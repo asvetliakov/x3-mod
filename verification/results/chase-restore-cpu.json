@@ -1,24 +1,24 @@
 {
  "fixture": "build/verification/chase-transition/chase_transition_cpu_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 6.3,
+ "elapsed_s": 5.9,
  "stubs": 18,
  "restore_stubs": 7,
- "checks": 722,
+ "checks": 739,
  "failures": 0,
  "failure_lines": [],
  "seam_idle_prefilter": {
-  "baseline_mean_us": 1.020182,
-  "stub_mean_us": 1.02443,
-  "delta_mean_us": 0.004248,
-  "delta_best_trial_us": -0.016821,
+  "baseline_mean_us": 1.055721,
+  "stub_mean_us": 1.063159,
+  "delta_mean_us": 0.007438,
+  "delta_best_trial_us": -0.018188,
   "scope": "seam_idle_prefilter_skip"
  },
  "full_stub_reference": {
-  "baseline_mean_us": 1.086141,
-  "stub_mean_us": 1.617977,
-  "delta_mean_us": 0.531836,
-  "delta_best_trial_us": 0.497388,
+  "baseline_mean_us": 1.077026,
+  "stub_mean_us": 1.61464,
+  "delta_mean_us": 0.537614,
+  "delta_best_trial_us": 0.52854,
   "scope": "full_stub_disabled_callback"
  },
  "bottle": {

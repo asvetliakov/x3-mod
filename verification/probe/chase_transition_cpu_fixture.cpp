@@ -3,7 +3,13 @@
 #include "../../src/proxy/chase_transition.cpp"
 #include "../../src/proxy/chase_lead.cpp"
 #include <cstdio>
-namespace x3m { void log(const char*,...) {} }
+// log() must never run under the chase SRW lock (present() holds capture's
+// mutex while report() takes this lock); count seam lines and violations.
+static unsigned log_under_lock=0,seam_lines=0;
+namespace x3m { void log(const char* format,...) {
+ if(TryAcquireSRWLockExclusive(&x3m::chase_transition::lock))ReleaseSRWLockExclusive(&x3m::chase_transition::lock);else ++log_under_lock;
+ if(!std::strncmp(format,"chase_view_restore_seam ",24))++seam_lines;
+} }
 namespace x3m::telemetry { bool enabled(){return true;} }
 namespace x3m::object_trace { bool executable_verified(){return true;} }
 namespace x3m::chase_camera { bool installed(){return true;} bool wanted(){return true;} }
@@ -129,14 +135,14 @@ void build_world(){
  std::memset(world,0,sizeof world);
  put(W(o_roots),W(o_vm));put(W(o_roots+4),W(o_native_registry));put(W(o_roots+8),W(o_cockpit_registry));
  put(W(o_vm+8),code_at(0));put(W(o_vm+0x1c),3u);put(W(o_vm+0x20),W(o_classes));put(W(o_vm+0x48),0x42d340u); // group1 dispatch
- const std::uint32_t ids[3]={0,restore_warp_class,restore_monitor_class};const unsigned cells[3]={o_global_cells,o_warp_cells,0};const unsigned counts[3]={12,8,12};
+ const std::uint32_t ids[3]={0,restore_warp_class,restore_monitor_class};const unsigned cells[3]={o_global_cells,o_warp_cells,0};const unsigned counts[3]={12,8,41};
  for(unsigned i=0;i<3;++i){put(descriptor(i),ids[i]);put(descriptor(i)+8,descriptor(i));put(descriptor(i)+0xc,cells[i]?W(cells[i]):0u);put(descriptor(i)+0x1c,counts[i]);}
  cell(W(o_global_cells)+5*9,player_id);cell(W(o_global_cells)+5*8,controller_id);
  cell(W(o_warp_cells)+5*3,1);cell(W(o_warp_cells)+5*6,0); // mid-warp world: transfer requires warp1/killed0
  put(W(o_monitor),monitor_id);put(W(o_monitor+8),descriptor(2));put(W(o_monitor+0xc),W(o_monitor_cells));
- cell(W(o_monitor_cells),restore_rear_mode);cell(W(o_monitor_cells)+5,0);cell(W(o_monitor_cells)+55,player_id);
+ cell(W(o_monitor_cells),restore_rear_mode);cell(W(o_monitor_cells)+5,0);cell(W(o_monitor_cells)+55,20);cell(W(o_monitor_cells)+80,0);cell(W(o_monitor_cells)+85,player_id); // run65 layout: cell11 priority, cell16 number, cell17 ref
  put(W(o_other_monitor),0xffff0001u);put(W(o_other_monitor+8),descriptor(2));put(W(o_other_monitor+0xc),W(o_other_monitor_cells));
- cell(W(o_other_monitor_cells),1);cell(W(o_other_monitor_cells)+5,0);cell(W(o_other_monitor_cells)+55,0xffff0002u);
+ cell(W(o_other_monitor_cells),1);cell(W(o_other_monitor_cells)+5,0);cell(W(o_other_monitor_cells)+55,60);cell(W(o_other_monitor_cells)+80,1);cell(W(o_other_monitor_cells)+85,0xffff0002u);
  put(W(o_task+8),task_id);put(W(o_task+0x10),128u);put(W(o_task+0x14),W(o_stack_base));put(W(o_task+0x3c),W(o_monitor));
  put(W(o_task2+8),task2_id);put(W(o_task2+0x10),128u);put(W(o_task2+0x14),W(o_stack2_base));put(W(o_task2+0x3c),W(o_monitor));
  put(W(o_ship+8),native_id);put(W(o_ship+0x94),player_id);
@@ -217,12 +223,20 @@ void scenarios(){
  {FrameCall f=seam_frame(restore_mode_pc,seam_source(W(o_stack_base)),0,W(o_monitor),0,W(o_other_monitor));run(0,f);
   check(!restore.pending&&payload()==1&&restore.last_refusal==refuse_context,"current-object/context mismatch cancels pending without writing");}
  // A secondary monitor whose variable11 is the player, visited first while pending, never touches the ticket.
- check(arm_pending(),"arm/pending for secondary player monitor");cell(W(o_other_monitor_cells)+55,player_id);
+ check(arm_pending(),"arm/pending for secondary player monitor");cell(W(o_other_monitor_cells)+85,player_id);
  {FrameCall f=seam_frame(restore_mode_pc,seam_source(W(o_stack_base)),0,W(o_other_monitor));run(0,f);
   check(restore.pending&&payload()==1&&restore.cancels[cancel_proof]==0,"secondary monitor viewing the player leaves pending untouched");}
  {FrameCall f=seam_frame(restore_mode_pc,seam_source(W(o_stack_base)),0,W(o_monitor));run(0,f);
   check(!restore.pending&&payload()==restore_rear_mode&&restore.consumed==1,"main monitor then consumes once");}
- cell(W(o_other_monitor_cells)+55,0xffff0002u);build_seam_stack(W(o_stack_base));
+ cell(W(o_other_monitor_cells)+85,0xffff0002u);build_seam_stack(W(o_stack_base));
+ // Side monitors never set cell17 (ef8c4 PUSH 0 / STOREM 17): their SelectMode(0) is foreign, never a cancel.
+ check(arm(),"arm for side monitor SelectMode(0)");cell(W(o_other_monitor_cells)+85,0,0);build_seam_stack(W(o_stack_base),0);
+ {FrameCall f=seam_frame(restore_mode_pc,seam_source(W(o_stack_base)),0,W(o_other_monitor));run(0,f);check(restore.armed&&restore.cancels[cancel_selection]==0,"side monitor with unset cell17 leaves the arm untouched");}
+ build_warp_stack();destroy();check(restore.pending,"armed ticket still transfers");build_seam_stack(W(o_stack_base),0);
+ {FrameCall f=seam_frame(restore_mode_pc,seam_source(W(o_stack_base)),0,W(o_other_monitor));run(0,f);check(restore.pending&&restore.cancels[cancel_proof]==0,"side monitor SelectMode(0) while pending leaves pending untouched");}
+ build_seam_stack(W(o_stack_base));
+ {FrameCall f=seam_frame(restore_mode_pc,seam_source(W(o_stack_base)),0,W(o_monitor));run(0,f);check(!restore.pending&&payload()==restore_rear_mode&&restore.consumed==1,"main monitor consumes once after side monitors");}
+ cell(W(o_other_monitor_cells)+85,0xffff0002u);build_seam_stack(W(o_stack_base));
  // An exception through the EH adapter while armed must not prevent a later re-arm and gate.
  check(arm(),"arm before eh bump");{FrameCall f{};f.flags=0x202;run(6,f);}
  update();check(restore.armed&&restore.arms==2&&restore.cancels[cancel_epoch]==1,"admitted rear update re-arms after an eh epoch bump");
@@ -290,7 +304,12 @@ void scenarios(){
   {"destination mode tag 0",refuse_mode_cell,[]{cell(W(o_monitor_cells),restore_rear_mode,0);},[]{cell(W(o_monitor_cells),restore_rear_mode);}},
   {"persistent mode 1",refuse_mode_cell,[]{cell(W(o_monitor_cells),1);},[]{cell(W(o_monitor_cells),restore_rear_mode);}},
   {"native handle nonzero",refuse_handle_cell,[]{cell(W(o_monitor_cells)+5,0x55);},[]{cell(W(o_monitor_cells)+5,0);}},
-  {"monitor ref not player",refuse_ref_cell,[]{cell(W(o_monitor_cells)+55,0xffff0002u);},[]{cell(W(o_monitor_cells)+55,player_id);}},
+  {"cell17 ref not player",refuse_ref_cell,[]{cell(W(o_monitor_cells)+85,0xffff0002u);},[]{cell(W(o_monitor_cells)+85,player_id);}},
+  {"cell17 tag 2",refuse_ref_tag,[]{cell(W(o_monitor_cells)+85,player_id,2);},[]{cell(W(o_monitor_cells)+85,player_id);}},
+  {"cell17 heap tag differs from global9",refuse_ref_tag,[]{cell(W(o_monitor_cells)+85,player_id,8);},[]{cell(W(o_monitor_cells)+85,player_id);}},
+  {"cell17 tag 0 (cleared by Show)",refuse_ref_tag,[]{cell(W(o_monitor_cells)+85,0,0);},[]{cell(W(o_monitor_cells)+85,player_id);}},
+  {"cell16 monitor number 1",refuse_monitor_number,[]{cell(W(o_monitor_cells)+80,1);},[]{cell(W(o_monitor_cells)+80,0);}},
+  {"cell11 priority is not consulted",refuse_ref_cell,[]{cell(W(o_monitor_cells)+55,player_id);cell(W(o_monitor_cells)+85,0xffff0002u);},[]{cell(W(o_monitor_cells)+55,20);cell(W(o_monitor_cells)+85,player_id);}},
   {"warp 0",refuse_warp,[]{cell(W(o_warp_cells)+15,0);},[]{cell(W(o_warp_cells)+15,1);}},
   {"killed 1",refuse_warp,[]{cell(W(o_warp_cells)+30,1);},[]{cell(W(o_warp_cells)+30,0);}},
   {"task id reused",refuse_task_id,[]{put(W(o_task+8),task_id+1);},[]{put(W(o_task+8),task_id);}},
@@ -450,6 +469,8 @@ int main(int argc,char** argv){
  restore_fixture::install_rollback();
  restore_fixture::scenarios();
  restore_fixture::late_window();
+ check(log_under_lock==0,"no log call under the chase SRW lock");
+ check(seam_lines>0,"pending seam calls emit the chase_view_restore_seam diagnostic after the lock is released");
  checks+=restore_fixture::checks;failures+=restore_fixture::failures;
  if(!cpu_only)benchmark(continuation,stubs,restore_fixture::stubs[0]);
  std::printf("CHASE TRANSITION LEAD CPU stubs=18 restore_stubs=%u checks=%u failures=%u\n",transition::restore_site_count,checks,failures);
