@@ -100,8 +100,11 @@ The inherited PS3 constant-read-port violation is repaired and reviewed in
 source: legacy/fill GPU reports and 1,162 fade readbacks match retained
 baselines exactly ([repair ledger](verification/linear-material-constant-port.md)).
 Native Windows runtime remains unverified; this repair is now installed. Replay admission has a ratified managed-buffer
-feasibility boundary, with complete entry coverage and concurrency proof still
-required before activation. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
+feasibility boundary. Optional buffer-lock observation is now reviewed in source:
+124 X3 fixture checks pass, including seven cold native-thread cases. It is not
+installed or connected to replay; complete entry coverage and concurrency proof
+remain required before activation
+([counter contract](reverse-engineering/replay-native-callbacks.md)). Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave
 exact wall-time attribution open. The bounded interval recorder is now independently
 reviewed and qualified in source (163 X3 CPU checks); run60 retains all 11,867 records over a 7.279 s load, with a 1.670 s wrapper

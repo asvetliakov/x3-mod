@@ -4,6 +4,7 @@
 #include <array>
 #include "finite_buffer_evidence.h"
 #include "execution_state.h"
+#include "buffer_lock_observation.h"
 
 // Opt-in normal-D3D9 ownership boundary. Application COM references are separate from renderer-owned
 // backend resources, so persistent history cannot keep its own owner alive.
@@ -15,6 +16,8 @@ struct Options {
     bool capture_auto_depth = false;
     // Diagnostic revisions of observed VB/IB writes; never captures payload.
     bool track_buffer_writes = false;
+    // Optional attempt/completion diagnostics; requires track_buffer_writes.
+    bool track_buffer_lock_attempts = false;
     // Observe scene/state-block/query intervals from pristine device creation.
     bool track_execution_state = false;
     // Opt-in finite XYZ evidence from verified existing MANAGED write mappings.
@@ -61,6 +64,21 @@ struct BufferContentView {
 // Caller must serialize buffer writes, these views and their draw snapshots.
 // Native writes plus metadata updates are not a transaction for concurrent callers.
 HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentView* out) noexcept;
+
+// CPU-only atomic registry snapshot of an allocation's observed Lock interval.
+// allocation_id survives wrapper recreation and is never reused. generation is
+// device-local and changes before every Reset attempt. Counts saturate and veto
+// known; READONLY attempts advance attempt_serial without changing revision.
+// Hold a live application reference. This is observation, never replay admission:
+// unknown/native escape coverage and source submission still need separate gates.
+// Ordinary returns preserve x87/MXCSR/LastError. Bookkeeping exceptions are caught
+// internally and return S_FALSE with unknown evidence (status E_FAIL).
+struct BufferLockView : BufferLockObservation {
+    std::uint64_t generation=0;
+    HRESULT status=S_FALSE;
+    bool requested=false, known=false;
+};
+HRESULT get_buffer_lock_view(IDirect3DResource9* application, BufferLockView* out) noexcept;
 
 // Step B/D locked-prefix positions of an application vertex buffer wrapper
 // for its leading vertex_count vertices (POSITION FLOAT3 at 0, stride 24

@@ -26,6 +26,8 @@ struct Factory;
 struct Device;
 struct Query;
 struct FiniteOwner;
+struct LockSidecar;
+void release_lock_sidecar(LockSidecar*) noexcept;
 void retire_finite(Device*, bool permanent, FiniteEvidenceReason);
 void initialize_finite(Device*);
 
@@ -56,8 +58,9 @@ struct Node {
     IUnknown* application = nullptr;
     IUnknown* identity = nullptr; // Borrowed, stable while backend is owned.
     Node* parent;
+    LockSidecar* lock_sidecar=nullptr; // CPU reference only; no native ownership edge.
     Node(Kind type, IUnknown* native, Node* owner) : kind(type), backend(native), parent(owner) {}
-    virtual ~Node() = default;
+    virtual ~Node() { release_lock_sidecar(lock_sidecar); }
 };
 
 HRESULT query(Node* node, REFIID iid, void** out);
@@ -160,6 +163,164 @@ auto execution_call(Device* node, Before&& before, Native&& native, After&& afte
     }
     outgoing.restore();
     return result;
+}
+
+// Allocation-owned counter metadata, independent of finite payload qualification.
+// Creation/adoption only may allocate or authenticate native private data. Hot
+// bookends use the wrapper's retained CPU reference, under registry_mutex.
+const GUID lock_sidecar_guid={0x630c9ec1,0x5821,0x481e,{0xa7,0xc4,0x59,0x92,0x72,0xfa,0x30,0x31}};
+std::unordered_map<IUnknown*,LockSidecar*> lock_sidecars;
+std::atomic<LockSidecar*> lock_retired{nullptr};
+std::uint64_t next_lock_allocation=0;
+std::size_t lock_sidecars_used=0;
+constexpr std::size_t lock_sidecar_limit=8192;
+struct LockSidecar final : IUnknown {
+    std::atomic<ULONG> refs{1};
+    IUnknown* identity=nullptr; // Weak key, never dereferenced.
+    Device* owner=nullptr; // Weak key; sidecar destructor never dereferences it.
+    LockSidecar* retired_next=nullptr;
+    BufferLockObservation observation;
+    // Authentication is published only by the registry-owning adoption caller.
+    // Native callbacks never touch compiler TLS, registry locks or allocation.
+    std::atomic<DWORD> authentication_thread{0};
+    std::atomic<unsigned> authentication_adds{0};
+    HRESULT WINAPI QueryInterface(REFIID iid,void** out) override;
+    ULONG WINAPI AddRef() override;
+    ULONG WINAPI Release() override;
+};
+// GCC's scoped policy is also used by the generated admission ABI shells. Only
+// these bounded native callbacks suppress EH; container/lifetime owners retain
+// exceptions. noinline prevents moving callback work outside its saved envelope.
+#if !defined(__GNUC__) || defined(__clang__)
+#error "Counter callback ABI shells require verified GCC scoped exception policy."
+#endif
+#pragma GCC push_options
+#pragma GCC optimize("no-exceptions")
+// Do not reuse ExecutionState here: its exception-enabled out-of-line helpers
+// can register SJLJ frames before save/after restore. These helpers must inline
+// into the audited no-EH shell, with no transitive compiler runtime calls.
+struct CounterAbiState {
+    unsigned char fp[108];unsigned mxcsr;DWORD error;
+    __attribute__((always_inline)) CounterAbiState() noexcept {
+        asm volatile("fnsave %0\n\tfrstor %0\n\tstmxcsr %1" : "=m"(fp),"=m"(mxcsr) :: "memory");
+        error=GetLastError();
+    }
+    __attribute__((always_inline)) void restore() const noexcept {
+        SetLastError(error);
+        asm volatile("frstor %0\n\tldmxcsr %1" :: "m"(fp),"m"(mxcsr) : "memory");
+    }
+};
+__attribute__((noinline)) HRESULT WINAPI LockSidecar::QueryInterface(REFIID iid,void** out) {
+    CounterAbiState incoming;
+    HRESULT result=E_POINTER;
+    if(out){
+        *out=nullptr;result=E_NOINTERFACE;
+        if(iid==IID_IUnknown){AddRef();*out=this;result=S_OK;}
+    }
+    incoming.restore();return result;
+}
+__attribute__((noinline)) ULONG WINAPI LockSidecar::AddRef() {
+    CounterAbiState incoming;
+    const auto expected=authentication_thread.load(std::memory_order_acquire);
+    if(expected&&expected==GetCurrentThreadId())
+        authentication_adds.fetch_add(1,std::memory_order_relaxed);
+    const auto result=refs.fetch_add(1,std::memory_order_relaxed)+1;
+    incoming.restore();return result;
+}
+__attribute__((noinline)) ULONG WINAPI LockSidecar::Release() {
+    CounterAbiState incoming;
+    const auto remaining=refs.fetch_sub(1,std::memory_order_acq_rel)-1;
+    if(!remaining){
+        // Native destruction can hold a runtime lock. This callback only enqueues.
+        auto* head=lock_retired.load(std::memory_order_relaxed);
+        do{retired_next=head;}while(!lock_retired.compare_exchange_weak(
+            head,this,std::memory_order_release,std::memory_order_relaxed));
+    }
+    incoming.restore();return remaining;
+}
+#pragma GCC pop_options
+void release_lock_sidecar(LockSidecar* side) noexcept {if(side)side->Release();}
+void drain_lock_retired() {
+    auto* side=lock_retired.exchange(nullptr,std::memory_order_acquire);
+    while(side){auto* next=side->retired_next;
+        const auto found=lock_sidecars.find(side->identity);
+        if(found!=lock_sidecars.end()&&found->second==side)lock_sidecars.erase(found);
+        delete side;--lock_sidecars_used;side=next;
+    }
+}
+LockSidecar* acquire_lock_sidecar(Device* device,IDirect3DResource9* resource,IUnknown* identity) {
+    if(!device->options.track_buffer_lock_attempts||FAILED(device->buffer_tracking_status))return nullptr;
+    drain_lock_retired();
+    const auto found=lock_sidecars.find(identity);
+    if(found==lock_sidecars.end())return nullptr;
+    auto* side=found->second;
+    ULONG refs=side->refs.load(std::memory_order_acquire);
+    while(refs&&refs!=ULONG_MAX){if(side->refs.compare_exchange_weak(refs,refs+1,std::memory_order_acq_rel))break;}
+    if(!refs||refs==ULONG_MAX)return nullptr;
+    // Authenticate once at ownership establishment. Nested authentication refuses
+    // before native entry, preserving the outer witness. Cross-thread AddRefs do
+    // not impersonate native GetPrivateData's same-thread owned-reference return.
+    if(side->authentication_thread.load(std::memory_order_acquire)){
+        side->Release();return nullptr;
+    }
+    side->authentication_adds.store(0,std::memory_order_relaxed);
+    side->authentication_thread.store(GetCurrentThreadId(),std::memory_order_release);
+    IUnknown* returned=nullptr;DWORD bytes=sizeof returned;
+    const HRESULT hr=resource->GetPrivateData(lock_sidecar_guid,&returned,&bytes);
+    side->authentication_thread.store(0,std::memory_order_release);
+    const auto adds=side->authentication_adds.exchange(0,std::memory_order_relaxed);
+    const bool valid=SUCCEEDED(hr)&&bytes==sizeof returned&&returned==side&&adds==1&&side->owner==device;
+    for(unsigned n=0;n<adds;++n)side->Release();
+    if(!valid){side->Release();return nullptr;}
+    return side;
+}
+void attach_lock_sidecar(Device* device,IDirect3DResource9* resource) {
+    if(!device->options.track_buffer_lock_attempts)return;
+    drain_lock_retired();
+    if(lock_sidecars_used>=lock_sidecar_limit||next_lock_allocation==UINT64_MAX)return;
+    IUnknown* identity=nullptr;
+    if(FAILED(resource->QueryInterface(IID_IUnknown,reinterpret_cast<void**>(&identity)))||!identity)return;
+    identity->Release();
+    auto* side=new(std::nothrow) LockSidecar;
+    if(!side)return;
+    side->identity=identity;side->owner=device;side->observation.allocation_id=++next_lock_allocation;
+    try{lock_sidecars[identity]=side;}catch(...){delete side;return;}
+    ++lock_sidecars_used;
+    // Only our bounded atomic private-IUnknown callback is authorized here.
+    if(FAILED(resource->SetPrivateData(lock_sidecar_guid,side,sizeof(IUnknown*),D3DSPD_IUNKNOWN)))
+        side->observation.ambiguous=true;
+    side->Release();
+}
+#ifdef X3M_BUFFER_LOCK_FIXTURE
+std::atomic<std::uint64_t> buffer_bookend_fixture_entries{0};
+#endif
+void begin_buffer_call(Node* node,bool unlock,UINT offset=0,UINT size=0,DWORD flags=0) {
+#ifdef X3M_BUFFER_LOCK_FIXTURE
+    ++buffer_bookend_fixture_entries;
+#endif
+    if(!device_of(node)->options.track_buffer_lock_attempts)return;
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    if(auto* side=node->lock_sidecar){
+        if(unlock)side->observation.begin_unlock(GetCurrentThreadId());
+        else side->observation.begin_lock(offset,size,flags,GetCurrentThreadId());
+    }
+}
+#ifdef X3M_BUFFER_LOCK_FIXTURE
+void(*buffer_publication_fixture_hook)(bool)=nullptr;
+#endif
+void complete_buffer_call(Node* node,bool unlock,HRESULT hr) {
+#ifdef X3M_BUFFER_LOCK_FIXTURE
+    ++buffer_bookend_fixture_entries;
+#endif
+    if(!device_of(node)->options.track_buffer_lock_attempts)return;
+#ifdef X3M_BUFFER_LOCK_FIXTURE
+    if(buffer_publication_fixture_hook)buffer_publication_fixture_hook(unlock);
+#endif
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    if(auto* side=node->lock_sidecar){
+        if(unlock)side->observation.complete_unlock(SUCCEEDED(hr));
+        else side->observation.complete_lock(SUCCEEDED(hr));
+    }
 }
 
 struct FiniteSidecar;
@@ -606,6 +767,9 @@ ULONG release(Node* node, ApplicationAdmissionAbi& admission) {
     } else node->backend->Release();
     {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
     delete node;
+    if(lock_retired.load(std::memory_order_acquire)){
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_lock_retired();
+    }
     // Retire the child application ticket before dispatching the parent entry.
     // Its adapter storage remains alive, but no longer names this dead child.
     // Ordinary entry invariants guarantee same-thread/LIFO completion here.
@@ -694,6 +858,7 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
             if (kind == Kind::Factory && options &&
                 (static_cast<Factory*>(existing)->options.capture_auto_depth != options->capture_auto_depth ||
                  static_cast<Factory*>(existing)->options.track_buffer_writes != options->track_buffer_writes ||
+                 static_cast<Factory*>(existing)->options.track_buffer_lock_attempts != options->track_buffer_lock_attempts ||
                  static_cast<Factory*>(existing)->options.track_execution_state != options->track_execution_state ||
                  static_cast<Factory*>(existing)->options.capture_finite_positions != options->capture_finite_positions ||
                  static_cast<Factory*>(existing)->options.finite_payload_budget != options->finite_payload_budget ||
@@ -707,6 +872,8 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
             if (options && kind == Kind::Factory) static_cast<Factory*>(fresh)->options = *options;
             if (options && kind == Kind::Device) static_cast<Device*>(fresh)->options = *options;
             fresh->identity = identity;
+            if(kind==Kind::VertexBuffer||kind==Kind::IndexBuffer)
+                fresh->lock_sidecar=acquire_lock_sidecar(static_cast<Device*>(parent),static_cast<IDirect3DResource9*>(owned),identity);
             native_nodes.emplace(identity, fresh);
             try { application_nodes.emplace(fresh->application, fresh); }
             catch (...) { native_nodes.erase(identity); throw; }
@@ -766,6 +933,7 @@ bool initialize_buffer(Device* device, IDirect3DResource9* native, DWORD request
     // Only a successfully created new buffer establishes a known revision zero.
     // Getters/adoption of an untagged pre-existing resource never do so.
     write_buffer_metadata(device, native, BufferMetadata{});
+    attach_lock_sidecar(device,native);
     return attach_finite(device, native, requested_usage);
 }
 // Creation conversion is transactional. Bookkeeping sees a native result only
@@ -833,7 +1001,7 @@ HRESULT buffer_desc(Node* node,D3DVERTEXBUFFER_DESC* desc){return buffer_desc_im
 HRESULT buffer_desc(Node* node,D3DINDEXBUFFER_DESC* desc){return buffer_desc_impl(node,desc);}
 
 enum class BufferEvent { Lock, Unlock, FailedUnlock, ProcessVertices };
-void record_buffer_event(Device* device, IDirect3DResource9* native, BufferEvent event, DWORD flags = 0) {
+void record_buffer_event(Device* device, IDirect3DResource9* native, BufferEvent event, DWORD flags = 0, LockSidecar* lock_sidecar = nullptr) {
     if (!device->options.track_buffer_writes) return;
     std::lock_guard<std::recursive_mutex> lock(registry_mutex);
     BufferMetadata value{};
@@ -855,10 +1023,18 @@ void record_buffer_event(Device* device, IDirect3DResource9* native, BufferEvent
         else ++value.revision;
     }
     write_buffer_metadata(device, native, value);
+    // Mirror existing successful pending/revision semantics without a query-time
+    // native call. Missing/failing metadata still vetoes through device status.
+    if(lock_sidecar){
+        auto& observation=lock_sidecar->observation;
+        observation.revision=value.revision;observation.pending_locks=value.pending;
+        observation.ambiguous|=value.ambiguous!=0;
+    }
 }
 HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags) {
     ExecutionState incoming;
     auto* device=device_of(node);
+    if(device->options.track_buffer_lock_attempts)begin_buffer_call(node,false,offset,size,flags);
     // Invalidate any prior write transaction before a nested/unsupported attempt.
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       SideReference hold{acquire_finite(device,static_cast<IDirect3DResource9*>(node->backend))};
@@ -888,7 +1064,7 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
     }
     if (SUCCEEDED(hr)) {
         auto* resource=static_cast<IDirect3DResource9*>(node->backend);
-        record_buffer_event(device,resource,BufferEvent::Lock,flags);
+        record_buffer_event(device,resource,BufferEvent::Lock,flags,node->lock_sidecar);
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         SideReference hold{acquire_finite(device,resource)};auto* side=hold.value;
         if(side){
@@ -910,11 +1086,13 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
             }
         }
     }
+    if(device->options.track_buffer_lock_attempts)complete_buffer_call(node,false,hr);
     outgoing.restore();return hr;
 }
 HRESULT buffer_unlock(Node* node) {
     ExecutionState incoming;
     Device* device=device_of(node);auto* resource=static_cast<IDirect3DResource9*>(node->backend);
+    if(device->options.track_buffer_lock_attempts)begin_buffer_call(node,true);
     SideReference hold;bool staged=false;
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       hold.value=acquire_finite(device,resource);auto* side=hold.value;
@@ -959,7 +1137,7 @@ HRESULT buffer_unlock(Node* node) {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         prefix_table.invalidate(reinterpret_cast<std::uintptr_t>(node));
     }
-    record_buffer_event(device,resource,SUCCEEDED(hr)?BufferEvent::Unlock:BufferEvent::FailedUnlock);
+    record_buffer_event(device,resource,SUCCEEDED(hr)?BufferEvent::Unlock:BufferEvent::FailedUnlock,0,node->lock_sidecar);
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       auto* side=hold.value;
       if(side&&staged){
@@ -976,13 +1154,14 @@ HRESULT buffer_unlock(Node* node) {
       }else if(side&&FAILED(hr))invalidate_finite(side,FiniteEvidenceReason::UnlockFailed);
     }
     if(hold.value){hold.value->Release();hold.value=nullptr;}
+    if(device->options.track_buffer_lock_attempts)complete_buffer_call(node,true,hr);
     outgoing.restore();return hr;
 }
 HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr) {
     PreserveExecution preserve;Device* device=device_of(node);
-    if(SUCCEEDED(hr)&&(guid==buffer_content_guid||guid==finite_sidecar_guid)){
+    if(SUCCEEDED(hr)&&(guid==buffer_content_guid||guid==finite_sidecar_guid||guid==lock_sidecar_guid)){
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        if(device->options.track_buffer_writes&&guid==buffer_content_guid)fail_buffer_tracking(device,E_FAIL);
+        if(device->options.track_buffer_writes&&(guid==buffer_content_guid||guid==lock_sidecar_guid))fail_buffer_tracking(device,E_FAIL);
         if(device->options.capture_finite_positions)retire_finite(device,true,FiniteEvidenceReason::MetadataTampered);
     }
     return observe_result(device,hr);
@@ -1000,7 +1179,14 @@ HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     incoming.restore();
     const HRESULT hr=node->native_->ProcessVertices(first,destination,count,native,native_declaration,flags);
     ExecutionState outgoing;
-    if(SUCCEEDED(hr)&&native)record_buffer_event(node,native,BufferEvent::ProcessVertices);
+    if(SUCCEEDED(hr)&&native){
+        if(node->options.track_buffer_lock_attempts){
+            std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+            const auto found=application_nodes.find(buffer);
+            record_buffer_event(node,native,BufferEvent::ProcessVertices,0,
+                found!=application_nodes.end()?found->second->lock_sidecar:nullptr);
+        }else record_buffer_event(node,native,BufferEvent::ProcessVertices);
+    }
     observe_result(node,hr);
     outgoing.restore();return hr;
 }
@@ -1126,7 +1312,14 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
     const D3DPRESENT_PARAMETERS requested = pp ? *pp : D3DPRESENT_PARAMETERS{};
     return execution_call(node, [&] {
         node->execution.before_reset();
-        { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; if (node->options.locked_prefix_bounds) prefix_table.clear(); }
+        {
+            std::lock_guard<std::recursive_mutex> lock(registry_mutex);node->resetting=true;
+            if(node->options.track_buffer_lock_attempts){
+                if(node->buffer_lock_generation!=UINT64_MAX)++node->buffer_lock_generation;
+                else fail_buffer_tracking(node,E_FAIL);
+            }
+            if(node->options.locked_prefix_bounds)prefix_table.clear();
+        }
         retire_geometry(node);
         retire_finite(node);
         retire_copy_depth(node, S_FALSE);
@@ -1393,7 +1586,7 @@ HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out, const Options& 
     *out = nullptr;
     {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
     if (!owned_native) return E_INVALIDARG;
-    if ((options.capture_finite_positions&&!options.track_buffer_writes)||options.finite_payload_budget>finite_global_budget||options.finite_sidecar_limit>finite_global_sidecars) return E_INVALIDARG;
+    if (((options.capture_finite_positions||options.track_buffer_lock_attempts)&&!options.track_buffer_writes)||options.finite_payload_budget>finite_global_budget||options.finite_sidecar_limit>finite_global_sidecars) return E_INVALIDARG;
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       if (application_nodes.count(owned_native)) return E_INVALIDARG; }
     if (has_ex(owned_native, IID_IDirect3D9Ex)) return E_NOINTERFACE;
@@ -1443,11 +1636,49 @@ HRESULT invalidate_native_buffer_evidence(IUnknown* application) noexcept {
     // Advance storage revision even when finite capture is disabled, so every
     // existing content/history/lease request becomes stale. The caller excludes
     // all queries throughout the following native mutation interval.
-    record_buffer_event(device,resource,BufferEvent::ProcessVertices);
+    record_buffer_event(device,resource,BufferEvent::ProcessVertices,0,node->lock_sidecar);
     SideReference side{acquire_finite(device,resource)};
     if(side.value)invalidate_finite(side.value,FiniteEvidenceReason::NativeContract);
     return S_OK;
 }
+
+#ifdef X3M_BUFFER_LOCK_FIXTURE
+bool buffer_snapshot_fixture_fail=false;
+#endif
+static __attribute__((noinline)) HRESULT get_buffer_lock_view_core(IDirect3DResource9* application,BufferLockView* out) noexcept {
+    if(!out)return E_POINTER;
+    *out={};
+    try {
+#ifdef X3M_BUFFER_LOCK_FIXTURE
+    if(buffer_snapshot_fixture_fail)throw std::bad_alloc{};
+#endif
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found=application_nodes.find(application);
+    if(found==application_nodes.end()||(found->second->kind!=Kind::VertexBuffer&&
+        found->second->kind!=Kind::IndexBuffer))return E_INVALIDARG;
+    auto* node=found->second;auto* device=device_of(node);
+    out->requested=device->options.track_buffer_lock_attempts;
+    if(!out->requested)return S_OK;
+    out->generation=device->buffer_lock_generation;
+    if(node->lock_sidecar)static_cast<BufferLockObservation&>(*out)=node->lock_sidecar->observation;
+    if(FAILED(device->buffer_tracking_status)){out->status=device->buffer_tracking_status;return S_OK;}
+    out->known=out->quiet()&&!device->retiring&&!device->resetting&&!device->lost&&own_buffer_slots(node);
+    out->status=out->known?S_OK:S_FALSE;
+    return S_OK;
+    }catch(...){
+        // Nothing may unwind across the no-EH ABI shell. Counter failure is
+        // optional unknown evidence, not a reason to abort the application.
+        *out={};out->status=E_FAIL;return S_FALSE;
+    }
+}
+#pragma GCC push_options
+#pragma GCC optimize("no-exceptions")
+__attribute__((noinline)) HRESULT get_buffer_lock_view(IDirect3DResource9* application,BufferLockView* out) noexcept {
+    CounterAbiState incoming;
+    const HRESULT result=get_buffer_lock_view_core(application,out);
+    incoming.restore();return result;
+}
+#pragma GCC pop_options
 
 HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentView* out) noexcept {
     if (!out) return E_POINTER;

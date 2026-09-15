@@ -70,7 +70,7 @@ def generate(parsed, directory):
             classes.append("    Options options;\n")
         if kind == "Device":
             classes.append("    std::vector<IUnknown*> renderer_resources;\n    bool retiring = false, resetting = false, lost = false;\n")
-            classes.append("    CopyDepth copy_depth;\n    ObservedExecutionState execution;\n    std::atomic<bool> recording_state_block{false};\n    HRESULT buffer_tracking_status = S_OK;\n    std::shared_ptr<FiniteOwner> finite_owner;\n    HRESULT finite_status = S_FALSE;\n")
+            classes.append("    CopyDepth copy_depth;\n    ObservedExecutionState execution;\n    std::atomic<bool> recording_state_block{false};\n    HRESULT buffer_tracking_status = S_OK;\n    std::uint64_t buffer_lock_generation = 1;\n    std::shared_ptr<FiniteOwner> finite_owner;\n    HRESULT finite_status = S_FALSE;\n")
         if kind == "Query":
             classes.append("    ExecutionQuery execution_query;\n")
         classes.append(f"    {kind}({interface}* native, Node* owner)\n        : Node(Kind::{kind}, native, owner), native_(native) {{ application = static_cast<{interface}*>(this); }}\n")

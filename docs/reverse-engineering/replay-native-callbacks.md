@@ -113,3 +113,139 @@ without waiting on its own token and without letting an ordinary application
 mutation impersonate renderer work. That behavior cannot be supplied by an
 unchecked thread-local bypass. For now the hard live replay gate remains required;
 this backend note does not change it.
+
+## Optional allocation Lock bookends — source checkpoint, 2026-09-15
+
+The counter-first step of [directional shadows §9](../architecture/directional-shadows.md#counter-first-observe-attempts-completion-and-the-draw-to-replay-interval)
+now has a separate `Options::track_buffer_lock_attempts` switch, requiring existing
+write tracking. `get_buffer_lock_view` takes a single registry snapshot entirely
+from CPU metadata: allocation ID, device Reset generation, Lock/Unlock serials,
+in-flight calls, successful pending maps/content revision, last Lock range/flags/
+thread, Unlock thread and saturating flag/failure totals. Zero-size ranges retain
+the actual API argument (whole/remainder semantics are not expanded by a getter).
+READONLY advances the attempt serial and READONLY total but preserves the existing
+content revision. DISCARD/NOOVERWRITE totals are independent flag counts, including
+failed calls; ordinary means none of READONLY/DISCARD/NOOVERWRITE. A successful
+writable Lock still advances the existing revision before return; the counter
+change does not redefine an observed write as a byte comparison or hash.
+
+An allocation-owned private-IUnknown counter sidecar is created only at successful
+native resource creation, with a process-unique nonzero ID. It owns no native or
+device reference and has no geometry payload. Wrapper adoption authenticates that
+sidecar once through an allocation-local atomic thread/count AddRef witness,
+then retains only the CPU record. No compiler TLS is used by the new callbacks. Canonical native identity keys the creation/
+adoption table, so aliases and recreated application shells share counters.
+Creation is capped at 8192 living/deferred sidecars; failed allocation,
+authentication, missing metadata, exhausted IDs or tampering never produces a
+known snapshot. A retained old sidecar cannot erase a replacement at the same
+identity: deferred deletion erases the table entry only when it still names that
+exact sidecar. Native final Release enqueues CPU retirement without acquiring the
+registry; creation, adoption and ordinary final-release cleanup drain it later.
+
+Lock and Unlock entry bookends run before the existing native dispatch; completion
+runs after native result observation, pending/revision publication, finite evidence
+and temporary-sidecar cleanup. The native Lock/Unlock calls and application map
+interval remain outside the registry mutex. No new native call, allocation, hash,
+logging, payload read or sentinel write occurs in a bookend. Existing content
+private-data operations remain unchanged and mirror into the CPU record while
+holding their existing registry lock. Registration/authentication native private-
+data calls happen only at creation/adoption; this does not certify all private-
+data/raw-helper operations for future replay authority.
+
+Every Reset attempt advances the device-local generation before native Reset,
+including failed attempts. Reset/loss/retirement makes views unavailable; a later
+successful Reset retains allocation counters and publishes the new generation.
+Overflow permanently vetoes known state. The native-input and native-output
+x87/MXCSR/LastError envelope still surrounds the entire helper, including the new
+bookends; generated application-admission shells and native Lock arguments/output
+slots remain unchanged. No engine instruction patch or replay draw is introduced.
+
+Focused host production-core checks cover 28 assertions, including barriers before
+native completion and after result publication, overlapping failed Lock, pending
+maps, READONLY classification and every new counter's saturation. The actual
+production-wrapper fixture is `verification/probe/buffer_lock_bookends_fixture.cpp`;
+it cross-compiles with GCC 16.2 for x86 Windows using SSE2 and the four-byte incoming
+stack contract. It adds native-entry/result-publication barriers, HRESULT/output/
+CPU/LastError checks, failed Unlock, wrapper recreation/allocation retirement,
+failed/successful Reset, metadata tamper, disabled allocation cost and IB coverage.
+The parent ran the frozen standalone executable under the serialized X3 Wine queue:
+80 checks passed, exit 0, child 4.933053 s and lock wait 0.000003083 s. Provenance:
+X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`,
+`X3M_ADMISSION=0`, `WINEDLLOVERRIDES=d3d9=b`. Executable SHA-256:
+`71eb7d475c4386a35e1baa8c441c30d1c224c1610925adb64628649b3333410b`;
+local report/timings: `/tmp/x3-lock-check/owner-report.txt` and
+`/tmp/x3-lock-check/owner-timings.json`. Final source guards skip adoption private-data authentication after a known
+device tracking failure and skip the bookend helper calls when disabled. The
+latter avoids GCC SJLJ exception registration before an internal option check;
+emitted-code inspection confirms both disabled branches jump over the helper.
+The final scoped fixture adds a retained-old-sidecar/foreign-IUnknown replacement
+case that proves recreation makes no foreign AddRef after known tampering, plus
+entry counters proving disabled Lock/Unlock bypass both helpers. The parent ran
+that final executable with the same X3 environment: 88 checks passed, exit 0,
+child 4.327074416 s, lock wait 0.000003500 s. Final executable SHA-256:
+`2075fd8442ac9cdad7a54c540b6dc52906a6a9ee3f13b168fff43c75cf6527da`;
+local report/timings: `/tmp/x3-lock-final1/owner-report.txt` and
+`/tmp/x3-lock-final1/owner-timings.json`. Native Windows runtime remains unverified.
+
+Cost inspection: disabled Lock/Unlock adds option branches with no new metadata
+mutex/native calls or allocation; enabled calls add two short CPU registry sections
+and fixed integer work. Successful content publication copies three existing
+metadata values through the cached sidecar pointer. Snapshots add one registry
+lookup and a fixed-size copy. Each wrapper gains one CPU pointer and each device
+one generation value. No per-draw caller exists yet and no game-FPS claim follows.
+Complete entry/window/native-helper coverage, draw-to-replay source integration,
+exclusive replay races and native Windows runtime qualification remain separate
+gates. Neither a quiet interval nor this API changes the hard live replay gate.
+
+
+### Review correction: cold native callback and snapshot boundaries
+
+Independent deep review found that the first counter implementation reused a
+compiler-TLS AddRef witness, whose emitted `__emutls_get_address` path could lock,
+allocate or abort on allocation failure on a new thread. Its Release and direct
+snapshot guards also had GCC SJLJ setup/teardown outside the saved CPU envelope.
+No runtime corruption was observed; this was a substantive emitted-code finding.
+
+The new counter's QI/AddRef/Release methods now have narrowly scoped GCC
+`no-exceptions` definitions. Their dedicated, always-inlined `CounterAbiState`
+saves x87/MXCSR before any call and restores after `SetLastError`. Reusing the
+old `ExecutionState` helpers was rejected by transitive inspection: those
+out-of-line helpers themselves register SJLJ frames. All ownership containers,
+creation rollback and snapshot registry work retain ordinary exception support.
+The public snapshot is a no-EH outer shell around a core that catches C++ failures
+and returns `S_FALSE`, `known=false`, `status=E_FAIL`; nothing unwinds through the
+outer saved state. These promises concern ordinary returns, not arbitrary SEH
+faults, illegal COM use or failures inside the C++ runtime's own exception system.
+
+Authentication no longer needs any TLS initialization or cold allocation. The
+adoption caller, under the registry, publishes the sidecar's expected Win32 thread
+ID and clears its atomic AddRef count before native GetPrivateData. The callback
+increments that count only for the matching thread; adoption clears both fields
+afterward and accepts only exact identity/size/result plus one witnessed AddRef.
+An already-active authentication refuses before native dispatch and leaves the
+outer witness intact. Native AddRef/Release use only integer atomics and the
+saved CPU state; final Release only enqueues deferred CPU retirement. There is no
+new callback allocator whose cold failure could terminate the application.
+
+`verify_buffer_lock_callbacks.py` checks the final fixture's emitted call closure,
+including imports, the snapshot core's catch and the absence of compiler warmup
+in the raw CreateThread entry. The review-fix executable has three callback
+closures whose only external calls are documented GetLastError, SetLastError and
+GetCurrentThreadId (QI also calls the audited AddRef). Its snapshot shell adds
+only the contained registry-core call. The seven fresh-thread cases independently
+exercise AddRef, Release, QI, nonmatching authentication thread, direct snapshot,
+caught snapshot failure and final Release, with x87/MXCSR/LastError comparisons.
+Nested and successful witness publication plus the earlier tamper controls remain
+in the same scoped fixture. The earlier 88-check witness remains valid for its
+unchanged paths. The parent ran the frozen review-fix executable under the same
+serialized X3 environment (arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`,
+`X3M_ADMISSION=0`, `WINEDLLOVERRIDES=d3d9=b`): **124 checks passed**, exit 0,
+child 4.734419708 s, lock wait 0.000002959 s. Executable SHA-256:
+`1b9ee3a48844f56cc6505c8df10481a1f3377bacd564a9477a9eb794b6e56945`.
+Local evidence is `/tmp/x3-lock-reviewfix/owner-report.txt`,
+`owner-timings.json` and `callback-audit.json` in the same directory. Final source
+also passes strict x86 compilation and the 28-assertion host core check. Native
+Windows runtime remains unverified. The same independent deep reviewer accepted
+the correction after re-running the emitted callback/snapshot audit and checking
+the frozen binary and patch hashes. This acceptance covers counter observation
+only; replay entry coverage and activation remain separate gates.

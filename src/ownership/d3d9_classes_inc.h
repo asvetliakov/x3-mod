@@ -32,6 +32,7 @@ struct Device final : IDirect3DDevice9, Node {
     ObservedExecutionState execution;
     std::atomic<bool> recording_state_block{false};
     HRESULT buffer_tracking_status = S_OK;
+    std::uint64_t buffer_lock_generation = 1;
     std::shared_ptr<FiniteOwner> finite_owner;
     HRESULT finite_status = S_FALSE;
     Device(IDirect3DDevice9* native, Node* owner)
