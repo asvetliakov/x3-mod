@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 (run24 gate trace received; restore lifetime assumption contradicted). This is the short current handoff; the current
+Updated 2026-09-15 (user selected EV ceiling 1.0 and fill 0.03; source changes in progress). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -36,8 +36,11 @@ HUD, and the selected WRAP/motion fixes are included.
 
 **Run 23 is complete**, preserved at `/tmp/x3-bottleX3-run54` (153 referenced
 files), with four EV0/+1.5 far/near screenshots. The user reports brighter hulls
-and asks whether 0.04 would be preferable. The sampled brightness thresholds
-pass; unmatched colour/reprojection evidence limits acceptance. Retain 0.06 provisionally; the configured default remains 0.
+and subsequently chose **Auto capped at +1.0 EV and material fill 0.03** as
+the new defaults. Those source changes are in progress; the installed defaults
+above have not changed yet. The run54 brightness thresholds support fill, but
+unmatched colour/reprojection evidence limits acceptance and does not establish
+a measured 0.03 comparison.
 See the [fill ledger](verification/fill-light.md) for numbers and limitations.
 The [run queue](verification/user-runs.md) records the remaining telemetry request. K=0 qualified
 4,177 cases with every recorded baseline row bit-identical; live qualification

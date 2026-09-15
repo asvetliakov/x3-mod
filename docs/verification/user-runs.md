@@ -39,7 +39,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 20 | Asteroid prepass jitter, port and ship far/near pairs, step D bullets, AO radius 20, loading markers | 0 | Completed as user run 20, snapshot run48: asteroid triangle dropout fixed and accepted, step-D brackets no longer fullscreen, loading markers fired; AO ran in debug view only, port darkening still open |
 | 21 | AO appearance at a readable footprint (`--ao-radius 100`, no debug view), bullet witness every frame, vanilla port approach | 1 | Completed as user run 21, snapshot run49 (session A only): the fade witness is clean on the firing frames and the bolts are accepted, AO is invisible at radius 100 and is now default-off, a new station-section jitter at ~4.7 km is under diagnosis; session B (vanilla port approach) has not been reported |
 | 22 | LOD scale 2×, fade-band trembling fix, docking-port screenshot pair | 0 | Completed as user run 22, snapshot run51: trembling gone, LOD 2× applied, module darkening owned by point-light range |
-| 23 | Material fill 0.06 at the run-51 station | 0 | Completed as snapshot run54; threshold evidence supports 0.06 provisionally, default remains 0; 0.04 is an optional preference bracket |
+| 23 | Material fill 0.06 at the run-51 station | 0 | Completed as snapshot run54; fill visibly works. User subsequently chose default 0.03 and Auto EV ceiling +1.0; source change in progress |
 | 24 | Chase reset-writer telemetry: gate jump and jumpdrive | 0 | Gate portion completed as run56; user confirms reset. Jumpdrive not run (no suitable save); lifetime/identity analysis in progress |
 
 Completed run commands and instructions are preserved in
@@ -49,9 +49,9 @@ not rerun requests.
 ## 23. Material fill at the run-51 station — completed
 
 Completed as `/tmp/x3-bottleX3-run54`. The user reports brighter hulls; fixed-EV0
-threshold evidence supports retaining 0.06 provisionally, while the default
-remains 0. The user may choose 0.04 as a preference bracket, without a required
-repeat. Full instructions are preserved under
+threshold evidence supported 0.06 provisionally. The user subsequently chose
+fill **0.03** and Auto EV ceiling **+1.0** as defaults; that source change is in
+progress. No further preference bracket is requested. Full instructions are preserved under
 [Run 23 in the completed-run archive](../archive/user-runs-completed.md#23-material-fill-at-the-run-51-station--completed).
 
 ## 24. Chase reset-writer telemetry — after the fill captures
