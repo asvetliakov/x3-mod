@@ -564,11 +564,16 @@ void fill_definition(Words& out, const LinearMaterialConfig& config) {
     emit(out, def, {dst(constant,fill_constant,xyzw),bits(config.fill),0,0,0});
 }
 // One MAD per converted pixel: sum.xyz = decode(LightDir_Color0)*g_direct*k + sum.
-void fill_instruction(Words& out, unsigned sum) {
+void fill_instruction(Words& out, unsigned sum, bool selective = false) {
+    if (selective) {
+        emit(out,mul,{dst(temp,16),src(temp,12),lane(constant,fill_constant,0)});
+        emit(out,mad,{dst(temp,sum),src(temp,16),lane(constant,222,0),src(temp,sum)});
+        return;
+    }
     emit(out, mad, {dst(temp,sum),src(temp,12),lane(constant,fill_constant,0),src(temp,sum)});
 }
 struct Source { Word value, address = 0; };
-void sanitize(Words& out, bool vertex, unsigned target, Source source) {
+void sanitize(Words& out, bool vertex, unsigned target, Source source, bool selective_output = false) {
     const unsigned base = vertex ? 248 : 212;
     // ps_3_0 exposes one float-constant read port per instruction. Stage the
     // admitted application constant without rewriting its source token, so the
@@ -584,11 +589,11 @@ void sanitize(Words& out, bool vertex, unsigned target, Source source) {
     if (source.value & relative)
         emit(out,max_op,{dst(temp,target),source.value,source.address,lane(constant,base,1)});
     else emit(out,max_op,{dst(temp,target),source.value,lane(constant,base,1)});
-    emit(out,min_op,{dst(temp,target),src(temp,target),lane(constant,base,2)});
+    emit(out,min_op,{dst(temp,target),src(temp,target),lane(constant,selective_output?222:base,selective_output?1:2)});
 }
-void transfer(Words& out, bool vertex, unsigned target, Source source, bool encode = false, unsigned pixel_scratch = 9) {
+void transfer(Words& out, bool vertex, unsigned target, Source source, bool encode = false, unsigned pixel_scratch = 9, bool selective_output = false) {
     const unsigned base = vertex ? 248 : 212, scratch = vertex ? 8 : pixel_scratch;
-    sanitize(out,vertex,target,source);
+    sanitize(out,vertex,target,source,selective_output);
     // VS3 has no CMP. A strict-positive SLT mask times a finite positive POW
     // yields exact +0 for either signed zero without evaluating POW(0,...).
     if (vertex) emit(out,slt,{dst(temp,9),lane(constant,base,1),src(temp,target)});
@@ -1048,6 +1053,7 @@ const MotionOutputProfile* selected_row(bool vertex, std::uint64_t hash) noexcep
     return nullptr;
 }
 #include "linear_sun_share_inc.h"
+#include "material_exposure_profiles_inc.h"
 #include "linear_xt_material_inc.h"
 
 LinearMaterialResult transform(const Word* original, std::size_t words, const LinearMaterialConfig& config,
@@ -1088,6 +1094,10 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             (row_pixel->glass_fresnel && !glass_color_sites(original,original_structure,vertex,vertex?v->glass_fresnel:p->glass_fresnel,vertex?0:p->clamp,vertex?0:p->final_rgb+5)) ||
             (row_pixel->palette_style && !palette_sites(original,original_structure,*palette,vertex,bump,row_pixel->palette_style)))
             return LinearMaterialResult::ProfileMismatch;
+        const auto* exposure=config.selective_exposure && !vertex ? exposure_seed(hash) : nullptr;
+        if (config.selective_exposure && (!exposure_reservations(original,original_structure,vertex) ||
+            (!vertex && !exposure_seed_valid(original,original_structure,exposure))))
+            return LinearMaterialResult::ProfileMismatch;
         // Constant hemispherical fill (docs/architecture/fill-light.md): one MAD
         // into the lobe sum, before the albedo multiply. The destination must be
         // the program's single such site; anything else keeps the law unchanged.
@@ -1100,11 +1110,15 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                  (fill_at==p->final_rgb || std::find(p->rgb.begin(),p->rgb.end(),fill_at)!=p->rgb.end()) &&
                  fill_constant_free(original,original_structure);
         }
+        if (config.selective_exposure && !vertex && config.fill>0.f && !fill)
+            return LinearMaterialResult::ProfileMismatch;
         Words motion;
         const auto motion_result=vertex ? material_motion_vertex_variant_for(*row,original,words,motion,current_depth) :
                                          material_motion_pixel_variant_for(*row,original,words,motion,current_depth);
         if (motion_result!=MaterialMotionResult::Applied)
             return motion_result==MaterialMotionResult::AllocationFailure ? LinearMaterialResult::AllocationFailure : LinearMaterialResult::ProfileMismatch;
+        if (config.selective_exposure && !exposure_motion_reservations(motion,vertex))
+            return LinearMaterialResult::ProfileMismatch;
         const bool depth=vertex?material_motion_vertex_exports_depth(*row,current_depth):material_motion_pixel_writes_depth(*row,current_depth);
         std::vector<Insertion> insertions;
         if (!motion_insertions(original,words,motion,*row,vertex,depth,original_structure,insertions)) return LinearMaterialResult::ProfileMismatch;
@@ -1139,12 +1153,17 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                     if (p->light1) { transfer(combined,false,13,{src(constant,p->light1)},false,abi.pixel_scratch); gain(combined,false,13,0); }
                 }
             }
-            if (original[at]==end_token) { combined.push_back(end_token); ++at; continue; }
+            if (original[at]==end_token) {
+                if (config.selective_exposure && !vertex && !fade) exposure_invalid_sun(combined);
+                combined.push_back(end_token); ++at; continue;
+            }
             const unsigned op=original[at]&0xffff, n=length(original[at]);
             if (vertex && at==point_site(*v)) {
                 transfer(combined,true,7,{original[at+3],v->loop?original[at+4]:0}); gain(combined,true,7,0);
             }
             if (vertex && at==emissive_site(*v)) {
+                if (config.selective_exposure)
+                    emit(combined,mul,{dst(temp,16),original[at+2],lane(constant,250,0)});
                 sanitize(combined,true,7,{original[at+(v->loop?3:4)]});
                 // Material emissive already includes native strength: no POW.
                 // ABS canonicalizes a signed-zero sanitizer result explicitly.
@@ -1154,9 +1173,9 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             // replaced by the separately declared whole COLOR1 register.
             if (palette && bump && op==dcl && kind(original[at+2])==(vertex?output_reg:input) &&
                 index(original[at+2])==(vertex?8u:7u)) { at+=n+1; continue; }
-            if (fill && at==fill_at) fill_instruction(combined,fill_sum);
+            if (fill && at==fill_at) fill_instruction(combined,fill_sum,config.selective_exposure);
             const auto copied=combined.size();
-            if (sun_extracted) sun_sites.push_back({at,copied});
+            if (sun_extracted && !config.selective_exposure) sun_sites.push_back({at,copied});
             combined.insert(combined.end(),original+at,original+at+n+1);
             if (palette && op!=0xfffe) {
                 if (op==dcl && kind(original[at+2])==(vertex?output_reg:input)) {
@@ -1191,6 +1210,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 }
                 if (at==emissive_site(*v)) {
                     combined[copied+1]=dst(output_reg,abi.vertex_rgb);
+                    if (config.selective_exposure) combined[copied+2]=src(temp,16);
                     combined[copied+(v->loop?3:4)]=src(temp,7);
                 }
             } else if (op!=0xfffe) {
@@ -1223,21 +1243,24 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 if (at==p->final_rgb) {
                     combined[copied+1]=dst(temp,11);
                     if (fade) {
-                        sanitize(combined,false,11,{src(temp,11)});
+                        sanitize(combined,false,11,{src(temp,11)},config.selective_exposure);
+                        if (config.selective_exposure)
+                            emit(combined,mul,{dst(temp,11),src(temp,11),lane(constant,222,2)});
                         emit(combined,mov,{dst(color_output,1),src(temp,11)});
                     } else {
-                        transfer(combined,false,11,{src(temp,11)},true,abi.pixel_scratch);
+                        transfer(combined,false,11,{src(temp,11)},true,abi.pixel_scratch,config.selective_exposure);
                         emit(combined,mov,{dst(color_output,0),src(temp,11)});
                     }
                 }
             }
+            if (exposure && at==exposure->at) exposure_join(combined,copied,*exposure);
             at+=n+1;
         }
         if (insertion_index!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final_structure;
         if (!structure(combined.data(),combined.size(),vertex,final_structure,false,abi,original_temp_count)) return LinearMaterialResult::ResourceLimit;
         bool sun_proved=false;
-        if (sun_extracted) {
+        if (sun_extracted && !config.selective_exposure) {
             Structure enhanced;
             const std::array<unsigned,2> seeds{p->color_source[0],p->color_source[1]};
             if (!sun_share_variant(original, original_structure, combined, final_structure, sun_sites, seeds, p->final_rgb, sun_proved) ||

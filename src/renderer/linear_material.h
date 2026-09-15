@@ -16,10 +16,19 @@ struct LinearMaterialConfig {
     // Zero is off and emits no instruction, so the programs stay byte-identical
     // to a fill-less build. Pixel stage only; the vertex programs are unchanged.
     float fill = 0.0f;
+    // Create-time opt-in only. Caller caches both stages separately and uploads
+    // one immutable, validated frame packet before admitting a selective pair.
+    // Existing default config produces byte-identical ordinary programs.
+    bool selective_exposure = false;
 };
 enum class LinearMaterialResult {
     Applied, InvalidInput, InvalidConfig, UnsupportedShader, ProfileMismatch,
     ResourceLimit, AllocationFailure
+};
+struct MaterialExposureAbi {
+    static constexpr unsigned vertex_constant = 250; // x = 1/e
+    static constexpr unsigned pixel_constant = 222; // x=1/e, y=C/min(e,1), z=min(e,1)
+    // Qualified e range is [1/8,2]; no shader-side factor-only clamping.
 };
 struct LinearMaterialAbi {
     static constexpr unsigned vertex_definition_base = 248;
@@ -107,6 +116,8 @@ LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t* ori
 // Unknown/malformed inputs and resource collisions retain output unchanged.
 // With current_depth=false this does not establish any valid depth in oC2.r;
 // receiver consumers require ordinary same-draw depth independently.
+// A selective_exposure config emits the same selective RGB as the base API,
+// writes the unqualified -1 sentinel, and reports extraction_applied=false.
 // Requires separate G32R32F MRT/state qualification before any live use.
 LinearMaterialResult linear_material_pixel_variant_sun_share(const std::uint32_t* original,
     std::size_t words, const LinearMaterialConfig& config,

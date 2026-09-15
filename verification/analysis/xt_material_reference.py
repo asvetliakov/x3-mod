@@ -133,6 +133,7 @@ class Inputs:
     cube: CubeSource = (0.0, 0.0, 0.0)
     direct_gain: float = 1.0
     lightmap_gain: float = 1.0
+    fill: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -347,6 +348,8 @@ def _evaluate(contract: Contract, inputs: Inputs, *, linear: bool) -> Result:
     lit = _add(_mul(diffuse_sum, inputs.diffuse_strength),
                _mul(specular_sum, inputs.specular_strength * direct_mask))
 
+    if linear:
+        lit = _add(lit, _mul(decode_rgb(inputs.lights[0].color), inputs.direct_gain * inputs.fill))
     palette_rgb = _palette_value(inputs.palette, view, reflection, linear=linear)
     if inputs.palette_enabled:
         weighting = _real(inputs.palette.weighting, "palette weighting")

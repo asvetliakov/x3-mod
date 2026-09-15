@@ -379,7 +379,7 @@ def bump_geometry(normal_sample, tangent, binormal, geometric_normal, view, *,
 def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
           lightmap, cubemap, directions: Sequence[DirectionalLight], *,
           affine=IDENTITY_AFFINE, face=1.0, glow=0.0, gains=Gains(),
-          fill=0.0,
+          fill=0.0, diffuse_scale=1.0,
           half_source=False, half_target=False, normal_sample=None,
           tangent=None, binormal=None, coefficients=None) -> PixelResult:
     """Evaluate one PS sample using explicit sampled inputs and VS varyings.
@@ -457,7 +457,7 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
         reflected = tuple(2.0 * _dot(normal, light.direction) * n - l
                           for n, l in zip(normal, light.direction))
         highlight = _sat(_dot(view, reflected)) ** power
-        lobe = diffuse_strength * cosine + specular_strength * mask * _sat(3.0 * cosine) * highlight
+        lobe = diffuse_scale * diffuse_strength * cosine + specular_strength * mask * _sat(3.0 * cosine) * highlight
         for i in range(3):
             directional[i] += lobe * decode(light.color[i]) * gains.direct
     for i in range(3):
@@ -509,7 +509,7 @@ class AsteroidWeights:
 
 
 def asteroid_pixel(profile, varying, base, detail, specular_mask, directions, *,
-                   weights=AsteroidWeights(), gains=Gains(), fill=0.0, half_source=False,
+                   weights=AsteroidWeights(), gains=Gains(), fill=0.0, diffuse_scale=1.0, half_source=False,
                    half_target=False, normal_sample=None, tangent=None, binormal=None) -> PixelResult:
     """Asteroid DEFAULT/BUMPMAP, from independently sampled base/detail RGBA.
 
@@ -555,7 +555,7 @@ def asteroid_pixel(profile, varying, base, detail, specular_mask, directions, *,
         reflected = tuple(2.0 * _dot(normal, light.direction) * n - l
                           for n, l in zip(normal, light.direction))
         highlight = _sat(_dot(view, reflected)) ** 3
-        lobe = cosine + mask * _sat(3.0 * cosine) * highlight
+        lobe = diffuse_scale * cosine + mask * _sat(3.0 * cosine) * highlight
         for i in range(3):
             directional[i] += lobe * decode(light.color[i]) * gains.direct
     for i in range(3):
@@ -699,7 +699,7 @@ def palette_vertex(profile, world_position, world_normal, camera_position, mater
 
 def palette_pixel(profile, varying, diffuse, specular_mask, lightmap, cubemap,
                   directions: Sequence[DirectionalLight], *, affine=IDENTITY_AFFINE,
-                  face=1.0, glow=0.0, gains=Gains(), fill=0.0, half_source=False, half_target=False,
+                  face=1.0, glow=0.0, gains=Gains(), fill=0.0, diffuse_scale=1.0, half_source=False, half_target=False,
                   normal_sample=None, tangent=None, binormal=None) -> PixelResult:
     """Full native palette terms with independent color conversion boundaries.
 
@@ -786,7 +786,7 @@ def palette_pixel(profile, varying, diffuse, specular_mask, lightmap, cubemap,
         cosine=_sat(_dot(normal,light.direction))
         reflected=tuple(2*_dot(normal,light.direction)*n-l for n,l in zip(normal,light.direction))
         highlight=_sat(_dot(view,reflected))**10
-        lobe=diffuse_coefficient*cosine+specular_scale*mask*_sat(3*cosine)*highlight
+        lobe=diffuse_scale*diffuse_coefficient*cosine+specular_scale*mask*_sat(3*cosine)*highlight
         for i in range(3):directional[i]+=lobe*decode(light.color[i])*gains.direct
     for i in range(3):directional[i]+=fill*decode(directions[0].color[i])*gains.direct
     j=quantize(_real(varying.reflection_weight,'reflection weight'))
@@ -851,7 +851,7 @@ def glass_vertex(world_position, world_normal, camera_position, material_emissiv
 
 
 def glass_pixel(profile, varying, diffuse, specular_mask, cubemap, directions, *,
-                face=1., gains=Gains(), fill=0.0, half_source=False, half_target=True, linear=True):
+                face=1., gains=Gains(), fill=0.0, diffuse_scale=1.0, half_source=False, half_target=True, linear=True):
     """Preserve diffuse-tinted q^6 gloss and a separately added S*F*cube term.
 
     Native COLOR0 RGB is explicitly saturated; only its converted linear RGB
@@ -877,7 +877,7 @@ def glass_pixel(profile, varying, diffuse, specular_mask, cubemap, directions, *
         cosine = _sat(_dot(normal,light.direction))
         reflected = tuple(2.*_dot(normal,light.direction)*n-l for n,l in zip(normal,light.direction))
         q = _sat(_dot(view,reflected))
-        lobe = .5*cosine + 3.*mask*q**6*_sat(3.*cosine)
+        lobe = diffuse_scale*.5*cosine + 3.*mask*q**6*_sat(3.*cosine)
         for i in range(3): lighting[i] += transfer(light.color[i])*lobe*(gains.direct if linear else 1.)
     if linear:
         for i in range(3): lighting[i] += fill*decode(directions[0].color[i])*gains.direct

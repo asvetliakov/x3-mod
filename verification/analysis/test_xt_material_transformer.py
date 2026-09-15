@@ -133,7 +133,7 @@ class XtMaterialTransformerTests(unittest.TestCase):
                 if i['opcode'] in (40,41):depth+=1
                 if i['opcode']==43:depth-=1
                 dest,sources=motion.split_operands(i,3)
-                if i['opcode']==11 and dest['name']=='r14' and sources[0]['name'].startswith('c'):
+                if i['opcode']==1 and dest['name']=='r14' and sources[0]['name'].startswith('c'):
                     self.assertEqual(depth,1)
                     seen.append(sources[0]['register'])
             self.assertEqual(seen,[v for _,v in p['palette']])
@@ -156,7 +156,7 @@ class XtMaterialTransformerTests(unittest.TestCase):
             self.assertLessEqual(count,512)
             key=(program[:2],linear,depth);maxima[key]=max(maxima.get(key,0),count)
         self.maxDiff=None
-        self.assertEqual(maxima,{('vs',False,0):79,('vs',False,1):81,('vs',True,0):104,('vs',True,1):106,('ps',False,0):136,('ps',False,1):138,('ps',True,0):296,('ps',True,1):298})
+        self.assertEqual(maxima,{('vs',False,0):79,('vs',False,1):81,('vs',True,0):104,('vs',True,1):106,('ps',False,0):136,('ps',False,1):138,('ps',True,0):303,('ps',True,1):305})
 
     def test_authored_default_geometry_matches_independent_reference(self):
         w,items=load(self.output/'vs_494fe349b8bc12ec-1-0-1.bin')

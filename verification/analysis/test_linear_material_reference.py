@@ -1205,3 +1205,64 @@ class PaletteEvidenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class SelectiveExposureReferenceTests(unittest.TestCase):
+    def test_all_family_independent_components_point_loops_faces_and_gains(self):
+        from dataclasses import replace
+        import linear_material_reference as ref
+        from material_exposure_reference import evaluate
+        counts=0
+        for table,function in [(ref.PROFILES,ref.pixel),(ref.ASTEROID_PROFILES,ref.asteroid_pixel),
+                               (ref.PALETTE_PROFILES,ref.palette_pixel),(ref.GLASS_PROFILES,ref.glass_pixel)]:
+            for shader,contract in table.items():
+                for gain in (0,1,4,16):
+                    for count in (0,1,8):
+                        gains=ref.Gains(gain,gain,gain)
+                        lights=[ref.PointLight((0.,0.,2.),(.3,.5,.7),(1.,0.,0.))]*count
+                        point=ref.vertex((0,0,0),(0,0,1),(.2,.1,2),(0,0,0),lights,gains=gains)
+                        emission=ref.vertex((0,0,0),(0,0,1),(.2,.1,2),(.07,.03,.09),gains=gains)
+                        if function==ref.palette_pixel:
+                            point=ref.PaletteVertexResult(point.normal,point.view,point.reflection,point.linear_rgb,point.alpha,(.2,.3,.1),.4,.2,(.2,.3,.4) if contract.vertex_palette else None)
+                            emission=replace(point,linear_rgb=emission.linear_rgb)
+                        if function==ref.glass_pixel:
+                            point=ref.GlassVertexResult(point.normal,point.view,point.reflection,point.linear_rgb,point.alpha,.3)
+                            emission=replace(point,linear_rgb=emission.linear_rgb)
+                        directions=[ref.DirectionalLight((0,0,1),(.4,.7,.3))]*contract.directions
+                        for face in (-1,1):
+                            def run(varying,base_only=False,high_only=False,exposure=1.,fill=0.):
+                                kwargs=dict(gains=gains,fill=fill,diffuse_scale=0. if high_only else 1/exposure,half_target=False)
+                                if function!=ref.asteroid_pixel:kwargs['face']=face
+                                if getattr(contract,'bump_map',False):kwargs.update(normal_sample=(.55,.6,.9,.55),tangent=(1,0,0),binormal=(0,1,0))
+                                mask=0. if base_only else .4
+                                cube=(0.,0.,0.) if base_only else (.2,.4,.3)
+                                lightmap=(0.,0.,0.,.8) if base_only else (.1,.2,.05,.8)
+                                if function==ref.asteroid_pixel:return function(shader,varying,(.5,.3,.7,.6),(.2,.4,.3,.8),mask,directions,**kwargs)
+                                if function==ref.glass_pixel:return function(shader,varying,(.5,.3,.7,.6),mask,lambda _:cube,directions,**kwargs)
+                                sampler=(lambda _:cube) if function==ref.palette_pixel or getattr(contract,'bump_map',False) else cube
+                                return function(shader,varying,(.5,.3,.7,.6),mask,lightmap,sampler,directions,**kwargs)
+                            for fill in (0.,.03):
+                                B=run(point,base_only=True,fill=fill);H=run(emission,high_only=True)
+                                for e in (.125,.5,1.,2.):
+                                    varying=replace(point,linear_rgb=tuple(p/e+m for p,m in zip(point.linear_rgb,emission.linear_rgb)))
+                                    actual=run(varying,exposure=e,fill=fill/e)
+                                    expected=evaluate(B.linear_rgb,H.linear_rgb,e)
+                                    self.assertTrue(expected.exact_domain)
+                                    for q,want in zip(actual.linear_rgb,expected.q):self.assertAlmostEqual(q,want,delta=1e-10)
+                                    self.assertEqual(actual.encoded_rgba[3],H.encoded_rgba[3]);counts+=1
+        print('Independent mathematical material component cases:',counts)
+
+    def test_fixed_point_emission_and_near_cap_domain(self):
+        from material_exposure_reference import evaluate
+        light=PointLight((0,0,2),(.2,.5,.7),(1,0,0))
+        for gain in (0,1,4,16):
+            args=((0,0,0),(0,0,1),(0,0,3),(.1,.2,.3),[light])
+            self.assertEqual(vertex(*args,gains=Gains(gain,gain,gain)).linear_rgb,
+                             vertex(*args,gains=Gains(gain,gain,gain),fixed_single=True).linear_rgb)
+        for e in (.125,.5,1.,2.):
+            result=evaluate((65500.,60000.,1e-25),(4.,5000.,1e-26),e)
+            self.assertTrue(result.exact_domain)
+            self.assertAlmostEqual(result.displayed[0],65500+e*4)
+            self.assertTrue(all(math.isfinite(v) and v<=65504 for v in result.encoded))
+        self.assertFalse(evaluate((65504.,)*3,(65504.,)*3,.125).exact_domain)
+        for e in (0.,.124,2.01,math.nan,math.inf):
+            with self.assertRaises(ValueError):evaluate((1,2,3),(4,5,6),e)

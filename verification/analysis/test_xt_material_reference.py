@@ -303,3 +303,34 @@ class XTReferenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class XtSelectiveExposureReferenceTests(unittest.TestCase):
+    def test_independent_components_damage_detail_palette_occlusion_and_terra(self):
+        from material_exposure_reference import evaluate
+        count=0
+        for shader,contract in ref.CONTRACTS.items():
+            for gain in (0.,1.,4.,16.):
+                for branch in (False,True):
+                    for face in (-1.,1.):
+                        for fill in (0.,.03):
+                            point=(gain*.03,gain*.07,gain*.02);emission=(gain*.04,gain*.02,gain*.06)
+                            inputs=ref.Inputs(diffuse=(.4,.5,.6,.7),specular=(.3,.1,.2,.8),lightmap=(.1,.3,.2,.7),
+                                occlusion=(.2,.1,.4,.6),detail=(.4,.6,.3,.8),bump_sample=(.5,.5,.5,.5),
+                                lights=(ref.Light((0.,0.,1.),(.3,.5,.7)),ref.Light((.2,.1,.9),(.5,.4,.2))),
+                                cube=(.2,.3,.5),fresnel=.4,reflection_strength=.7,specular_strength=1.3,
+                                diffuse_strength=.8,occlusion_strength=1.2,palette_enabled=branch,
+                                decal=branch and contract.family!='terraformer',face=face,
+                                palette=ref.Palette(weighting=.6,weights=(.2,.3,.1),highlight_weight=.2),
+                                detail_strength=.1,direct_gain=gain,lightmap_gain=gain,fill=fill)
+                            B=ref.linear_pixel(shader,replace(inputs,vertex_linear_rgb=point,specular_strength=0.,
+                                reflection_strength=0.,lightmap=(0.,0.,0.,.7),
+                                occlusion=(0.,0.,0.,.6) if contract.family=='terraformer' else inputs.occlusion))
+                            H=ref.linear_pixel(shader,replace(inputs,vertex_linear_rgb=emission,diffuse_strength=0.,fill=0.))
+                            for e in (.125,.5,1.,2.):
+                                actual=ref.linear_pixel(shader,replace(inputs,diffuse_strength=inputs.diffuse_strength/e,fill=fill/e,
+                                    vertex_linear_rgb=tuple(p/e+m for p,m in zip(point,emission))))
+                                expected=evaluate(B.working_rgb,H.working_rgb,e)
+                                self.assertTrue(expected.exact_domain)
+                                for q,want in zip(actual.working_rgb,expected.q):self.assertAlmostEqual(q,want,delta=1e-10)
+                                self.assertEqual(actual.alpha,H.alpha);count+=1
+        print('Independent XT source component cases:',count)

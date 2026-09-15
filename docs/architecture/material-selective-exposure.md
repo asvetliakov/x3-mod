@@ -501,3 +501,10 @@ all shader constant/slot proofs; specialized scratch finite behavior; meter stat
 at the depth-only Clear; selective resolve compilation budget; coexistence policy for the sun
 fraction; and measured translucent coverage at the user's scene. These are bounded source/
 fixture tasks, not reasons to restore the rejected paired-scene requirement.
+
+## 2026-09-15 implementation checkpoint
+
+Milestone 1 create-time variants are implemented and independently reviewed;
+the [feature ledger](../verification/material-exposure.md) distinguishes host
+source/tail proof from pending whole-program GPU and runtime qualification.
+No live selective-exposure mode is enabled by this checkpoint.

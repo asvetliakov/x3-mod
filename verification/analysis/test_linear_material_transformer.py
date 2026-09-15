@@ -302,6 +302,9 @@ def family_resources(profile):
             'temporary_base': temporal_base, 'scratch': 10 if bump else 9}
 
 
+# Historical corpus digests below were refreshed after 5b3b5c3. The affected
+# constant-port test independently proves each added MOV and rewritten MAX;
+# test_material_exposure compares all ordinary bytes against clean 070df80.
 class LinearMaterialTransformerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -348,9 +351,10 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         self.assertGreaterEqual(self.driver['checks'], 2800)
 
     def legacy_material_bytes(self, path):
-        # The intentional COLOR1 change is exactly one DCL semantic token per
+        # The COLOR1 change is exactly one DCL semantic token per
         # program. Restore that token only for comparison to retained complete
-        # bytecode goldens; no arithmetic, masks, registers or flags are ignored.
+        # bytecode goldens ratified after the 5b3b5c3 constant-port repair.
+        # All sanitizer staging MOVs remain included; no arithmetic is ignored.
         profile = next(p for p in self.report['programs'] if p['id'] == path.name.split('-')[0])
         vertex = profile['id'].startswith('vs_')
         abi = family_resources(profile)
@@ -378,9 +382,9 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for path in outputs:
             data = self.legacy_material_bytes(path)
             digest.update(path.name.encode() + b'\0' + struct.pack('<I', len(data)) + data)
-        self.assertEqual(digest.hexdigest(), 'f38849e8c5dedde5674aacd881f8eaae87e8d2eb3d67342e19a111c7582df40b')
+        self.assertEqual(digest.hexdigest(), 'cc686e0591a846de910c4ec58a244a9a1c491900a57a3b8653c12234554d5cc8')
 
-    def test_all_664_preceding_color1_outputs_are_byte_exact(self):
+    def test_all_664_color1_outputs_after_constant_port_repair_are_byte_exact(self):
         digest = hashlib.sha256()
         paths = sorted(p for p in self.output.glob('*.bin')
                        if '-motion-' not in p.name and p.name.split('-')[0] not in PALETTE_ORIGINALS)
@@ -388,7 +392,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for path in paths:
             data=path.read_bytes()
             digest.update(path.name.encode()+b'\0'+struct.pack('<I',len(data))+data)
-        self.assertEqual(digest.hexdigest(),'de4f0b34bb486b5d036dbd36c0d364a70f40eb7f611f4a8d9a6fc2db869c1c13')
+        self.assertEqual(digest.hexdigest(),'b3b3bfd1780e1959fa3cd1c9b200c8a70dd4e46e5c26432eac4620791d526dcd')
 
     def test_all_392_preceding_outputs_have_only_semantic_change(self):
         # Captured from qualified checkpoint 73f5c51 before the next hull rows:
@@ -402,7 +406,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             digest.update(path.name.encode() + b'\0')
             digest.update(struct.pack('<I', len(data)))
             digest.update(data)
-        self.assertEqual(digest.hexdigest(), 'b9753e6337fd36cbb8bf15851e5821361bd003ed428b9ec859d80289321f6e02')
+        self.assertEqual(digest.hexdigest(), 'b97c735636748d5d054edcaf502267f301cd90cec96287bb03178e5554132413')
 
     def test_all_584_preceding_hull_outputs_have_only_semantic_change(self):
         # Captured from 10e447b before Asteroid edits: all 73 originals,
@@ -415,7 +419,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for path in outputs:
             data = self.legacy_material_bytes(path)
             digest.update(path.name.encode() + b'\0' + struct.pack('<I', len(data)) + data)
-        self.assertEqual(digest.hexdigest(), '8b15fc29c3f5bbc5b1389a317349457f9769b05098bbbd2b49d824c632ac34ff')
+        self.assertEqual(digest.hexdigest(), 'e4219185882fddb0f925fbe41ecf69514f4228019d65110e8bac33a9eb9e8555')
 
     def test_all_192_installed_outputs_have_only_semantic_change(self):
         # Captured before this 40-pair extension from the accepted 24-program
@@ -429,7 +433,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             digest.update(path.name.encode() + b'\0')
             digest.update(struct.pack('<I', len(data)))
             digest.update(data)
-        self.assertEqual(digest.hexdigest(), '8c27bf32d6e0f006ab51f937b4321aecefa30073040dcbdac140b9e25dd4ea84')
+        self.assertEqual(digest.hexdigest(), '32deefc195add5e6423c177b5161472679942c7a233df7cbf8de36e7ad516c97')
 
     def test_all_previous_default_outputs_have_only_semantic_change(self):
         # Frozen before BUMPMAP core edits at 40ee4e1: all 120 DEFAULT
@@ -443,7 +447,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             digest.update(path.name.encode() + b'\0')
             digest.update(struct.pack('<I', len(data)))
             digest.update(data)
-        self.assertEqual(digest.hexdigest(), '797e97fd80ac54f7133249b4b3965ff9c438758b78169f784982d133a01aaff5')
+        self.assertEqual(digest.hexdigest(), '532784fb0e6cf686bb9d62fa26f7378b5b1aac695075d0a8f75ebe5affb44f9f')
 
     def test_previous_argon_outputs_have_only_semantic_change(self):
         # Captured from the qualified pre-extension transformer at c558b00:
@@ -459,7 +463,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             digest.update(path.name.encode() + b'\0')
             digest.update(struct.pack('<I', len(data)))
             digest.update(data)
-        self.assertEqual(digest.hexdigest(), '3b6d22c9155bd345e5b7cacf1f99c00216fccc6b71202626ba92452446b4c8fc')
+        self.assertEqual(digest.hexdigest(), 'b15faa03a1ca478ac6898979bb6416ba3884f0feda1fdea1d2fede125d51d857')
 
     def test_original_instruction_alpha_position_and_comment_invariants(self):
         for profile, depth, gain, combined, changed_items in self.each():
@@ -782,8 +786,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for family in ('default', 'bump'):
             self.assertEqual([maxima[family]['vs'], maxima[family]['ps']],
                              self.driver[f'weighted_slots_{family}_vs_ps_depth_off_on'])
-        self.assertEqual(maxima['default'], {'vs':[98,100], 'ps':[176,178]})
-        self.assertEqual(maxima['bump'], {'vs':[106,108], 'ps':[188,190]})
+        self.assertEqual(maxima['default'], {'vs':[98,100], 'ps':[178,180]})
+        self.assertEqual(maxima['bump'], {'vs':[106,108], 'ps':[190,192]})
 
     def test_sample_conversion_boundaries_preserve_data_and_use_proved_rgb_registers(self):
         # Distinguish affine r4 from DEFAULT r3 and both BUMP data samplers;

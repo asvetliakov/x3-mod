@@ -54,7 +54,9 @@ a measured 0.03 comparison. The user also approved a selective-exposure
 feature: base hull shading at EV0, with reflections/specular/emission and other
 scene effects still exposed. The [selective-exposure contract](architecture/material-selective-exposure.md)
 is ratified: background-driven Auto, one compensated scene and one exposed-linear
-TAA history. Material-family source proof and implementation remain pending.
+TAA history. Create-time material variants are now independently reviewed and
+host-qualified for all 137 covered stages; whole-program GPU and live integration
+remain pending ([ledger](verification/material-exposure.md)).
 See the [fill ledger](verification/fill-light.md) for numbers and limitations.
 The [run queue](verification/user-runs.md) records the remaining telemetry request. K=0 qualified
 4,177 cases with every recorded baseline row bit-identical; live qualification

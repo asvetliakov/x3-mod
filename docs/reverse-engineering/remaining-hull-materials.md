@@ -242,3 +242,121 @@ Session-local bounded extraction/check helpers and derived metadata are under
 `/tmp/x3-remaining-hulls/`. Original shader bytes and disassembler output remain
 local and untracked. No Wine execution, compilation, production changes or game
 launch was performed for this study.
+
+## Selective base exposure: all-current-family join proof (2026-09-15)
+
+This is the create-time milestone of
+[material-selective-exposure.md](../architecture/material-selective-exposure.md),
+including the related [palette/hull](../architecture/linear-hull-materials.md),
+[glass](../architecture/glass-materials.md) and [XT](../architecture/xt-materials.md)
+contracts. No runtime mode, installed build or native GPU result is asserted.
+The immutable local originals at `/tmp/x3-shader-sweep/programs` contain all
+**137 selected stages: 29 VS and 108 PS**.
+
+### Diffuse-only join and source ownership
+
+Every selected PS has exactly one directional diffuse/specular MAD join:
+**38 diffuse-product joins** and **70 diffuse-addend joins**. The bounded
+`material_exposure_profiles_inc.h` records original hash, instruction offset,
+destination lanes and which MAD term is diffuse. The full original hash and
+existing family sites remain mandatory; changed bytecode never inherits a plan.
+The independent host lane-ancestry proof starts at saturated normal/light DP3
+consumers and distinguishes reflected-view DP3 ancestry; it identifies the
+same single join in every original without importing the production offsets.
+It follows packed scalar lanes and native angular saturation before identifying
+the join, rather than treating a whole directional color as diffuse.
+
+| Representative original / DWORD | Proved join property |
+| --- | --- |
+| Argon base `8759c7838bbc86c2` / 1192 | Diffuse RGB from both colors times its native 0.4 coefficient, plus independent specular RGB |
+| Argon single `593e5dea9b3457d5` / 212 | Packed diffuse lane is the addend; the other packed lane's saturation still shapes specular |
+| Shared/Split BUMPMAP | Native diffuse half remains at the diffuse consumer; shared cube half, packed angular lane and POW stay unchanged |
+| Terran `3602b05ce11ca6ff` / 1247 | Unit diffuse RGB is the addend of the fused specular MAD |
+| Asteroid `517540ae6d5e5410` / 359 | Unit diffuse addend, before base/detail tint; no invented cube/lightmap source |
+| Boron `39eb3c2258a516e1` / 320 | Diffuse product precedes the existing palette/albedo products |
+| Opaque glass `a66fb1981ba755b2` / 271 | Diffuse product is separate from gloss; Fresnel cube remains independent |
+| XT BUMP `5f82ecacd39529cd` / 1636 | Diffuse sum times application DiffuseStrength, then independent specular; later tint/occlusion affect both in their original order |
+
+The emitted selective product form evaluates the diffuse product, multiplies it
+by runtime `inv_e`, then adds the unchanged specular addend. The addend form
+multiplies only that addend and retains the original specular MAD factors.
+Only this radiance join loses its old partial-precision hint; original angular,
+normal, detail/specular masks, shared constants and source clamps retain their
+operations. Neither method scales a sun fraction or subtracts RGB images.
+
+VS loop point accumulators are scaled immediately before the existing material
+emissive ADD. Fixed-light VS scale the independently proved point RGB factor
+before its final response/emissive MAD; attenuation and M remain unchanged.
+A transient r16 avoids mutating original registers that later geometry or alpha
+instructions may reuse. Fill computes its original decoded-light contribution,
+then applies inv_e before the sum. No point loop, varying or sampler is added.
+XT DEFAULT's authored ordinary/linear pair repair stays intact.
+
+### Reservations, output policy and publication
+
+All originals and motion-combined streams prove **VS c250 / PS c222 / r16 free**.
+Original instruction inventories exclude comment/DEF payloads from this check;
+the additional motion reservation scan allocates nothing. VS c250.x is `1/e`;
+PS c222 is `{1/e, 65504/min(e,1), min(e,1), reserved}`. Required runtime range is
+`1/8 <= e <= 2`; live packet validation, shadow/restore and caching remain later
+integration work. Every new PS instruction retains the single distinct float
+constant read port repaired in `5b3b5c3`.
+
+Only the **final output** sanitizer selects c222.y. Input clamps remain 65504.
+Opaque output stores compatibility-encoded Q. The five admitted fade PS programs
+instead emit `min(e,1)*Q` in linear scratch, keeping its RGB representable;
+original native RGB, alpha and coverage operations stay exact. Their compositor
+must divide scratch RGB by that frame scale before publication: this milestone
+does not enable the selective fade path by itself. Every selective opaque PS
+appends `.g=-1` after temporal writes while preserving RT1 and RT2.r; calling
+the extraction API returns `extraction_applied=false`, without publishing an
+ordinary-L fraction as a Q-domain result.
+
+Output vectors still publish only by final swap, including aliases and failed
+allocation. A positive requested fill with an unproved site refuses selective
+creation. No D3D object, Reset operation, CPU hook, constant upload, application
+state change, per-draw allocation or lock is introduced here. There are no new
+hook CPU/LastError obligations in this pure create-time transformation.
+
+### Host evidence and limits
+
+The six scoped modules are the five named in architecture §9 plus
+`verification.analysis.test_material_exposure`. Raw programs, generated variants
+and verbose logs remain local. The corpus driver produces **2,192 variants**
+per mode (137 stages × two depths × four gains × two fill values). Ordinary
+outputs match clean `070df80` byte for byte, including every alpha, motion and
+depth operation. Weighted full-program budgets are **69–311 / 512 slots**:
+**+1 VS slot**, **+3–5 PS slots** including invalid-fraction publication;
+selective fill adds one slot when enabled. No extra texture fetch or varying.
+
+Independent source references separate B and H by disabling the other source
+roles, never by subtraction. The emitted tail oracle starts at the proved join
+and runs actual palette/albedo/reflection/lightmap/occlusion/alpha/encode tokens:
+**20,736 RGB comparisons**, maximum float64 error **1.78e-15**, across all 108 PS,
+gains 0/1/4/16, fill 0/.03, both branch values and e=1/8,1/2,1,2. Separate mathematical
+references cover **18,048 material cases** (including faces and 0/1/8 loop lights)
+and **1,792 XT cases** (damage/detail, decal/palette, occlusion and Terraformer
+emission). The emitted VS point/emissive fragments add **4,176 RGB comparisons**; output
+sanitizer fragments add **1,296 near-cap/tiny RGB comparisons**. All five fade
+PS preserve native output tokens and normalize scratch. **54** internal mutated
+seed/constant/scratch guards pass; failure of each create-time allocation in five
+representative stages retains output and extraction flags (20/20/36/37/37 failure
+positions). **119 required-module tests** and **9 additional focused tests** pass.
+The complete 127-test run had one test-only expectation failure (`20 > 20` for
+allocation count); the final nine-test rerun passes after checking that each
+observed allocation position is tested rather than imposing that arbitrary floor.
+MinGW `i686-w64-mingw32-g++ -std=c++17 -Wall -Wextra -Werror -msse2 -mfpmath=sse
+-mstackrealign -mincoming-stack-boundary=2 -fsyntax-only
+src/renderer/linear_material.cpp` exits 0. Logs: `/tmp/exposure-final-tests.log`
+and `/tmp/exposure-final-focused.log`.
+Near-cap tests distinguish the unclipped B+H domain from original-cap saturation;
+out-of-domain inputs receive finite fallback with no exact appearance claim.
+
+These are source/algebra checks, not GPU rounding, FP16 blending or native Windows
+acceptance. Native partial precision, source-over composition, actual shader
+creation and whole-device state/Reset recovery still require the parent's scoped
+X3/native evidence. Selective opaque .g remains explicitly unqualified for shadows.
+Native/refused translucent writers retain the owning contract's overlap limitation.
+The two old transformer tests' historic digest/slot/palette expectations were
+updated only after exact clean-070df80 ordinary comparison: the prior ten failures
+were the retained 5b3b5c3 constant-staging repair, not selective arithmetic changes.

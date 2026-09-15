@@ -177,7 +177,7 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
     if (fill_applied) *fill_applied=false;
     if (sun_extracted) *sun_extracted=false;
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
-    if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
+    if (!linear_material_config_valid(config) || (config.selective_exposure && !linear)) return LinearMaterialResult::InvalidConfig;
     const auto expected=vertex?(p.bump?xt_bump_vs:xt_default_vs):p.hash;
     if (words!=(vertex?(p.bump?768u:526u):p.words) || material_motion_fingerprint(original,words)!=expected || (!linear && p.bump))
         return LinearMaterialResult::UnsupportedShader;
@@ -193,6 +193,9 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
         Structure s;
         if (!structure(original,words,vertex,s,true,abi,vertex?7u:p.terra?7u:6u,false,p.bump,true) ||
             !(vertex?xt_vertex_sites(original,s,p.bump):xt_pixel_sites(original,s,p))) return LinearMaterialResult::ProfileMismatch;
+        const auto* exposure=config.selective_exposure && !vertex ? exposure_seed(p.hash) : nullptr;
+        if (config.selective_exposure && (!exposure_reservations(original,s,vertex) ||
+            (!vertex && !exposure_seed_valid(original,s,exposure)))) return LinearMaterialResult::ProfileMismatch;
         // New policy DEFs have no native ownership; prohibit any original use.
         for (const auto& i:s.instructions) if (i.opcode!=dcl) {
             if (i.opcode==def) { if (index(original[i.at+1])==(vertex?244u:210u)) return LinearMaterialResult::ProfileMismatch; continue; }
@@ -201,9 +204,13 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
         unsigned fill_sum=0, fill_at=0; bool fill=false;
         if (!vertex && linear && config.fill>0.0f)
             fill=xt_fill_site(original,s,p,p.terra?7u:6u,fill_sum,fill_at) && fill_constant_free(original,s);
+        if (config.selective_exposure && !vertex && config.fill>0.f && !fill)
+            return LinearMaterialResult::ProfileMismatch;
         Words motion;
         const auto mr=vertex?material_motion_vertex_variant_for(*row,original,words,motion,current_depth):material_motion_pixel_variant_for(*row,original,words,motion,current_depth);
         if (mr!=MaterialMotionResult::Applied) return mr==MaterialMotionResult::AllocationFailure?LinearMaterialResult::AllocationFailure:LinearMaterialResult::ProfileMismatch;
+        if (config.selective_exposure && !exposure_motion_reservations(motion,vertex))
+            return LinearMaterialResult::ProfileMismatch;
         const bool depth=vertex?material_motion_vertex_exports_depth(*row,current_depth):material_motion_pixel_writes_depth(*row,current_depth);
         std::vector<Insertion> insertions;
         if (!motion_insertions(original,words,motion,*row,vertex,depth,s,insertions)) return LinearMaterialResult::ProfileMismatch;
@@ -234,6 +241,7 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
             }
             if (original[at]==end_token) {
                 if (vertex && !p.bump) xt_default_geometry(combined);
+                if (config.selective_exposure && !vertex) exposure_invalid_sun(combined);
                 combined.push_back(end_token);++at;continue;
             }
             const auto op=original[at]&0xffff, n=length(original[at]);
@@ -253,14 +261,16 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
                 transfer(combined,true,7,{original[at+3],original[at+4]});gain(combined,true,7,0);
             }
             if (vertex && linear && at==emissive) {
+                if (config.selective_exposure)
+                    emit(combined,mul,{dst(temp,16),original[at+2],lane(constant,250,0)});
                 // Native g_MatEmissiveColor includes strength; no power curve.
                 sanitize(combined,true,7,{original[at+3]});
                 emit(combined,abs_op,{dst(temp,7),src(temp,7)});gain(combined,true,7,1);
             }
             if (p.bump && op==dcl && kind(original[at+2])==(vertex?output_reg:input) && index(original[at+2])==(vertex?8u:7u)) {at+=n+1;continue;}
-            if (fill && at==fill_at) fill_instruction(combined,fill_sum);
+            if (fill && at==fill_at) fill_instruction(combined,fill_sum,config.selective_exposure);
             const auto copy=combined.size();
-            if (sun_extracted) sun_sites.push_back({at,copy});
+            if (sun_extracted && !config.selective_exposure) sun_sites.push_back({at,copy});
             combined.insert(combined.end(),original+at,original+at+n+1);
             if (op==dcl && kind(original[at+2])==(vertex?output_reg:input)) {
                 const auto number=index(original[at+2]);
@@ -271,7 +281,10 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
                 if (p.bump && at==733) combined[copy+1]=dst(output_reg,4,8);
                 if (p.bump && at==743) combined[copy+1]=dst(output_reg,3,8);
                 if (linear && at==point) {combined[copy+3]=src(temp,7);combined.erase(combined.begin()+copy+4);combined[copy]=(3u<<24)|mul;}
-                if (linear && at==emissive) {combined[copy+1]=dst(output_reg,abi.vertex_rgb);combined[copy+3]=src(temp,7);}
+                if (linear && at==emissive) {
+                    combined[copy+1]=dst(output_reg,abi.vertex_rgb);combined[copy+3]=src(temp,7);
+                    if (config.selective_exposure) combined[copy+2]=src(temp,16);
+                }
             } else if (op!=0xfffe) {
                 for (const auto& u:p.scalar) if (u.operand>at && u.operand<=at+n)
                     combined[copy+u.operand-at]=p.bump?lane(input,2+u.value,3):u.value==0?lane(temp,15,0):original[u.operand];
@@ -289,18 +302,19 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
                             for (unsigned q=2;q<=n;++q) if (original[at+q]==src(temp,p.texture_reg[p.bump?5:4])) {combined[copy+q]=src(temp,14);++replaced;}
                             if (replaced!=1) return LinearMaterialResult::ProfileMismatch;
                         }
-                        combined[copy+1]=dst(temp,11);transfer(combined,false,11,{src(temp,11)},true,10);
+                        combined[copy+1]=dst(temp,11);transfer(combined,false,11,{src(temp,11)},true,10,config.selective_exposure);
                         emit(combined,mov,{dst(color_output,0),src(temp,11)});
                     }
                 }
             }
+            if (exposure && at==exposure->at) exposure_join(combined,copy,*exposure);
             at+=n+1;
         }
         if (inserted!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final;
         if (!structure(combined.data(),combined.size(),vertex,final,false,abi,vertex?7u:p.terra?7u:6u,false,false,true)) return LinearMaterialResult::ResourceLimit;
         bool sun_proved=false;
-        if (sun_extracted) {
+        if (sun_extracted && !config.selective_exposure) {
             Structure enhanced;
             std::array<unsigned,2> seeds{}; unsigned count=0;
             for (const auto& u:p.lights) if (u.value==6) {
