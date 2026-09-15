@@ -43,10 +43,42 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 24 | Chase reset-writer telemetry: gate jump and jumpdrive | 0 | Gate portion completed as run56; user confirms reset. Jumpdrive not run (no suitable save); cross-recreation diagnostics prepared for run25 |
 
 | 25 | Consolidated loading, gate identity, forward HUD and sun-lane diagnostics | 0 | Completed as run60: forward HUD aligned, centre preferred; gate reset; trace analysis in progress |
+| 26 | Original hulls with cheap HDR emitters, chase view restore, elevated-camera reticle, replay candidates, loading intervals (A); optional linear sun-lane refusal buckets (B) | 0 | Open: candidate build in progress; command below once installed |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
+
+## 26. Cheap HDR emitters, chase view restore and replay candidates — open
+
+Install pending (see [status](../status.md) for the installed hash). No linear
+materials: this is the user's preferred original hull look. One session A covers
+everything except the sun-lane buckets; session B is optional.
+
+**Session A** (from the repository root):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --shadow-replay-candidates --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+Please do, in this order, and report what you saw:
+
+1. Load the usual save (the one from run 20/48 if possible, for the loading
+   stall attribution). Note whether loading felt like the 21.7 s stall.
+2. Fire at something and look at engines and bolts: are they clearly brighter
+   and bloomed than before, and does anything look wrong over a bright
+   background (sun, nebula)? Say whether gain 2 is too much, right, or too little.
+3. In rear chase view, fly through a gate. Does the view stay in rear chase on
+   the other side (no reset to the default view)? If it resets, say so; the log
+   tells us why.
+4. Optional second short session with a raised camera instead of a tilted one:
+   add `--chase-pitch-down-deg 0.5 --chase-offset-y 0.50`. Does the centre
+   reticle now sit on where the bolts go, and is the top view still acceptable?
+
+**Session B (optional, linear materials only for the diagnostic):** the sun-lane
+refusal buckets need converted materials; if you have time, run the same
+command plus `--linear-materials --linear-distance-fade --sun-shadow-lane` for
+a minute of ordinary flight near a station and quit. Nothing to look at.
 
 ## 23. Material fill at the run-51 station — completed
 
