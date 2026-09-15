@@ -43,7 +43,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 24 | Chase reset-writer telemetry: gate jump and jumpdrive | 0 | Gate portion completed as run56; user confirms reset. Jumpdrive not run (no suitable save); cross-recreation diagnostics prepared for run25 |
 
 | 25 | Consolidated loading, gate identity, forward HUD and sun-lane diagnostics | 0 | Completed as run60: forward HUD aligned, centre preferred; gate reset; trace analysis in progress |
-| 26 | Original hulls with cheap HDR emitters, chase view restore, elevated-camera reticle, replay candidates, loading intervals (A); optional linear sun-lane refusal buckets (B) | 0 | Open: candidate build in progress; command below once installed |
+| 26 | Original hulls with cheap HDR emitters, chase view restore, elevated-camera reticle, replay candidates, loading intervals (A); optional linear sun-lane refusal buckets (B) | 0 | Open: candidate `5726a37b…` installed 2026-09-15 evening; command below |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
@@ -51,7 +51,7 @@ not rerun requests.
 
 ## 26. Cheap HDR emitters, chase view restore and replay candidates — open
 
-Install pending (see [status](../status.md) for the installed hash). No linear
+Installed: DLL `5726a37b…` from `f2b7406` (see [status](../status.md)). No linear
 materials: this is the user's preferred original hull look. One session A covers
 everything except the sun-lane buckets; session B is optional.
 
