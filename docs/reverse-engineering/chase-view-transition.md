@@ -216,3 +216,200 @@ correction above removes the false method-entry check. Neither expands the scan
 or adds hooks. These repair kind-6 origin/context-return diagnostics only;
 it changes neither camera behavior nor target-lock callbacks and is not a
 selection-stutter fix. Installation awaits the next combined candidate.
+
+## 2026-09-15 run24 gate reconstruction (snapshot run56)
+
+This supersedes the earlier lack of decoded script names and the assumption
+that a gate preserves cockpit/ship pointers. It supplies evidence for amending
+[restore item 1](../architecture/chase-view-restore-and-hud-anchor.md#item-1-restore-the-external-view-after-a-gate-jump-or-jumpdrive),
+not an implemented or fully qualified restore contract. No jumpdrive save is
+required to establish the gate failure below. No game, Wine, build or install
+was run for this study.
+
+### Measured writer and ordering
+
+Local log `/tmp/x3-bottleX3-run56/session-20260915-053827-212.log` is
+11,671,031 bytes, SHA-256
+`089cbc44c1b343c5cdf74b61169f4e0853b0d17c7e4b0e5263e952e156a4b0e9`.
+All 43 events are contiguous, on thread 216; 39 windows report zero dropped
+records and zero origin read refusals. The kind counts are 2 constructor
+entries, 2 completions, 1 destructor, 8 changed updater snapshots, 12 script
+mode assignments, 1 deserialize assignment and 17 connect requests. Updater
+snapshots are change-suppressed, not a count of rendered updates.
+
+| Event | Established state before intercepted instruction |
+| --- | --- |
+| 20 | Generation 1, cockpit `3e128308`, mode 258, connect 0, ship `0efae310`, sector `19663cd0`, active handle 3. |
+| 22 | Script reapplies 258 at native `42e742`, `next_pc=f0794`; outer recorded return is `fec03`. |
+| 23 | Actual destructor `41ffc0`, return caller `42d402` (script free). Old cockpit still mode 258. Registry removal already happened, hence active handle 0. |
+| 24–25 | Script constructor caller `42d397`, new cockpit `6fda6b68`, generation 2, initialized mode 0. No deserialize writer between these and the gate reset. |
+| 27 | Native `42e742` writes **0 → 1**, `next_pc=f0794`, new native ship `3e067be0`, sector still 0. This is not 258 → 1 in one lifetime. |
+| 29–30 | Update serials 7046/7047: first sees sector 0; next sees `5ed0ae30`. Active handle is now 2, mode 1. The sector publication occurs inside the earlier updater, after the existing pose seam. |
+| 32 | Reapplies 1 through `f0794` after sector publication; outer recorded return `fdf28`. |
+| 35–43 | Manual internal selection then external selection: native stores at `f0c63` followed by `f0794`; event 43 is mode 258 in generation 2. |
+
+QPC frequency is 10,000,000. Destructor→constructor is 5.171201 s;
+constructor→initial mode store 2.401 ms; initial mode store→first updater
+32.906 ms; first→second updater 125.148 ms; event30→reassertion32 560.460 ms.
+These are observed intervals, not a guaranteed settle time. A two-update delay
+cannot prove that later reassertions have finished. Initial save loading reaches
+kind 7 at event3; the gate recreation does not.
+
+### Script cause, rather than just its shared native writer
+
+The decoded installed archive identity and loader representation are established
+in [selection-native-vm.md](selection-native-vm.md#recovering-actual-compiled-method-names).
+Static operands are endian-converted and native names resolved in place by
+`49e1a0`; `49e4f0` optimizes in place. CODE offsets remain usable, while raw
+native operands are not runtime group/command IDs. The following mappings match
+the observed valid native mode opcode and recorded return offsets. Whole runtime
+method bodies/save-dependent patches were not captured; static branch attribution
+beyond those witnesses remains conditional on that binding.
+
+- `f0794` follows `INS_CockpitSetViewMode` at `f078f` in class `25e`
+  `StartMonitor` (entry `f00ee`). `f0c63` follows the same command at `f0c5e`
+  in `SelectMode` (`f07cc`). This names two different script operations.
+- Event27's four candidate return records map to `Show` (`efbbb`), class
+  `25d.StartMonitor` (`edb1b`), `OpenLayout` (`e7b2d`), then
+  `RestartAllMonitors` (`edc98`). They are bounded candidate return records,
+  not an independently reconstructed full call stack; `origin_flags=4` means
+  an additional pair exceeded the four retained pairs, not an invalid read.
+- **The reset decision is inside `RestartAllMonitors`:** at `edc8c` it calls
+  the main monitor's `SelectMode(1)` before `OpenLayout` at `edc93`.
+  `SelectMode` assigns script monitor variable 0 at `f0c4b` even when no
+  native cockpit exists; the subsequent native store is conditional on its
+  handle. Therefore a native `f0c63` event need not exist for this reset.
+  `StartMonitor` later creates the native cockpit and applies that script mode.
+- Event22 and event32 both descend through `Show → UpdateVisibility →
+  SetLeftOffset`, with class `280.Close` (`fec03`) before recreation and
+  `280.Open` (`fdf28`) after it. They establish UI-driven reapplication, not
+  a dedicated transition-complete signal. `f0794` is also seen on save load
+  and manual view selection.
+- `RestartAllMonitors` also has static callers in `B3DReload`, `QuickWarp`,
+  `RunPlayerTrade`, `__StartInHangar` and `ChangePlayerShipTo`. Its presence
+  alone cannot authorize crossing a cockpit lifetime.
+
+### Geometry: the omitted fields matter
+
+The installed snapshot reader records only boom `+130` (always `(0,0,0)` in
+these events), not `+160..168`, `+a8..b0`, or view lock `+120`. Thus
+`snapshot_valid=255` does **not** prove those fields unchanged.
+
+Static `StartMonitor` sets up newly created mode 1 at `f02d0..f0329`:
+`INS_CockpitChangeView(0,0,0)` at `f02f9`, zero view position at `f0316`,
+and zero camera offset at `f0324`. The ordinary external branch computes an
+object-size-based distance and supplies a negative longitudinal offset at
+`f0598`; it also changes angles and view lock. Native dispatcher case `2b`
+writes target angles (`42df0b` onward), case `2f` writes boom, and case `36`
+writes camera offset (`42e1e9` onward). Constructor writes zero at `41fbb3`
+(angles), `41fbe8` (mode), `41fbfd` (camera offset). Static geometry is therefore
+not equivalent between fresh internal and rear view. Runtime numeric deltas
+remain unmeasured. The custom chase handler's own pose construction does not
+make native/script state equivalence established. No geometry writes are
+recommended by this study; preserve this as a prerequisite/design decision.
+
+### A discriminating warp boundary and identity sources
+
+Class `96.StartGateWarp` (`160ab`) and `StartSectorWarp` (`16154`) both call
+`WarpToSector` (`1635e`), at `16144` and `161f5`. Its ordered path includes
+`StopAllMonitors` (`16617`, return `1661c`), player/controller `LeaveSector`,
+conditional old-sector deactivate, `SA_CleanUpObjects` (`1666c`),
+`SA_FreeAllBodies` (`16673`), destination activation, player/controller
+`EnterSector` or `WarpEnterSector`, then `RestartAllMonitors` (`1671f`, return
+`16724`). The direct-call graph includes gate traversal `__FlyToNextSector`
+(`b7318`) and `JumpToSector` (`bd9ec`, `bdc3a`, plus StartSectorWarp branches).
+This supports static shared machinery for jumpdrive; it does not verify a
+jumpdrive run, its selected branches, or every warp geometry variant.
+
+The existing destructor entry is a useful **observation candidate**, without a
+global interpreter hook. For native caller `42d402` only, inherited EBP still
+belongs to `42d340`; task is `[EBP+c]`, command `[EBP+10]=1`, argument block
+`[EBP+18]`. Script free at `f0085` has `next_pc=f008a`. Its expected four
+return pairs are `efbff` (`Show` after `StopMonitor`), `edba0` (manager
+`StopMonitor` after `Show`), `edbe3` (`StopAllMonitors`), `1661c`
+(`WarpToSector`). Ship switching instead reaches StopAllMonitors with outer
+return `c6eee`. No destructor origin was recorded in run56, so the expected
+four-pair witness must be measured before it becomes authorization. Bounded
+scanning must refuse missing, ambiguous, invalid or out-of-capacity chains.
+
+| Source | Established native/script layout; limits |
+| --- | --- |
+| Native ship `+94` | `SA_GetEventObject`, SA command 4, dispatcher `460630` table `4690f0[4] → 4607dc`: lookup by native body ID through `43a4f0`, then `4607f4` reads `[EAX+94]`. This is the script event-object ID, distinct from native ship pointer and native `+8` ID. |
+| Global player ship | `VM=*6085e4`; `VM+20` is the static class-descriptor array. Its first descriptor supplies globals through `+c`; five-byte cell **9** is the player ship script value. Cell **8** is the player/controller object. `Show` compares monitor ref-object variable `11` with global9 at `efb62..efb69`. |
+| Global cell bounds | Global-read opcode `0e` executes at `4a2816`: `*(VM+20)`, then `+c + 5*index`. Loader `49d030` allocates `descriptor+1c` cells; descriptors are 0x38 bytes, sorted by ID, and `descriptor+8` points to itself. `49f1e0`/`4b06f0` prove bounded static-class lookup using `VM+1c` count and `VM+20` array. |
+| Dynamic script identity | Negative ID resolution at `49f1e0` uses `VM+12d0` hash table, key `-id-1`; rows are next/key/context. Context `+0` is its ID, `+4` reference count, `+8` live class descriptor, `+c` variable cells. `4a8640` retains a context only when `+8` is nonzero. Do not retain or increment engine references from a diagnostic. |
+| Warp/killed state | Resolve static class `96`; its variable 3 is returned by `IsWarping` at `16203`, and variable 6 by `GetKilled` at `13c82`. `0f`/`16` variable accesses use context `+c + 5*index` (`4a283c`, `4a290d`). Warp state is set to 1 at `160b9`, `16162`, `16362`; it also takes value 2 at `16496`, returns to 1 at `165f4`, and normally clears at `16b40`. This is a phase value, not a unique transition serial. |
+
+Cell tags, scalar payloads, counts, arithmetic, readable spans, class identity
+and current registry membership must all be validated before treating these
+as identity. Query live roots each time; copy only scalar IDs and numeric
+geometry into diagnostic/ticket storage. A pointer or ID alone is not proof
+against reuse. This log contains neither global9 nor ship+94, so their equality
+and continuity across this gate remain **unmeasured**. Static ordinary ship
+replacement writes global9 through class `192.SetPlayerShip` at `e5da1`;
+`ChangePlayerShipTo` calls it at `c6f0a`, after stopping monitors and before
+restarting them. Death clears/replaces the player ship through the same setter
+and marks killed state. Save restoration/newgame may reconstruct or reuse IDs;
+no cross-session persistence guarantee was established.
+
+### Proposed constrained ticket and unresolved prerequisites
+
+1. Arm only from an admitted rear-chase update in the active player cockpit.
+   Keep the current lifecycle/ship-pointer checks within that lifetime. A
+   matching script ID must additionally bind native ship+94 to global9 and
+   monitor ref-object variable11; retain numeric mode/geometry only.
+2. Transfer authorization across exactly one destruction/recreation **only**
+   after a verified warp destructor witness above, live class96 warp phase,
+   matching player identity, and a local one-use serial tied to the VM/session
+   epoch and executing task identity. Preserve the prior generation solely as
+   a scalar check. The now-unregistered cockpit is still alive on destructor
+   entry; never require an active handle there, and never dereference it after
+   native destruction. An arbitrary destruction cancels the arm.
+3. Bind the new cockpit only after successful constructor completion and a
+   matching reset writer; require active player ownership, fresh native
+   pointers/IDs, matching live script identity, valid destination and supported
+   connect/lock state at completion. Event27 precedes activation/sector
+   publication, so that store alone is too early. The five-level `16724`
+   restart ancestry is beyond the current four recorded pairs; do not silently
+   substitute a partial chain. Record full selected bounded proof or carry a
+   validated task ticket. Task pointers themselves may be reused.
+4. Cancel on script player selection (including `SelectMode` while no cockpit
+   exists), foreign or additional lifetime transitions, global9 change,
+   killed/leave state, deserialization, VM/session reconstruction, task abort
+   or invalidation, unsupported cinematic state, identity/provenance refusal,
+   and bounded expiry. State2→1 or elapsed time is not authorization. Native
+   mode diagnostics miss a script-only SelectMode, so cancellation needs that
+   script state observation or a proved input-method boundary.
+5. No complete restore implementation is yet supported by these facts:
+   runtime warp-free ancestry and script identity continuity are missing, as
+   are a proved VM/task epoch/abort invalidation boundary and the chosen
+   strategy for synchronizing script mode with restored native mode. A bare
+   `+150=258` leaves script variable0 at 1, and UI visibility can overwrite it
+   again. Numeric geometry telemetry (`+a8..b0`, `+130..138`, `+160..168`,
+   `+120`) belongs in the same future consolidated diagnostic as these identity
+   fields, not a separate requested user run.
+
+Hook boundaries remain whole-instruction: destructor `41ffc0` has a 7-byte
+SEH prologue prefix; mode store `42e742` is one 6-byte instruction,
+`89 88 50 01 00 00`, EAX=cockpit, ECX=requested mode, EBP=dispatcher frame.
+The store leaves flags unchanged, and the continuation performs VM result
+marshalling; preserve all incoming registers/flags and CPU/LastError state.
+At destructor entry ESP+4 is cockpit, ESP is native return, and dispatcher
+EBP is valid only on the verified command caller. Native registry removal at
+`42d3f7` precedes this call; actual free is at `42d403`. Constructor/destructor
+have SEH paths; an entry observation never implies successful completion.
+The interpreter is reentrant (`4a3760` recursively enters `4a26a0`) and scripts
+can yield via TI calls. No C++ lock, borrowed object or assumed native stack
+span may survive native execution/yield. Same-task pointer equality alone is
+not an exception/reentrancy/lifetime contract. Existing bounded callback storage
+and no-allocation/no-engine-call policy should be retained; future identity
+walks need fixed limits and no per-draw work. The native layouts are backend
+independent; native Windows behavior remains unverified.
+
+Local reproduction: `python3 /tmp/x3-run56-chase-analysis/analyze.py` validates
+43 events, the named script-call boundaries, PE opcode/table/field bytes and
+JSON round trip, and writes `summary.json` / `timeline.json` there. Read-only
+`X3CameraState.java` outputs `native-{identity,global,player,sa,body}.txt` and
+selected script listings remain local/untracked. The EXE SHA-256 is unchanged
+from the earlier study. This documentation-only checkpoint did not require
+fixture execution or a production build.

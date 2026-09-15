@@ -17,6 +17,20 @@ first run with the transition diagnostics installed.
 
 **Ratified 2026-09-15 (orchestrator):** both items as recommended, default-off (`--chase-view-restore`) and default `centre` (`--chase-hud-anchor forward|centre`). Before implementing item 1, one telemetry run with a gate jump and a jumpdrive (existing diagnostics) must settle the reset writer and its ordering; item 2 can be implemented directly.
 
+**Run24 amendment, 2026-09-15 (orchestrator):** the gate-only run56
+contradicts item 1's same-lifetime/same-native-ship assumption: the engine
+recreates both pointers and resets persistent script mode as well as native
+mode and geometry. The original one-lifetime algorithm below is retained as
+superseded design evidence; implementing it would not satisfy the requested
+gate restoration. The [gate reconstruction](../reverse-engineering/chase-view-transition.md#2026-09-15-run24-gate-reconstruction-snapshot-run56)
+owns the measured sequence and static contracts. Next, consolidate destructor
+provenance, script identity and geometry observations in one diagnostic
+candidate. A refined restoration contract must prove warp-specific transfer,
+fresh player ownership, cancellation and script/native mode synchronization;
+it must not merely remove the lifetime checks. Jumpdrive shares static warp
+machinery but remains gameplay-unverified; the user has no suitable save and
+no separate jumpdrive reproduction is requested now. Item 2 is unchanged.
+
 ## Item 1: restore the external view after a gate jump or jumpdrive
 
 ### What the engine does (established) and what it does not (unknown)

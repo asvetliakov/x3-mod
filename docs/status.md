@@ -53,8 +53,11 @@ a reset and did not use jumpdrive (no suitable save). The trace destroys the
 old cockpit, creates generation 2 with a different ship pointer, then requests
 mode 1 at script PC `0x000f0794` before the new sector is visible. The ratified
 same-lifetime restore predicate would cancel; targeted reconstruction must
-establish safe cross-recreation identity before implementation. Jumpdrive
-remains gameplay-unverified.
+establish safe cross-recreation identity before implementation. Static analysis
+also finds persistent script-mode and geometry resets; mode-only restoration
+would be incomplete. The [gate reconstruction](reverse-engineering/chase-view-transition.md#2026-09-15-run24-gate-reconstruction-snapshot-run56)
+requires consolidated identity/provenance/geometry diagnostics. Jumpdrive shares
+the static warp path but remains gameplay-unverified.
 
 The chase HUD anchor (`centre` default) is now implemented and independently
 reviewed in source, separately from the fill candidate ([ledger](verification/chase-hud-anchor.md));
