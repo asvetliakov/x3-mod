@@ -181,9 +181,13 @@ further linear-hull processing is planned. Decisions this session:
   Both ride the next candidate with the F8 baseline capture.
 - Sun lane: the run66 blocker is fixed lane-only (`444478a`: alpha-tested opaque
   receivers admitted, only depth writers veto). One-cascade depth replay
-  (`--shadow-replay-depth`, default-off) is implemented and fixture-proven in a
-  worktree, under deep review (map vs CPU projection ≤1e-4, byte-identical
-  presented twins, ≈35 µs + 1.3 µs/draw).
+  (`--shadow-replay-depth`, default-off) is implemented, deep-reviewed and merged
+  (`46dc822`): map vs CPU projection ≤1e-4, byte-identical presented twins,
+  ≈40 µs + 1.3 µs/draw, no consumer yet; open before any consumer: alpha-tested
+  casters write full-quad depth, DEVICELOST mid-transaction convention.
+- Run 27 candidate is being built from `46dc822`; the original-program fill
+  (option C) is still in flight and rides the following candidate if the F8
+  baseline shows dark faces.
 - Shadows: [replay gates](architecture/shadow-replay-gates.md) ratified; the
   depth-replay fixture is not funded until a lane-independent caster-candidate
   counter (`--shadow-replay-candidates`, in flight) answers four predicates in
