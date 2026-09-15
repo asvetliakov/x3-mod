@@ -797,8 +797,9 @@ after the write-back exactly as in stage 1.
 
 ### Switches and defaults
 
-The 2026-09-14 production/launcher candidate adopts Auto capped at +1.5 EV after
-run 27 acceptance; see [current exposure policy](space-exposure-policy.md).
+The 2026-09-15 production/launcher default is Auto capped at +1.0 EV by user
+choice. Run 27 exercised and visually accepted the earlier explicit +1.5-EV
+configuration; see [current exposure policy](space-exposure-policy.md).
 Standalone `ExposureParams` and its historical fixtures retain the +2 maximum.
 Installation status is recorded separately in [status](../status.md).
 
@@ -809,9 +810,9 @@ Installation status is recorded separately in [status](../status.md).
 | `X3M_HDR_LOOK` | `none` \| `golden` \| `punchy` | `none` | §3 triples through `agx.h::set_look` |
 | `X3M_HDR_CLAMP` | float > 0 | off (65504 uploaded) | §2 firefly guard, `min` on the decoded input |
 | `X3M_HDR_EXPOSURE` | `auto` \| `manual` \| `fixed` | `auto` | manual without an EV is EV 0 |
-| `X3M_HDR_EV_MANUAL` | EV in [−16, 16] | unset | forces `manual` with that EV, clamped to [`X3M_HDR_EV_MIN`, `X3M_HDR_EV_MAX`] (−3..+1.5 in the next production/launcher default; standalone components retain +2) so `exp2(EV)` stays inside the constant block's range; the `hdr_tonemap` line prints the requested value, `hdr_frame … ev=` the effective one; the chain does not run (deterministic; the fixtures) |
+| `X3M_HDR_EV_MANUAL` | EV in [−16, 16] | unset | forces `manual` with that EV, clamped to [`X3M_HDR_EV_MIN`, `X3M_HDR_EV_MAX`] (−3..+1.0 in the production/launcher default; standalone components retain +2) so `exp2(EV)` stays inside the constant block's range; the `hdr_tonemap` line prints the requested value, `hdr_frame … ev=` the effective one; the chain does not run (deterministic; the fixtures) |
 | `X3M_HDR_EV` (alias `X3M_HDR_EV_OFFSET`) | EV in [−16, 16] | 0 | the offset added to the auto target. **Deviation from the §3 text**, where `X3M_HDR_EV` forced the EV: the orchestrator's stage-2 brief names `X3M_HDR_EV` as the offset and `X3M_HDR_EV_MANUAL` as the override, and that is what is implemented; the design's `X3M_HDR_EV_OFFSET` remains accepted as the alias |
-| `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`, `X3M_HDR_ADAPT_UP/DOWN` | floats | 0.18, **−3/+1.5**, 0.4 s/1.2 s | next production defaults; `exposure_reference.py`/standalone components retain +2; the EV range was ±8 until the space-aware meter (2026-09-13): a conservative policy bounds the lift to two stops and the pull to three on the game's 8-bit-authored content |
+| `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`, `X3M_HDR_ADAPT_UP/DOWN` | floats | 0.18, **−3/+1.0**, 0.4 s/1.2 s | production defaults; `exposure_reference.py`/standalone components retain +2; explicit limits remain supported |
 | `X3M_HDR_METER_BG` | scene-linear luminance in [1e-4, 64] | 1/512 | tiles whose geometric-mean luminance is below it are the black sky: excluded from the key rule (`--hdr-meter-bg`) |
 | `X3M_HDR_METER_MIN_LIT` | fraction in [0, 1] | 0.01 | fewer lit tiles than this fraction of the tile image: the target is neutral (EV 0 plus the offset) |
 | `X3M_HDR_WHITE_TARGET` | fraction in [0, 4] | 0.9 | the highlight limit: the brightest 1 % of tiles (the p99 tile maximum) may reach this fraction of the AgX white (`exp2(4.026069)` = 16.29 scene units); 0 disables the limit (`--hdr-white-target`) |
@@ -956,8 +957,8 @@ guard, not the driver. This is a percentile limit on the fresh target, not
 a hard bound on every pixel: the brightest tail may exceed it, a tile maximum
 is not a pixel percentile, the meter clips at 64, and adaptation/deadband can
 temporarily retain a higher exposure. *Original meter EV range −3..+2:* this
-component/history calculation uses the earlier two-stop cap; the next production
-policy reduces that cap to +1.5 without changing the meter equations. The earlier policy
+component/history calculation uses the earlier two-stop cap; later production
+policy reduced it first to +1.5 and now to +1.0 without changing the meter equations. The earlier policy
 allows a two-stop lift (a hull at decoded 0.045 reaches the key at +2) and
 at most three stops of pull. Darker lit content can ask for more than two
 stops and is deliberately capped; the old ±8 allowed a whole-frame mean

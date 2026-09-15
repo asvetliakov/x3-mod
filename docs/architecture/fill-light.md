@@ -6,7 +6,7 @@ Design note, 2026-09-15. Decision for the orchestrator; implemented as documente
 "Ambient occlusion inputs", the converted-material notes, the exposure, shadow and AO notes, and
 one new reduction of the run-51 captures (below; no Wine, no launch).
 
-**Ratified 2026-09-15 (orchestrator):** implement as designed; amendment after review: the glass pairs take the fill on their albedo term too (their Fresnel/gloss law is unchanged), so all 108 converted programs carry it, default 0 (off, byte-identical shaders), `--material-fill K`; first user run at 0.06 with 0.04 and 0.10 as brackets at the run-51 spot. The point-light-range patch (option C) is rejected.
+**Ratified 2026-09-15 (orchestrator):** implement as designed; amendment after review: the glass pairs take the fill on their albedo term too (their Fresnel/gloss law is unchanged), so all 108 converted programs carry it, initially default 0 (off, byte-identical shaders), `--material-fill K`; first user run at 0.06 with 0.04 and 0.10 as brackets at the run-51 spot. The point-light-range patch (option C) is rejected. After that run, the user selected **0.03 as the production default when linear materials are enabled**. Explicit 0 remains the exact off/parity setting; the transformer's generic config default remains zero.
 
 ## Decision
 
@@ -18,9 +18,9 @@ L = A · (P + M + D + k_fill · decode(LightDir_Color0) · g_direct) + R + E
 ```
 
 `k_fill` is one scalar, launcher `--material-fill K` (`X3M_MATERIAL_FILL`, requires
-`--linear-materials`, finite 0..0.5, **default 0 = off**: the transformed programs stay
-byte-identical to the installed ones and the frozen 192-output hash holds). Recommended value for
-the acceptance run **0.06**, bracket 0.04 and 0.10. It is one `mad` per converted pixel on all 168
+`--linear-materials`, finite 0..0.5, **production default 0.03**). Explicit 0 keeps
+the transformed programs byte-identical to the fill-less artifacts and preserves the frozen hash.
+The completed acceptance run used **0.06**, bracketed by 0.04 and 0.10. It is one `mad` per converted pixel on all 168
 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs (hull families, asteroid, XT); glass keeps its own law; native
 draws are untouched. Option (A) of the brief, with the sector dependence coming from the sun
 register instead of a new colour source.
@@ -61,7 +61,7 @@ Against a full-sun face (`0.5·A·D0`) the sun-averted side is `k_fill/0.5`: 8 %
 0.032/0.049 to ≈ 0.054/0.071 — three quarters of the headlight level the user saw as the good
 state — while a sun-facing hull at 0.18 stays where it is. Night stays night: a 3-stop shadow side
 is a shadow side. D1's own shading (±0.021) remains visible on top of a 0.031 floor, which is why
-the default is not higher.
+the acceptance trial did not start higher.
 
 **Tint.** `LightDir_Color0` is declared by every converted PS (every transformer row carries a
 `light0` register — c5/c5/c2 in the BUMP base, affine and non-affine programs — and the transformer
@@ -131,10 +131,10 @@ insertion is skipped, not emitted with a zero constant.
   range only moves a 0.04-luma pop outward and extends a neutral white camera-anchored headlight;
   it lights nothing facing away from the ship, nothing beyond a few hundred metres, no bay
   interior, no night side. The fill also halves the pop's relative size (2.8× → ≈ 2×).
-- **(D) Do nothing.** Native parity; the black faces are the reported defect. Loses, but default-off
-  keeps parity until the user accepts the term.
+- **(D) Do nothing.** Native parity; the black faces are the reported defect. This was the initial
+  default while the user evaluated the term; explicit K=0 retains it.
 
-## 5. Acceptance run
+## 5. Completed K=0.06 acceptance run
 
 Switches: the installed set plus `--material-fill 0.06` (AO off; default Auto exposure capped at
 +1.5 EV). Spot: the run-51 docking ring with its clamp arms, sun about 45° in front, F8 at
@@ -165,7 +165,10 @@ compares the law within one FP16 ulp.
 
 Implemented 2026-09-15 in the transformer (`src/renderer/linear_material.cpp`,
 `linear_xt_material_inc.h`), launcher option `--material-fill K` /
-`X3M_MATERIAL_FILL`, finite 0..0.5, default 0.
+`X3M_MATERIAL_FILL`, finite 0..0.5. Production initialization selects 0.03 when
+linear materials are enabled; explicit 0 disables the term. The generic
+`LinearMaterialConfig` default remains zero so explicit K=0 artifacts retain
+their byte-identical contract.
 
 - `LinearMaterialConfig::fill`. At `k = 0` no `DEF` and no instruction are
   emitted, and the whole converted corpus (1388 driver outputs across the hull,

@@ -1,7 +1,9 @@
 # Exposure for X3's outdoor space scenes
 
-2026-09-14. The installed build selects **Auto capped at +1.5 EV**
-following run 27 visual acceptance; fixed EV 0 remains a comparison option.
+2026-09-14, updated 2026-09-15. Production source selects **Auto capped at
++1.0 EV**; fixed EV 0 remains a comparison option. Run 27 visually accepted
+the earlier explicit +1.5-EV configuration. The user subsequently chose the
+lower ceiling as the default; installation state remains in `docs/status.md`.
 The scene model is black cosmos, small stars, large colored
 nebulae, planets/suns, ships and transient effects. Indoor/hangar adaptation
 is not a design premise. The current implementation is described in
@@ -11,11 +13,11 @@ is not a design premise. The current implementation is described in
 Published practice in other space games is collected separately in
 [the primary-source comparison](../research/space-game-exposure.md).
 
-## Current policy after run 27
+## Current production policy
 
-The user preferred Auto to fixed EV 0 and then accepted the milder +1.5 EV
-comparison. Adopt **Auto with a +1.5 EV maximum** as the installed production and
-launcher default. Retain `--hdr-exposure fixed`, explicit manual EV, and the
+The user preferred Auto to fixed EV 0, accepted the milder +1.5-EV comparison,
+and then explicitly selected **Auto with a +1.0 EV maximum** as the production
+and launcher default. Retain `--hdr-exposure fixed`, explicit manual EV, and the
 Ctrl+Shift+F9 Auto/fixed-0 comparison. Explicit manual EV remains authoritative;
 explicit EV limits remain supported. Standalone component defaults are unchanged.
 No metering equation, response time, highlight guard or tone curve changes here.
@@ -26,14 +28,16 @@ sample, not proof that background metering represents illumination or provides
 useful adaptation. The research and light-aware metering limitations below still
 apply. A future light/context model should preserve the accepted appearance
 without introducing sky-driven pumping. Fixed exposure remains a useful control.
+Run 27 used a +1.5-EV ceiling; it does not constitute screenshot acceptance of
+the new +1.0-EV default.
 
 Implementation changes only production initialization and launcher defaults.
 Absent direct environment policy selects Auto; explicit unknown/truncated policy
 still falls back to fixed, and explicit manual EV overrides either mode. Meter
 resources and toggle support already exist; Auto has its existing per-frame
 meter cost while fixed has none. No new resource, shader or pass is introduced.
-The next combined candidate will install this policy with stronger authored glow;
-run 27 already exercised the same explicit Auto/+1.5 configuration.
+The next combined candidate will carry the +1.0-EV policy. Explicit
+`--hdr-ev-max 1.5` remains available and reproduces the earlier comparison cap.
 
 ## Earlier fixed-exposure evaluation (2026-09-13)
 

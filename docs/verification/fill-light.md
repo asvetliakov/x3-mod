@@ -1,8 +1,9 @@
 # Material fill-light verification ledger
 
-Final review PASS, 2026-09-15. This is evidence for the default-off
-`--material-fill` implementation; it does not by itself establish gameplay or
-native-Windows behaviour.
+Final review PASS, 2026-09-15. This is evidence for the fill transform and its
+explicit K=0 parity mode. A later user decision selects 0.03 as the production
+default with linear materials; this ledger does not establish screenshot
+acceptance for 0.03 or native-Windows behaviour.
 
 ## Provenance and scope
 
@@ -70,15 +71,17 @@ The clean reviewed candidate has passed its host audits and X3 load check and
 was installed by the main session. [Status](../status.md) is the authoritative
 installed-build description; [the compact install record](../../verification/results/run23-candidate-install.json)
 binds source, toolchain, hash, scoped results and rollback. Run23 later
-completed; no default change follows from this record.
+completed; its evidence supports the fill law at explicit K=0.06. The later
+0.03 default is the user's appearance decision, not a result claimed by this record.
 
 ### Run 23 / run54 gameplay evidence
 
 The user completed Run 23 in `/tmp/x3-bottleX3-run54` with `--material-fill
 0.06`. The analysis maps screenshots/readbacks as Auto far/near frames
 3481/4887 and fixed-EV0 far/near frames 7060/7687. The user reports brighter
-hulls and asked about 0.04; retain **0.06 provisionally**. The default remains
-0, and 0.04 is an optional preference bracket, not a required correction.
+hulls and asked about 0.04; at that checkpoint **0.06 was retained provisionally**
+and 0.04 was an optional preference bracket. The later user decision selects
+0.03 as the production default; there is no 0.03 screenshot acceptance in this run.
 
 The fixed-EV0 far frame passes the stated numeric thresholds: module p10
 0.0672 (minimum 0.045), dark fraction 0.0115 (maximum 0.10), and cylinder mean
@@ -88,3 +91,15 @@ differ, and unmatched dark-chroma difference is about 0.081, so that result is
 neither a passing chroma check nor a controlled comparison. Auto exposure is a
 global pre-tonemap multiplier: +1.5 EV gives 2.828×. The analysis result is
 [`results.json`](/tmp/x3-run54-fill-analysis/results.json).
+
+### Selected defaults checkpoint
+
+The user selected fill 0.03 and Auto exposure ceiling +1.0 on 2026-09-15.
+Source/default review passed; the three focused host modules passed 34 tests
+(independent run 9.298 s), and capture syntax compilation passed with the
+project ABI flags. Main's affected `./x3run --dry-run` emitted Auto, EV max 1.0
+and fill 0.03 without explicit value options; vanilla dry-run also passed.
+The current launcher applies these defaults to the existing DLL; its direct
+initialization defaults update with the next candidate. Explicit fill 0 and
+EV ceiling 1.5 remain supported. This preference choice does not establish
+new 0.03 image/GPU acceptance or change the retained 0.06 law oracle.

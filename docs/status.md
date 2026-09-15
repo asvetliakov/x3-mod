@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 (user selected EV ceiling 1.0 and fill 0.03; source changes in progress). This is the short current handoff; the current
+Updated 2026-09-15 (EV ceiling 1.0 and fill 0.03 reviewed; launcher defaults active). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -15,7 +15,7 @@ Read history only for a relevant unresolved question. The
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
 `f6cf181bf20e3fa15c2b29a5c0ffe867979d6d0d8e978e0e8477ddf8d1c52857`
 (14,321,844 bytes), built once on Sol from reviewed clean source `a53cf8f`.
-It adds `--material-fill` (default 0) and fill-refusal diagnostics to the previous
+Its direct-launch fill fallback is 0; it adds `--material-fill` and fill-refusal diagnostics to the previous
 feature set. The [install record](../verification/results/run23-candidate-install.json)
 binds the clean build (12.09 s, zero warnings), 225-function no-x87 audit,
 17 exports, X3 load check, scoped GPU/host qualification and verified installed
@@ -23,7 +23,7 @@ bytes. The previous `53a0d8a7…` DLL and manifest are retained together for rol
 EXE and bottle configuration hashes are unchanged. The affected run23 launch
 passed one `--dry-run`; no game was launched.
 
-The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, Auto capped at +1.5 EV by default,
+The installed DLL includes verified TAA, an FP16 scene target, AgX SDR writeback, and an Auto +1.5 EV fallback,
 and a fixed EV 0 comparison through Ctrl+Shift+F9. Ctrl+Shift+F10 switches bloom contribution. Bloom, linear materials, and linear
 emissions remain opt-in. Installed material coverage is **168 exact pairs / 137 originals**; installed default-off
 emission coverage is twenty exact SM2 DEFAULT/INSTANCE pairs.
@@ -37,10 +37,14 @@ HUD, and the selected WRAP/motion fixes are included.
 **Run 23 is complete**, preserved at `/tmp/x3-bottleX3-run54` (153 referenced
 files), with four EV0/+1.5 far/near screenshots. The user reports brighter hulls
 and subsequently chose **Auto capped at +1.0 EV and material fill 0.03** as
-the new defaults. Those source changes are in progress; the installed defaults
-above have not changed yet. The run54 brightness thresholds support fill, but
+the new defaults. The changes are reviewed (34 focused tests) and the current
+launcher now passes those values to the existing DLL. An affected dry-run
+confirmed Auto / EV max 1.0 / fill 0.03; vanilla dry-run also passed. Direct
+DLL fallbacks await the next consolidated candidate. The run54 brightness thresholds support fill, but
 unmatched colour/reprojection evidence limits acceptance and does not establish
-a measured 0.03 comparison.
+a measured 0.03 comparison. The user also approved a selective-exposure
+feature: base hull shading at EV0, with reflections/specular/emission and other
+scene effects still exposed. Its implementation design is in progress.
 See the [fill ledger](verification/fill-light.md) for numbers and limitations.
 The [run queue](verification/user-runs.md) records the remaining telemetry request. K=0 qualified
 4,177 cases with every recorded baseline row bit-identical; live qualification

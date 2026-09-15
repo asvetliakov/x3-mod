@@ -2,16 +2,17 @@
 
 Controls were installed in candidate `75dbbed`; runs 26/27 exercise their notices
 and toggles in game. Native Windows remains unverified. The 2026-09-14
-[exposure decision](space-exposure-policy.md) changes the next production default
-to Auto capped at +1.5 EV; installation is pending. The control protocol and
-meter equations are unchanged.
+[exposure decision](space-exposure-policy.md), updated 2026-09-15, selects the
+current production source default: Auto capped at +1.0 EV. Run 27 exercised the
+earlier explicit +1.5-EV cap. The control protocol and meter equations are unchanged;
+installation state is recorded in [status](../status.md).
 
 ## Controls and truthful state
 
 Launch with `--motion-output --hdr --hdr-tonemap --hdr-bloom` to prepare the
 features. Keep the game's Glow setting enabled: the recovered compositor
 boundary depends on it. Existing launch commands keep HDR, AgX and enhanced
-bloom opt-in. The next AgX production initialization uses Auto capped at +1.5 EV;
+bloom opt-in. AgX production initialization uses Auto capped at +1.0 EV;
 `--hdr-exposure fixed` selects fixed EV 0, multiplier 1. `--hdr-exposure fixed|auto`
 requires `--hdr-tonemap` when explicitly supplied. The launcher always writes
 `X3M_HDR_EXPOSURE`, overriding a stale inherited policy, and clears stale
@@ -56,7 +57,7 @@ HdrPass's current mode and EV as before.
 
 `HdrConfig` retains its old component default for standalone callers and
 fixtures. Production capture initialization explicitly selects Auto, maximum EV
-1.5, and `allow_auto_toggle=true`; manual zero remains the comparison reference. `HdrPass::attach` uses the existing format, shader and
+1.0, and `allow_auto_toggle=true`; manual zero remains the comparison reference. `HdrPass::attach` uses the existing format, shader and
 self-test gates to prepare AUTO when either AUTO is selected or that flag is
 set. Its normal target setup prepares the meter chain for the available
 capability even while fixed. A chain failure disables AUTO capability; no key
@@ -193,7 +194,7 @@ scenes, and native Windows execution remain separate acceptance limits.
 
 The 2026-09-14 default change starts **Auto → fixed → Auto**. All five affected
 host tests pass, including existing release/sanitized controls and notice cases.
-The launcher dry-run verifies Auto/+1.5 without explicit policy or EV options;
-the vanilla dry-run also passes. Explicit Auto/+1.5 already ran in run 27, so
-this default-only change does not require another GPU suite. The new default
-is source-ready and will be installed in the next combined candidate.
+That checkpoint's launcher dry-run verified Auto/+1.5 without explicit policy
+or EV options; the vanilla dry-run also passed. Explicit Auto/+1.5 ran in run 27
+and remains historical evidence for the controls. The current production source
+keeps Auto and lowers its default ceiling to +1.0; explicit +1.5 remains supported.

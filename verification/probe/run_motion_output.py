@@ -266,7 +266,7 @@ CASES += [case(name, 'hdrramp', hdr=True, hdr_env=env) for name, env in RAMP_CAS
 EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX_AUTO, X3M_HDR_DT_MS='16'),
                   # The offset script's level stimulus is designed around a
                   # +2 EV ceiling: with the +1 EV offset and the DLL's own
-                  # ev_max default of 1.5 (75dbbed) levels A..C clamp onto the
+                  # former ev_max default of 1.5 (75dbbed) made levels A..C clamp onto the
                   # grey target and the script stops exercising the dead band,
                   # so the case pins the ceiling it was written for.
                   'seam-hdr-exposure-offset': dict(AGX_AUTO, X3M_HDR_DT_MS='33', X3M_HDR_EV='1', X3M_HDR_EV_MAX='2', X3M_HDR_ADAPT_UP='0.2', X3M_HDR_ADAPT_DOWN='0.6', X3M_HDR_LOOK='golden')}
@@ -1515,11 +1515,11 @@ def bgra8(data, index):
     return r, g, b, a
 
 
-# The DLL's own auto-exposure ceiling (capture.cpp, "the milder AUTO
-# appearance" of 75dbbed) is below the reference module's EV_MAX; the runner
+# The DLL's own auto-exposure ceiling in capture.cpp is below the reference
+# module's EV_MAX; the runner
 # must use the DLL default when X3M_HDR_EV_MAX is unset, because the reference
 # adaptation clamps with it.
-HDR_EV_MAX_DEFAULT = 1.5
+HDR_EV_MAX_DEFAULT = 1.0
 
 
 def hdr_env_params(hdr_env):

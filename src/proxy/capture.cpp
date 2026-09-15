@@ -2009,10 +2009,10 @@ void initialize_log(HMODULE module) {
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
     hdr_config=x3m::renderer::HdrConfig{};
-    // Run 27 accepted the milder AUTO appearance. Keep standalone component
-    // defaults independent; fixed EV0 remains available without frame metering.
+    // The selected production appearance is Auto capped at +1 EV. Keep
+    // standalone component defaults independent; fixed EV0 remains available.
     hdr_config.exposure=x3m::renderer::ExposureMode::Auto;
-    hdr_config.params.ev_max=1.5f;
+    hdr_config.params.ev_max=1.f;
     hdr_config.allow_auto_toggle=true;
     if(GetEnvironmentVariableW(L"X3M_HDR_TONEMAP",setting,32)>0 && (!wcscmp(setting,L"agx")||!wcscmp(setting,L"1")))hdr_config.tonemap=x3m::renderer::HdrTonemap::Agx;
     if(GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32)>0){
@@ -2051,6 +2051,9 @@ void initialize_log(HMODULE module) {
     if(GetEnvironmentVariableW(L"X3M_HDR_DT_MS",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=1000.f)hdr_config.fixed_dt=v/1000.f;}
     const bool material_requested=GetEnvironmentVariableW(L"X3M_LINEAR_MATERIALS",setting,32)==1 && setting[0]==L'1';
     linear_material_config=x3m::renderer::LinearMaterialConfig{};
+    // Production material mode uses a small readability floor. Keep the
+    // shared config's zero default for explicit K=0 byte-identical artifacts.
+    linear_material_config.fill=0.03f;
     bool material_config_valid=true;
     const auto material_gain = [&](const wchar_t* name,float& output,float maximum=16.f) {
         SetLastError(ERROR_SUCCESS);
@@ -2065,8 +2068,8 @@ void initialize_log(HMODULE module) {
     material_gain(L"X3M_MATERIAL_DIRECT_GAIN",linear_material_config.direct_gain);
     material_gain(L"X3M_MATERIAL_EMISSIVE_GAIN",linear_material_config.material_emissive_gain);
     material_gain(L"X3M_LIGHTMAP_EMISSIVE_GAIN",linear_material_config.lightmap_emissive_gain);
-    // Constant hemispherical fill, 0..0.5, default 0 = off and byte-identical
-    // shader programs (docs/architecture/fill-light.md).
+    // Constant hemispherical fill, 0..0.5. Explicit 0 is off and produces
+    // byte-identical shader programs (docs/architecture/fill-light.md).
     material_gain(L"X3M_MATERIAL_FILL",linear_material_config.fill,0.5f);
     // Unlike the legacy decoder's permissive aliases, an explicit unknown or
     // truncated decode setting cannot authorize the material color contract.

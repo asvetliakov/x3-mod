@@ -95,7 +95,10 @@ class ComparisonHotkeys(unittest.TestCase):
             with self.subTest(arguments=arguments), mock.patch.object(sys, 'argv', base + arguments):
                 scope['env'] = {'X3M_HDR_EXPOSURE': 'fixed', 'X3M_HDR_EV_MANUAL': '2', 'X3M_HDR_EV_MAX': '2.0'}
                 result = scope['main']()
-                self.assertEqual(result, {'X3M_HDR_EXPOSURE': policy, 'X3M_HDR_EV_MANUAL': manual, 'X3M_HDR_EV_MAX': '1.5'})
+                self.assertEqual(result, {'X3M_HDR_EXPOSURE': policy, 'X3M_HDR_EV_MANUAL': manual, 'X3M_HDR_EV_MAX': '1.0'})
+        with mock.patch.object(sys, 'argv', base + ['--hdr-ev-max', '1.5']):
+            scope['env'] = {}
+            self.assertEqual(scope['main']()['X3M_HDR_EV_MAX'], '1.5')
         for policy in ('fixed', 'auto'):
             with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--hdr-exposure', policy]), contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit) as error:
@@ -131,7 +134,8 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('caps_.tonemap && config_.meter_requested()', hdr)
         defaults = capture.split('hdr_config=x3m::renderer::HdrConfig{};', 1)[1].split('hdr_config.allow_auto_toggle=true;', 1)[0]
         self.assertIn('hdr_config.exposure=x3m::renderer::ExposureMode::Auto;', defaults)
-        self.assertIn('hdr_config.params.ev_max=1.5f;', defaults)
+        self.assertIn('hdr_config.params.ev_max=1.f;', defaults)
+        self.assertIn('if(GetEnvironmentVariableW(L"X3M_HDR_EV_MAX",setting,32)>0)', capture)
         self.assertIn('hdr_config.allow_auto_toggle=true;', capture)
         self.assertIn('if (caps_.meter) ensure_chain(width, height)', hdr)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
