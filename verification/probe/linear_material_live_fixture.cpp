@@ -67,7 +67,7 @@ enum class LinearEmissionSm1Outputs {Native=1,Emission=2,Coverage=3,PackedScreen
 struct LinearEmissionSm1Config {float gain=1;LinearEmissionSm1Outputs outputs=LinearEmissionSm1Outputs::Coverage;bool native_partial_precision=false;};
 unsigned sm1_transforms=0;float sm1_gain=0;bool sm1_reject=false;
 LinearEmissionResult linear_emission_sm1_pixel_variant(const std::uint32_t*p,std::size_t,const LinearEmissionSm1Config&c,std::vector<std::uint32_t>&words){++sm1_transforms;CHECK(c.outputs==LinearEmissionSm1Outputs::PackedScreen);sm1_gain=c.gain;if(sm1_reject)return LinearEmissionResult::AllocationFailure;if(*p!=95&&*p!=96)return LinearEmissionResult::UnsupportedShader;words={*p+700};return LinearEmissionResult::Applied;}
-struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightmap_emissive_gain=1;};
+struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightmap_emissive_gain=1,fill=0;};
 enum class LinearMaterialResult{Applied,UnsupportedShader};
 unsigned fade_transforms=0,fade_lookups=0;bool fade_reject=false,fade_throw=false;
 std::uint32_t linear_distance_fade_sampler_mask(std::uint64_t vs,std::uint64_t ps){++fade_lookups;return vs>=70&&vs<76&&ps==80+(vs-70)%4?15:0;}
@@ -111,6 +111,7 @@ MaterialMotionResult material_motion_vertex_variant(const std::uint32_t*p,std::s
 MaterialMotionResult material_motion_pixel_variant(const std::uint32_t*p,std::size_t n,std::vector<std::uint32_t>&o,bool d){return material_motion_vertex_variant(p,n,o,d);}
 LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;if(p[0]>=70)return LinearMaterialResult::UnsupportedShader;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==41||p[0]==42||p[0]==43||p[0]==21||(p[0]>=22&&p[0]<=25)||p[0]==44);o={p[0]+200};return LinearMaterialResult::Applied;}
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d){return linear_material_vertex_variant(p,n,c,o,d);}
+LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d,bool&fill){fill=c.fill>0.f;return linear_material_pixel_variant(p,n,c,o,d);}
 }
 namespace renderer {
 enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2,DistanceFadeInPlace=4,PackedScreenInPlace=8};

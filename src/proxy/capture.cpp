@@ -2052,19 +2052,22 @@ void initialize_log(HMODULE module) {
     const bool material_requested=GetEnvironmentVariableW(L"X3M_LINEAR_MATERIALS",setting,32)==1 && setting[0]==L'1';
     linear_material_config=x3m::renderer::LinearMaterialConfig{};
     bool material_config_valid=true;
-    const auto material_gain = [&](const wchar_t* name,float& output) {
+    const auto material_gain = [&](const wchar_t* name,float& output,float maximum=16.f) {
         SetLastError(ERROR_SUCCESS);
         const DWORD length=GetEnvironmentVariableW(name,setting,32);
         if(!length && GetLastError()==ERROR_ENVVAR_NOT_FOUND)return;
         if(!length || length>=32){material_config_valid=false;return;}
         wchar_t* end=nullptr;
         const float value=wcstof(setting,&end);
-        if(end==setting || *end || !std::isfinite(value) || value<0.f || value>16.f){material_config_valid=false;return;}
+        if(end==setting || *end || !std::isfinite(value) || value<0.f || value>maximum){material_config_valid=false;return;}
         output=value;
     };
     material_gain(L"X3M_MATERIAL_DIRECT_GAIN",linear_material_config.direct_gain);
     material_gain(L"X3M_MATERIAL_EMISSIVE_GAIN",linear_material_config.material_emissive_gain);
     material_gain(L"X3M_LIGHTMAP_EMISSIVE_GAIN",linear_material_config.lightmap_emissive_gain);
+    // Constant hemispherical fill, 0..0.5, default 0 = off and byte-identical
+    // shader programs (docs/architecture/fill-light.md).
+    material_gain(L"X3M_MATERIAL_FILL",linear_material_config.fill,0.5f);
     // Unlike the legacy decoder's permissive aliases, an explicit unknown or
     // truncated decode setting cannot authorize the material color contract.
     const DWORD material_decode_length=GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32);
@@ -2074,9 +2077,9 @@ void initialize_log(HMODULE module) {
     linear_material_requested=material_requested && material_config_valid && material_decode_valid && material_tonemap_valid && motion_output_requested && hdr_requested
         && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
     if(material_requested)
-        log("linear_material_mode requested=1 enabled=%u config_valid=%u decode_valid=%u tonemap_valid=%u direct_gain=%g material_emissive_gain=%g lightmap_emissive_gain=%g",
+        log("linear_material_mode requested=1 enabled=%u config_valid=%u decode_valid=%u tonemap_valid=%u direct_gain=%g material_emissive_gain=%g lightmap_emissive_gain=%g fill=%g",
             linear_material_requested,material_config_valid,material_decode_valid,material_tonemap_valid,double(linear_material_config.direct_gain),
-            double(linear_material_config.material_emissive_gain),double(linear_material_config.lightmap_emissive_gain));
+            double(linear_material_config.material_emissive_gain),double(linear_material_config.lightmap_emissive_gain),double(linear_material_config.fill));
     const bool emission_requested=GetEnvironmentVariableW(L"X3M_LINEAR_EMISSIONS",setting,32)==1 && setting[0]==L'1';
     emission_gain=1.f;
     const bool saved_material_valid=material_config_valid;

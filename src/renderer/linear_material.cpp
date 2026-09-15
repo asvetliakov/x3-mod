@@ -554,6 +554,18 @@ void definitions(Words& out, bool vertex, const LinearMaterialConfig& config) {
         bits(vertex ? canonical_gain(config.material_emissive_gain) : 1.0f/2.2f),
         bits(vertex ? 0.0f : canonical_gain(config.lightmap_emissive_gain)),bits(vertex ? 0.0f : 1e-22f)});
 }
+// Shader-local fill constant. c212/c213 are the sanitizer/gain DEFs, c214
+// belongs to the detached fade producer and c216-c220 to motion/depth; c215 is
+// in no CTAB, so the engine never writes it (linear-material-profiles.json
+// records it free in every converted program).
+constexpr unsigned fill_constant = 215;
+void fill_definition(Words& out, const LinearMaterialConfig& config) {
+    emit(out, def, {dst(constant,fill_constant,xyzw),bits(config.fill),0,0,0});
+}
+// One MAD per converted pixel: sum.xyz = decode(LightDir_Color0)*g_direct*k + sum.
+void fill_instruction(Words& out, unsigned sum) {
+    emit(out, mad, {dst(temp,sum),src(temp,12),lane(constant,fill_constant,0),src(temp,sum)});
+}
 struct Source { Word value, address = 0; };
 void sanitize(Words& out, bool vertex, unsigned target, Source source) {
     const unsigned base = vertex ? 248 : 212;
@@ -958,6 +970,19 @@ bool palette_sites(const Word* code, const Structure& s, const PaletteProgram& p
            (vertex || style!=2 || palette_declarations==1);
 }
 
+// The fill DEF may only be added to a program that never reads or defines it.
+bool fill_constant_free(const Word* code, const Structure& s) noexcept {
+    for (const auto& instruction:s.instructions) {
+        if (instruction.opcode==dcl) continue;
+        if (instruction.opcode==def) {
+            if (kind(code[instruction.at+1])==constant && index(code[instruction.at+1])==fill_constant) return false;
+            continue;
+        }
+        for (unsigned operand=1; operand<=instruction.count; ++operand)
+            if (kind(code[instruction.at+operand])==constant && index(code[instruction.at+operand])==fill_constant) return false;
+    }
+    return true;
+}
 struct Insertion { std::size_t at, begin, end; };
 // Prove the exact original -> ordinary-motion partition before editing. All
 // copied original spans must match byte-for-byte. Ambiguous/new temporal
@@ -1015,7 +1040,8 @@ const MotionOutputProfile* selected_row(bool vertex, std::uint64_t hash) noexcep
 #include "linear_xt_material_inc.h"
 
 LinearMaterialResult transform(const Word* original, std::size_t words, const LinearMaterialConfig& config,
-    Words& output, bool current_depth, bool vertex, bool fade = false) noexcept {
+    Words& output, bool current_depth, bool vertex, bool fade = false, bool* fill_applied = nullptr) noexcept {
+    if (fill_applied) *fill_applied=false;
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
     // Bound the read before hashing; none of the reviewed original programs exceeds
@@ -1050,6 +1076,18 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             (row_pixel->glass_fresnel && !glass_color_sites(original,original_structure,vertex,vertex?v->glass_fresnel:p->glass_fresnel,vertex?0:p->clamp,vertex?0:p->final_rgb+5)) ||
             (row_pixel->palette_style && !palette_sites(original,original_structure,*palette,vertex,bump,row_pixel->palette_style)))
             return LinearMaterialResult::ProfileMismatch;
+        // Constant hemispherical fill (docs/architecture/fill-light.md): one MAD
+        // into the lobe sum, before the albedo multiply. The destination must be
+        // the program's single such site; anything else keeps the law unchanged.
+        unsigned fill_sum=0, fill_at=0; bool fill=false;
+        if (!vertex && config.fill>0.0f) {
+            const unsigned albedo=(p->asteroid_layout || p->glass_fresnel) ? 0u :
+                p->palette_style ? (p->affine_end?(p->bump?1u:4u):1u) : (p->affine_end?(p->bump?4u:3u):1u);
+            fill=linear_material_fill_sum(original,words,albedo,fill_sum,fill_at) &&
+                 fill_sum<original_temp_count && fill_sum!=albedo &&
+                 (fill_at==p->final_rgb || std::find(p->rgb.begin(),p->rgb.end(),fill_at)!=p->rgb.end()) &&
+                 fill_constant_free(original,original_structure);
+        }
         Words motion;
         const auto motion_result=vertex ? material_motion_vertex_variant_for(*row,original,words,motion,current_depth) :
                                          material_motion_pixel_variant_for(*row,original,words,motion,current_depth);
@@ -1072,6 +1110,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             }
             if (at==original_structure.first_declaration) {
                 definitions(combined,vertex,config);
+                if (fill) fill_definition(combined,config);
                 if (palette) palette_definitions(combined,*palette,vertex,row_pixel->palette_style);
             }
             const auto declaration_at=vertex?row->vertex_declaration_insert_dword:row->pixel_declaration_insert_dword;
@@ -1102,6 +1141,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             // replaced by the separately declared whole COLOR1 register.
             if (palette && bump && op==dcl && kind(original[at+2])==(vertex?output_reg:input) &&
                 index(original[at+2])==(vertex?8u:7u)) { at+=n+1; continue; }
+            if (fill && at==fill_at) fill_instruction(combined,fill_sum);
             const auto copied=combined.size();
             combined.insert(combined.end(),original+at,original+at+n+1);
             if (palette && op!=0xfffe) {
@@ -1232,6 +1272,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             combined.swap(dual);
         }
         output.swap(combined);
+        if (fill_applied) *fill_applied=fill;
         return LinearMaterialResult::Applied;
     } catch (...) { return LinearMaterialResult::AllocationFailure; }
 }
@@ -1240,7 +1281,51 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
 bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept {
     for (float value:{config.direct_gain,config.material_emissive_gain,config.lightmap_emissive_gain})
         if (!std::isfinite(value) || value<0.0f || value>16.0f) return false;
-    return true;
+    return std::isfinite(config.fill) && config.fill>=0.0f && config.fill<=0.5f;
+}
+bool linear_material_fill_sum(const Word* code, std::size_t words, unsigned albedo_register,
+    unsigned& sum_register, unsigned& instruction_dword) noexcept {
+    if (!code || words<2) return false;
+    // A whole-register RGB read of a temporary, the only operand form the
+    // converted albedo multiply uses for both of its factors.
+    const auto whole=[&](Word operand) {
+        return kind(operand)==temp && operand==src(temp,index(operand));
+    };
+    // The multiplier is the decoded albedo itself or the family's one-step
+    // palette/lightmap composite of it; anything else is not this site.
+    const auto albedo_factor=[&](unsigned number, std::size_t before) {
+        if (number==albedo_register) return true;
+        for (std::size_t at=1; at<before;) {
+            const Word token=code[at];
+            if (token==end_token) break;
+            const unsigned op=token&0xffffu, n=length(token);
+            if (n>words-at-1) return false;
+            if (op!=0xfffeu && op!=dcl && op!=def && n>=2 && kind(code[at+1])==temp &&
+                index(code[at+1])==number && (mask(code[at+1])&xyz)==xyz)
+                for (unsigned operand=2; operand<=n; ++operand)
+                    if (code[at+operand]==src(temp,albedo_register)) return true;
+            at+=n+1;
+        }
+        return false;
+    };
+    unsigned found=0;
+    for (std::size_t at=1; at<words;) {
+        const Word token=code[at];
+        if (token==end_token) break;
+        const unsigned op=token&0xffffu, n=length(token);
+        if (n>words-at-1) return false;
+        // The albedo multiply of every converted family: the accumulated direct
+        // lobes times the decoded albedo, into the r1 radiance carrier (hull,
+        // BUMPMAP, palette) or straight into oC0 (asteroid, glass).
+        if (op!=0xfffeu && (op==mul || op==mad) && n>=3 &&
+            (code[at+1]==(dst(temp,1)|pp) || code[at+1]==(dst(color_output,0)|pp)) &&
+            whole(code[at+2]) && whole(code[at+3]) && index(code[at+2])!=index(code[at+3]) &&
+            albedo_factor(index(code[at+3]),at)) {
+            sum_register=index(code[at+2]); instruction_dword=static_cast<unsigned>(at); ++found;
+        }
+        at+=n+1;
+    }
+    return found==1;
 }
 std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     return linear_material_pair_contract(vertex,pixel).sampler_mask;
@@ -1271,11 +1356,17 @@ LinearMaterialResult linear_material_vertex_variant(const Word* original, std::s
         return xt_transform(original,words,config,output,current_depth,true,*xt_pixel(0x5f82ecacd39529cdull),true);
     return transform(original,words,config,output,current_depth,true);
 }
+LinearMaterialResult linear_material_pixel_variant_fill(const Word* original, std::size_t words,
+    const LinearMaterialConfig& config, Words& output, bool current_depth, bool& fill_applied) noexcept {
+    fill_applied=false;
+    if (original && words>=1561 && words<=1791 && std::any_of(std::begin(xt_pixels),std::end(xt_pixels),[&](const XtPixel& p){return p.words==words;})) if (const auto* p=xt_pixel(material_motion_fingerprint(original,words)))
+        return xt_transform(original,words,config,output,current_depth,false,*p,true,&fill_applied);
+    return transform(original,words,config,output,current_depth,false,false,&fill_applied);
+}
 LinearMaterialResult linear_material_pixel_variant(const Word* original, std::size_t words,
     const LinearMaterialConfig& config, Words& output, bool current_depth) noexcept {
-    if (original && words>=1561 && words<=1791 && std::any_of(std::begin(xt_pixels),std::end(xt_pixels),[&](const XtPixel& p){return p.words==words;})) if (const auto* p=xt_pixel(material_motion_fingerprint(original,words)))
-        return xt_transform(original,words,config,output,current_depth,false,*p,true);
-    return transform(original,words,config,output,current_depth,false);
+    bool fill_applied=false;
+    return linear_material_pixel_variant_fill(original,words,config,output,current_depth,fill_applied);
 }
 bool linear_material_xt_default_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     const auto* p=xt_pixel(pixel);return vertex==xt_default_vs && p && !p->bump;

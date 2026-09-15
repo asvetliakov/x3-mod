@@ -99,6 +99,61 @@ bool xt_pixel_sites(const Word* code, const Structure& s, const XtPixel& p) noex
     return textures==(p.bump?7u:5u) && colors==2 && lights==4 && palette==5 && clamps==2 && scalar==2 &&
         (!p.bump || (view==1 && normal==1 && carrier==1));
 }
+// Constant fill for the XT law (docs/architecture/fill-light.md). The XT
+// programs multiply the lobe sum by a branch-dependent albedo, so the single
+// MAD goes in ahead of that two-armed branch, where one lobe sum is live for
+// both arms. Every step is anchored on the reviewed COLOR0 clamp sites; an
+// ambiguous branch, lobe sum or albedo multiply refuses (no fill).
+bool xt_fill_site(const Word* code, const Structure& s, const XtPixel& p,
+                  unsigned temporaries, unsigned& sum, unsigned& branch_at) noexcept {
+    const unsigned first=p.clamps[0], second=p.clamps[1];
+    if (!first || !second || first>=second) return false;
+    std::array<unsigned,8> open{}; unsigned depth=0, opener=0, openers=0, alternative=0;
+    for (const auto& i:s.instructions) {
+        const auto at=static_cast<unsigned>(i.at);
+        if (i.opcode==40 || i.opcode==41) { if (depth>=open.size()) return false; open[depth++]=at; }
+        else if (i.opcode==43) { if (!depth) return false; --depth; }
+        else if (i.opcode==42) {
+            if (!depth) return false;
+            if (at>first && at<second && open[depth-1]<first) { opener=open[depth-1]; alternative=at; ++openers; }
+        }
+    }
+    if (depth || openers!=1) return false;
+    unsigned resolved=0;
+    for (unsigned arm=0; arm<2; ++arm) {
+        const unsigned clamp=p.clamps[arm];
+        if (kind(code[clamp+1])!=temp) return false;
+        const unsigned carrier=index(code[clamp+1]);
+        unsigned lobe=0, add_at=0, destination=0, found=0;
+        for (const auto& i:s.instructions) {
+            const auto at=static_cast<unsigned>(i.at);
+            if (at<=clamp || i.opcode!=add || i.count!=3 || found) continue;
+            if (kind(code[at+1])!=temp || mask(code[at+1])!=xyz) continue;
+            const Word left=code[at+2], right=code[at+3];
+            if (left!=src(temp,carrier) && right!=src(temp,carrier)) continue;
+            const Word other=left==src(temp,carrier) ? right : left;
+            if (kind(other)!=temp || other!=src(temp,index(other)) || index(other)==carrier) return false;
+            lobe=index(other); add_at=at; destination=index(code[at+1]); found=1;
+        }
+        // The sum must survive from the branch (first arm) or from the ELSE
+        // (second arm) to its use; the other arm never runs alongside it.
+        if (!found || lobe>=temporaries || add_at<=(arm?alternative:opener) ||
+            (!arm && add_at>=alternative) || !no_write(code,s,lobe,xyz,arm?alternative:opener,add_at)) return false;
+        // The arm must finish with the albedo multiply of that sum.
+        unsigned products=0;
+        for (const auto& i:s.instructions) {
+            const auto at=static_cast<unsigned>(i.at);
+            if (at<=add_at || i.opcode!=mul || i.count!=3 || kind(code[at+1])!=temp || mask(code[at+1])!=xyz) continue;
+            if (code[at+2]==src(temp,destination) || code[at+3]==src(temp,destination)) { ++products; break; }
+        }
+        if (!products) return false;
+        if (arm && lobe!=sum) return false;
+        sum=lobe; ++resolved;
+    }
+    if (resolved!=2 || !opener) return false;
+    branch_at=opener;
+    return true;
+}
 void xt_default_geometry(Words& out) {
     // These are owned vertex inputs/temporaries, never absent interstage values.
     // Preserve the native geometry and alpha; extra temporaries die at END.
@@ -118,7 +173,8 @@ void xt_default_geometry(Words& out) {
     emit(out,mul,{dst(output_reg,9,1),lane(temp,12,0),lane(temp,12,0)});
 }
 LinearMaterialResult xt_transform(const Word* original, std::size_t words, const LinearMaterialConfig& config,
-    Words& output, bool current_depth, bool vertex, const XtPixel& p, bool linear) noexcept {
+    Words& output, bool current_depth, bool vertex, const XtPixel& p, bool linear, bool* fill_applied = nullptr) noexcept {
+    if (fill_applied) *fill_applied=false;
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
     const auto expected=vertex?(p.bump?xt_bump_vs:xt_default_vs):p.hash;
@@ -141,6 +197,9 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
             if (i.opcode==def) { if (index(original[i.at+1])==(vertex?244u:210u)) return LinearMaterialResult::ProfileMismatch; continue; }
             for (unsigned n=1;n<=i.count;++n) if (kind(original[i.at+n])==constant && index(original[i.at+n])==(vertex?244u:210u)) return LinearMaterialResult::ProfileMismatch;
         }
+        unsigned fill_sum=0, fill_at=0; bool fill=false;
+        if (!vertex && linear && config.fill>0.0f)
+            fill=xt_fill_site(original,s,p,p.terra?7u:6u,fill_sum,fill_at) && fill_constant_free(original,s);
         Words motion;
         const auto mr=vertex?material_motion_vertex_variant_for(*row,original,words,motion,current_depth):material_motion_pixel_variant_for(*row,original,words,motion,current_depth);
         if (mr!=MaterialMotionResult::Applied) return mr==MaterialMotionResult::AllocationFailure?LinearMaterialResult::AllocationFailure:LinearMaterialResult::ProfileMismatch;
@@ -155,6 +214,7 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
             }
             if (at==s.first_declaration) {
                 if (linear) definitions(combined,vertex,config);
+                if (fill) fill_definition(combined,config);
                 if (!p.bump) emit(combined,def,{dst(constant,vertex?244:210,xyzw),bits(vertex?1.f:0.1f),bits(vertex?0.f:0.9f),0,0});
             }
             if (at==(vertex?row->vertex_declaration_insert_dword:row->pixel_declaration_insert_dword)) {
@@ -196,6 +256,7 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
                 emit(combined,abs_op,{dst(temp,7),src(temp,7)});gain(combined,true,7,1);
             }
             if (p.bump && op==dcl && kind(original[at+2])==(vertex?output_reg:input) && index(original[at+2])==(vertex?8u:7u)) {at+=n+1;continue;}
+            if (fill && at==fill_at) fill_instruction(combined,fill_sum);
             const auto copy=combined.size();combined.insert(combined.end(),original+at,original+at+n+1);
             if (op==dcl && kind(original[at+2])==(vertex?output_reg:input)) {
                 const auto number=index(original[at+2]);
@@ -234,6 +295,8 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
         if (inserted!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final;
         if (!structure(combined.data(),combined.size(),vertex,final,false,abi,vertex?7u:p.terra?7u:6u,false,false,true)) return LinearMaterialResult::ResourceLimit;
-        output.swap(combined);return LinearMaterialResult::Applied;
+        output.swap(combined);
+        if (fill_applied) *fill_applied=fill;
+        return LinearMaterialResult::Applied;
     } catch (...) {return LinearMaterialResult::AllocationFailure;}
 }

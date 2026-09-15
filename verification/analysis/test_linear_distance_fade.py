@@ -69,10 +69,14 @@ class DistanceFadeProducer(unittest.TestCase):
         cls.driver=cls.work/'driver'
         baseline=cls.work/'baseline.cpp'
         baseline.write_bytes(subprocess.check_output(['git','show','2cf65ae:src/renderer/linear_material.cpp'],cwd=ROOT))
+        # The XT fragment is included by that translation unit and has moved on
+        # with the transformer, so the baseline compiles against its own copy.
+        (cls.work/'linear_xt_material_inc.h').write_bytes(
+            subprocess.check_output(['git','show','2cf65ae:src/renderer/linear_xt_material_inc.h'],cwd=ROOT))
         common=[compiler,'-std=c++17','-O2','-Wall','-Wextra','-Werror','-I',str(ROOT/'src/renderer'),
                 str(ROOT/'verification/probe/linear_distance_fade_structure.cpp'),str(ROOT/'src/renderer/material_motion.cpp')]
         for extra,target in (([str(ROOT/'src/renderer/linear_material.cpp')],cls.driver),
-                             ([str(baseline),'-DX3M_FADE_BASELINE'],cls.work/'baseline')):
+                             (['-I',str(cls.work),str(baseline),'-DX3M_FADE_BASELINE'],cls.work/'baseline')):
             subprocess.run(common+extra+['-o',str(target)],check=True,capture_output=True,text=True)
         cls.generated={}
         for name in IDS:

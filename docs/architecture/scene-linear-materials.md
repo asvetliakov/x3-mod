@@ -362,6 +362,7 @@ are finite values in [0, 16], default 1:
 | `--material-direct-gain` | `X3M_MATERIAL_DIRECT_GAIN` | Strength of decoded directional and point lights |
 | `--material-emissive-gain` | `X3M_MATERIAL_EMISSIVE_GAIN` | Multiplier on the game's already-scaled material emissive |
 | `--lightmap-emissive-gain` | `X3M_LIGHTMAP_EMISSIVE_GAIN` | Strength of the separate decoded s2 RGB contribution |
+| `--material-fill` | `X3M_MATERIAL_FILL` | Constant hemispherical fill `k` added to the lobe sum before the albedo multiply, tinted by the decoded sun register; finite 0..0.5, **default 0 = off** and then the generated programs are byte-identical ([fill-light.md](fill-light.md)) |
 
 Malformed gains or incompatible configuration disable the material feature.
 The gains are shader-local definitions, fixed for the device's lifetime; Reset
