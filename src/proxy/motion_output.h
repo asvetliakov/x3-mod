@@ -40,7 +40,9 @@
 #include "../renderer/linear_distance_fade.h"
 #include "fade_region.h"
 #include "fade_route_core.h"
+#include "shadow_replay_candidates.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
+namespace x3m::ownership { class AdmissionMonitor; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
 // Distinct clip-row constant windows the profile table names (c24-27 for the
@@ -125,6 +127,9 @@ struct MotionRoute {
     // Additive option: DESTBLEND ONE applied for this draw (restored to the
     // shadowed INVSRCCOLOR after it) and, with gain != 1, the gained PS bound.
     bool screen_additive = false, screen_additive_ps = false;
+    // Origin distance of the draw's rows (fade_route_core.h origin_distance) for
+    // the caster-candidate counter; negative when the camera latch or rows refuse.
+    float candidate_distance = -1.f;
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
@@ -406,6 +411,12 @@ public:
     // targets, R32F render-target support and the three-format self test.
     bool depth_enabled() const noexcept { return depth_enabled_; }
     void configure_sun_shadow_lane(bool requested) noexcept { sun_lane_requested_=requested; }
+    // Caster-candidate counter (shadow_replay_candidates.h; X3M_SHADOW_REPLAY_CANDIDATES=1):
+    // integer bookkeeping per routed draw, one shadow_replay_candidates line per
+    // scene end, at most 16 shadow_replay_lock_witness lines per device. Off: nothing.
+    void configure_shadow_replay_candidates(bool requested, ownership::AdmissionMonitor* monitor) noexcept {
+        candidates_requested_=requested; candidates_monitor_=requested?monitor:nullptr;
+    }
     bool sun_shadow_lane_enabled() const noexcept { return sun_lane_active_; }
     // Diagnostic snapshot at scene end BEFORE AO/TAA; not a later color-owner lease.
     const renderer::SunShareFrame& sun_shadow_frame() const noexcept { return sun_frame_; }
@@ -843,6 +854,8 @@ private:
         // dereferenced here): the fade bound table proves a subset record
         // holds exactly these.
         std::uintptr_t stream0_identity = 0, indices_identity = 0;
+        // Pool class of the bound buffers (candidate counter on only; Unknown otherwise).
+        shadow_replay::PoolClass stream0_pool = shadow_replay::PoolClass::Unknown, indices_pool = shadow_replay::PoolClass::Unknown;
         DWORD fill_mode = 0;          // D3DRS_FILLMODE, kept only with composition requested
         bool fill_mode_known = false;
         std::uint32_t position_offset = 0, position_type = 0;
@@ -882,6 +895,19 @@ private:
     void note_sun_untracked_writer(const MotionRoute& route, renderer::SunUntrackedReason reason) noexcept;
     bool sun_coverage_current_=false, sun_composition_completed_=false;
     IDirect3DPixelShader9* sun_sentinel_ps_=nullptr;
+    // Caster-candidate counter storage: fixed, cleared at begin_frame and after
+    // publication; the witness count is per device (attach clears it).
+    bool candidates_requested_=false;
+    ownership::AdmissionMonitor* candidates_monitor_=nullptr;
+    shadow_replay::Frame candidates_{};
+    shadow_replay::PoolCache candidate_pools_{};
+    unsigned candidate_witnesses_=0;
+    std::uint64_t candidates_published_frame_=~std::uint64_t(0); // frame serial of the last frame line (once per frame)
+    float candidate_slice_near_=shadow_replay::slice0_near; // production constant; the seam fixture may lower it
+    shadow_replay::PoolClass candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept;
+    void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
+    void note_candidate_draw(const MotionRoute& route) noexcept;
+    void publish_shadow_replay_candidates() noexcept;
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;
     // The 4x4 StretchRect round trip of one 8-bit format through FP16 and
     // back (D1 of the native-Windows audit): exact 8-bit bytes, FP16 within

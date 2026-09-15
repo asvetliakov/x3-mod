@@ -29,221 +29,534 @@
   },
   "consume_only": false,
   "selected_cases": [
-    "seam-taa-fade-route-hover"
+    "seam-ownership-taa-camera-candidates-on"
   ],
   "cases": {
-    "seam-taa-fade-route-hover": {
-      "script": "hover",
+    "seam-ownership-taa-camera-candidates-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": true,
+      "taa": true,
+      "lazy": false,
+      "checks": 216,
+      "restorations": 51,
       "frames": 12,
-      "checks": 3536,
-      "history_frames": 10,
-      "routed_frames": 8,
-      "held_frames": 5,
-      "switch_step": {
-        "permille": 449,
-        "max_abs": 0.03564453125,
-        "max_relative": 0.03718797758532858
+      "color_hashes": {
+        "0": "7780633dafe6b5fa",
+        "1": "a2499c06b255363a",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "403a1ff89ea0f8db",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "332b6a65322718bb",
+        "11": "11fc8bcc9362dee9"
       },
-      "max_code_error": 0.0,
-      "max_tolerance_fraction": 0.0,
-      "raw_evidence": 22,
-      "resolved_evidence": 10,
-      "worst_raw_error_px": 0.005539625204070919,
-      "worst_resolved_residual_px": 0.05315238975100379,
-      "shifts": {
+      "motion_pixels": 44279,
+      "matched_pixels": 10348,
+      "max_uv_error_pixels": 0.00191186365,
+      "max_previous_depth_error": 7.21407726e-08,
+      "depth_pixels": 44279,
+      "depth_written_pixels": 27293,
+      "max_current_depth_error": 3.74090846e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48957,
+      "coverage_ambiguous_pixels": 195,
+      "taa_invalidate_sites": {
+        "9": [
+          "reset"
+        ]
+      },
+      "taa_history_frames": [
+        1,
+        2,
+        4,
+        10,
+        11
+      ],
+      "camera_policy": {
+        "0": 1,
+        "1": 2,
+        "2": 2,
+        "3": 2,
+        "4": 2,
+        "5": 2,
+        "6": 2,
+        "7": 1,
+        "8": 2,
+        "9": 1,
+        "10": 2,
+        "11": 2
+      },
+      "taa_changed_pixels": {
+        "0": 0,
+        "1": 298,
+        "2": 0,
+        "3": 0,
+        "4": 237,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 347,
+        "11": 356
+      },
+      "color_hashes_before_boundary": {
+        "0": "7780633dafe6b5fa",
+        "1": "9d598f52bb65c0a6",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c9c5e220baccde15",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "750cdfe97753849e",
+        "11": "245a6dd4042eff8d"
+      },
+      "hdr": {
+        "enabled": false
+      },
+      "taa_copy": "stretch",
+      "depth_readbacks": {
         "1": {
-          "jitter_delta": [
-            -0.25,
-            0.3333333333333333
-          ],
-          "raw": [
-            -0.24964576450233278,
-            0.3316689105280334
-          ],
-          "resolved": [
-            -0.02023030725708367,
-            0.03654752433208437
-          ],
-          "history": 1,
-          "stable": true,
-          "follows": false
+          "written": 2660,
+          "min": 0.4877398908138275,
+          "max": 0.6000000238418579
         },
         "2": {
-          "jitter_delta": [
-            0.5,
-            -0.5555555555555556
-          ],
-          "raw": [
-            0.5010936452984597,
-            -0.5567426660495348
-          ],
-          "resolved": [
-            0.03189455756823001,
-            -0.020832343586512952
-          ],
-          "history": 1,
-          "stable": true,
-          "follows": false
+          "written": 2683,
+          "min": 0.4888249635696411,
+          "max": 0.6000000238418579
         },
         "3": {
-          "jitter_delta": [
-            -0.625,
-            0.3333333333333333
-          ],
-          "raw": [
-            -0.6242396458547876,
-            0.33661624640575405
-          ],
-          "resolved": [
-            -0.3846474580080624,
-            0.09591419880370422
-          ],
-          "history": 1,
-          "stable": false,
-          "follows": false
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
         },
         "4": {
-          "jitter_delta": [
-            0.5,
-            0.33333333333333326
-          ],
-          "raw": [
-            0.49952150383989236,
-            0.3362153239507562
-          ],
-          "resolved": [
-            0.49952150383989236,
-            0.3362153239507562
-          ],
-          "history": 1,
-          "stable": false,
-          "follows": true
+          "written": 2677,
+          "min": 0.4885537326335907,
+          "max": 0.6000000238418579
         },
         "5": {
-          "jitter_delta": [
-            -0.25,
-            -0.5555555555555555
-          ],
-          "raw": [
-            -0.25039527694521313,
-            -0.5610951807596264
-          ],
-          "resolved": [
-            -0.25039527694521313,
-            -0.5610951807596264
-          ],
-          "history": 1,
-          "stable": false,
-          "follows": true
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
         },
         "6": {
-          "jitter_delta": [
-            0.5,
-            0.33333333333333337
-          ],
-          "raw": [
-            0.5001039628355756,
-            0.33613811059952586
-          ],
-          "resolved": [
-            0.5001039628355756,
-            0.33613811059952586
-          ],
-          "history": 1,
-          "stable": false,
-          "follows": false
+          "written": 2616,
+          "min": 0.4890962541103363,
+          "max": 0.6000000238418579
         },
         "7": {
-          "jitter_delta": [
-            -0.8125,
-            0.33333333333333326
-          ],
-          "raw": [
-            -0.8142519438137741,
-            0.33223142008824685
-          ],
-          "resolved": [
-            -0.8142519438137741,
-            0.33223142008824685
-          ],
-          "history": 0,
-          "stable": true,
-          "follows": false
+          "written": 190,
+          "min": 0.5,
+          "max": 0.5
         },
         "8": {
-          "jitter_delta": [
-            0.4375,
-            -0.5555555555555556
-          ],
-          "raw": [
-            0.4397126942710575,
-            -0.5540133754527505
-          ],
-          "resolved": [
-            0.4397126942710575,
-            -0.5540133754527505
-          ],
-          "history": 1,
-          "stable": false,
-          "follows": false
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 3,
+          "cut": 0,
+          "rotation_deg": 0.0
         },
-        "9": {
-          "jitter_delta": [
-            -0.25,
-            0.3333333333333333
-          ],
-          "raw": [
-            -0.25183655328993604,
-            0.3302470734992082
-          ],
-          "resolved": [
-            -0.25183655328993604,
-            0.3302470734992082
-          ],
-          "history": 1,
-          "stable": false,
-          "follows": false
+        "1": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
         },
-        "10": {
-          "jitter_delta": [
-            0.5,
-            -0.5555555555555556
-          ],
-          "raw": [
-            0.5010936452984597,
-            -0.5567426660495348
-          ],
-          "resolved": [
-            0.05315238975100379,
-            -0.05091310493858632
-          ],
-          "history": 1,
-          "stable": true,
-          "follows": false
+        "2": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
         },
-        "11": {
-          "jitter_delta": [
-            -0.625,
-            0.3333333333333333
+        "3": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
+        },
+        "4": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
+        },
+        "5": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9998
+        },
+        "6": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
+        },
+        "7": {
+          "policy": 1,
+          "reason": 4,
+          "cut": 1,
+          "rotation_deg": 31.0
+        },
+        "8": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
+        }
+      },
+      "taa_image": {
+        "differing_fraction": {
+          "1": 0.02783203125,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.04931640625,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0
+        },
+        "max_difference": {
+          "1": 0.18707658356311274,
+          "2": 0.00023360906862746056,
+          "3": 0.00023360906862746056,
+          "4": 0.44848249846813726,
+          "5": 0.00023360906862746056,
+          "6": 0.00023360906862746056,
+          "7": 0.0004844515931372584,
+          "8": 0.00023360906862746056
+        }
+      },
+      "present_readbacks": {
+        "1": {
+          "equals_presented": true,
+          "max_code_error_vs_resolved": 0.4989013671875,
+          "mean_code_error_vs_resolved": 0.06813586503267288,
+          "alpha_max_error_vs_resolved": 0.0517578125
+        },
+        "2": {
+          "equals_presented": true,
+          "max_code_error_vs_resolved": 0.0595703125,
+          "mean_code_error_vs_resolved": 0.033986032009124756,
+          "alpha_max_error_vs_resolved": 0.0517578125
+        },
+        "3": {
+          "equals_presented": true,
+          "max_code_error_vs_resolved": 0.0595703125,
+          "mean_code_error_vs_resolved": 0.034821510314941406,
+          "alpha_max_error_vs_resolved": 0.0517578125
+        },
+        "4": {
+          "equals_presented": true,
+          "max_code_error_vs_resolved": 0.49847412109375,
+          "mean_code_error_vs_resolved": 0.09840629994869232,
+          "alpha_max_error_vs_resolved": 0.0517578125
+        },
+        "5": {
+          "equals_presented": true,
+          "max_code_error_vs_resolved": 0.0595703125,
+          "mean_code_error_vs_resolved": 0.034729957580566406,
+          "alpha_max_error_vs_resolved": 0.0517578125
+        },
+        "6": {
+          "equals_presented": true,
+          "max_code_error_vs_resolved": 0.0595703125,
+          "mean_code_error_vs_resolved": 0.03320789337158203,
+          "alpha_max_error_vs_resolved": 0.0517578125
+        },
+        "7": {
+          "equals_presented": true,
+          "max_code_error_vs_resolved": 0.12353515625,
+          "mean_code_error_vs_resolved": 0.07799148559570312,
+          "alpha_max_error_vs_resolved": 0.0517578125
+        },
+        "8": {
+          "equals_presented": true,
+          "max_code_error_vs_resolved": 0.0595703125,
+          "mean_code_error_vs_resolved": 0.03466320037841797,
+          "alpha_max_error_vs_resolved": 0.0517578125
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "render_state": {
+        "0": {
+          "queries": 22,
+          "hits": 22,
+          "gets": 14,
+          "resyncs": 0,
+          "invalidations": 0
+        },
+        "1": {
+          "queries": 22,
+          "hits": 22,
+          "gets": 14,
+          "resyncs": 0,
+          "invalidations": 0
+        },
+        "2": {
+          "queries": 22,
+          "hits": 22,
+          "gets": 14,
+          "resyncs": 0,
+          "invalidations": 0
+        },
+        "3": {
+          "queries": 22,
+          "hits": 22,
+          "gets": 14,
+          "resyncs": 0,
+          "invalidations": 0
+        },
+        "4": {
+          "queries": 27,
+          "hits": 27,
+          "gets": 14,
+          "resyncs": 0,
+          "invalidations": 0
+        },
+        "5": {
+          "queries": 32,
+          "hits": 32,
+          "gets": 14,
+          "resyncs": 0,
+          "invalidations": 0
+        },
+        "6": {
+          "queries": 22,
+          "hits": 22,
+          "gets": 14,
+          "resyncs": 0,
+          "invalidations": 0
+        },
+        "7": {
+          "queries": 14,
+          "hits": 2,
+          "gets": 26,
+          "resyncs": 2,
+          "invalidations": 0
+        },
+        "8": {
+          "queries": 22,
+          "hits": 12,
+          "gets": 24,
+          "resyncs": 1,
+          "invalidations": 0
+        }
+      },
+      "route_decisions": [
+        [
+          "1",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "2",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "2",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "3",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "4",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "4",
+          "4",
+          "4",
+          "0",
+          "0"
+        ],
+        [
+          "4",
+          "5",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "5",
+          "3",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "5",
+          "4",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "6",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "6",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "7",
+          "2",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "7",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "8",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "8",
+          "3",
+          "0",
+          "1",
+          "1"
+        ]
+      ],
+      "variant": "ownership",
+      "ownership": {
+        "wrapped": true,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        },
+        "source_epochs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0
+        }
+      },
+      "shadow_replay_candidates": {
+        "frames": 12,
+        "witnesses": {},
+        "checks": 39,
+        "summary": {
+          "frames": 12,
+          "devices": [
+            1
           ],
-          "raw": [
-            -0.6265345219278331,
-            0.3343284962737879
-          ],
-          "resolved": [
-            -0.013821195693504556,
-            -0.01503193636386025
-          ],
-          "history": 1,
-          "stable": true,
-          "follows": false
+          "slice0_p50": 2,
+          "slice0_max": 3,
+          "routed_p50": 2,
+          "managed_equals_slice0_share": 1.0,
+          "quiet_equals_leased_share": 1.0,
+          "writable_after_total": 0,
+          "serial_changed_total": 0,
+          "cold_thread_total": 0,
+          "waiting_or_nested_frames": 0,
+          "overflow_frames": 0,
+          "unknown_total": 0,
+          "shadow_mismatch_total": 0,
+          "stale_total": 0,
+          "witnesses": {},
+          "predicates": {
+            "managed_boundary": false,
+            "lease_contract": true,
+            "single_thread": true,
+            "promotion_possible": true
+          }
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-taa-fade-route-hover-20260915-024550-868059",
-      "trace_sha256": "f1b99767c95d3bcc834aba6ca5edc68ceccec1559c19a55b1ec0c45987d6daa4",
-      "dll_sha256": "f55861ae5b950d1e9f3eb3ba642729f0eafad2aa104962fbb72e7dfe9fd19ee0",
-      "exe_sha256": "52030cab92ed2e4010724caf46cb316b106d94f677f804574b8ae6ea4c03ed4c"
+      "directory": "verification/probe/build/motion-output-seam-ownership-taa-camera-candidates-on-20260915-192853-774237",
+      "trace_sha256": "ef90b62d137faba5d1d57006fccccd77fd53d4202ab0fb945b6d11790b486978",
+      "dll_sha256": "de5ec257c5f202c598aa65b580a0c67ace274ede0f6d8fd59327b57f096bd1c2",
+      "exe_sha256": "b2f8e8a57040131bcf1e154f0f4d2edfbf5ef5e64bdbb5e668ce38ee112b5e38"
     }
   },
   "local_inputs": {
@@ -251,16 +564,17 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_before_build": {
-    "CMakeLists.txt": "732bf0b38b08b84f6763936fc4646049d325c0af6b82c6ea9bfdc5428b344a18",
+    "CMakeLists.txt": "5d3012ad14bc897a71527485c7d0b32e6456fb72e150eafc145f2428a0c7db42",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
     "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
     "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
-    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/buffer_lock_observation.h": "0d32a17f14fba118e09aa2d3443b888f3ac8a984a66185e924558abf366a13a9",
+    "src/ownership/d3d9_classes_inc.h": "45e17bd75348b81f201e1f61856b977b41c2d14853fcf3307aad799b4cf4f6d1",
     "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
-    "src/ownership/d3d9_ownership.cpp": "0b7411bd2e4a563219a11f65f44be31017953c8e7cd210b610e6f92843ef633d",
-    "src/ownership/d3d9_ownership.h": "5f1093f1952e14b3010885504c6533bf354f6a49d959c237f97fc72ba74ae2df",
+    "src/ownership/d3d9_ownership.cpp": "636c60ed5bbb0259d03a204dcb178d10ac37f514ab51afe648445093f14108e9",
+    "src/ownership/d3d9_ownership.h": "ecdb7c6fc74c377b4a3af2c55d7f7b7c6627bd501b2a909f5d59a4a60dbcf5cb",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
@@ -269,25 +583,27 @@
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
     "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
     "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
-    "src/proxy/capture.cpp": "792da66546a08274335eccc1bca661473709a22bba5fd50991db4c17ead64eae",
+    "src/proxy/capture.cpp": "27c9b3ad8041be5379fc89a19600ee3d18a06e9f9ef62cc1a8edb895e703eed2",
     "src/proxy/capture.h": "6160992d0c312ee5373652e2053fba40774fb9a6bf858551cd2bf7ac0806465c",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
     "src/proxy/chase_aim_trace.cpp": "5871dc3242b53473970ceab2e9115d8a20a41fa633106ef3a86454565c6f5b75",
     "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
-    "src/proxy/chase_camera.cpp": "82e7a6e2bb4f159ef7744bd320b4ea5c34d87a85c95fb6fa9f2e952a0a27edc9",
+    "src/proxy/chase_camera.cpp": "934fe9da1525695d8100f5d0f90d72e64cc1f0fb8aac89df808c49c264bfe527",
     "src/proxy/chase_camera.h": "a9ef1de1c010509be2a9ee127a029b0d969e78aa50078d7b425c41f262913333",
     "src/proxy/chase_camera_math.h": "5d4531a34f037999b6fef8ae02538d192c8cbd3b732262349ba3dd3d4c14ccab",
     "src/proxy/chase_camera_native.h": "0f348abc94d1d44a57cf096a3fb095508f18daa86ce30d87f94951ddf3085c3d",
     "src/proxy/chase_fire.cpp": "a214c690d807e7b4c28ab706a99ad4638d16f8b0e4bd94c134bad7f8b15b4ae1",
     "src/proxy/chase_fire.h": "bf5798450448d5469af6741f712978d5dcda7381e5f30c5ec2fc1e80199e7df9",
-    "src/proxy/chase_lead.cpp": "fff9bc2f4a0f8b768a18c0c728b34059e1fc3b6640868deb4cc50b443b4200f0",
-    "src/proxy/chase_lead.h": "22c4e738087994992d845c5e676fe33501e4cae8f20ec9ef743e810e3ca556f3",
-    "src/proxy/chase_lead_core.h": "4d8f0170b96f7a64fcecd4107e1a7fe11fd6888ad8ec7f33a82ea13bed57ea59",
+    "src/proxy/chase_lead.cpp": "32ef2a4bf43adf07930c63d32aff4eac926659144d7c6e6b90d03960e005e700",
+    "src/proxy/chase_lead.h": "7de7705c884457b825b5ef062e537ed3cab1123f6c970b0d50a51b87dabd9685",
+    "src/proxy/chase_lead_core.h": "3ced88dff0bf1a1654f7e6f49199ef46da77890f9c8d21584a50bf4ff8f244d2",
     "src/proxy/chase_native_timing_core.h": "7b93d8068465004e884e73c006a966f111fb4f391ba8aaa3db400f80cd5ed348",
-    "src/proxy/chase_transition.cpp": "5b296acfdc2dd2a5834aad6873593907d7b3e0563d3c4b866198a8c323a8721d",
-    "src/proxy/chase_transition.h": "401e0a2c3b1ec55d0c42e9062fc349218f32a412e717321d9c342351413b7c9d",
-    "src/proxy/chase_transition_core.h": "1cc0c982b3b4b6cc7136350e24881c2832ca73399ad1bd96c99014eb6f4a8ca4",
+    "src/proxy/chase_transition.cpp": "c1204738bfb4e8e73736f9227a33b64c0cfde3299356335c57c530feb4796055",
+    "src/proxy/chase_transition.h": "d2fafbe68b6513779ccc1d47948c1574ea467213e7b54385e6bc9dc044db19c6",
+    "src/proxy/chase_transition_core.h": "c9d527567ab24c4202115d8f866f22ba2e43cdb891f44ea91cf35dbc13055c8f",
+    "src/proxy/chase_transition_identity_core.h": "ee0128afe7985afd252f387108d9b12ca6aa9fc9c985fb52fca3b598a6971bcb",
+    "src/proxy/chase_transition_restore_core.h": "712470cde7883036c1883da535e73f2f17139a141139779889c4b99bc230d0bc",
     "src/proxy/comparison_controls.h": "a9127335c5cbfffbee7bdc0957cdc4aaabd281716f710e60513e9a2e1a372af7",
     "src/proxy/comparison_notice.cpp": "7368d22a4038451205fd5f498e6f1fb358bfd4d2b29a361d30eac8bee197ea69",
     "src/proxy/comparison_notice.h": "a967f16b63731a62bdbe24463e0f4006d79176ccdaff7e344cfada0e7ab075b8",
@@ -310,19 +626,20 @@
     "src/proxy/fade_region_math.h": "88b5bd81404d2df2bbd1985315cb252089661a16531200b1f47388ddf83ddb37",
     "src/proxy/fade_route_core.h": "fbdb5c9ea7b24e95a66b6248dc88f859d4be845568d378ad88f19c276b37f632",
     "src/proxy/game_phase_sites.h": "6d3515bb64231ee132d2e06bcb802066b65c23984e2d203cc0c806075cfd635f",
-    "src/proxy/game_phases.cpp": "c23defaa460870afa2d2421ecf3da8637ba08b56064035166b09611e76e6bcc5",
+    "src/proxy/game_phases.cpp": "84d178c94b297d24a61467d2fdcc5f4ffe78eaafb078b6abe01e823c4d67e87d",
     "src/proxy/game_phases.h": "12b08c8726655b93739eb169327743af8e912c940e9ded09846ad9c7c81e1b8b",
     "src/proxy/game_phases_core.h": "007026edb3d4b3a125800af7deb141448e23273efeb405ac856b39686e41a809",
     "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
     "src/proxy/linear_cutout.h": "a913f958841e7e4c74e83eb577c922f9b280d4040771f32adb962c29ca36f905",
-    "src/proxy/loader.cpp": "86b2e9fbc2500f4514d0795dce442d65589cee517b300d490e70b5d00762f48f",
+    "src/proxy/loader.cpp": "56b3a6f1d8b3e7608d52a7a134baf27f2ad97b5d68a69e7921d55060a7910b13",
+    "src/proxy/loading_intervals_core.h": "a9254a0c1081ce4e95bbc2b31fbf472a7a7adfbae11b67a3fc755c44bbf91666",
     "src/proxy/loading_probes.cpp": "5ab9a604d03ebb82e80c67a0b98cce55cf6544252b07bf64db806b92a8969b77",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
-    "src/proxy/loading_trace.cpp": "8ca495e5b2a7905f085e1276fefc643191ff9b61f6c7efc9e0c4b736b00a928f",
-    "src/proxy/loading_trace.h": "6f7cb50dc11f98cf32fb7eac1ed23a9da14a8214dda8c8cd8f170fe7c4680097",
-    "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
-    "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
+    "src/proxy/loading_trace.cpp": "12fb38b5e129cb3cee77ca84f1a6d941afb1faeba47d12f21b1fafdbc86afb64",
+    "src/proxy/loading_trace.h": "c09c9fa2894ef7d8d095cca90217652fcc54fe9858c65348fa487fe18576f892",
+    "src/proxy/loading_trace_light.cpp": "d3a68e6ccf73ffec5b49c4f7f1640f6b6c4db8efed4ca9d7add0251f11ca1915",
+    "src/proxy/loading_trace_light.h": "99b2df9e7fcefa21e32edb8d0354487e389149cb9db62f70bc2ca106154effb9",
     "src/proxy/locked_prefix_core.h": "0b6ec59e1e02adbb7d58be21b676aefd5475d28ff506150d5d5783cb38f60622",
     "src/proxy/lod_scale.cpp": "836449ad6be5ecabe777760a2cd0e1bcbd39a874347c833c6aa21a1702a23773",
     "src/proxy/lod_scale.h": "09ae11a5849a8e4f937e86facecdfb86ad7d424f35f5b46be04136c30267ba66",
@@ -333,8 +650,8 @@
     "src/proxy/mesh_adjacency_fast.h": "f3476d5343e30eebddf8053b16c119b31629b736d000e1ec59746bc2e604891f",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "21e24a9af401812fc55853992f07dac507296564389a62770ec2ea7ebf98a746",
-    "src/proxy/motion_output.h": "c226345445111cdf136d5a155eeca664bd028386a0461bd9d5de0670c9aca840",
+    "src/proxy/motion_output.cpp": "91cc3b56a1dab5bec667b522068286f207ed43905c6389914b407c5d4b597ebe",
+    "src/proxy/motion_output.h": "da827d89b9cdf895964425434bc17fd16ac5368361c52407567f7996fd99eb8e",
     "src/proxy/object_capture.h": "397093b62033824cd3bd07697bbcd936313b475717490fe6ab642e5d474b7e3e",
     "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
@@ -350,6 +667,8 @@
     "src/proxy/scene_hook.cpp": "b672966d729bdc4bd8d5822f67d9f0265ec77b3360455e10a080b6b30c5b4dc5",
     "src/proxy/scene_hook.h": "14dbfa77adcf6f208ad380071e940f4b2d4c145e9528380cc54199983e4ac41e",
     "src/proxy/screen_emission_admission.h": "09ee5e4b57913698e28594e89d9f4232113d6c53ed93ae5af272bc9900900ef5",
+    "src/proxy/shadow_replay_candidates.h": "c81a116ff51273772133d8d069cdd0b94420f12bcfafdcd518e37e3b30192a54",
+    "src/proxy/sun_share_lane_inc.h": "08aee74af8d258a064fed31fd91e4991b6494ee032644bfca8f5ca5ccc628226",
     "src/proxy/telemetry.cpp": "79db179759b87149062fd0f1acd14b98540e84e4a66fbc47570c0511f8ce00a6",
     "src/proxy/telemetry.h": "d21acfa9e5a6faae2bab57a3d49689dad450a8907177de41c8770709c4c04ddc",
     "src/proxy/voice_dmo_fallback.cpp": "fad4a8844cf3bd105305e035a4aaf5cb21e93b182cc64a0b7c20cebcdcd3ce64",
@@ -359,8 +678,8 @@
     "src/renderer/ambient_occlusion_caps.h": "a1fe930a0c51594bb50c517a933b497b0169fb1964fc07a3bea6b8e31b4d2863",
     "src/renderer/ambient_occlusion_gtao_program_inc.h": "8629d8f4c462edbc0a015e842e7dee1e9fa912b7883180dd843311b74b4191a2",
     "src/renderer/ambient_occlusion_linearize_program_inc.h": "9fe436693e0f0bffe2a3eff72fb0fa35121d25228896c2702b7b2a2af01c0a8c",
-    "src/renderer/ambient_occlusion_pass.cpp": "2197c8f903f44ba268ba171e091a36dbcfbb2d3d3e73742d3110cb769743f17f",
-    "src/renderer/ambient_occlusion_pass.h": "0f395c9980a33b3c2ff0c7da0602063d73846cb5eed6937bee3f2a53b1826dfc",
+    "src/renderer/ambient_occlusion_pass.cpp": "e6520c50917c2e9ea6879340eac2730c5ae432d2f0fb69f7000902f299040758",
+    "src/renderer/ambient_occlusion_pass.h": "53bde3002bf9611f1ca3daf02bebbf818d370b6e4130e222af0e13d6b6eedfc4",
     "src/renderer/bloom_agx_program_inc.h": "972f049e883fe2068771bd4b3791960f35844f08b5cc869e43e8b9ae2f2fe5e7",
     "src/renderer/bloom_down_program_inc.h": "90cbc6eea524d20297cac17e97eb4b15733bc76fa3c630c27cd7a8789517ad17",
     "src/renderer/bloom_extract_even_gamma_program_inc.h": "3a22584e3e7454763f9c3ff7d8e98dd1ee6f794f4f46c3c2f1e66cfe9bd9907c",
@@ -391,25 +710,27 @@
     "src/renderer/hdr_tonemap_sharpen_program_inc.h": "ed43e66f9bf91bab53ba18a3fa78a062cfcb9c3ed51bbfd6a8f3e67140a1472f",
     "src/renderer/hdr_writeback_program.h": "c23f06aa2ba78bda2b804387cd53729d6f7658688954aacbea68d955c3ff7c25",
     "src/renderer/hdr_writeback_program_inc.h": "1719c1d7ba85da6cfa12f5662d6d4c33522a45c7fdb7cc1fcd2ae7f2fafb4146",
-    "src/renderer/linear_distance_fade.h": "92c73456d5980cf0c7a5400645fa33958f69be94b2040e7061d6073f460bb2ed",
+    "src/renderer/linear_distance_fade.h": "9c27bf2c41e18dc115f2eb0c3f2edf6284617517556708861e24b4a779316d0b",
     "src/renderer/linear_distance_fade_composite_inc.h": "a2b69432cddaeed6217589e60ac31e236420b601969a611dab43605963e17179",
-    "src/renderer/linear_emission.cpp": "443dff62380d49a012d7faa06d669ef39bf379bd41bc9d61503e9f2bd0e7c714",
-    "src/renderer/linear_emission.h": "5f77f79a7d95d8b390eede0c3e0442641ca5c2e8f68deb30ee826a715f9222a7",
+    "src/renderer/linear_emission.cpp": "525c6091693a2a63838cbb1f5e048578322a028343d8e9679c17ac62760ef83a",
+    "src/renderer/linear_emission.h": "2dde88396f40c11f7c1a612c279d17bde9403e2d0f3095d1005d0fc3a8d442ef",
     "src/renderer/linear_emission_composite_inc.h": "b996ddb01a707660cd030a80eed476929cfdefaaa5e301f89904b53e356dbbfa",
     "src/renderer/linear_emission_copy_clear_inc.h": "4e77b267085100ba905f214cc832d120e14b425845290a2a7e8e525d327cd7c4",
     "src/renderer/linear_emission_copy_inc.h": "73c2b18ec6bfc35f6f6c9eff72a95b189ee03b680f51464f5d2edb03f3dd5df2",
     "src/renderer/linear_emission_pass.cpp": "dcfd986a7e9fb9065cd982bc3cdd1191184bdc232559c11f0b496f23a1d42ef5",
     "src/renderer/linear_emission_pass.h": "635dc43765200ae11e6625a7cdd231d0c8dc7635172a363f01af3bf7af720d4b",
-    "src/renderer/linear_emission_sm1.cpp": "55b163c57a98f5a16710b1b6e43372791b50bfe2540b7cd56254f5808865996c",
-    "src/renderer/linear_emission_sm1.h": "be9dd0a3d0572f1d122b50876ae98c763d65b59c3e3896480f8b2215deaa4f2b",
-    "src/renderer/linear_material.cpp": "f89fd94f7a0861b5562472a1e38690c0728de0ece047e3aa6c9ff8a0621cdcb6",
-    "src/renderer/linear_material.h": "e5372603c0cec67f6ff638d7ba5a6505a6b9e882df0ba351699405514542d2b8",
+    "src/renderer/linear_emission_sm1.cpp": "0ab3dc64f9e526d367a57774cf88d5ba520a8059cca34da35fd783a0b59fa8bc",
+    "src/renderer/linear_emission_sm1.h": "072448644d36da6db4b9f4019031353af72d50f83d2181a6f917823cc7951b71",
+    "src/renderer/linear_material.cpp": "c2f11b32bff318110cc4c32702e363871e8a4d5aa3c347ceccc8e836328654b0",
+    "src/renderer/linear_material.h": "2ba5855b106c4c1458ff28badca5e22e06b285b8b6617ad6022d3b07131475f6",
     "src/renderer/linear_screen_composite_inc.h": "46736de020d09a1dfce035e92ab52469809adf2174e939ddf17aa7605e4eb59b",
     "src/renderer/linear_screen_plane_init_inc.h": "34a7baf27ae21412901d74a039dfa669fb2495704030dc2da15f8a10773b0f42",
-    "src/renderer/linear_xt_material_inc.h": "ac003397997468cd59ca306f8f74a5667e7f3859ee0672ebff499411e2a1268c",
+    "src/renderer/linear_sun_share_inc.h": "a84b61d3d584247c3ea2e5b98be47209b233dc8a9d64bb34e3f151c7c8c304d8",
+    "src/renderer/linear_xt_material_inc.h": "f1ee00093072d456bdcdc2843cf4a006760aef154e2c1a5c5db004a0e079c9fa",
     "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
-    "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
-    "src/renderer/material_motion.h": "4784fb7aacad1d633e4ca85cecdc428953ad71bc9570b9edbba858a3a7faedd0",
+    "src/renderer/material_exposure_profiles_inc.h": "07f597ae8839620aea6b2c6dabe5f7c445986d7d5b667020d5337d667c443c5d",
+    "src/renderer/material_motion.cpp": "5eb7a712d1320ac4429754c60f2760b417591fcd40b85b9f218e543036f29ab3",
+    "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
     "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
     "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
     "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
@@ -433,10 +754,11 @@
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
+    "src/renderer/sun_share_frame.h": "cd7217e6fc761d7640d758cbe69f66b92d49e6d46d8bca3e104232363dcdf403",
     "src/renderer/taa_sharpen_program.h": "466529e19b24eefc0e7744510e0cc83c31dc3631f7fa02c6f6327cc9387c5cd3",
     "src/renderer/taa_sharpen_program_inc.h": "93b6cb01499fc4a5cad7789730f6fd5f757235a1a3ed995b0ee80e4d7174db40",
-    "src/renderer/temporal_pass.cpp": "4ba343d1feb014a765bdf9d4dfa651a3bd454301bc5bc55e3b55e6460b62efe8",
-    "src/renderer/temporal_pass.h": "28d8c965e11611b357d2c2b47415d819f4f9232fc12687e62ca2ef72247507eb",
+    "src/renderer/temporal_pass.cpp": "63be50cc67aef34d04607c40388b2a7ee16ab6246cfe592f6ba0941e3d8773e0",
+    "src/renderer/temporal_pass.h": "c04b800c110aa47175674f1b2c990e3448df2049459808f1b171f3ccea387a45",
     "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
     "src/renderer/temporal_resolve_program_inc.h": "9fa4667340b0eea1fee9392d70ce82e9defe8bb7f00f989079c4399b5862237c",
     "src/temporal/agx.h": "5b4254964b0777aee4a035492ab305032bf60817c31b44fa741f0043c2c2b3e1",
@@ -471,15 +793,15 @@
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
     "tools/analysis/agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19",
-    "tools/analysis/analyze_motion_readback.py": "a1ba2f33d8a81f5394cffcee9a2d2eb6012bbefdd04373296cc764ba24e3511a",
+    "tools/analysis/analyze_motion_readback.py": "c8b713ee35b52b26a27a3475b1b24e1780527e17b35b9fd7d6f6d0d40c92e942",
     "tools/analysis/exposure_reference.py": "f683a1a4daa0455aaa546803382fb202f200ae4cb2c9b6633496bc659796af9d",
     "tools/analysis/summarize_capture.py": "9889f70f83659e35ee7312ce561a785c3170b06949e925576768c75ef742c11b",
     "verification/probe/abi_check.cpp": "ce9b3d58650932e70b74ea668835d188e7bf47b88421ec276dd1f8854307af46",
     "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
     "verification/probe/build_motion_output.sh": "7e4942068f9c18894de80218a390d76ec927fe7941a85f5a737285ac3600b73c",
     "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
-    "verification/probe/motion_output_fixture.cpp": "9c1da4886b10ddc0ee5442872551e373a987119d7ac01e994bf9f076a287410d",
-    "verification/probe/run_motion_output.py": "2f2d02c91c62d61675e6a9952acd4e5eb6307eebf14841babadc3f1e76d4407d",
+    "verification/probe/motion_output_fixture.cpp": "fb50b88557c11c9d26c4682e6ee490384f8a80c679878610a090311d03277dc5",
+    "verification/probe/run_motion_output.py": "d5a77dfe78d58f4c85945c5377df3e17a8d664a01628c0db9f12d6fb97789424",
     "verification/probe/run_ownership_integration.py": "8089b7ab5e4d8313640548b0a9d776688201cb92b4dddc2e7f6d3644d1770c56",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
     "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",
@@ -518,22 +840,23 @@
     ]
   ],
   "binaries": {
-    "verification/probe/build/motion_output_fixture.exe": "52030cab92ed2e4010724caf46cb316b106d94f677f804574b8ae6ea4c03ed4c",
-    "verification/probe/build/motion-output-seam/d3d9.dll": "f55861ae5b950d1e9f3eb3ba642729f0eafad2aa104962fbb72e7dfe9fd19ee0",
-    "build/d3d9.dll": "316abbd3fc90d0b361d3e31ce7c0b212fa45c854b0b687936003570ceea3808b"
+    "verification/probe/build/motion_output_fixture.exe": "b2f8e8a57040131bcf1e154f0f4d2edfbf5ef5e64bdbb5e668ce38ee112b5e38",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "de5ec257c5f202c598aa65b580a0c67ace274ede0f6d8fd59327b57f096bd1c2",
+    "build/d3d9.dll": "1d375de25e211c86031164644b56d33f6ce885dea15cb428f59c999dad517805"
   },
   "bench": {},
   "sources_after_run": {
-    "CMakeLists.txt": "732bf0b38b08b84f6763936fc4646049d325c0af6b82c6ea9bfdc5428b344a18",
+    "CMakeLists.txt": "5d3012ad14bc897a71527485c7d0b32e6456fb72e150eafc145f2428a0c7db42",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
     "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
     "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
-    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/buffer_lock_observation.h": "0d32a17f14fba118e09aa2d3443b888f3ac8a984a66185e924558abf366a13a9",
+    "src/ownership/d3d9_classes_inc.h": "45e17bd75348b81f201e1f61856b977b41c2d14853fcf3307aad799b4cf4f6d1",
     "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
-    "src/ownership/d3d9_ownership.cpp": "0b7411bd2e4a563219a11f65f44be31017953c8e7cd210b610e6f92843ef633d",
-    "src/ownership/d3d9_ownership.h": "5f1093f1952e14b3010885504c6533bf354f6a49d959c237f97fc72ba74ae2df",
+    "src/ownership/d3d9_ownership.cpp": "636c60ed5bbb0259d03a204dcb178d10ac37f514ab51afe648445093f14108e9",
+    "src/ownership/d3d9_ownership.h": "ecdb7c6fc74c377b4a3af2c55d7f7b7c6627bd501b2a909f5d59a4a60dbcf5cb",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
@@ -542,25 +865,27 @@
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
     "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
     "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
-    "src/proxy/capture.cpp": "792da66546a08274335eccc1bca661473709a22bba5fd50991db4c17ead64eae",
+    "src/proxy/capture.cpp": "27c9b3ad8041be5379fc89a19600ee3d18a06e9f9ef62cc1a8edb895e703eed2",
     "src/proxy/capture.h": "6160992d0c312ee5373652e2053fba40774fb9a6bf858551cd2bf7ac0806465c",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
     "src/proxy/chase_aim_trace.cpp": "5871dc3242b53473970ceab2e9115d8a20a41fa633106ef3a86454565c6f5b75",
     "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
-    "src/proxy/chase_camera.cpp": "82e7a6e2bb4f159ef7744bd320b4ea5c34d87a85c95fb6fa9f2e952a0a27edc9",
+    "src/proxy/chase_camera.cpp": "934fe9da1525695d8100f5d0f90d72e64cc1f0fb8aac89df808c49c264bfe527",
     "src/proxy/chase_camera.h": "a9ef1de1c010509be2a9ee127a029b0d969e78aa50078d7b425c41f262913333",
     "src/proxy/chase_camera_math.h": "5d4531a34f037999b6fef8ae02538d192c8cbd3b732262349ba3dd3d4c14ccab",
     "src/proxy/chase_camera_native.h": "0f348abc94d1d44a57cf096a3fb095508f18daa86ce30d87f94951ddf3085c3d",
     "src/proxy/chase_fire.cpp": "a214c690d807e7b4c28ab706a99ad4638d16f8b0e4bd94c134bad7f8b15b4ae1",
     "src/proxy/chase_fire.h": "bf5798450448d5469af6741f712978d5dcda7381e5f30c5ec2fc1e80199e7df9",
-    "src/proxy/chase_lead.cpp": "fff9bc2f4a0f8b768a18c0c728b34059e1fc3b6640868deb4cc50b443b4200f0",
-    "src/proxy/chase_lead.h": "22c4e738087994992d845c5e676fe33501e4cae8f20ec9ef743e810e3ca556f3",
-    "src/proxy/chase_lead_core.h": "4d8f0170b96f7a64fcecd4107e1a7fe11fd6888ad8ec7f33a82ea13bed57ea59",
+    "src/proxy/chase_lead.cpp": "32ef2a4bf43adf07930c63d32aff4eac926659144d7c6e6b90d03960e005e700",
+    "src/proxy/chase_lead.h": "7de7705c884457b825b5ef062e537ed3cab1123f6c970b0d50a51b87dabd9685",
+    "src/proxy/chase_lead_core.h": "3ced88dff0bf1a1654f7e6f49199ef46da77890f9c8d21584a50bf4ff8f244d2",
     "src/proxy/chase_native_timing_core.h": "7b93d8068465004e884e73c006a966f111fb4f391ba8aaa3db400f80cd5ed348",
-    "src/proxy/chase_transition.cpp": "5b296acfdc2dd2a5834aad6873593907d7b3e0563d3c4b866198a8c323a8721d",
-    "src/proxy/chase_transition.h": "401e0a2c3b1ec55d0c42e9062fc349218f32a412e717321d9c342351413b7c9d",
-    "src/proxy/chase_transition_core.h": "1cc0c982b3b4b6cc7136350e24881c2832ca73399ad1bd96c99014eb6f4a8ca4",
+    "src/proxy/chase_transition.cpp": "c1204738bfb4e8e73736f9227a33b64c0cfde3299356335c57c530feb4796055",
+    "src/proxy/chase_transition.h": "d2fafbe68b6513779ccc1d47948c1574ea467213e7b54385e6bc9dc044db19c6",
+    "src/proxy/chase_transition_core.h": "c9d527567ab24c4202115d8f866f22ba2e43cdb891f44ea91cf35dbc13055c8f",
+    "src/proxy/chase_transition_identity_core.h": "ee0128afe7985afd252f387108d9b12ca6aa9fc9c985fb52fca3b598a6971bcb",
+    "src/proxy/chase_transition_restore_core.h": "712470cde7883036c1883da535e73f2f17139a141139779889c4b99bc230d0bc",
     "src/proxy/comparison_controls.h": "a9127335c5cbfffbee7bdc0957cdc4aaabd281716f710e60513e9a2e1a372af7",
     "src/proxy/comparison_notice.cpp": "7368d22a4038451205fd5f498e6f1fb358bfd4d2b29a361d30eac8bee197ea69",
     "src/proxy/comparison_notice.h": "a967f16b63731a62bdbe24463e0f4006d79176ccdaff7e344cfada0e7ab075b8",
@@ -583,19 +908,20 @@
     "src/proxy/fade_region_math.h": "88b5bd81404d2df2bbd1985315cb252089661a16531200b1f47388ddf83ddb37",
     "src/proxy/fade_route_core.h": "fbdb5c9ea7b24e95a66b6248dc88f859d4be845568d378ad88f19c276b37f632",
     "src/proxy/game_phase_sites.h": "6d3515bb64231ee132d2e06bcb802066b65c23984e2d203cc0c806075cfd635f",
-    "src/proxy/game_phases.cpp": "c23defaa460870afa2d2421ecf3da8637ba08b56064035166b09611e76e6bcc5",
+    "src/proxy/game_phases.cpp": "84d178c94b297d24a61467d2fdcc5f4ffe78eaafb078b6abe01e823c4d67e87d",
     "src/proxy/game_phases.h": "12b08c8726655b93739eb169327743af8e912c940e9ded09846ad9c7c81e1b8b",
     "src/proxy/game_phases_core.h": "007026edb3d4b3a125800af7deb141448e23273efeb405ac856b39686e41a809",
     "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
     "src/proxy/linear_cutout.h": "a913f958841e7e4c74e83eb577c922f9b280d4040771f32adb962c29ca36f905",
-    "src/proxy/loader.cpp": "86b2e9fbc2500f4514d0795dce442d65589cee517b300d490e70b5d00762f48f",
+    "src/proxy/loader.cpp": "56b3a6f1d8b3e7608d52a7a134baf27f2ad97b5d68a69e7921d55060a7910b13",
+    "src/proxy/loading_intervals_core.h": "a9254a0c1081ce4e95bbc2b31fbf472a7a7adfbae11b67a3fc755c44bbf91666",
     "src/proxy/loading_probes.cpp": "5ab9a604d03ebb82e80c67a0b98cce55cf6544252b07bf64db806b92a8969b77",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
-    "src/proxy/loading_trace.cpp": "8ca495e5b2a7905f085e1276fefc643191ff9b61f6c7efc9e0c4b736b00a928f",
-    "src/proxy/loading_trace.h": "6f7cb50dc11f98cf32fb7eac1ed23a9da14a8214dda8c8cd8f170fe7c4680097",
-    "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
-    "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
+    "src/proxy/loading_trace.cpp": "12fb38b5e129cb3cee77ca84f1a6d941afb1faeba47d12f21b1fafdbc86afb64",
+    "src/proxy/loading_trace.h": "c09c9fa2894ef7d8d095cca90217652fcc54fe9858c65348fa487fe18576f892",
+    "src/proxy/loading_trace_light.cpp": "d3a68e6ccf73ffec5b49c4f7f1640f6b6c4db8efed4ca9d7add0251f11ca1915",
+    "src/proxy/loading_trace_light.h": "99b2df9e7fcefa21e32edb8d0354487e389149cb9db62f70bc2ca106154effb9",
     "src/proxy/locked_prefix_core.h": "0b6ec59e1e02adbb7d58be21b676aefd5475d28ff506150d5d5783cb38f60622",
     "src/proxy/lod_scale.cpp": "836449ad6be5ecabe777760a2cd0e1bcbd39a874347c833c6aa21a1702a23773",
     "src/proxy/lod_scale.h": "09ae11a5849a8e4f937e86facecdfb86ad7d424f35f5b46be04136c30267ba66",
@@ -606,8 +932,8 @@
     "src/proxy/mesh_adjacency_fast.h": "f3476d5343e30eebddf8053b16c119b31629b736d000e1ec59746bc2e604891f",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "21e24a9af401812fc55853992f07dac507296564389a62770ec2ea7ebf98a746",
-    "src/proxy/motion_output.h": "c226345445111cdf136d5a155eeca664bd028386a0461bd9d5de0670c9aca840",
+    "src/proxy/motion_output.cpp": "91cc3b56a1dab5bec667b522068286f207ed43905c6389914b407c5d4b597ebe",
+    "src/proxy/motion_output.h": "da827d89b9cdf895964425434bc17fd16ac5368361c52407567f7996fd99eb8e",
     "src/proxy/object_capture.h": "397093b62033824cd3bd07697bbcd936313b475717490fe6ab642e5d474b7e3e",
     "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
@@ -623,6 +949,8 @@
     "src/proxy/scene_hook.cpp": "b672966d729bdc4bd8d5822f67d9f0265ec77b3360455e10a080b6b30c5b4dc5",
     "src/proxy/scene_hook.h": "14dbfa77adcf6f208ad380071e940f4b2d4c145e9528380cc54199983e4ac41e",
     "src/proxy/screen_emission_admission.h": "09ee5e4b57913698e28594e89d9f4232113d6c53ed93ae5af272bc9900900ef5",
+    "src/proxy/shadow_replay_candidates.h": "c81a116ff51273772133d8d069cdd0b94420f12bcfafdcd518e37e3b30192a54",
+    "src/proxy/sun_share_lane_inc.h": "08aee74af8d258a064fed31fd91e4991b6494ee032644bfca8f5ca5ccc628226",
     "src/proxy/telemetry.cpp": "79db179759b87149062fd0f1acd14b98540e84e4a66fbc47570c0511f8ce00a6",
     "src/proxy/telemetry.h": "d21acfa9e5a6faae2bab57a3d49689dad450a8907177de41c8770709c4c04ddc",
     "src/proxy/voice_dmo_fallback.cpp": "fad4a8844cf3bd105305e035a4aaf5cb21e93b182cc64a0b7c20cebcdcd3ce64",
@@ -632,8 +960,8 @@
     "src/renderer/ambient_occlusion_caps.h": "a1fe930a0c51594bb50c517a933b497b0169fb1964fc07a3bea6b8e31b4d2863",
     "src/renderer/ambient_occlusion_gtao_program_inc.h": "8629d8f4c462edbc0a015e842e7dee1e9fa912b7883180dd843311b74b4191a2",
     "src/renderer/ambient_occlusion_linearize_program_inc.h": "9fe436693e0f0bffe2a3eff72fb0fa35121d25228896c2702b7b2a2af01c0a8c",
-    "src/renderer/ambient_occlusion_pass.cpp": "2197c8f903f44ba268ba171e091a36dbcfbb2d3d3e73742d3110cb769743f17f",
-    "src/renderer/ambient_occlusion_pass.h": "0f395c9980a33b3c2ff0c7da0602063d73846cb5eed6937bee3f2a53b1826dfc",
+    "src/renderer/ambient_occlusion_pass.cpp": "e6520c50917c2e9ea6879340eac2730c5ae432d2f0fb69f7000902f299040758",
+    "src/renderer/ambient_occlusion_pass.h": "53bde3002bf9611f1ca3daf02bebbf818d370b6e4130e222af0e13d6b6eedfc4",
     "src/renderer/bloom_agx_program_inc.h": "972f049e883fe2068771bd4b3791960f35844f08b5cc869e43e8b9ae2f2fe5e7",
     "src/renderer/bloom_down_program_inc.h": "90cbc6eea524d20297cac17e97eb4b15733bc76fa3c630c27cd7a8789517ad17",
     "src/renderer/bloom_extract_even_gamma_program_inc.h": "3a22584e3e7454763f9c3ff7d8e98dd1ee6f794f4f46c3c2f1e66cfe9bd9907c",
@@ -664,25 +992,27 @@
     "src/renderer/hdr_tonemap_sharpen_program_inc.h": "ed43e66f9bf91bab53ba18a3fa78a062cfcb9c3ed51bbfd6a8f3e67140a1472f",
     "src/renderer/hdr_writeback_program.h": "c23f06aa2ba78bda2b804387cd53729d6f7658688954aacbea68d955c3ff7c25",
     "src/renderer/hdr_writeback_program_inc.h": "1719c1d7ba85da6cfa12f5662d6d4c33522a45c7fdb7cc1fcd2ae7f2fafb4146",
-    "src/renderer/linear_distance_fade.h": "92c73456d5980cf0c7a5400645fa33958f69be94b2040e7061d6073f460bb2ed",
+    "src/renderer/linear_distance_fade.h": "9c27bf2c41e18dc115f2eb0c3f2edf6284617517556708861e24b4a779316d0b",
     "src/renderer/linear_distance_fade_composite_inc.h": "a2b69432cddaeed6217589e60ac31e236420b601969a611dab43605963e17179",
-    "src/renderer/linear_emission.cpp": "443dff62380d49a012d7faa06d669ef39bf379bd41bc9d61503e9f2bd0e7c714",
-    "src/renderer/linear_emission.h": "5f77f79a7d95d8b390eede0c3e0442641ca5c2e8f68deb30ee826a715f9222a7",
+    "src/renderer/linear_emission.cpp": "525c6091693a2a63838cbb1f5e048578322a028343d8e9679c17ac62760ef83a",
+    "src/renderer/linear_emission.h": "2dde88396f40c11f7c1a612c279d17bde9403e2d0f3095d1005d0fc3a8d442ef",
     "src/renderer/linear_emission_composite_inc.h": "b996ddb01a707660cd030a80eed476929cfdefaaa5e301f89904b53e356dbbfa",
     "src/renderer/linear_emission_copy_clear_inc.h": "4e77b267085100ba905f214cc832d120e14b425845290a2a7e8e525d327cd7c4",
     "src/renderer/linear_emission_copy_inc.h": "73c2b18ec6bfc35f6f6c9eff72a95b189ee03b680f51464f5d2edb03f3dd5df2",
     "src/renderer/linear_emission_pass.cpp": "dcfd986a7e9fb9065cd982bc3cdd1191184bdc232559c11f0b496f23a1d42ef5",
     "src/renderer/linear_emission_pass.h": "635dc43765200ae11e6625a7cdd231d0c8dc7635172a363f01af3bf7af720d4b",
-    "src/renderer/linear_emission_sm1.cpp": "55b163c57a98f5a16710b1b6e43372791b50bfe2540b7cd56254f5808865996c",
-    "src/renderer/linear_emission_sm1.h": "be9dd0a3d0572f1d122b50876ae98c763d65b59c3e3896480f8b2215deaa4f2b",
-    "src/renderer/linear_material.cpp": "f89fd94f7a0861b5562472a1e38690c0728de0ece047e3aa6c9ff8a0621cdcb6",
-    "src/renderer/linear_material.h": "e5372603c0cec67f6ff638d7ba5a6505a6b9e882df0ba351699405514542d2b8",
+    "src/renderer/linear_emission_sm1.cpp": "0ab3dc64f9e526d367a57774cf88d5ba520a8059cca34da35fd783a0b59fa8bc",
+    "src/renderer/linear_emission_sm1.h": "072448644d36da6db4b9f4019031353af72d50f83d2181a6f917823cc7951b71",
+    "src/renderer/linear_material.cpp": "c2f11b32bff318110cc4c32702e363871e8a4d5aa3c347ceccc8e836328654b0",
+    "src/renderer/linear_material.h": "2ba5855b106c4c1458ff28badca5e22e06b285b8b6617ad6022d3b07131475f6",
     "src/renderer/linear_screen_composite_inc.h": "46736de020d09a1dfce035e92ab52469809adf2174e939ddf17aa7605e4eb59b",
     "src/renderer/linear_screen_plane_init_inc.h": "34a7baf27ae21412901d74a039dfa669fb2495704030dc2da15f8a10773b0f42",
-    "src/renderer/linear_xt_material_inc.h": "ac003397997468cd59ca306f8f74a5667e7f3859ee0672ebff499411e2a1268c",
+    "src/renderer/linear_sun_share_inc.h": "a84b61d3d584247c3ea2e5b98be47209b233dc8a9d64bb34e3f151c7c8c304d8",
+    "src/renderer/linear_xt_material_inc.h": "f1ee00093072d456bdcdc2843cf4a006760aef154e2c1a5c5db004a0e079c9fa",
     "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
-    "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
-    "src/renderer/material_motion.h": "4784fb7aacad1d633e4ca85cecdc428953ad71bc9570b9edbba858a3a7faedd0",
+    "src/renderer/material_exposure_profiles_inc.h": "07f597ae8839620aea6b2c6dabe5f7c445986d7d5b667020d5337d667c443c5d",
+    "src/renderer/material_motion.cpp": "5eb7a712d1320ac4429754c60f2760b417591fcd40b85b9f218e543036f29ab3",
+    "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
     "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
     "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
     "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
@@ -706,10 +1036,11 @@
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
+    "src/renderer/sun_share_frame.h": "cd7217e6fc761d7640d758cbe69f66b92d49e6d46d8bca3e104232363dcdf403",
     "src/renderer/taa_sharpen_program.h": "466529e19b24eefc0e7744510e0cc83c31dc3631f7fa02c6f6327cc9387c5cd3",
     "src/renderer/taa_sharpen_program_inc.h": "93b6cb01499fc4a5cad7789730f6fd5f757235a1a3ed995b0ee80e4d7174db40",
-    "src/renderer/temporal_pass.cpp": "4ba343d1feb014a765bdf9d4dfa651a3bd454301bc5bc55e3b55e6460b62efe8",
-    "src/renderer/temporal_pass.h": "28d8c965e11611b357d2c2b47415d819f4f9232fc12687e62ca2ef72247507eb",
+    "src/renderer/temporal_pass.cpp": "63be50cc67aef34d04607c40388b2a7ee16ab6246cfe592f6ba0941e3d8773e0",
+    "src/renderer/temporal_pass.h": "c04b800c110aa47175674f1b2c990e3448df2049459808f1b171f3ccea387a45",
     "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
     "src/renderer/temporal_resolve_program_inc.h": "9fa4667340b0eea1fee9392d70ce82e9defe8bb7f00f989079c4399b5862237c",
     "src/temporal/agx.h": "5b4254964b0777aee4a035492ab305032bf60817c31b44fa741f0043c2c2b3e1",
@@ -744,15 +1075,15 @@
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
     "tools/analysis/agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19",
-    "tools/analysis/analyze_motion_readback.py": "a1ba2f33d8a81f5394cffcee9a2d2eb6012bbefdd04373296cc764ba24e3511a",
+    "tools/analysis/analyze_motion_readback.py": "c8b713ee35b52b26a27a3475b1b24e1780527e17b35b9fd7d6f6d0d40c92e942",
     "tools/analysis/exposure_reference.py": "f683a1a4daa0455aaa546803382fb202f200ae4cb2c9b6633496bc659796af9d",
     "tools/analysis/summarize_capture.py": "9889f70f83659e35ee7312ce561a785c3170b06949e925576768c75ef742c11b",
     "verification/probe/abi_check.cpp": "ce9b3d58650932e70b74ea668835d188e7bf47b88421ec276dd1f8854307af46",
     "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
     "verification/probe/build_motion_output.sh": "7e4942068f9c18894de80218a390d76ec927fe7941a85f5a737285ac3600b73c",
     "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
-    "verification/probe/motion_output_fixture.cpp": "9c1da4886b10ddc0ee5442872551e373a987119d7ac01e994bf9f076a287410d",
-    "verification/probe/run_motion_output.py": "2f2d02c91c62d61675e6a9952acd4e5eb6307eebf14841babadc3f1e76d4407d",
+    "verification/probe/motion_output_fixture.cpp": "fb50b88557c11c9d26c4682e6ee490384f8a80c679878610a090311d03277dc5",
+    "verification/probe/run_motion_output.py": "d5a77dfe78d58f4c85945c5377df3e17a8d664a01628c0db9f12d6fb97789424",
     "verification/probe/run_ownership_integration.py": "8089b7ab5e4d8313640548b0a9d776688201cb92b4dddc2e7f6d3644d1770c56",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
     "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",

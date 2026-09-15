@@ -160,6 +160,7 @@ sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import analyze_motion_readback as readback_analysis  # noqa: E402
 import agx_reference as agx_ref  # noqa: E402  (stage 2: the tonemap oracle)
 import exposure_reference as exposure_ref  # noqa: E402  (stage 2: the meter/adaptation oracle)
+import shadow_replay_candidates as candidates_analysis  # noqa: E402  (caster-candidate counter lines)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
@@ -221,6 +222,15 @@ CASES += [case('seam-taa-camera-on', 'seam', jitter=True, taa=True, camera=True)
           case('seam-taa-camera-sentinel2-on', 'seam', jitter=True, taa=True, camera=True, sentinel='2'),
           case('seam-taa-sentinel2-nocamera-on', 'seam', jitter=True, taa=True, sentinel='2'),
           case('seam-taa-envmap', 'seam', jitter=True, taa=True, camera=True, envmap=True)]
+# Caster-candidate counter (docs/architecture/shadow-replay-gates.md,
+# "Implemented"; X3M_SHADOW_REPLAY_CANDIDATES=1 needs the route and the
+# ownership wrapper only): the camera run through the wrapper, so the rows'
+# origin distance is defined; the seam's X3M_FIXTURE_SLICE_NEAR lowers the
+# slice-0 near bound to the fixture's unit-distance triangles (production
+# keeps 6). The runner checks the per-frame line's identities, one line per
+# routed frame, the managed/leased population and the 16-witness cap.
+CANDIDATES_ENV = dict(X3M_SHADOW_REPLAY_CANDIDATES='1', X3M_FIXTURE_SLICE_NEAR='0.5')
+CASES += [case('seam-ownership-taa-camera-candidates-on', 'seam', 'ownership', jitter=True, taa=True, camera=True, hdr_env=CANDIDATES_ENV)]
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
 SHADOW_TWINS = {'production-shadow-off': 'production-on', 'seam-shadow-off': 'seam-on', 'seam-taa-shadow-off': 'seam-taa-on',
                 'seam-lazy-shadow-off': 'seam-lazy-on', 'seam-burst-perdraw-shadow-off': 'seam-burst-perdraw', 'seam-burst-lazy-shadow-off': 'seam-burst-lazy'}
@@ -579,6 +589,44 @@ def read_depth(path, width=64, height=64):
     data = path.read_bytes()
     assert len(data) == width * height * 4, f'{path}: unexpected size {len(data)}'
     return list(struct.unpack('<%df' % (width * height), data))
+
+
+def validate_shadow_replay_candidates(name, trace, expected_witnesses=0):
+    """Caster-candidate counter lines (docs/architecture/shadow-replay-gates.md,
+    "Implemented"): the parser refuses a malformed line or a broken sum identity;
+    one line per frame with routed draws, its routed count equal to the frame
+    line's; the fixture's routed draws are z-writing MANAGED triangles at unit
+    distance (X3M_FIXTURE_SLICE_NEAR), so routed == zwrite == slice0 == managed
+    == leased == quiet, no other bucket, no lock between draw and scene end
+    (no witness) and never more than 16 witness lines per device."""
+    frames, witnesses = candidates_analysis.parse_text(trace)
+    candidates_analysis.check_frame_uniqueness(frames)
+    caps = candidates_analysis.check_witness_cap(witnesses)
+    # The frame line comes at the capture frames and every X3M_MOTION_FRAME_LOG-th
+    # frame; the counter line comes at every scene end, so the comparison is
+    # over the frames that have both, and a frame line without routed draws
+    # must not have a counter line claiming any.
+    summary_frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('motion_output_frame ')}
+    routed_frames = {f: int(r['routed']) for f, r in summary_frames.items() if int(r['routed']) > 0}
+    by_frame = {r['frame']: r for r in frames}
+    assert routed_frames and set(routed_frames) <= set(by_frame), (name, sorted(set(routed_frames) - set(by_frame))[:8])
+    assert all(by_frame[f]['routed'] == 0 for f in summary_frames if f not in routed_frames and f in by_frame), name
+    assert len(frames) >= len(routed_frames) and all(r['routed'] > 0 for r in frames), (name, len(frames))
+    checks = 0
+    for f, routed in routed_frames.items():
+        r = by_frame[f]
+        assert r['routed'] == routed == r['zwrite'] == r['slice0'] == r['managed'] == r['leased'] == r['quiet'], (name, f, r)
+        assert r['dynamic'] == r['default_pool'] == r['excluded'] == r['unknown'] == r['shadow_mismatch'] == 0, (name, f, r)
+        assert r['serial_changed'] == r['readonly_after'] == r['writable_after'] == r['pending'] == r['in_flight'] == r['cold_thread'] == r['stale'] == 0, (name, f, r)
+        assert r['waiting'] == r['nested'] == r['overflow'] == 0, (name, f, r)
+        checks += 4
+    assert sum(caps.values()) == expected_witnesses and all(n <= candidates_analysis.WITNESS_CAP for n in caps.values()), (name, caps)
+    mode = [l for l in trace.splitlines() if l.startswith('shadow_replay_candidates_mode ')]
+    assert mode == ['shadow_replay_candidates_mode requested=1 enabled=1 motion_output=1 ownership=1'], (name, mode)
+    summary = candidates_analysis.summarize(frames, witnesses)
+    predicates = summary['predicates']
+    assert predicates['lease_contract'] and predicates['single_thread'] and predicates['promotion_possible'], (name, summary)
+    return dict(frames=len(frames), witnesses=caps, checks=checks + 3, summary=summary)
 
 
 def validate_ownership(name, variant, enabled, trace):
@@ -3092,6 +3140,9 @@ def main(argv=None):
                 continue
             case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen,
                                copy_draw=hdr_env.get('X3M_FIXTURE_STRETCH_FAULT') == '1', quad_fvf=hdr_env.get('X3M_FIXTURE_QUAD_FVF') == '1')
+            if hdr_env.get('X3M_SHADOW_REPLAY_CANDIDATES') == '1':
+                case['shadow_replay_candidates'] = validate_shadow_replay_candidates(name, trace)
+                case['checks'] += case['shadow_replay_candidates']['checks']
             if sharpen > 0:
                 case['sharpen'] = validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen)
             elif hdr and taa and hdr_env and hdr_fault is None and mode == 'seam':

@@ -188,6 +188,87 @@ just refused); `waiting == 0 && nested == 0` at every scene end (else E1 promoti
 never succeed). From the writer lines: the count of `zwrite=1` signatures in
 `unregistered`/`pair`/`rows`/`geometry` versus `no_zwrite`/`blended` decides W5.
 
+### Implemented (2026-09-15)
+
+Option `--shadow-replay-candidates` (`X3M_SHADOW_REPLAY_CANDIDATES=1`; default off),
+requiring `--motion-output --ownership` only: no TAA, HDR, linear-material or lane
+prerequisite, so it rides the user's original-hull-shading configuration. The launcher
+refuses the option without both prerequisites; the DLL logs
+`shadow_replay_candidates_mode requested=1 enabled=<0|1> motion_output= ownership=` once
+at device creation. Source: `src/proxy/shadow_replay_candidates.h` (bookkeeping core,
+CPU only), the route sites in `src/proxy/motion_output.cpp` (`note_candidate_distance`,
+`note_candidate_draw`, `publish_shadow_replay_candidates`, `candidate_pool_of`), the
+switch in `src/proxy/capture.cpp` and, in `src/proxy/loader.cpp`, the ownership option
+`track_buffer_lock_attempts` (with `track_buffer_writes`) that the committed bookends
+(`src/ownership/buffer_lock_observation.h`, `4a708af`) needed to be connected.
+
+Grammar, once per frame at the scene end (engine hook or bloom copy; a frame without a
+scene end logs nothing):
+
+```
+shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u leased=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u
+shadow_replay_lock_witness device=%llu frame=%llu allocation=%llu flags=%08x offset=%u size=%u thread=%u serial_delta=%llu revision_delta=%llu
+```
+
+Field definitions (all per frame, from the route's own draw record; identities
+`routed ≥ zwrite ≥ slice0 = managed + dynamic + default_pool + excluded + unknown + shadow_mismatch`,
+`leased + overflow ≤ managed`, `quiet + stale ≤ leased`, every other bookend bucket
+`≤ leased − stale`). The frame line is emitted at most once per frame (a frame serial
+guards the hook and bloom-copy sites, so a second qualifying copy never emits a second
+all-zero line):
+
+- `routed`: routed draws whose native draw succeeded. `zwrite`: those not on the fade-band
+  arm (gate 4 requires `ZENABLE=1 ZWRITEENABLE=1` for every other routed draw).
+- `slice0`: z-writing routed draws whose rows' origin distance
+  (`fade_route::origin_distance`, the fade route's existing helper on the frame's
+  `CameraState` latch) lies in the own-ship slice 6–250 units. **Assumption:** the note's
+  §2 casters are defined by the fade-route AABB meeting cascade 0; the counter uses the
+  origin distance because the AABB is only known for fade-table meshes and the origin
+  test costs nothing. A frame without a valid camera latch counts `slice0=0` (W1).
+- `excluded`: slice-0 draws on the alpha-test (cutout) arm (W3). `managed`: both buffers
+  (VB, and IB when indexed) `D3DPOOL_MANAGED` without `D3DUSAGE_DYNAMIC`; `dynamic`: any
+  `D3DUSAGE_DYNAMIC` buffer; `default_pool`: any other non-managed pool; `unknown`: pool
+  not known; `shadow_mismatch`: the shadowed `SetStreamSource`/`SetIndices` allocation
+  ids differ from the route key's, so neither the pool class nor the bookends are
+  attributed and the draw is not recorded. The route has no pool/usage shadow: the class comes from one documented
+  `GetDesc` of the application's own live `SetStreamSource`/`SetIndices` argument inside
+  that setter hook (`CpuCallBoundary`, LastError kept), cached per allocation id in a
+  128-entry direct-mapped table, so a repeated binding costs a table probe.
+- `leased`: managed candidates whose buffer-lock views were `known` at the draw and were
+  recorded (64 records per frame; `overflow` counts managed candidates beyond them).
+  `managed − leased − overflow` is the count with an unknown bookend.
+- At the scene end each record's views are read again: `serial_changed` (attempt serial
+  moved on any buffer), `readonly_after` (moved with only READONLY attempts),
+  `writable_after` (writable attempts moved), `pending` (a Lock still open),
+  `in_flight` (a Lock/Unlock inside native), `quiet` (every buffer `quiet()` with
+  unchanged attempt/unlock serial and revision), `cold_thread` (a buffer whose last
+  Lock thread is not the thread at the scene end). Before any comparison the scene-end
+  view's `allocation_id` and `BufferLockView::generation` must equal the draw-time
+  ones; otherwise the record is `stale` (identity reused by a new wrapper, or a Reset
+  in between) and is neither compared nor witnessed. A record whose wrapper is no
+  longer registered is not quiet and yields no witness.
+- `roots`/`waiting`: the admission monitor snapshot when `X3M_ADMISSION=1`, else 0.
+  `nested`: scene-end signals this frame that found no open boundary (the observable
+  C1 refusal; the capture-side second-signal counter).
+- Witness lines: the first 16 changed buffers per device (attempt serial or revision
+  moved between draw and scene end), with the last Lock's flags/offset/size/thread.
+
+Cost: off, nothing runs (every site tests one bool). On: per routed draw one
+`origin_distance` evaluation and integer classification; per managed slice-0 candidate
+two registry snapshots (`get_buffer_lock_view`, registry mutex, no native call); at
+the scene end the same snapshots again for at most 64 records, one admission snapshot,
+one log line and at most 16 witness lines per device. No allocation, no device calls;
+the only added native calls are the cached `GetDesc` in the two setter hooks.
+
+Analysis: `tools/analysis/shadow_replay_candidates.py <session log>` streams the log,
+refuses malformed lines and broken identities, enforces the witness cap and prints the
+four predicates (`managed_boundary`, `lease_contract`, `single_thread`,
+`promotion_possible`) with the numbers behind them. Host tests:
+`verification/analysis/test_shadow_replay_candidates.py`; live case
+`seam-ownership-taa-camera-candidates-on` in `run_motion_output.py` (the seam DLL lowers
+the slice near bound through `X3M_FIXTURE_SLICE_NEAR` for the fixture's unit-distance
+triangles; production keeps 6). Evidence: [directional-shadows.md](../verification/directional-shadows.md).
+
 ## 4. Non-goals and recommendation
 
 Non-goals: shadow application or any consumer of the map; cascades 1–2 and culling;

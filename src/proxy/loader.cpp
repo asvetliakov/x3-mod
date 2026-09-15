@@ -21,6 +21,7 @@ HMODULE backend;
 bool ownership_enabled = false;
 bool depth_copy_enabled = false;
 bool finite_positions_enabled = false;
+bool lock_bookends_enabled = false;
 bool locked_prefix_enabled = false;
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
@@ -36,6 +37,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     depth_copy_enabled = ownership_enabled && depth_requested;
     const bool finite_requested = GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS", setting, 8) == 1 && setting[0] == L'1';
     finite_positions_enabled = ownership_enabled && finite_requested;
+    // Caster-candidate counter (shadow-replay-gates.md section 3): the lock
+    // bookends ride the same switch; capture.cpp gates the route side.
+    const bool bookends_requested = GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 8) == 1 && setting[0] == L'1';
+    lock_bookends_enabled = ownership_enabled && bookends_requested;
     // Step B locked-prefix bounds (screen-emission-region.md): the ownership
     // Unlock scan; MotionOutput reads the same switch for the draw side.
     // Step C (X3M_SCREEN_EMISSION=1 with the route's prerequisites, the gate
@@ -188,7 +193,10 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         IDirect3D9* wrapped = nullptr;
         x3m::ownership::Options options{};
         options.capture_auto_depth = depth_copy_enabled;
-        options.track_buffer_writes = x3m::object_trace::active() || finite_positions_enabled;
+        options.track_buffer_writes = x3m::object_trace::active() || finite_positions_enabled || lock_bookends_enabled;
+        // Buffer-lock bookends (buffer_lock_observation.h) for the caster-
+        // candidate counter; they require the write tracking above.
+        options.track_buffer_lock_attempts = lock_bookends_enabled;
         options.capture_finite_positions = finite_positions_enabled;
         options.locked_prefix_bounds = locked_prefix_enabled;
         // Live application-call admission is not yet serialized with replay.

@@ -1,596 +1,359 @@
-==== seam-taa-fade-route-hover exit=0
+==== seam-ownership-taa-camera-candidates-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-taa-fade-route-hover-20260915-024550-868059\d3d9.dll burst=0 rt_mode=lazy camera=1 sentinel=2 envmap=0 hook=0 state_shadow=1 hdr=1 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=0 mipbias=0 mip_bias=0 sharpen=0 msaa=0
+MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\.claude\worktrees\agent-ade528d6254daa0e2\verification\probe\build\motion-output-seam-ownership-taa-camera-candidates-on-20260915-192853-774237\d3d9.dll burst=0 rt_mode=perdraw camera=1 sentinel=0 envmap=0 hook=0 state_shadow=1 hdr=0 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=0 mipbias=0 mip_bias=0 sharpen=0 msaa=0
 CHECK local files are the reviewed pair PASS
 CHECK reference device uses the system d3d9, not the proxy PASS
-CHECK fade route HDR TAA seam with camera PASS
-CHECK fade route reference resolve device PASS
-CHECK fade route original directory PASS
-CHECK X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover PASS
-CHECK fade route exact originals PASS
 RESTORE frame=0 label=fill differences=0
 CHECK fake camera pose validates PASS
+RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=2 object=A routed=1 matched=0 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=0 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=0 x=12 y=12 before=1,1,1,0.39013671875 after=0.9345703125,0.9130859375,0.94482421875,0.39013671875
-FADE_ROUTE_SAMPLE frame=0 x=20 y=20 before=1,1,1,0.39013671875 after=0.9345703125,0.9130859375,0.94482421875,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=0 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=0 script=hover routed=1 matched=0 fade_routed=2 fade_refused=0 fade_held=0 prepared=0 covered=722 own_motion=392 mask_set=0 mask_valid=1 threshold=500 draws=2
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=3 object=B routed=1 matched=0 jittered=1
 CAMERA_EXPECT frame=0 installed=1 policy=1 reason=3 cut=0 rotation_deg=0.0000 p00=0.8 p11=1.333333 r00=1 r01=0 r02=0 r10=0 r11=1 r12=0 r20=-0 r21=0 r22=1 resolve=1
 RESTORE frame=0 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=0 x=0 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=0 x=1 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=0 x=2 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=0 x=3 y=0 before=00000000 after=63c9c9c9
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=0 k=1.00000 agx=1 worst_code=0 mismatches=0
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=0 history=0 cut=1 changed=4096 policy=1 skipped=0
-COLOR_BEFORE frame=0 hash=9c1bda7f8c872325
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=0 history=0 cut=1 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=0 hash=7780633dafe6b5fa
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=0 jitter=1 jx=0.000000 jy=-0.166667 background_color=ff203040 checked=4032 ambiguous=64 material=2667 background=1365 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=0 hash=7780633dafe6b5fa
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=0 motion=39e6e57a44fc2325 depth=ecb531c09fdafe25
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=0 checked=3673 skipped=423 sentinel=3673 matched=0 mismatches=0 depth_written=2461 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=1 label=fill differences=0
 CHECK fake camera pose validates PASS
+RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=1 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=1 x=12 y=12 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-FADE_ROUTE_SAMPLE frame=1 x=20 y=20 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=1 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=1 script=hover routed=1 matched=1 fade_routed=2 fade_refused=0 fade_held=2 prepared=0 covered=722 own_motion=392 mask_set=0 mask_valid=1 threshold=500 draws=2
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=3 object=B routed=1 matched=1 jittered=1
 CAMERA_EXPECT frame=1 installed=1 policy=2 reason=0 cut=0 rotation_deg=1.0000 p00=0.8 p11=1.333333 r00=0.9998477 r01=0 r02=0.01745241 r10=0 r11=1 r12=0 r20=-0.01745241 r21=0 r22=0.9998477 resolve=1
 RESTORE frame=1 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=1 x=0 y=0 before=00000000 after=ffb2b4b6
-CHANGED frame=1 x=1 y=0 before=00000000 after=ffb2b4b6
-CHANGED frame=1 x=2 y=0 before=00000000 after=ffb2b4b6
-CHANGED frame=1 x=3 y=0 before=00000000 after=ffb2b4b6
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=1 k=1.00000 agx=1 worst_code=0 mismatches=0
+CHANGED frame=1 x=24 y=0 before=ff203040 after=ff272d37
+CHANGED frame=1 x=34 y=0 before=4d4b1e0b after=4d4c1f0b
+CHANGED frame=1 x=35 y=0 before=4d4c1e0b after=4d4c1f0b
+CHANGED frame=1 x=57 y=0 before=ff203040 after=ff482110
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=1 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=1 hash=9c1bda7f8c872325
+TAA frame=1 history=1 cut=0 changed=298 policy=2 skipped=0
+COLOR_BEFORE frame=1 hash=9d598f52bb65c0a6
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=1 jitter=1 jx=-0.250000 jy=0.166667 background_color=ff203040 checked=4095 ambiguous=1 material=2659 background=1436 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=1 hash=a2499c06b255363a
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=1 motion=e6c6538cb3fa8923 depth=e045cb0e83af5c34
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=1 checked=3707 skipped=389 sentinel=1188 matched=2519 mismatches=0 depth_written=2519 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=2 label=fill differences=0
 CHECK fake camera pose validates PASS
-EXPECT frame=2 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=2 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=2 x=12 y=12 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-FADE_ROUTE_SAMPLE frame=2 x=20 y=20 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=2 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=2 script=hover routed=1 matched=1 fade_routed=2 fade_refused=0 fade_held=2 prepared=0 covered=722 own_motion=392 mask_set=0 mask_valid=1 threshold=500 draws=2
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=3 object=B routed=1 matched=0 jittered=1
 CAMERA_EXPECT frame=2 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9999 p00=0.8 p11=1.333333 r00=0.9993908 r01=0 r02=0.0348995 r10=0 r11=1 r12=0 r20=-0.0348995 r21=0 r22=0.9993908 resolve=1
 RESTORE frame=2 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=2 x=0 y=0 before=00000000 after=ffb2b4b6
-CHANGED frame=2 x=1 y=0 before=00000000 after=63b5b7b8
-CHANGED frame=2 x=2 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=2 x=3 y=0 before=00000000 after=63c9c9c9
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=2 k=1.00000 agx=1 worst_code=0 mismatches=0
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=2 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=2 hash=9c1bda7f8c872325
+TAA frame=2 history=1 cut=0 changed=0 policy=2 skipped=0
+COLOR_BEFORE frame=2 hash=47059dc8e751a751
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=2 jitter=1 jx=0.250000 jy=-0.388889 background_color=ff203040 checked=4096 ambiguous=0 material=2683 background=1413 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=2 hash=47059dc8e751a751
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=2 motion=39e6e57a44fc2325 depth=83f028b493f08200
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=2 checked=3720 skipped=376 sentinel=3720 matched=0 mismatches=0 depth_written=2453 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=3 label=fill differences=0
 CHECK fake camera pose validates PASS
-EXPECT frame=3 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=3 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=3 x=12 y=12 before=1,1,1,0.39013671875 after=0.96728515625,0.9638671875,0.97021484375,0.39013671875
-FADE_ROUTE_SAMPLE frame=3 x=20 y=20 before=1,1,1,0.39013671875 after=0.96728515625,0.9638671875,0.97021484375,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=3 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route bracketed draws preserve RT1 PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=3 script=hover routed=0 matched=0 fade_routed=0 fade_refused=2 fade_held=0 prepared=2 covered=722 own_motion=0 mask_set=392 mask_valid=1 threshold=500 draws=2
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=3 object=B routed=1 matched=0 jittered=1
 CAMERA_EXPECT frame=3 installed=1 policy=2 reason=0 cut=0 rotation_deg=1.0000 p00=0.8 p11=1.333333 r00=0.9986295 r01=0 r02=0.05233596 r10=0 r11=1 r12=0 r20=-0.05233596 r21=0 r22=0.9986295 resolve=1
 RESTORE frame=3 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=3 x=0 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=3 x=1 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=3 x=2 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=3 x=3 y=0 before=00000000 after=63c9c9c9
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=3 k=1.00000 agx=1 worst_code=0 mismatches=0
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=3 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=3 hash=9c1bda7f8c872325
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=3 history=0 cut=1 changed=0 policy=2 skipped=0
+COLOR_BEFORE frame=3 hash=35942d847a659ef3
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=3 jitter=1 jx=-0.375000 jy=-0.055556 background_color=ff203040 checked=4096 ambiguous=0 material=2750 background=1346 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=3 hash=35942d847a659ef3
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=3 motion=39e6e57a44fc2325 depth=30b3bc27ddbf5425
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=3 checked=3668 skipped=428 sentinel=3668 matched=0 mismatches=0 depth_written=2461 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=4 label=fill differences=0
 CHECK fake camera pose validates PASS
+RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=4 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=4 x=12 y=12 before=1,1,1,0.39013671875 after=0.96240234375,0.95849609375,0.96533203125,0.39013671875
-FADE_ROUTE_SAMPLE frame=4 x=20 y=20 before=1,1,1,0.39013671875 after=0.96240234375,0.95849609375,0.96533203125,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=4 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route bracketed draws preserve RT1 PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=4 script=hover routed=0 matched=0 fade_routed=0 fade_refused=2 fade_held=0 prepared=2 covered=722 own_motion=0 mask_set=392 mask_valid=1 threshold=500 draws=2
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=3 object=B routed=1 matched=1 jittered=1
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=4 object=A routed=0 matched=0 jittered=1
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=5 object=A routed=0 matched=0 jittered=1
 CAMERA_EXPECT frame=4 installed=1 policy=2 reason=0 cut=0 rotation_deg=1.0000 p00=0.8 p11=1.333333 r00=0.9975641 r01=0 r02=0.06975647 r10=0 r11=1 r12=0 r20=-0.06975647 r21=0 r22=0.9975641 resolve=1
 RESTORE frame=4 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=4 x=0 y=0 before=00000000 after=ff747e87
-CHANGED frame=4 x=1 y=0 before=00000000 after=ff9a9ea3
-CHANGED frame=4 x=2 y=0 before=00000000 after=ffb2b4b6
-CHANGED frame=4 x=3 y=0 before=00000000 after=ffb2b4b6
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=4 k=1.00000 agx=1 worst_code=0 mismatches=0
+CHANGED frame=4 x=24 y=0 before=ff203040 after=ff293040
+CHANGED frame=4 x=25 y=0 before=ff8040bf after=ff523355
+CHANGED frame=4 x=55 y=0 before=ff8040bf after=ff51356a
+CHANGED frame=4 x=56 y=0 before=ff203040 after=ff483040
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=4 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=4 hash=9c1bda7f8c872325
+TAA frame=4 history=1 cut=0 changed=237 policy=2 skipped=0
+COLOR_BEFORE frame=4 hash=c9c5e220baccde15
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=4 jitter=1 jx=0.125000 jy=0.277778 background_color=ff203040 checked=4095 ambiguous=1 material=190 background=1418 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=4 hash=403a1ff89ea0f8db
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=4 motion=6fc2538645957741 depth=b171565127b9d61a
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=4 checked=3710 skipped=386 sentinel=1271 matched=2439 mismatches=0 depth_written=2439 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=5 label=fill differences=0
 CHECK fake camera pose validates PASS
+RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=5 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=5 x=12 y=12 before=1,1,1,0.39013671875 after=0.96240234375,0.95849609375,0.96533203125,0.39013671875
-FADE_ROUTE_SAMPLE frame=5 x=20 y=20 before=1,1,1,0.39013671875 after=0.96240234375,0.95849609375,0.96533203125,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=5 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route bracketed draws preserve RT1 PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=5 script=hover routed=0 matched=0 fade_routed=0 fade_refused=2 fade_held=0 prepared=2 covered=722 own_motion=0 mask_set=392 mask_valid=1 threshold=500 draws=2
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=3 object=A routed=1 matched=0 jittered=1
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=4 object=B routed=1 matched=1 jittered=1
 CAMERA_EXPECT frame=5 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9998 p00=0.8 p11=1.333333 r00=0.9961947 r01=0 r02=0.08715574 r10=0 r11=1 r12=0 r20=-0.08715574 r21=0 r22=0.9961947 resolve=1
 RESTORE frame=5 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=5 x=0 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=5 x=1 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=5 x=2 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=5 x=3 y=0 before=00000000 after=63c9c9c9
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=5 k=1.00000 agx=1 worst_code=0 mismatches=0
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=5 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=5 hash=9c1bda7f8c872325
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=5 history=0 cut=1 changed=0 policy=2 skipped=0
+COLOR_BEFORE frame=5 hash=0554c1e31f1e7738
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=5 jitter=1 jx=-0.125000 jy=-0.277778 background_color=ff203040 checked=4096 ambiguous=0 material=2750 background=1346 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=5 hash=0554c1e31f1e7738
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=5 motion=1b3a79ef280c7251 depth=04434e2d40242725
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=5 checked=3669 skipped=427 sentinel=3564 matched=105 mismatches=0 depth_written=2461 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=6 label=fill differences=0
 CHECK fake camera pose validates PASS
-EXPECT frame=6 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=6 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=6 x=12 y=12 before=1,1,1,0.39013671875 after=0.9345703125,0.9130859375,0.94482421875,0.39013671875
-FADE_ROUTE_SAMPLE frame=6 x=20 y=20 before=1,1,1,0.39013671875 after=0.9345703125,0.9130859375,0.94482421875,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=6 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=6 script=hover routed=1 matched=0 fade_routed=2 fade_refused=0 fade_held=0 prepared=0 covered=722 own_motion=392 mask_set=0 mask_valid=1 threshold=500 draws=2
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=3 object=B routed=1 matched=1 jittered=1
 CAMERA_EXPECT frame=6 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9999 p00=0.8 p11=1.333333 r00=0.9945219 r01=0 r02=0.1045285 r10=0 r11=1 r12=0 r20=-0.1045285 r21=0 r22=0.9945219 resolve=1
 RESTORE frame=6 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=6 x=0 y=0 before=00000000 after=ff1c3147
-CHANGED frame=6 x=1 y=0 before=00000000 after=ff1c3147
-CHANGED frame=6 x=2 y=0 before=00000000 after=ff1c3147
-CHANGED frame=6 x=3 y=0 before=00000000 after=ff1c3147
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=6 k=1.00000 agx=1 worst_code=0 mismatches=0
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=6 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=6 hash=9c1bda7f8c872325
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=6 history=0 cut=1 changed=0 policy=2 skipped=0
+COLOR_BEFORE frame=6 hash=d8dbde26c9cf0b5d
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=6 jitter=1 jx=0.375000 jy=0.055556 background_color=ff203040 checked=4032 ambiguous=64 material=2597 background=1435 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=6 hash=d8dbde26c9cf0b5d
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=6 motion=669060406ad759ab depth=bf2aa73f2ac512e6
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=6 checked=3715 skipped=381 sentinel=3610 matched=105 mismatches=0 depth_written=2444 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=7 label=fill differences=0
 CHECK fake camera pose validates PASS
-EXPECT frame=7 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=7 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=7 x=12 y=12 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-FADE_ROUTE_SAMPLE frame=7 x=20 y=20 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=7 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=7 script=hover routed=1 matched=1 fade_routed=2 fade_refused=0 fade_held=2 prepared=0 covered=760 own_motion=392 mask_set=0 mask_valid=1 threshold=500 draws=2
+RESTORE frame=7 label=stateblock differences=0
+CHECK state block Apply rebinding is honored (flat PS still bound) PASS
+EXPECT frame=7 index=2 object=A routed=0 matched=0 jittered=1
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=3 object=B routed=1 matched=1 jittered=1
 CAMERA_EXPECT frame=7 installed=1 policy=1 reason=4 cut=1 rotation_deg=31.0000 p00=0.8 p11=1.333333 r00=0.7986355 r01=0 r02=0.601815 r10=0 r11=1 r12=0 r20=-0.601815 r21=0 r22=0.7986355 resolve=1
 RESTORE frame=7 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=7 x=0 y=0 before=00000000 after=ff1c3147
-CHANGED frame=7 x=1 y=0 before=00000000 after=ff1c3147
-CHANGED frame=7 x=2 y=0 before=00000000 after=ff1c3147
-CHANGED frame=7 x=3 y=0 before=00000000 after=ff1c3147
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=7 k=1.00000 agx=1 worst_code=0 mismatches=0
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=7 history=0 cut=1 changed=4096 policy=1 skipped=0
-COLOR_BEFORE frame=7 hash=9c1bda7f8c872325
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=7 history=0 cut=1 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=7 hash=ae0b3498446c57df
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=7 jitter=1 jx=-0.437500 jy=0.388889 background_color=ff203040 checked=4096 ambiguous=0 material=190 background=1386 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=7 hash=ae0b3498446c57df
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=7 motion=a2530706c92b2ded depth=fa19888bc1ab5425
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=7 checked=3666 skipped=430 sentinel=3561 matched=105 mismatches=0 depth_written=105 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=8 label=fill differences=0
 CHECK fake camera pose validates PASS
-EXPECT frame=8 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=8 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=8 x=12 y=12 before=1,1,1,0.39013671875 after=0.96728515625,0.9638671875,0.97021484375,0.39013671875
-FADE_ROUTE_SAMPLE frame=8 x=20 y=20 before=1,1,1,0.39013671875 after=0.96728515625,0.9638671875,0.97021484375,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=8 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route bracketed draws preserve RT1 PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=8 script=hover routed=0 matched=0 fade_routed=0 fade_refused=2 fade_held=0 prepared=2 covered=722 own_motion=0 mask_set=392 mask_valid=1 threshold=500 draws=2
+CHECK a recorded render-state write does not reach the device PASS
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=3 object=B routed=1 matched=1 jittered=1
 CAMERA_EXPECT frame=8 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9999 p00=0.8 p11=1.333333 r00=0.7880108 r01=0 r02=0.6156615 r10=0 r11=1 r12=0 r20=-0.6156615 r21=0 r22=0.7880108 resolve=1
 RESTORE frame=8 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=8 x=0 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=8 x=1 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=8 x=2 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=8 x=3 y=0 before=00000000 after=63c9c9c9
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=8 k=1.00000 agx=1 worst_code=0 mismatches=0
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=8 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=8 hash=9c1bda7f8c872325
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=8 history=0 cut=1 changed=0 policy=2 skipped=0
+COLOR_BEFORE frame=8 hash=48e1c7ad26e4fdc1
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=8 jitter=1 jx=0.000000 jy=-0.166667 background_color=ff203040 checked=4032 ambiguous=64 material=2667 background=1365 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=8 hash=48e1c7ad26e4fdc1
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=8 motion=2ae351fc38229c99 depth=35d1a104d1c62ad9
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=8 checked=3668 skipped=428 sentinel=3563 matched=105 mismatches=0 depth_written=2461 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+RESET PASS
 RESTORE frame=9 label=fill differences=0
 CHECK fake camera pose validates PASS
-EXPECT frame=9 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=9 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=9 x=12 y=12 before=1,1,1,0.39013671875 after=0.9345703125,0.9130859375,0.94482421875,0.39013671875
-FADE_ROUTE_SAMPLE frame=9 x=20 y=20 before=1,1,1,0.39013671875 after=0.9345703125,0.9130859375,0.94482421875,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=9 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=9 script=hover routed=1 matched=0 fade_routed=2 fade_refused=0 fade_held=0 prepared=0 covered=722 own_motion=392 mask_set=0 mask_valid=1 threshold=500 draws=2
-CAMERA_EXPECT frame=9 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9999 p00=0.8 p11=1.333333 r00=0.777146 r01=0 r02=0.6293204 r10=0 r11=1 r12=0 r20=-0.6293204 r21=0 r22=0.777146 resolve=1
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=3 object=B routed=1 matched=0 jittered=1
+CAMERA_EXPECT frame=9 installed=1 policy=1 reason=3 cut=0 rotation_deg=0.0000 p00=0.8 p11=1.333333 r00=0.777146 r01=0 r02=0.6293204 r10=0 r11=1 r12=0 r20=-0.6293204 r21=0 r22=0.777146 resolve=1
 RESTORE frame=9 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=9 x=0 y=0 before=00000000 after=ff1c3147
-CHANGED frame=9 x=1 y=0 before=00000000 after=ff1c3147
-CHANGED frame=9 x=2 y=0 before=00000000 after=ff1c3147
-CHANGED frame=9 x=3 y=0 before=00000000 after=ff1c3147
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=9 k=1.00000 agx=1 worst_code=0 mismatches=0
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=9 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=9 hash=9c1bda7f8c872325
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=9 history=0 cut=1 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=9 hash=4fccb6c7391e6b2d
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=9 jitter=1 jx=-0.250000 jy=0.166667 background_color=ff203040 checked=4095 ambiguous=1 material=2678 background=1417 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=9 hash=4fccb6c7391e6b2d
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=9 motion=39e6e57a44fc2325 depth=c4f51962b2367298
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=9 checked=3703 skipped=393 sentinel=3703 matched=0 mismatches=0 depth_written=2519 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=10 label=fill differences=0
 CHECK fake camera pose validates PASS
+RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=10 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=10 x=12 y=12 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-FADE_ROUTE_SAMPLE frame=10 x=20 y=20 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=10 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=10 script=hover routed=1 matched=1 fade_routed=2 fade_refused=0 fade_held=2 prepared=0 covered=722 own_motion=392 mask_set=0 mask_valid=1 threshold=500 draws=2
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=3 object=B routed=1 matched=1 jittered=1
 CAMERA_EXPECT frame=10 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9999 p00=0.8 p11=1.333333 r00=0.7660444 r01=0 r02=0.6427876 r10=0 r11=1 r12=0 r20=-0.6427876 r21=0 r22=0.7660444 resolve=1
 RESTORE frame=10 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=10 x=0 y=0 before=00000000 after=ffb2b4b6
-CHANGED frame=10 x=1 y=0 before=00000000 after=633d4e5f
-CHANGED frame=10 x=2 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=10 x=3 y=0 before=00000000 after=63c9c9c9
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=10 k=1.00000 agx=1 worst_code=0 mismatches=0
+CHANGED frame=10 x=54 y=0 before=4d4c1f0b after=4d4d1f0b
+CHANGED frame=10 x=53 y=1 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=10 x=55 y=1 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=10 x=56 y=1 before=4d4d1f0b after=4d4c1f0b
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=10 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=10 hash=9c1bda7f8c872325
+TAA frame=10 history=1 cut=0 changed=347 policy=2 skipped=0
+COLOR_BEFORE frame=10 hash=750cdfe97753849e
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=10 jitter=1 jx=0.250000 jy=-0.388889 background_color=ff203040 checked=4096 ambiguous=0 material=2686 background=1410 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=10 hash=332b6a65322718bb
 CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=10 motion=1bd104f9a7f97bdf depth=e965b8c3d3dfa47d
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=10 checked=3664 skipped=432 sentinel=1203 matched=2461 mismatches=0 depth_written=2461 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
 RESTORE frame=11 label=fill differences=0
 CHECK fake camera pose validates PASS
+RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=2 object=A routed=1 matched=1 jittered=1
-CHECK fade route: the fade producer is the required one PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=11 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-FADE_ROUTE_SAMPLE frame=11 x=12 y=12 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-FADE_ROUTE_SAMPLE frame=11 x=20 y=20 before=1,1,1,0.39013671875 after=0.94189453125,0.9228515625,0.951171875,0.39013671875
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-RESTORE frame=11 label=fade route complete draw restoration differences=0
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route arm decision matches the script PASS
-CHECK fade route HDR dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route target dimensions PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route evidence file PASS
-CHECK fade route evidence bytes PASS
-CHECK fade route RGB-masked draws keep the destination alpha PASS
-CHECK fade route M covers exactly the bracketed quads PASS
-CHECK fade route hysteresis holds exactly the script's held frames PASS
-FADE_ROUTE frame=11 script=hover routed=1 matched=1 fade_routed=2 fade_refused=0 fade_held=2 prepared=0 covered=722 own_motion=392 mask_set=0 mask_valid=1 threshold=500 draws=2
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=3 object=B routed=1 matched=1 jittered=1
 CAMERA_EXPECT frame=11 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9999 p00=0.8 p11=1.333333 r00=0.7547096 r01=0 r02=0.656059 r10=0 r11=1 r12=0 r20=-0.656059 r21=0 r22=0.7547096 resolve=1
 RESTORE frame=11 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=11 x=0 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=11 x=1 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=11 x=2 y=0 before=00000000 after=63c9c9c9
-CHANGED frame=11 x=3 y=0 before=00000000 after=63c9c9c9
-CHECK reference supplemental input dimensions PASS
-TAA_HDR frame=11 k=1.00000 agx=1 worst_code=0 mismatches=0
+CHANGED frame=11 x=24 y=0 before=ff203040 after=ff252e3a
+CHANGED frame=11 x=25 y=0 before=4d4b1e0b after=4d442114
+CHANGED frame=11 x=34 y=0 before=4d4b1e0b after=4d4c1f0b
+CHANGED frame=11 x=58 y=0 before=ff203040 after=ff472110
 CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
-TAA frame=11 history=1 cut=0 changed=4096 policy=2 skipped=0
-COLOR_BEFORE frame=11 hash=9c1bda7f8c872325
+TAA frame=11 history=1 cut=0 changed=356 policy=2 skipped=0
+COLOR_BEFORE frame=11 hash=245a6dd4042eff8d
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=11 jitter=1 jx=-0.375000 jy=-0.055556 background_color=ff203040 checked=4096 ambiguous=0 material=2680 background=1416 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=11 hash=11fc8bcc9362dee9
 CHECK presented image written PASS
-FADE_ROUTE_CHECKS frames=12 script=hover quads=2
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=11 motion=e4a9e2c7a30cf787 depth=5195c953ade69841
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=11 checked=3716 skipped=380 sentinel=1207 matched=2509 mismatches=0 depth_written=2509 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK every live frame verified against the oracle PASS
+CHECK every frame ran the boundary PASS
+CHECK history frames follow the script PASS
+CHECK strict mode skips exactly the frames whose camera cannot be read PASS
+CHECK every seam frame compared against the reference resolve PASS
 CHECK reference device final Release reaches zero PASS
 CHECK reference factory final Release reaches zero PASS
 CHECK device final Release reaches zero with the route's objects released PASS
 CHECK factory final Release reaches zero PASS
-RESULT PASS checks=3536 restorations=48 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=0 coverage_pixels=0 coverage_ambiguous=0 jitter=1 taa=1 taa_frames=12 taa_history_frames=10 taa_reference_frames=12 taa_changed_pixels=49152 taa_skipped_frames=0
+RESULT PASS checks=177 restorations=51 frames=12 motion_pixels=44279 matched_pixels=10348 max_uv_pixels=0.00191186365 max_depth_error=7.21407726e-08 depth_pixels=44279 depth_written=27293 max_current_depth_error=3.74090846e-06 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=1 taa_frames=12 taa_history_frames=5 taa_reference_frames=12 taa_changed_pixels=1238 taa_skipped_frames=0

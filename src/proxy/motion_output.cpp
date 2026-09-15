@@ -17,11 +17,13 @@
 #include "../renderer/quad_vertex_program.h"
 #include "../renderer/hdr_pass.h"
 #include "../ownership/d3d9_ownership.h"
+#include "../ownership/application_admission_abi.h"
 #include "screen_emission_admission.h"
 #include "../renderer/linear_emission_sm1.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <cwchar>
 #include <limits>
@@ -1456,7 +1458,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // The bloom copy is the fallback scene end: the AO chain runs here under
     // the same contract as at the hook (RT2 complete, brackets finished, the
     // resolve follows on the same target) when the hook did not run it.
-    if(bloom&&!counters_.hook_scene_end)publish_sun_lane("copy");
+    if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();}
     if (bloom && ao_requested_ && !counters_.ao.attempted) { counters_.ao.source = "copy"; run_ambient_occlusion(); }
     if (hdr_state_ != HdrState::Off) {
         if (bloom) { resolve_hdr(SceneEndSource::StretchRect); end_redirect(HdrEnd::BloomCopy); }
@@ -1535,6 +1537,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     // are identifiable by index in the per-draw capture log.
     if (capture_) log("scene_end_marker device=%llu frame=%llu draw_index=%lu", id_, frame_, static_cast<unsigned long>(counters_.draws));
     publish_sun_lane("hook");
+    if (candidates_requested_) publish_shadow_replay_candidates();
     // Ambient occlusion on the owning scene target (RT2 complete, every
     // in-place bracket finished, the resolve not yet run): the resolve below
     // consumes the darkened target.
@@ -1926,6 +1929,16 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     stats_ = stats; lazy_rt1_ = lazy_rt2_ = false;
     enabled_ = false; depth_enabled_ = false;
     sun_writer_count_ = sun_writer_overflow_ = 0; // signature cache is per device
+    candidate_witnesses_ = 0; candidates_.reset(); candidate_pools_ = {}; candidates_published_frame_ = ~std::uint64_t(0); // witness cap, pool cache and frame serial are per device
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    { // Seam only: X3M_FIXTURE_SLICE_NEAR moves the slice-0 near bound so the
+      // fixture's unit-distance triangles are candidates; production keeps 6.
+      char near_text[16]{}; candidate_slice_near_ = shadow_replay::slice0_near;
+      if (GetEnvironmentVariableA("X3M_FIXTURE_SLICE_NEAR", near_text, sizeof near_text) > 0) {
+          const float value = std::strtof(near_text, nullptr);
+          if (std::isfinite(value) && value >= 0.f) candidate_slice_near_ = value;
+      } }
+#endif
     if (!requested) return;
     probe_cutout_caps(true);
     history_ = renderer::MotionRowHistory(4096); // Reserves both tables once; ready() false on failure.
@@ -2835,11 +2848,13 @@ void MotionOutput::set_stream_source(UINT stream, IDirect3DVertexBuffer9* buffer
     shadow_.stream0 = buffer ? resource_id(buffer) : 0;
     shadow_.stream0_identity = shadow_.stream0 ? reinterpret_cast<std::uintptr_t>(buffer) : 0;
     shadow_.stream0_offset = offset; shadow_.stream0_stride = stride;
+    if (candidates_requested_) shadow_.stream0_pool = candidate_pool_of(shadow_.stream0, buffer, true);
 }
 void MotionOutput::set_indices(IDirect3DIndexBuffer9* buffer) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.indices = buffer ? resource_id(buffer) : 0;
     shadow_.indices_identity = shadow_.indices ? reinterpret_cast<std::uintptr_t>(buffer) : 0;
+    if (candidates_requested_) shadow_.indices_pool = candidate_pool_of(shadow_.indices, buffer, false);
 }
 // Declaration identity is the hash of its elements (as draw_input does), plus
 // the stream-0 POSITION0 layout the key records.
@@ -2991,6 +3006,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {}; sun_frame_={}; sun_coverage_current_=sun_composition_completed_=false;
+    if (candidates_requested_) candidates_.reset(); // a frame that never reached a scene end keeps no records
     // Keep failed-lane storage until the next scene latch can compare its
     // exact dimensions/generation before transactionally replacing it. The
     // reset frame snapshot above is unavailable; no stale lane is published.
@@ -4066,6 +4082,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     renderer::SubmittedMatrix rows{}, previous{};
     std::memcpy(rows.data(), shadow_.rows[window], sizeof shadow_.rows[window]);
     if (capture_) route.rows_hash = hash_bytes(rows.data(), sizeof rows); // Diagnostics only.
+    if (candidates_requested_) note_candidate_distance(route, rows.data()); // Diagnostics only (candidate counter).
     // Gate 5: verified object/camera scope. Failure still routes with mode 0 so
     // covered pixels of this material carry the sentinel, never stale history.
     bool matched = false;
@@ -4621,6 +4638,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
             }
         }
     }
+    if (candidates_requested_ && route.routed && SUCCEEDED(result)) note_candidate_draw(route);
     if (route.routed) {
         // route_draw: the apply (before_draw) plus this undo, without the
         // native draw between them and without the jitter writes.
@@ -5515,4 +5533,130 @@ HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t 
     return hr;
 }
 #endif
+
+// ---- caster-candidate counter (shadow_replay_candidates.h) ----------------
+//
+// docs/architecture/shadow-replay-gates.md section 3, X3M_SHADOW_REPLAY_CANDIDATES=1.
+// Off: no code runs (every site tests candidates_requested_). On: per routed
+// successful draw, integer classification from route fields the draw already
+// established plus, for a managed slice-0 candidate, two registry snapshots of
+// the buffer-lock bookends (CPU only); at scene end the same snapshots again,
+// one log line, at most 16 witness lines per device. No allocation.
+shadow_replay::PoolClass MotionOutput::candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept {
+    using shadow_replay::PoolClass;
+    if (!id || !buffer) return PoolClass::Unknown;
+    const PoolClass cached = candidate_pools_.find(id);
+    if (cached != PoolClass::Unknown) return cached;
+    // The route has no pool/usage shadow: one documented GetDesc of the
+    // application's own live SetStreamSource/SetIndices argument, cached per
+    // allocation id (never reused), inside the setter's CpuCallBoundary hook.
+    // LastError is kept as the application left it.
+    const DWORD error = GetLastError();
+    PoolClass value = PoolClass::Unknown;
+    if (vertex) {
+        D3DVERTEXBUFFER_DESC desc{};
+        if (SUCCEEDED(static_cast<IDirect3DVertexBuffer9*>(buffer)->GetDesc(&desc))) value = shadow_replay::classify_pool(desc.Pool, desc.Usage);
+    } else {
+        D3DINDEXBUFFER_DESC desc{};
+        if (SUCCEEDED(static_cast<IDirect3DIndexBuffer9*>(buffer)->GetDesc(&desc))) value = shadow_replay::classify_pool(desc.Pool, desc.Usage);
+    }
+    SetLastError(error);
+    if (value != PoolClass::Unknown) candidate_pools_.store(id, value);
+    return value;
+}
+void MotionOutput::note_candidate_distance(MotionRoute& route, const float* rows) noexcept {
+    float distance = 0.f;
+    route.candidate_distance = fade_route::origin_distance(rows, camera_scene_.valid, camera_scene_.m00, camera_scene_.m11,
+                                                           camera_scene_.m20, camera_scene_.m21, distance) ? distance : -1.f;
+}
+void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
+    // Gate 4 required ZENABLE=1 and ZWRITEENABLE=1 for every routed draw except
+    // the fade-band arm (fade_route::state); the alpha-test (cutout) arm is
+    // excluded by W3. Slice 0 is the own-ship distance window of the rows'
+    // origin (W1: no camera latch, no slice); pools come from the setter cache.
+    const bool zwrite = !route.fade_arm;
+    const bool in_slice = route.candidate_distance >= candidate_slice_near_ && route.candidate_distance <= shadow_replay::slice0_far;
+    // The pool class and the bookend identities are the shadow's; they are
+    // attributed only when the shadowed binding ids are the route key's.
+    const bool shadow_ok = shadow_.stream0 == route.key.vertex_buffer && (!route.key.indexed || shadow_.indices == route.key.index_buffer);
+    if (!candidates_.draw(zwrite, in_slice, route.cutout, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed)) return;
+    // Bookend view at the draw: registry snapshot keyed by the wrapper identity
+    // (never dereferenced). A managed candidate without a known view for
+    // every buffer it uses is counted managed but not leased.
+    ownership::BufferLockView vb{}, ib{};
+    const auto view = [](std::uintptr_t identity, ownership::BufferLockView& out) noexcept {
+        return identity && SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(identity), &out)) && out.known;
+    };
+    if (!view(shadow_.stream0_identity, vb)) return;
+    if (route.key.indexed && !view(shadow_.indices_identity, ib)) return;
+    auto& r = candidates_.record();
+    r.vb = route.key.vertex_buffer; r.vb_identity = shadow_.stream0_identity;
+    r.ib = route.key.indexed ? route.key.index_buffer : 0; r.ib_identity = route.key.indexed ? shadow_.indices_identity : 0;
+    r.vb_view = static_cast<const ownership::BufferLockObservation&>(vb);
+    r.ib_view = static_cast<const ownership::BufferLockObservation&>(ib);
+    r.vb_generation = vb.generation; r.ib_generation = ib.generation;
+    ++candidates_.counts.leased;
+}
+void MotionOutput::publish_shadow_replay_candidates() noexcept {
+    using shadow_replay::BufferVerdict;
+    // Once per frame: the hook and the bloom-copy sites both qualify, and a
+    // second qualifying copy must not emit a second (all-zero) line.
+    if (candidates_published_frame_ == frame_) return;
+    candidates_published_frame_ = frame_;
+    auto& c = candidates_.counts;
+    const std::uint32_t presenting = GetCurrentThreadId();
+    for (unsigned i = 0; i < candidates_.record_count; ++i) {
+        const auto& r = candidates_.records[i];
+        // Scene-end view of each recorded buffer. A buffer whose registry
+        // lookup fails (wrapper gone) is not quiet and yields no witness; a
+        // view of another allocation or generation (identity reused by a new
+        // wrapper, or a Reset in between) is stale: counted, never compared.
+        ownership::BufferLockView end{};
+        BufferVerdict verdicts[2]{}; bool present[2]{};
+        const std::uintptr_t identities[2] = {r.vb_identity, r.ib_identity};
+        const std::uint64_t generations[2] = {r.vb_generation, r.ib_generation};
+        const ownership::BufferLockObservation* at_draw[2] = {&r.vb_view, &r.ib_view};
+        const unsigned buffers = r.ib_identity ? 2u : 1u;
+        bool stale = false;
+        for (unsigned b = 0; b < buffers; ++b) {
+            end = {};
+            present[b] = SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(identities[b]), &end)) && end.requested;
+            if (!present[b]) continue;
+            if (end.allocation_id != at_draw[b]->allocation_id || end.generation != generations[b]) { stale = true; break; }
+            verdicts[b] = shadow_replay::compare(*at_draw[b], static_cast<const ownership::BufferLockObservation&>(end), presenting);
+        }
+        if (stale) { ++c.stale; continue; }
+        bool serial = false, readonly = false, writable = false, pending = false, in_flight = false, cold = false, quiet = true;
+        for (unsigned b = 0; b < buffers; ++b) {
+            if (!present[b]) { quiet = false; continue; }
+            const auto& v = verdicts[b];
+            serial |= v.serial_changed; readonly |= v.readonly_after; writable |= v.writable_after;
+            pending |= v.pending; in_flight |= v.in_flight; cold |= v.cold_thread; quiet &= v.quiet;
+        }
+        c.serial_changed += serial; c.readonly_after += readonly && !writable; c.writable_after += writable;
+        c.pending += pending; c.in_flight += in_flight; c.cold_thread += cold; c.quiet += quiet;
+        for (unsigned b = 0; b < buffers && candidate_witnesses_ < shadow_replay::witness_capacity; ++b) {
+            if (!present[b] || !verdicts[b].changed) continue;
+            ++candidate_witnesses_;
+            const auto& w = verdicts[b].witness;
+            log("shadow_replay_lock_witness device=%llu frame=%llu allocation=%llu flags=%08x offset=%u size=%u thread=%u serial_delta=%llu revision_delta=%llu",
+                id_, frame_, static_cast<unsigned long long>(w.allocation), unsigned(w.flags), unsigned(w.offset), unsigned(w.size), unsigned(w.thread),
+                static_cast<unsigned long long>(w.serial_delta), static_cast<unsigned long long>(w.revision_delta));
+        }
+    }
+    // Admission roots from the process monitor when X3M_ADMISSION=1 (zero
+    // otherwise); nested = scene-end signals this frame that found no open
+    // boundary (a second or out-of-phase signal), the observable C1 refusal.
+    if (candidates_monitor_) {
+        const auto s = ownership::admission_snapshot(candidates_monitor_);
+        c.roots = s.active_roots; c.waiting = s.waiting_roots;
+    }
+    c.nested = counters_.hook_outside_scene;
+    log("shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u"
+        " leased=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u",
+        id_, frame_, c.routed, c.zwrite, c.slice0, c.managed, c.dynamic, c.default_pool, c.excluded, c.unknown, c.shadow_mismatch,
+        c.leased, c.serial_changed, c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
+        static_cast<unsigned long long>(c.roots), static_cast<unsigned long long>(c.waiting), c.nested, c.overflow);
+    candidates_.reset();
+}
 } // namespace x3m

@@ -1,12 +1,12 @@
--- Configuring done (0.1s)
+-- Configuring done (0.2s)
 -- Generating done (0.0s)
--- Build files have been written to: /Users/asvetl/x3-mod/build
-[  3%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
+-- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-ade528d6254daa0e2/build
+[  1%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
 [  3%] Building compositor CPU boundary
-/Users/asvetl/x3-mod/build/compositor_bridge
-[  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
+/Users/asvetl/x3-mod/.claude/worktrees/agent-ade528d6254daa0e2/build/compositor_bridge
+[  6%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
 [  6%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
-[  8%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
+[ 10%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [ 10%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [ 11%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
 [ 13%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/comparison_notice.cpp.obj
@@ -31,7 +31,7 @@
 [ 45%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/lod_scale.cpp.obj
 [ 46%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj
 [ 48%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loading_trace_light.cpp.obj
-[ 50%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/gz_buffer.cpp.obj
+[ 51%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/gz_buffer.cpp.obj
 [ 51%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/crypt_cache.cpp.obj
 [ 53%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/sampling_profiler.cpp.obj
 [ 55%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj

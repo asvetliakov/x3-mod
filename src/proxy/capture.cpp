@@ -1848,6 +1848,15 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     { wchar_t lane[4]{};
       const bool asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_LANE",lane,4)==1&&lane[0]==L'1';
       hooked.motion_output.configure_sun_shadow_lane(asked&&motion_output_requested&&taa_requested&&hdr_requested&&linear_material_requested); }
+    // Caster-candidate counter (shadow-replay-gates.md section 3): the route
+    // plus the ownership wrapper (loader.cpp enables the lock bookends on the
+    // same switch); no TAA, HDR, linear-material or lane prerequisite.
+    { wchar_t setting[4]{};
+      const bool asked=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1';
+      const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
+      const bool enabled=asked&&motion_output_requested&&wrapped;
+      if(asked)log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
+      hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr); }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
