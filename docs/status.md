@@ -132,10 +132,17 @@ further linear-hull processing is planned. Decisions this session:
 - Chase HUD: keep `centre`; the next run tries `--chase-pitch-down-deg 0.5
   --chase-offset-y 0.50` so the forward vanishing point sits at screen centre
   ([survey](architecture/chase-hud-reticle-survey.md)).
-- The run60 gate-restore contract is ratified; `--chase-view-restore` is
-  implemented in a worktree and under deep review (not merged, not installed).
+- The run60 gate-restore contract is ratified and `--chase-view-restore`
+  (default off) is implemented, deep-reviewed on Fable and merged (`123f98d`):
+  seven byte-verified sites, 722 X3 CPU checks / 0 failures
+  (`verification/results/chase-restore-cpu.json`), idle seam prefilter
+  0.004 µs. Not installed; gameplay reads `chase_view_restore_state`.
 - Sun-lane refusal diagnostics were recreated (the earlier unmerged worktree no
-  longer existed), reviewed, and are receiving review fixes (not merged).
+  longer existed), reviewed with fixes and merged (`7f23195`): 16 reason buckets,
+  64-entry writer signature cache, run60 log parses identically.
+- In flight: `--emission-source-gain` (source-only multiply on the 20 additive
+  emission pairs) and, next, an additive-blend bolt option so bullets can exceed
+  1.0 without the packed bracket; the user prefers cost over exact blend law.
 - Pre-existing host failure: `test_linear_material_live.test_production_control_flow`
   fails to compile its mock on `main` (missing sun-lane fields); tracked, unowned.
 
