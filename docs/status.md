@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 evening (run26 candidate installed; run 26 queued). This is the short current handoff; the current
+Updated 2026-09-16 (run27 candidate installed; run 27 queued). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -13,47 +13,31 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`5726a37b702cb808ebdb8106f884e9cedca32066c02cfbcff1c413d9e3122c59`
-(15,034,835 bytes), built once on Opus from clean committed main `f2b7406`
-(2026-09-15 evening). The [build record](../verification/results/run26-candidate-build.json)
-binds the clean build (10.84 s, zero warnings), 225-function no-x87 audit, exact
-17 exports and the eight-check X3 DLL load; the
-[install record](../verification/results/run26-candidate-install.json) binds the
-installed bytes, the unchanged EXE/bottle hashes and the rollback. Rollback DLL and
-manifest are in `/tmp/x3-candidate-QkAfwa/rollback`. Run 26's launch passed `--dry-run`;
-no game launched.
+`215d8fbe5e06ae8090acf7871797972ba1203d87b32cd662f6a046c581649b32`
+(15,760,617 bytes), built once on Opus from clean committed main `46dc822`
+(2026-09-16; embedded marker `X3M_SOURCE_COMMIT=46dc822…`, no `-dirty`; the
+install manifest now records that commit). The
+[build record](../verification/results/run27-candidate-build.json) binds the
+clean build (12.21 s, zero warnings), 229-function no-x87 audit, exact 17
+exports and the eight-check X3 DLL load; the
+[install record](../verification/results/run27-candidate-install.json) binds the
+installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
+run26 DLL `5726a37b…` and manifest are in `/tmp/x3-candidate-h1qQTk/rollback`.
+Run 27's session A and B launches passed `--dry-run`; no game launched.
 
-**Provenance caveat:** before this install the bottle held DLL `3f1b9941…`
-(14,905,020 bytes, installed 17:00 local), not the `4c3ac81e…` run25 build this
-file previously recorded; a `/tmp/x3-candidate-run26/` candidate (`6df394fe…`,
-09:06) and snapshots run61–run64 also exist without repo records. Triage
-(log headers, build logs, `.codex`, temp build trees) could not tie either DLL
-to a commit: the session logs carry no proxy hash or env header, the run26
-source worktree is deleted, and the 17:00 manifest names only
-`/Users/asvetl/x3-mod/build/d3d9.dll`. Runs 62–64 (16:13–17:15) ran the packed
-screen-emission route with `materials=0`, so that DLL already carried an
-uncommitted decoupling. The `3f1b9941…` DLL is retained as the rollback; the
-proxy now logs its own hash, embedded source commit and effective `X3M_*`
-options at startup (`proxy_identity` / `proxy_options`, merged as `5eda356`,
-122 ms once per process under CrossOver; not in the installed `5726a37b…`
-build, rides the next candidate), and `manage.py install` records the DLL's
-embedded commit, so this cannot recur silently.
-
-This build adds, all default-off unless stated: `--chase-view-restore`,
-`--emission-source-gain G`, `--screen-emission-additive G`, `--shadow-replay-candidates`,
-sun-lane refusal buckets inside `--sun-shadow-lane`, and `--screen-emission` no
-longer requiring `--linear-materials`. It keeps the run25 features (native
-constant-port repair, `--chase-hud-anchor centre` default, gate diagnostics,
-`--loading-intervals`). It applies no shadows. Auto exposure ceiling +1.0 EV and
-fill 0.03 remain in the installed build; main now defaults to the raised camera
-(0.5° pitch, offset 0.50), fill 0.05 and EV ceiling 1.3 (`fdc85e4`, user
-decision after run 26), which ride the next candidate.
+This build adds, default-off unless stated: the corrected `--chase-view-restore`
+(cell16/cell17 proof, seam diagnostic), `--emission-source-gain` admitting the
+game's separate-alpha additive engines, `--point-light-root-admission`,
+`--shadow-replay-depth`, the lane-only sun-lane state-gate fix, and session
+identity logging (`proxy_identity` / `proxy_options`, 122 ms once at attach).
+New defaults: chase pitch 0.5° and offset 0.50, Auto exposure ceiling +1.3 EV,
+material fill 0.05 (linear materials only). It applies no shadows.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
 137 original programs; bloom, linear materials and linear emissions remain opt-in.
-Chase defaults in the installed build are 13° pitch, distance 0.9, responses
-0.28/0.38 s, offset 0.45, lag limits 8°/0.10 (main: 0.5° pitch, offset 0.50). Vanilla camera remains the default.
+Chase defaults: 0.5° pitch, offset 0.50, distance 0.9, responses 0.28/0.38 s,
+lag limits 8°/0.10. Vanilla camera remains the default.
 
 ## Next user action
 
@@ -185,7 +169,8 @@ further linear-hull processing is planned. Decisions this session:
   (`46dc822`): map vs CPU projection ≤1e-4, byte-identical presented twins,
   ≈40 µs + 1.3 µs/draw, no consumer yet; open before any consumer: alpha-tested
   casters write full-quad depth, DEVICELOST mid-transaction convention.
-- Run 27 candidate is being built from `46dc822`; the original-program fill
+- Run 27 candidate `215d8fbe…` from `46dc822` is installed and
+  [run 27](verification/user-runs.md) is queued; the original-program fill
   (option C) is still in flight and rides the following candidate if the F8
   baseline shows dark faces.
 - Shadows: [replay gates](architecture/shadow-replay-gates.md) ratified; the

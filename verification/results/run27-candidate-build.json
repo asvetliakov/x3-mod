@@ -1,0 +1,205 @@
+{
+  "recorded_utc": "2026-09-15T21:17:41Z",
+  "run": 27,
+  "candidate": {
+    "path": "/tmp/x3-candidate-h1qQTk/candidate/d3d9.dll",
+    "sha256": "215d8fbe5e06ae8090acf7871797972ba1203d87b32cd662f6a046c581649b32",
+    "bytes": 15760617,
+    "retained_first_build": true,
+    "candidate_directory_file_count": 1
+  },
+  "source": {
+    "worktree": "/tmp/x3-candidate-h1qQTk/source",
+    "commit": "46dc8228dc964f138d019b64dbc680bb024b9999",
+    "commit_short": "46dc822",
+    "detached": true,
+    "status_before_configure": "clean",
+    "status_after_build": "clean"
+  },
+  "source_commit_marker": {
+    "command": "strings /tmp/x3-candidate-h1qQTk/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+    "value": "X3M_SOURCE_COMMIT=46dc8228dc964f138d019b64dbc680bb024b9999",
+    "dirty_suffix": false,
+    "matches_worktree_head": true
+  },
+  "toolchain": {
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "cmake": "4.4.3",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "objdump": "GNU Binutils 2.47.20260726",
+    "target": "32-bit Windows PE",
+    "native_windows_execution": "not performed"
+  },
+  "configure": {
+    "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build",
+    "elapsed_seconds": 2.36,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-h1qQTk/configure.log"
+  },
+  "build": {
+    "command": "cmake --build build -j4",
+    "invocations": 1,
+    "elapsed_seconds": 12.21,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-h1qQTk/build.log"
+  },
+  "host_audits": {
+    "no_x87": {
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-h1qQTk/candidate/d3d9.dll",
+      "result": "PASS",
+      "reachable_functions": 229,
+      "violations": 0,
+      "run26_reachable_functions": 225,
+      "delta_note": "+4 reachable functions from the point-light root admission handler (_x3m_point_light_root_admits walked)"
+    },
+    "pe_exports": {
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-h1qQTk/candidate/d3d9.dll",
+      "result": "PASS",
+      "machine": "0x014c",
+      "count": 17,
+      "names": [
+        "D3DPERF_BeginEvent",
+        "D3DPERF_EndEvent",
+        "D3DPERF_GetStatus",
+        "D3DPERF_QueryRepeatFrame",
+        "D3DPERF_SetMarker",
+        "D3DPERF_SetOptions",
+        "D3DPERF_SetRegion",
+        "DebugSetLevel",
+        "DebugSetMute",
+        "Direct3D9EnableMaximizedWindowedModeShim",
+        "Direct3DCreate9",
+        "Direct3DCreate9Ex",
+        "Direct3DCreate9On12",
+        "Direct3DCreate9On12Ex",
+        "Direct3DShaderValidatorCreate9",
+        "PSGPError",
+        "PSGPSampleTexture"
+      ],
+      "matches_run26_names": true,
+      "report": "/tmp/x3-candidate-h1qQTk/pe-exports.json"
+    }
+  },
+  "load": {
+    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll /tmp/x3-candidate-h1qQTk/candidate/d3d9.dll --case writable",
+    "result": "PASS",
+    "passed": true,
+    "status": "PASS",
+    "game_launched": false,
+    "bottle": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "selected_case": "writable",
+    "checks": 8,
+    "failures": 0,
+    "exit": 0,
+    "source": "game",
+    "on12_forwarded": true,
+    "exports_resolved": 17,
+    "elapsed_seconds": 10.38,
+    "owner_log": "/tmp/x3-candidate-h1qQTk/load-owner.log",
+    "summary": "verification/results/bottle-X3/d3d9-exports-summary.json",
+    "summary_dll_sha256": "215d8fbe5e06ae8090acf7871797972ba1203d87b32cd662f6a046c581649b32",
+    "scope": "Eight-check X3 DLL load smoke under CrossOver Preview (writable case): 17 D3D9 exports, forwarded entry points and ret-N fallbacks. Not a native-Windows run."
+  },
+  "dry_run": {
+    "session_a": {
+      "command": "./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --taa-mip-bias -0.5 --taa-sharpen 0.75 --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --point-light-root-admission --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8 --dry-run",
+      "passed": true,
+      "exit_code": 0,
+      "path": "/tmp/x3-candidate-h1qQTk/dry-run.txt",
+      "corrections": "none; run 27 session A accepted as written",
+      "env_checked": {
+        "X3M_POINT_LIGHT_ROOT_ADMISSION": "1",
+        "X3M_SHADOW_REPLAY_DEPTH": "1",
+        "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+        "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+        "X3M_EMISSION_SOURCE_GAIN": "2.0",
+        "X3M_TAA_MIP_BIAS": "-0.5",
+        "X3M_TAA_SHARPEN": "0.75",
+        "X3M_CHASE_VIEW_RESTORE": "1",
+        "X3M_HDR_EXPOSURE": "auto",
+        "X3M_CHASE_HUD_ANCHOR": "centre",
+        "X3M_LINEAR_MATERIALS": "0",
+        "X3M_SUN_SHADOW_LANE": "0"
+      },
+      "dll_override": "d3d9=n,b"
+    },
+    "session_b": {
+      "command": "session A command plus --linear-materials --linear-distance-fade --sun-shadow-lane --dry-run",
+      "passed": true,
+      "exit_code": 0,
+      "path": "/tmp/x3-candidate-h1qQTk/dry-run-sessionB.txt",
+      "corrections": "none",
+      "env_checked": {
+        "X3M_LINEAR_MATERIALS": "1",
+        "X3M_LINEAR_DISTANCE_FADE": "1",
+        "X3M_SUN_SHADOW_LANE": "1"
+      },
+      "dll_override": "d3d9=n,b"
+    },
+    "launched": false
+  },
+  "qualification_ledgers": [
+    {
+      "path": "docs/verification/screen-emission.md",
+      "rows": [
+        "2026-09-16 \u2014 run65: engine gain admitted zero draws; shared `renderer::linear_emission_source_gain_blend` admits ONE/ONE/ADD regardless of SEPARATEALPHABLENDENABLE, ONE/INVSRCCOLOR refuses as `screen_blend`"
+      ]
+    },
+    {
+      "path": "docs/verification/chase-cpu-boundary.md",
+      "rows": [
+        "2026-09-16 run65 correction: cell16/cell17 consume predicate"
+      ]
+    },
+    {
+      "path": "docs/verification/directional-shadows.md",
+      "rows": [
+        "2026-09-16 \u2014 Run26 session B follow-up: XT state gate and non-depth writers",
+        "2026-09-16 \u2014 cascade-0 depth replay (`--shadow-replay-depth`) fixture, 22 host tests OK"
+      ]
+    },
+    {
+      "path": "docs/verification/point-light-admission.md",
+      "rows": [
+        "2026-09-16 \u2014 site qualification on the installed EXE (`fdbf3418\u2026`), 28-byte window, whole `jg` instruction",
+        "2026-09-16 \u2014 host tests: verifier, constants, encoders, log parser, core predicate over synthetic chains",
+        "2026-09-16 \u2014 X3 CPU fixture: synthetic engine-window copy, per-node admit identical to native",
+        "2026-09-16 \u2014 clean DLL build and no-x87 walk including the handler: PASS, 229 reachable",
+        "2026-09-16 \u2014 launcher dry run carries X3M_POINT_LIGHT_ROOT_ADMISSION=1"
+      ]
+    },
+    {
+      "path": "docs/verification/chase-hud-anchor.md",
+      "rows": [
+        "2026-09-16 camera framing defaults (pitch 0.5\u00b0, offset_y 0.50)"
+      ]
+    },
+    {
+      "path": "docs/verification/fill-light.md",
+      "rows": [
+        "2026-09-16 raised defaults (fill 0.05, Auto ceiling +1.3 EV)"
+      ]
+    },
+    {
+      "path": "docs/architecture/platform-portability.md",
+      "rows": [
+        "Session identity: two provenance lines written once by `initialize_log` ahead of every derived `*_mode` line"
+      ]
+    }
+  ],
+  "full_fixture_chain_rerun": false,
+  "native_windows_verified": false,
+  "installed": false,
+  "limitations": [
+    "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+    "Changed-dependency qualification is reused from the worktree builds recorded in qualification_ledgers; the full fixture chain was not rerun on this candidate.",
+    "Installation and game launch are owned by the main session; nothing was installed here."
+  ]
+}

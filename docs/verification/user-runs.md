@@ -44,7 +44,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | 25 | Consolidated loading, gate identity, forward HUD and sun-lane diagnostics | 0 | Completed as run60: forward HUD aligned, centre preferred; gate reset; trace analysis in progress |
 | 26 | Original hulls with cheap HDR emitters, chase view restore, elevated-camera reticle, replay candidates, loading intervals (A); optional linear sun-lane refusal buckets (B) | 1 | Session A completed as run65 (60 files): bolts brighter and liked; engines unchanged; loading possibly faster; **camera still reset at the gate**. Session B completed as run66 (55 files). Run65 triage: restore refused at the consume seam on the ref cell (2/2), engine gain refused on separate-alpha blend, loading stall 21.5 s again, replay predicates all pass; follow-ups in flight |
-| 27 | Next candidate: corrected chase restore, engine gain on separate-alpha, point-light root admission, original-program fill baseline, depth replay, mip bias/sharpen trial (A); linear sun lane after the state-gate fix (B) | 0 | Open: candidate build pending; commands below |
+| 27 | Next candidate: corrected chase restore, engine gain on separate-alpha, point-light root admission, original-program fill baseline, depth replay, mip bias/sharpen trial (A); linear sun lane after the state-gate fix (B) | 0 | Open: candidate `215d8fbe…` installed 2026-09-16; commands below |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
@@ -52,8 +52,7 @@ not rerun requests.
 
 ## 27. Corrected restore, engine gain, point-light admission, depth replay — open
 
-Candidate build pending (see [status](../status.md) for the installed hash once
-installed). Original hulls, new defaults (camera 0.5°/0.50, EV ceiling 1.3).
+Installed: DLL `215d8fbe…` from `46dc822` (see [status](../status.md)). Original hulls, new defaults (camera 0.5°/0.50, EV ceiling 1.3).
 
 **Session A** (from the repository root):
 

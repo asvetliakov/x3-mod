@@ -13,17 +13,17 @@
   },
   "scope": "Selected console-fixture cases under CrossOver Preview: 17 D3D9 exports, forwarded entry points and ret-N fallbacks; the readonly case additionally checks the %LOCALAPPDATA% session-log fallback. Not a native-Windows run.",
   "selected_case": "writable",
-  "dll_path": "/private/tmp/x3-candidate-QkAfwa/candidate/d3d9.dll",
+  "dll_path": "/private/tmp/x3-candidate-h1qQTk/candidate/d3d9.dll",
   "cases": {
     "writable": {
       "exit": 0,
       "checks": 8,
       "failures": 0,
       "readonly": false,
-      "directory": "verification/probe/build/d3d9-exports-writable-20260915-193126-134361",
-      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260915-193126-134361/x3-modern-captures/session-20260915-193128-208.log",
-      "trace_sha256": "c55e28450d048dfb10fb4dde07475f5936dde9530d685631a6b896440d2d9988",
-      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260915-193126-134361\\x3-modern-captures",
+      "directory": "verification/probe/build/d3d9-exports-writable-20260916-011623-017905",
+      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260916-011623-017905/x3-modern-captures/session-20260916-011624-204.log",
+      "trace_sha256": "3c42f1e961d82e593f51f70f2a665b11bea04a8fef23cd1ba0e03ff8dae219f9",
+      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260916-011623-017905\\x3-modern-captures",
       "source": "game",
       "localappdata": "C:\\users\\crossover\\AppData\\Local",
       "userprofile": "C:\\users\\crossover",
@@ -35,7 +35,7 @@
         },
         "Direct3DCreate9On12": {
           "name": "Direct3DCreate9On12",
-          "result": "0029cc40"
+          "result": "0029bc68"
         },
         "Direct3D9EnableMaximizedWindowedModeShim": {
           "name": "Direct3D9EnableMaximizedWindowedModeShim",
@@ -66,17 +66,17 @@
       },
       "on12_forwarded": true,
       "on12ex_forwarded": false,
-      "dll_sha256": "5726a37b702cb808ebdb8106f884e9cedca32066c02cfbcff1c413d9e3122c59",
-      "exe_sha256": "609d8e57b0c76228486c0bef0443e44808d91cf3e949fedbc020842499ea4c8b",
+      "dll_sha256": "215d8fbe5e06ae8090acf7871797972ba1203d87b32cd662f6a046c581649b32",
+      "exe_sha256": "3e8b28eb0ea72f5f6fe2d404a7f9b420cc28db0a57d8166baed4c46d375c7a0a",
       "env_lines": [
         "ENV LOCALAPPDATA=C:\\users\\crossover\\AppData\\Local",
         "ENV USERPROFILE=C:\\users\\crossover"
       ]
     }
   },
-  "dll_sha256": "5726a37b702cb808ebdb8106f884e9cedca32066c02cfbcff1c413d9e3122c59",
+  "dll_sha256": "215d8fbe5e06ae8090acf7871797972ba1203d87b32cd662f6a046c581649b32",
   "export_directory": {
-    "path": "/private/tmp/x3-candidate-QkAfwa/candidate/d3d9.dll",
+    "path": "/private/tmp/x3-candidate-h1qQTk/candidate/d3d9.dll",
     "machine": "0x014c",
     "image_base": "0x6fb40000",
     "dll_name": "d3d9.dll",
@@ -86,49 +86,49 @@
         "name": "D3DPERF_BeginEvent",
         "ordinal": 1,
         "hint": 0,
-        "rva": "0x95f0",
+        "rva": "0x9650",
         "forwarder": null
       },
       {
         "name": "D3DPERF_EndEvent",
         "ordinal": 2,
         "hint": 1,
-        "rva": "0x9950",
+        "rva": "0x99b0",
         "forwarder": null
       },
       {
         "name": "D3DPERF_GetStatus",
         "ordinal": 3,
         "hint": 2,
-        "rva": "0x9c80",
+        "rva": "0x9ce0",
         "forwarder": null
       },
       {
         "name": "D3DPERF_QueryRepeatFrame",
         "ordinal": 4,
         "hint": 3,
-        "rva": "0x9fb0",
+        "rva": "0xa010",
         "forwarder": null
       },
       {
         "name": "D3DPERF_SetMarker",
         "ordinal": 5,
         "hint": 4,
-        "rva": "0xa2e0",
+        "rva": "0xa340",
         "forwarder": null
       },
       {
         "name": "D3DPERF_SetOptions",
         "ordinal": 6,
         "hint": 5,
-        "rva": "0xa960",
+        "rva": "0xa9c0",
         "forwarder": null
       },
       {
         "name": "D3DPERF_SetRegion",
         "ordinal": 7,
         "hint": 6,
-        "rva": "0xa620",
+        "rva": "0xa680",
         "forwarder": null
       },
       {
@@ -142,7 +142,7 @@
         "name": "DebugSetMute",
         "ordinal": 9,
         "hint": 8,
-        "rva": "0xac90",
+        "rva": "0xacf0",
         "forwarder": null
       },
       {
@@ -156,35 +156,35 @@
         "name": "Direct3DCreate9",
         "ordinal": 11,
         "hint": 10,
-        "rva": "0x8340",
+        "rva": "0x83a0",
         "forwarder": null
       },
       {
         "name": "Direct3DCreate9Ex",
         "ordinal": 12,
         "hint": 11,
-        "rva": "0x88f0",
+        "rva": "0x8950",
         "forwarder": null
       },
       {
         "name": "Direct3DCreate9On12",
         "ordinal": 13,
         "hint": 12,
-        "rva": "0x8d60",
+        "rva": "0x8dc0",
         "forwarder": null
       },
       {
         "name": "Direct3DCreate9On12Ex",
         "ordinal": 14,
         "hint": 13,
-        "rva": "0x9160",
+        "rva": "0x91c0",
         "forwarder": null
       },
       {
         "name": "Direct3DShaderValidatorCreate9",
         "ordinal": 15,
         "hint": 14,
-        "rva": "0xafb0",
+        "rva": "0xb010",
         "forwarder": null
       },
       {
@@ -231,13 +231,13 @@
     "tools/analysis/pe_exports.py": "6b7548b440e1a476265a91ba26e5ec0a45bb184bbbb8e57b360a19786091ecea"
   },
   "binaries": {
-    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "609d8e57b0c76228486c0bef0443e44808d91cf3e949fedbc020842499ea4c8b",
-    "/private/tmp/x3-candidate-QkAfwa/candidate/d3d9.dll": "5726a37b702cb808ebdb8106f884e9cedca32066c02cfbcff1c413d9e3122c59"
+    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "3e8b28eb0ea72f5f6fe2d404a7f9b420cc28db0a57d8166baed4c46d375c7a0a",
+    "/private/tmp/x3-candidate-h1qQTk/candidate/d3d9.dll": "215d8fbe5e06ae8090acf7871797972ba1203d87b32cd662f6a046c581649b32"
   },
   "limits": [
     "Wine backend: three of the four naked forwarders reach Wine spec stubs and are resolved but not called; Direct3D9EnableMaximizedWindowedModeShim exercises the fallback path.",
     "The read-only case relies on the bottle refusing CreateDirectoryW/_wfopen in a 0555 directory, which stands in for a Windows ACL denial.",
     "Windows is cross-compiled, not verified."
   ],
-  "report_sha256": "15951a909a417796ec21597d3a49c2f6cc1c9cddaf523ec28369fd8b6243508a"
+  "report_sha256": "c7fc43b6ba5628a11845393af130673d94ecf1620ee7c82eed511caac7033e1c"
 }
