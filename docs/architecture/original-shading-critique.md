@@ -1,7 +1,8 @@
 # Original hull shading: fill, selective exposure and the point-light cull
 
-**Ratified 2026-09-16 (orchestrator):** Q1 no original-shading fill (revisit
-only via an A/B against `--linear-materials --material-fill 0.05`); Q2 selective
+**Ratified 2026-09-16 (orchestrator):** Q1 no code-value fill; the linear-light
+fill inside the original programs (§1a, option C) is the funded design, built
+after Q3 and enabled on the F8 trigger or user request; Q2 selective
 exposure closed, milestone-1 source kept as a checkpoint; Q3 root-object
 point-light admission implemented bounded and default-off after the replay
 fixture, enabled for a run only when the user confirms the module cliff in play.
@@ -25,7 +26,7 @@ hulls and their fill (`.05`) remain an optional launch configuration.
 
 | # | Question | Verdict | Trigger to revisit |
 |---|---|---|---|
-| 1 | Fill on original shading | **Don't.** | User reports unreadable sun-averted faces in ordinary play at the accepted look, *after* #3; then A/B the existing `--linear-materials --material-fill .05` launch first, no new code. |
+| 1 | Fill on original shading | **Not as a code-value constant; do later as option C** (the fill decoded/encoded in linear light at the located lobe-sum site of the original programs, §1a; ≈8 slots approximate, ≈29 exact, zero per draw). | After #3, when the baseline F8 at the run-51 spot on the installed build shows a far-module dark fraction ≥ 0.2, or the user asks for readable shadow sides. |
 | 2 | Selective (per-material) exposure | **Don't; close it.** Retain the milestone-1 source as a checkpoint; no runtime integration. | User wants hulls *darker* than the Auto ceiling gives while emitters and nebula must stay, and `--hdr-ev` / `--hdr-ev-max` / the two emitter gains cannot satisfy both. |
 | 3 | Patch the point-light cull | **Do, bounded and default-off**, root-object admission at `0x004c27af`; not range widening. Schedule after the run-26/65/66 shadow-candidate and loading analysis. | Gate on one user sentence: the docking-module cliff is visible in ordinary play under the accepted look (run 21 B already saw it in vanilla). |
 
@@ -88,6 +89,65 @@ its mid-scene bracket (0.2–0.47 ms fenced per quad) and its dark-sector failur
 hashes at k>0 and byte identity at k=0; ps_3_0 `def`/`mul`/`add` only, portable; verification is the
 run-51 reduction at the same spot (module `frac<0.05`, p10, cylinder mean, same-surface reprojection)
 on an original-shading capture. None of this is recommended now.
+
+### 1a. Option C: the fill in linear light inside the original programs
+
+The option §1 did not cover, and the one that resolves the tension with "no shipped space game
+renders black hulls": keep every original instruction, and at the located lobe-sum site insert
+`sum' = encode(max(decode(sum), 0) + k·decode(LightDir_Color0))`, nothing else converted. Because
+the round trip is the identity and `decode(a·b) = decode(a)·decode(b)` for a pure power, the
+displayed diffuse term becomes exactly `A_lin·(S_lin + k·C0_lin)`: run 54's accepted term
+(fill-light §2, `g_direct` = 1 folded into k) on original shading, with the original diffuse/specular
+mix, cube, lightmap and alpha untouched.
+
+**Placement.** Before the albedo multiply, as run 54 had it. `linear_material_fill_sum` already
+runs on the *original* bytecode (`linear_material.cpp:1108`, `:1333–1380`) and returns the sum
+register and the albedo MUL/MAD; `xt_fill_site` does the same ahead of XT's albedo branch. The sum
+there is the directional lobes plus the vertex-carried P+M (linear-bump law); all of it rides the
+identity round trip. Coverage: all 94 hull/asteroid/palette/glass and 14 XT pixel programs resolve
+(fill-light "Implementation"); the other stages of the 137 are vertex programs, which carry no fill.
+
+**Lift, A≈0.7, sun luma 0.524** (F·A = 0.011 at k .03, 0.018 at k .05; same arithmetic as §1):
+
+| face (code) | k .03 → code / EV | k .05 → code / EV | code-value fill matched at black |
+|---|---|---|---|
+| black 0.00 | 0.129 | 0.162 | 0.129 |
+| 0.10 | 0.158 (+0.058) / +1.46 | 0.186 (+0.086) / +1.97 | 0.229 / +2.63 |
+| 0.40 (sun-lit hull) | 0.415 (+0.015) / +0.11 | 0.424 (+0.024) / +0.19 | 0.529 / +0.89 |
+
+A fill: the shadow face gains 1.5–2 EV, the lit face a tenth of that. The code-value constant is a
+lift; doing nothing keeps the black quarter at 0.025–0.05 × 2.46 at the ceiling.
+
+**Cost per covered pixel.** Exact: three scalar POWs per RGB conversion (3 slots each, the
+transformer's `transfer` rate): decode sum 9 + decode C0 9 + MAD 1 + MAX 1 + encode 9 ≈ 29
+weighted slots (20 with a host-uploaded `k·decode(C0)` in c215, a new constant hook; not first).
+Gamma-2 approximation: `mul rS,sum,sum`, `mul rC,c5,c5`, `mad rS,rC,c215.x,rS`, `max rS,rS,c212.y`,
+3× scalar `rsq` + `mul` (sqrt as x·rsq(x); the MAX keeps rsq(0) finite) ≈ 8 slots. With k' matched
+at black (`F2 = F^(2/2.2)`) its error against exact pow-2.2 over code 0.05–0.60 is +0.002…+0.008
+code (≤3.1 %, ≤+0.10 EV) at k .03 and .05: a slightly stronger fill on mid faces, inside run 54's
+tolerances. Zero per draw, no upload, byte identity at k=0; originals sit well below the converted
+programs' 178/190-of-512 slots. ps_3_0 `pow`/`rsq`/`mad` only, portable.
+
+**Risks.** (1) Specular sits inside the sum on every family; exact form: untouched by the identity
+round trip; approximate form: the same ≤3 % mid-range error, i.e. marginally warmer glints. (2) Cube
+and lightmap terms are added after the albedo multiply and stay outside the fill, as in run 54;
+Shared BUMPMAP's shared half coefficient is not touched. (3) Clamps: VS `MOV_SAT COLOR0` keeps
+P+M ≤ 1; XT's two reviewed COLOR0 clamps are after the branch the block precedes; a later `_sat`
+clips the fill only where native highlights already clip. (4) `_pp` sums and negative/NaN input:
+FP16 resolution at code 0.05 is ~1e-5; the MAX excludes the rest. (5) Constant port: `c5` and
+`c215` never in one instruction. (6) `transform`/`xt_transform` assume the transfer: a fill-only
+config path that skips `transfer`, `gain` and the point/emissive sites is new code in those two
+functions, reusing the site finders, `fill_definition`, `fill_constant_free`, the r12+ temporaries
+and the combined motion/depth pipeline. (7) The meter sees the fill: ≤0.25 EV re-key, as run 54.
+
+**Q1 verdict, restated.** *Do later, as option C only*, after #3 and on trigger: the baseline F8 at
+the run-51 spot on the installed original-hull build shows a far-module dark fraction (< 0.05
+scene-linear) ≥ 0.2, or the user asks for readable shadow sides. Start with the gamma-2 form at k
+.05 tinted by `Color0` (`Color1` where present is the v2 tint); take the exact form only if the ≤3 %
+mid-range error is seen. Acceptance, same reductions as fill-light §5: baseline F8 pair (≈350 m /
+≈210 m) on the installed build, then a matched pair with the option — far-module `frac<0.05`
+to ≤ 0.10 and p10 ≥ 0.045, cylinder mean rise ≤ 0.03, module chroma within 0.03, far-dark
+same-surface median gain ≤ 2.0, `frame_end` unchanged; and the user's read at Auto +1.3.
 
 ## 2. Selective exposure
 
@@ -212,15 +272,16 @@ No Wine fixture is needed beyond the CPU harness.
    pre-empts them; nothing above needs a new user run of its own.
 2. **#3, root-object admission**: small, default-off, cause-fixing, the only item whose value survives
    the switch to original shading; one CPU fixture and a piggy-backed F8 pair. Do it after 1.
-3. **#1, fill on original shading**: hold. If the readability complaint returns, the answer is an A/B
-   with the existing linear-fill launch, not a new transform.
+3. **#1, fill on original shading**: option C (§1a) when its trigger fires; the baseline F8 pair
+   rides the same run as #3's acceptance, so the trigger costs no run of its own.
 4. **#2, selective exposure**: close; checkpoint retained.
 
 ## Do not
 
 - Do not re-enable or extend linear hull conversion to obtain a fill, the sun lane or selective
   exposure; the user's base is original shading.
-- Do not build a code-value fill transform of the 108 programs (gamma-space lift; §1).
+- Do not build a code-value constant fill of the 108 programs (gamma-space lift; §1); if a fill is
+  built, it is option C (§1a), not a lift and not a full conversion.
 - Do not integrate the selective-exposure runtime (meter move, Z history, exposed-destination screen
   law); do not port its seeds to original shading.
 - Do not widen `+0x158`/`+0x160`, and do not force `i0 = 1` from the proxy.
