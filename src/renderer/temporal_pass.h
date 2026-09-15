@@ -38,8 +38,9 @@ struct FrameInputs {
     IDirect3DSurface9* color_surface = nullptr;
     // Current depth: exactly one of the two.
     IDirect3DTexture9* depth_snapshot = nullptr; // verified native D24X8 comparison snapshot; runs the decoder draw
-    // R32F device depth z/w in [0,1]; -1 sentinel where nothing routed wrote.
-    // Copied into the owned depth history; no decoder draw runs.
+    // R32F or G32R32F .r device depth z/w in [0,1]; -1 sentinel.
+    // R32F copies directly; G32R32F point-samples .r through the configured
+    // identity copy shader into R32F history. No decoder draw runs.
     IDirect3DTexture9* current_depth = nullptr;
     IDirect3DTexture9* motion = nullptr; // RGBA32F if PerPixel; alpha ABI in temporal/README
     IDirect3DTexture9* reactive = nullptr; // RequiredMask: R32F; Supplemental: A16B16G16R16F raw red coverage
@@ -128,7 +129,7 @@ struct Diagnostics {
     bool timed = false;
     std::uint64_t ticks_capture = 0;    // state block Capture plus the binding getters
     std::uint64_t ticks_copy_color = 0; // 8-bit color to FP16 scratch StretchRect, or the same-format staging copy in draw mode (allocations included)
-    std::uint64_t ticks_copy_depth = 0; // R32F depth to depth history StretchRect
+    std::uint64_t ticks_copy_depth = 0; // R32F StretchRect or G32R32F point-sampled .r copy to R32F history
     std::uint64_t ticks_draw = 0;       // normalize, scene bracket, decoder/resolve/mask quads
     std::uint64_t ticks_apply = 0;      // binding restoration plus state block Apply
 };

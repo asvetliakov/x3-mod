@@ -300,10 +300,11 @@ unsigned MotionOutput::device_references() const noexcept {
     if (packed_sample_.pre_copy) ++count;
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
+    if (sun_sentinel_ps_) ++count;
     if (quad_vs_) ++count;
     if (quad_declaration_) ++count;
     for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; }
-    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; if (entry.second.screen_variant) ++count; }
+    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; if (entry.second.screen_variant) ++count; if(entry.second.sun_motion_variant)++count; if(entry.second.sun_material_variant)++count; if(entry.second.sun_xt_variant)++count; }
     return count;
 }
 
@@ -319,6 +320,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.ps_xt_default_ordinary = nullptr;
+    shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr;shadow_.ps_sun_extraction=false;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
@@ -334,10 +336,10 @@ void MotionOutput::release_resources() noexcept {
     if (taa_) { taa_call([&] { taa_->shutdown(); }); taa_.reset(); }
     if (ao_ || ao_timing_created_) { taa_call([&] { ao_timing_release(); if (ao_) ao_->detach(); }); ao_.reset(); }
     release(sentinel_ps_);
-    release(sentinel_mrt_ps_);
+    release(sentinel_mrt_ps_); release(sun_sentinel_ps_);
     release(quad_vs_); release(quad_declaration_);
     for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); }
-    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.screen_variant); }
+    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.screen_variant); release(entry.second.sun_motion_variant); release(entry.second.sun_material_variant); release(entry.second.sun_xt_variant); }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
@@ -362,9 +364,10 @@ void MotionOutput::release_resources() noexcept {
 }
 
 void MotionOutput::release_target() noexcept {
+    sun_frame_.available=false; sun_lane_active_=false;
     release(depth_surface_);
     release(target_surface_);
-    target_width_ = target_height_ = 0;
+    target_width_ = target_height_ = 0; target_generation_ = 0;
 }
 
 void MotionOutput::configure_jitter(bool enabled, unsigned samples) noexcept {
@@ -1429,6 +1432,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // The bloom copy is the fallback scene end: the AO chain runs here under
     // the same contract as at the hook (RT2 complete, brackets finished, the
     // resolve follows on the same target) when the hook did not run it.
+    if(bloom&&!counters_.hook_scene_end)publish_sun_lane("copy");
     if (bloom && ao_requested_ && !counters_.ao.attempted) { counters_.ao.source = "copy"; run_ambient_occlusion(); }
     if (hdr_state_ != HdrState::Off) {
         if (bloom) { resolve_hdr(SceneEndSource::StretchRect); end_redirect(HdrEnd::BloomCopy); }
@@ -1506,6 +1510,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     // the frame's draw counter at the signal, so draws after the scene end
     // are identifiable by index in the per-draw capture log.
     if (capture_) log("scene_end_marker device=%llu frame=%llu draw_index=%lu", id_, frame_, static_cast<unsigned long>(counters_.draws));
+    publish_sun_lane("hook");
     // Ambient occlusion on the owning scene target (RT2 complete, every
     // in-place bracket finished, the resolve not yet run): the resolve below
     // consumes the darkened target.
@@ -1532,6 +1537,22 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     resolve(rt0, nullptr);
     release(rt0);
 }
+
+void MotionOutput::publish_sun_lane(const char* source) noexcept {
+    if(!sun_lane_requested_)return;
+    const bool coverage=composition_&&sun_coverage_current_&&composition_->coverage_valid()&&
+        !composition_frame_stopped_&&!composition_quarantined_&&!composition_state_lost_&&!composition_busy_;
+    const bool owner=hdr_enabled_&&hdr_state_==HdrState::Active&&hdr_&&hdr_->tonemap_active()&&
+        hdr_target_.known&&hdr_target_.format==D3DFMT_A16B16G16R16F&&
+        hdr_config_.decode==x3::temporal::AgxDecode::gamma22&&hdr_config_.tonemap==renderer::HdrTonemap::Agx&&
+        counters_.filled&&!motion_state_lost_&&!composition_state_lost_&&!composition_frame_stopped_&&
+        !composition_quarantined_&&!composition_busy_&&!cutout_coverage_missed_;
+    sun_frame_.failed=sun_frame_.failed||sun_lane_failed_;
+    const bool available=sun_frame_.publish(sun_lane_active_&&depth_surface_,owner,coverage);
+    log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=0",
+        id_,frame_,source,unsigned(sun_lane_active_?D3DFMT_G32R32F:D3DFMT_R32F),available,sun_frame_.receivers,sun_frame_.covered,sun_frame_.untracked,sun_frame_.failed,owner,sun_frame_.coverage_required,coverage);
+}
+
 // ---- ambient occlusion at the scene end (ambient-occlusion.md, step 2) ------
 namespace {
 // Default projection scratch (camera-state-and-frame-routine.md sections 3-4):
@@ -1787,9 +1808,20 @@ void MotionOutput::query_active(bool active) noexcept {
 // device_references() would then under-count by one and the release hook's
 // final-Release probe would never match, leaking the device.
 bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
-    if (target_surface_ && target_width_ == width && target_height_ == height) return true;
+    const bool lane=sun_lane_requested_&&sun_lane_qualified_&&!sun_lane_failed_&&
+        sun_lane_depth_qualified(static_cast<D3DFORMAT>(main_depth_.format));
+    // Scene latch only, before any fill/routing. Switching an exact qualified
+    // attachment or retiring a failed lane never changes storage mid-frame.
+    if (target_surface_ && target_width_ == width && target_height_ == height && sun_lane_active_==lane) return true;
+    // Only a failed enhanced lane changing storage within this exact device,
+    // size and reset generation may retain row correspondence. R32F temporal
+    // history already contains the prior G32 input's point-copied .r; the new
+    // current RT1/RT2 receive the ordinary sentinel fill before any draw.
+    const bool preserve_rows = target_surface_ && sun_lane_active_ && !lane && sun_lane_failed_
+        && target_generation_ == generation_ && target_width_ == width && target_height_ == height;
     release_target();
     if (target_failed_ || !width || !height) return false;
+    sun_lane_active_=lane;
     IDirect3DTexture9* texture = nullptr;
     HRESULT hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
         D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texture, nullptr);
@@ -1801,10 +1833,23 @@ bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
         // producing depth must own RT2 whenever it routes: a failed depth
         // allocation disables routing like a failed motion allocation.
         depth_hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
-            D3DFMT_R32F, D3DPOOL_DEFAULT, &texture, nullptr);
+            sun_lane_active_?D3DFMT_G32R32F:D3DFMT_R32F, D3DPOOL_DEFAULT, &texture, nullptr);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
+         if(sun_lane_active_&&!std::strcmp(fault,"allocation")){release(texture);depth_hr=E_OUTOFMEMORY;}}
+#endif
         depth_level = E_FAIL;
         if (SUCCEEDED(depth_hr) && texture) depth_level = texture->GetSurfaceLevel(0, &depth_surface_);
         release(texture);
+        if(sun_lane_active_&&(FAILED(depth_hr)||FAILED(depth_level)||!depth_surface_)){
+            // Discard the incomplete enhancement and retry only the ordinary
+            // depth allocation. RT1 and all ordinary cached shaders survive.
+            release(depth_surface_); sun_lane_active_=false; sun_lane_failed_=true;
+            depth_hr=native<CreateTextureFn>(CreateTexture)(device_,width,height,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&texture,nullptr);
+            depth_level=E_FAIL;
+            if(SUCCEEDED(depth_hr)&&texture)depth_level=texture->GetSurfaceLevel(0,&depth_surface_);
+            release(texture);
+        }
         if (FAILED(depth_hr) || FAILED(depth_level) || !depth_surface_) hr = FAILED(depth_hr) ? depth_hr : E_FAIL;
     }
     if (FAILED(hr) || FAILED(level) || !target_surface_) {
@@ -1814,8 +1859,8 @@ bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
         target_failed_ = true; // Retry only after Reset; do not spam allocation per frame.
         return false;
     }
-    target_width_ = width; target_height_ = height;
-    history_.invalidate();
+    target_width_ = width; target_height_ = height; target_generation_ = generation_;
+    if (!preserve_rows) history_.invalidate();
     log("motion_output_target device=%llu width=%u height=%u create=%08lx level=%08lx depth=%u depth_create=%08lx depth_level=%08lx",
         id_, width, height, hr, level, depth_enabled_, depth_hr, depth_level);
     return true;
@@ -2012,6 +2057,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
             double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.chain_format_name, hdr_caps.chain_target, hdr_caps.chain_sampling);
         hdr_tonemap_disabled_logged_ = false; hdr_taa_k_ = 0.f;
     }
+    qualify_sun_lane();
     if (composition_requested() && taa_enabled_ && hdr_enabled_) {
         D3DDISPLAYMODE display{};
         composition_busy_ = true;
@@ -2177,6 +2223,8 @@ bool MotionOutput::self_test(bool with_depth, char* reason, std::size_t reason_s
     return ok;
 }
 
+#include "sun_share_lane_inc.h"
+
 HRESULT MotionOutput::save_state(SavedState& saved) noexcept {
     saved.target_count = caps_.NumSimultaneousRTs < 4 ? unsigned(caps_.NumSimultaneousRTs) : 4;
     if (!saved.target_count) saved.target_count = 1;
@@ -2278,7 +2326,7 @@ void MotionOutput::fill_sentinel() noexcept {
     HRESULT restore = S_OK;
     const std::uint64_t begin = stamp();
     const HRESULT hr = draw_quad(target_surface_, depth ? depth_surface_ : nullptr, nullptr,
-                                 depth ? sentinel_mrt_ps_ : sentinel_ps_, target_width_, target_height_, &restore);
+                                 depth ? (sun_lane_active_?sun_sentinel_ps_:sentinel_mrt_ps_) : sentinel_ps_, target_width_, target_height_, &restore);
     const std::uint64_t ticks = stamp() - begin;
     counters_.fill_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteFill), ticks, FAILED(hr) || FAILED(restore));
@@ -2344,7 +2392,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     scene_open_ = false; // Reset ends any application scene; BeginScene follows.
     if (!enabled_) return;
     // The interrupted frame continues after a successful Reset; capture is off.
-    if (SUCCEEDED(result)) { cutout_reset_pending_ = false; probe_cutout_caps(true); resync_shadow(); recover_motion_state(); begin_frame(frame_, false); }
+    if (SUCCEEDED(result)) { sun_lane_failed_=false; qualify_sun_lane(); cutout_reset_pending_ = false; probe_cutout_caps(true); resync_shadow(); recover_motion_state(); begin_frame(frame_, false); }
     log("motion_output_reset device=%llu result=%08lx generation=%llu taa_references=%u", id_, result, generation_, taa_references_);
 }
 
@@ -2367,6 +2415,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         auto& entry = vertex_[shader];
         entry.registered = false;
         release(entry.variant);
+        release(entry.sun_motion_variant); release(entry.sun_material_variant); release(entry.sun_xt_variant); entry.sun_extraction=false;
         release(entry.material_variant);
         release(entry.xt_default_ordinary_variant);
         release(entry.xt_default_linear_variant);
@@ -2457,12 +2506,14 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.ps_xt_default_ordinary = nullptr;
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
+        shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false;
     }
     if (!requested_ || !shader) return;
     try {
         auto& entry = pixel_[shader];
         entry.registered = false;
         release(entry.variant);
+        release(entry.sun_motion_variant); release(entry.sun_material_variant); release(entry.sun_xt_variant); entry.sun_extraction=false;
         release(entry.material_variant);
         release(entry.xt_default_ordinary_variant);
         release(entry.xt_default_linear_variant);
@@ -2533,6 +2584,14 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                 hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
             if (SUCCEEDED(hr) && variant) entry.variant = variant;
             else release(variant);
+            if(sun_lane_requested_&&entry.variant&&renderer::material_motion_pixel_writes_depth(*entry.row,depth_enabled_)) {
+                const HRESULT lane_hr=renderer::material_motion_invalid_sun_share(words)?native<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words.data()),&entry.sun_motion_variant):E_FAIL;
+                if(FAILED(lane_hr)||!entry.sun_motion_variant){release(entry.sun_motion_variant);sun_lane_failed_=true;}
+            }
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
+             if(sun_lane_active_&&!std::strcmp(fault,"late_shader")){release(entry.sun_motion_variant);sun_lane_failed_=true;}}
+#endif
             log("motion_output_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
                 id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
             if (linear_material_requested_ && entry.variant) {
@@ -2546,6 +2605,19 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     material_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
                 if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
                 else release(combined);
+                if(sun_lane_requested_&&entry.material_variant&&renderer::material_motion_pixel_writes_depth(*entry.row,depth_enabled_)) {
+                    std::vector<std::uint32_t> lane;
+                    bool extraction=false;
+                    const auto extracted=renderer::linear_material_pixel_variant_sun_share(
+                        reinterpret_cast<const std::uint32_t*>(code),bytes/4,linear_material_config_,lane,depth_enabled_,extraction);
+                    bool ready=extracted==renderer::LinearMaterialResult::Applied;
+                    if(!ready){lane.swap(words);ready=renderer::material_motion_invalid_sun_share(lane);}
+                    HRESULT lane_hr=E_FAIL;
+                    if(ready)lane_hr=native<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(lane.data()),&entry.sun_material_variant);
+                    if(FAILED(lane_hr)||!entry.sun_material_variant){release(entry.sun_material_variant);sun_lane_failed_=true;}
+                    entry.sun_extraction=entry.sun_material_variant&&extraction;
+                    log("sun_shadow_lane_variant device=%llu original=%016llx extraction=%u create=%08lx words=%u",id_,hash,unsigned(entry.sun_extraction),lane_hr,unsigned(lane.size()));
+                }
                 // fill_applied=0 with a configured fill is the fail-closed
                 // refusal of a program without a unique lobe sum.
                 if (material != renderer::LinearMaterialResult::UnsupportedShader)
@@ -2562,6 +2634,10 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &repaired);
                 if (SUCCEEDED(hr) && repaired) entry.xt_default_ordinary_variant = repaired;
                 else release(repaired);
+                if(sun_lane_requested_&&entry.xt_default_ordinary_variant&&renderer::material_motion_pixel_writes_depth(*entry.row,depth_enabled_)) {
+                    const HRESULT lane_hr=renderer::material_motion_invalid_sun_share(words)?native<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words.data()),&entry.sun_xt_variant):E_FAIL;
+                    if(FAILED(lane_hr)||!entry.sun_xt_variant){release(entry.sun_xt_variant);sun_lane_failed_=true;}
+                }
                 if (result != renderer::LinearMaterialResult::UnsupportedShader)
                     log("linear_material_xt_default_variant device=%llu kind=ps original=%016llx linear=0 transform=%u create=%08lx words=%u depth=%u",
                         id_, hash, unsigned(result), hr, unsigned(words.size()), depth_enabled_);
@@ -2604,6 +2680,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.ps_xt_default_ordinary = nullptr;
+    shadow_.ps_sun_motion=nullptr; shadow_.ps_sun_material=nullptr; shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     if (!shader) return;
     const auto it = pixel_.find(shader);
@@ -2615,6 +2692,10 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_screen_variant = it->second.screen_variant;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
     shadow_.ps_material_variant = static_cast<IDirect3DPixelShader9*>(it->second.material_variant);
+    shadow_.ps_sun_motion=it->second.sun_motion_variant;
+    shadow_.ps_sun_material=it->second.sun_material_variant;
+    shadow_.ps_sun_xt=it->second.sun_xt_variant;
+    shadow_.ps_sun_extraction=it->second.sun_extraction;
     shadow_.ps_xt_default_ordinary = static_cast<IDirect3DPixelShader9*>(it->second.xt_default_ordinary_variant);
     refresh_linear_material_contract();
     refresh_linear_emission_contract();
@@ -2813,7 +2894,10 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
-    counters_ = {};
+    counters_ = {}; sun_frame_={}; sun_coverage_current_=sun_composition_completed_=false;
+    // Keep failed-lane storage until the next scene latch can compare its
+    // exact dimensions/generation before transactionally replacing it. The
+    // reset frame snapshot above is unavailable; no stale lane is published.
     cutout_coverage_missed_ = false; cutout_arm_active_ = cutout_arm_configured();
     composition_required_producers_ = 0;
     composition_counts_ = {}; composition_enhanced_ = false; composition_frame_stopped_ = false; composition_published_ = false;
@@ -3106,6 +3190,8 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     }
     if (composition_published_ && hdr_state_ != HdrState::Off && (composition_main_sampler_mask_ || !composition_readers_known_)) composition_export();
     route.evaluated = true;
+    route.sun_color_writer=sun_lane_active_&&call.primitives&&selector_.state()==renderer::BoundaryState::Scene&&
+        !counters_.hook_scene_end&&(hdr_state_==HdrState::Active||scene_bound())&&shadow_state_field(D3DRS_COLORWRITEENABLE)!=0;
     evaluate_draw(call, route);
     // Step B rectangle before step C's admission: an admitted screen draw
     // composes inside it; without it the draw stays native.
@@ -3448,6 +3534,7 @@ bool MotionOutput::publish_composition() noexcept {
     return true;
 }
 void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositionPolicy policy) noexcept {
+    sun_composition_completed_=false;
     composition_counts_.source = source;
     auto completed = composition_->finish(source);
     composition_counts_.composition = completed.composition; composition_counts_.restore = completed.restore;
@@ -3486,6 +3573,7 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
             ++composition_counts_.linear; ++composition_counts_.in_place_linear;
             if (packed) ++composition_counts_.packed_linear; else ++composition_counts_.linear_fade;
             composition_enhanced_ = true;
+            sun_coverage_current_=sun_composition_completed_=true;
         }
         return;
     }
@@ -3501,9 +3589,10 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
     if (FAILED(source) || completed.image == renderer::LinearEmissionImage::Incomplete || !published || !composition_->coverage_valid()) {
         ++composition_counts_.incomplete; composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionIncomplete);
     } else if (completed.image == renderer::LinearEmissionImage::Linear) {
+        sun_coverage_current_=sun_composition_completed_=true;
         ++composition_counts_.linear; composition_enhanced_ = true;
         if (policy == renderer::LinearCompositionPolicy::DistanceFade) ++composition_counts_.linear_fade;
-    } else ++composition_counts_.native;
+    } else {++composition_counts_.native;sun_coverage_current_=sun_composition_completed_=true;}
 }
 void MotionOutput::refresh_linear_material_contract() noexcept {
     // Pair identity and complete corrected availability are computed only
@@ -3582,8 +3671,14 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     const auto vs = shadow_.xt_default_ready
         ? (material ? shadow_.vs_xt_default_linear : shadow_.vs_xt_default_ordinary)
         : (material ? shadow_.vs_material_variant : shadow_.vs_variant);
-    const auto ps = !material && shadow_.xt_default_ready ? shadow_.ps_xt_default_ordinary
+    auto ps = !material && shadow_.xt_default_ready ? shadow_.ps_xt_default_ordinary
         : (material ? shadow_.ps_material_variant : shadow_.ps_variant);
+    route.sun_receiver=false;
+    if(sun_lane_active_&&route.depth&&!route.fade_arm){
+        const auto lane=material?shadow_.ps_sun_material:shadow_.xt_default_ready?shadow_.ps_sun_xt:shadow_.ps_sun_motion;
+        if(lane){ps=lane;route.sun_receiver=material&&shadow_.ps_sun_extraction;}
+        else {sun_frame_.failed=true;sun_lane_failed_=true;}
+    }
     route.vs_set = true;
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -3596,7 +3691,12 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         if (route.cutout && material && SUCCEEDED(hr) && fixture_cutout_ps_fault_) { --fixture_cutout_ps_fault_; hr = E_FAIL; }
 #endif
     }
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
+     if(sun_lane_active_&&!sun_lane_failed_&&!std::strcmp(fault,"bind"))hr=E_FAIL;}
+#endif
     if (FAILED(hr) && SUCCEEDED(route.preparation_error)) route.preparation_error = hr;
+    if(sun_lane_active_&&FAILED(hr)){sun_frame_.failed=true;sun_lane_failed_=true;route.sun_receiver=false;}
     if (material && FAILED(hr)) {
         ++counters_.material_bind_failures;
         const HRESULT restored = undo(route);
@@ -4225,6 +4325,11 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
     if (route.composition) finish_composition(result, route.composition_policy);
+    if(sun_lane_active_&&route.sun_color_writer){
+        const bool coverage=route.composition&&sun_composition_completed_&&sun_coverage_current_&&composition_&&composition_->coverage_valid()&&
+            !composition_frame_stopped_&&!composition_state_lost_&&!composition_quarantined_;
+        sun_frame_.draw(route.submit&&SUCCEEDED(result),route.routed&&route.depth&&!route.fade_arm&&route.sun_receiver,coverage,route.routed&&route.depth&&!route.fade_arm);
+    }
     if (cutout::missed(route.cutout_candidate, route.submit, SUCCEEDED(result), route.routed || route.composition,
             route.cutout_test_known, route.cutout_test, route.cutout_color_known, route.cutout_color,
             route.cutout_alpha_known, route.cutout_alpha, route.cutout_z_known, route.cutout_z,
@@ -4581,7 +4686,9 @@ void MotionOutput::readback() noexcept {
     if (!target_surface_ || !counters_.filled) return;
     readback_surface(target_surface_, D3DFMT_A32B32G32R32F, 16, L"motion", L"rgba32f", "motion_output_readback", "rgba32f_row_major", target_width_, target_height_);
     if (depth_enabled_ && depth_surface_)
-        readback_surface(depth_surface_, D3DFMT_R32F, 4, L"depth", L"r32f", "motion_output_depth_readback", "r32f_row_major", target_width_, target_height_);
+        readback_surface(depth_surface_, sun_lane_active_?D3DFMT_G32R32F:D3DFMT_R32F, sun_lane_active_?8:4, L"depth", sun_lane_active_?L"rg32f":L"r32f", "motion_output_depth_readback", sun_lane_active_?"rg32f_row_major":"r32f_row_major", target_width_, target_height_);
+    if(sun_lane_active_&&sun_frame_.available&&sun_frame_.coverage_required&&sun_coverage_current_&&composition_)
+        readback_surface(composition_->coverage_target(),D3DFMT_A16B16G16R16F,8,L"sun_coverage",L"rgba16f","sun_shadow_lane_coverage_readback","rgba16f_row_major",target_width_,target_height_);
 }
 
 // One read of the engine's projection and view buffers (camera_state.cpp:
@@ -5010,6 +5117,15 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 27: return composition_counts_.in_place;
     case 28: return composition_counts_.in_place_linear;
     case 29: return unsigned(composition_counts_.region_pixels);
+    case 90: return sun_lane_qualified_;
+    case 91: return sun_lane_active_;
+    case 92: return sun_frame_.available;
+    case 93: return sun_frame_.receivers;
+    case 94: return sun_frame_.untracked;
+    case 95: return sun_lane_failed_;
+    case 96: return sun_frame_.coverage_required;
+    case 97: return counters_.taa.resolved;
+    case 98: return counters_.taa.used_history;
     case 30: return unsigned(cutout_caps_);
     case 31: return cutout_cap_queries_;
     case 32: return cutout_coverage_missed_;
@@ -5078,12 +5194,12 @@ HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t 
     if (height) *height = target_height_;
     if (target != 1 && target != 2 && target != 3) return D3DERR_INVALIDCALL;
     IDirect3DSurface9* surface = target == 1 ? target_surface_ : target == 2 ? depth_surface_ : composition_ ? composition_->coverage_target() : nullptr;
-    const unsigned components = target == 2 ? 1u : 4u;
+    const unsigned components = target == 2 ? (sun_lane_active_?2u:1u) : 4u;
     if (!surface) return D3DERR_NOTFOUND;
     if (!out || floats < std::size_t(target_width_) * target_height_ * components) return D3DERR_MOREDATA;
     IDirect3DSurface9* copy = nullptr;
     HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, target_width_, target_height_,
-        target == 1 ? D3DFMT_A32B32G32R32F : target == 2 ? D3DFMT_R32F : D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
+        target == 1 ? D3DFMT_A32B32G32R32F : target == 2 ? (sun_lane_active_?D3DFMT_G32R32F:D3DFMT_R32F) : D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
     if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
     D3DLOCKED_RECT lock{};
     if (SUCCEEDED(hr)) hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);

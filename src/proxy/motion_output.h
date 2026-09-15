@@ -28,6 +28,7 @@
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/depth_prepass_profiles.h"
+#include "../renderer/sun_share_frame.h"
 #include "../renderer/motion_row_history.h"
 #include "../renderer/camera_reprojection.h"
 #include "../renderer/ambient_occlusion_pass.h"
@@ -80,6 +81,7 @@ struct MotionRoute {
     bool linear_material = false; // Combined color+motion pair actually bound.
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
+    bool sun_receiver = false, sun_color_writer = false;
     bool depth = false, rt2_set = false, write2_set = false;   // RT2 bound for this draw (row has depth_output).
     bool jittered = false;                                     // Jittered rows written; restore after the draw.
     UINT jitter_register = 0;                                  // The VS row's clip-row window base.
@@ -394,6 +396,14 @@ public:
     // RT2 (R32F current depth) is produced on this device: three simultaneous
     // targets, R32F render-target support and the three-format self test.
     bool depth_enabled() const noexcept { return depth_enabled_; }
+    void configure_sun_shadow_lane(bool requested) noexcept { sun_lane_requested_=requested; }
+    bool sun_shadow_lane_enabled() const noexcept { return sun_lane_active_; }
+    // Diagnostic snapshot at scene end BEFORE AO/TAA; not a later color-owner lease.
+    const renderer::SunShareFrame& sun_shadow_frame() const noexcept { return sun_frame_; }
+    // Borrowed same-frame exclusion M; valid only while sun_shadow_frame().available.
+    IDirect3DSurface9* sun_shadow_coverage() const noexcept {
+        return sun_frame_.available&&sun_frame_.coverage_required&&composition_?composition_->coverage_target():nullptr;
+    }
     // Per-draw jitter (X3M_MOTION_JITTER=1) with a Halton(2,3) sequence of
     // `samples` entries advanced at each latching Clear; effective from the
     // next latch. Default off. Bounds of the cut detector: the median bound
@@ -714,6 +724,10 @@ private:
     // object never replaces the ordinary motion fallback for shared stages.
     struct ShaderEntry { std::uint64_t hash = 0; IUnknown* variant = nullptr;
                          IUnknown* material_variant = nullptr;
+                         IDirect3DPixelShader9* sun_motion_variant = nullptr;
+                         IDirect3DPixelShader9* sun_material_variant = nullptr;
+                         IDirect3DPixelShader9* sun_xt_variant = nullptr;
+                         bool sun_extraction = false;
                          // XT DEFAULT is pair-specific: the shared VS retains
                          // its generic objects for every earlier exact pair.
                          IUnknown* xt_default_ordinary_variant = nullptr;
@@ -729,6 +743,10 @@ private:
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
+        IDirect3DPixelShader9* ps_sun_motion = nullptr;
+        IDirect3DPixelShader9* ps_sun_material = nullptr;
+        IDirect3DPixelShader9* ps_sun_xt = nullptr;
+        bool ps_sun_extraction = false;
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
@@ -803,6 +821,19 @@ private:
     };
     struct SavedState;
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
+    bool sun_lane_self_test(D3DFORMAT depth_format, char* reason, std::size_t reason_size) noexcept;
+    void qualify_sun_lane() noexcept;
+    void publish_sun_lane(const char* source) noexcept;
+    bool sun_lane_requested_=false, sun_lane_qualified_=false, sun_lane_active_=false, sun_lane_failed_=false;
+    D3DFORMAT sun_lane_depth_formats_[3]{};
+    unsigned sun_lane_depth_count_=0;
+    bool sun_lane_depth_qualified(D3DFORMAT format) const noexcept {
+        for(unsigned i=0;i<sun_lane_depth_count_;++i)if(sun_lane_depth_formats_[i]==format)return true;
+        return false;
+    }
+    renderer::SunShareFrame sun_frame_{};
+    bool sun_coverage_current_=false, sun_composition_completed_=false;
+    IDirect3DPixelShader9* sun_sentinel_ps_=nullptr;
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;
     // The 4x4 StretchRect round trip of one 8-bit format through FP16 and
     // back (D1 of the native-Windows audit): exact 8-bit bytes, FP16 within
@@ -1142,6 +1173,7 @@ private:
     IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
     IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
     UINT target_width_ = 0, target_height_ = 0;
+    std::uint64_t target_generation_ = 0; // Successful allocation in this device/reset generation.
     bool target_failed_ = false;
     IDirect3DPixelShader9* sentinel_ps_ = nullptr;      // One output: motion target alone.
     IDirect3DPixelShader9* sentinel_mrt_ps_ = nullptr;  // Two outputs: motion and depth targets.

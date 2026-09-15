@@ -5,6 +5,12 @@
 #include "motion_output_profiles.h"
 
 namespace x3m::renderer {
+// Lane-only augmentation of an already validated/generated depth producer.
+// Adds one DEF at c221 and one final MOV oC2.g = -1; original bytes remain
+// ordered/verbatim and output is unchanged on refusal/allocation failure.
+// Rejects any c221 use or absent depth export. Never use on extraction output.
+bool material_motion_invalid_sun_share(std::vector<std::uint32_t>& program) noexcept;
+
 struct MaterialMotionVariant {
     std::vector<std::uint32_t> vertex;
     std::vector<std::uint32_t> pixel;

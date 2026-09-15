@@ -424,16 +424,18 @@ def load_readback(path, width, height):
 DEPTH_SENTINEL = -1.0
 
 
-def load_r32f(path, width, height):
+def load_r32f(path, width, height, components=1):
+    if components not in (1, 2):
+        raise MalformedInput("depth components must be 1 or 2")
     size = path.stat().st_size
-    if size != width * height * 4:
-        raise MalformedInput(f'{path.name}: size {size} != {width}x{height}x4')
+    if size != width * height * 4 * components:
+        raise MalformedInput(f'{path.name}: size {size} != {width}x{height}x{4 * components}')
     data = array.array('f')
     with path.open('rb') as stream:
-        data.fromfile(stream, width * height)
+        data.fromfile(stream, width * height * components)
     if sys.byteorder != 'little':
         data.byteswap()
-    return data
+    return data[::components]
 
 
 def depth_image_stats(data):
@@ -1127,7 +1129,7 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
                 hard_errors.append(f'{depth_name}: depth readback result {frame.depth_readback.get("result")}')
             elif depth_path.is_file():
                 try:
-                    depth = load_r32f(depth_path, width, height)
+                    depth = load_r32f(depth_path, width, height, 2 if (frame.depth_readback or {}).get("format") == "rg32f_row_major" else 1)
                     stats = depth_image_stats(depth)
                     report['depth_image'] = {'file': depth_path.name, 'status': 'loaded', 'sha256': sha256_stream(depth_path), **stats}
                     depth_images.append(report)

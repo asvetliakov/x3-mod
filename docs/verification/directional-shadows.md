@@ -64,7 +64,7 @@ The separate qualification object build passed with zero warnings; its local
 record is `/tmp/x3-sun-runtime-fixture-build.json`. It is not an install candidate.
 Native Windows execution, gameplay coverage and GPU performance remain open.
 
-### Actual-renderer execution checkpoint
+### Initial actual-renderer execution checkpoint
 
 The actual MotionOutput positive case passed 43,269 fixture checks and 18 state
 restorations across six frames, including Reset; all six TAA readbacks are byte
@@ -73,13 +73,43 @@ identical to the R32 reference. The runner initially misparsed nested
 a GPU rerun. Four early-failure cases (capability, dropped cutout, alpha-write
 mask, allocation) also passed, covering 24 additional frames.
 
-Qualification remains incomplete: the late-shader failure case stops at frame 2
+At this initial checkpoint qualification remained incomplete: the late-shader case stopped at frame 2
 on a TAA-history expectation, and composition stops at frame 1 on an exchange
-publication expectation. These are open fixture/runtime diagnoses, not accepted
-fallback evidence. Later cases have not yet run. Small local witnesses:
+publication expectation. These were unresolved fixture/runtime diagnoses, not accepted
+fallback evidence; the later qualification below resolves them. Small local witnesses:
 
 - Positive: `/tmp/x3-sun-live-positive-revalidation.json`.
 - Early passes and late-shader failure: `/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-zfrdwrrm/failed-result.json`.
 - Composition: `/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-oarlm2ss/composition/stdout.txt`.
 
 No integration or install follows from this partial checkpoint.
+
+## Runtime integration checkpoint — independent review PASS
+
+The default-off `--sun-shadow-lane` is integrated in source. It publishes a
+qualified sun-share/depth lane with same-frame exclusions; it does not render
+shadows. The [compact evidence](../../verification/results/sun-share-runtime.json)
+binds extraction, temporal and actual-renderer slices to their executable and
+DLL identities. Reviewer independently revalidated all 11 actual-renderer cases:
+**66 byte-exact TAA frame comparisons, 40 history frames and 11 Resets**.
+
+The fixes separate two fixture defects (duplicate motion keys and non-indexed
+submission outside additive admission) from the production history defect.
+Successful same-size/same-generation G32-to-R32 fallback now preserves motion
+rows; Reset, resize, loss and allocation failure retain normal invalidation.
+The extracted production-method fixture passed 49 checks, 27 creates and zero
+surviving surfaces; two affected review tests passed in 2.417 s.
+
+Actual additive composition runs cover 18 frames, with exclusion-mask union
+counts 4,608 / 3,072 / 3,072 for ordinary/missing/failed coverage cases. Missing
+or failed coverage invalidates sun availability and uses current-only TAA with
+no history seed. Late shader failure preserves ordinary TAA but an absent cached
+variant remains unavailable after Reset (`shader_cache`); bind-only failure with
+a complete cache requalifies. No unsafe original-pointer reconstruction occurs.
+
+Final six-case Wine execution took 14.665 s, with negligible lock wait, on X3/
+arm64 with `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Retained unaffected
+positive/early-failure slices avoid unnecessary reruns. Earlier shader extraction
+and temporal-copy qualification remain as recorded above. Native Windows,
+gameplay coverage and GPU performance remain open; composition evidence here
+is the additive exchange route. No shadow replay, cascades or install is claimed.

@@ -73,14 +73,13 @@ reviewed in source, separately from the fill candidate ([ledger](verification/ch
 route-B order: sun-lit-share lane, replay feasibility without shading, then cascades;
 screen-space shadows are fallback only. The [sun-share extraction contract](reverse-engineering/sun-share-material-contract.md)
 now covers all 108 pixel originals; the receiver/capability boundary is ratified
-in the shadow note, with portable depth-history channel copying required. No
-live shadow lane or replay is implemented yet. Sun-share extraction is now
-reviewed and host-qualified in source (432 variants; 1,388 legacy outputs unchanged
-at that extraction checkpoint).
-The isolated runtime implementation now has reviewed GPU extraction and temporal-copy
-evidence. Actual-renderer positive and four early-failure cases pass; late-shader
-history and composition-publication expectations currently fail and are under
-investigation before integration ([ledger](verification/directional-shadows.md)).
+in the shadow note. The default-off sun-share runtime lane is now integrated and
+independently reviewed: 216 extraction GPU cases, portable depth-history copying,
+and 11 actual-renderer cases / 66 byte-exact TAA frames pass. Composition
+exclusions, fallback and Reset are qualified within the recorded boundaries;
+missing shader variants remain unavailable through Reset. It awaits the next
+candidate; shadow replay and cascades remain unimplemented
+([ledger](verification/directional-shadows.md)).
 The inherited PS3 constant-read-port violation is repaired and reviewed in
 source: legacy/fill GPU reports and 1,162 fade readbacks match retained
 baselines exactly ([repair ledger](verification/linear-material-constant-port.md)).

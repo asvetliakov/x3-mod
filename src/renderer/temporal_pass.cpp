@@ -56,11 +56,12 @@ template<class Resource> HRESULT same_device(IDirect3DDevice9* device,Resource* 
     const bool same=owner==device;drop(owner);
     return same?S_OK:E_INVALIDARG;
 }
-HRESULT texture_input(IDirect3DDevice9* device,IDirect3DTexture9* texture,UINT w,UINT h,D3DFORMAT format) noexcept {
+HRESULT texture_input(IDirect3DDevice9* device,IDirect3DTexture9* texture,UINT w,UINT h,D3DFORMAT format, D3DFORMAT* depth_format=nullptr) noexcept {
     if(!texture)return E_INVALIDARG;
     D3DSURFACE_DESC desc{};
     HRESULT hr=texture->GetLevelDesc(0,&desc);if(FAILED(hr))return hr;
-    if(desc.Width!=w||desc.Height!=h||desc.Format!=format||desc.MultiSampleType!=D3DMULTISAMPLE_NONE)return E_INVALIDARG;
+    if(desc.Width!=w||desc.Height!=h||(desc.Format!=format&&!(depth_format&&desc.Format==D3DFMT_G32R32F))||desc.MultiSampleType!=D3DMULTISAMPLE_NONE)return E_INVALIDARG;
+    if(depth_format)*depth_format=desc.Format;
     return same_device(device,texture);
 }
 // The 8-bit main target: a default-pool, non-multisampled 32-bit surface that
@@ -264,12 +265,14 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
             if(owned&&(in.color==owned||in.depth_snapshot==owned||in.current_depth==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
         if(in.color_surface&&(in.color_surface==color_surfaces_[i]||in.color_surface==scratch_surface_||in.color_surface==staging_surface_))return fail(E_INVALIDARG);
     }
-    D3DFORMAT surface_format=D3DFMT_UNKNOWN;
+    D3DFORMAT surface_format=D3DFMT_UNKNOWN, depth_format=D3DFMT_UNKNOWN;
     HRESULT hr=in.color?texture_input(device_,in.color,in.width,in.height,D3DFMT_A16B16G16R16F):surface_input(device_,in.color_surface,in.width,in.height,&surface_format);
-    if(SUCCEEDED(hr))hr=in.current_depth?texture_input(device_,in.current_depth,in.width,in.height,D3DFMT_R32F):texture_input(device_,in.depth_snapshot,in.width,in.height,D3DFMT_D24X8);
+    if(SUCCEEDED(hr))hr=in.current_depth?texture_input(device_,in.current_depth,in.width,in.height,D3DFMT_R32F,&depth_format):texture_input(device_,in.depth_snapshot,in.width,in.height,D3DFMT_D24X8);
     if(SUCCEEDED(hr)&&in.motion_policy==MotionPolicy::PerPixel)hr=texture_input(device_,in.motion,in.width,in.height,D3DFMT_A32B32G32R32F);
     if(SUCCEEDED(hr)&&mask)hr=texture_input(device_,in.reactive,in.width,in.height,supplemental?D3DFMT_A16B16G16R16F:D3DFMT_R32F);
     if(FAILED(hr))return fail(hr);
+    const bool depth_draw=depth_format==D3DFMT_G32R32F;
+    if(depth_draw&&!copy_)return fail(E_INVALIDARG);
     hr=allocate(in.width,in.height,mask);if(FAILED(hr))return fail(hr);
     hr=ensure_block();if(FAILED(hr))return fail(hr);
     history_.begin(in.width,in.height,in.epoch);
@@ -287,6 +290,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(FAILED(hr))return fail(hr);
     const UINT next=current_^1;
     bool own_scene=false;
+    std::uint64_t depth_draw_ticks=0;
     mark=stamp();
     hr=normalize(in.width,in.height);
     diagnostics_.ticks_draw=stamp()-mark;
@@ -307,7 +311,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     }
     diagnostics_.ticks_copy_color=stamp()-mark;
     mark=stamp();
-    if(SUCCEEDED(hr)&&in.current_depth){
+    if(SUCCEEDED(hr)&&in.current_depth&&!depth_draw){
         IDirect3DSurface9* source=nullptr;
         if(step(in.current_depth->GetSurfaceLevel(0,&source)))hr=call<StretchFn>(StretchRect)(d,source,nullptr,depth_surfaces_[next],nullptr,D3DTEXF_POINT);
         drop(source);
@@ -315,6 +319,17 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     diagnostics_.ticks_copy_depth=stamp()-mark;
     mark=stamp();
     if(SUCCEEDED(hr)&&!in.caller_scene_open){hr=call<SceneFn>(BeginScene)(d);own_scene=SUCCEEDED(hr);}
+    // Enhanced RT2 retains R32F histories. The identity program point-samples
+    // the two-channel source; R32F stores only .r, exactly preserving sentinels.
+    // Never request an unsupported G32R32F -> R32F StretchRect conversion.
+    if(SUCCEEDED(hr)&&depth_draw){
+        const auto depth_mark=stamp();
+        if(step(call<SetRtFn>(SetRenderTarget)(d,0,depth_surfaces_[next]))&&
+           step(call<SetPsFn>(SetPixelShader)(d,copy_))&&
+           step(call<SetTextureFn>(SetTexture)(d,0,in.current_depth)))hr=quad(in.width,in.height);
+        depth_draw_ticks=stamp()-depth_mark;
+        diagnostics_.ticks_copy_depth+=depth_draw_ticks;
+    }
     // Draw mode: the identity program converts the staged 8-bit copy into the FP16 scratch.
     if(SUCCEEDED(hr)&&draw_copy&&step(call<SetRtFn>(SetRenderTarget)(d,0,scratch_surface_))&&
         step(call<SetPsFn>(SetPixelShader)(d,copy_))&&step(call<SetTextureFn>(SetTexture)(d,0,staging_)))hr=quad(in.width,in.height);
@@ -381,7 +396,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         if(lost(copy_result))hr=copy_result;
     }
     if(own_scene&&!lost(hr)){const HRESULT end=call<SceneFn>(EndScene)(d);if(SUCCEEDED(hr)||lost(end))hr=end;}
-    diagnostics_.ticks_draw+=stamp()-mark;
+    diagnostics_.ticks_draw+=stamp()-mark-depth_draw_ticks;
     diagnostics_.operation=hr;
     // Once loss is observed, ordinary state setters are not valid recovery. A
     // failed pass never publishes any member of a newly written history set.

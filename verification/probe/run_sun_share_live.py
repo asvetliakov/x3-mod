@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""Consume-only actual MotionOutput sun-lane qualification. Run under wine_lock.py.
+
+Requires explicit prebuilt fixture/seam; never builds or changes those inputs.
+The detached material producer fixture is independent and is not executed here.
+"""
+import argparse
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shutil
+import struct
+import subprocess
+import tempfile
+import time
+import bottle
+
+ROOT = Path(__file__).resolve().parents[2]
+CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed')
+
+def fields(line):
+    return dict(re.findall(r'(\w+)=([^\s=]+)(?=\s|$)', line))
+
+def validate(text, trace, work, case):
+    rows = [fields(line) for line in text.splitlines() if line.startswith('SUN_LIVE ')]
+    assert len(rows) == 6 and [int(r['step']) for r in rows] == list(range(6))
+    assert [int(r['frame']) for r in rows] == list(range(6))
+    assert 'RESULT PASS ' in text and 'SUN_LIVE_PASS ' in text and 'FAIL' not in text
+    assert text.count('RESET PASS') == 1 and 'RESTORE_DIFF' not in text
+    early = case in ('caps', 'cutout_drop', 'alpha_mask', 'allocation')
+    late = case in ('late_shader', 'bind')
+    composition = case.startswith('composition')
+    failed_coverage = case in ('composition_missing', 'composition_failed')
+    for i, row in enumerate(rows):
+        lane = not early and not (late and i == 3) and not (case == 'late_shader' and i >= 4)
+        available = lane and not (i == 2 and (late or case == 'untracked' or failed_coverage))
+        assert int(row['lane']) == lane and int(row['available']) == available
+        assert int(row['history']) == (i not in ((0, 2, 3, 4) if failed_coverage else (0, 4)))
+        assert int(row['drawn']) == 3600
+        assert int(row['positive']) == (3600 if lane and i != 1 else 0)
+        assert int(row['zero']) == (3600 if lane and i == 1 else 0)
+        assert int(row['fault']) == (late and i == 2)
+    histories = [fields(line) for line in text.splitlines() if line.startswith('SUN_HISTORY ')]
+    # Existing passed positive/capability records predate this failure witness.
+    # Late-fault and composition acceptance require explicit actual/reference
+    # history, rather than losing the distinction in one combined assertion.
+    if late or composition:
+        assert len(histories) == 6 and [int(r['frame']) for r in histories] == list(range(6))
+    for row in histories:
+        frame = int(row['frame']); expected = int(rows[frame]['history'])
+        assert [int(row[k]) for k in ('expected','reference','actual')] == [expected]*3
+        assert int(row['fixture_cut']) == (frame in (0,4))
+    masks = [fields(line) for line in text.splitlines() if line.startswith('SUN_M ')]
+    assert len(masks) == (6 if composition else 0)
+    if composition:
+        assert [int(r['frame']) for r in masks] == list(range(6))
+        for i, row in enumerate(masks):
+            bad = failed_coverage and i == 2
+            draws = (0,1,1 if case == 'composition_missing' else 2,2,0,1)[i]
+            excluded = 0 if bad else (0,768,1536,1536,0,768)[i]
+            assert int(row['draws']) == draws and int(row['valid']) == (not bad)
+            assert int(row['excluded']) == excluded
+            assert int(row['eligible']) == (0 if bad else 3600-excluded)
+            assert int(row['required']) == (draws > 0 and not (bad and case == 'composition_missing'))
+            assert int(row['interleaved']) == (i == 3)
+            assert int(row['stopped']) == bad
+            assert int(row['incomplete']) == (bad and case == 'composition_failed')
+            assert int(row['linear']) == (1 if bad and case == 'composition_failed' else 0 if bad else draws)
+            assert int(row['exchanged']) == (2 if bad and case == 'composition_failed' else 0 if bad else draws)
+    qualifications = [fields(line) for line in trace.splitlines() if line.startswith('sun_shadow_lane_device ')]
+    assert len(qualifications) == 2
+    assert [int(r['qualified']) for r in qualifications] == ([1,0] if case == 'late_shader' else [int(case not in ('caps','cutout_drop','alpha_mask'))]*2)
+    if case == 'late_shader': assert qualifications[1]['reason'] == 'shader_cache'
+    depths = [fields(line) for line in trace.splitlines() if line.startswith('sun_shadow_lane_depth ')]
+    if case == 'late_shader': assert len(depths) == 1 # Reset refuses incomplete cache before GPU self-test.
+    if case in ('cutout_drop', 'alpha_mask'):
+        # These deliberately broken GPU executions MUST fail the pixel oracle,
+        # rather than merely forcing a final status bit to unavailable.
+        assert depths and all(r['qualified'] == '0' and r.get('stage') == 'cutout_pass' and r.get('result') == '80004005' and r.get('restore') == '00000000' for r in depths)
+    elif not early or case == 'allocation':
+        assert depths and all(r['qualified'] == '1' and r.get('stage') == 'history_r' and r.get('checks') == '18' for r in depths)
+    readbacks = [fields(line) for line in trace.splitlines() if line.startswith('motion_output_taa_readback ')]
+    assert len(readbacks) == 6 and {int(r['frame']) for r in readbacks} == set(range(6))
+    publications = [fields(line) for line in trace.splitlines() if line.startswith('sun_shadow_lane_frame ')]
+    assert len(publications) == 6
+    for row in publications:
+        i = int(row['frame'])
+        assert int(row['available']) == int(rows[i]['available']) and int(row['owner']) == (not (failed_coverage and i == 2))
+        if composition:
+            assert row['exclusion_required'] == masks[i]['required']
+            if int(row['exclusion_required']): assert int(row['exclusion_valid']) == int(masks[i]['valid'])
+        if case == 'untracked' and i == 2:
+            assert int(row['untracked_writers']) > 0 and int(row['receiver_draws']) > 0
+        if late and i == 2:
+            assert row['failed'] == '1' and int(row['receiver_draws']) > 0
+    for row in readbacks:
+        frame = int(row['frame'])
+        assert row['result'] == '00000000' and (int(row['width']), int(row['height'])) == (64, 64)
+        actual = (work/'x3-modern-captures'/row['file']).read_bytes()
+        expected = (work/f'reference_taa_{frame}.rgba16f').read_bytes()
+        assert len(actual) == 64*64*8 and actual == expected, (case, frame, 'TAA differs from ordinary R32 reference')
+        values = list(struct.iter_unpack('<4e', actual))
+        assert all(all(math.isfinite(v) for v in pixel) for pixel in values)
+        assert sum(any(v > 0 for v in pixel[:3]) for pixel in values) > 3600
+    return dict(frames=6, histories=2 if failed_coverage else 4, resets=1, exact_taa_frames=6,
+                composition_frames=len(masks), mask_union_pixels=sum(int(r['excluded']) for r in masks),
+                positive_frames=sum(int(r['positive']) > 0 for r in rows),
+                zero_frames=sum(int(r['zero']) > 0 for r in rows),
+                negative_selftest=case in ('cutout_drop', 'alpha_mask'))
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--fixture', type=Path, required=True)
+    parser.add_argument('--dll', type=Path, required=True)
+    parser.add_argument('--programs', type=Path, default=Path('/tmp/x3-shader-sweep/programs'))
+    parser.add_argument('--case', choices=CASES, action='append')
+    parser.add_argument('--result', type=Path)
+    args = parser.parse_args()
+    assert os.environ.get('X3M_FIXTURE_BOTTLE') == 'X3' and bottle.BOTTLE == 'X3', 'Set X3M_FIXTURE_BOTTLE=X3 explicitly'
+    fixture, dll = args.fixture.resolve(), args.dll.resolve()
+    selected = args.case or CASES
+    names = ['vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin']
+    if any(case.startswith('composition') for case in selected): names += ['vs_089091aab2d5eb13.bin', 'ps_8559522220507d5e.bin']
+    programs = [args.programs.resolve()/name for name in names]
+    inputs = {str(p): sha(p) for p in (fixture, dll, *programs)}
+    raw = Path(tempfile.mkdtemp(prefix='x3-sun-share-live-'))
+    result = args.result or bottle.results_dir(ROOT)/'sun-share-live.json'
+    report = dict(passed=False, bottle=bottle.describe(), raw=str(raw), inputs=inputs, game_launched=False, cases={})
+    try:
+        for case in selected:
+            work = raw/case; work.mkdir()
+            shutil.copy2(fixture, work/'fixture.exe'); shutil.copy2(dll, work/'d3d9.dll')
+            env = {k:v for k,v in os.environ.items() if not k.startswith('X3M_')}
+            env.update(X3M_MOTION_OUTPUT='1', X3M_TAA='1', X3M_HDR='1', X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2',
+                       X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
+                       X3M_LINEAR_MATERIALS='1', X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='1', X3M_LIGHTMAP_EMISSIVE_GAIN='1',
+                       X3M_SUN_SHADOW_LANE='1', X3M_TAA_SENTINEL='1', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0',
+                       X3M_SCENE_HOOK='0', X3M_OWNERSHIP='0', X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1',
+                       X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0', X3M_MOTION_RT_MODE='perdraw', X3M_STATE_SHADOW='1',
+                       X3M_FIXTURE_SUN_LIVE_CASE=case, WINEDLLOVERRIDES='d3d9=n,b')
+            if case.startswith('composition'):
+                env.update(X3M_LINEAR_EMISSIONS='1', X3M_EMISSION_GAIN='1')
+            if case in ('caps', 'cutout_drop', 'alpha_mask', 'allocation'):
+                env['X3M_FIXTURE_SUN_LANE_FAULT'] = case
+            command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work/'fixture.exe'),
+                       *('Z:'+str(p) for p in programs[:2]), 'sunlane']
+            start = time.monotonic()
+            with (work/'stdout.txt').open('w') as out, (work/'wine.log').open('w') as error:
+                completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
+            assert completed.returncode == 0, (case, completed.returncode, str(work))
+            logs = list((work/'x3-modern-captures').glob('session-*.log')); assert len(logs) == 1
+            check = validate((work/'stdout.txt').read_text(), logs[0].read_text(), work, case)
+            report['cases'][case] = dict(check, elapsed_seconds=time.monotonic()-start, command=command)
+        assert all(sha(Path(p)) == digest for p,digest in inputs.items()), 'prebuilt inputs changed'
+        report['passed'] = True
+    finally:
+        destination = result if report['passed'] else raw/'failed-result.json'
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(json.dumps(report, indent=2)+'\n')
+        print(json.dumps(report, indent=2))
+
+if __name__ == '__main__':
+    main()

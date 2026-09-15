@@ -189,6 +189,7 @@ class SunShareTests(unittest.TestCase):
                 for kind,limit in ((0,3),(1,1),(2,1)):
                     reads={motion.register_of(w)[1] for w in sources if motion.register_of(w)[0]==kind}
                     self.assertLessEqual(len(reads),limit,(key,instruction['dword'],kind,reads))
+        self.assertFalse(baseline_port_programs, 'sanitizer repair must keep combined sun shaders within constant read ports')
         self.evidence={'variants':len(self.rows),'sun_mads':152,'weighted_slots':[min(totals),max(totals)],
                        'added_slots':[min(additions),max(additions)],'allocation_faults':self.fault_reports,
                        'baseline_constant_port_programs':len(baseline_port_programs)}

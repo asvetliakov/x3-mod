@@ -717,4 +717,36 @@ MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
     output.pixel.swap(variant.pixel);
     return MaterialMotionResult::Applied;
 }
+bool material_motion_invalid_sun_share(std::vector<std::uint32_t>& program) noexcept {
+    if (program.size()<2 || program.front()!=0xffff0300u || program.back()!=end_token) return false;
+    bool depth=false;
+    for (std::size_t at=1; at<program.size()-1;) {
+        const auto token=program[at]; const unsigned op=token&0xffff;
+        const auto n=instruction_length(token);
+        if (op==op_end || n>program.size()-at-2) return false;
+        if (op!=op_comment) {
+            // Definition immediates and DCL usage tokens are not registers.
+            const auto last=definition_opcode(op)?std::size_t(1):n;
+            for (std::size_t i=1;i<=last;++i) {
+                if(op==op_dcl&&i==1)continue;
+                const auto operand=program[at+i];
+                if ((operand&parameter_bit) && register_type(operand)==constant_class &&
+                    (register_index(operand)==221 || (operand&relative_bit))) return false;
+            }
+            if(n && op!=op_dcl && !definition_opcode(op) && register_type(program[at+1])==color_output_class &&
+               register_index(program[at+1])==2 && (program[at+1]&0x10000u)) depth=true;
+        }
+        at+=n+1;
+    }
+    if(!depth)return false;
+    try {
+        Words replacement; replacement.reserve(program.size()+9);
+        replacement.push_back(program.front());
+        replacement.insert(replacement.end(), {0x05000051u,0xa00f00ddu,0xbf800000u,0u,0u,0u});
+        replacement.insert(replacement.end(),program.begin()+1,program.end()-1);
+        replacement.insert(replacement.end(),{0x02000001u,0x80020802u,0xa00000ddu,end_token});
+        program.swap(replacement); return true;
+    } catch (...) { return false; }
+}
+
 } // namespace x3m::renderer

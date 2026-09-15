@@ -73,6 +73,7 @@ def main():
     parser.add_argument('--linear-distance-fade', action='store_true', default=None, help='Qualify six Asteroid source-over materials in linear light (requires --linear-materials --taa and the material HDR/motion prerequisites; default on with linear materials and TAA, off otherwise; --no-linear-distance-fade disables; full-size composition cost per draw)')
     parser.add_argument('--no-linear-distance-fade', dest='linear_distance_fade', action='store_false', help='Keep the Asteroid source-over materials on the native route even when --linear-materials --taa are on (opt out of the default)')
     parser.add_argument('--fade-witness', type=int, nargs='?', const=30, default=None, metavar='K', help='Diagnostic fade-region witness (X3M_FADE_WITNESS=K; requires --linear-distance-fade; default off; "--fade-witness" alone means 30): every K-th frame without an admitted emission draw the M coverage target is read back once (GetRenderTargetData to a retained system-memory copy) and the covered pixels outside the union of that frame\'s derived fade rectangles are counted; one fade_witness line per K-th frame plus that frame\'s per-DIP fade_region lines (first 64, with a truncated count) in the session log, validated by verification/probe/run_linear_distance_fade_live.py (docs/architecture/linear-distance-fade-region.md, step 1)')
+    parser.add_argument('--sun-shadow-lane', action='store_true', help='Diagnostic sun-share RT2 lane only; applies no shadows (default off; requires --motion-output --taa --hdr --linear-materials).')
     parser.add_argument('--ambient-occlusion', action='store_true', help='Half-resolution GTAO at the scene-end hook, multiplied into the scene target before the temporal resolve (X3M_AMBIENT_OCCLUSION=1; requires --motion-output --taa; default off). Ctrl+Shift+F11 toggles the chain off/on during play for a same-scene comparison (one ambient_occlusion_toggle log line per press; the pass stays attached). docs/architecture/ambient-occlusion.md, "Step 2"')
     parser.add_argument('--ao-radius', type=float, default=None, metavar='METRES', help='Ambient occlusion world radius in metres, 0.1..100, default 2 (X3M_AO_RADIUS; requires --ambient-occlusion; view units are 0.2 m, the calibration is tunable because the view-unit check is inconclusive)')
     parser.add_argument('--ao-strength', type=float, default=None, help='Ambient occlusion strength s of the factor 1 - s (1 - ao), 0..1, default 0.5 (X3M_AO_STRENGTH; requires --ambient-occlusion)')
@@ -196,6 +197,8 @@ def main():
         parser.error('--fade-witness requires --linear-distance-fade.')
     if args.shimmer_trace and not (args.motion_output and args.taa):
         parser.error('--shimmer-trace requires --motion-output --taa.')
+    if args.sun_shadow_lane and not (args.motion_output and args.taa and args.hdr and args.linear_materials):
+        parser.error('--sun-shadow-lane requires --motion-output --taa --hdr --linear-materials.')
     if args.ambient_occlusion and not (args.motion_output and args.taa):
         parser.error('--ambient-occlusion requires --motion-output --taa.')
     if not args.ambient_occlusion and (args.ao_radius is not None or args.ao_strength is not None or args.ao_debug or args.ao_timing):
@@ -362,6 +365,7 @@ def main():
         if args.shimmer_trace:
             env['X3M_SHIMMER_TRACE'] = '1'
         # Ambient occlusion: every switch explicit so an inherited value cannot enable it.
+        env['X3M_SUN_SHADOW_LANE'] = '1' if args.sun_shadow_lane else '0'
         env['X3M_AMBIENT_OCCLUSION'] = '1' if args.ambient_occlusion else '0'
         env['X3M_AO_RADIUS'] = repr(args.ao_radius if args.ao_radius is not None else 2.0)
         env['X3M_AO_STRENGTH'] = repr(args.ao_strength if args.ao_strength is not None else 0.5)

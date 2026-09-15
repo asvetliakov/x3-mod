@@ -28,8 +28,8 @@ import linear_glass_fixture_reference as glass_fixture
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
 EXE = ROOT / 'verification/probe/build/linear_material_fixture.exe'
-CODE_INPUTS = ('src/renderer/linear_material.cpp', 'src/renderer/linear_material.h',
-               'src/renderer/linear_xt_material_inc.h', 'src/renderer/linear_xt_profiles_inc.h',
+CODE_INPUTS = ('src/renderer/quad_vertex_program.h', 'src/renderer/quad_vertex_program_inc.h', 'verification/probe/sun_share_material_inc.h', 'src/renderer/linear_material.cpp', 'src/renderer/linear_material.h',
+               'src/renderer/linear_sun_share_inc.h', 'src/renderer/linear_xt_material_inc.h', 'src/renderer/linear_xt_profiles_inc.h',
                'src/renderer/material_motion.cpp', 'src/renderer/material_motion.h',
                'src/renderer/motion_output_profiles.h',
                'src/renderer/motion_output_profiles_inc.h',
@@ -1081,6 +1081,61 @@ def validate_cutout_report(text,cases=None):
                 max_tolerance_fraction=max_scaled,native_threshold_rows=threshold_rows)
 
 
+def sun_share_cases():
+    selected = {}
+    for case in fixture_cases():
+        pixel = PAIRS[case['pair']][1]
+        if case['depth'] == 1 and case['fp16'] == 1 and pixel not in selected:
+            selected[pixel] = case
+    assert len(selected) == 108
+    cases = []
+    for case in selected.values():
+        normal = copy.deepcopy(case)
+        normal.update(id=len(cases), label='sun_source')
+        cases.append(normal)
+        zero = copy.deepcopy(case)
+        zero.update(id=len(cases), label='sun_zero', dir0=[0., 0., 0.])
+        cases.append(zero)
+    return cases
+
+
+def validate_sun_share_report(text, cases=None):
+    cases = sun_share_cases() if cases is None else cases
+    assert 'FAIL' not in text
+    def records(tag):
+        return [dict(re.findall(r'(\w+)=(\S+)', line)) for line in text.splitlines() if line.startswith(tag+' ')]
+    clear = records('SUN_MATERIAL_CLEAR')
+    assert len(clear) == 1 and int(clear[0]['pixels']) > 0, 'missing no-draw negative control'
+    assert all(int(clear[0][key]) == 0 for key in ('drawn', 'valid', 'positive', 'zero')), 'clear pixels entered acceptance'
+    summaries = records('SUN_MATERIAL_PASS')
+    assert len(summaries) == 1, 'missing or duplicate sun producer summary'
+    summary = summaries[0]
+    count = int(summary['cases'])
+    keys = ('drawn', 'valid', 'positive', 'zero', 'invalid')
+    totals = {key: int(summary[key]) for key in keys}
+    error = float(summary['max_error'])
+    assert count == len(cases) and totals['positive'] > 0 and totals['zero'] > 0
+    assert math.isfinite(error) and 0 <= error <= .01
+    entries = records('SUN_MATERIAL')
+    rows = {int(row['id']): row for row in entries}
+    assert len(entries) == len(cases) and set(rows) == {case['id'] for case in cases}
+    for case in cases:
+        row = rows[case['id']]
+        values = {key: int(row[key]) for key in keys}
+        assert int(row['pair']) == case['pair'] and all(value >= 0 for value in values.values())
+        assert values['drawn'] == values['valid']+values['invalid'] and values['valid'] > 0, (case['id'], 'no valid drawn samples')
+        assert values['valid'] == values['positive']+values['zero']
+        row_error = float(row['max_error'])
+        assert math.isfinite(row_error) and 0 <= row_error <= .01
+        if case['label'] == 'sun_zero':
+            assert values['positive'] == 0 and values['zero'] == values['valid'], (case['id'], 'zero sun not proved on drawn samples')
+    assert all(totals[key] == sum(int(row[key]) for row in entries) for key in keys)
+    assert error == max(float(row['max_error']) for row in entries)
+    return dict(cases=count, drawn_pixels=totals['drawn'], valid_pixels=totals['valid'], positive_pixels=totals['positive'],
+                zero_pixels=totals['zero'], invalid_pixels=totals['invalid'], clear_control_pixels=int(clear[0]['pixels']),
+                max_gpu_subtraction_error=error, shader_extraction=True, live_receiver_qualification=False)
+
+
 def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--exe', type=Path, required=True, help='Previously built fixture EXE; this runner never builds')
@@ -1089,6 +1144,7 @@ def parse_arguments(argv=None):
     selection=parser.add_mutually_exclusive_group()
     selection.add_argument('--alpha-test-cutout',action='store_true',help='Only the two selected native cutout pairs; actual alpha/depth/stencil MRT twins')
     selection.add_argument('--glass-only', action='store_true', help='Run only new glass cases, retaining their original case IDs; skip unrelated timing passes')
+    selection.add_argument('--sun-share', action='store_true', help='108 generated sun-share PS, normal and zero-sun cases; positive pixel evidence and exact color/alpha/motion/depth twins')
     selection.add_argument('--fill', action='store_true', help='Run the bounded K=0.06 sun-averted fill oracle slice')
     return parser.parse_args(argv)
 
@@ -1097,13 +1153,13 @@ def main():
     args = parse_arguments()
     assert bottle.BOTTLE == 'X3', 'new fixtures require X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(), 'game running; fixture refused'
-    cases = alpha_cutout_cases() if args.alpha_test_cutout else fill_cases() if args.fill else fixture_cases()
+    cases = sun_share_cases() if args.sun_share else alpha_cutout_cases() if args.alpha_test_cutout else fill_cases() if args.fill else fixture_cases()
     if args.glass_only: cases = [c for c in cases if c['pair'] >= glass_fixture.START]
     args.raw_dir.mkdir(parents=True, exist_ok=True)
     case_file = args.raw_dir/'cases.bin'
     case_file.write_bytes(binary_cases(cases))
     report = args.raw_dir/'report.txt'
-    result_path = bottle.results_dir(ROOT)/('linear-alpha-test-gpu.json' if args.alpha_test_cutout else 'linear-material-fill-gpu.json' if args.fill else 'linear-glass-gpu.json' if args.glass_only else 'linear-material-gpu.json')
+    result_path = bottle.results_dir(ROOT)/('sun-share-material-gpu.json' if args.sun_share else 'linear-alpha-test-gpu.json' if args.alpha_test_cutout else 'linear-material-fill-gpu.json' if args.fill else 'linear-glass-gpu.json' if args.glass_only else 'linear-material-gpu.json')
     inputs = original_provenance(cases, args.programs)
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
@@ -1117,6 +1173,10 @@ def main():
           scope='23 sun-averted FP16 cases across 17 hull/asteroid/palette families, four XT standard/damage techniques and glass; point/material/reflection/lightmap/specular inputs zero. One-FP16-code oracle. No terraformer case because its occlusion RGB is also an additive emission source; no exhaustive program, live route or native Windows proof.',
           timing_scope='No benchmark in the bounded fill correctness slice.',
           tolerance=dict(fp16_code_distance=1, alpha='exact'))
+    if args.sun_share:
+        result['scope']='108 converted PS, normal and zero-sun paired cases. Detached positive valid share and independent D0 RGB subtraction, exact color/alpha/motion/depth. No live receiver/publication or native Windows runtime proof.'
+        result['timing_scope']='No benchmark; correctness readbacks only.'
+        result['render_contract']['targets']=['RGBA16F','RGBA32F','G32R32F']
     if args.alpha_test_cutout:
         result['scope']='Two captured Argon pairs, GE/ref1, mask7, blend off. Detached native/motion/combined coverage, retained alpha, hardware depth/stencil and poisoned MRT twins. No production gate/live TAA/native Windows qualification.'
         result['timing_scope']='No benchmark in this detached correctness mode; runtime route cost remains unmeasured.'
@@ -1126,12 +1186,13 @@ def main():
     command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(args.exe),'Z:'+str(args.programs),'Z:'+str(case_file)]
     if args.alpha_test_cutout: command.append('--alpha-test-cutout')
     if args.fill: command.extend(('--fill', str(FILL)))
+    if args.sun_share: command.append('--sun-share')
     try:
         with report.open('w') as out,(args.raw_dir/'wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1200)
         result['exit_code']=process.returncode
         assert process.returncode==0, 'fixture failed; see '+str(report)
-        validator = validate_cutout_report if args.alpha_test_cutout else validate_fill_report if args.fill else validate_report
+        validator = validate_sun_share_report if args.sun_share else validate_cutout_report if args.alpha_test_cutout else validate_fill_report if args.fill else validate_report
         result.update(validator(report.read_text(),cases))
         assert sha(args.exe)==result['executable_sha256'], 'executable changed'
         assert result['code_sha256']=={name:sha(ROOT/name) for name in CODE_INPUTS}, 'fixture/core/reference changed during run'

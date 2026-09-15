@@ -34,7 +34,7 @@ struct AmbientOcclusionParams {
     unsigned jitter_index = 0;     // rotates the 4x4 noise (integer, 0..15 used)
 };
 struct AmbientOcclusionFrame {
-    IDirect3DTexture9* depth = nullptr;  // R32F, width x height, device z/w with the -1 sentinel
+    IDirect3DTexture9* depth = nullptr;  // R32F or G32R32F .r, width x height, device z/w with -1 sentinel
     IDirect3DSurface9* target = nullptr; // owning scene target of the attached format; null computes the term only
     UINT width = 0, height = 0;
     AmbientOcclusionParams params{};

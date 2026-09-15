@@ -288,7 +288,7 @@ HRESULT AmbientOcclusionPass::execute(const AmbientOcclusionFrame& in, AmbientOc
     if (in.depth == half_depth_ || in.depth == ao_[0] || in.depth == ao_[1]) return fail(AmbientOcclusionStage::Validate, E_INVALIDARG);
     D3DSURFACE_DESC desc{};
     HRESULT hr = in.depth->GetLevelDesc(0, &desc);
-    if (SUCCEEDED(hr) && (desc.Width != in.width || desc.Height != in.height || desc.Format != D3DFMT_R32F || desc.MultiSampleType != D3DMULTISAMPLE_NONE))
+    if (SUCCEEDED(hr) && (desc.Width != in.width || desc.Height != in.height || (desc.Format != D3DFMT_R32F && desc.Format != D3DFMT_G32R32F) || desc.MultiSampleType != D3DMULTISAMPLE_NONE))
         hr = E_INVALIDARG;
     if (SUCCEEDED(hr)) hr = same_device(device_, in.depth);
     if (SUCCEEDED(hr) && in.target) {

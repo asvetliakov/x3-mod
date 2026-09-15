@@ -626,3 +626,312 @@ that bounded entry/fixture work before live promotion; a clean counter run canno
 substitute. Parent must ratify the managed-only diagnostic boundary, source-record
 check and staged activation; useful admitted geometry and native Windows runtime
 remain separate acceptance gaps tracked by [platform portability](platform-portability.md).
+
+## 10. Diagnostic lane source checkpoint (2026-09-15)
+
+`--sun-shadow-lane` / `X3M_SUN_SHADOW_LANE=1` is explicit and default off,
+requiring motion output, TAA, HDR and linear materials. It applies no shadows
+and records no replay geometry. Its off path retains ordinary shader objects,
+R32F storage and the ordinary depth-history copy.
+
+### Storage, cached variants and publication
+
+The enhancement has its own documented D3D9 queries and self-test in
+`src/proxy/sun_share_lane_inc.h`. It requires three MRTs, independent bit depths
+and masks, post-pixel operations, per-format target/sampling/post-pixel queries
+and depth-stencil matching. The self-test uses FP16 RT0, RGBA32F RT1 and G32R32F
+RT2; reads ordinary and exact GE/ref1/RGB-mask cutout writes and rejection,
+hardware depth rejection, independent RT2 masking, final invalid `.g`, two-lane
+point sampling and point-copy `.r` into R32F. It captures a full state block plus
+explicit targets/depth/viewport/scissor and restores after any mutation. A
+restore failure uses the existing shared-state quarantine/TAA safety response.
+There is no Wine-private prerequisite.
+
+When a depth attachment exists at attach/Reset, qualify that format. Without
+one, test the bounded D16/D24X8/D24S8 set and cache successes; a scene latch must
+match an actually qualified format. No test runs inside a game scene. Failed
+queries/tests select ordinary R32F. RT1/RT2 allocation is a transaction: failed
+enhanced allocation discards its incomplete objects and retries R32F at the
+latch, retaining ordinary shaders. Reset/resize release owned targets and
+rebuild the selected storage; Reset repeats format qualification.
+
+Each depth-producing PS has a separate cached invalid-share variant. Its sole
+final `MOV oC2.g = -1` uses a collision-checked shader-local c221 DEF, adds one
+slot and no temporary or host upload, and preserves all original instructions.
+The converted variant instead selects the explicit extraction API. Ordinary
+opaque/qualified cutout depth writers, including opaque glass, can publish a
+receiver. Fused fade keeps its existing RT2 mask; detached/native blend draws
+never become receivers. Empty clear is `(-1,0)`; invalid share is `-1`, distinct
+from proved zero. Failed shader creation/bind immediately vetoes the shadow
+frame and schedules R32F for the next frame boundary. The failed frame has **no
+physical `.g` validity guarantee**; it is unavailable, even if bytes happen to
+look nonnegative. This fallback never changes RT2 format mid-frame or disables
+ordinary TAA solely because the lane failed.
+
+`SunShareFrame` is a diagnostic snapshot at the pre-AO/TAA scene-end boundary,
+not a later lease on the owning color. Successful in-place completion or
+completed exchange/acknowledgement establishes same-frame conservative M.
+Every pixel covered by M is excluded. A successful later owning scene color
+writer without a proved depth/share update or completed conservative coverage
+vetoes the frame after an eligible receiver. Unknown state, failed publication
+and unavailable required M refuse the shadow snapshot. A plain depth writer
+with explicit invalid `.g` safely replaces an earlier receiver. The lane veto
+has no independent TAA-invalidation call.
+
+TAA recognizes G32R32F input and reuses its existing authored identity-copy PS
+with point sampling, writing only `.r` into the existing R32F history. It never
+requests G32R32F→R32F StretchRect. Copy failure restores state and leaves history
+unpublished; depth-copy timings exclude those ticks from resolve-draw timing.
+AO accepts either input format and samples `.r`. Capture/fixture readbacks and
+`analyze_motion_readback.py` use actual 4/8-byte depth stride. Capture frames
+with required valid M also write `sun_coverage_*.rgba16f`.
+`tools/analysis/analyze_sun_share_lane.py` requires the same-frame publication,
+G32 readback and required M before reporting actual eligible/zero-sun/excluded
+pixels. Unavailable frames always report zero eligible pixels.
+
+### Evidence and outstanding execution
+
+Host checks cover 110 ordinary motion depth PS, 108 linear PS and four XT
+repaired ordinary PS accepting invalid-share augmentation with original words
+verbatim. The separate extraction suite retains 432 variants / 152 sun MADs,
+137–349 weighted slots and 32–45 added slots on the repaired base. This lane checkpoint is now based on sanitizer repair
+`5b3b5c3`; the extraction suite additionally requires zero inherited constant
+read-port violations in the combined shaders. The repair's existing qualification
+remains separate from the pending lane GPU/native-runtime evidence.
+The synthetic C++ checks cover sentinel export, c221/relative-use/malformed
+refusal, allocation rollback, frame ordering, invalid-depth updates, coverage
+loss and frame veto; Python checks cover readback stride and fail-closed pixel
+counts. After the zero-sun fix and sanitizer integration, the affected lane,
+extraction and fill suites passed 19 host tests in 30.33 s; the 1,388-output
+zero-fill digest matches the sanitizer repair. MinGW fixture/transformer syntax
+checks use the required SSE2/four-byte incoming-stack flags.
+
+Owner acceptance commands (not executed under Wine by this agent):
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane verification.analysis.test_motion_readback verification.analysis.test_linear_sun_share verification.analysis.test_linear_material_report
+sh verification/probe/build_linear_material.sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_linear_material.py --exe verification/probe/build/linear_material_fixture.exe --sun-share --raw-dir /tmp/x3-sun-share-material-gpu
+sh verification/probe/build_temporal_pass.sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_temporal.py
+python3 tools/analysis/analyze_sun_share_lane.py PATH_TO_CAPTURE_LOG --readback-dir PATH_TO_READBACKS
+```
+
+The detached `--sun-share` mode prepares 216 cases over all 108 PS originals,
+normal/zero-sun twins, exact color/alpha/motion/depth comparisons, positive valid
+pixel requirements and an independent paired GPU D0-subtraction oracle with
+0.01 share tolerance for FP16 encode/decode. Before every material draw, an
+authored constant PS through the shared quad ABI initializes RT2 to `(-1,0)`;
+color and motion remain zero-cleared. A no-material-draw readback must contain
+only that sentinel and report zero drawn/valid/positive/zero-sun samples. Each
+case must then contain valid drawn samples; every zero-sun case requires
+`zero == valid > 0` and no positive share. Report validation rejects missing or
+duplicate rows, inconsistent count totals, clear pixels counted as zero-sun,
+and zero-sun cases without drawn samples. It is not live receiver acceptance.
+The temporal `sun-lane-only` mode prepares eight exact ordinary/enhanced history
+twins, four first-copy failures/recoveries, two sizes across two Reset generations,
+hostile-state comparisons, missing-copy refusal and an explicit cross-format
+StretchRect rejection. Actual GPU results are pending. Runtime fixture seams
+`X3M_FIXTURE_SUN_LANE_FAULT=caps|selftest|cutout_drop|alpha_mask|allocation|late_shader|bind` and status
+keys 90–98 expose qualification, active format, publication and failure counts.
+Their live route ordering, late-failure R32 fallback and positive gameplay pixel
+coverage still require owner-run fixtures/captures; no game was launched here.
+
+Cost pass: no new per-draw allocation, transformation, constant upload,
+capability query or lock; cached pointer selection and bounded integer frame
+bookkeeping only. The full corpus can add 222 cached PS objects plus one clear
+PS. Steady storage adds 4 B/pixel (3.75 MiB at 1280×768), with unchanged R32F
+histories and one full-size copy draw replacing StretchRect. Qualification
+allocates five 4×4 textures, five readback surfaces, one depth surface and five
+PS objects per tested depth format, all temporary, plus the retained clear PS.
+A synthetic host bookkeeping loop measured about 1 ns/iteration including loop
+and pseudorandom-input overhead; this is neither draw cost nor game FPS.
+Startup qualification time, GPU register pressure/bandwidth and native Windows
+execution remain unmeasured. No production DLL build, commit or install occurred.
+
+
+### Review correction: nonvacuous cutout and actual MotionOutput fixture
+
+The qualification positive cutout now writes RGB `(.5,.75,.25)`, motion
+`(7,8,9,-1)`, and depth/share `(.125,.75)` over different opaque values.
+Source alpha `.5` passes GE/ref1 while RGB-only writes must retain destination
+alpha `1`. A third, distinct alpha-zero payload must leave those passing outputs
+unchanged. Raster depth progresses `.5 → .25`; the subsequent `.375` draw must
+fail, proving that the passing cutout updated hardware depth as well. The 18
+readback comparisons remain; this correction adds one temporary three-slot
+constant PS, no draw, allocation or query to the game hot path. Fixture-only
+`cutout_drop` skips the passing draw and `alpha_mask` enables the forbidden alpha
+write. Both must fail at `stage=cutout_pass` with successful restoration, then
+run ordinary R32F TAA. Host payload execution rejects both broken outcomes.
+
+The actual `motion_output_fixture.exe ... sunlane` mode uses the original
+Argon material pair, real selector, native seam, lane qualification and cached
+shader routing. Its 3,600 interior pixels are selected from known triangle
+coverage, independently of observed depth/share. They must have exact `.r=.5`
+and finite valid `.g`, with every pixel positive or (the explicit D0-zero frame)
+exactly zero. Scene-end publication is asserted separately. Late shader
+creation/bind failure follows an already observed positive receiver, leaves
+G32 storage in that frame, vetoes publication, and chooses R32 on the next
+frame. A separate untracked color writer must actually replace FP16 color while
+retaining stale positive lane bytes, veto publication and keep TAA. Reset then
+requalifies. Every frame also compares the complete FP16 TAA output against the
+existing independent R32 reference, with four history frames per six-frame
+process; no status-only TAA acceptance. Caller-state comparisons and final
+zero device/factory references use the existing fixture checks.
+
+`run_sun_share_live.py` consumes explicit prebuilt EXE/seam inputs and preserves
+the detached material producer executable, inputs and result. Its eight scoped
+cases prepare 48 frame/output comparisons, 32 history frames, eight Resets,
+18 positive receiver-frame witnesses and four exact-zero receiver frames.
+The cases are `positive`, `caps`, `cutout_drop`, `alpha_mask`, `allocation`,
+`late_shader`, `bind`, and `untracked`; `--case` can select a bounded rerun.
+The GPU/native behavior and measured startup/game cost still need owner
+qualification; these are acceptance requirements, not claimed results.
+
+```sh
+# Owner only: build the seam against matching reviewed production objects.
+sh verification/probe/build_motion_output.sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane
+```
+
+Review-fix host acceptance: all eight `test_sun_share_lane` tests passed in
+5.31 s, including the existing 222-program invalid-export corpus, 24 C++ checks,
+new authored-payload negative controls and live-report corruption witnesses.
+Production MotionOutput, fixture-enabled MotionOutput and the actual live
+fixture passed MinGW `-fsyntax-only` with `-Wall -Wextra -Werror`, SSE2 and the
+required four-byte incoming-stack flags. No Wine or DLL build ran in this task.
+
+### Review correction: actual composition-M coverage in the live lane fixture
+
+Three additional `run_sun_share_live.py --case` selections use the real
+unfaded additive emission pair `vs_089091aab2d5eb13` /
+`ps_8559522220507d5e`, original shader registration, composition preparation,
+owning-target exchange/acknowledgement and GPU coverage reads:
+
+- `composition`: frame 1 excludes 768 covered pixels; frame 2 unions two
+  rectangles to 1,536; frame 3 interleaves emission → full opaque receiver →
+  emission and preserves both conservative exclusion rectangles. Frame 4
+  follows Reset with zero M; frame 5 covers only the opposite 768-pixel region.
+  All healthy M reads check the complete RGB mask against the authored scissor
+  rectangles, with positive eligible receiver pixels outside their union.
+- `composition_missing`: injects the actual pass's FrameClear operation failure
+  before frame 2's latch, then submits a real additive source. Old physical M
+  cannot become same-frame evidence: the frame reports zero eligible/excluded
+  pixels and unavailable publication. Subsequent frames recover through the
+  ordinary per-frame M clear.
+- `composition_failed`: frame 2 first completes one real composition/exchange,
+  then fails the second source's completion Restore, takes the existing native
+  recovery/exchange path, and invalidates M. It proves that earlier successful
+  composition in the same frame cannot authorize later incomplete coverage.
+
+Every composition source must visibly increase owning FP16 RGB while leaving
+RT2 receiver bytes unchanged. The interleaved opaque draw must restore original
+material RGB before the second exchange. Actual linear/exchange/incomplete
+counts accompany GPU M and eligible-pixel checks; report validation rejects
+lost exclusions, missing exchange/interleave evidence and stale validity.
+The missing/failed-M cases intentionally follow the **existing composition**
+TAA contract: current-only resolve without history seeding, followed by a fresh
+seed next frame. They require two history frames per process; healthy
+composition requires four. This does not relax the lane-only fault requirement
+that ordinary TAA history survives. Every process retains six full FP16 output
+comparisons against the R32 reference with the matching supplemental-mask
+policy. The full 11-case mode therefore requires 66 output comparisons,
+40 history frames and 11 Resets. The new GPU composition cases remain
+owner-qualified work, not claimed execution here.
+
+The owner-built positive lane run completed 43,269 checks, 18 restorations and
+six frames. Its original validator rejected nested `detail=stage=history_r`
+parsing; the corrected leaf-field parser and nested-detail host regression now
+accept the retained output, including all six exact TAA images, five positive
+receiver frames and one zero-sun frame. Revalidation read existing artifacts
+only. The affected host report test passed (0.58 s), and the modified live
+fixture passed MinGW syntax checking with the required strict/SSE2/stack flags.
+No production files, qualified material/temporal inputs, executables or results
+were changed by this composition extension.
+
+```sh
+# Owner only; consumes the already built seam and fixture.
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --case composition --case composition_missing --case composition_failed
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane.SunShareLane.test_live_evidence_rejects_missing_draws_faults_and_taa
+```
+
+### GPU witness correction: unique motion keys and same-size fallback history
+
+The first late-shader run reached frame 2 with valid receiver writes, lane
+`available=0 failed=1`, and a successful TAA resolve, but failed the fixture's
+history assertion. The fixture submitted the same object/motion key twice and
+incorrectly marked both draws matched. `MotionRowHistory::lookup_and_record`
+authorizes a previous key only once; the second draw misses, yielding a 1/2
+missing fraction above the existing .25 cut threshold. The reference had been
+fed a false no-cut verdict. Late-fault and interleaved-composition scripts now
+warm two distinct object scopes every frame and use each exactly once. Added
+`SUN_HISTORY` rows expose expected, reference and actual history separately.
+No duplicate-key or camera-cut rule was weakened.
+
+The first composition run changed native RGB but performed no owning exchange:
+the fixture used non-indexed DrawPrimitive while the additive-emission gate
+requires indexed DIP. Its source now uses a retained managed 16-bit index
+buffer and actual DrawIndexedPrimitive, matching the existing emission fixture.
+The index binding is explicitly released before fixture teardown. Neither
+correction changes ordinary material/temporal shaders or qualified producer
+inputs. Passed positive and early-capability output remains retained.
+
+Inspection also found a real next-frame fallback issue: target allocation
+unconditionally cleared motion-row correspondence, which would force a cut
+when failed G32 storage changed to ordinary R32. The route now keeps the
+unavailable old storage until the next scene latch can compare metadata, then
+preserves row history **only after successful replacement**, when the previous
+storage was an active failed lane with identical dimensions and the exact same
+MotionOutput device/reset generation. Target retirement clears that generation;
+Reset/loss/ordinary resize and allocation failures retain existing invalidation.
+The ordinary selector still begins the row-history frame with its own exact
+generation/size check. No target format changes within a scene.
+
+This preservation is compatible with pixel history: the existing TemporalPass
+history is already R32F containing the previous enhanced input's point-copied
+`.r` (qualified by the temporal fixture). The new current RT1/RT2 receive the
+ordinary sentinel fill before routing. Retained rows then supply the same
+previous transforms against those compatible histories. No old current depth
+pixels are copied or assumed valid. Allocation count and draw cost are
+unchanged; the new metadata comparison runs only on target replacement, with
+one retained generation word per device and no per-draw work.
+
+Focused host acceptance executes the **actual extracted** `ensure_target` and
+`release_target` methods with a documented-API failure double and the real
+MotionRowHistory: 49 checks, 27 create calls, zero surviving mock surfaces.
+It covers successful preservation, dimension/generation changes, prior target
+loss, ordinary resize, failed R32 allocation, failed surface extraction and
+consumed duplicate keys. This proves CPU decisions, not GPU lifetime or content.
+The two affected host tests passed in 2.38 s; production/seam/live fixture
+MinGW syntax passed. Parent-owned GPU reruns and deep review remain required
+for this production change; no Wine or build was executed by this agent.
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane.SunShareLane.test_actual_target_replacement_preserves_only_compatible_rows verification.analysis.test_sun_share_lane.SunShareLane.test_live_evidence_rejects_missing_draws_faults_and_taa
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --case late_shader --case bind --case composition --case composition_missing --case composition_failed
+```
+
+The owner rerun subsequently proved late-failure frame 2 and ordinary-R32
+frame 3 both had `SUN_HISTORY expected=1 reference=1 actual=1`; all four
+completed FP16 images (frames 0–3) were revalidated byte-exact from retained
+files. It then reached a distinct Reset refusal: `qualified=0 reason=shader_cache`.
+The orchestrator ratified this fail-closed distinction for the bounded lane:
+**Reset may recover a transient bind failure with a complete cache; it cannot
+recover a missing shader artifact.** The late-creation fixture now requires
+R32/unavailable through frames 4–5 and successful ordinary TAA throughout.
+The bind-only fixture still requires G32 requalification after Reset. Host
+negative evidence rejects either falsely recovered creation failure or falsely
+unrecoverable bind failure, and requires the exact persistent-cache reason.
+That focused validator test passed in 0.56 s; fixture syntax passed again.
+
+The shader registry owns generated PS references, not the original application
+objects. It retains raw original addresses as lookup keys without dereferencing
+them during qualification; no new dead-original access or recreation was added.
+`release_resources` releases/nulls every generated sun PS; final device Release
+erases its capture context, destroys MotionOutput and frees both registry maps.
+A missing artifact adds no surviving PS reference and persists only with its
+device's existing registry metadata. There is no fixed entry-count cap claimed:
+registry size follows registered shader objects/addresses during that device
+lifetime, as before this lane. An immutable-byte recovery design may improve
+this separately; Reset does not invent replacement shader source.

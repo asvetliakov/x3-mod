@@ -10,6 +10,7 @@
 #include "../../src/renderer/linear_distance_fade.h"
 #endif
 #include "../../src/renderer/material_motion.h"
+#include "../../src/renderer/quad_vertex_program.h"
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -320,9 +321,9 @@ struct Shaders {
       // No mode ever submits the incomplete original DEFAULT linkage. Mode 0
       // is the repaired ordinary pair with MRTs disabled, mode 1 enables MRTs.
       require((pixel ? linear_material_xt_default_pixel_variant(
-                           original.data(), original.size(), config, output, c.depth, mode == 2)
+                           original.data(), original.size(), config, output, c.depth, mode == 2 || mode == 4)
                      : linear_material_xt_default_vertex_variant(
-                           original.data(), original.size(), config, output, c.depth, mode == 2)) ==
+                           original.data(), original.size(), config, output, c.depth, mode == 2 || mode == 4)) ==
                   LinearMaterialResult::Applied, "XT repaired transform");
     } else if (mode == 0)
       output = original;
@@ -371,6 +372,10 @@ struct Shaders {
                        c.depth)) != LinearMaterialResult::Applied &&
               sentinel == preserved,
           "invalid source publication");
+    }
+    if(mode==4&&pixel){
+      bool extraction=false;
+      require(linear_material_pixel_variant_sun_share(original.data(),original.size(),config,output,c.depth,extraction)==LinearMaterialResult::Applied&&extraction,"sun extraction proof");
     }
     require(original == before, "original mutated");
     return output;
@@ -786,10 +791,11 @@ struct Gpu {
         auto &p = result[y * width + x];
         auto *bytes = static_cast<char *>(lock.pBits) + y * lock.Pitch +
                       x * (format == D3DFMT_R32F            ? 4
-                           : format == D3DFMT_A16B16G16R16F ? 8
+                           : (format == D3DFMT_A16B16G16R16F || format == D3DFMT_G32R32F) ? 8
                                                             : 16);
         if (format == D3DFMT_R32F)
           std::memcpy(p.f, bytes, 4);
+        else if(format==D3DFMT_G32R32F)std::memcpy(p.f,bytes,8);
         else if (format == D3DFMT_A16B16G16R16F) {
           unsigned short half[4];
           std::memcpy(half, bytes, 8);
@@ -1013,9 +1019,12 @@ struct Gpu {
 #include "linear_distance_fade_fixture_inc.h"
 #endif
 #include "linear_alpha_test_fixture_inc.h"
+#include "sun_share_material_inc.h"
+
 int main(int argc, char **argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   try {
+    const bool sun_mode=argc==4 && std::strcmp(argv[3],"--sun-share")==0;
     const bool cutout_mode=argc==4 && std::strcmp(argv[3],"--alpha-test-cutout")==0;
     const bool fill_mode=argc==5 && std::strcmp(argv[3],"--fill")==0;
     char* fill_end=nullptr;
@@ -1024,9 +1033,9 @@ int main(int argc, char **argv) {
             "fill must be finite and in (0,0.5]");
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     const bool fade_mode=argc==5 && std::strcmp(argv[3],"--distance-fade")==0;
-    require(argc==3 || fade_mode || cutout_mode || fill_mode,"args: programs cases [--distance-fade composite.bin] [--fill K]");
+    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode,"args: programs cases [--distance-fade composite.bin] [--fill K]");
 #else
-    require(argc == 3 || cutout_mode || fill_mode, "args: programs cases [--alpha-test-cutout] [--fill K]");
+    require(argc == 3 || sun_mode || cutout_mode || fill_mode, "args: programs cases [--alpha-test-cutout] [--fill K]");
 #endif
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
@@ -1071,7 +1080,8 @@ int main(int argc, char **argv) {
                   shaders.caps.MaxVertexShader30InstructionSlots,
                   shaders.caps.MaxPixelShader30InstructionSlots);
       require(shaders.caps.NumSimultaneousRTs >= 3, "three MRTs");
-      if (cutout_mode) alpha_test_cutout_fixture(device.p,shaders,cases);
+      if(sun_mode)sun_share_material_fixture(device.p,shaders,cases);
+      else if (cutout_mode) alpha_test_cutout_fixture(device.p,shaders,cases);
       else {
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
       if (fade_mode) distance_fade_fixture(device.p,shaders,cases,argv[4]);

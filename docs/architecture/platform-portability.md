@@ -77,14 +77,13 @@ Recording runtime hashes in test reports remains useful provenance.
   GPU parity. Cross-compilation and CrossOver shader creation do not establish
   native Windows creation or runtime, which remain unverified.
 
-- The off-by-default directional sun-share extraction API has no live caller,
-  configuration change or resource allocation. Its reviewed host artifact
-  covers 108 originals / 152 sun MADs, but no GPU, Wine, game, Reset/recovery
-  or consumer integration. Its new instructions obey the ps_3_0 constant-port
-  rule, and the separately reviewed sanitizer repair removes the known inherited
-  read-port violation. This does not extend its host-only qualification to GPU
-  or native execution. See the [sun-share ledger](../verification/directional-shadows.md)
-  and [extraction contract](../reverse-engineering/sun-share-material-contract.md).
+- The default-off directional sun-share lane now uses documented D3D9 format,
+  MRT, state and shader APIs, with portable G32R32F-to-R32F shader copying.
+  CrossOver GPU qualification covers extraction, temporal copying and actual
+  receiver/composition/fallback/Reset behavior. Native Windows execution,
+  gameplay coverage and GPU performance remain unverified. Missing cached
+  shader variants stay unavailable through Reset; complete-cache bind failures
+  can recover. See the [sun-share ledger](../verification/directional-shadows.md).
 
 - The original four XT DEFAULT pairs still have malformed SM3 linkage under
   Microsoft's [matching rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3)
