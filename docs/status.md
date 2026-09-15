@@ -173,6 +173,10 @@ further linear-hull processing is planned. Decisions this session:
   ([note](reverse-engineering/camera-and-lights.md)). With original hull shading
   the docking-module darkening is native behaviour again (fill exists only in
   converted materials).
+- Scheduled by the user (2026-09-16, [critique](architecture/original-shading-critique.md)):
+  root-object point-light admission (six-byte site `0x004c27af`, default-off)
+  first, then the linear-light fill inside the original programs (§1a option C,
+  default-off); both ride the next candidate with the F8 baseline capture.
 - Shadows: [replay gates](architecture/shadow-replay-gates.md) ratified; the
   depth-replay fixture is not funded until a lane-independent caster-candidate
   counter (`--shadow-replay-candidates`, in flight) answers four predicates in
