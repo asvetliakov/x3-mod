@@ -35,6 +35,7 @@
 #include "../renderer/hdr_pass.h"
 #include "../renderer/linear_material.h"
 #include "linear_cutout.h"
+#include "screen_emission_admission.h"
 #include "../renderer/linear_emission.h"
 #include "../renderer/linear_emission_pass.h"
 #include "../renderer/linear_distance_fade.h"
@@ -131,7 +132,7 @@ struct MotionRoute {
     unsigned fade_permille = 0;
     // Additive option: DESTBLEND ONE applied for this draw (restored to the
     // shadowed INVSRCCOLOR after it) and, with gain != 1, the gained PS bound.
-    bool screen_additive = false, screen_additive_ps = false;
+    bool screen_additive = false, screen_additive_ps = false, screen_additive_alpha = false;
     // Origin distance of the draw's rows (fade_route_core.h origin_distance) for
     // the caster-candidate counter; negative when the camera latch or rows refuse.
     float candidate_distance = -1.f;
@@ -547,6 +548,14 @@ public:
     // calls. Gain 1 is off (no variant is created). Configure before attach.
     void configure_emission_source_gain(float engine_gain, float effect_gain) noexcept; // per family (linear-emission-cost.md, "Family split")
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
+    // Runtime A/B of one source-gain family (Ctrl+Shift+F6 engine / F4 effect,
+    // comparison-hotkeys.md): the prebuilt variants stay; the per-draw path
+    // stops selecting them, so the draw goes out exactly as it would without
+    // the option. `family` is LinearEmissionFamily - 1 (0 engine, 1 effect).
+    // Returns the new state (1 on / 0 off), or -1 when the family was not
+    // requested or its gain is 1 (no variant exists): a logged no-op.
+    int emission_source_gain_toggle(unsigned family) noexcept;
+    bool emission_source_gain_enabled(unsigned family) const noexcept { return family < 2 && source_gain_enabled_[family]; }
     // Option C (docs/architecture/original-shading-critique.md 1a): fill in
     // linear light inside the original hull pixel programs, finite 0..0.5, 0
     // is off (no variant is created). Excludes linear materials; configure
@@ -571,8 +580,20 @@ public:
     // the FP16 redirect (X3M_HDR) and the motion-output hooks; exclusive with
     // the packed route (the caller refuses both; whichever of the two
     // configure calls runs second, the packed route wins). `gain` finite 1..8.
-    void configure_screen_emission_additive(bool requested, float gain) noexcept;
+    // `alpha` is the per-source bloom attenuation k of
+    // docs/architecture/bloom-per-source-attenuation.md (option 1, blend-state
+    // form), finite 0..1, applied only when `alpha_requested`. Absent (the
+    // default) leaves the alpha law at today's `a + D.a` and touches no alpha
+    // state per draw; an out-of-range k is dropped the same way.
+    void configure_screen_emission_additive(bool requested, float gain,
+        bool alpha_requested = false, float alpha = 1.f) noexcept;
     bool screen_emission_additive_requested() const noexcept { return screen_additive_requested_; }
+    // Runtime A/B of the additive option (Ctrl+Shift+F5): off leaves the draw
+    // in its native screen blend with the native program, exactly like a
+    // refused draw. Returns the new state, or -1 when the option was not
+    // requested or its gain is 1 (no variant exists): a logged no-op.
+    int screen_emission_additive_toggle() noexcept;
+    bool screen_emission_additive_enabled() const noexcept { return screen_additive_enabled_; }
     // Diagnostic fade-region witness (X3M_FADE_WITNESS=<k>, note section 7,
     // step 1): every k-th frame without an admitted emission draw the M
     // coverage target is read back once and its covered pixels counted
@@ -832,6 +853,7 @@ private:
         // Additive option: the same pair identity keyed on its own request
         // (never joins the packed route's counters) and its gained PS.
         bool screen_additive_pair = false;
+        unsigned screen_additive_index = screen_emission::pair_count; // table index of the bound pair (per-frame telemetry mask)
         IDirect3DPixelShader9* ps_screen_additive_variant = nullptr;
         IDirect3DVertexShader9* vs_fade_variant = nullptr;
         IDirect3DPixelShader9* ps_fade_variant = nullptr;
@@ -897,9 +919,11 @@ private:
         // three are the nine-state fade check's blend triple; the fourth is
         // logged by the capture-only motion_route line and is not part of it.
         // SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHABLENDENABLE, then
-        // SRCBLENDALPHA, DESTBLENDALPHA, BLENDOPALPHA (composition_blend_index).
-        DWORD composition_blend[7]{};
-        bool composition_blend_known[7]{};
+        // SRCBLENDALPHA, DESTBLENDALPHA, BLENDOPALPHA and BLENDFACTOR
+        // (composition_blend_index); the last five are what the additive
+        // option's alpha attenuation restores after its draw.
+        DWORD composition_blend[8]{};
+        bool composition_blend_known[8]{};
     };
     struct SavedState;
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
@@ -994,11 +1018,19 @@ private:
     void report_mip_bias_game_write_failure() noexcept;
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
+    // The bound pair's family is enabled for this draw (Ctrl+Shift+F6/F4).
+    // None is never enabled: an eligible variant always carries a family.
+    bool source_gain_family_enabled(renderer::LinearEmissionFamily family) const noexcept {
+        return emission_source_gain_enabled(unsigned(family) - 1u);
+    }
     void prepare_source_gain(const MotionDrawCall&, MotionRoute&) noexcept;
     // Additive option: the exact-state admission, the DESTBLEND/PS apply
     // (rolled back on a failed second step) and the restore after the draw.
     void prepare_screen_additive(const MotionDrawCall&, MotionRoute&) noexcept;
+    HRESULT apply_screen_additive_alpha() noexcept;
+    HRESULT restore_screen_additive_alpha() noexcept;
     void finish_screen_additive(MotionRoute&) noexcept;
+    void log_screen_additive_frame() noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
     // fill mode, clip to the owning target); the counters, witness and log
@@ -1161,6 +1193,9 @@ private:
     float screen_emission_gain_ = 1.f;
     bool emission_source_gain_requested_ = false;
     float emission_source_gain_[2]{1.f, 1.f}; // [engine, effect] (LinearEmissionFamily - 1); 1 = that family stays native
+    // Runtime hotkey state, default on; never touched by a draw that does not
+    // already reach the option's admission, and never used for creation.
+    bool source_gain_enabled_[2]{true, true};
     // Source-gain draw accounting (per-frame line): admitted draws (total and
     // per family), refusals by blend state, by unknown state, by device state, bind failures.
     struct { std::uint32_t admitted = 0, admitted_engine = 0, admitted_effect = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
@@ -1172,11 +1207,25 @@ private:
     std::uint32_t original_fill_draws_ = 0; // routed draws that bound the fill variant this frame (frame line only)
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
     float screen_additive_gain_ = 1.f;
+    bool screen_additive_enabled_ = true; // Ctrl+Shift+F5 runtime A/B; the variant stays created
+    // Per-source bloom attenuation of the additive draw (option 1): the scene
+    // alpha the bloom extract weighs by becomes k*a + D.a. 1 = off (no alpha
+    // state is touched); 0 uses SRCBLENDALPHA ZERO, anything between uses
+    // BLENDFACTOR with k in every lane (the colour law is ONE/ONE/ADD and
+    // reads no factor, so the shared constant cannot disturb it).
+    bool screen_additive_alpha_requested_ = false, screen_additive_alpha_constant_ = false;
+    float screen_additive_alpha_ = 1.f;
+    DWORD screen_additive_alpha_factor_ = 0xffffffffu;
+    unsigned screen_additive_alpha_applied_ = 0; // steps applied to the current draw (exact partial unwind)
     // Additive draws: admitted (DESTBLEND ONE around the native draw), refused
     // (unknown/different state, PROJECTED stage 0, recording, no FP16 target,
     // missing variant) and failed applies; fixture keys 60-62.
     unsigned screen_additive_admitted_ = 0, screen_additive_refused_ = 0, screen_additive_failures_ = 0;
     unsigned screen_additive_refusal_logged_ = 0; // bit per refusal reason already logged (one line each per device)
+    // Per-frame additive accounting for the telemetry line (reset every
+    // Present, logged only with telemetry on): this frame's admitted and
+    // refused draws and the bit mask of the nine table indices admitted.
+    unsigned screen_additive_frame_admitted_ = 0, screen_additive_frame_refused_ = 0, screen_additive_frame_pairs_ = 0;
     unsigned fade_route_threshold_ = 500; // per mille; fade_route::threshold_off = arm off
     fade_route::Hysteresis fade_hysteresis_; // per node identity; cleared at Reset
     unsigned composition_required_producers_ = 0;

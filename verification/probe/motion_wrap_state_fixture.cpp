@@ -16,7 +16,7 @@ constexpr unsigned D3DRS_ZENABLE=7,D3DRS_ZWRITEENABLE=14,D3DRS_ALPHATESTENABLE=1
  D3DRS_WRAP0=128,D3DRS_WRAP1=129,D3DRS_WRAP2=130,D3DRS_WRAP3=131,D3DRS_WRAP4=132,D3DRS_WRAP5=133,D3DRS_WRAP6=134,D3DRS_WRAP7=135,
  D3DRS_WRAP8=198,D3DRS_WRAP9=199,D3DRS_WRAP10=200,D3DRS_WRAP11=201,D3DRS_WRAP12=202,D3DRS_WRAP13=203,D3DRS_WRAP14=204,D3DRS_WRAP15=205;
 constexpr unsigned D3DRS_ALPHAFUNC=25,D3DRS_ALPHAREF=24,D3DRS_ZFUNC=23,D3DRS_FOGENABLE=28,D3DRS_DITHERENABLE=26,
- D3DRS_STENCILENABLE=52,D3DRS_CULLMODE=22,D3DRS_FILLMODE=8,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171,D3DRS_SEPARATEALPHABLENDENABLE=206,D3DRS_SRCBLENDALPHA=207,D3DRS_DESTBLENDALPHA=208,D3DRS_BLENDOPALPHA=209;
+ D3DRS_STENCILENABLE=52,D3DRS_CULLMODE=22,D3DRS_FILLMODE=8,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171,D3DRS_SEPARATEALPHABLENDENABLE=206,D3DRS_SRCBLENDALPHA=207,D3DRS_DESTBLENDALPHA=208,D3DRS_BLENDOPALPHA=209,D3DRS_BLENDFACTOR=193;
 constexpr unsigned motion_shadow_state_count=32,failure_log_limit=16;
 namespace renderer {
 struct MotionOutputProfile{std::uint8_t texcoord_index=4,depth_texcoord_index=7;};
@@ -75,7 +75,7 @@ public:
  Pass*depth_replay_=nullptr; // cascade-0 depth replay: after_reset forwards to the pass when one is attached
  struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;
-  /* sized for the production composition_blend_states table (asserted below) */ DWORD composition_blend[7]{};bool composition_blend_known[7]{};DWORD fill_mode=0;bool fill_mode_known=false;
+  /* sized for the production composition_blend_states table (asserted below) */ DWORD composition_blend[8]{};bool composition_blend_known[8]{};DWORD fill_mode=0;bool fill_mode_known=false;
   bool vs_reserved_written=false,ps_reserved_written=false;void*vs=nullptr,*ps=nullptr,*vs_variant=nullptr,*ps_variant=nullptr,*vs_material_variant=nullptr,*ps_material_variant=nullptr;
   bool original_fill_pair=false;void*ps_original_fill_variant=nullptr;
     bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
@@ -113,7 +113,7 @@ public:
  void begin_stateblock() noexcept;void end_stateblock() noexcept;void stateblock_applied() noexcept;
 };
 #include "motion_wrap_under_test_inc.h"
-static_assert(composition_blend_count<=7,"blend shadow mirror is smaller than the production table");
+static_assert(composition_blend_count<=8,"blend shadow mirror is smaller than the production table");
 
 unsigned wrap(unsigned i){return i<8?D3DRS_WRAP0+i:D3DRS_WRAP8+i-8;}
 renderer::LinearMaterialPairContract material(std::uint8_t count,

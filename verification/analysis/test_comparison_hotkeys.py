@@ -119,13 +119,63 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertEqual(present.count('const HRESULT hr=fn(d,a,b,w,r)'), 1)
         self.assertIn('const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;', present)
         self.assertIn('ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()', present)
+        motion_source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         polling = extract_function(capture, 'void comparison_begin_frame(')
         # Ordinary launches (no HDR AgX, no ambient occlusion) return before any key or foreground query.
-        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested)return;'),
+        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare)return;'),
                         polling.index('comparison_foreground()'))
         self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
         self.assertLess(polling.index('if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();'),
                         polling.index('if(!action.exposure && !action.bloom)return;'))
+        # Emitter A/B keys: F5 additive, F6 engine source gain, F4 effect
+        # source gain (F7 is the telemetry marker, F8 the capture key). The
+        # keys are polled only inside the comparison sampler, so an ordinary
+        # launch stays at zero queries; inside it they are unconditional, so
+        # an option that was not requested answers with a logged refusal.
+        self.assertIn('const bool emitter_compare=screen_emission_additive_requested'
+                      ' || emission_source_gain!=1.f || effect_source_gain!=1.f;', polling)
+        for key, call in (('VK_F5', 'ctx.motion_output.screen_emission_additive_toggle()'),
+                          ('VK_F6', 'ctx.motion_output.emission_source_gain_toggle(0)'),
+                          ('VK_F4', 'ctx.motion_output.emission_source_gain_toggle(1)')):
+            self.assertIn(f'(GetAsyncKeyState({key})&0x8000)!=0;', polling)
+            self.assertIn(call, polling)
+        for key, label in (('ctrl_shift_f5', 'BULLETS'), ('ctrl_shift_f6', 'ENGINES'), ('ctrl_shift_f4', 'EFFECTS')):
+            self.assertIn(f'comparison_emitter(ctx,"{key}","{label}"', polling)
+        self.assertNotIn('VK_F7', capture)  # telemetry.cpp owns Ctrl+Shift+F7
+        emitter = extract_function(capture, 'void comparison_emitter(')
+        self.assertIn('state<0?"UNAVAILABLE":state?"ON":"OFF"', emitter)
+        self.assertIn('comparison_log(ctx,"request",key,state>=0);', emitter)
+        notice = extract_function(capture, 'void comparison_notice_text(')
+        self.assertIn('if(ctx.comparison_emitter_notice[0])', notice)
+        # A refused toggle changes no state and creates nothing; the enabled
+        # flag only gates the per-draw selection of the prebuilt variant.
+        for signature, flag in (('int MotionOutput::screen_emission_additive_toggle(',
+                                 'screen_additive_enabled_ = !screen_additive_enabled_;'),
+                                ('int MotionOutput::emission_source_gain_toggle(',
+                                 'source_gain_enabled_[family] = !source_gain_enabled_[family];')):
+            body = extract_function(motion_source, signature)
+            self.assertIn(f'if (available) {flag}', body)
+            self.assertIn('return available ?', body)
+            self.assertNotIn('CreatePixelShader', body)
+        # Gain 1 creates no source-gain variant, so those two keys refuse it;
+        # the additive option at gain 1 still changes the draw (DESTBLEND ONE
+        # and any alpha attenuation), so F5 stays available.
+        self.assertIn('const bool available = screen_additive_requested_;',
+                      extract_function(motion_source, 'int MotionOutput::screen_emission_additive_toggle('))
+        self.assertIn('emission_source_gain_requested_ && emission_source_gain_[family] != 1.f',
+                      extract_function(motion_source, 'int MotionOutput::emission_source_gain_toggle('))
+        # Several emitter keys in one sample each keep their notice label.
+        self.assertIn("if(emitter)ctx.comparison_emitter_notice[0]='\\0';", polling)
+        self.assertIn('const std::size_t used=std::strlen(ctx.comparison_emitter_notice);', emitter)
+        draws = extract_function(motion_source, 'MotionRoute MotionOutput::before_draw(')
+        self.assertIn('shadow_.screen_additive_pair && screen_additive_enabled_ &&', draws)
+        self.assertIn('source_gain_family_enabled(shadow_.source_gain_family)', draws)
+        # One additive telemetry line per Present, counters reset every frame.
+        additive = extract_function(motion_source, 'void MotionOutput::log_screen_additive_frame(')
+        self.assertIn('screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x toggled=%u', additive)
+        present = extract_function(motion_source, 'void MotionOutput::after_present(')
+        self.assertIn('if (telemetry_) log_screen_additive_frame();', present)
+        self.assertIn('screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0;', present)
         reset = extract_function(capture, 'HRESULT reset_common(')
         self.assertIn('ctx.comparison_notice.hide();ctx.comparison.reset_focus()', reset)
         handoff = extract_function(capture, 'void retain_compositor_scene(')
@@ -138,10 +188,9 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('if(GetEnvironmentVariableW(L"X3M_HDR_EV_MAX",setting,32)>0)', capture)
         self.assertIn('hdr_config.allow_auto_toggle=true;', capture)
         self.assertIn('if (caps_.meter) ensure_chain(width, height)', hdr)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        toggle = extract_function(motion, 'bool MotionOutput::comparison_toggle_exposure(')
+        toggle = extract_function(motion_source, 'bool MotionOutput::comparison_toggle_exposure(')
         self.assertIn('invalidate_taa(TaaInvalidateSite::ComparisonExposure)', toggle)
-        failure = extract_function(motion, 'void MotionOutput::comparison_state_failed(')
+        failure = extract_function(motion_source, 'void MotionOutput::comparison_state_failed(')
         self.assertIn('FAILED(result) && !motion_state_lost_', failure)
         self.assertIn('motion_state_lost_ = true; motion_state_error_ = result', failure)
 

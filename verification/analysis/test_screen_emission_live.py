@@ -232,6 +232,23 @@ class AdditiveOption(unittest.TestCase):
                 code,output,error=launch(directory,*self.MINIMUM,'--screen-emission-additive',good);self.assertEqual(code,0,error)
                 self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_ADDITIVE'],value)
 
+    def test_alpha_attenuation_needs_the_option_and_stays_in_range(self):
+        # --screen-emission-additive-alpha K (per-source bloom attenuation,
+        # docs/architecture/bloom-per-source-attenuation.md option 1): absent
+        # exports nothing, so a stale shell value cannot attenuate.
+        with tempfile.TemporaryDirectory() as directory:
+            code,_,error=launch(directory,*self.MINIMUM,'--screen-emission-additive-alpha','0.5')
+            self.assertEqual(code,2);self.assertIn('--screen-emission-additive-alpha requires --screen-emission-additive',error)
+            code,output,error=launch(directory,*self.MINIMUM,'--screen-emission-additive','2');self.assertEqual(code,0,error)
+            self.assertNotIn('X3M_SCREEN_EMISSION_ADDITIVE_ALPHA',json.loads(output)['env'])
+            for bad in ('-0.1','1.1','nan','inf'):
+                code,_,error=launch(directory,*self.MINIMUM,'--screen-emission-additive','2','--screen-emission-additive-alpha',bad)
+                self.assertEqual(code,2,bad);self.assertIn('--screen-emission-additive-alpha',error)
+            for good,value in (('0','0.0'),('0.5','0.5'),('1','1.0')):
+                code,output,error=launch(directory,*self.MINIMUM,'--screen-emission-additive','2','--screen-emission-additive-alpha',good)
+                self.assertEqual(code,0,error)
+                self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_ADDITIVE_ALPHA'],value)
+
     def test_dll_gate_matches_the_launcher(self):
         # capture.cpp: motion output and HDR only, the packed option wins a
         # conflict, no TAA/ownership/linear-material prerequisite.
@@ -346,7 +363,7 @@ class RunnerParser(unittest.TestCase):
                             after=live.screen_native(white,q,1.,1) if samples_native else tuple(white[c]+gain*q[c] for c in range(4))
                             lines.append(line('SCREEN_SAMPLE',frame=frame,source=i,kind=kind,overlap=1,x=x,y=32,covered=1,bracket=0,packed=0,q=rgba(q[:3]),a=q[3],before=rgba(white),after=rgba(after)))
             lines.append('RESULT PASS checks=1')
-            trace=[line('screen_emission_additive_mode',requested=1,enabled=1,gain=gain,gain_valid=1,motion=1,hdr=1,packed_conflict=0),
+            trace=[line('screen_emission_additive_mode',requested=1,enabled=1,gain=gain,gain_valid=1,motion=1,hdr=1,packed_conflict=0,alpha='native',alpha_requested=0,alpha_valid=0),
                    line('screen_emission_additive_variant',device=1,original=live.SCREEN_PAIR[1],transform=0,create='00000000',words=73,gain=gain)]
             return '\n'.join(lines)+'\n','\n'.join(trace)+'\n'
         def write(work,frame,i,before,after):

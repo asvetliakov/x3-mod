@@ -18,7 +18,7 @@ constexpr HRESULT S_OK=0,S_FALSE=1,E_FAIL=-1,D3DERR_NOTFOUND=-2,D3DERR_INVALIDCA
 #define SUCCEEDED(x) ((x)>=0)
 #define FAILED(x) ((x)<0)
 using D3DSAMPLERSTATETYPE=unsigned;using D3DRENDERSTATETYPE=unsigned;
-constexpr unsigned D3DZB_TRUE=1,D3DBLEND_SRCALPHA=5,D3DBLEND_INVSRCALPHA=6,D3DBLENDOP_ADD=1,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171,D3DRS_SEPARATEALPHABLENDENABLE=206,D3DRS_SRCBLENDALPHA=207,D3DRS_DESTBLENDALPHA=208,D3DRS_BLENDOPALPHA=209;
+constexpr unsigned D3DZB_TRUE=1,D3DBLEND_SRCALPHA=5,D3DBLEND_INVSRCALPHA=6,D3DBLENDOP_ADD=1,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171,D3DRS_SEPARATEALPHABLENDENABLE=206,D3DRS_SRCBLENDALPHA=207,D3DRS_DESTBLENDALPHA=208,D3DRS_BLENDOPALPHA=209,D3DRS_BLENDFACTOR=193;
 constexpr unsigned D3DSAMP_SRGBTEXTURE=11,D3DSAMP_MIPFILTER=7,D3DSAMP_MIPMAPLODBIAS=8;
 constexpr unsigned D3DDEVCAPS2_DMAPNPATCH=1;
 constexpr unsigned D3DDMAPSAMPLER=256,D3DVERTEXTEXTURESAMPLER0=257,D3DVERTEXTEXTURESAMPLER3=260;
@@ -36,10 +36,10 @@ constexpr std::array<unsigned,24>shadow_states{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,
 // Mirrors the production blend shadow table (motion_output.cpp): the fade
 // check's triple plus SEPARATEALPHABLENDENABLE, then the separate alpha triple
 // that only the source-gain refusal lines read.
-constexpr unsigned composition_blend_count=7;
+constexpr unsigned composition_blend_count=8;
 constexpr D3DRENDERSTATETYPE composition_blend_states[composition_blend_count]={
  D3DRS_SRCBLEND,D3DRS_DESTBLEND,D3DRS_BLENDOP,D3DRS_SEPARATEALPHABLENDENABLE,
- D3DRS_SRCBLENDALPHA,D3DRS_DESTBLENDALPHA,D3DRS_BLENDOPALPHA};
+ D3DRS_SRCBLENDALPHA,D3DRS_DESTBLENDALPHA,D3DRS_BLENDOPALPHA,D3DRS_BLENDFACTOR};
 unsigned releases=0, checks=0, failures=0;
 #define CHECK(x) do {++checks;if(!(x)){++failures;std::fprintf(stderr,"line=%d %s\n",__LINE__,#x);}} while(0)
 const std::uint32_t* release_mask=nullptr;
@@ -213,6 +213,8 @@ unsigned pair_lookups=0,pixel_lookups=0,vertex_lookups=0;
 inline bool admitted_vertex_shader(std::uint64_t vs)noexcept{++vertex_lookups;return vs==90;}
 inline bool admitted_pair(std::uint64_t vs,std::uint64_t ps)noexcept{++pair_lookups;return (vs==90&&ps==95)||(vs==91&&ps==96);}
 inline bool admitted_pixel_shader(std::uint64_t ps)noexcept{++pixel_lookups;return ps==95||ps==96;}
+constexpr unsigned pair_count=9;
+inline unsigned admitted_pair_index(std::uint64_t vs,std::uint64_t ps)noexcept{++pair_lookups;return vs==90&&ps==95?0u:vs==91&&ps==96?1u:pair_count;}
 }
 namespace cutout {enum class Capability:std::uint8_t{Pending,Ready,Unsupported,Retry};
 unsigned pair_lookups=0;constexpr bool pair(std::uint64_t,std::uint64_t) noexcept {return false;}}
@@ -316,7 +318,7 @@ public:
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  IDirect3DPixelShader9*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
  IDirect3DPixelShader9*ps_source_gain_variant[2]{},*source_gain_eligible_variant=nullptr;renderer::LinearEmissionFamily source_gain_family=renderer::LinearEmissionFamily::None;unsigned source_gain_pair=renderer::linear_emission_pair_count;
- bool screen_additive_pair=false;IDirect3DPixelShader9*ps_screen_additive_variant=nullptr;
+ bool screen_additive_pair=false;unsigned screen_additive_index=screen_emission::pair_count;IDirect3DPixelShader9*ps_screen_additive_variant=nullptr;
  bool screen_pair=false;IDirect3DPixelShader9*ps_screen_variant=nullptr,*screen_eligible_variant=nullptr;std::uint64_t stream0=0;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr,*vs_prepass=nullptr;
  IDirect3DPixelShader9*ps_original_fill_variant=nullptr;bool original_fill_pair=false;
@@ -382,6 +384,10 @@ public:
  bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
  bool emission_source_gain_requested_=false;float emission_source_gain_[2]{1,1};
  bool screen_additive_requested_=false;float screen_additive_gain_=1;
+ bool screen_additive_enabled_=true;bool source_gain_enabled_[2]{true,true}; // runtime hotkey flags; the fixture exercises the default-on path
+ bool emission_source_gain_enabled(unsigned f)const noexcept{return f<2&&source_gain_enabled_[f];}
+ bool source_gain_family_enabled(renderer::LinearEmissionFamily f)const noexcept{return emission_source_gain_enabled(unsigned(f)-1u);}
+ unsigned screen_additive_frame_admitted_=0,screen_additive_frame_refused_=0,screen_additive_frame_pairs_=0;
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
  renderer::SunShareFrame sun_frame_{};unsigned sun_writer_count_=0,sun_writer_overflow_=0;
  bool sun_coverage_current_=false,sun_composition_completed_=false;
@@ -477,6 +483,7 @@ unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emissio
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
 float emission_source_gain=1.f,effect_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN / X3M_EFFECT_SOURCE_GAIN, parsed by the same extracted setting reader
 bool screen_emission_additive_requested=false;float screen_emission_additive_gain=1.f; // X3M_SCREEN_EMISSION_ADDITIVE=G
+bool screen_emission_additive_alpha_requested=false;float screen_emission_additive_alpha=1.f; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K, mirrored inertly
 float original_fill=0.f; // X3M_ORIGINAL_FILL=K, parsed by the same extracted setting reader
 unsigned fade_route_threshold=500;
 renderer::LinearMaterialConfig linear_material_config;

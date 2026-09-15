@@ -24,7 +24,31 @@ falls back to fixed.
 Hold **Ctrl+Shift**, then press **F9** for AUTO ↔ fixed EV 0 or **F10** for bloom
 ON ↔ OFF (**F11** toggles the ambient occlusion chain when `--ambient-occlusion` is on; no
 notice, one `ambient_occlusion_toggle` log line per press, `docs/architecture/ambient-occlusion.md`
-"Step 2"). Each function key needs a new press. Ctrl+Shift must already be held
+"Step 2"). Three more keys switch one emitter-gain family between its configured
+gain and native, without recreating anything: **F5** the additive bullets
+(`--screen-emission-additive G`, the nine SM1 screen pairs), **F6** the engine
+source gain (`--emission-source-gain G`, the five engine pairs) and **F4** the
+effect source gain (`--effect-source-gain G`, the fifteen effect pairs; F7 is the
+telemetry phase marker and F8 the capture key, so the effect family took the next
+free key). Each key only decides whether the per-draw path selects the variant
+that was already built at CreatePixelShader time, so an off family draws with the
+native program, the native blend and no substitution, exactly like a refused
+draw; a family whose option was not requested, or a source-gain family whose
+gain is 1 (no variant is created), answers with a logged no-op shown as
+UNAVAILABLE. The additive key has no gain-1 case: `G = 1` still draws with
+DESTBLEND ONE (and the alpha attenuation, if any), so F5 switches it whenever
+the option is requested. The three keys are polled whenever any comparison
+sampler is open, so a press in a run launched without `--hdr --motion-output`
+(or without that option) logs its refusal rather than being silently dropped. Each press logs
+`screen_emission_additive_toggle` or `emission_source_gain_toggle` with the
+family, acceptance, new state and gain, plus the usual `renderer_comparison`
+line under key `ctrl_shift_f5`/`f6`/`f4`, and takes over the notice's second
+line (BULLETS/ENGINES/EFFECTS ON/OFF/UNAVAILABLE, all of them when several keys
+land in one sample) until the next F9/F10 press.
+With `--telemetry`, the additive option also logs one
+`screen_emission_additive_frame device=… frame=… admitted=… refused=… pairs=<hex
+mask of the nine table indices admitted this frame> toggled=<option currently
+on>` line per Present, with the counters reset every frame. Each function key needs a new press. Ctrl+Shift must already be held
 in the previous foreground frame sample, preventing a modifier change from
 turning a held function key into a press. F8 capture is unchanged. Input is
 sampled once at the existing frame boundary, after Present and before the next
