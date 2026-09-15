@@ -1,6 +1,6 @@
 # Fill light for faces that receive no light source
 
-Design note, 2026-09-15. Decision for the orchestrator; nothing here is implemented. Inputs:
+Design note, 2026-09-15. Decision for the orchestrator; implemented as documented below. Inputs:
 [station-material-distance.md](../reverse-engineering/station-material-distance.md) "Run 22
 (run51)", [camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md)
 "Ambient occlusion inputs", the converted-material notes, the exposure, shadow and AO notes, and

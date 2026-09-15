@@ -1,0 +1,101 @@
+# Resume handoff — 2026-09-15 (midday checkpoint, written for the next orchestrator, Codex `gpt-6-astra` or Claude)
+
+Read this file, `AGENTS.md`, `CLAUDE.md` (Claude only), `docs/status.md`, `docs/goals.md`, then
+`git log --oneline -60`, then only the owning notes named per task. `archive/handoff-2026-09-15-morning.md`
+and `archive/handoff-2026-09-14d.md` are historical. Main is clean at this checkpoint; the only
+dirty files are untracked runner outputs under `verification/results/bottle-X3/` (never commit them).
+
+## Installed build and bottle
+
+- Installed DLL `53a0d8a7f76e89836a66068ce166af095058fd3e10b6cbb5693a2b0027d35c5b` (14,299,619
+  bytes), clean build of `509a273`; record `verification/results/run22-candidate-install.json`.
+  Candidate dir `/var/folders/l6/…/T/x3-run22-candidate-h8l9/` holds the DLL and the rollback
+  `39b090d0…` (`77a649b`) DLL + manifest (`rollback-*`). EXE `fdbf3418…`, `cxbottle.conf` `cc5d6c00…`
+  unchanged. Voice plugin `/tmp/x3-wma-plugin-v4` (backup `~/x3-mod-resume-2026-09-14/artifacts/wma-plugin-v4/`).
+- The build carries: TAA + z_only prepass jitter (asteroid triangle fix), step D/E screen emission,
+  `loading_phase` markers, the fade-band motion arm (trembling fix), `--lod-scale` (default-off),
+  AO step 2 (default-off, closed), fade route default-on, voice DMO hook.
+- `./x3run` takes the Wine lock itself: never wrap it in `wine_lock.py`. A `/tmp` cleaner wipes
+  `/tmp/x3-shader-sweep/programs` (regeneration in the previous handoff, archived, section "Local
+  artefacts"; ~1 min, no Wine) and run snapshots (run47–49, 51 backed up under
+  `~/x3-mod-resume-2026-09-14/artifacts/snapshots/`).
+
+## Decisions taken 2026-09-15 (do not reopen)
+
+- AO stays default-off, not pursued (invisible at 2/20/100 m; zero cost off). No AO v2.
+- `--lod-scale` stays default-off (3× vs 1× no visible difference for the user).
+- Bolts at gain 1 accepted; step D accepted (dimming refuted by the every-frame witness).
+- Trembling "station section" = fading asteroid through a hangar gap; fixed by the fade-band arm,
+  accepted in run 22.
+- Docking-module darkening: owner is the engine's per-node point-light range cull of the player
+  ship's headlight with no ambient term (`station-material-distance.md` "Run 22 (run51)", witnessed).
+  Vanilla too. Fix = the fill term (below). Point-light-range patch rejected. Earlier LOD-step and
+  distance-fade explanations withdrawn; the docking-port design note stays low priority.
+- Shadows (user decision, confirmed): go straight to cascaded shadow maps; skip screen-space sun
+  shadows as a shipped feature and keep it only as the fallback if geometry replay proves infeasible.
+  Order: fill term first (it gives shadowed faces a floor), then the sun-lit-share lane, then the
+  replay-feasibility step, then cascades. Not yet started;
+  `docs/architecture/directional-shadows.md` is the basis; its route B is the plan. Prerequisite shared
+  with the fill work: the converted materials expose the sun-lit share as a lane.
+- Double cursor after alt-tab is vanilla (run 4).
+
+## In flight at the checkpoint (may or may not have finished; check before redoing)
+
+1. **`--material-fill` implementation is MERGED to main** (commit `294c155`, merge after review; no
+   worktree remains). GPU fixtures have NOT yet run on main.
+   What it did: `LinearMaterialConfig::fill`, one `def c215` + one `mad` at the family's albedo
+   multiply in every converted PS (108 programs, unique lobe sum, ambiguity fails closed), launcher
+   `--material-fill K` / `X3M_MATERIAL_FILL` (0..0.5, default 0). Evidence on the branch: K=0 output
+   byte-identical (digest frozen in the new `test_linear_material_fill`), K=0.06 exactly two added
+   instructions per program (216 variants), slots 178→179 / 190→191, host tests 109 + 165 OK, build
+   0 warnings. Reviewed (Opus, merge-clean, K=0 digest independently rebuilt from main and equal): glass
+   receiving the fill is ratified as an amendment in fill-light.md; low findings to fold in when
+   merging: comment at linear_material.cpp:556–560 overstates the profiles evidence (only the 115
+   hull programs carry constant budgets), `linear_distance_fade_pixel_variant` has no
+   `fill_applied` out-param so fade-producer refusals cannot be logged, no launcher test for
+   `--material-fill` in test_linear_material_live.py, fill-light.md §3 slot figures need the
+   pointer to the measured 178→179/190→191, probe negatives incomplete. Next: (1) the low review fix-ups as a
+   follow-up commit; (2) on main under the Wine
+   lock: `verification/probe/build_linear_material.sh`, then `run_linear_material.py --exe
+   verification/probe/build/linear_material_fixture.exe --raw-dir /tmp/x3-linear-material-gpu`
+   (expected bit-identical to `verification/results/bottle-X3/linear-material-gpu.json`) and
+   `run_linear_material_live.py`; (3) the K=0.06 GPU oracle does not exist yet (the fixture has no fill
+   input and `linear_material_reference.py` no fill term): add that slice (sun-averted luma =
+   k·decode(sun)·albedo within one FP16 code) before or with the candidate; (4) Opus candidate build,
+   install from the main session, queue run 23 at the run-51 spot (`--material-fill 0.06`, brackets
+   0.04/0.10). Known: `test_linear_material_live.test_production_control_flow` fails identically at
+   HEAD (fixture double lacks `vs_prepass`/`fade_route`; pre-existing harness gap, repair it).
+2. **Chase design note** `docs/architecture/chase-view-restore-and-hud-anchor.md` exists and is
+   ratified: (a) `--chase-view-restore` (default off): a one-use restore ticket in the `0x00420e06`
+   handler writes cockpit `+0x150` back to mode 258 after an observed 258→1 reset on a sector change;
+   BEFORE implementing, one user telemetry run with a gate jump and a jumpdrive (existing
+   `chase_transition_event` diagnostics; run 51 had no sector change) must settle the reset writer's
+   PC and its order against `+0x1fc`. (b) `--chase-hud-anchor forward|centre` (default centre):
+   anchor the central HUD group on the projection of the ship's forward direction through the
+   written camera basis at the final-FOV seam `0x004213dd`; at the installed geometry the forward ray
+   is 118 px above centre at infinity (the native centred crosshair is a false cue, 13° low). Brief
+   `implement` on Fable for both (engine writes); fixture: projected forward ray vs anchor within 1 px
+   on the host fixture. Open: mouse-steering dead zone is centre-based (`0x0040e8c0`).
+
+## Pending after that
+
+- Run 23 (fill appearance) then the fill default decision.
+- Shadow maps: first bounded step = sun-lit-share lane + replay feasibility (Lock counter, one-cascade
+  depth replay of routed draws, no shading), per `directional-shadows.md` route B; then cascades.
+- Point-light admission per object (user's design, 2026-09-15), after the fill verdict: the engine
+  admits the player ship's point light per node by a bounding-sphere test (big hull nodes keep it at
+  3,200+ units, the small docking-module nodes lose it at ≈1,200), so parts of one station go black
+  next to lit parts. Fix: evaluate the admission once against the root object's bounding sphere and
+  apply it to every node of that object (hull and module lit or unlit together); do NOT change the
+  range or the falloff. Bounded `disassemble` first: the writer of the per-node light count
+  (`g_nNumLightPoint`/i0) and the range compare against the node field near `+0x158`
+  (`station-material-distance.md` "Run 22" open issues), the node→root link, and the root's sphere;
+  then a byte-verified, reversible patch in the style of `lod-selection.md` option 1, default-off
+  (`--light-admission object`). Cost: the two-light PS variant on a few more nodes. Not started.
+- Loading: attribute the 21.7 s save-load stall using the `loading_phase` markers (`loading-observations.md`).
+- Minor: exposure meter self-test under `X3M_HDR_DECODE=none`; `sentinel_us` convention doc item.
+
+## Run queue
+
+No run is open (`docs/verification/user-runs.md`); runs 19–22 are archived with outcomes. The user
+supplies flight captures; the agent never launches the game.

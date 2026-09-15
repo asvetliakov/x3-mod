@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 (fill candidate installed; runs 23/24 ready). This is the short current handoff; the current
+Updated 2026-09-15 (run23 analysed as run54; 0.06 retained provisionally). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -34,16 +34,20 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Next user action
 
-**Run 23 is ready** at the run-51 station spot (`--material-fill 0.06`, brackets
-0.04/0.10); command and capture instructions are in the [run queue](verification/user-runs.md#23-material-fill-at-the-run-51-station--ready).
-The fill default stays 0 until the user's appearance verdict. K=0 qualified
+**Run 23 is complete**, preserved at `/tmp/x3-bottleX3-run54` (153 referenced
+files), with four EV0/+1.5 far/near screenshots. The user reports brighter hulls
+and asks whether 0.04 would be preferable. The sampled brightness thresholds
+pass; unmatched colour/reprojection evidence limits acceptance. Retain 0.06 provisionally; the configured default remains 0.
+See the [fill ledger](verification/fill-light.md) for numbers and limitations.
+The [run queue](verification/user-runs.md) records the remaining telemetry request. K=0 qualified
 4,177 cases with every recorded baseline row bit-identical; live qualification
 passed 8 cases / 32,516 checks. The 23-case fill oracle has pre-target scene-linear
 luma error 0 FP16 codes, encoded FP16 RGB error ≤1 code, and reconstructed
 FP16-image luma error ≤3 codes ([ledger](verification/fill-light.md)).
 
-Run 24's gate jump and jumpdrive telemetry can share the same session **after**
-the station captures; it is the prerequisite for view-restoration implementation.
+Run24's gate jump and jumpdrive telemetry remains pending: run54 contains no
+reset-writer rows or confirmed pair of jumps. This evidence is the prerequisite
+for view-restoration implementation.
 
 The chase HUD anchor (`centre` default) is now implemented and independently
 reviewed in source, separately from the fill candidate ([ledger](verification/chase-hud-anchor.md));

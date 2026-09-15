@@ -788,3 +788,41 @@ Alt-tab out and back once. Report whether both the macOS arrow and game cursor
 appear, whether their positions differ, and whether the macOS menu bar overlaps
 the game. Compare the same screen as the enhanced run; load the save if the
 problem only appears during gameplay. No F8 capture is needed.
+
+## 23. Material fill at the run-51 station — completed
+
+Original active instructions follow verbatim.
+
+This reuses the withdrawn LOD comparison number for the requested fill run.
+The candidate is installed; the command below is ready.
+Fill stays default-off; this run selects 0.06 explicitly. Keep AO off and use the
+same save, station, approach and sun direction as snapshot run51.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-bloom --linear-materials --material-fill 0.06 \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness 1 --screen-emission \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+1. At the run-51 docking ring, take a screenshot and press F8 at about **350 m**
+   (far, sun-averted clamps), then again at about **210 m**. Report both distances.
+2. Say whether the far arm tips now read as surfaces, the cylinder's night side
+   stays dark, and any adjacent material looks conspicuously different.
+3. Auto exposure keeps its +1.5 EV ceiling. Run51 actually used **fixed EV 0**;
+   for an appearance comparison at the same spot, Ctrl+Shift+F9 selects fixed
+   EV 0, then capture once more. Tell us which screenshot uses fixed exposure.
+4. If 0.06 is clearly too weak or too strong, close X3 and repeat the same
+   far/near pair with only `--material-fill` changed to **0.04** or **0.10**.
+   Report the snapshot path and the value for each session.
+
+Analysis follows [fill acceptance](../architecture/fill-light.md#5-acceptance-run):
+startup fill and routed-pair evidence; far-module dark fraction ≤0.10 and p10
+≥0.045; cylinder mean ≤0.165; chroma difference ≤0.03; matched far-dark points'
+near/far gain ≤2.0. Scene-linear readbacks precede exposure. Auto exposure must
+be evaluated separately from the fixed-EV run51 baseline; no auto-EV difference
+against that baseline is an adaptation measurement. The result informs the fill
+default decision; it does not change the default automatically.

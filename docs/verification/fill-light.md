@@ -57,9 +57,9 @@ records that binding.
 The K=0.06 oracle excludes the XT terraformer: its occlusion RGB also feeds an
 additive-emission source, so it is outside this isolated fill-law comparison.
 The K=0 live and detached checks do not prove a user-visible fill change.
-Gameplay appearance, gameplay performance, and native Windows runtime remain
-unverified. The current installed-build description and compact install record
-are linked in the candidate handoff below.
+Run 23 supplies limited CrossOver gameplay evidence below; gameplay performance
+and native Windows runtime remain unverified. The current installed-build
+description and compact install record are linked in the candidate handoff below.
 The change adds no per-draw work; this evidence includes no benchmark or FPS
 claim.
 
@@ -69,5 +69,22 @@ claim.
 The clean reviewed candidate has passed its host audits and X3 load check and
 was installed by the main session. [Status](../status.md) is the authoritative
 installed-build description; [the compact install record](../../verification/results/run23-candidate-install.json)
-binds source, toolchain, hash, scoped results and rollback. Run23 is ready; no
-game was launched and the fill default remains 0 pending the user's verdict.
+binds source, toolchain, hash, scoped results and rollback. Run23 later
+completed; no default change follows from this record.
+
+### Run 23 / run54 gameplay evidence
+
+The user completed Run 23 in `/tmp/x3-bottleX3-run54` with `--material-fill
+0.06`. The analysis maps screenshots/readbacks as Auto far/near frames
+3481/4887 and fixed-EV0 far/near frames 7060/7687. The user reports brighter
+hulls and asked about 0.04; retain **0.06 provisionally**. The default remains
+0, and 0.04 is an optional preference bracket, not a required correction.
+
+The fixed-EV0 far frame passes the stated numeric thresholds: module p10
+0.0672 (minimum 0.045), dark fraction 0.0115 (maximum 0.10), and cylinder mean
+0.1519 (maximum 0.165). The approximate reprojected far-dark gain is 1.781,
+which is supportive only: it has 172 dark samples and no root mask. The poses
+differ, and unmatched dark-chroma difference is about 0.081, so that result is
+neither a passing chroma check nor a controlled comparison. Auto exposure is a
+global pre-tonemap multiplier: +1.5 EV gives 2.828×. The analysis result is
+[`results.json`](/tmp/x3-run54-fill-analysis/results.json).
