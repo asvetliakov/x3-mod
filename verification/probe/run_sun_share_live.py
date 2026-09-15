@@ -20,7 +20,7 @@ import bottle
 
 ROOT = Path(__file__).resolve().parents[2]
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
-         'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair')
+         'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias')
 # Bucket names of the sun_shadow_lane_refusals line (src/renderer/sun_share_frame.h, SunUntrackedReason order).
 REASONS = ('unknown', 'feature', 'scene', 'unregistered', 'pair', 'no_zwrite', 'blended', 'state', 'rows',
            'geometry', 'no_depth', 'fade_arm', 'apply_failed', 'scope', 'history', 'read_failed')
@@ -161,7 +161,10 @@ def validate(text, trace, work, case):
         # actual depth writer the lane did not track.
         assert refused == {2} and int(refusals[2]['pair']) == int(refusals[2]['untracked']) > 0
         assert any(w['reason'] == 'pair' and w['gate'] == '3' and w['registered'] == '1' and w['z'] == '1' and w['zwrite'] == '1' and w['z_known'] == '1' and int(w['frame']) == 2 for w in writers), writers
-    elif case in ('xt_state', 'effects'):
+    elif case in ('xt_state', 'effects', 'cutout_pair_bias'):
+        # cutout_pair_bias (run 28 session B): the cutout pair in its exact
+        # state under a nonzero mip bias is tracked by the tested-opaque arm,
+        # so no frame has an untracked writer or a signature line.
         assert not refused and not writers, (case, refusals, writers)
     elif case == 'cutout_pair':
         # A cutout pair by identity in mask-7/test-off state stays a gate-4
@@ -179,9 +182,17 @@ def validate(text, trace, work, case):
     cutouts = [fields(line) for line in text.splitlines() if line.startswith('SUN_CUTOUT_PAIR ')]
     assert len(cutouts) == (1 if case == 'cutout_pair' else 0), cutouts
     assert all((r['frame'], r['ps'], r['test'], r['mask'], r['gate4']) == ('2', '63f96eba9eea7880', '0', '7', '1') for r in cutouts), cutouts
+    biases = [fields(line) for line in text.splitlines() if line.startswith('SUN_CUTOUT_BIAS ')]
+    assert len(biases) == (1 if case == 'cutout_pair_bias' else 0), biases
+    assert all((r['frame'], r['ps'], r['test'], r['ref'], r['mask'], r['bias'], r['routed'], r['gate4'], r['untracked'], r['stage_bias']) == ('2', '63f96eba9eea7880', '1', '1', '7', '-0.5', '1', '0', '0', '00000000') for r in biases), biases
     effects = [fields(line) for line in text.splitlines() if line.startswith('SUN_EFFECTS ')]
     assert len(effects) == (1 if case == 'effects' else 0), effects
     assert all((r['frame'], r['depth_write'], r['blend']) == ('2', '0', '1') for r in effects), effects
+    # Writer-line grammar: the gate-4 values the chain read (-1 when gate 4 was
+    # not reached), cutout-pair identity and the exact-arm latch on every line.
+    for w in writers:
+        assert all(name in w for name in ('test', 'mask', 'srgb', 'cutout_pair', 'arm')), ('writer line without the gate-4 state fields', w)
+        assert (w['test'], w['mask'], w['srgb'], w['cutout_pair'], w['arm']) == (('0', '7', '0', '1', '1') if case == 'cutout_pair' else ('-1', '-1', '-1', '0', '1')), (case, w)
     signatures = {(w['vs'], w['ps'], w['reason'], w['declaration'], w['stride'], w['z'], w['zwrite'], w['registered']) for w in writers}
     assert len(signatures) == len(writers), 'signature logged twice'
     compare_taa(readbacks, work, case)
@@ -208,7 +219,7 @@ def main():
     selected = args.case or CASES
     names = ['vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin']
     if any(case.startswith('composition') for case in selected): names += ['vs_089091aab2d5eb13.bin', 'ps_8559522220507d5e.bin']
-    if 'cutout_pair' in selected: names += ['ps_63f96eba9eea7880.bin']
+    if 'cutout_pair' in selected or 'cutout_pair_bias' in selected: names += ['ps_63f96eba9eea7880.bin']
     programs = [args.programs.resolve()/name for name in names]
     inputs = {str(p): sha(p) for p in (fixture, dll, *programs)}
     raw = Path(tempfile.mkdtemp(prefix='x3-sun-share-live-'))
@@ -230,6 +241,11 @@ def main():
                 env.update(X3M_LINEAR_EMISSIONS='1', X3M_EMISSION_GAIN='1')
             if case == 'xt_state_lane_off':
                 env['X3M_SUN_SHADOW_LANE'] = '0'
+            if case == 'cutout_pair_bias':
+                # Run 28 session B's configuration: a nonzero TAA mip bias leaves the
+                # exact cutout arm unconfigured (the fixture textures are single-level,
+                # so no stage is actually biased).
+                env['X3M_TAA_MIP_BIAS'] = '-0.5'
             if case in ('caps', 'cutout_drop', 'alpha_mask', 'allocation'):
                 env['X3M_FIXTURE_SUN_LANE_FAULT'] = case
             command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work/'fixture.exe'),

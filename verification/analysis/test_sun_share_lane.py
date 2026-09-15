@@ -215,13 +215,14 @@ class SunShareLane(unittest.TestCase):
                 (work/'x3-modern-captures'/f'taa_{i}.rgba16f').write_bytes(data)
             if case=='untracked':
                 publications.append('sun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=1 no_zwrite=0 blended=0 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0')
-                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=3874adb0f396a660 reason=pair gate=3 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24')
+                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=3874adb0f396a660 reason=pair gate=3 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24 test=-1 mask=-1 srgb=-1 cutout_pair=0 arm=1')
             if case in ('xt_state','xt_state_lane_off'): rows.extend(f'SUN_XT_STATE frame={i} test=1 ref=1 func=7 mask=7 lane={int(not lane_off)} routed={int(not lane_off)} gate4={int(lane_off)}' for i in range(6))
             if case=='effects': rows.append('SUN_EFFECTS frame=2 depth_write=0 blend=1')
+            if case=='cutout_pair_bias': rows.append('SUN_CUTOUT_BIAS frame=2 ps=63f96eba9eea7880 test=1 ref=1 mask=7 bias=-0.5 routed=1 gate4=0 untracked=0 stage_bias=00000000')
             if case=='cutout_pair':
                 rows.append('SUN_CUTOUT_PAIR frame=2 ps=63f96eba9eea7880 test=0 mask=7 gate4=1')
                 publications.append('sun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=0 no_zwrite=0 blended=0 state=1 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0')
-                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=63f96eba9eea7880 reason=state gate=4 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24')
+                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=63f96eba9eea7880 reason=state gate=4 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24 test=0 mask=7 srgb=0 cutout_pair=1 arm=1')
             if lane_off:
                 text='\n'.join(rows+histories+['RESET PASS','SUN_LIVE_PASS frames=6','RESULT PASS checks=1'])
                 return text,'\n'.join(frames+readbacks)
@@ -232,7 +233,7 @@ class SunShareLane(unittest.TestCase):
             return text,'\n'.join(qualifications+[depth]*(1 if case=='late_shader' else 2)+publications+readbacks+frames)
         with tempfile.TemporaryDirectory() as folder:
             work=Path(folder);(work/'x3-modern-captures').mkdir()
-            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair'):
+            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair','cutout_pair_bias'):
                 text,trace=witness(work,case)
                 json.dumps(validate(text,trace,work,case),allow_nan=False)
                 for badtext,badtrace in (((text.replace('drawn=0','drawn=3600',1),trace),(text.replace('lane=0 available=0','lane=1 available=1',1),trace)) if case=='xt_state_lane_off' else
@@ -278,8 +279,22 @@ class SunShareLane(unittest.TestCase):
                     # The cutout pair must stay a state refusal at gate 4; an admitted pair (no refusal) or another bucket fails.
                     refusal_line=next(l for l in trace.splitlines() if l.startswith('sun_shadow_lane_refusals '))
                     for badtrace in (trace.replace(refusal_line+'\n','').replace('untracked_writers=1','untracked_writers=0'), trace.replace('state=1','state=0').replace('pair=0 no_zwrite','pair=1 no_zwrite'),
-                                     trace.replace('reason=state gate=4','reason=pair gate=3')):
+                                     trace.replace('reason=state gate=4','reason=pair gate=3'),
+                                     # New writer grammar: the gate-4 values read, the pair identity and the exact-arm latch are required.
+                                     trace.replace(' test=0 mask=7 srgb=0 cutout_pair=1 arm=1',''), trace.replace('cutout_pair=1 arm=1','cutout_pair=1 arm=0'),
+                                     trace.replace('test=0 mask=7','test=-1 mask=-1')):
                         with self.assertRaises(AssertionError): validate(text,badtrace,work,case)
+                elif case=='cutout_pair_bias':
+                    # Run 28 session B: the cutout pair under a nonzero mip bias must be tracked (routed, no gate-4 refusal, no
+                    # untracked writer); the run81 pattern (a state refusal and signature on the pair) or a lost witness fails.
+                    run81=('\nsun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=0 no_zwrite=0 blended=0 state=1 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0'
+                           '\nsun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=63f96eba9eea7880 reason=state gate=4 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24 test=1 mask=7 srgb=0 cutout_pair=1 arm=0')
+                    frame2='sun_shadow_lane_frame frame=2 available=1 owner=1 exclusion_required=0 exclusion_valid=1 failed=0 receiver_draws=1 untracked_writers=0'
+                    assert frame2 in trace
+                    for badtext,badtrace in ((text.replace('step=2 lane=1 available=1','step=2 lane=1 available=0'),trace.replace(frame2,frame2.replace('available=1','available=0').replace('untracked_writers=0','untracked_writers=1'))+run81),
+                                             (text,trace+run81), (text.replace('routed=1 gate4=0','routed=0 gate4=1'),trace), (text.replace('untracked=0','untracked=1'),trace),
+                                             (text.replace('SUN_CUTOUT_BIAS frame=2','SUN_CUTOUT_BIAS_LOST frame=2'),trace), (text.replace('stage_bias=00000000','stage_bias=bf000000'),trace)):
+                        with self.assertRaises(AssertionError): validate(badtext,badtrace,work,case)
                 elif case=='effects':
                     # The non-depth effects draw must be counted without a veto: dropping the count or a refusal line for it fails.
                     for badtrace in (trace.replace('non_depth_writers=1','non_depth_writers=0'),

@@ -96,6 +96,14 @@ struct MotionRoute {
     // read (bit0 z, bit1 z write, bit2 both known). Never consulted by
     // eligibility or availability.
     std::uint8_t sun_refusal = 0, sun_z_state = 0;
+    // Gate-4 states as the chain read them, for the writer signature line only:
+    // bits 0-3 RT0 mask, bit 4 alpha test on, bit 5 sRGB write on, bits 6-8 the
+    // three values known (read and succeeded). Zero when gate 4 was not reached.
+    std::uint16_t sun_draw_state = 0;
+    // A cutout pair admitted by the tested-opaque arm (alpha test on, exact arm
+    // unconfigured): drawn with its native MIPMAPLODBIAS so alpha-test coverage
+    // matches the native draw (biased stages are restored before the draw).
+    bool native_mip_bias = false;
     bool depth = false, rt2_set = false, write2_set = false;   // RT2 bound for this draw (row has depth_output).
     bool jittered = false;                                     // Jittered rows written; restore after the draw.
     UINT jitter_register = 0;                                  // The VS row's clip-row window base.
