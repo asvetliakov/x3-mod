@@ -279,7 +279,7 @@ the portable core `point_light_admission_core.h`; ledger
   the cdecl handler preserving `EBX`/`ESI`/`EDI`/`EBP`, the ESP locals above the
   pushes, and the empty x87 stack (the handler unit is built without SSE/MMX
   and contains no floating point; `check_no_x87.py` walks it).
-- **Handler** `x3m_point_light_root_admits(node, light)`: saves LastError, walks
+- **Handler** `x3m_point_light_root_admits(node, light, remainder)`: saves LastError, walks
   `node+0x18` through `engine_memory::read` (bounds-checked, at most 8 reads;
   null ends the walk; a link back to the node or to itself, an unreadable link
   or an exhausted bound fail closed), then applies the same predicate to the
