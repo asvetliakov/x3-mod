@@ -18,7 +18,7 @@ constexpr HRESULT S_OK=0,S_FALSE=1,E_FAIL=-1,D3DERR_NOTFOUND=-2,D3DERR_INVALIDCA
 #define SUCCEEDED(x) ((x)>=0)
 #define FAILED(x) ((x)<0)
 using D3DSAMPLERSTATETYPE=unsigned;using D3DRENDERSTATETYPE=unsigned;
-constexpr unsigned D3DZB_TRUE=1,D3DBLEND_SRCALPHA=5,D3DBLEND_INVSRCALPHA=6,D3DBLENDOP_ADD=1,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171,D3DRS_SEPARATEALPHABLENDENABLE=206;
+constexpr unsigned D3DZB_TRUE=1,D3DBLEND_SRCALPHA=5,D3DBLEND_INVSRCALPHA=6,D3DBLENDOP_ADD=1,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171,D3DRS_SEPARATEALPHABLENDENABLE=206,D3DRS_SRCBLENDALPHA=207,D3DRS_DESTBLENDALPHA=208,D3DRS_BLENDOPALPHA=209;
 constexpr unsigned D3DSAMP_SRGBTEXTURE=11,D3DSAMP_MIPFILTER=7,D3DSAMP_MIPMAPLODBIAS=8;
 constexpr unsigned D3DDEVCAPS2_DMAPNPATCH=1;
 constexpr unsigned D3DDMAPSAMPLER=256,D3DVERTEXTEXTURESAMPLER0=257,D3DVERTEXTEXTURESAMPLER3=260;
@@ -33,6 +33,13 @@ constexpr unsigned D3DTSS_TEXTURETRANSFORMFLAGS=24,D3DTTFF_PROJECTED=256;
 struct RECT{long left=0,top=0,right=0,bottom=0;};
 constexpr unsigned motion_shadow_state_count=24;
 constexpr std::array<unsigned,24>shadow_states{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_COLORWRITEENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_COLORWRITEENABLE2,128,129,130,131,132,133,134,135,198,199,200,201,202,203,204,205};
+// Mirrors the production blend shadow table (motion_output.cpp): the fade
+// check's triple plus SEPARATEALPHABLENDENABLE, then the separate alpha triple
+// that only the source-gain refusal lines read.
+constexpr unsigned composition_blend_count=7;
+constexpr D3DRENDERSTATETYPE composition_blend_states[composition_blend_count]={
+ D3DRS_SRCBLEND,D3DRS_DESTBLEND,D3DRS_BLENDOP,D3DRS_SEPARATEALPHABLENDENABLE,
+ D3DRS_SRCBLENDALPHA,D3DRS_DESTBLENDALPHA,D3DRS_BLENDOPALPHA};
 unsigned releases=0, checks=0, failures=0;
 #define CHECK(x) do {++checks;if(!(x)){++failures;std::fprintf(stderr,"line=%d %s\n",__LINE__,#x);}} while(0)
 const std::uint32_t* release_mask=nullptr;
@@ -156,6 +163,15 @@ bool material_motion_invalid_sun_share(std::vector<std::uint32_t>&program){++sun
 LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;if(p[0]>=70)return LinearMaterialResult::UnsupportedShader;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==41||p[0]==42||p[0]==43||p[0]==21||(p[0]>=22&&p[0]<=25)||p[0]==44);o={p[0]+200};return LinearMaterialResult::Applied;}
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d){return linear_material_vertex_variant(p,n,c,o,d);}
 LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d,bool&fill){fill=c.fill>0.f;return linear_material_pixel_variant(p,n,c,o,d);}
+// Original fill (X3M_ORIGINAL_FILL): the reviewed-pair predicate and the
+// create-time fill transform. fill_applied=0 is the fail-closed refusal of a
+// program without a unique lobe sum; the real transform has its own fixture.
+unsigned reviewed_lookups=0,original_fill_transforms=0;bool original_fill_reject=false,original_fill_applies=true;
+bool linear_material_pair_reviewed(std::uint64_t vs,std::uint64_t ps){++reviewed_lookups;return linear_material_pair_contract(vs,ps).sampler_mask!=0;}
+LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint32_t*p,std::size_t,float fill,std::vector<std::uint32_t>&o,bool,bool&fill_applied){
+ ++original_fill_transforms;fill_applied=false;
+ if(original_fill_reject)return LinearMaterialResult::UnsupportedShader;
+ fill_applied=original_fill_applies&&fill>0.f;o={*p+900};return LinearMaterialResult::Applied;}
 }
 namespace renderer {
 enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2,DistanceFadeInPlace=4,PackedScreenInPlace=8};
@@ -223,6 +239,7 @@ struct MotionRoute {
  Region fade_region{};bool fade_region_evaluated=false;unsigned fade_region_permille=0;
  Region prefix_region{};bool prefix_evaluated=false;unsigned prefix_region_permille=0;
  bool sun_color_writer=false,sun_receiver=false;std::uint8_t sun_z_state=0,sun_refusal=0;
+ bool original_fill=false; // the fill variant the bind path selected for this route
 };
 struct Counters{bool hook_scene_end=false,bloom_copy_seen=false;unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
 struct D3DDISPLAYMODE{D3DFORMAT Format=D3DFMT_UNKNOWN;};
@@ -291,7 +308,7 @@ HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept;
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant[2]{},*screen_variant=nullptr,*screen_additive_variant=nullptr;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant[2]{},*screen_variant=nullptr,*screen_additive_variant=nullptr;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
@@ -302,11 +319,12 @@ public:
  bool screen_additive_pair=false;IDirect3DPixelShader9*ps_screen_additive_variant=nullptr;
  bool screen_pair=false;IDirect3DPixelShader9*ps_screen_variant=nullptr,*screen_eligible_variant=nullptr;std::uint64_t stream0=0;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr,*vs_prepass=nullptr;
+ IDirect3DPixelShader9*ps_original_fill_variant=nullptr;bool original_fill_pair=false;
  bool xt_default_pair=false,xt_default_ready=false,cutout_pair=false,asteroid_pair=false,fade_route_pair=false;
  fade_route::Registers fade_route_registers{};
  DWORD fill_mode=0;bool fill_mode_known=false;
  IDirect3DVertexShader9*vs_xt_default_ordinary=nullptr,*vs_xt_default_linear=nullptr;IDirect3DPixelShader9*ps_xt_default_ordinary=nullptr;
- DWORD composition_blend[4]{};bool composition_blend_known[4]{};
+ DWORD composition_blend[composition_blend_count]{};bool composition_blend_known[composition_blend_count]{};
  DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};
  renderer::LinearMaterialPairContract material_contract{};float rows[1][16]{};bool rows_known[1]{};int integer0[4]{};bool integer0_known=false;
  Surface rt0,depth;Viewport viewport;bool extra_rt[4]{};
@@ -359,6 +377,7 @@ public:
  bool cutout_probe_frame_known_=false,cutout_reset_pending_=false,shimmer_trace_=false;
  unsigned cutout_probes_=0;void probe_cutout_caps(bool=false)noexcept{++cutout_probes_;}
  bool distance_fade_requested_=false;unsigned fade_route_threshold_=500;fade_route::Hysteresis fade_hysteresis_;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
+ bool original_fill_requested_=false;float original_fill_=0.f;std::uint32_t original_fill_draws_=0;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
  bool emission_source_gain_requested_=false;float emission_source_gain_[2]{1,1};
@@ -380,6 +399,10 @@ public:
  // Ambient occlusion pass and its timestamp queries (step 2): lifetime seams only.
  std::unique_ptr<Pass>ao_;bool ao_timing_created_=false,ao_timing_failed_=false,ao_timing_lost_=false,ao_attach_failed_=false;unsigned ao_timing_releases_=0,ao_chain_failures_=0,ao_attach_count_=0;std::uint64_t ao_attach_frame_=0;D3DFORMAT ao_adapter_format_=D3DFMT_UNKNOWN,ao_target_format_=D3DFMT_UNKNOWN;
  void ao_timing_release()noexcept{++ao_timing_releases_;ao_timing_created_=false;}
+ // Cascade-0 depth replay (default off): only the lifetime seams the extracted
+ // control flow touches - lease release, detach, Reset and re-attach state.
+ bool depth_replay_requested_=false,depth_replay_attach_failed_=false;std::unique_ptr<Pass>depth_replay_;unsigned depth_lease_releases_=0;
+ void release_depth_leases()noexcept{++depth_lease_releases_;}
  IUnknown*target_surface_=nullptr,*depth_surface_=nullptr,*sentinel_ps_=nullptr,*sentinel_mrt_ps_=nullptr,*quad_vs_=nullptr,*quad_declaration_=nullptr;
  IDirect3DPixelShader9*sun_sentinel_ps_=nullptr;
  enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;renderer::HdrConfig hdr_config_;
@@ -454,6 +477,7 @@ unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emissio
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
 float emission_source_gain=1.f,effect_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN / X3M_EFFECT_SOURCE_GAIN, parsed by the same extracted setting reader
 bool screen_emission_additive_requested=false;float screen_emission_additive_gain=1.f; // X3M_SCREEN_EMISSION_ADDITIVE=G
+float original_fill=0.f; // X3M_ORIGINAL_FILL=K, parsed by the same extracted setting reader
 unsigned fade_route_threshold=500;
 renderer::LinearMaterialConfig linear_material_config;
 renderer::HdrConfig hdr_config;

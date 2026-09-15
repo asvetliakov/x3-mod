@@ -70,3 +70,24 @@ production source was changed. Per test, cause → fix:
 | `test_linear_distance_fade` | not golden bytes: the test compiles a frozen baseline from a pinned commit. 5b3b5c3 (PS3 constant-read port repair, reviewed, with GPU parity evidence in `linear-material-constant-port.md`) intentionally stages the sanitizer constant through a `mov`, so 104 pixel programs diverge from the 2cf65ae pin | `BASELINE` pin moved 2cf65ae → 5b3b5c3; 137 originals now byte-exact across three configurations. The repair delta itself stays proved against pre-repair 8722072 by `test_linear_material_constant_port.py` |
 | `test_linear_emission_fused_report` | runner drift from 3ded947: `run_linear_emission.py` hashed `ps_*-source-<g>.bin` in every MRT mode, but `linear_emission_fixture.cpp` only writes them under `--source-gain` | `source_gain_sha256` moved inside the `--source-gain` branch |
 | `test_linear_emission_sm1_transformer` | not a missing corpus (751 programs are present): `linear_emission_sm1_structure.cpp` asserted mode 5 is refused, but c40ee94 made 5 `AdditiveGain` | invalid-mode set changed to `{0,6,-1}` |
+
+## Repair (2026-09-16)
+
+Same class again: extracted-snippet mocks behind the sun-lane (444478a),
+point-light-admission and cascade-0 depth-replay (46dc822) commits. Test and
+fixture files only; no production source changed and no assertion weakened.
+
+| Test | Cause | Fix |
+| --- | --- | --- |
+| `test_linear_material_live.test_production_control_flow` | 444478a moved the blend shadow to the seven-entry `composition_blend_states` table, made `source_gain_logged_` a three-reason array, and 46dc822 added the depth-replay lifetime seams | mirrored `composition_blend_count`/`composition_blend_states` and the three separate-alpha state values, widened `Shadow::composition_blend[_known]` to 7, `source_gain_logged_[3]`, added `depth_replay_requested_`/`depth_replay_attach_failed_`/`depth_replay_` (the `Pass` double) and a counting `release_depth_leases()` in `linear_material_live_fixture.cpp` |
+| `test_motion_wrap_states.test_production_transaction` | the extracted state table now carries the separate-alpha triple; `after_reset` forwards to the depth-replay pass | added the three state values and `depth_replay_`, widened the blend shadow to 7 with a `static_assert` against the included production table in `motion_wrap_state_fixture.cpp` |
+| `test_capture_bloom_lifetime.test_production_lifetime_and_reset_control_flow` | `capture.cpp` retires the point-light root verdicts per frame and on Reset | added a counting `point_light_admission::next_frame` double to `capture_bloom_lifetime_fixture.cpp` |
+| `test_linear_cutout_contract.test_actual_contract_and_runtime_helpers` | same separate-alpha states in the extracted table | added `D3DRS_SRCBLENDALPHA/DESTBLENDALPHA/BLENDOPALPHA` to the mock preamble in `test_linear_cutout_contract.py` |
+| `test_motion_hdr_scene.test_synchronous_handoff_and_default_null_parity` | `shadow_replay_pass.h`/`shadow_replay_depth.h` default `cull_mode` to `D3DCULL_NONE`; the `unique_ptr` member needs the pass destructor | added the documented `D3DCULL` enum to `motion_hdr_scene_stubs/d3d9.h` and `ShadowReplayPass::~ShadowReplayPass() = default;` to `motion_hdr_scene_fixture.cpp` |
+
+| `test_linear_material_live` / `test_motion_wrap_states` (second wave) | the original-fill route (`X3M_ORIGINAL_FILL`) landed on main during the repair: `ShaderEntry::original_fill_variant`, `Shadow::ps_original_fill_variant`/`original_fill_pair`, `MotionRoute::original_fill`, `original_fill_requested_`/`original_fill_`, `linear_material_pair_reviewed`, `linear_material_original_fill_pixel_variant` and the capture setting global | mirrored all of them in `linear_material_live_fixture.cpp` (reviewed-pair predicate from the contract mask; fill transform returns `fill_applied` and refuses on demand) and the route/shadow flags plus a `HdrState`/`hdr_state_` mirror in `motion_wrap_state_fixture.cpp` |
+
+Canonical discovery after the repair:
+`PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'`
+→ `Ran 1926 tests in 540.589s`, `OK (skipped=2)` (the two build-artifact skips), on main c0a435a.
+`linear_material_live checks=20495 failures=0`, `motion_wrap_states checks=34773 failures=0`.

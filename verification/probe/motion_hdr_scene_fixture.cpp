@@ -142,6 +142,7 @@ void MotionOutput::release_composition_identity() noexcept {}
 // unique_ptr<LinearEmissionPass> member and the busy query on that path.
 renderer::LinearEmissionPass::~LinearEmissionPass() = default;
 renderer::AmbientOcclusionPass::~AmbientOcclusionPass() = default;
+renderer::ShadowReplayPass::~ShadowReplayPass() = default; // the depth-replay pass is never constructed here; only the member destructor is needed
 bool renderer::LinearEmissionPass::reference_accounting_busy() const noexcept { return false; }
 bool renderer::LinearEmissionPass::coverage_valid() const noexcept { return true; }
 // Shadow-replay candidate publication is a separate per-frame diagnostic with

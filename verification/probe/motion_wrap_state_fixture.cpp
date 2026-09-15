@@ -16,7 +16,7 @@ constexpr unsigned D3DRS_ZENABLE=7,D3DRS_ZWRITEENABLE=14,D3DRS_ALPHATESTENABLE=1
  D3DRS_WRAP0=128,D3DRS_WRAP1=129,D3DRS_WRAP2=130,D3DRS_WRAP3=131,D3DRS_WRAP4=132,D3DRS_WRAP5=133,D3DRS_WRAP6=134,D3DRS_WRAP7=135,
  D3DRS_WRAP8=198,D3DRS_WRAP9=199,D3DRS_WRAP10=200,D3DRS_WRAP11=201,D3DRS_WRAP12=202,D3DRS_WRAP13=203,D3DRS_WRAP14=204,D3DRS_WRAP15=205;
 constexpr unsigned D3DRS_ALPHAFUNC=25,D3DRS_ALPHAREF=24,D3DRS_ZFUNC=23,D3DRS_FOGENABLE=28,D3DRS_DITHERENABLE=26,
- D3DRS_STENCILENABLE=52,D3DRS_CULLMODE=22,D3DRS_FILLMODE=8,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171,D3DRS_SEPARATEALPHABLENDENABLE=206;
+ D3DRS_STENCILENABLE=52,D3DRS_CULLMODE=22,D3DRS_FILLMODE=8,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171,D3DRS_SEPARATEALPHABLENDENABLE=206,D3DRS_SRCBLENDALPHA=207,D3DRS_DESTBLENDALPHA=208,D3DRS_BLENDOPALPHA=209;
 constexpr unsigned motion_shadow_state_count=32,failure_log_limit=16;
 namespace renderer {
 struct MotionOutputProfile{std::uint8_t texcoord_index=4,depth_texcoord_index=7;};
@@ -33,6 +33,7 @@ struct MotionRoute {
  bool depth=false,linear_material=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false,ps_set=false,vs_set=false,vs_constants_set=false,ps_constants_set=false;
  DWORD saved_write1=15,saved_write2=15,saved_wrap[6]{};std::uint8_t wrap_index[6]{},wrap_count=0,wrap_attempted=0;
  bool fade_arm=false,sun_receiver=false; // fade-band arm and sun-share lane flags read by the bind path
+ bool original_fill=false; // X3M_ORIGINAL_FILL: the bind path records the fill variant it selected
 };
 static unsigned failures=0,checks=0,allocations=0;
 void* operator new(std::size_t n){++allocations;if(void*p=std::malloc(n))return p;throw std::bad_alloc();}
@@ -71,11 +72,13 @@ public:
  unsigned id_=1,generation_=0,frame_=0,taa_references_=0,logged_failures_=0,taa_invalidations=0,frames=0;
  Pass*taa_=nullptr;
  Pass*ao_=nullptr; // AO step 2 (8b0a7c1): after_reset forwards to the ambient-occlusion pass when one is attached
+ Pass*depth_replay_=nullptr; // cascade-0 depth replay: after_reset forwards to the pass when one is attached
  struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;
-  DWORD composition_blend[3]{};bool composition_blend_known[3]{};DWORD fill_mode=0;bool fill_mode_known=false;
+  /* sized for the production composition_blend_states table (asserted below) */ DWORD composition_blend[7]{};bool composition_blend_known[7]{};DWORD fill_mode=0;bool fill_mode_known=false;
   bool vs_reserved_written=false,ps_reserved_written=false;void*vs=nullptr,*ps=nullptr,*vs_variant=nullptr,*ps_variant=nullptr,*vs_material_variant=nullptr,*ps_material_variant=nullptr;
-  bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
+  bool original_fill_pair=false;void*ps_original_fill_variant=nullptr;
+    bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
   void*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
  }shadow_;
@@ -83,6 +86,8 @@ public:
  template<class F> F native(unsigned n){switch(n){case GetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_state));case SetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_state));
  case SetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_ps));case SetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_vs));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}}
  HRESULT bind_target(unsigned,void*){return S_OK;}
+ // Mirrors motion_output.h; the bind path reads it for the original-fill gate.
+ enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;
  bool cutout_reset_pending_=false; void probe_cutout_caps(bool){}
  bool composition_requested()const{return false;}
  bool blend_shadow_requested()const{return false;}
@@ -108,6 +113,7 @@ public:
  void begin_stateblock() noexcept;void end_stateblock() noexcept;void stateblock_applied() noexcept;
 };
 #include "motion_wrap_under_test_inc.h"
+static_assert(composition_blend_count<=7,"blend shadow mirror is smaller than the production table");
 
 unsigned wrap(unsigned i){return i<8?D3DRS_WRAP0+i:D3DRS_WRAP8+i-8;}
 renderer::LinearMaterialPairContract material(std::uint8_t count,
