@@ -69,5 +69,7 @@ std::uint32_t fixture_attempts_frame();
 std::uint64_t fixture_refused();
 const char* fixture_site_status();
 void fixture_drop_pending();
+const detail::RateLimit* fixture_enter_limit();  // the media_cue_enter line limiter
+void fixture_reset_enter_limit();
 #endif
 }

@@ -149,12 +149,16 @@ struct TraceRing {
 };
 
 // The first `lines_per_second` trace lines of each clock second are emitted;
-// the rest are counted as suppressed and stay in the window summary.
+// the rest are counted as suppressed and stay in the window summary. Two
+// independent limiters share the bound: the drained `media_cue` outcome lines
+// (admitted with the entry's clock at the frame boundary) and the synchronous
+// `media_cue_enter` lines (admitted with the current clock inside the gate).
 inline constexpr unsigned lines_per_second = 32;
 struct RateLimit {
     std::uint64_t second_start = 0, suppressed = 0;
     unsigned emitted = 0;
     bool admit(std::uint64_t now, std::uint64_t frequency) noexcept {
+        if (!now) { ++suppressed; return false; }  // a failed clock read suppresses rather than admitting every call
         if (!frequency) frequency = 1;
         if (!second_start || now < second_start || now - second_start >= frequency) { second_start = now; emitted = 0; }
         if (emitted < lines_per_second) { ++emitted; return true; }
@@ -162,6 +166,12 @@ struct RateLimit {
         return false;
     }
 };
+
+// Documented per-dispatch cost of the gate with the trace off (run 34 record,
+// X3 bottle, CPU fixture): PASS arm entry + return capture, REFUSE arm entry
+// only. The fixture checks its measurement within 2x of these, so a change to
+// the off path shows up as a failed check rather than a silently drifting number.
+inline constexpr std::uint64_t pass_dispatch_cost_ns = 280, refuse_dispatch_cost_ns = 116;
 
 inline constexpr unsigned window_frames = 300, id_slots = 8;
 struct IdCount { std::uint32_t id = 0, count = 0; };

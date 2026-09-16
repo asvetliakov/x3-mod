@@ -79,6 +79,30 @@ class SourceAndPolicy(unittest.TestCase):
         self.assertIn('if(cache_on&&scoped&&cache.refuses(f->id,now,retry_ticks)){', enter)
         self.assertIn('if(pending.push(p))f->ret=std::uint32_t(reinterpret_cast<std::uintptr_t>(return_trampoline));', enter)
         self.assertEqual(source.count('__attribute__((force_align_arg_pointer))'), 2)
+        # The entry-side line: one predicate on the trace-off path, its own
+        # lines_per_second limiter, written after the proceed decision (the
+        # REFUSE arm returns first, so it writes none) and before the handler
+        # returns into the claim tail, synchronously to the log's OS handle
+        # under the full envelope; the handler itself never takes the log mutex.
+        self.assertIn('if(trace_on&&enter_limit.admit(now,frequency))write_enter_line(e);', enter)
+        self.assertLess(enter.index('return 0;'), enter.index('write_enter_line(e);'))
+        self.assertLess(enter.index('write_enter_line(e);'), enter.rindex('return 1;'))
+        self.assertEqual(enter.count('trace_on'), 1)
+        self.assertNotIn('WriteFile', enter)
+        writer = source[source.index('void write_enter_line(const detail::Entry& e) {'):]
+        writer = writer[:writer.index('\n}')]
+        self.assertIn('const HANDLE handle=log_handle();', writer)
+        self.assertIn('x3m::call_preserved([&]{', writer)
+        self.assertIn('"media_cue_enter frame=%llu qpc=%llu id=%lu kind=%s caller=%s flags=0x%lx attempt=%lu\\n"', writer)
+        self.assertIn('written_whole=n>0&&unsigned(n)<sizeof line&&WriteFile(handle,line,DWORD(n),&written,nullptr)&&written==DWORD(n);', writer)
+        self.assertIn('if(!written_whole)++enter_limit.suppressed;', writer)
+        self.assertIn('if (!now) { ++suppressed; return false; }', core)
+        self.assertNotIn('log(', writer.replace('log_handle()', ''))
+        self.assertIn('detail::RateLimit enter_limit;', source)
+        self.assertIn('limit={};enter_limit={};', source)
+        self.assertIn('suppressed=%llu enter_suppressed=%llu dropped=%llu', source)
+        self.assertIn('limit.suppressed=0;enter_limit.suppressed=0;ring.dropped=0;', source)
+        self.assertIn('inline constexpr std::uint64_t pass_dispatch_cost_ns = 280, refuse_dispatch_cost_ns = 116;', core)
         # The cache applies to the selector path alone; a success from any caller clears.
         self.assertIn('return caller == selector && kind == a.selector_kind;', core)
         self.assertIn('if (ret == a.helper_return) return slot_c == a.selector_return ? selector : other;', core)
@@ -128,8 +152,18 @@ class SourceAndPolicy(unittest.TestCase):
                       'nested speech call from inside the build reached depth 2 with both spans replayed',
                       'speech caller with the cached id proceeds', 'success after the interval clears the cache entry',
                       'media install refused after the install window closed', 'foreign-thread call proceeds unobserved',
-                      'lost return counted once and the fail-safe returned to last_return'):
+                      'lost return counted once and the fail-safe returned to last_return',
+                      'media_cue_enter line written with the entry\'s frame, qpc, id, kind, caller, flags and attempt',
+                      'media_cue_enter line was in the file before the allocator body ran',
+                      'the failed build wrote its entry line; the REFUSE arm wrote none',
+                      'media_cue_enter lines bounded to lines_per_second per clock second, the rest counted as enter_suppressed',
+                      'foreign-thread call writes no media_cue_enter line',
+                      'trace off: no media_cue_enter line written by the benchmark\'s proceeded calls',
+                      'documented trace-off PASS dispatch cost within 2x of the measured cost',
+                      'documented trace-off REFUSE dispatch cost within 2x of the measured cost'):
             self.assertIn(label, fixture)
+        self.assertIn('HANDLE log_handle() noexcept {return media_log_handle;}', fixture)
+        self.assertIn('media_cases=10', fixture)
 
 
 class MediaCueLaunchOptions(unittest.TestCase):

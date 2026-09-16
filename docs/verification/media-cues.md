@@ -208,8 +208,9 @@ requires `--telemetry`), drained at the Present boundary on the owner thread:
 
     media_cue_mode trace_requested= cache_requested= trace= cache= enabled= status= retry_s= cache_entries=32 pending_depth=4 ring=64 lines_per_second=32 window=300 owner=present_thread sector_change=interval_only qpc_frequency= return_trampoline=
     media_cue_site index=0 address=00498140 length=5 rel32=0 patched= status=
+    media_cue_enter frame= qpc= id= kind=<0x5a|0x..|none> caller=<selector|speech|script|savegame|query|other> flags= attempt=
     media_cue frame= qpc= id= kind=<0x5a|0x..|none> caller=<selector|speech|script|savegame|query|other> flags= result=<0x<record>|0|unobserved> us= attempts_frame= cached=<0|1>
-    media_cue_window qpc= frame= frames= attempts= failures= successes= refused= unobserved= attempts_frame_p50= attempts_frame_max= ids=<id:count,... up to 8|none> id_overflow= cache_used= evictions= depth_max= overflow= stale= mismatched= lost= suppressed= dropped= early= foreign=
+    media_cue_window qpc= frame= frames= attempts= failures= successes= refused= unobserved= attempts_frame_p50= attempts_frame_max= ids=<id:count,... up to 8|none> id_overflow= cache_used= evictions= depth_max= overflow= stale= mismatched= lost= suppressed= enter_suppressed= dropped= early= foreign=
 
 `media_cue` lines are the first 32 per clock second (`suppressed=` counts the
 rest); `qpc=` is the call's clock, alignable through `clock_anchor`; `us=` is
@@ -285,6 +286,65 @@ selector for the retry interval (30 s by default) instead of being rebuilt every
 frame. Nothing else is refused - speech, script, savegame and query callers are
 out of scope - and a success for the id from any caller clears the entry
 immediately.
+
+### Entry-side trace line (2026-09-17, worktree)
+
+Run100/101 showed the outcome-only schema's gap: a build that never returns
+leaves no line, so the hung cue is unnamed. With `--media-cue-trace` the gate
+now writes one line at entry, before the claim tail replays the span:
+
+    media_cue_enter frame= qpc= id= kind=<0x5a|0x..|none> caller=<selector|speech|script|savegame|query|other> flags= attempt=
+
+`qpc=` and `attempt=` are the same values the matching `media_cue` outcome
+line carries, so the pair joins on them; an entry line with no matching
+outcome line at the end of a log is the hung build. **Delivery:** the line is
+formatted and written synchronously from `x3m_media_cue_enter` to the session
+log's OS handle (`log_handle()`, `WriteFile`, the path the fault reporter
+already uses), not through the ring, `log()` or stdio, so it reaches the file
+even when the callee never returns and the Present thread never drains again.
+The handler never takes the log mutex; the CRT formatter runs under
+`call_preserved`'s FNSAVE/FRSTOR envelope through an indirect call, so the
+handler's audited graph stays x87-free (`check_no_x87.py` reachable 494 -> 495,
+0 violations). Because the write bypasses stdio's buffer, the line may appear
+before buffered lines logged earlier and can, rarely, split a line stdio
+flushed in two pieces: grep for the prefix, not for order. **Bound:** its own
+`RateLimit` with the same `lines_per_second = 32`, admitted with the entry's
+clock; the rest are counted in the window line's new `enter_suppressed=` field
+(the outcome-line limiter is fed the entry clock at drain time, so sharing one
+limiter would have reset it on every nested/out-of-order drain). **Refused
+calls write no entry line:** the REFUSE arm never runs the allocator, so it
+cannot hang, its `media_cue ... cached=1` outcome line already names it, and
+the arm keeps its cost. Proceeded-unobserved calls (pending depth exhausted)
+do write one, since they run the allocator. The line is written after the
+pending entry's clock is taken, so on the at most 32 traced calls per second
+the outcome line's `us=` includes the entry line's formatter plus `WriteFile`
+(~1.9 us under Wine); a line that cannot reach the file whole (no handle, a
+truncated format, a failed or short write) or a zero clock read counts in
+`enter_suppressed=` instead of vanishing. **Off:** `trace_on` is the only
+predicate on the entry path; no call, no flush. The documented trace-off costs
+now live in `media_cue_core.h` (`pass_dispatch_cost_ns = 280`,
+`refuse_dispatch_cost_ns = 116`) and the fixture checks its measurement within
+2x of them, as the pass/loop benches do.
+
+| Check | Result |
+| --- | --- |
+| `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_cue verification.analysis.test_game_phase_sites` | 25 tests OK, 26.5 s |
+| `python3 verification/probe/verify_media_cue_site.py` | PASS, `source_present: true` (site bytes unchanged) |
+| `cmake --build build/entry-trace` (fresh configure, RelWithDebInfo) | 0 warnings |
+| `python3 verification/probe/check_no_x87.py build/entry-trace/d3d9.dll` | PASS, 76 roots, 495 reachable, 0 violations |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py` | PASS, 8659 checks, 0 failures, 6.5 s, `media_cases=10` |
+| `MEDIA CUE BENCH` (X3 bottle) | trace off: baseline 10.9 ns, PASS dispatch **263.5 ns** (run 34: 280), REFUSE dispatch **110.0 ns** (run 34: 116); trace on, limiter saturated: PASS dispatch 225.8 ns (the predicate and `admit` are inside noise); one admitted entry line **~1.9 us** above the PASS cost (formatter + `WriteFile` syscall under Wine; at most 32 per second) |
+| `python3 tools/manage.py launch --dry-run ... --telemetry --media-cue-trace` | env `X3M_MEDIA_CUE_TRACE=1`, `X3M_MEDIA_CUE_CACHE=1`, `X3M_MEDIA_CUE_RETRY_S=30`; no launcher change |
+
+The fixture's new media case stands in for the session log with a
+delete-on-close file behind `log_handle()`: the first traced PASS call's line
+is compared byte-for-byte (`frame=1 qpc=<entry qpc> id=812 kind=0x5a
+caller=selector flags=0x0 attempt=1`) and its byte count is read back from
+inside the allocator body, proving the line is on disk before the callee runs;
+the early, refused and foreign-thread calls write nothing; speech/script/other
+lines carry `kind=none`/`0x11`; 40 rapid calls after a limiter reset give
+`lines <= 32` and `lines + enter_suppressed == 40`; the trace-off benchmark's
+140,000 proceeded calls write nothing.
 
 ## Open issues
 

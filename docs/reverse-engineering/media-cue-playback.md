@@ -121,7 +121,11 @@ handles stay in locals and registers (eight `cmp esi,0x8007000e` =
 observable at `0x00498140`'s return.** A trace there can log the id, the derived
 path candidates, the caller and — with a matching return hook — wall time; the
 HRESULT and the failing step need a hook inside `0x004cf460` at those four arms,
-whose filter names are static (below).
+whose filter names are static (below). Since 2026-09-17 the gate also writes a
+synchronous `media_cue_enter` line at entry (before the span is replayed), so a
+build that never returns still names its cue; it changes nothing the routine or
+its callers observe (the neutrality argument of §6 is about the REFUSE arm's
+early `return 0`, which the entry line does not touch).
 
 ### Which filters the EXE creates, and which step reaches quartz
 

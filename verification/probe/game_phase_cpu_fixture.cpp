@@ -25,7 +25,8 @@ constexpr unsigned total_stubs=marker::Count+frame_marker::Count; // frame stamp
 namespace x3m::loading_trace {
 void intervals_freeze(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,DWORD) noexcept {}
 }
-namespace x3m { LONGLONG dll_load_qpc=0; void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);va_end(args);std::putchar('\n');} }
+static HANDLE media_log_handle=INVALID_HANDLE_VALUE; // the media-cue checks' stand-in for the session log's OS handle
+namespace x3m { LONGLONG dll_load_qpc=0; void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);va_end(args);std::putchar('\n');} HANDLE log_handle() noexcept {return media_log_handle;} }
 namespace x3m::telemetry { bool enabled(){return true;} std::uint64_t frequency(){LARGE_INTEGER f{};return QueryPerformanceFrequency(&f)?std::uint64_t(f.QuadPart):0;} }
 namespace x3m::sampling_profiler { void set_periodic(void (*)(std::uint64_t),unsigned) {} }
 namespace x3m::object_trace { bool executable_verified(){return true;} }
@@ -1093,10 +1094,12 @@ extern "C" {
 std::uint32_t media_fixture_id=0,media_fixture_flags=0,media_fixture_result=0;
 std::uint32_t media_body_calls=0,media_body_ebx=0,media_body_arg=0,media_body_flags=0,media_body_ebx_ok=0;
 std::uint32_t media_reenter=0,media_reenter_result=0,media_reenter_depth=0,media_lost_trigger=0;
+std::uint32_t media_enter_probe=0,media_enter_bytes_in_body=0;
 void (*media_reenter_call)()=nullptr;
 __attribute__((force_align_arg_pointer)) void __cdecl media_body_record(std::uint32_t ebx,std::uint32_t argument,std::uint32_t flags){
     ++media_body_calls;media_body_ebx=ebx;media_body_arg=argument;media_body_flags=flags;
     media_body_ebx_ok+=ebx==argument; // the replayed `mov ebx,[esp+8]` read the argument at the game's exact ESP
+    if(media_enter_probe){media_enter_probe=0;media_enter_bytes_in_body=GetFileSize(media_log_handle,nullptr);} // the entry line must already be in the file while the build runs
     if(media_lost_trigger){media_lost_trigger=0;media::fixture_drop_pending();} // the entry vanishes while the build runs
     if(media_reenter&&media_reenter_call){ // models COM apartment dispatch re-entering the allocator from inside the build
         media_reenter=0;
@@ -1159,11 +1162,37 @@ static bool media_specs(const MediaBody& r,patch::SiteSpec* specs){
     return okay;
 }
 static void media_reset(){media_body_calls=media_body_ebx=media_body_arg=media_body_flags=media_body_ebx_ok=0;}
+// The stand-in session log: a delete-on-close file in the working directory.
+// `media_log_take` reads everything written so far into `out` (NUL-terminated,
+// truncated to the buffer) and empties the file; `media_log_lines` counts the
+// `media_cue_enter` lines in a taken buffer.
+static bool media_log_open(){
+    if(media_log_handle!=INVALID_HANDLE_VALUE)return true;
+    media_log_handle=CreateFileW(L"media_cue_enter_fixture.log",GENERIC_READ|GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE,nullptr);
+    return media_log_handle!=INVALID_HANDLE_VALUE;
+}
+static unsigned media_log_take(char* out,unsigned capacity){
+    out[0]=0;if(media_log_handle==INVALID_HANDLE_VALUE)return 0;
+    const DWORD size=GetFileSize(media_log_handle,nullptr);
+    DWORD read=0;
+    if(SetFilePointer(media_log_handle,0,nullptr,FILE_BEGIN)!=0)return 0;
+    if(size&&!ReadFile(media_log_handle,out,size<capacity-1?size:capacity-1,&read,nullptr))read=0;
+    out[read]=0;
+    SetFilePointer(media_log_handle,0,nullptr,FILE_BEGIN);SetEndOfFile(media_log_handle);
+    return size;
+}
+static unsigned media_log_lines(const char* text){
+    unsigned lines=0;
+    for(const char* p=text;*p;){const char* nl=std::strchr(p,'\n');if(!nl)break;lines+=!std::strncmp(p,"media_cue_enter ",16);p=nl+1;}
+    return lines;
+}
 static DWORD WINAPI media_foreign_thread(LPVOID caller){reinterpret_cast<void(*)()>(caller)();return 0;}
 static constexpr std::uint32_t media_record=0x40001000,media_id_a=812,media_id_b=245;
 static void media_replay_checks(){
     MediaBody r=make_media_body();check(r.body!=nullptr,"synthetic allocator and callers emitted");if(!r.body)return;
     patch::SiteSpec specs[media_marker::Count];if(!media_specs(r,specs))return;
+    check(media_log_open(),"media stand-in log opened");
+    static char lines[8192];char expected[192]; // the 40-call bound case writes up to 32 lines of ~90 B
     unsigned char original[64];std::memcpy(original,r.body,r.length);
     LARGE_INTEGER f{};QueryPerformanceFrequency(&f);const std::uint64_t retry_ticks=std::uint64_t(f.QuadPart)/10; // 100 ms
     Snapshot baseline_ok{},baseline_fail{},baseline_speech{},baseline_other{},hooked{},after{};
@@ -1186,11 +1215,18 @@ static void media_replay_checks(){
     media_reset();media_fixture_result=media_record;invoke(r.selector,hooked);compare(baseline_ok,hooked);
     check(media_body_calls==1&&media_body_ebx_ok==1,"PASS arm before admission replays the span at the game's ESP");
     check(gate->early.load()==1&&pending->depth==0&&pending->max_depth==0&&!media::fixture_pop_trace(&e),"call before admission is early, unobserved and untraced");
+    check(media_log_take(lines,sizeof lines)==0,"early call writes no media_cue_enter line");
     media::frame(1);
+    media_enter_probe=1;media_enter_bytes_in_body=0;
     // Observed success.
     media_reset();media_fixture_result=media_record;invoke(r.selector,hooked);compare(baseline_ok,hooked);
     check(media_body_calls==1&&media_body_ebx_ok==1&&media_body_arg==media_id_a,"PASS arm with return capture replays the span and reaches the body once");
     check(media::fixture_pop_trace(&e)&&e.outcome==media::detail::observed&&e.result==media_record&&e.id==media_id_a&&e.kind==0x5a&&e.caller==media::detail::selector&&e.scoped&&e.frame==1&&e.attempt==1,"trace entry names the selector, the id, kind 0x5a, the record and the frame");
+    std::snprintf(expected,sizeof expected,"media_cue_enter frame=1 qpc=%llu id=%lu kind=0x5a caller=selector flags=0x0 attempt=1\n",static_cast<unsigned long long>(e.qpc),static_cast<unsigned long>(media_id_a));
+    const unsigned enter_bytes=media_log_take(lines,sizeof lines);
+    check(!std::strcmp(lines,expected),"media_cue_enter line written with the entry's frame, qpc, id, kind, caller, flags and attempt");
+    if(std::strcmp(lines,expected))std::printf("media_cue_enter got=%s expected=%s",lines,expected);
+    check(enter_bytes>0&&media_enter_bytes_in_body==enter_bytes,"media_cue_enter line was in the file before the allocator body ran");
     check(pending->depth==0&&pending->max_depth==1&&pending->stale==0&&pending->lost==0&&pending->mismatched==0&&cache->used==0,"return trampoline popped its pending entry; a success is not cached");
     // Observed failure: cached.
     media_reset();media_fixture_result=0;invoke(r.selector,hooked);compare(baseline_fail,hooked);
@@ -1200,6 +1236,8 @@ static void media_replay_checks(){
     media_reset();invoke(r.selector,after);compare(baseline_fail,after);
     check(media_body_calls==0&&after.regs[7]==0,"REFUSE arm returns 0 to the caller without running the allocator");
     check(media::fixture_pop_trace(&e)&&e.outcome==media::detail::refused&&e.id==media_id_a&&e.attempt==3,"refusal traced as cached");
+    media_log_take(lines,sizeof lines);
+    check(media_log_lines(lines)==1&&std::strstr(lines,"media_cue_enter frame=1 qpc=")&&std::strstr(lines," id=812 kind=0x5a caller=selector flags=0x0 attempt=2\n"),"the failed build wrote its entry line; the REFUSE arm wrote none");
     check(media::fixture_refused()==1&&cache->slots[0].refusals==1&&pending->depth==0,"refusal counted, no pending entry");
     check(media::fixture_attempts_frame()==3,"per-frame attempt count covers observed and refused calls, not the early one");
     // Speech, script and another helper kind are never refused, and their failures are not cached.
@@ -1209,6 +1247,8 @@ static void media_replay_checks(){
     check(media_body_calls==1&&media::fixture_pop_trace(&e)&&e.caller==media::detail::script&&!e.scoped,"script caller proceeds");
     media_reset();invoke(r.other,after);compare(baseline_other,after);
     check(media_body_calls==1&&media::fixture_pop_trace(&e)&&e.caller==media::detail::other&&e.kind==0x11&&!e.scoped,"another helper caller (kind 0x11) proceeds as other");
+    media_log_take(lines,sizeof lines);
+    check(media_log_lines(lines)==3&&std::strstr(lines," kind=none caller=speech ")&&std::strstr(lines," kind=none caller=script ")&&std::strstr(lines," kind=0x11 caller=other "),"speech, script and other entry lines carry their caller and kind text");
     check(cache->used==1&&cache->slots[0].failures==1,"non-selector failures leave the cache unchanged");
     // Re-entrant call from inside the body (COM dispatch): the inner return pops first.
     media_fixture_id=media_id_b;media_fixture_result=media_record;media_reenter=1;media_reenter_result=0;media_reenter_call=reinterpret_cast<void(*)()>(r.speech);
@@ -1227,12 +1267,22 @@ static void media_replay_checks(){
     media_reset();media_fixture_result=0;invoke(r.selector,after);
     check(media_body_calls==1&&cache->used==1,"next call after a success proceeds and re-caches its failure");
     while(media::fixture_pop_trace(&e)){}
+    media_log_take(lines,sizeof lines);
+    media::fixture_reset_enter_limit();media_fixture_id=media_id_b;media_fixture_result=media_record;
+    for(unsigned i=0;i<40;++i)invoke(r.selector,after);
+    while(media::fixture_pop_trace(&e)){}
+    media_log_take(lines,sizeof lines);
+    const unsigned bounded=media_log_lines(lines);
+    const auto* enter_limit=media::fixture_enter_limit();
+    check(bounded<=media::detail::lines_per_second&&bounded+unsigned(enter_limit->suppressed)==40,"media_cue_enter lines bounded to lines_per_second per clock second, the rest counted as enter_suppressed");
+    media_fixture_id=media_id_a;
     // A foreign thread passes unobserved and untraced.
-    media_reset();media_fixture_result=media_record;
+    media_reset();media_fixture_result=media_record;media::fixture_reset_enter_limit(); // the limiter must be open for the no-line check to mean anything
     HANDLE thread=CreateThread(nullptr,0,&media_foreign_thread,r.selector,0,nullptr);
     check(thread!=nullptr,"media foreign thread started");
     if(thread){WaitForSingleObject(thread,INFINITE);CloseHandle(thread);}
     check(media_body_calls==1&&gate->foreign.load()==1&&!media::fixture_pop_trace(&e)&&pending->depth==0,"foreign-thread call proceeds unobserved");
+    check(media_log_take(lines,sizeof lines)==0,"foreign-thread call writes no media_cue_enter line");
     // Forced lost return (unreachable by construction: the entry is dropped while the
     // build runs); the trampoline returns to the last substituted real return address.
     media_fixture_id=media_id_b;media_reset();media_fixture_result=media_record;media_lost_trigger=1;invoke(r.selector,after);compare(baseline_ok,after);
@@ -1273,10 +1323,16 @@ static void media_late_window_checks(){ // after the frame checks closed the ins
 }
 // Per-call cost of the gate: the selector chain unhooked against hooked on
 // the PASS arm (entry handler, return capture) and on the REFUSE arm (entry
-// handler only), best of `trials`.
+// handler only) with the trace off, best of `trials`, checked within 2x of the
+// documented costs; then the trace-on PASS arm (the entry limiter admits 32
+// lines per second, the rest pay the predicate) and the cost of one admitted
+// media_cue_enter line (32 calls after a limiter reset, formatter and
+// unbuffered write included).
 static void media_benchmark(){
     constexpr unsigned loops=20000,trials=7;
     MediaBody r=make_media_body();check(r.body!=nullptr,"benchmark allocator emitted");if(!r.body)return;
+    check(media_log_open(),"benchmark stand-in log opened");
+    static char lines[32768];media_log_take(lines,sizeof lines); // trials x lines_per_second entry lines of ~90 B
     LARGE_INTEGER frequency{};
     check(QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0,"media benchmark QPC frequency");
     const auto caller=reinterpret_cast<void(*)()>(r.selector);
@@ -1305,11 +1361,38 @@ static void media_benchmark(){
     media_reset();check(timed(refuse),"media benchmark REFUSE arm timed");
     check(media_body_calls==0&&media::fixture_refused()==loops*trials,"REFUSE arm benchmark never reached the allocator");
     check(media::fixture_uninstall(),"media benchmark gate rolled back");
+    check(media_log_take(lines,sizeof lines)==0,"trace off: no media_cue_enter line written by the benchmark's proceeded calls");
+    std::uint64_t trace_pass=0,enter_lines=~std::uint64_t(0);
+    media_fixture_result=media_record;
+    check(media::fixture_install(specs,r.addresses,true,true,std::uint64_t(frequency.QuadPart)*3600,&status),"media benchmark gate installed with the trace on");
+    media::frame(1);
+    media_reset();check(timed(trace_pass),"media benchmark trace-on PASS arm timed");
+    check(media_body_calls==loops*trials,"trace-on PASS arm benchmark reached the allocator every call");
+    media_log_take(lines,sizeof lines);
+    for(unsigned t=0;t<trials;++t){
+        media::fixture_reset_enter_limit();
+        LARGE_INTEGER start{},end{};
+        if(!QueryPerformanceCounter(&start))break;
+        for(unsigned i=0;i<media::detail::lines_per_second;++i)caller();
+        if(!QueryPerformanceCounter(&end)||end.QuadPart<start.QuadPart)break;
+        const auto ticks=std::uint64_t(end.QuadPart-start.QuadPart);
+        if(ticks<enter_lines)enter_lines=ticks;
+    }
+    media_log_take(lines,sizeof lines);
+    check(media_log_lines(lines)==trials*media::detail::lines_per_second,"each limiter reset admitted exactly lines_per_second entry lines");
+    check(media::fixture_uninstall(),"media trace-on benchmark gate rolled back");
     const double ns_per_tick=1e9/number(std::uint64_t(frequency.QuadPart));
     const double baseline_ns=number(baseline)*ns_per_tick/loops,pass_ns=number(pass)*ns_per_tick/loops,refuse_ns=number(refuse)*ns_per_tick/loops;
-    std::printf("MEDIA CUE BENCH loops=%u trials=%u baseline_ns_per_call=%.1f pass_ns_per_call=%.1f refuse_ns_per_call=%.1f pass_dispatch_ns=%.1f refuse_dispatch_ns=%.1f stub_bytes=300 arena_used=%u arena_capacity=%u\n",
-        loops,trials,baseline_ns,pass_ns,refuse_ns,pass_ns-baseline_ns,refuse_ns-baseline_ns,patch::arena_used(),patch::arena_capacity());
+    const double trace_pass_ns=number(trace_pass)*ns_per_tick/loops,enter_line_ns=number(enter_lines)*ns_per_tick/media::detail::lines_per_second-pass_ns;
+    std::printf("MEDIA CUE BENCH loops=%u trials=%u baseline_ns_per_call=%.1f pass_ns_per_call=%.1f refuse_ns_per_call=%.1f pass_dispatch_ns=%.1f refuse_dispatch_ns=%.1f documented_pass_ns=%llu documented_refuse_ns=%llu trace_pass_ns_per_call=%.1f trace_pass_dispatch_ns=%.1f enter_line_ns=%.1f stub_bytes=300 arena_used=%u arena_capacity=%u\n",
+        loops,trials,baseline_ns,pass_ns,refuse_ns,pass_ns-baseline_ns,refuse_ns-baseline_ns,static_cast<unsigned long long>(media::detail::pass_dispatch_cost_ns),static_cast<unsigned long long>(media::detail::refuse_dispatch_cost_ns),
+        trace_pass_ns,trace_pass_ns-baseline_ns,enter_line_ns,patch::arena_used(),patch::arena_capacity());
     check(pass_ns>baseline_ns&&refuse_ns>0,"media dispatch costs measured");
+    const double pass_dispatch=pass_ns-baseline_ns,refuse_dispatch=refuse_ns-baseline_ns;
+    const double documented_pass=number(media::detail::pass_dispatch_cost_ns),documented_refuse=number(media::detail::refuse_dispatch_cost_ns);
+    check(documented_pass>=pass_dispatch*0.5&&documented_pass<=pass_dispatch*2.0,"documented trace-off PASS dispatch cost within 2x of the measured cost");
+    check(documented_refuse>=refuse_dispatch*0.5&&documented_refuse<=refuse_dispatch*2.0,"documented trace-off REFUSE dispatch cost within 2x of the measured cost");
+    check(enter_lines!=~std::uint64_t(0)&&trace_pass_ns>=pass_ns*0.5,"trace-on costs measured");
 }
 int main(){
     for(unsigned i=0;i<sizeof fixture_xmm_seed;++i)fixture_xmm_seed[i]=static_cast<unsigned char>(i*37+9);
@@ -1336,6 +1419,6 @@ int main(){
     media_replay_checks();media_benchmark();
     frame_replay_checks(); // closes the install window
     pass_late_window_checks();loop_late_window_checks();media_late_window_checks();
-    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 media_cases=9 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),unsigned(media_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);
+    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 media_cases=10 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),unsigned(media_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);
     return failures?1:0;
 }
