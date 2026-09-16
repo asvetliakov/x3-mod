@@ -202,7 +202,7 @@ class LauncherGateTests(unittest.TestCase):
             self.assertIn(required, admission)
         # The separate alpha states are shadowed (no per-draw getter) and logged, never gated.
         self.assertIn('D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA, D3DRS_BLENDFACTOR};', motion)
-        self.assertIn('for (unsigned i = 0; i < 3; ++i) known = known && shadow_.composition_blend_known[i]; // the colour triple gates', admission)
+        self.assertIn('for (unsigned i = 0; i < 3; ++i) known = blend_known(i) && known; // the colour triple gates', admission)
         self.assertNotIn('composition_blend[3]', admission[:admission.index('log(')])
         self.assertNotIn('GetRenderState', admission)
         configure = motion[motion.index('void MotionOutput::configure_emission_source_gain(float gain)'):][:600]
