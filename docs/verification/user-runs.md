@@ -59,10 +59,12 @@ Installed: DLL `RUN34HASH` from `RUN34COMMIT` (see [status](../status.md)). This
 build tees Wine's stderr into the session directory (`launcher-stderr.log`,
 UTC-prefixed) with a `clock_anchor` and `qpc=` on every window line so a
 GStreamer burst maps to a frame, logs `loaded_module` for the D3D9 backend and
-`d3dx9_37.dll`, and POSTPHASES_PLACEHOLDER. Appearance unchanged.
+`d3dx9_37.dll`, and `--media-cue-trace`: one line per media-cue graph build attempt at
+`0x00498140` (cue id, file, result, attempts per frame), which names the cue
+whose DirectShow graph fails in the stalling sector. Appearance unchanged.
 
 **Session A** (the slow sector): run 33 session B's command
-(`--game-phases --loop-phases`, plus POSTOPTION_PLACEHOLDER). Fly to the stalling
+(`--game-phases --loop-phases`, plus `--media-cue-trace`). Fly to the stalling
 sector, stay 30 s while it is slow, quit. Keep the terminal output too, but
 the log now has it.
 

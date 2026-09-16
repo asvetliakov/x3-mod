@@ -198,8 +198,19 @@ Run 33 came back as `run95` (A), `run96` (B) and `run97` (C):
   twice per slow frame (twice per session otherwise), suggesting a per-object
   media stream created or destroyed and failing each frame; the proxy log
   cannot confirm it (no stderr capture, no filenames), so the next build tees
-  the launcher's stderr into the session directory with a clock anchor. The
-  routine is being decompiled with the sound path as the leading hypothesis.
+  the launcher's stderr into the session directory with a clock anchor.
+  **Decompiled:** `0x0045b720` is the per-sector media-cue selector
+  ([note](reverse-engineering/sector-post-pass.md)): it scores the `Videos`
+  table against nearby objects and restarts the winning cue through
+  `0x00498140` into the DirectShow graph constructor; a cue whose graph
+  cannot be built is freed and retried every frame, one file probe plus
+  CoCreateInstance and Render per frame, which is the stall (and the
+  GStreamer criticals under Wine; on Windows the same retry with a missing
+  codec). Bounding is behaviour-neutral: a negative cache at `0x00498140`
+  leaves the game in the same state as a real failure. Next: qualify that
+  hook site and ABI (in flight), then `--media-cue-trace` to name the cue and
+  a default-off negative cache; the failing cue's format decides whether the
+  decode path (voice plugin, bottle) can be made to succeed instead.
 - **Cutout under the lane (run97):** ~90 cutout draws per frame routed through
   the tested-opaque arm with the lane share written, ~8 refused for no depth
   write; both cutout pairs write depth so lane = routed. Linear materials plus
