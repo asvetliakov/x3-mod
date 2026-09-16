@@ -77,6 +77,13 @@ still be there.
 attempt per cue followed by cached refusals; say whether the sector's music
 or ambient sound is missing and whether anything else changed.
 
+**Session A3** (decode fix, only if the v5 runtime is reported built): session
+A1's command with `--voice-decoder /tmp/x3-wma-plugin-v5` instead of v4 and
+`--media-cue-cache off`. Same sector, 30 s, quit. If the runtime decodes the
+cue, the trace shows the build succeeding, the stall is gone without the
+cache, and the sector's music or ambient sound plays; say whether speech
+still works.
+
 **Session B** (DXVK experiment, no proxy change): in CrossOver, enable the
 DXVK backend for the X3 bottle (bottle settings, D3D9 via DXVK), then run
 run 33 session A's command in the busy view for 30 s and quit. The
