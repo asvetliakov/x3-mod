@@ -294,14 +294,14 @@ frame and per draw. Per window one line, in microseconds, with the wrapper
 frame index of the last frame of the window:
 
 ```
-frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= draw_p50_us= draw_p95_us= draw_max_us= draw_native_p50_us= draw_native_max_us= scene_p50_us= scene_p95_us= scene_max_us= state_p50_us= state_p95_us= state_max_us= draw_calls_p50= scene_calls_p50= state_calls_p50= slow=
+frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= draw_p50_us= draw_p95_us= draw_max_us= draw_native_p50_us= draw_native_max_us= scene_p50_us= scene_p95_us= scene_max_us= state_p50_us= state_p95_us= state_max_us= draw_calls_p50= scene_calls_p50= state_calls_p50= state_sampled= slow= gap_pre_p50_us= gap_pre_p95_us= gap_pre_max_us= gap_draw_p50_us= gap_draw_p95_us= gap_draw_max_us= gap_post_p50_us= gap_post_p95_us= gap_post_max_us= gap_draw_per_draw_us= state_top=<entry>:<calls_p50>,... state_other_p50=
 ```
 
 followed by up to four witnesses for the slowest frames of that window
 (slowest first, a four-slot ring ordered by `dt_us`):
 
 ```
-frame_timing_slow frame=F dt_us= draws= present_us= prims= draw_us= draw_native_us= scene_us= state_us= draw_calls= scene_calls= state_calls= slow_call= slow_call_us=
+frame_timing_slow frame=F dt_us= draws= present_us= prims= draw_us= draw_native_us= scene_us= state_us= draw_calls= scene_calls= state_calls= slow_call= slow_call_us= gap_pre_us= gap_draw_us= gap_post_us=
 ```
 
 * `dt_us` is the Present-to-Present interval measured by the wrapper at the
@@ -339,21 +339,85 @@ frame_timing_slow frame=F dt_us= draws= present_us= prims= draw_us= draw_native_
   after the frame boundary, so its scene contribution is accounted to the
   following frame (one call per frame, so a window's `scene_calls_p50` still
   counts it once).
+* state calls are counted, not stamped, by default. The two
+  `QueryPerformanceCounter` reads of a stamped call cost 2 x 67.8 ns = 135.6 ns
+  under FEX (the bottle benchmark below), which at run87's ~30,076 state calls
+  per busy frame is 4.1 ms of a 28.5 ms frame; the whole added cost of a
+  stamped call is 228-231 ns in the per-setter rows of the benchmark below
+  (for example SetRenderState, 349.9 ns against 121.5 ns), which is 6.9 ms of
+  that frame, so the diagnostic would dominate what it measures.
+  `state_calls_p50` is therefore always the true
+  call count, while the line reports `state_us=-1` with `state_sampled=0`
+  unless calls are stamped: no calibration constant for the per-call cost of this machine is
+  compiled in (`state_calibration_ns` in `src/proxy/frame_timing.h`, zero,
+  nanoseconds per hooked state call), and when one is set, `state_us` becomes
+  `state_calls x state_calibration_ns / 1000`, an estimate rather than a
+  measurement. `--frame-timing-state-stamps N`
+  (`X3M_FRAME_TIMING_STATE_STAMPS`, requires `--frame-timing`, default 0)
+  stamps one state call in N and scales the sampled sum by N, reported as
+  `state_sampled=N`; N=1 stamps every call, which is the old behavior and its
+  old cost. The stride is kept per entry-name slot rather than over all state
+  calls together, so a fixed period cannot align with the game's repeating
+  per-draw setter sequence and sample the same position of it every time. The unstamped path is one hash, one pointer compare and one
+  increment per call, with no clock read at all; the outermost-only rule, the
+  native-Present subtraction and the nesting depth are unchanged, so the
+  proxy's own reentrant calls are still not counted.
+* `state_top` is the per-entry call mix of the state bucket: the six
+  most-called hooked entries of the window as `<entry>:<calls_p50>`, descending
+  by the window median of that entry's per-frame call count, with
+  `state_other_p50` the calls whose name found no slot in the fixed 32-slot
+  table. The key is the static name pointer the guard already carries
+  (`__builtin_FUNCTION()`), so `SetRenderState` against `SetSamplerState`
+  against `SetTexture` against `SetVertexShaderConstantF` against the stream
+  and declaration setters is measured directly rather than assumed as an equal
+  share (`docs/architecture/state-call-fast-path.md`).
+* the three gaps split what `dt_us` leaves over after every hooked call
+  (all buckets plus the native `Present`) by position relative to the frame's
+  draws, from the stamps already taken, with no additional
+  `QueryPerformanceCounter` read: `gap_pre_us` from the frame boundary to the
+  entry of the first draw hook, `gap_draw_us` from that entry to the return of
+  the last draw hook (the game's per-object scene traversal between hooked
+  calls), `gap_post_us` from that return to the next frame boundary (UI,
+  script, physics and AI after rendering). This is game time between hooked
+  calls, not proxy time; unstamped or sampled-out state-call time is not
+  measured and therefore also appears inside the gaps. A frame with no draw
+  puts the whole remainder in `gap_post_us`. `gap_draw_per_draw_us` is the
+  window's `gap_draw_p50` divided by `draws_p50`, in microseconds with three
+  decimals: the game's own per-object cost between draws. The three gaps, the
+  three buckets and `present_us` sum to `dt_us` exactly, at any sampling
+  stride: a sampled state call enters the hooked total scaled by N, the same
+  estimate `state_us` reports, so the sampled-out time is removed from the gaps
+  rather than left in them. Two exceptions: a hooked call straddling the frame
+  boundary (the `Present` hook's scope) is charged to the following frame in
+  both its bucket and `gap_pre_us`, which can clamp `gap_pre_us` at zero on a
+  frame with little pre-draw work; and with the stamps off entirely
+  (`state_sampled=0`) there is no state estimate at all, so the state-call time
+  stays inside the gaps and `state_us=-1` is not part of the sum.
 * `slow_call` is the slowest single hooked call of that frame and
   `slow_call_us` its wall time; the name is the hooked function's own name
   (`__builtin_FUNCTION()` at the guard's call site) or the literal of an
   explicitly scoped entry, always static storage, never allocated.
 * cost: with the option off, one predictable branch on a process-global bool
-  per hooked call. On, one `QueryPerformanceCounter` pair per outermost hooked
-  call, no division and no logging on that path. Measured by
+  per hooked call. On, one `QueryPerformanceCounter` pair per stamped outermost
+  hooked call and no clock read at all for a counted-only state call, with no
+  division and no logging on either path. Measured by
   `verification/probe/frame_timing_host.cpp --cost` (the production scope with
   the stand-in reading `clock_gettime(CLOCK_MONOTONIC_RAW)` in place of QPC;
-  the mode is not run by the test): on macOS arm64, 0.23 ns per call off and
-  26.5 ns on, so about 26 ns added per hooked call and about 79 us per frame at
-  3,000 hooked calls. The QPC cost under Wine/FEX is not measured here.
+  the mode is not run by the test): on macOS arm64 over two runs, 0.27-0.44 ns
+  per call off, 2.7-3.6 ns counted-only and 30-35 ns stamped, so 2-3 ns added
+  per counted state call against about 30-35 ns for a stamped one, that is
+  70-95 us per frame at 30,000 counted state calls. The QPC cost under Wine/FEX is not
+  measured here; the bottle benchmark below measures 67.8 ns per
+  `QueryPerformanceCounter` read, which at run87's ~30,076 state calls per busy
+  frame is why state calls are counted rather than stamped by default.
 * percentiles are nearest-rank over the samples of the window, index
   `min(count-1, count*p/100)` of the ascending order; `slow` counts the frames
   of the window whose `dt_us` exceeds twice the window's `dt_p50`.
+* memory: the fixed window grew from 26,864 to 114,416 bytes of
+  zero-initialised static data (+87,552, measured on the host build; the 32-bit
+  DLL differs only by the pointer in each retained `Frame`), all of it the gap
+  split (3 x 300 values) and the per-entry state counts (32 slots x 300 values
+  plus the overflow row). Nothing is allocated at any point, on or off.
 
 These are diagnostic timings taken inside the proxy, not game FPS. Under FEX
 the sampler attributes nothing (run84: every leaf is the ntdll syscall thunk or
@@ -367,6 +431,12 @@ compiles `src/proxy/frame_timing.cpp` itself against the Win32 stand-in of
 one tick per microsecond) and runs a scripted 300-frame window, so the
 outermost-only accounting, the nesting depth, the native-Present subtraction,
 the slow-call witness and the emitted line text are executed, not inspected.
+The scripted frames also cover the counted-only state path (no clock read at
+all, asserted on the stand-in's counter), sampling at N=4 (a quarter of the
+calls stamped, the sum scaled by four), the per-entry counts and their
+ordering, and two frames with explicit game time between the hooked calls
+where the three gaps and the hooked time sum to `dt_us` exactly, one at N=1 and
+one at N=4 with the scaled state estimate.
 
 ## Per-call cost of the hooked state setters under the X3 bottle (2026-09-16)
 

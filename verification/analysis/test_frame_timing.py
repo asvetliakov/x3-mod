@@ -27,7 +27,7 @@ class FrameTimingWindow(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True, timeout=60)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'frame_timing_host checks=88 failures=0\n')
+            self.assertEqual(run.stdout, 'frame_timing_host checks=438 failures=0\n')
             self.assertEqual(run.stderr, '')
 
     def test_production_call_sites_and_schema(self):
@@ -71,12 +71,46 @@ class FrameTimingWindow(unittest.TestCase):
                       'draws_p50=%llu draws_max=%llu present_p50_us=%llu present_p95_us=%llu '
                       'present_max_us=%llu', source)
         self.assertIn('" draw_p50_us=%llu draw_p95_us=%llu draw_max_us=%llu draw_native_p50_us=%llu draw_native_max_us=%llu"', source)
-        self.assertIn('" scene_p50_us=%llu scene_p95_us=%llu scene_max_us=%llu state_p50_us=%llu state_p95_us=%llu state_max_us=%llu"', source)
-        self.assertIn('" draw_calls_p50=%llu scene_calls_p50=%llu state_calls_p50=%llu slow=%u"', source)
+        # state_us is signed: -1 when no state call is stamped and no
+        # calibration constant exists.
+        self.assertIn('" scene_p50_us=%llu scene_p95_us=%llu scene_max_us=%llu state_p50_us=%lld state_p95_us=%lld state_max_us=%lld"', source)
+        self.assertIn('" draw_calls_p50=%llu scene_calls_p50=%llu state_calls_p50=%llu state_sampled=%u slow=%u"', source)
+        # The three gaps of the unhooked time, and the per-draw scene-traversal
+        # cost of the window median.
+        self.assertIn('" gap_pre_p50_us=%llu gap_pre_p95_us=%llu gap_pre_max_us=%llu"', source)
+        self.assertIn('" gap_draw_p50_us=%llu gap_draw_p95_us=%llu gap_draw_max_us=%llu"', source)
+        self.assertIn('" gap_post_p50_us=%llu gap_post_p95_us=%llu gap_post_max_us=%llu gap_draw_per_draw_us=%llu.%03llu"', source)
+        self.assertIn('" state_top=%s state_other_p50=%llu"', source)
         self.assertIn('frame_timing_slow frame=%llu dt_us=%llu draws=%llu present_us=%llu prims=%llu', source)
-        self.assertIn('" draw_us=%llu draw_native_us=%llu scene_us=%llu state_us=%llu"', source)
+        self.assertIn('" draw_us=%llu draw_native_us=%llu scene_us=%llu state_us=%lld"', source)
         self.assertIn('" draw_calls=%llu scene_calls=%llu state_calls=%llu slow_call=%s slow_call_us=%llu"', source)
+        self.assertIn('" gap_pre_us=%llu gap_draw_us=%llu gap_post_us=%llu"', source)
+        self.assertIn('X3M_FRAME_TIMING_STATE_STAMPS', source)
         self.assertIn('X3M_FRAME_TIMING', source)
+        # The unstamped state path: one per-entry increment, no clock read.
+        begin = source[source.index('void scope_begin_impl'):]
+        begin = begin[:begin.index('\n}')]
+        state_branch = begin[begin.index('if (bucket == state_bucket) {'):begin.index('const DWORD saved')]
+        self.assertNotIn('stamp()', state_branch)
+        self.assertIn('count_state_entry(entry);', state_branch)
+        self.assertIn('if (!state_stamps || ++state_stamp_counter[slot] < state_stamps) return;', state_branch)
+        # The sampled estimate, not the raw sampled ticks, enters the hooked
+        # total, so the gaps and the buckets sum to dt at any stride.
+        self.assertIn('hooked_ticks += state.bucket == state_bucket ? ticks * state_stamps : ticks;', source)
+
+    def test_schema_documents_the_state_stamps_and_the_gaps(self):
+        schema = (ROOT / 'docs/verification/sampling-profiler.md').read_text()
+        section = schema[schema.index('## Frame timing diagnostic'):]
+        section = section[:section.index('\n## ')]
+        for field in ('state_sampled=', 'gap_pre_p50_us=', 'gap_draw_p50_us=', 'gap_post_p50_us=',
+                      'gap_draw_per_draw_us=', 'state_top=', 'state_other_p50=',
+                      'gap_pre_us=', 'gap_draw_us=', 'gap_post_us='):
+            self.assertIn(field, section, field)
+        self.assertIn('X3M_FRAME_TIMING_STATE_STAMPS', section)
+        self.assertIn('--frame-timing-state-stamps', section)
+        self.assertIn('state_us=-1', section)
+        # gap_draw is game time between hooked calls, not proxy time.
+        self.assertIn('game time', section)
 
 
 class FrameTimingLaunchOption(unittest.TestCase):
@@ -93,6 +127,24 @@ class FrameTimingLaunchOption(unittest.TestCase):
             code, output, error = helper.launch(directory, inherited={'X3M_FRAME_TIMING': '1'})
             self.assertEqual(code, 0, error)
             self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING'], '0')
+
+    def test_state_stamps_option_requires_frame_timing_and_exports_the_interval(self):
+        from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
+        helper = LodScaleLaunchOption()
+        with tempfile.TemporaryDirectory() as directory:
+            code, _, error = helper.launch(directory, '--telemetry', '--frame-timing-state-stamps', '8')
+            self.assertEqual(code, 2)
+            self.assertIn('--frame-timing-state-stamps requires --frame-timing', error)
+            code, output, error = helper.launch(
+                directory, '--telemetry', '--frame-timing', '--frame-timing-state-stamps', '8')
+            self.assertEqual(code, 0, error)
+            environment = json.loads(output)['env']
+            self.assertEqual(environment['X3M_FRAME_TIMING'], '1')
+            self.assertEqual(environment['X3M_FRAME_TIMING_STATE_STAMPS'], '8')
+            # Default: the calls are counted, never stamped.
+            code, output, error = helper.launch(directory, '--telemetry', '--frame-timing')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING_STATE_STAMPS'], '0')
 
 
 if __name__ == '__main__':

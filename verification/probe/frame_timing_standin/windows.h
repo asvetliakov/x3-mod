@@ -19,7 +19,8 @@ inline long long clock_ticks = 0;         // scripted QueryPerformanceCounter
 inline long long frequency = 1000000;     // 1 tick = 1 microsecond
 inline bool real_clock = false;           // cost mode: read the host clock
 inline DWORD last_error = 0;
-inline const wchar_t* environment = nullptr; // X3M_FRAME_TIMING value, or none
+inline const wchar_t* environment = nullptr;        // X3M_FRAME_TIMING value, or none
+inline const wchar_t* environment_stamps = nullptr; // X3M_FRAME_TIMING_STATE_STAMPS, or none
 inline unsigned environment_reads = 0;
 inline unsigned counter_reads = 0;
 inline void advance(long long ticks) { clock_ticks += ticks; }
@@ -45,9 +46,11 @@ inline int QueryPerformanceFrequency(LARGE_INTEGER* value) {
     return 1;
 }
 
-inline DWORD GetEnvironmentVariableW(const wchar_t*, wchar_t* buffer, DWORD size) {
+inline DWORD GetEnvironmentVariableW(const wchar_t* name, wchar_t* buffer, DWORD size) {
     ++x3m_win32_standin::environment_reads;
-    const wchar_t* value = x3m_win32_standin::environment;
+    const wchar_t* value = name && !std::wcscmp(name, L"X3M_FRAME_TIMING_STATE_STAMPS")
+                               ? x3m_win32_standin::environment_stamps
+                               : x3m_win32_standin::environment;
     if (!value) return 0;
     DWORD length = 0;
     while (value[length]) ++length;

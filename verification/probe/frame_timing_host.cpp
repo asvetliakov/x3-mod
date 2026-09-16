@@ -28,7 +28,7 @@ void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 // The production translation unit, with its Win32 stand-in and its log sink.
 #include "../../src/proxy/frame_timing.cpp"
 using namespace x3m::frame_timing;
-static char logged[8][640];
+static char logged[8][1024]; // the window line carries the per-entry state mix
 static unsigned logged_count = 0;
 namespace x3m {
 void log(const char* format, ...) {
@@ -82,6 +82,38 @@ static long long simulate_frame(std::uint64_t index) {
     }
     return x3m_win32_standin::clock_ticks - before;
 }
+// One scripted frame with explicit unhooked game time between the hooked
+// calls: 300 us before the first draw, 500 + 600 us between the two draws
+// around one 7 us state call, and 900 us after the last draw, then the Present
+// hook's scene scope (10 us of proxy work, a 100 us native Present) holding
+// the frame boundary. dt is 2477 us.
+static long long simulate_gap_frame(std::uint64_t index) {
+    const long long before = x3m_win32_standin::clock_ticks;
+    x3m_win32_standin::advance(300); // game time before the first draw
+    {
+        Scope draw_scope(Bucket::Draw, "draw_indexed");
+        x3m_win32_standin::advance(5);
+        draw_native_begin();
+        x3m_win32_standin::advance(20);
+        draw_native_end();
+        draw(3);
+        x3m_win32_standin::advance(5);
+    }
+    x3m_win32_standin::advance(500); // game time between hooked calls
+    { Scope state_scope(Bucket::State, "set_texture"); x3m_win32_standin::advance(7); }
+    x3m_win32_standin::advance(600);
+    { Scope draw_scope(Bucket::Draw, "draw_primitive"); x3m_win32_standin::advance(30); }
+    x3m_win32_standin::advance(900); // game time after the last draw
+    {
+        Scope scene_scope(Bucket::Scene, "present");
+        x3m_win32_standin::advance(10);
+        present_begin();
+        x3m_win32_standin::advance(100);
+        present_end();
+        frame(index, 2);
+    }
+    return x3m_win32_standin::clock_ticks - before;
+}
 static const char* last_line(const char* prefix) {
     for (unsigned i = logged_count; i-- > 0 && logged_count - i <= 8;)
         if (!std::strncmp(logged[i % 8], prefix, std::strlen(prefix))) return logged[i % 8];
@@ -101,7 +133,8 @@ static double cost_per_call(bool on) {
 }
 
 static unsigned checks = 0;
-static void check(bool value) { ++checks; if (!value) { std::fprintf(stderr, "check %u failed\n", checks); std::exit(1); } }
+static void check_impl(bool value, int line) { ++checks; if (!value) { std::fprintf(stderr, "check %u failed (line %d)\n", checks, line); std::exit(1); } }
+#define check(expression) check_impl((expression), __LINE__)
 
 static Window reduction; // static storage: the production window is a global too
 
@@ -232,8 +265,10 @@ int main(int argc, char** argv) {
     // hook's scene scope of 2107 us holding a 100 us native Present and a
     // 2000 us reentrant call.
     x3m_win32_standin::environment = L"1";
+    x3m_win32_standin::environment_stamps = L"1"; // stamp every state call
+    x3m_win32_standin::environment_reads = 0;
     initialize();
-    check(active && x3m_win32_standin::environment_reads == 1);
+    check(active && state_stamps == 1 && x3m_win32_standin::environment_reads == 2);
     check(depth == 0 && native_excluded == 0);
     refuse_allocation = true;
     const unsigned counter_before = x3m_win32_standin::counter_reads;
@@ -262,11 +297,22 @@ int main(int argc, char** argv) {
     // the next frame; its 2000 us reentrant call stays inside it.
     check(std::strstr(line, "scene_p50_us=2007 scene_p95_us=2007 scene_max_us=2007") != nullptr);
     check(std::strstr(line, "state_p50_us=13 state_p95_us=13 state_max_us=13") != nullptr);
-    check(std::strstr(line, "draw_calls_p50=2 scene_calls_p50=1 state_calls_p50=5 slow=0") != nullptr);
+    check(std::strstr(line, "draw_calls_p50=2 scene_calls_p50=1 state_calls_p50=5 state_sampled=1 slow=0") != nullptr);
+    // The frame's first draw begins at the boundary and the Present scope of
+    // the previous frame closes just after it, so gap_pre clamps at zero; the
+    // 2007 us the scope holds is charged to this frame and shows in gap_post.
+    check(std::strstr(line, "gap_pre_p50_us=0 gap_pre_p95_us=0 gap_pre_max_us=0") != nullptr);
+    check(std::strstr(line, "gap_draw_p50_us=0 gap_draw_p95_us=0 gap_draw_max_us=0") != nullptr);
+    check(std::strstr(line, "gap_post_p50_us=2007 gap_post_p95_us=2007 gap_post_max_us=2007") != nullptr);
+    check(std::strstr(line, "gap_draw_per_draw_us=0.000") != nullptr);
+    // Per-entry state counts, most-called first: four set_texture calls and
+    // one set_render_state per frame; the reentrant call is not counted.
+    check(std::strstr(line, "state_top=set_texture:4,set_render_state:1 state_other_p50=0") != nullptr);
     const char* witness = last_line("frame_timing_slow frame=");
     check(std::strstr(witness, "dt_us=2180 draws=2 present_us=100 prims=6") != nullptr);
     check(std::strstr(witness, "draw_us=60 draw_native_us=40 scene_us=2007 state_us=13") != nullptr);
     check(std::strstr(witness, "draw_calls=2 scene_calls=1 state_calls=5") != nullptr);
+    check(std::strstr(witness, "gap_pre_us=0 gap_draw_us=0 gap_post_us=2007") != nullptr);
     // The reentrant 2000 us call never becomes the slow call: the entry the
     // game made owns that time, and it is the Present hook's scope.
     check(std::strstr(witness, "slow_call=present slow_call_us=2007") != nullptr);
@@ -292,15 +338,144 @@ int main(int argc, char** argv) {
     // The per-frame accumulators were reset at the last frame boundary.
     check(bucket_calls[unsigned(Bucket::Draw)] == 0 && bucket_ticks[unsigned(Bucket::Draw)] == 0);
 
+
+    // Default: state calls are counted, never stamped. The same scripted frame
+    // with explicit game time between the hooked calls, 301 frames, so the
+    // window line carries the gap split and state_us=-1.
+    x3m_win32_standin::environment = L"1";
+    x3m_win32_standin::environment_stamps = nullptr;
+    logged_count = 0;
+    initialize();
+    check(active && state_stamps == 0);
+    simulate_gap_frame(1); // only starts the interval
+    const unsigned gap_reads_before = x3m_win32_standin::counter_reads;
+    check(simulate_gap_frame(2) == 2477);
+    // Six reads for the two draws (the first forwards a native draw), five for
+    // the Present hook and the frame boundary, none at all for the state call.
+    check(x3m_win32_standin::counter_reads - gap_reads_before == 11);
+    check(bucket_ticks[unsigned(Bucket::State)] == 0 && bucket_calls[unsigned(Bucket::State)] == 0);
+    for (std::uint64_t f = 3; f <= window_frames + 1; ++f) check(simulate_gap_frame(f) == 2477);
+    check(logged_count == 5);
+    const char* gap_line = last_line("frame_timing frame=");
+    check(std::strstr(gap_line, "frame_timing frame=301 frames=300 dt_p50_us=2477") != nullptr);
+    // Unstamped state time is not measured, so it stays inside the gaps: 300 us
+    // before the first draw less the 10 us Present scope charged to this frame,
+    // 500 + 600 us plus the 7 us state call between the draws, 900 us after the
+    // last draw plus the 10 us of Present-hook work before the native Present.
+    check(std::strstr(gap_line, "gap_pre_p50_us=290 gap_pre_p95_us=290 gap_pre_max_us=290") != nullptr);
+    check(std::strstr(gap_line, "gap_draw_p50_us=1107 gap_draw_p95_us=1107 gap_draw_max_us=1107") != nullptr);
+    check(std::strstr(gap_line, "gap_post_p50_us=910 gap_post_p95_us=910 gap_post_max_us=910") != nullptr);
+    check(std::strstr(gap_line, "gap_draw_per_draw_us=553.500") != nullptr);
+    check(std::strstr(gap_line, "state_p50_us=-1 state_p95_us=-1 state_max_us=-1") != nullptr);
+    check(std::strstr(gap_line, "state_calls_p50=1 state_sampled=0") != nullptr);
+    check(std::strstr(gap_line, "state_top=set_texture:1 state_other_p50=0") != nullptr);
+    check(std::strstr(gap_line, "draw_p50_us=60 draw_p95_us=60 draw_max_us=60") != nullptr);
+    check(std::strstr(gap_line, "scene_p50_us=10 scene_p95_us=10 scene_max_us=10") != nullptr);
+    check(std::strstr(gap_line, "present_p50_us=100") != nullptr);
+    // The three gaps and the measured hooked time sum to dt exactly: no gap
+    // clamped on this frame.
+    check(290 + 1107 + 910 + 60 + 10 + 100 == 2477);
+    const char* gap_witness = last_line("frame_timing_slow frame=");
+    check(std::strstr(gap_witness, "state_us=-1 ") != nullptr);
+    check(std::strstr(gap_witness, "gap_pre_us=290 gap_draw_us=1107 gap_post_us=910") != nullptr);
+
+    // Sampling: every fourth state call is stamped and the sum is scaled by
+    // four. Eight 10 us calls read the clock four times (two stamped calls).
+    x3m_win32_standin::environment_stamps = L"4";
+    logged_count = 0;
+    initialize();
+    check(state_stamps == 4);
+    frame(0, 0); // only starts the interval
+    const unsigned sampled_reads = x3m_win32_standin::counter_reads;
+    for (unsigned c = 0; c < 8; ++c) {
+        Scope state_scope(Bucket::State, "set_texture");
+        x3m_win32_standin::advance(10);
+    }
+    check(x3m_win32_standin::counter_reads - sampled_reads == 4);
+    check(bucket_ticks[unsigned(Bucket::State)] == 20 && bucket_calls[unsigned(Bucket::State)] == 8);
+    frame(1, 0);
+    Summary sampled;
+    check(window.close(sampled));
+    check(sampled.frames == 1 && sampled.dt_p50 == 80);
+    check(sampled.bucket_p50[unsigned(Bucket::State)] == 80); // 20 us stamped, scaled by 4
+    check(sampled.bucket_calls_p50[unsigned(Bucket::State)] == 8);
+    // The sampled ticks enter the hooked total scaled by four as well, so the
+    // gaps and the buckets still sum to dt: no unhooked time is left over here,
+    // and there is no draw, so all three gaps are zero.
+    check(sampled.gap_p50[0] == 0 && sampled.gap_p50[1] == 0 && sampled.gap_p50[2] == 0);
+    check(sampled.bucket_p50[unsigned(Bucket::State)] + sampled.gap_p50[0] + sampled.gap_p50[1]
+          + sampled.gap_p50[2] == sampled.dt_p50);
+    check(sampled.state_top_used == 1 && sampled.state_top[0].calls == 8);
+    check(logged_count == 0); // one frame is not a window
+    // The same at N=4 with draws and unhooked time around them: four state
+    // calls of 25 us each (one stamped, estimated as 4 x 25 us), 200 us before
+    // the first draw, 300 us between the draws and 400 us after the last.
+    frame(2, 0); // restart the interval after the closed window
+    {
+        x3m_win32_standin::advance(200);
+        { Scope draw_scope(Bucket::Draw, "draw_primitive"); x3m_win32_standin::advance(40); }
+        for (unsigned c = 0; c < 4; ++c) {
+            Scope state_scope(Bucket::State, "set_render_state");
+            x3m_win32_standin::advance(25);
+        }
+        x3m_win32_standin::advance(300);
+        { Scope draw_scope(Bucket::Draw, "draw_primitive"); x3m_win32_standin::advance(60); }
+        x3m_win32_standin::advance(400);
+    }
+    frame(3, 2);
+    Summary spread;
+    check(window.close(spread));
+    check(spread.dt_p50 == 1100 && spread.draws_p50 == 2);
+    check(spread.bucket_p50[unsigned(Bucket::Draw)] == 100);
+    check(spread.bucket_p50[unsigned(Bucket::State)] == 100); // 25 us stamped, scaled by 4
+    check(spread.gap_p50[0] == 200 && spread.gap_p50[1] == 300 && spread.gap_p50[2] == 400);
+    check(spread.bucket_p50[unsigned(Bucket::Draw)] + spread.bucket_p50[unsigned(Bucket::State)]
+          + spread.gap_p50[0] + spread.gap_p50[1] + spread.gap_p50[2] == spread.dt_p50);
+
+    // Per-entry counting with no stamps: distinct static entry names, counted
+    // once each, reentrant calls excluded, reported most-called first.
+    static const char texture[] = "set_texture";
+    static const char render[] = "set_render_state";
+    static const char sampler[] = "set_sampler_state";
+    x3m_win32_standin::environment_stamps = nullptr;
+    initialize();
+    frame(0, 0);
+    const unsigned mix_reads = x3m_win32_standin::counter_reads;
+    for (unsigned c = 0; c < 8; ++c) { Scope scope(Bucket::State, texture); x3m_win32_standin::advance(1); }
+    for (unsigned c = 0; c < 3; ++c) { Scope scope(Bucket::State, render); x3m_win32_standin::advance(1); }
+    for (unsigned c = 0; c < 5; ++c) { Scope scope(Bucket::State, sampler); x3m_win32_standin::advance(1); }
+    for (unsigned c = 0; c < 2; ++c) {
+        Scope outer(Bucket::State, texture);
+        Scope reentered(Bucket::State, sampler); // the proxy's own call: not counted
+        x3m_win32_standin::advance(1);
+    }
+    check(x3m_win32_standin::counter_reads == mix_reads); // not one clock read
+    frame(1, 0);
+    Summary mix;
+    check(window.close(mix));
+    check(mix.bucket_calls_p50[unsigned(Bucket::State)] == 18);
+    check(mix.bucket_p50[unsigned(Bucket::State)] == unknown_us); // nothing stamped
+    check(mix.state_top_used == 3 && mix.state_other_p50 == 0);
+    check(mix.state_top[0].calls == 10 && mix.state_top[1].calls == 5 && mix.state_top[2].calls == 3);
+    check(!std::strcmp(state_entry_name[mix.state_top[0].slot], texture));
+    check(!std::strcmp(state_entry_name[mix.state_top[1].slot], sampler));
+    check(!std::strcmp(state_entry_name[mix.state_top[2].slot], render));
+
     std::printf("frame_timing_host checks=%u failures=0\n", checks);
     // Optional, never part of the test: the added wall time per hooked call,
     // the production scope with the stand-in reading the host monotonic clock
     // in place of QueryPerformanceCounter.
     if (argc > 1 && !std::strcmp(argv[1], "--cost")) {
         cost_per_call(false); cost_per_call(true); // warm up
-        const double off = cost_per_call(false), on = cost_per_call(true);
-        std::printf("frame_timing_cost off_ns_per_call=%.2f on_ns_per_call=%.2f added_ns_per_call=%.2f added_us_at_3000_calls=%.1f\n",
-                    off, on, on - off, (on - off) * 3.0);
+        const double off = cost_per_call(false);
+        state_stamps = 0; // the default: the state call is counted, not stamped
+        const double counted = cost_per_call(true);
+        state_stamps = 1; // every state call stamped
+        const double stamped = cost_per_call(true);
+        state_stamps = 0;
+        std::printf("frame_timing_cost off_ns_per_call=%.2f counted_ns_per_call=%.2f stamped_ns_per_call=%.2f"
+                    " added_counted_ns=%.2f added_stamped_ns=%.2f added_us_at_30000_counted_calls=%.1f\n",
+                    off, counted, stamped, counted - off, stamped - off, (counted - off) * 30.0);
     }
     return 0;
 }
