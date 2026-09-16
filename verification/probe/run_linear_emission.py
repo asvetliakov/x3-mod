@@ -966,6 +966,104 @@ def validate_source_gain_report(text,data,cases):
                     '(G s + bg with s the native readback over black, alpha a + bg.a as separate alpha is off; the gain-1 slot is the native screen draw s + bg (1 - s))')
 
 
+def validate_original_report(text,data,cases,coverage=False,component=False,fused_comparison=False):
+    result=validate_mrt_report(text,data,cases,actual_original=True,coverage=coverage,component=component,fused_comparison=fused_comparison)
+    energy_maximum=native_maximum=0.;alpha_count=0
+    stride=4+256*(17 if coverage else 13)*4
+    for c,offset in zip(cases,range(0,len(data),stride)):
+        _,_,_,wanted_native,wanted_energy=mrt_expected(c,True)
+        values=struct.unpack_from('<2048f',data,offset+4+1280*4)
+        for label,wanted,actual in (('native B',wanted_native,values[:1024]),('linear E',wanted_energy,values[1024:])):
+            for i,p in enumerate(wanted):
+                rgba=actual[i*4:i*4+4]
+                assert struct.pack('<f',rgba[3])==struct.pack('<f',p[3]),(c['label'],label,i,'raw alpha bits')
+                alpha_count+=1
+                for k,(v,w) in enumerate(zip(rgba[:3],p[:3])):
+                    assert math.isfinite(v),(c['label'],label,i,'nonfinite RGB')
+                    if label=='linear E':assert 0<=v<=CAP,(c['label'],'finite source cap')
+                    fraction=abs(v-w)/(RGB_ABS+RGB_REL*abs(w))
+                    assert fraction<=1,(c['label'],label,i,k,v,w,fraction)
+                    if label=='linear E':energy_maximum=max(energy_maximum,fraction)
+                    else:native_maximum=max(native_maximum,fraction)
+    result.update(original_vertex_programs=8,original_pixel_programs=10,reviewed_pairs=20,
+        source_shader_model='Eight unchanged original VS2; seven exact PS2.0 and three exact PS2.1 native _pp paths; 50 full-precision emission tails',
+        exact_pairs=[dict(vs=ORIGINAL_VS[v],ps=ORIGINAL_PS[p],pixel_model='2.1' if p in PS21 else '2.0',
+                          vertex_layout='instance' if v in INSTANCE_VS else 'default',fade=v not in NO_FADE_VS)
+                     for v,p in ORIGINAL_PAIRS],
+        gains=list(ORIGINAL_GAINS),max_energy_tolerance_fraction=energy_maximum,
+        max_native_oracle_tolerance_fraction=native_maximum,exact_source_alpha_pixels=alpha_count)
+    return result
+
+
+def validate_coverage_timings(text):
+    rows=re.findall(r'^COVERAGE_TIMING width=(\d+) height=(\d+) variant=([012]) pair=(\d+) order=([01]) completed_ms=(\S+)$',text,re.M)
+    assert len(rows)==48,'coverage timing rows'
+    summary=[]
+    for w,h in ((1280,768),(1920,1080)):
+        block=[x for x in rows if tuple(map(int,x[:2]))==(w,h)]
+        wanted=[(1-order if pair%2 else order,pair,order) for pair in range(8) for order in range(2)]
+        paired=[x for x in block if x[2]!='2'];clears=[x for x in block if x[2]=='2']
+        assert [tuple(map(int,x[2:5])) for x in paired]==wanted,'coverage paired order'
+        assert [tuple(map(int,x[3:5])) for x in clears]==[(i,0) for i in range(8)],'frame clear order'
+        assert all(math.isfinite(float(x[5])) and float(x[5])>=0 for x in block),'coverage timing value'
+        two=[float(x[5]) for x in paired if x[2]=='0'];three=[float(x[5]) for x in paired if x[2]=='1'];clear=[float(x[5]) for x in clears]
+        delta=[b-a for a,b in zip(two,three)]
+        summary.append(dict(width=w,height=h,samples=8,warmups=2,source_draws=2,authored_union_fraction=.5,
+            two_output_median_ms=statistics.median(two),three_output_median_ms=statistics.median(three),
+            paired_extra_output_median_ms=statistics.median(delta),frame_clear_median_ms=statistics.median(clear),
+            pairs=[dict(pair=i,two_first=i%2==0,two_ms=a,three_ms=b,extra_output_ms=b-a,frame_clear_ms=clear[i]) for i,(a,b) in enumerate(zip(two,three))]))
+    return summary
+
+
+def validate_pass_timings(text,fused_comparison=False):
+    prefix="FUSED_TIMING" if fused_comparison else "PASS_TIMING"
+    rows=re.findall(r"^"+prefix+r' width=(\d+) height=(\d+) variant=([01]) pair=(\d+) order=([01]) completed_ms=(\S+)$',text,re.M)
+    assert len(rows)==32,'component timing rows'
+    result=[]
+    for w,h in ((1280,768),(1920,1080)):
+        block=[x for x in rows if tuple(map(int,x[:2]))==(w,h)]
+        assert [tuple(map(int,x[2:5])) for x in block]==[(1-order if pair%2 else order,pair,order) for pair in range(8) for order in range(2)],'component paired order'
+        values={v:[float(x[5]) for x in block if int(x[2])==v] for v in (0,1)}
+        assert all(math.isfinite(x) and x>=0 for group in values.values() for x in group),'component timing value'
+        delta=[b-a for a,b in zip(values[0],values[1])]
+        if fused_comparison:
+            result.append(dict(width=w,height=h,samples=8,warmups=2,source_draws=1,authored_coverage_fraction=.3125,
+                baseline_median_ms=statistics.median(values[0]),fused_median_ms=statistics.median(values[1]),
+                baseline_range_ms=[min(values[0]),max(values[0])],fused_range_ms=[min(values[1]),max(values[1])],
+                paired_delta_median_ms=statistics.median(delta),paired_delta_range_ms=[min(delta),max(delta)],
+                delta_sign='fused minus separate-copy baseline; negative favors fused',
+                pairs=[dict(pair=i,baseline_first=i%2==0,baseline_ms=a,fused_ms=b,delta_ms=b-a) for i,(a,b) in enumerate(zip(values[0],values[1]))]))
+        else:
+            result.append(dict(width=w,height=h,samples=8,warmups=2,source_draws=1,authored_coverage_fraction=.3125,
+                native_median_ms=statistics.median(values[0]),component_median_ms=statistics.median(values[1]),
+                paired_extra_median_ms=statistics.median(delta),
+                pairs=[dict(pair=i,native_first=i%2==0,native_ms=a,component_ms=b,extra_ms=b-a) for i,(a,b) in enumerate(zip(values[0],values[1]))]))
+    return result
+
+
+def validate_coverage_report(text,data,cases,component=False,fused_comparison=False):
+    result=validate_original_report(text,data,cases,True,component,fused_comparison)
+    stride=4+256*17*4;covered=zero=0
+    for c,offset in zip(cases,range(0,len(data),stride)):
+        mask=struct.unpack_from('<1024f',data,offset+4+256*13*4)
+        for i,wanted in enumerate(coverage_expected(c)):
+            assert tuple(mask[i*4:i*4+3])==(wanted,)*3,(c['label'],i,'positive RGB coverage union')
+            covered+=wanted>0;zero+=wanted==0
+    result.update(coverage_variants=50,exact_two_three_output_channels=result['invariants']['bursts']*2048,
+        coverage_pixels=256*len(cases),covered_pixels=covered,uncovered_pixels=zero,
+        mask_contract='FP16 RGB positive iff at least one surviving source sample; additive count tested through16 draws; mask alpha ignored',
+        source_shader_model='Eight unchanged original VS2; seven exact PS2.0 and three exact PS2.1;50 two-output and50 three-output transformer variants')
+    if component:
+        result.update(component=True,component_comparison_channels=4096*len(cases),indexed_source_draws=sum(len(c['ops']) for c in cases),
+            steady_allocations=0,fault_controls=16,capability_twins=2,native_reset_passed=True,post_reset_same_instance_transaction=True,
+            ownership='Owning-slot exchange acknowledgement preserves Incomplete source outcomes; blocked history/coverage stays unavailable after partial-B recovery')
+    if fused_comparison:
+        result.update(fused_comparison=True,fused_image_twins=len(cases),fused_exact_channels=256*17*len(cases),
+            copy_program='qualified oC0 bytecode prefix plus MOV oC1,c20.x(+0); M detached',
+            shader_creations=None)
+    return result
+
+
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
