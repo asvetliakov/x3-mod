@@ -213,7 +213,8 @@ further linear-hull processing is planned. Decisions this session:
 - Run 27 done as run68 (2026-09-16): engines brighter, halo from the shared
   effects PS `8360f422…` now gained (split merged `a26eb9b`: 5 engine pairs under
   `--emission-source-gain`, 15 effect pairs under new `--effect-source-gain`,
-  default 1); restore consumed on transits 1 and 3 but never re-armed on the
+  default 1; split undone 2026-09-16 in the worktree change "Screen
+  substitution", `linear-emission-cost.md`); restore consumed on transits 1 and 3 but never re-armed on the
   fresh generation (fixed `220d2e9`: bounded precondition retry, refusal
   samples); mip bias -0.5 / sharpen 0.75 now defaults (`ca6ad2e`); point-light
   telemetry merged (`7521b79`), option kept but dropped from the run command

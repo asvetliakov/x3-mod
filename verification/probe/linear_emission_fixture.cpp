@@ -950,8 +950,10 @@ constexpr const char *actual_vs[] = {"d5e1c75351ed3f04", "32e75459998d0388",
     "89193868c61c3846", "a520be365951c9dc", "cfb2c31707d545bc"};
 constexpr float actual_gains[] = {0, .25f, 1, 4, 16};
 // Source-only encoded gain variants (linear_emission_source_gain_variant):
-// gain 1 is the byte-identical original, the rest one colour MUL.
-constexpr float source_gains[] = {1, 2, 3.5f, 8};
+// gain 1 is the byte-identical original, the rest one colour MUL. Slots 0-3
+// are the additive cases' gains; the screen cases run slots {0, 1, 4, 3}.
+constexpr float source_gains[] = {1, 2, 3.5f, 8, 5};
+constexpr unsigned screen_slots[] = {0, 1, 4, 3};
 constexpr unsigned actual_pairs[][2] = {{0,0},{1,1},{1,2},{2,3},{2,4},
     {3,1},{3,2},{4,5},{4,6},{4,7},{4,8},{5,0},{5,9},{6,3},{6,4},
     {7,5},{7,6},{7,7},{7,8},{0,9}};
@@ -982,7 +984,7 @@ struct MrtFixture : Fixture {
   bool use_branch = false, compare_compositors = false, actual = false, coverage_experiment = false, coverage_write = false;
   Com<IDirect3DVertexShader9> actual_vertices[8];
   Com<IDirect3DPixelShader9> actual_originals[10], actual_variants[10][5], coverage_variants[10][5];
-  Com<IDirect3DPixelShader9> source_gain_variants[10][4];
+  Com<IDirect3DPixelShader9> source_gain_variants[10][5];
   std::vector<std::uint32_t> original_vertices[8], original_pixels[10];
   std::vector<IDirect3DTexture9 *> textures;
   Saved application;
@@ -1020,7 +1022,7 @@ struct MrtFixture : Fixture {
           output.write(reinterpret_cast<const char *>(transformed.data()), transformed.size() * 4);
           need(bool(output), "local transformed output");
           api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(transformed.data()), &actual_variants[p][g].p));
-          if (source_gain && g < 4) {
+          if (source_gain) {
             need(linear_emission_source_gain_variant(saved.data(), saved.size(), source_gains[g], transformed) == LinearEmissionResult::Applied, "source-gain PS transform");
             need(original_pixels[p] == saved, "source-gain transform mutated original");
             need(g ? transformed.size() == saved.size() + 10 : transformed == saved, "source-gain variant shape");
@@ -1758,22 +1760,21 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
 
 #include "linear_emission_pass_cases_inc.h"
 // Source-only encoded gain (docs/architecture/linear-emission-cost.md,
-// "Implemented"): every reviewed pair drawn natively (ADD/ONE/ONE into the
-// FP16 target over a cleared background), then with each source-gain variant
-// bound in the same state. Raw per case: cleared target, native, then the
-// four variant images (gain 1 must equal native bit for bit); the runner
-// owns the law `bg + G (native - bg)` and its FP16 tolerance. The blend
-// verdict is the shared renderer law over the device's real state (read back
-// after the source state is set, as the proxy reads its shadow): header
-// alpha 2 turns SEPARATEALPHABLENDENABLE on with SRCALPHA/INVSRCALPHA alpha
-// factors (admitted: colour law unchanged, alpha native); an op of kind 2
-// sets DESTBLEND INVSRCCOLOR (refused `screen_blend`: the variant is never
-// bound, every image must equal native). Flag 8192 is the family split
-// (linear-emission-cost.md, "Family split"): the four variant slots hold the
-// configurations (engine, effect) = (2,1), (1,2), (8,1), (1,8) and the pair's
-// registry family (linear_emission_pair_info over the original fingerprints)
-// selects its effective gain; an effective gain of 1 binds nothing, so that
-// image must equal native bit for bit, as the proxy keeps that family native.
+// "Implemented" and "Screen substitution"): every reviewed pair drawn
+// natively (ADD/ONE/ONE into the FP16 target over a cleared background), then
+// with each source-gain variant bound in the same state. Raw per case:
+// cleared target, native, then the four variant images (gain 1 must equal
+// native bit for bit); the runner owns the law `bg + G (native - bg)` and its
+// FP16 tolerance. The blend verdict is the shared renderer law over the
+// device's real state (read back after the source state is set, as the
+// proxy reads its shadow): header alpha 2 turns SEPARATEALPHABLENDENABLE on
+// with SRCALPHA/INVSRCALPHA alpha factors (admitted: colour law unchanged,
+// alpha native); an op of kind 2 sets DESTBLEND INVSRCCOLOR (verdict Screen:
+// the gained slots draw with DESTBLEND ONE substituted exactly as the proxy
+// does, law `G native + bg` with native read over black; the gain-1 slot
+// substitutes nothing, the toggle-off image, and must equal the native
+// screen draw). Screen cases run the gains {1, 2, 5, 8}; flag 8192 clears to
+// the grey 128/255 background instead of the tinted one.
 void source_gain_experiment(IDirect3DDevice9 *device,
                             const std::vector<Case> &cases, const char *path,
                             IDirect3DSurface9 *back, const char *programs,
@@ -1781,21 +1782,18 @@ void source_gain_experiment(IDirect3DDevice9 *device,
   MrtFixture f(device, 16, 16, false, programs, variants, false, true);
   std::ofstream raw(path, std::ios::binary);
   need(bool(raw), "source-gain raw output");
-  unsigned draws = 0;
+  unsigned draws = 0, substituted = 0;
   for (const auto &cs : cases) {
     need(cs.ops.size() == 1, "one source per source-gain case");
     f.initialize_mrt(cs);
     const unsigned pair = f.profile(cs), pixel = actual_pixel(pair);
-    const bool dark = (cs.h.flags & 32768) == 0, split = (cs.h.flags & 8192) != 0;
-    using x3m::renderer::LinearEmissionFamily;
-    const auto info = x3m::renderer::linear_emission_pair_info(
-        local_fingerprint(f.original_vertices[actual_vertex(pair)]), local_fingerprint(f.original_pixels[pixel]));
-    need(info.family != LinearEmissionFamily::None && info.index == pair, "registry pair index and family");
-    constexpr float split_gains[4][2] = {{2, 1}, {1, 2}, {8, 1}, {1, 8}};
-    float effective[4];
-    for (unsigned v = 0; v < 4; ++v)
-      effective[v] = split ? split_gains[v][info.family == LinearEmissionFamily::Engine ? 0 : 1] : source_gains[v];
-    const D3DCOLOR background = dark ? 0 : D3DCOLOR_ARGB(128, 64, 128, 192);
+    const bool dark = (cs.h.flags & 32768) == 0, grey = (cs.h.flags & 8192) != 0, screen_case = cs.ops[0].kind == 2;
+    need(x3m::renderer::linear_emission_pair_index(
+             local_fingerprint(f.original_vertices[actual_vertex(pair)]), local_fingerprint(f.original_pixels[pixel])) == pair,
+         "registry pair index");
+    unsigned slots[4];
+    for (unsigned v = 0; v < 4; ++v) slots[v] = screen_case ? screen_slots[v] : v;
+    const D3DCOLOR background = dark ? 0 : grey ? D3DCOLOR_ARGB(128, 128, 128, 128) : D3DCOLOR_ARGB(128, 64, 128, 192);
     auto clear_target = [&] {
       f.single(*f.a);
       api(device->SetDepthStencilSurface(f.depth.p));
@@ -1816,11 +1814,12 @@ void source_gain_experiment(IDirect3DDevice9 *device,
     using x3m::renderer::SourceGainBlend;
     SourceGainBlend verdict = SourceGainBlend::Blend;
     DWORD state[8]{};
+    unsigned case_substituted = 0;
     for (unsigned v = 0; v < 5; ++v) {
       api(device->BeginScene());
       clear_target();
       f.source_state(cs, 0, *f.a, false);
-      if (cs.ops[0].kind == 2) f.rs(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+      if (screen_case) f.rs(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR); // the native screen state of the case
       const D3DRENDERSTATETYPE read[8] = {
           D3DRS_ALPHABLENDENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_SRCBLEND,
           D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE,
@@ -1830,34 +1829,38 @@ void source_gain_experiment(IDirect3DDevice9 *device,
           state[0], state[1], state[2], state[3], state[4]);
       need(v == 0 || now == verdict, "source-gain verdict stable across the case");
       verdict = now;
-      if (v && verdict == SourceGainBlend::Admit && effective[v - 1] != 1) {
-        unsigned slot = 4;
-        for (unsigned g = 0; g < 4; ++g) if (source_gains[g] == effective[v - 1]) slot = g;
-        need(slot < 4, "effective gain has a variant");
-        api(device->SetPixelShader(f.source_gain_variants[pixel][slot].p));
+      if (v && verdict != SourceGainBlend::Blend && source_gains[slots[v - 1]] != 1) {
+        if (verdict == SourceGainBlend::Screen) {
+          // The proxy's substitution for this draw only: DESTBLEND ONE
+          // before the program bind (prepare_source_gain).
+          f.rs(D3DRS_DESTBLEND, D3DBLEND_ONE);
+          ++case_substituted;
+        }
+        api(device->SetPixelShader(f.source_gain_variants[pixel][slots[v - 1]].p));
       }
       f.quad(cs.ops[0], cs.h.flags);
       ++draws;
       capture(image);
       raw.write(reinterpret_cast<const char *>(image.data()), image.size() * 4);
     }
-    need((cs.ops[0].kind == 2) == (verdict == SourceGainBlend::Screen), "screen op refused as screen_blend");
-    need((cs.ops[0].kind != 2) == (verdict == SourceGainBlend::Admit), "additive op admitted");
+    substituted += case_substituted;
+    need(screen_case == (verdict == SourceGainBlend::Screen), "screen op admitted as screen");
+    need(!screen_case == (verdict == SourceGainBlend::Admit), "additive op admitted");
+    need(case_substituted == (screen_case ? 3u : 0u), "substitution count per case");
     need((cs.h.alpha != 0) == (state[5] != 0), "separate alpha state as authored");
     std::printf("SOURCE_GAIN_CASE id=%u pair=%u pixel=%u background=%u draws=5 admission=%s "
-                "src=%lu dst=%lu sepalpha=%lu srcalpha=%lu dstalpha=%lu family=%s split=%u effective=%g,%g,%g,%g\n",
-                cs.h.id, pair, pixel, dark ? 0u : 1u,
-                verdict == SourceGainBlend::Admit ? "admit" : verdict == SourceGainBlend::Screen ? "screen_blend" : "blend",
+                "src=%lu dst=%lu sepalpha=%lu srcalpha=%lu dstalpha=%lu substituted=%u effective=%g,%g,%g,%g\n",
+                cs.h.id, pair, pixel, dark ? 0u : grey ? 2u : 1u,
+                verdict == SourceGainBlend::Admit ? "admit" : verdict == SourceGainBlend::Screen ? "screen" : "blend",
                 static_cast<unsigned long>(state[2]), static_cast<unsigned long>(state[3]), static_cast<unsigned long>(state[5]),
-                static_cast<unsigned long>(state[6]), static_cast<unsigned long>(state[7]),
-                x3m::renderer::linear_emission_family_name(info.family), split ? 1u : 0u,
-                double(effective[0]), double(effective[1]), double(effective[2]), double(effective[3]));
+                static_cast<unsigned long>(state[6]), static_cast<unsigned long>(state[7]), case_substituted,
+                double(source_gains[slots[0]]), double(source_gains[slots[1]]), double(source_gains[slots[2]]), double(source_gains[slots[3]]));
   }
   need(bool(raw), "source-gain raw write");
   f.single(f.scene);
   api(device->SetRenderTarget(0, back));
-  std::printf("SOURCE_GAIN_TOTAL cases=%u draws=%u variants=40\n",
-              unsigned(cases.size()), draws);
+  std::printf("SOURCE_GAIN_TOTAL cases=%u draws=%u substituted=%u variants=50\n",
+              unsigned(cases.size()), draws, substituted);
 }
 
 int main(int argc, char **argv) {
@@ -2025,7 +2028,7 @@ int main(int argc, char **argv) {
     FreeLibrary(runtime);
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-    std::printf(source_gain ? "SOURCE_GAIN_RESULT pass cases=%u shaders=117\n"
+    std::printf(source_gain ? "SOURCE_GAIN_RESULT pass cases=%u shaders=127\n"
                 : fused_comparison ? "FUSED_RESULT pass cases=%u\n"
                 : component ? "PASS_RESULT pass cases=%u shaders=528\n"
                 : coverage ? "COVERAGE_RESULT pass cases=%u shaders=381\n"

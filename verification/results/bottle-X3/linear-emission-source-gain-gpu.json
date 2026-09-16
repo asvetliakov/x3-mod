@@ -10,7 +10,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "game_launched": false,
-  "scope": "Detached source-only encoded gain of the twenty reviewed pairs: native ADD/ONE/ONE draw versus the colour-MUL PS variant in the same state over zero and non-zero FP16 backgrounds, plus the engine/effect family split (each family gained while the other draws native bytes); no live route, bloom or native Windows runtime proof",
+  "scope": "Detached source-only encoded gain of the twenty reviewed pairs: native ADD/ONE/ONE draw versus the colour-MUL PS variant in the same state over zero and non-zero FP16 backgrounds, plus the screen ONE/INVSRCCOLOR draw with DESTBLEND ONE substituted for the gained slots (gains 2, 5, 8 over black and grey 128/255) against the native screen draw; no live route, bloom or native Windows runtime proof",
   "targets": {
     "A": "FP16 scene target (cleared background, native and gained images)",
     "depth": "D24S8",
@@ -23,16 +23,16 @@
     "alpha": "exact binary16",
     "gain_1": "exact image"
   },
-  "timing_scope": "No timing pass: the option adds one MUL per fragment and two native SetPixelShader calls per admitted draw",
+  "timing_scope": "No timing pass: the option adds one MUL per fragment and two native SetPixelShader calls per admitted draw, plus two native SetRenderState calls per substituted screen draw",
   "limitations": [
-    "Fixture blend state is the admitted native ADD/ONE/ONE; the live admission predicate (blend shadow, HDR redirect active) is exercised by the DLL, not here",
+    "Fixture blend state is the admitted native ADD/ONE/ONE or the screen ADD/ONE/INVSRCCOLOR with the substitution applied per draw; the live admission predicate (blend shadow, HDR redirect active) and the post-draw restore are exercised by the DLL, not here",
     "Finite texture/affine/fade inputs only; sources near the FP16 cap are not exercised (clipping refuses the case)",
     "Native Windows untested; the variant is documented PS 2.0 bytecode"
   ],
   "code_sha256": {
-    "verification/probe/linear_emission_fixture.cpp": "ad646b7ead28b8f469b9f75474ef9d1fd2332dfcc574721874633a737640eacf",
+    "verification/probe/linear_emission_fixture.cpp": "cd25d4b741ad80de09ebfe6c0e9dc5b41aa66e746679e366fb2d6f27a3a72572",
     "verification/probe/build_linear_emission.sh": "a009637c105925829ee02e9bbe143545cddf7884471d4e1a8524a1624eee484e",
-    "verification/probe/run_linear_emission.py": "bf37548e1da04d7d8b73eb46d06f3ce70ad2562f4db7470e8b3370707d2b7e42",
+    "verification/probe/run_linear_emission.py": "7e59cbf9ea4c0531e7d512ced37b520483b11982fe1a216c764a05a8f575af83",
     "verification/analysis/test_linear_emission_report.py": "afca46caba3639fdae20d07582c839b8c4dcbf179bc0bdcdc52e7867123f7a0f",
     "verification/analysis/test_linear_emission_mrt_report.py": "03930edeace530259c304640e7267e809d79c6bebfaf398523a84b035ffb8a7b",
     "verification/analysis/test_linear_emission_original_report.py": "a7853fa8a5cba891cf18defbe3a7d2aefd62628f54dc0eb3f9c105b2b166727e",
@@ -51,11 +51,11 @@
     "src/renderer/linear_emission_composite_inc.h": "b996ddb01a707660cd030a80eed476929cfdefaaa5e301f89904b53e356dbbfa",
     "src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
     "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
-    "src/renderer/linear_emission.h": "785e3452e410e8698a0c0cb50619b0c7c8f93438f030211380e7ee94c6906dd7",
-    "src/renderer/linear_emission.cpp": "94e7b9d34891180a558c82f6f34114c6058bfd1e365a8628f32a927a5a4082ec"
+    "src/renderer/linear_emission.h": "a6e52630a5c1bf43d4e3ad9f0049ebc172705e453b02c16f9552fe4c3255b0cc",
+    "src/renderer/linear_emission.cpp": "130de5d1fb2f436e5d5e14f004ca8d24f798dd0bba30bb965d9794ce59c7ee7a"
   },
-  "executable_sha256": "9cf1537c9a4fdabf4fcce3cb9cce8f2bbaab8c386021d64971c2b5b44006f8ac",
-  "cases_sha256": "1469e00f2876c70f7df956e700ef99e17f30df07330293453d39db2e0936459d",
+  "executable_sha256": "cb1b3eac3a6d02db0cada1ea152fc0080ee16f15414e6e2286d772fe51c0f6b2",
+  "cases_sha256": "db2fdca0ead01402baa88d4cb41a24842a834b1ac12f9e9f234e61845472c90c",
   "raw_dir": "/tmp/x3-linear-emission-gpu-source-gain",
   "original_sha256": {
     "vs_d5e1c75351ed3f04.bin": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114",
@@ -78,7 +78,7 @@
     "ps_f0c91793a75e1203.bin": "bf30c26d78fcf6f781edd5d6dfdfb0ecf973b924d3ae13bd8e4eea593fbef038"
   },
   "original_dir": "/tmp/x3-shader-sweep/programs",
-  "source_shader_model": "Eight unchanged original VS2; ten exact PS2.0/PS2.x programs versus 40 source-gain variants (10 identical at gain 1)",
+  "source_shader_model": "Eight unchanged original VS2; ten exact PS2.0/PS2.x programs versus 50 source-gain variants (10 identical at gain 1)",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -94,7 +94,7 @@
     "Z:/private/tmp/x3-linear-emission-gpu-source-gain/variants"
   ],
   "exit_code": 0,
-  "cases": 200,
+  "cases": 160,
   "reviewed_pairs": 20,
   "source_gains": [
     1.0,
@@ -102,16 +102,22 @@
     3.5,
     8.0
   ],
-  "identity_channels": 163840,
-  "alpha_channels_exact": 112640,
-  "covered_pixels": 46720,
+  "screen_gains": [
+    1.0,
+    2.0,
+    5.0,
+    8.0
+  ],
+  "identity_channels": 122880,
+  "alpha_channels_exact": 92160,
+  "covered_pixels": 36480,
   "per_gain": {
     "2.0": {
-      "channels": 122880,
-      "exact": 122880,
-      "within_one": 122880,
+      "channels": 92160,
+      "exact": 92160,
+      "within_one": 92160,
       "max_codes": 0,
-      "brighter": 109440,
+      "brighter": 78720,
       "max_value": 1.7529296875
     },
     "3.5": {
@@ -123,11 +129,11 @@
       "max_value": 2.501953125
     },
     "8.0": {
-      "channels": 122880,
-      "exact": 122880,
-      "within_one": 122880,
+      "channels": 92160,
+      "exact": 92160,
+      "within_one": 92160,
       "max_codes": 0,
-      "brighter": 109440,
+      "brighter": 78720,
       "max_value": 4.75
     }
   },
@@ -138,46 +144,45 @@
     "alpha_channels_exact": 30720,
     "alpha_blended_pixels": 7680
   },
-  "screen_refused": {
+  "screen_substituted": {
     "cases": 40,
-    "channels_native": 122880,
-    "darkened_pixels": 0
+    "identity_channels": 40960,
+    "native_law_channels": 30720,
+    "native_law_exact": 23168,
+    "per_gain": {
+      "2.0": {
+        "channels": 30720,
+        "exact": 30720,
+        "within_one": 30720,
+        "max_codes": 0,
+        "max_value": 1.501953125,
+        "brighter_than_native": 30720,
+        "alpha_channels": 10240,
+        "alpha_exact": 10240
+      },
+      "5.0": {
+        "channels": 30720,
+        "exact": 30720,
+        "within_one": 30720,
+        "max_codes": 0,
+        "max_value": 3.001953125,
+        "brighter_than_native": 30720,
+        "alpha_channels": 10240,
+        "alpha_exact": 10240
+      },
+      "8.0": {
+        "channels": 30720,
+        "exact": 30720,
+        "within_one": 30720,
+        "max_codes": 0,
+        "max_value": 4.5,
+        "brighter_than_native": 30720,
+        "alpha_channels": 10240,
+        "alpha_exact": 10240
+      }
+    }
   },
-  "family_split": {
-    "cases": 40,
-    "engine_cases": 10,
-    "effect_cases": 30,
-    "native_slots": 80,
-    "native_channels": 81920,
-    "gained_slots": 80,
-    "gained_channels_exact": 61440,
-    "engine_pairs": [
-      0,
-      1,
-      2,
-      5,
-      6
-    ],
-    "configurations": [
-      [
-        2.0,
-        1.0
-      ],
-      [
-        1.0,
-        2.0
-      ],
-      [
-        8.0,
-        1.0
-      ],
-      [
-        1.0,
-        8.0
-      ]
-    ]
-  },
-  "law": "gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native; separate alpha blend admitted (rgb-only law), screen ONE/INVSRCCOLOR refused as screen_blend and native; family split: the pair family selects its gain, the other family draws the native bytes",
+  "law": "gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native; separate alpha blend admitted (rgb-only law); screen ONE/INVSRCCOLOR admitted with DESTBLEND ONE substituted for the gained draw (G s + bg with s the native readback over black, alpha a + bg.a as separate alpha is off; the gain-1 slot is the native screen draw s + bg (1 - s))",
   "transformed_sha256": {
     "ps_8360f422de08b5bd-0.bin": "d181ff936913172aba9fd4ac5f3c45cbeabf92c975a1091ef6dfb3c7d808678e",
     "ps_8360f422de08b5bd-1.bin": "bcffa23679bb083654e2c57b37e091569f9be638a6591132a5a6dd3523ae5f5c",

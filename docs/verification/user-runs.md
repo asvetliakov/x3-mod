@@ -57,7 +57,9 @@ not rerun requests.
 Installed: DLL `7f296d53…` from `dd29770` (see [status](../status.md)). Defaults unchanged.
 New in this build: Ctrl+Shift+F5 toggles the additive bolts, Ctrl+Shift+F6 the
 engine source gain, Ctrl+Shift+F4 the effect source gain (each between its
-configured gain and native, with an on-screen notice); `--screen-emission-additive-alpha K`
+configured gain and native, with an on-screen notice; the next candidate
+merges F6/F4 into one F6 over all twenty pairs and drops
+`--effect-source-gain`, `linear-emission-cost.md` "Screen substitution"); `--screen-emission-additive-alpha K`
 keeps the bolts out of the authored-glow bloom term; the chase pose now lands on
 the first frame after a transit; `--frame-timing` logs frame-time windows.
 
@@ -89,8 +91,9 @@ gains back at 2 plus `--linear-materials --linear-distance-fade --sun-shadow-lan
 a minute near a station: sun-lane frames should now report `available=1`.
 
 After the tests, play with gains at 2 (`--screen-emission-additive 2
---screen-emission-additive-alpha 0 --emission-source-gain 2 --effect-source-gain 1`)
-and say whether alpha 0 should stay.
+--screen-emission-additive-alpha 0 --emission-source-gain 2 --effect-source-gain 1`;
+the next candidate takes no `--effect-source-gain`) and say whether alpha 0
+should stay.
 
 ## 27. Corrected restore, engine gain, point-light admission, depth replay — session A completed (run68)
 

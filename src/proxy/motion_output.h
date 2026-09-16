@@ -87,6 +87,7 @@ struct MotionRoute {
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;
     bool linear_material = false; // Combined color+motion pair actually bound.
     bool source_gain = false;     // Source-gain PS bound natively for this draw; restored after it.
+    bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen substitution); restored after it.
     bool original_fill = false;   // Original-fill PS selected in the routed pair (undone with the route).
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
@@ -554,16 +555,15 @@ public:
     // ADD/ONE/ONE state while the FP16 scene target is active. No bracket,
     // no composition, no per-draw work beyond two native SetPixelShader
     // calls. Gain 1 is off (no variant is created). Configure before attach.
-    void configure_emission_source_gain(float engine_gain, float effect_gain) noexcept; // per family (linear-emission-cost.md, "Family split")
+    void configure_emission_source_gain(float gain) noexcept; // one gain for all twenty pairs
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
-    // Runtime A/B of one source-gain family (Ctrl+Shift+F6 engine / F4 effect,
-    // comparison-hotkeys.md): the prebuilt variants stay; the per-draw path
-    // stops selecting them, so the draw goes out exactly as it would without
-    // the option. `family` is LinearEmissionFamily - 1 (0 engine, 1 effect).
-    // Returns the new state (1 on / 0 off), or -1 when the family was not
-    // requested or its gain is 1 (no variant exists): a logged no-op.
-    int emission_source_gain_toggle(unsigned family) noexcept;
-    bool emission_source_gain_enabled(unsigned family) const noexcept { return family < 2 && source_gain_enabled_[family]; }
+    // Runtime A/B of the source gain (Ctrl+Shift+F6, comparison-hotkeys.md):
+    // the prebuilt variants stay; the per-draw path stops selecting them (and
+    // stops the screen substitution), so the draw goes out exactly as it
+    // would without the option. Returns the new state (1 on / 0 off), or -1
+    // when the option was not requested (gain 1, no variant): a logged no-op.
+    int emission_source_gain_toggle() noexcept;
+    bool emission_source_gain_enabled() const noexcept { return source_gain_enabled_; }
     // Option C (docs/architecture/original-shading-critique.md 1a): fill in
     // linear light inside the original hull pixel programs, finite 0..0.5, 0
     // is off (no variant is created). Excludes linear materials; configure
@@ -821,7 +821,7 @@ private:
                          IUnknown* xt_default_ordinary_variant = nullptr;
                          IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
                          IDirect3DPixelShader9* emission_variant = nullptr;
-                         IDirect3DPixelShader9* source_gain_variant[2]{}; // colour-MUL variant per family gain [engine, effect] (PS only; the VS stays original)
+                         IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant at the source gain (PS only; the VS stays original)
                          IDirect3DPixelShader9* original_fill_variant = nullptr; // motion variant plus the option C fill block (PS only)
                          IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
                          IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
@@ -841,12 +841,10 @@ private:
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
-        IDirect3DPixelShader9* ps_source_gain_variant[2]{};
-        // The bound PS's source-gain variant of the bound pair's family when
-        // the bound VS/PS is one of the twenty reviewed pairs and that
-        // family's gain is not 1; null otherwise (one pointer test per draw).
+        IDirect3DPixelShader9* ps_source_gain_variant = nullptr;
+        // The bound PS's source-gain variant when the bound VS/PS is one of
+        // the twenty reviewed pairs; null otherwise (one pointer test per draw).
         IDirect3DPixelShader9* source_gain_eligible_variant = nullptr;
-        renderer::LinearEmissionFamily source_gain_family = renderer::LinearEmissionFamily::None;
         unsigned source_gain_pair = renderer::linear_emission_pair_count; // registry index of the bound pair (first-admission log)
         // Original fill: the bound PS's fill variant and whether the bound
         // VS/PS is a reviewed linear-material pair with both motion variants
@@ -1026,12 +1024,8 @@ private:
     void report_mip_bias_game_write_failure() noexcept;
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
-    // The bound pair's family is enabled for this draw (Ctrl+Shift+F6/F4).
-    // None is never enabled: an eligible variant always carries a family.
-    bool source_gain_family_enabled(renderer::LinearEmissionFamily family) const noexcept {
-        return emission_source_gain_enabled(unsigned(family) - 1u);
-    }
     void prepare_source_gain(const MotionDrawCall&, MotionRoute&) noexcept;
+    void finish_source_gain(MotionRoute&) noexcept;
     // Additive option: the exact-state admission, the DESTBLEND/PS apply
     // (rolled back on a failed second step) and the restore after the draw.
     void prepare_screen_additive(const MotionDrawCall&, MotionRoute&) noexcept;
@@ -1200,14 +1194,16 @@ private:
     bool linear_emission_requested_ = false, distance_fade_requested_ = false, screen_emission_requested_ = false;
     float screen_emission_gain_ = 1.f;
     bool emission_source_gain_requested_ = false;
-    float emission_source_gain_[2]{1.f, 1.f}; // [engine, effect] (LinearEmissionFamily - 1); 1 = that family stays native
+    float emission_source_gain_ = 1.f; // 1 = off (no variant, native bytes)
     // Runtime hotkey state, default on; never touched by a draw that does not
     // already reach the option's admission, and never used for creation.
-    bool source_gain_enabled_[2]{true, true};
-    // Source-gain draw accounting (per-frame line): admitted draws (total and
-    // per family), refusals by blend state, by unknown state, by device state, bind failures.
-    struct { std::uint32_t admitted = 0, admitted_engine = 0, admitted_effect = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
-    // Per-device sample caps, one per logged reason: blend, screen_blend, bind_failed, state.
+    bool source_gain_enabled_ = true;
+    // Source-gain draw accounting (per-frame line): admitted draws (total, of
+    // which screen-substituted), refusals by blend state, screen draws refused
+    // because the DESTBLEND substitution failed, by unknown state, by device
+    // state, bind failures.
+    struct { std::uint32_t admitted = 0, admitted_screen = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
+    // Per-device sample caps, one per logged reason: blend, screen_substitute_failed, bind_failed, state.
     std::uint32_t source_gain_logged_[4]{};
     std::uint32_t source_gain_pair_logged_ = 0; // bit per registry pair: first admission logged this device epoch (at most 20 lines)
     bool original_fill_requested_ = false; // X3M_ORIGINAL_FILL=K (finite 0..0.5), exclusive with linear materials

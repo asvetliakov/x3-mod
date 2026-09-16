@@ -197,59 +197,70 @@ not linear composition and is never labelled so.
   backgrounds; law `bg + G (native - bg)`, alpha and gain-1 images bit-exact).
   Ledger row: [screen-emission.md](../verification/screen-emission.md).
 
-### Family split (2026-09-16): `--emission-source-gain G` / `--effect-source-gain G`
+### Screen substitution (2026-09-16): one `--emission-source-gain G` for all twenty pairs
 
-Run 27 (run68, `--emission-source-gain 2 --screen-emission-additive 2`, the
-first run admitting the separate-alpha ONE/ONE draws) showed a broad soft
-orange halo around the weapon impact point and brighter bolts. The halo is
-attributed, as a **hypothesis**, to the effect sprites (impact flashes, muzzle
-glows, explosions) among the twenty pairs receiving the same gain as the
-engine glow and bloom spreading them; the bolt brightness itself is the
-unchanged `--screen-emission-additive 2` and not part of this change. The gain
-is therefore split by pair family; the pair log below confirms or refutes the
-attribution in the next run.
+The 2026-09-16 engine/effect family split (`--effect-source-gain`,
+Ctrl+Shift+F4; history in `docs/archive/` and the screen-emission ledger) is
+**undone**. Its premise was that the engine glow and the impact sprites are
+separable by shader identity; the material survey
+([effect-shader-users.md](../reverse-engineering/effect-shader-users.md))
+shows the engine glow is drawn by the same DEFAULT pair as the jump gate and
+the effect sprites (VS `d5e1c753` / PS `8360f422`, from
+`objects/effects/engines/*`), and that 92 of the 122 engine materials blend
+ONE/INVSRCCOLOR (screen), which the source gain refused as `screen_blend`
+(run 28: refused_screen 124,827, refused_state 101,263, admitted 78,307 =
+the ONE/ONE gate materials). That is why the engines never responded to the
+gain. Two decisions follow: one option, one hotkey, one gain for all twenty
+pairs (`X3M_EMISSION_SOURCE_GAIN`, Ctrl+Shift+**F6**; a passed
+`--effect-source-gain` is a launcher error naming the replacement), and the
+screen draws are admitted through a blend substitution.
 
-- Family table (`src/renderer/linear_emission.cpp`, `pairs[]` with a
-  `Family` per row; `linear_emission_pair_info` returns index and family,
-  `linear_emission_pair_reviewed` is `family != None`). Evidence per pair is
-  the archive alias that carries it (`verification/results/shader-sweep-aliases.json`,
-  [effects-engine-remaining-emission.md](../reverse-engineering/effects-engine-remaining-emission.md)
-  rows 1–15): the four pairs found only in `engine_0000/0001` (VS `32e75459`,
-  `5b7a3ccd` with PS `9975b706`, `ff2473e7`) are **engine**; the twelve pairs
-  found only in `effects_0000/0001` (VS `089091aa`, `6435a84d`, `a520be36`,
-  `cfb2c317`) are **effect**. The base `effects`/`effects2s`/`engine`/`engine2s`
-  aliases are byte-identical, so their pairs split by technique: DEFAULT VS
-  `d5e1c753` / PS `8360f422` (g_TexMatrix UV scroll through the ordinary
-  material dispatch; the only pair ever observed drawing in captured scene
-  frames, the historical cruising two-draw bursts, run 27's `admitted=2`
-  baseline over 6,442 frames) is **engine**; INSTANCE VS `89193868` / PS
-  `8360f422` (direct UV; the instanced-mesh sprite path `FUN_004bfd40` names
-  effect `"effects"` and technique `INSTANCE`, the same path as the bullets) is
-  **effect**; the two PS2.1 `f0c91793` pairs sit only in the base `effects`
-  alias (profile 2_b, never created in run 27) and are **effect**. Total 5
-  engine, 15 effect. Limits: the shared base PS means an impact drawn through
-  the ordinary material dispatch with DEFAULT would still take the engine gain,
-  and the run-27 log cannot name the pairs behind its `admitted=8` bursts
-  (frames 8260–8299 and others): only PS `8360f422` was created in that
-  session (10 `emission_source_gain_variant` lines, all for it), so both base
-  pairs are candidates. The per-pair first-admission line settles that.
-- Options: `--emission-source-gain G` now gains the engine family only;
-  `--effect-source-gain G` (`X3M_EFFECT_SOURCE_GAIN`, finite 1..8, default 1 =
-  original bytes) gains the effect family; same gate (`--hdr`, excludes
-  `--linear-emissions`), independent of each other. `configure_emission_source_gain(engine, effect)`;
-  `register_pixel_shader` creates one variant per family whose gain is not 1
-  (`emission_source_gain_variant ... family=`; PS `8360f422` gets both when
-  both gains are set), `refresh_linear_emission_contract` selects the bound
-  pair's family variant, a family at gain 1 has no variant and stays native
-  (byte identity as before).
-- Observability: `emission_source_gain_pair device= frame= vs= ps= family= gain=`
-  once per pair per device epoch (at most 20 lines); the frame line is now
-  `emission_source_gain_frame device= frame= gain= effect_gain= admitted=
-  admitted_engine= admitted_effect= refused_blend= refused_screen=
-  refused_other= refused_unknown= refused_state= bind_failures=`; and
-  `emission_source_gain_refused_state device= frame= vs= ps= family= hdr=
-  scene= open= recording= primitives= msaa= blend= src= dst= op= sepalpha=`
-  samples (16 per device epoch) name the predicate behind `refused_state`.
+- Why screen cannot carry the gain as is: `INVSRCCOLOR` reads the *gained*
+  output, so `S·G + D·(1 − S·G)` goes negative for `S·G > 1` on the FP16
+  target (and darkens wherever `D > 1`).
+- Substitution: for an admitted draw whose colour blend is ADD/ONE/INVSRCCOLOR
+  (separate alpha as the admission already allows), `prepare_source_gain`
+  sets `DESTBLEND ONE` for that draw before binding the gain variant, exactly
+  as `--screen-emission-additive` does for the bullet pair
+  (`prepare_screen_additive`, set unconditionally, restored through the
+  setter shadow). The draw becomes additive `G·S + D`; `finish_source_gain`
+  puts the application's program and its shadowed DESTBLEND back after the
+  draw. A failed DESTBLEND setter leaves the draw native (counted
+  `refused_screen`, sample `reason=screen_substitute_failed`); a failed
+  program bind after the substitution unwinds the DESTBLEND through the
+  shadow before returning; a failed restore is the lost-state path
+  (`motion_state_lost_`, render-state resync, TAA invalidated). Only while
+  the F6 toggle is on; off, the draw goes out native (screen blend, native
+  program). The ONE/ONE path is unchanged.
+- Accepted trade (user preference: cheap `> 1.0` emitters over the exact
+  blend law): over black the additive result equals the native screen draw
+  for `S ≤ 1` (identical when `D = 0`); over a lit background it is brighter
+  by `D·S` (native `S + D − D·S`, substituted `S·G + D`), never negative and
+  never darker than native. With separate alpha off (the engine materials)
+  the alpha lane also changes from `a + D.a·(1 − a)` to `a + D.a`, the
+  additive bullets' alpha law; `a` itself is untouched by the variant.
+- Blend law (`renderer::linear_emission_source_gain_blend`): sRGB write now
+  refuses before the screen test (the substitution needs the linear FP16
+  target), so screen + sRGB is a `blend` refusal, not `Screen`.
+- Cost: one native `SetRenderState` before and one after a substituted screen
+  draw; nothing on the additive draws or on any other draw (the pair pointer
+  test and the toggle flag are unchanged). One variant per original program
+  (ten), no per-family creation.
+- Registry: `linear_emission_pair_index(vs, ps)` (0..19 or the count);
+  `LinearEmissionFamily`, `linear_emission_pair_info` and
+  `linear_emission_family_name` are gone from the renderer and the proxy.
+- Observability: `emission_source_gain_pair device= frame= vs= ps= gain=
+  screen=` once per pair per device epoch (`screen=1` when the first
+  admission substituted); `emission_source_gain_frame device= frame= gain=
+  admitted= admitted_screen= refused_blend= refused_screen= refused_other=
+  refused_unknown= refused_state= bind_failures=` (one admitted counter,
+  `admitted_screen` the substituted share, `refused_screen` only screen
+  draws whose substitution failed); `emission_source_gain_refused ...
+  reason=blend|screen_substitute_failed`; `emission_source_gain_refused_state
+  device= frame= vs= ps= hdr= scene= open= recording= primitives= msaa=
+  blend= src= dst= op= sepalpha=`; `emission_source_gain_toggle device=
+  frame= accepted= enabled= requested= gain=`; `emission_source_gain_variant
+  ... gain=` without a family.
 - `refused_other` in run 27 (66,024 of 124,774 candidates) was entirely
   `refused_state` (`refused_unknown` 0, `bind_failures` 0): the draw failed the
   device-state predicate (`hdr_state_`, `route.scene`, `scene_open_`, state
@@ -262,21 +273,22 @@ attribution in the next run.
   overlay population of the same pair
   ([emission-draw-order.md](../reverse-engineering/emission-draw-order.md),
   "924 late overlay draws"), i.e. `route.scene` false. Inference, not a
-  witness: the new state sample line is the witness. It is not engine glow
+  witness: the state sample line is the witness. It is not engine glow
   and is not admitted. No SRCALPHA/ONE or other premultiplied additive
-  population exists in runs 26/27 (`refused_blend` 0 in run 27; run 26's
-  blend refusals were all ONE/ONE/ADD with separate alpha, now admitted, or
-  the screen blend), so the truth table is unchanged: admitting SRCALPHA/ONE
-  would be valid for the colour law (`dst + a·G·s = dst + G·(a·s)`, alpha
-  untouched) but there is no draw to admit and fail-closed stays.
-- Evidence: host `test_linear_emission_source_gain.py` (family table: 20 rows
-  each with exactly one family in the source and through the compiled
-  lookup, 5 engine; launcher and DLL gates of both options; frame/pair/state
-  line grammar; fixture and runner coverage) and
-  `run_linear_emission.py --mode source-gain` with 40 `source_gain_family`
-  cases (the four variant slots run (engine, effect) = (2,1), (1,2), (8,1),
-  (1,8); the pair's family side is the gained image under the law, the other
-  side is bit-exact native).
+  population exists in runs 26/27 (`refused_blend` 0 in run 27), so the
+  truth table is otherwise unchanged: admitting SRCALPHA/ONE would be valid
+  for the colour law (`dst + a·G·s = dst + G·(a·s)`, alpha untouched) but
+  there is no draw to admit and fail-closed stays.
+- Evidence: host `test_linear_emission_source_gain.py` (registry 20 rows
+  without a family, compiled 80-cell lookup; launcher gate and the removed
+  option's error; substitution order, rollback and restore pins; frame /
+  pair / state line grammar; fixture and runner coverage) and
+  `run_linear_emission.py --mode source-gain`: 120 ONE/ONE cases byte-identical
+  to the pre-change raw baseline, plus 40 `source_gain_screen` cases (20 pairs
+  × black and grey 128/255 backgrounds, gains 2 / 5 / 8 substituted, gain-1
+  slot native): the substituted images match `G·s + D` and the gain-1 slot
+  the native screen law within one FP16 code
+  ([screen-emission.md](../verification/screen-emission.md)).
 
 ## 5. Options for the linear route, ranked
 

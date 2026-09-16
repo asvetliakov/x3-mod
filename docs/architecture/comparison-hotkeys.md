@@ -24,25 +24,26 @@ falls back to fixed.
 Hold **Ctrl+Shift**, then press **F9** for AUTO ↔ fixed EV 0 or **F10** for bloom
 ON ↔ OFF (**F11** toggles the ambient occlusion chain when `--ambient-occlusion` is on; no
 notice, one `ambient_occlusion_toggle` log line per press, `docs/architecture/ambient-occlusion.md`
-"Step 2"). Three more keys switch one emitter-gain family between its configured
+"Step 2"). Two more keys switch one emitter gain between its configured
 gain and native, without recreating anything: **F5** the additive bullets
-(`--screen-emission-additive G`, the nine SM1 screen pairs), **F6** the engine
-source gain (`--emission-source-gain G`, the five engine pairs) and **F4** the
-effect source gain (`--effect-source-gain G`, the fifteen effect pairs; F7 is the
-telemetry phase marker and F8 the capture key, so the effect family took the next
-free key). Each key only decides whether the per-draw path selects the variant
-that was already built at CreatePixelShader time, so an off family draws with the
-native program, the native blend and no substitution, exactly like a refused
-draw; a family whose option was not requested, or a source-gain family whose
-gain is 1 (no variant is created), answers with a logged no-op shown as
-UNAVAILABLE. The additive key has no gain-1 case: `G = 1` still draws with
-DESTBLEND ONE (and the alpha attenuation, if any), so F5 switches it whenever
-the option is requested. The three keys are polled whenever any comparison
+(`--screen-emission-additive G`, the nine SM1 screen pairs) and **F6** the
+emission source gain (`--emission-source-gain G`, all twenty engine/effects
+pairs; the 2026-09-16 F4 effect key went with the undone family split,
+`linear-emission-cost.md` "Screen substitution"; F7 is the telemetry phase
+marker and F8 the capture key). Each key only decides whether the per-draw
+path selects the variant that was already built at CreatePixelShader time
+(and, for F6, whether a screen draw gets its DESTBLEND ONE substitution), so
+an off option draws with the native program, the native blend and no
+substitution, exactly like a refused draw; an option that was not requested,
+or the source gain at 1 (no variant is created), answers with a logged no-op
+shown as UNAVAILABLE. The additive key has no gain-1 case: `G = 1` still draws
+with DESTBLEND ONE (and the alpha attenuation, if any), so F5 switches it
+whenever the option is requested. Both keys are polled whenever any comparison
 sampler is open, so a press in a run launched without `--hdr --motion-output`
 (or without that option) logs its refusal rather than being silently dropped. Each press logs
 `screen_emission_additive_toggle` or `emission_source_gain_toggle` with the
-family, acceptance, new state and gain, plus the usual `renderer_comparison`
-line under key `ctrl_shift_f5`/`f6`/`f4`, and takes over the notice's second
+acceptance, new state and gain, plus the usual `renderer_comparison`
+line under key `ctrl_shift_f5`/`f6`, and takes over the notice's second
 line (BULLETS/ENGINES/EFFECTS ON/OFF/UNAVAILABLE, all of them when several keys
 land in one sample) until the next F9/F10 press.
 With `--telemetry`, the additive option also logs one
