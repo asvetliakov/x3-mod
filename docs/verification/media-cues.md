@@ -218,9 +218,10 @@ line is emitted once per 300 frames whenever the gate is installed (trace or
 cache), so the per-frame attempt count (`attempts_frame_p50`/`_max`) is visible
 with the trace off; it is not added to the `frame_phases` line.
 
-**Cache policy** (`X3M_MEDIA_CUE_CACHE=1`, launcher `--media-cue-cache on`,
-default `off` in this build; `X3M_MEDIA_CUE_RETRY_S`, `--media-cue-retry-s N`,
-default 30, 1..3600). Scope: caller `selector` only, meaning `[esp] ==
+**Cache policy** (`X3M_MEDIA_CUE_CACHE=1`, launcher `--media-cue-cache on|off`,
+**default `on` since 2026-09-17** (run 34 session A2: the ~390 ms/frame stall
+of the failing cue disappears with the cache on); `X3M_MEDIA_CUE_RETRY_S`,
+`--media-cue-retry-s N`, default 30, 1..3600). Scope: caller `selector` only, meaning `[esp] ==
 0x004f6615` and `[esp+0xc] == 0x0045c60c` with kind `0x5a` at `[esp+0x10]`;
 speech, script, savegame, query and the other play-helper callers are never
 refused and their failures are never cached. A scoped build that returns 0
@@ -265,6 +266,25 @@ group on the 16,384-byte production arena would have kept 308 B, below the
 320-byte largest single reservation the model requires, so the arena grew by
 one page to 20,480 (`engine_patch.cpp`; 16,076 modelled with everything on,
 4,404 B headroom; `test_game_phase_sites.py`). The fixture arena stays 32,768.
+
+**Default-on policy (2026-09-17).** `--media-cue-cache` defaults to `on`;
+`--media-cue-cache off` restores the stock per-frame rebuild. The cache is
+independent of telemetry: `media_cue::initialize` sets `cache_on` straight from
+`X3M_MEDIA_CUE_CACHE` and gates only `trace_on` on `telemetry::enabled()`, so
+with the cache on and `--telemetry` absent the gate is still installed and
+refuses (the `media_cue_mode`/`media_cue_window` lines are written by `log`,
+which does not consult telemetry; only the per-call `media_cue` lines need
+`--media-cue-trace`, which the launcher still requires `--telemetry` for). Only
+`--media-cue-trace` carries a launcher precondition; `--media-cue-retry-s` with
+an explicit `off` is rejected as before. An unset variable keeps the gate off, so
+an inherited environment cannot enable it behind the launcher's back.
+
+What the player loses with the cache on: the first failed build of a cue still
+happens; after it, that cue's sound or video is silently skipped in the sector
+selector for the retry interval (30 s by default) instead of being rebuilt every
+frame. Nothing else is refused - speech, script, savegame and query callers are
+out of scope - and a success for the id from any caller clears the entry
+immediately.
 
 ## Open issues
 

@@ -84,8 +84,11 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   Wine. Its handlers use documented Win32 only (`QueryPerformanceCounter`,
   `GetCurrentThreadId`, `Get/SetLastError`) and the patch machinery's
   `VirtualProtect`/`FlushInstructionCache`. The failing DirectShow build it
-  refuses is a CrossOver symptom (missing decoders); on native Windows the
-  quartz filters decode and the cache would simply never fill. Cross-compiled
+  refuses is a CrossOver symptom (missing decoders); the launcher enables the
+  cache by default (`--media-cue-cache on`, since 2026-09-17) and ships the same
+  bytes on native Windows, where the quartz filters normally decode and the
+  cache simply never fills - a missing codec on Windows is exactly the case the
+  cache handles, with the same 30 s retry. The cache needs no telemetry. Cross-compiled
   and fixture-qualified under CrossOver; native execution unverified like the
   other engine patches.
 

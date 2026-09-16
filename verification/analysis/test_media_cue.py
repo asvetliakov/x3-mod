@@ -133,7 +133,7 @@ class SourceAndPolicy(unittest.TestCase):
 
 
 class MediaCueLaunchOptions(unittest.TestCase):
-    def test_trace_requires_telemetry_cache_default_off_and_retry_range(self):
+    def test_trace_requires_telemetry_cache_default_on_and_retry_range(self):
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
@@ -143,12 +143,23 @@ class MediaCueLaunchOptions(unittest.TestCase):
             code, output, error = helper.launch(directory, '--media-cue-trace', '--telemetry')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('1', '0', '30'))
+            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('1', '1', '30'))
+            # The cache is on by default and does not depend on telemetry: the
+            # DLL reads X3M_MEDIA_CUE_CACHE on its own (src/proxy/media_cue.cpp).
+            code, output, error = helper.launch(directory)
+            self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '1', '30'))
             code, output, error = helper.launch(directory, '--media-cue-cache', 'on', '--media-cue-retry-s', '45')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
             self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '1', '45'))
-            code, _, error = helper.launch(directory, '--media-cue-retry-s', '45')
+            # off still writes 0, the stock per-frame rebuild.
+            code, output, error = helper.launch(directory, '--media-cue-cache', 'off')
+            self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '0', '30'))
+            code, _, error = helper.launch(directory, '--media-cue-cache', 'off', '--media-cue-retry-s', '45')
             self.assertEqual(code, 2)
             self.assertIn('--media-cue-retry-s requires --media-cue-cache on', error)
             for value in ('0', '3601'):
@@ -158,10 +169,10 @@ class MediaCueLaunchOptions(unittest.TestCase):
             code, _, error = helper.launch(directory, '--media-cue-cache', 'maybe')
             self.assertEqual(code, 2)
             # Absent options reset inherited values: the launcher owns the three variables.
-            code, output, error = helper.launch(directory, inherited={'X3M_MEDIA_CUE_TRACE': '1', 'X3M_MEDIA_CUE_CACHE': '1', 'X3M_MEDIA_CUE_RETRY_S': '5'})
+            code, output, error = helper.launch(directory, inherited={'X3M_MEDIA_CUE_TRACE': '1', 'X3M_MEDIA_CUE_CACHE': '0', 'X3M_MEDIA_CUE_RETRY_S': '5'})
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '0', '30'))
+            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '1', '30'))
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')
