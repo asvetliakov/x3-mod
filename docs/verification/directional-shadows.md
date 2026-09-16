@@ -439,7 +439,7 @@ cutout_unavailable=0 cutout_caps=1`: with a nonzero configured bias
 `cutout_arm_configured()` is false ([motion_output.cpp:940](../../src/proxy/motion_output.cpp)),
 so `cutout_arm_active_` (latched per frame, motion_output.cpp:921) is off and
 `route.cutout` — the only input of `counters_.cutout_routed` — is off with it
-(motion_output.cpp:4542, 5107). Those draws were neither refused nor invisible;
+(motion_output.cpp:4542, 5140). Those draws were neither refused nor invisible;
 they took the tested-opaque arm and were counted as ordinary `routed`. Reading
 the path for a cutout-pair draw under that default configuration:
 
@@ -457,7 +457,7 @@ the path for a cutout-pair draw under that default configuration:
   `sun_lane_active_ && route.depth && !route.fade_arm` (motion_output.cpp:4214-4217),
   so oC2 carries this draw's depth and share; `route.sun_receiver` additionally
   requires the material variant and `shadow_.ps_sun_extraction` (4216) and is
-  the flag the lane bookkeeping counts as a receiver (5098). A pair whose
+  the flag the lane bookkeeping counts as a receiver (5131). A pair whose
   profile writes no depth routes without the lane PS (reason `no_depth`).
 - **(c) Native MIPMAPLODBIAS: kept.** `route.native_mip_bias = route.alpha_tested
   && shadow_.cutout_pair` (motion_output.cpp:4541) makes the apply restore any
@@ -517,8 +517,15 @@ allocation, no device call, no extra state read per draw.
   verification.analysis.test_capture_bloom_lifetime
   verification.analysis.test_motion_hdr_scene verification.analysis.test_frame_timing`:
   42 tests OK; `linear_cutout_contract scenarios=41 checks=284 failures=0`
-  (the new scenarios compile `note_cutout_opaque` unchanged and check the
-  routed/lane/refused buckets, the failed-draw case and the gate fallbacks).
+  (unchanged scenario count: the host mocks only gained the new members
+  inertly; `note_cutout_opaque` is exercised by the Wine fixture frame above,
+  not by a host scenario). Reading caveats: a routed cutout-pair draw whose
+  native draw fails counts in neither bucket, so routed + refused can be
+  below the pair draw count; with linear materials on but the lane off, an
+  inactive-arm frame still accumulates `cutout_opaque_refused` with reason
+  `state`; and every non-colour-writer gate-4 refusal collapses to `state`
+  through the gate fallback, so `no_zwrite`/`blended`/`geometry` appear only
+  for colour writers.
 - mingw-i686 RelWithDebInfo build: zero warnings;
   `python3 verification/probe/check_no_x87.py build/d3d9.dll`: 490 reachable
   functions, no violations.
