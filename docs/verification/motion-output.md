@@ -1124,8 +1124,12 @@ hooks; the per-frame summary reports `rs_mode=get|shadow|native`. The six
 shadow-off twins are identical to their shadow-on twins and to the committed
 record (`state_hashes`, `motion_pixels`, colour, route decisions, checks,
 restorations); four of them run in `get` mode, the two lazy ones in `native`.
-Benchmark: production SetRenderState 13.2 ns and SetSamplerState 10.9 ns
-(native 11.3/11.0, hooked 79.7/69.8), the ten-read per-draw set 92.5 ns.
+Benchmark (committed `state-hook-benchmark-hybrid.json`, DLL `c136e425…`):
+production SetRenderState 15.0 ns and SetSamplerState 10.4 ns (native
+14.1/11.1, hooked 78.8/67.7), the ten-read per-draw set 90.9 ns, a routed draw
+with two biased stages 78.0 ns (native 78.3); the mip-bias apply/restore per
+routed draw is modelled at two stages, the fade-mask pairs bind up to five
+(projection about 0.2 ms per 987-draw frame at five stages, not measured).
 Review follow-up on the merged tree: eighteen production-DLL cases now run
 the production configuration (`X3M_STATE_SHADOW` unset) and the new
 `seam-taa-cutout-opaque-get` case proves the per-draw cache (426 queries, 66
