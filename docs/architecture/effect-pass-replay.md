@@ -195,6 +195,19 @@ Companion experiment on the 6.5 ms share: once the module-identity line says
 which `d3dx9_37` serves the game, force the other by `DllOverride`, one
 session; outcome unknown, range −2 to +2 ms.
 
+`tools/manage.py launch --d3dx {native,builtin}` is that switch. `native`
+(default) leaves the command exactly as it is, so the bottle decides; `builtin`
+appends `d3dx9_37=b` to the child's own `--dll` override
+(`d3d9=n,b;d3dx9_37=b`, or `d3d9=b;d3dx9_37=b` under `--vanilla`), using the
+`;` entry separator of `WINEDLLOVERRIDES` that CrossOver's `wine --dll` feeds,
+so the user's other bottle overrides and every other process stay untouched.
+No DLL change: the installed proxy already logs which file loaded. The run
+compares one `--pass-phases` session per setting: the per-pass `BeginPass`
+median in microseconds against run95's **6.7 µs**, and the `loaded_module`
+line for `d3dx9_37` in each session log, which must name the game directory's
+native redistributable in the `native` run and the bottle's builtin in the
+`builtin` run — if both name the same file the comparison is void.
+
 ## Option D: accept 26.5 ms
 
 Correct if C returns nothing and A's classification excludes the top pairs,

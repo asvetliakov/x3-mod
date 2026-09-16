@@ -200,6 +200,11 @@ def main():
     parser.add_argument('--capture-frames', type=int, choices=range(0, 9), default=1)
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
+    parser.add_argument('--d3dx', choices=['native', 'builtin'], default='native', help="Which d3dx9_37.dll serves the game child, for the busy-frame experiment in "
+                             "docs/architecture/effect-pass-replay.md: native (default) leaves the command as it is, so the "
+                             "bottle decides (usually the native redistributable in the game directory); builtin appends "
+                             "d3dx9_37=b to this child's --dll override, forcing Wine's builtin D3DX. The installed DLL's "
+                             "loaded_module line reports which one actually loaded.")
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
     parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles, the proxy draw/scene/state buckets with the state call mix, the pre-draw/between-draws/post-draw split of the game time between hooked calls, and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
@@ -751,9 +756,15 @@ def main():
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
                          'X3M_VOICE_DMO_FALLBACK': '1'}  # the DMO wrapper fallback hook travels with the decoder
             env.update(voice_env)
-        # --dll applies to this child only, preserving the user's other overrides.
+        # --dll applies to this child only, preserving the user's other overrides;
+        # ';' separates entries exactly as in WINEDLLOVERRIDES, which is what
+        # CrossOver's wine --dll feeds (docs/architecture/effect-pass-replay.md,
+        # "bottle experiments": builtin vs native D3DX).
+        overrides = 'd3d9=b' if args.vanilla else 'd3d9=n,b'
+        if args.d3dx == 'builtin':
+            overrides += ';d3dx9_37=b'
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
-                   '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',
+                   '--dll', overrides,
                    '--workdir', str(game), str(game / 'X3AP.exe')]
         if args.direct:
             command += ['-noabout', '-skipintro', '-runinbg']
