@@ -408,6 +408,11 @@ CUTOUT_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_EXPO
                   X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0', X3M_FIXTURE_CUTOUT_MIXED='0', X3M_FIXTURE_CUTOUT_ORDINARY='0')
 CASES += [case(f'seam-taa-cutout-{script}', 'cutout', jitter=True, taa=True, lazy=True, hdr=True, cutout=script,
                hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT=script)) for script in ('blended', 'opaque')]
+# The same blended script per-draw with the hooks off (`rs_mode=get`): the
+# candidate marker re-reads ALPHABLENDENABLE after the gate, so the per-draw
+# cache must serve a repeat read (rs_hits > 0) and the verdicts must not change.
+CASES += [case('seam-taa-cutout-blended-get', 'cutout', jitter=True, taa=True, lazy=False, hdr=True, cutout='blended', shadow=False,
+               hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT='blended'))]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
 # docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
 # static frames over the eight jitter phases with the rotating camera (cut at
@@ -510,6 +515,25 @@ HDR_FAULT_SCRIPT = {0: dict(fault=0, redirected=1, unwind=0, source='shader', re
 # regular script's resynchronizations per frame (frame 7: two state block
 # Applies; frame 8: EndStateBlock).
 RS_FILL_GETS = 14
+
+
+# The shadow switch per case: True (X3M_STATE_SHADOW=1, hooks and shadow on),
+# False (=0: hooks off, `rs_mode=get`; in lazy RT mode hooks on without the
+# cache, `rs_mode=native`) or 'auto' (unset, the production configuration:
+# hooks off, `rs_mode=get`; lazy keeps the hooks with the shadow on).
+def shadow_request(shadow):
+    """The motion_output_mode line's state_shadow (the request as parsed)."""
+    return 'auto' if shadow == 'auto' else str(int(shadow))
+
+
+def shadow_effective(shadow, lazy):
+    """The device and per-frame lines' state_shadow (the cross-draw shadow is on)."""
+    return '1' if shadow is True or (shadow == 'auto' and lazy) else '0'
+
+
+def shadow_mode(shadow, lazy):
+    """The per-frame line's rs_mode."""
+    return 'shadow' if shadow is True or (shadow == 'auto' and lazy) else 'native' if lazy else 'get'
 RS_SHADOW_STATES = 32  # eight gate/mask states, WRAP0..15, eight cutout states; invalidated by resync
 SEAM_RESYNCS = {7: 2, 8: 1}
 # Hook script: seven frames (glow on, outside-Scene signal, glow off) and the
@@ -935,7 +959,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
                          'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
-                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
+                         'envmap': '0', 'hook': '0', 'state_shadow': '0' if shadow is False else '1', 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
                          'mipbias': '0', 'mip_bias': mip_bias_text(mip_bias if enabled else None), 'sharpen': f'{sharpen:g}', 'msaa': '0'}, (name, mode_line)
     # The camera script: the 31-degree jump at frame 7 is a cut unless the
     # switch is off; strict mode without a camera skips every frame.
@@ -1072,7 +1096,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
     assert modes[0]['jitter'] == str(int(jitter)) and modes[0]['jitter_samples'] == str(JITTER_SAMPLES), (name, modes)
     assert modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '60', (name, modes)
-    assert modes[0]['state_shadow'] == str(int(shadow)) and modes[0]['scene_hook'] == '0' and modes[0]['hdr'] == str(int(hdr)), (name, modes)
+    assert modes[0]['state_shadow'] == shadow_request(shadow) and modes[0]['scene_hook'] == '0' and modes[0]['hdr'] == str(int(hdr)), (name, modes)
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
     color_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_color_readback ')}
     present_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_present_readback ')}
@@ -1084,7 +1108,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         return result
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['reason'] == 'ok', (name, devices)
     assert devices[0]['rt_mode'] == rt_mode, (name, devices)
-    assert devices[0]['state_shadow'] == str(int(shadow)) and devices[0]['scene_hook'] == '0', (name, devices)
+    assert devices[0]['state_shadow'] == shadow_effective(shadow, lazy) and devices[0]['scene_hook'] == '0', (name, devices)
     assert devices[0]['hdr'] == str(int(hdr and hdr_fault is None)), (name, devices)
     # The HDR redirect: device gate, per-frame lines, readbacks (or the feature disabling itself with a forced-absent capability).
     result['hdr'] = validate_hdr(name, trace, directory, hdr, hdr_fault, frames=range(0, 9), capture_frames=range(1, 9),
@@ -1641,12 +1665,13 @@ def validate_hdrfault(name, text, trace, directory, hdr_env=None, hdr_fault=None
 
 def check_render_state(name, frame, summary, shadow, resyncs):
     """The DLL's per-frame render-state counters against the shadow switch."""
-    assert summary['state_shadow'] == str(int(shadow)), (name, frame, summary)
+    lazy = summary.get('rt_mode') == 'lazy'
+    assert summary['state_shadow'] == shadow_effective(shadow, lazy), (name, frame, summary)
     mode = summary.get('rs_mode')
     if mode is None:
-        mode = 'shadow' if shadow else 'native'  # a DLL from before the hybrid unhook: the hooks were always installed
+        mode = 'shadow' if shadow_effective(shadow, lazy) == '1' else 'native'  # a DLL from before the hybrid unhook: the hooks were always installed
     else:
-        assert mode == ('shadow' if shadow else 'native' if summary.get('rt_mode') == 'lazy' else 'get'), (name, frame, mode, summary.get('rt_mode'))
+        assert mode == shadow_mode(shadow, lazy), (name, frame, mode, summary.get('rt_mode'))
     q, h, g, r = (int(summary[k]) for k in ('rs_queries', 'rs_hits', 'rs_gets', 'rs_resyncs'))
     # Failed application setters drop single shadow entries without a re-read;
     # they are counted apart so a resync still has to show a shadow miss.
@@ -2665,7 +2690,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
-                         'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
+                         'hook': '0', 'state_shadow': '0' if shadow is False else '1', 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
                          'mipbias': '0', 'mip_bias': '0', 'sharpen': '0', 'msaa': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
@@ -2696,10 +2721,10 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     assert len(expects) == 8 * BURST_FRAMES and all(e['matched'] == '0' and e['jittered'] == '0' for e in expects), (name, len(expects))
     tl = trace.splitlines()
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
-    assert len(modes) == 1 and modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '1' and modes[0]['state_shadow'] == str(int(shadow)), (name, modes)
+    assert len(modes) == 1 and modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '1' and modes[0]['state_shadow'] == shadow_request(shadow), (name, modes)
     devices = [fields(l) for l in tl if l.startswith('motion_output_device ')]
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['rt_mode'] == rt_mode and devices[0]['depth'] == '1', (name, devices)
-    assert devices[0]['state_shadow'] == str(int(shadow)) and devices[0]['scene_hook'] == '0', (name, devices)
+    assert devices[0]['state_shadow'] == shadow_effective(shadow, lazy) and devices[0]['scene_hook'] == '0', (name, devices)
     assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed', 'motion_output_taa_failed')) for l in tl), name
     frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
     assert sorted(frames) == list(range(BURST_FRAMES)), (name, sorted(frames))  # X3M_MOTION_FRAME_LOG=1
@@ -3059,6 +3084,15 @@ def validate_hook(name, installed, text, trace, directory, hdr=False):
             'color_hashes': colors, 'color_hashes_before_boundary': before, 'taa_changed_pixels': {f: int(t['changed']) for f, t in taa_lines.items()},
             'matched_pixels': int(terminal['matched_pixels']), 'motion_pixels': int(terminal['motion_pixels'])}
 
+# The production configuration (X3M_STATE_SHADOW unset, the hybrid unhook) for
+# every production-DLL case except the shadow-on reference of the shadow twins
+# and the mip-bias script cases, whose hand-derived per-frame sampler counts
+# describe the hooked configuration.
+SHADOW_AUTO_EXEMPT = {'production-on'}
+for _case in CASES:
+    if _case['mode'] == 'production' and _case['shadow'] is True and _case['name'] not in SHADOW_AUTO_EXEMPT and not _case['mipbias']:
+        _case['shadow'] = 'auto'
+
 
 def arguments(argv=None):
     parser = argparse.ArgumentParser(description='Run motion-output cases; explicit retained binaries skip all builds.')
@@ -3158,6 +3192,8 @@ def main(argv=None):
                 env.setdefault('X3M_TAA_SHARPEN', '0'); env.setdefault('X3M_TAA_MIP_BIAS', '0')
             if hook == 'default':
                 del env['X3M_SCENE_HOOK']  # the DLL's default: on with X3M_MOTION_OUTPUT=1
+            if shadow == 'auto':
+                del env['X3M_STATE_SHADOW']  # the production configuration: the hybrid unhook
             if mip_bias is not None:
                 env['X3M_TAA_MIP_BIAS'] = mip_bias
             if mipbias:
@@ -3257,6 +3293,15 @@ def main(argv=None):
                 continue
             if cutout:
                 case = validate_cutout(name, cutout, text, trace)
+                if shadow is not True:
+                    # Hooks off: the candidate marker's repeat read of ALPHABLENDENABLE
+                    # is served by the per-draw cache (rs_hits > 0), every other read
+                    # is one native read, nothing is invalidated.
+                    frame_lines = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('motion_output_frame ')}
+                    case['render_state'] = {f: {k: int(frame_lines[f][k]) for k in ('rs_queries', 'rs_hits', 'rs_gets', 'rs_invalidations')} | {'mode': frame_lines[f]['rs_mode']}
+                                            for f in sorted(frame_lines)}
+                    assert all(v['mode'] == shadow_mode(shadow, lazy) and v['rs_invalidations'] == 0 for v in case['render_state'].values()), (name, case['render_state'])
+                    assert sum(v['rs_hits'] for v in case['render_state'].values()) > 0, (name, 'the per-draw cache served no repeat read')
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')

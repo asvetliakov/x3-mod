@@ -632,7 +632,7 @@ against the SDK layout in `verification/probe/abi_check.cpp`.
 | 65 / 69 | SetTexture / SetSamplerState | `X3M_TAA_MIP_BIAS` (light boundary): the sampler shadow of the mip LOD bias — texture binding and level count (`GetLevelCount` once per pointer change, inside the native section; slot 65 in both configurations), `MIPFILTER`, and the application's own `MIPMAPLODBIAS` writes (counted, logged, the restore value; slot 69 in the hooked configuration only, otherwise `MIPFILTER`/`MIPMAPLODBIAS` are re-read per routed draw and the bias restored right after it); see [temporal-integration.md](temporal-integration.md#mip-lod-bias-for-routed-material-draws-2026-09-12) |
 
 Native slots the route calls itself (never the hooked table): 1, 2, 6, 8, 9,
-23, 28, 32, 34, 36, 37, 38, 39, 40, 41, 42, 47, 48, 57, 58, 75, 76, 83, 87, 88,
+23, 28, 32, 34, 36, 37, 38, 39, 40, 41, 42, 47, 48, 57, 58, 64, 68, 75, 76, 83, 87, 88,
 89, 90, 91, 92, 93, 94, 95, 97, 100, 101, 103, 105, 106, 107, 108, 109, 110; the
 release hook's reference-count probe and the route's pass accounting use
 native 1 and 2 (AddRef/Release). The pass adds 7, 59, 65, 69, 102 and 104

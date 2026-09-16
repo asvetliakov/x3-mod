@@ -132,6 +132,21 @@ struct Workload {
         status_or |= device->GetSamplerState(0, D3DSAMP_MIPFILTER, &v);
         status_or |= device->GetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, &v);
     }
+    // The hybrid unhook's mip-bias work per routed draw with the hooks off
+    // (motion_output.cpp apply_mip_bias + the after_draw restore): per
+    // bias-eligible stage GetSamplerState MIPFILTER, GetSamplerState
+    // MIPMAPLODBIAS, SetSamplerState bias (-0.5f), SetSamplerState the saved
+    // value back; two stages. The hooked design keeps the bias across
+    // consecutive routed draws and issues none of these there.
+    void routed_draw_mip_bias(unsigned) {
+        for (DWORD stage = 0; stage < 2; ++stage) {
+            DWORD filter = 0, saved = 0;
+            status_or |= device->GetSamplerState(stage, D3DSAMP_MIPFILTER, &filter);
+            status_or |= device->GetSamplerState(stage, D3DSAMP_MIPMAPLODBIAS, &saved);
+            status_or |= device->SetSamplerState(stage, D3DSAMP_MIPMAPLODBIAS, 0xbf000000u);
+            status_or |= device->SetSamplerState(stage, D3DSAMP_MIPMAPLODBIAS, saved);
+        }
+    }
 
     // One hooked draw: the stream rebind the game issues per draw plus the draw
     // itself (two triangles, four vertices, one index buffer).
@@ -165,6 +180,7 @@ void device_benchmark(Workload& w) {
         begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_texture(i); report("GetTexture_Release", rep, getter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_vs_constant(i); report("GetVertexShaderConstantF4", rep, getter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.draw_state_reads(i); report("GetState_draw_set_10", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.routed_draw_mip_bias(i); report("routed_draw_mip_bias_2stages", rep, getter_calls, ticks() - begin);
 
         // The draw pair runs inside one scene, as the game's draws do.
         check(w.device->BeginScene() == S_OK, "BeginScene");

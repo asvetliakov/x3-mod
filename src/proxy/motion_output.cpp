@@ -1177,7 +1177,10 @@ bool MotionOutput::fill_mode_known() noexcept {
 bool MotionOutput::sampler_srgb_known(unsigned stage) noexcept {
     if (stage >= sampler_stage_count) return false;
     auto& s = samplers_[stage];
-    if (state_hooks_ || s.srgb_known) return s.srgb_known;
+    if (state_hooks_) return s.srgb_known;
+    ++counters_.rs_queries; // counted with the render-state reads: one query, a hit or one native read
+    if (s.srgb_known) { ++counters_.rs_hits; return true; }
+    ++counters_.rs_gets;
     DWORD value = 0;
     if (FAILED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &value))) return false;
     s.srgb = value; s.srgb_known = true;
@@ -3966,9 +3969,9 @@ HRESULT MotionOutput::apply_screen_additive_alpha() noexcept {
     }
     return S_OK;
 }
-// Back to the application's own values, which the setter hook shadowed
-// (composition_blend[3..7]); the admission refused unless every one of them
-// was known. Only the states this draw actually applied are written.
+// Back to the application's own values (composition_blend[3..7]: the setter
+// hook's shadow with the hooks on, this draw's Get* cache with them off); the
+// admission refused unless every one of them was known. Only the states this draw actually applied are written.
 HRESULT MotionOutput::restore_screen_additive_alpha() noexcept {
     D3DRENDERSTATETYPE states[5]{}; DWORD values[5]{};
     screen_additive_alpha_steps(screen_additive_alpha_, screen_additive_alpha_constant_,
@@ -4328,9 +4331,10 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
     }
 }
 // After the native draw: the application's program, then its DESTBLEND when
-// the screen substitution was applied (the shadowed INVSRCCOLOR; the setter
-// hook keeps the shadow in step with the application, so a value set between
-// prepare and finish is the one restored). Mirrors finish_screen_additive.
+// the screen substitution was applied (the shadowed INVSRCCOLOR: the setter
+// hook's value with the hooks on, the value this draw's admission read with
+// them off; nothing of the application's runs between prepare and finish,
+// both sit under the hook mutex of one draw). Mirrors finish_screen_additive.
 void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
     route.source_gain = false;
     HRESULT first = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
@@ -4559,10 +4563,12 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
             if (!(material_refusals_logged_ & bit)) {
                 material_refusals_logged_ |= bit;
                 // Build masks only for this bounded first refusal log. The
-                // steady-state draw gate visits cached required samplers only.
+                // steady-state draw gate visits cached required samplers only;
+                // with the hooks off this one log reads the six stages
+                // (sampler_srgb_known), so "unknown" means a failed read there.
                 std::uint32_t unknown = 0, srgb_enabled = 0;
                 for (unsigned stage = 0; stage < 6; ++stage) {
-                    if (!samplers_[stage].srgb_known) unknown |= 1u << stage;
+                    if (!sampler_srgb_known(stage)) unknown |= 1u << stage;
                     else if (samplers_[stage].srgb != FALSE) srgb_enabled |= 1u << stage;
                 }
                 log("linear_material_refused device=%llu reason=%u vs=%016llx ps=%016llx required=%02lx unknown=%02lx srgb_enabled=%02lx",

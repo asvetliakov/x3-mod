@@ -16,7 +16,9 @@ repetitions inside one process (medians reported):
    GetSamplerState, GetTexture including the Release of the returned reference
    and GetVertexShaderConstantF(4), 1,000,000 calls each, the hybrid unhook's
    per-draw read set GetState_draw_set_10 (eight GetRenderState + two
-   GetSamplerState per "call"), and 200,000 SetStreamSource +
+   GetSamplerState per "call"), its per-routed-draw mip-bias work
+   routed_draw_mip_bias_2stages (two Gets and two Sets per stage, two stages
+   per "call"), and 200,000 SetStreamSource +
    DrawIndexedPrimitive draw pairs inside one scene)
 
   primitives        QueryPerformanceCounter, an uncontended recursive_mutex
@@ -214,6 +216,9 @@ def derive(result):
             'SetSamplerState': {'native': native.get('SetSamplerState'), 'production': hybrid.get('SetSamplerState'), 'hooked': off.get('SetSamplerState')},
             'GetState_draw_set_10': {'native': native.get('GetState_draw_set_10'), 'production': hybrid.get('GetState_draw_set_10'),
                                      'hooked': off.get('GetState_draw_set_10'), 'timing_on': on.get('GetState_draw_set_10')},
+            'routed_draw_mip_bias_2stages': {'native': native.get('routed_draw_mip_bias_2stages'), 'production': hybrid.get('routed_draw_mip_bias_2stages'),
+                                             'hooked': off.get('routed_draw_mip_bias_2stages'),
+                                             'note': 'the per-routed-draw sampler work of the unhooked mip bias (two eligible stages); the hooked design issues none of it between consecutive routed draws'},
             'SetStreamSource': {'native': native.get('SetStreamSource'), 'production': hybrid.get('SetStreamSource'), 'hooked': off.get('SetStreamSource')},
             'draw_pair': {'native': native.get('SetStreamSource_DrawIndexedPrimitive_pair'),
                           'production': hybrid.get('SetStreamSource_DrawIndexedPrimitive_pair'),
