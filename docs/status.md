@@ -71,8 +71,8 @@ Run 29 came back as `run83` (A), `run84` (A2 with the profiler) and `run85`
   ([contract](architecture/legacy-sun-application.md)).
 - **Mods:** two Mayhem packages inspected, no shader files; hash-keyed
   transforms fail closed ([mod-compatibility.md](architecture/mod-compatibility.md)).
-  The unknown-program report (`shader_unknown` / `shader_population`) is
-  implemented and in review; it rides the next candidate. Decision: no `.fx`
+  The unknown-program report (`shader_unknown` / `shader_population`,
+  `36d25a7`) is merged on main and rides the next candidate. Decision: no `.fx`
   archive edits.
 
 [Run 30](verification/user-runs.md) is queued.
