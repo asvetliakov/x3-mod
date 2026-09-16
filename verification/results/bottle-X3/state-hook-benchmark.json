@@ -1,0 +1,302 @@
+{
+  "generated": "2026-09-16T05:58:46",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "fixture": {
+    "source": "verification/probe/state_hook_benchmark.cpp",
+    "exe_sha256": "c0a5a2c451f7b9dc17118d1fcf80c62bcd1287ad34576ed2a57f07fa51ba877f"
+  },
+  "dll": {
+    "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+    "sha256": "bbadc568e5397dcda9e5e94d01eb6a33e730aea541e29210858ad40120441e9c"
+  },
+  "note": "Three repetitions per configuration inside one process; ns_per_call is the median. Equal-share setter mix: run87 frame_timing keeps one counter per bucket, no per-entry breakdown.",
+  "cases": {
+    "primitives": {
+      "directory": "verification/probe/build/state-hook-benchmark-primitives-20260916-055848-197892",
+      "command_tail": [
+        "primitives"
+      ],
+      "frame_timing": null,
+      "ns_per_call": {
+        "QueryPerformanceCounter": 67.8,
+        "recursive_mutex_lock_unlock": 6.8,
+        "GetLastError_SetLastError": 3.9,
+        "LightCallBoundary_envelope": 9.9,
+        "CpuCallBoundary_envelope": 1004.4
+      },
+      "samples": {
+        "QueryPerformanceCounter": [
+          68.2,
+          67.8,
+          66.3
+        ],
+        "recursive_mutex_lock_unlock": [
+          6.8,
+          6.8,
+          6.8
+        ],
+        "GetLastError_SetLastError": [
+          4.0,
+          3.8,
+          3.9
+        ],
+        "LightCallBoundary_envelope": [
+          9.9,
+          9.9,
+          9.9
+        ],
+        "CpuCallBoundary_envelope": [
+          1008.5,
+          1004.3,
+          1004.4
+        ]
+      },
+      "hooked_slots": {}
+    },
+    "native": {
+      "directory": "verification/probe/build/state-hook-benchmark-native-20260916-055859-219668",
+      "command_tail": [
+        "device",
+        "native"
+      ],
+      "frame_timing": null,
+      "ns_per_call": {
+        "state_mix": 15.5,
+        "SetRenderState": 13.5,
+        "SetTexture": 16.2,
+        "SetSamplerState": 10.6,
+        "SetTextureStageState": 11.4,
+        "SetVertexShaderConstantF4": 16.7,
+        "SetStreamSource": 15.8
+      },
+      "samples": {
+        "state_mix": [
+          15.7,
+          15.5,
+          15.4
+        ],
+        "SetRenderState": [
+          13.5,
+          11.1,
+          15.3
+        ],
+        "SetTexture": [
+          16.2,
+          16.3,
+          16.1
+        ],
+        "SetSamplerState": [
+          11.3,
+          10.6,
+          10.6
+        ],
+        "SetTextureStageState": [
+          11.5,
+          11.4,
+          11.2
+        ],
+        "SetVertexShaderConstantF4": [
+          17.3,
+          16.5,
+          16.7
+        ],
+        "SetStreamSource": [
+          17.3,
+          15.8,
+          15.6
+        ]
+      },
+      "hooked_slots": {
+        "SetRenderState": "d3d9.dll (backend)",
+        "SetTexture": "d3d9.dll (backend)",
+        "SetSamplerState": "d3d9.dll (backend)",
+        "SetTextureStageState": "d3d9.dll (backend)",
+        "SetVertexShaderConstantF": "d3d9.dll (backend)",
+        "SetStreamSource": "d3d9.dll (backend)",
+        "DrawIndexedPrimitive": "d3d9.dll (backend)"
+      }
+    },
+    "proxy-timing-off": {
+      "directory": "verification/probe/build/state-hook-benchmark-proxy-timing-off-20260916-055901-643840",
+      "command_tail": [
+        "device",
+        "proxy"
+      ],
+      "frame_timing": "0",
+      "ns_per_call": {
+        "state_mix": 313.5,
+        "SetRenderState": 121.5,
+        "SetTexture": 128.1,
+        "SetSamplerState": 110.3,
+        "SetTextureStageState": 11.2,
+        "SetVertexShaderConstantF4": 79.5,
+        "SetStreamSource": 1393.7
+      },
+      "samples": {
+        "state_mix": [
+          315.4,
+          313.5,
+          312.8
+        ],
+        "SetRenderState": [
+          121.5,
+          121.7,
+          121.2
+        ],
+        "SetTexture": [
+          127.9,
+          129.4,
+          128.1
+        ],
+        "SetSamplerState": [
+          110.3,
+          110.3,
+          109.6
+        ],
+        "SetTextureStageState": [
+          11.2,
+          11.0,
+          11.3
+        ],
+        "SetVertexShaderConstantF4": [
+          80.4,
+          79.5,
+          78.6
+        ],
+        "SetStreamSource": [
+          1398.7,
+          1393.7,
+          1384.5
+        ]
+      },
+      "hooked_slots": {
+        "SetRenderState": "d3d9.dll (proxy)",
+        "SetTexture": "d3d9.dll (proxy)",
+        "SetSamplerState": "d3d9.dll (proxy)",
+        "SetTextureStageState": "d3d9.dll (backend)",
+        "SetVertexShaderConstantF": "d3d9.dll (proxy)",
+        "SetStreamSource": "d3d9.dll (proxy)",
+        "DrawIndexedPrimitive": "d3d9.dll (proxy)"
+      },
+      "ns_over_native": {
+        "state_mix": 298.0,
+        "SetRenderState": 108.0,
+        "SetTexture": 111.9,
+        "SetSamplerState": 99.7,
+        "SetTextureStageState": -0.2,
+        "SetVertexShaderConstantF4": 62.8,
+        "SetStreamSource": 1377.9
+      }
+    },
+    "proxy-timing-on": {
+      "directory": "verification/probe/build/state-hook-benchmark-proxy-timing-on-20260916-055904-915302",
+      "command_tail": [
+        "device",
+        "proxy"
+      ],
+      "frame_timing": "1",
+      "ns_per_call": {
+        "state_mix": 506.6,
+        "SetRenderState": 349.9,
+        "SetTexture": 357.2,
+        "SetSamplerState": 338.0,
+        "SetTextureStageState": 11.1,
+        "SetVertexShaderConstantF4": 310.2,
+        "SetStreamSource": 1618.9
+      },
+      "samples": {
+        "state_mix": [
+          506.9,
+          503.4,
+          506.6
+        ],
+        "SetRenderState": [
+          349.9,
+          352.8,
+          348.8
+        ],
+        "SetTexture": [
+          358.2,
+          355.8,
+          357.2
+        ],
+        "SetSamplerState": [
+          338.6,
+          335.1,
+          338.0
+        ],
+        "SetTextureStageState": [
+          11.1,
+          11.1,
+          11.0
+        ],
+        "SetVertexShaderConstantF4": [
+          311.3,
+          309.8,
+          310.2
+        ],
+        "SetStreamSource": [
+          1617.4,
+          1621.4,
+          1618.9
+        ]
+      },
+      "hooked_slots": {
+        "SetRenderState": "d3d9.dll (proxy)",
+        "SetTexture": "d3d9.dll (proxy)",
+        "SetSamplerState": "d3d9.dll (proxy)",
+        "SetTextureStageState": "d3d9.dll (backend)",
+        "SetVertexShaderConstantF": "d3d9.dll (proxy)",
+        "SetStreamSource": "d3d9.dll (proxy)",
+        "DrawIndexedPrimitive": "d3d9.dll (proxy)"
+      },
+      "ns_over_native": {
+        "state_mix": 491.1,
+        "SetRenderState": 336.4,
+        "SetTexture": 341.0,
+        "SetSamplerState": 327.4,
+        "SetTextureStageState": -0.3,
+        "SetVertexShaderConstantF4": 293.5,
+        "SetStreamSource": 1603.1
+      }
+    }
+  },
+  "attribution_ns_per_state_call": {
+    "native_backend": 15.5,
+    "hook_without_frame_timing": 298.0,
+    "frame_timing_stamps": 193.1,
+    "proxy_total": 506.6
+  },
+  "attribution": {
+    "basis": "mean of the four hooked light-guard setters; equal shares",
+    "native_backend_call_ns": 14.2,
+    "proxy_guard_and_shadow_ns": 95.6,
+    "frame_timing_stamps_ns": 229.0,
+    "proxy_total_with_frame_timing_ns": 338.8,
+    "of_which_hook_mutex_ns": 6.8,
+    "of_which_cpu_envelope_light_ns": 9.9,
+    "of_which_qpc_pair_ns": 135.6,
+    "heavy_guard_setter_ns": {
+      "SetStreamSource_total_with_frame_timing": 1618.9,
+      "SetStreamSource_without_frame_timing": 1393.7,
+      "CpuCallBoundary_envelope": 1004.4
+    },
+    "unhooked_control_ns": {
+      "SetTextureStageState_native": 11.4,
+      "SetTextureStageState_through_proxy": 11.1
+    },
+    "equal_share_mix_ns": {
+      "native": 15.5,
+      "timing_off": 313.5,
+      "timing_on": 506.6
+    }
+  }
+}

@@ -367,3 +367,55 @@ compiles `src/proxy/frame_timing.cpp` itself against the Win32 stand-in of
 one tick per microsecond) and runs a scripted 300-frame window, so the
 outermost-only accounting, the nesting depth, the native-Present subtraction,
 the slow-call witness and the emitted line text are executed, not inspected.
+
+## Per-call cost of the hooked state setters under the X3 bottle (2026-09-16)
+
+`verification/probe/state_hook_benchmark.cpp` (build
+`build_state_hook_benchmark.sh`, runner `run_state_hook_benchmark.py`) drives
+the installed candidate DLL `bbadc568` from a fixture process against a
+synthetic windowed HAL device (no draws, no Present): an equal-share mix of
+SetRenderState, SetTexture, SetSamplerState, SetTextureStageState,
+SetVertexShaderConstantF (4 registers) and SetStreamSource, 1,000,002 calls per
+repetition, plus the same calls per setter, three repetitions per configuration
+(medians). run87's `frame_timing` carries no per-entry breakdown of the `state`
+bucket (one counter per bucket plus the slowest call's name), so the mix is
+equal shares. The run records which module owns each hooked vtable slot, so the
+record proves the setter hooks were live; `SetTextureStageState` is not hooked
+by the proxy at all and serves as the pass-through control (11.4 ns native,
+11.1 ns through the proxy). Record:
+`verification/results/bottle-X3/state-hook-benchmark.json` (X3 bottle,
+WineArch=arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`).
+
+ns per call, medians of three repetitions:
+
+| | native | proxy, timing off | proxy, timing on |
+| --- | --- | --- | --- |
+| equal-share mix | 15.5 | 313.5 | 506.6 |
+| SetRenderState | 13.5 | 121.5 | 349.9 |
+| SetTexture | 16.2 | 128.1 | 357.2 |
+| SetSamplerState | 10.6 | 110.3 | 338.0 |
+| SetVertexShaderConstantF (4) | 16.7 | 79.5 | 310.2 |
+| SetStreamSource | 15.8 | 1393.7 | 1618.9 |
+| SetTextureStageState (unhooked) | 11.4 | 11.2 | 11.1 |
+
+Primitives, same bottle: `QueryPerformanceCounter` 67.8 ns (10,000,000 calls),
+uncontended `std::recursive_mutex` lock+unlock 6.8 ns, GetLastError/SetLastError
+pair 3.9 ns, the full four-stamp `LightCallBoundary` envelope 9.9 ns, the full
+`CpuCallBoundary` envelope 1004.4 ns (2,000,000 iterations; the FNSAVE/FRSTOR
+pairs under FEX).
+
+Attribution of the 297 ns per hooked state call of run87, taking the four
+hooked light-guard setters (the per-state-write calls; SetStreamSource takes
+the heavy guard and is a per-draw call): 14.2 ns native backend, 95.6 ns proxy
+guard and state shadow (of which 6.8 ns lock and 9.9 ns CPU envelope, so about
+79 ns is the device-map lookup, dispatch and the shadow write), and 229.0 ns
+for the frame-timing stamps, whose QPC pair alone is 135.6 ns. The reported
+bucket value excludes the parts of the two stamps that fall outside the
+measured interval, which is why 297 ns is reported for about 339 ns of wall
+cost. So roughly two thirds of run87's 8.9 ms `state` bucket is the diagnostic
+itself: without `--frame-timing` the same ~30,076 calls cost about 3.3 ms.
+
+The 1004 ns `CpuCallBoundary` envelope also accounts for most of run87's 5.0 us
+of proxy per-draw work: each draw passes several heavy-guard hooks
+(SetStreamSource, SetIndices, SetVertexDeclaration/SetFVF and the draw hook
+itself), each paying that envelope once.
