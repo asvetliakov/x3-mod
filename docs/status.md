@@ -13,26 +13,32 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`bbadc568e5397dcda9e5e94d01eb6a33e730aea541e29210858ad40120441e9c`
-(16,007,716 bytes), built once on Opus from clean committed main `f94290c`
-(2026-09-17; marker `X3M_SOURCE_COMMIT=f94290c…`, no `-dirty`). The
-[build record](../verification/results/run30-candidate-build.json) binds the
-clean build (12.74 s, zero warnings), the 233-function no-x87 audit, the exact
-17 exports and the eight-check X3 DLL load; the
-[install record](../verification/results/run30-candidate-install.json) binds the
+`a9ebfa3b26638fc10aaacae007fccbb26274d64cacbeb291ff57cfe51487401c`
+(16,308,205 bytes), built once on Opus from clean committed main `4adf3dd`
+(2026-09-17; marker `X3M_SOURCE_COMMIT=4adf3dd…`, no `-dirty`). The
+[build record](../verification/results/run31-candidate-build.json) binds the
+clean build (12.79 s, zero warnings), the 481-function no-x87 audit, the exact
+17 exports, the state-hook benchmark on the candidate bytes
+([record](../verification/results/bottle-X3/state-hook-benchmark-run31.json):
+SetRenderState 79.5 ns, SetSamplerState 68.5 ns, SetStreamSource 134.1 ns,
+draw pair 1,092 ns, all within the run30-build baseline or below) and four
+motion-output parity cases; the frame-phase stub CPU fixture passed on the
+same source after its audit constant was updated to the light-envelope
+contract (8,033 checks, 0 failures). The
+[install record](../verification/results/run31-candidate-install.json) binds the
 installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
-run29 DLL `7f296d53…` and manifest are in `/tmp/x3-candidate-cCPCVu/rollback`.
-Run 30's session A command passed `--dry-run`; no game launched.
+run30 DLL `bbadc568…` and manifest are in `/tmp/x3-candidate-yfFAil/rollback`.
+Run 31's session A command passed `--dry-run`; no game launched.
 
-This build adds, on top of run29's: one `--emission-source-gain G` over all 20
-pairs with screen-blended draws substituted additive so the ship engines
-respond (`7b5c3f0`; `--effect-source-gain` and Ctrl+Shift+F4 removed),
-`--bloom-source-clamp C` (`1a77895`, absent = unchanged), and the proxy
-self-time buckets in `--frame-timing` (`3acb2d2`). It keeps run29's chase
-pose fix, hotkeys F5/F6, `--screen-emission-additive-alpha`, the sun-lane
-cutout admission and `--frame-timing`. Defaults unchanged: camera 0.5°/0.50,
-EV ceiling +1.3, mip bias -0.5, sharpen 0.75, fill 0.05 (linear only);
-original hull shading. No shadows applied.
+This build adds, on top of run30's: the light CPU-state envelope on the draw
+and binding hooks (`e8bac89`), the setter dispatch trim (`4adf3dd`), count-only
+`--frame-timing` with `state_top=` and gap attribution (`dcbe43c`),
+`--frame-phases` engine stamps (`fcbddb2`) and the unknown-program report
+(`36d25a7`). Appearance is unchanged from run30: single `--emission-source-gain`,
+`--bloom-source-clamp`, chase pose fix, hotkeys F5/F6, additive alpha, sun-lane
+cutout admission. Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip
+bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull shading. No
+shadows applied.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
@@ -75,7 +81,44 @@ Run 29 came back as `run83` (A), `run84` (A2 with the profiler) and `run85`
   `36d25a7`) is merged on main and rides the next candidate. Decision: no `.fx`
   archive edits.
 
-[Run 30](verification/user-runs.md) is queued.
+Run 30 is complete (below).
+
+## Session 2026-09-17 (later): run 30 received, run 31 candidate
+
+Run 30 came back as `run87` (A) and `run88` (B). Outcomes and decisions:
+
+- **Engines respond** to the single `--emission-source-gain` (screen draws
+  substituted additive); **bolt halo accepted** at `--bloom-source-clamp 1.0`
+  with `--screen-emission-additive-alpha 0`; the user keeps both values.
+- **Frame split (run87):** a busy frame of 28.5 ms at 457 draws carried
+  ~30,000 hooked state calls, of which the `state` bucket was 8.9 ms; about
+  two thirds of that was the diagnostic's own timing, the rest the proxy's
+  full CPU-state envelope (FNSAVE/FRSTOR, 1,004 ns under FEX) on every draw
+  and binding hook ([attribution](verification/sampling-profiler.md)). The game
+  drives its state through an unfiltered `ID3DXEffectStateManager` and sorts
+  its render list with an O(n²) bubble sort at `0x0047e620`
+  ([frame loop](reverse-engineering/frame-loop-phases.md)).
+- **Merged for run 31:** count-only state timing with `state_top=` and gap
+  attribution (`dcbe43c`); the light envelope (MXCSR + LastError, 9.9 ns) on
+  the draw and binding hooks with an x87-free draw path (`e8bac89`, draw pair
+  4,197 to 1,276 ns); the setter dispatch trim (`79ccb59`/`4adf3dd`,
+  SetRenderState 119.6 to 79.0 ns, SetSamplerState 108.3 to 68.6 ns; the
+  50 ns target waits on a no-exceptions unit for the light hooks,
+  [design](architecture/state-call-fast-path.md)); `--frame-phases`, ten
+  byte-verified stamps in the engine's frame routine `0x00471f50` attributing
+  the game's own time (`fcbddb2`, two reviews, CPU fixture 8,033 checks). The
+  hybrid unhook with `Get*` at draw and the bubble-sort patch are the next
+  fast-path steps, after run 31 shows what is left.
+- **Sun lane (run88):** available on every frame (14,924 of 14,924) under
+  linear materials; still no cutout draws, so the cutout admission is
+  unexercised. Run 31 session B goes to an Argon factory, farm, solar plant or
+  trading station ([ledger](verification/directional-shadows.md)).
+- **Kept:** point-light admission default-off; no `.fx` archive edits; the
+  proxy over engine trampolines for the renderer (trampolines stay for
+  engine-side fixes only); three concurrent agents unless the user raises it.
+
+[Run 31](verification/user-runs.md) is queued (candidate `a9ebfa3b…` from
+`4adf3dd`, installed).
 
 ## Next user action
 

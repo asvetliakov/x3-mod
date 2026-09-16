@@ -323,9 +323,16 @@ in the trim record), the SetStreamSource + DrawIndexedPrimitive pair (1275.8
 against 4322.8) and the equal-share `state_mix` (98.4 against 302.8, since the
 mix includes SetStreamSource). Those trim-record numbers are the pre-envelope
 values, not a regression. The combined per-call figures on one DLL carrying
-both changes are pending the run 31 candidate benchmark, which reruns
-`run_state_hook_benchmark.py --dll` on the candidate bytes; until then no
-single record states the post-envelope, post-trim cost of a light setter.
+both changes were measured on the run 31 candidate (commit 4adf3dd, DLL
+`a9ebfa3b`, `verification/results/bottle-X3/state-hook-benchmark-run31.json`,
+bound by `verification/results/run31-candidate-build.json`). Timing off, ns per
+call, against the same `207d4ede` baseline: SetRenderState 119.6 -> 79.5,
+SetSamplerState 108.3 -> 68.5, SetVertexShaderConstantF(4) 79.0 -> 75.4,
+SetTexture 126.4 -> 123.9, mean proxy guard/shadow/dispatch cost 93.7 -> 71.8.
+The rows the envelope owns, now on the same DLL as the trim: SetStreamSource
+133.3 -> 134.1, the SetStreamSource + DrawIndexedPrimitive pair 1275.8 ->
+1092.1 and the equal-share `state_mix` 98.4 -> 84.6, that is the envelope's
+gain over `CpuCallBoundary` is retained and the trim adds to it.
 
 The ≤ 40 ns-over-native target is not reached. What remains per call, measured
 or counted: the forwarded native call (11-17), the hook mutex (6.9), the

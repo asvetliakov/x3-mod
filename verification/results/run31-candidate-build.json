@@ -1,0 +1,212 @@
+{
+  "recorded_utc": "2026-09-16T03:41:05Z",
+  "run": 31,
+  "candidate": {
+    "path": "/tmp/x3-candidate-yfFAil/candidate/d3d9.dll",
+    "sha256": "a9ebfa3b26638fc10aaacae007fccbb26274d64cacbeb291ff57cfe51487401c",
+    "bytes": 16308205,
+    "retained_first_build": true,
+    "candidate_directory_file_count": 1,
+    "hash_rechecked_after_benchmark": true
+  },
+  "source": {
+    "worktree": "/Users/asvetl/x3-mod",
+    "commit": "4adf3dd3c3452fe6c708e41c86475bdd4703b103",
+    "commit_short": "4adf3dd",
+    "detached": false,
+    "status_before_configure": "clean",
+    "dirty_diff": "none",
+    "status_after_build": "three tracked documentation files (docs/status.md, docs/goals.md, docs/handoff-2026-09-16.md) modified concurrently by the main session; no production source, CMake or toolchain file changed; result files touched by the fixtures were restored with git checkout"
+  },
+  "source_commit_marker": {
+    "command": "strings /tmp/x3-candidate-yfFAil/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+    "value": "X3M_SOURCE_COMMIT=4adf3dd3c3452fe6c708e41c86475bdd4703b103",
+    "dirty_suffix": false,
+    "matches_worktree_head": true
+  },
+  "toolchain": {
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "cmake": "4.4.3",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "objdump": "GNU Binutils 2.47.20260726",
+    "target": "32-bit Windows PE",
+    "native_windows_execution": "not performed"
+  },
+  "configure": {
+    "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build/candidate-run31",
+    "elapsed_seconds": 3.07,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-yfFAil/configure.log"
+  },
+  "build": {
+    "command": "cmake --build build/candidate-run31 -j4",
+    "invocations": 1,
+    "elapsed_seconds": 12.79,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-yfFAil/build.log",
+    "note": "build/candidate-run31 removed before configure; the shared ./build tree was not used or modified"
+  },
+  "host_audits": {
+    "no_x87": {
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-yfFAil/candidate/d3d9.dll",
+      "result": "PASS",
+      "roots": 72,
+      "reachable_functions": 481,
+      "violations": 0,
+      "run30_roots": 64,
+      "run30_reachable_functions": 233,
+      "delta_note": "root set 64 -> 72 and reachable 233 -> 481 from the light CPU-state envelope on the draw/binding hooks (e8bac89) and the dispatch trim (18d6511)",
+      "report": "/tmp/x3-candidate-yfFAil/no-x87.json"
+    },
+    "pe_exports": {
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-yfFAil/candidate/d3d9.dll",
+      "result": "PASS",
+      "machine": "0x014c",
+      "count": 17,
+      "matches_run30_names": true,
+      "report": "/tmp/x3-candidate-yfFAil/pe-exports.json"
+    }
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "scoped_results": {
+    "state_hook_benchmark": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-yfFAil/candidate/d3d9.dll",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 23,
+      "lock_wait_seconds": 0,
+      "output": "verification/results/bottle-X3/state-hook-benchmark-run31.json",
+      "dll_sha256_in_output": "a9ebfa3b26638fc10aaacae007fccbb26274d64cacbeb291ff57cfe51487401c",
+      "fixture_exe_sha256": "704b211912a5c6566837eaa4f88029fc693d062747c86d7971c692fd4d7a60e2",
+      "baseline": "verification/results/bottle-X3/state-hook-benchmark.json (dll 207d4ede, post-envelope, pre-trim; restored with git checkout after the run)",
+      "per_op_timing_off_ns": {
+        "SetRenderState": {
+          "candidate_ns": 79.5,
+          "baseline_207d4ede_ns": 119.6,
+          "delta_pct": -33.5
+        },
+        "SetSamplerState": {
+          "candidate_ns": 68.5,
+          "baseline_207d4ede_ns": 108.3,
+          "delta_pct": -36.7
+        },
+        "SetTexture": {
+          "candidate_ns": 123.9,
+          "baseline_207d4ede_ns": 126.4,
+          "delta_pct": -2.0
+        },
+        "SetVertexShaderConstantF4": {
+          "candidate_ns": 75.4,
+          "baseline_207d4ede_ns": 79.0,
+          "delta_pct": -4.6
+        },
+        "SetStreamSource": {
+          "candidate_ns": 134.1,
+          "baseline_207d4ede_ns": 133.3,
+          "delta_pct": 0.6
+        },
+        "SetStreamSource_DrawIndexedPrimitive_pair": {
+          "candidate_ns": 1092.1,
+          "baseline_207d4ede_ns": 1275.8,
+          "delta_pct": -14.4
+        },
+        "state_mix": {
+          "candidate_ns": 84.6,
+          "baseline_207d4ede_ns": 98.4,
+          "delta_pct": -14.0
+        }
+      },
+      "proxy_guard_and_shadow_ns": {
+        "candidate": 71.8,
+        "baseline": 93.7
+      },
+      "native_backend_call_ns": 15.0,
+      "regression_gate": "no per-draw row above the baseline; worst row SetStreamSource +0.6 %",
+      "scope": "Binds the light-envelope and dispatch-trim dispatch cost to the candidate bytes. Median of three repetitions per configuration in one process under CrossOver Preview; not a native-Windows run and not game FPS."
+    },
+    "game_phase_cpu": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py",
+      "result": "BLOCKED",
+      "exit": 1,
+      "elapsed_seconds": 2,
+      "wine_reached": false,
+      "reason": "verification/probe/run_chase_aim_trace.py:audit_object hardcodes the pre-e8bac89 CPU boundary inventory {fnsave 1, frstor 2, fninit 1, stmxcsr 1, ldmxcsr 2, ret 1}; commit e8bac89 changed CpuState::capture() from 'fnsave; frstor' to 'fnsave; fninit', so x3m_game_phase_enter now disassembles to {fnsave 1, frstor 1, fninit 2, stmxcsr 1, ldmxcsr 2, ret 1} and the audit raises before the fixture is linked or run",
+      "confirmed_preexisting": "the same host compile of src/proxy/game_phases.cpp at commit 1748a20 (where the 8033-check run was recorded) yields the expected inventory; nothing in this candidate build affects it",
+      "prior_evidence": "docs/verification/sampling-profiler.md: 8033 checks, 0 failures, arena 13896/16384 B at 1748a20",
+      "candidate_impact": "none: this fixture compiles its own objects from source and never loads the candidate DLL"
+    },
+    "motion_output_state_shadow": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py production-on production-shadow-off seam-on seam-shadow-off",
+      "result": "PASS (partial selection; runner status PARTIAL because cross-case comparisons need the full set)",
+      "exit": 0,
+      "elapsed_seconds": 40,
+      "lock_wait_seconds": 0,
+      "cases": {
+        "production-on": {
+          "exit": 0,
+          "checks": 43,
+          "motion_pixels": 0
+        },
+        "production-shadow-off": {
+          "exit": 0,
+          "checks": 43,
+          "motion_pixels": 0
+        },
+        "seam-on": {
+          "exit": 0,
+          "checks": 103,
+          "motion_pixels": 44284
+        },
+        "seam-shadow-off": {
+          "exit": 0,
+          "checks": 103,
+          "motion_pixels": 44284
+        }
+      },
+      "shadow_on_off_identical": true,
+      "render_state_resyncs": "domains 0-6 and 9+ zero; domains 7 and 8 report 2 and 1 in every case, byte-identical to the committed full run in verification/results/bottle-X3/motion-output-summary.json",
+      "dll": "the runner builds its own fixture DLLs (9125ed41 production, 1b1dfa2e seam); this is a source-parity check for the hand-merged capture.cpp, not a candidate-byte check",
+      "artifacts": "motion-output-partial.json/.txt, -build.log and -wine.log were restored with git checkout after reading"
+    },
+    "host_suite": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+      "result": "FAIL (pre-existing)",
+      "ran": 1955,
+      "errors": 58,
+      "failures": 0,
+      "skips": 0,
+      "elapsed_seconds": 454,
+      "error_cause": "all 58 errors are AttributeError on verification/probe/run_linear_emission.py: missing validate_coverage_report (49), validate_original_report (3), validate_coverage_timings (1), validate_pass_timings (1); modules test_linear_emission_{pass,fused,coverage,original}_report",
+      "preexisting": "present on committed main at 4adf3dd and unrelated to the candidate; run_linear_emission.py itself calls validate_coverage_report at line 1061 without defining it",
+      "log": "/tmp/x3-candidate-yfFAil/host-suite.log"
+    }
+  },
+  "load_check": {
+    "performed": false,
+    "note": "run_d3d9_exports was not part of this task's scoped set; the run 30 load evidence is not carried over to these bytes"
+  },
+  "dry_run": {
+    "performed": false,
+    "note": "owned by the main session before install"
+  },
+  "full_fixture_chain_rerun": false,
+  "native_windows_verified": false,
+  "installed": false,
+  "limitations": [
+    "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+    "Only the marker, no-x87, export-list and state-hook benchmark checks bind these candidate bytes; the motion-output fixture uses its own built DLLs and the game-phase CPU fixture did not run.",
+    "run_game_phase_cpu.py is blocked by a stale host audit constant; the frame-phase stub CPU evidence for this commit is not established.",
+    "The host suite has 58 pre-existing errors from a missing validator in run_linear_emission.py.",
+    "Installation and game launch are owned by the main session; nothing was installed and the game was never launched."
+  ]
+}

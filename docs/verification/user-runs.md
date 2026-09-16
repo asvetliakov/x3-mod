@@ -48,7 +48,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 28 | Next candidate: restore re-arm fix, emitter gain split (engines vs weapon effects), original-program fill A/B, point-light telemetry (opt-in) | 0 | Completed as snapshots run74–run80 (session A) and run81 (session B), DLL `2b0969e5…` from `a26eb9b`: halo identified as bloom of the >1.0 bolts (bloom working-set 21 vs 13 MB is the sharpen-stage buffer, not resolution); chase restore consumed on both run78 transits, the centre-then-jump was the camera hook refusing the unbound view phase (37 and 13 frames), fixed `e4fd22a`; original fill 0.05 accepted visually, no clean frame-time A/B; engine-family gain admits draws, effect family 0; session B sun lane `available=0` on all 2,123 frames, fixed `e62722a` |
 | 29 | Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane | 3 | Completed as run83 (A), run84 (A2 profiler), run85 (B): engines unchanged (gain refused screen blend), halo persisted (bloom amplitude), chase pose fixed, profiler blind under FEX, sun lane available 4577/4695 |
 | 30 | Single emission gain, bloom source clamp, frame-time split | 2 | Session A run87 and B run88 received: engines respond, halo accepted at clamp 1.0, no cutout draws yet (B to repeat at an Argon industrial station), frame split: state hooks 8.9 ms of a 28.5 ms busy frame |
-| 31 | Frame split, engine phases, lighter proxy | 2 | Drafted; candidate pending |
+| 31 | Frame split, engine phases, lighter proxy | 2 | Queued: candidate `a9ebfa3b…` from `4adf3dd` installed 2026-09-17 |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
@@ -57,7 +57,7 @@ not rerun requests.
 
 ## 31. Frame split, engine phases, lighter proxy — open
 
-Installed: DLL `RUN31HASH` from `RUN31COMMIT` (see [status](../status.md)). This
+Installed: DLL `a9ebfa3b…` from `4adf3dd` (see [status](../status.md)). This
 build removes most of the proxy's own per-call cost (light CPU envelope on the
 draw and binding hooks, trimmed setter dispatch, count-only frame timing), adds
 `--frame-phases` (ten stamps in the engine's frame routine: input, script,

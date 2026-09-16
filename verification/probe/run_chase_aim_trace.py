@@ -48,7 +48,13 @@ def audit_object(path, callback='x3m_chase_aim_enter'):
     body = match[1]
     markers = {name: len(re.findall(r'\b' + name + r'\b', body))
                for name in ('fnsave', 'frstor', 'stmxcsr', 'fninit', 'ldmxcsr', 'ret')}
-    if markers != {'fnsave': 1, 'frstor': 2, 'stmxcsr': 1, 'fninit': 1, 'ldmxcsr': 2, 'ret': 1}:
+    # Exact inventory derived from the CpuState contract (src/proxy/cpu_state.h)
+    # plus the callback's own prologue; a lost fnsave or frstor must fail here.
+    #   CpuState::capture (PreserveCpuState ctor): fnsave, fninit, stmxcsr
+    #   callback prologue (after the envelope):    fninit, ldmxcsr 0x1f80
+    #   CpuState::restore (PreserveCpuState dtor): frstor, ldmxcsr
+    # call_preserved is not inlined into the callback, so it contributes nothing.
+    if markers != {'fnsave': 1, 'frstor': 1, 'stmxcsr': 1, 'fninit': 2, 'ldmxcsr': 2, 'ret': 1}:
         raise RuntimeError('CPU boundary instruction inventory changed: ' + repr(markers))
     prefix = body[:body.index('fnsave')]
     if len(re.findall(r'\bcall\b', prefix)) != 1 or '__imp__GetLastError@0' not in prefix:
