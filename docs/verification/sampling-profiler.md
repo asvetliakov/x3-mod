@@ -742,3 +742,101 @@ negligible — so the busy/empty gap is carried by `views`/`view_submit`
 No `arena_full`, claim failure, `chase_restore` refusal, or `shader_unknown` anywhere in the log; `shader_population` reports `unknown=0 overflow=0` at
 all three cadence points (lines 2243, 5121, 27669). `lock_wait` values are
 small (max 6.5 us seen). No crash/assert lines.
+
+### Run 32 session A1 (run91), 2026-09-17
+
+Session `/tmp/x3-bottleX3-run91/session-20260916-165038-212.log` (57,979
+lines), `--frame-timing --frame-phases --telemetry`, launcher default
+`--state-shadow auto` (no `X3M_STATE_SHADOW` in env). Identity:
+`proxy_identity sha256=11c1f119...` `source_commit=baee232...`, matching
+`docs/status.md` "Installed build". `state_hooks device=1 installed=1
+reason=frame_timing state_shadow=1 rs_mode=shadow`; `frame_phase_mode
+requested=1 enabled=1 status=ok sites=10 window=300`.
+
+Busy `frame=4200` (draws_p50=1006, closest to run89's 987) vs. empty
+`frame=6900` (draws_p50=75, lowest plateau, windows 5700-9900):
+
+| Window | dt p50/p95 | draws_p50 | state_calls_p50 | draw p50 | draw_native p50 | scene p50 | gap_pre/draw/post p50 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| busy 4200 | 37.32/39.78 ms | 1006 | 63,311 | 7.75 ms | 2.52 ms | 1.19 ms | 3.99/23.26/0.40 ms |
+| empty 6900 | 7.14/13.98 ms | 75 | 3,892 | 0.56 ms | 0.20 ms | 1.04 ms | 3.23/2.16/0.14 ms |
+
+Both windows have `reason=frame_timing` (hooks installed) — comparable to
+run89 (also hooked), not an unhooked baseline. Busy tracks run89's busy
+(37.5 ms/987/61,896); empty same shape, not identical (run89 6.8 ms/51 vs
+here 7.1 ms/75). `views_p50` busy/empty 32,115/3,857 us (`view_submit_p50`
+29,191/2,330); phase-sum matches `dt_p50` in both.
+
+Redundancy, busy 4200 (rs/ss/tex order): `state_redundant=2754453,1590735,
+534520`, `state_shadowed=2902118,1601271,1329862`, `redundant_top=
+7:292241,25:291642,24:291639,14:287371` (D3DRS_ZFUNC=7, ZWRITEENABLE=14;
+24/25 need the RS-index table, not in this doc). Ratios: rs 94.9%, ss
+99.3%, tex 40.2% — per-window cumulative counters vs. a single-frame
+median `state_calls_p50`, different units, not a valid fraction of 63,311.
+Empty 6900: `state_redundant=201990,86295,30396`, `state_shadowed=216390,
+88395,73596` (~93/97/41%, same shape).
+
+Program pairs, busy 4200 (`draws=292841 draw_pairs_overflow=0`), top-8:
+`53a0a641.../8759c783...:113,282` (argon hull DEFAULT, exact pair),
+`4944d81d.../ca6bfa4a...:38,177` (argon hull BUMPMAP, exact pair),
+`37c34a74.../5f82ecac...:37,520`, `494fe349.../fffdabd9...:24,036`,
+`37c34a74.../f1b0e820...:10,608` (`XT_standard_lighting.fx`; the
+`494fe349.../fffdabd9...` pair is the XT DEFAULT left original by design),
+`53a0a641.../63f96eba...:23,509` and `4944d81d.../5e0a10fe...:9,073`
+(the two sun-lane cutout pairs, `cutout_pairs=9073,23509` matches: **the
+cutout programs draw in this busy Argon view**, about 108 draws per frame,
+so run 32 session B belongs here, not at a station of another type),
+`c78b4c68.../none:8,012` (the `z_only` depth-prepass vertex shader with a
+null pixel shader, `depth_prepass_profiles.h`). Empty 6900 (`draws=22599`):
+`4944d81d.../ca6bfa4a...:4,500` tied `53a0a641.../8759c783...:4,500`,
+`7b6393fe.../6109cf64...:4,200`, two engine-glow pairs (`494fe349.../
+7c83ed50...:2,799`, `4944d81d.../0c1f3f0f...:1,800`), engine/gate
+`d5e1c753.../8360f422...:1,200`, two more at 600; `cutout_pairs=600,300`.
+No overflow either window.
+
+Batchability: busy 4200 `same_mesh=14677 same_mesh_any_range=0
+same_material=17644 draws=292841` — 5.0% instancing candidates, 6.0%
+material-sortable. Empty 6900: `same_mesh=3079 same_material=920
+draws=22599` — 13.6% instancing candidates, 4.1% material-sortable.
+
+No anomalies: `truncated=1`, `shader_unknown`, `chase_restore`,
+`arena_full`, `claim_fail`, crash/assert/ERROR/FATAL all 0.
+`shader_population unknown=0 overflow=0` throughout (last known=57).
+`lock_wait` max 18.9 us. Error-path refusal counters (`anchor_refused`,
+`arm_refusals`, `origin_refusals_total`, `last_refusal`) all 0;
+`identity_refused`/`identity_valid` and one `bloom_refusal
+reason=scene_handoff count=1` are ordinary diagnostic counters, not
+failures. `rs_mode=shadow` throughout (167 lines).
+
+### Run 32 session A2 (run92), 2026-09-17
+
+Preserved `/tmp/x3-bottleX3-run92/session-20260916-165414-216.log`. Identity
+matches: `proxy_identity sha256=11c1f119...` `source_commit=baee232...`.
+`proxy_options` has no `X3M_STATE_SHADOW`, `X3M_FRAME_TIMING=0`,
+`X3M_FRAME_PHASES=1`. Line 122: `state_hooks device=1 installed=0
+reason=none state_shadow=0 rs_mode=get` — hooks correctly absent under
+`--state-shadow auto` with no `--frame-timing`; `rs_gets=0 rs_hits=0
+rs_queries=0` (unshadowed Get* path, not tracked by shadow counters).
+
+175 `frame_phases` lines, 35 full windows. Busy `frame=5400` (highest
+`views_p50_us`) vs. empty `frame=7800`:
+
+| Window | dt p50/p95 | begin_scene p50 | views p50/p95 | view_setup p50 | view_submit p50/p95 |
+| --- | --- | --- | --- | --- | --- |
+| busy 5400 | 26.49/28.09 ms | 291 us | 22,155/23,026 us | 1,699 us | 19,191/19,880 us |
+| empty 7800 | 6.59/13.38 ms | 255 us | 2,977 us | 460 us | 1,448 us |
+
+No `draws_p50` field exists without `--frame-timing`; `views_p50` count (=9)
+is the view-loop count, not draws, so busy/empty here is not draw-confirmed.
+vs. run89 busy (37.48 ms hooked): dt −10.99 ms (−29.3%), views −31.8%,
+view_submit −34.7%. vs. run91 busy (37.32 ms): dt −10.83 ms (−29.0%).
+Consistent with skipping run91's ~63,311 state calls/frame plus no hook
+install, but sessions are not matched-load (no draw counter), so this is a
+plausible attribution, not proven.
+
+No anomalies: `truncated=1`, `capability`/`claim` failures, `chase_restore`
+refusals, `shader_unknown` all 0/absent; `shader_population unknown=0
+overflow=0` (last `known=57`). `incomplete`: 2 windows at 1, 1 at 3 (opening
+only), 32 at 0. `mip_bias_sets=restores=8,091,791 failures=0` (final
+summary) — no leak. No `motion_state_lost`/`restore_failures`/
+`apply_failures` nonzero. `lock_wait` samples max 2–3 us.

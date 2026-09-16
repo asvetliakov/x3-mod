@@ -73,11 +73,11 @@ count; the felt FPS comes from session A2 without it. Appearance unchanged.
 `--frame-timing`. Hold the same busy view 30 s and say how the FPS compares
 with run 31 there; the phase stamps give the frame time.
 
-**Session B** (station programs, cutout draws): session A1's command plus
-`--linear-materials --linear-distance-fade --sun-shadow-lane`; one minute close
-to an Argon station of a different type than run 31's (a tech, liquid or farm
-factory if run 31 was a trading station, or the reverse), then quit. The log
-now names the program pairs the station drew.
+**Session B** (cutout draws under the lane): session A1's command plus
+`--linear-materials --linear-distance-fade --sun-shadow-lane`; hold the same
+busy view as A1/A2 for 30 s, then quit. Run91 (A1) counted about 108 cutout
+draws per frame in that view (`cutout_pairs=9073,23509` per 300 frames), so
+the cutout admission is exercised there; no station hunt needed.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
