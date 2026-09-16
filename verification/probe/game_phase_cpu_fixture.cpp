@@ -1092,11 +1092,12 @@ namespace media_marker=x3m::media_cue::sites;
 extern "C" {
 std::uint32_t media_fixture_id=0,media_fixture_flags=0,media_fixture_result=0;
 std::uint32_t media_body_calls=0,media_body_ebx=0,media_body_arg=0,media_body_flags=0,media_body_ebx_ok=0;
-std::uint32_t media_reenter=0,media_reenter_result=0,media_reenter_depth=0;
+std::uint32_t media_reenter=0,media_reenter_result=0,media_reenter_depth=0,media_lost_trigger=0;
 void (*media_reenter_call)()=nullptr;
 __attribute__((force_align_arg_pointer)) void __cdecl media_body_record(std::uint32_t ebx,std::uint32_t argument,std::uint32_t flags){
     ++media_body_calls;media_body_ebx=ebx;media_body_arg=argument;media_body_flags=flags;
     media_body_ebx_ok+=ebx==argument; // the replayed `mov ebx,[esp+8]` read the argument at the game's exact ESP
+    if(media_lost_trigger){media_lost_trigger=0;media::fixture_drop_pending();} // the entry vanishes while the build runs
     if(media_reenter&&media_reenter_call){ // models COM apartment dispatch re-entering the allocator from inside the build
         media_reenter=0;
         const std::uint32_t outer_result=media_fixture_result,outer_id=media_fixture_id;
@@ -1232,6 +1233,11 @@ static void media_replay_checks(){
     check(thread!=nullptr,"media foreign thread started");
     if(thread){WaitForSingleObject(thread,INFINITE);CloseHandle(thread);}
     check(media_body_calls==1&&gate->foreign.load()==1&&!media::fixture_pop_trace(&e)&&pending->depth==0,"foreign-thread call proceeds unobserved");
+    // Forced lost return (unreachable by construction: the entry is dropped while the
+    // build runs); the trampoline returns to the last substituted real return address.
+    media_fixture_id=media_id_b;media_reset();media_fixture_result=media_record;media_lost_trigger=1;invoke(r.selector,after);compare(baseline_ok,after);
+    check(media_body_calls==1&&pending->lost==1&&pending->depth==0&&!media::fixture_pop_trace(&e),"lost return counted once and the fail-safe returned to last_return");
+    media_fixture_id=media_id_a;
     media::frame(2);
     check(media::fixture_attempts_frame()==0,"frame boundary resets the per-frame attempt count");
     check(media::fixture_uninstall(),"media gate rollback restores the span");

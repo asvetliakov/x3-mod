@@ -80,8 +80,17 @@ int main() {
     p.esp = 0x1000; p.id = 3; pending.push(p); p.esp = 0x0f00; p.id = 4; pending.push(p);
     check(pending.pop(0x1000, out) && out.id == 3 && pending.depth == 0 && pending.stale == 1);  // the inner entry was unwound past its return
     check(!pending.pop(0x2000, out) && pending.lost == 1);
+    pending = {};
+    // An entry unwound past the trampoline is reclaimed when a later call arrives at the same or a higher ESP.
+    p.esp = 0x1000; p.id = 5; p.ret = 0xa1; check(pending.push(p) && pending.last_return == 0xa1);
+    p.esp = 0x1000; p.id = 6; p.ret = 0xa2; check(pending.push(p) && pending.depth == 1 && pending.stale == 1 && pending.items[0].id == 6 && pending.last_return == 0xa2);
+    p.esp = 0x0ff0; p.id = 7; check(pending.push(p) && pending.depth == 2);        // a nested call keeps the outer entry
+    p.esp = 0x1010; p.id = 8; check(pending.push(p) && pending.depth == 1 && pending.stale == 3 && pending.items[0].id == 8);
+    for (unsigned i = 0; i < 100; ++i) { p.esp = 0x1010; check(pending.push(p) && pending.depth == 1); }  // repeated unwinds at one frame never exhaust the slots
+    check(pending.stale == 103);
+    pending = {};
     for (unsigned i = 0; i < pending_depth; ++i) { p.esp = 0x3000 - 0x10 * i; check(pending.push(p)); }
-    check(!pending.push(p) && pending.overflow == 1 && pending.depth == pending_depth);
+    p.esp = 0x2000; check(!pending.push(p) && pending.overflow == 1 && pending.depth == pending_depth);
     pending = {};
     // Ring: FIFO, the oldest dropped when full.
     for (std::uint32_t i = 0; i < ring_entries + 3; ++i) ring.push(entry(i, selector, observed, 0, i));

@@ -68,5 +68,6 @@ bool fixture_pop_trace(detail::Entry* out);  // owner thread only
 std::uint32_t fixture_attempts_frame();
 std::uint64_t fixture_refused();
 const char* fixture_site_status();
+void fixture_drop_pending();
 #endif
 }

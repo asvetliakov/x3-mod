@@ -284,8 +284,19 @@ def inspect(image, instructions, source, data, installed, exe=DEFAULT_EXE):
                                       for i in esp_writers)
     # The gate captures a proceeded call's outcome by substituting the return
     # address at [esp]; the routine must never read that slot itself (its only
-    # ESP-relative read is `mov ebx,[esp+8]`, the argument after `push ebx`).
-    checks['no_return_slot_read'] = not any('[esp]' in i.operands for i in instructions)
+    # ESP-relative read is `mov ebx,[esp+8]`, the argument after `push ebx`), never
+    # copy ESP into a register (`mov reg,esp` / `lea reg,[esp..]`) through which it
+    # could read the slot indirectly, and write ESP only by `add esp,N`.
+    esp_reads = [i for i in instructions if '[esp' in i.operands]
+    # `mov reg,esp` or `lea reg,[esp..]`: an ESP copy through which the slot could be read indirectly.
+    esp_copies = [i for i in instructions
+                  if i.operands.split(',')[0].strip() != 'esp'
+                  and ((i.mnemonic == 'mov' and i.operands.split(',', 1)[-1].strip() == 'esp')
+                       or (i.mnemonic == 'lea' and '[esp' in i.operands))]
+    checks['no_return_slot_read'] = (not any('[esp]' in i.operands for i in instructions)
+                                     and [(i.va, i.operands) for i in esp_reads] == [(0x498141, 'ebx,DWORD PTR [esp+0x8]')]
+                                     and not esp_copies
+                                     and all(i.mnemonic == 'add' for i in esp_writers))
     # Callee-saved discipline: four pushes at entry, four pops on each return.
     pushes = [i for i in instructions if i.mnemonic == 'push' and i.va < 0x498148]
     checks['callee_saved'] = [i.operands for i in pushes] == ['ebx', 'ebp', 'esi', 'edi']

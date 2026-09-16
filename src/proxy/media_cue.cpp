@@ -31,6 +31,7 @@ std::uint32_t attempts_frame=0;            // owner thread only, reset at the fr
 std::uint64_t attempts_total=0,refused_total=0;
 std::atomic<std::uint64_t> current_frame{0};
 void* return_trampoline=nullptr;
+bool lost_reported=false;
 engine_patch::Site patches[sites::Count];
 struct ErrorGuard { DWORD value=GetLastError();~ErrorGuard(){SetLastError(value);} };
 std::uint64_t qpc() noexcept {LARGE_INTEGER v{};return QueryPerformanceCounter(&v)&&v.QuadPart>0?std::uint64_t(v.QuadPart):0;}
@@ -82,7 +83,7 @@ void* emit_gate(const void* enter,const void* ret_handler,void*** next_out,void*
 void* emit(unsigned index,void*** next_out);
 void reset_state() {
     gate.reset();cache.clear();pending={};ring={};limit={};window.reset();
-    attempts_frame=0;attempts_total=refused_total=0;current_frame.store(0);
+    attempts_frame=0;attempts_total=refused_total=0;current_frame.store(0);lost_reported=false;
 }
 bool install_group(const engine_patch::SiteSpec* specs,const char*& status) {
     return_trampoline=nullptr;reset_state();
@@ -116,6 +117,7 @@ void emit_window() {
         s.id_count?ids:"none",s.id_overflow,cache.used,cache.evictions,pending.max_depth,pending.overflow,pending.stale,pending.mismatched,pending.lost,
         limit.suppressed,ring.dropped,gate.early.exchange(0,std::memory_order_relaxed),gate.foreign.exchange(0,std::memory_order_relaxed));
     limit.suppressed=0;ring.dropped=0;
+    if(pending.lost&&!lost_reported){lost_reported=true;log("media_cue_lost count=%llu last_return=%08lx note=return_matched_no_pending_entry_fail_safe_used",pending.lost,static_cast<unsigned long>(pending.last_return));}
 }
 }
 }
@@ -156,7 +158,12 @@ x3m_media_cue_return(x3m::media_cue::ReturnFrame* f) {
     x3m::LightCallBoundary cpu;
     const std::uint64_t now=qpc();
     detail::Pending p;
-    if(!pending.pop(std::uint32_t(reinterpret_cast<std::uintptr_t>(&f->slot)),p))return 0; // structurally unreachable: every substituted return lands here first
+    // Unreachable by construction: every substituted return address is this
+    // trampoline and every such call pushed an entry keyed by this slot. The
+    // fail-safe returns the most recent substituted real return address
+    // (counted in `lost`, reported once by the window line) so a hypothetical
+    // miss does not `ret` to 0; it is a crash-avoidance measure, not a recovery.
+    if(!pending.pop(std::uint32_t(reinterpret_cast<std::uintptr_t>(&f->slot)),p))return pending.last_return;
     if(f->id!=p.id)++pending.mismatched;
     if(f->eax)cache.success(p.id);
     else if(cache_on&&p.scoped)cache.fail(p.id,now);
@@ -242,5 +249,6 @@ bool fixture_pop_trace(detail::Entry* out) {
 std::uint32_t fixture_attempts_frame(){return attempts_frame;}
 std::uint64_t fixture_refused(){return refused_total;}
 const char* fixture_site_status(){return patches[0].status;}
+void fixture_drop_pending(){pending.depth=0;} // models a return whose entry vanished: the next return is `lost`
 #endif
 }

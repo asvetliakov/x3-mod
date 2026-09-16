@@ -90,9 +90,13 @@ struct NegativeCache {
 // Proceeded entries whose return the gate captured, innermost last. A nested
 // call (COM apartment dispatch inside the graph constructor) pushes a second
 // entry; its return pops first. `esp` is the game's stack slot that held the
-// return address, so a return matches its entry exactly; entries above a
-// matched one were unwound past the trampoline (an exception) and are
-// discarded as `stale`.
+// return address, so a return matches its entry exactly. An entry whose frame
+// was unwound past the trampoline (exception, longjmp) never returns through
+// it: it is reclaimed as `stale` either when a later return matches an entry
+// below it, or when a new call arrives at the same or a higher stack address
+// (the stack grows down, so a live outer entry always has a higher `esp` than
+// the call nested inside it). `last_return` is the most recent substituted
+// real return address, the fail-safe for a return that matches no entry.
 inline constexpr unsigned pending_depth = 4;
 struct Pending {
     std::uint32_t ret = 0, esp = 0, id = 0, kind = 0, flags = 0, attempt = 0;
@@ -104,9 +108,11 @@ struct PendingStack {
     Pending items[pending_depth]{};
     unsigned depth = 0, max_depth = 0;
     std::uint64_t overflow = 0, stale = 0, lost = 0, mismatched = 0;
+    std::uint32_t last_return = 0;
     bool push(const Pending& p) noexcept {
+        while (depth && items[depth - 1].esp <= p.esp) { --depth; ++stale; }  // unwound frames at or below the new call
         if (depth >= pending_depth) { ++overflow; return false; }
-        items[depth++] = p;
+        items[depth++] = p; last_return = p.ret;
         if (depth > max_depth) max_depth = depth;
         return true;
     }

@@ -85,6 +85,8 @@ class SourceAndPolicy(unittest.TestCase):
         self.assertIn('if(f->eax)cache.success(p.id);\n    else if(cache_on&&p.scoped)cache.fail(p.id,now);', source)
         self.assertIn('inline constexpr unsigned cache_entries = 32;', core)
         self.assertIn('inline constexpr unsigned pending_depth = 4;', core)
+        self.assertIn('while (depth && items[depth - 1].esp <= p.esp) { --depth; ++stale; }', core)
+        self.assertIn('return pending.last_return;', source)
         self.assertIn('inline constexpr unsigned lines_per_second = 32;', core)
         self.assertIn('inline constexpr unsigned window_frames = 300, id_slots = 8;', core)
         # The gate stub: both arms restore flags/EAX/ECX/EDX/XMM0-7; REFUSE ends
@@ -125,7 +127,8 @@ class SourceAndPolicy(unittest.TestCase):
         for label in ('REFUSE arm returns 0 to the caller without running the allocator',
                       'nested speech call from inside the build reached depth 2 with both spans replayed',
                       'speech caller with the cached id proceeds', 'success after the interval clears the cache entry',
-                      'media install refused after the install window closed', 'foreign-thread call proceeds unobserved'):
+                      'media install refused after the install window closed', 'foreign-thread call proceeds unobserved',
+                      'lost return counted once and the fail-safe returned to last_return'):
             self.assertIn(label, fixture)
 
 

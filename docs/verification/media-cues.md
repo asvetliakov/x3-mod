@@ -191,7 +191,14 @@ routine never reads `[esp]`) are the contract it rests on. Both handlers run
 under `LightCallBoundary` (MXCSR + LastError), execute no x87 opcode
 (`check_no_x87.py` roots `_x3m_media_cue_enter`, `_x3m_media_cue_return`),
 never log and never allocate. Calls before the first Present or from a thread
-other than the Present thread pass unobserved (`early`/`foreign`). Installed
+other than the Present thread pass unobserved (`early`/`foreign`): the trace and
+the cache observe owner-thread (Present-thread) calls only. The selector runs on
+that thread: the loop-phase stamps of run96 (`docs/verification/sampling-profiler.md`,
+"Run 33 session B") recorded `foreign=0`, so the per-sector create path is on
+it. An entry unwound past the trampoline is reclaimed as `stale` by the next
+call at the same or a higher ESP; a return matching no entry (`lost`,
+unreachable by construction) returns to the last substituted real return
+address as a crash-avoidance fail-safe, reported once as `media_cue_lost`. Installed
 only when `object_trace::executable_verified()`; refused outside the install
 window; preflight, ordered claim and reverse rollback through
 `stamp::install_group`.
@@ -232,10 +239,10 @@ global reachable from this handler, so there is no sector-change reset.
 | --- | --- |
 | `cmake --build build` (MinGW i686, `-Wall -Wextra`) | 0 warnings |
 | `python3 verification/probe/check_no_x87.py build/d3d9.dll` | PASS, 494 reachable functions, 0 violations, both handlers rooted |
-| `PYTHONPATH=verification/probe python3 verification/probe/verify_media_cue_site.py` | PASS, `source_present: true`, 19 checks incl. `no_return_slot_read` |
-| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py` | PASS, 8506 checks, 0 failures, 6.8 s; `media_cases=9` |
-| `MEDIA CUE BENCH` (fixture, X3 bottle) | baseline 11.2 ns/call, PASS arm 287.3 (dispatch **276 ns**, entry + return capture), REFUSE arm 126.1 (dispatch **115 ns**) |
-| host probe `verification/probe/media_cue_host.cpp` | 49 checks, 0 failures, no allocation |
+| `PYTHONPATH=verification/probe python3 verification/probe/verify_media_cue_site.py` | PASS, `source_present: true`, 19 checks incl. `no_return_slot_read` (no `[esp]` read, the one `[esp+0x8]` read, no ESP copy, `add esp,N` writers only) |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py` | PASS, 8521 checks, 0 failures, 6.7 s; `media_cases=9` (incl. the forced-lost fail-safe case) |
+| `MEDIA CUE BENCH` (fixture, X3 bottle) | baseline 11.4 ns/call, PASS arm 285.7 (dispatch **274 ns**, entry + return capture), REFUSE arm 130.7 (dispatch **119 ns**) |
+| host probe `verification/probe/media_cue_host.cpp` | 154 checks, 0 failures, no allocation (incl. unwound-entry reclaim at push) |
 | `python3 -m unittest verification.analysis.test_media_cue ...` (12 modules) | 94 tests OK |
 
 The CPU fixture models the game's frames with emitted cdecl callers (play
