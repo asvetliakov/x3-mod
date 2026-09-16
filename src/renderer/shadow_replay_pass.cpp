@@ -115,9 +115,9 @@ unsigned ShadowReplayPass::references() const noexcept {
 void ShadowReplayPass::release_targets() noexcept { drop(map_surface_); drop(map_); drop(depth_); }
 void ShadowReplayPass::detach() noexcept {
     release_targets(); drop(block_); drop(vs_); drop(ps_);
-    device_ = nullptr; vtable_ = nullptr; size_ = render_targets_ = 0; reset_pending_ = false; caps_ = {};
+    device_ = nullptr; vtable_ = nullptr; size_ = render_targets_ = 0; reset_pending_ = false; caps_ = {}; view_rows_valid_ = false;
 }
-void ShadowReplayPass::before_reset() noexcept { release_targets(); drop(block_); reset_pending_ = device_ != nullptr; }
+void ShadowReplayPass::before_reset() noexcept { release_targets(); drop(block_); view_rows_valid_ = false; reset_pending_ = device_ != nullptr; }
 void ShadowReplayPass::after_reset(HRESULT result) noexcept { if (SUCCEEDED(result)) reset_pending_ = false; }
 HRESULT ShadowReplayPass::attach(IDirect3DDevice9* d, void* const* native, const D3DCAPS9& caps, D3DFORMAT adapter_format, unsigned size) noexcept {
     detach();

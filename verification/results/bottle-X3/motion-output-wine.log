@@ -1,9 +1,5 @@
-==== seam-ownership-shadow-replay-on
+==== production-on
 msync: bootstrapped mach port on wine-2505746-msync.
 msync: up and running.
-==== seam-ownership-shadow-replay-off
-==== seam-ownership-taa-shadow-replay-on
-==== seam-ownership-taa-shadow-replay-off
-==== seam-ownership-shadow-replay-casters-2
-==== seam-ownership-shadow-replay-casters-8
-==== seam-ownership-shadow-replay-casters-20
+==== seam-ownership-shadow-replay-on
+==== sun-shadow-apply

@@ -64,6 +64,18 @@ public:
     unsigned size() const noexcept { return size_; }
     bool targets_ready() const noexcept { return map_surface_ != nullptr && depth_ != nullptr; }
     IDirect3DSurface9* map_surface() const noexcept { return map_surface_; } // borrowed; null until prepared
+    // What the scene-end apply quad consumes (legacy-sun-application.md,
+    // section 2): the map as a texture (borrowed; null until prepared or
+    // after before_reset) and the frame's view -> sun-space rows
+    // (shadow_replay_view_rows), which the owner records per frame beside
+    // the draws it replays; the rows are invalidated by before_reset and
+    // detach so a stale frame can never be applied.
+    IDirect3DTexture9* map_texture() const noexcept { return map_; }
+    const float* view_rows() const noexcept { return view_rows_valid_ ? view_rows_ : nullptr; }
+    void set_view_rows(const float rows[12]) noexcept {
+        view_rows_valid_ = rows != nullptr;
+        if (rows) for (unsigned i = 0; i < 12; ++i) view_rows_[i] = rows[i];
+    }
 private:
     struct SavedState;
     template<class Fn> Fn call(unsigned slot) const noexcept {
@@ -82,6 +94,8 @@ private:
     IDirect3DSurface9* map_surface_ = nullptr;
     IDirect3DSurface9* depth_ = nullptr;
     unsigned size_ = 0, render_targets_ = 0, allocations_ = 0;
+    float view_rows_[12]{};
+    bool view_rows_valid_ = false;
     bool reset_pending_ = false;
 };
 } // namespace x3m::renderer

@@ -168,6 +168,7 @@ import agx_reference as agx_ref  # noqa: E402  (stage 2: the tonemap oracle)
 import exposure_reference as exposure_ref  # noqa: E402  (stage 2: the meter/adaptation oracle)
 import shadow_replay_candidates as candidates_analysis  # noqa: E402  (caster-candidate counter lines)
 import shadow_replay_depth as depth_replay  # noqa: E402  (cascade-0 depth replay lines and the CPU projection of the map)
+import sun_shadow_apply as sun_apply  # noqa: E402  (the CPU twin of the sun-shadow apply quad)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
@@ -259,6 +260,14 @@ CASES += [case('seam-ownership-shadow-replay-on', 'shadowreplay', 'ownership', c
           case('seam-ownership-taa-shadow-replay-off', 'shadowreplay', 'ownership', jitter=True, taa=True, camera=True, hdr_env=SHADOW_REPLAY_OFF_ENV)]
 CASES += [case(f'seam-ownership-shadow-replay-casters-{n}', 'shadowreplay', 'ownership', camera=True,
                hdr_env=dict(SHADOW_REPLAY_ENV, X3M_SHADOW_REPLAY_SIZE='1024', X3M_FIXTURE_SHADOW_CASTERS=str(n))) for n in SHADOW_REPLAY_CASTERS]
+# Sun-shadow apply quad (legacy-sun-application.md, section 3.3): the
+# production SunShadowApplyPass linked into the fixture and driven directly
+# (no proxy wiring; the DLL is passive): synthetic G32R32F RT2 and R32F map of
+# a box on a plane at three sun elevations against the CPU twin of the program
+# within one FP16 code, hard-shadow edges within the kernel's reach, a far map
+# byte-identical, a Reset between two identical frames byte-identical.
+SUN_APPLY_FRAMES, SUN_APPLY_RESET_FRAME, SUN_APPLY_FAR_FRAME, SUN_APPLY_ZERO_FRAME = 6, 5, 0, 1
+CASES += [case('sun-shadow-apply', 'sunapply', enabled='0')]
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
 SHADOW_TWINS = {'production-shadow-off': 'production-on', 'seam-shadow-off': 'seam-on', 'seam-taa-shadow-off': 'seam-taa-on',
                 'seam-lazy-shadow-off': 'seam-lazy-on', 'seam-burst-perdraw-shadow-off': 'seam-burst-perdraw', 'seam-burst-lazy-shadow-off': 'seam-burst-lazy'}
@@ -640,7 +649,7 @@ def sources():
         'exposure_reference.py', 'agx_reference.py', 'analyze_motion_readback.py', 'summarize_capture.py')]
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
-        'bottle.py', 'game_guard.py', 'wine_lock.py')]
+        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h')]
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
 
 
@@ -696,6 +705,61 @@ def validate_shadow_replay_candidates(name, trace, expected_witnesses=0):
     predicates = summary['predicates']
     assert predicates['lease_contract'] and predicates['single_thread'] and predicates['promotion_possible'], (name, summary)
     return dict(frames=len(frames), witnesses=caps, checks=checks + 3, summary=summary)
+
+
+def validate_sun_apply(name, text, directory):
+    """The apply-quad script: the fixture's own checks passed (skip paths,
+    restoration, far-map identity, Reset identity), every frame's readback
+    against the CPU twin of the program on the same RT2 and map within one
+    FP16 code (ambiguous rounding calls excluded and counted), frame 1 with
+    f = 0 on every valid pixel, the hard shadow against the analytic box
+    shadow with every disagreement within the kernel's reach of an edge, and
+    the quad's EVENT-synchronized time."""
+    assert 'RESULT PASS' in text, f'{name}: fixture failed'
+    result_line = next(l for l in text.splitlines() if l.startswith('RESULT PASS'))
+    checks = int(fields(result_line)['checks'])
+    device = [fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_DEVICE ')]
+    assert len(device) == 1 and device[0]['attached'] == '1' and device[0]['references'] == '3', (name, device)
+    frames = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY ')}
+    times = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_TIME ')}
+    assert sorted(frames) == list(range(SUN_APPLY_FRAMES)) and sorted(times) == sorted(frames), (name, sorted(frames), sorted(times))
+    assert all(t['applied'] == '1' and t['result'] == '00000000' and float(t['us']) > 0 for t in times.values()), (name, times)
+    width, height, size = (int(frames[0][k]) for k in ('width', 'height', 'map_size'))
+    comparisons, images = {}, {}
+    for frame in range(SUN_APPLY_FRAMES):
+        f = frames[frame]
+        read = lambda suffix, count: (directory / f'sunapply_{frame}_{suffix}').read_bytes()
+        before, after = read('before.rgba16f', 8), read('after.rgba16f', 8)
+        rt2, sun_map = read('rt2.g32r32f', 8), read('map.r32f', 4)
+        assert len(before) == len(after) == width * height * 8 and len(rt2) == width * height * 8 and len(sun_map) == size * size * 4, (name, frame)
+        images[frame] = (before, after)
+        params, scene = sun_apply.parse_params(f)
+        d, s = sun_apply.unpack_rt2(rt2, width, height)
+        comparison = sun_apply.compare_frame(sun_apply.unpack_rgba16f(before, width, height), sun_apply.unpack_rgba16f(after, width, height),
+                                             d, s, sun_apply.unpack_map(sun_map, size), params, scene if f['map_mode'] == '2' else None)
+        comparison.update(map_mode=int(f['map_mode']), elevation=float(f['elevation']), jitter_index=int(f['jitter_index']), exponent=float(f['exponent']),
+                          us=float(times[frame]['us']), receivers=int(f['receivers']), share_free=int(f['share_free']), sentinels=int(f['sentinels']))
+        assert comparison['ok'], (name, frame, comparison)
+        assert comparison['compared'] > 0 and comparison['ambiguous'] < comparison['valid'] // 10, (name, frame, comparison)
+        if frame == SUN_APPLY_FAR_FRAME:
+            assert after == before and comparison['shadowed'] == 0, (name, frame, comparison)
+        if frame == SUN_APPLY_ZERO_FRAME:
+            # Every valid pixel is fully shadowed: the readback is C (1 - s) within one code.
+            expected = sun_apply.expected_factor(d, s, sun_apply.unpack_map(sun_map, size), params)
+            import numpy as np
+            assert not np.any(expected['valid'] & (expected['f'] > 0.0)), (name, frame, int(np.count_nonzero(expected['valid'] & (expected['f'] > 0.0))))
+            assert comparison['shadowed'] == comparison['compared'], (name, frame, comparison)
+        if f['map_mode'] == '2':
+            assert comparison['shadowed'] > 100 and comparison['penumbra'] > 0 and comparison['analytic']['shadowed_analytic'] > 100, (name, frame, comparison)
+        comparisons[frame] = comparison
+    assert images[SUN_APPLY_RESET_FRAME][1] == images[SUN_APPLY_RESET_FRAME - 1][1] and images[SUN_APPLY_RESET_FRAME][0] == images[SUN_APPLY_RESET_FRAME - 1][0], f'{name}: the frame after the Reset differs'
+    us = sorted(c['us'] for c in comparisons.values())
+    validator_checks = 6 + 4 * SUN_APPLY_FRAMES  # device line, frame sets, timing, Reset identity, far identity, zero-map law; per frame: sizes, twin, ambiguity bound, scene predicates
+    return {'checks': checks + validator_checks, 'fixture_checks': checks, 'validator_checks': validator_checks, 'frames': SUN_APPLY_FRAMES, 'width': width, 'height': height, 'map_size': size,
+            'program_slots': int(device[0]['slots']), 'frames_detail': comparisons,
+            'worst_codes': max(c['worst_codes'] for c in comparisons.values()), 'ambiguous_max': max(c['ambiguous'] for c in comparisons.values()),
+            'edge_mismatch': {k: sum(c['analytic'][k] for c in comparisons.values() if 'analytic' in c) for k in ('mismatch', 'within_one_texel', 'within_two_texels', 'beyond_two_texels')},
+            'us': {'min': us[0], 'median': us[len(us) // 2], 'max': us[-1]}}
 
 
 def validate_shadow_replay(name, text, trace, directory, env, taa):
@@ -3289,6 +3353,17 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} hook_status={case["hook_status"]} sources={case["sources"]}', flush=True)
+                continue
+            if mode == 'sunapply':
+                case = validate_sun_apply(name, text, directory)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                # The compact per-case record the ledger cites (no readbacks).
+                (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} worst_codes={case["worst_codes"]:.3f} ambiguous_max={case["ambiguous_max"]} edge={case["edge_mismatch"]} us={case["us"]["median"]}', flush=True)
                 continue
             if mode == 'shadowreplay':
                 case = validate_shadow_replay(name, text, trace, directory, hdr_env, taa)  # the wrapper's own frame lines belong to the 12-frame seam script (validate_ownership); this script has 8 frames and a Reset

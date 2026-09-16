@@ -9,11 +9,12 @@ cd "$(dirname "$0")"
 mkdir -p build/motion-output-seam
 FLAGS="-std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2"
 # The fixture links the production TemporalPass as its reference resolve (TAA
-# environments) with the same embedded resolve bytecode the DLL carries.
+# environments) with the same embedded resolve bytecode the DLL carries, and
+# the production SunShadowApplyPass and ShadowReplayPass it drives directly in the "sunapply" mode.
 # X3M_QUAD_FVF_SWITCH (fixture and seam only): X3M_FIXTURE_QUAD_FVF=1 selects
 # the previous XYZRHW quads so the seam-taa-quad-fvf twin proves the vs_3_0
 # quads byte-identical; production never compiles the switch.
-i686-w64-mingw32-g++ $FLAGS -DX3M_QUAD_FVF_SWITCH -static -static-libgcc -static-libstdc++ motion_output_fixture.cpp ../../src/renderer/temporal_pass.cpp -o build/motion_output_fixture.exe -ldxguid -luser32
+i686-w64-mingw32-g++ $FLAGS -DX3M_QUAD_FVF_SWITCH -static -static-libgcc -static-libstdc++ motion_output_fixture.cpp ../../src/renderer/temporal_pass.cpp ../../src/renderer/sun_shadow_apply_pass.cpp ../../src/renderer/shadow_replay_pass.cpp -o build/motion_output_fixture.exe -ldxguid -luser32
 
 if [ "${1:-}" = "--fixture-only" ]; then exit 0; fi
 

@@ -325,6 +325,14 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   D3DSBT_ALL block, the application's own buffers and declaration under authored vs_3_0/ps_3_0
   programs; verified on CrossOver only (R32F render targets, the depth match, state-block
   capture/apply cost and the single-thread Lock assumption remain unverified natively).
+- The sun-shadow apply pass (`src/renderer/sun_shadow_apply_pass.cpp`, standalone, not yet wired
+  into the scene end) uses documented D3D9 only: `CheckDeviceFormat` gates for `G32R32F`/`R32F`
+  render-target textures and post-pixel-shader blending on the owning `A16B16G16R16F` format,
+  ZERO/SRCCOLOR blend caps, `MaxPixelShader30InstructionSlots` against the embedded ps_3_0 program
+  (`dsx`/`dsy` receiver-plane bias, nine point taps), one `D3DSBT_ALL` block, one `DrawPrimitiveUP`
+  quad. Cross-compiled with the SSE2/four-byte-stack policy; verified on CrossOver only (the quad
+  derivative convention of `dsx`/`dsy` at 2x2 quad granularity, FP16 blend rounding and the format
+  gates are unverified natively; the fixture excludes pixels whose result depends on the convention).
 - The ambient occlusion pass (`src/renderer/ambient_occlusion_pass.cpp`, step 1, detached) uses
   documented D3D9 only: `CheckDeviceFormat` gates for the R32F/R16F render targets and post-pixel-shader
   blending on the owning format, blend-factor caps, `MaxPixelShader30InstructionSlots` against a

@@ -595,3 +595,73 @@ throughout; `fade_refused`/`fade_held` present but 0 on all 97 frames.
 `dropped=1` (pass_phases, frame=300) and `incomplete=1/3` (frame_phases,
 frames 300/900/5700) are startup/tail transients, outside the busy window
 (4500-5400 all show `dropped=0 incomplete=0`).
+
+## Sun-shadow apply pass (2026-09-17, worktree)
+
+Standalone implementation of [legacy-sun-application.md](../architecture/legacy-sun-application.md)
+§2 (`src/renderer/sun_shadow_apply_pass.{h,cpp}`, `src/temporal/sun_shadow_apply_ps.hlsl` →
+`sun_shadow_apply_program_inc.h`, 220 conservative ps_3_0 slots) and its §3.3 fixture
+(`motion_output_fixture.cpp` mode `sunapply`, CPU twin `verification/probe/sun_shadow_apply.py`,
+host test `verification/analysis/test_sun_shadow_apply.py`). No proxy wiring; `ShadowReplayPass`
+gained `map_texture()`, `view_rows()`/`set_view_rows()` and `shadow_replay_view_rows` builds the
+frame's view → sun rows. The assigned worktree was removed mid-task, so the work sits uncommitted
+in the main checkout beside another agent's uncommitted `linear_material` changes, which the
+runner's clean build therefore included. Review fixes folded in before the wiring hand-off: RT0 is
+bound before its viewport (a viewport must fit the bound target on native D3D9), the share is
+saturated before use, the vertex declaration/FVF is re-set after the block `Apply` (a D3DSBT_ALL
+block does not restore a null declaration), and the non-planar bias fallback pulls towards the
+light.
+
+Case `sun-shadow-apply` (`run_motion_output.py`; production DLL passive, the pass linked into the
+fixture): a 128² `A16B16G16R16F` target of 64 colour tiles, synthetic `G32R32F` RT2 (box on a
+plane, jittered projection, share pattern with share-free columns and sentinel sky) and a 256²
+`R32F` map ray-cast through the `shadow_replay_basis` cascade (half-extent 5, depth half-range 8).
+Six frames, odd frames with `caller_scene_open=false` (the pass opens its own scene):
+
+| frame | map | elevation | jitter | exponent | compared | ambiguous | worst (FP16 codes) | shadowed / penumbra | hard-shadow edge mismatches (≤1 / ≤2 / >2 texels) |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 | far | 50° | 0 | 1 | 8,809 | 212 | 0 (byte-identical) | 0 | – |
+| 1 | depth 0 | 50° | 1 | 1 | 8,847 | 204 | 0.994 | 8,847 (f = 0 everywhere) | – |
+| 2 | scene | 30° | 2 | 1 | 8,990 | 245 | 0.998 | 3,761 / 255 | 120 / 17 / 0 |
+| 3 | scene | 50° | 3 | 1 | 8,756 | 218 | 0.997 | 2,266 / 258 | 109 / 8 / 0 |
+| 4 | scene | 70° | 5 | 1/2.2 | 8,757 | 218 | 0.998 | 1,632 / 240 | 58 / 3 / 0 |
+| 5 | = 4 after Reset | | | | byte-identical to frame 4 | | | | |
+
+Every compared pixel is within one FP16 code of `C·(1−(1−f)·s)^e` with `f` from the CPU twin on
+the same RT2 and map (0 violations in 52,916 pixel comparisons); "ambiguous" pixels (2.3–2.7 %:
+a tap or the receiver within 2e-3 texel of a boundary, a compare within 1e-4 of equality, a quad
+straddling a sentinel or near the planar threshold, or fine/coarse derivatives disagreeing) are
+excluded from the strict compare. Sentinel and share-free pixels, factor-1 pixels and alpha are
+byte-identical in every frame. Hard-shadow disagreements against the analytic box shadow are all
+within two map texels of an edge (the rotated 3×3 kernel's reach); 345 of 376 within one.
+Checks 156 = 126 fixture checks (`RESULT PASS checks=126`) + 30 validator checks (device line,
+frame sets, timing, Reset identity, far identity, zero-map law, and per frame sizes, twin,
+ambiguity bound, scene predicates). Fixture evidence per frame: skip paths `input` (missing map),
+`format` (R32F RT2, A8R8G8B8 target, width and height mismatch), `params`, recording caller and
+`device` (an RT2 of a second device) touch nothing (target byte-identical, state snapshot equal);
+`reset_pending` refused between `before_reset` and `after_reset`; hostile caller state (blend
+factors and op, Z, textures 0–1, scissor, viewport, pixel shader) restored with the snapshot now
+covering `SRCBLEND`/`DESTBLEND`/`BLENDOP` and the other normalized render states, textures and
+samplers 0–15, the vertex texture samplers and stage 0's coordinate states; `references()` 3
+across Reset, 0 after detach. `ShadowReplayPass` accessors: rows round-trip detached and
+attached, `before_reset` invalidates the rows and drops the map, `prepare()` publishes the
+256² map texture in the attached format.
+
+Bias: constant 0.003 and clamp/fallback 0.01 in normalized sun depth (fixture values, caller-tuned).
+The receiver-plane fit is dropped in a 2×2 quad whose view depth steps by more than 5 % (the
+silhouette column) and the clamp value then pulls the receiver towards the light; without that
+fallback frame 2 showed a one-pixel acne column beside the box at 30°.
+
+Timing (`SUNAPPLY_TIME`, CPU-inclusive, EVENT-synchronized, 128² through the proxy device, mostly
+fixed per-call cost): first execute 174.7 ms (block creation and backend program compile), frames
+1–4 1.54–3.68 ms, the first frame after the Reset 5.41 ms. The game-size GPU number is the run's
+`frame_end` delta once wired. Companion cases on the same build: `production-on` 43 and
+`seam-ownership-shadow-replay-on` 144 checks, PASS. Host tests `test_sun_shadow_apply` (6) and
+`test_shadow_replay_depth` OK. Compact record (the runner's own output)
+`verification/results/bottle-X3/sun-shadow-apply-fixture.json`; program provenance
+`verification/results/sun-shadow-apply-program.json`.
+
+Open: quads straddling a sentinel (sky silhouettes) are excluded from the strict compare as
+ambiguous, so the quad's behaviour on those pixels is unverified beyond the byte-identity of the
+sentinel pixels themselves; the bias constants at production scale and the `dsx`/`dsy` quad
+convention on native D3D9 are unmeasured.

@@ -70,6 +70,9 @@
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/hdr_writeback_program.h"
+#include "../../src/renderer/sun_shadow_apply_pass.h"
+#include "../../src/renderer/shadow_replay_projection.h"
+#include "../../src/renderer/shadow_replay_pass.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -162,14 +165,17 @@ constexpr D3DRENDERSTATETYPE watched_states[] = {
     D3DRS_CLIPPLANEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_ZFUNC, D3DRS_LIGHTING, D3DRS_COLORWRITEENABLE2,
     D3DRS_MULTISAMPLEMASK, D3DRS_VERTEXBLEND, D3DRS_WRAP0, D3DRS_CLIPPING,
     D3DRS_WRAP1, D3DRS_WRAP2, D3DRS_WRAP3, D3DRS_WRAP4, D3DRS_WRAP5, D3DRS_WRAP6, D3DRS_WRAP7,
-    D3DRS_WRAP8, D3DRS_WRAP9, D3DRS_WRAP10, D3DRS_WRAP11, D3DRS_WRAP12, D3DRS_WRAP13, D3DRS_WRAP14, D3DRS_WRAP15};
+    D3DRS_WRAP8, D3DRS_WRAP9, D3DRS_WRAP10, D3DRS_WRAP11, D3DRS_WRAP12, D3DRS_WRAP13, D3DRS_WRAP14, D3DRS_WRAP15,
+    // The apply quad's blend and the remaining states its normalize sets.
+    D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE, D3DRS_INDEXEDVERTEXBLENDENABLE,
+    D3DRS_POINTSPRITEENABLE, D3DRS_DITHERENABLE, D3DRS_ANTIALIASEDLINEENABLE};
 constexpr unsigned watched_count = sizeof(watched_states) / sizeof(watched_states[0]);
-// Sampler states the resolve normalizes on s0-s6; compared on stages 0-7.
+// Sampler states the resolve normalizes on s0-s6; compared on stages 0-15 (the apply quad nulls 0-15).
 // MIPMAPLODBIAS is watched too: with the mip bias on (X3M_TAA_MIP_BIAS) the
 // regular scripts bind no mip-mapped texture, so a bias left on a stage
 // across any restore point would fail the state comparisons.
 constexpr D3DSAMPLERSTATETYPE watched_samplers[] = {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER, D3DSAMP_MIPFILTER, D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_SRGBTEXTURE, D3DSAMP_MAXMIPLEVEL, D3DSAMP_MIPMAPLODBIAS};
-constexpr unsigned sampler_stages = 8, sampler_count = sizeof(watched_samplers) / sizeof(watched_samplers[0]);
+constexpr unsigned sampler_stages = 16, sampler_count = sizeof(watched_samplers) / sizeof(watched_samplers[0]);
 
 // Every state the route or its fill may touch. Getters add references that
 // are dropped immediately: only pointer identity is compared.
@@ -185,6 +191,8 @@ struct Snapshot {
     IDirect3DBaseTexture9* textures[sampler_stages]{};
     DWORD samplers[sampler_stages][sampler_count]{};
     float ps_low[32]{}; UINT frequency0 = 0; IDirect3DIndexBuffer9* indices = nullptr;
+    // Nulled by the apply quad's normalize: the vertex texture samplers and stage 0's coordinate states.
+    IDirect3DBaseTexture9* vertex_textures[4]{}; DWORD stage0[2]{};
 };
 struct Object {
     const char* name; IDirect3DVertexBuffer9* vb = nullptr;
@@ -639,6 +647,9 @@ struct Fixture {
             if (SUCCEEDED(d->GetTexture(i, &s.textures[i])) && s.textures[i]) s.textures[i]->Release();
             for (unsigned k = 0; k < sampler_count; ++k) api(d->GetSamplerState(i, watched_samplers[k], &s.samplers[i][k]), "GetSamplerState");
         }
+        for (UINT i = 0; i < 4; ++i) if (SUCCEEDED(d->GetTexture(D3DVERTEXTEXTURESAMPLER0 + i, &s.vertex_textures[i])) && s.vertex_textures[i]) s.vertex_textures[i]->Release();
+        api(d->GetTextureStageState(0, D3DTSS_TEXCOORDINDEX, &s.stage0[0]), "GetTextureStageState TEXCOORDINDEX");
+        api(d->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &s.stage0[1]), "GetTextureStageState TEXTURETRANSFORMFLAGS");
         api(d->GetPixelShaderConstantF(0, s.ps_low, 8), "GetPixelShaderConstantF low");
         api(d->GetStreamSourceFreq(0, &s.frequency0), "GetStreamSourceFreq");
         if (SUCCEEDED(d->GetIndices(&s.indices)) && s.indices) s.indices->Release();
@@ -681,6 +692,8 @@ struct Fixture {
         }
         differs(std::memcmp(x.ps_low, y.ps_low, sizeof x.ps_low) != 0, "ps_c0_7");
         differs(x.frequency0 != y.frequency0, "frequency0"); differs(x.indices != y.indices, "indices");
+        for (unsigned i = 0; i < 4; ++i) { char what[32]; std::snprintf(what, sizeof what, "vertex_texture_%u", i); differs(x.vertex_textures[i] != y.vertex_textures[i], what); }
+        differs(std::memcmp(x.stage0, y.stage0, sizeof x.stage0) != 0, "stage0_coordinates");
         ++restorations;
         std::printf("RESTORE frame=%llu label=%s differences=%u\n", frame, label, differences);
         if (differences) throw std::runtime_error(label);
@@ -3009,6 +3022,7 @@ struct Fixture {
 #include "motion_output_cutout_inc.h"
 #include "motion_output_fade_route_inc.h"
 #include "motion_output_shadow_replay_inc.h"
+#include "motion_output_sun_apply_inc.h"
 } // namespace
 // The glow pass stand-in: records the signal count at entry (the trampoline's
 // signal must precede it), then with glow the depth unbind and the bloom copy
@@ -3094,7 +3108,7 @@ int main(int argc, char** argv) {
         f.emission_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime,"x3m_linear_emission_fixture_fault",false);
         f.emission_readback = symbol<HRESULT (*)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*)>(runtime,"x3m_motion_output_fixture_readback_target",false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.sunlane || f.emissions || mode == "shadowreplay" || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.sunlane || f.emissions || mode == "shadowreplay" || mode == "sunapply" || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
@@ -3156,7 +3170,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if ((f.taa || f.cutout || f.faderoute) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.sunlane) f.run_sun_lane(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
+        if (f.sunlane) f.run_sun_lane(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "sunapply") run_sun_apply_integration(f); else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

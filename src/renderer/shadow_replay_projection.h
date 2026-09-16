@@ -107,4 +107,32 @@ inline bool shadow_replay_light_rows(const CameraState& camera, const float rows
     }
     return true;
 }
+// The frame's view -> sun-space rows for the scene-end apply quad
+// (docs/architecture/legacy-sun-application.md, section 2): S . W of the
+// per-draw product above without the draw's clip rows, three dp4 rows applied
+// to the view position (x, y, z, 1) giving sun-space NDC x, y and the
+// normalized depth. out[12] row-major.
+inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowReplayBasis& basis, const ShadowReplayCascade& cascade,
+                                    float out[12]) noexcept {
+    if (!camera.valid || !basis.valid || !out) return false;
+    double W[3][4] = {};
+    for (unsigned i = 0; i < 3; ++i) {
+        for (unsigned j = 0; j < 3; ++j) { W[i][j] = double(camera.r[i * 3 + j]); W[i][3] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
+    }
+    const double E = double(cascade.half_extent), D = double(cascade.depth_half_range);
+    if (!(E > 0.) || !(D > 0.)) return false;
+    const float* axes[3] = {basis.right, basis.up, basis.forward};
+    for (unsigned a = 0; a < 3; ++a) {
+        double dot = 0;
+        for (unsigned j = 0; j < 3; ++j) dot += double(axes[a][j]) * double(basis.center[j]);
+        const double scale = a == 2 ? 1. / (2. * D) : 1. / E, offset = a == 2 ? (D - dot) / (2. * D) : -dot / E;
+        for (unsigned j = 0; j < 4; ++j) {
+            double m = j == 3 ? offset : 0.;
+            for (unsigned k = 0; k < 3; ++k) m += double(axes[a][k]) * scale * W[k][j];
+            if (!std::isfinite(m) || std::fabs(m) > 1e15) return false;
+            out[a * 4 + j] = float(m);
+        }
+    }
+    return true;
+}
 } // namespace x3m::renderer
