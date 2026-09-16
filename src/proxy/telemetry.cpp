@@ -2,6 +2,7 @@
 #include "capture.h"
 #include "loading_trace.h"
 #include "game_phases.h"
+#include "cpu_state.h"
 #include <algorithm>
 #include <cstring>
 
@@ -10,6 +11,10 @@ namespace {
 bool active=false, draw_active=false, reporting=false;
 void (*flush_output)()=nullptr;
 uint64_t clock_frequency=0, startup=0;
+// Histogram edges (10 us, 100 us, ... 100 ms) in QPC ticks, computed once at
+// initialize: record() runs inside the light-envelope draw hooks
+// (cpu_state.h), so the bucketing is integer work, not a double division.
+uint64_t bucket_ticks[5]{};
 State global;
 constexpr const char* names[]={"lock_wait","create_device","present_normal","present_capture","frame_normal","frame_capture","draw_backend","capture_cpu","snapshot","shader_vs_backend","shader_ps_backend","shader_inspect","shader_getfunction","shader_hash","shader_dump","texture","cube_texture","volume_texture","render_target","depth_stencil","vertex_buffer","index_buffer","reset","log_flush","cursor_properties","cursor_position","cursor_show","stretch_backend","route_gate","route_draw","route_set_rt","route_jitter","route_fill","route_lazy_flush","route_readback","taa_run","taa_state_capture","taa_copy_color","taa_copy_depth","taa_resolve_draw","taa_state_apply","taa_copy_back","hdr_redirect","hdr_writeback","hdr_writeback_draw","hdr_writeback_stretch","hdr_bind","hdr_recheck","hdr_meter","hdr_meter_readback"};
 static_assert(sizeof(names)/sizeof(*names)==static_cast<unsigned>(Metric::Count));
@@ -30,6 +35,7 @@ void initialize(void (*flush_log)()){
     draw_active=GetEnvironmentVariableW(L"X3M_TELEMETRY_DRAW",value,8)==1 && value[0]==L'1';
     LARGE_INTEGER f{}; if(!QueryPerformanceFrequency(&f)||f.QuadPart<=0){active=false;return;}
     clock_frequency=uint64_t(f.QuadPart); startup=now();global.last_summary=startup;
+    for(unsigned i=0,limit_us=10;i<5;++i,limit_us*=10)bucket_ticks[i]=clock_frequency*limit_us/1000000u;
     log("telemetry_start schema=1 qpc_frequency=%llu qpc=%llu anchor=proxy_initialize cpu_only=1 per_draw=%u",clock_frequency,startup,draw_active);
 }
 bool enabled(){return active;}
@@ -43,14 +49,16 @@ void record(State& state,Metric metric,uint64_t ticks,bool failed,uint64_t bytes
     if(!enabled(metric))return;
     auto& c=state.counters[static_cast<unsigned>(metric)];
     ++c.count;c.failures+=failed;c.total+=ticks;c.minimum=std::min(c.minimum,ticks);c.maximum=std::max(c.maximum,ticks);c.bytes+=bytes;
-    const double duration=us(ticks);
-    const unsigned bucket=duration<=10?0:duration<=100?1:duration<=1000?2:duration<=10000?3:duration<=100000?4:5;
+    unsigned bucket=0;while(bucket<5 && ticks>bucket_ticks[bucket])++bucket;
     ++c.buckets[bucket];
     // Check the reporting deadline from every observed operation, including
-    // resource creation during loading when no Present calls arrive.
+    // resource creation during loading when no Present calls arrive. The
+    // summary formats microseconds and calls the loading reporters (x87 code
+    // in the CRT formatter): it runs under its own CPU-state envelope so the
+    // light draw hooks that record per-draw metrics stay transparent.
     const auto stamp=now();
     if(!state.last_summary)state.last_summary=stamp;
-    else if(!reporting && stamp-state.last_summary>=clock_frequency)summary(state,"interval",state.frame);
+    else if(!reporting && stamp-state.last_summary>=clock_frequency)call_preserved([&]{summary(state,"interval",state.frame);});
 }
 void summary(State& state,const char* reason,uint64_t frame){
     if(!active)return;

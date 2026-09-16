@@ -93,7 +93,9 @@ def main():
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
-    parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
+    parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles, the proxy draw/scene/state buckets with the state call mix, the pre-draw/between-draws/post-draw split of the game time between hooked calls, and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
+    parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
+                        help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
     parser.add_argument('--frame-phases', action='store_true', help='Per-frame engine phase stamps: ten byte-verified sites inside the render routine partition the frame into pre_render, prologue, scene_update, begin_scene, views, overlays, text, scene_end and present, plus per-view setup/submit sums; one frame_phases line per 300-frame window and up to four frame_phases_slow witnesses keyed by frame (X3M_FRAME_PHASES=1; requires --telemetry; independent of --game-phases; docs/verification/sampling-profiler.md, "Frame phases")')
     parser.add_argument('--audio-sites', action='store_true', help='Load hang witness: add the fourteen byte-verified audio-path markers (media create SetState/Pause returns, message pump entry and drain iterations, the six 0x00498370 manager-update call sites, refill entry, CompletionStatus poll with its HRESULT bucket, Update return, cue play) to the game-phase group (X3M_AUDIO_SITES=1; requires --game-phases); one game_phase_audio line per telemetry window and, with --profile, every 2 s from the sampler thread so the counters stay visible while frames are stopped (docs/architecture/voice-decoder-adapter.md, "Load hang witness build")')
@@ -215,6 +217,10 @@ def main():
         parser.error('--frame-timing requires --telemetry.')
     if args.frame_phases and not args.telemetry:
         parser.error('--frame-phases requires --telemetry.')
+    if args.frame_timing_state_stamps and not args.frame_timing:
+        parser.error('--frame-timing-state-stamps requires --frame-timing.')
+    if not 0 <= args.frame_timing_state_stamps <= 100000:
+        parser.error('--frame-timing-state-stamps must be between 0 and 100000.')
     if args.audio_sites and not args.game_phases:
         parser.error('--audio-sites requires --game-phases.')
     if args.profile_raw and not args.profile:
@@ -391,6 +397,10 @@ def main():
         parser.error('--loading-probes requires --telemetry.')
     if args.frame_timing and not args.telemetry:
         parser.error('--frame-timing requires --telemetry.')
+    if args.frame_timing_state_stamps and not args.frame_timing:
+        parser.error('--frame-timing-state-stamps requires --frame-timing.')
+    if not 0 <= args.frame_timing_state_stamps <= 100000:
+        parser.error('--frame-timing-state-stamps must be between 0 and 100000.')
     if not 1 <= args.gz_buffer_kb <= 65536:
         parser.error('--gz-buffer-kb must be between 1 and 65536.')
     if args.taa:
@@ -447,6 +457,7 @@ def main():
         env['X3M_GAME_PHASES'] = '1' if args.game_phases else '0'
         env['X3M_FRAME_TIMING'] = '1' if args.frame_timing else '0'
         env['X3M_FRAME_PHASES'] = '1' if args.frame_phases else '0'
+        env['X3M_FRAME_TIMING_STATE_STAMPS'] = str(args.frame_timing_state_stamps if args.frame_timing else 0)
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
         env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'
         env['X3M_SCENE_DEPTH_CAPTURE'] = '1' if args.scene_depth_capture else '0'
