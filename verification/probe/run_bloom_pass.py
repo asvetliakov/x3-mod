@@ -29,6 +29,10 @@ NAMES = ('quad_vs', *(f'bloom_{name}_ps' for name in filtering.KERNELS),
 # ideal). Three codes cover FP16 storage, shader arithmetic, sampler and UNORM
 # conversion jointly for this moderate bounded corpus, not a universal bound.
 MAX_CODE_ERROR = 3
+# The case repeated after the native Reset: pinned to the odd-geometry,
+# generic-extraction authored case (9x7, decode none), matching kResetCase in
+# bloom_pass_fixture.cpp, so appended cases cannot move it silently.
+RESET_CASE_INDEX = 35
 
 
 def make_cases():
@@ -41,9 +45,10 @@ def make_cases():
                       for x in range(w)] for y in range(h)]
             for strength in (0., .5):
                 for sharp in (0., .75):
-                    cases.append(dict(mode=mode, kind=kind, width=w, height=h,
+                    cases.append(dict(mode=mode, kind=kind, width=w, height=h, levels=3,
                                       strength=strength, sharp=sharp, threshold=0., exposure=1.,
-                                      authored_glow_gain=0., highlight_gain=.05, image=image))
+                                      authored_glow_gain=0., highlight_gain=.05, scatter=.7,
+                                      source_clamp=0., image=image))
     # Six bounded authored configurations, each paired as final strength 0/1
     # to exercise the runtime F10 contribution gate against the same input.
     configurations = (
@@ -70,28 +75,64 @@ def make_cases():
                 row.append(pixel)
             image.append(row)
         for strength in (0., 1.):
-            cases.append(dict(mode=mode, kind='authored', width=w, height=h,
+            cases.append(dict(mode=mode, kind='authored', width=w, height=h, levels=3,
                               strength=strength, sharp=0., threshold=1., exposure=2 ** ev,
-                              authored_glow_gain=gain, highlight_gain=.05, image=image))
+                              authored_glow_gain=gain, highlight_gain=.05, scatter=.7,
+                              source_clamp=0., image=image))
+    cases.extend(clamp_cases())
     return cases
+
+
+# The live compositor constants (capture.cpp: authored glow .375, highlight
+# .05, scatter .65, threshold 1, knee .5, five levels, EV ceiling +1.3) at the
+# bolt geometry of docs/architecture/bloom-falloff.md: a 6x40 bar with alpha 0,
+# so only the thresholded highlight term feeds the pyramid. No other case pins
+# these constants, five effective levels, or the source clamp.
+CLAMP_WIDTH, CLAMP_HEIGHT, CLAMP_BAR = 64, 40, (29, 35)
+CLAMP_EXPOSURE = 2 ** 1.3
+
+
+def clamp_cases():
+    def bar(code, alpha):
+        return [[(code, code, code, alpha) if CLAMP_BAR[0] <= x < CLAMP_BAR[1] else (0., 0., 0., alpha)
+                 for x in range(CLAMP_WIDTH)] for _ in range(CLAMP_HEIGHT)]
+    # A code-1 source is at the clamp, so 1.0 must reproduce the unbounded feed
+    # exactly; the code-5 source is 42x brighter decoded and must fall back onto
+    # the code-1 result at clamp 1, with clamp 2 strictly between. Alpha 0 is the
+    # thresholded highlight lane (the additive bolt); alpha 1 is the authored
+    # glow lane (a * 0.375), which the clamp must bound identically.
+    configurations = (('clamp_ref_none', 1., 0., 0.), ('clamp_ref_one', 1., 1., 0.),
+                      ('clamp_hot_none', 5., 0., 0.), ('clamp_hot_one', 5., 1., 0.),
+                      ('clamp_hot_two', 5., 2., 0.),
+                      ('clamp_authored_ref_none', 1., 0., 1.), ('clamp_authored_ref_one', 1., 1., 1.),
+                      ('clamp_authored_hot_none', 5., 0., 1.), ('clamp_authored_hot_one', 5., 1., 1.))
+    return [dict(mode='gamma2.2', kind='clamp', label=label, width=CLAMP_WIDTH, height=CLAMP_HEIGHT,
+                 levels=5, strength=1., sharp=0., threshold=1., exposure=CLAMP_EXPOSURE,
+                 authored_glow_gain=.375, highlight_gain=.05, scatter=.65, source_clamp=clamp,
+                 alpha=alpha, image=bar(code, alpha))
+            for label, code, clamp, alpha in configurations]
 
 
 def write_cases(cases, path):
     with path.open('wb') as f:
-        f.write(b'X3BP0002' + struct.pack('<I',len(cases)))
+        f.write(b'X3BP0003' + struct.pack('<I',len(cases)))
         for c in cases:
-            f.write(struct.pack('<3I6f',c['width'],c['height'],ref.DECODE_MODES.index(c['mode']),
-                                c['strength'],c['sharp'],c['threshold'],c['exposure'],
-                                c['authored_glow_gain'],c['highlight_gain']))
+            f.write(struct.pack('<4I8f',c['width'],c['height'],ref.DECODE_MODES.index(c['mode']),
+                                c['levels'],c['strength'],c['sharp'],c['threshold'],c['exposure'],
+                                c['authored_glow_gain'],c['highlight_gain'],c['scatter'],
+                                c['source_clamp']))
             for row in c['image']:
                 for p in row:
                     f.write(struct.pack('<4e',*p))
 
 
 def expected(c):
-    p = ref.Params(levels=3, threshold=c['threshold'], strength=c['strength'],
-                   authored_glow_gain=c['authored_glow_gain'], highlight_gain=c['highlight_gain'])
-    bloom = ref.bloom(c['image'],p,exposure=c['exposure'],mode=c['mode'])
+    p = ref.Params(levels=c['levels'], threshold=c['threshold'], strength=c['strength'],
+                   scatter=c['scatter'], authored_glow_gain=c['authored_glow_gain'],
+                   highlight_gain=c['highlight_gain'])
+    # The source clamp bounds the extraction feed only; the displayed scene in
+    # composition() keeps its unbounded HDR value.
+    bloom = ref.bloom(c['image'],p,exposure=c['exposure'],clamp_max=c['source_clamp'],mode=c['mode'])
     display = [[oracle.composition(e,b,c['strength'],exposure=c['exposure'],mode=c['mode'])
                 for e,b in zip(row,blur)] for row,blur in zip(c['image'],bloom)]
     if not c['sharp']:
@@ -117,6 +158,62 @@ def compare(c,path,baseline_path):
                 original_sha256=filtering.digest(baseline_path))
 
 
+# The clamp identities hold where the displayed scene is identical between two
+# clamp cases, i.e. on the black background: inside the bar the scene keeps its
+# unbounded HDR code by design and the two images must differ.
+CLAMP_CODE_TOLERANCE = 1
+
+
+def _rgb_codes(path,pixels):
+    data=path.read_bytes()
+    if len(data)!=pixels*4: raise ValueError('Readback length mismatch')
+    return [(data[i*4+2],data[i*4+1],data[i*4]) for i in range(pixels)]
+
+
+def clamp_relations(cases,directory):
+    """Cross-case source-clamp identities on the unclamped background."""
+    index={c['label']:i for i,c in enumerate(cases) if c.get('label')}
+    lanes={'highlight':'clamp_','authored':'clamp_authored_'}
+    wanted={prefix+name for prefix in lanes.values() for name in ('ref_none','ref_one','hot_none','hot_one')}
+    wanted.add('clamp_hot_two')
+    if set(index)!=wanted: raise ValueError('Missing source-clamp cases')
+    reference=cases[index['clamp_ref_none']]
+    pixels=reference['width']*reference['height']
+    # Outside the bar every clamp case of a lane shares the same displayed
+    # scene, so the whole difference there is the bloom feed. The bar itself
+    # carries the unclamped HDR code and must differ between the two sources.
+    background=[y*reference['width']+x for y in range(reference['height'])
+                for x in range(reference['width']) if not CLAMP_BAR[0] <= x < CLAMP_BAR[1]]
+    if len(background)!=pixels-reference['height']*(CLAMP_BAR[1]-CLAMP_BAR[0]):
+        raise ValueError('Clamp background region mismatch')
+    codes={name:_rgb_codes(directory/f'case_{i}.bgra8',pixels) for name,i in index.items()}
+    def delta(a,b,region):
+        return max(abs(x-y) for i in region for x,y in zip(codes[a][i],codes[b][i]))
+    everywhere=range(pixels)
+    result={}
+    for lane,prefix in lanes.items():
+        identical=codes[prefix+'ref_none']==codes[prefix+'ref_one']
+        clamped=delta(prefix+'hot_one',prefix+'ref_none',background)
+        effect=delta(prefix+'hot_none',prefix+'hot_one',background)
+        result[lane]=dict(identity_bit_identical=identical,
+                          clamped_vs_native_max_code=clamped,
+                          clamp_effect_max_code=effect,
+                          # Informational: the bar itself must still differ,
+                          # since the clamp never touches the displayed scene.
+                          whole_image_max_code=delta(prefix+'hot_one',prefix+'ref_none',everywhere),
+                          passed=identical and clamped<=CLAMP_CODE_TOLERANCE and effect>MAX_CODE_ERROR)
+    # Only the highlight lane carries the intermediate clamp 2.0 case.
+    bracket=max(max(codes['clamp_hot_one'][i][ch]-codes['clamp_hot_two'][i][ch],
+                    codes['clamp_hot_two'][i][ch]-codes['clamp_hot_none'][i][ch])
+                for i in background for ch in range(3))
+    result['clamp_two_bracket_violation_code']=bracket
+    result['background_pixels']=len(background)
+    result['pixels']=pixels
+    result['passed']=bracket<=CLAMP_CODE_TOLERANCE and all(result[lane]['passed'] for lane in lanes)
+    if not result['passed']: raise RuntimeError(f'Source-clamp relations failed: {result}')
+    return result
+
+
 def validate_log(text,cases,returncode):
     lines=text.splitlines()
     terminal=[line for line in lines if line.startswith('RESULT ')]
@@ -140,8 +237,8 @@ def validate_log(text,cases,returncode):
     if len(npatch)!=1 or len(adaptive)!=1 or len(draws)!=1 or int(draws[0])<=0:
         raise ValueError('Missing/duplicate NPatch capability or injected-draw assertion')
     reset=[line for line in lines if line.startswith('RESET_CASE ')]
-    last=cases[-1]
-    if reset!=[f"RESET_CASE index={len(cases)-1} width={last['width']} height={last['height']} checks=1 pass=1"]:
+    last=cases[RESET_CASE_INDEX]
+    if reset!=[f"RESET_CASE index={RESET_CASE_INDEX} width={last['width']} height={last['height']} checks=1 pass=1"]:
         raise ValueError('Missing/duplicate/incorrect post-Reset case')
     if any(line.startswith(('CASE ','CONTROL ')) and not re.fullmatch(
             r'(?:CONTROL test=\d+ pass=1|CASE index=\d+ width=\d+ height=\d+ checks=\d+ pass=1)',line) for line in lines):
@@ -220,12 +317,13 @@ def main():
         report['hostile_adaptive_verified']='ADAPTIVE accepted=1 ' in log
         if not report['hostile_adaptive_verified']: report['untested'].append('hostile adaptive tessellation state rejected by backend')
         for i,c in enumerate(corpus): report['images'].append(dict(index=i,**compare(c,directory/f'case_{i}.bgra8',directory/f'c{i}_t0_original.bgra8')))
-        reset_index=len(corpus)-1
-        report['reset_image']=compare(corpus[-1],directory/'reset_case.bgra8',
+        reset_index=RESET_CASE_INDEX
+        report['reset_image']=compare(corpus[reset_index],directory/'reset_case.bgra8',
                                       directory/f'reset_c{reset_index}_t0_original.bgra8')
         if not report['reset_image']['passed']: raise RuntimeError('Post-Reset independent image mismatch')
         report['compiled_shaders']={name:filtering.digest(directory/(name+'.cso')) for name in NAMES}
         if not all(x['passed'] for x in report['images']): raise RuntimeError('Independent image oracle mismatch')
+        report['clamp_relations']=clamp_relations(corpus,directory)
         report.update(passed=True,phase='complete',gpu_execution_verified=True)
     except Exception as error:
         report.update(passed=False,phase='failed',error=str(error))

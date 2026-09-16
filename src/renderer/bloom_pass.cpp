@@ -554,7 +554,10 @@ BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
     // One validated common block; per-pass work updates dimensions only.
     c.filter[0] = p.filter.threshold; c.filter[1] = p.filter.knee;
     c.filter[2] = p.filter.scatter; c.filter[3] = p.filter.strength;
-    c.radiance[0] = p.agx.exposure[0]; c.radiance[1] = p.agx.exposure[1];
+    c.radiance[0] = p.agx.exposure[0];
+    // Bloom-only decoded-space source ceiling (bloom.h); the AgX display block
+    // uploaded below keeps the unmodified firefly clamp.
+    c.radiance[1] = p.agx.exposure[1] < p.filter.source_clamp ? p.agx.exposure[1] : p.filter.source_clamp;
     for (unsigned i = 0; i < 4; ++i) c.decode[i] = p.agx.decode[i];
     c.radiance[3] = p.filter.authored_glow_gain;
     if (p.filter.authored_glow_gain > 0.f) c.decode[3] = p.filter.highlight_gain;

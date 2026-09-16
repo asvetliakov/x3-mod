@@ -118,6 +118,10 @@ float emission_gain = 1.f;
 bool linear_material_requested = false;
 x3m::renderer::LinearMaterialConfig linear_material_config{};
 bool bloom_requested = false; // X3M_HDR_BLOOM=1; opt-in AgX compositor replacement
+// X3M_BLOOM_SOURCE_CLAMP=C: bloom-only decoded-space ceiling on the extraction
+// source (docs/architecture/bloom-falloff.md). kAgxClampOff is the unbounded
+// feed this option leaves untouched when absent or invalid.
+float bloom_source_clamp = x3::temporal::kAgxClampOff;
 x3m::renderer::HdrConfig hdr_config{};
 // X3M_MOTION_RT_MODE=lazy keeps the route's RT1/RT2 bindings across routed
 // draws (experiment; default perdraw); X3M_MOTION_FRAME_LOG=<n> sets the
@@ -682,6 +686,9 @@ void retain_compositor_scene(void* storage,const MotionHdrScene& scene) noexcept
     call.input.filter.authored_glow_gain=0.375f;
     call.input.filter.scatter=0.65f;
     call.input.filter.highlight_gain=0.05f;
+    // Bloom-only source ceiling: the pyramid sees at most this decoded code,
+    // the presented scene keeps its full HDR value (bloom-falloff.md).
+    call.input.filter.source_clamp=bloom_source_clamp;
     // OFF retains the same filtering/RGB replacement, with zero final gain.
     // Skipping replacement would restore the original compositor's glow.
     call.input.filter.strength=ctx.comparison.bloom_requested?1.f:0.f;
@@ -762,9 +769,15 @@ void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
         if(call.ready)++ctx.bloom_prepared;
     }
     if((call.ready && ctx.bloom_prepared==1) || (!prepared.ready && ctx.bloom_failure_reports++<8) || ctx.frame%300==0)
-        log("bloom_prepare device=%llu frame=%llu ready=%u reason=%s operation=%08lx restore=%08lx state_preserved=%u cpu_ticks=%llu bytes=%llu",
+    {
+        char clamp_text[24];
+        const float clamp=call.input.filter.source_clamp;
+        if(clamp<x3::temporal::kAgxClampOff)std::snprintf(clamp_text,sizeof clamp_text,"%g",double(clamp));
+        else std::snprintf(clamp_text,sizeof clamp_text,"none");
+        log("bloom_prepare device=%llu frame=%llu ready=%u reason=%s operation=%08lx restore=%08lx state_preserved=%u clamp=%s cpu_ticks=%llu bytes=%llu",
             ctx.id,ctx.frame,call.ready,prepared.reason,prepared.operation,prepared.restore,prepared.state_preserved,
-            telemetry::now()-begin,ctx.bloom.resource_bytes());
+            clamp_text,telemetry::now()-begin,ctx.bloom.resource_bytes());
+    }
 }
 void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
     auto& call=*static_cast<CompositorInvocation*>(storage);
@@ -2318,6 +2331,22 @@ void initialize_log(HMODULE module) {
      shimmer_trace_requested=asked && motion_output_requested && taa_requested;
      if(asked)log("shimmer_trace_mode requested=1 enabled=%u motion_output=%u taa=%u",shimmer_trace_requested,motion_output_requested,taa_requested);}
     bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
+    // X3M_BLOOM_SOURCE_CLAMP=C (finite, >0, at most 64): decoded-space ceiling
+    // on the bloom extraction source only. Needs the bloom replacement; absent,
+    // unparsable or out of range keeps today's unbounded feed.
+    {bloom_source_clamp=x3::temporal::kAgxClampOff;
+     SetLastError(ERROR_SUCCESS);
+     const DWORD length=GetEnvironmentVariableW(L"X3M_BLOOM_SOURCE_CLAMP",setting,32);
+     const bool present=length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND;
+     wchar_t* end=nullptr;
+     const float value=length&&length<32?wcstof(setting,&end):0.f;
+     const bool valid=length&&length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>0.f&&value<=64.f;
+     if(valid&&bloom_requested)bloom_source_clamp=value;
+     // Always one line, so a log audit separates "variable absent" from "the
+     // option was never built into this DLL".
+     log("bloom_source_clamp_mode requested=%u enabled=%u clamp=%g clamp_valid=%u bloom=%u",
+         unsigned(present),unsigned(bloom_source_clamp<x3::temporal::kAgxClampOff),
+         double(value),unsigned(valid),unsigned(bloom_requested));}
     // X3M_AMBIENT_OCCLUSION=1: the AO chain at the scene end (needs the route
     // and the resolve, which integrates the rotated noise). The whole radius and
     // strength strings must parse; out of range keeps the default.

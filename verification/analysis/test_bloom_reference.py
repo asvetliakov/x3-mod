@@ -287,6 +287,7 @@ int main() {
  BloomParams p{}; BloomConstants c{};
  assert(p.levels==5 && p.strength==.05f && p.threshold==1 && p.knee==.5f && p.scatter==.7f);
  assert(p.authored_glow_gain==0 && p.highlight_gain==.05f);
+ assert(p.source_clamp==kAgxClampOff);
  const AgxDecode modes[]={AgxDecode::gamma22,AgxDecode::srgb,AgxDecode::none};
  for (AgxDecode mode : modes) {
    BloomParams legacy_params{}; BloomConstants legacy{}, authored{};
@@ -325,6 +326,18 @@ int main() {
  p.highlight_gain=-.01f; assert(!valid_bloom_params(p));
  p={}; p.highlight_gain=std::numeric_limits<float>::quiet_NaN(); assert(!valid_bloom_params(p));
  p={}; p.highlight_gain=std::numeric_limits<float>::infinity(); assert(!valid_bloom_params(p));
+ p={}; p.source_clamp=0; assert(!valid_bloom_params(p));
+ p={}; p.source_clamp=-1; assert(!valid_bloom_params(p));
+ p={}; p.source_clamp=65505; assert(!valid_bloom_params(p));
+ p={}; p.source_clamp=std::numeric_limits<float>::quiet_NaN(); assert(!valid_bloom_params(p));
+ p={}; p.source_clamp=std::numeric_limits<float>::infinity(); assert(!valid_bloom_params(p));
+ // The bloom source ceiling only tightens c27.y; it never raises it.
+ { BloomParams s{}; BloomConstants unbounded{}, capped{};
+   assert(prepare_bloom(unbounded,{13,7},{7,4},s,2,4,AgxDecode::srgb) && unbounded.radiance[1]==4);
+   s.source_clamp=1; assert(prepare_bloom(capped,{13,7},{7,4},s,2,4,AgxDecode::srgb));
+   assert(capped.radiance[1]==1 && capped.radiance[2]==65504);
+   s.source_clamp=8; assert(prepare_bloom(capped,{13,7},{7,4},s,2,4,AgxDecode::srgb));
+   assert(capped.radiance[1]==4); }
  assert(kBloomFirstRegister==24 && kBloomRegisterCount==5 && kBloomMaxLevels==6);
  assert(bloom_even_extraction({82,2}) && !bloom_even_extraction({82,1}));
  assert(!bloom_even_extraction({0,2}) && !bloom_even_extraction({2,3}));

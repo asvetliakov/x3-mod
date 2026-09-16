@@ -73,6 +73,10 @@ static DWORD GetCurrentThreadId() {
 }
 static void* GetModuleHandleW(const wchar_t*) { return reinterpret_cast<void*>(0x400000u); }
 
+// Bloom source clamp ABI (src/temporal/bloom.h): only the extracted
+// bloom_prepare logging reads it here.
+namespace x3 { namespace temporal { constexpr float kAgxClampOff = 65504.f;
+struct BloomParams { float source_clamp = kAgxClampOff; }; } }
 namespace x3m {
 
 struct Device;
@@ -117,6 +121,7 @@ struct BloomBoundary {
 struct BloomPrepare {
     IDirect3DSurface9* scene = nullptr;
     BloomBoundary boundary{};
+    x3::temporal::BloomParams filter{};
     int agx = 0, decode = 0;
     float sharpen = 0;
 };
