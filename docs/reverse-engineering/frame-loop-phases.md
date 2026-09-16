@@ -298,6 +298,21 @@ and must be extended to these sites before any claim.
    `std::string` construct/destroy (`0x00472524`, `0x0047255f`). Constant cost;
    listed for completeness, not as a suspect.
 
+## 5b. Implemented sites
+
+All ten sites of section 4 are installed by `X3M_FRAME_PHASES=1`
+(`src/proxy/frame_phase_sites.h`, runtime `src/proxy/frame_phases.cpp`,
+launcher `--frame-phases`, requires `--telemetry`). The ESP re-check for sites
+4 and 8 held: the shared game-phase stub restores all registers and the flags
+before its `jmp [next]`, the dispatcher is a plain `jmp [entry]`, and the
+displaced instructions therefore execute in the tail at the game's exact ESP;
+neither site was dropped or moved. The verifier
+`verification/probe/verify_frame_phase_sites.py` binds the ledger above to the
+installed EXE and adds the relative-replay check at alternate arena addresses
+that this note left open, plus the exact incoming-edge sets of the
+"Validation performed" list. Schema, phase names and the scaling column are in
+`docs/verification/sampling-profiler.md`, "Frame phases".
+
 ## 6. What this does not establish
 
 - No runtime measurement. The 53 % attribution is the open question these stamps

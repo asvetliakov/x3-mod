@@ -5,7 +5,8 @@ largest proxy cost in busy scenes; what to change, in which order, and what each
 step is worth. Inputs: run87 (DLL `bbadc568`, source `f94290c`, `--frame-timing`
 on, log `session-20260916-055042-216.log`) and the bottle microbenchmark
 `verification/results/bottle-X3/state-hook-benchmark.json` (same DLL, section in
-`docs/verification/sampling-profiler.md`). Nothing here is implemented.
+`docs/verification/sampling-profiler.md`). Steps 2 and 3 are implemented
+(Envelope, below); the benchmark record now holds the post-change numbers.
 
 ## Measured inputs
 
@@ -21,7 +22,7 @@ flat across load, so it is fixed per-call overhead, not driver work. Of 200
 Benchmark, ns per call (native backend / proxy with timing off / timing on):
 SetRenderState 13.5 / 121.5 / 349.9; SetTexture 16.2 / 128.1 / 357.2;
 SetSamplerState 10.6 / 110.3 / 338.0; SetVertexShaderConstantF(4 regs)
-16.7 / 79.5 / 310.2; SetStreamSource (heavy guard) 15.8 / 1393.7 / 1618.9;
+16.7 / 79.5 / 310.2; SetStreamSource (heavy guard at the time) 15.8 / 1393.7 / 1618.9;
 SetTextureStageState is not hooked (11.4 / 11.1). Primitives:
 QueryPerformanceCounter 67.8; uncontended `std::recursive_mutex` lock+unlock
 6.8; Get/SetLastError pair 3.9; `LightCallBoundary` envelope 9.9;
@@ -242,6 +243,47 @@ Expected result after 1-4: the hooked state calls cost ~30k × (14 + ~40) ≈
 18-19 ms if the game's own CPU time is what the remainder implies. After 5 the
 hooked calls cost a further ~0.6-0.9 ms less. These are projections from the
 benchmark's per-call numbers and run87's counts, not measured frames.
+
+## Envelope (steps 2 and 3, implemented 2026-09-16)
+
+`CpuCallBoundary`/`HookGuard` became `LightCallBoundary`/`PlainHookGuard` on
+`set_stream_source`, `set_indices`, `set_declaration`, `set_fvf` and the four
+draw hooks (`capture.cpp`); the `CallTimer` outer QPC pair now runs only on
+capture frames and its inner pair only when `DrawBackend` telemetry is on.
+What the draw path reached that was x87, found by extending
+`check_no_x87.py` to root at those eight hooks: `log()` (the MinGW `vfprintf`
+formatter), `telemetry::record` (`us()` double bucketing, `fildll`) and its
+once-per-second `summary` (formatting, the loading reporters), `snapshot`'s
+`snprintf` and `shader_id`'s `swprintf` (capture only), `std::fabs` in
+`fade_region_math.h` (the MinGW header inlines it as x87 `fabs`),
+`std::floor`/`std::ceil` there (CRT routines returning in `st(0)`),
+`std::sqrt(float)` in `fade_route_core.h` and `evaluate_draw` (`_sqrtf` is
+x87) and `unsigned(float)` in `fade_route::permille` (`fistpll`). Fixes:
+`log()` formats under `call_preserved` (a full FNSAVE/FRSTOR save around an
+indirect call, paid per written line; `cpu_state.h`), `record` buckets in
+integer ticks against edges computed at `initialize` and calls `summary`
+through `call_preserved`, the shader dump's formatting and file write run
+under `call_preserved`, the render-target role string is built by hand, and
+`sse_scalar.h` supplies `abs`, `floor`, `ceil` (truncating conversion, so
+the result does not depend on the application's live MXCSR rounding mode)
+and `sqrt` (`sqrtss`). The stream/indices/declaration shadows keep their D3D
+accessors after the native call (D3D runtime entry points like the slot
+itself; LastError/MXCSR restored by the boundary's destructor). Audit: 72
+roots, 480 reachable functions, 0 violations. Measured (same fixture, X3
+bottle, worktree DLL `207d4ede`, `state-hook-benchmark.json`): SetStreamSource
+133.3 ns timing off (was 1393.7), 371.5 timing on (was 1618.9); the
+SetStreamSource + DrawIndexedPrimitive pair 1275.8 ns timing off (was 4197.4),
+1877.2 timing on (was 5276.4), against 389.2 native, so ~0.89 µs of proxy
+work per pair with the timing off. Fail-closed proof: the fixture's
+`PRESERVE` rows enter SetStreamSource, SetIndices, SetVertexDeclaration,
+SetFVF, SetRenderState, DrawIndexedPrimitive and DrawPrimitive with three live
+x87 registers, a sticky invalid flag, control word 0x0f7f, MXCSR 0xbf80 and
+LastError 0x3ac, and every row reports the FNSAVE image, MXCSR and LastError
+unchanged in both proxy configurations (and natively). `lock_wait` (`HeldHookLock`) is now sampled only by the remaining `HookGuard` users: begin_scene, end_scene, present, reset, clear, set_rt, set_depth, get_rt, get_rt_data, stretch_rect, color_fill, update_surface, update_texture, the create_* resource/shader/query/state-block entries, query_issue/query_release, stateblock begin/end/apply/release, get_render_state, draw_rect_patch/draw_tri_patch, the cursor hooks and device/factory release; its count per interval drops by the draw and binding calls (run87: most of the 249 per second), which tools/analysis/analyze_iteration07_taa.py, analyze_iteration09_cost.py and analyze_iteration10.py read as `lock_wait`.
+`CpuState::capture` now leaves the FPU initialised (FNSAVE, then FNINIT) instead
+of restoring the live image, so heavy-envelope code and the formatter under
+`call_preserved` run on an empty x87 stack; `restore` is unchanged. Run 87's
+per-draw figure is not remeasured here; the next flight capture settles it.
 
 ## Dispatch trim (step 4, implemented)
 

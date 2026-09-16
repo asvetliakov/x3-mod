@@ -5,12 +5,17 @@
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/proxy/game_phases.h"
 #include "../../src/proxy/game_phase_sites.h"
+#include "../../src/proxy/frame_phases.h"
+#include "../../src/proxy/frame_phase_sites.h"
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
 namespace phases=x3m::game_phases;
 namespace patch=x3m::engine_patch;
 namespace marker=x3m::game_phases::sites;
+namespace frame=x3m::frame_phases;
+namespace frame_marker=x3m::frame_phases::sites;
+constexpr unsigned total_stubs=marker::Count+frame_marker::Count; // frame stamps share the emitter, indexed after the phase group
 namespace x3m::loading_trace {
 void intervals_freeze(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,DWORD) noexcept {}
 }
@@ -54,11 +59,11 @@ asm(".text\n.globl _fixture_call\n_fixture_call:\n"
 
 static unsigned checks=0,failures=0;
 static void check(bool okay,const char* label){++checks;if(!okay){++failures;std::printf("FAIL %s\n",label);}}
-static std::uint32_t callbacks[marker::Count]{},observed[marker::Count][9]{};
+static std::uint32_t callbacks[total_stubs]{},observed[total_stubs][9]{};
 static std::uint32_t stack_args[marker::Count][6]{};
 static bool capture_args=false;
 static void __cdecl hostile_callback(unsigned kind,const std::uint32_t* regs){
-    check(kind<marker::Count,"callback marker ID");if(kind>=marker::Count)return;
+    check(kind<total_stubs,"callback marker ID");if(kind>=total_stubs)return;
     ++callbacks[kind];std::memcpy(observed[kind],regs,sizeof observed[kind]);
     if(capture_args&&(kind==marker::DelayedBegin||kind==marker::ColdBegin||kind==marker::PresentBegin||
                      kind==marker::PublisherBegin||kind==marker::PlaybackBegin||
@@ -544,6 +549,132 @@ static void targeted_benchmark(void* continuation,void* const* stubs){
     check(VirtualFree(bytes,0,MEM_RELEASE)!=FALSE,"dynamic target witness released");
     restore_target_replay(hooked);
 }
+extern "C" {
+std::uint32_t frame_native_calls=0;
+void frame_callee();void frame_callee_ret4();
+}
+asm(".text\n.globl _frame_callee\n_frame_callee:\n incl _frame_native_calls\n ret\n"
+".globl _frame_callee_ret4\n_frame_callee_ret4:\n incl _frame_native_calls\n ret $4\n");
+// One synthetic render frame: the ten real spans in the game's order with a
+// two-iteration view loop whose back edge lands on the view_setup_begin span
+// start (as 0x472387 does on the game's loop). Call/disp32 fields point at
+// fixture objects; opcodes, lengths and relocation metadata are the contract.
+struct FrameBody { void* body=nullptr;void* spans[frame_marker::Count]{};unsigned length=0; };
+static std::uint32_t frame_view[0x20]{},frame_layers[0x20]{},frame_global_a=0x1111,frame_global_b=0x2222;
+static FrameBody make_frame_body(){
+    frame_view[0x1c/4]=std::uint32_t(address(frame_layers));
+    patch::Emitter e(128);FrameBody r;r.body=e.here();
+    e.byte(0xbe);e.dword(std::uint32_t(address(frame_view)));
+    for(unsigned i=1;i<=4;++i)push(e,i); // the qsort arguments Views' add esp,0x10 removes
+    r.spans[0]=e.here();call(e,reinterpret_cast<void*>(&frame_callee));
+    r.spans[1]=e.here();call(e,reinterpret_cast<void*>(&frame_callee));
+    r.spans[2]=e.here();e.byte(0xa1);e.dword(std::uint32_t(address(&frame_global_a)));
+    r.spans[3]=e.here();const unsigned char views[]={0x33,0xdb,0x83,0xc4,0x10};e.bytes(views,sizeof views);
+    e.byte(0xb9);e.dword(2); // two views
+    r.spans[7]=e.here();e.byte(0x56);call(e,reinterpret_cast<void*>(&frame_callee_ret4));
+    r.spans[8]=e.here();const unsigned char submit[]={0x8b,0x46,0x1c,0x8b,0x68,0x4c};e.bytes(submit,sizeof submit);
+    r.spans[9]=e.here();e.byte(0x8b);e.byte(0x15);e.dword(std::uint32_t(address(&frame_global_b)));
+    e.byte(0x49);e.byte(0x75);e.byte(static_cast<unsigned char>(-(6+6+6+1+2))); // dec ecx (1 byte); jnz view_setup_begin
+    r.spans[4]=e.here();const unsigned char overlays[]={0x33,0xdb,0x39,0x5c,0x24,0x18};e.bytes(overlays,sizeof overlays);
+    r.spans[5]=e.here();e.byte(0xa1);e.dword(std::uint32_t(address(&frame_global_b)));
+    r.spans[6]=e.here();call(e,reinterpret_cast<void*>(&frame_callee));
+    e.byte(0xc3);
+    r.length=unsigned(static_cast<unsigned char*>(e.here())-static_cast<unsigned char*>(r.body));
+    if(!e.finish())r.body=nullptr;
+    return r;
+}
+// Offset of the one fixture-relocated field per span (call rel32 or absolute
+// disp32); 0 = the span is byte-exact.
+static constexpr unsigned frame_field[frame_marker::Count]={1,1,1,0,0,1,1,2,0,2};
+static bool frame_specs(const FrameBody& r,patch::SiteSpec* specs){
+    bool okay=true;
+    for(unsigned k=0;k<frame_marker::Count;++k){
+        specs[k]=frame_marker::kSites[k];specs[k].address=address(r.spans[k]);
+        const auto* bytes=static_cast<const unsigned char*>(r.spans[k]);
+        std::memcpy(specs[k].expected,bytes,specs[k].length);
+        for(unsigned i=0;i<specs[k].length;++i){
+            if(frame_field[k]&&i>=frame_field[k]&&i<frame_field[k]+4)continue;
+            okay=okay&&bytes[i]==frame_marker::kSites[k].expected[i];
+        }
+    }
+    check(okay,"synthetic frame spans match proved native opcodes except relocated fields");
+    return okay;
+}
+static void frame_replay_checks(){
+    FrameBody r=make_frame_body();check(r.body!=nullptr,"synthetic frame body emitted");if(!r.body)return;
+    patch::SiteSpec specs[frame_marker::Count];if(!frame_specs(r,specs))return;
+    unsigned char original[128];std::memcpy(original,r.body,r.length);
+    Snapshot baseline{},hooked{},after{};frame_native_calls=0;invoke(r.body,baseline);
+    check(frame_native_calls==5,"frame baseline executes five native calls");
+    const char* status=nullptr;
+    check(frame::fixture_install(specs,&status),"frame group installed on the synthetic spans");
+    check(status&&!std::strcmp(status,"ok"),"frame install status ok");
+    check(frame::active,"frame group active after install");
+    check(std::memcmp(original,r.body,r.length)!=0,"frame spans carry the patch jumps");
+    phases::fixture_set_callback(nullptr); // the real stamp handler, through the real CPU boundary
+    frame::present_begin();frame::present_end(); // admits this thread and starts frame 1
+    frame_native_calls=0;invoke(r.body,hooked);compare(baseline,hooked);
+    check(frame_native_calls==5,"instrumented frame executes exactly the native calls");
+    frame::present_begin();frame::present_end();frame::frame(1);
+    frame::detail::Sample s{};
+    check(frame::fixture_last_sample(&s),"closed frame sample readable by the owner thread");
+    check(s.frame==1&&s.complete&&s.views==2,"scripted frame is complete with two views");
+    std::uint64_t sum=0;for(unsigned i=0;i<frame::detail::phase_count;++i)sum+=s.phase_us[i];
+    check(sum==s.dt_us,"phase intervals partition the frame");
+    const auto* tracker=frame::fixture_tracker();
+    check(tracker->order_errors==0&&tracker->clock_errors==0&&tracker->unmatched==0&&tracker->dropped==0,"scripted frame has no order, clock or unmatched errors");
+    // Order: after a full frame body the tracker sits in scene_end; entering the
+    // begin_scene span again is a backward core stamp, which drops the frame so
+    // the next Present return restarts it without a sample.
+    invoke(r.body,after);compare(baseline,after);
+    {
+        // Enter the body at the begin_scene span with its ESI and the four
+        // pushed words in place; the remaining stamps of that pass are unmatched.
+        patch::Emitter e(40);void* entry=e.here();
+        e.byte(0xbe);e.dword(std::uint32_t(address(frame_view)));
+        for(unsigned i=1;i<=4;++i)push(e,i);
+        e.byte(0xe9);e.rel32(r.spans[2]);
+        check(e.finish()!=nullptr,"begin_scene entry trampoline emitted");
+        fixture_call(std::uint32_t(address(entry)),0,0,0,0,0);
+    }
+    check(tracker->order_errors==1&&tracker->dropped==1&&tracker->unmatched==10,"backward core stamp is an order error that drops the frame; later stamps unmatched");
+    frame::present_begin();frame::present_end();frame::frame(2);
+    frame::detail::Sample dropped{};frame::fixture_last_sample(&dropped);
+    check(dropped.frame==1,"dropped frame produced no sample");
+    check(frame::fixture_uninstall(),"frame group rollback restores every span");
+    check(!std::memcmp(original,r.body,r.length),"frame spans byte-identical after rollback");
+    check(!frame::active,"frame group inactive after rollback");
+    phases::fixture_set_callback(&hostile_callback);
+    frame_native_calls=0;invoke(r.body,after);compare(baseline,after);
+    check(frame_native_calls==5,"restored frame body runs natively");
+    // Byte mismatch: one corrupted opcode in the overlays span refuses the whole
+    // group before any claim; no span changes.
+    FrameBody c=make_frame_body();check(c.body!=nullptr,"second synthetic frame body emitted");if(!c.body)return;
+    patch::SiteSpec corrupt[frame_marker::Count];if(!frame_specs(c,corrupt))return;
+    unsigned char corrupted[128];std::memcpy(corrupted,c.body,c.length);
+    corrupt[4].expected[0]^=1;
+    check(!frame::fixture_install(corrupt,&status),"frame install refused on a byte mismatch");
+    check(status&&!std::strcmp(status,"preflight_bytes"),"byte mismatch reported as preflight_bytes");
+    check(!std::memcmp(corrupted,c.body,c.length),"no span patched after the preflight refusal");
+    check(!frame::active,"frame group stays inactive after refusal");
+    frame::fixture_uninstall();
+    // Partial install: the second spec duplicates the first address, so its
+    // claim reads the fresh jump and fails; the first site is rolled back.
+    corrupt[4].expected[0]^=1;
+    patch::SiteSpec partial[frame_marker::Count];std::memcpy(partial,corrupt,sizeof partial);
+    partial[1]=partial[0];
+    check(!frame::fixture_install(partial,&status),"frame install refused on a duplicate claim");
+    check(status&&!std::strcmp(status,"bytes_mismatch"),"duplicate claim reported with the claim's own reason");
+    check(!std::memcmp(corrupted,c.body,c.length),"partial install rolled back to original bytes");
+    check(!frame::active,"frame group inactive after partial rollback");
+    frame::fixture_uninstall();
+    // Late window: after the first Present closes the window no claim is made.
+    patch::close_install_window("fixture_first_present");
+    check(!frame::fixture_install(corrupt,&status),"frame install refused after the install window closed");
+    check(status&&!std::strcmp(status,"install_window_closed"),"late install reported as install_window_closed");
+    check(!std::memcmp(corrupted,c.body,c.length),"no span touched by the late refusal");
+    frame::fixture_uninstall();
+}
 int main(){
     for(unsigned i=0;i<sizeof fixture_xmm_seed;++i)fixture_xmm_seed[i]=static_cast<unsigned char>(i*37+9);
     patch::Emitter tail(8);void* continuation=tail.here();tail.byte(0xc3);if(!tail.finish())return 2;
@@ -564,6 +695,7 @@ int main(){
     input_replay_checks(0);input_replay_checks(1);
     benchmark(continuation,stubs);
     targeted_benchmark(continuation,stubs);
-    std::printf("GAME PHASE CPU stubs=%u replay_cases=13 actual_target_handler_cases=5 checks=%u failures=%u\n",unsigned(marker::Count),checks,failures);
+    frame_replay_checks(); // last: it closes the install window
+    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 arena_used=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),patch::arena_used(),checks,failures);
     return failures?1:0;
 }

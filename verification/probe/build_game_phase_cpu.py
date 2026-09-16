@@ -15,6 +15,7 @@ def build(objects_only=False):
     objects=[]
     for source,stem in (
         ('src/proxy/game_phases.cpp','runtime'),
+        ('src/proxy/frame_phases.cpp','frame'),
         ('verification/probe/game_phase_cpu_fixture.cpp','fixture'),
         ('src/proxy/engine_patch.cpp','patch'),
         ('src/proxy/engine_memory.cpp','memory')):

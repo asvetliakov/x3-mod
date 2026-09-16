@@ -1,4 +1,5 @@
 #include "motion_output.h"
+#include "sse_scalar.h"
 #include "capture.h"
 #include "cpu_state.h"
 #include "capture_state.h"
@@ -4459,7 +4460,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         if (c[15] > 1e-6f && p[15] > 1e-6f && displacements_.size() < displacements_.capacity()) {
             const float dx = (c[3] / c[15] - p[3] / p[15]) * .5f * float(target_width_);
             const float dy = (c[7] / c[15] - p[7] / p[15]) * .5f * float(target_height_);
-            const float magnitude = std::sqrt(dx * dx + dy * dy);
+            const float magnitude = scalar::sqrt(dx * dx + dy * dy); // sse_scalar.h: the draw path is light-envelope code
             if (std::isfinite(magnitude)) displacements_.push_back(magnitude);
         }
     }

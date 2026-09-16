@@ -314,8 +314,8 @@ extern "C" {
 // reached from here are x87 code (cpu_state.h).
 __attribute__((force_align_arg_pointer)) void __cdecl x3m_chase_camera_enter(uint32_t* regs) {
     x3m::PreserveCpuState cpu;
-    // PreserveCpuState saves with FNSAVE and immediately FRSTORs, so the x87
-    // stack our code inherits is the game's. This is a mid-function site, not a
+    // PreserveCpuState saves with FNSAVE and FNINITs, so our code runs on an
+    // empty x87 stack and FRSTOR returns the game's. This is a mid-function site, not a
     // call boundary, so nothing guarantees the stack is empty, and the libm
     // transcendentals the pipeline reaches (exp/acos/atan/tan) are x87 code that
     // would push onto it. Start from a clean, fully masked, round-to-nearest FPU;

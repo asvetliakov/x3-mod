@@ -164,6 +164,9 @@ class SourceAndReplay(unittest.TestCase):
                     probe.common.parse_source_specs((ROOT/'src/proxy'/filename).read_text())]
         families={
             'game_phases':lengths('game_phase_sites.h'),
+            # The ten frame-phase stamps use the game-phase emitter (indices
+            # after the phase group) and claim through the same tail shape.
+            'frame_phases':lengths('frame_phase_sites.h'),
             'chase_transition':lengths('chase_transition.cpp'),
             'chase_lead':lengths('chase_lead.cpp'),
             'chase_aim_trace':lengths('chase_aim_trace.cpp'),
@@ -179,7 +182,7 @@ class SourceAndReplay(unittest.TestCase):
         # chase_transition carries 16 rows since 123f98d added the seven
         # byte-verified chase view restore sites.
         self.assertEqual({name:len(value) for name,value in families.items()},
-                         {'resource_reader':1,'game_phases':47,'chase_camera':1,
+                         {'resource_reader':1,'game_phases':47,'frame_phases':10,'chase_camera':1,
                           'chase_transition':16,'chase_lead':9,'chase_aim_trace':4})
         lead_rows=probe.common.parse_source_specs((ROOT/'src/proxy/chase_lead.cpp').read_text())
         self.assertEqual([row['name'] for row in lead_rows],[
@@ -203,9 +206,9 @@ class SourceAndReplay(unittest.TestCase):
         # a four-byte chain head and a six-byte indirect dispatcher.
         claim_used=lambda length: (((length+5+3)&~3)+4+6+3)&~3
         operations=[]
-        for name in ('resource_reader','game_phases','chase_camera','chase_transition',
+        for name in ('resource_reader','game_phases','frame_phases','chase_camera','chase_transition',
                      'chase_lead','chase_aim_trace'):
-            reserve,stub_used=emitted[name]
+            reserve,stub_used=emitted['game_phases' if name=='frame_phases' else name]
             for length in families[name]:
                 operations.extend(((length+23,claim_used(length)),(reserve,stub_used)))
 
@@ -217,8 +220,10 @@ class SourceAndReplay(unittest.TestCase):
             return True,cursor
 
         accepted,used=admit(capacity)
-        self.assertTrue(accepted);self.assertEqual(used,11792)
-        self.assertEqual(capacity-used,4592)
+        # 11792 for the 47-site phase group and the chase set; the ten frame
+        # stamps add 10 * (24 + 128) with X3M_FRAME_PHASES=1.
+        self.assertTrue(accepted);self.assertEqual(used,13312)
+        self.assertEqual(capacity-used,3072)
         self.assertGreaterEqual(capacity-used,max(reserve for reserve,_ in operations))
         self.assertEqual(admit(8192)[0],False)
         old_game=23

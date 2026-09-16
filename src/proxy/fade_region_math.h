@@ -1,4 +1,5 @@
 #pragma once
+#include "sse_scalar.h"
 #include <cmath>
 #include <cstdint>
 
@@ -72,10 +73,10 @@ constexpr unsigned pad_limit = 8;
 inline unsigned pad_pixels(double term_sum_max, double w_min, double half_max) noexcept {
     const double k = 2.0 * half_max * eps_dp4 * term_sum_max;
     if (!(k > 0) || !(w_min > 0)) return w_min > 0 ? 1u : pad_limit; // nonfinite or degenerate w
-    const double pad = std::ceil(k / w_min);
-    if (!(pad > 1)) return 1u; // covers NaN
-    if (!(pad < double(pad_limit))) return pad_limit;
-    return unsigned(pad);
+    const double q = k / w_min;
+    if (!(q > 1)) return 1u; // covers NaN (ceil(q) <= 1)
+    if (q > double(pad_limit - 1)) return pad_limit; // ceil(q) >= pad_limit
+    return unsigned(scalar::ceil(q)); // 2..pad_limit-1; sse_scalar.h: the CRT ceil returns in st(0)
 }
 
 // MotionOutput::apply_jitter's arithmetic, bit for bit (single precision,
@@ -155,8 +156,8 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
             clip[corner][k] = double(row[0]) * p[0] + double(row[1]) * p[1] + double(row[2]) * p[2] + double(row[3]);
             if (!std::isfinite(clip[corner][k])) return Reason::NonFinite;
             if (k == 2) continue; // the z row never reaches a screen coordinate
-            const double sum = std::fabs(double(row[0]) * p[0]) + std::fabs(double(row[1]) * p[1]) +
-                               std::fabs(double(row[2]) * p[2]) + std::fabs(double(row[3]));
+            const double sum = scalar::abs(double(row[0]) * p[0]) + scalar::abs(double(row[1]) * p[1]) +
+                               scalar::abs(double(row[2]) * p[2]) + scalar::abs(double(row[3]));
             if (sum > term_sum_max) term_sum_max = sum;
         }
         // Unclipped: refuse at the first corner with w <= 0, before the later
@@ -217,10 +218,10 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
     auto clamp = [](double v, double lo, double hi) { return v < lo ? lo : v > hi ? hi : v; };
     const std::int32_t pad = std::int32_t(pad_pixels(term_sum_max, w_min, half_w > half_h ? half_w : half_h));
     if (pad_out) *pad_out = unsigned(pad);
-    const Rect hull{std::int32_t(std::floor(clamp(min_x, -limit, limit))) - pad,
-                    std::int32_t(std::floor(clamp(min_y, -limit, limit))) - pad,
-                    std::int32_t(std::ceil(clamp(max_x, -limit, limit))) + pad + 1,
-                    std::int32_t(std::ceil(clamp(max_y, -limit, limit))) + pad + 1};
+    const Rect hull{std::int32_t(scalar::floor(clamp(min_x, -limit, limit))) - pad,
+                    std::int32_t(scalar::floor(clamp(min_y, -limit, limit))) - pad,
+                    std::int32_t(scalar::ceil(clamp(max_x, -limit, limit))) + pad + 1,
+                    std::int32_t(scalar::ceil(clamp(max_y, -limit, limit))) + pad + 1};
     Rect rect = intersect(hull, full_rect(viewport));
     if (empty(rect)) rect = {std::int32_t(viewport.x), std::int32_t(viewport.y), std::int32_t(viewport.x) + 1, std::int32_t(viewport.y) + 1};
     *out = rect;
@@ -317,8 +318,8 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
         const double p[3] = {double((corner & 1u) ? hi[0] : lo[0]), double((corner & 2u) ? hi[1] : lo[1]), double((corner & 4u) ? hi[2] : lo[2])};
         for (unsigned r = 0; r < 4; ++r) {
             const float* row = rows + 4 * r;
-            const double sum = std::fabs(double(row[0]) * p[0]) + std::fabs(double(row[1]) * p[1]) +
-                               std::fabs(double(row[2]) * p[2]) + std::fabs(double(row[3]));
+            const double sum = scalar::abs(double(row[0]) * p[0]) + scalar::abs(double(row[1]) * p[1]) +
+                               scalar::abs(double(row[2]) * p[2]) + scalar::abs(double(row[3]));
             if (r == 2) { if (sum > z_sum_max) z_sum_max = sum; } // the z row decides the cut only
             else if (sum > term_sum_max) term_sum_max = sum;
         }
@@ -385,10 +386,10 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
     auto clamp = [](double v, double lo_, double hi_) { return v < lo_ ? lo_ : v > hi_ ? hi_ : v; };
     const std::int32_t pad = std::int32_t(pad_pixels(term_sum_max, w_min, half_w > half_h ? half_w : half_h));
     if (info) info->pad = unsigned(pad);
-    const Rect hull{std::int32_t(std::floor(clamp(min_x, -limit, limit))) - pad,
-                    std::int32_t(std::floor(clamp(min_y, -limit, limit))) - pad,
-                    std::int32_t(std::ceil(clamp(max_x, -limit, limit))) + pad + 1,
-                    std::int32_t(std::ceil(clamp(max_y, -limit, limit))) + pad + 1};
+    const Rect hull{std::int32_t(scalar::floor(clamp(min_x, -limit, limit))) - pad,
+                    std::int32_t(scalar::floor(clamp(min_y, -limit, limit))) - pad,
+                    std::int32_t(scalar::ceil(clamp(max_x, -limit, limit))) + pad + 1,
+                    std::int32_t(scalar::ceil(clamp(max_y, -limit, limit))) + pad + 1};
     Rect rect = intersect(hull, full_rect(viewport));
     if (empty(rect)) rect = {std::int32_t(viewport.x), std::int32_t(viewport.y), std::int32_t(viewport.x) + 1, std::int32_t(viewport.y) + 1};
     *out = rect;

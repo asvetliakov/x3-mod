@@ -6,10 +6,15 @@ instances using LightCallBoundary) preserve only MXCSR and the last error
 around the native call, on the grounds that nothing on their path executes an
 x87 instruction. This script disassembles the DLL, walks the static call graph
 from each light hook over every function it can reach through direct calls
-(indirect calls are the native vtable slot and Win32 imports, which the full
-boundary does not cover either) and fails on any x87 opcode other than the
-state-transport pairs the project itself uses (fnsave/frstor) and the SSE
-control transfers (stmxcsr/ldmxcsr).
+(indirect calls are the native vtable slot, Win32 imports, which the full
+boundary does not cover either, and x3m::call_preserved thunks, which run
+their callee under a full FNSAVE/FRSTOR envelope: cpu_state.h) and fails on
+any x87 opcode other than the state-transport instructions the project itself
+uses (fnsave, the fninit after it in CpuState::capture, frstor) and the SSE
+control transfers (stmxcsr/ldmxcsr). Any
+indirect call, through a volatile function pointer or otherwise, is invisible
+to this walk, not only call_preserved's thunk; the runtime FNSAVE/FRSTOR
+envelope, not the audit, is what covers such callees.
 
 usage: check_no_x87.py [dll]   (default build/d3d9.dll); writes a JSON summary
 to stdout and exits non-zero on a violation.
@@ -23,7 +28,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 OBJDUMP = 'i686-w64-mingw32-objdump'
 LIGHT_HOOKS = ['set_vs', 'set_ps', 'set_vs_constant_f', 'set_vs_constant_i', 'set_ps_constant_f', 'set_viewport', 'set_render_state',
-               'set_texture', 'set_sampler_state']  # the mip LOD bias's sampler shadow (X3M_TAA_MIP_BIAS)
+               'set_texture', 'set_sampler_state',  # the mip LOD bias's sampler shadow (X3M_TAA_MIP_BIAS)
+               # state-call fast path steps 2-3 (docs/architecture/state-call-fast-path.md): the per-draw
+               # binding hooks and the four draw hooks are light too; their whole route (before_draw,
+               # after_draw, scene depth, draw input, capture logging) is walked from here.
+               'set_stream_source', 'set_indices', 'set_declaration', 'set_fvf',
+               'draw_primitive', 'draw_indexed', 'draw_up', 'draw_indexed_up']
 # The gz read-ahead buffer's import entry points (src/proxy/loading_trace.cpp ->
 # src/proxy/gz_buffer.cpp) run with no boundary at all on their fast path, so the
 # same rule applies to them; the real zlib calls are indirect and stop the walk.
@@ -50,7 +60,7 @@ LIGHT_NAMESPACE = '__ZN3x3m13loading_trace5light'   # x3m::loading_trace::light:
 # runs on the engine's submission thread with no boundary: walked too.
 EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry', '_x3m_pool_fopen', '_x3m_pool_fclose',
                 '_x3m_point_light_root_admits']
-ALLOWED = {'fnsave', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}
+ALLOWED = {'fnsave', 'fninit', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}  # fninit only follows fnsave in CpuState::capture
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')
 DIRECT_CALL = re.compile(r'^(?:call|jmp)\s+[0-9a-f]+ <([^>]+)>')
