@@ -408,3 +408,9 @@ replay-candidate predicate on live geometry, against the fixture's 2.
   `… test_linear_material_live test_motion_wrap_states test_capture_bloom_lifetime test_motion_hdr_scene test_linear_cutout_contract`: 26 tests OK (HDR-scene mock mirrors the three render-state enums and an inert `shadow_state_field`).
 - Clean CMake build (`--clean-first`, mingw-i686, RelWithDebInfo): zero warnings, `build/d3d9.dll` sha256 `c33f3d8e6623fa4c…`; `check_no_x87.py`: 230 reachable functions, no violations; strict seam compile clean.
 - Not exercised: the game's actual cutout-pair states in run81 (the new writer fields answer this on the next `--sun-shadow-lane` run), a cutout pair routed with an actually biased mip-chain stage (fixture textures are single-level), native Windows.
+
+### Run 30 session B (run88), 2026-09-17
+
+DLL `bbadc568…` (`f94290c`), `--linear-materials --linear-distance-fade --sun-shadow-lane`, mip bias -0.5:
+`sun_shadow_lane_frame available=1` on all 14,924 frames; `cutout_routed`/`cutout_missed`/`cutout_unavailable` 0 (`cutout_caps` 254 windows), no `sun_shadow_lane_writer` line, `non_depth_writers` 3–203. The station drew no alpha-tested cutout material, so the `e62722a` admission is still unexercised; the cutout pairs belong to Argon station bodies (tech, liquid, farm, solar/mine, trading station; [where cutouts appear](../reverse-engineering/effect-shader-users.md)). Next: one session B at an Argon industrial station.
+
