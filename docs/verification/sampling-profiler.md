@@ -1233,3 +1233,47 @@ shutdown transient), `order_errors/unmatched/dropped/early/foreign=0`. Busy
 `passes_p50` 929-1,010 (avg 981) matches run91's ~1,006 draws (hooked) in
 magnitude. No `claim_fail`, `arena_full`, `truncated`, `shader_unknown`,
 `chase_refus*`, `motion_state_lost`; `mip_bias_failures=0` (223 lines).
+
+### Run 33 session B (run96): slow sector loop split
+
+Preserved `/tmp/x3-bottleX3-run96/session-20260916-214604-212.log` (98,459
+lines). Identity: `loop_phase_mode ... status=ok sites=6 window=300
+slow_threshold_us=50000 slow_limit=64 dispatch_cost_ns=91` (line 75);
+`game_phase_mode ... sites=33` (11), `frame_phase_mode ... sites=10` (59),
+`pass_phase_mode ... sites=4` (70); `state_hooks device=1 installed=0
+reason=none` (182) - unhooked.
+
+Stall spans frames ~13200-14700; worst window frame=14700 (`slow=143`):
+
+| Window | dt p50/p95 | pre_render p50/p95 | sectors/containers p50 | collide p50/p95 | simulate p50/p95 | post p50/p95 | passb p50/p95 | sum p50 | input p50 | slow |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 13500 | 21.1/23.2ms | 3.2/9.4ms | 1/1 | 498/577us | 41/66us | 14/26us | 87/102us | 654us | 1,779us | 1 |
+| 14100 | 17.9/21.3ms | 5.9/7.3ms | 1/1 | 451/476us | 69/79us | 15/65us | 86/100us | 623us | 1,732us | 1 |
+| 14400 | 16.1/21.0ms | 3.9/6.7ms | 1/1 | 442/477us | 62/81us | 13/27us | 82/113us | 597us | 1,724us | 1 |
+| **14700** | 18.9ms/**416.8ms** | 6.6/**405.3ms** | 1/1 | 442/474us | 69/82us | 28/**396,390us** | 110/178us | 762us | 2,317us | **143** |
+| 15000 (normal) | 12.2/13.0ms | 2.6/3.4ms | 1/1 | 1,388/1,423us | 4/5us | 10/14us | 63/69us | 1,467us | 1,698us | 0 |
+
+`max_interval_owner=post` in all 4 stall windows; 15000 owner=collide,
+max_interval_us=3,098 (an order of magnitude below the stall).
+
+**Decisive split.** Across all 70 `loop_phases_slow` lines (64 in
+14400-14700, plus 5198/7095/7457/13222/14014/14346), `max_interval_owner=post`
+in **70/70 (100%)**. In the 14400-14700 cluster:
+
+| Interval | p50 us | p95 us | share of sum_us |
+| --- | --- | --- | --- |
+| collide | 437 | 459 | 0.1% |
+| simulate | 75 | 85 | <0.1% |
+| **post** | **381,385** | **388,893** | **99.8%** |
+| passb | 160 | 185 | <0.1% |
+
+`sum_p50=382,049us`, `input_p50=383,330us`; remainder p50/p95 = 1,346/1,925us
+(<0.6%): the six stamps account for essentially the whole Input segment.
+`sectors=1, containers=1` on all 70 slow lines: one sector walked per slow
+frame; its `sector_post` (`0x0043a39a`, calls `0x0045b720` global object
+pass, `docs/reverse-engineering/main-loop-input-region.md` line 128) stalls.
+
+**Sanity.** `orphans/unmatched/clock_errors/clock_failures/early/foreign=0`
+over all 50 `loop_phases` windows; `dropped=1` at startup (frame=300) only.
+No `claim_fail`/`arena_full`/`truncated`/`shader_unknown`/`chase_refus*`.
+`self_p50_us=0` (50/50), consistent with `6 x sectors_p50(1) x 91ns = 546ns`.
