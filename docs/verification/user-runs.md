@@ -51,71 +51,27 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
 | 32 | Hybrid unhook, draw and state counters | 4 | A1 run91 (redundancy 95/99/40 %, batchability 5 %), A2 run92 (busy frame 37.5 to 26.5 ms unhooked), B run93 (cutout pairs draw everywhere, lane admission unobservable; slow sector is `pre_render` 98 % of a 420 ms frame); C queued with `--game-phases` |
 | 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | A run95 (view submit: draw 43 %, BeginPass 33 %, engine between passes 22 %), B run96 (stall 99.8 % in the per-sector object pass `0x0045b720`, one sector; GStreamer criticals repeat during it), C run97 (cutout draws admitted through the tested-opaque arm, ~90/frame with the lane share; linear materials + lane +3 ms) |
+| 34 | Stall evidence: stderr capture, module identity, object-pass split | 2 | Drafted; candidate pending |
 
-## 32. Hybrid unhook, draw and state counters — open
+## 34. Stall evidence: stderr capture, module identity, object-pass split — drafted
 
-Installed: DLL `11c1f119…` from `baee232` (see [status](../status.md)). This
-build stops hooking SetRenderState and SetSamplerState in production (the
-proxy reads what it needs at draw time) and adds three count-only diagnostics
-to `--frame-timing`: draws per program pair with the two cutout pairs called
-out, redundant state sets against the shadow, and draw batchability (same
-mesh, same material). `--frame-timing` keeps the two hooks installed so it can
-count; the felt FPS comes from session A2 without it. Appearance unchanged.
+Installed: DLL `RUN34HASH` from `RUN34COMMIT` (see [status](../status.md)). This
+build tees Wine's stderr into the session directory (`launcher-stderr.log`,
+UTC-prefixed) with a `clock_anchor` and `qpc=` on every window line so a
+GStreamer burst maps to a frame, logs `loaded_module` for the D3D9 backend and
+`d3dx9_37.dll`, and POSTPHASES_PLACEHOLDER. Appearance unchanged.
 
-**Session A1** (busy view, counters):
+**Session A** (the slow sector): run 33 session B's command
+(`--game-phases --loop-phases`, plus POSTOPTION_PLACEHOLDER). Fly to the stalling
+sector, stay 30 s while it is slow, quit. Keep the terminal output too, but
+the log now has it.
 
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-timing --frame-phases --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
-```
-
-1. The busy view of run 31 (run89), hold 30 s, then empty space 30 s, quit.
-
-**Session A2** (same place, felt FPS): the same command without
-`--frame-timing`. Hold the same busy view 30 s and say how the FPS compares
-with run 31 there; the phase stamps give the frame time.
-
-**Session B** (cutout draws under the lane): session A1's command plus
-`--linear-materials --linear-distance-fade --sun-shadow-lane`; hold the same
-busy view as A1/A2 for 30 s, then quit. Run91 (A1) counted about 108 cutout
-draws per frame in that view (`cutout_pairs=9073,23509` per 300 frames), so
-the cutout admission is exercised there; no station hunt needed.
-
-**Session C** (the slow sector, installed build, no new candidate): session
-A1's command plus `--game-phases`. Fly to the sector where run93 slowed down
-(the third sector of that route, not visually busy), stay there 30 s while it
-is slow, then quit. `--game-phases` records every frame over 50 ms with the
-main loop's sub-phases (input, script VM, deferred callbacks, simulation/AI,
-cockpit), which is what run93's `pre_render` at 98 % of a 420 ms frame could
-not split.
-
-## 33. Pass phases, loop-region split, cutout lane telemetry — completed as run95–run97
-
-Installed: DLL `03c0c9f4…` from `a3cafd5` (see [status](../status.md)). This
-build adds `--pass-phases` (four accumulate-only stamps in the effect pass
-loop: pass apply, draw, pass end, per draw, about 0.36 ms per busy frame),
-the `cutout_opaque_*` lane counters on `linear_material_frame`, and
-`--loop-phases` (six stamps in the per-sector update driver `0x0043a360`:
-collision, simulation, global object pass, economy/attach pass, per sector and
-per frame, with a slow-frame line naming the worst interval). Appearance unchanged from run 32.
-
-**Session A** (busy view, production hooks off, pass split):
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-phases --pass-phases --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
-```
-
-1. The busy view of runs 31/32, hold 30 s, then empty space 30 s, quit. No
-   `--frame-timing`, so the proxy runs unhooked as you play; the pass stamps
-   split the engine's per-draw time into pass apply, draw and pass end.
-
-**Session B** (the slow sector): session A's command plus `--game-phases
---loop-phases`. Fly to the sector that stalled in runs 93/94, stay 30 s while
-it is slow, quit. The `loop_phases_slow` lines name which of the five
-per-sector routines owns each slow frame and how many sectors were walked.
-
-**Session C** (cutout lane): session A's command plus
-`--linear-materials --linear-distance-fade --sun-shadow-lane`, the same busy
-view 30 s, quit; the log now reports `cutout_opaque_routed/lane/refused`.
+**Session B** (DXVK experiment, no proxy change): in CrossOver, enable the
+DXVK backend for the X3 bottle (bottle settings, D3D9 via DXVK), then run
+run 33 session A's command in the busy view for 30 s and quit. The
+`loaded_module` line says which D3D9 backend the proxy actually forwarded to,
+and the `pass_phases` draw µs per pass says whether the draw call got cheaper.
+Switch DXVK back off afterwards unless it wins.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
