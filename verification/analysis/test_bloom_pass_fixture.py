@@ -21,9 +21,9 @@ class FixtureAcceptance(unittest.TestCase):
         self.lines += [f'CONTROL test={i} pass=1' for i in range(16)]
         self.lines += [f"CASE index={i} width={c['width']} height={c['height']} checks={16 if i==0 else 1} pass=1"
                        for i,c in enumerate(self.cases)]
-        last=self.cases[-1]
+        last=self.cases[fixture.RESET_CASE_INDEX]
         self.lines += ['NPATCH accepted=1 hr=00000000','ADAPTIVE accepted=1 hr=00000000','NPATCH_DRAWS checked=10 pass=1',
-                       f"RESET_CASE index={len(self.cases)-1} width={last['width']} height={last['height']} checks=1 pass=1",
+                       f"RESET_CASE index={fixture.RESET_CASE_INDEX} width={last['width']} height={last['height']} checks=1 pass=1",
                        f'RESULT PASS cases={len(self.cases)} controls=16 checks={len(self.cases)+16} reset=1 reset_cases=1']
 
     def test_terminal_and_complete_records(self):
@@ -32,6 +32,8 @@ class FixtureAcceptance(unittest.TestCase):
                            (self.lines+['unexpected after terminal'],0),(self.lines[1:],0),
                            ([self.lines[0]]+self.lines,0),
                            ([x for x in self.lines if not x.startswith(f'CASE index={len(self.cases)-1} ')],0),
+                           ([x.replace(f'RESET_CASE index={fixture.RESET_CASE_INDEX} ',
+                                       f'RESET_CASE index={len(self.cases)-1} ') for x in self.lines],0),
                            ([x for x in self.lines if not x.startswith('RESET_CASE ')],0),
                            ([x for x in self.lines if not x.startswith('NPATCH_DRAWS ')],0),
                            (['API_FAIL getter']+self.lines,0),
@@ -68,13 +70,13 @@ class FixtureAcceptance(unittest.TestCase):
                          '46c4b26ac1b977efd3c89df5542ae8684ce2e7e9452662c10ce4b37d6835f698')
 
     def test_authored_cases_cover_masks_evs_decoders_geometry_and_f10_gate(self):
-        authored=self.cases[24:]
+        authored=self.cases[24:36]
         self.assertEqual(len(authored),12)
         self.assertEqual({(c['mode'],c['width']%2) for c in authored},
                          {(m,p) for m in fixture.ref.DECODE_MODES for p in (0,1)})
         self.assertEqual({round(math.log2(c['exposure']),1) for c in authored},{0.,1.5,2.})
         self.assertEqual({c['authored_glow_gain'] for c in authored},{.1,.2})
-        self.assertEqual((self.cases[-1]['kind'],self.cases[-1]['strength']),('authored',1.))
+        self.assertEqual((authored[-1]['kind'],authored[-1]['strength']),('authored',1.))
         for index in range(0,len(authored),2):
             off,on=authored[index:index+2]
             self.assertEqual({off['strength'],on['strength']},{0.,1.})
@@ -113,6 +115,72 @@ class FixtureAcceptance(unittest.TestCase):
                                              exposure=on['exposure'],mode=on['mode'])
                 self.assertEqual(actual,wanted)
 
+    def test_post_reset_case_is_pinned_to_the_odd_generic_authored_case(self):
+        pinned=self.cases[fixture.RESET_CASE_INDEX]
+        self.assertEqual((fixture.RESET_CASE_INDEX,pinned['kind'],pinned['mode'],
+                          pinned['width'],pinned['height'],pinned['strength']),
+                         (35,'authored','none',9,7,1.))
+        self.assertNotEqual(fixture.RESET_CASE_INDEX,len(self.cases)-1)
+
+    def test_source_clamp_cases_pin_live_constants_and_the_clamp_identities(self):
+        clamp=self.cases[36:]
+        self.assertEqual(len(clamp),9)
+        self.assertEqual(len(self.cases),45)
+        for c in clamp:
+            self.assertEqual((c['kind'],c['mode'],c['levels'],c['scatter']),('clamp','gamma2.2',5,.65))
+            self.assertEqual((c['authored_glow_gain'],c['highlight_gain'],c['threshold'],c['strength']),
+                             (.375,.05,1.,1.))
+            self.assertEqual(round(math.log2(c['exposure']),1),1.3)
+            self.assertEqual(len(fixture.ref.layout(c['width'],c['height'],c['levels'])),5)
+            self.assertEqual({p[3] for row in c['image'] for p in row},{c['alpha']})
+        # Both extraction lanes: the thresholded highlight term and the
+        # alpha-authored glow term.
+        self.assertEqual({c['alpha'] for c in clamp},{0.,1.})
+        by_label={c['label']:c for c in clamp}
+        self.assertEqual(sorted(by_label),
+                         ['clamp_authored_hot_none','clamp_authored_hot_one',
+                          'clamp_authored_ref_none','clamp_authored_ref_one',
+                          'clamp_hot_none','clamp_hot_one','clamp_hot_two',
+                          'clamp_ref_none','clamp_ref_one'])
+        self.assertEqual([by_label[n]['source_clamp'] for n in
+                          ('clamp_ref_none','clamp_ref_one','clamp_hot_none','clamp_hot_one','clamp_hot_two')],
+                         [0.,1.,0.,1.,2.])
+        params=fixture.ref.Params(levels=5,threshold=1.,strength=1.,scatter=.65,
+                                  authored_glow_gain=.375,highlight_gain=.05)
+        exposure=by_label['clamp_ref_none']['exposure']
+        feeds={name:fixture.ref.bloom(c['image'],params,exposure=exposure,
+                                      clamp_max=c['source_clamp'],mode='gamma2.2')
+               for name,c in by_label.items()}
+        flat=lambda name:[v for row in feeds[name] for p in row for v in p]
+        column=(fixture.CLAMP_BAR[0]+fixture.CLAMP_BAR[1])//2
+        for prefix in ('clamp_','clamp_authored_'):
+            # A code-1 source is at the clamp: the whole oracle image is identical.
+            self.assertEqual(fixture.expected(by_label[prefix+'ref_none']),
+                             fixture.expected(by_label[prefix+'ref_one']))
+            # A code-5 source at clamp 1 feeds exactly the code-1 pyramid.
+            self.assertEqual(flat(prefix+'hot_one'),flat(prefix+'ref_none'))
+            self.assertGreater(min(a-b for a,b in zip(flat(prefix+'hot_none'),
+                                                      flat(prefix+'hot_one')) if a>0),0.)
+            # The displayed bar keeps its unbounded HDR code under every clamp.
+            native=fixture.expected(by_label[prefix+'hot_none'])
+            clamped=fixture.expected(by_label[prefix+'hot_one'])
+            reference=fixture.expected(by_label[prefix+'ref_none'])
+            self.assertGreater(max(abs(fixture.oracle.code8(a)-fixture.oracle.code8(b))
+                                   for ar,br in zip(native,clamped)
+                                   for ap,bp in zip(ar,br) for a,b in zip(ap,bp)),fixture.MAX_CODE_ERROR)
+            self.assertEqual([fixture.oracle.code8(v) for v in clamped[0][column]],
+                             [fixture.oracle.code8(v) for v in native[0][column]])
+            self.assertNotEqual([fixture.oracle.code8(v) for v in clamped[0][column]],
+                                [fixture.oracle.code8(v) for v in reference[0][column]])
+        # Alpha 1 routes through the authored lane, alpha 0 through the
+        # thresholded highlight lane: the same source must feed more with alpha 1.
+        self.assertGreater(min(a-b for a,b in zip(flat('clamp_authored_ref_none'),
+                                                  flat('clamp_ref_none')) if a>0),0.)
+        self.assertGreater(min(a-b for a,b in zip(flat('clamp_hot_none'),
+                                                  flat('clamp_hot_two')) if a>0),0.)
+        self.assertGreater(min(a-b for a,b in zip(flat('clamp_hot_two'),
+                                                  flat('clamp_hot_one')) if a>0),0.)
+
     def test_structured_cases_detect_skipped_sharpen(self):
         for i in range(0,len(self.cases),2):
             if self.cases[i]['kind']!='structured': continue
@@ -145,13 +213,14 @@ class FixtureAcceptance(unittest.TestCase):
             fixture.write_cases(self.cases,a);fixture.write_cases(fixture.make_cases(),b)
             self.assertEqual(a.read_bytes(),b.read_bytes())
             payload=a.read_bytes()
-            self.assertEqual(payload[:12],b'X3BP0002'+struct.pack('<I',36))
+            self.assertEqual(payload[:12],b'X3BP0003'+struct.pack('<I',45))
             offset=12
             for c in self.cases:
-                header=struct.pack('<3I6f',c['width'],c['height'],
-                                   fixture.ref.DECODE_MODES.index(c['mode']),c['strength'],
-                                   c['sharp'],c['threshold'],c['exposure'],
-                                   c['authored_glow_gain'],c['highlight_gain'])
+                header=struct.pack('<4I8f',c['width'],c['height'],
+                                   fixture.ref.DECODE_MODES.index(c['mode']),c['levels'],
+                                   c['strength'],c['sharp'],c['threshold'],c['exposure'],
+                                   c['authored_glow_gain'],c['highlight_gain'],c['scatter'],
+                                   c['source_clamp'])
                 self.assertEqual(payload[offset:offset+len(header)],header)
                 offset+=len(header)+c['width']*c['height']*8
             self.assertEqual(offset,len(payload))

@@ -159,6 +159,7 @@ def main():
     parser.add_argument('--original-fill', type=float, default=None, metavar='K', help='Fill in linear light inside the ORIGINAL hull pixel programs, finite 0..0.5, default 0 = off (X3M_ORIGINAL_FILL; requires --hdr; excludes --linear-materials, whose converted programs take --material-fill instead; needs neither --taa nor --hdr-tonemap): the 108 reviewed hull/asteroid/palette/glass/XT pixel programs get sum = encode(decode(sum) + K*decode(LightDir_Color0)) at their lobe-sum site before the albedo multiply, with the exact 2.2 power law and everything else in the program untouched, so shadow sides keep a floor tinted by the sector sun on original shading. K=0 creates no variant and is byte-identical to a build without the option (docs/architecture/original-shading-critique.md, 1a "Implemented")')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-bloom', action='store_true', help='Replace stock bloom RGB with bloom from the FP16 scene before AgX (X3M_HDR_BLOOM=1; requires --hdr-tonemap and scene hook; default off)')
+    parser.add_argument('--bloom-source-clamp', type=float, default=None, metavar='C', help='Decoded-space ceiling on the bloom extraction source only (X3M_BLOOM_SOURCE_CLAMP=C, finite 0 < C <= 64; requires --hdr-bloom; absent keeps today\'s unbounded feed). The pyramid then sees at most code C, so an over-bright emitter (additive bolts at gain 5, overlapping sprites) can no longer feed tens or hundreds of units into the halo and saturate it into a white disk; the presented scene keeps its full HDR value and every source at code C or below is bit-identical to today. Recommended value 1.0, the ceiling of the native A8R8G8B8 scene map the original compositor read (docs/architecture/bloom-falloff.md)')
     parser.add_argument('--hdr-decode', choices=['gamma2.2', 'pow22', 'srgb', 'none'], default='gamma2.2', help='Engine-space decode before the tonemap and the meter (X3M_HDR_DECODE; requires --hdr-tonemap): gamma2.2 (default; pow22 is the same curve), srgb, or none for the A/B against the decoded transform')
     parser.add_argument('--hdr-ev', type=float, default=0.0, help='Exposure offset in EV added to the auto-exposure target (X3M_HDR_EV; requires --hdr-tonemap; default 0)')
     parser.add_argument('--hdr-exposure', choices=['fixed', 'auto'], default=None, help='Exposure policy (X3M_HDR_EXPOSURE; requires --hdr-tonemap when explicit): Auto capped at +1.3 EV by default, or fixed EV0; Ctrl+Shift+F9 switches during play')
@@ -347,6 +348,11 @@ def main():
         parser.error('--original-fill must be finite and within [0, 0.5].')
     if args.hdr_bloom and (not args.hdr_tonemap or args.scene_hook == 'off'):
         parser.error('--hdr-bloom requires --hdr-tonemap and the scene hook.')
+    if args.bloom_source_clamp is not None and not args.hdr_bloom:
+        parser.error('--bloom-source-clamp requires --hdr-bloom.')
+    if args.bloom_source_clamp is not None and not (math.isfinite(args.bloom_source_clamp)
+                                                   and 0.0 < args.bloom_source_clamp <= 64.0):
+        parser.error('--bloom-source-clamp must be finite and within (0, 64].')
     if not args.hdr_tonemap and (args.hdr_exposure is not None or args.hdr_look != 'none' or args.hdr_decode != 'gamma2.2' or args.hdr_ev != 0.0 or args.hdr_ev_manual is not None or args.hdr_clamp != 0.0
                                  or args.hdr_ev_min != -3.0 or args.hdr_ev_max != 1.3 or args.hdr_meter_bg != 1.0 / 512.0 or args.hdr_white_target != 0.9 or args.hdr_key_pull != 0.25
                                  or args.hdr_ev_deadband != 0.25 or args.hdr_edge_weight != 0.35):
@@ -515,6 +521,12 @@ def main():
         env['X3M_ORIGINAL_FILL'] = repr(args.original_fill if args.original_fill is not None else 0.0)
         env['X3M_HDR_TONEMAP'] = 'agx' if args.hdr_tonemap else 'identity'
         env['X3M_HDR_BLOOM'] = '1' if args.hdr_bloom else '0'
+        # Absent means the unbounded feed: drop the inherited variable entirely
+        # rather than exporting an empty value.
+        if args.bloom_source_clamp is not None:
+            env['X3M_BLOOM_SOURCE_CLAMP'] = repr(args.bloom_source_clamp)
+        else:
+            env.pop('X3M_BLOOM_SOURCE_CLAMP', None)
         env['X3M_HDR_LOOK'] = args.hdr_look
         env['X3M_HDR_DECODE'] = args.hdr_decode
         env['X3M_HDR_EV'] = repr(args.hdr_ev)

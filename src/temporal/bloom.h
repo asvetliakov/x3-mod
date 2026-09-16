@@ -22,6 +22,11 @@ struct BloomParams {
     // into alpha-authored colored glow plus complementary HDR highlights.
     float authored_glow_gain = 0.f;
     float highlight_gain = 0.05f; // only used in the authored-glow mode
+    // Bloom-only decoded-space ceiling on the extraction source, applied by
+    // bloomExposed() through the existing c27.y min before exposure. It never
+    // touches the displayed scene. kAgxClampOff is the unbounded feed.
+    // docs/architecture/bloom-falloff.md.
+    float source_clamp = kAgxClampOff;
 };
 struct BloomSize { unsigned width = 0, height = 0; };
 struct BloomLayout {
@@ -46,7 +51,8 @@ inline bool valid_bloom_params(const BloomParams& p) noexcept {
         && std::isfinite(p.scatter) && p.scatter >= 0.f && p.scatter <= 1.f
         && std::isfinite(p.authored_glow_gain) && p.authored_glow_gain >= 0.f
         && p.authored_glow_gain <= kBloomMaxAuthoredGlowGain
-        && std::isfinite(p.highlight_gain) && p.highlight_gain >= 0.f && p.highlight_gain <= 1.f;
+        && std::isfinite(p.highlight_gain) && p.highlight_gain >= 0.f && p.highlight_gain <= 1.f
+        && std::isfinite(p.source_clamp) && p.source_clamp > 0.f && p.source_clamp <= kAgxClampOff;
 }
 inline bool valid_bloom_size(BloomSize s) noexcept {
     return s.width && s.height && s.width <= kBloomMaxDimension && s.height <= kBloomMaxDimension;
@@ -97,7 +103,9 @@ inline bool prepare_bloom(BloomConstants& out, BloomSize source, BloomSize desti
     next.destination[2] = 1.f / destination.width; next.destination[3] = 1.f / destination.height;
     next.filter[0] = p.threshold; next.filter[1] = p.knee;
     next.filter[2] = p.scatter; next.filter[3] = p.strength;
-    next.radiance[0] = agx.exposure[0]; next.radiance[1] = agx.exposure[1];
+    next.radiance[0] = agx.exposure[0];
+    // The bloom source ceiling only ever tightens the display firefly clamp.
+    next.radiance[1] = agx.exposure[1] < p.source_clamp ? agx.exposure[1] : p.source_clamp;
     for (unsigned i = 0; i < 4; ++i) next.decode[i] = agx.decode[i];
     next.radiance[3] = p.authored_glow_gain;
     // c28.w was unused; retain its old zero value in the legacy mode. xyz

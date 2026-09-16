@@ -49,23 +49,32 @@ void bytes(const std::string& path, const void* p, size_t n) {
     std::ofstream out(path, std::ios::binary); require(bool(out.write((const char*)p, n)), "write bytes");
 }
 template<class T> T read(std::ifstream& f) { T v{}; require(bool(f.read((char*)&v, sizeof(v))), "truncated input"); return v; }
+// Index of the case repeated after the native Reset; see main().
+constexpr unsigned kResetCase = 35;
 struct Case {
-    unsigned w, h, mode;
-    float strength, sharp, threshold, exposure, authored_glow_gain, highlight_gain;
+    unsigned w, h, mode, levels;
+    float strength, sharp, threshold, exposure, authored_glow_gain, highlight_gain, scatter;
+    // Zero is the unbounded feed; any positive value is the decoded-space
+    // bloom source ceiling of docs/architecture/bloom-falloff.md.
+    float source_clamp;
     std::vector<unsigned short> pixels;
 };
 std::vector<Case> cases(const std::string& directory) {
     std::ifstream f(directory + "/cases.bin", std::ios::binary);
-    char magic[8]; require(bool(f.read(magic, 8)) && !std::memcmp(magic, "X3BP0002", 8), "input magic");
-    unsigned n = read<unsigned>(f); require(n == 36, "input count");
+    char magic[8]; require(bool(f.read(magic, 8)) && !std::memcmp(magic, "X3BP0003", 8), "input magic");
+    unsigned n = read<unsigned>(f); require(n == 45, "input count");
     std::vector<Case> out;
     for (unsigned i = 0; i < n; ++i) {
         Case c{}; c.w=read<unsigned>(f); c.h=read<unsigned>(f); c.mode=read<unsigned>(f);
+        c.levels=read<unsigned>(f);
         c.strength=read<float>(f); c.sharp=read<float>(f); c.threshold=read<float>(f);
         c.exposure=read<float>(f); c.authored_glow_gain=read<float>(f); c.highlight_gain=read<float>(f);
-        require(c.w >= 4 && c.w <= 32 && c.h >= 4 && c.h <= 32 && c.mode < 3, "input bounds");
+        c.scatter=read<float>(f); c.source_clamp=read<float>(f);
+        require(c.w >= 4 && c.w <= 64 && c.h >= 4 && c.h <= 64 && c.mode < 3, "input bounds");
         x3::temporal::BloomParams params{};params.strength=c.strength;params.threshold=c.threshold;
+        params.levels=c.levels;params.scatter=c.scatter;
         params.authored_glow_gain=c.authored_glow_gain;params.highlight_gain=c.highlight_gain;
+        if(c.source_clamp>0.f)params.source_clamp=c.source_clamp;
         require(x3::temporal::valid_bloom_params(params)&&c.exposure>0&&c.exposure<=65504.f,
                 "input parameters");
         c.pixels.resize(c.w*c.h*4);
@@ -239,9 +248,11 @@ unsigned run_case(IDirect3DDevice9* d,const D3DCAPS9& caps,void* const* native,c
     scene.upload(c);sentinel.upload(c);Com<IDirect3DVertexBuffer9> vb;
     check(d->CreateVertexBuffer(128,0,0,D3DPOOL_MANAGED,&vb.p,nullptr),"Create stream");
     BloomPrepare input{};input.scene=scene.texture.p;input.decode=static_cast<x3::temporal::AgxDecode>(c.mode);
-    input.sharpen=c.sharp;input.filter.levels=3;input.filter.threshold=c.threshold;
+    input.sharpen=c.sharp;input.filter.levels=c.levels;input.filter.threshold=c.threshold;
+    input.filter.scatter=c.scatter;
     input.filter.strength=c.strength;input.filter.authored_glow_gain=c.authored_glow_gain;
     input.filter.highlight_gain=c.highlight_gain;
+    if(c.source_clamp>0.f)input.filter.source_clamp=c.source_clamp;
     require(x3::temporal::prepare(input.agx,c.exposure,0,input.decode,x3::temporal::AgxLook::none),"AgX constants");
     auto& boundary=input.boundary;boundary.main=main.surface.p;check(main.surface->GetDesc(&boundary.main_desc),"Main desc");
     boundary.frame=7;boundary.reset=post_reset?3:2;boundary.thread=GetCurrentThreadId();boundary.admitted=true;
@@ -394,7 +405,11 @@ int X3M_BLOOM_PASS_FIXTURE_ENTRY(int argc,char** argv) {
         require(!pass.valid(reset_token),"Native Reset resurrected ticket");
         BloomBoundary rejected{};rejected.admitted=true;rejected.frame=7;rejected.reset=3;rejected.thread=GetCurrentThreadId();
         auto old=pass.commit(reset_token,rejected);require(!old.committed&&!old.write_attempted,"Pre-Reset token wrote after Reset");
-        checks+=run_case(device.p,caps,native,programs.bundle,input.back(),unsigned(input.size()-1),dir,false,pass,nullptr,true);
+        // The post-Reset repeat is pinned to the odd-geometry, generic-extraction
+        // authored case (9x7, decode none), not to whatever case is last.
+        require(kResetCase<input.size()&&input[kResetCase].w==9&&input[kResetCase].h==7
+                &&input[kResetCase].mode==2,"Post-Reset case identity");
+        checks+=run_case(device.p,caps,native,programs.bundle,input[kResetCase],kResetCase,dir,false,pass,nullptr,true);
         DestroyWindow(window);
         require(npatch_draw_checks>0,"Missing injected draw NPatch assertions");
         std::printf("NPATCH_DRAWS checked=%u pass=1\n",npatch_draw_checks);

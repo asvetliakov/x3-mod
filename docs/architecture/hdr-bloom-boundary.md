@@ -95,6 +95,29 @@ output. Scripted D3D outcomes qualify this metadata/control flow; existing GPU
 state/image evidence remains separate. No GPU calls, allocations, locks or
 exposure work were added, and no Wine rerun was needed for this change.
 
+### Bloom source clamp
+
+`--bloom-source-clamp C` (`X3M_BLOOM_SOURCE_CLAMP`, finite `0 < C <= 64`,
+requires `--hdr-bloom`; absent keeps today's unbounded feed, and the launcher
+names 1.0 as the recommended value) bounds the bloom extraction source in
+decoded space at code `C`. It is one `BloomParams` field, `source_clamp`, that
+`prepare_bloom` and `BloomPass::prepare` fold into the existing `c27.y`
+decoded-space minimum with `min(agx.exposure[1], source_clamp)`; the shader is
+unchanged, no register or lane is added, and the cost is one CPU `min` per pass
+with no per-draw or per-frame work. The clamp is bloom-only: the displayed
+scene keeps its full HDR value, and the AgX display block uploaded before the
+candidate draw still carries the unmodified firefly clamp, so a source at code
+`C` or below is bit-identical to the unclamped feed. Its purpose is the bolt
+halo: an emitter at additive gain 5, or several overlapping sprites summed
+through `DESTBLEND ONE`, feeds tens to hundreds of exposed units into the
+pyramid, which AgX clips to a saturated white plateau (the "disk"). Capping the
+source at the native `A8R8G8B8` scene-map ceiling bounds the feed regardless of
+gain or overlap and leaves the falloff shape untouched. The derivation, the
+measured kernel profile and the rejected alternatives are in
+`docs/architecture/bloom-falloff.md`; `bloom_prepare` logs the value as
+`clamp=<C>` or `clamp=none`, and one `bloom_source_clamp_mode` line records
+whether the variable was present, parsed and enabled.
+
 ### Synchronous MotionOutput scene handoff
 
 `MotionOutput::scene_end_hook` accepts an optional `MotionHdrSceneCallback` and

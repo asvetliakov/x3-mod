@@ -164,3 +164,25 @@ Fixture allocations, state readbacks, image downloads and CPU oracle work are
 diagnostic. Production BloomPass has no CPU image readback or host allocations
 inside its pyramid loop; the fixture does not claim measured GPU timings,
 original-compositor cost, capture-mutex cost, game FPS or game acceptance.
+
+2026-09-16, source clamp: corpus 36 -> 45 cases (`X3BP0003`; per-case `levels`,
+`scatter` and `source_clamp`, dimension bound 32 -> 64). The nine new cases run
+the live compositor constants no other case pinned (authored glow 0.375,
+highlight 0.05, threshold 1, knee 0.5, scatter 0.65, five effective levels, EV
++1.3) on a 64x40 image with a 6x40 bar, in both extraction lanes: alpha 0 (the
+thresholded highlight term, the additive bolt) and alpha 1 (the authored glow
+term). The post-Reset repeat is now pinned by index to the odd-geometry,
+generic-extraction authored case (35: 9x7, decode none) in both the fixture and
+the runner, instead of following the last case. One X3-bottle run
+(`run_bloom_pass.py --output-dir /private/tmp/x3-bloom-source-clamp`, d3d9.dll
+`6aee3138309d...`): 45/45 cases and the post-Reset case pass against the CPU
+oracle, maximum 1 code, maximum per-case mean 0.073, and all 36 pre-existing
+readbacks are byte-identical to their recorded baseline. The `clamp_relations`
+block checks the identities on the black background, where every clamp case of
+a lane shares the same displayed scene. Highlight lane: a code-1 source is
+bit-identical with clamp none and clamp 1.0; a code-5 source at clamp 1.0
+reproduces the code-1 image exactly (0 codes); clamp none differs from clamp
+1.0 by 165 codes; clamp 2.0 lies strictly between the two (bracket margin 6
+codes). Authored lane: bit-identical at code 1, 0 codes for the clamped code-5
+source, 149 codes of clamp effect. Inside the bar the images still differ by 27
+and 24 codes, since the clamp never touches the displayed scene.
