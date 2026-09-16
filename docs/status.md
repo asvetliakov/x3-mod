@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-16 (run28 candidate installed; run 28 queued). This is the short current handoff; the current
+Updated 2026-09-17 (run34 candidate installed; run 35 complete, run 36 pending the next candidate). This is the short current handoff; the current
 session handoff is [handoff-2026-09-17.md](handoff-2026-09-17.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -233,6 +233,37 @@ Run 34 is complete (run98–102): the stall is solved by the media-cue cache
 DXVK D3D9 renders black on this Preview, so the bottle's graphics backend must
 be switched back before the next run. No run is queued; next steps are in
 [handoff-2026-09-17.md](handoff-2026-09-17.md).
+
+## Session 2026-09-17 (late): run 35, shadow producer and apply pass, diagnostics
+
+Merged on main after the run34 install (not yet in any installed build):
+
+- **Media cues:** entry-side `media_cue_enter` line under `--media-cue-trace`
+  (synchronous write before the allocator, 32/s limiter, `enter_suppressed=`),
+  so a hung graph build names its cue (`221e384`; ledger
+  [media-cues.md](verification/media-cues.md) §6).
+- **D3DX experiment:** launcher `--d3dx native|builtin` (`c518720`). Run 35 A
+  (`run103`) ran with the builtin override at the run95 view: visuals
+  unchanged; the identity line could not prove which D3DX loaded (Wine keeps
+  the native path and size for a mapped builtin, probe-verified), and the
+  per-pass medians (BeginPass 8.90 vs run95's 6.64 µs) are confounded by the
+  different build. `loaded_module` now reads the mapped image (`image_size`,
+  `stamp`, `exports`, `wine_builtin`) and the launcher records its command and
+  override string in `launcher-stderr.log` (`ccb1312`); the experiment repeats
+  as run 36 A1/A2 on one build ([ledger](verification/sampling-profiler.md),
+  run103 section).
+- **Shadows:** the original-program share producer
+  (`linear_material_original_sun_share_pixel_variant`, 108/108 admitted, GPU
+  share error ≤ 1.9e-4 FP16 codes, `1139090`) and the scene-end sun-shadow
+  apply pass (`SunShadowApplyPass`, synthetic fixture worst 0.998 FP16 codes,
+  all skip and restore paths compared, `a41e028`) are reviewed and merged;
+  neither is wired into the proxy yet. The lane latch without linear
+  materials, cutout admission under original shading, bind-pair selection,
+  scene-end order and `--sun-shadow-apply` are in flight
+  ([contract](architecture/legacy-sun-application.md),
+  [ledger](verification/directional-shadows.md)).
+- **Housekeeping:** the run file holds only open runs; the 40 merged agent
+  worktrees were removed (18 GB).
 
 ## Next user action
 
