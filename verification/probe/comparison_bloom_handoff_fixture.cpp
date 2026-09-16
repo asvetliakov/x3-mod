@@ -25,6 +25,7 @@ struct Input {
     bool exact_sharpen=false;
     x3::temporal::BloomParams filter{};
 };
+float bloom_source_clamp=x3::temporal::kAgxClampOff; // mirrors capture.cpp (inert, --bloom-source-clamp)
 struct CompositorInvocation { Device* owner; void* device; bool revoked=false; Input input{}; };
 struct MotionHdrScene { void* device; Resource* scene; Resource* main; std::uint64_t device_id,frame; Display display{}; };
 #include "comparison_handoff_under_test_inc.h"
