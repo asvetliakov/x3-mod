@@ -206,6 +206,8 @@ namespace capture_host {
 std::vector<char> events;
 std::recursive_mutex mutex;
 
+struct LightCallBoundary { LightCallBoundary() {} ~LightCallBoundary() {} }; // mirrors capture.cpp: inert, non-trivial so the scoped variable is not "unused"
+namespace proxy_identity { inline void log_loaded_module(const wchar_t*) {} } // mirrors the loaded_module line (inert)
 struct CpuCallBoundary {
     CpuCallBoundary() { events.push_back('C'); }
     void before_original() { events.push_back('B'); }

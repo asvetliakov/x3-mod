@@ -13,36 +13,40 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`03c0c9f4b69ceaa1241b8513a6a013a61884e818f9eddbdb681acef9dd6ef171`
-(16,579,851 bytes), built once on Opus from clean committed main `a3cafd5`
-(2026-09-17; marker `X3M_SOURCE_COMMIT=a3cafd5…`, no `-dirty`). The
-[build record](../verification/results/run33-candidate-build.json) binds the
-clean build (14 s, zero warnings), the 492-function no-x87 audit with both
-stamp handlers as roots, the 17 exports, the three site verifiers against
-the EXE, the stamp CPU fixture (8,274 checks, 0 failures, fixture sha
-recorded; pass stamps 89.1 ns and loop stamps 90.9 ns per dispatch), the
-state-hook benchmark on the candidate bytes
-([record](../verification/results/bottle-X3/state-hook-benchmark-run33.json):
-production SetRenderState 14.0 ns vs native 13.0, SetSamplerState 10.8 vs
-11.0, draw pair 1,014 ns), six motion-output parity cases and the lane
-fixture with the new cutout counters (16 cases). The
-[install record](../verification/results/run33-candidate-install.json) binds the
+`7102a2f14a2ce71421f76b90bc37b5f99aa6aa8a4b9c2b6db242ace07736031f`
+(16,748,838 bytes), built once on Opus from clean committed main `ee5a406`
+(2026-09-17; marker `X3M_SOURCE_COMMIT=ee5a406…`, no `-dirty`). The
+[build record](../verification/results/run34-candidate-build.json) binds the
+clean build (14 s, zero warnings), the 494-function no-x87 audit (76 roots,
+media-cue handlers included), the 17 exports, the four site verifiers against
+the EXE, the stamp CPU fixture (8,521 checks, 0 failures, fixture sha
+recorded; pass 90.3 ns, loop 88.6 ns, media-cue pass 280 ns / refuse 116 ns
+per dispatch), the state-hook benchmark on the candidate bytes
+([record](../verification/results/bottle-X3/state-hook-benchmark-run34.json):
+production SetRenderState 13.4 ns vs native 15.5, SetSamplerState 10.9 vs
+11.0, draw pair 1,020 ns), five motion-output parity cases equal to the
+committed record, and the launcher dry-runs for the trace, cache and v5
+runtime options. A first attempt from `1f255f2` failed its fixture gate on a
+`-Werror=cast-function-type` cast in the new clock anchor and was discarded
+(`/tmp/x3-candidate-dXW89V`); the fix is `ee5a406`. The
+[install record](../verification/results/run34-candidate-install.json) binds the
 installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
-run32 DLL `11c1f119…` and manifest are in `/tmp/x3-candidate-LN7X0v/rollback`.
-Run 33's three session commands passed `--dry-run`; no game launched.
+run33 DLL `03c0c9f4…` and manifest are in `/tmp/x3-candidate-uemMxM/rollback`.
+Run 34's four session commands passed `--dry-run`; no game launched.
 
-This build adds, on top of run32's: `--pass-phases` (four lean-stub stamps in
-the effect pass loop `0x004c0150`, about 0.36 ms per busy frame,
-[note](reverse-engineering/effect-pass-loop.md)), `--loop-phases` (six
-lean-stub stamps in the per-sector update driver `0x0043a360` with slow-frame
-lines, [note](reverse-engineering/main-loop-input-region.md)), the shared
-lean stub (`lean_stub.cpp`, `stamp_core.h`, `stamp_install.h`), the
-`cutout_opaque_*` lane counters, and the game-phases invalidate fix. Both
-stamp groups are off unless requested; appearance and production hooks are
-unchanged from run32 (SetRenderState/SetSamplerState unhooked, launcher
-`--state-shadow auto`). Defaults unchanged: camera 0.5°/0.50, EV ceiling
-+1.3, mip bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull
-shading. No shadows applied.
+This build adds, on top of run33's: the launcher's stderr tee into the
+session directory (`launcher-stderr.log`, UTC-prefixed) with a `clock_anchor`
+and `qpc=` on every window line; `loaded_module` identity lines for the D3D9
+backend and `d3dx9_37.dll`; the media-cue gate at `0x00498140`
+(`--media-cue-trace`, `--media-cue-cache on|off` default off in this build,
+`--media-cue-retry-s 30`; [note](reverse-engineering/media-cue-playback.md),
+[ledger](verification/media-cues.md)); stamp arena 20,480 B. Off by default:
+pass, loop and media-cue groups. Appearance and production hooks unchanged
+from run32/33. Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip
+bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull shading. No
+shadows applied. The v5 decoder runtime (`/tmp/x3-wma-plugin-v5`: MP3, MP2,
+MPEG-1 video, program-stream demux on top of wmav2) is host-verified and
+selected per session with `--voice-decoder`.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
@@ -219,8 +223,11 @@ Run 33 came back as `run95` (A), `run96` (B) and `run97` (C):
   write; both cutout pairs write depth so lane = routed. Linear materials plus
   the lane cost about +3 ms in the busy view, mostly in the draw call.
 
-Run 33 is complete; run 34 (stderr capture, module identity, and whatever the
-`0x0045b720` decompilation proposes) follows the in-flight work.
+Run 33 is complete. [Run 34](verification/user-runs.md) is queued (candidate
+`7102a2f1…` from `ee5a406`, installed): A1 the stalling sector with the
+media-cue trace only, A2 the same with the negative cache on, A3 the same on
+the v5 decoder runtime with the cache off, B the DXVK experiment in the busy
+view.
 
 ## Next user action
 

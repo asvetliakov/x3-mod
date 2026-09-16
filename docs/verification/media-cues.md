@@ -237,11 +237,12 @@ global reachable from this handler, so there is no sector-change reset.
 
 | Check | Result |
 | --- | --- |
-| `cmake --build build` (MinGW i686, `-Wall -Wextra`) | 0 warnings |
-| `python3 verification/probe/check_no_x87.py build/d3d9.dll` | PASS, 494 reachable functions, 0 violations, both handlers rooted |
+| `cmake --build build` (MinGW i686, `-Wall -Wextra`; worktree build) | 0 warnings |
+| `python3 verification/probe/check_no_x87.py build/d3d9.dll` (worktree build) | PASS, 494 reachable functions, 0 violations, both handlers rooted |
 | `PYTHONPATH=verification/probe python3 verification/probe/verify_media_cue_site.py` | PASS, `source_present: true`, 19 checks incl. `no_return_slot_read` (no `[esp]` read, the one `[esp+0x8]` read, no ESP copy, `add esp,N` writers only) |
 | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py` | PASS, 8521 checks, 0 failures, 6.7 s; `media_cases=9` (incl. the forced-lost fail-safe case) |
 | `MEDIA CUE BENCH` (fixture, X3 bottle) | baseline 11.4 ns/call, PASS arm 285.7 (dispatch **274 ns**, entry + return capture), REFUSE arm 130.7 (dispatch **119 ns**) |
+| run 34 install candidate (committed main `ee5a406`, DLL `7102a2f1`) | `check_no_x87.py` PASS, 76 roots / 494 reachable, 0 violations, `_x3m_media_cue_enter` and `_x3m_media_cue_return` both walked; `verify_media_cue_site.py` PASS, `source_present: true`; `run_game_phase_cpu.py` PASS, 8521 checks, 0 failures, `media_sites=1`, `media_cases=9`; `MEDIA CUE BENCH` baseline 11.4, PASS arm 291.2 (dispatch **280 ns**), REFUSE arm 127.6 (dispatch **116 ns**); record `verification/results/run34-candidate-build.json` |
 | host probe `verification/probe/media_cue_host.cpp` | 154 checks, 0 failures, no allocation (incl. unwound-entry reclaim at push) |
 | `python3 -m unittest verification.analysis.test_media_cue ...` (12 modules) | 94 tests OK |
 
