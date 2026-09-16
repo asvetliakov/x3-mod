@@ -475,6 +475,12 @@ ns per call, medians of three repetitions:
 | GetVertexShaderConstantF (4, unhooked) | 15.8 | 15.6 | 16.1 |
 | SetStreamSource + DrawIndexedPrimitive pair | 396.2 | 4197.4 | 5276.4 |
 
+Light envelope on the binding and draw hooks (state-call-fast-path.md,
+Envelope; worktree DLL `207d4ede`, record overwritten in place): SetStreamSource
+15.9 / 133.3 / 371.5, the draw pair 389.2 / 1275.8 / 1877.2, and the fixture's
+`PRESERVE` rows show the seeded x87 image, MXCSR and LastError unchanged
+through every hooked binding and draw call. `lock_wait` (`HeldHookLock`) is now sampled only by the remaining `HookGuard` users: begin_scene, end_scene, present, reset, clear, set_rt, set_depth, get_rt, get_rt_data, stretch_rect, color_fill, update_surface, update_texture, the create_* resource/shader/query/state-block entries, query_issue/query_release, stateblock begin/end/apply/release, get_render_state, draw_rect_patch/draw_tri_patch, the cursor hooks and device/factory release; its count per interval drops by the draw and binding calls (run87: most of the 249 per second), which tools/analysis/analyze_iteration07_taa.py, analyze_iteration09_cost.py and analyze_iteration10.py read as `lock_wait`.
+
 Primitives, same bottle: `QueryPerformanceCounter` 67.8 ns (10,000,000 calls),
 uncontended `std::recursive_mutex` lock+unlock 6.8 ns, GetLastError/SetLastError
 pair 3.9 ns, the full four-stamp `LightCallBoundary` envelope 9.9 ns, the full

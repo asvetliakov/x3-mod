@@ -22,6 +22,14 @@
 // creation, so a run proves whether the proxy's setter hooks were installed at
 // all: the proxy hooks the device's private vtable in place, and the module
 // file name separates the proxy (workdir) from the backend (system32).
+//
+// `PRESERVE` lines are the fail-closed proof for the light envelope
+// (cpu_state.h LightCallBoundary on the binding and draw hooks): each hooked
+// call is entered with a seeded live x87 stack (three values, a masked invalid
+// sticky flag), a non-default control word (round toward zero, 64-bit
+// precision), a non-default MXCSR (FTZ, round down) and a distinct LastError,
+// and the FNSAVE image, MXCSR and LastError are compared after it. The same
+// lines in native mode show what the backend itself does to that state.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
@@ -48,6 +56,36 @@ template <class T> struct Com { T* p = nullptr; ~Com() { if (p) p->Release(); } 
 using Create = IDirect3D9* (WINAPI*)(UINT);
 
 double frequency_hz = 1;
+
+// x87/MXCSR/LastError image around one call (the FNSAVE form the proxy itself
+// uses: fnsave resets the FPU, so it is followed by frstor).
+struct CpuImage {
+    alignas(16) unsigned char x87[108]; unsigned mxcsr; DWORD error;
+    void capture() { error = GetLastError(); asm volatile("fnsave %0\n\tfrstor %0\n\tstmxcsr %1" : "=m"(x87), "=m"(mxcsr) :: "memory"); }
+};
+// Seed: fninit, two zeros divided (masked invalid -> sticky IE, one NaN on the
+// stack), 1.0 and pi pushed (three live registers), control word 0x0f7f (all
+// masked, PC=64-bit, RC=truncate; default 0x027f), MXCSR 0xbf80 (FTZ, RC down,
+// all masked; default 0x1f80), LastError 0x3ac.
+void seed_cpu_state() {
+    const unsigned short cw = 0x0f7f; const unsigned mx = 0xbf80;
+    asm volatile("fninit\n\tfldz\n\tfldz\n\tfdivp\n\tfld1\n\tfldpi\n\tfldcw %0\n\tldmxcsr %1" :: "m"(cw), "m"(mx) : "memory");
+    SetLastError(0x3ac);
+}
+void clear_cpu_state() { asm volatile("fninit" ::: "memory"); const unsigned mx = 0x1f80; asm volatile("ldmxcsr %0" :: "m"(mx) : "memory"); }
+template <class Call> void preserve_check(const char* op, Call call) {
+    CpuImage before{}, after{};
+    seed_cpu_state(); before.capture();       // capture() restores the seeded image
+    const HRESULT hr = call();
+    after.capture(); clear_cpu_state();
+    const bool x87 = !std::memcmp(before.x87, after.x87, sizeof before.x87);
+    // Control word (bytes 0-1), status word (4-5), tag word (8-9) named separately.
+    const bool control = !std::memcmp(before.x87, after.x87, 2), status = !std::memcmp(before.x87 + 4, after.x87 + 4, 2),
+               tags = !std::memcmp(before.x87 + 8, after.x87 + 8, 2);
+    std::printf("PRESERVE op=%s result=%08lx x87=%u control=%u status=%u tags=%u mxcsr=%u error=%u mxcsr_before=%04x mxcsr_after=%04x error_before=%lu error_after=%lu\n",
+                op, static_cast<unsigned long>(hr), x87, control, status, tags, before.mxcsr == after.mxcsr, before.error == after.error,
+                before.mxcsr, after.mxcsr, static_cast<unsigned long>(before.error), static_cast<unsigned long>(after.error));
+}
 std::uint64_t ticks() { LARGE_INTEGER t{}; QueryPerformanceCounter(&t); return static_cast<std::uint64_t>(t.QuadPart); }
 void report(const char* op, unsigned rep, std::uint64_t calls, std::uint64_t elapsed) {
     std::printf("BENCH op=%s rep=%u calls=%llu elapsed_ticks=%llu ns_per_call=%.3f\n", op, rep,
@@ -121,6 +159,22 @@ void device_benchmark(Workload& w) {
         check(w.device->EndScene() == S_OK, "EndScene");
     }
     std::printf("STATUS or=%08lx\n", static_cast<unsigned long>(status_or));
+}
+
+// The light-envelope binding hooks and the draw hooks, entered with the seeded
+// state (see preserve_check); the draws run inside a scene like the
+// benchmark's draw pairs.
+void preserve_benchmark(Workload& w, IDirect3DVertexDeclaration9* declaration) {
+    IDirect3DDevice9* device = w.device;
+    preserve_check("SetStreamSource", [&] { return device->SetStreamSource(0, w.draw_vertices, 0, 16); });
+    preserve_check("SetIndices", [&] { return device->SetIndices(w.draw_indices); });
+    preserve_check("SetVertexDeclaration", [&] { return device->SetVertexDeclaration(declaration); });
+    preserve_check("SetFVF", [&] { return device->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE); });
+    preserve_check("SetRenderState", [&] { return device->SetRenderState(D3DRS_ALPHAREF, 7); });
+    check(device->BeginScene() == S_OK, "BeginScene (preserve)");
+    preserve_check("DrawIndexedPrimitive", [&] { return device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2); });
+    preserve_check("DrawPrimitive", [&] { return device->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1); });
+    check(device->EndScene() == S_OK, "EndScene (preserve)");
 }
 
 // The hooked vtable entries of the device the fixture holds: slot -> owning
@@ -223,6 +277,13 @@ int main(int argc, char** argv) {
                 Workload w{device.p, {a.p, b.p}, {va.p, vb.p}, quad.p, quad_indices.p, {}};
                 for (unsigned i = 0; i < 8; ++i) w.constants[i] = float(i);
                 device_benchmark(w);
+                Com<IDirect3DVertexDeclaration9> declaration;
+                {
+                    const D3DVERTEXELEMENT9 elements[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                                                          {0, 12, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0}, D3DDECL_END()};
+                    ok(device->CreateVertexDeclaration(elements, &declaration.p), "declaration");
+                }
+                preserve_benchmark(w, declaration.p);
                 ok(device->SetTexture(0, nullptr), "unbind texture");
                 ok(device->SetStreamSource(0, nullptr, 0, 0), "unbind stream");
             }
