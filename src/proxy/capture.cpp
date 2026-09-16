@@ -6,6 +6,7 @@
 #include "voice_dmo_fallback.h"
 #include "lod_scale.h"
 #include "frame_timing.h"
+#include "frame_phases.h"
 #include "point_light_admission.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
@@ -1088,10 +1089,12 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         }
     }
     const auto begin=telemetry::now();
+    frame_phases::present_begin(); // X3M_FRAME_PHASES only: the present phase begins; same placement rule as frame_timing
     frame_timing::present_begin(); // ahead of before_original: pre-call instrumentation must not alter the native input state (cpu_state.h)
     cpu.before_original();
     const HRESULT hr=fn(d,a,b,w,r);cpu.after_original();
     frame_timing::present_end();
+    frame_phases::present_end(); // X3M_FRAME_PHASES only: closes the frame at the native Present return
     ctx.motion_output.after_present(hr);
     const bool scene_confirmed=ctx.scene_depth.end_frame(hr);
     const bool motion_committed=ctx.motion.end_frame(scene_confirmed,hr);
@@ -1114,6 +1117,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     // a later claim would write over code the loading threads may be executing.
     if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
     frame_timing::frame(ctx.frame,ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
+    frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per 300-frame window
     // Programs the game compiled that are in none of the proxy's tables
     // (docs/architecture/mod-compatibility.md, "Making unknown programs
     // visible"). One line per distinct unknown, at the first Present after it
@@ -2443,6 +2447,7 @@ void initialize_log(HMODULE module) {
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present
+    frame_phases::initialize(); // X3M_FRAME_PHASES=1 only: ten render-routine stamps through the game-phase stub, same window
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
     frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
     lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window

@@ -1,0 +1,33 @@
+{
+  "result": "PASS",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "exit": 0,
+  "elapsed_s": 5.9,
+  "summary": {
+    "stubs": "47",
+    "frame_sites": "10",
+    "replay_cases": "13",
+    "actual_target_handler_cases": "5",
+    "frame_cases": "4",
+    "arena_used": "13896",
+    "checks": "8033",
+    "failures": "0"
+  },
+  "failures": [],
+  "benchmark_lines": [
+    "GAME PHASE BENCH trials=3 batches=128 loops_per_batch=4 marker_calls_per_loop=18 owned_bridges_per_loop=1 cpu_queries_per_enabled_loop=17 baseline_loop_us=19.236914 disabled_loop_us=28.488216 enabled_loop_us=158.522656 disabled_added_loop_us=9.251302 enabled_added_loop_us=139.285742 enabled_added_per_marker_equivalent_us=7.738097 scope=actual_emit_callback_core_owned_bridge_GetThreadTimes harness=paired_same_snapshot normal_tape=yes pump_metadata=valid engine_read_epoch=per_loop warmup_loops_per_batch=1 runtime_report_includes_warmup=yes game_fps=unmeasured",
+    "GAME PHASE TARGET BENCH variant=nonnull_mode3 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=8 cpu_queries_per_request=0 native_request_us=1.064648 disabled_request_us=5.137174 enabled_request_us=7.972331 disabled_added_request_us=4.072526 enabled_added_request_us=6.907682 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
+    "GAME PHASE TARGET BENCH variant=null_mode3 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=2 cpu_queries_per_request=0 native_request_us=1.036133 disabled_request_us=2.084961 enabled_request_us=3.298958 disabled_added_request_us=1.048828 enabled_added_request_us=2.262826 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
+    "GAME PHASE TARGET BENCH variant=rejected_null_mode2 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=2 cpu_queries_per_request=0 native_request_us=1.048568 disabled_request_us=2.061589 enabled_request_us=2.635742 disabled_added_request_us=1.013021 enabled_added_request_us=1.587174 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured"
+  ],
+  "fixture_sha256": "1757286c86ee51c73bd5b24bf5370680b7b8c34594781e9ac5cd9acb93d3ae78",
+  "stdout": "build/verification/game-phases/stdout.txt"
+}

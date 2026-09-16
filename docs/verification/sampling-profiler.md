@@ -368,6 +368,102 @@ one tick per microsecond) and runs a scripted 300-frame window, so the
 outermost-only accounting, the nesting depth, the native-Present subtraction,
 the slow-call witness and the emitted line text are executed, not inspected.
 
+## Frame phases (`X3M_FRAME_PHASES=1`)
+
+`--frame-timing` says how much of a frame is inside the proxy's hooks and the
+native Present; what is left (run87: about 15 ms of a 28.5 ms frame at 457
+draws) is game code between D3D calls, which the sampler cannot attribute under
+FEX. `--frame-phases` (launcher `tools/manage.py`, requires `--telemetry`,
+independent of `--game-phases`; `X3M_FRAME_PHASES=1`) attributes it to the
+engine's own per-frame phases with ten byte-verified stamps inside the render
+routine `0x00471f50` (`src/proxy/frame_phase_sites.h`, study
+`docs/reverse-engineering/frame-loop-phases.md` section 4) plus the Present
+hook. Each stamp is one `QueryPerformanceCounter` through the game-phase stub
+and CPU boundary (`src/proxy/game_phases.cpp`, `x3m_game_phase_enter` with an
+index at or above the phase group's count), so the computational state,
+LastError and the game's exact ESP at the displaced instructions are preserved
+as for the existing markers. No stamp is on a per-object path: the seven core
+sites fire once per frame, the three view sites once per view (three or more
+views per frame). The install is one transaction inside the engine-patch
+window (preflight of all ten spans, claim in order, rollback of every patched
+site on the first failure, `late_claim`/`install_window_closed` after the first
+Present); `frame_phase_mode` and ten `frame_phase_site` lines record it.
+
+A frame runs from one native Present return to the next; the interval that
+starts at a stamp carries that stamp's name. Per 300-frame window one line in
+microseconds (nearest-rank percentiles, the frame index of the window's last
+frame) and up to four witnesses for the slowest frames by `dt_us`, keyed by the
+same wrapper frame index as `frame_timing_slow` so the two can be joined:
+
+```
+frame_phases frame=N frames=300 incomplete= dt_p50_us= dt_p95_us= pre_render_p50_us= pre_render_p95_us= prologue_p50_us= prologue_p95_us= scene_update_p50_us= scene_update_p95_us= begin_scene_p50_us= begin_scene_p95_us= views_p50_us= views_p95_us= overlays_p50_us= overlays_p95_us= text_p50_us= text_p95_us= scene_end_p50_us= scene_end_p95_us= present_p50_us= present_p95_us= view_setup_p50_us= view_setup_p95_us= view_submit_p50_us= view_submit_p95_us= views_p50= order_errors= clock_errors= unmatched= dropped= early= foreign=
+frame_phases_slow frame=F dt_us= pre_render_us= prologue_us= scene_update_us= begin_scene_us= views_us= overlays_us= text_us= scene_end_us= present_us= view_setup_us= view_submit_us= views= complete=
+```
+
+| Phase | From | To | Contains | Scales with |
+| --- | --- | --- | --- | --- |
+| `pre_render` | native Present return | `frame_phase_prologue` `0x00471f6c` | the main loop's input/messages, script VM, deferred callbacks, simulation/AI and cockpit update (`--game-phases` subdivides it) | objects, scripts |
+| `prologue` | `0x00471f6c` | `frame_phase_scene_update` `0x00472044` | `0x004f4fc0`, view count scan, `malloc`+`memset` of the view array | views |
+| `scene_update` | `0x00472044` | `frame_phase_begin_scene` `0x004720b5` | lens-flare setup, recursive node transform update `0x0047b680`, node-flag reset | linear in scene nodes |
+| `begin_scene` | `0x004720b5` | `frame_phase_views` `0x00472186` | `BeginScene`, per-view update, view `_qsort` | views (constant in objects) |
+| `views` | `0x00472186` | `frame_phase_overlays` `0x0047238d` | the whole per-view loop: env map, setup, traversal, draw-queue sort, submission, particles, the scene-end hook `0x004721b1` | super-linear in queued objects; O(n²) sort |
+| `overlays` | `0x0047238d` | `frame_phase_text` `0x004724ec` | second view pass (2D overlays) and the cockpit view (its own traversal/sort/submission) | constant, plus cockpit objects |
+| `text` | `0x004724ec` | `frame_phase_scene_end` `0x00472574` | on-screen text | constant |
+| `scene_end` | `0x00472574` | Present hook entry | frame `EndScene`, the two option-gated tails, the view-array `free`, the main loop's post-render, detail and presentation phases | constant |
+| `present` | Present hook entry | native Present return | the forwarded native `Present` (the same interval `frame_timing` reports as `present_us`) | GPU/vsync |
+| `view_setup` (sum) | `frame_phase_view_setup_begin` `0x0047224c` | `frame_phase_view_submit_begin` `0x00472270` | per-view light selection `0x004892a0`, state build, camera/viewport/clear, pass setup | views |
+| `view_submit` (sum) | `0x00472270` | `frame_phase_view_submit_end` `0x004722c8` | the layer loop: traversal `0x0047e920`, sort `0x0047e620`, submission `0x0047e6e0` (the effect state-manager path) | queue length × sub-meshes × passes |
+
+* `dt_us` is the sum of the nine phases; `views` is the number of
+  `view_setup_begin` stamps in the frame and `view_setup`/`view_submit` are
+  sums over those views. A frame without views lands from `begin_scene` on
+  `text` (the routine's `0x0047216a` edge): the skipped phases are zero and the
+  frame counts as `incomplete`. A repeated or backward core stamp, a second
+  Present begin, or a backward clock drops the frame (`order_errors`,
+  `clock_errors`, `dropped`); stamps outside a live frame are `unmatched`.
+  `early` counts stamps before the first Present admitted the owner thread,
+  `foreign` stamps from any other thread; both are ignored. The first observed
+  frame only starts the interval, as in `frame_timing`.
+* Contract notes on the two sites the study flagged: `frame_phase_views`
+  (`xor ebx,ebx; add esp,0x10` after the `_qsort` call) and
+  `frame_phase_view_setup_begin` (`push esi; call 0x004892a0`) run in the arena
+  tail at the game's exact ESP, because the stub restores every register and
+  the flags (`popad`/`popfd`) before its `jmp [next]` and the dispatcher is a
+  plain `jmp [entry]`; the displaced call's return address lies in the tail like
+  every displaced call of the phase group. Both sites are kept.
+  `frame_phase_overlays` leaves live flags for the `jle` at `0x00472393`, which
+  the tail's copy of the `cmp` re-creates after `popfd`.
+* cost: 7 + 3 x views stub dispatches per frame (seven core stamps once, the
+  three view stamps once per view), each one `QueryPerformanceCounter` read
+  through the game-phase stub and CPU boundary, which the CPU fixture measures
+  at 0.51 us per dispatch under the X3 bottle (`GAME PHASE BENCH`
+  `disabled_added_loop_us` 9.26 over 18 marker calls); about 8 us per frame at
+  three views. No allocation; the window reduction once per 300 frames. Off,
+  three relaxed atomic loads per frame and nothing at the sites.
+* `begin_scene_p50_us` blends frames that have views with frames that have
+  none (the no-views edge lands on `text`, so the whole interval from
+  `0x004720b5` to `0x004724ec` is `begin_scene` there): read it together with
+  `incomplete`, and use the `frame_phases_slow` witnesses (`complete=1`) for a
+  per-frame split.
+* verification: `python3 verification/probe/verify_frame_phase_sites.py`
+  (exact bytes, whole instructions, no interior branch, the exact incoming-edge
+  set per span, the rel32 replay at three arena addresses, no indirect jump and
+  one `ret` in the routine, no data reference to any span byte, disjointness
+  from the scene hook, the flag consumer and the `_qsort` call, EXE identity);
+  `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_game_phase_cpu.py` (the CPU fixture with one scripted
+  frame: install, native register/flag/x87/XMM/LastError parity, stamp order
+  and interval accounting with two views, an order error, rollback to the
+  original bytes, refusal on a byte mismatch, partial-install rollback on a
+  duplicate claim (the group status carries the claim's own reason,
+  `bytes_mismatch`), refusal after the install window closed); host
+  `verification/analysis/test_game_phase_frame.py` (`frame_phases_host.cpp`
+  tracker/window probe, wiring, launcher). Ledger:
+
+| Date | Change | Checks | Result |
+| --- | --- | --- | --- |
+| 2026-09-16 | Frame-phase group added (ten sites, `--frame-phases`) | `verify_frame_phase_sites.py` PASS (10 sites, all checks); `run_game_phase_cpu.py` under X3: 8033 checks, 0 failures, arena 13896/16384 B; host `test_game_phase_frame` 10 tests OK; DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations | not yet run in the game; first instrumented flight pending |
+
 ## Per-call cost of the hooked state setters under the X3 bottle (2026-09-16)
 
 `verification/probe/state_hook_benchmark.cpp` (build

@@ -2,6 +2,8 @@
 #include "game_phases.h"
 #include "game_phases_core.h"
 #include "game_phase_sites.h"
+#include "frame_phases.h"
+#include "frame_phase_sites.h"
 #include "cpu_state.h"
 #include "engine_memory.h"
 #include "object_trace.h"
@@ -221,6 +223,7 @@ x3m_game_phase_enter(unsigned index,const std::uint32_t* regs) {
 #ifdef X3M_GAME_PHASE_FIXTURE
     if(x3m::game_phases::fixture_callback){x3m::game_phases::fixture_callback(index,regs);return;}
 #endif
+    if(index>=x3m::game_phases::sites::Count){x3m::frame_phases::stamp(index-x3m::game_phases::sites::Count);return;}
     x3m::game_phases::handle(index,regs);
 }
 namespace x3m::game_phases {
@@ -241,6 +244,7 @@ void* emit(unsigned index,void*** next_out) {
     *next_out=reinterpret_cast<void**>(next);e.dword(0);return e.finish()?start:nullptr;
 }
 }
+void* emit_stub(unsigned index,void*** next){return index<unsigned(sites::Count)+unsigned(frame_phases::sites::Count)?emit(index,next):nullptr;}
 bool initialize() {
     ErrorGuard error;
     if(initialized)return active.load(std::memory_order_acquire);
@@ -378,7 +382,7 @@ bool fixture_target_state(std::uint64_t* completed4,std::uint64_t* ignored,std::
     for(unsigned i=0;i<4;++i)completed4[i]=core.calls[i+4].count;
     *ignored=core.ignored_joins;*reads=read_failures;*depth=core.depth;return true;
 }
-void* fixture_emit(unsigned index,void*** next){return index<sites::Count?emit(index,next):nullptr;}
+void* fixture_emit(unsigned index,void*** next){return emit_stub(index,next);}
 void fixture_set_callback(void (__cdecl* callback)(unsigned,const std::uint32_t*)){fixture_callback=callback;}
 void fixture_enable(bool enabled){
     active.store(false);core={};owner_thread.store(0);invalidation_epoch.store(0);seen_epoch=0;
