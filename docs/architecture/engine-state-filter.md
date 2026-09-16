@@ -201,9 +201,14 @@ from the pass loop.
 
 ## RE work needed before implementation
 
-- For the measurement (recommended next step): validate the four spans above
-  (incoming edges, flag and register liveness, no data references), extend
-  the verifier, add the module-identity line for `d3dx9_37`.
+- For the measurement (recommended next step): **done** for the spans —
+  [effect-pass-loop.md](../reverse-engineering/effect-pass-loop.md) validates
+  all four as proposed (`verification/probe/verify_pass_phase_sites.py` PASS)
+  and corrects two premises: there is no `CommitChanges` dispatch in
+  `0x004c0150` (the apply interval is `BeginPass` alone), and the stamps are
+  per-draw (~4,024 dispatches, 0.6–1.3 ms with an accumulate-only stub, not
+  0.25 ms with the shared one). Still open: the module-identity line for
+  `d3dx9_37`.
 - For A (only if ever revived): confirm slots 7–10 of `0x00562a8c` are the
   only manager methods D3DX calls on the material path (slots 12–20 exist and
   forward too), confirm `[this+4]` is the device on every constructed manager

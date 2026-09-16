@@ -49,7 +49,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 29 | Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane | 3 | Completed as run83 (A), run84 (A2 profiler), run85 (B): engines unchanged (gain refused screen blend), halo persisted (bloom amplitude), chase pose fixed, profiler blind under FEX, sun lane available 4577/4695 |
 | 30 | Single emission gain, bloom source clamp, frame-time split | 2 | Session A run87 and B run88 received: engines respond, halo accepted at clamp 1.0, no cutout draws yet (B to repeat at an Argon industrial station), frame split: state hooks 8.9 ms of a 28.5 ms busy frame |
 | 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
-| 32 | Hybrid unhook, draw and state counters | 3 | Queued: candidate `11c1f119…` from `baee232` installed 2026-09-17 |
+| 32 | Hybrid unhook, draw and state counters | 4 | A1 run91 (redundancy 95/99/40 %, batchability 5 %), A2 run92 (busy frame 37.5 to 26.5 ms unhooked), B run93 (cutout pairs draw everywhere, lane admission unobservable; slow sector is `pre_render` 98 % of a 420 ms frame); C queued with `--game-phases` |
 
 ## 32. Hybrid unhook, draw and state counters — open
 
@@ -78,6 +78,14 @@ with run 31 there; the phase stamps give the frame time.
 busy view as A1/A2 for 30 s, then quit. Run91 (A1) counted about 108 cutout
 draws per frame in that view (`cutout_pairs=9073,23509` per 300 frames), so
 the cutout admission is exercised there; no station hunt needed.
+
+**Session C** (the slow sector, installed build, no new candidate): session
+A1's command plus `--game-phases`. Fly to the sector where run93 slowed down
+(the third sector of that route, not visually busy), stay there 30 s while it
+is slow, then quit. `--game-phases` records every frame over 50 ms with the
+main loop's sub-phases (input, script VM, deferred callbacks, simulation/AI,
+cockpit), which is what run93's `pre_render` at 98 % of a 420 ms frame could
+not split.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
