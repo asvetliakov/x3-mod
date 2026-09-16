@@ -38,8 +38,9 @@ This build adds, on top of run33's: the launcher's stderr tee into the
 session directory (`launcher-stderr.log`, UTC-prefixed) with a `clock_anchor`
 and `qpc=` on every window line; `loaded_module` identity lines for the D3D9
 backend and `d3dx9_37.dll`; the media-cue gate at `0x00498140`
-(`--media-cue-trace`, `--media-cue-cache on|off` default off in this build,
-`--media-cue-retry-s 30`; [note](reverse-engineering/media-cue-playback.md),
+(`--media-cue-trace`, `--media-cue-cache on|off`, launcher default **on** since
+run 34 A2 confirmed the bound (the installed DLL reads the variable; the
+run-34 dry-runs were made with the old default), `--media-cue-retry-s 30`; [note](reverse-engineering/media-cue-playback.md),
 [ledger](verification/media-cues.md)); stamp arena 20,480 B. Off by default:
 pass, loop and media-cue groups. Appearance and production hooks unchanged
 from run32/33. Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip
@@ -212,12 +213,13 @@ Run 33 came back as `run95` (A), `run96` (B) and `run97` (C):
   GStreamer criticals under Wine; on Windows the same retry with a missing
   codec). Bounding is behaviour-neutral: a negative cache at `0x00498140`
   leaves the game in the same state as a real failure. **Decision (user,
-  2026-09-17): both.** A negative cache at `0x00498140`, default on once run
-  34 confirms it (bounded retry on sector change and after a fixed interval),
-  so the stall is gone on Windows without the codec as well; and the decode
-  path fixed for the named cue (voice plugin or bottle), as speech was, so the
-  cue plays and the cache never engages. Next: qualify the hook site and ABI
-  (in flight), then `--media-cue-trace` and the cache, run 34.
+  2026-09-17): both.** Run 34 A1 (run98) named the cue: id 2 =
+  `mov\00002.dat`, a 533 MB MPEG-1 video elementary stream, one failed
+  ~390 ms graph build per frame (no MPEG video decoder in the v4 runtime or
+  CrossOver's set). A2 (run99): the negative cache at `0x00498140` reduces it
+  to one real attempt per 30 s and the sector runs at 7–9 ms; **the stall is
+  gone (user confirmed)** and the launcher default is now on. A3 (v5 decoder
+  runtime with `avdec_mpeg2video`) tests the decode fix so the cue plays.
 - **Cutout under the lane (run97):** ~90 cutout draws per frame routed through
   the tested-opaque arm with the lane share written, ~8 refused for no depth
   write; both cutout pairs write depth so lane = routed. Linear materials plus
