@@ -41,6 +41,7 @@ alignas(16) unsigned char Emitter::storage[512]{};
 }
 extern "C" void x3m_resource_read_entry(){}
 extern "C" void x3m_game_phase_enter(){}
+extern "C" void x3m_pass_phase_enter(){}
 extern "C" void x3m_chase_camera_enter(){}
 extern "C" void x3m_chase_transition_enter(){}
 extern "C" void x3m_chase_lead_enter(){}
@@ -63,6 +64,8 @@ def emitter_fixture_source():
     emitters=(
         ('resource_reader','resource_reader.cpp','emit_reader_stub','emit_reader_stub(&next)','',()),
         ('game_phases','game_phases.cpp','emit','emit(0,&next)','',()),
+        # The four pass-phase stamps have their own lean stub (no x87 save).
+        ('pass_phases','pass_phases.cpp','emit','emit(0,&next)','',()),
         ('chase_camera','chase_camera.cpp','emit_stub','emit_stub(&next)','',()),
         ('chase_transition','chase_transition.cpp','emit','emit(0,&next)',
          f'namespace detail {{ constexpr unsigned restore_filter_count={restore_filter_count()}; }}',
@@ -74,7 +77,7 @@ def emitter_fixture_source():
     calls=[]
     for label,filename,name,call,prelude,helpers in emitters:
         source=(ROOT/'src/proxy'/filename).read_text()
-        if filename=='game_phases.cpp':
+        if filename in ('game_phases.cpp','pass_phases.cpp'):
             source=source.replace('void* emit(unsigned index,void*** next_out);','')
         bodies=[extract_named_function(source,helper) for helper in helpers]
         bodies.append(extract_named_function(source,name))
@@ -154,7 +157,7 @@ class SourceAndReplay(unittest.TestCase):
         # emit() shares emit_stub with the filtered restore path, whose
         # prefilter is sized into the same reservation. Emitted bytes unchanged.
         self.assertEqual(emitted,{
-            'resource_reader':(48,32),'game_phases':(192,128),
+            'resource_reader':(48,32),'game_phases':(192,128),'pass_phases':(160,124),
             'chase_camera':(160,124),'chase_transition':(320,128),
             'chase_lead':(192,128),'chase_aim_trace':(176,128),
         })
@@ -167,6 +170,7 @@ class SourceAndReplay(unittest.TestCase):
             # The ten frame-phase stamps use the game-phase emitter (indices
             # after the phase group) and claim through the same tail shape.
             'frame_phases':lengths('frame_phase_sites.h'),
+            'pass_phases':lengths('pass_phase_sites.h'),
             'chase_transition':lengths('chase_transition.cpp'),
             'chase_lead':lengths('chase_lead.cpp'),
             'chase_aim_trace':lengths('chase_aim_trace.cpp'),
@@ -182,7 +186,7 @@ class SourceAndReplay(unittest.TestCase):
         # chase_transition carries 16 rows since 123f98d added the seven
         # byte-verified chase view restore sites.
         self.assertEqual({name:len(value) for name,value in families.items()},
-                         {'resource_reader':1,'game_phases':47,'frame_phases':10,'chase_camera':1,
+                         {'resource_reader':1,'game_phases':47,'frame_phases':10,'pass_phases':4,'chase_camera':1,
                           'chase_transition':16,'chase_lead':9,'chase_aim_trace':4})
         lead_rows=probe.common.parse_source_specs((ROOT/'src/proxy/chase_lead.cpp').read_text())
         self.assertEqual([row['name'] for row in lead_rows],[
@@ -206,7 +210,7 @@ class SourceAndReplay(unittest.TestCase):
         # a four-byte chain head and a six-byte indirect dispatcher.
         claim_used=lambda length: (((length+5+3)&~3)+4+6+3)&~3
         operations=[]
-        for name in ('resource_reader','game_phases','frame_phases','chase_camera','chase_transition',
+        for name in ('resource_reader','game_phases','frame_phases','pass_phases','chase_camera','chase_transition',
                      'chase_lead','chase_aim_trace'):
             reserve,stub_used=emitted['game_phases' if name=='frame_phases' else name]
             for length in families[name]:
@@ -221,9 +225,11 @@ class SourceAndReplay(unittest.TestCase):
 
         accepted,used=admit(capacity)
         # 11792 for the 47-site phase group and the chase set; the ten frame
-        # stamps add 10 * (24 + 128) with X3M_FRAME_PHASES=1.
-        self.assertTrue(accepted);self.assertEqual(used,13312)
-        self.assertEqual(capacity-used,3072)
+        # stamps add 10 * (24 + 128) with X3M_FRAME_PHASES=1 (13312); the four
+        # pass stamps add 100 (claims of 6/7/8/7 bytes) + 4 * 124 with
+        # X3M_PASS_PHASES=1.
+        self.assertTrue(accepted);self.assertEqual(used,13908)
+        self.assertEqual(capacity-used,2476)
         self.assertGreaterEqual(capacity-used,max(reserve for reserve,_ in operations))
         self.assertEqual(admit(8192)[0],False)
         old_game=23

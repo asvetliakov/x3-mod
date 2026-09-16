@@ -98,6 +98,7 @@ def main():
                         help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
     parser.add_argument('--frame-phases', action='store_true', help='Per-frame engine phase stamps: ten byte-verified sites inside the render routine partition the frame into pre_render, prologue, scene_update, begin_scene, views, overlays, text, scene_end and present, plus per-view setup/submit sums; one frame_phases line per 300-frame window and up to four frame_phases_slow witnesses keyed by frame (X3M_FRAME_PHASES=1; requires --telemetry; independent of --game-phases; docs/verification/sampling-profiler.md, "Frame phases")')
+    parser.add_argument('--pass-phases', action='store_true', help='Per-draw effect-pass stamps: four byte-verified sites in the D3DX pass loop of the material submission routine split each material draw into pass-apply (BeginPass), the device draw and EndPass, accumulated per frame through a lean stub (no x87 save) and reduced at the frame-phase boundary; one pass_phases line per 300-frame window with passes, apply/draw/end p50/p95, their sum, the same window\'s view_submit and the stamps\' own estimated cost self_p50_us (X3M_PASS_PHASES=1; requires --telemetry and --frame-phases; about 4,000 dispatches per busy frame, budget under 1.5 ms; docs/verification/sampling-profiler.md, "Pass phases")')
     parser.add_argument('--audio-sites', action='store_true', help='Load hang witness: add the fourteen byte-verified audio-path markers (media create SetState/Pause returns, message pump entry and drain iterations, the six 0x00498370 manager-update call sites, refill entry, CompletionStatus poll with its HRESULT bucket, Update return, cue play) to the game-phase group (X3M_AUDIO_SITES=1; requires --game-phases); one game_phase_audio line per telemetry window and, with --profile, every 2 s from the sampler thread so the counters stay visible while frames are stopped (docs/architecture/voice-decoder-adapter.md, "Load hang witness build")')
     parser.add_argument('--ownership', action='store_true', help='Enable the experimental normal-D3D9 ownership wrapper')
     parser.add_argument('--depth-copy', action='store_true', help='Enable experimental original-preserving depth copy (requires --ownership)')
@@ -217,6 +218,8 @@ def main():
         parser.error('--frame-timing requires --telemetry.')
     if args.frame_phases and not args.telemetry:
         parser.error('--frame-phases requires --telemetry.')
+    if args.pass_phases and not (args.telemetry and args.frame_phases):
+        parser.error('--pass-phases requires --telemetry and --frame-phases.')
     if args.frame_timing_state_stamps and not args.frame_timing:
         parser.error('--frame-timing-state-stamps requires --frame-timing.')
     if not 0 <= args.frame_timing_state_stamps <= 100000:
@@ -457,6 +460,7 @@ def main():
         env['X3M_GAME_PHASES'] = '1' if args.game_phases else '0'
         env['X3M_FRAME_TIMING'] = '1' if args.frame_timing else '0'
         env['X3M_FRAME_PHASES'] = '1' if args.frame_phases else '0'
+        env['X3M_PASS_PHASES'] = '1' if args.pass_phases else '0'
         env['X3M_FRAME_TIMING_STATE_STAMPS'] = str(args.frame_timing_state_stamps if args.frame_timing else 0)
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
         env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'

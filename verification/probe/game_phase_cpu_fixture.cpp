@@ -7,6 +7,8 @@
 #include "../../src/proxy/game_phase_sites.h"
 #include "../../src/proxy/frame_phases.h"
 #include "../../src/proxy/frame_phase_sites.h"
+#include "../../src/proxy/pass_phases.h"
+#include "../../src/proxy/pass_phase_sites.h"
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
@@ -675,6 +677,163 @@ static void frame_replay_checks(){
     check(!std::memcmp(corrupted,c.body,c.length),"no span touched by the late refusal");
     frame::fixture_uninstall();
 }
+// Pass phases (X3M_PASS_PHASES=1): the four exact effect-pass spans (plain
+// copies, byte-identical to the EXE) executed once per body call at a frame
+// depth of 0x90, with the operands they dereference supplied by fixture
+// objects: [esp+0x28] -> a geometry object, [esp+0x74] the pass index, EBX ->
+// the effect object whose first word is a vtable of >= 0x10c bytes. The body
+// keeps the cdecl contract (EBX saved) so the benchmark can call it directly.
+namespace pass=x3m::pass_phases;
+namespace pass_marker=x3m::pass_phases::sites;
+static std::uint32_t pass_effect_vtable[0x50]{},pass_effect_object[4]{},pass_geometry[8]{};
+struct PassBody { void* body=nullptr;void* spans[pass_marker::Count]{};unsigned length=0; };
+static PassBody make_pass_body(){
+    pass_effect_object[0]=std::uint32_t(address(pass_effect_vtable));
+    patch::Emitter e(96);PassBody r;r.body=e.here();
+    e.byte(0x53);e.byte(0x81);e.byte(0xec);e.dword(0x90); // push ebx; sub esp,0x90
+    e.byte(0xc7);e.byte(0x44);e.byte(0x24);e.byte(0x28);e.dword(std::uint32_t(address(pass_geometry))); // mov [esp+0x28],&geometry
+    e.byte(0xc7);e.byte(0x44);e.byte(0x24);e.byte(0x74);e.dword(5); // mov [esp+0x74],5
+    e.byte(0xbb);e.dword(std::uint32_t(address(pass_effect_object))); // mov ebx,&effect
+    for(unsigned k=0;k<pass_marker::Count;++k){r.spans[k]=e.here();e.bytes(pass_marker::kSites[k].expected,pass_marker::kSites[k].length);}
+    e.byte(0x81);e.byte(0xc4);e.dword(0x90);e.byte(0x5b);e.byte(0xc3); // add esp,0x90; pop ebx; ret
+    r.length=unsigned(static_cast<unsigned char*>(e.here())-static_cast<unsigned char*>(r.body));
+    if(!e.finish())r.body=nullptr;
+    return r;
+}
+static void pass_specs(const PassBody& r,patch::SiteSpec* specs){
+    for(unsigned k=0;k<pass_marker::Count;++k){specs[k]=pass_marker::kSites[k];specs[k].address=address(r.spans[k]);}
+}
+// Entry at the pass_applied span with the body's frame in place: the chain is
+// entered mid-pass, so the closing stamp has no open interval (an orphan).
+static void* make_pass_entry(const PassBody& r,unsigned span){
+    patch::Emitter e(48);void* entry=e.here();
+    e.byte(0x53);e.byte(0x81);e.byte(0xec);e.dword(0x90);
+    e.byte(0xc7);e.byte(0x44);e.byte(0x24);e.byte(0x28);e.dword(std::uint32_t(address(pass_geometry)));
+    e.byte(0xc7);e.byte(0x44);e.byte(0x24);e.byte(0x74);e.dword(5);
+    e.byte(0xbb);e.dword(std::uint32_t(address(pass_effect_object)));
+    e.byte(0xe9);e.rel32(r.spans[span]);
+    return e.finish()?entry:nullptr;
+}
+static DWORD WINAPI pass_foreign_thread(LPVOID body){reinterpret_cast<void(*)()>(body)();return 0;}
+static void pass_replay_checks(){
+    PassBody r=make_pass_body();check(r.body!=nullptr,"synthetic pass body emitted");if(!r.body)return;
+    patch::SiteSpec specs[pass_marker::Count];pass_specs(r,specs);
+    unsigned char original[96];std::memcpy(original,r.body,r.length);
+    Snapshot baseline{},hooked{},after{};invoke(r.body,baseline);
+    check(baseline.regs[7]==6&&baseline.regs[5]==std::uint32_t(address(pass_effect_vtable)),"pass body baseline reads the pass index and the effect vtable");
+    const char* status=nullptr;
+    check(pass::fixture_install(specs,&status),"pass group installed on the synthetic spans");
+    check(status&&!std::strcmp(status,"ok"),"pass install status ok");
+    check(pass::active,"pass group active after install");
+    check(std::memcmp(original,r.body,r.length)!=0,"pass spans carry the patch jumps");
+    const auto* gate=pass::fixture_gate();const auto* accumulator=pass::fixture_accumulator();
+    // Before the first frame boundary no thread is admitted: early, ignored.
+    invoke(r.body,hooked);compare(baseline,hooked);
+    check(gate->early.load()==pass_marker::Count&&gate->foreign.load()==0&&accumulator->passes==0,"stamps before admission are early and ignored");
+    pass::frame(1,false,0); // admits this thread; no frame-phase sample yet, so the accumulation is discarded
+    check(pass::fixture_dropped()==1,"frame boundary without a frame-phase sample is a dropped frame");
+    invoke(r.body,hooked);compare(baseline,hooked);
+    check(accumulator->passes==1&&accumulator->last==0,"one body pass counted and the interval chain closed");
+    check(accumulator->orphans==0&&accumulator->clock_errors==0&&accumulator->clock_failures==0&&accumulator->unmatched==0,"scripted pass has no orphan, clock or unmatched errors");
+    pass::frame(2,true,4321);
+    pass::detail::Sample s{};
+    check(pass::fixture_last_sample(&s),"closed pass sample readable by the owner thread");
+    check(s.frame==2&&s.passes==1&&s.view_submit_us==4321,"pass sample carries the frame, the pass count and the joined view_submit");
+    check(s.sum_us==s.interval_us[0]+s.interval_us[1]+s.interval_us[2],"pass intervals sum to sum_us");
+    check(s.self_us==pass_marker::Count*pass::detail::dispatch_cost_ns/1000,"self cost is passes x sites x the fixture-measured dispatch cost");
+    check(accumulator->passes==0,"take resets the per-frame accumulation");
+    // A stamp from another thread is foreign, counted and ignored.
+    HANDLE thread=CreateThread(nullptr,0,&pass_foreign_thread,r.body,0,nullptr);
+    check(thread!=nullptr,"foreign thread started");
+    if(thread){WaitForSingleObject(thread,INFINITE);CloseHandle(thread);}
+    check(gate->foreign.load()==pass_marker::Count&&accumulator->passes==0,"foreign-thread stamps are counted and ignored");
+    // Entering the chain at pass_applied: the closing stamp is an orphan, the
+    // draw and EndPass intervals still accumulate and the pass is counted.
+    void* entry=make_pass_entry(r,pass_marker::PassApplied);check(entry!=nullptr,"pass_applied entry trampoline emitted");
+    if(entry){
+        invoke(entry,after);compare(baseline,after);
+        check(accumulator->orphans==1&&accumulator->passes==1&&accumulator->last==0,"mid-pass entry is one orphan, still one pass");
+    }
+    pass::frame(3,true,0);
+    check(pass::fixture_uninstall(),"pass group rollback restores every span");
+    check(!std::memcmp(original,r.body,r.length),"pass spans byte-identical after rollback");
+    check(!pass::active,"pass group inactive after rollback");
+    invoke(r.body,after);compare(baseline,after);
+    // Byte mismatch: one corrupted opcode refuses the whole group before any claim.
+    PassBody c=make_pass_body();check(c.body!=nullptr,"second synthetic pass body emitted");if(!c.body)return;
+    patch::SiteSpec corrupt[pass_marker::Count];pass_specs(c,corrupt);
+    unsigned char corrupted[96];std::memcpy(corrupted,c.body,c.length);
+    corrupt[2].expected[0]^=1;
+    check(!pass::fixture_install(corrupt,&status),"pass install refused on a byte mismatch");
+    check(status&&!std::strcmp(status,"preflight_bytes"),"pass byte mismatch reported as preflight_bytes");
+    check(!std::memcmp(corrupted,c.body,c.length),"no pass span patched after the preflight refusal");
+    check(!pass::active,"pass group stays inactive after refusal");
+    pass::fixture_uninstall();
+    // Partial install: the second spec duplicates the first address, so its
+    // claim reads the fresh jump and fails; the first site is rolled back.
+    corrupt[2].expected[0]^=1;
+    patch::SiteSpec partial[pass_marker::Count];std::memcpy(partial,corrupt,sizeof partial);
+    partial[1]=partial[0];
+    check(!pass::fixture_install(partial,&status),"pass install refused on a duplicate claim");
+    check(status&&!std::strcmp(status,"bytes_mismatch"),"pass duplicate claim reported with the claim's own reason");
+    check(!std::memcmp(corrupted,c.body,c.length),"pass partial install rolled back to original bytes");
+    check(!pass::active,"pass group inactive after partial rollback");
+    pass::fixture_uninstall();
+}
+static void pass_late_window_checks(){ // after the frame checks closed the install window
+    PassBody r=make_pass_body();check(r.body!=nullptr,"late-window pass body emitted");if(!r.body)return;
+    patch::SiteSpec specs[pass_marker::Count];pass_specs(r,specs);
+    unsigned char original[96];std::memcpy(original,r.body,r.length);
+    const char* status=nullptr;
+    check(!pass::fixture_install(specs,&status),"pass install refused after the install window closed");
+    check(status&&!std::strcmp(status,"install_window_closed"),"late pass install reported as install_window_closed");
+    check(!std::memcmp(original,r.body,r.length),"no pass span touched by the late refusal");
+    pass::fixture_uninstall();
+}
+// Per-dispatch cost of the lean stub: the body (four spans) called directly,
+// unhooked against hooked, best of `trials`; the difference over four
+// dispatches is the stub envelope + owner check + QPC + accumulate.
+static void pass_benchmark(){
+    constexpr unsigned loops=20000,trials=7;
+    PassBody r=make_pass_body();check(r.body!=nullptr,"benchmark pass body emitted");if(!r.body)return;
+    LARGE_INTEGER frequency{};
+    check(QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0,"pass benchmark QPC frequency");
+    const auto body=reinterpret_cast<void(*)()>(r.body);
+    const auto timed=[&](std::uint64_t& best){
+        best=~std::uint64_t(0);
+        for(unsigned t=0;t<trials;++t){
+            LARGE_INTEGER start{},end{};
+            if(!QueryPerformanceCounter(&start))return false;
+            for(unsigned i=0;i<loops;++i)body();
+            if(!QueryPerformanceCounter(&end)||end.QuadPart<start.QuadPart)return false;
+            const auto ticks=std::uint64_t(end.QuadPart-start.QuadPart);
+            if(ticks<best)best=ticks;
+        }
+        return true;
+    };
+    std::uint64_t baseline=0,hooked=0;
+    check(timed(baseline),"pass benchmark baseline timed");
+    patch::SiteSpec specs[pass_marker::Count];pass_specs(r,specs);
+    const char* status=nullptr;
+    check(pass::fixture_install(specs,&status),"pass benchmark group installed");
+    pass::frame(1,false,0);
+    check(timed(hooked),"pass benchmark hooked timed");
+    pass::frame(2,true,0);
+    pass::detail::Sample s{};
+    check(pass::fixture_last_sample(&s)&&s.passes==loops*trials,"hooked benchmark loop counted every pass");
+    check(pass::fixture_uninstall(),"pass benchmark group rolled back");
+    const double ns_per_tick=1e9/number(std::uint64_t(frequency.QuadPart));
+    const double baseline_ns=number(baseline)*ns_per_tick/loops,hooked_ns=number(hooked)*ns_per_tick/loops;
+    const double dispatch_ns=(hooked_ns-baseline_ns)/pass_marker::Count;
+    const double busy_us=dispatch_ns*4024/1000; // ~1,006 passes x 4 stamps per busy frame (effect-pass-loop.md section 4)
+    std::printf("PASS PHASE BENCH loops=%u trials=%u baseline_ns_per_loop=%.1f hooked_ns_per_loop=%.1f dispatch_ns=%.1f implied_busy_frame_us=%.0f budget_us=1500 within_budget=%u documented_dispatch_ns=%llu\n",
+        loops,trials,baseline_ns,hooked_ns,dispatch_ns,busy_us,unsigned(busy_us<=1500.0),static_cast<unsigned long long>(pass::detail::dispatch_cost_ns));
+    check(busy_us<=1500.0,"lean stub within the 1.5 ms busy-frame budget");
+    // The documented constant behind self_p50_us must stay within a factor of
+    // two of the measurement; a drift beyond that is a stale ledger, not noise.
+    const double documented=number(pass::detail::dispatch_cost_ns);
+    check(dispatch_ns>0&&documented>=dispatch_ns*0.5&&documented<=dispatch_ns*2.0,"documented dispatch cost within 2x of the measured cost");
+}
 int main(){
     for(unsigned i=0;i<sizeof fixture_xmm_seed;++i)fixture_xmm_seed[i]=static_cast<unsigned char>(i*37+9);
     patch::Emitter tail(8);void* continuation=tail.here();tail.byte(0xc3);if(!tail.finish())return 2;
@@ -695,7 +854,9 @@ int main(){
     input_replay_checks(0);input_replay_checks(1);
     benchmark(continuation,stubs);
     targeted_benchmark(continuation,stubs);
-    frame_replay_checks(); // last: it closes the install window
-    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 arena_used=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),patch::arena_used(),checks,failures);
+    pass_replay_checks();pass_benchmark();
+    frame_replay_checks(); // closes the install window
+    pass_late_window_checks();
+    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 arena_used=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),patch::arena_used(),checks,failures);
     return failures?1:0;
 }

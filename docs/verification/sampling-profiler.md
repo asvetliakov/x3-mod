@@ -606,6 +606,112 @@ frame_phases_slow frame=F dt_us= pre_render_us= prologue_us= scene_update_us= be
 | --- | --- | --- | --- |
 | 2026-09-16 | Frame-phase group added (ten sites, `--frame-phases`) | `verify_frame_phase_sites.py` PASS (10 sites, all checks); `run_game_phase_cpu.py` under X3: 8033 checks, 0 failures, arena 13896/16384 B; host `test_game_phase_frame` 10 tests OK; DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations | not yet run in the game; first instrumented flight pending |
 
+## Pass phases (`X3M_PASS_PHASES=1`)
+
+`view_submit` (run91 busy window: 29.4 ms of a 37.3 ms frame) is the engine's
+per-view layer loop, and `frame_timing`'s `gap_draw` (23.4 ms in the same
+window, 23.1 us per draw) is the part of it outside the proxy's hooked calls.
+Neither says how much of that is the D3DX effect applying a pass versus the
+engine's own per-object work. `--pass-phases` (launcher `tools/manage.py`,
+requires `--telemetry` and `--frame-phases`; `X3M_PASS_PHASES=1`) splits every
+material draw with four byte-verified stamps in the D3DX pass loop of the
+material submission routine `0x004c0150` (`src/proxy/pass_phase_sites.h`,
+study `docs/reverse-engineering/effect-pass-loop.md`): `pass_begin`
+`0x004c3ff0` (loop head), `pass_applied` `0x004c4000` (`BeginPass` returned),
+`pass_drawn` `0x004c403e` (`DrawIndexedPrimitive` returned), `pass_end`
+`0x004c4049` (`EndPass` returned). The loop issues one draw per iteration, so
+the stamps are per-draw sites: ~1,006 passes and ~4,024 dispatches per busy
+frame.
+
+At that rate the shared game-phase stub is over budget (`PreserveCpuState`,
+FNSAVE/FRSTOR, about 0.6 us per dispatch), so the group has its own lean stub
+(`src/proxy/pass_phases.cpp` `emit`, 124 bytes): `pushfd`, `push eax/ecx/edx`,
+`cld`, XMM0-7 saved, `push index; call x3m_pass_phase_enter`, everything
+restored, `jmp [next]`; the displaced instructions run in the claim tail at
+the game's exact ESP (every span is a plain copy, no rel32 to re-base, and
+the game's flags are dead at all four sites). The handler runs under
+`LightCallBoundary` (MXCSR + LastError; it is x87-free, walked by
+`verification/probe/check_no_x87.py` from `_x3m_pass_phase_enter`), does one
+relaxed `active` load, one owner-thread compare, one `QueryPerformanceCounter`
+and one 64-bit subtract/add into the frame's `apply`/`draw`/`end` accumulator
+(`src/proxy/pass_phases_core.h`); no tracker, no logging, no allocation, no
+lock. The window arithmetic runs once per frame at the frame-phase boundary
+(`frame_phases::detail::frame_impl`, under its owner guard), which also joins
+the same frame's `view_submit` sum; a frame the frame group dropped is
+`dropped` here too. The install is the frame group's transaction (preflight,
+in-order claim, reverse rollback, `install_window_closed`/`late_claim`) and
+additionally refuses with `frame_phases_off` when the frame group is not
+active; `pass_phase_mode` and four `pass_phase_site` lines record it.
+
+Per 300-frame window one line, microseconds, nearest-rank percentiles over
+per-frame sums, the frame index of the window's last frame:
+
+```
+pass_phases frame=N frames=300 passes_p50= apply_p50_us= apply_p95_us= draw_p50_us= draw_p95_us= end_p50_us= end_p95_us= sum_p50_us= view_submit_p50_us= self_p50_us= dispatch_cost_ns= orphans= clock_errors= clock_failures= unmatched= dropped= early= foreign=
+```
+
+| Field | Interval | Contains |
+| --- | --- | --- |
+| `apply` | `pass_begin` -> `pass_applied` | `ID3DXEffect::BeginPass` only (no `CommitChanges` in the routine): D3DX applies the pass state through the game's state manager, i.e. the ~63 hooked state calls per draw plus D3DX's own work |
+| `draw` | `pass_applied` -> `pass_drawn` | the two geometry calls (`primCount`, `NumVertices`) and the hooked `IDirect3DDevice9::DrawIndexedPrimitive` including its native call |
+| `end` | `pass_drawn` -> `pass_end` | `ID3DXEffect::EndPass` (`D3DXFX_DONOTSAVESTATE`, so no state restore) |
+| `sum` | | `apply + draw + end` per frame |
+| `view_submit` | | the same frame's `frame_phases` `view_submit` sum, for the residual |
+| `self` | | `passes * 4 * dispatch_cost_ns / 1000`: the stamps' own estimated cost, from the fixture row below, not subtracted |
+
+Reading it, with the run91 busy window as the yardstick:
+
+* `view_submit_p50_us - sum_p50_us` is the engine's per-object residual
+  (draw-queue sort, the ~75 by-name parameter writes per object, `Begin`/`End`,
+  the two engine state writes, overlays and particles in the same interval).
+  If it carries most of the 29.4 ms, the lever is the engine's submission
+  path, not the D3DX pass.
+* `apply_p50_us` is what the engine-state-filter note's option B could
+  attack. `apply_p50_us - state_p50_us` (`frame_timing`, same window, with
+  `--frame-timing-state-stamps`) is D3DX's cost outside the hooked setters.
+  Below ~3 ms apply kills option B; at >= 10 ms it is the only lever short of
+  drawing fewer objects.
+* the pass `draw_p50_us` minus the `frame_timing` `draw_p50_us` is the two geometry calls;
+  `gap_draw` (23.4 ms) should be about `apply - state` plus the residual plus
+  the geometry calls, since those are the parts of the draw span outside
+  hooked calls.
+* Each stamp's cost lands in the interval that follows it: the three
+  intervals are each inflated by roughly one dispatch per pass and
+  `view_submit` by four; subtract `self_p50_us` (about 0.36 ms at 1,006
+  passes) before comparing.
+* `passes_p50` must track the telemetry `draws_p50` (passes <= draws, the
+  difference being overlay and particle draws outside the material path); a
+  large gap means multi-pass techniques and the per-draw arithmetic above
+  must be redone. `orphans` (a closing stamp with no open interval),
+  `clock_errors` (backward clock: interval skipped), `clock_failures` (QPC
+  failed: counting only), `unmatched`, `early` and `foreign` (stamps before
+  admission or from another thread, ignored) should be zero in a healthy run.
+* cost: the CPU fixture measures the lean stub at 90.5 ns per dispatch under
+  the X3 bottle (`PASS PHASE BENCH`, best of 7 x 20,000 loops of the four
+  spans hooked minus unhooked), i.e. about 0.36 ms per busy frame at 4,024
+  dispatches against the 1.5 ms ceiling of the study; the two-stamp fallback
+  was not needed. `dispatch_cost_ns` in `pass_phases_core.h` is 87 and the
+  fixture refuses a constant more than 2x off the measurement. Off, nothing
+  is installed and the frame boundary is one relaxed load.
+* verification: `python3 verification/probe/verify_pass_phase_sites.py`
+  (exact bytes, whole instructions of the gap-free routine decode, the single
+  incoming edge, plain copy, frame-depth anchors, vtable dispatches, raw
+  interior-encoding sweep of `.text`, no data reference, point-light patch
+  disjoint, EXE identity); `X3M_FIXTURE_BOTTLE=X3 python3
+  verification/probe/wine_lock.py python3
+  verification/probe/run_game_phase_cpu.py` (the four exact spans replayed
+  at frame depth with hostile CPU state: register/flag/XMM/x87/MXCSR/LastError/
+  ESP parity, early and foreign stamps ignored, one pass counted and the
+  chain closed, the joined sample, a mid-pass entry as one orphan, rollback,
+  byte-mismatch refusal, duplicate-claim rollback, late-window refusal, the
+  benchmark row); host `verification/analysis/test_pass_phases.py`
+  (`pass_phases_host.cpp` accumulator/gate/window probe, wiring, launcher).
+  Ledger:
+
+| Date | Change | Checks | Result |
+| --- | --- | --- | --- |
+| 2026-09-16 | Pass-phase group added (four sites, lean stub, `--pass-phases`) | `verify_pass_phase_sites.py` PASS, `source_present: true`; `run_game_phase_cpu.py` under X3: 8136 checks, 0 failures, `PASS PHASE BENCH dispatch_ns=90.5 implied_busy_frame_us=364 within_budget=1`, fixture arena 15528/16384 B; host `test_pass_phases` 9 tests OK; DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_pass_phase_enter` walked | not yet run in the game |
+
 ## Per-call cost of the hooked state setters under the X3 bottle (2026-09-16)
 
 `verification/probe/state_hook_benchmark.cpp` (build
