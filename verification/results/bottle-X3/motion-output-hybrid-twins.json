@@ -1,0 +1,137 @@
+{
+ "generated": "2026-09-16T08:44:03",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "verification/probe/build/motion_output_fixture.exe": "727cec7cb9d3848b7ad3917ea632ba33065fe0dd0d128bb63050706769eb7b40",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "dd7acc15c29073f6f552fe93a66755744540e2c4623ec0f8bd83b0b9bca36c6a",
+  "build/d3d9.dll": "ee80fdf374a82a156259308a53f08a3fc90b8222df5ff2be0222bbee51b033a4"
+ },
+ "note": "Hybrid unhook (state-call-fast-path.md step 5): the six X3M_STATE_SHADOW=0 twins of the aborted full run (110 cases validated; the suite stopped at seam-taa-fade-route-routed, pre-existing at main, see the note) compared here as the runner would at the end of a full run, plus every validated case against the committed motion-output-summary.json.",
+ "twins": {
+  "production-shadow-off": {
+   "twin": "production-on",
+   "identical": true,
+   "mode": [
+    "get"
+   ],
+   "frames": 9,
+   "queries": 205,
+   "hits": 0,
+   "gets": 331,
+   "invalidations": 0,
+   "resyncs": 3,
+   "state_hashes_equal_committed": true,
+   "motion_pixels_equal_committed": true,
+   "color_hashes_equal_committed": true
+  },
+  "seam-shadow-off": {
+   "twin": "seam-on",
+   "identical": true,
+   "mode": [
+    "get"
+   ],
+   "frames": 9,
+   "queries": 205,
+   "hits": 0,
+   "gets": 331,
+   "invalidations": 0,
+   "resyncs": 3,
+   "state_hashes_equal_committed": true,
+   "motion_pixels_equal_committed": true,
+   "color_hashes_equal_committed": true
+  },
+  "seam-taa-shadow-off": {
+   "twin": "seam-taa-on",
+   "identical": true,
+   "mode": [
+    "get"
+   ],
+   "frames": 9,
+   "queries": 205,
+   "hits": 0,
+   "gets": 331,
+   "invalidations": 0,
+   "resyncs": 3,
+   "state_hashes_equal_committed": true,
+   "motion_pixels_equal_committed": true,
+   "color_hashes_equal_committed": true
+  },
+  "seam-lazy-shadow-off": {
+   "twin": "seam-lazy-on",
+   "identical": true,
+   "mode": [
+    "native"
+   ],
+   "frames": 9,
+   "queries": 205,
+   "hits": 0,
+   "gets": 331,
+   "invalidations": 0,
+   "resyncs": 3,
+   "state_hashes_equal_committed": true,
+   "motion_pixels_equal_committed": true,
+   "color_hashes_equal_committed": true
+  },
+  "seam-burst-perdraw-shadow-off": {
+   "twin": "seam-burst-perdraw",
+   "identical": true,
+   "mode": [
+    "get"
+   ],
+   "frames": 9,
+   "queries": 513,
+   "hits": 0,
+   "gets": 639,
+   "invalidations": 0,
+   "resyncs": 0,
+   "state_hashes_equal_committed": true,
+   "motion_pixels_equal_committed": true,
+   "color_hashes_equal_committed": true
+  },
+  "seam-burst-lazy-shadow-off": {
+   "twin": "seam-burst-lazy",
+   "identical": true,
+   "mode": [
+    "native"
+   ],
+   "frames": 9,
+   "queries": 485,
+   "hits": 0,
+   "gets": 611,
+   "invalidations": 0,
+   "resyncs": 0,
+   "state_hashes_equal_committed": true,
+   "motion_pixels_equal_committed": true,
+   "color_hashes_equal_committed": true
+  }
+ },
+ "against_committed": {
+  "validated_cases": 110,
+  "committed_cases": 107,
+  "compared": 102,
+  "same": 98,
+  "differing": {
+   "seam-hdr-exposure": [
+    "color_hashes"
+   ],
+   "seam-ownership-hdr-exposure": [
+    "color_hashes"
+   ],
+   "seam-hdr-tonemap-fault": [
+    "color_hashes"
+   ],
+   "seam-taa-hdr-tonemap-auto": [
+    "color_hashes"
+   ]
+  },
+  "differing_explained": "each differing case equals the main checkout seam DLL (source 4adf3dd) frame for frame in a retained-binary A/B: drift since the committed 2026-09-15 record, not this change"
+ }
+}

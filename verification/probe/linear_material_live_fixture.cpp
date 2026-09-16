@@ -334,7 +334,13 @@ public:
  static constexpr unsigned sampler_stage_count=16,failure_log_limit=8;
  SamplerShadow samplers_[16];
  ThrowingMap<ShaderEntry>vertex_,pixel_;
- bool state_shadow_=false;
+ bool state_shadow_=false,state_hooks_=true; // hooks on: the extracted refusal reads the shadow's flag (hybrid unhook mirror)
+ bool sampler_srgb_known(unsigned stage)noexcept{return stage<sampler_stage_count&&samplers_[stage].srgb_known;}
+ bool state_known(unsigned i)noexcept{return i<motion_shadow_state_count&&shadow_.states_known[i];}
+ bool blend_known(unsigned i)noexcept{return i<composition_blend_count&&shadow_.composition_blend_known[i];}
+ bool fill_mode_known()noexcept{return shadow_.fill_mode_known;}
+ void begin_draw_reads()noexcept{} // hooks on: never reached
+ long state_field(unsigned i)noexcept{return state_known(i)?long(shadow_.states[i]):-1;}
  D device_=nullptr;bool enabled_=true,requested_=true,depth_enabled_=true,linear_material_requested_=false;
  renderer::LinearMaterialConfig linear_material_config_{};
  struct XtDefaultUnavailable {std::uint64_t device=0,vs=0,ps=0;unsigned ready_mask=0;bool seen=false,pending=false;} xt_default_unavailable_;
@@ -462,7 +468,7 @@ public:
  void set_vertex_shader(IDirect3DVertexShader9*)noexcept;void set_pixel_shader(IDirect3DPixelShader9*)noexcept;
  void set_render_state(D3DRENDERSTATETYPE,DWORD)noexcept;
  void set_sampler_state(DWORD,D3DSAMPLERSTATETYPE,DWORD)noexcept;void resync_samplers()noexcept;
- void refresh_linear_material_contract()noexcept;unsigned linear_material_refusal()const noexcept;HRESULT bind_variant_pair(MotionRoute&,bool)noexcept;HRESULT undo(MotionRoute&)noexcept;void rollback_route(MotionRoute&)noexcept;
+ void refresh_linear_material_contract()noexcept;unsigned linear_material_refusal()noexcept;HRESULT bind_variant_pair(MotionRoute&,bool)noexcept;HRESULT undo(MotionRoute&)noexcept;void rollback_route(MotionRoute&)noexcept;
  void count_material_route(const MotionRoute&)noexcept;
 };
 // Win32 environment semantics needed by capture's unmodified parsing block.

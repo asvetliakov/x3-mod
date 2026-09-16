@@ -350,13 +350,120 @@ removes the render-state and sampler hooks altogether and is the larger
 remaining saving. SetTexture is dominated by its two out-of-line shadow
 queries, not by dispatch.
 
+## Hybrid unhook (step 5, implemented)
+
+Implemented in `capture.cpp` (the render-state configuration decided per
+device in `hook_device`, the slot-57/69 install gates) and `motion_output.cpp`
+(the draw-time readers). In the production configuration (`X3M_STATE_SHADOW`
+unset, now "auto") the SetRenderState and SetSamplerState hooks are not
+installed. The hooks stay installed for exactly four reasons, logged per device
+as `state_hooks device=N installed=1 reason=<explicit|lazy_rt|frame_timing|
+get_failed>`: `X3M_STATE_SHADOW=1` (the shadow as before), lazy RT mode
+(`X3M_MOTION_RT_MODE=lazy`: the held write masks need the write observation),
+`X3M_FRAME_TIMING=1` (the diagnostic build keeps both hooks so its per-entry
+state-call counts stay complete), and a failed capability check. The check
+issues one `GetRenderState(D3DRS_ZENABLE)` and one
+`GetSamplerState(0, D3DSAMP_SRGBTEXTURE)` through the saved native entries at
+device creation; a device that refuses either (documented behaviour of a
+`D3DCREATE_PUREDEVICE` device, which the proxy strips) fails closed to the
+hooked configuration. Composition no longer forces slot 57: its blend and
+fill-mode needs are value reads, not write observations. SetTexture,
+SetVertexShaderConstantF, the shaders, stream, indices, declaration, viewport
+and targets stay hooked; the composition reader identity stays on SetTexture.
+
+Draw-time reads with the hooks off: `before_draw` drops a per-draw cache
+(`begin_draw_reads`: the render-state, blend and fill-mode known flags and
+the sampler sRGB/MIPFILTER flags; a biased stage keeps its saved LODBIAS),
+`render_state` fills that cache like the shadow, and the readers that used to
+test the shadow's flags directly (composition's fade/screen state, the
+additive option, the source-gain law, the material sampler gate, the fade
+rectangle's fill mode, the sun writer's write mask) go through `state_known`/
+`blend_known`/`fill_mode_known`/`sampler_srgb_known`, which read once per
+state per draw and count into `rs_queries`/`rs_hits`/`rs_gets`. The
+restore-after-substitution sites (DESTBLEND for the screen law, the additive
+alpha triple, the wrap states, COLORWRITEENABLE1/2) restore the values the
+same draw's admission cached, so admission and restore see one consistent
+snapshot in both configurations. The mip bias: `apply_mip_bias` runs as
+before at the routed draw (MIPFILTER and the saved LODBIAS re-read per routed
+draw, since no hook sees the application change them) and `after_draw` puts
+the bias back right after the draw, one native SetSamplerState per biased
+stage, so no application LODBIAS write can land under the route's bias. With
+the hooks on nothing changed: the helpers return the shadow's flags, the
+resync and invalidation paths are the hooked configuration's.
+
+Telemetry: the per-frame summary carries `rs_mode=get|shadow|native` beside
+`state_shadow`; in get mode `rs_invalidations` is 0 by construction (no hook,
+nothing to invalidate) and `rs_resyncs` still counts the shadow resyncs of the
+other bindings. Lost with the hooks off: `mip_bias_game_writes` (no write
+observation; the saved value is read instead), the `rs_invalidations` of failed
+application setters, the `fixture_setter_result` seams on slots 57/69 (they
+run in the hooked fixture cases), and the "sRGB write admission" becomes sRGB
+value admission (a failed application SRGBTEXTURE write leaves the device
+value, which is what is read). The `motion_output_mode` line prints
+`state_shadow=auto|0|1` (the request); the device line adds `state_hooks=`.
+
+Frame timing measures the hooked configuration: a `--frame-timing` session
+keeps slots 57 and 69 installed, so its state-call counts and per-call costs
+are those of the hooked build, and the felt FPS of the unhooked configuration
+comes from a session without `--frame-timing` (the frame-phase stamps need
+only `--telemetry`).
+
+Benchmark (`state-hook-benchmark-hybrid.json`, worktree DLL `16c7c135`, X3
+bottle, timing off, ns per call; `state-hook-benchmark-run31.json` DLL
+`a9ebfa3b` as the previous record): production SetRenderState 13.2 (native
+11.3; run31 hooked 79.5; this DLL hooked 79.7), SetSamplerState 10.9 (native
+11.0; run31 68.5; hooked 69.8), the new per-draw read set `GetState_draw_set_10`
+(eight GetRenderState + two GetSamplerState) 92.5 per draw (native 92.9),
+SetStreamSource 132.8 (run31 134.1), the SetStreamSource + DrawIndexedPrimitive
+pair 1017.3 (run31 1092.1), SetTexture 127.1 (run31 123.9),
+SetVertexShaderConstantF(4) 74.5 (run31 75.4), equal-share `state_mix` 64.8
+(run31 84.6; the mix still carries the hooked SetTexture, constants and
+SetStreamSource). The SLOT lines of the production case show SetRenderState and
+SetSamplerState owned by the backend, the three retained setters and the draw
+by the proxy. Projection for run89's busy frame (18,449 SetRenderState +
+31,149 SetSamplerState per 987 draws): 49,598 × (~74 − ~12) ≈ 3.1 ms of
+hook cost removed, against 987 × ~93 ns ≈ 0.09 ms of draw-time reads added
+(plus two sampler reads and one restore per biased stage of routed draws); a
+projection, not a measured frame.
+
+Fixture (`run_motion_output.py`, worktree build, X3 bottle, compact witness
+`verification/results/bottle-X3/motion-output-hybrid-twins.json`, untracked):
+the six `X3M_STATE_SHADOW=0` twins are identical to their shadow-on twins in
+colour, pre-boundary colour, `state_hashes`, `motion_hashes`, readback files,
+route decisions, checks, restorations, `motion_pixels` and depth pixels, and
+equal the committed record on `state_hashes`, `motion_pixels` and colour.
+`production-shadow-off`, `seam-shadow-off`, `seam-taa-shadow-off` and
+`seam-burst-perdraw-shadow-off` ran in `rs_mode=get` (205/205/205/513 queries
+over nine frames, every one a native read: the regular script reads no state
+twice in a draw; `rs_gets` = queries + the sentinel fill's 14 saves per
+frame; 0 invalidations); the two lazy twins keep the hooks (`rs_mode=native`).
+110 cases validated individually, 98 of the 103 with a committed counterpart
+equal it on colour, `state_hashes`, `motion_pixels`, checks and restorations;
+the four that differ (`seam-hdr-exposure`, `seam-ownership-hdr-exposure`,
+`seam-hdr-tonemap-fault`, `seam-taa-hdr-tonemap-auto`, colour only, hooked
+configuration) equal the main checkout's pre-change seam DLL (source
+`4adf3dd`) frame for frame in a retained-binary A/B: drift since the
+2026-09-15 record, not this change. Two harness findings outside the change:
+the runner's TAA cases did not pin `X3M_TAA_SHARPEN`/`X3M_TAA_MIP_BIAS`, which
+`ca6ad2e` defaulted to 0.75/-0.5 after the last full run, so
+`production-taa-on` failed its FP16 round-trip check with any current DLL
+(the installed `a9ebfa3b` included); the runner now pins both to 0 for TAA
+cases that do not set them. `seam-taa-fade-route-routed` fails "routed fade
+draw equals the fade oracle" (frame 0, pixel 12,12, channel 2: 0.4651 against
+0.4583) with this worktree's seam DLL and with the main checkout's `4adf3dd`
+seam DLL alike; the suite stops there, so the run's own cross-case block did
+not execute and the twin comparison above was made from the per-case records
+with the runner's assertions. Open until the fade-route regression on main is
+explained.
+
 ## Native Windows
 
 Every step uses documented D3D9 and Win32 only. The FNSAVE cost and the 68 ns
 QPC are FEX/Wine figures; natively FNSAVE/FRSTOR are tens of ns and QPC ~20-30
 ns, so steps 1-3 gain less there but change no contract. Get* on a non-pure
-device (step 5) is the documented path. None of it is verified natively; the
-existing gap entry in `platform-portability.md` covers it.
+device (step 5) is the documented path; the per-device capability check fails
+closed to the hooked configuration when a device refuses the reads. None of
+it is verified natively; `platform-portability.md` carries the entry.
 
 ## Unknowns and what settles them
 

@@ -488,6 +488,21 @@ public:
     // query is a native GetRenderState (the previous behaviour, A/B).
     void configure_state_shadow(bool enabled) noexcept { state_shadow_ = enabled; }
     bool state_shadow() const noexcept { return state_shadow_; }
+    // Hybrid unhook (docs/architecture/state-call-fast-path.md, step 5): with
+    // the SetRenderState/SetSamplerState hooks not installed (`state_hooks_`
+    // false, the production configuration) the route has no write
+    // observation. Every render-state, blend, fill-mode and sampler-sRGB
+    // reader then takes its value from GetRenderState/GetSamplerState at the
+    // draw, once per state per draw: begin_draw_reads drops the per-draw cache
+    // at the top of before_draw, the *_known helpers fill it on demand, and
+    // the restore-after-substitution sites read the values the admission
+    // cached. The mip bias goes on for the routed draw only and comes back
+    // right after it (after_draw), so no application LODBIAS write can land
+    // under the route's bias. With the hooks installed the helpers return
+    // the shadow's flags unchanged.
+    void configure_state_hooks(bool installed) noexcept { state_hooks_ = installed; }
+    bool state_hooks() const noexcept { return state_hooks_; }
+    const char* render_state_mode() const noexcept { return !state_hooks_ ? "get" : state_shadow_ ? "shadow" : "native"; }
     // BEFORE the application's SetRenderState (light hook: no logging, no
     // telemetry record): in lazy mode an application write to a write mask the
     // route holds first puts the application's bindings back, so the write
@@ -1095,7 +1110,7 @@ private:
 
     // 0 eligible, 1 unreviewed pair, 2 missing combined object, 3 HDR/decode,
     // 4 unknown or enabled sampler sRGB decode. Does not reject motion.
-    unsigned linear_material_refusal() const noexcept;
+    unsigned linear_material_refusal() noexcept;
     HRESULT bind_variant_pair(MotionRoute& route, bool material) noexcept;
     // Timed wrappers over the native SetRenderTarget/COLORWRITEENABLE calls of
     // the per-draw path and the lazy flush; each counts into counters_.set_rt.
@@ -1119,6 +1134,14 @@ private:
     // native GetRenderState (counted) that fills the shadow.
     HRESULT render_state(D3DRENDERSTATETYPE state, DWORD* value) noexcept;
     HRESULT get_render_state_native(D3DRENDERSTATETYPE state, DWORD* value) noexcept;
+    // Draw-time readers (see configure_state_hooks): the shadow's flag with
+    // the hooks on; with them off, one counted native read per draw.
+    void begin_draw_reads() noexcept;
+    bool state_known(unsigned index) noexcept;
+    bool blend_known(unsigned index) noexcept;
+    bool fill_mode_known() noexcept;
+    bool sampler_srgb_known(unsigned stage) noexcept;
+    long state_field(unsigned index) noexcept;
     void invalidate_render_states() noexcept;
     bool resolve_allowed(SceneEndSource source) noexcept;
     // CPU tick stamp (0 without telemetry) and metric recording into stats_.
@@ -1448,7 +1471,7 @@ private:
     // application's COLORWRITEENABLE1/2 values saved at bind time.
     bool lazy_mode_ = false, lazy_rt1_ = false, lazy_rt2_ = false;
     DWORD lazy_write1_ = 15, lazy_write2_ = 15;
-    bool state_shadow_ = true, scene_hook_installed_ = false;
+    bool state_shadow_ = true, state_hooks_ = true, scene_hook_installed_ = false;
     // Sampler shadow of the mip LOD bias (X3M_TAA_MIP_BIAS), stages 0-15:
     // the application's texture binding (pointer identity only, never
     // dereferenced after the SetTexture hook that recorded it) and its level

@@ -453,7 +453,15 @@ Two of the assessment's recommendations
 ([assessment-2026-09-12.md](assessment-2026-09-12.md), 1–3) are implemented
 behind their own switches, plus the pass field the third asked for.
 
-**Render-state shadow (`X3M_STATE_SHADOW`, default on).** `SetRenderState`
+**Render-state shadow (`X3M_STATE_SHADOW=1`; unset is the hybrid unhook).**
+Since [state-call-fast-path.md](state-call-fast-path.md) step 5 the production
+configuration does not hook `SetRenderState`/`SetSamplerState`: the route
+reads the states below with `GetRenderState` once per state per draw (a
+per-draw cache dropped at `before_draw`), the mip bias goes on for the routed
+draw and comes back right after it, and the sampler sRGB gates read
+`GetSamplerState` at the draw. The hooks stay for `X3M_STATE_SHADOW=1`, lazy
+RT mode, `X3M_FRAME_TIMING=1` and a failed Get* capability check (logged per
+device as `state_hooks`). With them on, `SetRenderState`
 (slot 57) is hooked with the light boundary of the other hot setters and
 stores the application's value of every render state the route reads per
 draw: `ZENABLE`, `ZWRITEENABLE` (the selector's z states, every draw while
@@ -618,10 +626,10 @@ against the SDK layout in `verification/probe/abi_check.cpp`.
 | 30 / 31 / 34 / 35 / 39 / 115 / 116 | UpdateSurface, UpdateTexture, StretchRect, ColorFill, SetDepthStencilSurface, patches | complete selector event stream (previously only with scene-depth capture); StretchRect also runs the resolve before the application's bloom copy (step 3) |
 | 41 / 42 | BeginScene / EndScene | scene state for the resolve's caller contract (step 3) |
 | 118 | CreateQuery | query objects get a private vtable (slots 2 Release, 6 Issue) so the route counts queries between BEGIN and END; the resolve never draws while one is open (step 3) |
-| 57 | SetRenderState | render-state shadow (`X3M_STATE_SHADOW`, default on; light boundary) and, in lazy RT mode, the flush of a held write mask before the application's write (installed in lazy mode with the shadow off too) |
+| 57 | SetRenderState | hooked configuration only (`X3M_STATE_SHADOW=1`, lazy RT mode, `X3M_FRAME_TIMING=1`, failed Get* check; not in production, where the route reads at the draw): render-state shadow (light boundary) and, in lazy RT mode, the flush of a held write mask before the application's write (installed in lazy mode with the shadow off too) |
 | 58 | GetRenderState | lazy RT mode only: the application's read of a write mask restores the bindings first |
 | 38 / 32 | GetRenderTarget / GetRenderTargetData | lazy RT mode and `X3M_HDR`: the application's target getter answers with its logical RT0 while the FP16 target is bound (the logical-binding shim), a read of the main target's contents receives the pending FP16 content first |
-| 65 / 69 | SetTexture / SetSamplerState | `X3M_TAA_MIP_BIAS` only (light boundary): the sampler shadow of the mip LOD bias — texture binding and level count (`GetLevelCount` once per pointer change, inside the native section), `MIPFILTER`, and the application's own `MIPMAPLODBIAS` writes (counted, logged, the restore value); see [temporal-integration.md](temporal-integration.md#mip-lod-bias-for-routed-material-draws-2026-09-12) |
+| 65 / 69 | SetTexture / SetSamplerState | `X3M_TAA_MIP_BIAS` (light boundary): the sampler shadow of the mip LOD bias — texture binding and level count (`GetLevelCount` once per pointer change, inside the native section; slot 65 in both configurations), `MIPFILTER`, and the application's own `MIPMAPLODBIAS` writes (counted, logged, the restore value; slot 69 in the hooked configuration only, otherwise `MIPFILTER`/`MIPMAPLODBIAS` are re-read per routed draw and the bias restored right after it); see [temporal-integration.md](temporal-integration.md#mip-lod-bias-for-routed-material-draws-2026-09-12) |
 
 Native slots the route calls itself (never the hooked table): 1, 2, 6, 8, 9,
 23, 28, 32, 34, 36, 37, 38, 39, 40, 41, 42, 47, 48, 57, 58, 75, 76, 83, 87, 88,

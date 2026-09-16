@@ -1112,3 +1112,21 @@ masked 408 checks, resolved residual 0.000 px; hover 3536 checks, 8 routed
 frames of which 5 held, switch step 3.7 % at 449 ‰. `run_linear_distance_fade_live.py`
 PASS, 34 cases. Host: 49 tests OK across the runner, fade-region and
 live-report modules.
+
+
+## 2026-09-16 — hybrid unhook (state-call-fast-path.md step 5)
+
+Production no longer hooks `SetRenderState`/`SetSamplerState`; the route reads
+its draw-time state with `GetRenderState`/`GetSamplerState` once per state per
+draw and restores the mip bias right after each routed draw. `X3M_STATE_SHADOW=1`,
+lazy RT mode, `X3M_FRAME_TIMING=1` and a failed Get* capability check keep the
+hooks; the per-frame summary reports `rs_mode=get|shadow|native`. The six
+shadow-off twins are identical to their shadow-on twins and to the committed
+record (`state_hashes`, `motion_pixels`, colour, route decisions, checks,
+restorations); four of them run in `get` mode, the two lazy ones in `native`.
+Benchmark: production SetRenderState 13.2 ns and SetSamplerState 10.9 ns
+(native 11.3/11.0, hooked 79.7/69.8), the ten-read per-draw set 92.5 ns.
+Numbers, the A/B of the four drifted HDR cases and the two harness findings
+(the TAA sharpen/mip-bias pin, the pre-existing `seam-taa-fade-route-routed`
+failure on main): [state-call-fast-path.md](../architecture/state-call-fast-path.md),
+"Hybrid unhook (step 5, implemented)".

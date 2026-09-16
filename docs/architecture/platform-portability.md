@@ -61,6 +61,17 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   hash-gated. Cross-compiled and fixture-qualified under CrossOver; native
   Windows execution unverified like the other engine patches.
 
+- The hybrid unhook ([state-call-fast-path.md](state-call-fast-path.md),
+  "Hybrid unhook (step 5, implemented)") reads the route's draw-time render
+  and sampler state with `GetRenderState`/`GetSamplerState` instead of hooking
+  the setters: documented D3D9 on a non-pure device (the proxy strips
+  `D3DCREATE_PUREDEVICE`), with one `GetRenderState` and one `GetSamplerState`
+  through the saved native entries at device creation as the capability
+  check; a device that refuses either keeps the hooked configuration
+  (`state_hooks ... reason=get_failed`). Qualified under CrossOver by the
+  benchmark and the motion-output fixture; the native runtime's Get* on the
+  game's actual device flags is unverified like the rest.
+
 - The [loading interval recorder](../verification/loading-intervals.md) uses
   documented Windows QPC, TLS, interlocked, allocation and file APIs. Its x86
   build, CPU audit and CrossOver fixture qualification pass; native Windows

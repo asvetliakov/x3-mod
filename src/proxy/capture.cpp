@@ -130,11 +130,17 @@ x3m::renderer::HdrConfig hdr_config{};
 // periodic motion_output_frame cadence with telemetry on (default 60).
 bool motion_rt_lazy = false;
 unsigned motion_frame_log = 60;
-// X3M_STATE_SHADOW=0 turns the route's render-state shadow off (default on:
-// SetRenderState is hooked and the per-draw state queries never reach
-// GetRenderState after the first read); X3M_SCENE_HOOK is parsed by scene_hook
-// (default on with the route, X3M_SCENE_HOOK=0 off).
-bool motion_state_shadow = true;
+// X3M_STATE_SHADOW selects the render-state configuration (hybrid unhook,
+// docs/architecture/state-call-fast-path.md step 5). Unset (auto, -1): the
+// SetRenderState and SetSamplerState hooks are not installed and the route
+// reads its draw-time state with GetRenderState/GetSamplerState, unless lazy
+// RT mode, X3M_FRAME_TIMING=1 (the diagnostic build still counts state calls)
+// or a failed Get* capability check keeps the hooks on, in which case the
+// shadow is on. 1: hooks on, shadow on (every per-draw query a shadow hit).
+// 0: hooks off as auto; with a hook reason present, hooks on with the shadow
+// off (every query a native GetRenderState, the A/B of the shadow itself).
+// X3M_SCENE_HOOK is parsed by scene_hook (default on with the route).
+int motion_state_shadow = -1;
 // X3M_TAA_K=<k> (stage 3 of the HDR scene path; requires X3M_HDR=1 and
 // X3M_TAA=1) fixes k of the resolve's luminance weighting (0: unweighted);
 // unset: k = exp2(EV) of the AgX write-back, 0 with the identity write-back.
@@ -2035,7 +2041,24 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
-    hooked.motion_output.configure_state_shadow(motion_state_shadow);
+    // Render-state configuration (hybrid unhook): the reasons that keep the
+    // SetRenderState/SetSamplerState hooks installed, then the capability
+    // check of the documented reads the unhooked route depends on (the proxy
+    // strips PUREDEVICE, so a non-pure device answers Get*; a device that
+    // does not fails closed to the hooked configuration). Both reads go
+    // through the saved native entries (58, 68), never through a hook.
+    const char* state_hooks_reason=motion_state_shadow==1?"explicit":hooked.motion_output.lazy_rt_mode()?"lazy_rt":frame_timing::active?"frame_timing":nullptr;
+    if(!state_hooks_reason){
+        DWORD value=0;
+        const bool get_ok=SUCCEEDED(hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*)>(58)(d,D3DRS_ZENABLE,&value))
+            &&SUCCEEDED(hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,D3DSAMPLERSTATETYPE,DWORD*)>(68)(d,0,D3DSAMP_SRGBTEXTURE,&value));
+        if(!get_ok)state_hooks_reason="get_failed";
+    }
+    const bool state_hooks=state_hooks_reason!=nullptr;
+    hooked.motion_output.configure_state_hooks(state_hooks);
+    hooked.motion_output.configure_state_shadow(state_hooks&&motion_state_shadow!=0);
+    log("state_hooks device=%llu installed=%u reason=%s state_shadow=%u rs_mode=%s",hooked.id,state_hooks,state_hooks_reason?state_hooks_reason:"none",
+        hooked.motion_output.state_shadow(),hooked.motion_output.render_state_mode());
     // Production scene patch and immutable binding persist across devices.
     hooked.motion_output.configure_scene_hook(scene_hook::active());
     hooked.motion_output.configure_hdr(hdr_requested,hdr_config);
@@ -2091,17 +2114,18 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         hooked.set(59,create_stateblock);hooked.set(60,begin_stateblock);hooked.set(61,end_stateblock);
         // Scene and query tracking for the resolve's caller contract.
         hooked.set(41,begin_scene);hooked.set(42,end_scene);hooked.set(118,create_query);
-        // Render-state shadow: the application's render-state writes. Lazy
-        // mode needs the same hook with the shadow off (X3M_STATE_SHADOW=0):
-        // an application write to a held write mask must flush the binding first.
-        // Composition also needs current source blend state with that cache off.
-        if(hooked.motion_output.state_shadow()||hooked.motion_output.lazy_rt_mode()||hooked.motion_output.composition_requested())hooked.set(57,set_render_state);
-        // Texture levels are needed only for mip bias. Material admission also
-        // needs successful sampler-state writes when mip bias is disabled.
+        // Render-state shadow: the application's render-state writes, only in
+        // the hooked configuration (state_hooks above: explicit shadow, lazy
+        // mode's held write masks, frame timing's state-call counts, or a
+        // failed Get* check). Otherwise the route reads at the draw.
+        if(hooked.motion_output.state_hooks())hooked.set(57,set_render_state);
+        // Texture levels are needed only for mip bias; the composition reader
+        // identity stays on SetTexture in both configurations.
         if(hooked.motion_output.mip_bias_active()||hooked.motion_output.composition_requested())hooked.set(65,set_texture);
-        // The packed screen bracket reads the stage-0 sRGB decode shadow at its
-        // readiness gate, so it needs the sampler hook without linear materials.
-        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested()||hooked.motion_output.screen_emission_requested()||hooked.motion_output.screen_emission_additive_requested())hooked.set(69,set_sampler_state);
+        // Sampler writes (mip-bias restore ahead of an application LODBIAS
+        // write, sRGB decode shadow of the material and screen gates) in the
+        // hooked configuration only; frame timing counts them like the rest.
+        if(hooked.motion_output.state_hooks()&&(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested()||hooked.motion_output.screen_emission_requested()||hooked.motion_output.screen_emission_additive_requested()||frame_timing::active))hooked.set(69,set_sampler_state);
         // Lazy binding: the application's target and write-mask getters restore first.
         if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
         // HDR redirect: the application's GetRenderTarget(0) and its reads of
@@ -2499,7 +2523,7 @@ void initialize_log(HMODULE module) {
      if(asked)log("ambient_occlusion_mode requested=1 enabled=%u motion_output=%u taa=%u radius_m=%g strength=%g debug=%u timing=%u",ambient_occlusion_requested,motion_output_requested,taa_requested,double(ambient_occlusion_radius),double(ambient_occlusion_strength),ambient_occlusion_debug,ambient_occlusion_timing);}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
-    motion_state_shadow=!(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)==1 && setting[0]==L'0');
+    if(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)==1)motion_state_shadow=setting[0]==L'0'?0:setting[0]==L'1'?1:-1;
     const bool scene_hook_requested=scene_hook::wanted(); // default on with the route (X3M_SCENE_HOOK=0 turns it off)
     if(GetEnvironmentVariableW(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
     if(GetEnvironmentVariableW(L"X3M_TAA_SENTINEL",setting,32)>0){
@@ -2509,9 +2533,9 @@ void initialize_log(HMODULE module) {
     }
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen);
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present

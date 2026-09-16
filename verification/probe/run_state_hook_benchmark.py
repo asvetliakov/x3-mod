@@ -1,27 +1,33 @@
 #!/usr/bin/env python3
 """Per-call cost of the proxy's hooked state setters under the real bottle; no game launch.
 
-Four configurations of verification/probe/state_hook_benchmark.exe, each three
+Five configurations of verification/probe/state_hook_benchmark.exe, each three
 repetitions inside one process (medians reported):
 
-  native            the backend d3d9 loaded directly (C:\\windows\\system32\\d3d9.dll),
-                    no proxy in the process and no DLL override
-  proxy-timing-off  the installed candidate d3d9.dll with X3M_FRAME_TIMING=0
-  proxy-timing-on   the same DLL with X3M_FRAME_TIMING=1 (run87's launch)
+  native                   the backend d3d9 loaded directly (C:\\windows\\system32\\d3d9.dll),
+                           no proxy in the process and no DLL override
+  proxy-timing-off         the candidate d3d9.dll in the production configuration
+                           (X3M_STATE_SHADOW unset, X3M_FRAME_TIMING=0): the hybrid
+                           unhook, SetRenderState and SetSamplerState not hooked
+  proxy-shadow-timing-off  the same DLL with X3M_STATE_SHADOW=1 (every setter hooked)
+  proxy-timing-on          the same DLL with X3M_FRAME_TIMING=1 (run87's launch;
+                           frame timing keeps the two hooks on to count state calls)
   (each device case also times the application getters GetRenderState,
    GetSamplerState, GetTexture including the Release of the returned reference
-   and GetVertexShaderConstantF(4), 1,000,000 calls each, and 200,000
-   SetStreamSource + DrawIndexedPrimitive draw pairs inside one scene)
+   and GetVertexShaderConstantF(4), 1,000,000 calls each, the hybrid unhook's
+   per-draw read set GetState_draw_set_10 (eight GetRenderState + two
+   GetSamplerState per "call"), and 200,000 SetStreamSource +
+   DrawIndexedPrimitive draw pairs inside one scene)
 
   primitives        QueryPerformanceCounter, an uncontended recursive_mutex
                     lock/unlock pair, a GetLastError/SetLastError pair and the
                     LightCallBoundary / CpuCallBoundary envelopes, with no D3D9
 
 The proxy runs carry the route switches that install the setter hooks
-(X3M_MOTION_OUTPUT=1 X3M_TAA=1 X3M_MOTION_JITTER=1: the render-state shadow,
-and the mip bias which needs the texture and sampler hooks). Each run's SLOT
-lines record which module owns the hooked vtable entries, so the record proves
-the hooks were live. The DLL under test is the installed candidate (or the
+(X3M_MOTION_OUTPUT=1 X3M_TAA=1 X3M_MOTION_JITTER=1: the mip bias, which needs
+the texture hook; the render-state and sampler hooks only in the hooked
+configurations). Each run's SLOT lines record which module owns the hooked
+vtable entries, so the record proves which hooks were live in each case. The DLL under test is the installed candidate (or the
 DLL named by --dll, e.g. a worktree build), copied read-only into the run
 directory; nothing is rebuilt.
 
@@ -74,15 +80,23 @@ BASE_ENV = dict(
 # hooks need the route's capability gate, set_render_state the state shadow,
 # set_texture/set_sampler_state the mip bias, which needs the jitter).
 ROUTE_ENV = dict(X3M_MOTION_OUTPUT='1', X3M_TAA='1', X3M_TAA_DEBUG='0', X3M_MOTION_JITTER='1',
-                 X3M_MOTION_RT_MODE='perdraw', X3M_STATE_SHADOW='1', X3M_SCENE_HOOK='0',
+                 X3M_MOTION_RT_MODE='perdraw', X3M_SCENE_HOOK='0',
                  X3M_TELEMETRY='1', X3M_TELEMETRY_DRAW='0', X3M_CAPTURE_START='0',
                  X3M_CAPTURE_FRAMES='0', X3M_MOTION_FRAME_LOG='60')
+# The slots each proxy case must own (proxy) and must leave to the backend.
+ALWAYS_HOOKED = ('SetTexture', 'SetVertexShaderConstantF', 'SetStreamSource')
+LIGHT_PAIR = ('SetRenderState', 'SetSamplerState')
 
 CASES = [
     dict(name='primitives', argv=['primitives'], proxy=False, frame_timing=None),
     dict(name='native', argv=['device', 'native'], proxy=False, frame_timing=None),
-    dict(name='proxy-timing-off', argv=['device', 'proxy'], proxy=True, frame_timing='0'),
-    dict(name='proxy-timing-on', argv=['device', 'proxy'], proxy=True, frame_timing='1'),
+    # Production: X3M_STATE_SHADOW unset (auto), the hybrid unhook.
+    dict(name='proxy-timing-off', argv=['device', 'proxy'], proxy=True, frame_timing='0', state_shadow=None,
+         hooked=ALWAYS_HOOKED, unhooked=LIGHT_PAIR),
+    dict(name='proxy-shadow-timing-off', argv=['device', 'proxy'], proxy=True, frame_timing='0', state_shadow='1',
+         hooked=ALWAYS_HOOKED + LIGHT_PAIR, unhooked=()),
+    dict(name='proxy-timing-on', argv=['device', 'proxy'], proxy=True, frame_timing='1', state_shadow=None,
+         hooked=ALWAYS_HOOKED + LIGHT_PAIR, unhooked=()),
 ]
 
 
@@ -105,6 +119,9 @@ def run_case(entry, log, dll):
         shutil.copy(dll, directory / 'd3d9.dll')
         env.update(ROUTE_ENV)
         env['X3M_FRAME_TIMING'] = entry['frame_timing']
+        env.pop('X3M_STATE_SHADOW', None)
+        if entry['state_shadow'] is not None:
+            env['X3M_STATE_SHADOW'] = entry['state_shadow']
         command += ['--dll', 'd3d9=n,b']
     command += [str(directory / EXE.name)] + entry['argv']
     assert not game_running(), 'the game is running'
@@ -132,6 +149,7 @@ def run_case(entry, log, dll):
     case = {'directory': str(directory.relative_to(ROOT)),
             'command_tail': entry['argv'],
             'frame_timing': entry['frame_timing'],
+            'state_shadow': entry.get('state_shadow'),
             'ns_per_call': {op: round(statistics.median(values), 1) for op, values in samples.items()},
             'samples': {op: [round(v, 1) for v in values] for op, values in samples.items()},
             'hooked_slots': slots,
@@ -144,9 +162,8 @@ def run_case(entry, log, dll):
         # or MXCSR fails the run, whatever the benchmark numbers say.
         bad = {op: p for op, p in preserve.items() if not (p['x87'] and p['mxcsr'])}
         assert not bad, f'{entry["name"]}: x87/MXCSR not preserved: {bad}'
-        assert slots and all('proxy' in v for k, v in slots.items()
-                             if k in ('SetRenderState', 'SetTexture', 'SetSamplerState',
-                                      'SetVertexShaderConstantF', 'SetStreamSource')), slots
+        assert slots and all('proxy' in slots[k] for k in entry['hooked']), (entry['name'], slots)
+        assert all('backend' in slots[k] for k in entry['unhooked']), (entry['name'], slots)
     return case
 
 
@@ -160,9 +177,11 @@ LIGHT_SETTERS = ('SetRenderState', 'SetTexture', 'SetSamplerState', 'SetVertexSh
 def derive(result):
     """Add the per-call deltas and the attribution of run87's 297 ns state call."""
     cases = result['cases']
-    native, off, on = (cases['native']['ns_per_call'], cases['proxy-timing-off']['ns_per_call'],
-                       cases['proxy-timing-on']['ns_per_call'])
-    for name in ('proxy-timing-off', 'proxy-timing-on'):
+    # The setter attribution is the hooked configuration's (the light pair is
+    # native in the production case); `hybrid` below carries the unhooked rows.
+    native, off, on, hybrid = (cases['native']['ns_per_call'], cases['proxy-shadow-timing-off']['ns_per_call'],
+                               cases['proxy-timing-on']['ns_per_call'], cases['proxy-timing-off']['ns_per_call'])
+    for name in ('proxy-timing-off', 'proxy-shadow-timing-off', 'proxy-timing-on'):
         cases[name]['ns_over_native'] = {op: round(value - native[op], 1)
                                          for op, value in cases[name]['ns_per_call'].items() if op in native}
     mean = lambda table: statistics.mean(table[op] for op in LIGHT_SETTERS)  # noqa: E731
@@ -187,13 +206,27 @@ def derive(result):
                        for op in ('GetRenderState', 'GetSamplerState', 'GetTexture_Release', 'GetVertexShaderConstantF4')},
         'draw_pair_ns': {'native': native.get('SetStreamSource_DrawIndexedPrimitive_pair'),
                          'timing_off': off.get('SetStreamSource_DrawIndexedPrimitive_pair'),
-                         'timing_on': on.get('SetStreamSource_DrawIndexedPrimitive_pair')}}
+                         'timing_on': on.get('SetStreamSource_DrawIndexedPrimitive_pair')},
+        'hybrid_unhook_ns': {
+            'basis': 'proxy-timing-off is the production configuration (X3M_STATE_SHADOW unset): '
+                     'SetRenderState/SetSamplerState native, the route reads GetState_draw_set_10 per routed draw',
+            'SetRenderState': {'native': native.get('SetRenderState'), 'production': hybrid.get('SetRenderState'), 'hooked': off.get('SetRenderState')},
+            'SetSamplerState': {'native': native.get('SetSamplerState'), 'production': hybrid.get('SetSamplerState'), 'hooked': off.get('SetSamplerState')},
+            'GetState_draw_set_10': {'native': native.get('GetState_draw_set_10'), 'production': hybrid.get('GetState_draw_set_10'),
+                                     'hooked': off.get('GetState_draw_set_10'), 'timing_on': on.get('GetState_draw_set_10')},
+            'SetStreamSource': {'native': native.get('SetStreamSource'), 'production': hybrid.get('SetStreamSource'), 'hooked': off.get('SetStreamSource')},
+            'draw_pair': {'native': native.get('SetStreamSource_DrawIndexedPrimitive_pair'),
+                          'production': hybrid.get('SetStreamSource_DrawIndexedPrimitive_pair'),
+                          'hooked': off.get('SetStreamSource_DrawIndexedPrimitive_pair')},
+            'state_mix': {'native': native.get('state_mix'), 'production': hybrid.get('state_mix'), 'hooked': off.get('state_mix')}}}
     return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--dll', type=Path, default=INSTALLED_DLL, help='proxy DLL under test (default: the installed candidate)')
+    parser.add_argument('--out', type=Path, default=RESULTS / 'state-hook-benchmark.json',
+                        help='result file (the Wine log goes beside it as <stem>-wine.log)')
     args = parser.parse_args()
     dll = args.dll.resolve()
     subprocess.run([str(PROBE / 'build_state_hook_benchmark.sh')], cwd=ROOT, check=True)
@@ -205,8 +238,8 @@ def main():
               'note': ('Three repetitions per configuration inside one process; ns_per_call is the median. '
                        'Equal-share setter mix: run87 frame_timing keeps one counter per bucket, no per-entry breakdown.'),
               'cases': {}}
-    out = RESULTS / 'state-hook-benchmark.json'
-    with (RESULTS / 'state-hook-benchmark-wine.log').open('w') as log:
+    out = args.out.resolve()
+    with out.with_name(out.stem + '-wine.log').open('w') as log:
         for entry in CASES:
             result['cases'][entry['name']] = run_case(entry, log, dll)
             out.write_text(json.dumps(result, indent=2) + '\n')
@@ -215,7 +248,7 @@ def main():
     # LastError transparency: the proxy must match the backend's own behaviour
     # per operation (the boundary restores the native call's outgoing error).
     native_preserve = result['cases']['native']['preserve']
-    for name in ('proxy-timing-off', 'proxy-timing-on'):
+    for name in ('proxy-timing-off', 'proxy-shadow-timing-off', 'proxy-timing-on'):
         for op, p in result['cases'][name]['preserve'].items():
             assert p['error'] or not native_preserve[op]['error'], f'{name} {op}: LastError changed by the proxy'
     out.write_text(json.dumps(result, indent=2) + '\n')

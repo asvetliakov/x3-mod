@@ -87,16 +87,22 @@ target changes with their own Clear, view and draws, BeginScene) between
 routed frames, before the scene's depth Clear and before the initial Clear:
 nothing of those frames routes, the scene camera is never read, the resolve
 does not run, and the history is dropped.
-Render-state shadow (X3M_STATE_SHADOW, default on; six runs with it off): the
-route answers its per-draw render-state queries from a shadow fed by the
-SetRenderState hook instead of GetRenderState. The regular script on both
-DLLs, the seam with TAA and in lazy mode, and the burst script in both binding
-modes repeat with the shadow off and must equal their shadow-on twins in
-colour, readback files, per-draw route decisions, checks and restorations;
-the DLL's per-frame counters must show zero route GetRenderState calls with
-the shadow on (every query a hit, outside the frames with a state block
-Apply/EndStateBlock resynchronization, where each shadowed state is read once
-more) and one per query with it off. The regular script also writes a state
+Render-state shadow (X3M_STATE_SHADOW=1; six runs with it off): the route
+answers its per-draw render-state queries from a shadow fed by the
+SetRenderState hook instead of GetRenderState. With X3M_STATE_SHADOW=0 (or
+unset, the production default) and no other hook reason the hybrid unhook
+applies (docs/architecture/state-call-fast-path.md, step 5): the
+SetRenderState/SetSamplerState hooks are not installed and the route reads at
+the draw, once per state per draw (`rs_mode=get`); in lazy RT mode the hooks
+stay and X3M_STATE_SHADOW=0 turns only the cache off (`rs_mode=native`). The
+regular script on both DLLs, the seam with TAA and in lazy mode, and the burst
+script in both binding modes repeat with the shadow off and must equal their
+shadow-on twins in colour, readback files, per-draw route decisions, checks
+and restorations; the DLL's per-frame counters must show zero route
+GetRenderState calls with the shadow on (every query a hit, outside the frames
+with a state block Apply/EndStateBlock resynchronization, where each shadowed
+state is read once more), one per query in native mode, and one per state per
+draw in get mode (every query a within-draw hit or one native read). The regular script also writes a state
 through a state block Apply and records one between BeginStateBlock and
 EndStateBlock (never applied); the burst script writes and reads back
 COLORWRITEENABLE1 between routed draws in lazy mode (the lazy-mode hole).
@@ -1636,20 +1642,29 @@ def validate_hdrfault(name, text, trace, directory, hdr_env=None, hdr_fault=None
 def check_render_state(name, frame, summary, shadow, resyncs):
     """The DLL's per-frame render-state counters against the shadow switch."""
     assert summary['state_shadow'] == str(int(shadow)), (name, frame, summary)
+    mode = summary.get('rs_mode')
+    if mode is None:
+        mode = 'shadow' if shadow else 'native'  # a DLL from before the hybrid unhook: the hooks were always installed
+    else:
+        assert mode == ('shadow' if shadow else 'native' if summary.get('rt_mode') == 'lazy' else 'get'), (name, frame, mode, summary.get('rt_mode'))
     q, h, g, r = (int(summary[k]) for k in ('rs_queries', 'rs_hits', 'rs_gets', 'rs_resyncs'))
     # Failed application setters drop single shadow entries without a re-read;
     # they are counted apart so a resync still has to show a shadow miss.
     i = int(summary.get('rs_invalidations', 0))
     assert r == resyncs and q >= 2 * int(summary['draws']), (name, frame, q, h, g, r)
     assert g == RS_FILL_GETS + q - h, (name, frame, q, h, g)
-    if shadow:
+    if mode == 'shadow':
         if not r and not i:
             assert h == q, (name, frame, q, h)
         else:
             assert (0 < q - h if r else 0 <= q - h) and q - h <= RS_SHADOW_STATES * r + i, (name, frame, q, h, r, i)
-    else:
+    elif mode == 'native':
         assert h == 0, (name, frame, q, h)
-    return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r, 'invalidations': i}
+    else:
+        # Hybrid unhook: no hooks, so nothing to invalidate; the per-draw cache
+        # answers repeats within a draw and every state costs one read per draw.
+        assert i == 0 and 0 <= h < q, (name, frame, q, h, i)
+    return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r, 'invalidations': i, 'mode': mode}
 
 
 # ---- FP16 HDR scene path, stage 2 -------------------------------------------
@@ -3136,6 +3151,11 @@ def main(argv=None):
                        X3M_GZ_BUFFER='0', X3M_GZ_BUFFER_KB='256')
             env.update(VARIANTS[variant])
             env.update(hdr_env)
+            if taa:
+                # ca6ad2e made --taa default to sharpen 0.75 and mip bias -0.5;
+                # the fixture's TAA checks assume the unsharpened, unbiased
+                # resolve unless a case sets them (hdr_env above, mip_bias below).
+                env.setdefault('X3M_TAA_SHARPEN', '0'); env.setdefault('X3M_TAA_MIP_BIAS', '0')
             if hook == 'default':
                 del env['X3M_SCENE_HOOK']  # the DLL's default: on with X3M_MOTION_OUTPUT=1
             if mip_bias is not None:
@@ -3466,8 +3486,17 @@ def main(argv=None):
                 assert files_a and files_a == files_b, f'{off_name}: readback files differ from {twin}'
             gets_off = sum(v['gets'] for v in a['render_state'].values()); gets_on = sum(v['gets'] for v in b['render_state'].values())
             queries = sum(v['queries'] for v in b['render_state'].values())
-            assert sum(v['hits'] for v in a['render_state'].values()) == 0 and gets_off == queries + RS_FILL_GETS * len(a['render_state']), off_name
-            shadow_report[off_name] = {'twin': twin, 'identical': True, 'frames': len(b['render_state']), 'route_queries': queries,
+            modes_off = {v['mode'] for v in a['render_state'].values()}
+            assert len(modes_off) == 1 and modes_off <= {'get', 'native'}, (off_name, modes_off)
+            mode_off = modes_off.pop()
+            if mode_off == 'native':
+                assert sum(v['hits'] for v in a['render_state'].values()) == 0 and gets_off == queries + RS_FILL_GETS * len(a['render_state']), off_name
+            else:  # get: the per-draw cache's own accounting, checked per frame; no hook, no invalidation
+                queries_off = sum(v['queries'] for v in a['render_state'].values()); hits_off = sum(v['hits'] for v in a['render_state'].values())
+                assert gets_off == queries_off - hits_off + RS_FILL_GETS * len(a['render_state']), off_name
+                assert sum(v['invalidations'] for v in a['render_state'].values()) == 0, off_name
+            shadow_report[off_name] = {'twin': twin, 'identical': True, 'frames': len(b['render_state']), 'route_queries': queries, 'mode': mode_off,
+                                       'route_queries_off': sum(v['queries'] for v in a['render_state'].values()),
                                        'native_gets_shadow_off': gets_off, 'native_gets_shadow_on': gets_on,
                                        'shadow_hits': sum(v['hits'] for v in b['render_state'].values()), 'resyncs': sum(v['resyncs'] for v in b['render_state'].values())}
         result['state_shadow'] = shadow_report
