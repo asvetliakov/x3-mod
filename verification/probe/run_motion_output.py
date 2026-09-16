@@ -295,7 +295,15 @@ RAMP_CASES = {'seam-hdr-ramp-none': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0'),
               'production-hdr-ramp-none': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0'),
               'seam-hdr-ramp-identity': dict(X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0')}  # tonemap off: the stage-1 conversion on the same ramp
 CASES += [case(name, 'hdrramp', hdr=True, hdr_env=env) for name, env in RAMP_CASES.items()]
-EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX_AUTO, X3M_HDR_DT_MS='16'),
+# Auto-exposure ceiling (X3M_HDR_EV_MAX): the DLL's production default moved
+# from +1.5 EV to +1.0 (3df7b9f) and then to +1.3 (b391635, with the runner's
+# HDR_EV_MAX_DEFAULT mirror). The ceiling engages from frame 2 of the exposure
+# scripts, so every unpinned Auto case's presented frames drifted away from the
+# committed record, which was taken at +1.5. These cases pin the ceiling their
+# record was written for instead of following the production default; the
+# production ceiling has its own coverage in the exposure component fixtures.
+RECORD_EV_MAX = '1.5'
+EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX_AUTO, X3M_HDR_DT_MS='16', X3M_HDR_EV_MAX=RECORD_EV_MAX),
                   # The offset script's level stimulus is designed around a
                   # +2 EV ceiling: with the +1 EV offset and the DLL's own
                   # former ev_max default of 1.5 (75dbbed) made levels A..C clamp onto the
@@ -305,9 +313,9 @@ EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX_AUTO, X3M_HDR_DT_MS='16'),
 CASES += [case(name, 'hdrexposure', hdr=True, hdr_env=env) for name, env in EXPOSURE_CASES.items()]
 # The meter chain's level surfaces and readback surfaces through the ownership wrapper (reference accounting at teardown).
 CASES += [case('seam-ownership-hdr-exposure', 'hdrexposure', 'ownership', hdr=True, hdr_env=EXPOSURE_CASES['seam-hdr-exposure'])]
-CASES += [case('seam-hdr-tonemap-fault', 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16')),
-          case('seam-hdr-meter-selftest-unlock', 'hdrtonemapfault', hdr=True, hdr_fault='16', hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16')),
-          case('seam-hdr-tonemap-shader-absent', 'hdrtonemapfault', hdr=True, hdr_fault='12', hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16'))]
+CASES += [case('seam-hdr-tonemap-fault', 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16', X3M_HDR_EV_MAX=RECORD_EV_MAX)),
+          case('seam-hdr-meter-selftest-unlock', 'hdrtonemapfault', hdr=True, hdr_fault='16', hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16', X3M_HDR_EV_MAX=RECORD_EV_MAX)),
+          case('seam-hdr-tonemap-shader-absent', 'hdrtonemapfault', hdr=True, hdr_fault='12', hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16', X3M_HDR_EV_MAX=RECORD_EV_MAX))]
 CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True, hdr_env=dict(AGX_AUTO, X3M_MOTION_FRAME_LOG='4')) for size in BENCH_SIZES for state in ('off', 'on')]  # frame lines every 4 frames: the adapted state of a timed frame
 # FP16 HDR scene path, stage 3 (TAA on HDR): the resolve consumes the FP16
 # scene target and the write-back presents tonemap(resolve(HDR)). The HDR
@@ -396,7 +404,15 @@ HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault
 # invalidates the frame's history every frame, as documented.
 CUTOUT_FRAMES = 12
 CUTOUT_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
-                  X3M_LINEAR_MATERIALS='1', X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='1', X3M_LIGHTMAP_EMISSIVE_GAIN='1',
+                  # Material fill (X3M_MATERIAL_FILL): the DLL gained a nonzero
+                  # production default (0.03 in 3df7b9f, 0.05 in b391635), which
+                  # adds the fill term to every converted material draw of these
+                  # scripts while the composite oracle here (run_linear_material
+                  # .expected, fill=0) and the committed record are fill-free.
+                  # The cutout and fade-route cases pin the fill their oracle and
+                  # record were written for; the fill itself is covered by the
+                  # linear-material fill oracle cases.
+                  X3M_LINEAR_MATERIALS='1', X3M_MATERIAL_FILL='0', X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='1', X3M_LIGHTMAP_EMISSIVE_GAIN='1',
                   X3M_LINEAR_DISTANCE_FADE='0', X3M_LINEAR_EMISSIONS='0', X3M_OWNERSHIP='1', X3M_TAA_SENTINEL='2', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0',
                   X3M_FIXTURE_MOTION_DEPTH='1', X3M_FIXTURE_CAMERA='rotate', X3M_MOTION_FRAME_LOG='1', X3M_TAA_DEBUG='1',
                   X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0', X3M_FIXTURE_CUTOUT_MIXED='0', X3M_FIXTURE_CUTOUT_ORDINARY='0')
