@@ -51,7 +51,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
 | 32 | Hybrid unhook, draw and state counters | 4 | A1 run91 (redundancy 95/99/40 %, batchability 5 %), A2 run92 (busy frame 37.5 to 26.5 ms unhooked), B run93 (cutout pairs draw everywhere, lane admission unobservable; slow sector is `pre_render` 98 % of a 420 ms frame); C queued with `--game-phases` |
 | 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | A run95 (view submit: draw 43 %, BeginPass 33 %, engine between passes 22 %), B run96 (stall 99.8 % in the per-sector object pass `0x0045b720`, one sector; GStreamer criticals repeat during it), C run97 (cutout draws admitted through the tested-opaque arm, ~90/frame with the lane share; linear materials + lane +3 ms) |
-| 34 | Stall evidence: stderr capture, module identity, media-cue trace and cache | 4 | Queued: candidate `7102a2f1…` from `ee5a406` installed 2026-09-17 |
+| 34 | Stall evidence: stderr capture, module identity, media-cue trace and cache | 4 | A1 run98: the stalling cue is id 2 = `mov\00002.dat` (MPEG-1 video), one failed build per frame at ~390 ms, GStreamer bursts aligned within 16 ms; native d3dx9_37 loads; A2/A3/B pending |
 
 ## 34. Stall evidence: stderr capture, module identity, media-cue trace and cache — open
 

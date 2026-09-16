@@ -292,3 +292,64 @@ one page to 20,480 (`engine_patch.cpp`; 16,076 modelled with everything on,
 * CrossOver ships no `gst-plugin-scanner`, so both plugins are scanned
   in-process (the host probe logs the usual external-loader warning); a plugin
   fault would be taken by the game process.
+
+### Run 34 session A1 (run98), 2026-09-17
+
+Identity: proxy_identity sha256=7102a2f1… matches docs/status.md installed
+build (commit ee5a406). `loaded_module`: d3d9.dll from
+`C:\windows\system32\d3d9.dll` (187968 B, builtin) and `d3dx9_37.dll` from
+`C:\X3\d3dx9_37.dll` size=3786760 (the native game-dir copy, not the
+1,646,144 B system32 builtin). `clock_anchor` present:
+utc=2026-09-16T19:56:20.260Z qpc=13180193782578 qpc_frequency=10000000.
+`media_cue_mode` gate: one site (`00498140`, 5 B, `push ebx`+`mov`), status=ok,
+arena/ring healthy (cache=0 per `X3M_MEDIA_CUE_CACHE=0`).
+
+**Cue table.** Session total: 107 `media_cue` lines, 97 `result=0`
+(failure), 10 non-zero (success). 93 of those lines are `id=2 kind=0x5a`
+(87 `caller=selector`, 2 `caller=other`) plus 4 `id=2 kind=0x520
+caller=other`; all 93 are `result=0`. Per-attempt `us=` for the 87
+`id=2 kind=0x5a caller=selector` rows: n=87, min=160791, median=392942,
+max=448898 (session log lines 79589–92668). `media_cue_window` at
+frame=12899: attempts=8 failures=8 ids=2:7,24:1 (one very slow frame,
+`loop_phases_slow` frame=12753 dt_us=1394988, 7 retries inside it). At
+frame=14099: attempts=4 failures=4 ids=2:4, one retry per frame across
+frames 14096–14183 (`game_phase_slow_frame` cluster, covered_ticks up to
+4,177,724 = ~418 ms). Per `docs/reverse-engineering/media-cue-playback.md`
+§3, id=2 is outside the 100–299/810/840–899 `addon\mov` ranges, so its path
+resolves (by the documented rule, not directly logged) to
+`soundtrack\00002.mp3` with a `.wma` fallback — the note's open question
+"which id the stalling sector selects" is answered as id=2, kind 0x5a
+(selector). Baseline (non-stall) attempts (ids 144, 244, 1, 8404, 2004, 31,
+8509, 24) mostly succeed (10/17 non-zero `result=`), confirming media cues
+normally resolve; only id=2's selector path fails every time it is attempted.
+
+**Alignment.** `clock_anchor` maps qpc→UTC: frame=14100 attempt
+(qpc=13182399828226) → 2026-09-16 20:00:00.8646; nearest
+`launcher-stderr.log` GStreamer-CRITICAL at `[2026-09-16T20:00:00.848Z]
+gst_element_set_state: assertion 'GST_IS_ELEMENT (element)' failed` (16 ms
+earlier). frame=14101 (qpc→20:00:01.2205) aligns with
+`[2026-09-16T20:00:01.214Z]` (6 ms). frame=14180 (qpc→20:00:34.0211) aligns
+with `[2026-09-16T20:00:34.032Z]` (11 ms). 752 of the session's 760
+GStreamer-CRITICAL lines fall inside the 19:59:33–20:00:35 UTC window that
+brackets the id=2 retries; no other Wine fixme/err naming quartz,
+winegstreamer, mp3, mpeg or a file path appears anywhere in the stderr log.
+
+**Frame shape.** `loop_phases` window ending frame=14100: post_p50_us=12,
+post_p95_us=20, but max_interval_us=260463 owner=post, slow=5 — the p50/p95
+stay tiny because only the handful of retry frames are slow; each slow
+frame's `loop_phases_slow` `post_us` (160825–260463) alone accounts for the
+observed ~200–260 ms dt, i.e. one media-cue attempt per frame, not several.
+
+**Sanity.** All `media_cue_window` early/foreign/stale/lost/mismatched/
+dropped/refused/overflow counters are 0 for the whole session; no
+`shader_unknown` lines; chase-camera refusal counters are 0 at frame=0
+(no other windows sampled for chase in this session).
+
+**Correction (orchestrator, file check):** the create routine tries
+`"%05d.dat"` in `mov\` first and falls back to `soundtrack\%05d.mp3/.wma`
+only when that file is absent (media-cue-playback.md §4). `mov\00002.dat`
+exists (533,575,370 bytes, header `000001b3`: MPEG-1 video elementary stream), while
+`soundtrack\00002.*` does not, so cue id 2 is the **MPEG-1 video elementary stream** `mov\00002.dat`,
+not a soundtrack track. Its graph needs an MPEG-1 video decoder, which the v4
+runtime and CrossOver's GStreamer set lack (§3) and the v5 runtime adds
+(`avdec_mpeg2video`, `mpegvideoparse`): run 34 session A3 is the direct test.
