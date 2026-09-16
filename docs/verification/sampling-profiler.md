@@ -995,3 +995,67 @@ frames, `incomplete=0` throughout — the spike is not loading. No anomalies:
 `truncated=1`, `shader_unknown`, `motion_state_lost`, `lock_wait` outliers, or
 `mip_bias_failures`; `incomplete` sums to 4 across all 95 windows (opening
 only).
+
+### Run 32 session C (run94): slow sector sub-phases
+
+Preserved log `/tmp/x3-bottleX3-run94/session-20260916-171827-212.log` (82,225
+lines), installed DLL `11c1f119…` from `baee232`, command = run 32 session A1
+(`--frame-timing --frame-phases --telemetry`) plus `--game-phases`
+(`X3M_GAME_PHASES=1`). Identity: `game_phase_mode requested=1 enabled=1
+status=ok sites=33 ... frame_threshold_ms=50 call_threshold_ms=10 tape=96`;
+`frame_phase_mode requested=1 enabled=1 status=ok sites=10 window=300`.
+
+**Windows (dt_p50 top, plus the slow one).** The slow sector is the
+`frame=12000` window: `slow=111` frames over 50 ms (all other top-dt_p50
+windows have `slow≤1`).
+
+| frame window | dt_p50_us | dt_p95_us | draws_p50 | pre_render_p50/p95_us | views_p50/p95_us |
+|---|---:|---:|---:|---:|---:|
+| 900 | 29106 | 34098 | 727 | — | — |
+| 1200 | 25425 | 35834 | 547 | — | — |
+| **12000** | 24715 | **426097** | 472 | 5842 / **413588** | 14196 / 19599 |
+| 11700 | 24448 | 28371 | 692 | 5377 / 7949 | 18958 / 20322 |
+
+`frame_phases frame=12000`: `pre_render_p95_us=413588` dominates `dt_p95_us=426151`
+(97 %); `views_p95_us=19599` is normal. Reproduces run93's shape: pre_render
+dominant, not views.
+
+**Decisive sub-phase (`--game-phases`, 111 slow frames, `game_phase_slow_frame`
+frame 11890–12006, `game_phase_segment`).** Total covered time 44,805.2 ms;
+one phase owns nearly all of it:
+
+| phase (site) | n | p50_us | p95_us | total_ms | share |
+|---|---:|---:|---:|---:|---:|
+| **Input** (`game_phase_input` 0x00403b09, region [403b09,403f2a)) | 333 | 1350 | 403778 | 42873.5 | **95.7 %** |
+| Render (`0x00403f34`) | 111 | 11973 | 15210 | 1384.4 | 3.1 % |
+| PendingVm (script VM, `0x00403aff`) | 111 | 2757 | 7915 | 391.8 | 0.9 % |
+| Cockpits | 111 | 437 | 789 | 54.0 | 0.1 % |
+| all others | — | — | — | ~10 | <0.1 % |
+
+Within Input, `input_part=0` alone carries p50 391,500 us / max 454,653 us
+(total 42,701 ms) — essentially the whole slow frame; `input_part=1` (script/VM
+sub-path) is 1,350 us p50, `input_part=2` negligible. Per
+`docs/reverse-engineering/selection-native-vm.md`, phase 6 `[403b09,403f2a)` is
+a broad region (registry/sector/object work, input/control/script dispatch, an
+explicit input-wait branch, optional save) — calling it a pure "input" cost
+overclaims. `game_phase_call_sample`/`game_phase_slow_call` (the call tape) has
+only 5 rows in the whole log, none in frames 11700–12000, all `caller=00000000`:
+no named engine call site is attributable inside the stall from this run: it is
+an unattributed remainder inside the broad Input phase, not the script VM,
+simulation/AI, cockpit update or deferred-callbacks group narrowly (PendingVm,
+Simulation, Cockpits, Clock are all <1 % combined).
+
+**Normal-frame comparison.** The diagnostic only emits `game_phase_segment` rows
+for frames over `frame_threshold_ms=50`, so no true <50 ms frame has a segment
+breakdown; the lightest recorded slow frame in the session (frame=3425, 50.8 ms
+total) is dominated by **PendingVm 70.8 %** and Render 24.7 %, with Input only
+2.5 % — the opposite ranking from the sector stall, where Input is 95.7 % and
+PendingVm <1 %. This is the closest available before/after contrast and shows
+Input is what grew.
+
+**Anomalies.** No `arena_full`, `bytes_mismatch`, `truncated`, `shader_unknown`
+or chase refusals anywhere in the log. `lock_wait` (616 hits) is an unrelated
+`telemetry_metric`, all `failures=0`, microsecond-scale. `game_phase_window
+unmatched=3` appears twice: frame=326 (mid-session, isolated) and frame=12005
+(`frames=0`, the window that closed at quit) — consistent with session
+termination during the stall, not a claim failure.

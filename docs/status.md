@@ -151,9 +151,35 @@ the hooked texture/constant/binding setters; the remaining cost is the
 engine's per-draw work, which the run 32 counters size for a state-manager
 filter and proxy instancing ([design](architecture/state-call-fast-path.md)).
 
-[Run 32](verification/user-runs.md) is queued (candidate `11c1f119…` from
-`baee232`, installed): A1 counters, A2 felt FPS without `--frame-timing`, B
-station programs.
+Run 32 came back as `run91` (A1), `run92` (A2), `run93` (B) and `run94` (C):
+
+- **Unhooked proxy (run92):** the same busy view fell from 37.5 ms (run89,
+  hooks and frame timing on) to 26.5 ms p50, hooks confirmed absent, mip-bias
+  apply/restore balanced over 8.1 M calls. The proxy is out of the state path.
+- **Counters (run91):** redundant sets 95 % (render states), 99 % (sampler),
+  40 % (texture) of the ~19,400 shadowed calls per frame; instancing
+  candidates 5 % of draws, material-sortable 6 %. Design decision: no
+  engine-side state filter (bounded at 0.3–1.0 ms, native setters cost
+  11–15 ns) and no proxy instancing or sorting
+  ([engine-state-filter.md](architecture/engine-state-filter.md)). The
+  remaining ~23 ms of game code per busy frame is split next by
+  `--pass-phases`, four accumulate-only stamps in the effect pass loop
+  `0x004c0150` (BeginPass, draw, EndPass; once per draw; RE validated,
+  [effect-pass-loop.md](reverse-engineering/effect-pass-loop.md)), in flight.
+- **Cutout pairs draw everywhere (run91/run93):** ~108 per frame in the busy
+  Argon view, 561 k over run93; under the default configuration they are
+  routed through the tested-opaque arm with the lane share written, which
+  the old counters could not show; `cutout_opaque_*` telemetry merged for the
+  next candidate ([ledger](verification/directional-shadows.md)).
+- **Slow sectors are not rendering (run93/run94):** a quiet sector ran at
+  ~390 ms per frame with 95.7 % in the main loop's broad input region
+  (`0x00403b09`–`0x00403f2a`: input wait, synchronous script and save paths),
+  render 3 %, deferred script VM 1 %; the same stall existed on Windows. The
+  region is being decompiled for stamp sites and a candidate owner
+  ([ledger](verification/sampling-profiler.md), run94 section).
+
+Run 32 is complete; run 33 (pass phases, loop-region split, cutout telemetry)
+follows the in-flight work.
 
 ## Next user action
 

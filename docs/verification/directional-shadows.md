@@ -430,6 +430,109 @@ Open: still no session with an actual cutout draw; the station type visited in r
 
 
 
+## Cutout pairs under the tested-opaque arm: code path
+
+Run93 (`--linear-materials --linear-distance-fade --sun-shadow-lane`, default
+mip bias -0.5) drew the two cutout pairs 292,413 and 268,716 times while every
+`linear_material_frame` line reported `cutout_routed=0 cutout_missed=0
+cutout_unavailable=0 cutout_caps=1`: with a nonzero configured bias
+`cutout_arm_configured()` is false ([motion_output.cpp:940](../../src/proxy/motion_output.cpp)),
+so `cutout_arm_active_` (latched per frame, motion_output.cpp:921) is off and
+`route.cutout` — the only input of `counters_.cutout_routed` — is off with it
+(motion_output.cpp:4542, 5140). Those draws were neither refused nor invisible;
+they took the tested-opaque arm and were counted as ordinary `routed`. Reading
+the path for a cutout-pair draw under that default configuration:
+
+- **(a) Routed through the material route: yes.** Gate 4's third admission
+  clause, `sun_lane_active_ && linear_material_requested_ &&
+  !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0`
+  (motion_output.cpp:4504), admits the pair in its exact cutout state
+  (alpha test on, mask 7) because the exact arm is inactive. Nothing downstream
+  distinguishes it: `route.alpha_tested` is set (4536), `route.cutout` stays
+  false (4542), and the draw then takes the ordinary linear-material apply
+  (`linear_material_refusal()` == 0 → `bind_variant_pair(route, true)`,
+  4615-4654), counting into `routed`, `material_routed` and `depth_routed`.
+- **(b) Lane share written: yes, when the pair's profile writes depth.**
+  `bind_variant_pair` replaces the PS with `shadow_.ps_sun_material` whenever
+  `sun_lane_active_ && route.depth && !route.fade_arm` (motion_output.cpp:4214-4217),
+  so oC2 carries this draw's depth and share; `route.sun_receiver` additionally
+  requires the material variant and `shadow_.ps_sun_extraction` (4216) and is
+  the flag the lane bookkeeping counts as a receiver (5131). A pair whose
+  profile writes no depth routes without the lane PS (reason `no_depth`).
+- **(c) Native MIPMAPLODBIAS: kept.** `route.native_mip_bias = route.alpha_tested
+  && shadow_.cutout_pair` (motion_output.cpp:4541) makes the apply restore any
+  stage still holding the route's bias instead of applying it (4655), so the
+  alpha source of an alpha-tested cutout draw is the native draw's.
+- **(d) Refusal paths.** Gate 1 `feature`, gate 2 `scene`, gate 3
+  `unregistered`/`pair`, gate 4 `no_zwrite` (z test or z write off, the first
+  check of the chain), `blended`, `state` (sRGB write on, or mask 0), `rows`,
+  `geometry`, `read_failed` (motion_output.cpp:4500-4534), and after admission
+  `apply_failed` (rollback, 4635-4642). `scope` and `history` are recorded but
+  still route. Refusals send the draw down the native path with `route.routed`
+  false.
+
+### Per-frame telemetry (`linear_material_frame`)
+
+Next to `cutout_routed` / `cutout_missed` / `cutout_unavailable` / `cutout_caps`
+the line now carries the tested-opaque arm's own counts, on frames where the
+exact arm is inactive (`shadow_.cutout_pair && !cutout_arm_active_`, the single
+branch in `after_draw`; `shadow_.cutout_pair` is false whenever linear materials
+are off, so the cost off is that one test):
+
+- `cutout_opaque_routed` — cutout-pair draws routed through the tested-opaque
+  arm with a successful native call.
+- `cutout_opaque_lane` — of those, the ones that bound the lane variant with the
+  share extraction (`route.sun_receiver`), i.e. whose lane share (oC2.g) was
+  written.
+- `cutout_opaque_refused` and `cutout_opaque_refused_top=<reason>:<n>,…` — the
+  refused ones and their top three buckets, named by the existing
+  `SunUntrackedReason` table (`src/renderer/sun_share_frame.h`); a refusal
+  without a recorded reason (the lane only fills it for a colour writer) falls
+  back to its gate's bucket.
+
+Counting is `note_cutout_opaque` (motion_output.cpp:5095): increments only, no
+allocation, no device call, no extra state read per draw.
+
+### Fixture evidence (2026-09-16, worktree)
+
+- `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_sun_share_live.py --fixture
+  verification/probe/build/motion_output_fixture.exe --dll
+  verification/probe/build/motion-output-seam/d3d9.dll`: all 16 cases pass
+  (`verification/results/bottle-X3/sun-share-live.json`, untracked).
+  `cutout_pair_bias` frame 2 prints `SUN_CUTOUT_OPAQUE frame=2 routed=1 lane=1
+  refused=1 no_zwrite=1 state=0 untracked=0` and its session log's
+  `linear_material_frame` reads `cutout_routed=0 … cutout_opaque_routed=1
+  cutout_opaque_refused=1 cutout_opaque_lane=1
+  cutout_opaque_refused_top=no_zwrite:1`; `RESULT PASS checks=46879
+  restorations=18`. The refusal probe is the same cutout pair drawn with z write
+  off and a ZERO/ONE blend (colour and depth untouched): it is a non-depth
+  colour writer, so frame 2 also reports `non_depth_writers=1` and stays
+  available.
+- `PYTHONPATH=verification/probe python3 -m unittest
+  verification.analysis.test_sun_share_lane
+  verification.analysis.test_linear_cutout_contract
+  verification.analysis.test_linear_material_live
+  verification.analysis.test_motion_wrap_states
+  verification.analysis.test_capture_bloom_lifetime
+  verification.analysis.test_motion_hdr_scene verification.analysis.test_frame_timing`:
+  42 tests OK; `linear_cutout_contract scenarios=41 checks=284 failures=0`
+  (unchanged scenario count: the host mocks only gained the new members
+  inertly; `note_cutout_opaque` is exercised by the Wine fixture frame above,
+  not by a host scenario). Reading caveats: a routed cutout-pair draw whose
+  native draw fails counts in neither bucket, so routed + refused can be
+  below the pair draw count; with linear materials on but the lane off, an
+  inactive-arm frame still accumulates `cutout_opaque_refused` with reason
+  `state`; and every non-colour-writer gate-4 refusal collapses to `state`
+  through the gate fallback, so `no_zwrite`/`blended`/`geometry` appear only
+  for colour writers.
+- mingw-i686 RelWithDebInfo build: zero warnings;
+  `python3 verification/probe/check_no_x87.py build/d3d9.dll`: 490 reachable
+  functions, no violations.
+
+Not exercised: a real game cutout draw through this arm (the counters are what
+the next session B reads), and native Windows.
+
 ### Run 32 session B (run93), 2026-09-17
 
 `/tmp/x3-bottleX3-run93/session-20260916-165735-212.log` (206,769 lines). DLL

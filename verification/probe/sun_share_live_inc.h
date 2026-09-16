@@ -180,6 +180,32 @@ void run_sun_lane(const char* bootstrap_vertex) {
             require(routed_c==1&&gate4_c==0,"cutout pair under a nonzero mip bias takes the tested-opaque arm");
             require(bias_after==0,"admitted cutout pair drew with the native LOD bias on the mip-chain stage");
             require(emission_status(d.p,94)==0,"tracked cutout pair is not an untracked writer");
+            // Admission telemetry (linear_material_frame cutout_opaque_*): the
+            // admitted pair is one tested-opaque-arm draw whose lane share was
+            // written (the lane variant with the share extraction was bound).
+            require(emission_status(d.p,37)==1&&emission_status(d.p,39)==1&&emission_status(d.p,38)==0,
+                    "admitted cutout pair counted as a tested-opaque-arm routed draw with the lane share written");
+            // The same pair refused on the same frame: z write off is the first
+            // check of the gate's chain, and a ZERO/ONE blend leaves the colour
+            // of the destination alone, so only the refusal bucket moves.
+            std::swap(ps.p,cutout_ps.p);
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"cutout refusal alpha test on");api(d->SetRenderState(D3DRS_ALPHAREF,1),"cutout refusal alpha reference 1");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"cutout refusal alpha GREATEREQUAL");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"cutout refusal RT0 mask 7");
+            api(d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"cutout refusal depth write off");
+            api(d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE),"cutout refusal blend on");
+            api(d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_ZERO),"cutout refusal source zero");api(d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_ONE),"cutout refusal destination one");
+            draw(a,0,0,0,false,false,false);
+            api(d->SetRenderState(D3DRS_ALPHABLENDENABLE,FALSE),"cutout refusal blend off");
+            api(d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_ONE),"cutout refusal source restore");api(d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_ZERO),"cutout refusal destination restore");
+            api(d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE),"cutout refusal depth write restore");
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"cutout refusal alpha test off");api(d->SetRenderState(D3DRS_ALPHAREF,0),"cutout refusal alpha reference default");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_ALWAYS),"cutout refusal alpha func default");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"cutout refusal RT0 mask restore");
+            std::swap(ps.p,cutout_ps.p);api(d->SetPixelShader(ps.p),"retire cutout refusal binding");
+            std::printf("SUN_CUTOUT_OPAQUE frame=%llu routed=%u lane=%u refused=%u no_zwrite=%u state=%u untracked=%u\n",
+                frame,emission_status(d.p,37),emission_status(d.p,39),emission_status(d.p,38),emission_status(d.p,405),emission_status(d.p,407),emission_status(d.p,94));
+            require(emission_status(d.p,38)==1&&emission_status(d.p,405)==1&&emission_status(d.p,37)==1,
+                    "refused cutout pair counted once with its no_zwrite reason");
+            require(emission_status(d.p,94)==0,"a colour-only refusal never vetoes the lane");
             lane=lane_read();
             for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x)require_quiet(lane[(y*W+x)*2]==.5f,"tracked cutout pair rewrote the interior depth exactly");
         }

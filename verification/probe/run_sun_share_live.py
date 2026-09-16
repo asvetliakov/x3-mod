@@ -133,9 +133,11 @@ def validate(text, trace, work, case):
         # is counted non_depth_writers and never fails the frame. The effects
         # case draws one (frame available); the failed-composition cases' frame-2
         # emitter (blend on, z write off, coverage failed) is one too, and that
-        # frame is unavailable through owner=0 alone. No other case draws one.
+        # frame is unavailable through owner=0 alone. cutout_pair_bias' frame-2
+        # refusal probe (the cutout pair with z write off) is the third. No
+        # other case draws one.
         assert 'non_depth_writers' in row, ('build without the non-writer counter', row)
-        assert int(row['non_depth_writers']) == int((case == 'effects' or failed_coverage) and i == 2), (case, row)
+        assert int(row['non_depth_writers']) == int((case in ('effects', 'cutout_pair_bias') or failed_coverage) and i == 2), (case, row)
         if case == 'xt_state' and int(rows[i]['lane']):
             assert int(row['receiver_draws']) >= 1 and int(row['untracked_writers']) == 0, (case, row)
         if late and i == 2:
@@ -185,6 +187,14 @@ def validate(text, trace, work, case):
     biases = [fields(line) for line in text.splitlines() if line.startswith('SUN_CUTOUT_BIAS ')]
     assert len(biases) == (1 if case == 'cutout_pair_bias' else 0), biases
     assert all((r['frame'], r['ps'], r['test'], r['ref'], r['mask'], r['bias'], r['routed'], r['gate4'], r['untracked'], r['stage_bias']) == ('2', '63f96eba9eea7880', '1', '1', '7', '-0.5', '1', '0', '0', '00000000') for r in biases), biases
+    # Tested-opaque-arm admission telemetry (linear_material_frame
+    # cutout_opaque_*): on the mip-bias frame the exact arm is unconfigured, so
+    # the admitted cutout pair is one routed draw with its lane share written
+    # and the z-write-off one is a single no_zwrite refusal.
+    opaque = [fields(line) for line in text.splitlines() if line.startswith('SUN_CUTOUT_OPAQUE ')]
+    assert len(opaque) == (1 if case == 'cutout_pair_bias' else 0), opaque
+    assert all((r['frame'], r['routed'], r['lane'], r['refused'], r['no_zwrite'], r['state'], r['untracked'])
+               == ('2', '1', '1', '1', '1', '0', '0') for r in opaque), opaque
     effects = [fields(line) for line in text.splitlines() if line.startswith('SUN_EFFECTS ')]
     assert len(effects) == (1 if case == 'effects' else 0), effects
     assert all((r['frame'], r['depth_write'], r['blend']) == ('2', '0', '1') for r in effects), effects

@@ -197,7 +197,7 @@ class SunShareLane(unittest.TestCase):
             for i in range(6):
                 lane=not early and not lane_off and not (late and i==3) and not (case=='late_shader' and i>=4)
                 available=lane and not (i==2 and (late or case in ('untracked','cutout_pair') or failed_coverage))
-                non_writers=int((case=='effects' or failed_coverage) and i==2)
+                non_writers=int((case in ('effects','cutout_pair_bias') or failed_coverage) and i==2)
                 expected_history=int(i not in ((0,2,3,4) if failed_coverage else (0,4)))
                 histories.append(f'SUN_HISTORY frame={i} expected={expected_history} reference={expected_history} actual={expected_history} fixture_cut={int(i in (0,4) and not lane_off)}')
                 bad=failed_coverage and i==2
@@ -218,7 +218,9 @@ class SunShareLane(unittest.TestCase):
                 publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=3874adb0f396a660 reason=pair gate=3 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24 test=-1 mask=-1 srgb=-1 cutout_pair=0 arm=1')
             if case in ('xt_state','xt_state_lane_off'): rows.extend(f'SUN_XT_STATE frame={i} test=1 ref=1 func=7 mask=7 lane={int(not lane_off)} routed={int(not lane_off)} gate4={int(lane_off)}' for i in range(6))
             if case=='effects': rows.append('SUN_EFFECTS frame=2 depth_write=0 blend=1')
-            if case=='cutout_pair_bias': rows.append('SUN_CUTOUT_BIAS frame=2 ps=63f96eba9eea7880 test=1 ref=1 mask=7 bias=-0.5 routed=1 gate4=0 untracked=0 stage_bias=00000000')
+            if case=='cutout_pair_bias':
+                rows.append('SUN_CUTOUT_BIAS frame=2 ps=63f96eba9eea7880 test=1 ref=1 mask=7 bias=-0.5 routed=1 gate4=0 untracked=0 stage_bias=00000000')
+                rows.append('SUN_CUTOUT_OPAQUE frame=2 routed=1 lane=1 refused=1 no_zwrite=1 state=0 untracked=0')
             if case=='cutout_pair':
                 rows.append('SUN_CUTOUT_PAIR frame=2 ps=63f96eba9eea7880 test=0 mask=7 gate4=1')
                 publications.append('sun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=0 no_zwrite=0 blended=0 state=1 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0')
@@ -251,6 +253,13 @@ class SunShareLane(unittest.TestCase):
                         with self.assertRaises(AssertionError): validate(text,trace.replace('reason=shader_cache','reason=ok'),work,case)
                     else:
                         with self.assertRaises(AssertionError): validate(text,trace.replace('qualified=1 reason=ok','qualified=0 reason=shader_cache',1),work,case)
+                if case=='cutout_pair_bias':
+                    # The admission telemetry is required and exact: a missing
+                    # line, an unwritten lane share or a lost refusal bucket fails.
+                    for bad in (text.replace('SUN_CUTOUT_OPAQUE frame=2 routed=1 lane=1 refused=1 no_zwrite=1 state=0 untracked=0\n',''),
+                                text.replace('routed=1 lane=1','routed=1 lane=0'),
+                                text.replace('refused=1 no_zwrite=1','refused=1 no_zwrite=0')):
+                        with self.assertRaises(AssertionError): validate(bad,trace,work,case)
                 if case=='untracked':
                     with self.assertRaises(AssertionError): validate(text,trace.replace('untracked_writers=1','untracked_writers=0'),work,case)
                     # Refusal diagnostics: the bucket line, its sum, the identifying bucket and one signature line are all required.
