@@ -304,8 +304,13 @@ int main(int argc, char** argv) {
     // per frame and never counted as proxy time.
     check(native_excluded == 100 * (window_frames + 1));
     check(logged_count == 7); // the window line, draw_pairs, draw_batch and four slow witnesses
-    const char* line = last_line("frame_timing frame=");
-    check(std::strstr(line, "frame_timing frame=301 frames=300 dt_p50_us=2180") != nullptr);
+    const char* line = last_line("frame_timing qpc=");
+    check(std::strstr(line, "frame=301 frames=300 dt_p50_us=2180") != nullptr);
+    // qpc= is the frame-boundary reading the window closed on, taken from the
+    // stamp the window already used: no extra clock read (counter_reads above).
+    char anchor[64];
+    std::snprintf(anchor, sizeof anchor, "frame_timing qpc=%lld frame=301", x3m_win32_standin::clock_ticks);
+    check(std::strstr(line, anchor) == line);
     check(std::strstr(line, "present_p50_us=100 present_p95_us=100 present_max_us=100") != nullptr);
     check(std::strstr(line, "draw_p50_us=60 draw_p95_us=60 draw_max_us=60") != nullptr);
     check(std::strstr(line, "draw_native_p50_us=40 draw_native_max_us=40") != nullptr);
@@ -372,8 +377,8 @@ int main(int argc, char** argv) {
     check(bucket_ticks[unsigned(Bucket::State)] == 0 && bucket_calls[unsigned(Bucket::State)] == 0);
     for (std::uint64_t f = 3; f <= window_frames + 1; ++f) check(simulate_gap_frame(f) == 2477);
     check(logged_count == 7);
-    const char* gap_line = last_line("frame_timing frame=");
-    check(std::strstr(gap_line, "frame_timing frame=301 frames=300 dt_p50_us=2477") != nullptr);
+    const char* gap_line = last_line("frame_timing qpc=");
+    check(std::strstr(gap_line, "frame=301 frames=300 dt_p50_us=2477") != nullptr);
     // Unstamped state time is not measured, so it stays inside the gaps: 300 us
     // before the first draw less the 10 us Present scope charged to this frame,
     // 500 + 600 us plus the 7 us state call between the draws, 900 us after the
@@ -538,7 +543,7 @@ int main(int argc, char** argv) {
     check(std::strstr(pairs_line, "cutout_pairs=2,0") != nullptr);
     const char* batch_line = last_line("draw_batch frame=");
     check(std::strstr(batch_line, "draw_batch frame=300 same_mesh=2 same_mesh_any_range=1 same_material=1 up=2 draws=12") != nullptr);
-    const char* counted = last_line("frame_timing frame=");
+    const char* counted = last_line("frame_timing qpc=");
     check(std::strstr(counted, "state_redundant=5,1,4 state_shadowed=6,2,4 redundant_top=7:3,14:2") != nullptr);
 
     // Window B: the pair table fills, further pairs are counted as overflow,
@@ -561,7 +566,7 @@ int main(int argc, char** argv) {
     check(std::strstr(overflow_line, "cutout_pairs=1,0") != nullptr);
     check(std::strstr(last_line("draw_batch frame="),
                       "draw_batch frame=600 same_mesh=2 same_mesh_any_range=0 same_material=0 up=0 draws=68") != nullptr);
-    check(std::strstr(last_line("frame_timing frame="),
+    check(std::strstr(last_line("frame_timing qpc="),
                       "state_redundant=0,0,0 state_shadowed=0,0,0 redundant_top=none") != nullptr);
 
     std::printf("frame_timing_host checks=%u failures=0\n", checks);

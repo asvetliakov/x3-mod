@@ -108,7 +108,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertLess(impl.index('if(!owner(false))return;'), impl.index('pass_phases::frame(frame,taken,taken?last_sample.view_submit_us:0);'))
         self.assertLess(impl.index('pass_phases::frame('), impl.index('if(!taken)return;'))
         self.assertIn('if(!sampled){accumulator.discard();++dropped;return;}', source)
-        self.assertIn('log("pass_phases frame=%llu frames=%u passes_p50=%llu apply_p50_us=%llu apply_p95_us=%llu draw_p50_us=%llu draw_p95_us=%llu end_p50_us=%llu end_p95_us=%llu sum_p50_us=%llu view_submit_p50_us=%llu self_p50_us=%llu', source)
+        self.assertIn('log("pass_phases qpc=%llu frame=%llu frames=%u passes_p50=%llu apply_p50_us=%llu apply_p95_us=%llu draw_p50_us=%llu draw_p95_us=%llu end_p50_us=%llu end_p95_us=%llu sum_p50_us=%llu view_submit_p50_us=%llu self_p50_us=%llu', source)
         self.assertIn('out.self_us = std::uint64_t(passes) * site_count * dispatch_cost_ns / 1000;', core)
         cost = int(re.search(r'inline constexpr std::uint64_t dispatch_cost_ns = (\d+);', core).group(1))
         self.assertTrue(0 < cost <= 370, cost)  # 1.5 ms / 4,024 dispatches

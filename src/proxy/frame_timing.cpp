@@ -346,7 +346,10 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
             constexpr unsigned rs = static_cast<unsigned>(StateSet::RenderState);
             constexpr unsigned ss = static_cast<unsigned>(StateSet::SamplerState);
             constexpr unsigned tex = static_cast<unsigned>(StateSet::Texture);
-            log("frame_timing frame=%llu frames=%u dt_p50_us=%llu dt_p95_us=%llu dt_max_us=%llu draws_p50=%llu draws_max=%llu present_p50_us=%llu present_p95_us=%llu present_max_us=%llu"
+            // qpc= is the frame-boundary reading this window closed on (no
+            // extra clock read): with the session's clock_anchor line it places
+            // the window on the wall clock (docs/verification/sampling-profiler.md).
+            log("frame_timing qpc=%llu frame=%llu frames=%u dt_p50_us=%llu dt_p95_us=%llu dt_max_us=%llu draws_p50=%llu draws_max=%llu present_p50_us=%llu present_p95_us=%llu present_max_us=%llu"
                 " draw_p50_us=%llu draw_p95_us=%llu draw_max_us=%llu draw_native_p50_us=%llu draw_native_max_us=%llu"
                 " scene_p50_us=%llu scene_p95_us=%llu scene_max_us=%llu state_p50_us=%lld state_p95_us=%lld state_max_us=%lld"
                 " draw_calls_p50=%llu scene_calls_p50=%llu state_calls_p50=%llu state_sampled=%u slow=%u"
@@ -355,7 +358,7 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
                 " gap_post_p50_us=%llu gap_post_p95_us=%llu gap_post_max_us=%llu gap_draw_per_draw_us=%llu.%03llu"
                 " state_top=%s state_other_p50=%llu"
                 " state_redundant=%llu,%llu,%llu state_shadowed=%llu,%llu,%llu redundant_top=%s",
-                s.frame, s.frames, s.dt_p50, s.dt_p95, s.dt_max, s.draws_p50, s.draws_max,
+                now, s.frame, s.frames, s.dt_p50, s.dt_p95, s.dt_max, s.draws_p50, s.draws_max,
                 s.present_p50, s.present_p95, s.present_max,
                 s.bucket_p50[draw_bucket], s.bucket_p95[draw_bucket], s.bucket_max[draw_bucket],
                 s.draw_native_p50, s.draw_native_max,

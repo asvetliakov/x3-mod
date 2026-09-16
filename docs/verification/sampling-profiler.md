@@ -294,7 +294,7 @@ frame and per draw. Per window one line, in microseconds, with the wrapper
 frame index of the last frame of the window:
 
 ```
-frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= draw_p50_us= draw_p95_us= draw_max_us= draw_native_p50_us= draw_native_max_us= scene_p50_us= scene_p95_us= scene_max_us= state_p50_us= state_p95_us= state_max_us= draw_calls_p50= scene_calls_p50= state_calls_p50= state_sampled= slow= gap_pre_p50_us= gap_pre_p95_us= gap_pre_max_us= gap_draw_p50_us= gap_draw_p95_us= gap_draw_max_us= gap_post_p50_us= gap_post_p95_us= gap_post_max_us= gap_draw_per_draw_us= state_top=<entry>:<calls_p50>,... state_other_p50= state_redundant=<rs>,<ss>,<tex> state_shadowed=<rs>,<ss>,<tex> redundant_top=<D3DRS>:<count>,...
+frame_timing qpc= frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= draw_p50_us= draw_p95_us= draw_max_us= draw_native_p50_us= draw_native_max_us= scene_p50_us= scene_p95_us= scene_max_us= state_p50_us= state_p95_us= state_max_us= draw_calls_p50= scene_calls_p50= state_calls_p50= state_sampled= slow= gap_pre_p50_us= gap_pre_p95_us= gap_pre_max_us= gap_draw_p50_us= gap_draw_p95_us= gap_draw_max_us= gap_post_p50_us= gap_post_p95_us= gap_post_max_us= gap_draw_per_draw_us= state_top=<entry>:<calls_p50>,... state_other_p50= state_redundant=<rs>,<ss>,<tex> state_shadowed=<rs>,<ss>,<tex> redundant_top=<D3DRS>:<count>,...
 draw_pairs frame=N draws= draw_pairs_overflow= top=<vs_id>/<ps_id>:<draws>,... cutout_pairs=<hull>,<station>
 draw_batch frame=N same_mesh= same_mesh_any_range= same_material= up= draws=
 ```
@@ -536,7 +536,7 @@ frame) and up to four witnesses for the slowest frames by `dt_us`, keyed by the
 same wrapper frame index as `frame_timing_slow` so the two can be joined:
 
 ```
-frame_phases frame=N frames=300 incomplete= dt_p50_us= dt_p95_us= pre_render_p50_us= pre_render_p95_us= prologue_p50_us= prologue_p95_us= scene_update_p50_us= scene_update_p95_us= begin_scene_p50_us= begin_scene_p95_us= views_p50_us= views_p95_us= overlays_p50_us= overlays_p95_us= text_p50_us= text_p95_us= scene_end_p50_us= scene_end_p95_us= present_p50_us= present_p95_us= view_setup_p50_us= view_setup_p95_us= view_submit_p50_us= view_submit_p95_us= views_p50= order_errors= clock_errors= unmatched= dropped= early= foreign=
+frame_phases qpc= frame=N frames=300 incomplete= dt_p50_us= dt_p95_us= pre_render_p50_us= pre_render_p95_us= prologue_p50_us= prologue_p95_us= scene_update_p50_us= scene_update_p95_us= begin_scene_p50_us= begin_scene_p95_us= views_p50_us= views_p95_us= overlays_p50_us= overlays_p95_us= text_p50_us= text_p95_us= scene_end_p50_us= scene_end_p95_us= present_p50_us= present_p95_us= view_setup_p50_us= view_setup_p95_us= view_submit_p50_us= view_submit_p95_us= views_p50= order_errors= clock_errors= unmatched= dropped= early= foreign=
 frame_phases_slow frame=F dt_us= pre_render_us= prologue_us= scene_update_us= begin_scene_us= views_us= overlays_us= text_us= scene_end_us= present_us= view_setup_us= view_submit_us= views= complete=
 ```
 
@@ -647,7 +647,7 @@ Per 300-frame window one line, microseconds, nearest-rank percentiles over
 per-frame sums, the frame index of the window's last frame:
 
 ```
-pass_phases frame=N frames=300 passes_p50= apply_p50_us= apply_p95_us= draw_p50_us= draw_p95_us= end_p50_us= end_p95_us= sum_p50_us= view_submit_p50_us= self_p50_us= dispatch_cost_ns= orphans= clock_errors= clock_failures= unmatched= dropped= early= foreign=
+pass_phases qpc= frame=N frames=300 passes_p50= apply_p50_us= apply_p95_us= draw_p50_us= draw_p95_us= end_p50_us= end_p95_us= sum_p50_us= view_submit_p50_us= self_p50_us= dispatch_cost_ns= orphans= clock_errors= clock_failures= unmatched= dropped= early= foreign=
 ```
 
 | Field | Interval | Contains |
@@ -767,14 +767,14 @@ Per 300-frame window one line, microseconds, nearest-rank percentiles over
 per-frame sums:
 
 ```
-loop_phases frame=N frames=300 sectors_p50= containers_p50= collide_p50_us= collide_p95_us= simulate_p50_us= simulate_p95_us= post_p50_us= post_p95_us= passb_p50_us= passb_p95_us= sum_p50_us= input_p50_us= self_p50_us= dispatch_cost_ns= max_interval_us= max_interval_owner= slow= orphans= clock_errors= clock_failures= unmatched= dropped= early= foreign=
+loop_phases qpc= frame=N frames=300 sectors_p50= containers_p50= collide_p50_us= collide_p95_us= simulate_p50_us= simulate_p95_us= post_p50_us= post_p95_us= passb_p50_us= passb_p95_us= sum_p50_us= input_p50_us= self_p50_us= dispatch_cost_ns= max_interval_us= max_interval_owner= slow= orphans= clock_errors= clock_failures= unmatched= dropped= early= foreign=
 ```
 
 and, for each of the first 64 frames of the window whose `sum` exceeds 50 ms
 (`slow` counts all of them):
 
 ```
-loop_phases_slow frame= dt_us= sectors= containers= collide_us= simulate_us= post_us= passb_us= sum_us= input_us= max_interval_us= max_interval_owner=
+loop_phases_slow qpc= frame= dt_us= sectors= containers= collide_us= simulate_us= post_us= passb_us= sum_us= input_us= max_interval_us= max_interval_owner=
 ```
 
 | Field | Interval | Contains |
@@ -1317,6 +1317,52 @@ stalling and non-stalling sessions alike. Settling the reported GStreamer
 bursts needs a new diagnostic: pipe launcher stderr to a file under the run
 directory on the next launch so CRITICAL lines share the session's QPC clock
 with `loop_phases_slow`/`game_phase_slow_frame`.
+
+#### Audio correlation: aligning a terminal burst with a frame
+
+The GStreamer/GLib messages the user sees during a stall are printed by the
+child process on its terminal and carry a **local** wall-clock stamp
+(`HH:MM:SS.mmm`); the proxy's lines carry frame numbers and QPC ticks. Both are
+preserved in one run directory now:
+
+- `tools/manage.py launch` tees the child's stdout and stderr to
+  `<game>\x3-modern-captures\launcher-stderr.log` (one fresh file per launch),
+  prefixing every line with the launcher's own UTC stamp
+  `[YYYY-MM-DDTHH:MM:SS.mmmZ]`. The terminal output is unchanged. The first
+  line is `launcher_tee pid=<launcher pid> log=<path>`, so a file replaced by a
+  second concurrent launch still names its writer; the pump drains the child's
+  pipe even when a sink fails, so the game never blocks on a full pipe.
+  `tools/analysis/snapshot_x3_run.py` copies that file next to the session log
+  and counts it among the referenced files; `--dry-run` prints the path
+  (`launcher_stderr`) without creating anything.
+- The session log opens with
+  `clock_anchor utc=<ISO8601 with ms> qpc=<ticks> qpc_frequency=<Hz> local_offset_min=<minutes>`
+  (one `GetSystemTimePreciseAsFileTime` reading next to one
+  `QueryPerformanceCounter` reading; `local_offset_min` is the negated
+  `GetTimeZoneInformation` bias, i.e. `local = UTC + local_offset_min`).
+- `frame_timing`, `frame_phases`, `pass_phases` and `loop_phases` window lines
+  and the `loop_phases_slow` lines carry `qpc=<ticks at emission>`
+  (`frame_timing` reuses the frame-boundary stamp; the others read the counter
+  once per window). `game_phase_slow_frame` already carries `qpc_begin=` /
+  `qpc_end=` for its own frame and needs no extra field.
+
+Recipe, from a GLib line to a frame:
+
+1. Prefer the launcher's `[...Z]` prefix on that line; it is already UTC. Use
+   the GLib local stamp only as a cross-check:
+   `utc = local - local_offset_min` (minutes), date taken from the anchor.
+2. `qpc = anchor.qpc + (utc - anchor.utc) * qpc_frequency` (seconds).
+3. Find the window line whose `qpc=` is nearest and ahead of that value: its
+   `frame=` closes a 300-frame window, so the burst falls in
+   `(previous window qpc, this window qpc]`. Within a window, interpolate with
+   the per-frame `dt_p50_us`, or use the `loop_phases_slow` lines of that
+   window (same emission `qpc=`) whose `frame=` values name the slow frames.
+
+Two clock caveats: the anchor pairs the two clocks once at attach, so a long
+session inherits any drift between the system clock and the performance counter
+(seconds per hour at worst, well inside a 300-frame window); and the launcher's
+stamp is taken when the line is read from the pipe, after the child's own
+buffering, so it is an upper bound on the message's own time.
 
 ### Run 33 session C (run97): linear-material cost
 

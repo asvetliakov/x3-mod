@@ -1,4 +1,5 @@
 #include "capture.h"
+#include "proxy_identity.h"
 #include "voice_dmo_fallback.h"
 #include "lod_scale.h"
 #include "point_light_admission.h"
@@ -75,6 +76,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     if (backend) {
         GetModuleFileNameW(backend, path, 32768);
         x3m::log("backend path=%ls", path);
+        // Which D3D9 implementation this process forwards to, by path, size and
+        // hash prefix (builtin, a replacement in the system directory, ...): one
+        // hash of the loaded file, once, never classified by name here.
+        x3m::proxy_identity::log_loaded_module(backend, "d3d9.dll");
         x3m::object_trace::initialize();
         x3m::log("object_trace active=%u status=%s recovery_required=%u",x3m::object_trace::active(),x3m::object_trace::status(),x3m::object_trace::recovery_required());
         x3m::object_lifetime::initialize();

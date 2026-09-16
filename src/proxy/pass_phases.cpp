@@ -32,8 +32,11 @@ bool install_group(const engine_patch::SiteSpec* specs,const char*& status) {
 void emit_window() {
     detail::Summary s;
     if(!window.close(s))return;
-    log("pass_phases frame=%llu frames=%u passes_p50=%llu apply_p50_us=%llu apply_p95_us=%llu draw_p50_us=%llu draw_p95_us=%llu end_p50_us=%llu end_p95_us=%llu sum_p50_us=%llu view_submit_p50_us=%llu self_p50_us=%llu dispatch_cost_ns=%llu orphans=%llu clock_errors=%llu clock_failures=%llu unmatched=%llu dropped=%llu early=%u foreign=%u",
-        s.frame,s.frames,s.passes_p50,s.interval_p50[0],s.interval_p95[0],s.interval_p50[1],s.interval_p95[1],s.interval_p50[2],s.interval_p95[2],
+    // One clock read per window; see frame_phases::emit_window for qpc=.
+    LARGE_INTEGER v{};
+    const std::uint64_t emitted=QueryPerformanceCounter(&v)&&v.QuadPart>0?std::uint64_t(v.QuadPart):0;
+    log("pass_phases qpc=%llu frame=%llu frames=%u passes_p50=%llu apply_p50_us=%llu apply_p95_us=%llu draw_p50_us=%llu draw_p95_us=%llu end_p50_us=%llu end_p95_us=%llu sum_p50_us=%llu view_submit_p50_us=%llu self_p50_us=%llu dispatch_cost_ns=%llu orphans=%llu clock_errors=%llu clock_failures=%llu unmatched=%llu dropped=%llu early=%u foreign=%u",
+        emitted,s.frame,s.frames,s.passes_p50,s.interval_p50[0],s.interval_p95[0],s.interval_p50[1],s.interval_p95[1],s.interval_p50[2],s.interval_p95[2],
         s.sum_p50,s.view_submit_p50,s.self_p50,detail::dispatch_cost_ns,accumulator.orphans,accumulator.clock_errors,accumulator.clock_failures,accumulator.unmatched,dropped,
         gate.early.exchange(0,std::memory_order_relaxed),gate.foreign.exchange(0,std::memory_order_relaxed));
     accumulator.orphans=accumulator.clock_errors=accumulator.clock_failures=accumulator.unmatched=0;dropped=0;

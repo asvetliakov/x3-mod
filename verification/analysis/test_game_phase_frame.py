@@ -85,7 +85,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn('e.byte(0x81);e.byte(0xc4);e.dword(0x80);e.byte(0x61);e.byte(0x9d);', phases)
         source = (ROOT / 'src/proxy/frame_phases.cpp').read_text()
         self.assertIn('X3M_FRAME_PHASES', source)
-        self.assertIn('log("frame_phases frame=%llu frames=%u incomplete=%u dt_p50_us=%llu dt_p95_us=%llu%s views_p50=%llu', source)
+        self.assertIn('log("frame_phases qpc=%llu frame=%llu frames=%u incomplete=%u dt_p50_us=%llu dt_p95_us=%llu%s views_p50=%llu', source)
         self.assertIn('log("frame_phases_slow frame=%llu dt_us=%llu%s view_setup_us=%llu view_submit_us=%llu views=%u complete=%u"', source)
         self.assertIn('status="install_window_closed"', source)
         self.assertIn('status="preflight_bytes"', source)

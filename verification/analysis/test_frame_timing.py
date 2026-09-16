@@ -29,7 +29,7 @@ class FrameTimingWindow(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True, timeout=60)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'frame_timing_host checks=453 failures=0\n')
+            self.assertEqual(run.stdout, 'frame_timing_host checks=454 failures=0\n')
             self.assertEqual(run.stderr, '')
 
     def test_production_call_sites_and_schema(self):
@@ -69,7 +69,7 @@ class FrameTimingWindow(unittest.TestCase):
         self.assertIn('frame_timing::initialize();', capture)
         self.assertEqual(capture.count('log("frame_end device=%llu frame=%llu draws=%llu'), 1)
         source = (ROOT / 'src/proxy/frame_timing.cpp').read_text()
-        self.assertIn('frame_timing frame=%llu frames=%u dt_p50_us=%llu dt_p95_us=%llu dt_max_us=%llu '
+        self.assertIn('frame_timing qpc=%llu frame=%llu frames=%u dt_p50_us=%llu dt_p95_us=%llu dt_max_us=%llu '
                       'draws_p50=%llu draws_max=%llu present_p50_us=%llu present_p95_us=%llu '
                       'present_max_us=%llu', source)
         self.assertIn('" draw_p50_us=%llu draw_p95_us=%llu draw_max_us=%llu draw_native_p50_us=%llu draw_native_max_us=%llu"', source)

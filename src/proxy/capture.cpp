@@ -2181,6 +2181,16 @@ ULONG WINAPI release_factory(IDirect3D9* d) {
     return refs;
 }
 HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND window,DWORD flags,D3DPRESENT_PARAMETERS* p,IDirect3DDevice9** out) {
+    // Which copy of the shipped-twice helper DLL this process loaded: the game
+    // directory carries its own d3dx9_37.dll next to the system one. Logged at
+    // the first device creation, when the game's imports are resolved. Ahead of
+    // the hook mutex and of the HookGuard's frame-timing scope, so the one file
+    // hash neither blocks another hooked call nor lands in the first window's
+    // state bucket; its own cost is reported as hash_us=.
+    {
+        static std::atomic<bool> helper_module_logged{false};
+        if(!helper_module_logged.exchange(true)){LightCallBoundary boundary;proxy_identity::log_loaded_module(L"d3dx9_37.dll");}
+    }
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
@@ -2248,6 +2258,36 @@ void initialize_log(HMODULE module) {
         if(utf8.size()>1) utf8.resize(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8,0,directory.c_str(),-1,&utf8[0],static_cast<int>(utf8.size()),nullptr,nullptr))-1);
         else utf8.clear();
         log("capture_dir=%s source=%s",utf8.c_str(),source);
+    }
+    // Wall-clock anchor of this session (docs/verification/sampling-profiler.md,
+    // "Audio correlation"): one UTC instant read next to one QueryPerformanceCounter
+    // reading, with the counter frequency and the local-time offset. Every
+    // window and slow-frame line carries qpc= ticks, so a line stamped in local
+    // wall clock by another component (GLib prints HH:MM:SS.mmm on the
+    // launcher's terminal) can be converted to UTC and mapped onto a frame.
+    {
+        // GetSystemTimePreciseAsFileTime is documented since Windows 8; resolved
+        // dynamically so an older system falls back to the coarser documented call.
+        using PreciseTimeFn=void(WINAPI*)(LPFILETIME);
+        const HMODULE kernel=GetModuleHandleW(L"kernel32.dll");
+        const PreciseTimeFn precise=kernel?reinterpret_cast<PreciseTimeFn>(GetProcAddress(kernel,"GetSystemTimePreciseAsFileTime")):nullptr;
+        LARGE_INTEGER counter{},frequency{};
+        FILETIME utc{};
+        QueryPerformanceFrequency(&frequency);
+        QueryPerformanceCounter(&counter);
+        if(precise) precise(&utc); else GetSystemTimeAsFileTime(&utc);
+        TIME_ZONE_INFORMATION zone{};
+        const DWORD kind=GetTimeZoneInformation(&zone);
+        // Win32 states UTC = local + bias, so the local offset is the negated bias.
+        const long bias=kind==TIME_ZONE_ID_INVALID?0:zone.Bias+(kind==TIME_ZONE_ID_DAYLIGHT?zone.DaylightBias:zone.StandardBias);
+        SYSTEMTIME moment{};
+        if(FileTimeToSystemTime(&utc,&moment))
+            log("clock_anchor utc=%04u-%02u-%02uT%02u:%02u:%02u.%03uZ qpc=%llu qpc_frequency=%llu local_offset_min=%ld",
+                unsigned(moment.wYear),unsigned(moment.wMonth),unsigned(moment.wDay),unsigned(moment.wHour),unsigned(moment.wMinute),
+                unsigned(moment.wSecond),unsigned(moment.wMilliseconds),
+                counter.QuadPart>0?static_cast<unsigned long long>(counter.QuadPart):0ull,
+                frequency.QuadPart>0?static_cast<unsigned long long>(frequency.QuadPart):0ull,
+                kind==TIME_ZONE_ID_INVALID?0l:-bias);
     }
     // Session identity ahead of every derived *_mode line, so that a gameplay
     // log always names the DLL and the options it came from (docs/architecture/

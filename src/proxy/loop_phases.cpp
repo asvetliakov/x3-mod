@@ -34,16 +34,20 @@ bool install_group(const engine_patch::SiteSpec* specs,const char*& status) {
 void emit_window() {
     detail::Summary& s=summary;
     if(!window.close(s))return;
-    log("loop_phases frame=%llu frames=%u sectors_p50=%llu containers_p50=%llu collide_p50_us=%llu collide_p95_us=%llu simulate_p50_us=%llu simulate_p95_us=%llu post_p50_us=%llu post_p95_us=%llu passb_p50_us=%llu passb_p95_us=%llu sum_p50_us=%llu input_p50_us=%llu self_p50_us=%llu dispatch_cost_ns=%llu max_interval_us=%llu max_interval_owner=%s slow=%u orphans=%llu clock_errors=%llu clock_failures=%llu unmatched=%llu dropped=%llu early=%u foreign=%u",
-        s.frame,s.frames,s.sectors_p50,s.containers_p50,s.interval_p50[0],s.interval_p95[0],s.interval_p50[1],s.interval_p95[1],s.interval_p50[2],s.interval_p95[2],s.interval_p50[3],s.interval_p95[3],
+    // One clock read per window, carried by the window line and by every
+    // slow-frame line closed with it; see frame_phases::emit_window for qpc=.
+    LARGE_INTEGER v{};
+    const std::uint64_t emitted=QueryPerformanceCounter(&v)&&v.QuadPart>0?std::uint64_t(v.QuadPart):0;
+    log("loop_phases qpc=%llu frame=%llu frames=%u sectors_p50=%llu containers_p50=%llu collide_p50_us=%llu collide_p95_us=%llu simulate_p50_us=%llu simulate_p95_us=%llu post_p50_us=%llu post_p95_us=%llu passb_p50_us=%llu passb_p95_us=%llu sum_p50_us=%llu input_p50_us=%llu self_p50_us=%llu dispatch_cost_ns=%llu max_interval_us=%llu max_interval_owner=%s slow=%u orphans=%llu clock_errors=%llu clock_failures=%llu unmatched=%llu dropped=%llu early=%u foreign=%u",
+        emitted,s.frame,s.frames,s.sectors_p50,s.containers_p50,s.interval_p50[0],s.interval_p95[0],s.interval_p50[1],s.interval_p95[1],s.interval_p50[2],s.interval_p95[2],s.interval_p50[3],s.interval_p95[3],
         s.sum_p50,s.input_p50,s.self_p50,detail::dispatch_cost_ns,s.max_interval_us,detail::interval_names[s.max_owner],s.slow,
         accumulator.orphans,accumulator.clock_errors,accumulator.clock_failures,accumulator.unmatched,dropped,
         gate.early.exchange(0,std::memory_order_relaxed),gate.foreign.exchange(0,std::memory_order_relaxed));
     accumulator.orphans=accumulator.clock_errors=accumulator.clock_failures=accumulator.unmatched=0;dropped=0;
     for(unsigned i=0;i<s.slow_count;++i){
         const auto& f=s.slow_frames[i];
-        log("loop_phases_slow frame=%llu dt_us=%llu sectors=%u containers=%u collide_us=%llu simulate_us=%llu post_us=%llu passb_us=%llu sum_us=%llu input_us=%llu max_interval_us=%llu max_interval_owner=%s",
-            f.frame,f.dt_us,f.sectors,f.containers,f.interval_us[0],f.interval_us[1],f.interval_us[2],f.interval_us[3],f.sum_us,f.input_us,f.max_interval_us,detail::interval_names[f.max_owner]);
+        log("loop_phases_slow qpc=%llu frame=%llu dt_us=%llu sectors=%u containers=%u collide_us=%llu simulate_us=%llu post_us=%llu passb_us=%llu sum_us=%llu input_us=%llu max_interval_us=%llu max_interval_owner=%s",
+            emitted,f.frame,f.dt_us,f.sectors,f.containers,f.interval_us[0],f.interval_us[1],f.interval_us[2],f.interval_us[3],f.sum_us,f.input_us,f.max_interval_us,detail::interval_names[f.max_owner]);
     }
 }
 }

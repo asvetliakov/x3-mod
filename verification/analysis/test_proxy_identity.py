@@ -21,6 +21,44 @@ LINE = (f'proxy_identity sha256={DIGEST} bytes=3211264 path=C:\\X3\\d3d9.dll '
         f'manifest_sha256={OTHER} source_commit={COMMIT} attach_us=4210')
 
 
+class SessionStartLines(unittest.TestCase):
+    """Format and placement of the two session-start lines that carry the
+    session's clocks and loaded-module identity. Source text only; the values
+    come from documented Win32 calls at attach and at the first device creation."""
+
+    def test_clock_anchor_precedes_the_identity_header(self):
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('log("clock_anchor utc=%04u-%02u-%02uT%02u:%02u:%02u.%03uZ qpc=%llu '
+                      'qpc_frequency=%llu local_offset_min=%ld"', capture)
+        self.assertLess(capture.index('log("clock_anchor'), capture.index('proxy_identity::log_identity(module)'))
+        # One UTC reading next to one counter reading, with the documented
+        # fallback when the precise call is missing.
+        anchor = capture[capture.index('log("capture_dir=%s'):capture.index('proxy_identity::log_identity(module)')]
+        self.assertIn('GetSystemTimePreciseAsFileTime', anchor)
+        self.assertIn('GetSystemTimeAsFileTime(&utc)', anchor)
+        self.assertIn('GetTimeZoneInformation(&zone)', anchor)
+
+    def test_loaded_module_line_and_its_two_call_sites(self):
+        source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
+        self.assertIn('log("loaded_module name=%s path=%s size=%llu sha256=%s hash_us=%llu"', source)
+        # The hash prefix is the first 16 hex digits of the file's SHA-256, and
+        # the module reference is taken and released around the file read.
+        self.assertIn('hex=hash_file(path,full,bytes)&&full.size()==64?full.substr(0,16):std::string("unavailable")', source)
+        self.assertIn('GetModuleHandleExW(0,name,&module)', source)
+        self.assertIn('if(module) FreeLibrary(module);', source)
+        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        self.assertIn('x3m::proxy_identity::log_loaded_module(backend, "d3d9.dll");', loader)
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('if(!helper_module_logged.exchange(true)){LightCallBoundary boundary;'
+                      'proxy_identity::log_loaded_module(L"d3dx9_37.dll");}', capture)
+        self.assertEqual(capture.count('proxy_identity::log_loaded_module('), 1)
+        # The 3.8 MB hash runs before the hook mutex and before the HookGuard's
+        # frame-timing scope, so it blocks no other hook and lands in no window.
+        body = capture[capture.index('HRESULT WINAPI create_device('):]
+        self.assertLess(body.index('proxy_identity::log_loaded_module(L"d3dx9_37.dll")'), body.index('HookGuard lock;'))
+        self.assertLess(body.index('proxy_identity::log_loaded_module(L"d3dx9_37.dll")'), body.index('CpuCallBoundary cpu;'))
+
+
 class ParseIdentity(unittest.TestCase):
     def test_full_line(self):
         fields = identity.parse_identity(LINE)
