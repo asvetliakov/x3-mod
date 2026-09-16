@@ -251,6 +251,46 @@ program would also gain its opaque draws. The larger gap remains the
 and the screen-blend populations of `XT_standard_lighting.fx` (172 materials),
 `nebula.fx` (14) and `argon.fx` (8).
 
+## Where the alpha-tested cutout pairs appear
+
+The sun lane's two cutout pairs, `4944d81dfe531b37`/`5e0a10fe752b6140` and
+`53a0a641107ed76c`/`63f96eba9eea7880` (`src/proxy/linear_cutout.h`,
+[directional-shadows.md](../verification/directional-shadows.md)), are both
+`argon2s` programs in profile `3_0` — the two-sided Argon hull effect. The
+matching material population is `argon.fx` with `g_ALPHATESTENABLE 1` and
+`g_CullMode 1` (`D3DCULL_NONE`): **2,417 records in 197 bodies**, against 8,588
+`argon.fx` records that are alpha-test off / cull CW. Their textures are
+`metal_argon_lattice_support_beams_01..04_diff` (895), `metal_argon_lattice_grid_diff`
+(231), `metal_argon_antennas-A/B_*_diff` (885) and `argon_wheat_diff` (138) —
+open lattice frameworks, antenna masts and crop fields.
+
+Owners of the cutout material records:
+
+| Owner | Records | Bodies |
+| --- | ---: | --- |
+| `objects/stations/station_scenes/tech` | 308 | 31 `argon_tech_{S,M,L}_{laser,missile,shield}_*` (Argon weapon/shield/missile factories) |
+| `objects/stations/station_scenes/liquid` | 279 | 28 `argon_liquid_{S,M,L}_factory_*` (Argon Bliss Place / Space Fuel style) |
+| `objects/stations/station_scenes/farm` | 150 | 15 `argon_farm_{S,M}_factory_A..G` (Cattle Ranch / Wheat Farm — the `argon_wheat_diff` cutouts) |
+| `objects/stations/station_scenes/others` | 120 | 12: `argon_{S,M,L}_solarpowerplant`, `argon_mine{A,B}_{ore,silicon}_{S,L}`, `argon_spacedock` |
+| `objects/stations/station_scenes/lost_colony` | 54 | 7 `lostcolony_{energy,farm,food,shipyard,tec A/B}` |
+| `objects/stations/station_scenes/food` | 39 | 4 `argon_food_{S,M}_factory_{A,C}` |
+| `objects/stations/{trading_stations,connections,docks,living_sections,others}` | ~110 | Argon trading station parts A/B, cargo pipes, `argon_dock_center`, `argon_livingsection`, `argon_player_headquarter`, `argon_goner_temple`, `marine_training_station` |
+| `objects/ships/argon`, `objects/ships/{T0,props,ANIMPROPS}`, `objects/ships/x3ap/props` | ~360 | Argon capitals (M1/M2/TL), `Argon_Solar`, `Argon_Tech`, turret/radar props |
+| `objects/cut/*` | ~790 | cutscene sets, not flyable |
+
+**Caveat:** a body's `MAT6` block is the exporter's whole Argon material palette,
+so a body carrying ~11 cutout records does not prove ~11 cutout draws; the counts
+rank exposure, not draw count. Station scenes dominate because they have many
+distinct bodies, and lattice/antenna geometry is the visible cutout in all of them.
+
+Run 81 (`/tmp/x3-bottleX3-run81/session-20260916-023735-216.log`) cannot name its
+location: the only sector reference is the pointer `sector=0x1acc59f8` in
+`chase_transition_event`, and the log carries no object or sector names. It does
+record both cutout programs being created (`shader kind=ps id=5e0a10fe752b6140`,
+`id=63f96eba9eea7880`, 5,416 / 5,168 bytes) and their depth variants
+(`motion_output_variant … depth=1`). Per-frame cutout draw counts come from
+[directional-shadows.md](../verification/directional-shadows.md), not this log.
+
 ## Open unknowns
 
 - What selects `<name>_0000` / `<name>_0001` effect files. No material names
