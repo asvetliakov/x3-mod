@@ -110,6 +110,14 @@ struct IDirect3DDevice9 {
     unsigned sampler_calls = 0;
 };
 
+// Inert mirror of the X3M_FRAME_TIMING redundant-state counters
+// (src/proxy/frame_timing.h): the extracted sampler shadow update reports into
+// them and they measure nothing here.
+namespace frame_timing {
+enum class StateSet : unsigned { RenderState = 0, SamplerState = 1, Texture = 2 };
+inline void state_write(StateSet, unsigned, bool, bool) noexcept {}
+}
+
 int cpu_events[64]{}; unsigned cpu_event_count = 0;
 struct PreserveCpuState {
     PreserveCpuState() { cpu_events[cpu_event_count++]=1; }

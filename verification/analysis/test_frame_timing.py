@@ -8,6 +8,8 @@ import subprocess
 import tempfile
 import unittest
 
+from verification.analysis.test_capture_bloom_lifetime import extract_function
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -27,7 +29,7 @@ class FrameTimingWindow(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True, timeout=60)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'frame_timing_host checks=438 failures=0\n')
+            self.assertEqual(run.stdout, 'frame_timing_host checks=453 failures=0\n')
             self.assertEqual(run.stderr, '')
 
     def test_production_call_sites_and_schema(self):
@@ -81,6 +83,47 @@ class FrameTimingWindow(unittest.TestCase):
         self.assertIn('" gap_draw_p50_us=%llu gap_draw_p95_us=%llu gap_draw_max_us=%llu"', source)
         self.assertIn('" gap_post_p50_us=%llu gap_post_p95_us=%llu gap_post_max_us=%llu gap_draw_per_draw_us=%llu.%03llu"', source)
         self.assertIn('" state_top=%s state_other_p50=%llu"', source)
+        # The three count-only window diagnostics (run 31): the redundancy
+        # fields on the window line, and one line each for the program-pair
+        # mix and the batchability classes.
+        self.assertIn('" state_redundant=%llu,%llu,%llu state_shadowed=%llu,%llu,%llu redundant_top=%s"', source)
+        self.assertIn('draw_pairs frame=%llu draws=%llu draw_pairs_overflow=%llu top=%s cutout_pairs=%llu,%llu', source)
+        self.assertIn('draw_batch frame=%llu same_mesh=%llu same_mesh_any_range=%llu same_material=%llu up=%llu draws=%llu', source)
+        # The cutout pairs are counted in their own counters, independent of
+        # the pair table, and come from the single source, not a literal here.
+        self.assertIn('draw_pairs.cutout_draws(0), draw_pairs.cutout_draws(1)', source)
+        header = (ROOT / 'src/proxy/frame_timing.h').read_text()
+        self.assertIn('if (vs == cutout::pair_hashes[2] && ps == cutout::pair_hashes[3]) ++cutout_[0];', header)
+        self.assertIn('else if (vs == cutout::pair_hashes[0] && ps == cutout::pair_hashes[1]) ++cutout_[1];', header)
+        # A user-memory draw never batches: D3D9 clears stream 0 and the
+        # shadowed buffers say nothing about it.
+        self.assertIn('if (key.user_memory) { ++user_memory_; previous_ = DrawKey{}; return; }', header)
+        self.assertIn('key.user_memory = user_memory;', capture)
+        # Every window counter restarts with the window.
+        self.assertIn('draw_pairs.reset(); redundant_states.reset(); draw_batch.reset();', source)
+        self.assertIn('draw_batch.end_frame(); // draws are only compared inside one frame', source)
+        # One capture.cpp helper on the draw path, gated on the option, reading
+        # the binding shadow the proxy already keeps (no Get* call per draw).
+        helper = capture[capture.index('void frame_timing_draw_state('):]
+        helper = helper[:helper.index('\nvoid snapshot(')]
+        self.assertIn('if (!frame_timing::active) return;', helper)
+        self.assertIn('ctx.motion_output.binding_shadow();', helper)
+        self.assertNotIn('->Get', helper)
+        self.assertEqual(capture.count('frame_timing_draw_state(ctx,type,primitives,base_vertex,start_index,user_memory);'), 1)
+        # The redundancy counting sits in the shadow update, not in the hook
+        # bodies, and elides nothing.
+        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        for setter, call in (
+                ('void MotionOutput::set_render_state(',
+                 'frame_timing::state_write(frame_timing::StateSet::RenderState, unsigned(state),'),
+                ('void MotionOutput::set_sampler_state(',
+                 'frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type),'),
+                ('void MotionOutput::set_texture(',
+                 'frame_timing::state_write(frame_timing::StateSet::Texture, unsigned(stage), true,')):
+            body = extract_function(motion, setter)
+            self.assertIn(call, body, setter)
+            self.assertNotIn('return;  // redundant', body)
+        self.assertEqual(capture.count('frame_timing::state_write('), 0)
         self.assertIn('frame_timing_slow frame=%llu dt_us=%llu draws=%llu present_us=%llu prims=%llu', source)
         self.assertIn('" draw_us=%llu draw_native_us=%llu scene_us=%llu state_us=%lld"', source)
         self.assertIn('" draw_calls=%llu scene_calls=%llu state_calls=%llu slow_call=%s slow_call_us=%llu"', source)
@@ -104,13 +147,20 @@ class FrameTimingWindow(unittest.TestCase):
         section = section[:section.index('\n## ')]
         for field in ('state_sampled=', 'gap_pre_p50_us=', 'gap_draw_p50_us=', 'gap_post_p50_us=',
                       'gap_draw_per_draw_us=', 'state_top=', 'state_other_p50=',
-                      'gap_pre_us=', 'gap_draw_us=', 'gap_post_us='):
+                      'gap_pre_us=', 'gap_draw_us=', 'gap_post_us=',
+                      'state_redundant=', 'state_shadowed=', 'redundant_top=',
+                      'draw_pairs ', 'draw_pairs_overflow=', 'cutout_pairs=',
+                      'draw_batch ', 'same_mesh=', 'same_mesh_any_range=', 'same_material=', 'up='):
             self.assertIn(field, section, field)
         self.assertIn('X3M_FRAME_TIMING_STATE_STAMPS', section)
         self.assertIn('--frame-timing-state-stamps', section)
         self.assertIn('state_us=-1', section)
         # gap_draw is game time between hooked calls, not proxy time.
         self.assertIn('game time', section)
+        # The per-draw evidence the next session B reads.
+        shadows = (ROOT / 'docs/verification/directional-shadows.md').read_text()
+        self.assertIn('draw_pairs', shadows)
+        self.assertIn('cutout_pairs=', shadows)
 
 
 class FrameTimingLaunchOption(unittest.TestCase):

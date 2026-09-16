@@ -28,7 +28,7 @@ void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 // The production translation unit, with its Win32 stand-in and its log sink.
 #include "../../src/proxy/frame_timing.cpp"
 using namespace x3m::frame_timing;
-static char logged[8][1024]; // the window line carries the per-entry state mix
+static char logged[8][2048]; // the window line carries the per-entry state mix and the redundancy fields
 static unsigned logged_count = 0;
 namespace x3m {
 void log(const char* format, ...) {
@@ -130,6 +130,22 @@ static double cost_per_call(bool on) {
     const double ns = double(end.tv_sec - begin.tv_sec) * 1e9 + double(end.tv_nsec - begin.tv_nsec);
     x3m_win32_standin::real_clock = false;
     return ns / double(calls);
+}
+
+// One draw of the count-only diagnostics: the bindings the proxy shadows, with
+// only the program pair varying. The callers below change one field at a time.
+static DrawKey make_key(std::uint64_t vs, std::uint64_t ps) {
+    DrawKey key;
+    key.vs = vs; key.ps = ps;
+    key.stream0 = 3; key.indices = 4; key.declaration = 5;
+    key.textures[0] = 6; key.textures[1] = 7; key.textures[2] = 8; key.textures[3] = 9;
+    key.primitive_type = 4; key.primitives = 10;
+    key.valid = true;
+    return key;
+}
+// Runs frames `first`..`last` of a window: one microsecond each, no hooked call.
+static void run_frames(std::uint64_t first, std::uint64_t last) {
+    for (std::uint64_t f = first; f <= last; ++f) { x3m_win32_standin::advance(1); frame(f, 0); }
 }
 
 static unsigned checks = 0;
@@ -287,7 +303,7 @@ int main(int argc, char** argv) {
     // The native Present is subtracted from the enclosing scope exactly once
     // per frame and never counted as proxy time.
     check(native_excluded == 100 * (window_frames + 1));
-    check(logged_count == 5); // one window line and four slow witnesses
+    check(logged_count == 7); // the window line, draw_pairs, draw_batch and four slow witnesses
     const char* line = last_line("frame_timing frame=");
     check(std::strstr(line, "frame_timing frame=301 frames=300 dt_p50_us=2180") != nullptr);
     check(std::strstr(line, "present_p50_us=100 present_p95_us=100 present_max_us=100") != nullptr);
@@ -355,7 +371,7 @@ int main(int argc, char** argv) {
     check(x3m_win32_standin::counter_reads - gap_reads_before == 11);
     check(bucket_ticks[unsigned(Bucket::State)] == 0 && bucket_calls[unsigned(Bucket::State)] == 0);
     for (std::uint64_t f = 3; f <= window_frames + 1; ++f) check(simulate_gap_frame(f) == 2477);
-    check(logged_count == 5);
+    check(logged_count == 7);
     const char* gap_line = last_line("frame_timing frame=");
     check(std::strstr(gap_line, "frame_timing frame=301 frames=300 dt_p50_us=2477") != nullptr);
     // Unstamped state time is not measured, so it stays inside the gaps: 300 us
@@ -460,6 +476,93 @@ int main(int argc, char** argv) {
     check(!std::strcmp(state_entry_name[mix.state_top[0].slot], texture));
     check(!std::strcmp(state_entry_name[mix.state_top[1].slot], sampler));
     check(!std::strcmp(state_entry_name[mix.state_top[2].slot], render));
+
+
+    // The three count-only window diagnostics, driven through the production
+    // accumulators and emitted by the production window boundary. Window A:
+    // the program-pair mix with the two cutout pairs, the three batch classes,
+    // and the redundancy counters with and without a shadowed value.
+    x3m_win32_standin::environment = L"1";
+    x3m_win32_standin::environment_stamps = nullptr;
+    logged_count = 0;
+    initialize();
+    frame(0, 0); // only starts the interval
+    refuse_allocation = true;
+    const std::uint64_t cutout_vs = 0x4944d81dfe531b37ull, cutout_ps = 0x5e0a10fe752b6140ull;
+    draw_state(make_key(cutout_vs, cutout_ps));  // 1: first draw of the frame, no predecessor
+    draw_state(make_key(cutout_vs, cutout_ps));  // 2: identical bindings and range -> same_mesh
+    DrawKey key = make_key(0x11, 0x22);
+    draw_state(key);                             // 3: another pair -> no class
+    draw_state(key);                             // 4: same_mesh
+    key.start_index = 12;
+    draw_state(key);                             // 5: another range of the same mesh
+    key.stream0 = 99;
+    draw_state(key);                             // 6: same material, another mesh
+    key.stream0 = 3; key.start_index = 0; key.textures[2] = 77;
+    draw_state(key);                             // 7: another texture -> no class
+    draw_state(DrawKey{});                       // 8: no live shadow -> not classified
+    draw_state(make_key(0, 0));                  // 9: predecessor was not classified
+    DrawKey up = make_key(0, 0);
+    up.user_memory = true;
+    draw_state(up);                              // 10: user memory, counted apart
+    draw_state(up);                              // 11: never batched with the one before it
+    // Redundant state sets: the shadowed denominators and the equal writes.
+    for (unsigned i = 0; i < 3; ++i) state_write(StateSet::RenderState, 7, true, true);
+    state_write(StateSet::RenderState, 7, true, false);
+    for (unsigned i = 0; i < 2; ++i) state_write(StateSet::RenderState, 14, true, true);
+    state_write(StateSet::RenderState, 26, false, true); // no shadowed value: neither counter moves
+    state_write(StateSet::SamplerState, 6, true, true);
+    state_write(StateSet::SamplerState, 6, true, false);
+    for (unsigned i = 0; i < 4; ++i) state_write(StateSet::Texture, 0, true, true);
+    // Option off: both entry points are inert, whatever the arguments.
+    active = false;
+    draw_state(make_key(0x11, 0x22));
+    state_write(StateSet::RenderState, 7, true, true);
+    active = true;
+    check(draw_pairs.draws() == 11 && draw_batch.draws() == 11);
+    check(redundant_states.shadowed(unsigned(StateSet::RenderState)) == 6);
+    x3m_win32_standin::advance(1);
+    frame(1, 0);
+    // A draw identical to the last draw of the previous frame is not batchable
+    // with it: the classifier only compares inside one frame.
+    draw_state(make_key(0, 0));
+    run_frames(2, window_frames);
+    refuse_allocation = false;
+    check(logged_count == 7); // the window line, draw_pairs, draw_batch and four witnesses
+    const char* pairs_line = last_line("draw_pairs frame=");
+    check(std::strstr(pairs_line, "draw_pairs frame=300 draws=12 draw_pairs_overflow=0") != nullptr);
+    // Descending by draws; the tie at five keeps the lower slot first.
+    check(std::strstr(pairs_line, "top=none/none:5,0000000000000011/0000000000000022:5,"
+                                  "4944d81dfe531b37/5e0a10fe752b6140:2") != nullptr);
+    // The two qualified pairs are reported explicitly, the second at zero.
+    check(std::strstr(pairs_line, "cutout_pairs=2,0") != nullptr);
+    const char* batch_line = last_line("draw_batch frame=");
+    check(std::strstr(batch_line, "draw_batch frame=300 same_mesh=2 same_mesh_any_range=1 same_material=1 up=2 draws=12") != nullptr);
+    const char* counted = last_line("frame_timing frame=");
+    check(std::strstr(counted, "state_redundant=5,1,4 state_shadowed=6,2,4 redundant_top=7:3,14:2") != nullptr);
+
+    // Window B: the pair table fills, further pairs are counted as overflow,
+    // and every counter restarted at the previous window boundary.
+    check(draw_pairs.draws() == 0 && draw_batch.draws() == 0);
+    check(redundant_states.shadowed(unsigned(StateSet::Texture)) == 0);
+    refuse_allocation = true;
+    for (std::uint64_t vs = 1; vs <= 64; ++vs) draw_state(make_key(vs, 0)); // one per slot
+    // No free slot within the probe limit; the three identical draws still batch.
+    for (unsigned i = 0; i < 3; ++i) draw_state(make_key(65, 0));
+    // The hull cutout pair arrives with the table already full, so the table
+    // cannot hold it: the dedicated counter reports it anyway, which is what
+    // makes a reported zero mean the pair never drew.
+    draw_state(make_key(cutout_vs, cutout_ps));
+    check(draw_pairs.draws_of(cutout_vs, cutout_ps) == 0 && draw_pairs.cutout_draws(0) == 1);
+    run_frames(window_frames + 1, 2 * window_frames);
+    refuse_allocation = false;
+    const char* overflow_line = last_line("draw_pairs frame=");
+    check(std::strstr(overflow_line, "draw_pairs frame=600 draws=68 draw_pairs_overflow=4") != nullptr);
+    check(std::strstr(overflow_line, "cutout_pairs=1,0") != nullptr);
+    check(std::strstr(last_line("draw_batch frame="),
+                      "draw_batch frame=600 same_mesh=2 same_mesh_any_range=0 same_material=0 up=0 draws=68") != nullptr);
+    check(std::strstr(last_line("frame_timing frame="),
+                      "state_redundant=0,0,0 state_shadowed=0,0,0 redundant_top=none") != nullptr);
 
     std::printf("frame_timing_host checks=%u failures=0\n", checks);
     // Optional, never part of the test: the added wall time per hooked call,

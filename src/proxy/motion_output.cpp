@@ -20,6 +20,7 @@
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
 #include "screen_emission_admission.h"
+#include "frame_timing.h" // X3M_FRAME_TIMING only: the redundant-state counters
 #include "../renderer/linear_emission_sm1.h"
 #include <algorithm>
 #include <cmath>
@@ -709,6 +710,11 @@ void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWOR
     auto& s = samplers_[stage];
     if (queried) s.levels = levels;      // a new pointer: the count the hook read from it
     else if (!texture) s.levels = 0;     // unbound
+    // Count-only diagnostic (X3M_FRAME_TIMING): rebinding the texture already
+    // on the stage. The pointer shadow always holds a current value (no
+    // texture is bound at attach and after Reset), so every call is a
+    // denominator. Never elided.
+    frame_timing::state_write(frame_timing::StateSet::Texture, unsigned(stage), true, s.texture == texture);
     if (!state_hooks_ && s.texture != texture && !s.biased) { s.mipfilter_known = false; s.saved_known = false; } // hooks off: re-read for the new binding
     s.texture = texture;                 // same pointer, still bound: the count stands
     const std::uint32_t bit = 1u << stage;
@@ -717,10 +723,19 @@ void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWOR
 void MotionOutput::set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept {
     if (stage >= sampler_stage_count || shadow_.recording) return;
     auto& s = samplers_[stage];
-    if (type == D3DSAMP_SRGBTEXTURE) { s.srgb = value; s.srgb_known = true; return; }
+    // Count-only diagnostic (X3M_FRAME_TIMING) on the three shadowed sampler
+    // states: a write of the value already on the device. Never elided.
+    if (type == D3DSAMP_SRGBTEXTURE) {
+        frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.srgb_known, s.srgb == value);
+        s.srgb = value; s.srgb_known = true; return;
+    }
     if (!mip_bias_bits_) return;
-    if (type == D3DSAMP_MIPFILTER) { s.mipfilter = value; s.mipfilter_known = true; return; }
+    if (type == D3DSAMP_MIPFILTER) {
+        frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.mipfilter_known, s.mipfilter == value);
+        s.mipfilter = value; s.mipfilter_known = true; return;
+    }
     if (type != D3DSAMP_MIPMAPLODBIAS) return;
+    frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.saved_known, s.saved_bias == value);
     // The application's own write replaced whatever the device held: it is
     // the value to restore, and the route's bias is no longer on the device.
     s.saved_bias = value; s.saved_known = true;
@@ -1043,12 +1058,31 @@ void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexc
     // A recorded call does not reach the device (EndStateBlock resynchronizes).
     if (!enabled_ || shadow_.recording) return;
     const unsigned i = shadow_index(state);
-    if (i < motion_shadow_state_count) { shadow_.states[i] = value; shadow_.states_known[i] = true; }
+    if (i < motion_shadow_state_count) {
+        // Count-only diagnostic (X3M_FRAME_TIMING): a write of the value the
+        // device already holds. Nothing is elided, the native call already
+        // happened (docs/architecture/state-call-fast-path.md, section (d)).
+        frame_timing::state_write(frame_timing::StateSet::RenderState, unsigned(state),
+                                  shadow_.states_known[i], shadow_.states[i] == value);
+        shadow_.states[i] = value; shadow_.states_known[i] = true;
+    }
     if (blend_shadow_requested()) {
         const unsigned blend = composition_blend_index(state);
         if (blend < composition_blend_count) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
     }
     if ((composition_requested() || screen_emission_bound_) && state == D3DRS_FILLMODE) { shadow_.fill_mode = value; shadow_.fill_mode_known = true; }
+}
+// X3M_FRAME_TIMING only, once per hooked draw: a copy of the binding shadow
+// the game last set. No device call, no allocation.
+MotionOutput::BindingShadow MotionOutput::binding_shadow() const noexcept {
+    BindingShadow out;
+    if (!enabled_ || shadow_.recording) return out;
+    out.vs_hash = shadow_.vs_hash; out.ps_hash = shadow_.ps_hash;
+    out.stream0 = shadow_.stream0; out.indices = shadow_.indices; out.declaration = shadow_.declaration;
+    for (unsigned stage = 0; stage < 4; ++stage)
+        out.textures[stage] = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(samplers_[stage].texture));
+    out.valid = true;
+    return out;
 }
 // Capture-log accessors: the shadowed application value or -1 when unknown.
 // Pure shadow reads (no GetRenderState, no query counters), so the capture

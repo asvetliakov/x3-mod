@@ -112,6 +112,14 @@ public:
  void after_reset(HRESULT) noexcept;
  void begin_stateblock() noexcept;void end_stateblock() noexcept;void stateblock_applied() noexcept;
 };
+
+// Inert mirror of the X3M_FRAME_TIMING redundant-state counters
+// (src/proxy/frame_timing.h): the extracted shadow updates report into them
+// and they measure nothing here.
+namespace frame_timing {
+enum class StateSet : unsigned { RenderState = 0, SamplerState = 1, Texture = 2 };
+inline void state_write(StateSet, unsigned, bool, bool) noexcept {}
+}
 #include "motion_wrap_under_test_inc.h"
 static_assert(composition_blend_count<=8,"blend shadow mirror is smaller than the production table");
 

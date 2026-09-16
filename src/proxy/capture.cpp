@@ -616,10 +616,33 @@ void object_context(Device& ctx) {
             log("object_basis row=%u bits=%08lx,%08lx,%08lx",row,static_cast<unsigned long>(value.basis[row*3]),static_cast<unsigned long>(value.basis[row*3+1]),static_cast<unsigned long>(value.basis[row*3+2]));
     }
 }
-void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory=false) {
+// X3M_FRAME_TIMING only: the per-draw program-pair and batchability counters
+// (frame_timing.h). One predictable branch when the option is off; when it is
+// on, one copy of the binding shadow the proxy already keeps (no Get* call, no
+// allocation) and a table increment plus one comparison against the previous
+// draw, under the hook mutex the draw path already holds.
+void frame_timing_draw_state(Device& ctx, D3DPRIMITIVETYPE type, UINT primitives, INT base_vertex, UINT start_index,
+                             bool user_memory) {
+    if (!frame_timing::active) return;
+    const auto bindings = ctx.motion_output.binding_shadow();
+    frame_timing::DrawKey key;
+    key.vs = bindings.vs_hash; key.ps = bindings.ps_hash;
+    key.stream0 = bindings.stream0; key.indices = bindings.indices; key.declaration = bindings.declaration;
+    for (unsigned stage = 0; stage < 4; ++stage) key.textures[stage] = bindings.textures[stage];
+    key.primitive_type = static_cast<std::uint32_t>(type);
+    key.primitives = static_cast<std::uint32_t>(primitives);
+    key.start_index = static_cast<std::uint32_t>(start_index);
+    key.base_vertex = static_cast<std::int32_t>(base_vertex);
+    key.valid = bindings.valid;
+    key.user_memory = user_memory; // D3D9 clears stream 0: never batched against a shadowed mesh
+    frame_timing::draw_state(key);
+}
+void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory=false,
+              INT base_vertex=0, UINT start_index=0) {
     auto& ctx = *devices.at(d);
     ++ctx.draws;
     frame_timing::draw(primitives); // X3M_FRAME_TIMING only: one branch, one add
+    frame_timing_draw_state(ctx,type,primitives,base_vertex,start_index,user_memory);
     if (!ctx.capture) return;
     telemetry::Scope timed(ctx.stats,telemetry::Metric::Snapshot);
     capture_event(ctx,"draw_begin",S_OK,true);
@@ -1321,7 +1344,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::Primitive,t,c,s});
     ctx.scene_depth.before_draw(d,t,c);
-    snapshot(d,"primitive",t,c);
+    snapshot(d,"primitive",t,c,false,0,s); // s is StartVertex: the range field of a non-indexed draw
     if (devices.at(d)->capture) log("draw_args start_vertex=%u",s);
     // Step C (screen-emission-region.md): the bullet screen draws are
     // non-indexed; they get the same scene/thread permission and draw scope
@@ -1359,7 +1382,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::Indexed,t,c,s,b,m,n});
     ctx.scene_depth.before_draw(d,t,c);
-    snapshot(d,"indexed",t,c);
+    snapshot(d,"indexed",t,c,false,b,s);
     if (devices.at(d)->capture) log("draw_args base_vertex=%d min_vertex=%u num_vertices=%u start_index=%u",b,m,n,s);
     const bool composition_permission=ctx.composition_scene_owner && ctx.composition_scene_frame==ctx.frame && ctx.scene_thread==GetCurrentThreadId()
         && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy && !ctx.composition_draw_depth
