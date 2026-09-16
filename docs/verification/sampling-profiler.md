@@ -294,7 +294,9 @@ frame and per draw. Per window one line, in microseconds, with the wrapper
 frame index of the last frame of the window:
 
 ```
-frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= draw_p50_us= draw_p95_us= draw_max_us= draw_native_p50_us= draw_native_max_us= scene_p50_us= scene_p95_us= scene_max_us= state_p50_us= state_p95_us= state_max_us= draw_calls_p50= scene_calls_p50= state_calls_p50= state_sampled= slow= gap_pre_p50_us= gap_pre_p95_us= gap_pre_max_us= gap_draw_p50_us= gap_draw_p95_us= gap_draw_max_us= gap_post_p50_us= gap_post_p95_us= gap_post_max_us= gap_draw_per_draw_us= state_top=<entry>:<calls_p50>,... state_other_p50=
+frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= draw_p50_us= draw_p95_us= draw_max_us= draw_native_p50_us= draw_native_max_us= scene_p50_us= scene_p95_us= scene_max_us= state_p50_us= state_p95_us= state_max_us= draw_calls_p50= scene_calls_p50= state_calls_p50= state_sampled= slow= gap_pre_p50_us= gap_pre_p95_us= gap_pre_max_us= gap_draw_p50_us= gap_draw_p95_us= gap_draw_max_us= gap_post_p50_us= gap_post_p95_us= gap_post_max_us= gap_draw_per_draw_us= state_top=<entry>:<calls_p50>,... state_other_p50= state_redundant=<rs>,<ss>,<tex> state_shadowed=<rs>,<ss>,<tex> redundant_top=<D3DRS>:<count>,...
+draw_pairs frame=N draws= draw_pairs_overflow= top=<vs_id>/<ps_id>:<draws>,... cutout_pairs=<hull>,<station>
+draw_batch frame=N same_mesh= same_mesh_any_range= same_material= draws=
 ```
 
 followed by up to four witnesses for the slowest frames of that window
@@ -371,6 +373,49 @@ frame_timing_slow frame=F dt_us= draws= present_us= prims= draw_us= draw_native_
   against `SetTexture` against `SetVertexShaderConstantF` against the stream
   and declaration setters is measured directly rather than assumed as an equal
   share (`docs/architecture/state-call-fast-path.md`).
+* three count-only window diagnostics answer what the timing above cannot
+  (run 31): they are totals over the whole window, not per-frame percentiles,
+  they are reset with the window, and they cost one predictable branch when the
+  option is off. None of them changes behaviour: no state write is elided and
+  no draw is merged.
+  * `draw_pairs` is the window's program-pair mix: `draws` the draws it
+    classified, `top` the eight most-drawn `(vertex, pixel)` pairs as
+    `<vs_id>/<ps_id>:<draws>` with the same 16-hex program ids as the
+    `shader kind=ps id=` lines (`none` for a null program: fixed function, or a
+    program the route never registered), and `draw_pairs_overflow` the draws
+    whose pair found no slot in the fixed 64-slot table (they are in `draws`
+    but not in `top`). `cutout_pairs` is the draw count of the two qualified
+    cutout pairs explicitly, in the order hull
+    (`4944d81dfe531b37/5e0a10fe752b6140`) then station
+    (`53a0a641107ed76c/63f96eba9eea7880`), reported even at zero: this is the
+    per-draw evidence for whether a session drew them at all. The identities
+    come from the route's binding shadow, so a window with the route off
+    classifies nothing and reports `draws=0`.
+  * `state_redundant` counts the state writes whose incoming value equals the
+    value the proxy's shadow already holds, for `SetRenderState`,
+    `SetSamplerState` and `SetTexture` in that order, with `state_shadowed` the
+    denominators: the calls of each hook that had a shadowed value to compare
+    against (only the shadowed render states and the three shadowed sampler
+    states qualify; every `SetTexture` on stage 0-15 does, because the shadow
+    always holds a current pointer). `redundant_top` names the four most
+    redundant render states by `D3DRS` index. This is what decides whether a
+    state-manager filter is worth installing; the counting happens inside the
+    shadow update, and section (d) of
+    `docs/architecture/state-call-fast-path.md` says why nothing is elided.
+  * `draw_batch` classifies each draw against the previous draw of the same
+    frame; the three classes are disjoint and a draw is never compared across a
+    frame boundary. `same_mesh` is the same stream-0 vertex buffer, index
+    buffer, declaration/FVF, both programs, stage 0-3 textures *and* the same
+    primitive type, count, base vertex and start index, so only the constants
+    differ: the instancing candidate. `same_mesh_any_range` is the same
+    bindings with a different primitive range, and `same_material` the same
+    programs and stage 0-3 textures across a different mesh. `draws` is the
+    same denominator as `draw_pairs`.
+  * cost: per draw, one table mix with at most eight probes and one key
+    comparison (no `Get*` call: the bindings come from the shadow the route
+    already keeps); per state write, one comparison plus at most eight probes
+    for the render-state attribution. No allocation and no lock beyond the hook
+    mutex the path already holds.
 * the three gaps split what `dt_us` leaves over after every hooked call
   (all buckets plus the native `Present`) by position relative to the frame's
   draws, from the stamps already taken, with no additional

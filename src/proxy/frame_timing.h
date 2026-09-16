@@ -69,6 +69,174 @@ struct TopEntry {
     std::uint64_t calls = 0;   // window p50 of that entry's per-frame calls
 };
 
+// ---- count-only window diagnostics ----------------------------------------
+// Three per-window counters that decide the next features (run 31): which
+// program pairs the frame's draws used, how many state writes rewrite the
+// value already on the device, and how many consecutive draws differ only in
+// their constants. All three are counted, never stamped: no clock read, no
+// allocation, no lock of their own (the hook mutex is already held), and one
+// predictable branch on `active` when the option is off. They accumulate over
+// the whole window and are reset with it, unlike the per-frame Frame sample.
+
+// Draws per bound (vertex, pixel) program pair, keyed by the proxy's program
+// hashes (zero means no program: fixed function or an unregistered program).
+// A fixed open-addressed table: one mix, at most eight probes and one
+// increment per draw; a pair that finds no slot is counted in overflow().
+inline constexpr unsigned draw_pair_slots = 64; // power of two
+inline constexpr unsigned draw_pair_top_count = 8;
+
+class DrawPairs {
+public:
+    struct Pair { std::uint64_t vs = 0, ps = 0, draws = 0; };
+
+    void record(std::uint64_t vs, std::uint64_t ps) noexcept {
+        ++draws_;
+        const unsigned mix = static_cast<unsigned>(vs ^ (vs >> 32) ^ ps ^ (ps >> 17));
+        for (unsigned probe = 0; probe < 8; ++probe) {
+            Pair& slot = slots_[(mix + probe) & (draw_pair_slots - 1)];
+            if (slot.draws && slot.vs == vs && slot.ps == ps) { ++slot.draws; return; }
+            if (!slot.draws) { slot.vs = vs; slot.ps = ps; slot.draws = 1; return; }
+        }
+        ++overflow_;
+    }
+    std::uint64_t draws() const noexcept { return draws_; }
+    std::uint64_t overflow() const noexcept { return overflow_; }
+    // Draws counted for one exact pair; zero when the pair never drew.
+    std::uint64_t draws_of(std::uint64_t vs, std::uint64_t ps) const noexcept {
+        for (const Pair& slot : slots_)
+            if (slot.draws && slot.vs == vs && slot.ps == ps) return slot.draws;
+        return 0;
+    }
+    // The most-drawn pairs, descending; ties keep the lower slot. One pass
+    // over the fixed table at the window boundary, off the per-draw path.
+    unsigned top(Pair* out, unsigned capacity) const noexcept {
+        unsigned used = 0;
+        for (const Pair& slot : slots_) {
+            if (!slot.draws) continue;
+            unsigned at = used;
+            while (at > 0 && out[at - 1].draws < slot.draws) --at;
+            if (at >= capacity) continue;
+            for (unsigned i = used < capacity ? used : capacity - 1; i > at; --i) out[i] = out[i - 1];
+            out[at] = slot;
+            if (used < capacity) ++used;
+        }
+        return used;
+    }
+    void reset() noexcept {
+        for (Pair& slot : slots_) slot = Pair{};
+        draws_ = overflow_ = 0;
+    }
+
+private:
+    Pair slots_[draw_pair_slots]{};
+    std::uint64_t draws_ = 0, overflow_ = 0;
+};
+
+// Which shadowed setter a redundancy belongs to.
+enum class StateSet : unsigned { RenderState = 0, SamplerState = 1, Texture = 2 };
+inline constexpr unsigned state_set_count = 3;
+inline constexpr unsigned redundant_entry_slots = 32; // power of two, render states only
+inline constexpr unsigned redundant_top_count = 4;
+
+// State writes whose incoming value equals the value the proxy's shadow
+// already holds for that entry. Nothing is elided: the native call still
+// happens (docs/architecture/state-call-fast-path.md, section (d)); this only
+// measures how much of the game's setter traffic is rewriting.
+class RedundantStates {
+public:
+    // `set` selects the hook; `entry` is the D3DRS index for RenderState and
+    // is not attributed for the other two. Called only for a write that had a
+    // shadowed value to compare against, so shadowed() is the denominator.
+    void record(unsigned set, unsigned entry, bool equal) noexcept {
+        if (set >= state_set_count) return;
+        ++shadowed_[set];
+        if (!equal) return;
+        ++redundant_[set];
+        if (set != static_cast<unsigned>(StateSet::RenderState)) return;
+        for (unsigned probe = 0; probe < 8; ++probe) {
+            Entry& slot = entries_[(entry + probe) & (redundant_entry_slots - 1)];
+            if (slot.count && slot.entry == entry) { ++slot.count; return; }
+            if (!slot.count) { slot.entry = entry; slot.count = 1; return; }
+        }
+        // No slot: the aggregate above still counts it, the attribution does not.
+    }
+    std::uint64_t redundant(unsigned set) const noexcept { return set < state_set_count ? redundant_[set] : 0; }
+    std::uint64_t shadowed(unsigned set) const noexcept { return set < state_set_count ? shadowed_[set] : 0; }
+    struct Entry { unsigned entry = 0; std::uint64_t count = 0; };
+    unsigned top(Entry* out, unsigned capacity) const noexcept {
+        unsigned used = 0;
+        for (const Entry& slot : entries_) {
+            if (!slot.count) continue;
+            unsigned at = used;
+            while (at > 0 && out[at - 1].count < slot.count) --at;
+            if (at >= capacity) continue;
+            for (unsigned i = used < capacity ? used : capacity - 1; i > at; --i) out[i] = out[i - 1];
+            out[at] = slot;
+            if (used < capacity) ++used;
+        }
+        return used;
+    }
+    void reset() noexcept {
+        for (unsigned s = 0; s < state_set_count; ++s) redundant_[s] = shadowed_[s] = 0;
+        for (Entry& slot : entries_) slot = Entry{};
+    }
+
+private:
+    std::uint64_t redundant_[state_set_count]{}, shadowed_[state_set_count]{};
+    Entry entries_[redundant_entry_slots]{};
+};
+
+// What identifies one draw for the batchability counters: the bindings the
+// proxy's shadow already holds plus the primitive range. `valid` is false when
+// the shadow is not live (motion output off, or a state block recording); such
+// a draw is classified as nothing and is not counted.
+struct DrawKey {
+    std::uint64_t vs = 0, ps = 0;
+    std::uint64_t stream0 = 0, indices = 0, declaration = 0; // declaration covers FVF
+    std::uint64_t textures[4]{};                             // stage 0..3
+    std::uint32_t primitive_type = 0, primitives = 0, start_index = 0;
+    std::int32_t base_vertex = 0;
+    bool valid = false;
+};
+
+// Consecutive draws of one frame, compared against the draw before them. The
+// three classes are disjoint: same_mesh is an instancing candidate (only the
+// constants differ), same_mesh_any_range is the same buffers and material with
+// another range, same_material shares shaders and textures across meshes.
+class DrawBatch {
+public:
+    void record(const DrawKey& key) noexcept {
+        ++draws_;
+        const DrawKey previous = previous_;
+        previous_ = key;
+        if (!key.valid || !previous.valid) return;
+        const bool shaders = key.vs == previous.vs && key.ps == previous.ps;
+        bool textures = true;
+        for (unsigned i = 0; i < 4; ++i) textures = textures && key.textures[i] == previous.textures[i];
+        if (!shaders || !textures) return;
+        const bool buffers = key.stream0 == previous.stream0 && key.indices == previous.indices
+            && key.declaration == previous.declaration;
+        if (!buffers) { ++same_material_; return; }
+        const bool range = key.primitive_type == previous.primitive_type && key.primitives == previous.primitives
+            && key.base_vertex == previous.base_vertex && key.start_index == previous.start_index;
+        if (range) ++same_mesh_; else ++same_mesh_any_range_;
+    }
+    // A draw is only compared with a draw of the same frame.
+    void end_frame() noexcept { previous_ = DrawKey{}; }
+    std::uint64_t same_mesh() const noexcept { return same_mesh_; }
+    std::uint64_t same_mesh_any_range() const noexcept { return same_mesh_any_range_; }
+    std::uint64_t same_material() const noexcept { return same_material_; }
+    std::uint64_t draws() const noexcept { return draws_; }
+    void reset() noexcept {
+        same_mesh_ = same_mesh_any_range_ = same_material_ = draws_ = 0;
+        previous_ = DrawKey{};
+    }
+
+private:
+    DrawKey previous_{};
+    std::uint64_t same_mesh_ = 0, same_mesh_any_range_ = 0, same_material_ = 0, draws_ = 0;
+};
+
 struct Frame {
     std::uint64_t frame = 0;      // wrapper frame index
     std::uint64_t dt_us = 0;      // Present-to-Present interval
@@ -241,6 +409,8 @@ void present_end_impl() noexcept;
 void draw_native_begin_impl() noexcept;
 void draw_native_end_impl() noexcept;
 void draw_impl(unsigned primitives) noexcept;
+void draw_state_impl(const DrawKey& key) noexcept;
+void state_write_impl(unsigned set, unsigned entry, bool equal) noexcept;
 void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept;
 
 // Stack-local state of one timed hooked call. Only `entered` is initialized
@@ -290,6 +460,16 @@ inline void draw_native_begin() noexcept { if (active) detail::draw_native_begin
 inline void draw_native_end() noexcept { if (active) detail::draw_native_end_impl(); }
 inline void frame(std::uint64_t frame_index, std::uint64_t draws) noexcept {
     if (active) detail::frame_impl(frame_index, draws);
+}
+// One call per hooked draw, from the draw path, with the bindings the proxy
+// already shadows: counts the program pair and classifies the draw against the
+// previous draw of the frame. The caller builds the key only when `active`.
+inline void draw_state(const DrawKey& key) noexcept { if (active) detail::draw_state_impl(key); }
+// One call per shadowed state write, from inside the shadow update. `shadowed`
+// is false when the shadow holds no current value for the entry; the write is
+// then neither a redundancy nor a denominator. Nothing is elided either way.
+inline void state_write(StateSet set, unsigned entry, bool shadowed, bool equal) noexcept {
+    if (active && shadowed) detail::state_write_impl(static_cast<unsigned>(set), entry, equal);
 }
 
 }

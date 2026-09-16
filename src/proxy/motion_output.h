@@ -649,6 +649,19 @@ public:
     void set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept;
     void before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept;
     void sampler_state_failed(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept;
+    // X3M_FRAME_TIMING only: the bindings the per-draw pair and batchability
+    // counters read (src/proxy/frame_timing.h). Pure shadow reads, no Get*
+    // call and no device access; `valid` is false when the shadow is not live
+    // (the route is off, or a state block is recording) and the draw is then
+    // not classified. Program identities are the proxy's bytecode hashes, the
+    // buffer and declaration identities the shadow's own.
+    struct BindingShadow {
+        std::uint64_t vs_hash = 0, ps_hash = 0;
+        std::uint64_t stream0 = 0, indices = 0, declaration = 0;
+        std::uint64_t textures[4]{}; // stage 0..3 pointers
+        bool valid = false;
+    };
+    BindingShadow binding_shadow() const noexcept;
     // X3M_TAA_SHARPEN in [0, 1]: post-resolve RCAS of the display image
     // (docs/architecture/temporal-integration.md "Post-resolve sharpen"); 0.75
     // by default with the TAA resolve, and an explicit 0 leaves both routes

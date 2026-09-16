@@ -1,4 +1,5 @@
 #include "frame_timing.h"
+#include "linear_cutout.h" // the two qualified cutout pairs, reported even at zero
 #include <cstdio>
 #include <cstdint>
 #include <windows.h>
@@ -60,6 +61,12 @@ std::uint64_t last_draw_stamp = 0;  // return of the frame's last draw hook
 const char* state_entry_name[state_entry_slots]{};
 std::uint64_t state_entry_calls[state_entry_slots]{};
 std::uint64_t state_other_calls = 0;
+// The three count-only window diagnostics. Unlike the per-frame sample these
+// accumulate over the whole window and are reset with it; only the batch
+// classifier's "previous draw" is cleared at every frame boundary.
+DrawPairs draw_pairs;
+RedundantStates redundant_states;
+DrawBatch draw_batch;
 
 std::uint64_t stamp() noexcept {
     LARGE_INTEGER value{};
@@ -119,6 +126,7 @@ void initialize() noexcept {
         QueryPerformanceFrequency(&f);
         frequency = f.QuadPart > 0 ? static_cast<std::uint64_t>(f.QuadPart) : 1;
         window.reset();
+        draw_pairs.reset(); redundant_states.reset(); draw_batch.reset();
         previous_qpc = present_stamp = present_us = prims = 0;
         draw_native_ticks = draw_native_stamp = slow_call_ticks = native_excluded = 0;
         slow_call_entry = "";
@@ -227,6 +235,19 @@ void scope_end_impl(ScopeState& state) noexcept {
 
 void draw_impl(unsigned primitives) noexcept { prims += primitives; }
 
+// Per-draw counters: one table mix with at most eight probes for the program
+// pair, and one comparison of the key against the previous draw of the frame.
+// No clock read, no allocation, no logging and no lock of its own.
+void draw_state_impl(const DrawKey& key) noexcept {
+    draw_pairs.record(key.vs, key.ps);
+    draw_batch.record(key);
+}
+// Per-state-write counter: one increment, plus at most eight probes for the
+// render-state attribution. The write itself is untouched.
+void state_write_impl(unsigned set, unsigned entry, bool equal) noexcept {
+    redundant_states.record(set, entry, equal);
+}
+
 void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
     const DWORD saved = GetLastError();
     const std::uint64_t now = stamp();
@@ -289,6 +310,7 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
     for (unsigned b = 0; b < bucket_count; ++b) bucket_ticks[b] = bucket_calls[b] = 0;
     for (unsigned e = 0; e < state_entry_slots; ++e) state_entry_calls[e] = 0;
     state_other_calls = 0;
+    draw_batch.end_frame(); // draws are only compared inside one frame
     if (window.full()) {
         Summary s;
         if (window.close(s)) {
@@ -305,6 +327,26 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
                 length += written;
             }
             if (length <= 0 || length >= int(sizeof top)) std::snprintf(top, sizeof top, "none");
+            // The redundant render-state entries of the window, most redundant
+            // first, by D3DRS index. Built once per window like `top` above.
+            RedundantStates::Entry redundant[redundant_top_count]{};
+            const unsigned redundant_used = redundant_states.top(redundant, redundant_top_count);
+            char redundant_top[96];
+            int redundant_length = 0;
+            for (unsigned i = 0; i < redundant_used && redundant_length >= 0
+                                 && redundant_length < int(sizeof redundant_top) - 1; ++i) {
+                const int written = std::snprintf(redundant_top + redundant_length,
+                                                  sizeof redundant_top - std::size_t(redundant_length), "%s%u:%llu",
+                                                  i ? "," : "", redundant[i].entry,
+                                                  static_cast<unsigned long long>(redundant[i].count));
+                if (written <= 0) break;
+                redundant_length += written;
+            }
+            if (redundant_length <= 0 || redundant_length >= int(sizeof redundant_top))
+                std::snprintf(redundant_top, sizeof redundant_top, "none");
+            constexpr unsigned rs = static_cast<unsigned>(StateSet::RenderState);
+            constexpr unsigned ss = static_cast<unsigned>(StateSet::SamplerState);
+            constexpr unsigned tex = static_cast<unsigned>(StateSet::Texture);
             log("frame_timing frame=%llu frames=%u dt_p50_us=%llu dt_p95_us=%llu dt_max_us=%llu draws_p50=%llu draws_max=%llu present_p50_us=%llu present_p95_us=%llu present_max_us=%llu"
                 " draw_p50_us=%llu draw_p95_us=%llu draw_max_us=%llu draw_native_p50_us=%llu draw_native_max_us=%llu"
                 " scene_p50_us=%llu scene_p95_us=%llu scene_max_us=%llu state_p50_us=%lld state_p95_us=%lld state_max_us=%lld"
@@ -312,7 +354,8 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
                 " gap_pre_p50_us=%llu gap_pre_p95_us=%llu gap_pre_max_us=%llu"
                 " gap_draw_p50_us=%llu gap_draw_p95_us=%llu gap_draw_max_us=%llu"
                 " gap_post_p50_us=%llu gap_post_p95_us=%llu gap_post_max_us=%llu gap_draw_per_draw_us=%llu.%03llu"
-                " state_top=%s state_other_p50=%llu",
+                " state_top=%s state_other_p50=%llu"
+                " state_redundant=%llu,%llu,%llu state_shadowed=%llu,%llu,%llu redundant_top=%s",
                 s.frame, s.frames, s.dt_p50, s.dt_p95, s.dt_max, s.draws_p50, s.draws_max,
                 s.present_p50, s.present_p95, s.present_max,
                 s.bucket_p50[draw_bucket], s.bucket_p95[draw_bucket], s.bucket_max[draw_bucket],
@@ -326,7 +369,37 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
                 s.gap_p50[1], s.gap_p95[1], s.gap_max[1],
                 s.gap_p50[2], s.gap_p95[2], s.gap_max[2],
                 s.gap_draw_per_draw_ns / 1000ull, s.gap_draw_per_draw_ns % 1000ull,
-                top, s.state_other_p50);
+                top, s.state_other_p50,
+                redundant_states.redundant(rs), redundant_states.redundant(ss), redundant_states.redundant(tex),
+                redundant_states.shadowed(rs), redundant_states.shadowed(ss), redundant_states.shadowed(tex),
+                redundant_top);
+            // The window's program-pair mix, most-drawn first, and the two
+            // qualified cutout pairs explicitly (zero is the finding).
+            DrawPairs::Pair pairs[draw_pair_top_count]{};
+            const unsigned pairs_used = draw_pairs.top(pairs, draw_pair_top_count);
+            char pair_top[512];
+            int pair_length = 0;
+            for (unsigned i = 0; i < pairs_used && pair_length >= 0 && pair_length < int(sizeof pair_top) - 1; ++i) {
+                char vs[20], ps[20];
+                if (pairs[i].vs) std::snprintf(vs, sizeof vs, "%016llx", static_cast<unsigned long long>(pairs[i].vs));
+                else std::snprintf(vs, sizeof vs, "none");
+                if (pairs[i].ps) std::snprintf(ps, sizeof ps, "%016llx", static_cast<unsigned long long>(pairs[i].ps));
+                else std::snprintf(ps, sizeof ps, "none");
+                const int written = std::snprintf(pair_top + pair_length, sizeof pair_top - std::size_t(pair_length),
+                                                  "%s%s/%s:%llu", i ? "," : "", vs, ps,
+                                                  static_cast<unsigned long long>(pairs[i].draws));
+                if (written <= 0) break;
+                pair_length += written;
+            }
+            if (pair_length <= 0 || pair_length >= int(sizeof pair_top)) std::snprintf(pair_top, sizeof pair_top, "none");
+            log("draw_pairs frame=%llu draws=%llu draw_pairs_overflow=%llu top=%s cutout_pairs=%llu,%llu",
+                s.frame, draw_pairs.draws(), draw_pairs.overflow(), pair_top,
+                draw_pairs.draws_of(cutout::pair_hashes[2], cutout::pair_hashes[3]),
+                draw_pairs.draws_of(cutout::pair_hashes[0], cutout::pair_hashes[1]));
+            log("draw_batch frame=%llu same_mesh=%llu same_mesh_any_range=%llu same_material=%llu draws=%llu",
+                s.frame, draw_batch.same_mesh(), draw_batch.same_mesh_any_range(),
+                draw_batch.same_material(), draw_batch.draws());
+            draw_pairs.reset(); redundant_states.reset(); draw_batch.reset();
             for (unsigned i = 0; i < s.slow_frames_count; ++i) {
                 const Frame& f = s.slow_frames[i];
                 log("frame_timing_slow frame=%llu dt_us=%llu draws=%llu present_us=%llu prims=%llu"

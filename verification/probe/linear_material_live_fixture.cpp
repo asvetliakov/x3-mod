@@ -228,6 +228,14 @@ enum class TaaInvalidateSite:unsigned{RestoreFailed=0,StateLost=1,Skip=2,Target=
 enum class MotionGate{Feature=1};
 struct MotionDrawCall{bool indexed=true,user_memory=false;unsigned primitives=3;bool composition_permission=true;};
 namespace telemetry{enum class Metric{RouteGate,RouteSetRenderTarget,RouteLazyFlush};bool draw_enabled(){return false;}}
+
+// Inert mirror of the X3M_FRAME_TIMING redundant-state counters
+// (src/proxy/frame_timing.h): the extracted shadow updates report into them
+// and they measure nothing here.
+namespace frame_timing {
+enum class StateSet : unsigned { RenderState = 0, SamplerState = 1, Texture = 2 };
+inline void state_write(StateSet, unsigned, bool, bool) noexcept {}
+}
 std::uint64_t draw_stamp(){return 0;}
 struct MotionRoute {
  renderer::LinearCompositionPolicy composition_policy=renderer::LinearCompositionPolicy::AdditiveEmission;
