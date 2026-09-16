@@ -49,11 +49,11 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 29 | Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane | 3 | Completed as run83 (A), run84 (A2 profiler), run85 (B): engines unchanged (gain refused screen blend), halo persisted (bloom amplitude), chase pose fixed, profiler blind under FEX, sun lane available 4577/4695 |
 | 30 | Single emission gain, bloom source clamp, frame-time split | 2 | Session A run87 and B run88 received: engines respond, halo accepted at clamp 1.0, no cutout draws yet (B to repeat at an Argon industrial station), frame split: state hooks 8.9 ms of a 28.5 ms busy frame |
 | 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
-| 32 | Hybrid unhook, draw and state counters | 3 | Drafted; candidate pending |
+| 32 | Hybrid unhook, draw and state counters | 3 | Queued: candidate `11c1f119…` from `baee232` installed 2026-09-17 |
 
-## 32. Hybrid unhook, draw and state counters — drafted
+## 32. Hybrid unhook, draw and state counters — open
 
-Installed: DLL `RUN32HASH` from `RUN32COMMIT` (see [status](../status.md)). This
+Installed: DLL `11c1f119…` from `baee232` (see [status](../status.md)). This
 build stops hooking SetRenderState and SetSamplerState in production (the
 proxy reads what it needs at draw time) and adds three count-only diagnostics
 to `--frame-timing`: draws per program pair with the two cutout pairs called

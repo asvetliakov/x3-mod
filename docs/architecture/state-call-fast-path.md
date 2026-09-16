@@ -356,7 +356,10 @@ Implemented in `capture.cpp` (the render-state configuration decided per
 device in `hook_device`, the slot-57/69 install gates) and `motion_output.cpp`
 (the draw-time readers). In the production configuration (`X3M_STATE_SHADOW`
 unset, now "auto") the SetRenderState and SetSamplerState hooks are not
-installed. The hooks stay installed for exactly four reasons, logged per device
+installed. Since 2026-09-16 `tools/manage.py --state-shadow` defaults to
+`auto` and then leaves `X3M_STATE_SHADOW` unset entirely, so this production
+configuration is what `./x3run` engages; `on` and `off` still force the
+hooked and the legacy Get-per-query configurations. The hooks stay installed for exactly four reasons, logged per device
 as `state_hooks device=N installed=1 reason=<explicit|lazy_rt|frame_timing|
 get_failed>`: `X3M_STATE_SHADOW=1` (the shadow as before), lazy RT mode
 (`X3M_MOTION_RT_MODE=lazy`: the held write masks need the write observation),
@@ -425,9 +428,19 @@ changed); the fixture reruns below ran on the runner's own clean builds of
 the same tree (`ee80fdf3` for the six twins at 7b2a611, `e371c83b` for the
 production-configuration rerun on the final tree); no committed DLL carries
 both proofs. Builds of one tree are not byte-reproducible here (PE timestamps
-and debug line tables), so the run 32 candidate build rebinds both: it reruns
-the benchmark on the candidate DLL and the twins rerun is the candidate's
-fixture run. Rows on `c136e425`: production SetRenderState 15.0 (native
+and debug line tables), so the run 32 candidate build rebinds the rows to the
+candidate bytes: the same benchmark ran on the candidate DLL
+`11c1f119` (commit baee232, `verification/results/run32-candidate-build.json`)
+and is recorded in `verification/results/bottle-X3/state-hook-benchmark-run32.json`.
+Its production rows reproduce this record within noise: SetRenderState 10.9
+(native 14.7), SetSamplerState 10.8 (native 11.0), `GetState_draw_set_10` 91.8
+(native 95.1), `routed_draw_mip_bias_2stages` 76.3 (native 76.7; 474.7 hooked),
+SetStreamSource 130.7, the draw pair 1020.0, SetTexture 122.7,
+SetVertexShaderConstantF(4) 75.2, `state_mix` 63.8, with SetRenderState and
+SetSamplerState backend-owned in the production case's SLOT lines and
+proxy-owned again under `X3M_FRAME_TIMING=1` (151.7 / 141.0). The motion-output
+fixture builds its own DLLs, so the candidate's rerun of the cutout-get and
+twin cases is a source-parity check, not a candidate-byte one. Rows on `c136e425`: production SetRenderState 15.0 (native
 14.1; run31 hooked 79.5; this DLL hooked 78.8), SetSamplerState 10.4 (native
 11.1; run31 68.5; hooked 67.7), the per-draw read set `GetState_draw_set_10`
 (eight GetRenderState + two GetSamplerState) 90.9 per draw (native 92.7),

@@ -175,7 +175,7 @@ def main():
     parser.add_argument('--hdr-edge-weight', type=float, default=0.35, help='Centre weighting of the lit-content statistic (X3M_HDR_METER_EDGE_WEIGHT; requires --hdr-tonemap): the tile weight at the frame corners, 1 at the centre (a raised cosine), so a bright emitter at the edge does not darken what the player looks at; the highlight limit stays unweighted; default 0.35; 1 = unweighted')
     parser.add_argument('--hdr-key-pull', type=float, default=0.25, help='Fraction of the key rule applied when the lit median is brighter than the key, so a bright full frame is pulled down gently instead of to mid-grey (X3M_HDR_KEY_PULL; requires --hdr-tonemap; default 0.25; 1 = the full key rule both ways)')
     parser.add_argument('--hdr-clamp', type=float, default=0.0, help='Clamp of the decoded scene value before the tonemap, the blunt firefly guard (X3M_HDR_CLAMP; requires --hdr-tonemap; default 0 = off)')
-    parser.add_argument('--state-shadow', choices=['on', 'off'], default='on', help='Render-state shadow of the route (X3M_STATE_SHADOW): on (default) hooks SetRenderState and answers the per-draw state queries from the shadow; off issues GetRenderState per query (A/B; requires --motion-output)')
+    parser.add_argument('--state-shadow', choices=['auto', 'on', 'off'], default='auto', help='Render-state configuration of the route (X3M_STATE_SHADOW): auto (default) leaves the variable unset, so the DLL runs the hybrid unhook, with SetRenderState/SetSamplerState unhooked in production and the state read at the draw, and installs the hooks only under --frame-timing, the lazy RT mode or a failed Get* check; on always installs the hooks and answers the per-draw state queries from the shadow (the run-31 behaviour); off issues a legacy GetRenderState per query (A/B; requires --motion-output)')
     parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
     parser.add_argument('--camera', choices=['vanilla', 'chase'], default='vanilla', help='External back view camera (X3M_CAMERA): vanilla (default) patches nothing; chase installs the byte-verified cockpit-update trampoline (0x00420e06, exact executable only, fails closed to vanilla) and replaces the external back view with the critically damped chase camera; internal/front/side views stay vanilla, so the game\'s view keys remain the switch (docs/architecture/chase-camera.md)')
     # Chase tunables are X3M_CHASE_* (review 31 O7): X3M_CAMERA_CUT_DEG / X3M_CAMERA_LOG above belong to the TAA camera read.
@@ -367,8 +367,8 @@ def main():
     if not -16.0 <= args.hdr_ev_min <= args.hdr_ev_max <= 16.0 or not 1e-4 <= args.hdr_meter_bg <= 64.0 or not 0.0 <= args.hdr_white_target <= 4.0 or not 0.0 <= args.hdr_key_pull <= 1.0 \
             or not 0.0 <= args.hdr_ev_deadband <= 8.0 or not 0.0 <= args.hdr_edge_weight <= 1.0:
         parser.error('--hdr-ev-min <= --hdr-ev-max within [-16, 16], --hdr-meter-bg within [1e-4, 64], --hdr-white-target within [0, 4], --hdr-key-pull, --hdr-edge-weight within [0, 1], --hdr-ev-deadband within [0, 8].')
-    if args.state_shadow != 'on' and not args.motion_output:
-        parser.error('--state-shadow requires --motion-output.')
+    if args.state_shadow == 'off' and not args.motion_output:
+        parser.error('--state-shadow off requires --motion-output.')
     chase_tunables = {'X3M_CHASE_ROT_TAU': args.chase_rot_tau, 'X3M_CHASE_POS_TAU': args.chase_pos_tau, 'X3M_CHASE_OFFSET_Y': args.chase_offset_y,
                       'X3M_CHASE_PITCH_DOWN_DEG': args.chase_pitch_down_deg, 'X3M_CHASE_DISTANCE_SCALE': args.chase_distance_scale, 'X3M_CHASE_LAG_CLAMP_DEG': args.chase_lag_clamp_deg,
                       'X3M_CHASE_POS_LAG_CLAMP': args.chase_pos_lag_clamp, 'X3M_CHASE_COMBAT_TIGHTNESS': args.chase_combat_tightness}
@@ -550,7 +550,13 @@ def main():
         env['X3M_HDR_KEY_PULL'] = repr(args.hdr_key_pull)
         env['X3M_HDR_EV_DEADBAND'] = repr(args.hdr_ev_deadband)
         env['X3M_HDR_METER_EDGE_WEIGHT'] = repr(args.hdr_edge_weight)
-        env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
+        # auto leaves the variable unset so the DLL's hybrid unhook decides
+        # (docs/architecture/state-call-fast-path.md, "Hybrid unhook"); a stale
+        # shell value must not force a configuration, so it is dropped.
+        if args.state_shadow == 'auto':
+            env.pop('X3M_STATE_SHADOW', None)
+        else:
+            env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
         env['X3M_GZ_BUFFER'] = '1' if args.gz_buffer else '0'
         env['X3M_GZ_BUFFER_KB'] = str(args.gz_buffer_kb)
         env['X3M_LOADING_INTERVALS'] = '1' if args.loading_intervals else '0'

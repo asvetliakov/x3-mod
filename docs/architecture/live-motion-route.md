@@ -200,7 +200,7 @@ TAA run is user-managed.
 | `src/renderer/hdr_pass.{h,cpp}` + `hdr_writeback_program{,_inc}.h`, `hdr_tonemap_program{,_inc}.h`, `hdr_meter_program.h` + `hdr_meter_{level0,reduce}_program_inc.h`, `exposure.{h,cpp}`, `src/temporal/agx.{h,hlsl}` | FP16 HDR scene path (`X3M_HDR=1`): the owned `A16B16G16R16F` RT0, the capability gate and four-format self test, the write-back ladder (stage 1: identity; stage 2 with `X3M_HDR_TONEMAP=agx`: the AgX tonemap, the exposure meter chain and the host adaptation of `exposure.h`); the route decides when to redirect, flush and end ([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation" and "Stage 2 implementation") |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `src/proxy/camera_state.{h,cpp}` + `src/renderer/camera_reprojection.h` | Live engine camera read at the selector's Clear events behind the exact-executable gate (no patch), the far-plane `clip_to_previous` builder and the sentinel policy decision (`X3M_TAA_SENTINEL`, `X3M_CAMERA_CUT_DEG`, `X3M_CAMERA_LOG`); see [temporal-integration.md](temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12) |
-| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-k`, `--taa-mip-bias <float>` (`X3M_TAA_MIP_BIAS`: the mip LOD bias of the routed material stages while the jitter is on, default −0.5 with `--taa` since 2026-09-16, 0 disables), `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook [on|off]` (default on with `--motion-output`), `--hdr` |
+| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-k`, `--taa-mip-bias <float>` (`X3M_TAA_MIP_BIAS`: the mip LOD bias of the routed material stages while the jitter is on, default −0.5 with `--taa` since 2026-09-16, 0 disables), `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow auto|on|off` (default `auto`: the variable is left unset and the DLL's hybrid unhook decides), `--scene-hook [on|off]` (default on with `--motion-output`), `--hdr` |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
@@ -240,8 +240,11 @@ on a frame whose camera cannot be read. `X3M_CAMERA_LOG=<n>` (default 300)
 is the cadence of the `camera_state` diagnostic line (capture frames always
 log it). The camera read needs the exact executable (the object-trace
 identity gate) and `X3M_TAA=1`; it patches nothing. `X3M_STATE_SHADOW=0`
-(default on, `--state-shadow off`) turns the render-state shadow off, so
-every per-draw state query is a native `GetRenderState` again (A/B only).
+(`--state-shadow off`) turns the render-state shadow off, so
+every per-draw state query is a native `GetRenderState` again (A/B only);
+`X3M_STATE_SHADOW=1` (`--state-shadow on`) always installs the hooks, and the
+launcher default `--state-shadow auto` leaves the variable unset, which is the
+hybrid unhook's production configuration (state-call-fast-path.md).
 `X3M_HDR=1` (default off, `--hdr`; requires `X3M_MOTION_OUTPUT=1`) redirects
 the scene into an owned `A16B16G16R16F` RT0 at the latching Clear and writes
 it back into the game's 8-bit main target with the stage-1 identity tonemap

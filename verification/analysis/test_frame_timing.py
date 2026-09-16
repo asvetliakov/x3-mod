@@ -197,5 +197,28 @@ class FrameTimingLaunchOption(unittest.TestCase):
             self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING_STATE_STAMPS'], '0')
 
 
+    def test_state_shadow_modes_select_auto_on_and_off(self):
+        from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
+        helper = LodScaleLaunchOption()
+        with tempfile.TemporaryDirectory() as directory:
+            # auto is the default and leaves the variable unset, so the DLL's
+            # hybrid unhook runs the production configuration; a stale shell
+            # value must not survive either.
+            code, output, error = helper.launch(directory, inherited={'X3M_STATE_SHADOW': '1'})
+            self.assertEqual(code, 0, error)
+            self.assertNotIn('X3M_STATE_SHADOW', json.loads(output)['env'])
+            code, output, error = helper.launch(directory, '--state-shadow', 'auto')
+            self.assertEqual(code, 0, error)
+            self.assertNotIn('X3M_STATE_SHADOW', json.loads(output)['env'])
+            code, output, error = helper.launch(directory, '--state-shadow', 'on')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_STATE_SHADOW'], '1')
+            code, _, error = helper.launch(directory, '--state-shadow', 'off')
+            self.assertEqual(code, 2)
+            self.assertIn('--state-shadow off requires --motion-output', error)
+            code, output, error = helper.launch(directory, '--motion-output', '--state-shadow', 'off')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_STATE_SHADOW'], '0')
+
 if __name__ == '__main__':
     unittest.main()

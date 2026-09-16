@@ -315,7 +315,8 @@ ALPHABLENDENABLE shadow slot and takes the factors from the composition blend
 shadow when it is maintained (composition requested), otherwise one native
 GetRenderState each, only on a blended exact-pair draw; with the state shadow
 off the ALPHABLENDENABLE read is one more GetRenderState per refused
-cutout-pair draw. Only a wholly inactive configuration
+cutout-pair draw (the production case, since the launcher's `--state-shadow`
+defaults to `auto` and leaves `X3M_STATE_SHADOW` unset). Only a wholly inactive configuration
 (disabled, Unsupported, Retry pending, HDR off, nonzero bias) forwards a
 refused pair as the ordinary native color plus motion fallback with
 trustworthy history retained and no reactive Unavailable. Known alpha-test off, no RGB writes, NEVER alpha/depth

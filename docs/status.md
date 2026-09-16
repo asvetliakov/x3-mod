@@ -13,30 +13,32 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`a9ebfa3b26638fc10aaacae007fccbb26274d64cacbeb291ff57cfe51487401c`
-(16,308,205 bytes), built once on Opus from clean committed main `4adf3dd`
-(2026-09-17; marker `X3M_SOURCE_COMMIT=4adf3dd…`, no `-dirty`). The
-[build record](../verification/results/run31-candidate-build.json) binds the
-clean build (12.79 s, zero warnings), the 481-function no-x87 audit, the exact
+`11c1f119145ee1af821b9224f1438c7b1206745bce9c7a7d312d4e9638640925`
+(16,350,788 bytes), built once on Opus from clean committed main `baee232`
+(2026-09-17; marker `X3M_SOURCE_COMMIT=baee232…`, no `-dirty`). The
+[build record](../verification/results/run32-candidate-build.json) binds the
+clean build (11.97 s, zero warnings), the 489-function no-x87 audit, the exact
 17 exports, the state-hook benchmark on the candidate bytes
-([record](../verification/results/bottle-X3/state-hook-benchmark-run31.json):
-SetRenderState 79.5 ns, SetSamplerState 68.5 ns, SetStreamSource 134.1 ns,
-draw pair 1,092 ns, all within the run30-build baseline or below) and four
-motion-output parity cases; the frame-phase stub CPU fixture passed on the
-same source after its audit constant was updated to the light-envelope
-contract (8,033 checks, 0 failures). The
-[install record](../verification/results/run31-candidate-install.json) binds the
+([record](../verification/results/bottle-X3/state-hook-benchmark-run32.json):
+production SetRenderState 10.9 ns and SetSamplerState 10.8 ns, both
+backend-owned, ten draw-time reads 91.8 ns, draw pair 1,020 ns, all at or
+below run31), seven motion-output parity cases equal to the committed record
+(the production cases in `rs_mode=get`, the cutout case with 66 cache hits)
+and the frame-phase CPU fixture (8,033 checks, 0 failures). The
+[install record](../verification/results/run32-candidate-install.json) binds the
 installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
-run30 DLL `bbadc568…` and manifest are in `/tmp/x3-candidate-yfFAil/rollback`.
-Run 31's session A command passed `--dry-run`; no game launched.
+run31 DLL `a9ebfa3b…` and manifest are in `/tmp/x3-candidate-xh0TEO/rollback`.
+Run 32's session A1 command passed `--dry-run`; no game launched.
 
-This build adds, on top of run30's: the light CPU-state envelope on the draw
-and binding hooks (`e8bac89`), the setter dispatch trim (`4adf3dd`), count-only
-`--frame-timing` with `state_top=` and gap attribution (`dcbe43c`),
-`--frame-phases` engine stamps (`fcbddb2`) and the unknown-program report
-(`36d25a7`). Appearance is unchanged from run30: single `--emission-source-gain`,
-`--bloom-source-clamp`, chase pose fix, hotkeys F5/F6, additive alpha, sun-lane
-cutout admission. Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip
+This build adds, on top of run31's: the hybrid unhook (`6696fe6`: SetRenderState
+and SetSamplerState leave the hook table in production, the material routes
+read their inputs at draw time through a per-draw Get* cache, the mip bias is
+restored after each routed draw; hooks stay under `--frame-timing`,
+`--state-shadow on` or lazy RT mode, and the launcher default is now auto),
+and three count-only `--frame-timing` diagnostics (`c703e70`: draws per
+program pair with the two cutout pairs counted outside the table, redundant
+state sets against the shadow, draw batchability). Appearance is unchanged
+from run30/31. Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip
 bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull shading. No
 shadows applied.
 
@@ -138,6 +140,20 @@ Run 31 came back as `run89` (A) and `run90` (B), both on the installed build:
   ([ledger](verification/directional-shadows.md)).
 - No unknown programs, claim failures, truncated stamps or chase refusals in
   either session.
+
+Merged after run 31 and installed as the run32 candidate: the hybrid unhook
+and the three counters (above), the motion-output runner pins for the record's
+pre-`3df7b9f` defaults (`39d9863`: the fade-oracle and auto-exposure drifts
+were defaults drift, not rendering), and the restored linear-emission
+validators (`8ba98c9`, host suite 1,955 tests green). Fast-path state after
+step 5: the proxy's per-call share of the busy frame is ~1 µs per draw plus
+the hooked texture/constant/binding setters; the remaining cost is the
+engine's per-draw work, which the run 32 counters size for a state-manager
+filter and proxy instancing ([design](architecture/state-call-fast-path.md)).
+
+[Run 32](verification/user-runs.md) is queued (candidate `11c1f119…` from
+`baee232`, installed): A1 counters, A2 felt FPS without `--frame-timing`, B
+station programs.
 
 ## Next user action
 
