@@ -6,6 +6,14 @@ from `i686-w64-mingw32-objdump` on the file bytes and is re-checked by
 `verification/probe/verify_media_cue_site.py` (`PASS`, `source_present: false`).
 Raw decompiler output stayed local and untracked. Inferences are marked.
 
+**Status (2026-09-16).** Implemented as the default-off gate `src/proxy/media_cue.cpp`
+(`--media-cue-trace`, `--media-cue-cache on|off`, `--media-cue-retry-s`):
+two-arm stub on the span of §5, outcome captured by return-address
+substitution rather than a second site, cache scoped as §2 describes, sector
+change by interval only. Qualification, telemetry names and fixture evidence:
+[media-cues.md](../verification/media-cues.md) §6. The verifier now also pins
+that the routine never reads `[esp]` (`no_return_slot_read`).
+
 **Question.** [sector-post-pass.md](sector-post-pass.md) §2 names `0x00498140`
 as the retry engine behind the 380 ms sector stall. Can a trampoline trace it
 and negative-cache the failed graph build without touching speech, and is an

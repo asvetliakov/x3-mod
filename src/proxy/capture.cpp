@@ -9,6 +9,7 @@
 #include "frame_phases.h"
 #include "pass_phases.h"
 #include "loop_phases.h"
+#include "media_cue.h"
 #include "point_light_admission.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
@@ -1206,6 +1207,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
     frame_timing::frame(ctx.frame,ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
     frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per 300-frame window
+    media_cue::frame(ctx.frame); // X3M_MEDIA_CUE_* only: admits this thread, closes the frame's attempt count, drains the trace ring
     // Programs the game compiled that are in none of the proxy's tables
     // (docs/architecture/mod-compatibility.md, "Making unknown programs
     // visible"). One line per distinct unknown, at the first Present after it
@@ -2611,6 +2613,7 @@ void initialize_log(HMODULE module) {
     frame_phases::initialize(); // X3M_FRAME_PHASES=1 only: ten render-routine stamps through the game-phase stub, same window
     pass_phases::initialize(); // X3M_PASS_PHASES=1 only: four effect-pass stamps through the lean stub, needs the frame group, same window
     loop_phases::initialize(); // X3M_LOOP_PHASES=1 only: six per-sector update stamps through the lean stub, needs the frame group, same window
+    media_cue::initialize(); // X3M_MEDIA_CUE_TRACE=1 / X3M_MEDIA_CUE_CACHE=1 only: one gate on the media-record allocator, same window
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
     frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
     lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window

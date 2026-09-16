@@ -18,6 +18,7 @@ def build(objects_only=False):
         ('src/proxy/frame_phases.cpp','frame'),
         ('src/proxy/pass_phases.cpp','pass'),
         ('src/proxy/loop_phases.cpp','loop'),
+        ('src/proxy/media_cue.cpp','media'),
         ('src/proxy/lean_stub.cpp','lean'),
         ('verification/probe/game_phase_cpu_fixture.cpp','fixture'),
         ('src/proxy/engine_patch.cpp','patch'),

@@ -11,6 +11,8 @@
 #include "../../src/proxy/pass_phase_sites.h"
 #include "../../src/proxy/loop_phases.h"
 #include "../../src/proxy/loop_phase_sites.h"
+#include "../../src/proxy/media_cue.h"
+#include "../../src/proxy/media_cue_sites.h"
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
@@ -1078,6 +1080,231 @@ static void loop_benchmark(){
     const double documented=number(loop::detail::dispatch_cost_ns);
     check(dispatch_ns>0&&documented>=dispatch_ns*0.5&&documented<=dispatch_ns*2.0,"documented loop dispatch cost within 2x of the measured cost");
 }
+
+// Media-cue gate (media_cue.cpp): the two-arm gate stub on a synthetic
+// allocator whose first five bytes are the proved span `push ebx;
+// mov ebx,[esp+8]`, called through emitted cdecl callers that reproduce the
+// game's frames: the play helper (`push ecx; push [id]; mov eax,[flags];
+// call; add esp,4; pop ecx; ret`) called by a selector (`push 0x5a; call;
+// add esp,4; ret`) or by another kind, and direct speech/script callers.
+namespace media=x3m::media_cue;
+namespace media_marker=x3m::media_cue::sites;
+extern "C" {
+std::uint32_t media_fixture_id=0,media_fixture_flags=0,media_fixture_result=0;
+std::uint32_t media_body_calls=0,media_body_ebx=0,media_body_arg=0,media_body_flags=0,media_body_ebx_ok=0;
+std::uint32_t media_reenter=0,media_reenter_result=0,media_reenter_depth=0;
+void (*media_reenter_call)()=nullptr;
+__attribute__((force_align_arg_pointer)) void __cdecl media_body_record(std::uint32_t ebx,std::uint32_t argument,std::uint32_t flags){
+    ++media_body_calls;media_body_ebx=ebx;media_body_arg=argument;media_body_flags=flags;
+    media_body_ebx_ok+=ebx==argument; // the replayed `mov ebx,[esp+8]` read the argument at the game's exact ESP
+    if(media_reenter&&media_reenter_call){ // models COM apartment dispatch re-entering the allocator from inside the build
+        media_reenter=0;
+        const std::uint32_t outer_result=media_fixture_result,outer_id=media_fixture_id;
+        media_fixture_result=media_reenter_result;media_fixture_id=outer_id+1;
+        media_reenter_call();
+        media_reenter_depth=media::fixture_pending()->max_depth;
+        media_fixture_result=outer_result;media_fixture_id=outer_id;
+    }
+}
+}
+struct MediaBody { void* body=nullptr;unsigned length=0;void* helper=nullptr;void* selector=nullptr;void* other=nullptr;void* speech=nullptr;void* script=nullptr;media::detail::Addresses addresses{}; };
+static MediaBody make_media_body(){
+    MediaBody r;
+    {
+        patch::Emitter e(64);r.body=e.here();
+        e.byte(0x53);e.byte(0x8b);e.byte(0x5c);e.byte(0x24);e.byte(0x08);        // push ebx; mov ebx,[esp+8]   (the proved span)
+        e.byte(0x50);e.byte(0x51);e.byte(0x52);                                  // push eax; push ecx; push edx
+        e.byte(0x8b);e.byte(0x44);e.byte(0x24);e.byte(0x08);e.byte(0x50);        // mov eax,[esp+8] (the flags word); push eax
+        e.byte(0x8b);e.byte(0x44);e.byte(0x24);e.byte(0x18);e.byte(0x50);        // mov eax,[esp+0x18] (the argument); push eax
+        e.byte(0x53);call(e,reinterpret_cast<void*>(&media_body_record));        // push ebx; call media_body_record(ebx,argument,flags)
+        e.byte(0x83);e.byte(0xc4);e.byte(0x0c);                                  // add esp,12
+        e.byte(0x5a);e.byte(0x59);e.byte(0x58);                                  // pop edx; pop ecx; pop eax
+        e.byte(0xa1);e.dword(std::uint32_t(address(&media_fixture_result)));     // mov eax,[result]: the record or 0
+        e.byte(0x85);e.byte(0xc0);                                               // test eax,eax
+        e.byte(0x5b);e.byte(0xc3);                                               // pop ebx; ret (cdecl)
+        r.length=unsigned(static_cast<unsigned char*>(e.here())-static_cast<unsigned char*>(r.body));
+        if(!e.finish())r.body=nullptr;
+    }
+    patch::Emitter e(128);
+    r.helper=e.here();
+    e.byte(0x51);e.byte(0xff);e.byte(0x35);e.dword(std::uint32_t(address(&media_fixture_id)));  // push ecx; push [id]
+    e.byte(0xa1);e.dword(std::uint32_t(address(&media_fixture_flags)));call(e,r.body);          // mov eax,[flags]; call body
+    r.addresses.helper_return=std::uint32_t(address(e.here()));
+    e.byte(0x83);e.byte(0xc4);e.byte(0x04);e.byte(0x59);e.byte(0xc3);                            // add esp,4; pop ecx; ret
+    r.selector=e.here();
+    e.byte(0x6a);e.byte(0x5a);call(e,r.helper);                                                  // push 0x5a; call helper
+    r.addresses.selector_return=std::uint32_t(address(e.here()));
+    e.byte(0x83);e.byte(0xc4);e.byte(0x04);e.byte(0xc3);                                         // add esp,4; ret
+    r.other=e.here();
+    e.byte(0x6a);e.byte(0x11);call(e,r.helper);e.byte(0x83);e.byte(0xc4);e.byte(0x04);e.byte(0xc3); // another helper caller, kind 0x11
+    r.speech=e.here();
+    e.byte(0xff);e.byte(0x35);e.dword(std::uint32_t(address(&media_fixture_id)));
+    e.byte(0xa1);e.dword(std::uint32_t(address(&media_fixture_flags)));call(e,r.body);
+    r.addresses.speech_return=std::uint32_t(address(e.here()));
+    e.byte(0x83);e.byte(0xc4);e.byte(0x04);e.byte(0xc3);
+    r.script=e.here();
+    e.byte(0xff);e.byte(0x35);e.dword(std::uint32_t(address(&media_fixture_id)));
+    e.byte(0xa1);e.dword(std::uint32_t(address(&media_fixture_flags)));call(e,r.body);
+    r.addresses.script_return=std::uint32_t(address(e.here()));
+    e.byte(0x83);e.byte(0xc4);e.byte(0x04);e.byte(0xc3);
+    r.addresses.selector_kind=media_marker::kSelectorKind;
+    if(!e.finish())r.body=nullptr;
+    return r;
+}
+static bool media_specs(const MediaBody& r,patch::SiteSpec* specs){
+    specs[0]=media_marker::kSites[0];specs[0].address=address(r.body);
+    const bool okay=r.body&&!std::memcmp(r.body,media_marker::kSites[0].expected,media_marker::kSites[0].length);
+    check(okay,"synthetic allocator opens with the proved span bytes");
+    return okay;
+}
+static void media_reset(){media_body_calls=media_body_ebx=media_body_arg=media_body_flags=media_body_ebx_ok=0;}
+static DWORD WINAPI media_foreign_thread(LPVOID caller){reinterpret_cast<void(*)()>(caller)();return 0;}
+static constexpr std::uint32_t media_record=0x40001000,media_id_a=812,media_id_b=245;
+static void media_replay_checks(){
+    MediaBody r=make_media_body();check(r.body!=nullptr,"synthetic allocator and callers emitted");if(!r.body)return;
+    patch::SiteSpec specs[media_marker::Count];if(!media_specs(r,specs))return;
+    unsigned char original[64];std::memcpy(original,r.body,r.length);
+    LARGE_INTEGER f{};QueryPerformanceFrequency(&f);const std::uint64_t retry_ticks=std::uint64_t(f.QuadPart)/10; // 100 ms
+    Snapshot baseline_ok{},baseline_fail{},baseline_speech{},baseline_other{},hooked{},after{};
+    media_fixture_id=media_id_a;media_fixture_flags=0;
+    media_reset();media_fixture_result=media_record;invoke(r.selector,baseline_ok);
+    check(media_body_calls==1&&media_body_ebx_ok==1&&media_body_arg==media_id_a&&media_body_flags==0&&baseline_ok.regs[7]==media_record,"native selector chain reaches the allocator body with ebx == [esp+8] and returns the record");
+    media_reset();media_fixture_result=0;invoke(r.selector,baseline_fail);
+    check(media_body_calls==1&&baseline_fail.regs[7]==0,"native failed build returns 0 through the selector chain");
+    media_reset();invoke(r.speech,baseline_speech);media_reset();invoke(r.other,baseline_other);
+    const char* status=nullptr;
+    const bool media_installed=media::fixture_install(specs,r.addresses,true,true,retry_ticks,&status);
+    check(media_installed,"media gate installed on the synthetic span");
+    if(!media_installed)std::printf("media install status=%s site_status=%s\n",status?status:"null",media::fixture_site_status());
+    check(status&&!std::strcmp(status,"ok"),"media install status ok");
+    check(media::active,"media gate active after install");
+    check(std::memcmp(original,r.body,r.length)!=0,"media span carries the patch jump");
+    const auto* gate=media::fixture_gate();const auto* cache=media::fixture_cache();const auto* pending=media::fixture_pending();
+    media::detail::Entry e{};
+    // Before the frame boundary admits a thread, a call passes unobserved.
+    media_reset();media_fixture_result=media_record;invoke(r.selector,hooked);compare(baseline_ok,hooked);
+    check(media_body_calls==1&&media_body_ebx_ok==1,"PASS arm before admission replays the span at the game's ESP");
+    check(gate->early.load()==1&&pending->depth==0&&pending->max_depth==0&&!media::fixture_pop_trace(&e),"call before admission is early, unobserved and untraced");
+    media::frame(1);
+    // Observed success.
+    media_reset();media_fixture_result=media_record;invoke(r.selector,hooked);compare(baseline_ok,hooked);
+    check(media_body_calls==1&&media_body_ebx_ok==1&&media_body_arg==media_id_a,"PASS arm with return capture replays the span and reaches the body once");
+    check(media::fixture_pop_trace(&e)&&e.outcome==media::detail::observed&&e.result==media_record&&e.id==media_id_a&&e.kind==0x5a&&e.caller==media::detail::selector&&e.scoped&&e.frame==1&&e.attempt==1,"trace entry names the selector, the id, kind 0x5a, the record and the frame");
+    check(pending->depth==0&&pending->max_depth==1&&pending->stale==0&&pending->lost==0&&pending->mismatched==0&&cache->used==0,"return trampoline popped its pending entry; a success is not cached");
+    // Observed failure: cached.
+    media_reset();media_fixture_result=0;invoke(r.selector,hooked);compare(baseline_fail,hooked);
+    check(media_body_calls==1&&media::fixture_pop_trace(&e)&&e.outcome==media::detail::observed&&e.result==0&&e.attempt==2,"observed failed build traced with result 0");
+    check(cache->used==1&&cache->slots[0].used&&cache->slots[0].id==media_id_a&&cache->slots[0].failures==1,"selector failure enters the negative cache");
+    // Refused inside the retry interval: REFUSE arm, EAX 0, the body never runs.
+    media_reset();invoke(r.selector,after);compare(baseline_fail,after);
+    check(media_body_calls==0&&after.regs[7]==0,"REFUSE arm returns 0 to the caller without running the allocator");
+    check(media::fixture_pop_trace(&e)&&e.outcome==media::detail::refused&&e.id==media_id_a&&e.attempt==3,"refusal traced as cached");
+    check(media::fixture_refused()==1&&cache->slots[0].refusals==1&&pending->depth==0,"refusal counted, no pending entry");
+    check(media::fixture_attempts_frame()==3,"per-frame attempt count covers observed and refused calls, not the early one");
+    // Speech, script and another helper kind are never refused, and their failures are not cached.
+    media_reset();invoke(r.speech,after);compare(baseline_speech,after);
+    check(media_body_calls==1&&media::fixture_pop_trace(&e)&&e.caller==media::detail::speech&&!e.scoped&&e.outcome==media::detail::observed&&e.result==0,"speech caller with the cached id proceeds");
+    media_reset();invoke(r.script,after);
+    check(media_body_calls==1&&media::fixture_pop_trace(&e)&&e.caller==media::detail::script&&!e.scoped,"script caller proceeds");
+    media_reset();invoke(r.other,after);compare(baseline_other,after);
+    check(media_body_calls==1&&media::fixture_pop_trace(&e)&&e.caller==media::detail::other&&e.kind==0x11&&!e.scoped,"another helper caller (kind 0x11) proceeds as other");
+    check(cache->used==1&&cache->slots[0].failures==1,"non-selector failures leave the cache unchanged");
+    // Re-entrant call from inside the body (COM dispatch): the inner return pops first.
+    media_fixture_id=media_id_b;media_fixture_result=media_record;media_reenter=1;media_reenter_result=0;media_reenter_call=reinterpret_cast<void(*)()>(r.speech);
+    media_reset();invoke(r.selector,after);compare(baseline_ok,after);
+    check(media_body_calls==2&&media_body_ebx_ok==2&&media_reenter_depth==2,"nested speech call from inside the build reached depth 2 with both spans replayed");
+    check(media::fixture_pop_trace(&e)&&e.caller==media::detail::speech&&e.id==media_id_b+1&&e.result==0,"inner call traced first");
+    check(media::fixture_pop_trace(&e)&&e.caller==media::detail::selector&&e.id==media_id_b&&e.result==media_record,"outer call traced with its own id and result");
+    check(pending->depth==0&&pending->stale==0&&pending->lost==0&&pending->mismatched==0&&cache->used==1&&cache->slots[0].id==media_id_a,"re-entrancy leaves the pending stack empty and the cache untouched");
+    media_reenter_call=nullptr;media_fixture_id=media_id_a;
+    // Retry after the interval, refusal again, then success clears the entry.
+    Sleep(150);media_reset();media_fixture_result=0;invoke(r.selector,after);compare(baseline_fail,after);
+    check(media_body_calls==1&&cache->slots[0].failures==2,"retry after the interval reaches the allocator and refreshes the failure");
+    media_reset();invoke(r.selector,after);check(media_body_calls==0&&media::fixture_refused()==2,"refused again inside the new interval");
+    Sleep(150);media_reset();media_fixture_result=media_record;invoke(r.selector,after);compare(baseline_ok,after);
+    check(media_body_calls==1&&cache->used==0,"success after the interval clears the cache entry");
+    media_reset();media_fixture_result=0;invoke(r.selector,after);
+    check(media_body_calls==1&&cache->used==1,"next call after a success proceeds and re-caches its failure");
+    while(media::fixture_pop_trace(&e)){}
+    // A foreign thread passes unobserved and untraced.
+    media_reset();media_fixture_result=media_record;
+    HANDLE thread=CreateThread(nullptr,0,&media_foreign_thread,r.selector,0,nullptr);
+    check(thread!=nullptr,"media foreign thread started");
+    if(thread){WaitForSingleObject(thread,INFINITE);CloseHandle(thread);}
+    check(media_body_calls==1&&gate->foreign.load()==1&&!media::fixture_pop_trace(&e)&&pending->depth==0,"foreign-thread call proceeds unobserved");
+    media::frame(2);
+    check(media::fixture_attempts_frame()==0,"frame boundary resets the per-frame attempt count");
+    check(media::fixture_uninstall(),"media gate rollback restores the span");
+    check(!std::memcmp(original,r.body,r.length),"media span byte-identical after rollback");
+    check(!media::active,"media gate inactive after rollback");
+    media_reset();media_fixture_result=media_record;invoke(r.selector,after);compare(baseline_ok,after);
+    check(media_body_calls==1,"restored allocator runs natively");
+    // Cache off: failures are traced, never refused.
+    check(media::fixture_install(specs,r.addresses,true,false,retry_ticks,&status),"media gate installed with the cache off");
+    media::frame(1);
+    media_reset();media_fixture_result=0;invoke(r.selector,after);invoke(r.selector,after);invoke(r.selector,after);
+    check(media_body_calls==3&&media::fixture_refused()==0&&cache->used==0,"cache off never refuses");
+    check(media::fixture_uninstall(),"cache-off gate rolled back");
+    // Byte mismatch refuses before any claim.
+    MediaBody c=make_media_body();check(c.body!=nullptr,"second synthetic allocator emitted");if(!c.body)return;
+    patch::SiteSpec corrupt[media_marker::Count];if(!media_specs(c,corrupt))return;
+    unsigned char corrupted[64];std::memcpy(corrupted,c.body,c.length);
+    corrupt[0].expected[1]^=1;
+    check(!media::fixture_install(corrupt,c.addresses,true,true,retry_ticks,&status),"media install refused on a byte mismatch");
+    check(status&&!std::strcmp(status,"preflight_bytes"),"media byte mismatch reported as preflight_bytes");
+    check(!std::memcmp(corrupted,c.body,c.length)&&!media::active,"no media span patched after the preflight refusal");
+    media::fixture_uninstall();
+}
+static void media_late_window_checks(){ // after the frame checks closed the install window
+    MediaBody r=make_media_body();check(r.body!=nullptr,"late-window allocator emitted");if(!r.body)return;
+    patch::SiteSpec specs[media_marker::Count];if(!media_specs(r,specs))return;
+    unsigned char original[64];std::memcpy(original,r.body,r.length);
+    const char* status=nullptr;
+    check(!media::fixture_install(specs,r.addresses,true,true,1,&status),"media install refused after the install window closed");
+    check(status&&!std::strcmp(status,"install_window_closed"),"late media install reported as install_window_closed");
+    check(!std::memcmp(original,r.body,r.length),"no media span touched by the late refusal");
+    media::fixture_uninstall();
+}
+// Per-call cost of the gate: the selector chain unhooked against hooked on
+// the PASS arm (entry handler, return capture) and on the REFUSE arm (entry
+// handler only), best of `trials`.
+static void media_benchmark(){
+    constexpr unsigned loops=20000,trials=7;
+    MediaBody r=make_media_body();check(r.body!=nullptr,"benchmark allocator emitted");if(!r.body)return;
+    LARGE_INTEGER frequency{};
+    check(QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0,"media benchmark QPC frequency");
+    const auto caller=reinterpret_cast<void(*)()>(r.selector);
+    const auto timed=[&](std::uint64_t& best){
+        best=~std::uint64_t(0);
+        for(unsigned t=0;t<trials;++t){
+            LARGE_INTEGER start{},end{};
+            if(!QueryPerformanceCounter(&start))return false;
+            for(unsigned i=0;i<loops;++i)caller();
+            if(!QueryPerformanceCounter(&end)||end.QuadPart<start.QuadPart)return false;
+            const auto ticks=std::uint64_t(end.QuadPart-start.QuadPart);
+            if(ticks<best)best=ticks;
+        }
+        return true;
+    };
+    media_fixture_id=media_id_a;media_fixture_flags=0;media_fixture_result=media_record;
+    std::uint64_t baseline=0,pass=0,refuse=0;
+    check(timed(baseline),"media benchmark baseline timed");
+    patch::SiteSpec specs[media_marker::Count];if(!media_specs(r,specs))return;
+    const char* status=nullptr;
+    check(media::fixture_install(specs,r.addresses,false,true,std::uint64_t(frequency.QuadPart)*3600,&status),"media benchmark gate installed");
+    media::frame(1);
+    media_reset();check(timed(pass),"media benchmark PASS arm timed");
+    check(media_body_calls==loops*trials&&media_body_ebx_ok==loops*trials,"PASS arm benchmark replayed the span every call");
+    media_fixture_result=0;caller(); // one observed failure primes the cache
+    media_reset();check(timed(refuse),"media benchmark REFUSE arm timed");
+    check(media_body_calls==0&&media::fixture_refused()==loops*trials,"REFUSE arm benchmark never reached the allocator");
+    check(media::fixture_uninstall(),"media benchmark gate rolled back");
+    const double ns_per_tick=1e9/number(std::uint64_t(frequency.QuadPart));
+    const double baseline_ns=number(baseline)*ns_per_tick/loops,pass_ns=number(pass)*ns_per_tick/loops,refuse_ns=number(refuse)*ns_per_tick/loops;
+    std::printf("MEDIA CUE BENCH loops=%u trials=%u baseline_ns_per_call=%.1f pass_ns_per_call=%.1f refuse_ns_per_call=%.1f pass_dispatch_ns=%.1f refuse_dispatch_ns=%.1f stub_bytes=300 arena_used=%u arena_capacity=%u\n",
+        loops,trials,baseline_ns,pass_ns,refuse_ns,pass_ns-baseline_ns,refuse_ns-baseline_ns,patch::arena_used(),patch::arena_capacity());
+    check(pass_ns>baseline_ns&&refuse_ns>0,"media dispatch costs measured");
+}
 int main(){
     for(unsigned i=0;i<sizeof fixture_xmm_seed;++i)fixture_xmm_seed[i]=static_cast<unsigned char>(i*37+9);
     patch::Emitter tail(8);void* continuation=tail.here();tail.byte(0xc3);if(!tail.finish())return 2;
@@ -1100,8 +1327,9 @@ int main(){
     targeted_benchmark(continuation,stubs);
     pass_replay_checks();pass_benchmark();
     loop_replay_checks();loop_benchmark();
+    media_replay_checks();media_benchmark();
     frame_replay_checks(); // closes the install window
-    pass_late_window_checks();loop_late_window_checks();
-    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);
+    pass_late_window_checks();loop_late_window_checks();media_late_window_checks();
+    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 media_cases=9 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),unsigned(media_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);
     return failures?1:0;
 }

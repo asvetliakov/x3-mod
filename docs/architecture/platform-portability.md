@@ -76,6 +76,19 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
 
 ## Current gaps
 
+- The media-cue gate (`--media-cue-trace`, `--media-cue-cache`,
+  [media-cues.md](../verification/media-cues.md) §6) is an EXE-side patch on
+  `0x00498140` of the non-relocatable, hash-gated X3AP.exe: the same bytes on
+  native Windows, so the byte-verified claim, the two-arm stub and the
+  return-address capture are platform-independent x86 and need nothing from
+  Wine. Its handlers use documented Win32 only (`QueryPerformanceCounter`,
+  `GetCurrentThreadId`, `Get/SetLastError`) and the patch machinery's
+  `VirtualProtect`/`FlushInstructionCache`. The failing DirectShow build it
+  refuses is a CrossOver symptom (missing decoders); on native Windows the
+  quartz filters decode and the cache would simply never fill. Cross-compiled
+  and fixture-qualified under CrossOver; native execution unverified like the
+  other engine patches.
+
 - The point-light root-admission patch (`--point-light-root-admission`,
   [camera-and-lights.md](../reverse-engineering/camera-and-lights.md)
   "Implementation") is documented Win32 only: `VirtualProtect`,

@@ -63,7 +63,8 @@ LIGHT_NAMESPACE = '__ZN3x3m13loading_trace5light'   # x3m::loading_trace::light:
 # the loop-phase handler (src/proxy/loop_phases.cpp, X3M_LOOP_PHASES=1) behind
 # the same lean stub.
 EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry', '_x3m_pool_fopen', '_x3m_pool_fclose',
-                '_x3m_point_light_root_admits', '_x3m_pass_phase_enter', '_x3m_loop_phase_enter']
+                '_x3m_point_light_root_admits', '_x3m_pass_phase_enter', '_x3m_loop_phase_enter',
+                '_x3m_media_cue_enter', '_x3m_media_cue_return']
 ALLOWED = {'fnsave', 'fninit', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}  # fninit only follows fnsave in CpuState::capture
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')

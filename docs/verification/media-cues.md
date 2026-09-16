@@ -160,6 +160,104 @@ runtime, and the WMA speech path is unchanged. The updated capability table:
 | MPEG-PS | `mpegpsdemux` (**v5**) | `avdec_mpeg2video` (v5) + MPEG audio as above | **decodes** |
 | MPEG-1 video ES | `mpegvideoparse` (CX) | `avdec_mpeg2video` (v5) | **decodes** |
 
+## 6. Gate on the allocator: `--media-cue-trace`, `--media-cue-cache` (2026-09-16)
+
+Implementation of the hook [media-cue-playback.md](../reverse-engineering/media-cue-playback.md)
+§5 qualifies: `src/proxy/media_cue_sites.h` (the one span), `media_cue_core.h`
+(value-only policy), `media_cue.cpp` (gate stub, handlers, install, frame
+boundary). Default off; nothing is installed and the per-frame cost is one
+relaxed load. Cross-compiled for native Windows with documented Win32 only
+(`QueryPerformanceCounter`, `GetCurrentThreadId`, `Get/SetLastError`, the
+engine-patch `VirtualProtect`/`FlushInstructionCache`); native execution is
+unverified like every other EXE-side patch (`docs/architecture/platform-portability.md`).
+
+**Mechanism.** One byte-verified claim on `push ebx; mov ebx,[esp+8]` at
+`0x00498140` carries a two-arm gate stub (300 B, one arena block): flags,
+EAX/ECX/EDX and XMM0-7 saved, handler `x3m_media_cue_enter(EnterFrame*)`
+reads the id at the game's `[esp+4]`, the return address, `[esp+0xc]`,
+`[esp+0x10]` and the EAX flag word, and returns PASS (restore, `jmp [next]`
+into the claim tail that replays the span at the game's exact ESP) or REFUSE
+(restore, `xor eax,eax; ret`: the caller-visible state of a real failed build,
+minus the two lifetime allocation counters of §6 of the RE note). A proceeded
+call's outcome is captured by **return-address substitution**: the handler
+keeps the original return address in a 4-deep pending stack (keyed by the
+stack slot, so nested COM-dispatch re-entry pops innermost first, an unwound
+entry is `stale`, an unmatched return is `lost`) and points `[esp]` at the
+stub's return trampoline, which records EAX (the record or 0) and the clock,
+writes the original address back into a reserved slot and `ret`s with every
+register and the flags intact. No second patched site: the verifier's
+`cdecl_ret`, `esp_writers_known` and the new `no_return_slot_read` (the
+routine never reads `[esp]`) are the contract it rests on. Both handlers run
+under `LightCallBoundary` (MXCSR + LastError), execute no x87 opcode
+(`check_no_x87.py` roots `_x3m_media_cue_enter`, `_x3m_media_cue_return`),
+never log and never allocate. Calls before the first Present or from a thread
+other than the Present thread pass unobserved (`early`/`foreign`). Installed
+only when `object_trace::executable_verified()`; refused outside the install
+window; preflight, ordered claim and reverse rollback through
+`stamp::install_group`.
+
+**Telemetry** (`X3M_MEDIA_CUE_TRACE=1`, launcher `--media-cue-trace`,
+requires `--telemetry`), drained at the Present boundary on the owner thread:
+
+    media_cue_mode trace_requested= cache_requested= trace= cache= enabled= status= retry_s= cache_entries=32 pending_depth=4 ring=64 lines_per_second=32 window=300 owner=present_thread sector_change=interval_only qpc_frequency= return_trampoline=
+    media_cue_site index=0 address=00498140 length=5 rel32=0 patched= status=
+    media_cue frame= qpc= id= kind=<0x5a|0x..|none> caller=<selector|speech|script|savegame|query|other> flags= result=<0x<record>|0|unobserved> us= attempts_frame= cached=<0|1>
+    media_cue_window qpc= frame= frames= attempts= failures= successes= refused= unobserved= attempts_frame_p50= attempts_frame_max= ids=<id:count,... up to 8|none> id_overflow= cache_used= evictions= depth_max= overflow= stale= mismatched= lost= suppressed= dropped= early= foreign=
+
+`media_cue` lines are the first 32 per clock second (`suppressed=` counts the
+rest); `qpc=` is the call's clock, alignable through `clock_anchor`; `us=` is
+the build duration from entry to the captured return. The `media_cue_window`
+line is emitted once per 300 frames whenever the gate is installed (trace or
+cache), so the per-frame attempt count (`attempts_frame_p50`/`_max`) is visible
+with the trace off; it is not added to the `frame_phases` line.
+
+**Cache policy** (`X3M_MEDIA_CUE_CACHE=1`, launcher `--media-cue-cache on`,
+default `off` in this build; `X3M_MEDIA_CUE_RETRY_S`, `--media-cue-retry-s N`,
+default 30, 1..3600). Scope: caller `selector` only, meaning `[esp] ==
+0x004f6615` and `[esp+0xc] == 0x0045c60c` with kind `0x5a` at `[esp+0x10]`;
+speech, script, savegame, query and the other play-helper callers are never
+refused and their failures are never cached. A scoped build that returns 0
+enters a 32-entry table with its clock; a scoped call for that id inside the
+retry interval is REFUSED and counted; the retry is due at the interval
+(exactly `now - failed >= retry`), and a retry that fails restarts the
+interval. A success for the id from any caller clears the entry. A full table
+evicts the oldest failure; a backward clock never refuses. **Sector change is
+the interval alone**: the chase-transition sector pointer is a cockpit field
+read through the engine-memory reader inside the chase hook context, not a
+global reachable from this handler, so there is no sector-change reset.
+
+**Evidence.**
+
+| Check | Result |
+| --- | --- |
+| `cmake --build build` (MinGW i686, `-Wall -Wextra`) | 0 warnings |
+| `python3 verification/probe/check_no_x87.py build/d3d9.dll` | PASS, 494 reachable functions, 0 violations, both handlers rooted |
+| `PYTHONPATH=verification/probe python3 verification/probe/verify_media_cue_site.py` | PASS, `source_present: true`, 19 checks incl. `no_return_slot_read` |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py` | PASS, 8506 checks, 0 failures, 6.8 s; `media_cases=9` |
+| `MEDIA CUE BENCH` (fixture, X3 bottle) | baseline 11.2 ns/call, PASS arm 287.3 (dispatch **276 ns**, entry + return capture), REFUSE arm 126.1 (dispatch **115 ns**) |
+| host probe `verification/probe/media_cue_host.cpp` | 49 checks, 0 failures, no allocation |
+| `python3 -m unittest verification.analysis.test_media_cue ...` (12 modules) | 94 tests OK |
+
+The CPU fixture models the game's frames with emitted cdecl callers (play
+helper `push ecx; push [id]; mov eax,[flags]; call; add esp,4; pop ecx; ret`
+called by a `push 0x5a` selector or a `push 0x11` other, plus direct speech
+and script callers) on a synthetic allocator that opens with the proved five
+bytes and records `ebx == [esp+8]`: PASS-arm GPR/EFLAGS/XMM/x87/MXCSR/
+LastError/ESP parity against the unhooked baseline under hostile CPU state,
+REFUSE arm EAX 0 with the body never run and ESP as a cdecl return leaves it,
+observed success then failure then refusal then retry after 100 ms then
+success clearing the entry, speech/script/other never refused, a nested speech
+call from inside the body (COM dispatch model) at depth 2 with the inner return
+popped first and the cache untouched, a foreign thread passing unobserved,
+rollback to byte-identical code, preflight refusal on a corrupted byte,
+late-window refusal, and a per-frame attempt count reset at the boundary.
+
+**Arena.** The gate needs 324 B (24 B claim + 300 B stub); with every optional
+group on the 16,384-byte production arena would have kept 308 B, below the
+320-byte largest single reservation the model requires, so the arena grew by
+one page to 20,480 (`engine_patch.cpp`; 16,076 modelled with everything on,
+4,404 B headroom; `test_game_phase_sites.py`). The fixture arena stays 32,768.
+
 ## Open issues
 
 * `Videos.pck`/`VideoLists.pck` encoding is unidentified; cue ids and the

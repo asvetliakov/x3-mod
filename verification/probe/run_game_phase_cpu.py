@@ -49,7 +49,7 @@ def run(no_build=False):
     summary = SUMMARY.search(text)
     counts = fields(summary.group(1)) if summary else {}
     failures = [line for line in text.splitlines() if line.startswith('FAIL ')]
-    bench = [line for line in text.splitlines() if line.startswith(('GAME PHASE BENCH', 'GAME PHASE TARGET BENCH', 'PASS PHASE BENCH', 'LOOP PHASE BENCH'))]
+    bench = [line for line in text.splitlines() if line.startswith(('GAME PHASE BENCH', 'GAME PHASE TARGET BENCH', 'PASS PHASE BENCH', 'LOOP PHASE BENCH', 'MEDIA CUE BENCH'))]
     record = {
         'result': 'PASS' if completed.returncode == 0 and counts.get('failures') == '0' else 'FAIL',
         'bottle': bottle.describe(),

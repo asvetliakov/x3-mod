@@ -208,6 +208,9 @@ def main():
     parser.add_argument('--frame-phases', action='store_true', help='Per-frame engine phase stamps: ten byte-verified sites inside the render routine partition the frame into pre_render, prologue, scene_update, begin_scene, views, overlays, text, scene_end and present, plus per-view setup/submit sums; one frame_phases line per 300-frame window and up to four frame_phases_slow witnesses keyed by frame (X3M_FRAME_PHASES=1; requires --telemetry; independent of --game-phases; docs/verification/sampling-profiler.md, "Frame phases")')
     parser.add_argument('--pass-phases', action='store_true', help='Per-draw effect-pass stamps: four byte-verified sites in the D3DX pass loop of the material submission routine split each material draw into pass-apply (BeginPass), the device draw and EndPass, accumulated per frame through a lean stub (no x87 save) and reduced at the frame-phase boundary; one pass_phases line per 300-frame window with passes, apply/draw/end p50/p95, their sum, the same window\'s view_submit and the stamps\' own estimated cost self_p50_us (X3M_PASS_PHASES=1; requires --telemetry and --frame-phases; about 4,000 dispatches per busy frame, budget under 1.5 ms; docs/verification/sampling-profiler.md, "Pass phases")')
     parser.add_argument('--loop-phases', action='store_true', help='Per-sector update stamps: six byte-verified sites inside the main loop\'s per-sector update driver split the input_part=0 stall region into its callees (collide, simulate, post, economy+attach), accumulated per frame over every container the driver visits through the lean stub and reduced at the frame-phase boundary; one loop_phases line per 300-frame window with sectors/containers, the four intervals p50/p95, their sum, the frame\'s pre_render (or the --game-phases input phase), the largest single interval and its owner, plus one loop_phases_slow line for each of the first 64 frames whose sum exceeds 50 ms (X3M_LOOP_PHASES=1; requires --telemetry and --frame-phases; six dispatches per active sector and two per skipped container per frame; docs/verification/sampling-profiler.md, "Loop phases")')
+    parser.add_argument('--media-cue-trace', action='store_true', help='Trace every media-record build: one byte-verified gate on the allocator 0x00498140 records the media id, caller (selector/speech/script/savegame/query/other), constructor flags, result (the record or 0) and build duration of every call, drained at the Present boundary as media_cue lines (first 32 per second) plus one media_cue_window line per 300 frames with attempts/failures/refusals, per-frame attempt p50/max and the top ids (X3M_MEDIA_CUE_TRACE=1; requires --telemetry; docs/verification/media-cues.md, "Gate")')
+    parser.add_argument('--media-cue-cache', choices=('on', 'off'), default='off', help='Negative cache for the sector selector\'s cue restart: a media id whose selector-path build returned 0 is refused (EAX 0, the state a failed build leaves) on the same gate for --media-cue-retry-s seconds instead of rebuilding the DirectShow graph every frame; speech, script, savegame and query callers are never refused (X3M_MEDIA_CUE_CACHE; default off in this build)')
+    parser.add_argument('--media-cue-retry-s', type=int, default=30, metavar='N', help='Seconds before a cached media-cue failure is retried (X3M_MEDIA_CUE_RETRY_S; default 30; 1..3600; requires --media-cue-cache on)')
     parser.add_argument('--audio-sites', action='store_true', help='Load hang witness: add the fourteen byte-verified audio-path markers (media create SetState/Pause returns, message pump entry and drain iterations, the six 0x00498370 manager-update call sites, refill entry, CompletionStatus poll with its HRESULT bucket, Update return, cue play) to the game-phase group (X3M_AUDIO_SITES=1; requires --game-phases); one game_phase_audio line per telemetry window and, with --profile, every 2 s from the sampler thread so the counters stay visible while frames are stopped (docs/architecture/voice-decoder-adapter.md, "Load hang witness build")')
     parser.add_argument('--ownership', action='store_true', help='Enable the experimental normal-D3D9 ownership wrapper')
     parser.add_argument('--depth-copy', action='store_true', help='Enable experimental original-preserving depth copy (requires --ownership)')
@@ -335,6 +338,12 @@ def main():
         parser.error('--frame-timing-state-stamps requires --frame-timing.')
     if not 0 <= args.frame_timing_state_stamps <= 100000:
         parser.error('--frame-timing-state-stamps must be between 0 and 100000.')
+    if args.media_cue_trace and not args.telemetry:
+        parser.error('--media-cue-trace requires --telemetry.')
+    if args.media_cue_retry_s != 30 and args.media_cue_cache != 'on':
+        parser.error('--media-cue-retry-s requires --media-cue-cache on.')
+    if not 1 <= args.media_cue_retry_s <= 3600:
+        parser.error('--media-cue-retry-s must be between 1 and 3600.')
     if args.audio_sites and not args.game_phases:
         parser.error('--audio-sites requires --game-phases.')
     if args.profile_raw and not args.profile:
@@ -573,6 +582,9 @@ def main():
         env['X3M_FRAME_PHASES'] = '1' if args.frame_phases else '0'
         env['X3M_PASS_PHASES'] = '1' if args.pass_phases else '0'
         env['X3M_LOOP_PHASES'] = '1' if args.loop_phases else '0'
+        env['X3M_MEDIA_CUE_TRACE'] = '1' if args.media_cue_trace else '0'
+        env['X3M_MEDIA_CUE_CACHE'] = '1' if args.media_cue_cache == 'on' else '0'
+        env['X3M_MEDIA_CUE_RETRY_S'] = str(args.media_cue_retry_s)
         env['X3M_FRAME_TIMING_STATE_STAMPS'] = str(args.frame_timing_state_stamps if args.frame_timing else 0)
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
         env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'
