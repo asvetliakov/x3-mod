@@ -791,6 +791,11 @@ problem only appears during gameplay. No F8 capture is needed.
 
 ## 23. Material fill at the run-51 station — completed
 
+Completed as `/tmp/x3-bottleX3-run54`. The user reports brighter hulls; fixed-EV0
+threshold evidence supported 0.06 provisionally. The user subsequently chose fill
+**0.03** and Auto EV ceiling **+1.0** as defaults; the defaults are now applied.
+No further preference bracket is requested.
+
 Original active instructions follow verbatim.
 
 This reuses the withdrawn LOD comparison number for the requested fill run.
@@ -833,8 +838,10 @@ default decision; it does not change the default automatically.
 Gate portion completed as `/tmp/x3-bottleX3-run56`; the user confirms a camera
 reset. Jumpdrive was not run because no suitable save is available. The trace
 recreates the cockpit, so the proposed same-lifetime restore would cancel.
-Analysis of a safe cross-recreation identity is in progress. Instructions below
-are retained as provenance; no repeat is currently requested.
+Analysis of a safe cross-recreation identity is in progress. The shared static
+warp path is documented; another jumpdrive attempt is not a prerequisite for
+run25. Instructions below are retained as provenance; no repeat is currently
+requested.
 
 The recorded diagnostic command is:
 
@@ -863,6 +870,14 @@ is implemented only after these observations settle its prerequisite.
 
 
 ## 25. Consolidated diagnostic — completed as run60
+
+Received as `/tmp/x3-bottleX3-run60` (60 referenced files). The user reports that
+the forward crosshair/distance group is aligned, but prefers the screen centre
+default and may revisit forward anchoring after future camera tuning. Centre
+remains the default; forward remains opt-in. The gate transition still reset the
+view; this build records diagnostics and contains no restoration. Gate identity,
+loading intervals and sun-lane evidence are under analysis. No repeat is
+requested at this checkpoint.
 
 One session collects the additional evidence needed for chase restoration and
 loading attribution, while checking forward HUD placement and sun-share
@@ -896,6 +911,63 @@ Analysis: compare script IDs/native lifetimes, destructor ancestry, persistent
 mode and geometry across the gate; validate loading interval completeness and
 report per-thread/combined occupancy and uncovered intervals without assigning
 a causal residual; check sun-lane admitted coverage/refusals and TAA continuity.
+
+## 26. Cheap HDR emitters, chase view restore and replay candidates — completed (run65/run66)
+
+Installed: DLL `5726a37b…` from `f2b7406` (see [status](../status.md)). No linear
+materials: this is the user's preferred original hull look. One session A covers
+everything except the sun-lane buckets; session B is optional.
+
+**Session A** (from the repository root):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --shadow-replay-candidates --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+Please do, in this order, and report what you saw:
+
+1. Load the usual save (the one from run 20/48 if possible, for the loading
+   stall attribution). Note whether loading felt like the 21.7 s stall.
+2. Fire at something and look at engines and bolts: are they clearly brighter
+   and bloomed than before, and does anything look wrong over a bright
+   background (sun, nebula)? Say whether gain 2 is too much, right, or too little.
+3. In rear chase view, fly through a gate. Does the view stay in rear chase on
+   the other side (no reset to the default view)? If it resets, say so; the log
+   tells us why.
+4. Optional second short session with a raised camera instead of a tilted one:
+   add `--chase-pitch-down-deg 0.5 --chase-offset-y 0.50`. Does the centre
+   reticle now sit on where the bolts go, and is the top view still acceptable?
+
+**Session B (optional, linear materials only for the diagnostic):** the sun-lane
+refusal buckets need converted materials; if you have time, run the same
+command plus `--linear-materials --linear-distance-fade --sun-shadow-lane` for
+a minute of ordinary flight near a station and quit. Nothing to look at.
+
+## 27. Corrected restore, engine gain, point-light admission, depth replay — session A completed (run68)
+
+Installed: DLL `215d8fbe…` from `46dc822` (see [status](../status.md)). Original hulls, new defaults (camera 0.5°/0.50, EV ceiling 1.3).
+
+**Session A** (from the repository root):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --taa-mip-bias -0.5 --taa-sharpen 0.75 --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --point-light-root-admission --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+1. Load the usual save. Engines: are they now visibly brighter and bloomed
+   (the gain admitted no draws in run 26; that is fixed)? Bolts as before?
+2. Mip bias -0.5 and sharpen 0.75 are on for the first time on this build:
+   sharper textures at distance, any shimmer or over-sharpening? Say keep/drop.
+3. Rear chase view, fly through a gate: does the view stay in rear chase?
+4. Fly to the station of run 22/51 (docking modules that went black at range)
+   and press F8 once at about 1.2 km facing the modules, once close. With the
+   point-light option on the modules should stay lit at range.
+5. Optional short session A2: same command without `--point-light-root-admission`,
+   same station spot, one F8 at the same distance, for the frame-time and
+   appearance comparison.
+
+**Session B (optional, linear materials, diagnostics only):** the same command
+plus `--linear-materials --linear-distance-fade --sun-shadow-lane`, a minute of
+flight near a station. The sun-lane frames should now report `available=1`.
 
 ## 29. Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane — completed as run83–run85
 
