@@ -244,21 +244,23 @@ struct HookGuard {
     explicit HookGuard(frame_timing::Bucket bucket=frame_timing::Bucket::State,
                        const char* entry=__builtin_FUNCTION()):timing(bucket,entry){}
 };
-// Same serialization without the lock-wait telemetry, for the hot setter hooks
-// of the motion route: telemetry::record's reporting deadline can reach the
-// log formatter, which the LightCallBoundary contract excludes from the path.
+// Same serialization without the lock-wait telemetry (two QPC stamps per
+// call), for the hot setter, binding and draw hooks of the motion route.
 struct PlainHookGuard {
     std::lock_guard<std::recursive_mutex> lock{mutex};
     frame_timing::Scope timing;
     explicit PlainHookGuard(frame_timing::Bucket bucket=frame_timing::Bucket::State,
                             const char* entry=__builtin_FUNCTION()):timing(bucket,entry){}
 };
+// The outer stamps feed CaptureCpu (capture frames only) and the inner pair a
+// backend metric; the draw hooks pass `backend` as their DrawBackend enable so
+// an uncaptured draw with per-draw telemetry off takes no QPC stamp at all.
 struct CallTimer {
     Device& ctx; uint64_t start, backend_start=0, backend_ticks=0;
-    bool captured;
-    explicit CallTimer(Device& value):ctx(value),start(telemetry::now()),captured(value.capture){}
-    void begin(){backend_start=telemetry::now();}
-    void end(){backend_ticks=telemetry::now()-backend_start;}
+    bool captured, stamps;
+    explicit CallTimer(Device& value,bool backend=true):ctx(value),start(value.capture?telemetry::now():0),captured(value.capture),stamps(backend||value.capture){}
+    void begin(){if(stamps)backend_start=telemetry::now();}
+    void end(){if(stamps)backend_ticks=telemetry::now()-backend_start;}
     ~CallTimer(){if(captured)telemetry::record(ctx.stats,telemetry::Metric::CaptureCpu,telemetry::now()-start-backend_ticks);}
 };
 void presentation_parameters(const char* phase,uint64_t device,HWND focus,const D3DPRESENT_PARAMETERS* p){
@@ -445,11 +447,16 @@ template<typename Shader> uint64_t shader_id(Shader* shader, const char* kind) {
     telemetry::record(telemetry::process(),telemetry::Metric::ShaderHash,telemetry::now()-hash_begin,false,bytes);
     if (dumped.insert(hash).second) {
         const auto dump_begin=telemetry::now();
-        wchar_t suffix[80];
-        swprintf(suffix, 80, L"\\%hs_%016llx.bin", kind, static_cast<unsigned long long>(hash));
-        FILE* file = _wfopen((directory + suffix).c_str(), L"wb");
         size_t written=0;bool dump_ok=false;
-        if (file) { written=fwrite(code.data(),1,bytes,file);const int closed=fclose(file);dump_ok=written==bytes&&closed==0; }
+        // Once per distinct program, from the draw hooks' capture path: the
+        // wide formatter is x87 CRT code, so the dump runs under its own
+        // CPU-state envelope (cpu_state.h call_preserved).
+        call_preserved([&]{
+            wchar_t suffix[80];
+            swprintf(suffix, 80, L"\\%hs_%016llx.bin", kind, static_cast<unsigned long long>(hash));
+            FILE* file = _wfopen((directory + suffix).c_str(), L"wb");
+            if (file) { written=fwrite(code.data(),1,bytes,file);const int closed=fclose(file);dump_ok=written==bytes&&closed==0; }
+        });
         telemetry::record(telemetry::process(),telemetry::Metric::ShaderDump,telemetry::now()-dump_begin,!dump_ok,written);
         log("shader kind=%s id=%016llx bytes=%u dumped=%u", kind,
             static_cast<unsigned long long>(hash), bytes, dump_ok);
@@ -572,7 +579,7 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
     IDirect3DSurface9* rt = nullptr;
     for (DWORD i = 0; i < 4; ++i) {
         if (SUCCEEDED(d->GetRenderTarget(i,&rt)) && rt) {
-            char role[8]; snprintf(role,sizeof role,"rt%lu",i);
+            const char role[4]={'r','t',char('0'+i),'\0'}; // no snprintf: the draw hooks are light-envelope code and the CRT formatter is x87
             surface_info(role,rt); rt->Release(); rt = nullptr;
         }
     }
@@ -1246,10 +1253,10 @@ void fixture_observe_wrap(Device& ctx, IDirect3DDevice9* device) {
 }
 #endif
 HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT c) {
-    CpuCallBoundary cpu;
+    LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock(frame_timing::Bucket::Draw);
-    auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    PlainHookGuard lock(frame_timing::Bucket::Draw);
+    auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({false,false,t,c,s,0,0,0}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::Primitive,t,c,s});
@@ -1284,10 +1291,10 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
     return result;
 }
 HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,UINT n,UINT s,UINT c) {
-    CpuCallBoundary cpu;
+    LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock(frame_timing::Bucket::Draw);
-    auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    PlainHookGuard lock(frame_timing::Bucket::Draw);
+    auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,false,t,c,s,b,m,n}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::Indexed,t,c,s,b,m,n});
@@ -1319,10 +1326,10 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     return result;
 }
 HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void* data,UINT stride) {
-    CpuCallBoundary cpu;
+    LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock(frame_timing::Bucket::Draw);
-    auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    PlainHookGuard lock(frame_timing::Bucket::Draw);
+    auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({false,true,t,c,0,0,0,0}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::UserMemory,t,c});
@@ -1343,10 +1350,10 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void*
     return result;
 }
 HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UINT n,UINT c,const void* indices,D3DFORMAT f,const void* data,UINT stride) {
-    CpuCallBoundary cpu;
+    LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock(frame_timing::Bucket::Draw);
-    auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    PlainHookGuard lock(frame_timing::Bucket::Draw);
+    auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,true,t,c,0,0,m,n}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::IndexedUserMemory,t,c,0,0,m,n});
@@ -1733,16 +1740,17 @@ HRESULT WINAPI create_ps(IDirect3DDevice9* d,const DWORD* code,IDirect3DPixelSha
 // success; the route restores exactly these values. Slot indices are verified
 // against the SDK layout in abi_check.cpp.
 //
-// `boundary`/`guard` select the CPU-state contract. The hot setters (shaders,
-// constants, viewport) do only integer/SSE memory work on both sides of the
-// native call, no logging and no telemetry, so LightCallBoundary (MXCSR +
-// last error) with a plain lock preserves the same application-observed state
-// as CpuCallBoundary without four FNSAVE/FRSTOR per call;
-// verification/probe/check_no_x87.py proves the absence of x87 opcodes on
-// every function those hooks reach in the built DLL. Hooks whose shadow calls
-// foreign code or the logger (resource_id private data for stream/indices,
-// GetVertexDeclaration/GetDeclaration for declaration/FVF, state block
-// recording) keep the full boundary.
+// `boundary`/`guard` select the CPU-state contract. Every row is light:
+// LightCallBoundary (MXCSR + last error) with a plain lock preserves the same
+// application-observed state as CpuCallBoundary without four FNSAVE/FRSTOR per
+// call, because verification/probe/check_no_x87.py proves the absence of x87
+// opcodes on every function these hooks reach in the built DLL. The
+// stream/indices/declaration/FVF shadows call D3D accessors after the native
+// call (resource_id private data, GetDeclaration): D3D runtime entry points
+// like the native slot itself, which vanilla calls with no envelope; their
+// LastError/MXCSR effects are undone by the boundary's destructor. Their
+// metadata-failure log() line is self-preserving (see log). The parameters
+// stay so a row can be returned to the full boundary if its path changes.
 #define X3M_SHADOW_HOOK(boundary,guard,name,slot,signature,call,update) \
 HRESULT WINAPI name signature { \
     boundary cpu; \
@@ -1758,11 +1766,11 @@ X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_ps,107,(IDirect3DDevice9* d
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_vs_constant_f,94,(IDirect3DDevice9* d,UINT start,const float* data,UINT count),(d,start,data,count),set_vertex_constants_f(start,data,count))
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_vs_constant_i,96,(IDirect3DDevice9* d,UINT start,const int* data,UINT count),(d,start,data,count),set_vertex_constants_i(start,data,count))
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_ps_constant_f,109,(IDirect3DDevice9* d,UINT start,const float* data,UINT count),(d,start,data,count),set_pixel_constants_f(start,data,count))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_stream_source,100,(IDirect3DDevice9* d,UINT stream,IDirect3DVertexBuffer9* buffer,UINT offset,UINT stride),(d,stream,buffer,offset,stride),set_stream_source(stream,buffer,offset,stride))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_indices,104,(IDirect3DDevice9* d,IDirect3DIndexBuffer9* buffer),(d,buffer),set_indices(buffer))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_stream_source,100,(IDirect3DDevice9* d,UINT stream,IDirect3DVertexBuffer9* buffer,UINT offset,UINT stride),(d,stream,buffer,offset,stride),set_stream_source(stream,buffer,offset,stride))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_indices,104,(IDirect3DDevice9* d,IDirect3DIndexBuffer9* buffer),(d,buffer),set_indices(buffer))
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_viewport,47,(IDirect3DDevice9* d,const D3DVIEWPORT9* viewport),(d,viewport),set_viewport(viewport))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
 #undef X3M_SHADOW_HOOK
 // Render-state shadow (X3M_STATE_SHADOW, default on). Light boundary like the
 // other hot setters: before the native call only the lazy-mode flush of a
@@ -2490,10 +2498,17 @@ void scene_end_signal() {
     frame_timing::Scope timing(frame_timing::Bucket::Scene,"scene_end_signal"); // X3M_FRAME_TIMING only
     for(auto& entry:devices) entry.second->motion_output.scene_end_hook();
 }
+// Self-preserving: the CRT formatter is x87 code (%g/%f, the MinGW pformat),
+// and log() is reachable from the light-envelope hooks (draw capture lines,
+// the stream hooks' metadata-failure line). The save/restore is paid only when
+// a line is written; call_preserved keeps the formatter out of the audited
+// graph (cpu_state.h).
 void log(const char* format,...) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     if(!logfile) return;
-    va_list args; va_start(args,format); vfprintf(logfile,format,args); va_end(args); fputc('\n',logfile);
+    va_list args; va_start(args,format);
+    call_preserved([&]{vfprintf(logfile,format,args);fputc('\n',logfile);});
+    va_end(args);
 }
 HANDLE log_handle() noexcept { return log_os_handle; }
 void hook_direct3d(IDirect3D9* d) {

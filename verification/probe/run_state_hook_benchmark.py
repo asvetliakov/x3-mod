@@ -21,13 +21,21 @@ The proxy runs carry the route switches that install the setter hooks
 (X3M_MOTION_OUTPUT=1 X3M_TAA=1 X3M_MOTION_JITTER=1: the render-state shadow,
 and the mip bias which needs the texture and sampler hooks). Each run's SLOT
 lines record which module owns the hooked vtable entries, so the record proves
-the hooks were live. The DLL under test is the installed candidate, copied
-read-only into the run directory; nothing is rebuilt.
+the hooks were live. The DLL under test is the installed candidate (or the
+DLL named by --dll, e.g. a worktree build), copied read-only into the run
+directory; nothing is rebuilt.
+
+Each device case also ends with the PRESERVE lines of state_hook_benchmark.cpp:
+the binding and draw hooks entered with a seeded live x87 stack, non-default
+control word and MXCSR and a distinct LastError. The proxy cases must leave the
+x87 image and MXCSR unchanged (the LightCallBoundary proof); LastError must be
+unchanged wherever the native backend leaves it unchanged.
 
 Run it under the Wine lock:
   X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py \\
-      python3 verification/probe/run_state_hook_benchmark.py
+      python3 verification/probe/run_state_hook_benchmark.py [--dll build/d3d9.dll]
 """
+import argparse
 import datetime
 import hashlib
 import json
@@ -49,6 +57,8 @@ EXE = BUILD / 'state_hook_benchmark.exe'
 RESULTS = bottle.results_dir(ROOT)
 WINE = Path(bottle.WINE)
 INSTALLED_DLL = bottle.game_dir() / 'd3d9.dll'
+PRESERVE_OPS = ('SetStreamSource', 'SetIndices', 'SetVertexDeclaration', 'SetFVF', 'SetRenderState',
+                'DrawIndexedPrimitive', 'DrawPrimitive')
 
 # Unrelated features pinned off, as the other runners do, so an inherited host
 # environment cannot change what the proxy installs.
@@ -84,7 +94,7 @@ def fields(line):
     return dict(token.split('=', 1) for token in line.split()[1:] if '=' in token)
 
 
-def run_case(entry, log):
+def run_case(entry, log, dll):
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
     directory = BUILD / f'state-hook-benchmark-{entry["name"]}-{stamp}'
     directory.mkdir(parents=True)
@@ -92,7 +102,7 @@ def run_case(entry, log):
     env = dict(os.environ, **BASE_ENV)
     command = [str(WINE)] + bottle.wine_args() + ['--workdir', str(directory)]
     if entry['proxy']:
-        shutil.copy(INSTALLED_DLL, directory / 'd3d9.dll')
+        shutil.copy(dll, directory / 'd3d9.dll')
         env.update(ROUTE_ENV)
         env['X3M_FRAME_TIMING'] = entry['frame_timing']
         command += ['--dll', 'd3d9=n,b']
@@ -105,11 +115,16 @@ def run_case(entry, log):
     (directory / 'stdout.txt').write_text(text)
     assert completed.returncode == 0, f'{entry["name"]}: exit {completed.returncode}\n{text[-2000:]}'
     assert 'status=pass' in text, f'{entry["name"]}: {text[-2000:]}'
-    samples, slots = {}, {}
+    samples, slots, preserve = {}, {}, {}
     for line in text.splitlines():
         if line.startswith('BENCH '):
             f = fields(line)
             samples.setdefault(f['op'], []).append(float(f['ns_per_call']))
+        elif line.startswith('PRESERVE '):
+            f = fields(line)
+            preserve[f['op']] = {k: int(f[k]) for k in ('x87', 'control', 'status', 'tags', 'mxcsr', 'error')}
+            preserve[f['op']].update(result=f['result'], mxcsr_before=f['mxcsr_before'], mxcsr_after=f['mxcsr_after'],
+                                     error_before=int(f['error_before']), error_after=int(f['error_after']))
         elif line.startswith('SLOT '):
             f = fields(line)
             slots[f['name']] = Path(f['module'].replace('\\', '/')).name + (
@@ -119,8 +134,16 @@ def run_case(entry, log):
             'frame_timing': entry['frame_timing'],
             'ns_per_call': {op: round(statistics.median(values), 1) for op, values in samples.items()},
             'samples': {op: [round(v, 1) for v in values] for op, values in samples.items()},
-            'hooked_slots': slots}
+            'hooked_slots': slots,
+            'preserve': preserve}
+    if entry['argv'][0] == 'device':
+        assert set(preserve) == set(PRESERVE_OPS), sorted(preserve)
+        assert all(p['result'] == '00000000' for p in preserve.values()), preserve
     if entry['proxy']:
+        # Fail closed: a light-envelope hook that touched the seeded x87 image
+        # or MXCSR fails the run, whatever the benchmark numbers say.
+        bad = {op: p for op, p in preserve.items() if not (p['x87'] and p['mxcsr'])}
+        assert not bad, f'{entry["name"]}: x87/MXCSR not preserved: {bad}'
         assert slots and all('proxy' in v for k, v in slots.items()
                              if k in ('SetRenderState', 'SetTexture', 'SetSamplerState',
                                       'SetVertexShaderConstantF', 'SetStreamSource')), slots
@@ -169,22 +192,32 @@ def derive(result):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--dll', type=Path, default=INSTALLED_DLL, help='proxy DLL under test (default: the installed candidate)')
+    args = parser.parse_args()
+    dll = args.dll.resolve()
     subprocess.run([str(PROBE / 'build_state_hook_benchmark.sh')], cwd=ROOT, check=True)
     result = {'generated': datetime.datetime.now().isoformat(timespec='seconds'),
               'bottle': bottle.describe(),
               'fixture': {'source': 'verification/probe/state_hook_benchmark.cpp',
                           'exe_sha256': sha(EXE)},
-              'dll': {'path': str(INSTALLED_DLL), 'sha256': sha(INSTALLED_DLL)},
+              'dll': {'path': str(dll), 'sha256': sha(dll), 'installed': dll == INSTALLED_DLL.resolve()},
               'note': ('Three repetitions per configuration inside one process; ns_per_call is the median. '
                        'Equal-share setter mix: run87 frame_timing keeps one counter per bucket, no per-entry breakdown.'),
               'cases': {}}
     out = RESULTS / 'state-hook-benchmark.json'
     with (RESULTS / 'state-hook-benchmark-wine.log').open('w') as log:
         for entry in CASES:
-            result['cases'][entry['name']] = run_case(entry, log)
+            result['cases'][entry['name']] = run_case(entry, log, dll)
             out.write_text(json.dumps(result, indent=2) + '\n')
             print(entry['name'], json.dumps(result['cases'][entry['name']]['ns_per_call']), flush=True)
     derive(result)
+    # LastError transparency: the proxy must match the backend's own behaviour
+    # per operation (the boundary restores the native call's outgoing error).
+    native_preserve = result['cases']['native']['preserve']
+    for name in ('proxy-timing-off', 'proxy-timing-on'):
+        for op, p in result['cases'][name]['preserve'].items():
+            assert p['error'] or not native_preserve[op]['error'], f'{name} {op}: LastError changed by the proxy'
     out.write_text(json.dumps(result, indent=2) + '\n')
     print('wrote', out.relative_to(ROOT))
     print(json.dumps(result['attribution'], indent=2))

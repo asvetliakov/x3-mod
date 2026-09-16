@@ -1,4 +1,5 @@
 #pragma once
+#include "sse_scalar.h"
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -60,7 +61,7 @@ inline bool origin_distance(const float rows[16], bool camera_valid, float m00, 
     if (!std::isfinite(xc) || !std::isfinite(yc) || !std::isfinite(w) || !(w > 0.f)) return false;
     if (!camera_valid || !(m00 > 0.f) || !(m11 > 0.f) || !std::isfinite(m20) || !std::isfinite(m21)) return false;
     const float xv = (xc - w * m20) / m00, yv = (yc - w * m21) / m11;
-    const float d = std::sqrt(xv * xv + yv * yv + w * w);
+    const float d = scalar::sqrt(xv * xv + yv * yv + w * w);
     if (!std::isfinite(d)) return false;
     out = d; return true;
 }
@@ -84,7 +85,7 @@ inline float fraction(float alpha_x, bool fog, float fog_x, float fog_y, float d
 inline unsigned permille(float f) noexcept {
     if (!(f > 0.f)) return 0u;
     if (f >= 1.f) return 1000u;
-    return unsigned(f * 1000.f);
+    return unsigned(int(f * 1000.f)); // f in (0, 1): the signed conversion is one cvttss2si, the unsigned one x87 fistp
 }
 // Admission by threshold (per mille, X3M_FADE_ROUTE): the arm is off for a
 // threshold above 1000; 0 admits every recognised fade-band draw.
