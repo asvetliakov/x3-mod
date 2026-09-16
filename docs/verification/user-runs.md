@@ -50,7 +50,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 30 | Single emission gain, bloom source clamp, frame-time split | 2 | Session A run87 and B run88 received: engines respond, halo accepted at clamp 1.0, no cutout draws yet (B to repeat at an Argon industrial station), frame split: state hooks 8.9 ms of a 28.5 ms busy frame |
 | 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
 | 32 | Hybrid unhook, draw and state counters | 4 | A1 run91 (redundancy 95/99/40 %, batchability 5 %), A2 run92 (busy frame 37.5 to 26.5 ms unhooked), B run93 (cutout pairs draw everywhere, lane admission unobservable; slow sector is `pre_render` 98 % of a 420 ms frame); C queued with `--game-phases` |
-| 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | Drafted; candidate pending |
+| 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | Queued: candidate `03c0c9f4…` from `a3cafd5` installed 2026-09-17 |
 
 ## 32. Hybrid unhook, draw and state counters — open
 
@@ -88,9 +88,9 @@ main loop's sub-phases (input, script VM, deferred callbacks, simulation/AI,
 cockpit), which is what run93's `pre_render` at 98 % of a 420 ms frame could
 not split.
 
-## 33. Pass phases, loop-region split, cutout lane telemetry — drafted
+## 33. Pass phases, loop-region split, cutout lane telemetry — open
 
-Installed: DLL `RUN33HASH` from `RUN33COMMIT` (see [status](../status.md)). This
+Installed: DLL `03c0c9f4…` from `a3cafd5` (see [status](../status.md)). This
 build adds `--pass-phases` (four accumulate-only stamps in the effect pass
 loop: pass apply, draw, pass end, per draw, about 0.36 ms per busy frame),
 the `cutout_opaque_*` lane counters on `linear_material_frame`, and

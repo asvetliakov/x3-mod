@@ -13,34 +13,36 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`11c1f119145ee1af821b9224f1438c7b1206745bce9c7a7d312d4e9638640925`
-(16,350,788 bytes), built once on Opus from clean committed main `baee232`
-(2026-09-17; marker `X3M_SOURCE_COMMIT=baee232…`, no `-dirty`). The
-[build record](../verification/results/run32-candidate-build.json) binds the
-clean build (11.97 s, zero warnings), the 489-function no-x87 audit, the exact
-17 exports, the state-hook benchmark on the candidate bytes
-([record](../verification/results/bottle-X3/state-hook-benchmark-run32.json):
-production SetRenderState 10.9 ns and SetSamplerState 10.8 ns, both
-backend-owned, ten draw-time reads 91.8 ns, draw pair 1,020 ns, all at or
-below run31), seven motion-output parity cases equal to the committed record
-(the production cases in `rs_mode=get`, the cutout case with 66 cache hits)
-and the frame-phase CPU fixture (8,033 checks, 0 failures). The
-[install record](../verification/results/run32-candidate-install.json) binds the
+`03c0c9f4b69ceaa1241b8513a6a013a61884e818f9eddbdb681acef9dd6ef171`
+(16,579,851 bytes), built once on Opus from clean committed main `a3cafd5`
+(2026-09-17; marker `X3M_SOURCE_COMMIT=a3cafd5…`, no `-dirty`). The
+[build record](../verification/results/run33-candidate-build.json) binds the
+clean build (14 s, zero warnings), the 492-function no-x87 audit with both
+stamp handlers as roots, the 17 exports, the three site verifiers against
+the EXE, the stamp CPU fixture (8,274 checks, 0 failures, fixture sha
+recorded; pass stamps 89.1 ns and loop stamps 90.9 ns per dispatch), the
+state-hook benchmark on the candidate bytes
+([record](../verification/results/bottle-X3/state-hook-benchmark-run33.json):
+production SetRenderState 14.0 ns vs native 13.0, SetSamplerState 10.8 vs
+11.0, draw pair 1,014 ns), six motion-output parity cases and the lane
+fixture with the new cutout counters (16 cases). The
+[install record](../verification/results/run33-candidate-install.json) binds the
 installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
-run31 DLL `a9ebfa3b…` and manifest are in `/tmp/x3-candidate-xh0TEO/rollback`.
-Run 32's session A1 command passed `--dry-run`; no game launched.
+run32 DLL `11c1f119…` and manifest are in `/tmp/x3-candidate-LN7X0v/rollback`.
+Run 33's three session commands passed `--dry-run`; no game launched.
 
-This build adds, on top of run31's: the hybrid unhook (`6696fe6`: SetRenderState
-and SetSamplerState leave the hook table in production, the material routes
-read their inputs at draw time through a per-draw Get* cache, the mip bias is
-restored after each routed draw; hooks stay under `--frame-timing`,
-`--state-shadow on` or lazy RT mode, and the launcher default is now auto),
-and three count-only `--frame-timing` diagnostics (`c703e70`: draws per
-program pair with the two cutout pairs counted outside the table, redundant
-state sets against the shadow, draw batchability). Appearance is unchanged
-from run30/31. Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip
-bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull shading. No
-shadows applied.
+This build adds, on top of run32's: `--pass-phases` (four lean-stub stamps in
+the effect pass loop `0x004c0150`, about 0.36 ms per busy frame,
+[note](reverse-engineering/effect-pass-loop.md)), `--loop-phases` (six
+lean-stub stamps in the per-sector update driver `0x0043a360` with slow-frame
+lines, [note](reverse-engineering/main-loop-input-region.md)), the shared
+lean stub (`lean_stub.cpp`, `stamp_core.h`, `stamp_install.h`), the
+`cutout_opaque_*` lane counters, and the game-phases invalidate fix. Both
+stamp groups are off unless requested; appearance and production hooks are
+unchanged from run32 (SetRenderState/SetSamplerState unhooked, launcher
+`--state-shadow auto`). Defaults unchanged: camera 0.5°/0.50, EV ceiling
++1.3, mip bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull
+shading. No shadows applied.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
@@ -178,8 +180,11 @@ Run 32 came back as `run91` (A1), `run92` (A2), `run93` (B) and `run94` (C):
   region is being decompiled for stamp sites and a candidate owner
   ([ledger](verification/sampling-profiler.md), run94 section).
 
-Run 32 is complete; run 33 (pass phases, loop-region split, cutout telemetry)
-follows the in-flight work.
+Run 32 is complete. [Run 33](verification/user-runs.md) is queued (candidate
+`03c0c9f4…` from `a3cafd5`, installed): A the busy view with `--pass-phases`
+(unhooked proxy, engine per-draw split), B the slow sector with
+`--game-phases --loop-phases` (which per-sector routine owns the stall), C the
+busy view under the lane with the cutout counters.
 
 ## Next user action
 
