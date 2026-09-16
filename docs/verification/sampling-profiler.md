@@ -1193,3 +1193,43 @@ or chase refusals anywhere in the log. `lock_wait` (616 hits) is an unrelated
 unmatched=3` appears twice: frame=326 (mid-session, isolated) and frame=12005
 (`frames=0`, the window that closed at quit) — consistent with session
 termination during the stall, not a claim failure.
+
+### Run 33 session A (run95), 2026-09-17
+
+Preserved `/tmp/x3-bottleX3-run95/session-20260916-214129-216.log`. Identity:
+`proxy_identity sha256=03c0c9f4b69ceaa...` `source_commit=a3cafd515...`,
+matching `docs/status.md` "Installed build". `proxy_options` carries
+`X3M_FRAME_TIMING=0` (line 3), so `state_hooks device=1 installed=0
+reason=none state_shadow=0 rs_mode=get` (line 127): the proxy runs unhooked,
+production configuration. `frame_phase_mode requested=1 enabled=1 status=ok
+sites=10` and `pass_phase_mode requested=1 enabled=1 status=ok sites=4
+dispatch_cost_ns=91` (lines 11, 22).
+
+Busy window frames 6300-7800 (six 300-frame samples, `view_submit_p50_us`
+19.4-20.6 ms, the held view) vs. empty window frames 8100-9900 (quit,
+`view_submit_p50_us` 1.3-1.7 ms):
+
+| Window | dt p50/p95 | views p50 | view_submit p50 | passes_p50 | apply p50/p95 | draw p50/p95 | end p50/p95 | sum p50 | self p50 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| busy (avg of 6) | 26.9/29.2 ms | 23,072 us | 20,115 us | 981 | 6,537/6,920 us | 8,581/8,974 us | 111/120 us | 15,238 us | 357 us |
+| empty (avg of 7) | 7.1/13.5 ms | 3,212 us | 1,475 us | 42 | 292/343 us | 370/429 us | 5/6 us | 667 us | 14 us |
+
+Decisive split of busy `view_submit_p50=20,115 us`: apply (BeginPass) 6,537 us
+(32.5%), draw (`DrawIndexedPrimitive`) 8,581 us (42.7%), end (`EndPass`) 111 us
+(0.6%), remainder = view_submit − sum − self = 20,115 − 15,238 − 357 = 4,520 us
+(22.5%, the engine's per-object work between passes: matrix/constant setup,
+object iteration, not captured by any pass stamp). Per pass: apply 6.66
+us/pass, draw 8.75 us/pass, end 0.11 us/pass (981 passes/frame) — draw, not
+apply, dominates per-draw cost here; the earlier "apply loop dominates"
+estimate (`docs/reverse-engineering/effect-pass-loop.md`) is not borne out at
+this pass count.
+
+Sanity: `sum_p50` (15,238) vs `apply+draw+end` (15,229) agree to 0.06%.
+`self_p50` (357 us) = `passes_p50 × 4 sites × dispatch_cost_ns` = 981 × 4 ×
+91 ns = 357,084 ns, exact. `orphans/unmatched/early/foreign/clock_errors/
+clock_failures` are 0 across all 44 `pass_phases` lines; `dropped=1` total
+(frame=300, startup transient). `frame_phases incomplete=4` total (startup/
+shutdown transient), `order_errors/unmatched/dropped/early/foreign=0`. Busy
+`passes_p50` 929-1,010 (avg 981) matches run91's ~1,006 draws (hooked) in
+magnitude. No `claim_fail`, `arena_full`, `truncated`, `shader_unknown`,
+`chase_refus*`, `motion_state_lost`; `mip_bias_failures=0` (223 lines).
