@@ -1303,6 +1303,121 @@ def run_original_fill(args):
         print(json.dumps({k:v for k,v in result.items() if k in ('passed','runs','error')}))
 
 
+ORIGINAL_SUN_SHARE_FILLS = (0.0, 0.05)
+
+
+def original_sun_share_cases():
+    """Per reviewed pixel program (108): the lit calibration face (vertex M=1,
+    so 0 < s < 1), the same face with the sun constant zeroed (s = 0) and the
+    sun-only face (M=0, s > 0). Fixture-case inputs otherwise as the
+    original-fill slice, with the normal turned towards the light."""
+    selected = {}
+    for case in fixture_cases():
+        pixel = PAIRS[case['pair']][1]
+        if case['depth'] == 1 and case['fp16'] == 1 and pixel not in selected:
+            selected[pixel] = case
+    assert len(selected) == 108
+    result = []
+    for case in selected.values():
+        seed = copy.deepcopy(case)
+        fixed = PAIRS[seed['pair']][0] in FIXED_VERTICES
+        seed.update(lights=1 if fixed else 0, reverse=0, affine=0, valid=1, fp16=1, depth=1, flags=0,
+                    gains=[1., 1., 1.], diffuse=[.5, .25, .75, .75], lightmap=[0., 0., 0., .25],
+                    cube=[0., 0., 0., 1.], mask=0., material=[0., 0., 0.], point=[0., 0., 0.],
+                    dir0=[.375, .25, .5], dir1=[0., 0., 0.], normal=[0., 0., 1.], glow=0.,
+                    normal_sample=[.5, .5, 1., .5], binormal=[0., 1., 0.], tangent=[1., 0., 0.], camera=[0., 0., -4.])
+        def add(label, **changes):
+            c = copy.deepcopy(seed)
+            c.update(changes, id=len(result), label='original_sun_share_' + label)
+            result.append(c)
+        add('calibration', material=[1., 1., 1.])
+        add('zero_sun', material=[1., 1., 1.], dir0=[0., 0., 0.])
+        add('sun_only')
+    return result
+
+
+def validate_original_sun_share_report(text, cases, fill):
+    """Colour/alpha/motion/depth identical to the control on every pixel; the
+    share against the zero-sun draw within one FP16 code; zero-sun faces
+    exactly 0; calibration faces strictly below 1 and positive."""
+    lines = text.splitlines()
+    assert lines and lines[-1] == f'RESULT PASS cases={len(cases)}'
+    assert not any('FAIL' in line for line in lines)
+    rows = {int(row['id']): row for row in
+            (dict(re.findall(r'(\w+)=(\S+)', line)) for line in lines if line.startswith('OSHARE '))}
+    assert set(rows) == {c['id'] for c in cases}
+    summaries = [dict(re.findall(r'(\w+)=(\S+)', line)) for line in lines if line.startswith('OSHARE_PASS ')]
+    f32 = lambda x: struct.unpack('<f', struct.pack('<f', x))[0]
+    assert len(summaries) == 1 and int(summaries[0]['cases']) == len(cases) and f32(float(summaries[0]['fill'])) == f32(fill)
+    max_codes = 0.; max_share = 0.; invalid = 0; positive_pixels = 0; zero_pixels = 0
+    for c in cases:
+        row = rows[c['id']]
+        pixels = int(row['pixels'])
+        assert int(row['pair']) == c['pair'] and pixels == 256
+        assert (row['color_bad'], row['motion_bad'], row['depth_bad']) == ('0', '0', '0'), (c['id'], c['label'])
+        assert int(row['invalid']) == 0, (c['id'], c['label'], 'invalid share sentinel on a drawn pixel')
+        codes = float(row['max_codes']); assert math.isfinite(codes) and codes <= 1., (c['id'], c['label'], codes)
+        max_codes = max(max_codes, codes); max_share = max(max_share, float(row['max_share']))
+        positive, zero, below_one = (int(row[k]) for k in ('positive', 'zero', 'below_one'))
+        assert positive + zero == pixels
+        if c['label'].endswith('zero_sun'):
+            assert positive == 0 and zero == pixels, (c['id'], 'zero-sun face must read s = 0')
+        elif c['label'].endswith('calibration'):
+            assert below_one == pixels and positive == pixels, (c['id'], 'emissive face must read 0 < s < 1')
+        else:
+            assert positive == pixels, (c['id'], 'sun-only face must read s > 0')
+        positive_pixels += positive; zero_pixels += zero; invalid += int(row['invalid'])
+    creates = re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$', text, re.M)
+    share = sorted(key for stage, key, *_ in creates if stage == 'ps' and '_8_' in key and '_oshare_' in key)
+    assert len(share) == len(set(share)) == 108, 'one share PS per reviewed pixel program'
+    instructions = {key: int(count) for stage, key, count, *_ in creates if stage == 'ps' and '_oshare_' in key}
+    allowed = ('CAPS ', 'CREATE ', 'OSHARE ', 'OSHARE_PASS ', 'RESULT PASS ')
+    assert all(line.startswith(allowed) for line in lines), 'unexpected original-sun-share output row'
+    return dict(cases=len(cases), programs=108, pixels_per_case=256, invalid_pixels=invalid, positive_pixels=positive_pixels, zero_pixels=zero_pixels,
+                fp16_code_tolerance=1, max_fp16_code_error=max_codes, max_share=max_share,
+                colour_alpha_motion_depth='byte-identical to the control on every pixel (FP16 and RGBA32F)',
+                max_share_ps_instructions=max(instructions.values()), share_ps=len(share))
+
+
+def run_original_sun_share(args):
+    cases = original_sun_share_cases()
+    args.raw_dir.mkdir(parents=True, exist_ok=True)
+    case_file = args.raw_dir / 'share-cases.bin'
+    case_file.write_bytes(binary_cases(cases))
+    result_path = bottle.results_dir(ROOT) / 'original-sun-share-gpu.json'
+    inputs = original_provenance(cases, args.programs)
+    result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
+                  render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','G32R32F']),
+                  scope=('--original-sun-share (legacy-sun-application.md 3.2): 108 reviewed original PS x 3 faces (lit calibration M=1, zero sun, sun only) x K %s; '
+                         'the share variant against the motion PS (K=0) or the fill PS (K>0): colour/alpha/motion/depth byte-identical, oC2.g against a zero-sun control '
+                         'draw within one FP16 code of Y(C). Detached; no live route, lane or native Windows proof.') % (ORIGINAL_SUN_SHARE_FILLS,),
+                  timing_scope='No benchmark in the bounded original-sun-share correctness slice.',
+                  fills=list(ORIGINAL_SUN_SHARE_FILLS), original_sha256=inputs, executable_sha256=sha(args.exe),
+                  code_sha256={name:sha(ROOT/name) for name in CODE_INPUTS}, runs={})
+    wine=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
+    try:
+        for fill in ORIGINAL_SUN_SHARE_FILLS:
+            report = args.raw_dir / ('share-report-%g.txt' % fill)
+            command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(args.exe),'Z:'+str(args.programs),'Z:'+str(case_file),'--original-sun-share',repr(fill)]
+            with report.open('w') as out,(args.raw_dir/('share-wine-%g.log' % fill)).open('w') as err:
+                process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1800)
+            assert process.returncode==0, 'fixture failed; see '+str(report)
+            result['runs'][repr(fill)] = dict(raw_report=str(report), exit_code=process.returncode,
+                                              **validate_original_sun_share_report(report.read_text(), cases, fill))
+        assert sha(args.exe)==result['executable_sha256'], 'executable changed'
+        assert result['code_sha256']=={name:sha(ROOT/name) for name in CODE_INPUTS}, 'fixture/core/reference changed during run'
+        assert all(sha(args.programs/name)==value for name,value in inputs.items()), 'original changed'
+        result['passed']=True
+    except BaseException as error:
+        result['error']=repr(error)
+        raise
+    finally:
+        destination=result_path if result['passed'] else args.raw_dir/'share-failed-result.json'
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        destination.write_text(json.dumps(result,indent=2)+'\n')
+        print(json.dumps({k:v for k,v in result.items() if k in ('passed','runs','error')}))
+
+
 def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--exe', type=Path, required=True, help='Previously built fixture EXE; this runner never builds')
@@ -1314,6 +1429,7 @@ def parse_arguments(argv=None):
     selection.add_argument('--sun-share', action='store_true', help='108 generated sun-share PS, normal and zero-sun cases; positive pixel evidence and exact color/alpha/motion/depth twins')
     selection.add_argument('--fill', action='store_true', help='Run the bounded K=0.06 sun-averted fill oracle slice')
     selection.add_argument('--original-fill', action='store_true', help='Run the original-shading fill (option C) slice at K 0.03 and 0.05: calibration/black/0.10/0.40 faces per fill pair, K=0 bit-exact')
+    selection.add_argument('--original-sun-share', action='store_true', help='Run the original-shading share producer slice: 108 PS x lit/zero-sun/sun-only faces at K 0 and 0.05; colour twins and oC2.g against a zero-sun draw')
     return parser.parse_args(argv)
 
 
@@ -1323,6 +1439,8 @@ def main():
     assert not game_running(), 'game running; fixture refused'
     if args.original_fill:
         return run_original_fill(args)
+    if args.original_sun_share:
+        return run_original_sun_share(args)
     cases = sun_share_cases() if args.sun_share else alpha_cutout_cases() if args.alpha_test_cutout else fill_cases() if args.fill else fixture_cases()
     if args.glass_only: cases = [c for c in cases if c['pair'] >= glass_fixture.START]
     args.raw_dir.mkdir(parents=True, exist_ok=True)

@@ -29,7 +29,12 @@ bool sun_read(Word source, unsigned consumed, const SunState& state) noexcept {
         (state[index(source)]&(1u<<((sw>>(2*c))&3)))) return true;
     return false;
 }
-void sun_reduction(Words& out) {
+// slack (an optional constant lane, zero token = none) admits S <= L up to
+// slack*L per component: the original-shading producer evaluates its parallel
+// chain in full precision beside the original's _pp MAD chain and the two
+// differ by one ulp on pure-sun pixels (GPU witness in the directional-shadows
+// ledger). The converted producer passes none and stays byte-identical.
+void sun_reduction(Words& out, Word slack=0) {
     // ps_3_0 has one distinct c# read port per instruction. Stage zero in
     // an otherwise unused lane before CMP also reads c221.
     emit(out,mov,{dst(temp,17,8),lane(constant,212,1)});
@@ -43,6 +48,7 @@ void sun_reduction(Words& out) {
     // the failure arm; subtraction catches infinities too. Never sanitize S/L.
     emit(out,cmp,{dst(temp,16),src(temp,23),zero,negative_epsilon});
     emit(out,add,{dst(temp,17),src(temp,11),src(temp,23,identity,1)});
+    if (slack) emit(out,mad,{dst(temp,17),src(temp,11),slack,src(temp,17)});
     emit(out,cmp,{dst(temp,17),src(temp,17),src(temp,16),negative_epsilon});
     emit(out,add,{dst(temp,16),lane(constant,212,2),src(temp,11,identity,1)});
     emit(out,cmp,{dst(temp,16),src(temp,16),src(temp,17),negative_epsilon});

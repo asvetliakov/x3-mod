@@ -138,6 +138,22 @@ LinearMaterialResult linear_material_pixel_variant_sun_share(const std::uint32_t
 LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
     bool& fill_applied) noexcept;
+// Original-shading share producer (docs/architecture/legacy-sun-application.md
+// 1): the fill variant above (K = fill, K = 0 is the plain motion variant)
+// plus the sun's code-value contribution S_c propagated on the original
+// operands (seed MULs before each sun MAD, one parallel op per sun-dependent
+// RGB op, the fill twin fill(sum) - fill(sum - S_sum) when K > 0), the final
+// RGB instruction redirected through r11 keeping its _pp, and the converted
+// producer's reduction s = Y(S_c)/Y(C) (c221 luma weights, 2^-20 epsilon,
+// -1 for an invalid domain) written to oC2.g after the motion/depth writes.
+// Colour, alpha, motion and depth are the fill/motion variant's. A program
+// without the contract's structure keeps the fill/motion variant byte for
+// byte and reports share_applied = false; vertex and unreviewed programs are
+// UnsupportedShader. Pure, allocation-bounded, no D3D; input may alias output;
+// failure leaves output intact. Depth-off generation establishes no oC2.r.
+LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t* original,
+    std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
+    bool& share_applied) noexcept;
 // Four XT DEFAULT programs require an explicitly authored producer repair.
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.

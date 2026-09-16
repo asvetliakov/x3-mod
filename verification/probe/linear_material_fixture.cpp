@@ -295,8 +295,8 @@ struct Shaders {
     char buffer[128];
     if (mode >= 5) {
       if (!pixel) return key(c, 1, false);
-      std::snprintf(buffer, sizeof buffer, "%s_%u_%u_ofill_%.9g", id, mode, c.depth,
-                    mode == 5 ? original_fill : 0.0f);
+      std::snprintf(buffer, sizeof buffer, mode == 8 ? "%s_%u_%u_oshare_%.9g" : mode == 9 ? "%s_%u_%u_odark_%.9g" : "%s_%u_%u_ofill_%.9g", id, mode, c.depth,
+                    mode == 5 || mode == 8 || mode == 9 ? original_fill : 0.0f);
       return buffer;
     }
     std::snprintf(buffer, sizeof buffer, "%s_%u_%u_%.9g_%.9g_%.9g", id, mode,
@@ -336,7 +336,35 @@ struct Shaders {
       require(material_motion_pixel_variant(original.data(), original.size(), motion, c.depth) ==
               MaterialMotionResult::Applied, "original fill motion control");
       if (mode == 7) output = motion;
-      else {
+      else if (mode == 8) {
+        // Original share producer (legacy-sun-application.md 1): the fill
+        // variant with K = original_fill (K = 0: the motion PS) plus oC2.g.
+        bool applied = false;
+        require(linear_material_original_sun_share_pixel_variant(original.data(), original.size(), original_fill,
+                  output, c.depth, applied) == LinearMaterialResult::Applied && applied, "original sun share transform");
+      } else if (mode == 9) {
+        // Fixture-only zero-sun control at K > 0: the fill PS with its fill
+        // tint staging `mov r13.xyz, c<LightDir_Color0>` redirected to c200,
+        // which the share fixture uploads with the sun colour while zeroing the
+        // game constant. Zeroing the constant alone would also remove the fill
+        // term, whereas the law's f = 0 endpoint is fill(sum - S_sum).
+        bool applied = false;
+        require(original_fill > 0.0f, "dark control needs K > 0");
+        require(linear_material_original_fill_pixel_variant(original.data(), original.size(), original_fill,
+                  output, c.depth, applied) == LinearMaterialResult::Applied && applied, "dark control fill transform");
+        unsigned staged = 0;
+        for (std::size_t at = 1; at + 2 < output.size();) {
+          const DWORD token = output[at], op = token & 0xffffu;
+          const unsigned count = op == 0xfffeu ? (token >> 16) & 0x7fffu : (token >> 24) & 15u;
+          if (token == 0xffffu) break;
+          if (op == 1 && count == 2 && output[at + 1] == 0x80070000u + 13u && (output[at + 2] & 0xf0fff800u) == 0xa0e40000u &&
+              (output[at + 2] & 0x7ffu) < 24u) {
+            output[at + 2] = (output[at + 2] & ~0x7ffu) | 200u; ++staged;
+          }
+          at += count + 1;
+        }
+        require(staged == 1, "exactly one fill tint staging MOV in the fill PS");
+      } else {
         bool applied = false;
         require(linear_material_original_fill_pixel_variant(original.data(), original.size(),
                   mode == 5 ? original_fill : 0.0f, output, c.depth, applied) == LinearMaterialResult::Applied,
@@ -1096,6 +1124,69 @@ struct Gpu {
 #include "linear_alpha_test_fixture_inc.h"
 #include "sun_share_material_inc.h"
 
+// --original-sun-share K (legacy-sun-application.md 3.2): the share variant
+// (mode 8) against its control (mode 7 at K=0, the fill PS at K>0): colour,
+// alpha and motion byte-identical on FP16 and RGBA32F targets, depth bits
+// identical in the G32R32F lane target, and oC2.g against a second control
+// draw with the sun constant zeroed (at K > 0 the fill tint stays through
+// c200, mode 9): |s*Y(C) - (Y(C) - Y(C_nosun))| within one FP16 code of Y(C),
+// on the RGBA32F colour. Detached; no live route claim.
+void original_sun_share_fixture(IDirect3DDevice9* d, Shaders& shaders, const std::vector<Case>& cases, float fill) {
+  Gpu gpu(d, shaders, 16);
+  gpu.current.p->Release(); gpu.current.p = nullptr;
+  api(d->CreateRenderTarget(16, 16, D3DFMT_G32R32F, D3DMULTISAMPLE_NONE, 0, FALSE, &gpu.current.p, nullptr));
+  const unsigned control_mode = fill > 0.0f ? 5u : 7u, dark_mode = fill > 0.0f ? 9u : 7u;
+  struct Readback { std::vector<Pixel> color, motion, lane; };
+  auto pass = [&](const Case& which, unsigned mode, const float* sun = nullptr) {
+    gpu.state(which, mode);
+    if (sun) api(d->SetPixelShaderConstantF(200, sun, 1)); // mode 9's fill tint
+    api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+    gpu.draw(which);
+    Readback r;
+    r.color = gpu.read(gpu.color[which.fp16].p, which.fp16 ? D3DFMT_A16B16G16R16F : D3DFMT_A32B32G32R32F);
+    r.motion = gpu.read(gpu.motion.p, D3DFMT_A32B32G32R32F);
+    r.lane = gpu.read(gpu.current.p, D3DFMT_G32R32F);
+    return r;
+  };
+  unsigned run = 0, total_invalid = 0, total_zero = 0, total_positive = 0; double max_codes = 0;
+  const double weights[] = {.2126, .7152, .0722};
+  for (const auto& c : cases) {
+    require(c.pair < std::size(pair_v) && c.depth == 1, "share cases require depth");
+    Case c16 = c; c16.fp16 = 1; Case c32 = c; c32.fp16 = 0;
+    const auto base16 = pass(c16, control_mode), share16 = pass(c16, 8);
+    const auto base32 = pass(c32, control_mode), share32 = pass(c32, 8);
+    Case dark = c32; std::fill(dark.f + 22, dark.f + 25, 0.f);
+    const float sun[4] = {c.f[22], c.f[23], c.f[24], 0.f};
+    const auto dark32 = pass(dark, dark_mode, dark_mode == 9 ? sun : nullptr);
+    unsigned color_bad = 0, motion_bad = 0, depth_bad = 0, invalid = 0, zero = 0, positive = 0, below_one = 0;
+    double codes = 0, max_share = 0;
+    const unsigned pixels = gpu.width * gpu.width;
+    for (unsigned i = 0; i < pixels; ++i) {
+      color_bad += std::memcmp(&base16.color[i], &share16.color[i], 16) != 0 || std::memcmp(&base32.color[i], &share32.color[i], 16) != 0;
+      motion_bad += std::memcmp(&base16.motion[i], &share16.motion[i], 16) != 0 || std::memcmp(&base32.motion[i], &share32.motion[i], 16) != 0;
+      depth_bad += std::memcmp(&base16.lane[i].f[0], &share16.lane[i].f[0], 4) != 0 || std::memcmp(&base32.lane[i].f[0], &share32.lane[i].f[0], 4) != 0;
+      const float s = share32.lane[i].f[1];
+      require(std::memcmp(&s, &share16.lane[i].f[1], 4) == 0, "share is independent of the colour target format");
+      if (s == -1.f) { ++invalid; continue; }
+      require(std::isfinite(s) && s >= 0.f && s <= 1.f, "share domain or explicit invalid sentinel");
+      zero += s == 0.f; positive += s > 0.f; below_one += s < 1.f; max_share = std::max(max_share, double(s));
+      double y = 0, y_dark = 0;
+      for (unsigned k = 0; k < 3; ++k) { y += weights[k] * base32.color[i].f[k]; y_dark += weights[k] * dark32.color[i].f[k]; }
+      require(std::isfinite(y) && std::isfinite(y_dark) && y >= 0, "finite code-value luminance");
+      const double error = std::abs(double(s) * y - (y - y_dark));
+      const double ulp = y >= std::ldexp(1., -14) ? std::ldexp(1., int(std::floor(std::log2(y))) - 10) : std::ldexp(1., -24);
+      codes = std::max(codes, error / ulp);
+    }
+    require(!color_bad && !motion_bad && !depth_bad, "original share: colour, alpha, motion and depth are the control's");
+    require(codes <= 1.0, "share agrees with the zero-sun control draw within one FP16 code of Y(C)");
+    std::printf("OSHARE id=%u pair=%u pixels=%u invalid=%u zero=%u positive=%u below_one=%u max_codes=%.9g max_share=%.9g color_bad=%u motion_bad=%u depth_bad=%u\n",
+                c.id, c.pair, pixels, invalid, zero, positive, below_one, codes, max_share, color_bad, motion_bad, depth_bad);
+    total_invalid += invalid; total_zero += zero; total_positive += positive; max_codes = std::max(max_codes, codes); ++run;
+  }
+  require(total_positive > 0, "share producer writes positive pixels");
+  std::printf("OSHARE_PASS cases=%u fill=%.9g invalid=%u zero=%u positive=%u max_codes=%.9g\n", run, fill, total_invalid, total_zero, total_positive, max_codes);
+}
+
 int main(int argc, char **argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   try {
@@ -1111,11 +1202,16 @@ int main(int argc, char **argv) {
     const float original_fill=original_fill_mode ? std::strtof(argv[4],&original_fill_end) : 0.0f;
     require(!original_fill_mode || (original_fill_end && *original_fill_end=='\0' && std::isfinite(original_fill) && original_fill>0.0f && original_fill<=0.5f),
             "original fill must be finite and in (0,0.5]");
+    const bool original_share_mode=argc==5 && std::strcmp(argv[3],"--original-sun-share")==0;
+    char* original_share_end=nullptr;
+    const float original_share_fill=original_share_mode ? std::strtof(argv[4],&original_share_end) : 0.0f;
+    require(!original_share_mode || (original_share_end && *original_share_end=='\0' && std::isfinite(original_share_fill) && original_share_fill>=0.0f && original_share_fill<=0.5f),
+            "original sun share fill must be finite and in [0,0.5]");
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     const bool fade_mode=argc==5 && std::strcmp(argv[3],"--distance-fade")==0;
-    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode || original_fill_mode,"args: programs cases [--distance-fade composite.bin] [--fill K] [--original-fill K]");
+    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode,"args: programs cases [--distance-fade composite.bin] [--fill K] [--original-fill K] [--original-sun-share K]");
 #else
-    require(argc == 3 || sun_mode || cutout_mode || fill_mode || original_fill_mode, "args: programs cases [--alpha-test-cutout] [--fill K] [--original-fill K]");
+    require(argc == 3 || sun_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode, "args: programs cases [--alpha-test-cutout] [--fill K] [--original-fill K] [--original-sun-share K]");
 #endif
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
@@ -1154,7 +1250,7 @@ int main(int argc, char **argv) {
       api(factory->CreateDevice(0, D3DDEVTYPE_HAL, window,
                                 D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp,
                                 &device.p));
-      Shaders shaders(device.p, argv[1], cases, fill, original_fill);
+      Shaders shaders(device.p, argv[1], cases, fill, original_share_mode ? original_share_fill : original_fill);
       std::printf("CAPS mrt=%lu vs_slots=%lu ps_slots=%lu\n",
                   shaders.caps.NumSimultaneousRTs,
                   shaders.caps.MaxVertexShader30InstructionSlots,
@@ -1162,6 +1258,7 @@ int main(int argc, char **argv) {
       require(shaders.caps.NumSimultaneousRTs >= 3, "three MRTs");
       if(sun_mode)sun_share_material_fixture(device.p,shaders,cases);
       else if (cutout_mode) alpha_test_cutout_fixture(device.p,shaders,cases);
+      else if (original_share_mode) original_sun_share_fixture(device.p, shaders, cases, original_share_fill);
       else if (original_fill_mode) {
         Gpu gpu(device.p, shaders, 16);
         for (const auto &c : cases) {

@@ -14,7 +14,11 @@ materials; this note gives original shading its own law and route. Inputs:
 implementation (`d864246`), `src/renderer/linear_material.cpp` (`original_fill_transform`,
 `linear_material_fill_sum`), `src/renderer/ambient_occlusion_pass.cpp` (the multiply-blend
 apply precedent), run81 (`/tmp/x3-bottleX3-run81`). Host inspection of the 108 local
-originals only; no Wine, build or game. Nothing here is implemented.
+originals only; no Wine, build or game. Implemented so far: the share producer of 1,
+`linear_material_original_sun_share_pixel_variant` in `src/renderer/linear_material.{h,cpp}`
+with its host and detached GPU fixtures (3.1, 3.2; ledger
+[directional-shadows.md](../verification/directional-shadows.md) "Original-program share
+producer"); the apply pass, lane latch and cutout admission of 2 and 4 are not.
 
 ## Decision
 

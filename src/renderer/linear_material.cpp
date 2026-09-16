@@ -1464,12 +1464,167 @@ void original_fill_block(Words& out, unsigned sum, unsigned light) {
     emit(out,max_op,{dst(temp,12),src(temp,12),lane(constant,fill_constant,1)});
     for (unsigned c=0;c<3;++c) emit(out,pow_op,{dst(temp,sum,1u<<c),lane(temp,12,c),lane(constant,fill_constant,3)});
 }
+// Original-shading share producer (docs/architecture/legacy-sun-application.md
+// 1, "Share producer"): sun_plan's forward propagation over the ORIGINAL
+// program's operands. r16-r22 shadow r0-r6, r23 carries S, the final RGB
+// instruction is redirected into r11 (keeping its _pp) and copied to oC0, and
+// the converted producer's sun_reduction writes s = Y(S)/Y(C) to r23.w for the
+// sole oC2.g MOV at END. c221 holds the luma weights; c212 the reduction's
+// (2.2, 0, 65504) literals and, in .w, the 2^-16 relative slack of its
+// S <= L guard (the full-precision parallel chain and the original's _pp
+// chain differ by an ulp on pure-sun pixels); both are shader-local DEFs,
+// collision-checked with r11-r23 over the original's declarations,
+// definitions and operands.
+constexpr unsigned original_share_total=11, original_share_domain=212;
+constexpr float original_share_slack=0x1p-16f;
+bool original_share_resources_free(const Word* code, const Structure& s) noexcept {
+    for (const auto& i:s.instructions) {
+        if (i.opcode==dcl) continue;
+        const unsigned last=i.opcode==def?1:i.count;
+        for (unsigned n=1;n<=last;++n) {
+            const auto t=kind(code[i.at+n]), r=index(code[i.at+n]);
+            if ((t==temp && r>=original_share_total && r<=sun_final) ||
+                (t==constant && (r==original_share_domain || r==sun_constant))) return false;
+        }
+    }
+    return true;
+}
+// The appended pieces must stay inside their reserved ranges too: the motion
+// insertions (temporaries below r11, none of c212/c215/c221) and the fill
+// block (r12/r13 scratch, its sum register, c215 and the light constant).
+// Checked on the actual emitted words, not inferred from the emitters.
+bool original_share_range_free(const Word* code, std::size_t begin, std::size_t end,
+    bool fill_block, unsigned sum, unsigned light) noexcept {
+    for (std::size_t at=begin; at<end;) {
+        const Word token=code[at]; const unsigned op=token&0xffff, n=length(token);
+        if (at+n>=end) return false; // an instruction overrunning the range
+        if (op!=0xfffe && op!=dcl) {
+            const unsigned last=op==def?1:n;
+            for (unsigned q=1;q<=last;++q) {
+                const auto t=kind(code[at+q]), r=index(code[at+q]);
+                if (t==temp && (fill_block ? (r!=12 && r!=13 && r!=sum) : r>=original_share_total)) return false;
+                if (t==constant && (fill_block ? (r!=fill_constant && r!=light) :
+                    (r==original_share_domain || r==sun_constant || r==fill_constant))) return false;
+            }
+        }
+        at+=n+1;
+    }
+    return true;
+}
+// Edits are keyed by ORIGINAL instruction DWORD and inserted before it; the
+// reduction is keyed by the DWORD after the final RGB instruction. With a
+// fill site the lobe-sum shadow must be fully tracked there, because the
+// emitter replaces it by fill(sum) - fill(sum - S_sum) (the fill twin).
+bool original_sun_plan(const Word* original, const Structure& source, const std::array<unsigned,2>& seeds,
+    unsigned final_rgb, unsigned fill_site, unsigned fill_sum, std::vector<SunEdit>& edits, Word& final_destination) {
+    SunState state{}; std::vector<SunBranch> branches;
+    unsigned seeded=0, expected=0, finals=0; bool initialized=false, fill_tracked=fill_site==0;
+    for (const auto seed:seeds) if (seed) ++expected;
+    if (!expected || (fill_site && fill_sum>=state.size())) return false;
+    for (const auto& i:source.instructions) {
+        if (i.opcode==dcl || i.opcode==def) continue;
+        SunEdit edit{i.at,{}};
+        if (!initialized) {
+            for (unsigned r=sun_base;r<=sun_final;++r) emit(edit.words,mov,{dst(temp,r),lane(constant,original_share_domain,1)});
+            initialized=true;
+        } else if (fill_site && i.at==fill_site) {
+            if (state[fill_sum]!=xyz) return false;
+            fill_tracked=true;
+        }
+        unsigned count=0,cost=0; bool destination=false;
+        if (!body_shape(i.opcode,count,cost,destination)) return false;
+        if (!destination) {
+            for (unsigned q=1;q<=i.count;++q) if (sun_read(original[i.at+q],xyzw,state)) return false;
+            if (i.opcode==40 || i.opcode==41) {
+                if (branches.size()>=8) return false;
+                branches.push_back({state,{},false});
+            } else if (i.opcode==42) {
+                if (branches.empty() || branches.back().alternative) return false;
+                auto& b=branches.back(); b.first=state; b.alternative=true; state=b.entry;
+            } else if (i.opcode==43) {
+                if (branches.empty()) return false;
+                const auto b=branches.back(); branches.pop_back();
+                for (unsigned r=0;r<state.size();++r) state[r]|=(b.alternative?b.first:b.entry)[r];
+            } else return false;
+            if (!edit.words.empty()) edits.push_back(std::move(edit));
+            continue;
+        }
+        const Word od=original[i.at+1];
+        const unsigned lanes=mask(od), target=index(od);
+        const bool final=i.at==final_rgb;
+        const unsigned consumed=(i.opcode==mov || i.opcode==add || i.opcode==mul || i.opcode==mad)?lanes:xyzw;
+        std::array<bool,3> dep{}; bool active=false;
+        for (unsigned q=2;q<=i.count;++q) {
+            const bool reads=sun_read(original[i.at+q],consumed,state);
+            if (reads && q>=5) return false;
+            if (q<5) dep[q-2]=reads;
+            active|=reads;
+        }
+        unsigned seed_operand=0;
+        for (const auto seed:seeds) if (seed>i.at && seed<=i.at+i.count) {
+            if (seed_operand) return false;
+            seed_operand=static_cast<unsigned>(seed-i.at); ++seeded;
+        }
+        active|=seed_operand!=0;
+        if (active) {
+            // Original destinations keep their _pp; the parallel operation is
+            // full precision. Saturation anywhere on the path refuses.
+            if (lanes!=xyz || (od&sat) ||
+                (!final && (kind(od)!=temp || target>=state.size() || (od&~pp)!=dst(temp,target))) ||
+                (final && ((od&~pp)!=dst(color_output,0) || !branches.empty())) ||
+                (i.opcode!=mov && i.opcode!=add && i.opcode!=mul && i.opcode!=mad)) return false;
+            std::array<Word,3> parallel{lane(constant,original_share_domain,1),lane(constant,original_share_domain,1),lane(constant,original_share_domain,1)};
+            for (unsigned q=2;q<=i.count;++q) if (dep[q-2]) {
+                const Word operand=original[i.at+q];
+                if (operand!=src(temp,index(operand)) || state[index(operand)]!=xyz) return false;
+                parallel[q-2]=src(temp,sun_base+index(operand));
+            }
+            const Word output=dst(temp,final?sun_final:sun_base+target);
+            if (seed_operand) {
+                const Word sun=original[i.at+seed_operand];
+                if (i.opcode!=mad || (seed_operand!=2 && seed_operand!=3) || dep[0] || dep[1] ||
+                    kind(sun)!=constant || (sun&relative) || index(sun)>=LinearMaterialAbi::pixel_definition_base) return false;
+                if (dep[2]) emit(edit.words,mad,{output,original[i.at+2],original[i.at+3],parallel[2]});
+                else emit(edit.words,mul,{output,original[i.at+2],original[i.at+3]});
+            } else if (i.opcode==mov) emit(edit.words,mov,{output,parallel[0]});
+            else if (i.opcode==add) {
+                if (dep[0] && dep[1]) emit(edit.words,add,{output,parallel[0],parallel[1]});
+                else emit(edit.words,mov,{output,parallel[dep[0]?0:1]});
+            } else {
+                if (dep[0] && dep[1]) return false; // nonlinear in sun
+                if (dep[0] || dep[1]) {
+                    const Word a=dep[0]?parallel[0]:original[i.at+2], b=dep[1]?parallel[1]:original[i.at+3];
+                    if (i.opcode==mad && dep[2]) emit(edit.words,mad,{output,a,b,parallel[2]});
+                    else emit(edit.words,mul,{output,a,b});
+                } else emit(edit.words,mov,{output,parallel[2]});
+            }
+            if (!final) state[target]=xyz;
+        } else if (kind(od)==temp && target<state.size()) {
+            const unsigned killed=state[target]&lanes;
+            if (killed) emit(edit.words,mov,{dst(temp,sun_base+target,killed),lane(constant,original_share_domain,1)});
+            state[target]&=~lanes;
+        }
+        if (!edit.words.empty()) edits.push_back(std::move(edit));
+        if (final) {
+            if (!active || ++finals!=1) return false;
+            final_destination=dst(temp,original_share_total)|(od&pp);
+            SunEdit reduce{i.at+i.count+1,{}};
+            emit(reduce.words,mov,{dst(color_output,0),src(temp,original_share_total)});
+            sun_reduction(reduce.words,lane(constant,original_share_domain,3));
+            edits.push_back(std::move(reduce));
+        }
+    }
+    return initialized && branches.empty() && seeded==expected && finals==1 && fill_tracked;
+}
 // Fill-only path: the site finders, fill_constant_free and the proven
 // original -> motion partition of transform()/xt_transform(), none of their
 // conversion edits. The output is the motion variant plus the DEF and block.
+// With share_applied the same skeleton also carries the share producer; a
+// refused plan keeps the fill/motion variant byte for byte (fail closed).
 LinearMaterialResult original_fill_transform(const Word* original, std::size_t words, float fill,
-    Words& output, bool current_depth, bool& fill_applied) noexcept {
+    Words& output, bool current_depth, bool& fill_applied, bool* share_applied=nullptr) noexcept {
     fill_applied=false;
+    if (share_applied) *share_applied=false;
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!std::isfinite(fill) || fill<0.0f || fill>0.5f) return LinearMaterialResult::InvalidConfig;
     if (words>1791 || original[0]!=0xffff0300u) return LinearMaterialResult::UnsupportedShader;
@@ -1504,6 +1659,24 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             light=p->light0;
         }
         if (fill_site && (light>=212u || light==fill_constant)) fill_site=false; // never our own or the motion range
+        const bool fill_on=fill>0.0f && fill_site;
+        // Share plan on the original: seeds are the profile's sun-colour
+        // operands (hull rows color_source[0..1]; XT lights with value 6).
+        std::vector<SunEdit> edits; Word final_destination=0; bool share=false;
+        unsigned final_rgb=xt ? xt->final_rgb : p->final_rgb;
+        if (share_applied) {
+            std::array<unsigned,2> seeds{};
+            if (xt) {
+                unsigned count=0;
+                for (const auto& u:xt->lights) if (u.value==6) {
+                    if (count>=seeds.size()) return LinearMaterialResult::ProfileMismatch;
+                    seeds[count++]=u.operand;
+                }
+            } else seeds={p->color_source[0],p->color_source[1]};
+            share=original_share_resources_free(original,s) &&
+                  original_sun_plan(original,s,seeds,final_rgb,fill_on?site:0u,sum,edits,final_destination);
+            if (!share) edits.clear();
+        }
         Words motion;
         const auto mr=material_motion_pixel_variant_for(*row,original,words,motion,current_depth);
         if (mr!=MaterialMotionResult::Applied)
@@ -1511,26 +1684,64 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         const bool depth=material_motion_pixel_writes_depth(*row,current_depth);
         std::vector<Insertion> insertions;
         if (!motion_insertions(original,words,motion,*row,false,depth,s,insertions)) return LinearMaterialResult::ProfileMismatch;
-        if (fill==0.0f || !fill_site) { output.swap(motion); return LinearMaterialResult::Applied; }
-        Words combined; combined.reserve(motion.size()+64); combined.push_back(original[0]);
-        std::size_t inserted=0;
+        if (share) for (const auto& i:insertions)
+            if (!original_share_range_free(motion.data(),i.begin,i.end,false,0,0)) return LinearMaterialResult::ResourceLimit;
+        if (fill_on) {
+            Words block; original_fill_block(block,sum,light);
+            if (!original_share_range_free(block.data(),0,block.size(),true,sum,light)) return LinearMaterialResult::ResourceLimit;
+        }
+        if (!fill_on && !share) { output.swap(motion); return LinearMaterialResult::Applied; }
+        Words combined; combined.reserve(motion.size()+(share?640:64)); combined.push_back(original[0]);
+        std::size_t inserted=0, edited=0;
+        const auto flush_edits=[&](std::size_t at) {
+            while (edited<edits.size() && edits[edited].at==at) {
+                const auto& e=edits[edited++]; combined.insert(combined.end(),e.words.begin(),e.words.end());
+            }
+        };
         for (std::size_t at=1; at<words;) {
+            // A reduction keyed at END precedes the appended motion body.
+            if (original[at]==end_token) flush_edits(at);
             while (inserted<insertions.size() && insertions[inserted].at==at) {
                 const auto& i=insertions[inserted++]; combined.insert(combined.end(),motion.begin()+i.begin,motion.begin()+i.end);
             }
-            if (at==s.first_declaration) original_fill_definition(combined,fill);
-            if (original[at]==end_token) { combined.push_back(end_token); ++at; continue; }
+            if (at==s.first_declaration) {
+                if (fill_on) original_fill_definition(combined,fill);
+                if (share) {
+                    emit(combined,def,{dst(constant,original_share_domain,xyzw),bits(2.2f),bits(0.0f),bits(65504.0f),bits(original_share_slack)});
+                    emit(combined,def,{dst(constant,sun_constant,xyzw),bits(0.2126f),bits(0.7152f),bits(0.0722f),bits(0x1p-20f)});
+                }
+            }
+            if (original[at]==end_token) {
+                // After the motion body's depth write: the sole oC2.g MOV.
+                if (share) emit(combined,mov,{dst(color_output,2,2),lane(temp,sun_final,3)});
+                combined.push_back(end_token); ++at; continue;
+            }
             const unsigned n=length(original[at]);
-            if (at==site) original_fill_block(combined,sum,light);
+            if (fill_on && at==site) {
+                // Fill twin: S_sum' = fill(sum) - fill(sum - S_sum), evaluated
+                // on r23 (free until the final RGB instruction writes it).
+                if (share) emit(combined,add,{dst(temp,sun_final),src(temp,sum),src(temp,sun_base+sum,identity,1)});
+                original_fill_block(combined,sum,light);
+                if (share) {
+                    original_fill_block(combined,sun_final,light);
+                    emit(combined,add,{dst(temp,sun_base+sum),src(temp,sum),src(temp,sun_final,identity,1)});
+                }
+            }
+            // The instruction's own share edits follow the twin: a parallel
+            // operation at the site reads the twin's lobe-sum carrier.
+            flush_edits(at);
+            const std::size_t copy=combined.size();
             combined.insert(combined.end(),original+at,original+at+n+1);
+            if (share && at==final_rgb) combined[copy+1]=final_destination;
             at+=n+1;
         }
-        if (inserted!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
+        if (inserted!=insertions.size() || edited!=edits.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final_structure;
         if (!structure(combined.data(),combined.size(),false,final_structure,false,abi,temp_count,false,false,xt!=nullptr))
             return LinearMaterialResult::ResourceLimit;
         output.swap(combined);
-        fill_applied=true;
+        fill_applied=fill_on;
+        if (share_applied) *share_applied=share;
         return LinearMaterialResult::Applied;
     } catch (...) { return LinearMaterialResult::AllocationFailure; }
 }
@@ -1538,6 +1749,11 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
 LinearMaterialResult linear_material_original_fill_pixel_variant(const Word* original, std::size_t words,
     float fill, Words& output, bool current_depth, bool& fill_applied) noexcept {
     return original_fill_transform(original,words,fill,output,current_depth,fill_applied);
+}
+LinearMaterialResult linear_material_original_sun_share_pixel_variant(const Word* original, std::size_t words,
+    float fill, Words& output, bool current_depth, bool& share_applied) noexcept {
+    bool fill_applied=false;
+    return original_fill_transform(original,words,fill,output,current_depth,fill_applied,&share_applied);
 }
 } // namespace x3m::renderer
 

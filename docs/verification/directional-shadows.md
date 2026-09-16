@@ -665,3 +665,55 @@ Open: quads straddling a sentinel (sky silhouettes) are excluded from the strict
 ambiguous, so the quad's behaviour on those pixels is unverified beyond the byte-identity of the
 sentinel pixels themselves; the bias constants at production scale and the `dsx`/`dsy` quad
 convention on native D3D9 are unmeasured.
+
+## Original-program share producer (2026-09-17)
+
+`linear_material_original_sun_share_pixel_variant` (legacy-sun-application.md 1, "Share
+producer"): the fill/motion variant of a reviewed original PS plus, on the original operands,
+eight carrier initialisations (`r16`–`r23` = 0), one seed MUL/MAD before each sun MAD, one
+parallel MOV/ADD/MUL/MAD per sun-dependent RGB op, the fill twin `fill(sum) − fill(sum − S_sum)`
+at K > 0 (16 instructions, 34 slots), the final RGB instruction redirected into `r11` keeping
+its `_pp` plus `mov oC0.xyz, r11`, the converted producer's reduction (`sun_reduction`, now with an
+optional slack lane) and the sole `mov oC2.y, r23.w` after the motion body. Shader-local
+`def c221 = (luma, 2^-20)` and `def c212 = (2.2, 0, 65504, 2^-16)`, both collision-checked with
+`r11`–`r23` over the original; the emitted motion insertions (temporaries below `r11`, none of
+`c212/c215/c221`) and the fill block (`r12/r13`, its sum, `c215`, the light constant) are
+range-checked on their actual words at create time (`original_share_range_free`). A refused plan
+keeps the fill/motion variant byte for byte (`share_applied = false`); vertex and unreviewed
+programs are `UnsupportedShader`. Limitation of the witness set: the transformer is hash-bound, so
+a plan refusal cannot be reached through the public API with any input (all 108 reviewed programs
+admit; every other program is refused before planning); the refusal path is proved on the planner
+and the range check via the include seam, and the fail-closed emission branch by inspection.
+
+**Host** (`verification/analysis/test_original_sun_share.py`, helper
+`verification/probe/original_sun_share_structure.cpp`): 108/108 PS admitted with the share; 152
+seeds (64 one-seed, 44 two-seed programs); 29 VS refused; 108 × 2 depth × K {0, 0.05} = 432
+variants; the control retained verbatim and in order with exactly the final redirect differing;
+every original instruction retained in order; added instructions carry no `_pp` and read one
+constant port; combined weighted slots ≤ 262 of 512 (K=0 adds 34–47, K=0.05 a further 34) — per
+family maximum hull 207, asteroid 180, palette 214, glass 185, XT 262; 13 synthetic refusals
+(untracked fill sum, no/duplicate/misplaced seeds, `_sat`, sun×sun, sun texcoord, `c221` DEF,
+`r20` read; motion body reaching `r11` or `c221`, fill block on another sum). Float64 oracle on
+the generated tails (seeds intact vs seeds zeroed, XT both branches): `s·Y(C) = Y(C) − Y(C_nosun)`
+within 1e-9, colour/alpha/depth equal to the control, zeroed seeds give exactly 0 — 244 tails.
+
+**Detached GPU** (`run_linear_material.py --original-sun-share`, fixture mode 8; compact record
+`verification/results/bottle-X3/original-sun-share-gpu.json`, EXE sha256 `277789c1…`): 108 PS ×
+{lit calibration M=1, zero sun, sun only} × K {0, 0.05} = 648 cases, 256 px each; colour, alpha,
+motion and the RT2 depth bits byte-identical to the control on every pixel (FP16 and RGBA32F);
+`oC2.g` against a zero-sun control draw (at K > 0 a fixture-only mode 9 keeps the fill tint
+through `c200`, because zeroing the game constant alone also removes the fill term): max error
+1.1e-4 (K=0) / 1.9e-4 (K=0.05) FP16 codes of Y(C), tolerance 1; zero-sun faces `s = 0` on all
+27,648 px; calibration faces `0 < s < 1`; sun-only faces `s > 0` (max 1.0). Witness that fixed
+the guard: on XT BUMP sun-only faces (pairs 150–155) the strict `S ≤ L` comparison read −1 on
+66–86 of 256 px per case while `C_nosun = 0` exactly and the error was 1.1e-4 codes: the parallel
+full-precision chain and the original `_pp` MAD chain differ by one ulp, flipping with the
+occlusion texture's x band; the original variant therefore passes `c212.w = 2^-16` as relative
+slack to that comparison (one MAD; the converted producer is byte-identical). The later
+create-time range check changed no emitted bytes (432 variant files identical before/after), so
+the GPU record stands. Cost is unmeasured: no `us` lines in this slice; the share PS is ≤ 175
+(K=0) / 205 (K=0.05) device instructions. No live route, lane latch or native Windows evidence.
+
+Commands:
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_original_sun_share verification.analysis.test_original_fill verification.analysis.test_linear_sun_share`
+`sh verification/probe/build_linear_material.sh && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_linear_material.py --original-sun-share --exe verification/probe/build/linear_material_fixture.exe --programs /tmp/x3-shader-sweep/programs`
