@@ -40,7 +40,8 @@ class SessionStartLines(unittest.TestCase):
 
     def test_loaded_module_line_and_its_two_call_sites(self):
         source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
-        self.assertIn('log("loaded_module name=%s path=%s size=%llu sha256=%s hash_us=%llu"', source)
+        self.assertIn('log("loaded_module name=%s path=%s size=%llu sha256=%s hash_us=%llu '
+                      'image_size=%lu stamp=%08lx exports=%lu wine_builtin=%d"', source)
         # The hash prefix is the first 16 hex digits of the file's SHA-256, and
         # the module reference is taken and released around the file read.
         self.assertIn('hex=hash_file(path,full,bytes)&&full.size()==64?full.substr(0,16):std::string("unavailable")', source)
@@ -57,6 +58,68 @@ class SessionStartLines(unittest.TestCase):
         body = capture[capture.index('HRESULT WINAPI create_device('):]
         self.assertLess(body.index('proxy_identity::log_loaded_module(L"d3dx9_37.dll")'), body.index('HookGuard lock;'))
         self.assertLess(body.index('proxy_identity::log_loaded_module(L"d3dx9_37.dll")'), body.index('CpuCallBoundary cpu;'))
+
+
+class MappedImageFields(unittest.TestCase):
+    """The `loaded_module` line also reports what the mapped image says about
+    itself, because under Wine a builtin module keeps the native file's
+    FullDllName and on-disk size: path and size alone cannot tell them apart
+    (measured with a probe EXE, docs/architecture/effect-pass-replay.md).
+    Source text only; the values come from documented PE structures read at the
+    module base, never from the file on disk."""
+
+    def setUp(self):
+        self.source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
+        start = self.source.index('ModuleImage module_image(HMODULE module)')
+        self.reader = self.source[start:self.source.index('void log_module(', start)]
+
+    def test_field_order_after_the_existing_fields(self):
+        line = re.search(r'log\("loaded_module ([^"]*)"', self.source).group(1)
+        self.assertEqual(line.split(),
+                         ['name=%s', 'path=%s', 'size=%llu', 'sha256=%s', 'hash_us=%llu',
+                          'image_size=%lu', 'stamp=%08lx', 'exports=%lu', 'wine_builtin=%d'])
+        # The values are passed in the same order as the fields.
+        arguments = self.source[self.source.index('wine_builtin=%d"'):self.source.index('image.wine_builtin);')]
+        self.assertLess(arguments.index('image.size'), arguments.index('image.stamp'))
+        self.assertLess(arguments.index('image.stamp'), arguments.index('image.exports'))
+
+    def test_every_header_read_is_bounds_checked_before_it_is_dereferenced(self):
+        self.assertIn('if(!module) return info;', self.reader)
+        self.assertIn("dos->e_magic!=IMAGE_DOS_SIGNATURE", self.reader)
+        self.assertIn('nt->Signature!=IMAGE_NT_SIGNATURE', self.reader)
+        self.assertIn('nt->OptionalHeader.Magic!=IMAGE_NT_OPTIONAL_HDR32_MAGIC', self.reader)
+        # e_lfanew is checked on both sides before the NT headers are formed.
+        self.assertIn('lfanew<static_cast<LONG>(sizeof(IMAGE_DOS_HEADER))', self.reader)
+        self.assertIn('lfanew>static_cast<LONG>(0x1000u-sizeof(IMAGE_NT_HEADERS32))', self.reader)
+        self.assertLess(self.reader.index('e_lfanew'), self.reader.index('base+lfanew'))
+        # The export directory is read only when NumberOfRvaAndSizes covers the
+        # entry and the whole structure lies inside SizeOfImage.
+        self.assertIn('nt->OptionalHeader.NumberOfRvaAndSizes>IMAGE_DIRECTORY_ENTRY_EXPORT', self.reader)
+        self.assertIn('directory.VirtualAddress<=info.size-sizeof(IMAGE_EXPORT_DIRECTORY)', self.reader)
+        self.assertIn('NumberOfFunctions', self.reader)
+
+    def test_marker_rule_stays_inside_the_dos_header_area(self):
+        self.assertIn('static const char marker[]="Wine builtin DLL";', self.reader)
+        self.assertIn('const std::size_t marker_size=sizeof(marker)-1;', self.reader)
+        self.assertIn('for(std::size_t at=0x40;at+marker_size<=0x80;++at)', self.reader)
+        self.assertEqual(len('Wine builtin DLL'), 16)
+        # The rule the loop implements, on synthetic buffers: the 16-byte marker
+        # anywhere in [0x40, 0x80) sets the flag; a marker that starts before
+        # 0x40 or would run past 0x80 does not.
+        def scan(buffer):
+            return any(buffer[at:at + 16] == b'Wine builtin DLL' for at in range(0x40, 0x80 - 16 + 1))
+        self.assertTrue(scan(bytearray(0x40) + b'Wine builtin DLL' + bytearray(0x40)))
+        self.assertTrue(scan(bytearray(0x70) + b'Wine builtin DLL' + bytearray(0x10)))
+        self.assertFalse(scan(bytearray(0x71) + b'Wine builtin DLL' + bytearray(0x10)))
+        self.assertFalse(scan(bytearray(0x30) + b'Wine builtin DLL' + bytearray(0x50)))
+        self.assertFalse(scan(bytearray(0x100)))
+
+    def test_no_file_is_opened_for_the_image_fields(self):
+        for call in ('CreateFileW', 'ReadFile', 'IsBadReadPtr', '__try'):
+            self.assertNotIn(call, self.reader)
+        # The image is read while the caller still holds the module reference.
+        body = self.source[self.source.index('void log_module('):self.source.index('std::string options()')]
+        self.assertLess(body.index('image=module_image(module);'), body.index('GetModuleFileNameW'))
 
 
 class ParseIdentity(unittest.TestCase):

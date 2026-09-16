@@ -104,10 +104,11 @@ def tee_stream(source, terminal, log, lock, clock=utc_stamp, chunk=65536):
     return lines
 
 
-def launch_teed(command, env, cwd, log_path, *, stdout=None, stderr=None, clock=utc_stamp):
+def launch_teed(command, env, cwd, log_path, *, stdout=None, stderr=None, clock=utc_stamp, header=None):
     """Run the child with both streams teed into log_path (one fresh file per
-    launch) and return its exit code. A directory or file that cannot be written
-    costs the copy, never the launch."""
+    launch) and return its exit code. `header` is one extra line written before
+    the child's output, so a preserved session records what was launched. A
+    directory or file that cannot be written costs the copy, never the launch."""
     stdout = sys.stdout.buffer if stdout is None else stdout
     stderr = sys.stderr.buffer if stderr is None else stderr
     try:
@@ -118,6 +119,8 @@ def launch_teed(command, env, cwd, log_path, *, stdout=None, stderr=None, clock=
         # Whose file this is: a second concurrent launch replaces it, and the
         # preserved copy must still name the process that wrote the lines.
         log.write(f'{clock()} launcher_tee pid={os.getpid()} log={log_path}\n'.encode('utf-8', 'replace'))
+        if header:
+            log.write(f'{clock()} {header}\n'.encode('utf-8', 'replace'))
         log.flush()
     except OSError as error:
         print(f'Launcher output is not preserved ({error}); the terminal output is unchanged.', file=sys.stderr)
@@ -771,10 +774,14 @@ def main():
         launcher_log = game / CAPTURE_SUBDIRECTORY / LAUNCHER_STDERR
         if args.dry_run:
             print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
+                              'overrides': overrides, 'd3dx': args.d3dx,
                               'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')}, **voice_env}}, indent=2))
             return
         print(f'Launching X3AP through CrossOver Preview; terminal output is also teed to {launcher_log}.', flush=True)
-        raise SystemExit(launch_teed(command, env, game, launcher_log))
+        # What was actually launched, first in the preserved log: the exact
+        # argv, the --dll string this child got and the resolved --d3dx choice.
+        header = (f'launcher command={json.dumps(command)} overrides={overrides} d3dx={args.d3dx}')
+        raise SystemExit(launch_teed(command, env, game, launcher_log, header=header))
 
 
 if __name__ == '__main__':

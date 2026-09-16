@@ -1379,3 +1379,31 @@ log lines 31404-38331, frames 4500/4800/5100/5400). `dt_p50_us` ~29.0-29.8k
 directional-shadows.md run97 entry); apply-phase cost is not materially
 higher, consistent with the lane reusing existing material state rather
 than adding per-pass setup.
+
+### Run 35 session A (run103), 2026-09-17: D3DX builtin vs native
+
+`/tmp/x3-bottleX3-run103`, the installed run34 build launched with
+`--d3dx builtin` (override string `d3d9=n,b;d3dx9_37=b`, which reached the
+Windows process intact). Visuals were unchanged; nothing failed to render.
+
+**The identity line could not prove which D3DX loaded.** The `d3dx9_37`
+`loaded_module` line read `path=C:\X3\d3dx9_37.dll size=3786760`, identical to
+a native run. A probe EXE showed why: with `WINEDLLOVERRIDES=d3dx9_37=b` and a
+native copy beside the EXE, Wine loads the builtin but keeps the module's
+`FullDllName` at the native path, so `GetModuleFileName` and the on-disk size
+are the native file's. Only the mapped image differs: native
+`image_size=3895296 stamp=47cdef5d`, builtin `image_size=585728 stamp=00000000`,
+and the builtin carries the string `Wine builtin DLL` inside the first 0x80
+bytes of the module base. The `loaded_module` line now reports `image_size=`,
+`stamp=`, `exports=` and `wine_builtin=` for exactly this reason.
+
+Numbers, over 14 busy windows matched to run95 by pass count (±15 %), medians
+per pass: BeginPass 8.90 µs (run95 6.64), draw 9.21 (8.74), engine between
+passes 5.42 (4.89); `dt` p50 27.4 ms (run95 22.9 ms). The empty view gave
+≈8.7 µs vs run95's ≈6.9–7.0 µs. `pass_phases` health was clean: 0 orphans,
+0 clock errors, 1 dropped window in 60.
+
+The comparison is confounded twice: different builds (run95 is the run33 build)
+and unproven module identity. It repeats as **run 36 A1/A2** on one build with
+the new identity fields. The 25 "zero area" lines at 23:10:38 are exit-time
+teardown noise (run98 had 31 of them).

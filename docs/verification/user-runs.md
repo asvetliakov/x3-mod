@@ -53,14 +53,14 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 32 | Hybrid unhook, draw and state counters | 4 | A1 run91 (redundancy 95/99/40 %, batchability 5 %), A2 run92 (busy frame 37.5 to 26.5 ms unhooked), B run93 (cutout pairs draw everywhere, lane admission unobservable; slow sector is `pre_render` 98 % of a 420 ms frame); C queued with `--game-phases` |
 | 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | A run95 (view submit: draw 43 %, BeginPass 33 %, engine between passes 22 %), B run96 (stall 99.8 % in the per-sector object pass `0x0045b720`, one sector; GStreamer criticals repeat during it), C run97 (cutout draws admitted through the tested-opaque arm, ~90/frame with the lane share; linear materials + lane +3 ms) |
 | 34 | Stall evidence: stderr capture, module identity, media-cue trace and cache | 4 | A1 run98: the stalling cue is id 2 = `mov\00002.dat` (MPEG-1 video), one failed build per frame at ~390 ms, GStreamer bursts aligned within 16 ms; native d3dx9_37 loads. A2 run99: cache on, one real attempt per 30 s, frames back to 7–9 ms p50 in the sector (stall gone, user confirmed); the exit-time "zero area" warning is pre-existing teardown noise (31 lines in run98 too). A3 run100/101: the v5 decoder runtime hangs the main loop on the first comm dialog (avatar video graph now builds and blocks in Wine's video path); v5 parked, cache is the fix. B pending |
-| 35 | D3DX builtin vs native (no new DLL) | 1 | Queued: session A on the installed run34 build with `--d3dx builtin` at the run95 busy view; optional A2 native control |
+| 35 | D3DX builtin vs native (no new DLL) | 1 | Completed as run103: visuals unchanged; identity line could not prove the builtin loaded; BeginPass 8.90 vs 6.64 µs/pass confounded by build; repeat as run 36 on one build |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
 
-## 35. D3DX builtin vs native at the busy view — queued (no new DLL)
+## 35. D3DX builtin vs native at the busy view — completed (run103)
 
 Installed: DLL `7102a2f1…` from `ee5a406` (see [status](../status.md)); the
 bottle's graphics backend is back on its default. The launcher option

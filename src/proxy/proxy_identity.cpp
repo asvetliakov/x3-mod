@@ -89,16 +89,67 @@ std::string manifest_sha256(const std::wstring& directory) {
     for(char& c:value) if(c>='A'&&c<='Z') c=char(c-'A'+'a');
     return value;
 }
+// What the mapped image says about itself, read from the module base with the
+// documented PE structures only (IMAGE_DOS_HEADER/IMAGE_NT_HEADERS32). Under
+// Wine a builtin DLL keeps the native file's FullDllName, so GetModuleFileNameW
+// and the on-disk size cannot tell the two apart; the mapped image can
+// (docs/architecture/effect-pass-replay.md, "bottle experiments").
+struct ModuleImage {
+    unsigned long size=0;      // OptionalHeader.SizeOfImage
+    unsigned long stamp=0;     // FileHeader.TimeDateStamp
+    unsigned long exports=0;   // export directory NumberOfFunctions, 0 when absent
+    int wine_builtin=0;        // the 16-byte marker in the DOS header area
+};
+// Every read is bounds-checked against the structure that precedes it and
+// against SizeOfImage; no file is opened and no pointer past the headers is
+// dereferenced. The caller holds a module reference, so the image stays mapped.
+ModuleImage module_image(HMODULE module) {
+    ModuleImage info;
+    if(!module) return info;
+    const unsigned char* base=reinterpret_cast<const unsigned char*>(module);
+    const IMAGE_DOS_HEADER* dos=reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+    if(dos->e_magic!=IMAGE_DOS_SIGNATURE) return info;
+    // The PE headers live in the first page of every image, which is mapped as
+    // soon as the module base is valid; refuse anything that points elsewhere.
+    const LONG lfanew=dos->e_lfanew;
+    if(lfanew<static_cast<LONG>(sizeof(IMAGE_DOS_HEADER))||
+       lfanew>static_cast<LONG>(0x1000u-sizeof(IMAGE_NT_HEADERS32))) return info;
+    const IMAGE_NT_HEADERS32* nt=reinterpret_cast<const IMAGE_NT_HEADERS32*>(base+lfanew);
+    if(nt->Signature!=IMAGE_NT_SIGNATURE) return info;
+    if(nt->FileHeader.SizeOfOptionalHeader<sizeof(IMAGE_OPTIONAL_HEADER32)) return info;
+    if(nt->OptionalHeader.Magic!=IMAGE_NT_OPTIONAL_HDR32_MAGIC) return info;
+    info.size=nt->OptionalHeader.SizeOfImage;
+    info.stamp=nt->FileHeader.TimeDateStamp;
+    if(nt->OptionalHeader.NumberOfRvaAndSizes>IMAGE_DIRECTORY_ENTRY_EXPORT){
+        const IMAGE_DATA_DIRECTORY& directory=nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+        // The export directory is read only when it lies wholly inside the
+        // mapped image; a truncated or absent directory reports zero.
+        if(directory.VirtualAddress&&directory.Size>=sizeof(IMAGE_EXPORT_DIRECTORY)&&
+           info.size>=sizeof(IMAGE_EXPORT_DIRECTORY)&&
+           directory.VirtualAddress<=info.size-sizeof(IMAGE_EXPORT_DIRECTORY))
+            info.exports=reinterpret_cast<const IMAGE_EXPORT_DIRECTORY*>(base+directory.VirtualAddress)->NumberOfFunctions;
+    }
+    // Wine stamps "Wine builtin DLL" into the unused DOS header area of a
+    // builtin module. Informational telemetry, never a prerequisite: a native
+    // file and a Windows host simply report 0.
+    static const char marker[]="Wine builtin DLL";
+    const std::size_t marker_size=sizeof(marker)-1; // 16 bytes, no terminator
+    for(std::size_t at=0x40;at+marker_size<=0x80;++at)
+        if(std::memcmp(base+at,marker,marker_size)==0){info.wine_builtin=1;break;}
+    return info;
+}
 // Shared body of the two log_loaded_module entry points; `module` may be null
 // (the DLL is not loaded in this process, itself a finding).
 void log_module(HMODULE module,const char* name) {
     std::string path_utf8="none",hex="none";
     unsigned long long bytes=0;
+    ModuleImage image;
     LARGE_INTEGER begin{},end{},frequency{};
     QueryPerformanceCounter(&begin); QueryPerformanceFrequency(&frequency);
     // Nothing may escape into a caller on the attach or device-creation path.
     try {
         if(module){
+            image=module_image(module);
             std::wstring path(32768,L'\0');
             const DWORD length=GetModuleFileNameW(module,&path[0],static_cast<DWORD>(path.size()));
             if(length&&length<path.size()){
@@ -113,7 +164,9 @@ void log_module(HMODULE module,const char* name) {
     QueryPerformanceCounter(&end);
     const unsigned long long microseconds=frequency.QuadPart>0&&end.QuadPart>begin.QuadPart
         ?static_cast<unsigned long long>((end.QuadPart-begin.QuadPart)*1000000ll/frequency.QuadPart):0ull;
-    log("loaded_module name=%s path=%s size=%llu sha256=%s hash_us=%llu",name,path_utf8.c_str(),bytes,hex.c_str(),microseconds);
+    log("loaded_module name=%s path=%s size=%llu sha256=%s hash_us=%llu image_size=%lu stamp=%08lx exports=%lu wine_builtin=%d",
+        name,path_utf8.c_str(),bytes,hex.c_str(),microseconds,
+        image.size,image.stamp,image.exports,image.wine_builtin);
 }
 // Every X3M_* variable present in the process environment, name=value, sorted.
 // Names are matched case-insensitively (Win32 environment names are); no

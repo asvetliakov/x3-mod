@@ -27,6 +27,24 @@ the bottle's `X3AP.exe` this session; nothing ran under Wine.
    the largest hot-path component the proxy would own. B collapses into A or
    into nothing (below); D is the fallback.
 
+**Bottle experiments, status (run103, 2026-09-17).** Step 1's D3DX swap ran as
+run 35 session A: the installed run34 build with `--d3dx builtin`
+(`/tmp/x3-bottleX3-run103`). Visuals were unchanged, but the proxy's
+`loaded_module` line could not distinguish builtin from native: under Wine a
+builtin module keeps the native file's `FullDllName`, so the path and the
+on-disk size on that line are the native file's even when the builtin is
+mapped (probe: native `image_size=3895296 stamp=47cdef5d`, builtin
+`image_size=585728 stamp=00000000`, plus the `Wine builtin DLL` marker in the
+first 0x80 bytes of the module base). The line now carries `image_size=`,
+`stamp=`, `exports=` and `wine_builtin=`. Over 14 busy windows matched to run95
+by pass count (±15 %), per-pass medians were BeginPass 8.90 µs (run95 6.64),
+draw 9.21 (8.74) and engine between passes 5.42 (4.89), with `dt` p50 27.4 ms
+against 22.9 ms; the empty view gave ≈8.7 µs vs ≈6.9–7.0 µs. Because run95 is
+the run33 build and the module identity was unproven, the comparison decides
+nothing and the experiment repeats as run 36 A1/A2 on one build with the new
+identity fields (numbers in
+[sampling-profiler.md](../verification/sampling-profiler.md), "Run 35 session A").
+
 ## Measured inputs
 
 Run95 busy window (unhooked proxy, 981 passes per frame, `view_submit_p50`
