@@ -1,7 +1,7 @@
 # Project status
 
 Updated 2026-09-16 (run28 candidate installed; run 28 queued). This is the short current handoff; the current
-session handoff is [handoff-2026-09-16.md](handoff-2026-09-16.md). The day's narrative
+session handoff is [handoff-2026-09-17.md](handoff-2026-09-17.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
 [status history 2026-09-14](archive/status-history-2026-09-14.md); earlier
