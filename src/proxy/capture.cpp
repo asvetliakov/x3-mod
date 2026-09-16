@@ -281,8 +281,11 @@ std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
 // and every write below happens with the hook mutex held (the guards are
 // constructed first), and the map is only mutated under that same mutex
 // (hook_device, release_device), where the cache is dropped. Fail-closed: any
-// pointer that is not the cached one takes the ordinary devices.at path, which
-// still throws for an unknown device exactly as before.
+// pointer that is not the cached one takes the ordinary devices.at lookup, so
+// an unhooked device is never served from the cache. That lookup is now inside
+// a noexcept function, so an unknown device terminates where it previously
+// threw std::out_of_range out of a stdcall hook into the game's frames, which
+// had no handler either: both outcomes end the process, this one at the fault.
 IDirect3DDevice9* cached_device_key = nullptr;
 Device* cached_device_context = nullptr;
 void forget_cached_device() noexcept { cached_device_key = nullptr; cached_device_context = nullptr; }

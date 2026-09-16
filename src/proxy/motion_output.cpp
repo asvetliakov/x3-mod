@@ -248,6 +248,15 @@ constexpr unsigned shadow_index_scan(D3DRENDERSTATETYPE state) noexcept {
 constexpr unsigned state_index_table_size = 256;
 static_assert(motion_shadow_state_count < state_index_table_size && composition_blend_count < state_index_table_size,
               "shadow/blend indices fit one table byte");
+// Every state the tables must answer for is inside them, so the out-of-range
+// arm below can only be reached by a state neither shadow tracks (largest
+// today: D3DRS_BLENDOPALPHA, 209).
+constexpr bool states_within_index_table() noexcept {
+    for (const D3DRENDERSTATETYPE state : shadow_states) if (unsigned(state) >= state_index_table_size) return false;
+    for (const D3DRENDERSTATETYPE state : composition_blend_states) if (unsigned(state) >= state_index_table_size) return false;
+    return unsigned(D3DRS_WRAP7) < state_index_table_size && unsigned(D3DRS_WRAP15) < state_index_table_size;
+}
+static_assert(states_within_index_table(), "every shadowed render state is inside the index tables");
 struct StateIndexTables {
     unsigned char shadow[state_index_table_size]{};
     unsigned char blend[state_index_table_size]{};

@@ -289,8 +289,8 @@ per-draw figure is not remeasured here; the next flight capture settles it.
 
 Implemented in `capture.cpp` (light hook bodies, the device lookup, the null
 admission early-out) and `motion_output.cpp` (the index tables): a one-entry
-device cache ahead of `devices.at` (any other pointer falls back to the map,
-which still throws for an unknown device); 256-entry compile-time
+device cache ahead of `devices.at` (any other pointer falls back to the map
+lookup, which for an unknown device terminates instead of throwing); 256-entry compile-time
 `shadow_index`/`composition_blend_index` byte tables built from the old scans,
 with a `static_assert` that the tables equal the scans for 0..255 and an
 out-of-range value keeping the scans' "not shadowed" answer; an inline null
@@ -305,15 +305,27 @@ and `before_set_sampler_state` unless the write is `D3DSAMP_MIPMAPLODBIAS`.
 The shadow's contents, the resync semantics, the telemetry counters, the hook
 mutex and the CPU-state envelope are unchanged.
 
-Benchmark, ns per call with timing off, installed candidate `bbadc568`
-(`state-hook-benchmark.json`) against the trimmed build `5b8e6f8d`
-(`state-hook-benchmark-dispatch-trim.json`, same bottle and fixture):
-SetRenderState 119.9 -> 79.0, SetSamplerState 109.8 -> 68.6,
-SetVertexShaderConstantF(4) 79.7 -> 77.0, SetTexture 130.0 -> 125.9, the
-equal-share mix 316.8 -> 302.8; the mean proxy guard/shadow/dispatch cost of
-the four light setters 96.0 -> 73.5 ns. Native and unhooked rows are unchanged
-(SetTextureStageState 11.7/11.0, the getters within noise). `set_render_state`
-falls from 211 to 143 emitted instructions with far fewer on the taken path.
+Benchmark, ns per call with timing off, X3 bottle, same fixture. Baseline:
+`state-hook-benchmark.json`, DLL `207d4ede`, which is main after the envelope
+merge (e8bac89). Trim: `state-hook-benchmark-dispatch-trim.json`, DLL
+`5b8e6f8d`, built from this branch's point 27bfdc4, that is BEFORE the envelope
+merge. The two DLLs therefore differ by both changes, and only the rows the
+envelope did not touch are a valid A/B. Those are the per-state-write setters:
+SetRenderState 119.6 -> 79.0, SetSamplerState 108.3 -> 68.6,
+SetVertexShaderConstantF(4) 79.0 -> 77.0, SetTexture 126.4 -> 125.9, and the
+record's mean proxy guard/shadow/dispatch cost of those four, 93.7 -> 73.5 ns.
+The unhooked control is unchanged (SetTextureStageState 10.9 -> 11.0 through
+the proxy) and the getters are within noise.
+
+Not comparable in this pair, because the trim DLL still has `CpuCallBoundary`
+on the draw and binding hooks: SetStreamSource (133.3 baseline against 1398.5
+in the trim record), the SetStreamSource + DrawIndexedPrimitive pair (1275.8
+against 4322.8) and the equal-share `state_mix` (98.4 against 302.8, since the
+mix includes SetStreamSource). Those trim-record numbers are the pre-envelope
+values, not a regression. The combined per-call figures on one DLL carrying
+both changes are pending the run 31 candidate benchmark, which reruns
+`run_state_hook_benchmark.py --dll` on the candidate bytes; until then no
+single record states the post-envelope, post-trim cost of a light setter.
 
 The ≤ 40 ns-over-native target is not reached. What remains per call, measured
 or counted: the forwarded native call (11-17), the hook mutex (6.9), the
@@ -324,11 +336,12 @@ throw: `std::lock_guard` on the recursive mutex and the `dllimport`
 GetLastError/SetLastError of `cpu_state.h` are both potentially-throwing to
 GCC. Moving the lock into nothrow out-of-line helpers was measured and
 rejected: each helper then carried its own SJLJ frame and the four light
-setters lost 30-70 ns (SetVertexShaderConstantF 77 -> 147). Removing the
-frame needs the light hooks in a `-fno-exceptions` unit, which is a separate
-change; step 5 (the hybrid unhook) removes the render-state and sampler hooks
-altogether and is the larger remaining saving. SetTexture is dominated by its
-two out-of-line shadow queries, not by dispatch.
+setters lost 30-70 ns (SetVertexShaderConstantF 77 -> 147, a measurement kept
+only in this note). Removing the frame needs the light hooks in a
+`-fno-exceptions` unit, which is a separate change; step 5 (the hybrid unhook)
+removes the render-state and sampler hooks altogether and is the larger
+remaining saving. SetTexture is dominated by its two out-of-line shadow
+queries, not by dispatch.
 
 ## Native Windows
 
