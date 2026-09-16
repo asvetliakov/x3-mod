@@ -13,25 +13,26 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`7f296d535860ca6a650d5ec06e5d5f67caab2af2de49db32da81795ae13d038f`
-(15,933,651 bytes), built once on Opus from clean committed main `dd29770`
-(2026-09-16; marker `X3M_SOURCE_COMMIT=dd29770…`, no `-dirty`). The
-[build record](../verification/results/run29-candidate-build.json) binds the
-clean build (12.33 s, zero warnings), the 230-function no-x87 audit, the exact
+`bbadc568e5397dcda9e5e94d01eb6a33e730aea541e29210858ad40120441e9c`
+(16,007,716 bytes), built once on Opus from clean committed main `f94290c`
+(2026-09-17; marker `X3M_SOURCE_COMMIT=f94290c…`, no `-dirty`). The
+[build record](../verification/results/run30-candidate-build.json) binds the
+clean build (12.74 s, zero warnings), the 233-function no-x87 audit, the exact
 17 exports and the eight-check X3 DLL load; the
-[install record](../verification/results/run29-candidate-install.json) binds the
+[install record](../verification/results/run30-candidate-install.json) binds the
 installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
-run28 DLL `2b0969e5…` and manifest are in `/tmp/x3-candidate-owVYe6/rollback`.
-Run 29's session A command passed `--dry-run`; no game launched.
+run29 DLL `7f296d53…` and manifest are in `/tmp/x3-candidate-cCPCVu/rollback`.
+Run 30's session A command passed `--dry-run`; no game launched.
 
-This build adds, on top of run28's: the chase pose admitted during the unbound
-view phase after a transit (`e4fd22a`, removes the centre-then-jump), the three
-emitter hotkeys Ctrl+Shift+F5 (bolts) / F6 (engine gain) / F4 (effect gain)
-with per-frame additive telemetry and `--screen-emission-additive-alpha K`
-(`6c8a375`, bolt-only bloom reduction), the sun-lane cutout admission under the
-mip-bias default (`e62722a`) and the `--frame-timing` diagnostic (`8954cff`).
-Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip bias -0.5, sharpen
-0.75, fill 0.05 (linear only); original hull shading. No shadows applied.
+This build adds, on top of run29's: one `--emission-source-gain G` over all 20
+pairs with screen-blended draws substituted additive so the ship engines
+respond (`7b5c3f0`; `--effect-source-gain` and Ctrl+Shift+F4 removed),
+`--bloom-source-clamp C` (`1a77895`, absent = unchanged), and the proxy
+self-time buckets in `--frame-timing` (`3acb2d2`). It keeps run29's chase
+pose fix, hotkeys F5/F6, `--screen-emission-additive-alpha`, the sun-lane
+cutout admission and `--frame-timing`. Defaults unchanged: camera 0.5°/0.50,
+EV ceiling +1.3, mip bias -0.5, sharpen 0.75, fill 0.05 (linear only);
+original hull shading. No shadows applied.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
@@ -39,46 +40,42 @@ and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
 Chase defaults: 0.5° pitch, offset 0.50, distance 0.9, responses 0.28/0.38 s,
 lag limits 8°/0.10. Vanilla camera remains the default.
 
-## Session 2026-09-16 (resumed): run 28 received, run 29 candidate
+## Session 2026-09-17: run 29 received, run 30 candidate
 
-Run 28 came back as `/tmp/x3-bottleX3-run74`–`run80` (session A) and `run81`
-(session B); the [handoff](handoff-2026-09-16.md) lists the open questions.
-Outcomes and decisions:
+Run 29 came back as `run83` (A), `run84` (A2 with the profiler) and `run85`
+(B). Outcomes and decisions:
 
-- **Halo:** persists at EV 1.0 and without sharpen/mip bias, gone only with
-  bloom off; it is bloom of the >1.0 bolts over black. The 21 vs 13 MB bloom
-  working set is the sharpen stage buffer. Ratified
-  [bloom-per-source-attenuation.md](architecture/bloom-per-source-attenuation.md):
-  the additive draw writes `K·a + D.a` to scene alpha so the authored-glow
-  term no longer selects the bolts (`--screen-emission-additive-alpha 0`
-  first; GPU fixture 22 cases, alpha exact, colour within one FP16 code).
-- **Chase:** both run78 transits restored; the 0.4–1.1 s centre-then-jump was
-  the camera hook refusing the fresh cockpit while its ref view object was
-  unbound (12–36 updates). Fixed on the registry active-control proof, CPU
-  fixture 771/0, two reviews
-  ([note](reverse-engineering/chase-view-transition.md), "Run 28 (run78) pose gap").
-- **Original fill:** works visually (screenshots `original_fill_*.png`); 0.05
-  lifts the black modules with mild flattening, 0.02 buys little. No clean
-  cost A/B yet; the next run's `--frame-timing` windows give it
-  ([fill ledger](verification/fill-light.md)).
-- **Emitters:** engine gain admitted 162–13,287 draws per run; effect gain was 1
-  (no variant); the additive option had no per-draw telemetry. Hotkeys F5/F6/F4
-  and the `screen_emission_additive_frame` line let the user attribute each.
-- **Session B:** sun lane 0/2,123 frames available: the mip-bias default leaves
-  the exact cutout arm unconfigured and the two cutout pairs vetoed as state
-  writers; fixed lane-only with native sampler bias on those draws
-  ([ledger](verification/directional-shadows.md), "Run 28 session B (run81)").
-  Depth replay 42 µs median, no skips. Ratified
-  [legacy-sun-application.md](architecture/legacy-sun-application.md): per-seed
-  sun-constant scaling (exact on all 108 programs), lane share to `oC2.g`, one
-  scene-end multiply; implementation waits for lane availability under
-  original shading.
-- **FPS with many objects (user report):** `--frame-timing` (per-300-frame dt,
-  Present and draw percentiles, four slowest frames) rides this build; run 29
-  pairs it with the sampling profiler in a busy scene
+- **Engines never responded to any gain:** the ship engine glow is the jump
+  gate's program pair `d5e1c753…/8360f422…`, drawn on 92 of 122 engine
+  materials with the screen blend ONE/INVSRCCOLOR that the gain admission
+  refused ([effect shader users](reverse-engineering/effect-shader-users.md)).
+  Only 39 pixel / 24 vertex programs were ever created across 81 sessions;
+  18 of the 20 gain pairs and 8 of the 9 bullet pairs never were. Decision
+  (user): one gain, one key; screen draws substituted additive under the gain
+  ([cost note](architecture/linear-emission-cost.md), "Screen substitution").
+  Plan and attribution table: [emitter-plan.md](architecture/emitter-plan.md).
+- **Halo persisted with alpha 0 and native bolts:** the bloom source is
+  unbounded, so gained or overlapping bolts saturate the tonemapper into a
+  white disc; the kernel itself is narrow (50 % at 2–3 px). Ratified and
+  merged: `--bloom-source-clamp` ([bloom-falloff.md](architecture/bloom-falloff.md)).
+- **Chase pose:** fixed per the user; no centre-then-jump.
+- **FPS:** busy view 14.7 ms p50 at ~240 draws vs 8.1 ms at ~86 facing away;
+  Present 9–15 µs throughout (CPU-side, scales with draws). The sampling
+  profiler attributes nothing under FEX (every leaf a syscall thunk), so
+  `--frame-timing` gained proxy self-time buckets and the slowest hooked call
   ([schema](verification/sampling-profiler.md)).
+- **Sun lane:** available on 4,577 of 4,695 frames in run85 under linear
+  materials, the first time in game; no cutout draws occurred, so the cutout
+  admission fix is unexercised. Next shadow step: the original-program share
+  producer and a lane latch without the linear-material prerequisite
+  ([contract](architecture/legacy-sun-application.md)).
+- **Mods:** two Mayhem packages inspected, no shader files; hash-keyed
+  transforms fail closed ([mod-compatibility.md](architecture/mod-compatibility.md)).
+  The unknown-program report (`shader_unknown` / `shader_population`) is
+  implemented and in review; it rides the next candidate. Decision: no `.fx`
+  archive edits.
 
-[Run 29](verification/user-runs.md) is queued.
+[Run 30](verification/user-runs.md) is queued.
 
 ## Next user action
 
@@ -236,8 +233,7 @@ further linear-hull processing is planned. Decisions this session:
   edits in `73772bf`. The canonical discovery run is green (1883 tests, 2
   build-artifact skips) ([ledger](verification/host-suite-2026-09-15.md)).
 
-The run26 candidate is installed (see above) and
-[run 26](verification/user-runs.md) is queued: session A with original hulls,
+Run 26 was received as run65/run66 (see the goals table); its command was session A with original hulls,
 both gains at 2, chase restore, replay candidates and loading intervals; optional
 session B with linear materials for the sun-lane buckets.
 

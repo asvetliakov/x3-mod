@@ -897,6 +897,51 @@ mode and geometry across the gate; validate loading interval completeness and
 report per-thread/combined occupancy and uncovered intervals without assigning
 a causal residual; check sun-lane admitted coverage/refusals and TAA continuity.
 
+## 29. Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane — completed as run83–run85
+
+Received as `/tmp/x3-bottleX3-run83` (session A), `run84` (A2 with the profiler), `run85` (session B). Outcomes are in [status](../status.md) (session 2026-09-16/17) and the owning ledgers. Original instructions follow.
+
+Installed: DLL `7f296d53…` from `dd29770` (see [status](../status.md)). Defaults unchanged.
+New in this build: Ctrl+Shift+F5 toggles the additive bolts, Ctrl+Shift+F6 the
+engine source gain, Ctrl+Shift+F4 the effect source gain (each between its
+configured gain and native, with an on-screen notice; the next candidate
+merges F6/F4 into one F6 over all twenty pairs and drops
+`--effect-source-gain`, `linear-emission-cost.md` "Screen substitution"); `--screen-emission-additive-alpha K`
+keeps the bolts out of the authored-glow bloom term; the chase pose now lands on
+the first frame after a transit; `--frame-timing` logs frame-time windows.
+
+**Session A, emitter attribution and halo** (gains at 5 so each family is unmistakable):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-timing --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 5 --screen-emission-additive-alpha 0 --emission-source-gain 5 --effect-source-gain 5 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+1. With engines burning and while firing, press each key in turn and say what
+   changes: F5 (bolts), F6 (engines), F4 (effect sprites). If F5 also dims the
+   engine glow, say so; the log's `screen_emission_additive_frame` line names
+   the admitted pairs per frame either way.
+2. Bolt halo over black space, bloom on: with alpha 0 the bolts should keep
+   their brightness but bloom much less. Toggle bloom (Ctrl+Shift+F10) once to
+   compare. Say whether the halo is now acceptable or still too strong.
+3. Rear chase through a gate and back, twice: the ship should sit at the
+   configured position on the first frame after each transit, no centre-then-jump.
+4. Low FPS: find a view with many objects (a busy station or fleet) and hold it
+   for 30 s, then look away to empty space for 30 s. Note the rough FPS both
+   ways; the `frame_timing` windows tie the slow frames to draw counts.
+
+**Session A2, profiler in the busy scene** (short): the same command plus
+`--profile`, load, fly to the same busy view, hold 30 s, quit. Nothing to look
+at; the sampler attributes the slow frames to game, Wine, GPU wait or proxy.
+
+**Session B (linear materials, diagnostics only):** the session A command with
+gains back at 2 plus `--linear-materials --linear-distance-fade --sun-shadow-lane`,
+a minute near a station: sun-lane frames should now report `available=1`.
+
+After the tests, play with gains at 2 (`--screen-emission-additive 2
+--screen-emission-additive-alpha 0 --emission-source-gain 2 --effect-source-gain 1`;
+the next candidate takes no `--effect-source-gain`) and say whether alpha 0
+should stay.
+
 ## 28. Restore re-arm, emitter split and original fill — completed as run74–run81
 
 Installed: DLL `2b0969e5…` from `a26eb9b`. Mip bias -0.5 and sharpen 0.75 are now defaults, as

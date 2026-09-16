@@ -46,54 +46,51 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 26 | Original hulls with cheap HDR emitters, chase view restore, elevated-camera reticle, replay candidates, loading intervals (A); optional linear sun-lane refusal buckets (B) | 1 | Session A completed as run65 (60 files): bolts brighter and liked; engines unchanged; loading possibly faster; **camera still reset at the gate**. Session B completed as run66 (55 files). Run65 triage: restore refused at the consume seam on the ref cell (2/2), engine gain refused on separate-alpha blend, loading stall 21.5 s again, replay predicates all pass; follow-ups in flight |
 | 27 | Next candidate: corrected chase restore, engine gain on separate-alpha, point-light root admission, original-program fill baseline, depth replay, mip bias/sharpen trial (A); linear sun lane after the state-gate fix (B) | 1 | Session A completed as run68 (108 files): engines brighter, halo around bolt impacts (weapon-effect sprites now gained), mip bias/sharpen kept as defaults, chase restore consumed on transits 1–2 but the view still reset on the return transit and no transfer on 3–4, docking modules partly dark with the point-light option (no per-node telemetry yet); A2 without the option in progress |
 | 28 | Next candidate: restore re-arm fix, emitter gain split (engines vs weapon effects), original-program fill A/B, point-light telemetry (opt-in) | 0 | Completed as snapshots run74–run80 (session A) and run81 (session B), DLL `2b0969e5…` from `a26eb9b`: halo identified as bloom of the >1.0 bolts (bloom working-set 21 vs 13 MB is the sharpen-stage buffer, not resolution); chase restore consumed on both run78 transits, the centre-then-jump was the camera hook refusing the unbound view phase (37 and 13 frames), fixed `e4fd22a`; original fill 0.05 accepted visually, no clean frame-time A/B; engine-family gain admits draws, effect family 0; session B sun lane `available=0` on all 2,123 frames, fixed `e62722a` |
-| 29 | Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane | 3 | Queued on DLL `7f296d53…` (`dd29770`) |
+| 29 | Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane | 3 | Completed as run83 (A), run84 (A2 profiler), run85 (B): engines unchanged (gain refused screen blend), halo persisted (bloom amplitude), chase pose fixed, profiler blind under FEX, sun lane available 4577/4695 |
+| 30 | Single emission gain, bloom source clamp, frame-time split | 2 | Queued on `bbadc568…` (`f94290c`) |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
-## 29. Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane — open
 
-Installed: DLL `7f296d53…` from `dd29770` (see [status](../status.md)). Defaults unchanged.
-New in this build: Ctrl+Shift+F5 toggles the additive bolts, Ctrl+Shift+F6 the
-engine source gain, Ctrl+Shift+F4 the effect source gain (each between its
-configured gain and native, with an on-screen notice; the next candidate
-merges F6/F4 into one F6 over all twenty pairs and drops
-`--effect-source-gain`, `linear-emission-cost.md` "Screen substitution"); `--screen-emission-additive-alpha K`
-keeps the bolts out of the authored-glow bloom term; the chase pose now lands on
-the first frame after a transit; `--frame-timing` logs frame-time windows.
+## 30. Single emission gain, bloom source clamp, frame-time split — open
 
-**Session A, emitter attribution and halo** (gains at 5 so each family is unmistakable):
+Installed: DLL `bbadc568…` from `f94290c` (see [status](../status.md)). New in this
+build: one `--emission-source-gain G` for every emitter drawn by the effects
+program (engines, gate, beams, flares, shield hits; screen-blended engine
+materials are drawn additively under the gain), Ctrl+Shift+F6 toggles it,
+Ctrl+Shift+F4 and `--effect-source-gain` are gone; `--bloom-source-clamp C`
+bounds what any pixel feeds the bloom (1.0 = a native bright pixel's halo);
+`--frame-timing` now splits each frame into proxy draw/scene/state time versus
+game time and names the slowest hooked call.
+
+**Session A** (appearance and frame split):
 
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-timing --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 5 --screen-emission-additive-alpha 0 --emission-source-gain 5 --effect-source-gain 5 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-timing --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
 ```
 
-1. With engines burning and while firing, press each key in turn and say what
-   changes: F5 (bolts), F6 (engines), F4 (effect sprites). If F5 also dims the
-   engine glow, say so; the log's `screen_emission_additive_frame` line names
-   the admitted pairs per frame either way.
-2. Bolt halo over black space, bloom on: with alpha 0 the bolts should keep
-   their brightness but bloom much less. Toggle bloom (Ctrl+Shift+F10) once to
-   compare. Say whether the halo is now acceptable or still too strong.
-3. Rear chase through a gate and back, twice: the ship should sit at the
-   configured position on the first frame after each transit, no centre-then-jump.
-4. Low FPS: find a view with many objects (a busy station or fleet) and hold it
-   for 30 s, then look away to empty space for 30 s. Note the rough FPS both
-   ways; the `frame_timing` windows tie the slow frames to draw counts.
+1. Engines: are they now visibly brighter and bloomed? Press Ctrl+Shift+F6 to
+   compare with native. Look at an engine glow over a nebula or the sun and
+   say whether the additive look is acceptable there (it is brighter than
+   native over bright backgrounds).
+2. Bolt halo over black with the clamp at 1.0: acceptable, too faint, or still
+   too strong? Then quit and relaunch with `--bloom-source-clamp 2.0` and say
+   which you prefer; if both look wrong, once more without the option.
+3. Fire at something until it explodes, and fly past a station with lattice
+   or grating trim (the run-22 station): the log then shows which program draws
+   explosions and exercises the cutout admission.
+4. Hold a busy view for 30 s, then empty space for 30 s: the frame-time split
+   says whether the slow frames are proxy or game time.
+5. One gate transit in rear chase: no centre-then-jump expected.
 
-**Session A2, profiler in the busy scene** (short): the same command plus
-`--profile`, load, fly to the same busy view, hold 30 s, quit. Nothing to look
-at; the sampler attributes the slow frames to game, Wine, GPU wait or proxy.
+**Session B (linear materials, diagnostics only):** the session A command plus
+`--linear-materials --linear-distance-fade --sun-shadow-lane`, a minute at the
+same lattice station: sun-lane frames should report `available=1` and the
+`sun_shadow_lane_writer` lines should name any cutout draw with `arm=`.
 
-**Session B (linear materials, diagnostics only):** the session A command with
-gains back at 2 plus `--linear-materials --linear-distance-fade --sun-shadow-lane`,
-a minute near a station: sun-lane frames should now report `available=1`.
-
-After the tests, play with gains at 2 (`--screen-emission-additive 2
---screen-emission-additive-alpha 0 --emission-source-gain 2 --effect-source-gain 1`;
-the next candidate takes no `--effect-source-gain`) and say whether alpha 0
-should stay.
+After the tests, say the gain and clamp you want to play with.
 
 ## 27. Corrected restore, engine gain, point-light admission, depth replay — session A completed (run68)
 
