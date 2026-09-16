@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from verification.analysis.test_capture_bloom_lifetime import extract_function
+from verification.analysis.test_capture_bloom_lifetime import extract_function, strip_comments
 from verification.analysis.test_chase_lead import extract_named_function
 
 
@@ -341,7 +341,7 @@ int main() {
 
 
 def compact(text: str) -> str:
-    return re.sub(r'\s+', '', text)
+    return re.sub(r'\s+', '', strip_comments(text))
 
 
 def positions(text: str, *needles: str) -> list[int]:

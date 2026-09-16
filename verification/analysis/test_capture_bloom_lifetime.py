@@ -14,6 +14,43 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def strip_comments(source: str) -> str:
+    """Remove // and /* */ comments, leaving string/character literals intact.
+
+    Whitespace-compacted snippets have no line breaks, so a surviving line
+    comment would swallow the rest of the text for any later brace scan.
+    """
+    out = []
+    state = 'code'
+    index = 0
+    while index < len(source):
+        char = source[index]
+        following = source[index + 1] if index + 1 < len(source) else ''
+        if state == 'code':
+            if char == '/' and following == '/':
+                state = 'line_comment'; index += 2; continue
+            if char == '/' and following == '*':
+                state = 'block_comment'; index += 2; continue
+            if char == '"': state = 'string'
+            elif char == "'": state = 'character'
+        elif state == 'line_comment':
+            if char == '\n': state = 'code'
+        elif state == 'block_comment':
+            if char == '*' and following == '/':
+                state = 'code'; index += 2; out.append(' '); continue
+        elif state in ('string', 'character'):
+            if char == '\\':
+                out.append(source[index:index + 2]); index += 2; continue
+            if (state == 'string' and char == '"') or (state == 'character' and char == "'"):
+                state = 'code'
+        if state in ('code', 'string', 'character'):
+            out.append(char)
+        elif char == '\n':
+            out.append(char)
+        index += 1
+    return ''.join(out)
+
+
 def extract_function(source: str, signature: str) -> str:
     """Return one complete function definition, ignoring braces in comments/strings."""
     start = source.index(signature)
