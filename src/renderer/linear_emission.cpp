@@ -35,37 +35,32 @@ constexpr Profile profiles[] = {
 };
 // Whole VS/PS identities establish the archive pair, independent of shared
 // executable bodies or DEFAULT/INSTANCE names. Native VS is unchanged.
-// Family (docs/architecture/linear-emission-cost.md, "Family split"): the
-// archive alias that carries the pair decides. `engine_0000/0001` pairs are
-// Engine; `effects_0000/0001` pairs are Effect. The base `effects`/`engine`
-// aliases are byte-identical, so their four pairs split by technique: the
-// DEFAULT VS d5e1c753 (g_TexMatrix, the ordinary material dispatch, the
-// historical cruising two-draw bursts) is Engine, the INSTANCE VS 89193868
-// (direct UV, the instanced-mesh sprite path that names effect "effects") is
-// Effect; the two PS2.1 f0c91793 pairs sit only in the base `effects` alias.
-using Family = LinearEmissionFamily;
-struct Pair { std::uint64_t vertex, pixel; Family family; };
+// One registry, one gain: the 2026-09-16 engine/effect family split is undone
+// (docs/reverse-engineering/effect-shader-users.md: the engine glow is drawn
+// by the same pair as the jump gate and the effect sprites, so no family is
+// separable by shader identity).
+struct Pair { std::uint64_t vertex, pixel; };
 constexpr Pair pairs[] = {
-    {0xd5e1c75351ed3f04ull,0x8360f422de08b5bdull,Family::Engine},
-    {0x32e75459998d0388ull,0x9975b706e5a1c999ull,Family::Engine},
-    {0x32e75459998d0388ull,0xff2473e73a6bdfa1ull,Family::Engine},
-    {0x089091aab2d5eb13ull,0x8559522220507d5eull,Family::Effect},
-    {0x089091aab2d5eb13ull,0x875e780adb131b16ull,Family::Effect},
-    {0x5b7a3ccd9e7df00aull,0x9975b706e5a1c999ull,Family::Engine},
-    {0x5b7a3ccd9e7df00aull,0xff2473e73a6bdfa1ull,Family::Engine},
-    {0x6435a84d8ac5908eull,0x39f3b4d5b6a5aaedull,Family::Effect},
-    {0x6435a84d8ac5908eull,0x47e15e20d63b0e93ull,Family::Effect},
-    {0x6435a84d8ac5908eull,0x846c5c1a549f9491ull,Family::Effect},
-    {0x6435a84d8ac5908eull,0xc6dacb8f74b65c97ull,Family::Effect},
-    {0x89193868c61c3846ull,0x8360f422de08b5bdull,Family::Effect},
-    {0x89193868c61c3846ull,0xf0c91793a75e1203ull,Family::Effect},
-    {0xa520be365951c9dcull,0x8559522220507d5eull,Family::Effect},
-    {0xa520be365951c9dcull,0x875e780adb131b16ull,Family::Effect},
-    {0xcfb2c31707d545bcull,0x39f3b4d5b6a5aaedull,Family::Effect},
-    {0xcfb2c31707d545bcull,0x47e15e20d63b0e93ull,Family::Effect},
-    {0xcfb2c31707d545bcull,0x846c5c1a549f9491ull,Family::Effect},
-    {0xcfb2c31707d545bcull,0xc6dacb8f74b65c97ull,Family::Effect},
-    {0xd5e1c75351ed3f04ull,0xf0c91793a75e1203ull,Family::Effect},
+    {0xd5e1c75351ed3f04ull,0x8360f422de08b5bdull},
+    {0x32e75459998d0388ull,0x9975b706e5a1c999ull},
+    {0x32e75459998d0388ull,0xff2473e73a6bdfa1ull},
+    {0x089091aab2d5eb13ull,0x8559522220507d5eull},
+    {0x089091aab2d5eb13ull,0x875e780adb131b16ull},
+    {0x5b7a3ccd9e7df00aull,0x9975b706e5a1c999ull},
+    {0x5b7a3ccd9e7df00aull,0xff2473e73a6bdfa1ull},
+    {0x6435a84d8ac5908eull,0x39f3b4d5b6a5aaedull},
+    {0x6435a84d8ac5908eull,0x47e15e20d63b0e93ull},
+    {0x6435a84d8ac5908eull,0x846c5c1a549f9491ull},
+    {0x6435a84d8ac5908eull,0xc6dacb8f74b65c97ull},
+    {0x89193868c61c3846ull,0x8360f422de08b5bdull},
+    {0x89193868c61c3846ull,0xf0c91793a75e1203ull},
+    {0xa520be365951c9dcull,0x8559522220507d5eull},
+    {0xa520be365951c9dcull,0x875e780adb131b16ull},
+    {0xcfb2c31707d545bcull,0x39f3b4d5b6a5aaedull},
+    {0xcfb2c31707d545bcull,0x47e15e20d63b0e93ull},
+    {0xcfb2c31707d545bcull,0x846c5c1a549f9491ull},
+    {0xcfb2c31707d545bcull,0xc6dacb8f74b65c97ull},
+    {0xd5e1c75351ed3f04ull,0xf0c91793a75e1203ull},
 };
 static_assert(sizeof(pairs)/sizeof(pairs[0])==linear_emission_pair_count,"twenty reviewed pairs");
 unsigned type(Word value) noexcept { return ((value>>28)&7)|((value>>8)&24); }
@@ -227,21 +222,18 @@ bool linear_emission_source_gain_valid(float gain) noexcept {
 SourceGainBlend linear_emission_source_gain_blend(std::uint32_t blend_enable,std::uint32_t srgb_write,
     std::uint32_t src,std::uint32_t dst,std::uint32_t op) noexcept {
     constexpr std::uint32_t blend_one=2, blend_inv_src_color=4, op_add=1; // D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD
-    if (!blend_enable || src!=blend_one || op!=op_add) return SourceGainBlend::Blend;
+    if (!blend_enable || srgb_write || src!=blend_one || op!=op_add) return SourceGainBlend::Blend;
     if (dst==blend_inv_src_color) return SourceGainBlend::Screen;
-    if (dst!=blend_one || srgb_write) return SourceGainBlend::Blend;
+    if (dst!=blend_one) return SourceGainBlend::Blend;
     return SourceGainBlend::Admit;
 }
-LinearEmissionPairInfo linear_emission_pair_info(std::uint64_t vertex,std::uint64_t pixel) noexcept {
+unsigned linear_emission_pair_index(std::uint64_t vertex,std::uint64_t pixel) noexcept {
     for (unsigned i=0;i<linear_emission_pair_count;++i)
-        if (pairs[i].vertex==vertex && pairs[i].pixel==pixel) return {i,pairs[i].family};
-    return {};
+        if (pairs[i].vertex==vertex && pairs[i].pixel==pixel) return i;
+    return linear_emission_pair_count;
 }
 bool linear_emission_pair_reviewed(std::uint64_t vertex,std::uint64_t pixel) noexcept {
-    return linear_emission_pair_info(vertex,pixel).family!=Family::None;
-}
-const char* linear_emission_family_name(LinearEmissionFamily family) noexcept {
-    return family==Family::Engine?"engine":family==Family::Effect?"effect":"none";
+    return linear_emission_pair_index(vertex,pixel)<linear_emission_pair_count;
 }
 LinearEmissionResult linear_emission_pixel_variant(const Word* original,std::size_t count,
     const LinearEmissionConfig& config,Words& output_words) noexcept {

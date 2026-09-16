@@ -22,17 +22,11 @@ bool linear_emission_config_valid(const LinearEmissionConfig& config) noexcept;
 // pairs. This establishes no ownership, blend, sampler, alpha, MRT, query or
 // other live admission gate; technique names and shared bodies never admit a pair.
 bool linear_emission_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
-// Family of a reviewed pair for the split source gain (linear-emission-cost.md,
-// "Family split"): Engine = engine-glow archive pairs (`--emission-source-gain`),
-// Effect = effects archive pairs (weapon impact / muzzle / explosion sprites,
-// `--effect-source-gain`). Every reviewed pair has exactly one family; an
-// unreviewed pair is None with index linear_emission_pair_count. The linear
-// route and the blend law ignore the family: it selects the gain only.
-enum class LinearEmissionFamily : std::uint8_t { None = 0, Engine = 1, Effect = 2 };
+// Registry index of a reviewed pair (0..19), linear_emission_pair_count for
+// any other pair. One gain covers all twenty (the engine/effect family split
+// is undone: docs/reverse-engineering/effect-shader-users.md).
 constexpr unsigned linear_emission_pair_count = 20;
-struct LinearEmissionPairInfo { unsigned index = linear_emission_pair_count; LinearEmissionFamily family = LinearEmissionFamily::None; };
-LinearEmissionPairInfo linear_emission_pair_info(std::uint64_t vertex, std::uint64_t pixel) noexcept;
-const char* linear_emission_family_name(LinearEmissionFamily family) noexcept; // "engine" / "effect" / "none"
+unsigned linear_emission_pair_index(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 
 // Pure creation-time PS2 augmentation; the original VS2 is never transformed.
 // Preserve every original word, including comments, native PP oC0 and raw alpha.
@@ -66,9 +60,13 @@ LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* or
 // D3DBLENDOP codes: ONE = 2, INVSRCCOLOR = 4, ADD = 1). The separate alpha
 // factors are not inputs: the variant multiplies only rgb, so the ONE/ONE/ADD
 // colour law holds whatever SEPARATEALPHABLENDENABLE and the alpha triple are.
-// Screen (ONE/INVSRCCOLOR/ADD) is not additive: gained, `bg + G*s*(1-bg)`
-// darkens where bg > 1 (the FP16 scene admits that), so it is a distinct refusal; everything else (blend
-// off, sRGB write, other factors or ops) is the generic blend refusal.
+// Screen (ONE/INVSRCCOLOR/ADD) cannot carry the gain as is (INVSRCCOLOR reads
+// the gained output, so `G*s + bg*(1-G*s)` goes negative for G*s > 1): the
+// proxy admits it with DESTBLEND ONE substituted for the draw (additive
+// `G*s + bg`, docs/architecture/linear-emission-cost.md, "Screen
+// substitution"), so Screen is a distinct admission, not a refusal; blend
+// off, sRGB write (no linear FP16 target), other factors or ops are the
+// generic blend refusal.
 enum class SourceGainBlend : std::uint8_t { Admit = 0, Blend = 1, Screen = 2 };
 SourceGainBlend linear_emission_source_gain_blend(std::uint32_t blend_enable, std::uint32_t srgb_write,
     std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept;
