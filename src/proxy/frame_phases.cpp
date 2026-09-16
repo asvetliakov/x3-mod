@@ -2,6 +2,7 @@
 #include "frame_phase_sites.h"
 #include "game_phases.h"
 #include "game_phase_sites.h"
+#include "pass_phases.h"
 #include "object_trace.h"
 #include "telemetry.h"
 #include "capture.h"
@@ -130,7 +131,9 @@ void present_end_impl() noexcept {
 void frame_impl(std::uint64_t frame) noexcept {
     ErrorGuard error;
     if(!owner(false))return;
-    if(!tracker.take(frame,frequency,last_sample))return;
+    const bool taken=tracker.take(frame,frequency,last_sample);
+    pass_phases::frame(frame,taken,taken?last_sample.view_submit_us:0); // X3M_PASS_PHASES only: closes the frame's pass accumulators under this guard
+    if(!taken)return;
     window.add(last_sample);
     if(window.full())emit_window();
 }

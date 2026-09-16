@@ -9,6 +9,18 @@ span and edge claim is from `i686-w64-mingw32-objdump` on the file bytes and is
 re-checked mechanically by `verification/probe/verify_pass_phase_sites.py`.
 Inferences are marked. Raw decompiler output stayed local and untracked.
 
+**Status (2026-09-16).** Implemented as `--pass-phases`
+(`src/proxy/pass_phase_sites.h`, `pass_phases.cpp`, `pass_phases_core.h`) on
+the four spans of §3 as proposed, with the accumulate-only lean stub of §4.
+The CPU fixture measured the stub at 90.5 ns per dispatch under the X3 bottle
+(364 µs implied per busy frame at 4,024 dispatches, against the 1.5 ms
+ceiling), so the two-stamp fallback of §4.4 was not needed. The shipped line
+differs from the §5 draft in field names (`end_*` for `endpass_*`,
+`self_p50_us` for `stamp_overhead_us`, p95 columns added, no `residual` field:
+the reader subtracts `sum` from `view_submit`); the schema and reading guide
+are in [sampling-profiler.md](../verification/sampling-profiler.md), "Pass
+phases". No game run yet.
+
 **Question.** [engine-state-filter.md](../architecture/engine-state-filter.md)
 ratified "no state filter; measure the D3DX pass loop instead" and proposed four
 accumulating stamps. Are those four spans safe trampoline sites, how often do
