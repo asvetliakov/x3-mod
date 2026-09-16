@@ -48,78 +48,12 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 28 | Next candidate: restore re-arm fix, emitter gain split (engines vs weapon effects), original-program fill A/B, point-light telemetry (opt-in) | 0 | Completed as snapshots run74–run80 (session A) and run81 (session B), DLL `2b0969e5…` from `a26eb9b`: halo identified as bloom of the >1.0 bolts (bloom working-set 21 vs 13 MB is the sharpen-stage buffer, not resolution); chase restore consumed on both run78 transits, the centre-then-jump was the camera hook refusing the unbound view phase (37 and 13 frames), fixed `e4fd22a`; original fill 0.05 accepted visually, no clean frame-time A/B; engine-family gain admits draws, effect family 0; session B sun lane `available=0` on all 2,123 frames, fixed `e62722a` |
 | 29 | Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane | 3 | Completed as run83 (A), run84 (A2 profiler), run85 (B): engines unchanged (gain refused screen blend), halo persisted (bloom amplitude), chase pose fixed, profiler blind under FEX, sun lane available 4577/4695 |
 | 30 | Single emission gain, bloom source clamp, frame-time split | 2 | Session A run87 and B run88 received: engines respond, halo accepted at clamp 1.0, no cutout draws yet (B to repeat at an Argon industrial station), frame split: state hooks 8.9 ms of a 28.5 ms busy frame |
-| 31 | Frame split, engine phases, lighter proxy | 2 | Queued: candidate `a9ebfa3b…` from `4adf3dd` installed 2026-09-17 |
+| 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
-
-## 31. Frame split, engine phases, lighter proxy — open
-
-Installed: DLL `a9ebfa3b…` from `4adf3dd` (see [status](../status.md)). This
-build removes most of the proxy's own per-call cost (light CPU envelope on the
-draw and binding hooks, trimmed setter dispatch, count-only frame timing), adds
-`--frame-phases` (ten stamps in the engine's frame routine: input, script,
-scene update, views, overlays, text, scene end, present) and reports the
-unknown-program census (`shader_unknown`). Appearance is unchanged from run 30.
-
-**Session A** (the busy sector, frame split):
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-timing --frame-phases --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
-```
-
-1. Fly to the busy view of run 30 (the one that felt slow), hold it 30 s, then
-   face empty space 30 s, then quit. Say roughly how the FPS compares with
-   run 30 in the same place; the logs give the exact split: proxy versus game,
-   and inside the game which phase grows with the object count.
-2. Nothing to look at otherwise; engines, bolts and halo should look exactly
-   as in run 30. Say if anything changed.
-
-**Session B (linear materials, cutout admission):** the session A command plus
-`--linear-materials --linear-distance-fade --sun-shadow-lane`, one minute close
-to an **Argon** factory, farm, solar plant or trading station (they carry the
-lattice and crop cutouts): the log should show `cutout_routed` above 0 and
-`sun_shadow_lane_writer` lines with `arm=`.
-
-## 30. Single emission gain, bloom source clamp, frame-time split — open
-
-Installed: DLL `bbadc568…` from `f94290c` (see [status](../status.md)). New in this
-build: one `--emission-source-gain G` for every emitter drawn by the effects
-program (engines, gate, beams, flares, shield hits; screen-blended engine
-materials are drawn additively under the gain), Ctrl+Shift+F6 toggles it,
-Ctrl+Shift+F4 and `--effect-source-gain` are gone; `--bloom-source-clamp C`
-bounds what any pixel feeds the bloom (1.0 = a native bright pixel's halo);
-`--frame-timing` now splits each frame into proxy draw/scene/state time versus
-game time and names the slowest hooked call.
-
-**Session A** (appearance and frame split):
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-timing --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
-```
-
-1. Engines: are they now visibly brighter and bloomed? Press Ctrl+Shift+F6 to
-   compare with native. Look at an engine glow over a nebula or the sun and
-   say whether the additive look is acceptable there (it is brighter than
-   native over bright backgrounds).
-2. Bolt halo over black with the clamp at 1.0: acceptable, too faint, or still
-   too strong? Then quit and relaunch with `--bloom-source-clamp 2.0` and say
-   which you prefer; if both look wrong, once more without the option.
-3. Fire at something until it explodes, and fly past a station with lattice
-   or grating trim (the run-22 station): the log then shows which program draws
-   explosions and exercises the cutout admission.
-4. Hold a busy view for 30 s, then empty space for 30 s: the frame-time split
-   says whether the slow frames are proxy or game time.
-5. One gate transit in rear chase: no centre-then-jump expected.
-
-**Session B (linear materials, diagnostics only):** the session A command plus
-`--linear-materials --linear-distance-fade --sun-shadow-lane`, a minute at the
-same lattice station: sun-lane frames should report `available=1` and the
-`sun_shadow_lane_writer` lines should name any cutout draw with `arm=`.
-
-After the tests, say the gain and clamp you want to play with.
 
 ## 27. Corrected restore, engine gain, point-light admission, depth replay — session A completed (run68)
 

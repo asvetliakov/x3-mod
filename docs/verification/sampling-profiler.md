@@ -611,3 +611,64 @@ the two are close but not the same quantity). The 1008 ns `CpuCallBoundary`
 envelope is most of it: each draw passes several heavy-guard hooks
 (SetStreamSource, SetIndices, SetVertexDeclaration/SetFVF and the draw hook
 itself), each paying that envelope once.
+
+### Run 31 session A (run89), 2026-09-17
+
+Session `/tmp/x3-bottleX3-run89/session-20260916-074655-212.log` (68,530
+lines), `--frame-timing --frame-phases --telemetry`, state unstamped
+(`state_us=-1` throughout). Identity line 2: sha256 `a9ebfa3b...`, source
+`4adf3dd3...`, matching the installed candidate; options line 3 confirm
+`FRAME_TIMING=1`, `FRAME_PHASES=1`, `BLOOM_SOURCE_CLAMP=1.0`,
+`EMISSION_SOURCE_GAIN=2.0`, `SCREEN_EMISSION_ADDITIVE=2.0`/`_ALPHA=0.0`.
+Install (line 11): `status=ok sites=10`, all ten `frame_phase_site` lines
+`patched=1 status=active`. 38/38 `frame_timing`/`frame_phases` windows, no
+`truncated=1`; `order_errors`/`clock_errors`/`unmatched`/`dropped`/`early`/
+`foreign` all 0 everywhere. `incomplete`: `frame=300` incomplete=3,
+`frame=600` incomplete=1 (both in the opening/loading windows), 0 elsewhere.
+
+Busy window `frame=5700` (`draws_p50=987`, the session's highest) vs. empty
+window `frame=6900` (`draws_p50=51`, low-draw plateau of windows 20-37):
+
+| Window | dt p50/p95 | draws_p50 | state_calls_p50 | draw p50 | draw_native p50 | scene p50 | gap_pre/draw/post p50 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| busy 5700 | 37.48/41.69 ms | 987 | 61,896 | 7.93 ms | 2.53 ms | 1.25 ms | 4.34/23.44/0.45 ms |
+| empty 6900 | 6.80/13.52 ms | 51 | 2,501 | 0.38 ms | 0.12 ms | 1.07 ms | 3.42/1.66/0.15 ms |
+
+run87: 28.5 ms p50 at 457 draws, ~30,076 state calls, 8.9 ms *stamped* state
+bucket; run89 has no state stamps, so the state bucket is not comparable
+(folded into `gap_draw_us`). Proxy share (draw+scene only) is 9.18 ms of
+37.48 ms (24.5%). run89's busy frame is slower (37.5 vs 28.5 ms) at more than
+double the scene load (987 draws/61,896 state calls vs 457/30,076) — not a
+matched-load comparison. `state_top` busy: `set_sampler_state:31149,
+set_render_state:18449, set_texture:4451, set_vs:987, set_ps:987,
+set_declaration:984`, `state_other_p50=993`; empty: `set_sampler_state:1049,
+set_render_state:899, set_texture:151, set_vs:51, set_ps:51,
+set_declaration:48`, `state_other_p50=56`. Worst slow-call witness:
+`frame=5642 dt_us=88635 slow_call=draw_indexed slow_call_us=1702`.
+
+Frame-phase medians (us):
+
+| Phase | busy p50/p95 | empty p50/p95 |
+| --- | --- | --- |
+| pre_render | 4057/5703 | 2946/9777 |
+| prologue | 49/113 | 48/69 |
+| scene_update | 65/170 | 57/69 |
+| begin_scene | 308/392 | 281/313 |
+| views | 32505/35419 | 3205/3418 |
+| overlays | 171/186 | 2/2 |
+| text | 1/1 | 1/1 |
+| scene_end | 265/366 | 100/190 |
+| present | 12/15 | 9/11 |
+| view_setup (sum) | 1810/2064 | 400/484 |
+| view_submit (sum) | 29396/31754 | 1656/1737 |
+
+Sum of nine phases: busy 37,433 us vs `dt_p50=37,498`; empty 6,649 us vs
+`dt_p50=6,794` (both match within rounding). `views` dominates the busy
+frame (32.5/37.5 ms, 87%), almost all `view_submit` (29.4 ms) against
+`view_setup` (1.8 ms). `scene_update` is 65 us busy vs 57 us empty —
+negligible — so the busy/empty gap is carried by `views`/`view_submit`
+(submission and its O(n^2) sort at `0x0047e620`), not the render-list build.
+
+No `arena_full`, claim failure, `chase_restore` refusal, or `shader_unknown` anywhere in the log; `shader_population` reports `unknown=0 overflow=0` at
+all three cadence points (lines 2243, 5121, 27669). `lock_wait` values are
+small (max 6.5 us seen). No crash/assert lines.

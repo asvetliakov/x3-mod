@@ -117,8 +117,27 @@ Run 30 came back as `run87` (A) and `run88` (B). Outcomes and decisions:
   proxy over engine trampolines for the renderer (trampolines stay for
   engine-side fixes only); three concurrent agents unless the user raises it.
 
-[Run 31](verification/user-runs.md) is queued (candidate `a9ebfa3b…` from
-`4adf3dd`, installed).
+Run 31 came back as `run89` (A) and `run90` (B), both on the installed build:
+
+- **Busy frame attributed (run89):** 37.5 ms p50 at 987 draws and 61,896
+  hooked state calls; the `views` phase (view submission) carries 32.5 ms,
+  scene update with the O(n²) sort only 65 µs. Inside submission the hooked
+  draws including native cost 7.9 ms; the 23.4 ms between hooked calls is game
+  code, of which the state-call chain (about 63 per draw from the unfiltered
+  effect state manager) is roughly 6 ms proxy plus native and the rest the
+  emulated D3DX apply loop. Empty view 6.8 ms at 51 draws
+  ([ledger](verification/sampling-profiler.md)). Next fast-path steps proposed:
+  a redundant-state counter against the proxy shadow, the hybrid unhook
+  (about 5 ms), then a state-manager filter trampoline if the no-op fraction
+  justifies it; awaiting the user's go.
+- **Sun lane (run90):** available on all 16,041 frames, depth replay 40.7 µs
+  median, zero skips; **zero cutout draws for the third session** although
+  both cutout programs compile at startup. The telemetry has no per-draw
+  shader-pair counter, so which programs the station drew is unknown; the next
+  diagnostic build adds one before any further session B
+  ([ledger](verification/directional-shadows.md)).
+- No unknown programs, claim failures, truncated stamps or chase refusals in
+  either session.
 
 ## Next user action
 
