@@ -127,11 +127,12 @@ before exposure; `c27.y` is filled from the display firefly clamp
 (`bloom_pass.cpp:557`, `prepare_bloom` in `bloom.h:100`). Add
 `float source_clamp = kAgxClampOff;` to `BloomParams` (validated like
 `threshold`), and set `c.radiance[1] = min(p.agx.exposure[1], p.filter.source_clamp)`
-in both places. No shader edit, no new register, no new lane. The live call
-site (`capture.cpp:676`) sets `source_clamp = 1.f`; an env override
-`X3M_HDR_BLOOM_SOURCE_CLAMP` (positive, at most 65504; absent = 1) and
-`--hdr-bloom-source-clamp` in `tools/manage.py` allow the user bracket
-(0.5 / 1 / 2). Log the value once with the other bloom configuration lines.
+in both places. No shader edit, no new register, no new lane. As implemented
+(ratified 2026-09-16): the option is `--bloom-source-clamp C` /
+`X3M_BLOOM_SOURCE_CLAMP` (finite, 0 < C <= 64, requires `--hdr-bloom`); absent
+means no clamp, so the installed behaviour is unchanged until the user run
+brackets 1.0 against 2.0 and none; 1.0 is the recommended value. Logged once
+as `bloom_source_clamp_mode` and as `clamp=` in the `bloom_prepare` line.
 The oracle already models it: `bloom_reference.exposed(..., clamp_max)`.
 
 **Effect.** Every source is capped per channel at code 1 before the split, so
