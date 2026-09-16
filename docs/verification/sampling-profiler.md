@@ -1328,7 +1328,10 @@ preserved in one run directory now:
 - `tools/manage.py launch` tees the child's stdout and stderr to
   `<game>\x3-modern-captures\launcher-stderr.log` (one fresh file per launch),
   prefixing every line with the launcher's own UTC stamp
-  `[YYYY-MM-DDTHH:MM:SS.mmmZ]`. The terminal output is unchanged.
+  `[YYYY-MM-DDTHH:MM:SS.mmmZ]`. The terminal output is unchanged. The first
+  line is `launcher_tee pid=<launcher pid> log=<path>`, so a file replaced by a
+  second concurrent launch still names its writer; the pump drains the child's
+  pipe even when a sink fails, so the game never blocks on a full pipe.
   `tools/analysis/snapshot_x3_run.py` copies that file next to the session log
   and counts it among the referenced files; `--dry-run` prints the path
   (`launcher_stderr`) without creating anything.

@@ -48,18 +48,58 @@ def utc_stamp(when=None):
     return f'[{moment:%Y-%m-%dT%H:%M:%S}.{moment.microsecond // 1000:03d}Z]'
 
 
-def tee_stream(source, terminal, log, lock, clock=utc_stamp):
-    """Copy one child stream, line by line: the terminal keeps the exact bytes,
-    the log gets the same line behind this launcher's UTC stamp. Returns the
-    number of lines copied."""
-    lines = 0
-    for line in iter(source.readline, b''):
-        terminal.write(line)
-        terminal.flush()
-        stamped = clock().encode('ascii') + b' ' + line.rstrip(b'\r\n') + b'\n'
-        with lock:
-            log.write(stamped)
-            log.flush()
+def tee_stream(source, terminal, log, lock, clock=utc_stamp, chunk=65536):
+    """Drain one child stream to EOF and copy it: the terminal keeps the exact
+    bytes, the log gets each line behind this launcher's UTC stamp.
+
+    Draining is unconditional. A sink that raises (a terminal whose reader has
+    exited, a full disk) is dropped, reported once to the other sink and the
+    read side continues, because a pump that stops reading fills the child's
+    pipe and blocks the game in write(). Reads are bounded, and a chunk without
+    any newline is flushed as one line, so a child that never emits a newline
+    cannot grow the buffer. Returns the number of lines written to the log."""
+    sinks = {'terminal': terminal, 'log': log}
+    lines, pending = 0, b''
+
+    def write(name, data, notify=True):
+        sink = sinks[name]
+        if sink is None:
+            return
+        try:
+            if name == 'log':
+                with lock:
+                    sink.write(data)
+                    sink.flush()
+            else:
+                sink.write(data)
+                sink.flush()
+        except (OSError, ValueError) as error:
+            sinks[name] = None
+            if notify:
+                write('log' if name == 'terminal' else 'terminal',
+                      f'{clock()} launcher tee: the {name} sink was dropped ({error}); '
+                      f'the child is still being drained.\n'.encode('utf-8', 'replace'), notify=False)
+
+    read = getattr(source, 'read1', source.read)
+    while True:
+        try:
+            data = read(chunk)
+        except (OSError, ValueError):
+            break
+        if not data:
+            break
+        write('terminal', data)
+        pending += data
+        while b'\n' in pending:
+            line, pending = pending.split(b'\n', 1)
+            write('log', clock().encode('ascii') + b' ' + line.rstrip(b'\r') + b'\n')
+            lines += 1
+        if len(pending) >= chunk:  # no newline in sight: flush what is held
+            write('log', clock().encode('ascii') + b' ' + pending + b'\n')
+            lines += 1
+            pending = b''
+    if pending:
+        write('log', clock().encode('ascii') + b' ' + pending + b'\n')
         lines += 1
     return lines
 
@@ -75,6 +115,10 @@ def launch_teed(command, env, cwd, log_path, *, stdout=None, stderr=None, clock=
         if log_path.exists():
             log_path.unlink()  # a new file, so the snapshot sees this launch's creation time
         log = open(log_path, 'wb')
+        # Whose file this is: a second concurrent launch replaces it, and the
+        # preserved copy must still name the process that wrote the lines.
+        log.write(f'{clock()} launcher_tee pid={os.getpid()} log={log_path}\n'.encode('utf-8', 'replace'))
+        log.flush()
     except OSError as error:
         print(f'Launcher output is not preserved ({error}); the terminal output is unchanged.', file=sys.stderr)
         return subprocess.call(command, env=env, cwd=cwd)

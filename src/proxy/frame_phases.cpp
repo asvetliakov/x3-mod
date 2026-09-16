@@ -78,10 +78,11 @@ struct PhaseText {
 void emit_window() {
     detail::Summary s;
     if(!window.close(s))return;
-    // One clock read per window: qpc= places the window (and the slow frames
-    // reported with it) on the session's clock_anchor line, so a wall-clock
-    // stamp from another component can be aligned with these frames
-    // (docs/verification/sampling-profiler.md, "Audio correlation").
+    // One clock read per window: qpc= on the window line places it on the
+    // session's clock_anchor line, so a wall-clock stamp from another component
+    // can be aligned with these frames (docs/verification/sampling-profiler.md,
+    // "Audio correlation"). The frame_phases_slow lines below carry no qpc=:
+    // they name frames inside the window this line closes.
     const std::uint64_t emitted=qpc();
     PhaseText phases;
     for(unsigned i=0;i<detail::phase_count;++i)phases.add(" %s_p50_us=%llu %s_p95_us=%llu",detail::phase_names[i],s.phase_p50[i],detail::phase_names[i],s.phase_p95[i]);

@@ -68,14 +68,40 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.assertTrue((self.capture / 'hdr_1_2.rgba16f').exists())
 
     def test_launcher_stderr_is_preserved_and_counted(self):
-        (self.capture / snapshot.LAUNCHER_STDERR).write_text('[2026-09-16T10:00:00.000Z] GStreamer-CRITICAL\n')
+        launcher = self.capture / snapshot.LAUNCHER_STDERR
+        launcher.write_text('[2026-09-16T10:00:00.000Z] GStreamer-CRITICAL\n')
+        touched = snapshot.created_ns(self.log.stat()) + 1
+        os.utime(launcher, ns=(touched, touched))
         destination, count, issues = self.save(log=self.log)
         self.assertEqual((count, issues), (1, []))
         self.assertEqual((destination / snapshot.LAUNCHER_STDERR).read_text(),
                          '[2026-09-16T10:00:00.000Z] GStreamer-CRITICAL\n')
         # Absent (a session not started through tools/manage.py launch) is silent.
-        (self.capture / snapshot.LAUNCHER_STDERR).unlink()
+        launcher.unlink()
         self.assertEqual(self.save(log=self.log)[1:], (0, []))
+
+    def test_launcher_stderr_of_a_later_launch_is_refused_with_an_explicit_log(self):
+        launcher = self.capture / snapshot.LAUNCHER_STDERR
+        launcher.write_text('later launch\n')
+        # created_ns sees stat results only, so the two files are told apart by size.
+        with patch.object(snapshot, 'created_ns',
+                          side_effect=lambda info: 20 if info.st_size == launcher.stat().st_size else 10):
+            destination, count, issues = self.save(log=self.log)
+        self.assertEqual(count, 0)
+        self.assertEqual(len(issues), 1)
+        self.assertIn('belongs to a later launch', issues[0])
+        self.assertFalse((destination / snapshot.LAUNCHER_STDERR).exists())
+
+    def test_launcher_stderr_untouched_after_the_log_is_preserved_with_a_note(self):
+        launcher = self.capture / snapshot.LAUNCHER_STDERR
+        launcher.write_text('[2026-09-16T10:00:00.000Z] launcher_tee pid=42\n')
+        older = self.log.stat().st_mtime_ns - 1_000_000
+        os.utime(launcher, ns=(older, older))
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual(count, 1)
+        self.assertTrue((destination / snapshot.LAUNCHER_STDERR).exists())
+        self.assertEqual(len(issues), 1)
+        self.assertIn('not written after the session log was created', issues[0])
 
     def test_launcher_stderr_from_an_earlier_launch_is_reported_not_copied(self):
         stale = self.capture / snapshot.LAUNCHER_STDERR

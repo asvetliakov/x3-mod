@@ -40,7 +40,7 @@ class SessionStartLines(unittest.TestCase):
 
     def test_loaded_module_line_and_its_two_call_sites(self):
         source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
-        self.assertIn('log("loaded_module name=%s path=%s size=%llu sha256=%s"', source)
+        self.assertIn('log("loaded_module name=%s path=%s size=%llu sha256=%s hash_us=%llu"', source)
         # The hash prefix is the first 16 hex digits of the file's SHA-256, and
         # the module reference is taken and released around the file read.
         self.assertIn('hex=hash_file(path,full,bytes)&&full.size()==64?full.substr(0,16):std::string("unavailable")', source)
@@ -49,9 +49,14 @@ class SessionStartLines(unittest.TestCase):
         loader = (ROOT / 'src/proxy/loader.cpp').read_text()
         self.assertIn('x3m::proxy_identity::log_loaded_module(backend, "d3d9.dll");', loader)
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('if(!helper_module_logged){helper_module_logged=true;'
+        self.assertIn('if(!helper_module_logged.exchange(true)){LightCallBoundary boundary;'
                       'proxy_identity::log_loaded_module(L"d3dx9_37.dll");}', capture)
         self.assertEqual(capture.count('proxy_identity::log_loaded_module('), 1)
+        # The 3.8 MB hash runs before the hook mutex and before the HookGuard's
+        # frame-timing scope, so it blocks no other hook and lands in no window.
+        body = capture[capture.index('HRESULT WINAPI create_device('):]
+        self.assertLess(body.index('proxy_identity::log_loaded_module(L"d3dx9_37.dll")'), body.index('HookGuard lock;'))
+        self.assertLess(body.index('proxy_identity::log_loaded_module(L"d3dx9_37.dll")'), body.index('CpuCallBoundary cpu;'))
 
 
 class ParseIdentity(unittest.TestCase):

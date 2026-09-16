@@ -66,14 +66,50 @@ class LauncherTee(unittest.TestCase):
             self.assertEqual(out, b'out line\n')
             self.assertIn(b'GStreamer-CRITICAL', err)
             written = log.read_text().splitlines()
-            self.assertEqual(len(written), 2, written)
+            self.assertEqual(len(written), 3, written)
+            self.assertRegex(written[0], r'launcher_tee pid=\d+ log=')
+            written = written[1:]
             for line in written:
                 self.assertRegex(line + ' ', STAMP)
             self.assertEqual(sorted(STAMP.sub('', line) for line in written),
                              ['(X3AP.exe:9) GStreamer-CRITICAL 10:20:30.123', 'out line'])
             # A second launch replaces the file instead of appending to it.
             self.assertEqual(self.child(directory, code=0)[0], 0)
-            self.assertEqual(len(log.read_text().splitlines()), 2)
+            self.assertEqual(len(log.read_text().splitlines()), 3)
+
+    def test_a_failing_sink_is_dropped_and_the_child_is_still_drained(self):
+        class Failing(io.BytesIO):
+            def __init__(self, after):
+                super().__init__()
+                self.remaining = after
+
+            def write(self, data):
+                if self.remaining <= 0:
+                    raise BrokenPipeError('reader is gone')
+                self.remaining -= 1
+                return super().write(data)
+
+        lines = [f'line {i}'.encode() for i in range(200)]
+        source = io.BytesIO(b'\n'.join(lines) + b'\n')
+        terminal, log = Failing(after=1), io.BytesIO()
+        written = self.manage.tee_stream(source, terminal, log, threading.Lock(),
+                                         clock=lambda: '[2026-09-16T00:00:00.500Z]', chunk=64)
+        # The source is drained to EOF and the surviving sink has every line.
+        self.assertEqual(source.read(), b'')
+        self.assertEqual(written, len(lines))
+        kept = [STAMP.sub('', line) for line in log.getvalue().decode().splitlines()]
+        self.assertEqual([line for line in kept if 'launcher tee:' not in line],
+                         [line.decode() for line in lines])
+        self.assertIn('terminal sink was dropped', log.getvalue().decode())
+
+    def test_a_child_without_a_newline_is_flushed_in_bounded_chunks(self):
+        source = io.BytesIO(b'x' * 200)
+        terminal, log = io.BytesIO(), io.BytesIO()
+        written = self.manage.tee_stream(source, terminal, log, threading.Lock(),
+                                         clock=lambda: '[2026-09-16T00:00:00.500Z]', chunk=64)
+        self.assertEqual(written, 4)  # three full chunks plus the tail, none held back
+        self.assertEqual(terminal.getvalue(), b'x' * 200)
+        self.assertEqual(sum(len(STAMP.sub('', line)) for line in log.getvalue().decode().splitlines()), 200)
 
     def test_an_unwritable_log_costs_the_copy_not_the_launch(self):
         with tempfile.TemporaryDirectory() as directory:

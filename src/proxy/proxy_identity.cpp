@@ -94,6 +94,8 @@ std::string manifest_sha256(const std::wstring& directory) {
 void log_module(HMODULE module,const char* name) {
     std::string path_utf8="none",hex="none";
     unsigned long long bytes=0;
+    LARGE_INTEGER begin{},end{},frequency{};
+    QueryPerformanceCounter(&begin); QueryPerformanceFrequency(&frequency);
     // Nothing may escape into a caller on the attach or device-creation path.
     try {
         if(module){
@@ -108,7 +110,10 @@ void log_module(HMODULE module,const char* name) {
             } else path_utf8="unavailable";
         }
     } catch(const std::exception&) { hex="unavailable"; }
-    log("loaded_module name=%s path=%s size=%llu sha256=%s",name,path_utf8.c_str(),bytes,hex.c_str());
+    QueryPerformanceCounter(&end);
+    const unsigned long long microseconds=frequency.QuadPart>0&&end.QuadPart>begin.QuadPart
+        ?static_cast<unsigned long long>((end.QuadPart-begin.QuadPart)*1000000ll/frequency.QuadPart):0ull;
+    log("loaded_module name=%s path=%s size=%llu sha256=%s hash_us=%llu",name,path_utf8.c_str(),bytes,hex.c_str(),microseconds);
 }
 // Every X3M_* variable present in the process environment, name=value, sorted.
 // Names are matched case-insensitively (Win32 environment names are); no

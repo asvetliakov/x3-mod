@@ -2181,15 +2181,19 @@ ULONG WINAPI release_factory(IDirect3D9* d) {
     return refs;
 }
 HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND window,DWORD flags,D3DPRESENT_PARAMETERS* p,IDirect3DDevice9** out) {
+    // Which copy of the shipped-twice helper DLL this process loaded: the game
+    // directory carries its own d3dx9_37.dll next to the system one. Logged at
+    // the first device creation, when the game's imports are resolved. Ahead of
+    // the hook mutex and of the HookGuard's frame-timing scope, so the one file
+    // hash neither blocks another hooked call nor lands in the first window's
+    // state bucket; its own cost is reported as hash_us=.
+    {
+        static std::atomic<bool> helper_module_logged{false};
+        if(!helper_module_logged.exchange(true)){LightCallBoundary boundary;proxy_identity::log_loaded_module(L"d3dx9_37.dll");}
+    }
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
-    // Which copy of the shipped-twice helper DLL this process loaded: the game
-    // directory carries its own d3dx9_37.dll next to the system one. Logged at
-    // the first device creation, when the game's imports are resolved; one file
-    // hash, once, off the render path.
-    static bool helper_module_logged=false;
-    if(!helper_module_logged){helper_module_logged=true;proxy_identity::log_loaded_module(L"d3dx9_37.dll");}
     // The startup motion route (including HDR/TAA/bloom) saves and resyncs
     // state through documented Get* calls. PUREDEVICE forbids those reads.
     // Keep hardware/mixed/software VP and every other application flag intact;

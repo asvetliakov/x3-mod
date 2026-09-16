@@ -30,7 +30,7 @@ header, and two `loaded_module` lines identify the DLLs the process actually
 runs with:
 
     clock_anchor utc=<ISO8601 with ms> qpc=<ticks> qpc_frequency=<Hz> local_offset_min=<minutes>
-    loaded_module name=<dll> path=<full path|none|unavailable> size=<bytes> sha256=<first 16 hex|none|unavailable>
+    loaded_module name=<dll> path=<full path|none|unavailable> size=<bytes> sha256=<first 16 hex|none|unavailable> hash_us=<n>
 
 `clock_anchor` pairs one `GetSystemTimePreciseAsFileTime` reading (dynamically
 resolved; `GetSystemTimeAsFileTime` before Windows 8) with one
@@ -44,8 +44,10 @@ first device creation, when the game's imports are resolved: the path, size and
 hash prefix say which copy of a DLL that exists twice on disk (the game
 directory ships its own `d3dx9_37.dll`) is in the process, and which D3D9
 implementation is behind the proxy. Nothing is classified by name here; the
-same documented calls as above, one file hash each, once, off the render path,
-and `GetModuleHandleExW` holds a reference across the read.
+same documented calls as above, one file hash each (its cost reported as
+`hash_us=`), once, off the render path and, at the device-creation site, ahead
+of the hook mutex and of the frame-timing scope; `GetModuleHandleExW` holds a
+reference across the read.
 
 `manifest_sha256` is the `sha256` value recorded in the `x3-modern-install.json`
 next to the DLL (`none` without a readable manifest); `proxy_options` lists every

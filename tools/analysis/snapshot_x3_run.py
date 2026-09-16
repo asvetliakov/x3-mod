@@ -64,7 +64,7 @@ def select_log(directory_fd, since_ns):
     return max(found)[2] if found else None
 
 
-def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=None, since_ns=None):
+def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=None, since_ns=None, created_before=None):
     """Pinned directories + no-follow leaf opens prevent path/symlink escapes."""
     read_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=source_fd)
     with os.fdopen(read_fd, 'rb') as source:
@@ -77,6 +77,8 @@ def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=N
             raise ValueError(f'size differs: expected {size}, found {before.st_size}')
         if window and not window[0] <= before.st_mtime_ns <= window[1]:
             raise ValueError('stale or overwritten outside this session')
+        if created_before is not None and created_ns(before) > created_before:
+            raise ValueError('created after this session log: it belongs to a later launch')
         if shader_id is not None and not 0 < before.st_size <= 4 * 1024 * 1024:
             raise ValueError('shader size exceeds the logged writer contract')
         write_fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=target_fd)
@@ -200,9 +202,22 @@ def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=
             # The launcher's own log is authorized by its name and this launch's
             # boundary, not by a record inside the session log; it is absent for
             # a session started outside tools/manage.py launch.
+            # The launcher starts before the proxy creates its session log, so
+            # this launch's file was created no later than the log: that
+            # excludes a later launch's file even when --log names an older
+            # session. --since-ns additionally excludes an earlier one. A file
+            # never touched after the log was created is still preserved, with
+            # its mtime relation recorded, because a quiet session writes
+            # nothing after the header line.
+            bounds = {'created_before': created_ns(info)}
+            if since_ns is not None:
+                bounds['since_ns'] = since_ns
             try:
-                copy_file(source_fd, target_fd, LAUNCHER_STDERR, since_ns=since_ns if log is None else None)
+                stamps = copy_file(source_fd, target_fd, LAUNCHER_STDERR, **bounds)
                 count += 1
+                if stamps.st_mtime_ns < created_ns(info):
+                    issues.append(f'{LAUNCHER_STDERR}: not written after the session log was created '
+                                  f'(mtime {stamps.st_mtime_ns} < log creation {created_ns(info)})')
             except FileNotFoundError:
                 pass
             except (OSError, ValueError) as error:
