@@ -55,7 +55,8 @@ bool install_group(const engine_patch::SiteSpec* specs,const char*& status) {
     }
     status="ok";installed.store(true,std::memory_order_release);return true;
 }
-// Field text of one line: 72 bytes per phase pair holds two 20-digit values;
+// Field text of one line: 72 bytes per phase pair covers realistic microsecond
+// values (the widest pair name plus two 20-digit values would need 82);
 // the reserved tail carries `truncated=1` if a field ever does not fit, so a
 // dropped field is never silent.
 constexpr unsigned phase_text_tail=16,phase_text_capacity=(detail::phase_count+2)*72+phase_text_tail;

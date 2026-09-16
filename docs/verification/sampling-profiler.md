@@ -505,10 +505,12 @@ frame_phases_slow frame=F dt_us= pre_render_us= prologue_us= scene_update_us= be
   the tail's copy of the `cmp` re-creates after `popfd`.
 * cost: 7 + 3 x views stub dispatches per frame (seven core stamps once, the
   three view stamps once per view), each one `QueryPerformanceCounter` read
-  through the game-phase stub and CPU boundary, which the CPU fixture measures
-  at 0.51 us per dispatch under the X3 bottle (`GAME PHASE BENCH`
-  `disabled_added_loop_us` 9.26 over 18 marker calls); about 8 us per frame at
-  three views. No allocation; the window reduction once per 300 frames. Off,
+  through the game-phase stub and CPU boundary. The CPU fixture measures the
+  stub plus boundary at 0.51 us per dispatch under the X3 bottle (`GAME PHASE
+  BENCH` `disabled_added_loop_us` 9.26 over 18 marker calls, handler returning
+  early); the stamp itself adds an unbenchmarked `GetCurrentThreadId` and
+  `QueryPerformanceCounter` (about 0.1 us, QPC 68 ns above), so budget about
+  0.6 us per stamp and 10 us per frame at three views. No allocation; the window reduction once per 300 frames. Off,
   three relaxed atomic loads per frame and nothing at the sites.
 * `begin_scene_p50_us` blends frames that have views with frames that have
   none (the no-views edge lands on `text`, so the whole interval from
