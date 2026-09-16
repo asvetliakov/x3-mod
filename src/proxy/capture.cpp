@@ -215,15 +215,30 @@ struct Device : Hooks {
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
 // Preserve the original serialization while exposing its CPU-side wait cost.
-struct HookGuard {
+struct HeldHookLock {
     std::unique_lock<std::recursive_mutex> lock;
-    HookGuard():lock(mutex,std::defer_lock){const auto start=telemetry::now();lock.lock();telemetry::record(telemetry::process(),telemetry::Metric::LockWait,telemetry::now()-start);}
+    HeldHookLock():lock(mutex,std::defer_lock){const auto start=telemetry::now();lock.lock();telemetry::record(telemetry::process(),telemetry::Metric::LockWait,telemetry::now()-start);}
+};
+// The guards carry the X3M_FRAME_TIMING scope of the hooked entry point: the
+// lock member is declared first, so the frame-timing stamps are taken with the
+// hook mutex already held (the diagnostic's state is single-threaded by that
+// lock) and released before it. The entry name defaults to the hooked
+// function's own name at the call site; the bucket defaults to State, the draw
+// hooks and the scene-end path pass their own.
+struct HookGuard {
+    HeldHookLock held;
+    frame_timing::Scope timing;
+    explicit HookGuard(frame_timing::Bucket bucket=frame_timing::Bucket::State,
+                       const char* entry=__builtin_FUNCTION()):timing(bucket,entry){}
 };
 // Same serialization without the lock-wait telemetry, for the hot setter hooks
 // of the motion route: telemetry::record's reporting deadline can reach the
 // log formatter, which the LightCallBoundary contract excludes from the path.
 struct PlainHookGuard {
     std::lock_guard<std::recursive_mutex> lock{mutex};
+    frame_timing::Scope timing;
+    explicit PlainHookGuard(frame_timing::Bucket bucket=frame_timing::Bucket::State,
+                            const char* entry=__builtin_FUNCTION()):timing(bucket,entry){}
 };
 struct CallTimer {
     Device& ctx; uint64_t start, backend_start=0, backend_ticks=0;
@@ -705,6 +720,7 @@ void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
     // including when admission declines before a context is acquired.
     auto& call=*new(storage) CompositorInvocation{};
     std::lock_guard<std::recursive_mutex> lock(mutex);
+    frame_timing::Scope timing(frame_timing::Bucket::Scene,"compositor_pre"); // X3M_FRAME_TIMING only
     if(++bloom_calls%300==0)
         log("bloom_admission calls=%llu caller=%llu owner=%llu device=%llu nested=%llu thread=%llu reset=%llu glow_off=%llu scene_handoff=%llu pass_unavailable=%llu boundary=%llu post_qualification=%llu",
             bloom_calls,bloom_refusals[0],bloom_refusals[1],bloom_refusals[2],bloom_refusals[3],bloom_refusals[4],bloom_refusals[5],
@@ -769,6 +785,7 @@ void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
 void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
     auto& call=*static_cast<CompositorInvocation*>(storage);
     std::lock_guard<std::recursive_mutex> lock(mutex);
+    frame_timing::Scope timing(frame_timing::Bucket::Scene,"compositor_post"); // X3M_FRAME_TIMING only
     if(!call.ready)return;
     if(!compositor_current(call)){bloom_refuse(BloomRefusal::Post,call.owner.get());return;}
     Device& ctx=*call.owner;
@@ -997,7 +1014,11 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         std::shared_ptr<Device> owner;
         ~NoticePin(){if(device)device->Release();}
     } notice_pin;
-    HookGuard lock;
+    // Scene bucket: the proxy work of this hook is scene-end work (the pre-present
+    // flush and the optional notice). Its scope closes after frame_timing::frame,
+    // so that time is accounted to the following frame; the forwarded native
+    // Present is subtracted and reported separately as present_us.
+    HookGuard lock(frame_timing::Bucket::Scene);
     // The optional notice can reenter through documented device/surface APIs.
     // Pin CPU ownership for this entry; its native pin lasts through Present.
     auto owner=devices.at(d);
@@ -1097,7 +1118,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
 HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode,bool extended) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;
+    // Named for the hook the game called, not for this shared body.
+    HookGuard lock(frame_timing::Bucket::State,extended?"reset_ex":"reset");
     auto& ctx=*devices.at(d);
     game_phases::invalidate_device(); // includes a refused reentrant attempt
     ctx.object_evidence.invalidate(); // diagnostic association also ends on refused Reset
@@ -1172,7 +1194,7 @@ void fixture_observe_wrap(Device& ctx, IDirect3DDevice9* device) {
 HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT c) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;
+    HookGuard lock(frame_timing::Bucket::Draw);
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({false,false,t,c,s,0,0,0}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
@@ -1195,9 +1217,11 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if(route.submit)++ctx.fixture_primitive_source_calls;
 #endif
+    frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
     const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT)>(81)(d,t,s,c):route.submission_error;cpu.after_original();
+    frame_timing::draw_native_end();
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     ctx.motion_output.after_draw(route,result);
     ctx.scene_depth.after_draw(result);
@@ -1208,7 +1232,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
 HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,UINT n,UINT s,UINT c) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;
+    HookGuard lock(frame_timing::Bucket::Draw);
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,false,t,c,s,b,m,n}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
@@ -1228,9 +1252,11 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}
 #endif
+    frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
     const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,INT,UINT,UINT,UINT,UINT)>(82)(d,t,b,m,n,s,c):route.submission_error;cpu.after_original();
+    frame_timing::draw_native_end();
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     ctx.motion_output.after_draw(route,result);
     ctx.scene_depth.after_draw(result);
@@ -1241,7 +1267,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
 HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void* data,UINT stride) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;
+    HookGuard lock(frame_timing::Bucket::Draw);
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({false,true,t,c,0,0,0,0}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
@@ -1250,9 +1276,11 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void*
     snapshot(d,"up",t,c,true);
     if (devices.at(d)->capture) log("draw_args vertex_ptr=%p stride=%u",data,stride);
     auto route=ctx.motion_output.before_draw({false,true,t,c,0,0,0,0});
+    frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
     const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,const void*,UINT)>(83)(d,t,c,data,stride):route.submission_error;cpu.after_original();
+    frame_timing::draw_native_end();
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     ctx.motion_output.after_draw(route,result);
     ctx.scene_depth.after_draw(result);
@@ -1263,7 +1291,7 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void*
 HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UINT n,UINT c,const void* indices,D3DFORMAT f,const void* data,UINT stride) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;
+    HookGuard lock(frame_timing::Bucket::Draw);
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,true,t,c,0,0,m,n}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
@@ -1272,9 +1300,11 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UIN
     snapshot(d,"indexed_up",t,c,true);
     if (devices.at(d)->capture) log("draw_args min_vertex=%u num_vertices=%u vertex_ptr=%p stride=%u index_ptr=%p index_format=%u",m,n,data,stride,indices,f);
     auto route=ctx.motion_output.before_draw({true,true,t,c,0,0,m,n});
+    frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
     const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT,UINT,const void*,D3DFORMAT,const void*,UINT)>(84)(d,t,m,n,c,indices,f,data,stride):route.submission_error;cpu.after_original();
+    frame_timing::draw_native_end();
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     ctx.motion_output.after_draw(route,result);
     ctx.scene_depth.after_draw(result);
@@ -1398,7 +1428,7 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
 HRESULT WINAPI end_scene(IDirect3DDevice9* d){
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock(frame_timing::Bucket::Scene);auto& ctx=*devices.at(d);
     ctx.motion_output.restore_bindings();
     ctx.motion_output.before_end_scene(); // HDR: flush the FP16 content while draws are legal
     cpu.before_original();
@@ -2394,6 +2424,7 @@ const X3mCompositorBinding* compositor_binding() noexcept {
 }
 void scene_end_signal() {
     std::lock_guard<std::recursive_mutex> lock(mutex);
+    frame_timing::Scope timing(frame_timing::Bucket::Scene,"scene_end_signal"); // X3M_FRAME_TIMING only
     for(auto& entry:devices) entry.second->motion_output.scene_end_hook();
 }
 void log(const char* format,...) {

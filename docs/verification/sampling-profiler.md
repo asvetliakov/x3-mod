@@ -294,14 +294,14 @@ frame and per draw. Per window one line, in microseconds, with the wrapper
 frame index of the last frame of the window:
 
 ```
-frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= slow=
+frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= draw_p50_us= draw_p95_us= draw_max_us= draw_native_p50_us= draw_native_max_us= scene_p50_us= scene_p95_us= scene_max_us= state_p50_us= state_p95_us= state_max_us= draw_calls_p50= scene_calls_p50= state_calls_p50= slow=
 ```
 
 followed by up to four witnesses for the slowest frames of that window
 (slowest first, a four-slot ring ordered by `dt_us`):
 
 ```
-frame_timing_slow frame=F dt_us= draws= present_us= prims=
+frame_timing_slow frame=F dt_us= draws= present_us= prims= draw_us= draw_native_us= scene_us= state_us= draw_calls= scene_calls= state_calls= slow_call= slow_call_us=
 ```
 
 * `dt_us` is the Present-to-Present interval measured by the wrapper at the
@@ -315,11 +315,55 @@ frame_timing_slow frame=F dt_us= draws= present_us= prims=
   reports) and `prims` the primitive count summed over that frame's draws; both
   come from the existing central draw path, so a many-object scene can be tied
   to its draw and primitive counts.
+* the three buckets are the wall time spent inside the proxy's own hooked
+  entry points, so a slow frame can be split between the proxy and the
+  game/driver. `draw_us` is the four draw hooks from entry to return including
+  the forwarded native draw, `draw_native_us` that forwarded call alone (so
+  `draw_us - draw_native_us` is the proxy's own per-draw work), `scene_us` the
+  proxy's own scene-end passes (the `EndScene` hook including the forwarded
+  native `EndScene`, the engine scene-end signal, the AgX/bloom compositor pre
+  and post callbacks, and the `Present` hook's pre/post-present work with the
+  forwarded native `Present` subtracted) and
+  `state_us` every other hooked device call (render/sampler state, textures,
+  shaders and constants, render targets, `Clear`, `Lock`/`Unlock`, stream and
+  declaration setters), which all share the two dispatch guards of
+  `src/proxy/capture.cpp`, so one stamp pair per guard covers them.
+  `*_calls` are the calls counted in each bucket. Only the outermost hooked
+  entry is timed, so the proxy's own reentrant device calls are attributed to
+  the entry the game made rather than counted twice. What `dt_us` leaves over
+  after the four buckets and `present_us` is the game's own CPU time, the
+  driver and the time between hooked calls. The stamps are taken with the hook
+  mutex already held, so no bucket contains hook-lock wait: `dt_us` minus the
+  buckets and `present_us` therefore covers lock wait (`telemetry` reports it
+  as `LockWait`) as well as the game's own time. The `Present` hook's scope closes
+  after the frame boundary, so its scene contribution is accounted to the
+  following frame (one call per frame, so a window's `scene_calls_p50` still
+  counts it once).
+* `slow_call` is the slowest single hooked call of that frame and
+  `slow_call_us` its wall time; the name is the hooked function's own name
+  (`__builtin_FUNCTION()` at the guard's call site) or the literal of an
+  explicitly scoped entry, always static storage, never allocated.
+* cost: with the option off, one predictable branch on a process-global bool
+  per hooked call. On, one `QueryPerformanceCounter` pair per outermost hooked
+  call, no division and no logging on that path. Measured by
+  `verification/probe/frame_timing_host.cpp --cost` (the production scope with
+  the stand-in reading `clock_gettime(CLOCK_MONOTONIC_RAW)` in place of QPC;
+  the mode is not run by the test): on macOS arm64, 0.23 ns per call off and
+  26.5 ns on, so about 26 ns added per hooked call and about 79 us per frame at
+  3,000 hooked calls. The QPC cost under Wine/FEX is not measured here.
 * percentiles are nearest-rank over the samples of the window, index
   `min(count-1, count*p/100)` of the ascending order; `slow` counts the frames
   of the window whose `dt_us` exceeds twice the window's `dt_p50`.
 
-These are diagnostic timings taken inside the proxy, not game FPS. Host tests:
-`verification/analysis/test_frame_timing.py` with
+These are diagnostic timings taken inside the proxy, not game FPS. Under FEX
+the sampler attributes nothing (run84: every leaf is the ntdll syscall thunk or
+an unattributed sentinel), so these buckets, not the profiler, provide the
+proxy/game split. Host tests: `verification/analysis/test_frame_timing.py` with
 `verification/probe/frame_timing_host.cpp` (window statistics, slow count, the
-four-slot ring, partial and over-long windows, no allocation while sampling).
+four-slot ring, the bucket/call-count reduction and the slow-call witness,
+partial and over-long windows, no allocation while sampling). The probe also
+compiles `src/proxy/frame_timing.cpp` itself against the Win32 stand-in of
+`verification/probe/frame_timing_standin` (scripted `QueryPerformanceCounter`,
+one tick per microsecond) and runs a scripted 300-frame window, so the
+outermost-only accounting, the nesting depth, the native-Present subtraction,
+the slow-call witness and the emitted line text are executed, not inspected.
