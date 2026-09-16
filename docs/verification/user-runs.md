@@ -94,7 +94,9 @@ Installed: DLL `RUN33HASH` from `RUN33COMMIT` (see [status](../status.md)). This
 build adds `--pass-phases` (four accumulate-only stamps in the effect pass
 loop: pass apply, draw, pass end, per draw, about 0.36 ms per busy frame),
 the `cutout_opaque_*` lane counters on `linear_material_frame`, and
-LOOPPHASES_PLACEHOLDER. Appearance unchanged from run 32.
+`--loop-phases` (six stamps in the per-sector update driver `0x0043a360`:
+collision, simulation, global object pass, economy/attach pass, per sector and
+per frame, with a slow-frame line naming the worst interval). Appearance unchanged from run 32.
 
 **Session A** (busy view, production hooks off, pass split):
 
@@ -106,7 +108,10 @@ LOOPPHASES_PLACEHOLDER. Appearance unchanged from run 32.
    `--frame-timing`, so the proxy runs unhooked as you play; the pass stamps
    split the engine's per-draw time into pass apply, draw and pass end.
 
-**Session B** (the slow sector): SESSIONB_PLACEHOLDER
+**Session B** (the slow sector): session A's command plus `--game-phases
+--loop-phases`. Fly to the sector that stalled in runs 93/94, stay 30 s while
+it is slow, quit. The `loop_phases_slow` lines name which of the five
+per-sector routines owns each slow frame and how many sectors were walked.
 
 **Session C** (cutout lane): session A's command plus
 `--linear-materials --linear-distance-fade --sun-shadow-lane`, the same busy
