@@ -8,6 +8,11 @@ repetitions inside one process (medians reported):
                     no proxy in the process and no DLL override
   proxy-timing-off  the installed candidate d3d9.dll with X3M_FRAME_TIMING=0
   proxy-timing-on   the same DLL with X3M_FRAME_TIMING=1 (run87's launch)
+  (each device case also times the application getters GetRenderState,
+   GetSamplerState, GetTexture including the Release of the returned reference
+   and GetVertexShaderConstantF(4), 1,000,000 calls each, and 200,000
+   SetStreamSource + DrawIndexedPrimitive draw pairs inside one scene)
+
   primitives        QueryPerformanceCounter, an uncontended recursive_mutex
                     lock/unlock pair, a GetLastError/SetLastError pair and the
                     LightCallBoundary / CpuCallBoundary envelopes, with no D3D9
@@ -154,7 +159,12 @@ def derive(result):
                                   'CpuCallBoundary_envelope': primitives['CpuCallBoundary_envelope']},
         'unhooked_control_ns': {'SetTextureStageState_native': native.get('SetTextureStageState'),
                                 'SetTextureStageState_through_proxy': on.get('SetTextureStageState')},
-        'equal_share_mix_ns': {'native': native['state_mix'], 'timing_off': off['state_mix'], 'timing_on': on['state_mix']}}
+        'equal_share_mix_ns': {'native': native['state_mix'], 'timing_off': off['state_mix'], 'timing_on': on['state_mix']},
+        'getters_ns': {op: {'native': native.get(op), 'timing_off': off.get(op), 'timing_on': on.get(op)}
+                       for op in ('GetRenderState', 'GetSamplerState', 'GetTexture_Release', 'GetVertexShaderConstantF4')},
+        'draw_pair_ns': {'native': native.get('SetStreamSource_DrawIndexedPrimitive_pair'),
+                         'timing_off': off.get('SetStreamSource_DrawIndexedPrimitive_pair'),
+                         'timing_on': on.get('SetStreamSource_DrawIndexedPrimitive_pair')}}
     return result
 
 

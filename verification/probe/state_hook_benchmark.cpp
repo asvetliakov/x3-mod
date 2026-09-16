@@ -5,8 +5,12 @@
 // no readback. `device <native|proxy>` issues an interleaved mix of the game's
 // hot setters (SetRenderState, SetTexture, SetSamplerState,
 // SetTextureStageState, SetVertexShaderConstantF with four registers,
-// SetStreamSource) in equal shares, then the same calls per setter, and prints
-// ns per call per repetition. run87's frame_timing carries no per-entry
+// SetStreamSource) in equal shares, then the same calls per setter, then the
+// application getters (GetRenderState, GetSamplerState, GetTexture with the
+// Release of the returned reference, GetVertexShaderConstantF with four
+// registers, 1,000,000 calls each) and finally 200,000 hooked draw pairs
+// (SetStreamSource + DrawIndexedPrimitive of a two-triangle buffer, inside one
+// scene), and prints ns per call per repetition. run87's frame_timing carries no per-entry
 // breakdown of the `state` bucket (frame_timing.h keeps one counter per bucket
 // plus the slowest call's name), so the mix is equal shares by construction.
 // `primitives` times QueryPerformanceCounter, an uncontended
@@ -31,6 +35,8 @@
 namespace {
 constexpr unsigned mix_rounds = 166667;      // x 6 calls = 1,000,002 calls per repetition
 constexpr unsigned per_setter_calls = 166667;
+constexpr unsigned getter_calls = 1000000;
+constexpr unsigned draw_iterations = 200000; // SetStreamSource + DrawIndexedPrimitive pairs
 constexpr unsigned primitive_iterations = 10000000;
 constexpr unsigned boundary_iterations = 2000000; // FNSAVE/FRSTOR dominate CpuCallBoundary
 constexpr unsigned repetitions = 3;
@@ -58,6 +64,8 @@ struct Workload {
     IDirect3DDevice9* device;
     IDirect3DTexture9* textures[2];
     IDirect3DVertexBuffer9* buffers[2];
+    IDirect3DVertexBuffer9* draw_vertices;
+    IDirect3DIndexBuffer9* draw_indices;
     float constants[8];
 
     void set_render_state(unsigned i) { status_or |= device->SetRenderState(render_states[i & 3], i * 2654435761u); }
@@ -66,6 +74,21 @@ struct Workload {
     void set_stage_state(unsigned i) { status_or |= device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, i & 1); }
     void set_vs_constant(unsigned i) { constants[0] = float(i); status_or |= device->SetVertexShaderConstantF(8, constants, 4); }
     void set_stream_source(unsigned i) { status_or |= device->SetStreamSource(0, buffers[i & 1], 0, 32); }
+
+    // Application getters, measured with the same rotation discipline. GetTexture
+    // returns an AddRef'd reference, so the Release is part of the timed pair.
+    void get_render_state(unsigned i) { DWORD v = 0; status_or |= device->GetRenderState(render_states[i & 3], &v); }
+    void get_sampler_state(unsigned i) { DWORD v = 0; status_or |= device->GetSamplerState(0, i & 1 ? D3DSAMP_MAXANISOTROPY : D3DSAMP_MIPMAPLODBIAS, &v); }
+    void get_texture(unsigned) { IDirect3DBaseTexture9* t = nullptr; status_or |= device->GetTexture(0, &t); if (t) t->Release(); }
+    void get_vs_constant(unsigned) { float v[4]{}; status_or |= device->GetVertexShaderConstantF(8, v, 4); }
+
+    // One hooked draw: the stream rebind the game issues per draw plus the draw
+    // itself (two triangles, four vertices, one index buffer).
+    void draw_pair(unsigned i) {
+        status_or |= device->SetStreamSource(0, draw_vertices, 0, 16);
+        status_or |= device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2);
+        (void)i;
+    }
 };
 
 void mix(Workload& w, unsigned rounds) {
@@ -85,6 +108,17 @@ void device_benchmark(Workload& w) {
         begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_stage_state(i); report("SetTextureStageState", rep, per_setter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_vs_constant(i); report("SetVertexShaderConstantF4", rep, per_setter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_stream_source(i); report("SetStreamSource", rep, per_setter_calls, ticks() - begin);
+
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_render_state(i); report("GetRenderState", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_sampler_state(i); report("GetSamplerState", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_texture(i); report("GetTexture_Release", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_vs_constant(i); report("GetVertexShaderConstantF4", rep, getter_calls, ticks() - begin);
+
+        // The draw pair runs inside one scene, as the game's draws do.
+        check(w.device->BeginScene() == S_OK, "BeginScene");
+        begin = ticks(); for (unsigned i = 0; i < draw_iterations; ++i) w.draw_pair(i);
+        report("SetStreamSource_DrawIndexedPrimitive_pair", rep, draw_iterations, ticks() - begin);
+        check(w.device->EndScene() == S_OK, "EndScene");
     }
     std::printf("STATUS or=%08lx\n", static_cast<unsigned long>(status_or));
 }
@@ -95,7 +129,8 @@ void report_slots(IDirect3DDevice9* device) {
     void** vtable = *reinterpret_cast<void***>(device);
     const struct { unsigned slot; const char* name; } entries[] = {
         {57, "SetRenderState"}, {65, "SetTexture"}, {69, "SetSamplerState"}, {67, "SetTextureStageState"},
-        {94, "SetVertexShaderConstantF"}, {100, "SetStreamSource"}, {81, "DrawIndexedPrimitive"}};
+        {94, "SetVertexShaderConstantF"}, {100, "SetStreamSource"}, {81, "DrawIndexedPrimitive"},
+        {58, "GetRenderState"}, {68, "GetSamplerState"}, {64, "GetTexture"}, {95, "GetVertexShaderConstantF"}};
     for (const auto& entry : entries) {
         HMODULE owner = nullptr; char path[2048] = "unknown";
         if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -169,7 +204,23 @@ int main(int argc, char** argv) {
                 ok(device->CreateTexture(64, 64, 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &b.p, nullptr), "texture b");
                 ok(device->CreateVertexBuffer(32 * 64, D3DUSAGE_WRITEONLY, 0, D3DPOOL_MANAGED, &va.p, nullptr), "vb a");
                 ok(device->CreateVertexBuffer(32 * 64, D3DUSAGE_WRITEONLY, 0, D3DPOOL_MANAGED, &vb.p, nullptr), "vb b");
-                Workload w{device.p, {a.p, b.p}, {va.p, vb.p}, {}};
+                // Two triangles, four XYZ|DIFFUSE vertices, six indices.
+                Com<IDirect3DVertexBuffer9> quad; Com<IDirect3DIndexBuffer9> quad_indices;
+                ok(device->CreateVertexBuffer(4 * 16, D3DUSAGE_WRITEONLY, D3DFVF_XYZ | D3DFVF_DIFFUSE, D3DPOOL_MANAGED, &quad.p, nullptr), "quad vb");
+                ok(device->CreateIndexBuffer(6 * sizeof(std::uint16_t), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, &quad_indices.p, nullptr), "quad ib");
+                {
+                    struct Vertex { float x, y, z; DWORD color; };
+                    const Vertex vertices[4] = {{-0.5f, -0.5f, 0.5f, 0xffff0000}, {-0.5f, 0.5f, 0.5f, 0xff00ff00},
+                                                {0.5f, 0.5f, 0.5f, 0xff0000ff}, {0.5f, -0.5f, 0.5f, 0xffffffff}};
+                    const std::uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
+                    void* data = nullptr;
+                    ok(quad->Lock(0, sizeof vertices, &data, 0), "quad vb lock"); std::memcpy(data, vertices, sizeof vertices); ok(quad->Unlock(), "quad vb unlock");
+                    ok(quad_indices->Lock(0, sizeof indices, &data, 0), "quad ib lock"); std::memcpy(data, indices, sizeof indices); ok(quad_indices->Unlock(), "quad ib unlock");
+                }
+                ok(device->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE), "quad fvf");
+                ok(device->SetIndices(quad_indices.p), "quad indices");
+                ok(device->SetRenderState(D3DRS_LIGHTING, FALSE), "lighting off");
+                Workload w{device.p, {a.p, b.p}, {va.p, vb.p}, quad.p, quad_indices.p, {}};
                 for (unsigned i = 0; i < 8; ++i) w.constants[i] = float(i);
                 device_benchmark(w);
                 ok(device->SetTexture(0, nullptr), "unbind texture");
