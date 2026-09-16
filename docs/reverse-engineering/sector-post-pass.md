@@ -174,16 +174,14 @@ per active sector per frame.
 ## 5. Can a trampoline bound it?
 
 1. **Negative-cache the failed media create — recommended, behaviour-neutral.**
-   Hook `0x00498140` (entry `53 8b 5c 24 08` = `push ebx; mov ebx,[esp+8]`, a
-   clean 5-byte whole-instruction span; `EBX` = media id, `EAX` = flags in,
-   result in `EAX`; **span not qualified here**). If the same id failed within
-   the last N seconds, return 0 at once: the game's state after that early
-   return is *identical* to its state after a real failure (record freed,
-   nothing linked, caller takes the same branch), only 380 ms cheaper. No AI,
-   economy, physics or script input changes; the only observable difference is
-   that a cue which would have succeeded later is delayed, so use a backoff, not
-   a permanent block. It covers all five `0x00498140` call sites including
-   speech — a benefit and a risk to weigh with the voice owner.
+   Hook `0x00498140` (entry `53 8b 5c 24 08`). If the same id failed within the
+   last N seconds, return 0 at once: the game's state after that early return is
+   *identical* to its state after a real failure, only 380 ms cheaper. The span,
+   the ABI, the five callers, the return-address scoping that keeps the cache
+   off the speech path, the filters the graph constructor creates and the full
+   neutrality argument are in
+   [media-cue-playback.md](media-cue-playback.md) (site verdict: suitable,
+   `verify_media_cue_site.py` → `PASS`).
 2. **Make the graph succeed** (plugin/bottle side, not a trampoline):
    `src/proxy/voice_dmo_fallback.cpp` already covers the `X WMSpeech Decoder
    DMO` leg of the same constructor; if the failing cue is an MP3/MPEG leg,
@@ -208,7 +206,8 @@ per active sector per frame.
   data, not EXE bytes.
 * "Media surface / emitter" for class `0x14` and record fields `+0x18`…`+0x2c`
   as playback parameters are inferences from layout and call shape; the
-  `0x00498140` hook span of §5.1 has no edge/ESP/conflict qualification yet.
+  `0x00498140` hook span of §5.1 is now qualified in
+  [media-cue-playback.md](media-cue-playback.md) §5.
 
 ## Reproduce
 
