@@ -49,6 +49,35 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 29 | Emitter hotkeys, bolt alpha, chase pose, frame timing, sun lane | 3 | Completed as run83 (A), run84 (A2 profiler), run85 (B): engines unchanged (gain refused screen blend), halo persisted (bloom amplitude), chase pose fixed, profiler blind under FEX, sun lane available 4577/4695 |
 | 30 | Single emission gain, bloom source clamp, frame-time split | 2 | Session A run87 and B run88 received: engines respond, halo accepted at clamp 1.0, no cutout draws yet (B to repeat at an Argon industrial station), frame split: state hooks 8.9 ms of a 28.5 ms busy frame |
 | 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
+| 32 | Hybrid unhook, draw and state counters | 3 | Drafted; candidate pending |
+
+## 32. Hybrid unhook, draw and state counters — drafted
+
+Installed: DLL `RUN32HASH` from `RUN32COMMIT` (see [status](../status.md)). This
+build stops hooking SetRenderState and SetSamplerState in production (the
+proxy reads what it needs at draw time) and adds three count-only diagnostics
+to `--frame-timing`: draws per program pair with the two cutout pairs called
+out, redundant state sets against the shadow, and draw batchability (same
+mesh, same material). `--frame-timing` keeps the two hooks installed so it can
+count; the felt FPS comes from session A2 without it. Appearance unchanged.
+
+**Session A1** (busy view, counters):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-timing --frame-phases --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+1. The busy view of run 31 (run89), hold 30 s, then empty space 30 s, quit.
+
+**Session A2** (same place, felt FPS): the same command without
+`--frame-timing`. Hold the same busy view 30 s and say how the FPS compares
+with run 31 there; the phase stamps give the frame time.
+
+**Session B** (station programs, cutout draws): session A1's command plus
+`--linear-materials --linear-distance-fade --sun-shadow-lane`; one minute close
+to an Argon station of a different type than run 31's (a tech, liquid or farm
+factory if run 31 was a trading station, or the reverse), then quit. The log
+now names the program pairs the station drew.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
