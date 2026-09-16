@@ -557,3 +557,41 @@ No `truncated=1`/`shader_unknown`/`motion_state_lost`/`restore_failures`/
 `apply_failures`/`mip_bias_failures`; `incomplete=4` total. Open: which draw
 introduced the unregistered writer at frame 24316 is not attributable from
 this telemetry.
+
+### Run 33 session C (run97), 2026-09-17
+
+Fixture `/tmp/x3-bottleX3-run97` (58 files), session log
+`session-20260916-215146-216.log` (41206 lines), candidate 03c0c9f4 from
+a3cafd5. Options confirmed at line 129/137-139: `state_hooks installed=0`,
+`sun_shadow_lane_device requested=1 qualified=1 reason=ok`,
+`linear_material_frame` present (linear materials on), `mip_bias=-0.5`.
+
+Busy Argon window identified as frames 4380-5580 (log lines 29003-38331) by
+`cutout_opaque_routed`/`cutout_opaque_lane` activity, matching run91's ~108
+draws/frame (max observed 112 at frame=4860). Over this window (21 samples):
+`routed` p50=880 (range 364-1009); `cutout_opaque_routed` p50=90 (range
+22-112); `cutout_opaque_lane` equals `cutout_opaque_routed` on every sampled
+frame (ratio lane/routed = 1.0, not "routed minus no-depth pairs" as
+expected); `cutout_opaque_refused` p50=8 (range 5-8), refused reason is
+`no_zwrite` in every case (histogram: no_zwrite=8 frames at 8, one at 7×5,
+one at 5, one at 8 — all `no_zwrite`, no other reason seen). Outside this
+window `cutout_opaque_*` are 0 or small (2-4), with an early transient
+`cutout_opaque_refused_top=scene:4` at frames 420-600 (before the lane
+warms up), distinct from the steady-state `no_zwrite` reason.
+
+Lane (`sun_shadow_lane_frame`, 4962 samples, log line 4031 onward):
+`available=1` on all 4962 sampled frames (100%); `non_depth_writers` range
+3-58, median 40; `untracked_writers`=0 throughout; `failed`=0 throughout.
+No `reason=` refusal field appears on `sun_shadow_lane_frame` lines in this
+session (only one `reason=ok` line total, on `sun_shadow_lane_device` at
+line 138); the run93 `unregistered` writer string does not occur anywhere
+in this log (grep count 0). `shadow_replay_depth` (4962 samples): median
+38.0 µs, range 0.0-561.1 µs; `skipped_lease`/`skipped_state`/`skipped_caps`
+all sum to 0.
+
+No abnormal markers: `claim_fail`, `truncated`, `shader_unknown`,
+`chase_refus`, `motion_state_lost` all 0 occurrences; `mip_bias_failures=0`
+throughout; `fade_refused`/`fade_held` present but 0 on all 97 frames.
+`dropped=1` (pass_phases, frame=300) and `incomplete=1/3` (frame_phases,
+frames 300/900/5700) are startup/tail transients, outside the busy window
+(4500-5400 all show `dropped=0 incomplete=0`).

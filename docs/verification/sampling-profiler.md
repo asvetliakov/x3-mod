@@ -1277,3 +1277,18 @@ pass, `docs/reverse-engineering/main-loop-input-region.md` line 128) stalls.
 over all 50 `loop_phases` windows; `dropped=1` at startup (frame=300) only.
 No `claim_fail`/`arena_full`/`truncated`/`shader_unknown`/`chase_refus*`.
 `self_p50_us=0` (50/50), consistent with `6 x sectors_p50(1) x 91ns = 546ns`.
+
+### Run 33 session C (run97): linear-material cost
+
+Same busy Argon view as run95, now with `--linear-materials
+--linear-distance-fade --sun-shadow-lane` active (`/tmp/x3-bottleX3-run97`,
+log lines 31404-38331, frames 4500/4800/5100/5400). `dt_p50_us` ~29.0-29.8k
+(p50 ~29ms) vs run95's 26.5ms (+~2.5-3.3ms, +9-12%); `view_submit_p50_us`
+~21.3-22.2k (~21.7ms) vs run95's 20.1ms (+~1.2-2.1ms, +6-10%). Per-pass cost
+(passes_p50 ~953-984): `apply_p50_us`/passes ~6.65-6.99µs vs run95's 6.7µs
+(roughly flat); `draw_p50_us`/passes ~9.9-10.4µs vs run95's 8.7µs
+(+~1.2-1.7µs/pass, +14-20%). The extra draw-phase cost tracks the
+`cutout_opaque_routed` lane draws (p50 90/frame in this window, see
+directional-shadows.md run97 entry); apply-phase cost is not materially
+higher, consistent with the lane reusing existing material state rather
+than adding per-pass setup.
