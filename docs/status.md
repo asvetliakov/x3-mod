@@ -180,11 +180,33 @@ Run 32 came back as `run91` (A1), `run92` (A2), `run93` (B) and `run94` (C):
   region is being decompiled for stamp sites and a candidate owner
   ([ledger](verification/sampling-profiler.md), run94 section).
 
-Run 32 is complete. [Run 33](verification/user-runs.md) is queued (candidate
-`03c0c9f4…` from `a3cafd5`, installed): A the busy view with `--pass-phases`
-(unhooked proxy, engine per-draw split), B the slow sector with
-`--game-phases --loop-phases` (which per-sector routine owns the stall), C the
-busy view under the lane with the cutout counters.
+Run 33 came back as `run95` (A), `run96` (B) and `run97` (C):
+
+- **Busy frame per draw (run95):** of 20.1 ms view submission at 981 passes,
+  the device draw call is 8.6 ms (8.7 µs per draw: ~1 µs proxy, the rest
+  Wine's D3D9 path), BeginPass 6.5 ms (6.7 µs), engine work between passes
+  4.5 ms (4.6 µs), EndPass 0.1 ms. Design ratified
+  ([effect-pass-replay.md](architecture/effect-pass-replay.md)): first the
+  no-code bottle experiments (CrossOver's DXVK backend for D3D9; builtin vs
+  native `d3dx9_37`, which the next build identifies with a `loaded_module`
+  line), then host prerequisites (compiled-effect state classification, two
+  residual stamps), and a pass-replay `ID3DXEffect` wrapper at the EXE's
+  `D3DXCreateEffect` import (3–5 ms bound) only if the frame still needs it.
+- **Quiet-sector stall (run96):** 99.8 % of a ~380 ms frame is one call, the
+  per-sector object pass `0x0045b720`, one sector and one container per frame.
+  The user observes GStreamer-CRITICAL bursts on the launcher's stderr once or
+  twice per slow frame (twice per session otherwise), suggesting a per-object
+  media stream created or destroyed and failing each frame; the proxy log
+  cannot confirm it (no stderr capture, no filenames), so the next build tees
+  the launcher's stderr into the session directory with a clock anchor. The
+  routine is being decompiled with the sound path as the leading hypothesis.
+- **Cutout under the lane (run97):** ~90 cutout draws per frame routed through
+  the tested-opaque arm with the lane share written, ~8 refused for no depth
+  write; both cutout pairs write depth so lane = routed. Linear materials plus
+  the lane cost about +3 ms in the busy view, mostly in the draw call.
+
+Run 33 is complete; run 34 (stderr capture, module identity, and whatever the
+`0x0045b720` decompilation proposes) follows the in-flight work.
 
 ## Next user action
 

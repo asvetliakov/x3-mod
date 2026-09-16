@@ -1278,6 +1278,46 @@ over all 50 `loop_phases` windows; `dropped=1` at startup (frame=300) only.
 No `claim_fail`/`arena_full`/`truncated`/`shader_unknown`/`chase_refus*`.
 `self_p50_us=0` (50/50), consistent with `6 x sectors_p50(1) x 91ns = 546ns`.
 
+### Run 33 session B (run96): audio correlation
+
+No launcher/Wine stderr capture exists in run96/run94/run95 (59-63 files each:
+`session-*.log`, `ps_*.bin`/`vs_*.bin`, `loading-intervals-*.bin`; no
+`wine.log`/`x3run*.log`/stderr file) - the reported GStreamer bursts cannot be
+aligned to frames from this evidence; **open, not settled**.
+
+`grep -ci gst` = **0** in all three session logs; no GStreamer token is
+recorded by the proxy itself.
+
+`voice_dmo_fallback` (only voice/dmo token) totals **6 activations per
+session**, not per-frame: run96 frames 4, 584, 14695; run94 frames ~4, ~584,
+12003-12005; run95 frames ~4, ~584, 13265-13267. Activations 5/6 land at the
+tail of each stall (run96 stall ~13200-14700, `game_phase_slow_frame` last
+covers 14693 before covered_ticks drops to ~0.8M at 14696, activation at
+14695; run94 stall's last slow frame is 12003, `covered_ticks=4083429`,
+activation at 12003-12005) - but the same event also fires in run95 at a
+comparable frame (13265-13267) despite **zero** `game_phase_slow_frame` lines
+there (no stall). The event tracks a scripted/sector trigger present with or
+without the stall, not per-frame stream churn.
+
+No `.wav`/`.mp3`/`.ogg`/`.wma` path appears in any log
+(`grep -oE '(path|name|file)=\S*\.(wav|mp3|ogg|wma)'` = 0); `resource`/
+`dat_handle_pool_metric`/`loading_*` counters carry no filename field, so
+per-file audio opens during the stall cannot be attributed from this
+telemetry.
+
+`--game-phases` has no audio-named sites: `game_phase_metric` uses numeric
+`category=phase index=N`; run96's only `game_phase_segment` site values are
+`not_resolved` (1046x) and raw addresses. No `game_phase_call_sample`/
+`game_phase_slow_call` token exists in this build.
+
+**Conclusion: hypothesis not supported.** No GStreamer/audio failure signal
+and no per-frame voice-stream churn during the stall in run96 or run94; the
+one audio event repeats once per session near a sector transition in
+stalling and non-stalling sessions alike. Settling the reported GStreamer
+bursts needs a new diagnostic: pipe launcher stderr to a file under the run
+directory on the next launch so CRITICAL lines share the session's QPC clock
+with `loop_phases_slow`/`game_phase_slow_frame`.
+
 #### Audio correlation: aligning a terminal burst with a frame
 
 The GStreamer/GLib messages the user sees during a stall are printed by the
