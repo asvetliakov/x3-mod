@@ -228,11 +228,11 @@ Run 33 came back as `run95` (A), `run96` (B) and `run97` (C):
   write; both cutout pairs write depth so lane = routed. Linear materials plus
   the lane cost about +3 ms in the busy view, mostly in the draw call.
 
-Run 33 is complete. [Run 34](verification/user-runs.md) is queued (candidate
-`7102a2f1…` from `ee5a406`, installed): A1 the stalling sector with the
-media-cue trace only, A2 the same with the negative cache on, A3 the same on
-the v5 decoder runtime with the cache off, B the DXVK experiment in the busy
-view.
+Run 34 is complete (run98–102): the stall is solved by the media-cue cache
+(default on); the v5 decoder runtime is parked (comm-dialog hang); CrossOver's
+DXVK D3D9 renders black on this Preview, so the bottle's graphics backend must
+be switched back before the next run. No run is queued; next steps are in
+[handoff-2026-09-17.md](handoff-2026-09-17.md).
 
 ## Next user action
 

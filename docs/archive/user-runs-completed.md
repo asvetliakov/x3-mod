@@ -1103,3 +1103,45 @@ is slow, then quit. `--game-phases` records every frame over 50 ms with the
 main loop's sub-phases (input, script VM, deferred callbacks, simulation/AI,
 cockpit), which is what run93's `pre_render` at 98 % of a 420 ms frame could
 not split.
+
+## 34. Stall evidence: stderr capture, module identity, media-cue trace and cache — completed as run98–run102
+
+Installed: DLL `7102a2f1…` from `ee5a406` (see [status](../status.md)). This
+build tees Wine's stderr into the session directory (`launcher-stderr.log`,
+UTC-prefixed) with a `clock_anchor` and `qpc=` on every window line so a
+GStreamer burst maps to a frame, logs `loaded_module` for the D3D9 backend and
+`d3dx9_37.dll`, `--media-cue-trace` (one line per media-cue graph build attempt at
+`0x00498140`: cue id, file, result, attempts per frame) and the media-cue
+negative cache (a cue whose graph build failed is not retried every frame;
+retried on sector change and after a fixed interval; default on after this
+run, `--media-cue-cache on|off`). Appearance unchanged.
+
+**Session A1** (the slow sector, trace only):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-phases --pass-phases --game-phases --loop-phases --media-cue-trace --media-cue-cache off --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+Fly to the stalling sector, stay 30 s while it is slow, quit. The trace names
+the cue, its file and the result of every build attempt; the stall should
+still be there. Wine's stderr is now in the session directory.
+
+**Session A2** (the slow sector, cache on): the same command with
+`--media-cue-cache on` (the default once this run confirms it). Same sector,
+30 s, quit. The stall should be gone and the trace should show one failed
+attempt per cue followed by cached refusals; say whether the sector's music
+or ambient sound is missing and whether anything else changed.
+
+**Session A3** (decode fix, only if the v5 runtime is reported built): session
+A1's command with `--voice-decoder /tmp/x3-wma-plugin-v5` instead of v4 and
+`--media-cue-cache off`. Same sector, 30 s, quit. If the runtime decodes the
+cue, the trace shows the build succeeding, the stall is gone without the
+cache, and the sector's music or ambient sound plays; say whether speech
+still works.
+
+**Session B** (DXVK experiment, no proxy change): in CrossOver, enable the
+DXVK backend for the X3 bottle (bottle settings, D3D9 via DXVK), then run
+run 33 session A's command in the busy view for 30 s and quit. The
+`loaded_module` line says which D3D9 backend the proxy actually forwarded to,
+and the `pass_phases` draw µs per pass says whether the draw call got cheaper.
+Switch DXVK back off afterwards unless it wins.

@@ -53,48 +53,6 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | A run95 (view submit: draw 43 %, BeginPass 33 %, engine between passes 22 %), B run96 (stall 99.8 % in the per-sector object pass `0x0045b720`, one sector; GStreamer criticals repeat during it), C run97 (cutout draws admitted through the tested-opaque arm, ~90/frame with the lane share; linear materials + lane +3 ms) |
 | 34 | Stall evidence: stderr capture, module identity, media-cue trace and cache | 4 | A1 run98: the stalling cue is id 2 = `mov\00002.dat` (MPEG-1 video), one failed build per frame at ~390 ms, GStreamer bursts aligned within 16 ms; native d3dx9_37 loads. A2 run99: cache on, one real attempt per 30 s, frames back to 7–9 ms p50 in the sector (stall gone, user confirmed); the exit-time "zero area" warning is pre-existing teardown noise (31 lines in run98 too). A3 run100/101: the v5 decoder runtime hangs the main loop on the first comm dialog (avatar video graph now builds and blocks in Wine's video path); v5 parked, cache is the fix. B pending |
 
-## 34. Stall evidence: stderr capture, module identity, media-cue trace and cache — completed as run98–run102
-
-Installed: DLL `7102a2f1…` from `ee5a406` (see [status](../status.md)). This
-build tees Wine's stderr into the session directory (`launcher-stderr.log`,
-UTC-prefixed) with a `clock_anchor` and `qpc=` on every window line so a
-GStreamer burst maps to a frame, logs `loaded_module` for the D3D9 backend and
-`d3dx9_37.dll`, `--media-cue-trace` (one line per media-cue graph build attempt at
-`0x00498140`: cue id, file, result, attempts per frame) and the media-cue
-negative cache (a cue whose graph build failed is not retried every frame;
-retried on sector change and after a fixed interval; default on after this
-run, `--media-cue-cache on|off`). Appearance unchanged.
-
-**Session A1** (the slow sector, trace only):
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-phases --pass-phases --game-phases --loop-phases --media-cue-trace --media-cue-cache off --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
-```
-
-Fly to the stalling sector, stay 30 s while it is slow, quit. The trace names
-the cue, its file and the result of every build attempt; the stall should
-still be there. Wine's stderr is now in the session directory.
-
-**Session A2** (the slow sector, cache on): the same command with
-`--media-cue-cache on` (the default once this run confirms it). Same sector,
-30 s, quit. The stall should be gone and the trace should show one failed
-attempt per cue followed by cached refusals; say whether the sector's music
-or ambient sound is missing and whether anything else changed.
-
-**Session A3** (decode fix, only if the v5 runtime is reported built): session
-A1's command with `--voice-decoder /tmp/x3-wma-plugin-v5` instead of v4 and
-`--media-cue-cache off`. Same sector, 30 s, quit. If the runtime decodes the
-cue, the trace shows the build succeeding, the stall is gone without the
-cache, and the sector's music or ambient sound plays; say whether speech
-still works.
-
-**Session B** (DXVK experiment, no proxy change): in CrossOver, enable the
-DXVK backend for the X3 bottle (bottle settings, D3D9 via DXVK), then run
-run 33 session A's command in the busy view for 30 s and quit. The
-`loaded_module` line says which D3D9 backend the proxy actually forwarded to,
-and the `pass_phases` draw µs per pass says whether the draw call got cheaper.
-Switch DXVK back off afterwards unless it wins.
-
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
