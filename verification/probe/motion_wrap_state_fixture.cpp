@@ -67,7 +67,7 @@ struct Pass {void after_reset(HRESULT){};};
 enum class TaaInvalidateSite:unsigned{RestoreFailed=0,StateLost=1,Skip=2,Target=3,Container=4,ResolveFailed=5,NotResolved=6,PresentFailed=7,Reset=8,ComparisonExposure=9,ComparisonStateFailed=10,CompositionStateLost=11,CompositionReaders=12,CompositionExport=13,CompositionAttach=14,CompositionBegin=15,CompositionRefused=16,CompositionPrepare=17,CompositionIncomplete=18,CutoutMissed=19,Count=20};
 class MotionOutput {
 public:
- Device*device_;bool enabled_=true,state_shadow_=true,motion_state_lost_=false,scene_open_=false;
+ Device*device_;bool enabled_=true,state_shadow_=true,state_hooks_=true,motion_state_lost_=false,scene_open_=false; // state_hooks_: hybrid unhook mirror (hooks on here)
  HRESULT motion_state_error_=D3DERR_INVALIDCALL;
  unsigned id_=1,generation_=0,frame_=0,taa_references_=0,logged_failures_=0,taa_invalidations=0,frames=0;
  Pass*taa_=nullptr;

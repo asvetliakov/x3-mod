@@ -715,6 +715,7 @@ void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWOR
     // texture is bound at attach and after Reset), so every call is a
     // denominator. Never elided.
     frame_timing::state_write(frame_timing::StateSet::Texture, unsigned(stage), true, s.texture == texture);
+    if (!state_hooks_ && s.texture != texture && !s.biased) { s.mipfilter_known = false; s.saved_known = false; } // hooks off: re-read for the new binding
     s.texture = texture;                 // same pointer, still bound: the count stands
     const std::uint32_t bit = 1u << stage;
     sampler_bound_mask_ = texture ? sampler_bound_mask_ | bit : sampler_bound_mask_ & ~bit;
@@ -837,7 +838,7 @@ void MotionOutput::resync_samplers() noexcept {
         auto& s = samplers_[stage];
         s = SamplerShadow{};
         // The packed screen readiness gate reads stage 0 only (the diffuse sampler).
-        if ((linear_material_requested_ && stage < 6) || ((screen_emission_requested_ || screen_additive_requested_) && stage == 0))
+        if (state_hooks_ && ((linear_material_requested_ && stage < 6) || ((screen_emission_requested_ || screen_additive_requested_) && stage == 0)))
             s.srgb_known = SUCCEEDED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
         if (!mip_bias_bits_ && !composition_requested()) continue;
         IDirect3DBaseTexture9* texture = nullptr;
@@ -968,8 +969,8 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
     if (FAILED(render_state(D3DRS_ALPHATESTENABLE, &test)) || FAILED(render_state(D3DRS_SRGBWRITEENABLE, &srgb))
         || FAILED(render_state(D3DRS_COLORWRITEENABLE, &color))) return false;
     constexpr D3DRENDERSTATETYPE blend_states[4] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE};
-    for (unsigned i = 0; i < 4; ++i) {
-        if (shadow_.composition_blend_known[i]) factor[i] = shadow_.composition_blend[i];
+    for (unsigned i = 0; i < 4; ++i) { // blend_known: the shadow's flag (hooks on) or this draw's cache (hooks off)
+        if (blend_known(i)) factor[i] = shadow_.composition_blend[i];
         else if (FAILED(render_state(blend_states[i], &factor[i]))) return false;
     }
     if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3])) return false;
@@ -1029,7 +1030,7 @@ void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
         DWORD factor[2]{}; bool known[2]{};
         const D3DRENDERSTATETYPE states[2] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND};
         for (unsigned i = 0; i < 2; ++i) {
-            if (shadow_.composition_blend_known[i]) { factor[i] = shadow_.composition_blend[i]; known[i] = true; }
+            if (blend_known(i)) { factor[i] = shadow_.composition_blend[i]; known[i] = true; }
             else known[i] = SUCCEEDED(render_state(states[i], &factor[i]));
         }
         route.cutout_source_over = cutout::source_over(true, route.cutout_blend, known[0], factor[0], known[1], factor[1]);
@@ -1153,13 +1154,74 @@ HRESULT MotionOutput::get_render_state_native(D3DRENDERSTATETYPE state, DWORD* v
 HRESULT MotionOutput::render_state(D3DRENDERSTATETYPE state, DWORD* value) noexcept {
     ++counters_.rs_queries;
     const unsigned i = shadow_index(state);
-    if (state_shadow_ && i < motion_shadow_state_count && shadow_.states_known[i]) {
+    // Cached across draws with the shadow (hooks on), within the draw without
+    // the hooks (begin_draw_reads drops it; every state is read once per draw).
+    const bool cached = state_shadow_ || !state_hooks_;
+    if (cached && i < motion_shadow_state_count && shadow_.states_known[i]) {
         *value = shadow_.states[i]; ++counters_.rs_hits; return S_OK;
     }
     const HRESULT hr = get_render_state_native(state, value);
     // The getter reports the device state whether or not a block is recording.
-    if (state_shadow_ && i < motion_shadow_state_count && SUCCEEDED(hr)) { shadow_.states[i] = *value; shadow_.states_known[i] = true; }
+    if (cached && i < motion_shadow_state_count && SUCCEEDED(hr)) { shadow_.states[i] = *value; shadow_.states_known[i] = true; }
     return hr;
+}
+// Hybrid unhook (hooks off): the per-draw cache. Dropped at the top of every
+// before_draw (integer stores only: the draw hooks are audited light roots),
+// filled on demand by the helpers below, one native read per state per draw.
+// A biased stage keeps its saved LODBIAS: after a failed after-draw restore
+// the device holds the route's bias and a re-read would save that instead of
+// the application's value (the hooked design's "only a trusted saved value is
+// ever written"). MIPFILTER is re-read per routed draw (no hook sees the
+// application change it).
+void MotionOutput::begin_draw_reads() noexcept {
+    std::memset(shadow_.states_known, 0, sizeof shadow_.states_known);
+    std::memset(shadow_.composition_blend_known, 0, sizeof shadow_.composition_blend_known);
+    shadow_.fill_mode_known = false;
+    for (auto& s : samplers_) { s.srgb_known = false; s.mipfilter_known = false; if (!s.biased) s.saved_known = false; }
+}
+bool MotionOutput::state_known(unsigned index) noexcept {
+    if (index >= motion_shadow_state_count) return false;
+    if (state_hooks_) return shadow_.states_known[index];
+    ++counters_.rs_queries;
+    if (shadow_.states_known[index]) { ++counters_.rs_hits; return true; }
+    DWORD value = 0;
+    if (FAILED(get_render_state_native(shadow_states[index], &value))) return false;
+    shadow_.states[index] = value; shadow_.states_known[index] = true;
+    return true;
+}
+bool MotionOutput::blend_known(unsigned index) noexcept {
+    if (index >= composition_blend_count) return false;
+    if (state_hooks_) return shadow_.composition_blend_known[index];
+    ++counters_.rs_queries;
+    if (shadow_.composition_blend_known[index]) { ++counters_.rs_hits; return true; }
+    DWORD value = 0;
+    if (FAILED(get_render_state_native(composition_blend_states[index], &value))) return false;
+    shadow_.composition_blend[index] = value; shadow_.composition_blend_known[index] = true;
+    return true;
+}
+bool MotionOutput::fill_mode_known() noexcept {
+    if (state_hooks_) return shadow_.fill_mode_known;
+    ++counters_.rs_queries;
+    if (shadow_.fill_mode_known) { ++counters_.rs_hits; return true; }
+    DWORD value = 0;
+    if (FAILED(get_render_state_native(D3DRS_FILLMODE, &value))) return false;
+    shadow_.fill_mode = value; shadow_.fill_mode_known = true;
+    return true;
+}
+bool MotionOutput::sampler_srgb_known(unsigned stage) noexcept {
+    if (stage >= sampler_stage_count) return false;
+    auto& s = samplers_[stage];
+    if (state_hooks_) return s.srgb_known;
+    ++counters_.rs_queries; // counted with the render-state reads: one query, a hit or one native read
+    if (s.srgb_known) { ++counters_.rs_hits; return true; }
+    ++counters_.rs_gets;
+    DWORD value = 0;
+    if (FAILED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &value))) return false;
+    s.srgb = value; s.srgb_known = true;
+    return true;
+}
+long MotionOutput::state_field(unsigned index) noexcept {
+    return state_known(index) ? long(shadow_.states[index]) : -1;
 }
 // After a failed restoration of the route's own state changes the device's
 // values are unknown: drop the shadow, the next queries read again.
@@ -2282,13 +2344,13 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         if (SUCCEEDED(native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display))) composition_adapter_format_ = display.Format;
         composition_busy_ = false;
     }
-    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_copy=%s taa_stretch_query=%08lx taa_stretch_test=%s taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u mip_bias=%g quad_fvf=%u",
+    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_copy=%s taa_stretch_query=%08lx taa_stretch_test=%s taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u state_hooks=%u scene_hook=%u hdr=%u mip_bias=%g quad_fvf=%u",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
         caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result,
         history_available_, unsigned(history_.stats().capacity), depth_enabled_, depth_reason,
         depth_detail[0] ? depth_detail : "-", depth_format_result, jitter_requested_, jitter_samples_,
         taa_enabled_, taa_reason, taa_format_result, taa_enabled_ ? (taa_copy_draw_ ? "draw" : "stretch") : "off", stretch_query, taa_stretch_test_, taa_debug_, lazy_mode_ ? "lazy" : "perdraw",
-        camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_, camera_log_interval_, state_shadow_, scene_hook_installed_, hdr_enabled_,
+        camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_, camera_log_interval_, state_shadow_, state_hooks_, scene_hook_installed_, hdr_enabled_,
         double(mip_bias_), quad_fvf_);
 }
 
@@ -3128,7 +3190,7 @@ void MotionOutput::resync_shadow() noexcept {
     D3DVIEWPORT9 viewport{};
     if (SUCCEEDED(native<GetViewportFn>(GetViewport)(device_, &viewport)))
         shadow_.viewport = {true, viewport.X, viewport.Y, viewport.Width, viewport.Height, viewport.MinZ, viewport.MaxZ};
-    if (blend_shadow_requested()) {
+    if (blend_shadow_requested() && state_hooks_) { // hooks off: the next draw reads what it needs
         // Admission reads only cached state. Refresh the consumed common state
         // even with the ordinary motion state-shadow experiment disabled.
         for (unsigned i = 0; i < 6; ++i)
@@ -3136,7 +3198,7 @@ void MotionOutput::resync_shadow() noexcept {
         for (unsigned i = 0; i < composition_blend_count; ++i)
             shadow_.composition_blend_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, composition_blend_states[i], &shadow_.composition_blend[i]));
     }
-    if (composition_requested() || screen_emission_bound_)
+    if ((composition_requested() || screen_emission_bound_) && state_hooks_)
         shadow_.fill_mode_known = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_FILLMODE, &shadow_.fill_mode));
     resync_samplers();
 }
@@ -3473,6 +3535,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         ++counters_.gates[1]; invalidate_taa(TaaInvalidateSite::StateLost); return route;
     }
     if (!enabled_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
+    if (!state_hooks_) begin_draw_reads(); // hooks off: this draw's state comes from Get*, read once each below
     if (hdr_state_ == HdrState::Active) hdr_dirty_ = true; // every application draw lands in the FP16 target
     if (mip_bias_total_game_writes_ != mip_bias_logged_game_writes_) log_mip_bias_game_write();
     const std::uint64_t begin = draw_stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
@@ -3483,7 +3546,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     if (composition_published_ && hdr_state_ != HdrState::Off && (composition_main_sampler_mask_ || !composition_readers_known_)) composition_export();
     route.evaluated = true;
     route.sun_color_writer=sun_lane_active_&&call.primitives&&selector_.state()==renderer::BoundaryState::Scene&&
-        !counters_.hook_scene_end&&(hdr_state_==HdrState::Active||scene_bound())&&shadow_state_field(D3DRS_COLORWRITEENABLE)!=0;
+        !counters_.hook_scene_end&&(hdr_state_==HdrState::Active||scene_bound())&&state_field(4)!=0; // slot 4: COLORWRITEENABLE
     evaluate_draw(call, route);
     // Step B rectangle before step C's admission: an admitted screen draw
     // composes inside it; without it the draw stays native.
@@ -3661,12 +3724,12 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     // (the station hull pair is mostly drawn opaque): it never enters the
     // nine-state check, so an unknown other state cannot stop the frame. A
     // blended or unknown-blend draw is checked as before (fail closed).
-    const bool fade_pair = shadow_.fade_sampler_mask != 0 && !(shadow_.states_known[3] && !shadow_.states[3]);
+    const bool fade_pair = shadow_.fade_sampler_mask != 0 && !(state_known(3) && !shadow_.states[3]);
     bool fade = false;
     if (fade_pair) {
         bool known = true;
-        for (unsigned i = 0; i < 6; ++i) known = known && shadow_.states_known[i];
-        for (unsigned i = 0; i < 3; ++i) known = known && shadow_.composition_blend_known[i]; // the blend triple only
+        for (unsigned i = 0; i < 6; ++i) known = state_known(i) && known;
+        for (unsigned i = 0; i < 3; ++i) known = blend_known(i) && known; // the blend triple only
         if (!known) {
             if (composition_required_producers_ & 2u) { composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionRefused); }
             ++composition_counts_.refused; ++composition_counts_.refusal[2]; return;
@@ -3685,8 +3748,8 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     bool screen = false;
     if (shadow_.screen_pair && !fade) {
         bool known = true;
-        for (unsigned i : {1u, 3u, 4u, 5u}) known = known && shadow_.states_known[i];
-        for (unsigned i = 0; i < 4; ++i) known = known && shadow_.composition_blend_known[i];
+        for (unsigned i : {1u, 3u, 4u, 5u}) known = state_known(i) && known;
+        for (unsigned i = 0; i < 4; ++i) known = blend_known(i) && known;
         DWORD dither = 0; // shadowed lazily like the cutout states (one Get, then the shadow)
         if (!known || FAILED(render_state(D3DRS_DITHERENABLE, &dither))) { ++composition_counts_.refused; ++composition_counts_.refusal[2]; return; }
         screen = shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5] && !dither
@@ -3730,7 +3793,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     if (refusal == 6 && fade) {
         // Every sampler the mask names (Asteroid s0-s3, hull BUMPMAP s0-s4).
         for (unsigned stage = 0; stage < 8; ++stage)
-            if ((shadow_.fade_sampler_mask & (1u << stage)) && (!samplers_[stage].srgb_known || samplers_[stage].srgb)) refusal = 2;
+            if ((shadow_.fade_sampler_mask & (1u << stage)) && (!sampler_srgb_known(stage) || samplers_[stage].srgb)) refusal = 2;
         const auto* row = shadow_.vs_row;
         if (!row || (row->light_loop_bound_required && (!shadow_.integer0_known || shadow_.integer0[0] < 0 || shadow_.integer0[0] > int(row->light_loop_max_count)))) refusal = 2;
     }
@@ -3740,7 +3803,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         // coordinates: the SM1 originals leave W undefined under PROJECTED
         // (linear-emission-sm1.md). One documented Get per bounded candidate.
         DWORD flags = 0;
-        if (!samplers_[0].srgb_known || samplers_[0].srgb
+        if (!sampler_srgb_known(0) || samplers_[0].srgb
             || FAILED(native<GetStageFn>(GetTextureStageState)(device_, 0, D3DTSS_TEXTURETRANSFORMFLAGS, &flags))
             || (flags & D3DTTFF_PROJECTED)) refusal = 2;
     }
@@ -3835,8 +3898,8 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         }
     };
     bool known = true;
-    for (unsigned i : {1u, 3u, 4u, 5u}) known = known && shadow_.states_known[i];
-    for (unsigned i = 0; i < 4; ++i) known = known && shadow_.composition_blend_known[i];
+    for (unsigned i : {1u, 3u, 4u, 5u}) known = state_known(i) && known;
+    for (unsigned i = 0; i < 4; ++i) known = blend_known(i) && known;
     DWORD dither = 0; // shadowed lazily like the packed route (one Get, then the shadow)
     if (!known || FAILED(render_state(D3DRS_DITHERENABLE, &dither))) { refuse(0); return; }
     if (!(shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5]
@@ -3852,7 +3915,7 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     if (gained && !shadow_.ps_screen_additive_variant) { refuse(4); return; }
     // The PS2 promotion samples the diffuse texture itself: the packed route's
     // sRGB-sampler refusal applies (unknown or decoding sampler 0 refuses).
-    if (!samplers_[0].srgb_known || samplers_[0].srgb) { refuse(5); return; }
+    if (!sampler_srgb_known(0) || samplers_[0].srgb) { refuse(5); return; }
     DWORD flags = 0;
     if (FAILED(native<GetStageFn>(GetTextureStageState)(device_, 0, D3DTSS_TEXTURETRANSFORMFLAGS, &flags))
         || (flags & D3DTTFF_PROJECTED)) { refuse(6); return; }
@@ -3863,7 +3926,7 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     // values restored after the draw, and an unknown one cannot be put back.
     if (screen_additive_alpha_requested_) {
         bool alpha_known = true;
-        for (unsigned i = 4; i < composition_blend_count; ++i) alpha_known = alpha_known && shadow_.composition_blend_known[i];
+        for (unsigned i = 4; i < composition_blend_count; ++i) alpha_known = blend_known(i) && alpha_known;
         if (!alpha_known) { refuse(8); return; }
         if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_SEPARATEALPHABLEND)) { refuse(9); return; }
         if (screen_additive_alpha_constant_ && !(caps_.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR)) { refuse(9); return; }
@@ -3940,9 +4003,9 @@ HRESULT MotionOutput::apply_screen_additive_alpha() noexcept {
     }
     return S_OK;
 }
-// Back to the application's own values, which the setter hook shadowed
-// (composition_blend[3..7]); the admission refused unless every one of them
-// was known. Only the states this draw actually applied are written.
+// Back to the application's own values (composition_blend[3..7]: the setter
+// hook's shadow with the hooks on, this draw's Get* cache with them off); the
+// admission refused unless every one of them was known. Only the states this draw actually applied are written.
 HRESULT MotionOutput::restore_screen_additive_alpha() noexcept {
     D3DRENDERSTATETYPE states[5]{}; DWORD values[5]{};
     screen_additive_alpha_steps(screen_additive_alpha_, screen_additive_alpha_constant_,
@@ -4119,8 +4182,10 @@ void MotionOutput::refresh_linear_emission_contract() noexcept {
         && fade_route::registers(shadow_.vs_hash, shadow_.fade_route_registers);
 }
 // Called only after the ordinary opaque/no-MSAA motion gates. All fields are
-// cached; never query samplers or revalidate bytecode in this draw-time check.
-unsigned MotionOutput::linear_material_refusal() const noexcept {
+// cached and no bytecode is revalidated in this draw-time check; the sampler
+// sRGB flags come from the shadow with the hooks on and, with them off, from
+// one GetSamplerState per required stage per draw (sampler_srgb_known).
+unsigned MotionOutput::linear_material_refusal() noexcept {
     if (!shadow_.material_contract.sampler_mask) return 1;
     if (shadow_.xt_default_pair ? !shadow_.xt_default_ready : (!shadow_.vs_material_variant || !shadow_.ps_material_variant)) return 2;
     if (!hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active()
@@ -4128,7 +4193,7 @@ unsigned MotionOutput::linear_material_refusal() const noexcept {
         || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return 3;
     for (std::uint32_t mask = shadow_.material_contract.sampler_mask; mask; mask &= mask - 1) {
         const unsigned stage = unsigned(__builtin_ctz(mask));
-        if (!samplers_[stage].srgb_known || samplers_[stage].srgb != FALSE) return 4;
+        if (!sampler_srgb_known(stage) || samplers_[stage].srgb != FALSE) return 4;
     }
     return 0;
 }
@@ -4227,8 +4292,8 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         }
         return;
     }
-    bool known = shadow_.states_known[3] && shadow_.states_known[5];
-    for (unsigned i = 0; i < 3; ++i) known = known && shadow_.composition_blend_known[i]; // the colour triple gates; sepalpha and the alpha triple are logged only
+    bool known = state_known(3); known = state_known(5) && known;
+    for (unsigned i = 0; i < 3; ++i) known = blend_known(i) && known; // the colour triple gates; sepalpha and the alpha triple are logged only
     if (!known) { ++source_gain_counts_.refused_unknown; return; }
     const auto verdict = renderer::linear_emission_source_gain_blend(shadow_.states[3], shadow_.states[5],
         shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2]);
@@ -4300,9 +4365,10 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
     }
 }
 // After the native draw: the application's program, then its DESTBLEND when
-// the screen substitution was applied (the shadowed INVSRCCOLOR; the setter
-// hook keeps the shadow in step with the application, so a value set between
-// prepare and finish is the one restored). Mirrors finish_screen_additive.
+// the screen substitution was applied (the shadowed INVSRCCOLOR: the setter
+// hook's value with the hooks on, the value this draw's admission read with
+// them off; nothing of the application's runs between prepare and finish,
+// both sit under the hook mutex of one draw). Mirrors finish_screen_additive.
 void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
     route.source_gain = false;
     HRESULT first = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
@@ -4531,10 +4597,12 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
             if (!(material_refusals_logged_ & bit)) {
                 material_refusals_logged_ |= bit;
                 // Build masks only for this bounded first refusal log. The
-                // steady-state draw gate visits cached required samplers only.
+                // steady-state draw gate visits cached required samplers only;
+                // with the hooks off this one log reads the six stages
+                // (sampler_srgb_known), so "unknown" means a failed read there.
                 std::uint32_t unknown = 0, srgb_enabled = 0;
                 for (unsigned stage = 0; stage < 6; ++stage) {
-                    if (!samplers_[stage].srgb_known) unknown |= 1u << stage;
+                    if (!sampler_srgb_known(stage)) unknown |= 1u << stage;
                     else if (samplers_[stage].srgb != FALSE) srgb_enabled |= 1u << stage;
                 }
                 log("linear_material_refused device=%llu reason=%u vs=%016llx ps=%016llx required=%02lx unknown=%02lx srgb_enabled=%02lx",
@@ -4625,7 +4693,7 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
             rows = jittered;
         }
     }
-    const bool fill_solid = shadow_.fill_mode_known && shadow_.fill_mode == D3DFILL_SOLID;
+    const bool fill_solid = fill_mode_known() && shadow_.fill_mode == D3DFILL_SOLID;
     // The owning target: the FP16 main while the HDR path holds it; for the
     // locked-prefix diagnostic without it, the application's RT0 (step C
     // composes into the HDR target and takes the first branch).
@@ -5049,6 +5117,10 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         counters_.route_draw_ticks += route.ticks;
         record(unsigned(telemetry::Metric::RouteDraw), route.ticks);
     }
+    // Hooks off: no SetSamplerState hook can put the bias back ahead of an
+    // application LODBIAS write, so it comes back here, one native
+    // SetSamplerState per biased stage (the mask is empty otherwise).
+    if (!state_hooks_ && sampler_biased_mask_) restore_mip_bias();
     if (route.jittered && !composition_state_lost_) restore_jitter(route);
     if (pending_valid_) { pending_valid_ = false; observe(pending_, result); }
     if (shimmer_trace_ && route.scene && shadow_.asteroid_pair) record_shimmer_draw(route);
@@ -5764,7 +5836,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
-            " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu rs_invalidations=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
+            " state_shadow=%u rs_mode=%s rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu rs_invalidations=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
             " mip_bias=%g mip_bias_sets=%lu mip_bias_restores=%lu mip_bias_draws=%lu mip_bias_stages=%04lx mip_bias_reads=%lu mip_bias_game_writes=%lu mip_bias_game_writes_total=%lu mip_bias_failures=%lu mip_bias_biased_now=%04lx",
             id_, frame_, counters_.latched, static_cast<unsigned long>(main_msaa_ ? main_msaa_samples_ : 0u), counters_.filled, counters_.fill_result, counters_.fill_restore,
             static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
@@ -5787,7 +5859,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(c.readbacks), us(c.gate_ticks), us(c.route_draw_ticks), us(c.set_rt_ticks), us(c.lazy_flush_ticks),
             us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks), us(c.taa_copy_color_ticks),
             us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks), us(c.taa_copy_back_ticks), us(c.readback_ticks),
-            state_shadow_, static_cast<unsigned long>(c.rs_queries), static_cast<unsigned long>(c.rs_hits), static_cast<unsigned long>(c.rs_gets),
+            state_shadow_, render_state_mode(), static_cast<unsigned long>(c.rs_queries), static_cast<unsigned long>(c.rs_hits), static_cast<unsigned long>(c.rs_gets),
             static_cast<unsigned long>(c.rs_resyncs), static_cast<unsigned long>(c.rs_invalidations), static_cast<unsigned long>(c.sb_resyncs), scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
             static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene), static_cast<unsigned long>(c.hook_state),
             static_cast<unsigned long>(c.draws_after_hook), c.bloom_copy_seen,

@@ -119,6 +119,34 @@ struct Workload {
     void get_sampler_state(unsigned i) { DWORD v = 0; status_or |= device->GetSamplerState(0, i & 1 ? D3DSAMP_MAXANISOTROPY : D3DSAMP_MIPMAPLODBIAS, &v); }
     void get_texture(unsigned) { IDirect3DBaseTexture9* t = nullptr; status_or |= device->GetTexture(0, &t); if (t) t->Release(); }
     void get_vs_constant(unsigned) { float v[4]{}; status_or |= device->GetVertexShaderConstantF(8, v, 4); }
+    // The hybrid unhook's per-draw read set (state-call-fast-path.md, step 5):
+    // the eight render states an admitted routed draw reads once each with the
+    // SetRenderState hook off (selector z pair, gate-4 quartet, RT1 mask, one
+    // wrap) plus the two sampler reads of a bias-eligible stage (MIPFILTER,
+    // MIPMAPLODBIAS). One "call" of this row is the whole ten-read set.
+    void draw_state_reads(unsigned) {
+        static const D3DRENDERSTATETYPE set[8] = {D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHABLENDENABLE, D3DRS_ALPHATESTENABLE,
+                                                  D3DRS_SRGBWRITEENABLE, D3DRS_COLORWRITEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_WRAP0};
+        DWORD v = 0;
+        for (auto state : set) status_or |= device->GetRenderState(state, &v);
+        status_or |= device->GetSamplerState(0, D3DSAMP_MIPFILTER, &v);
+        status_or |= device->GetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, &v);
+    }
+    // The hybrid unhook's mip-bias work per routed draw with the hooks off
+    // (motion_output.cpp apply_mip_bias + the after_draw restore): per
+    // bias-eligible stage GetSamplerState MIPFILTER, GetSamplerState
+    // MIPMAPLODBIAS, SetSamplerState bias (-0.5f), SetSamplerState the saved
+    // value back; two stages. The hooked design keeps the bias across
+    // consecutive routed draws and issues none of these there.
+    void routed_draw_mip_bias(unsigned) {
+        for (DWORD stage = 0; stage < 2; ++stage) {
+            DWORD filter = 0, saved = 0;
+            status_or |= device->GetSamplerState(stage, D3DSAMP_MIPFILTER, &filter);
+            status_or |= device->GetSamplerState(stage, D3DSAMP_MIPMAPLODBIAS, &saved);
+            status_or |= device->SetSamplerState(stage, D3DSAMP_MIPMAPLODBIAS, 0xbf000000u);
+            status_or |= device->SetSamplerState(stage, D3DSAMP_MIPMAPLODBIAS, saved);
+        }
+    }
 
     // One hooked draw: the stream rebind the game issues per draw plus the draw
     // itself (two triangles, four vertices, one index buffer).
@@ -151,6 +179,8 @@ void device_benchmark(Workload& w) {
         begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_sampler_state(i); report("GetSamplerState", rep, getter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_texture(i); report("GetTexture_Release", rep, getter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_vs_constant(i); report("GetVertexShaderConstantF4", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.draw_state_reads(i); report("GetState_draw_set_10", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.routed_draw_mip_bias(i); report("routed_draw_mip_bias_2stages", rep, getter_calls, ticks() - begin);
 
         // The draw pair runs inside one scene, as the game's draws do.
         check(w.device->BeginScene() == S_OK, "BeginScene");

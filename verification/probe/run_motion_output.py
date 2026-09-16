@@ -87,16 +87,22 @@ target changes with their own Clear, view and draws, BeginScene) between
 routed frames, before the scene's depth Clear and before the initial Clear:
 nothing of those frames routes, the scene camera is never read, the resolve
 does not run, and the history is dropped.
-Render-state shadow (X3M_STATE_SHADOW, default on; six runs with it off): the
-route answers its per-draw render-state queries from a shadow fed by the
-SetRenderState hook instead of GetRenderState. The regular script on both
-DLLs, the seam with TAA and in lazy mode, and the burst script in both binding
-modes repeat with the shadow off and must equal their shadow-on twins in
-colour, readback files, per-draw route decisions, checks and restorations;
-the DLL's per-frame counters must show zero route GetRenderState calls with
-the shadow on (every query a hit, outside the frames with a state block
-Apply/EndStateBlock resynchronization, where each shadowed state is read once
-more) and one per query with it off. The regular script also writes a state
+Render-state shadow (X3M_STATE_SHADOW=1; six runs with it off): the route
+answers its per-draw render-state queries from a shadow fed by the
+SetRenderState hook instead of GetRenderState. With X3M_STATE_SHADOW=0 (or
+unset, the production default) and no other hook reason the hybrid unhook
+applies (docs/architecture/state-call-fast-path.md, step 5): the
+SetRenderState/SetSamplerState hooks are not installed and the route reads at
+the draw, once per state per draw (`rs_mode=get`); in lazy RT mode the hooks
+stay and X3M_STATE_SHADOW=0 turns only the cache off (`rs_mode=native`). The
+regular script on both DLLs, the seam with TAA and in lazy mode, and the burst
+script in both binding modes repeat with the shadow off and must equal their
+shadow-on twins in colour, readback files, per-draw route decisions, checks
+and restorations; the DLL's per-frame counters must show zero route
+GetRenderState calls with the shadow on (every query a hit, outside the frames
+with a state block Apply/EndStateBlock resynchronization, where each shadowed
+state is read once more), one per query in native mode, and one per state per
+draw in get mode (every query a within-draw hit or one native read). The regular script also writes a state
 through a state block Apply and records one between BeginStateBlock and
 EndStateBlock (never applied); the burst script writes and reads back
 COLORWRITEENABLE1 between routed draws in lazy mode (the lazy-mode hole).
@@ -418,6 +424,12 @@ CUTOUT_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_EXPO
                   X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0', X3M_FIXTURE_CUTOUT_MIXED='0', X3M_FIXTURE_CUTOUT_ORDINARY='0')
 CASES += [case(f'seam-taa-cutout-{script}', 'cutout', jitter=True, taa=True, lazy=True, hdr=True, cutout=script,
                hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT=script)) for script in ('blended', 'opaque')]
+# The opaque script per-draw with the hooks off (`rs_mode=get`): the gate reads
+# ALPHATESTENABLE and the eight cutout states, then the candidate marker reads
+# them again, so the per-draw cache must serve repeat reads (rs_hits > 0) and
+# the coverage verdicts must not change.
+CASES += [case('seam-taa-cutout-opaque-get', 'cutout', jitter=True, taa=True, lazy=False, hdr=True, cutout='opaque', shadow=False,
+               hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT='opaque'))]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
 # docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
 # static frames over the eight jitter phases with the rotating camera (cut at
@@ -520,6 +532,25 @@ HDR_FAULT_SCRIPT = {0: dict(fault=0, redirected=1, unwind=0, source='shader', re
 # regular script's resynchronizations per frame (frame 7: two state block
 # Applies; frame 8: EndStateBlock).
 RS_FILL_GETS = 14
+
+
+# The shadow switch per case: True (X3M_STATE_SHADOW=1, hooks and shadow on),
+# False (=0: hooks off, `rs_mode=get`; in lazy RT mode hooks on without the
+# cache, `rs_mode=native`) or 'auto' (unset, the production configuration:
+# hooks off, `rs_mode=get`; lazy keeps the hooks with the shadow on).
+def shadow_request(shadow):
+    """The motion_output_mode line's state_shadow (the request as parsed)."""
+    return 'auto' if shadow == 'auto' else str(int(shadow))
+
+
+def shadow_effective(shadow, lazy):
+    """The device and per-frame lines' state_shadow (the cross-draw shadow is on)."""
+    return '1' if shadow is True or (shadow == 'auto' and lazy) else '0'
+
+
+def shadow_mode(shadow, lazy):
+    """The per-frame line's rs_mode."""
+    return 'shadow' if shadow is True or (shadow == 'auto' and lazy) else 'native' if lazy else 'get'
 RS_SHADOW_STATES = 32  # eight gate/mask states, WRAP0..15, eight cutout states; invalidated by resync
 SEAM_RESYNCS = {7: 2, 8: 1}
 # Hook script: seven frames (glow on, outside-Scene signal, glow off) and the
@@ -945,7 +976,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
                          'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
-                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
+                         'envmap': '0', 'hook': '0', 'state_shadow': '0' if shadow is False else '1', 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
                          'mipbias': '0', 'mip_bias': mip_bias_text(mip_bias if enabled else None), 'sharpen': f'{sharpen:g}', 'msaa': '0'}, (name, mode_line)
     # The camera script: the 31-degree jump at frame 7 is a cut unless the
     # switch is off; strict mode without a camera skips every frame.
@@ -1082,7 +1113,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
     assert modes[0]['jitter'] == str(int(jitter)) and modes[0]['jitter_samples'] == str(JITTER_SAMPLES), (name, modes)
     assert modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '60', (name, modes)
-    assert modes[0]['state_shadow'] == str(int(shadow)) and modes[0]['scene_hook'] == '0' and modes[0]['hdr'] == str(int(hdr)), (name, modes)
+    assert modes[0]['state_shadow'] == shadow_request(shadow) and modes[0]['scene_hook'] == '0' and modes[0]['hdr'] == str(int(hdr)), (name, modes)
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
     color_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_color_readback ')}
     present_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_present_readback ')}
@@ -1094,7 +1125,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         return result
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['reason'] == 'ok', (name, devices)
     assert devices[0]['rt_mode'] == rt_mode, (name, devices)
-    assert devices[0]['state_shadow'] == str(int(shadow)) and devices[0]['scene_hook'] == '0', (name, devices)
+    assert devices[0]['state_shadow'] == shadow_effective(shadow, lazy) and devices[0]['scene_hook'] == '0', (name, devices)
     assert devices[0]['hdr'] == str(int(hdr and hdr_fault is None)), (name, devices)
     # The HDR redirect: device gate, per-frame lines, readbacks (or the feature disabling itself with a forced-absent capability).
     result['hdr'] = validate_hdr(name, trace, directory, hdr, hdr_fault, frames=range(0, 9), capture_frames=range(1, 9),
@@ -1651,21 +1682,31 @@ def validate_hdrfault(name, text, trace, directory, hdr_env=None, hdr_fault=None
 
 def check_render_state(name, frame, summary, shadow, resyncs):
     """The DLL's per-frame render-state counters against the shadow switch."""
-    assert summary['state_shadow'] == str(int(shadow)), (name, frame, summary)
+    lazy = summary.get('rt_mode') == 'lazy'
+    assert summary['state_shadow'] == shadow_effective(shadow, lazy), (name, frame, summary)
+    mode = summary.get('rs_mode')
+    if mode is None:
+        mode = 'shadow' if shadow_effective(shadow, lazy) == '1' else 'native'  # a DLL from before the hybrid unhook: the hooks were always installed
+    else:
+        assert mode == shadow_mode(shadow, lazy), (name, frame, mode, summary.get('rt_mode'))
     q, h, g, r = (int(summary[k]) for k in ('rs_queries', 'rs_hits', 'rs_gets', 'rs_resyncs'))
     # Failed application setters drop single shadow entries without a re-read;
     # they are counted apart so a resync still has to show a shadow miss.
     i = int(summary.get('rs_invalidations', 0))
     assert r == resyncs and q >= 2 * int(summary['draws']), (name, frame, q, h, g, r)
     assert g == RS_FILL_GETS + q - h, (name, frame, q, h, g)
-    if shadow:
+    if mode == 'shadow':
         if not r and not i:
             assert h == q, (name, frame, q, h)
         else:
             assert (0 < q - h if r else 0 <= q - h) and q - h <= RS_SHADOW_STATES * r + i, (name, frame, q, h, r, i)
-    else:
+    elif mode == 'native':
         assert h == 0, (name, frame, q, h)
-    return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r, 'invalidations': i}
+    else:
+        # Hybrid unhook: no hooks, so nothing to invalidate; the per-draw cache
+        # answers repeats within a draw and every state costs one read per draw.
+        assert i == 0 and 0 <= h < q, (name, frame, q, h, i)
+    return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r, 'invalidations': i, 'mode': mode}
 
 
 # ---- FP16 HDR scene path, stage 2 -------------------------------------------
@@ -2666,7 +2707,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
-                         'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
+                         'hook': '0', 'state_shadow': '0' if shadow is False else '1', 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
                          'mipbias': '0', 'mip_bias': '0', 'sharpen': '0', 'msaa': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
@@ -2697,10 +2738,10 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     assert len(expects) == 8 * BURST_FRAMES and all(e['matched'] == '0' and e['jittered'] == '0' for e in expects), (name, len(expects))
     tl = trace.splitlines()
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
-    assert len(modes) == 1 and modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '1' and modes[0]['state_shadow'] == str(int(shadow)), (name, modes)
+    assert len(modes) == 1 and modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '1' and modes[0]['state_shadow'] == shadow_request(shadow), (name, modes)
     devices = [fields(l) for l in tl if l.startswith('motion_output_device ')]
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['rt_mode'] == rt_mode and devices[0]['depth'] == '1', (name, devices)
-    assert devices[0]['state_shadow'] == str(int(shadow)) and devices[0]['scene_hook'] == '0', (name, devices)
+    assert devices[0]['state_shadow'] == shadow_effective(shadow, lazy) and devices[0]['scene_hook'] == '0', (name, devices)
     assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed', 'motion_output_taa_failed')) for l in tl), name
     frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
     assert sorted(frames) == list(range(BURST_FRAMES)), (name, sorted(frames))  # X3M_MOTION_FRAME_LOG=1
@@ -3060,6 +3101,15 @@ def validate_hook(name, installed, text, trace, directory, hdr=False):
             'color_hashes': colors, 'color_hashes_before_boundary': before, 'taa_changed_pixels': {f: int(t['changed']) for f, t in taa_lines.items()},
             'matched_pixels': int(terminal['matched_pixels']), 'motion_pixels': int(terminal['motion_pixels'])}
 
+# The production configuration (X3M_STATE_SHADOW unset, the hybrid unhook) for
+# every production-DLL case except the shadow-on reference of the shadow twins
+# and the mip-bias script cases, whose hand-derived per-frame sampler counts
+# describe the hooked configuration.
+SHADOW_AUTO_EXEMPT = {'production-on'}
+for _case in CASES:
+    if _case['mode'] == 'production' and _case['shadow'] is True and _case['name'] not in SHADOW_AUTO_EXEMPT and not _case['mipbias']:
+        _case['shadow'] = 'auto'
+
 
 def arguments(argv=None):
     parser = argparse.ArgumentParser(description='Run motion-output cases; explicit retained binaries skip all builds.')
@@ -3152,8 +3202,15 @@ def main(argv=None):
                        X3M_GZ_BUFFER='0', X3M_GZ_BUFFER_KB='256')
             env.update(VARIANTS[variant])
             env.update(hdr_env)
+            if taa:
+                # ca6ad2e made --taa default to sharpen 0.75 and mip bias -0.5;
+                # the fixture's TAA checks assume the unsharpened, unbiased
+                # resolve unless a case sets them (hdr_env above, mip_bias below).
+                env.setdefault('X3M_TAA_SHARPEN', '0'); env.setdefault('X3M_TAA_MIP_BIAS', '0')
             if hook == 'default':
                 del env['X3M_SCENE_HOOK']  # the DLL's default: on with X3M_MOTION_OUTPUT=1
+            if shadow == 'auto':
+                del env['X3M_STATE_SHADOW']  # the production configuration: the hybrid unhook
             if mip_bias is not None:
                 env['X3M_TAA_MIP_BIAS'] = mip_bias
             if mipbias:
@@ -3253,6 +3310,15 @@ def main(argv=None):
                 continue
             if cutout:
                 case = validate_cutout(name, cutout, text, trace)
+                if shadow is not True:
+                    # Hooks off: the candidate marker's repeat reads (ALPHATESTENABLE, the cutout states)
+                    # is served by the per-draw cache (rs_hits > 0), every other read
+                    # is one native read, nothing is invalidated.
+                    frame_lines = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('motion_output_frame ')}
+                    case['render_state'] = {f: {k: int(frame_lines[f][k]) for k in ('rs_queries', 'rs_hits', 'rs_gets', 'rs_invalidations')} | {'mode': frame_lines[f]['rs_mode']}
+                                            for f in sorted(frame_lines)}
+                    assert all(v['mode'] == shadow_mode(shadow, lazy) and v['rs_invalidations'] == 0 for v in case['render_state'].values()), (name, case['render_state'])
+                    assert sum(v['rs_hits'] for v in case['render_state'].values()) > 0, (name, 'the per-draw cache served no repeat read')
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
@@ -3482,8 +3548,17 @@ def main(argv=None):
                 assert files_a and files_a == files_b, f'{off_name}: readback files differ from {twin}'
             gets_off = sum(v['gets'] for v in a['render_state'].values()); gets_on = sum(v['gets'] for v in b['render_state'].values())
             queries = sum(v['queries'] for v in b['render_state'].values())
-            assert sum(v['hits'] for v in a['render_state'].values()) == 0 and gets_off == queries + RS_FILL_GETS * len(a['render_state']), off_name
-            shadow_report[off_name] = {'twin': twin, 'identical': True, 'frames': len(b['render_state']), 'route_queries': queries,
+            modes_off = {v['mode'] for v in a['render_state'].values()}
+            assert len(modes_off) == 1 and modes_off <= {'get', 'native'}, (off_name, modes_off)
+            mode_off = modes_off.pop()
+            if mode_off == 'native':
+                assert sum(v['hits'] for v in a['render_state'].values()) == 0 and gets_off == queries + RS_FILL_GETS * len(a['render_state']), off_name
+            else:  # get: the per-draw cache's own accounting, checked per frame; no hook, no invalidation
+                queries_off = sum(v['queries'] for v in a['render_state'].values()); hits_off = sum(v['hits'] for v in a['render_state'].values())
+                assert gets_off == queries_off - hits_off + RS_FILL_GETS * len(a['render_state']), off_name
+                assert sum(v['invalidations'] for v in a['render_state'].values()) == 0, off_name
+            shadow_report[off_name] = {'twin': twin, 'identical': True, 'frames': len(b['render_state']), 'route_queries': queries, 'mode': mode_off,
+                                       'route_queries_off': sum(v['queries'] for v in a['render_state'].values()),
                                        'native_gets_shadow_off': gets_off, 'native_gets_shadow_on': gets_on,
                                        'shadow_hits': sum(v['hits'] for v in b['render_state'].values()), 'resyncs': sum(v['resyncs'] for v in b['render_state'].values())}
         result['state_shadow'] = shadow_report

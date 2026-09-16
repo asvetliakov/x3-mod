@@ -37,11 +37,20 @@ class LinearMaterialLiveTests(unittest.TestCase):
         writeback = extract_function(source, 'renderer::HdrWriteback MotionOutput::hdr_writeback(')
         self.assertIn('if (write && composition_enhanced_ && !composition_terminal_export_ && !composition_diagnostic_export_) composition_export();', writeback)
 
-    def test_composition_installs_render_state_hook_without_state_shadow(self):
+    def test_render_state_hook_follows_the_hooked_configuration(self):
+        # Hybrid unhook (state-call-fast-path.md, step 5): slot 57 is installed
+        # exactly in the hooked configuration, which composition no longer
+        # forces; the reasons are the explicit shadow, lazy RT mode, frame
+        # timing and a failed Get* capability check (fail closed).
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         install = next(line.strip() for line in capture.splitlines()
                        if 'hooked.set(57,set_render_state)' in line)
-        self.assertIn('||hooked.motion_output.composition_requested()', install.replace(' ', ''))
+        self.assertEqual(install.replace(' ', ''), 'if(hooked.motion_output.state_hooks())hooked.set(57,set_render_state);')
+        gate = capture[capture.index('const char* state_hooks_reason='):capture.index('hooked.motion_output.configure_state_hooks(state_hooks);')]
+        for reason in ('"explicit"', 'lazy_rt_mode()', 'frame_timing::active', '"get_failed"', '(58)(d,D3DRS_ZENABLE', '(68)(d,0,D3DSAMP_SRGBTEXTURE'):
+            self.assertIn(reason, gate)
+        sampler = next(line.strip() for line in capture.splitlines() if 'hooked.set(69,set_sampler_state)' in line)
+        self.assertTrue(sampler.startswith('if(hooked.motion_output.state_hooks()&&('), sampler)
         setter = extract_function(capture, 'HRESULT WINAPI set_render_state(')
         self.assertIn('if(SUCCEEDED(hr))ctx.motion_output.set_render_state(state,value);', setter)
 
@@ -98,7 +107,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'void MotionOutput::before_reset() noexcept',
             'void MotionOutput::after_reset(HRESULT result) noexcept',
             'void MotionOutput::recover_motion_state() noexcept',
-            'unsigned MotionOutput::linear_material_refusal() const noexcept',
+            'unsigned MotionOutput::linear_material_refusal() noexcept',
             'HRESULT MotionOutput::bind_variant_pair(',
             'HRESULT MotionOutput::bind_targets(',
             'HRESULT MotionOutput::undo(',
