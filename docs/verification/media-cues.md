@@ -353,3 +353,56 @@ exists (533,575,370 bytes, header `000001b3`: MPEG-1 video elementary stream), w
 not a soundtrack track. Its graph needs an MPEG-1 video decoder, which the v4
 runtime and CrossOver's GStreamer set lack (§3) and the v5 runtime adds
 (`avdec_mpeg2video`, `mpegvideoparse`): run 34 session A3 is the direct test.
+
+### Run 34 session A2 (run99), 2026-09-17
+
+Cache on (`--media-cue-cache on`), retry_s=30, cache_entries=32 vs run98's
+same options with cache=0 (session log `media_cue_mode` line 83 both runs;
+`loaded_module` d3d9.dll/d3dx9_37.dll paths/sizes/hashes match run98, only
+`hash_us` timing differs — same DLLs).
+
+**Cache behaviour.** Entry into the sector at frame=12643 produces 7 real
+attempts (`cached=0`, `result=0`) inside 1.32 s (us=155088–352209 each,
+`caller` selector then `other`, `kind` 0x5a/0x520) before the cache commits
+(window frame=12899: attempts=8 failures=8 cache_used=1). After that only
+two more real attempts occur for the whole 30 s stay: frame=14150
+(qpc 13185398691265, +28.9 s from the last frame-12643 attempt, result=0,
+us=275326) and frame=16689 (+30.27 s later, result=0, us=249896) — matching
+the 30 s retry interval. All other frames in those windows show
+`cached=1`/`refused=1` per frame (windows frame=13799..16799: attempts=300
+refused=300 per 300-frame window, except the two windows holding a real
+retry which show failures=1/refused=299). No ids other than 2 (and one-off
+id=24 at the burst) attempted in this stretch.
+
+**Frame time.** `frame_phases` `dt_p50_us`/`dt_p95_us` per 300-frame window
+in the sector: frame=12900 22451/33183 us (during the entry burst), settling
+to frame=16800 8366/8990 us — no window near run98's ~400 ms or run96's
+380 ms average. `frame_phases_slow` shows the entry-burst cost concentrated
+at frame=12643 (dt_us=4,370,575, one-time) then frame=12644 (1,781,668),
+frame=12668 (326,773); after settling, the two real retries cost
+frame=14151 dt_us=290,911 and frame=16690 dt_us=259,777 — single frames, not
+sustained stalls. `loop_phases_slow`: exactly 4 lines in the sector range —
+frame 12644, 14151, 16690 (all matching real cue attempts) plus an
+unexplained frame=15219 (dt_us=92,615, post_us=81,239) whose window
+(frame=15299, failures=0, refused=300) shows no cue-2 failure; cause not
+identified by media-cue evidence. `game_phase_slow_frame`: 14 lines in range,
+clustered at the entry burst (12643/12644/12645/12659/12661/12662/12668)
+and at the three retry frames (14151, 14644, 15219 — 15219 recurs here too).
+
+**stderr.** 88 GStreamer-CRITICAL lines in 8 distinct-second clusters (run98:
+760 lines) — consistent with roughly one small burst per real attempt
+instead of continuous failure. `Warning!  Some triangles have zero area!`
+appears 32 times, all at the same timestamp `2026-09-16T20:05:41.51[34]Z`,
+at the very end of `launcher-stderr.log` (last 32 of 275 lines), preceded by
+the last GStreamer-CRITICAL cluster (20:05:34) with nothing after —
+consistent with an EXE shutdown-teardown message flood, not a new symptom:
+run98's `launcher-stderr.log` carries the same warning 31 times (verified by
+grep), so it is pre-existing at exit in both runs, unrelated to the media-cue
+fix.
+
+**Sanity.** All `media_cue_window` early/foreign/stale/lost/mismatched/
+overflow counters are 0 throughout; the single `game_phase_window foreign=10`
+is a startup-phase (frame=53) transient in both runs, not sector-related.
+`mip_bias_fail` count 284 (run98: 239) — present at similar order in both
+runs, pre-existing, not attributable to the cache change. No
+`shader_unknown`, `claim_fail`, `truncated`, or `chase_refus` lines.
