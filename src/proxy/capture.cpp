@@ -45,6 +45,7 @@
 #include <cstring>
 #include <map>
 #include <memory>
+#include <new>
 #include <mutex>
 #include <set>
 #include <string>
@@ -271,6 +272,52 @@ void capture_event(Device& ctx,const char* operation,HRESULT result,bool before_
 }
 std::map<IDirect3D9*, std::unique_ptr<Hooks>> factories;
 std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
+// Dispatch trim (docs/architecture/state-call-fast-path.md, step 4): the light
+// setter hooks paid a std::map lookup per call. The game drives one device, so
+// a one-entry cache turns the repeat lookup into a pointer compare. Every read
+// and every write below happens with the hook mutex held (the guards are
+// constructed first), and the map is only mutated under that same mutex
+// (hook_device, release_device), where the cache is dropped. Fail-closed: any
+// pointer that is not the cached one takes the ordinary devices.at path, which
+// still throws for an unknown device exactly as before.
+IDirect3DDevice9* cached_device_key = nullptr;
+Device* cached_device_context = nullptr;
+void forget_cached_device() noexcept { cached_device_key = nullptr; cached_device_context = nullptr; }
+Device& device_context(IDirect3DDevice9* d) { return *devices.at(d); }
+__attribute__((noinline)) Device& adopt_cached_device(IDirect3DDevice9* d) noexcept {
+    Device& ctx = *devices.at(d);
+    cached_device_key = d; cached_device_context = &ctx;
+    return ctx;
+}
+inline Device& hooked_device(IDirect3DDevice9* d) noexcept {
+    if (d == cached_device_key) return *cached_device_context;
+    return adopt_cached_device(d);
+}
+// A null monitor (X3M_ADMISSION off) is the option-off path on which the ABI
+// adapter constructs, observes and destroys nothing. The light setters test it
+// here instead of paying the adapter's two cross-unit calls per hooked call;
+// with X3M_ADMISSION=1 the monitor is non-null and the adapter is constructed
+// and destroyed in exactly the same position as before. The monitor lookup
+// itself is unchanged (one published acquire load, already on this path).
+class LightAdmissionScope {
+public:
+    LightAdmissionScope() noexcept : monitor_(ownership::process_admission_monitor_published()) {
+        if (monitor_) new (storage_) ownership::ApplicationAdmissionAbi(monitor_);
+    }
+    ~LightAdmissionScope() { if (monitor_) adapter()->~ApplicationAdmissionAbi(); }
+    LightAdmissionScope(const LightAdmissionScope&) = delete;
+    LightAdmissionScope& operator=(const LightAdmissionScope&) = delete;
+private:
+    ownership::ApplicationAdmissionAbi* adapter() noexcept {
+        return std::launder(reinterpret_cast<ownership::ApplicationAdmissionAbi*>(storage_));
+    }
+    ownership::AdmissionMonitor* monitor_;
+    alignas(ownership::ApplicationAdmissionAbi) unsigned char storage_[sizeof(ownership::ApplicationAdmissionAbi)];
+};
+// The heavy shadow hooks keep the adapter exactly as before.
+struct HeavyAdmissionScope {
+    ownership::ApplicationAdmissionAbi adapter{ownership::process_admission_monitor()};
+};
 // Invocation storage is constructed explicitly by pre and destroyed by bridge
 // finally. No GCC destructor is relied upon across original's Windows SEH.
 struct CompositorInvocation {
@@ -671,7 +718,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         cpu.before_original();
         refs=fn(d);cpu.after_original();
         if(!refs){game_phases::invalidate_device();report_shader_population(true); // session end: flush the last count movement
-        telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);devices.erase(d);}
+        telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);forget_cached_device();devices.erase(d);}
         last_device_destroyed=!refs&&devices.empty();
     }
     // The profiler's quiescent stop: the last device is gone and the capture
@@ -1743,26 +1790,34 @@ HRESULT WINAPI create_ps(IDirect3DDevice9* d,const DWORD* code,IDirect3DPixelSha
 // foreign code or the logger (resource_id private data for stream/indices,
 // GetVertexDeclaration/GetDeclaration for declaration/FVF, state block
 // recording) keep the full boundary.
-#define X3M_SHADOW_HOOK(boundary,guard,name,slot,signature,call,update) \
+//
+// `admission_scope` and `lookup` carry the dispatch trim (step 4 of
+// docs/architecture/state-call-fast-path.md): the light hooks take the inline
+// null-admission scope and the cached device lookup, the heavy ones keep the
+// adapter and the map. `native_spec` is `noexcept` for the light hooks: the
+// forwarded slot is a COM/HRESULT entry point, which does not propagate a C++
+// exception in either the Windows runtime or Wine, and saying so removes the
+// exception region the call otherwise carries. Empty for the heavy hooks.
+#define X3M_SHADOW_HOOK(boundary,guard,admission_scope,lookup,native_spec,name,slot,signature,call,update) \
 HRESULT WINAPI name signature { \
     boundary cpu; \
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor()); \
-    guard lock;auto& ctx=*devices.at(d); \
+    admission_scope admission; \
+    guard lock;auto& ctx=lookup(d); \
     cpu.before_original(); \
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)signature>(slot)call;cpu.after_original(); \
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)signature native_spec>(slot)call;cpu.after_original(); \
     if(SUCCEEDED(hr))ctx.motion_output.update; \
     return hr; \
 }
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_vs,92,(IDirect3DDevice9* d,IDirect3DVertexShader9* shader),(d,shader),set_vertex_shader(shader))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_ps,107,(IDirect3DDevice9* d,IDirect3DPixelShader9* shader),(d,shader),set_pixel_shader(shader))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_vs_constant_f,94,(IDirect3DDevice9* d,UINT start,const float* data,UINT count),(d,start,data,count),set_vertex_constants_f(start,data,count))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_vs_constant_i,96,(IDirect3DDevice9* d,UINT start,const int* data,UINT count),(d,start,data,count),set_vertex_constants_i(start,data,count))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_ps_constant_f,109,(IDirect3DDevice9* d,UINT start,const float* data,UINT count),(d,start,data,count),set_pixel_constants_f(start,data,count))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_stream_source,100,(IDirect3DDevice9* d,UINT stream,IDirect3DVertexBuffer9* buffer,UINT offset,UINT stride),(d,stream,buffer,offset,stride),set_stream_source(stream,buffer,offset,stride))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_indices,104,(IDirect3DDevice9* d,IDirect3DIndexBuffer9* buffer),(d,buffer),set_indices(buffer))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_viewport,47,(IDirect3DDevice9* d,const D3DVIEWPORT9* viewport),(d,viewport),set_viewport(viewport))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_vs,92,(IDirect3DDevice9* d,IDirect3DVertexShader9* shader),(d,shader),set_vertex_shader(shader))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_ps,107,(IDirect3DDevice9* d,IDirect3DPixelShader9* shader),(d,shader),set_pixel_shader(shader))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_vs_constant_f,94,(IDirect3DDevice9* d,UINT start,const float* data,UINT count),(d,start,data,count),set_vertex_constants_f(start,data,count))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_vs_constant_i,96,(IDirect3DDevice9* d,UINT start,const int* data,UINT count),(d,start,data,count),set_vertex_constants_i(start,data,count))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_ps_constant_f,109,(IDirect3DDevice9* d,UINT start,const float* data,UINT count),(d,start,data,count),set_pixel_constants_f(start,data,count))
+X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,HeavyAdmissionScope,device_context,,set_stream_source,100,(IDirect3DDevice9* d,UINT stream,IDirect3DVertexBuffer9* buffer,UINT offset,UINT stride),(d,stream,buffer,offset,stride),set_stream_source(stream,buffer,offset,stride))
+X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,HeavyAdmissionScope,device_context,,set_indices,104,(IDirect3DDevice9* d,IDirect3DIndexBuffer9* buffer),(d,buffer),set_indices(buffer))
+X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_viewport,47,(IDirect3DDevice9* d,const D3DVIEWPORT9* viewport),(d,viewport),set_viewport(viewport))
+X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,HeavyAdmissionScope,device_context,,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
+X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,HeavyAdmissionScope,device_context,,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
 #undef X3M_SHADOW_HOOK
 // Render-state shadow (X3M_STATE_SHADOW, default on). Light boundary like the
 // other hot setters: before the native call only the lazy-mode flush of a
@@ -1771,11 +1826,11 @@ X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_fvf,89,(IDirect3DDevice9* d,DWORD 
 // this hook too.
 HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWORD value){
     LightCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    PlainHookGuard lock;auto& ctx=*devices.at(d);
-    ctx.motion_output.before_set_render_state(state);
+    LightAdmissionScope admission;
+    PlainHookGuard lock;auto& ctx=hooked_device(d);
+    if(ctx.motion_output.lazy_write_mask_held())ctx.motion_output.before_set_render_state(state); // lazy mode only
     cpu.before_original();
-    HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD)>(57)(d,state,value);cpu.after_original();
+    HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD)noexcept>(57)(d,state,value);cpu.after_original();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     hr=ctx.motion_output.fixture_setter_result(hr,57,unsigned(state));
 #endif
@@ -1794,11 +1849,11 @@ HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWO
 // indirect call check_no_x87.py does not walk (same as the native slot).
 HRESULT WINAPI set_texture(IDirect3DDevice9* d,DWORD stage,IDirect3DBaseTexture9* texture){
     LightCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    PlainHookGuard lock;auto& ctx=*devices.at(d);
+    LightAdmissionScope admission;
+    PlainHookGuard lock;auto& ctx=hooked_device(d);
     const bool query=ctx.motion_output.texture_levels_wanted(stage,texture);
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DBaseTexture9*)>(65)(d,stage,texture);
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DBaseTexture9*)noexcept>(65)(d,stage,texture);
     const DWORD levels=SUCCEEDED(hr)&&query?texture->GetLevelCount():0;
     const int reader=SUCCEEDED(hr)?ctx.motion_output.composition_texture_reader(stage,texture):2;
     cpu.after_original();
@@ -1807,11 +1862,11 @@ HRESULT WINAPI set_texture(IDirect3DDevice9* d,DWORD stage,IDirect3DBaseTexture9
 }
 HRESULT WINAPI set_sampler_state(IDirect3DDevice9* d,DWORD stage,D3DSAMPLERSTATETYPE type,DWORD value){
     LightCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    PlainHookGuard lock;auto& ctx=*devices.at(d);
-    ctx.motion_output.before_set_sampler_state(stage,type);
+    LightAdmissionScope admission;
+    PlainHookGuard lock;auto& ctx=hooked_device(d);
+    if(type==D3DSAMP_MIPMAPLODBIAS)ctx.motion_output.before_set_sampler_state(stage,type); // the only type it acts on
     cpu.before_original();
-    HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,D3DSAMPLERSTATETYPE,DWORD)>(69)(d,stage,type,value);cpu.after_original();
+    HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,D3DSAMPLERSTATETYPE,DWORD)noexcept>(69)(d,stage,type,value);cpu.after_original();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if(type==D3DSAMP_SRGBTEXTURE)hr=ctx.motion_output.fixture_setter_result(hr,69,stage);
 #endif
@@ -1945,6 +2000,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     ctx->set(81,draw_primitive); ctx->set(82,draw_indexed); ctx->set(83,draw_up); ctx->set(84,draw_indexed_up);
     ctx->set(91,create_vs); ctx->set(106,create_ps);
     // Publish only after the owning map allocation succeeds.
+    forget_cached_device(); // a reused address must not answer from a retired context
     auto entry=devices.emplace(d,std::move(ctx));
     entry.first->second->install(d);
     log("device_hooked ptr=%p device=%llu ex=%u",d,devices.at(d)->id,supports_ex);

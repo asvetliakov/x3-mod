@@ -225,17 +225,56 @@ constexpr unsigned composition_blend_count = 8;
 constexpr D3DRENDERSTATETYPE composition_blend_states[composition_blend_count] = {
     D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE,
     D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA, D3DRS_BLENDFACTOR};
-constexpr unsigned composition_blend_index(D3DRENDERSTATETYPE state) noexcept {
+constexpr unsigned composition_blend_index_scan(D3DRENDERSTATETYPE state) noexcept {
     for (unsigned i = 0; i < composition_blend_count; ++i) if (composition_blend_states[i] == state) return i;
     return composition_blend_count;
 }
-constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept {
+constexpr unsigned shadow_index_scan(D3DRENDERSTATETYPE state) noexcept {
     // WRAP8 starts a second, non-contiguous D3DRENDERSTATETYPE range.
     if (state >= D3DRS_WRAP0 && state <= D3DRS_WRAP7) return 8u + unsigned(state - D3DRS_WRAP0);
     if (state >= D3DRS_WRAP8 && state <= D3DRS_WRAP15) return 16u + unsigned(state - D3DRS_WRAP8);
     for (unsigned i = 0; i < 8; ++i) if (shadow_states[i] == state) return i;
     for (unsigned i = 24; i < motion_shadow_state_count; ++i) if (shadow_states[i] == state) return i;
     return unsigned(motion_shadow_state_count);
+}
+// Dispatch trim (docs/architecture/state-call-fast-path.md, step 4): the
+// SetRenderState hook ran both scans on every application write, up to 16
+// compares for the shadow plus 8 for the blend shadow. The largest documented
+// D3DRENDERSTATETYPE is D3DRS_BLENDOPALPHA (209), so a 256-entry byte table
+// built at compile time from the scans answers every defined state with one
+// range test and one load; a value outside the table keeps the scans' answer
+// for an unknown state (not shadowed), so the shadow's contents are unchanged.
+constexpr unsigned state_index_table_size = 256;
+static_assert(motion_shadow_state_count < state_index_table_size && composition_blend_count < state_index_table_size,
+              "shadow/blend indices fit one table byte");
+struct StateIndexTables {
+    unsigned char shadow[state_index_table_size]{};
+    unsigned char blend[state_index_table_size]{};
+};
+constexpr StateIndexTables make_state_index_tables() noexcept {
+    StateIndexTables tables{};
+    for (unsigned i = 0; i < state_index_table_size; ++i) {
+        tables.shadow[i] = static_cast<unsigned char>(shadow_index_scan(D3DRENDERSTATETYPE(i)));
+        tables.blend[i] = static_cast<unsigned char>(composition_blend_index_scan(D3DRENDERSTATETYPE(i)));
+    }
+    return tables;
+}
+constexpr StateIndexTables state_index_tables = make_state_index_tables();
+// The table equals the scan for every value it covers, proved at compile time.
+constexpr bool state_index_tables_match_scans() noexcept {
+    for (unsigned i = 0; i < state_index_table_size; ++i)
+        if (state_index_tables.shadow[i] != shadow_index_scan(D3DRENDERSTATETYPE(i))
+            || state_index_tables.blend[i] != composition_blend_index_scan(D3DRENDERSTATETYPE(i))) return false;
+    return true;
+}
+static_assert(state_index_tables_match_scans(), "state index tables equal the scans for 0..255");
+constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept {
+    const unsigned value = unsigned(state);
+    return value < state_index_table_size ? state_index_tables.shadow[value] : unsigned(motion_shadow_state_count);
+}
+constexpr unsigned composition_blend_index(D3DRENDERSTATETYPE state) noexcept {
+    const unsigned value = unsigned(state);
+    return value < state_index_table_size ? state_index_tables.blend[value] : composition_blend_count;
 }
 const char* scene_end_source_name(std::uint32_t source) noexcept {
     return source == unsigned(SceneEndSource::Hook) ? "hook" : source == unsigned(SceneEndSource::StretchRect) ? "stretchrect" : "none";

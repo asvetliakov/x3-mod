@@ -240,6 +240,10 @@ std::atomic<unsigned> Device::destructors{0};
 
 std::recursive_mutex mutex;
 std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
+// Production's one-entry device cache (capture.cpp, dispatch trim): the
+// extracted release path drops it before erasing. Inert here; this fixture
+// exercises lifetime, not the setter fast path.
+void forget_cached_device() noexcept {}
 bool bloom_requested=true;
 
 namespace compositor_owner {

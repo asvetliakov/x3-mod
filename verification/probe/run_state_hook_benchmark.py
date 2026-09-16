@@ -28,6 +28,7 @@ Run it under the Wine lock:
   X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py \\
       python3 verification/probe/run_state_hook_benchmark.py
 """
+import argparse
 import datetime
 import hashlib
 import json
@@ -49,6 +50,11 @@ EXE = BUILD / 'state_hook_benchmark.exe'
 RESULTS = bottle.results_dir(ROOT)
 WINE = Path(bottle.WINE)
 INSTALLED_DLL = bottle.game_dir() / 'd3d9.dll'
+# The DLL under test: the installed candidate by default, or a build under
+# qualification passed with --dll (a worktree build/d3d9.dll, for instance).
+# Nothing is rebuilt either way; the file is copied read-only into each run
+# directory and its sha256 goes into the record.
+DLL = INSTALLED_DLL
 
 # Unrelated features pinned off, as the other runners do, so an inherited host
 # environment cannot change what the proxy installs.
@@ -92,7 +98,7 @@ def run_case(entry, log):
     env = dict(os.environ, **BASE_ENV)
     command = [str(WINE)] + bottle.wine_args() + ['--workdir', str(directory)]
     if entry['proxy']:
-        shutil.copy(INSTALLED_DLL, directory / 'd3d9.dll')
+        shutil.copy(DLL, directory / 'd3d9.dll')
         env.update(ROUTE_ENV)
         env['X3M_FRAME_TIMING'] = entry['frame_timing']
         command += ['--dll', 'd3d9=n,b']
@@ -168,13 +174,21 @@ def derive(result):
     return result
 
 
-def main():
+def main(argv=None):
+    global DLL
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument('--dll', type=Path, help='DLL under test (default: the installed candidate)')
+    arguments = parser.parse_args(argv)
+    if arguments.dll:
+        DLL = arguments.dll.resolve()
+        assert DLL.is_file(), f'no such DLL: {DLL}'
     subprocess.run([str(PROBE / 'build_state_hook_benchmark.sh')], cwd=ROOT, check=True)
     result = {'generated': datetime.datetime.now().isoformat(timespec='seconds'),
               'bottle': bottle.describe(),
               'fixture': {'source': 'verification/probe/state_hook_benchmark.cpp',
                           'exe_sha256': sha(EXE)},
-              'dll': {'path': str(INSTALLED_DLL), 'sha256': sha(INSTALLED_DLL)},
+              'dll': {'path': str(DLL), 'sha256': sha(DLL),
+                      'installed': DLL == INSTALLED_DLL},
               'note': ('Three repetitions per configuration inside one process; ns_per_call is the median. '
                        'Equal-share setter mix: run87 frame_timing keeps one counter per bucket, no per-entry breakdown.'),
               'cases': {}}

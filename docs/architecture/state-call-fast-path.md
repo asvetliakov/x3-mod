@@ -243,6 +243,51 @@ Expected result after 1-4: the hooked state calls cost ~30k × (14 + ~40) ≈
 hooked calls cost a further ~0.6-0.9 ms less. These are projections from the
 benchmark's per-call numbers and run87's counts, not measured frames.
 
+## Dispatch trim (step 4, implemented)
+
+Implemented in `capture.cpp` (light hook bodies, the device lookup, the null
+admission early-out) and `motion_output.cpp` (the index tables): a one-entry
+device cache ahead of `devices.at` (any other pointer falls back to the map,
+which still throws for an unknown device); 256-entry compile-time
+`shadow_index`/`composition_blend_index` byte tables built from the old scans,
+with a `static_assert` that the tables equal the scans for 0..255 and an
+out-of-range value keeping the scans' "not shadowed" answer; an inline null
+test on the admission monitor, which is now published for an inline read
+(`process_admission_monitor_published`), so the option-off path constructs no
+ABI adapter and makes no cross-unit call; `noexcept` on the forwarded native
+slot of the light setters and on the admission adapter's constructor and
+destructor (its unit is already `-fno-exceptions`), which removes the
+exception regions that surrounded the native call; and inline guards that skip
+`before_set_render_state` unless the route holds a write mask (lazy mode only)
+and `before_set_sampler_state` unless the write is `D3DSAMP_MIPMAPLODBIAS`.
+The shadow's contents, the resync semantics, the telemetry counters, the hook
+mutex and the CPU-state envelope are unchanged.
+
+Benchmark, ns per call with timing off, installed candidate `bbadc568`
+(`state-hook-benchmark.json`) against the trimmed build `5b8e6f8d`
+(`state-hook-benchmark-dispatch-trim.json`, same bottle and fixture):
+SetRenderState 119.9 -> 79.0, SetSamplerState 109.8 -> 68.6,
+SetVertexShaderConstantF(4) 79.7 -> 77.0, SetTexture 130.0 -> 125.9, the
+equal-share mix 316.8 -> 302.8; the mean proxy guard/shadow/dispatch cost of
+the four light setters 96.0 -> 73.5 ns. Native and unhooked rows are unchanged
+(SetTextureStageState 11.7/11.0, the getters within noise). `set_render_state`
+falls from 211 to 143 emitted instructions with far fewer on the taken path.
+
+The ≤ 40 ns-over-native target is not reached. What remains per call, measured
+or counted: the forwarded native call (11-17), the hook mutex (6.9), the
+`LightCallBoundary` envelope (10.0, two GetLastError/SetLastError pairs), one
+`__Unwind_SjLj_Register`/`Unregister` pair, and the out-of-line shadow store.
+The SJLJ frame cannot be removed from these hooks while the reachable code can
+throw: `std::lock_guard` on the recursive mutex and the `dllimport`
+GetLastError/SetLastError of `cpu_state.h` are both potentially-throwing to
+GCC. Moving the lock into nothrow out-of-line helpers was measured and
+rejected: each helper then carried its own SJLJ frame and the four light
+setters lost 30-70 ns (SetVertexShaderConstantF 77 -> 147). Removing the
+frame needs the light hooks in a `-fno-exceptions` unit, which is a separate
+change; step 5 (the hybrid unhook) removes the render-state and sampler hooks
+altogether and is the larger remaining saving. SetTexture is dominated by its
+two out-of-line shadow queries, not by dispatch.
+
 ## Native Windows
 
 Every step uses documented D3D9 and Win32 only. The FNSAVE cost and the 68 ns

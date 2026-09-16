@@ -29,31 +29,35 @@ struct AdmissionState {
 // survive. No graphics work or admission wait occurs in its configuration.
 AdmissionMonitor process_monitor;
 INIT_ONCE process_configuration = INIT_ONCE_STATIC_INIT;
-std::atomic<bool> process_configured{false};
-AdmissionMonitor* selected_process_monitor=nullptr;
 BOOL CALLBACK configure_process_admission(PINIT_ONCE, PVOID, PVOID*) {
     wchar_t setting[2]{};
     if(GetEnvironmentVariableW(L"X3M_ADMISSION",setting,2)==1 && setting[0]==L'1')
-        selected_process_monitor=&process_monitor;
-    process_configured.store(true,std::memory_order_release);
+        detail::published_monitor=&process_monitor;
+    detail::monitor_published.store(true,std::memory_order_release);
     return TRUE;
 }
 }
+// Published selection: written once under the INIT_ONCE below, then read-only
+// for the process (the header's inline accessor reads it on hook paths).
+namespace detail {
+std::atomic<bool> monitor_published{false};
+AdmissionMonitor* published_monitor=nullptr;
+}
 AdmissionMonitor* process_admission_monitor() noexcept {
-    if(process_configured.load(std::memory_order_acquire))return selected_process_monitor;
+    if(detail::monitor_published.load(std::memory_order_acquire))return detail::published_monitor;
     AdmissionState state;
     InitOnceExecuteOnce(&process_configuration,configure_process_admission,nullptr,nullptr);
-    auto* result=process_configured.load(std::memory_order_acquire)?selected_process_monitor:nullptr;
+    auto* result=detail::monitor_published.load(std::memory_order_acquire)?detail::published_monitor:nullptr;
     state.restore();return result;
 }
-ApplicationAdmissionAbi::ApplicationAdmissionAbi(AdmissionMonitor* monitor):requested_(monitor!=nullptr){
+ApplicationAdmissionAbi::ApplicationAdmissionAbi(AdmissionMonitor* monitor) noexcept:requested_(monitor!=nullptr){
     if(!monitor)return;
     AdmissionState state;
     thread_=std::this_thread::get_id();
     new(storage_) ApplicationAdmission(*monitor);present_=true;result_=core()->result();
     state.restore();
 }
-ApplicationAdmissionAbi::~ApplicationAdmissionAbi(){
+ApplicationAdmissionAbi::~ApplicationAdmissionAbi() noexcept{
     if(!present_)return;
     AdmissionState state;core()->~ApplicationAdmission();present_=false;state.restore();
 }

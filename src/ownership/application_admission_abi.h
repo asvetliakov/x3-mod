@@ -1,5 +1,6 @@
 #pragma once
 #include "application_admission.h"
+#include <atomic>
 #include <new>
 #include <type_traits>
 
@@ -11,8 +12,8 @@ namespace x3m::ownership {
 // a null monitor is an option-off path, not an exemption for nested callbacks.
 class ApplicationAdmissionAbi final {
 public:
-    explicit ApplicationAdmissionAbi(AdmissionMonitor* monitor);
-    ~ApplicationAdmissionAbi();
+    explicit ApplicationAdmissionAbi(AdmissionMonitor* monitor) noexcept;
+    ~ApplicationAdmissionAbi() noexcept;
     ApplicationAdmissionAbi(const ApplicationAdmissionAbi&)=delete;
     ApplicationAdmissionAbi& operator=(const ApplicationAdmissionAbi&)=delete;
     bool requested() const noexcept {return requested_;}
@@ -67,6 +68,21 @@ AdmissionSnapshot admission_snapshot(const AdmissionMonitor* monitor);
 // Do not call from DllMain. Obtaining this pointer does not establish admission
 // or certify startup/callback/window coverage for live replay.
 AdmissionMonitor* process_admission_monitor() noexcept;
+namespace detail {
+// The configured selection, published once by process_admission_monitor() and
+// never replaced. Read only through the accessor below.
+extern std::atomic<bool> monitor_published;
+extern AdmissionMonitor* published_monitor;
+}
+// Same answer as process_admission_monitor() with no cross-unit call once the
+// configuration is published: one acquire load and one pointer load. Touches no
+// x87/MXCSR/LastError state on that path, and falls back to the out-of-line
+// configuration (which preserves CPU state) before the first publication.
+// A null result is the option-off path: the adapters below then do nothing.
+inline AdmissionMonitor* process_admission_monitor_published() noexcept {
+    if (detail::monitor_published.load(std::memory_order_acquire)) return detail::published_monitor;
+    return process_admission_monitor();
+}
 
 static_assert(std::is_trivially_destructible_v<std::thread::id>);
 

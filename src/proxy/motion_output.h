@@ -492,6 +492,10 @@ public:
     // telemetry record): in lazy mode an application write to a write mask the
     // route holds first puts the application's bindings back, so the write
     // lands where the application expects it (closes the lazy-mode hole).
+    // Nothing to put back unless the route currently holds a write mask, which
+    // only lazy mode does. The hook tests this inline and calls the function
+    // below only then; that function still re-checks every condition itself.
+    bool lazy_write_mask_held() const noexcept { return enabled_ && (lazy_rt1_ || lazy_rt2_); }
     void before_set_render_state(D3DRENDERSTATETYPE state) noexcept;
     // After a successful application SetRenderState; ignored while recording.
     void set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexcept;

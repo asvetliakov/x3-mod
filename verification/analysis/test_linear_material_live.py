@@ -121,7 +121,22 @@ class LinearMaterialLiveTests(unittest.TestCase):
                          'HRESULT hr=S_OK; bool matched=true; std::array<float,16> previous{};\n'
                          'const float zeros[16]{}, pixel[8]{}; previous.fill(99.f);\n' +
                          evaluate[begin:end] + 'return hr;\n}\n')
-            (path / 'linear_material_live_under_test_inc.h').write_text('\n\n'.join(extract_function(source, sig) for sig in signatures) + '\n' + environment + count + constants)
+            # The compile-time shadow/blend index tables the setter reads
+            # (docs/architecture/state-call-fast-path.md, dispatch trim),
+            # with the production static_assert that they equal the scans.
+            size = next(line for line in source.splitlines() if line.startswith('constexpr unsigned state_index_table_size'))
+            match = next(line for line in source.splitlines() if line.startswith('static_assert(state_index_tables_match_scans()'))
+            tables = '\n'.join([
+                extract_function(source, 'constexpr unsigned composition_blend_index_scan('),
+                extract_function(source, 'constexpr unsigned shadow_index_scan('),
+                size,
+                extract_function(source, 'struct StateIndexTables') + ';',
+                extract_function(source, 'constexpr StateIndexTables make_state_index_tables() noexcept'),
+                'constexpr StateIndexTables state_index_tables = make_state_index_tables();',
+                extract_function(source, 'constexpr bool state_index_tables_match_scans() noexcept'),
+                match]) + '\n'
+            (path / 'linear_material_live_under_test_inc.h').write_text(
+                tables + '\n\n'.join(extract_function(source, sig) for sig in signatures) + '\n' + environment + count + constants)
             executable = path / 'fixture'
             build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-I', directory,
                                     str(ROOT / 'verification/probe/linear_material_live_fixture.cpp'), '-o', str(executable)], capture_output=True, text=True)
