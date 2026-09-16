@@ -5,8 +5,16 @@ static_assert(sizeof(void*)==4,"x86 code patching only");
 namespace x3m::engine_patch {
 namespace {
 // Fixed process-lifetime capacity: the combined 33-site phase and existing
-// chase/lead/aim diagnostic set needs 8,580 bytes, including native tails.
+// chase/lead/aim diagnostic set needs 8,580 bytes, including native tails;
+// with every optional group on the modelled use is stated in
+// verification/analysis/test_game_phase_sites.py. The CPU fixture installs
+// and rolls back every group several times (the arena is never freed), so
+// its build alone gets a doubled arena; the stub and tail shapes are unchanged.
+#ifndef X3M_GAME_PHASE_FIXTURE
 constexpr unsigned arena_size=16384;
+#else
+constexpr unsigned arena_size=32768;
+#endif
 unsigned char* arena=nullptr;
 unsigned arena_cursor=0;
 SRWLOCK arena_lock=SRWLOCK_INIT;

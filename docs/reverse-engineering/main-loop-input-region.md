@@ -9,6 +9,19 @@ from `i686-w64-mingw32-objdump` on the file bytes and is re-checked by
 `verification/probe/verify_loop_phase_sites.py` (`PASS`). Inferences are marked;
 raw decompiler output stayed local and untracked.
 
+**Status (2026-09-16).** The six sites of §4 are implemented as `--loop-phases`
+(`X3M_LOOP_PHASES=1`, `src/proxy/loop_phase_sites.h`, `loop_phases.cpp`,
+`loop_phases_core.h`, the lean stub shared with pass phases); verifier `PASS`
+with `source_present: true`, CPU fixture 8274 checks / 0 failures with the
+driver mirrored instruction for instruction, 89.7 ns per dispatch. Schema and
+reading guide: `docs/verification/sampling-profiler.md`, "Loop phases". One
+correction to §4's wording: the edges that land on sites 3 and 5 are the two
+gate `jne`s of each pass (`0x0043a384`/`0x0043a38c`, `0x0043a3b4`/`0x0043a3bc`,
+as the verifier's `INCOMING` table already says); the loop back edges
+`0x0043a3a5`/`0x0043a3cf` return to the loop heads `0x0043a380`/`0x0043a3b0`,
+outside every span. Not yet run in the game; §5's container-count question is
+what `sectors_p50`/`containers_p50` will answer.
+
 **Question.** Run 32 session C (run94, `docs/verification/sampling-profiler.md`)
 puts 95.7 % of a sustained 390 ms frame in `game_phase_input`
 (`[0x00403b09, 0x00403f2a)`), and inside it `input_part=0` alone carries p50

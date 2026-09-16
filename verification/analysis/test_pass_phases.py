@@ -72,22 +72,32 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn('gate.owned(GetCurrentThreadId())', handler)
         self.assertNotIn('log(', handler)
         self.assertIn('__attribute__((force_align_arg_pointer))', source)
-        # The lean stub: flags, EAX/ECX/EDX and XMM0-7 saved, then the handler,
-        # then everything restored before `jmp [next]`; no x87 save.
-        emit = source[source.index('void* emit(unsigned index,void*** next_out) {'):]
+        # The lean stub, shared with the loop-phase group (lean_stub.cpp): flags,
+        # EAX/ECX/EDX and XMM0-7 saved, then the handler, then everything
+        # restored before `jmp [next]`; no x87 save.
+        self.assertIn('return lean_stub::emit(reinterpret_cast<const void*>(&x3m_pass_phase_enter),index,next_out);', source)
+        stub = (ROOT / 'src/proxy/lean_stub.cpp').read_text()
+        emit = stub[stub.index('void* emit(const void* handler,unsigned index,void*** next_out) {'):]
         emit = emit[:emit.index('\n}')]
         self.assertIn('e.byte(0x9c);e.byte(0x50);e.byte(0x51);e.byte(0x52);e.byte(0xfc);', emit)
         self.assertEqual(emit.count('e.byte(0x0f);e.byte(0x11);'), 1)
         self.assertEqual(emit.count('e.byte(0x0f);e.byte(0x10);'), 1)
-        self.assertIn('e.rel32(reinterpret_cast<const void*>(&x3m_pass_phase_enter));', emit)
+        self.assertIn('e.byte(0x68);e.dword(index);e.byte(0xe8);e.rel32(handler);', emit)
         self.assertIn('e.byte(0x81);e.byte(0xc4);e.dword(0x80);e.byte(0x5a);e.byte(0x59);e.byte(0x58);e.byte(0x9d);', emit)
         self.assertIn('e.byte(0xff);e.byte(0x25);e.dword(std::uint32_t(next));', emit)
-        # Install transaction: window, preflight, in-order claim, reverse
-        # rollback, activate last; the group needs the frame group.
-        self.assertIn('status="install_window_closed"', source)
-        self.assertIn('status="preflight_bytes"', source)
-        self.assertIn('else status=patches[i].status;', source)
-        self.assertIn('if(!restored)status="rollback_failed_inert";', source)
+        self.assertNotIn('fnsave', emit); self.assertNotIn('0xdd', emit)
+        # Install transaction (stamp_install.h, shared): window, preflight,
+        # in-order claim, reverse rollback, activate last; the group needs the
+        # frame group.
+        self.assertIn('return stamp::install_group(patches,specs,&emit,installed,status);', source)
+        install = (ROOT / 'src/proxy/stamp_install.h').read_text()
+        self.assertIn('status = "install_window_closed"', install)
+        self.assertIn('status = "preflight_bytes"', install)
+        self.assertIn('} else status = patches[i].status;', install)
+        self.assertIn('if (!restored) status = "rollback_failed_inert";', install)
+        self.assertLess(install.index('status = "install_window_closed"'), install.index('verify_bytes('))
+        self.assertLess(install.index('verify_bytes('), install.index('engine_patch::claim('))
+        self.assertLess(install.index('for (unsigned j = Count; j-- > 0;)'), install.index('status = "ok"; installed.store(true'))
         self.assertIn('status="frame_phases_off"', source)
         self.assertIn('std::atomic<bool> active', header)
         # The window closes at the frame-phase boundary under its owner guard,

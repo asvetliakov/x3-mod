@@ -711,6 +711,138 @@ Reading it, with the run91 busy window as the yardstick:
 | Date | Change | Checks | Result |
 | --- | --- | --- | --- |
 | 2026-09-16 | Pass-phase group added (four sites, lean stub, `--pass-phases`) | `verify_pass_phase_sites.py` PASS, `source_present: true`; `run_game_phase_cpu.py` under X3: 8136 checks, 0 failures, `PASS PHASE BENCH dispatch_ns=90.5 implied_busy_frame_us=364 within_budget=1`, fixture arena 15528/16384 B; host `test_pass_phases` 9 tests OK; DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_pass_phase_enter` walked | not yet run in the game |
+| 2026-09-16 | Lean stub, owner gate, percentile and install transaction factored into `lean_stub.cpp`, `stamp_core.h`, `stamp_install.h` (shared with loop phases); `dispatch_cost_ns` 87 -> 91 (the larger of the two measurements); a `pass_begin` over a pass whose end never arrived now counts in `orphans` | `run_game_phase_cpu.py` under X3 (with the loop group): `PASS PHASE BENCH dispatch_ns=86.6`; host `test_pass_phases` 9 tests OK | not yet run in the game |
+
+## Loop phases (`X3M_LOOP_PHASES=1`)
+
+Run94 put 95.7 % of the sustained 390 ms frame in the main loop's Input phase
+and, inside it, `input_part=0` (`[0x00403b09, 0x00403b3a)`, three calls) with
+no named call in the tape. The static study
+`docs/reverse-engineering/main-loop-input-region.md` names the per-sector
+update driver `0x0043a360` as the owner with high confidence and cannot
+decide between its five callees. `--loop-phases` (launcher `tools/manage.py`,
+requires `--telemetry` and `--frame-phases`; `X3M_LOOP_PHASES=1`) splits it
+with six byte-verified stamps inside the driver (`src/proxy/loop_phase_sites.h`):
+`sector_collide` `0x0043a38e`, `sector_simulate` `0x0043a394`, `sector_post`
+`0x0043a39a`, `sector_pass_a_end` `0x0043a3a0`, `sector_economy` `0x0043a3be`,
+`sector_pass_b_end` `0x0043a3ca`. The driver walks the universe container list
+twice (class word `[+0x48] == 1`, skip bit `[+0x148] & 1`): pass A calls
+`0x0045d250`/`0x00452ad0`/`0x0045b720` per active container, pass B calls
+`0x004596e0` then `0x004526b0`. Sites 0, 1, 2 and 4 are `push esi; call rel32`
+(the claim tail re-bases the rel32, the callee sees an arena return address,
+the contract the game-phase clock/pump/channels sites rely on); sites 3 and 5
+are the five-byte `mov esi,[esi]; cmp [esi],0` that the two gate `jne`s of
+each pass land on (`0x0043a384`/`0x0043a38c` and `0x0043a3b4`/`0x0043a3bc`),
+so the span *is* the patch jump: a gate edge executes the stub, the tail
+replays both instructions after the stub's `popfd` and the `cmp` leaves the
+flags the following `jne` back edge (`0x0043a3a5` -> `0x0043a380`,
+`0x0043a3cf` -> `0x0043a3b0`, both outside every span) consumes. The RE note's
+"back edges land on the stamp" is therefore more precisely "the gate skip
+edges land on the stamp; the loop back edges go to the loop heads"; the CPU
+fixture models both (a skipped container reaches the stamp through the gate
+edge, and an entry trampoline jumps onto the patched span start).
+
+The stamp rate is six per active sector plus two per container the gates skip,
+per frame, and the container count is unknown (open issue of the RE note), so
+the group uses the lean stub shared with pass phases (`src/proxy/lean_stub.cpp`,
+124 bytes, no x87 save; handler `x3m_loop_phase_enter` under
+`LightCallBoundary`, walked by `check_no_x87.py`). Per frame the accumulator
+(`src/proxy/loop_phases_core.h`) keeps four interval sums (collide = site
+0 -> 1, simulate = 1 -> 2, post = 2 -> 3, passb = 4 -> 5), the sector count
+(site 4 hits: containers that passed the pass-B gate), the container count
+(site 5 hits), the dispatch count and the largest single interval with the
+interval that owned it, so one pathological sector is visible. A pass end with
+nothing open is the container walk, not an error; any other close without its
+open, or an open over an interval still open, is an `orphan`. The window
+reduction runs at the frame-phase boundary (`frame_phases::detail::frame_impl`,
+owner guard) and joins the frame's `dt` and `pre_render`; when `--game-phases`
+is also on, the Input phase of the last completed loop
+(`game_phases::last_input_us`) replaces `pre_render` as `input`. Install is the
+shared transaction (`src/proxy/stamp_install.h`: preflight, in-order claim,
+reverse rollback, `install_window_closed`/`late_claim`) plus `frame_phases_off`;
+`loop_phase_mode` and six `loop_phase_site` lines record it.
+
+Per 300-frame window one line, microseconds, nearest-rank percentiles over
+per-frame sums:
+
+```
+loop_phases frame=N frames=300 sectors_p50= containers_p50= collide_p50_us= collide_p95_us= simulate_p50_us= simulate_p95_us= post_p50_us= post_p95_us= passb_p50_us= passb_p95_us= sum_p50_us= input_p50_us= self_p50_us= dispatch_cost_ns= max_interval_us= max_interval_owner= slow= orphans= clock_errors= clock_failures= unmatched= dropped= early= foreign=
+```
+
+and, for each of the first 64 frames of the window whose `sum` exceeds 50 ms
+(`slow` counts all of them):
+
+```
+loop_phases_slow frame= dt_us= sectors= containers= collide_us= simulate_us= post_us= passb_us= sum_us= input_us= max_interval_us= max_interval_owner=
+```
+
+| Field | Interval | Contains |
+| --- | --- | --- |
+| `collide` | `sector_collide` -> `sector_simulate` | `0x0045d250`: flag clearing over the 32 object buckets, then collision detect/respond on bucket 0 (`0x0045cab0` query, `0x0045e130` response, the `"CollisionWarn"`/`"MakeDamage"` script notifications) |
+| `simulate` | `sector_simulate` -> `sector_post` | `0x00452ad0` (27,390 bytes, 401 calls): the per-object simulation body over all 32 buckets |
+| `post` | `sector_post` -> `sector_pass_a_end` | `0x0045b720`: the global object chain walk seeded by `0x0044e600` |
+| `passb` | `sector_economy` -> `sector_pass_b_end` | `0x004596e0` (own time accumulator, catch-up work) **and** `0x004526b0` (a seventh site would split them) |
+| `sum` | | the four intervals per frame |
+| `input` | | the same frame's `pre_render` (`frame_phases`), or the `--game-phases` Input phase of the last completed loop when that group is on |
+| `self` | | `dispatches * dispatch_cost_ns / 1000`, the stamps' own estimated cost, not subtracted |
+| `max_interval` | | the largest single interval of the frame (window line: of the window) and its owner (`collide`/`simulate`/`post`/`passb`) |
+
+Reading it, with run94 as the yardstick (`input_part=0` p50 391,500 us on the
+slow sector):
+
+* `input_p50_us - sum_p50_us` is the residual of the input region outside the
+  driver: the cut-event driver `0x0048f550`, the deferred-delete sweep
+  `0x0045b660`, both list walks and (when `input` is `pre_render`) everything
+  else between the Present return and the render routine. If the residual
+  carries the stall, the driver was not the owner and the note's §3 ranking
+  is wrong.
+* The interval whose p95 tracks `sum_p95` names the callee; on a slow frame
+  `max_interval_owner` says which routine, and `max_interval_us` against
+  `sum_us` says whether one sector or every sector carries it (`sectors` and
+  `containers` in the same line give the per-sector cost).
+* `sectors_p50` answers the RE note's open question: ~1 means only the
+  player's sector is active and the stamp rate is ~6 + 2 x `containers`
+  dispatches per frame; a large value means every sector is simulated every
+  frame and the per-sector cost, not the sector count, is the lever.
+* `orphans`, `clock_errors`, `clock_failures`, `unmatched`, `early` and
+  `foreign` should be zero in a healthy run.
+* cost: the CPU fixture measures the lean stub on the mirrored driver at
+  88.2 and 89.7 ns per dispatch under the X3 bottle (`LOOP PHASE BENCH`, best
+  of 7 x 20,000 loops of the 16-dispatch body hooked minus unhooked;
+  `dispatch_cost_ns` is 91, the fixture refuses a constant more than 2x off).
+  Implied cost per frame: 0.54 us for 1 active sector (6 dispatches), 108 us
+  for 200 active sectors (1,200 dispatches), plus 0.18 us per skipped
+  container. Off, nothing is installed and the frame boundary is one relaxed
+  load.
+* arena: with every optional group on (resource reader, 47 game-phase sites,
+  10 frame, 4 pass, 6 loop, chase camera/transition/lead/aim/fire, voice DMO
+  fallback, 12 loading probes) the modelled use is 15,752 of 16,384 B, 632 B
+  free (`test_game_phase_sites.py`); the six loop sites take 888 B. The CPU
+  fixture build alone gets a 32 KiB arena because it installs and rolls back
+  every group several times and the arena is never freed.
+* verification: `python3 verification/probe/verify_loop_phase_sites.py`
+  (exact bytes, whole instructions of the gap-free routine and region decode,
+  the exact incoming edges, rel32 targets and their re-based arena copies,
+  plain-copy contract, ESP contract, single-caller chain, raw
+  interior-encoding sweep, no data reference, disjoint from the 47 installed
+  sites, EXE identity); `X3M_FIXTURE_BOTTLE=X3 python3
+  verification/probe/wine_lock.py python3
+  verification/probe/run_game_phase_cpu.py` (the driver mirrored instruction
+  for instruction with fixture callees and a four-container list, executed
+  through the production stubs with hostile CPU state: GPR/EFLAGS (the
+  terminator's `cmp` flags at exit)/XMM/x87/MXCSR/LastError/ESP parity, exact
+  native call counts and arguments, early and foreign stamps ignored, two
+  sectors/four containers/sixteen dispatches with no orphan, the slow-simulate
+  owner, the joined sample, an entry on the pass_a_end stub through the gate
+  edge with the replayed `cmp` deciding the back edge, a mid-chain entry as one
+  orphan, rollback, byte-mismatch refusal, duplicate-claim rollback,
+  late-window refusal, the benchmark row); host
+  `verification/analysis/test_loop_phases.py` (`loop_phases_host.cpp`
+  accumulator/gate/window/slow-limit probe, wiring, launcher). Ledger:
+
+| Date | Change | Checks | Result |
+| --- | --- | --- | --- |
+| 2026-09-16 | Loop-phase group added (six sites, shared lean stub, `--loop-phases`) | `verify_loop_phase_sites.py` PASS, `source_present: true`; `run_game_phase_cpu.py` under X3: 8274 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=89.7 implied_frame_us_1_sector=0.54 implied_frame_us_200_sectors=108`, fixture arena 17980/32768 B; host `test_loop_phases` 9 tests OK (`loop_phases_host` 40 checks); DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_loop_phase_enter` walked (492 reachable functions) | not yet run in the game |
 
 ## Per-call cost of the hooked state setters under the X3 bottle (2026-09-16)
 

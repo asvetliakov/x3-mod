@@ -21,6 +21,11 @@ void* emit_stub(unsigned index,void*** next);
 // and by the sampling profiler's periodic callback every 2 s.
 bool audio_active() noexcept;
 void audio_report(const char* scope,std::uint64_t qpc);
+// The Input phase (site game_phase_input, 0x00403b09) of the last completed
+// main-loop iteration in microseconds; false when the group is off, on any
+// thread but the owner, or before the first completed Input phase. Read by the
+// loop-phase group at the frame boundary (the owner is the Present thread).
+bool last_input_us(std::uint64_t* out) noexcept;
 #ifdef X3M_GAME_PHASE_FIXTURE
 // Configure only while disabled; (0,0) clears before freeing the allocation.
 // Caller owns the readable region; every marker still uses engine_memory::read.

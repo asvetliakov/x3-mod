@@ -8,6 +8,7 @@
 #include "frame_timing.h"
 #include "frame_phases.h"
 #include "pass_phases.h"
+#include "loop_phases.h"
 #include "point_light_admission.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
@@ -2569,6 +2570,7 @@ void initialize_log(HMODULE module) {
     game_phases::initialize(); // all 33 claims here, before the first Present
     frame_phases::initialize(); // X3M_FRAME_PHASES=1 only: ten render-routine stamps through the game-phase stub, same window
     pass_phases::initialize(); // X3M_PASS_PHASES=1 only: four effect-pass stamps through the lean stub, needs the frame group, same window
+    loop_phases::initialize(); // X3M_LOOP_PHASES=1 only: six per-sector update stamps through the lean stub, needs the frame group, same window
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
     frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
     lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window

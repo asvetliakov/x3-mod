@@ -309,6 +309,11 @@ void loading_phase_present(std::uint64_t device,std::uint64_t reset,std::uint64_
     }
 }
 bool audio_active() noexcept {return audio_enabled&&active.load(std::memory_order_acquire);}
+bool last_input_us(std::uint64_t* out) noexcept {
+    if(!out||!active.load(std::memory_order_acquire)||GetCurrentThreadId()!=owner_thread.load(std::memory_order_acquire))return false;
+    if(!core.frequency||!core.input_valid)return false;
+    *out=core.input_last*1000000ull/core.frequency;return true;
+}
 void audio_report(const char* scope,std::uint64_t qpc_stamp) {
     if(!audio_active())return;
     ErrorGuard error;

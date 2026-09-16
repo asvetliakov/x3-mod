@@ -96,11 +96,16 @@ struct Core {
     Request request{},phase_request{};
     Pump pump{};
     Present anchor{};
+    // The Input phase (6) of the loop in progress and of the last loop that
+    // completed it, in ticks: the loop-phase group joins the latter to its
+    // per-frame sample (X3M_LOOP_PHASES with X3M_GAME_PHASES).
+    std::uint64_t input_ticks=0,input_last=0;
+    bool input_valid=false;
 
     void invalidate() noexcept {
         ++invalidated;
         phase_live=anchor_valid=false;used=depth=0;tape_overflow=false;
-        anchor={};request={};pump={};input_part=0;
+        anchor={};request={};pump={};input_part=0;input_ticks=0;input_valid=false;
         for(auto& t:stack){t.raw=0;t.bridged=t.detail=false;t.endpoint={};}
     }
     bool valid(const Stamp& at) noexcept {
@@ -111,7 +116,7 @@ struct Core {
         if(!phase_live)return;
         if(at.qpc<phase_begin.qpc){++clock_errors;invalidate();return;}
         phases[phase].add(phase_begin,at);
-        if(phase==6)input_parts[input_part].add(phase_begin,at);
+        if(phase==6){input_parts[input_part].add(phase_begin,at);input_ticks+=at.qpc-phase_begin.qpc;}
         if(anchor_valid&&at.qpc>phase_begin.qpc){
             if(used<tape_capacity)tape[used++]={phase_begin,at,loop,phase,input_part,phase_request,request,pump};
             else {++overflow;tape_overflow=true;}
@@ -129,7 +134,8 @@ struct Core {
         if(!phase_live){++unmatched;return;}
         if(index!=phase+1){++order_errors;invalidate();return;}
         segment(at);if(!phase_live)return;
-        phase=index;input_part=0;phase_begin=at;phase_request=request;
+        if(phase==6){input_last=input_ticks;input_valid=true;}
+        phase=index;input_part=0;input_ticks=0;phase_begin=at;phase_request=request;
     }
     void begin(unsigned kind,const Stamp& at,Request r={},std::uintptr_t raw=0) noexcept {
         if(!valid(at))return;

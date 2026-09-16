@@ -46,6 +46,10 @@ extern "C" void x3m_chase_camera_enter(){}
 extern "C" void x3m_chase_transition_enter(){}
 extern "C" void x3m_chase_lead_enter(){}
 extern "C" void x3m_chase_aim_enter(){}
+extern "C" void x3m_chase_fire_enter(){}
+extern "C" void x3m_voice_dmo_fallback_enter(){}
+extern "C" void x3m_probe_enter(){}
+extern "C" void x3m_probe_exit(){}
 '''
 
 
@@ -64,27 +68,33 @@ def emitter_fixture_source():
     emitters=(
         ('resource_reader','resource_reader.cpp','emit_reader_stub','emit_reader_stub(&next)','',()),
         ('game_phases','game_phases.cpp','emit','emit(0,&next)','',()),
-        # The four pass-phase stamps have their own lean stub (no x87 save).
-        ('pass_phases','pass_phases.cpp','emit','emit(0,&next)','',()),
+        # The pass-phase and loop-phase stamps share the lean stub (no x87 save).
+        ('pass_phases','lean_stub.cpp','emit','emit(nullptr,0,&next)','constexpr unsigned reserve=160;',()),
+        ('loop_phases','lean_stub.cpp','emit','emit(nullptr,0,&next)','constexpr unsigned reserve=160;',()),
         ('chase_camera','chase_camera.cpp','emit_stub','emit_stub(&next)','',()),
         ('chase_transition','chase_transition.cpp','emit','emit(0,&next)',
          f'namespace detail {{ constexpr unsigned restore_filter_count={restore_filter_count()}; }}',
          ('emit_stub',)),
         ('chase_lead','chase_lead.cpp','emit','emit(0,&next)','',()),
         ('chase_aim_trace','chase_aim_trace.cpp','emit','emit(0,&next)','',()),
+        ('chase_fire','chase_fire.cpp','emit','emit(&next)','',()),
+        ('voice_dmo_fallback','voice_dmo_fallback.cpp','emit','emit(&next)','',()),
+        ('loading_probes','loading_probes.cpp','emit_entry_stub','emit_entry_stub(0,&next)','',()),
+        ('loading_probes_exit','loading_probes.cpp','emit_exit_stub','emit_exit_stub()','',()),
     )
     chunks=[COUNTING_EMITTER]
     calls=[]
     for label,filename,name,call,prelude,helpers in emitters:
         source=(ROOT/'src/proxy'/filename).read_text()
-        if filename in ('game_phases.cpp','pass_phases.cpp'):
+        if filename in ('game_phases.cpp','pass_phases.cpp','loop_phases.cpp'):
             source=source.replace('void* emit(unsigned index,void*** next_out);','')
         bodies=[extract_named_function(source,helper) for helper in helpers]
         bodies.append(extract_named_function(source,name))
         body='\n'.join(bodies)
         chunks.append(f'namespace {label} {{\n{prelude}\n{body}\n}}')
+        next_check='||!next' if '&next' in call else ''
         calls.append(
-            f'next=nullptr;last={{}};if(!{label}::{call}||!next)return 2;'
+            f'next=nullptr;last={{}};if(!{label}::{call}{next_check})return 2;'
             f'std::printf("{label} %u %u\\n",last.reserve,last.used);')
     chunks.append('int main(){void** next=nullptr;'+''.join(calls)+'return 0;}')
     return '\n'.join(chunks)
@@ -157,9 +167,11 @@ class SourceAndReplay(unittest.TestCase):
         # emit() shares emit_stub with the filtered restore path, whose
         # prefilter is sized into the same reservation. Emitted bytes unchanged.
         self.assertEqual(emitted,{
-            'resource_reader':(48,32),'game_phases':(192,128),'pass_phases':(160,124),
+            'resource_reader':(48,32),'game_phases':(192,128),'pass_phases':(160,124),'loop_phases':(160,124),
             'chase_camera':(160,124),'chase_transition':(320,128),
             'chase_lead':(192,128),'chase_aim_trace':(176,128),
+            'chase_fire':(176,124),'voice_dmo_fallback':(192,124),
+            'loading_probes':(40,28),'loading_probes_exit':(32,24),
         })
 
         def lengths(filename):
@@ -171,9 +183,13 @@ class SourceAndReplay(unittest.TestCase):
             # after the phase group) and claim through the same tail shape.
             'frame_phases':lengths('frame_phase_sites.h'),
             'pass_phases':lengths('pass_phase_sites.h'),
+            'loop_phases':lengths('loop_phase_sites.h'),
             'chase_transition':lengths('chase_transition.cpp'),
             'chase_lead':lengths('chase_lead.cpp'),
             'chase_aim_trace':lengths('chase_aim_trace.cpp'),
+            'chase_fire':lengths('chase_fire.cpp'),
+            'voice_dmo_fallback':lengths('voice_dmo_fallback.cpp'),
+            'loading_probes':lengths('loading_probes.cpp'),
         }
         camera=(ROOT/'src/proxy/chase_camera.cpp').read_text()
         camera_match=re.search(r'SiteSpec site_spec\s*=\s*\{"cockpit_update_pose",\s*site_va,\s*\{[^}]+\},\s*(\d+),',camera)
@@ -186,8 +202,9 @@ class SourceAndReplay(unittest.TestCase):
         # chase_transition carries 16 rows since 123f98d added the seven
         # byte-verified chase view restore sites.
         self.assertEqual({name:len(value) for name,value in families.items()},
-                         {'resource_reader':1,'game_phases':47,'frame_phases':10,'pass_phases':4,'chase_camera':1,
-                          'chase_transition':16,'chase_lead':9,'chase_aim_trace':4})
+                         {'resource_reader':1,'game_phases':47,'frame_phases':10,'pass_phases':4,'loop_phases':6,'chase_camera':1,
+                          'chase_transition':16,'chase_lead':9,'chase_aim_trace':4,'chase_fire':1,'voice_dmo_fallback':1,
+                          'loading_probes':12})
         lead_rows=probe.common.parse_source_specs((ROOT/'src/proxy/chase_lead.cpp').read_text())
         self.assertEqual([row['name'] for row in lead_rows],[
             'chase_lead_gate','chase_lead_publish','chase_lead_final_fov',
@@ -227,11 +244,32 @@ class SourceAndReplay(unittest.TestCase):
         # 11792 for the 47-site phase group and the chase set; the ten frame
         # stamps add 10 * (24 + 128) with X3M_FRAME_PHASES=1 (13312); the four
         # pass stamps add 100 (claims of 6/7/8/7 bytes) + 4 * 124 with
-        # X3M_PASS_PHASES=1.
+        # X3M_PASS_PHASES=1 (13908).
         self.assertTrue(accepted);self.assertEqual(used,13908)
         self.assertEqual(capacity-used,2476)
         self.assertGreaterEqual(capacity-used,max(reserve for reserve,_ in operations))
         self.assertEqual(admit(8192)[0],False)
+        # Every optional group on: the six loop stamps (claims of 6/6/6/5/6/5
+        # bytes, 6 * 24, plus 6 * 124) with X3M_LOOP_PHASES=1, the chase cursor
+        # admission site, the voice DMO fallback site and the twelve loading
+        # probes (one shared exit stub plus an entry stub per site). The
+        # remaining headroom is what a future group can claim; the 47-site
+        # phase group's 192-byte reserve is the largest single reservation.
+        everything=list(operations)
+        for name in ('loop_phases','chase_fire','voice_dmo_fallback'):
+            reserve,stub_used=emitted[name]
+            for length in families[name]:
+                everything.extend(((length+23,claim_used(length)),(reserve,stub_used)))
+        everything.append(emitted['loading_probes_exit'])
+        for length in families['loading_probes']:
+            everything.extend(((length+23,claim_used(length)),emitted['loading_probes']))
+        accepted_all,used_all=admit(capacity,everything)
+        self.assertTrue(accepted_all);self.assertEqual(used_all,15752)
+        self.assertEqual(capacity-used_all,632)
+        self.assertEqual(sum(used for _,used in everything)-sum(used for _,used in operations),1844)
+        # 632 B left: room for four more 128-byte-stub sites, not for another six-site group.
+        self.assertGreaterEqual(capacity-used_all,max(reserve for reserve,_ in everything))
+        self.assertLess(capacity-used_all,6*(24+124))
         old_game=23
         old_operations=[]
         for name in ('resource_reader','game_phases','chase_camera','chase_transition',

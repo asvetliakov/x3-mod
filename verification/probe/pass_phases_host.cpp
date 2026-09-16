@@ -58,9 +58,9 @@ int main() {
     // An index outside the table is unmatched and changes nothing.
     accumulator.stamp(4, clock_ticks); accumulator.stamp(99, clock_ticks);
     check(accumulator.unmatched == 2 && accumulator.passes == 3);
-    // A pass_begin after pass_begin only moves the open interval.
+    // A pass_begin over a pass whose end never arrived is an orphan and moves the open interval.
     accumulator.stamp(0, clock_ticks); at(50); accumulator.stamp(0, clock_ticks); at(2); accumulator.stamp(1, clock_ticks);
-    check(accumulator.ticks[0] == 2);
+    check(accumulator.ticks[0] == 2 && accumulator.orphans == 3);
     accumulator.discard();
     check(accumulator.passes == 0 && accumulator.last == 0 && accumulator.ticks[0] == 0);
     // Zero frequency: intervals are zero, the count and the self estimate survive.

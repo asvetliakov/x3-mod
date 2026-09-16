@@ -1,7 +1,6 @@
 #pragma once
-#include <algorithm>
-#include <atomic>
 #include <cstdint>
+#include "stamp_core.h"
 
 // Value-only state of the pass-phase diagnostic (X3M_PASS_PHASES=1): the
 // per-frame accumulate-only stamp logic, the owner gate and the 300-frame
@@ -25,10 +24,12 @@ inline constexpr const char* const interval_names[interval_count] = {"apply", "d
 // the X3 bottle (verification/probe/run_game_phase_cpu.py, `PASS PHASE
 // BENCH dispatch_ns`). Each stamp's cost lands in the interval that follows
 // it; `self_us` = passes * 4 * this lets the reader subtract it. Measured
-// 86.8 and 90.5 ns in two runs (2026-09-16, best of 7 x 20,000 loops; the
-// fixture refuses a constant more than 2x off); keep in step with the ledger in
+// 86.8 and 90.5 ns in two runs (2026-09-16, best of 7 x 20,000 loops); the
+// constant is the larger measurement and the fixture refuses a constant more
+// than 2x off; keep in step with the ledger in
 // docs/verification/sampling-profiler.md ("Pass phases").
-inline constexpr std::uint64_t dispatch_cost_ns = 87;
+inline constexpr std::uint64_t dispatch_cost_ns = 91;
+using Gate = x3m::stamp::Gate;
 
 struct Sample {
     std::uint64_t frame = 0;
@@ -46,14 +47,14 @@ struct Accumulator {
     std::uint32_t passes = 0;
     std::uint64_t last = 0; // the previous stamp's clock, 0 = no open interval
     // Window counters, reset by the reporter.
-    std::uint64_t orphans = 0;        // a closing stamp with no open interval (chain entered mid-pass)
+    std::uint64_t orphans = 0;        // a closing stamp with no open interval, or an opening stamp over one still open
     std::uint64_t clock_errors = 0;   // a backward clock: the interval is not accumulated
     std::uint64_t clock_failures = 0; // QueryPerformanceCounter failed: counting only, chain reset
     std::uint64_t unmatched = 0;      // an index outside the site table
     void stamp(unsigned index, std::uint64_t now) noexcept {
         if (index >= site_count) { ++unmatched; return; }
         if (!now) { ++clock_failures; last = 0; if (index == site_count - 1) ++passes; return; }
-        if (index == 0) { last = now; return; }
+        if (index == 0) { if (last) ++orphans; last = now; return; } // a pass whose end never arrived
         if (!last) ++orphans;
         else if (now < last) ++clock_errors;
         else ticks[index - 1] += now - last;
@@ -72,27 +73,6 @@ struct Accumulator {
         out.self_us = std::uint64_t(passes) * site_count * dispatch_cost_ns / 1000;
         discard();
     }
-};
-
-// Owner admission: the frame boundary (the frame-phase guard, Present thread)
-// admits its thread once; a stamp from any other thread is `foreign`, a stamp
-// before the first frame boundary is `early`; both are counted and ignored.
-// Per stamp this is one relaxed load and a compare.
-struct Gate {
-    std::atomic<std::uint32_t> owner{0};
-    std::atomic<std::uint32_t> early{0}, foreign{0};
-    bool admit(std::uint32_t thread) noexcept {
-        std::uint32_t expected = 0;
-        owner.compare_exchange_strong(expected, thread, std::memory_order_acq_rel);
-        return owner.load(std::memory_order_acquire) == thread;
-    }
-    bool owned(std::uint32_t thread) noexcept {
-        const std::uint32_t current = owner.load(std::memory_order_relaxed);
-        if (current == thread) return true;
-        (current ? foreign : early).fetch_add(1, std::memory_order_relaxed);
-        return false;
-    }
-    void reset() noexcept { owner.store(0); early.store(0); foreign.store(0); }
 };
 
 struct Summary {
@@ -136,11 +116,7 @@ public:
 
 private:
     std::uint64_t percentile(const std::uint64_t* values, unsigned p) noexcept {
-        std::copy(values, values + count_, scratch_);
-        std::size_t index = (static_cast<std::size_t>(count_) * p) / 100;
-        if (index >= count_) index = count_ - 1;
-        std::nth_element(scratch_, scratch_ + index, scratch_ + count_);
-        return scratch_[index];
+        return x3m::stamp::percentile(values, count_, p, scratch_);
     }
     std::uint64_t passes_[window_frames]{}, interval_[interval_count][window_frames]{};
     std::uint64_t sum_[window_frames]{}, submit_[window_frames]{}, self_[window_frames]{};
