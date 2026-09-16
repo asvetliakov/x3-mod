@@ -50,6 +50,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 30 | Single emission gain, bloom source clamp, frame-time split | 2 | Session A run87 and B run88 received: engines respond, halo accepted at clamp 1.0, no cutout draws yet (B to repeat at an Argon industrial station), frame split: state hooks 8.9 ms of a 28.5 ms busy frame |
 | 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
 | 32 | Hybrid unhook, draw and state counters | 4 | A1 run91 (redundancy 95/99/40 %, batchability 5 %), A2 run92 (busy frame 37.5 to 26.5 ms unhooked), B run93 (cutout pairs draw everywhere, lane admission unobservable; slow sector is `pre_render` 98 % of a 420 ms frame); C queued with `--game-phases` |
+| 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | Drafted; candidate pending |
 
 ## 32. Hybrid unhook, draw and state counters — open
 
@@ -86,6 +87,30 @@ is slow, then quit. `--game-phases` records every frame over 50 ms with the
 main loop's sub-phases (input, script VM, deferred callbacks, simulation/AI,
 cockpit), which is what run93's `pre_render` at 98 % of a 420 ms frame could
 not split.
+
+## 33. Pass phases, loop-region split, cutout lane telemetry — drafted
+
+Installed: DLL `RUN33HASH` from `RUN33COMMIT` (see [status](../status.md)). This
+build adds `--pass-phases` (four accumulate-only stamps in the effect pass
+loop: pass apply, draw, pass end, per draw, about 0.36 ms per busy frame),
+the `cutout_opaque_*` lane counters on `linear_material_frame`, and
+LOOPPHASES_PLACEHOLDER. Appearance unchanged from run 32.
+
+**Session A** (busy view, production hooks off, pass split):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-phases --pass-phases --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+1. The busy view of runs 31/32, hold 30 s, then empty space 30 s, quit. No
+   `--frame-timing`, so the proxy runs unhooked as you play; the pass stamps
+   split the engine's per-draw time into pass apply, draw and pass end.
+
+**Session B** (the slow sector): SESSIONB_PLACEHOLDER
+
+**Session C** (cutout lane): session A's command plus
+`--linear-materials --linear-distance-fade --sun-shadow-lane`, the same busy
+view 30 s, quit; the log now reports `cutout_opaque_routed/lane/refused`.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
