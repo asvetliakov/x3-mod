@@ -207,10 +207,13 @@ Run 33 came back as `run95` (A), `run96` (B) and `run97` (C):
   CoCreateInstance and Render per frame, which is the stall (and the
   GStreamer criticals under Wine; on Windows the same retry with a missing
   codec). Bounding is behaviour-neutral: a negative cache at `0x00498140`
-  leaves the game in the same state as a real failure. Next: qualify that
-  hook site and ABI (in flight), then `--media-cue-trace` to name the cue and
-  a default-off negative cache; the failing cue's format decides whether the
-  decode path (voice plugin, bottle) can be made to succeed instead.
+  leaves the game in the same state as a real failure. **Decision (user,
+  2026-09-17): both.** A negative cache at `0x00498140`, default on once run
+  34 confirms it (bounded retry on sector change and after a fixed interval),
+  so the stall is gone on Windows without the codec as well; and the decode
+  path fixed for the named cue (voice plugin or bottle), as speech was, so the
+  cue plays and the cache never engages. Next: qualify the hook site and ABI
+  (in flight), then `--media-cue-trace` and the cache, run 34.
 - **Cutout under the lane (run97):** ~90 cutout draws per frame routed through
   the tested-opaque arm with the lane share written, ~8 refused for no depth
   write; both cutout pairs write depth so lane = routed. Linear materials plus

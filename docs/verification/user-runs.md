@@ -51,22 +51,31 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 31 | Frame split, engine phases, lighter proxy | 2 | Session A run89 and B run90 received: busy frame 37.5 ms at 987 draws is 87 % engine view submission (63 state calls per draw), scene update 65 µs; lane available on all 16,041 frames, still zero cutout draws (third time) |
 | 32 | Hybrid unhook, draw and state counters | 4 | A1 run91 (redundancy 95/99/40 %, batchability 5 %), A2 run92 (busy frame 37.5 to 26.5 ms unhooked), B run93 (cutout pairs draw everywhere, lane admission unobservable; slow sector is `pre_render` 98 % of a 420 ms frame); C queued with `--game-phases` |
 | 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | A run95 (view submit: draw 43 %, BeginPass 33 %, engine between passes 22 %), B run96 (stall 99.8 % in the per-sector object pass `0x0045b720`, one sector; GStreamer criticals repeat during it), C run97 (cutout draws admitted through the tested-opaque arm, ~90/frame with the lane share; linear materials + lane +3 ms) |
-| 34 | Stall evidence: stderr capture, module identity, object-pass split | 2 | Drafted; candidate pending |
+| 34 | Stall evidence: stderr capture, module identity, media-cue trace and cache | 3 | Drafted; candidate pending |
 
-## 34. Stall evidence: stderr capture, module identity, object-pass split — drafted
+## 34. Stall evidence: stderr capture, module identity, media-cue trace and cache — drafted
 
 Installed: DLL `RUN34HASH` from `RUN34COMMIT` (see [status](../status.md)). This
 build tees Wine's stderr into the session directory (`launcher-stderr.log`,
 UTC-prefixed) with a `clock_anchor` and `qpc=` on every window line so a
 GStreamer burst maps to a frame, logs `loaded_module` for the D3D9 backend and
-`d3dx9_37.dll`, and `--media-cue-trace`: one line per media-cue graph build attempt at
-`0x00498140` (cue id, file, result, attempts per frame), which names the cue
-whose DirectShow graph fails in the stalling sector. Appearance unchanged.
+`d3dx9_37.dll`, `--media-cue-trace` (one line per media-cue graph build attempt at
+`0x00498140`: cue id, file, result, attempts per frame) and the media-cue
+negative cache (a cue whose graph build failed is not retried every frame;
+retried on sector change and after a fixed interval; default on after this
+run, `--media-cue-cache on|off`). Appearance unchanged.
 
-**Session A** (the slow sector): run 33 session B's command
-(`--game-phases --loop-phases`, plus `--media-cue-trace`). Fly to the stalling
-sector, stay 30 s while it is slow, quit. Keep the terminal output too, but
-the log now has it.
+**Session A1** (the slow sector, trace only): run 33 session B's command
+(`--game-phases --loop-phases`) plus `--media-cue-trace --media-cue-cache off`.
+Fly to the stalling sector, stay 30 s while it is slow, quit. The trace names
+the cue, its file and the result of every build attempt; the stall should
+still be there.
+
+**Session A2** (the slow sector, cache on): the same command with
+`--media-cue-cache on` (the default once this run confirms it). Same sector,
+30 s, quit. The stall should be gone and the trace should show one failed
+attempt per cue followed by cached refusals; say whether the sector's music
+or ambient sound is missing and whether anything else changed.
 
 **Session B** (DXVK experiment, no proxy change): in CrossOver, enable the
 DXVK backend for the X3 bottle (bottle settings, D3D9 via DXVK), then run
