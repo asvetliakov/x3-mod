@@ -5080,6 +5080,39 @@ void MotionOutput::log_fade_refused() noexcept {
     fade_refused_count_ = 0;
 }
 
+// Tested-opaque-arm admission of the two cutout pairs, observable per frame
+// (linear_material_frame cutout_opaque_*). Reached only from after_draw's one
+// shadow_.cutout_pair branch, which is false whenever linear materials are off
+// (the flag is set from linear_material_requested_ at pair latch), and only
+// while the exact cutout arm is inactive, so route.cutout is false here and
+// these draws are otherwise indistinguishable from ordinary routed ones.
+// Count-only: no allocation, no device call, no getter. A routed draw counts on
+// success like cutout_routed; the lane bucket is the draws that bound the sun
+// lane variant with the share extraction (route.sun_receiver), meaning oC2.g
+// carried this draw's share. A refused draw counts its route reason: the
+// route's own SunUntrackedReason when it recorded one (the lane's diagnostics
+// only fill it for a colour writer), otherwise the gate it stopped at.
+void MotionOutput::note_cutout_opaque(const MotionRoute& route, HRESULT result) noexcept {
+    if (route.routed) {
+        if (FAILED(result)) return;
+        ++counters_.cutout_opaque_routed;
+        if (route.sun_receiver) ++counters_.cutout_opaque_lane;
+        return;
+    }
+    ++counters_.cutout_opaque_refused;
+    unsigned reason = route.sun_refusal;
+    if (!reason) switch (route.gate) { // no reason recorded: the gate's own bucket
+        case MotionGate::Feature: reason = unsigned(renderer::SunUntrackedReason::Feature); break;
+        case MotionGate::Scene: reason = unsigned(renderer::SunUntrackedReason::Scene); break;
+        case MotionGate::Pair: reason = unsigned(renderer::SunUntrackedReason::Pair); break;
+        case MotionGate::DrawState: reason = unsigned(renderer::SunUntrackedReason::State); break;
+        case MotionGate::Scope: reason = unsigned(renderer::SunUntrackedReason::Scope); break;
+        case MotionGate::History: reason = unsigned(renderer::SunUntrackedReason::History); break;
+        default: break; // MotionGate::None without a reason: apply rollback before it was recorded
+    }
+    ++counters_.cutout_opaque_reasons[reason < renderer::sun_untracked_reason_count ? reason : 0u];
+}
+
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
@@ -5105,6 +5138,8 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         cutout_coverage_missed_ = true; ++counters_.cutout_missed; invalidate_taa(TaaInvalidateSite::CutoutMissed);
     }
     if (route.routed && route.cutout && SUCCEEDED(result)) ++counters_.cutout_routed;
+    // One branch with linear materials off (shadow_.cutout_pair is false then).
+    if (shadow_.cutout_pair && !cutout_arm_active_) note_cutout_opaque(route, result);
     if (route.routed && route.original_fill && SUCCEEDED(result)) ++original_fill_draws_;
     if (route.source_gain) finish_source_gain(route);
     if (candidates_requested_ && route.routed && SUCCEEDED(result)) note_candidate_draw(route);
@@ -5826,12 +5861,32 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 distance_fade_requested_ || screen_emission_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.refusal[0], composition_counts_.refusal[1], composition_counts_.refusal[2], composition_counts_.refusal[3], composition_counts_.refusal[4], composition_counts_.refusal[5],
                 composition_counts_.prepare_failures, composition_counts_.composition_failures, composition_counts_.restore_failures, composition_counts_.exchange_failures, composition_counts_.ack_failures, composition_counts_.recovery_failures,
                 composition_counts_.prepare, composition_counts_.prepare_restore, composition_counts_.source, composition_counts_.composition, composition_counts_.restore, composition_counts_.exchange, composition_counts_.ack, composition_counts_.recovery);
-        if (linear_material_requested_)
-            log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu cutout_routed=%lu cutout_missed=%lu cutout_unavailable=%u cutout_caps=%u fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u",
+        if (linear_material_requested_) {
+            // Top three refusal buckets of the tested-opaque arm's cutout
+            // pairs, formatted into a fixed stack buffer (no allocation, once
+            // per frame line): name:count, descending, "none" when empty.
+            char cutout_top[64] = "none"; unsigned written = 0;
+            std::uint32_t taken = 0;
+            for (unsigned slot = 0; slot < 3; ++slot) {
+                unsigned best = renderer::sun_untracked_reason_count, best_count = 0;
+                for (unsigned reason = 0; reason < renderer::sun_untracked_reason_count; ++reason)
+                    if (!(taken & (1u << reason)) && c.cutout_opaque_reasons[reason] > best_count) { best = reason; best_count = c.cutout_opaque_reasons[reason]; }
+                if (best == renderer::sun_untracked_reason_count) break;
+                taken |= 1u << best;
+                const int length = std::snprintf(cutout_top + written, sizeof cutout_top - written, "%s%s:%lu",
+                    written ? "," : "", renderer::sun_untracked_reason_name(best), static_cast<unsigned long>(best_count));
+                if (length <= 0 || unsigned(length) >= sizeof cutout_top - written) break;
+                written += unsigned(length);
+            }
+            log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu cutout_routed=%lu cutout_missed=%lu cutout_unavailable=%u cutout_caps=%u fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u"
+                " cutout_opaque_routed=%lu cutout_opaque_refused=%lu cutout_opaque_lane=%lu cutout_opaque_refused_top=%s",
                 id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
                 static_cast<unsigned long>(c.material_bind_failures), static_cast<unsigned long>(c.cutout_routed),
                 static_cast<unsigned long>(c.cutout_missed), unsigned(cutout_coverage_missed_), unsigned(cutout_caps_),
-                static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held), fade_route_threshold_);
+                static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held), fade_route_threshold_,
+                static_cast<unsigned long>(c.cutout_opaque_routed), static_cast<unsigned long>(c.cutout_opaque_refused),
+                static_cast<unsigned long>(c.cutout_opaque_lane), cutout_top);
+        }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
@@ -5892,6 +5947,8 @@ void MotionOutput::fixture_emission_fault(unsigned kind, unsigned count) noexcep
 #endif
 }
 unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
+    // 400 + SunUntrackedReason: the tested-opaque arm's refusal buckets.
+    if (key >= 400 && key < 400 + renderer::sun_untracked_reason_count) return counters_.cutout_opaque_reasons[key - 400];
     switch (key) {
     case 0: return composition_effective_;
     case 1: return composition_ && composition_->coverage_valid() && !composition_frame_stopped_ && !composition_quarantined_ && !composition_state_lost_;
@@ -5937,6 +5994,9 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 33: return counters_.cutout_routed;
     case 34: return counters_.cutout_missed;
     case 35: return static_cast<unsigned>(cutout_cap_result_);
+    case 37: return counters_.cutout_opaque_routed;  // fixture: tested-opaque arm cutout pairs this frame
+    case 38: return counters_.cutout_opaque_refused;
+    case 39: return counters_.cutout_opaque_lane;
     case 89: return counters_.routed;   // fixture: routed draws this frame
     case 99: return counters_.gates[4]; // fixture: gate-4 (draw state) refusals this frame
     case 40: return composition_counts_.packed_eligible;

@@ -259,6 +259,16 @@ struct MotionTaaCounters {
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
     std::uint32_t cutout_routed = 0, cutout_missed = 0;
+    // Cutout pairs (linear_cutout.h identity) on a frame whose exact cutout
+    // arm is inactive (cutout_arm_active_ false: configured mip bias, HDR off
+    // or a non-Ready verdict), where they can only reach the route through
+    // the tested-opaque arm. cutout_opaque_routed counts successful routed
+    // draws, cutout_opaque_lane those of them that bound the lane variant
+    // with the share extraction (route.sun_receiver: oC2.g written), and
+    // cutout_opaque_refused the refused ones, bucketed by the route's
+    // SunUntrackedReason (sun_share_frame.h). Diagnostics only.
+    std::uint32_t cutout_opaque_routed = 0, cutout_opaque_refused = 0, cutout_opaque_lane = 0;
+    std::uint32_t cutout_opaque_reasons[renderer::sun_untracked_reason_count]{};
     // Fade-band arm: reviewed-pair draws in the exact fade-band state routed
     // by the arm, and those recognised but refused (fraction below the
     // threshold, unreadable constants, device not ready), which then take
@@ -999,6 +1009,8 @@ private:
     shadow_replay::PoolClass candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept;
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
     void note_candidate_draw(const MotionRoute& route) noexcept;
+    // Count-only tested-opaque-arm bookkeeping for a cutout pair (after_draw).
+    void note_cutout_opaque(const MotionRoute& route, HRESULT result) noexcept;
     void publish_shadow_replay_candidates() noexcept;
     // Depth replay storage (motion_output_shadow_replay_inc.h): the geometry
     // leases parallel to candidates_.records, the frame's sun constant as the

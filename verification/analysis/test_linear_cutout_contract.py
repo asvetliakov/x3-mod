@@ -21,6 +21,7 @@ PREFIX = r'''
 #include <cstdint>
 #include <cstdio>
 #include "src/proxy/linear_cutout.h"
+#include "src/renderer/sun_share_frame.h"
 
 #define WINAPI
 #define SUCCEEDED(value) ((value) >= 0)
@@ -158,8 +159,15 @@ using GetDisplayModeFn = HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, D3DDISPLAYMOD
 using GetCreationFn = HRESULT(WINAPI*)(IDirect3DDevice9*, D3DDEVICE_CREATION_PARAMETERS*);
 using SetSamplerStateFn = HRESULT(WINAPI*)(IDirect3DDevice9*, DWORD, D3DSAMPLERSTATETYPE, DWORD);
 
+enum class MotionGate : unsigned { None = 0, Feature = 1, Scene = 2, Pair = 3, DrawState = 4, Scope = 5, History = 6 };
 struct MotionRoute {
     bool routed = false, composition = false, submit = true;
+    // Tested-opaque arm bookkeeping (motion_output.h): the gate the refused
+    // draw stopped at, the recorded lane reason and whether the lane variant
+    // with the share extraction was bound.
+    MotionGate gate = MotionGate::Feature;
+    std::uint8_t sun_refusal = 0;
+    bool sun_receiver = false;
     bool cutout_candidate = false;
     bool cutout_test_known = false, cutout_color_known = false;
     bool cutout_alpha_known = false, cutout_z_known = false, cutout_zfunc_known = false, cutout_blend_known = false, cutout_source_over = false;
@@ -192,6 +200,7 @@ public:
     void release_mip_bias_retry_bound() noexcept;
     bool cutout_draw_state() noexcept;
     void mark_cutout_candidate(MotionRoute& route) noexcept;
+    void note_cutout_opaque(const MotionRoute& route, HRESULT result) noexcept;
     bool blend_known(unsigned i) noexcept { return i < 4 && shadow_.composition_blend_known[i]; } // hooks on: the shadow's flag (hybrid unhook mirror)
     void render_state_failed(D3DRENDERSTATETYPE state) noexcept;
     void sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) noexcept;
@@ -234,6 +243,8 @@ public:
         unsigned rs_resyncs = 0, rs_invalidations = 0, draws = 0;
         unsigned mip_bias_restores = 0, mip_bias_game_writes = 0;
         unsigned mip_bias_failures = 0, restore_failures = 0;
+        unsigned cutout_opaque_routed = 0, cutout_opaque_refused = 0, cutout_opaque_lane = 0;
+        std::uint32_t cutout_opaque_reasons[x3m::renderer::sun_untracked_reason_count]{};
     } counters_;
     struct Sampler {
         DWORD saved_bias = 0, srgb = 0, mipfilter = 0;
@@ -251,6 +262,7 @@ public:
 
 using x3m::cutout::Capability;
 namespace cutout = x3m::cutout;
+namespace renderer = x3m::renderer;
 '''
 
 
