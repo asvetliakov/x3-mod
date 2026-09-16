@@ -290,10 +290,18 @@ static bool glow_enabled = true;
 static bool compositor_glow_enabled(std::uintptr_t) noexcept { return glow_enabled; }
 static void retain_compositor_scene(void*, const MotionHdrScene&) noexcept {}
 
+// Inert mirror of the X3M_FRAME_TIMING scope (src/proxy/frame_timing.h): the
+// extracted compositor callbacks declare one, and it measures nothing here.
+namespace frame_timing {
+enum class Bucket : unsigned { Draw = 0, Scene = 1, State = 2 };
+struct Scope { Scope(Bucket,const char*) noexcept {} };
+}
+
 static thread_local unsigned hook_guard_depth=0;
 struct HookGuard {
     std::unique_lock<std::recursive_mutex> lock{mutex};
-    HookGuard(){++hook_guard_depth;}
+    // The bucket and entry name of the production guard are inert here.
+    explicit HookGuard(frame_timing::Bucket=frame_timing::Bucket::State,const char* =nullptr){++hook_guard_depth;}
     ~HookGuard(){--hook_guard_depth;}
 };
 struct CpuCallBoundary { void before_original() noexcept {} void after_original() noexcept {} };
