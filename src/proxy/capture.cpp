@@ -615,7 +615,8 @@ void object_context(Device& ctx) {
 // on, one copy of the binding shadow the proxy already keeps (no Get* call, no
 // allocation) and a table increment plus one comparison against the previous
 // draw, under the hook mutex the draw path already holds.
-void frame_timing_draw_state(Device& ctx, D3DPRIMITIVETYPE type, UINT primitives, INT base_vertex, UINT start_index) {
+void frame_timing_draw_state(Device& ctx, D3DPRIMITIVETYPE type, UINT primitives, INT base_vertex, UINT start_index,
+                             bool user_memory) {
     if (!frame_timing::active) return;
     const auto bindings = ctx.motion_output.binding_shadow();
     frame_timing::DrawKey key;
@@ -627,6 +628,7 @@ void frame_timing_draw_state(Device& ctx, D3DPRIMITIVETYPE type, UINT primitives
     key.start_index = static_cast<std::uint32_t>(start_index);
     key.base_vertex = static_cast<std::int32_t>(base_vertex);
     key.valid = bindings.valid;
+    key.user_memory = user_memory; // D3D9 clears stream 0: never batched against a shadowed mesh
     frame_timing::draw_state(key);
 }
 void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory=false,
@@ -634,7 +636,7 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
     auto& ctx = *devices.at(d);
     ++ctx.draws;
     frame_timing::draw(primitives); // X3M_FRAME_TIMING only: one branch, one add
-    frame_timing_draw_state(ctx,type,primitives,base_vertex,start_index);
+    frame_timing_draw_state(ctx,type,primitives,base_vertex,start_index,user_memory);
     if (!ctx.capture) return;
     telemetry::Scope timed(ctx.stats,telemetry::Metric::Snapshot);
     capture_event(ctx,"draw_begin",S_OK,true);

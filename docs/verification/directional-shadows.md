@@ -424,7 +424,7 @@ Timing: busiest window in this session is frame=900 (`frame_timing`/`frame_phase
 
 No abnormal conditions: 0 hits for crash/panic/fatal/shader_unknown/claim_fail/truncat/restore_refus; the 113 case-insensitive "error" hits are all `errors=0`/`error=203`-as-success-code fields inside `dat_handle_pool_metric`, `hdr_device`, `motion_output_device` self-test lines and one `telemetry_span`, none indicating failure.
 
-That gap is now closed by the frame-timing window's `draw_pairs … cutout_pairs=` line (`--frame-timing`, schema in [sampling-profiler.md](sampling-profiler.md)): it names the eight most-drawn `(vs/ps)` pairs of each 300-frame window and reports the hull and station cutout pairs explicitly even at zero, so the next session B reads from it which programs the station actually drew.
+That gap is now closed by the frame-timing window's `draw_pairs … cutout_pairs=` line (`--frame-timing`, schema in [sampling-profiler.md](sampling-profiler.md)): it names the eight most-drawn `(vs/ps)` pairs of each 300-frame window and reports the hull and station cutout pairs explicitly even at zero, so the next session B reads from it which programs the station actually drew. The two cutout counts do not come from that eight-entry table but from their own counters, incremented on every draw, so a reported zero means the pair never drew rather than that it lost a table slot.
 
 Open: still no session with an actual cutout draw; the station type visited in run90 (identity not recorded in telemetry) did not produce alpha-tested cutout geometry either. A next run needs per-draw shader-pair (vs/ps hash) telemetry to identify what the station actually drew, or a target confirmed (by the user, since launch is out of scope here) to carry the Argon cutout materials.
 

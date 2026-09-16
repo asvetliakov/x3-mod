@@ -1,5 +1,4 @@
 #include "frame_timing.h"
-#include "linear_cutout.h" // the two qualified cutout pairs, reported even at zero
 #include <cstdio>
 #include <cstdint>
 #include <windows.h>
@@ -394,11 +393,10 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
             if (pair_length <= 0 || pair_length >= int(sizeof pair_top)) std::snprintf(pair_top, sizeof pair_top, "none");
             log("draw_pairs frame=%llu draws=%llu draw_pairs_overflow=%llu top=%s cutout_pairs=%llu,%llu",
                 s.frame, draw_pairs.draws(), draw_pairs.overflow(), pair_top,
-                draw_pairs.draws_of(cutout::pair_hashes[2], cutout::pair_hashes[3]),
-                draw_pairs.draws_of(cutout::pair_hashes[0], cutout::pair_hashes[1]));
-            log("draw_batch frame=%llu same_mesh=%llu same_mesh_any_range=%llu same_material=%llu draws=%llu",
+                draw_pairs.cutout_draws(0), draw_pairs.cutout_draws(1));
+            log("draw_batch frame=%llu same_mesh=%llu same_mesh_any_range=%llu same_material=%llu up=%llu draws=%llu",
                 s.frame, draw_batch.same_mesh(), draw_batch.same_mesh_any_range(),
-                draw_batch.same_material(), draw_batch.draws());
+                draw_batch.same_material(), draw_batch.user_memory(), draw_batch.draws());
             draw_pairs.reset(); redundant_states.reset(); draw_batch.reset();
             for (unsigned i = 0; i < s.slow_frames_count; ++i) {
                 const Frame& f = s.slow_frames[i];

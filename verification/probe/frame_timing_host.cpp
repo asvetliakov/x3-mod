@@ -502,6 +502,10 @@ int main(int argc, char** argv) {
     draw_state(key);                             // 7: another texture -> no class
     draw_state(DrawKey{});                       // 8: no live shadow -> not classified
     draw_state(make_key(0, 0));                  // 9: predecessor was not classified
+    DrawKey up = make_key(0, 0);
+    up.user_memory = true;
+    draw_state(up);                              // 10: user memory, counted apart
+    draw_state(up);                              // 11: never batched with the one before it
     // Redundant state sets: the shadowed denominators and the equal writes.
     for (unsigned i = 0; i < 3; ++i) state_write(StateSet::RenderState, 7, true, true);
     state_write(StateSet::RenderState, 7, true, false);
@@ -515,7 +519,7 @@ int main(int argc, char** argv) {
     draw_state(make_key(0x11, 0x22));
     state_write(StateSet::RenderState, 7, true, true);
     active = true;
-    check(draw_pairs.draws() == 9 && draw_batch.draws() == 9);
+    check(draw_pairs.draws() == 11 && draw_batch.draws() == 11);
     check(redundant_states.shadowed(unsigned(StateSet::RenderState)) == 6);
     x3m_win32_standin::advance(1);
     frame(1, 0);
@@ -526,13 +530,14 @@ int main(int argc, char** argv) {
     refuse_allocation = false;
     check(logged_count == 7); // the window line, draw_pairs, draw_batch and four witnesses
     const char* pairs_line = last_line("draw_pairs frame=");
-    check(std::strstr(pairs_line, "draw_pairs frame=300 draws=10 draw_pairs_overflow=0") != nullptr);
-    check(std::strstr(pairs_line, "top=0000000000000011/0000000000000022:5,none/none:3,"
+    check(std::strstr(pairs_line, "draw_pairs frame=300 draws=12 draw_pairs_overflow=0") != nullptr);
+    // Descending by draws; the tie at five keeps the lower slot first.
+    check(std::strstr(pairs_line, "top=none/none:5,0000000000000011/0000000000000022:5,"
                                   "4944d81dfe531b37/5e0a10fe752b6140:2") != nullptr);
     // The two qualified pairs are reported explicitly, the second at zero.
     check(std::strstr(pairs_line, "cutout_pairs=2,0") != nullptr);
     const char* batch_line = last_line("draw_batch frame=");
-    check(std::strstr(batch_line, "draw_batch frame=300 same_mesh=2 same_mesh_any_range=1 same_material=1 draws=10") != nullptr);
+    check(std::strstr(batch_line, "draw_batch frame=300 same_mesh=2 same_mesh_any_range=1 same_material=1 up=2 draws=12") != nullptr);
     const char* counted = last_line("frame_timing frame=");
     check(std::strstr(counted, "state_redundant=5,1,4 state_shadowed=6,2,4 redundant_top=7:3,14:2") != nullptr);
 
@@ -544,13 +549,18 @@ int main(int argc, char** argv) {
     for (std::uint64_t vs = 1; vs <= 64; ++vs) draw_state(make_key(vs, 0)); // one per slot
     // No free slot within the probe limit; the three identical draws still batch.
     for (unsigned i = 0; i < 3; ++i) draw_state(make_key(65, 0));
+    // The hull cutout pair arrives with the table already full, so the table
+    // cannot hold it: the dedicated counter reports it anyway, which is what
+    // makes a reported zero mean the pair never drew.
+    draw_state(make_key(cutout_vs, cutout_ps));
+    check(draw_pairs.draws_of(cutout_vs, cutout_ps) == 0 && draw_pairs.cutout_draws(0) == 1);
     run_frames(window_frames + 1, 2 * window_frames);
     refuse_allocation = false;
     const char* overflow_line = last_line("draw_pairs frame=");
-    check(std::strstr(overflow_line, "draw_pairs frame=600 draws=67 draw_pairs_overflow=3") != nullptr);
-    check(std::strstr(overflow_line, "cutout_pairs=0,0") != nullptr);
+    check(std::strstr(overflow_line, "draw_pairs frame=600 draws=68 draw_pairs_overflow=4") != nullptr);
+    check(std::strstr(overflow_line, "cutout_pairs=1,0") != nullptr);
     check(std::strstr(last_line("draw_batch frame="),
-                      "draw_batch frame=600 same_mesh=2 same_mesh_any_range=0 same_material=0 draws=67") != nullptr);
+                      "draw_batch frame=600 same_mesh=2 same_mesh_any_range=0 same_material=0 up=0 draws=68") != nullptr);
     check(std::strstr(last_line("frame_timing frame="),
                       "state_redundant=0,0,0 state_shadowed=0,0,0 redundant_top=none") != nullptr);
 

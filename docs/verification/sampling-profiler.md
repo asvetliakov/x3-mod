@@ -296,7 +296,7 @@ frame index of the last frame of the window:
 ```
 frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= draw_p50_us= draw_p95_us= draw_max_us= draw_native_p50_us= draw_native_max_us= scene_p50_us= scene_p95_us= scene_max_us= state_p50_us= state_p95_us= state_max_us= draw_calls_p50= scene_calls_p50= state_calls_p50= state_sampled= slow= gap_pre_p50_us= gap_pre_p95_us= gap_pre_max_us= gap_draw_p50_us= gap_draw_p95_us= gap_draw_max_us= gap_post_p50_us= gap_post_p95_us= gap_post_max_us= gap_draw_per_draw_us= state_top=<entry>:<calls_p50>,... state_other_p50= state_redundant=<rs>,<ss>,<tex> state_shadowed=<rs>,<ss>,<tex> redundant_top=<D3DRS>:<count>,...
 draw_pairs frame=N draws= draw_pairs_overflow= top=<vs_id>/<ps_id>:<draws>,... cutout_pairs=<hull>,<station>
-draw_batch frame=N same_mesh= same_mesh_any_range= same_material= draws=
+draw_batch frame=N same_mesh= same_mesh_any_range= same_material= up= draws=
 ```
 
 followed by up to four witnesses for the slowest frames of that window
@@ -378,29 +378,50 @@ frame_timing_slow frame=F dt_us= draws= present_us= prims= draw_us= draw_native_
   they are reset with the window, and they cost one predictable branch when the
   option is off. None of them changes behaviour: no state write is elided and
   no draw is merged.
-  * `draw_pairs` is the window's program-pair mix: `draws` the draws it
-    classified, `top` the eight most-drawn `(vertex, pixel)` pairs as
-    `<vs_id>/<ps_id>:<draws>` with the same 16-hex program ids as the
-    `shader kind=ps id=` lines (`none` for a null program: fixed function, or a
-    program the route never registered), and `draw_pairs_overflow` the draws
-    whose pair found no slot in the fixed 64-slot table (they are in `draws`
-    but not in `top`). `cutout_pairs` is the draw count of the two qualified
-    cutout pairs explicitly, in the order hull
+  * `draw_pairs` is the window's program-pair mix: `draws` is every draw that
+    reached a draw hook body in the window, `top` the eight most-drawn
+    `(vertex, pixel)` pairs as `<vs_id>/<ps_id>:<draws>` with the same 16-hex
+    program ids as the `shader kind=ps id=` lines, descending, ties keeping the
+    earlier slot. `none` means no program identity was available: fixed
+    function, a program the route never registered, or any draw at all while
+    the route is off (`--frame-timing` alone then reports every draw as
+    `none/none:<draws>`, which is the shape to check before reading the mix).
+    `draw_pairs_overflow` counts the draws whose pair found no slot in the
+    fixed 64-slot, eight-probe table; they are in `draws` but in no `top`
+    entry, and since the table never evicts, a pair first drawn after the table
+    filled is invisible to `top`. `cutout_pairs` therefore does not come from
+    the table: the two qualified cutout pairs have their own counters,
+    incremented on every draw before the table is consulted, in the order hull
     (`4944d81dfe531b37/5e0a10fe752b6140`) then station
-    (`53a0a641107ed76c/63f96eba9eea7880`), reported even at zero: this is the
-    per-draw evidence for whether a session drew them at all. The identities
-    come from the route's binding shadow, so a window with the route off
-    classifies nothing and reports `draws=0`.
+    (`53a0a641107ed76c/63f96eba9eea7880`) and reported even at zero, so
+    `cutout_pairs=0,0` does prove those pairs never drew in the window.
+  * a draw the route refused or substituted is still counted (the counters sit
+    at the top of the shared draw path, before the route decides); a draw
+    rejected by `draw_submission_blocked()` returns before that point and the
+    proxy's own internal draws do not enter the draw hooks at all, so neither
+    is counted.
   * `state_redundant` counts the state writes whose incoming value equals the
     value the proxy's shadow already holds, for `SetRenderState`,
     `SetSamplerState` and `SetTexture` in that order, with `state_shadowed` the
     denominators: the calls of each hook that had a shadowed value to compare
-    against (only the shadowed render states and the three shadowed sampler
-    states qualify; every `SetTexture` on stage 0-15 does, because the shadow
-    always holds a current pointer). `redundant_top` names the four most
-    redundant render states by `D3DRS` index. This is what decides whether a
-    state-manager filter is worth installing; the counting happens inside the
-    shadow update, and section (d) of
+    against. The counting sits inside the shadow update, so it only sees what
+    the proxy actually shadows: the ~32 render states of the route's shadow
+    table (and only while the route is enabled and no state block is
+    recording), `D3DSAMP_SRGBTEXTURE` always plus `MIPFILTER`/`MIPMAPLODBIAS`
+    only with a mip bias configured, and every `SetTexture` on stage 0-15
+    (the pointer shadow always holds a current value). The hooks themselves are
+    installed only under the mip-bias, composition, linear-material and
+    screen-emission conditions, so `--frame-timing` on its own reports
+    `state_redundant=0,0,0 state_shadowed=0,0,0`: that means nothing was
+    hooked, not that nothing was redundant. The production command
+    (`--motion-output --taa` with the TAA mip bias, `--linear-materials`)
+    installs all three and makes the counters meaningful.
+    `redundant_top` names the four most redundant render states by `D3DRS`
+    index, from a 32-slot table keyed by `index mod 32` with an eight-probe
+    limit: `D3DRS_WRAP8..15` alias `WRAP6..13` there, and a state that finds no
+    slot is attributed to none, so a hot state can be missing from the list
+    while `state_redundant` itself stays exact. This is what decides whether a
+    state-manager filter is worth installing; section (d) of
     `docs/architecture/state-call-fast-path.md` says why nothing is elided.
   * `draw_batch` classifies each draw against the previous draw of the same
     frame; the three classes are disjoint and a draw is never compared across a
@@ -409,8 +430,12 @@ frame_timing_slow frame=F dt_us= draws= present_us= prims= draw_us= draw_native_
     primitive type, count, base vertex and start index, so only the constants
     differ: the instancing candidate. `same_mesh_any_range` is the same
     bindings with a different primitive range, and `same_material` the same
-    programs and stage 0-3 textures across a different mesh. `draws` is the
-    same denominator as `draw_pairs`.
+    programs and stage 0-3 textures across a different mesh. `up` counts the
+    `DrawPrimitiveUP`/`DrawIndexedPrimitiveUP` draws, which are never
+    classified and break the chain: D3D9 clears stream 0 on such a call and the
+    proxy does not invalidate its shadow, so the shadowed buffers say nothing
+    about them or about the draw that follows. `draws` is the same denominator
+    as `draw_pairs`.
   * cost: per draw, one table mix with at most eight probes and one key
     comparison (no `Get*` call: the bindings come from the shadow the route
     already keeps); per state write, one comparison plus at most eight probes

@@ -22,6 +22,7 @@
 // abnormal unwind (SEH or longjmp) past a live Scope would leave the nesting
 // depth above zero and silence the buckets until the next initialize(); this
 // is a diagnostic, so it neither guards against that nor affects the hooks.
+#include "linear_cutout.h" // the two qualified cutout pairs, counted independently of the table
 #include <algorithm>
 #include <cstdint>
 
@@ -89,8 +90,16 @@ class DrawPairs {
 public:
     struct Pair { std::uint64_t vs = 0, ps = 0, draws = 0; };
 
+    // The two qualified cutout pairs, in report order: hull then station.
+    static constexpr unsigned cutout_pair_count = 2;
+
     void record(std::uint64_t vs, std::uint64_t ps) noexcept {
         ++draws_;
+        // Counted before and independently of the table: a late-arriving pair
+        // can land in overflow_, so a zero drawn from the table would not
+        // prove the pair never drew. These two counters always do.
+        if (vs == cutout::pair_hashes[2] && ps == cutout::pair_hashes[3]) ++cutout_[0];
+        else if (vs == cutout::pair_hashes[0] && ps == cutout::pair_hashes[1]) ++cutout_[1];
         const unsigned mix = static_cast<unsigned>(vs ^ (vs >> 32) ^ ps ^ (ps >> 17));
         for (unsigned probe = 0; probe < 8; ++probe) {
             Pair& slot = slots_[(mix + probe) & (draw_pair_slots - 1)];
@@ -101,6 +110,10 @@ public:
     }
     std::uint64_t draws() const noexcept { return draws_; }
     std::uint64_t overflow() const noexcept { return overflow_; }
+    // Exact, whatever the table did: 0 is the hull pair, 1 the station pair.
+    std::uint64_t cutout_draws(unsigned pair) const noexcept {
+        return pair < cutout_pair_count ? cutout_[pair] : 0;
+    }
     // Draws counted for one exact pair; zero when the pair never drew.
     std::uint64_t draws_of(std::uint64_t vs, std::uint64_t ps) const noexcept {
         for (const Pair& slot : slots_)
@@ -124,11 +137,13 @@ public:
     }
     void reset() noexcept {
         for (Pair& slot : slots_) slot = Pair{};
+        for (std::uint64_t& pair : cutout_) pair = 0;
         draws_ = overflow_ = 0;
     }
 
 private:
     Pair slots_[draw_pair_slots]{};
+    std::uint64_t cutout_[cutout_pair_count]{};
     std::uint64_t draws_ = 0, overflow_ = 0;
 };
 
@@ -197,6 +212,10 @@ struct DrawKey {
     std::uint32_t primitive_type = 0, primitives = 0, start_index = 0;
     std::int32_t base_vertex = 0;
     bool valid = false;
+    // A DrawPrimitiveUP/DrawIndexedPrimitiveUP draw. D3D9 clears stream 0 on
+    // such a call and the proxy's shadow is not invalidated, so the shadowed
+    // buffers say nothing about it: it is counted apart and never batched.
+    bool user_memory = false;
 };
 
 // Consecutive draws of one frame, compared against the draw before them. The
@@ -207,34 +226,39 @@ class DrawBatch {
 public:
     void record(const DrawKey& key) noexcept {
         ++draws_;
-        const DrawKey previous = previous_;
+        // A user-memory draw is its own count and breaks the chain: neither it
+        // nor the draw after it may be compared against a stale stream shadow.
+        if (key.user_memory) { ++user_memory_; previous_ = DrawKey{}; return; }
+        classify(key);          // compares in place, before the key replaces it
         previous_ = key;
-        if (!key.valid || !previous.valid) return;
-        const bool shaders = key.vs == previous.vs && key.ps == previous.ps;
-        bool textures = true;
-        for (unsigned i = 0; i < 4; ++i) textures = textures && key.textures[i] == previous.textures[i];
-        if (!shaders || !textures) return;
-        const bool buffers = key.stream0 == previous.stream0 && key.indices == previous.indices
-            && key.declaration == previous.declaration;
-        if (!buffers) { ++same_material_; return; }
-        const bool range = key.primitive_type == previous.primitive_type && key.primitives == previous.primitives
-            && key.base_vertex == previous.base_vertex && key.start_index == previous.start_index;
-        if (range) ++same_mesh_; else ++same_mesh_any_range_;
     }
     // A draw is only compared with a draw of the same frame.
     void end_frame() noexcept { previous_ = DrawKey{}; }
     std::uint64_t same_mesh() const noexcept { return same_mesh_; }
     std::uint64_t same_mesh_any_range() const noexcept { return same_mesh_any_range_; }
     std::uint64_t same_material() const noexcept { return same_material_; }
+    std::uint64_t user_memory() const noexcept { return user_memory_; }
     std::uint64_t draws() const noexcept { return draws_; }
     void reset() noexcept {
-        same_mesh_ = same_mesh_any_range_ = same_material_ = draws_ = 0;
+        same_mesh_ = same_mesh_any_range_ = same_material_ = user_memory_ = draws_ = 0;
         previous_ = DrawKey{};
     }
 
 private:
+    // No copy of the previous key: the fields are compared where they are.
+    void classify(const DrawKey& key) noexcept {
+        if (!key.valid || !previous_.valid) return;
+        if (key.vs != previous_.vs || key.ps != previous_.ps) return;
+        for (unsigned i = 0; i < 4; ++i) if (key.textures[i] != previous_.textures[i]) return;
+        if (key.stream0 != previous_.stream0 || key.indices != previous_.indices
+            || key.declaration != previous_.declaration) { ++same_material_; return; }
+        if (key.primitive_type == previous_.primitive_type && key.primitives == previous_.primitives
+            && key.base_vertex == previous_.base_vertex && key.start_index == previous_.start_index) ++same_mesh_;
+        else ++same_mesh_any_range_;
+    }
+
     DrawKey previous_{};
-    std::uint64_t same_mesh_ = 0, same_mesh_any_range_ = 0, same_material_ = 0, draws_ = 0;
+    std::uint64_t same_mesh_ = 0, same_mesh_any_range_ = 0, same_material_ = 0, user_memory_ = 0, draws_ = 0;
 };
 
 struct Frame {

@@ -29,7 +29,7 @@ class FrameTimingWindow(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True, timeout=60)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'frame_timing_host checks=452 failures=0\n')
+            self.assertEqual(run.stdout, 'frame_timing_host checks=453 failures=0\n')
             self.assertEqual(run.stderr, '')
 
     def test_production_call_sites_and_schema(self):
@@ -88,10 +88,17 @@ class FrameTimingWindow(unittest.TestCase):
         # mix and the batchability classes.
         self.assertIn('" state_redundant=%llu,%llu,%llu state_shadowed=%llu,%llu,%llu redundant_top=%s"', source)
         self.assertIn('draw_pairs frame=%llu draws=%llu draw_pairs_overflow=%llu top=%s cutout_pairs=%llu,%llu', source)
-        self.assertIn('draw_batch frame=%llu same_mesh=%llu same_mesh_any_range=%llu same_material=%llu draws=%llu', source)
-        # The cutout pairs come from the single source, not from a literal here.
-        self.assertIn('cutout::pair_hashes[2], cutout::pair_hashes[3]', source)
-        self.assertIn('cutout::pair_hashes[0], cutout::pair_hashes[1]', source)
+        self.assertIn('draw_batch frame=%llu same_mesh=%llu same_mesh_any_range=%llu same_material=%llu up=%llu draws=%llu', source)
+        # The cutout pairs are counted in their own counters, independent of
+        # the pair table, and come from the single source, not a literal here.
+        self.assertIn('draw_pairs.cutout_draws(0), draw_pairs.cutout_draws(1)', source)
+        header = (ROOT / 'src/proxy/frame_timing.h').read_text()
+        self.assertIn('if (vs == cutout::pair_hashes[2] && ps == cutout::pair_hashes[3]) ++cutout_[0];', header)
+        self.assertIn('else if (vs == cutout::pair_hashes[0] && ps == cutout::pair_hashes[1]) ++cutout_[1];', header)
+        # A user-memory draw never batches: D3D9 clears stream 0 and the
+        # shadowed buffers say nothing about it.
+        self.assertIn('if (key.user_memory) { ++user_memory_; previous_ = DrawKey{}; return; }', header)
+        self.assertIn('key.user_memory = user_memory;', capture)
         # Every window counter restarts with the window.
         self.assertIn('draw_pairs.reset(); redundant_states.reset(); draw_batch.reset();', source)
         self.assertIn('draw_batch.end_frame(); // draws are only compared inside one frame', source)
@@ -102,7 +109,7 @@ class FrameTimingWindow(unittest.TestCase):
         self.assertIn('if (!frame_timing::active) return;', helper)
         self.assertIn('ctx.motion_output.binding_shadow();', helper)
         self.assertNotIn('->Get', helper)
-        self.assertEqual(capture.count('frame_timing_draw_state(ctx,type,primitives,base_vertex,start_index);'), 1)
+        self.assertEqual(capture.count('frame_timing_draw_state(ctx,type,primitives,base_vertex,start_index,user_memory);'), 1)
         # The redundancy counting sits in the shadow update, not in the hook
         # bodies, and elides nothing.
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
@@ -143,7 +150,7 @@ class FrameTimingWindow(unittest.TestCase):
                       'gap_pre_us=', 'gap_draw_us=', 'gap_post_us=',
                       'state_redundant=', 'state_shadowed=', 'redundant_top=',
                       'draw_pairs ', 'draw_pairs_overflow=', 'cutout_pairs=',
-                      'draw_batch ', 'same_mesh=', 'same_mesh_any_range=', 'same_material='):
+                      'draw_batch ', 'same_mesh=', 'same_mesh_any_range=', 'same_material=', 'up='):
             self.assertIn(field, section, field)
         self.assertIn('X3M_FRAME_TIMING_STATE_STAMPS', section)
         self.assertIn('--frame-timing-state-stamps', section)
