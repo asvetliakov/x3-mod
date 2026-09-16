@@ -313,6 +313,19 @@ that this note left open, plus the exact incoming-edge sets of the
 "Validation performed" list. Schema, phase names and the scaling column are in
 `docs/verification/sampling-profiler.md`, "Frame phases".
 
+## 5c. Effect pass loop `0x004c3ff0`
+
+The pass loop named in §2 (`BeginPass` → draw → `EndPass`) has its own site
+study in [effect-pass-loop.md](effect-pass-loop.md): the four per-draw stamps
+of the `--pass-phases` diagnostic, their validation against this EXE
+(`verification/probe/verify_pass_phase_sites.py`), the identification of the
+draw at `0x004c403c` as a direct `IDirect3DDevice9::DrawIndexedPrimitive`
+(device vtable `+0x148`, slot 82, device from `[[0x00608b3c+0x18]]`), the
+absence of any `CommitChanges` dispatch in `0x004c0150`, and why those sites
+need an accumulate-only stub rather than the shared `game_phases` one. That
+study also splits interval 9→10 (`view_submit`) into D3DX and engine time,
+which §6 lists as unresolved here.
+
 ## 6. What this does not establish
 
 - No runtime measurement. The 53 % attribution is the open question these stamps
@@ -322,9 +335,11 @@ that this note left open, plus the exact incoming-edge sets of the
   paths in §2 is an inference from two guards.
 - `0x00473e10` and `0x00476140` are option-gated and their role is inferred from
   their call histograms (`_fwrite`, `_strncmp`); neither was decompiled.
-- The class behind vtable slot `0x148` at `0x004c403c` remains unidentified
-  (camera note §9), so the submission interval 9→10 cannot yet be split into
-  "engine time" and "d3dx9 time" from the EXE alone.
+- The class behind vtable slot `0x148` at `0x004c403c` is the D3D device
+  (`IDirect3DDevice9::DrawIndexedPrimitive`, resolved in
+  [effect-pass-loop.md](effect-pass-loop.md) §2, superseding camera note §9);
+  splitting the submission interval 9→10 into "engine time" and "d3dx9 time"
+  still needs the four pass stamps of that note, not more static work.
 - Queue lengths, view counts and layer counts are all runtime quantities; the
   scaling claims in §3 are structural.
 
