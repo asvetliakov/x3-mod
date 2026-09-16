@@ -2272,7 +2272,8 @@ void initialize_log(HMODULE module) {
         // dynamically so an older system falls back to the coarser documented call.
         using PreciseTimeFn=void(WINAPI*)(LPFILETIME);
         const HMODULE kernel=GetModuleHandleW(L"kernel32.dll");
-        const PreciseTimeFn precise=kernel?reinterpret_cast<PreciseTimeFn>(GetProcAddress(kernel,"GetSystemTimePreciseAsFileTime")):nullptr;
+        const FARPROC precise_proc=kernel?GetProcAddress(kernel,"GetSystemTimePreciseAsFileTime"):nullptr;
+        const PreciseTimeFn precise=precise_proc?reinterpret_cast<PreciseTimeFn>(reinterpret_cast<void*>(precise_proc)):nullptr; // via void*: -Wcast-function-type (fixture builds use -Werror)
         LARGE_INTEGER counter{},frequency{};
         FILETIME utc{};
         QueryPerformanceFrequency(&frequency);
