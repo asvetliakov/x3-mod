@@ -45,6 +45,14 @@ game hook. Conclusion: Mayhem 3 does not touch shaders; every proxy feature
 keyed on stock programs applies unchanged, and its new bodies can only reach
 stock programs, some of which may be outside the covered 137.
 
+## Mayhem update package (`x3-mod-example-2`)
+
+A 124 MB Mayhem/Zero Hour update: one CAT/DAT pair (`addon/12.cat`, 272
+entries: `objects/` 222, `s/` 20, `addon/` 15, `dds/` 14, `l/` 1), loose
+`addon/scripts` and `addon/t` text files, references and the galaxy generator.
+No `shader` directory, no `.fx`/`.fxo`/`.psh`/`.vsh` entry, no game DLL. Same
+conclusion as above: no shader is touched; new bodies reach only stock programs.
+
 ## Making unknown programs visible
 
 Two follow-ups, not yet implemented:
