@@ -840,3 +840,52 @@ overflow=0` (last `known=57`). `incomplete`: 2 windows at 1, 1 at 3 (opening
 only), 32 at 0. `mip_bias_sets=restores=8,091,791 failures=0` (final
 summary) — no leak. No `motion_state_lost`/`restore_failures`/
 `apply_failures` nonzero. `lock_wait` samples max 2–3 us.
+
+### Run 32 session B (run93): slow sectors
+
+`/tmp/x3-bottleX3-run93/session-20260916-165735-212.log` (206,769 lines), DLL
+`11c1f119…`. Sectors by `chase_transition_event` `sector=` changes (log
+lines): s1 5514-28864 (`0x1acc9810`), s2 28875-169345 (`0x5fc9d188`), s3
+169356-198742 (`0x1ae49060`), s4 198753-end (`0x998c0238`).
+
+Top 8 `frame_timing` windows by `dt_p50_us` (line, frame, sector, dt_p50/p95,
+draws_p50, state_calls_p50, gap_pre/draw/post p50, µs):
+
+| line | frame | sector | dt_p50 | dt_p95 | draws_p50 | state_calls_p50 | gap_pre | gap_draw | gap_post |
+|---|---|---|---|---|---|---|---|---|---|
+| 187749 | 26400 | 3 | 421745 | 513480 | 151 | 7962 | 411935 | 3995 | 281 |
+| 10168 | 1200 | 1 | 32843 | 36118 | 760 | 49321 | 5091 | 18901 | 471 |
+| 177197 | 25500 | 3 | 27981 | 31261 | 851 | 45197 | 4253 | 16550 | 249 |
+| 174654 | 25200 | 3 | 26014 | 31277 | 794 | 40681 | 3880 | 15339 | 250 |
+| 169308 | 24600 | 2 | 24811 | 27735 | 804 | 39041 | 3029 | 14649 | 217 |
+| 12199 | 1500 | 1 | 23217 | 26700 | 461 | 30210 | 5531 | 11831 | 341 |
+| 180018 | 25800 | 3 | 22721 | 26102 | 581 | 32469 | 4442 | 12161 | 243 |
+| 201609 | 28200 | 4 | 21756 | 23761 | 513 | 31477 | 4433 | 11123 | 234 |
+
+`frame_phases` for the busy windows (1200, 25200/25500/25800): `views` is
+85-87 % of `dt` (e.g. 1200: views 27627/dt 32843), matching run91's
+busy-render shape — not script-side.
+
+**Frame=26400 answers the decisive question**: `pre_render` (Present-return
+through input/message pump, script VM, deferred callbacks, simulation/AI,
+cockpit update — line 545 above) is 411,427/421,745 µs = 97.6 % of the
+window; `views_p50_us`=6,787 (1.6 %). `frame_phases_slow` confirms with 8
+individual frames across 25827-26292 (not one glitch), all pre_render 90-98 %
+of dt: 25827 (542,062/528,617), 26085 (452,156/435,675), 26080
+(443,057/423,106), 25882 (435,052/418,126), 26285 (575,332/520,364), 26203
+(567,812/556,514), 26286 (545,591/537,395), 26292 (537,855/529,473). No
+`chase_transition_event` falls in that line range (nearest ~5514-10202 and
+~198703-201609) — not a loading/transit spike, but sustained slowness inside
+sector 3, outside rendering, in the phase covering the game's script/
+simulation/AI update. Matches the user's report of slowdown in a
+not-visually-busy sector and their memory of the same on vanilla Windows.
+The log has no `--game-phases` subdivision, so which sub-phase inside
+`pre_render` is responsible cannot be resolved further; a follow-up launch
+adding `--game-phases` to the current flags would attribute it.
+
+Loading vs sustained: windows before (24600-26100, draws_p50 497-851) and
+after (26700-27900, draws_p50 69-145) the spike are normal busy/quiet render
+frames, `incomplete=0` throughout — the spike is not loading. No anomalies:
+`truncated=1`, `shader_unknown`, `motion_state_lost`, `lock_wait` outliers, or
+`mip_bias_failures`; `incomplete` sums to 4 across all 95 windows (opening
+only).

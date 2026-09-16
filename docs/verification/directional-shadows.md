@@ -429,3 +429,28 @@ That gap is now closed by the frame-timing window's `draw_pairs … cutout_pairs
 Open: still no session with an actual cutout draw; the station type visited in run90 (identity not recorded in telemetry) did not produce alpha-tested cutout geometry either. A next run needs per-draw shader-pair (vs/ps hash) telemetry to identify what the station actually drew, or a target confirmed (by the user, since launch is out of scope here) to carry the Argon cutout materials.
 
 
+
+### Run 32 session B (run93), 2026-09-17
+
+`/tmp/x3-bottleX3-run93/session-20260916-165735-212.log` (206,769 lines). DLL
+`11c1f119…` (`baee232`), session A1 flags plus `--linear-materials
+--linear-distance-fade --sun-shadow-lane` (log:5,124,132-133). User navigated
+several sectors instead of holding the busy view.
+
+**Cutout draws.** All 95 `draw_pairs` windows (frame=300..28500) nonzero
+`cutout_pairs=<hull>,<station>` (log:2302 first); session totals hull=292,413,
+station=268,716. **cutout_routed=0 across all 479 `linear_material_frame`
+lines** (cutout_missed/unavailable also 0, cutout_caps=479) — capability
+present, tested-opaque arm not exercised, same shape as run66/run88/run81.
+
+**Lane availability.** 28,207 `sun_shadow_lane_frame` lines: available=1 on
+25,523, available=0 on 2,684 (frames 24316-28613, log:166363 first), all
+`failed=1 owner=1 exclusion_valid=0`, one `sun_shadow_lane_writer
+reason=unregistered` (log:166363, frame=24316, gate=3); `non_depth_writers`
+peaks 220. `shadow_replay_depth`: 28,207 samples, median 39.9 µs, all
+`skipped_*` 0.
+
+No `truncated=1`/`shader_unknown`/`motion_state_lost`/`restore_failures`/
+`apply_failures`/`mip_bias_failures`; `incomplete=4` total. Open: which draw
+introduced the unregistered writer at frame 24316 is not attributable from
+this telemetry.
