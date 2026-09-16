@@ -179,3 +179,85 @@ swresample enabled unless explicitly disabled. The configure line now includes
 `--disable-swresample`; the rest of the recipe was approved. Source
 tag identities were checked, but local cryptographic signature verification
 has not been performed.
+
+## v5: MP3 and MPEG-1 (2026-09-16)
+
+`/tmp/x3-wma-plugin-v5` is a superset of v4 for the media cues the soundtrack
+and movie files need (`docs/verification/media-cues.md`): the same patched
+gst-libav decoder, an FFmpeg closure with six more decoders, and the one
+demuxer CrossOver's plugin set lacks. v4 is untouched and stays the rollback
+target. Untracked build record with the full audit: `/tmp/x3-wma-plugin-v5/build-record.md`.
+Sources are the pinned ones already on disk (FFmpeg n7.1.5 `3a0867c2…`,
+GStreamer monorepo 1.28.4 `b46f881e…`); the toolchain is the same venv
+meson 1.11.2 / ninja 1.13.2 / pkgconf 2.4.3 and Apple clang with
+`MACOSX_DEPLOYMENT_TARGET=14.0`.
+
+FFmpeg configure — the v1 line plus six `--enable-decoder`, nothing else changed:
+
+```sh
+MACOSX_DEPLOYMENT_TARGET=14.0 /tmp/x3-wma-plugin/src/ffmpeg/configure \
+  --prefix=/tmp/x3-wma-plugin-v5/ffmpeg --cc=clang --arch=aarch64 --target-os=darwin \
+  --disable-autodetect --disable-everything --disable-programs --disable-doc \
+  --disable-network --disable-gpl --disable-nonfree --disable-version3 \
+  --disable-static --enable-shared --enable-pic \
+  --enable-decoder=wmav2 --enable-decoder=mp3 --enable-decoder=mp3float \
+  --enable-decoder=mp2 --enable-decoder=mp2float \
+  --enable-decoder=mpeg1video --enable-decoder=mpeg2video \
+  --enable-avcodec --enable-avutil --enable-avformat --enable-avfilter \
+  --disable-avdevice --disable-postproc --disable-swscale --disable-swresample \
+  --extra-cflags="-arch arm64 -mmacosx-version-min=14.0" \
+  --extra-ldflags="-arch arm64 -mmacosx-version-min=14.0"
+```
+
+Generated-configuration audit: 7 `*_DECODER 1` (`WMAV2, MP3, MP3FLOAT, MP2,
+MP2FLOAT, MPEG1VIDEO, MPEG2VIDEO`), 0 demuxers/muxers/parsers/protocols/
+encoders/filters/bsfs/hwaccels, no `CONFIG_LIB*`, `GPL/NONFREE/VERSION3/
+SWRESAMPLE/SWSCALE/POSTPROC/AVDEVICE` all 0, LGPL-2.1-or-later.
+
+gst-libav is rebuilt with the **identical** flags, patches and source as v4
+(`gstavauddec.c` = `f5ade4b3…`, i.e. sub-buffer cap + 500 ms tolerance + float
+limit); only `PKG_CONFIG_PATH` points at the v5 FFmpeg. So the float-limit and
+cue-timing behavior of the speech path is unchanged, and the same clamp now
+also applies to the float MP3/MP2 decoders.
+
+New second plugin, `libgstmpegpsdemux.dylib`, from the pinned monorepo's
+`gst-plugins-bad/gst/mpegdemux` (deps `gstbase`/`gsttag`/`gstpbutils`, all
+CrossOver dylibs):
+
+```sh
+PKG_CONFIG_PATH=/tmp/x3-wma-plugin-v5/pcshim \
+meson setup build/gstbad src/gst-plugins-bad --buildtype=release --default-library=shared \
+  --wrap-mode=nofallback -Dauto_features=disabled -Dtests=disabled -Dexamples=disabled \
+  -Ddoc=disabled -Dmpegdemux=enabled -Dintrospection=disabled -Dorc=disabled -Dnls=disabled \
+  -Dc_args="-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_78 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_78"
+ninja -C build/gstbad gst/mpegdemux/libgstmpegpsdemux.dylib
+```
+
+v5 has its own `pcshim/` (v1's shims with the CrossOver `libdir`, plus
+`gstreamer-{tag,controller,net,allocators,app,riff,rtp,rtsp,fft}-1.0.pc`,
+`gio-2.0.pc` and glib's tool variables pointing at `sdk/bin`), because
+`gst-plugins-bad`'s top-level `meson.build` resolves those before reaching the
+one subdirectory we build. No SDK runtime library is packaged and no Homebrew
+runtime library is linked. `mpegaudioparse` (audioparsers) and `mpegvideoparse`
+(videoparsersbad) already ship with CrossOver and were **not** rebuilt.
+
+Packaging and audit are the v1-v4 procedure, now over six artifacts
+(2272 KB total): `@loader_path` IDs, FFmpeg imports as
+`@loader_path/../lib/libx3wma-*.dylib`, CrossOver imports as `@rpath/...` with
+the single absolute CrossOver `LC_RPATH`, `codesign -f -s -`. All six are arm64
+`minos 14.0` with zero homebrew/cxoffice/SDK/build-tree load commands.
+
+| Artifact | Bytes | SHA256 (prefix) |
+| --- | ---: | --- |
+| `runtime/plugins/libgstlibav.dylib` | 343232 | `ba95962b…` |
+| `runtime/plugins/libgstmpegpsdemux.dylib` | 137824 | `5e93887f…` |
+| `runtime/lib/libx3wma-avcodec.61.dylib` | 654640 | `19643621…` |
+| `runtime/lib/libx3wma-avfilter.10.dylib` | 166208 | `f06fdff0…` |
+| `runtime/lib/libx3wma-avformat.61.dylib` | 244304 | `56a3168e…` |
+| `runtime/lib/libx3wma-avutil.59.dylib` | 715008 | `6aa4f9aa…` |
+
+Delivery is unchanged: `tools/manage.py launch --voice-decoder /tmp/x3-wma-plugin-v5`
+sets only `GST_PLUGIN_PATH_1_0`/`GST_REGISTRY_1_0` (and the DMO gate) for the
+launched process. Native Windows is unaffected: it keeps its own MP3/MPEG
+codecs and never loads this runtime. Host verification results are in
+`docs/verification/media-cues.md` §5.

@@ -108,6 +108,58 @@ not a caps negotiation fix. If it instead names one of the three ASF files,
 this hypothesis is wrong and the failure is elsewhere (e.g. a DirectShow
 filter registration issue distinct from decode capability).
 
+## 5. v5 runtime: MP3/MPEG-1 decode added and verified on the host (2026-09-16)
+
+`/tmp/x3-wma-plugin-v5` is v4 plus the decoders and the demuxer this inventory
+found missing (build recipe and hashes: `docs/architecture/voice-decoder-recipe.md`
+§"v5: MP3 and MPEG-1"; untracked build record `/tmp/x3-wma-plugin-v5/build-record.md`).
+v4 is untouched and remains the rollback target. Launcher change the user makes:
+`--voice-decoder /tmp/x3-wma-plugin-v5` instead of `--voice-decoder /tmp/x3-wma-plugin-v4`.
+
+Verified **on the host only**, no Wine and no game launch, with
+`/tmp/x3-wma-plugin-v5/results/host_decode_probe` — a small arm64 program linked
+against CrossOver's own GStreamer 1.28.4 dylibs and run with
+`GST_PLUGIN_PATH_1_0` at the v5 plugins, `GST_PLUGIN_SYSTEM_PATH_1_0` at
+CrossOver's plugin directory and `GST_REGISTRY_1_0` at a separate
+`registry/host-verify.bin`. Game files were read read-only through `filesrc`;
+nothing in the bottle was written.
+
+Elements registered from the private path (rank in brackets):
+
+| Plugin | Features |
+| --- | --- |
+| `libav` (v5) | `avdec_wmav2`(64), `avdec_mp3`(64), `avdec_mp3float`(64), `avdec_mp2float`(64), `avdec_mpeg2video`(256), `avdeinterlace`(0), `avvideocompare`(0) |
+| `mpegpsdemux` (new) | `mpegpsdemux`(256) |
+
+`avdec_mp2` and `avdec_mpeg1video` are deliberately **not** registered by
+upstream gst-libav (MP1/MP2 go to `avdec_mp3`, MPEG-1 video to
+`avdec_mpeg2video`); both ffmpeg decoders are nevertheless present in the
+closure. `mpegaudioparse`(258, audioparsers) and `mpegvideoparse`(257,
+videoparsersbad) come from CrossOver's own set, as does `atdec`(64, osxaudio),
+an AudioToolbox audio decoder this inventory had not previously accounted for.
+
+Decode results (`fakesink` buffer counts; span = last PTS - first PTS + last
+duration):
+
+| Input | Pipeline | Result |
+| --- | --- | --- |
+| `soundtrack/00005.mp3` (166272 B, MPEG-1 Layer III, 128 kbps, 48 kHz) | explicit `id3demux ! mpegaudioparse ! avdec_mp3` | EOS, 2532 buffers, span **10.128 s** vs 10.136 s computed from bitrate; `S16LE, 48000, 2ch, non-interleaved` |
+| same | automatic `decodebin` | decodes, but picks CrossOver's `atdec`: 423 buffers, span 10.139 s, `S16LE 48000 2ch interleaved` |
+| `mov/00800.dat` (329820164 B, MPEG-PS) | automatic `decodebin` | `mpegpsdemux ! mpegvideoparse ! avdec_mpeg2video` for video and `mpegaudioparse ! atdec` for audio; 993 video frames `I420 512x512 30 fps` span 33.100 s and 2187 audio buffers span 52.488 s in 0.31 s wall (stopped at the probe's buffer limit) |
+| same | explicit `mpegpsdemux ! {mpegaudioparse ! avdec_mp3, mpegvideoparse ! avdec_mpeg2video}` | 36300 audio buffers span **145.200 s**, 4364 video frames span **145.467 s**, 0.92 s wall |
+| `mov/00001.dat` (639970202 B, MPEG-1 video ES) | automatic `decodebin` | `mpegvideoparse ! avdec_mpeg2video`, 1348 frames `I420 256x256 30 fps`, span **44.933 s**, 0.11 s wall |
+| `addon/mov/00244.dat` (20311023 B, ASF/WMA v2 speech) | automatic `decodebin` | unchanged from v4: `asfdemux ! avdec_wmav2`, 56881 buffers, span **256.580 s**, `F32LE mono 44100 non-interleaved` (the v3 sub-buffer cap is visible in the buffer count) |
+
+So the three format classes that had **no** decode path now all decode on this
+runtime, and the WMA speech path is unchanged. The updated capability table:
+
+| Format class | Demux/parse | Decode | Verdict |
+| --- | --- | --- | --- |
+| ASF/WMA v2 | `asfdemux` (CX) | `avdec_wmav2` (v5) | decodes (unchanged) |
+| MP3 (Layer III) | `id3demux`/`mpegaudioparse` (CX) | `avdec_mp3`/`avdec_mp3float` (v5), or CX `atdec` | **decodes** |
+| MPEG-PS | `mpegpsdemux` (**v5**) | `avdec_mpeg2video` (v5) + MPEG audio as above | **decodes** |
+| MPEG-1 video ES | `mpegvideoparse` (CX) | `avdec_mpeg2video` (v5) | **decodes** |
+
 ## Open issues
 
 * `Videos.pck`/`VideoLists.pck` encoding is unidentified; cue ids and the
@@ -119,3 +171,18 @@ filter registration issue distinct from decode capability).
 * This inventory does not identify *which* cue the stalling sector selects;
   that requires the run-34 trace naming a media id, per
   `docs/reverse-engineering/sector-post-pass.md` §6.
+* **Automatic selection of the audio arm is not ours.** With equal rank 64,
+  GStreamer autoplugging picked CrossOver's `atdec` over `avdec_mp3` for both
+  the MP3 file and the program stream's MPEG audio; only the demuxer (256) and
+  the video decoder (256) are unambiguously ours. Whether the game's
+  `IGraphBuilder::Render` arm under winegstreamer ends at the same elements was
+  not tested here (no Wine in this task), and no rank override is used.
+* **Sub-buffer cap sizing for stereo.** `voice-decoder-subbuffer.patch` caps
+  decoder output at 200 samples because 200 samples of *mono* 16-bit PCM is
+  400 B, under Wine amstream's 429-byte position-arithmetic bound. Stereo
+  48 kHz MP3 sub-buffers are 800 B, so that bound does not hold for soundtrack
+  cues; cue-time trimming for MP3 may be imprecise even though decoding is
+  correct. Not measured.
+* CrossOver ships no `gst-plugin-scanner`, so both plugins are scanned
+  in-process (the host probe logs the usual external-loader warning); a plugin
+  fault would be taken by the game process.
