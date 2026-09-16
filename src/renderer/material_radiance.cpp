@@ -1,4 +1,5 @@
 #include "material_radiance.h"
+#include "shader_population.h"
 
 namespace x3m::renderer {
 namespace {
@@ -127,5 +128,15 @@ RadianceResult material_radiance_variant(const std::uint32_t* source,
         if (profile.word_count == count && profile.fnv == hash)
             return apply_radiance_profile(profile, source, count, output);
     return RadianceResult::UnsupportedShader;
+}
+// Shader-population provider (src/renderer/shader_population.h): the radiance
+// profile table, enumerated in place.
+const ShaderTable* material_radiance_shader_tables(std::size_t& count) noexcept {
+    static constexpr ShaderTable tables[] = {
+        {"material_radiance_pixel", sizeof profiles / sizeof profiles[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return profiles[i].fnv; }},
+    };
+    count = sizeof tables / sizeof tables[0];
+    return tables;
 }
 } // namespace x3m::renderer

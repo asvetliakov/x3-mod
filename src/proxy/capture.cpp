@@ -20,6 +20,7 @@
 #include "compositor_bridge.h"
 #include "compositor_owner.h"
 #include "../renderer/bloom_programs.h"
+#include "../renderer/shader_population.h"
 #include "chase_camera.h"
 #include "chase_aim_trace.h"
 #include "chase_transition.h"
@@ -151,6 +152,15 @@ float motion_cut_median_px = 48.f, motion_cut_missing = .25f;
 // unsafe GPU replay merely because the latest revisions looked unchanged.
 constexpr bool motion_live_replay_available = false;
 std::set<uint64_t> dumped;
+// Session population of created programs (docs/architecture/mod-compatibility.md,
+// "Making unknown programs visible"). Process-wide, not per device: a program
+// is classified once, under the hook lock that already serialises shader
+// creation and Present. The `dumped` set above is process-wide and never
+// cleared, so each program is classified on its first creation only; a
+// program first created before telemetry was enabled is therefore never
+// reported (X3M_TELEMETRY is read once at load, so this cannot happen in a
+// normal session).
+renderer::ShaderPopulation shader_population;
 uint64_t next_device_id = 1;
 }
 unsigned long long dll_load_qpc = 0; // stamped in DllMain (loader.cpp)
@@ -403,6 +413,24 @@ void record_draw_input(Device& ctx,ObservedDraw& draw,HRESULT result) {
             draw.lifetime.mutation_revision,after.mutation_revision,draw.lifetime.node_serial,draw.lifetime.camera_serial,
             after.observer_epoch,after.load_epoch,after.registry_epoch,after.node_serial,after.camera_serial);
 }
+// Drains the pending unknown-program lines and, when `population` is set and
+// a counter moved, the session population line. Called from Present at the
+// 300-frame cadence and once more when a device is destroyed, so the last
+// movement of a session is not lost. Telemetry only; no other output.
+void report_shader_population(bool population) {
+    if(!telemetry::enabled())return;
+    renderer::ShaderPopulation::Entry unknown{};
+    while(shader_population.take(unknown))
+        log("shader_unknown kind=%s id=%016llx version=%08lx bytes=%lu tables=%lu",
+            unknown.vertex?"vs":"ps",static_cast<unsigned long long>(unknown.hash),
+            static_cast<unsigned long>(unknown.version),static_cast<unsigned long>(unknown.bytes),
+            static_cast<unsigned long>(renderer::shader_table_count()));
+    if(population&&shader_population.counts_changed())
+        log("shader_population known=%lu unknown=%lu overflow=%lu",
+            static_cast<unsigned long>(shader_population.known()),
+            static_cast<unsigned long>(shader_population.unknown()),
+            static_cast<unsigned long>(shader_population.overflow()));
+}
 template<typename Shader> uint64_t shader_id(Shader* shader, const char* kind) {
     if (!shader) return 0;
     telemetry::Scope inspect(telemetry::process(),telemetry::Metric::ShaderInspect);
@@ -425,6 +453,15 @@ template<typename Shader> uint64_t shader_id(Shader* shader, const char* kind) {
         telemetry::record(telemetry::process(),telemetry::Metric::ShaderDump,telemetry::now()-dump_begin,!dump_ok,written);
         log("shader kind=%s id=%016llx bytes=%u dumped=%u", kind,
             static_cast<unsigned long long>(hash), bytes, dump_ok);
+        // Classify this distinct program against every table the proxy keys
+        // on, so a mod that changes what the game compiles is visible in the
+        // log. Telemetry only, once per program, never per draw; the line
+        // itself is emitted at the next Present.
+        if (telemetry::enabled()) {
+            std::uint32_t version = 0;
+            if (bytes >= sizeof version) std::memcpy(&version, code.data(), sizeof version);
+            shader_population.observe(hash, kind[0]=='v', version, bytes);
+        }
     }
     return hash;
 }
@@ -633,7 +670,8 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         }
         cpu.before_original();
         refs=fn(d);cpu.after_original();
-        if(!refs){game_phases::invalidate_device();telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);devices.erase(d);}
+        if(!refs){game_phases::invalidate_device();report_shader_population(true); // session end: flush the last count movement
+        telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);devices.erase(d);}
         last_device_destroyed=!refs&&devices.empty();
     }
     // The profiler's quiescent stop: the last device is gone and the capture
@@ -1076,6 +1114,12 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     // a later claim would write over code the loading threads may be executing.
     if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
     frame_timing::frame(ctx.frame,ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
+    // Programs the game compiled that are in none of the proxy's tables
+    // (docs/architecture/mod-compatibility.md, "Making unknown programs
+    // visible"). One line per distinct unknown, at the first Present after it
+    // was created; the population line follows the 300-frame cadence and only
+    // when the counts moved.
+    report_shader_population(ctx.frame%300==0);
     if (ctx.capture || ctx.frame%300==0) {
         // One QPC per logged line (every 300 frames or a capture frame), in every
         // mode: elapsed_ms since DllMain and dt_ms since the previous frame_end

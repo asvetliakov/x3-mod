@@ -55,13 +55,39 @@ conclusion as above: no shader is touched; new bodies reach only stock programs.
 
 ## Making unknown programs visible
 
-Two follow-ups, not yet implemented:
+1. Implemented. With `--telemetry` on, the proxy classifies each distinct
+   created program once, at `CreateVertexShader`/`CreatePixelShader`, against
+   every table it keys on: `src/renderer/shader_population.{h,cpp}` consults
+   22 tables and 1810 entries (the motion pairs and their depth-only aliases,
+   the material originals with their pairs, palette, sun-share exposure seeds
+   and XT rows, the distance-fade and cutout pairs, the fade route, the twenty
+   linear-emission pairs, the nine SM1 bullet pairs, the screen-emission
+   admission, the scene/bloom signatures, the rigid-position, position-path
+   and pixel-coverage profiles and the radiance profiles). Each table is
+   enumerated in the translation unit that owns it through a provider
+   function, so no hash literal is duplicated. A hash in none of them is
+   recorded in a fixed 256-entry session table (no allocation; further
+   distinct unknowns only advance an overflow counter) and reported at the
+   first Present after it appeared:
 
-1. Log, once per session, every created program hash that is in no proxy
-   table with its profile and the first material state seen, so a mod's effect
-   on coverage is visible in the first minute of a session rather than as an
-   option that "does nothing".
-2. Match programs by the structural fingerprint already documented in
+   ```
+   shader_unknown kind=ps|vs id=<hash> version=<bytecode version token> bytes=<size> tables=<tables consulted>
+   ```
+
+   `version` is the raw header DWORD (`0xffff0300` = ps_3_0, `0xfffe0101` =
+   vs_1_1). At the 300-frame telemetry cadence, and only when a counter moved,
+   one further line gives the session population:
+
+   ```
+   shader_population known=<n> unknown=<n> overflow=<n>
+   ```
+
+   Counts are distinct programs: the create path already dedupes by hash. With
+   telemetry off nothing is classified, recorded or logged, and the
+   classification never runs per draw. Host test:
+   `verification/analysis/test_shader_population.py` over
+   `verification/probe/shader_population_host.cpp`.
+2. Not yet implemented. Match programs by the structural fingerprint documented in
    [shader-fingerprints.md](../reverse-engineering/shader-fingerprints.md)
    as a fallback when the exact hash misses, so a small `.fx` edit still
    resolves to the same family; keep exact-hash matching authoritative for

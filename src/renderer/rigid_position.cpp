@@ -1,4 +1,5 @@
 #include "rigid_position.h"
+#include "shader_population.h"
 
 namespace x3m::renderer {
 namespace {
@@ -80,5 +81,19 @@ const PixelCoverageProfile* find_pixel_coverage(const std::uint32_t* words,
                                               std::size_t word_count) noexcept {
     if (!words || word_count > kMaxReviewedPixelShaderWords || !length_known(pixel_profiles, word_count)) return nullptr;
     return lookup(pixel_profiles, fingerprint(words, word_count), word_count);
+}
+// Shader-population provider (src/renderer/shader_population.h): the three
+// profile tables this unit owns, enumerated in place.
+const ShaderTable* rigid_position_shader_tables(std::size_t& count) noexcept {
+    static constexpr ShaderTable tables[] = {
+        {"rigid_position_vertex", sizeof profiles / sizeof profiles[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return profiles[i].hash; }},
+        {"position_path_vertex", sizeof exceptions / sizeof exceptions[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return exceptions[i].hash; }},
+        {"pixel_coverage_pixel", sizeof pixel_profiles / sizeof pixel_profiles[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return pixel_profiles[i].hash; }},
+    };
+    count = sizeof tables / sizeof tables[0];
+    return tables;
 }
 } // namespace x3m::renderer

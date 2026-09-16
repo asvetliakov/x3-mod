@@ -323,6 +323,9 @@ template<class... Args> static void record(Args&&...) noexcept {}
 template<class... Args> static void summary(Args&&...) noexcept {}
 } // namespace telemetry
 namespace game_phases { static void invalidate_device() noexcept {} }
+// Inert mirror of the production diagnostic: the shader-population report does
+// no lifetime or Reset work, so it has nothing to contribute to this seam.
+static void report_shader_population(bool) noexcept {}
 namespace sampling_profiler {
 static unsigned shutdown_under_lock=0;
 static void shutdown() noexcept {if(hook_guard_depth)++shutdown_under_lock;}

@@ -1,15 +1,27 @@
 #pragma once
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 // The first qualified cutout state. These are public D3D9 enum values; the
 // adapter/static assertions in motion_output.cpp bind them to the SDK. No
 // generic alpha-test allowlist or reconstructed shader alpha is involved.
 namespace x3m::cutout {
+// The qualified pairs as (vertex, pixel) in sequence. This is the single
+// source: pair() scans it and the shader-population classifier
+// (src/renderer/shader_population.h) enumerates it, so neither form can
+// admit a program the other does not.
+inline constexpr std::uint64_t pair_hashes[] = {
+    0x53a0a641107ed76cull, 0x63f96eba9eea7880ull,
+    0x4944d81dfe531b37ull, 0x5e0a10fe752b6140ull};
+inline constexpr std::size_t pair_hash_count = sizeof pair_hashes / sizeof pair_hashes[0];
+static_assert(pair_hash_count == 4, "two qualified cutout pairs");
 constexpr bool pair(std::uint64_t vs, std::uint64_t ps) noexcept {
-    return (vs == 0x53a0a641107ed76cull && ps == 0x63f96eba9eea7880ull)
-        || (vs == 0x4944d81dfe531b37ull && ps == 0x5e0a10fe752b6140ull);
+    for (std::size_t i = 0; i + 1 < pair_hash_count; i += 2)
+        if (pair_hashes[i] == vs && pair_hashes[i + 1] == ps) return true;
+    return false;
 }
+
 enum class Capability : std::uint8_t { Pending, Ready, Unsupported, Retry };
 constexpr Capability query_result(std::int32_t hr) noexcept {
     return hr >= 0 ? Capability::Ready
