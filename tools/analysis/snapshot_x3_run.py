@@ -20,6 +20,10 @@ from game_guard import game_running
 
 CAPTURES = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-captures'
 SESSION = re.compile(r'session-\d{8}-\d{6}-\d+\.log\Z')
+# The launcher's teed terminal output (tools/manage.py launch), written next to
+# the session log: preserved with it so a wall-clock burst from another
+# component can be aligned with the proxy's frame clock.
+LAUNCHER_STDERR = 'launcher-stderr.log'
 # Current MotionOutput writers (including the earlier color/TAA readbacks).
 READBACKS = {
     'motion_output_color_readback': ('color', 'bgra8'),
@@ -193,6 +197,16 @@ def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=
                     count += 1
                 except (OSError, ValueError) as error:
                     issues.append(f'{filename}: not preserved ({error})')
+            # The launcher's own log is authorized by its name and this launch's
+            # boundary, not by a record inside the session log; it is absent for
+            # a session started outside tools/manage.py launch.
+            try:
+                copy_file(source_fd, target_fd, LAUNCHER_STDERR, since_ns=since_ns if log is None else None)
+                count += 1
+            except FileNotFoundError:
+                pass
+            except (OSError, ValueError) as error:
+                issues.append(f'{LAUNCHER_STDERR}: not preserved ({error})')
             require_idle()
             return destination, count, issues
 

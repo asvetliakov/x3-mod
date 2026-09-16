@@ -89,6 +89,27 @@ std::string manifest_sha256(const std::wstring& directory) {
     for(char& c:value) if(c>='A'&&c<='Z') c=char(c-'A'+'a');
     return value;
 }
+// Shared body of the two log_loaded_module entry points; `module` may be null
+// (the DLL is not loaded in this process, itself a finding).
+void log_module(HMODULE module,const char* name) {
+    std::string path_utf8="none",hex="none";
+    unsigned long long bytes=0;
+    // Nothing may escape into a caller on the attach or device-creation path.
+    try {
+        if(module){
+            std::wstring path(32768,L'\0');
+            const DWORD length=GetModuleFileNameW(module,&path[0],static_cast<DWORD>(path.size()));
+            if(length&&length<path.size()){
+                path.resize(length);
+                path_utf8=utf8(path);
+                sanitize(path_utf8);
+                std::string full;
+                hex=hash_file(path,full,bytes)&&full.size()==64?full.substr(0,16):std::string("unavailable");
+            } else path_utf8="unavailable";
+        }
+    } catch(const std::exception&) { hex="unavailable"; }
+    log("loaded_module name=%s path=%s size=%llu sha256=%s",name,path_utf8.c_str(),bytes,hex.c_str());
+}
 // Every X3M_* variable present in the process environment, name=value, sorted.
 // Names are matched case-insensitively (Win32 environment names are); no
 // unrelated variable is read or logged.
@@ -145,6 +166,25 @@ void log_identity(HMODULE self) {
     log("proxy_identity sha256=%s bytes=%llu path=%s manifest_sha256=%s source_commit=%s attach_us=%llu",
         hex.c_str(),bytes,path_utf8.c_str(),manifest.c_str(),X3M_SOURCE_COMMIT,microseconds);
     log("proxy_options%s",option_line.c_str());
+    SetLastError(saved);
+}
+
+void log_loaded_module(const wchar_t* name) {
+    const DWORD saved=GetLastError();
+    std::string label="unknown";
+    HMODULE module=nullptr;
+    // GetModuleHandleExW takes a reference, so the module cannot unload between
+    // the lookup and the file read; no PIN, the reference is released here.
+    if(name&&!GetModuleHandleExW(0,name,&module)) module=nullptr;
+    try { label=utf8(name?name:L""); sanitize(label); } catch(const std::exception&) { label="unknown"; }
+    log_module(module,label.c_str());
+    if(module) FreeLibrary(module);
+    SetLastError(saved);
+}
+
+void log_loaded_module(HMODULE module,const char* name) {
+    const DWORD saved=GetLastError();
+    log_module(module,name&&name[0]?name:"unknown");
     SetLastError(saved);
 }
 }

@@ -25,6 +25,28 @@ every derived `*_mode` line, so a gameplay log can never lose its provenance:
     proxy_identity sha256=<64 hex|unavailable> bytes=<n> path=<dll path> manifest_sha256=<64 hex|none> source_commit=<commit[-dirty]|unknown> attach_us=<n>
     proxy_options [NAME=VALUE ...]
 
+The same `initialize_log` writes one wall-clock anchor before the identity
+header, and two `loaded_module` lines identify the DLLs the process actually
+runs with:
+
+    clock_anchor utc=<ISO8601 with ms> qpc=<ticks> qpc_frequency=<Hz> local_offset_min=<minutes>
+    loaded_module name=<dll> path=<full path|none|unavailable> size=<bytes> sha256=<first 16 hex|none|unavailable>
+
+`clock_anchor` pairs one `GetSystemTimePreciseAsFileTime` reading (dynamically
+resolved; `GetSystemTimeAsFileTime` before Windows 8) with one
+`QueryPerformanceCounter` reading, plus the counter frequency and the negated
+`GetTimeZoneInformation` bias, so a line stamped in local wall clock by another
+component can be mapped onto the `qpc=` field the frame windows carry
+(recipe in `docs/verification/sampling-profiler.md`, "Audio correlation").
+`loaded_module` is written for the D3D9 backend the proxy forwards to (after
+`loader.cpp` loads `<system directory>\d3d9.dll`) and for `d3dx9_37.dll` at the
+first device creation, when the game's imports are resolved: the path, size and
+hash prefix say which copy of a DLL that exists twice on disk (the game
+directory ships its own `d3dx9_37.dll`) is in the process, and which D3D9
+implementation is behind the proxy. Nothing is classified by name here; the
+same documented calls as above, one file hash each, once, off the render path,
+and `GetModuleHandleExW` holds a reference across the read.
+
 `manifest_sha256` is the `sha256` value recorded in the `x3-modern-install.json`
 next to the DLL (`none` without a readable manifest); `proxy_options` lists every
 `X3M_*` variable of the process environment, sorted, and nothing else. The digest

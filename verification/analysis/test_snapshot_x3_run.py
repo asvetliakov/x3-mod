@@ -67,6 +67,28 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.assertEqual((destination.name, second.name), ('x3-bottleX3-run1', 'x3-bottleX3-run2'))
         self.assertTrue((self.capture / 'hdr_1_2.rgba16f').exists())
 
+    def test_launcher_stderr_is_preserved_and_counted(self):
+        (self.capture / snapshot.LAUNCHER_STDERR).write_text('[2026-09-16T10:00:00.000Z] GStreamer-CRITICAL\n')
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual((count, issues), (1, []))
+        self.assertEqual((destination / snapshot.LAUNCHER_STDERR).read_text(),
+                         '[2026-09-16T10:00:00.000Z] GStreamer-CRITICAL\n')
+        # Absent (a session not started through tools/manage.py launch) is silent.
+        (self.capture / snapshot.LAUNCHER_STDERR).unlink()
+        self.assertEqual(self.save(log=self.log)[1:], (0, []))
+
+    def test_launcher_stderr_from_an_earlier_launch_is_reported_not_copied(self):
+        stale = self.capture / snapshot.LAUNCHER_STDERR
+        stale.write_text('old\n')
+        boundary = max(snapshot.created_ns(stale.stat()), stale.stat().st_mtime_ns) + 1
+        with patch.object(snapshot, 'created_ns', side_effect=lambda info: info.st_mtime_ns):
+            os.utime(self.log, ns=(boundary + 1, boundary + 1))
+            destination, count, issues = self.save(since_ns=boundary)
+        self.assertEqual(count, 0)
+        self.assertEqual(len(issues), 1)
+        self.assertIn(snapshot.LAUNCHER_STDERR, issues[0])
+        self.assertFalse((destination / snapshot.LAUNCHER_STDERR).exists())
+
     def test_since_selects_newest_and_no_new_log_is_noop(self):
         boundary = snapshot.created_ns(self.log.stat()) + 1
         with patch.object(snapshot, 'created_ns', side_effect=lambda info: info.st_mtime_ns):

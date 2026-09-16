@@ -5,6 +5,7 @@ No registry or bottle-wide DLL override is changed. Refuse to overwrite an
 unowned d3d9.dll or remove a file whose contents changed after installation.
 """
 import argparse
+import datetime
 import hashlib
 import json
 import math
@@ -12,6 +13,8 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
+import threading
 
 ROOT = Path(__file__).resolve().parents[1]
 BOTTLE = os.environ.get('X3M_BOTTLE', 'X3')
@@ -27,6 +30,67 @@ CHASE_FRAMING_DEFAULTS = {'X3M_CHASE_PITCH_DOWN_DEG': 0.5, 'X3M_CHASE_OFFSET_Y':
 # disables either one and keeps the bit-identical route.
 TAA_MIP_BIAS_DEFAULT = -0.5
 TAA_SHARPEN_DEFAULT = 0.75
+
+
+# The proxy writes its session-*.log into <game dir>\x3-modern-captures; the
+# launcher's own teed terminal output joins it there, so one preserved run
+# directory (tools/analysis/snapshot_x3_run.py) holds both clocks
+# (docs/verification/sampling-profiler.md, "audio correlation").
+CAPTURE_SUBDIRECTORY = 'x3-modern-captures'
+LAUNCHER_STDERR = 'launcher-stderr.log'
+
+
+def utc_stamp(when=None):
+    """[YYYY-MM-DDTHH:MM:SS.mmmZ] of this launcher process, so a child line
+    carrying only a local-time stamp (GLib prints HH:MM:SS.mmm) still has a UTC
+    reading next to it."""
+    moment = when or datetime.datetime.now(datetime.timezone.utc)
+    return f'[{moment:%Y-%m-%dT%H:%M:%S}.{moment.microsecond // 1000:03d}Z]'
+
+
+def tee_stream(source, terminal, log, lock, clock=utc_stamp):
+    """Copy one child stream, line by line: the terminal keeps the exact bytes,
+    the log gets the same line behind this launcher's UTC stamp. Returns the
+    number of lines copied."""
+    lines = 0
+    for line in iter(source.readline, b''):
+        terminal.write(line)
+        terminal.flush()
+        stamped = clock().encode('ascii') + b' ' + line.rstrip(b'\r\n') + b'\n'
+        with lock:
+            log.write(stamped)
+            log.flush()
+        lines += 1
+    return lines
+
+
+def launch_teed(command, env, cwd, log_path, *, stdout=None, stderr=None, clock=utc_stamp):
+    """Run the child with both streams teed into log_path (one fresh file per
+    launch) and return its exit code. A directory or file that cannot be written
+    costs the copy, never the launch."""
+    stdout = sys.stdout.buffer if stdout is None else stdout
+    stderr = sys.stderr.buffer if stderr is None else stderr
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        if log_path.exists():
+            log_path.unlink()  # a new file, so the snapshot sees this launch's creation time
+        log = open(log_path, 'wb')
+    except OSError as error:
+        print(f'Launcher output is not preserved ({error}); the terminal output is unchanged.', file=sys.stderr)
+        return subprocess.call(command, env=env, cwd=cwd)
+    with log:
+        child = subprocess.Popen(command, env=env, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        lock = threading.Lock()
+        pumps = [threading.Thread(target=tee_stream, args=(child.stdout, stdout, log, lock, clock), daemon=True),
+                 threading.Thread(target=tee_stream, args=(child.stderr, stderr, log, lock, clock), daemon=True)]
+        for pump in pumps:
+            pump.start()
+        code = child.wait()
+        for pump in pumps:
+            pump.join()
+        child.stdout.close()
+        child.stderr.close()
+    return code
 
 
 def digest(path):
@@ -637,12 +701,13 @@ def main():
                    '--workdir', str(game), str(game / 'X3AP.exe')]
         if args.direct:
             command += ['-noabout', '-skipintro', '-runinbg']
+        launcher_log = game / CAPTURE_SUBDIRECTORY / LAUNCHER_STDERR
         if args.dry_run:
-            print(json.dumps({'command': command, 'cwd': str(game),
+            print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
                               'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')}, **voice_env}}, indent=2))
             return
-        print('Launching X3AP through CrossOver Preview.', flush=True)
-        raise SystemExit(subprocess.call(command, env=env, cwd=game))
+        print(f'Launching X3AP through CrossOver Preview; terminal output is also teed to {launcher_log}.', flush=True)
+        raise SystemExit(launch_teed(command, env, game, launcher_log))
 
 
 if __name__ == '__main__':

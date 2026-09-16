@@ -78,12 +78,17 @@ struct PhaseText {
 void emit_window() {
     detail::Summary s;
     if(!window.close(s))return;
+    // One clock read per window: qpc= places the window (and the slow frames
+    // reported with it) on the session's clock_anchor line, so a wall-clock
+    // stamp from another component can be aligned with these frames
+    // (docs/verification/sampling-profiler.md, "Audio correlation").
+    const std::uint64_t emitted=qpc();
     PhaseText phases;
     for(unsigned i=0;i<detail::phase_count;++i)phases.add(" %s_p50_us=%llu %s_p95_us=%llu",detail::phase_names[i],s.phase_p50[i],detail::phase_names[i],s.phase_p95[i]);
     phases.add(" view_setup_p50_us=%llu view_setup_p95_us=%llu",s.view_setup_p50,s.view_setup_p95);
     phases.add(" view_submit_p50_us=%llu view_submit_p95_us=%llu",s.view_submit_p50,s.view_submit_p95);
-    log("frame_phases frame=%llu frames=%u incomplete=%u dt_p50_us=%llu dt_p95_us=%llu%s views_p50=%llu order_errors=%llu clock_errors=%llu unmatched=%llu dropped=%llu early=%u foreign=%u",
-        s.frame,s.frames,s.incomplete,s.dt_p50,s.dt_p95,phases.finish(),s.views_p50,tracker.order_errors,tracker.clock_errors,tracker.unmatched,tracker.dropped,
+    log("frame_phases qpc=%llu frame=%llu frames=%u incomplete=%u dt_p50_us=%llu dt_p95_us=%llu%s views_p50=%llu order_errors=%llu clock_errors=%llu unmatched=%llu dropped=%llu early=%u foreign=%u",
+        emitted,s.frame,s.frames,s.incomplete,s.dt_p50,s.dt_p95,phases.finish(),s.views_p50,tracker.order_errors,tracker.clock_errors,tracker.unmatched,tracker.dropped,
         early_hits.exchange(0,std::memory_order_relaxed),foreign_hits.exchange(0,std::memory_order_relaxed));
     tracker.order_errors=tracker.clock_errors=tracker.unmatched=tracker.dropped=0;
     for(unsigned i=0;i<s.slow_frames_count;++i){
