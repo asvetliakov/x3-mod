@@ -671,7 +671,7 @@ Reading it, with the run91 busy window as the yardstick:
   `--frame-timing-state-stamps`) is D3DX's cost outside the hooked setters.
   Below ~3 ms apply kills option B; at >= 10 ms it is the only lever short of
   drawing fewer objects.
-* `draw_p50_us - draw_p50_us` of `frame_timing` is the two geometry calls;
+* the pass `draw_p50_us` minus the `frame_timing` `draw_p50_us` is the two geometry calls;
   `gap_draw` (23.4 ms) should be about `apply - state` plus the residual plus
   the geometry calls, since those are the parts of the draw span outside
   hooked calls.
