@@ -65,11 +65,15 @@ negative cache (a cue whose graph build failed is not retried every frame;
 retried on sector change and after a fixed interval; default on after this
 run, `--media-cue-cache on|off`). Appearance unchanged.
 
-**Session A1** (the slow sector, trace only): run 33 session B's command
-(`--game-phases --loop-phases`) plus `--media-cue-trace --media-cue-cache off`.
+**Session A1** (the slow sector, trace only):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-phases --pass-phases --game-phases --loop-phases --media-cue-trace --media-cue-cache off --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
 Fly to the stalling sector, stay 30 s while it is slow, quit. The trace names
 the cue, its file and the result of every build attempt; the stall should
-still be there.
+still be there. Wine's stderr is now in the session directory.
 
 **Session A2** (the slow sector, cache on): the same command with
 `--media-cue-cache on` (the default once this run confirms it). Same sector,
