@@ -969,8 +969,8 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
     if (FAILED(render_state(D3DRS_ALPHATESTENABLE, &test)) || FAILED(render_state(D3DRS_SRGBWRITEENABLE, &srgb))
         || FAILED(render_state(D3DRS_COLORWRITEENABLE, &color))) return false;
     constexpr D3DRENDERSTATETYPE blend_states[4] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE};
-    for (unsigned i = 0; i < 4; ++i) {
-        if (shadow_.composition_blend_known[i]) factor[i] = shadow_.composition_blend[i];
+    for (unsigned i = 0; i < 4; ++i) { // blend_known: the shadow's flag (hooks on) or this draw's cache (hooks off)
+        if (blend_known(i)) factor[i] = shadow_.composition_blend[i];
         else if (FAILED(render_state(blend_states[i], &factor[i]))) return false;
     }
     if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3])) return false;
@@ -1030,7 +1030,7 @@ void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
         DWORD factor[2]{}; bool known[2]{};
         const D3DRENDERSTATETYPE states[2] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND};
         for (unsigned i = 0; i < 2; ++i) {
-            if (shadow_.composition_blend_known[i]) { factor[i] = shadow_.composition_blend[i]; known[i] = true; }
+            if (blend_known(i)) { factor[i] = shadow_.composition_blend[i]; known[i] = true; }
             else known[i] = SUCCEEDED(render_state(states[i], &factor[i]));
         }
         route.cutout_source_over = cutout::source_over(true, route.cutout_blend, known[0], factor[0], known[1], factor[1]);

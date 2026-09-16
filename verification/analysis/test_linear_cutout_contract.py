@@ -192,6 +192,7 @@ public:
     void release_mip_bias_retry_bound() noexcept;
     bool cutout_draw_state() noexcept;
     void mark_cutout_candidate(MotionRoute& route) noexcept;
+    bool blend_known(unsigned i) noexcept { return i < 4 && shadow_.composition_blend_known[i]; } // hooks on: the shadow's flag (hybrid unhook mirror)
     void render_state_failed(D3DRENDERSTATETYPE state) noexcept;
     void sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) noexcept;
     void before_set_sampler_state(DWORD stage,D3DSAMPLERSTATETYPE type) noexcept;

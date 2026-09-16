@@ -1126,7 +1126,11 @@ record (`state_hashes`, `motion_pixels`, colour, route decisions, checks,
 restorations); four of them run in `get` mode, the two lazy ones in `native`.
 Benchmark: production SetRenderState 13.2 ns and SetSamplerState 10.9 ns
 (native 11.3/11.0, hooked 79.7/69.8), the ten-read per-draw set 92.5 ns.
-Numbers, the A/B of the four drifted HDR cases and the two harness findings
-(the TAA sharpen/mip-bias pin, the pre-existing `seam-taa-fade-route-routed`
-failure on main): [state-call-fast-path.md](../architecture/state-call-fast-path.md),
+Review follow-up on the merged tree: eighteen production-DLL cases now run
+the production configuration (`X3M_STATE_SHADOW` unset) and the new
+`seam-taa-cutout-opaque-get` case proves the per-draw cache (426 queries, 66
+hits over twelve frames); all nineteen equal the committed record. Numbers,
+the A/B of the four drifted HDR cases and the harness findings (the TAA
+sharpen/mip-bias pin; the fade-route and HDR drift resolved on main by
+39d9863): [state-call-fast-path.md](../architecture/state-call-fast-path.md),
 "Hybrid unhook (step 5, implemented)".

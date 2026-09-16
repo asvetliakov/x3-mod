@@ -14,7 +14,7 @@
   "verification/probe/build/motion-output-seam/d3d9.dll": "dd7acc15c29073f6f552fe93a66755744540e2c4623ec0f8bd83b0b9bca36c6a",
   "build/d3d9.dll": "ee80fdf374a82a156259308a53f08a3fc90b8222df5ff2be0222bbee51b033a4"
  },
- "note": "Hybrid unhook (state-call-fast-path.md step 5): the six X3M_STATE_SHADOW=0 twins of the aborted full run (110 cases validated; the suite stopped at seam-taa-fade-route-routed, pre-existing at main, see the note) compared here as the runner would at the end of a full run, plus every validated case against the committed motion-output-summary.json.",
+ "note": "Hybrid unhook (state-call-fast-path.md step 5): the six X3M_STATE_SHADOW=0 twins of the aborted full run (110 cases validated; the suite stopped at seam-taa-fade-route-routed, a defaults drift resolved on main by 39d9863) compared here as the runner would at the end of a full run, plus every validated case against the committed motion-output-summary.json.",
  "twins": {
   "production-shadow-off": {
    "twin": "production-on",
@@ -132,6 +132,305 @@
     "color_hashes"
    ]
   },
-  "differing_explained": "each differing case equals the main checkout seam DLL (source 4adf3dd) frame for frame in a retained-binary A/B: drift since the committed 2026-09-15 record, not this change"
+  "differing_explained": "each differing case equalled the main checkout seam DLL (source 4adf3dd) frame for frame in a retained-binary A/B: defaults drift since the committed 2026-09-15 record (material fill 0, EV ceiling 1.5 from 3df7b9f), resolved on main by 39d9863 which pins those defaults on the affected cases; not this change"
+ },
+ "production_configuration_rerun": {
+  "generated": "2026-09-16T09:13:27",
+  "binaries": {
+   "verification/probe/build/motion_output_fixture.exe": "0163bfd65e2ec5b6212faea45dd8791a22dec597fbd03fcc90931a8046219506",
+   "verification/probe/build/motion-output-seam/d3d9.dll": "26f8e36646b6ff6459def239a7ee9356e6c53c06db36e658b5fe5a6f9786f361",
+   "build/d3d9.dll": "e371c83bbe3ef95507e01f6729f5a4c3ca54e08899049ec902c759e1a0f83c0d"
+  },
+  "note": "Review follow-up on the merged tree (main 39d9863 pins included): 18 production-DLL cases switched to the production configuration (X3M_STATE_SHADOW unset, rs_mode=get; the lazy cases keep the hooks with the shadow on) and the new seam-taa-cutout-opaque-get case (hooks off, per-draw: the candidate marker re-reads the gate states, rs_hits > 0 proves the per-draw cache). Two selected runs on the same retained binaries; each case validated by its own runner checks; no cross-case block (selected runs).",
+  "cases": {
+   "production-off": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": null,
+    "queries": null,
+    "hits": null,
+    "gets": null
+   },
+   "production-ownership-off": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": null,
+    "queries": null,
+    "hits": null,
+    "gets": null
+   },
+   "production-ownership-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-depth-off": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": null,
+    "queries": null,
+    "hits": null,
+    "gets": null
+   },
+   "production-depth-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-admission-off": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": null,
+    "queries": null,
+    "hits": null,
+    "gets": null
+   },
+   "production-admission-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-jitter-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-taa-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-ownership-taa-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-lazy-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "shadow"
+    ],
+    "queries": 205,
+    "hits": 183,
+    "gets": 148
+   },
+   "production-burst-perdraw": {
+    "equal_committed": [
+     "color_hashes",
+     "state_hashes",
+     "checks",
+     "restorations",
+     "route_decisions",
+     "readback_sha256"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 513,
+    "hits": 0,
+    "gets": 639
+   },
+   "production-burst-lazy": {
+    "equal_committed": [
+     "color_hashes",
+     "state_hashes",
+     "checks",
+     "restorations",
+     "route_decisions",
+     "readback_sha256"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "shadow"
+    ],
+    "queries": 485,
+    "hits": 485,
+    "gets": 126
+   },
+   "production-hdr-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-ownership-hdr-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-taa-hdr-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-taa-hdr-tonemap-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "production-taa-mipbias-on": {
+    "equal_committed": [
+     "color_hashes",
+     "motion_pixels",
+     "checks",
+     "restorations",
+     "route_decisions"
+    ],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 205,
+    "hits": 0,
+    "gets": 331
+   },
+   "seam-taa-cutout-opaque-get": {
+    "equal_committed": [],
+    "differing_from_committed": [],
+    "rs_mode": [
+     "get"
+    ],
+    "queries": 426,
+    "hits": 66,
+    "gets": 528
+   }
+  }
  }
 }

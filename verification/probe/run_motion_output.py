@@ -424,11 +424,12 @@ CUTOUT_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_EXPO
                   X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0', X3M_FIXTURE_CUTOUT_MIXED='0', X3M_FIXTURE_CUTOUT_ORDINARY='0')
 CASES += [case(f'seam-taa-cutout-{script}', 'cutout', jitter=True, taa=True, lazy=True, hdr=True, cutout=script,
                hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT=script)) for script in ('blended', 'opaque')]
-# The same blended script per-draw with the hooks off (`rs_mode=get`): the
-# candidate marker re-reads ALPHABLENDENABLE after the gate, so the per-draw
-# cache must serve a repeat read (rs_hits > 0) and the verdicts must not change.
-CASES += [case('seam-taa-cutout-blended-get', 'cutout', jitter=True, taa=True, lazy=False, hdr=True, cutout='blended', shadow=False,
-               hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT='blended'))]
+# The opaque script per-draw with the hooks off (`rs_mode=get`): the gate reads
+# ALPHATESTENABLE and the eight cutout states, then the candidate marker reads
+# them again, so the per-draw cache must serve repeat reads (rs_hits > 0) and
+# the coverage verdicts must not change.
+CASES += [case('seam-taa-cutout-opaque-get', 'cutout', jitter=True, taa=True, lazy=False, hdr=True, cutout='opaque', shadow=False,
+               hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT='opaque'))]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
 # docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
 # static frames over the eight jitter phases with the rotating camera (cut at
@@ -3310,7 +3311,7 @@ def main(argv=None):
             if cutout:
                 case = validate_cutout(name, cutout, text, trace)
                 if shadow is not True:
-                    # Hooks off: the candidate marker's repeat read of ALPHABLENDENABLE
+                    # Hooks off: the candidate marker's repeat reads (ALPHATESTENABLE, the cutout states)
                     # is served by the per-draw cache (rs_hits > 0), every other read
                     # is one native read, nothing is invalidated.
                     frame_lines = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('motion_output_frame ')}
