@@ -1,6 +1,7 @@
 #include "linear_material.h"
 #include "linear_distance_fade.h"
 #include "material_motion.h"
+#include "shader_population.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -1555,19 +1556,58 @@ LinearMaterialResult linear_distance_fade_pixel_variant(const std::uint32_t* ori
 } // namespace x3m::renderer
 
 namespace x3m::renderer {
+// The distance-fade pairs and their sampler masks. This is the single source:
+// linear_distance_fade_sampler_mask scans it and the shader-population
+// provider below enumerates the same rows, so neither form can admit a pair
+// the other does not.
+namespace {
+struct DistanceFadeRow { std::uint64_t vertex, pixel; std::uint32_t sampler_mask; };
+constexpr DistanceFadeRow distance_fade_rows[] = {
+    {0xb0602757fce6e870ull, 0x517540ae6d5e5410ull, 7u},
+    {0x0c223ad11bce02d5ull, 0x7a0c3388065bb08dull, 7u},
+    {0x233d17d26ce0c1fcull, 0x7a0c3388065bb08dull, 7u},
+    {0x167eb2d5629ab9d3ull, 0xd44db87778a43b61ull, 15u},
+    {0x330ceb9dd874ede2ull, 0x550c2a4d4d3ed70full, 15u},
+    {0x12b8a13f13fe8cfeull, 0x550c2a4d4d3ed70full, 15u},
+    {station_fade_vs, station_fade_ps, 0x1fu}};
+} // namespace
 std::uint32_t linear_distance_fade_sampler_mask(std::uint64_t vs, std::uint64_t ps) noexcept {
-    switch (vs) {
-    case 0xb0602757fce6e870ull: return ps == 0x517540ae6d5e5410ull ? 7u : 0u;
-    case 0x0c223ad11bce02d5ull:
-    case 0x233d17d26ce0c1fcull: return ps == 0x7a0c3388065bb08dull ? 7u : 0u;
-    case 0x167eb2d5629ab9d3ull: return ps == 0xd44db87778a43b61ull ? 15u : 0u;
-    case 0x330ceb9dd874ede2ull:
-    case 0x12b8a13f13fe8cfeull: return ps == 0x550c2a4d4d3ed70full ? 15u : 0u;
-    case station_fade_vs: return ps == station_fade_ps ? 0x1fu : 0u;
-    default: return 0;
-    }
+    for (const auto& row : distance_fade_rows)
+        if (row.vertex == vs && row.pixel == ps) return row.sampler_mask;
+    return 0;
 }
 bool linear_distance_fade_pair(std::uint64_t vs, std::uint64_t ps) noexcept {
     return linear_distance_fade_sampler_mask(vs,ps)!=0;
+}
+constexpr std::uint64_t xt_vertex_hashes[] = {xt_default_vs, xt_bump_vs};
+
+// Shader-population provider (src/renderer/shader_population.h): the material
+// originals and every table keyed on them that this unit owns, enumerated in
+// place. No hash literal is duplicated: every table is its arm's single source.
+const ShaderTable* linear_material_shader_tables(std::size_t& count) noexcept {
+    static constexpr ShaderTable tables[] = {
+        {"linear_material_vertex", sizeof vertices / sizeof vertices[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return vertices[i].hash; }},
+        {"linear_material_pixel", sizeof pixels / sizeof pixels[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return pixels[i].hash; }},
+        {"linear_material_pairs", (sizeof pairs / sizeof pairs[0]) * 2,
+         [](std::size_t i) noexcept -> std::uint64_t {
+             return (i & 1u) ? pairs[i / 2].pixel : pairs[i / 2].vertex;
+         }},
+        {"linear_material_palette", sizeof palette_programs / sizeof palette_programs[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return palette_programs[i].hash; }},
+        {"material_exposure_seed", sizeof exposure_seeds / sizeof exposure_seeds[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return exposure_seeds[i].hash; }},
+        {"linear_xt_pixel", sizeof xt_pixels / sizeof xt_pixels[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return xt_pixels[i].hash; }},
+        {"linear_xt_vertex", sizeof xt_vertex_hashes / sizeof xt_vertex_hashes[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return xt_vertex_hashes[i]; }},
+        {"linear_distance_fade_pairs", (sizeof distance_fade_rows / sizeof distance_fade_rows[0]) * 2,
+         [](std::size_t i) noexcept -> std::uint64_t {
+             return (i & 1u) ? distance_fade_rows[i / 2].pixel : distance_fade_rows[i / 2].vertex;
+         }},
+    };
+    count = sizeof tables / sizeof tables[0];
+    return tables;
 }
 } // namespace x3m::renderer

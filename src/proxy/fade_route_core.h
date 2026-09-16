@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 
 // Fade-band motion arm (docs/architecture/linear-distance-fade-region.md,
@@ -18,16 +19,24 @@ namespace x3m::fade_route {
 // inventory, verification/results/shader-sweep-inventory.json; the loop
 // programs carry c39/c41, the two fixed-light programs c18/c20).
 struct Registers { std::uint8_t alpha = 0, fog = 0; };
+// The single source for this arm: registers() scans this table and the
+// shader-population classifier (src/renderer/shader_population.h) enumerates
+// the same rows, so neither form can admit a program the other does not.
+struct VertexProgram { std::uint64_t hash; Registers registers; };
+inline constexpr VertexProgram vertex_programs[] = {
+    {0xb0602757fce6e870ull, {39, 41}}, {0x0c223ad11bce02d5ull, {39, 41}},
+    {0x167eb2d5629ab9d3ull, {39, 41}}, {0x330ceb9dd874ede2ull, {39, 41}},
+    {0x4944d81dfe531b37ull, {39, 41}},
+    {0x233d17d26ce0c1fcull, {18, 20}}, {0x12b8a13f13fe8cfeull, {18, 20}}};
+inline constexpr std::size_t vertex_program_count =
+    sizeof vertex_programs / sizeof vertex_programs[0];
+static_assert(vertex_program_count == 7, "seven distance-fade vertex programs");
 constexpr bool registers(std::uint64_t vs, Registers& out) noexcept {
-    switch (vs) {
-    case 0xb0602757fce6e870ull: case 0x0c223ad11bce02d5ull: case 0x167eb2d5629ab9d3ull:
-    case 0x330ceb9dd874ede2ull: case 0x4944d81dfe531b37ull:
-        out = Registers{39, 41}; return true;
-    case 0x233d17d26ce0c1fcull: case 0x12b8a13f13fe8cfeull:
-        out = Registers{18, 20}; return true;
-    default: return false;
-    }
+    for (const auto& row : vertex_programs)
+        if (row.hash == vs) { out = row.registers; return true; }
+    return false;
 }
+
 // The exact fade-band render state (the fade route's nine-state check plus
 // the separate-alpha switch off). Public D3D9 enum values: D3DZB_TRUE 1,
 // D3DBLEND_SRCALPHA 5, D3DBLEND_INVSRCALPHA 6, D3DBLENDOP_ADD 1.

@@ -1,4 +1,5 @@
 #include "linear_emission.h"
+#include "shader_population.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -305,5 +306,19 @@ LinearEmissionResult linear_emission_source_gain_variant(const Word* original,st
         output_words.swap(result);
         return LinearEmissionResult::Applied;
     } catch (...) { return LinearEmissionResult::AllocationFailure; }
+}
+// Shader-population provider (src/renderer/shader_population.h): the twenty
+// linear-emission pairs and their pixel originals, enumerated in place.
+const ShaderTable* linear_emission_shader_tables(std::size_t& count) noexcept {
+    static constexpr ShaderTable tables[] = {
+        {"linear_emission_pixel", sizeof profiles / sizeof profiles[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return profiles[i].pixel; }},
+        {"linear_emission_pairs", (sizeof pairs / sizeof pairs[0]) * 2,
+         [](std::size_t i) noexcept -> std::uint64_t {
+             return (i & 1u) ? pairs[i / 2].pixel : pairs[i / 2].vertex;
+         }},
+    };
+    count = sizeof tables / sizeof tables[0];
+    return tables;
 }
 } // namespace x3m::renderer

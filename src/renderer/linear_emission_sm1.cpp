@@ -1,4 +1,5 @@
 #include "linear_emission_sm1.h"
+#include "shader_population.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -233,5 +234,19 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std:
         if(!generated_shape(result,budget,outputs) || budget.arithmetic!=expected) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);return LinearEmissionResult::Applied;
     } catch(...) { return LinearEmissionResult::AllocationFailure; }
+}
+// Shader-population provider (src/renderer/shader_population.h): the six SM1
+// pixel originals and the nine bullet pairs, enumerated in place.
+const ShaderTable* linear_emission_sm1_shader_tables(std::size_t& count) noexcept {
+    static constexpr ShaderTable tables[] = {
+        {"linear_emission_sm1_pixel", sizeof profiles / sizeof profiles[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return profiles[i].hash; }},
+        {"linear_emission_sm1_pairs", (sizeof pairs / sizeof pairs[0]) * 2,
+         [](std::size_t i) noexcept -> std::uint64_t {
+             return (i & 1u) ? pairs[i / 2].pixel : pairs[i / 2].vertex;
+         }},
+    };
+    count = sizeof tables / sizeof tables[0];
+    return tables;
 }
 } // namespace x3m::renderer

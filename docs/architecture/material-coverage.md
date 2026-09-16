@@ -197,6 +197,14 @@ background, or a justified post/UI/depth exclusion. It does not mean copying all
 ownership gates; uncertain roles remain explicitly open until targeted resource
 linking or draw-state reverse engineering resolves them.
 
+Coverage is observable at runtime: with `--telemetry` on, every created
+program whose hash is in none of the proxy's 22 keyed tables (1810 entries) is
+reported once per session as `shader_unknown`, with a `shader_population
+known=/unknown=/overflow=` line at the 300-frame cadence when the counts move
+(schema and test in [mod-compatibility.md](mod-compatibility.md), "Making
+unknown programs visible"). A mod that replaces or adds compiled effects shows
+up as unknown programs instead of as an option that silently does nothing.
+
 Sources: [complete shader sweep](../reverse-engineering/shader-sweep.md),
 [family review](../reverse-engineering/shader-family-review.md),
 [motion pair inventory](../reverse-engineering/motion-output-profiles.md),
