@@ -426,3 +426,44 @@ is a startup-phase (frame=53) transient in both runs, not sector-related.
 `mip_bias_fail` count 284 (run98: 239) — present at similar order in both
 runs, pre-existing, not attributable to the cache change. No
 `shader_unknown`, `claim_fail`, `truncated`, or `chase_refus` lines.
+
+### Run 34 session A3 (run100/run101): freeze under v5
+
+Both sessions (run100 10632 lines, run101 8077 lines) end abruptly mid
+normal per-frame telemetry (last frame run100=1437, run101=1007) with no
+crash line and no extra `launcher-stderr.log` content beyond the 3-line
+msync banner — a hard hang of the main loop, not a decode exception.
+
+`media_cue` lines in both runs are only `caller=query|savegame|script`
+(ids 1,144,244,2004,8404,8509, `kind=none`), all completed. **No
+`caller=selector` or `caller=speech` line in either run.** This schema
+prints only on return; a hang before return of a comm-avatar cue leaves no
+line, so evidence cannot distinguish "hung before return" from "this path
+isn't reached via the five instrumented callers." No `media_cue_window`
+covers the freeze (last window run100 frame=1199, run101 frame=899; next
+due ~300 frames later, after the hang), so pending/stale/lost counters that
+would show a stuck entry were never re-emitted.
+
+`voice_dmo_fallback` shows 4 speech activations per run (`qi_hr=init_hr=0`),
+matching v4-era speech. No evidence v5's GStreamer path loaded: `loaded_module`
+lists only d3d9.dll/d3dx9_37.dll, no `GST_PLUGIN_PATH_1_0` in `proxy_options`,
+no `X3M_VOICE_DECODER*` key despite `--voice-decoder /tmp/x3-wma-plugin-v5`
+on the command line. Does not prove v5 caused the freeze; open gap.
+
+**Next launch should record:** an "entering" line at the graph constructor
+(`0x004cf460`) and each CLSID create/`Init` call before the call returns, so
+a hang shows as an unmatched entry; and confirmation the launcher applied
+`--voice-decoder` (echo resolved `GST_PLUGIN_PATH_1_0` into `proxy_options`).
+
+**Decision (orchestrator, 2026-09-17):** the v5 runtime is parked as a
+documented experiment. Under v5 the start-of-session GStreamer criticals are
+absent (the graphs now build), and the first comm dialog hangs the main loop
+inside a graph build or decode that the return-side trace cannot see; the
+comm avatar videos are MPEG program streams whose video branch would go
+through Wine's quartz video path, which is beyond this project's decode fix.
+The quiet-sector stall is solved by the negative cache (default on since
+run 99); the v5 audio decoders bring nothing the cache does not already cover
+(cue 2 is a video). Not pursued further unless the user wants avatar or
+sector videos; the recipe stays for that case, and the next trace build adds
+an entry-side `media_cue_enter` line so a hung build is attributable.
+

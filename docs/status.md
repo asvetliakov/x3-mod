@@ -218,8 +218,11 @@ Run 33 came back as `run95` (A), `run96` (B) and `run97` (C):
   ~390 ms graph build per frame (no MPEG video decoder in the v4 runtime or
   CrossOver's set). A2 (run99): the negative cache at `0x00498140` reduces it
   to one real attempt per 30 s and the sector runs at 7–9 ms; **the stall is
-  gone (user confirmed)** and the launcher default is now on. A3 (v5 decoder
-  runtime with `avdec_mpeg2video`) tests the decode fix so the cue plays.
+  gone (user confirmed)** and the launcher default is now on. A3 (run100/101):
+  the v5 decoder runtime (`avdec_mpeg2video`, `mpegpsdemux`) makes the graphs
+  build and the first comm dialog then hangs the main loop in Wine's video
+  path; **v5 is parked**, the cache is the fix, the recipe stays documented
+  ([ledger](verification/media-cues.md)).
 - **Cutout under the lane (run97):** ~90 cutout draws per frame routed through
   the tested-opaque arm with the lane share written, ~8 refused for no depth
   write; both cutout pairs write depth so lane = routed. Linear materials plus
