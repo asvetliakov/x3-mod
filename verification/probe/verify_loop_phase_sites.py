@@ -33,6 +33,9 @@ import verify_chase_aim_sites as common
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / 'src/proxy/loop_phase_sites.h'
 INSTALLED = ROOT / 'src/proxy/game_phase_sites.h'
+# The other stamp tables that may be installed alongside; their spans must be
+# disjoint from these six as well.
+OTHER_TABLES = (ROOT / 'src/proxy/frame_phase_sites.h', ROOT / 'src/proxy/pass_phase_sites.h')
 DEFAULT_EXE = common.DEFAULT_EXE
 
 # Per-sector update driver: push ebx at 0x0043a360, single ret at 0x0043a3d4,
@@ -300,6 +303,9 @@ def verify(exe=DEFAULT_EXE, source=SOURCE, installed=INSTALLED):
     data = Path(exe).read_bytes()
     text = Path(source).read_text() if source and Path(source).exists() else None
     claimed = installed_spans(Path(installed).read_text()) if Path(installed).exists() else []
+    for table in OTHER_TABLES:
+        if table.exists():
+            claimed += installed_spans(table.read_text())
     try:
         report = inspect(common.Image(data), decode(exe), text, data, claimed)
     except (ValueError, OSError, struct.error, subprocess.SubprocessError) as error:

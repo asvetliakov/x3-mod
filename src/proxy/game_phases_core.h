@@ -105,7 +105,7 @@ struct Core {
     void invalidate() noexcept {
         ++invalidated;
         phase_live=anchor_valid=false;used=depth=0;tape_overflow=false;
-        anchor={};request={};pump={};input_part=0;input_ticks=0;input_valid=false;
+        anchor={};request={};pump={};input_part=0;input_ticks=input_last=0;input_valid=false;
         for(auto& t:stack){t.raw=0;t.bridged=t.detail=false;t.endpoint={};}
     }
     bool valid(const Stamp& at) noexcept {

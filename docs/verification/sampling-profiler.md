@@ -807,8 +807,9 @@ slow sector):
 * `orphans`, `clock_errors`, `clock_failures`, `unmatched`, `early` and
   `foreign` should be zero in a healthy run.
 * cost: the CPU fixture measures the lean stub on the mirrored driver at
-  88.2 and 89.7 ns per dispatch under the X3 bottle (`LOOP PHASE BENCH`, best
-  of 7 x 20,000 loops of the 16-dispatch body hooked minus unhooked;
+  89.7 ns per dispatch under the X3 bottle (`LOOP PHASE BENCH`, best of
+  7 x 20,000 loops of the 16-dispatch body hooked minus unhooked; the tracked
+  record `verification/results/bottle-X3/game_phase_cpu.json`;
   `dispatch_cost_ns` is 91, the fixture refuses a constant more than 2x off).
   Implied cost per frame: 0.54 us for 1 active sector (6 dispatches), 108 us
   for 200 active sectors (1,200 dispatches), plus 0.18 us per skipped
@@ -824,8 +825,8 @@ slow sector):
   (exact bytes, whole instructions of the gap-free routine and region decode,
   the exact incoming edges, rel32 targets and their re-based arena copies,
   plain-copy contract, ESP contract, single-caller chain, raw
-  interior-encoding sweep, no data reference, disjoint from the 47 installed
-  sites, EXE identity); `X3M_FIXTURE_BOTTLE=X3 python3
+  interior-encoding sweep, no data reference, disjoint from the 47 game-phase,
+  10 frame-phase and 4 pass-phase sites, EXE identity); `X3M_FIXTURE_BOTTLE=X3 python3
   verification/probe/wine_lock.py python3
   verification/probe/run_game_phase_cpu.py` (the driver mirrored instruction
   for instruction with fixture callees and a four-container list, executed
@@ -842,7 +843,7 @@ slow sector):
 
 | Date | Change | Checks | Result |
 | --- | --- | --- | --- |
-| 2026-09-16 | Loop-phase group added (six sites, shared lean stub, `--loop-phases`) | `verify_loop_phase_sites.py` PASS, `source_present: true`; `run_game_phase_cpu.py` under X3: 8274 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=89.7 implied_frame_us_1_sector=0.54 implied_frame_us_200_sectors=108`, fixture arena 17980/32768 B; host `test_loop_phases` 9 tests OK (`loop_phases_host` 40 checks); DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_loop_phase_enter` walked (492 reachable functions) | not yet run in the game |
+| 2026-09-16 | Loop-phase group added (six sites, shared lean stub, `--loop-phases`) | `verify_loop_phase_sites.py` PASS, `source_present: true`; `run_game_phase_cpu.py` under X3: 8274 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=89.7 implied_frame_us_1_sector=0.54 implied_frame_us_200_sectors=108`, fixture arena 17980/32768 B; host `test_loop_phases` 9 tests OK (`loop_phases_host` 40 checks); DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_loop_phase_enter` walked (492 reachable functions). Both DLL figures were measured on the worktree build (31c0c79 plus the uncommitted change), and the fixture record has `fixture_sha256: null` because that run used `--no-build`; the install candidate re-measures no-x87 and the CPU fixture (with a build) on the committed source | not yet run in the game |
 
 ## Per-call cost of the hooked state setters under the X3 bottle (2026-09-16)
 

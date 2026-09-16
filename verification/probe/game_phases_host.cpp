@@ -113,6 +113,15 @@ int main(){
     check(core.phases[6].total==1600);
     check(core.tape[core.used-3].input_part==0&&core.tape[core.used-2].input_part==1&&core.tape[core.used-1].input_part==2);
     core.input_boundary(1,at(++time_now));check(core.order_errors==1&&!core.phase_live);
+    // The last completed Input phase (1500 us) was latched for the loop-phase
+    // join before that order error; the invalidation it caused clears the latch
+    // so no stale value survives until phase 6 completes again.
+    check(!core.input_valid&&core.input_last==0&&core.input_ticks==0);
+    reset();loop(0);time_now+=100;core.boundary(0,at(time_now));
+    for(unsigned i=1;i<=6;++i)core.boundary(i,at(time_now+=100));
+    check(!core.input_valid||core.input_last==100); // loop(0)'s 100 us Input phase, not the one in progress
+    core.boundary(7,at(time_now+=250));check(core.input_valid&&core.input_last==250&&core.input_ticks==0);
+    core.invalidate();check(!core.input_valid&&core.input_last==0);
 
     reset();loop(0);core.boundary(0,at(time_now+=100));
     for(unsigned i=1;i<=6;++i)core.boundary(i,at(time_now+=100));
