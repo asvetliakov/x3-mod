@@ -31,6 +31,10 @@ identifies a native command, script branch, resource, or codec.
 Phase 6 remains `[403b09,403f2a)`: it includes registry/sector/object work,
 input/control/script dispatch, an explicit input-wait branch, and optional save
 work. Calling the entire interval an Input-method duration would overclaim.
+Its first sub-interval `input_part=0` = `[403b09,403b3a)` — the one that carries
+run94's 390 ms slow-sector stall — is decoded call by call, with the six
+proposed `0x0043a360` stamp sites, in
+[main-loop-input-region.md](main-loop-input-region.md).
 
 ## Recovering actual compiled method names
 
