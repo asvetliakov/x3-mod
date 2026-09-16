@@ -1,31 +1,31 @@
 # `0x0045b720`: the per-sector post pass and its 380 ms stall
 
 2026-09-16. Static study of X3AP.exe, SHA-256 `fdbf3418d8f0a897…` (the bottle
-copy); nothing was launched. Call lists and string refs from Ghidra headless on
-`/tmp/x3-ghidra-research/X3Render` (`X3CallTree.java`, `X3DecompileFunctions.java`);
-every byte, span, edge and caller claim from `i686-w64-mingw32-objdump` on the
-file bytes, re-checked by `verification/probe/verify_post_phase_sites.py`
-(`PASS`). Raw decompiler output stayed local and untracked. Inferences marked.
+copy); nothing was launched. Call lists and string refs from Ghidra headless
+(`X3CallTree.java`, `X3DecompileFunctions.java`); every byte, span, edge and
+caller claim from `i686-w64-mingw32-objdump` on the file bytes, re-checked by
+`verification/probe/verify_post_phase_sites.py` (`PASS`). Raw decompiler output
+stayed local and untracked. Inferences marked.
 
 **Question.** Run 33 session B (run96, `docs/verification/sampling-profiler.md`)
 puts 99.8 % of a ~380 ms frame in the `sector_post` interval — the call at
 `0x0043a39a`/`0x0043a39b` to `0x0045b720` — on 70 of 70 slow frames, with one
 sector and one container walked; a normal frame spends well under a millisecond
-there. What inside `0x0045b720` grows to 380 ms?
+there. What grows to 380 ms?
 
 **Answer (leading hypothesis, one runtime count from proof).** `0x0045b720` is
-the **per-sector media-cue selector**. Its tail restarts the sector's
+the **per-sector media-cue selector**; its tail restarts the sector's
 soundtrack/video cue through the play helper `0x004f65f0` (`0x0045c607`)
 whenever the selected cue is *not currently registered as playing*.
 `0x00498140` links a media record only when the DirectShow graph constructor
 `0x004cf460` succeeds, and frees it and returns 0 when it fails
-([voice-startup-sequence.md](voice-startup-sequence.md) §3). A cue whose graph
-cannot be built is therefore retried **every frame, forever**, each retry a full
+([voice-startup-sequence.md](voice-startup-sequence.md) §3), so a cue whose
+graph cannot be built is retried **every frame, forever** — each retry a full
 file-probe + `CoCreateInstance` + graph-render attempt. Under CrossOver that
 lands in winegstreamer and fails there: the launcher's stderr shows
 `gst_element_set_state`/`gst_object_unref` criticals once or twice per slow
 frame during the stall, and exactly twice (start, exit) in a healthy session.
-Nothing else in the routine can reach 380 ms (§4).
+Nothing else in the routine can reach 380 ms (§3).
 
 ## 1. Shape of the routine
 
@@ -46,22 +46,19 @@ allocation-failure retry blocks of the 16-byte list-node helper).
 | Teardown | `0x0045c60f`–`0x0045c77d` | the four candidate lists | `_free` each node |
 
 `0x0044e600` (0x7a B, `EAX` = cursor or 0, `EDI` = sector) is a *per-sector*
-iterator, not a global chain: it walks the 32 lists at `[sector+0x50]` and
-returns the next object with bit 20 of `[obj+0x40]` set, resuming from the
-bucket index it reads out of the object's own class word `[obj+0x48]`. **The
-class word is the bucket index** — objects are bucketed by class in the sector's
-32-entry table. This corrects the [main-loop-input-region.md](
+iterator, not a global chain: it walks the 32 lists at `[sector+0x50]`, returns
+the next object with bit 20 of `[obj+0x40]` set, and resumes from the bucket
+index it reads out of the object's own class word `[obj+0x48]` — **the class
+word is the bucket index**. This corrects the [main-loop-input-region.md](
 main-loop-input-region.md) row that called it "a global object chain seeded by
-`0x0044e600`"; the pass is per-sector throughout.
+`0x0044e600`"; the pass is per-sector throughout. Class 1 is the
+sector/container (`[obj+0x54]`, the parent, is tested for class 1 before every
+distance call); 5/6/7 and `0x12` take walk 1's scene-node update; `0x14` is what
+the cue selector scores (**inference**: an object carrying a media surface or
+emitter — it owns `[[obj+0x50]+4]`, a cue key, and `[[obj+0x50]+8]`, the
+assigned cue slot written back here, plus flag `[obj+0x44] & 0x400000`).
 
-Classes here: 1 = the sector/container (`[obj+0x54]`, the parent, is tested for
-class 1 before every distance call); 5/6/7 and `0x12` take walk 1's
-visual/scene-node update; `0x14` is what the cue selector scores
-(**inference**: an object carrying a media surface or emitter — it owns
-`[[obj+0x50]+4]` = a cue key and `[[obj+0x50]+8]` = the assigned cue slot,
-written back here, plus flag `[obj+0x44] & 0x400000`).
-
-## 2. The media tables
+## 2. The media tables and the retry loop
 
 `DAT_006070b8` records of `0x30` bytes at `DAT_00606fb4`, loaded at
 `0x0043520b`–`0x00435374` from `addon\types\Videos` (strings `0x0055f8a4`,
@@ -82,24 +79,19 @@ written to manager-record `+0x30`. `0x004f65f0` looks the id up in
 [voice-startup-sequence.md](voice-startup-sequence.md) §3–4, which already lists
 `0x0045c607` as one of the three `0x004f65f0` call sites.
 
-## 3. The retry loop, exactly
+The retry: at the head (`0x0045b83e`–`0x0045b8b5`), if `[sector+0x174] == 0` and
+`[sector+0x178] >= 0`, the routine scans `*DAT_00606f44` for a record with
+`[rec+0x10] == Videos[[sector+0x178]].id` and sets an "already playing" flag
+only when that record also has `[rec+0x30] == 0x5a` and `[rec+0x2c] & 4`. At the
+tail (`0x0045c1e4`), a clear flag forces the restart flag to 1 and `0x004f65f0`
+is called; a set flag makes the restart flag `score[current] != max(score)`, the
+normal "a better cue now wins" path. `0x00498140` on failure (`0x004981e3`)
+frees the unlinked `0x40`-byte record and returns 0, so **nothing is added to
+`*DAT_00606f44`**, the head probe fails again next frame, and the whole attempt
+repeats. There is no negative cache anywhere on this path — the failure shape
+the voice note calls "the fast failure", only slow.
 
-Head, `0x0045b83e`–`0x0045b8b5`: if `[sector+0x174] == 0` and
-`[sector+0x178] >= 0`, scan `*DAT_00606f44` for a record with
-`[rec+0x10] == Videos[[sector+0x178]].id`; the "already playing" flag is set
-only if that record also has `[rec+0x30] == 0x5a` and `[rec+0x2c] & 4`.
-
-Tail, `0x0045c1e4`: if that flag is clear the restart flag is forced to 1, the
-selector re-runs and `0x004f65f0` is called; if it is set the restart flag is
-`score[current] != max(score)`, the normal "a better cue now wins" path.
-
-`0x00498140` on failure (`0x004981e3`) frees the unlinked `0x40`-byte record and
-returns 0, so **nothing is added to `*DAT_00606f44`**; next frame the head probe
-fails again and the whole attempt repeats. There is no negative cache anywhere
-on this path. It is the failure shape the voice note calls "the fast failure"
-(§6) — only there it was fast, and here the graph attempt is slow.
-
-## 4. Why the other candidates cannot reach 380 ms
+## 3. Why the other candidates cannot reach 380 ms
 
 Order-of-magnitude estimates for FEX on the X3 bottle, anchored on the measured
 89.7 ns per lean-stamp dispatch (`LOOP PHASE BENCH`).
@@ -114,12 +106,11 @@ Order-of-magnitude estimates for FEX on the X3 bottle, anchored on the measured
 * **`0x004510a0`** (objects with `[obj+0x44] & 0x100000`; `"SelfDestruct"`,
   `"DetailSwitch"`) loads a body (`0x00492970`) and **builds a collision tree**
   (`0x0047eb90`, the top loading hot spot); one object re-triggering its detail
-  switch per frame could cost tens of ms. **The surviving alternative**, in
-  walk 2.
+  switch per frame could cost tens of ms. **The surviving alternative**, in walk 2.
 * **Media restart** — one `0x004cf460` per frame: ≤4 catalogue-resolved file
-  probes (`0x004e6fa0` + `fopen`), ≤8 `CoCreateInstance`, filter connection and
-  `OpenFile`/`Render`. A failing winegstreamer build of 100–400 ms matches the
-  stderr cadence. **Consistent with 380 ms at a count of 1.**
+  probes, ≤8 `CoCreateInstance`, filter connection and `OpenFile`/`Render`. A
+  failing winegstreamer build of 100–400 ms matches the stderr cadence.
+  **Consistent with 380 ms at a count of 1.**
 
 The sector property behind the stall is therefore not object count but *which
 cue the sector's class-`0x14` objects select* — a sector whose winning `Videos`
@@ -128,7 +119,7 @@ missing `soundtrack\%05d.*`, or a filter the pipeline cannot instantiate). That
 fits "certain sectors that are not visually busy" and predicts the same stall on
 stock Windows when the file or filter is absent.
 
-## 5. Proposed `--post-phases` stamps (four, accumulate-only)
+## 4. Proposed `--post-phases` stamps (four, accumulate-only)
 
 Ledger format as [main-loop-input-region.md](main-loop-input-region.md) §4;
 `ret_pop` and `rel32_offset` are 0 for all four — no span carries a relative
@@ -142,13 +133,13 @@ control transfer, so every arena copy is byte-identical.
 | 3 | `post_media_end` | `0x0045c60f` | `8b 35 b8 70 60 00` | 6 | closes the restart, opens teardown |
 
 Three intervals (0→1, 1→2, 2→3) and four counts. **The decisive number is site
-2's count:** ≥1 per slow frame with interval 2→3 ≈ the whole frame confirms §3;
-interval 0→1 or 1→2 dominating instead points at `0x004510a0`. Site 0 duplicates
-the loop group's `sector_post` interval and can be dropped, leaving three. At
-148 B per site (six loop sites = 888 B, `docs/verification/sampling-profiler.md`)
-four sites need 592 B of the 632 B free with every group on: it fits with 40 B
-to spare, only as the last group added; three sites need 444 B. Rate is ~4
-dispatches per active sector per frame.
+2's count:** ≥1 per slow frame with interval 2→3 ≈ the whole frame confirms §2;
+0→1 or 1→2 dominating instead points at `0x004510a0`. Site 0 duplicates the loop
+group's `sector_post` interval and can be dropped, leaving three. At 148 B per
+site (six loop sites = 888 B, `docs/verification/sampling-profiler.md`) four
+sites need 592 B of the 632 B free with every group on — it fits with 40 B to
+spare, only as the last group added; three sites need 444 B. Rate ~4 dispatches
+per active sector per frame.
 
 ### Hook-site suitability (`verify_post_phase_sites.py` → `PASS`)
 
@@ -169,18 +160,18 @@ dispatches per active sector per frame.
   run in the arena tail at the game's exact ESP. Sites 1 and 3 do not touch ESP;
   site 2's start precedes any pending push, and at site 3 `add esp,0x20`
   (`0x0045c60c`) has already run on the taken path.
-* **Registers and flags.** All registers are preserved by the stub; incoming
-  flags are dead at all four sites, sites 1–3 write no flags, and site 0's `sub`
-  sets flags nothing reads before `0x0045b737 test esi,esi`. Unlike loop sites 3
-  and 5, no span leaves a flag consumer depending on the stub.
-* **Re-entrancy and conflicts.** One `e8` caller image-wide (`0x0043a39b`), no
+* **Registers and flags.** The stub preserves all registers; incoming flags are
+  dead at all four sites, sites 1–3 write none, and site 0's `sub` sets flags
+  nothing reads before `0x0045b737 test esi,esi`. Unlike loop sites 3 and 5, no
+  span leaves a flag consumer depending on the stub.
+* **Re-entrancy, conflicts.** One `e8` caller image-wide (`0x0043a39b`), no
   aligned dword reference to a span byte outside `.rsrc`, so no indirect entry;
   main-loop thread only, but `0x004510a0` dispatches scripts (`0x0049f4c0`), so
   a foreign-thread or re-entrant hit must still be counted and dropped. All four
   spans are disjoint from every installed `game_phase`, `frame_phase`,
   `pass_phase` and `loop_phase` span.
 
-## 6. Can a trampoline bound it?
+## 5. Can a trampoline bound it?
 
 1. **Negative-cache the failed media create — recommended, behaviour-neutral.**
    Hook `0x00498140` (entry `53 8b 5c 24 08` = `push ebx; mov ebx,[esp+8]`, a
@@ -189,16 +180,15 @@ dispatches per active sector per frame.
    the last N seconds, return 0 at once: the game's state after that early
    return is *identical* to its state after a real failure (record freed,
    nothing linked, caller takes the same branch), only 380 ms cheaper. No AI,
-   economy, physics or script input changes; the one observable difference is
-   that a cue which would have succeeded later is delayed, so use a backoff and
-   never a permanent block. It covers all five `0x00498140` call sites including
+   economy, physics or script input changes; the only observable difference is
+   that a cue which would have succeeded later is delayed, so use a backoff, not
+   a permanent block. It covers all five `0x00498140` call sites including
    speech — a benefit and a risk to weigh with the voice owner.
-2. **Make the graph succeed** (plugin/bottle side, not a trampoline). The
-   project already ships `src/proxy/voice_dmo_fallback.cpp` for the
-   `X WMSpeech Decoder DMO` leg of the same constructor; if the failing cue is
-   an MP3/MPEG leg, extending that coverage ends the retry loop by itself, with
-   no behaviour change and the cue actually playing. Needs the failing media id
-   from §5's stamps to scope.
+2. **Make the graph succeed** (plugin/bottle side, not a trampoline):
+   `src/proxy/voice_dmo_fallback.cpp` already covers the `X WMSpeech Decoder
+   DMO` leg of the same constructor; if the failing cue is an MP3/MPEG leg,
+   extending it ends the retry loop with no behaviour change at all and the cue
+   actually playing. Needs the failing media id from §4's stamps to scope.
 3. **Rate-limit the selection** (walk 2 + scoring every N frames): cheap, but
    **changes behaviour** — cue assignment to class-`0x14` objects
    (`[[obj+0x50]+8]`, flag `0x400000`) lags and the `0x004510a0` detail switches
@@ -208,17 +198,17 @@ dispatches per active sector per frame.
    `[[obj+0x50]+0x1c0…0x1dc]` from the game clock every frame, and other passes
    read those; skipping it changes simulation state.
 
-## 7. What this does not establish
+## 6. What this does not establish
 
-* No runtime measurement: §3 is a code-path argument plus the launcher's
-  GStreamer stderr. Site 2's count turns it into a fact.
+* No runtime measurement: §2 is a code-path argument plus the launcher's
+  GStreamer stderr; site 2's count turns it into a fact. `0x004510a0`'s trigger
+  rate (§3's alternative) was not decompiled.
 * Which media id the stalling sector selects, and whether it resolves under
-  `addon\mov` or `soundtrack\`, is unknown — `Videos`/`VideoLists` are runtime
-  data, not EXE bytes. `0x004510a0`'s trigger rate was not decompiled.
+  `addon\mov` or `soundtrack\`, is unknown: `Videos`/`VideoLists` are runtime
+  data, not EXE bytes.
 * "Media surface / emitter" for class `0x14` and record fields `+0x18`…`+0x2c`
-  as playback parameters are inferences from layout and call shape.
-* The `0x00498140` hook span of §6.1 was read from the file bytes but has no
-  incoming-edge, ESP or conflict qualification yet.
+  as playback parameters are inferences from layout and call shape; the
+  `0x00498140` hook span of §5.1 has no edge/ESP/conflict qualification yet.
 
 ## Reproduce
 

@@ -22,6 +22,13 @@ as the verifier's `INCOMING` table already says); the loop back edges
 outside every span. Not yet run in the game; §5's container-count question is
 what `sectors_p50`/`containers_p50` will answer.
 
+**Follow-up (2026-09-16).** Run 33 session B (run96) put 99.8 % of a ~380 ms
+frame in the `sector_post` interval of §4, i.e. `0x0045b720`. That routine, its
+loops, the media-cue tables it reads, the every-frame retry that produces the
+stall, a four-site `--post-phases` stamp proposal and the bounding options are
+in [sector-post-pass.md](sector-post-pass.md); it also corrects §2's "global
+object chain" wording for `0x0044e600`.
+
 **Question.** Run 32 session C (run94, `docs/verification/sampling-profiler.md`)
 puts 95.7 % of a sustained 390 ms frame in `game_phase_input`
 (`[0x00403b09, 0x00403f2a)`), and inside it `input_part=0` alone carries p50
@@ -84,7 +91,7 @@ one stack argument, are callee-pop (`ret 4`: no `add esp` exists anywhere in
 | --- | --- | --- | ---: | --- | --- |
 | A | `0x0045d250` | `0xe61` | 43 | clears `[obj+0x40] &= 0xff9fcfff` / `[obj+0x44] &= 0xfff7ffbc` on all 32 buckets, then collision detect/respond on bucket 0: `0x0045cab0` (swept query, `0x4a7`) → `0x0045e130` (response, `0xd75`); script notifications through `0x0049f4c0` with `"CanWarp"`, `"CanLand"`, `"NotifyPlanetCollision"`, `"MakeDamage"`, `"KilledBy"`, `"CollisionWarn"` | objects in the sector; collision pairs |
 | A | `0x00452ad0` | **`0x6afe`** | 401 direct, 0 indirect | the per-object simulation body over all 32 buckets; clamps its dt from `*0x00606f34+0x714` to 1000 ms; strings `"NotifySelfDestruct"`, `"KilledBy"`, `"NotifyDockingAbort"`; hottest callees `0x00450980` ×34, `0x0042fb20` ×27, `0x0049c8b0` ×22, `0x0044ccc0` ×16 | objects in the sector |
-| A | `0x0045b720` | `0x1057` | 49 | walks a **global** object chain seeded by `0x0044e600`, filtered on `[obj+0x40] & 0x08000000`, bit 20 and class `5/6/7/0x12`; `0x0044b750` (`0xed0`), 12× `0x005112c4`, 7× `free`, 3× `memset` | global object count |
+| A | `0x0045b720` | `0x1060` | 49 | **the per-sector media-cue selector** — walks the sector's own 32 class buckets twice (the `0x0044e600` cursor is per-sector, not global: [sector-post-pass.md](sector-post-pass.md)), then picks and restarts the sector's soundtrack/video cue through `0x004f65f0` at `0x0045c607`. Owner of 99.8 % of the run96 slow frame; the leading cause is a DirectShow graph that fails to build and is retried every frame | the cue the sector's class-`0x14` objects select, not object count |
 | B | `0x004596e0` | `0x1f47` | 90 | timed tick with its own accumulator `[sector+0x16c]`/`[+0x170]` and a 1000 ms clamp from `*0x00606f34+0x718`; 14× `0x0043ad20` (`0x387`), ware/slot accessors `0x00450cf0`/`0x00450d60`/`0x00450dd0`, 4× matrix `0x004f17f0` | objects and their per-object tick rate |
 | B | `0x004526b0` | `0x411` | 13 | attach/transform pass over the 32 buckets: `0x004f17f0` matrix concat, `0x004f0640`, `0x004f0da0`; 2× `0x0049f4c0` with `"MakeBreak"` | objects in the sector |
 
