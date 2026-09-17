@@ -71,6 +71,7 @@
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/hdr_writeback_program.h"
 #include "../../src/renderer/sun_shadow_apply_pass.h"
+#include "../../src/renderer/quad_vertex_program.h" // quad_pixel_centre_m20/m21: the apply latch of the sunapply scripts
 #include "../../src/renderer/shadow_replay_projection.h"
 #include "../../src/renderer/shadow_replay_pass.h"
 #include <algorithm>

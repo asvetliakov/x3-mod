@@ -426,7 +426,11 @@ CASES += [case('sun-shadow-apply-wide', 'sunapply', enabled='0', hdr_env=SUN_APP
 # motion_output_sun_apply_cascades_inc.h: case letter per frame; the far
 # cascade yields to the budget on the odd frames of (d) and (e).
 SUN_APPLY_CASCADES_ENV = dict(X3M_FIXTURE_SUNAPPLY_CASCADES='1')
-SUN_CASCADE_SCRIPT = 'aabbccddeeef' + 'g' * 8 + 'h'  # g: the box at eight sub-texel phases (the half-texel witness); h: the sun at finite distance (a point light, per-cascade suns)
+# g: the box at eight sub-texel phases (the half-texel witness); h: the sun at finite distance (a point light, per-cascade
+# suns); i: the half-pixel receiver witness (case a at scale 170, 30 degrees, jittered, eight phases): RT2 is synthesised
+# under the D3D9 raster and the analytic shadow is evaluated at the true pixel centres, so the quad's receiver must carry
+# the pixel-centre term of its latch (quad_pixel_centre_m20/m21); X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1 drops it and fails.
+SUN_CASCADE_SCRIPT = 'aabbccddeeef' + 'g' * 8 + 'h' + 'i' * 8
 SUN_CASCADE_FAR_SKIPPED, SUN_CASCADE_RESET_FRAME, SUN_CASCADE_IDENTITY = (7, 9), 9, (8, 10)
 CASES += [case('sun-shadow-apply-cascades', 'sunapply', enabled='0', hdr_env=SUN_APPLY_CASCADES_ENV)]
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
@@ -810,8 +814,8 @@ def sources():
         'exposure_reference.py', 'agx_reference.py', 'analyze_motion_readback.py', 'summarize_capture.py')]
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
-        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_shadow_retention_inc.h',
-        'motion_output_shadow_pool_inc.h')]
+        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_sun_apply_cascades_inc.h',
+        'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h')]
     paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
 
@@ -925,7 +929,11 @@ def validate_sun_apply(name, text, directory, env):
         comparison = sun_apply.compare_frame(sun_apply.unpack_rgba16f(before, width, height), sun_apply.unpack_rgba16f(after, width, height),
                                              d, s, sun_apply.unpack_map(sun_map, size), params, scene if f['map_mode'] == '2' else None, strict_box=not wide)
         comparison.update(map_mode=int(f['map_mode']), elevation=float(f['elevation']), jitter_index=int(f['jitter_index']), exponent=float(f['exponent']),
-                          us=float(times[frame]['us']), receivers=int(f['receivers']), share_free=int(f['share_free']), sentinels=int(f['sentinels']))
+                          us=float(times[frame]['us']), receivers=int(f['receivers']), share_free=int(f['share_free']), sentinels=int(f['sentinels']),
+                          raster_m20=scene['raster_m20'], raster_m21=scene['raster_m21'], legacy_latch=scene['legacy_latch'])
+        # The latch is the raster's jitter plus the pixel-centre term (quad_pixel_centre_m20/m21) unless the legacy witness dropped it.
+        centre = sun_apply.pixel_centre_terms(width, height)
+        assert abs(params['m20'] - scene['raster_m20'] - (0.0 if scene['legacy_latch'] else centre[0])) < 1e-7 and abs(params['m21'] - scene['raster_m21'] - (0.0 if scene['legacy_latch'] else centre[1])) < 1e-7, (name, frame, params, scene)
         assert comparison['ok'], (name, frame, comparison)
         assert comparison['compared'] > 0 and comparison['ambiguous'] < comparison['valid'] // 10, (name, frame, comparison)
         if frame == SUN_APPLY_FAR_FRAME:
@@ -942,13 +950,13 @@ def validate_sun_apply(name, text, directory, env):
         comparisons[frame] = comparison
     assert images[SUN_APPLY_RESET_FRAME][1] == images[SUN_APPLY_RESET_FRAME - 1][1] and images[SUN_APPLY_RESET_FRAME][0] == images[SUN_APPLY_RESET_FRAME - 1][0], f'{name}: the frame after the Reset differs'
     us = sorted(c['us'] for c in comparisons.values())
-    validator_checks = 7 + 5 * SUN_APPLY_FRAMES  # device line, configuration, frame sets, timing, Reset identity, far identity, zero-map law; per frame: sizes, bias, twin, ambiguity bound, scene predicates
+    validator_checks = 7 + 6 * SUN_APPLY_FRAMES  # device line, configuration, frame sets, timing, Reset identity, far identity, zero-map law; per frame: sizes, bias, latch law, twin, ambiguity bound, scene predicates
     edge_texels = {'texel_world': float(config['texel_world']) if wide else 2.0 * 5.0 / 256, 'within_one_texel_fraction': 0.0}
     mismatches = sum(c['analytic']['mismatch'] for c in comparisons.values() if 'analytic' in c)
     if mismatches:
         edge_texels['within_one_texel_fraction'] = sum(c['analytic']['within_one_texel'] for c in comparisons.values() if 'analytic' in c) / mismatches
     return {'checks': checks + validator_checks, 'fixture_checks': checks, 'validator_checks': validator_checks, 'frames': SUN_APPLY_FRAMES, 'width': width, 'height': height, 'map_size': size,
-            'wide': wide, 'config': {k: config[k] for k in ('extent', 'depth_half', 'map_size', 'scale', 'bias_units', 'clamp_texels', 'texel_world', 'bias_constant', 'bias_max')}, 'edge_texels': edge_texels,
+            'legacy_latch': any(c['legacy_latch'] for c in comparisons.values()), 'wide': wide, 'config': {k: config[k] for k in ('extent', 'depth_half', 'map_size', 'scale', 'bias_units', 'clamp_texels', 'texel_world', 'bias_constant', 'bias_max')}, 'edge_texels': edge_texels,
             'program_slots': int(device[0]['slots']), 'frames_detail': comparisons,
             'worst_codes': max(c['worst_codes'] for c in comparisons.values()), 'ambiguous_max': max(c['ambiguous'] for c in comparisons.values()),
             'edge_mismatch': {k: sum(c['analytic'][k] for c in comparisons.values() if 'analytic' in c)
@@ -1012,8 +1020,16 @@ def validate_sun_apply_cascades(name, text, directory, env):
         maps = [sun_apply.unpack_map(read(f'map{c}.r32f', map_frames[c]), size) if params['cascades'][c]['valid'] else None for c in range(count)]
         d, s = sun_apply.unpack_rt2(rt2, width, height)
         comparison = sun_apply.compare_frame_cascades(sun_apply.unpack_rgba16f(before, width, height), sun_apply.unpack_rgba16f(after, width, height), d, s, maps, params, scene, extents)
+        # The F8 self-check on the fixture's own frame: the receiver-minus-map residual of own-surface receivers per
+        # cascade, in world units against the cascade's depth range (depth_light + depth_behind<c>).
+        ranges = [float(config['depth_light']) + float(config['depth_behind'].split(',')[c]) for c in range(count)]
+        own_surface = sun_apply.own_surface_residual(sun_apply.expected_factor_cascades(d, s, maps, params), maps, params, ranges)
         comparison.update(case=letter, scale=float(f['scale']), elevation=float(f['elevation']), us=float(t['us']), replay_us=float(t['replay_us']), issues=int(t['issues']),
-                          far_replayed=f['far_replayed'] == '1', far_frame=int(f['far_frame']), records=records)
+                          far_replayed=f['far_replayed'] == '1', far_frame=int(f['far_frame']), records=records, own_surface=own_surface,
+                          raster_m20=scene['raster_m20'], raster_m21=scene['raster_m21'], legacy_latch=scene['legacy_latch'])
+        # The latch is the raster's jitter plus the pixel-centre term (quad_pixel_centre_m20/m21) unless the legacy witness dropped it.
+        centre = sun_apply.pixel_centre_terms(width, height)
+        assert abs(params['m20'] - scene['raster_m20'] - (0.0 if scene['legacy_latch'] else centre[0])) < 1e-7 and abs(params['m21'] - scene['raster_m21'] - (0.0 if scene['legacy_latch'] else centre[1])) < 1e-7, (name, frame, params, scene)
         assert comparison['ok'], (name, frame, comparison)
         # Ambiguity: up to 14 % here against the apply script's 10 % bound, because this scene shows the plane out to its horizon,
         # where the per-pixel view-depth step sits at the plane-fit threshold (the twin's planar_step band); measured, not an error class.
@@ -1032,8 +1048,11 @@ def validate_sun_apply_cascades(name, text, directory, env):
         else:
             assert comparison['edge_beyond_one'] == 0 and comparison['interior_wrong'] == 0, (name, frame, comparison)
         per = comparison['cascades']
-        if letter in 'ag':   # the far plane: the box's shadow is cascade 1's alone (g: the same scene at eight sub-texel phases)
+        if letter in 'agi':  # the far plane: the box's shadow is cascade 1's alone (g, i: the same scene at eight sub-texel phases)
             assert per['1']['shadowed_analytic'] > 100 and per['0']['shadowed_analytic'] == 0 and per['2']['shadowed_analytic'] == 0, (name, frame, per)
+        if letter == 'i':    # the half-pixel receiver: cascade 1's own-surface residual median is within a quarter texel (the legacy latch: over it)
+            own = own_surface[1]
+            assert own['own_surface'] >= 1000 and abs(own['median']) < .25 * per['1']['texel_world'], (name, frame, own, per['1']['texel_world'])
         elif letter == 'b':  # the seam: the shadow runs through cascade 0's band into cascade 1
             assert per['0']['band_shadowed'] > 20 and per['0']['shadowed_analytic'] > 50 and per['1']['shadowed_analytic'] > 50, (name, frame, per)
         elif letter in 'cf':  # the sun column: the second caster's shadow exists on cascade 0 and is dark
@@ -1061,14 +1080,23 @@ def validate_sun_apply_cascades(name, text, directory, env):
     assert sum(comparisons[k]['shift_fit']['edge_pixels'] for k in phase_frames) >= 4000, (name, [comparisons[k]['shift_fit']['edge_pixels'] for k in phase_frames])
     assert max(abs(v) for v in shift_fit['shift']) <= .25, (name, shift_fit)
     assert max(abs(v) for v in shift_fit_legacy['shift']) >= .5 and shift_fit_legacy['mismatch_at_zero'] > 1.2 * shift_fit['mismatch_at_zero'], (name, shift_fit_legacy, shift_fit)
+    # The half-pixel receiver witness (case i, eight phases, the sloped receiver 800-1,250 units out): the same fit against
+    # the analytic shadow at the D3D9 pixel centres is within a quarter texel; the pre-fix latch (the receiver z / (W m00)
+    # beside the sampled surface) moves the edge by half a texel or more (X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1 witnesses it).
+    receiver_frames = [k for k, letter in enumerate(SUN_CASCADE_SCRIPT) if letter == 'i']
+    receiver_fit = sun_apply.sum_shift_fits([comparisons[k]['shift_fit'] for k in receiver_frames])
+    assert sum(comparisons[k]['shift_fit']['edge_pixels'] for k in receiver_frames) >= 2000, (name, [comparisons[k]['shift_fit']['edge_pixels'] for k in receiver_frames])
+    assert max(abs(v) for v in receiver_fit['shift']) <= .25, (name, receiver_fit)
+    legacy_latch = any(c['legacy_latch'] for c in comparisons.values())
     for c in comparisons.values():  # the per-frame grids stay out of the record
         c['shift_fit'].pop('grid'); c['shift_fit_legacy_rule'].pop('grid')
     first, second = SUN_CASCADE_IDENTITY
     assert images[first] == images[second], f'{name}: the replay after the Reset frames differs from the frame before it'
     assert frames[7]['camera'] != frames[6]['camera'] and frames[7]['rows2'] != frames[6]['rows2'], (name, 'the retained far map is sampled through the moved camera')
     us, replay_us = sorted(c['us'] for c in comparisons.values()), sorted(c['replay_us'] for c in comparisons.values())
-    validator_checks = 8 + 9 * len(SUN_CASCADE_SCRIPT)
+    validator_checks = 10 + 10 * len(SUN_CASCADE_SCRIPT)
     return {'checks': checks + validator_checks, 'fixture_checks': checks, 'validator_checks': validator_checks, 'frames': len(SUN_CASCADE_SCRIPT), 'map_size': size, 'cascades': count,
+            'legacy_latch': legacy_latch,
             'config': {k: config[k] for k in ('extents', 'depth_light', 'depth_behind', 'caps', 'bias_units', 'clamp_texels', 'margin', 'band')},
             'program_slots': int(device[0]['slots']), 'cascade_program_slots': int(device[0]['cascade_slots']), 'max_texture': device[0]['max_texture'], 'ps30_slots': int(device[0]['ps30_slots']),
             'depth_format': int(replay_device[0]['depth_format']), 'depth_size': int(replay_device[0]['depth_size']),
@@ -1076,6 +1104,7 @@ def validate_sun_apply_cascades(name, text, directory, env):
                                 'cascade_mask_4_with_size': float(bench[0]['sized_mask_ns']), 'static_classification': float(bench[0]['class_ns'])},
             'select_bench_us': {'records_4096_cap_2048': float(bench[0]['select_4096_half_us']), 'records_4096_cap_4095': float(bench[0]['select_4096_one_us'])},
             'half_texel': {'shift_fit': shift_fit, 'shift_fit_legacy_rule': shift_fit_legacy, 'frames': phase_frames},
+            'half_pixel_receiver': {'shift_fit': receiver_fit, 'frames': receiver_frames, 'own_surface_median_c1': [comparisons[k]['own_surface'][1]['median'] for k in receiver_frames]},
             'point_light': {'frame': SUN_CASCADE_SCRIPT.index('h'), 'regions': comparisons[SUN_CASCADE_SCRIPT.index('h')]['regions']},
             'frames_detail': comparisons, 'worst_codes': max(c['worst_codes'] for c in comparisons.values()), 'ambiguous_max': max(c['ambiguous'] for c in comparisons.values()),
             'edge_mismatch': {'mismatch': sum(v['edge_mismatch'] for c in comparisons.values() for v in c['cascades'].values()), 'beyond_one_texel': sum(c['edge_beyond_one'] for c in comparisons.values())},
