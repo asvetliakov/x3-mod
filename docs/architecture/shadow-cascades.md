@@ -216,3 +216,23 @@ hash. Unverified natively like the rest; add the row to
 - Whether a held C2 centre plus a caster-change hash is worth a per-frame hash of ≤ 1024
   records (≈ 10–20 µs): only if run 38 shows C2 dominating at rest.
 - Native Windows behaviour: untestable here; source is documented-API only.
+
+## Amendments from the survey (2026-09-17)
+
+[space-shadow-survey.md](space-shadow-survey.md) places the plan inside the
+industry envelope (Elite's six cascades to 5.3 km with ratios 2–5; CryEngine's
+cached far cascades) and adds three points, adopted:
+
+1. **Far-cascade distance fade**: the last cascade fades to lit over its outer
+   band (one `saturate` per pixel) instead of a hard cut; every shipped CSM does.
+2. **Near band decision after run 38**: either a per-object own-ship map
+   (EVE, Freelancer hook, Elite's cockpit frustum; lets C0 drop to 1024² with a
+   better hull texel) or a ps_3_0 screen-space contact-shadow march on RT2
+   composed as `min(f, f_ss)` in the sun-share lane (NMS, Star Citizen). Not
+   both; the run-38 own-ship capture decides which artefact dominates.
+3. **Memory**: four 4096² maps plus depth (256 MiB+) exceed every shipped
+   budget found (Elite Ultra ≈ 24 MiB); the configurable sizes stay, the
+   fallback is C0 at 1024² and D16 where the run shows no visible loss.
+   PCSS is rejected (the 0.53° sun disc gives sub-texel penumbrae on hulls);
+   3×3 rotated PCF stays.
+
