@@ -75,5 +75,70 @@ class ExpectedFactor(unittest.TestCase):
         self.assertAlmostEqual(float(t[1]), 5.0)  # the plane beside the box
 
 
+class RunInputs(unittest.TestCase):
+    """The capture-frame `sun_shadow_apply_params` line (motion_output.cpp
+    run_sun_shadow_apply) and the reconstruction from the older lines feed the
+    same params dict; the report on real-shaped inputs is finite."""
+    ROWS = '-0.00333094015,0.0012562772,-0.00182387815,0.233906448,0.00183137401,0.00341484277,-0.000992501737,0.127228171,0.000304036046,-0.000405657483,-0.000834669627,0.606838644'
+    LINE = ('sun_shadow_apply_params device=1 frame=8979 m00=0.800000012 m11=1.33333302 jitter_x=-0.250000 jitter_y=0.166667 m20=-0.000390625'
+            ' m21=-0.000434028637 m22=1.00000298 m32=-6.00001812 texel=0.0009765625 bias=0.00100000005 bias_max=0.00999999978 planar_step=0.0500000007'
+            ' exponent=1.000000 jitter_index=1 map=1024 width=1280 height=768 rows=' + ROWS)
+
+    def test_params_line(self):
+        params, extra = apply.parse_apply_params(apply.line_fields(self.LINE))
+        self.assertEqual(set(params), {'m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'bias_constant', 'bias_max', 'planar_step', 'rows', 'jitter_index'})
+        self.assertAlmostEqual(params['m20'], -2 * .25 / 1280); self.assertAlmostEqual(params['m21'], -2 * .166667 / 768, places=7)
+        self.assertEqual((params['jitter_index'], params['bias_constant'], len(params['rows'])), (1, .00100000005, 12))
+        self.assertEqual((extra['width'], extra['height'], extra['map'], extra['jitter_px']), (1280, 768, 1024, (-.25, .166667)))
+        with self.assertRaises(ValueError):
+            apply.parse_apply_params(apply.line_fields(self.LINE.replace('texel=0.0009765625', 'texel=0.001')))
+        with self.assertRaises(ValueError):
+            apply.parse_apply_params(apply.line_fields(self.LINE.rsplit(',', 1)[0]))
+
+    def test_reconstruction_matches_params_line(self):
+        camera = apply.line_fields('camera_state device=1 frame=8979 p00=0.8 p11=1.333333 p20=0 p21=0')
+        frame = apply.line_fields('motion_output_frame device=1 frame=8979 jitter=1 jitter_index=1 jitter_x=-0.250000 jitter_y=0.166667')
+        basis = apply.line_fields('shadow_replay_map_basis device=1 frame=8979 size=1024 valid=1 extent=250 depth_half=512 rows=' + self.ROWS)
+        expected, _ = apply.parse_apply_params(apply.line_fields(self.LINE))
+        got = apply.reconstruct_params(camera, frame, basis, 1280, 768)
+        for key in expected:
+            if key == 'rows':
+                self.assertEqual(got[key], expected[key])
+            else:
+                self.assertAlmostEqual(got[key], expected[key], places=6, msg=key)
+
+    def test_frame_params_prefers_the_line(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:
+            log = Path(folder) / 'session.log'
+            log.write_text('camera_state device=1 frame=8979 p00=0.8 p11=1.333333 p20=0 p21=0\n'
+                           'motion_output_frame device=1 frame=8979 jitter=1 jitter_index=1 jitter_x=-0.250000 jitter_y=0.166667\n'
+                           'motion_output_depth_readback device=1 frame=8979 file=depth_1_8979.rg32f width=1280 height=768\n'
+                           'shadow_replay_map_basis device=1 frame=8979 size=1024 valid=1 rows=' + self.ROWS + '\n')
+            params, extra, source = apply.frame_params(log, 8979)
+            self.assertEqual((source, extra['map'], extra['width']), ('reconstructed', 1024, 1280))
+            with self.assertRaises(ValueError):
+                apply.frame_params(log, 8980)
+            log.write_text(log.read_text() + self.LINE + '\n')
+            params2, extra2, source2 = apply.frame_params(log, 8979)
+            self.assertEqual(source2, 'params_line')
+            self.assertAlmostEqual(params2['m21'], params['m21'], places=7)
+
+    def test_frame_report(self):
+        d, s = receivers()
+        luminance = np.full(d.shape, .4)
+        report = apply.frame_report(d, s, np.zeros((64, 64)), PARAMS, luminance, region=(0, 8, 0, 8), columns=8, lines=8)
+        self.assertEqual(report['valid'], 49)
+        self.assertEqual(report['f_below_0_9'], 1.0)
+        self.assertAlmostEqual(report['factor_mean'], .5)
+        self.assertEqual(len(report['mask']), 8)
+        self.assertTrue(all(c in ' #' for row in report['mask'] for c in row))
+        self.assertEqual(report['darkening'].get('control'), None)  # no lit pixel to pair with
+        far = apply.frame_report(d, s, np.ones((64, 64)), PARAMS, luminance)
+        self.assertEqual((far['f_below_0_9'], far['factor_mean']), (0.0, 1.0))
+        self.assertEqual(far['darkening'], {})  # every receiver of the flat synthetic scene is ambiguous: no strict pair
+
+
 if __name__ == '__main__':
     unittest.main()
