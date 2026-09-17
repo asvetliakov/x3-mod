@@ -247,7 +247,13 @@ CASES += [case('seam-ownership-taa-camera-candidates-on', 'seam', 'ownership', j
 # 0 to the fixture's unit-size geometry (X3M_FIXTURE_SHADOW_EXTENT, half-extent
 # 8 units centred on the camera) and a 256-texel map keeps the CPU projection
 # small. The caster-count cases time the transaction at the production size.
-SHADOW_REPLAY_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_FIXTURE_SHADOW_EXTENT='8')
+# X3M_SHADOW_REPLAY_CAP = casters: the script's two bounds objects lie beyond
+# the origin rule (L across the box, drawn first; F outside it, drawn last), so
+# frame 0 (no extents yet) admits the casters alone and later frames L and the
+# casters, of which the cap drops the last submitted caster (capped=1).
+SHADOW_REPLAY_BOUNDS_OBJECTS = 2
+SHADOW_REPLAY_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_FIXTURE_SHADOW_EXTENT='8',
+                         X3M_SHADOW_REPLAY_CAP='2')
 SHADOW_REPLAY_OFF_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='0', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_FIXTURE_SHADOW_EXTENT='8')
 SHADOW_REPLAY_TWINS = {'seam-ownership-shadow-replay-on': 'seam-ownership-shadow-replay-off',
                        'seam-ownership-taa-shadow-replay-on': 'seam-ownership-taa-shadow-replay-off'}
@@ -259,7 +265,7 @@ CASES += [case('seam-ownership-shadow-replay-on', 'shadowreplay', 'ownership', c
           case('seam-ownership-taa-shadow-replay-on', 'shadowreplay', 'ownership', jitter=True, taa=True, camera=True, hdr_env=SHADOW_REPLAY_ENV),
           case('seam-ownership-taa-shadow-replay-off', 'shadowreplay', 'ownership', jitter=True, taa=True, camera=True, hdr_env=SHADOW_REPLAY_OFF_ENV)]
 CASES += [case(f'seam-ownership-shadow-replay-casters-{n}', 'shadowreplay', 'ownership', camera=True,
-               hdr_env=dict(SHADOW_REPLAY_ENV, X3M_SHADOW_REPLAY_SIZE='1024', X3M_FIXTURE_SHADOW_CASTERS=str(n))) for n in SHADOW_REPLAY_CASTERS]
+               hdr_env=dict(SHADOW_REPLAY_ENV, X3M_SHADOW_REPLAY_SIZE='1024', X3M_FIXTURE_SHADOW_CASTERS=str(n), X3M_SHADOW_REPLAY_CAP=str(n))) for n in SHADOW_REPLAY_CASTERS]
 # Sun-shadow apply quad (legacy-sun-application.md, section 3.3): the
 # production SunShadowApplyPass linked into the fixture and driven directly
 # (no proxy wiring; the DLL is passive): synthetic G32R32F RT2 and R32F map of
@@ -764,10 +770,16 @@ def validate_sun_apply(name, text, directory):
 
 def validate_shadow_replay(name, text, trace, directory, env, taa):
     """The depth replay script: the DLL's per-frame lines against the fixture's
-    script (every frame replays its casters except the READONLY-Lock frame,
-    which is refused as a lease failure and leaves the map unchanged; the Reset
-    recreates the map), the CPU projection of the fixture's geometry against
-    every replayed map within one depth code, and the transaction time."""
+    script (frame 0 replays the casters, every later frame L and the casters
+    but the last submitted one, which the cap drops; the READONLY-Lock frame is
+    refused as a lease failure and leaves the map unchanged; the Reset recreates
+    the map), the caster-candidate lines (casters by bounds: both bounds
+    objects lie beyond the origin rule, so frame 0 admits the casters alone by
+    the origin rule and reads every extent at its scene end; from frame 1 on L
+    and the casters are admitted by bounds, F is not, one caster is capped and
+    origin < bounds), the CPU projection of the
+    fixture's geometry against every replayed map within one depth code, and
+    the transaction time."""
     assert 'RESULT PASS' in text, f'{name}: fixture failed'
     result_line = next(l for l in text.splitlines() if l.startswith('RESULT PASS'))
     checks = int(fields(result_line)['checks'])
@@ -794,30 +806,65 @@ def validate_shadow_replay(name, text, trace, directory, env, taa):
     device = [fields(l) for l in tl if l.startswith('shadow_replay_depth_device ')]
     assert len(device) == 1 and device[0]['attached'] == '1' and device[0]['readable'] == '1' and device[0]['map_format'] == '114' \
         and device[0]['depth_format'] in ('77', '80') and device[0]['size'] == str(size), (name, device)  # R32F, D24X8 or D16
-    # One line per frame: every frame replays every caster except the Lock
-    # frame (lease refused, nothing replayed); the target is created for the
-    # first replay and again after the Reset.
+    # One line per frame: frame 0 replays the casters (the origin rule, no
+    # extent yet), every later frame L and the casters but the last submitted
+    # (capped), except the Lock frame (lease refused, nothing replayed); the
+    # target is created for the first replay and again after the Reset. The
+    # record count is the cap = casters on every frame.
+    replayed_draws = casters
+    assert int(env['X3M_SHADOW_REPLAY_CAP']) == replayed_draws, (name, env.get('X3M_SHADOW_REPLAY_CAP'))
     assert [r['frame'] for r in depth_rows] == list(range(SHADOW_REPLAY_FRAMES)), (name, [r['frame'] for r in depth_rows])
     refused_frames = {SHADOW_REPLAY_LOCK_FRAME, SHADOW_REPLAY_NO_SUN_FRAME, SHADOW_REPLAY_MULTISTREAM_FRAME}
     for r in depth_rows:
-        assert r['draws'] == casters, (name, r)
+        assert r['draws'] == replayed_draws, (name, r)
         if r['frame'] == SHADOW_REPLAY_LOCK_FRAME:
             assert (r['replayed'], r['skipped_lease'], r['skipped_state'], r['skipped_caps']) == (0, 1, 0, 0), (name, r)
         elif r['frame'] == SHADOW_REPLAY_NO_SUN_FRAME:      # a frame-level refusal counts every record
-            assert (r['replayed'], r['skipped_lease'], r['skipped_state'], r['skipped_caps']) == (0, 0, casters, 0), (name, r)
+            assert (r['replayed'], r['skipped_lease'], r['skipped_state'], r['skipped_caps']) == (0, 0, replayed_draws, 0), (name, r)
         elif r['frame'] == SHADOW_REPLAY_MULTISTREAM_FRAME:  # a record-level refusal counts the offending record
             assert (r['replayed'], r['skipped_lease'], r['skipped_state'], r['skipped_caps']) == (0, 0, 1, 0), (name, r)
         else:
-            assert (r['replayed'], r['skipped_lease'], r['skipped_state'], r['skipped_caps']) == (casters, 0, 0, 0) and r['us'] > 0, (name, r)
+            assert (r['replayed'], r['skipped_lease'], r['skipped_state'], r['skipped_caps']) == (replayed_draws, 0, 0, 0) and r['us'] > 0, (name, r)
+    # Casters by bounds (shadow-replay-gates.md): the counter line of every
+    # frame. routed = L + casters + F, all z-writing; the origin rule admits
+    # the casters alone (L's origin at 256 units, F's at 300). Frame 0 knows
+    # no extent: the casters fall back to the origin rule, nothing is capped,
+    # and the scene end reads every extent (casters + 2). From frame 1 on L
+    # and the casters are admitted by bounds (origin < bounds: the run-36
+    # station direction), F (225 units away) is not, the cap drops the last
+    # caster and nothing is read again (the Reset keeps the cache: managed
+    # buffers survive it).
+    candidate_rows, _ = candidates_analysis.parse_text(trace)
+    by_frame = {r['frame']: r for r in candidate_rows}
+    routed = casters + SHADOW_REPLAY_BOUNDS_OBJECTS
+    assert sorted(by_frame) == list(range(SHADOW_REPLAY_FRAMES)), (name, sorted(by_frame))
+    for frame, r in sorted(by_frame.items()):
+        assert r['routed'] == r['zwrite'] == routed and r['origin'] == casters, (name, frame, r)
+        if frame == 0:
+            assert (r['bounds'], r['fallback'], r['slice0'], r['managed'], r['leased'], r['capped'], r['reads']) == (0, casters, casters, casters, casters, 0, routed), (name, frame, r)
+        else:
+            assert (r['bounds'], r['fallback'], r['slice0'], r['managed'], r['leased'], r['capped'], r['reads']) == (casters + 1, 0, casters + 1, casters + 1, casters, 1, 0), (name, frame, r)
+            assert r['origin'] < r['bounds'], (name, frame, r)
+        assert r['quiet'] == replayed_draws - (1 if frame == SHADOW_REPLAY_LOCK_FRAME else 0), (name, frame, r)
+    case['candidates'] = {'frames': len(by_frame), 'routed': routed, 'replayed_draws': replayed_draws,
+                          'frame0': {k: by_frame[0][k] for k in ('bounds', 'origin', 'fallback', 'capped', 'reads')},
+                          'steady': {k: by_frame[1][k] for k in ('bounds', 'origin', 'fallback', 'capped', 'reads')}}
+    case['checks'] += 3 * SHADOW_REPLAY_FRAMES
     assert [(r['reason'], r['detail'], int(r['frame'])) for r in refused] == [('lease', 'bookends', SHADOW_REPLAY_LOCK_FRAME), ('state', 'no_sun', SHADOW_REPLAY_NO_SUN_FRAME),
                                                                              ('state', 'multistream', SHADOW_REPLAY_MULTISTREAM_FRAME)], (name, refused)
     assert [(t['frame'], t['allocations'], t['size'], t['map_format']) for t in targets] == [(0, 1, size, 114), (SHADOW_REPLAY_RESET_FRAME, 2, size, 114)], (name, targets)
     case['us'] = depth_replay.us_summary(depth_rows)
-    case['us']['per_draw_median'] = case['us']['median'] / casters
+    case['us']['per_draw_median'] = case['us']['median'] / replayed_draws
     case['refusals'] = refused; case['targets'] = targets
-    # The map against the CPU projection of the same geometry through the
-    # same chain (frames that replayed); the Lock frame's map equals the
-    # previous frame's byte for byte.
+    # The map against the CPU projection of the replayed geometry through the
+    # same chain (frames that replayed): frame 0 the casters, later frames L
+    # and the casters but the last submitted (index casters - 1, capped); F
+    # never (and it rasterizes nothing on the map anyway). The Lock frame's
+    # map equals the previous frame's byte for byte.
+    def replayed(frame, draws_of_frame):
+        if frame == 0:
+            return [d for d in draws_of_frame if d['shape'] in ('A', 'B')]
+        return [d for d in draws_of_frame if d['shape'] == 'L' or (d['shape'] in ('A', 'B') and d['caster'] != casters - 1)]
     cameras = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SHADOW_CAMERA ')}
     suns = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SHADOW_SUN ')}
     draws = {}
@@ -844,7 +891,7 @@ def validate_shadow_replay(name, text, trace, directory, env, taa):
         c = cameras[frame]
         camera = {'m00': float(c['m00']), 'm11': float(c['m11']), 'r': [float(v) for v in c['r'].split(',')], 't': [float(v) for v in c['t'].split(',')]}
         actual = struct.unpack(f'<{size * size}f', data)
-        comparison = depth_replay.compare_map(actual, draws[frame], camera, basis, size)
+        comparison = depth_replay.compare_map(actual, replayed(frame, draws[frame]), camera, basis, size)
         assert comparison['ok'] and comparison['covered_cpu'] > 100, (name, frame, comparison)
         comparisons[frame] = comparison
         previous = data

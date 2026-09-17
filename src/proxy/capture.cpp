@@ -2122,7 +2122,9 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
       const bool enabled=(asked||depth_asked)&&motion_output_requested&&wrapped;
       if(asked||depth_asked)log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
-      hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr);
+      unsigned cap=shadow_replay::record_capacity; // X3M_SHADOW_REPLAY_CAP (1..512): managed candidates recorded per frame
+      { wchar_t text[16]{}; if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CAP",text,16)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=1&&v<=shadow_replay::record_capacity)cap=unsigned(v); } }
+      hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr,cap);
       if(depth_asked){
           unsigned size=1024; wchar_t text[16]{};
           if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_SIZE",text,16)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=64&&v<=4096)size=unsigned(v); }

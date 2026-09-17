@@ -4,17 +4,37 @@
 // default 2) drawn every frame at fixed rows under a fixed world sun
 // direction uploaded as LightDir_Dir0 (PS c4); the DLL replays the quiet
 // candidates into its private map at the scene end (the bloom copy, with or
-// without the resolve). Frame 2 issues a READONLY Lock/Unlock of caster 1
-// between its draw and the scene end (lease proof fails: the frame's replay is
+// without the resolve). Frame 2 issues a READONLY Lock/Unlock of a caster
+// between its draw and the scene end (caster 0 since 2026-09-17: the cap drops the last caster; lease proof fails: the frame's replay is
 // refused and the map keeps frame 1's content); a Reset precedes frame 4 (the
 // map is recreated); frame 5 writes no LightDir_Dir0 (refused no_sun); frame 7
-// draws caster 0 with a two-stream declaration (refused multistream). After
-// every Present the map is read back through the
+// draws caster 0 with a two-stream declaration (refused multistream). Two
+// bounds objects join the casters every frame (casters by bounds): L, drawn
+// first, a large triangle whose origin lies 256 units to the camera's right
+// (outside the origin rule's 250 units, the run-36 station case) but whose
+// vertices cross the 8-unit box, and F, drawn last, a small triangle whose
+// origin lies 300 units away and whose vertices lie 225 units away (outside
+// both rules). Neither shows on the presented frame: L lies beyond the far
+// plane (clip z / w > 1, its tilt .004 keeps its plane from crossing the
+// casters' planes inside their triangles), F behind the camera (w < 0). The
+// DLL learns every extent at frame 0's scene end; frame 0 admits the casters
+// alone (origin rule), later frames L and the casters by bounds, and the
+// per-frame cap X3M_SHADOW_REPLAY_CAP = casters drops the last caster on
+// those frames (capped=1). After every Present the map is read back through the
 // seam export and written beside the executable (shadow_<frame>.r32f) with the
 // projection basis, for the runner's CPU projection of the same geometry. The
 // presented frames are written as in every mode for the byte-identical twins.
 namespace {
 constexpr float shadow_tri_a[3][2] = {{-1, 1}, {3, 1}, {-1, -3}}, shadow_tri_b[3][2] = {{-.9f, .9f}, {-.3f, .9f}, {-.9f, .3f}};
+constexpr float shadow_tri_l[3][2] = {{-214, 8}, {-214, -8}, {-195, 0}}, shadow_tri_f[3][2] = {{-60, 4}, {-60, -4}, {-56, 0}};
+constexpr float shadow_t_l = 204.8f, shadow_p_l = .004f; // L: origin at view x = 204.8 / m00 (0.8) = 256 units; vertices at view x -11.5..12.25, w .14..0.22
+constexpr float shadow_t_f = 240.f;                    // F: origin at 300 units; vertices at view x 225..230, w -6.5 (behind the camera)
+// Coverage on the presented frame: the triangle test at the raster sample's
+// object point. L's points have z / w > 1 (the oracles' depth test rejects
+// them as the far plane does); F's inverse-mapped points lie behind the
+// camera (w = 1 + .125 x <= 0), where the GPU clips.
+bool covers_l(double ox, double oy) { return ox >= -214 && oy <= 8 - 8 * (ox + 214) / 19 && oy >= -8 + 8 * (ox + 214) / 19; }
+bool covers_f(double ox, double oy) { return 1 + .125 * ox > 0 && ox >= -60 && oy <= 4 - (ox + 60) && oy >= -4 + (ox + 60); }
 constexpr float shadow_sun[4] = {0.30151134f, 0.90453403f, -0.30151134f, 0.f}; // (1, 3, -1) / sqrt(11): unit, object -> light, world space
 constexpr unsigned shadow_frames = 8, shadow_lock_frame = 2, shadow_reset_before = 4, shadow_no_sun_frame = 5, shadow_multistream_frame = 7;
 struct ShadowCaster { Object object{""}; float t = 0, p = 0, zo = 0; Com<IDirect3DVertexBuffer9> buffer; };
@@ -76,10 +96,13 @@ void run_shadow_replay_integration(Fixture& f) {
     const auto readback = symbol<ShadowReadbackFn>(f.runtime, "x3m_shadow_replay_fixture_readback", false);
     std::printf("SHADOW_MODE depth=%u casters=%u taa=%u export=%u\n", depth_on, casters, f.taa, readback != nullptr);
     // Casters: A and B, then copies of their shapes in their own managed
-    // buffers (distinct route keys) with their own scope identities.
-    std::vector<ShadowCaster> extra(casters > 2 ? casters - 2 : 0);
-    for (unsigned i = 2; i < casters; ++i) {
-        auto& c = extra[i - 2]; const bool b = i & 1; const auto& tri = b ? shadow_tri_b : shadow_tri_a;
+    // buffers (distinct route keys) with their own scope identities; then the
+    // two bounds objects L (index casters) and F (index casters + 1).
+    std::vector<ShadowCaster> extra(casters);
+    for (unsigned i = 2; i < casters + 2; ++i) {
+        auto& c = extra[i - 2]; const bool b = i & 1;
+        const bool large = i == casters, distant = i == casters + 1; // (`far` is a Win16 macro)
+        const auto& tri = large ? shadow_tri_l : distant ? shadow_tri_f : b ? shadow_tri_b : shadow_tri_a;
         api(f.d->CreateVertexBuffer(24 * 3, 0, 0, D3DPOOL_MANAGED, &c.buffer.p, nullptr), "CreateVertexBuffer caster");
         void* dst = nullptr; api(c.buffer->Lock(0, 0, &dst, 0), "Lock caster");
         for (UINT v = 0; v < 3; ++v) {
@@ -87,7 +110,8 @@ void run_shadow_replay_integration(Fixture& f) {
             std::memcpy(static_cast<char*>(dst) + v * 24, data, 24);
         }
         api(c.buffer->Unlock(), "Unlock caster");
-        c.object.name = b ? "B" : "A"; c.object.vb = c.buffer.p; c.object.covers = b ? covers_b : covers_a;
+        c.object.name = large ? "L" : distant ? "F" : b ? "B" : "A"; c.object.vb = c.buffer.p;
+        c.object.covers = large ? covers_l : distant ? covers_f : b ? covers_b : covers_a;
         c.object.scope = b ? f.b.scope : f.a.scope;
         c.object.scope.node_serial = 11 + i; c.object.scope.node = 0x1000 + 0x100 * i; c.object.scope.mesh = 0x4000 + 0x100 * i;
         c.object.scope.node_handle = 7 + i; c.object.scope.model = 0x11 + i;
@@ -99,7 +123,12 @@ void run_shadow_replay_integration(Fixture& f) {
     auto rows_of = [&](unsigned i, float& t, float& p, float& zo) {
         const bool b = i & 1; const float k = float(i / 2);
         t = (b ? -.05f : .8f) - .1f * k; p = .125f; zo = .05f * float(i);
+        if (i == casters) { t = shadow_t_l; p = shadow_p_l; } // L: origin beyond the origin rule, geometry across the box
+        else if (i == casters + 1) t = shadow_t_f;            // F: origin and geometry outside both rules
     };
+    // Submission order: L, the casters, F (the cap drops the last submitted).
+    auto order_of = [&](unsigned k) { return k == 0 ? casters : k <= casters ? k - 1 : casters + 1; };
+    const char* shape_of[] = {"A", "B"};
     // A declaration that also reads stream 1 (TEXCOORD1, unused by the
     // reviewed program): the route keys the draw; the replay must refuse it.
     Com<IDirect3DVertexDeclaration9> two_streams;
@@ -124,9 +153,11 @@ void run_shadow_replay_integration(Fixture& f) {
                     cam.r[0], cam.r[1], cam.r[2], cam.r[3], cam.r[4], cam.r[5], cam.r[6], cam.r[7], cam.r[8], cam.t[0], cam.t[1], cam.t[2]);
         std::printf("SHADOW_SUN frame=%llu direction=%.9g,%.9g,%.9g\n", f.frame, shadow_sun[0], shadow_sun[1], shadow_sun[2]);
         const bool matched = f.frames_since_reset > 0;
-        for (unsigned i = 0; i < casters; ++i) {
+        for (unsigned k = 0; k < casters + 2; ++k) {
+            const unsigned i = order_of(k);
             float t, p, zo; rows_of(i, t, p, zo);
-            std::printf("SHADOW_DRAW frame=%llu caster=%u shape=%s t=%.9g p=%.9g zo=%.9g\n", f.frame, i, (i & 1) ? "B" : "A", t, p, zo);
+            const char* shape = i == casters ? "L" : i == casters + 1 ? "F" : shape_of[i & 1];
+            std::printf("SHADOW_DRAW frame=%llu caster=%u shape=%s t=%.9g p=%.9g zo=%.9g\n", f.frame, i, shape, t, p, zo);
             const bool other_declaration = multistream && i == 0;
             if (other_declaration) {
                 api(f.d->SetStreamSource(1, f.vb_a.p, 0, 24), "SetStreamSource stream 1");
@@ -145,10 +176,10 @@ void run_shadow_replay_integration(Fixture& f) {
             // end moves the attempt serial (no revision, so the route's
             // history is unaffected); the counter refuses the record.
             void* data = nullptr;
-            api(f.vb_b->Lock(0, 0, &data, D3DLOCK_READONLY), "READONLY Lock of caster 1 after its draw");
-            api(f.vb_b->Unlock(), "Unlock of caster 1");
+            api(f.vb_a->Lock(0, 0, &data, D3DLOCK_READONLY), "READONLY Lock of caster 0 after its draw");
+            api(f.vb_a->Unlock(), "Unlock of caster 0");
         }
-        std::printf("SHADOW_EXPECT frame=%llu casters=%u lease_refused=%u after_reset=%u no_sun=%u multistream=%u\n", f.frame, casters, lock, frame == shadow_reset_before, no_sun, multistream);
+        std::printf("SHADOW_EXPECT frame=%llu casters=%u bounds_objects=2 lease_refused=%u after_reset=%u no_sun=%u multistream=%u\n", f.frame, casters, lock, frame == shadow_reset_before, no_sun, multistream);
         const unsigned long long ended = f.frame;
         shadow_frame_end(f);
         shadow_readback(f, readback, ended);

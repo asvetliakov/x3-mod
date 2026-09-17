@@ -206,25 +206,30 @@ Grammar, once per frame at the scene end (engine hook or bloom copy; a frame wit
 scene end logs nothing):
 
 ```
-shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u leased=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u
+shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u bounds=%u origin=%u fallback=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u leased=%u capped=%u reads=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u
 shadow_replay_lock_witness device=%llu frame=%llu allocation=%llu flags=%08x offset=%u size=%u thread=%u serial_delta=%llu revision_delta=%llu
 ```
 
 Field definitions (all per frame, from the route's own draw record; identities
-`routed ≥ zwrite ≥ slice0 = managed + dynamic + default_pool + excluded + unknown + shadow_mismatch`,
-`leased + overflow ≤ managed`, `quiet + stale ≤ leased`, every other bookend bucket
+`routed ≥ zwrite ≥ slice0 = bounds + fallback = managed + dynamic + default_pool + excluded + unknown + shadow_mismatch`,
+`origin ≤ zwrite`, `leased + capped + overflow ≤ managed`, `quiet + stale ≤ leased`, every other bookend bucket
 `≤ leased − stale`). The frame line is emitted at most once per frame (a frame serial
 guards the hook and bloom-copy sites, so a second qualifying copy never emits a second
 all-zero line):
 
 - `routed`: routed draws whose native draw succeeded. `zwrite`: those not on the fade-band
   arm (gate 4 requires `ZENABLE=1 ZWRITEENABLE=1` for every other routed draw).
-- `slice0`: z-writing routed draws whose rows' origin distance
-  (`fade_route::origin_distance`, the fade route's existing helper on the frame's
-  `CameraState` latch) lies in the own-ship slice 6–250 units. **Assumption:** the note's
-  §2 casters are defined by the fade-route AABB meeting cascade 0; the counter uses the
-  origin distance because the AABB is only known for fade-table meshes and the origin
-  test costs nothing. A frame without a valid camera latch counts `slice0=0` (W1).
+- `slice0`: z-writing routed draws admitted as cascade-0 casters, `bounds + fallback`.
+  `bounds`: draws whose vertex extent (the object-space AABB of the draw's vertex range,
+  "Casters by bounds" below) meets the map box (centre, half-extent 250 in the sun basis,
+  ±512 along the sun) under the draw's own rows and the frame's camera latch, with the
+  rows' origin distance (`fade_route::origin_distance`) at least the near bound 6 (W1: no
+  camera latch, no candidate). `fallback`: draws admitted by the origin rule (6–250
+  units) because no extent is known for their range yet (their read is queued for this
+  scene end) or the frame has no sun basis. `origin`: the z-writing draws the origin rule
+  alone would admit, a statistic. Before 2026-09-17 `slice0` was the origin rule: run 36
+  showed a station deck under the ship never replayed because the station origin was
+  2.5 km away (`docs/verification/directional-shadows.md`).
 - `excluded`: slice-0 draws on the alpha-test (cutout) arm (W3). `managed`: both buffers
   (VB, and IB when indexed) `D3DPOOL_MANAGED` without `D3DUSAGE_DYNAMIC`; `dynamic`: any
   `D3DUSAGE_DYNAMIC` buffer; `default_pool`: any other non-managed pool; `unknown`: pool
@@ -235,8 +240,14 @@ all-zero line):
   that setter hook (`CpuCallBoundary`, LastError kept), cached per allocation id in a
   128-entry direct-mapped table, so a repeated binding costs a table probe.
 - `leased`: managed candidates whose buffer-lock views were `known` at the draw and were
-  recorded (64 records per frame; `overflow` counts managed candidates beyond them).
-  `managed − leased − overflow` is the count with an unknown bookend.
+  recorded (512 records of storage; the per-frame cap `X3M_SHADOW_REPLAY_CAP`, 1..512,
+  default 512, is the replay budget: `capped` counts managed candidates beyond it, and
+  `overflow` those beyond the storage, always 0 while the cap is at most the storage).
+  Drop order is submission order: the first `cap` managed candidates of the frame are
+  recorded and the later ones dropped, whatever their bounds, so a frame over the cap
+  may pop casters at the cap as the submission order changes.
+  `managed − leased − capped − overflow` is the count with an unknown bookend. `reads`:
+  vertex-extent reads performed at this scene end.
 - At the scene end each record's views are read again: `serial_changed` (attempt serial
   moved on any buffer), `readonly_after` (moved with only READONLY attempts),
   `writable_after` (writable attempts moved), `pending` (a Lock still open),
@@ -254,11 +265,46 @@ all-zero line):
   moved between draw and scene end), with the last Lock's flags/offset/size/thread.
 
 Cost: off, nothing runs (every site tests one bool). On: per routed draw one
-`origin_distance` evaluation and integer classification; per managed slice-0 candidate
-two registry snapshots (`get_buffer_lock_view`, registry mutex, no native call); at
-the scene end the same snapshots again for at most 64 records, one admission snapshot,
-one log line and at most 16 witness lines per device. No allocation, no device calls;
-the only added native calls are the cached `GetDesc` in the two setter hooks.
+`origin_distance` evaluation and integer classification; per z-writing managed draw one
+registry snapshot (`get_buffer_lock_view`, registry mutex, no native call), one
+direct-mapped extent-cache probe and, on a hit, eight corner transforms (about 200
+flops); per recorded candidate one more snapshot for the index buffer; once per frame
+the sun basis and view→sun rows; at the scene end the same snapshots again for at most
+the cap's records, the queued extent reads (below), one admission snapshot, one log
+line and at most 16 witness lines per device. No allocation, no device calls beyond the
+extent reads; the only other added native calls are the cached `GetDesc` in the two
+setter hooks.
+
+**Casters by bounds (2026-09-17).** The draw carries no bounding volume (the motion
+route's rows are the object→clip matrix only, and the fade-route AABB exists only for
+fade-table meshes), so the extent comes from the mesh itself: the object-space AABB of
+the draw's vertex range (`[base_vertex + min_vertex, + vertex_count)` for an indexed
+draw, the primitive range for a plain one, POSITION as FLOAT3, FLOAT4 or FLOAT16_4 at
+the declaration's offset) read once per (allocation id, buffer revision, stream offset,
+stride, first vertex, count, position layout) and cached in a 1024-entry direct-mapped
+table (`shadow_replay::ExtentCache`, `src/proxy/shadow_replay_candidates.h`). A draw
+whose key misses queues a read (at most 32 per frame, deduplicated, the wrapper retained
+by `AddRef` until the read) and is admitted by the origin rule for that frame. The
+reads run at the scene end in `publish_shadow_replay_candidates`, after every bookend
+verdict of the frame and before the frame line and the replay: one `Lock(offset, size,
+D3DLOCK_READONLY)` of the range through the application's own wrapper (so the bookends
+see it, as a READONLY attempt after this frame's comparison and before any record of the
+next frame is taken), the scan, `Unlock`, the store, `Release`; the read that crosses a
+1 MiB byte budget is the frame's last, the rest are dropped and re-queued by their next
+draw. Before its Lock the read takes the buffer's bookend view: a view that is not
+known, another revision, or a Lock pending or in flight (the wrapper would mark the
+nested Lock ambiguous, a sticky veto on that buffer's lease) skips the read, and it and a
+failed Lock are retried at a later scene end (the range's next draw re-queues it; after 8
+attempts the entry is unreadable). A nonfinite position stores an unreadable entry at
+once (never re-read; the draw stays on the origin rule). A frame without a scene end, a Reset and teardown
+release the queue without reading; a Reset keeps the cache (managed buffers survive it;
+a rewritten buffer changes its revision and so its key). The box test itself is
+`renderer::shadow_replay_bounds_verdict` (`shadow_replay_projection.h`): the eight AABB
+corners through the draw's rows to view space, the frame's `shadow_replay_view_rows`
+(from the same basis the replay uses: this frame's `LightDir_Dir0` write or, before one,
+the previous frame's) to sun-space NDC, and the corners' AABB against
+`[-1, 1]² × [0, 1]`, conservative for a rotated box. Replay draws per frame are bounded
+by the cap; the counter line tells `bounds`/`fallback`/`origin`/`capped`/`reads` apart.
 
 Analysis: `tools/analysis/shadow_replay_candidates.py <session log>` streams the log,
 refuses malformed lines and broken identities, enforces the witness cap and prints the
@@ -346,7 +392,7 @@ shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_
 shadow_replay_depth_refused device=%llu frame=%llu reason=%s detail=%s result=%08lx stage=%u
 ```
 
-`draws` is the counter's `leased`; `replayed` is `draws` or 0; each `skipped_*` counts the
+`draws` is the counter's `leased` (at most the cap); `replayed` is `draws` or 0; each `skipped_*` counts the
 records refused for that reason and is bounded by `draws`; a replayed frame skipped
 nothing. `us` is one QPC pair around the transaction (capture to restore). Refusal samples
 are capped at 8 per reason per device.
@@ -393,7 +439,7 @@ to the option-off twin (32,768 pixels per twin, colour hashes equal) with TAA of
 every watched state compares equal across the scene-end copy in both.
 
 Not exercised: the unreadable fallback formats (R32F and D24X8 are available here), the
-64-record cap, DYNAMIC/DEFAULT pools, a Lock held across the scene end (the counter's
+512-record storage limit (the fixture caps at `casters`), DYNAMIC/DEFAULT pools, a Lock held across the scene end (the counter's
 `pending` bucket refuses it by construction), a production-extent map in the game, native
 Windows ([platform-portability.md](platform-portability.md)). E1–E5 are unchanged.
 

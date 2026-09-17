@@ -315,7 +315,64 @@ Implementation of [shadow-replay-gates.md](../architecture/shadow-replay-gates.m
 - Clean CMake build (`--clean-first`): zero warnings; `check_no_x87.py build/d3d9.dll`: 225 reachable functions, no violations. Strict `-Wall -Wextra -Werror` compiles of `shadow_replay_pass.cpp`, `motion_output.cpp` (production and seam defines), `capture.cpp` (seam) and `loader.cpp`: clean.
 - `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py --dll build/d3d9.dll --seam verification/probe/build/motion-output-seam/d3d9.dll --fixture verification/probe/build/motion_output_fixture.exe seam-ownership-shadow-replay-on seam-ownership-shadow-replay-off seam-ownership-taa-shadow-replay-on seam-ownership-taa-shadow-replay-off seam-ownership-shadow-replay-casters-2 seam-ownership-shadow-replay-casters-8 seam-ownership-shadow-replay-casters-20`: exit 0, checks 144/98/167/121/144/144/144. Map versus the CPU projection: 0 coverage disagreements, max depth error 1.2e-05 (256², 8-unit cascade) and ≤ 3.9e-06 (1024²) against the 1e-4 gate, 3,136–81,656 covered texels per case; lease frame `replayed=0 skipped_lease=1`, no-sun frame `skipped_state=draws` (`no_sun`), two-stream frame `skipped_state=1` (`multistream`), the map unchanged on all three; Reset: `allocations=2` at frame 4, replay resumes. Transaction `us` medians 40.8 (2 draws, 256²), 40.7 / 50.4 / 65.8 (2 / 8 / 20 draws, 1024²): ≈ 35 µs fixed plus ≈ 1.4 µs per draw. Presented frames byte-identical to the option-off twins with TAA off and on (32,768 pixels each, colour hashes equal). Record `verification/results/bottle-X3/motion-output-partial.json` (production `131c261e8703…`, seam `a77045059ba6…`, fixture `8087cb8db637…`).
 - Sun direction: PS register c4 (`LightDir_Dir0` of the hull programs), decided in the note; the light record is not read.
-- Not exercised: the depth-only fallback formats, the 64-record cap, a production-extent map in the game, native Windows.
+- Not exercised: the depth-only fallback formats, the record storage limit (64 then, 512 since the casters-by-bounds change, whose fixture exercises the per-frame cap), a production-extent map in the game, native Windows.
+
+### Casters by bounds (2026-09-17, worktree `agent-a7e2c2470cc482842`)
+
+Run 36 B (`/tmp/x3-bottleX3-run106`) hovered over a station deck and replayed only the
+own ship (`shadow_replay_candidates … routed=245 zwrite=245 slice0=6 managed=6`,
+`shadow_replay_depth replayed=8 draws=8` every frame): slice 0 was the object's origin
+distance and the station origin was 2.5 km away. Cascade-0 casters are now the z-writing
+managed draws whose vertex extent meets the map box (`shadow-replay-gates.md`, "Casters
+by bounds": the extent is the object-space AABB of the draw's vertex range, read once per
+buffer range at a scene end through the wrapper's READONLY Lock behind a bookend-view
+guard with bounded retry, and cached; a draw without an extent falls back to the origin
+rule for that frame and queues the read; the per-frame replay budget is
+`X3M_SHADOW_REPLAY_CAP`, 1..512, default 512, storage 512, dropping the last submitted).
+The counter line gains `bounds= origin= fallback= capped= reads=`.
+
+Fixture: the replay script draws L first (origin 256 units to the camera's right, beyond
+the origin rule's 250; vertices across the 8-unit box; beyond the far plane on screen),
+then the casters, then F (origin 300 units, vertices 225 units away; behind the camera);
+the runner sets the cap to `casters`, so frame 0 (no extents) replays the casters by the
+origin rule and later frames L and the casters but the last submitted one (capped), and
+asserts the counter and depth lines per frame (`origin < bounds` on frames 1–7) and the
+map against the oracle of the replayed set. The lease-proof Lock moved to caster 0 (the
+capped caster is never leased). Bottle X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`, after the Fable review (bookend guard, L beyond 250, cap drop order):
+
+- `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_shadow_replay_candidates verification.analysis.test_shadow_replay_depth`: 12 tests OK
+  (with `test_motion_output_runner test_sun_share_lane`: 35 OK).
+- `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py seam-ownership-shadow-replay-on seam-ownership-taa-shadow-replay-on sun-shadow-apply`
+  (the runner's own fresh build: `verification/results/bottle-X3/motion-output-build.log`, clean
+  CMake build with zero compiler warnings, seam DLL and fixture; `build/d3d9.dll` sha256
+  `e32595f607f13c65…`; `check_no_x87.py`: 504 reachable functions, 0 violations, after the
+  draw-time basis made `shadow_replay_basis`/`shadow_replay_view_rows` reachable and their
+  `std::fabs`/`std::sqrt`/`std::floor` were replaced by comparisons, `sqrtsd` and a
+  `cvttsd2si` floor): exit 0 on all three (168 / 191 / 156 checks). Counter, both replay
+  cases, every frame `routed=4 zwrite=4 origin=2`; frame 0
+  `bounds=0 fallback=2 slice0=2 managed=2 leased=2 capped=0 reads=4` (four extents read at
+  the scene end); frames 1–7 `bounds=3 fallback=0 slice0=3 managed=3 leased=2 capped=1 reads=0`
+  (L admitted by bounds although its origin is beyond the rule, F excluded, the last caster
+  capped; the cache survives the frame-4 Reset). Depth line `draws=2` on every frame,
+  `replayed=2` on the five replayed frames, the three refusals unchanged (`lease/bookends`
+  on caster 0, `state/no_sun`, `state/multistream`). Map: 40,681 covered texels over the run
+  per case (L included from frame 1), max depth error 1.17e-5 against the oracle; TAA twin
+  identical. Per frame: median 58.7 µs (min 34.7, first frame with target creation 1438.6)
+  without TAA, 45.2 µs (31.0 / 1331.9) with TAA, for 2 draws at 256²: the transaction's
+  fixed cost dominates in the fixture; the ledger's live figure stays ~1.3 µs/draw (run81:
+  42.3 µs median for 6 draws at 1024²). `sun-shadow-apply`: worst codes 0.998, edge
+  mismatches 376 (345 within one texel, 31 within two, 0 beyond), quad median 3419.6 µs.
+- `… run_sun_share_live.py --fixture … --dll … --case shadow_apply`: passed (shadowed
+  pixels min 3969, apply max 1700.3 µs).
+- Not exercised: the game (first frames of a new mesh set run on the origin rule while
+  the extents are read, at most 32 reads / 1 MiB per scene end; a station under the ship
+  is expected to raise `draws` to hundreds against the 512 cap), the retry path (a buffer
+  found locked at the scene end, a failed Lock), `X3M_ADMISSION=1` with the scene-end
+  reads, an object whose origin the rule admits but whose geometry misses the box (no
+  fixture object; F lies outside both rules), the
+  `seam-ownership-taa-camera-candidates-on` and `casters-N` cases (updated, not rerun),
+  native Windows.
 
 ## Run 28 session B (run81): the cutout pairs veto every frame under a nonzero mip bias (2026-09-16)
 

@@ -4,10 +4,10 @@
 
 Two line kinds, read from a capture log without loading it whole:
 
-  shadow_replay_candidates device= frame= routed= zwrite= slice0= managed= dynamic=
-      default_pool= excluded= unknown= leased= serial_changed= readonly_after=
-      writable_after= pending= in_flight= quiet= cold_thread= roots= waiting=
-      nested= overflow=
+  shadow_replay_candidates device= frame= routed= zwrite= slice0= bounds= origin=
+      fallback= managed= dynamic= default_pool= excluded= unknown= shadow_mismatch=
+      leased= capped= reads= serial_changed= readonly_after= writable_after=
+      pending= in_flight= quiet= cold_thread= stale= roots= waiting= nested= overflow=
   shadow_replay_lock_witness device= frame= allocation= flags= offset= size= thread=
       serial_delta= revision_delta=
 
@@ -22,9 +22,9 @@ from pathlib import Path
 
 FRAME_PREFIX = 'shadow_replay_candidates '
 WITNESS_PREFIX = 'shadow_replay_lock_witness '
-FRAME_FIELDS = ('device', 'frame', 'routed', 'zwrite', 'slice0', 'managed', 'dynamic', 'default_pool', 'excluded', 'unknown',
-                'shadow_mismatch', 'leased', 'serial_changed', 'readonly_after', 'writable_after', 'pending', 'in_flight', 'quiet',
-                'cold_thread', 'stale', 'roots', 'waiting', 'nested', 'overflow')
+FRAME_FIELDS = ('device', 'frame', 'routed', 'zwrite', 'slice0', 'bounds', 'origin', 'fallback', 'managed', 'dynamic', 'default_pool',
+                'excluded', 'unknown', 'shadow_mismatch', 'leased', 'capped', 'reads', 'serial_changed', 'readonly_after', 'writable_after',
+                'pending', 'in_flight', 'quiet', 'cold_thread', 'stale', 'roots', 'waiting', 'nested', 'overflow')
 WITNESS_FIELDS = ('device', 'frame', 'allocation', 'flags', 'offset', 'size', 'thread', 'serial_delta', 'revision_delta')
 HEX_FIELDS = ('flags',)
 WITNESS_CAP = 16
@@ -55,16 +55,22 @@ def _parse(line, prefix, names):
 
 def check_identities(row):
     """The chain routed >= zwrite >= slice0 >= managed and the partitions
-    slice0 = managed + dynamic + default_pool + excluded + unknown + shadow_mismatch,
-    leased + overflow <= managed, quiet + stale <= leased, every other bookend
-    bucket <= leased - stale (a stale record is compared with nothing)."""
+    slice0 = bounds + fallback (casters by bounds, or the origin rule while no
+    extent is known) = managed + dynamic + default_pool + excluded + unknown +
+    shadow_mismatch, origin <= zwrite (the origin rule alone, a statistic),
+    leased + capped + overflow <= managed, quiet + stale <= leased, every other
+    bookend bucket <= leased - stale (a stale record is compared with nothing)."""
     if not row['routed'] >= row['zwrite'] >= row['slice0'] >= row['managed']:
         raise MalformedLine(f'chain violated: {row}')
+    if row['slice0'] != row['bounds'] + row['fallback']:
+        raise MalformedLine(f'slice0 != bounds + fallback: {row}')
+    if row['origin'] > row['zwrite']:
+        raise MalformedLine(f'origin exceeds zwrite: {row}')
     if row['slice0'] != (row['managed'] + row['dynamic'] + row['default_pool'] + row['excluded'] + row['unknown']
                          + row['shadow_mismatch']):
         raise MalformedLine(f'slice0 partition violated: {row}')
-    if row['leased'] + row['overflow'] > row['managed']:
-        raise MalformedLine(f'leased+overflow exceeds managed: {row}')
+    if row['leased'] + row['capped'] + row['overflow'] > row['managed']:
+        raise MalformedLine(f'leased+capped+overflow exceeds managed: {row}')
     if row['quiet'] + row['stale'] > row['leased']:
         raise MalformedLine(f'quiet+stale exceeds leased: {row}')
     for key in ('serial_changed', 'readonly_after', 'writable_after', 'pending', 'in_flight', 'cold_thread'):
@@ -151,6 +157,11 @@ def summarize(frames, witnesses):
         'cold_thread_total': sum(r['cold_thread'] for r in frames),
         'waiting_or_nested_frames': sum(1 for r in frames if r['waiting'] or r['nested']),
         'overflow_frames': sum(1 for r in frames if r['overflow']),
+        'capped_frames': sum(1 for r in frames if r['capped']),
+        'capped_total': sum(r['capped'] for r in frames),
+        'bounds_share': share(lambda r: r['slice0'] == r['bounds']),  # frames whose every caster was decided by bounds (no fallback)
+        'origin_p50': percentile([r['origin'] for r in frames], 0.5),
+        'reads_total': sum(r['reads'] for r in frames),
         'unknown_total': sum(r['unknown'] for r in frames),
         'shadow_mismatch_total': sum(r['shadow_mismatch'] for r in frames),
         'stale_total': sum(r['stale'] for r in frames),

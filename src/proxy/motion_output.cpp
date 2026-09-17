@@ -396,7 +396,7 @@ void MotionOutput::release_resources() noexcept {
     if (hdr_) { hdr_->shutdown(); hdr_.reset(); hdr_enabled_ = false; }
     if (taa_) { taa_call([&] { taa_->shutdown(); }); taa_.reset(); }
     if (ao_ || ao_timing_created_) { taa_call([&] { ao_timing_release(); if (ao_) ao_->detach(); }); ao_.reset(); }
-    release_depth_leases();
+    release_depth_leases(); release_candidate_extents();
     if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }
     if (sun_apply_) { taa_call([&] { sun_apply_->detach(); }); sun_apply_.reset(); }
     release(sentinel_ps_);
@@ -2140,6 +2140,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     sun_writer_count_ = sun_writer_overflow_ = 0; // signature cache is per device
     candidate_witnesses_ = 0; candidates_.reset(); candidate_pools_ = {}; candidates_published_frame_ = ~std::uint64_t(0); // witness cap, pool cache and frame serial are per device
     release_depth_leases(); depth_sun_written_ = false; depth_replay_attach_failed_ = false; depth_basis_ = {}; // depth replay state is per device
+    release_candidate_extents(); candidate_extents_.clear(); candidate_bounds_state_ = 0; depth_sun_previous_known_ = false; // extent cache and queue are per device
     for (unsigned& logged : depth_refusal_logs_) logged = 0;
     depth_cascade_ = renderer::ShadowReplayCascade{}; depth_cascade_.size = depth_replay_size_;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -2664,6 +2665,7 @@ void MotionOutput::before_reset() noexcept {
     // timestamp queries are device objects and go with them (recreated lazily).
     if (ao_ || ao_timing_created_) taa_call([&] { ao_timing_release(); if (ao_) ao_->before_reset(); });
     ao_timing_failed_ = false; ao_timing_lost_ = false; ao_chain_failures_ = 0;
+    if (candidates_requested_) release_candidate_extents();
     if (depth_replay_requested_) { release_depth_leases(); if (depth_replay_) taa_call([&] { depth_replay_->before_reset(); }); depth_replay_attach_failed_ = false; }
     depth_replayed_ = 0; sun_apply_applied_ = sun_apply_attempted_ = false;
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
@@ -3123,7 +3125,7 @@ void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT cou
         shadow_.ps_reserved_written = true;
     }
     // Depth replay: the world sun direction (LightDir_Dir0, shadow_replay_depth.h) as last written.
-    if (depth_replay_requested_ && start <= shadow_replay::depth_sun_register && end > shadow_replay::depth_sun_register) {
+    if (candidates_requested_ && start <= shadow_replay::depth_sun_register && end > shadow_replay::depth_sun_register) {
         std::memcpy(depth_sun_constant_, data + (shadow_replay::depth_sun_register - start) * 4, sizeof depth_sun_constant_);
         depth_sun_written_ = true;
     }
@@ -3292,7 +3294,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     counters_ = {}; sun_frame_={}; sun_coverage_current_=sun_composition_completed_=false;
     sun_apply_applied_=sun_apply_attempted_=false; // fixture keys 70/71 describe this frame
     sun_original_refused_draws_=0;
-    if (candidates_requested_) { if (depth_replay_requested_) { release_depth_leases(); depth_sun_written_ = false; } candidates_.reset(); } // a frame that never reached a scene end keeps no records or leases; the sun is per frame
+    if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); depth_sun_written_ = false; candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
     // Keep failed-lane storage until the next scene latch can compare its
     // exact dimensions/generation before transactionally replacing it. The
     // reset frame snapshot above is unavailable; no stale lane is published.
@@ -6223,22 +6225,57 @@ void MotionOutput::note_candidate_distance(MotionRoute& route, const float* rows
 void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     // Gate 4 required ZENABLE=1 and ZWRITEENABLE=1 for every routed draw except
     // the fade-band arm (fade_route::state); alpha-tested draws (the exact
-    // cutout arm and the tested-opaque arm) are excluded by W3. Slice 0 is the own-ship distance window of the rows'
-    // origin (W1: no camera latch, no slice); pools come from the setter cache.
+    // cutout arm and the tested-opaque arm) are excluded by W3. A draw is a
+    // cascade-0 caster when its vertex extent (cached from a scene-end read)
+    // meets the map box; a draw without an extent yet falls back to the
+    // origin rule for this frame and queues its read. The near bound stays on
+    // the origin (W1: no camera latch, no candidate); pools come from the
+    // setter cache.
     const bool zwrite = !route.fade_arm;
-    const bool in_slice = route.candidate_distance >= candidate_slice_near_ && route.candidate_distance <= shadow_replay::slice0_far;
+    const float d = route.candidate_distance;
+    const bool near_ok = d >= candidate_slice_near_;
+    const bool origin_rule = near_ok && d <= shadow_replay::slice0_far;
     // The pool class and the bookend identities are the shadow's; they are
     // attributed only when the shadowed binding ids are the route key's.
     const bool shadow_ok = shadow_.stream0 == route.key.vertex_buffer && (!route.key.indexed || shadow_.indices == route.key.index_buffer);
-    if (!candidates_.draw(zwrite, in_slice, route.alpha_tested, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed)) return;
-    // Bookend view at the draw: registry snapshot keyed by the wrapper identity
-    // (never dereferenced). A managed candidate without a known view for
-    // every buffer it uses is counted managed but not leased.
+    const bool managed = shadow_.stream0_pool == shadow_replay::PoolClass::Managed
+        && (!route.key.indexed || shadow_.indices_pool == shadow_replay::PoolClass::Managed);
+    bool admitted = origin_rule, by_bounds = false, vb_known = false;
     ownership::BufferLockView vb{}, ib{};
     const auto view = [](std::uintptr_t identity, ownership::BufferLockView& out) noexcept {
         return identity && SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(identity), &out)) && out.known;
     };
-    if (!view(shadow_.stream0_identity, vb)) return;
+    if (zwrite && shadow_ok && managed && !route.alpha_tested) {
+        // Bookend view at the draw: registry snapshot keyed by the wrapper
+        // identity (never dereferenced here); its revision keys the extent.
+        vb_known = view(shadow_.stream0_identity, vb);
+        if (vb_known) {
+            const auto& k = route.key;
+            shadow_replay::ExtentKey key{};
+            key.vb = k.vertex_buffer; key.revision = vb.revision; key.stream_offset = k.stream_offset; key.stride = k.stride;
+            key.position_offset = k.position_offset; key.position_type = k.position_type;
+            const std::int64_t first = k.indexed ? std::int64_t(k.base_vertex) + k.min_vertex : std::int64_t(k.first);
+            const std::uint32_t count = k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives);
+            const bool range_ok = first >= 0 && first <= 0xFFFFFFFFll && count && k.stride && shadow_replay::extent_type_supported(k.position_type)
+                && k.position_offset + shadow_replay::extent_type_bytes(k.position_type) <= k.stride;
+            if (range_ok) {
+                key.first = std::uint32_t(first); key.count = count;
+                if (const auto* e = candidate_extents_.find(key)) {
+                    if (e->state == shadow_replay::ExtentState::Known && ensure_candidate_bounds_rows()) {
+                        const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register : ~0u;
+                        const std::size_t window = matrix_register == ~0u ? motion_matrix_windows_max : window_of(matrix_register);
+                        const float* rows = window < motion_matrix_windows_max && shadow_.rows_known[window] ? shadow_.rows[window] : nullptr;
+                        const int verdict = rows ? renderer::shadow_replay_bounds_verdict(camera_scene_, rows, candidate_bounds_rows_, e->lo, e->hi) : -1;
+                        if (verdict >= 0) { by_bounds = true; admitted = verdict == 1 && near_ok; }
+                    }
+                } else queue_candidate_extent(key, shadow_.stream0_identity);
+            }
+        }
+    }
+    if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, route.alpha_tested, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed, candidate_cap_)) return;
+    // A managed candidate without a known view for every buffer it uses is
+    // counted managed but not leased.
+    if (!vb_known) return;
     if (route.key.indexed && !view(shadow_.indices_identity, ib)) return;
     auto& r = candidates_.record();
     r.vb = route.key.vertex_buffer; r.vb_identity = shadow_.stream0_identity;
@@ -6248,6 +6285,78 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     r.vb_generation = vb.generation; r.ib_generation = ib.generation;
     ++candidates_.counts.leased;
     if (depth_replay_requested_) note_depth_geometry(route, candidates_.record_count - 1);
+}
+// The frame's view -> sun rows for the draw-time box test, from the camera
+// latch and the frame's sun (this frame's LightDir_Dir0 write, else the
+// previous frame's: the sun is world-fixed). Computed at most once per frame.
+bool MotionOutput::ensure_candidate_bounds_rows() noexcept {
+    if (candidate_bounds_state_) return candidate_bounds_state_ > 0;
+    const float* sun = depth_sun_written_ ? depth_sun_constant_ : depth_sun_previous_known_ ? depth_sun_previous_ : nullptr;
+    renderer::ShadowReplayBasis basis{};
+    const bool ok = sun && camera_scene_.valid && renderer::shadow_replay_basis(camera_scene_, sun, depth_cascade_, basis)
+        && renderer::shadow_replay_view_rows(camera_scene_, basis, depth_cascade_, candidate_bounds_rows_);
+    candidate_bounds_state_ = ok ? 1 : -1;
+    return ok;
+}
+// Queues one extent read for the scene end (deduplicated; at most
+// extent_reads_per_frame per frame). The wrapper is retained by AddRef so the
+// read cannot outlive the application's own reference.
+void MotionOutput::queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept {
+    if (!identity) return;
+    for (unsigned i = 0; i < candidate_extent_read_count_; ++i) if (candidate_extent_reads_[i].key == key) return;
+    if (candidate_extent_read_count_ >= shadow_replay::extent_reads_per_frame) return;
+    auto& q = candidate_extent_reads_[candidate_extent_read_count_++];
+    q.key = key; q.identity = identity;
+    reinterpret_cast<IUnknown*>(identity)->AddRef();
+}
+// The scene end, after this frame's bookend verdicts: one READONLY Lock of the
+// vertex range through the application's own wrapper (the bookends see it as
+// a read, before any record of the next frame is taken), the AABB scan, Unlock,
+// the cache store and the release. The bookend view is read first: a range
+// whose buffer has a Lock pending or in flight (the wrapper would mark our
+// nested Lock ambiguous, a sticky veto on the lease) or whose view is not
+// known is not locked; it and a failed Lock are retried at a later scene end
+// (the next draw re-queues; extent_read_attempts, then unreadable). Never more
+// than the queued reads; the read that crosses the byte budget is the frame's
+// last, the rest are dropped and re-queued by their next draw. LastError is kept.
+void MotionOutput::read_candidate_extents() noexcept {
+    if (!candidate_extent_read_count_) return;
+    const DWORD error = GetLastError();
+    std::uint64_t bytes = 0;
+    for (unsigned i = 0; i < candidate_extent_read_count_; ++i) {
+        auto& q = candidate_extent_reads_[i];
+        auto* buffer = reinterpret_cast<IDirect3DVertexBuffer9*>(q.identity);
+        if (bytes < shadow_replay::extent_read_bytes_per_frame && !candidate_extents_.find(q.key)) {
+            const std::uint64_t offset = std::uint64_t(q.key.stream_offset) + std::uint64_t(q.key.first) * q.key.stride;
+            const std::uint64_t size = std::uint64_t(q.key.count - 1) * q.key.stride + q.key.position_offset + shadow_replay::extent_type_bytes(q.key.position_type);
+            float lo[3], hi[3];
+            bool locked = false, finite = false;
+            ownership::BufferLockView view{};
+            const bool quiet = SUCCEEDED(ownership::get_buffer_lock_view(buffer, &view)) && view.known && view.revision == q.key.revision
+                && !view.pending_locks && !view.in_flight_locks && !view.in_flight_unlocks;
+            void* data = nullptr;
+            if (quiet && offset + size <= 0xFFFFFFFFull && SUCCEEDED(buffer->Lock(UINT(offset), UINT(size), &data, D3DLOCK_READONLY))) {
+                locked = true;
+                finite = data && shadow_replay::extent_of(static_cast<const unsigned char*>(data), q.key.stride, q.key.position_offset, q.key.position_type, q.key.count, lo, hi);
+                buffer->Unlock();
+                bytes += size;
+            }
+            if (locked) candidate_extents_.store(q.key, finite ? lo : nullptr, finite ? hi : nullptr, finite ? shadow_replay::ExtentState::Known : shadow_replay::ExtentState::Unreadable);
+            else candidate_extents_.retry(q.key);
+            candidates_.counts.reads += locked;
+        }
+        buffer->Release();
+        q = {};
+    }
+    candidate_extent_read_count_ = 0;
+    SetLastError(error);
+}
+void MotionOutput::release_candidate_extents() noexcept {
+    for (unsigned i = 0; i < candidate_extent_read_count_; ++i) {
+        if (candidate_extent_reads_[i].identity) reinterpret_cast<IUnknown*>(candidate_extent_reads_[i].identity)->Release();
+        candidate_extent_reads_[i] = {};
+    }
+    candidate_extent_read_count_ = 0;
 }
 void MotionOutput::publish_shadow_replay_candidates() noexcept {
     using shadow_replay::BufferVerdict;
@@ -6306,10 +6415,16 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         c.roots = s.active_roots; c.waiting = s.waiting_roots;
     }
     c.nested = counters_.hook_outside_scene;
-    log("shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u"
-        " leased=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u",
-        id_, frame_, c.routed, c.zwrite, c.slice0, c.managed, c.dynamic, c.default_pool, c.excluded, c.unknown, c.shadow_mismatch,
-        c.leased, c.serial_changed, c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
+    // The queued extent reads, after every verdict above (a READONLY Lock
+    // moves the attempt serial the next frame's records start from, never
+    // this frame's comparison); the frame's sun carries to the next frame's
+    // early draws.
+    read_candidate_extents();
+    if (depth_sun_written_) { std::memcpy(depth_sun_previous_, depth_sun_constant_, sizeof depth_sun_previous_); depth_sun_previous_known_ = true; }
+    log("shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u bounds=%u origin=%u fallback=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u"
+        " leased=%u capped=%u reads=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u",
+        id_, frame_, c.routed, c.zwrite, c.slice0, c.bounds, c.origin, c.fallback, c.managed, c.dynamic, c.default_pool, c.excluded, c.unknown, c.shadow_mismatch,
+        c.leased, c.capped, c.reads, c.serial_changed, c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
         static_cast<unsigned long long>(c.roots), static_cast<unsigned long long>(c.waiting), c.nested, c.overflow);
     if (depth_replay_requested_) run_shadow_replay_depth(quiet_records);
     candidates_.reset();

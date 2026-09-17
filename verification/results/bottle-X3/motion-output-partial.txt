@@ -1,143 +1,6 @@
-==== production-on exit=0
-CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-on-20260917-031611-268647\d3d9.dll burst=0 rt_mode=perdraw camera=0 sentinel=0 envmap=0 hook=0 state_shadow=1 hdr=0 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=0 mipbias=0 mip_bias=0 sharpen=0 msaa=0
-CHECK local files are the reviewed pair PASS
-RESTORE frame=0 label=fill differences=0
-RESTORE frame=0 label=draw differences=0
-EXPECT frame=0 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=0 label=draw differences=0
-EXPECT frame=0 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=0 hash=86eb44945a50eb49
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=0 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=3969 ambiguous=127 material=2628 background=1341 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=1 label=fill differences=0
-RESTORE frame=1 label=draw differences=0
-EXPECT frame=1 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=1 label=draw differences=0
-EXPECT frame=1 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=1 hash=8b2e5709a9312512
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=1 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4071 ambiguous=25 material=2661 background=1410 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=2 label=fill differences=0
-RESTORE frame=2 label=draw differences=0
-EXPECT frame=2 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=2 label=draw differences=0
-EXPECT frame=2 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=2 hash=8b2e5709a9312512
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=2 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4071 ambiguous=25 material=2661 background=1410 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=3 label=fill differences=0
-RESTORE frame=3 label=draw differences=0
-EXPECT frame=3 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=3 label=draw differences=0
-EXPECT frame=3 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=3 hash=86eb44945a50eb49
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=3 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=3969 ambiguous=127 material=2628 background=1341 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=4 label=fill differences=0
-RESTORE frame=4 label=draw differences=0
-EXPECT frame=4 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=4 label=draw differences=0
-EXPECT frame=4 index=3 object=B routed=0 matched=0 jittered=0
-RESTORE frame=4 label=draw differences=0
-EXPECT frame=4 index=4 object=A routed=0 matched=0 jittered=0
-RESTORE frame=4 label=draw differences=0
-EXPECT frame=4 index=5 object=A routed=0 matched=0 jittered=0
-COLOR frame=4 hash=cf2e37fae83fa592
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=4 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4071 ambiguous=25 material=171 background=1410 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=5 label=fill differences=0
-RESTORE frame=5 label=draw differences=0
-EXPECT frame=5 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=5 label=draw differences=0
-EXPECT frame=5 index=3 object=A routed=0 matched=0 jittered=0
-RESTORE frame=5 label=draw differences=0
-EXPECT frame=5 index=4 object=B routed=0 matched=0 jittered=0
-COLOR frame=5 hash=86eb44945a50eb49
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=5 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=3969 ambiguous=127 material=2628 background=1341 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=6 label=fill differences=0
-RESTORE frame=6 label=draw differences=0
-EXPECT frame=6 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=6 label=draw differences=0
-EXPECT frame=6 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=6 hash=8b2e5709a9312512
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=6 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4071 ambiguous=25 material=2661 background=1410 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=7 label=fill differences=0
-RESTORE frame=7 label=stateblock differences=0
-CHECK state block Apply rebinding is honored (flat PS still bound) PASS
-EXPECT frame=7 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=7 label=draw differences=0
-EXPECT frame=7 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=7 hash=ddc0712e50d28304
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=7 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=3969 ambiguous=127 material=171 background=1341 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=8 label=fill differences=0
-CHECK a recorded render-state write does not reach the device PASS
-RESTORE frame=8 label=draw differences=0
-EXPECT frame=8 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=8 label=draw differences=0
-EXPECT frame=8 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=8 hash=e975537fa974ffaf
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=8 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=3945 ambiguous=151 material=2628 background=1317 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESET PASS
-RESTORE frame=9 label=fill differences=0
-RESTORE frame=9 label=draw differences=0
-EXPECT frame=9 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=9 label=draw differences=0
-EXPECT frame=9 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=9 hash=f138e92c0090e990
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=9 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4096 ambiguous=0 material=2661 background=1435 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=10 label=fill differences=0
-RESTORE frame=10 label=draw differences=0
-EXPECT frame=10 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=10 label=draw differences=0
-EXPECT frame=10 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=10 hash=e975537fa974ffaf
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=10 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=3945 ambiguous=151 material=2628 background=1317 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-RESTORE frame=11 label=fill differences=0
-RESTORE frame=11 label=draw differences=0
-EXPECT frame=11 index=2 object=A routed=0 matched=0 jittered=0
-RESTORE frame=11 label=draw differences=0
-EXPECT frame=11 index=3 object=B routed=0 matched=0 jittered=0
-COLOR frame=11 hash=f138e92c0090e990
-CHECK presented image written PASS
-CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=11 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4096 ambiguous=0 material=2661 background=1435 mismatches=0
-CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-CHECK every live frame verified against the oracle PASS
-CHECK device final Release reaches zero with the route's objects released PASS
-CHECK factory final Release reaches zero PASS
-RESULT PASS checks=43 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0 taa_skipped_frames=0
 ==== seam-ownership-shadow-replay-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-shadow-replay-on-20260917-031615-730702\d3d9.dll burst=0 rt_mode=perdraw camera=1 sentinel=0 envmap=0 hook=0 state_shadow=1 hdr=0 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=0 mipbias=0 mip_bias=0 sharpen=0 msaa=0
+MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\.claude\worktrees\agent-a7e2c2470cc482842\verification\probe\build\motion-output-seam-ownership-shadow-replay-on-20260917-054016-896280\d3d9.dll burst=0 rt_mode=perdraw camera=1 sentinel=0 envmap=0 hook=0 state_shadow=1 hdr=0 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=0 mipbias=0 mip_bias=0 sharpen=0 msaa=0
 CHECK local files are the reviewed pair PASS
 CHECK shadowreplay runs on the seam DLL with the route and the rotating camera PASS
 SHADOW_MODE depth=1 casters=2 taa=0 export=1
@@ -145,20 +8,26 @@ RESTORE frame=0 label=fill differences=0
 CHECK fake camera pose validates PASS
 SHADOW_CAMERA frame=0 m00=0.800000012 m11=1.33333337 r=1,0,0,0,1,0,-0,0,1 t=12.5,-3,1000
 SHADOW_SUN frame=0 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=0 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=2 object=L routed=1 matched=0 jittered=0
 SHADOW_DRAW frame=0 caster=0 shape=A t=0.800000012 p=0.125 zo=0
 RESTORE frame=0 label=draw differences=0
-EXPECT frame=0 index=2 object=A routed=1 matched=0 jittered=0
+EXPECT frame=0 index=3 object=A routed=1 matched=0 jittered=0
 SHADOW_DRAW frame=0 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
 RESTORE frame=0 label=draw differences=0
-EXPECT frame=0 index=3 object=B routed=1 matched=0 jittered=0
-SHADOW_EXPECT frame=0 casters=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
+EXPECT frame=0 index=4 object=B routed=1 matched=0 jittered=0
+SHADOW_DRAW frame=0 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=5 object=F routed=1 matched=0 jittered=0
+SHADOW_EXPECT frame=0 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
 RESTORE frame=0 label=boundary differences=0
 CHECK the scene-end copy without a resolve leaves the main target byte-identical PASS
 CHECK the application's bloom copy receives the main target PASS
 COLOR frame=0 hash=432a75d4edb538c6
 CHECK presented image written PASS
 CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=0 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4093 ambiguous=3 material=2698 background=1395 mismatches=0
+COVERAGE frame=0 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4092 ambiguous=4 material=2697 background=1395 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
@@ -174,20 +43,26 @@ RESTORE frame=1 label=fill differences=0
 CHECK fake camera pose validates PASS
 SHADOW_CAMERA frame=1 m00=0.800000012 m11=1.33333337 r=0.99984771,0,0.0174524058,0,1,0,-0.0174524058,0,0.99984771 t=12.5,-3,1000
 SHADOW_SUN frame=1 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=1 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=2 object=L routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=1 caster=0 shape=A t=0.800000012 p=0.125 zo=0
 RESTORE frame=1 label=draw differences=0
-EXPECT frame=1 index=2 object=A routed=1 matched=1 jittered=0
+EXPECT frame=1 index=3 object=A routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=1 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
 RESTORE frame=1 label=draw differences=0
-EXPECT frame=1 index=3 object=B routed=1 matched=1 jittered=0
-SHADOW_EXPECT frame=1 casters=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
+EXPECT frame=1 index=4 object=B routed=1 matched=1 jittered=0
+SHADOW_DRAW frame=1 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=5 object=F routed=1 matched=1 jittered=0
+SHADOW_EXPECT frame=1 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
 RESTORE frame=1 label=boundary differences=0
 CHECK the scene-end copy without a resolve leaves the main target byte-identical PASS
 CHECK the application's bloom copy receives the main target PASS
 COLOR frame=1 hash=432a75d4edb538c6
 CHECK presented image written PASS
 CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=1 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4093 ambiguous=3 material=2698 background=1395 mismatches=0
+COVERAGE frame=1 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4092 ambiguous=4 material=2697 background=1395 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
@@ -203,20 +78,26 @@ RESTORE frame=2 label=fill differences=0
 CHECK fake camera pose validates PASS
 SHADOW_CAMERA frame=2 m00=0.800000012 m11=1.33333337 r=0.999390841,0,0.0348994955,0,1,0,-0.0348994955,0,0.999390841 t=12.5,-3,1000
 SHADOW_SUN frame=2 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=2 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=2 object=L routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=2 caster=0 shape=A t=0.800000012 p=0.125 zo=0
 RESTORE frame=2 label=draw differences=0
-EXPECT frame=2 index=2 object=A routed=1 matched=1 jittered=0
+EXPECT frame=2 index=3 object=A routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=2 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
 RESTORE frame=2 label=draw differences=0
-EXPECT frame=2 index=3 object=B routed=1 matched=1 jittered=0
-SHADOW_EXPECT frame=2 casters=2 lease_refused=1 after_reset=0 no_sun=0 multistream=0
+EXPECT frame=2 index=4 object=B routed=1 matched=1 jittered=0
+SHADOW_DRAW frame=2 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=5 object=F routed=1 matched=1 jittered=0
+SHADOW_EXPECT frame=2 casters=2 bounds_objects=2 lease_refused=1 after_reset=0 no_sun=0 multistream=0
 RESTORE frame=2 label=boundary differences=0
 CHECK the scene-end copy without a resolve leaves the main target byte-identical PASS
 CHECK the application's bloom copy receives the main target PASS
 COLOR frame=2 hash=432a75d4edb538c6
 CHECK presented image written PASS
 CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=2 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4093 ambiguous=3 material=2698 background=1395 mismatches=0
+COVERAGE frame=2 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4092 ambiguous=4 material=2697 background=1395 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
@@ -232,20 +113,26 @@ RESTORE frame=3 label=fill differences=0
 CHECK fake camera pose validates PASS
 SHADOW_CAMERA frame=3 m00=0.800000012 m11=1.33333337 r=0.99862951,0,0.0523359552,0,1,0,-0.0523359552,0,0.99862951 t=12.5,-3,1000
 SHADOW_SUN frame=3 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=3 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=2 object=L routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=3 caster=0 shape=A t=0.800000012 p=0.125 zo=0
 RESTORE frame=3 label=draw differences=0
-EXPECT frame=3 index=2 object=A routed=1 matched=1 jittered=0
+EXPECT frame=3 index=3 object=A routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=3 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
 RESTORE frame=3 label=draw differences=0
-EXPECT frame=3 index=3 object=B routed=1 matched=1 jittered=0
-SHADOW_EXPECT frame=3 casters=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
+EXPECT frame=3 index=4 object=B routed=1 matched=1 jittered=0
+SHADOW_DRAW frame=3 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=5 object=F routed=1 matched=1 jittered=0
+SHADOW_EXPECT frame=3 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
 RESTORE frame=3 label=boundary differences=0
 CHECK the scene-end copy without a resolve leaves the main target byte-identical PASS
 CHECK the application's bloom copy receives the main target PASS
 COLOR frame=3 hash=432a75d4edb538c6
 CHECK presented image written PASS
 CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=3 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4093 ambiguous=3 material=2698 background=1395 mismatches=0
+COVERAGE frame=3 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4092 ambiguous=4 material=2697 background=1395 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
@@ -262,20 +149,26 @@ RESTORE frame=4 label=fill differences=0
 CHECK fake camera pose validates PASS
 SHADOW_CAMERA frame=4 m00=0.800000012 m11=1.33333337 r=0.997564077,0,0.0697564706,0,1,0,-0.0697564706,0,0.997564077 t=12.5,-3,1000
 SHADOW_SUN frame=4 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=4 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=2 object=L routed=1 matched=0 jittered=0
 SHADOW_DRAW frame=4 caster=0 shape=A t=0.800000012 p=0.125 zo=0
 RESTORE frame=4 label=draw differences=0
-EXPECT frame=4 index=2 object=A routed=1 matched=0 jittered=0
+EXPECT frame=4 index=3 object=A routed=1 matched=0 jittered=0
 SHADOW_DRAW frame=4 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
 RESTORE frame=4 label=draw differences=0
-EXPECT frame=4 index=3 object=B routed=1 matched=0 jittered=0
-SHADOW_EXPECT frame=4 casters=2 lease_refused=0 after_reset=1 no_sun=0 multistream=0
+EXPECT frame=4 index=4 object=B routed=1 matched=0 jittered=0
+SHADOW_DRAW frame=4 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=5 object=F routed=1 matched=0 jittered=0
+SHADOW_EXPECT frame=4 casters=2 bounds_objects=2 lease_refused=0 after_reset=1 no_sun=0 multistream=0
 RESTORE frame=4 label=boundary differences=0
 CHECK the scene-end copy without a resolve leaves the main target byte-identical PASS
 CHECK the application's bloom copy receives the main target PASS
 COLOR frame=4 hash=432a75d4edb538c6
 CHECK presented image written PASS
 CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=4 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4093 ambiguous=3 material=2698 background=1395 mismatches=0
+COVERAGE frame=4 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4092 ambiguous=4 material=2697 background=1395 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
@@ -291,20 +184,26 @@ RESTORE frame=5 label=fill differences=0
 CHECK fake camera pose validates PASS
 SHADOW_CAMERA frame=5 m00=0.800000012 m11=1.33333337 r=0.99619472,0,0.0871557444,0,1,0,-0.0871557444,0,0.99619472 t=12.5,-3,1000
 SHADOW_SUN frame=5 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=5 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=2 object=L routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=5 caster=0 shape=A t=0.800000012 p=0.125 zo=0
 RESTORE frame=5 label=draw differences=0
-EXPECT frame=5 index=2 object=A routed=1 matched=1 jittered=0
+EXPECT frame=5 index=3 object=A routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=5 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
 RESTORE frame=5 label=draw differences=0
-EXPECT frame=5 index=3 object=B routed=1 matched=1 jittered=0
-SHADOW_EXPECT frame=5 casters=2 lease_refused=0 after_reset=0 no_sun=1 multistream=0
+EXPECT frame=5 index=4 object=B routed=1 matched=1 jittered=0
+SHADOW_DRAW frame=5 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=5 object=F routed=1 matched=1 jittered=0
+SHADOW_EXPECT frame=5 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=1 multistream=0
 RESTORE frame=5 label=boundary differences=0
 CHECK the scene-end copy without a resolve leaves the main target byte-identical PASS
 CHECK the application's bloom copy receives the main target PASS
 COLOR frame=5 hash=432a75d4edb538c6
 CHECK presented image written PASS
 CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=5 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4093 ambiguous=3 material=2698 background=1395 mismatches=0
+COVERAGE frame=5 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4092 ambiguous=4 material=2697 background=1395 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
@@ -320,20 +219,26 @@ RESTORE frame=6 label=fill differences=0
 CHECK fake camera pose validates PASS
 SHADOW_CAMERA frame=6 m00=0.800000012 m11=1.33333337 r=0.994521916,0,0.104528464,0,1,0,-0.104528464,0,0.994521916 t=12.5,-3,1000
 SHADOW_SUN frame=6 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=6 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=2 object=L routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=6 caster=0 shape=A t=0.800000012 p=0.125 zo=0
 RESTORE frame=6 label=draw differences=0
-EXPECT frame=6 index=2 object=A routed=1 matched=1 jittered=0
+EXPECT frame=6 index=3 object=A routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=6 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
 RESTORE frame=6 label=draw differences=0
-EXPECT frame=6 index=3 object=B routed=1 matched=1 jittered=0
-SHADOW_EXPECT frame=6 casters=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
+EXPECT frame=6 index=4 object=B routed=1 matched=1 jittered=0
+SHADOW_DRAW frame=6 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=5 object=F routed=1 matched=1 jittered=0
+SHADOW_EXPECT frame=6 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
 RESTORE frame=6 label=boundary differences=0
 CHECK the scene-end copy without a resolve leaves the main target byte-identical PASS
 CHECK the application's bloom copy receives the main target PASS
 COLOR frame=6 hash=432a75d4edb538c6
 CHECK presented image written PASS
 CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=6 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4093 ambiguous=3 material=2698 background=1395 mismatches=0
+COVERAGE frame=6 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4092 ambiguous=4 material=2697 background=1395 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
@@ -349,20 +254,26 @@ RESTORE frame=7 label=fill differences=0
 CHECK fake camera pose validates PASS
 SHADOW_CAMERA frame=7 m00=0.800000012 m11=1.33333337 r=0.798635483,0,0.601815045,0,1,0,-0.601815045,0,0.798635483 t=12.5,-3,1000
 SHADOW_SUN frame=7 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=7 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=2 object=L routed=1 matched=1 jittered=0
 SHADOW_DRAW frame=7 caster=0 shape=A t=0.800000012 p=0.125 zo=0
 RESTORE frame=7 label=draw differences=0
-EXPECT frame=7 index=2 object=A routed=1 matched=0 jittered=0
+EXPECT frame=7 index=3 object=A routed=1 matched=0 jittered=0
 SHADOW_DRAW frame=7 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
 RESTORE frame=7 label=draw differences=0
-EXPECT frame=7 index=3 object=B routed=1 matched=1 jittered=0
-SHADOW_EXPECT frame=7 casters=2 lease_refused=0 after_reset=0 no_sun=0 multistream=1
+EXPECT frame=7 index=4 object=B routed=1 matched=1 jittered=0
+SHADOW_DRAW frame=7 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=5 object=F routed=1 matched=1 jittered=0
+SHADOW_EXPECT frame=7 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=1
 RESTORE frame=7 label=boundary differences=0
 CHECK the scene-end copy without a resolve leaves the main target byte-identical PASS
 CHECK the application's bloom copy receives the main target PASS
 COLOR frame=7 hash=432a75d4edb538c6
 CHECK presented image written PASS
 CHECK an uncovered pixel gives the frame's background colour PASS
-COVERAGE frame=7 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4093 ambiguous=3 material=2698 background=1395 mismatches=0
+COVERAGE frame=7 jitter=0 jx=0.000000 jy=0.000000 background_color=ff203040 checked=4092 ambiguous=4 material=2697 background=1395 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
@@ -377,10 +288,368 @@ SHADOW_MAP frame=7 available=1 width=256 height=256 right=0.707106769,-0,0.70710
 CHECK every frame verified against the oracle PASS
 CHECK device final Release reaches zero with the route's objects released PASS
 CHECK factory final Release reaches zero PASS
-RESULT PASS checks=110 restorations=32 frames=8 motion_pixels=30104 matched_pixels=12606 max_uv_pixels=0.00171089172 max_depth_error=3.69455019e-06 depth_pixels=30104 depth_written=19928 max_current_depth_error=3.69455019e-06 coverage_frames=8 coverage_pixels=32744 coverage_ambiguous=24 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0 taa_skipped_frames=0
+RESULT PASS checks=110 restorations=48 frames=8 motion_pixels=30104 matched_pixels=12606 max_uv_pixels=0.00171089172 max_depth_error=3.69455019e-06 depth_pixels=30104 depth_written=19928 max_current_depth_error=3.69455019e-06 coverage_frames=8 coverage_pixels=32736 coverage_ambiguous=32 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0 taa_skipped_frames=0
+==== seam-ownership-taa-shadow-replay-on exit=0
+CHECK DLL seam presence matches the requested mode PASS
+MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\.claude\worktrees\agent-a7e2c2470cc482842\verification\probe\build\motion-output-seam-ownership-taa-shadow-replay-on-20260917-054021-536204\d3d9.dll burst=0 rt_mode=perdraw camera=1 sentinel=0 envmap=0 hook=0 state_shadow=1 hdr=0 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=0 mipbias=0 mip_bias=0 sharpen=0 msaa=0
+CHECK local files are the reviewed pair PASS
+CHECK reference device uses the system d3d9, not the proxy PASS
+CHECK shadowreplay runs on the seam DLL with the route and the rotating camera PASS
+SHADOW_MODE depth=1 casters=2 taa=1 export=1
+RESTORE frame=0 label=fill differences=0
+CHECK fake camera pose validates PASS
+SHADOW_CAMERA frame=0 m00=0.800000012 m11=1.33333337 r=1,0,0,0,1,0,-0,0,1 t=12.5,-3,1000
+SHADOW_SUN frame=0 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=0 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=2 object=L routed=1 matched=0 jittered=1
+SHADOW_DRAW frame=0 caster=0 shape=A t=0.800000012 p=0.125 zo=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=3 object=A routed=1 matched=0 jittered=1
+SHADOW_DRAW frame=0 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=4 object=B routed=1 matched=0 jittered=1
+SHADOW_DRAW frame=0 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=5 object=F routed=1 matched=0 jittered=1
+SHADOW_EXPECT frame=0 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
+CAMERA_EXPECT frame=0 installed=1 policy=1 reason=3 cut=0 rotation_deg=0.0000 p00=0.8 p11=1.333333 r00=1 r01=0 r02=0 r10=0 r11=1 r12=0 r20=-0 r21=0 r22=1 resolve=1
+RESTORE frame=0 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=0 history=0 cut=1 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=0 hash=5885370fcd5286af
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=0 jitter=1 jx=0.000000 jy=-0.166667 background_color=ff203040 checked=4086 ambiguous=10 material=2694 background=1392 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=0 hash=5885370fcd5286af
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=0 motion=39e6e57a44fc2325 depth=2dca245f23ae6892
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=0 checked=3768 skipped=328 sentinel=3768 matched=0 mismatches=0 depth_written=2494 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK the map readback reports its size PASS
+CHECK shadow map written PASS
+SHADOW_MAP frame=0 available=1 width=256 height=256 right=0.707106769,-0,0.707106769 up=-0.639602125,0.426401436,0.639602125 forward=-0.301511347,-0.904534042,0.301511347 center=-12.5041227,3.00657415,-999.984375 extent=8 depth_half=16 valid=1
+RESTORE frame=1 label=fill differences=0
+CHECK fake camera pose validates PASS
+SHADOW_CAMERA frame=1 m00=0.800000012 m11=1.33333337 r=0.99984771,0,0.0174524058,0,1,0,-0.0174524058,0,0.99984771 t=12.5,-3,1000
+SHADOW_SUN frame=1 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=1 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=2 object=L routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=1 caster=0 shape=A t=0.800000012 p=0.125 zo=0
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=3 object=A routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=1 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=4 object=B routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=1 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=5 object=F routed=1 matched=1 jittered=1
+SHADOW_EXPECT frame=1 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
+CAMERA_EXPECT frame=1 installed=1 policy=2 reason=0 cut=0 rotation_deg=1.0000 p00=0.8 p11=1.333333 r00=0.9998477 r01=0 r02=0.01745241 r10=0 r11=1 r12=0 r20=-0.01745241 r21=0 r22=0.9998477 resolve=1
+RESTORE frame=1 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=1 x=1 y=0 before=ff203040 after=ff2e170e
+CHANGED frame=1 x=2 y=0 before=ff203040 after=ff2d1912
+CHANGED frame=1 x=3 y=0 before=ff203040 after=ff2d1912
+CHANGED frame=1 x=30 y=0 before=4d301409 after=4d2f1409
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=1 history=1 cut=0 changed=60 policy=2 skipped=0
+COLOR_BEFORE frame=1 hash=f07fe1333487ee54
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=1 jitter=1 jx=-0.250000 jy=0.166667 background_color=ff203040 checked=4087 ambiguous=9 material=2685 background=1402 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=1 hash=75b1a7e390b08405
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=1 motion=d6534ffca256ba71 depth=5d8f8643e975a842
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=1 checked=3758 skipped=338 sentinel=1213 matched=2545 mismatches=0 depth_written=2545 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK the map readback reports its size PASS
+CHECK shadow map written PASS
+SHADOW_MAP frame=1 available=1 width=256 height=256 right=0.707106769,-0,0.707106769 up=-0.639602125,0.426401436,0.639602125 forward=-0.301511347,-0.904534042,0.301511347 center=-29.9291592,2.99663234,-999.618286 extent=8 depth_half=16 valid=1
+RESTORE frame=2 label=fill differences=0
+CHECK fake camera pose validates PASS
+SHADOW_CAMERA frame=2 m00=0.800000012 m11=1.33333337 r=0.999390841,0,0.0348994955,0,1,0,-0.0348994955,0,0.999390841 t=12.5,-3,1000
+SHADOW_SUN frame=2 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=2 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=2 object=L routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=2 caster=0 shape=A t=0.800000012 p=0.125 zo=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=3 object=A routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=2 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=4 object=B routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=2 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=5 object=F routed=1 matched=1 jittered=1
+SHADOW_EXPECT frame=2 casters=2 bounds_objects=2 lease_refused=1 after_reset=0 no_sun=0 multistream=0
+CAMERA_EXPECT frame=2 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9999 p00=0.8 p11=1.333333 r00=0.9993908 r01=0 r02=0.0348995 r10=0 r11=1 r12=0 r20=-0.0348995 r21=0 r22=0.9993908 resolve=1
+RESTORE frame=2 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=2 x=5 y=0 before=4d301409 after=4d25272e
+CHANGED frame=2 x=29 y=0 before=4d301409 after=4d2f1409
+CHANGED frame=2 x=30 y=0 before=4d301409 after=4d2f1409
+CHANGED frame=2 x=60 y=0 before=4d2f1409 after=4d25272e
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=2 history=1 cut=0 changed=55 policy=2 skipped=0
+COLOR_BEFORE frame=2 hash=6bfa6752edf5f45e
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=2 jitter=1 jx=0.250000 jy=-0.388889 background_color=ff203040 checked=4092 ambiguous=4 material=2704 background=1388 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=2 hash=7a155adbf320620e
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=2 motion=6afaff7b922a769d depth=0ee961d600a5b1bf
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=2 checked=3775 skipped=321 sentinel=1273 matched=2502 mismatches=0 depth_written=2502 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK the map readback reports its size PASS
+CHECK shadow map written PASS
+SHADOW_MAP frame=2 available=1 width=256 height=256 right=0.707106769,-0,0.707106769 up=-0.639602125,0.426401436,0.639602125 forward=-0.301511347,-0.904534042,0.301511347 center=-29.9291592,2.99663234,-999.618286 extent=8 depth_half=16 valid=1
+RESTORE frame=3 label=fill differences=0
+CHECK fake camera pose validates PASS
+SHADOW_CAMERA frame=3 m00=0.800000012 m11=1.33333337 r=0.99862951,0,0.0523359552,0,1,0,-0.0523359552,0,0.99862951 t=12.5,-3,1000
+SHADOW_SUN frame=3 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=3 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=2 object=L routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=3 caster=0 shape=A t=0.800000012 p=0.125 zo=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=3 object=A routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=3 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=4 object=B routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=3 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=5 object=F routed=1 matched=1 jittered=1
+SHADOW_EXPECT frame=3 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
+CAMERA_EXPECT frame=3 installed=1 policy=2 reason=0 cut=0 rotation_deg=1.0000 p00=0.8 p11=1.333333 r00=0.9986295 r01=0 r02=0.05233596 r10=0 r11=1 r12=0 r20=-0.05233596 r21=0 r22=0.9986295 resolve=1
+RESTORE frame=3 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=3 x=2 y=0 before=ff203040 after=ff2e170e
+CHANGED frame=3 x=3 y=0 before=ff203040 after=ff2d1912
+CHANGED frame=3 x=4 y=0 before=ff203040 after=ff2d1912
+CHANGED frame=3 x=5 y=0 before=ff203040 after=ff252830
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=3 history=1 cut=0 changed=51 policy=2 skipped=0
+COLOR_BEFORE frame=3 hash=c0261354b331dbb5
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=3 jitter=1 jx=-0.375000 jy=-0.055556 background_color=ff203040 checked=4091 ambiguous=5 material=2689 background=1402 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=3 hash=d89c8b26fe89f96f
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=3 motion=e160d22cbcd0fd23 depth=a43e4583f7908ef9
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=3 checked=3763 skipped=333 sentinel=1215 matched=2548 mismatches=0 depth_written=2548 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK the map readback reports its size PASS
+CHECK shadow map written PASS
+SHADOW_MAP frame=3 available=1 width=256 height=256 right=0.707106769,-0,0.707106769 up=-0.639602125,0.426401436,0.639602125 forward=-0.301511347,-0.904534042,0.301511347 center=-64.8171005,3.00306582,-997.964417 extent=8 depth_half=16 valid=1
+RESET PASS
+RESTORE frame=4 label=fill differences=0
+CHECK fake camera pose validates PASS
+SHADOW_CAMERA frame=4 m00=0.800000012 m11=1.33333337 r=0.997564077,0,0.0697564706,0,1,0,-0.0697564706,0,0.997564077 t=12.5,-3,1000
+SHADOW_SUN frame=4 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=4 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=2 object=L routed=1 matched=0 jittered=1
+SHADOW_DRAW frame=4 caster=0 shape=A t=0.800000012 p=0.125 zo=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=3 object=A routed=1 matched=0 jittered=1
+SHADOW_DRAW frame=4 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=4 object=B routed=1 matched=0 jittered=1
+SHADOW_DRAW frame=4 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=5 object=F routed=1 matched=0 jittered=1
+SHADOW_EXPECT frame=4 casters=2 bounds_objects=2 lease_refused=0 after_reset=1 no_sun=0 multistream=0
+CAMERA_EXPECT frame=4 installed=1 policy=1 reason=3 cut=0 rotation_deg=0.0000 p00=0.8 p11=1.333333 r00=0.9975641 r01=0 r02=0.06975647 r10=0 r11=1 r12=0 r20=-0.06975647 r21=0 r22=0.9975641 resolve=1
+RESTORE frame=4 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=4 history=0 cut=1 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=4 hash=b50485f1468b983b
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=4 jitter=1 jx=0.125000 jy=0.277778 background_color=ff203040 checked=4088 ambiguous=8 material=2691 background=1397 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=4 hash=b50485f1468b983b
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=4 motion=39e6e57a44fc2325 depth=e37e26fd24b9a452
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=4 checked=3752 skipped=344 sentinel=3752 matched=0 mismatches=0 depth_written=2486 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK the map readback reports its size PASS
+CHECK shadow map written PASS
+SHADOW_MAP frame=4 available=1 width=256 height=256 right=0.707106769,-0,0.707106769 up=-0.639602125,0.426401436,0.639602125 forward=-0.301511347,-0.904534042,0.301511347 center=-82.2390137,2.99585462,-996.717529 extent=8 depth_half=16 valid=1
+RESTORE frame=5 label=fill differences=0
+CHECK fake camera pose validates PASS
+SHADOW_CAMERA frame=5 m00=0.800000012 m11=1.33333337 r=0.99619472,0,0.0871557444,0,1,0,-0.0871557444,0,0.99619472 t=12.5,-3,1000
+SHADOW_SUN frame=5 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=5 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=2 object=L routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=5 caster=0 shape=A t=0.800000012 p=0.125 zo=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=3 object=A routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=5 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=4 object=B routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=5 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=5 object=F routed=1 matched=1 jittered=1
+SHADOW_EXPECT frame=5 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=1 multistream=0
+CAMERA_EXPECT frame=5 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9998 p00=0.8 p11=1.333333 r00=0.9961947 r01=0 r02=0.08715574 r10=0 r11=1 r12=0 r20=-0.08715574 r21=0 r22=0.9961947 resolve=1
+RESTORE frame=5 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=5 x=4 y=0 before=4d301409 after=4d25272e
+CHANGED frame=5 x=30 y=0 before=4d301409 after=4d2f1409
+CHANGED frame=5 x=59 y=0 before=4d2f1409 after=4d25272e
+CHANGED frame=5 x=9 y=1 before=4d301409 after=4d222d37
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=5 history=1 cut=0 changed=92 policy=2 skipped=0
+COLOR_BEFORE frame=5 hash=c845a7f52fb3870b
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=5 jitter=1 jx=-0.125000 jy=-0.277778 background_color=ff203040 checked=4087 ambiguous=9 material=2692 background=1395 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=5 hash=0f17561db229202d
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=5 motion=4e7a81045d6b21ea depth=78a5fbb5f0f618e9
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=5 checked=3770 skipped=326 sentinel=1277 matched=2493 mismatches=0 depth_written=2493 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK the map readback reports its size PASS
+CHECK shadow map written PASS
+SHADOW_MAP frame=5 available=1 width=256 height=256 right=0.707106769,-0,0.707106769 up=-0.639602125,0.426401436,0.639602125 forward=-0.301511347,-0.904534042,0.301511347 center=-82.2390137,2.99585462,-996.717529 extent=8 depth_half=16 valid=1
+RESTORE frame=6 label=fill differences=0
+CHECK fake camera pose validates PASS
+SHADOW_CAMERA frame=6 m00=0.800000012 m11=1.33333337 r=0.994521916,0,0.104528464,0,1,0,-0.104528464,0,0.994521916 t=12.5,-3,1000
+SHADOW_SUN frame=6 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=6 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=2 object=L routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=6 caster=0 shape=A t=0.800000012 p=0.125 zo=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=3 object=A routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=6 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=4 object=B routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=6 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=5 object=F routed=1 matched=1 jittered=1
+SHADOW_EXPECT frame=6 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=0
+CAMERA_EXPECT frame=6 installed=1 policy=2 reason=0 cut=0 rotation_deg=0.9999 p00=0.8 p11=1.333333 r00=0.9945219 r01=0 r02=0.1045285 r10=0 r11=1 r12=0 r20=-0.1045285 r21=0 r22=0.9945219 resolve=1
+RESTORE frame=6 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=6 x=2 y=0 before=ff203040 after=ff2e170e
+CHANGED frame=6 x=3 y=0 before=ff203040 after=ff2d1912
+CHANGED frame=6 x=4 y=0 before=ff203040 after=ff252830
+CHANGED frame=6 x=25 y=0 before=ff203040 after=ff2d1912
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=6 history=1 cut=0 changed=120 policy=2 skipped=0
+COLOR_BEFORE frame=6 hash=5762d836574f4110
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=6 jitter=1 jx=0.375000 jy=0.055556 background_color=ff203040 checked=4093 ambiguous=3 material=2640 background=1453 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=6 hash=410157942398478d
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=6 motion=d7a924db590dbac4 depth=5c1b401b67005a71
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=6 checked=3758 skipped=338 sentinel=1261 matched=2497 mismatches=0 depth_written=2497 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK the map readback reports its size PASS
+CHECK shadow map written PASS
+SHADOW_MAP frame=6 available=1 width=256 height=256 right=0.707106769,-0,0.707106769 up=-0.639602125,0.426401436,0.639602125 forward=-0.301511347,-0.904534042,0.301511347 center=-116.943542,2.99491835,-993.214111 extent=8 depth_half=16 valid=1
+RESTORE frame=7 label=fill differences=0
+CHECK fake camera pose validates PASS
+SHADOW_CAMERA frame=7 m00=0.800000012 m11=1.33333337 r=0.798635483,0,0.601815045,0,1,0,-0.601815045,0,0.798635483 t=12.5,-3,1000
+SHADOW_SUN frame=7 direction=0.301511347,0.904534042,-0.301511347
+SHADOW_DRAW frame=7 caster=2 shape=L t=204.800003 p=0.00400000019 zo=0.100000001
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=2 object=L routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=7 caster=0 shape=A t=0.800000012 p=0.125 zo=0
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=3 object=A routed=1 matched=0 jittered=1
+SHADOW_DRAW frame=7 caster=1 shape=B t=-0.0500000007 p=0.125 zo=0.0500000007
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=4 object=B routed=1 matched=1 jittered=1
+SHADOW_DRAW frame=7 caster=3 shape=F t=240 p=0.125 zo=0.150000006
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=5 object=F routed=1 matched=1 jittered=1
+SHADOW_EXPECT frame=7 casters=2 bounds_objects=2 lease_refused=0 after_reset=0 no_sun=0 multistream=1
+CAMERA_EXPECT frame=7 installed=1 policy=1 reason=4 cut=1 rotation_deg=31.0000 p00=0.8 p11=1.333333 r00=0.7986355 r01=0 r02=0.601815 r10=0 r11=1 r12=0 r20=-0.601815 r21=0 r22=0.7986355 resolve=1
+RESTORE frame=7 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=7 history=0 cut=1 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=7 hash=b34353d93d518e70
+CHECK an uncovered pixel gives the frame's background colour PASS
+COVERAGE frame=7 jitter=1 jx=-0.437500 jy=0.388889 background_color=ff203040 checked=4093 ambiguous=3 material=2683 background=1410 mismatches=0
+CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
+COLOR frame=7 hash=b34353d93d518e70
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=7 motion=db9e63b204fa075a depth=f1869eab17c094b9
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=7 checked=3751 skipped=345 sentinel=3608 matched=143 mismatches=0 depth_written=2536 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+CHECK the map readback reports its size PASS
+CHECK shadow map written PASS
+SHADOW_MAP frame=7 available=1 width=256 height=256 right=0.707106769,-0,0.707106769 up=-0.639602125,0.426401436,0.639602125 forward=-0.301511347,-0.904534042,0.301511347 center=-116.943542,2.99491835,-993.214111 extent=8 depth_half=16 valid=1
+CHECK every frame verified against the oracle PASS
+CHECK every frame ran the boundary and compared against the reference resolve PASS
+CHECK reference device final Release reaches zero PASS
+CHECK reference factory final Release reaches zero PASS
+CHECK device final Release reaches zero with the route's objects released PASS
+CHECK factory final Release reaches zero PASS
+RESULT PASS checks=133 restorations=48 frames=8 motion_pixels=30095 matched_pixels=12728 max_uv_pixels=0.0017812517 max_depth_error=3.74090846e-06 depth_pixels=30095 depth_written=20101 max_current_depth_error=3.75415281e-06 coverage_frames=8 coverage_pixels=32717 coverage_ambiguous=51 jitter=1 taa=1 taa_frames=8 taa_history_frames=5 taa_reference_frames=8 taa_changed_pixels=378 taa_skipped_frames=0
 ==== sun-shadow-apply exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-sun-shadow-apply-20260917-031617-334995\d3d9.dll burst=0 rt_mode=perdraw camera=0 sentinel=0 envmap=0 hook=0 state_shadow=1 hdr=0 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=0 mipbias=0 mip_bias=0 sharpen=0 msaa=0
+MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\.claude\worktrees\agent-a7e2c2470cc482842\verification\probe\build\motion-output-sun-shadow-apply-20260917-054023-413402\d3d9.dll burst=0 rt_mode=perdraw camera=0 sentinel=0 envmap=0 hook=0 state_shadow=1 hdr=0 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=0 mipbias=0 mip_bias=0 sharpen=0 msaa=0
 CHECK local files are the reviewed pair PASS
 SUNAPPLY_DEVICE attached=1 result=00000000 reason= slots=220 references=3
 CHECK the apply pass attaches on this device PASS
@@ -404,7 +673,7 @@ CHECK a height mismatch skips the quad PASS
 CHECK another device's RT2 skips the quad PASS
 CHECK the skipped executions leave the target byte-identical PASS
 RESTORE frame=0 label=sunapply_skipped differences=0
-SUNAPPLY_TIME frame=0 us=174702.7 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=1
+SUNAPPLY_TIME frame=0 us=22561.5 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=1
 CHECK the quad applied PASS
 RESTORE frame=0 label=sunapply differences=0
 CHECK a far map leaves the target byte-identical PASS
@@ -426,7 +695,7 @@ CHECK a height mismatch skips the quad PASS
 CHECK another device's RT2 skips the quad PASS
 CHECK the skipped executions leave the target byte-identical PASS
 RESTORE frame=1 label=sunapply_skipped differences=0
-SUNAPPLY_TIME frame=1 us=3680.4 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=0
+SUNAPPLY_TIME frame=1 us=3419.6 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=0
 CHECK the quad applied PASS
 RESTORE frame=1 label=sunapply differences=0
 CHECK a shadowing map changes the target PASS
@@ -448,7 +717,7 @@ CHECK a height mismatch skips the quad PASS
 CHECK another device's RT2 skips the quad PASS
 CHECK the skipped executions leave the target byte-identical PASS
 RESTORE frame=2 label=sunapply_skipped differences=0
-SUNAPPLY_TIME frame=2 us=1537.1 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=1
+SUNAPPLY_TIME frame=2 us=1640.5 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=1
 CHECK the quad applied PASS
 RESTORE frame=2 label=sunapply differences=0
 CHECK a shadowing map changes the target PASS
@@ -470,7 +739,7 @@ CHECK a height mismatch skips the quad PASS
 CHECK another device's RT2 skips the quad PASS
 CHECK the skipped executions leave the target byte-identical PASS
 RESTORE frame=3 label=sunapply_skipped differences=0
-SUNAPPLY_TIME frame=3 us=1608.8 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=0
+SUNAPPLY_TIME frame=3 us=1777.8 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=0
 CHECK the quad applied PASS
 RESTORE frame=3 label=sunapply differences=0
 CHECK a shadowing map changes the target PASS
@@ -492,7 +761,7 @@ CHECK a height mismatch skips the quad PASS
 CHECK another device's RT2 skips the quad PASS
 CHECK the skipped executions leave the target byte-identical PASS
 RESTORE frame=4 label=sunapply_skipped differences=0
-SUNAPPLY_TIME frame=4 us=1923.6 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=1
+SUNAPPLY_TIME frame=4 us=1663.4 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=1
 CHECK the quad applied PASS
 RESTORE frame=4 label=sunapply differences=0
 CHECK a shadowing map changes the target PASS
@@ -518,7 +787,7 @@ CHECK a height mismatch skips the quad PASS
 CHECK another device's RT2 skips the quad PASS
 CHECK the skipped executions leave the target byte-identical PASS
 RESTORE frame=5 label=sunapply_skipped differences=0
-SUNAPPLY_TIME frame=5 us=5405.7 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=0
+SUNAPPLY_TIME frame=5 us=5273.1 result=00000000 applied=1 stage=0 map_size=256 caller_scene_open=0
 CHECK the quad applied PASS
 RESTORE frame=5 label=sunapply differences=0
 CHECK a shadowing map changes the target PASS
