@@ -68,15 +68,15 @@ not rerun requests.
 ## 40. Five cascades to 30 km, 2048² A/B, corvette ladder, retained casters, hull emitters — queued (run40 candidate)
 
 Installed: run40 candidate `d4d824a4…` from `d415264f` (see [status](../status.md)). Original hull
-shading. New since run 39: the apply-quad half-pixel fix (the moving serrated band), five
-cascades with a 30 km reach, caster pool control (importance drop order, per-cascade records; the
+shading. New since run 39: the apply-quad half-pixel fix (the moving serrated band), the run116
+flicker fix (back-face far cascades, verdict cycle), five cascades with a 30 km reach, caster pool control (importance drop order, per-cascade records; the
 static-only rule stays available but is off after run116), own-ship-adaptive C0 with the
 sliding ladder. Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull
 emitters, F6 effect gains, F8 capture.
 
 Common prefix:
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --shadow-sun-trace --frame-end-stride 1
 ```
 Shadow set (add to every shadow session):
 ```sh
