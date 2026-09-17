@@ -557,6 +557,8 @@ private:
     template <class Check> void walk_unseen(const FrameInput& in, Check check) noexcept {
         const unsigned cascades = in.bases_valid ? in.set.count : 0;
         double centre_sun[renderer::shadow_cascade_max][3]{};
+        bool shared_axes[renderer::shadow_cascade_max] = {true, true, true, true}; // cascade c has cascade 0's axes (always, under the latched sun)
+        for (unsigned c = 1; c < cascades; ++c) shared_axes[c] = renderer::shadow_replay_axes_equal(in.bases[c], in.bases[0]);
         for (unsigned c = 0; c < cascades; ++c) for (unsigned a = 0; a < 3; ++a) { double m = 0; for (unsigned j = 0; j < 3; ++j) m += in.bases[c].axes[a][j] * in.bases[c].center_d[j]; centre_sun[c][a] = m; }
         for (unsigned index = 0; index < node_capacity; ++index) {
             Node& n = nodes[index];
@@ -590,9 +592,12 @@ private:
                 Draw& d = draws[i];
                 d.cascades = 0;
                 if (!d.complete()) continue;
+                // Each cascade against its own current basis: the cascades share their axes under the
+                // latched sun and may each hold another direction under the positional sun.
                 double mid[3], radius[3];
-                for (unsigned a = 0; a < 3; ++a) sun_interval(in.bases[0], a, d.centre, d.half, mid[a], radius[a]);
                 for (unsigned c = 0; c < cascades; ++c) {
+                    if (!c || !shared_axes[c]) for (unsigned a = 0; a < 3; ++a) sun_interval(in.bases[c], a, d.centre, d.half, mid[a], radius[a]);
+                    else if (!shared_axes[c - 1]) for (unsigned a = 0; a < 3; ++a) sun_interval(in.bases[0], a, d.centre, d.half, mid[a], radius[a]);
                     const auto& box = in.set.cascades[c];
                     const double e = double(box.half_extent), x = mid[0] - centre_sun[c][0], y = mid[1] - centre_sun[c][1], z = mid[2] - centre_sun[c][2];
                     // As the draw-time mask: the light side is open (a caster nearer the light is pancaked).

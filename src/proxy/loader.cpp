@@ -6,6 +6,7 @@
 #include "telemetry.h"
 #include "object_trace.h"
 #include "camera_state.h"
+#include "sun_light_poll.h"
 #include "scene_hook.h"
 #include "chase_camera.h"
 #include "chase_aim_trace.h"
@@ -85,6 +86,8 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::object_lifetime::initialize();
         x3m::camera_state::initialize(); // X3M_MOTION_OUTPUT=1 with X3M_TAA=1 or the shadow-replay switches; reads only, no patch
         x3m::log("camera_state active=%u status=%s",x3m::camera_state::available(),x3m::camera_state::status());
+        x3m::sun_light_poll::initialize(); // cascades only (X3M_SHADOW_SUN_POLL=0 off): reads only, no patch; unavailable keeps the LightDir_Dir0 latch
+        x3m::log("sun_light_poll active=%u status=%s",x3m::sun_light_poll::available(),x3m::sun_light_poll::status());
         // X3M_SCENE_HOOK (default on with X3M_MOTION_OUTPUT=1, 0 off): the frame
         // routine's compositing callsite, exact executable and exact bytes
         // only, otherwise fails closed (the route keeps the copy/selector

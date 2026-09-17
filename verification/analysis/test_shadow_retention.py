@@ -77,6 +77,7 @@ struct Rig {
     unsigned room[4] = {1024, 1024, 1024, 1024};
     std::uint32_t age_cap = sr::age_cap_default;
     std::uint64_t changed_vb = 0; // the check callback reports this allocation as rewritten
+    const float* outer_sun = nullptr; // the positional sun: cascade 1 holds another direction than cascade 0
     Rig(bool hold = true) { const float extents[2] = {250.f, 1500.f}; renderer::shadow_cascade_set(extents, 2, nullptr, nullptr, 640, set); store->configure(hold); }
     sr::Seen draw(std::uint64_t serial, const float world[12], std::uint64_t vb = 100, std::uint32_t lod = 0, std::uint32_t flags12c = 0, std::uint32_t flags130 = 0, std::uint64_t epoch = 1, std::uint64_t revision = 1) {
         float rows[16]; clip_rows(camera(pose), world, rows);
@@ -92,7 +93,7 @@ struct Rig {
     void end() {
         sr::FrameInput in; in.frame = frame; in.camera = camera(pose); in.set = set; in.age_cap = age_cap;
         in.bases_valid = true;
-        for (unsigned c = 0; c < set.count; ++c) in.bases_valid = in.bases_valid && renderer::shadow_replay_basis(in.camera, sun, set.cascades[c], in.bases[c]);
+        for (unsigned c = 0; c < set.count; ++c) in.bases_valid = in.bases_valid && renderer::shadow_replay_basis(in.camera, c && outer_sun ? outer_sun : sun, set.cascades[c], in.bases[c]);
         for (unsigned c = 0; c < 4; ++c) in.room[c] = room[c];
         store->end_scene(in, [&](const sr::Draw& d) { return changed_vb && d.key.vb == changed_vb ? sr::BufferState::Changed : sr::BufferState::Quiet; });
         release();
@@ -182,6 +183,18 @@ int main() {
         CHECK(f.would[0] == 2 && f.capped[0] == 1 && f.would[1] == 2 && f.capped[1] == 0 && r.store->admitted_count == 2);
         for (unsigned q = 0; q < r.store->admitted_count; ++q) { const auto& d = r.store->draws[r.store->admitted[q]]; CHECK(d.cascades == (d.key.vb == 100 ? 3 : 2)); }
         r.room[0] = r.room[1] = 0; r.end(); CHECK(r.store->admitted_count == 0); r.next();
+    }
+    { // per-cascade suns: a retained record's mask is taken against each cascade's own current basis
+        Rig r; renderer::ShadowReplayBasis shared{};
+        CHECK(renderer::shadow_replay_basis(camera(r.pose), sun, r.set.cascades[1], shared));
+        const double* right = shared.axes[0]; // 2,000 units along the shared basis' x axis: outside cascade 1's 1,500-unit box
+        place(w, 2000 * right[0], 2000 * right[1], 2000 * right[2]); r.settle(15, w);
+        r.end(); CHECK(r.store->nodes_used == 1 && r.store->admitted_count == 0); auto f = r.next(); CHECK(f.would[0] == 0 && f.would[1] == 0);
+        // Cascade 1 lit from -x of that basis: the node now lies on its light axis, 2,000 units behind the centre, inside its box.
+        const float other[4] = {float(-right[0]), float(-right[1]), float(-right[2]), 0.f};
+        r.outer_sun = other; r.end(); CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].cascades == 2);
+        f = r.next(); CHECK(f.would[0] == 0 && f.would[1] == 1);
+        r.outer_sun = nullptr; r.end(); CHECK(r.store->admitted_count == 0); r.next();
     }
     { // excluded classes are never retained
         Rig r; place(w, 20, 0, 60);

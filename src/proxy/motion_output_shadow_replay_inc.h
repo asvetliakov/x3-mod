@@ -210,7 +210,9 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     const bool retained_on = retention_live();
     const unsigned m = retained_on ? retention_->store.admitted_count : 0;
     renderer::ShadowReplayDraw* const draws = retained_on ? retention_->draws.get() : depth_draws_;
-    const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr; // the one sun every cascade shares
+    // The latch's verdict gates the frame; each cascade's basis takes its own sun (cascade_sun: one held direction per
+    // cascade from the polled sun position, else the latch's sun for all).
+    const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr;
     const char* unleased = nullptr;
     unsigned per_cascade[renderer::shadow_cascade_max]{}, issues = 0;
     for (unsigned i = 0; i < n; ++i) {
@@ -247,7 +249,8 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     if (!refused && !state) {
         unsigned offset = 0;
         for (unsigned k = 0; k < cascades && !state; ++k) {
-            if (!renderer::shadow_replay_basis(camera_scene_, sun, depth_cascades_.cascades[k], bases[k])) { state = "basis"; break; }
+            const float* own = cascade_sun(k); // decides the frame's source: the grid anchor below is the same source's
+            if (!renderer::shadow_replay_basis(camera_scene_, own, depth_cascades_.cascades[k], bases[k], point_sun_.grid_anchor(k))) { state = "basis"; break; }
             replays[k] = per_cascade[k] != 0 && renderer::shadow_cascade_replays(k, cascades, issues, depth_cascades_.budget, frame_);
             offsets[k] = offset;
             if (replays[k]) { lists[list_count].map = k; lists[list_count].issues = depth_issues_.get() + offset; lists[list_count].count = 0; ++list_count; offset += per_cascade[k]; }
@@ -263,9 +266,14 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             d.stream_offset = g.stream_offset; d.stride = g.stride; d.topology = g.topology; d.primitives = g.primitives; d.first = g.first;
             d.min_vertex = g.min_vertex; d.vertex_count = g.vertex_count; d.base_vertex = g.base_vertex; d.indexed = g.indexed; d.cull_mode = g.cull_mode;
             double base[3][4];
+            unsigned base_of = 0; // the cascade whose axes `base` was built with (one product per draw while the cascades share a sun)
             if (!renderer::shadow_cascade_draw_rows(camera_scene_, g.rows, bases[0], base)) { state = "rows"; break; }
             for (unsigned k = 0; k < cascades; ++k) {
                 if (!replays[k] || !(candidates_.records[i].cascades & (1u << k))) continue;
+                if (k != base_of && !renderer::shadow_replay_axes_equal(bases[k], bases[base_of])) {
+                    if (!renderer::shadow_cascade_draw_rows(camera_scene_, g.rows, bases[k], base)) { state = "rows"; break; }
+                    base_of = k;
+                }
                 auto& issue = depth_issues_[offsets[k] + fill[k]++];
                 issue.draw = std::uint16_t(i);
                 if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }
@@ -282,9 +290,11 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             d.stream_offset = r.key.stream_offset; d.stride = r.key.stride; d.topology = static_cast<D3DPRIMITIVETYPE>(r.key.topology); d.primitives = r.key.primitives; d.first = r.key.first;
             d.min_vertex = r.key.min_vertex; d.vertex_count = r.key.vertex_count; d.base_vertex = r.key.base_vertex; d.indexed = r.key.indexed != 0; d.cull_mode = r.cull_mode;
             double base[3][4];
+            unsigned base_of = 0; // as the live loop: one product while the cascades share their axes, another per cascade whose sun differs
             shadow_retention::sun_rows(r.world, bases[0], base); // S(sun basis) . W_retained: no camera enters
             for (unsigned k = 0; k < cascades; ++k) {
                 if (!replays[k] || !(r.cascades & (1u << k))) continue;
+                if (k != base_of && !renderer::shadow_replay_axes_equal(bases[k], bases[base_of])) { shadow_retention::sun_rows(r.world, bases[k], base); base_of = k; }
                 auto& issue = depth_issues_[offsets[k] + fill[k]++];
                 issue.draw = std::uint16_t(n + q);
                 if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }

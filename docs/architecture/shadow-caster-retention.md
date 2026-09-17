@@ -428,6 +428,11 @@ Where the build differs from, or sharpens, the text above:
 - **Device loss** is a failed `Present` (`flush=device`). Not reachable in the fixture.
 - **`flush_sun`** fires on the latch's `Relatched` verdict. "The first validated sun after a
   period with none" cannot occur on one device: the latch stays valid until attach.
+- **Positional sun (merged with main c27e974).** The unseen walk builds each cascade's basis as
+  the transaction does (`cascade_sun(k)`, `point_sun_.grid_anchor(k)`) and takes a record's mask
+  against each cascade's own axes; the issue loop rebuilds the sun rows for a cascade whose axes
+  differ; box exit uses the outermost cascade's own basis. A switch of the sun source
+  (point ↔ latch) flushes the store like a re-latch (`flush=sun`).
 - **Draws after the frame's scene end** are not sightings, and a frame that never reaches a
   scene end drops its sightings at the next frame begin (`abandoned`): their rows belong to a
   camera latch that is gone.

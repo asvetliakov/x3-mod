@@ -241,7 +241,7 @@ void MotionOutput::note_retention_draw(const MotionRoute& route, const shadow_re
     if (st.timing) { st.draw_ticks += retention_ticks() - t0; ++st.draw_calls; }
 }
 // The scene end, after the frame's sun verdict and before the replay.
-void MotionOutput::retention_scene_end() noexcept {
+void MotionOutput::retention_scene_end(bool sun_source_switched) noexcept {
     auto& st = *retention_; auto& store = st.store;
     if (st.published_frame == frame_) return;
     const std::int64_t t0 = retention_ticks();
@@ -250,7 +250,8 @@ void MotionOutput::retention_scene_end() noexcept {
     const std::int64_t t1 = retention_ticks();
     // The validated sun changed beyond the gate, or is the first after a period with none.
     const bool none = sun_verdict_ == shadow_replay::SunVerdict::None;
-    if (sun_verdict_ == shadow_replay::SunVerdict::Relatched || (st.sun_none && !none)) {
+    // A switch of the sun source (point <-> latch) voids the retained maps' bases the same way.
+    if (sun_verdict_ == shadow_replay::SunVerdict::Relatched || (st.sun_none && !none) || sun_source_switched) {
         ++store.frame.sun_relatch; store.flush(shadow_retention::Flush::Sun);
     }
     st.sun_none = none;
@@ -272,7 +273,9 @@ void MotionOutput::retention_scene_end() noexcept {
     in.frame = frame_; in.camera = camera_scene_; in.set = depth_cascades_; in.eps = retention_eps_; in.age_cap = retention_age_cap_;
     const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr;
     in.bases_valid = sun && camera_scene_.valid && depth_cascades_.count != 0;
-    for (unsigned c = 0; in.bases_valid && c < depth_cascades_.count; ++c) in.bases_valid = renderer::shadow_replay_basis(camera_scene_, sun, depth_cascades_.cascades[c], in.bases[c]);
+    // Each cascade's own current basis, exactly as the transaction builds it (its own sun and grid anchor).
+    for (unsigned c = 0; in.bases_valid && c < depth_cascades_.count; ++c)
+        in.bases_valid = renderer::shadow_replay_basis(camera_scene_, cascade_sun(c), depth_cascades_.cascades[c], in.bases[c], point_sun_.grid_anchor(c));
     for (unsigned c = 0; c < depth_cascades_.count; ++c) { const unsigned live = candidates_.counts.cascade[c], cap = depth_cascades_.caps[c]; in.room[c] = live < cap ? cap - live : 0; }
     const bool live_mode = st.mode == shadow_retention::Mode::Live;
     store.end_scene(in, [&](const shadow_retention::Draw& d) noexcept {

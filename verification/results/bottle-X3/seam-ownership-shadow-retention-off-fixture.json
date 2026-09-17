@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/verification/probe/build/motion_output_fixture.exe": "f59928eaee748a46b111bcf3b5305f1d98e73265e0f342d270355dfeae5b2282",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/verification/probe/build/motion-output-seam/d3d9.dll": "da34a3f09d2367b090660420fa460f2e337865a2d19a887ba5a63178b9b17070",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/build/d3d9.dll": "acdd32c94e5e22362d7d802e0a61bcd753db0c8665409de822d93d667715945e"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/verification/probe/build/motion_output_fixture.exe": "ba17fdad3d739d851b59d04bd34796a655ccf7cecbcea0435f6c9452a40a394e",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/verification/probe/build/motion-output-seam/d3d9.dll": "4f73a5116c3e6cc78ab7e628ebec47581babe6211f58ff036f07b666d10794e0",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/build/d3d9.dll": "4151b17bd7d6b071afdd44e0e284ce10a528e1e279757df99d3914270b547e3c"
  },
  "mode": "off",
  "frames": 1461,
@@ -47,20 +47,20 @@
  },
  "us": {
   "frames": 1453,
-  "min": 19.5,
-  "median": 24.6,
-  "max": 1881.3,
+  "min": 19.7,
+  "median": 25.0,
+  "max": 1996.6,
   "bulk": {
    "frames": 5,
    "issues_median": 1402,
-   "us_median": 1874.3
+   "us_median": 1898.8
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260917-103315-360355",
- "trace_sha256": "84c8e267f93939147ccb139e1fa5af7641d5c5bff0d9ae4dd094277c3946c552",
- "dll_sha256": "da34a3f09d2367b090660420fa460f2e337865a2d19a887ba5a63178b9b17070",
- "exe_sha256": "f59928eaee748a46b111bcf3b5305f1d98e73265e0f342d270355dfeae5b2282",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260917-104055-879436",
+ "trace_sha256": "e8b6fb56f8e844af4e5e62d1a77e1ecd6e5303057e658bd364d6c1dac67c3e80",
+ "dll_sha256": "4f73a5116c3e6cc78ab7e628ebec47581babe6211f58ff036f07b666d10794e0",
+ "exe_sha256": "ba17fdad3d739d851b59d04bd34796a655ccf7cecbcea0435f6c9452a40a394e",
  "presented_identical_to": [
   "seam-ownership-shadow-retention-live",
   "seam-ownership-shadow-retention-census"

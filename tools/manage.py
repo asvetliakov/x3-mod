@@ -281,6 +281,7 @@ def main():
     parser.add_argument('--shadow-cascades', default=None, metavar='E0,E1,...|default', help='Sun-shadow cascades (X3M_SHADOW_CASCADES; default off: the single --shadow-replay-extent map; requires --shadow-replay-depth): 1..4 ascending half-extents in world units, each 50..50000, of camera-centred texel-snapped maps replayed in one transaction; "default" means 250,1500,7500,25000. Every cascade reaches 2 x the largest extent towards the light, the apply quad selects the first cascade containing a pixel with a 10 %% blend band and fades the last one to lit; the far cascade replays on even frames only while the frame exceeds --shadow-cascade-budget (docs/architecture/shadow-cascades.md)')
     parser.add_argument('--shadow-cascade-sizes', default=None, metavar='N[,N...]', help='Map side per cascade, 64..4096, one value for all or one per cascade, default 4096 (X3M_SHADOW_CASCADE_SIZES; requires --shadow-cascades); memory is 4 N^2 bytes per map plus one depth attachment of the largest size')
     parser.add_argument('--shadow-cascade-caps', default=None, metavar='N[,N...]', help='Caster records per cascade and frame, 1..1024, one value for all or one per cascade, default 128,512,1024,1024 (X3M_SHADOW_CASCADE_CAPS; requires --shadow-cascades); the drops count capped<i> in the shadow_replay_candidates line')
+    parser.add_argument('--shadow-sun-poll', choices=('on', 'off'), default=None, help='Sun position for the cascades from the engine\'s brightest directional light node instead of one LightDir_Dir0 constant (X3M_SHADOW_SUN_POLL; default on with --shadow-cascades; verified executable only, cross-checked against the constants, the constant latch otherwise; requires --shadow-cascades).')
     parser.add_argument('--shadow-cascade-budget', type=int, default=None, metavar='B', help='Draw issues per frame above which the far cascade replays on even frames only, 1..4096, default 640 (X3M_SHADOW_CASCADE_BUDGET; requires --shadow-cascades)')
     parser.add_argument('--shadow-retention-census', action='store_true', help='Caster retention census (X3M_SHADOW_RETENTION_CENSUS=1; default off; requires --shadow-cascades): the node-keyed retention store runs with every expiry decision taken as if live but holds no references and replays nothing; one shadow_retention_frame line per frame, one cumulative shadow_retention_resight line every 300 frames and shadow_retention_caster lines on F8 frames calibrate eps, the age cap and the budget before --shadow-caster-retention is trusted (docs/architecture/shadow-caster-retention.md, stage 1)')
     parser.add_argument('--shadow-caster-retention', action='store_true', help='Retention of static sun-shadow casters the engine stopped submitting (X3M_SHADOW_CASTER_RETENTION=1; default off; requires --shadow-cascades; wins over --shadow-retention-census): nodes whose world rows held still for 8 sightings keep their draws, with the store\'s own references on VB, IB and declaration, and are replayed into the cascades they meet inside the per-cascade caps and the issue budget until the node retires, leaves 2 x the outermost box, its buffers change, the age cap passes, the sun re-latches or the device resets (docs/architecture/shadow-caster-retention.md, stage 2)')
@@ -479,12 +480,12 @@ def main():
         """Validates --shadow-cascades and its companions; returns their environment
         ('X3M_SHADOW_CASCADES': '0' when off, the companions only when given)."""
         companions = (('--shadow-cascade-sizes', args.shadow_cascade_sizes), ('--shadow-cascade-caps', args.shadow_cascade_caps),
-                      ('--shadow-cascade-budget', args.shadow_cascade_budget))
+                      ('--shadow-cascade-budget', args.shadow_cascade_budget), ('--shadow-sun-poll', args.shadow_sun_poll))
         if args.shadow_cascades is None:
             for option, value in companions:
                 if value is not None:
                     parser.error(f'{option} requires --shadow-cascades.')
-            return {'X3M_SHADOW_CASCADES': '0'}
+            return {'X3M_SHADOW_CASCADES': '0', 'X3M_SHADOW_SUN_POLL': '0'}
         if not args.shadow_replay_depth:
             parser.error('--shadow-cascades requires --shadow-replay-depth.')
         try:
@@ -495,7 +496,7 @@ def main():
         if not 1 <= len(extents) <= SHADOW_CASCADE_MAX or not all(math.isfinite(e) and low <= e <= high for e in extents) \
                 or any(b <= a for a, b in zip(extents, extents[1:])):
             parser.error('--shadow-cascades takes 1..4 ascending half-extents within [50, 50000].')
-        env = {'X3M_SHADOW_CASCADES': ','.join(repr(e) for e in extents)}
+        env = {'X3M_SHADOW_CASCADES': ','.join(repr(e) for e in extents), 'X3M_SHADOW_SUN_POLL': '0' if args.shadow_sun_poll == 'off' else '1'}
 
         def integers(option, text, low, high):
             try:
