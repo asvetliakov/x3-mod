@@ -1,0 +1,542 @@
+{
+ "generated": "2026-09-17T08:13:27",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "fixture": {
+  "source": "verification/probe/effect_technique_lookup_fixture.cpp",
+  "exe_sha256": "b3fcdeb5c6dafd0a35bf182b045ed005eb7f96e8a3ebc41717427ba7b177c6d1",
+  "iterations": 100000,
+  "repetitions": 3,
+  "batch": 100
+ },
+ "d3dx9_37_game_file": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll",
+  "bytes": 3786760,
+  "sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+ },
+ "draws_per_frame": 825,
+ "note": "Median of the per-repetition medians (and of the per-repetition p90s). Each repetition times `iterations` calls in batches of `batch` between one QPC pair (the bottle QPC ticks at 0.1 us, coarser than a single call) after a warm-up, and the per-repetition median/p90 are over the per-batch per-call means. `net_*` subtracts the empty-body batch loop baseline. No state manager is installed: none of these calls reaches the device. Diagnostic microbenchmark timings on an idle synthetic device, not game FPS.",
+ "effects": {
+  "shader/3_0/argon.fb": {
+   "catalogue": "addon/01.cat",
+   "bytes": 41004,
+   "sha256": "bc504b32dee758b12afeb904910e4b2281033ebdb0b5fad2510d2de485ec48b7",
+   "module": {
+    "path": "Z:\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effect-technique-lookup-yb5wug8s\\d3dx9_37.dll",
+    "image_size": 3895296,
+    "stamp": "47cdef5d",
+    "exports": 336,
+    "wine_builtin": 0
+   },
+   "device": {
+    "vs": "fffe0300",
+    "ps": "ffff0300"
+   },
+   "run": {
+    "effect_bytes": 41004,
+    "parameters": 54,
+    "techniques": 2,
+    "engine_techniques": "DEFAULT,BUMPMAP",
+    "iterations": 100000,
+    "repetitions": 3,
+    "warmup": 400,
+    "batch": 100
+   },
+   "measures": {
+    "baseline": {
+     "detail": "-",
+     "us_median": 0.001,
+     "us_p90": 0.001,
+     "us_mean": 0.0008,
+     "us_p99": 0.001,
+     "rep_medians": [
+      0.001,
+      0.001,
+      0.001
+     ]
+    },
+    "gtbn:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.005,
+     "us_p90": 0.005,
+     "us_mean": 0.0049,
+     "us_p99": 0.006,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.004,
+     "ms_per_frame_median": 0.0033
+    },
+    "gtbn:BUMPMAP": {
+     "detail": "BUMPMAP",
+     "us_median": 0.006,
+     "us_p90": 0.006,
+     "us_mean": 0.0058,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.006,
+      0.006,
+      0.006
+     ],
+     "net_us_median": 0.005,
+     "net_us_p90": 0.005,
+     "ms_per_frame_median": 0.0041
+    },
+    "settech_same:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.005,
+     "us_p90": 0.005,
+     "us_mean": 0.0047,
+     "us_p99": 0.006,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.004,
+     "ms_per_frame_median": 0.0033
+    },
+    "settech_alt:DEFAULT|BUMPMAP": {
+     "detail": "DEFAULT|BUMPMAP",
+     "us_median": 0.005,
+     "us_p90": 0.005,
+     "us_mean": 0.0049,
+     "us_p99": 0.006,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.004,
+     "ms_per_frame_median": 0.0033
+    },
+    "beginend:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.006,
+     "us_p90": 0.007,
+     "us_mean": 0.0062,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.006,
+      0.006,
+      0.006
+     ],
+     "net_us_median": 0.005,
+     "net_us_p90": 0.006,
+     "ms_per_frame_median": 0.0041
+    }
+   },
+   "cache_saving": {
+    "gtbn_us_median": 0.0045,
+    "settech_same_us_median": 0.004,
+    "saved_us_per_draw": 0.0085,
+    "saved_ms_per_frame": 0.007
+   }
+  },
+  "shader/3_0/argon2s.fb": {
+   "catalogue": "addon/01.cat",
+   "bytes": 41236,
+   "sha256": "3315222a8dc47a3aaca882b1c05ec682138c02d2b9b24e35527552642a78da74",
+   "module": {
+    "path": "Z:\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effect-technique-lookup-yb5wug8s\\d3dx9_37.dll",
+    "image_size": 3895296,
+    "stamp": "47cdef5d",
+    "exports": 336,
+    "wine_builtin": 0
+   },
+   "device": {
+    "vs": "fffe0300",
+    "ps": "ffff0300"
+   },
+   "run": {
+    "effect_bytes": 41236,
+    "parameters": 54,
+    "techniques": 2,
+    "engine_techniques": "DEFAULT,BUMPMAP",
+    "iterations": 100000,
+    "repetitions": 3,
+    "warmup": 400,
+    "batch": 100
+   },
+   "measures": {
+    "baseline": {
+     "detail": "-",
+     "us_median": 0.001,
+     "us_p90": 0.001,
+     "us_mean": 0.0008,
+     "us_p99": 0.001,
+     "rep_medians": [
+      0.001,
+      0.001,
+      0.001
+     ]
+    },
+    "gtbn:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.005,
+     "us_p90": 0.006,
+     "us_mean": 0.0051,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.005,
+     "ms_per_frame_median": 0.0033
+    },
+    "gtbn:BUMPMAP": {
+     "detail": "BUMPMAP",
+     "us_median": 0.006,
+     "us_p90": 0.007,
+     "us_mean": 0.0058,
+     "us_p99": 0.008,
+     "rep_medians": [
+      0.006,
+      0.006,
+      0.006
+     ],
+     "net_us_median": 0.005,
+     "net_us_p90": 0.006,
+     "ms_per_frame_median": 0.0041
+    },
+    "settech_same:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.005,
+     "us_p90": 0.005,
+     "us_mean": 0.0048,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.004,
+     "ms_per_frame_median": 0.0033
+    },
+    "settech_alt:DEFAULT|BUMPMAP": {
+     "detail": "DEFAULT|BUMPMAP",
+     "us_median": 0.005,
+     "us_p90": 0.005,
+     "us_mean": 0.0049,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.004,
+     "ms_per_frame_median": 0.0033
+    },
+    "beginend:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.006,
+     "us_p90": 0.007,
+     "us_mean": 0.0064,
+     "us_p99": 0.009,
+     "rep_medians": [
+      0.007,
+      0.006,
+      0.006
+     ],
+     "net_us_median": 0.005,
+     "net_us_p90": 0.006,
+     "ms_per_frame_median": 0.0041
+    }
+   },
+   "cache_saving": {
+    "gtbn_us_median": 0.0045,
+    "settech_same_us_median": 0.004,
+    "saved_us_per_draw": 0.0085,
+    "saved_ms_per_frame": 0.007
+   }
+  },
+  "shader/3_0/standard_lighting.fb": {
+   "catalogue": "addon/01.cat",
+   "bytes": 55872,
+   "sha256": "bd1cec1d4b425e3b42bfbea5720ba4f9af5c91de800140fbe583282cd3dcf733",
+   "module": {
+    "path": "Z:\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effect-technique-lookup-yb5wug8s\\d3dx9_37.dll",
+    "image_size": 3895296,
+    "stamp": "47cdef5d",
+    "exports": 336,
+    "wine_builtin": 0
+   },
+   "device": {
+    "vs": "fffe0300",
+    "ps": "ffff0300"
+   },
+   "run": {
+    "effect_bytes": 55872,
+    "parameters": 60,
+    "techniques": 3,
+    "engine_techniques": "DEFAULT,BUMPMAP,BUMPMAP_LOW",
+    "iterations": 100000,
+    "repetitions": 3,
+    "warmup": 400,
+    "batch": 100
+   },
+   "measures": {
+    "baseline": {
+     "detail": "-",
+     "us_median": 0.001,
+     "us_p90": 0.001,
+     "us_mean": 0.0008,
+     "us_p99": 0.002,
+     "rep_medians": [
+      0.001,
+      0.001,
+      0.001
+     ]
+    },
+    "gtbn:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.005,
+     "us_p90": 0.006,
+     "us_mean": 0.0052,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.005,
+     "ms_per_frame_median": 0.0033
+    },
+    "gtbn:BUMPMAP": {
+     "detail": "BUMPMAP",
+     "us_median": 0.006,
+     "us_p90": 0.007,
+     "us_mean": 0.006,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.006,
+      0.006,
+      0.006
+     ],
+     "net_us_median": 0.005,
+     "net_us_p90": 0.006,
+     "ms_per_frame_median": 0.0041
+    },
+    "gtbn:BUMPMAP_LOW": {
+     "detail": "BUMPMAP_LOW",
+     "us_median": 0.01,
+     "us_p90": 0.011,
+     "us_mean": 0.0108,
+     "us_p99": 0.013,
+     "rep_medians": [
+      0.01,
+      0.011,
+      0.01
+     ],
+     "net_us_median": 0.009,
+     "net_us_p90": 0.01,
+     "ms_per_frame_median": 0.0074
+    },
+    "settech_same:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.005,
+     "us_p90": 0.006,
+     "us_mean": 0.0051,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.005,
+     "ms_per_frame_median": 0.0033
+    },
+    "settech_alt:DEFAULT|BUMPMAP": {
+     "detail": "DEFAULT|BUMPMAP",
+     "us_median": 0.005,
+     "us_p90": 0.006,
+     "us_mean": 0.0052,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.005,
+     "ms_per_frame_median": 0.0033
+    },
+    "beginend:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.007,
+     "us_p90": 0.007,
+     "us_mean": 0.0067,
+     "us_p99": 0.008,
+     "rep_medians": [
+      0.007,
+      0.007,
+      0.006
+     ],
+     "net_us_median": 0.006,
+     "net_us_p90": 0.006,
+     "ms_per_frame_median": 0.005
+    }
+   },
+   "cache_saving": {
+    "gtbn_us_median": 0.005,
+    "settech_same_us_median": 0.004,
+    "saved_us_per_draw": 0.009,
+    "saved_ms_per_frame": 0.0074
+   }
+  },
+  "shader/3_0/xt_standard_lighting.fb": {
+   "catalogue": "addon/01.cat",
+   "bytes": 70172,
+   "sha256": "181316fe35217c3277ea39fc6edacdbb5818abc0e2d5f9ec965eed179768f004",
+   "module": {
+    "path": "Z:\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effect-technique-lookup-yb5wug8s\\d3dx9_37.dll",
+    "image_size": 3895296,
+    "stamp": "47cdef5d",
+    "exports": 336,
+    "wine_builtin": 0
+   },
+   "device": {
+    "vs": "fffe0300",
+    "ps": "ffff0300"
+   },
+   "run": {
+    "effect_bytes": 70172,
+    "parameters": 78,
+    "techniques": 3,
+    "engine_techniques": "DEFAULT,BUMPMAP,BUMPMAP_LOW",
+    "iterations": 100000,
+    "repetitions": 3,
+    "warmup": 400,
+    "batch": 100
+   },
+   "measures": {
+    "baseline": {
+     "detail": "-",
+     "us_median": 0.001,
+     "us_p90": 0.001,
+     "us_mean": 0.0008,
+     "us_p99": 0.001,
+     "rep_medians": [
+      0.001,
+      0.001,
+      0.001
+     ]
+    },
+    "gtbn:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.005,
+     "us_p90": 0.005,
+     "us_mean": 0.0049,
+     "us_p99": 0.006,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.004,
+     "ms_per_frame_median": 0.0033
+    },
+    "gtbn:BUMPMAP": {
+     "detail": "BUMPMAP",
+     "us_median": 0.006,
+     "us_p90": 0.006,
+     "us_mean": 0.0056,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.005,
+      0.006,
+      0.006
+     ],
+     "net_us_median": 0.005,
+     "net_us_p90": 0.005,
+     "ms_per_frame_median": 0.0041
+    },
+    "gtbn:BUMPMAP_LOW": {
+     "detail": "BUMPMAP_LOW",
+     "us_median": 0.01,
+     "us_p90": 0.01,
+     "us_mean": 0.0096,
+     "us_p99": 0.012,
+     "rep_medians": [
+      0.01,
+      0.01,
+      0.009
+     ],
+     "net_us_median": 0.009,
+     "net_us_p90": 0.009,
+     "ms_per_frame_median": 0.0074
+    },
+    "settech_same:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.005,
+     "us_p90": 0.005,
+     "us_mean": 0.0048,
+     "us_p99": 0.007,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.004,
+     "ms_per_frame_median": 0.0033
+    },
+    "settech_alt:DEFAULT|BUMPMAP": {
+     "detail": "DEFAULT|BUMPMAP",
+     "us_median": 0.005,
+     "us_p90": 0.005,
+     "us_mean": 0.005,
+     "us_p99": 0.006,
+     "rep_medians": [
+      0.005,
+      0.005,
+      0.005
+     ],
+     "net_us_median": 0.004,
+     "net_us_p90": 0.004,
+     "ms_per_frame_median": 0.0033
+    },
+    "beginend:DEFAULT": {
+     "detail": "DEFAULT",
+     "us_median": 0.006,
+     "us_p90": 0.007,
+     "us_mean": 0.0063,
+     "us_p99": 0.008,
+     "rep_medians": [
+      0.006,
+      0.007,
+      0.006
+     ],
+     "net_us_median": 0.005,
+     "net_us_p90": 0.006,
+     "ms_per_frame_median": 0.0041
+    }
+   },
+   "cache_saving": {
+    "gtbn_us_median": 0.005,
+    "settech_same_us_median": 0.004,
+    "saved_us_per_draw": 0.009,
+    "saved_ms_per_frame": 0.0074
+   }
+  }
+ }
+}

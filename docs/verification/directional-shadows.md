@@ -1038,3 +1038,248 @@ silhouette pixels of a receiver's own faces in the wide fixture (14 of 35,266) w
 (run 36 tuned only the constant) is a run-38 question (`--sun-shadow-bias-clamp-texels 4`, no
 rebuild), as is the visible result of a station-wide box. The bias in texels at the wide setting (1.55) is what the receiver-plane term expects; the
 default B alone (0.536 units) is close to one production texel (0.488).
+
+## Run 38 A (run111)
+
+Capture `/tmp/x3-bottleX3-run111` (5.0 GB, 256 files, session log
+`session-20260917-073417-212.log`, 10,807,495 lines, 634 MB — never opened
+whole; queried with `grep`/`python3`). Options (from `proxy_options` line):
+extent=1500, depth_half=3000, map=4096, cap=512, bias_clamp_texels=4,
+`X3M_SUN_SHADOW_APPLY=1`, original hull shading (`fill=0 share_applied=1` on
+`sun_shadow_original_variant`). Six F8 dumps of 8 frames each: 3897-3904,
+15565-15572, 16050-16057, 16633-16640, 19205-19212, 19584-19591 (48 frames,
+matches `shadow_replay_map_basis`/`sun_shadow_apply_params` counts of 48).
+Screenshots `shadow1..3-{1,2}.png` (shadow absent / present after a slight
+pitch-down) are user-side; the corresponding F8 bursts were not separately
+timestamped against them in-log (`camera_state` has no field tying a frame to
+a named screenshot), so the screenshot-to-burst mapping is inferred from file
+mtimes only, not verified against the log.
+
+**Q1 caster counts (H1/H2).** Over all 34,529 `shadow_replay_candidates`
+frames: `bounds` median 8 max 51, `leased` (admitted) median 8 max 52,
+`capped` median 0 max 0 (`capped>0` in 0/34,529 frames — **H2 refuted**: the
+512 cap never engages, so cap-driven reordering cannot be the cause).
+Within two F8 bursts where `camera_state` `t=` and every `rNN=` field are
+byte-identical across all 8 frames (16633-16640, 19205-19212 — camera frozen,
+not turning or moving), `leased` still oscillates: 22,25,25,24,25,20,22,25 and
+19,21,24,24,23,24,19,21. **H1 refuted as the sole/primary mechanism**: caster
+admission changes frame-to-frame with zero camera motion. Mechanism found in
+`src/proxy/motion_output.cpp:6386-6414` (`note_candidate_draw`): a caster
+whose vertex-buffer extent isn't cached yet is admitted by a coarse
+`origin_rule` (near/far distance only, field `fallback`); extents are filled
+by a per-frame-budgeted read (`reads=` field, observed 1-25/frame) via
+`queue_candidate_extent`; once known, the real bounds verdict
+(`shadow_replay_bounds_verdict`) can exclude a caster the distance rule had
+admitted. This extent-cache warm-up/eviction race, not camera angle or the
+cap, is the quantified source of the observed admit/drop flicker; two other
+bursts (16050-16057, 19584-19591) hold steady at `leased=8` (only the fixed
+8 `origin` casters, no extra scenery in range), so flicker is scene-dependent.
+
+**Q2 apply/lane availability (H3).** `sun_shadow_apply_frame`: applied=1 in
+34,426/34,529 frames (99.70%); `skip_reason=replay` in 103/34,529 (0.30%),
+in 3 contiguous runs (frames 578-597, 6467-6502, 13972-14018), each run
+showing `slice0=0 bounds=0 fallback=0` on the matching
+`shadow_replay_candidates` line — no candidates existed that frame (empty
+scene/loading), not a pitch-triggered refusal. `sun_shadow_lane_frame`
+`available=1` in all 34,529 frames. **H3 refuted**: apply is refused only
+when there is nothing to apply, not correlated with camera pitch.
+
+**Q3 placement/basis (H4/H5).** `shadow_replay_map_basis.center` is
+bit-identical across both frozen-camera bursts (16633-16640:
+`-72179.2891,888.427734,-37306.6406` all 8 frames; 19205-19212:
+`-72886.8359,1565.91797,-37671.3867` all 8 frames) — no texel-snap jitter
+while the camera itself is still. In the moving burst 3897-3904, consecutive
+`center` deltas are ~171 units/frame (170.9-172.7, effectively constant)
+while the chase-camera `t` delta shrinks 234.8→177.8 units/frame (ship
+decelerating, camera lagging) — the map center tracks something with
+different dynamics than the visible camera (consistent with tracking the
+ship/object transform rather than the interpolated chase camera), but this
+capture alone does not show a placement error from it. **H4 undetermined**:
+no snap artifact found in this data, but the center-vs-camera decoupling is
+unexplained and not cross-checked against ship transform logs.
+`sun_shadow_apply_params` at 4096²: `texel_world=0.732421875`,
+`clamp_texels=4`, `bias_units=0.53571875` (matches the configured
+`--sun-shadow-bias-clamp-texels 4`), constant across the run — no CPU/GPU
+twin comparison was run against the captured `depth_1_*.rg32f`/HDR frames in
+this pass (`verification/probe/sun_shadow_apply.py` was not invoked; running
+it against the 48 F8 frames is the natural follow-up). **H5 undetermined**:
+the bias/clamp values are as configured but placement correctness against
+the actual GPU output was not verified here.
+
+**Q4 replay cost.** `shadow_replay_depth` `us` vs `draws` at map=4096, from
+the 48 F8-adjacent frames (draws 6-25): roughly 40-110 us, no clear linear
+fit attempted (insufficient distinct draw counts in this sample: 6, 8, 19-25);
+whole-session median/intercept not computed this pass (34,532 lines
+available for a full regression — open item).
+
+**Q5 ~30s distant-object flicker.** No matches for `missed`, `history_reset`,
+`history_drop`, or any TAA-history-invalidate cadence near 30 s:
+`taa_invalidate` (483 lines) fires almost entirely in the first frames (0-9…)
+then stops, not periodic. No `cutout::missed`-style line exists in this
+build's vocabulary at all (0 hits). The only strictly periodic diagnostic is
+`media_cue_window` (116 lines, exactly every 300 frames by frame count,
+`qpc` delta 26.3 s between frame 299 and 599 at the frame rate then in
+effect, i.e. period is frame-count-fixed, not wall-clock-fixed — coincides
+with `X3M_MEDIA_CUE_RETRY_S=30` only by construction, each window reports
+audio-cue `attempts/failures`, not object visibility). `frame_end.dt_ms`
+spikes are two one-off stalls (15,467 ms and 26,317 ms), not periodic.
+**Undetermined**: this capture contains no diagnostic that records distant-
+object visibility/culling events; the log has nothing to attribute the ~30s
+flicker to. A dedicated diagnostic is needed (see Open issues).
+
+## Run 38 A (run111) diagnosis
+
+2026-09-17, no source edits, no Wine. Inputs: run111 (A: 1500 / 3000 / 4096², clamp 4 texels) and
+run112 (A2: 250 / 512 / 4096², default clamp 20.97 texels), build `e575136`. Summary lines were
+extracted once into scratch slim logs; per-draw lines only for F8 frames 16635, 16051, 3900, 19586,
+16640, 15572. "Measured" = from the capture or code; "inferred" is marked.
+
+### Ranked root causes
+
+**1. The sun direction is read from PS register c4 regardless of the bound program; c4 is
+`LightDir_Dir0` in only some hull programs (decides wrong direction, pop with pitch, A = A2, the
+self-shadow flicker and most of "only ≤ 52 casters").**
+`src/proxy/shadow_replay_depth.h:16` (`depth_sun_register = 4`), latch
+`src/proxy/motion_output.cpp:3169-3171` (any `SetPixelShaderConstantF` covering c4, any program),
+consumers `motion_output.cpp:6437` (the frame's bounds rows, computed once at the first bounds
+test, `candidate_bounds_state_` sticky for the frame) and
+`motion_output_shadow_replay_inc.h:32,110` (replay sun = the c4 value latched at the first leased
+record). Measured from the CTABs of the 38 dumped pixel programs: c4 is `LightDir_Dir0` in 16,
+`g_EnableGlow` in 6 (`fffdabd9…`, `5f82ecac…`, `f1b0e820…`, `496049ce…`, `6733b119…`,
+`e6794b6e…`; their `LightDir_Dir0` is c5), `p_DetailMapBlendWeight` in 2 (`517540ae…`,
+`d44db877…`; `LightDir_Dir0` is c0), unused in the rest (`a66fb198…` has `LightDir_Dir0` at c0).
+On frame 16635 the glow programs carry 144 of 431 eligible routed draws. Two frame states follow
+from the first routed draw (measured on the per-draw lines):
+- **State A** (first routed draw is a `p_DetailMapBlendWeight` program: an asteroid, model
+  `4fef`/`4fee`; frames 16051, 3900, 19586): c4 is not a unit vector, `shadow_replay_basis` fails,
+  `candidate_bounds_state_ = -1` for the whole frame, every draw falls back to the 250-unit origin
+  rule → `bounds=0 fallback=8 leased=8`: the own ship only, with the true sun (first valid c4 is
+  the ship's). Map occupancy 0.01–0.03 % (one 111 × 66-texel blob) although 72 % (636,294 of
+  878,288) of the visible geometry pixels of 16051 lie inside the 1500 box. Session: 14,645 frames
+  (42.4 %), `leased` max 8. This is why A looks like the 250 box and like A2.
+- **State B** (first routed draw is a `g_EnableGlow` station program, model `53a1`; 16635, 15565–72,
+  16633–40, 19205–12): c4 = (1,0,0,0) passes `shadow_replay_sun_valid`; the basis is
+  `forward=(-1,0,0) right=(0,0,1) up=(0,1,0)` on 24/24 captured B frames of run111 and 2/2 of run112,
+  versus the true `forward=(0.2965,-0.4568,0.8387)` on all 38 A frames: 107° off. Bounds test, map and
+  apply rows all use the bogus axis consistently, so the GPU matches the twin (16635: darkening ratio
+  median 0.2236 vs predicted 0.2235; control 0.997) while 99.5 % of the 852,599 in-box pixels are
+  shadowed (map 20.3 % occupied, occupied bbox touching the map edges, map depth minimum 1e-8 = casters
+  cut by the near plane of the ±3000 range, `D3DRS_CLIPPING` on, no pancaking,
+  `shadow_replay_pass.cpp:199`). That is screenshot `-2`: a large hard-edged dark region in a direction
+  unrelated to the sun. Session: 19,781 frames (57.3 %), `leased` median 24 / max 52; 789 A↔B
+  transitions. Whether any B frame had the true sun is not observable outside captures (inferred: only
+  when the first bounds-tested draw is a c4-`LightDir` program).
+- The pitch dependence (measured on `shadow1-1` vs `-2`): the asteroid visible at the top of `-1` leaves
+  the view in `-2`; the engine stops submitting it, the first routed draw becomes a station glow draw, A → B.
+- Run112 self-shadow flicker: frames 20602 and 21142 are single B frames inside A bursts at a resting
+  camera (`replayed` 8 → 25 → 8, basis flips to (-1,0,0)); twin 20602: 20,968 of 25,107 ship pixels
+  shadowed vs 2,311 / 2,373 on 20601 / 20603, mean luminance 0.154 vs 0.230. 560 single-frame B blips in
+  19,699 frames. Trigger (inferred from cause 2): the extent of the first (detail) draw is evicted that
+  frame, so it never calls `ensure_candidate_bounds_rows` and a glow draw seeds the frame.
+- "Shadow moves with the ship": in B the direction is a world axis and the receiver set is whatever
+  station parts pass the bogus box; with cause 2 and 3 the caster set changes with position and view.
+
+Fix direction (N cascades): take the sun per draw from the bound program's own `LightDir_Dir0` register
+(CTAB-resolved per pixel program at creation, cached by program id; refuse a program without it), latch it
+only on writes made while such a program is bound, and resolve **one** frame sun before any cascade's
+bounds rows are built (previous frame's validated sun for the draw-time tests; never "first valid c4").
+Add a plausibility gate: reject a candidate sun that differs from the retained sun by more than a few
+degrees unless it persists. The bounds-row failure must not be sticky-silent: log a per-frame
+`bounds_state` and keep the previous frame's rows instead of dropping to the origin rule. Every cascade
+shares the one sun so retained-basis reuse stays valid.
+
+**2. Extent cache thrash (leased oscillation at a frozen camera).**
+`src/proxy/shadow_replay_candidates.h:153-165` (1024-slot direct-mapped, a collision evicts),
+`motion_output.cpp:6406-6414` (a miss falls back to the origin rule and queues a re-read),
+`:6472-6487` (the re-read evicts the partner). Measured: the submitted node set is identical across the
+frozen burst (68 = 68 nodes, 431 draws), yet `reads` never reaches 0 and cycles with period 6
+(19,7,8,3,9,6) with `leased` 25,20,22,25,25,24; frames with `bounds=13 fallback=7` are the evicted
+own-ship draws (still admitted by origin) and 5 evicted station draws (not admitted). Replaying the hash
+on frame 16635's keys: 251 distinct keys in 227 slots, 24 colliding slots holding 48 keys / 82 draws
+(e.g. slot 322: vb 2161 model `53a1` vs vb 836 model `bf23`; slot 191: vb 2193 `53a1` vs vb 798 `45c3`);
+frame 16051: 311 keys, 40 colliding slots, 84 keys / 154 draws. Session: `reads>0` on 21,172 of 34,529
+frames. Each flip also costs READONLY locks every frame forever.
+Fix direction: a set-associative or open-addressed cache sized for ≥ 4× the routed key count (keys are
+static: managed VB, revision), no eviction of a Known entry by a different key while it was used this
+frame; a miss must keep the previous verdict for that draw (or be treated as "meets" for the outer
+cascade) rather than the 250 origin rule. One cache serves all cascades (the extent is object-space).
+
+**3. Engine view culling removes off-screen casters (structural, second-order today).**
+Measured: 15572 vs 16635, 64 units apart, forward vectors 7.1° apart: 64 of 127 nodes (98 draws) are
+not submitted in the second; 16051 vs 16635 (24°): 89 of 126 nodes (253 draws) missing, 31 new. A replay
+built from the frame's submitted draws cannot cast from geometry outside the view. The user's point
+stands, though: the screenshots' missing shadows are from **visible** geometry, which is cause 1 (state
+A admits nothing but the ship), so culling's share of the reported symptom is small until 1 and 2 are
+fixed; afterwards it is the remaining source of shadows that pop when the camera turns.
+Fix direction: per-cascade caster retention for static nodes (keyed by node + extent key, world rows
+derived from the draw's clip rows and that frame's camera, lease refreshed while the buffer stays quiet),
+dropped after N frames unseen or on a registry/load epoch change; the retained-C2 design already needs
+the same record.
+
+**4. Depth range without pancaking.** `shadow_replay_pass.cpp:199` clips casters at the map's near
+plane; measured in B frames (depth min 1e-8, bbox on the map edges). With the true sun a complex longer
+than `depth_half` towards the light loses exactly the casters that matter (inferred for the true sun).
+Fix direction: clamp light-space z to the near plane in the replay vertex program per cascade, or the
+asymmetric range the cascade note's fixture (d) already names.
+
+**5. Bias at the 0.73-unit texel (minor).** Frame 16051 (true sun): constant 1.27 units, clamp 2.93
+units; of 8,490 receiver pixels on the map's own nearest surface 2,993 (35 %) have `f<1` but only 25
+have `f ≤ 1/3`; 58 of 420 receivers lying 1.27–4.2 units behind an occluder are fully lit. A2 frame
+20601 (0.122-unit texel, constant 0.66, clamp 2.56 units because A2 ran the default 20.97-texel clamp):
+1,070 of 23,253 (4.6 %) with `f<1`, 107 of 338 lit behind. No evidence of detached shadows from the
+4-texel clamp; the cost of the wide texel is soft partial self-darkening of the ship, an argument for
+the own-ship cascade keeping its ~0.12-unit texel.
+
+### What is correct (measured)
+
+- Receiver reconstruction and replay rows: on true-sun frames the receiver's sun-space depth minus
+  the map depth at its texel has median −2e-5 / +4e-5 / +7e-5 normalized (−0.12 / +0.24 / +0.07 units)
+  on covered pixels of 16051 / 19586 / 20601, 54–76 % within 2e-4: the RT2 depth, jittered projection
+  terms, camera and per-draw rows agree to well under a texel. The `rows=` of
+  `sun_shadow_apply_params` and `shadow_replay_map_basis` are identical strings on every captured frame
+  (same camera and basis for replay and apply).
+- Centre and snapping: `center − (camera position + 128·forward)` in sun axes is ≤ 0.35 units (half a
+  texel is 0.366) on all 11 checked frames, depth axis 0.00. The "171 vs 235→178" discrepancy is an
+  artefact of comparing |Δt| of the view translation (which includes rotation) with world motion:
+  |Δposition| with position = −t·Rᵀ is 170.8–172.7 per frame, equal to the centre delta. The forward
+  offset moves the centre by at most 2·128·sin(Δθ/2) (22 units for 10°, 1.5 % of the 1500 box) and is
+  snapped; it is not the pitch pop.
+- GPU vs twin: 16635 0.2236 / 0.2235, 16051 0.338 / 0.372 (166 pairs), controls 0.994–0.997.
+- Candidate box code path: `shadow_replay_bounds_verdict` and the replay both take the box from
+  `depth_cascade_` (1500 / 3000, centre as above, view-space corners → sun NDC); the 250 constant
+  survives only as the origin-rule fallback (`shadow_replay_candidates.h:15`,
+  `motion_output.cpp:6380,6386`), which is what state A and every cache miss use.
+
+### Ship shadow on stations only when very close
+
+By the code the ship (always leased: `origin=8`) casts onto any receiver within ±E of the snapped centre
+in the sun plane and ±D along the sun: 1500 / 3000 units in A, 250 / 512 in A2 (so "very close" is the
+expected A2 result, as in run 37). Bias cannot swallow it (1.27 + ≤ 2.93 units against an ~80-unit
+ship: map blob 111 × 66 texels × 0.732). Measured in A, true-sun frame 16051: 360 shadowed and 272
+covered pixels at view depth ≥ 300, so the ship's shadow does land on the station when state A holds.
+Near a station, however, the first routed draws are the station's glow programs, so the frame is in
+state B (57 % of run111; 26/26 captured B frames bogus) and the ship's shadow is thrown along world −X
+inside a scene already darkened by near-plane-clipped station parts. Inferred: the close-range sightings
+are A frames (or B frames where the −X projection happens to hit a nearby face). Not separable further
+without a capture taken while the user sees the ship's shadow on a hull.
+
+### A vs A2
+
+| | run111 A (1500 / 3000) | run112 A2 (250 / 512) |
+| --- | --- | --- |
+| frames | 34,529 | 19,699 |
+| state A (bounds=0) | 14,645, leased ≤ 8 | 13,434, leased ≤ 8 |
+| state B (bounds>0) | 19,781, leased median 24 / max 52 | 6,249, median 24 / max 44 |
+| map occupancy, true sun | 0.01–0.03 % | ship only (24.8k covered px) |
+| map occupancy, bogus sun | 15.5–20.3 % | single-frame blips |
+
+The B counts are nearly equal in both boxes because along the bogus +X axis the admitted set is the
+same handful of large station pieces; with the true sun the box never got to admit station casters in
+any captured frame.
+
+### Not determined
+
+The value of c4 under the glow and detail programs is inferred from the basis, not logged. No per-draw
+admitted flag exists, so the five flipping station draws are identified only as members of the 24
+colliding slots. Screenshot-to-burst mapping remains by mtime. A capture-frame
+`shadow_replay_caster` line (draw index, verdict source, sun register and value) would close all three.

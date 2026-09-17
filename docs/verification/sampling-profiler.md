@@ -1617,3 +1617,159 @@ repeats the same device state, so wined3d's redundant-state filtering makes
 the 57 forwarded calls cheap, and the fixture bounds the parameter-dirty and
 D3DX-walk shares, not the wined3d share of the in-game number. The forwarding
 manager adds one virtual call per callback to every regime equally.
+
+## Run 38 session B (run113), 2026-09-17: prepare/setup split, GetTechniqueByName decision
+
+Main build e575136 (not run38's installed candidate 5b4be52e), `--frame-phases
+--pass-phases --residual-phases`, session log
+`/tmp/x3-bottleX3-run113/session-20260917-075940-216.log` (12.9 MB, 44
+300-frame windows, `residual_phase_mode ... sites=2 status=ok`, `pass_phase_mode
+... sites=4 status=ok`). Selection: busy Argon-station plateau = windows 22-25
+(`frame=6900..7800`, `dt_p50_us` 23.1-23.3 ms, `passes_p50` 823-827, stable
+across four consecutive windows — the requested several-hundred-to-~1000-draw
+busy view); peak window 18 (`frame=5700`, `dt_p50` 26.2 ms, 970 passes) noted
+separately; quiet control = window 34 (`frame=10500`, `dt_p50` 6.34 ms, 60
+passes).
+
+**Per-phase stamps, busy plateau (windows 22-25, per-draw ns from the
+per-pass fields, p50):**
+
+| Phase | source stamp pair | per-draw | ms/frame (827 draws) |
+|---|---|---|---|
+| BeginPass (apply) | pass_begin→pass_applied | 6.57-6.58 µs | 5.42-5.43 ms |
+| draw (Commit+DrawIndexedPrimitive) | pass_applied→pass_drawn | 8.71-8.77 µs | 7.17-7.24 ms |
+| EndPass | pass_drawn→pass_end | 0.109-0.111 µs | 0.090-0.091 ms |
+| **prepare** (engine walk + `GetTechniqueByName`+`SetTechnique`+`End`, mixed) | last pass_end→`0x004c1eab` | 6.35-6.38 µs | 5.22-5.26 ms |
+| **setup** (`Begin`+param setters+2 RS writes+guard) | `0x004c1eab`→first pass_begin | 1.628-1.636 µs | 1.34-1.35 ms |
+| particles | view_submit_end→particles-call return | 0.015-0.017 ms/frame total | ~0.017 ms |
+| other (scene-end/env-map/fixups) | frame-boundary arithmetic | ~1.12 ms/frame total | 1.12 ms |
+
+Sum check (window 22): pass `sum_p50_us` 12,679 + residual prepare 5,223 +
+setup 1,340 + particles 15 + other 1,113 = 20,370 µs vs frame `views_p50_us`
+19,414 µs (+4.9%, close to the combined stub `self_us` 299+74=373 µs plus
+rounding) vs frame `dt_p50_us` 23,116 µs (views excludes pre_render 2.5-7.4 ms,
+prologue/scene_update/begin_scene/overlays/text/scene_end/present, which the
+frame group reports separately, not in the pass/residual chain). No overflow
+or drop counter fired at steady state: `dropped=0`, `orphans=0`,
+`clock_errors=0/clock_failures=0/unmatched=0` in every busy window;
+`prepare_skipped=300` in every window (300 frames), i.e. exactly one per
+frame — the documented first-material-of-frame case, not an anomaly. Window 0
+(install transition) shows `dropped=1` on both groups once. The 24,576 B
+arena figure is a static build-time budget (`test_game_phase_sites.py`), not
+a runtime counter; no runtime arena-overflow counter exists in this log
+format to check.
+
+**The decisive number cannot be produced from this capture.** The
+`residual_phases` group has exactly one stamp (`material_setup` at
+`0x004c1eab`, effect-pass-loop.md §7) splitting the loop into two buckets:
+`prepare` (last `pass_end` → `0x004c1eab`) and `setup` (`0x004c1eab` → first
+`pass_begin`). Per §7's own call-histogram, `prepare` bundles the engine's
+per-object work (queue walk `0x0047e6e0`/traversal `0x0047d9c0`, cull
+`0x004f66e0`, world matrix `0x004bdee0`, this routine's prologue, three
+engine-wrapper binds) together with `End` **and** the D3DX
+`GetTechniqueByName`/`FindNextValidTechnique`/`SetTechnique` calls in one
+6.35-6.38 µs/draw bucket at busy-view; there is no second stamp inside
+`prepare` to separate them. `docs/architecture/effect-pass-replay.md` ("The
+4.5 ms residual") already specifies the two additional stamps that would do
+it — sub-mesh loop head `0x004c0223` and `Begin`'s return `0x004c1ec0` — and
+this build does not install them. So: no ms/frame figure for
+`GetTechniqueByName`+`SetTechnique` alone, and no per-draw technique-change
+rate, can be read from run113; both require a new diagnostic build with
+those two stamps (or the `sub-mesh head → Begin returned` interval alone),
+one launch at the same busy view, before the handle-cache decision can be
+made on evidence rather than the existing arithmetic estimate (a (a) 1-5 µs
++ (b) 0.3-0.8 µs D3DX share vs (c) engine-only remainder, itself only
+plausible, not measured).
+
+**Quiet control (window 34, 60 draws/frame, 6.34 ms frame):** apply 6.58 µs,
+draw 6.88 µs, end 0.117 µs — apply/draw per-draw cost is nearly identical to
+the busy view (draws are the same shader work, just fewer of them). `prepare`
+per-draw jumps to 29.97 µs, because `prepare` includes fixed per-frame
+traversal/cull/prologue cost that does not shrink with draw count and here is
+divided by only 60 materials — this is expected from the bucket's contents
+(§7), not evidence about `GetTechniqueByName` cost, and is further proof the
+bucket is dominated by non-technique-lookup work at low draw counts.
+
+**Consistency with the earlier split.** Busy-plateau BeginPass 6.57-6.58 µs
+matches the prior split's "6.6-6.7 µs" figure and run105's 6.58 µs
+(effect-pass-replay.md) closely; draw 8.71-8.77 µs matches the prior "Wine
+draw 8.7 µs" and run105's 8.76 µs. Draws/frame 823-970 across windows 18/22-25
+matches the brief's "several hundred to ~1000" at ~22-26 ms frames. These are
+diagnostic-timing numbers (telemetry stamp overhead `self_us` 373-441 µs/frame
+included), not game FPS.
+
+**Open issue.** The task as framed (split engine prepare vs
+`GetTechniqueByName`+`SetTechnique`) needs a diagnostic this build does not
+have; the existing capture only bounds the *combined* prepare+setup at
+6.35-6.38 + 1.63 µs/draw busy (≈6.56-6.58 ms/frame combined at 827 draws) as
+a loose upper bound on what any handle cache could touch, not a measurement
+of the technique-lookup share.
+
+## Technique lookup microbenchmark (2026-09-17, no game)
+
+Answers the open issue above: what the engine's per-draw
+`GetTechniqueByName` (`0x004c0bfa`) + `SetTechnique` (`0x004c0c34`) actually
+cost, so the run 38 B `prepare` bucket (6.35-6.38 µs/draw) can be split
+without another load/test cycle.
+`verification/probe/effect_technique_lookup_fixture.cpp` +
+`run_effect_technique_lookup.py`; result
+`verification/results/bottle-X3/effect-technique-lookup.json`, host test
+`verification/analysis/test_effect_technique_lookup.py` (6 tests). Bottle
+**X3**, `WineArch=arm64`, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. It
+reuses the BeginPass fixture's effect loading and device: one synthetic
+windowed HAL device (64×64, no draws), the game's own compiled effects read
+out of the bottle's archives into a scratch directory outside the
+repository, and the game's own `d3dx9_37.dll` (3,786,760 bytes,
+`c2ccb84c672a9d89…`) via `--dll d3dx9_37=n`, proven native from the mapped
+image (`image_size=3895296 stamp=47cdef5d exports=336 wine_builtin=0`, the
+same image as the BeginPass fixture); a builtin image fails the run closed.
+No state manager: none of these calls reaches the device.
+
+**Method.** The bottle's QPC ticks at 0.1 µs, coarser than any of these
+calls — a first run returned exactly 0.100 µs for every measurement
+including an empty timed region. Timing is therefore batched: one QPC pair
+around 100 identical calls, divided by 100; median and p90 are over the
+1,000 batches of a repetition, and the table is the median of three
+per-repetition medians. 100,000 timed calls per measurement and repetition
+after a 400-call warm-up. The baseline is the same batch loop with an empty
+body (loop + QPC pair), 0.001 µs/call, and is subtracted; a confirmation run
+at batch 1,000 × 1,000,000 calls reproduced every net figure within
+0.001 µs, so the divisor and per-batch overhead are not shaping the result.
+The names are the engine's literal material technique names DEFAULT /
+BUMPMAP / BUMPMAP_LOW (xt-materials.md `0x004c0996`-`0x004c0b85`); the miss
+path (`FindNextValidTechnique`) is not timed because steady-state draws hit.
+
+Net µs per call (median, p90 in parentheses), baseline subtracted:
+
+| Effect (addon/01.cat) | techniques | gtbn DEFAULT | gtbn BUMPMAP | gtbn BUMPMAP_LOW | SetTechnique same | SetTechnique alternating | Begin+End |
+|---|---|---|---|---|---|---|---|
+| `argon.fb` 41,004 B (busy-view hull) | 2 | 0.004 (0.004) | 0.005 (0.005) | — | 0.004 (0.004) | 0.004 (0.004) | 0.005 (0.006) |
+| `argon2s.fb` 41,236 B | 2 | 0.004 (0.005) | 0.005 (0.006) | — | 0.004 (0.004) | 0.004 (0.004) | 0.005 (0.006) |
+| `standard_lighting.fb` 55,872 B | 3 | 0.004 (0.005) | 0.005 (0.006) | 0.009 (0.010) | 0.004 (0.005) | 0.004 (0.005) | 0.006 (0.006) |
+| `xt_standard_lighting.fb` 70,172 B | 3 | 0.004 (0.004) | 0.005 (0.005) | 0.009 (0.009) | 0.004 (0.004) | 0.004 (0.004) | 0.005 (0.006) |
+
+`GetTechniqueByName` rises with the technique's position in the declaration
+order (4 / 5 / 9 ns for the 1st / 2nd / 3rd name) — a linear name search, as
+expected — and does not grow with effect size. `SetTechnique` costs the same
+whether the handle equals the current technique or alternates, i.e. native
+D3DX does no work proportional to a technique change here, and there is no
+"redundant call is free" and no "redundant call is expensive" effect to
+exploit.
+
+**Conclusion arithmetic.** At 825 draws per frame, per draw
+`GetTechniqueByName` 0.0045 µs + redundant `SetTechnique` 0.004 µs =
+0.0085 µs, so a perfect per-(effect, name) handle cache that removed the
+lookup entirely and the redundant `SetTechnique` with it would save
+0.0085 × 825 = **0.007 ms per frame** — 0.03 % of a 23 ms frame, and 0.13 %
+of the 5.2 ms `prepare` bucket that contains them. Even including the
+`End`/`Begin` bookends (0.005 µs each pair, 0.004 ms/frame), the whole D3DX
+side of `prepare` is under 0.012 ms/frame. The 6.35-6.38 µs/draw of `prepare`
+is therefore ≈99.8 % engine traversal, cull and wrapper binds, not D3DX
+technique handling. **A technique-handle cache trampoline is not worth
+building**, and the site hooks it would need (`0x004c0bfa` / `0x004c0c34`)
+buy nothing measurable.
+
+These are diagnostic microbenchmark timings on an idle synthetic device, not
+game FPS; they bound the D3DX call cost, and the in-game call may differ by
+cache state, but not by the three orders of magnitude the conclusion has in
+hand.
