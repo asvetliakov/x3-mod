@@ -16,5 +16,13 @@
  "game_launched": false,
  "build_record": "verification/results/run39-candidate-build.json",
  "dry_run_sessions": "see build record (A, A2, B, C, D)",
- "native_windows_verified": false
+ "native_windows_verified": false,
+ "install_method": "tools/manage.py install --dll-source (after a direct copy that left the ownership manifest at run38; corrected 2026-09-18, launcher refused with \"Install the proxy before launch\")",
+ "manifest": {
+  "project": "x3-modern-renderer",
+  "sha256": "cc966fb2fe6e5609a4c29fc91aa3192a0db4d1c67defe2e8d07562b856ca0ea6",
+  "source": "/private/tmp/x3-candidate-pnXpbE/candidate/d3d9.dll",
+  "source_commit": "7492137f6e5b0b956eac9ff4734568b43831390e",
+  "manifest_source": "dll"
+ }
 }
