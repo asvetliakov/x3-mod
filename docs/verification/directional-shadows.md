@@ -2945,3 +2945,18 @@ footprint-aware cascade selection (2.5–5× on C3 receivers at 20–40 km); the
 real fix is a ±1 ULP RT2 invariance check in the apply twin on a single-sided plate with a girder
 pattern at 37 km (today ≥ 9 % of its pixels flip; target ≤ 1 %), which cannot pass before the lane
 change and was therefore not added.
+
+### 4. The aligned map comparison as a tool (2026-09-18)
+
+The section's alignment arithmetic is now `tools/analysis/shadow_map_diff.py`, so a future burst is
+compared without a scratch script: it streams the `shadow_replay_map_basis` lines of the requested
+frames out of the session log (never loading it), derives the whole-texel box shift
+`(-(Δcentre·right), +(Δcentre·up)) / texel` and the depth-origin drift `(Δcentre·forward) / R`, and
+reports per cascade and consecutive pair the occupied counts, the occupied↔empty flips, the texels
+past `--eps` with their mean and p50 |Δz|, aligned and unaligned, as text or `--json`. Reproduced on
+run117 burst 14780–14787 (`--cascade 3 --cascade 4`, 2.8 s): C3 shift (−6…−7, +3…+4) texels,
+depth_offset 2.662e-4, aligned flips 80–100 and |Δz| > 1e-3 on 0–4 texels against unaligned flips
+36.0–40.7 k, > 1e-3 on 145–160 k (> 1e-4 on 588.6 k = 83.2 % of the occupied texels at 14780→14781),
+p50 2.72–3.00e-4; C4 shift (−1…−2, 0…+1), depth_offset 1.664e-4, aligned flips 32–56 and > 1e-3 on
+12–20 (the section's hand figure was 15–30), unaligned flips 3.6–6.6 k, p50 1.69–2.13e-4. Host
+contracts: `verification/analysis/test_shadow_map_diff.py` (10 tests, synthetic 64² maps and log).
