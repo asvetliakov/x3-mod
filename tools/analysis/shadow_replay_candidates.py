@@ -11,6 +11,12 @@ Two line kinds, read from a capture log without loading it whole:
   shadow_replay_lock_witness device= frame= allocation= flags= offset= size= thread=
       serial_delta= revision_delta=
 
+With sun-shadow cascades on (docs/architecture/shadow-cascades.md, section 4) the
+frame line ends with one `c<i>=` per configured cascade (records carrying
+cascade i) followed by one `capped<i>=` per cascade (admitted draws whose
+cascade i was dropped by that cascade's cap); a log without them parses as
+before and its rows carry no `cascades` key.
+
 A malformed line (missing or non-numeric field, unknown extra field) raises
 MalformedLine; the caller decides whether that fails the run. Sum identities
 of every frame line are checked at parse time; the witness cap (16 per device)
@@ -35,12 +41,39 @@ class MalformedLine(ValueError):
     pass
 
 
-def _parse(line, prefix, names):
+CASCADE_MAX = 4
+
+
+def _cascade_suffix(line, pairs):
+    """The optional cascade tail of a frame line: c0..c<n-1> then
+    capped0..capped<n-1>, 1 <= n <= 4, nothing else."""
+    if not pairs:
+        return None
+    if len(pairs) % 2 or len(pairs) // 2 > CASCADE_MAX:
+        raise MalformedLine(line.rstrip('\n'))
+    count = len(pairs) // 2
+    expected = [f'c{i}' for i in range(count)] + [f'capped{i}' for i in range(count)]
+    if [k for k, _ in pairs] != expected:
+        raise MalformedLine(line.rstrip('\n'))
+    try:
+        values = [int(v) for _, v in pairs]
+    except ValueError as error:
+        raise MalformedLine(line.rstrip('\n')) from error
+    if any(v < 0 for v in values):
+        raise MalformedLine(line.rstrip('\n'))
+    return {'count': count, 'records': values[:count], 'capped': values[count:]}
+
+
+def _parse(line, prefix, names, suffix=False):
     body = line[len(prefix):].rstrip('\n')
     pairs = FIELD.findall(body)
-    if len(pairs) != len(names) or ' '.join(f'{k}={v}' for k, v in pairs) != body.strip():
+    if ' '.join(f'{k}={v}' for k, v in pairs) != body.strip() or len(pairs) < len(names) or (len(pairs) != len(names) and not suffix):
         raise MalformedLine(line.rstrip('\n'))
+    cascades = _cascade_suffix(line, pairs[len(names):]) if suffix else None
+    pairs = pairs[:len(names)]
     row = {}
+    if cascades:
+        row['cascades'] = cascades
     for (key, value), name in zip(pairs, names):
         if key != name:
             raise MalformedLine(line.rstrip('\n'))
@@ -78,6 +111,14 @@ def check_identities(row):
             raise MalformedLine(f'{key} exceeds leased-stale: {row}')
     if row['readonly_after'] > row['serial_changed']:
         raise MalformedLine(f'readonly_after exceeds serial_changed: {row}')
+    cascades = row.get('cascades')
+    if cascades:
+        # A record carries at least one cascade and at most all of them; a
+        # draw dropped from every cascade is one of `capped`.
+        if max(cascades['records']) > row['leased'] or sum(cascades['records']) < row['leased']:
+            raise MalformedLine(f'cascade records do not cover leased: {row}')
+        if row['capped'] > sum(cascades['capped']):
+            raise MalformedLine(f'capped exceeds the per-cascade drops: {row}')
     return row
 
 
@@ -86,7 +127,7 @@ def parse_lines(lines):
     lines are ignored. Raises MalformedLine."""
     for line in lines:
         if line.startswith(FRAME_PREFIX):
-            yield 'frame', check_identities(_parse(line, FRAME_PREFIX, FRAME_FIELDS))
+            yield 'frame', check_identities(_parse(line, FRAME_PREFIX, FRAME_FIELDS, suffix=True))
         elif line.startswith(WITNESS_PREFIX):
             yield 'witness', _parse(line, WITNESS_PREFIX, WITNESS_FIELDS)
 
@@ -167,6 +208,15 @@ def summarize(frames, witnesses):
         'stale_total': sum(r['stale'] for r in frames),
         'witnesses': witness_counts(witnesses),
     }
+    cascade_rows = [r['cascades'] for r in frames if 'cascades' in r]
+    if cascade_rows:
+        count = max(c['count'] for c in cascade_rows)
+        column = lambda key, i: [c[key][i] for c in cascade_rows if i < c['count']]  # noqa: E731
+        summary['cascades'] = {'frames': len(cascade_rows), 'count': count,
+                               'records_p50': [percentile(column('records', i), 0.5) for i in range(count)],
+                               'records_max': [max(column('records', i)) for i in range(count)],
+                               'capped_total': [sum(column('capped', i)) for i in range(count)],
+                               'capped_frames': [sum(1 for v in column('capped', i) if v) for i in range(count)]}
     summary['predicates'] = {
         'managed_boundary': (summary['slice0_p50'] is not None and summary['slice0_p50'] >= 5
                              and summary['managed_equals_slice0_share'] >= 0.95),

@@ -65,6 +65,30 @@ class Parser(unittest.TestCase):
                 depth.parse_depth_line(bad)
 
 
+class CascadeFields(unittest.TestCase):
+    """The optional cascade tail of the depth line (docs/architecture/
+    shadow-cascades.md, section 4): draws<i> per cascade, then far_replayed,
+    far_frame (-1 while the far cascade is absent), issues and budget."""
+    TAIL = ' draws0=2 draws1=4 far_replayed=1 far_frame=6 issues=6 budget=5'
+
+    def test_tail_parses_and_old_lines_are_unchanged(self):
+        rows, _, _ = depth.parse_text(line(6, replayed=4, draws=4) + self.TAIL + '\n' + line(7) + '\n')
+        self.assertEqual(rows[0]['cascades'], {'count': 2, 'draws': [2, 4], 'far_replayed': 1, 'far_frame': 6, 'issues': 6, 'budget': 5})
+        self.assertNotIn('cascades', rows[1])
+        skipped = depth.parse_depth_line(line(7, replayed=4, draws=4) + ' draws0=2 draws1=0 far_replayed=0 far_frame=-1 issues=6 budget=5')
+        self.assertEqual((skipped['cascades']['draws'], skipped['cascades']['far_frame']), ([2, 0], -1))
+
+    def test_malformed_tails(self):
+        good = line(6, replayed=4, draws=4) + self.TAIL
+        for bad in (good.replace(' draws0=2', ''), good.replace('far_frame=6', 'far_frame=-2'), good.replace('far_replayed=1', 'far_replayed=2'), good.replace(' budget=5', ''),
+                    good.replace('issues=6', 'issues=5'),                       # more draws than issues
+                    good.replace('draws1=4', 'draws1=0'),                      # far_replayed without far draws
+                    good + ' draws2=1', good.replace('draws0=2', 'draws0=x'), good.replace('budget=5', 'budget=0'),
+                    good.replace('draws0=2 draws1=4', 'draws0=1 draws1=1 draws2=1 draws3=1 draws4=1')):
+            with self.assertRaises(depth.MalformedLine, msg=bad[-70:]):
+                depth.parse_depth_line(bad)
+
+
 class Projection(unittest.TestCase):
     """The identity camera at the origin and a sun-space basis aligned with
     the world axes (light travelling +z): the chain reduces to view = world."""
@@ -86,6 +110,24 @@ class Projection(unittest.TestCase):
         view = (0.0, 0.0, 1.0)
         world = [sum((view[j] - camera['t'][j]) * camera['r'][i * 3 + j] for j in range(3)) for i in range(3)]
         self.assertAlmostEqual(nx, world[0] / 4.0); self.assertAlmostEqual(ny, world[1] / 4.0); self.assertAlmostEqual(d, (world[2] + 8.0) / 16.0)
+
+    def test_asymmetric_range_and_pancake(self):
+        try:
+            import numpy  # noqa: F401
+        except ImportError:
+            self.skipTest('numpy')
+        # A cascade's range: depth_light towards the light, depth_behind beyond the centre.
+        basis = dict(self.basis, depth_light=24.0, depth_behind=8.0); del basis['depth_half']
+        rows = depth.rows_matrix(0.0, 0.0, 0.0)
+        _, _, d = depth.project_vertex((0.0, 0.0, 0.5), rows, self.camera, basis)  # view z = clip w = 1
+        self.assertAlmostEqual(d, (1.0 + 24.0) / 32.0)
+        symmetric = dict(self.basis)
+        self.assertAlmostEqual(depth.project_vertex((0.0, 0.0, 0.5), rows, self.camera, symmetric)[2], (1.0 + 8.0) / 16.0)
+        # A caster nearer the light than the near plane is stored at depth 0, not clipped away.
+        near = dict(self.basis, depth_light=0.5, depth_behind=8.0); del near['depth_half']
+        cpu, _ = depth.expected_map([{'caster': 0, 'shape': 'A', 't': 0.0, 'p': 0.0, 'zo': 0.0}], dict(self.camera, t=[0.3, 0.2, 2.0]), near, 64)  # view z = 1, world z = -1: 0.5 beyond the near plane
+        covered = cpu < 1.0
+        self.assertGreater(int(covered.sum()), 300); self.assertTrue(bool((cpu[covered] == 0.0).all()))
 
     def test_rasterizer_and_compare(self):
         try:

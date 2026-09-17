@@ -10,7 +10,8 @@ sketch), [legacy-sun-application.md](legacy-sun-application.md) §2 (the apply q
 [shadow-replay-gates.md](shadow-replay-gates.md) ("Casters by bounds"); ledger
 [../verification/directional-shadows.md](../verification/directional-shadows.md). Units: 1 m =
 5 units; screen pixel at view distance `z` is `z/512` units at 1280 wide (`m00 = 0.8`),
-`z/768` at 1920. Nothing here is implemented; the run-38 options (`--shadow-replay-extent`,
+`z/768` at 1920. Implemented default-off on 2026-09-17 (see "Implemented" at the end; when
+written nothing was); the run-38 options (`--shadow-replay-extent`,
 `--shadow-replay-depth-half`, `--shadow-replay-cap`, `--shadow-replay-size` ≤ 4096, bias in
 world units with a texel term) are assumed present.
 
@@ -236,3 +237,24 @@ cached far cascades) and adds three points, adopted:
    PCSS is rejected (the 0.53° sun disc gives sub-texel penumbrae on hulls);
    3×3 rotated PCF stays.
 
+## Implemented (2026-09-17, default off)
+
+Evidence: [../verification/directional-shadows.md](../verification/directional-shadows.md),
+"Sun-shadow cascades and the run-38 fixes". Launcher `--shadow-cascades E0,…|default`,
+`--shadow-cascade-sizes`, `--shadow-cascade-caps`, `--shadow-cascade-budget`; every default is one
+named constant in `src/renderer/shadow_replay_projection.h`.
+
+| Part of this note | State |
+| --- | --- |
+| Decision: N ≤ 4 camera-centred snapped cascades, own `R32F` map each, one shared attachment, one transaction | implemented (`ShadowReplayPass::attach_cascades` / `execute_cascades`); defaults 250 / 1500 / 7500 / 25000 at 4096², per-cascade sizes |
+| Depth range towards the light | implemented: `depth_toward_light` = 2 × the largest extent, `depth_behind` = max(512, 2 E); additionally the box test's light side is open and the replay pancakes (run-38 fix) |
+| §1 one bounds pass, cascade mask, storage 1024, per-cascade caps and `capped<i>` | implemented; measured 44.6 ns per draw for four cascades against 45.0 ns for the single verdict |
+| §1 budget B = 640, far cascade in full on even frames when over budget | implemented (`shadow_cascade_replays`); the far map counts as valid when replayed this frame or the previous one, so a map that stops being refreshed expires by itself |
+| §2 apply quad | implemented with two changes (and the half-texel lookup `suv = muv + 0.5 / N` of the review fix round, which the single-map program shares): the nine taps are a ps_3_0 loop over CPU-rotated offsets (406 slots; the unrolled program was 887 and this backend offers 512), and the far fade is the blend band itself (the last cascade's "next" is lit). An absent cascade is lit and still owns its pixels; a cascade without casters is absent |
+| §3 Reset, refusal, device loss void every retained basis | implemented; a re-latched sun voids them too |
+| §3 F8 | implemented: `shadow_map0..3` readbacks of present cascades, one `shadow_replay_map_basis cascade=` line each (with `sun= sun_register= sun_verdict=`), `sun_shadow_apply_params` with `valid<i> map<i> map_frame<i> bias<i> bias_max<i> texel_world<i> extent<i> depth_light<i> depth_behind<i> rows<i>`, and one `shadow_replay_caster` line per record |
+| §4 fixture and twin, counters | implemented: cases (a)–(e) plus (f) pancake in `sun-shadow-apply-cascades`, the DLL script `seam-ownership-shadow-replay-cascades`, the live case `shadow_apply_cascades`; `c<i>= capped<i>=` and `draws<i>= far_replayed= far_frame= issues= budget=` |
+| §6 Native Windows | source documented-API only; row added to platform-portability.md; unverified |
+| Near band decision (own-ship map or contact shadows) | not implemented: out of scope until run 38 |
+| Held far centre with a caster-change hash; D16 attachment as a memory option | not implemented (deferred by this note) |
+| Cross-frame caster retention against engine view culling | not implemented; next step, requirements in the ledger section |

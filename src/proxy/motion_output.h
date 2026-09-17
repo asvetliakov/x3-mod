@@ -478,8 +478,16 @@ public:
         depth_replay_size_=size>=renderer::shadow_replay_size_min&&size<=renderer::shadow_replay_size_max?size:renderer::shadow_replay_size_default;
         depth_replay_extent_=extent>=renderer::shadow_replay_extent_min&&extent<=renderer::shadow_replay_extent_max?extent:renderer::shadow_replay_extent_default;
         depth_replay_depth_half_=depth_half>=renderer::shadow_replay_depth_half_min&&depth_half<=renderer::shadow_replay_depth_half_max?depth_half:renderer::shadow_replay_depth_half_default;
-        depth_cascade_.size=depth_replay_size_; depth_cascade_.half_extent=depth_replay_extent_; depth_cascade_.depth_half_range=depth_replay_depth_half_;
+        depth_cascade_.size=depth_replay_size_; depth_cascade_.half_extent=depth_replay_extent_; depth_cascade_.set_depth_half(depth_replay_depth_half_);
     }
+    // Sun-shadow cascades (docs/architecture/shadow-cascades.md; X3M_SHADOW_CASCADES):
+    // a set with count >= 1 replaces the single map by that many camera-centred
+    // maps in one replay transaction, a cascade mask per candidate, per-cascade
+    // caps, the issue budget with the far cascade on alternate frames, and the
+    // cascade apply program. Requires the depth replay (the caller enables
+    // both); count 0 (the default) leaves the single-map path untouched.
+    void configure_shadow_cascades(const renderer::ShadowCascadeSet& set) noexcept { depth_cascade_config_=set; }
+    const renderer::ShadowCascadeSet& shadow_cascades() const noexcept { return depth_cascades_; }
     const renderer::ShadowReplayCascade& shadow_replay_cascade() const noexcept { return depth_cascade_; }
     bool sun_shadow_lane_enabled() const noexcept { return sun_lane_active_; }
     // Diagnostic snapshot at scene end BEFORE AO/TAA; not a later color-owner lease.
@@ -920,7 +928,12 @@ private:
                          const renderer::MotionOutputProfile* row = nullptr;
                          // Depth-only prepass program (depth_prepass_profiles.h):
                          // jittered like a row's VS, never routed. Exclusive with row.
-                         const renderer::DepthPrepassProfile* prepass = nullptr; };
+                         const renderer::DepthPrepassProfile* prepass = nullptr;
+                         // LightDir_Dir0's float register from the program's own
+                         // constant table (caster counter on; -1: none or beyond
+                         // the shadowed c0..c31): the sun is at c4, c5 or c0
+                         // depending on the program.
+                         std::int8_t sun_register = -1; };
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
@@ -936,6 +949,7 @@ private:
         bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion variant, frame failed
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
+        std::int8_t ps_sun_register = -1; // the bound PS's LightDir_Dir0 register (ShaderEntry::sun_register)
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
         IDirect3DPixelShader9* ps_source_gain_variant = nullptr;
         // The bound PS's source-gain variant when the bound VS/PS is one of
@@ -1089,15 +1103,25 @@ private:
     shadow_replay::ExtentCache candidate_extents_{};
     shadow_replay::PendingExtent candidate_extent_reads_[shadow_replay::extent_reads_per_frame]{};
     unsigned candidate_extent_read_count_=0;
+    unsigned candidate_extent_priority_count_=0; // the queue's first entries: re-reads of ranges answering stale (read first, never crowded out by new ranges)
     float candidate_bounds_rows_[12]{};
+    renderer::ShadowCascadeBounds candidate_cascade_bounds_{}; // cascades on: every cascade's box for the one bounds pass
     int candidate_bounds_state_=0; // 0 not computed this frame, 1 valid, -1 unavailable
-    float depth_sun_previous_[4]{};
-    bool depth_sun_previous_known_=false;
+    // The frame's one validated sun (shadow_replay_sun.h): pixel float
+    // registers c0..c31 shadowed as the application writes them, sampled at
+    // every routed z-writing draw from the bound program's own LightDir_Dir0
+    // register; the latch survives Reset (the sun is world-fixed) and is per device.
+    float candidate_ps_constants_[shadow_replay::sun_register_limit][4]{};
+    std::uint32_t candidate_ps_written_=0;
+    shadow_replay::SunLatch sun_latch_{};
+    shadow_replay::SunVerdict sun_verdict_=shadow_replay::SunVerdict::None; // this frame's, resolved once at the scene end
+    std::uint32_t candidate_bounds_unavailable_=0; // this frame's extent-known draws that found no sun for the box test
+    bool sample_candidate_sun(float out[4], int& reg) noexcept;
     shadow_replay::PoolClass candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept;
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
     void note_candidate_draw(const MotionRoute& route) noexcept;
     bool ensure_candidate_bounds_rows() noexcept;
-    void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept;
+    void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity, bool priority) noexcept;
     void read_candidate_extents() noexcept;    // the scene end: Lock READONLY through the wrapper, scan, cache, release
     void release_candidate_extents() noexcept; // drop the queue without reading (frame without scene end, Reset, teardown)
     // Count-only tested-opaque-arm bookkeeping for a cutout pair (after_draw).
@@ -1113,13 +1137,21 @@ private:
     HRESULT depth_replay_attach_result_=S_FALSE;
     shadow_replay::DepthGeometry depth_geometry_[shadow_replay::record_capacity]{};
     renderer::ShadowReplayDraw depth_draws_[shadow_replay::record_capacity]{}; // the scene-end transaction's draw list (too large for the stack at 512)
-    float depth_sun_constant_[4]{};
-    bool depth_sun_written_=false;
     renderer::ShadowReplayCascade depth_cascade_{};
     renderer::ShadowReplayBasis depth_basis_{}; // basis of the last replayed frame (seam readback)
     unsigned depth_replayed_=0;                  // draws replayed on depth_replayed_frame_ (0: the map is not this frame's)
     std::uint64_t depth_replayed_frame_=~std::uint64_t(0);
     unsigned depth_refusal_logs_[shadow_replay::depth_reason_count]{};
+    // Cascades (shadow-cascades.md): the configured set, this device's set
+    // (the seam override and the sizes the pass kept after halving), and the
+    // transaction's issue storage, allocated once at attach (sum of the caps;
+    // none while cascades are off). The retained bases live in the pass.
+    renderer::ShadowCascadeSet depth_cascade_config_{}, depth_cascades_{};
+    std::unique_ptr<renderer::ShadowReplayIssue[]> depth_issues_;
+    unsigned depth_issue_capacity_=0;
+    bool depth_cascade_frame_ok_=false; // this frame's cascade transaction was not refused (the apply's precondition)
+    bool depth_cascades_on() const noexcept { return depth_replay_requested_&&depth_cascades_.count!=0; }
+    void run_shadow_replay_cascades(const bool* quiet) noexcept;
     void note_depth_geometry(const MotionRoute& route, unsigned index) noexcept;
     void release_depth_leases() noexcept;
     bool ensure_shadow_replay_depth() noexcept;
@@ -1127,7 +1159,7 @@ private:
     void log_depth_refusal(shadow_replay::DepthReason reason, const char* detail, HRESULT result, unsigned stage) noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 public:
-    HRESULT fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats) noexcept;
+    HRESULT fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats, unsigned cascade=0) noexcept;
 private:
 #endif
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;

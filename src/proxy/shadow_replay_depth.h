@@ -9,11 +9,12 @@
 #include <cstdint>
 #include <d3d9.h>
 #include "shadow_replay_candidates.h"
+#include "shadow_replay_sun.h"
 
 namespace x3m::shadow_replay {
 constexpr unsigned depth_reason_count = 3;   // lease, state, caps
 constexpr unsigned depth_refusal_log_limit = 8; // refusal samples per reason per device
-constexpr unsigned depth_sun_register = 4;   // PS register of LightDir_Dir0 for the hull programs (world space, object->light)
+constexpr const char* depth_sun_constant_name = "LightDir_Dir0"; // world space, object->light; its register is per program (shadow_replay_sun.h)
 enum class DepthReason : unsigned { Lease = 0, State = 1, Caps = 2 };
 constexpr const char* depth_reason_name(DepthReason r) noexcept {
     switch (r) { case DepthReason::Lease: return "lease"; case DepthReason::State: return "state"; default: return "caps"; }
@@ -27,11 +28,12 @@ struct DepthGeometry {
     D3DPRIMITIVETYPE topology = D3DPT_TRIANGLELIST;
     UINT primitives = 0, first = 0, min_vertex = 0, vertex_count = 0;
     INT base_vertex = 0;
-    bool indexed = false, leased = false, sun_known = false;
+    bool indexed = false, leased = false, sun_known = false; // sun_known: the program's own LightDir_Dir0 sample agreed with the frame's validated sun
+    std::int8_t sun_register = -1; // the bound program's LightDir_Dir0 register (-1: none, or beyond the shadowed range)
     bool multistream = false; // refused: the declaration references a stream other than 0, or stream 0 is instanced
     DWORD cull_mode = D3DCULL_NONE;
     float rows[16]{};   // the application's own clip rows (pre-jitter)
-    float sun[4]{};     // the frame's LightDir_Dir0 as last written before the draw
+    float sun[4]{};     // that register's value at the draw (diagnostics; the replay uses the frame's one validated sun)
 };
 struct DepthCounts {
     std::uint32_t draws = 0, replayed = 0, skipped_lease = 0, skipped_state = 0, skipped_caps = 0;

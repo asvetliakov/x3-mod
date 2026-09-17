@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "source": "src/temporal/sun_shadow_apply_ps.hlsl",
-  "source_sha256": "9b48d578470d146e4605be537f3b555f948dd2bdc6ef82aa7d7b43b492f97905",
+  "source": "src/temporal/sun_shadow_cascade_apply_ps.hlsl",
+  "source_sha256": "a3f95936eb19839ebf17718505732baf49274b3b179a2ad00915a04abd0f81ce",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,9 +10,9 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": null,
-  "word_count": 993,
-  "bytecode_sha256": "063adb6dc30d32e89b0714b4aa6b7da17452c6ffd76e6aa91ee3a73a2ffbcef4",
-  "header_sha256": "e7d82f9b119327e7c5f8e9681736b46ad94945124d6fa5445c15f93348c9d119",
+  "word_count": 1755,
+  "bytecode_sha256": "771266706ca6bcd3faa30c8996d71d0289f9a5e20cb0e498b86a2e2e3976eb1a",
+  "header_sha256": "bed6a3c487b210842a446bd454352bdc2b0d2166e4729f7b15d186d26a3262e4",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
     "tools/shaders/generate_rigid_motion_pixel.py": "3eb914e1d5173a43ae18ee45c7893299f897cf464f79a46533d558079618d896"

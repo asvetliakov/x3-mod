@@ -331,12 +331,12 @@ HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept;
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*hull_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr,*sun_original_variant=nullptr;bool hull_program=false;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*hull_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr,*sun_original_variant=nullptr;bool hull_program=false;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;std::int8_t sun_register=-1;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
  bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
- bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
+ bool vs_registered=false,ps_registered=false;std::int8_t ps_sun_register=-1;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  IDirect3DPixelShader9*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
  IDirect3DPixelShader9*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
  IDirect3DPixelShader9*ps_source_gain_variant=nullptr,*source_gain_eligible_variant=nullptr;unsigned source_gain_pair=renderer::linear_emission_pair_count;
@@ -445,7 +445,8 @@ public:
  // extent queue: lifetime seams only, counted here.
  std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
  void release_candidate_extents()noexcept{++candidate_extent_releases_;}
- bool candidates_requested_=false,sun_apply_applied_=false,sun_apply_attempted_=false,sun_apply_attach_failed_=false;
+ bool candidates_requested_=false,sun_apply_applied_=false,sun_apply_attempted_=false,sun_apply_attach_failed_=false,depth_cascade_frame_ok_=false;
+ std::uint32_t candidate_ps_written_=0;
  unsigned depth_replayed_=0,sun_original_refused_=0,sun_original_variants_=0;
  std::uint64_t sun_apply_frame_=~std::uint64_t(0),depth_replayed_frame_=~std::uint64_t(0);
  IUnknown*target_surface_=nullptr,*depth_surface_=nullptr,*sentinel_ps_=nullptr,*sentinel_mrt_ps_=nullptr,*quad_vs_=nullptr,*quad_declaration_=nullptr;
@@ -517,7 +518,11 @@ DWORD GetEnvironmentVariableW(const wchar_t*name,wchar_t*out,DWORD size){
  if(it->second.size()>=size)return DWORD(it->second.size()+1);
  std::wmemcpy(out,it->second.c_str(),it->second.size()+1);return DWORD(it->second.size());
 }
-namespace x3m {namespace renderer=::renderer;namespace fade_route=::fade_route;}
+// The per-program sun register of the caster counter (shadow_replay_sun.h,
+// shader_constant_register.h): stand-ins, the counter is off in this fixture.
+namespace shadow_replay {constexpr unsigned sun_register_limit=32;constexpr const char*depth_sun_constant_name="LightDir_Dir0";}
+namespace renderer {inline int shader_float_constant_register(const std::uint32_t*,std::size_t,const char*)noexcept{return -1;}}
+namespace x3m {namespace renderer=::renderer;namespace fade_route=::fade_route;namespace shadow_replay=::shadow_replay;}
 unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emission_timing_requested=false;
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
 float emission_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN, parsed by the same extracted setting reader

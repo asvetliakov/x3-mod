@@ -29,7 +29,6 @@ void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index)
     const DWORD error = GetLastError();
     DWORD cull = D3DCULL_NONE;
     if (SUCCEEDED(render_state(D3DRS_CULLMODE, &cull))) g.cull_mode = cull;
-    if (depth_sun_written_) { std::memcpy(g.sun, depth_sun_constant_, sizeof g.sun); g.sun_known = true; }
     IDirect3DVertexDeclaration9* declaration = nullptr;
     if (FAILED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration)) || !declaration) { release(declaration); SetLastError(error); return; }
     // Only stream 0 is leased: a declaration that reads another stream, or an
@@ -74,6 +73,15 @@ bool MotionOutput::ensure_shadow_replay_depth() noexcept {
     HRESULT hr = native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display);
     const char* reason = "adapter_query";
     if (SUCCEEDED(hr)) {
+        if (depth_cascades_on()) {
+            // One pass, N maps and the shared attachment; a size above
+            // MaxTextureWidth/Height was halved by the pass and is adopted
+            // here (the basis snaps to the texel the map really has).
+            unsigned sizes[renderer::shadow_cascade_max]{};
+            for (unsigned i = 0; i < depth_cascades_.count; ++i) sizes[i] = depth_cascades_.cascades[i].size;
+            taa_call([&] { hr = depth_replay_->attach_cascades(device_, native_, caps_, display.Format, sizes, depth_cascades_.count); });
+            if (SUCCEEDED(hr)) for (unsigned i = 0; i < depth_cascades_.count; ++i) depth_cascades_.cascades[i].size = depth_replay_->size(i);
+        } else
         taa_call([&] { hr = depth_replay_->attach(device_, native_, caps_, display.Format, depth_replay_size_); });
         reason = depth_replay_->caps().reason;
         depth_replay_attach_failed_ = FAILED(hr) || !depth_replay_->caps().enabled;
@@ -83,6 +91,14 @@ bool MotionOutput::ensure_shadow_replay_depth() noexcept {
     log("shadow_replay_depth_device device=%llu attached=%u reason=%s result=%08lx size=%u map_format=%u depth_format=%u readable=%u adapter_format=%u",
         id_, !depth_replay_attach_failed_, depth_replay_attach_failed_ ? reason : "ok", hr, depth_replay_size_,
         unsigned(caps.map_format), unsigned(caps.depth_format), caps.readable, unsigned(display.Format));
+    if (depth_cascades_on()) {
+        // The caps line of the cascade attach (shadow-cascades.md, "Unknown"):
+        // the device limits beside what the pass kept.
+        log("shadow_replay_cascades_device device=%llu attached=%u cascades=%u sizes=%u,%u,%u,%u depth_size=%u halved=%u max_texture=%lux%lu budget=%u caps=%u,%u,%u,%u",
+            id_, !depth_replay_attach_failed_, depth_cascades_.count, depth_replay_->size(0), depth_replay_->size(1), depth_replay_->size(2), depth_replay_->size(3),
+            depth_replay_->depth_size(), caps.halved, static_cast<unsigned long>(caps_.MaxTextureWidth), static_cast<unsigned long>(caps_.MaxTextureHeight), depth_cascades_.budget,
+            depth_cascades_.caps[0], depth_cascades_.caps[1], depth_cascades_.caps[2], depth_cascades_.caps[3]);
+    }
     return !depth_replay_attach_failed_;
 }
 // The scene-end transaction on this frame's records. `quiet[i]` is the
@@ -100,14 +116,14 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
     const unsigned n = candidates_.record_count;
     renderer::ShadowReplayDraw* const draws = depth_draws_;
     unsigned admitted = 0;
-    const float* sun = nullptr;
+    // The frame's one validated sun (shadow_replay_sun.h), never a record's own register.
+    const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr;
     const char* unleased = nullptr;
     for (unsigned i = 0; i < n; ++i) {
         const auto& g = depth_geometry_[i];
         ++c.draws;
         if (!g.leased) { ++c.skipped_state; if (!unleased) unleased = g.multistream ? "multistream" : "geometry"; continue; }
         if (!quiet[i]) { ++c.skipped_lease; continue; }
-        if (!sun && g.sun_known && renderer::shadow_replay_sun_valid(g.sun)) sun = g.sun;
         ++admitted;
     }
     bool refused = c.draws == 0;
@@ -120,7 +136,7 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
     const char* state = nullptr;
     if (!refused) {
         if (!camera_scene_.valid) state = "camera";
-        else if (!sun) state = "no_sun"; // no c4 write this frame (cleared at begin_frame), or none finite and unit
+        else if (!sun) state = sun_verdict_ == shadow_replay::SunVerdict::None ? "no_sun" : sun_verdict_ == shadow_replay::SunVerdict::Relatched ? "sun_relatched" : "sun_changing"; // never validated, or every sample of this frame disagrees with the validated sun
         else if (shadow_.recording) state = "recording";
         else if (active_queries_) state = "queries";
         else if (depth_replay_->reset_pending()) state = "reset_pending";
@@ -171,23 +187,150 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
     log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f",
         id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us);
 }
+// The cascade transaction (docs/architecture/shadow-cascades.md, section 1):
+// the single-map admission and refusal rules on the same records, then per
+// cascade the records carrying its bit. The far cascade of a set replays every
+// frame while the frame's issues fit the budget, otherwise on even frames only
+// and always in full (shadow_cascade_replays); a skipped far map keeps the
+// basis it was replayed with (the pass retains it) for the apply. A refused or
+// failed frame voids every retained basis (absent cascade = lit); a cascade
+// without casters is absent too. Per draw the matrix products run once
+// (shadow_cascade_draw_rows) and each issue is 12 scaled rows; no allocation,
+// one transaction.
+void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
+    shadow_replay::DepthCounts c{};
+    if (depth_replayed_frame_ == frame_) return; // once per frame, as the single map
+    depth_replayed_ = 0; depth_replayed_frame_ = frame_; depth_cascade_frame_ok_ = false;
+    const unsigned n = candidates_.record_count, cascades = depth_cascades_.count;
+    renderer::ShadowReplayDraw* const draws = depth_draws_;
+    const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr; // the one sun every cascade shares
+    const char* unleased = nullptr;
+    unsigned per_cascade[renderer::shadow_cascade_max]{}, issues = 0;
+    for (unsigned i = 0; i < n; ++i) {
+        const auto& g = depth_geometry_[i];
+        ++c.draws;
+        if (!g.leased) { ++c.skipped_state; if (!unleased) unleased = g.multistream ? "multistream" : "geometry"; continue; }
+        if (!quiet[i]) { ++c.skipped_lease; continue; }
+        for (unsigned k = 0; k < cascades; ++k) if (candidates_.records[i].cascades & (1u << k)) { ++per_cascade[k]; ++issues; }
+    }
+    bool refused = c.draws == 0;
+    if (!refused && c.skipped_lease) { refused = true; log_depth_refusal(shadow_replay::DepthReason::Lease, "bookends", S_OK, 0); }
+    if (!refused && c.skipped_state) { refused = true; log_depth_refusal(shadow_replay::DepthReason::State, unleased, S_OK, 0); }
+    if (!refused && !ensure_shadow_replay_depth()) {
+        refused = true; c.skipped_caps = c.draws;
+        log_depth_refusal(shadow_replay::DepthReason::Caps, depth_replay_ ? depth_replay_->caps().reason : "allocation", depth_replay_attach_result_, 0);
+    }
+    const char* state = nullptr;
+    if (!refused) {
+        if (!camera_scene_.valid) state = "camera";
+        else if (!sun) state = sun_verdict_ == shadow_replay::SunVerdict::None ? "no_sun" : sun_verdict_ == shadow_replay::SunVerdict::Relatched ? "sun_relatched" : "sun_changing";
+        else if (shadow_.recording) state = "recording";
+        else if (active_queries_) state = "queries";
+        else if (depth_replay_->reset_pending()) state = "reset_pending";
+        else if (issues > depth_issue_capacity_) state = "issues";
+    }
+    renderer::ShadowReplayBasis bases[renderer::shadow_cascade_max]{};
+    bool replays[renderer::shadow_cascade_max]{};
+    renderer::ShadowReplayMapList lists[renderer::shadow_cascade_max]{};
+    unsigned list_count = 0, offsets[renderer::shadow_cascade_max]{};
+    if (!refused && !state) {
+        unsigned offset = 0;
+        for (unsigned k = 0; k < cascades && !state; ++k) {
+            if (!renderer::shadow_replay_basis(camera_scene_, sun, depth_cascades_.cascades[k], bases[k])) { state = "basis"; break; }
+            replays[k] = per_cascade[k] != 0 && renderer::shadow_cascade_replays(k, cascades, issues, depth_cascades_.budget, frame_);
+            offsets[k] = offset;
+            if (replays[k]) { lists[list_count].map = k; lists[list_count].issues = depth_issues_.get() + offset; lists[list_count].count = 0; ++list_count; offset += per_cascade[k]; }
+        }
+    }
+    if (!refused && !state) {
+        unsigned fill[renderer::shadow_cascade_max]{};
+        for (unsigned i = 0; i < n && !state; ++i) {
+            const auto& g = depth_geometry_[i];
+            auto& d = draws[i];
+            d = {};
+            d.vertex_buffer = g.vertex_buffer; d.index_buffer = g.index_buffer; d.declaration = g.declaration;
+            d.stream_offset = g.stream_offset; d.stride = g.stride; d.topology = g.topology; d.primitives = g.primitives; d.first = g.first;
+            d.min_vertex = g.min_vertex; d.vertex_count = g.vertex_count; d.base_vertex = g.base_vertex; d.indexed = g.indexed; d.cull_mode = g.cull_mode;
+            double base[3][4];
+            if (!renderer::shadow_cascade_draw_rows(camera_scene_, g.rows, bases[0], base)) { state = "rows"; break; }
+            for (unsigned k = 0; k < cascades; ++k) {
+                if (!replays[k] || !(candidates_.records[i].cascades & (1u << k))) continue;
+                auto& issue = depth_issues_[offsets[k] + fill[k]++];
+                issue.draw = std::uint16_t(i);
+                if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }
+            }
+        }
+        for (unsigned l = 0; l < list_count; ++l) lists[l].count = fill[lists[l].map];
+    }
+    if (!refused && state) { refused = true; c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, state, S_OK, 0); }
+    renderer::ShadowReplayResult out{};
+    bool far_replayed = false;
+    if (!refused && list_count) {
+        const unsigned allocations = depth_replay_->allocations();
+        LARGE_INTEGER t0{}, t1{}, f{};
+        HRESULT hr = E_FAIL;
+        QueryPerformanceCounter(&t0);
+        taa_call([&] { hr = depth_replay_->execute_cascades(draws, n, lists, list_count, scene_open_, shadow_.recording, &out); });
+        QueryPerformanceCounter(&t1);
+        QueryPerformanceFrequency(&f);
+        c.us = f.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) : 0.;
+        if (depth_replay_->allocations() != allocations) {
+            const auto& caps = depth_replay_->caps();
+            log("shadow_replay_depth_target device=%llu frame=%llu size=%u map_format=%u depth_format=%u allocations=%u",
+                id_, frame_, depth_replay_->depth_size(), unsigned(caps.map_format), unsigned(caps.depth_format), depth_replay_->allocations());
+        }
+        if (FAILED(out.restore)) invalidate_render_states();
+        if (FAILED(hr)) { refused = true; c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, "transaction", out.operation, unsigned(out.failed)); }
+    }
+    if (depth_replay_) {
+        if (refused) depth_replay_->invalidate_retained(); // a refused frame, a failed transaction, a lost device: nothing retained survives
+        else {
+            // Replayed: this frame's basis. Without casters: absent. The far
+            // cascade skipped by the budget keeps what it had.
+            for (unsigned k = 0; k < cascades; ++k) {
+                if (replays[k]) depth_replay_->retain(k, bases[k], frame_, out.drawn_map[k]);
+                else if (!per_cascade[k]) depth_replay_->invalidate_retained(k);
+            }
+            far_replayed = cascades > 1 && replays[cascades - 1];
+            c.replayed = c.draws; depth_replayed_ = out.drawn; depth_cascade_frame_ok_ = true; depth_basis_ = bases[0];
+        }
+    }
+    release_depth_leases();
+    char text[192]; int used = 0;
+    for (unsigned k = 0; k < cascades && used >= 0 && used < int(sizeof text); ++k) used += std::snprintf(text + used, sizeof text - used, " draws%u=%u", k, refused ? 0u : out.drawn_map[k]);
+    if (used < 0 || used >= int(sizeof text)) text[0] = 0;
+    const auto* far_kept = depth_replay_ && cascades ? depth_replay_->retained(cascades - 1) : nullptr;
+    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f%s far_replayed=%u far_frame=%lld issues=%u budget=%u",
+        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, text, unsigned(far_replayed),
+        far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget);
+}
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam: the map as floats (R32F only) and the last replayed frame's basis:
-// right, up, forward, center (world), half_extent, depth_half_range, size, valid.
-HRESULT MotionOutput::fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats) noexcept {
-    const unsigned size = depth_replay_ ? depth_replay_->size() : 0;
+// right, up, forward, center (world), half_extent, depth half range, size, valid.
+// Cascades on: `cascade` selects the map; the basis is the one retained for it
+// (valid 0 while absent) and params[16..18] are depth_toward_light,
+// depth_behind and the frame it was replayed on.
+HRESULT MotionOutput::fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats, unsigned cascade) noexcept {
+    const bool cascades = depth_cascades_on();
+    if (cascade && (!cascades || cascade >= depth_cascades_.count)) return D3DERR_INVALIDCALL;
+    const unsigned size = depth_replay_ ? depth_replay_->size(cascade) : 0;
     if (width) *width = size;
     if (height) *height = size;
+    const auto* kept = cascades && depth_replay_ ? depth_replay_->retained(cascade) : nullptr;
+    const renderer::ShadowReplayBasis none{};
+    const auto& basis = cascades ? (kept ? kept->basis : none) : depth_basis_;
+    const auto& box = cascades ? depth_cascades_.cascades[cascade] : depth_cascade_;
     if (params && param_floats >= 16) {
-        for (unsigned i = 0; i < 3; ++i) { params[i] = depth_basis_.right[i]; params[3 + i] = depth_basis_.up[i]; params[6 + i] = depth_basis_.forward[i]; params[9 + i] = depth_basis_.center[i]; }
-        params[12] = depth_cascade_.half_extent; params[13] = depth_cascade_.depth_half_range; params[14] = float(size); params[15] = depth_basis_.valid ? 1.f : 0.f;
+        for (unsigned i = 0; i < 3; ++i) { params[i] = basis.right[i]; params[3 + i] = basis.up[i]; params[6 + i] = basis.forward[i]; params[9 + i] = basis.center[i]; }
+        params[12] = box.half_extent; params[13] = float(box.depth_half()); params[14] = float(size); params[15] = basis.valid ? 1.f : 0.f;
+        if (param_floats >= 19) { params[16] = box.depth_toward_light; params[17] = box.depth_behind; params[18] = kept ? float(kept->frame) : -1.f; }
     }
-    if (!depth_replay_ || !depth_replay_->map_surface()) return D3DERR_NOTFOUND;
+    if (!depth_replay_ || !depth_replay_->map_surface(cascade)) return D3DERR_NOTFOUND;
     if (!depth_replay_->caps().readable) return D3DERR_NOTAVAILABLE;
     if (!out || floats < std::size_t(size) * size) return D3DERR_MOREDATA;
     IDirect3DSurface9* copy = nullptr;
     HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, size, size, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
-    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, depth_replay_->map_surface(), copy);
+    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, depth_replay_->map_surface(cascade), copy);
     D3DLOCKED_RECT lock{};
     if (SUCCEEDED(hr)) hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
     if (SUCCEEDED(hr)) {

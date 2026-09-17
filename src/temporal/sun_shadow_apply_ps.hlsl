@@ -20,6 +20,12 @@
 // only to a shadowed factor. Alpha is 1 so the target's alpha is unchanged.
 // Compiled by tools/shaders/generate_rigid_motion_pixel.py into
 // src/renderer/sun_shadow_apply_program_inc.h.
+// Texel convention: the replay rasterizes under D3D9, where map texel (i, j)
+// holds the depth at screen position (i, j), i.e. at map position (i, j) / N,
+// while a texture lookup addresses that texel at ((i, j) + 0.5) / N. The
+// receiver's lookup position is therefore suv = muv + 0.5 / N: its nearest
+// texel is floor(suv N) (= round(muv N)), and a tap at tapUV holds the depth
+// of the point tapUV - suv away from the receiver (the receiver-plane term).
 sampler depthShareTex : register(s0); // G32R32F: r = device depth (z/w, -1 sentinel), g = sun share s
 sampler sunMapTex : register(s1);     // R32F sun-space depth map of the same frame
 float4 view : register(c0);     // x = m00, y = m11, z = m20, w = m21 (the jittered projection latch)
@@ -48,13 +54,14 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float inv = planar ? 1.0 / det : 0.0;
     float2 g = float2(dzdx * duvdy.y - dzdy * duvdx.y, dzdy * duvdx.x - dzdx * duvdy.x) * inv;
     bool valid = d >= 0.0 && s > 0.0 && all(muv >= 0.0) && all(muv <= 1.0) && sun.z >= 0.0 && sun.z <= 1.0;
-    float2 texel = floor(muv * map.x);
+    float2 suv = muv + 0.5 * map.y;
+    float2 texel = floor(suv * map.x);
     float lit = 0.0;
     [unroll] for (int j = -1; j <= 1; ++j) {
         [unroll] for (int i = -1; i <= 1; ++i) {
             float2 o = float2(map.z * i - map.w * j, map.w * i + map.z * j);
             float2 tapUV = (floor(texel + 0.5 + o) + 0.5) * map.y;
-            float bias = planar ? clamp(dot(tapUV - muv, g), -limits.x, limits.x) : -limits.x;
+            float bias = planar ? clamp(dot(tapUV - suv, g), -limits.x, limits.x) : -limits.x;
             float reference = sun.z + bias - terms.w;
             lit += (tex2D(sunMapTex, tapUV).r >= reference) ? 1.0 : 0.0;
         }

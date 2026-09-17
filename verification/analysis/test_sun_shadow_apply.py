@@ -56,6 +56,26 @@ class ExpectedFactor(unittest.TestCase):
         out = apply.expected_factor(d, s, np.zeros((64, 64)), PARAMS)
         self.assertFalse(np.any(out['valid'][1:, :2]))
 
+    def test_half_texel_lookup_is_unbiased_against_a_d3d9_rasterized_map(self):
+        # A map as the replay's rasterizer fills it: texel i holds the sample at map position i / N, covered
+        # (depth 0) when that position is left of the caster's edge e. 64 receivers across 12 texels of a
+        # 16-texel map; the f >= 0.5 crossing against e, averaged over ten sub-texel edge positions, is the
+        # lookup's bias: 0 for the half-texel rule (nearest texel round(u N)), +0.5 texel for the former floor.
+        size = 16
+        d, s = receivers(width=64, height=8)
+        s[:, :] = .5; d[0, :] = PARAMS['m22'] + PARAMS['m32'] / 6.0
+        position = (.5 + .375 * ((np.arange(64) + .5) / 64 * 2 - 1)) * size  # map position of every column in texels
+        bias = {}
+        for legacy in (False, True):
+            offsets = []
+            for edge in np.linspace(6.05, 6.95, 10):
+                sun_map = np.where(np.arange(size)[None, :] < edge, 0.0, 1.0).repeat(size, 0).reshape(size, size)
+                f = apply.expected_factor(d, s, sun_map, PARAMS, legacy_floor=legacy)['f'][4]
+                crossing = position[int(np.argmax(f >= .5))] - .5 * (position[1] - position[0])
+                offsets.append(crossing - edge)
+            bias[legacy] = float(np.mean(offsets))
+        self.assertLess(abs(bias[False]), .25, bias); self.assertGreater(bias[True], .35, bias)
+
     def test_quad_derivative(self):
         value = np.arange(16, dtype=np.float64).reshape(4, 4) * 3.0
         self.assertTrue(np.all(apply._quad_derivative(value, 1) == 3.0))
@@ -169,7 +189,77 @@ class RunInputs(unittest.TestCase):
         self.assertEqual(report['darkening'].get('control'), None)  # no lit pixel to pair with
         far = apply.frame_report(d, s, np.ones((64, 64)), PARAMS, luminance)
         self.assertEqual((far['f_below_0_9'], far['factor_mean']), (0.0, 1.0))
-        self.assertEqual(far['darkening'], {})  # every receiver of the flat synthetic scene is ambiguous: no strict pair
+        # Lit receivers pair with lit neighbours at ratio 1 and nothing is shadowed (with the half-texel lookup the
+        # synthetic receivers sit on texel centres; under the former floor rule they sat on texel boundaries, all ambiguous).
+        self.assertEqual(set(far['darkening']), {'control'}); self.assertEqual(far['darkening']['control']['ratio_p25_p50_p75'], [1.0, 1.0, 1.0])
+        legacy = apply.frame_report(d, s, np.ones((64, 64)), PARAMS, luminance, legacy_floor=True)
+        self.assertEqual(legacy['darkening'], {})
+
+
+def cascade_rows(extent):
+    """PARAMS' sun space at another half-extent: NDC (x / E, (z - 6) / E), depth (4 - y) / 8."""
+    return (1.0 / extent, 0, 0, 0, 0, 0, 1.0 / extent, -6.0 / extent, 0, -.125, 0, .5)
+
+
+def cascade_params(cascades):
+    shared = {k: PARAMS[k] for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'jitter_index', 'exponent', 'planar_step')}
+    return dict(shared, cascades=[dict(rows=cascade_rows(extent), bias_constant=.003, bias_max=.01, valid=valid) for extent, valid in cascades])
+
+
+class CascadeFactor(unittest.TestCase):
+    """The cascade twin (docs/architecture/shadow-cascades.md, section 2). The
+    8 x 8 receivers at view depth 6 lie at view x = +-0.375, 1.125, 1.875, 2.625:
+    with a 2-unit cascade 0 that is sun |x| = 0.1875, 0.5625 (core), 0.9375
+    (band, t = 0.875) and 1.3125 (beyond the 0.95 margin: the next cascade)."""
+    COLUMN_REACH = (1.3125, .9375, .5625, .1875, .1875, .5625, .9375, 1.3125)
+
+    def test_single_cascade_core_equals_the_single_map_twin(self):
+        d, s = receivers()
+        single = apply.expected_factor(d, s, np.zeros((64, 64)), PARAMS)
+        out = apply.expected_factor_cascades(d, s, [np.zeros((64, 64))], cascade_params([(4.0, True)]))
+        self.assertTrue(np.array_equal(out['factor'], single['factor']) and np.array_equal(out['valid'], single['valid']))
+        self.assertTrue(np.all(out['selected'][1:, :] == 0))
+
+    def test_selection_band_and_next_cascade(self):
+        d, s = receivers()
+        out = apply.expected_factor_cascades(d, s, [np.zeros((64, 64)), np.ones((64, 64))], cascade_params([(2.0, True), (8.0, True)]))
+        self.assertEqual([int(v) for v in out['selected'][4]], [1, 0, 0, 0, 0, 0, 0, 1])  # the first cascade containing the pixel
+        f = out['f'][4]
+        self.assertTrue(np.allclose(f, [1.0, .875, 0.0, 0.0, 0.0, 0.0, .875, 1.0]))      # shadowed core, lerp(0, 1, t) in the band, the lit next cascade
+        self.assertTrue(np.allclose(out['factor'][4], [1.0, .9375, .5, 1.0, .5, .5, .9375, 1.0]))  # 1 - (1 - f) s with s = 0.5; column 3 is share-free
+        swapped = apply.expected_factor_cascades(d, s, [np.ones((64, 64)), np.zeros((64, 64))], cascade_params([(2.0, True), (8.0, True)]))
+        self.assertTrue(np.allclose(swapped['f'][4], [0.0, .125, 1.0, 1.0, 1.0, 1.0, .125, 0.0]))  # monotone through the band from the other side
+
+    def test_last_cascade_fades_to_lit(self):
+        d, s = receivers()
+        out = apply.expected_factor_cascades(d, s, [np.zeros((64, 64))], cascade_params([(2.0, True)]))
+        self.assertTrue(np.allclose(out['f'][4], [1.0, .875, 0.0, 0.0, 0.0, 0.0, .875, 1.0]))
+        self.assertEqual([bool(v) for v in out['valid'][4]], [False, True, True, False, True, True, True, False])  # beyond the margin: no cascade, untouched
+
+    def test_absent_cascade_is_lit_and_keeps_its_pixels(self):
+        d, s = receivers()
+        out = apply.expected_factor_cascades(d, s, [None, np.zeros((64, 64))], cascade_params([(2.0, False), (8.0, True)]))
+        # Cascade 0's core pixels stay lit (the coarser map's shadow does not reappear); its band blends into cascade 1; beyond it cascade 1 shadows.
+        self.assertTrue(np.allclose(out['f'][4], [0.0, .125, 1.0, 1.0, 1.0, 1.0, .125, 0.0]))
+        far_absent = apply.expected_factor_cascades(d, s, [np.zeros((64, 64)), None], cascade_params([(2.0, True), (8.0, False)]))
+        self.assertTrue(np.allclose(far_absent['f'][4], [1.0, .875, 0.0, 0.0, 0.0, 0.0, .875, 1.0]))  # an absent far cascade: lit, and the band fades into it
+
+    def test_cascade_params_line(self):
+        rows = ','.join('%.9g' % v for v in cascade_rows(250.0))
+        resolved = [apply.resolve_bias(apply.BIAS_UNITS_DEFAULT, e, .5 * (15000.0 + b), 4096) for e, b in ((250.0, 512.0), (1500.0, 3000.0))]
+        per = ''.join(' valid%d=%d map%d=4096 map_frame%d=%d bias%d=%.9g bias_max%d=%.9g texel_world%d=%.9g extent%d=%g depth_light%d=15000 depth_behind%d=%g rows%d=%s'
+                      % (c, 1 - c, c, c, 77 - c if c == 0 else -1, c, resolved[c]['bias_constant'], c, resolved[c]['bias_max'], c, resolved[c]['texel_world'], c, e, c, c, b, c, rows)
+                      for c, (e, b) in enumerate(((250.0, 512.0), (1500.0, 3000.0))))
+        line = ('sun_shadow_apply_params device=1 frame=77 m00=0.8 m11=1.33333337 jitter_x=-0.250000 jitter_y=0.166667 m20=-0.000390625 m21=-0.000434028637 m22=1.00000298 m32=-6.00001812'
+                ' planar_step=0.0500000007 exponent=1.000000 jitter_index=1 width=1280 height=768 bias_units=0.53571875 clamp_texels=20.97152 cascades=2 margin=0.949999988 band=0.100000001' + per)
+        params, extra = apply.parse_apply_params(apply.line_fields(line))
+        self.assertEqual([c['valid'] for c in params['cascades']], [True, False])
+        self.assertEqual([(c['map'], c['map_frame'], c['extent'], c['depth_behind']) for c in extra['cascades']], [(4096, 77, 250.0, 512.0), (4096, -1, 1500.0, 3000.0)])
+        self.assertAlmostEqual(params['margin'], .95, places=6); self.assertAlmostEqual(params['band'], .10, places=6)
+        with self.assertRaises(ValueError):  # a printed bias that is not the law's at that cascade's texel and range
+            apply.parse_apply_params(apply.line_fields(line.replace('bias1=%.9g' % resolved[1]['bias_constant'], 'bias1=0.001')))
+        with self.assertRaises(ValueError):
+            apply.parse_apply_params(apply.line_fields(line.replace('rows1=' + rows, 'rows1=' + rows.rsplit(',', 1)[0])))
 
 
 if __name__ == '__main__':

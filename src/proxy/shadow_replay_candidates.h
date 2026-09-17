@@ -11,11 +11,20 @@
 namespace x3m::shadow_replay {
 constexpr unsigned record_capacity = 1024; // storage (fixed arrays in MotionOutput, no allocation); the per-frame cap is at most this
 constexpr unsigned default_cap = 512;       // X3M_SHADOW_REPLAY_CAP default (1..record_capacity): managed candidates recorded and replayed per frame
+constexpr unsigned cascade_capacity = 4;    // = renderer::shadow_cascade_max (docs/architecture/shadow-cascades.md); this header stays D3D- and renderer-free
 constexpr unsigned witness_capacity = 16;  // per device, section 3
 constexpr float slice0_near = 6.f, slice0_far = 250.f; // own-ship slice of cascade 0 (origin distance, view units)
 constexpr unsigned extent_reads_per_frame = 32;               // vertex-extent reads queued per frame (one per unseen buffer range)
 constexpr std::uint64_t extent_read_bytes_per_frame = 1u << 20; // soft byte budget of those reads: the read that crosses it is the frame's last
 constexpr unsigned extent_read_attempts = 8;                  // scene ends a range may be found locked or fail to Lock before it is given up
+// A range whose buffer revision moved answers with its previous extent only
+// this long. Its re-read goes to the front of the frame's read queue, so an
+// unread revision after eight scene ends means the buffer is rewritten every
+// frame or cannot be read (the same eight ends extent_read_attempts allows);
+// from then on the previous extent is not trusted as it is: it is doubled about
+// its centre (a re-uploaded or animated mesh of the same vertex range stays
+// inside that) and the verdict is reported as `inflated`.
+constexpr unsigned extent_stale_frames = 8;
 
 // Pool/usage class of a bound buffer, from the documented GetDesc of the
 // application's own SetStreamSource/SetIndices argument (cached per allocation).
@@ -52,13 +61,25 @@ struct FrameCounts {
     std::uint32_t stale = 0;           // record whose scene-end view is another allocation or generation
     std::uint32_t nested = 0, overflow = 0;
     std::uint64_t roots = 0, waiting = 0;
+    // Cascades on: records carrying cascade i (c<i>=) and admitted draws whose
+    // cascade i was dropped by that cascade's cap (capped<i>=); `capped` then
+    // counts the draws every one of whose cascades was dropped.
+    std::uint32_t cascade[cascade_capacity]{}, cascade_capped[cascade_capacity]{};
 };
 struct Record {
     std::uint64_t vb = 0, ib = 0;                 // route allocation ids (RigidDrawKey)
     std::uintptr_t vb_identity = 0, ib_identity = 0; // wrapper identities: registry keys only, never dereferenced
     std::uint64_t vb_generation = 0, ib_generation = 0; // BufferLockView::generation at the draw (changes before every Reset)
     ownership::BufferLockObservation vb_view{}, ib_view{}; // bookend views at the draw
+    std::uint8_t cascades = 1; // bit i: the draw is replayed into cascade i (the single map is cascade 0)
+    std::uint8_t verdict = 0;  // VerdictSource: what admitted the draw (capture-frame diagnostics)
 };
+// What decided a record's admission: the draw-time box test on the range's own
+// extent, on the extent of an earlier buffer revision (the new one is queued
+// with priority), on that extent doubled once it is older than
+// extent_stale_frames, or the origin rule while no extent is known.
+enum class VerdictSource : std::uint8_t { Origin = 0, Bounds = 1, Retained = 2, Inflated = 3 };
+constexpr const char* verdict_source_name(std::uint8_t v) noexcept { return v == 1 ? "bounds" : v == 2 ? "retained" : v == 3 ? "inflated" : "origin"; }
 struct Witness {
     std::uint64_t allocation = 0, serial_delta = 0, revision_delta = 0;
     std::uint32_t flags = 0, offset = 0, size = 0, thread = 0;
@@ -102,8 +123,11 @@ struct Frame {
     // binding ids equal the route key's (else the pool class and bookends
     // would describe another buffer). Returns true when the draw is a managed
     // candidate the caller should record (below the per-frame cap).
+    // Cascades on: *cascade_mask is the draw's cascades on entry (admitted ==
+    // mask != 0) and the cascades whose own cap still has room on return; the
+    // counts move when the record is made (record(mask)).
     bool draw(bool zwrite, bool admitted, bool by_bounds, bool origin_rule, bool excluded, bool shadow_ok,
-              PoolClass vb, PoolClass ib, bool indexed, unsigned cap) noexcept {
+              PoolClass vb, PoolClass ib, bool indexed, unsigned cap, std::uint8_t* cascade_mask = nullptr, const unsigned* cascade_caps = nullptr) noexcept {
         ++counts.routed;
         if (!zwrite) return false;
         ++counts.zwrite;
@@ -120,9 +144,26 @@ struct Frame {
         ++counts.managed;
         if (record_count >= record_capacity) { ++counts.overflow; return false; }
         if (record_count >= cap) { ++counts.capped; return false; }
+        if (cascade_mask && cascade_caps) {
+            std::uint8_t kept = 0;
+            for (unsigned i = 0; i < cascade_capacity; ++i) {
+                if (!(*cascade_mask & (1u << i))) continue;
+                if (counts.cascade[i] >= cascade_caps[i]) ++counts.cascade_capped[i]; else kept |= std::uint8_t(1u << i);
+            }
+            *cascade_mask = kept;
+            if (!kept) { ++counts.capped; return false; }
+        }
         return true;
     }
-    Record& record() noexcept { return records[record_count++]; }
+    Record& record(std::uint8_t cascade_mask = 1) noexcept {
+        Record& r = records[record_count++];
+        r.cascades = cascade_mask;
+        return r;
+    }
+    // Cascades on: the per-cascade record counts (the caps' ledger).
+    void count_cascades(std::uint8_t cascade_mask) noexcept {
+        for (unsigned i = 0; i < cascade_capacity; ++i) if (cascade_mask & (1u << i)) ++counts.cascade[i];
+    }
 };
 
 // ---- vertex extents (docs/architecture/shadow-replay-gates.md, "Casters by bounds") ----
@@ -132,12 +173,16 @@ struct Frame {
 struct ExtentKey {
     std::uint64_t vb = 0, revision = 0;
     std::uint32_t stream_offset = 0, stride = 0, first = 0, count = 0, position_offset = 0, position_type = 0;
-    bool operator==(const ExtentKey& o) const noexcept {
-        return vb == o.vb && revision == o.revision && stream_offset == o.stream_offset && stride == o.stride && first == o.first
+    // The same vertex range and position layout, whatever the buffer revision.
+    bool same_range(const ExtentKey& o) const noexcept {
+        return vb == o.vb && stream_offset == o.stream_offset && stride == o.stride && first == o.first
             && count == o.count && position_offset == o.position_offset && position_type == o.position_type;
     }
+    bool operator==(const ExtentKey& o) const noexcept { return revision == o.revision && same_range(o); }
+    // Of the range alone: every revision of a range lives in one set, so a
+    // rewritten buffer finds its previous extent while the new one is read.
     std::uint64_t hash() const noexcept {
-        std::uint64_t h = vb * 0x9E3779B97F4A7C15ull ^ revision;
+        std::uint64_t h = vb * 0x9E3779B97F4A7C15ull;
         h ^= (std::uint64_t(stream_offset) << 32 | stride) * 0xC2B2AE3D27D4EB4Full;
         h ^= (std::uint64_t(first) << 32 | count) * 0x165667B19E3779F9ull;
         h ^= (std::uint64_t(position_offset) << 32 | position_type);
@@ -149,29 +194,107 @@ struct ExtentKey {
 // Lock failed, `attempts` times; its next draw re-queues the read. Unreadable:
 // a nonfinite position, or extent_read_attempts retries; never re-read.
 enum class ExtentState : std::uint8_t { Empty = 0, Known = 1, Unreadable = 2, Retry = 3 };
-struct ExtentEntry { ExtentKey key{}; float lo[3]{}, hi[3]{}; ExtentState state = ExtentState::Empty; std::uint8_t attempts = 0; };
+struct ExtentEntry {
+    ExtentKey key{}; float lo[3]{}, hi[3]{}; ExtentState state = ExtentState::Empty; std::uint8_t attempts = 0;
+    std::uint32_t used = 0; // frame stamp of the last lookup that returned this entry
+    // While the entry answers stale: the revision being waited for (failed
+    // reads of it are counted in `attempts`; a further revision restarts both)
+    // and the frame it was first asked for.
+    std::uint64_t pending_revision = 0;
+    std::uint32_t stale_since = 0;
+    // The read of the pending revision was given up after extent_read_attempts: not queued again.
+    bool abandoned() const noexcept { return attempts >= extent_read_attempts; }
+    // Doubled about its centre (the answer of a stale entry older than extent_stale_frames).
+    void inflated(float out_lo[3], float out_hi[3]) const noexcept {
+        for (unsigned i = 0; i < 3; ++i) { const float half = .5f * (hi[i] - lo[i]); out_lo[i] = lo[i] - half; out_hi[i] = hi[i] + half; }
+    }
+};
+// Set-associative, sized for eight times the record capacity (at 1,024 live
+// ranges a set of eight overflows about once in a million sets)
+// (docs/verification/directional-shadows.md, "Run 38 A (run111) diagnosis",
+// cause 2: the direct-mapped cache evicted colliding ranges every frame, so a
+// frozen scene's admitted set cycled and READONLY locks never stopped). An
+// entry returned by a lookup this frame is never evicted this frame; a store
+// into a set whose every way was used this frame is refused and counted
+// (the range is re-queued by its next draw). A range whose buffer revision
+// moved keeps its previous extent as the `stale` answer until the new one is
+// read, so its verdict does not drop to the origin rule in between; the stale
+// answer is bounded: stale_age() beyond extent_stale_frames asks the caller to
+// inflate it, and its re-read is a priority read.
 struct ExtentCache {
-    static constexpr unsigned size = 1024; // direct-mapped; a collision evicts (the evicted range is re-read on its next draw)
+    static constexpr unsigned sets = 1024, ways = 8, size = sets * ways;
     ExtentEntry entries[size]{};
-    // The decided entry (Known or Unreadable); a Retry entry is a miss.
-    const ExtentEntry* find(const ExtentKey& key) const noexcept {
-        const ExtentEntry& e = entries[unsigned(key.hash() % size)];
-        return (e.state == ExtentState::Known || e.state == ExtentState::Unreadable) && e.key == key ? &e : nullptr;
+    std::uint32_t stamp = 1;   // the current frame
+    std::uint32_t refused = 0;       // stores refused since clear()
+    std::uint32_t refused_frame = 0; // ... since begin_frame()
+    void begin_frame() noexcept {
+        refused_frame = 0;
+        if (++stamp == 0) { stamp = 1; for (auto& e : entries) { e.used = 0; e.stale_since = 0; } }
     }
-    void store(const ExtentKey& key, const float lo[3], const float hi[3], ExtentState state) noexcept {
-        ExtentEntry& e = entries[unsigned(key.hash() % size)];
-        e.key = key; e.state = state; e.attempts = 0;
-        for (unsigned i = 0; i < 3; ++i) { e.lo[i] = lo ? lo[i] : 0.f; e.hi[i] = hi ? hi[i] : 0.f; }
+    // Frames the entry has been answering for a revision it does not hold.
+    std::uint32_t stale_age(const ExtentEntry& e) const noexcept { return stamp - e.stale_since; }
+    ExtentEntry* set_of(const ExtentKey& key) noexcept { return entries + std::size_t(key.hash() % sets) * ways; }
+    const ExtentEntry* set_of(const ExtentKey& key) const noexcept { return entries + std::size_t(key.hash() % sets) * ways; }
+    // The decided entry of this exact key (Known or Unreadable); a Retry
+    // entry is a miss. `stale`: on a miss, the Known extent of the same range
+    // at another revision, if any.
+    const ExtentEntry* find(const ExtentKey& key, const ExtentEntry** stale = nullptr) noexcept {
+        if (stale) *stale = nullptr;
+        ExtentEntry* set = set_of(key);
+        for (unsigned w = 0; w < ways; ++w) {
+            ExtentEntry& e = set[w];
+            if (e.state == ExtentState::Empty || !e.key.same_range(key)) continue;
+            e.used = stamp;
+            if (e.key.revision == key.revision) return e.state == ExtentState::Retry ? nullptr : &e;
+            if (stale && e.state == ExtentState::Known) {
+                if (e.pending_revision != key.revision) { e.pending_revision = key.revision; e.attempts = 0; e.stale_since = stamp; }
+                *stale = &e;
+            }
+        }
+        return nullptr;
     }
-    // One failed attempt: Retry until extent_read_attempts, then Unreadable.
+    // The way a key goes to: its own range's entry, an empty way, else the
+    // least recently used way that no lookup returned this frame; null when
+    // every way was used this frame.
+    ExtentEntry* way_for(const ExtentKey& key) noexcept {
+        ExtentEntry* set = set_of(key); ExtentEntry* empty = nullptr; ExtentEntry* oldest = nullptr;
+        for (unsigned w = 0; w < ways; ++w) {
+            ExtentEntry& e = set[w];
+            if (e.state == ExtentState::Empty) { if (!empty) empty = &e; continue; }
+            if (e.key.same_range(key)) return &e;
+            if (e.used != stamp && (!oldest || e.used < oldest->used)) oldest = &e;
+        }
+        return empty ? empty : oldest;
+    }
+    bool store(const ExtentKey& key, const float lo[3], const float hi[3], ExtentState state) noexcept {
+        ExtentEntry* e = way_for(key);
+        if (!e) { ++refused; ++refused_frame; return false; }
+        e->key = key; e->state = state; e->attempts = 0; e->used = stamp; e->pending_revision = 0; e->stale_since = 0;
+        for (unsigned i = 0; i < 3; ++i) { e->lo[i] = lo ? lo[i] : 0.f; e->hi[i] = hi ? hi[i] : 0.f; }
+        return true;
+    }
+    // One failed attempt: Retry until extent_read_attempts, then Unreadable. A
+    // range that still has a Known extent of an earlier revision keeps it (the
+    // stale, later inflated, answer) while the attempts are counted on it; at
+    // extent_read_attempts the read is abandoned and the entry stays.
     void retry(const ExtentKey& key) noexcept {
-        ExtentEntry& e = entries[unsigned(key.hash() % size)];
-        const unsigned attempts = e.state == ExtentState::Retry && e.key == key ? e.attempts + 1u : 1u;
-        e.key = key; e.attempts = std::uint8_t(attempts);
-        e.state = attempts >= extent_read_attempts ? ExtentState::Unreadable : ExtentState::Retry;
-        for (unsigned i = 0; i < 3; ++i) e.lo[i] = e.hi[i] = 0.f;
+        ExtentEntry* e = way_for(key);
+        if (!e) { ++refused; ++refused_frame; return; }
+        const bool same = e->state != ExtentState::Empty && e->key.same_range(key);
+        const bool kept = same && e->state == ExtentState::Known && e->key.revision != key.revision;
+        if (kept) {
+            if (e->pending_revision != key.revision) { e->pending_revision = key.revision; e->attempts = 0; e->stale_since = stamp; }
+            if (e->attempts < extent_read_attempts) ++e->attempts;
+            e->used = stamp;
+            return;
+        }
+        const unsigned attempts = same && e->state == ExtentState::Retry && e->key.revision == key.revision ? e->attempts + 1u : 1u;
+        e->attempts = std::uint8_t(attempts); e->used = stamp; e->pending_revision = 0; e->stale_since = 0;
+        e->key = key;
+        e->state = attempts >= extent_read_attempts ? ExtentState::Unreadable : ExtentState::Retry;
+        for (unsigned i = 0; i < 3; ++i) e->lo[i] = e->hi[i] = 0.f;
     }
-    void clear() noexcept { for (auto& e : entries) e.state = ExtentState::Empty; }
+    void clear() noexcept { for (auto& e : entries) { e.state = ExtentState::Empty; e.used = 0; e.stale_since = 0; e.pending_revision = 0; } stamp = 1; refused = refused_frame = 0; }
 };
 // Vertex count of a primitive range (D3D9 topology values); 0 for an unknown topology.
 inline std::uint32_t vertices_of(std::uint32_t topology, std::uint32_t primitives) noexcept {
