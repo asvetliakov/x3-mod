@@ -234,6 +234,57 @@ control".
    casters than the list counts `overflow=` as before. The retention store's draw list follows
    (`records + 4096`). The issue budget and the far-cascade cadence are unchanged.
 
+**Amendments (2026-09-18, run 40 A; evidence in
+[../verification/directional-shadows.md](../verification/directional-shadows.md), "Run 40 A
+(run116) fix"):**
+
+- *The store's verdict is used only where it is informative.* Per cascade the store answers a
+  node it has promoted at that cascade's eps (`Node::static_mask`) or verified moved beyond it
+  since that promotion (`Node::moved_mask`); a node it does not know, a fresh one, or one whose
+  streak is still accruing falls through to the ring for that cascade. Before, a fresh node was
+  `is_static = false` = moving: refused, not recorded, dropped unseen, readmitted fresh by the
+  ring next frame (the period-2 whole-object blink of run116, cause 1). A draw the static gate
+  refuses from *every* cascade it met is no candidate (no record, no lease) but is still fed to
+  the store as a sighting (`note_refused_sighting`, counted `gate_sightings=` on the retention
+  frame line), so its streak accrues while refused and it is promoted instead of dropped.
+  `class_store=` now counts draws the store answered for every static-only cascade they met,
+  `class_ring=` those the ring answered (any cascade).
+- *Per-cascade eps (cause 3).* A static-only cascade's drift threshold is
+  `max(--shadow-caster-retention-eps, world texel / 8)` (`shadow_cascade_class_eps`: 2.3 u at
+  37,500 / 4096, 9.2 u at 150,000 / 4096); the other cascades keep the base eps. The ring's
+  anchor and the store's `d.world` move on the base eps alone, so a far tier compares each
+  sighting's step against the last beyond-base placement (a hull part jittering 0.1 u at 19 km
+  is static there, a station part stepping 2 u too; a real slow mover re-anchors every frame
+  and stays under its far eps, which costs nothing: a live draw is replayed with its current
+  rows). The store keeps a streak per cascade (`Draw::streak_cascade`), the retention frame
+  line counts `reclassified_c<i>=` per tier.
+- *Back-face casters (cause 2; `--shadow-cascade-backface-from K|none`,
+  `X3M_SHADOW_CASCADE_BACKFACE_FROM`, default the texel law: every cascade whose world texel is
+  at least 8 u, `shadow_cascade_backface_texel_default`; 37,500 / 4096 = 18.3 u qualifies,
+  7,500 / 4096 = 3.7 u does not).* Such a cascade replays its casters with the cull mode
+  inverted per draw (CW <-> CCW, NONE unchanged: `ShadowReplayMapList::invert_cull`), so the
+  map holds the far side of every body and a lit front face compares against its own thickness
+  instead of its own depth on the compare's knife edge (57.7 % of run116's far-cascade pixels
+  shadowed, 27–37 % flipping per frame at rest, bias x8 no better). Trade-offs: a body thinner
+  than one texel of that cascade casts no contact shadow (invisible at 18–73-u texels); a
+  pancaked caster (nearer the light than the map's near plane) is flattened onto it by its back
+  faces exactly as before, so it still shadows. Its rows also carry the pre-jitter receiver
+  (`r.z += r.x jx / m00 + r.y jy / m11`: the same RT2 depth reconstructed at the pre-jitter
+  pixel centre, linear in z, so the program, its derivatives and the near cascades are
+  untouched; `unjittered<s>=1` on `sun_shadow_apply_params`); the twin measured this term alone
+  neutral on run116 (the re-roll is in the depth, not the lateral selection), it is kept for a
+  jitter-independent texel choice at texels of a pixel or more. Independent of the static rule.
+  Under the sliding ladder an index law slides like `static_from`; the texel law follows the
+  slid extents. Logged as `backface_from=` / `backface_mask=` on `shadow_cascades_mode` and
+  `backface_mask=` on `shadow_cascade_set`.
+- *Huge hulls (cause 4).* A draw whose object origin lies at or behind the camera plane has no
+  origin distance (`fade_route::origin_distance` fails, `candidate_distance = -1`); the near
+  gate treated that as "nearer than the near bound" and refused the draw even when its known
+  extent met every box (run116 frame 24291: the outpost at 1–10 km, 312 z-writing draws, no
+  candidate between 165 u and 74 km). Now a known extent decides alone when the origin distance
+  is unknown; a known origin nearer than the near bound stays refused. The fixture's `hull`
+  case is a 200-u sliver with its origin 2 u behind the camera plane.
+
 Costs (`sun-shadow-apply-cascades` bench, `SUNAPPLY_BOUNDS_BENCH`): the mask with the size
 beside it against the mask alone, the classification per draw, and the scene-end selection at a
 full 4,096-record list are in the ledger section. Native Windows: documented D3D9 only (no new

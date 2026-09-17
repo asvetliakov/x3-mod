@@ -408,6 +408,21 @@ Where the build differs from, or sharpens, the text above:
   class until that record has earned its streak. Verification runs on every sighting of a
   moving node, on a resighting after any unseen frame, after a set change, and on 1 sighting in
   16 otherwise.
+- **Per-cascade tiers (2026-09-18, run 40 A, causes 1 and 3).** Beside `is_static` (the base
+  eps, what retention replays while a node is unseen) every node carries `static_mask` and
+  `moved_mask`, bit `c` per cascade: static under cascade c's eps (`FrameInput::eps_cascade[c]`,
+  `renderer::shadow_cascade_class_eps`: a static-only cascade's world texel / 8, never below the
+  base; the base elsewhere), or verified moved beyond it since its last promotion there. Each
+  record keeps a streak per cascade (`Draw::streak_cascade`); the anchor `d.world` moves on the
+  base eps alone. The owner's static-only classifier (`classify_candidate_static`) takes the
+  store's answer for a cascade only where one of the two bits is set and asks the ring
+  (`shadow_caster_class.h`, `Ring::drift`) for the rest: a fresh node or one whose streak is
+  accruing no longer counts as moving, which was the store/ring feedback cycle of run116
+  (refused, unseen, dropped, readmitted fresh, period 2). A draw the gate refused from every
+  cascade it met is still fed as a sighting (`note_refused_sighting`; `gate_sightings=`), so it
+  is promoted while refused rather than dropped. The frame line counts `reclassified_c<i>=`
+  per tier; the F8 caster line prints `static_mask= moved_mask=`. Host driver:
+  `test_shadow_retention.py` (the tiers case).
 - **The seen path keeps today's per-frame lease.** The store takes its own references beside
   it; the contract's reuse of the held references for live draws (no per-frame
   `GetVertexDeclaration` / `AddRef` / `Release`) is not built. It is an optimisation of the

@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion_output_fixture.exe": "f8cca8775e552567fd6815be15ac2a47d08d1552496589c5516820bda3f634aa",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion-output-seam/d3d9.dll": "bb62cda0e0e5f9aa966edffcf1e406bcc1f525d41d54cee73e4e6b858e8f490c",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/build/d3d9.dll": "9da9084d0634477e879612e53b738c71b02729f76b6304da126b55a788d2b17b"
+  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
  },
  "checks": 336,
  "depth": true,
@@ -193,15 +193,15 @@
  "frames": 8,
  "us": {
   "frames": 5,
-  "min": 61.1,
-  "median": 76.6,
-  "max": 1491.9
+  "min": 60.1,
+  "median": 75.6,
+  "max": 1552.6
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-swap-20260918-002006-406152",
- "trace_sha256": "52ea4cde9b5e45fec0b13e9b644c110d57773d02c3c1c78b7da258cbe3d12f5f",
- "dll_sha256": "bb62cda0e0e5f9aa966edffcf1e406bcc1f525d41d54cee73e4e6b858e8f490c",
- "exe_sha256": "f8cca8775e552567fd6815be15ac2a47d08d1552496589c5516820bda3f634aa",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-swap-20260918-021438-962246",
+ "trace_sha256": "e3c434e85428a8f9359119a683907aea5c21c14609d2aff5f055ce76e1769a7d",
+ "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+ "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
  "map": {
   "max_depth_error": 8.4620178757433e-06,
   "covered_texels": 189273

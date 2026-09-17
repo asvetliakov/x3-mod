@@ -52,7 +52,7 @@
 #include "../renderer/shadow_replay_projection.h"
 #include "../renderer/sun_shadow_apply_pass.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
-namespace x3m::ownership { class AdmissionMonitor; }
+namespace x3m::ownership { class AdmissionMonitor; struct BufferLockView; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
 // Distinct clip-row constant windows the profile table names (c24-27 for the
@@ -1212,7 +1212,11 @@ private:
     std::unique_ptr<shadow_replay::KeptEntry[]> candidate_kept_last_;  // importance order: last frame's kept casters (two slots per record; allocated while the option is on)
     unsigned depth_cascade_draw_caps_[renderer::shadow_cascade_max]{}; // the per-cascade bound the draw path applies (the cap, or the record capacity under the importance order)
     std::uint8_t depth_cascade_static_mask_=0; // bit i: cascade i admits static casters only (none by default)
-    shadow_caster_class::Verdict classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept; // shadow_caster_class.h
+    std::uint8_t depth_cascade_backface_mask_=0; // bit i: cascade i replays back faces and evaluates the unjittered receiver (ShadowCascadeSet::backface_mask; the texel law by default)
+    double depth_cascade_class_eps_[renderer::shadow_cascade_max]{}; // per cascade the static/moving drift threshold (renderer::shadow_cascade_class_eps of the live set)
+    void refresh_cascade_policy() noexcept; // the three above from depth_cascades_ (attach, and every ladder commit)
+    std::uint8_t classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi, std::uint8_t wanted, bool& miss) noexcept; // shadow_caster_class.h: bit i = static at cascade i's eps
+    void note_refused_sighting(const MotionRoute& route, const ownership::BufferLockView& vb, const shadow_replay::ExtentEntry* extent) noexcept; // the static gate's refusal is still a sighting (cause 1)
     bool attach_candidate_storage() noexcept; // sizes the arrays above for depth_cascades_; false leaves the cascades off
     renderer::ShadowReplayCascade depth_cascade_{};
     renderer::ShadowReplayBasis depth_basis_{}; // basis of the last replayed frame (seam readback)
@@ -1258,6 +1262,7 @@ public:
 private:
 #endif
     void note_depth_geometry(const MotionRoute& route, unsigned index) noexcept;
+    bool fill_depth_geometry(const MotionRoute& route, shadow_replay::DepthGeometry& g) noexcept; // rows, keys, cull mode and the declaration's own reference; no lease
     void release_depth_leases() noexcept;
     bool ensure_shadow_replay_depth() noexcept;
     void run_shadow_replay_depth(const bool* quiet) noexcept;

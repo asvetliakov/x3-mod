@@ -164,9 +164,11 @@ def shape_vertices(shape, scale=1.0):
     return [(x * scale, y * scale, .5) for x, y in tri]
 
 
-def rows_matrix(t, p, zo):
-    """The fixture's clip rows c24-c27 (four dp4 rows)."""
-    return ((1, 0, 0, t), (0, 1, 0, 0), (0, 0, 1, zo), (p, 0, 0, 1))
+def rows_matrix(t, p, zo, w0=1.0):
+    """The fixture's clip rows c24-c27 (four dp4 rows); `w0` is the w row's
+    constant (the object origin's clip w: 1 everywhere but the pool script's
+    hull case, whose origin lies behind the camera plane)."""
+    return ((1, 0, 0, t), (0, 1, 0, 0), (0, 0, 1, zo), (p, 0, 0, w0))
 
 
 def project_vertex(vertex, rows, camera, basis):
@@ -242,7 +244,7 @@ def expected_map(draws, camera, basis, size):
     """The CPU map for one frame's SHADOW_DRAW records."""
     triangles = []
     for d in draws:
-        rows = rows_matrix(d['t'], d['p'], d['zo'])
+        rows = rows_matrix(d['t'], d['p'], d['zo'], d.get('w0', 1.0))
         tri = []
         for v in shape_vertices(d['shape'], d.get('scale', 1.0)):
             # A retained caster (shadow-caster-retention.md) keeps the world place its rows

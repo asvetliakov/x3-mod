@@ -240,6 +240,14 @@ constexpr unsigned shadow_cascade_cap_max = 4096; // = shadow_cascade_records_ma
 constexpr unsigned shadow_cascade_records_default = 1024, shadow_cascade_records_min = 1, shadow_cascade_records_max = 4096;
 constexpr unsigned shadow_cascade_static_from_none = ~0u; // never a cascade index: a set of N cascades takes static_from in 1..N-1 or none
 constexpr float shadow_cascade_large_min_max = 1e6f; // X3M_SHADOW_CASCADE_LARGE_MIN: 0 (off) .. this, world units
+// Back-face casters (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 2): a
+// cascade whose world texel is at or above this holds its casters' BACK faces (the replay
+// inverts CW <-> CCW; NONE unchanged), so a lit front face compares against the far side of its
+// own body (residual = thickness, off the compare's knife edge) instead of its own depth
+// re-rolled by the jittered receiver. X3M_SHADOW_CASCADE_BACKFACE_FROM = K overrides the
+// texel law with cascades i >= K (0: every cascade; "none": no cascade).
+constexpr double shadow_cascade_backface_texel_default = 8.; // world units per texel: 37,500 / 4096 (18.3 u) qualifies, 7,500 / 4096 (3.7 u) does not
+constexpr unsigned shadow_cascade_backface_from_texel = ~0u - 1u; // the texel law (the option absent); shadow_cascade_static_from_none = no cascade
 constexpr unsigned shadow_cascade_budget_default = 640, shadow_cascade_budget_min = 1, shadow_cascade_budget_max = 4096; // draw issues per frame
 constexpr float shadow_cascade_depth_light_factor = 2.f, shadow_cascade_depth_behind_factor = 2.f;
 constexpr float shadow_cascade_select_margin = .95f; // a pixel belongs to the first cascade with max(|x|, |y|) <= margin (room for the 3x3 kernel)
@@ -253,12 +261,20 @@ struct ShadowCascadeSet {
     unsigned static_from = shadow_cascade_static_from_none; // cascades i >= static_from admit static casters only
     bool importance = false;                                // a cascade over its cap keeps the largest projected casters, not the first submitted
     float large_min = 0.f;                                  // a static-only cascade also admits a moving caster whose world AABB extent is >= this (0: never)
+    unsigned backface_from = shadow_cascade_backface_from_texel; // cascades i >= this replay back faces; the texel law by default (shadow_cascade_backface_texel_default)
     // The issues cascade i can carry: its cap bounded by its records (the storage the issue list was sized with).
     unsigned bound(unsigned i) const noexcept { return i < shadow_cascade_max ? (caps[i] < records[i] ? caps[i] : records[i]) : 0u; }
     // The record list's capacity: the largest per-cascade records (the boxes nest, so the union of the cascades' casters is about the outermost's).
     unsigned record_capacity() const noexcept { unsigned m = 0; for (unsigned i = 0; i < count; ++i) if (records[i] > m) m = records[i]; return m; }
     bool static_only(unsigned i) const noexcept { return i >= static_from; }
     std::uint8_t static_only_mask() const noexcept { std::uint8_t m = 0; for (unsigned i = static_from; i < count; ++i) m |= std::uint8_t(1u << i); return m; }
+    // Bit i: cascade i replays back faces (the option's index law, else the texel law on the live extents and sizes).
+    bool backface(unsigned i) const noexcept {
+        if (i >= count) return false;
+        if (backface_from == shadow_cascade_backface_from_texel) return shadow_replay_world_texel(cascades[i]) >= shadow_cascade_backface_texel_default;
+        return i >= backface_from;
+    }
+    std::uint8_t backface_mask() const noexcept { std::uint8_t m = 0; for (unsigned i = 0; i < count; ++i) if (backface(i)) m |= std::uint8_t(1u << i); return m; }
     // Bit i: cascade i is active. A cascade the sliding ladder dropped
     // (shadow_cascade_adapt_c0: its slid extent reached the next one's) keeps
     // its map, size, cap and records but has an empty box (no record carries
@@ -268,20 +284,35 @@ struct ShadowCascadeSet {
     bool checked = true; // the production laws (forward offset, depth-behind floor); false: the fixture seam's unit geometry
 };
 // The pool policy on a built set: records (one per cascade, null = default), the first
-// static-only cascade (shadow_cascade_static_from_none = none; count or more means none too)
-// and the drop order. False on an out-of-range value; `out` is untouched then.
-inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, unsigned static_from, bool importance, float large_min = 0.f) noexcept {
+// static-only cascade (shadow_cascade_static_from_none = none; count or more means none too),
+// the drop order, the mover threshold and the first back-face cascade (the texel law by
+// default; shadow_cascade_static_from_none = no cascade; 0..count-1 = that cascade and beyond).
+// False on an out-of-range value; `out` is untouched then.
+inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, unsigned static_from, bool importance, float large_min = 0.f,
+                                unsigned backface_from = shadow_cascade_backface_from_texel) noexcept {
     if (!out.count) return false;
     if (static_from != shadow_cascade_static_from_none && (static_from < 1 || static_from >= out.count)) return false; // cascade 0 always admits movers; == count would be a no-op
     if (!(large_min >= 0.f) || large_min > shadow_cascade_large_min_max) return false; // NaN refused
+    if (backface_from != shadow_cascade_backface_from_texel && backface_from != shadow_cascade_static_from_none && backface_from >= out.count) return false; // == count would be a silent no-op
     for (unsigned i = 0; records && i < out.count; ++i) if (records[i] < shadow_cascade_records_min || records[i] > shadow_cascade_records_max) return false;
     for (unsigned i = 0; records && i < out.count; ++i) out.records[i] = records[i];
     out.static_from = static_from;
     out.importance = importance;
     out.large_min = large_min;
+    out.backface_from = backface_from;
     return true;
 }
 inline bool shadow_cascade_active(const ShadowCascadeSet& set, unsigned cascade) noexcept { return cascade < set.count && (set.active >> cascade & 1u) != 0; }
+// The static/moving drift threshold of cascade i (directional-shadows.md, "Run 40 A (run116)
+// diagnosis", cause 3): a static-only cascade tolerates one eighth of its world texel per
+// sighting (37,500 / 4096: 2.3 u; 150,000 / 4096: 9.2 u), never less than the base eps, so a
+// hull part jittering 0.1 u at 19 km or a station part stepping 2 u stays static at 73-u
+// texels; every other cascade keeps the base eps (the store's fine law for the near maps).
+inline double shadow_cascade_class_eps(const ShadowCascadeSet& set, unsigned i, double base) noexcept {
+    if (i >= set.count || !set.static_only(i)) return base;
+    const double scaled = shadow_replay_world_texel(set.cascades[i]) / 8.;
+    return scaled > base ? scaled : base;
+}
 // Builds the set from ascending half-extents; sizes/caps may be null (defaults).
 // `checked` false is the fixture seam (unit-size geometry below the production
 // minimum: no forward offset, depth behind exactly the factor). False on a
@@ -388,6 +419,10 @@ inline void shadow_cascade_ladder_policy(const ShadowCascadeSet& config, ShadowC
     if (!config.count || !shadow_cascade_extent_delta_mask(config, out)) return;
     unsigned matched[shadow_cascade_max]{};
     out.static_from = shadow_cascade_static_from_none; out.large_min = 0.f;
+    // An index-law back-face policy slides like static_from (the first live cascade matching a
+    // configured back-face one); the texel law and "none" carry over as they are.
+    const bool backface_index = config.backface_from != shadow_cascade_backface_from_texel && config.backface_from != shadow_cascade_static_from_none;
+    if (backface_index) out.backface_from = shadow_cascade_static_from_none;
     unsigned budget = 0, wanted = 0;
     for (unsigned i = 0; i < out.count && i < shadow_cascade_max; ++i) {
         const unsigned j = matched[i] = shadow_cascade_policy_match(config, out.cascades[i].half_extent);
@@ -397,6 +432,7 @@ inline void shadow_cascade_ladder_policy(const ShadowCascadeSet& config, ShadowC
             out.static_from = i;
             out.large_min = config.large_min * (out.cascades[i].half_extent / config.cascades[j].half_extent);
         }
+        if (backface_index && out.backface_from == shadow_cascade_static_from_none && shadow_cascade_active(out, i) && j >= config.backface_from) out.backface_from = i;
     }
     if (wanted > budget) for (unsigned i = 0; i < out.count && i < shadow_cascade_max; ++i) {
         if (!out.caps[i]) continue;

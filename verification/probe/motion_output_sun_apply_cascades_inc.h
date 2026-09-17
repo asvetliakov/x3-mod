@@ -68,8 +68,25 @@
 // of the three-cascade script on the fifth cascade (budget 3 < 6 issues). The
 // plane quad grows with the scale (24 x scale) so it meets every cascade from
 // every camera while staying inside the 300,000-unit light-side range.
+// X3M_FIXTURE_SUNAPPLY_FACES=1 (with CASCADES=5) runs the faces script instead
+// (docs/verification/directional-shadows.md, "Run 40 A (run116) diagnosis",
+// cause 2): the fifth cascade's 'r' scene (scale 11,250) sixteen times under
+// the eight jitter indices and offsets, the box drawn CW (its outside faces).
+// Frames 0-7 are the control: the maps hold the casters' front faces and the
+// receiver is the jittered reconstruction, so the box's LIT faces compare
+// against their own depth on the knife edge and their shadow re-rolls with
+// the jitter. Frames 8-15 are the fix: every cascade whose world texel is 8
+// units or more (ShadowCascadeSet::backface_mask, cascades 1-4 at 256^2 maps)
+// replays with inverted culling (the back faces) and its rows carry the
+// pre-jitter receiver (r.z += r.x jx / m00 + r.y jy / m11, as MotionOutput
+// does), so the lit faces stay lit on every frame and the faces away from the
+// sun stay shadowed. SUNAPPLY_FACES per frame: the lit- and dark-face receiver
+// counts, how many of each the quad darkened, and the lit-face flips against
+// the previous frame of the same half. X3M_FIXTURE_SUNAPPLY_FACES_FIX=0 runs
+// the second half unfixed too (the runner's pre-fix witness).
 namespace {
-constexpr unsigned cascade_frames = 29, cascade_map = 256, cascade_frames_five = 15;
+constexpr unsigned cascade_frames = 29, cascade_map = 256, cascade_frames_five = 15, cascade_frames_faces = 16;
+constexpr float cascade_faces_jitter[8][2] = {{0.f, 0.f}, {.25f, -.125f}, {-.375f, .25f}, {.125f, .375f}, {-.25f, -.375f}, {.375f, -.25f}, {-.125f, .125f}, {.125f, -.375f}};
 constexpr float cascade_extents_five[5] = {250.f, 1500.f, 7500.f, 37500.f, 150000.f};
 constexpr double cascade_point_distance = 24000., cascade_point_side_deg = 75., cascade_point_track[3] = {260., 550., 1200.}, cascade_point_lift[3] = {120., 160., 1000.}, cascade_point_half[3] = {8., 40., 80.};
 constexpr double cascade_phase_texel = 2. * 1500. / cascade_map; // cascade 1's world texel
@@ -116,19 +133,28 @@ constexpr CascadeScript cascade_script_five[cascade_frames_five] = {
 };
 struct CascadeBox { double lo[3], hi[3]; };
 // Nearest positive hit of the plane y = 0 and the boxes along o + t dir, or a negative value.
-double cascade_hit(Vec3 o, Vec3 dir, const CascadeBox* boxes, unsigned count) {
+// `normal` (optional): the outward normal of the face hit (the plane's +y; a box's entered slab), zero on no hit;
+// `object` (optional): -1 the plane (or nothing), else the box index.
+double cascade_hit(Vec3 o, Vec3 dir, const CascadeBox* boxes, unsigned count, Vec3* normal = nullptr, int* object = nullptr) {
     double best = -1.;
-    if (dir.y < 0. && o.y > 0.) best = -o.y / dir.y;
+    if (normal) *normal = {0., 0., 0.};
+    if (object) *object = -1;
+    if (dir.y < 0. && o.y > 0.) { best = -o.y / dir.y; if (normal) *normal = {0., 1., 0.}; }
     const double oo[3] = {o.x, o.y, o.z}, dd[3] = {dir.x, dir.y, dir.z};
     for (unsigned b = 0; b < count; ++b) {
-        double enter = -1e30, leave = 1e30; bool outside = false;
+        double enter = -1e30, leave = 1e30; bool outside = false; unsigned axis = 0; double sign = 0.;
         for (unsigned k = 0; k < 3 && !outside; ++k) {
             if (std::fabs(dd[k]) < 1e-12) { outside = oo[k] < boxes[b].lo[k] || oo[k] > boxes[b].hi[k]; continue; }
             double t0 = (boxes[b].lo[k] - oo[k]) / dd[k], t1 = (boxes[b].hi[k] - oo[k]) / dd[k];
-            if (t0 > t1) std::swap(t0, t1);
-            enter = std::max(enter, t0); leave = std::min(leave, t1);
+            double s = -1.; // the slab entered at t0 is the lo face when the ray travels +k
+            if (t0 > t1) { std::swap(t0, t1); s = 1.; }
+            if (t0 > enter) { enter = t0; axis = k; sign = s; }
+            leave = std::min(leave, t1);
         }
-        if (!outside && enter <= leave && leave > 0.) { const double t = enter > 0. ? enter : leave; if (best < 0. || t < best) best = t; }
+        if (!outside && enter <= leave && leave > 0.) {
+            const double t = enter > 0. ? enter : leave;
+            if (best < 0. || t < best) { best = t; if (object) *object = int(b); if (normal) { double n[3] = {0., 0., 0.}; n[axis] = enter > 0. ? sign : -sign; *normal = {n[0], n[1], n[2]}; } }
+        }
     }
     return best;
 }
@@ -165,8 +191,17 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
     static_assert(r::shadow_cascade_max == 5, "the script covers five cascades");
     require(cascade_count == 3 || cascade_count == 5, "the three- or the five-cascade script");
     const bool five = cascade_count == 5;
-    const CascadeScript* script_frames = five ? cascade_script_five : cascade_script;
-    const unsigned frames = five ? cascade_frames_five : cascade_frames;
+    char faces_text[4]{};
+    const bool faces = five && GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_FACES", faces_text, sizeof faces_text) == 1 && faces_text[0] == '1';
+    const bool faces_fix = !(GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_FACES_FIX", faces_text, sizeof faces_text) == 1 && faces_text[0] == '0');
+    CascadeScript faces_script[cascade_frames_faces];
+    for (unsigned k = 0; k < cascade_frames_faces; ++k) {
+        faces_script[k] = cascade_script_five[4]; // the fifth cascade's range scene: the box's shadow 45,000-90,000 units out, the box itself a receiver
+        faces_script[k].jitter_index = k % 8; faces_script[k].jx = cascade_faces_jitter[k % 8][0]; faces_script[k].jy = cascade_faces_jitter[k % 8][1];
+    }
+    const CascadeScript* script_frames = faces ? faces_script : five ? cascade_script_five : cascade_script;
+    const unsigned frames = faces ? cascade_frames_faces : five ? cascade_frames_five : cascade_frames;
+    std::vector<signed char> faces_previous; // per pixel of the previous frame of the same half: 0 not a lit-face receiver, 1 lit, 2 darkened
     SunApplyState s;
     sun_apply_map = cascade_map;
     D3DCAPS9 caps{}; api(f.d->GetDeviceCaps(&caps), "GetDeviceCaps");
@@ -393,15 +428,21 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         r::ShadowReplayIssue issue_store[20]{};
         r::ShadowReplayMapList lists[r::shadow_cascade_max]{};
         unsigned list_count = 0, used = 0;
+        // The faces script draws the box CW: its outside faces (cascade_make_box winds them counter-clockwise
+        // from outside, which D3DCULL_CCW would cull), so a back-face map (CCW after the inversion) holds the
+        // inside. The fix applies to the second half of the script on the cascades of the texel law.
+        const bool faces_fixed = faces && faces_fix && frame >= cascade_frames_faces / 2;
+        const std::uint8_t backface_mask = faces_fixed ? set.backface_mask() : std::uint8_t(0);
         for (unsigned o = 0; o < object_count; ++o) {
             auto& d = draws[o];
-            d.vertex_buffer = objects[o]->buffer.p; d.declaration = declaration.p; d.stride = 12; d.topology = D3DPT_TRIANGLELIST; d.primitives = objects[o]->triangles; d.cull_mode = D3DCULL_NONE;
+            d.vertex_buffer = objects[o]->buffer.p; d.declaration = declaration.p; d.stride = 12; d.topology = D3DPT_TRIANGLELIST; d.primitives = objects[o]->triangles;
+            d.cull_mode = faces && objects[o] == &box ? D3DCULL_CW : D3DCULL_NONE;
         }
         for (unsigned c = 0; c < cascade_count; ++c) {
             require(r::shadow_replay_basis(s.camera, suns + c * 4, set.cascades[c], bases[c], point ? anchors + c * 3 : nullptr), "the cascade basis builds");
             replays[c] = per_cascade[c] != 0 && r::shadow_cascade_replays(c, cascade_count, issues, script.budget, frame);
             if (!replays[c]) continue;
-            lists[list_count].map = c; lists[list_count].issues = issue_store + used;
+            lists[list_count].map = c; lists[list_count].issues = issue_store + used; lists[list_count].invert_cull = (backface_mask >> c & 1u) != 0;
             for (unsigned o = 0; o < object_count; ++o) {
                 if (!(masks[o] & (1u << c))) continue;
                 double base[3][4];
@@ -424,12 +465,15 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         const SunApplyLatch latch = sun_apply_latch(script.jx, script.jy);
         const float m20 = latch.m20, m21 = latch.m21;
         unsigned receivers = 0, sentinels = 0, share_free = 0;
+        std::vector<signed char> face_kind(std::size_t(sun_apply_w) * sun_apply_h, 0); // faces script: 1 a box face towards the sun, -1 one away from it, 0 the plane or nothing
         for (unsigned j = 0; j < sun_apply_h; ++j) for (unsigned i = 0; i < sun_apply_w; ++i) {
             const Vec3 dv = sun_apply_texel_direction(i, j, latch, s.camera.m00, s.camera.m11);
             const Vec3 dir = s.right * dv.x + s.up * dv.y + s.forward * dv.z;
-            const double t = cascade_hit(s.position, dir, boxes, box_count);
+            Vec3 normal{0., 0., 0.}; int hit_object = -1;
+            const double t = cascade_hit(s.position, dir, boxes, box_count, &normal, &hit_object);
             float* px = &s.rt2_data[(std::size_t(j) * sun_apply_w + i) * 2];
             if (t <= 0. || t >= far_z) { px[0] = -1.f; px[1] = 0.f; ++sentinels; continue; }
+            if (faces && hit_object >= 0) { const double facing = normal.x * sun[0] + normal.y * sun[1] + normal.z * sun[2]; face_kind[std::size_t(j) * sun_apply_w + i] = facing > .05 ? 1 : facing < -.05 ? -1 : 0; }
             const Vec3 hit = s.position + dir * t;
             px[0] = float(double(s.m22) + double(s.m32) / t);
             px[1] = (i % 9 == 4) ? 0.f : hit.y > 1e-6 * scale ? .85f : float(.2 + .75 * ((i * 3 + j * 5) % 17) / 16.);
@@ -519,9 +563,31 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         for (std::size_t p = 0; p < std::size_t(sun_apply_w) * sun_apply_h; ++p)
             if (s.rt2_data[p * 2 + 1] <= 0.f && std::memcmp(&s.before[p * 8], &s.after[p * 8], 8) != 0) ++untouched_diff;
         require(untouched_diff == 0, "sentinel and share-free pixels are byte-identical");
+        if (faces) {
+            // The box's faces as receivers: a darkened pixel is one the quad changed (factor < 1). Lit-face flips
+            // are counted against the previous frame of the same half on the pixels that are lit-face receivers in
+            // both. Interior: every one of the eight neighbours is a lit-face receiver too (the silhouette and the
+            // face edges, where the kernel's taps leave the face, are counted apart).
+            unsigned lit = 0, lit_dark = 0, dark = 0, dark_dark = 0, flips = 0, common = 0, interior = 0, interior_dark = 0, interior_common = 0, interior_flips = 0;
+            std::vector<signed char> now(face_kind.size(), 0);
+            const auto lit_at = [&](int x, int y) { return x >= 0 && y >= 0 && x < int(sun_apply_w) && y < int(sun_apply_h) && face_kind[std::size_t(y) * sun_apply_w + x] > 0 && s.rt2_data[(std::size_t(y) * sun_apply_w + x) * 2 + 1] > 0.f; };
+            for (std::size_t p = 0; p < face_kind.size(); ++p) {
+                if (s.rt2_data[p * 2 + 1] <= 0.f || !face_kind[p]) continue;
+                const bool darkened = std::memcmp(&s.before[p * 8], &s.after[p * 8], 8) != 0;
+                if (face_kind[p] > 0) {
+                    const int x = int(p % sun_apply_w), y = int(p / sun_apply_w);
+                    bool inner = true; for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) inner &= lit_at(x + dx, y + dy);
+                    ++lit; lit_dark += darkened; now[p] = darkened ? 2 : 1; interior += inner; interior_dark += inner && darkened;
+                    if (!faces_previous.empty() && faces_previous[p]) { ++common; flips += faces_previous[p] != now[p]; interior_common += inner; interior_flips += inner && faces_previous[p] != now[p]; }
+                } else { ++dark; dark_dark += darkened; }
+            }
+            std::printf("SUNAPPLY_FACES frame=%u fixed=%u backface_mask=%u lit=%u lit_darkened=%u dark=%u dark_darkened=%u lit_common=%u lit_flips=%u interior=%u interior_darkened=%u interior_common=%u interior_flips=%u\n",
+                        frame, unsigned(faces_fixed), unsigned(backface_mask), lit, lit_dark, dark, dark_dark, common, flips, interior, interior_dark, interior_common, interior_flips);
+            faces_previous = frame + 1 == cascade_frames_faces / 2 ? std::vector<signed char>() : now; // the halves are not compared with each other
+        }
         const unsigned reset_pair = five ? 12 : 8; // the frame before the Reset and the one that repeats it
-        if (frame == reset_pair) { reset_reference_before = s.before; reset_reference_after = s.after; }
-        if (frame == reset_pair + 2) require(s.before == reset_reference_before && s.after == reset_reference_after, "the replay after the Reset frames equals the frame before the Reset byte for byte");
+        if (!faces && frame == reset_pair) { reset_reference_before = s.before; reset_reference_after = s.after; }
+        if (!faces && frame == reset_pair + 2) require(s.before == reset_reference_before && s.after == reset_reference_after, "the replay after the Reset frames equals the frame before the Reset byte for byte");
         // The record: shared inputs, the scene, per cascade what the twin needs and the counters.
         std::printf("SUNAPPLY_CASCADES frame=%u case=%c width=%u height=%u cascades=%u scale=%.9g elevation=%g jitter_index=%u exponent=%.9g planar_step=%.9g budget=%u issues=%u far_replayed=%u far_frame=%lld "
                     "m00=%.9g m11=%.9g m20=%.9g m21=%.9g m22=%.9g m32=%.9g camera=%.9g,%.9g,%.9g cam_right=%.9g,%.9g,%.9g cam_up=%.9g,%.9g,%.9g cam_forward=%.9g,%.9g,%.9g sun=%.9g,%.9g,%.9g "
@@ -542,9 +608,9 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         }
         for (unsigned c = 0; c < cascade_count; ++c) {
             const auto& k = in.cascades[c];
-            std::printf(" c%u=%u draws%u=%u valid%u=%u map_frame%u=%lld extent%u=%.9g bias%u=%.9g bias_max%u=%.9g texel_world%u=%.9g rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
+            std::printf(" c%u=%u draws%u=%u valid%u=%u map_frame%u=%lld extent%u=%.9g bias%u=%.9g bias_max%u=%.9g texel_world%u=%.9g backface%u=%u rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
                         c, per_cascade[c], c, replayed.drawn_map[c], c, unsigned(k.valid), c, k.valid ? static_cast<long long>(map_frames[c]) : -1ll, c, double(set.cascades[c].half_extent),
-                        c, double(k.bias_constant), c, double(k.bias_max), c, double(biases[c].texel_world), c,
+                        c, double(k.bias_constant), c, double(k.bias_max), c, double(biases[c].texel_world), c, unsigned(backface_mask >> c & 1u), c,
                         double(k.rows[0]), double(k.rows[1]), double(k.rows[2]), double(k.rows[3]), double(k.rows[4]), double(k.rows[5]), double(k.rows[6]), double(k.rows[7]),
                         double(k.rows[8]), double(k.rows[9]), double(k.rows[10]), double(k.rows[11]));
         }

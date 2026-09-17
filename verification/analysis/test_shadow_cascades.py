@@ -227,6 +227,22 @@ int main(int argc, char** argv) {
         CHECK(shadow_cascade_pool(set, nullptr, 3, false, 1500.f) && set.large_min == 1500.f && !shadow_cascade_pool(set, nullptr, 3, false, -1.f) && !shadow_cascade_pool(set, nullptr, 3, false, 1e7f)
               && !shadow_cascade_pool(set, nullptr, 3, false, std::nanf("")) && set.large_min == 1500.f);
         ShadowCascadeSet none{}; CHECK(!shadow_cascade_pool(none, records, 1, true));
+        // Back-face cascades (run 40 A, cause 2): the texel law by default (4096^2 maps: 37,500 and 150,000 qualify at 18.3 / 73.2 u, 7,500 does not at
+        // 3.66 u), an index K = that cascade and beyond (0: all), none, and the count refused; the law follows halved maps (a 2048^2 fourth map doubles its texel).
+        { ShadowCascadeSet five{}; const float ext[5] = {250.f, 1500.f, 7500.f, 37500.f, 150000.f};
+          CHECK(shadow_cascade_set(ext, 5, nullptr, nullptr, 640, five) && five.backface_from == shadow_cascade_backface_from_texel && five.backface_mask() == 24 && !five.backface(2) && five.backface(3) && !five.backface(5));
+          CHECK(shadow_cascade_pool(five, nullptr, shadow_cascade_static_from_none, false, 0.f, 1) && five.backface_mask() == 30 && five.backface(1) && !five.backface(0));
+          CHECK(shadow_cascade_pool(five, nullptr, shadow_cascade_static_from_none, false, 0.f, 0) && five.backface_mask() == 31);
+          CHECK(shadow_cascade_pool(five, nullptr, shadow_cascade_static_from_none, false, 0.f, shadow_cascade_static_from_none) && five.backface_mask() == 0);
+          CHECK(!shadow_cascade_pool(five, nullptr, shadow_cascade_static_from_none, false, 0.f, 5) && five.backface_mask() == 0);
+          CHECK(shadow_cascade_pool(five, nullptr, shadow_cascade_static_from_none, false, 0.f) && five.backface_from == shadow_cascade_backface_from_texel && five.backface_mask() == 24);
+          const unsigned sizes[5] = {4096, 4096, 2048, 4096, 4096}; ShadowCascadeSet halved{};
+          CHECK(shadow_cascade_set(ext, 5, sizes, nullptr, 640, halved) && halved.backface_mask() == 24 && shadow_replay_world_texel(halved.cascades[2]) > 7.); // 7.32 u: still under 8
+          const unsigned coarse[5] = {4096, 4096, 1024, 4096, 4096}; CHECK(shadow_cascade_set(ext, 5, coarse, nullptr, 640, halved) && halved.backface_mask() == 28);
+          // The classification eps per cascade (cause 3): a static-only cascade's texel / 8, never below the base; the others the base.
+          CHECK(shadow_cascade_pool(five, nullptr, 3, false) && shadow_cascade_class_eps(five, 3, .05) > 2.28 && shadow_cascade_class_eps(five, 3, .05) < 2.29 && shadow_cascade_class_eps(five, 4, .05) > 9.15
+                && shadow_cascade_class_eps(five, 2, .05) == .05 && shadow_cascade_class_eps(five, 0, .05) == .05 && shadow_cascade_class_eps(five, 3, 10.) == 10. && shadow_cascade_class_eps(five, 7, .05) == .05);
+          CHECK(shadow_cascade_pool(five, nullptr, shadow_cascade_static_from_none, false) && shadow_cascade_class_eps(five, 4, .05) == .05); }
         // The projected size: the box diagonal over the distance; a nearer or larger box is larger, an unknown mask yields 0.
         const CameraState c = camera();
         const float sun[4] = {0, 1, 0, 0};
@@ -298,6 +314,13 @@ int main(int argc, char** argv) {
         CHECK(ring.test(colliders[0], world, lo, hi, .05, 10) == Verdict::Miss && ring.test(colliders[1], world, lo, hi, .05, 11) == Verdict::Miss); // key (stamp 9) is evicted by the second
         CHECK(ring.test(key, world, lo, hi, .05, 12) == Verdict::Miss && ring.test(colliders[1], world, lo, hi, .05, 12) == Verdict::Static);
         shadow_caster_class::Ring small(0); CHECK(small.valid() && small.sets == 1 && small.test(key, world, lo, hi, .05, 1) == Verdict::Miss && small.test(key, world, lo, hi, .05, 2) == Verdict::Static);
+        { // drift: the squared corner drift for several per-cascade thresholds; the anchor moves on the anchor eps alone (a 0.125-unit jitter is
+          // moving at 0.05 and static at cascade 1's 0.195, sighting after sighting, because the base law re-anchors every time)
+          shadow_caster_class::Ring tiers(16); tiers.clear();
+          double a[12] = {1, 0, 0, 10, 0, 1, 0, 20, 0, 0, 1, 30}, b[12] = {1, 0, 0, 10.125, 0, 1, 0, 20, 0, 0, 1, 30};
+          CHECK(tiers.drift(key, a, lo, hi, .05, 1) < 0.);
+          for (unsigned f = 2; f < 10; ++f) { const double d2 = tiers.drift(key, f % 2 ? a : b, lo, hi, .05, f); CHECK(d2 > .05 * .05 && d2 <= .195 * .195 && d2 > .124 * .124); }
+          CHECK(tiers.drift(key, a, lo, hi, .05, 10) < .001 * .001); } // the anchor is the previous sighting (a)
         // Hysteresis at the cap boundary: with the kept-last table attached, a caster kept last frame stays kept while its
         // size is at least 0.8 x the cutoff; a caster that fell below it yields. Two candidates a (kept) and b at the boundary of cap 1.
         static shadow_replay::KeptEntry kept[2 * shadow_replay::record_capacity];
@@ -892,6 +915,20 @@ class LauncherOptions(unittest.TestCase):
             code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-records', '4096', '--shadow-cascade-drop-order', 'submission')
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
             self.assertEqual((env['X3M_SHADOW_CASCADE_RECORDS'], env['X3M_SHADOW_CASCADE_DROP_ORDER']), ('4096', 'submission')); self.assertNotIn('X3M_SHADOW_CASCADE_STATIC_FROM', env)
+
+    def test_backface_option(self):
+        """--shadow-cascade-backface-from (run 40 A, cause 2): absent by default (the DLL's texel law), an inherited value cannot leak, K in 0..cascades-1 or none pass, the rest are refused."""
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', inherited={'X3M_SHADOW_CASCADE_BACKFACE_FROM': '1'})
+            self.assertEqual(code, 0, error); self.assertNotIn('X3M_SHADOW_CASCADE_BACKFACE_FROM', json.loads(output)['env'])
+            for value, expected in (('3', '3'), ('0', '0'), ('none', 'none'), ('NONE', 'none')):
+                code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-backface-from', value)
+                self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_CASCADE_BACKFACE_FROM'], expected)
+            for value in ('4', '-1', 'texel', '1.5'):
+                code, _, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-backface-from', value)
+                self.assertNotEqual(code, 0); self.assertIn('--shadow-cascade-backface-from', error)
+            code, _, error = launch(directory, *self.BASE, '--shadow-cascade-backface-from', '1')
+            self.assertNotEqual(code, 0); self.assertIn('requires --shadow-cascades', error)
 
 
 if __name__ == '__main__':

@@ -123,6 +123,9 @@ struct Draw {
     std::uint64_t stamp = 0; // frame of the last sighting
     std::uint16_t next = none, node = none, resource[3] = {none, none, none};
     std::uint8_t streak = 0, cascades = 0; // cascades: this frame's mask while the node is unseen
+    // Per cascade the streak under that cascade's own eps (FrameInput::eps_cascade: the texel-scaled
+    // law of the static-only cascades, the base eps elsewhere, where it equals `streak`).
+    std::uint8_t streak_cascade[renderer::shadow_cascade_max]{};
     bool used = false, world_valid = false, extent_known = false, bounds_dirty = false;
     bool complete() const noexcept { return world_valid && extent_known; }
 };
@@ -132,6 +135,13 @@ struct Node {
     std::uint32_t handle = 0, camera_handle = 0, model = 0, lod = 0, flags12c = 0;
     double centre[3]{}; float half[3]{};
     std::uint16_t head = none, tail = none, cursor = none, draws = 0;
+    // Per cascade (bit c): static under cascade c's eps (every record's streak reached
+    // static_sightings there); verified moved beyond cascade c's eps since its last promotion
+    // at that tier. A node with neither bit set for a cascade is uninformative there (fresh, or
+    // its streak accruing): the owner's classifier falls through to the ring for that cascade
+    // (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 1). is_static is bit 0's law
+    // under the base eps: what retention replays while the node is unseen.
+    std::uint8_t static_mask = 0, moved_mask = 0;
     bool used = false, is_static = false, dirty = false, fresh = false, changed = false, lod_changed = false, model_changed = false;
     bool partial = false, pre_transit = false, bounds_valid = false;
 };
@@ -176,6 +186,8 @@ struct FrameStats {
     std::uint32_t refused = 0, moving_dropped = 0, abandoned = 0, deferred = 0; // beyond the contract's list: capacity refusals, moving nodes dropped unseen, sightings of a frame without a scene end, draws ignored while a flush is pending
     std::uint32_t nodes_live = 0, nodes_unseen = 0, records = 0, records_unseen = 0, statics = 0, moving = 0; // levels
     std::uint64_t age_max = 0;
+    std::uint32_t reclassified_cascade[renderer::shadow_cascade_max]{}; // nodes static at cascade c's eps that moved beyond it this sighting (reclassified= is the base tier)
+    std::uint32_t gate_sightings = 0;                                     // sightings the owner fed for draws the static gate refused from every cascade (no record, no lease)
 };
 // Cumulative since attach: the shadow_retention_resight line and the fixture's checks.
 struct Totals {
@@ -194,6 +206,7 @@ struct FrameInput {
     renderer::ShadowCascadeSet set{};
     unsigned room[renderer::shadow_cascade_max]{};        // per cascade: cap minus this frame's live records
     double eps = eps_default;
+    double eps_cascade[renderer::shadow_cascade_max] = {eps_default, eps_default, eps_default, eps_default, eps_default}; // per cascade (renderer::shadow_cascade_class_eps); never below eps
     std::uint32_t age_cap = age_cap_default;
 };
 
@@ -330,7 +343,7 @@ struct Store {
             d.stamp = now; d.cascades = 0; n.cursor = d.next; d.cull_mode = s.cull_mode;
             std::memcpy(d.rows, s.rows, sizeof d.rows);
             const bool rewritten = d.vb.revision != s.vb.revision || d.ib.revision != s.ib.revision;
-            if (rewritten) { ++frame.buffer_changed; ++totals.buffer_changed; d.vb.revision = s.vb.revision; d.ib.revision = s.ib.revision; d.streak = 0; if (!s.lo) d.extent_known = false; }
+            if (rewritten) { ++frame.buffer_changed; ++totals.buffer_changed; d.vb.revision = s.vb.revision; d.ib.revision = s.ib.revision; d.streak = 0; std::memset(d.streak_cascade, 0, sizeof d.streak_cascade); if (!s.lo) d.extent_known = false; }
             if (s.lo && s.hi) set_extent(d, s.lo, s.hi);
             return Seen::Known;
         }
@@ -577,22 +590,35 @@ private:
             // unseen is the accepted residual, bounded by age_cap; its resighting counts reclassified_after_unseen.
             const bool verify = true;
             bool moved = false, all_static = !n.partial;
+            // The per-cascade tiers (in.eps_cascade): the anchor d.world moves on the BASE eps alone, so a
+            // far tier measures each sighting's step against the last beyond-base placement, never an
+            // accumulation the base tier already re-anchored (a hull part jittering 0.1 u at a 73-u texel
+            // is static there; a real slow mover re-anchors every frame and stays under its far eps).
+            const unsigned tiers = in.set.count < renderer::shadow_cascade_max ? in.set.count : renderer::shadow_cascade_max;
+            const std::uint8_t tier_bits = std::uint8_t((1u << tiers) - 1u);
+            std::uint8_t moved_c = 0, static_c = n.partial ? std::uint8_t(0) : tier_bits;
             double worst = 0;
             for (std::uint16_t i = n.head; i != none; i = draws[i].next) {
                 Draw& d = draws[i];
                 if (verify) {
                     double w[12];
-                    if (!world_rows(in.camera, d.rows, w)) { d.streak = 0; if (!d.world_valid) { all_static = false; continue; } }
+                    if (!world_rows(in.camera, d.rows, w)) { d.streak = 0; std::memset(d.streak_cascade, 0, sizeof d.streak_cascade); if (!d.world_valid) { all_static = false; static_c = 0; continue; } }
                     else if (d.world_valid) {
                         const float zero[3] = {0, 0, 0};
                         const double d2 = drift2(w, d.world, d.extent_known ? d.lo : zero, d.extent_known ? d.hi : zero);
                         if (d2 > worst) worst = d2;
                         if (d2 > eps2) { moved = true; std::memcpy(d.world, w, sizeof w); d.streak = 0; d.bounds_dirty = true; }
                         else if (d.streak < static_sightings) ++d.streak;
-                    } else { std::memcpy(d.world, w, sizeof w); d.world_valid = true; d.streak = 0; d.bounds_dirty = true; }
+                        for (unsigned c = 0; c < tiers; ++c) {
+                            const double e = in.eps_cascade[c];
+                            if (d2 > e * e) { moved_c |= std::uint8_t(1u << c); d.streak_cascade[c] = 0; }
+                            else if (d.streak_cascade[c] < static_sightings) ++d.streak_cascade[c];
+                        }
+                    } else { std::memcpy(d.world, w, sizeof w); d.world_valid = true; d.streak = 0; std::memset(d.streak_cascade, 0, sizeof d.streak_cascade); d.bounds_dirty = true; }
                 }
                 if (d.bounds_dirty && d.complete()) { world_bounds(d.world, d.lo, d.hi, d.centre, d.half); d.bounds_dirty = false; n.bounds_valid = false; }
                 all_static &= d.complete() && d.streak >= static_sightings;
+                for (unsigned c = 0; c < tiers; ++c) if (!(d.complete() && d.streak_cascade[c] >= static_sightings)) static_c &= std::uint8_t(~(1u << c));
             }
             if (!n.bounds_valid) node_bounds(n);
             if (verify && was_static && drift_count < node_capacity) {
@@ -602,6 +628,9 @@ private:
             }
             if (was_static && moved) { ++frame.reclassified; ++totals.reclassified; if (n.unseen_before) { ++frame.reclassified_after_unseen; ++totals.reclassified_after_unseen; } }
             n.is_static = all_static && !moved;
+            for (unsigned c = 0; c < tiers; ++c) if ((n.static_mask >> c & 1u) && (moved_c >> c & 1u)) ++frame.reclassified_cascade[c];
+            n.static_mask = std::uint8_t(static_c & ~moved_c);
+            n.moved_mask = std::uint8_t((n.moved_mask | moved_c) & ~n.static_mask); // verified moved at a tier until promoted there again
             if (!was_static && n.is_static) { ++frame.promoted; ++totals.promoted; }
             if (resight) {
                 const unsigned bucket = age_bucket(n.unseen_before);

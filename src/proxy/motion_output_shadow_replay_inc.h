@@ -13,14 +13,18 @@
 // documented GetVertexDeclaration reference; nothing is copied or Locked. A
 // record whose rows window is unknown or whose declaration cannot be read is
 // left unleased (counted skipped_state at the scene end). LastError is kept.
-void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index) noexcept {
-    if (index >= candidate_capacity_) return;
-    auto& g = depth_geometry_[index];
+// The geometry of one draw without its lease: the rows, keys and cull mode,
+// and the declaration's own GetVertexDeclaration reference (the caller
+// releases it or keeps it as the lease); the buffer pointers are the
+// identities, not AddRef'd. False (declaration released, nothing held) when
+// the rows window is unknown, a binding identity is missing or the
+// declaration cannot be read.
+bool MotionOutput::fill_depth_geometry(const MotionRoute& route, shadow_replay::DepthGeometry& g) noexcept {
     g = {};
     const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register : ~0u;
     const std::size_t window = matrix_register == ~0u ? motion_matrix_windows_max : window_of(matrix_register);
-    if (window >= motion_matrix_windows_max || !shadow_.rows_known[window]) return;
-    if (!shadow_.stream0_identity || (route.key.indexed && !shadow_.indices_identity)) return;
+    if (window >= motion_matrix_windows_max || !shadow_.rows_known[window]) return false;
+    if (!shadow_.stream0_identity || (route.key.indexed && !shadow_.indices_identity)) return false;
     std::memcpy(g.rows, shadow_.rows[window], sizeof g.rows);
     const auto& key = route.key;
     g.stream_offset = key.stream_offset; g.stride = key.stride; g.topology = static_cast<D3DPRIMITIVETYPE>(key.topology);
@@ -30,7 +34,7 @@ void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index)
     DWORD cull = D3DCULL_NONE;
     if (SUCCEEDED(render_state(D3DRS_CULLMODE, &cull))) g.cull_mode = cull;
     IDirect3DVertexDeclaration9* declaration = nullptr;
-    if (FAILED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration)) || !declaration) { release(declaration); SetLastError(error); return; }
+    if (FAILED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration)) || !declaration) { release(declaration); SetLastError(error); return false; }
     // Only stream 0 is leased: a declaration that reads another stream, or an
     // instanced stream 0, would replay against whatever is bound at the scene
     // end, so such a record is refused (skipped_state, detail multistream).
@@ -39,12 +43,47 @@ void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index)
     bool stream0_only = SUCCEEDED(declaration->GetDeclaration(elements, &count)) && count >= 2 && count <= MAXD3DDECLLENGTH + 1;
     for (UINT i = 0; stream0_only && i + 1 < count; ++i) stream0_only = elements[i].Stream == 0;
     if (stream0_only) stream0_only = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) && frequency == 1;
-    if (!stream0_only) { release(declaration); g.multistream = true; SetLastError(error); return; }
+    if (!stream0_only) { release(declaration); g.multistream = true; SetLastError(error); return false; }
     g.declaration = declaration;
-    g.vertex_buffer = reinterpret_cast<IDirect3DVertexBuffer9*>(shadow_.stream0_identity); g.vertex_buffer->AddRef();
-    if (g.indexed) { g.index_buffer = reinterpret_cast<IDirect3DIndexBuffer9*>(shadow_.indices_identity); g.index_buffer->AddRef(); }
+    g.vertex_buffer = reinterpret_cast<IDirect3DVertexBuffer9*>(shadow_.stream0_identity);
+    if (g.indexed) g.index_buffer = reinterpret_cast<IDirect3DIndexBuffer9*>(shadow_.indices_identity);
+    SetLastError(error);
+    return true;
+}
+void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index) noexcept {
+    if (index >= candidate_capacity_) return;
+    auto& g = depth_geometry_[index];
+    if (!fill_depth_geometry(route, g)) return;
+    const DWORD error = GetLastError();
+    g.vertex_buffer->AddRef();
+    if (g.indexed) g.index_buffer->AddRef();
     g.leased = true;
     SetLastError(error);
+}
+// A draw the static gate refused from every cascade it met (no record, no
+// lease) is still a sighting of its node for the retention store
+// (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 1): the same
+// sighting a record would give it (rows, extent, cull mode, the buffer views
+// and the declaration identity), from which the store takes its own
+// references in live mode as for any sighting; the geometry lease is not
+// taken and nothing is issued. The declaration's reference is released here.
+// LastError is kept by the callees.
+void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownership::BufferLockView& vb, const shadow_replay::ExtentEntry* extent) noexcept {
+    ownership::BufferLockView ib{};
+    if (route.key.indexed && !(shadow_.indices_identity && SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(shadow_.indices_identity), &ib)) && ib.known)) return;
+    shadow_replay::DepthGeometry g{};
+    if (!fill_depth_geometry(route, g)) return;
+    shadow_replay::Record r{};
+    r.serial = route.key.object_lifetime;
+    r.vb = route.key.vertex_buffer; r.vb_identity = shadow_.stream0_identity;
+    r.ib = route.key.indexed ? route.key.index_buffer : 0; r.ib_identity = route.key.indexed ? shadow_.indices_identity : 0;
+    r.vb_view = static_cast<const ownership::BufferLockObservation&>(vb);
+    r.ib_view = static_cast<const ownership::BufferLockObservation&>(ib);
+    r.vb_generation = vb.generation; r.ib_generation = ib.generation;
+    g.leased = true; // the sighting is complete (rows, declaration); no lease is held, the draw is not issued
+    note_retention_draw(route, r, g, extent);
+    ++retention_->store.frame.gate_sightings;
+    release(g.declaration);
 }
 // Retires every lease (after the scene end, at a frame begin without a scene
 // end, before Reset and at teardown). The caller holds the capture mutex, so a
@@ -260,7 +299,9 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             // absent for a frame (comparison-hotkeys.md, "Sun shadows at rest").
             replays[k] = per_cascade[k] != 0 && (sun_shadow_force_replay_ || renderer::shadow_cascade_replays(k, cascades, issues, depth_cascades_.budget, frame_));
             offsets[k] = offset;
-            if (replays[k]) { lists[list_count].map = k; lists[list_count].issues = depth_issues_.get() + offset; lists[list_count].count = 0; ++list_count; offset += per_cascade[k]; }
+            // Back-face cascades (shadow_cascade_backface_texel_default): the map holds the casters' far sides, so a
+            // lit receiver never compares against its own depth (directional-shadows.md, "Run 40 A", cause 2).
+            if (replays[k]) { lists[list_count].map = k; lists[list_count].issues = depth_issues_.get() + offset; lists[list_count].count = 0; lists[list_count].invert_cull = (depth_cascade_backface_mask_ >> k & 1u) != 0; ++list_count; offset += per_cascade[k]; }
         }
     }
     if (!refused && !state) {

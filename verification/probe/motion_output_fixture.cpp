@@ -561,8 +561,11 @@ struct Fixture {
         if (object) config.scope = object->scope;
         configure(&config);
     }
+    // rows_w: the w row's constant (the object origin's clip w; 1 as every script's rows, below 0 an
+    // origin behind the camera plane: the pool script's hull case, docs/verification/directional-shadows.md).
+    float rows_w = 1.f;
     void rows(float t, float p, float zo) {
-        float m[16]; std::memcpy(m, identity, sizeof m); m[3] = t; m[11] = zo; m[12] = p;
+        float m[16]; std::memcpy(m, identity, sizeof m); m[3] = t; m[11] = zo; m[12] = p; m[15] = rows_w;
         api(d->SetVertexShaderConstantF(24, m, 4), "SetVertexShaderConstantF rows");
     }
     void material_state() {

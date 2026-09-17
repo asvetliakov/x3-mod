@@ -288,6 +288,7 @@ void MotionOutput::retention_scene_end(bool sun_source_switched) noexcept {
     }
     shadow_retention::FrameInput in;
     in.frame = frame_; in.camera = camera_scene_; in.set = depth_cascades_; in.eps = retention_eps_; in.age_cap = retention_age_cap_;
+    for (unsigned c = 0; c < renderer::shadow_cascade_max; ++c) in.eps_cascade[c] = depth_cascade_class_eps_[c]; // the per-cascade tiers (refresh_cascade_policy)
     const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr;
     in.bases_valid = sun && camera_scene_.valid && depth_cascades_.count != 0;
     // Each cascade's own current basis, exactly as the transaction builds it (its own sun and grid anchor).
@@ -335,7 +336,8 @@ void MotionOutput::publish_shadow_retention() noexcept {
         " would_c0=%u would_c1=%u would_c2=%u would_c3=%u would_c4=%u capped_c0=%u capped_c1=%u capped_c2=%u capped_c3=%u capped_c4=%u drift_n=%u drift_p99=%.6g drift_max=%.6g"
         " age_max=%llu refs_held=%u sun_relatch=%u cam_jump=%u transit_survivors=%u us=%.1f"
         " refused=%u moving_dropped=%u abandoned=%u deferred=%u journal_us=%.1f walk_us=%.1f draw_us=%.1f draw_calls=%u"
-        " far_alternate_due_to_retained=%u revalidate_context_lost=%u release_queue_full=%u reclassified_after_unseen=%u admitted_checked=%u buffer_views=%u idle_frames=%u",
+        " far_alternate_due_to_retained=%u revalidate_context_lost=%u release_queue_full=%u reclassified_after_unseen=%u admitted_checked=%u buffer_views=%u idle_frames=%u"
+        " reclassified_c0=%u reclassified_c1=%u reclassified_c2=%u reclassified_c3=%u reclassified_c4=%u gate_sightings=%u",
         id_, frame_, live ? "live" : "census", unsigned(st.registered && st.available), f.nodes_live, f.nodes_unseen, f.records, f.records_unseen, f.statics, f.moving,
         f.excluded_class, f.unscoped, f.new_nodes, f.first_seen_in_range, f.promoted, f.superseded, f.lod_replaced, f.model_replaced, f.reclassified,
         f.retired, f.journal_overflow, f.revalidated, static_cast<unsigned long long>(f.mutation_delta), f.buffer_changed, f.buffer_gone, f.buffer_orphaned, unsigned(live && st.orphan_probe),
@@ -343,7 +345,8 @@ void MotionOutput::publish_shadow_retention() noexcept {
         f.would[0], f.would[1], f.would[2], f.would[3], f.would[4], f.capped[0], f.capped[1], f.capped[2], f.capped[3], f.capped[4], f.drift_n, double(f.drift_p99), double(f.drift_max),
         static_cast<unsigned long long>(f.age_max), store.references(), f.sun_relatch, f.cam_jump, f.transit_survivors, st.us,
         f.refused, f.moving_dropped, f.abandoned, f.deferred, st.journal_us, st.walk_us, retention_us(st.draw_ticks), st.draw_calls,
-        f.far_alternate_due_to_retained, f.revalidate_context_lost, f.release_queue_full, f.reclassified_after_unseen, f.admitted_checked, f.buffer_views, st.idle_frames);
+        f.far_alternate_due_to_retained, f.revalidate_context_lost, f.release_queue_full, f.reclassified_after_unseen, f.admitted_checked, f.buffer_views, st.idle_frames,
+        f.reclassified_cascade[0], f.reclassified_cascade[1], f.reclassified_cascade[2], f.reclassified_cascade[3], f.reclassified_cascade[4], f.gate_sightings);
     if (capture_) {
         for (unsigned i = 0; i < shadow_retention::node_capacity; ++i) {
             const auto& n = store.nodes[i];
@@ -351,11 +354,11 @@ void MotionOutput::publish_shadow_retention() noexcept {
             const bool unseen = n.last_seen != frame_;
             for (std::uint16_t q = n.head; q != shadow_retention::none; q = store.draws[q].next) {
                 const auto& d = store.draws[q];
-                log("shadow_retention_caster device=%llu frame=%llu handle=%u serial=%llu model=%08x lod=%u flags12c=%08x class=%s unseen=%llu centre=%.9g,%.9g,%.9g half=%.6g,%.6g,%.6g cascades=%u in_frustum=%u vb=%llu primitives=%u streak=%u",
+                log("shadow_retention_caster device=%llu frame=%llu handle=%u serial=%llu model=%08x lod=%u flags12c=%08x class=%s unseen=%llu centre=%.9g,%.9g,%.9g half=%.6g,%.6g,%.6g cascades=%u in_frustum=%u vb=%llu primitives=%u streak=%u static_mask=%u moved_mask=%u",
                     id_, frame_, unsigned(n.handle), static_cast<unsigned long long>(n.serial), unsigned(n.model), unsigned(n.lod), unsigned(n.flags12c), n.is_static ? "static" : "moving",
                     static_cast<unsigned long long>(unseen ? frame_ - n.last_seen : 0), d.centre[0], d.centre[1], d.centre[2], double(d.half[0]), double(d.half[1]), double(d.half[2]),
                     unsigned(d.cascades), unsigned(n.bounds_valid && camera_scene_.valid && shadow_retention::Store::inside_frustum(camera_scene_, n.centre, n.half)),
-                    static_cast<unsigned long long>(d.key.vb), unsigned(d.key.primitives), unsigned(d.streak));
+                    static_cast<unsigned long long>(d.key.vb), unsigned(d.key.primitives), unsigned(d.streak), unsigned(n.static_mask), unsigned(n.moved_mask));
             }
         }
     }

@@ -2721,3 +2721,83 @@ outside the 0.85–0.95 band; `class_miss` 0 on all burst frames.
 and the next move; burst 24291 came after a move). Deciding capture: F8 at rest immediately
 after Ctrl+Shift+F12 on, then F8 after moving and stopping — compare the twin's C4 flip rate and
 the `new_nodes`/`moving_dropped` alternation.
+
+## Run 40 A (run116) fix (2026-09-18, worktree branch off main `f067f5fa`)
+
+Four changes, one logical fix, per the diagnosis above. Architecture:
+[shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md) "Caster pool control"
+(amendments) and [shadow-caster-retention.md](../architecture/shadow-caster-retention.md)
+("Per-cascade tiers"). Option: `--shadow-cascade-backface-from K|none`
+(`X3M_SHADOW_CASCADE_BACKFACE_FROM`; default the texel law: every cascade whose world texel is
+at least 8 u, so it applies with the static rule off, as the run 40 command does not use it).
+Everything else is on the cascade path only; the single map and every default outside the
+cascades are byte-identical.
+
+1. **Cycle (cause 1).** `classify_candidate_static` answers per cascade: the store where its
+   node is promoted at that cascade's tier (`Node::static_mask`) or verified moved beyond it
+   (`Node::moved_mask`), the ring (`Ring::drift`, one drift against every open cascade's eps)
+   elsewhere; a fresh node no longer counts as moving. A draw the gate refused from every
+   cascade it met is still a sighting (`note_refused_sighting`, `gate_sightings=` on the
+   retention frame line), so the node is promoted while refused instead of dropped.
+2. **Far self-shadow (cause 2).** The back-face cascades replay with the cull mode inverted per
+   draw (`ShadowReplayMapList::invert_cull`, `shadow_replay_cull_mode`: CW <-> CCW, NONE
+   unchanged), so a lit face compares against its own far side. The pre-jitter receiver for
+   those cascades was implemented as a rows term (`r.z += r.x jx / m00 + r.y jy / m11`, kept
+   as `sun_shadow_apply.unjitter_rows`, the measurement tool), measured and **not applied**:
+   on run116 at rest (24291 → 24298) the twin's C4 flip fraction is 0.31–0.37 with the logged
+   rows and 0.30–0.40 with the term (C3 0.000–0.001 both); moving (16788 → 16789) C3 0.258 →
+   0.473 (n 132), C4 0.276 → 0.257 (n 991): the re-roll is in the sampled depth, not the
+   lateral texel choice, and the term would evaluate the shadow up to half a pixel beside the
+   sample the scene shaded, so far shadow edges would stop being averaged over the jitter. The
+   jittered receiver is the TAA-consistent one: the factor modulates the sample the scene
+   shaded and the resolve averages the per-sample factors as every other term. The back-face
+   map itself cannot be re-rendered offline (the maps are the game's casters): the fixture
+   below is its evidence, the run 41 capture the in-game one. Measured trade-off (the faces
+   fixture): the contact line of a box standing on the plane, 17 of 872 plane-shadow pixels
+   beyond one texel at a 1,171-u texel and 50° elevation (the plane point near the foot
+   compares against the box's side face within the constant bias); none on the control half.
+   In the game the faces away from the sun, the back faces themselves, have sun share 0 and
+   no verdict shows.
+3. **Eps per cascade (cause 3).** `shadow_cascade_class_eps`: a static-only cascade's texel / 8,
+   never below the base (2.29 u at 37,500 / 4096, 9.16 u at 150,000 / 4096); per-cascade
+   streaks in the store, `reclassified_c<i>=` counted per tier.
+4. **Huge hulls (cause 4).** Found by replay of frame 24291: the outpost at 1–10 km (RT2 median
+   view z 2.5 km, 80 k receivers) had no candidate between 165 u and 74 km; its 312 z-writing
+   draws (models `35ba45c3` 105, `35b8bf23` 30, `35b42b44` 15, `4f79` 15, `5419` 14, …) were
+   refused although their AABBs meet every box: the object origin lies at or behind the
+   camera plane, `fade_route::origin_distance` fails, `candidate_distance = -1`, and the near
+   gate (`near_ok = d >= 6`) zeroed the bounds mask. `bounds_near_ok = near_ok || d < 0`: a
+   known extent decides alone when the origin distance is unknown. (The `5411` hull of the
+   diagnosis is 74 km out and meets only C4 correctly: sun-space x 40–62 km.) The F8
+   own-surface window scales with the texel (`own_surface_window`: eight texels, 30 u minimum).
+
+**Evidence.** Clean CMake build (`cmake --build build -j4`) 0 warnings; `check_no_x87.py` PASS,
+77 roots, 537 reachable, 0 violations (clean build, 70 objects, DLL `d177f8326536ef2f…`). Host: `test_shadow_cascades`
+(the pool policy, the texel law, `shadow_cascade_class_eps`, `Ring::drift`,
+`--shadow-cascade-backface-from`), `test_shadow_retention` (the tiers case),
+`test_sun_shadow_apply`, `test_shadow_replay_depth`, `test_shadow_replay_candidates`: 59 tests
+OK. Offline: the cycle witness at rest 22260–22270 (`c3` 54 ↔ 70, `c4` 59 ↔ 75, `new_nodes`
+0 ↔ 16, `moving_dropped` 16 ↔ 0, period 2); the fixed classification cannot be replayed outside
+F8 frames (no per-draw rows in the log) and the F8 bursts hold no cycle (`new_nodes` 0,
+`moving_dropped` 0 on 24291–24298, 22251–22258, 16788–16795; per-frame centre drift of the 48 /
+25 / 41 nodes seen on consecutive frames: 14–18 static at C3's 2.29 u, 18–20 at C4's 9.16 u),
+so the fixture is the witness.
+
+New fixture cases (`verification/probe/run_motion_output.py`; records under
+`verification/results/bottle-X3/`), each failing on the pre-fix seam DLL built from `f067f5fa`
+with the new fixture (`--dll --seam --fixture`):
+
+| case | fixed build | pre-fix witness |
+| --- | --- | --- |
+| `seam-ownership-shadow-pool-cycle-census` / `-live` | PASS, 193 checks each: `c1` = 3 from frame 1, `moving_dropped` 0, S and S2 promoted at frame 8 | the fixture's own store expectations fail (exit 1) |
+| `seam-ownership-shadow-pool-jitter-off` / `-live` | PASS, 143 / 192 checks: J (0.156 u to and fro) admitted to cascade 1 from frame 1; live: the store answers from frame 9 | frame 1 `records [2, 1]`, `static_only_refused1` 1 |
+| `seam-ownership-shadow-pool-hull` | PASS, 77 checks: W (origin 2 u behind the camera plane) admitted to both cascades from frame 1, the map twin covers it | frame 1 `records [1, 1]`, `leased` 1 |
+| `sun-shadow-apply-cascades-5-faces` | PASS, 2,861 checks: fixed half interior lit-face pixels darkened 0 / flipping 0 (112–117 per frame), silhouette ≤ 2.4 % / ≤ 2.6 %, the back faces (the dark faces) darkened 17–21 % against 97–98 % on the control half, the plane shadow within one texel but the contact line; readback within one FP16 code (`worst_codes` 1.000) | `X3M_FIXTURE_SUNAPPLY_FACES_FIX=0`: `backface_mask` 0 on frame 8, FAIL |
+
+Regression (38 cases, one runner invocation): the cascade / toggle / poll / adaptive / ladder /
+wide / far-refused replay cases, the four retention cases, the six pool cases and the four sun
+apply cases all PASS with their previous counts (`sun-shadow-apply-cascades-5` 3,117 checks,
+`beyond_one_texel` 0; the retention live case 9,743 checks); the pool `static` records change by
+design (S enters cascade 1 on frame 1 under every store setting, `class_store` / `class_ring`
+follow the informative rule: 182 checks against 181) and the retention records gain the
+`reclassified_c<i>` / `gate_sightings` fields; everything else is the same behaviour.

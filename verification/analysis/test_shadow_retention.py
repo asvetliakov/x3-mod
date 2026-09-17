@@ -79,6 +79,7 @@ struct Rig {
     std::uint64_t changed_vb = 0; // the view callback reports this allocation as rewritten
     unsigned views = 0;           // registry lookups the view callback answered
     const float* outer_sun = nullptr; // the positional sun: cascade 1 holds another direction than cascade 0
+    double eps_cascade1 = sr::eps_default; // cascade 1's classification tier (renderer::shadow_cascade_class_eps in production)
     Rig(bool hold = true) { const float extents[2] = {250.f, 1500.f}; renderer::shadow_cascade_set(extents, 2, nullptr, nullptr, 640, set); store->configure(hold); }
     sr::Seen draw(std::uint64_t serial, const float world[12], std::uint64_t vb = 100, std::uint32_t lod = 0, std::uint32_t flags12c = 0, std::uint32_t flags130 = 0, std::uint64_t epoch = 1, std::uint64_t revision = 1) {
         float rows[16]; clip_rows(camera(pose), world, rows);
@@ -92,7 +93,7 @@ struct Rig {
         return result;
     }
     void end() {
-        sr::FrameInput in; in.frame = frame; in.camera = camera(pose); in.set = set; in.age_cap = age_cap;
+        sr::FrameInput in; in.frame = frame; in.camera = camera(pose); in.set = set; in.age_cap = age_cap; in.eps_cascade[1] = eps_cascade1;
         in.bases_valid = true;
         for (unsigned c = 0; c < set.count; ++c) in.bases_valid = in.bases_valid && renderer::shadow_replay_basis(in.camera, c && outer_sun ? outer_sun : sun, set.cascades[c], in.bases[c]);
         for (unsigned c = 0; c < 4; ++c) in.room[c] = room[c];
@@ -250,6 +251,30 @@ int main() {
         Rig q(false);
         for (unsigned i = 0; i < sr::node_capacity; ++i) { place(w, 5. * (i % 32), 0, 50. + 8. * (i / 32)); q.draw(1000 + i, w, 5000 + 2 * i); }
         place(w, 0, 0, 40); CHECK(q.draw(5000, w, 9000) == sr::Seen::Refused && q.store->frame.refused == 1 && q.store->frame.evicted == 0);
+    }
+    { // the per-cascade tiers (run 40 A, causes 1 and 3): a node jittering 0.125 units to and fro is moving under the base eps (never promoted;
+      // moved_mask bit 0 from its second sighting, so the owner's classifier takes the store's Moving there) and static under cascade 1's
+      // 0.195 after eight sightings (static_mask bit 1, never moved there: the classifier takes Static); a fresh node is uninformative at
+      // both tiers (the classifier falls through to the ring); a later step beyond 0.195 counts reclassified_cascade[1], not reclassified.
+        Rig r; r.eps_cascade1 = .195; place(w, 20, 0, 60); place(w2, 20.125, 0, 60);
+        const auto node = [&]() -> const sr::Node& { return r.store->nodes[r.store->find_node(30)]; };
+        r.draw(30, w); r.end(); CHECK(node().static_mask == 0 && node().moved_mask == 0 && !node().is_static); r.next();
+        for (unsigned i = 1; i <= 8; ++i) {
+            r.draw(30, i % 2 ? w2 : w); r.end(); const auto f = r.next();
+            CHECK(f.moving_dropped == 0 && f.promoted == 0 && f.reclassified == 0 && f.reclassified_cascade[1] == 0);
+            if (i < 8) CHECK(node().static_mask == 0 && node().moved_mask == 1);
+        }
+        CHECK(node().static_mask == 2 && node().moved_mask == 1 && !node().is_static);
+        float w3[12]; place(w3, 20.5, 0, 60); r.draw(30, w3); r.end(); const auto f = r.next();
+        CHECK(f.reclassified_cascade[1] == 1 && f.reclassified == 0 && node().static_mask == 0 && node().moved_mask == 3);
+        // A static node (both tiers) that moves beyond both: reclassified at both; promoted again after eight sightings at both, the moved bits cleared.
+        Rig q; q.eps_cascade1 = .195; place(w, 20, 0, 60); q.settle(31, w);
+        const auto n31 = [&]() -> const sr::Node& { return q.store->nodes[q.store->find_node(31)]; };
+        CHECK(n31().is_static && n31().static_mask == 3 && n31().moved_mask == 0);
+        place(w2, 21, 0, 60); q.draw(31, w2); q.end(); const auto g = q.next();
+        CHECK(g.reclassified == 1 && g.reclassified_cascade[0] == 1 && g.reclassified_cascade[1] == 1 && n31().static_mask == 0 && n31().moved_mask == 3);
+        for (unsigned i = 0; i < 8; ++i) { q.draw(31, w2); q.end(); q.next(); }
+        CHECK(n31().is_static && n31().static_mask == 3 && n31().moved_mask == 0);
     }
     { // the precision twin: one static node recovered from unrelated cameras 81,000 units out
         std::mt19937 rng(7); std::uniform_real_distribution<double> unit(-1., 1.);

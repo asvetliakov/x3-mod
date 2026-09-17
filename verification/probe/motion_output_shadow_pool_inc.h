@@ -30,11 +30,39 @@
 //               overflows), the smallest (the farthest node) dropped, 4,096
 //               issues over the budget 640 so the far cascade replays on even
 //               frames only. Counters only (no map twin at this count).
-// Per frame: SHADOW_CAMERA / SHADOW_SUN / SHADOW_DRAW (with scale=) for the
+// The run 40 A (run116) cases (docs/verification/directional-shadows.md, "Run 40 A (run116)
+// diagnosis"), all with X3M_SHADOW_CASCADE_STATIC_FROM=1 but `hull`:
+//   cycle       a static node S (both cascades) and S2 meeting cascade 1 alone
+//               (view x 20: inside 40, outside 8), under a census or live store.
+//               Cause 1: before the fix S2 alternated between admitted (the
+//               ring: static) and refused (the store's fresh node: moving),
+//               unseen and dropped (new_nodes / moving_dropped 1 on alternate
+//               frames, period 2). Now every frame from 1 admits the anchor, S
+//               and S2 to cascade 1 (the store defers to the ring until its
+//               eight verified sightings, the refused frame 0 is a sighting
+//               too), the store never drops a node, both are promoted by frame 9.
+//   jitter      X3M_FIXTURE_SHADOW_CASCADES=8,200: cascade 1's texel is 400 / 256
+//               = 1.5625 units, its eps texel / 8 = 0.195; a node J (B at eight
+//               times its size, so the map twin covers texels) at both
+//               cascades jitters 0.125 row units (0.156 world units) on alternate frames (beyond the
+//               base eps 0.05: moving at cascade 0's law, which admits movers;
+//               within cascade 1's). Cause 3: J is refused from cascade 1 by the
+//               base eps before the fix, admitted from frame 1 after it (the
+//               ring, then the store's tier-1 promotion on frame 9 under a live store).
+//   hull        no static rule: the 200-unit sliver W whose object origin lies
+//               2 units BEHIND the camera plane (rows w0 = -2; its vertices
+//               straddle the plane). Cause 4: the origin distance is unknown,
+//               so before the fix the near gate refused W from every cascade
+//               although its AABB meets both boxes; now its extent admits it
+//               to both from frame 1 (frame 0 has no extent yet: POOL_EXPECT
+//               carries leased=).
+// Per frame: SHADOW_CAMERA / SHADOW_SUN / SHADOW_DRAW (with scale= and w0=) for the
 // runner's CPU twin of every compared map, POOL_KEPT per cascade (the casters
 // the map must show) and POOL_EXPECT (the counter line's values).
 namespace {
-constexpr unsigned pool_static_frames = 14, pool_importance_frames = 8, pool_records_frames = 6;
+constexpr unsigned pool_static_frames = 14, pool_importance_frames = 8, pool_records_frames = 6, pool_cycle_frames = 12, pool_jitter_frames = 12, pool_hull_frames = 6;
+constexpr float pool_jitter_step = .125f;  // dyadic row units, 0.156 world units (/ m00 0.8): beyond eps 0.05, within cascade 1's texel / 8 at extent 200 (0.195)
+constexpr float pool_hull_w0 = -2.f;       // the sliver's origin 2 units behind the camera plane (fade_route::origin_distance fails: d = -1)
 constexpr unsigned pool_store_static_frame = 9; // shadow_retention::static_sightings = 8 verified sightings: promoted at the scene end of frame 8
 constexpr float pool_moving_step = .0625f;      // dyadic: exactly representable rows
 constexpr unsigned pool_importance_nodes = 7, pool_records_nodes = 4095;
@@ -54,7 +82,8 @@ struct PoolScript {
     std::map<unsigned, float> scale_of; // id -> scale (1 unless set)
     const char* name = "";
     // One frame: the anchor, then `listed` in that order. `kept[c]`: the ids the map of cascade c must show.
-    void frame(const std::vector<RetentionNode*>& listed, const std::vector<std::vector<unsigned>>& kept, unsigned c0, unsigned c1, unsigned capped1, unsigned refused1, bool compare, unsigned large1 = 0) {
+    // `leased`: the counter line's leased= when it differs from the draws (a draw refused from every cascade; -1: every draw).
+    void frame(const std::vector<RetentionNode*>& listed, const std::vector<std::vector<unsigned>>& kept, unsigned c0, unsigned c1, unsigned capped1, unsigned refused1, bool compare, unsigned large1 = 0, int leased = -1) {
         std::vector<RetentionNode*> drawn{s.anchor}; drawn.insert(drawn.end(), listed.begin(), listed.end());
         f.camera_scripted = true;
         f.frame_begin();
@@ -70,12 +99,14 @@ struct PoolScript {
             const bool known = n->object.scope.known != 0;
             const bool matched = known && n->last_drawn == static_cast<long long>(now) - 1 && f.frames_since_reset > 0;
             const auto scale = scale_of.find(n->id);
-            if (compare) std::printf("SHADOW_DRAW frame=%llu caster=%u shape=%c t=%.9g p=%.9g zo=%.9g scale=%.9g\n", now, n->id, n->shape, n->t, n->p, n->zo, scale == scale_of.end() ? 1. : double(scale->second));
+            if (compare) std::printf("SHADOW_DRAW frame=%llu caster=%u shape=%c t=%.9g p=%.9g zo=%.9g scale=%.9g w0=%.9g\n", now, n->id, n->shape, n->t, n->p, n->zo, scale == scale_of.end() ? 1. : double(scale->second), double(n->w0));
+            f.rows_w = n->w0;
             f.draw(n->object, n->t, n->p, n->zo, known, known, matched, Alter::None, false);
+            f.rows_w = 1.f;
             n->last_drawn = static_cast<long long>(now);
         }
         std::printf("POOL_FRAME frame=%llu case=%s drawn=%u compare=%u\n", now, name, unsigned(drawn.size()), unsigned(compare));
-        std::printf("POOL_EXPECT frame=%llu c0=%u c1=%u capped1=%u static_only_refused1=%u large_admitted1=%u\n", now, c0, c1, capped1, refused1, large1);
+        std::printf("POOL_EXPECT frame=%llu c0=%u c1=%u capped1=%u static_only_refused1=%u large_admitted1=%u leased=%d\n", now, c0, c1, capped1, refused1, large1, leased);
         if (compare) for (unsigned c = 0; c < kept.size(); ++c) {
             std::string ids;
             for (unsigned id : kept[c]) { if (!ids.empty()) ids += ','; ids += std::to_string(id); }
@@ -105,7 +136,8 @@ void run_shadow_pool_integration(Fixture& f) {
     char script[16]{};
     require(GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_POOL", script, sizeof script) > 0, "X3M_FIXTURE_SHADOW_POOL names the script");
     const bool is_static = !std::strcmp(script, "static"), is_importance = !std::strcmp(script, "importance"), is_records = !std::strcmp(script, "records");
-    require(is_static || is_importance || is_records, "X3M_FIXTURE_SHADOW_POOL is static, importance or records");
+    const bool is_cycle = !std::strcmp(script, "cycle"), is_jitter = !std::strcmp(script, "jitter"), is_hull = !std::strcmp(script, "hull");
+    require(is_static || is_importance || is_records || is_cycle || is_jitter || is_hull, "X3M_FIXTURE_SHADOW_POOL is static, importance, records, cycle, jitter or hull");
     std::printf("POOL_MODE script=%s store=%u\n", script, s.mode);
     s.lifetime(7, 0, 0); s.lifetime(3, f.b.scope.load_epoch, f.b.scope.registry_epoch);
     std::memcpy(f.camera_position, retention_eye, sizeof retention_eye); f.camera_yaw = 0;
@@ -123,7 +155,9 @@ void run_shadow_pool_integration(Fixture& f) {
         if (GetEnvironmentVariableA("X3M_SHADOW_CASCADE_LARGE_MIN", setting, sizeof setting) > 0) large_min = std::strtof(setting, nullptr);
         const bool wide_admitted = large_min > 0.f && large_min <= 200.f; // W's extent is 200 units (its box test knows it from frame 1)
         std::printf("POOL_LARGE_MIN units=%.9g wide_admitted=%u\n", double(large_min), unsigned(wide_admitted));
-        const unsigned fixed_from = s.on() ? pool_store_static_frame : 1u; // the store knows S from its first sighting and needs eight verified ones; the ring one
+        // S enters cascade 1 on frame 1 under every store setting: the store defers to the ring until its eight
+        // verified sightings promote S (frame 9; the ring's anchor from frame 0 already answers static).
+        const unsigned fixed_from = 1u;
         for (unsigned frame = 0; frame < pool_static_frames; ++frame) {
             mover.t = .375f + pool_moving_step * float(frame);
             wide.t = .2f + pool_moving_step * float(frame);
@@ -135,6 +169,50 @@ void run_shadow_pool_integration(Fixture& f) {
             p.frame({&fixed, &mover, &wide}, {{0, 1, 2, 3}, far_ids}, 4, unsigned(far_ids.size()), 0, 4 - unsigned(far_ids.size()), true, large);
         }
         s.expect(RsNodes, 3, "S, M and W are the store's nodes"); s.expect(RsStatics, 1, "only S is static in the store");
+        s.expect(RsPromoted, 1, "S was promoted once (frame 8's scene end)");
+        wide_mesh.reset();
+    } else if (is_cycle) {
+        require(s.on(), "the cycle script runs under a census or live store (the cycle is the store's)");
+        auto& fixed = s.make(1, 'B', -.05f, .05f);   // S: both cascades
+        auto& alone = s.make(2, 'B', 16.f, .05f);    // S2: view x 20, cascade 1 alone (as the records script's nodes)
+        for (unsigned frame = 0; frame < pool_cycle_frames; ++frame) {
+            std::vector<unsigned> far_ids;
+            if (frame >= 1) far_ids = {0, 1, 2};
+            p.frame({&fixed, &alone}, {{0, 1}, far_ids}, 2, unsigned(far_ids.size()), 0, 3 - unsigned(far_ids.size()), true, 0, frame ? 3 : 2); // frame 0: S2 is refused from its only cascade (a sighting, not a candidate)
+            s.read();
+            s.expect(RsMovingDropped, 0, "no node is dropped as moving: the refused frame 0 and every admitted frame are sightings");
+            s.expect(RsNodes, 2, "S and S2 are the store's nodes on every frame (the anchor's class is excluded)");
+            s.expect(RsStatics, frame >= pool_store_static_frame - 1 ? 2 : 0, "S and S2 are promoted at frame 8's scene end");
+        }
+        s.expect(RsPromoted, 2, "S and S2 were promoted once each");
+    } else if (is_jitter) {
+        Com<IDirect3DVertexBuffer9> big_mesh; // B at eight times its size: 4.8 units across, about three texels of cascade 1's 1.56-unit map
+        api(f.d->CreateVertexBuffer(24 * 3, 0, 0, D3DPOOL_MANAGED, &big_mesh.p, nullptr), "CreateVertexBuffer jitter node");
+        pool_fill_scaled(big_mesh.p, shadow_tri_b, 8.f);
+        auto& jitter = s.make(1, 'B', -.05f, .05f, big_mesh.p); // J: both cascades, 0.125 units to and fro
+        p.scale_of[1] = 8.f;
+        for (unsigned frame = 0; frame < pool_jitter_frames; ++frame) {
+            jitter.t = -.05f + (frame % 2 ? pool_jitter_step : 0.f);
+            std::vector<unsigned> far_ids;
+            if (frame >= 1) far_ids = {0, 1};
+            p.frame({&jitter}, {{0, 1}, far_ids}, 2, unsigned(far_ids.size()), 0, 2 - unsigned(far_ids.size()), true);
+            s.read();
+            s.expect(RsMovingDropped, 0, "J is seen every frame (cascade 0 admits it): never dropped");
+            s.expect(RsNodes, 1, "J is the store's node"); s.expect(RsStatics, 0, "J moves beyond the base eps: not static at cascade 0's law");
+        }
+        s.expect(RsPromoted, 0, "J is never promoted at the base tier (its tier-1 promotion is the static_mask, not is_static)");
+        big_mesh.reset();
+    } else if (is_hull) {
+        Com<IDirect3DVertexBuffer9> wide_mesh;
+        api(f.d->CreateVertexBuffer(24 * 3, 0, 0, D3DPOOL_MANAGED, &wide_mesh.p, nullptr), "CreateVertexBuffer hull node");
+        pool_fill_scaled(wide_mesh.p, shadow_tri_w, 1.f);
+        auto& wide = s.make(3, 'W', .2f, .15f, wide_mesh.p); // W: 200 units across (both boxes), its origin behind the camera plane
+        wide.w0 = pool_hull_w0;
+        for (unsigned frame = 0; frame < pool_hull_frames; ++frame) {
+            std::vector<unsigned> ids{0};
+            if (frame >= 1) ids.push_back(3); // frame 0: no extent yet and no origin rule (the origin is behind the camera)
+            p.frame({&wide}, {ids, ids}, unsigned(ids.size()), unsigned(ids.size()), 0, 0, true, 0, int(ids.size()));
+        }
         wide_mesh.reset();
     } else if (is_importance) {
         std::vector<RetentionNode*> nodes;

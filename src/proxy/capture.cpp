@@ -2177,6 +2177,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           // (the first static-only cascade, 1..count-1; absent: none; the count or more is refused) and
           // X3M_SHADOW_CASCADE_DROP_ORDER (submission | importance) and X3M_SHADOW_CASCADE_LARGE_MIN
           // (world units, 0..1e6, default 0: a static-only cascade also admits moving casters of that extent).
+          // X3M_SHADOW_CASCADE_BACKFACE_FROM (0..count-1 | none; absent: every cascade whose world texel is
+          // 8 u or more) selects the cascades that replay back faces and evaluate the unjittered receiver.
           // A malformed list leaves the cascades off (the single map stays).
           { wchar_t list[128]{};
             const auto parse=[](const wchar_t* text,double* out,unsigned capacity)->unsigned{
@@ -2209,7 +2211,14 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 char static_text[12]; std::snprintf(static_text,sizeof static_text,"%u",static_from<renderer::shadow_cascade_max?static_from:0u);
                 if(!reason&&!renderer::shadow_cascade_set(extents,count,sizes,caps,budget,set))reason="range";
                 if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_LARGE_MIN",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end); if(end==list||*end!=L'\0'||!(v>=0.)||v>double(renderer::shadow_cascade_large_min_max))reason="large_min"; else large_min=float(v); }
-                if(!reason&&!renderer::shadow_cascade_pool(set,records,static_from,importance,large_min))reason="pool";
+                // Back-face casters (shadow_replay_projection.h, shadow_cascade_backface_texel_default): absent, the texel
+                // law (every cascade whose world texel is 8 u or more); X3M_SHADOW_CASCADE_BACKFACE_FROM = K (0..count-1)
+                // that cascade and beyond; "none" no cascade; the count or more is refused (never a silent no-op).
+                unsigned backface_from=renderer::shadow_cascade_backface_from_texel;
+                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_BACKFACE_FROM",list,128)>0){
+                    if(!wcscmp(list,L"none"))backface_from=renderer::shadow_cascade_static_from_none;
+                    else { wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v>=count)reason="backface_from"; else backface_from=unsigned(v); } }
+                if(!reason&&!renderer::shadow_cascade_pool(set,records,static_from,importance,large_min,backface_from))reason="pool";
                 if(reason||!enabled)set=renderer::ShadowCascadeSet{};
                 // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5):
                 // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k within [0.5, 8] (E0 = max(E0, k x
@@ -2224,10 +2233,12 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 static_assert(renderer::shadow_cascade_max==5,"the mode line lists five cascades");
                 const auto ext=[&](unsigned i){ return double(set.count>i?set.cascades[i].half_extent:0.f); };
                 const auto sz=[&](unsigned i){ return set.count>i?set.cascades[i].size:0u; };
-                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g ladder_ratio=%.9g",
+                char backface_text[12]; std::snprintf(backface_text,sizeof backface_text,"%u",set.backface_from<set.count?set.backface_from:0u);
+                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g ladder_ratio=%.9g backface_from=%s backface_mask=%u",
                     set.count!=0,reason?reason:enabled?"ok":"replay",set.count,ext(0),ext(1),ext(2),ext(3),ext(4),sz(0),sz(1),sz(2),sz(3),sz(4),
                     set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.caps[4],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
-                    set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k),double(ladder_ratio));
+                    set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k),double(ladder_ratio),
+                    !set.count?"none":set.backface_from==renderer::shadow_cascade_backface_from_texel?"texel":set.backface_from<set.count?backface_text:"none",unsigned(set.count?set.backface_mask():0u));
                 hooked.motion_output.configure_shadow_cascades(set);
                 hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k,ladder_ratio); } }
           // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:

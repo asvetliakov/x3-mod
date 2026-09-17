@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "f8bbcb717b9d0f187f4a3ee3337a0e3fff098155e338c39a0392e8d09561872e"
+  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
  },
  "script": "static",
  "store": 0,
@@ -493,9 +493,9 @@
  },
  "us": {
   "frames": 14,
-  "min": 43.0,
-  "median": 55.45,
-  "max": 1535.1
+  "min": 37.7,
+  "median": 46.900000000000006,
+  "max": 1496.7
  },
  "classified": {
   "class_store": 0,
@@ -511,8 +511,8 @@
  ],
  "large_min": 100.0,
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-off-20260917-225901-742612",
- "trace_sha256": "e6e55ce893f5504611fb4711471a24c2351e3414afc129aeb8c470ac8be5d1cc",
- "dll_sha256": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
- "exe_sha256": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-off-20260918-021520-382479",
+ "trace_sha256": "2e479a72cc5d722e0a8f0511beebdf9f2e51dd46b50870f03ef664120ce94faa",
+ "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+ "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9"
 }

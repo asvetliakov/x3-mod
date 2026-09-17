@@ -284,6 +284,7 @@ def main():
     parser.add_argument('--shadow-cascade-records', default=None, metavar='N[,N...]', help='Record capacity per cascade, 1..4096, one value for all or one per cascade, default 1024 (X3M_SHADOW_CASCADE_RECORDS; requires --shadow-cascades): the caster list is sized to the largest at device creation (state memory, about 400 bytes per record), so a far cascade can carry more than the 1,024 the default list holds (docs/architecture/shadow-cascade-extents.md, "Caster pool control")')
     parser.add_argument('--shadow-cascade-static-from', type=int, default=None, metavar='K', help='Cascades K and beyond (1..cascades-1) admit static casters only (X3M_SHADOW_CASCADE_STATIC_FROM; requires --shadow-cascades): the retention store\'s verdict for nodes it knows, else the draw\'s world rows unchanged since its previous sighting within --shadow-caster-retention-eps; a first sighting counts as moving. Refusals count static_only_refused<i>. Under --shadow-cascade-adaptive-c0 the policy follows the slid extents: a slid cascade is static-only when the configured cascade whose extent it now most closely matches is (a corvette on 250/1500/7500/37500 with --shadow-cascade-static-from 3 makes its slid 16875 cascade static-only), and --shadow-cascade-large-min scales with that cascade\'s extent over its match\'s')
     parser.add_argument('--shadow-cascade-large-min', type=float, default=None, metavar='UNITS', help='A static-only cascade (--shadow-cascade-static-from) also admits a moving caster whose world AABB extent is at least UNITS (0..1000000; X3M_SHADOW_CASCADE_LARGE_MIN; requires --shadow-cascades; default 0: static only). The extent is the draw\'s (a mesh part, not the whole ship): 1500 passes M7 and larger hulls (M7 about 3,500 u, TL 5,000, M2/M1 7,500-10,000) and refuses fighters and small parts (M3 250 u, M6 900 u; run-115 census parts 100-610 u). Admissions count large_admitted<i>')
+    parser.add_argument('--shadow-cascade-backface-from', default=None, metavar='K|none', help='Cascades K and beyond (0..cascades-1) replay their casters\' BACK faces (CW and CCW swapped per draw; NONE unchanged) and evaluate the receiver at the pre-jitter pixel centre, so a lit surface never compares against its own depth on the knife edge re-rolled by the TAA jitter (X3M_SHADOW_CASCADE_BACKFACE_FROM; requires --shadow-cascades). Default (absent): every cascade whose world texel is at least 8 units (37,500 / 4096 = 18.3 u qualifies, 7,500 / 4096 = 3.7 u does not); "none" turns it off. Trade-off: a back-face map casts no contact shadow from geometry thinner than one texel of that cascade (a hull plate at 18-73 u texels is invisible either way) and a pancaked caster (nearer the light than the map\'s near plane) is flattened by its back faces as before')
     parser.add_argument('--shadow-cascade-drop-order', choices=('submission', 'importance'), default=None, help='What a cascade drops when its candidates exceed its cap (X3M_SHADOW_CASCADE_DROP_ORDER; requires --shadow-cascades): submission (default: the last submitted) or importance (the smallest projected size at the camera, decided at the scene end; stable across submission order; dropped_min_size<i> shows the largest caster dropped)')
     parser.add_argument('--shadow-sun-poll', choices=('on', 'off'), default=None, help='Sun position for the cascades from the engine\'s brightest directional light node instead of one LightDir_Dir0 constant (X3M_SHADOW_SUN_POLL; default on with --shadow-cascades; verified executable only, cross-checked against the constants, the constant latch otherwise; requires --shadow-cascades).')
     parser.add_argument('--shadow-cascade-budget', type=int, default=None, metavar='B', help='Draw issues per frame above which the far cascade replays on even frames only, 1..4096, default 640 (X3M_SHADOW_CASCADE_BUDGET; requires --shadow-cascades)')
@@ -493,7 +494,8 @@ def main():
                       ('--shadow-cascade-budget', args.shadow_cascade_budget), ('--shadow-sun-poll', args.shadow_sun_poll),
                       ('--shadow-cascade-records', args.shadow_cascade_records), ('--shadow-cascade-static-from', args.shadow_cascade_static_from),
                       ('--shadow-cascade-drop-order', args.shadow_cascade_drop_order), ('--shadow-cascade-large-min', args.shadow_cascade_large_min),
-                      ('--shadow-cascade-adaptive-c0', args.shadow_cascade_adaptive_c0), ('--shadow-cascade-ladder-ratio', args.shadow_cascade_ladder_ratio))
+                      ('--shadow-cascade-adaptive-c0', args.shadow_cascade_adaptive_c0), ('--shadow-cascade-ladder-ratio', args.shadow_cascade_ladder_ratio),
+                      ('--shadow-cascade-backface-from', args.shadow_cascade_backface_from))
         if args.shadow_cascades is None:
             for option, value in companions:
                 if value is not None:
@@ -531,6 +533,13 @@ def main():
             env['X3M_SHADOW_CASCADE_STATIC_FROM'] = str(args.shadow_cascade_static_from)
         if args.shadow_cascade_drop_order is not None:
             env['X3M_SHADOW_CASCADE_DROP_ORDER'] = args.shadow_cascade_drop_order
+        if args.shadow_cascade_backface_from is not None:
+            value = args.shadow_cascade_backface_from.strip().lower()
+            if value != 'none':
+                if not value.isdigit() or not 0 <= int(value) <= len(extents) - 1:
+                    parser.error(f'--shadow-cascade-backface-from must be within [0, cascades-1] ({len(extents)} cascades configured) or none.')
+                value = str(int(value))
+            env['X3M_SHADOW_CASCADE_BACKFACE_FROM'] = value
         if args.shadow_cascade_large_min is not None:
             if not (math.isfinite(args.shadow_cascade_large_min) and 0.0 <= args.shadow_cascade_large_min <= 1000000.0):
                 parser.error('--shadow-cascade-large-min must be within [0, 1000000].')
@@ -821,7 +830,7 @@ def main():
         # inherited value cannot enable or reshape the cascades.
         for name in ('X3M_SHADOW_CASCADES', 'X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET',
                      'X3M_SHADOW_CASCADE_RECORDS', 'X3M_SHADOW_CASCADE_STATIC_FROM', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_SHADOW_CASCADE_LARGE_MIN', 'X3M_SHADOW_CASCADE_ADAPTIVE_C0',
-                     'X3M_SHADOW_CASCADE_LADDER_RATIO'):
+                     'X3M_SHADOW_CASCADE_LADDER_RATIO', 'X3M_SHADOW_CASCADE_BACKFACE_FROM'):
             env.pop(name, None)
         env.update(args.shadow_cascade_env)
         # Caster retention: explicit switches, companions only when given.

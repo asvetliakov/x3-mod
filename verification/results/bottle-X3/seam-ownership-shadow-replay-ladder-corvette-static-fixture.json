@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion_output_fixture.exe": "f8cca8775e552567fd6815be15ac2a47d08d1552496589c5516820bda3f634aa",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion-output-seam/d3d9.dll": "bb62cda0e0e5f9aa966edffcf1e406bcc1f525d41d54cee73e4e6b858e8f490c",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/build/d3d9.dll": "9da9084d0634477e879612e53b738c71b02729f76b6304da126b55a788d2b17b"
+  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
  },
  "checks": 373,
  "depth": true,
@@ -205,15 +205,15 @@
  "frames": 8,
  "us": {
   "frames": 5,
-  "min": 45.7,
-  "median": 61.9,
-  "max": 1482.6
+  "min": 47.6,
+  "median": 58.4,
+  "max": 1492.4
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-ladder-corvette-static-20260918-002031-929944",
- "trace_sha256": "4b2f7fe0891b3e26ccb3b33447572173328700807e7c6c75b13f400fe15b5f21",
- "dll_sha256": "bb62cda0e0e5f9aa966edffcf1e406bcc1f525d41d54cee73e4e6b858e8f490c",
- "exe_sha256": "f8cca8775e552567fd6815be15ac2a47d08d1552496589c5516820bda3f634aa",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-ladder-corvette-static-20260918-021450-305032",
+ "trace_sha256": "9c61d524e940ce9fbd6d867d15eabee45c00c5e136c059e407abf872a1337a23",
+ "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+ "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
  "map": {
   "max_depth_error": 5.997454037842687e-07,
   "covered_texels": 26723

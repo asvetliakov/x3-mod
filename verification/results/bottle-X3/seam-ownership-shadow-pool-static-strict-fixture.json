@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "f8bbcb717b9d0f187f4a3ee3337a0e3fff098155e338c39a0392e8d09561872e"
+  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
  },
  "script": "static",
  "store": 0,
@@ -493,9 +493,9 @@
  },
  "us": {
   "frames": 14,
-  "min": 41.5,
-  "median": 54.1,
-  "max": 1571.0
+  "min": 38.0,
+  "median": 47.25,
+  "max": 1467.6
  },
  "classified": {
   "class_store": 0,
@@ -511,10 +511,10 @@
  ],
  "large_min": 0.0,
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-strict-20260917-225906-819071",
- "trace_sha256": "d62ab7eb6b6a3fb68f04c6e148aaf492e14352cfe8ae5f1eea332be7910afaed",
- "dll_sha256": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
- "exe_sha256": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-strict-20260918-021525-601801",
+ "trace_sha256": "eb4dd38fb9f93bb2a297b811058c039cbd45714ae3022704e21a457b967e8ec2",
+ "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+ "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
  "presented_identical_to": [
   "seam-ownership-shadow-pool-static-off",
   "seam-ownership-shadow-pool-static-census",

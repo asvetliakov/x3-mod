@@ -24,7 +24,7 @@ constexpr double retention_eye[3] = {55962., 20286., 55517.}; // the run111 worl
 constexpr unsigned retention_settle = 10;                      // sightings: the ninth agreeing one makes a node static
 struct RetentionNode {
     Object object{""}; Com<IDirect3DVertexBuffer9> buffer; char shape = 'B'; unsigned id = 0;
-    float t = 0, p = .125f, zo = 0; long long last_drawn = -2, placed_frame = -1; float placed_t = 0;
+    float t = 0, p = .125f, zo = 0, w0 = 1.f; long long last_drawn = -2, placed_frame = -1; float placed_t = 0; // w0: the rows' w constant (Fixture::rows_w)
 };
 ULONG retention_count(IUnknown* object) { object->AddRef(); return object->Release(); }
 struct RetentionScript {
