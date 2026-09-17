@@ -99,6 +99,13 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const std::uint32_t*p,std
 unsigned source_gain_transforms=0;float source_gain_value=0;bool source_gain_reject=false;
 bool linear_emission_source_gain_valid(float g){return std::isfinite(g)&&g>=1&&g<=8;}
 LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t*p,std::size_t,float g,std::vector<std::uint32_t>&words){++source_gain_transforms;source_gain_value=g;if(source_gain_reject)return LinearEmissionResult::AllocationFailure;if(*p!=60&&*p!=61)return LinearEmissionResult::UnsupportedShader;words={*p+900};return LinearEmissionResult::Applied;}
+// Hull-emitter gain double (emitter plan phase 3): synthetic PS 62 is the one
+// covered hull program; the real transformer is checked by its own oracle.
+constexpr unsigned linear_emission_hull_program_count=12;
+unsigned hull_gain_transforms=0;float hull_gain_value=0;bool hull_gain_reject=false;
+unsigned linear_emission_hull_program_index(std::uint64_t ps){return ps==62?0u:linear_emission_hull_program_count;}
+bool linear_emission_hull_program_reviewed(std::uint64_t ps){return linear_emission_hull_program_index(ps)<linear_emission_hull_program_count;}
+LinearEmissionResult linear_emission_hull_source_gain_variant(const std::uint32_t*p,std::size_t,float g,std::vector<std::uint32_t>&words){++hull_gain_transforms;hull_gain_value=g;if(hull_gain_reject)return LinearEmissionResult::AllocationFailure;if(*p!=62)return LinearEmissionResult::UnsupportedShader;words={*p+900};return LinearEmissionResult::Applied;}
 struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightmap_emissive_gain=1,fill=0;};
 enum class LinearMaterialResult{Applied,UnsupportedShader};
 unsigned fade_transforms=0,fade_lookups=0;bool fade_reject=false,fade_throw=false;
@@ -166,6 +173,10 @@ LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t*p,st
 // program without a unique lobe sum; the real transform has its own fixture.
 unsigned reviewed_lookups=0,original_fill_transforms=0;bool original_fill_reject=false,original_fill_applies=true;
 bool linear_material_pair_reviewed(std::uint64_t vs,std::uint64_t ps){++reviewed_lookups;return linear_material_pair_contract(vs,ps).sampler_mask!=0;}
+// Original sun-share producer double: refused (fail closed to the fill/motion variant) unless asked for.
+unsigned original_share_transforms=0;bool original_share_apply=false;
+LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t*p,std::size_t,float,std::vector<std::uint32_t>&o,bool,bool&share_applied){
+ ++original_share_transforms;share_applied=original_share_apply;if(share_applied)o={*p+950};return LinearMaterialResult::Applied;}
 LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint32_t*p,std::size_t,float fill,std::vector<std::uint32_t>&o,bool,bool&fill_applied){
  ++original_fill_transforms;fill_applied=false;
  if(original_fill_reject)return LinearMaterialResult::UnsupportedShader;
@@ -316,7 +327,7 @@ HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept;
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*hull_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr,*sun_original_variant=nullptr;bool hull_program=false;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
@@ -325,6 +336,7 @@ public:
  IDirect3DPixelShader9*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
  IDirect3DPixelShader9*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
  IDirect3DPixelShader9*ps_source_gain_variant=nullptr,*source_gain_eligible_variant=nullptr;unsigned source_gain_pair=renderer::linear_emission_pair_count;
+ bool ps_hull_program=false;IDirect3DPixelShader9*ps_hull_gain_variant=nullptr;
  bool screen_additive_pair=false;unsigned screen_additive_index=screen_emission::pair_count;IDirect3DPixelShader9*ps_screen_additive_variant=nullptr;
  bool screen_pair=false;IDirect3DPixelShader9*ps_screen_variant=nullptr,*screen_eligible_variant=nullptr;std::uint64_t stream0=0;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr,*vs_prepass=nullptr;
@@ -396,6 +408,10 @@ public:
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
  bool emission_source_gain_requested_=false;float emission_source_gain_=1;
+ bool hull_emission_gain_requested_=false;float hull_emission_gain_=1;
+ struct{std::uint32_t admitted=0,refused_blend=0,refused_variant=0,refused_routed=0,refused_unknown=0,refused_state=0,bind_failures=0,programs=0;}hull_gain_counts_;
+ std::uint32_t hull_gain_logged_[3]{};std::uint32_t hull_gain_program_logged_=0;unsigned hull_gain_prepares_=0;
+ void prepare_hull_gain(const MotionDrawCall&,MotionRoute&)noexcept{++hull_gain_prepares_;}
  bool screen_additive_requested_=false;float screen_additive_gain_=1;
  bool screen_additive_enabled_=true;bool source_gain_enabled_=true; // runtime hotkey flags; the fixture exercises the default-on path
  bool emission_source_gain_enabled()const noexcept{return source_gain_enabled_;}
@@ -421,6 +437,9 @@ public:
  // control flow touches - lease release, detach, Reset and re-attach state.
  bool depth_replay_requested_=false,depth_replay_attach_failed_=false;std::unique_ptr<Pass>depth_replay_;unsigned depth_lease_releases_=0;
  void release_depth_leases()noexcept{++depth_lease_releases_;}
+ void release_candidate_extents()noexcept{}std::unique_ptr<Pass>sun_apply_; // lifetime seams of the extracted release path only
+ unsigned sun_original_variants_=0,sun_original_refused_=0;bool candidates_requested_=false;unsigned depth_replayed_=0;std::uint64_t depth_replayed_frame_=~std::uint64_t(0);
+ bool sun_apply_attach_failed_=false,sun_apply_applied_=false,sun_apply_attempted_=false;std::uint64_t sun_apply_frame_=~std::uint64_t(0);
  IUnknown*target_surface_=nullptr,*depth_surface_=nullptr,*sentinel_ps_=nullptr,*sentinel_mrt_ps_=nullptr,*quad_vs_=nullptr,*quad_declaration_=nullptr;
  IDirect3DPixelShader9*sun_sentinel_ps_=nullptr;
  enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;renderer::HdrConfig hdr_config_;
@@ -494,6 +513,7 @@ namespace x3m {namespace renderer=::renderer;namespace fade_route=::fade_route;}
 unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emission_timing_requested=false;
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
 float emission_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN, parsed by the same extracted setting reader
+float hull_emission_gain=1.f;   // X3M_HULL_EMISSION_GAIN (emitter plan phase 3), same reader
 bool screen_emission_additive_requested=false;float screen_emission_additive_gain=1.f; // X3M_SCREEN_EMISSION_ADDITIVE=G
 bool screen_emission_additive_alpha_requested=false;float screen_emission_additive_alpha=1.f; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K, mirrored inertly
 float original_fill=0.f; // X3M_ORIGINAL_FILL=K, parsed by the same extracted setting reader

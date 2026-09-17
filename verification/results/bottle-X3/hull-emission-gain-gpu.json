@@ -27,7 +27,7 @@
       "RGBA16F"
     ]
   },
-  "scope": "--hull-emission-gain (emitter plan phase 3): 10 of the twelve covered hull programs, one pair each, emitter and lit faces at gains [2.0, 4.0]. The baseline is the untransformed original pair (mode 0, MRTs off); the gain variant is the same original PS with one DEF and one MUL at its emission term, and gain 1 is required byte-identical at creation. Detached; no live route, no blend-keyed admission and no native Windows proof. Pairs 148/149 are excluded: no fixture mode submits their original DEFAULT linkage.",
+  "scope": "--hull-emission-gain (emitter plan phase 3): 10 of the twelve covered hull programs, one pair each, a diffuse-authored emitter face (lightmap black, as the ONE/ONE emitter materials bind their slots) and a black face at gains [2.0, 4.0]. The baseline is the untransformed original pair (mode 0, MRTs off); the gain variant is the same original PS with one DEF, its final colour instruction redirected to r0 and one MUL of the whole colour output into oC0.xyz, and gain 1 is required byte-identical at creation. Detached; no live route, no blend-keyed admission and no native Windows proof. Pairs 148/149 are excluded: no fixture mode submits their original DEFAULT linkage.",
   "timing_scope": "No benchmark in the bounded hull-emitter correctness slice.",
   "gains": [
     2.0,
@@ -48,15 +48,15 @@
     "vs_4944d81dfe531b37.bin": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
     "vs_494fe349b8bc12ec.bin": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7"
   },
-  "executable_sha256": "772aeb3622cebfbc315fc5be8eff4c09984e3fd46ed9131518f476e30e6a10bb",
+  "executable_sha256": "5ca472b1159c26546693d8909ad331d439f0cbed575cd92989b89a5952c38e1a",
   "code_sha256": {
     "src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
     "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
     "verification/probe/sun_share_material_inc.h": "8b629c7ca49adf072d97ca455770fb5376d18f5d1fbe8542591d80395004bcbe",
     "src/renderer/linear_material.cpp": "72a85db39088ed5a6e292d82e1a7052d09c6dc7e1fa06d5a1876a38b3423c000",
     "src/renderer/linear_material.h": "707778cb75f469f44f680b6bdce8a9024b4706c157ec00d9351b9a0445618f2d",
-    "src/renderer/linear_emission.cpp": "c37d655319c31da775bee710613f3da4bb213cd728a5bf0a10fb11c00d996a9b",
-    "src/renderer/linear_emission.h": "c69f2b31cf82817868bf52370913f735d17183036847169cbe0c030c1a4e5b6a",
+    "src/renderer/linear_emission.cpp": "74685608acd0129cc1ed49a00894de1812ae74287445ea6a144b3c0b28f67a99",
+    "src/renderer/linear_emission.h": "f76c7bca3e2691af2ed30e344e1d9913af61005523d3b38461426f914bac4c36",
     "src/renderer/linear_sun_share_inc.h": "de0b29729de6952a2a681e8985fef5bda35650e7bf6849a23a62d63524bfd1dc",
     "src/renderer/linear_xt_material_inc.h": "f1ee00093072d456bdcdc2843cf4a006760aef154e2c1a5c5db004a0e079c9fa",
     "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
@@ -72,7 +72,7 @@
     "verification/probe/linear_xt_fixture_reference.py": "19e2ada0cd4e7d79086c364fa4b5ccae5c8931aa7fabddc2a4f8cf10740307e9",
     "verification/probe/linear_glass_fixture_reference.py": "6e364915c820a21854dcada9ac563fdd0fe20d34f4aadc3909729d57fc600c1f",
     "verification/analysis/xt_material_reference.py": "f6918184dbd201a26c81f167eab9d8968f740d498a722cf21de6d70ea86cce14",
-    "verification/probe/run_linear_material.py": "13c66b70615ed6b3fd2c7d1bd92c80c6862450b8b8e057048232a453ec21c9cf"
+    "verification/probe/run_linear_material.py": "8a13a79e2f4e24a648fc10a3faceb37412852d159160eb3cdaa77eeedc32d90c"
   },
   "runs": {
     "2.0": {

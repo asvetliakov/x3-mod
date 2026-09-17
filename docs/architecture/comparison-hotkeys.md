@@ -28,7 +28,9 @@ notice, one `ambient_occlusion_toggle` log line per press, `docs/architecture/am
 gain and native, without recreating anything: **F5** the additive bullets
 (`--screen-emission-additive G`, the nine SM1 screen pairs) and **F6** the
 emission source gain (`--emission-source-gain G`, all twenty engine/effects
-pairs; the 2026-09-16 F4 effect key went with the undone family split,
+pairs and, with `--hull-emitters`, the twelve hull programs' ONE/ONE draws of
+`emitter-plan.md` phase 3: one flag, `hull=1` on the toggle line; the
+2026-09-16 F4 effect key went with the undone family split,
 `linear-emission-cost.md` "Screen substitution"; F7 is the telemetry phase
 marker and F8 the capture key). Each key only decides whether the per-draw
 path selects the variant that was already built at CreatePixelShader time

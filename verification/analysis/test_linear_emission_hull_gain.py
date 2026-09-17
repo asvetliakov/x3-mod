@@ -5,10 +5,13 @@ twenty effects pairs cannot reach (position lights, deco flares, warning signs,
 warp tunnels; docs/reverse-engineering/effect-shader-users.md, "Additive
 emitters drawn by material programs"). Transformer: gain 1 is byte-identical to
 the original; gain G adds exactly one `def c223 = (G, 0, 0, 0)` at the first
-declaration and one `mul r0.xyz, r0, c223.x` immediately before the final
-colour instruction, whose added operand is that r0 - the unlit emission sample.
-Every other original word, the lit term and the native alpha MUL are retained
-in order, so the lit hull shading is untouched and a pixel without emission is
+declaration, redirects the final colour instruction (`add oC0.xyz, r1, r0` or
+the XT `mad oC0.xyz, r1, r2.z, r0`) to write r0.xyz with its opcode, _pp, mask
+and operands kept, and adds one `mul oC0.xyz, r0, c223.x` in its place: the
+whole colour output of the ONE/ONE draw is gained, because the emitter art of
+these materials is diffuse-authored with the lightmap slot (the r0 sample)
+black (archive check, 2026-09-17). Every other original word and the native
+alpha MUL are retained in order, so the alpha lane and a black pixel are
 bit-identical. Blend law: only ADD ONE/ONE admits; screen is never substituted
 in this population. Launcher: --hull-emitters applies the existing
 --emission-source-gain G to this population and requires it and --hdr.
@@ -127,37 +130,41 @@ class HullGainTransformerTests(unittest.TestCase):
             self.assertEqual((self.directory / f'ps_{key}-hull-0.bin').read_bytes(),
                              (self.originals / f'ps_{key}.bin').read_bytes(), key)
 
-    def test_gain_adds_one_def_and_one_mul_at_the_emission_term(self):
+    def test_gain_adds_one_def_and_one_whole_output_mul(self):
         for key in PIXELS:
             original, original_items, _ = shader.instructions((self.originals / f'ps_{key}.bin').read_bytes())
             self.assertEqual(original[0], 0xffff0300, key)
+            native_colour, native_alpha = original_items[-2], original_items[-1]
+            self.assertEqual(native_colour['opcode'], MAD if key in MODULATED else ADD, key)
+            self.assertEqual((shader.register_of(native_colour['words'][0]), shader.mask_of(native_colour['words'][0])), (COLOUR_OUTPUT, 'xyz'))
             for g, gain in enumerate(GAINS[1:], 1):
                 words, items, _ = shader.instructions((self.directory / f'ps_{key}-hull-{g}.bin').read_bytes())
                 self.assertEqual(len(words), len(original) + 10, (key, gain))
                 self.assertEqual(words[0], original[0], 'shader model retained')
-                added = [item for item in items if span(words, item) not in {span(original, o) for o in original_items}]
-                self.assertEqual([item['opcode'] for item in added], [DEF, MUL], (key, gain))
-                definition, multiply = added
+                originals = {span(original, o) for o in original_items}
+                added = [item for item in items if span(words, item) not in originals]
+                self.assertEqual([item['opcode'] for item in added], [DEF, native_colour['opcode'], MUL], (key, gain))
+                definition, colour, multiply = added
                 self.assertEqual(shader.register_of(definition['words'][0]), (2, GAIN_CONSTANT))
                 self.assertEqual(struct.unpack('<4f', struct.pack('<4I', *definition['words'][1:])), (gain, 0., 0., 0.))
                 # The DEF precedes every declaration of the original.
                 self.assertLess(definition['dword'], min(item['dword'] for item in items if item is not definition))
-                # The MUL is the instruction before the final colour instruction,
-                # whose emission operand it scales; the native alpha MUL is last.
-                colour, alpha = items[-2], items[-1]
-                self.assertIs(items[-3], multiply)
-                self.assertEqual(colour['opcode'], MAD if key in MODULATED else ADD, key)
-                self.assertEqual((shader.register_of(colour['words'][0]), shader.mask_of(colour['words'][0])), (COLOUR_OUTPUT, 'xyz'))
+                # The redirected colour instruction is third from the end, the
+                # whole-output MUL second, the native alpha MUL (verbatim) last.
+                self.assertIs(items[-3], colour); self.assertIs(items[-2], multiply)
+                self.assertEqual(span(words, items[-1]), span(original, native_alpha), 'the native alpha MUL is verbatim')
+                self.assertEqual(colour['token'], native_colour['token'], 'opcode, length and modifiers of the colour instruction kept')
+                self.assertEqual((shader.register_of(colour['words'][0]), shader.mask_of(colour['words'][0])), ((0, 0), 'xyz'), 'redirected to r0.xyz')
+                self.assertEqual(colour['words'][0] & 0x00f00000, native_colour['words'][0] & 0x00f00000, 'destination _pp kept')
+                self.assertEqual(colour['words'][1:], native_colour['words'][1:], 'operands verbatim')
                 self.assertEqual(shader.register_of(colour['words'][-1]), (0, 0), 'the added operand is r0')
-                self.assertEqual((alpha['opcode'], shader.register_of(alpha['words'][0]), shader.mask_of(alpha['words'][0])),
-                                 (MUL, COLOUR_OUTPUT, 'w'))
                 destination, source, constant = multiply['words']
-                self.assertEqual((shader.register_of(destination), shader.mask_of(destination)), ((0, 0), 'xyz'))
+                self.assertEqual(destination, native_colour['words'][0], 'the MUL writes oC0.xyz with the original destination token')
                 self.assertEqual((shader.register_of(source), shader.swizzle_of(source)), ((0, 0), 'xyzw'))
                 self.assertEqual((shader.register_of(constant), shader.swizzle_of(constant)), ((2, GAIN_CONSTANT), 'xxxx'))
-                # Every original instruction, in order, including the final two.
-                retained = [span(words, item) for item in items if item is not definition and item is not multiply]
-                self.assertEqual(retained, [span(original, o) for o in original_items], (key, gain))
+                # Every original instruction before the colour site, in order.
+                retained = [span(words, item) for item in items[:-3] if item is not definition]
+                self.assertEqual(retained, [span(original, o) for o in original_items[:-2]], (key, gain))
 
     def test_slot_counts_and_the_untouched_gain_constant(self):
         for key in PIXELS:
@@ -192,14 +199,18 @@ class HullGainTransformerTests(unittest.TestCase):
                                                shader.register_of(item['words'][0]) == register]
             for g in (1, 2, 3):
                 words, items, _ = shader.instructions((self.directory / f'ps_{key}-hull-{g}.bin').read_bytes())
-                # oC0 writers are the original's, r1 (the lit term) is never rewritten,
-                # and the only new r0 writer is the colour-lane MUL.
-                self.assertEqual([span(words, i) for i in writers(items, COLOUR_OUTPUT)],
-                                 [span(original, i) for i in writers(original_items, COLOUR_OUTPUT)], key)
+                # oC0 has the same two writers (colour then alpha); the alpha
+                # writer is the original's; r1 (the lit term) is never
+                # rewritten; the only new r0 writer is the redirected colour
+                # instruction, whose colour lanes the MUL scales.
+                colour_writers, original_colour_writers = writers(items, COLOUR_OUTPUT), writers(original_items, COLOUR_OUTPUT)
+                self.assertEqual(len(colour_writers), len(original_colour_writers), key)
+                self.assertEqual(span(words, colour_writers[-1]), span(original, original_colour_writers[-1]), key)
                 self.assertEqual([span(words, i) for i in writers(items, (0, 1))],
                                  [span(original, i) for i in writers(original_items, (0, 1))], key)
                 self.assertEqual(len(writers(items, (0, 0))), len(writers(original_items, (0, 0))) + 1, key)
-                self.assertNotIn('w', shader.mask_of(words[items[-3]['dword'] + 1]), 'the gain MUL never writes alpha')
+                for item in items[-3:-1]:
+                    self.assertNotIn('w', shader.mask_of(item['words'][0]), 'neither the redirect nor the gain MUL writes alpha')
 
 
 class LauncherGateTests(unittest.TestCase):

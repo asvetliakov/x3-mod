@@ -1275,10 +1275,12 @@ HULL_GAINS = (2.0, 4.0)
 
 
 def hull_gain_cases():
-    """Per covered pair: an emitter face whose only non-zero input is the
-    emission (lightmap) sample, so the original writes the emission term alone,
-    and a lit face with a black emission sample, which the gain must leave bit
-    for bit. Inputs otherwise as the original-fill slice."""
+    """Per covered pair: an emitter face authored the way the ONE/ONE emitter
+    materials are (the art in the diffuse slot, lit by one directional light,
+    the lightmap slot black), whose whole colour output the gain must scale by
+    G, and a black face (black diffuse, black lightmap, no specular mask) whose
+    zero output and native alpha the gain must leave bit for bit. Inputs
+    otherwise as the original-fill slice."""
     full = fixture_cases()
     result = []
     for pair in HULL_GAIN_PAIRS:
@@ -1296,15 +1298,15 @@ def hull_gain_cases():
             c = copy.deepcopy(seed)
             c.update(changes, id=len(result), label='hull_gain_' + label, depth=len(result) & 1)
             result.append(c)
-        add('emitter', lightmap=[.5, .25, .75, .25])
-        add('lit', diffuse=[.5, .25, .75, .75], material=[1., 1., 1.],
+        add('emitter', diffuse=[.5, .25, .75, .75], material=[1., 1., 1.],
             dir0=[.375, .25, .5], normal=[0., 0., 1.], glow=0.)
+        add('black', material=[1., 1., 1.], dir0=[.375, .25, .5], normal=[0., 0., 1.], glow=0.)
     return result
 
 
 def validate_hull_gain_report(text, cases, gain):
-    """The emitter face scales by G within one FP16 code; the face without
-    emission is bit-identical; alpha is exact in both."""
+    """The emitter face (diffuse-authored, lightmap black) scales by G within
+    one FP16 code; the black face is bit-identical; alpha is exact in both."""
     lines = text.splitlines()
     assert lines and lines[-1] == f'RESULT PASS cases={len(cases)}'
     assert not any('FAIL' in line for line in lines)
@@ -1328,8 +1330,8 @@ def validate_hull_gain_report(text, cases, gain):
             assert positive[c['id']] >= 3 * 256, (c['id'], 'the emitter face writes a positive emission everywhere')
         else:
             controls += 1
-            assert identical[c['id']] == 256, (c['id'], 'a face without emission is bit-identical', identical[c['id']])
-            assert positive[c['id']] > 0, (c['id'], 'the control face is lit')
+            assert identical[c['id']] == 256, (c['id'], 'the black face is bit-identical', identical[c['id']])
+            assert positive[c['id']] == 0, (c['id'], 'the control face writes no colour (the whole output is gained)')
         for x in (4, 8, 12):
             for y in (4, 8, 12):
                 base, gained = parsed[(c['id'], x, y)]
@@ -1363,10 +1365,12 @@ def run_hull_gain(args):
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F']),
                   scope=('--hull-emission-gain (emitter plan phase 3): %d of the twelve covered hull programs, one pair each, '
-                         'emitter and lit faces at gains %s. The baseline is the untransformed original pair (mode 0, MRTs off); '
-                         'the gain variant is the same original PS with one DEF and one MUL at its emission term, and gain 1 is '
-                         'required byte-identical at creation. Detached; no live route, no blend-keyed admission and no native '
-                         'Windows proof. Pairs 148/149 are excluded: no fixture mode submits their original DEFAULT linkage.')
+                         'a diffuse-authored emitter face (lightmap black, as the ONE/ONE emitter materials bind their slots) and a '
+                         'black face at gains %s. The baseline is the untransformed original pair (mode 0, MRTs off); the gain '
+                         'variant is the same original PS with one DEF, its final colour instruction redirected to r0 and one MUL '
+                         'of the whole colour output into oC0.xyz, and gain 1 is required byte-identical at creation. Detached; no '
+                         'live route, no blend-keyed admission and no native Windows proof. Pairs 148/149 are excluded: no fixture '
+                         'mode submits their original DEFAULT linkage.')
                         % (len(HULL_GAIN_PAIRS), list(HULL_GAINS)),
                   timing_scope='No benchmark in the bounded hull-emitter correctness slice.',
                   gains=list(HULL_GAINS), original_sha256=inputs, executable_sha256=sha(args.exe),
@@ -1560,7 +1564,7 @@ def parse_arguments(argv=None):
     selection.add_argument('--sun-share', action='store_true', help='108 generated sun-share PS, normal and zero-sun cases; positive pixel evidence and exact color/alpha/motion/depth twins')
     selection.add_argument('--fill', action='store_true', help='Run the bounded K=0.06 sun-averted fill oracle slice')
     selection.add_argument('--original-fill', action='store_true', help='Run the original-shading fill (option C) slice at K 0.03 and 0.05: calibration/black/0.10/0.40 faces per fill pair, K=0 bit-exact')
-    selection.add_argument('--hull-emission-gain', action='store_true', help='Run the hull-program emitter gain slice (emitter plan phase 3): one pair per covered hull program, an emitter and a lit face at gains 2 and 4; the emitter face scales by the gain within one FP16 code and the face without emission is bit-identical')
+    selection.add_argument('--hull-emission-gain', action='store_true', help='Run the hull-program emitter gain slice (emitter plan phase 3): one pair per covered hull program, a diffuse-authored emitter face (lightmap black) and a black face at gains 2 and 4; the emitter face scales by the gain within one FP16 code (the whole colour output is gained) and the black face is bit-identical')
     selection.add_argument('--original-sun-share', action='store_true', help='Run the original-shading share producer slice: 108 PS x lit/zero-sun/sun-only faces at K 0 and 0.05; colour twins and oC2.g against a zero-sun draw')
     return parser.parse_args(argv)
 

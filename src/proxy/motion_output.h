@@ -89,6 +89,7 @@ struct MotionRoute {
     bool linear_material = false; // Combined color+motion pair actually bound.
     bool source_gain = false;     // Source-gain PS bound natively for this draw; restored after it.
     bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen substitution); restored after it.
+    bool hull_gain = false;       // Hull-emitter gain PS bound natively for this ONE/ONE draw (emitter plan phase 3); restored after it.
     bool original_fill = false;   // Original-fill PS selected in the routed pair (undone with the route).
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
@@ -597,6 +598,10 @@ public:
     // calls. Gain 1 is off (no variant is created). Configure before attach.
     void configure_emission_source_gain(float gain) noexcept; // one gain for all twenty pairs
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
+    // Emitter plan phase 3: the same gain over the twelve hull programs' ADD
+    // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. Shares the F6 toggle.
+    void configure_hull_emission_gain(float gain) noexcept;
+    bool hull_emission_gain_requested() const noexcept { return hull_emission_gain_requested_; }
     // Runtime A/B of the source gain (Ctrl+Shift+F6, comparison-hotkeys.md):
     // the prebuilt variants stay; the per-draw path stops selecting them (and
     // stops the screen substitution), so the draw goes out exactly as it
@@ -669,7 +674,7 @@ public:
     bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_; }
     // The blend-state shadow (SRCBLEND/DESTBLEND/BLENDOP/SEPARATEALPHA) is fed
     // for the composition producers and for the source-gain admission.
-    bool blend_shadow_requested() const noexcept { return composition_requested() || emission_source_gain_requested_ || screen_additive_requested_; }
+    bool blend_shadow_requested() const noexcept { return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ || screen_additive_requested_; }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
     void configure_mip_bias(float bias) noexcept;
@@ -881,6 +886,12 @@ private:
                          IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
                          IDirect3DPixelShader9* emission_variant = nullptr;
                          IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant at the source gain (PS only; the VS stays original)
+                         // Hull-emitter gain (emitter plan phase 3): the whole-output
+                         // variant of one of the twelve hull programs, keyed on the PS
+                         // alone; hull_program marks a covered original whether or not
+                         // its variant was created (a covered draw without one is counted).
+                         IDirect3DPixelShader9* hull_gain_variant = nullptr;
+                         bool hull_program = false;
                          IDirect3DPixelShader9* original_fill_variant = nullptr; // motion variant plus the option C fill block (PS only)
                          IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
                          IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
@@ -911,6 +922,11 @@ private:
         // the twenty reviewed pairs; null otherwise (one pointer test per draw).
         IDirect3DPixelShader9* source_gain_eligible_variant = nullptr;
         unsigned source_gain_pair = renderer::linear_emission_pair_count; // registry index of the bound pair (first-admission log)
+        // Hull-emitter gain: the bound PS is a covered hull program (one bool
+        // test per draw; false without the option) and its variant (null when
+        // creation failed: counted refused_variant at the draw).
+        bool ps_hull_program = false;
+        IDirect3DPixelShader9* ps_hull_gain_variant = nullptr;
         // Original fill: the bound PS's fill variant and whether the bound
         // VS/PS is a reviewed linear-material pair with both motion variants
         // (refreshed with the pair identities, never at a draw).
@@ -1126,6 +1142,10 @@ private:
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
     void prepare_source_gain(const MotionDrawCall&, MotionRoute&) noexcept;
     void finish_source_gain(MotionRoute&) noexcept;
+    // Hull-emitter gain: ONE/ONE admission from the draw-time blend shadow,
+    // the PS bind (rolled back on failure) and the restore after the draw.
+    void prepare_hull_gain(const MotionDrawCall&, MotionRoute&) noexcept;
+    void finish_hull_gain(MotionRoute&) noexcept;
     // Additive option: the exact-state admission, the DESTBLEND/PS apply
     // (rolled back on a failed second step) and the restore after the draw.
     void prepare_screen_additive(const MotionDrawCall&, MotionRoute&) noexcept;
@@ -1314,6 +1334,18 @@ private:
     // Per-device sample caps, one per logged reason: blend, screen_substitute_failed, bind_failed, state.
     std::uint32_t source_gain_logged_[4]{};
     std::uint32_t source_gain_pair_logged_ = 0; // bit per registry pair: first admission logged this device epoch (at most 20 lines)
+    // Hull-emitter gain (emitter plan phase 3): X3M_HULL_EMISSION_GAIN=G
+    // (finite 1..8, 1 = off, needs the effects gain), one whole-output variant
+    // per covered hull program at creation, ONE/ONE admission per draw; the
+    // F6 toggle (source_gain_enabled_) covers it. Per-frame accounting:
+    // admitted draws, refusals by blend state, covered draws without a
+    // variant, routed draws (the motion route took the draw), unknown state,
+    // device state, bind failures; programs = bit per admitted program.
+    bool hull_emission_gain_requested_ = false;
+    float hull_emission_gain_ = 1.f;
+    struct { std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0, programs = 0; } hull_gain_counts_;
+    std::uint32_t hull_gain_logged_[3]{}; // per-device sample caps: blend, bind_failed, state
+    std::uint32_t hull_gain_program_logged_ = 0; // bit per hull program: first admission logged this device epoch (at most 12 lines)
     bool original_fill_requested_ = false; // X3M_ORIGINAL_FILL=K (finite 0..0.5), exclusive with linear materials
     float original_fill_ = 0.f;
     std::uint32_t original_fill_draws_ = 0; // routed draws that bound the fill variant this frame (frame line only)

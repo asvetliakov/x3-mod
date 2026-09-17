@@ -54,8 +54,11 @@ int main(int argc,char** argv) {
                 if (g==0) { require(result==original,"gain 1 byte identity"); ++identical; }
                 else {
                     require(result.size()==original.size()+10,"one DEF and one MUL added");
-                    // The DEF sits at the first declaration, the MUL immediately
-                    // before the final colour instruction; everything else is verbatim.
+                    // The DEF sits at the first declaration; the final colour
+                    // instruction is redirected to r0.xyz (opcode, _pp, mask and
+                    // operands kept) and the MUL into oC0.xyz follows it with the
+                    // original destination token; everything else is verbatim.
+                    const std::size_t site=profile.modulated ? 5u : 4u, colour=profile.definition+6+(profile.emission-profile.definition);
                     require(std::equal(original.begin(),original.begin()+profile.definition,result.begin()),"header verbatim");
                     require(result[profile.definition]==((5u<<24)|def) &&
                             result[profile.definition+1]==(dst(constant,hull_gain_constant,15)) &&
@@ -63,12 +66,17 @@ int main(int argc,char** argv) {
                             result[profile.definition+4]==0 && result[profile.definition+5]==0,"gain DEF");
                     require(std::equal(original.begin()+profile.definition,original.begin()+profile.emission,
                                        result.begin()+profile.definition+6),"body verbatim");
-                    require(result[profile.emission+6]==((3u<<24)|mul) &&
-                            result[profile.emission+7]==dst(temporary,hull_emission_temporary,7) &&
-                            result[profile.emission+8]==src(temporary,hull_emission_temporary) &&
-                            result[profile.emission+9]==lane(constant,hull_gain_constant,0),"colour-lane MUL at the emission term");
-                    require(std::equal(original.begin()+profile.emission,original.end(),
-                                       result.begin()+profile.emission+10),"tail verbatim");
+                    require(result[colour]==original[profile.emission] && result[colour]==((profile.modulated?4u:3u)<<24|(profile.modulated?mad:add)),"colour opcode kept");
+                    require(original[profile.emission+1]==(dst(output,0,7)|pp) &&
+                            result[colour+1]==(dst(temporary,hull_emission_temporary,7)|pp),"colour instruction redirected to r0.xyz with _pp");
+                    require(std::equal(original.begin()+profile.emission+2,original.begin()+profile.emission+site,
+                                       result.begin()+colour+2),"colour operands verbatim");
+                    require(result[colour+site]==((3u<<24)|mul) &&
+                            result[colour+site+1]==(dst(output,0,7)|pp) &&
+                            result[colour+site+2]==src(temporary,hull_emission_temporary) &&
+                            result[colour+site+3]==lane(constant,hull_gain_constant,0),"whole-output MUL into oC0.xyz");
+                    require(std::equal(original.begin()+profile.emission+site,original.end(),
+                                       result.begin()+colour+site+4),"alpha MUL and end verbatim");
                 }
                 auto alias=original;
                 require(linear_emission_hull_source_gain_variant(alias.data(),alias.size(),gains[g],alias)==LinearEmissionResult::Applied && alias==result,"successful alias");
