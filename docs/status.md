@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-17 (run37 candidate installed; run 37 queued: FEX/wined3d experiments, station shadows, avatar video). This is the short current handoff; the current
+Updated 2026-09-17 (run37 candidate installed; run 37 complete; run 38 candidate in preparation). This is the short current handoff; the current
 session handoff is [handoff-2026-09-17.md](handoff-2026-09-17.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -220,6 +220,31 @@ Run 34 is complete (run98–102): the stall is solved by the media-cue cache
 DXVK D3D9 renders black on this Preview, so the bottle's graphics backend must
 be switched back before the next run. No run is queued; next steps are in
 [handoff-2026-09-17.md](handoff-2026-09-17.md).
+
+## Session 2026-09-17 (latest): runs 36–37 complete, first shadows, experiments closed
+
+- **Run 36:** builtin D3DX confirmed loaded and slower (+32 % BeginPass;
+  closed). Session B (run106) showed no shadow; the apply path was proven
+  correct offline (receiver-map residual within one unit, HDR darkening
+  matches the twin): the view was backlit and casters were chosen by object
+  origin, so only the own ship was in the map.
+- **Run 37:** A1 FEX TSO off no measurable change (hardware TSO); A2 wined3d
+  CSMT off doubles the draw call (+46 % frame): both closed. **B (run109):
+  first visible shadows in game** (hull from station parts, ship on nearby
+  parts) with geometry-chosen casters; station-on-station shadows need a
+  larger box than 250 units: extent/depth/cap options and a scale-independent
+  bias are in flight for run 38 at 4096 texels. C (run110): the H.264/AVI
+  avatar file froze at the same post-create stage as MPEG-1 with zero blits
+  witnessed: codec-independent Wine `amstream` block, video **parked**
+  ([ledger](verification/media-cues.md)).
+- **Merged:** residual-attribution stamp group (`--residual-phases`, arena
+  24,576 B; review fixes pending), effect state classification (37 % constant,
+  4.6 % expression-free passes), pass-replay assessment ratified (attribution
+  fixture first, no replay yet), `proxy_environment` identity line, AO jitter
+  term, video blit witness, `tools/media_transcode.py`, shader-fingerprint
+  fallback design ratified (not scheduled), emitter phase 3 transform (under
+  review, proxy wiring next).
+- Concurrency raised by the user to six to eight agents.
 
 ## Session 2026-09-17 (late): run 35, shadow producer and apply pass, diagnostics
 
