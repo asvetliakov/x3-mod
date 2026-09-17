@@ -2987,11 +2987,11 @@ extern "C" __declspec(dllexport) int x3m_sun_shadow_fixture_toggle(IDirect3DDevi
 // the fixture executable's synthetic own-ship root node stands in for the
 // registry walk of the verified executable; the scope nodes of its draws are
 // compared against it. Pressed at a frame boundary, before the frame's draws.
-extern "C" __declspec(dllexport) int x3m_shadow_own_ship_fixture_install(IDirect3DDevice9* device,std::uintptr_t node,std::uint32_t handle) {
+extern "C" __declspec(dllexport) int x3m_shadow_own_ship_fixture_install(IDirect3DDevice9* device,std::uintptr_t node,std::uint32_t handle,std::uintptr_t part,std::uint32_t part_handle) {
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end())return -1;
-    it->second->motion_output.fixture_own_ship(node,handle);
+    it->second->motion_output.fixture_own_ship(node,handle,part,part_handle);
     return 0;
 }
 // Caster retention seam (shadow-caster-retention.md): the store's levels and

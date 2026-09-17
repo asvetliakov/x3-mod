@@ -25,6 +25,7 @@
 #include <memory>
 #include <vector>
 #include "chase_camera.h"
+#include "own_ship_cache.h"
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/depth_prepass_profiles.h"
@@ -1238,19 +1239,20 @@ private:
     std::uint64_t own_ship_frame_=~std::uint64_t(0);
     std::uintptr_t own_ship_node_=0; std::uint32_t own_ship_handle_=0, own_ship_status_=0;
     float own_radius_frame_=0.f; unsigned own_draws_frame_=0;
-    struct OwnNodeEntry { std::uintptr_t node=0, root=0; std::uint32_t stamp=0; bool own=false; };
-    static constexpr unsigned own_node_cache_size=64, own_node_cache_frames=256;
-    OwnNodeEntry own_nodes_[own_node_cache_size]{};
+    own_ship::Cache own_cache_{}; // (node, handle) -> descends from the root; flushed on root / epoch change (own_ship_cache.h)
     bool cascade_adaptive_on() const noexcept { return cascade_adaptive_k_>0.f&&depth_cascades_on(); }
     void resolve_own_ship() noexcept;
-    bool own_ship_draw(std::uintptr_t node) noexcept;
+    bool own_ship_draw(std::uintptr_t node, std::uint32_t handle, std::uint64_t load_epoch, std::uint64_t registry_epoch) noexcept;
     void note_own_ship_draw(const shadow_replay::ExtentEntry& extent) noexcept;
     void update_adaptive_cascades() noexcept;
     void log_cascade_set(const char* reason) noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    bool fixture_own_ship_set_=false; std::uintptr_t fixture_own_ship_node_=0; std::uint32_t fixture_own_ship_handle_=0;
+    bool fixture_own_ship_set_=false; std::uintptr_t fixture_own_ship_node_=0, fixture_own_part_node_=0; std::uint32_t fixture_own_ship_handle_=0, fixture_own_part_handle_=0;
 public:
-    void fixture_own_ship(std::uintptr_t node, std::uint32_t handle) noexcept { fixture_own_ship_set_=true; fixture_own_ship_node_=node; fixture_own_ship_handle_=handle; own_ship_frame_=~std::uint64_t(0); }
+    // The seam's player ship (root node and handle) and one synthetic part (node, handle) that the walk treats as descending from it.
+    void fixture_own_ship(std::uintptr_t node, std::uint32_t handle, std::uintptr_t part, std::uint32_t part_handle) noexcept {
+        fixture_own_ship_set_=true; fixture_own_ship_node_=node; fixture_own_ship_handle_=handle; fixture_own_part_node_=part; fixture_own_part_handle_=part_handle; own_ship_frame_=~std::uint64_t(0);
+    }
 private:
 #endif
     void note_depth_geometry(const MotionRoute& route, unsigned index) noexcept;

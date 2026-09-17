@@ -256,6 +256,13 @@ class CascadeFactor(unittest.TestCase):
         self.assertEqual([c['valid'] for c in params['cascades']], [True, False])
         self.assertEqual([(c['map'], c['map_frame'], c['extent'], c['depth_behind']) for c in extra['cascades']], [(4096, 77, 250.0, 512.0), (4096, -1, 1500.0, 3000.0)])
         self.assertAlmostEqual(params['margin'], .95, places=6); self.assertAlmostEqual(params['band'], .10, places=6)
+        self.assertEqual([c['source'] for c in extra['cascades']], [0, 1])  # no source<i>: the slot itself
+        # The ratio guard's compaction (shadow-cascade-extents.md, section 5): slot 1 samples cascade 2's map.
+        compact = line.replace(' rows1=', ' source1=2 rows1=')
+        _, extra_compact = apply.parse_apply_params(apply.line_fields(compact))
+        self.assertEqual([c['source'] for c in extra_compact['cascades']], [0, 2])
+        with self.assertRaises(ValueError):  # slots sample cascades in ascending order
+            apply.parse_apply_params(apply.line_fields(line.replace(' rows0=', ' source0=1 rows0=').replace(' rows1=', ' source1=1 rows1=')))
         with self.assertRaises(ValueError):  # a printed bias that is not the law's at that cascade's texel and range
             apply.parse_apply_params(apply.line_fields(line.replace('bias1=%.9g' % resolved[1]['bias_constant'], 'bias1=0.001')))
         with self.assertRaises(ValueError):

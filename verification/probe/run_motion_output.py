@@ -346,8 +346,14 @@ CASES += [case(f'seam-ownership-shadow-replay-cascades-poll-{m}', 'shadowreplay'
 SHADOW_ADAPTIVE_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SHADOW_CASCADES='250,1500,7500,25000',
                            X3M_FIXTURE_SHADOW_CASCADES='8,48,240,800', X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_CAPS='8', X3M_SHADOW_CASCADE_BUDGET='640',
                            X3M_SHADOW_CASCADE_ADAPTIVE_C0='1.5')
-SHADOW_ADAPTIVE_K, SHADOW_ADAPTIVE_SWAP_FRAME, SHADOW_ADAPTIVE_RATIO = 1.5, 5, 3.0
+# `reuse`: H1 is the ship and H2's node is declared its part until frame 4, from which the same
+# address carries another handle (a freed part reused by a non-own node): the (node, handle)
+# cache misses, H2 no longer counts, the frame radius drops to H1's while the committed E0
+# holds under the hysteresis (no inflation, no re-anchor).
+SHADOW_ADAPTIVE_K, SHADOW_ADAPTIVE_SWAP_FRAME, SHADOW_ADAPTIVE_REUSE_FRAME, SHADOW_ADAPTIVE_RATIO = 1.5, 5, 4, 3.0
 CASES += [case(f'seam-ownership-shadow-replay-adaptive-{m}', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_ADAPTIVE_ENV, X3M_FIXTURE_OWN_SHIP=m)) for m in ('small', 'big', 'swap')]
+CASES += [case('seam-ownership-shadow-replay-adaptive-reuse', 'shadowreplay', 'ownership', camera=True,
+               hdr_env=dict(SHADOW_ADAPTIVE_ENV, X3M_FIXTURE_OWN_SHIP='reuse', X3M_CAPTURE_START='5', X3M_CAPTURE_FRAMES='4'))]  # capture lines on frames 5-7 (the Reset before frame 4 clears a window opened on it)
 CASES += [case('seam-ownership-shadow-replay-wide', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_WIDE_ENV),
           case('seam-ownership-shadow-replay-far-refused', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_FAR_ENV)]
 # Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md,
@@ -1417,13 +1423,18 @@ def validate_shadow_replay_adaptive(name, text, trace, directory, env, taa):
     camera_of = lambda cam: {'m00': float(cam['m00']), 'm11': float(cam['m11']), 'r': [float(v) for v in cam['r'].split(',')], 't': [float(v) for v in cam['t'].split(',')]}
     radius = {h: shadow_hull_radius(h, camera_of(cameras[0])) for h in ('H1', 'H2')}
     assert 1.5 < radius['H1'] < 2.0 and 30.0 < radius['H2'] < 40.0, (name, radius)  # about 1.69 and 33.7 under the script's camera
-    own = {int(fields(l)['frame']): fields(l)['hull'] for l in text.splitlines() if l.startswith('SHADOW_OWN_SHIP ')}
+    own_lines = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SHADOW_OWN_SHIP ')}
+    own = {f: l['hull'] for f, l in own_lines.items()}
     assert sorted(own) == list(range(SHADOW_REPLAY_FRAMES)) and all(own[f] == ('H2' if mode == 'big' or (mode == 'swap' and f >= SHADOW_ADAPTIVE_SWAP_FRAME) else 'H1') for f in own), (name, own)
+    assert all((own_lines[f]['part'] == '1') == (mode == 'reuse' and f < SHADOW_ADAPTIVE_REUSE_FRAME) for f in own), (name, own_lines)
     # The law: E0 of a frame is what the boundary before it committed; the first
     # frame of a ship measures nothing (its extents are read at that scene end)
     # and commits nothing; its first measured frame commits the ship at once.
     def e0_of(hull):
         return max(extents[0], k * radius[hull])
+    # The ship's measured radius per frame: its hull, or in `reuse` both hulls while H2 is its part (frames < 3), H1 alone after.
+    def measured(f):
+        return radius['H2'] if mode == 'reuse' and f < SHADOW_ADAPTIVE_REUSE_FRAME else radius[own[f]]
     def mask_of(e0):
         mask, previous = 1, e0
         for c in range(1, count):
@@ -1434,14 +1445,28 @@ def validate_shadow_replay_adaptive(name, text, trace, directory, env, taa):
     hull_seen = None
     for f in range(SHADOW_REPLAY_FRAMES):
         e0_by_frame[f] = committed
-        if own[f] != hull_seen and f >= 1:  # frame 0: no extent known yet, a candidate only
+        if own[f] != hull_seen and f >= 1:  # frame 0: no extent known yet, held
             hull_seen = own[f]
-            committed = e0_of(hull_seen); expected_events.append((f, 'node', radius[hull_seen], committed))
+            committed = max(extents[0], k * measured(f)); expected_events.append((f, 'node', measured(f), committed))
     events = [fields(l) for l in tl if l.startswith('shadow_cascade_set ')]
     commits = [(int(e['frame']), e['reason'], float(e['own_radius']), float(e['e0'])) for e in events if e['reason'] != 'capture']
     assert len(commits) == len(expected_events) and all(a[:2] == b[:2] and abs(a[2] - b[2]) < 1e-3 and abs(a[3] - b[3]) < 1e-3 for a, b in zip(commits, expected_events)), (name, commits, expected_events)
-    for e in events:  # every line: the mask of its E0, the texel of its E0 at the map size, cascade 0's depth behind 2 E0 (the unchecked law)
-        assert int(e['active_mask']) == mask_of(float(e['e0'])) and abs(float(e['texel0']) - 2 * float(e['e0']) / size) < 1e-6 and abs(float(e['depth_behind0']) - 2 * float(e['e0'])) < 1e-3, (name, e)
+    for e in events:  # every line: the mask of its E0, the apply slots (the active cascades in order), the texel of its E0 at the map size, cascade 0's depth behind 2 E0 (the unchecked law)
+        mask = mask_of(float(e['e0']))
+        assert int(e['active_mask']) == mask and e['apply_slots'] == ','.join(str(c) for c in range(count) if mask >> c & 1), (name, e)
+        assert abs(float(e['texel0']) - 2 * float(e['e0']) / size) < 1e-6 and abs(float(e['depth_behind0']) - 2 * float(e['e0'])) < 1e-3, (name, e)
+        f = int(e['frame'])  # the frame the line closes: its measured radius (0 on frame 0, whose extents are read at that scene end; both hulls are known from frame 1, so the swap measures at once)
+        assert abs(float(e['frame_radius']) - (0.0 if f == 0 else measured(f))) < 1e-3, (name, e)
+        assert int(e['own_walk_deferred']) == 0 and int(e['own_draws']) == (0 if f == 0 else 2 if mode == 'reuse' and f < SHADOW_ADAPTIVE_REUSE_FRAME else 1), (name, e)
+    # Frame 0 measured nothing (its extents are read at that scene end): E0 held once before the first commit. In `reuse` the
+    # capture window covers the frames from the reuse frame on: the measured radius drops to H1's, pends under the hysteresis
+    # (pending_frames counting up, below the 8 that would commit) and the committed E0 and radius stay H2's: no inflation, no re-anchor.
+    captures = {int(e['frame']): e for e in events if e['reason'] == 'capture'}
+    assert int(events[0]['held_frames']) == 1 and int(events[0]['frame']) == 1, (name, events[0])
+    if mode == 'reuse':  # the capture window opens the frame after the Reset frame (a Reset clears an open window)
+        assert sorted(captures) == list(range(SHADOW_ADAPTIVE_REUSE_FRAME + 1, SHADOW_REPLAY_FRAMES)), (name, sorted(captures))
+        for f, e in captures.items():
+            assert abs(float(e['pending_radius']) - radius['H1']) < 1e-3 and int(e['pending_frames']) == f - SHADOW_ADAPTIVE_REUSE_FRAME + 1 and abs(float(e['e0']) - e0_of('H2')) < 1e-3 and abs(float(e['own_radius']) - radius['H2']) < 1e-3, (name, e)
     # Per frame: the counter and replay lines, the maps and their bases.
     depth_rows, refused, targets = depth_replay.parse_text(trace)
     candidate_rows, _ = candidates_analysis.parse_text(trace)
@@ -1523,12 +1548,14 @@ def validate_shadow_replay_adaptive(name, text, trace, directory, env, taa):
             assert comparison['ok'] and comparison['covered_cpu'] >= 1, (name, frame, c, comparison)
             comparisons[f'{frame}/{c}'] = comparison
     # The swap re-anchors cascade 0 alone: on its first frame under the new E0 the far cascades replay as on any frame.
+    if mode == 'reuse':
+        assert [f for f in expectations if expectations[f]['voided_at_boundary']] == [1], (name, 'the reused address never re-anchors')
     if mode == 'swap':
         first = SHADOW_ADAPTIVE_SWAP_FRAME + 1
         assert expectations[first]['e0'] == e0_of('H2') and all(maps[(first, c)]['valid'] == '1' for c in (0, 2, 3)) and maps[(first, 1)]['valid'] == '0', (name, expectations[first])
         assert [f for f in expectations if expectations[f]['voided_at_boundary']] == [SHADOW_ADAPTIVE_SWAP_FRAME], (name, 'one re-anchor: the fighter commit leaves E0 at 8')
     sun = validate_shadow_replay_sun(name, trace, len(order), False, tuple(float(v) for v in suns[0]['direction'].split(',')))
-    case = {'checks': checks + 2 + len(events) + 4 * SHADOW_REPLAY_FRAMES + 3 * SHADOW_REPLAY_FRAMES * count, 'depth': True, 'taa': taa, 'casters': casters, 'cascades': count, 'extents': extents,
+    case = {'checks': checks + 3 + 3 * len(events) + 5 * SHADOW_REPLAY_FRAMES + 3 * SHADOW_REPLAY_FRAMES * count, 'depth': True, 'taa': taa, 'casters': casters, 'cascades': count, 'extents': extents,
             'mode': mode, 'k': k, 'radius': radius, 'events': commits, 'e0_by_frame': e0_by_frame, 'per_frame': expectations, 'refusals': refused, 'targets': targets, 'sun': sun,
             'frames': SHADOW_REPLAY_FRAMES, 'map': {'frames': comparisons, 'max_depth_error': max(v.get('max_depth_error', 0.0) for v in comparisons.values()),
                                                    'covered_texels': sum(v.get('covered_gpu', 0) for v in comparisons.values())}}
@@ -4559,6 +4586,10 @@ def main(argv=None):
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                if 'X3M_FIXTURE_OWN_SHIP' in hdr_env:  # the compact per-case record the ledger cites (no per-texel comparisons)
+                    compact = {k: v for k, v in case.items() if k not in ('map', 'per_frame', 'sun', 'refusals', 'targets')}
+                    compact['map'] = {k: v for k, v in case['map'].items() if k != 'frames'}
+                    (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **compact}, indent=1) + '\n')
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} depth={case["depth"]} casters={case["casters"]} us={case.get("us", {}).get("median")} max_depth_error={case.get("map", {}).get("max_depth_error")}', flush=True)

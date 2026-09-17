@@ -50,6 +50,9 @@ DRIVER = r'''
 #include "proxy/shadow_replay_sun.h"
 #include "proxy/shadow_replay_sun_point.h"
 #include "proxy/shadow_caster_class.h"
+#include "proxy/object_capture.h"
+#include "proxy/own_ship_cache.h"
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -335,12 +338,13 @@ int main(int argc, char** argv) {
             ShadowCascadeAdaptive state{}; ShadowCascadeSet live = set; const char* why = nullptr;
             shadow_cascade_adaptive_reset(state, set);
             CHECK(state.e0 == 250.f && !shadow_cascade_adaptive_update(state, 0, 0.f, 1.5f, set, live, &why) && why == nullptr && live.cascades[0].half_extent == 250.f);
-            // A fighter (radius 50): E0 stays 250. Its first frame has no extents yet (radius 0): a ship without a
-            // measurement is only a candidate; the first measured radius commits it at once and re-anchors nothing.
-            CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 0.f, 1.5f, set, live, &why) && why == nullptr && state.node == 0 && state.pending_node == 0x1000 && state.pending_frames == 1);
+            // A fighter (radius 50): E0 stays 250. Its first frame has no extents yet (radius 0): a boundary without a
+            // measurement holds (held_frames); the first measured radius commits at once and re-anchors nothing.
+            CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 0.f, 1.5f, set, live, &why) && why == nullptr && state.node == 0 && state.held_frames == 2 && state.pending_frames == 0);
             CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 50.f, 1.5f, set, live, &why) && why && !std::strcmp(why, "node") && state.node == 0x1000 && state.radius == 50.f && live.cascades[0].half_extent == 250.f && live.active == 15);
-            // The hull culled for a frame (radius 0 on the same ship) is a candidate too: E0 holds.
-            CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 0.f, 1.5f, set, live, &why) && why == nullptr && state.radius == 50.f && state.pending_frames == 1);
+            // The hull culled for a frame, a cockpit view or a menu (radius 0, with or without a ship): E0 holds, nothing pends.
+            CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 0.f, 1.5f, set, live, &why) && why == nullptr && state.radius == 50.f && state.pending_frames == 0 && state.held_frames == 3);
+            CHECK(!shadow_cascade_adaptive_update(state, 0, 0.f, 1.5f, set, live, &why) && why == nullptr && state.node == 0x1000 && state.held_frames == 4);
             CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 50.f, 1.5f, set, live, &why) && why == nullptr && state.pending_frames == 0);
             // A capital (radius 1,000): E0 = 1,500 at once (a ship change), C1 (1,500 < 4,500) dropped, C2 (7,500 >= 4,500) and C3 kept;
             // cascade 0 keeps the 128-unit forward offset and gets depth behind 3,000; the depth towards the light stays the last cascade's.
@@ -357,10 +361,14 @@ int main(int argc, char** argv) {
             // The clamp: E0 never exceeds the last cascade (every other cascade dropped); the extent maximum bounds it too.
             CHECK(shadow_cascade_adaptive_update(state, 0x3000, 1e6f, 1.5f, set, live, &why) && live.cascades[0].half_extent == 25000.f && live.active == 1);
             CHECK(shadow_cascade_adaptive_extent(set, 1.5f, 0.f) == 250.f && shadow_cascade_adaptive_extent(set, 1.5f, 100.f) == 250.f && shadow_cascade_adaptive_extent(set, 2.f, 200.f) == 400.f);
-            // Losing the ship (0: a menu, no candidate draw) returns to the configured set after stable_frames boundaries, not at once;
-            // a Reset's repeated boundary or one menu frame never moves E0.
-            for (unsigned i = 0; i + 1 < shadow_cascade_adaptive_stable_frames; ++i) CHECK(!shadow_cascade_adaptive_update(state, 0, 0.f, 1.5f, set, live, &why) && why == nullptr && live.cascades[0].half_extent == 25000.f);
-            CHECK(shadow_cascade_adaptive_update(state, 0, 0.f, 1.5f, set, live, &why) && why && !std::strcmp(why, "node") && live.cascades[0].half_extent == 250.f && live.active == 15);
+            // Losing the ship (0: a menu, a loading screen) holds E0 for any number of boundaries; the next measured ship commits.
+            for (unsigned i = 0; i < 1000; ++i) CHECK(!shadow_cascade_adaptive_update(state, 0, 0.f, 1.5f, set, live, &why) && why == nullptr && live.cascades[0].half_extent == 25000.f);
+            CHECK(shadow_cascade_adaptive_update(state, 0x1000, 50.f, 1.5f, set, live, &why) && why && !std::strcmp(why, "node") && live.cascades[0].half_extent == 250.f && live.active == 15);
+            // The apply quad's slots: the active cascades in order.
+            unsigned slots[shadow_cascade_max]{};
+            CHECK(shadow_cascade_apply_slots(live, slots) == 4 && slots[3] == 3);
+            ShadowCascadeSet two{}; CHECK(shadow_cascade_adapt_c0(set, 3000.f, two) && shadow_cascade_apply_slots(two, slots) == 2 && slots[0] == 0 && slots[1] == 3);
+            ShadowCascadeSet three_active{}; CHECK(shadow_cascade_adapt_c0(set, 1500.f, three_active) && shadow_cascade_apply_slots(three_active, slots) == 3 && slots[1] == 2 && slots[2] == 3);
             ShadowCascadeSet guarded{}; CHECK(shadow_cascade_adapt_c0(set, 3000.f, guarded) && guarded.active == 9); // 1,500 and 7,500 < 9,000 dropped; 25,000 >= 9,000 kept
             // The fixture law (unchecked): no forward offset, depth behind exactly 2 E0.
             ShadowCascadeSet unit{}; const float units[2] = {8.f, 400.f};
@@ -378,6 +386,92 @@ int main(int argc, char** argv) {
             const float box_lo[3] = {-20, -30, .5f}, box_hi[3] = {20, 30, .5f}, tilted[16] = {1, 0, 0, .3f, 0, 1, 0, 0, 0, 0, 1, 0, .125f, 0, 0, 1};
             const float r = shadow_cascade_draw_radius(c, tilted, box_lo, box_hi);
             CHECK(r > 35.44f && r < 35.45f); // sqrt(25^2 + 25^2 + 2.5^2)
+        }
+        // ---- the own-ship registry walk and the parent-link ancestry over a synthetic image (object_capture.h)
+        {
+            // Layout (chase-camera-first-flight.md, object_capture::target): slot 0x608504 -> registry {+0 table, +0x10 active handle};
+            // table {+0 bucket array, +4 count (a power of two)}; bucket[(n - 1) & handle] -> link row {next, handle, cockpit};
+            // cockpit +0xc ref object; ref +0x70 root node; node +0x18 parent, +0x28 handle.
+            struct Image {
+                enum : std::uint32_t { base = 0x600000, size = 0x80000 };
+                std::vector<unsigned char> bytes = std::vector<unsigned char>(size, 0);
+                std::uint32_t unreadable_lo = 0, unreadable_hi = 0;
+                void put(std::uint32_t at, std::uint32_t v) { std::memcpy(bytes.data() + (at - base), &v, 4); }
+                bool read(std::uintptr_t at, void* out, std::size_t n) const {
+                    if (at < base || at + n > base + size) return false;
+                    if (unreadable_hi && at < unreadable_hi && at + n > unreadable_lo) return false;
+                    std::memcpy(out, bytes.data() + (at - base), n); return true;
+                }
+            };
+            Image image;
+            auto read = [&](std::uintptr_t at, void* out, std::size_t n) { return image.read(at, out, n); };
+            constexpr std::uint32_t slot = 0x608504, registry = 0x610000, table = 0x611000, buckets = 0x612000, link = 0x613000, cockpit = 0x614000, ref = 0x615000,
+                                    root = 0x616000, part = 0x617000, grandpart = 0x618000, foreign = 0x619000, other_root = 0x61a000, stale_link = 0x61b000;
+            auto build = [&]() {
+                image = Image{};
+                image.put(slot, registry); image.put(registry, table); image.put(registry + 0x10, 5);
+                image.put(table, buckets); image.put(table + 4, 8);
+                image.put(buckets + 4 * 5, stale_link);                                                     // a stale row first (another cockpit's handle), then ours
+                image.put(stale_link, link); image.put(stale_link + 4, 9); image.put(stale_link + 8, 0x61c000);
+                image.put(link, 0); image.put(link + 4, 5); image.put(link + 8, cockpit);
+                image.put(cockpit + 0xc, ref); image.put(ref + 0x70, root); image.put(root + 0x28, 77);
+                image.put(part + 0x18, root); image.put(part + 0x28, 78); image.put(grandpart + 0x18, part); image.put(grandpart + 0x28, 79);
+                image.put(foreign + 0x18, other_root); image.put(other_root + 0x28, 500);
+            };
+            using object_capture::Status;
+            build();
+            auto own = object_capture::own_ship(read, slot);
+            CHECK(own.status == Status::Ready && own.registry == registry && own.handle == 5 && own.cockpit == cockpit && own.object == ref && own.node == root && own.node_handle == 77);
+            CHECK(object_capture::own_ship_descends(read, root, root, 77) && object_capture::own_ship_descends(read, part, root, 77) && object_capture::own_ship_descends(read, grandpart, root, 77));
+            CHECK(!object_capture::own_ship_descends(read, foreign, root, 77) && !object_capture::own_ship_descends(read, root, root, 78) && !object_capture::own_ship_descends(read, 0, root, 77) && !object_capture::own_ship_descends(read, root + 2, root, 77));
+            CHECK(!object_capture::own_ship_descends(read, 0x620000, root, 77)); // a parent link that reads as 0: the chain ends
+            image.unreadable_lo = part + 0x18; image.unreadable_hi = part + 0x1c; CHECK(!object_capture::own_ship_descends(read, grandpart, root, 77)); build();
+            { std::uint32_t chain = 0x630000; for (unsigned i = 0; i < 20; ++i) image.put(chain + 0x100 * i + 0x18, i + 1 < 20 ? chain + 0x100 * (i + 1) : root); CHECK(!object_capture::own_ship_descends(read, chain, root, 77)); } // 21 links: beyond the 16-link bound
+            CHECK(object_capture::own_ship(read, 0).status == Status::ReadFailure && object_capture::own_ship(read, 0x700000).status == Status::ReadFailure);
+            image.put(registry + 0x10, 0); CHECK(object_capture::own_ship(read, slot).status == Status::NoTarget); build();   // no active control: a zero handle never matches a stale row
+            image.put(link + 4, 6); CHECK(object_capture::own_ship(read, slot).status == Status::Missing); build();          // every row another handle
+            image.put(link, link); image.put(link + 4, 6); CHECK(object_capture::own_ship(read, slot).status == Status::Cycle); build();
+            image.put(table + 4, 6); CHECK(object_capture::own_ship(read, slot).status == Status::Malformed); build();       // a count that is not a power of two
+            image.put(cockpit + 0xc, 0); CHECK(object_capture::own_ship(read, slot).status == Status::NoTarget); build();    // a cockpit without a ref object (a fresh generation, run78)
+            image.put(ref + 0x70, root + 2); CHECK(object_capture::own_ship(read, slot).status == Status::Malformed); build();
+            image.unreadable_lo = root + 0x28; image.unreadable_hi = root + 0x2c; CHECK(object_capture::own_ship(read, slot).status == Status::ReadFailure); build();
+            // A foreign generation: the registry rebinds to another registry object whose cockpit's ref is another ship.
+            image.put(slot, 0x640000); image.put(0x640000, 0x641000); image.put(0x640000 + 0x10, 3); image.put(0x641000, 0x642000); image.put(0x641000 + 4, 4);
+            image.put(0x642000 + 4 * 3, 0x643000); image.put(0x643000 + 4, 3); image.put(0x643000 + 8, 0x644000); image.put(0x644000 + 0xc, 0x645000); image.put(0x645000 + 0x70, other_root);
+            const auto rebound = object_capture::own_ship(read, slot);
+            CHECK(rebound.status == Status::Ready && rebound.node == other_root && rebound.node_handle == 500 && rebound.node != own.node);
+            build();
+            // ---- the (node, handle) cache: hits, the walk budget, flushes on root / epoch change, a reused address (own_ship_cache.h)
+            own_ship::Cache cache{};
+            unsigned walked = 0;
+            auto walk = [&](std::uintptr_t n, std::uint32_t) { ++walked; return object_capture::own_ship_descends(read, std::uint32_t(n), std::uint32_t(cache.root), cache.root_handle); };
+            cache.bind(1, root, 77, 10, 20); CHECK(cache.flushes == 1); // the first bind flushes the empty table (root 0 -> root)
+            CHECK(cache.own(root, 77, walk) && !cache.own(root, 78, walk) && walked == 0);            // the root by handle, no walk
+            CHECK(cache.own(part, 78, walk) && walked == 1 && cache.own(part, 78, walk) && walked == 1 && cache.hits == 1); // walked once, then a hit
+            CHECK(!cache.own(foreign, 1, walk) && walked == 2 && !cache.own(foreign, 1, walk) && walked == 2);
+            // The part freed and its address reused by a node under another root, seen under its new handle: the
+            // (node, handle) key misses, the walk reads the current memory, the verdict is no. The old key shares the
+            // direct-mapped slot and is gone; a live scope never presents it again anyway (node+0x28 reads the new handle).
+            image.put(part + 0x18, other_root);
+            CHECK(!cache.own(part, 79, walk) && walked == 3 && !cache.own(part, 78, walk) && walked == 4);
+            cache.bind(2, root, 77, 10, 21); CHECK(cache.flushes == 2 && !cache.own(part, 78, walk) && walked == 5); // the registry epoch moved: flushed, re-walked
+            build(); cache.bind(3, root, 77, 11, 21); CHECK(cache.flushes == 3 && cache.own(part, 78, walk) && walked == 6); // the load epoch moved
+            cache.bind(4, other_root, 500, 11, 21); CHECK(cache.flushes == 4 && !cache.own(part, 78, walk) && walked == 7 && cache.own(other_root, 500, walk)); // the ship changed
+            cache.bind(5, root, 77, 11, 21); CHECK(cache.flushes == 5);
+            // The walk budget: a thrashing frame of 500 distinct nodes walks 64 and defers the rest (not cached, not own this frame).
+            walked = 0;
+            for (unsigned i = 0; i < 500; ++i) cache.own(0x650000 + 0x40 * i, 1000 + i, walk);
+            CHECK(walked == own_ship::walks_per_frame && cache.deferred == 500 - own_ship::walks_per_frame && cache.walks == own_ship::walks_per_frame);
+            cache.bind(6, root, 77, 11, 21); CHECK(cache.walks == 0 && cache.deferred == 0 && cache.flushes == 5);
+            // A stale entry beyond cache_frames is re-walked.
+            cache.bind(6 + own_ship::cache_frames, root, 77, 11, 21); walked = 0; CHECK(cache.own(part, 78, walk) && walked == 1);
+            // Cost: the thrash case (500 distinct nodes a frame over 1,000 frames: 64 walks of the image and 436 deferrals per frame).
+            {
+                auto t0 = std::chrono::steady_clock::now(); unsigned own_count = 0;
+                for (unsigned f = 0; f < 1000; ++f) { cache.bind(1000 + f, root, 77, 11, 21); for (unsigned i = 0; i < 500; ++i) own_count += cache.own(0x650000 + 0x40 * ((f * 7 + i) % 4096), 1000 + i, walk); }
+                auto t1 = std::chrono::steady_clock::now();
+                std::printf("OWN_CACHE_THRASH ns_per_draw=%.1f own=%u\n", std::chrono::duration<double, std::nano>(t1 - t0).count() / 500000., own_count);
+            }
         }
         CHECK(shadow_cascade_replays(3, 4, 641, 640, 0) && !shadow_cascade_replays(3, 4, 641, 640, 1) && shadow_cascade_replays(3, 4, 640, 640, 1) && shadow_cascade_replays(2, 4, 9999, 640, 1)
               && shadow_cascade_replays(0, 1, 9999, 640, 1));

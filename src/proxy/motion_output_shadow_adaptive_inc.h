@@ -6,9 +6,10 @@
 // frame's first candidate draw (six to eight bounded engine reads through the
 // registry walk the chase camera uses: active cockpit, ref object, root node),
 // each z-writing draw with a known extent costs one pointer compare (a scope
-// node other than the root: one cache probe; a cache miss walks the parent
-// links once per own_node_cache_frames), and an own-ship draw adds eight
-// corner transforms. The commit runs at the frame boundary (begin_frame) so a
+// node other than the root: one cache probe keyed on node and handle; a cache
+// miss walks the parent links, at most own_ship::walks_per_frame walks per
+// frame, the rest deferred), and an own-ship draw adds eight corner
+// transforms. Draws without a known extent pay nothing. The commit runs at the frame boundary (begin_frame) so a
 // frame's box test, replay and apply share one set; a changed E0 re-snaps
 // cascade 0's grid (the texel changed) and voids only its retained map. No
 // allocation, no device call.
@@ -35,25 +36,24 @@ void MotionOutput::resolve_own_ship() noexcept {
 }
 // Whether a draw's scope node belongs to the own ship: the root itself, or a
 // node whose parent chain reaches it (turrets, engines and other parts hang
-// under the ship's root node). The verdict is cached per node while the root
-// is the same, re-walked every own_node_cache_frames frames.
-bool MotionOutput::own_ship_draw(std::uintptr_t node) noexcept {
+// under the ship's root node). The verdict is cached per (node, handle) while
+// the root and the epochs are the same (own_ship_cache.h: at most
+// walks_per_frame walks per frame, the rest deferred as not-own this frame).
+bool MotionOutput::own_ship_draw(std::uintptr_t node, std::uint32_t handle, std::uint64_t load_epoch, std::uint64_t registry_epoch) noexcept {
     if (!node) return false;
     resolve_own_ship();
     if (!own_ship_node_) return false;
-    if (node == own_ship_node_) return true;
-    auto& e = own_nodes_[(node >> 4) % own_node_cache_size];
-    const std::uint32_t now = std::uint32_t(frame_);
-    if (e.node == node && e.root == own_ship_node_ && now - e.stamp < own_node_cache_frames) return e.own;
-    e.node = node; e.root = own_ship_node_; e.stamp = now; e.own = false;
+    own_cache_.bind(std::uint32_t(frame_), own_ship_node_, own_ship_handle_, load_epoch, registry_epoch);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if (fixture_own_ship_set_) return false; // the seam's nodes are synthetic: no parent links to walk
+    if (fixture_own_ship_set_) return own_cache_.own(node, handle, [this](std::uintptr_t n, std::uint32_t h) { return n == fixture_own_part_node_ && h == fixture_own_part_handle_; }); // the seam's nodes are synthetic: its one declared part stands for the parent walk
 #endif
-    const DWORD error = GetLastError();
-    auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
-    e.own = object_capture::own_ship_descends(read, std::uint32_t(node), std::uint32_t(own_ship_node_), own_ship_handle_);
-    SetLastError(error);
-    return e.own;
+    return own_cache_.own(node, handle, [this](std::uintptr_t n, std::uint32_t) {
+        const DWORD error = GetLastError();
+        auto read = [](std::uintptr_t p, void* out, std::size_t bytes) { return engine_memory::read(p, out, bytes); };
+        const bool own = object_capture::own_ship_descends(read, std::uint32_t(n), std::uint32_t(own_ship_node_), own_ship_handle_);
+        SetLastError(error);
+        return own;
+    });
 }
 // One own-ship z-writing draw with a known extent: its AABB corners through
 // its rows, the largest corner distance from the object origin in world units.
@@ -80,7 +80,13 @@ void MotionOutput::update_adaptive_cascades() noexcept {
 }
 void MotionOutput::log_cascade_set(const char* reason) noexcept {
     const auto& c0 = depth_cascades_.cascades[0];
-    log("shadow_cascade_set device=%llu frame=%llu reason=%s own_node=%p own_status=%u own_radius=%.9g e0=%.9g texel0=%.9g depth_behind0=%.9g active_mask=%u k=%.9g pending_radius=%.9g pending_frames=%u",
+    unsigned slots[renderer::shadow_cascade_max]{}; const unsigned n = renderer::shadow_cascade_apply_slots(depth_cascades_, slots);
+    char slot_text[16]; int used = 0;
+    for (unsigned s = 0; s < n && used >= 0 && used < int(sizeof slot_text); ++s) used += std::snprintf(slot_text + used, sizeof slot_text - used, "%s%u", s ? "," : "", slots[s]);
+    if (used < 0 || used >= int(sizeof slot_text)) slot_text[0] = 0;
+    log("shadow_cascade_set device=%llu frame=%llu reason=%s own_node=%p own_status=%u own_radius=%.9g e0=%.9g texel0=%.9g depth_behind0=%.9g active_mask=%u apply_slots=%s k=%.9g pending_radius=%.9g pending_frames=%u held_frames=%u"
+        " frame_radius=%.9g own_draws=%u own_hits=%u own_walks=%u own_walk_deferred=%u own_flushes=%u",
         id_, frame_, reason, reinterpret_cast<void*>(cascade_adaptive_.node), own_ship_status_, double(cascade_adaptive_.radius), double(c0.half_extent),
-        renderer::shadow_replay_world_texel(c0), double(c0.depth_behind), depth_cascades_.active, double(cascade_adaptive_k_), double(cascade_adaptive_.pending), cascade_adaptive_.pending_frames);
+        renderer::shadow_replay_world_texel(c0), double(c0.depth_behind), depth_cascades_.active, slot_text, double(cascade_adaptive_k_), double(cascade_adaptive_.pending), cascade_adaptive_.pending_frames,
+        cascade_adaptive_.held_frames, double(own_radius_frame_), own_draws_frame_, own_cache_.hits, own_cache_.walks, own_cache_.deferred, own_cache_.flushes);
 }

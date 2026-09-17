@@ -346,9 +346,9 @@ inline bool shadow_cascade_adapt_c0(const ShadowCascadeSet& config, float e0, Sh
 struct ShadowCascadeAdaptive {
     std::uintptr_t node = 0;
     float radius = 0.f, e0 = 0.f;      // committed radius and the E0 it produced
-    std::uintptr_t pending_node = 0;    // a candidate (node, radius) outside the committed state, and how many frame boundaries it held
-    float pending = 0.f;
+    float pending = 0.f;                // a candidate radius outside the hysteresis band, and how many frame boundaries it held
     unsigned pending_frames = 0;
+    unsigned held_frames = 0;           // boundaries with no measured own-ship draw (cockpit view, menu, loading): E0 held
 };
 // The E0 the law yields for a radius: max(config E0, k x radius), clamped to
 // the last cascade's extent (the depth range towards the light stays) and the
@@ -365,33 +365,33 @@ inline float shadow_cascade_adaptive_extent(const ShadowCascadeSet& config, floa
 // One frame boundary: `node` and `radius` are the frame's own ship (0: none
 // resolved) and its measured radius (0: no z-writing draw of it had a known
 // extent; a ship's extents are read at the scene end after its first draw).
-// Commits at once: another ship with a measured radius, and the first
-// measurement of the committed ship. Everything else (a ship not yet measured,
-// no ship at all, a > hysteresis size change) is a candidate that commits
-// after stable_frames consistent boundaries, so a menu frame, a culled hull or
-// a LOD flicker never moves E0. Returns true when E0 changed: `set` then
-// holds the adapted set (cascade 0 re-snaps to its new texel grid and its
-// retained map is void; the others keep theirs). `reason` names a commit:
-// "node", "radius", or null.
+// A boundary without a measured radius (cockpit view, menu, loading, the
+// ship's first frame, no ship at all) HOLDS the committed E0 and counts
+// held_frames: a view toggle never voids cascade 0. With a measurement:
+// another ship commits at once, as does the first measurement of the
+// committed ship; a > hysteresis size change of the same ship commits after
+// stable_frames consistent boundaries (a LOD flicker never moves E0). Returns
+// true when E0 changed: `set` then holds the adapted set (cascade 0 re-snaps
+// to its new texel grid and its retained map is void; the others keep theirs).
+// `reason` names a commit: "node", "radius", or null.
 inline bool shadow_cascade_adaptive_update(ShadowCascadeAdaptive& state, std::uintptr_t node, float radius, float k,
                                            const ShadowCascadeSet& config, ShadowCascadeSet& set, const char** reason = nullptr) noexcept {
     if (reason) *reason = nullptr;
-    if (!std::isfinite(radius) || radius < 0.f) radius = 0.f;
-    const bool node_changed = node != state.node;
+    if (!std::isfinite(radius) || !(radius > 0.f) || !node) { ++state.held_frames; return false; }
     const float band = shadow_cascade_adaptive_hysteresis * state.radius;
     const float delta = radius > state.radius ? radius - state.radius : state.radius - radius;
     bool commit = false; const char* why = nullptr;
-    if (node_changed && node && radius > 0.f) { commit = true; why = "node"; }
-    else if (!node_changed && state.radius == 0.f && radius > 0.f) { commit = true; why = "radius"; }
-    else if (node_changed || delta > band) {
+    if (node != state.node) { commit = true; why = "node"; }
+    else if (state.radius == 0.f) { commit = true; why = "radius"; }
+    else if (delta > band) {
         const float pending_band = shadow_cascade_adaptive_hysteresis * state.pending;
         const float pending_delta = radius > state.pending ? radius - state.pending : state.pending - radius;
-        if (state.pending_frames && state.pending_node == node && pending_delta <= pending_band) ++state.pending_frames;
-        else { state.pending_node = node; state.pending = radius; state.pending_frames = 1; }
-        if (state.pending_frames >= shadow_cascade_adaptive_stable_frames) { commit = true; why = node_changed ? "node" : "radius"; radius = state.pending; }
+        if (state.pending_frames && pending_delta <= pending_band) ++state.pending_frames;
+        else { state.pending = radius; state.pending_frames = 1; }
+        if (state.pending_frames >= shadow_cascade_adaptive_stable_frames) { commit = true; why = "radius"; radius = state.pending; }
     } else state.pending_frames = 0;
     if (!commit) return false;
-    state.node = node; state.radius = radius; state.pending_node = 0; state.pending = 0.f; state.pending_frames = 0;
+    state.node = node; state.radius = radius; state.pending = 0.f; state.pending_frames = 0;
     if (reason) *reason = why;
     const float e0 = shadow_cascade_adaptive_extent(config, k, state.radius);
     if (e0 == state.e0) return false; // the same ship class: the grid stays
@@ -399,6 +399,15 @@ inline bool shadow_cascade_adaptive_update(ShadowCascadeAdaptive& state, std::ui
     if (!shadow_cascade_adapt_c0(config, e0, adapted)) return false;
     set = adapted; state.e0 = e0;
     return true;
+}
+// The apply quad's slots: the active cascades in order, so a dropped cascade
+// is not in the list at all and the previous cascade's blend band leads into
+// the next ACTIVE one (the shader blends slot s into slot s + 1; a dropped
+// cascade left in place would end the band at a hard edge). Returns the count.
+inline unsigned shadow_cascade_apply_slots(const ShadowCascadeSet& set, unsigned out[shadow_cascade_max]) noexcept {
+    unsigned n = 0;
+    for (unsigned i = 0; i < set.count && i < shadow_cascade_max; ++i) if (shadow_cascade_active(set, i)) out[n++] = i;
+    return n;
 }
 // The state at attach and after a device reset: the configured set as it is.
 inline void shadow_cascade_adaptive_reset(ShadowCascadeAdaptive& state, const ShadowCascadeSet& config) noexcept {

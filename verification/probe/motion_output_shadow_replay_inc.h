@@ -211,12 +211,16 @@ void shadow_cascade_readback(Fixture& f, ShadowCascadeReadbackFn readback, unsig
 // between must show no replay at all, and the frame back on must replay every
 // cascade, the far one included.
 using ShadowToggleFn = int (*)(IDirect3DDevice9*);
-// The own-ship seam (X3M_FIXTURE_OWN_SHIP=small|big|swap): H1 and H2 are drawn
-// every frame with their own scope nodes; the seam names H1 (small), H2 (big)
-// or H1 until frame shadow_own_swap_frame and H2 from it (swap) as the player
-// ship before each frame's draws, the way the registry walk would.
-using ShadowOwnShipFn = int (*)(IDirect3DDevice9*, std::uintptr_t, std::uint32_t);
-constexpr unsigned shadow_own_swap_frame = 5;
+// The own-ship seam (X3M_FIXTURE_OWN_SHIP=small|big|swap|reuse): H1 and H2
+// are drawn every frame with their own scope nodes; the seam names H1
+// (small), H2 (big) or H1 until frame shadow_own_swap_frame and H2 from it
+// (swap) as the player ship before each frame's draws, the way the registry
+// walk would. `reuse`: H1 is the ship and H2's node is declared its part
+// (the seam's stand-in for the parent walk) until shadow_own_reuse_frame,
+// from which H2 keeps its node address under another handle (a freed part
+// address reused by a non-own node) and the seam declares no part.
+using ShadowOwnShipFn = int (*)(IDirect3DDevice9*, std::uintptr_t, std::uint32_t, std::uintptr_t, std::uint32_t);
+constexpr unsigned shadow_own_swap_frame = 5, shadow_own_reuse_frame = 4;
 void run_shadow_replay_integration(Fixture& f) {
     require(f.seam && f.camera && f.enabled, "shadowreplay runs on the seam DLL with the route and the rotating camera");
     char setting[16]{};
@@ -287,7 +291,7 @@ void run_shadow_replay_integration(Fixture& f) {
     const bool own_ship = GetEnvironmentVariableA("X3M_FIXTURE_OWN_SHIP", own_mode, sizeof own_mode) > 0;
     ShadowOwnShipFn own_install = nullptr;
     if (own_ship) {
-        require(cascades != 0 && (!std::strcmp(own_mode, "small") || !std::strcmp(own_mode, "big") || !std::strcmp(own_mode, "swap")), "X3M_FIXTURE_OWN_SHIP is small, big or swap, with cascades");
+        require(cascades != 0 && (!std::strcmp(own_mode, "small") || !std::strcmp(own_mode, "big") || !std::strcmp(own_mode, "swap") || !std::strcmp(own_mode, "reuse")), "X3M_FIXTURE_OWN_SHIP is small, big, swap or reuse, with cascades");
         own_install = symbol<ShadowOwnShipFn>(f.runtime, "x3m_shadow_own_ship_fixture_install", false);
         require(own_install != nullptr, "the seam DLL exports the own-ship seam");
     }
@@ -366,9 +370,12 @@ void run_shadow_replay_integration(Fixture& f) {
         }
         if (poll_refusals) std::printf("SHADOW_POLL_REFUSAL frame=%u expect=%s\n", frame, poll_context.refuse(frame, poll_light));
         if (own_ship) {
+            const bool reuse = !std::strcmp(own_mode, "reuse");
             const unsigned which = !std::strcmp(own_mode, "big") || (!std::strcmp(own_mode, "swap") && frame >= shadow_own_swap_frame) ? 1u : 0u;
-            require(own_install(f.d.p, hull_node[which], hull_handle[which]) == 0, "the own-ship seam accepts the device");
-            std::printf("SHADOW_OWN_SHIP frame=%u hull=H%u node=%llx\n", frame, which + 1, static_cast<unsigned long long>(hull_node[which]));
+            const bool part = reuse && frame < shadow_own_reuse_frame;
+            if (reuse && frame == shadow_own_reuse_frame) extra[casters + 3].object.scope.node_handle += 100; // the same address, another node
+            require(own_install(f.d.p, hull_node[which], hull_handle[which], part ? hull_node[1] : 0, part ? hull_handle[1] : 0) == 0, "the own-ship seam accepts the device");
+            std::printf("SHADOW_OWN_SHIP frame=%u hull=H%u node=%llx part=%u\n", frame, which + 1, static_cast<unsigned long long>(hull_node[which]), part);
         }
         f.frame_begin();
         const float* frame_sun = no_sun ? shadow_sun_flip : shadow_sun; // the sun-changing frame: one frame of another direction
