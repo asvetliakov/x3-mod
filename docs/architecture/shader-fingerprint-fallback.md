@@ -1,6 +1,6 @@
 # Shader fingerprint fallback
 
-Design note, 2026-09-17, for ratification. Question: when a program's exact
+Design note, 2026-09-17, **ratified by the orchestrator 2026-09-17** (one fallback tier: literal-blind, comment-free fingerprint; anything looser refused; implementation not yet scheduled). Question: when a program's exact
 hash misses every transform table, how can a structural fingerprint still
 bind the reviewed transform to a recompiled or lightly edited program without
 weakening the fail-closed property described in
