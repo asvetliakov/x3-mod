@@ -123,7 +123,7 @@ void run_sun_apply_integration(Fixture& f) {
     SunApplyState s;
     // The configuration: default (5 / 8 / 256, literal bias) or wide (the
     // production variables, the scene scaled by extent / 5, the bias resolved).
-    x3m::renderer::ShadowReplayCascade cascade{}; cascade.half_extent = 5.f; cascade.depth_half_range = 8.f; cascade.size = 256;
+    x3m::renderer::ShadowReplayCascade cascade{}; cascade.half_extent = 5.f; cascade.set_depth_half(8.f); cascade.size = 256;
     bool wide = false; double bias_units = x3m::renderer::sun_shadow_bias_units_default, clamp_texels = x3m::renderer::sun_shadow_bias_clamp_texels_default;
     {
         char text[32]{};
@@ -132,12 +132,12 @@ void run_sun_apply_integration(Fixture& f) {
             require(GetEnvironmentVariableA("X3M_SHADOW_REPLAY_EXTENT", text, sizeof text) > 0, "the wide run names X3M_SHADOW_REPLAY_EXTENT");
             const float extent = std::strtof(text, nullptr);
             require(extent >= x3m::renderer::shadow_replay_extent_min && extent <= x3m::renderer::shadow_replay_extent_max, "X3M_SHADOW_REPLAY_EXTENT within the production range");
-            wide = true; cascade.half_extent = extent; cascade.depth_half_range = x3m::renderer::shadow_replay_depth_half_default; cascade.size = x3m::renderer::shadow_replay_size_default;
-            if (GetEnvironmentVariableA("X3M_SHADOW_REPLAY_DEPTH_HALF", text, sizeof text) > 0) cascade.depth_half_range = std::strtof(text, nullptr);
+            wide = true; cascade.half_extent = extent; cascade.set_depth_half(x3m::renderer::shadow_replay_depth_half_default); cascade.size = x3m::renderer::shadow_replay_size_default;
+            if (GetEnvironmentVariableA("X3M_SHADOW_REPLAY_DEPTH_HALF", text, sizeof text) > 0) cascade.set_depth_half(std::strtof(text, nullptr));
             if (GetEnvironmentVariableA("X3M_SHADOW_REPLAY_SIZE", text, sizeof text) > 0) cascade.size = unsigned(std::atoi(text));
             if (GetEnvironmentVariableA("X3M_SUN_SHADOW_BIAS_UNITS", text, sizeof text) > 0) bias_units = std::strtod(text, nullptr);
             if (GetEnvironmentVariableA("X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS", text, sizeof text) > 0) clamp_texels = std::strtod(text, nullptr);
-            require(cascade.depth_half_range >= x3m::renderer::shadow_replay_depth_half_min && cascade.depth_half_range <= x3m::renderer::shadow_replay_depth_half_max
+            require(float(cascade.depth_half()) >= x3m::renderer::shadow_replay_depth_half_min && float(cascade.depth_half()) <= x3m::renderer::shadow_replay_depth_half_max
                     && cascade.size >= x3m::renderer::shadow_replay_size_min && cascade.size <= x3m::renderer::shadow_replay_size_max, "wide cascade within the production ranges");
         }
     }
@@ -146,11 +146,11 @@ void run_sun_apply_integration(Fixture& f) {
     float bias_constant = .003f, bias_max = .01f, texel_world = 0.f;
     if (wide) {
         x3m::renderer::SunShadowBias bias{};
-        require(x3m::renderer::sun_shadow_apply_bias(bias_units, clamp_texels, cascade.half_extent, cascade.depth_half_range, cascade.size, bias), "the world-unit bias resolves for the wide cascade");
+        require(x3m::renderer::sun_shadow_apply_bias(bias_units, clamp_texels, cascade.half_extent, float(cascade.depth_half()), cascade.size, bias), "the world-unit bias resolves for the wide cascade");
         bias_constant = bias.constant; bias_max = bias.max; texel_world = bias.texel_world;
     }
     std::printf("SUNAPPLY_CONFIG wide=%u extent=%.9g depth_half=%.9g map_size=%u scale=%.9g bias_units=%.9g clamp_texels=%.9g texel_world=%.9g bias_constant=%.9g bias_max=%.9g\n",
-                unsigned(wide), double(cascade.half_extent), double(cascade.depth_half_range), sun_apply_map, sun_apply_scale, bias_units, clamp_texels, double(texel_world), double(bias_constant), double(bias_max));
+                unsigned(wide), double(cascade.half_extent), double(float(cascade.depth_half())), sun_apply_map, sun_apply_scale, bias_units, clamp_texels, double(texel_world), double(bias_constant), double(bias_max));
     D3DCAPS9 caps{}; api(f.d->GetDeviceCaps(&caps), "GetDeviceCaps");
     const HRESULT attached = s.pass.attach(f.d.p, nullptr, caps, D3DFMT_X8R8G8B8, D3DFMT_A16B16G16R16F);
     std::printf("SUNAPPLY_DEVICE attached=%u result=%08lx reason=%s slots=%u references=%u\n", SUCCEEDED(attached), attached, s.pass.caps().reason, s.pass.caps().program_slots, s.pass.references());
@@ -252,9 +252,9 @@ void run_sun_apply_integration(Fixture& f) {
             if (script.map_mode == 1) value = 0.f;
             else if (script.map_mode == 2) {
                 const double x = (a + .5) / sun_apply_map * 2. - 1., y = 1. - (b + .5) / sun_apply_map * 2.;
-                const Vec3 q = s_center + s_right * (x * cascade.half_extent) + s_up * (y * cascade.half_extent) - s_fwd * cascade.depth_half_range;
+                const Vec3 q = s_center + s_right * (x * cascade.half_extent) + s_up * (y * cascade.half_extent) - s_fwd * float(cascade.depth_half());
                 const double t = sun_apply_hit(q, s_fwd);
-                if (t > 0.) value = float(std::min(1., t / (2. * cascade.depth_half_range)));
+                if (t > 0.) value = float(std::min(1., t / (2. * float(cascade.depth_half()))));
             }
             s.map_data[std::size_t(b) * sun_apply_map + a] = value;
         }
@@ -325,7 +325,7 @@ void run_sun_apply_integration(Fixture& f) {
                     double(s.camera.m00), double(s.camera.m11), double(m20), double(m21), double(s.m22), double(s.m32),
                     double(rows[0]), double(rows[1]), double(rows[2]), double(rows[3]), double(rows[4]), double(rows[5]), double(rows[6]), double(rows[7]), double(rows[8]), double(rows[9]), double(rows[10]), double(rows[11]),
                     s.position.x, s.position.y, s.position.z, s.right.x, s.right.y, s.right.z, s.up.x, s.up.y, s.up.z, s.forward.x, s.forward.y, s.forward.z, double(sun[0]), double(sun[1]), double(sun[2]),
-                    s_right.x, s_right.y, s_right.z, s_up.x, s_up.y, s_up.z, s_fwd.x, s_fwd.y, s_fwd.z, s_center.x, s_center.y, s_center.z, double(cascade.half_extent), double(cascade.depth_half_range),
+                    s_right.x, s_right.y, s_right.z, s_up.x, s_up.y, s_up.z, s_fwd.x, s_fwd.y, s_fwd.z, s_center.x, s_center.y, s_center.z, double(cascade.half_extent), double(float(cascade.depth_half())),
                     sun_apply_box_lo[0], sun_apply_box_lo[1], sun_apply_box_lo[2], sun_apply_box_hi[0], sun_apply_box_hi[1], sun_apply_box_hi[2],
                     receivers, share_free, sentinels, unsigned(wide), sun_apply_scale, bias_units, double(texel_world));
         sun_apply_write("before.rgba16f", f.frame, s.before.data(), s.before.size());

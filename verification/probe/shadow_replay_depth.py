@@ -20,6 +20,9 @@ DEPTH_PREFIX = 'shadow_replay_depth '
 REFUSED_PREFIX = 'shadow_replay_depth_refused '
 TARGET_PREFIX = 'shadow_replay_depth_target '
 DEPTH_FIELDS = ('device', 'frame', 'replayed', 'skipped_lease', 'skipped_state', 'skipped_caps', 'draws', 'us')
+# Cascades on (docs/architecture/shadow-cascades.md, section 4): draws<i> per
+# configured cascade (issues drawn into it this frame), then these.
+CASCADE_FIELDS = ('far_replayed', 'far_frame', 'issues', 'budget')
 FIELD = re.compile(r'(\w+)=(\S+)')
 DEPTH_CODE = 1.0 / 65536.0   # one 16-bit depth code in normalized sun-space depth (reported, not the gate)
 # The gate is the note's 1e-4 in normalized depth (shadow-replay-gates.md,
@@ -51,9 +54,25 @@ def fields(line):
 def parse_depth_line(line):
     body = line[len(DEPTH_PREFIX):].strip()
     pairs = FIELD.findall(body)
-    if [k for k, _ in pairs] != list(DEPTH_FIELDS) or ' '.join(f'{k}={v}' for k, v in pairs) != body:
+    if [k for k, _ in pairs[:len(DEPTH_FIELDS)]] != list(DEPTH_FIELDS) or ' '.join(f'{k}={v}' for k, v in pairs) != body:
         raise MalformedLine(line.strip())
+    tail, pairs = pairs[len(DEPTH_FIELDS):], pairs[:len(DEPTH_FIELDS)]
     row = {}
+    if tail:
+        count = len(tail) - len(CASCADE_FIELDS)
+        if not 1 <= count <= 4 or [k for k, _ in tail] != [f'draws{i}' for i in range(count)] + list(CASCADE_FIELDS):
+            raise MalformedLine(line.strip())
+        try:
+            values = [int(v) for _, v in tail]
+        except ValueError as error:
+            raise MalformedLine(line.strip()) from error
+        cascades = {'count': count, 'draws': values[:count], **dict(zip(CASCADE_FIELDS, values[count:]))}
+        # far_frame is -1 while the far cascade is absent; everything else counts.
+        if any(v < 0 for v in cascades['draws']) or cascades['far_replayed'] not in (0, 1) or cascades['far_frame'] < -1 or cascades['issues'] < 0 or cascades['budget'] < 1:
+            raise MalformedLine(line.strip())
+        if sum(cascades['draws']) > cascades['issues'] or (cascades['far_replayed'] and count > 1 and not cascades['draws'][-1]):
+            raise MalformedLine(f'cascade draws inconsistent: {line.strip()}')
+        row['cascades'] = cascades
     for key, value in pairs:
         try:
             row[key] = float(value) if key == 'us' else int(value)
@@ -130,8 +149,11 @@ def project_vertex(vertex, rows, camera, basis):
     world = [sum((view[j] - t[j]) * r[i * 3 + j] for j in range(3)) for i in range(3)]
     d = [world[i] - basis['center'][i] for i in range(3)]
     dot = lambda axis: sum(d[i] * basis[axis][i] for i in range(3))
-    e, depth_half = basis['extent'], basis['depth_half']
-    return (dot('right') / e, dot('up') / e, (dot('forward') + depth_half) / (2 * depth_half))
+    # The asymmetric range of a cascade (depth_light towards the light,
+    # depth_behind beyond the centre) or the single map's symmetric half range.
+    e = basis['extent']
+    light, behind = basis.get('depth_light', basis.get('depth_half')), basis.get('depth_behind', basis.get('depth_half'))
+    return (dot('right') / e, dot('up') / e, (dot('forward') + light) / (light + behind))
 
 
 def to_texels(ndc_x, ndc_y, size):
@@ -171,7 +193,9 @@ def rasterize(triangles, size):
         for w, edge in zip((w0, w1, w2), edges):
             if edge > 0:
                 near |= np.abs(w) * abs(area) / edge < EDGE_EPSILON_PX
-        z = w0 * z0 + w1 * z1 + w2 * z2
+        # Pancaking: a caster nearer the light than the near plane is stored at
+        # depth 0 (the replay's pixel program writes max(depth, 0)).
+        z = np.maximum(w0 * z0 + w1 * z1 + w2 * z2, 0.0)
         window = depth[lo_y:hi_y + 1, lo_x:hi_x + 1]
         window[:] = np.where(inside & (z < window), z, window)
         ambiguous[lo_y:hi_y + 1, lo_x:hi_x + 1] |= near

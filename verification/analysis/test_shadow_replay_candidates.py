@@ -27,6 +27,13 @@ def frame(index, managed=5, leased=5, serial=0, writable=0, quiet=None, capped=0
                         quiet=leased - serial if quiet is None else quiet, capped=capped)
 
 
+CASCADE_TAIL = ' c0={c0} c1={c1} c2={c2} capped0={k0} capped1={k1} capped2={k2}'
+
+
+def cascade_frame(index, c=(3, 5, 5), capped=(2, 0, 0), **kwargs):
+    return frame(index, **kwargs) + CASCADE_TAIL.format(c0=c[0], c1=c[1], c2=c[2], k0=capped[0], k1=capped[1], k2=capped[2])
+
+
 def launch(directory, *args):
     spec = importlib.util.spec_from_file_location('candidates_manage', ROOT / 'tools/manage.py')
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
@@ -143,6 +150,37 @@ class LauncherGate(unittest.TestCase):
             self.assertEqual(env.get('X3M_TAA', '0'), '0'); self.assertEqual(env.get('X3M_SUN_SHADOW_LANE'), '0')
             code, output, _ = launch(directory, '--motion-output', '--ownership')
             self.assertEqual(code, 0); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_REPLAY_CANDIDATES'], '0')
+
+
+
+class CascadeFields(unittest.TestCase):
+    """The optional cascade tail of the frame line (docs/architecture/
+    shadow-cascades.md, section 4): c<i> then capped<i>, one pair per cascade;
+    a log without it parses exactly as before."""
+
+    def test_tail_parses_and_old_lines_are_unchanged(self):
+        frames, _ = counter.parse_text(frame(1) + '\n' + cascade_frame(2) + '\n')
+        self.assertNotIn('cascades', frames[0])
+        self.assertEqual(frames[1]['cascades'], {'count': 3, 'records': [3, 5, 5], 'capped': [2, 0, 0]})
+        self.assertEqual({k: v for k, v in frames[1].items() if k != 'cascades' and k != 'frame'}, {k: v for k, v in frames[0].items() if k != 'frame'})
+        summary = counter.summarize(frames, [])
+        self.assertEqual(summary['cascades'], {'frames': 1, 'count': 3, 'records_p50': [3, 5, 5], 'records_max': [3, 5, 5], 'capped_total': [2, 0, 0], 'capped_frames': [1, 0, 0]})
+        self.assertNotIn('cascades', counter.summarize(frames[:1], []))
+
+    def test_malformed_tails(self):
+        good = cascade_frame(3)
+        for bad in (good.replace(' c1=5', ''), good.replace('capped2=0', 'capped3=0'), good + ' c3=1', good.replace('c0=3', 'c0=x'), good.replace('c0=3', 'c0=-1'),
+                    good.replace(' capped0=2 capped1=0 capped2=0', ''), good.replace('c0=3 c1=5 c2=5', 'c1=5 c0=3 c2=5')):
+            with self.assertRaises(counter.MalformedLine, msg=bad[-80:]):
+                counter.parse_text(bad + '\n')
+
+    def test_identities(self):
+        with self.assertRaises(counter.MalformedLine):  # a cascade with more records than were leased
+            counter.parse_text(cascade_frame(4, c=(6, 5, 5)) + '\n')
+        with self.assertRaises(counter.MalformedLine):  # five leased records cannot all be missing from every cascade
+            counter.parse_text(cascade_frame(5, c=(1, 1, 1)) + '\n')
+        with self.assertRaises(counter.MalformedLine):  # a draw dropped from every cascade is one of the per-cascade drops
+            counter.parse_text(cascade_frame(6, managed=6, capped=(0, 0, 0), **{}).replace(' capped=0 ', ' capped=1 ') + '\n')
 
 
 if __name__ == '__main__':

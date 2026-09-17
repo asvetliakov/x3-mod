@@ -1038,3 +1038,158 @@ silhouette pixels of a receiver's own faces in the wide fixture (14 of 35,266) w
 (run 36 tuned only the constant) is a run-38 question (`--sun-shadow-bias-clamp-texels 4`, no
 rebuild), as is the visible result of a station-wide box. The bias in texels at the wide setting (1.55) is what the receiver-plane term expects; the
 default B alone (0.536 units) is close to one production texel (0.488).
+
+## Sun-shadow cascades and the run-38 fixes (2026-09-17)
+
+Contract [../architecture/shadow-cascades.md](../architecture/shadow-cascades.md) (its
+"Implemented" section lists the deviations) plus the mandatory fixes of "Run 38 A (run111)
+diagnosis" (main checkout) and the disassembly result in
+[../reverse-engineering/camera-and-lights.md](../reverse-engineering/camera-and-lights.md)
+("Directional lights: source, space and count"). Cascades are default-off
+(`--shadow-cascades`); the fixes below are in shared code and change the single-map path too.
+Worktree build: clean CMake build zero warnings, `build/d3d9.dll` sha256 `9e034b15…c6cd3d`,
+`check_no_x87.py`: 512 reachable functions, 0 violations; `build_motion_output.sh` (strict
+`-Wall -Wextra -Werror`) clean. No game launch, no install.
+
+**Where the defaults are not byte-identical (sanctioned, shared code).**
+1. *One validated sun per sector.* `LightDir_Dir0`'s register is resolved per pixel program from its
+   constant table at creation (`src/renderer/shader_constant_register.h`, strictly by name; measured
+   on the local dumps: c4 `8759c783…`, c5 `fffdabd9…`/`5f82ecac…`, c0 `517540ae…`/`a66fb198…`);
+   pixel registers c0–c31 are shadowed as written; every routed z-writing draw (routed = past the
+   main-scene gate) samples its own program's register into `shadow_replay::SunLatch`
+   (`src/proxy/shadow_replay_sun.h`): a sample counts only at unit length within 1e-3 with w = 0; the
+   first valid one latches and the value then stays fixed while samples agree within 1.5°; a frame
+   whose samples all disagree is refused `sun_changing`; the same candidate for 8 consecutive frames
+   re-latches (that frame refused, every retained cascade voided); a frame without samples reuses the
+   sun; before any sample `no_sun`. The bounds rows are never sticky-unavailable
+   (`bounds_unavailable=` counts extent-known draws that found no sun). Lines: per frame
+   `shadow_replay_sun verdict= register= samples= agree= disagree= invalid= no_register= bounds_state=
+   bounds_unavailable= extent_refused= sun=`, events `shadow_replay_sun_latch event=latch|relatch
+   register= program= sun=`. Consequence for the script: frame 5 (formerly "no c4 write": the device
+   register still holds the sun) now writes another direction for one frame and is refused
+   `sun_changing`.
+2. *Extent cache.* 1,024 sets × 8 ways (was 1,024 direct-mapped), hashed by the range without the
+   revision; an entry returned this frame is never evicted this frame, a store into a fully used set is
+   refused and counted (`extent_refused=`); a moved revision answers with the previous extent
+   (`verdict=retained`) while the new one is read.
+3. *Pancake.* The replay vertex program clamps the light-space z to the near plane and the pixel
+   program stores `max(depth, 0)`; the box tests (single verdict and cascade mask) are open on the
+   light side. A D3DSBT_ALL block does not restore "no declaration": `ShadowReplayPass` now re-sets the
+   caller's FVF or declaration like `SunShadowApplyPass` (found by the direct-drive fixture, whose
+   caller has none).
+4. *Diagnostics (F8 only).* One `shadow_replay_caster` line per record (`record= vb= cascades=
+   verdict=origin|bounds|retained leased= quiet= sun_register= sun_agrees= sun= primitives=`);
+   `shadow_replay_map_basis` gains `sun= sun_register= sun_verdict=`.
+Bias: unchanged. Engine view culling (cause 3): not addressed here by instruction; the next step is
+per-cascade caster retention for static nodes, which needs a static-node identity (node + extent key),
+world rows retained from the draw's clip rows and that frame's camera, a lease refreshed while the
+buffer stays quiet, and expiry after N unseen frames or a registry/load epoch change.
+
+**Cascades.** `ShadowReplayPass::attach_cascades` (≤ 4 R32F maps of their own sizes, one shared
+attachment of the largest, sizes above `MaxTextureWidth/Height` halved, below 64 refused),
+`execute_cascades` (one block capture/apply; per map SetRenderTarget, viewport, Clear, its issues;
+the listed maps' retained bases voided first), retained basis per map (voided by `before_reset`,
+`detach`, a refusal, a failed transaction, a re-latched sun). Projection helper: `depth_toward_light` /
+`depth_behind` (the single map sets both to the half range: same doubles as before),
+`shadow_cascade_set` (defaults 250 / 1500 / 7500 / 25000, 4096², caps 128 / 512 / 1024 / 1024, budget
+640, towards the light 2 × the largest extent, behind max(512, 2 E)), `shadow_cascade_bounds_mask` (one
+corner transform, 5 compares per cascade), `shadow_cascade_replays`. Candidates: a cascade mask per
+record, per-cascade caps and `capped<i>`; issues storage allocated once at attach (sum of the caps).
+Apply: `sun_shadow_cascade_apply_ps.hlsl`, 398 slots (the nine taps are a ps_3_0 loop over rotated
+offsets uploaded as c4–c12; the unrolled form was 887 slots and this backend reports
+`MaxPixelShader30InstructionSlots = 512`), five samplers, first containing cascade at 0.95, 10 % band,
+last cascade fades to lit, absent cascade lit but still owning its pixels. The far map is valid when
+replayed this frame or the previous one. Launcher: `--shadow-cascades E0,…|default`,
+`--shadow-cascade-sizes`, `--shadow-cascade-caps`, `--shadow-cascade-budget`
+(`X3M_SHADOW_CASCADES[_SIZES|_CAPS|_BUDGET]`; off exports `X3M_SHADOW_CASCADES=0` and drops the rest).
+
+**Fixtures** (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_motion_output.py --dll build/d3d9.dll --seam
+verification/probe/build/motion-output-seam/d3d9.dll --fixture
+verification/probe/build/motion_output_fixture.exe <16 cases>`; record
+`verification/results/bottle-X3/motion-output-partial.json`, 16 / 16 pass):
+- `sun-shadow-apply-cascades` (direct drive of both production passes, real geometry, three 256²
+  maps, the checked default set; record `sun-shadow-apply-cascades-fixture.json`): 1,527 fixture checks
+  + 116 validator checks, 12 frames. GPU against the cascade twin on the fixture's own map readbacks:
+  worst 1.000 FP16 code, 0 violations, 0 identity or alpha changes; ambiguous ≤ 1,711 of 11,742–11,856
+  valid pixels (14 %; 1,357 of 1,556 on frame 0 are the twin's `planar_step` band at the plane's
+  horizon, 199 elsewhere). Edge rule `f ≥ 0.5` against the analytic shadow with the owning cascade's
+  own texel: 1,021 disagreements in all, **0 beyond one texel**; interiors (≥ 2 texels from an edge,
+  3 from a contact line) wrong: 0; band monotonicity violations: 0.
+  (a) frames 0–1: analytic shadow 885 / 2,388 px, all owned by cascade 1. (b) frames 2–3: 1,119 / 231
+  shadowed pixels inside cascade 0's band, shadow on both sides (1,631 + 723, 76 + 805). (c) frames
+  4–5: the occluder 2,000 units towards the light is in cascade 0's mask; its own shadow 186 / 254 px,
+  interior 103 / 136 all at f = 0. (d) frame 7: camera moved 37 / 6.6 / 21.6 units, far cascade skipped
+  (`issues=4 > budget=3`, odd), `far_frame=6`, 881 analytic px on cascade 2, 0 beyond one 58.6-unit
+  texel. (e) frame 9 after the Reset: far absent, 9,042 far-owned pixels, 0 shadowed, target
+  byte-identical; frame 10 equals frame 8 byte for byte. (f) frame 11: the occluder at 16,000 units
+  (beyond the 15,000 light side) is admitted, ≥ 50 map texels at depth exactly 0, its shadow 186 px,
+  interior 105 all dark. Counters asserted per frame (`c<i>`, `draws<i>`, `far_replayed`, `far_frame`,
+  valid flags, per-cascade bias against the law). Also: halving under a faked 128-texel limit
+  (256 → 128 on all three, refusal below 64), mixed sizes 64 / 256 / 128 with a 256 attachment,
+  a device with 256 slots refuses the cascade program and keeps the single one, the refusals touch
+  nothing, 48 state restorations equal.
+- `seam-ownership-shadow-replay-cascades` (through the DLL; seam extents 8 / 400, caps 2 / 8, budget 5
+  < 6 issues): per frame `c0 c1 capped0 capped1`, `draws0 draws1 far_replayed far_frame issues
+  budget` equal the script (frame 0 by the origin rule per cascade `c=2,4`; later `c=2,4 capped0=1`;
+  far replayed on 0, 4, 6; retained on 1 (`far_frame=0`, map byte-identical); voided by the Lock
+  refusal (3: `far_frame=-1`), the Reset, the sun-changing frame and the multistream frame); every
+  replayed map against the CPU projection of the draws its cascade kept, max depth error 4.1e-6;
+  245 checks. `…-cascades-casters-20` (1024² maps, 43 issues): 245 checks.
+- `seam-ownership-shadow-replay-sun-programs`: the glow pair (`vs_494fe349…`/`ps_fffdabd9…`, c4 =
+  (1,0,0,0), sun at c5) and the detail pair (`vs_b0602757…`/`ps_517540ae…`, c4 = (.3,.2,.7,0), sun at
+  c0) drawn first on every frame, both routed; one latch event `register=5 program=fffdabd910793aba`;
+  6 samples per frame all agreeing; the map's basis is the true sun's on every replayed frame
+  (inferred, not run: the former c4 rule would have latched (1,0,0) from G, the first routed draw); 205 checks.
+- Unchanged cases against their committed records (volatile keys aside): `sun-shadow-apply` and
+  `sun-shadow-apply-wide` 0 differences; `seam-ownership-shadow-replay-on`, `-taa-…-on`, `-wide`,
+  `-far-refused` differ only in the frame-5 refusal detail (`no_sun` → `sun_changing`) and the new
+  `sun` block; on/off twins byte-identical presented frames (TAA off and on); casters 2 / 8 / 20 pass.
+- Live (`run_sun_share_live.py … --case shadow_apply --case original_lane --case hull_emission --case
+  shadow_apply_cascades --result verification/results/bottle-X3/sun-share-live-cascades.json`): 4 / 4
+  pass; the three existing cases equal the committed 20-case record (paths and timings aside; that
+  record is left as it is). `shadow_apply_cascades` is the `shadow_apply` script through the DLL's
+  cascade wiring (seam extents 32 / 256, 512² maps, capture window open): 4 applied frames, ≥ 3,969
+  shadowed pixels, 6 TAA frames exact against the CPU-shadowed reference; on capture frames 1 and 3
+  one `shadow_map<i>` readback and one `shadow_replay_map_basis cascade=` line per cascade, two
+  `shadow_replay_caster` lines, the cascade `sun_shadow_apply_params` line parsed with every printed
+  bias resolving by the law, and the cascade twin on the dumps (cascade 0 owns every receiver; the
+  script's RT2 dump carries a zero share, so the twin runs with share 1).
+
+**Cost** (measured in the fixtures; CrossOver, not game FPS). Bounds pass per draw, 2,000,000 rounds
+in the fixture executable: single verdict 45.0 ns, four-cascade mask 44.6 ns (no measurable delta; the
+mask multiplies by 1/m00 once instead of dividing per corner). Sun sample per routed z-writing draw:
+one 16-byte copy and two dot products (not separately measurable). Replay transaction through the DLL
+(`shadow_replay_depth us=`, unsynchronised CPU): single map 43.7 / 53.5 / 68.0 µs at 2 / 8 / 20 draws
+(≈ 1.4 µs per further draw), two cascades 65.7 µs at 2–6 issues and 102.2 µs at 43 issues (≈ 1.0 µs per
+further issue; ≈ +13–22 µs fixed for the second map's bind and Clear over two runs). The direct-drive fixture's
+EVENT-synchronised replay time (0.8–17 ms) is GPU-inclusive and not a per-draw figure. Apply quad,
+EVENT-synchronised: cascades 1.8 ms median against 3.5–5.2 ms for the single-map fixture runs in the
+same session (128², dominated by the synchronisation). Memory while cascades are on: the maps, one
+attachment, the issue storage (sum of the caps × 52 B: 137 KiB at the defaults); the extent cache is 576 KiB (was 72 KiB),
+a `MotionOutput` member whether or not the counter is on.
+
+**Host.** `test_shadow_cascades` (new, 4: a native driver over the four pure headers — constant-table
+lookup on built glow / detail / hull / none / sampler / malformed tables and, when present, five local
+dumps; the latch sequences including the glow program first; a frozen set of 1,500 extent keys with
+identical answers and no store after the first frame, no eviction of an entry used this frame, stale
+revision; the cascade set, budget policy, bounds mask with the open light side, shared-product light
+rows; launcher options), `test_shadow_replay_candidates` (10), `test_shadow_replay_depth` (11),
+`test_sun_shadow_apply` (16), `test_sun_share_lane` (11), the six mock modules (the
+`linear_material_live` mock gained the new members), `test_comparison_hotkeys`; the nine bloom
+manifests' generator hash updated (program words untouched). The 13 affected modules: 89 tests OK. One full discovery run before the repairs: 2,120 tests, 15 drift
+failures (nine bloom manifests, six `test_comparison_hotkeys` subtests that execute `main()` without the
+module's helpers: the cascade validation is therefore a nested function of `main`); both modules rerun
+green, the full run not repeated.
+
+**Open.** (1) Native Windows unverified, as everywhere. (2) The cascade program needs 398 of the 512
+ps_3_0 slots; a loop inside a dynamic branch is what buys that, so a driver that mishandles it would
+show up in the fixture, not in the caps. (3) d3dx warns X4121 on the cascade source (it hoists the two
+derivative instructions out of the branches, which is where they already are: dsx/dsy at instructions
+110–111, first `ifc` at 116). (4) State-block-applied pixel constants bypass the register shadow (as
+they bypassed the c4 latch). (5) Per-vertex pancaking lets a triangle that crosses the near plane lose
+the depth test to a caster truly behind it over its far part (the stored value stays exact); the
+asymmetric range keeps such triangles rare. (6) Defaults (budget, caps, sizes, extents) await run 38's
+numbers; every one is an option. (7) A lost device takes the same refusal path as any failed
+transaction (everything retained voided, restoration stopped as in the other passes); no fixture forces a
+device loss, for the cascades as for the single map.

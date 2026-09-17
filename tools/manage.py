@@ -278,6 +278,10 @@ def main():
     parser.add_argument('--shadow-replay-extent', type=float, default=None, metavar='E', help='Half-extent of the cascade-0 map box in world units in the sun basis, 50..4000, default 250 (X3M_SHADOW_REPLAY_EXTENT; requires --shadow-replay-depth): the world texel is 2 E / N, so a station-wide box (E 1000-1500) needs --shadow-replay-size 2048-4096 for the same texel; the candidate box test, the replay projection and the apply quad share the value')
     parser.add_argument('--shadow-replay-depth-half', type=float, default=None, metavar='D', help='Half depth range of the cascade-0 map box along the sun in world units, 128..8192, default 512 (X3M_SHADOW_REPLAY_DEPTH_HALF; requires --shadow-replay-depth); the apply bias is expressed in world units and rescaled from it per frame')
     parser.add_argument('--shadow-replay-cap', type=int, default=None, metavar='N', help='Managed caster candidates recorded and replayed per frame, 1..1024, default 512 (X3M_SHADOW_REPLAY_CAP; requires --shadow-replay-candidates or --shadow-replay-depth); the rest count capped in the shadow_replay_candidates line')
+    parser.add_argument('--shadow-cascades', default=None, metavar='E0,E1,...|default', help='Sun-shadow cascades (X3M_SHADOW_CASCADES; default off: the single --shadow-replay-extent map; requires --shadow-replay-depth): 1..4 ascending half-extents in world units, each 50..50000, of camera-centred texel-snapped maps replayed in one transaction; "default" means 250,1500,7500,25000. Every cascade reaches 2 x the largest extent towards the light, the apply quad selects the first cascade containing a pixel with a 10 %% blend band and fades the last one to lit; the far cascade replays on even frames only while the frame exceeds --shadow-cascade-budget (docs/architecture/shadow-cascades.md)')
+    parser.add_argument('--shadow-cascade-sizes', default=None, metavar='N[,N...]', help='Map side per cascade, 64..4096, one value for all or one per cascade, default 4096 (X3M_SHADOW_CASCADE_SIZES; requires --shadow-cascades); memory is 4 N^2 bytes per map plus one depth attachment of the largest size')
+    parser.add_argument('--shadow-cascade-caps', default=None, metavar='N[,N...]', help='Caster records per cascade and frame, 1..1024, one value for all or one per cascade, default 128,512,1024,1024 (X3M_SHADOW_CASCADE_CAPS; requires --shadow-cascades); the drops count capped<i> in the shadow_replay_candidates line')
+    parser.add_argument('--shadow-cascade-budget', type=int, default=None, metavar='B', help='Draw issues per frame above which the far cascade replays on even frames only, 1..4096, default 640 (X3M_SHADOW_CASCADE_BUDGET; requires --shadow-cascades)')
     parser.add_argument('--sun-shadow-bias-units', type=float, default=None, metavar='B', help='Constant sun-shadow compare bias in world units, 0..1000, default 0.53571875 (X3M_SUN_SHADOW_BIAS_UNITS; requires --sun-shadow-apply): the quad subtracts B plus one world texel of the map, divided by 2 D, from every compare; with --sun-shadow-bias-clamp-texels the defaults resolve to the former 0.001 / 0.01 at the default 250 / 512 / 1024 cascade; capture frames print the resolved values in sun_shadow_apply_params')
     parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
     parser.add_argument('--ambient-occlusion', action='store_true', help='Half-resolution GTAO at the scene-end hook, multiplied into the scene target before the temporal resolve (X3M_AMBIENT_OCCLUSION=1; requires --motion-output --taa; default off). Ctrl+Shift+F11 toggles the chain off/on during play for a same-scene comparison (one ambient_occlusion_toggle log line per press; the pass stays attached). docs/architecture/ambient-occlusion.md, "Step 2"')
@@ -463,6 +467,51 @@ def main():
         parser.error('--shadow-replay-cap requires --shadow-replay-candidates or --shadow-replay-depth.')
     if args.shadow_replay_cap is not None and not 1 <= args.shadow_replay_cap <= 1024:
         parser.error('--shadow-replay-cap must be within [1, 1024].')
+    # Sun-shadow cascades (docs/architecture/shadow-cascades.md; the DLL's defaults
+    # are the single named constants of src/renderer/shadow_replay_projection.h).
+    SHADOW_CASCADE_EXTENTS = '250,1500,7500,25000'
+    SHADOW_CASCADE_MAX, SHADOW_CASCADE_EXTENT_RANGE, SHADOW_CASCADE_BUDGET_RANGE = 4, (50.0, 50000.0), (1, 4096)
+    def shadow_cascade_env(parser, args):
+        """Validates --shadow-cascades and its companions; returns their environment
+        ('X3M_SHADOW_CASCADES': '0' when off, the companions only when given)."""
+        companions = (('--shadow-cascade-sizes', args.shadow_cascade_sizes), ('--shadow-cascade-caps', args.shadow_cascade_caps),
+                      ('--shadow-cascade-budget', args.shadow_cascade_budget))
+        if args.shadow_cascades is None:
+            for option, value in companions:
+                if value is not None:
+                    parser.error(f'{option} requires --shadow-cascades.')
+            return {'X3M_SHADOW_CASCADES': '0'}
+        if not args.shadow_replay_depth:
+            parser.error('--shadow-cascades requires --shadow-replay-depth.')
+        try:
+            extents = [float(v) for v in (SHADOW_CASCADE_EXTENTS if args.shadow_cascades == 'default' else args.shadow_cascades).split(',')]
+        except ValueError:
+            extents = []
+        low, high = SHADOW_CASCADE_EXTENT_RANGE
+        if not 1 <= len(extents) <= SHADOW_CASCADE_MAX or not all(math.isfinite(e) and low <= e <= high for e in extents) \
+                or any(b <= a for a, b in zip(extents, extents[1:])):
+            parser.error('--shadow-cascades takes 1..4 ascending half-extents within [50, 50000].')
+        env = {'X3M_SHADOW_CASCADES': ','.join(repr(e) for e in extents)}
+
+        def integers(option, text, low, high):
+            try:
+                values = [int(v) for v in text.split(',')]
+            except ValueError:
+                values = []
+            if len(values) not in (1, len(extents)) or not all(low <= v <= high for v in values):
+                parser.error(f'{option} takes one value or one per cascade within [{low}, {high}].')
+            return ','.join(str(v) for v in values)
+        if args.shadow_cascade_sizes is not None:
+            env['X3M_SHADOW_CASCADE_SIZES'] = integers('--shadow-cascade-sizes', args.shadow_cascade_sizes, 64, 4096)
+        if args.shadow_cascade_caps is not None:
+            env['X3M_SHADOW_CASCADE_CAPS'] = integers('--shadow-cascade-caps', args.shadow_cascade_caps, 1, 1024)
+        if args.shadow_cascade_budget is not None:
+            low, high = SHADOW_CASCADE_BUDGET_RANGE
+            if not low <= args.shadow_cascade_budget <= high:
+                parser.error('--shadow-cascade-budget must be within [1, 4096].')
+            env['X3M_SHADOW_CASCADE_BUDGET'] = str(args.shadow_cascade_budget)
+        return env
+    args.shadow_cascade_env = shadow_cascade_env(parser, args)
     if args.sun_shadow_bias_units is not None and not args.sun_shadow_apply:
         parser.error('--sun-shadow-bias-units requires --sun-shadow-apply.')
     if args.sun_shadow_bias_units is not None and not (math.isfinite(args.sun_shadow_bias_units) and 0.0 <= args.sun_shadow_bias_units <= 1000.0):
@@ -713,6 +762,11 @@ def main():
         env['X3M_SHADOW_REPLAY_EXTENT'] = repr(args.shadow_replay_extent if args.shadow_replay_extent is not None else 250.0)
         env['X3M_SHADOW_REPLAY_DEPTH_HALF'] = repr(args.shadow_replay_depth_half if args.shadow_replay_depth_half is not None else 512.0)
         env['X3M_SHADOW_REPLAY_CAP'] = str(args.shadow_replay_cap if args.shadow_replay_cap is not None else 512)
+        # Explicit off value ("0") and companions dropped when absent, so an
+        # inherited value cannot enable or reshape the cascades.
+        for name in ('X3M_SHADOW_CASCADES', 'X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET'):
+            env.pop(name, None)
+        env.update(args.shadow_cascade_env)
         env['X3M_SUN_SHADOW_BIAS_UNITS'] = repr(args.sun_shadow_bias_units if args.sun_shadow_bias_units is not None else 0.53571875)
         env['X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS'] = repr(args.sun_shadow_bias_clamp_texels if args.sun_shadow_bias_clamp_texels is not None else 20.97152)
         env['X3M_AMBIENT_OCCLUSION'] = '1' if args.ambient_occlusion else '0'

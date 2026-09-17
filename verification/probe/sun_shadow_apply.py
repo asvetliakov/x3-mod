@@ -16,6 +16,11 @@ motion_output_fixture.cpp). No Wine, no game.
   the sun, and the distance in map texels to the nearest classification
   change, for the edge tolerance.
 * `compare_frame`: the readbacks against C * factor within one FP16 code.
+* `expected_factor_cascades` / `compare_frame_cascades`: the same for
+  src/temporal/sun_shadow_cascade_apply_ps.hlsl (docs/architecture/
+  shadow-cascades.md, section 2): per-pixel selection of the first cascade
+  containing the pixel, the blend band into the next one, the last cascade's
+  fade to lit, absent cascades lit, per-cascade size and bias.
 """
 import math
 import struct
@@ -150,6 +155,122 @@ def expected_factor(d, s, sun_map, params, coarse=False):
     return {'factor': factor, 'f': f, 'valid': valid, 'ambiguous': ambiguous & valid, 'sun': sun, 'z': z}
 
 
+CASCADE_MARGIN, CASCADE_BAND = .95, .10   # shadow_cascade_select_margin / _blend_band (shadow_replay_projection.h)
+EPS_SELECT = 1e-5                          # selection-threshold ambiguity in sun-space NDC (float32 rows on the GPU)
+
+
+def expected_factor_cascades(d, s, maps, params, coarse=False):
+    """The cascade program's twin. `params`: m00 m11 m20 m21 m22 m32 exponent
+    planar_step jitter_index, optional margin/band, and `cascades`: a list of
+    dicts rows(12) bias_constant bias_max valid. `maps[i]` is cascade i's map
+    (None while absent). Returns factor, f, valid, ambiguous, selected (index
+    of the owning cascade, -1 outside every one), weights and per-cascade f."""
+    import numpy as np
+    height, width = d.shape
+    m00, m11, m20, m21, m22, m32 = (params[k] for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32'))
+    margin, band_width = params.get('margin', CASCADE_MARGIN), params.get('band', CASCADE_BAND)
+    cascades = params['cascades']
+    count = len(cascades)
+    z = m32 / (d - m22)
+    i = np.arange(width, dtype=np.float64)[None, :].repeat(height, 0)
+    j = np.arange(height, dtype=np.float64)[:, None].repeat(width, 1)
+    view = [((i + .5) / width * 2.0 - 1.0 - m20) * z / m00, (1.0 - (j + .5) / height * 2.0 - m21) * z / m11, z]
+    derivative = _coarse if coarse else _quad_derivative
+    dpdx = [derivative(v, 1) for v in view]; dpdy = [derivative(v, 0) for v in view]
+    step = np.abs(dpdx[2]) + np.abs(dpdy[2])
+    steady = step < params['planar_step'] * np.abs(z)
+    ambiguous = np.abs(step - params['planar_step'] * np.abs(z)) < .25 * params['planar_step'] * np.abs(z)
+    sun, inside, band, reach = [], [], [], []
+    for c in cascades:
+        rows = c['rows']
+        position = [rows[r * 4] * view[0] + rows[r * 4 + 1] * view[1] + rows[r * 4 + 2] * view[2] + rows[r * 4 + 3] for r in range(3)]
+        m = np.maximum(np.abs(position[0]), np.abs(position[1]))
+        sun.append(position); reach.append(m)
+        inside.append(((m <= margin) & (position[2] >= 0.0) & (position[2] <= 1.0)).astype(np.float64))
+        band.append(np.clip((m - (margin - band_width)) / band_width, 0.0, 1.0))
+    chosen, open_ = [], np.ones(d.shape)
+    for c in range(count):
+        chosen.append(open_ * inside[c]); open_ = open_ * (1.0 - inside[c])
+    covered = sum(chosen) > 0.0
+    weights = []
+    for c in range(count):
+        last = c + 1 == count
+        following = np.ones(d.shape) if last else inside[c + 1]
+        w = chosen[c] * (1.0 - band[c] * following)
+        if c:
+            w = w + chosen[c - 1] * band[c - 1] * inside[c]
+        weights.append(w)
+    selected = np.full(d.shape, -1, dtype=np.int64)
+    for c in range(count - 1, -1, -1):
+        selected = np.where(chosen[c] > 0.0, c, selected)
+    # A selection threshold within EPS of a pixel's position is the GPU's call
+    # (the weights are continuous across the margin except at the depth range
+    # and where the following cascade stops containing the pixel).
+    for c in range(count):
+        owner = np.zeros(d.shape, dtype=bool)
+        for k in range(c + 1):
+            owner |= chosen[k] > 0.0
+        near = (np.abs(reach[c] - margin) < EPS_SELECT) | (np.abs(sun[c][2]) < EPS_DEPTH) | (np.abs(sun[c][2] - 1.0) < EPS_DEPTH)
+        ambiguous |= near & (owner | (open_ > 0.0))
+    cos_r, sin_r = KERNEL[int(params['jitter_index']) % 8]
+    near_boundary = lambda x: np.minimum(x - np.floor(x), np.ceil(x) - x) < EPS_TEXEL
+    shade = np.zeros(d.shape)
+    per_cascade = []
+    for c in range(count):
+        cascade, sun_map = cascades[c], maps[c]
+        if not cascade.get('valid', True) or sun_map is None:
+            per_cascade.append(np.ones(d.shape)); continue
+        size = sun_map.shape[0]
+        rows, position = cascade['rows'], sun[c]
+        active = weights[c] > 0.0
+        mu, mv = position[0] * .5 + .5, .5 - position[1] * .5
+        dot3 = lambda row, g: rows[row * 4] * g[0] + rows[row * 4 + 1] * g[1] + rows[row * 4 + 2] * g[2]
+        dudx, dudy, dvdx, dvdy = .5 * dot3(0, dpdx), .5 * dot3(0, dpdy), -.5 * dot3(1, dpdx), -.5 * dot3(1, dpdy)
+        dzdx, dzdy = dot3(2, dpdx), dot3(2, dpdy)
+        det = dudx * dvdy - dvdx * dudy
+        planar = (np.abs(det) > 1e-12) & steady
+        inv = np.where(planar, 1.0 / np.where(planar, det, 1.0), 0.0)
+        gu = (dzdx * dvdy - dzdy * dvdx) * inv
+        gv = (dzdy * dudx - dzdx * dudy) * inv
+        texel_u, texel_v = np.floor(mu * size), np.floor(mv * size)
+        local = near_boundary(mu * size) | near_boundary(mv * size)
+        lit = np.zeros(d.shape)
+        for kj in (-1, 0, 1):
+            for ki in (-1, 0, 1):
+                ou, ov = cos_r * ki - sin_r * kj, sin_r * ki + cos_r * kj
+                raw_u, raw_v = texel_u + .5 + ou, texel_v + .5 + ov
+                if abs(ou - round(ou)) > 1e-9 or abs(ov - round(ov)) > 1e-9:
+                    local |= near_boundary(raw_u) | near_boundary(raw_v)
+                tap_u, tap_v = np.floor(raw_u), np.floor(raw_v)
+                tap_uv_u, tap_uv_v = (tap_u + .5) / size, (tap_v + .5) / size
+                bias = np.where(planar, np.clip((tap_uv_u - mu) * gu + (tap_uv_v - mv) * gv, -cascade['bias_max'], cascade['bias_max']), -cascade['bias_max'])
+                reference = position[2] + bias - cascade['bias_constant']
+                iu = np.clip(np.nan_to_num(tap_u), 0, size - 1).astype(np.int64)
+                iv = np.clip(np.nan_to_num(tap_v), 0, size - 1).astype(np.int64)
+                sampled = sun_map[iv, iu]
+                local |= np.abs(sampled - reference) < EPS_DEPTH
+                lit += (sampled >= reference)
+        f_c = lit / 9.0
+        per_cascade.append(f_c)
+        shade += np.where(active, weights[c] * (1.0 - f_c), 0.0)
+        ambiguous |= local & active
+    f = np.clip(1.0 - shade, 0.0, 1.0)
+    valid = (d >= 0.0) & (s > 0.0) & covered
+    base = np.clip(1.0 - (1.0 - f) * np.clip(s, 0.0, 1.0), 0.0, 1.0)
+    shadowed = np.where(base > 0.0, np.power(np.maximum(base, 1e-30), params['exponent']), 0.0)
+    factor = np.where(valid & (f < 1.0), shadowed, 1.0)
+    if not coarse:
+        other = expected_factor_cascades(d, s, maps, params, coarse=True)
+        ambiguous |= other['factor'] != factor
+    sentinel = d < 0.0
+    quad_sentinel = sentinel.copy()
+    quad_sentinel[:, 0::2] |= sentinel[:, 1::2]; quad_sentinel[:, 1::2] |= sentinel[:, 0::2]
+    quad_sentinel[0::2, :] |= quad_sentinel[1::2, :].copy(); quad_sentinel[1::2, :] |= quad_sentinel[0::2, :].copy()
+    ambiguous |= quad_sentinel & valid
+    return {'factor': factor, 'f': f, 'valid': valid, 'ambiguous': ambiguous & valid, 'selected': selected, 'weights': weights,
+            'per_cascade': per_cascade, 'band': band, 'z': z}
+
+
 def _hit(o, direction, box_min, box_max):
     """Nearest positive hit of the plane y = 0 and the box, or -1 (the fixture's law)."""
     import numpy as np
@@ -185,12 +306,16 @@ def analytic_shadow(d, s, params, scene, size):
     axes = (scene['cam_right'], scene['cam_up'], scene['cam_forward'])
     world = [scene['camera'][c] + z * sum(axes[a][c] * dv[a] for a in range(3)) for c in range(3)]
     sun = scene['sun']
-    texel = 2.0 * scene['extent'] / size
-    box_min, box_max = scene['box'][:3], scene['box'][3:]
+    texel = 2.0 * scene.get('extent', 0.0) / size
+    boxes = scene.get('boxes') or [scene['box']]  # the cascade scene has several casters
+    if 'texel_map' in scene:
+        texel = scene['texel_map']              # per pixel: the owning cascade's world texel
     def lit_at(offset_u, offset_v):
         o = [world[c] + (scene['right'][c] * offset_u + scene['up'][c] * offset_v) * texel + sun[c] * 1e-4 for c in range(3)]
-        t = _hit(o, [np.full(z.shape, sun[c]) for c in range(3)], box_min, box_max)
-        return t <= 0.0
+        lit = np.ones(z.shape, dtype=bool)
+        for box in boxes:
+            lit &= _hit(o, [np.full(z.shape, sun[c]) for c in range(3)], box[:3], box[3:]) <= 0.0
+        return lit
     lit = lit_at(0.0, 0.0)
     distance = np.zeros(d.shape, dtype=np.int64)
     for radius in (2, 1):
@@ -204,7 +329,7 @@ def analytic_shadow(d, s, params, scene, size):
     # plane shadow edge is the plane subset; a box face at its camera silhouette
     # is a non-planar quad whose fallback bias (the clamp) can light it.
     on_plane = np.abs(world[1]) < 1e-3 * max(1.0, max(abs(v) for v in scene['box']))
-    return {'lit': lit, 'edge_distance': distance, 'on_plane': on_plane}
+    return {'lit': lit, 'edge_distance': distance, 'on_plane': on_plane, 'world': world}
 
 
 def compare_frame(before, after, d, s, sun_map, params, scene=None, strict_box=True):
@@ -244,6 +369,114 @@ def compare_frame(before, after, d, s, sun_map, params, scene=None, strict_box=T
                               'plane_beyond_two_texels': int(np.count_nonzero(far & plane)), 'box_beyond_two_texels': int(np.count_nonzero(far & ~plane))}
         record['ok'] = record['ok'] and (record['analytic']['beyond_two_texels'] if strict_box else record['analytic']['plane_beyond_two_texels']) == 0
     return record
+
+
+def compare_frame_cascades(before, after, d, s, maps, params, scene, extents):
+    """The cascade quad's readbacks against before * factor within one FP16
+    code, plus per owning cascade: the pixels it owns, its shadowed pixels, the
+    edge record against the analytic hard shadow with that cascade's own world
+    texel (band pixels take the coarser following cascade's): `edge_beyond_one`
+    counts plane receivers whose f >= 0.5 classification disagrees with the
+    analytic shadow further than one texel from an analytic edge;
+    `interior_wrong` counts plane receivers at least two texels inside a shadow
+    or a lit area whose f is not 0 (9/9 shadowed, 0 allowed) or 1: a lit gap or
+    a double darkening in a blend band would show there. `monotone`: f lies
+    between the two blended cascades' f everywhere."""
+    import numpy as np
+    expected = expected_factor_cascades(d, s, maps, params)
+    factor, valid, ambiguous, selected, f = expected['factor'], expected['valid'], expected['ambiguous'], expected['selected'], expected['f']
+    strict = valid & ~ambiguous
+    reference = before[..., :3] * factor[..., None]
+    codes = np.abs(after[..., :3] - reference) / fp16_code(reference)
+    identity_changed = int(np.count_nonzero((factor == 1.0) & np.any(after != before, axis=-1)))
+    worst = float(np.max(np.where(strict[..., None], codes, 0.0))) if np.any(strict) else 0.0
+    violations = int(np.count_nonzero(strict & np.any(codes > 1.0 + 1e-9, axis=-1)))
+    alpha_changed = int(np.count_nonzero(after[..., 3] != before[..., 3]))
+    count = len(params['cascades'])
+    sizes = [m.shape[0] if m is not None else None for m in maps]
+    texels = [2.0 * extents[c] / sizes[c] if sizes[c] else None for c in range(count)]
+    # The texel that bounds a pixel's edge error: its owner's, or the following
+    # cascade's while the band blends into it; an absent cascade has no edge.
+    texel_map = np.zeros(d.shape)
+    for c in range(count):
+        mine = selected == c
+        coarser = texels[c + 1] if c + 1 < count and texels[c + 1] else texels[c]
+        in_band = expected['band'][c] > 0.0
+        if texels[c]:
+            texel_map = np.where(mine, np.where(in_band & (coarser is not None), coarser or 0.0, texels[c]), texel_map)
+    scene = dict(scene, texel_map=np.where(texel_map > 0.0, texel_map, 1.0))
+    analytic = analytic_shadow(d, s, params, scene, 1)
+    plane = analytic['on_plane'] & strict & (texel_map > 0.0)
+    half = f >= 0.5
+    mismatch = plane & (half != analytic['lit'])
+    beyond_one = mismatch & (analytic['edge_distance'] != 1)
+    # The caster's contact line is an edge too (the constant bias lights the
+    # receivers within about a texel of the wall they touch), but the texel
+    # offsets above run across the light, not along it: keep three texels clear
+    # of every box footprint.
+    world = analytic['world']
+    contact = np.zeros(d.shape, dtype=bool)
+    for box in scene['boxes']:
+        if box[1] > 1e-3 * max(1.0, abs(box[4])):
+            continue                                  # a caster above the plane touches nothing
+        dx = np.maximum(np.maximum(box[0] - world[0], world[0] - box[3]), 0.0)
+        dz = np.maximum(np.maximum(box[2] - world[2], world[2] - box[5]), 0.0)
+        contact |= np.hypot(dx, dz) < 3.0 * scene['texel_map']
+    interior = plane & (analytic['edge_distance'] == 0) & ~contact
+    low, high = np.ones(d.shape), np.zeros(d.shape)
+    for c in range(count):
+        touched = expected['weights'][c] > 0.0
+        low = np.where(touched, np.minimum(low, expected['per_cascade'][c]), low)
+        high = np.where(touched, np.maximum(high, expected['per_cascade'][c]), high)
+    fading = np.zeros(d.shape, dtype=bool)   # the last cascade's band (and a band into an absent cascade) blends with lit
+    fading |= (selected == count - 1) & (expected['band'][count - 1] > 0.0)
+    high = np.where(fading, 1.0, high)
+    monotone = int(np.count_nonzero(valid & ((f < low - 1e-12) | (f > np.maximum(high, low) + 1e-12))))
+    per = {}
+    for c in range(count):
+        mine = selected == c
+        band_c = mine & (expected['band'][c] > 0.0)
+        # Interior of a band: weighted f must still be the hard value unless the band fades to lit.
+        solid = interior & mine & ~(fading & mine)
+        wrong = solid & (np.where(analytic['lit'], f != 1.0, f != 0.0))
+        per[str(c)] = {'owned': int(np.count_nonzero(valid & mine)), 'band': int(np.count_nonzero(valid & band_c)), 'shadowed': int(np.count_nonzero(strict & mine & (f < 1.0))),
+                       'shadowed_analytic': int(np.count_nonzero(plane & mine & ~analytic['lit'])), 'edge_mismatch': int(np.count_nonzero(mismatch & mine)),
+                       'edge_beyond_one': int(np.count_nonzero(beyond_one & mine)), 'interior_wrong': int(np.count_nonzero(wrong)),
+                       'band_shadowed': int(np.count_nonzero(strict & band_c & (f < 1.0))), 'texel_world': texels[c]}
+    record = {'valid': int(np.count_nonzero(valid)), 'compared': int(np.count_nonzero(strict)), 'ambiguous': int(np.count_nonzero(ambiguous)), 'violations': violations,
+              'worst_codes': worst, 'identity_changed': identity_changed, 'alpha_changed': alpha_changed, 'shadowed': int(np.count_nonzero(strict & (f < 1.0))),
+              'penumbra': int(np.count_nonzero(strict & (f > 0.0) & (f < 1.0))), 'monotone_violations': monotone, 'cascades': per,
+              'edge_beyond_one': int(np.count_nonzero(beyond_one)), 'interior_wrong': sum(v['interior_wrong'] for v in per.values())}
+    if len(scene['boxes']) > 1:
+        # The second caster alone (the sun-column occluder): plane receivers lit
+        # by the first box's law and shadowed with both, and how many of them
+        # the quad darkened.
+        first_only = analytic_shadow(d, s, params, dict(scene, boxes=scene['boxes'][:1]), 1)
+        alone = plane & first_only['lit'] & ~analytic['lit']
+        record['second_caster'] = {'pixels': int(np.count_nonzero(alone)), 'interior': int(np.count_nonzero(alone & interior)),
+                                   'darkened': int(np.count_nonzero(alone & (f < 0.5))), 'interior_dark': int(np.count_nonzero(alone & interior & (f == 0.0)))}
+    record['ok'] = violations == 0 and identity_changed == 0 and alpha_changed == 0 and monotone == 0
+    return record
+
+
+def parse_cascade_params(fields):
+    """The fixture's SUNAPPLY_CASCADES line -> the cascade twin's params, the
+    scene, and per cascade the extent and the frame its map was replayed on."""
+    triple = lambda key: tuple(float(v) for v in fields[key].split(','))
+    params = {k: float(fields[k]) for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'planar_step')}
+    params['jitter_index'] = int(fields['jitter_index'])
+    count = int(fields['cascades'])
+    params['cascades'] = [{'rows': tuple(float(v) for v in fields['rows%d' % c].split(',')), 'bias_constant': float(fields['bias%d' % c]),
+                           'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1'} for c in range(count)]
+    for c in params['cascades']:
+        if len(c['rows']) != 12:
+            raise ValueError('cascade rows: expected 12 values')
+    scene = {k: triple(k) for k in ('camera', 'cam_right', 'cam_up', 'cam_forward', 'sun', 'right', 'up')}
+    scene['boxes'] = [tuple(float(v) for v in text.split(',')) for text in fields['boxes'].split(';')]
+    scene['box'] = scene['boxes'][0]
+    extents = [float(fields['extent%d' % c]) for c in range(count)]
+    map_frames = [int(fields['map_frame%d' % c]) for c in range(count)]
+    return params, scene, extents, map_frames
 
 
 def parse_params(fields):
@@ -297,6 +530,8 @@ def parse_apply_params(fields):
     """A `sun_shadow_apply_params` line (capture frames; motion_output.cpp
     run_sun_shadow_apply) -> the params dict of expected_factor plus the
     frame's raster size, map size and pixel jitter."""
+    if 'cascades' in fields:
+        return parse_apply_cascade_params(fields)
     params = {k: float(fields[k]) for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'bias_max', 'planar_step')}
     params['bias_constant'] = float(fields['bias'])
     params['rows'] = tuple(float(v) for v in fields['rows'].split(','))
@@ -319,6 +554,45 @@ def parse_apply_params(fields):
                 raise ValueError('%s %.9g does not resolve from bias_units %g extent %g depth_half %g map %d (%.9g)'
                                  % (key, printed, extra['bias_units'], extra['extent'], extra['depth_half'], extra['map'], resolved[key]))
     return params, extra
+
+
+def parse_apply_cascade_params(fields):
+    """The cascade form of the line (cascades= and, per cascade i, valid<i>
+    map<i> map_frame<i> bias<i> bias_max<i> texel_world<i> extent<i>
+    depth_light<i> depth_behind<i> rows<i>): params for
+    expected_factor_cascades; every printed bias must resolve from the line's
+    own world-unit inputs."""
+    params = {k: float(fields[k]) for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'planar_step', 'margin', 'band')}
+    params['jitter_index'] = int(fields['jitter_index'])
+    count = int(fields['cascades'])
+    bias_units, clamp_texels = float(fields['bias_units']), float(fields['clamp_texels'])
+    params['cascades'], cascades = [], []
+    for c in range(count):
+        rows = tuple(float(v) for v in fields['rows%d' % c].split(','))
+        if len(rows) != 12:
+            raise ValueError('rows%d: expected 12 values, got %d' % (c, len(rows)))
+        entry = {'rows': rows, 'bias_constant': float(fields['bias%d' % c]), 'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1'}
+        detail = {'map': int(fields['map%d' % c]), 'map_frame': int(fields['map_frame%d' % c]), 'texel_world': float(fields['texel_world%d' % c]),
+                  'extent': float(fields['extent%d' % c]), 'depth_light': float(fields['depth_light%d' % c]), 'depth_behind': float(fields['depth_behind%d' % c])}
+        resolved = resolve_bias(bias_units, detail['extent'], .5 * (detail['depth_light'] + detail['depth_behind']), detail['map'], clamp_texels)
+        for key, printed in (('bias_constant', entry['bias_constant']), ('bias_max', entry['bias_max']), ('texel_world', detail['texel_world'])):
+            if abs(resolved[key] - printed) > 1e-6 * max(1.0, abs(printed)) + 1e-9:
+                raise ValueError('cascade %d: %s %.9g does not resolve (%.9g)' % (c, key, printed, resolved[key]))
+        params['cascades'].append(entry); cascades.append(detail)
+    extra = dict(width=int(fields['width']), height=int(fields['height']), jitter_px=(float(fields['jitter_x']), float(fields['jitter_y'])),
+                 bias_units=bias_units, clamp_texels=clamp_texels, cascades=cascades, map=cascades[0]['map'])
+    return params, extra
+
+
+def load_cascade_maps(directory, device, frame, extra, params):
+    """F8 writes every present cascade's map on the capture frame itself
+    (shadow_map<i>_<device>_<frame>.r32f), the retained far one included."""
+    from pathlib import Path
+    maps = []
+    for c, detail in enumerate(extra['cascades']):
+        path = Path(directory) / ('shadow_map%d_%d_%d.r32f' % (c, device, frame))
+        maps.append(unpack_map(path.read_bytes(), detail['map']) if params['cascades'][c]['valid'] and path.exists() else None)
+    return maps
 
 
 def reconstruct_params(camera, frame_line, basis, width, height):
@@ -454,6 +728,16 @@ def main(argv=None):
         params['bias_constant'] = args.bias
     if args.no_jitter:
         params['m20'] -= 2.0 * extra['jitter_px'][0] / extra['width']; params['m21'] += 2.0 * extra['jitter_px'][1] / extra['height']
+    if 'cascades' in params:
+        import numpy as np
+        d, s = unpack_rt2((__import__('pathlib').Path(args.capture) / ('depth_%d_%d.rg32f' % (args.device, args.frame))).read_bytes(), extra['width'], extra['height'])
+        out = expected_factor_cascades(d, s, load_cascade_maps(args.capture, args.device, args.frame, extra, params), params)
+        valid = out['valid']
+        print(json.dumps(dict(frame=args.frame, source=source, cascades=extra['cascades'], valid=int(valid.sum()), ambiguous=int(out['ambiguous'].sum()),
+                              owned=[int((valid & (out['selected'] == c)).sum()) for c in range(len(params['cascades']))],
+                              f_below_0_9=float((out['f'][valid] < .9).mean()) if valid.any() else None,
+                              factor_mean=float(out['factor'][valid].mean()) if valid.any() else None), indent=1))
+        return
     d, s, sun_map, luminance = load_capture(args.capture, args.device, args.frame, extra['width'], extra['height'], extra['map'])
     region = tuple(int(v) for v in args.region.split(',')) if args.region else None
     report = frame_report(d, s, sun_map, params, luminance, region)

@@ -1,0 +1,841 @@
+{
+ "case": "sun-shadow-apply-cascades",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion_output_fixture.exe": "c48e2077621da4b3dec9baee15c80cde71757dc2d5eae91a7a807908ca28f5ca",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion-output-seam/d3d9.dll": "2e2b63399e47deea635b64036e35d0dddee5a4c146f7103217720cf6b05b1573",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/build/d3d9.dll": "9e034b15c3543087db8c8255e499b4c0c0e9cfd4359873f3d3a4401623c6cd3d"
+ },
+ "checks": 1643,
+ "fixture_checks": 1527,
+ "validator_checks": 116,
+ "frames": 12,
+ "map_size": 256,
+ "cascades": 3,
+ "config": {
+  "extents": "250,1500,7500",
+  "depth_light": "15000",
+  "depth_behind": "512,3000,15000",
+  "caps": "128,512,1024",
+  "bias_units": "0.53571875",
+  "clamp_texels": "4",
+  "margin": "0.949999988",
+  "band": "0.100000001"
+ },
+ "program_slots": 220,
+ "cascade_program_slots": 398,
+ "max_texture": "16384x16384",
+ "ps30_slots": 512,
+ "depth_format": 77,
+ "depth_size": 256,
+ "bounds_bench_ns": {
+  "single_verdict": 45.0,
+  "cascade_mask_4": 44.6
+ },
+ "frames_detail": {
+  "0": {
+   "valid": 11856,
+   "compared": 10300,
+   "ambiguous": 1556,
+   "violations": 0,
+   "worst_codes": 0.99826580286026,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2227,
+   "penumbra": 703,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9553,
+     "band": 327,
+     "shadowed": 2227,
+     "shadowed_analytic": 885,
+     "edge_mismatch": 98,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2303,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "a",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 11697.1,
+   "replay_us": 17277.4,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 0,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "1": {
+   "valid": 11856,
+   "compared": 10362,
+   "ambiguous": 1494,
+   "violations": 0,
+   "worst_codes": 0.9993329445519521,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 3813,
+   "penumbra": 830,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 10374,
+     "band": 338,
+     "shadowed": 3813,
+     "shadowed_analytic": 2388,
+     "edge_mismatch": 132,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 1482,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "a",
+   "scale": 100.0,
+   "elevation": 30.0,
+   "us": 1811.5,
+   "replay_us": 6752.3,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 1,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "2": {
+   "valid": 11742,
+   "compared": 10065,
+   "ambiguous": 1677,
+   "violations": 0,
+   "worst_codes": 0.9999969154596329,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 3854,
+   "penumbra": 652,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 4430,
+     "band": 1862,
+     "shadowed": 2540,
+     "shadowed_analytic": 1631,
+     "edge_mismatch": 46,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 1119,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 7084,
+     "band": 228,
+     "shadowed": 1314,
+     "shadowed_analytic": 723,
+     "edge_mismatch": 80,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 228,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "b",
+   "scale": 60.0,
+   "elevation": 30.0,
+   "us": 1811.8,
+   "replay_us": 6134.5,
+   "issues": 6,
+   "far_replayed": true,
+   "far_frame": 2,
+   "records": [
+    2,
+    2,
+    2
+   ]
+  },
+  "3": {
+   "valid": 11742,
+   "compared": 10031,
+   "ambiguous": 1711,
+   "violations": 0,
+   "worst_codes": 0.9999704360961914,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2262,
+   "penumbra": 1084,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 2987,
+     "band": 1157,
+     "shadowed": 231,
+     "shadowed_analytic": 76,
+     "edge_mismatch": 29,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 231,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 7843,
+     "band": 228,
+     "shadowed": 2031,
+     "shadowed_analytic": 805,
+     "edge_mismatch": 120,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 912,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "b",
+   "scale": 60.0,
+   "elevation": 50.0,
+   "us": 1789.9,
+   "replay_us": 6334.1,
+   "issues": 6,
+   "far_replayed": true,
+   "far_frame": 3,
+   "records": [
+    2,
+    2,
+    2
+   ]
+  },
+  "4": {
+   "valid": 11856,
+   "compared": 10306,
+   "ambiguous": 1550,
+   "violations": 0,
+   "worst_codes": 0.99826580286026,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2453,
+   "penumbra": 305,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 7905,
+     "band": 347,
+     "shadowed": 2453,
+     "shadowed_analytic": 1069,
+     "edge_mismatch": 54,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 3723,
+     "band": 228,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 228,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "second_caster": {
+    "pixels": 186,
+    "interior": 103,
+    "darkened": 171,
+    "interior_dark": 103
+   },
+   "ok": true,
+   "case": "c",
+   "scale": 40.0,
+   "elevation": 50.0,
+   "us": 1754.2,
+   "replay_us": 9147.9,
+   "issues": 9,
+   "far_replayed": true,
+   "far_frame": 4,
+   "records": [
+    3,
+    3,
+    3
+   ]
+  },
+  "5": {
+   "valid": 11856,
+   "compared": 10339,
+   "ambiguous": 1517,
+   "violations": 0,
+   "worst_codes": 0.9994246670710254,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 1783,
+   "penumbra": 310,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 7801,
+     "band": 310,
+     "shadowed": 1783,
+     "shadowed_analytic": 562,
+     "edge_mismatch": 52,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 6,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 3599,
+     "band": 228,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 456,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "second_caster": {
+    "pixels": 254,
+    "interior": 136,
+    "darkened": 237,
+    "interior_dark": 136
+   },
+   "ok": true,
+   "case": "c",
+   "scale": 40.0,
+   "elevation": 70.0,
+   "us": 1901.7,
+   "replay_us": 8801.4,
+   "issues": 9,
+   "far_replayed": true,
+   "far_frame": 5,
+   "records": [
+    3,
+    3,
+    3
+   ]
+  },
+  "6": {
+   "valid": 9042,
+   "compared": 8775,
+   "ambiguous": 267,
+   "violations": 0,
+   "worst_codes": 0.9999969154596329,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2312,
+   "penumbra": 643,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 9042,
+     "band": 401,
+     "shadowed": 2312,
+     "shadowed_analytic": 880,
+     "edge_mismatch": 92,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "d",
+   "scale": 600.0,
+   "elevation": 50.0,
+   "us": 1826.6,
+   "replay_us": 4779.3,
+   "issues": 4,
+   "far_replayed": true,
+   "far_frame": 6,
+   "records": [
+    1,
+    1,
+    2
+   ]
+  },
+  "7": {
+   "valid": 9038,
+   "compared": 8812,
+   "ambiguous": 226,
+   "violations": 0,
+   "worst_codes": 0.9999969154596329,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2387,
+   "penumbra": 677,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 9038,
+     "band": 441,
+     "shadowed": 2387,
+     "shadowed_analytic": 881,
+     "edge_mismatch": 79,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "d",
+   "scale": 600.0,
+   "elevation": 50.0,
+   "us": 1813.7,
+   "replay_us": 2665.7,
+   "issues": 2,
+   "far_replayed": false,
+   "far_frame": 6,
+   "records": [
+    1,
+    1,
+    2
+   ]
+  },
+  "8": {
+   "valid": 9042,
+   "compared": 8775,
+   "ambiguous": 267,
+   "violations": 0,
+   "worst_codes": 0.9999969154596329,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2312,
+   "penumbra": 643,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 9042,
+     "band": 401,
+     "shadowed": 2312,
+     "shadowed_analytic": 880,
+     "edge_mismatch": 92,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "e",
+   "scale": 600.0,
+   "elevation": 50.0,
+   "us": 1748.6,
+   "replay_us": 4504.9,
+   "issues": 4,
+   "far_replayed": true,
+   "far_frame": 8,
+   "records": [
+    1,
+    1,
+    2
+   ]
+  },
+  "9": {
+   "valid": 9042,
+   "compared": 8899,
+   "ambiguous": 143,
+   "violations": 0,
+   "worst_codes": 0.0,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 0,
+   "penumbra": 0,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 9042,
+     "band": 401,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": null
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "e",
+   "scale": 600.0,
+   "elevation": 50.0,
+   "us": 8015.3,
+   "replay_us": 2546.1,
+   "issues": 2,
+   "far_replayed": false,
+   "far_frame": -1,
+   "records": [
+    1,
+    1,
+    2
+   ]
+  },
+  "10": {
+   "valid": 9042,
+   "compared": 8775,
+   "ambiguous": 267,
+   "violations": 0,
+   "worst_codes": 0.9999969154596329,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2312,
+   "penumbra": 643,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 9042,
+     "band": 401,
+     "shadowed": 2312,
+     "shadowed_analytic": 880,
+     "edge_mismatch": 92,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "ok": true,
+   "case": "e",
+   "scale": 600.0,
+   "elevation": 50.0,
+   "us": 703.2,
+   "replay_us": 814.4,
+   "issues": 4,
+   "far_replayed": true,
+   "far_frame": 10,
+   "records": [
+    1,
+    1,
+    2
+   ]
+  },
+  "11": {
+   "valid": 11856,
+   "compared": 10304,
+   "ambiguous": 1552,
+   "violations": 0,
+   "worst_codes": 0.99826580286026,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2454,
+   "penumbra": 304,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 7942,
+     "band": 375,
+     "shadowed": 2454,
+     "shadowed_analytic": 1068,
+     "edge_mismatch": 55,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 3686,
+     "band": 160,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 228,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "second_caster": {
+    "pixels": 186,
+    "interior": 105,
+    "darkened": 169,
+    "interior_dark": 105
+   },
+   "ok": true,
+   "case": "f",
+   "scale": 40.0,
+   "elevation": 50.0,
+   "us": 706.3,
+   "replay_us": 835.7,
+   "issues": 9,
+   "far_replayed": true,
+   "far_frame": 11,
+   "records": [
+    3,
+    3,
+    3
+   ]
+  }
+ },
+ "worst_codes": 0.9999969154596329,
+ "ambiguous_max": 1711,
+ "edge_mismatch": {
+  "mismatch": 1021,
+  "beyond_one_texel": 0
+ },
+ "us": {
+  "min": 703.2,
+  "median": 1811.8,
+  "max": 11697.1
+ },
+ "replay_us": {
+  "min": 814.4,
+  "median": 6134.5,
+  "max": 17277.4,
+  "per_issue_median": 1126.225
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-20260917-085507-798724",
+ "trace_sha256": "880862baed028c666237e26d1b4df009747eb54caea699a6f0da2de1fff4744b",
+ "dll_sha256": "9e034b15c3543087db8c8255e499b4c0c0e9cfd4359873f3d3a4401623c6cd3d",
+ "exe_sha256": "c48e2077621da4b3dec9baee15c80cde71757dc2d5eae91a7a807908ca28f5ca"
+}

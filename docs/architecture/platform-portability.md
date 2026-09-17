@@ -93,6 +93,21 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   and fixture-qualified under CrossOver; native execution unverified like the
   other engine patches.
 
+- Sun-shadow cascades and the per-program sun ([shadow-cascades.md](shadow-cascades.md),
+  [directional-shadows.md](../verification/directional-shadows.md) "Sun-shadow cascades and
+  the run-38 fixes") are documented D3D9 only: up to four `R32F` render-target textures and one
+  shared `D24X8`/`D16` depth-stencil at least as large as each target (`CheckDeviceFormat`,
+  `CheckDepthStencilMatch`), `MaxTextureWidth/Height` checked at attach with the cascade sizes
+  halved to fit, one `D3DSBT_ALL` block per pass with the caller's FVF or declaration re-set
+  explicitly, the application's own buffers and declaration, `GetRenderTargetData` for the F8
+  readbacks, five samplers, `texldl` inside a ps_3_0 loop and dynamic branch, the program's slot
+  count (398) gated against `MaxPixelShader30InstructionSlots` (a device below it keeps the
+  single-map program and refuses the cascades). `LightDir_Dir0`'s register comes from the
+  program's own constant table (the documented `D3DXSHADER_CONSTANTTABLE` layout in the `CTAB`
+  comment, bounds-checked) and the application's own `SetPixelShaderConstantF` writes; no Wine
+  export, layout or hash. Cross-compiled and fixture-qualified under CrossOver; native
+  execution, and a native driver's handling of the loop inside the branch, are unverified.
+
 - The point-light root-admission patch (`--point-light-root-admission`,
   [camera-and-lights.md](../reverse-engineering/camera-and-lights.md)
   "Implementation") is documented Win32 only: `VirtualProtect`,

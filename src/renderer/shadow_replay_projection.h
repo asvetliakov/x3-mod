@@ -13,10 +13,10 @@
 
 namespace x3m::renderer {
 // The own-ship cascade: centred on the camera position plus forward x
-// forward_offset, half-extent in sun-space x/y, z within +-depth_half_range,
+// forward_offset, half-extent in sun-space x/y, z within the depth range,
 // texel-snapped in sun space (the sun is world-fixed, so snapping removes
 // camera-translation swim). Production defaults per the note; half_extent
-// (X3M_SHADOW_REPLAY_EXTENT), depth_half_range (X3M_SHADOW_REPLAY_DEPTH_HALF)
+// (X3M_SHADOW_REPLAY_EXTENT), the depth half range (X3M_SHADOW_REPLAY_DEPTH_HALF)
 // and size (X3M_SHADOW_REPLAY_SIZE) are read once at device creation within
 // the ranges below; the seam fixture narrows them to its unit-size geometry.
 // The world texel is 2 half_extent / size (legacy-sun-application.md, section 2).
@@ -24,9 +24,18 @@ constexpr float shadow_replay_extent_default = 250.f, shadow_replay_extent_min =
 constexpr float shadow_replay_depth_half_default = 512.f, shadow_replay_depth_half_min = 128.f, shadow_replay_depth_half_max = 8192.f;
 constexpr unsigned shadow_replay_size_default = 1024, shadow_replay_size_min = 64, shadow_replay_size_max = 4096;
 constexpr float shadow_replay_forward_offset_default = 128.f;
+// The sun-space depth range is asymmetric (docs/architecture/shadow-cascades.md,
+// "Depth range towards the light"): z = 0 lies depth_toward_light units from
+// the centre towards the light, z = 1 depth_behind units beyond it. The
+// single-map path keeps both at the half range (set_depth_half), which is
+// bit-identical to the former symmetric law (L + R = 2 D exactly in double).
 struct ShadowReplayCascade {
-    float half_extent = shadow_replay_extent_default, forward_offset = shadow_replay_forward_offset_default, depth_half_range = shadow_replay_depth_half_default;
+    float half_extent = shadow_replay_extent_default, forward_offset = shadow_replay_forward_offset_default;
+    float depth_toward_light = shadow_replay_depth_half_default, depth_behind = shadow_replay_depth_half_default;
     unsigned size = shadow_replay_size_default;
+    void set_depth_half(float half) noexcept { depth_toward_light = depth_behind = half; }
+    double depth_range() const noexcept { return double(depth_toward_light) + double(depth_behind); }
+    double depth_half() const noexcept { return .5 * depth_range(); } // what sun_shadow_apply_bias doubles again
 };
 inline double shadow_replay_world_texel(const ShadowReplayCascade& c) noexcept { return c.size ? 2. * double(c.half_extent) / double(c.size) : 0.; }
 struct ShadowReplayBasis {
@@ -63,7 +72,7 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
                                 ShadowReplayBasis& out) noexcept {
     out = ShadowReplayBasis{};
     if (!camera.valid || !shadow_replay_sun_valid(sun) || !cascade.size) return false;
-    if (!(cascade.half_extent > 0.f) || !(cascade.depth_half_range > 0.f) || !std::isfinite(cascade.forward_offset)) return false;
+    if (!(cascade.half_extent > 0.f) || !(cascade.depth_toward_light > 0.f) || !(cascade.depth_behind > 0.f) || !std::isfinite(cascade.forward_offset)) return false;
     double f[3], n = 0;
     for (unsigned i = 0; i < 3; ++i) { f[i] = -double(sun[i]); n += f[i] * f[i]; }
     n = sqrt_sd(n);
@@ -98,7 +107,7 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
 }
 // The per-draw light matrix: clip = rows . pos; p_view = (clip.x / m00,
 // clip.y / m11, clip.w); world = (p_view - t) R^T; sun-space NDC x, y in
-// [-1, 1] over the half-extent, z in [0, 1] over +-depth_half_range.
+// [-1, 1] over the half-extent, z in [0, 1] over [-depth_toward_light, +depth_behind].
 inline bool shadow_replay_light_rows(const CameraState& camera, const float rows[16], const ShadowReplayBasis& basis,
                                      const ShadowReplayCascade& cascade, float out[16]) noexcept {
     if (!camera.valid || !basis.valid || !rows || !out) return false;
@@ -114,15 +123,15 @@ inline bool shadow_replay_light_rows(const CameraState& camera, const float rows
     }
     W[3][3] = 1;
     // S: world -> sun-space NDC.
-    const double E = double(cascade.half_extent), D = double(cascade.depth_half_range);
+    const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
     double S[4][4] = {};
     const float* axes[3] = {basis.right, basis.up, basis.forward};
     for (unsigned a = 0; a < 3; ++a) {
         double dot = 0;
         for (unsigned j = 0; j < 3; ++j) dot += double(axes[a][j]) * double(basis.center[j]);
-        const double scale = a == 2 ? 1. / (2. * D) : 1. / E;
+        const double scale = a == 2 ? 1. / R : 1. / E;
         for (unsigned j = 0; j < 3; ++j) S[a][j] = double(axes[a][j]) * scale;
-        S[a][3] = a == 2 ? (D - dot) / (2. * D) : -dot / E;
+        S[a][3] = a == 2 ? (L - dot) / R : -dot / E;
     }
     S[3][3] = 1;
     double WA[4][4] = {}, M[4][4] = {};
@@ -146,13 +155,13 @@ inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowRepla
     for (unsigned i = 0; i < 3; ++i) {
         for (unsigned j = 0; j < 3; ++j) { W[i][j] = double(camera.r[i * 3 + j]); W[i][3] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
     }
-    const double E = double(cascade.half_extent), D = double(cascade.depth_half_range);
-    if (!(E > 0.) || !(D > 0.)) return false;
+    const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
+    if (!(E > 0.) || !(L > 0.) || !(R > L)) return false;
     const float* axes[3] = {basis.right, basis.up, basis.forward};
     for (unsigned a = 0; a < 3; ++a) {
         double dot = 0;
         for (unsigned j = 0; j < 3; ++j) dot += double(axes[a][j]) * double(basis.center[j]);
-        const double scale = a == 2 ? 1. / (2. * D) : 1. / E, offset = a == 2 ? (D - dot) / (2. * D) : -dot / E;
+        const double scale = a == 2 ? 1. / R : 1. / E, offset = a == 2 ? (L - dot) / R : -dot / E;
         for (unsigned j = 0; j < 4; ++j) {
             double m = j == 3 ? offset : 0.;
             for (unsigned k = 0; k < 3; ++k) m += double(axes[a][k]) * scale * W[k][j];
@@ -166,8 +175,10 @@ inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowRepla
 // eight corners of the draw's object-space AABB through the draw's clip rows
 // (x, y, w only: p_view = (clip.x / m00, clip.y / m11, clip.w)) and the
 // frame's view -> sun rows (shadow_replay_view_rows); the corners' sun-space
-// AABB meets the map box when it overlaps [-1, 1]^2 x [0, 1]. Conservative
-// for a rotated box. 1 meets, 0 misses, -1 unknown (nonfinite input).
+// AABB meets the map box when it overlaps [-1, 1]^2 and does not lie wholly
+// beyond z = 1: the light side is open, because the replay pancakes a caster
+// nearer the light than the near plane onto it (it still shadows the box).
+// Conservative for a rotated box. 1 meets, 0 misses, -1 unknown (nonfinite input).
 inline int shadow_replay_bounds_verdict(const CameraState& camera, const float rows[16], const float view_rows[12],
                                         const float lo[3], const float hi[3]) noexcept {
     if (!camera.valid || !rows || !view_rows || !lo || !hi || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return -1;
@@ -185,7 +196,167 @@ inline int shadow_replay_bounds_verdict(const CameraState& camera, const float r
             if (s > smax[a]) smax[a] = s;
         }
     }
-    const bool meets = smax[0] >= -1.f && smin[0] <= 1.f && smax[1] >= -1.f && smin[1] <= 1.f && smax[2] >= 0.f && smin[2] <= 1.f;
+    const bool meets = smax[0] >= -1.f && smin[0] <= 1.f && smax[1] >= -1.f && smin[1] <= 1.f && smin[2] <= 1.f;
     return meets ? 1 : 0;
+}
+
+// ---- cascades (docs/architecture/shadow-cascades.md) --------------------------
+// N <= 4 camera-centred, texel-snapped cascades sharing the sun basis. Every
+// default is a single named constant; the launcher options override them
+// (X3M_SHADOW_CASCADES and companions, tools/manage.py). Cascade 0 keeps the
+// own-ship forward offset scaled to its extent; the others centre on the
+// camera. Every cascade's depth range reaches depth_light_factor x the largest
+// extent towards the light (so the smallest cascade containing a pixel contains
+// every occluder of it) and max(the single-map half range, depth_behind_factor
+// x its own extent) behind its centre.
+constexpr unsigned shadow_cascade_max = 4;
+constexpr float shadow_cascade_extent_defaults[shadow_cascade_max] = {250.f, 1500.f, 7500.f, 25000.f}; // the intended set
+constexpr float shadow_cascade_extent_min = 50.f, shadow_cascade_extent_max = 50000.f;
+constexpr unsigned shadow_cascade_size_default = 4096;
+constexpr unsigned shadow_cascade_cap_defaults[shadow_cascade_max] = {128, 512, 1024, 1024};
+constexpr unsigned shadow_cascade_cap_max = 1024; // = shadow_replay::record_capacity (one record list)
+constexpr unsigned shadow_cascade_budget_default = 640, shadow_cascade_budget_min = 1, shadow_cascade_budget_max = 4096; // draw issues per frame
+constexpr float shadow_cascade_depth_light_factor = 2.f, shadow_cascade_depth_behind_factor = 2.f;
+constexpr float shadow_cascade_select_margin = .95f; // a pixel belongs to the first cascade with max(|x|, |y|) <= margin (room for the 3x3 kernel)
+constexpr float shadow_cascade_blend_band = .10f;    // the outer band of that margin blends into the next cascade (the last one fades to lit)
+struct ShadowCascadeSet {
+    unsigned count = 0; // 0: the single-map path
+    ShadowReplayCascade cascades[shadow_cascade_max]{};
+    unsigned caps[shadow_cascade_max]{};
+    unsigned budget = shadow_cascade_budget_default;
+};
+// Builds the set from ascending half-extents; sizes/caps may be null (defaults).
+// `checked` false is the fixture seam (unit-size geometry below the production
+// minimum: no forward offset, depth behind exactly the factor). False on a
+// non-ascending, nonfinite or out-of-range input.
+inline bool shadow_cascade_set(const float* extents, unsigned count, const unsigned* sizes, const unsigned* caps, unsigned budget,
+                               ShadowCascadeSet& out, bool checked = true) noexcept {
+    out = ShadowCascadeSet{};
+    if (!extents || count < 1 || count > shadow_cascade_max) return false;
+    if (budget < shadow_cascade_budget_min || budget > shadow_cascade_budget_max) return false;
+    for (unsigned i = 0; i < count; ++i) {
+        const float e = extents[i];
+        if (!std::isfinite(e) || !(e > 0.f) || (i && !(e > extents[i - 1]))) return false;
+        if (checked && (e < shadow_cascade_extent_min || e > shadow_cascade_extent_max)) return false;
+        const unsigned size = sizes ? sizes[i] : shadow_cascade_size_default, cap = caps ? caps[i] : shadow_cascade_cap_defaults[i];
+        if (size < shadow_replay_size_min || size > shadow_replay_size_max || cap < 1 || cap > shadow_cascade_cap_max) return false;
+        auto& c = out.cascades[i];
+        c.half_extent = e; c.size = size; out.caps[i] = cap;
+        const float forward = e * (shadow_replay_forward_offset_default / shadow_replay_extent_default);
+        c.forward_offset = i || !checked ? 0.f : forward < shadow_replay_forward_offset_default ? forward : shadow_replay_forward_offset_default;
+        const float behind = e * shadow_cascade_depth_behind_factor;
+        c.depth_behind = checked && behind < shadow_replay_depth_half_default ? shadow_replay_depth_half_default : behind;
+        c.depth_toward_light = extents[count - 1] * shadow_cascade_depth_light_factor;
+    }
+    out.count = count; out.budget = budget;
+    return true;
+}
+// The far-cascade policy: the last cascade of a multi-cascade set replays every
+// frame while the frame's issues fit the budget, otherwise on even frames only
+// and always in full; the others replay every frame.
+inline bool shadow_cascade_replays(unsigned cascade, unsigned count, unsigned issues, unsigned budget, std::uint64_t frame) noexcept {
+    return count < 2 || cascade + 1 != count || issues <= budget || (frame & 1u) == 0;
+}
+// The frame's box test for every cascade at once: the view -> sun-space rows in
+// world units relative to the camera position (three dp3; the camera position
+// maps to 0, so the magnitudes stay near the extents) and each cascade's box in
+// those coordinates. One corner transform per draw, then 6 compares per cascade.
+struct ShadowCascadeBounds {
+    unsigned count = 0;
+    float rows[9]{};
+    float lo[shadow_cascade_max][3]{}, hi[shadow_cascade_max][3]{};
+};
+inline bool shadow_cascade_bounds(const CameraState& camera, const float sun[4], const ShadowCascadeSet& set, ShadowCascadeBounds& out) noexcept {
+    out = ShadowCascadeBounds{};
+    if (!set.count || set.count > shadow_cascade_max) return false;
+    double position[3];
+    for (unsigned i = 0; i < 3; ++i) { position[i] = 0; for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
+    for (unsigned c = 0; c < set.count; ++c) {
+        ShadowReplayBasis basis{};
+        if (!shadow_replay_basis(camera, sun, set.cascades[c], basis)) return false;
+        const float* axes[3] = {basis.right, basis.up, basis.forward};
+        for (unsigned a = 0; a < 3; ++a) {
+            if (!c) for (unsigned j = 0; j < 3; ++j) { // sun_rel[a] = sum_j (sum_k axes[a][k] r[k*3+j]) view_j
+                double m = 0;
+                for (unsigned k = 0; k < 3; ++k) m += double(axes[a][k]) * double(camera.r[k * 3 + j]);
+                out.rows[a * 3 + j] = float(m);
+            }
+            double centre = 0;
+            for (unsigned k = 0; k < 3; ++k) centre += double(axes[a][k]) * (double(basis.center[k]) - position[k]);
+            const auto& s = set.cascades[c];
+            const double below = a == 2 ? double(s.depth_toward_light) : double(s.half_extent), above = a == 2 ? double(s.depth_behind) : double(s.half_extent);
+            if (!std::isfinite(centre)) return false;
+            out.lo[c][a] = float(centre - below); out.hi[c][a] = float(centre + above);
+        }
+    }
+    out.count = set.count;
+    return true;
+}
+// Bit i set: the draw's object-space AABB (eight corners through its clip rows,
+// as shadow_replay_bounds_verdict) meets cascade i's box, whose light side is
+// open as there. -1: unknown.
+inline int shadow_cascade_bounds_mask(const CameraState& camera, const float rows[16], const ShadowCascadeBounds& bounds,
+                                      const float lo[3], const float hi[3]) noexcept {
+    if (!camera.valid || !rows || !lo || !hi || !bounds.count || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return -1;
+    float smin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f}, smax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
+    const float ix = 1.f / camera.m00, iy = 1.f / camera.m11;
+    for (unsigned corner = 0; corner < 8; ++corner) {
+        const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1], z = (corner & 4) ? hi[2] : lo[2];
+        const float v[3] = {(rows[0] * x + rows[1] * y + rows[2] * z + rows[3]) * ix, (rows[4] * x + rows[5] * y + rows[6] * z + rows[7]) * iy,
+                            rows[12] * x + rows[13] * y + rows[14] * z + rows[15]};
+        for (unsigned a = 0; a < 3; ++a) {
+            const float s = bounds.rows[a * 3] * v[0] + bounds.rows[a * 3 + 1] * v[1] + bounds.rows[a * 3 + 2] * v[2];
+            if (!std::isfinite(s)) return -1;
+            if (s < smin[a]) smin[a] = s;
+            if (s > smax[a]) smax[a] = s;
+        }
+    }
+    int mask = 0;
+    for (unsigned c = 0; c < bounds.count; ++c) {
+        const float* l = bounds.lo[c]; const float* h = bounds.hi[c];
+        if (smax[0] >= l[0] && smin[0] <= h[0] && smax[1] >= l[1] && smin[1] <= h[1] && smin[2] <= h[2]) mask |= 1 << c; // the light side is open (pancaked)
+    }
+    return mask;
+}
+// The per-draw light rows of several cascades without repeating the matrix
+// products: `base` is the draw's object -> absolute sun-space rows in world
+// units (double; the basis axes are shared by every cascade of a frame);
+// shadow_cascade_light_rows scales and offsets them into one cascade's NDC
+// (c0-c2 of the authored vertex program; c3 is (0, 0, 0, 1): the projection is orthographic).
+inline bool shadow_cascade_draw_rows(const CameraState& camera, const float rows[16], const ShadowReplayBasis& basis, double base[3][4]) noexcept {
+    if (!camera.valid || !basis.valid || !rows || !base) return false;
+    for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return false;
+    double WA[3][4];
+    for (unsigned i = 0; i < 3; ++i) for (unsigned k = 0; k < 4; ++k) {
+        // world_i = sum_j (view_j - t_j) r[i*3+j], view = (clip.x / m00, clip.y / m11, clip.w)
+        const double vx = double(rows[k]) / camera.m00, vy = double(rows[4 + k]) / camera.m11, vz = double(rows[12 + k]);
+        double m = vx * double(camera.r[i * 3]) + vy * double(camera.r[i * 3 + 1]) + vz * double(camera.r[i * 3 + 2]);
+        if (k == 3) for (unsigned j = 0; j < 3; ++j) m -= double(camera.t[j]) * double(camera.r[i * 3 + j]);
+        WA[i][k] = m;
+    }
+    const float* axes[3] = {basis.right, basis.up, basis.forward};
+    for (unsigned a = 0; a < 3; ++a) for (unsigned k = 0; k < 4; ++k) {
+        const double m = double(axes[a][0]) * WA[0][k] + double(axes[a][1]) * WA[1][k] + double(axes[a][2]) * WA[2][k];
+        if (!std::isfinite(m)) return false;
+        base[a][k] = m;
+    }
+    return true;
+}
+inline bool shadow_cascade_light_rows(const double base[3][4], const ShadowReplayBasis& basis, const ShadowReplayCascade& cascade, float out[12]) noexcept {
+    if (!basis.valid || !base || !out) return false;
+    const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
+    if (!(E > 0.) || !(L > 0.) || !(R > L)) return false;
+    const float* axes[3] = {basis.right, basis.up, basis.forward};
+    for (unsigned a = 0; a < 3; ++a) {
+        double dot = 0;
+        for (unsigned j = 0; j < 3; ++j) dot += double(axes[a][j]) * double(basis.center[j]);
+        const double scale = a == 2 ? 1. / R : 1. / E, offset = a == 2 ? (L - dot) / R : -dot / E;
+        for (unsigned k = 0; k < 4; ++k) {
+            const double m = base[a][k] * scale + (k == 3 ? offset : 0.);
+            if (!std::isfinite(m) || m > 1e15 || m < -1e15) return false;
+            out[a * 4 + k] = float(m);
+        }
+    }
+    return true;
 }
 } // namespace x3m::renderer

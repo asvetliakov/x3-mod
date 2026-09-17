@@ -774,11 +774,13 @@ struct Fixture {
     // `verify`: snapshot the state around the draw (every getter is a
     // restore point of the lazy RT mode, so the burst script passes false to
     // keep consecutive routed draws free of application getters).
-    void draw(Object& o, float t, float p, float zo, bool known, bool routed, bool matched, Alter alter = Alter::None, bool verify = true, UINT stride = 24) {
+    // pair_vs / pair_ps: another reviewed pair for this draw (the shadow-replay script's sun-register programs).
+    void draw(Object& o, float t, float p, float zo, bool known, bool routed, bool matched, Alter alter = Alter::None, bool verify = true, UINT stride = 24,
+              IDirect3DVertexShader9* pair_vs = nullptr, IDirect3DPixelShader9* pair_ps = nullptr) {
         scope(known ? &o : nullptr);
         api(d->SetStreamSource(0, o.vb, 0, stride), "SetStreamSource object");
-        IDirect3DPixelShader9* program = alter == Alter::FlatPixel ? flat.p : alter == Alter::Hdr2 ? hdr2.p : (alter == Alter::Hdr8 || alter == Alter::Hdr8Additive) ? hdr8.p : alter == Alter::HdrMid ? hdrmid.p : ps.p;
-        api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(program), "SetPixelShader");
+        IDirect3DPixelShader9* program = pair_ps ? pair_ps : alter == Alter::FlatPixel ? flat.p : alter == Alter::Hdr2 ? hdr2.p : (alter == Alter::Hdr8 || alter == Alter::Hdr8Additive) ? hdr8.p : alter == Alter::HdrMid ? hdrmid.p : ps.p;
+        api(d->SetVertexShader(pair_vs ? pair_vs : vs.p), "SetVertexShader"); api(d->SetPixelShader(program), "SetPixelShader");
         if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "blend on");
         if (alter == Alter::Hdr8Additive) {
             api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "additive on"); api(d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE), "src one");
@@ -3024,6 +3026,7 @@ struct Fixture {
 #include "motion_output_fade_route_inc.h"
 #include "motion_output_shadow_replay_inc.h"
 #include "motion_output_sun_apply_inc.h"
+#include "motion_output_sun_apply_cascades_inc.h"
 } // namespace
 // The glow pass stand-in: records the signal count at entry (the trampoline's
 // signal must precede it), then with glow the depth unbind and the bloom copy
@@ -3171,7 +3174,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if ((f.taa || f.cutout || f.faderoute) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "sunapply") run_sun_apply_integration(f); else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
+        if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "sunapply") { char cascades[4]{}; if (GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_CASCADES", cascades, sizeof cascades) == 1 && cascades[0] == '1') run_sun_apply_cascades(f); else run_sun_apply_integration(f); } else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

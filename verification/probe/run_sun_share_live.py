@@ -25,7 +25,17 @@ ROOT = Path(__file__).resolve().parents[2]
 APPLY_SKIP_REASONS = frozenset(('none', 'lane', 'replay', 'owner', 'depth', 'recording', 'queries', 'camera', 'target', 'attach',
                                 'reset_pending', 'depth_container', 'bias', 'failed', 'detached', 'input', 'params', 'format', 'device'))
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
-         'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission')
+         'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission',
+         'shadow_apply_cascades')
+# shadow_apply_cascades (docs/architecture/shadow-cascades.md): the shadow_apply
+# script and its validation unchanged, with two cascades through the DLL's own
+# wiring (the seam narrows them to 32 and 256 units; cascade 0 is the single
+# map's box, so the CPU-shadowed reference stands) and the capture window open:
+# one shadow_map<i> readback and one shadow_replay_map_basis line per cascade,
+# the sun_shadow_apply_params line with per-cascade rows, bias and texel, and
+# the cascade twin on those dumps.
+CASCADE_LIVE_ENV = dict(X3M_SHADOW_CASCADES='250,1500', X3M_FIXTURE_SHADOW_CASCADES='32,256', X3M_SHADOW_CASCADE_SIZES='512', X3M_CAPTURE_FRAMES='8',
+                        X3M_LINEAR_MATERIALS='0')  # original shading, as shadow_apply
 # hull_emission (emitter plan phase 3, hull_emission_live_inc.h): the covered
 # standard_lighting pair vs_494fe349b8bc12ec / ps_7c83ed50c9894e44 under the
 # HDR scene with X3M_HULL_EMISSION_GAIN=2 (variant created, the ONE/ONE draw
@@ -370,6 +380,47 @@ def validate_hull_emission(text, trace, gain):
     return dict(gain=gain, frames=[dict(kind=r['kind'], pixels=int(r['pixels']), max_codes=int(r['max_codes'])) for r in rows],
                 variants=len(variants), admitted=sum(int(r['admitted']) for r in frames), refused_blend=sum(int(r['refused_blend']) for r in frames))
 
+def validate_cascade_capture(trace, work):
+    """The F8 record of the cascade apply: per applied capture frame one basis
+    line and one readback per cascade, the params line (parse_apply_params
+    checks every printed bias against the law) and the cascade twin on the
+    dumps: cascade 0 owns the receiver and the twin finds the caster's shadow."""
+    import numpy as np
+    lines = trace.splitlines()
+    captures = next(work.glob('x3-modern-captures'))
+    mode = [fields(l) for l in lines if l.startswith('shadow_cascades_mode ')]
+    assert len(mode) == 1 and (mode[0]['enabled'], mode[0]['cascades']) == ('1', '2'), mode
+    device = [fields(l) for l in lines if l.startswith('sun_shadow_apply_device ')]
+    assert device and all(r['attached'] == '1' for r in device), device
+    frames = {}
+    for l in lines:
+        if l.startswith('sun_shadow_apply_params '):
+            row = sun_apply.line_fields(l); frames[int(row['frame'])] = row
+    assert len(frames) >= 2 and all(r['cascades'] == '2' for r in frames.values()), sorted(frames)  # the capture frames on which the quad drew
+    record = {}
+    for frame, row in sorted(frames.items()):
+        basis = [fields(l) for l in lines if l.startswith('shadow_replay_map_basis ') and f' frame={frame} ' in l]
+        assert [(b['cascade'], b['cascades'], b['valid'], b['replayed_frame']) for b in basis] == [('0', '2', '1', str(frame)), ('1', '2', '1', str(frame))], (frame, basis)
+        assert all(b['sun_verdict'] == 'sampled' and b['sun_register'] == '4' for b in basis), basis
+        assert (float(basis[0]['extent']), float(basis[0]['depth_light']), float(basis[0]['depth_behind'])) == (32.0, 512.0, 64.0), basis[0]
+        assert (float(basis[1]['extent']), float(basis[1]['depth_light']), float(basis[1]['depth_behind'])) == (256.0, 512.0, 512.0), basis[1]
+        casters = [fields(l) for l in lines if l.startswith('shadow_replay_caster ') and f' frame={frame} ' in l]
+        assert len(casters) == 2 and all(c['cascades'] == '3' and c['sun_register'] == '4' and c['sun_agrees'] == '1' and c['verdict'] in ('bounds', 'origin') for c in casters), casters
+        params, extra = sun_apply.parse_apply_params(row)
+        assert [c['valid'] for c in params['cascades']] == [True, True] and [c['map_frame'] for c in extra['cascades']] == [frame, frame] and [c['map'] for c in extra['cascades']] == [512, 512], (frame, extra)
+        device_id = int(row['device'])
+        maps = sun_apply.load_cascade_maps(captures, device_id, frame, extra, params)
+        assert all(m is not None and m.shape == (512, 512) for m in maps), frame
+        d, s = sun_apply.unpack_rt2((captures / f'depth_{device_id}_{frame}.rg32f').read_bytes(), extra['width'], extra['height'])
+        # The script's RT2 dump carries the depth but a zero share by the time of the readback; the
+        # visibility f does not depend on the share, so the twin runs with share 1 on every receiver.
+        out = sun_apply.expected_factor_cascades(d, np.where(d >= 0.0, 1.0, 0.0), maps, params)
+        owned = [int(np.count_nonzero(out['valid'] & (out['selected'] == c))) for c in range(2)]
+        shadowed = int(np.count_nonzero(out['valid'] & (out['f'] < 1.0)))
+        assert owned[0] > 1000 and owned[1] == 0 and shadowed >= 400, (frame, owned, shadowed)
+        record[frame] = dict(owned=owned, shadowed=shadowed, bias=[c['bias_constant'] for c in params['cascades']], texel_world=[c['texel_world'] for c in extra['cascades']])
+    return dict(capture_frames=sorted(record), frames=record)
+
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -442,12 +493,14 @@ def main():
                 env['X3M_LINEAR_MATERIALS'] = '0'
             if case == 'original_share_refused':
                 env.update(X3M_FIXTURE_SUN_LANE_FAULT='original_share', X3M_ORIGINAL_FILL='0.05')
-            if case == 'shadow_apply':
+            if case in ('shadow_apply', 'shadow_apply_cascades'):
                 # The depth replay (ownership bookends, rotating camera seam, a
                 # 512^2 map over a 32-unit half-extent centred on the camera so
                 # the receiver at view depth 12 and the caster at 16 lie inside cascade 0) and the quad.
                 env.update(X3M_OWNERSHIP='1', X3M_FIXTURE_CAMERA='rotate', X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='512',
                            X3M_FIXTURE_SLICE_NEAR='0.5', X3M_FIXTURE_SHADOW_EXTENT='32', X3M_SUN_SHADOW_APPLY='1')
+            if case == 'shadow_apply_cascades':
+                env.update(CASCADE_LIVE_ENV, X3M_FIXTURE_SUN_LIVE_CASE='shadow_apply')  # the same script; only the DLL's options differ
             command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work/'fixture.exe'),
                        *('Z:'+str(p) for p in programs[:2]), 'sunlane']
             start = time.monotonic()
@@ -455,7 +508,9 @@ def main():
                 completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
             assert completed.returncode == 0, (case, completed.returncode, str(work))
             logs = list((work/'x3-modern-captures').glob('session-*.log')); assert len(logs) == 1
-            check = validate((work/'stdout.txt').read_text(), logs[0].read_text(), work, case)
+            check = validate((work/'stdout.txt').read_text(), logs[0].read_text(), work, 'shadow_apply' if case == 'shadow_apply_cascades' else case)
+            if case == 'shadow_apply_cascades':
+                check['cascades'] = validate_cascade_capture(logs[0].read_text(), work)
             report['cases'][case] = dict(check, elapsed_seconds=time.monotonic()-start, command=command)
         assert all(sha(Path(p)) == digest for p,digest in inputs.items()), 'prebuilt inputs changed'
         report['passed'] = True

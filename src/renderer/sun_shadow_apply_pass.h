@@ -11,12 +11,15 @@
 // gates are CheckDeviceFormat queries, as AmbientOcclusionPass.
 #include <cstdint>
 #include <d3d9.h>
+#include "shadow_replay_projection.h"
 namespace x3m::renderer {
 struct SunShadowApplyCaps {
     bool enabled = false;
     const char* reason = "detached"; // gate name or creation failure
     HRESULT formats = S_FALSE, programs = S_FALSE;
     unsigned program_slots = 0;      // conservative ps_3_0 slot count of the embedded program
+    bool cascades = false;           // the cascade program was requested, fits the device and was created
+    unsigned cascade_slots = 0;
 };
 struct SunShadowApplyParams {
     // The route's jittered projection latch (camera_reprojection.h; the AO
@@ -51,6 +54,29 @@ inline bool sun_shadow_apply_bias(double bias_units, double clamp_texels, double
     out.constant = float(constant); out.max = float(clamp_texels * texel / (2. * depth_half)); out.texel_world = float(texel);
     return out.constant >= 0.f && out.max >= 0.f && out.max <= 1.f && out.constant <= 1.f;
 }
+// Cascades (docs/architecture/shadow-cascades.md, section 2;
+// src/temporal/sun_shadow_cascade_apply_ps.hlsl): per cascade the view -> sun
+// rows of the map's *retained* basis composed with the current camera, the
+// map, and the bias resolved against that cascade's texel and depth range. A
+// null map or valid = false is an absent cascade (lit).
+struct SunShadowCascadeInput {
+    IDirect3DTexture9* map = nullptr;
+    float rows[12]{};
+    float bias_constant = 0.f, bias_max = 0.f;
+    bool valid = false;
+};
+struct SunShadowCascadeFrame {
+    IDirect3DTexture9* depth_share = nullptr;
+    IDirect3DSurface9* target = nullptr;
+    UINT width = 0, height = 0;
+    float m00 = 0, m11 = 0, m20 = 0, m21 = 0, m22 = 0, m32 = 0;
+    unsigned jitter_index = 0;
+    float exponent = 1.f, planar_step = .05f;
+    unsigned count = 0;                                   // configured cascades, 1..shadow_cascade_max
+    SunShadowCascadeInput cascades[shadow_cascade_max]{};
+    bool caller_scene_open = true;
+    bool caller_stateblock_recording = false;
+};
 struct SunShadowApplyFrame {
     IDirect3DTexture9* depth_share = nullptr; // RT2 G32R32F, width x height (.r = z/w with -1 sentinel, .g = share)
     IDirect3DTexture9* map = nullptr;         // the replay's R32F square map of this frame
@@ -68,6 +94,7 @@ struct SunShadowApplyResult {
     bool skipped = false;             // a missing or invalid input: nothing touched, execute returns S_FALSE
     const char* skipped_reason = "";  // detached, reset_pending, input, params, format, device
     unsigned map_size = 0;
+    unsigned cascades_bound = 0;      // execute_cascades: maps sampled (valid cascades)
 };
 class SunShadowApplyPass {
 public:
@@ -80,13 +107,20 @@ public:
     // textures and post-pixel-shader blending on target_format, then creates
     // the programs and the declaration (surviving Reset). A refusal leaves
     // the pass detached with caps().reason set.
-    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format, D3DFORMAT target_format) noexcept;
+    // `cascades` additionally gates and creates the cascade program (its slot
+    // count against MaxPixelShader30InstructionSlots, five samplers); without
+    // it the pass is exactly the single-map pass.
+    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format, D3DFORMAT target_format, bool cascades = false) noexcept;
     const SunShadowApplyCaps& caps() const noexcept { return caps_; }
     // One quad: capture the owned block and the bindings, normalize, upload
     // the constants, draw, restore. Any missing input returns S_FALSE with
     // result.skipped and touches no device state; a failed device call
     // restores and names its stage; a lost device stops restoration.
     HRESULT execute(const SunShadowApplyFrame&, SunShadowApplyResult*) noexcept;
+    // The same transaction with the cascade program; skips with reason
+    // "cascades" when the pass was attached without it and "absent" when no
+    // cascade is valid (nothing to darken: the frame stays byte-identical).
+    HRESULT execute_cascades(const SunShadowCascadeFrame&, SunShadowApplyResult*) noexcept;
     void before_reset() noexcept;              // releases the block, refuses execute until after_reset(SUCCEEDED)
     void after_reset(HRESULT) noexcept;
     void detach() noexcept;                    // full teardown including programs
@@ -98,13 +132,14 @@ private:
         return reinterpret_cast<Fn>((vtable_ ? vtable_ : *reinterpret_cast<void* const* const*>(device_))[slot]);
     }
     HRESULT ensure_block() noexcept;
-    HRESULT normalize(IDirect3DSurface9* target, UINT w, UINT h) noexcept;
+    HRESULT normalize(IDirect3DSurface9* target, UINT w, UINT h, IDirect3DPixelShader9* program, UINT samplers) noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* vtable_ = nullptr;
     SunShadowApplyCaps caps_{};
     D3DFORMAT target_format_ = D3DFMT_UNKNOWN;
     IDirect3DStateBlock9* block_ = nullptr;
     IDirect3DPixelShader9* apply_ = nullptr;
+    IDirect3DPixelShader9* cascade_apply_ = nullptr;
     IDirect3DVertexShader9* quad_vs_ = nullptr;
     IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
     UINT render_targets_ = 0, streams_ = 0;
