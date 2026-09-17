@@ -237,16 +237,20 @@ and `src/proxy/motion_output_shadow_adaptive_inc.h`:
   (`object_capture::own_ship`; the chase camera's anchor, chase-camera-first-flight.md). Resolved
   once per frame at the first candidate draw, behind `object_trace::executable_verified()`;
   a draw belongs to the ship when its scope node is the root or reaches it through the parent
-  links `+0x18` (cached per node, re-walked every 256 frames). No new hook.
+  links `+0x18` (`own_ship_cache.h`: cached per (node, handle), flushed on a root, handle, load
+  or registry epoch change, expiring after 256 frames, at most 64 walks per frame with the
+  rest deferred as not-own). No new hook. Both readers run on the host over a synthetic image
+  (`test_shadow_cascades`).
 - **Radius.** Per frame the largest AABB-corner distance from the object origin through the
   draw's rows (view units = world units) over the ship's z-writing draws with a known extent
   (`shadow_cascade_draw_radius`, 12 ns on the host per own-ship draw; other draws pay one
   pointer compare or one cache probe).
 - **Commit, at the frame boundary** (`begin_frame`, so one frame's box test, replay and apply
   share one set): another ship with a measured radius commits at once, as does the first
-  measurement of the current ship; a ship not measured yet, no ship at all (menu, cockpit
-  view without hull draws) and a > 20 % size change are candidates that commit after 8
-  consistent boundaries. `E0 = max(E0_config, K × radius)`, clamped to the last cascade's
+  measurement of the current ship; a > 20 % size change of the same ship commits after 8
+  consistent boundaries. A boundary without a measured own-ship draw (menu, loading, cockpit
+  view without hull draws, the ship's first frame) holds E0 and counts `held_frames`: a view
+  toggle never re-anchors C0. `E0 = max(E0_config, K × radius)`, clamped to the last cascade's
   extent (the depth towards the light stays `2 E_last`) and the 50,000 maximum; texel
   `2 E0 / size`, depth behind `max(512, 2 E0)`, forward offset `min(128, E0 × 128/250)`. A
   changed E0 re-snaps C0's grid (its texel changed) and voids only C0's retained map; the far
@@ -256,12 +260,12 @@ and `src/proxy/motion_output_shadow_adaptive_inc.h`:
 - **Ratio guard.** After each commit, every following cascade whose extent is below 3× the
   previous *active* cascade's is dropped while that holds (`active_mask`; the reading of
   "E_{i−1}" as the previous kept cascade: with E0 = 3,000 both 1,500 and 7,500 go, 25,000 stays).
-  A dropped cascade keeps its map, size and cap (no reallocation) but has an empty box (no
-  record or retained draw carries its bit), replays nothing, its retained basis is void, and
-  the apply quad gets rows that put every pixel outside its margin, so the selection falls
-  through to the next active cascade (the shader's "absent = lit" would otherwise open a hole
-  between E0 and the dropped extent). The `sun_shadow_apply_params` line prints the per-frame
-  extents as before; the twin reads them from there.
+  A dropped cascade keeps its map, size, cap and records (no reallocation) but has an empty
+  box (no record or retained draw carries its bit), replays nothing, its retained basis is
+  void, and it is not a slot of the apply quad (`shadow_cascade_apply_slots`: the active
+  cascades in order), so the previous cascade's blend band leads into the next active one and
+  the shader is unchanged. The `sun_shadow_apply_params` line prints one entry per slot with
+  `source<s>=` naming the cascade it samples; the twin reads the extents and map files by it.
 - **Expected in flight.** M5/M3 (radius ≤ 165 at K 1.5): nothing changes. M6 (radius ~500–
   700): E0 750–1,050, C1 (1,500) dropped, C2 kept (7,500 ≥ 3 E0 up to E0 = 2,500). M2 (radius
   ~5,000): E0 = 7,500, C1 and C2 dropped, C3 kept: 7,500 / 25,000, two maps.

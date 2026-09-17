@@ -246,13 +246,7 @@ struct ShadowCascadeSet {
     ShadowReplayCascade cascades[shadow_cascade_max]{};
     unsigned caps[shadow_cascade_max]{};
     unsigned budget = shadow_cascade_budget_default;
-    unsigned records[shadow_cascade_max] = {shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default    // Bit i: cascade i is active. A cascade the ratio guard dropped
-    // (shadow_cascade_ratio_guard) keeps its map, size and cap but has an empty
-    // box (no record carries its bit, nothing replays into it, the apply owns
-    // no pixel with it). Cascade 0 is always active.
-    unsigned active = 0;
-    bool checked = true; // the production laws (forward offset, depth-behind floor); false: the fixture seam's unit geometry
-};
+    unsigned records[shadow_cascade_max] = {shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default};
     unsigned static_from = shadow_cascade_static_from_none; // cascades i >= static_from admit static casters only
     bool importance = false;                                // a cascade over its cap keeps the largest projected casters, not the first submitted
     float large_min = 0.f;                                  // a static-only cascade also admits a moving caster whose world AABB extent is >= this (0: never)
@@ -262,6 +256,12 @@ struct ShadowCascadeSet {
     unsigned record_capacity() const noexcept { unsigned m = 0; for (unsigned i = 0; i < count; ++i) if (records[i] > m) m = records[i]; return m; }
     bool static_only(unsigned i) const noexcept { return i >= static_from; }
     std::uint8_t static_only_mask() const noexcept { std::uint8_t m = 0; for (unsigned i = static_from; i < count; ++i) m |= std::uint8_t(1u << i); return m; }
+    // Bit i: cascade i is active. A cascade the ratio guard dropped
+    // (shadow_cascade_ratio_guard_mask) keeps its map, size, cap and records
+    // but has an empty box (no record carries its bit, nothing replays into
+    // it, the apply quad has no slot for it). Cascade 0 is always active.
+    unsigned active = 0;
+    bool checked = true; // the production laws (forward offset, depth-behind floor); false: the fixture seam's unit geometry
 };
 // The pool policy on a built set: records (one per cascade, null = default), the first
 // static-only cascade (shadow_cascade_static_from_none = none; count or more means none too)

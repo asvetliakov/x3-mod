@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/verification/probe/build/motion_output_fixture.exe": "2f02803ae9eba54d836e57d15a02f529536968fc9d3ce91b082c94d602e09476",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/verification/probe/build/motion-output-seam/d3d9.dll": "62b3ce72776d09c8d4706d7215a2888976490d0a36998238eb050d36a3f3dabc",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/build/d3d9.dll": "8115d9432093d9a642853cf137e7fa51cd6e649bf81e1265bd92c3ea6f029a99"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/verification/probe/build/motion_output_fixture.exe": "c1bd179109aad795e9d7d1f2dfb602722154eb860b3ff797d4e168fdbbf40715",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/verification/probe/build/motion-output-seam/d3d9.dll": "12268e8bc9c28b12c1b49ee64c1f3871aa0e972dda2b9ef0e1c6171c32dd8158",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/build/d3d9.dll": "cc51e4dee8d0879bdb2481a3089a8e70e2c8a035e019b19de83b6e47aea9b861"
  },
  "checks": 336,
  "depth": true,
@@ -52,15 +52,15 @@
  "frames": 8,
  "us": {
   "frames": 5,
-  "min": 65.6,
-  "median": 76.1,
-  "max": 1485.3
+  "min": 62.4,
+  "median": 70.7,
+  "max": 1531.6
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-reuse-20260917-231255-522770",
- "trace_sha256": "2d6b334da6d586b10c324be49c671e12a2aadb711637a4bca09dbd2bf2bf13d2",
- "dll_sha256": "62b3ce72776d09c8d4706d7215a2888976490d0a36998238eb050d36a3f3dabc",
- "exe_sha256": "2f02803ae9eba54d836e57d15a02f529536968fc9d3ce91b082c94d602e09476",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-reuse-20260917-231735-454682",
+ "trace_sha256": "6b07e1b7ab778656cb238d3d79924b8eda97d1a78d6acfaf9ae851d464b485fe",
+ "dll_sha256": "12268e8bc9c28b12c1b49ee64c1f3871aa0e972dda2b9ef0e1c6171c32dd8158",
+ "exe_sha256": "c1bd179109aad795e9d7d1f2dfb602722154eb860b3ff797d4e168fdbbf40715",
  "map": {
   "max_depth_error": 8.4620178757433e-06,
   "covered_texels": 57785
