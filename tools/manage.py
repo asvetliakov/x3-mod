@@ -287,6 +287,7 @@ def main():
     parser.add_argument('--shadow-cascade-drop-order', choices=('submission', 'importance'), default=None, help='What a cascade drops when its candidates exceed its cap (X3M_SHADOW_CASCADE_DROP_ORDER; requires --shadow-cascades): submission (default: the last submitted) or importance (the smallest projected size at the camera, decided at the scene end; stable across submission order; dropped_min_size<i> shows the largest caster dropped)')
     parser.add_argument('--shadow-sun-poll', choices=('on', 'off'), default=None, help='Sun position for the cascades from the engine\'s brightest directional light node instead of one LightDir_Dir0 constant (X3M_SHADOW_SUN_POLL; default on with --shadow-cascades; verified executable only, cross-checked against the constants, the constant latch otherwise; requires --shadow-cascades).')
     parser.add_argument('--shadow-cascade-budget', type=int, default=None, metavar='B', help='Draw issues per frame above which the far cascade replays on even frames only, 1..4096, default 640 (X3M_SHADOW_CASCADE_BUDGET; requires --shadow-cascades)')
+    parser.add_argument('--shadow-cascade-adaptive-c0', type=float, default=None, metavar='K', help='Own-ship-adaptive near cascade (X3M_SHADOW_CASCADE_ADAPTIVE_C0; default off; requires --shadow-cascades; suggested 1.5): the first cascade\'s half-extent becomes max(its configured value, K x the own ship\'s radius), the radius being the largest object-space AABB corner distance over the player ship\'s z-writing draws (the ship is the active cockpit\'s ref object of the verified executable), committed at once on a ship change and after eight stable frames on a > 20 %% size change, clamped to the last cascade\'s extent; the texel is 2 E0 / size. A following cascade whose extent is below 3 x the previous active one is dropped while that holds (its map stays allocated, nothing replays into it, the apply owns no pixel with it). One shadow_cascade_set line (own_radius= e0= texel0= active_mask=) per commit and per F8 frame (docs/architecture/shadow-cascade-extents.md, 5)')
     parser.add_argument('--shadow-retention-census', action='store_true', help='Caster retention census (X3M_SHADOW_RETENTION_CENSUS=1; default off; requires --shadow-cascades): the node-keyed retention store runs with every expiry decision taken as if live but holds no references and replays nothing; one shadow_retention_frame line per frame, one cumulative shadow_retention_resight line every 300 frames and shadow_retention_caster lines on F8 frames calibrate eps, the age cap and the budget before --shadow-caster-retention is trusted (docs/architecture/shadow-caster-retention.md, stage 1)')
     parser.add_argument('--shadow-caster-retention', action='store_true', help='Retention of static sun-shadow casters the engine stopped submitting (X3M_SHADOW_CASTER_RETENTION=1; default off; requires --shadow-cascades; wins over --shadow-retention-census): nodes whose world rows held still for 8 sightings keep their draws, with the store\'s own references on VB, IB and declaration, and are replayed into the cascades they meet inside the per-cascade caps and the issue budget until the node retires, leaves 2 x the outermost box, its buffers change, the age cap passes, the sun re-latches or the device resets (docs/architecture/shadow-caster-retention.md, stage 2)')
     parser.add_argument('--shadow-caster-retention-age', type=int, default=None, metavar='FRAMES', help='Frames an unseen static caster is kept, 1..10000000, default 7200 (X3M_SHADOW_CASTER_RETENTION_AGE; requires --shadow-retention-census or --shadow-caster-retention)')
@@ -482,13 +483,15 @@ def main():
     # are the single named constants of src/renderer/shadow_replay_projection.h).
     SHADOW_CASCADE_EXTENTS = '250,1500,7500,25000'
     SHADOW_CASCADE_MAX, SHADOW_CASCADE_EXTENT_RANGE, SHADOW_CASCADE_BUDGET_RANGE = 4, (50.0, 50000.0), (1, 4096)
+    SHADOW_CASCADE_ADAPTIVE_RANGE = (0.5, 8.0)  # shadow_cascade_adaptive_k_min/max
     def shadow_cascade_env(parser, args):
         """Validates --shadow-cascades and its companions; returns their environment
         ('X3M_SHADOW_CASCADES': '0' when off, the companions only when given)."""
         companions = (('--shadow-cascade-sizes', args.shadow_cascade_sizes), ('--shadow-cascade-caps', args.shadow_cascade_caps),
                       ('--shadow-cascade-budget', args.shadow_cascade_budget), ('--shadow-sun-poll', args.shadow_sun_poll),
                       ('--shadow-cascade-records', args.shadow_cascade_records), ('--shadow-cascade-static-from', args.shadow_cascade_static_from),
-                      ('--shadow-cascade-drop-order', args.shadow_cascade_drop_order), ('--shadow-cascade-large-min', args.shadow_cascade_large_min))
+                      ('--shadow-cascade-drop-order', args.shadow_cascade_drop_order), ('--shadow-cascade-large-min', args.shadow_cascade_large_min),
+                      ('--shadow-cascade-adaptive-c0', args.shadow_cascade_adaptive_c0))
         if args.shadow_cascades is None:
             for option, value in companions:
                 if value is not None:
@@ -535,6 +538,11 @@ def main():
             if not low <= args.shadow_cascade_budget <= high:
                 parser.error('--shadow-cascade-budget must be within [1, 4096].')
             env['X3M_SHADOW_CASCADE_BUDGET'] = str(args.shadow_cascade_budget)
+        if args.shadow_cascade_adaptive_c0 is not None:
+            low, high = SHADOW_CASCADE_ADAPTIVE_RANGE
+            if not (math.isfinite(args.shadow_cascade_adaptive_c0) and low <= args.shadow_cascade_adaptive_c0 <= high):
+                parser.error('--shadow-cascade-adaptive-c0 must be within [0.5, 8].')
+            env['X3M_SHADOW_CASCADE_ADAPTIVE_C0'] = repr(args.shadow_cascade_adaptive_c0)
         return env
     args.shadow_cascade_env = shadow_cascade_env(parser, args)
     # Caster retention (docs/architecture/shadow-caster-retention.md): rides the cascades.
@@ -803,7 +811,7 @@ def main():
         # Explicit off value ("0") and companions dropped when absent, so an
         # inherited value cannot enable or reshape the cascades.
         for name in ('X3M_SHADOW_CASCADES', 'X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET',
-                     'X3M_SHADOW_CASCADE_RECORDS', 'X3M_SHADOW_CASCADE_STATIC_FROM', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_SHADOW_CASCADE_LARGE_MIN'):
+                     'X3M_SHADOW_CASCADE_RECORDS', 'X3M_SHADOW_CASCADE_STATIC_FROM', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_SHADOW_CASCADE_LARGE_MIN', 'X3M_SHADOW_CASCADE_ADAPTIVE_C0'):
             env.pop(name, None)
         env.update(args.shadow_cascade_env)
         # Caster retention: explicit switches, companions only when given.

@@ -329,6 +329,56 @@ int main(int argc, char** argv) {
               && !shadow_cascade_set(shadow_cascade_extent_defaults, 1, big, nullptr, 640, bad) && !shadow_cascade_set(shadow_cascade_extent_defaults, 1, nullptr, zero, 640, bad)
               && !shadow_cascade_set(shadow_cascade_extent_defaults, 1, nullptr, nullptr, 4097, bad) && !shadow_cascade_set(shadow_cascade_extent_defaults, 0, nullptr, nullptr, 640, bad) && bad.count == 0);
         CHECK(shadow_cascade_set(small, 1, nullptr, nullptr, 640, bad, false) && bad.cascades[0].forward_offset == 0.f && bad.cascades[0].depth_behind == 98.f);
+        // ---- own-ship-adaptive cascade 0 and the ratio guard (shadow-cascade-extents.md, section 5)
+        {
+            CHECK(set.active == 15 && set.checked && shadow_cascade_active(set, 3) && !shadow_cascade_active(set, 4) && shadow_cascade_ratio_guard_mask(set) == 15);
+            ShadowCascadeAdaptive state{}; ShadowCascadeSet live = set; const char* why = nullptr;
+            shadow_cascade_adaptive_reset(state, set);
+            CHECK(state.e0 == 250.f && !shadow_cascade_adaptive_update(state, 0, 0.f, 1.5f, set, live, &why) && why == nullptr && live.cascades[0].half_extent == 250.f);
+            // A fighter (radius 50): E0 stays 250. Its first frame has no extents yet (radius 0): a ship without a
+            // measurement is only a candidate; the first measured radius commits it at once and re-anchors nothing.
+            CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 0.f, 1.5f, set, live, &why) && why == nullptr && state.node == 0 && state.pending_node == 0x1000 && state.pending_frames == 1);
+            CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 50.f, 1.5f, set, live, &why) && why && !std::strcmp(why, "node") && state.node == 0x1000 && state.radius == 50.f && live.cascades[0].half_extent == 250.f && live.active == 15);
+            // The hull culled for a frame (radius 0 on the same ship) is a candidate too: E0 holds.
+            CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 0.f, 1.5f, set, live, &why) && why == nullptr && state.radius == 50.f && state.pending_frames == 1);
+            CHECK(!shadow_cascade_adaptive_update(state, 0x1000, 50.f, 1.5f, set, live, &why) && why == nullptr && state.pending_frames == 0);
+            // A capital (radius 1,000): E0 = 1,500 at once (a ship change), C1 (1,500 < 4,500) dropped, C2 (7,500 >= 4,500) and C3 kept;
+            // cascade 0 keeps the 128-unit forward offset and gets depth behind 3,000; the depth towards the light stays the last cascade's.
+            CHECK(shadow_cascade_adaptive_update(state, 0x2000, 1000.f, 1.5f, set, live, &why) && why && !std::strcmp(why, "node") && live.cascades[0].half_extent == 1500.f
+                  && live.active == 13 && !shadow_cascade_active(live, 1) && shadow_cascade_active(live, 2) && live.cascades[0].forward_offset == 128.f
+                  && live.cascades[0].depth_behind == 3000.f && live.cascades[0].depth_toward_light == 50000.f && live.cascades[1].half_extent == 1500.f && live.cascades[0].size == 4096);
+            CHECK(shadow_replay_world_texel(live.cascades[0]) == 2. * 1500. / 4096.);
+            // Hysteresis: a 15 % change never moves E0; a 25 % change moves it after stable_frames consecutive scene ends, a wobble in between restarts the count.
+            for (unsigned i = 0; i < 20; ++i) CHECK(!shadow_cascade_adaptive_update(state, 0x2000, 1150.f, 1.5f, set, live, &why) && why == nullptr);
+            for (unsigned i = 0; i + 1 < shadow_cascade_adaptive_stable_frames; ++i) CHECK(!shadow_cascade_adaptive_update(state, 0x2000, 1250.f, 1.5f, set, live, &why) && why == nullptr && state.pending_frames == i + 1);
+            CHECK(!shadow_cascade_adaptive_update(state, 0x2000, 1000.f, 1.5f, set, live, &why) && state.pending_frames == 0);
+            for (unsigned i = 0; i + 1 < shadow_cascade_adaptive_stable_frames; ++i) CHECK(!shadow_cascade_adaptive_update(state, 0x2000, 1250.f, 1.5f, set, live, &why));
+            CHECK(shadow_cascade_adaptive_update(state, 0x2000, 1250.f, 1.5f, set, live, &why) && why && !std::strcmp(why, "radius") && live.cascades[0].half_extent == 1875.f && live.active == 13);
+            // The clamp: E0 never exceeds the last cascade (every other cascade dropped); the extent maximum bounds it too.
+            CHECK(shadow_cascade_adaptive_update(state, 0x3000, 1e6f, 1.5f, set, live, &why) && live.cascades[0].half_extent == 25000.f && live.active == 1);
+            CHECK(shadow_cascade_adaptive_extent(set, 1.5f, 0.f) == 250.f && shadow_cascade_adaptive_extent(set, 1.5f, 100.f) == 250.f && shadow_cascade_adaptive_extent(set, 2.f, 200.f) == 400.f);
+            // Losing the ship (0: a menu, no candidate draw) returns to the configured set after stable_frames boundaries, not at once;
+            // a Reset's repeated boundary or one menu frame never moves E0.
+            for (unsigned i = 0; i + 1 < shadow_cascade_adaptive_stable_frames; ++i) CHECK(!shadow_cascade_adaptive_update(state, 0, 0.f, 1.5f, set, live, &why) && why == nullptr && live.cascades[0].half_extent == 25000.f);
+            CHECK(shadow_cascade_adaptive_update(state, 0, 0.f, 1.5f, set, live, &why) && why && !std::strcmp(why, "node") && live.cascades[0].half_extent == 250.f && live.active == 15);
+            ShadowCascadeSet guarded{}; CHECK(shadow_cascade_adapt_c0(set, 3000.f, guarded) && guarded.active == 9); // 1,500 and 7,500 < 9,000 dropped; 25,000 >= 9,000 kept
+            // The fixture law (unchecked): no forward offset, depth behind exactly 2 E0.
+            ShadowCascadeSet unit{}; const float units[2] = {8.f, 400.f};
+            CHECK(shadow_cascade_set(units, 2, nullptr, nullptr, 640, unit, false) && !unit.checked && shadow_cascade_adapt_c0(unit, 48.f, guarded) && guarded.cascades[0].forward_offset == 0.f && guarded.cascades[0].depth_behind == 96.f && guarded.active == 3);
+            // The bounds of a dropped cascade are empty: no draw carries its bit; the active cascades' boxes are the plain set's.
+            CameraState c = camera(); const float sun[4] = {0, 1, 0, 0};
+            ShadowCascadeBounds plain{}, dropped{}; ShadowCascadeSet three{}; CHECK(shadow_cascade_adapt_c0(set, 1500.f, three));
+            CHECK(shadow_cascade_bounds(c, sun, set, plain) && shadow_cascade_bounds(c, sun, three, dropped) && dropped.lo[1][0] > dropped.hi[1][0]);
+            const float rows[16] = {1, 0, 0, 100, 0, 1, 0, 50, 0, 0, 1, 0, 0, 0, 0, 1}, lo[3] = {-10, -10, -10}, hi[3] = {10, 10, 10};
+            CHECK(shadow_cascade_bounds_mask(c, rows, plain, lo, hi) == 15 && shadow_cascade_bounds_mask(c, rows, dropped, lo, hi) == 13);
+            const float huge_lo[3] = {-3000, -3000, -3000}, huge_hi[3] = {3000, 3000, 3000}; // a hull spanning every box: still no bit for the dropped cascade
+            CHECK(shadow_cascade_bounds_mask(c, rows, plain, huge_lo, huge_hi) == 15 && shadow_cascade_bounds_mask(c, rows, dropped, huge_lo, huge_hi) == 13);
+            for (unsigned k = 2; k < 4; ++k) for (unsigned a = 0; a < 3; ++a) CHECK(plain.lo[k][a] == dropped.lo[k][a] && plain.hi[k][a] == dropped.hi[k][a]);
+            // The draw radius: the largest AABB corner distance through the rows in view units (m00 .8, m11 1.2: x / .8, y / 1.2).
+            const float box_lo[3] = {-20, -30, .5f}, box_hi[3] = {20, 30, .5f}, tilted[16] = {1, 0, 0, .3f, 0, 1, 0, 0, 0, 0, 1, 0, .125f, 0, 0, 1};
+            const float r = shadow_cascade_draw_radius(c, tilted, box_lo, box_hi);
+            CHECK(r > 35.44f && r < 35.45f); // sqrt(25^2 + 25^2 + 2.5^2)
+        }
         CHECK(shadow_cascade_replays(3, 4, 641, 640, 0) && !shadow_cascade_replays(3, 4, 641, 640, 1) && shadow_cascade_replays(3, 4, 640, 640, 1) && shadow_cascade_replays(2, 4, 9999, 640, 1)
               && shadow_cascade_replays(0, 1, 9999, 640, 1));
         const CameraState c = camera();
@@ -608,6 +658,11 @@ class LauncherOptions(unittest.TestCase):
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
             self.assertEqual((env['X3M_SHADOW_CASCADES'], env['X3M_SHADOW_CASCADE_SIZES'], env['X3M_SHADOW_CASCADE_CAPS'], env['X3M_SHADOW_CASCADE_BUDGET']),
                              ('250.0,1500.0,7500.0', '4096,2048,1024', '64', '900'))
+            self.assertNotIn('X3M_SHADOW_CASCADE_ADAPTIVE_C0', env)  # default off
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-adaptive-c0', '1.5', inherited={'X3M_SHADOW_CASCADE_ADAPTIVE_C0': '8'})
+            self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_CASCADE_ADAPTIVE_C0'], '1.5')
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', inherited={'X3M_SHADOW_CASCADE_ADAPTIVE_C0': '8'})
+            self.assertEqual(code, 0, error); self.assertNotIn('X3M_SHADOW_CASCADE_ADAPTIVE_C0', json.loads(output)['env'])  # an inherited value cannot enable it
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -625,13 +680,15 @@ class LauncherOptions(unittest.TestCase):
                                            ('--shadow-cascade-large-min', '1000001', '--shadow-cascade-large-min must be within [0, 1000000]'),
                                            ('--shadow-cascade-large-min', 'nan', '--shadow-cascade-large-min must be within [0, 1000000]'),
                                            ('--shadow-cascade-budget', '0', '--shadow-cascade-budget must be within [1, 4096]'),
-                                           ('--shadow-cascade-budget', '4097', '--shadow-cascade-budget must be within [1, 4096]')):
+                                           ('--shadow-cascade-budget', '4097', '--shadow-cascade-budget must be within [1, 4096]'),
+                                           ('--shadow-cascade-adaptive-c0', '0.4', '--shadow-cascade-adaptive-c0 must be within [0.5, 8]'),
+                                           ('--shadow-cascade-adaptive-c0', '9', '--shadow-cascade-adaptive-c0 must be within [0.5, 8]')):
                 code, _, error = launch(directory, *self.BASE, '--shadow-cascades', '250,1500,7500', option, value)
                 self.assertNotEqual(code, 0, (option, value)); self.assertIn(message, error)
             code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-cascades', 'default')
             self.assertNotEqual(code, 0); self.assertIn('--shadow-cascades requires --shadow-replay-depth', error)
             for option, value in (('--shadow-cascade-sizes', '1024'), ('--shadow-cascade-caps', '8'), ('--shadow-cascade-budget', '64'), ('--shadow-sun-poll', 'on'),
-                                  ('--shadow-cascade-records', '4096'), ('--shadow-cascade-static-from', '3'), ('--shadow-cascade-drop-order', 'importance'), ('--shadow-cascade-large-min', '1500')):
+                                  ('--shadow-cascade-records', '4096'), ('--shadow-cascade-static-from', '3'), ('--shadow-cascade-drop-order', 'importance'), ('--shadow-cascade-large-min', '1500'), ('--shadow-cascade-adaptive-c0', '1.5')):
                 code, _, error = launch(directory, *self.BASE, option, value)
                 self.assertNotEqual(code, 0, option); self.assertIn(f'{option} requires --shadow-cascades', error)
             code, _, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-drop-order', 'largest')

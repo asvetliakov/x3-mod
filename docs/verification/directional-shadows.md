@@ -2155,3 +2155,53 @@ geometry is close enough that z/1024 stays under a quarter texel. Two checks:
    with `analytic_shadow` evaluated at the D3D9 pixel centre. Plus the capture-side self-check that
    flags this on any F8 frame: per cascade, the median own-surface residual (|r| < 30 units) must be
    below bias/2 — run115 C1 gives 1.66 vs 0.63.
+
+## 2026-09-17 Own-ship-adaptive C0 and the ratio guard (`--shadow-cascade-adaptive-c0 K`)
+
+Design and law: [shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md), §5
+(amended). Default off; the option is a companion of `--shadow-cascades` (an inherited value
+cannot enable it). Worktree `agent-adaptive-c0`, rebased onto main `c662df4`.
+
+- Clean CMake build: 0 warnings, `build/d3d9.dll` sha256 `eff688f0…ef46`;
+  `check_no_x87.py`: 533 reachable functions, no violations. `build_motion_output.sh` (strict
+  seam compile): clean, the new `x3m_shadow_own_ship_fixture_install` export present.
+- Host: `test_shadow_cascades` (driver CHECKs for the commit law, hysteresis, the clamp, the
+  guard's previous-active rule, the empty box of a dropped cascade against a hull spanning
+  every box, the draw radius; launcher value/range/requires cases), `test_shadow_replay_depth`,
+  `test_shadow_retention`, `test_sun_shadow_apply`, `test_shadow_replay_candidates`, `test_comparison_hotkeys` and the six
+  mock-drift modules: 82 tests OK.
+- Fixture (`X3M_FIXTURE_BOTTLE=X3`, bottle X3), the cascade script under 8 / 48 / 240 / 800
+  (set R's ratios), K 1.5, two hulls drawn every frame (H1 radius 1.69, H2 radius 33.7 through
+  the script's camera), the seam naming one of them as the player ship:
+  `seam-ownership-shadow-replay-adaptive-small` 318 checks — one `node` commit at frame 1
+  (radius 1.69, `e0=8`, `active_mask=15`), E0 stays 8 on every map;
+  `…-adaptive-big` 318 checks — one commit at frame 1 (radius 33.7, `e0=50.59`, texel 0.395,
+  depth behind 101.2, `active_mask=13`): from frame 2 cascade 0 reads back at 50.59, cascade 1
+  (48 < 3 × 50.59) is never replayed and stays void, cascades 2 and 3 replay as before, the
+  counter shows `c1=0`; `…-adaptive-swap` 319 checks — H1 until frame 5 and H2 from it: exactly
+  one further `node` commit at frame 5, cascade 0 alone voided at that boundary (its map still
+  holds frame 5's replay), cascades 2 and 3 valid on frame 6 as without the option. Every
+  replayed map of every active cascade equals the CPU projection of the draws it kept, the
+  hulls included (`max_depth_error` 8.46e-06 of the depth range, 0.55 FP16 codes; C0 texel
+  0.395 units at E0 = 50.59). The twin gained a far-clip ambiguity band (a hull larger than a
+  cascade's depth range is clipped at z = 1 on the GPU; samples within the depth tolerance of
+  1 are ambiguous), 1 texel of 42,856 on the small case's frame 4 before the band.
+- Records equal: `seam-ownership-shadow-replay-cascades` 278 checks / 4.0742862848497374e-06,
+  `…-cascades-toggle` 283 / 5.82e-06 (main's follow-up record), `…-cascades-poll-agree` 281 / 9.65e-06,
+  `…-cascades-casters-20` 278 / 3.42e-06, `seam-ownership-shadow-replay-on` 203 / 1.19e-05,
+  `seam-ownership-shadow-retention-live` 9,743 checks, 1,535 frames, 39 / 28 compared,
+  1.7169477474210382e-06, `sun-shadow-apply-cascades` 2,891 checks — all identical to the
+  recorded runs (the tracked result files were restored, only their timestamps differed).
+- Cost (host, clang -O2, one core): `shadow_cascade_draw_radius` 11.7 ns per own-ship draw;
+  the boundary update 7.3 ns; a commit (set rebuild + four bounds) 130 ns, at most once per
+  commit. Per frame in flight: one registry walk (six to eight bounded reads) and, per
+  z-writing draw, one pointer compare or a direct-mapped cache probe; the replay and apply
+  paths are unchanged (the dropped cascade's empty box costs the same six compares).
+- Limits. The registry walk and the parent-link ancestry are exercised on synthetic nodes
+  only (the seam injects the root; scope nodes equal it); the first flight with the option
+  must show `own_status=0` and a plausible `own_radius` on the `shadow_cascade_set` lines, and
+  measure the chase-camera distance (`camera_state t` against `node+0xb0`) to set K. No
+  fixture drives the apply quad through the DLL with a dropped cascade (the never-inside rows
+  are covered by source reading and the shader's selection law). Native Windows unverified as
+  elsewhere.
+

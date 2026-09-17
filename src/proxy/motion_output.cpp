@@ -9,6 +9,7 @@
 #include "object_trace.h"
 #include "object_lifetime.h"
 #include "engine_memory.h"
+#include "object_capture.h"
 #include "camera_state.h"
 #include "sun_light_poll.h"
 #include "chase_camera.h"
@@ -2236,6 +2237,10 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         if (!depth_issues_) { log("shadow_replay_cascades_refused device=%llu reason=allocation issues=%u", id_, capacity); depth_cascades_ = renderer::ShadowCascadeSet{}; }
     }
     if (!depth_cascades_.count) attach_candidate_storage(); // the inline arrays (a refused set drops back to them)
+    // The own-ship-adaptive cascade 0 starts from this device's set as configured (motion_output_shadow_adaptive_inc.h).
+    depth_cascade_base_ = depth_cascades_; renderer::shadow_cascade_adaptive_reset(cascade_adaptive_, depth_cascade_base_);
+    own_ship_frame_ = ~std::uint64_t(0); own_ship_node_ = 0; own_ship_handle_ = 0; own_ship_status_ = 0; own_radius_frame_ = 0.f; own_draws_frame_ = 0;
+    for (auto& e : own_nodes_) e = OwnNodeEntry{};
     if (retention_mode_ != shadow_retention::Mode::Off || retention_) attach_shadow_retention(); // caster retention rides the cascades (off: nothing runs)
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { // Seam only: X3M_FIXTURE_SLICE_NEAR moves the slice-0 near bound so the
@@ -3412,6 +3417,7 @@ bool MotionOutput::scene_bound() const noexcept {
 
 void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     flush_taa_invalidate_log(); // sites that fired since the last flush (Reset) carry the frame begun at the last Present
+    if (cascade_adaptive_on() && frame != frame_) update_adaptive_cascades(); // the previous frame's own ship and radius commit at the boundary (its frame number and capture flag); a Reset's repeated begin of the same frame is no boundary
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
@@ -6633,7 +6639,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     const bool cascades = depth_cascades_on();
     std::uint8_t cascade_mask = 0;
     if (cascades) {
-        if (near_ok) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (d <= depth_cascades_.cascades[i].half_extent) cascade_mask |= std::uint8_t(1u << i);
+        if (near_ok) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (d <= depth_cascades_.cascades[i].half_extent && renderer::shadow_cascade_active(depth_cascades_, i)) cascade_mask |= std::uint8_t(1u << i);
         admitted = cascade_mask != 0;
     }
     const shadow_replay::ExtentEntry* exact_extent = nullptr; // the range's own extent of this revision (caster retention's payload)
@@ -6718,6 +6724,8 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
             if (!large) { cascade_mask = std::uint8_t(cascade_mask & ~depth_cascade_static_mask_); admitted = cascade_mask != 0; }
         }
     }
+    // Own-ship-adaptive cascade 0: the own ship's z-writing draws with a known extent feed the frame's radius.
+    if (zwrite && cascade_adaptive_on() && own_ship_draw(std::uintptr_t(route.key.node)) && exact_extent) note_own_ship_draw(*exact_extent);
     if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, route.alpha_tested, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed,
                           cascades ? candidate_capacity_ : candidate_cap_, cascades ? &cascade_mask : nullptr, cascades ? depth_cascade_draw_caps_ : nullptr)) return;
     // A managed candidate without a known view for every buffer it uses is
@@ -7189,6 +7197,13 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             const auto& cascade = depth_cascades_.cascades[i];
             auto& k = in.cascades[i];
             const auto* kept = depth_replay_->retained(i);
+            if (!renderer::shadow_cascade_active(depth_cascades_, i)) {
+                // Dropped by the ratio guard: absent, and its box owns no pixel (the
+                // selection falls through to the next cascade): rows that put every
+                // pixel outside the margin and the depth range.
+                k = {}; k.rows[3] = k.rows[7] = k.rows[11] = 4.f; map_frames[i] = ~std::uint64_t(0);
+                continue;
+            }
             const bool far_kept = i + 1 == in.count && in.count > 1;
             const bool valid = kept && (kept->frame == frame_ || (far_kept && kept->frame + 1 == frame_)) && depth_replay_->map_texture(i);
             renderer::ShadowReplayBasis current{};
@@ -7290,5 +7305,6 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         id_, frame_, unsigned(sun_apply_applied_), skip ? skip : "none", double(exponent), us, out.map_size, out.operation, out.restore, unsigned(out.failed));
 }
 #include "motion_output_shadow_replay_inc.h"
+#include "motion_output_shadow_adaptive_inc.h"
 #include "motion_output_shadow_retention_inc.h"
 } // namespace x3m

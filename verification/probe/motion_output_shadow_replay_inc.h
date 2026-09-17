@@ -106,6 +106,29 @@ float shadow_t_far = shadow_t_f;                       // F's row offset this ru
 // camera (w = 1 + .125 x <= 0), where the GPU clips.
 bool covers_l(double ox, double oy) { return ox >= -214 && oy <= 8 - 8 * (ox + 214) / 19 && oy >= -8 + 8 * (ox + 214) / 19; }
 bool covers_f(double ox, double oy) { return 1 + .125 * ox > 0 && ox >= -60 && oy <= 4 - (ox + 60) && oy >= -4 + (ox + 60); }
+// The own-ship hulls of the adaptive cascade-0 cases (X3M_FIXTURE_OWN_SHIP;
+// docs/architecture/shadow-cascade-extents.md, section 5): H1, a fighter whose
+// AABB is +-1 x +-1.5 (radius about 1.7 through the rows: x / m00, y / m11,
+// the .125 tilt), and H2, a capital at +-20 x +-30 (about 34). Both share the
+// casters' tilt (parallel planes, never crossing) and sit near the camera
+// (origins at 1.1 units); their zo = 4 puts every point with w > 0 beyond the
+// far plane (z / w = 4.5 / w > 1 for w <= 3.5), so neither shows on the
+// presented frame, while the replay's linear rows put them on every map they meet.
+constexpr float shadow_tri_h1[3][2] = {{-1, -1.5f}, {1, -1.5f}, {0, 1.5f}}, shadow_tri_h2[3][2] = {{-20, -30}, {20, -30}, {0, 30}};
+constexpr float shadow_t_h1 = .4f, shadow_t_h2 = -.4f, shadow_zo_h = 4.f;
+bool covers_tri(const float (&tri)[3][2], double ox, double oy) {
+    if (!(1 + .125 * ox > 0)) return false;
+    double sign = 0;
+    for (unsigned i = 0; i < 3; ++i) {
+        const double ax = tri[i][0], ay = tri[i][1], bx = tri[(i + 1) % 3][0], by = tri[(i + 1) % 3][1];
+        const double cross = (bx - ax) * (oy - ay) - (by - ay) * (ox - ax);
+        if (cross == 0) continue;
+        if (sign == 0) sign = cross; else if ((cross > 0) != (sign > 0)) return false;
+    }
+    return true;
+}
+bool covers_h1(double ox, double oy) { return covers_tri(shadow_tri_h1, ox, oy); }
+bool covers_h2(double ox, double oy) { return covers_tri(shadow_tri_h2, ox, oy); }
 constexpr float shadow_sun[4] = {0.30151134f, 0.90453403f, -0.30151134f, 0.f}; // (1, 3, -1) / sqrt(11): unit, object -> light, world space
 constexpr float shadow_sun_flip[4] = {1.f, 0.f, 0.f, 0.f};                     // the one-frame disagreement of the sun-changing frame
 constexpr float shadow_glow_c4[4] = {1.f, 0.f, 0.f, 0.f}, shadow_detail_c4[4] = {.3f, .2f, .7f, 0.f}; // what c4 means to the glow and detail programs
@@ -188,6 +211,12 @@ void shadow_cascade_readback(Fixture& f, ShadowCascadeReadbackFn readback, unsig
 // between must show no replay at all, and the frame back on must replay every
 // cascade, the far one included.
 using ShadowToggleFn = int (*)(IDirect3DDevice9*);
+// The own-ship seam (X3M_FIXTURE_OWN_SHIP=small|big|swap): H1 and H2 are drawn
+// every frame with their own scope nodes; the seam names H1 (small), H2 (big)
+// or H1 until frame shadow_own_swap_frame and H2 from it (swap) as the player
+// ship before each frame's draws, the way the registry walk would.
+using ShadowOwnShipFn = int (*)(IDirect3DDevice9*, std::uintptr_t, std::uint32_t);
+constexpr unsigned shadow_own_swap_frame = 5;
 void run_shadow_replay_integration(Fixture& f) {
     require(f.seam && f.camera && f.enabled, "shadowreplay runs on the seam DLL with the route and the rotating camera");
     char setting[16]{};
@@ -253,15 +282,24 @@ void run_shadow_replay_integration(Fixture& f) {
         create("vs_494fe349b8bc12ec.bin", 0x494fe349b8bc12ecull, "ps_fffdabd910793aba.bin", 0xfffdabd910793abaull, glow_vs, glow_ps);
         create("vs_b0602757fce6e870.bin", 0xb0602757fce6e870ull, "ps_517540ae6d5e5410.bin", 0x517540ae6d5e5410ull, detail_vs, detail_ps);
     }
-    std::printf("SHADOW_MODE depth=%u casters=%u taa=%u export=%u far_t=%.9g far_origin=%.9g sun_programs=%u\n", depth_on, casters, f.taa, readback != nullptr, double(shadow_t_far), double(shadow_t_far / .8f), sun_programs);
+    // The own-ship seam.
+    char own_mode[16]{};
+    const bool own_ship = GetEnvironmentVariableA("X3M_FIXTURE_OWN_SHIP", own_mode, sizeof own_mode) > 0;
+    ShadowOwnShipFn own_install = nullptr;
+    if (own_ship) {
+        require(cascades != 0 && (!std::strcmp(own_mode, "small") || !std::strcmp(own_mode, "big") || !std::strcmp(own_mode, "swap")), "X3M_FIXTURE_OWN_SHIP is small, big or swap, with cascades");
+        own_install = symbol<ShadowOwnShipFn>(f.runtime, "x3m_shadow_own_ship_fixture_install", false);
+        require(own_install != nullptr, "the seam DLL exports the own-ship seam");
+    }
+    std::printf("SHADOW_MODE depth=%u casters=%u taa=%u export=%u far_t=%.9g far_origin=%.9g sun_programs=%u own_ship=%s\n", depth_on, casters, f.taa, readback != nullptr, double(shadow_t_far), double(shadow_t_far / .8f), sun_programs, own_ship ? own_mode : "none");
     // Casters: A and B, then copies of their shapes in their own managed
     // buffers (distinct route keys) with their own scope identities; then the
     // two bounds objects L (index casters) and F (index casters + 1).
-    std::vector<ShadowCaster> extra(casters + 2); // ... and G, D (indices casters + 2, casters + 3) with F's shape
-    for (unsigned i = 2; i < casters + 4; ++i) {
+    std::vector<ShadowCaster> extra(casters + 4); // ... G, D (indices casters + 2, casters + 3) with F's shape, and the hulls H1, H2 (casters + 4, casters + 5)
+    for (unsigned i = 2; i < casters + 6; ++i) {
         auto& c = extra[i - 2]; const bool b = i & 1;
-        const bool large = i == casters, distant = i >= casters + 1; // (`far` is a Win16 macro)
-        const auto& tri = large ? shadow_tri_l : distant ? shadow_tri_f : b ? shadow_tri_b : shadow_tri_a;
+        const bool large = i == casters, distant = i >= casters + 1 && i < casters + 4, hull1 = i == casters + 4, hull2 = i == casters + 5; // (`far` is a Win16 macro)
+        const auto& tri = hull1 ? shadow_tri_h1 : hull2 ? shadow_tri_h2 : large ? shadow_tri_l : distant ? shadow_tri_f : b ? shadow_tri_b : shadow_tri_a;
         api(f.d->CreateVertexBuffer(24 * 3, 0, 0, D3DPOOL_MANAGED, &c.buffer.p, nullptr), "CreateVertexBuffer caster");
         void* dst = nullptr; api(c.buffer->Lock(0, 0, &dst, 0), "Lock caster");
         for (UINT v = 0; v < 3; ++v) {
@@ -269,8 +307,8 @@ void run_shadow_replay_integration(Fixture& f) {
             std::memcpy(static_cast<char*>(dst) + v * 24, data, 24);
         }
         api(c.buffer->Unlock(), "Unlock caster");
-        c.object.name = large ? "L" : i == casters + 2 ? "G" : i == casters + 3 ? "D" : distant ? "F" : b ? "B" : "A"; c.object.vb = c.buffer.p;
-        c.object.covers = large ? covers_l : distant ? covers_f : b ? covers_b : covers_a;
+        c.object.name = hull1 ? "H1" : hull2 ? "H2" : large ? "L" : i == casters + 2 ? "G" : i == casters + 3 ? "D" : distant ? "F" : b ? "B" : "A"; c.object.vb = c.buffer.p;
+        c.object.covers = hull1 ? covers_h1 : hull2 ? covers_h2 : large ? covers_l : distant ? covers_f : b ? covers_b : covers_a;
         c.object.scope = b ? f.b.scope : f.a.scope;
         c.object.scope.node_serial = 11 + i; c.object.scope.node = 0x1000 + 0x100 * i; c.object.scope.mesh = 0x4000 + 0x100 * i;
         c.object.scope.node_handle = 7 + i; c.object.scope.model = 0x11 + i;
@@ -286,7 +324,12 @@ void run_shadow_replay_integration(Fixture& f) {
         else if (i == casters + 1) t = shadow_t_far;          // F: origin and geometry outside both rules (or inside a wide box)
         else if (i == casters + 2) t = shadow_t_g;            // G and D: as F at 240, outside every box of the cases that draw them
         else if (i == casters + 3) t = shadow_t_d;
+        else if (i == casters + 4) { t = shadow_t_h1; zo = shadow_zo_h; } // the hulls: near the camera, beyond the far plane on screen
+        else if (i == casters + 5) { t = shadow_t_h2; zo = shadow_zo_h; }
     };
+    // The hulls' scope nodes: what the seam names as the player ship.
+    const std::uintptr_t hull_node[2] = {extra[casters + 2].object.scope.node, extra[casters + 3].object.scope.node};
+    const std::uint32_t hull_handle[2] = {extra[casters + 2].object.scope.node_handle, extra[casters + 3].object.scope.node_handle};
     // Submission order: L, the casters, F (the cap drops the last submitted).
     auto order_of = [&](unsigned k) { return k == 0 ? casters : k <= casters ? k - 1 : casters + 1; };
     // poll agree: the engine's law, LightDir_Dir0 = normalize(light - the draw's own origin); the origin of rows
@@ -322,6 +365,11 @@ void run_shadow_replay_integration(Fixture& f) {
             std::printf("SHADOW_TOGGLE frame=%llu state=%d\n", f.frame, state);
         }
         if (poll_refusals) std::printf("SHADOW_POLL_REFUSAL frame=%u expect=%s\n", frame, poll_context.refuse(frame, poll_light));
+        if (own_ship) {
+            const unsigned which = !std::strcmp(own_mode, "big") || (!std::strcmp(own_mode, "swap") && frame >= shadow_own_swap_frame) ? 1u : 0u;
+            require(own_install(f.d.p, hull_node[which], hull_handle[which]) == 0, "the own-ship seam accepts the device");
+            std::printf("SHADOW_OWN_SHIP frame=%u hull=H%u node=%llx\n", frame, which + 1, static_cast<unsigned long long>(hull_node[which]));
+        }
         f.frame_begin();
         const float* frame_sun = no_sun ? shadow_sun_flip : shadow_sun; // the sun-changing frame: one frame of another direction
         if (sun_programs) {
@@ -365,6 +413,12 @@ void run_shadow_replay_integration(Fixture& f) {
                 api(f.d->SetVertexDeclaration(f.declaration.p), "SetVertexDeclaration restore");
                 api(f.d->SetStreamSource(1, nullptr, 0, 0), "SetStreamSource stream 1 unbound");
             }
+        }
+        if (own_ship) for (unsigned h = 0; h < 2; ++h) { // the hulls after the script's objects: both drawn every frame, one of them the player ship
+            const unsigned i = casters + 4 + h;
+            float t, p, zo; rows_of(i, t, p, zo);
+            std::printf("SHADOW_DRAW frame=%llu caster=%u shape=H%u t=%.9g p=%.9g zo=%.9g\n", f.frame, i, h + 1, t, p, zo);
+            f.draw(caster(i), t, p, zo, true, true, matched, Alter::None, casters <= 8);
         }
         const bool lock = frame == shadow_lock_frame;
         if (lock) {
