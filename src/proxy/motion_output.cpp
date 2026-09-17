@@ -2874,13 +2874,15 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         entry.hash = hash;
         entry.row = nullptr;
         entry.sun_register = -1;
-        if (!enabled_ || !code || !bytes || bytes % 4) return;
-        if (candidates_requested_) {
+        if (code && bytes && bytes % 4 == 0) {
             // The program's own sun register (c4, c5 or c0 in the engine's hull
             // programs); a program without the constant contributes no sun.
+            // Resolved for every program at creation (one walk of its leading
+            // comment), whatever is configured or enabled by then.
             const int sun = renderer::shader_float_constant_register(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, shadow_replay::depth_sun_constant_name);
             entry.sun_register = sun >= 0 && sun < int(shadow_replay::sun_register_limit) ? std::int8_t(sun) : std::int8_t(-1);
         }
+        if (!enabled_ || !code || !bytes || bytes % 4) return;
         if (distance_fade_requested_) {
             std::vector<std::uint32_t> words;
             bool fill_applied = false;
@@ -5757,11 +5759,11 @@ void MotionOutput::readback() noexcept {
             const renderer::ShadowReplayBasis none{};
             const auto& b = kept ? kept->basis : none;
             const float* frame_sun = sun_latch_.frame_sun();
-            log("shadow_replay_map_basis device=%llu frame=%llu cascade=%u cascades=%u replayed=%u replayed_frame=%lld size=%u valid=%u right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.9g,%.9g,%.9g extent=%.9g depth_light=%.9g depth_behind=%.9g"
+            log("shadow_replay_map_basis device=%llu frame=%llu cascade=%u cascades=%u replayed=%u replayed_frame=%lld size=%u valid=%u right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.12g,%.12g,%.12g extent=%.9g depth_light=%.9g depth_behind=%.9g"
                 " sun=%.9g,%.9g,%.9g sun_register=%d sun_verdict=%s",
                 id_, frame_, i, depth_cascades_.count, kept ? kept->draws : 0u, kept ? static_cast<long long>(kept->frame) : -1ll, size, unsigned(kept != nullptr),
                 double(b.right[0]), double(b.right[1]), double(b.right[2]), double(b.up[0]), double(b.up[1]), double(b.up[2]), double(b.forward[0]), double(b.forward[1]), double(b.forward[2]),
-                double(b.center[0]), double(b.center[1]), double(b.center[2]), double(cascade.half_extent), double(cascade.depth_toward_light), double(cascade.depth_behind),
+                b.center_d[0], b.center_d[1], b.center_d[2], double(cascade.half_extent), double(cascade.depth_toward_light), double(cascade.depth_behind),
                 double(frame_sun ? frame_sun[0] : 0.f), double(frame_sun ? frame_sun[1] : 0.f), double(frame_sun ? frame_sun[2] : 0.f), sun_latch_.source_register, shadow_replay::sun_verdict_name(sun_verdict_));
         }
     } else if (depth_replay_requested_ && depth_replay_ && depth_replay_->map_surface() && depth_replay_->caps().readable) {
@@ -5770,10 +5772,10 @@ void MotionOutput::readback() noexcept {
         const float* rows = depth_replay_->view_rows();
         const auto& b = depth_basis_;
         const float* frame_sun = sun_latch_.frame_sun();
-        log("shadow_replay_map_basis device=%llu frame=%llu replayed=%u replayed_frame=%llu size=%u valid=%u right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.9g,%.9g,%.9g extent=%.9g depth_half=%.9g rows=%s%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g"
+        log("shadow_replay_map_basis device=%llu frame=%llu replayed=%u replayed_frame=%llu size=%u valid=%u right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.12g,%.12g,%.12g extent=%.9g depth_half=%.9g rows=%s%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g"
             " sun=%.9g,%.9g,%.9g sun_register=%d sun_verdict=%s",
             id_, frame_, depth_replayed_, static_cast<unsigned long long>(depth_replayed_frame_), size, unsigned(b.valid), double(b.right[0]), double(b.right[1]), double(b.right[2]),
-            double(b.up[0]), double(b.up[1]), double(b.up[2]), double(b.forward[0]), double(b.forward[1]), double(b.forward[2]), double(b.center[0]), double(b.center[1]), double(b.center[2]),
+            double(b.up[0]), double(b.up[1]), double(b.up[2]), double(b.forward[0]), double(b.forward[1]), double(b.forward[2]), b.center_d[0], b.center_d[1], b.center_d[2],
             double(depth_cascade_.half_extent), depth_cascade_.depth_half(), rows ? "" : "none:",
             double(rows ? rows[0] : 0.f), double(rows ? rows[1] : 0.f), double(rows ? rows[2] : 0.f), double(rows ? rows[3] : 0.f), double(rows ? rows[4] : 0.f), double(rows ? rows[5] : 0.f),
             double(rows ? rows[6] : 0.f), double(rows ? rows[7] : 0.f), double(rows ? rows[8] : 0.f), double(rows ? rows[9] : 0.f), double(rows ? rows[10] : 0.f), double(rows ? rows[11] : 0.f),
@@ -6480,10 +6482,20 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                 // The range's own extent, else the extent of an earlier revision
                 // of the same range while the new one is read (the verdict does
                 // not drop to the origin rule in between).
+                // The stale answer is bounded: its re-read is a priority read, and
+                // once it is older than extent_stale_frames (or its read was given
+                // up) the previous extent is doubled about its centre instead of
+                // being trusted as it is.
                 const shadow_replay::ExtentEntry* stale = nullptr;
                 const shadow_replay::ExtentEntry* e = candidate_extents_.find(key, &stale);
-                if (!e) queue_candidate_extent(key, shadow_.stream0_identity);
-                if (!e && stale) e = stale;
+                if (!e && !(stale && stale->abandoned())) queue_candidate_extent(key, shadow_.stream0_identity, stale != nullptr);
+                shadow_replay::ExtentEntry inflated{};
+                bool old = false;
+                if (!e && stale) {
+                    e = stale;
+                    old = stale->abandoned() || candidate_extents_.stale_age(*stale) > shadow_replay::extent_stale_frames;
+                    if (old) { inflated = *stale; stale->inflated(inflated.lo, inflated.hi); e = &inflated; }
+                }
                 if (e) {
                     if (e->state == shadow_replay::ExtentState::Known && !ensure_candidate_bounds_rows()) ++candidate_bounds_unavailable_;
                     else if (e->state == shadow_replay::ExtentState::Known) {
@@ -6497,7 +6509,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                             const int verdict = rows ? renderer::shadow_replay_bounds_verdict(camera_scene_, rows, candidate_bounds_rows_, e->lo, e->hi) : -1;
                             if (verdict >= 0) { by_bounds = true; admitted = verdict == 1 && near_ok; }
                         }
-                        if (by_bounds) verdict_source = std::uint8_t(e == stale ? shadow_replay::VerdictSource::Retained : shadow_replay::VerdictSource::Bounds);
+                        if (by_bounds) verdict_source = std::uint8_t(old ? shadow_replay::VerdictSource::Inflated : e == stale ? shadow_replay::VerdictSource::Retained : shadow_replay::VerdictSource::Bounds);
                     }
                 }
             }
@@ -6533,9 +6545,9 @@ bool MotionOutput::sample_candidate_sun(float out[4], int& reg) noexcept {
     std::memcpy(out, candidate_ps_constants_[reg], 16);
     const bool latched = sun_latch_.valid;
     const bool agrees = sun_latch_.sample(out, reg, shadow_.ps_hash);
-    if (!latched && sun_latch_.valid)
+    if (!latched && sun_latch_.valid) // two draws agreed: the first one's value, register and program
         log("shadow_replay_sun_latch device=%llu frame=%llu event=latch register=%d program=%016llx sun=%.9g,%.9g,%.9g",
-            id_, frame_, reg, static_cast<unsigned long long>(shadow_.ps_hash), double(out[0]), double(out[1]), double(out[2]));
+            id_, frame_, sun_latch_.source_register, static_cast<unsigned long long>(sun_latch_.source_program), double(sun_latch_.sun[0]), double(sun_latch_.sun[1]), double(sun_latch_.sun[2]));
     return agrees;
 }
 // The frame's view -> sun rows for the draw-time box test, from the camera
@@ -6558,12 +6570,27 @@ bool MotionOutput::ensure_candidate_bounds_rows() noexcept {
 }
 // Queues one extent read for the scene end (deduplicated; at most
 // extent_reads_per_frame per frame). The wrapper is retained by AddRef so the
-// read cannot outlive the application's own reference.
-void MotionOutput::queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept {
+// read cannot outlive the application's own reference. A priority read (the
+// range answers with a stale extent) goes to the front of the queue, which is
+// read in order under the byte budget, and evicts the last ordinary read when
+// the queue is full; an ordinary read never displaces anything.
+void MotionOutput::queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity, bool priority) noexcept {
     if (!identity) return;
+    constexpr unsigned capacity = shadow_replay::extent_reads_per_frame;
     for (unsigned i = 0; i < candidate_extent_read_count_; ++i) if (candidate_extent_reads_[i].key == key) return;
-    if (candidate_extent_read_count_ >= shadow_replay::extent_reads_per_frame) return;
-    auto& q = candidate_extent_reads_[candidate_extent_read_count_++];
+    unsigned slot = candidate_extent_read_count_;
+    if (priority) {
+        if (candidate_extent_priority_count_ >= capacity) return;
+        if (candidate_extent_read_count_ >= capacity) { // full: the last ordinary read gives way (its next draw re-queues it)
+            auto& last = candidate_extent_reads_[capacity - 1];
+            if (last.identity) reinterpret_cast<IUnknown*>(last.identity)->Release();
+            last = {}; candidate_extent_read_count_ = capacity - 1;
+        }
+        slot = candidate_extent_priority_count_++;
+        candidate_extent_reads_[candidate_extent_read_count_] = candidate_extent_reads_[slot]; // the first ordinary read moves to the end
+    } else if (slot >= capacity) return;
+    ++candidate_extent_read_count_;
+    auto& q = candidate_extent_reads_[slot];
     q.key = key; q.identity = identity;
     reinterpret_cast<IUnknown*>(identity)->AddRef();
 }
@@ -6606,7 +6633,7 @@ void MotionOutput::read_candidate_extents() noexcept {
         buffer->Release();
         q = {};
     }
-    candidate_extent_read_count_ = 0;
+    candidate_extent_read_count_ = candidate_extent_priority_count_ = 0;
     SetLastError(error);
 }
 void MotionOutput::release_candidate_extents() noexcept {
@@ -6614,7 +6641,7 @@ void MotionOutput::release_candidate_extents() noexcept {
         if (candidate_extent_reads_[i].identity) reinterpret_cast<IUnknown*>(candidate_extent_reads_[i].identity)->Release();
         candidate_extent_reads_[i] = {};
     }
-    candidate_extent_read_count_ = 0;
+    candidate_extent_read_count_ = candidate_extent_priority_count_ = 0;
 }
 void MotionOutput::publish_shadow_replay_candidates() noexcept {
     using shadow_replay::BufferVerdict;
@@ -6688,9 +6715,9 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         if (sun_verdict_ == shadow_replay::SunVerdict::Relatched)
             log("shadow_replay_sun_latch device=%llu frame=%llu event=relatch register=%d program=%016llx sun=%.9g,%.9g,%.9g",
                 id_, frame_, sun_latch_.source_register, static_cast<unsigned long long>(sun_latch_.source_program), double(sun[0]), double(sun[1]), double(sun[2]));
-        log("shadow_replay_sun device=%llu frame=%llu verdict=%s register=%d samples=%u agree=%u disagree=%u invalid=%u no_register=%u bounds_state=%d bounds_unavailable=%u extent_refused=%u sun=%.6f,%.6f,%.6f",
-            id_, frame_, shadow_replay::sun_verdict_name(sun_verdict_), sun_latch_.source_register, samples.samples, samples.agree, samples.disagree, samples.invalid, samples.no_register,
-            candidate_bounds_state_, candidate_bounds_unavailable_, candidate_extents_.refused, double(sun ? sun[0] : 0.f), double(sun ? sun[1] : 0.f), double(sun ? sun[2] : 0.f));
+        log("shadow_replay_sun device=%llu frame=%llu verdict=%s register=%d samples=%u agree=%u disagree=%u invalid=%u no_register=%u unlatched=%u bounds_state=%d bounds_unavailable=%u extent_refused=%u sun=%.6f,%.6f,%.6f",
+            id_, frame_, shadow_replay::sun_verdict_name(sun_verdict_), sun_latch_.source_register, samples.samples, samples.agree, samples.disagree, samples.invalid, samples.no_register, samples.unlatched,
+            candidate_bounds_state_, candidate_bounds_unavailable_, candidate_extents_.refused_frame /* extent_refused: this frame's refused stores */, double(sun ? sun[0] : 0.f), double(sun ? sun[1] : 0.f), double(sun ? sun[2] : 0.f));
     }
     // Capture frames: one line per record (what admitted it, into which
     // cascades, and what its own program said the sun was).
@@ -6699,9 +6726,17 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             const auto& r = candidates_.records[i];
             const shadow_replay::DepthGeometry none{};
             const auto& g = depth_replay_requested_ ? depth_geometry_[i] : none;
-            log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=%s leased=%u quiet=%u sun_register=%d sun_agrees=%u sun=%.6f,%.6f,%.6f primitives=%u",
+            // origin: the world position of the draw's object origin (its clip rows' translation through the camera
+            // latch), beside the sun its own program held: the engine's LightDir_Dir0 is normalize(light - node), so
+            // the pairs of one frame triangulate the light's distance (directional-shadows.md, Open).
+            double origin[3] = {0, 0, 0};
+            if (camera_scene_.valid && camera_scene_.m00 > 0.f && camera_scene_.m11 > 0.f) {
+                const double view[3] = {double(g.rows[3]) / camera_scene_.m00, double(g.rows[7]) / camera_scene_.m11, double(g.rows[15])};
+                for (unsigned k = 0; k < 3; ++k) for (unsigned j = 0; j < 3; ++j) origin[k] += (view[j] - double(camera_scene_.t[j])) * double(camera_scene_.r[k * 3 + j]);
+            }
+            log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=%s leased=%u quiet=%u sun_register=%d sun_agrees=%u sun=%.9g,%.9g,%.9g primitives=%u origin=%.9g,%.9g,%.9g",
                 id_, frame_, i, static_cast<unsigned long long>(r.vb), unsigned(r.cascades), shadow_replay::verdict_source_name(r.verdict), unsigned(g.leased), unsigned(quiet_records[i]),
-                int(g.sun_register), unsigned(g.sun_known), double(g.sun[0]), double(g.sun[1]), double(g.sun[2]), unsigned(g.primitives));
+                int(g.sun_register), unsigned(g.sun_known), double(g.sun[0]), double(g.sun[1]), double(g.sun[2]), unsigned(g.primitives), origin[0], origin[1], origin[2]);
         }
     }
     // Cascades on: the per-cascade record counts and cap drops follow the
@@ -6762,6 +6797,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
     double us = 0.;
     HRESULT hr = S_FALSE;
     if (!sun_lane_active_ || !sun_frame_.published || !sun_frame_.available) skip = "lane";
+    else if (depth_cascades_on() && !shadow_replay::sun_verdict_usable(sun_verdict_)) skip = "sun"; // no latched sun, or every sample of this frame disagreed with it
     else if (depth_cascades_on() ? !depth_replay_ || depth_replayed_frame_ != frame_ || !depth_cascade_frame_ok_
              : !depth_replay_requested_ || !depth_replay_ || depth_replayed_frame_ != frame_ || !depth_replayed_ || !depth_replay_->view_rows() || !depth_replay_->map_texture()) skip = "replay";
     else if (!sun_owner_valid_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->target()) skip = "owner";

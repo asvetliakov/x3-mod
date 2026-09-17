@@ -28,6 +28,13 @@ import struct
 EPS_TEXEL = 2e-3     # texel-boundary ambiguity of floor() between float32 (GPU) and float64
 EPS_DEPTH = 1e-4     # compare-equality ambiguity in normalized sun depth
 KERNEL = [(math.cos(k * math.pi / 8), math.sin(k * math.pi / 8)) for k in range(8)]
+# Texel convention (the programs' header comments): the replay rasterizes under
+# D3D9, so map texel (i, j) holds the depth at map position (i, j) / N and is
+# addressed at ((i, j) + 0.5) / N; the receiver looks up at suv = muv + 0.5 / N
+# (nearest texel round(muv N)) and the receiver-plane term runs on tapUV - suv.
+# `legacy_floor=True` is the rule of the programs before 2026-09-17 (texel
+# floor(muv N), half a texel off), kept for captures made with those builds
+# and as the sensitivity witness of the fixture's shift fit.
 
 
 def unpack_rt2(data, width, height):
@@ -83,7 +90,7 @@ def _coarse(value, axis):
     return coarse
 
 
-def expected_factor(d, s, sun_map, params, coarse=False):
+def expected_factor(d, s, sun_map, params, coarse=False, legacy_floor=False):
     """Per-pixel factor and the ambiguity mask. `params`: m00 m11 m20 m21
     m22 m32 rows(12) jitter_index exponent bias_constant bias_max planar_step."""
     import numpy as np
@@ -112,10 +119,12 @@ def expected_factor(d, s, sun_map, params, coarse=False):
     gu = (dzdx * dvdy - dzdy * dvdx) * inv
     gv = (dzdy * dudx - dzdx * dudy) * inv
     valid = (d >= 0.0) & (s > 0.0) & (mu >= 0.0) & (mu <= 1.0) & (mv >= 0.0) & (mv <= 1.0) & (sun[2] >= 0.0) & (sun[2] <= 1.0)
-    texel_u, texel_v = np.floor(mu * size), np.floor(mv * size)
+    half = 0.0 if legacy_floor else .5 / size
+    su, sv = mu + half, mv + half
+    texel_u, texel_v = np.floor(su * size), np.floor(sv * size)
     ambiguous = np.zeros(d.shape, dtype=bool)
     near_boundary = lambda x: np.minimum(x - np.floor(x), np.ceil(x) - x) < EPS_TEXEL
-    ambiguous |= near_boundary(mu * size) | near_boundary(mv * size)
+    ambiguous |= near_boundary(su * size) | near_boundary(sv * size)
     ambiguous |= (np.abs(mu) < EPS_TEXEL / size) | (np.abs(mu - 1) < EPS_TEXEL / size) | (np.abs(mv) < EPS_TEXEL / size) | (np.abs(mv - 1) < EPS_TEXEL / size)
     ambiguous |= (np.abs(sun[2]) < EPS_DEPTH) | (np.abs(sun[2] - 1) < EPS_DEPTH)
     # A quad whose depth step is near the planar threshold, or across a sentinel, has no reliable plane fit.
@@ -130,7 +139,7 @@ def expected_factor(d, s, sun_map, params, coarse=False):
                 ambiguous |= near_boundary(raw_u) | near_boundary(raw_v)
             tap_u, tap_v = np.floor(raw_u), np.floor(raw_v)
             tap_uv_u, tap_uv_v = (tap_u + .5) / size, (tap_v + .5) / size
-            bias = np.where(planar, np.clip((tap_uv_u - mu) * gu + (tap_uv_v - mv) * gv, -params['bias_max'], params['bias_max']), -params['bias_max'])
+            bias = np.where(planar, np.clip((tap_uv_u - su) * gu + (tap_uv_v - sv) * gv, -params['bias_max'], params['bias_max']), -params['bias_max'])
             reference = sun[2] + bias - params['bias_constant']
             iu = np.clip(tap_u, 0, size - 1).astype(np.int64)
             iv = np.clip(tap_v, 0, size - 1).astype(np.int64)
@@ -143,7 +152,7 @@ def expected_factor(d, s, sun_map, params, coarse=False):
     factor = np.where(valid & (f < 1.0), shadowed, 1.0)
     # The derivative convention must not change the outcome.
     if not coarse:
-        other = expected_factor(d, s, sun_map, params, coarse=True)
+        other = expected_factor(d, s, sun_map, params, coarse=True, legacy_floor=legacy_floor)
         ambiguous |= other['factor'] != factor
     # Sentinel members make a quad's derivatives meaningless for its other
     # members (a share-free receiver still has a depth, so its quad is fine).
@@ -159,7 +168,7 @@ CASCADE_MARGIN, CASCADE_BAND = .95, .10   # shadow_cascade_select_margin / _blen
 EPS_SELECT = 1e-5                          # selection-threshold ambiguity in sun-space NDC (float32 rows on the GPU)
 
 
-def expected_factor_cascades(d, s, maps, params, coarse=False):
+def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=False):
     """The cascade program's twin. `params`: m00 m11 m20 m21 m22 m32 exponent
     planar_step jitter_index, optional margin/band, and `cascades`: a list of
     dicts rows(12) bias_constant bias_max valid. `maps[i]` is cascade i's map
@@ -232,8 +241,10 @@ def expected_factor_cascades(d, s, maps, params, coarse=False):
         inv = np.where(planar, 1.0 / np.where(planar, det, 1.0), 0.0)
         gu = (dzdx * dvdy - dzdy * dvdx) * inv
         gv = (dzdy * dudx - dzdx * dudy) * inv
-        texel_u, texel_v = np.floor(mu * size), np.floor(mv * size)
-        local = near_boundary(mu * size) | near_boundary(mv * size)
+        half = 0.0 if legacy_floor else .5 / size
+        su, sv = mu + half, mv + half
+        texel_u, texel_v = np.floor(su * size), np.floor(sv * size)
+        local = near_boundary(su * size) | near_boundary(sv * size)
         lit = np.zeros(d.shape)
         for kj in (-1, 0, 1):
             for ki in (-1, 0, 1):
@@ -243,7 +254,7 @@ def expected_factor_cascades(d, s, maps, params, coarse=False):
                     local |= near_boundary(raw_u) | near_boundary(raw_v)
                 tap_u, tap_v = np.floor(raw_u), np.floor(raw_v)
                 tap_uv_u, tap_uv_v = (tap_u + .5) / size, (tap_v + .5) / size
-                bias = np.where(planar, np.clip((tap_uv_u - mu) * gu + (tap_uv_v - mv) * gv, -cascade['bias_max'], cascade['bias_max']), -cascade['bias_max'])
+                bias = np.where(planar, np.clip((tap_uv_u - su) * gu + (tap_uv_v - sv) * gv, -cascade['bias_max'], cascade['bias_max']), -cascade['bias_max'])
                 reference = position[2] + bias - cascade['bias_constant']
                 iu = np.clip(np.nan_to_num(tap_u), 0, size - 1).astype(np.int64)
                 iv = np.clip(np.nan_to_num(tap_v), 0, size - 1).astype(np.int64)
@@ -260,7 +271,7 @@ def expected_factor_cascades(d, s, maps, params, coarse=False):
     shadowed = np.where(base > 0.0, np.power(np.maximum(base, 1e-30), params['exponent']), 0.0)
     factor = np.where(valid & (f < 1.0), shadowed, 1.0)
     if not coarse:
-        other = expected_factor_cascades(d, s, maps, params, coarse=True)
+        other = expected_factor_cascades(d, s, maps, params, coarse=True, legacy_floor=legacy_floor)
         ambiguous |= other['factor'] != factor
     sentinel = d < 0.0
     quad_sentinel = sentinel.copy()
@@ -329,7 +340,7 @@ def analytic_shadow(d, s, params, scene, size):
     # plane shadow edge is the plane subset; a box face at its camera silhouette
     # is a non-planar quad whose fallback bias (the clamp) can light it.
     on_plane = np.abs(world[1]) < 1e-3 * max(1.0, max(abs(v) for v in scene['box']))
-    return {'lit': lit, 'edge_distance': distance, 'on_plane': on_plane, 'world': world}
+    return {'lit': lit, 'edge_distance': distance, 'on_plane': on_plane, 'world': world, 'lit_at': lit_at}
 
 
 def compare_frame(before, after, d, s, sun_map, params, scene=None, strict_box=True):
@@ -369,6 +380,42 @@ def compare_frame(before, after, d, s, sun_map, params, scene=None, strict_box=T
                               'plane_beyond_two_texels': int(np.count_nonzero(far & plane)), 'box_beyond_two_texels': int(np.count_nonzero(far & ~plane))}
         record['ok'] = record['ok'] and (record['analytic']['beyond_two_texels'] if strict_box else record['analytic']['plane_beyond_two_texels']) == 0
     return record
+
+
+SHIFT_STEPS = (-.75, -.5, -.25, 0.0, .25, .5, .75)
+
+
+def fit_shift(f, select, lit_at):
+    """The map-space shift, in texels of each pixel's own cascade, that best
+    explains the f >= 0.5 shadow against the analytic one: the (u, v) offset
+    on SHIFT_STEPS^2 with the fewest disagreements when the analytic shadow
+    is evaluated at the receiver displaced by it (+u = the basis' right, +v =
+    minus its up). A lookup that is half a texel off shows as (+-0.5, +-0.5);
+    0.25-texel steps resolve it on a few hundred edge pixels. Returns the
+    offset, its count and the count at (0, 0)."""
+    import numpy as np
+    half = f >= 0.5
+    best = None
+    counts = {}
+    for dv in SHIFT_STEPS:
+        for du in SHIFT_STEPS:
+            count = int(np.count_nonzero(select & (half != lit_at(du, -dv))))
+            counts[(du, dv)] = count
+            if best is None or count < counts[best] or (count == counts[best] and abs(du) + abs(dv) < abs(best[0]) + abs(best[1])):
+                best = (du, dv)
+    return {'shift': list(best), 'mismatch': counts[best], 'mismatch_at_zero': counts[(0.0, 0.0)],
+            'grid': [[counts[(du, dv)] for du in SHIFT_STEPS] for dv in SHIFT_STEPS]}
+
+
+def sum_shift_fits(fits):
+    """The fit over several frames (their grids summed): one frame's straight
+    edges sit at one sub-texel phase of the map grid, which alone moves its
+    minimum by up to half a texel either way; frames at evenly spread phases
+    average that out."""
+    total = [[sum(f['grid'][j][i] for f in fits) for i in range(len(SHIFT_STEPS))] for j in range(len(SHIFT_STEPS))]
+    best = min(((total[j][i], abs(SHIFT_STEPS[i]) + abs(SHIFT_STEPS[j]), i, j) for j in range(len(SHIFT_STEPS)) for i in range(len(SHIFT_STEPS))))
+    centre = len(SHIFT_STEPS) // 2
+    return {'shift': [SHIFT_STEPS[best[2]], SHIFT_STEPS[best[3]]], 'mismatch': best[0], 'mismatch_at_zero': total[centre][centre], 'frames': len(fits), 'grid': total}
 
 
 def compare_frame_cascades(before, after, d, s, maps, params, scene, extents):
@@ -455,6 +502,12 @@ def compare_frame_cascades(before, after, d, s, maps, params, scene, extents):
         alone = plane & first_only['lit'] & ~analytic['lit']
         record['second_caster'] = {'pixels': int(np.count_nonzero(alone)), 'interior': int(np.count_nonzero(alone & interior)),
                                    'darkened': int(np.count_nonzero(alone & (f < 0.5))), 'interior_dark': int(np.count_nonzero(alone & interior & (f == 0.0)))}
+    # The half-texel witness: the best-fit shift of this program's shadow, and of
+    # the pre-fix lookup rule on the same maps (the sensitivity of the fit).
+    edge = plane & (analytic['edge_distance'] != 0) & ~contact
+    record['shift_fit'] = dict(fit_shift(f, edge, analytic['lit_at']), edge_pixels=int(np.count_nonzero(edge)))
+    legacy = expected_factor_cascades(d, s, maps, params, legacy_floor=True)
+    record['shift_fit_legacy_rule'] = fit_shift(legacy['f'], edge & legacy['valid'] & ~legacy['ambiguous'], analytic['lit_at'])
     record['ok'] = violations == 0 and identity_changed == 0 and alpha_changed == 0 and monotone == 0
     return record
 
@@ -650,19 +703,20 @@ def load_capture(directory, device, frame, width, height, size):
     return d, s, sun_map, luminance
 
 
-def frame_report(d, s, sun_map, params, luminance=None, region=None, columns=64, lines=24):
+def frame_report(d, s, sun_map, params, luminance=None, region=None, columns=64, lines=24, legacy_floor=False):
     """The twin on real inputs: receiver-minus-map residual on valid pixels
     (nearest texel, no bias), the factor statistics, the HDR darkening of
     shadowed pixels against same-surface lit neighbours within 4 px (and the
     lit-lit control), and an ASCII mask of `region` (y0, y1, x0, x1) or the
     valid bounding box: '#' factor < .6, '+' < .85, '-' < .999, '.' 1."""
     import numpy as np
-    out = expected_factor(d, s, sun_map, params)
+    out = expected_factor(d, s, sun_map, params, legacy_floor=legacy_floor)
     factor, f, valid, ambiguous, sun, z = out['factor'], out['f'], out['valid'], out['ambiguous'], out['sun'], out['z']
     size = sun_map.shape[0]
     mu, mv = sun[0] * .5 + .5, .5 - sun[1] * .5
-    tu = np.clip(np.floor(np.nan_to_num(mu) * size).astype(np.int64), 0, size - 1)
-    tv = np.clip(np.floor(np.nan_to_num(mv) * size).astype(np.int64), 0, size - 1)
+    nearest = 0.0 if legacy_floor else .5  # the texel holding the receiver's position: round(muv N) under the D3D9 raster convention
+    tu = np.clip(np.floor(np.nan_to_num(mu) * size + nearest).astype(np.int64), 0, size - 1)
+    tv = np.clip(np.floor(np.nan_to_num(mv) * size + nearest).astype(np.int64), 0, size - 1)
     difference = sun[2] - sun_map[tv, tu]
     covered = valid & (sun_map[tv, tu] < 1.0)
     report = {'valid': int(valid.sum()), 'ambiguous': int(ambiguous.sum()), 'covered': int(covered.sum())}
@@ -722,6 +776,7 @@ def main(argv=None):
     parser.add_argument('--region', help='y0,y1,x0,x1 of the ASCII mask')
     parser.add_argument('--bias', type=float, help='override the constant bias')
     parser.add_argument('--no-jitter', action='store_true', help='drop the jitter term from m20/m21 (the run106 pass)')
+    parser.add_argument('--legacy-floor', action='store_true', help='the lookup rule of builds before 2026-09-17 (texel floor(muv N), no half-texel offset)')
     args = parser.parse_args(argv)
     params, extra, source = frame_params(args.log, args.frame, args.device)
     if args.bias is not None:
@@ -731,7 +786,7 @@ def main(argv=None):
     if 'cascades' in params:
         import numpy as np
         d, s = unpack_rt2((__import__('pathlib').Path(args.capture) / ('depth_%d_%d.rg32f' % (args.device, args.frame))).read_bytes(), extra['width'], extra['height'])
-        out = expected_factor_cascades(d, s, load_cascade_maps(args.capture, args.device, args.frame, extra, params), params)
+        out = expected_factor_cascades(d, s, load_cascade_maps(args.capture, args.device, args.frame, extra, params), params, legacy_floor=args.legacy_floor)
         valid = out['valid']
         print(json.dumps(dict(frame=args.frame, source=source, cascades=extra['cascades'], valid=int(valid.sum()), ambiguous=int(out['ambiguous'].sum()),
                               owned=[int((valid & (out['selected'] == c)).sum()) for c in range(len(params['cascades']))],
@@ -740,7 +795,7 @@ def main(argv=None):
         return
     d, s, sun_map, luminance = load_capture(args.capture, args.device, args.frame, extra['width'], extra['height'], extra['map'])
     region = tuple(int(v) for v in args.region.split(',')) if args.region else None
-    report = frame_report(d, s, sun_map, params, luminance, region)
+    report = frame_report(d, s, sun_map, params, luminance, region, legacy_floor=args.legacy_floor)
     mask = report.pop('mask')
     print(json.dumps(dict(frame=args.frame, source=source, params={k: v for k, v in params.items() if k != 'rows'}, **report), indent=1))
     print('\n'.join(mask))

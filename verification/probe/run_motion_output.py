@@ -322,7 +322,7 @@ CASES += [case('sun-shadow-apply-wide', 'sunapply', enabled='0', hdr_env=SUN_APP
 # motion_output_sun_apply_cascades_inc.h: case letter per frame; the far
 # cascade yields to the budget on the odd frames of (d) and (e).
 SUN_APPLY_CASCADES_ENV = dict(X3M_FIXTURE_SUNAPPLY_CASCADES='1')
-SUN_CASCADE_SCRIPT = 'aabbccddeeef'
+SUN_CASCADE_SCRIPT = 'aabbccddeeef' + 'g' * 8  # g: the box at eight sub-texel phases (the half-texel witness)
 SUN_CASCADE_FAR_SKIPPED, SUN_CASCADE_RESET_FRAME, SUN_CASCADE_IDENTITY = (7, 9), 9, (8, 10)
 CASES += [case('sun-shadow-apply-cascades', 'sunapply', enabled='0', hdr_env=SUN_APPLY_CASCADES_ENV)]
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
@@ -914,7 +914,7 @@ def validate_sun_apply_cascades(name, text, directory, env):
         assert comparison['compared'] > 0 and comparison['ambiguous'] < comparison['valid'] // 5, (name, frame, comparison)
         assert comparison['edge_beyond_one'] == 0 and comparison['interior_wrong'] == 0, (name, frame, comparison)
         per = comparison['cascades']
-        if letter == 'a':    # the far plane: the box's shadow is cascade 1's alone
+        if letter in 'ag':   # the far plane: the box's shadow is cascade 1's alone (g: the same scene at eight sub-texel phases)
             assert per['1']['shadowed_analytic'] > 100 and per['0']['shadowed_analytic'] == 0 and per['2']['shadowed_analytic'] == 0, (name, frame, per)
         elif letter == 'b':  # the seam: the shadow runs through cascade 0's band into cascade 1
             assert per['0']['band_shadowed'] > 20 and per['0']['shadowed_analytic'] > 50 and per['1']['shadowed_analytic'] > 50, (name, frame, per)
@@ -923,14 +923,28 @@ def validate_sun_apply_cascades(name, text, directory, env):
             assert f['legacy_high'] == '1' and masks[2] & 1 and second['interior'] > 20 and second['interior_dark'] == second['interior'] and second['darkened'] > second['pixels'] // 2, (name, frame, second)
             covered = int(np.count_nonzero(maps[0] == 0.0))
             assert (covered >= 50) if letter == 'f' else covered == 0, (name, frame, covered)  # only the pancaked occluder lies on the near plane
-        else:                # the far cascade: replayed, retained through a camera move, absent after the Reset
+        elif letter in 'de':  # the far cascade: replayed, retained through a camera move, absent after the Reset
             far = per['2']
             assert far['owned'] > 1000, (name, frame, far)
             if frame == SUN_CASCADE_RESET_FRAME:
                 assert far['shadowed'] == 0 and far['texel_world'] is None, (name, frame, far)
             else:
                 assert far['shadowed_analytic'] > 100 and far['edge_beyond_one'] == 0, (name, frame, far)
+        # The half-texel witness on real rasterized maps: the shift (0.25-texel steps of the owning cascade) at which the
+        # analytic shadow best matches the quad's f >= 0.5 shadow is within a quarter texel on both axes, while the
+        # pre-fix lookup rule evaluated on the same maps sits half a texel away (the fit's sensitivity).
         comparisons[frame] = comparison
+    # The half-texel witness on real rasterized maps (case g, eight sub-texel phases of the box summed): the shift, in
+    # 0.25-texel steps of the owning cascade, at which the analytic shadow best matches the quad's f >= 0.5 shadow is
+    # within a quarter texel on both axes; the pre-fix lookup rule evaluated on the same maps is not (the fit's sensitivity).
+    phase_frames = [k for k, letter in enumerate(SUN_CASCADE_SCRIPT) if letter == 'g']
+    shift_fit = sun_apply.sum_shift_fits([comparisons[k]['shift_fit'] for k in phase_frames])
+    shift_fit_legacy = sun_apply.sum_shift_fits([comparisons[k]['shift_fit_legacy_rule'] for k in phase_frames])
+    assert sum(comparisons[k]['shift_fit']['edge_pixels'] for k in phase_frames) >= 4000, (name, [comparisons[k]['shift_fit']['edge_pixels'] for k in phase_frames])
+    assert max(abs(v) for v in shift_fit['shift']) <= .25, (name, shift_fit)
+    assert max(abs(v) for v in shift_fit_legacy['shift']) >= .5 and shift_fit_legacy['mismatch_at_zero'] > 1.2 * shift_fit['mismatch_at_zero'], (name, shift_fit_legacy, shift_fit)
+    for c in comparisons.values():  # the per-frame grids stay out of the record
+        c['shift_fit'].pop('grid'); c['shift_fit_legacy_rule'].pop('grid')
     first, second = SUN_CASCADE_IDENTITY
     assert images[first] == images[second], f'{name}: the replay after the Reset frames differs from the frame before it'
     assert frames[7]['camera'] != frames[6]['camera'] and frames[7]['rows2'] != frames[6]['rows2'], (name, 'the retained far map is sampled through the moved camera')
@@ -941,6 +955,7 @@ def validate_sun_apply_cascades(name, text, directory, env):
             'program_slots': int(device[0]['slots']), 'cascade_program_slots': int(device[0]['cascade_slots']), 'max_texture': device[0]['max_texture'], 'ps30_slots': int(device[0]['ps30_slots']),
             'depth_format': int(replay_device[0]['depth_format']), 'depth_size': int(replay_device[0]['depth_size']),
             'bounds_bench_ns': {'single_verdict': float(bench[0]['verdict_ns']), 'cascade_mask_4': float(bench[0]['mask_ns'])},
+            'half_texel': {'shift_fit': shift_fit, 'shift_fit_legacy_rule': shift_fit_legacy, 'frames': phase_frames},
             'frames_detail': comparisons, 'worst_codes': max(c['worst_codes'] for c in comparisons.values()), 'ambiguous_max': max(c['ambiguous'] for c in comparisons.values()),
             'edge_mismatch': {'mismatch': sum(v['edge_mismatch'] for c in comparisons.values() for v in c['cascades'].values()), 'beyond_one_texel': sum(c['edge_beyond_one'] for c in comparisons.values())},
             'us': {'min': us[0], 'median': us[len(us) // 2], 'max': us[-1]},
@@ -948,7 +963,7 @@ def validate_sun_apply_cascades(name, text, directory, env):
                           'per_issue_median': sorted(c['replay_us'] / max(1, c['issues']) for c in comparisons.values())[len(comparisons) // 2]}}
 
 
-SUN_LINE_FIELDS = ('device', 'frame', 'verdict', 'register', 'samples', 'agree', 'disagree', 'invalid', 'no_register', 'bounds_state', 'bounds_unavailable', 'extent_refused', 'sun')
+SUN_LINE_FIELDS = ('device', 'frame', 'verdict', 'register', 'samples', 'agree', 'disagree', 'invalid', 'no_register', 'unlatched', 'bounds_state', 'bounds_unavailable', 'extent_refused', 'sun')
 
 
 def validate_shadow_replay_sun(name, trace, routed, sun_programs, expected_sun):
@@ -966,9 +981,10 @@ def validate_shadow_replay_sun(name, trace, routed, sun_programs, expected_sun):
     for l in lines:
         frame = int(l['frame'])
         changing = frame == SHADOW_REPLAY_NO_SUN_FRAME
-        counts = tuple(int(l[k]) for k in ('samples', 'agree', 'disagree', 'invalid', 'no_register'))
+        counts = tuple(int(l[k]) for k in ('samples', 'agree', 'disagree', 'invalid', 'no_register', 'unlatched'))
         assert l['verdict'] == ('changing' if changing else 'sampled') and int(l['register']) == register, (name, l)
-        assert counts == ((routed, 0, routed, 0, 0) if changing else (routed, routed, 0, 0, 0)), (name, l, routed)
+        # Frame 0: the first draw's sample waits (unlatched), the second agrees and latches the first one's value.
+        assert counts == ((routed, 0, routed, 0, 0, 0) if changing else (routed, routed - 1, 0, 0, 0, 1) if frame == 0 else (routed, routed, 0, 0, 0, 0)), (name, l, routed)
         assert int(l['bounds_unavailable']) == 0 and int(l['extent_refused']) == 0, (name, l)
         assert all(abs(float(v) - e) < 1e-5 for v, e in zip(l['sun'].split(','), expected_sun)), (name, l, expected_sun)  # the latched value never follows the flip
     events = [fields(l) for l in trace.splitlines() if l.startswith('shadow_replay_sun_latch ')]

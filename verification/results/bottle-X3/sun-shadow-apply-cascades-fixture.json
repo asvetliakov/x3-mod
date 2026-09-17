@@ -10,14 +10,14 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion_output_fixture.exe": "c48e2077621da4b3dec9baee15c80cde71757dc2d5eae91a7a807908ca28f5ca",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion-output-seam/d3d9.dll": "2e2b63399e47deea635b64036e35d0dddee5a4c146f7103217720cf6b05b1573",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/build/d3d9.dll": "9e034b15c3543087db8c8255e499b4c0c0e9cfd4359873f3d3a4401623c6cd3d"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion_output_fixture.exe": "8b08e9640a4a5b9700cd05e20960ef74f5e8011e134e955d2f72cb3f4bd9758c",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion-output-seam/d3d9.dll": "365398438f80391d20357c7ca2dc958dabbc9c5756f339d3abda36e070c11f62",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/build/d3d9.dll": "3495fc3c0a9313765013bac27a57c4e57ef11537c13b5e0d5c35909ae45f8280"
  },
- "checks": 1643,
- "fixture_checks": 1527,
- "validator_checks": 116,
- "frames": 12,
+ "checks": 2651,
+ "fixture_checks": 2463,
+ "validator_checks": 188,
+ "frames": 20,
  "map_size": 256,
  "cascades": 3,
  "config": {
@@ -30,27 +30,187 @@
   "margin": "0.949999988",
   "band": "0.100000001"
  },
- "program_slots": 220,
- "cascade_program_slots": 398,
+ "program_slots": 225,
+ "cascade_program_slots": 406,
  "max_texture": "16384x16384",
  "ps30_slots": 512,
  "depth_format": 77,
  "depth_size": 256,
  "bounds_bench_ns": {
-  "single_verdict": 45.0,
-  "cascade_mask_4": 44.6
+  "single_verdict": 45.1,
+  "cascade_mask_4": 44.0
+ },
+ "half_texel": {
+  "shift_fit": {
+   "shift": [
+    0.0,
+    -0.25
+   ],
+   "mismatch": 383,
+   "mismatch_at_zero": 394,
+   "frames": 8,
+   "grid": [
+    [
+     988,
+     864,
+     737,
+     667,
+     682,
+     781,
+     954
+    ],
+    [
+     840,
+     684,
+     549,
+     479,
+     520,
+     637,
+     826
+    ],
+    [
+     786,
+     612,
+     457,
+     383,
+     427,
+     539,
+     731
+    ],
+    [
+     807,
+     612,
+     455,
+     394,
+     430,
+     549,
+     717
+    ],
+    [
+     913,
+     709,
+     544,
+     486,
+     526,
+     631,
+     793
+    ],
+    [
+     1059,
+     864,
+     725,
+     671,
+     713,
+     804,
+     945
+    ],
+    [
+     1217,
+     1039,
+     921,
+     891,
+     937,
+     1040,
+     1174
+    ]
+   ]
+  },
+  "shift_fit_legacy_rule": {
+   "shift": [
+    -0.5,
+    -0.75
+   ],
+   "mismatch": 366,
+   "mismatch_at_zero": 823,
+   "frames": 8,
+   "grid": [
+    [
+     428,
+     366,
+     393,
+     523,
+     712,
+     909,
+     1114
+    ],
+    [
+     446,
+     394,
+     431,
+     560,
+     720,
+     893,
+     1068
+    ],
+    [
+     536,
+     484,
+     528,
+     653,
+     812,
+     965,
+     1128
+    ],
+    [
+     689,
+     654,
+     708,
+     823,
+     955,
+     1086,
+     1232
+    ],
+    [
+     887,
+     867,
+     928,
+     1030,
+     1164,
+     1283,
+     1422
+    ],
+    [
+     1097,
+     1102,
+     1165,
+     1275,
+     1393,
+     1512,
+     1641
+    ],
+    [
+     1327,
+     1341,
+     1401,
+     1511,
+     1627,
+     1755,
+     1884
+    ]
+   ]
+  },
+  "frames": [
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19
+  ]
  },
  "frames_detail": {
   "0": {
    "valid": 11856,
-   "compared": 10300,
-   "ambiguous": 1556,
+   "compared": 10317,
+   "ambiguous": 1539,
    "violations": 0,
    "worst_codes": 0.99826580286026,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 2227,
-   "penumbra": 703,
+   "shadowed": 2308,
+   "penumbra": 714,
    "monotone_violations": 0,
    "cascades": {
     "0": {
@@ -67,9 +227,9 @@
     "1": {
      "owned": 9553,
      "band": 327,
-     "shadowed": 2227,
-     "shadowed_analytic": 885,
-     "edge_mismatch": 98,
+     "shadowed": 2308,
+     "shadowed_analytic": 879,
+     "edge_mismatch": 59,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
      "band_shadowed": 0,
@@ -89,12 +249,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.25,
+     -0.25
+    ],
+    "mismatch": 49,
+    "mismatch_at_zero": 56,
+    "edge_pixels": 928
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.25,
+     -0.5
+    ],
+    "mismatch": 51,
+    "mismatch_at_zero": 90
+   },
    "ok": true,
    "case": "a",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 11697.1,
-   "replay_us": 17277.4,
+   "us": 11097.7,
+   "replay_us": 16545.8,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 0,
@@ -106,14 +283,14 @@
   },
   "1": {
    "valid": 11856,
-   "compared": 10362,
-   "ambiguous": 1494,
+   "compared": 10311,
+   "ambiguous": 1545,
    "violations": 0,
    "worst_codes": 0.9993329445519521,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 3813,
-   "penumbra": 830,
+   "shadowed": 3768,
+   "penumbra": 727,
    "monotone_violations": 0,
    "cascades": {
     "0": {
@@ -130,9 +307,9 @@
     "1": {
      "owned": 10374,
      "band": 338,
-     "shadowed": 3813,
-     "shadowed_analytic": 2388,
-     "edge_mismatch": 132,
+     "shadowed": 3768,
+     "shadowed_analytic": 2376,
+     "edge_mismatch": 98,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
      "band_shadowed": 0,
@@ -152,12 +329,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.5,
+     -0.75
+    ],
+    "mismatch": 76,
+    "mismatch_at_zero": 93,
+    "edge_pixels": 1186
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     0.0,
+     -0.75
+    ],
+    "mismatch": 92,
+    "mismatch_at_zero": 124
+   },
    "ok": true,
    "case": "a",
    "scale": 100.0,
    "elevation": 30.0,
-   "us": 1811.5,
-   "replay_us": 6752.3,
+   "us": 1740.5,
+   "replay_us": 6540.8,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 1,
@@ -169,33 +363,33 @@
   },
   "2": {
    "valid": 11742,
-   "compared": 10065,
-   "ambiguous": 1677,
+   "compared": 10051,
+   "ambiguous": 1691,
    "violations": 0,
    "worst_codes": 0.9999969154596329,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 3854,
-   "penumbra": 652,
+   "shadowed": 3862,
+   "penumbra": 682,
    "monotone_violations": 0,
    "cascades": {
     "0": {
      "owned": 4430,
      "band": 1862,
-     "shadowed": 2540,
-     "shadowed_analytic": 1631,
-     "edge_mismatch": 46,
+     "shadowed": 2546,
+     "shadowed_analytic": 1628,
+     "edge_mismatch": 9,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
-     "band_shadowed": 1119,
+     "band_shadowed": 1116,
      "texel_world": 1.953125
     },
     "1": {
      "owned": 7084,
      "band": 228,
-     "shadowed": 1314,
-     "shadowed_analytic": 723,
-     "edge_mismatch": 80,
+     "shadowed": 1316,
+     "shadowed_analytic": 726,
+     "edge_mismatch": 10,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
      "band_shadowed": 0,
@@ -215,12 +409,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 17,
+    "mismatch_at_zero": 17,
+    "edge_pixels": 994
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     0.25
+    ],
+    "mismatch": 38,
+    "mismatch_at_zero": 97
+   },
    "ok": true,
    "case": "b",
    "scale": 60.0,
    "elevation": 30.0,
-   "us": 1811.8,
-   "replay_us": 6134.5,
+   "us": 1749.9,
+   "replay_us": 6183.8,
    "issues": 6,
    "far_replayed": true,
    "far_frame": 2,
@@ -232,33 +443,33 @@
   },
   "3": {
    "valid": 11742,
-   "compared": 10031,
-   "ambiguous": 1711,
+   "compared": 10088,
+   "ambiguous": 1654,
    "violations": 0,
-   "worst_codes": 0.9999704360961914,
+   "worst_codes": 0.9996107399599623,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 2262,
-   "penumbra": 1084,
+   "shadowed": 2435,
+   "penumbra": 1118,
    "monotone_violations": 0,
    "cascades": {
     "0": {
      "owned": 2987,
      "band": 1157,
-     "shadowed": 231,
-     "shadowed_analytic": 76,
-     "edge_mismatch": 29,
+     "shadowed": 351,
+     "shadowed_analytic": 79,
+     "edge_mismatch": 9,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
-     "band_shadowed": 231,
+     "band_shadowed": 351,
      "texel_world": 1.953125
     },
     "1": {
      "owned": 7843,
      "band": 228,
-     "shadowed": 2031,
-     "shadowed_analytic": 805,
-     "edge_mismatch": 120,
+     "shadowed": 2084,
+     "shadowed_analytic": 798,
+     "edge_mismatch": 37,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
      "band_shadowed": 0,
@@ -278,12 +489,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 39,
+    "mismatch_at_zero": 39,
+    "edge_pixels": 1224
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     -0.5
+    ],
+    "mismatch": 66,
+    "mismatch_at_zero": 114
+   },
    "ok": true,
    "case": "b",
    "scale": 60.0,
    "elevation": 50.0,
-   "us": 1789.9,
-   "replay_us": 6334.1,
+   "us": 1718.1,
+   "replay_us": 6096.0,
    "issues": 6,
    "far_replayed": true,
    "far_frame": 3,
@@ -295,25 +523,25 @@
   },
   "4": {
    "valid": 11856,
-   "compared": 10306,
-   "ambiguous": 1550,
+   "compared": 10295,
+   "ambiguous": 1561,
    "violations": 0,
-   "worst_codes": 0.99826580286026,
+   "worst_codes": 0.99653160572052,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 2453,
-   "penumbra": 305,
+   "shadowed": 2472,
+   "penumbra": 293,
    "monotone_violations": 0,
    "cascades": {
     "0": {
      "owned": 7905,
      "band": 347,
-     "shadowed": 2453,
+     "shadowed": 2472,
      "shadowed_analytic": 1069,
-     "edge_mismatch": 54,
+     "edge_mismatch": 28,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
-     "band_shadowed": 0,
+     "band_shadowed": 10,
      "texel_world": 1.953125
     },
     "1": {
@@ -342,17 +570,34 @@
    "edge_beyond_one": 0,
    "interior_wrong": 0,
    "second_caster": {
-    "pixels": 186,
-    "interior": 103,
-    "darkened": 171,
-    "interior_dark": 103
+    "pixels": 188,
+    "interior": 105,
+    "darkened": 179,
+    "interior_dark": 105
+   },
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 27,
+    "mismatch_at_zero": 27,
+    "edge_pixels": 515
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     -0.5
+    ],
+    "mismatch": 26,
+    "mismatch_at_zero": 54
    },
    "ok": true,
    "case": "c",
    "scale": 40.0,
    "elevation": 50.0,
-   "us": 1754.2,
-   "replay_us": 9147.9,
+   "us": 1766.9,
+   "replay_us": 8770.5,
    "issues": 9,
    "far_replayed": true,
    "far_frame": 4,
@@ -364,25 +609,25 @@
   },
   "5": {
    "valid": 11856,
-   "compared": 10339,
-   "ambiguous": 1517,
+   "compared": 10300,
+   "ambiguous": 1556,
    "violations": 0,
    "worst_codes": 0.9994246670710254,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 1783,
-   "penumbra": 310,
+   "shadowed": 1796,
+   "penumbra": 280,
    "monotone_violations": 0,
    "cascades": {
     "0": {
      "owned": 7801,
      "band": 310,
-     "shadowed": 1783,
-     "shadowed_analytic": 562,
-     "edge_mismatch": 52,
+     "shadowed": 1796,
+     "shadowed_analytic": 560,
+     "edge_mismatch": 37,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
-     "band_shadowed": 6,
+     "band_shadowed": 11,
      "texel_world": 1.953125
     },
     "1": {
@@ -411,17 +656,34 @@
    "edge_beyond_one": 0,
    "interior_wrong": 0,
    "second_caster": {
-    "pixels": 254,
-    "interior": 136,
-    "darkened": 237,
-    "interior_dark": 136
+    "pixels": 256,
+    "interior": 137,
+    "darkened": 244,
+    "interior_dark": 137
+   },
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.25
+    ],
+    "mismatch": 26,
+    "mismatch_at_zero": 37,
+    "edge_pixels": 476
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     -0.75
+    ],
+    "mismatch": 18,
+    "mismatch_at_zero": 51
    },
    "ok": true,
    "case": "c",
    "scale": 40.0,
    "elevation": 70.0,
-   "us": 1901.7,
-   "replay_us": 8801.4,
+   "us": 1738.7,
+   "replay_us": 8569.3,
    "issues": 9,
    "far_replayed": true,
    "far_frame": 5,
@@ -433,14 +695,14 @@
   },
   "6": {
    "valid": 9042,
-   "compared": 8775,
-   "ambiguous": 267,
+   "compared": 8767,
+   "ambiguous": 275,
    "violations": 0,
-   "worst_codes": 0.9999969154596329,
+   "worst_codes": 0.9972249666848256,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 2312,
-   "penumbra": 643,
+   "shadowed": 2362,
+   "penumbra": 652,
    "monotone_violations": 0,
    "cascades": {
     "0": {
@@ -468,9 +730,9 @@
     "2": {
      "owned": 9042,
      "band": 401,
-     "shadowed": 2312,
-     "shadowed_analytic": 880,
-     "edge_mismatch": 92,
+     "shadowed": 2362,
+     "shadowed_analytic": 878,
+     "edge_mismatch": 49,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
      "band_shadowed": 0,
@@ -479,12 +741,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 49,
+    "mismatch_at_zero": 49,
+    "edge_pixels": 783
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.75,
+     -0.5
+    ],
+    "mismatch": 43,
+    "mismatch_at_zero": 89
+   },
    "ok": true,
    "case": "d",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 1826.6,
-   "replay_us": 4779.3,
+   "us": 1725.7,
+   "replay_us": 4483.0,
    "issues": 4,
    "far_replayed": true,
    "far_frame": 6,
@@ -496,14 +775,14 @@
   },
   "7": {
    "valid": 9038,
-   "compared": 8812,
-   "ambiguous": 226,
+   "compared": 8841,
+   "ambiguous": 197,
    "violations": 0,
-   "worst_codes": 0.9999969154596329,
+   "worst_codes": 0.9972249666848256,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 2387,
-   "penumbra": 677,
+   "shadowed": 2461,
+   "penumbra": 683,
    "monotone_violations": 0,
    "cascades": {
     "0": {
@@ -531,9 +810,9 @@
     "2": {
      "owned": 9038,
      "band": 441,
-     "shadowed": 2387,
-     "shadowed_analytic": 881,
-     "edge_mismatch": 79,
+     "shadowed": 2461,
+     "shadowed_analytic": 893,
+     "edge_mismatch": 50,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
      "band_shadowed": 0,
@@ -542,12 +821,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     -0.25,
+     0.25
+    ],
+    "mismatch": 40,
+    "mismatch_at_zero": 47,
+    "edge_pixels": 794
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.75,
+     -0.5
+    ],
+    "mismatch": 41,
+    "mismatch_at_zero": 77
+   },
    "ok": true,
    "case": "d",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 1813.7,
-   "replay_us": 2665.7,
+   "us": 1882.6,
+   "replay_us": 2856.6,
    "issues": 2,
    "far_replayed": false,
    "far_frame": 6,
@@ -559,14 +855,14 @@
   },
   "8": {
    "valid": 9042,
-   "compared": 8775,
-   "ambiguous": 267,
+   "compared": 8767,
+   "ambiguous": 275,
    "violations": 0,
-   "worst_codes": 0.9999969154596329,
+   "worst_codes": 0.9972249666848256,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 2312,
-   "penumbra": 643,
+   "shadowed": 2362,
+   "penumbra": 652,
    "monotone_violations": 0,
    "cascades": {
     "0": {
@@ -594,9 +890,9 @@
     "2": {
      "owned": 9042,
      "band": 401,
-     "shadowed": 2312,
-     "shadowed_analytic": 880,
-     "edge_mismatch": 92,
+     "shadowed": 2362,
+     "shadowed_analytic": 878,
+     "edge_mismatch": 49,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
      "band_shadowed": 0,
@@ -605,12 +901,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 49,
+    "mismatch_at_zero": 49,
+    "edge_pixels": 783
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.75,
+     -0.5
+    ],
+    "mismatch": 43,
+    "mismatch_at_zero": 89
+   },
    "ok": true,
    "case": "e",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 1748.6,
-   "replay_us": 4504.9,
+   "us": 1737.8,
+   "replay_us": 4441.0,
    "issues": 4,
    "far_replayed": true,
    "far_frame": 8,
@@ -668,12 +981,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 0,
+    "mismatch_at_zero": 0,
+    "edge_pixels": 0
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 0,
+    "mismatch_at_zero": 0
+   },
    "ok": true,
    "case": "e",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 8015.3,
-   "replay_us": 2546.1,
+   "us": 7736.8,
+   "replay_us": 2406.6,
    "issues": 2,
    "far_replayed": false,
    "far_frame": -1,
@@ -685,14 +1015,14 @@
   },
   "10": {
    "valid": 9042,
-   "compared": 8775,
-   "ambiguous": 267,
+   "compared": 8767,
+   "ambiguous": 275,
    "violations": 0,
-   "worst_codes": 0.9999969154596329,
+   "worst_codes": 0.9972249666848256,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 2312,
-   "penumbra": 643,
+   "shadowed": 2362,
+   "penumbra": 652,
    "monotone_violations": 0,
    "cascades": {
     "0": {
@@ -720,9 +1050,9 @@
     "2": {
      "owned": 9042,
      "band": 401,
-     "shadowed": 2312,
-     "shadowed_analytic": 880,
-     "edge_mismatch": 92,
+     "shadowed": 2362,
+     "shadowed_analytic": 878,
+     "edge_mismatch": 49,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
      "band_shadowed": 0,
@@ -731,12 +1061,29 @@
    },
    "edge_beyond_one": 0,
    "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 49,
+    "mismatch_at_zero": 49,
+    "edge_pixels": 783
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.75,
+     -0.5
+    ],
+    "mismatch": 43,
+    "mismatch_at_zero": 89
+   },
    "ok": true,
    "case": "e",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 703.2,
-   "replay_us": 814.4,
+   "us": 692.6,
+   "replay_us": 689.1,
    "issues": 4,
    "far_replayed": true,
    "far_frame": 10,
@@ -748,25 +1095,25 @@
   },
   "11": {
    "valid": 11856,
-   "compared": 10304,
-   "ambiguous": 1552,
+   "compared": 10309,
+   "ambiguous": 1547,
    "violations": 0,
-   "worst_codes": 0.99826580286026,
+   "worst_codes": 0.99653160572052,
    "identity_changed": 0,
    "alpha_changed": 0,
-   "shadowed": 2454,
-   "penumbra": 304,
+   "shadowed": 2487,
+   "penumbra": 298,
    "monotone_violations": 0,
    "cascades": {
     "0": {
      "owned": 7942,
      "band": 375,
-     "shadowed": 2454,
-     "shadowed_analytic": 1068,
-     "edge_mismatch": 55,
+     "shadowed": 2487,
+     "shadowed_analytic": 1073,
+     "edge_mismatch": 28,
      "edge_beyond_one": 0,
      "interior_wrong": 0,
-     "band_shadowed": 0,
+     "band_shadowed": 11,
      "texel_world": 1.953125
     },
     "1": {
@@ -795,17 +1142,34 @@
    "edge_beyond_one": 0,
    "interior_wrong": 0,
    "second_caster": {
-    "pixels": 186,
-    "interior": 105,
-    "darkened": 169,
-    "interior_dark": 105
+    "pixels": 188,
+    "interior": 106,
+    "darkened": 179,
+    "interior_dark": 106
+   },
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 28,
+    "mismatch_at_zero": 28,
+    "edge_pixels": 506
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     -0.5
+    ],
+    "mismatch": 26,
+    "mismatch_at_zero": 53
    },
    "ok": true,
    "case": "f",
    "scale": 40.0,
    "elevation": 50.0,
-   "us": 706.3,
-   "replay_us": 835.7,
+   "us": 710.1,
+   "replay_us": 820.0,
    "issues": 9,
    "far_replayed": true,
    "far_frame": 11,
@@ -814,28 +1178,668 @@
     3,
     3
    ]
+  },
+  "12": {
+   "valid": 11856,
+   "compared": 10317,
+   "ambiguous": 1539,
+   "violations": 0,
+   "worst_codes": 0.99826580286026,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2308,
+   "penumbra": 714,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9553,
+     "band": 327,
+     "shadowed": 2308,
+     "shadowed_analytic": 879,
+     "edge_mismatch": 59,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2303,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.25,
+     -0.25
+    ],
+    "mismatch": 49,
+    "mismatch_at_zero": 56,
+    "edge_pixels": 928
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.25,
+     -0.5
+    ],
+    "mismatch": 51,
+    "mismatch_at_zero": 90
+   },
+   "ok": true,
+   "case": "g",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 798.8,
+   "replay_us": 897.2,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 12,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "13": {
+   "valid": 11856,
+   "compared": 10326,
+   "ambiguous": 1530,
+   "violations": 0,
+   "worst_codes": 0.99826580286026,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2344,
+   "penumbra": 739,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9554,
+     "band": 327,
+     "shadowed": 2344,
+     "shadowed_analytic": 883,
+     "edge_mismatch": 56,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2302,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     -0.25
+    ],
+    "mismatch": 45,
+    "mismatch_at_zero": 52,
+    "edge_pixels": 925
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.25,
+     -0.75
+    ],
+    "mismatch": 42,
+    "mismatch_at_zero": 99
+   },
+   "ok": true,
+   "case": "g",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 708.1,
+   "replay_us": 765.9,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 13,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "14": {
+   "valid": 11856,
+   "compared": 10311,
+   "ambiguous": 1545,
+   "violations": 0,
+   "worst_codes": 0.99826580286026,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2328,
+   "penumbra": 727,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9552,
+     "band": 330,
+     "shadowed": 2328,
+     "shadowed_analytic": 879,
+     "edge_mismatch": 53,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2304,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     -0.25
+    ],
+    "mismatch": 47,
+    "mismatch_at_zero": 50,
+    "edge_pixels": 927
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     -0.75
+    ],
+    "mismatch": 40,
+    "mismatch_at_zero": 107
+   },
+   "ok": true,
+   "case": "g",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 724.5,
+   "replay_us": 786.6,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 14,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "15": {
+   "valid": 11856,
+   "compared": 10251,
+   "ambiguous": 1605,
+   "violations": 0,
+   "worst_codes": 0.9972249666848256,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2273,
+   "penumbra": 660,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9553,
+     "band": 332,
+     "shadowed": 2273,
+     "shadowed_analytic": 875,
+     "edge_mismatch": 44,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2303,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     -0.25
+    ],
+    "mismatch": 41,
+    "mismatch_at_zero": 42,
+    "edge_pixels": 925
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     -0.75
+    ],
+    "mismatch": 37,
+    "mismatch_at_zero": 100
+   },
+   "ok": true,
+   "case": "g",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 693.7,
+   "replay_us": 759.5,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 15,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "16": {
+   "valid": 11856,
+   "compared": 10219,
+   "ambiguous": 1637,
+   "violations": 0,
+   "worst_codes": 0.9972249666848256,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2241,
+   "penumbra": 626,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9555,
+     "band": 331,
+     "shadowed": 2241,
+     "shadowed_analytic": 878,
+     "edge_mismatch": 46,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2301,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     -0.25
+    ],
+    "mismatch": 42,
+    "mismatch_at_zero": 46,
+    "edge_pixels": 925
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     -0.75
+    ],
+    "mismatch": 40,
+    "mismatch_at_zero": 103
+   },
+   "ok": true,
+   "case": "g",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 713.0,
+   "replay_us": 812.7,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 16,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "17": {
+   "valid": 11856,
+   "compared": 10179,
+   "ambiguous": 1677,
+   "violations": 0,
+   "worst_codes": 0.9972249666848256,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2183,
+   "penumbra": 640,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9554,
+     "band": 328,
+     "shadowed": 2183,
+     "shadowed_analytic": 879,
+     "edge_mismatch": 47,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2302,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     -0.25,
+     0.0
+    ],
+    "mismatch": 41,
+    "mismatch_at_zero": 45,
+    "edge_pixels": 925
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.75,
+     -0.75
+    ],
+    "mismatch": 35,
+    "mismatch_at_zero": 115
+   },
+   "ok": true,
+   "case": "g",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 769.4,
+   "replay_us": 822.2,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 17,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "18": {
+   "valid": 11856,
+   "compared": 10326,
+   "ambiguous": 1530,
+   "violations": 0,
+   "worst_codes": 0.99826580286026,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2322,
+   "penumbra": 780,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9554,
+     "band": 328,
+     "shadowed": 2322,
+     "shadowed_analytic": 876,
+     "edge_mismatch": 51,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2302,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     0.0
+    ],
+    "mismatch": 47,
+    "mismatch_at_zero": 47,
+    "edge_pixels": 924
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.75,
+     -0.75
+    ],
+    "mismatch": 44,
+    "mismatch_at_zero": 116
+   },
+   "ok": true,
+   "case": "g",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 751.9,
+   "replay_us": 756.1,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 18,
+   "records": [
+    1,
+    2,
+    2
+   ]
+  },
+  "19": {
+   "valid": 11856,
+   "compared": 10299,
+   "ambiguous": 1557,
+   "violations": 0,
+   "worst_codes": 0.99826580286026,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 2256,
+   "penumbra": 722,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 0,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 9555,
+     "band": 328,
+     "shadowed": 2256,
+     "shadowed_analytic": 874,
+     "edge_mismatch": 63,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 2301,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 0,
+   "interior_wrong": 0,
+   "shift_fit": {
+    "shift": [
+     0.0,
+     -0.25
+    ],
+    "mismatch": 52,
+    "mismatch_at_zero": 56,
+    "edge_pixels": 918
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     -0.5,
+     -0.75
+    ],
+    "mismatch": 44,
+    "mismatch_at_zero": 93
+   },
+   "ok": true,
+   "case": "g",
+   "scale": 100.0,
+   "elevation": 50.0,
+   "us": 727.1,
+   "replay_us": 849.7,
+   "issues": 5,
+   "far_replayed": true,
+   "far_frame": 19,
+   "records": [
+    1,
+    2,
+    2
+   ]
   }
  },
  "worst_codes": 0.9999969154596329,
- "ambiguous_max": 1711,
+ "ambiguous_max": 1691,
  "edge_mismatch": {
-  "mismatch": 1021,
+  "mismatch": 931,
   "beyond_one_texel": 0
  },
  "us": {
-  "min": 703.2,
-  "median": 1811.8,
-  "max": 11697.1
+  "min": 692.6,
+  "median": 1718.1,
+  "max": 11097.7
  },
  "replay_us": {
-  "min": 814.4,
-  "median": 6134.5,
-  "max": 17277.4,
-  "per_issue_median": 1126.225
+  "min": 689.1,
+  "median": 2406.6,
+  "max": 16545.8,
+  "per_issue_median": 952.1444444444444
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-20260917-085507-798724",
- "trace_sha256": "880862baed028c666237e26d1b4df009747eb54caea699a6f0da2de1fff4744b",
- "dll_sha256": "9e034b15c3543087db8c8255e499b4c0c0e9cfd4359873f3d3a4401623c6cd3d",
- "exe_sha256": "c48e2077621da4b3dec9baee15c80cde71757dc2d5eae91a7a807908ca28f5ca"
+ "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-20260917-092602-006482",
+ "trace_sha256": "9637a7c4840ff29001156c573477c33aec013acd267d44f80342bd91dd2c9f8c",
+ "dll_sha256": "3495fc3c0a9313765013bac27a57c4e57ef11537c13b5e0d5c35909ae45f8280",
+ "exe_sha256": "8b08e9640a4a5b9700cd05e20960ef74f5e8011e134e955d2f72cb3f4bd9758c"
 }

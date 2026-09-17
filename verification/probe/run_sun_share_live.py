@@ -23,7 +23,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # sun_shadow_apply_frame skip reasons (motion_output.cpp run_sun_shadow_apply and
 # SunShadowApplyPass::execute; legacy-sun-application.md section 2).
 APPLY_SKIP_REASONS = frozenset(('none', 'lane', 'replay', 'owner', 'depth', 'recording', 'queries', 'camera', 'target', 'attach',
-                                'reset_pending', 'depth_container', 'bias', 'failed', 'detached', 'input', 'params', 'format', 'device'))
+                                'reset_pending', 'depth_container', 'bias', 'failed', 'detached', 'input', 'params', 'format', 'device',
+                                'sun', 'basis', 'rows', 'cascades', 'absent'))  # the cascade branch's own
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
          'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission',
          'shadow_apply_cascades')

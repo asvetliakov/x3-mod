@@ -101,7 +101,7 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   halved to fit, one `D3DSBT_ALL` block per pass with the caller's FVF or declaration re-set
   explicitly, the application's own buffers and declaration, `GetRenderTargetData` for the F8
   readbacks, five samplers, `texldl` inside a ps_3_0 loop and dynamic branch, the program's slot
-  count (398) gated against `MaxPixelShader30InstructionSlots` (a device below it keeps the
+  count (406) gated against `MaxPixelShader30InstructionSlots` (a device below it keeps the
   single-map program and refuses the cascades). `LightDir_Dir0`'s register comes from the
   program's own constant table (the documented `D3DXSHADER_CONSTANTTABLE` layout in the `CTAB`
   comment, bounds-checked) and the application's own `SetPixelShaderConstantF` writes; no Wine

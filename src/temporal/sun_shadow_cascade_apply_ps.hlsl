@@ -22,6 +22,12 @@
 // share-free or fully lit: exactly 1 (the multiply leaves the target
 // byte-identical). Compiled by tools/shaders/generate_rigid_motion_pixel.py
 // into src/renderer/sun_shadow_cascade_apply_program_inc.h.
+// Texel convention: the replay rasterizes under D3D9, where map texel (i, j)
+// holds the depth at screen position (i, j), i.e. at map position (i, j) / N,
+// while a texture lookup addresses that texel at ((i, j) + 0.5) / N. The
+// receiver's lookup position is therefore suv = muv + 0.5 / N: its nearest
+// texel is floor(suv N) (= round(muv N)), and a tap at tapUV holds the depth
+// of the point tapUV - suv away from the receiver (the receiver-plane term).
 sampler depthShareTex : register(s0); // G32R32F: r = device depth (z/w, -1 sentinel), g = sun share s
 sampler mapTex0 : register(s1);       // R32F sun-space depth maps, nearest cascade first
 sampler mapTex1 : register(s2);
@@ -46,11 +52,12 @@ float pcf(sampler tex, float3 sun, float3 dpdx, float3 dpdy, float4 r0, float4 r
     bool planar = abs(det) > 1e-12 && steady;
     float inv = planar ? 1.0 / det : 0.0;
     float2 g = float2(dzdx * duvdy.y - dzdy * duvdx.y, dzdy * duvdx.x - dzdx * duvdy.x) * inv;
-    float2 texel = floor(muv * map.x);
+    float2 suv = muv + 0.5 * map.y;
+    float2 texel = floor(suv * map.x);
     float lit = 0.0;
     [loop] for (int k = 0; k < 9; ++k) {
         float2 tapUV = (floor(texel + 0.5 + taps[k].xy) + 0.5) * map.y;
-        float bias = planar ? clamp(dot(tapUV - muv, g), -map.w, map.w) : -map.w;
+        float bias = planar ? clamp(dot(tapUV - suv, g), -map.w, map.w) : -map.w;
         float reference = sun.z + bias - map.z;
         lit += (tex2Dlod(tex, float4(tapUV, 0.0, 0.0)).r >= reference) ? 1.0 : 0.0;
     }

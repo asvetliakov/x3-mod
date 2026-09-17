@@ -251,7 +251,9 @@ void run_sun_apply_integration(Fixture& f) {
             float value = 1.f;
             if (script.map_mode == 1) value = 0.f;
             else if (script.map_mode == 2) {
-                const double x = (a + .5) / sun_apply_map * 2. - 1., y = 1. - (b + .5) / sun_apply_map * 2.;
+                // As the replay's D3D9 rasterizer fills a map: texel (a, b) holds the sample at map position (a, b) / N
+                // (no half-texel term; the quad's lookup adds it, sun_shadow_apply_ps.hlsl).
+                const double x = double(a) / sun_apply_map * 2. - 1., y = 1. - double(b) / sun_apply_map * 2.;
                 const Vec3 q = s_center + s_right * (x * cascade.half_extent) + s_up * (y * cascade.half_extent) - s_fwd * float(cascade.depth_half());
                 const double t = sun_apply_hit(q, s_fwd);
                 if (t > 0.) value = float(std::min(1., t / (2. * float(cascade.depth_half()))));

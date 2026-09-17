@@ -42,6 +42,13 @@ struct ShadowReplayBasis {
     bool valid = false;
     float right[3]{}, up[3]{}, forward[3]{}; // sun-space axes in world space (forward = direction the light travels)
     float center[3]{};                        // snapped cascade centre in world space
+    // The same in double: what every row is built from. Narrowing the snapped
+    // centre to float quantises it (0.0078 units at |c| = 7e4, a visible swim
+    // of a 0.06-unit texel), so the centre and the axes are folded into the
+    // rows in double and only the finished rows are narrowed; the floats above
+    // are for the logs and the seam readback.
+    double axes[3][3]{};                      // right, up, forward
+    double center_d[3]{};
 };
 // No libm on the i686 build (check_no_x87.py): GCC's std::sqrt(double) keeps
 // an errno call whose result returns on the x87 stack, and floor/fabs are x87
@@ -101,6 +108,7 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
         const double c = right[i] * cx + up[i] * cy + f[i] * cz;
         if (!std::isfinite(c)) return false;
         out.center[i] = float(c); out.right[i] = float(right[i]); out.up[i] = float(up[i]); out.forward[i] = float(f[i]);
+        out.center_d[i] = c; out.axes[0][i] = right[i]; out.axes[1][i] = up[i]; out.axes[2][i] = f[i];
     }
     out.valid = true;
     return true;
@@ -125,12 +133,12 @@ inline bool shadow_replay_light_rows(const CameraState& camera, const float rows
     // S: world -> sun-space NDC.
     const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
     double S[4][4] = {};
-    const float* axes[3] = {basis.right, basis.up, basis.forward};
+    const auto& axes = basis.axes;
     for (unsigned a = 0; a < 3; ++a) {
         double dot = 0;
-        for (unsigned j = 0; j < 3; ++j) dot += double(axes[a][j]) * double(basis.center[j]);
+        for (unsigned j = 0; j < 3; ++j) dot += axes[a][j] * basis.center_d[j];
         const double scale = a == 2 ? 1. / R : 1. / E;
-        for (unsigned j = 0; j < 3; ++j) S[a][j] = double(axes[a][j]) * scale;
+        for (unsigned j = 0; j < 3; ++j) S[a][j] = axes[a][j] * scale;
         S[a][3] = a == 2 ? (L - dot) / R : -dot / E;
     }
     S[3][3] = 1;
@@ -157,14 +165,14 @@ inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowRepla
     }
     const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
     if (!(E > 0.) || !(L > 0.) || !(R > L)) return false;
-    const float* axes[3] = {basis.right, basis.up, basis.forward};
+    const auto& axes = basis.axes;
     for (unsigned a = 0; a < 3; ++a) {
         double dot = 0;
-        for (unsigned j = 0; j < 3; ++j) dot += double(axes[a][j]) * double(basis.center[j]);
+        for (unsigned j = 0; j < 3; ++j) dot += axes[a][j] * basis.center_d[j];
         const double scale = a == 2 ? 1. / R : 1. / E, offset = a == 2 ? (L - dot) / R : -dot / E;
         for (unsigned j = 0; j < 4; ++j) {
             double m = j == 3 ? offset : 0.;
-            for (unsigned k = 0; k < 3; ++k) m += double(axes[a][k]) * scale * W[k][j];
+            for (unsigned k = 0; k < 3; ++k) m += axes[a][k] * scale * W[k][j];
             if (!std::isfinite(m) || m > 1e15 || m < -1e15) return false;
             out[a * 4 + j] = float(m);
         }
@@ -274,15 +282,15 @@ inline bool shadow_cascade_bounds(const CameraState& camera, const float sun[4],
     for (unsigned c = 0; c < set.count; ++c) {
         ShadowReplayBasis basis{};
         if (!shadow_replay_basis(camera, sun, set.cascades[c], basis)) return false;
-        const float* axes[3] = {basis.right, basis.up, basis.forward};
+        const auto& axes = basis.axes;
         for (unsigned a = 0; a < 3; ++a) {
             if (!c) for (unsigned j = 0; j < 3; ++j) { // sun_rel[a] = sum_j (sum_k axes[a][k] r[k*3+j]) view_j
                 double m = 0;
-                for (unsigned k = 0; k < 3; ++k) m += double(axes[a][k]) * double(camera.r[k * 3 + j]);
+                for (unsigned k = 0; k < 3; ++k) m += axes[a][k] * double(camera.r[k * 3 + j]);
                 out.rows[a * 3 + j] = float(m);
             }
             double centre = 0;
-            for (unsigned k = 0; k < 3; ++k) centre += double(axes[a][k]) * (double(basis.center[k]) - position[k]);
+            for (unsigned k = 0; k < 3; ++k) centre += axes[a][k] * (basis.center_d[k] - position[k]);
             const auto& s = set.cascades[c];
             const double below = a == 2 ? double(s.depth_toward_light) : double(s.half_extent), above = a == 2 ? double(s.depth_behind) : double(s.half_extent);
             if (!std::isfinite(centre)) return false;
@@ -334,9 +342,9 @@ inline bool shadow_cascade_draw_rows(const CameraState& camera, const float rows
         if (k == 3) for (unsigned j = 0; j < 3; ++j) m -= double(camera.t[j]) * double(camera.r[i * 3 + j]);
         WA[i][k] = m;
     }
-    const float* axes[3] = {basis.right, basis.up, basis.forward};
+    const auto& axes = basis.axes;
     for (unsigned a = 0; a < 3; ++a) for (unsigned k = 0; k < 4; ++k) {
-        const double m = double(axes[a][0]) * WA[0][k] + double(axes[a][1]) * WA[1][k] + double(axes[a][2]) * WA[2][k];
+        const double m = axes[a][0] * WA[0][k] + axes[a][1] * WA[1][k] + axes[a][2] * WA[2][k];
         if (!std::isfinite(m)) return false;
         base[a][k] = m;
     }
@@ -346,10 +354,10 @@ inline bool shadow_cascade_light_rows(const double base[3][4], const ShadowRepla
     if (!basis.valid || !base || !out) return false;
     const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
     if (!(E > 0.) || !(L > 0.) || !(R > L)) return false;
-    const float* axes[3] = {basis.right, basis.up, basis.forward};
+    const auto& axes = basis.axes;
     for (unsigned a = 0; a < 3; ++a) {
         double dot = 0;
-        for (unsigned j = 0; j < 3; ++j) dot += double(axes[a][j]) * double(basis.center[j]);
+        for (unsigned j = 0; j < 3; ++j) dot += axes[a][j] * basis.center_d[j];
         const double scale = a == 2 ? 1. / R : 1. / E, offset = a == 2 ? (L - dot) / R : -dot / E;
         for (unsigned k = 0; k < 4; ++k) {
             const double m = base[a][k] * scale + (k == 3 ? offset : 0.);

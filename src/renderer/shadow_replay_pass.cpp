@@ -120,8 +120,11 @@ struct ShadowReplayPass::SavedState {
         for (UINT i = 0; i < count; ++i) if (!attempt(pass.call<SetRtFn>(SetRenderTarget)(d, i, targets[i]))) return first;
         if (!attempt(pass.call<SetDepthFn>(SetDepthStencilSurface)(d, depth))) return first;
         if (!attempt(block->Apply())) return first;
-        if (fvf) { if (!attempt(pass.call<SetFvfFn>(SetFVF)(d, fvf))) return first; }
-        else if (!attempt(pass.call<SetDeclarationFn>(SetVertexDeclaration)(d, declaration))) return first;
+        // The declaration object the caller had bound goes back as that object;
+        // only a caller without one is restored through its FVF (or to none).
+        if (declaration) { if (!attempt(pass.call<SetDeclarationFn>(SetVertexDeclaration)(d, declaration))) return first; }
+        else if (fvf) { if (!attempt(pass.call<SetFvfFn>(SetFVF)(d, fvf))) return first; }
+        else if (!attempt(pass.call<SetDeclarationFn>(SetVertexDeclaration)(d, nullptr))) return first;
         if (!attempt(pass.call<SetViewportFn>(SetViewport)(d, &viewport))) return first;
         attempt(pass.call<SetScissorFn>(SetScissorRect)(d, &scissor));
         return first;

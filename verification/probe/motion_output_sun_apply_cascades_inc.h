@@ -23,13 +23,20 @@
 //   (f) pancake: the second box 16,000 units towards the light, beyond every
 //       cascade's 15,000-unit light-side range: the bounds test admits it (the
 //       light side is open), the replay flattens it onto the near plane
-//       (map depth 0) and it still shadows the receiver.
+//       (map depth 0) and it still shadows the receiver;
+//   (g) half texel: case (a)'s scene eight times with the box moved by k / 8
+//       of a cascade-1 texel (11.72 units) along x and 0.61 of that along z,
+//       so its shadow edges take eight sub-texel phases against the
+//       world-fixed texel grid; the runner sums the shift fit over the eight
+//       frames (one frame's edges sit at one phase, which alone is worth up
+//       to half a texel either way) and finds the lookup unbiased.
 // Every frame's RT2, per-cascade map readbacks and target readbacks are
 // written beside the executable for the runner's twin
 // (verification/probe/sun_shadow_apply.py, expected_factor_cascades).
 namespace {
-constexpr unsigned cascade_frames = 12, cascade_map = 256, cascade_count = 3;
-struct CascadeScript { char name; double scale; float elevation_deg; double high_box; unsigned budget; double shift[3]; unsigned jitter_index; float jx, jy; float exponent; bool reset_before; };
+constexpr unsigned cascade_frames = 20, cascade_map = 256, cascade_count = 3;
+constexpr double cascade_phase_texel = 2. * 1500. / cascade_map; // cascade 1's world texel
+struct CascadeScript { char name; double scale; float elevation_deg; double high_box; unsigned budget; double shift[3]; unsigned jitter_index; float jx, jy; float exponent; bool reset_before; unsigned phase = 0; };
 constexpr CascadeScript cascade_script[cascade_frames] = {
     {'a', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false},
     {'a', 100., 30.f, 0., 640, {0, 0, 0}, 1, .25f, -.125f, 1.f, false},
@@ -43,6 +50,10 @@ constexpr CascadeScript cascade_script[cascade_frames] = {
     {'e', 600., 50.f, 0., 3, {0, 0, 0}, 0, 0.f, 0.f, 1.f, true},                // Reset first: the retained far map is gone
     {'e', 600., 50.f, 0., 3, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false},               // = frame 8
     {'f', 40., 50.f, 16000., 640, {0, 0, 0}, 3, .125f, -.25f, 1.f, false},      // beyond depth_toward_light: pancaked
+    {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 0}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 1},
+    {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 2}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 3},
+    {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 4}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 5},
+    {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 6}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 7},
 };
 struct CascadeBox { double lo[3], hi[3]; };
 // Nearest positive hit of the plane y = 0 and the boxes along o + t dir, or a negative value.
@@ -159,7 +170,7 @@ void run_sun_apply_cascades(Fixture& f) {
     CascadeObject plane, box, high;
     std::vector<unsigned char> reset_reference_before, reset_reference_after;
     std::uint64_t map_frames[cascade_count] = {~0ull, ~0ull, ~0ull};
-    double built_scale = 0.;
+    double built_scale = 0.; unsigned built_phase = 0;
     for (unsigned frame = 0; frame < cascade_frames; ++frame) {
         const CascadeScript& script = cascade_script[frame];
         if (script.reset_before) {
@@ -178,6 +189,8 @@ void run_sun_apply_cascades(Fixture& f) {
         const double scale = script.scale;
         CascadeBox boxes[2]; unsigned box_count = 1;
         for (unsigned k = 0; k < 3; ++k) { boxes[0].lo[k] = sun_apply_box_min[k] * scale; boxes[0].hi[k] = sun_apply_box_max[k] * scale; }
+        { const double phase = script.phase / 8. * cascade_phase_texel; // case g: the box at eight sub-texel phases
+          boxes[0].lo[0] += phase; boxes[0].hi[0] += phase; boxes[0].lo[2] += .61 * phase; boxes[0].hi[2] += .61 * phase; }
         const double az = sun_apply_azimuth_deg * 3.14159265358979323846 / 180., el = double(script.elevation_deg) * 3.14159265358979323846 / 180.;
         const float sun[4] = {float(std::sin(az) * std::cos(el)), float(std::sin(el)), float(std::cos(az) * std::cos(el)), 0.f};
         if (script.high_box > 0.) {
@@ -188,7 +201,7 @@ void run_sun_apply_cascades(Fixture& f) {
             box_count = 2;
         }
         // The plane quad stays inside every cascade's light-side range from every camera of the script.
-        if (built_scale != scale) { cascade_make_plane(f, plane, 12000.f); cascade_make_box(f, box, boxes[0]); built_scale = scale; }
+        if (built_scale != scale || built_phase != script.phase) { cascade_make_plane(f, plane, 12000.f); cascade_make_box(f, box, boxes[0]); built_scale = scale; built_phase = script.phase; }
         if (script.high_box > 0.) cascade_make_box(f, high, boxes[1]);
         // Camera.
         const Vec3 look = Vec3{sun_apply_look[0], sun_apply_look[1], sun_apply_look[2]} * scale;

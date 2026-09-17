@@ -136,7 +136,7 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
     const char* state = nullptr;
     if (!refused) {
         if (!camera_scene_.valid) state = "camera";
-        else if (!sun) state = sun_verdict_ == shadow_replay::SunVerdict::None ? "no_sun" : "sun_changing"; // never validated, or every sample of this frame disagrees with the validated sun
+        else if (!sun) state = sun_verdict_ == shadow_replay::SunVerdict::None ? "no_sun" : sun_verdict_ == shadow_replay::SunVerdict::Relatched ? "sun_relatched" : "sun_changing"; // never validated, or every sample of this frame disagrees with the validated sun
         else if (shadow_.recording) state = "recording";
         else if (active_queries_) state = "queries";
         else if (depth_replay_->reset_pending()) state = "reset_pending";
@@ -223,7 +223,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     const char* state = nullptr;
     if (!refused) {
         if (!camera_scene_.valid) state = "camera";
-        else if (!sun) state = sun_verdict_ == shadow_replay::SunVerdict::None ? "no_sun" : "sun_changing";
+        else if (!sun) state = sun_verdict_ == shadow_replay::SunVerdict::None ? "no_sun" : sun_verdict_ == shadow_replay::SunVerdict::Relatched ? "sun_relatched" : "sun_changing";
         else if (shadow_.recording) state = "recording";
         else if (active_queries_) state = "queries";
         else if (depth_replay_->reset_pending()) state = "reset_pending";

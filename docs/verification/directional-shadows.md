@@ -1047,8 +1047,8 @@ diagnosis" (main checkout) and the disassembly result in
 [../reverse-engineering/camera-and-lights.md](../reverse-engineering/camera-and-lights.md)
 ("Directional lights: source, space and count"). Cascades are default-off
 (`--shadow-cascades`); the fixes below are in shared code and change the single-map path too.
-Worktree build: clean CMake build zero warnings, `build/d3d9.dll` sha256 `9e034b15…c6cd3d`,
-`check_no_x87.py`: 512 reachable functions, 0 violations; `build_motion_output.sh` (strict
+Worktree build (after the review fix round below): clean CMake build zero warnings,
+`build/d3d9.dll` sha256 `3495fc3c…45f8280`, `check_no_x87.py`: 513 reachable functions, 0 violations; `build_motion_output.sh` (strict
 `-Wall -Wextra -Werror`) clean. No game launch, no install.
 
 **Where the defaults are not byte-identical (sanctioned, shared code).**
@@ -1058,7 +1058,7 @@ Worktree build: clean CMake build zero warnings, `build/d3d9.dll` sha256 `9e034b
    pixel registers c0–c31 are shadowed as written; every routed z-writing draw (routed = past the
    main-scene gate) samples its own program's register into `shadow_replay::SunLatch`
    (`src/proxy/shadow_replay_sun.h`): a sample counts only at unit length within 1e-3 with w = 0; the
-   first valid one latches and the value then stays fixed while samples agree within 1.5°; a frame
+   first of two agreeing draws latches (fix round below) and the value then stays fixed while samples agree within 1.5°; a frame
    whose samples all disagree is refused `sun_changing`; the same candidate for 8 consecutive frames
    re-latches (that frame refused, every retained cascade voided); a frame without samples reuses the
    sun; before any sample `no_sun`. The bounds rows are never sticky-unavailable
@@ -1095,7 +1095,7 @@ the listed maps' retained bases voided first), retained basis per map (voided by
 640, towards the light 2 × the largest extent, behind max(512, 2 E)), `shadow_cascade_bounds_mask` (one
 corner transform, 5 compares per cascade), `shadow_cascade_replays`. Candidates: a cascade mask per
 record, per-cascade caps and `capped<i>`; issues storage allocated once at attach (sum of the caps).
-Apply: `sun_shadow_cascade_apply_ps.hlsl`, 398 slots (the nine taps are a ps_3_0 loop over rotated
+Apply: `sun_shadow_cascade_apply_ps.hlsl`, 406 slots (the nine taps are a ps_3_0 loop over rotated
 offsets uploaded as c4–c12; the unrolled form was 887 slots and this backend reports
 `MaxPixelShader30InstructionSlots = 512`), five samplers, first containing cascade at 0.95, 10 % band,
 last cascade fades to lit, absent cascade lit but still owning its pixels. The far map is valid when
@@ -1109,26 +1109,26 @@ verification/probe/build/motion-output-seam/d3d9.dll --fixture
 verification/probe/build/motion_output_fixture.exe <16 cases>`; record
 `verification/results/bottle-X3/motion-output-partial.json`, 16 / 16 pass):
 - `sun-shadow-apply-cascades` (direct drive of both production passes, real geometry, three 256²
-  maps, the checked default set; record `sun-shadow-apply-cascades-fixture.json`): 1,527 fixture checks
-  + 116 validator checks, 12 frames. GPU against the cascade twin on the fixture's own map readbacks:
-  worst 1.000 FP16 code, 0 violations, 0 identity or alpha changes; ambiguous ≤ 1,711 of 11,742–11,856
-  valid pixels (14 %; 1,357 of 1,556 on frame 0 are the twin's `planar_step` band at the plane's
-  horizon, 199 elsewhere). Edge rule `f ≥ 0.5` against the analytic shadow with the owning cascade's
-  own texel: 1,021 disagreements in all, **0 beyond one texel**; interiors (≥ 2 texels from an edge,
-  3 from a contact line) wrong: 0; band monotonicity violations: 0.
-  (a) frames 0–1: analytic shadow 885 / 2,388 px, all owned by cascade 1. (b) frames 2–3: 1,119 / 231
-  shadowed pixels inside cascade 0's band, shadow on both sides (1,631 + 723, 76 + 805). (c) frames
-  4–5: the occluder 2,000 units towards the light is in cascade 0's mask; its own shadow 186 / 254 px,
-  interior 103 / 136 all at f = 0. (d) frame 7: camera moved 37 / 6.6 / 21.6 units, far cascade skipped
-  (`issues=4 > budget=3`, odd), `far_frame=6`, 881 analytic px on cascade 2, 0 beyond one 58.6-unit
+  maps, the checked default set; record `sun-shadow-apply-cascades-fixture.json`): 2,463 fixture checks
+  + 188 validator checks, 20 frames. GPU against the cascade twin on the fixture's own map readbacks:
+  worst 1.000 FP16 code, 0 violations, 0 identity or alpha changes; ambiguous ≤ 1,691 of 11,742–11,856
+  valid pixels (14 %; on the first round's frame 0, 1,357 of 1,556 were the twin's `planar_step` band at
+  the plane's horizon, 199 elsewhere). Edge rule `f ≥ 0.5` against the analytic shadow with the owning
+  cascade's own texel: 931 disagreements in all, **0 beyond one texel**; interiors (≥ 2 texels from an
+  edge, 3 from a contact line) wrong: 0; band monotonicity violations: 0.
+  (a) frames 0–1: analytic shadow 879 / 2,376 px, all owned by cascade 1. (b) frames 2–3: 1,116 / 351
+  shadowed pixels inside cascade 0's band, shadow on both sides (1,628 + 726, 79 + 798). (c) frames
+  4–5: the occluder 2,000 units towards the light is in cascade 0's mask; its own shadow 188 / 256 px,
+  interior 105 / 137 all at f = 0. (d) frame 7: camera moved 37 / 6.6 / 21.6 units, far cascade skipped
+  (`issues=4 > budget=3`, odd), `far_frame=6`, 893 analytic px on cascade 2, 0 beyond one 58.6-unit
   texel. (e) frame 9 after the Reset: far absent, 9,042 far-owned pixels, 0 shadowed, target
   byte-identical; frame 10 equals frame 8 byte for byte. (f) frame 11: the occluder at 16,000 units
-  (beyond the 15,000 light side) is admitted, ≥ 50 map texels at depth exactly 0, its shadow 186 px,
-  interior 105 all dark. Counters asserted per frame (`c<i>`, `draws<i>`, `far_replayed`, `far_frame`,
+  (beyond the 15,000 light side) is admitted, ≥ 50 map texels at depth exactly 0, its shadow 188 px,
+  interior 106 all dark. (g) frames 12–19: the half-texel witness (fix round below). Counters asserted per frame (`c<i>`, `draws<i>`, `far_replayed`, `far_frame`,
   valid flags, per-cascade bias against the law). Also: halving under a faked 128-texel limit
   (256 → 128 on all three, refusal below 64), mixed sizes 64 / 256 / 128 with a 256 attachment,
   a device with 256 slots refuses the cascade program and keeps the single one, the refusals touch
-  nothing, 48 state restorations equal.
+  nothing, 80 state restorations equal.
 - `seam-ownership-shadow-replay-cascades` (through the DLL; seam extents 8 / 400, caps 2 / 8, budget 5
   < 6 issues): per frame `c0 c1 capped0 capped1`, `draws0 draws1 far_replayed far_frame issues
   budget` equal the script (frame 0 by the origin rule per cascade `c=2,4`; later `c=2,4 capped0=1`;
@@ -1145,10 +1145,9 @@ verification/probe/build/motion_output_fixture.exe <16 cases>`; record
   `sun-shadow-apply-wide` 0 differences; `seam-ownership-shadow-replay-on`, `-taa-…-on`, `-wide`,
   `-far-refused` differ only in the frame-5 refusal detail (`no_sun` → `sun_changing`) and the new
   `sun` block; on/off twins byte-identical presented frames (TAA off and on); casters 2 / 8 / 20 pass.
-- Live (`run_sun_share_live.py … --case shadow_apply --case original_lane --case hull_emission --case
-  shadow_apply_cascades --result verification/results/bottle-X3/sun-share-live-cascades.json`): 4 / 4
-  pass; the three existing cases equal the committed 20-case record (paths and timings aside; that
-  record is left as it is). `shadow_apply_cascades` is the `shadow_apply` script through the DLL's
+- Live (`run_sun_share_live.py --fixture … --dll …`, the full set after the fix round; record
+  `verification/results/bottle-X3/sun-share-live.json` regenerated with 21 cases): 21 / 21 pass, 37.5 s of
+  fixture time; the 20 existing cases equal the previously committed record (paths and timings aside). `shadow_apply_cascades` is the `shadow_apply` script through the DLL's
   cascade wiring (seam extents 32 / 256, 512² maps, capture window open): 4 applied frames, ≥ 3,969
   shadowed pixels, 6 TAA frames exact against the CPU-shadowed reference; on capture frames 1 and 3
   one `shadow_map<i>` readback and one `shadow_replay_map_basis cascade=` line per cascade, two
@@ -1166,7 +1165,7 @@ further issue; ≈ +13–22 µs fixed for the second map's bind and Clear over t
 EVENT-synchronised replay time (0.8–17 ms) is GPU-inclusive and not a per-draw figure. Apply quad,
 EVENT-synchronised: cascades 1.8 ms median against 3.5–5.2 ms for the single-map fixture runs in the
 same session (128², dominated by the synchronisation). Memory while cascades are on: the maps, one
-attachment, the issue storage (sum of the caps × 52 B: 137 KiB at the defaults); the extent cache is 576 KiB (was 72 KiB),
+attachment, the issue storage (sum of the caps × 52 B: 137 KiB at the defaults); the extent cache is 704 KiB (8,192 × 88 B; was 72 KiB),
 a `MotionOutput` member whether or not the counter is on.
 
 **Host.** `test_shadow_cascades` (new, 4: a native driver over the four pure headers — constant-table
@@ -1182,7 +1181,7 @@ failures (nine bloom manifests, six `test_comparison_hotkeys` subtests that exec
 module's helpers: the cascade validation is therefore a nested function of `main`); both modules rerun
 green, the full run not repeated.
 
-**Open.** (1) Native Windows unverified, as everywhere. (2) The cascade program needs 398 of the 512
+**Open.** (1) Native Windows unverified, as everywhere. (2) The cascade program needs 406 of the 512
 ps_3_0 slots; a loop inside a dynamic branch is what buys that, so a driver that mishandles it would
 show up in the fixture, not in the caps. (3) d3dx warns X4121 on the cascade source (it hoists the two
 derivative instructions out of the branches, which is where they already are: dsx/dsy at instructions
@@ -1193,3 +1192,85 @@ asymmetric range keeps such triangles rare. (6) Defaults (budget, caps, sizes, e
 numbers; every one is an option. (7) A lost device takes the same refusal path as any failed
 transaction (everything retained voided, restoration stopped as in the other passes); no fixture forces a
 device loss, for the cascades as for the single map.
+
+### Review fix round (2026-09-17, second commit)
+
+Two reviews of `3f14880`, no blocker; seven items. Final binaries `build/d3d9.dll` `3495fc3c…`, seam
+`36539843…`, fixture `8b08e964…`; the 16 motion-output cases and all 21 live cases rerun on them.
+
+1. **Half-texel lookup** (both apply programs and the twin). The replay rasterizes under D3D9: map
+   texel (i, j) holds the depth at map position (i, j) / N but is addressed at ((i, j) + 0.5) / N, so the
+   receiver now looks up at `suv = muv + 0.5 / N` (nearest texel `round(muv N)`, was `floor`) and the
+   receiver-plane term runs on `tapUV − suv`. Programs regenerated (single 993 words and 225 slots, were 974 and 220; cascade
+   1,755 words and 406 slots, was 398). The twin takes `legacy_floor=True` (CLI `--legacy-floor`) for captures of earlier
+   builds. **Witness on real rasterized maps**: case (g), the far-plane scene with the box at eight
+   sub-texel phases (k / 8 of cascade 1's 11.72-unit texel); over the eight frames (7,397 edge pixels)
+   the shift, in 0.25-texel steps, at which the analytic shadow best matches the quad's `f ≥ 0.5` shadow
+   is **(0, −0.25)** with 383 disagreements against 394 at zero (a bowl centred on zero: 455 / 394 / 430
+   across u, 383 / 394 / 486 across v at −0.25 / 0 / +0.25), while the former rule evaluated on the same maps sits at
+   (−0.5, −0.75), the grid's corner, with 823 disagreements at zero; asserted ≤ 0.25 and ≥ 0.5. One
+   frame alone cannot show it: its straight edges sit at one phase of the grid, worth up to half a
+   texel either way (single frames fit between (0, 0) and (0.5, −0.75)). Host: a D3D9-style rasterized
+   edge at ten sub-texel positions, bias of the 0.5 crossing < 0.25 texel (round) and > 0.35 (floor).
+   **Single-map records regenerated**: the apply script's synthetic map now follows the rasterizer's
+   convention (texel a holds the sample at a / N; it was written at (a + 0.5) / N, which is why the
+   floor rule had looked right there). `sun-shadow-apply`: edge disagreements 376 → 337, plane 278 →
+   241, 0 beyond two texels as before, shadowed per frame 8,847 / 3,761 / 2,266 / 1,632 → 8,831 / 3,716 /
+   2,260 / 1,639, worst code 0.998; `-wide`: 145 → 139, box faces beyond two texels 14 → 13. Live
+   `shadow_apply`: unchanged (3,969 shadowed pixels; its caster covers every receiver).
+2. **Stale extents bounded.** A stale entry records the revision it waits for and since when; its
+   re-read is a priority read (front of the 32-slot queue, evicting the last ordinary read when full;
+   the queue is read in order under the byte budget). Older than `extent_stale_frames = 8` (the same
+   eight scene ends a failing read is given before it is abandoned: by then the buffer is rewritten
+   every frame or unreadable) or abandoned, the previous extent is doubled about its centre
+   (`verdict=inflated`) instead of trusted; an abandoned re-read is not queued again until the revision
+   moves once more. `extent_refused=` is now per frame.
+3. **Latch.** The sun latches when a second draw's sample agrees with a waiting one (value, register
+   and program of the first); a lone or stray sample only waits (`unlatched=` on the sun line; frame 0
+   of the scripts: `agree = routed − 1, unlatched = 1`). Comment corrected: measured per-node spread
+   0.753°, gate 1.5°. Refusal detail `sun_relatched` distinct from `sun_changing`. The cascade apply
+   skips with `sun` unless the frame's verdict is usable. `sun_register` is resolved for every pixel
+   program at creation, unconditionally.
+4. **Restore.** Both passes put back the declaration object when one was bound, else the FVF, else
+   none (capture order declaration, then FVF); 80 restorations in the cascade script and the apply
+   scripts' hostile-state compares unchanged.
+5. **Centre precision.** `ShadowReplayBasis` carries the axes and the snapped centre as doubles and every
+   row set (light rows, view rows, cascade rows, the box test) folds them in double before narrowing.
+   Host, camera 70,000 units out: row-set error 1.1e-8 of cascade 0's NDC against 4.8e-6 for the float
+   centre alone (0.0012 units there; up to 0.0078). F8 basis lines print the double centre (`%.12g`).
+   Map depth error of `seam-ownership-shadow-replay-on` 1.170e-5 → 1.194e-5 (gate 1e-4), the other
+   maps' unchanged; the seam readback still hands the fixture a float centre (its cameras are near the
+   origin).
+6. **Host counts** (`python3 -m unittest -v`, test methods): `test_shadow_cascades` 4,
+   `test_shadow_replay_candidates` 10, `test_shadow_replay_depth` 11, `test_sun_shadow_apply` 17 (was
+   16: 41 → 42 for the four shadow modules), `test_sun_share_lane` 11, `test_comparison_hotkeys` 5
+   (58), `test_linear_material_live` 17, `test_motion_wrap_states` 4, `test_linear_cutout_contract` 3,
+   `test_capture_bloom_lifetime`, `test_motion_hdr_scene`, `test_capture_device_creation` 1 each,
+   `test_bloom_programs` 5: 90 in one invocation (the first round's "89" was the same set before the
+   new test; I do not reproduce a count of 91 for the mock modules alone: they are 27, 32 with
+   `test_bloom_programs`). Full discovery at the end of this round:
+   `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'`:
+   **2,121 tests, OK** (544 s).
+7. F8 `shadow_replay_caster` lines gained `origin=` (the draw's object origin in world space) and print
+   the program's sun at `%.9g`, so one capture gives (node position, direction) pairs.
+
+**Open after the fix round.**
+- *The sun is a positional light at finite distance.* The engine computes `normalize(light − node)` per
+  mesh part on 16.16 fixed-point positions; |L| raw 1.5689e9 is ≈ 23,900 units if raw is 16.16, and the
+  0.753° spread across run111's nodes is what such a distance gives. One latched direction then
+  misplaces a shadow by about 1.3 % of its throw at station scale and far more in the 7,500 / 25,000
+  cascades. Not confirmed from run111: its log has no per-draw constants or node positions (`draw`,
+  `motion_input`, `object_context` carry neither), so the distance could not be triangulated; the new
+  `origin=` / `sun=` pairs of the caster lines make the next F8 capture sufficient. Planned follow-up:
+  the direction evaluated at each cascade's centre from the engine light position (hook-free poll,
+  camera-and-lights.md).
+- Stale extents: the inflated box is a heuristic (twice the previous extent); a range rewritten every
+  frame with larger motion than that is still mis-admitted, and there is no whole-buffer bound. A
+  priority read can evict an ordinary one every frame while more than 32 ranges are stale.
+- The latch's first value is the first of two agreeing draws, not a mean: up to the 0.75° spread from
+  the sector's central direction, fixed for the sector.
+- Pancaking stays per vertex: a triangle crossing the near plane can lose the depth test over its far
+  part to a caster truly behind it (the stored depth stays exact).
+- The shift fit's v axis is weaker than u in this scene (flat valley along v in single frames); the
+  eight-phase sum is what is asserted.
+

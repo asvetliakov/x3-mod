@@ -1103,6 +1103,7 @@ private:
     shadow_replay::ExtentCache candidate_extents_{};
     shadow_replay::PendingExtent candidate_extent_reads_[shadow_replay::extent_reads_per_frame]{};
     unsigned candidate_extent_read_count_=0;
+    unsigned candidate_extent_priority_count_=0; // the queue's first entries: re-reads of ranges answering stale (read first, never crowded out by new ranges)
     float candidate_bounds_rows_[12]{};
     renderer::ShadowCascadeBounds candidate_cascade_bounds_{}; // cascades on: every cascade's box for the one bounds pass
     int candidate_bounds_state_=0; // 0 not computed this frame, 1 valid, -1 unavailable
@@ -1120,7 +1121,7 @@ private:
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
     void note_candidate_draw(const MotionRoute& route) noexcept;
     bool ensure_candidate_bounds_rows() noexcept;
-    void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept;
+    void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity, bool priority) noexcept;
     void read_candidate_extents() noexcept;    // the scene end: Lock READONLY through the wrapper, scan, cache, release
     void release_candidate_extents() noexcept; // drop the queue without reading (frame without scene end, Reset, teardown)
     // Count-only tested-opaque-arm bookkeeping for a cutout pair (after_draw).

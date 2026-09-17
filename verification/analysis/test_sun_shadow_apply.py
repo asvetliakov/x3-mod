@@ -56,6 +56,26 @@ class ExpectedFactor(unittest.TestCase):
         out = apply.expected_factor(d, s, np.zeros((64, 64)), PARAMS)
         self.assertFalse(np.any(out['valid'][1:, :2]))
 
+    def test_half_texel_lookup_is_unbiased_against_a_d3d9_rasterized_map(self):
+        # A map as the replay's rasterizer fills it: texel i holds the sample at map position i / N, covered
+        # (depth 0) when that position is left of the caster's edge e. 64 receivers across 12 texels of a
+        # 16-texel map; the f >= 0.5 crossing against e, averaged over ten sub-texel edge positions, is the
+        # lookup's bias: 0 for the half-texel rule (nearest texel round(u N)), +0.5 texel for the former floor.
+        size = 16
+        d, s = receivers(width=64, height=8)
+        s[:, :] = .5; d[0, :] = PARAMS['m22'] + PARAMS['m32'] / 6.0
+        position = (.5 + .375 * ((np.arange(64) + .5) / 64 * 2 - 1)) * size  # map position of every column in texels
+        bias = {}
+        for legacy in (False, True):
+            offsets = []
+            for edge in np.linspace(6.05, 6.95, 10):
+                sun_map = np.where(np.arange(size)[None, :] < edge, 0.0, 1.0).repeat(size, 0).reshape(size, size)
+                f = apply.expected_factor(d, s, sun_map, PARAMS, legacy_floor=legacy)['f'][4]
+                crossing = position[int(np.argmax(f >= .5))] - .5 * (position[1] - position[0])
+                offsets.append(crossing - edge)
+            bias[legacy] = float(np.mean(offsets))
+        self.assertLess(abs(bias[False]), .25, bias); self.assertGreater(bias[True], .35, bias)
+
     def test_quad_derivative(self):
         value = np.arange(16, dtype=np.float64).reshape(4, 4) * 3.0
         self.assertTrue(np.all(apply._quad_derivative(value, 1) == 3.0))
@@ -169,7 +189,11 @@ class RunInputs(unittest.TestCase):
         self.assertEqual(report['darkening'].get('control'), None)  # no lit pixel to pair with
         far = apply.frame_report(d, s, np.ones((64, 64)), PARAMS, luminance)
         self.assertEqual((far['f_below_0_9'], far['factor_mean']), (0.0, 1.0))
-        self.assertEqual(far['darkening'], {})  # every receiver of the flat synthetic scene is ambiguous: no strict pair
+        # Lit receivers pair with lit neighbours at ratio 1 and nothing is shadowed (with the half-texel lookup the
+        # synthetic receivers sit on texel centres; under the former floor rule they sat on texel boundaries, all ambiguous).
+        self.assertEqual(set(far['darkening']), {'control'}); self.assertEqual(far['darkening']['control']['ratio_p25_p50_p75'], [1.0, 1.0, 1.0])
+        legacy = apply.frame_report(d, s, np.ones((64, 64)), PARAMS, luminance, legacy_floor=True)
+        self.assertEqual(legacy['darkening'], {})
 
 
 def cascade_rows(extent):

@@ -7,15 +7,18 @@ Wine, no D3D) into one driver:
   glow-style program (c4 = g_EnableGlow, LightDir_Dir0 at c5), a detail-style
   one (c4 = p_DetailMapBlendWeight, LightDir_Dir0 at c0), a hull one (c4), a
   program without the constant, and malformed tables;
-* src/proxy/shadow_replay_sun.h: the glow program drawn first with c4 =
+* src/proxy/shadow_replay_sun.h: the sun latches on the second agreeing draw
+  (a lone or stray sample only waits), the glow program drawn first with c4 =
   (1, 0, 0, 0) still yields the true sun, one frame of disagreement is refused,
   a persisting one re-latches, a frame without samples reuses the sun;
 * src/proxy/shadow_replay_candidates.h: a frozen set of colliding extent keys
   gives identical answers on every frame with no store after the first, an
-  entry used this frame is never evicted, a moved revision answers stale;
+  entry used this frame is never evicted, a moved revision answers stale for
+  extent_stale_frames and inflated after, an abandoned re-read is not queued;
 * src/renderer/shadow_replay_projection.h: the default cascade set, the budget
   policy, the bounds mask with its open light side, and the shared-product
-  light rows against shadow_replay_light_rows.
+  light rows against shadow_replay_light_rows, and the rows' accuracy 70,000
+  units from the origin (the snapped centre is folded in as a double).
 The launcher options are checked through tools/manage.py --dry-run.
 """
 import contextlib
@@ -73,7 +76,13 @@ int main(int argc, char** argv) {
         // register resolved from its table is c5, which holds the sun.
         float registers[32][4]{}; std::memcpy(registers[4], glow, 16); std::memcpy(registers[5], sun, 16);
         latch.begin_frame();
-        CHECK(latch.sample(registers[5], 5) && latch.frame_sun() && latch.frame_sun()[1] == sun[1] && latch.source_register == 5);
+        // A lone sample only waits, and a stray one is replaced, never latched: two draws must agree.
+        CHECK(!latch.sample(other, 9, 3) && latch.frame_sun() == nullptr && latch.frame.unlatched == 1);
+        CHECK(!latch.sample(registers[5], 5, 0xf1) && latch.frame_sun() == nullptr && latch.frame.unlatched == 2 && latch.end_frame() == SunVerdict::None);
+        latch.begin_frame();
+        std::memcpy(registers[0], sun, 16);
+        CHECK(latch.sample(registers[0], 0, 0xd0) && latch.frame_sun() && latch.frame_sun()[1] == sun[1] && latch.source_register == 5 && latch.source_program == 0xf1); // the first of the two agreeing draws
+        CHECK(latch.sample(registers[5], 5) && latch.frame.agree == 2 && latch.frame.unlatched == 0);
         std::memcpy(registers[0], sun, 16); std::memcpy(registers[4], weight, 16); // the detail program: c0, with a non-unit c4
         CHECK(latch.sample(registers[0], 0));
         std::memcpy(registers[4], sun, 16);                                         // a hull program: c4
@@ -81,7 +90,7 @@ int main(int argc, char** argv) {
         latch.no_register();
         CHECK(latch.sample(near, 4, 7) && latch.frame_sun()[0] == sun[0] && latch.frame_sun()[1] == sun[1]); // agrees, and the latched value does not follow it
         CHECK(!latch.sample(positional, 4) && !latch.sample(loose, 4) && latch.frame.invalid == 2);           // w = 1, or 1 % off unit length: not a direction sample
-        CHECK(latch.frame.samples == 6 && latch.frame.agree == 4 && latch.frame.no_register == 1 && latch.end_frame() == SunVerdict::Sampled);
+        CHECK(latch.frame.samples == 7 && latch.frame.agree == 5 && latch.frame.no_register == 1 && latch.end_frame() == SunVerdict::Sampled);
         latch.begin_frame(); CHECK(!latch.sample(off, 4) && latch.frame.disagree == 1 && latch.end_frame() == SunVerdict::Changing);
         latch.begin_frame(); CHECK(latch.sample(sun, 4) && latch.end_frame() == SunVerdict::Sampled);
         // What the c4 rule would have taken is rejected as a sample, too: not unit / disagreeing.
@@ -152,6 +161,24 @@ int main(int argc, char** argv) {
         CHECK(cache.find(moved, &stale) == nullptr && stale != nullptr); // a failed read keeps the stale extent
         const float hi2[3] = {2, 2, 2};
         CHECK(cache.store(moved, lo, hi2, ExtentState::Known) && cache.find(moved) && cache.find(moved)->hi[0] == 2.f && cache.find(same[1]) == nullptr);
+        // The stale answer is bounded: fresh for extent_stale_frames, inflated after; failed re-reads are counted on the
+        // entry and abandoned at extent_read_attempts (no longer queued); a further revision restarts both; the read heals it.
+        {
+            ExtentKey next = moved; next.revision = 10;
+            CHECK(cache.find(next, &stale) == nullptr && stale && !stale->abandoned() && cache.stale_age(*stale) == 0);
+            for (unsigned k = 0; k < extent_stale_frames; ++k) { cache.begin_frame(); CHECK(cache.find(next, &stale) == nullptr && stale && cache.stale_age(*stale) == k + 1); }
+            CHECK(cache.stale_age(*stale) <= extent_stale_frames);
+            cache.begin_frame(); CHECK(cache.find(next, &stale) == nullptr && stale && cache.stale_age(*stale) > extent_stale_frames);
+            float lo2[3], hi2x[3]; stale->inflated(lo2, hi2x);
+            CHECK(lo2[0] == -1.f && hi2x[0] == 3.f && lo2[2] == -1.f && hi2x[2] == 3.f); // (0, 2) doubled about its centre
+            for (unsigned k = 0; k < extent_read_attempts; ++k) { CHECK(!stale->abandoned()); cache.retry(next); }
+            CHECK(cache.find(next, &stale) == nullptr && stale && stale->abandoned() && stale->hi[0] == 2.f);
+            ExtentKey later = next; later.revision = 11;
+            CHECK(cache.find(later, &stale) == nullptr && stale && !stale->abandoned() && cache.stale_age(*stale) == 0);
+            const float hi3[3] = {3, 3, 3};
+            CHECK(cache.store(later, lo, hi3, ExtentState::Known) && cache.find(later) && cache.find(later)->hi[0] == 3.f && cache.find(later)->stale_since == 0);
+            const unsigned before = cache.refused_frame; cache.begin_frame(); CHECK(cache.refused_frame == 0 && cache.refused >= before);
+        }
         // Retry to unreadable on a fresh range.
         ExtentKey fresh{}; fresh.vb = 999999; fresh.stride = 12; fresh.count = 3; fresh.position_type = 2;
         for (unsigned i = 0; i + 1 < extent_read_attempts; ++i) { cache.retry(fresh); CHECK(cache.find(fresh) == nullptr); }
@@ -218,6 +245,30 @@ int main(int argc, char** argv) {
             const float centre_y = b.center[1], top = centre_y + set.cascades[k].depth_toward_light, bottom = centre_y - set.cascades[k].depth_behind;
             const double z_top = got[8] * 100. + got[9] * double(top) + got[10] * 103. + got[11], z_bottom = got[8] * 100. + got[9] * double(bottom) + got[10] * 103. + got[11];
             CHECK(std::fabs(z_top) < 1e-3 && std::fabs(z_bottom - 1.) < 1e-3);
+        }
+        // 70,000 units from the origin: the snapped centre and the axes enter the rows as doubles, so the row set of an
+        // object near the camera is exact to float rounding of small numbers (a float centre is quantised to 0.0078 units
+        // there: 3e-5 of cascade 0's NDC, an eighth of a 0.06-unit texel).
+        {
+            CameraState far_camera = camera(); far_camera.t[0] = -70000.3f; far_camera.t[2] = 25.7f;
+            const double position[3] = {double(-far_camera.t[0]), 50., double(-far_camera.t[2])};
+            const float tilted[4] = {.30151134f, .90453403f, -.30151134f, 0};
+            ShadowReplayBasis b{}; CHECK(shadow_replay_basis(far_camera, tilted, set.cascades[0], b));
+            const float local[16] = {.8f, 0, 0, 8.f, 0, 1.2f, 0, -3.6f, 0, 0, 1, 0, 0, 0, 1, 40.f}; // object origin at view (10, -3, 40)
+            float got[16]; CHECK(shadow_replay_light_rows(far_camera, local, b, set.cascades[0], got));
+            double worst = 0, worst_float_centre = 0;
+            for (int corner = 0; corner < 8; ++corner) {
+                const double o[3] = {corner & 1 ? 6. : -6., corner & 2 ? 4. : -4., corner & 4 ? 9. : -9.};
+                const double world[3] = {position[0] + 10. + o[0], position[1] - 3. + o[1], position[2] + 40. + o[2]};
+                for (unsigned a = 0; a < 2; ++a) {
+                    double reference = 0, quantised = 0;
+                    for (unsigned k = 0; k < 3; ++k) { reference += b.axes[a][k] * (world[k] - b.center_d[k]); quantised += b.axes[a][k] * (world[k] - double(b.center[k])); }
+                    const double ndc = double(got[a * 4]) * o[0] + double(got[a * 4 + 1]) * o[1] + double(got[a * 4 + 2]) * o[2] + double(got[a * 4 + 3]);
+                    worst = std::fmax(worst, std::fabs(ndc - reference / 250.)); worst_float_centre = std::fmax(worst_float_centre, std::fabs(quantised - reference) / 250.);
+                }
+            }
+            std::printf("CENTRE rows_error_ndc=%.3g float_centre_error_ndc=%.3g\n", worst, worst_float_centre);
+            CHECK(worst < 1e-6 && worst * 10. < worst_float_centre); // the float centre alone costs more than ten times the whole row set's error
         }
         // The single map's symmetric range is the same law with both sides at the half range.
         ShadowReplayCascade symmetric{}; symmetric.set_depth_half(512.f);
