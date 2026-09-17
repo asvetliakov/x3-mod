@@ -344,3 +344,252 @@ the portable core `point_light_admission_core.h`; ledger
   `point_light_node` lines say per module whether its root was too far, its
   root scale small, or its chain ended at a non-body root. Static and fixture
   evidence is in the ledger.
+
+## Directional lights: source, space and count
+
+Read-only Ghidra pass, 2026-09-17, on the EXE of [executable.md](executable.md)
+(`fdbf3418…`, preferred base `0x00400000`), project `/tmp/x3-ghidra-research
+X3Render`, script `tools/analysis/X3CameraState.java`, specs
+`range:004c5030:48 range:004c2330:140 range:004c4fc0:40 range:004c5200:24
+range:004c26df:20 range:0047d641:44 range:0047d5b0:14 ins:00420260 dec:0047d5e0
+dec:0047d560 dec:0047c640 dec:004bdea0 dec:004bdbf0 dec:00488170 data:0047d5e0
+data:0047c640 data:0047e820 data:004bdbf0 data:00608518 load:0x5e8c load:0x6288
+load:0x628c ptr:00565578:6`. Raw listings stayed under the session scratchpad
+(untracked). No Wine command, no launch, no patch. This is the
+program-independent sun source the run-38 A diagnosis
+([directional-shadows.md](../verification/directional-shadows.md), "Run 38 A
+(run111) diagnosis") asked for; it does **not** replace the per-program CTAB fix,
+it validates it.
+
+### The chain, end to end
+
+Everything hangs off the one global render context `R = *(void**)0x00608518`,
+written once at startup (`0x00470df8` in the constructor `0x00470d80`, stored
+again by main init at `0x00403367`; those are the only two `WRITE` references in
+the image). Three arrays inside `R` matter, and their displacements are adjacent
+and self-checking:
+
+| Span | Meaning | Established at |
+| --- | --- | --- |
+| `R+0x5e8c` … `R+0x6287` | **Light candidate array**: 255 dwords = up to 254 node pointers plus a `0` terminator | built by `0x0047c640`, capacity test `(int)n < 0xfe` |
+| `R+0x6288` | Slot count, set to **8** | `0x004b9bbb` `MOV [ECX+0x6288],8` |
+| `R+0x628c` … `R+0x62eb` | **Per-node slot table**, 8 records × 12 bytes `{light index (−1 = empty), score, distance}` | reset `0x0047d560`, filled `0x0047d5e0` (`+0x628c`, `+0x6290`, `+0x6294`), read `0x004c5050` and `0x004c26ed` |
+
+`0x6288 − 0x5e8c = 0x3fc` = exactly 255 dwords, which corroborates the 254-entry
+capacity independently of the `0xfe` immediate.
+
+**1. Candidate array — per view.** `0x0047c640(scene, ref)` walks the scene's
+light node lists, admits a node on `+0x12c & 4` (the "is a light" bit), applies a
+distance/range cull **only** to point/spot lights (`+0x12c & 0x400010`; the cull
+uses the Chebyshev distance to `ref+0x30/34/38` against the light's range
+`+0x158`, with the `0xccc` ratio test), appends the pointer, and null-terminates
+at `R+0x5e8c+4n`. A **directional light is never culled**: the first disjunct
+`(flags & 0x400010) == 0` admits it outright. Three call sites: `0x0047c8ad` (in
+`0x0047c840`) and `0x0047e8ae` (in `0x0047e820`), both of which are called only
+from the view render `0x00471f50` (`0x00472260`, `0x004723c8`, `0x00472461` and
+`0x00472210` respectively), plus `0x0042172f` in `0x004216e0`, which immediately
+follows it with `0x0047d5e0` and a slot-table walk. So the array is rebuilt once
+per rendered view, before submission, and once more on the `0x004216e0` path.
+
+**2. Slot table — per submitted node.** `0x0047d5e0(node)` resets all 8 slots to
+−1 (`0x0047d560`), returns immediately unless `node+0xa0 ≥ 2` **and**
+`0x00488170(node) ≥ 2`, then scores every candidate and keeps the best 8. The
+score (`0x0047d641`–`0x0047d6ac`) is
+
+```
+luma = round(0.299·R + 0.587·G + 0.114·B)      ; node words +0x150/+0x152/+0x154
+score = luma + 0x300                            ; if +0x12c & 0x800000  (directional)
+score = luma − luma·d/(2·range)                 ; point/spot, d = Chebyshev distance − node+0x70
+```
+
+The three doubles at `0x00565578`/`0x00565580`/`0x00565588` decode to
+0.114 (B), 0.299 (R), 0.587 (G) — Rec.601 luma, exactly. Finally the table is
+`qsort`ed (`0x0047d94d`+) with the comparator at `0x0047d5b0`, which compares
+record `+4` and returns 1 when the second is larger, i.e. **descending by score**.
+A directional light scores ≥ 768 and a plain point light ≤ 255, so directional
+lights always sort to the front. Caller: `0x0047dff1` inside the render-node visit
+`0x0047d9c0`, immediately followed by `0x004bdea0` (which writes each selected
+light's slot index back into its D3DLIGHT record at `[light+0x16c]+0x68`).
+
+**3. Selection of the two Dir slots — per node.** `0x004c4fc0`, `0x004c5030`–
+`0x004c508f`, with `EBP = 0` from `0x004c4fdf`:
+
+```
+004c5030  MOV  EDI,[0x00608518]
+004c5036  MOV  EDX,[EDI+0x6288]        ; 8
+004c5046  LEA  ESI,[EDI+0x628c]
+004c5050  MOV  EAX,[ESI]               ; slot index
+004c5054  JL   0x004c508f              ; negative index ends the scan
+004c5056  MOV  EAX,[EDI+EAX*4+0x5e8c]  ; the light node
+004c5061  TEST [EAX+0x12c],0x800000    ; directional?
+004c506d  CMP  [EAX+0x158],0x256250    ; or range > 2 450 000 native
+004c5079  TEST EBP,EBP                 ; first found -> EBP, second -> [ESP+0xc], stop
+```
+
+and `0x004c5202`–`0x004c5215` passes them as arguments 5 and 6 of `0x004c0150`
+(`PUSH [ESP+0xc]; PUSH EBP; PUSH 2; PUSH EDI; PUSH ECX; PUSH EDX`), i.e.
+`[EBP+0x18]` = Dir0 and `[EBP+0x1c]` = Dir1. The other branch, `0x004c5217`,
+passes `0, 0, 0` — no directional light at all. **Exactly two** lights can reach
+the `LightDir_*` parameters; the loop terminates on the second.
+
+**4. Upload — per submitted node, by handle, `SetVector`.** Inside `0x004c0150`.
+Handles are cached at `0x004c1a3e`–`0x004c1a9d`: descriptor `+0x54`
+`LightDir_Dir0`, `+0x58` `LightDir_Color0`, `+0x5c` `LightDir_Dir1`, `+0x60`
+`LightDir_Color1`. Dir0 is written at `0x004c234d`–`0x004c245e`:
+
+```
+004c2361  MOV  EDX,[EAX+0xb0]      ; light node world position, raw ints
+004c2367  MOV  ECX,[EBP+0xc]       ; the submitted node (argument 2)
+004c2370  SUB  EDX,[ECX+0xb0]      ; delta = light − node,  x/y/z
+004c23af  FILD ... FSQRT           ; length
+004c23d6  FMUL double [0x00565510] ; 2^-16
+004c23e4  CALL 0x0052b5d0          ; float -> int, x65536 fixed point, per component
+004c2415  MOV  EDX,[EBX] / MOV ECX,[EDX+0x88]   ; ID3DXEffect::SetVector (slot 34)
+004c242e  MOV  EAX,[EDI+0x54]      ; the LightDir_Dir0 handle
+004c2455  FLDZ / FSTP [ESP+0x1ec]  ; w = 0
+004c245e  CALL ECX
+```
+
+Dir1 is the same code at `0x004c2507`–`0x004c2621` on `[EBP+0x1c]`, descriptor
+`+0x5c`. `LightDir_Color0` (`0x004c246f`–`0x004c24b7`) and `LightDir_Color1` copy
+three floats from `[light+0x16c]+0x04/0x08/0x0c` — the `D3DLIGHT9.Diffuse` of the
+record, written by `0x004bdbf0` as the node's colour words × `1/256`
+(`0x00565568`) — again with `w = 0`, again `SetVector`. When the light argument is
+null the engine writes an all-zero float4 instead (`0x004c24bb`, `0x004c2674`).
+
+So the update frequency is **per `0x004c0150` invocation**, that is per submitted
+mesh part per view (the single caller `0x004c5228` in `0x004c4fc0` runs per part,
+existing section above) — never per frame and never per material. Every part of
+one node recomputes the same vector from the same node origin.
+
+### Answers
+
+**Space and sign.** World space, and **object-relative**: the uploaded vector is
+`normalize(light[+0xb0/b4/b8] − node[+0xb0/b4/b8])`, both raw render-domain
+integers, with **no matrix anywhere** in `0x004c234d`–`0x004c245e`. It points
+**from the shaded node towards the light**; the direction light travels is its
+negation. There is no untransformed "world sun" vector in memory — the engine
+stores only the light node's world **position**, and the direction is synthesised
+per node. To recover a world direction from a captured register you need that
+draw's node position: `L = node_pos + |L − node_pos| · dir`; conversely, to
+produce one, read the light node position and pick any origin.
+
+Because the sun sits ~1.57e9 native units away (run-39 fit, below) and scene
+nodes are within ~1e6 of the camera, the per-node variation is small but real:
+0.6° scene-wide in run 39 (`c4.x` from −0.310425 to −0.300079). A single frame sun
+computed from the camera position is therefore accurate to well under a degree,
+which is adequate for a shadow basis and *not* adequate for a bit-exact match to
+any one draw's register.
+
+**Count and ordering.** Up to 254 lights can be in the candidate array, 8 in the
+per-node slot table, and **exactly 2** in `LightDir_Dir0/1`. Ordering is
+**brightest first**, by Rec.601 luma of the light node's colour words, not by
+sector-file order: the slot table is sorted descending by score and the selector
+takes the first two admitted entries. Two caveats, both measured: (a) admission is
+`+0x12c & 0x800000` **or** `+0x158 > 0x256250` (2 450 000 native ≈ 24 500 world
+units at the session context scale 0.01), so a point light with a huge range can
+occupy a Dir slot; (b) the score of a point/spot light is distance-dependent, so
+in principle the *identity* of Dir0/Dir1 is per node, although a directional
+light's +0x300 bonus makes a flip between two ordinary lights and a sun
+impossible. Directional lights beyond the second are uploaded into the
+`g_LightPoint` array with `atten = (1,0,0)` (`0x004c28f9`–`0x004c2969`, existing
+section above), so a third sun still lights the scene — just not through
+`LightDir_*`. `LightDir_Dir1` is declared by 44 of the 751 archive programs and in
+run 22 carried a dim bluish colour (luma 0.227 against the sun's 0.742): the
+engine's "fill" is that second directional light, not an ambient term —
+`g_LightAmbientIntensity` has no writer, no consumer and no register
+([camera-state-and-frame-routine.md](camera-state-and-frame-routine.md)).
+
+How many suns a sector actually has is a scene-file question and is **not**
+answerable from the EXE. What the EXE fixes is the ceiling (2 in the Dir slots)
+and the rule for which two.
+
+**Directional flag provenance.** `+0x12c & 0x800000` is not authored; `0x004bdbf0`
+sets it lazily when it fills the `D3DLIGHT9` record — spot on `& 0x10`, point on
+`& 0x400000`, otherwise type 3 and `+0x12c |= 0x800000`. A reader that wants to be
+independent of whether the record has been built yet should test
+`(flags & 4) != 0 && (flags & 0x400010) == 0`, which is exactly `0x0047c640`'s own
+admission logic.
+
+### Safe read contract for the proxy (hook-free)
+
+No hook is required. Once per frame, from the render thread:
+
+1. `R = *(uint32_t*)0x00608518`. Refuse if null (it is null before
+   `0x00470d80` runs) or unreadable.
+2. Validate the layout before trusting it: `*(int32_t*)(R+0x6288) == 8`. This is
+   the cheapest single check that the context is the one this note describes.
+3. Walk `p = (uint32_t*)(R + 0x5e8c)` until `*p == 0` or 254 entries, reading
+   through the proxy's bounds-checked `engine_memory::read`. For each node `n`:
+   `flags = *(uint32_t*)(n+0x12c)`; keep it when `(flags & 4) && !(flags &
+   0x400010)`. Its world position is the three `int32_t` at `n+0xb0/0xb4/0xb8`;
+   its colour is the three `int16_t` at `n+0x150/0x152/0x154` (divide by 256 to
+   get `LightDir_Color0`).
+4. Rank the kept nodes by `0.299·R + 0.587·G + 0.114·B` descending; the first is
+   the engine's Dir0 for any node that reaches `0x0047d5e0`. Sun direction for a
+   receiver at `P`: `normalize(light_pos − P)`; use the view position for a
+   frame-wide basis. Light-travel direction is the negation.
+
+*Validity and change points.* The array contents change at every
+`0x0047c640` call, i.e. once per rendered view inside `0x00471f50` — so between
+two Presents it is rewritten for the sector view, the background view and any
+secondary scene. A read taken at Present therefore reflects the **last** view
+rendered, not necessarily the sector. The concrete hazard: `0x00420260` builds a
+secondary scene (camera `+0x270 |= 0x24`, the cockpit/HUD-class marker) whose 16
+light nodes (`[ESP+0x14] = 0x10` loop at `0x004202f5`–`0x00420355`) are each given
+colour words `0x80`, direction `+0x30/34/38 = (0,0,0x10000)` and a **forced**
+`+0x12c |= 0x800000` at `0x00420333`. Whether those nodes are attached into a
+list `0x0047c640` walks is *not* established here; treat it as possible. Three
+defences, cheapest first: (a) prefer the directional candidate with the largest
+`|position|` (the sun is at ~1.5e9 native, a cockpit light is not) or the largest
+luma × distance; (b) take the read while the sector view is current, which the
+camera-state note's `cam+0x270 & 0x810000` test identifies; (c) cross-validate
+against the shader: on the first draw of a program whose CTAB declares
+`LightDir_Dir0`, compare the register with `normalize(light_pos − node_pos)` and
+refuse the engine-memory sun if they differ by more than a few degrees. (c) is the
+check the in-flight per-program fix already makes possible and is the one that
+turns this into ground truth rather than a second guess.
+
+Other validity conditions, all measured: the slot table is empty (all −1) for any
+node with `+0xa0 < 2` or `0x00488170(node) < 2`, and then `0x004c4fc0` passes no
+lights and the shader gets an all-zero `LightDir_Dir0` — a zero register is a
+legitimate engine state, not a capture error. Sector transit, menu and cutscene
+change the scene and hence the candidate array wholesale; nothing caches a light
+pointer across that, so a per-frame re-read is required and a cached node pointer
+must never outlive a frame. The EXE is non-relocatable and the proxy already gates
+patches on the `fdbf3418…` hash; the same gate covers these absolute addresses,
+and step 2 is the runtime layout assertion.
+
+*If a hook is ever preferred over polling*, the natural site is the selector tail
+`0x004c508f` (`MOV EDI,[ESP+0x44]`, 4 bytes) where `EBP` holds Dir0 and
+`[ESP+0xc]` Dir1 — but it is inside `0x004c4fc0`'s SEH frame, runs per submitted
+node (thousands of times per frame), and `EDI` is being reloaded there, so a
+detour must preserve `EBP`, `ESI`, `EBX` and every `ESP`-relative local and would
+need its own rate limiting. Polling `R+0x5e8c` costs one pointer chase and a short
+scan once per frame and has none of that exposure. **Recommendation: poll, do not
+hook.**
+
+### Cross-check against captures
+
+Cheap numeric check, from numbers already in the notes rather than a new capture:
+the run-39 least-squares fit of 615 (direction, `object_position`) pairs to a
+single world point gave `L = (−4.708e8, +7.144e8, −1.3151e9)` native, `|L| =
+1.5689e9` (`camera-state-and-frame-routine.md`, round 2). Normalised that is
+`(−0.300079, +0.455345, −0.838220)`. The run-111 A-frame replay basis measured on
+all 38 A frames was `forward = (0.2965, −0.4568, 0.8387)`
+(`directional-shadows.md`). `−forward` is **0.2496°** from the run-39 unit vector,
+and run 22's captured `c4 = (−0.304886, 0.455627, −0.836319)` is **0.3882°** from
+it. All three sessions agree to within the 0.6° per-node spread this section
+predicts, which is what "the sun is one world *point* and the register is
+`normalize(L − node)`" requires and what a view-space or per-draw-rotated vector
+could not produce.
+
+*Uncertainty.* Everything above is static on `fdbf3418…` plus previously measured
+capture numbers; no new capture was taken and no value was read from a live
+process. Not established: whether `0x00420260`'s 16 forced-directional nodes ever
+enter the candidate array; the identity of `0x00488170`'s return (used only as the
+`≥ 2` gate); the exact semantics of the spot-light (`+0x12c & 0x10`) score
+multiplier inside `0x0047d5e0`, which can scale a score up and is the one path
+that could in principle put a non-sun into a Dir slot; and how many directional
+lights a real X3 sector authors, which
+lives in the scene files, not the EXE.
