@@ -935,3 +935,5 @@ device's existing registry metadata. There is no fixed entry-count cap claimed:
 registry size follows registered shader objects/addresses during that device
 lifetime, as before this lane. An immutable-byte recovery design may improve
 this separately; Reset does not invent replacement shader source.
+
+Cascade layout (2026-09-17): see [shadow-cascades.md](shadow-cascades.md), ratified; the one-cascade replay and apply are in game since run 37 B.
