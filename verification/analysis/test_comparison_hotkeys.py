@@ -49,8 +49,8 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;', polling)
         self.assertEqual(capture.count('GetAsyncKeyState(VK_F12)'), 1, 'one owner per function key')
         self.assertIn('if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();', polling)
-        self.assertIn('!emitter_compare && !sun_shadow_apply_requested)return;', polling)
-        self.assertLess(polling.index('!sun_shadow_apply_requested)return;'), polling.index('comparison_foreground()'))
+        self.assertIn('!emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;', polling)
+        self.assertLess(polling.index('!fps_overlay_requested)return;'), polling.index('comparison_foreground()'))
         # The toggle: no allocation, no device object, every retained basis voided.
         toggle = extract_function(motion_source, 'int MotionOutput::sun_shadow_toggle(')
         self.assertIn('sun_shadow_enabled_ = !sun_shadow_enabled_;', toggle)
@@ -177,7 +177,7 @@ class ComparisonHotkeys(unittest.TestCase):
         motion_source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         polling = extract_function(capture, 'void comparison_begin_frame(')
         # Ordinary launches (no HDR AgX, no ambient occlusion) return before any key or foreground query.
-        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested)return;'),
+        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;'),
                         polling.index('comparison_foreground()'))
         self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
         self.assertLess(polling.index('if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();'),
@@ -202,7 +202,17 @@ class ComparisonHotkeys(unittest.TestCase):
             self.assertIn(f'comparison_emitter(ctx,"{key}","{label}"', polling)
         for removed in ('effect_source_gain', 'X3M_EFFECT_SOURCE_GAIN'):
             self.assertNotIn(removed, capture)
-        self.assertNotIn('VK_F7', capture)  # telemetry.cpp owns Ctrl+Shift+F7
+        # F7 rule: telemetry.cpp owns Ctrl+Shift+F7 (its marker requires Shift);
+        # capture.cpp's one F7 poller is the FPS overlay's Ctrl+Alt+F7 with
+        # Shift up, so the chords are disjoint (comparison-hotkeys.md, "FPS overlay").
+        self.assertEqual(capture.count('GetAsyncKeyState(VK_F7)'), 1)
+        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
+        self.assertIn('keys.alt=fps_overlay_requested && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
+        self.assertIn('keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;', polling)
+        self.assertIn('result.fps_overlay = keys.control && keys.alt && !keys.shift && keys.fps_overlay && !fps_overlay_down_;', controls)
+        telemetry_source = (ROOT / 'src/proxy/telemetry.cpp').read_text()
+        self.assertEqual(telemetry_source.count('GetAsyncKeyState(VK_F7)'), 1)
+        self.assertIn('(GetAsyncKeyState(VK_F7)&0x8000)!=0 && (GetAsyncKeyState(VK_CONTROL)&0x8000)!=0 && (GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;', telemetry_source)
         emitter = extract_function(capture, 'void comparison_emitter(')
         self.assertIn('state<0?"UNAVAILABLE":state?"ON":"OFF"', emitter)
         self.assertIn('comparison_log(ctx,"request",key,state>=0);', emitter)

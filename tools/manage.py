@@ -225,6 +225,7 @@ def main():
     parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles, the proxy draw/scene/state buckets with the state call mix, the pre-draw/between-draws/post-draw split of the game time between hooked calls, and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
     parser.add_argument('--frame-end-stride', type=int, default=300, metavar='N',
                         help='Frames between two frame_end lines, 1..100000, default 300 (X3M_FRAME_END_STRIDE; no prerequisite: frame_end exists in every mode): 1 logs every frame, which makes the frame cost readable per toggle state and shows periodic events the 300-frame cadence hides, at about 100 B of log per frame. Capture frames always log one. The other 300-frame reports of the Present path (chase camera, admission, finite upload) keep their own cadence')
+    parser.add_argument('--fps-overlay', action='store_true', help='On-screen frame-rate line on the presented image (X3M_FPS_OVERLAY=1; default off; no prerequisite): "FPS 61.3  16.3 MS  DRAWS 638" from a one-second sliding window of the Present-to-Present interval (the ms figure is the frame interval, not GPU time), refreshed every 250 ms, plus "SHADOWS ON|OFF" when --sun-shadow-apply is on. Ctrl+Alt+F7 hides and shows it (Alt is the Option key under Wine on macOS; Shift must be up, so the Ctrl+Shift+F7 telemetry marker never fires on it). Drawn with Clear rectangles like the comparison notice, no GPU objects (docs/architecture/comparison-hotkeys.md, "FPS overlay")')
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
                         help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
@@ -764,6 +765,7 @@ def main():
         env['X3M_GAME_PHASES'] = '1' if args.game_phases else '0'
         env['X3M_FRAME_TIMING'] = '1' if args.frame_timing else '0'
         env['X3M_FRAME_END_STRIDE'] = str(args.frame_end_stride)  # explicit, so an inherited value cannot change the cadence
+        env['X3M_FPS_OVERLAY'] = '1' if args.fps_overlay else '0'
         env['X3M_FRAME_PHASES'] = '1' if args.frame_phases else '0'  # implied by --residual-phases above
         env['X3M_PASS_PHASES'] = '1' if args.pass_phases else '0'
         env['X3M_RESIDUAL_PHASES'] = '1' if args.residual_phases else '0'

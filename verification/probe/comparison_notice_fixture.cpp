@@ -6,6 +6,7 @@
 #include <new>
 #include "../../src/proxy/comparison_notice.h"
 static unsigned checks=0,failures=0,allocations=0;
+static LONG expected_top=16; // the panel row of the notice under test
 void* operator new(std::size_t size){++allocations;if(void*p=std::malloc(size))return p;throw std::bad_alloc();}
 void operator delete(void*p) noexcept{std::free(p);}
 #define CHECK(x) do{++checks;if(!(x)){++failures;std::printf("FAIL line=%u %s\n",__LINE__,#x);}}while(0)
@@ -38,7 +39,7 @@ HRESULT clear(IDirect3DDevice9* raw,DWORD n,const D3DRECT* rects,DWORD flags,D3D
     auto& d=*static_cast<Device*>(raw);++d.clears;
     CHECK(d.rt[0]==&d.surfaces[5]&&!d.rt[1]&&!d.rt[2]&&!d.rt[3]&&!d.depth);
     CHECK(flags==D3DCLEAR_TARGET&&n>0&&rects);
-    for(unsigned i=0;i<n;++i)CHECK(rects[i].x1>=0&&rects[i].y1>=0&&rects[i].x2<=LONG(d.surfaces[5].desc.Width)&&rects[i].y2<=LONG(d.surfaces[5].desc.Height)&&rects[i].x1<rects[i].x2&&rects[i].y1<rects[i].y2);
+    for(unsigned i=0;i<n;++i)CHECK(rects[i].x1>=0&&rects[i].y1>=expected_top&&rects[i].x2<=LONG(d.surfaces[5].desc.Width)&&rects[i].y2<=LONG(d.surfaces[5].desc.Height)&&rects[i].x1<rects[i].x2&&rects[i].y1<rects[i].y2);
     return d.clears==d.fail_clear?-300-HRESULT(d.clears):S_OK;
 }
 int main(){
@@ -65,6 +66,25 @@ int main(){
     {Device d;d.rt[1]=d.rt[2]=d.rt[3]=nullptr;d.depth=nullptr;const auto r=notice.draw(&d,native,4);CHECK(r.drawn&&!d.rt[1]&&!d.rt[2]&&!d.rt[3]&&!d.depth);d.balanced();}
     for(unsigned size:{0u,10u,26u,40u,120u}){Device d;d.surfaces[5].desc.Width=d.surfaces[5].desc.Height=size;notice.draw(&d,native,4);CHECK(d.restored());d.balanced();}
     for(unsigned count:{0u,5u}){Device d;notice.draw(&d,native,count);CHECK(!d.gets&&!d.sets&&!d.clears);}
+    // The FPS overlay's instance sits one panel lower: every rectangle starts
+    // at or below its top row, and the same two Clear calls draw it.
+    {x3m::ComparisonNotice lower(72);lower.text("FPS 61.3  16.3 MS  DRAWS 638","SHADOWS ON");expected_top=72;
+     Device d;const auto r=lower.draw(&d,native,4);CHECK(r.drawn&&r.operation==S_OK&&r.restore==S_OK);CHECK(d.clears==2&&d.restored());d.balanced();
+     Device small;small.surfaces[5].desc.Width=small.surfaces[5].desc.Height=80;lower.draw(&small,native,4);CHECK(small.restored());small.balanced();
+     expected_top=16;}
+    // The clip is cached per (text, target size): a second draw with the same
+    // text and size re-clips nothing and issues the same two Clear calls; a
+    // new size or new text re-clips once.
+    {x3m::ComparisonNotice cached;cached.text("EXPOSURE AUTO","BLOOM OFF REQUESTED");CHECK(cached.clip_passes()==0);
+     Device a;cached.draw(&a,native,4);CHECK(cached.clip_passes()==1&&a.clears==2);
+     for(unsigned i=0;i<100;++i){Device b;const auto r=cached.draw(&b,native,4);CHECK(r.drawn&&b.clears==2&&b.restored());b.balanced();}
+     CHECK(cached.clip_passes()==1);
+     Device c;c.surfaces[5].desc.Width=120;cached.draw(&c,native,4);CHECK(cached.clip_passes()==2);
+     Device e;e.surfaces[5].desc.Width=120;cached.draw(&e,native,4);CHECK(cached.clip_passes()==2);
+     cached.text("EXPOSURE AUTO","BLOOM OFF REQUESTED");CHECK(cached.clip_passes()==2); // identical text keeps the cache
+     cached.text("EXPOSURE AUTO","BLOOM ON");Device f;f.surfaces[5].desc.Width=120;cached.draw(&f,native,4);CHECK(cached.clip_passes()==3);
+     Device g;g.fail_get=1;cached.draw(&g,native,4);CHECK(cached.clip_passes()==3); // a refused read never reaches the clip
+    }
     CHECK(allocations==before_allocations);
     std::printf("comparison_notice checks=%u failures=%u allocations=%u\n",checks,failures,allocations-before_allocations);
     return failures?1:0;

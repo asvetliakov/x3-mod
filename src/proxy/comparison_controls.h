@@ -14,12 +14,15 @@ struct ComparisonKeys {
     bool screen_additive = false, source_gain = false; // F5, F6
     bool hull_gain = false; // F4
     bool sun_shadow = false; // F12
+    bool alt = false; // polled with --fps-overlay only
+    bool fps_overlay = false; // F7 (with --fps-overlay): fires on Ctrl+Alt with Shift up, disjoint from the Ctrl+Shift+F7 telemetry marker
 };
 struct ComparisonActions {
     bool exposure = false, bloom = false, ambient_occlusion = false;
     bool screen_additive = false, source_gain = false;
     bool hull_gain = false;
     bool sun_shadow = false;
+    bool fps_overlay = false;
 };
 class ComparisonControls {
 public:
@@ -41,6 +44,10 @@ public:
             result.hull_gain = keys.hull_gain && !hull_gain_down_;
             result.sun_shadow = keys.sun_shadow && !sun_shadow_down_;
         }
+        // The overlay chord is Ctrl+Alt with Shift up, edged here outside the
+        // Ctrl+Shift arm on the raw F7 latch (a held F7 never becomes a press
+        // by changing modifiers); the focus latch above still applies.
+        result.fps_overlay = keys.control && keys.alt && !keys.shift && keys.fps_overlay && !fps_overlay_down_;
         latch(keys);
         return result;
     }
@@ -50,10 +57,11 @@ private:
     void latch(const ComparisonKeys& keys) noexcept {
         exposure_down_ = keys.exposure; bloom_down_ = keys.bloom; ambient_occlusion_down_ = keys.ambient_occlusion;
         screen_additive_down_ = keys.screen_additive; source_gain_down_ = keys.source_gain; hull_gain_down_ = keys.hull_gain;
-        sun_shadow_down_ = keys.sun_shadow;
+        sun_shadow_down_ = keys.sun_shadow; fps_overlay_down_ = keys.fps_overlay;
         modifiers_down_ = keys.control && keys.shift;
     }
     bool focused_ = false, exposure_down_ = false, bloom_down_ = false, ambient_occlusion_down_ = false, modifiers_down_ = false;
     bool screen_additive_down_ = false, source_gain_down_ = false, hull_gain_down_ = false, sun_shadow_down_ = false;
+    bool fps_overlay_down_ = false;
 };
 } // namespace x3m
