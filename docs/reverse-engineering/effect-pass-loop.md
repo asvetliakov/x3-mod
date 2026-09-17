@@ -297,7 +297,8 @@ second stamp because it pairs with the pass group's clocks.
 **What the two intervals contain.** `prepare` = last `pass_end` →
 `0x004c1eab`: the pass loop's tail, `End` (`0x004c4066`), the SEH unlink and
 `ret`, the caller `0x004c4fc0`'s remainder, the queue walk `0x0047e6e0` or the
-traversal step of `0x0047d9c0` (cull `0x004f66e0`, world matrix `0x004bdee0`),
+traversal step of `0x0047d9c0` (world matrix `0x004bdee0`, texture-animation stepper `0x004f66e0`;
+not a cull, corrected 2026-09-17, [shadow-caster-lifetime.md](shadow-caster-lifetime.md) §0),
 the next node's `0x004c4fc0` entry, this routine's prologue (SEH record,
 `sub esp,0x4c8`, `SetSoftwareVertexProcessing`), the sub-mesh head, the
 three engine-wrapper binds, `GetTechniqueByName`, `SetTechnique` and the two

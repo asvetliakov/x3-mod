@@ -80,11 +80,11 @@ game-object/AI simulation `0x00416750` (`game_phase_simulation`, reaches
 ```
 0x004722b5  0x0047e6e0   walk sorted queue *0x00608518+0x40  (per entry)
                  0x004bdee0   world matrix for the entry
-                 0x004f66e0   visibility/bounds predicate; true -> node[0x12c] |= 0x2000
+                 0x004f66e0   animated-texture/sprite-sequence stepper, NOT a cull (corrected 2026-09-17, shadow-caster-lifetime.md §0); true -> caller sets node[0x12c] |= 0x2000 (refresh flag)
                  0x004c4fc0   submit one node
 0x00472295  0x0047e920   traversal driver for one (view, layer)
                  0x0047d9c0   RECURSIVE scene-graph traversal (self-calls 0x0047e5e5, 0x0047e600)
-                      0x004f66e0 / 0x004bdee0 / 0x0047d5e0   cull + transform
+                      0x004bdee0 / 0x004f66e0 / 0x0047d5e0   world matrix + texture-animation step; 0x0047d5e0 not re-examined (the cull/LOD pass is 0x0047cfe0, run earlier from 0x0047e780; shadow-caster-lifetime.md §3)
                       0x004c4fc0 (0x0047e076)                submit one node
 0x004c4fc0  (size 0x287)  per-node submit
                  0x004c5228   0x004c0150   <-- object_trace's existing patch site

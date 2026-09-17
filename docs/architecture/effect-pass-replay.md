@@ -237,7 +237,8 @@ Plausible content, per draw: (a) ~40 D3DX parameter setters (1–5
 `SetMatrix`, 10 `SetVector`, 15 `SetInt`, 10 `SetFloat`, ≤ 10 `SetBool`, 4
 `GetBool`, 2 `ApplyParameterBlock`) plus 22 cached-texture-setter calls,
 d3dx9 code, estimated 1.5–3 µs; (b) `Begin`/`End` per sub-mesh, 0.3–0.8 µs;
-(c) engine work: `0x004c4fc0`, world matrix `0x004bdee0`, cull `0x004f66e0`,
+(c) engine work: `0x004c4fc0`, world matrix `0x004bdee0`, texture-animation stepper `0x004f66e0`
+(not a cull; the cull/LOD pass is `0x0047cfe0`, see [shadow-caster-lifetime.md](../reverse-engineering/shadow-caster-lifetime.md) §0),
 queue walk, the O(n²) sort `0x0047e620`, `0x004c0150`'s own code, the two
 engine state writes. **A stamp pair EndPass(n) → BeginPass(n+1) attributes
 nothing new**: in the single-pass case it spans the routine exit, the caller's

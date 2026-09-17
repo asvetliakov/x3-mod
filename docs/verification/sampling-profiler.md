@@ -1681,6 +1681,11 @@ made on evidence rather than the existing arithmetic estimate (a (a) 1-5 µs
 + (b) 0.3-0.8 µs D3DX share vs (c) engine-only remainder, itself only
 plausible, not measured).
 
+*Correction, 2026-09-17:* the paragraph above calls `0x004f66e0` the cull. It is the per-node
+animated-texture stepper; the cull/LOD pass is `0x0047cfe0`
+([shadow-caster-lifetime.md](../reverse-engineering/shadow-caster-lifetime.md) §0, §3). The
+bucket arithmetic is unaffected; the entry is left as written.
+
 **Quiet control (window 34, 60 draws/frame, 6.34 ms frame):** apply 6.58 µs,
 draw 6.88 µs, end 0.117 µs — apply/draw per-draw cost is nearly identical to
 the busy view (draws are the same shader work, just fewer of them). `prepare`
