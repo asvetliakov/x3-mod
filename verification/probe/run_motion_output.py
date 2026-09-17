@@ -372,6 +372,11 @@ CASES += [case('seam-ownership-shadow-replay-adaptive-reuse', 'shadowreplay', 'o
 # 1,200 or 4,800 map; the finer far maps give the twin clear texels to compare (texel 2.3 at 1,200, 4.7 at 4,800).
 SHADOW_LADDER_ENV = dict(SHADOW_ADAPTIVE_ENV, X3M_SHADOW_CASCADES='250,1500,7500,37500,150000', X3M_FIXTURE_SHADOW_CASCADES='8,48,240,1200,4800', X3M_SHADOW_CASCADE_SIZES='256,256,512,1024,2048')
 CASES += [case(f'seam-ownership-shadow-replay-ladder-{m}', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_LADDER_ENV, X3M_FIXTURE_OWN_SHIP=m)) for m in ('corvette', 'destroyer', 'shrink')]
+# The policies slide with the extents: `corvette-static` configures static-only from cascade 3 (1,200 / 4,800). Under the slid set the
+# 542 cascade matches the configured 1,200 (the 16,875 cascade of the brief matching 37,500) and the static mask moves to cascades 2-4:
+# every draw of the script moves (or is a first sighting), so those cascades refuse every draw (static_only_refused<i>) and replay
+# nothing, the far object F (in the static cascades alone) is not leased, and the configured mask returns on frames 0-1 only.
+CASES += [case('seam-ownership-shadow-replay-ladder-corvette-static', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_LADDER_ENV, X3M_FIXTURE_OWN_SHIP='corvette', X3M_SHADOW_CASCADE_STATIC_FROM='3'))]
 CASES += [case('seam-ownership-shadow-replay-wide', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_WIDE_ENV),
           case('seam-ownership-shadow-replay-far-refused', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_FAR_ENV)]
 # Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md,
@@ -1583,6 +1588,24 @@ def shadow_ladder_extents(extents, e0, ratio):
     return live, active
 
 
+def shadow_ladder_policy(extents, live, active, static_from):
+    """The DLL's slid policies (shadow_cascade_ladder_policy) for a live set:
+    each live cascade's match (the configured cascade its extent is closest to
+    in ratio, a tie to the larger), the first static-only live cascade (the
+    first active one matching a configured static-only cascade, None for none)
+    and the caps (the match's, 0 for a dropped cascade; the fixture's caps
+    are all equal, so no scaling applies). An unslid set keeps its own."""
+    count = len(extents)
+    if live == list(extents):
+        return list(range(count)), static_from, [8 if active >> i & 1 or True else 0 for i in range(count)]
+    matched = []
+    for e in live:
+        best = min(range(count), key=lambda j: (max(e / extents[j], extents[j] / e), -j))
+        matched.append(best)
+    first = next((i for i in range(1, count) if active >> i & 1 and static_from is not None and matched[i] >= static_from), None)
+    return matched, first, [8 if active >> i & 1 else 0 for i in range(count)]
+
+
 def validate_shadow_replay_adaptive(name, text, trace, directory, env, taa):
     """The own-ship-adaptive cascade 0 and the sliding ladder behind it
     (shadow-cascade-extents.md, section 5) through the DLL: the
@@ -1642,9 +1665,12 @@ def validate_shadow_replay_adaptive(name, text, trace, directory, env, taa):
             committed = max(extents[0], k * measured(f)); expected_events.append((f, 'node', measured(f), committed))
     live_by_frame = {f: set_of(e0_by_frame[f])[0] for f in e0_by_frame}
     active_by_frame = {f: set_of(e0_by_frame[f])[1] for f in e0_by_frame}
-    def changed_mask(f):  # the cascades whose extent the boundary ending frame f moved
-        after = live_by_frame.get(f + 1, live_by_frame[f])
-        return sum(1 << c for c in range(count) if after[c] != live_by_frame[f][c])
+    static_from = int(env['X3M_SHADOW_CASCADE_STATIC_FROM']) if 'X3M_SHADOW_CASCADE_STATIC_FROM' in env else None
+    policy_by_frame = {f: shadow_ladder_policy(extents, live_by_frame[f], active_by_frame[f], static_from) for f in live_by_frame}
+    static_mask_of = lambda f: sum(1 << c for c in range(count) if policy_by_frame[f][1] is not None and c >= policy_by_frame[f][1])
+    def changed_mask(f):  # the cascades whose extent or active bit the boundary ending frame f moved (a dropped-and-restored cascade re-anchors too)
+        after, active_after = live_by_frame.get(f + 1, live_by_frame[f]), active_by_frame.get(f + 1, active_by_frame[f])
+        return sum(1 << c for c in range(count) if after[c] != live_by_frame[f][c]) | (active_after ^ active_by_frame[f])
     events = [fields(l) for l in tl if l.startswith('shadow_cascade_set ')]
     commits = [(int(e['frame']), e['reason'], float(e['own_radius']), float(e['e0'])) for e in events if e['reason'] != 'capture']
     assert len(commits) == len(expected_events) and all(a[:2] == b[:2] and abs(a[2] - b[2]) < 1e-3 and abs(a[3] - b[3]) < 1e-3 for a, b in zip(commits, expected_events)), (name, commits, expected_events)
@@ -1659,6 +1685,8 @@ def validate_shadow_replay_adaptive(name, text, trace, directory, env, taa):
         if e['reason'] != 'capture':
             last_changed = changed_mask(f)
         assert int(e['changed']) == last_changed, (name, e, last_changed)  # a capture line repeats the last commit's mask
+        matched, first_static, caps = shadow_ladder_policy(extents, live, mask, static_from)
+        assert [int(v) for v in e['caps'].split(',')] == caps and e['static_from'] == (str(first_static) if first_static is not None else 'none') and float(e['large_min']) == 0.0, (name, e, caps, first_static)
         assert abs(float(e['texel0']) - 2 * float(e['e0']) / size) < 1e-6 and abs(float(e['depth_behind0']) - 2 * float(e['e0'])) < 1e-3, (name, e)
         # the frame the line closes: its measured radius (0 on frame 0, whose extents are read at that scene end; both hulls are known from frame 1, so the swap measures at once)
         assert abs(float(e['frame_radius']) - (0.0 if f == 0 else measured(f))) < 1e-3, (name, e)
@@ -1716,13 +1744,22 @@ def validate_shadow_replay_adaptive(name, text, trace, directory, env, taa):
     comparisons, previous, expectations, coarse_maps = {}, {}, {}, []
     for frame in range(SHADOW_REPLAY_FRAMES):
         masks = masks_of(frame)
+        # A static-only cascade (the slid mask) refuses every draw of this script (all move, or are first sightings): its records are
+        # the refusals, and a draw refused in every cascade it met (F, in the far cascades alone) is not leased at all.
+        static_mask = static_mask_of(frame)
+        refused_static = [sum(1 for key in order if masks[key] >> c & 1) if static_mask >> c & 1 else 0 for c in range(count)]
+        for key in order:
+            masks[key] &= ~static_mask
         records = [sum(1 for key in order if masks[key] >> c & 1) for c in range(count)]
+        leased = sum(1 for key in order if masks[key])
         is_refused = frame in refused_frames
         c_row, d_row = by_frame[frame], depth_by_frame[frame]
-        assert c_row['cascades'] == {'count': count, 'records': records, 'capped': [0] * count} and c_row['leased'] == len(order), (name, frame, c_row, records)
+        assert c_row['cascades']['count'] == count and c_row['cascades']['records'] == records and c_row['cascades']['capped'] == [0] * count and c_row['leased'] == leased, (name, frame, c_row, records, leased)
+        assert ('static_only_refused' in c_row['cascades']) == (static_from is not None) and c_row['cascades'].get('static_only_refused', refused_static) == refused_static, (name, frame, c_row['cascades'], refused_static)
         draws_expected = [0 if is_refused else records[c] for c in range(count)]
-        assert d_row['cascades']['draws'] == draws_expected and d_row['cascades']['far_replayed'] == int(not is_refused) and d_row['cascades']['budget'] == int(env['X3M_SHADOW_CASCADE_BUDGET']), (name, frame, d_row, draws_expected)
-        assert d_row['replayed'] == (0 if is_refused else len(order)), (name, frame, d_row)
+        far_replays = not is_refused and records[-1] > 0
+        assert d_row['cascades']['draws'] == draws_expected and d_row['cascades']['far_replayed'] == int(far_replays) and d_row['cascades']['budget'] == int(env['X3M_SHADOW_CASCADE_BUDGET']), (name, frame, d_row, draws_expected)
+        assert d_row['replayed'] == (0 if is_refused else leased), (name, frame, d_row)
         # The readback follows the Present, so it sees the set after the boundary
         # that ends this frame: on a commit frame every changed cascade reads back
         # with its new extent and a void basis (its map still holds this frame's
@@ -1785,13 +1822,16 @@ def validate_shadow_replay_adaptive(name, text, trace, directory, env, taa):
         e0 = e0_of(big)
         want = [e0, 5 * e0, 25 * e0, min(125 * e0, extents[-1]), extents[-1]] if mode == 'corvette' else [e0, 5 * e0, extents[-1], extents[-1], extents[-1]]
         assert all(abs(a - b) < 1e-6 for a, b in zip(live_by_frame[2], want)) and active_by_frame[2] == (31 if mode == 'corvette' else 19) and voided_frames == [1], (name, live_by_frame[2], want, voided_frames)
-        assert all(maps[(3, c)]['valid'] == ('1' if active_by_frame[3] >> c & 1 else '0') for c in range(count)), (name, 'every kept cascade replays on the first unrefused frame under the slid set (frame 2 is the lease-refused frame), a dropped one never')
+        assert all(maps[(3, c)]['valid'] == ('1' if active_by_frame[3] >> c & 1 and not static_mask_of(3) >> c & 1 else '0') for c in range(count)), (name, 'every kept cascade replays on the first unrefused frame under the slid set (frame 2 is the lease-refused frame), a dropped or static-only (nothing static here) one never')
+        if static_from is not None:  # the slid static mask: cascades 2-4 (542 matches the configured 1,200) from frame 2, the configured 3-4 before
+            assert policy_by_frame[0][1] == static_from and policy_by_frame[3][1] == 2 and policy_by_frame[3][0] == [1, 2, 3, 4, 4], (name, policy_by_frame[3])
         if mode == 'corvette':
             assert all(live_by_frame[2][c + 1] / live_by_frame[2][c] <= ratio + 1e-6 for c in range(count - 1)), (name, 'no gap wider than the ratio behind cascade 0')
     sun = validate_shadow_replay_sun(name, trace, len(order), False, tuple(float(v) for v in suns[0]['direction'].split(',')))
     case = {'checks': checks + 3 + 3 * len(events) + 5 * SHADOW_REPLAY_FRAMES + 3 * SHADOW_REPLAY_FRAMES * count, 'depth': True, 'taa': taa, 'casters': casters, 'cascades': count, 'extents': extents,
             'mode': mode, 'k': k, 'radius': radius, 'events': commits, 'e0_by_frame': e0_by_frame, 'per_frame': expectations, 'refusals': refused, 'targets': targets, 'sun': sun,
-            'ladder': {'ratio': ratio, 'big_hull': big, 'sizes': sizes, 'extents_by_frame': live_by_frame, 'active_by_frame': active_by_frame, 'voided_frames': voided_frames, 'coarse_maps': coarse_maps},
+            'ladder': {'ratio': ratio, 'big_hull': big, 'sizes': sizes, 'extents_by_frame': live_by_frame, 'active_by_frame': active_by_frame, 'voided_frames': voided_frames, 'coarse_maps': coarse_maps,
+                       'static_from': static_from, 'static_from_by_frame': {f: policy_by_frame[f][1] for f in policy_by_frame}, 'matched_by_frame': {f: policy_by_frame[f][0] for f in policy_by_frame}},
             'frames': SHADOW_REPLAY_FRAMES, 'map': {'frames': comparisons, 'max_depth_error': max(v.get('max_depth_error', 0.0) for v in comparisons.values()),
                                                    'covered_texels': sum(v.get('covered_gpu', 0) for v in comparisons.values())}}
     case['us'] = depth_replay.us_summary(depth_rows)

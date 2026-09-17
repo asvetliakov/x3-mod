@@ -2479,3 +2479,33 @@ cascade re-anchors its grid and voids its retained map (`ShadowCascadeAdaptive::
   on the `shadow_cascade_set` line and by the twin's parser); the far maps at the fixture scale are
   coarse (recorded per map as `ladder.coarse_maps`); a big-ship flight sets K and shows the ladder's
   seams in play; native Windows unverified as elsewhere.
+
+### Review round (2026-09-18, branch `ladder-followup` off main `ee3ff318`): change mask, slid policies, refused index
+
+1. `ShadowCascadeAdaptive::changed` is now `shadow_cascade_change_mask` (extent delta OR active-bit
+   delta): a cascade dropped and restored with its extent unchanged (the last one under an E0 at the
+   ceiling) is voided at both commits and cannot republish its pre-drop basis. Host: E0 25,000 →
+   `changed` 11 (bit 3 with its extent unchanged), back to 250 → 15; `shadow_cascade_change_mask`
+   15 / 0.
+2. `shadow_cascade_ladder_policy`: caps, records, `static_from` and `large_min` follow the extents
+   (each live cascade takes the policy of the configured cascade its extent matches closest in
+   ratio; dropped → cap 0; `large_min` scaled by the first static-only cascade's extent over its
+   match's; active caps scaled down together when the bounds would exceed the configured sum). The
+   draw path's caps and static mask are refreshed at the commit; the candidates line keeps its
+   static group whenever the configured set has one. Host: corvette on 250 / 1,500 / 7,500 / 37,500
+   with static-from 3, records 1,024 / 1,024 / 2,048 / 4,096, large_min 1,500 → `static_from` 2
+   (16,875 static-only), `large_min` 675, records 2,048 / 4,096 / 4,096, bounds ≤ 2,688; destroyer →
+   `static_from` 1, the dropped cascade idle; unslid → configured; no configured static → none.
+3. `shadow_cascade_ladder_extent(i >= count)` returns NaN and `shadow_cascade_adapt_c0` refuses a
+   non-positive or nonfinite extent (host: indices 4 of four and 7 of five).
+4. §5 wording "at or above".
+
+Build 0 warnings, `check_no_x87.py` 534 reachable, 0 violations; host 97 tests OK (the 12 modules).
+Fixture (`X3M_FIXTURE_BOTTLE=X3`): new `seam-ownership-shadow-replay-ladder-corvette-static` 373
+checks (corvette env + `X3M_SHADOW_CASCADE_STATIC_FROM=3`): the commit line prints
+`caps=8,8,8,8,8 static_from=2 large_min=0`; from frame 2 cascades 2-4 (542 / 2,711 / 4,800, matching
+the configured 1,200 / 4,800 / 4,800) refuse every draw (`static_only_refused2..4=6`, `c2..4=0`,
+`leased=5`: F, in the static cascades alone, is not leased) while frames 0-1 refuse on the configured
+3-4; replayed maps 6.0e-07. ladder-corvette 373 / destroyer 373 / shrink 376, adaptive small 333 /
+big 333 / swap 336 / reuse 336 and pool-static-live 181: equal to the committed records apart from
+the added `ladder.static_from*` / `matched_by_frame` keys and timings (the pool record restored).
