@@ -435,6 +435,11 @@ launcher choice covers the interim without code.
   of the 0.122 texel; the bias 0.54 + texel term is 200+ ulps. World magnitude does not enter
   the float rows: the constant terms are (object origin − centre) / E, O(1), because the
   products are formed in double and narrowed last (`shadow_replay_projection.h`).
+  **Receiver precision is the risk (measured, run117):** RT2 holds device depth z/w in fp32, so
+  the apply's reconstructed view depth steps by z² / 1e8 u per ULP (13.6 u at 37 km, 85 u at
+  92 km; 0.24–1.2 far-cascade texels), which re-rolls the PCF on fine single-sided geometry every
+  frame (`docs/verification/directional-shadows.md`, "Run 40 A (run117) diagnosis"). The fix is a
+  precise receiver depth in the lane, not a bias, kernel or selection change.
 - **Blend band width.** 10 % of the 0.95 margin: 24 / 143 / 713 / 2,375 u for C0–C3. The far
   fade runs from 4.25 to 4.75 km lateral: a station straddling it shows a 500 m gradient to
   lit, which is the intended fade. The C2/C3 seam (1.28–1.43 km) is where the 6.7× softness
