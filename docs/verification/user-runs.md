@@ -54,11 +54,49 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 33 | Pass phases, loop-region split, cutout lane telemetry | 3 | A run95 (view submit: draw 43 %, BeginPass 33 %, engine between passes 22 %), B run96 (stall 99.8 % in the per-sector object pass `0x0045b720`, one sector; GStreamer criticals repeat during it), C run97 (cutout draws admitted through the tested-opaque arm, ~90/frame with the lane share; linear materials + lane +3 ms) |
 | 34 | Stall evidence: stderr capture, module identity, media-cue trace and cache | 4 | A1 run98: the stalling cue is id 2 = `mov\00002.dat` (MPEG-1 video), one failed build per frame at ~390 ms, GStreamer bursts aligned within 16 ms; native d3dx9_37 loads. A2 run99: cache on, one real attempt per 30 s, frames back to 7–9 ms p50 in the sector (stall gone, user confirmed); the exit-time "zero area" warning is pre-existing teardown noise (31 lines in run98 too). A3 run100/101: the v5 decoder runtime hangs the main loop on the first comm dialog (avatar video graph now builds and blocks in Wine's video path); v5 parked, cache is the fix. B pending |
 | 35 | D3DX builtin vs native (no new DLL) | 1 | Completed as run103: visuals unchanged; identity line could not prove the builtin loaded; BeginPass 8.90 vs 6.64 µs/pass confounded by build; repeat as run 36 on one build |
+| 36 | D3DX builtin vs native on one build (A1/A2); first sun shadows on original shading (B) | 3 | Queued: run36 candidate `51a3d764…` from `c9a8145` installed 2026-09-17 |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
+
+## 36. D3DX on one build, first sun shadows — queued (run36 candidate)
+
+Installed: DLL `51a3d764…` from `c9a8145` (see [status](../status.md)). Original hull shading
+throughout; no `--linear-materials` anywhere.
+
+**Session A1** (builtin D3DX, the run95 busy view):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases --d3dx builtin
+```
+**Session A2** (native D3DX, same spot, same duration):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases
+```
+For A1 and A2: load the usual save, hold the busy Argon station view about two
+minutes, then an empty view for one minute, quit. Nothing to look at beyond
+"anything rendered wrong?". The log's `loaded_module` line now says
+`wine_builtin=1` when the builtin loaded, and the launcher's first stderr line
+records the command.
+
+**Session B** (first shadows):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates
+```
+1. Fly near a station in daylight with the sun to one side. Look at the
+   station's own parts shadowing each other and at your ship's hull; also at
+   engine glow and bolts over a shadowed hull (a known limitation darkens
+   effects composed over a shadowed receiver).
+2. Press F8 twice: once at about 1 km facing a station with the sun to the
+   side, once close to your own ship's shadowed side. The capture now dumps
+   the sun map so the mask can be judged offline.
+3. Report what you see in plain words: are there shadows at all, are they in
+   the right place, edge quality, acne or striping, anything flickering, and
+   whether the frame rate changed noticeably. Shadows are expected to be
+   rough on this first look; the run decides bias and cascade tuning.
+If the game misbehaves, the same command without `--sun-shadow-apply` keeps
+the lane and replay diagnostics only.
 
 ## 35. D3DX builtin vs native at the busy view — completed (run103)
 

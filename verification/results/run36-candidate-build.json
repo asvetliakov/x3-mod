@@ -1,0 +1,308 @@
+{
+ "recorded_utc": "2026-09-17T00:22:55Z",
+ "run": 36,
+ "candidate": {
+  "path": "/tmp/x3-candidate-rPJp5y/candidate/d3d9.dll",
+  "directory": "/tmp/x3-candidate-rPJp5y",
+  "subdirectories": [
+   "candidate",
+   "rollback (empty; the installed DLL is copied here by the installing owner)"
+  ],
+  "sha256": "51a3d764b53cf6add973c3a17a13f56ed3c9192bbb1a68c5e5410bc31f7f3ee0",
+  "bytes": 17004352,
+  "retained_first_build": true,
+  "candidate_directory_file_count": 1,
+  "hash_rechecked_after_benchmark": true,
+  "hash_source_after_benchmark": "state-hook-benchmark-run36.json dll.sha256 equals the recorded sha256"
+ },
+ "source": {
+  "worktree": "/Users/asvetl/x3-mod",
+  "commit": "c9a814514549fa118008a6840e97c1a8b9cb897b",
+  "commit_short": "c9a8145",
+  "detached": false,
+  "status_before_configure": "clean; untracked only state-hook-benchmark-run32/33/34-wine.log",
+  "dirty_diff": "none",
+  "status_after_build": "docs/verification/user-runs.md is modified in the worktree (run 36 session commands added by the orchestrator during this task, not by the candidate owner); no production source, CMake or toolchain file changed. Fixture-touched result files (game_phase_cpu.json, motion-output-partial.json/.txt, -build.log, -wine.log) were restored with git checkout after reading."
+ },
+ "source_commit_marker": {
+  "command": "strings /tmp/x3-candidate-rPJp5y/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+  "value": "X3M_SOURCE_COMMIT=c9a814514549fa118008a6840e97c1a8b9cb897b",
+  "dirty_suffix": false,
+  "matches_worktree_head": true
+ },
+ "changes_since_run34": [
+  "sun lane on original shading: linear_material_original_sun_share_pixel_variant producer, fill twin, r11 redirect, shared reduction to oC2.g",
+  "scene-end sun-shadow apply pass (multiply quad, rotated 3x3 PCF, receiver-plane bias) with Reset plumbing",
+  "cutout pairs admitted through the tested-opaque arm; lane latch without linear materials; fail-closed to the fill variant",
+  "--sun-shadow-apply launcher flag, sun_shadow_apply_frame telemetry line, F8 map dump",
+  "loaded_module reads the mapped image; launcher records command/overrides/d3dx in launcher-stderr.log and dry-run"
+ ],
+ "toolchain": {
+  "toolchain_file": "cmake/mingw-i686.cmake",
+  "cmake": "4.4.3",
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "target": "32-bit Windows PE",
+  "native_windows_execution": "not performed"
+ },
+ "configure": {
+  "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build/candidate-run36",
+  "elapsed_seconds": 2,
+  "result": "PASS",
+  "warning_error_matches": 0,
+  "log": "/tmp/x3-candidate-rPJp5y/configure.log"
+ },
+ "build": {
+  "command": "cmake --build build/candidate-run36 -j4",
+  "invocations": 1,
+  "elapsed_seconds": 13,
+  "result": "PASS",
+  "warning_error_matches": 0,
+  "log": "/tmp/x3-candidate-rPJp5y/build.log",
+  "note": "build/candidate-run36 removed before configure; the shared ./build tree was not used or modified"
+ },
+ "host_audits": {
+  "no_x87": {
+   "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-rPJp5y/candidate/d3d9.dll",
+   "result": "PASS",
+   "roots": 76,
+   "reachable_functions": 498,
+   "violations": 0,
+   "run34_roots": 76,
+   "run34_reachable_functions": 494,
+   "delta_note": "same root set as run34; reachable 494 -> 498 with the sun-share producer and apply-pass code",
+   "report": "/tmp/x3-candidate-rPJp5y/no-x87.txt"
+  },
+  "pe_exports": {
+   "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-rPJp5y/candidate/d3d9.dll",
+   "result": "PASS",
+   "machine": "0x014c",
+   "count": 17,
+   "names": 17,
+   "matches_run34_count": true,
+   "report": "/tmp/x3-candidate-rPJp5y/pe-exports.json"
+  },
+  "phase_site_verifiers": {
+   "commands": [
+    "python3 verification/probe/verify_frame_phase_sites.py",
+    "python3 verification/probe/verify_pass_phase_sites.py",
+    "python3 verification/probe/verify_loop_phase_sites.py",
+    "python3 verification/probe/verify_media_cue_site.py"
+   ],
+   "result": "PASS (all four, exit 0, read-only against the bottle EXE)",
+   "exe_identity": "true in all four reports",
+   "source_present": "true in the pass, loop and media-cue reports; source_specs: true in all four",
+   "verify_post_phase_sites": "not run: the run34 record does not list it"
+  }
+ },
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "scoped_results": {
+  "game_phase_cpu": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 10,
+   "lock_wait_seconds": 0,
+   "checks": 8659,
+   "failures": 0,
+   "run34_checks": 8521,
+   "frame_sites": 10,
+   "pass_sites": 4,
+   "loop_sites": 6,
+   "media_sites": 1,
+   "media_cases": 10,
+   "run34_media_cases": 9,
+   "stubs": 47,
+   "arena_used": "19772/32768 B",
+   "fixture_sha256": "377ac95ee289ec1ac898e9487041ea61884134fe4278f6c22e73944a097b99f7",
+   "media_cue_bench": "MEDIA CUE BENCH loops=20000 trials=7 baseline_ns_per_call=12.2 pass_ns_per_call=287.9 refuse_ns_per_call=125.8 pass_dispatch_ns=275.7 refuse_dispatch_ns=113.6 documented_pass_ns=280 documented_refuse_ns=116 trace_pass_ns_per_call=225.6 trace_pass_dispatch_ns=213.4 enter_line_ns=1937.1 stub_bytes=300",
+   "media_cue_vs_run34": "pass 291.2 -> 287.9 ns, refuse 127.6 -> 125.8 ns; the new entry-line path measures enter_line_ns=1937.1",
+   "pass_phase_bench": "PASS PHASE BENCH loops=20000 trials=7 baseline_ns_per_loop=1.6 hooked_ns_per_loop=350.7 dispatch_ns=87.3 implied_busy_frame_us=351 budget_us=1500 within_budget=1",
+   "loop_phase_bench": "LOOP PHASE BENCH loops=20000 trials=7 dispatches_per_loop=16 baseline_ns_per_loop=35.8 hooked_ns_per_loop=1462.6 dispatch_ns=89.2 implied_frame_us_200_sectors=107 arena_used=15916",
+   "candidate_impact": "none: this fixture compiles its own objects from source and never loads the candidate DLL",
+   "artifacts": "verification/results/bottle-X3/game_phase_cpu.json restored with git checkout after reading"
+  },
+  "state_hook_benchmark": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-rPJp5y/candidate/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run36.json",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 26,
+   "lock_wait_seconds": 0,
+   "output": "verification/results/bottle-X3/state-hook-benchmark-run36.json (untracked; the paired -run36-wine.log stays local)",
+   "dll_sha256_in_output": "51a3d764b53cf6add973c3a17a13f56ed3c9192bbb1a68c5e5410bc31f7f3ee0",
+   "fixture_exe_sha256": "d1b8d93cdc07d0908d32577e964e231d0ac9568c1266f9a3e15f21954fa7cd05",
+   "baseline_untouched": "verification/results/bottle-X3/state-hook-benchmark.json was not written (--out redirected); git status showed it unmodified",
+   "ns_per_call_timing_off": {
+    "SetRenderState": {
+     "native": 14.9,
+     "production": 11.1,
+     "hooked_shadow": 79.9
+    },
+    "SetSamplerState": {
+     "native": 11.1,
+     "production": 10.6,
+     "hooked_shadow": 69.7
+    },
+    "GetState_draw_set_10": {
+     "native": 91.7,
+     "production": 92.0,
+     "hooked_shadow": 93.7
+    },
+    "routed_draw_mip_bias_2stages": {
+     "native": 77.0,
+     "production": 78.2,
+     "hooked_shadow": 474.3
+    },
+    "SetTexture": {
+     "native": 16.3,
+     "production": 124.1,
+     "hooked_shadow": 125.6
+    },
+    "SetStreamSource": {
+     "native": 16.0,
+     "production": 133.6,
+     "hooked_shadow": 134.8
+    },
+    "SetStreamSource_DrawIndexedPrimitive_pair": {
+     "native": 387.7,
+     "production": 1020.8,
+     "hooked_shadow": 960.1
+    },
+    "state_mix": {
+     "native": 15.6,
+     "production": 63.8,
+     "hooked_shadow": 84.7
+    }
+   },
+   "frame_timing_on": {
+    "SetRenderState": 153.4,
+    "SetSamplerState": 144.6,
+    "draw_pair": 1432.9
+   },
+   "attribution": {
+    "proxy_guard_and_shadow_ns": 72.6,
+    "frame_timing_stamps_ns": 75.2,
+    "of_which_qpc_pair_ns": 127.2
+   },
+   "gates": {
+    "production_SetRenderState_vs_run34_ns": "11.1 vs 13.4 (-17%)",
+    "production_SetSamplerState_vs_run34_ns": "10.6 vs 10.9 (-3%)",
+    "draw_pair_vs_run34_pct": 0.1,
+    "production_SetRenderState_minus_native_ns": -3.8,
+    "production_SetSamplerState_minus_native_ns": -0.5,
+    "verdict": "PASS (draw pair 1020.8 vs the run34 record 1020.1, +0.1%; both production setters below native)"
+   },
+   "cpu_state_preservation": "x87/control/status/tags/mxcsr/LastError all preserved (=1) for SetStreamSource, SetIndices, SetVertexDeclaration, SetFVF, SetRenderState, DrawIndexedPrimitive, DrawPrimitive in all four configurations; mxcsr bf80 before/after, LastError 940 before/after",
+   "scope": "Median of three repetitions per configuration in one process under CrossOver Preview; not a native-Windows run and not game FPS."
+  },
+  "motion_output_source_parity": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py production-on production-shadow-off seam-on seam-shadow-off seam-taa-cutout-opaque-get",
+   "result": "PASS (runner status PARTIAL by design: a selected run does no cross-case block)",
+   "exit": 0,
+   "elapsed_seconds": 43,
+   "lock_wait_seconds": 0,
+   "candidate_bytes": "not exercised: --dll requires retained --seam and --fixture artifacts, so the runner built its own fixture DLLs from source; this is a source-parity check of the committed tree",
+   "cases": {
+    "production-on": {
+     "exit": 0,
+     "checks": 43,
+     "motion_pixels": 0
+    },
+    "production-shadow-off": {
+     "exit": 0,
+     "checks": 43,
+     "motion_pixels": 0
+    },
+    "seam-on": {
+     "exit": 0,
+     "checks": 103,
+     "motion_pixels": 44284
+    },
+    "seam-shadow-off": {
+     "exit": 0,
+     "checks": 103,
+     "motion_pixels": 44284
+    },
+    "seam-taa-cutout-opaque-get": {
+     "exit": 0,
+     "checks": 49612,
+     "history_frames": 0,
+     "cutout_missed_frames": 11
+    }
+   },
+   "against_committed_record": "for the four cases present in verification/results/bottle-X3/motion-output-summary.json, state/color hashes, motion_pixels, checks and restorations are all equal (0 differing fields); seam-taa-cutout-opaque-get has no row in the committed summary and matches the run34 record numbers",
+   "artifacts": "motion-output-partial.json/.txt, -build.log and -wine.log restored with git checkout after reading"
+  },
+  "sun_share_live": {
+   "status": "referenced, not rerun (already recorded on this tree)",
+   "record": "verification/results/bottle-X3/sun-share-live.json",
+   "cases": 19,
+   "passed": true,
+   "game_launched": false,
+   "seam_dll": "verification/probe/build/motion-output-seam/d3d9.dll",
+   "seam_dll_sha256": "22fe99ddbb243f979ead07d23c8811f4ec3dad71c58cc68366ac1f8aa03a296a",
+   "fixture_exe_sha256": "5f266f9ab224da8c1fa4e0fe0e5878c610067f6613766b49894aad8307f8afe9"
+  },
+  "launcher_dry_run": {
+   "command": "python3 tools/manage.py launch --dry-run <run 36 option set>",
+   "shared_options": "--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8",
+   "result": "PASS (all three exit 0, each printed its command: 12 argv elements starting at the CrossOver Preview wine binary)",
+   "variants": {
+    "A1_frame_pass_phases_d3dx_builtin": {
+     "exit": 0,
+     "overrides": "d3d9=n,b;d3dx9_37=b",
+     "X3M_SUN_SHADOW_APPLY": "0",
+     "X3M_LINEAR_MATERIALS": "0"
+    },
+    "A2_frame_pass_phases": {
+     "exit": 0,
+     "overrides": "d3d9=n,b",
+     "X3M_SUN_SHADOW_APPLY": "0",
+     "X3M_LINEAR_MATERIALS": "0"
+    },
+    "B_sun_shadow_lane_replay_depth_apply_candidates": {
+     "exit": 0,
+     "overrides": "d3d9=n,b",
+     "X3M_SUN_SHADOW_APPLY": "1",
+     "X3M_LINEAR_MATERIALS": "0",
+     "X3M_SUN_SHADOW_LANE": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1",
+     "X3M_SHADOW_REPLAY_CANDIDATES": "1"
+    }
+   },
+   "note": "options must follow the launch subcommand; the launcher rejects them before it",
+   "game_launched": false
+  }
+ },
+ "load_check": {
+  "performed": true,
+  "how": "the state-hook benchmark loaded the candidate d3d9.dll as the process proxy in three device configurations (proxy-timing-off, proxy-shadow-timing-off, proxy-timing-on), each reporting its SLOT ownership and exiting 0",
+  "run_d3d9_exports": "not run; not in this task's scoped set"
+ },
+ "dry_run": {
+  "performed": true,
+  "note": "three --dry-run launcher variants above; vanilla not run"
+ },
+ "host_suite": {
+  "run": false,
+  "reason": "not in this task's scoped set; the run34 record documents the open capture_device_creation harness failure"
+ },
+ "full_fixture_chain_rerun": false,
+ "native_windows_verified": false,
+ "installed": false,
+ "limitations": [
+  "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+  "Only the commit marker, no-x87, export-list and state-hook benchmark checks bind these candidate bytes; the game-phase and motion-output fixtures build their own binaries from the same committed source.",
+  "The sun lane live evidence (19/19) is from the seam DLL recorded earlier on this tree, not from the candidate bytes.",
+  "The benchmark is a synthetic per-call fixture under CrossOver Preview; it is not measured game FPS.",
+  "The host suite was not rerun for this candidate.",
+  "Installation and game launch are owned by the main session; nothing was installed and the game was never launched."
+ ]
+}

@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-17 (run34 candidate installed; run 35 complete, run 36 pending the next candidate). This is the short current handoff; the current
+Updated 2026-09-17 (run36 candidate installed; run 36 queued). This is the short current handoff; the current
 session handoff is [handoff-2026-09-17.md](handoff-2026-09-17.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -13,47 +13,36 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`7102a2f14a2ce71421f76b90bc37b5f99aa6aa8a4b9c2b6db242ace07736031f`
-(16,748,838 bytes), built once on Opus from clean committed main `ee5a406`
-(2026-09-17; marker `X3M_SOURCE_COMMIT=ee5a406…`, no `-dirty`). The
-[build record](../verification/results/run34-candidate-build.json) binds the
-clean build (14 s, zero warnings), the 494-function no-x87 audit (76 roots,
-media-cue handlers included), the 17 exports, the four site verifiers against
-the EXE, the stamp CPU fixture (8,521 checks, 0 failures, fixture sha
-recorded; pass 90.3 ns, loop 88.6 ns, media-cue pass 280 ns / refuse 116 ns
-per dispatch), the state-hook benchmark on the candidate bytes
-([record](../verification/results/bottle-X3/state-hook-benchmark-run34.json):
-production SetRenderState 13.4 ns vs native 15.5, SetSamplerState 10.9 vs
-11.0, draw pair 1,020 ns), five motion-output parity cases equal to the
-committed record, and the launcher dry-runs for the trace, cache and v5
-runtime options. A first attempt from `1f255f2` failed its fixture gate on a
-`-Werror=cast-function-type` cast in the new clock anchor and was discarded
-(`/tmp/x3-candidate-dXW89V`); the fix is `ee5a406`. The
-[install record](../verification/results/run34-candidate-install.json) binds the
-installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
-run33 DLL `03c0c9f4…` and manifest are in `/tmp/x3-candidate-uemMxM/rollback`.
-Run 34's four session commands passed `--dry-run`; no game launched.
+`51a3d764b53cf6add973c3a17a13f56ed3c9192bbb1a68c5e5410bc31f7f3ee0`
+(17,004,352 bytes), built once on Opus from clean committed main `c9a8145`
+(2026-09-17; marker `X3M_SOURCE_COMMIT=c9a8145…`, no `-dirty`). The
+[build record](../verification/results/run36-candidate-build.json) binds the
+clean build (13 s, zero warnings), the no-x87 audit (76 roots, 498 reachable,
+0 violations), 17 exports, the four site verifiers against the EXE, the stamp
+CPU fixture (8,659 checks, 0 failures; media-cue pass 288 ns / refuse 126 ns /
+entry line 1.9 µs per dispatch), the state-hook benchmark on the candidate
+bytes ([record](../verification/results/bottle-X3/state-hook-benchmark-run36.json):
+SetRenderState 11.1 ns, SetSamplerState 10.6, draw pair 1,021 ns, unchanged
+from run34 within 0.1 %), five motion-output parity cases equal to the
+committed record, the sun-lane live runner 19/19 on the seam DLL, and the
+launcher dry-runs of the three run 36 sessions. The
+[install record](../verification/results/run36-candidate-install.json) binds the
+installed bytes, unchanged EXE/bottle hashes and the rollback; the previous
+run34 DLL `7102a2f1…` and manifest are in `/tmp/x3-candidate-rPJp5y/rollback`.
+No game launched.
 
-This build adds, on top of run33's: the launcher's stderr tee into the
-session directory (`launcher-stderr.log`, UTC-prefixed) with a `clock_anchor`
-and `qpc=` on every window line; `loaded_module` identity lines for the D3D9
-backend and `d3dx9_37.dll`; the media-cue gate at `0x00498140`
-(`--media-cue-trace`, `--media-cue-cache on|off`, launcher default **on** since
-run 34 A2 confirmed the bound (the installed DLL reads the variable; the
-run-34 dry-runs were made with the old default), `--media-cue-retry-s 30`; [note](reverse-engineering/media-cue-playback.md),
-[ledger](verification/media-cues.md)); stamp arena 20,480 B. Off by default:
-pass, loop and media-cue groups. Appearance and production hooks unchanged
-from run32/33. Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip
-bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull shading. No
-shadows applied. The v5 decoder runtime (`/tmp/x3-wma-plugin-v5`: MP3, MP2,
-MPEG-1 video, program-stream demux on top of wmav2) is host-verified and
-selected per session with `--voice-decoder`.
-
-Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
-and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
-137 original programs; bloom, linear materials and linear emissions remain opt-in.
-Chase defaults: 0.5° pitch, offset 0.50, distance 0.9, responses 0.28/0.38 s,
-lag limits 8°/0.10. Vanilla camera remains the default.
+This build adds, on top of run34's: the sun lane on original shading with the
+original-program share producer, the cutout pairs admitted, the one-cascade
+depth replay and the scene-end shadow apply quad behind `--sun-shadow-apply`
+(default off; [contract](architecture/legacy-sun-application.md),
+[ledger](verification/directional-shadows.md)); the F8 sun-map dump; the
+`media_cue_enter` trace line; `loaded_module` image fields
+(`image_size`, `stamp`, `exports`, `wine_builtin`); the launcher's command
+line as the first line of `launcher-stderr.log`; `--d3dx native|builtin`.
+Default path unchanged: with none of the lane options the draw path pays
+nothing new. Appearance defaults unchanged: camera 0.5°/0.50, EV ceiling
++1.3, mip bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull
+shading; no shadows unless `--sun-shadow-apply`. Decoder runtime v4.
 
 ## Session 2026-09-17: run 29 received, run 30 candidate
 
