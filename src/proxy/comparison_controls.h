@@ -6,17 +6,20 @@ namespace x3m {
 // modifier change cannot become a fresh press. No OS calls or draw-path work.
 // The emitter keys (F4/F5/F6) only flip which prebuilt pixel-shader variant
 // the per-draw path binds; they create nothing. F7 is the telemetry marker
-// and F8 the capture key.
+// and F8 the capture key. F12 is the sun-shadow A/B: it flips one scene-end
+// boolean (the cascade replay and the apply quad), nothing per draw.
 struct ComparisonKeys {
     bool foreground = false, control = false, shift = false;
     bool exposure = false, bloom = false, ambient_occlusion = false; // F9, F10, F11
     bool screen_additive = false, source_gain = false; // F5, F6
     bool hull_gain = false; // F4
+    bool sun_shadow = false; // F12
 };
 struct ComparisonActions {
     bool exposure = false, bloom = false, ambient_occlusion = false;
     bool screen_additive = false, source_gain = false;
     bool hull_gain = false;
+    bool sun_shadow = false;
 };
 class ComparisonControls {
 public:
@@ -36,6 +39,7 @@ public:
             result.screen_additive = keys.screen_additive && !screen_additive_down_;
             result.source_gain = keys.source_gain && !source_gain_down_;
             result.hull_gain = keys.hull_gain && !hull_gain_down_;
+            result.sun_shadow = keys.sun_shadow && !sun_shadow_down_;
         }
         latch(keys);
         return result;
@@ -46,9 +50,10 @@ private:
     void latch(const ComparisonKeys& keys) noexcept {
         exposure_down_ = keys.exposure; bloom_down_ = keys.bloom; ambient_occlusion_down_ = keys.ambient_occlusion;
         screen_additive_down_ = keys.screen_additive; source_gain_down_ = keys.source_gain; hull_gain_down_ = keys.hull_gain;
+        sun_shadow_down_ = keys.sun_shadow;
         modifiers_down_ = keys.control && keys.shift;
     }
     bool focused_ = false, exposure_down_ = false, bloom_down_ = false, ambient_occlusion_down_ = false, modifiers_down_ = false;
-    bool screen_additive_down_ = false, source_gain_down_ = false, hull_gain_down_ = false;
+    bool screen_additive_down_ = false, source_gain_down_ = false, hull_gain_down_ = false, sun_shadow_down_ = false;
 };
 } // namespace x3m

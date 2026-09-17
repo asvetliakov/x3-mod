@@ -122,6 +122,10 @@ bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route an
 // X3M_AO_DEBUG=1 (factor written as grayscale; implies timing),
 // X3M_AO_TIMING=1 (one ambient_occlusion_frame line per frame).
 bool ambient_occlusion_requested = false, ambient_occlusion_debug = false, ambient_occlusion_timing = false;
+// Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): true once a
+// device enabled the scene-end sun-shadow application, so the A/B key is
+// polled only then; without --sun-shadow-apply the press is ignored.
+bool sun_shadow_apply_requested = false;
 float ambient_occlusion_radius = 2.f, ambient_occlusion_strength = .5f;
 float emission_gain = 1.f;
 bool linear_material_requested = false;
@@ -1112,7 +1116,7 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // unconditionally inside it so an unrequested option answers with a
     // logged refusal.
     const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || hull_emission_gain!=1.f;
-    if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare)return;
+    if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested)return;
     ComparisonKeys keys{};
     keys.foreground=comparison_foreground();
     keys.control=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
@@ -1123,8 +1127,14 @@ void comparison_begin_frame(Device& ctx) noexcept {
     keys.screen_additive=(GetAsyncKeyState(VK_F5)&0x8000)!=0;
     keys.source_gain=(GetAsyncKeyState(VK_F6)&0x8000)!=0;
     keys.hull_gain=(GetAsyncKeyState(VK_F4)&0x8000)!=0;
+    // Ctrl+Shift+F12: the sun shadows at rest (comparison-hotkeys.md, "Sun
+    // shadows at rest"). Polled only with the apply requested, so a launch
+    // without it never queries the key; no notice and no report, one
+    // sun_shadow_toggle line per accepted press.
+    keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
     if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();
+    if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
     const bool emitter=action.screen_additive||action.source_gain||action.hull_gain;
     if(emitter)ctx.comparison_emitter_notice[0]='\0';
     if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","HULL",ctx.motion_output.hull_emission_gain_toggle());
@@ -2222,6 +2232,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_UNITS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_units_min&&v<=renderer::sun_shadow_bias_units_max)bias_units=v; }
         if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_clamp_texels_min&&v<=renderer::sun_shadow_bias_clamp_texels_max)clamp_texels=v; }
         if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels);
+        sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -2940,6 +2951,15 @@ extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_cascade_readb
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_shadow_replay_readback(out,floats,width,height,params,param_floats,cascade);
+}
+// The at-rest sun-shadow A/B (comparison-hotkeys.md, "Sun shadows at rest"):
+// the fixture executable stands in for the Ctrl+Shift+F12 press, which the
+// production key path delivers at the same frame boundary. Returns the new
+// state (1 on / 0 off), or -1 for an unknown device.
+extern "C" __declspec(dllexport) int x3m_sun_shadow_fixture_toggle(IDirect3DDevice9* device) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    return it==x3m::devices.end()?-1:it->second->motion_output.sun_shadow_toggle();
 }
 // Caster retention seam (shadow-caster-retention.md): the store's levels and
 // counters, and the synthetic lifetime observer (births, retirements, journal).

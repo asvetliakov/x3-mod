@@ -184,8 +184,8 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
         }
     }
     release_depth_leases();
-    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f",
-        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us);
+    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u",
+        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, unsigned(sun_shadow_enabled_));
 }
 // The cascade transaction (docs/architecture/shadow-cascades.md, section 1):
 // the single-map admission and refusal rules on the same records, then per
@@ -355,8 +355,8 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             length += std::snprintf(retained_text + length, sizeof retained_text - length, " replayed_live%u=%u replayed_retained%u=%u", k, retention_->replayed_live[k], k, retention_->replayed_retained[k]);
         if (length < 0 || length >= int(sizeof retained_text)) retained_text[0] = 0;
     }
-    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s",
-        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, text, unsigned(far_replayed),
+    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s",
+        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, unsigned(sun_shadow_enabled_), text, unsigned(far_replayed),
         far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget, retained_text);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE

@@ -779,6 +779,16 @@ public:
     // the chain while --ambient-occlusion is on; the pass stays attached.
     // Returns the new state, or -1 when the option is off.
     int ambient_occlusion_toggle() noexcept;
+    // Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): the
+    // at-rest A/B of the sun shadows. Off, the scene end runs neither the
+    // cascade/single-map replay transaction (no map cleared or drawn, no
+    // retained caster issued) nor the apply quad; everything else (the lane,
+    // the candidate counter, TAA, capture) is unchanged. Every retained basis
+    // is dropped on both edges, so the first frame back on replays every
+    // cascade instead of publishing a stale map. Returns the new state
+    // (1 on / 0 off); one bool test at the scene end, nothing per draw.
+    int sun_shadow_toggle() noexcept;
+    bool sun_shadow_enabled() const noexcept { return sun_shadow_enabled_; }
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
     // BEFORE the application's SetRenderTarget: the surface to bind natively.
     // Index 0 while redirected: the application's main surface maps to the FP16
@@ -1085,6 +1095,7 @@ private:
     // epoch for the FP16 target (a refusal is final until Reset), run once per
     // frame after the depth replay. Storage only: no per-draw cost.
     bool sun_apply_requested_=false, sun_apply_attach_failed_=false, sun_apply_applied_=false, sun_apply_attempted_=false;
+    bool sun_shadow_enabled_=true; // Ctrl+Shift+F12: the scene-end replay/apply gate (on until a press)
     double sun_apply_bias_units_=renderer::sun_shadow_bias_units_default;         // world units; resolved per frame with the cascade (sun_shadow_apply_bias)
     double sun_apply_clamp_texels_=renderer::sun_shadow_bias_clamp_texels_default; // world texels; the receiver-plane clamp and non-planar fallback
     std::unique_ptr<renderer::SunShadowApplyPass> sun_apply_;

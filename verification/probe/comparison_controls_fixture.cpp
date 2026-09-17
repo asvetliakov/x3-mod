@@ -62,6 +62,25 @@ int main(){
     for(unsigned i=0;i<100;++i)CHECK(!hull.sample(k).hull_gain);
     k.foreground=false;hull.sample(k);k.foreground=true;CHECK(!hull.sample(k).hull_gain);
     k.hull_gain=false;hull.sample(k);k.hull_gain=true;CHECK(hull.sample(k).hull_gain);
+    // F12 (the sun shadows at rest): the same chord, edge and focus rules,
+    // independent of every other key. The caller polls it only with
+    // --sun-shadow-apply, so a held key here is a genuine press.
+    x3m::ComparisonControls shadow;
+    x3m::ComparisonKeys s{};s.foreground=true;s.control=s.shift=true;shadow.sample(s);
+    s.sun_shadow=true;{const auto a=shadow.sample(s);CHECK(a.sun_shadow&&!a.hull_gain&&!a.ambient_occlusion&&!a.exposure&&!a.bloom);}
+    for(unsigned i=0;i<1000;++i)CHECK(!shadow.sample(s).sun_shadow); // held is not a second press
+    s.sun_shadow=false;shadow.sample(s);s.sun_shadow=true;CHECK(shadow.sample(s).sun_shadow);
+    s.foreground=false;CHECK(!shadow.sample(s).sun_shadow);
+    s.foreground=true;CHECK(!shadow.sample(s).sun_shadow); // held through alt-tab
+    s.sun_shadow=false;shadow.sample(s);s.sun_shadow=true;CHECK(shadow.sample(s).sun_shadow);
+    s.shift=false;s.sun_shadow=false;shadow.sample(s);s.shift=true;s.sun_shadow=true;
+    CHECK(!shadow.sample(s).sun_shadow); // the chord must be armed in the previous sample
+    s.sun_shadow=false;shadow.sample(s);s.sun_shadow=true;CHECK(shadow.sample(s).sun_shadow);
+    s.ambient_occlusion=true;{const auto a=shadow.sample(s);CHECK(a.ambient_occlusion&&!a.sun_shadow);} // its own edge, not the other key's
+    shadow.reset_focus();{const auto a=shadow.sample(s);CHECK(!a.sun_shadow&&!a.ambient_occlusion);}
+    x3m::ComparisonControls startup; // a key held before the first foreground sample is not a press
+    x3m::ComparisonKeys held{};held.foreground=true;held.control=held.shift=held.sun_shadow=true;
+    CHECK(!startup.sample(held).sun_shadow);CHECK(!startup.sample(held).sun_shadow);
 
     HdrPass hdr; IDirect3DPixelShader9 shader;
     hdr.config_.tonemap=HdrTonemap::Agx;hdr.config_.allow_auto_toggle=true;

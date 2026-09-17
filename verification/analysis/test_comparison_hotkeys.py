@@ -32,6 +32,45 @@ class ComparisonHotkeys(unittest.TestCase):
         functions = [extract_function(source, 'void retain_compositor_scene(')]
         self.run_host('comparison_bloom_handoff_fixture.cpp', functions, handoff=True)
 
+    def test_sun_shadow_at_rest_key_and_scene_end_gate(self):
+        """Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): the
+        edge-triggered key, polled only with --sun-shadow-apply, and the one
+        boolean that removes the replay transaction and the apply quad from the
+        scene end while everything else keeps running."""
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
+        motion_source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        replay = (ROOT / 'src/proxy/motion_output_shadow_replay_inc.h').read_text()
+        # The key: its own latch and edge in the shared sampler.
+        self.assertIn('bool sun_shadow = false;', controls)
+        self.assertIn('result.sun_shadow = keys.sun_shadow && !sun_shadow_down_;', controls)
+        self.assertIn('sun_shadow_down_ = keys.sun_shadow;', controls)
+        polling = extract_function(capture, 'void comparison_begin_frame(')
+        self.assertIn('keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;', polling)
+        self.assertEqual(capture.count('GetAsyncKeyState(VK_F12)'), 1, 'one owner per function key')
+        self.assertIn('if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();', polling)
+        self.assertIn('!emitter_compare && !sun_shadow_apply_requested)return;', polling)
+        self.assertLess(polling.index('!sun_shadow_apply_requested)return;'), polling.index('comparison_foreground()'))
+        # The toggle: no allocation, no device object, every retained basis voided.
+        toggle = extract_function(motion_source, 'int MotionOutput::sun_shadow_toggle(')
+        self.assertIn('sun_shadow_enabled_ = !sun_shadow_enabled_;', toggle)
+        self.assertIn('if (depth_replay_) depth_replay_->invalidate_retained();', toggle)
+        self.assertIn('sun_shadow_toggle device=%llu state=%u frame=%llu', toggle)
+        for absent in ('CreateTexture', 'execute', 'Clear'):
+            self.assertNotIn(absent, toggle)
+        # The scene end: one boolean test, both the replay transaction and the
+        # apply quad, with the frame's leases still retired.
+        scene_end = extract_function(motion_source, 'void MotionOutput::publish_shadow_replay_candidates(')
+        self.assertIn('if (!sun_shadow_enabled_) {', scene_end)
+        self.assertIn('if (depth_replay_requested_) release_depth_leases();', scene_end)
+        self.assertIn('else if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);', scene_end)
+        self.assertEqual(motion_source.count('run_sun_shadow_apply();'), 2)
+        self.assertEqual(motion_source.count('sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();')
+                         + motion_source.count('sun_apply_requested_ && sun_shadow_enabled_) run_sun_shadow_apply();'), 2)
+        # The per-frame shadow line carries the state it ran under.
+        self.assertEqual(replay.count('us=%.1f shadow_toggle=%u'), 2)  # the single map and the cascades
+        self.assertEqual(replay.count('us=%.1f shadow_toggle=%u%s far_replayed='), 1)
+
     def run_host(self, fixture, functions, exposure=False, notice=False, handoff=False):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
@@ -122,7 +161,7 @@ class ComparisonHotkeys(unittest.TestCase):
         motion_source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         polling = extract_function(capture, 'void comparison_begin_frame(')
         # Ordinary launches (no HDR AgX, no ambient occlusion) return before any key or foreground query.
-        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare)return;'),
+        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested)return;'),
                         polling.index('comparison_foreground()'))
         self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
         self.assertLess(polling.index('if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();'),

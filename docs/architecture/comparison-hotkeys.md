@@ -24,7 +24,8 @@ falls back to fixed.
 Hold **Ctrl+Shift**, then press **F9** for AUTO ↔ fixed EV 0 or **F10** for bloom
 ON ↔ OFF (**F11** toggles the ambient occlusion chain when `--ambient-occlusion` is on; no
 notice, one `ambient_occlusion_toggle` log line per press, `docs/architecture/ambient-occlusion.md`
-"Step 2"). Three more keys switch one emitter gain between its configured
+"Step 2"; **F12** switches the sun shadows off and on with `--sun-shadow-apply`,
+"Sun shadows at rest" below). Three more keys switch one emitter gain between its configured
 gain and native, without recreating anything: **F4** the hull-program
 emitters (`--hull-emitters --hull-emission-gain G`, the twelve hull programs'
 ONE/ONE draws of `emitter-plan.md` phase 3, its own flag since 2026-09-17 so
@@ -65,6 +66,39 @@ Polling cannot detect an entire focus-away/back interval during which no frame
 was sampled; no window-procedure hook is added. The prior-frame chord rule also
 suppresses the ordinary held-chord return in that case, but is not a claim of
 complete unseen focus-transition detection.
+
+## Sun shadows at rest
+
+**Ctrl+Shift+F12** switches the sun shadows off and on at a frame boundary
+while `--sun-shadow-apply` is on; without that option the key is not polled at
+all and a press is ignored. It exists because no GPU timer query works on this
+backend: the only instrument for the cascades' fill and clear cost is the
+`frame_end` median with the shadows on versus off at the same spot, at rest.
+
+The press flips one boolean that the scene end tests once. Off, the scene end
+runs neither the replay transaction (no cascade map is cleared or drawn, no
+live record and no retained caster is issued) nor the apply quad, so no
+`shadow_replay_depth` and no `sun_shadow_apply_frame` line is written for that
+frame; the frame's geometry leases are retired exactly as a replayed frame
+retires them. Everything else keeps running unchanged: the sun lane, the
+caster-candidate counter and its per-frame line, caster retention's own
+bookkeeping, TAA and F8 capture. The presented image is simply the un-shadowed
+one. Nothing is created or released by a press, and there is no per-draw cost:
+the gate is one bool test at the scene end.
+
+Both edges void every retained basis, as a Reset and a refusal do, so an off
+interval can never leave a stale map for the apply quad: the first frame back
+on replays every cascade, the far one included, instead of publishing what it
+held before. A Reset inside an off interval releases the maps and no
+transaction recreates them until the toggle comes back.
+
+Each press logs `sun_shadow_toggle device= state= frame=` (state 1 on, 0 off);
+there is no notice line and no `renderer_comparison` record, as with F11. The
+per-frame `shadow_replay_depth` line carries `shadow_toggle=` (the state that
+frame replayed under), so a triage splits `frame_end` medians by state: the
+toggle events bound the intervals and every shadow line inside an on interval
+states its own state. The key follows the same edge, chord and focus rules as
+F4-F6 and F9-F11; a held key, a modifier change or a focus loss is not a press.
 
 A dark two-line top-left panel lasts three seconds. It shows AUTO/fixed effective
 EV and bloom ON/OFF only when the current frame used the relevant processing;

@@ -58,6 +58,14 @@ def parse_depth_line(line):
         raise MalformedLine(line.strip())
     tail, pairs = pairs[len(DEPTH_FIELDS):], pairs[:len(DEPTH_FIELDS)]
     row = {}
+    # The at-rest sun-shadow A/B (comparison-hotkeys.md, "Sun shadows at
+    # rest"): shadow_toggle= is the state this frame replayed under. Absent in
+    # logs written before the key existed; a frame toggled off has no line.
+    if tail and tail[0][0] == 'shadow_toggle':
+        if tail[0][1] not in ('0', '1'):
+            raise MalformedLine(line.strip())
+        row['shadow_toggle'] = int(tail[0][1])
+        tail = tail[1:]
     # Live caster retention (shadow-caster-retention.md): after the cascade
     # fields, replayed_live<i> replayed_retained<i> per cascade.
     retained = [(k, v) for k, v in tail if k.startswith('replayed_')]

@@ -181,6 +181,13 @@ void shadow_cascade_readback(Fixture& f, ShadowCascadeReadbackFn readback, unsig
                     frame, c, w, h, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9], params[10], params[11], params[12], params[16], params[17], params[15], params[18]);
     }
 }
+// The at-rest A/B (docs/architecture/comparison-hotkeys.md, "Sun shadows at
+// rest"): X3M_FIXTURE_SHADOW_TOGGLE=<off frame>,<on frame> presses the seam
+// that the production Ctrl+Shift+F12 path reaches, at the same frame boundary
+// (after the previous Present, before this frame's first draw). The frames in
+// between must show no replay at all, and the frame back on must replay every
+// cascade, the far one included.
+using ShadowToggleFn = int (*)(IDirect3DDevice9*);
 void run_shadow_replay_integration(Fixture& f) {
     require(f.seam && f.camera && f.enabled, "shadowreplay runs on the seam DLL with the route and the rotating camera");
     char setting[16]{};
@@ -195,6 +202,20 @@ void run_shadow_replay_integration(Fixture& f) {
     { char list[128]{}; const DWORD n = GetEnvironmentVariableA("X3M_SHADOW_CASCADES", list, sizeof list);
       if (n > 0 && n < sizeof list && !(n == 1 && list[0] == '0')) { cascades = 1; for (const char* c = list; *c; ++c) cascades += *c == ','; } }
     require(!cascades || cascade_readback != nullptr, "the seam DLL exports the per-cascade readback");
+    // The at-rest A/B seam: the two frames the toggle is pressed on.
+    unsigned toggle_off = shadow_frames, toggle_on = shadow_frames;
+    ShadowToggleFn toggle = nullptr;
+    { char list[32]{};
+      if (GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_TOGGLE", list, sizeof list) > 0) {
+          char* stop = nullptr;
+          const unsigned long off = std::strtoul(list, &stop, 10);
+          const unsigned long on = stop && *stop == ',' ? std::strtoul(stop + 1, nullptr, 10) : shadow_frames;
+          require(off < on && on < shadow_frames, "X3M_FIXTURE_SHADOW_TOGGLE is <off frame>,<on frame> inside the script");
+          toggle_off = unsigned(off); toggle_on = unsigned(on);
+          toggle = symbol<ShadowToggleFn>(f.runtime, "x3m_sun_shadow_fixture_toggle", false);
+          require(toggle != nullptr, "the seam DLL exports the sun-shadow A/B toggle");
+          std::printf("SHADOW_TOGGLE_SCRIPT off=%u on=%u\n", toggle_off, toggle_on);
+      } }
     // The sun-position poll seam.
     char poll_mode[16]{};
     const bool poll = GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_POLL", poll_mode, sizeof poll_mode) > 0;
@@ -290,6 +311,11 @@ void run_shadow_replay_integration(Fixture& f) {
     for (unsigned frame = 0; frame < shadow_frames; ++frame) {
         if (frame == shadow_reset_before) { f.reset(); shadow_ensure_bloom(f); }
         const bool no_sun = frame == shadow_no_sun_frame, multistream = frame == shadow_multistream_frame;
+        if (toggle && (frame == toggle_off || frame == toggle_on)) {
+            const int state = toggle(f.d.p);
+            require(state == (frame == toggle_on ? 1 : 0), "the toggle reports the state it switched to");
+            std::printf("SHADOW_TOGGLE frame=%llu state=%d\n", f.frame, state);
+        }
         if (poll_refusals) std::printf("SHADOW_POLL_REFUSAL frame=%u expect=%s\n", frame, poll_context.refuse(frame, poll_light));
         f.frame_begin();
         const float* frame_sun = no_sun ? shadow_sun_flip : shadow_sun; // the sun-changing frame: one frame of another direction
