@@ -1435,3 +1435,30 @@ about +2.1 to +2.4 µs per pass (+32 %) over the native redistributable on this
 backend; native stays. Run103's 8.90 µs was the builtin after all. The
 experiment is closed; the per-pass split stands at draw 8.8 / BeginPass 6.6 /
 engine 4.5 µs on the native path.
+
+## Run 37 sessions A1/A2 (run107/run108), 2026-09-17: FEX TSO off, wined3d CSMT off
+
+Installed run37 build `61725145…`, same busy Argon view as run105, about
+30 s each (6 and 5 busy windows matched to run105 by pass count ±15 %).
+
+| Per pass (busy) | run105 reference | A1 `FEX_TSOENABLED=0` | A2 `csmt=0x0` |
+|---|---|---|---|
+| BeginPass | 6.58 µs | 6.53 µs | 6.57 µs |
+| Draw | 8.76 µs | 8.68 µs | 17.63 µs |
+| Engine between passes | 4.45 µs | 4.45 µs | 4.39 µs |
+| EndPass | 0.112 µs | 0.110 µs | 0.119 µs |
+| Frame dt p50 | 22.2 ms | 22.8 ms | 32.5 ms |
+
+Health clean in both (orphans 0, clock errors 0, one startup `dropped`; no
+claim failures or unknown shaders; the usual GStreamer bursts and 25
+exit-time "zero area" lines). The launcher header records `fex_tso=off` /
+`wined3d=csmt=0x0`; the proxy logs only `X3M_*` variables, so in-process
+delivery is attested by the launcher line and, for A2, by the effect itself.
+
+**Verdicts.** Disabling wined3d's command-stream thread doubles the draw call
+(8.8 to 17.6 µs per pass) and adds 46 % to the frame: CSMT stays on. Relaxing
+FEX's memory ordering changes nothing measurable (every emulated bucket within
+1 %); the likely reason is that on Apple silicon FEX uses the hardware TSO
+mode, so strong ordering costs nothing to begin with and there is no lever.
+Both environment experiments are closed; the busy frame's levers are back to
+code (pass replay, which now needs an FXLC evaluator per the classification).

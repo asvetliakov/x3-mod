@@ -288,7 +288,7 @@ closed (DXVK renders black on this CrossOver Preview); what remains of the
 plan is the host prerequisites and the pass-replay wrapper, only if the 3–5 ms
 is still wanted ([ledger](../verification/sampling-profiler.md), run104/105).
 
-**Environment experiments.** Two launcher options change only the game child's
+**Environment experiments (outcome, run107/run108, 2026-09-17: FEX TSO off changes nothing within 1 %, hardware TSO on Apple silicon; wined3d CSMT off doubles the draw call and adds 46 % to the frame; both closed, CSMT stays on. Details in the profiler ledger.)** Original text: Two launcher options change only the game child's
 environment, nothing in the bottle or the application. `--fex-tso {on,off}`
 sets `FEX_TSOENABLED`; `off` relaxes FEX's emulation of x86 total store order,
 which targets the ~11 ms of emulated engine and D3DX code per busy frame (every
