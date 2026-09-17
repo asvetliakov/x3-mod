@@ -121,7 +121,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn("'_x3m_loop_phase_enter'", audit)
         # The CPU fixture arena is enlarged for the fixture build only.
         engine = (ROOT / 'src/proxy/engine_patch.cpp').read_text()
-        self.assertIn('#ifndef X3M_GAME_PHASE_FIXTURE\nconstexpr unsigned arena_size=20480;\n#else\nconstexpr unsigned arena_size=32768;\n#endif', engine)
+        self.assertIn('#ifndef X3M_GAME_PHASE_FIXTURE\nconstexpr unsigned arena_size=24576;\n#else\nconstexpr unsigned arena_size=32768;\n#endif', engine)
 
 
 class LoopPhasesLaunchOption(unittest.TestCase):

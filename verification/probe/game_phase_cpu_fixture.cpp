@@ -11,6 +11,8 @@
 #include "../../src/proxy/pass_phase_sites.h"
 #include "../../src/proxy/loop_phases.h"
 #include "../../src/proxy/loop_phase_sites.h"
+#include "../../src/proxy/residual_phases.h"
+#include "../../src/proxy/residual_phase_sites.h"
 #include "../../src/proxy/media_cue.h"
 #include "../../src/proxy/media_cue_sites.h"
 #include <cstdio>
@@ -1082,6 +1084,206 @@ static void loop_benchmark(){
     check(dispatch_ns>0&&documented>=dispatch_ns*0.5&&documented<=dispatch_ns*2.0,"documented loop dispatch cost within 2x of the measured cost");
 }
 
+// Residual phases (X3M_RESIDUAL_PHASES=1): the two exact residual spans on a
+// synthetic material-plus-view body at the pass body's frame depth: the
+// material_setup span (`mov edx,[ebx]; mov ecx,[edx+0xfc]`, EBX -> the pass
+// fixture's effect object), a gate that skips the four pass spans when
+// residual_skip_passes is set (a material whose geometry guard skipped the
+// pass loop), `push 0` and the view_particles span (`mov edx,[global];
+// add esp,4`, its disp32 relocated to a fixture global; the add esp,4 removes
+// the pushed word in the claim tail at the game's ESP). The pass group is
+// installed on the same body's pass spans and the frame group on the frame
+// body, so the residual stamps pair with the real retained clocks and the
+// frame boundary runs through frame_phases::frame as in production.
+namespace residual=x3m::residual_phases;
+namespace residual_marker=x3m::residual_phases::sites;
+static std::uint32_t residual_global=0x3333,residual_skip_passes=0;
+struct ResidualBody { void* body=nullptr;void* spans[residual_marker::Count]{};void* pass_spans[pass_marker::Count]{};unsigned length=0; };
+static ResidualBody make_residual_body(){
+    pass_effect_object[0]=std::uint32_t(address(pass_effect_vtable));
+    patch::Emitter e(128);ResidualBody r;r.body=e.here();
+    e.byte(0x53);e.byte(0x81);e.byte(0xec);e.dword(0x90); // push ebx; sub esp,0x90
+    e.byte(0xc7);e.byte(0x44);e.byte(0x24);e.byte(0x28);e.dword(std::uint32_t(address(pass_geometry))); // mov [esp+0x28],&geometry
+    e.byte(0xc7);e.byte(0x44);e.byte(0x24);e.byte(0x74);e.dword(5); // mov [esp+0x74],5
+    e.byte(0xbb);e.dword(std::uint32_t(address(pass_effect_object))); // mov ebx,&effect
+    r.spans[0]=e.here();e.bytes(residual_marker::kSites[0].expected,residual_marker::kSites[0].length);
+    e.byte(0x83);e.byte(0x3d);e.dword(std::uint32_t(address(&residual_skip_passes)));e.byte(0x00); // cmp dword [skip],0
+    unsigned pass_bytes=0;for(unsigned k=0;k<pass_marker::Count;++k)pass_bytes+=pass_marker::kSites[k].length;
+    e.byte(0x75);e.byte(static_cast<unsigned char>(pass_bytes)); // jne over the pass spans
+    for(unsigned k=0;k<pass_marker::Count;++k){r.pass_spans[k]=e.here();e.bytes(pass_marker::kSites[k].expected,pass_marker::kSites[k].length);}
+    e.byte(0x6a);e.byte(0x00); // push 0: the particles argument the span's add esp,4 removes
+    r.spans[1]=e.here();e.byte(0x8b);e.byte(0x15);e.dword(std::uint32_t(address(&residual_global)));e.byte(0x83);e.byte(0xc4);e.byte(0x04);
+    e.byte(0x81);e.byte(0xc4);e.dword(0x90);e.byte(0x5b);e.byte(0xc3); // add esp,0x90; pop ebx; ret
+    r.length=unsigned(static_cast<unsigned char*>(e.here())-static_cast<unsigned char*>(r.body));
+    if(!e.finish())r.body=nullptr;
+    return r;
+}
+// The material span is byte-exact; the view span keeps the proved opcodes and
+// only its disp32 (offset 2) is fixture-relocated.
+static bool residual_specs(const ResidualBody& r,patch::SiteSpec* specs){
+    bool okay=true;
+    for(unsigned k=0;k<residual_marker::Count;++k){
+        specs[k]=residual_marker::kSites[k];specs[k].address=address(r.spans[k]);
+        const auto* bytes=static_cast<const unsigned char*>(r.spans[k]);
+        std::memcpy(specs[k].expected,bytes,specs[k].length);
+        for(unsigned i=0;i<specs[k].length;++i){
+            if(k==residual_marker::ViewParticles&&i>=2&&i<6)continue;
+            okay=okay&&bytes[i]==residual_marker::kSites[k].expected[i];
+        }
+    }
+    check(okay,"synthetic residual spans match the proved native opcodes except the relocated view field");
+    return okay;
+}
+static void residual_pass_specs(const ResidualBody& r,patch::SiteSpec* specs){
+    for(unsigned k=0;k<pass_marker::Count;++k){specs[k]=pass_marker::kSites[k];specs[k].address=address(r.pass_spans[k]);}
+}
+static DWORD WINAPI residual_foreign_thread(LPVOID body){reinterpret_cast<void(*)()>(body)();return 0;}
+static void residual_replay_checks(){
+    ResidualBody r=make_residual_body();check(r.body!=nullptr,"synthetic residual body emitted");if(!r.body)return;
+    patch::SiteSpec specs[residual_marker::Count];if(!residual_specs(r,specs))return;
+    patch::SiteSpec pass_specs_on_body[pass_marker::Count];residual_pass_specs(r,pass_specs_on_body);
+    unsigned char original[128];std::memcpy(original,r.body,r.length);
+    Snapshot baseline{},baseline_skip{},hooked{},after{};
+    residual_skip_passes=0;invoke(r.body,baseline);
+    check(baseline.regs[7]==6&&baseline.regs[5]==0x3333,"residual body baseline reads the pass index and the view global");
+    residual_skip_passes=1;invoke(r.body,baseline_skip);residual_skip_passes=0;
+    // The frame group on the frame body supplies the view_submit_end clock and
+    // the frame boundary; the pass group on this body's pass spans the
+    // pass_end/pass_begin clocks and the pass count.
+    FrameBody f=make_frame_body();check(f.body!=nullptr,"residual frame body emitted");if(!f.body)return;
+    patch::SiteSpec frame_specs_on_body[frame_marker::Count];if(!frame_specs(f,frame_specs_on_body))return;
+    const char* status=nullptr;
+    check(frame::fixture_install(frame_specs_on_body,&status)&&status&&!std::strcmp(status,"ok"),"frame group installed for the residual checks");
+    check(pass::fixture_install(pass_specs_on_body,&status)&&status&&!std::strcmp(status,"ok"),"pass group installed on the residual body's pass spans");
+    check(residual::fixture_install(specs,&status),"residual group installed on the synthetic spans");
+    check(status&&!std::strcmp(status,"ok"),"residual install status ok");
+    check(residual::active,"residual group active after install");
+    check(std::memcmp(original,r.body,r.length)!=0,"residual spans carry the patch jumps");
+    phases::fixture_set_callback(nullptr); // the frame stamps through the real handler
+    const auto* gate=residual::fixture_gate();const auto* accumulator=residual::fixture_accumulator();
+    const auto* pass_accumulator=pass::fixture_accumulator();
+    // Before the first frame boundary no thread is admitted: early, ignored.
+    invoke(r.body,hooked);compare(baseline,hooked);
+    check(gate->early.load()==residual_marker::Count&&gate->foreign.load()==0&&accumulator->materials==0,"residual stamps before admission are early and ignored");
+    frame::present_begin();frame::present_end();frame::frame(1); // admits the frame owner and, through the frame boundary, this group and the pass group; no sample yet
+    check(residual::fixture_dropped()==1&&pass::fixture_dropped()==1,"frame boundary without a frame-phase sample is a dropped frame for both groups");
+    frame_native_calls=0;invoke(f.body,hooked);
+    check(frame_native_calls==5&&frame::shared_tracker()->submit_end!=0,"frame body stamped two views and retained the view_submit_end clock");
+    invoke(r.body,hooked);compare(baseline,hooked);
+    check(accumulator->materials==1&&accumulator->particle_views==1&&accumulator->prepare_skipped==1&&accumulator->setup_skipped==0,"first material has no pass_end to pair with; its setup is pending");
+    check(pass_accumulator->begin_armed==false&&pass_accumulator->begin_clock>=accumulator->p_clock&&pass_accumulator->end_clock>pass_accumulator->begin_clock,"pass group retained the first pass_begin and the pass_end for this group");
+    check(accumulator->ticks[2]>0&&accumulator->view_skipped==0,"particles paired with the frame's view_submit_end");
+    invoke(r.body,hooked);compare(baseline,hooked);
+    check(accumulator->materials==2&&accumulator->ticks[0]>0&&accumulator->ticks[1]>0&&accumulator->prepare_skipped==1&&accumulator->setup_skipped==0,"second material closes the first setup and pairs prepare with the last pass_end");
+    check(accumulator->view_skipped==1&&accumulator->particle_views==2,"a second view stamp against the same view_submit_end is view_skipped");
+    // A material whose pass loop is skipped: its setup never closes and the
+    // following material has no fresh pass_end.
+    residual_skip_passes=1;invoke(r.body,hooked);compare(baseline_skip,hooked);residual_skip_passes=0;
+    invoke(r.body,hooked);compare(baseline,hooked);
+    check(accumulator->materials==4&&accumulator->setup_skipped==1&&accumulator->prepare_skipped==2,"skipped pass loop leaves its setup and the next prepare unpaired");
+    check(accumulator->clock_errors==0&&accumulator->clock_failures==0&&accumulator->unmatched==0,"scripted materials have no clock or unmatched errors");
+    check(pass_accumulator->passes==3&&pass_accumulator->orphans==0,"pass group still counts every pass with no orphan");
+    LARGE_INTEGER qf{};check(QueryPerformanceFrequency(&qf)&&qf.QuadPart>0,"residual QPC frequency");
+    const std::uint64_t qpc_hz=std::uint64_t(qf.QuadPart),ticks_before[3]={accumulator->ticks[0],accumulator->ticks[1],accumulator->ticks[2]};
+    frame::present_begin();frame::present_end();frame::frame(2);
+    residual::detail::Sample s{};
+    check(residual::fixture_last_sample(&s),"closed residual sample readable by the owner thread");
+    check(s.frame==2&&s.materials==4&&s.particle_views==4&&s.passes==3&&s.views==2,"residual sample carries the frame, the counts, the pass count and the view count");
+    // Sub-microsecond intervals truncate to 0 us at a 10 MHz clock: compare the
+    // conversion, not the magnitude (setup grows at take by the pending close).
+    check(s.interval_us[0]==ticks_before[0]*1000000ull/qpc_hz&&s.interval_us[2]==ticks_before[2]*1000000ull/qpc_hz&&s.interval_us[1]>=ticks_before[1]*1000000ull/qpc_hz&&s.interval_us[2]>0,"prepare, setup and particles converted to microseconds");
+    check(accumulator->setup_skipped==1,"the frame boundary closed the last material's pending setup without skipping it");
+    check(s.prepare_per_pass_ns==s.interval_us[0]*1000/3&&s.setup_per_pass_ns==s.interval_us[1]*1000/3,"per-pass figures divide by the frame's pass count");
+    check((s.views_us>=s.view_setup_us+s.view_submit_us+s.interval_us[2]&&s.interval_us[3]==s.views_us-s.view_setup_us-s.view_submit_us-s.interval_us[2]&&accumulator->other_underflow==0)
+          ||(s.interval_us[3]==0&&accumulator->other_underflow==1),"other is views minus setup, submit and particles, or zero with the underflow counted");
+    check(s.self_us==8*residual::detail::dispatch_cost_ns/1000,"self cost is stamps x the fixture-measured dispatch cost");
+    check(accumulator->materials==0&&accumulator->p_clock==0&&pass_accumulator->begin_armed==false,"take resets the per-frame accumulation and disarms the pass capture");
+    pass::detail::Sample ps{};
+    check(pass::fixture_last_sample(&ps)&&ps.frame==2&&ps.passes==3,"the pass group's own sample closed after this group read it");
+    // A stamp from another thread is foreign, counted and ignored.
+    HANDLE thread=CreateThread(nullptr,0,&residual_foreign_thread,r.body,0,nullptr);
+    check(thread!=nullptr,"residual foreign thread started");
+    if(thread){WaitForSingleObject(thread,INFINITE);CloseHandle(thread);}
+    check(gate->foreign.load()==residual_marker::Count&&accumulator->materials==0,"foreign-thread residual stamps are counted and ignored");
+    check(residual::fixture_uninstall(),"residual group rollback restores both spans");
+    check(pass::fixture_uninstall()&&frame::fixture_uninstall(),"pass and frame groups rolled back after the residual checks");
+    check(!std::memcmp(original,r.body,r.length),"residual body byte-identical after rollback");
+    check(!residual::active,"residual group inactive after rollback");
+    phases::fixture_set_callback(&hostile_callback);
+    invoke(r.body,after);compare(baseline,after);
+    // Byte mismatch: one corrupted opcode refuses the whole group before any claim.
+    ResidualBody c=make_residual_body();check(c.body!=nullptr,"second synthetic residual body emitted");if(!c.body)return;
+    patch::SiteSpec corrupt[residual_marker::Count];if(!residual_specs(c,corrupt))return;
+    unsigned char corrupted[128];std::memcpy(corrupted,c.body,c.length);
+    corrupt[1].expected[0]^=1;
+    check(!residual::fixture_install(corrupt,&status),"residual install refused on a byte mismatch");
+    check(status&&!std::strcmp(status,"preflight_bytes"),"residual byte mismatch reported as preflight_bytes");
+    check(!std::memcmp(corrupted,c.body,c.length),"no residual span patched after the preflight refusal");
+    check(!residual::active,"residual group stays inactive after refusal");
+    residual::fixture_uninstall();
+    // Partial install: the second spec duplicates the first address, so its
+    // claim reads the fresh jump and fails; the first site is rolled back.
+    corrupt[1].expected[0]^=1;
+    patch::SiteSpec partial[residual_marker::Count];std::memcpy(partial,corrupt,sizeof partial);
+    partial[1]=partial[0];
+    check(!residual::fixture_install(partial,&status),"residual install refused on a duplicate claim");
+    check(status&&!std::strcmp(status,"bytes_mismatch"),"residual duplicate claim reported with the claim's own reason");
+    check(!std::memcmp(corrupted,c.body,c.length),"residual partial install rolled back to original bytes");
+    check(!residual::active,"residual group inactive after partial rollback");
+    residual::fixture_uninstall();
+}
+static void residual_late_window_checks(){ // after the frame checks closed the install window
+    ResidualBody r=make_residual_body();check(r.body!=nullptr,"late-window residual body emitted");if(!r.body)return;
+    patch::SiteSpec specs[residual_marker::Count];if(!residual_specs(r,specs))return;
+    unsigned char original[128];std::memcpy(original,r.body,r.length);
+    const char* status=nullptr;
+    check(!residual::fixture_install(specs,&status),"residual install refused after the install window closed");
+    check(status&&!std::strcmp(status,"install_window_closed"),"late residual install reported as install_window_closed");
+    check(!std::memcmp(original,r.body,r.length),"no residual span touched by the late refusal");
+    residual::fixture_uninstall();
+}
+// Per-dispatch cost of the lean stub on the two residual spans (the pass spans
+// run natively, unhooked): the body unhooked against hooked, best of
+// `trials`; a busy frame fires about 1,000 material stamps and a few view stamps.
+static void residual_benchmark(){
+    constexpr unsigned loops=20000,trials=7;
+    ResidualBody r=make_residual_body();check(r.body!=nullptr,"benchmark residual body emitted");if(!r.body)return;
+    LARGE_INTEGER frequency{};
+    check(QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0,"residual benchmark QPC frequency");
+    const auto body=reinterpret_cast<void(*)()>(r.body);
+    const auto timed=[&](std::uint64_t& best){
+        best=~std::uint64_t(0);
+        for(unsigned t=0;t<trials;++t){
+            LARGE_INTEGER start{},end{};
+            if(!QueryPerformanceCounter(&start))return false;
+            for(unsigned i=0;i<loops;++i)body();
+            if(!QueryPerformanceCounter(&end)||end.QuadPart<start.QuadPart)return false;
+            const auto ticks=std::uint64_t(end.QuadPart-start.QuadPart);
+            if(ticks<best)best=ticks;
+        }
+        return true;
+    };
+    std::uint64_t baseline=0,hooked=0;
+    residual_skip_passes=0;
+    check(timed(baseline),"residual benchmark baseline timed");
+    patch::SiteSpec specs[residual_marker::Count];if(!residual_specs(r,specs))return;
+    const char* status=nullptr;
+    check(residual::fixture_install(specs,&status),"residual benchmark group installed");
+    residual::frame(1,false,0,0,0,0);
+    check(timed(hooked),"residual benchmark hooked timed");
+    residual::frame(2,true,0,0,0,0);
+    residual::detail::Sample s{};
+    check(residual::fixture_last_sample(&s)&&s.materials==loops*trials&&s.particle_views==loops*trials,"hooked benchmark loop counted every material and view stamp");
+    check(residual::fixture_uninstall(),"residual benchmark group rolled back");
+    const double ns_per_tick=1e9/number(std::uint64_t(frequency.QuadPart));
+    const double baseline_ns=number(baseline)*ns_per_tick/loops,hooked_ns=number(hooked)*ns_per_tick/loops;
+    const double dispatch_ns=(hooked_ns-baseline_ns)/residual_marker::Count;
+    std::printf("RESIDUAL PHASE BENCH loops=%u trials=%u baseline_ns_per_loop=%.1f hooked_ns_per_loop=%.1f dispatch_ns=%.1f implied_busy_frame_us=%.0f documented_dispatch_ns=%llu arena_used=%u arena_capacity=%u\n",
+        loops,trials,baseline_ns,hooked_ns,dispatch_ns,dispatch_ns*1010/1000,static_cast<unsigned long long>(residual::detail::dispatch_cost_ns),patch::arena_used(),patch::arena_capacity());
+    const double documented=number(residual::detail::dispatch_cost_ns);
+    check(dispatch_ns>0&&documented>=dispatch_ns*0.5&&documented<=dispatch_ns*2.0,"documented residual dispatch cost within 2x of the measured cost");
+}
+
 // Media-cue gate (media_cue.cpp): the two-arm gate stub on a synthetic
 // allocator whose first five bytes are the proved span `push ebx;
 // mov ebx,[esp+8]`, called through emitted cdecl callers that reproduce the
@@ -1518,9 +1720,10 @@ int main(){
     targeted_benchmark(continuation,stubs);
     pass_replay_checks();pass_benchmark();
     loop_replay_checks();loop_benchmark();
+    residual_replay_checks();residual_benchmark();
     media_replay_checks();media_video_checks();media_benchmark();
     frame_replay_checks(); // closes the install window
-    pass_late_window_checks();loop_late_window_checks();media_late_window_checks();
-    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 media_cases=11 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),unsigned(media_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);
+    pass_late_window_checks();loop_late_window_checks();residual_late_window_checks();media_late_window_checks();
+    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u residual_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 residual_cases=6 media_cases=11 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),unsigned(residual_marker::Count),unsigned(media_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);
     return failures?1:0;
 }

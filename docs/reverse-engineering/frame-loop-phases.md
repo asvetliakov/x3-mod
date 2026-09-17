@@ -326,6 +326,58 @@ need an accumulate-only stub rather than the shared `game_phases` one. That
 study also splits interval 9→10 (`view_submit`) into D3DX and engine time,
 which §6 lists as unresolved here.
 
+## 5d. The residual stamp `0x0047230c` (`--residual-phases`)
+
+The ten frame stamps leave one interval of the per-view loop unattributed:
+`views − Σ view_setup − Σ view_submit` (run95 busy: 23,072 − 20,115 − setup,
+about 2 ms per frame). Its contents, in loop order from `view_submit_end`
+(`0x004722c8`): a small state reset loop (`0x004722d0`–`0x004722f5`), the
+particles/stardust pass `0x004bf4c0` at `0x00472307` (gated on `view[0x270] &
+0x4000`, `je 0x472315` skips it), the post-view fixup `0x00489bf0`
+(`0x00472358`), `0x004715d0` (`0x00472370`, gated on `& 0x1000`), the loop
+tail, and, at the head of the next iteration, the scene-end composite
+`0x004c4750` (`0x004721b1`, once per frame for the first view with
+`[esi+0x29c] > 0x11` — the proxy's scene hook lives here) and the env-map
+branch (`0x00472201`–`0x0047223d`). The particles pass and the composite are
+the two candidates for the bulk of it; `X3M_RESIDUAL_PHASES=1` separates
+them with one stamp at the particles call's return
+(`src/proxy/residual_phase_sites.h`; the material-routine twin is in
+[effect-pass-loop.md](effect-pass-loop.md) §7):
+
+```
+472301  je 0x472315                   ; no particles for this view: skips the span too
+472303  mov edx,[esi+0x1c] / push edx
+472307  call 0x4bf4c0                 ; particles
+47230c  mov edx,[0x608518]            ; <- view_particles (9 bytes, plain copy)
+472312  add esp,0x4                   ;    removes the pushed argument
+472315  mov eax,[0x606f34]            ; the je target, first instruction after the span
+```
+
+`particles` = the view's `view_submit_end` → `0x0047230c` (the tracker
+retains the `view_submit_end` clock, one store per view); everything else is
+`other = views − view_setup − view_submit − particles`, computed at the
+frame boundary from the frame sample. A view without particles fires no
+stamp and its whole remainder lands in `other`; a second stamp against the
+same `view_submit_end` cannot happen by structure and is counted as
+`view_skipped` if it does.
+
+Validation (`verification/probe/verify_residual_phase_sites.py`, `PASS`):
+bytes `8b 15 18 85 60 00 83 c4 04`, two whole instructions, a plain copy (the
+`mov` carries an absolute disp32, not a rel32; the arena tail is
+byte-identical at any address); no incoming edge (fall-through from the
+call), no branch into the interior, the raw-encoding sweep of `.text` clean,
+no data reference; the `je` at `0x00472301` lands exactly on the span end;
+every jump between `0x004722c8` and the span stays inside
+[`0x004722c8`, `0x00472315`] (`jle 0x4722f7`, `jl 0x4722e1`, `je 0x472315`),
+so the span always follows the same view's `view_submit_end` stamp. ESP: the
+displaced `add esp,4` runs in the claim tail at the game's exact ESP, the
+contract already proven for site 4's `add esp,0x10` and site 8's `push esi`.
+Flags: dead on entry (`mov`), and the `add` leaves flags that the `test` at
+`0x0047231a` overwrites. EBX (0), ESI (the view), EBP, EDI live and
+preserved by the lean stub. Disjoint from all ten frame sites and the scene
+hook (`0x004721b1`–`0x004721b5`). Rate: at most one dispatch per view (three
+or more views per frame), negligible cost.
+
 ## 6. What this does not establish
 
 - No runtime measurement. The 53 % attribution is the open question these stamps

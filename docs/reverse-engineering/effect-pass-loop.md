@@ -238,3 +238,107 @@ arithmetic above must be redone.
   remains open (one `GetModuleFileNameW` line settles it, state-filter note).
 - The steady-state pass count per sub-mesh (1 in the common case) is an
   inference from the measured draw count, not from the technique data.
+
+## 7. The residual boundary `0x004c1eab` (`--residual-phases`)
+
+2026-09-17. The pass stamps leave `view_submit − sum` (run95: 4,520 us, 4.6 us
+per draw) unattributed, and a stamp pair `pass_end(n) → pass_begin(n+1)`
+would only re-measure it. `X3M_RESIDUAL_PHASES=1` adds one stamp inside this
+routine at the boundary between the engine's per-object preparation and the
+D3DX setup of a sub-mesh, and pairs it with the clocks the pass group already
+takes (`src/proxy/residual_phase_sites.h`, `residual_phases_core.h`; the
+frame-routine twin is in [frame-loop-phases.md](frame-loop-phases.md) §5d).
+
+**The boundary.** Inside the sub-mesh loop (`0x004c0223` … `0x004c4082`)
+the steady-state path is: loop head, `ebx = sub-mesh material` (`0x004c0236`),
+the two material-initialisation guards `0x004c0c64`/`0x004c0dea`
+(§2 of the frame-loop note; the initialisation block between them runs once
+per material and ends with `SetTechnique`/`FindNextValidTechnique`), then
+`0x004c1eab`:
+
+```
+4c1eab  mov edx,[ebx]                 ; ebx = ID3DXEffect        <- material_setup
+4c1ead  mov ecx,[edx+0xfc]            ; slot 63 Begin
+4c1eb3  push 1                        ; D3DXFX_DONOTSAVESTATE
+4c1eb5  lea eax,[esp+0x88]            ; = E+0x84, the pass-count slot (one push deep)
+4c1ebc  push eax / push ebx
+4c1ebe  call ecx                      ; Begin(effect, &passes, 1)
+4c1ec0  ... 0x2130 bytes of parameter setters, the two engine RS writes,
+        the geometry guard (0x4c3fcb..0x4c3fd8), then the pass loop 0x4c3ff0
+```
+
+A call histogram by region (objdump on the routine, this session): between
+`Begin`'s return `0x004c1ec0` and the pass loop head, 135 calls — 70
+register-indirect dispatches (`call edx` 44, `call eax` 15, `call ecx` 11:
+the SetInt/SetVector/SetBool/SetFloat/SetMatrix/GetBool/ApplyParameterBlock
+callsites the frame-loop note classifies by displacement), the cached
+texture setter `0x004b9ed0` 22 times, and helpers; between the second guard
+`0x004c0dea` and the span, 153 calls dominated by the by-name setters
+`0x004b8f70` (31) and `0x004b9010` (21) — the initialisation block the
+guards skip in steady state; before the first guard (`0x004c0223` …
+`0x004c0c6d`), 28 calls, among them the six effect-cache lookups `0x004bb0f0`
+and six `call eax`/`call edx` dispatches. Those six are **not** an
+initialisation block: every non-exit path of the sub-mesh loop joins at
+`0x004c0b85` and runs, per sub-mesh, the three engine-wrapper binds
+(`0x004c0ba9`, `0x004c0bc0`, `0x004c0be5`, each followed by an exit test),
+then `GetTechniqueByName` (`0x004c0bfa`, vtable `+0x34`, slot 13),
+`FindNextValidTechnique` only on a name miss (`0x004c0c19`, `+0xf4`, slot
+61) and `SetTechnique` (`0x004c0c34`, `+0xe8`, slot 58) before the first
+guard at `0x004c0c64`. The slot names are inferred from the `ID3DXEffect`
+vtable order of `d3dx9effect.h` (consistent with `Begin` = slot 63 at
+`+0xfc` and `BeginPass` = slot 64 at `+0x100`). So `prepare` contains, per
+draw, one D3DX technique lookup by name plus `SetTechnique` (and `End`),
+never the per-draw parameter-setter traffic, which starts at `0x004c1eab`.
+The design note's two candidates (`0x004c0223` loop head, `0x004c1ec0`
+Begin returned) differ from this boundary only by the guards (engine side)
+and by `Begin` itself (D3DX side, one call), and a stamp here needs no
+second stamp because it pairs with the pass group's clocks.
+
+**What the two intervals contain.** `prepare` = last `pass_end` →
+`0x004c1eab`: the pass loop's tail, `End` (`0x004c4066`), the SEH unlink and
+`ret`, the caller `0x004c4fc0`'s remainder, the queue walk `0x0047e6e0` or the
+traversal step of `0x0047d9c0` (cull `0x004f66e0`, world matrix `0x004bdee0`),
+the next node's `0x004c4fc0` entry, this routine's prologue (SEH record,
+`sub esp,0x4c8`, `SetSoftwareVertexProcessing`), the sub-mesh head, the
+three engine-wrapper binds, `GetTechniqueByName`, `SetTechnique` and the two
+guards — engine work, plus `End`, the technique lookup and `SetTechnique`
+(D3DX, per draw).
+`setup` = `0x004c1eab` → the first `pass_begin`: `Begin`, the parameter
+setters, the two RS writes, the geometry guard — D3DX work plus a few engine
+instructions. For a sub-mesh whose geometry guard skips the pass loop, no
+`pass_begin` follows and the accumulator counts `setup_skipped`; the next
+material's `prepare` then has no fresh `pass_end` and counts
+`prepare_skipped` (as does the first material of every frame).
+
+**Site validation** (`verification/probe/verify_residual_phase_sites.py`,
+`PASS` against the bottle EXE, the same contract as §3):
+
+- Bytes `8b 13 8b 8a fc 00 00 00`, two whole instructions, a plain copy (no
+  relative control transfer; byte-identical at any arena address).
+- Incoming edges: exactly four, all landing on the span start:
+  `jne 0x004c1eab` at `0x004c0c67` and `0x004c0ded` (the two guards),
+  `jmp 0x004c1eab` at `0x004c0de5` (the initialisation path's exit) and
+  `je 0x004c1eab` at `0x004c1e23` (its parameter-loop skip). No branch in the
+  routine targets the span interior; the raw-encoding sweep of `.text` finds
+  none; no data reference outside `.rsrc`.
+- ESP: the span is at the frame base E. `lea eax,[esp+0x88]` after one push
+  writes `E+0x84`, the same slot the pass loop reads at frame depth
+  (`0x004c3fde`, `0x004c4050`), and every callee between the guards and the
+  span restores ESP (the loop reads `E+0xa0` at `0x004c0223` and
+  `0x004c406b`). The displaced instructions run in the claim tail at the
+  game's exact ESP; the lean stub restores every register and the flags.
+- Flags: dead on entry (the guards' `cmp` results are consumed by the `jne`s
+  that land here; the next consumer is the `test` at `0x004c1ec3`, after
+  `Begin`). EBX (effect), EDI (`[esp+0x28]`, loaded at `0x004c1ea7`), ESI,
+  EBP live across the span and preserved by the stub.
+- Disjoint from the four pass spans, the point-light patch
+  (`0x004c27af`–`0x004c27b5`) and every installed game/frame site; `Begin`
+  follows the span directly (`0x004c1eb3` is the next instruction) and the
+  span precedes the pass loop.
+
+**Rate and cost.** One dispatch per sub-mesh, i.e. per material draw in the
+common single-pass case (~1,000 per busy frame), through the same lean stub
+as the pass stamps (91 ns documented; the fixture measures the residual stub
+separately, `RESIDUAL PHASE BENCH`). The pass handler gains one predicted
+branch at `pass_begin` and one store at `pass_end` for the retained clocks;
+the fixture's `PASS PHASE BENCH` is the check that this stays within noise.

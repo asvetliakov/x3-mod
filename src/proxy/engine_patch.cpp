@@ -7,13 +7,15 @@ namespace {
 // Fixed process-lifetime capacity: the combined 33-site phase and existing
 // chase/lead/aim diagnostic set needs 8,580 bytes, including native tails;
 // with every optional group on the modelled use is stated in
-// verification/analysis/test_game_phase_sites.py (16,076 of 20,480 with the
-// media-cue gate; the page was added when that gate's 324 bytes left less
-// headroom than the largest single reservation). The CPU fixture installs
-// and rolls back every group several times (the arena is never freed), so
-// its build alone gets a larger arena; the stub and tail shapes are unchanged.
+// verification/analysis/test_game_phase_sites.py (16,380 of 24,576 with the
+// media-cue gate and the two residual stamps; a page was added for the gate
+// when its 324 bytes left less headroom than the largest single reservation,
+// and another for the residual group so a further six-site lean group and a
+// second gate still fit). The CPU fixture installs and rolls back every group
+// several times (the arena is never freed), so its build alone gets a larger
+// arena; the stub and tail shapes are unchanged.
 #ifndef X3M_GAME_PHASE_FIXTURE
-constexpr unsigned arena_size=20480;
+constexpr unsigned arena_size=24576;
 #else
 constexpr unsigned arena_size=32768;
 #endif
