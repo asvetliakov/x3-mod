@@ -287,3 +287,94 @@ empty view; draw and EndPass unchanged. The native redistributable stays and
 closed (DXVK renders black on this CrossOver Preview); what remains of the
 plan is the host prerequisites and the pass-replay wrapper, only if the 3–5 ms
 is still wanted ([ledger](../verification/sampling-profiler.md), run104/105).
+
+## Prerequisite 1: state classification
+
+2026-09-17, host only (no Wine, no game, no build).
+`tools/analysis/effect_passes.py` now classifies every state assignment D3DX
+applies for a pass, not only the two shader states:
+
+```sh
+python3 tools/analysis/effect_passes.py \
+  "$HOME/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3" \
+  --classification verification/results/effect-pass-classification.json
+python3 tools/analysis/effect_passes.py <game> \
+  --pass shader/1_1/adeffects.fb:DEFAULT:P0        # per-state detail printer
+```
+
+Source: the bottle's own numbered `*.cat`/`*.dat` archives, read in memory as
+before (a virtual path present in several catalogues is taken from the last
+one, i.e. what the game loads). No archive bytes enter the repository; the
+summary holds counts, names and effect digests only (16 KB).
+
+**Method.** The container walk now keeps the parameters, the full four-dword
+state records and both resource scopes. A state's value source is the resource
+record for its `(technique, pass, element, state)` key: absent = a literal in
+the container; `usage 0` = the compiled program on a shader state and an FXLC
+preshader (expression) on any other; `usage 1` = a parameter reference, whose
+payload is the parameter name; `usage 2` = an array selector. Passes carry no
+sampler or texture states at all in this game's effects: every one comes from a
+sampler parameter whose value is its own state list, and D3DX applies that list
+inside `BeginPass` for each sampler register the pass's programs declare, so
+the tool attributes a sampler block to a pass through the programs' CTAB
+sampler names. The D3DX state table is reconstructed from its own order and
+pinned by six anchors (`Lighting` 48, `SeparateAlphaBlendEnable` 99,
+`VertexShader` 146, `PixelShader` 147, `Texture` 164, `MaxAnisotropy` 174); all
+98,636 resource records of the archive land on a state the walk produced, and
+no operation outside the table occurs.
+
+**Totals** (2,352 effect files, 1,708 distinct containers, 4,528 passes):
+**204,416 state assignments, of which 75,984 (37.2 %)
+are constant** and 128,432 (62.8 %) parameter-driven. By class:
+
+| class | constant | parameter-driven |
+| --- | --- | --- |
+| render state | 21,828 | 42,440 |
+| sampler state | 45,100 | 69,096 |
+| texture binding | 0 | 16,896 |
+| shader binding | 9,056 | 0 |
+| other / unknown | 0 | 0 |
+
+By value source: 111,536 expressions (54.6 % of all assignments), 66,928
+literals, 16,896 parameter references, 8,984 shader blobs, 72 NULL shaders.
+Per pass the mean is 45.1 assignments (16.8 constant), 3.7 sampler blocks:
+14.2 render states, 25.2 sampler states, 3.7 texture bindings, 2.0 shaders —
+the same shape as run91's measured 19 / 32 / 4.5 / 2 per draw, whose mix is the
+busy view's rather than the archive average. **Only 208 of 4,528 passes
+(4.6 %) contain no expression and no array selector**; the rest need FXLC
+evaluation for at least one state. The archive holds six shader-model trees
+(`1_1`, `1_4`, `2_0`, `2_a`, `2_b`, `3_0`) × four hue/light variants; one
+session loads one tree, ~188 passes of it, 22 effects.
+
+Top ten passes by parameter-driven count (duplicates across the variant trees
+collapsed; all ten are `2_0` XT material effects):
+
+| passes | parameter-driven / states |
+| --- | --- |
+| `xt_standard_lighting.fb` BUMPMAP/P0, BUMPMAP_LOW/P0 | 59 / 91 |
+| `xt_standard_lighting2s.fb` BUMPMAP/P0, BUMPMAP_LOW/P0 | 59 / 91 |
+| `xt_standard_lighting_damage.fb` BUMPMAP/P0, BUMPMAP_LOW/P0 | 59 / 91 |
+| `xt_standard_lighting_damage2s.fb` BUMPMAP/P0, BUMPMAP_LOW/P0 | 59 / 91 |
+| `xt_terraformer.fb` BUMPMAP/P0, BUMPMAP_LOW/P0 | 59 / 91 |
+
+**What this decides for option A.** The literal-versus-parameter split the
+option A estimate assumed does not hold: a majority of the states the engine's
+material effects assign are compiled expressions over the `g_*` and `t_*`
+parameters (`ZEnable`, `CullMode`, the whole blend group, `AddressU/V`,
+`MaxAnisotropy`), not literals. Replaying only the constant assignments covers
+37 % of the work and, per § "The parameter problem", cannot be combined with a
+D3DX apply for the rest. Full pass replay therefore needs an FXLC preshader
+evaluator (a small stack machine over the wrapper's parameter store,
+re-evaluated per draw for the dirty parameters) as a third prerequisite, or it
+is restricted to the 4.6 % of passes that carry none — which the run91 material
+mix is not in. Sizing the evaluator (opcode inventory and expression length
+over the same containers) is the next host-side step and is cheap; the
+measured 3–5 ms estimate above stands only if it succeeds.
+
+**Limits.** The classification is static: it is what the container says D3DX
+will apply, not a recording of what the loaded `d3dx9_37` emits (option A's
+recording manager remains the self-check). A sampler declared by both the
+vertex and the pixel program is counted once, where D3DX would apply its block
+per stage; no pass in the archive declares a vertex-stage sampler (checked),
+so the case does not arise here. Synthetic
+coverage for each class is in `verification/analysis/test_effect_passes.py`.

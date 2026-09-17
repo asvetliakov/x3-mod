@@ -1,0 +1,800 @@
+{
+ "schema": 1,
+ "scope": "Per-pass classification of the state assignments D3DX applies for the installed compiled effects: counts, names and hashes only; no state values, parameter values or shader words.",
+ "effect_count": 2352,
+ "distinct_effect_count": 1708,
+ "pass_count": 4528,
+ "replayable_pass_count": 208,
+ "totals": {
+  "states": 204416,
+  "constant": 75984,
+  "parameter_driven": 128432,
+  "constant_fraction": 0.3717,
+  "samplers": 16896,
+  "counts": {
+   "render_const": 21828,
+   "render_param": 42440,
+   "sampler_const": 45100,
+   "sampler_param": 69096,
+   "texture_const": 0,
+   "texture_param": 16896,
+   "shader": 9056,
+   "other_const": 0,
+   "other_param": 0,
+   "unknown": 0
+  },
+  "kinds": {
+   "expression": 111536,
+   "literal": 66928,
+   "null_shader": 72,
+   "parameter": 16896,
+   "shader_blob": 8984,
+   "unresolved_sampler": 0
+  }
+ },
+ "per_pass_mean": {
+  "states": 45.145,
+  "constant": 16.781,
+  "samplers": 3.731
+ },
+ "pass_signatures": [
+  {
+   "counts": {
+    "render_const": 0,
+    "render_param": 11,
+    "sampler_const": 1,
+    "sampler_param": 6,
+    "texture_const": 0,
+    "texture_param": 1,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 384
+  },
+  {
+   "counts": {
+    "render_const": 9,
+    "render_param": 0,
+    "sampler_const": 1,
+    "sampler_param": 6,
+    "texture_const": 0,
+    "texture_param": 1,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 256
+  },
+  {
+   "counts": {
+    "render_const": 10,
+    "render_param": 9,
+    "sampler_const": 4,
+    "sampler_param": 3,
+    "texture_const": 0,
+    "texture_param": 1,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 224
+  },
+  {
+   "counts": {
+    "render_const": 0,
+    "render_param": 11,
+    "sampler_const": 20,
+    "sampler_param": 19,
+    "texture_const": 0,
+    "texture_param": 6,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 224
+  },
+  {
+   "counts": {
+    "render_const": 6,
+    "render_param": 13,
+    "sampler_const": 22,
+    "sampler_param": 18,
+    "texture_const": 0,
+    "texture_param": 6,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 200
+  },
+  {
+   "counts": {
+    "render_const": 0,
+    "render_param": 11,
+    "sampler_const": 9,
+    "sampler_param": 25,
+    "texture_const": 0,
+    "texture_param": 5,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 176
+  },
+  {
+   "counts": {
+    "render_const": 0,
+    "render_param": 11,
+    "sampler_const": 8,
+    "sampler_param": 19,
+    "texture_const": 0,
+    "texture_param": 4,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 160
+  },
+  {
+   "counts": {
+    "render_const": 6,
+    "render_param": 13,
+    "sampler_const": 4,
+    "sampler_param": 24,
+    "texture_const": 0,
+    "texture_param": 4,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 144
+  },
+  {
+   "counts": {
+    "render_const": 0,
+    "render_param": 11,
+    "sampler_const": 27,
+    "sampler_param": 25,
+    "texture_const": 0,
+    "texture_param": 8,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 144
+  },
+  {
+   "counts": {
+    "render_const": 6,
+    "render_param": 13,
+    "sampler_const": 10,
+    "sampler_param": 18,
+    "texture_const": 0,
+    "texture_param": 4,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 144
+  },
+  {
+   "counts": {
+    "render_const": 6,
+    "render_param": 13,
+    "sampler_const": 11,
+    "sampler_param": 24,
+    "texture_const": 0,
+    "texture_param": 5,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 144
+  },
+  {
+   "counts": {
+    "render_const": 0,
+    "render_param": 11,
+    "sampler_const": 4,
+    "sampler_param": 24,
+    "texture_const": 0,
+    "texture_param": 4,
+    "shader": 2,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   },
+   "passes": 136
+  }
+ ],
+ "top_parameter_driven": [
+  {
+   "path": "shader/2_0/hue_lights_off/xt_standard_lighting.fb",
+   "technique": "BUMPMAP",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_standard_lighting.fb",
+   "technique": "BUMPMAP_LOW",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_standard_lighting2s.fb",
+   "technique": "BUMPMAP",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_standard_lighting2s.fb",
+   "technique": "BUMPMAP_LOW",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_standard_lighting_damage.fb",
+   "technique": "BUMPMAP",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_standard_lighting_damage.fb",
+   "technique": "BUMPMAP_LOW",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_standard_lighting_damage2s.fb",
+   "technique": "BUMPMAP",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_standard_lighting_damage2s.fb",
+   "technique": "BUMPMAP_LOW",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_terraformer.fb",
+   "technique": "BUMPMAP",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  },
+  {
+   "path": "shader/2_0/hue_lights_off/xt_terraformer.fb",
+   "technique": "BUMPMAP_LOW",
+   "pass": "P0",
+   "parameter_driven": 59,
+   "states": 91
+  }
+ ],
+ "directories": [
+  {
+   "directory": "shader/1_1",
+   "effects": 98,
+   "passes": 188,
+   "states": 6807,
+   "constant": 1900,
+   "parameter_driven": 4907,
+   "constant_fraction": 0.2791,
+   "counts": {
+    "render_const": 896,
+    "render_param": 1773,
+    "sampler_const": 628,
+    "sampler_param": 2662,
+    "texture_const": 0,
+    "texture_param": 472,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/1_1/hue_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 6807,
+   "constant": 1900,
+   "parameter_driven": 4907,
+   "constant_fraction": 0.2791,
+   "counts": {
+    "render_const": 896,
+    "render_param": 1773,
+    "sampler_const": 628,
+    "sampler_param": 2662,
+    "texture_const": 0,
+    "texture_param": 472,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/1_1/hueshift_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 6807,
+   "constant": 1900,
+   "parameter_driven": 4907,
+   "constant_fraction": 0.2791,
+   "counts": {
+    "render_const": 896,
+    "render_param": 1773,
+    "sampler_const": 628,
+    "sampler_param": 2662,
+    "texture_const": 0,
+    "texture_param": 472,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/1_1/v_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 6807,
+   "constant": 1900,
+   "parameter_driven": 4907,
+   "constant_fraction": 0.2791,
+   "counts": {
+    "render_const": 896,
+    "render_param": 1773,
+    "sampler_const": 628,
+    "sampler_param": 2662,
+    "texture_const": 0,
+    "texture_param": 472,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/1_4",
+   "effects": 98,
+   "passes": 188,
+   "states": 8784,
+   "constant": 3502,
+   "parameter_driven": 5282,
+   "constant_fraction": 0.3987,
+   "counts": {
+    "render_const": 896,
+    "render_param": 1773,
+    "sampler_const": 2230,
+    "sampler_param": 2764,
+    "texture_const": 0,
+    "texture_param": 745,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/1_4/hue_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 8784,
+   "constant": 3502,
+   "parameter_driven": 5282,
+   "constant_fraction": 0.3987,
+   "counts": {
+    "render_const": 896,
+    "render_param": 1773,
+    "sampler_const": 2230,
+    "sampler_param": 2764,
+    "texture_const": 0,
+    "texture_param": 745,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/1_4/hueshift_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 8784,
+   "constant": 3502,
+   "parameter_driven": 5282,
+   "constant_fraction": 0.3987,
+   "counts": {
+    "render_const": 896,
+    "render_param": 1773,
+    "sampler_const": 2230,
+    "sampler_param": 2764,
+    "texture_const": 0,
+    "texture_param": 745,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/1_4/v_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 8784,
+   "constant": 3502,
+   "parameter_driven": 5282,
+   "constant_fraction": 0.3987,
+   "counts": {
+    "render_const": 896,
+    "render_param": 1773,
+    "sampler_const": 2230,
+    "sampler_param": 2764,
+    "texture_const": 0,
+    "texture_param": 745,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_0",
+   "effects": 98,
+   "passes": 188,
+   "states": 9827,
+   "constant": 4211,
+   "parameter_driven": 5616,
+   "constant_fraction": 0.4285,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 2923,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 888,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_0/hue_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 9827,
+   "constant": 4211,
+   "parameter_driven": 5616,
+   "constant_fraction": 0.4285,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 2923,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 888,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_0/hueshift_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 9827,
+   "constant": 4211,
+   "parameter_driven": 5616,
+   "constant_fraction": 0.4285,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 2923,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 888,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_0/v_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 9827,
+   "constant": 4211,
+   "parameter_driven": 5616,
+   "constant_fraction": 0.4285,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 2923,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 888,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_a",
+   "effects": 98,
+   "passes": 188,
+   "states": 9827,
+   "constant": 4211,
+   "parameter_driven": 5616,
+   "constant_fraction": 0.4285,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 2923,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 888,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_a/hue_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 9827,
+   "constant": 4211,
+   "parameter_driven": 5616,
+   "constant_fraction": 0.4285,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 2923,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 888,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_a/hueshift_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 9827,
+   "constant": 4211,
+   "parameter_driven": 5616,
+   "constant_fraction": 0.4285,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 2923,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 888,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_a/v_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 9827,
+   "constant": 4211,
+   "parameter_driven": 5616,
+   "constant_fraction": 0.4285,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 2923,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 888,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_b",
+   "effects": 98,
+   "passes": 188,
+   "states": 7902,
+   "constant": 2561,
+   "parameter_driven": 5341,
+   "constant_fraction": 0.3241,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 1273,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 613,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_b/hue_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 7902,
+   "constant": 2561,
+   "parameter_driven": 5341,
+   "constant_fraction": 0.3241,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 1273,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 613,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_b/hueshift_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 7902,
+   "constant": 2561,
+   "parameter_driven": 5341,
+   "constant_fraction": 0.3241,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 1273,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 613,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/2_b/v_lights_off",
+   "effects": 98,
+   "passes": 188,
+   "states": 7902,
+   "constant": 2561,
+   "parameter_driven": 5341,
+   "constant_fraction": 0.3241,
+   "counts": {
+    "render_const": 912,
+    "render_param": 1766,
+    "sampler_const": 1273,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 613,
+    "shader": 376,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/3_0",
+   "effects": 98,
+   "passes": 192,
+   "states": 7957,
+   "constant": 2611,
+   "parameter_driven": 5346,
+   "constant_fraction": 0.3281,
+   "counts": {
+    "render_const": 929,
+    "render_param": 1766,
+    "sampler_const": 1298,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 618,
+    "shader": 384,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/3_0/hue_lights_off",
+   "effects": 98,
+   "passes": 192,
+   "states": 7957,
+   "constant": 2611,
+   "parameter_driven": 5346,
+   "constant_fraction": 0.3281,
+   "counts": {
+    "render_const": 929,
+    "render_param": 1766,
+    "sampler_const": 1298,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 618,
+    "shader": 384,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/3_0/hueshift_off",
+   "effects": 98,
+   "passes": 192,
+   "states": 7957,
+   "constant": 2611,
+   "parameter_driven": 5346,
+   "constant_fraction": 0.3281,
+   "counts": {
+    "render_const": 929,
+    "render_param": 1766,
+    "sampler_const": 1298,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 618,
+    "shader": 384,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  },
+  {
+   "directory": "shader/3_0/v_lights_off",
+   "effects": 98,
+   "passes": 192,
+   "states": 7957,
+   "constant": 2611,
+   "parameter_driven": 5346,
+   "constant_fraction": 0.3281,
+   "counts": {
+    "render_const": 929,
+    "render_param": 1766,
+    "sampler_const": 1298,
+    "sampler_param": 2962,
+    "texture_const": 0,
+    "texture_param": 618,
+    "shader": 384,
+    "other_const": 0,
+    "other_param": 0,
+    "unknown": 0
+   }
+  }
+ ]
+}
