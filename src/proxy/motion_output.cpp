@@ -6376,7 +6376,14 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         renderer::SunShadowApplyFrame in{};
         in.depth_share = depth; in.map = depth_replay_->map_texture(); in.target = rt0;
         in.width = target_width_; in.height = target_height_;
-        in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11; in.params.m20 = camera_scene_.m20; in.params.m21 = camera_scene_.m21;
+        // RT2 is on the jittered raster (jitter_rows adds jitter_ in pixels to
+        // the routed rows' clip x/y, +2 jx / width and -2 jy / height in NDC), so
+        // the quad's NDC -> view law subtracts the same offset through m20/m21;
+        // the engine's own projection latch carries none (camera_state p20/p21 = 0).
+        const float jitter_x = in.width ? 2.f * jitter_[0] / float(in.width) : 0.f;
+        const float jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
+        in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11;
+        in.params.m20 = camera_scene_.m20 + jitter_x; in.params.m21 = camera_scene_.m21 + jitter_y;
         in.params.m22 = ao_default_m22; in.params.m32 = ao_default_m32;
         const float* rows = depth_replay_->view_rows();
         for (unsigned i = 0; i < 12; ++i) in.params.rows[i] = rows[i];
@@ -6392,6 +6399,21 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         if (out.skipped) skip = out.skipped_reason;
         else if (FAILED(hr)) skip = "failed";
         sun_apply_applied_ = SUCCEEDED(hr) && out.applied;
+        // Capture frames: the quad's exact inputs (c0-c6 of sun_shadow_apply_ps.hlsl)
+        // beside the RT2, map and HDR dumps, so the CPU twin
+        // (verification/probe/sun_shadow_apply.py, frame_params) reproduces the
+        // pass on the run's data without guessing the projection or the jitter.
+        if (capture_ && !skip) {
+            const auto& q = in.params;
+            log("sun_shadow_apply_params device=%llu frame=%llu m00=%.9g m11=%.9g jitter_x=%.6f jitter_y=%.6f m20=%.9g m21=%.9g m22=%.9g m32=%.9g"
+                " texel=%.9g bias=%.9g bias_max=%.9g planar_step=%.9g exponent=%.6f jitter_index=%u map=%u width=%u height=%u"
+                " rows=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
+                id_, frame_, double(q.m00), double(q.m11), double(jitter_[0]), double(jitter_[1]), double(q.m20), double(q.m21), double(q.m22), double(q.m32),
+                out.map_size ? 1. / double(out.map_size) : 0., double(q.bias_constant), double(q.bias_max), double(q.planar_step), double(q.exponent),
+                q.jitter_index, out.map_size, in.width, in.height,
+                double(q.rows[0]), double(q.rows[1]), double(q.rows[2]), double(q.rows[3]), double(q.rows[4]), double(q.rows[5]),
+                double(q.rows[6]), double(q.rows[7]), double(q.rows[8]), double(q.rows[9]), double(q.rows[10]), double(q.rows[11]));
+        }
     }
     release(depth); release(rt0);
     log("sun_shadow_apply_frame device=%llu frame=%llu applied=%u skip_reason=%s exponent=%.6f us=%.1f map=%u result=%08lx restore=%08lx stage=%u",

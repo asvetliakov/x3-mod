@@ -159,6 +159,18 @@ route. The quad runs only when, in the same frame, `sun_shadow_lane_frame availa
 `shadow_replay_depth replayed>0`, the owner is valid and HDR is active; any missing input
 skips the quad, leaving the frame byte-identical.
 
+**Run106 (first apply in game) finding.** The quad, the rows and the map agree to the
+map's quantization and the HDR carries the twin's factor
+([directional-shadows.md](../verification/directional-shadows.md), "Run 36 session B"); what
+the design produces on the own ship is a short shadow behind each low protrusion, because
+the visible receivers are the top hull, the sun in the run's views sat 31° off the view
+axis ahead of the camera at 27° elevation, and a hull hump a few units tall casts a shadow
+a few units long. The pass is not to be judged on a backlit view; the acceptance capture
+needs the ship side-lit (sun 60–120° off the view axis), where the wing and fuselage
+shadows span tens of units. The quad's NDC → view law now subtracts the route's raster
+jitter through `m20/m21` (the latch carries none); capture frames log the pass inputs
+(`sun_shadow_apply_params`) so the CPU twin runs on the run's data without assumptions.
+
 **Known limitation.** Colour-only draws over a receiver (blended effects, no depth write)
 never veto the lane and are multiplied by the receiver's factor at scene end, because the
 quad runs on the composed RT0 after them. Accepted for the first look; judged on the run 36

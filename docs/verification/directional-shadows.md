@@ -795,3 +795,76 @@ frame's own projection terms, which the camera latch does not carry (note, unkno
 live fixture's perspective rows use the same mapping. `shadow_.cutout_pair` is evaluated
 and the `cutout_opaque_*` counting runs only with the lane or linear materials requested.
 
+
+## Run 36 session B (run106): first apply in game (2026-09-17)
+
+Run 36 B (`/tmp/x3-bottleX3-run106`, proxy `51a3d764…` from c9a8145, original shading,
+`--sun-shadow-lane --shadow-replay-depth --sun-shadow-apply`): 24,700 frames
+`sun_shadow_apply_frame applied=1 exponent=1`, 32 F8 frames with RT2, map and post-apply HDR
+dumps (`hdr_readback` follows `sun_shadow_apply_frame` in the log, the RT2 dump follows the
+UI draws, which route nothing: `motion_route` stops at draw 159 of 187). The user saw no
+shadow; the first offline analysis reported `sun.z − map` with std 0.10 and a shadowed
+fraction swinging 74 % → 28 % with the bias.
+
+**Diagnosis (frames 8979 and 18265; `python3 verification/probe/sun_shadow_apply.py --log …
+--capture /tmp/x3-bottleX3-run106 --frame N`, the fixture's CPU twin on the run's data):**
+
+- The projection matches. `camera_state` gives `p00=0.8 p11=1.333333 p20=p21=0` on every
+  capture frame (the engine's projection carries no jitter; the route jitters the rows
+  itself: `jitter_x=-0.25 jitter_y=0.166667` px on 8979, `-0.4375/0.388889` on 18265).
+  Receiver minus nearest map texel on the 15,198 / 17,678 valid pixels: p25/p50/p75 =
+  −0.0002 / +0.0004 / +0.0013 (8979) and −0.0008 / −0.0004 / +0.0003 (18265), i.e. within
+  ±1 unit for half the pixels; p95 +0.019 / +0.017 (self-occluded pixels 17–19 units behind
+  their caster); p5 −0.46 / −0.45. The std 0.10 was that last 5–6 %: receivers whose map
+  texel is empty (1.0), the silhouette fringe of a 0.75 %-occupied map — lit by the compare,
+  not scatter. Std over the map-covered pixels is 0.0069 / 0.0061.
+- Geometry: light-travel direction against the camera forward is 148.7° / 150.3° (the sun
+  31° off the view axis ahead of the camera, elevation 27°), the cascade centre 128 units
+  ahead as designed. Self-shadows are therefore short strips behind low protrusions on
+  the top hull (cockpit hump, engine block, fin roots) plus one-texel silhouette fringes.
+  The twin's factor image (ASCII mask in the CLI output; PNG scratch) shows exactly that: the
+  hull is factor 1 almost everywhere, `factor < 0.7` on 19 % / 13 % of valid pixels, in
+  strips 1–3 px wide; mean factor 0.854 / 0.904.
+- The quad did apply. Shadowed pixels (`f ≤ 3/9`, unambiguous) against same-surface lit
+  neighbours within 4 px (|Δz| < 1 %, |Δs| < 0.05): HDR luminance ratio p25/p50/p75 =
+  0.32 / 0.46 / 0.71 versus the twin's predicted factor 0.36 / 0.44 / 0.65 on 133 pairs
+  (8979), 0.17 / 0.37 / 0.70 versus 0.21 / 0.35 / 0.51 on 244 pairs (18265); binned by
+  predicted factor, [0, .35) → 0.21 / 0.26, [.35, .55) → 0.46 / 0.43, [.55, .8) → 0.69 / 0.72.
+  Lit–lit control pairs (7,522 / 11,238): 0.98. The GPU multiplied by the twin's factor.
+- The first analysis's swing came from a nearest-texel hard compare without the PCF and
+  receiver-plane term, over a region that included the station behind the ship.
+
+**Verdict.** No single defect: the pass, the rows and the map agree to the map's
+quantization, and the HDR carries the predicted darkening. The visible result is small
+because the captured views are backlit at 31° with a low-relief hull; the "no shadow"
+impression is the geometry, not the pass. One plumbing input was wrong and is fixed:
+`run_sun_shadow_apply` passed the camera latch's `m20/m21` (0), ignoring the route's
+raster jitter; it now adds `+2 jx / width`, `−2 jy / height` (the `jitter_rows` convention),
+as the design's "NDC from the quad UV minus the frame's jitter". Measured effect on the twin:
+`f < 0.9` 0.450 → 0.462 (8979), 0.316 → 0.312 (18265); the run106 quad was wrong by up to
+0.44 px, below the shadow-edge scale. Bias: constant 0.001 (1 unit) and clamp 0.01 keep
+the hull acne-free; with constant 0 the twin shadows 86 % / 52 % of the ship (acne on the
+covered hull), so the defaults stay.
+
+**Diagnostic added.** On capture frames `run_sun_shadow_apply` logs
+`sun_shadow_apply_params device= frame= m00= m11= jitter_x= jitter_y= m20= m21= m22= m32=
+texel= bias= bias_max= planar_step= exponent= jitter_index= map= width= height= rows=<12>`
+once per frame after a successful quad (c0–c6 of `sun_shadow_apply_ps.hlsl` exactly).
+`sun_shadow_apply.py` gained `parse_apply_params`, `reconstruct_params` (the run106 path from
+`camera_state`, `motion_output_frame` and `shadow_replay_map_basis`), `frame_params` (prefers
+the line), `load_capture`, `frame_report` (residual percentiles, factor statistics, the
+neighbour-pair darkening test with its control, ASCII mask) and a CLI (`--log --capture
+--frame [--region y0,y1,x0,x1] [--bias] [--no-jitter]`). `test_sun_shadow_apply`: 10 tests OK
+(4 new: line format and errors, reconstruction equality, line preference, report shape).
+
+**Next run.** A capture with the sun 60–120° off the view axis (ship side-lit) at the same
+spot; the `sun_shadow_apply_params` lines make the twin exact. Fixture: `sun-shadow-apply`
+(`run_motion_output.py`) on this tree, result below.
+
+Fixture on this tree (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_motion_output.py sun-shadow-apply`, clean cmake build with the
+`run_sun_shadow_apply` change): `checks=156 worst_codes=0.998 ambiguous_max=245
+edge={mismatch 376, within one texel 345, two 31, beyond 0} us=3286.4` (median, CPU-inclusive),
+the same counts as the pass's original record; the runner's single-case status is `PARTIAL`
+by design. The runner needs `verification/probe/build/` to exist (a fresh worktree lacks it:
+`abi_check.o` cannot be created), which the first attempt hit before any Wine work.

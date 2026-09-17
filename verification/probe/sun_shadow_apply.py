@@ -251,3 +251,177 @@ def parse_params(fields):
 def half_bytes(values):
     """Float sequence -> little-endian FP16 bytes (tests)."""
     return struct.pack('<%de' % len(values), *values)
+
+
+# ---- the twin on a run's F8 capture (docs/verification/directional-shadows.md,
+# "Run 36 session B (run106)"): the pass's inputs come from the session log, the
+# RT2, map and HDR dumps from the capture directory. No Wine, no game.
+PRODUCTION_M22, PRODUCTION_M32 = 1.000003, -6.0000184   # ao_default_m22/m32 (motion_output.cpp)
+PRODUCTION_BIAS = dict(bias_constant=.001, bias_max=.01, planar_step=.05)  # SunShadowApplyParams defaults
+LINE_FIELDS = __import__('re').compile(r'(\w+)=([^\s]+)')
+
+
+def line_fields(line):
+    return dict(LINE_FIELDS.findall(line))
+
+
+def parse_apply_params(fields):
+    """A `sun_shadow_apply_params` line (capture frames; motion_output.cpp
+    run_sun_shadow_apply) -> the params dict of expected_factor plus the
+    frame's raster size, map size and pixel jitter."""
+    params = {k: float(fields[k]) for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'bias_max', 'planar_step')}
+    params['bias_constant'] = float(fields['bias'])
+    params['rows'] = tuple(float(v) for v in fields['rows'].split(','))
+    params['jitter_index'] = int(fields['jitter_index'])
+    if len(params['rows']) != 12:
+        raise ValueError('rows: expected 12 values, got %d' % len(params['rows']))
+    extra = dict(width=int(fields['width']), height=int(fields['height']), map=int(fields['map']),
+                 jitter_px=(float(fields['jitter_x']), float(fields['jitter_y'])), texel=float(fields['texel']))
+    if extra['map'] and abs(extra['texel'] * extra['map'] - 1.0) > 1e-6:
+        raise ValueError('texel %g does not match map %d' % (extra['texel'], extra['map']))
+    return params, extra
+
+
+def reconstruct_params(camera, frame_line, basis, width, height):
+    """Before the params line existed (run106): the pass's inputs from the
+    `camera_state` line (p00/p11/p20/p21), the `motion_output_frame` line
+    (jitter in pixels, jitter_index) and the `shadow_replay_map_basis` rows,
+    with the production constants. The jitter enters m20/m21 in NDC as the
+    fixed run_sun_shadow_apply does (+2 jx / width, -2 jy / height)."""
+    jx, jy = float(frame_line['jitter_x']), float(frame_line['jitter_y'])
+    params = dict(m00=float(camera['p00']), m11=float(camera['p11']),
+                  m20=float(camera['p20']) + 2.0 * jx / width, m21=float(camera['p21']) - 2.0 * jy / height,
+                  m22=PRODUCTION_M22, m32=PRODUCTION_M32, exponent=1.0, jitter_index=int(frame_line['jitter_index']),
+                  rows=tuple(float(v) for v in basis['rows'].split(',')), **PRODUCTION_BIAS)
+    if len(params['rows']) != 12:
+        raise ValueError('basis rows: expected 12 values')
+    return params
+
+
+def frame_params(log_path, frame, device=1):
+    """The pass's inputs of one capture frame from the session log: the
+    `sun_shadow_apply_params` line when present, otherwise reconstructed.
+    Returns (params, extra, source) with source 'params_line' or 'reconstructed'."""
+    key = ' device=%d frame=%d ' % (device, frame)
+    found = {}
+    with open(log_path, errors='replace') as handle:
+        for line in handle:
+            for tag in ('sun_shadow_apply_params', 'camera_state', 'motion_output_frame', 'shadow_replay_map_basis', 'motion_output_depth_readback'):
+                if line.startswith(tag) and key in line:
+                    found[tag] = line_fields(line)
+    if 'sun_shadow_apply_params' in found:
+        params, extra = parse_apply_params(found['sun_shadow_apply_params'])
+        return params, extra, 'params_line'
+    for tag in ('camera_state', 'motion_output_frame', 'shadow_replay_map_basis', 'motion_output_depth_readback'):
+        if tag not in found:
+            raise ValueError('frame %d: no %s line' % (frame, tag))
+    width, height = int(found['motion_output_depth_readback']['width']), int(found['motion_output_depth_readback']['height'])
+    basis = found['shadow_replay_map_basis']
+    params = reconstruct_params(found['camera_state'], found['motion_output_frame'], basis, width, height)
+    extra = dict(width=width, height=height, map=int(basis['size']),
+                 jitter_px=(float(found['motion_output_frame']['jitter_x']), float(found['motion_output_frame']['jitter_y'])), texel=1.0 / int(basis['size']))
+    return params, extra, 'reconstructed'
+
+
+def load_capture(directory, device, frame, width, height, size):
+    """The frame's RT2 (d, s), map and, when present, HDR luminance."""
+    from pathlib import Path
+    base = Path(directory)
+    d, s = unpack_rt2((base / ('depth_%d_%d.rg32f' % (device, frame))).read_bytes(), width, height)
+    sun_map = unpack_map((base / ('shadow_map_%d_%d.r32f' % (device, frame))).read_bytes(), size)
+    hdr = base / ('hdr_%d_%d.rgba16f' % (device, frame))
+    luminance = None
+    if hdr.exists():
+        rgba = unpack_rgba16f(hdr.read_bytes(), width, height)
+        luminance = .2126 * rgba[..., 0] + .7152 * rgba[..., 1] + .0722 * rgba[..., 2]
+    return d, s, sun_map, luminance
+
+
+def frame_report(d, s, sun_map, params, luminance=None, region=None, columns=64, lines=24):
+    """The twin on real inputs: receiver-minus-map residual on valid pixels
+    (nearest texel, no bias), the factor statistics, the HDR darkening of
+    shadowed pixels against same-surface lit neighbours within 4 px (and the
+    lit-lit control), and an ASCII mask of `region` (y0, y1, x0, x1) or the
+    valid bounding box: '#' factor < .6, '+' < .85, '-' < .999, '.' 1."""
+    import numpy as np
+    out = expected_factor(d, s, sun_map, params)
+    factor, f, valid, ambiguous, sun, z = out['factor'], out['f'], out['valid'], out['ambiguous'], out['sun'], out['z']
+    size = sun_map.shape[0]
+    mu, mv = sun[0] * .5 + .5, .5 - sun[1] * .5
+    tu = np.clip(np.floor(np.nan_to_num(mu) * size).astype(np.int64), 0, size - 1)
+    tv = np.clip(np.floor(np.nan_to_num(mv) * size).astype(np.int64), 0, size - 1)
+    difference = sun[2] - sun_map[tv, tu]
+    covered = valid & (sun_map[tv, tu] < 1.0)
+    report = {'valid': int(valid.sum()), 'ambiguous': int(ambiguous.sum()), 'covered': int(covered.sum())}
+    if valid.any():
+        residual = difference[valid]
+        report.update(residual_p05_p25_p50_p75_p95=[float(v) for v in np.percentile(residual, [5, 25, 50, 75, 95])],
+                      residual_std=float(residual.std()), residual_std_covered=float(difference[covered].std()) if covered.any() else None,
+                      f_below_0_9=float((f[valid] < .9).mean()), factor_mean=float(factor[valid].mean()),
+                      factor_below_0_7=float((factor[valid] < .7).mean()))
+    if luminance is not None:
+        good = valid & ~ambiguous
+        report['darkening'] = {}
+        for label, select in (('shadowed', good & (f <= 3.0 / 9 + 1e-9)), ('control', good & (f == 1.0))):
+            ratio = np.full(d.shape, np.nan); predicted = np.full(d.shape, np.nan)
+            for dy in range(-4, 5):
+                for dx in range(-4, 5):
+                    if dx == 0 and dy == 0:
+                        continue
+                    shifted = lambda a: np.roll(np.roll(a, dy, 0), dx, 1)
+                    ok = select & shifted(good) & (shifted(f) == 1.0) & (np.abs(shifted(z) - z) < .01 * np.abs(z)) & (np.abs(shifted(s) - s) < .05) & np.isnan(ratio)
+                    ratio[ok] = luminance[ok] / np.maximum(shifted(luminance)[ok], 1e-6); predicted[ok] = factor[ok]
+            have = ~np.isnan(ratio)
+            if have.any():
+                report['darkening'][label] = dict(pairs=int(have.sum()), ratio_p25_p50_p75=[float(v) for v in np.percentile(ratio[have], [25, 50, 75])],
+                                                  predicted_p25_p50_p75=[float(v) for v in np.percentile(predicted[have], [25, 50, 75])])
+    if region is None and valid.any():
+        ys, xs = np.nonzero(valid)
+        region = (int(ys.min()), int(ys.max()) + 1, int(xs.min()), int(xs.max()) + 1)
+    mask = []
+    if region is not None:
+        y0, y1, x0, x1 = region
+        block = np.where(valid, factor, np.nan)[y0:y1, x0:x1]
+        bh, bw = max(1, block.shape[0] // lines), max(1, block.shape[1] // columns)
+        for j in range(0, block.shape[0], bh):
+            row = ''
+            for i in range(0, block.shape[1], bw):
+                cell = block[j:j + bh, i:i + bw]
+                if np.all(np.isnan(cell)):
+                    row += ' '
+                else:
+                    m = np.nanmean(cell)
+                    row += '#' if m < .6 else '+' if m < .85 else '-' if m < .999 else '.'
+            mask.append(row.rstrip())
+    report['mask'] = mask
+    report['region'] = region
+    return report
+
+
+def main(argv=None):
+    import argparse
+    import json
+    parser = argparse.ArgumentParser(description='Run the sun-shadow apply twin on a capture frame.')
+    parser.add_argument('--log', required=True, help='session log with the frame\'s lines')
+    parser.add_argument('--capture', required=True, help='directory with depth_/shadow_map_/hdr_ dumps')
+    parser.add_argument('--frame', type=int, required=True)
+    parser.add_argument('--device', type=int, default=1)
+    parser.add_argument('--region', help='y0,y1,x0,x1 of the ASCII mask')
+    parser.add_argument('--bias', type=float, help='override the constant bias')
+    parser.add_argument('--no-jitter', action='store_true', help='drop the jitter term from m20/m21 (the run106 pass)')
+    args = parser.parse_args(argv)
+    params, extra, source = frame_params(args.log, args.frame, args.device)
+    if args.bias is not None:
+        params['bias_constant'] = args.bias
+    if args.no_jitter:
+        params['m20'] -= 2.0 * extra['jitter_px'][0] / extra['width']; params['m21'] += 2.0 * extra['jitter_px'][1] / extra['height']
+    d, s, sun_map, luminance = load_capture(args.capture, args.device, args.frame, extra['width'], extra['height'], extra['map'])
+    region = tuple(int(v) for v in args.region.split(',')) if args.region else None
+    report = frame_report(d, s, sun_map, params, luminance, region)
+    mask = report.pop('mask')
+    print(json.dumps(dict(frame=args.frame, source=source, params={k: v for k, v in params.items() if k != 'rows'}, **report), indent=1))
+    print('\n'.join(mask))
+
+
+if __name__ == '__main__':
+    main()
