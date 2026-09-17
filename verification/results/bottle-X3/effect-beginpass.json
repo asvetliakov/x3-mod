@@ -1,0 +1,244 @@
+{
+  "generated": "2026-09-17T06:20:42",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "fixture": {
+    "source": "verification/probe/effect_beginpass_fixture.cpp",
+    "exe_sha256": "f1024356069886e618995298de234dba7e2dfcab4fd2b51952a7266bbd706e42"
+  },
+  "effect": {
+    "archive_path": "shader/3_0/argon.fb",
+    "catalogue": "addon/01.cat",
+    "bytes": 41004,
+    "sha256": "bc504b32dee758b12afeb904910e4b2281033ebdb0b5fad2510d2de485ec48b7"
+  },
+  "d3dx9_37_game_file": {
+    "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll",
+    "bytes": 3786760,
+    "sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  },
+  "note": "Median of the per-repetition medians; each repetition times `iterations` BeginPass calls with QPC around the single call, after a 500-iteration warm-up. Callback counts are per BeginPass, counted only inside the timed call, through a forwarding ID3DXEffectStateManager (the game installs one too). Begin uses D3DXFX_DONOTSAVESTATE and CommitChanges is never called, as the game does.",
+  "cases": {
+    "native": {
+      "dll_override": "d3dx9_37=n",
+      "module": {
+        "path": "Z:\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effect-beginpass-4bymbp61\\d3dx9_37.dll",
+        "image_size": 3895296,
+        "stamp": "47cdef5d",
+        "exports": 336,
+        "wine_builtin": 0
+      },
+      "device": {
+        "vs": "fffe0300",
+        "ps": "ffff0300"
+      },
+      "run": {
+        "technique": "DEFAULT",
+        "technique_source": "named",
+        "pass": "P0",
+        "passes": 1,
+        "parameters": 54,
+        "settable": 45,
+        "skipped": 9,
+        "iterations": 10000,
+        "repetitions": 3,
+        "warmup": 500,
+        "effect_bytes": 41004
+      },
+      "regimes": {
+        "unchanged": {
+          "us_median": 1.6,
+          "us_mean": 1.6197,
+          "us_p05": 1.5,
+          "us_p95": 1.8,
+          "setters_us_mean": 0.3963,
+          "rep_medians": [
+            1.8,
+            1.6,
+            1.6
+          ],
+          "callbacks": {
+            "render_state": 19.0,
+            "sampler_state": 28.0,
+            "texture": 4.0,
+            "texture_stage": 0.0,
+            "vertex_shader": 1.0,
+            "pixel_shader": 1.0,
+            "shader_constant": 4.0,
+            "constant_registers": 52.0,
+            "other": 0.0,
+            "total": 57.0
+          }
+        },
+        "changed": {
+          "us_median": 3.3,
+          "us_mean": 3.305,
+          "us_p05": 3.2,
+          "us_p95": 3.5,
+          "setters_us_mean": 0.5669,
+          "rep_medians": [
+            3.3,
+            3.3,
+            3.3
+          ],
+          "callbacks": {
+            "render_state": 19.0,
+            "sampler_state": 28.0,
+            "texture": 4.0,
+            "texture_stage": 0.0,
+            "vertex_shader": 1.0,
+            "pixel_shader": 1.0,
+            "shader_constant": 4.0,
+            "constant_registers": 52.0,
+            "other": 0.0,
+            "total": 57.0
+          }
+        },
+        "none": {
+          "us_median": 1.5,
+          "us_mean": 1.5377,
+          "us_p05": 1.5,
+          "us_p95": 1.6,
+          "setters_us_mean": 0.068,
+          "rep_medians": [
+            1.5,
+            1.5,
+            1.5
+          ],
+          "callbacks": {
+            "render_state": 19.0,
+            "sampler_state": 28.0,
+            "texture": 4.0,
+            "texture_stage": 0.0,
+            "vertex_shader": 1.0,
+            "pixel_shader": 1.0,
+            "shader_constant": 4.0,
+            "constant_registers": 52.0,
+            "other": 0.0,
+            "total": 57.0
+          }
+        },
+        "deltas": {
+          "unchanged_minus_none_us": 0.1,
+          "changed_minus_none_us": 1.8,
+          "unchanged_minus_none_callbacks": 0.0,
+          "same_value_set_dirties": false
+        }
+      }
+    },
+    "builtin": {
+      "dll_override": "d3dx9_37=b",
+      "module": {
+        "path": "Z:\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effect-beginpass-4bymbp61\\d3dx9_37.dll",
+        "image_size": 585728,
+        "stamp": "00000000",
+        "exports": 336,
+        "wine_builtin": 1
+      },
+      "device": {
+        "vs": "fffe0300",
+        "ps": "ffff0300"
+      },
+      "run": {
+        "technique": "DEFAULT",
+        "technique_source": "named",
+        "pass": "P0",
+        "passes": 1,
+        "parameters": 54,
+        "settable": 45,
+        "skipped": 9,
+        "iterations": 10000,
+        "repetitions": 3,
+        "warmup": 500,
+        "effect_bytes": 41004
+      },
+      "regimes": {
+        "unchanged": {
+          "us_median": 1.7,
+          "us_mean": 1.7346,
+          "us_p05": 1.6,
+          "us_p95": 1.9,
+          "setters_us_mean": 1.2447,
+          "rep_medians": [
+            1.7,
+            1.7,
+            1.7
+          ],
+          "callbacks": {
+            "render_state": 19.0,
+            "sampler_state": 28.0,
+            "texture": 4.0,
+            "texture_stage": 0.0,
+            "vertex_shader": 1.0,
+            "pixel_shader": 1.0,
+            "shader_constant": 4.0,
+            "constant_registers": 52.0,
+            "other": 0.0,
+            "total": 57.0
+          }
+        },
+        "changed": {
+          "us_median": 3.7,
+          "us_mean": 3.7648,
+          "us_p05": 3.6,
+          "us_p95": 4.0,
+          "setters_us_mean": 1.4178,
+          "rep_medians": [
+            3.7,
+            3.7,
+            3.7
+          ],
+          "callbacks": {
+            "render_state": 19.0,
+            "sampler_state": 28.0,
+            "texture": 4.0,
+            "texture_stage": 0.0,
+            "vertex_shader": 1.0,
+            "pixel_shader": 1.0,
+            "shader_constant": 4.0,
+            "constant_registers": 52.0,
+            "other": 0.0,
+            "total": 57.0
+          }
+        },
+        "none": {
+          "us_median": 1.5,
+          "us_mean": 1.483,
+          "us_p05": 1.4,
+          "us_p95": 1.6,
+          "setters_us_mean": 0.0698,
+          "rep_medians": [
+            1.5,
+            1.5,
+            1.5
+          ],
+          "callbacks": {
+            "render_state": 19.0,
+            "sampler_state": 28.0,
+            "texture": 4.0,
+            "texture_stage": 0.0,
+            "vertex_shader": 1.0,
+            "pixel_shader": 1.0,
+            "shader_constant": 4.0,
+            "constant_registers": 52.0,
+            "other": 0.0,
+            "total": 57.0
+          }
+        },
+        "deltas": {
+          "unchanged_minus_none_us": 0.2,
+          "changed_minus_none_us": 2.2,
+          "unchanged_minus_none_callbacks": 0.0,
+          "same_value_set_dirties": false
+        }
+      }
+    }
+  }
+}

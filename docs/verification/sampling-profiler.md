@@ -1462,3 +1462,56 @@ FEX's memory ordering changes nothing measurable (every emulated bucket within
 mode, so strong ordering costs nothing to begin with and there is no lever.
 Both environment experiments are closed; the busy frame's levers are back to
 code (pass replay, which now needs an FXLC evaluator per the classification).
+
+## Native BeginPass attribution fixture (2026-09-17, no game)
+
+`verification/probe/effect_beginpass_fixture.cpp` +
+`run_effect_beginpass.py`; result
+`verification/results/bottle-X3/effect-beginpass.json`, host test
+`verification/analysis/test_effect_beginpass.py` (11 tests). One synthetic
+windowed HAL device (64×64, no draws), the game's own compiled effect
+`shader/3_0/argon.fb` (`addon/01.cat`, 41,004 bytes,
+`bc504b32dee758b1…`) read out of the bottle's archives into a scratch
+directory outside the repository, technique `DEFAULT` pass `P0`, and the
+game's own `d3dx9_37.dll` (3,786,760 bytes) selected per case by
+`--dll d3dx9_37=n|b`. The loop is the game's (effect-pass-loop.md §2):
+`Begin(&passes, D3DXFX_DONOTSAVESTATE)`, `BeginPass`, `EndPass`, `End`, never
+`CommitChanges`; only `BeginPass` is inside the QPC pair. A forwarding,
+counting `ID3DXEffectStateManager` (the game installs one too) counts the
+callbacks issued inside the timed call. 45 of 54 top-level parameters are
+written per iteration in regimes (i)/(ii); 10,000 timed iterations ×
+3 repetitions per regime after a 500-iteration warm-up; the table is the
+median of the three per-repetition medians. Identity proven from the mapped
+image, matching run104/105: native `image_size=3895296 stamp=47cdef5d
+wine_builtin=0`, builtin `image_size=585728 stamp=00000000 wine_builtin=1`.
+
+| Regime | native µs/BeginPass | builtin µs/BeginPass | Set\* block µs (native / builtin) |
+|---|---|---|---|
+| (i) same values re-set | 1.60 | 1.70 | 0.40 / 1.24 |
+| (ii) values change | 3.30 | 3.70 | 0.57 / 1.42 |
+| (iii) no `Set*` | 1.50 | 1.50 | 0.07 / 0.07 |
+
+State-manager callbacks per `BeginPass`: **57 in every regime and both
+implementations** — 19 render state, 28 sampler state, 4 texture, 1 vertex
+shader, 1 pixel shader, 4 shader-constant calls (52 registers), 0 texture
+stage, 0 other.
+
+**What it settles.** (1) A same-value `Set*` costs +0.10 µs (native) /
++0.20 µs (builtin) inside `BeginPass` and **zero extra callbacks**: native
+D3DX does not pay a dirty-driven re-evaluation for a write that does not
+change the value, so regime (i) ≈ regime (iii). (2) A changed value costs
++1.8 µs (native) / +2.2 µs (builtin) per pass, all of it D3DX-internal
+(expression/preshader evaluation and constant assembly): the callback count
+does not move. (3) D3DX re-applies **all 57 pass states on every
+`BeginPass`** regardless of dirtiness, so any replay must issue the same 57
+device calls (or dedup them at the device level); they are paid either way.
+(4) Wine's builtin is 6–13 % slower than native on `BeginPass` here and ~3×
+slower on the parameter setters themselves (1.24 vs 0.40 µs per pass for the
+45 writes) — the same direction as run104/105, much smaller in magnitude on
+this idle device.
+
+**Scope.** 1.5 µs is not the in-game 6.58 µs: this device sees no draws and
+repeats the same device state, so wined3d's redundant-state filtering makes
+the 57 forwarded calls cheap, and the fixture bounds the parameter-dirty and
+D3DX-walk shares, not the wined3d share of the in-game number. The forwarding
+manager adds one virtual call per callback to every regime equally.
