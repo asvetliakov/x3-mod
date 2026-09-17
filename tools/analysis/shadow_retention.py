@@ -37,8 +37,8 @@ FRAME_FIELDS = ('device', 'frame', 'mode', 'known', 'nodes_live', 'nodes_unseen'
                 'refused', 'moving_dropped', 'abandoned', 'deferred', 'journal_us', 'walk_us', 'draw_us', 'draw_calls',
                 'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'buffer_views', 'idle_frames',
                 # per-cascade reclassifications at that cascade's eps tier and the static gate's refused-draw sightings (2026-09-18, run 40 A)
-                'reclassified_c0', 'reclassified_c1', 'reclassified_c2', 'reclassified_c3', 'reclassified_c4', 'gate_sightings')
-FLOAT_FIELDS = ('drift_p99', 'drift_max', 'us', 'journal_us', 'walk_us', 'draw_us')
+                'reclassified_c0', 'reclassified_c1', 'reclassified_c2', 'reclassified_c3', 'reclassified_c4', 'gate_sightings', 'gate_us')
+FLOAT_FIELDS = ('drift_p99', 'drift_max', 'us', 'journal_us', 'walk_us', 'draw_us', 'gate_us')
 TEXT_FIELDS = {'mode': ('census', 'live'), 'flush': ('none', 'epoch', 'reset', 'device', 'teardown', 'sun', 'observer', 'idle')}
 BUCKETS = 5
 BUCKET_LABELS = ('<60', '<600', '<3600', '<14400', '>=14400')

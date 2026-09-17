@@ -2730,8 +2730,14 @@ Four changes, one logical fix, per the diagnosis above. Architecture:
 ("Per-cascade tiers"). Option: `--shadow-cascade-backface-from K|none`
 (`X3M_SHADOW_CASCADE_BACKFACE_FROM`; default the texel law: every cascade whose world texel is
 at least 8 u, so it applies with the static rule off, as the run 40 command does not use it).
-Everything else is on the cascade path only; the single map and every default outside the
-cascades are byte-identical.
+Everything else is on the cascade path, except the near-gate change of cause 4, which also
+admits origin-behind-camera draws by their extent on the single-map path (its records changed
+in hashes and timings only: no fixture draw has such an origin). Note the former default set
+(250 / 1,500 / 7,500 / 25,000 at 4096²: a 12.2-u texel on the last cascade) now gets back faces
+on that cascade by default. Residual of cause 2: a caster drawn with `D3DCULL_NONE` has no back
+side to invert and keeps the knife edge; `cull_none<k>=` / `cull_inverted<k>=` on
+`shadow_replay_depth` (while a cascade replays back faces) count the issued far records by cull
+mode, so run 41 shows how many two-sided casters remain.
 
 1. **Cycle (cause 1).** `classify_candidate_static` answers per cascade: the store where its
    node is promoted at that cascade's tier (`Node::static_mask`) or verified moved beyond it
@@ -2789,7 +2795,7 @@ with the new fixture (`--dll --seam --fixture`):
 
 | case | fixed build | pre-fix witness |
 | --- | --- | --- |
-| `seam-ownership-shadow-pool-cycle-census` / `-live` | PASS, 193 checks each: `c1` = 3 from frame 1, `moving_dropped` 0, S and S2 promoted at frame 8 | the fixture's own store expectations fail (exit 1) |
+| `seam-ownership-shadow-pool-cycle-census` / `-live` | PASS, 193 checks each: `c1` = 3 from frame 1, `moving_dropped` 0, S and S2 promoted at frame 8; M2 (cascade 1 alone, moving) refused and seen every frame: 13 `gate_sightings`, 1.25 / 1.62 µs per sighting (census / live; `X3M_SHADOW_RETENTION_TIMING=1`) | the fixture's own store expectations fail (exit 1) |
 | `seam-ownership-shadow-pool-jitter-off` / `-live` | PASS, 143 / 192 checks: J (0.156 u to and fro) admitted to cascade 1 from frame 1; live: the store answers from frame 9 | frame 1 `records [2, 1]`, `static_only_refused1` 1 |
 | `seam-ownership-shadow-pool-hull` | PASS, 77 checks: W (origin 2 u behind the camera plane) admitted to both cascades from frame 1, the map twin covers it | frame 1 `records [1, 1]`, `leased` 1 |
 | `sun-shadow-apply-cascades-5-faces` | PASS, 2,861 checks: fixed half interior lit-face pixels darkened 0 / flipping 0 (112–117 per frame), silhouette ≤ 2.4 % / ≤ 2.6 %, the back faces (the dark faces) darkened 17–21 % against 97–98 % on the control half, the plane shadow within one texel but the contact line; readback within one FP16 code (`worst_codes` 1.000) | `X3M_FIXTURE_SUNAPPLY_FACES_FIX=0`: `backface_mask` 0 on frame 8, FAIL |
@@ -2800,4 +2806,17 @@ apply cases all PASS with their previous counts (`sun-shadow-apply-cascades-5` 3
 `beyond_one_texel` 0; the retention live case 9,743 checks); the pool `static` records change by
 design (S enters cascade 1 on frame 1 under every store setting, `class_store` / `class_ring`
 follow the informative rule: 182 checks against 181) and the retention records gain the
-`reclassified_c<i>` / `gate_sightings` fields; everything else is the same behaviour.
+`reclassified_c<i>` / `gate_sightings` / `gate_us` fields; everything else is the same behaviour.
+
+**Review follow-up (second commit).** The refused-draw sighting path measured 4.2 µs per sighting
+with the geometry queries on every sighting (one queried sighting in the first cycle case); it
+now reuses the declaration identity the live store already holds for the range and queries
+nothing under the census (rows and cull mode only), so only the first refused sighting of a range
+under the live store pays the queries: 1.62 µs live / 1.25 µs census per sighting over 13 in the
+cycle case (two of them queried), under Wine/FEX. `cull_none<k>=` / `cull_inverted<k>=` count the
+issued far records by cull mode on `shadow_replay_depth` (the pool fixtures' 8 / 40-u cascades are
+under the texel law, so the fields appear in the game's logs only; the parser is host-tested). The
+ladder carry-over of the texel law is host-tested (the corvette's slid 16,875-u cascade crosses
+8 u: mask 8 → 12; an index law slides with the policy match). Rerun after the follow-up: 22 cases
+(the six pool run116 cases, the six other pool cases, four cascade replay cases, three retention
+cases, replay-on, cascades-5, faces) PASS; no-x87 537 reachable / 0 violations; host 59 tests OK.

@@ -77,13 +77,14 @@
 // against their own depth on the knife edge and their shadow re-rolls with
 // the jitter. Frames 8-15 are the fix: every cascade whose world texel is 8
 // units or more (ShadowCascadeSet::backface_mask, cascades 1-4 at 256^2 maps)
-// replays with inverted culling (the back faces) and its rows carry the
-// pre-jitter receiver (r.z += r.x jx / m00 + r.y jy / m11, as MotionOutput
-// does), so the lit faces stay lit on every frame and the faces away from the
-// sun stay shadowed. SUNAPPLY_FACES per frame: the lit- and dark-face receiver
-// counts, how many of each the quad darkened, and the lit-face flips against
-// the previous frame of the same half. X3M_FIXTURE_SUNAPPLY_FACES_FIX=0 runs
-// the second half unfixed too (the runner's pre-fix witness).
+// replays with inverted culling (the back faces), so the lit faces stay lit
+// on every frame while the faces away from the sun (the back faces
+// themselves; sun share 0 in the game) are no longer self-shadowed.
+// SUNAPPLY_FACES per frame: the lit- and dark-face receiver counts, how many
+// of each the quad darkened, the lit-face flips against the previous frame of
+// the same half, and the same for the interior lit-face pixels (every
+// neighbour a lit-face receiver). X3M_FIXTURE_SUNAPPLY_FACES_FIX=0 runs the
+// second half unfixed too (the runner's pre-fix witness).
 namespace {
 constexpr unsigned cascade_frames = 29, cascade_map = 256, cascade_frames_five = 15, cascade_frames_faces = 16;
 constexpr float cascade_faces_jitter[8][2] = {{0.f, 0.f}, {.25f, -.125f}, {-.375f, .25f}, {.125f, .375f}, {-.25f, -.375f}, {.375f, -.25f}, {-.125f, .125f}, {.125f, -.375f}};

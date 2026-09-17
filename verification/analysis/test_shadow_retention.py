@@ -329,7 +329,7 @@ class Core(unittest.TestCase):
 
 def frame_line(**overrides):
     values = {k: 0 for k in retention.FRAME_FIELDS}
-    values.update(device=1, frame=10, mode='census', known=1, flush='none', drift_p99='0', drift_max='0', us='12.5', journal_us='0.4', walk_us='11.0', draw_us='0.0')
+    values.update(device=1, frame=10, mode='census', known=1, flush='none', drift_p99='0', drift_max='0', us='12.5', journal_us='0.4', walk_us='11.0', draw_us='0.0', gate_us='0.0')
     values.update(overrides)
     return 'shadow_retention_frame ' + ' '.join(f'{k}={values[k]}' for k in retention.FRAME_FIELDS)
 

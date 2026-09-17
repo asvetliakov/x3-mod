@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
-  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
+  "verification/probe/build/motion_output_fixture.exe": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
+  "build/d3d9.dll": "c028798dc421b9d70778e22921aff361bc7f25b5315bb0d5395c61ab4d46f6b2"
  },
  "script": "jitter",
  "store": 0,
@@ -427,9 +427,9 @@
  },
  "us": {
   "frames": 12,
-  "min": 35.1,
-  "median": 43.150000000000006,
-  "max": 1518.9
+  "min": 36.5,
+  "median": 43.5,
+  "max": 1486.1
  },
  "classified": {
   "class_store": 0,
@@ -444,8 +444,8 @@
   0
  ],
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-jitter-off-20260918-021530-815627",
- "trace_sha256": "d1a9902d143bce8a6d47545e845f1e04558577c56340a9956cbbc18dff222cad",
- "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
- "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-jitter-off-20260918-023133-083571",
+ "trace_sha256": "0c446f53e84fd3c18ff358e9c8077d09baa1ab9e76e5cf7c68bcc487a1f4fe57",
+ "dll_sha256": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
+ "exe_sha256": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56"
 }

@@ -337,7 +337,7 @@ void MotionOutput::publish_shadow_retention() noexcept {
         " age_max=%llu refs_held=%u sun_relatch=%u cam_jump=%u transit_survivors=%u us=%.1f"
         " refused=%u moving_dropped=%u abandoned=%u deferred=%u journal_us=%.1f walk_us=%.1f draw_us=%.1f draw_calls=%u"
         " far_alternate_due_to_retained=%u revalidate_context_lost=%u release_queue_full=%u reclassified_after_unseen=%u admitted_checked=%u buffer_views=%u idle_frames=%u"
-        " reclassified_c0=%u reclassified_c1=%u reclassified_c2=%u reclassified_c3=%u reclassified_c4=%u gate_sightings=%u",
+        " reclassified_c0=%u reclassified_c1=%u reclassified_c2=%u reclassified_c3=%u reclassified_c4=%u gate_sightings=%u gate_us=%.1f",
         id_, frame_, live ? "live" : "census", unsigned(st.registered && st.available), f.nodes_live, f.nodes_unseen, f.records, f.records_unseen, f.statics, f.moving,
         f.excluded_class, f.unscoped, f.new_nodes, f.first_seen_in_range, f.promoted, f.superseded, f.lod_replaced, f.model_replaced, f.reclassified,
         f.retired, f.journal_overflow, f.revalidated, static_cast<unsigned long long>(f.mutation_delta), f.buffer_changed, f.buffer_gone, f.buffer_orphaned, unsigned(live && st.orphan_probe),
@@ -346,7 +346,7 @@ void MotionOutput::publish_shadow_retention() noexcept {
         static_cast<unsigned long long>(f.age_max), store.references(), f.sun_relatch, f.cam_jump, f.transit_survivors, st.us,
         f.refused, f.moving_dropped, f.abandoned, f.deferred, st.journal_us, st.walk_us, retention_us(st.draw_ticks), st.draw_calls,
         f.far_alternate_due_to_retained, f.revalidate_context_lost, f.release_queue_full, f.reclassified_after_unseen, f.admitted_checked, f.buffer_views, st.idle_frames,
-        f.reclassified_cascade[0], f.reclassified_cascade[1], f.reclassified_cascade[2], f.reclassified_cascade[3], f.reclassified_cascade[4], f.gate_sightings);
+        f.reclassified_cascade[0], f.reclassified_cascade[1], f.reclassified_cascade[2], f.reclassified_cascade[3], f.reclassified_cascade[4], f.gate_sightings, retention_us(st.gate_ticks));
     if (capture_) {
         for (unsigned i = 0; i < shadow_retention::node_capacity; ++i) {
             const auto& n = store.nodes[i];
@@ -364,7 +364,7 @@ void MotionOutput::publish_shadow_retention() noexcept {
     }
     st.last_nodes_unseen = f.nodes_unseen;
     f = {};
-    st.draw_ticks = 0; st.draw_calls = 0;
+    st.draw_ticks = 0; st.draw_calls = 0; st.gate_ticks = 0; st.gate_calls = 0;
     if (frame_ && frame_ % shadow_retention::resight_period == 0) {
         const auto& t = store.totals;
         char text[1024]; int used = 0;

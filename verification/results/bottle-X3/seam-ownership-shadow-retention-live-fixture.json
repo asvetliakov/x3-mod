@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
-  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
+  "verification/probe/build/motion_output_fixture.exe": "adbfee0323acbac30f5cdae57b7146a4c995bb6d1a635e986e431afdddd42680",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4612681cfcf143d1d34a66faf7a71d274fdeb7c9f8f74f73871177660501ba7e",
+  "build/d3d9.dll": "bd1d62ecd3a443918824fb6e12eb96b051cba48d273be509d32a127ff6525e3a"
  },
  "mode": "live",
  "frames": 1535,
@@ -125,13 +125,13 @@
     "frames_over_eps": 1
    },
    "us": {
-    "median": 3.4,
-    "max": 379.6,
-    "p99": 46.0
+    "median": 3.6,
+    "max": 368.4,
+    "p99": 45.0
    },
    "draw_us_per_call": {
-    "median": 0.15,
-    "max": 1.7
+    "median": 0.2,
+    "max": 1.6333333333333335
    },
    "moving_share_median": 0.0,
    "resight": {
@@ -190,13 +190,13 @@
    }
   },
   "full_store_frames": 11,
-  "full_store_us_median": 46.4,
-  "full_store_walk_us_max": 95.7,
-  "overflow_frame_us": 176.9,
+  "full_store_us_median": 46.2,
+  "full_store_walk_us_max": 95.1,
+  "overflow_frame_us": 181.1,
   "burst_frame": {
    "retired": 591,
-   "us": 65.2,
-   "journal_us": 38.9
+   "us": 64.3,
+   "journal_us": 39.2
   }
  },
  "failed_reset": "8876086c",
@@ -216,18 +216,18 @@
  },
  "us": {
   "frames": 1527,
-  "min": 21.6,
-  "median": 28.3,
-  "max": 2325.9,
+  "min": 20.1,
+  "median": 29.0,
+  "max": 2327.2,
   "bulk": {
    "frames": 16,
    "issues_median": 1450,
-   "us_median": 1568.1
+   "us_median": 1586.9
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-20260918-021456-436594",
- "trace_sha256": "442fd450bdb55d4cb580f1478b7beb1ff4d23b04fed35be9843f0dbe9bc71cc3",
- "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
- "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-20260918-023328-358408",
+ "trace_sha256": "656b4288c903cf444516e237071b06e65ef8e22571d2b2d787370c51f0ee231d",
+ "dll_sha256": "4612681cfcf143d1d34a66faf7a71d274fdeb7c9f8f74f73871177660501ba7e",
+ "exe_sha256": "adbfee0323acbac30f5cdae57b7146a4c995bb6d1a635e986e431afdddd42680"
 }

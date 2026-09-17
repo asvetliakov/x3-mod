@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
-  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
+  "verification/probe/build/motion_output_fixture.exe": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
+  "build/d3d9.dll": "c028798dc421b9d70778e22921aff361bc7f25b5315bb0d5395c61ab4d46f6b2"
  },
  "script": "records",
  "store": 0,
@@ -37,7 +37,7 @@
      0.0,
      0.0
     ],
-    "select_us": 368.9
+    "select_us": 372.6
    },
    "draws": [
     1,
@@ -59,7 +59,7 @@
      0.0,
      0.02977
     ],
-    "select_us": 70.9
+    "select_us": 70.2
    },
    "draws": [
     1,
@@ -81,7 +81,7 @@
      0.0,
      0.02977
     ],
-    "select_us": 70.0
+    "select_us": 75.9
    },
    "draws": [
     1,
@@ -103,7 +103,7 @@
      0.0,
      0.02977
     ],
-    "select_us": 71.8
+    "select_us": 71.3
    },
    "draws": [
     1,
@@ -125,7 +125,7 @@
      0.0,
      0.02977
     ],
-    "select_us": 70.7
+    "select_us": 71.8
    },
    "draws": [
     1,
@@ -147,7 +147,7 @@
      0.0,
      0.02977
     ],
-    "select_us": 70.6
+    "select_us": 71.5
    },
    "draws": [
     1,
@@ -163,18 +163,18 @@
  },
  "us": {
   "frames": 6,
-  "min": 47.5,
-  "median": 2516.8,
-  "max": 6191.8
+  "min": 51.8,
+  "median": 2583.7,
+  "max": 5999.3
  },
  "dropped_min_size1": 0.02977,
  "select_us": {
-  "median": 70.9,
-  "max": 368.9
+  "median": 71.8,
+  "max": 372.6
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-records-20260918-021537-381655",
- "trace_sha256": "6029a9478bf666cef682ded42a573466ae16eaec51ec9b3ccd1520dfa349803e",
- "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
- "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-records-20260918-023139-128582",
+ "trace_sha256": "f49125b5506ef489a336d78b6d4db8ef24c69938d5b95c7e312be03442f075fc",
+ "dll_sha256": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
+ "exe_sha256": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56"
 }

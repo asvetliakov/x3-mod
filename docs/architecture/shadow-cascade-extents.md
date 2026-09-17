@@ -268,12 +268,14 @@ control".
   shadowed, 27–37 % flipping per frame at rest, bias x8 no better). Trade-offs: a body thinner
   than one texel of that cascade casts no contact shadow (invisible at 18–73-u texels); a
   pancaked caster (nearer the light than the map's near plane) is flattened onto it by its back
-  faces exactly as before, so it still shadows. Its rows also carry the pre-jitter receiver
-  (`r.z += r.x jx / m00 + r.y jy / m11`: the same RT2 depth reconstructed at the pre-jitter
-  pixel centre, linear in z, so the program, its derivatives and the near cascades are
-  untouched; `unjittered<s>=1` on `sun_shadow_apply_params`); the twin measured this term alone
-  neutral on run116 (the re-roll is in the depth, not the lateral selection), it is kept for a
-  jitter-independent texel choice at texels of a pixel or more. Independent of the static rule.
+  faces exactly as before, so it still shadows. The receiver stays the jittered sample (a
+  pre-jitter receiver was measured neutral on run116: the re-roll is in the sampled depth, not
+  the lateral texel choice; [../verification/directional-shadows.md](../verification/directional-shadows.md),
+  "Run 40 A (run116) fix"). Independent of the static rule. The former default set (250 /
+  1,500 / 7,500 / 25,000 at 4096²: a 12.2-u texel on the last cascade) gets back faces on that
+  cascade by default too. Residual: a caster drawn with `D3DCULL_NONE` has no back side to
+  invert and keeps the knife edge; `cull_none<k>=` / `cull_inverted<k>=` on
+  `shadow_replay_depth` count the far records by cull mode.
   Under the sliding ladder an index law slides like `static_from`; the texel law follows the
   slid extents. Logged as `backface_from=` / `backface_mask=` on `shadow_cascades_mode` and
   `backface_mask=` on `shadow_cascade_set`.

@@ -1212,7 +1212,7 @@ private:
     std::unique_ptr<shadow_replay::KeptEntry[]> candidate_kept_last_;  // importance order: last frame's kept casters (two slots per record; allocated while the option is on)
     unsigned depth_cascade_draw_caps_[renderer::shadow_cascade_max]{}; // the per-cascade bound the draw path applies (the cap, or the record capacity under the importance order)
     std::uint8_t depth_cascade_static_mask_=0; // bit i: cascade i admits static casters only (none by default)
-    std::uint8_t depth_cascade_backface_mask_=0; // bit i: cascade i replays back faces and evaluates the unjittered receiver (ShadowCascadeSet::backface_mask; the texel law by default)
+    std::uint8_t depth_cascade_backface_mask_=0; // bit i: cascade i replays back faces (ShadowCascadeSet::backface_mask; the texel law by default)
     double depth_cascade_class_eps_[renderer::shadow_cascade_max]{}; // per cascade the static/moving drift threshold (renderer::shadow_cascade_class_eps of the live set)
     void refresh_cascade_policy() noexcept; // the three above from depth_cascades_ (attach, and every ladder commit)
     std::uint8_t classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi, std::uint8_t wanted, bool& miss) noexcept; // shadow_caster_class.h: bit i = static at cascade i's eps

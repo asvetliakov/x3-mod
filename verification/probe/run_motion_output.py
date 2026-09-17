@@ -426,8 +426,8 @@ CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW
 # cycle (cause 1: the store/ring feedback cycle, census and live), jitter (cause 3: the texel-scaled eps of a
 # static-only cascade, at extents 8 / 200 so cascade 1's eps is 0.195; J steps 0.156 world units) and hull (cause 4: a sliver whose origin lies
 # behind the camera plane is admitted by its extent). Each fails on the pre-fix seam DLL (POOL_EXPECT differs).
-SHADOW_POOL_RUN116_CASES = {'seam-ownership-shadow-pool-cycle-census': dict(X3M_FIXTURE_SHADOW_POOL='cycle', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_SHADOW_RETENTION_CENSUS='1'),
-                            'seam-ownership-shadow-pool-cycle-live': dict(X3M_FIXTURE_SHADOW_POOL='cycle', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_SHADOW_CASTER_RETENTION='1'),
+SHADOW_POOL_RUN116_CASES = {'seam-ownership-shadow-pool-cycle-census': dict(X3M_FIXTURE_SHADOW_POOL='cycle', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_SHADOW_RETENTION_CENSUS='1', X3M_SHADOW_RETENTION_TIMING='1'),
+                            'seam-ownership-shadow-pool-cycle-live': dict(X3M_FIXTURE_SHADOW_POOL='cycle', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_SHADOW_CASTER_RETENTION='1', X3M_SHADOW_RETENTION_TIMING='1'),
                             'seam-ownership-shadow-pool-jitter-off': dict(X3M_FIXTURE_SHADOW_POOL='jitter', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_FIXTURE_SHADOW_CASCADES='8,200'),
                             'seam-ownership-shadow-pool-jitter-live': dict(X3M_FIXTURE_SHADOW_POOL='jitter', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_FIXTURE_SHADOW_CASCADES='8,200', X3M_SHADOW_CASTER_RETENTION='1'),
                             'seam-ownership-shadow-pool-hull': dict(X3M_FIXTURE_SHADOW_POOL='hull')}
@@ -481,9 +481,9 @@ SUN_CASCADE5_EPS_RANGE = 15512.0  # the three-cascade script's cascade-0 depth r
 CASES += [case('sun-shadow-apply-cascades-5', 'sunapply', enabled='0', hdr_env=dict(X3M_FIXTURE_SUNAPPLY_CASCADES='5'))]
 # The run 40 A (run116) faces case (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 2;
 # motion_output_sun_apply_cascades_inc.h, the faces script): the fifth cascade's box under the eight
-# jitter offsets, eight control frames (front-face maps, the jittered receiver: the box's lit faces
-# darken themselves and re-roll with the jitter) and eight fixed frames (back-face maps and the
-# pre-jitter receiver on every cascade of the texel law): the lit faces stay lit, the faces away
+# jitter offsets, eight control frames (front-face maps: the box's lit faces darken themselves and
+# re-roll with the jitter) and eight fixed frames (back-face maps on every cascade of the texel
+# law): the lit faces stay lit, the faces away
 # from the sun stay shadowed. With X3M_FIXTURE_SUNAPPLY_FACES_FIX=0 the second half is the control
 # too, and the validator fails: the pre-fix witness.
 SUN_FACES_FRAMES, SUN_FACES_FIXED_FROM = 16, 8
@@ -2127,8 +2127,8 @@ def validate_shadow_pool(name, text, trace, directory, env):
             # everything with the store off; nothing misses after frame 0.
             if script == 'static':
                 expected_store = 0 if not store_on or frame <= 1 else 2 if frame <= 8 else 3
-            elif script == 'cycle':
-                expected_store = 2 if store_on and frame >= 9 else 0
+            elif script == 'cycle':  # M2 verified moved from frame 1's scene end; S and S2 promoted at frame 8's
+                expected_store = 0 if not store_on or frame <= 1 else 1 if frame <= 8 else 3
             elif script == 'jitter':
                 expected_store = 1 if store_on and frame >= 9 else 0
             else:
@@ -2203,6 +2203,13 @@ def validate_shadow_pool(name, text, trace, directory, env):
     if importance:
         case['dropped_min_size1'] = dropped_sizes[0]
         case['select_us'] = {'median': sorted(r['cascades']['select_us'] for r in candidate_rows)[len(candidate_rows) // 2], 'max': max(r['cascades']['select_us'] for r in candidate_rows)}
+    if store_on and env.get('X3M_SHADOW_RETENTION_TIMING') == '1':
+        # The static gate's refused-draw sightings (run 40 A, cause 1) and their cost per sighting (the IB view, the
+        # geometry queries and the store's seen path), from the retention frame lines.
+        rows = [retention_analysis.parse_frame_line(l) for l in tl if l.startswith('shadow_retention_frame ')]
+        sightings = sum(r['gate_sightings'] for r in rows)
+        case['gate_sightings'] = sightings
+        case['gate_us_per_sighting'] = (sum(r['gate_us'] for r in rows) / sightings) if sightings else None
     if static_on:
         case['classified'] = {k: sum(r['cascades']['classified'][k] for r in candidate_rows) for k in candidates_analysis.CLASS_FIELDS}
         case['class_miss'] = [sum(r['cascades']['class_miss'][i] for r in candidate_rows) for i in range(count)]

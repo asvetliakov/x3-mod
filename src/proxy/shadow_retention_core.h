@@ -304,6 +304,14 @@ struct Store {
         epochs_set = false; flush_pending = Flush::None; transit_open = false;
     }
     std::uint16_t find_node(std::uint64_t serial) const noexcept { return node_map.find(serial, [this](std::uint16_t i) { return nodes[i].serial; }); }
+    // The declaration identity of the node's record for this range and buffers (0: no such record):
+    // the owner's refused-draw sighting reuses it instead of querying the device again.
+    std::uintptr_t known_declaration(std::uint64_t serial, const DrawKey& key, const BufferStamp& vb, const BufferStamp& ib) const noexcept {
+        const std::uint16_t index = find_node(serial);
+        if (index == none) return 0;
+        for (std::uint16_t i = nodes[index].head; i != none; i = draws[i].next) { const Draw& d = draws[i]; if (d.key == key && d.vb.same_object(vb) && d.ib.same_object(ib)) return d.declaration; }
+        return 0;
+    }
     unsigned references() const noexcept { return resources_used; }
 
     // ---- the seen path (per recorded caster draw) ------------------------------

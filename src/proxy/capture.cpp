@@ -2178,7 +2178,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           // X3M_SHADOW_CASCADE_DROP_ORDER (submission | importance) and X3M_SHADOW_CASCADE_LARGE_MIN
           // (world units, 0..1e6, default 0: a static-only cascade also admits moving casters of that extent).
           // X3M_SHADOW_CASCADE_BACKFACE_FROM (0..count-1 | none; absent: every cascade whose world texel is
-          // 8 u or more) selects the cascades that replay back faces and evaluate the unjittered receiver.
+          // 8 u or more) selects the cascades that replay back faces.
           // A malformed list leaves the cascades off (the single map stays).
           { wchar_t list[128]{};
             const auto parse=[](const wchar_t* text,double* out,unsigned capacity)->unsigned{

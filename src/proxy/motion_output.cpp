@@ -7272,12 +7272,8 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         const float raster_x = camera_scene_.m20 + jitter_x, raster_y = camera_scene_.m21 + jitter_y; // the latch RT2 was rasterised under
         in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = raster_x + centre_x; in.m21 = raster_y + centre_y;
         in.m22 = ao_default_m22; in.m32 = ao_default_m32; in.jitter_index = counters_.jitter_index; in.exponent = exponent;
-        // The receiver stays the jittered sample on every cascade (the point the scene shaded; the
-        // TAA resolve averages the per-sample factors as it does every other shading term). A
-        // pre-jitter receiver for the back-face cascades (the same RT2 depth reconstructed at the
-        // pre-jitter pixel centre, foldable into their rows as r.z += r.x jx / m00 + r.y jy / m11)
-        // was measured neutral on run116's far-cascade flips and mis-registers grazing shadow edges
-        // by up to half a pixel (directional-shadows.md, "Run 40 A (run116) fix"): not applied.
+        // The receiver is the jittered sample on every cascade (the point the scene shaded; the
+        // TAA resolve averages the per-sample factors as it does every other shading term).
         // The quad's slots are the ACTIVE cascades in order (shadow_cascade_apply_slots):
         // a cascade the ladder dropped is not in the list, so the previous
         // cascade's blend band leads into the next active one. Slot s samples

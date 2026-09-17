@@ -41,6 +41,9 @@
 //               and S2 to cascade 1 (the store defers to the ring until its
 //               eight verified sightings, the refused frame 0 is a sighting
 //               too), the store never drops a node, both are promoted by frame 9.
+//               M2 (cascade 1 alone, moving) is refused every frame and seen
+//               every frame through the refused-draw path (gate_sightings=),
+//               whose cost the case records (X3M_SHADOW_RETENTION_TIMING=1).
 //   jitter      X3M_FIXTURE_SHADOW_CASCADES=8,200: cascade 1's texel is 400 / 256
 //               = 1.5625 units, its eps texel / 8 = 0.195; a node J (B at eight
 //               times its size, so the map twin covers texels) at both
@@ -175,14 +178,16 @@ void run_shadow_pool_integration(Fixture& f) {
         require(s.on(), "the cycle script runs under a census or live store (the cycle is the store's)");
         auto& fixed = s.make(1, 'B', -.05f, .05f);   // S: both cascades
         auto& alone = s.make(2, 'B', 16.f, .05f);    // S2: view x 20, cascade 1 alone (as the records script's nodes)
+        auto& mover = s.make(3, 'B', 18.f, .05f);    // M2: cascade 1 alone, moving 0.078 units per frame: refused every frame, a sighting every frame (the refused-draw path's steady state)
         for (unsigned frame = 0; frame < pool_cycle_frames; ++frame) {
+            mover.t = 18.f + pool_moving_step * float(frame);
             std::vector<unsigned> far_ids;
             if (frame >= 1) far_ids = {0, 1, 2};
-            p.frame({&fixed, &alone}, {{0, 1}, far_ids}, 2, unsigned(far_ids.size()), 0, 3 - unsigned(far_ids.size()), true, 0, frame ? 3 : 2); // frame 0: S2 is refused from its only cascade (a sighting, not a candidate)
+            p.frame({&fixed, &alone, &mover}, {{0, 1}, far_ids}, 2, unsigned(far_ids.size()), 0, 4 - unsigned(far_ids.size()), true, 0, frame ? 3 : 2); // frame 0: S2 and M2 are refused from their only cascade (sightings, not candidates)
             s.read();
-            s.expect(RsMovingDropped, 0, "no node is dropped as moving: the refused frame 0 and every admitted frame are sightings");
-            s.expect(RsNodes, 2, "S and S2 are the store's nodes on every frame (the anchor's class is excluded)");
-            s.expect(RsStatics, frame >= pool_store_static_frame - 1 ? 2 : 0, "S and S2 are promoted at frame 8's scene end");
+            s.expect(RsMovingDropped, 0, "no node is dropped as moving: the refused frames and every admitted frame are sightings");
+            s.expect(RsNodes, 3, "S, S2 and M2 are the store's nodes on every frame (the anchor's class is excluded)");
+            s.expect(RsStatics, frame >= pool_store_static_frame - 1 ? 2 : 0, "S and S2 are promoted at frame 8's scene end; M2 never");
         }
         s.expect(RsPromoted, 2, "S and S2 were promoted once each");
     } else if (is_jitter) {
