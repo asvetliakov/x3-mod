@@ -69,8 +69,8 @@ not rerun requests.
 
 Installed: run40 candidate `d4d824a4…` from `d415264f` (see [status](../status.md)). Original hull
 shading. New since run 39: the apply-quad half-pixel fix (the moving serrated band), five
-cascades with a 30 km reach, caster pool control (static-only far cascades with capital
-ships admitted, importance drop order, per-cascade records), own-ship-adaptive C0 with the
+cascades with a 30 km reach, caster pool control (importance drop order, per-cascade records; the
+static-only rule stays available but is off after run116), own-ship-adaptive C0 with the
 sliding ladder. Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull
 emitters, F6 effect gains, F8 capture.
 
@@ -80,7 +80,7 @@ Common prefix:
 ```
 Shadow set (add to every shadow session):
 ```sh
---shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-static-from 3 --shadow-cascade-large-min 1500 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096
+--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096
 ```
 
 **Session A** (fighter save, 4096² maps, 5–8 minutes):
