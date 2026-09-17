@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "f8bbcb717b9d0f187f4a3ee3337a0e3fff098155e338c39a0392e8d09561872e"
+  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
  },
  "mode": "off",
  "frames": 1535,
@@ -48,21 +48,22 @@
  },
  "us": {
   "frames": 1527,
-  "min": 19.5,
-  "median": 28.1,
-  "max": 1960.3,
+  "min": 19.1,
+  "median": 24.4,
+  "max": 1983.5,
   "bulk": {
    "frames": 5,
    "issues_median": 1450,
-   "us_median": 1594.4
+   "us_median": 1681.3
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260917-225856-615969",
- "trace_sha256": "f27e1ab854ef27fa43ff01040feffe91a687d94f834cf795d0489c53f78dce30",
- "dll_sha256": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
- "exe_sha256": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260918-021508-229867",
+ "trace_sha256": "49790cfcb2ce6a638d87eab11a0ce3f23391c06ee83e445d18e4478466770010",
+ "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+ "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
  "presented_identical_to": [
-  "seam-ownership-shadow-retention-live"
+  "seam-ownership-shadow-retention-live",
+  "seam-ownership-shadow-retention-census"
  ]
 }

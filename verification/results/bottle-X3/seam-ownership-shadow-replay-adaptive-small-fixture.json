@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion_output_fixture.exe": "f8cca8775e552567fd6815be15ac2a47d08d1552496589c5516820bda3f634aa",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion-output-seam/d3d9.dll": "bb62cda0e0e5f9aa966edffcf1e406bcc1f525d41d54cee73e4e6b858e8f490c",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/build/d3d9.dll": "9da9084d0634477e879612e53b738c71b02729f76b6304da126b55a788d2b17b"
+  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
  },
  "checks": 333,
  "depth": true,
@@ -185,15 +185,15 @@
  "frames": 8,
  "us": {
   "frames": 5,
-  "min": 71.7,
-  "median": 74.7,
-  "max": 1443.3
+  "min": 63.3,
+  "median": 101.2,
+  "max": 1491.3
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-small-20260918-002000-427374",
- "trace_sha256": "9393ddd640add0f73761ed29159542c6e7a8f8c75f69f32e83eea8099b418660",
- "dll_sha256": "bb62cda0e0e5f9aa966edffcf1e406bcc1f525d41d54cee73e4e6b858e8f490c",
- "exe_sha256": "f8cca8775e552567fd6815be15ac2a47d08d1552496589c5516820bda3f634aa",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-small-20260918-021435-356762",
+ "trace_sha256": "457bc2f8c6b7d8683fa8246016e26a504b4da119234da2a32e3e84c4be225d12",
+ "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+ "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
  "map": {
   "max_depth_error": 8.4620178757433e-06,
   "covered_texels": 231003

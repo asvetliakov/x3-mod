@@ -35,8 +35,10 @@ FRAME_FIELDS = ('device', 'frame', 'mode', 'known', 'nodes_live', 'nodes_unseen'
                 'drift_n', 'drift_p99', 'drift_max', 'age_max', 'refs_held', 'sun_relatch', 'cam_jump', 'transit_survivors', 'us',
                 # beyond the contract's list (implementation diagnostics)
                 'refused', 'moving_dropped', 'abandoned', 'deferred', 'journal_us', 'walk_us', 'draw_us', 'draw_calls',
-                'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'buffer_views', 'idle_frames')
-FLOAT_FIELDS = ('drift_p99', 'drift_max', 'us', 'journal_us', 'walk_us', 'draw_us')
+                'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'buffer_views', 'idle_frames',
+                # per-cascade reclassifications at that cascade's eps tier and the static gate's refused-draw sightings (2026-09-18, run 40 A)
+                'reclassified_c0', 'reclassified_c1', 'reclassified_c2', 'reclassified_c3', 'reclassified_c4', 'gate_sightings', 'gate_us')
+FLOAT_FIELDS = ('drift_p99', 'drift_max', 'us', 'journal_us', 'walk_us', 'draw_us', 'gate_us')
 TEXT_FIELDS = {'mode': ('census', 'live'), 'flush': ('none', 'epoch', 'reset', 'device', 'teardown', 'sun', 'observer', 'idle')}
 BUCKETS = 5
 BUCKET_LABELS = ('<60', '<600', '<3600', '<14400', '>=14400')
@@ -155,7 +157,8 @@ def summary(frames, resights, eps=0.05):
            'totals': {k: total(k) for k in ('excluded_class', 'unscoped', 'new_nodes', 'first_seen_in_range', 'promoted', 'superseded', 'lod_replaced', 'model_replaced', 'reclassified',
                                             'retired', 'journal_overflow', 'revalidated', 'mutation_delta', 'buffer_changed', 'buffer_gone', 'buffer_orphaned', 'box_exit', 'age',
                                             'evicted', 'sun_relatch', 'cam_jump', 'transit_survivors', 'refused', 'moving_dropped', 'abandoned', 'deferred',
-                                            'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'buffer_views')},
+                                            'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'buffer_views',
+                                            'reclassified_c0', 'reclassified_c1', 'reclassified_c2', 'reclassified_c3', 'reclassified_c4', 'gate_sightings')},
            'flushes': {name: sum(1 for r in frames if r['flush'] == name) for name in TEXT_FIELDS['flush'] if name != 'none'},
            'retired_burst_peak': peak('retired'),
            'drift': {'frames': len(verified), 'samples': sum(r['drift_n'] for r in verified), 'max': max((r['drift_max'] for r in verified), default=0.0),

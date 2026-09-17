@@ -10,14 +10,14 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "f8bbcb717b9d0f187f4a3ee3337a0e3fff098155e338c39a0392e8d09561872e"
+  "verification/probe/build/motion_output_fixture.exe": "adbfee0323acbac30f5cdae57b7146a4c995bb6d1a635e986e431afdddd42680",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4612681cfcf143d1d34a66faf7a71d274fdeb7c9f8f74f73871177660501ba7e",
+  "build/d3d9.dll": "bd1d62ecd3a443918824fb6e12eb96b051cba48d273be509d32a127ff6525e3a"
  },
  "script": "static",
  "store": 1,
  "frames": 14,
- "checks": 181,
+ "checks": 182,
  "compared_frames": 14,
  "absent_maps": 1,
  "color_sha256": "d5e47b25453cf050b11910f8d05a60c4a74707d7bb74551dd0e160c9aebac63b",
@@ -60,7 +60,7 @@
     "count": 2,
     "records": [
      4,
-     2
+     3
     ],
     "capped": [
      0,
@@ -68,7 +68,7 @@
     ],
     "static_only_refused": [
      0,
-     2
+     1
     ],
     "large_admitted": [
      0,
@@ -79,13 +79,13 @@
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
     4,
-    2
+    3
    ]
   },
   "2": {
@@ -93,7 +93,7 @@
     "count": 2,
     "records": [
      4,
-     2
+     3
     ],
     "capped": [
      0,
@@ -101,7 +101,7 @@
     ],
     "static_only_refused": [
      0,
-     2
+     1
     ],
     "large_admitted": [
      0,
@@ -112,13 +112,13 @@
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 2,
+     "class_ring": 2
     }
    },
    "draws": [
     4,
-    2
+    3
    ]
   },
   "3": {
@@ -126,7 +126,7 @@
     "count": 2,
     "records": [
      4,
-     2
+     3
     ],
     "capped": [
      0,
@@ -134,7 +134,7 @@
     ],
     "static_only_refused": [
      0,
-     2
+     1
     ],
     "large_admitted": [
      0,
@@ -145,13 +145,13 @@
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 2,
+     "class_ring": 2
     }
    },
    "draws": [
     4,
-    2
+    3
    ]
   },
   "4": {
@@ -159,7 +159,7 @@
     "count": 2,
     "records": [
      4,
-     2
+     3
     ],
     "capped": [
      0,
@@ -167,7 +167,7 @@
     ],
     "static_only_refused": [
      0,
-     2
+     1
     ],
     "large_admitted": [
      0,
@@ -178,13 +178,13 @@
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 2,
+     "class_ring": 2
     }
    },
    "draws": [
     4,
-    2
+    3
    ]
   },
   "5": {
@@ -192,7 +192,7 @@
     "count": 2,
     "records": [
      4,
-     2
+     3
     ],
     "capped": [
      0,
@@ -200,7 +200,7 @@
     ],
     "static_only_refused": [
      0,
-     2
+     1
     ],
     "large_admitted": [
      0,
@@ -211,13 +211,13 @@
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 2,
+     "class_ring": 2
     }
    },
    "draws": [
     4,
-    2
+    3
    ]
   },
   "6": {
@@ -225,7 +225,7 @@
     "count": 2,
     "records": [
      4,
-     2
+     3
     ],
     "capped": [
      0,
@@ -233,7 +233,7 @@
     ],
     "static_only_refused": [
      0,
-     2
+     1
     ],
     "large_admitted": [
      0,
@@ -244,13 +244,13 @@
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 2,
+     "class_ring": 2
     }
    },
    "draws": [
     4,
-    2
+    3
    ]
   },
   "7": {
@@ -258,7 +258,7 @@
     "count": 2,
     "records": [
      4,
-     2
+     3
     ],
     "capped": [
      0,
@@ -266,7 +266,7 @@
     ],
     "static_only_refused": [
      0,
-     2
+     1
     ],
     "large_admitted": [
      0,
@@ -277,13 +277,13 @@
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 2,
+     "class_ring": 2
     }
    },
    "draws": [
     4,
-    2
+    3
    ]
   },
   "8": {
@@ -291,7 +291,7 @@
     "count": 2,
     "records": [
      4,
-     2
+     3
     ],
     "capped": [
      0,
@@ -299,7 +299,7 @@
     ],
     "static_only_refused": [
      0,
-     2
+     1
     ],
     "large_admitted": [
      0,
@@ -310,13 +310,13 @@
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 2,
+     "class_ring": 2
     }
    },
    "draws": [
     4,
-    2
+    3
    ]
   },
   "9": {
@@ -493,13 +493,13 @@
  },
  "us": {
   "frames": 14,
-  "min": 46.0,
-  "median": 50.05,
-  "max": 1479.7
+  "min": 48.9,
+  "median": 63.449999999999996,
+  "max": 1591.8
  },
  "classified": {
-  "class_store": 39,
-  "class_ring": 13
+  "class_store": 29,
+  "class_ring": 23
  },
  "class_miss": [
   0,
@@ -511,11 +511,8 @@
  ],
  "large_min": 100.0,
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-census-20260917-225903-467887",
- "trace_sha256": "cd56fd83d50e4379be849f90b3efb34ff456e9c7d0ff585fd284e39067dbce98",
- "dll_sha256": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
- "exe_sha256": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
- "presented_identical_to": [
-  "seam-ownership-shadow-pool-static-off"
- ]
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-census-20260918-023344-438148",
+ "trace_sha256": "71f81ffc241c51c93dfd452cb0a6071ce67b2c89e214ce841354e760365d8386",
+ "dll_sha256": "4612681cfcf143d1d34a66faf7a71d274fdeb7c9f8f74f73871177660501ba7e",
+ "exe_sha256": "adbfee0323acbac30f5cdae57b7146a4c995bb6d1a635e986e431afdddd42680"
 }

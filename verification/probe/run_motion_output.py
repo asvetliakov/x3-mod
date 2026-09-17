@@ -422,6 +422,16 @@ SHADOW_POOL_STATIC_CASES = {'seam-ownership-shadow-pool-static-off': dict(X3M_SH
                             'seam-ownership-shadow-pool-static-strict': {}}
 CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='static', X3M_SHADOW_CASCADE_CAPS='1024', X3M_SHADOW_CASCADE_STATIC_FROM='1', **extra))
           for name, extra in SHADOW_POOL_STATIC_CASES.items()]
+# The run 40 A (run116) cases (directional-shadows.md, "Run 40 A (run116) diagnosis"; motion_output_shadow_pool_inc.h):
+# cycle (cause 1: the store/ring feedback cycle, census and live), jitter (cause 3: the texel-scaled eps of a
+# static-only cascade, at extents 8 / 200 so cascade 1's eps is 0.195; J steps 0.156 world units) and hull (cause 4: a sliver whose origin lies
+# behind the camera plane is admitted by its extent). Each fails on the pre-fix seam DLL (POOL_EXPECT differs).
+SHADOW_POOL_RUN116_CASES = {'seam-ownership-shadow-pool-cycle-census': dict(X3M_FIXTURE_SHADOW_POOL='cycle', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_SHADOW_RETENTION_CENSUS='1', X3M_SHADOW_RETENTION_TIMING='1'),
+                            'seam-ownership-shadow-pool-cycle-live': dict(X3M_FIXTURE_SHADOW_POOL='cycle', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_SHADOW_CASTER_RETENTION='1', X3M_SHADOW_RETENTION_TIMING='1'),
+                            'seam-ownership-shadow-pool-jitter-off': dict(X3M_FIXTURE_SHADOW_POOL='jitter', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_FIXTURE_SHADOW_CASCADES='8,200'),
+                            'seam-ownership-shadow-pool-jitter-live': dict(X3M_FIXTURE_SHADOW_POOL='jitter', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_FIXTURE_SHADOW_CASCADES='8,200', X3M_SHADOW_CASTER_RETENTION='1'),
+                            'seam-ownership-shadow-pool-hull': dict(X3M_FIXTURE_SHADOW_POOL='hull')}
+CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW_POOL_ENV, X3M_SHADOW_CASCADE_CAPS='1024', **extra)) for name, extra in SHADOW_POOL_RUN116_CASES.items()]
 CASES += [case('seam-ownership-shadow-pool-importance', 'shadowpool', 'ownership', camera=True,
                hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='importance', X3M_SHADOW_CASCADE_CAPS='16,4', X3M_SHADOW_CASCADE_DROP_ORDER='importance')),
           case('seam-ownership-shadow-pool-records', 'shadowpool', 'ownership', camera=True,
@@ -469,6 +479,15 @@ SUN_CASCADE5_SCRIPT = (('r', 0), ('r', 1), ('r', 2), ('r', 3), ('r', 4), ('s', 0
 SUN_CASCADE5_FAR_SKIPPED, SUN_CASCADE5_RESET_FRAME, SUN_CASCADE5_IDENTITY = (11, 13), 13, (12, 14)
 SUN_CASCADE5_EPS_RANGE = 15512.0  # the three-cascade script's cascade-0 depth range, whose EPS_DEPTH the twin keeps in world units here
 CASES += [case('sun-shadow-apply-cascades-5', 'sunapply', enabled='0', hdr_env=dict(X3M_FIXTURE_SUNAPPLY_CASCADES='5'))]
+# The run 40 A (run116) faces case (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 2;
+# motion_output_sun_apply_cascades_inc.h, the faces script): the fifth cascade's box under the eight
+# jitter offsets, eight control frames (front-face maps: the box's lit faces darken themselves and
+# re-roll with the jitter) and eight fixed frames (back-face maps on every cascade of the texel
+# law): the lit faces stay lit, the faces away
+# from the sun stay shadowed. With X3M_FIXTURE_SUNAPPLY_FACES_FIX=0 the second half is the control
+# too, and the validator fails: the pre-fix witness.
+SUN_FACES_FRAMES, SUN_FACES_FIXED_FROM = 16, 8
+CASES += [case('sun-shadow-apply-cascades-5-faces', 'sunapply', enabled='0', hdr_env=dict(X3M_FIXTURE_SUNAPPLY_CASCADES='5', X3M_FIXTURE_SUNAPPLY_FACES='1'))]
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
 SHADOW_TWINS = {'production-shadow-off': 'production-on', 'seam-shadow-off': 'seam-on', 'seam-taa-shadow-off': 'seam-taa-on',
                 'seam-lazy-shadow-off': 'seam-lazy-on', 'seam-burst-perdraw-shadow-off': 'seam-burst-perdraw', 'seam-burst-lazy-shadow-off': 'seam-burst-lazy'}
@@ -1147,6 +1166,85 @@ def validate_sun_apply_cascades(name, text, directory, env):
             'us': {'min': us[0], 'median': us[len(us) // 2], 'max': us[-1]},
             'replay_us': {'min': replay_us[0], 'median': replay_us[len(replay_us) // 2], 'max': replay_us[-1],
                           'per_issue_median': sorted(c['replay_us'] / max(1, c['issues']) for c in comparisons.values())[len(comparisons) // 2]}}
+
+
+def validate_sun_apply_cascades_faces(name, text, directory, env):
+    """The faces script: sixteen 'r' frames of the fifth cascade under the
+    eight jitter offsets; per frame the readback against the cascade twin
+    within one FP16 code, the box's plane shadow against the analytic shadow
+    (the closed box casts the same footprint from its back faces; the fixed
+    half may lose the contact line, at most 5 % of the shadow beyond one
+    texel), and SUNAPPLY_FACES: on the fixed half the lit-face receivers stay
+    lit (no interior pixel darkened, none flipping between consecutive
+    frames; the silhouette pixels, whose taps leave the face, at most 3 %) and
+    the map holds the back faces (the faces away from the sun, the back faces
+    themselves, are no longer self-shadowed: at most 40 % darkened against at
+    least 90 % on the control half; in the game those faces have sun share 0
+    and no verdict shows). A fixed half run unfixed
+    (X3M_FIXTURE_SUNAPPLY_FACES_FIX=0) fails the back-face signature and the
+    flags. At 256^2 maps the fixture's flat box does not reproduce run116's
+    knife edge on faceted hulls at 4096^2 (its 1-texel constant bias covers a
+    flat face's quantisation); the control's lit-face numbers are recorded."""
+    import numpy as np
+    assert 'RESULT PASS' in text, f'{name}: fixture failed'
+    checks = int(fields(next(l for l in text.splitlines() if l.startswith('RESULT PASS')))['checks'])
+    count = len(SUN_CASCADE5_EXTENTS)
+    config = [fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_CONFIG ')]
+    assert len(config) == 1 and config[0]['cascades'] == '5', (name, config)
+    config = config[0]
+    size = int(config['map_size'])
+    frames = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_CASCADES ')}
+    times = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_TIME ')}
+    faces = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_FACES ')}
+    assert sorted(frames) == sorted(times) == sorted(faces) == list(range(SUN_FACES_FRAMES)), (name, sorted(frames), sorted(faces))
+    comparisons, control, fixed = {}, [], []
+    # Cascades 1-4 replay back faces at 256^2 maps (their texels 11.7 .. 1,171 units; cascade 0's is 1.95): the texel law.
+    expected_mask = sum(1 << c for c in range(count) if 2.0 * SUN_CASCADE5_EXTENTS[c] / size >= 8.0)
+    for frame in range(SUN_FACES_FRAMES):
+        f, t, face = frames[frame], times[frame], faces[frame]
+        is_fixed = frame >= SUN_FACES_FIXED_FROM
+        assert f['case'] == 'r' and int(f['owner']) == 4 and t['applied'] == '1' and t['result'] == '00000000' and int(f['jitter_index']) == frame % 8, (name, frame, f['case'], t)
+        assert int(face['fixed']) == int(is_fixed) and int(face['backface_mask']) == (expected_mask if is_fixed else 0), (name, frame, face, expected_mask)
+        assert [f[f'backface{c}'] for c in range(count)] == [('1' if is_fixed and expected_mask >> c & 1 else '0') for c in range(count)], (name, frame, f)
+        width, height = int(f['width']), int(f['height'])
+        params, scene, extents, map_frames = sun_apply.parse_cascade_params(f)
+        for c, cascade in enumerate(params['cascades']):
+            cascade['eps_depth'] = sun_apply.EPS_DEPTH * SUN_CASCADE5_EPS_RANGE / (float(config['depth_light']) + float(config['depth_behind'].split(',')[c]))
+        params['band_eps'] = sun_apply.EPS_SELECT
+        read = lambda suffix, at=frame: (directory / f'sunapply_{at}_{suffix}').read_bytes()
+        before, after, rt2 = read('before.rgba16f'), read('after.rgba16f'), read('rt2.g32r32f')
+        maps = [sun_apply.unpack_map(read(f'map{c}.r32f', map_frames[c]), size) if params['cascades'][c]['valid'] else None for c in range(count)]
+        d, s = sun_apply.unpack_rt2(rt2, width, height)
+        comparison = sun_apply.compare_frame_cascades(sun_apply.unpack_rgba16f(before, width, height), sun_apply.unpack_rgba16f(after, width, height), d, s, maps, params, scene, extents)
+        assert comparison['ok'] and comparison['compared'] > 0, (name, frame, 'the readback differs from the twin', {k: comparison[k] for k in ('ok', 'compared', 'worst_codes', 'violations') if k in comparison})
+        far = comparison['cascades'][str(count - 1)]
+        # The plane shadow of the box: exact on the control half; on the fixed half the back-face map loses the
+        # contact line (the ray through a plane point near the box's foot leaves the box through the side face
+        # facing that point, within the constant bias of the point itself: about one texel of contact shadow at
+        # this elevation, the trade-off of shadow-cascade-extents.md; 17 of 872 shadowed pixels here), never more.
+        contact_limit = 0 if not is_fixed else int(.05 * far['shadowed_analytic'])
+        assert comparison['edge_beyond_one'] <= contact_limit and far['shadowed_analytic'] > 100, (name, frame, 'the plane shadow of the box', comparison['edge_beyond_one'], contact_limit, far)
+        lit, lit_dark, dark, dark_dark, common, flips, interior, interior_dark, interior_common, interior_flips = (
+            int(face[k]) for k in ('lit', 'lit_darkened', 'dark', 'dark_darkened', 'lit_common', 'lit_flips', 'interior', 'interior_darkened', 'interior_common', 'interior_flips'))
+        assert lit > 200 and dark > 50 and interior > 100, (name, frame, 'the box must be a receiver on both kinds of face', face)
+        entry = dict(frame=frame, fixed=is_fixed, jitter_index=int(f['jitter_index']), lit=lit, lit_darkened=lit_dark / lit, interior=interior, interior_darkened=interior_dark / interior,
+                     dark=dark, dark_shadowed=dark_dark / dark, lit_flips=(flips / common) if common else None, interior_flips=(interior_flips / interior_common) if interior_common else None,
+                     worst_codes=comparison['worst_codes'], ambiguous=comparison['ambiguous'], plane_shadowed=far['shadowed_analytic'], plane_edge_beyond_one=comparison['edge_beyond_one'],
+                     us=float(t['us']), replay_us=float(t['replay_us']))
+        (fixed if is_fixed else control).append(entry)
+        comparisons[frame] = entry
+    for e in fixed:
+        assert e['interior_darkened'] == 0.0 and (e['interior_flips'] is None or e['interior_flips'] == 0.0) and e['lit_darkened'] <= .03 and (e['lit_flips'] is None or e['lit_flips'] <= .03), (name, 'the fixed half: lit faces', e)
+        assert e['dark_shadowed'] <= .4, (name, 'the fixed half: the map holds the back faces', e)
+    for e in control:
+        assert e['dark_shadowed'] >= .9, (name, 'the control half: the map holds the front faces', e)
+    return {'checks': checks + 6 * SUN_FACES_FRAMES, 'fixture_checks': checks, 'frames': SUN_FACES_FRAMES, 'map_size': size, 'cascades': count, 'backface_mask': expected_mask,
+            'control': {'lit_darkened_max': max(e['lit_darkened'] for e in control), 'interior_darkened_max': max(e['interior_darkened'] for e in control),
+                        'lit_flips_max': max(e['lit_flips'] or 0.0 for e in control), 'interior_flips_max': max(e['interior_flips'] or 0.0 for e in control), 'dark_shadowed_min': min(e['dark_shadowed'] for e in control)},
+            'fixed': {'lit_darkened_max': max(e['lit_darkened'] for e in fixed), 'interior_darkened_max': max(e['interior_darkened'] for e in fixed),
+                      'lit_flips_max': max(e['lit_flips'] or 0.0 for e in fixed), 'interior_flips_max': max(e['interior_flips'] or 0.0 for e in fixed), 'dark_shadowed_max': max(e['dark_shadowed'] for e in fixed)},
+            'frames_detail': comparisons, 'worst_codes': max(e['worst_codes'] for e in comparisons.values()), 'ambiguous_max': max(e['ambiguous'] for e in comparisons.values()),
+            'edge_mismatch': None, 'us': {'median': sorted(e['us'] for e in comparisons.values())[SUN_FACES_FRAMES // 2]}}
 
 
 def validate_sun_apply_cascades_five(name, text, directory, env):
@@ -2011,15 +2109,30 @@ def validate_shadow_pool(name, text, trace, directory, env):
         cascades = c_row['cascades']
         assert (cascades['count'], cascades['records'], cascades['capped']) == (count, records, capped), (name, frame, c_row, e)
         # A drop from cascade 1 drops the whole draw only where the draw met no other cascade (the records script's nodes).
-        assert c_row['leased'] == int(frames[frame]['drawn']) - c_row['capped'] and c_row['overflow'] == 0 and c_row['capped'] == (capped[1] if script == 'records' else 0), (name, frame, c_row)
+        # POOL_EXPECT leased= (-1: every draw) names the draws that are candidates at all: a draw refused from every
+        # cascade (the cycle script's S2 on frame 0, the hull script's W before its extent is read) is not leased.
+        expected_leased = int(e.get('leased', -1))
+        if expected_leased < 0:
+            expected_leased = int(frames[frame]['drawn']) - c_row['capped']
+        assert c_row['leased'] == expected_leased and c_row['overflow'] == 0 and c_row['capped'] == (capped[1] if script == 'records' else 0), (name, frame, c_row, expected_leased)
         assert ('static_only_refused' in cascades) == static_on and ('dropped_min_size' in cascades) == importance, (name, frame, cascades)
         if static_on:
             assert cascades['static_only_refused'] == [0, int(e['static_only_refused1'])] and cascades['large_admitted'] == [0, int(e['large_admitted1'])], (name, frame, cascades, e)
             classified, drawn = cascades['classified'], int(frames[frame]['drawn'])
             assert sum(classified.values()) + cascades['class_miss'][1] == drawn and cascades['class_miss'][0] == 0, (name, frame, classified, cascades['class_miss'])
-            # Frame 0: every draw misses (no anchor yet). Later: the store answers for S, M and W once it knows
-            # them (the anchor node's class is excluded from it), the ring for the rest; nothing misses.
-            expected_store = drawn - 1 if store_on and frame >= 1 else 0
+            # Frame 0: every draw misses (no anchor yet). Later the store answers the nodes it is informative about
+            # (the anchor node's class is excluded from it): a verified mover from frame 2 (M and W of the static
+            # script), a node promoted at its tier from frame 9 (S; the cycle script's S and S2; the jitter script's J
+            # at cascade 1's tier); a fresh node or one whose streak is accruing goes to the ring, which also answers
+            # everything with the store off; nothing misses after frame 0.
+            if script == 'static':
+                expected_store = 0 if not store_on or frame <= 1 else 2 if frame <= 8 else 3
+            elif script == 'cycle':  # M2 verified moved from frame 1's scene end; S and S2 promoted at frame 8's
+                expected_store = 0 if not store_on or frame <= 1 else 1 if frame <= 8 else 3
+            elif script == 'jitter':
+                expected_store = 1 if store_on and frame >= 9 else 0
+            else:
+                expected_store = drawn - 1 if store_on and frame >= 1 else 0
             assert classified == {'class_store': expected_store, 'class_ring': 0 if frame == 0 else drawn - expected_store} and cascades['class_miss'][1] == (drawn if frame == 0 else 0), (name, frame, classified)
         if importance:
             assert cascades['select_us'] >= 0, (name, frame, cascades)
@@ -2047,7 +2160,7 @@ def validate_shadow_pool(name, text, trace, directory, env):
         elif l.startswith('SHADOW_SUN '):
             suns[int(fields(l)['frame'])] = fields(l)
         elif l.startswith('SHADOW_DRAW '):
-            f = fields(l); draws.setdefault(int(f['frame']), []).append({'caster': int(f['caster']), 'shape': f['shape'], 't': float(f['t']), 'p': float(f['p']), 'zo': float(f['zo']), 'scale': float(f['scale'])})
+            f = fields(l); draws.setdefault(int(f['frame']), []).append({'caster': int(f['caster']), 'shape': f['shape'], 't': float(f['t']), 'p': float(f['p']), 'zo': float(f['zo']), 'scale': float(f['scale']), 'w0': float(f.get('w0', 1.0))})
         elif l.startswith('POOL_KEPT '):
             f = fields(l); kept[(int(f['frame']), int(f['cascade']))] = [] if f['casters'] == '-' else [int(v) for v in f['casters'].split(',')]
     compared = sorted(f for f, row in frames.items() if row['compare'] == '1')
@@ -2090,6 +2203,13 @@ def validate_shadow_pool(name, text, trace, directory, env):
     if importance:
         case['dropped_min_size1'] = dropped_sizes[0]
         case['select_us'] = {'median': sorted(r['cascades']['select_us'] for r in candidate_rows)[len(candidate_rows) // 2], 'max': max(r['cascades']['select_us'] for r in candidate_rows)}
+    if store_on and env.get('X3M_SHADOW_RETENTION_TIMING') == '1':
+        # The static gate's refused-draw sightings (run 40 A, cause 1) and their cost per sighting (the IB view, the
+        # geometry queries and the store's seen path), from the retention frame lines.
+        rows = [retention_analysis.parse_frame_line(l) for l in tl if l.startswith('shadow_retention_frame ')]
+        sightings = sum(r['gate_sightings'] for r in rows)
+        case['gate_sightings'] = sightings
+        case['gate_us_per_sighting'] = (sum(r['gate_us'] for r in rows) / sightings) if sightings else None
     if static_on:
         case['classified'] = {k: sum(r['cascades']['classified'][k] for r in candidate_rows) for k in candidates_analysis.CLASS_FIELDS}
         case['class_miss'] = [sum(r['cascades']['class_miss'][i] for r in candidate_rows) for i in range(count)]
@@ -4818,7 +4938,8 @@ def main(argv=None):
                 continue
             if mode == 'sunapply':
                 scripted = hdr_env.get('X3M_FIXTURE_SUNAPPLY_CASCADES')
-                case = (validate_sun_apply_cascades_five if scripted == '5' else validate_sun_apply_cascades if scripted == '1' else validate_sun_apply)(name, text, directory, hdr_env)
+                validator = validate_sun_apply_cascades_faces if hdr_env.get('X3M_FIXTURE_SUNAPPLY_FACES') == '1' else validate_sun_apply_cascades_five if scripted == '5' else validate_sun_apply_cascades if scripted == '1' else validate_sun_apply
+                case = validator(name, text, directory, hdr_env)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')

@@ -43,7 +43,10 @@ struct ShadowReplayCaps {
 // One draw issue of a cascade transaction: the draw (index into the shared
 // draw list) and that cascade's light rows c0-c2 (shadow_cascade_light_rows).
 struct ShadowReplayIssue { std::uint16_t draw = 0; float rows[12]{}; };
-struct ShadowReplayMapList { unsigned map = 0; const ShadowReplayIssue* issues = nullptr; unsigned count = 0; };
+// invert_cull: this map holds the casters' BACK faces (CW <-> CCW per draw; NONE unchanged:
+// shadow_replay_projection.h, shadow_cascade_backface_texel_default). Off by default.
+struct ShadowReplayMapList { unsigned map = 0; const ShadowReplayIssue* issues = nullptr; unsigned count = 0; bool invert_cull = false; };
+inline DWORD shadow_replay_cull_mode(DWORD cull, bool invert) noexcept { return !invert ? cull : cull == D3DCULL_CW ? DWORD(D3DCULL_CCW) : cull == D3DCULL_CCW ? DWORD(D3DCULL_CW) : cull; }
 struct ShadowReplayRetained { ShadowReplayBasis basis{}; std::uint64_t frame = 0; unsigned draws = 0; bool valid = false; };
 enum class ShadowReplayStage : unsigned { None, Validate, Targets, Block, Capture, Scene, Bind, Clear, Draw, EndScene, Restore };
 struct ShadowReplayResult {
@@ -125,7 +128,7 @@ private:
     HRESULT ensure_block() noexcept;
     HRESULT bind() noexcept;
     HRESULT bind_map(unsigned map) noexcept;
-    HRESULT issue(const ShadowReplayDraw&, const float* rows, unsigned vectors) noexcept;
+    HRESULT issue(const ShadowReplayDraw&, const float* rows, unsigned vectors, bool invert_cull = false) noexcept;
     void release_targets() noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* vtable_ = nullptr;

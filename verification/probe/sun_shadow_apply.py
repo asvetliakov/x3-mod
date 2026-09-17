@@ -316,18 +316,31 @@ def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=Fals
             'per_cascade': per_cascade, 'band': band, 'z': z, 'sun': sun}
 
 
-def own_surface_residual(out, maps, params, ranges, window_units=30.0):
+def own_surface_window(window_units, texel_world, texels=8.0):
+    """The own-surface window of a cascade: `window_units` or `texels` world
+    texels of that cascade, whichever is wider (a fixed 30-unit window was blind
+    at the 18- and 73-unit texels of the far cascades, whose own-surface residual
+    is texel quantisation on faceted hulls: run116 frame 24291, 64 % under four
+    texels; directional-shadows.md, "Run 40 A (run116) diagnosis")."""
+    return max(window_units, texels * texel_world) if texel_world else window_units
+
+
+def own_surface_residual(out, maps, params, ranges, window_units=30.0, texels=None):
     """The F8 self-check of the receiver reconstruction, per cascade: on the
     pixels a cascade owns (valid, `selected` == c) the residual receiver sun
     depth minus the map at the receiver's nearest texel (round(muv N), no
     bias, no plane term) in world units (`ranges[c]` = the cascade's depth
     range, depth_light + depth_behind), restricted to own-surface receivers,
-    |residual| < `window_units`, so real occluders drop out. A correct
-    reconstruction gives a median near 0 and a fraction above the constant
-    bias of a few percent (the texel quantisation on sloped surfaces); the
-    half-pixel receiver error of builds before 2026-09-18 gives a median that
-    grows with view distance (run115 frame 11954: cascade 1 median 1.66 units
-    against a 1.27-unit bias, 72 % over it). Compare the median with bias / 2."""
+    |residual| < the cascade's window (own_surface_window: `window_units`, or
+    eight of that cascade's world texels `texels[c]` when wider), so real
+    occluders drop out. A correct reconstruction gives a median near 0 and a
+    fraction above the constant bias of a few percent (the texel quantisation
+    on sloped surfaces); the half-pixel receiver error of builds before
+    2026-09-18 gives a median that grows with view distance (run115 frame
+    11954: cascade 1 median 1.66 units against a 1.27-unit bias, 72 % over
+    it). Compare the median with bias / 2. A back-face cascade (the map
+    holding the far sides) reports its residual against the far side: the
+    body's thickness, not zero."""
     import numpy as np
     report = []
     for c, cascade in enumerate(params['cascades']):
@@ -340,9 +353,11 @@ def own_surface_residual(out, maps, params, ranges, window_units=30.0):
         tu = np.clip(np.floor(np.nan_to_num(mu) * size + .5).astype(np.int64), 0, size - 1)
         tv = np.clip(np.floor(np.nan_to_num(mv) * size + .5).astype(np.int64), 0, size - 1)
         residual = (position[2] - sun_map[tv, tu]) * ranges[c]
-        own = out['valid'] & (out['selected'] == c) & (sun_map[tv, tu] < 1.0) & (np.abs(residual) < window_units)
+        window = own_surface_window(window_units, texels[c] if texels and c < len(texels) else None)
+        own = out['valid'] & (out['selected'] == c) & (sun_map[tv, tu] < 1.0) & (np.abs(residual) < window)
         bias = cascade['bias_constant'] * ranges[c]
-        entry = {'cascade': c, 'bias_units': float(bias), 'own_surface': int(np.count_nonzero(own)), 'owned': int(np.count_nonzero(out['valid'] & (out['selected'] == c)))}
+        entry = {'cascade': c, 'bias_units': float(bias), 'own_surface': int(np.count_nonzero(own)), 'owned': int(np.count_nonzero(out['valid'] & (out['selected'] == c))),
+                 'window_units': float(window), 'backface': bool(cascade.get('backface', False))}
         if entry['own_surface']:
             r = residual[own]
             entry.update(median=float(np.median(r)), p25=float(np.percentile(r, 25)), p75=float(np.percentile(r, 75)),
@@ -359,8 +374,8 @@ def own_surface_residual_line(report):
             parts.append('absent'); continue
         if not entry['own_surface']:
             parts.append('c%d none' % entry['cascade']); continue
-        parts.append('c%d %.3f (bias/2 %.3f, over bias %.1f%%, n=%d)%s' % (entry['cascade'], entry['median'], .5 * entry['bias_units'], 100.0 * entry['over_bias'], entry['own_surface'],
-                                                                             ' OVER' if entry['median_over_half_bias'] else ''))
+        parts.append('c%d %.3f (bias/2 %.3f, over bias %.1f%%, n=%d%s)%s' % (entry['cascade'], entry['median'], .5 * entry['bias_units'], 100.0 * entry['over_bias'], entry['own_surface'],
+                                                                               (', window %.0f' % entry['window_units']) if 'window_units' in entry else '', ' OVER' if entry['median_over_half_bias'] else ''))
     return 'median own-surface residual (units): ' + '; '.join(parts)
 
 
@@ -643,7 +658,9 @@ def parse_cascade_params(fields):
     params['jitter_index'] = int(fields['jitter_index'])
     count = int(fields['cascades'])
     params['cascades'] = [{'rows': tuple(float(v) for v in fields['rows%d' % c].split(',')), 'bias_constant': float(fields['bias%d' % c]),
-                           'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1'} for c in range(count)]
+                           'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1',
+                           # The map holds the casters' back faces (backface<c>=1; absent on older records).
+                           'backface': fields.get('backface%d' % c) == '1'} for c in range(count)]
     for c in params['cascades']:
         if len(c['rows']) != 12:
             raise ValueError('cascade rows: expected 12 values')
@@ -771,7 +788,9 @@ def parse_apply_cascade_params(fields):
         rows = tuple(float(v) for v in fields['rows%d' % c].split(','))
         if len(rows) != 12:
             raise ValueError('rows%d: expected 12 values, got %d' % (c, len(rows)))
-        entry = {'rows': rows, 'bias_constant': float(fields['bias%d' % c]), 'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1'}
+        # backface<c>: the map holds the casters' back faces (a cascade of the texel law, shadow_replay_projection.h); absent on older lines.
+        entry = {'rows': rows, 'bias_constant': float(fields['bias%d' % c]), 'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1',
+                 'backface': fields.get('backface%d' % c) == '1'}
         detail = {'map': int(fields['map%d' % c]), 'map_frame': int(fields['map_frame%d' % c]), 'texel_world': float(fields['texel_world%d' % c]),
                   'extent': float(fields['extent%d' % c]), 'depth_light': float(fields['depth_light%d' % c]), 'depth_behind': float(fields['depth_behind%d' % c]),
                   # The configured cascade this slot samples (shadow-cascade-extents.md, section 5: the
@@ -786,8 +805,24 @@ def parse_apply_cascade_params(fields):
                 raise ValueError('cascade %d: %s %.9g does not resolve (%.9g)' % (c, key, printed, resolved[key]))
         params['cascades'].append(entry); cascades.append(detail)
     extra = dict(width=int(fields['width']), height=int(fields['height']), jitter_px=(float(fields['jitter_x']), float(fields['jitter_y'])),
-                 bias_units=bias_units, clamp_texels=clamp_texels, cascades=cascades, map=cascades[0]['map'])
+                 bias_units=bias_units, clamp_texels=clamp_texels, cascades=cascades, map=cascades[0]['map'], backface_mask=int(fields.get('backface_mask', 0)))
     return params, parse_latch_law(fields, params, extra)
+
+
+def unjitter_rows(rows, jitter_px, width, height, m00, m11):
+    """A cascade's rows evaluating the pre-jitter receiver (the measurement tool of
+    directional-shadows.md, "Run 40 A (run116) fix"; not what the build does): the quad
+    reconstructs p from the jittered latch; the same RT2 depth at the pre-jitter pixel centre
+    is q = p + (jx z / m00, jy z / m11, 0) with (jx, jy) the raster jitter in NDC (+2 jx_px / W,
+    -2 jy_px / H), linear in z, so r.z += r.x jx / m00 + r.y jy / m11 and dot(r, p) = dot(r, q).
+    Returns the twelve adjusted rows (a tuple). On run116 the term left the far cascade's
+    per-frame flips unchanged (the re-roll is in the sampled depth, not the lateral texel) and
+    it moves grazing shadow edges by up to half a pixel, so the build keeps the jittered receiver."""
+    jx, jy = 2.0 * jitter_px[0] / width, -2.0 * jitter_px[1] / height
+    out = list(rows)
+    for r in range(3):
+        out[r * 4 + 2] += rows[r * 4] * jx / m00 + rows[r * 4 + 1] * jy / m11
+    return tuple(out)
 
 
 def load_cascade_maps(directory, device, frame, extra, params):
@@ -947,7 +982,7 @@ def main(argv=None):
         maps = load_cascade_maps(args.capture, args.device, args.frame, extra, params)
         out = expected_factor_cascades(d, s, maps, params, legacy_floor=args.legacy_floor)
         valid = out['valid']
-        residual = own_surface_residual(out, maps, params, [c['depth_light'] + c['depth_behind'] for c in extra['cascades']])
+        residual = own_surface_residual(out, maps, params, [c['depth_light'] + c['depth_behind'] for c in extra['cascades']], texels=[c['texel_world'] for c in extra['cascades']])
         print(json.dumps(dict(frame=args.frame, source=source, pixel_centre_added=add_pixel_centre, pixel_centre_logged=bool(extra.get('pixel_centre')), m20=params['m20'], m21=params['m21'], cascades=extra['cascades'],
                               valid=int(valid.sum()), ambiguous=int(out['ambiguous'].sum()),
                               owned=[int((valid & (out['selected'] == c)).sum()) for c in range(len(params['cascades']))],

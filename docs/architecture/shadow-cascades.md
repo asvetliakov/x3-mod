@@ -259,6 +259,7 @@ named constant in `src/renderer/shadow_replay_projection.h`.
 | Held far centre with a caster-change hash; D16 attachment as a memory option | not implemented (deferred by this note) |
 | Cross-frame caster retention against engine view culling | implemented: [shadow-caster-retention.md](shadow-caster-retention.md) |
 | Caster pool control for wide far cascades: per-cascade records up to 4,096, importance drop order, static-only far cascades | implemented 2026-09-18, default off: [shadow-cascade-extents.md](shadow-cascade-extents.md), "Caster pool control" (`--shadow-cascade-records`, `--shadow-cascade-drop-order`, `--shadow-cascade-static-from`) |
+| Back-face casters on the far cascades (the map holds the far side of every body: no self-shadow on the compare's knife edge) | implemented 2026-09-18, default on for every cascade whose world texel is 8 u or more: [shadow-cascade-extents.md](shadow-cascade-extents.md), "Caster pool control" amendments (`--shadow-cascade-backface-from`) |
 
 ### Amendment: one sun per cascade (2026-09-17)
 

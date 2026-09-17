@@ -267,14 +267,15 @@ HRESULT ShadowReplayPass::bind() noexcept {
 #undef STEP
     return S_OK;
 }
-// One draw: the application's own geometry bindings and cull mode, the light
-// rows (c0-c3, or c0-c2 of a cascade issue over the transaction's constant c3).
-HRESULT ShadowReplayPass::issue(const ShadowReplayDraw& r, const float* rows, unsigned vectors) noexcept {
+// One draw: the application's own geometry bindings and cull mode (inverted
+// for a back-face map: shadow_replay_cull_mode), the light rows (c0-c3, or
+// c0-c2 of a cascade issue over the transaction's constant c3).
+HRESULT ShadowReplayPass::issue(const ShadowReplayDraw& r, const float* rows, unsigned vectors, bool invert_cull) noexcept {
     D d = device_;
     HRESULT hr = call<SetDeclarationFn>(SetVertexDeclaration)(d, r.declaration);
     if (SUCCEEDED(hr)) hr = call<SetStreamFn>(SetStreamSource)(d, 0, r.vertex_buffer, r.stream_offset, r.stride);
     if (SUCCEEDED(hr)) hr = call<SetIndicesFn>(SetIndices)(d, r.indexed ? r.index_buffer : nullptr);
-    if (SUCCEEDED(hr)) hr = call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, r.cull_mode);
+    if (SUCCEEDED(hr)) hr = call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, shadow_replay_cull_mode(r.cull_mode, invert_cull));
     if (SUCCEEDED(hr)) hr = call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 0, rows, vectors);
     if (FAILED(hr)) return hr;
     return r.indexed ? call<DrawIndexedFn>(DrawIndexedPrimitive)(d, r.topology, r.base_vertex, r.min_vertex, r.vertex_count, r.first, r.primitives)
@@ -330,7 +331,7 @@ HRESULT ShadowReplayPass::execute_cascades(const ShadowReplayDraw* draws, unsign
         if (!step(ShadowReplayStage::Bind, bind_map(list.map))) break;
         if (!step(ShadowReplayStage::Clear, call<ClearFn>(Clear)(d, 0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xffffffffu, 1.f, 0))) break;
         for (unsigned i = 0; i < list.count; ++i) {
-            if (!step(ShadowReplayStage::Draw, issue(draws[list.issues[i].draw], list.issues[i].rows, 3))) break;
+            if (!step(ShadowReplayStage::Draw, issue(draws[list.issues[i].draw], list.issues[i].rows, 3, list.invert_cull))) break;
             ++out->drawn; ++out->drawn_map[list.map];
         }
     }

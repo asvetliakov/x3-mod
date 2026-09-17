@@ -66,6 +66,21 @@ def parse_depth_line(line):
             raise MalformedLine(line.strip())
         row['shadow_toggle'] = int(tail[0][1])
         tail = tail[1:]
+    # Back-face cascades (shadow-cascade-extents.md, "Caster pool control" amendments): the
+    # issued records by cull mode per cascade, cull_none<i> cull_inverted<i>, at the end of the line.
+    culls = [(k, v) for k, v in tail if k.startswith('cull_')]
+    if culls:
+        tail = tail[:len(tail) - len(culls)]
+        count = len(culls) // 2
+        if len(culls) % 2 or [k for k, _ in culls] != [f'cull_{kind}{i}' for i in range(count) for kind in ('none', 'inverted')]:
+            raise MalformedLine(line.strip())
+        try:
+            values = [int(v) for _, v in culls]
+        except ValueError as error:
+            raise MalformedLine(line.strip()) from error
+        if any(v < 0 for v in values):
+            raise MalformedLine(line.strip())
+        row['cull'] = {'none': values[0::2], 'inverted': values[1::2]}
     # Live caster retention (shadow-caster-retention.md): after the cascade
     # fields, replayed_live<i> replayed_retained<i> per cascade.
     retained = [(k, v) for k, v in tail if k.startswith('replayed_')]
@@ -164,9 +179,11 @@ def shape_vertices(shape, scale=1.0):
     return [(x * scale, y * scale, .5) for x, y in tri]
 
 
-def rows_matrix(t, p, zo):
-    """The fixture's clip rows c24-c27 (four dp4 rows)."""
-    return ((1, 0, 0, t), (0, 1, 0, 0), (0, 0, 1, zo), (p, 0, 0, 1))
+def rows_matrix(t, p, zo, w0=1.0):
+    """The fixture's clip rows c24-c27 (four dp4 rows); `w0` is the w row's
+    constant (the object origin's clip w: 1 everywhere but the pool script's
+    hull case, whose origin lies behind the camera plane)."""
+    return ((1, 0, 0, t), (0, 1, 0, 0), (0, 0, 1, zo), (p, 0, 0, w0))
 
 
 def project_vertex(vertex, rows, camera, basis):
@@ -242,7 +259,7 @@ def expected_map(draws, camera, basis, size):
     """The CPU map for one frame's SHADOW_DRAW records."""
     triangles = []
     for d in draws:
-        rows = rows_matrix(d['t'], d['p'], d['zo'])
+        rows = rows_matrix(d['t'], d['p'], d['zo'], d.get('w0', 1.0))
         tri = []
         for v in shape_vertices(d['shape'], d.get('scale', 1.0)):
             # A retained caster (shadow-caster-retention.md) keeps the world place its rows

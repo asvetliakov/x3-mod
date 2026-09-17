@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-affda091a6929e138/verification/probe/build/motion_output_fixture.exe": "0260b6be16428d8b63f4b1b6aa219d4a86c2a97a54c4f86bf13dad3adf887455",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-affda091a6929e138/verification/probe/build/motion-output-seam/d3d9.dll": "e74b49f16e9e87402cecdf81eea8a17ddd16a14064b967681d1e762c1729d66d",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-affda091a6929e138/build/d3d9.dll": "a7d40b763a2f72332349501e2750b61a387d6d7ed10c0b41bc370d8c6258884c"
+  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
+  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
  },
  "checks": 173,
  "fixture_checks": 130,
@@ -55,7 +55,7 @@
    "elevation": 50.0,
    "jitter_index": 0,
    "exponent": 1.0,
-   "us": 21440.3,
+   "us": 20976.4,
    "receivers": 12882,
    "share_free": 1582,
    "sentinels": 1920,
@@ -78,7 +78,7 @@
    "elevation": 50.0,
    "jitter_index": 1,
    "exponent": 1.0,
-   "us": 3685.2,
+   "us": 3854.2,
    "receivers": 12882,
    "share_free": 1582,
    "sentinels": 1920,
@@ -112,7 +112,7 @@
    "elevation": 30.0,
    "jitter_index": 2,
    "exponent": 1.0,
-   "us": 1545.6,
+   "us": 2086.4,
    "receivers": 12882,
    "share_free": 1582,
    "sentinels": 1920,
@@ -146,7 +146,7 @@
    "elevation": 50.0,
    "jitter_index": 3,
    "exponent": 1.0,
-   "us": 1750.5,
+   "us": 1733.2,
    "receivers": 12882,
    "share_free": 1582,
    "sentinels": 1920,
@@ -180,7 +180,7 @@
    "elevation": 70.0,
    "jitter_index": 5,
    "exponent": 0.454545438,
-   "us": 1776.7,
+   "us": 1753.6,
    "receivers": 12996,
    "share_free": 1596,
    "sentinels": 1792,
@@ -214,7 +214,7 @@
    "elevation": 70.0,
    "jitter_index": 5,
    "exponent": 0.454545438,
-   "us": 5363.2,
+   "us": 6347.0,
    "receivers": 12996,
    "share_free": 1596,
    "sentinels": 1792,
@@ -236,13 +236,13 @@
   "box_beyond_two_texels": 12
  },
  "us": {
-  "min": 1545.6,
-  "median": 3685.2,
-  "max": 21440.3
+  "min": 1733.2,
+  "median": 3854.2,
+  "max": 20976.4
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-sun-shadow-apply-wide-20260917-232833-233615",
- "trace_sha256": "db1bf1c19b0462f80b6563e34afdf1242dd1fac3ec96d85d9556fb0421f6f34e",
- "dll_sha256": "a7d40b763a2f72332349501e2750b61a387d6d7ed10c0b41bc370d8c6258884c",
- "exe_sha256": "0260b6be16428d8b63f4b1b6aa219d4a86c2a97a54c4f86bf13dad3adf887455"
+ "directory": "verification/probe/build/motion-output-sun-shadow-apply-wide-20260918-021542-744317",
+ "trace_sha256": "405a07431bf629581c5f0a9c8bfcfa03c3d17952dde65a52dea6431a01bc749c",
+ "dll_sha256": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496",
+ "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9"
 }

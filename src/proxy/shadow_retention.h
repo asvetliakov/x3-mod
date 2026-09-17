@@ -47,6 +47,7 @@ struct ShadowRetention {
     // Cost: the scene-end work of the frame; with X3M_SHADOW_RETENTION_TIMING=1 also the draw path (one counter pair per recorded draw).
     bool timing = false;
     std::int64_t draw_ticks = 0; std::uint32_t draw_calls = 0;
+    std::int64_t gate_ticks = 0; std::uint32_t gate_calls = 0; // note_refused_sighting (timing on): the static gate's refused-draw sightings
     double us = 0, journal_us = 0, walk_us = 0;
     std::uint64_t published_frame = ~std::uint64_t(0);
     unsigned idle_frames = 0; // consecutive frame begins without a scene end since the last one (the idle watchdog)

@@ -81,7 +81,7 @@ void MotionOutput::update_adaptive_cascades() noexcept {
         // the map it held before the drop); the slid policies (caps, static-only mask) replace the attach-time ones on the draw path.
         if (depth_replay_) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (cascade_adaptive_.changed >> i & 1u) depth_replay_->invalidate_retained(i);
         for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) depth_cascade_draw_caps_[i] = depth_cascades_.importance ? candidate_capacity_ : depth_cascades_.bound(i);
-        depth_cascade_static_mask_ = depth_cascades_.static_only_mask();
+        refresh_cascade_policy(); // the static-only mask, the back-face mask (the texel law follows the slid extents) and the per-cascade eps
     }
     if (reason || capture_) log_cascade_set(reason ? reason : "capture");
     own_radius_frame_ = 0.f; own_draws_frame_ = 0;
@@ -100,10 +100,10 @@ void MotionOutput::log_cascade_set(const char* reason) noexcept {
     if (used < 0 || used >= int(sizeof cap_text)) cap_text[0] = 0;
     char static_text[12]; std::snprintf(static_text, sizeof static_text, "%u", depth_cascades_.static_from < depth_cascades_.count ? depth_cascades_.static_from : 0u);
     log("shadow_cascade_set device=%llu frame=%llu reason=%s own_node=%p own_status=%u own_radius=%.9g e0=%.9g texel0=%.9g depth_behind0=%.9g active_mask=%u apply_slots=%s slid=%u changed=%u extents=%s caps=%s static_from=%s large_min=%.9g k=%.9g ratio=%.9g pending_radius=%.9g pending_frames=%u held_frames=%u"
-        " frame_radius=%.9g own_draws=%u own_hits=%u own_walks=%u own_walk_deferred=%u own_flushes=%u",
+        " frame_radius=%.9g own_draws=%u own_hits=%u own_walks=%u own_walk_deferred=%u own_flushes=%u backface_mask=%u",
         id_, frame_, reason, reinterpret_cast<void*>(cascade_adaptive_.node), own_ship_status_, double(cascade_adaptive_.radius), double(c0.half_extent),
         renderer::shadow_replay_world_texel(c0), double(c0.depth_behind), depth_cascades_.active, slot_text, cascade_adaptive_.slid, cascade_adaptive_.changed, extent_text, cap_text,
         depth_cascades_.static_from < depth_cascades_.count ? static_text : "none", double(depth_cascades_.large_min), double(cascade_adaptive_k_), double(cascade_ladder_ratio_),
         double(cascade_adaptive_.pending), cascade_adaptive_.pending_frames,
-        cascade_adaptive_.held_frames, double(own_radius_frame_), own_draws_frame_, own_cache_.hits, own_cache_.walks, own_cache_.deferred, own_cache_.flushes);
+        cascade_adaptive_.held_frames, double(own_radius_frame_), own_draws_frame_, own_cache_.hits, own_cache_.walks, own_cache_.deferred, own_cache_.flushes, unsigned(depth_cascade_backface_mask_));
 }

@@ -1,5 +1,5 @@
 {
- "case": "seam-ownership-shadow-pool-static-off",
+ "case": "seam-ownership-shadow-pool-cycle-census",
  "bottle": {
   "name": "X3",
   "wine_arch": "arm64",
@@ -10,23 +10,23 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
-  "build/d3d9.dll": "c028798dc421b9d70778e22921aff361bc7f25b5315bb0d5395c61ab4d46f6b2"
+  "verification/probe/build/motion_output_fixture.exe": "adbfee0323acbac30f5cdae57b7146a4c995bb6d1a635e986e431afdddd42680",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "4612681cfcf143d1d34a66faf7a71d274fdeb7c9f8f74f73871177660501ba7e",
+  "build/d3d9.dll": "bd1d62ecd3a443918824fb6e12eb96b051cba48d273be509d32a127ff6525e3a"
  },
- "script": "static",
- "store": 0,
- "frames": 14,
- "checks": 165,
- "compared_frames": 14,
+ "script": "cycle",
+ "store": 1,
+ "frames": 12,
+ "checks": 193,
+ "compared_frames": 12,
  "absent_maps": 1,
- "color_sha256": "d5e47b25453cf050b11910f8d05a60c4a74707d7bb74551dd0e160c9aebac63b",
+ "color_sha256": "a31a206f9028c1a02e455473159acdf9461551178b91534d4b30b5f6c4bbc894",
  "per_frame": {
   "0": {
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      0
     ],
     "capped": [
@@ -51,7 +51,7 @@
     }
    },
    "draws": [
-    4,
+    2,
     0
    ]
   },
@@ -59,7 +59,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -72,7 +72,7 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
@@ -84,7 +84,7 @@
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -92,7 +92,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -105,19 +105,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 1,
+     "class_ring": 3
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -125,7 +125,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -138,19 +138,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 1,
+     "class_ring": 3
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -158,7 +158,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -171,19 +171,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 1,
+     "class_ring": 3
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -191,7 +191,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -204,19 +204,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 1,
+     "class_ring": 3
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -224,7 +224,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -237,19 +237,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 1,
+     "class_ring": 3
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -257,7 +257,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -270,19 +270,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 1,
+     "class_ring": 3
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -290,7 +290,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -303,19 +303,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 1,
+     "class_ring": 3
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -323,7 +323,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -336,19 +336,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -356,7 +356,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -369,19 +369,19 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    4,
+    2,
     3
    ]
   },
@@ -389,7 +389,7 @@
    "c": {
     "count": 2,
     "records": [
-     4,
+     2,
      3
     ],
     "capped": [
@@ -402,104 +402,40 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 0,
-     "class_ring": 4
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    4,
-    3
-   ]
-  },
-  "12": {
-   "c": {
-    "count": 2,
-    "records": [
-     4,
-     3
-    ],
-    "capped": [
-     0,
-     0
-    ],
-    "static_only_refused": [
-     0,
-     1
-    ],
-    "large_admitted": [
-     0,
-     1
-    ],
-    "class_miss": [
-     0,
-     0
-    ],
-    "classified": {
-     "class_store": 0,
-     "class_ring": 4
-    }
-   },
-   "draws": [
-    4,
-    3
-   ]
-  },
-  "13": {
-   "c": {
-    "count": 2,
-    "records": [
-     4,
-     3
-    ],
-    "capped": [
-     0,
-     0
-    ],
-    "static_only_refused": [
-     0,
-     1
-    ],
-    "large_admitted": [
-     0,
-     1
-    ],
-    "class_miss": [
-     0,
-     0
-    ],
-    "classified": {
-     "class_store": 0,
-     "class_ring": 4
-    }
-   },
-   "draws": [
-    4,
+    2,
     3
    ]
   }
  },
  "map": {
-  "max_depth_error": 4.412964153133192e-05,
-  "covered_texels": 10747,
+  "max_depth_error": 3.7744857035226786e-05,
+  "covered_texels": 370,
   "coverage_disagreements": 0,
-  "maps": 27
+  "maps": 23
  },
  "us": {
-  "frames": 14,
-  "min": 37.1,
-  "median": 48.0,
-  "max": 1552.3
+  "frames": 12,
+  "min": 35.1,
+  "median": 44.25,
+  "max": 1481.5
  },
+ "gate_sightings": 13,
+ "gate_us_per_sighting": 1.2461538461538464,
  "classified": {
-  "class_store": 0,
-  "class_ring": 52
+  "class_store": 16,
+  "class_ring": 28
  },
  "class_miss": [
   0,
@@ -507,12 +443,11 @@
  ],
  "large_admitted": [
   0,
-  13
+  0
  ],
- "large_min": 100.0,
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-off-20260918-023122-176089",
- "trace_sha256": "1f5524c1560ab0a1760674a1c0e7c50f5cd0e2976692ceae17056673cc916891",
- "dll_sha256": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
- "exe_sha256": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-cycle-census-20260918-023348-202590",
+ "trace_sha256": "aa18408bdae60505787dcdcd66b50710e527d1dc1041bf1b2dfd066ccbc977b4",
+ "dll_sha256": "4612681cfcf143d1d34a66faf7a71d274fdeb7c9f8f74f73871177660501ba7e",
+ "exe_sha256": "adbfee0323acbac30f5cdae57b7146a4c995bb6d1a635e986e431afdddd42680"
 }

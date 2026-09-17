@@ -2,8 +2,10 @@
 // Static/moving classification of a live caster draw for the static-only far
 // cascades (docs/architecture/shadow-cascade-extents.md, "Caster pool control";
 // X3M_SHADOW_CASCADE_STATIC_FROM). The retention store's verdict is used for
-// the nodes it knows (shadow_retention_core.h: eight verified sightings within
-// eps); a node the store does not know, or with the store off, is classified
+// the cascades it is informative about (shadow_retention_core.h, Node::static_mask
+// and moved_mask: eight verified sightings within that cascade's eps, or a
+// verified move beyond it since); a node the store does not know, one it has not
+// verified yet (fresh, or its streak accruing), or with the store off, is classified
 // here against its own anchor sighting: the draw's object -> world rows
 // (world_rows, from the clip rows and the frame's camera latch) must be within
 // eps of the rows of the same node and draw range at its anchor (drift2 on the
@@ -41,11 +43,15 @@ struct Ring {
     }
     void clear() noexcept { if (entries) for (unsigned i = 0; i < size(); ++i) { entries[i].key = 0; entries[i].stamp = 0; } }
     // `world`: this sighting's rows; `lo`/`hi`: the draw's own extent (zero
-    // boxes compare the origin alone); `frame`: the current frame. Static:
-    // within eps of the anchor (which stays). Moving: beyond eps; the sighting
-    // becomes the new anchor. Miss: no anchor; the sighting becomes one.
-    Verdict test(std::uint64_t key, const double world[12], const float lo[3], const float hi[3], double eps, std::uint32_t frame) noexcept {
-        if (!entries) return Verdict::Miss;
+    // boxes compare the origin alone); `frame`: the current frame. The squared
+    // corner drift from the anchor (drift2), or -1 on a miss (no anchor; the
+    // sighting becomes one). Beyond `anchor_eps` the sighting becomes the new
+    // anchor (the store's base law), so a caller with several per-cascade
+    // thresholds (renderer::shadow_cascade_class_eps) compares the one drift
+    // against each: a far cascade's coarser eps sees the step since the last
+    // beyond-base placement, as the store's tiers do.
+    double drift(std::uint64_t key, const double world[12], const float lo[3], const float hi[3], double anchor_eps, std::uint32_t frame) noexcept {
+        if (!entries) return -1.;
         Entry* set = entries.get() + std::size_t(key % sets) * ways;
         Entry* found = nullptr; Entry* victim = set;
         for (unsigned w = 0; w < ways; ++w) {
@@ -55,13 +61,18 @@ struct Ring {
         }
         if (!found) {
             victim->key = key; victim->stamp = frame; std::memcpy(victim->world, world, sizeof victim->world);
-            return Verdict::Miss;
+            return -1.;
         }
         found->stamp = frame;
         const double d2 = shadow_retention::drift2(world, found->world, lo, hi);
-        if (d2 <= eps * eps) return Verdict::Static;
-        std::memcpy(found->world, world, sizeof found->world); // the new anchor
-        return Verdict::Moving;
+        if (d2 > anchor_eps * anchor_eps) std::memcpy(found->world, world, sizeof found->world); // the new anchor
+        return d2;
+    }
+    // The one-threshold verdict: Static within eps of the anchor (which stays), Moving beyond it
+    // (the sighting becomes the new anchor), Miss without an anchor.
+    Verdict test(std::uint64_t key, const double world[12], const float lo[3], const float hi[3], double eps, std::uint32_t frame) noexcept {
+        const double d2 = drift(key, world, lo, hi, eps, frame);
+        return d2 < 0. ? Verdict::Miss : d2 <= eps * eps ? Verdict::Static : Verdict::Moving;
     }
 };
 } // namespace x3m::shadow_caster_class
