@@ -18,7 +18,13 @@ originals only; no Wine, build or game. Implemented so far: the share producer o
 `linear_material_original_sun_share_pixel_variant` in `src/renderer/linear_material.{h,cpp}`
 with its host and detached GPU fixtures (3.1, 3.2; ledger
 [directional-shadows.md](../verification/directional-shadows.md) "Original-program share
-producer"); the apply pass, lane latch and cutout admission of 2 and 4 are not.
+producer"), the apply pass of 2 (`src/renderer/sun_shadow_apply_pass.{h,cpp}`, 3.3), and the
+wiring of 2 and 4: the lane latch without linear materials (capture gate, `qualify_sun_lane`,
+gate 4's tested-opaque arm), the original share variant as the routed draw's bind pair,
+the cutout pairs through the tested-opaque arm, the scene-end order replay → rows → apply →
+AO → resolve with Reset plumbing, the F8 map dump, `--sun-shadow-apply`, and the live
+`original_lane` / `shadow_apply` cases (3.4; ledger "Lane latch and apply wiring
+(2026-09-17)"). Not yet: a user run with the lane and the quad on original shading (4.3).
 
 ## Decision
 
@@ -153,6 +159,11 @@ route. The quad runs only when, in the same frame, `sun_shadow_lane_frame availa
 `shadow_replay_depth replayed>0`, the owner is valid and HDR is active; any missing input
 skips the quad, leaving the frame byte-identical.
 
+**Known limitation.** Colour-only draws over a receiver (blended effects, no depth write)
+never veto the lane and are multiplied by the receiver's factor at scene end, because the
+quad runs on the composed RT0 after them. Accepted for the first look; judged on the run 36
+F8; the fix, if needed, is a share-0 RT2 write from those draws so the quad leaves them alone.
+
 **Native Windows.** Documented D3D9 only: `G32R32F`/`R32F` render targets, ps_3_0
 `dsx/dsy/texld`, `ZERO/SRCCOLOR` blending on `A16B16G16R16F` behind the
 post-pixel-shader-blending query, no Wine export or layout. Unverified on Windows like the
@@ -228,7 +239,7 @@ cutout state); every other bucket 0, `non_depth_writers` 3–4. The replay side 
    on the same frames with the §3 predicates of shadow-replay-gates; one F8 at the run-51
    spot with the RT2 readback, from which `analyze_sun_share_lane.py` reports eligible
    pixels and a share histogram (fraction of receiver pixels with `0 < s < 1`, invalid
-   count). Shadows stay off (`shadows=0`).
+   count). Shadows stay off (`shadows=0`; the field is 1 once `--sun-shadow-apply` is on).
 
 **What it can do without the lane:** build and prove the producer (§3.1–3.2) and the quad
 (§3.3–3.4) on fixtures; and judge the map itself offline — project the F8 capture's RT2 `.r`

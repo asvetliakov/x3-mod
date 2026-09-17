@@ -256,7 +256,8 @@ def main():
     parser.add_argument('--linear-distance-fade', action='store_true', default=None, help='Qualify six Asteroid source-over materials in linear light (requires --linear-materials --taa and the material HDR/motion prerequisites; default on with linear materials and TAA, off otherwise; --no-linear-distance-fade disables; full-size composition cost per draw)')
     parser.add_argument('--no-linear-distance-fade', dest='linear_distance_fade', action='store_false', help='Keep the Asteroid source-over materials on the native route even when --linear-materials --taa are on (opt out of the default)')
     parser.add_argument('--fade-witness', type=int, nargs='?', const=30, default=None, metavar='K', help='Diagnostic fade-region witness (X3M_FADE_WITNESS=K; requires --linear-distance-fade or --screen-emission; default off; "--fade-witness" alone means 30): every K-th frame without an admitted emission draw the M coverage target is read back once (GetRenderTargetData to a retained system-memory copy) and the covered pixels outside the union of that frame\'s derived fade rectangles are counted; one fade_witness line per K-th frame plus that frame\'s per-DIP fade_region lines (first 64, with a truncated count) in the session log, validated by verification/probe/run_linear_distance_fade_live.py (docs/architecture/linear-distance-fade-region.md, step 1)')
-    parser.add_argument('--sun-shadow-lane', action='store_true', help='Diagnostic sun-share RT2 lane only; applies no shadows (default off; requires --motion-output --taa --hdr --linear-materials).')
+    parser.add_argument('--sun-shadow-lane', action='store_true', help='Sun-share RT2 lane (X3M_SUN_SHADOW_LANE=1; default off; requires --motion-output --taa --hdr): on original shading the reviewed original programs bind their own code-value share variant (composed with --original-fill), with --linear-materials the converted materials bind theirs; applies no shadows by itself (docs/architecture/legacy-sun-application.md, 4).')
+    parser.add_argument('--sun-shadow-apply', action='store_true', help='Scene-end sun-shadow application (X3M_SUN_SHADOW_APPLY=1; default off; requires --sun-shadow-lane --shadow-replay-depth): one quad multiplies the FP16 scene by 1 - (1 - f) s, s the lane share and f a 3x3 PCF of the same frame\'s replay map, before AO and the TAA resolve; exponent 1 on original shading (code values both sides), 1/2.2 with --linear-materials (the converted lane\'s linear law); one sun_shadow_apply_frame line per frame; a frame missing the lane, the replay or the FP16 owner is left byte-identical (docs/architecture/legacy-sun-application.md, 2).')
     parser.add_argument('--shadow-replay-candidates', action='store_true', help='Lane-independent caster-candidate counter of the motion route (X3M_SHADOW_REPLAY_CANDIDATES=1; requires --motion-output --ownership only, works with original hull shading; default off): one shadow_replay_candidates line per scene end and at most 16 shadow_replay_lock_witness lines per device; integer bookkeeping per routed draw, no allocation, no shadows (docs/architecture/shadow-replay-gates.md, "Implemented")')
     parser.add_argument('--shadow-replay-depth', action='store_true', help='One-cascade depth replay of the slice-0 caster candidates into a private sun-space map at every scene end (X3M_SHADOW_REPLAY_DEPTH=1; implies --shadow-replay-candidates and requires its prerequisites --motion-output --ownership only; default off): one shadow_replay_depth line per frame, nothing samples the map, no shadows are applied (docs/architecture/shadow-replay-gates.md, "Implemented: cascade-0 depth replay fixture")')
     parser.add_argument('--shadow-replay-size', type=int, default=None, metavar='N', help='Side of the square depth replay map in texels, 64..4096, default 1024 (X3M_SHADOW_REPLAY_SIZE; requires --shadow-replay-depth)')
@@ -409,8 +410,10 @@ def main():
         parser.error('--fade-witness requires --linear-distance-fade or --screen-emission.')
     if args.shimmer_trace and not (args.motion_output and args.taa):
         parser.error('--shimmer-trace requires --motion-output --taa.')
-    if args.sun_shadow_lane and not (args.motion_output and args.taa and args.hdr and args.linear_materials):
-        parser.error('--sun-shadow-lane requires --motion-output --taa --hdr --linear-materials.')
+    if args.sun_shadow_lane and not (args.motion_output and args.taa and args.hdr):
+        parser.error('--sun-shadow-lane requires --motion-output --taa --hdr.')
+    if args.sun_shadow_apply and not (args.sun_shadow_lane and args.shadow_replay_depth):
+        parser.error('--sun-shadow-apply requires --sun-shadow-lane --shadow-replay-depth.')
     if args.shadow_replay_candidates and not (args.motion_output and args.ownership):
         parser.error('--shadow-replay-candidates requires --motion-output --ownership.')
     if args.shadow_replay_depth and not (args.motion_output and args.ownership):
@@ -649,6 +652,7 @@ def main():
             env['X3M_SHIMMER_TRACE'] = '1'
         # Ambient occlusion: every switch explicit so an inherited value cannot enable it.
         env['X3M_SUN_SHADOW_LANE'] = '1' if args.sun_shadow_lane else '0'
+        env['X3M_SUN_SHADOW_APPLY'] = '1' if args.sun_shadow_apply else '0'
         env['X3M_SHADOW_REPLAY_CANDIDATES'] = '1' if (args.shadow_replay_candidates or args.shadow_replay_depth) else '0'
         env['X3M_SHADOW_REPLAY_DEPTH'] = '1' if args.shadow_replay_depth else '0'
         env['X3M_SHADOW_REPLAY_SIZE'] = str(args.shadow_replay_size if args.shadow_replay_size is not None else 1024)

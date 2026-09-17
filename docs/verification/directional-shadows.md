@@ -226,7 +226,7 @@ draws never count as untracked writers.
 
 Worktree `worktree-agent-a8f56079c839edc2f`, bottle X3, WineArch arm64,
 `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. No composition or shadow
-application change (`shadows=0` still).
+application change (`shadows=` reported 0 then; since the apply wiring the field is 1 when `--sun-shadow-apply` is on).
 
 **Failing term.** The run66 `sun_shadow_lane_writer` lines carry no state
 fields (`reason=state gate=4 registered=1 z=1 zwrite=1 z_known=1` for all
@@ -717,3 +717,81 @@ the GPU record stands. Cost is unmeasured: no `us` lines in this slice; the shar
 Commands:
 `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_original_sun_share verification.analysis.test_original_fill verification.analysis.test_linear_sun_share`
 `sh verification/probe/build_linear_material.sh && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_linear_material.py --original-sun-share --exe verification/probe/build/linear_material_fixture.exe --programs /tmp/x3-shader-sweep/programs`
+
+## Lane latch and apply wiring (2026-09-17)
+
+The proxy integration of [legacy-sun-application.md](../architecture/legacy-sun-application.md)
+sections 2 and 4 (`src/proxy/motion_output.{h,cpp}`, `motion_output_shadow_replay_inc.h`,
+`sun_share_lane_inc.h`, `capture.cpp`, `tools/manage.py`):
+
+- Latch: `X3M_SUN_SHADOW_LANE` no longer needs linear materials (capture gate,
+  `qualify_sun_lane`'s prerequisite, gate 4's third clause). `shadow_.cutout_pair` is the
+  identity alone; the exact cutout arm keeps its own `linear_material_requested_` key, so
+  with the lane off nothing routes differently. Under original shading a routed depth
+  writer of a reviewed pair binds `sun_original_variant` (created once at registration,
+  `linear_material_original_sun_share_pixel_variant` composed with `--original-fill` K,
+  logged `sun_shadow_original_variant`, counted `original_variants` / `original_refused` on
+  the lane line; fail closed to the plain lane motion variant) and is a receiver
+  (`route.sun_receiver`). The two cutout pairs enter the tested-opaque arm with their own
+  share; `cutout_opaque_*` now also appear on `sun_shadow_lane_frame`.
+- Scene end (hook and bloom-copy sites): `publish_sun_lane` → replay transaction (on
+  success `set_view_rows` of the replayed frame; a refused frame clears them) →
+  `run_sun_shadow_apply` → AO → resolve. The quad runs only with the lane published
+  available, `replayed > 0` this frame with rows and map, the owner term valid, HDR
+  active and RT0 the FP16 target; every miss skips with the frame byte-identical. One
+  `sun_shadow_apply_frame frame= applied= skip_reason= exponent= us= map= result= restore= stage=`
+  line per frame with the option on; `sun_shadow_apply_device` once per attach
+  (retried after Reset); `before_reset` / `after_reset` forward to the pass. Exponent
+  1 on original shading, 1/2.2 with linear materials. Capture frames additionally dump
+  the replay map (`shadow_map_<device>_<frame>.r32f`, `shadow_replay_map_readback`) with
+  a `shadow_replay_map_basis` line (basis, extent, view rows) whenever the replay is on.
+- Launcher: `--sun-shadow-lane` requires `--motion-output --taa --hdr`; new
+  `--sun-shadow-apply` (default off) requires `--sun-shadow-lane --shadow-replay-depth`
+  and sets `X3M_SUN_SHADOW_APPLY=1`.
+
+Evidence (seam DLL `verification/probe/build/motion-output-seam/d3d9.dll` from this tree;
+production `build/d3d9.dll` sha256 `451d3fca…0813`, `check_no_x87.py`: 0 violations):
+
+- `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe
+  --dll verification/probe/build/motion-output-seam/d3d9.dll`: all 19 cases pass
+  (`verification/results/bottle-X3/sun-share-live.json`). `original_lane` (linear
+  materials off): 6 frames lane available, `positive=3600` on the sun frames, `zero=3600`
+  on the zero-sun frame, two `sun_shadow_original_variant` lines (`8759c7838bbc86c2`,
+  `63f96eba9eea7880`, `share_applied=1`), frame 2 `SUN_ORIGINAL_CUTOUT … routed=1 gate4=0
+  opaque_routed=1 opaque_lane=1 opaque_refused=0 untracked=0`. `shadow_apply` (ownership,
+  rotating camera, 512² map over a 32-unit half-extent, a caster at view depth 16 behind
+  the receiver at 12 under the +Z sun): `apply_frames=4`, skipped `{0: replay (lease
+  refused), 2: lane (untracked writer)}`, `exponent=1.000000`, `map=512`, `apply_us_max=1716.9`
+  (the JSON carries the per-run maximum; the first quad includes the block capture), `replayed=2` on frames 1–5, Reset before
+  frame 4; TAA output compared byte-identical on frames 0–2 and within one FP16 code of the
+  CPU-shadowed reference `C·(1−s)` on frames 3–5 (`shadowed_pixels_min=3969` of 4096 per
+  frame, all darkened by ≥ 1 code); `exact_taa_frames` is derived per run (6 of 6 exact on
+  the review rerun, 3 required).
+- `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane
+  verification.analysis.test_original_sun_share`: 16 tests OK (new: the launcher acceptance
+  without `--linear-materials`, the `--sun-shadow-apply` refusal, the latch source contract,
+  witnesses for both new cases). Snippet mocks and fixtures
+  (`test_linear_cutout_contract`, `test_linear_emission_source_gain`, `test_motion_wrap_states`,
+  `test_original_fill`, `test_capture_device_creation`, `test_shadow_replay_depth`,
+  `test_sun_shadow_apply`): 42 tests OK.
+- Fail closed (review round 3): a reviewed original pair whose share producer refused keeps
+  its fill/motion bind pair and fails the frame's lane (`original_refused_draws` on the lane
+  line, `sun_frame_.failed`); live case `original_share_refused`
+  (`X3M_FIXTURE_SUN_LANE_FAULT=original_share`, `--original-fill 0.05`): 6 frames
+  `available=0 failed=1 original_refused_draws=1`, `original_fill_frame admitted=1` each frame.
+  The replay transaction runs once per frame (a second EndScene keeps the first result's rows
+  and counts); `after_reset` clears the per-frame apply/replay frame markers.
+- `python3 tools/manage.py launch --dry-run … --sun-shadow-lane --shadow-replay-depth
+  --sun-shadow-apply …` prints `X3M_SUN_SHADOW_LANE=1`, `X3M_SHADOW_REPLAY_DEPTH=1`,
+  `X3M_SUN_SHADOW_APPLY=1` with `X3M_LINEAR_MATERIALS=0`.
+
+Assumptions: the live comparison tolerates one FP16 code on shadowed frames (the quad's
+`pow`/multiply rounding and the history of an earlier shadowed frame), not byte identity;
+the `shadows=` field of `sun_shadow_lane_frame` now reports whether the apply option is on;
+the quad reconstructs view z from RT2's z/w with AO's default depth mapping
+(`ao_default_m22` / `ao_default_m32`, the game's zn = 6 / zf = 2e6 projection), not the
+frame's own projection terms, which the camera latch does not carry (note, unknown 2); the
+live fixture's perspective rows use the same mapping. `shadow_.cutout_pair` is evaluated
+and the `cutout_opaque_*` counting runs only with the lane or linear materials requested.
+

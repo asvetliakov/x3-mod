@@ -45,6 +45,7 @@
 #include "shadow_replay_depth.h"
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
+#include "../renderer/sun_shadow_apply_pass.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::ownership { class AdmissionMonitor; }
 namespace x3m::telemetry { struct State; }
@@ -436,6 +437,13 @@ public:
     // targets, R32F render-target support and the three-format self test.
     bool depth_enabled() const noexcept { return depth_enabled_; }
     void configure_sun_shadow_lane(bool requested) noexcept { sun_lane_requested_=requested; }
+    // Scene-end sun-shadow application (docs/architecture/legacy-sun-application.md,
+    // section 2; X3M_SUN_SHADOW_APPLY=1): one quad multiplying the FP16 scene
+    // target by 1 - (1 - f) s after the depth replay of the same frame and
+    // before AO and the resolve. Requires the lane and the depth replay (the
+    // caller enables all three); exponent 1 on original shading, 1 / 2.2 with
+    // linear materials. Off: nothing.
+    void configure_sun_shadow_apply(bool requested) noexcept { sun_apply_requested_=requested; }
     // Caster-candidate counter (shadow_replay_candidates.h; X3M_SHADOW_REPLAY_CANDIDATES=1):
     // integer bookkeeping per routed draw, one shadow_replay_candidates line per
     // scene end, at most 16 shadow_replay_lock_witness lines per device. Off: nothing.
@@ -858,6 +866,12 @@ private:
                          IDirect3DPixelShader9* sun_material_variant = nullptr;
                          IDirect3DPixelShader9* sun_xt_variant = nullptr;
                          bool sun_extraction = false;
+                         // Original-shading share producer (legacy-sun-application.md
+                         // section 1): the motion/depth variant composed with the
+                         // --original-fill K plus the code-value share in oC2.g. PS
+                         // only; created once at registration with the lane on and
+                         // linear materials off; null is the fail-closed refusal.
+                         IDirect3DPixelShader9* sun_original_variant = nullptr;
                          // XT DEFAULT is pair-specific: the shared VS retains
                          // its generic objects for every earlier exact pair.
                          IUnknown* xt_default_ordinary_variant = nullptr;
@@ -880,6 +894,12 @@ private:
         IDirect3DPixelShader9* ps_sun_material = nullptr;
         IDirect3DPixelShader9* ps_sun_xt = nullptr;
         bool ps_sun_extraction = false;
+        // The bound PS's original share variant and whether the bound VS/PS
+        // is a reviewed pair with both motion variants under original shading
+        // (refreshed with the pair identities, never at a draw).
+        IDirect3DPixelShader9* ps_sun_original = nullptr;
+        bool original_share_pair = false;
+        bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion variant, frame failed
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
@@ -930,7 +950,7 @@ private:
         // Published only at registration/SetShader; draws neither look up nor
         // validate the four objects. An incomplete pair stays native-forward.
         bool xt_default_pair = false, xt_default_ready = false;
-        bool cutout_pair = false; // identity independent of variant/capability availability
+        bool cutout_pair = false; // identity (cutout::pair) independent of variant, capability and linear-material availability
         // Asteroid-family pair identity for the shimmer trace only (the six
         // distance-fade pairs of the material tables). Refreshed with the
         // other pair identities, never at a draw, and only while the trace is on.
@@ -979,6 +999,19 @@ private:
     void qualify_sun_lane() noexcept;
     void publish_sun_lane(const char* source) noexcept;
     bool sun_lane_requested_=false, sun_lane_qualified_=false, sun_lane_active_=false, sun_lane_failed_=false;
+    bool sun_owner_valid_=false; // publish_sun_lane's owner term of this frame (the apply quad's precondition)
+    unsigned sun_original_variants_=0, sun_original_refused_=0; // original share producer: created / refused (fail closed to the fill or motion variant)
+    unsigned sun_original_refused_draws_=0; // this frame's routed depth writers of a share-refused reviewed pair (frame failed)
+    // Scene-end apply pass (sun_shadow_apply_pass.h): attached once per device
+    // epoch for the FP16 target (a refusal is final until Reset), run once per
+    // frame after the depth replay. Storage only: no per-draw cost.
+    bool sun_apply_requested_=false, sun_apply_attach_failed_=false, sun_apply_applied_=false, sun_apply_attempted_=false;
+    std::unique_ptr<renderer::SunShadowApplyPass> sun_apply_;
+    HRESULT sun_apply_attach_result_=S_FALSE;
+    std::uint64_t sun_apply_frame_=~std::uint64_t(0);
+    unsigned sun_apply_logs_=0;
+    void run_sun_shadow_apply() noexcept;
+    bool ensure_sun_shadow_apply() noexcept;
     D3DFORMAT sun_lane_depth_formats_[3]{};
     unsigned sun_lane_depth_count_=0;
     bool sun_lane_depth_qualified(D3DFORMAT format) const noexcept {
@@ -1024,6 +1057,8 @@ private:
     bool depth_sun_written_=false;
     renderer::ShadowReplayCascade depth_cascade_{};
     renderer::ShadowReplayBasis depth_basis_{}; // basis of the last replayed frame (seam readback)
+    unsigned depth_replayed_=0;                  // draws replayed on depth_replayed_frame_ (0: the map is not this frame's)
+    std::uint64_t depth_replayed_frame_=~std::uint64_t(0);
     unsigned depth_refusal_logs_[shadow_replay::depth_reason_count]{};
     void note_depth_geometry(const MotionRoute& route, unsigned index) noexcept;
     void release_depth_leases() noexcept;

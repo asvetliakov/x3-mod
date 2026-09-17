@@ -846,8 +846,10 @@ class LinearCutoutContractTests(unittest.TestCase):
         self.assertIn('if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();', temporal)
         gate = extract_function(source, 'void MotionOutput::evaluate_draw(')
         # 7f23195 (sun-lane refusal buckets) records the cutout verdict the
-        # chain computed in cutout_ok; the arm and its order are unchanged.
-        self.assertIn('test == 1 && color == 7 && shadow_.cutout_pair && (cutout_ok = cutout_draw_state())', gate)
+        # chain computed in cutout_ok; the arm and its order are unchanged. The
+        # lane latch (legacy-sun-application.md 4.2) made shadow_.cutout_pair
+        # identity-only, so the exact arm carries the linear-material key itself.
+        self.assertIn('test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && (cutout_ok = cutout_draw_state())', gate)
         reset = extract_function(source, 'void MotionOutput::before_reset(')
         self.assertIn('cutout_caps_ = cutout::Capability::Pending', reset)
         self.assertIn('cutout_reset_pending_ = true', reset)

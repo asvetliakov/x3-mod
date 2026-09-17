@@ -36,7 +36,48 @@ class SunShareLane(unittest.TestCase):
     def test_cli_default_and_requirements(self):
         result = subprocess.run(['python3', str(ROOT/'tools/manage.py'), 'launch', '--sun-shadow-lane', '--dry-run'], text=True, capture_output=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('--sun-shadow-lane requires', result.stderr)
+        self.assertIn('--sun-shadow-lane requires --motion-output --taa --hdr.', result.stderr)
+        # The latch without linear materials (legacy-sun-application.md 4.1): the
+        # lane is accepted on original shading; the apply needs the lane and the replay.
+        base = ['python3', str(ROOT/'tools/manage.py'), 'launch', '--dry-run', '--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa', '--hdr', '--sun-shadow-lane']
+        result = subprocess.run(base, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('"X3M_SUN_SHADOW_LANE": "1"', result.stdout)
+        self.assertIn('"X3M_LINEAR_MATERIALS": "0"', result.stdout)
+        self.assertIn('"X3M_SUN_SHADOW_APPLY": "0"', result.stdout)
+        result = subprocess.run(base + ['--sun-shadow-apply'], text=True, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('--sun-shadow-apply requires --sun-shadow-lane --shadow-replay-depth.', result.stderr)
+        result = subprocess.run(base + ['--shadow-replay-depth', '--sun-shadow-apply'], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for line in ('"X3M_SUN_SHADOW_LANE": "1"', '"X3M_SHADOW_REPLAY_DEPTH": "1"', '"X3M_SUN_SHADOW_APPLY": "1"', '"X3M_LINEAR_MATERIALS": "0"'):
+            self.assertIn(line, result.stdout)
+
+    def test_latch_has_no_linear_material_prerequisite(self):
+        # Source contract of the latch (legacy-sun-application.md 4.1-4.2): the
+        # tested-opaque arm, the lane qualification and the capture-side gate no
+        # longer require linear materials; the cutout identity is unconditional
+        # and the exact cutout arm keeps its linear-material key.
+        motion = (ROOT/'src/proxy/motion_output.cpp').read_text()
+        self.assertEqual(motion.count('(sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0)'), 2)
+        self.assertNotIn('sun_lane_active_ && linear_material_requested_', motion)
+        self.assertIn('shadow_.cutout_pair = (linear_material_requested_ || sun_lane_requested_) && cutout::pair(shadow_.vs_hash, shadow_.ps_hash);', motion)
+        self.assertIn('(test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && (cutout_ok = cutout_draw_state()))', motion)
+        self.assertIn('if (sun_lane_requested_ && !linear_material_requested_ && entry.variant && renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_)) {', motion)
+        self.assertIn('linear_material_original_sun_share_pixel_variant(', motion)
+        lane = (ROOT/'src/proxy/sun_share_lane_inc.h').read_text()
+        self.assertIn('if(!enabled_||!depth_enabled_||!taa_enabled_||!hdr_enabled_)break;', lane)
+        self.assertNotIn('linear_material_requested_', lane)
+        capture = (ROOT/'src/proxy/capture.cpp').read_text()
+        self.assertIn('sun_lane_enabled=asked&&motion_output_requested&&taa_requested&&hdr_requested;', capture)
+        self.assertIn('apply_asked&&sun_lane_enabled&&depth_asked&&enabled', capture)
+        # Scene-end order at both sites: lane publication, replay, apply, then AO.
+        hook = motion[motion.index('void MotionOutput::scene_end_hook'):]
+        self.assertLess(hook.index('publish_shadow_replay_candidates();'), hook.index('run_sun_shadow_apply();'))
+        self.assertLess(hook.index('run_sun_shadow_apply();'), hook.index('run_ambient_occlusion();'))
+        copy = motion[motion.index('publish_sun_lane("copy")'):]
+        self.assertLess(copy.index('publish_shadow_replay_candidates();'), copy.index('run_sun_shadow_apply();'))
+        self.assertLess(copy.index('run_sun_shadow_apply();'), copy.index('run_ambient_occlusion();'))
 
     def test_publication_and_coverage(self):
         from tools.analysis.analyze_sun_share_lane import analyze
@@ -196,8 +237,10 @@ class SunShareLane(unittest.TestCase):
             composition=case.startswith('composition');failed_coverage=case in ('composition_missing','composition_failed')
             for i in range(6):
                 lane=not early and not lane_off and not (late and i==3) and not (case=='late_shader' and i>=4)
-                available=lane and not (i==2 and (late or case in ('untracked','cutout_pair') or failed_coverage))
+                refused_share=case=='original_share_refused'
+                available=lane and not (i==2 and (late or case in ('untracked','cutout_pair','shadow_apply') or failed_coverage)) and not refused_share
                 non_writers=int((case in ('effects','cutout_pair_bias') or failed_coverage) and i==2)
+                original=case in ('original_lane','shadow_apply')
                 expected_history=int(i not in ((0,2,3,4) if failed_coverage else (0,4)))
                 histories.append(f'SUN_HISTORY frame={i} expected={expected_history} reference={expected_history} actual={expected_history} fixture_cut={int(i in (0,4) and not lane_off)}')
                 bad=failed_coverage and i==2
@@ -207,15 +250,35 @@ class SunShareLane(unittest.TestCase):
                 if composition:
                     masks.append(f'SUN_M frame={i} draws={draws} valid={int(not bad)} required={required} excluded={excluded} eligible={0 if bad else 3600-excluded} linear={1 if bad and case=="composition_failed" else 0 if bad else draws} exchanged={2 if bad and case=="composition_failed" else 0 if bad else draws} incomplete={int(bad and case=="composition_failed")} stopped={int(bad)} interleaved={int(i==3)}')
                 rows.append(f'SUN_LIVE frame={i} step={i} lane={int(lane)} available={int(available)} drawn={0 if lane_off else 3600} positive={3600 if lane and i!=1 else 0} zero={3600 if lane and i==1 else 0} fault={int(late and i==2)} history={int(i not in ((0,2,3,4) if failed_coverage else (0,4)))}')
-                publications.append(f'sun_shadow_lane_frame frame={i} available={int(available)} owner={int(not bad)} exclusion_required={required} exclusion_valid={int(not bad)} failed={int(late and i==2)} receiver_draws={int(lane)} untracked_writers={int(case in ("untracked","cutout_pair") and i==2)} non_depth_writers={non_writers}')
+                publications.append(f'sun_shadow_lane_frame frame={i} available={int(available)} owner={int(not bad)} exclusion_required={required} exclusion_valid={int(not bad)} failed={int((late and i==2) or refused_share)} receiver_draws={int(lane)} untracked_writers={int(case in ("untracked","cutout_pair","shadow_apply") and i==2)} non_depth_writers={non_writers}'
+                                    f' shadows={int(case=="shadow_apply")} cutout_opaque_routed={int(case=="original_lane" and i==2)} cutout_opaque_lane={int(case=="original_lane" and i==2)} cutout_opaque_refused=0 original_variants={2 if case=="original_lane" else int(original and not refused_share)} original_refused={int(refused_share)} original_refused_draws={int(refused_share)}')
+                if refused_share:
+                    publications.append(f'original_fill_frame frame={i} fill=0.05 admitted=1')
+                    rows.append(f'SUN_SHARE_REFUSED frame={i} refused_programs=1 refused_draws=1 fill_draws=1 failed=0')
+                if case=='shadow_apply':
+                    applied=i in (1,3,4,5)
+                    publications.append(f'shadow_replay_depth frame={i} replayed={0 if i==0 else 2} skipped_lease={2 if i==0 else 0} skipped_state=0 skipped_caps=0 draws=2 us=40.0')
+                    publications.append(f'sun_shadow_apply_frame frame={i} applied={int(applied)} skip_reason={"none" if applied else ("replay" if i==0 else "lane")} exponent=1.000000 us={70.0 if applied else 0.0} map={512 if applied else 0} result={"00000000" if applied else "00000001"} restore=00000001 stage=0')
+                    rows.append(f'SUN_APPLY frame={i} step={i} applied={int(applied)} attempted=1 replayed={0 if i==0 else 2} expect_applied={int(applied)} inner={4096 if i>=3 else 0} band=0 changed={4096 if i>=3 else 0}')
+                    (work/f'apply_mask_{i}.u8').write_bytes(bytes(4096))
                 frames.append(f'motion_output_frame frame={i} routed={int(not lane_off)} gate4={int(lane_off)}')
                 readbacks.append(f'motion_output_taa_readback frame={i} file=taa_{i}.rgba16f width=64 height=64 result=00000000')
                 data=struct.pack('<4e', .5,.25,.75,1)*4096
                 (work/f'reference_taa_{i}.rgba16f').write_bytes(data)
                 (work/'x3-modern-captures'/f'taa_{i}.rgba16f').write_bytes(data)
-            if case=='untracked':
+            if case in ('untracked','shadow_apply'):
                 publications.append('sun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=1 no_zwrite=0 blended=0 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0')
-                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=3874adb0f396a660 reason=pair gate=3 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24 test=-1 mask=-1 srgb=-1 cutout_pair=0 arm=1')
+                publications.append(f'sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=3874adb0f396a660 reason=pair gate=3 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24 test=-1 mask=-1 srgb=-1 cutout_pair=0 arm={int(case=="untracked")}')
+            if case in ('original_lane','shadow_apply'):
+                publications.append('sun_shadow_original_variant original=8759c7838bbc86c2 transform=0 create=00000000 words=1568 depth=1 fill=0 share_applied=1')
+            if case=='original_share_refused':
+                publications.append('sun_shadow_original_variant original=8759c7838bbc86c2 transform=0 create=80004005 words=1568 depth=1 fill=0.05 share_applied=0')
+            if case=='original_lane':
+                publications.append('sun_shadow_original_variant original=63f96eba9eea7880 transform=0 create=00000000 words=1600 depth=1 fill=0 share_applied=1')
+                rows.append('SUN_ORIGINAL_CUTOUT frame=2 ps=63f96eba9eea7880 test=1 ref=1 mask=7 routed=1 gate4=0 opaque_routed=1 opaque_lane=1 opaque_refused=0 untracked=0 variants=2 refused=0')
+            if case=='shadow_apply':
+                publications.append('sun_shadow_apply_mode requested=1 enabled=1 lane=1 replay=1 linear_materials=0')
+                publications.append('sun_shadow_apply_device attached=1 reason=ok result=00000000 slots=220')
             if case in ('xt_state','xt_state_lane_off'): rows.extend(f'SUN_XT_STATE frame={i} test=1 ref=1 func=7 mask=7 lane={int(not lane_off)} routed={int(not lane_off)} gate4={int(lane_off)}' for i in range(6))
             if case=='effects': rows.append('SUN_EFFECTS frame=2 depth_write=0 blend=1')
             if case=='cutout_pair_bias':
@@ -235,12 +298,37 @@ class SunShareLane(unittest.TestCase):
             return text,'\n'.join(qualifications+[depth]*(1 if case=='late_shader' else 2)+publications+readbacks+frames)
         with tempfile.TemporaryDirectory() as folder:
             work=Path(folder);(work/'x3-modern-captures').mkdir()
-            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair','cutout_pair_bias'):
+            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair','cutout_pair_bias','original_lane','shadow_apply','original_share_refused'):
                 text,trace=witness(work,case)
-                json.dumps(validate(text,trace,work,case),allow_nan=False)
+                report=validate(text,trace,work,case)
+                json.dumps(report,allow_nan=False)
+                if case=='original_lane':
+                    # The cutout admission witness is required and exact; a converted
+                    # material line anywhere in the trace fails the original case.
+                    with self.assertRaises(AssertionError): validate(text.replace('SUN_ORIGINAL_CUTOUT frame=2','SUN_ORIGINAL_CUTOUT frame=3'),trace,work,case)
+                    with self.assertRaises(AssertionError): validate(text.replace('opaque_lane=1','opaque_lane=0'),trace,work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace+'\nlinear_material_variant kind=ps original=8759c7838bbc86c2 transform=0',work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('share_applied=1','share_applied=0',1),work,case)
+                if case=='original_share_refused':
+                    # The fail-closed witness is exact: a frame published available, a dropped fill or an uncounted draw fails.
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('frame=3 available=0','frame=3 available=1'),work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('original_fill_frame frame=3 fill=0.05 admitted=1','original_fill_frame frame=3 fill=0.05 admitted=0'),work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('original_refused_draws=1','original_refused_draws=0',1),work,case)
+                if case=='shadow_apply':
+                    self.assertEqual((report['apply_frames'],report['apply_skipped'],report['exact_taa_frames']),(4,{0:'replay',2:'lane'},6))  # the synthetic witness is byte-identical on every frame; the live run reports 3
+                    # A quad drawn on the map-less or lane-less frame, a missing
+                    # skip, or a shadowed frame without a darkened footprint fails.
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('frame=0 applied=0 skip_reason=replay','frame=0 applied=1 skip_reason=none'),work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('frame=2 applied=0 skip_reason=lane','frame=2 applied=0 skip_reason=none'),work,case)
+                    with self.assertRaises(AssertionError): validate(text.replace('inner=4096 band=0 changed=4096','inner=4096 band=0 changed=0',1),trace,work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('exponent=1.000000','exponent=0.454545'),work,case)
+                    data=(work/'x3-modern-captures'/'taa_3.rgba16f').read_bytes()
+                    (work/'x3-modern-captures'/'taa_3.rgba16f').write_bytes(struct.pack('<4e',.5,.25,.75,1)*4095+struct.pack('<4e',.5,.25,.75,.5))
+                    with self.assertRaises(AssertionError): validate(text,trace,work,case)
+                    (work/'x3-modern-captures'/'taa_3.rgba16f').write_bytes(data)
                 for badtext,badtrace in (((text.replace('drawn=0','drawn=3600',1),trace),(text.replace('lane=0 available=0','lane=1 available=1',1),trace)) if case=='xt_state_lane_off' else
                                          ((text.replace('drawn=3600','drawn=0',1),trace),
-                                          (text.replace('positive=3600','positive=0',1),trace) if case not in ('cutout_drop','alpha_mask') else (text,trace.replace('stage=cutout_pass','stage=history_r')))):
+                                          (text.replace('positive=3600','positive=0',1),trace) if case not in ('cutout_drop','alpha_mask','original_share_refused') else (text,trace.replace('stage=cutout_pass','stage=history_r')) if case!='original_share_refused' else (text,trace.replace('failed=1','failed=0',1)))):
                     with self.assertRaises(AssertionError): validate(badtext,badtrace,work,case)
                 if case in ('cutout_drop','alpha_mask'):
                     with self.assertRaises(AssertionError): validate(text,trace.replace('result=80004005','result=00000000'),work,case)

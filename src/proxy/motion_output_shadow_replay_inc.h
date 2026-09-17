@@ -91,6 +91,12 @@ bool MotionOutput::ensure_shadow_replay_depth() noexcept {
 // content); the counts name the reason per record: replayed == draws or 0.
 void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
     shadow_replay::DepthCounts c{};
+    // Once per frame: a second scene-end signal (a second EndScene) must not
+    // rerun the replay with no records after the quad consumed this frame's
+    // map; the first result's rows and counts stand for the frame.
+    if (depth_replayed_frame_ == frame_) return;
+    depth_replayed_ = 0; depth_replayed_frame_ = frame_;
+    if (depth_replay_) depth_replay_->set_view_rows(nullptr); // a refused frame leaves no rows for the apply quad
     const unsigned n = candidates_.record_count;
     renderer::ShadowReplayDraw draws[shadow_replay::record_capacity];
     unsigned admitted = 0;
@@ -152,7 +158,14 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
         }
         if (FAILED(out.restore)) invalidate_render_states();
         if (FAILED(hr)) { c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, "transaction", out.operation, unsigned(out.failed)); }
-        else { c.replayed = out.drawn; depth_basis_ = basis; }
+        else {
+            c.replayed = out.drawn; depth_basis_ = basis;
+            // This frame's view -> sun rows for the scene-end apply quad
+            // (legacy-sun-application.md section 2); a row failure leaves the
+            // map unconsumable this frame (the quad skips with reason replay).
+            float rows[12];
+            if (out.drawn && renderer::shadow_replay_view_rows(camera_scene_, basis, depth_cascade_, rows)) { depth_replay_->set_view_rows(rows); depth_replayed_ = out.drawn; }
+        }
     }
     release_depth_leases();
     log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f",

@@ -2099,9 +2099,15 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
+    // Sun-share lane (directional-shadows.md section 2; legacy-sun-application.md
+    // section 4.1): the route, TAA and the FP16 scene; no linear-material
+    // prerequisite since the original share producer (original shading binds
+    // its own share variant, the converted materials theirs).
+    bool sun_lane_enabled=false;
     { wchar_t lane[4]{};
       const bool asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_LANE",lane,4)==1&&lane[0]==L'1';
-      hooked.motion_output.configure_sun_shadow_lane(asked&&motion_output_requested&&taa_requested&&hdr_requested&&linear_material_requested); }
+      sun_lane_enabled=asked&&motion_output_requested&&taa_requested&&hdr_requested;
+      hooked.motion_output.configure_sun_shadow_lane(sun_lane_enabled); }
     // Caster-candidate counter (shadow-replay-gates.md section 3): the route
     // plus the ownership wrapper (loader.cpp enables the lock bookends on the
     // same switch); no TAA, HDR, linear-material or lane prerequisite.
@@ -2119,7 +2125,14 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           unsigned size=1024; wchar_t text[16]{};
           if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_SIZE",text,16)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=64&&v<=4096)size=unsigned(v); }
           log("shadow_replay_depth_mode requested=1 enabled=%u size=%u motion_output=%u ownership=%u",enabled,size,motion_output_requested,wrapped);
-          hooked.motion_output.configure_shadow_replay_depth(enabled,size); } }
+          hooked.motion_output.configure_shadow_replay_depth(enabled,size); }
+      // Scene-end sun-shadow application (legacy-sun-application.md section 2;
+      // X3M_SUN_SHADOW_APPLY=1): the lane and the depth replay of the same
+      // frame; exponent 1 on original shading, 1 / 2.2 with linear materials.
+      { const bool apply_asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_APPLY",setting,4)==1&&setting[0]==L'1';
+        const bool apply_enabled=apply_asked&&sun_lane_enabled&&depth_asked&&enabled;
+        if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested);
+        hooked.motion_output.configure_sun_shadow_apply(apply_enabled); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);

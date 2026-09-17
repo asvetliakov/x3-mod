@@ -10,7 +10,7 @@ void MotionOutput::qualify_sun_lane() noexcept {
     HRESULT hr=D3DERR_NOTAVAILABLE;
     constexpr DWORD required=D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS|D3DPMISCCAPS_INDEPENDENTWRITEMASKS|D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
     do {
-        if(!enabled_||!depth_enabled_||!taa_enabled_||!hdr_enabled_||!linear_material_requested_)break;
+        if(!enabled_||!depth_enabled_||!taa_enabled_||!hdr_enabled_)break; // no linear-material prerequisite: original shading has its own share producer (legacy-sun-application.md 4.1)
         reason="caps";
         if(caps_.NumSimultaneousRTs<3||(caps_.PrimitiveMiscCaps&required)!=required||!(caps_.AlphaCmpCaps&D3DPCMPCAPS_GREATEREQUAL))break;
         reason="metadata";

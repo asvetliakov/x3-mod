@@ -73,6 +73,8 @@ public:
  Pass*taa_=nullptr;
  Pass*ao_=nullptr; // AO step 2 (8b0a7c1): after_reset forwards to the ambient-occlusion pass when one is attached
  Pass*depth_replay_=nullptr; // cascade-0 depth replay: after_reset forwards to the pass when one is attached
+ Pass*sun_apply_=nullptr; // scene-end sun-shadow apply: after_reset forwards to the pass when one is attached
+ std::uint64_t sun_apply_frame_=~std::uint64_t(0),depth_replayed_frame_=~std::uint64_t(0); // per-frame markers cleared by after_reset
  struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;
   /* sized for the production composition_blend_states table (asserted below) */ DWORD composition_blend[8]{};bool composition_blend_known[8]{};DWORD fill_mode=0;bool fill_mode_known=false;
@@ -80,6 +82,7 @@ public:
   bool original_fill_pair=false;void*ps_original_fill_variant=nullptr;
     bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
   void*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
+  void*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
  }shadow_;
  explicit MotionOutput(Device&d):device_(&d){}
@@ -94,6 +97,7 @@ public:
  // Sun-share lane (X3M_SUN_SHADOW_LANE): inert for the wrap-state seam; the
  // extracted bind path only reads the flags and reports a failed creation.
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
+ bool original_fill_requested_=false; unsigned sun_original_refused_draws_=0; // read by the bind path's original-share gate
  unsigned sun_qualifications_=0;void qualify_sun_lane(){++sun_qualifications_;}
  struct{bool failed=false,published=false,available=false,coverage_required=false;unsigned receivers=0,covered=0,untracked=0;}sun_frame_;
  bool screen_emission_bound_=false; // step B locked-prefix request; inert for the wrap-state seam

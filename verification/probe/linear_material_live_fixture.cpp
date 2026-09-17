@@ -323,6 +323,7 @@ public:
  bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  IDirect3DPixelShader9*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
+ IDirect3DPixelShader9*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
  IDirect3DPixelShader9*ps_source_gain_variant=nullptr,*source_gain_eligible_variant=nullptr;unsigned source_gain_pair=renderer::linear_emission_pair_count;
  bool screen_additive_pair=false;unsigned screen_additive_index=screen_emission::pair_count;IDirect3DPixelShader9*ps_screen_additive_variant=nullptr;
  bool screen_pair=false;IDirect3DPixelShader9*ps_screen_variant=nullptr,*screen_eligible_variant=nullptr;std::uint64_t stream0=0;
@@ -391,7 +392,7 @@ public:
  bool cutout_probe_frame_known_=false,cutout_reset_pending_=false,shimmer_trace_=false;
  unsigned cutout_probes_=0;void probe_cutout_caps(bool=false)noexcept{++cutout_probes_;}
  bool distance_fade_requested_=false;unsigned fade_route_threshold_=500;fade_route::Hysteresis fade_hysteresis_;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
- bool original_fill_requested_=false;float original_fill_=0.f;std::uint32_t original_fill_draws_=0;
+ bool original_fill_requested_=false;float original_fill_=0.f;std::uint32_t original_fill_draws_=0;unsigned sun_original_refused_draws_=0;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
  bool emission_source_gain_requested_=false;float emission_source_gain_=1;

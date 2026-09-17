@@ -300,7 +300,7 @@ class LauncherGateTests(unittest.TestCase):
         # the one bind pair of the routed draw; undone with the route.
         self.assertIn('renderer::linear_material_original_fill_pixel_variant(', motion)
         self.assertIn('original_fill_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g fill_applied=%u', motion)
-        bind = motion[motion.index('HRESULT MotionOutput::bind_variant_pair'):][:4200]
+        bind = motion[motion.index('HRESULT MotionOutput::bind_variant_pair'):][:5400]  # the lane's original-share and fail-closed branches precede the fill selection
         self.assertIn('shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active', bind)
         self.assertIn('route.original_fill = true', bind)
         self.assertNotIn('GetRenderState', bind)

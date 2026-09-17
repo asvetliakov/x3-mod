@@ -5,7 +5,27 @@ void run_sun_lane(const char* bootstrap_vertex) {
             "sun live needs the HDR/TAA native seam and reference");
     char mode[24]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LIVE_CASE",mode,sizeof mode);
     const bool late=!std::strcmp(mode,"late_shader")||!std::strcmp(mode,"bind");
-    const bool untracked=!std::strcmp(mode,"untracked");
+    // original_lane: the lane on original shading (X3M_LINEAR_MATERIALS=0,
+    // legacy-sun-application.md section 4.1/4.2): the reviewed original pair
+    // binds its own share variant (positive share, receivers counted) and on
+    // frame 2 the cutout pair in its exact cutout state is admitted through
+    // the tested-opaque arm (the exact arm is never configured without linear
+    // materials) with its own share. shadow_apply (section 3.4): the depth
+    // replay and the apply quad on (rotating camera seam, ownership bookends,
+    // linear materials off, exponent 1); the sun is the fixture's default
+    // LightDir_Dir0 (+Z world, the receiver's normal, so the light travels
+    // toward the camera) and a caster plane at view depth 16 behind the
+    // receiver at 12 is nearer to the light, so its footprint (4/3 of the
+    // receiver's) shadows every receiver pixel (f = 0: C (1 - s)); frame 0
+    // READONLY-locks the geometry after its draw (lease refused: map
+    // unavailable, quad skipped), frame 2 has the untracked writer (lane
+    // unavailable, quad skipped), a Reset precedes frame 4.
+    // original_share_refused: the share producer refused for the reviewed pair
+    // (X3M_FIXTURE_SUN_LANE_FAULT=original_share) under --original-fill 0.05:
+    // the draw keeps its fill variant (the fill is never dropped), writes no
+    // share, and the frame's lane is failed (available=0) with the draw counted.
+    const bool original_lane=!std::strcmp(mode,"original_lane"),shadow_apply=!std::strcmp(mode,"shadow_apply"),share_refused=!std::strcmp(mode,"original_share_refused");
+    const bool untracked=!std::strcmp(mode,"untracked")||shadow_apply;
     const bool refused=!std::strcmp(mode,"caps")||!std::strcmp(mode,"cutout_drop")||!std::strcmp(mode,"alpha_mask");
     const bool allocation=!std::strcmp(mode,"allocation");
     const bool fallback=refused||allocation;
@@ -33,7 +53,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
     const std::string bootstrap_path(bootstrap_vertex);const auto bootstrap_slash=bootstrap_path.find_last_of("/\\");
     const auto folder=bootstrap_slash==std::string::npos?std::string{}:bootstrap_path.substr(0,bootstrap_slash+1);
     Com<IDirect3DPixelShader9> cutout_ps;
-    if(cutout_pair||cutout_bias){
+    if(cutout_pair||cutout_bias||original_lane){
         const auto p=load((folder+"ps_63f96eba9eea7880.bin").c_str());
         require(fnv(p.data(),p.size()*4)==0x63f96eba9eea7880ull,"cutout pair original PS");
         api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(p.data()),&cutout_ps.p),"cutout pair PS");
@@ -63,7 +83,25 @@ void run_sun_lane(const char* bootstrap_vertex) {
     // A previous motion key authorizes exactly one lookup per frame. Use a
     // second stable object scope for the late-fault/interleaved submission and
     // warm BOTH keys every frame; duplicate A would legitimately force a cut.
-    if(late||suncomposition){b.vb=a.vb;b.covers=covers_a;}
+    if(late||suncomposition||shadow_apply){b.vb=a.vb;b.covers=covers_a;}
+    if(shadow_apply)require(camera,"shadow_apply needs the rotating camera seam (X3M_FIXTURE_CAMERA=rotate)");
+    // shadow_apply geometry: perspective rows placing the authored triangle at
+    // view depth Z with device depth dz exactly (clip = (x Z, y Z, dz Z, Z)), so
+    // the apply's AO-law linearization of RT2 and the replay's clip.w agree.
+    auto draw_at=[&](Object& o,float Z,float dz,bool matched){
+        scope(&o);
+        api(d->SetStreamSource(0,o.vb,0,24),"apply stream");
+        api(d->SetVertexShader(vs.p),"apply VS");api(d->SetPixelShader(ps.p),"apply PS");
+        float m[16]{};m[0]=Z;m[5]=Z;m[11]=dz*Z;m[15]=Z;
+        api(d->SetVertexShaderConstantF(24,m,4),"apply rows");
+        const Snapshot before=snapshot();
+        api(d->DrawPrimitive(D3DPT_TRIANGLELIST,0,1),"apply DrawPrimitive");++draw_index;
+        compare(before,snapshot(),"apply draw");
+        const bool jittered=enabled&&jitter&&!scene_rejected;
+        records.push_back({&o,0,0,0,true,matched,o.rt,o.rp,o.rzo,false,jittered,true});
+        std::printf("EXPECT frame=%llu index=%u object=%s routed=1 matched=%u jittered=%u\n",frame,draw_index,o.name,unsigned(matched),unsigned(jittered));
+        o.recorded=true;o.rt=0;o.rp=0;o.rzo=0;
+    };
     unsigned positive_frames=0,zero_frames=0,history_frames=0;
     bool previous_mask_valid=true;
     for(unsigned step=0;step<6;++step){
@@ -95,7 +133,15 @@ void run_sun_lane(const char* bootstrap_vertex) {
             api(d->GetSamplerState(6,D3DSAMP_MIPFILTER,&stage6_filter),"stage 6 native mip filter");
             api(d->SetTexture(6,ramp.p),"ramp on stage 6");api(d->SetSamplerState(6,D3DSAMP_MIPFILTER,D3DTEXF_LINEAR),"stage 6 mip linear");
         }
-        draw(a,0,0,0,true,!lane_off,frames_since_reset!=0&&!lane_off,Alter::None,!(cutout_bias&&step==2));
+        if(shadow_apply){
+            draw_at(b,16.f,.7f,frames_since_reset!=0); // the caster, behind the receiver and nearer to the light
+            draw_at(a,12.f,.5f,frames_since_reset!=0); // the receiver (LESSEQUAL: it wins the depth test)
+            if(step==0){
+                // The lease proof (shadow-replay-gates.md): a READONLY Lock after
+                // the draw refuses the frame's replay; no map, the quad skips.
+                void* data=nullptr;api(a.vb->Lock(0,0,&data,D3DLOCK_READONLY),"READONLY Lock of the geometry after its draw");api(a.vb->Unlock(),"Unlock of the geometry");
+            }
+        } else draw(a,0,0,0,true,!lane_off,frames_since_reset!=0&&!lane_off,Alter::None,!(cutout_bias&&step==2));
         if(cutout_bias&&step==2)require(sampler_bias(6)==float_bits(mip_bias),"routed receiver applied the route's bias to the mip-chain stage");
         if(xt_state){
             api(d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"xt alpha test off");api(d->SetRenderState(D3DRS_ALPHAREF,0),"xt alpha reference default");
@@ -120,12 +166,20 @@ void run_sun_lane(const char* bootstrap_vertex) {
             // not inferred from clear values or the share being tested.
             require_quiet(depth_value==.5f,"sun receiver interior actually wrote exact depth");++drawn;
             if(expected_lane){const float share=lane[2*pixel+1];
-                require_quiet(std::isfinite(share)&&share>=0&&share<=1,"sun receiver interior valid share");
+                if(!share_refused)require_quiet(std::isfinite(share)&&share>=0&&share<=1,"sun receiver interior valid share");
                 positive+=share>0;zeros+=share==0;
             }
         }
         require(lane_off||drawn==(W-4)*(H-4),"sun receiver coverage positive control");
-        if(expected_lane){require(step==1?zeros==drawn:positive==drawn,"drawn positive and zero-sun controls");positive_frames+=positive>0;zero_frames+=zeros>0;}
+        if(expected_lane){auto at=[&](unsigned x,unsigned y){return double(lane[2*(y*W+x)+1]);};
+            std::printf("SUN_SHARE_STATS frame=%llu drawn=%u positive=%u zero=%u center=%.6g left=%.6g right=%.6g top=%.6g bottom=%.6g corner=%.6g\n",frame,drawn,positive,zeros,at(W/2,H/2),at(3,H/2),at(W-4,H/2),at(W/2,3),at(W/2,H-4),at(3,3));}
+        if(expected_lane&&!share_refused){require(step==1?zeros==drawn:positive==drawn,"drawn positive and zero-sun controls");positive_frames+=positive>0;zero_frames+=zeros>0;}
+        if(share_refused){
+            require(emission_status(d.p,73)==0&&emission_status(d.p,74)>=1,"the share producer refused the reviewed pair, no variant created");
+            require(emission_status(d.p,76)==1,"the refused pair's routed depth writer counted once this frame");
+            require(emission_status(d.p,77)==1,"the refused pair kept its original-fill variant");
+            std::printf("SUN_SHARE_REFUSED frame=%llu refused_programs=%u refused_draws=%u fill_draws=%u failed=%u\n",frame,emission_status(d.p,74),emission_status(d.p,76),emission_status(d.p,77),emission_status(d.p,95));
+        }
         Com<IDirect3DPixelShader9> late_ps;
         if(late&&step==2){
             api(SetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",mode)?S_OK:E_FAIL,"arm late lane fault");
@@ -209,6 +263,29 @@ void run_sun_lane(const char* bootstrap_vertex) {
             lane=lane_read();
             for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x)require_quiet(lane[(y*W+x)*2]==.5f,"tracked cutout pair rewrote the interior depth exactly");
         }
+        if(original_lane&&step==2){
+            // The cutout pair in its exact cutout state on original shading:
+            // no exact arm exists without linear materials, so the tested-opaque
+            // arm admits it (routed, no gate-4 refusal, its own share written).
+            require(emission_status(d.p,73)>=2&&emission_status(d.p,74)==0,"original share variants created for both registered originals, none refused");
+            const unsigned routed_before_o=emission_status(d.p,89),gate4_before_o=emission_status(d.p,99);
+            std::swap(ps.p,cutout_ps.p);
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"original cutout alpha test on");api(d->SetRenderState(D3DRS_ALPHAREF,1),"original cutout alpha reference 1");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"original cutout alpha GREATEREQUAL");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"original cutout RT0 mask 7");
+            draw(a,0,0,0,false,true,false);
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"original cutout alpha test off");api(d->SetRenderState(D3DRS_ALPHAREF,0),"original cutout alpha reference default");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_ALWAYS),"original cutout alpha func default");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"original cutout RT0 mask restore");
+            std::swap(ps.p,cutout_ps.p);api(d->SetPixelShader(ps.p),"retire original cutout binding");
+            const unsigned routed_o=emission_status(d.p,89)-routed_before_o,gate4_o=emission_status(d.p,99)-gate4_before_o;
+            std::printf("SUN_ORIGINAL_CUTOUT frame=%llu ps=63f96eba9eea7880 test=1 ref=1 mask=7 routed=%u gate4=%u opaque_routed=%u opaque_lane=%u opaque_refused=%u untracked=%u variants=%u refused=%u\n",
+                frame,routed_o,gate4_o,emission_status(d.p,37),emission_status(d.p,39),emission_status(d.p,38),emission_status(d.p,94),emission_status(d.p,73),emission_status(d.p,74));
+            require(routed_o==1&&gate4_o==0,"cutout pair admitted through the tested-opaque arm on original shading");
+            require(emission_status(d.p,37)==1&&emission_status(d.p,39)==1&&emission_status(d.p,38)==0,"admitted cutout pair counted with its original share written");
+            require(emission_status(d.p,94)==0,"tracked cutout pair is not an untracked writer");
+            lane=lane_read();
+            for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x){const unsigned pixel=y*W+x;require_quiet(lane[pixel*2]==.5f,"admitted cutout pair rewrote the interior depth exactly");
+                const float share=lane[2*pixel+1];require_quiet(std::isfinite(share)&&share>=0&&share<=1,"cutout pair original share valid");}
+        }
         if(effects&&step==2){
             // Additive blend, z test on, z write off: color-only over the
             // receiver, so the tracked depth is intact and nothing vetoes.
@@ -289,13 +366,50 @@ void run_sun_lane(const char* bootstrap_vertex) {
         for(std::size_t p=0;p<depth_values.size();++p)depth_values[p]=lane[p*(expected_lane?2:1)];
         reference.upload(std::vector<DWORD>(depth_values.size()),motion,depth_values);
         const float k=hdr_reference_input();decide();
+        // shadow_apply: the CPU reference of the shadowed scene. The caster at
+        // view depth 16 is nearer to the +Z light than the receiver at 12 and
+        // its footprint covers the whole receiver (4/3 of it in NDC, the sun
+        // within 7 degrees of the view axis), so every receiver pixel with a
+        // share is shadowed by all nine taps: C (1 - s) (f = 0, exponent 1).
+        // The mask file names, per pixel, 0 exact / 1 within one FP16 code
+        // (the GPU's pow/multiply rounding and the history of an earlier
+        // shadowed frame) / 2 excluded (unused here), for the runner.
+        const bool apply_frame=shadow_apply&&step!=0&&step!=2;
+        unsigned apply_inner=0,apply_band=0,apply_changed=0;
+        if(shadow_apply){
+            unsigned w=0,h=0;auto image=hdr_image(&w,&h);require(w==W&&h==H,"apply colour dimensions");
+            std::vector<unsigned char> apply_mask(std::size_t(W)*H,step>=3?1:0);
+            for(unsigned y=0;y<H;++y)for(unsigned x=0;x<W;++x){
+                const std::size_t pixel=std::size_t(y)*W+x;
+                const float share=expected_lane?lane[2*pixel+1]:0.f,depth_value=lane[pixel*(expected_lane?2:1)];
+                if(!(apply_frame&&depth_value>=0&&share>0))continue;
+                ++apply_inner;
+                const float factor=1.f-std::min(share,1.f);
+                bool changed=false;
+                for(unsigned c=0;c<3;++c){const float shaded=image[pixel*4+c]*factor;changed|=float_to_half(shaded)!=float_to_half(image[pixel*4+c]);image[pixel*4+c]=shaded;}
+                apply_changed+=changed;
+            }
+            reference.upload16(image);
+            char mask_name[64];std::snprintf(mask_name,sizeof mask_name,"apply_mask_%llu.u8",frame);
+            FILE* mask_file=std::fopen(mask_name,"wb");require(mask_file!=nullptr,"apply mask file");
+            const auto mask_written=std::fwrite(apply_mask.data(),1,apply_mask.size(),mask_file);std::fclose(mask_file);require(mask_written==apply_mask.size(),"apply mask complete");
+            if(step>=3)require(apply_inner>=400&&apply_changed>=400,"the shadowed footprint really darkens the reference by at least one FP16 code");
+            if(step==1)require(apply_changed==0,"the zero-sun frame's shares leave the reference unchanged");
+        }
         api(d->SetDepthStencilSurface(nullptr),"sun scene-end detach depth");
         const auto before=snapshot();
         api(d->StretchRect(back.p,nullptr,bloom_surface.p,nullptr,D3DTEXF_NONE),"sun scene-end publication and TAA");
         compare(before,snapshot(),"sun boundary");
-        const bool available=expected_lane&&!(step==2&&(late||untracked||cutout_pair))&&!bad_mask;
+        const bool available=expected_lane&&!(step==2&&(late||untracked||cutout_pair))&&!bad_mask&&!share_refused;
         require(emission_status(d.p,92)==unsigned(available),"sun publication follows actual writers and faults");
         require(emission_status(d.p,97)==1,"sun unavailable frame still resolves TAA");
+        if(shadow_apply){
+            const unsigned applied=emission_status(d.p,70),attempted=emission_status(d.p,71),replayed=emission_status(d.p,72);
+            std::printf("SUN_APPLY frame=%llu step=%u applied=%u attempted=%u replayed=%u expect_applied=%u inner=%u band=%u changed=%u\n",frame,step,applied,attempted,replayed,unsigned(apply_frame),apply_inner,apply_band,apply_changed);
+            require(attempted==1,"the apply gate ran at this scene end");
+            require((replayed>0)==(step!=0),"the depth replay produced this frame's map on every frame with a sun");
+            require(applied==unsigned(apply_frame),"the apply quad drew exactly on the frames with the lane available, the map and the owner");
+        }
         std::vector<DWORD> image;std::vector<unsigned char> expected;
         const auto policy=suncomposition?(mask_valid?x3m::renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel:x3m::renderer::ReactivePolicy::Unavailable):x3m::renderer::ReactivePolicy::DerivedFromDepthSentinel;
         const auto output=reference.run(jx,jy,pjx,pjy,expected_cut(),decision.matrix,decision.policy==2,true,k,image,expected,policy);
