@@ -396,3 +396,196 @@ vertex and the pixel program is counted once, where D3DX would apply its block
 per stage; no pass in the archive declares a vertex-stage sampler (checked),
 so the case does not arise here. Synthetic
 coverage for each class is in `verification/analysis/test_effect_passes.py`.
+## Assessment after the classification and environment experiments
+
+Ratified 2026-09-17: no FXLC-aware replay and no constant-only replay now; the two attributions first (the native-BeginPass fixture under the three setter regimes, then a profile session), then the decision between a setter-dedup wrapper, full replay, or stopping at 22 ms.
+
+2026-09-17, host only (no build, no Wine, no game). Inputs: the sections
+above, [effect-pass-loop.md](../reverse-engineering/effect-pass-loop.md),
+the profiler ledger (run95, run104/105, run107/108),
+`tools/analysis/effect_passes.py` and its counts file, plus the `--pass`
+printer run against the bottle archive for the busy view's own passes
+(`shader/3_0/argon.fb` DEFAULT/P0 and BUMPMAP/P0, `argon2s.fb` DEFAULT/P0,
+`xt_standard_lighting.fb` BUMPMAP/P0; names and counts only). Wine's
+`d3dx9_36/preshader.c` was not fetched; statements about it are from memory
+and marked unverified.
+
+**Where the frame stands (run105, native D3DX, busy Argon view).** Per pass
+BeginPass 6.58 µs, draw 8.76, engine between passes 4.45, EndPass 0.11; 787
+passes; `dt` 22.2 ms. So BeginPass is 5.2 ms (23 %), the draw 6.9 ms (31 %),
+the engine remainder 3.5 ms. Every environment lever is closed: DXVK black,
+builtin D3DX +32 % on BeginPass, FEX TSO within 1 %, CSMT off +46 %. Only code
+remains, and only BeginPass is proxy-removable code; the draw is wined3d.
+
+**What the busy view's passes actually contain.** The Argon hull DEFAULT/P0
+pass (the run91 top pair) applies 53 assignments: 2 shader blobs, 16 literals
+(Lighting, ColorVertex, BlendOp/BlendOpAlpha, AlphaRef, AlphaFunc, the whole
+`CubeMapTexSampler` block, `MaxMipLevel` of the other three samplers), 4
+texture parameter references, and **31 FXLC expressions**: 13 render states
+(ZEnable, ZWriteEnable, CullMode, AlphaTestEnable, AlphaBlendEnable,
+SeparateAlphaBlendEnable, SrcBlend/DestBlend and the alpha pair,
+ColorWriteEnable, Wrap0/Wrap1) and 18 sampler states (AddressU/V,
+Min/Mag/MipFilter, MaxAnisotropy on three samplers). BUMPMAP/P0 is 61 with 24
+sampler expressions; `xt_standard_lighting` BUMPMAP/P0 is 77 with 57
+parameter-driven. **No pass the busy view draws is expression-free**; the 208
+replayable passes are irrelevant to this frame. The classification cannot say
+whether an expression is trivial (a typed cast of one parameter) or real (a
+select on `g_*` flags); the resource sizes would, and are not yet decoded.
+
+### (a) Must a proxy replay evaluate FXLC?
+
+Yes, for any pass this frame draws, and in **two forms**: the pass and
+sampler-block state expressions above, and the preshaders embedded in the
+compiled programs (`PRES` comment chunks; the station material's grading
+matrix in PS c0..c2 is "computed by the preshader",
+[station-material-distance.md](../reverse-engineering/station-material-distance.md),
+and the motion-output notes record CPU preshader metadata in the PS
+comments). A wrapper that owns the constant upload must produce those
+registers itself, so the second evaluator is not optional. Both use the same
+FXLC opcode set (Wine implements one interpreter for both; unverified).
+
+The split of the 6.58 µs is **unknown**. Arithmetic only: the ~55–63 manager
+calls cost ≈ 1.4 µs at the measured per-call figures; the remaining ≈ 4.6–5.0
+µs covers ~31 expression evaluations, at least one shader preshader,
+constant packing for ≤ 5 float4 ranges plus `i0`, four texture resolves and
+the state walk itself. If uniform, ≈ 50 ns per item; expressions are the
+largest item class and plausibly the most expensive each, but nothing here
+measures them. Two cheap attributions, in order of cost:
+
+1. **One profiler session** (`X3M_PROFILE=1`, existing, no build): the
+   main thread's `leaf_d3dx` share of samples during the busy view against
+   the `pass_phases` BeginPass share, and the top-48 `profile_leaf` RVAs
+   inside `d3dx9_37`. A bytecode interpreter concentrates in a few RVAs;
+   state iteration and packing spread. This costs one user run and gives
+   the fraction without any disassembly; a ≤ 100-instruction look at the
+   hottest RVA (allowed, targeted) then names it.
+2. **One Wine fixture, no game** (the decisive measurement):
+   `D3DXCreateEffect` on the `argon.fb` bytes read from the CAT at run time
+   through the game directory's native `d3dx9_37` on the state-hook
+   benchmark's synthetic device (`state_hook_benchmark.cpp` already creates
+   it), with a counting state manager. Per iteration `Begin`/`BeginPass`/
+   `EndPass`/`End`, timed, in three regimes: (i) the game's pattern, ~40
+   per-draw setters rewritten with **unchanged** values; (ii) rewritten with
+   changing values; (iii) not rewritten. (i)−(iii) is the dirty-driven part
+   (expression and preshader re-evaluation, constant re-upload); (iii) is
+   the fixed walk; the manager's call count per pass against the 53
+   classified assignments cross-checks the classification and tells whether
+   D3DX elides anything. The fixture's (ii) must land near 6.6 µs or the
+   game's cost is not what the fixture models. This also answers a question
+   the note has not asked: **whether native D3DX marks a parameter dirty on
+   a same-value `Set*`** (Wine's setters do unconditionally, unverified; MS
+   unknown). If it does, the game's 15 `SetInt` + 10 `SetFloat` + 10
+   `SetVector` per draw force every dependent expression and constant to be
+   redone each BeginPass even when nothing changed.
+
+### (b) Wrapper architecture
+
+The only sane entry stays the EXE's single `D3DXCreateEffect` import
+(`0x00532324`; `src/proxy/loading_trace.cpp` already patches that slot and
+forwards through the same signature). A full replacement of D3DX (own effect
+runtime) is rejected: it is option A with none of D3DX's behaviour left to
+compare against, and it forfeits the recording cross-check.
+
+**Constant-only replay with D3DX still applying the rest is not faster.**
+D3DX has no device shadow (94.9 % of its render-state writes are no-ops at
+the device, run91) and walks every record of the pass in `BeginPass`
+regardless of what the wrapper set beforehand; the wrapper's constant apply
+is purely additive. The one variant that removes work is to **strip the
+constant records from the container** before `D3DXCreateEffect` (rewrite the
+pass state tables and renumber the resource keys, which index by state
+position) and apply them from the wrapper on pass change against the proxy
+shadow. Its bound is small: 16 of 53 records in the Argon DEFAULT pass, so ≤
+30 % of the walk if the walk is uniform per record, ≈ 0.5–1.0 µs per pass,
+**0.4–0.8 ms per frame**, minus the wrapper's own apply; a container rewrite
+is fragile and the shader records (constant, 2 per pass) cannot be stripped.
+Not worth building alone.
+
+**Recording-manager cross-check** (unchanged from option A, made concrete):
+in verify mode the wrapper replays, then lets D3DX apply the same pass
+through a manager that diffs every call against the shadow and counts
+`replay_mismatch` by (effect, technique, pass, state); the recorded call
+count per pass must equal the classified count (53 for Argon DEFAULT/P0)
+minus whatever D3DX demonstrably elides, or the classification is wrong for
+that pass and it is excluded.
+
+### (c) Cost, risk and the bound on the gain
+
+Engineering: the COM wrapper (ID3DXEffect's full vtable forwarded, clones
+wrapped), a parameter store keyed by D3DX handles with name fallback, the
+FXLC evaluator for state expressions, the shader-preshader evaluator with
+its CTAB register mapping, a constant packer that reproduces D3DX's
+int/bool/matrix packing, sampler and texture resolution per CTAB register,
+value-gated dirty tracking, parameter blocks, `CloneEffect`,
+`OnLostDevice`/`OnResetDevice`, verify mode, and the fixture that proves
+device-state equality for every pass under random parameters. Roughly the
+size of the motion-output route; the largest hot-path component the proxy
+would own. Risks that the fixture cannot fully retire: preshader precision
+(Wine evaluates in double; native's precision unverified; a select on a
+float compare can flip a state), the ~30-opcode semantics, array selectors,
+shared parameters across the 22 effects, texture lifetime, and any game
+parameter write path the wrapper does not see (`SetRawValue`, blocks).
+
+Gain bound. The earlier replay estimate of 1.5–2.0 µs per pass assumed
+literal compares only. Add value-gated expression evaluation (rarely fires
+if D3DX's dirty-driven work is what the game pays for; every draw if not) and
+the preshader: **2.0–3.0 µs per pass**, i.e. 1.6–2.4 ms against today's 5.2
+ms, **saving 2.8–3.6 ms of 22.2 ms (13–16 %)**, about 45 to 51–52 fps, plus
+the low-confidence 1–2.5 ms of the residual if the setters are owned. The
+number holds only if the fixture confirms that most of BeginPass is D3DX's
+own work rather than something the replay must also pay (the manager calls
+and the constant upload are paid either way).
+
+### (d) Recommendation
+
+**Do not start the FXLC-aware replay now; run the two attributions first
+(one profiler session, one no-game fixture), then decide by their numbers.**
+Constant-only replay is rejected in both forms (additive without stripping;
+≤ 0.8 ms with it). Decision rule once the fixture reports:
+
+- If regime (i) costs markedly more than (iii) (≥ 2 µs per pass), the cheap
+  lever is a **thin setter-dedup wrapper**: the same import-slot wrapper,
+  forwarding `SetInt/SetFloat/SetBool/SetVector/SetMatrix/SetTexture` only
+  when the value differs from its own copy, invalidating its copy on
+  `ApplyParameterBlock` (2 per draw; record the block's parameters between
+  `Begin/EndParameterBlock`), `SetValue`/`SetRawValue`, `CloneEffect` and
+  `OnResetDevice`. No replay, no FXLC, no recording; a few hundred lines
+  of documented COM; hot path ~40 compares per draw (~1 µs under FEX,
+  estimated). It recovers the dirty-driven share of BeginPass and part of
+  the residual's setter cost; the bound is exactly (i)−(iii) times the pass
+  count plus what the setters cost inside the residual. Then reassess
+  whether the remaining walk is worth full replay.
+- If (i) ≈ (iii), the walk is fixed cost, the setter wrapper is worthless,
+  and full replay is the only lever on the 5.2 ms. Build it only if 13–16 %
+  is worth a motion-output-sized component with the risks above; otherwise
+  **stop at 22 ms** and spend the effort on the draw share, which is larger
+  and not proxy-owned (fewer draws: the 5 % instancing candidates and the
+  engine's O(n²) sort are engine patches, a separate decision).
+
+Cheaper levers checked against the numbers: the ~63 redundant state calls
+per draw inside BeginPass cost the device 11–15 ns each, ≈ 0.5–0.7 ms per
+frame if all vanished, and are already bounded and shelved in
+[engine-state-filter.md](engine-state-filter.md) (0.3–1.0 ms); a replay's
+shadow compare removes them as a by-product, not as a reason. `D3DXFX_DONOTSAVESTATE`
+is already set by the game. No `D3DXCreateEffect` flag disables preshaders in
+an already-compiled container. Nothing else in the classification suggests
+a lever below the setter-dedup wrapper.
+
+**Native Windows.** Both wrappers are documented COM over the game's own
+IAT slot. The setter-dedup wrapper is semantically transparent if native
+D3DX treats a same-value set as a no-op or as a dirty mark with the same
+resulting device state (it does: the value is the same), so its native
+behaviour is not in doubt; only its benefit is Windows-unverified. The FXLC
+evaluator would have to match native preshader semantics that the user
+cannot test on Windows; verify mode against the native redistributable under
+CrossOver is the only guard, and that gap would be recorded in
+[platform-portability.md](platform-portability.md).
+
+**Unknowns and what settles each.** The BeginPass split and the same-value
+dirty behaviour: the fixture above. The share of interpreter time: the
+profiler session. Whether the expressions are trivial casts or real
+selects: decode the FXLC resource blobs in `effect_passes.py` (opcode
+inventory and instruction count per expression; the chunk layout is the one
+Wine's parser documents, unverified here) — one host-side step, no Wine.
+Native preshader precision: not answerable without disassembling
+`d3dx9_37`, which the setter-dedup path never needs. The residual split: the
+two stamps of § "The 4.5 ms residual", still pending.
