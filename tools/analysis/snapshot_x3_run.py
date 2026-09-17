@@ -24,14 +24,18 @@ SESSION = re.compile(r'session-\d{8}-\d{6}-\d+\.log\Z')
 # the session log: preserved with it so a wall-clock burst from another
 # component can be aligned with the proxy's frame clock.
 LAUNCHER_STDERR = 'launcher-stderr.log'
-# Current MotionOutput writers (including the earlier color/TAA readbacks).
+# Current MotionOutput writers (including the earlier color/TAA readbacks) and
+# the sun-lane shadow map dump. Each tag maps to its fixed basename prefix and
+# the extensions its writer may emit: the depth readback is R32F normally and
+# G32R32F (.r depth, .g sun share) while the sun lane is active.
 READBACKS = {
-    'motion_output_color_readback': ('color', 'bgra8'),
-    'motion_output_taa_readback': ('taa', 'rgba16f'),
-    'motion_output_present_readback': ('present', 'bgra8'),
-    'motion_output_readback': ('motion', 'rgba32f'),
-    'motion_output_depth_readback': ('depth', 'r32f'),
-    'hdr_readback': ('hdr', 'rgba16f'),
+    'motion_output_color_readback': ('color', ('bgra8',)),
+    'motion_output_taa_readback': ('taa', ('rgba16f',)),
+    'motion_output_present_readback': ('present', ('bgra8',)),
+    'motion_output_readback': ('motion', ('rgba32f',)),
+    'motion_output_depth_readback': ('depth', ('r32f', 'rg32f')),
+    'hdr_readback': ('hdr', ('rgba16f',)),
+    'shadow_replay_map_readback': ('shadow_map', ('r32f',)),
 }
 FIELDS = re.compile(r'(?:^|\s)(\w+)=([^\s]+)')
 
@@ -113,10 +117,15 @@ def references(log):
         row = dict(FIELDS.findall(line))
         try:
             if tag in READBACKS:
-                prefix, extension = READBACKS[tag]
-                name = f'{prefix}_{int(row["device"])}_{int(row["frame"])}.{extension}'
-                if row['file'] != name:
+                prefix, extensions = READBACKS[tag]
+                # Basename only: the shape below admits no separator, no '..'
+                # and no absolute path, and the device/frame must be the ones
+                # this record reports.
+                shape = re.fullmatch(re.escape(prefix) + r'_(\d+)_(\d+)\.([a-z0-9]+)', row['file'])
+                if (shape is None or int(shape[1]) != int(row['device'])
+                        or int(shape[2]) != int(row['frame']) or shape[3] not in extensions):
                     raise ValueError('unsafe or unexpected readback basename')
+                name = row['file']
                 if int(row['result'], 16) != 0 or int(row['bytes']) <= 0:
                     wanted.pop(name, None)
                     issues.append(f'{name}: writer did not report a successful readback')

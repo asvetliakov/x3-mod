@@ -145,15 +145,46 @@ class SnapshotX3RunTests(unittest.TestCase):
 
     def test_actual_writer_record_shapes_cover_all_readback_formats(self):
         # Full emitted field order/format from readback_surface; synthetic bytes.
-        rows = []
-        for tag, (prefix, extension) in snapshot.READBACKS.items():
-            name = f'{prefix}_1_2.{extension}'
-            (self.capture / name).write_bytes(b'abcd')
-            rows.append(f'{tag} device=1 frame=2 file={name} width=1 height=1 '
-                        f'format={extension}_row_major result=00000000 bytes=4\n')
+        rows, expected = [], 0
+        for tag, (prefix, extensions) in snapshot.READBACKS.items():
+            for index, extension in enumerate(extensions):
+                name = f'{prefix}_1_{2 + index}.{extension}'
+                (self.capture / name).write_bytes(b'abcd')
+                rows.append(f'{tag} device=1 frame={2 + index} file={name} width=1 height=1 '
+                            f'format={extension}_row_major result=00000000 bytes=4\n')
+                expected += 1
         self.log.write_text(''.join(rows))
         _, count, issues = self.save(log=self.log)
-        self.assertEqual((count, issues), (6, []))
+        self.assertEqual((count, issues), (expected, []))
+        self.assertEqual(expected, 8)  # Seven writers; the depth tag has two formats.
+
+    def test_sun_lane_depth_and_shadow_map_records_are_preserved(self):
+        # Sun lane active: RT2 is G32R32F (.r depth, .g share) and the replayed
+        # shadow map is dumped as R32F; both are the real logged lines.
+        (self.capture / 'depth_1_8979.rg32f').write_bytes(b'ab' * 6)
+        (self.capture / 'shadow_map_1_8979.r32f').write_bytes(b'cd' * 4)
+        self.log.write_text(
+            'motion_output_depth_readback device=1 frame=8979 file=depth_1_8979.rg32f '
+            'width=1280 height=768 format=rg32f_row_major result=00000000 bytes=12\n'
+            'shadow_replay_map_readback device=1 frame=8979 file=shadow_map_1_8979.r32f '
+            'width=1024 height=1024 format=r32f_row_major result=00000000 bytes=8\n')
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual((count, issues), (2, []))
+        self.assertEqual((destination / 'depth_1_8979.rg32f').read_bytes(), b'ab' * 6)
+        self.assertEqual((destination / 'shadow_map_1_8979.r32f').read_bytes(), b'cd' * 4)
+
+    def test_extension_outside_the_tag_allowance_is_refused(self):
+        for tag, name in (('motion_output_depth_readback', 'depth_1_2.rgba32f'),
+                          ('shadow_replay_map_readback', 'shadow_map_1_2.rg32f'),
+                          ('hdr_readback', 'hdr_1_2.rg32f'),
+                          ('motion_output_depth_readback', 'depth_1_2.r32f.rg32f'),
+                          ('shadow_replay_map_readback', 'shadow_map_1_3.r32f')):
+            with self.subTest(name=name):
+                (self.capture / name).write_bytes(b'abcd')
+                self.log.write_text(f'{tag} device=1 frame=2 file={name} result=00000000 bytes=4\n')
+                destination, count, issues = self.save(log=self.log)
+                self.assertEqual(count, 0); self.assertTrue(issues)
+                self.assertEqual([path.name for path in destination.iterdir()], [self.log.name])
 
     def test_running_game_or_unknown_inventory_refuses_before_creation(self):
         for state in (['123 X3AP.exe'], RuntimeError('process inventory unavailable')):
