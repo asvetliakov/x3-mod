@@ -2603,3 +2603,121 @@ lines (log never read whole).
    what one more launch should record to settle periodicity.
 
 Files changed: `docs/verification/directional-shadows.md` (this section only).
+
+## Run 40 A (run116) diagnosis
+
+2026-09-18, no source edits, no Wine. Inputs: run116 (`/tmp/x3-bottleX3-run116`), the four F8
+bursts 16788–16795 (distant station, 50–216 u/frame), 19405–19412 (distant, 25–154 u/frame),
+22251–22258 (outpost at 2.2 km, slowing 5 → 4 u/frame), 24291–24298 (same place, 0–1.9 u/frame,
+after the 23115/23166 toggle pair and a 24136–24290 move), the per-cascade maps, `depth_*.rg32f`,
+`sun_shadow_apply_params`, `shadow_replay_map_basis`, `shadow_replay_candidates`,
+`shadow_replay_depth`, `shadow_replay_caster`, `shadow_retention_frame` / `_caster`,
+`shadow_replay_sun_point`, `camera_state` (`t=` differenced for speed). Twin
+`verification/probe/sun_shadow_apply.py` (`expected_factor_cascades`, coarse derivatives) with
+scratch scripts outside the repository. "Measured" = from the capture or code; "inferred" marked.
+
+### Ranked causes
+
+**1. (measured; the whole-object blink) A feedback cycle between the retention store and the
+classification ring admits a static-only caster on alternate frames.** Code path:
+`classify_candidate_static` (`src/proxy/motion_output.cpp:6613`) returns the store's verdict for
+any node the store knows, and a fresh node is `is_static=false`
+(`shadow_retention_core.h:306-316`) → Moving → the draw loses its C3/C4 bits and, with no other
+cascade, is not leased; `note_retention_draw` records leased draws only
+(`src/proxy/motion_output_shadow_retention_inc.h:236`) → the node is unseen at scene end; an
+unseen moving node is removed (`shadow_retention_core.h:659`, `Expiry::Moving`); next frame the
+store misses, the ring (`shadow_caster_class.h:57-63`, anchor unchanged) says Static → admitted →
+recorded fresh → the cycle repeats. Witness (`shadow_retention_frame`, at rest 22260–22266):
+`nodes_live` 17 ↔ 33, `new_nodes` 0 ↔ 16, `first_seen_in_range` 0 ↔ 16, `moving_dropped` 16 ↔ 0,
+`records` 130 ↔ 146; the same frames' `shadow_replay_candidates`: c3 54 ↔ 70, c4 59 ↔ 75,
+`static_only_refused3` 54 ↔ 38, `class_store` 102 ↔ 86, `class_ring` 14 ↔ 30 (16 draws move
+between the store's Moving and the ring's Static every frame); `shadow_replay_depth`
+`draws3/4` 54/59 ↔ 70/75. Session-wide: 5,791 of 24,296 frames are in such a cycle (period 2:
+`new_nodes>0`, previous `moving_dropped>0`, second-previous `new_nodes>0`), 1,999 of the 3,534
+at-rest frames (57 %) and 3,792 of the 21,300 moving ones (18 %); 88 runs, the longest 2,043 frames
+(10443–12485, at rest, through 17 of the toggle events) and 668 / 617 / 794 frames while moving.
+Cohorts of 5–25 nodes per cycle (`promoted` 0 ↔ 5 at 23110–23113: five nodes even promote on
+their second sighting and leave the next frame). The toggle does not touch the store, the ring
+or the counters (`motion_output.cpp:2100-2117` voids retained bases only): the cycle ran across
+both toggle pairs at rest (23040–24135 spans 23115/23166), so the user's "toggle at rest stops
+it" is **not reproduced by the counters**; what starts a run is a node meeting only static-only
+cascades whose drift falls under eps for one frame pair (see 3), what ends it is its next step.
+
+**2. (measured; the lit-side speckle and its per-frame re-roll) The far cascades' self-shadow
+sits on the compare threshold and is re-rolled by the TAA-jittered receiver every frame, at
+rest.** Burst 24291–24298 (caster identity sets identical on all eight frames, `far_replayed=1
+far_frame=frame` on every frame, C3/C4 basis centres 0 texels apart laterally, 0.1–0.9 u along
+the sun): twin flips (`f<1` changing between consecutive frames on pixels owned by the same
+cascade in both) C4 **27–37 %** of its 13.3 k owned pixels per frame, C3 0.03–0.14 %, C0 2–5 %
+(the kernel rotation). C4-owned pixels are 57.7 % shadowed, 50.8 % "ambiguous" by the twin's
+own rule (a compare within EPS_DEPTH); the shadowed ones' residual (receiver − map at the nearest
+texel, world units) p10/25/50/75/90 = −144 / 2.6 / 138 / 662 / 3,690, 39 % under one texel (73 u)
+and 64 % under four: self-shadow of the same surface. Attribution 24291 → 24292: B's RT2 with A's
+rows, maps and kernel flips 36.6 % (the receiver alone; C4 receivers move 149 u median, 573 u p90
+in view z between frames under the jitter at 60–70 km, where one pixel spans ≈66 u ≈ 0.9 texel);
+A's RT2 with B's rows (a 0.4-u basis shift along the sun) flips 14.6 %; kernel only 14.6 %; maps
+91 % of covered texels changed but add nothing beyond the receiver. Constant bias ×2/×4/×8 (2 / 4
+/ 8 texels): C4 shadowed 0.49 / 0.38 / 0.27, flips 0.36 / 0.30 / 0.20 — the bias law cannot fix
+it. Moving (16788 → 16789): C3 flips 26 %, C4 28 %, maps 99.9 % re-rasterised (grid 4–5 C3
+texels, 1 C4 texel per frame), same-kernel-and-maps still 34 / 30 %, bias ×4 no better (C3 35 %).
+The F8 self-check in the run116 section above passes because its |r| < 30 u window is blind at
+18 / 73-u texels. The 2.2-km outpost has no shadow at all (C1/C2-owned shadowed fraction 0.0 on
+24291): its 38-km hull meets only C4's box (`shadow_cascade_bounds_mask`, C4-only mask 16 on 287
+of 318 records), so C2 receivers never see it — a separate gap.
+
+**3. (measured; decides who is a far caster) The corner-drift law at eps 0.05 u classifies every
+km-scale body as moving.** Live records at 24291: 318 moving, 0 static; every C3/C4 admission is
+`large_admitted` (c3 23 = la3 23, c4 310 = la4 310), 231 C4 draws refused per frame. Per-record
+centre drift across the F8 frames (census `centre=`): median 4.0 u/frame at rest, 2.0 moving;
+the least-moving records are the 19-km station hull parts (model `5411`) at 0.088–0.14 u/frame at
+rest and 0.093–0.13 moving. Objects step: the 61 reclassification events carry 0.8–34 u (17 parts
+of one station at 2.08 u each on frame 499 at speed 0.04; 17 at 24136 at speed 1.96 with static
+18 → 0). Consequence: small distant asteroids (< 1,500 u) never cast, and nodes only in C3/C4 can
+never accrue the eight sightings (they are refused, hence unseen, hence dropped: cause 1).
+
+**Ruled out (measured).** Float error of the world-row recovery under camera motion (the
+proposed H1 reading): `drift_max` of verified static sightings on frames without a
+reclassification — rest median 0.0156 / p99 0.0493, < 5 u/frame 0.0087 / 0.0459, < 50 u/frame
+0.0064 / 0.0122, faster 0.0083 / 0.0478, max 0.0493 in every class, all under eps; the recovery
+(`world_rows`, double from the float latch) is stable at 100–2,000 u/frame. H2: `capped3/4` 0,
+`dropped_min_size` 0, kept sets identical across each burst (one node changed mask 24 → 28 at
+16795). H4: `far_replayed=1`, `far_frame=frame` on every burst frame; 275 anchor re-derivations
+over the session in 1+4 pairs ~10 frames apart, the last at 21464, none at rest after 22251 or
+at the toggles. H5: the basis centre follows the camera 0.1–1.8 u/frame along the sun (6.7e-7 of
+C4's 600-km range); it only matters because of the knife edge in 2 (14.6 % flips from a 0.4-u
+shift). H6: the > 30-km station records sit at 63–68 km, reach ≈ 0.45 of C4's 150-km half-extent,
+outside the 0.85–0.95 band; `class_miss` 0 on all burst frames.
+
+### Fixes
+
+1. Cycle (cause 1). `src/proxy/motion_output.cpp:6613`: use the store's verdict only when it is
+   informative — `is_static` → Static; a node with a verified beyond-eps sighting (a `moved` flag
+   set in `finalize_seen`, `shadow_retention_core.h:589`, cleared on promotion) → Moving;
+   otherwise (fresh, or streak accruing) fall through to the ring. And
+   `src/proxy/motion_output_shadow_retention_inc.h:236`: a draw refused **only** by the static
+   gate must still reach `store.seen` (rows and extent are known; the lease matters to the live
+   mode's AddRef path only), so the streak can reach eight and the node be promoted while
+   refused; then `walk_unseen` no longer drops it. Fixture: `shadowpool` static case
+   (`verification/probe/motion_output_shadow_pool_inc.h`, `…-pool-static-census/live`) with a
+   second static node S2 meeting cascade 1 (static-only) alone: expect `c1` constant and
+   `new_nodes`/`moving_dropped` 0 from frame 2 and S2 promoted at frame 9; today it alternates
+   `c1` and `new_nodes`=1/`moving_dropped`=1 with period 2 (`POOL_EXPECT`, `:78`).
+2. Far self-shadow (cause 2). Replay the static-only (or all ≥ 2) cascades with inverted culling
+   so the map holds back faces (`src/renderer/shadow_replay_pass.cpp:277`, per-record
+   `r.cull_mode`: CW ↔ CCW, NONE unchanged): a lit-side receiver then compares against the far
+   side of its own body, the residual becomes the body's thickness (≫ bias), and the compare
+   leaves the knife edge; contact-shadow loss at 18 / 73-u texels is invisible. Fixture:
+   `sun-shadow-apply-cascades-5` with the box's lit face as the receiver at texel ≈ pixel
+   footprint, all eight jitter indices: lit-face `f` must be 1 on every frame (today it flips).
+   Keep the bias law; a texel-scaled bias alone was measured insufficient (×8 leaves 27 %).
+3. Classification scale (cause 3). Ring eps per static-only cascade in texels (e.g. the smallest
+   static-only cascade met, `texel_world/8`: C3 2.3 u, C4 9.2 u) at `motion_output.cpp:6621` and
+   the store's `in.eps` (`motion_output_shadow_retention_inc.h:290`) for its C3/C4 verdict, so a
+   station part stepping 2 u or a hull part jittering 0.1 u stays static at 73-u texels.
+   Host: `test_shadow_cascades` ring cases at two eps; fixture: `…-pool-static` with a 0.1-u
+   jitter node under a 2-u eps.
+
+**Not verified.** The user's toggle observation (no F8 burst exists at rest between a toggle-on
+and the next move; burst 24291 came after a move). Deciding capture: F8 at rest immediately
+after Ctrl+Shift+F12 on, then F8 after moving and stopping — compare the twin's C4 flip rate and
+the `new_nodes`/`moving_dropped` alternation.
