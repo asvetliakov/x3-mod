@@ -1820,3 +1820,49 @@ Evidence: `run_motion_output.py` (retained binaries) 20 cases: 20 / 20 pass; mai
 before (case h: 22 pixels beyond one texel in region C, predicted 24.2 units = 2.06 tx; A and B 0; all 0
 against their own parallel shadow). `run_sun_share_live.py`: 21 / 21, record equal (temp paths aside).
 Host: the ten affected modules 69 tests OK; the sixteen other launcher-option modules 214 tests OK.
+
+## 2026-09-17 At-rest sun-shadow A/B (Ctrl+Shift+F12)
+
+Run 39 needs the cascades' GPU fill/clear cost, and no GPU timer query works on
+this backend; the instrument is the `frame_end` median with the shadows on
+versus off at rest. The key, the gate and the log contract are in
+[comparison-hotkeys.md](../architecture/comparison-hotkeys.md), "Sun shadows at
+rest": one boolean tested once at the scene end removes the replay transaction
+and the apply quad, both edges void every retained basis, the press is polled
+only with `--sun-shadow-apply`, and each press logs `sun_shadow_toggle device=
+state= frame=`. The per-frame `shadow_replay_depth` line gained
+`shadow_toggle=` (optional in `shadow_replay_depth.py`, so older logs parse
+unchanged).
+
+- Host: `test_comparison_hotkeys` 6 tests OK, including the new source/gate case
+  and the controls fixture at 12,231 checks (release and ASan/UBSan), 0
+  failures. The six mock-drift modules (`test_linear_material_live`,
+  `test_motion_wrap_states`, `test_capture_bloom_lifetime`,
+  `test_motion_hdr_scene`, `test_linear_cutout_contract`,
+  `test_capture_device_creation`) 27 tests OK.
+- Clean CMake build: 0 warnings, `build/d3d9.dll` sha256 `33479b74…c75ec8`
+  (the fixture runner's own rebuild of the same sources, `6f7eb3bd…a89df5`,
+  audits identically); `check_no_x87.py`: 526 reachable functions, no violations.
+  `build_motion_output.sh` (strict `-Wall -Wextra -Werror` seam compile): clean,
+  the new `x3m_sun_shadow_fixture_toggle` export present.
+- Fixture (`X3M_FIXTURE_BOTTLE=X3`, bottle X3): new case
+  `seam-ownership-shadow-replay-cascades-toggle` (the cascade script with the
+  seam pressed at the boundary of frame 2 off and frame 6 on), 277 checks,
+  exit 0. Frames 2-5 carry no `shadow_replay_depth` line at all and both
+  cascades read back invalid (the far basis of frame 0 is voided by the press,
+  never republished); the Reset of frame 4 leaves the maps released while the
+  A/B is off; frame 6 replays both cascades (`draws=[2,4]`, `far_replayed=1`,
+  `far_frame=6`: re-replayed, not reused) and recreates the targets
+  (`allocations=2` at frame 6 instead of 4); every replayed map equals the CPU
+  twin, `max_depth_error` 1.83e-06. The two `sun_shadow_toggle` lines and the
+  four `shadow_toggle=1` replay lines are the only new trace lines. All eight
+  presented frames are byte-identical to `seam-ownership-shadow-replay-cascades`.
+- Records equal: `seam-ownership-shadow-replay-cascades` 278 checks,
+  `max_depth_error` 4.0742862848497374e-06; `seam-ownership-shadow-retention-live`
+  9,743 checks, 1,535 frames, 39 compared / 28 retained-compared,
+  `max_depth_error` 1.7169477474210382e-06 — all identical to the recorded runs.
+- Limit: no fixture case requests `--sun-shadow-apply` through the DLL (the
+  apply needs the sun lane, which the replay script does not run), so the
+  quad's half of the gate is covered by source and the host case only; the
+  absence of `sun_shadow_apply_frame` lines while off is not measured in game
+  yet. Native Windows behavior is unverified as elsewhere.

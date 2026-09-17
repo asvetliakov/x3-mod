@@ -78,6 +78,21 @@ class CascadeFields(unittest.TestCase):
         skipped = depth.parse_depth_line(line(7, replayed=4, draws=4) + ' draws0=2 draws1=0 far_replayed=0 far_frame=-1 issues=6 budget=5')
         self.assertEqual((skipped['cascades']['draws'], skipped['cascades']['far_frame']), ([2, 0], -1))
 
+    def test_shadow_toggle_state_is_optional(self):
+        """The at-rest A/B (comparison-hotkeys.md, "Sun shadows at rest") adds
+        shadow_toggle= before the cascade tail; logs written before the key
+        parse unchanged, and only 0/1 is a state."""
+        cascades = depth.parse_depth_line(line(6, replayed=4, draws=4) + ' shadow_toggle=1' + self.TAIL)
+        self.assertEqual((cascades['shadow_toggle'], cascades['cascades']['draws']), (1, [2, 4]))
+        single = depth.parse_depth_line(line(7) + ' shadow_toggle=1')
+        self.assertEqual(single['shadow_toggle'], 1)
+        self.assertNotIn('cascades', single)
+        self.assertNotIn('shadow_toggle', depth.parse_depth_line(line(7)))
+        for bad in (line(7) + ' shadow_toggle=2', line(7) + ' shadow_toggle=x',
+                    line(6, replayed=4, draws=4) + self.TAIL + ' shadow_toggle=1'):
+            with self.assertRaises(depth.MalformedLine, msg=bad[-40:]):
+                depth.parse_depth_line(bad)
+
     def test_malformed_tails(self):
         good = line(6, replayed=4, draws=4) + self.TAIL
         for bad in (good.replace(' draws0=2', ''), good.replace('far_frame=6', 'far_frame=-2'), good.replace('far_replayed=1', 'far_replayed=2'), good.replace(' budget=5', ''),

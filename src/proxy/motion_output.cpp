@@ -1640,7 +1640,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // The bloom copy is the fallback scene end: the AO chain runs here under
     // the same contract as at the hook (RT2 complete, brackets finished, the
     // resolve follows on the same target) when the hook did not run it.
-    if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(sun_apply_requested_)run_sun_shadow_apply();}
+    if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();} // F12 off: the quad is skipped whole
     if (bloom && ao_requested_ && !counters_.ao.attempted) { counters_.ao.source = "copy"; run_ambient_occlusion(); }
     if (hdr_state_ != HdrState::Off) {
         if (bloom) { resolve_hdr(SceneEndSource::StretchRect); end_redirect(HdrEnd::BloomCopy); }
@@ -1722,7 +1722,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     if (candidates_requested_) publish_shadow_replay_candidates();
     // Sun-shadow application (legacy-sun-application.md section 2): after the
     // replay produced this frame's map, before AO and the resolve.
-    if (sun_apply_requested_) run_sun_shadow_apply();
+    if (sun_apply_requested_ && sun_shadow_enabled_) run_sun_shadow_apply(); // Ctrl+Shift+F12 off: no quad, no sun_shadow_apply_frame line
     // Ambient occlusion on the owning scene target (RT2 complete, every
     // in-place bracket finished, the resolve not yet run): the resolve below
     // consumes the darkened target.
@@ -2077,6 +2077,19 @@ int MotionOutput::hull_emission_gain_toggle() noexcept {
     log("hull_emission_gain_toggle device=%llu frame=%llu accepted=%u enabled=%u requested=%u gain=%g",
         id_, frame_, unsigned(available), unsigned(hull_gain_enabled_), unsigned(hull_emission_gain_requested_), double(hull_emission_gain_));
     return available ? (hull_gain_enabled_ ? 1 : 0) : -1;
+}
+// Ctrl+Shift+F12: the sun shadows at rest (comparison-hotkeys.md, "Sun shadows
+// at rest"), the A/B that makes the cascades' fill/clear cost readable in
+// frame_end. The press lands at the frame boundary, so a scene never sees the
+// gate change under it. Both edges void every retained basis (the far
+// cascade's included): an off interval must never leave a stale map for the
+// apply quad to publish when it comes back. Nothing is created or released.
+int MotionOutput::sun_shadow_toggle() noexcept {
+    sun_shadow_enabled_ = !sun_shadow_enabled_;
+    if (depth_replay_) depth_replay_->invalidate_retained();
+    depth_replayed_ = 0; depth_cascade_frame_ok_ = false;
+    log("sun_shadow_toggle device=%llu state=%u frame=%llu", id_, unsigned(sun_shadow_enabled_), frame_);
+    return sun_shadow_enabled_ ? 1 : 0;
 }
 int MotionOutput::ambient_occlusion_toggle() noexcept {
     if (!ao_requested_) return -1;
@@ -6928,7 +6941,15 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         id_, frame_, c.routed, c.zwrite, c.slice0, c.bounds, c.origin, c.fallback, c.managed, c.dynamic, c.default_pool, c.excluded, c.unknown, c.shadow_mismatch,
         c.leased, c.capped, c.reads, c.serial_changed, c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
         static_cast<unsigned long long>(c.roots), static_cast<unsigned long long>(c.waiting), c.nested, c.overflow, cascade_fields);
-    if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);
+    // Ctrl+Shift+F12 off (comparison-hotkeys.md, "Sun shadows at rest"): one
+    // boolean test, then no transaction at all this frame (no map cleared,
+    // nothing drawn, no retained caster issued). The frame's leases are still
+    // retired here, as a replayed frame retires them.
+    if (!sun_shadow_enabled_) {
+        depth_replayed_ = 0; depth_replayed_frame_ = frame_; depth_cascade_frame_ok_ = false;
+        if (depth_replay_requested_) release_depth_leases();
+    }
+    else if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);
     else if (depth_replay_requested_) run_shadow_replay_depth(quiet_records);
     if (retention_) publish_shadow_retention(); // the frame line reads this frame's live counts: before the reset
     candidates_.reset();

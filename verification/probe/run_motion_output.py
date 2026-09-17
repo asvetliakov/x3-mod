@@ -308,6 +308,17 @@ CASES += [case('seam-ownership-shadow-replay-sun-programs', 'shadowreplay', 'own
 # unavailable / refused by the cross-check, the latch stays the source, counted
 # by reason, and every other expectation is the plain cascade case's.
 SHADOW_POLL_MODES = ('agree', 'null', 'disagree', 'refusals')  # refusals: a layout, pointer or content defect per frame
+# The at-rest sun-shadow A/B (docs/architecture/comparison-hotkeys.md, "Sun
+# shadows at rest"): the cascade script with the Ctrl+Shift+F12 seam pressed at
+# the boundary of frame 2 (off) and of frame 6 (on). Frames 2-5 must carry no
+# shadow_replay_depth line at all (no map cleared or drawn, the Reset of frame 4
+# inside the window), every cascade must read back invalid there (the retained
+# far basis is voided by the press, never republished stale), and frame 6 must
+# replay both cascades, the far one included, although its issues exceed the
+# budget on an even frame only.
+SHADOW_TOGGLE_OFF_FRAME, SHADOW_TOGGLE_ON_FRAME = 2, 6
+CASES += [case('seam-ownership-shadow-replay-cascades-toggle', 'shadowreplay', 'ownership', camera=True,
+               hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_FIXTURE_SHADOW_TOGGLE=f'{SHADOW_TOGGLE_OFF_FRAME},{SHADOW_TOGGLE_ON_FRAME}'))]
 CASES += [case(f'seam-ownership-shadow-replay-cascades-poll-{m}', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_FIXTURE_SHADOW_POLL=m)) for m in SHADOW_POLL_MODES]
 CASES += [case('seam-ownership-shadow-replay-wide', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_WIDE_ENV),
           case('seam-ownership-shadow-replay-far-refused', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_FAR_ENV)]
@@ -1156,7 +1167,22 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
     depth_rows, refused, targets = depth_replay.parse_text(trace)
     candidate_rows, _ = candidates_analysis.parse_text(trace)
     by_frame = {r['frame']: r for r in candidate_rows}
-    assert [r['frame'] for r in depth_rows] == sorted(by_frame) == list(range(SHADOW_REPLAY_FRAMES)), (name, sorted(by_frame))
+    # The at-rest A/B (comparison-hotkeys.md, "Sun shadows at rest"): the frames
+    # of the off window carry no replay line at all; the candidate counter, the
+    # lane and the presented frames keep running.
+    toggle = env.get('X3M_FIXTURE_SHADOW_TOGGLE')
+    off_window, toggle_on_frame = set(), None
+    if toggle:
+        off_at, toggle_on_frame = (int(v) for v in toggle.split(','))
+        off_window = set(range(off_at, toggle_on_frame))
+        script = [fields(l) for l in text.splitlines() if l.startswith('SHADOW_TOGGLE ')]
+        assert [(int(t['frame']), int(t['state'])) for t in script] == [(off_at, 0), (toggle_on_frame, 1)], (name, script)
+        events = [fields(l) for l in tl if l.startswith('sun_shadow_toggle ')]
+        assert [(int(e['frame']), int(e['state'])) for e in events] == [(off_at, 0), (toggle_on_frame, 1)], (name, events)
+    depth_by_frame = {r['frame']: r for r in depth_rows}
+    assert [r['frame'] for r in depth_rows] == [f for f in range(SHADOW_REPLAY_FRAMES) if f not in off_window], (name, sorted(depth_by_frame))
+    assert sorted(by_frame) == list(range(SHADOW_REPLAY_FRAMES)), (name, sorted(by_frame))
+    assert all(r.get('shadow_toggle') == 1 for r in depth_rows), (name, 'every replay line records the state it ran under')
     # The script's objects in submission order with their cascade masks: frame 0
     # by the origin rule per cascade (the casters at unit distance: both; L at
     # 256 and F at 300 units: the far cascade), later frames by bounds (L
@@ -1183,24 +1209,34 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
                     records[c] += 1; kept[c].append(key)
             dropped += survived == 0
         issues = sum(records)
-        is_refused = frame in refused_frames
-        far_replays = not is_refused and records[-1] > 0 and (issues <= budget or frame % 2 == 0)
-        if frame == SHADOW_REPLAY_RESET_FRAME or is_refused:
+        is_off = frame in off_window
+        is_refused = frame in refused_frames and not is_off  # an off frame runs no transaction, so it refuses nothing
+        far_replays = not is_off and not is_refused and records[-1] > 0 and (issues <= budget or frame % 2 == 0)
+        # Both edges of the A/B void every retained basis, as the Reset and a
+        # refusal do: an off interval never leaves a far map to be republished.
+        if frame == SHADOW_REPLAY_RESET_FRAME or is_refused or is_off or frame == toggle_on_frame:
             far_frame = -1
         if far_replays:
             far_frame = frame
-        draws = [0 if is_refused or (c == count - 1 and not far_replays) else records[c] for c in range(count)]
-        expectations[frame] = dict(records=records, capped=capped, dropped=dropped, issues=issues, draws=draws, far_replayed=int(far_replays), far_frame=far_frame)
+        draws = [0 if is_off or is_refused or (c == count - 1 and not far_replays) else records[c] for c in range(count)]
+        expectations[frame] = dict(records=records, capped=capped, dropped=dropped, issues=issues, draws=draws, far_replayed=int(far_replays), far_frame=far_frame, toggle=int(not is_off))
         kept_by_frame[frame] = kept
-        c_row, d_row = by_frame[frame], depth_rows[frame]
+        c_row = by_frame[frame]
         assert c_row['cascades'] == {'count': count, 'records': records, 'capped': capped} and c_row['capped'] == dropped and c_row['leased'] == len(order) - dropped, (name, frame, c_row, expectations[frame])
+        if is_off:
+            assert frame not in depth_by_frame, (name, frame, 'the A/B off: no replay transaction and no line')
+            continue
+        d_row = depth_by_frame[frame]
         assert d_row['cascades'] == {'count': count, 'draws': draws, 'far_replayed': int(far_replays), 'far_frame': far_frame, 'issues': 0 if False else d_row['cascades']['issues'], 'budget': budget}, (name, frame, d_row, expectations[frame])
         # issues counts the quiet leased records' cascades: the Lock frame's refused record and the multistream one are not among them.
         expected_issues = issues - (sum(1 for c in range(count) if masks_of(frame)[('A', 0)] >> c & 1 and ('A', 0) in kept[c]) if frame in (SHADOW_REPLAY_LOCK_FRAME, SHADOW_REPLAY_MULTISTREAM_FRAME) else 0)
         assert d_row['cascades']['issues'] == expected_issues, (name, frame, d_row, expected_issues)
         assert d_row['draws'] == len(order) - dropped and d_row['replayed'] == (0 if is_refused else d_row['draws']), (name, frame, d_row)
-    assert [(r['reason'], r['detail'], int(r['frame'])) for r in refused] == [(v[0], v[1], k) for k, v in sorted(refused_frames.items())], (name, refused)
-    assert [(t['frame'], t['allocations'], t['size']) for t in targets] == [(0, 1, max(sizes)), (SHADOW_REPLAY_RESET_FRAME, 2, max(sizes))], (name, targets)
+    assert [(r['reason'], r['detail'], int(r['frame'])) for r in refused] == [(v[0], v[1], k) for k, v in sorted(refused_frames.items()) if k not in off_window], (name, refused)
+    # The Reset's targets are recreated by the next transaction; inside an off
+    # window that is the first frame back on.
+    recreated = next(f for f in range(SHADOW_REPLAY_RESET_FRAME, SHADOW_REPLAY_FRAMES) if sum(expectations[f]['draws']))
+    assert [(t['frame'], t['allocations'], t['size']) for t in targets] == [(0, 1, max(sizes)), (recreated, 2, max(sizes))], (name, targets)
     # The maps.
     maps = {}
     for l in text.splitlines():
@@ -1221,9 +1257,19 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
             data = (directory / f'shadow_{frame}_c{c}.r32f').read_bytes() if m['available'] == '1' else None
             replayed_now = e['draws'][c] > 0
             valid = replayed_now or (c == count - 1 and e['far_frame'] >= 0)
-            assert m['available'] == '1' and int(m['width']) == sizes[c] and (m['valid'] == '1') == valid, (name, frame, c, m, e)
+            # Only an off window may lose the surface itself: the Reset inside
+            # it releases the maps and no transaction recreates them.
+            assert (m['available'] == '1' or (frame in off_window and frame >= SHADOW_REPLAY_RESET_FRAME)) and (m['valid'] == '1') == valid, (name, frame, c, m, e)
+            if m['available'] == '1':
+                assert int(m['width']) == sizes[c], (name, frame, c, m)
             if valid:
                 assert int(float(m['replayed_frame'])) == (frame if replayed_now else e['far_frame']), (name, frame, c, m, e)
+            if frame in off_window:
+                # No map was cleared or drawn: the content is the last replay's,
+                # or gone with the Reset's release.
+                assert data is None or (c in previous and data == previous[c]), f'{name}: frame {frame} cascade {c} changed with the A/B off'
+                comparisons[f'{frame}/{c}'] = {'toggled_off': True, 'valid': valid, 'available': m['available'] == '1'}
+                continue
             if not replayed_now:
                 # Refused, or the far cascade skipped by the budget: the map is untouched.
                 assert c in previous and data == previous[c], f'{name}: frame {frame} cascade {c} changed without a replay'
@@ -1246,7 +1292,8 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
             comparisons[f'{frame}/{c}'] = comparison
     sun = validate_shadow_replay_sun(name, trace, len(order), False, tuple(float(v) for v in suns[0]['direction'].split(',')))
     sun_point = validate_shadow_replay_poll(name, text, trace, env.get('X3M_FIXTURE_SHADOW_POLL'), count, sizes, cameras, maps, len(order))
-    case = {'checks': checks + 6 + 6 * SHADOW_REPLAY_FRAMES + 3 * SHADOW_REPLAY_FRAMES * count + 1 + 4 * SHADOW_REPLAY_FRAMES, 'sun_point': sun_point, 'depth': True, 'taa': taa, 'casters': casters, 'cascades': count, 'extents': extents, 'sizes': sizes, 'caps': caps, 'budget': budget,
+    case = {'checks': checks + 6 + 6 * SHADOW_REPLAY_FRAMES + 3 * SHADOW_REPLAY_FRAMES * count + 1 + 4 * SHADOW_REPLAY_FRAMES + (3 + len(off_window) if toggle else 0),
+            'toggle': {'off_frames': sorted(off_window), 'on_frame': toggle_on_frame} if toggle else None, 'sun_point': sun_point, 'depth': True, 'taa': taa, 'casters': casters, 'cascades': count, 'extents': extents, 'sizes': sizes, 'caps': caps, 'budget': budget,
             'frames': SHADOW_REPLAY_FRAMES, 'per_frame': expectations, 'refusals': refused, 'targets': targets, 'sun': sun,
             'map': {'frames': comparisons, 'max_depth_error': max(v.get('max_depth_error', 0.0) for v in comparisons.values()), 'covered_texels': sum(v.get('covered_gpu', 0) for v in comparisons.values())}}
     case['us'] = depth_replay.us_summary(depth_rows)
