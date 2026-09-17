@@ -394,6 +394,7 @@ struct Fixture {
     bool aohook = false, ao_env = false, ao_fault = false, ao_debug = false, ao_toggle_script = false;
     float ao_strength = .5f;
     int (*ao_toggle)(IDirect3DDevice9*) = nullptr; // x3m_ambient_occlusion_fixture_toggle: the Ctrl+Shift+F11 action
+    int (*hull_toggle)(IDirect3DDevice9*) = nullptr; // x3m_hull_emission_fixture_toggle: the Ctrl+Shift+F4 action
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool emissions = false, emission_bench = false, emissions_enabled = false, emission_mask_valid = false;
     unsigned reactive_uploads = 0; // reference reactive-mask uploads (supplemental policy frames)
@@ -3135,6 +3136,7 @@ int main(int argc, char** argv) {
         f.ao_fault = GetEnvironmentVariableA("X3M_FIXTURE_AO_FAULT", setting, sizeof setting) == 6 && !std::strcmp(setting, "attach");
         f.ao_toggle_script = GetEnvironmentVariableA("X3M_FIXTURE_AO_TOGGLE", setting, sizeof setting) == 1 && setting[0] == '1';
         f.ao_toggle = symbol<int (*)(IDirect3DDevice9*)>(runtime, "x3m_ambient_occlusion_fixture_toggle", false);
+        f.hull_toggle = symbol<int (*)(IDirect3DDevice9*)>(runtime, "x3m_hull_emission_fixture_toggle", false);
         f.ao_debug = f.ao_env && GetEnvironmentVariableA("X3M_AO_DEBUG", setting, sizeof setting) == 1 && setting[0] == '1';
         { char strength[32]{}; if (GetEnvironmentVariableA("X3M_AO_STRENGTH", strength, sizeof strength) > 0) { char* end = nullptr; const float v = std::strtof(strength, &end); if (end != strength && *end == '\0' && v >= 0.f && v <= 1.f) f.ao_strength = v; } }
         f.hdr_agx = f.hdr && GetEnvironmentVariableA("X3M_HDR_TONEMAP", setting, sizeof setting) > 0 && (!std::strcmp(setting, "agx") || !std::strcmp(setting, "1"));

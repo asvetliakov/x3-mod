@@ -9,10 +9,10 @@
     },
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
-  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xz76zh7g",
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-3fk66axt",
   "inputs": {
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8dfaa0adca1d5d9c/verification/probe/build/motion_output_fixture.exe": "2057fa4146c2293761f66e7215540c97958ae2385592e953c412eb4d7f0873d2",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8dfaa0adca1d5d9c/verification/probe/build/motion-output-seam/d3d9.dll": "319f028e86d9ffd64727579919a01058dfba24ed68f43bcebde94c5d021d003d",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a946f0723d50e4c65/verification/probe/build/motion_output_fixture.exe": "d235f298e83c4ad15c21cb1b1fe1511c25bb9966772e1f0369b20ddf0973189f",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a946f0723d50e4c65/verification/probe/build/motion-output-seam/d3d9.dll": "1e2c79558ec7099129a93bddb35227acb574cec78fe93192ca14e5aad4912c6c",
     "/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
     "/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
     "/private/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
@@ -38,12 +38,46 @@
             "kind": "screen",
             "pixels": 171,
             "max_codes": 0
+          },
+          {
+            "kind": "additive_off",
+            "pixels": 171,
+            "max_codes": 0
+          },
+          {
+            "kind": "additive_on",
+            "pixels": 171,
+            "max_codes": 0
           }
         ],
         "variants": 1,
-        "admitted": 1,
-        "refused_blend": 1,
-        "elapsed_seconds": 4.198290083,
+        "admitted": 2,
+        "refused_blend": 2,
+        "refused_routed": 0,
+        "draw_lines": 2,
+        "colour": [
+          [
+            0,
+            "59ff6b7d21e23cae"
+          ],
+          [
+            1,
+            "5b71341eb6689a4c"
+          ],
+          [
+            2,
+            "59ff6b7d21e23cae"
+          ],
+          [
+            3,
+            "59ff6b7d21e23cae"
+          ],
+          [
+            4,
+            "5b71341eb6689a4c"
+          ]
+        ],
+        "elapsed_seconds": 4.161215,
         "command": [
           "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
           "--bottle",
@@ -52,8 +86,8 @@
           "--dll",
           "d3d9=n,b",
           "--workdir",
-          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xz76zh7g/hull_emission/gain-2",
-          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xz76zh7g/hull_emission/gain-2/fixture.exe",
+          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-3fk66axt/hull_emission/gain-2",
+          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-3fk66axt/hull_emission/gain-2/fixture.exe",
           "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
           "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
           "hullemission"
@@ -76,12 +110,46 @@
             "kind": "screen",
             "pixels": 171,
             "max_codes": 0
+          },
+          {
+            "kind": "additive_off",
+            "pixels": 171,
+            "max_codes": 0
+          },
+          {
+            "kind": "additive_on",
+            "pixels": 171,
+            "max_codes": 0
           }
         ],
         "variants": 0,
         "admitted": 0,
         "refused_blend": 0,
-        "elapsed_seconds": 1.521320417,
+        "refused_routed": 0,
+        "draw_lines": 0,
+        "colour": [
+          [
+            0,
+            "59ff6b7d21e23cae"
+          ],
+          [
+            1,
+            "59ff6b7d21e23cae"
+          ],
+          [
+            2,
+            "59ff6b7d21e23cae"
+          ],
+          [
+            3,
+            "59ff6b7d21e23cae"
+          ],
+          [
+            4,
+            "59ff6b7d21e23cae"
+          ]
+        ],
+        "elapsed_seconds": 1.4096600000000006,
         "command": [
           "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
           "--bottle",
@@ -90,13 +158,18 @@
           "--dll",
           "d3d9=n,b",
           "--workdir",
-          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xz76zh7g/hull_emission/gain-1",
-          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xz76zh7g/hull_emission/gain-1/fixture.exe",
+          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-3fk66axt/hull_emission/gain-1",
+          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-3fk66axt/hull_emission/gain-1/fixture.exe",
           "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
           "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
           "hullemission"
         ]
-      }
+      },
+      "identical_frames_across_gains": [
+        0,
+        2,
+        3
+      ]
     }
   }
 }

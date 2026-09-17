@@ -54,6 +54,14 @@ int main(){
     e.foreground=true;CHECK(!emitters.sample(e).screen_additive); // held through alt-tab
     e.screen_additive=false;emitters.sample(e);e.screen_additive=true;CHECK(emitters.sample(e).screen_additive);
     emitters.reset_focus();{const auto a=emitters.sample(e);CHECK(!a.screen_additive&&!a.source_gain);}
+    // F4 (hull emitters): its own edge, independent of F6; held is not a press; focus loss disarms it.
+    x3m::ComparisonControls hull;
+    x3m::ComparisonKeys k{};k.foreground=true;k.control=k.shift=true;hull.sample(k);
+    k.hull_gain=true;{const auto a=hull.sample(k);CHECK(a.hull_gain&&!a.source_gain&&!a.screen_additive);}
+    k.source_gain=true;{const auto a=hull.sample(k);CHECK(!a.hull_gain&&a.source_gain);}
+    for(unsigned i=0;i<100;++i)CHECK(!hull.sample(k).hull_gain);
+    k.foreground=false;hull.sample(k);k.foreground=true;CHECK(!hull.sample(k).hull_gain);
+    k.hull_gain=false;hull.sample(k);k.hull_gain=true;CHECK(hull.sample(k).hull_gain);
 
     HdrPass hdr; IDirect3DPixelShader9 shader;
     hdr.config_.tonemap=HdrTonemap::Agx;hdr.config_.allow_auto_toggle=true;

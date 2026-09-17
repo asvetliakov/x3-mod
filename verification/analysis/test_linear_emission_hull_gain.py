@@ -229,14 +229,35 @@ class LauncherGateTests(unittest.TestCase):
             self.assertEqual({k: v for k, v in env.items() if k != 'X3M_HULL_EMISSION_GAIN'},
                              {k: v for k, v in json.loads(launch(directory, *PREREQUISITES, '--emission-source-gain', '2')[1])['env'].items()
                               if k != 'X3M_HULL_EMISSION_GAIN'}, 'only the hull key changes')
+            # Own gain: --hull-emission-gain G stands without the effects gain
+            # (the hull population is bracketed alone) and wins over it.
+            code, output, error = launch(directory, *PREREQUISITES, '--hull-emitters', '--hull-emission-gain', '4')
+            self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            self.assertEqual((env['X3M_HULL_EMISSION_GAIN'], env['X3M_EMISSION_SOURCE_GAIN']), ('4.0', '1.0'))
+            code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2', '--hull-emitters', '--hull-emission-gain', '8')
+            self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            self.assertEqual((env['X3M_HULL_EMISSION_GAIN'], env['X3M_EMISSION_SOURCE_GAIN']), ('8.0', '2.0'))
             for bad, message in ((PREREQUISITES + ['--hull-emitters'], '--emission-source-gain'),
+                                 (PREREQUISITES + ['--hull-emitters'], '--hull-emission-gain'),
                                  (['--motion-output', '--emission-source-gain', '2', '--hull-emitters'], '--emission-source-gain requires --hdr'),
-                                 (PREREQUISITES + ['--emission-source-gain', '9', '--hull-emitters'], '--emission-source-gain')):
+                                 (['--motion-output', '--hull-emitters', '--hull-emission-gain', '2'], '--hull-emitters requires --hdr'),
+                                 (PREREQUISITES + ['--emission-source-gain', '9', '--hull-emitters'], '--emission-source-gain'),
+                                 (PREREQUISITES + ['--hull-emission-gain', '2'], '--hull-emission-gain requires --hull-emitters'),
+                                 (PREREQUISITES + ['--hull-emitters', '--hull-emission-gain', '9'], '--hull-emission-gain must be finite'),
+                                 (PREREQUISITES + ['--hull-emitters', '--hull-emission-gain', '0.5'], '--hull-emission-gain must be finite'),
+                                 (PREREQUISITES + ['--hull-emitters', '--hull-emission-gain', '1'], 'must be above 1')):
                 code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad); self.assertIn(message, error)
             for boundary in ('1', '8'):
                 code, _, error = launch(directory, *PREREQUISITES, '--emission-source-gain', boundary, '--hull-emitters')
                 self.assertEqual(code, 0, error)
-        self.assertIn('--hull-emitters', launch_help())
+            for boundary in ('1.5', '8'):
+                code, _, error = launch(directory, *PREREQUISITES, '--hull-emitters', '--hull-emission-gain', boundary)
+                self.assertEqual(code, 0, error)
+        help_text = launch_help()
+        self.assertIn('--hull-emitters', help_text); self.assertIn('--hull-emission-gain', help_text)
+        self.assertIn('Ctrl+Shift+F4', help_text)
 
 
 class FixtureCoverageTests(unittest.TestCase):

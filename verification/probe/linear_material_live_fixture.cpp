@@ -417,7 +417,7 @@ public:
  std::uint32_t hull_gain_logged_[3]{};std::uint32_t hull_gain_program_logged_=0;unsigned hull_gain_prepares_=0;
  void prepare_hull_gain(const MotionDrawCall&,MotionRoute&)noexcept{++hull_gain_prepares_;}
  bool screen_additive_requested_=false;float screen_additive_gain_=1;
- bool screen_additive_enabled_=true;bool source_gain_enabled_=true; // runtime hotkey flags; the fixture exercises the default-on path
+ bool screen_additive_enabled_=true;bool source_gain_enabled_=true;bool hull_gain_enabled_=true; // runtime hotkey flags (F5/F6/F4); the fixture exercises the default-on path
  bool emission_source_gain_enabled()const noexcept{return source_gain_enabled_;}
  unsigned screen_additive_frame_admitted_=0,screen_additive_frame_refused_=0,screen_additive_frame_pairs_=0;
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
