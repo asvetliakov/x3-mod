@@ -287,3 +287,22 @@ empty view; draw and EndPass unchanged. The native redistributable stays and
 closed (DXVK renders black on this CrossOver Preview); what remains of the
 plan is the host prerequisites and the pass-replay wrapper, only if the 3–5 ms
 is still wanted ([ledger](../verification/sampling-profiler.md), run104/105).
+
+**Environment experiments.** Two launcher options change only the game child's
+environment, nothing in the bottle or the application. `--fex-tso {on,off}`
+sets `FEX_TSOENABLED`; `off` relaxes FEX's emulation of x86 total store order,
+which targets the ~11 ms of emulated engine and D3DX code per busy frame (every
+guarded store in that path gets cheaper). `--wined3d CONFIG` sets
+`WINE_D3D_CONFIG`, the documented environment form of the
+`HKCU\Software\Wine\Direct3D` keys; the experiment uses `csmt` (`csmt=0x0`
+runs the draw path on the calling thread instead of the command-stream thread)
+and `renderer` (`gl` or `vulkan`), targeting the ~7 ms draw path. Risk: relaxed
+store ordering removes a correctness guarantee the emulated game and Wine rely
+on and can expose latent multithreading races (hangs, corruption, crashes that
+do not reproduce without it), and a wined3d renderer switch can change or break
+presentation; both are experiments, never defaults, and a misbehaving session
+is void. Neither leaves log evidence — the proxy's `loaded_module` line for
+`d3d9.dll` does not reflect either variable — so a run is judged by behaviour
+and timing: one `--pass-phases` session per setting compared against run105's
+native figures, BeginPass 6.58 µs, draw 8.76 µs, engine 4.45 µs and frame
+dt 22.2 ms, in the same view.
