@@ -289,6 +289,7 @@ def main():
     parser.add_argument('--linear-emissions', action='store_true', help='Compose reviewed additive scene emissions in linear light (requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode; default off)')
     parser.add_argument('--emission-gain', type=float, default=None, help='Linear emission gain, finite 0..16, default 1 (requires --linear-emissions)')
     parser.add_argument('--emission-source-gain', type=float, default=None, metavar='G', help='Source-only encoded gain of the twenty engine/effects emission pairs (ship engine glow, jump gate, weapon impact flashes, muzzle glows, explosion sprites), finite 1..8, default 1 = off (X3M_EMISSION_SOURCE_GAIN; requires --hdr; excludes --linear-emissions, whose bracket carries its own --emission-gain; needs neither --linear-materials nor --taa): the pixel program of each pair multiplies its native colour output by G before the game\'s own blend into the FP16 scene, so bloom and exposure pick the brighter emitters up. An ADD/ONE/ONE draw keeps its blend (G*S + D); a screen ADD/ONE/INVSRCCOLOR draw (most engine materials) draws with DESTBLEND ONE substituted for that draw only (G*S + D: identical to native over black for S <= 1, brighter by D*S over a lit background); alpha, draw order and every other state stay native, and a pair drawn through any other blend stays native. Gain 1 creates no variant and is byte-identical to a build without the option (docs/architecture/linear-emission-cost.md, "Implemented" and "Screen substitution"). Ctrl+Shift+F6 switches all twenty pairs between G and native during play (no shader is recreated; one emission_source_gain_toggle line per press)')
+    parser.add_argument('--hull-emitters', action='store_true', help='Extend --emission-source-gain G to the hull-program emitters (X3M_HULL_EMISSION_GAIN=G, default off = 1.0; requires --emission-source-gain and --hdr): position lights, deco flares, warning signs and warp tunnels are drawn by twelve standard_lighting / XT_standard_lighting material programs with ADD ONE/ONE materials, which the twenty effects pairs cannot reach (docs/architecture/emitter-plan.md phase 3). Each covered program gets one variant that multiplies only its emission term (the unlit illumination sample the final colour instruction adds) by G; the lit hull shading, the native alpha and every other state stay native, so a pixel without emission is bit-identical. Admission is per draw and keyed on blend state: only an ADD ONE/ONE draw of a covered program takes the variant, opaque and screen-blended draws of the same program stay native. G=1 creates no variant. The DLL route is not wired yet: this exports the setting only')
     parser.add_argument('--effect-source-gain', type=float, default=None, metavar='G', help=argparse.SUPPRESS)  # removed 2026-09-16: refused below, naming the replacement
     parser.add_argument('--linear-materials', action='store_true', help='Evaluate the reviewed hull-material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
     parser.add_argument('--material-direct-gain', type=float, default=None, help='Linear direct-light gain, finite 0..16, default 1 (requires --linear-materials)')
@@ -490,6 +491,10 @@ def main():
         parser.error('--emission-source-gain excludes --linear-emissions (use --emission-gain inside the linear route).')
     if args.emission_source_gain is not None and not (math.isfinite(args.emission_source_gain) and 1.0 <= args.emission_source_gain <= 8.0):
         parser.error('--emission-source-gain must be finite and within [1, 8].')
+    if args.hull_emitters and args.emission_source_gain is None:
+        parser.error('--hull-emitters requires --emission-source-gain G (it applies that one gain to the hull-program emitters).')
+    if args.hull_emitters and not args.hdr:
+        parser.error('--hull-emitters requires --hdr.')
     if args.effect_source_gain is not None:
         parser.error('--effect-source-gain was removed: the single --emission-source-gain G now covers all twenty emission pairs (engines, gate and effect sprites).')
     if args.linear_materials and (not args.motion_output or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
@@ -689,6 +694,7 @@ def main():
         env['X3M_AO_TIMING'] = '1' if args.ao_timing else '0'
         env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)
         env['X3M_EMISSION_SOURCE_GAIN'] = repr(args.emission_source_gain if args.emission_source_gain is not None else 1.0)
+        env['X3M_HULL_EMISSION_GAIN'] = repr(args.emission_source_gain if (args.hull_emitters and args.emission_source_gain is not None) else 1.0)
         env['X3M_LINEAR_MATERIALS'] = '1' if args.linear_materials else '0'
         for name, value in material_gains.items():
             env[name] = str(value if value is not None else 1.0)

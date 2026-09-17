@@ -9,6 +9,7 @@
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
 #include "../../src/renderer/linear_distance_fade.h"
 #endif
+#include "../../src/renderer/linear_emission.h"
 #include "../../src/renderer/material_motion.h"
 #include "../../src/renderer/quad_vertex_program.h"
 #include <array>
@@ -264,13 +265,18 @@ struct Shaders {
   // --original-fill K (option C): modes 5/6/7 are the original-fill PS with
   // K, with K=0, and the plain motion PS; their VS is mode 1's.
   float original_fill = 0.0f;
+  // --hull-emission-gain G (emitter plan phase 3): mode 12 is the hull emitter
+  // gain variant of the ORIGINAL pixel program; its VS and its baseline are
+  // mode 0, the untransformed original pair with the MRTs disabled.
+  float hull_gain = 0.0f;
   D3DCAPS9 caps;
   Words originals[2][108];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path,
-          const std::vector<Case>& cases, float fill_value = 0.0f, float original_fill_value = 0.0f)
-      : d(device), fill(fill_value), original_fill(original_fill_value) {
+          const std::vector<Case>& cases, float fill_value = 0.0f, float original_fill_value = 0.0f,
+          float hull_gain_value = 0.0f)
+      : d(device), fill(fill_value), original_fill(original_fill_value), hull_gain(hull_gain_value) {
     api(d->GetDeviceCaps(&caps));
     // Scoped runs require only their selected originals. Load each once, after
     // validating the case index; variant creation remains lazy in bind().
@@ -293,6 +299,11 @@ struct Shaders {
     const char *id =
         pixel ? pixel_ids[pair_p[c.pair]] : vertex_ids[pair_v[c.pair]];
     char buffer[128];
+    if (mode == 12) {
+      if (!pixel) return key(c, 0, false);
+      std::snprintf(buffer, sizeof buffer, "%s_12_hull_%.9g", id, hull_gain);
+      return buffer;
+    }
     if (mode >= 5) {
       if (!pixel) return key(c, 1, false);
       std::snprintf(buffer, sizeof buffer, mode == 8 ? "%s_%u_%u_oshare_%.9g" : mode == 9 ? "%s_%u_%u_odark_%.9g" : "%s_%u_%u_ofill_%.9g", id, mode, c.depth,
@@ -316,6 +327,20 @@ struct Shaders {
     const auto before = original;
     Words output = {0xdeadbeef};
     LinearMaterialConfig config{c.f[0], c.f[1], c.f[2], fill};
+    if (mode == 12) {
+      // The gain never sees a repaired program: the emitter slice submits the
+      // original pair only, and gain 1 must be the original byte for byte.
+      require(!xt_default(c), "hull emitter gain runs on original pairs only");
+      if (!pixel) { require(original == before, "original mutated"); return original; }
+      Words identity = {0xdeadbeef};
+      require(linear_emission_hull_source_gain_variant(original.data(), original.size(), 1.0f, identity) ==
+                  LinearEmissionResult::Applied && identity == original, "gain 1 is the original program");
+      require(linear_emission_hull_source_gain_variant(original.data(), original.size(), hull_gain, output) ==
+                  LinearEmissionResult::Applied, "hull emitter gain transform");
+      require(output.size() == original.size() + 10, "one DEF and one MUL added");
+      require(original == before, "original mutated");
+      return output;
+    }
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     if (mode == 3) {
       require((c.pair>=110 && c.pair<116) || c.pair==station_fade_pair,"seven exact fade pairs only");
@@ -541,8 +566,9 @@ struct Gpu {
     api(d->SetRenderTarget(1, nullptr));
     api(d->SetDepthStencilSurface(nullptr));
     api(d->SetRenderTarget(0, color[c.fp16].p));
-    api(d->SetRenderTarget(1, mode ? motion.p : nullptr));
-    api(d->SetRenderTarget(2, mode && c.depth ? current.p : nullptr));
+    const bool targets = mode != 0 && mode != 12; // mode 12 submits the original pair, which writes oC0 only
+    api(d->SetRenderTarget(1, targets ? motion.p : nullptr));
+    api(d->SetRenderTarget(2, targets && c.depth ? current.p : nullptr));
     D3DVIEWPORT9 viewport{0, 0, width, width, 0, 1};
     api(d->SetViewport(&viewport));
     for (auto s :
@@ -990,6 +1016,40 @@ struct Gpu {
                     f16.f[0], f16.f[1], f16.f[2], f16.f[3], f32.f[0], f32.f[1], f32.f[2], f32.f[3]);
       }
   }
+  // --hull-emission-gain G (emitter plan phase 3): the original pair as the
+  // baseline and the gain variant of the same original PS, both in FP16. The
+  // runner owns the oracle: an emitter face (only the emission sample is
+  // non-zero) must scale by G, a face without emission must be bit-identical.
+  void test_hull_emission_gain(const Case &c) {
+    Case c16 = c; c16.fp16 = 1;
+    auto pass = [&](unsigned mode) {
+      state(c16, mode);
+      api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+      draw(c16);
+      return read(color[1].p, D3DFMT_A16B16G16R16F);
+    };
+    const auto base = pass(0);
+    const auto gained = pass(12);
+    unsigned alpha_bad = 0, rgb_bad = 0, identical = 0, positive = 0;
+    for (unsigned i = 0; i < width * width; ++i) {
+      for (unsigned k = 0; k < 3; ++k) {
+        rgb_bad += !std::isfinite(gained[i].f[k]) || gained[i].f[k] < 0 ||
+                   !std::isfinite(base[i].f[k]) || base[i].f[k] < 0;
+        positive += base[i].f[k] > 0;
+      }
+      alpha_bad += std::memcmp(&base[i].f[3], &gained[i].f[3], 4) != 0;
+      identical += std::memcmp(&base[i], &gained[i], 16) == 0;
+    }
+    std::printf("HULLGAIN id=%u pair=%u pixels=%u alpha_bad=%u rgb_bad=%u identical=%u positive=%u gain=%.9g\n",
+                c.id, c.pair, width * width, alpha_bad, rgb_bad, identical, positive, shaders.hull_gain);
+    require(!alpha_bad && !rgb_bad, "hull emitter gain: native alpha and finite non-negative RGB");
+    for (unsigned y : {width / 4, width / 2, 3 * width / 4})
+      for (unsigned x : {width / 4, width / 2, 3 * width / 4}) {
+        const auto& b = base[y * width + x]; const auto& g = gained[y * width + x];
+        std::printf("HULLSAMPLE id=%u x=%u y=%u base=%.9g,%.9g,%.9g,%.9g gained=%.9g,%.9g,%.9g,%.9g\n",
+                    c.id, x, y, b.f[0], b.f[1], b.f[2], b.f[3], g.f[0], g.f[1], g.f[2], g.f[3]);
+      }
+  }
   void classify_flat() {
     // Independent color-ramp sentinel: distinguish effective flat COLOR
     // interpolation from a backend that accepts FLAT but interpolates smoothly.
@@ -1202,6 +1262,11 @@ int main(int argc, char **argv) {
     const float original_fill=original_fill_mode ? std::strtof(argv[4],&original_fill_end) : 0.0f;
     require(!original_fill_mode || (original_fill_end && *original_fill_end=='\0' && std::isfinite(original_fill) && original_fill>0.0f && original_fill<=0.5f),
             "original fill must be finite and in (0,0.5]");
+    const bool hull_gain_mode=argc==5 && std::strcmp(argv[3],"--hull-emission-gain")==0;
+    char* hull_gain_end=nullptr;
+    const float hull_gain=hull_gain_mode ? std::strtof(argv[4],&hull_gain_end) : 0.0f;
+    require(!hull_gain_mode || (hull_gain_end && *hull_gain_end=='\0' && std::isfinite(hull_gain) && hull_gain>1.0f && hull_gain<=8.0f),
+            "hull emitter gain must be finite and within (1,8]");
     const bool original_share_mode=argc==5 && std::strcmp(argv[3],"--original-sun-share")==0;
     char* original_share_end=nullptr;
     const float original_share_fill=original_share_mode ? std::strtof(argv[4],&original_share_end) : 0.0f;
@@ -1209,9 +1274,9 @@ int main(int argc, char **argv) {
             "original sun share fill must be finite and in [0,0.5]");
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     const bool fade_mode=argc==5 && std::strcmp(argv[3],"--distance-fade")==0;
-    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode,"args: programs cases [--distance-fade composite.bin] [--fill K] [--original-fill K] [--original-sun-share K]");
+    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode || hull_gain_mode,"args: programs cases [--distance-fade composite.bin] [--fill K] [--original-fill K] [--original-sun-share K] [--hull-emission-gain G]");
 #else
-    require(argc == 3 || sun_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode, "args: programs cases [--alpha-test-cutout] [--fill K] [--original-fill K] [--original-sun-share K]");
+    require(argc == 3 || sun_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode || hull_gain_mode, "args: programs cases [--alpha-test-cutout] [--fill K] [--original-fill K] [--original-sun-share K] [--hull-emission-gain G]");
 #endif
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
@@ -1250,7 +1315,7 @@ int main(int argc, char **argv) {
       api(factory->CreateDevice(0, D3DDEVTYPE_HAL, window,
                                 D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp,
                                 &device.p));
-      Shaders shaders(device.p, argv[1], cases, fill, original_share_mode ? original_share_fill : original_fill);
+      Shaders shaders(device.p, argv[1], cases, fill, original_share_mode ? original_share_fill : original_fill, hull_gain);
       std::printf("CAPS mrt=%lu vs_slots=%lu ps_slots=%lu\n",
                   shaders.caps.NumSimultaneousRTs,
                   shaders.caps.MaxVertexShader30InstructionSlots,
@@ -1259,6 +1324,13 @@ int main(int argc, char **argv) {
       if(sun_mode)sun_share_material_fixture(device.p,shaders,cases);
       else if (cutout_mode) alpha_test_cutout_fixture(device.p,shaders,cases);
       else if (original_share_mode) original_sun_share_fixture(device.p, shaders, cases, original_share_fill);
+      else if (hull_gain_mode) {
+        Gpu gpu(device.p, shaders, 16);
+        for (const auto &c : cases) {
+          require(c.pair < std::size(pair_v) && c.depth < 2, "case bounds");
+          gpu.test_hull_emission_gain(c);
+        }
+      }
       else if (original_fill_mode) {
         Gpu gpu(device.p, shaders, 16);
         for (const auto &c : cases) {

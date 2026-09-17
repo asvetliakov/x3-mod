@@ -11,7 +11,7 @@ using Word = std::uint32_t;
 using Words = std::vector<Word>;
 constexpr Word end_token=0xffff, pp=0x200000, identity=0xe4;
 constexpr unsigned temporary=0, color=1, constant=2, coordinate=3, output=8, sampler=10;
-constexpr unsigned mov=1, mul=5, dp4=9, minimum=10, maximum=11, dcl=31, power=32, texld=66, def=81, cmp=88;
+constexpr unsigned mov=1, add=2, mad=4, mul=5, dp4=9, minimum=10, maximum=11, dcl=31, power=32, texld=66, def=81, cmp=88;
 
 // Derived whole-original identities and DWORD sites, never game shader words.
 // Affine/no-affine and fade/no-fade are independent native source contracts.
@@ -212,6 +212,115 @@ void source_output(Words& words,bool fade) {
     emit(words,mov,{dst(temporary,2,8),lane(constant,30,1)});
     emit(words,mov,{dst(output,1,15),src(temporary,2)});
 }
+
+// Phase 3 (docs/architecture/emitter-plan.md): the twelve exact ps_3_0 hull
+// originals that draw the ADD ONE/ONE emitters the effects gain cannot reach
+// (docs/reverse-engineering/effect-shader-users.md, "Additive emitters drawn
+// by material programs"): six XT_standard_lighting and six standard_lighting
+// material programs. Derived whole-original identities and DWORD sites, never
+// game shader words. `definition` is the first DEF/DCL dword (the CTAB comment
+// ends there) and `emission` the final colour instruction, whose added operand
+// is r0, the unlit emission sample.
+struct HullProfile { std::uint64_t pixel; unsigned words, definition, emission; bool modulated; };
+constexpr HullProfile hull_profiles[] = {
+    {0x5f82ecacd39529cdull,1765,1307,1755,true},
+    {0x6733b119142c8d42ull,1754,1307,1744,true},
+    {0xfffdabd910793abaull,1648,1262,1638,true},
+    {0x496049cec2066ed3ull,1780,1307,1770,true},
+    {0xe6794b6ec37ff71aull,1674,1262,1664,true},
+    {0xf1b0e820c7b488c3ull,1791,1307,1781,true},
+    {0x0c1f3f0f440e4a0cull,1366,1100,1357,false},
+    {0x7c83ed50c9894e44ull,1298,1091,1289,false},
+    {0x99153c144030c396ull,1355,1100,1346,false},
+    {0x64bac8bb307eb896ull,1392,1100,1383,false},
+    {0xc1452981fd0bff64ull,1381,1100,1372,false},
+    {0xe70adc744a38ca59ull,1324,1091,1315,false},
+};
+static_assert(sizeof(hull_profiles)/sizeof(hull_profiles[0])==linear_emission_hull_program_count,"twelve reviewed hull programs");
+// The gain lives in the last ps_3_0 float constant, outside every constant the
+// originals read (max c26) and outside the linear-material/exposure/fill
+// reservations (c204..c222). A program that reads c223 is refused.
+constexpr unsigned hull_gain_constant = 223, hull_emission_temporary = 0, sm3_pixel_slots = 512;
+constexpr Word sm3_pixel = 0xffff0300u;
+// Narrow SM3 walk: instruction boundaries from the length field, comments and
+// DEF/DCL payloads excluded from the register scan. It establishes the sites
+// and refuses relative addressing or any read of the gain constant.
+// Documented ps_3_0 executable budget: 512 slots, macro instructions at their
+// documented cost (the SM2 path's `structure` applies the 64/32 PS2 budgets the
+// same way, and the Python oracle mirrors this table).
+unsigned slot_cost(unsigned op) noexcept {
+    switch (op) {
+    case 18: case 24: case 33: return 2;                 // lrp, m3x2, crs
+    case 21: case 23: case power: case 36: return 3;     // m4x3, m3x3, pow, nrm
+    case 20: case 22: return 4;                          // m4x4, m3x4
+    case 37: return 8;                                   // sincos
+    default: return 1;
+    }
+}
+bool texture_op(unsigned op) noexcept { return op==65 || op==texld || op==93 || op==95; }
+bool hull_structure(const Word* code,std::size_t count,std::size_t& first_declaration,
+                    unsigned& instructions,bool original=true) noexcept {
+    if (count<2 || code[0]!=sm3_pixel) return false;
+    first_declaration=0; instructions=0;
+    unsigned slots=0;
+    for (std::size_t at=1;at<count;) {
+        const Word token=code[at];
+        if (token==end_token) return at==count-1 && first_declaration!=0 && instructions!=0 && slots<=sm3_pixel_slots;
+        const unsigned op=token&0xffffu;
+        if (op==0xffffu) return false;
+        if (op==0xfffeu) { // comment block: opaque payload, no registers
+            if (first_declaration) return false;
+            const unsigned size=(token>>16)&0x7fffu;
+            if (size>count-at-1) return false;
+            at+=size+1;
+            continue;
+        }
+        const unsigned size=(token>>24)&15;
+        if (size>count-at-1 || (token&0xf0ff0000u)) return false;
+        ++instructions;
+        if (op==def || op==dcl) {
+            if (size!=(op==def?5u:2u)) return false;
+            if (!first_declaration) first_declaration=at;
+            if (original && op==def && index(code[at+1])==hull_gain_constant) return false;
+            if (op==dcl && (code[at+2]&0x2000u)) return false;
+        } else {
+            slots+=texture_op(op) ? 1u : slot_cost(op);
+            for (unsigned i=1;i<=size;++i) {
+                const Word value=code[at+i];
+                if (!(value&0x80000000u) || (value&0x2000u)) return false; // no relative addressing
+                if (original && type(value)==constant && index(value)==hull_gain_constant) return false;
+            }
+        }
+        at+=size+1;
+    }
+    return false;
+}
+const HullProfile* hull_profile_of(const Word* original,std::size_t count) noexcept {
+    const auto hash=fingerprint(original,count);
+    for (const auto& profile:hull_profiles)
+        if (profile.pixel==hash && profile.words==count) return &profile;
+    return nullptr;
+}
+// The pinned tail: the final colour instruction, then the native alpha MUL and
+// the end token. Nothing after the emission site is copied or rewritten.
+bool hull_tail(const Word* code,const HullProfile& profile) noexcept {
+    const Word colour_destination=dst(output,0,7)|pp;
+    const Word alpha[] = {(3u<<24)|mul,dst(output,0,8)|pp,lane(temporary,2,3),lane(color,0,3)};
+    std::size_t at=profile.emission;
+    if (profile.modulated) {
+        const Word site[] = {(4u<<24)|mad,colour_destination,src(temporary,1),lane(temporary,2,2),
+                             src(temporary,hull_emission_temporary)};
+        if (!std::equal(std::begin(site),std::end(site),code+at)) return false;
+        at+=sizeof site/sizeof site[0];
+    } else {
+        const Word site[] = {(3u<<24)|add,colour_destination,src(temporary,1),
+                             src(temporary,hull_emission_temporary)};
+        if (!std::equal(std::begin(site),std::end(site),code+at)) return false;
+        at+=sizeof site/sizeof site[0];
+    }
+    return std::equal(std::begin(alpha),std::end(alpha),code+at) &&
+           at+sizeof alpha/sizeof alpha[0]==profile.words-1;
+}
 } // namespace
 
 bool linear_emission_config_valid(const LinearEmissionConfig& config) noexcept {
@@ -303,6 +412,63 @@ LinearEmissionResult linear_emission_source_gain_variant(const Word* original,st
         Shape transformed;
         if (!structure(result.data(),result.size(),transformed,profile.model) || transformed.outputs!=1u || transformed.texture!=1 ||
             transformed.arithmetic!=original_structure.arithmetic+1u) return LinearEmissionResult::ResourceLimit;
+        output_words.swap(result);
+        return LinearEmissionResult::Applied;
+    } catch (...) { return LinearEmissionResult::AllocationFailure; }
+}
+unsigned linear_emission_hull_program_index(std::uint64_t pixel) noexcept {
+    for (unsigned i=0;i<linear_emission_hull_program_count;++i)
+        if (hull_profiles[i].pixel==pixel) return i;
+    return linear_emission_hull_program_count;
+}
+bool linear_emission_hull_program_reviewed(std::uint64_t pixel) noexcept {
+    return linear_emission_hull_program_index(pixel)<linear_emission_hull_program_count;
+}
+SourceGainBlend linear_emission_hull_source_gain_blend(std::uint32_t blend_enable,std::uint32_t srgb_write,
+    std::uint32_t src,std::uint32_t dst,std::uint32_t op) noexcept {
+    constexpr std::uint32_t blend_one=2, op_add=1; // D3DBLEND_ONE, D3DBLENDOP_ADD
+    if (!blend_enable || srgb_write || src!=blend_one || dst!=blend_one || op!=op_add) return SourceGainBlend::Blend;
+    return SourceGainBlend::Admit;
+}
+LinearEmissionResult linear_emission_hull_source_gain_variant(const Word* original,std::size_t count,
+    float gain,Words& output_words) noexcept {
+    if (!original || count<2) return LinearEmissionResult::InvalidInput;
+    if (!linear_emission_source_gain_valid(gain)) return LinearEmissionResult::InvalidConfig;
+    const auto* selected=hull_profile_of(original,count);
+    if (!selected) return LinearEmissionResult::UnsupportedShader;
+    const auto& profile=*selected;
+    std::size_t first_declaration=0; unsigned instructions=0;
+    if (!hull_structure(original,count,first_declaration,instructions) ||
+        first_declaration!=profile.definition || !hull_tail(original,profile))
+        return LinearEmissionResult::ProfileMismatch;
+    try {
+        Words result;
+        if (gain==1) {
+            // Byte identity: the option at gain 1 is the native program.
+            result.assign(original,original+count);
+            output_words.swap(result);
+            return LinearEmissionResult::Applied;
+        }
+        result.reserve(count+10);
+        result.insert(result.end(),original,original+profile.definition);
+        emit(result,def,{dst(constant,hull_gain_constant,15),bits(gain),bits(0),bits(0),bits(0)});
+        result.insert(result.end(),original+profile.definition,original+profile.emission);
+        // Colour lanes of the emission sample only: r0.w (the native alpha's
+        // lightmap lane, already consumed by the preceding LRP) is untouched,
+        // and so is every lit term the final instruction adds it to. The MUL
+        // deliberately carries no _pp although its neighbours do: full
+        // precision on one multiply is never worse than the native partial
+        // precision, changes no emitted original word, and keeps the inserted
+        // instruction identical to the effects gain's (which also omits _pp).
+        emit(result,mul,{dst(temporary,hull_emission_temporary),src(temporary,hull_emission_temporary),
+                         lane(constant,hull_gain_constant,0)});
+        result.insert(result.end(),original+profile.emission,original+count);
+        std::size_t transformed_declaration=0; unsigned transformed_instructions=0;
+        HullProfile moved=profile;
+        moved.definition=profile.definition; moved.emission=profile.emission+10; moved.words=profile.words+10;
+        if (result.size()!=count+10 || !hull_structure(result.data(),result.size(),transformed_declaration,transformed_instructions,false) ||
+            transformed_declaration!=profile.definition || transformed_instructions!=instructions+2 ||
+            !hull_tail(result.data(),moved)) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);
         return LinearEmissionResult::Applied;
     } catch (...) { return LinearEmissionResult::AllocationFailure; }

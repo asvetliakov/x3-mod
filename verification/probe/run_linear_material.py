@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
 EXE = ROOT / 'verification/probe/build/linear_material_fixture.exe'
 CODE_INPUTS = ('src/renderer/quad_vertex_program.h', 'src/renderer/quad_vertex_program_inc.h', 'verification/probe/sun_share_material_inc.h', 'src/renderer/linear_material.cpp', 'src/renderer/linear_material.h',
+               'src/renderer/linear_emission.cpp', 'src/renderer/linear_emission.h',
                'src/renderer/linear_sun_share_inc.h', 'src/renderer/linear_xt_material_inc.h', 'src/renderer/linear_xt_profiles_inc.h',
                'src/renderer/material_motion.cpp', 'src/renderer/material_motion.h',
                'src/renderer/motion_output_profiles.h',
@@ -1264,6 +1265,136 @@ def validate_original_fill_report(text, cases, fill):
                 xt_measured_site_sums={'%d:%d' % key: value for key, value in sorted(xt_sums.items())})
 
 
+# --hull-emission-gain (docs/architecture/emitter-plan.md phase 3): one pair per
+# covered hull program. The two XT DEFAULT programs (pairs 148/149,
+# fffdabd910793aba and e6794b6ec37ff71a) are excluded because no fixture mode
+# submits their incomplete original DEFAULT linkage; the host oracle covers all
+# twelve programs.
+HULL_GAIN_PAIRS = (40, 41, 50, 51, 60, 61, 150, 151, 152, 153)
+HULL_GAINS = (2.0, 4.0)
+
+
+def hull_gain_cases():
+    """Per covered pair: an emitter face whose only non-zero input is the
+    emission (lightmap) sample, so the original writes the emission term alone,
+    and a lit face with a black emission sample, which the gain must leave bit
+    for bit. Inputs otherwise as the original-fill slice."""
+    full = fixture_cases()
+    result = []
+    for pair in HULL_GAIN_PAIRS:
+        seed = copy.deepcopy(next(row for row in full if row['pair'] == pair))
+        fixed = PAIRS[pair][0] in FIXED_VERTICES
+        seed.update(pair=pair, lights=1 if fixed else 0, reverse=0, affine=0, valid=1,
+                    fp16=1, flags=0, gains=[1., 1., 1.],
+                    diffuse=[0., 0., 0., 1.], lightmap=[0., 0., 0., .25],
+                    cube=[0., 0., 0., 1.], mask=0., material=[0., 0., 0.],
+                    point=[0., 0., 0.], dir0=[0., 0., 0.],
+                    dir1=[0., 0., 0.], normal=[0., 0., -1.], glow=1.,
+                    normal_sample=[.5, .5, 1., .5], binormal=[0., 1., 0.],
+                    tangent=[1., 0., 0.], camera=[0., 0., -4.])
+        def add(label, **changes):
+            c = copy.deepcopy(seed)
+            c.update(changes, id=len(result), label='hull_gain_' + label, depth=len(result) & 1)
+            result.append(c)
+        add('emitter', lightmap=[.5, .25, .75, .25])
+        add('lit', diffuse=[.5, .25, .75, .75], material=[1., 1., 1.],
+            dir0=[.375, .25, .5], normal=[0., 0., 1.], glow=0.)
+    return result
+
+
+def validate_hull_gain_report(text, cases, gain):
+    """The emitter face scales by G within one FP16 code; the face without
+    emission is bit-identical; alpha is exact in both."""
+    lines = text.splitlines()
+    assert lines and lines[-1] == f'RESULT PASS cases={len(cases)}'
+    assert not any('FAIL' in line for line in lines)
+    rows = re.findall(r'^HULLGAIN id=(\d+) pair=(\d+) pixels=256 alpha_bad=0 rgb_bad=0 identical=(\d+) positive=(\d+) gain=(\S+)$', text, re.M)
+    assert [int(cid) for cid, *_ in rows] == list(range(len(cases))), 'one reported row per case'
+    assert {row[4] for row in rows} == {'%.9g' % gain}, 'the fixture ran the requested gain'
+    identical = {int(cid): int(count) for cid, _, count, _, _ in rows}
+    positive = {int(cid): int(count) for cid, _, _, count, _ in rows}
+    samples = re.findall(r'^HULLSAMPLE id=(\d+) x=(\d+) y=(\d+) base=(\S+) gained=(\S+)$', text, re.M)
+    assert len(samples) == 9 * len(cases)
+    parsed = {}
+    for cid, x, y, base, gained in samples:
+        key = (int(cid), int(x), int(y))
+        assert key not in parsed and int(x) in (4, 8, 12) and int(y) in (4, 8, 12)
+        parsed[key] = tuple(tuple(map(float, v.split(','))) for v in (base, gained))
+    max_codes = 0; checked = 0; emitters = 0; controls = 0
+    for c in cases:
+        emitter = c['label'].endswith('emitter')
+        if emitter:
+            emitters += 1
+            assert positive[c['id']] >= 3 * 256, (c['id'], 'the emitter face writes a positive emission everywhere')
+        else:
+            controls += 1
+            assert identical[c['id']] == 256, (c['id'], 'a face without emission is bit-identical', identical[c['id']])
+            assert positive[c['id']] > 0, (c['id'], 'the control face is lit')
+        for x in (4, 8, 12):
+            for y in (4, 8, 12):
+                base, gained = parsed[(c['id'], x, y)]
+                assert base[3] == gained[3], (c['id'], 'alpha')
+                for k in range(3):
+                    want = gain * base[k] if emitter else base[k]
+                    codes = abs(_half_code(gained[k]) - _half_code(ref.half(want)))
+                    assert codes <= 1, (c['id'], c['label'], k, base[k], gained[k], want, codes)
+                    max_codes = max(max_codes, codes)
+                    if emitter:
+                        assert base[k] > 0, (c['id'], 'emitter face sample is positive')
+                checked += 1
+    allowed = ('CAPS ', 'CREATE ', 'HULLGAIN ', 'HULLSAMPLE ', 'RESULT PASS ')
+    assert all(line.startswith(allowed) for line in lines), 'unexpected hull-gain output row'
+    creates = re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$', text, re.M)
+    gained_ps = sorted({key for stage, key, *_ in creates if stage == 'ps' and '_12_hull_' in key})
+    assert len(gained_ps) == len(HULL_GAIN_PAIRS), 'one gain variant per covered program'
+    return dict(cases=len(cases), programs=len(HULL_GAIN_PAIRS), emitter_cases=emitters, control_cases=controls,
+                samples=checked, gain=gain, fp16_code_tolerance=1, max_fp16_code_error=max_codes,
+                bit_identical_control_pixels=sum(identical[c['id']] for c in cases if not c['label'].endswith('emitter')),
+                alpha='exact', variants=len(gained_ps))
+
+
+def run_hull_gain(args):
+    cases = hull_gain_cases()
+    args.raw_dir.mkdir(parents=True, exist_ok=True)
+    case_file = args.raw_dir / 'cases.bin'
+    case_file.write_bytes(binary_cases(cases))
+    result_path = bottle.results_dir(ROOT) / 'hull-emission-gain-gpu.json'
+    inputs = original_provenance(cases, args.programs)
+    result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
+                  render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F']),
+                  scope=('--hull-emission-gain (emitter plan phase 3): %d of the twelve covered hull programs, one pair each, '
+                         'emitter and lit faces at gains %s. The baseline is the untransformed original pair (mode 0, MRTs off); '
+                         'the gain variant is the same original PS with one DEF and one MUL at its emission term, and gain 1 is '
+                         'required byte-identical at creation. Detached; no live route, no blend-keyed admission and no native '
+                         'Windows proof. Pairs 148/149 are excluded: no fixture mode submits their original DEFAULT linkage.')
+                        % (len(HULL_GAIN_PAIRS), list(HULL_GAINS)),
+                  timing_scope='No benchmark in the bounded hull-emitter correctness slice.',
+                  gains=list(HULL_GAINS), original_sha256=inputs, executable_sha256=sha(args.exe),
+                  code_sha256={name:sha(ROOT/name) for name in CODE_INPUTS}, runs={})
+    wine=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
+    try:
+        for gain in HULL_GAINS:
+            report = args.raw_dir / ('report-hull-%g.txt' % gain)
+            command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(args.exe),'Z:'+str(args.programs),'Z:'+str(case_file),'--hull-emission-gain',repr(gain)]
+            with report.open('w') as out,(args.raw_dir/('wine-hull-%g.log' % gain)).open('w') as err:
+                process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1200)
+            assert process.returncode==0, 'fixture failed; see '+str(report)
+            result['runs'][repr(gain)] = dict(raw_report=str(report), exit_code=process.returncode,
+                                              **validate_hull_gain_report(report.read_text(), cases, gain))
+        assert sha(args.exe)==result['executable_sha256'], 'executable changed'
+        assert result['code_sha256']=={name:sha(ROOT/name) for name in CODE_INPUTS}, 'fixture/core/reference changed during run'
+        assert all(sha(args.programs/name)==value for name,value in inputs.items()), 'original changed'
+        result['passed']=True
+    except BaseException as error:
+        result['error']=repr(error)
+        raise
+    finally:
+        destination=result_path if result['passed'] else args.raw_dir/'failed-result.json'
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        destination.write_text(json.dumps(result,indent=2)+'\n')
+        print(json.dumps({k:v for k,v in result.items() if k in ('passed','runs','error')}))
+
+
 def run_original_fill(args):
     cases = original_fill_cases()
     args.raw_dir.mkdir(parents=True, exist_ok=True)
@@ -1429,6 +1560,7 @@ def parse_arguments(argv=None):
     selection.add_argument('--sun-share', action='store_true', help='108 generated sun-share PS, normal and zero-sun cases; positive pixel evidence and exact color/alpha/motion/depth twins')
     selection.add_argument('--fill', action='store_true', help='Run the bounded K=0.06 sun-averted fill oracle slice')
     selection.add_argument('--original-fill', action='store_true', help='Run the original-shading fill (option C) slice at K 0.03 and 0.05: calibration/black/0.10/0.40 faces per fill pair, K=0 bit-exact')
+    selection.add_argument('--hull-emission-gain', action='store_true', help='Run the hull-program emitter gain slice (emitter plan phase 3): one pair per covered hull program, an emitter and a lit face at gains 2 and 4; the emitter face scales by the gain within one FP16 code and the face without emission is bit-identical')
     selection.add_argument('--original-sun-share', action='store_true', help='Run the original-shading share producer slice: 108 PS x lit/zero-sun/sun-only faces at K 0 and 0.05; colour twins and oC2.g against a zero-sun draw')
     return parser.parse_args(argv)
 
@@ -1441,6 +1573,8 @@ def main():
         return run_original_fill(args)
     if args.original_sun_share:
         return run_original_sun_share(args)
+    if args.hull_emission_gain:
+        return run_hull_gain(args)
     cases = sun_share_cases() if args.sun_share else alpha_cutout_cases() if args.alpha_test_cutout else fill_cases() if args.fill else fixture_cases()
     if args.glass_only: cases = [c for c in cases if c['pair'] >= glass_fixture.START]
     args.raw_dir.mkdir(parents=True, exist_ok=True)
