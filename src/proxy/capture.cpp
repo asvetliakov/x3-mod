@@ -39,6 +39,7 @@
 #include "motion_output.h"
 #include "comparison_controls.h"
 #include "comparison_notice.h"
+#include "fps_overlay.h"
 #include "engine_memory.h"
 #include "cpu_state.h"
 #include "../ownership/d3d9_ownership.h"
@@ -133,6 +134,10 @@ bool ambient_occlusion_requested = false, ambient_occlusion_debug = false, ambie
 // device enabled the scene-end sun-shadow application, so the A/B key is
 // polled only then; without --sun-shadow-apply the press is ignored.
 bool sun_shadow_apply_requested = false;
+// X3M_FPS_OVERLAY=1 (comparison-hotkeys.md, "FPS overlay"; default off): the
+// frame-rate line on the presented image, Ctrl+Alt+F7 hides and shows it.
+// Off, the Present path pays one branch and polls no key.
+bool fps_overlay_requested = false;
 float ambient_occlusion_radius = 2.f, ambient_occlusion_strength = .5f;
 float emission_gain = 1.f;
 bool linear_material_requested = false;
@@ -228,6 +233,8 @@ struct Device : Hooks {
     ComparisonNotice comparison_notice;
     bool comparison_report_pending = false;
     char comparison_emitter_notice[40]{}; // last emitter-key result (Ctrl+Shift+F5/F6); empty = show the bloom line
+    FpsOverlay fps_overlay; // --fps-overlay accumulator and Ctrl+Alt+F7 visibility
+    ComparisonNotice fps_notice{72}; // its bitmap, one panel below the hotkey notice
 
     std::uint64_t bloom_effective_frame = UINT64_MAX;
     bool bloom_effective_on = false;
@@ -1123,7 +1130,7 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // unconditionally inside it so an unrequested option answers with a
     // logged refusal.
     const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || hull_emission_gain!=1.f;
-    if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested)return;
+    if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;
     ComparisonKeys keys{};
     keys.foreground=comparison_foreground();
     keys.control=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
@@ -1131,17 +1138,27 @@ void comparison_begin_frame(Device& ctx) noexcept {
     keys.exposure=hdr_compare && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
     keys.bloom=hdr_compare && (GetAsyncKeyState(VK_F10)&0x8000)!=0;
     keys.ambient_occlusion=ambient_occlusion_requested && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
-    keys.screen_additive=(GetAsyncKeyState(VK_F5)&0x8000)!=0;
-    keys.source_gain=(GetAsyncKeyState(VK_F6)&0x8000)!=0;
-    keys.hull_gain=(GetAsyncKeyState(VK_F4)&0x8000)!=0;
+    // The emitter keys are polled with any emitter option on (an unrequested
+    // one of the three still answers with a logged refusal); a launch with
+    // only --fps-overlay polls its own chord and nothing else.
+    keys.screen_additive=emitter_compare && (GetAsyncKeyState(VK_F5)&0x8000)!=0;
+    keys.source_gain=emitter_compare && (GetAsyncKeyState(VK_F6)&0x8000)!=0;
+    keys.hull_gain=emitter_compare && (GetAsyncKeyState(VK_F4)&0x8000)!=0;
     // Ctrl+Shift+F12: the sun shadows at rest (comparison-hotkeys.md, "Sun
     // shadows at rest"). Polled only with the apply requested, so a launch
     // without it never queries the key; no notice and no report, one
     // sun_shadow_toggle line per accepted press.
     keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;
+    // Ctrl+Alt+F7 with Shift up: the FPS overlay (comparison-hotkeys.md, "FPS
+    // overlay"), polled only with --fps-overlay. The telemetry phase marker
+    // is Ctrl+Shift+F7 (telemetry.cpp requires Shift), so the chords are
+    // disjoint; the sampler applies the Alt/Shift rule and the F7 edge.
+    keys.alt=fps_overlay_requested && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;
+    keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
     if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
+    if(action.fps_overlay)log("fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key",ctx.id,ctx.frame,unsigned(ctx.fps_overlay.toggle()));
     const bool emitter=action.screen_additive||action.source_gain||action.hull_gain;
     if(emitter)ctx.comparison_emitter_notice[0]='\0';
     if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","HULL",ctx.motion_output.hull_emission_gain_toggle());
@@ -1216,6 +1233,21 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
             ctx.comparison_notice.hide();
         }
     }
+    // The FPS overlay (comparison-hotkeys.md, "FPS overlay"): the same
+    // admission and pin as the hotkey notice, its own bitmap one panel lower.
+    // Off or hidden, this is the one branch the option costs per frame.
+    if(ctx.fps_overlay.visible() && comparison_foreground()
+            && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
+            && ctx.motion_output.comparison_boundary_available()){
+        if(!notice_pin.device){ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);notice_pin.device=d;notice_pin.owner=owner;}
+        BloomOperation internal(ctx);
+        const auto overlay=ctx.fps_notice.draw(d,ctx.original,ctx.caps.NumSimultaneousRTs);
+        if(FAILED(overlay.restore))ctx.motion_output.comparison_state_failed(overlay.restore);
+        // A failure keeps the mode on and retries next frame (a lost device
+        // recovers by itself after Reset); one line per failure episode.
+        if(ctx.fps_overlay.draw_outcome(FAILED(overlay.operation)||FAILED(overlay.restore)))
+            log("renderer_fps_overlay device=%llu frame=%llu operation=%08lx restore=%08lx drawn=%u",ctx.id,ctx.frame,overlay.operation,overlay.restore,overlay.drawn);
+    }
     const auto begin=telemetry::now();
     frame_phases::present_begin(); // X3M_FRAME_PHASES only: the present phase begins; same placement rule as frame_timing
     frame_timing::present_begin(); // ahead of before_original: pre-call instrumentation must not alter the native input state (cpu_state.h)
@@ -1236,6 +1268,16 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     lod_scale::refresh(); // X3M_LOD_SCALE only: two bounded reads per Present, one store when the game value changed
     point_light_admission::present(ctx.id,ctx.frame,ctx.capture); // option on only: one point_light_admission_frame line, point_light_node samples on capture frames, memo serial bump
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
+    if(ctx.fps_overlay.visible()){
+        // Shown only: one QueryPerformanceCounter per Present (the frame_end
+        // clock), the text rebuilt when a 250 ms bucket closes. The second
+        // line is the Ctrl+Shift+F12 state, only when that key is live.
+        LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);
+        const bool refreshed=ctx.fps_overlay.frame(uint64_t(stamp.QuadPart),ctx.draws);
+        const int shadows=!sun_shadow_apply_requested?-1:int(ctx.motion_output.sun_shadow_enabled());
+        if(ctx.fps_overlay.shadows(shadows)||refreshed) // a state change rewrites the line the same frame
+            ctx.fps_notice.text(ctx.fps_overlay.line(),shadows<0?"":shadows?"SHADOWS ON":"SHADOWS OFF");
+    }
     if(telemetry::enabled()&&(!ctx.stats.present_override_known||ctx.stats.present_override!=w)){
         log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx",ctx.id,ctx.frame,w,ctx.stats.window,hr);
         ctx.stats.present_override_known=true;ctx.stats.present_override=w;
@@ -1319,6 +1361,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
     ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.composition_scene_owner=false;
     ctx.comparison_notice.hide();ctx.comparison.reset_focus();ctx.comparison_report_pending=false;ctx.comparison_emitter_notice[0]='\0';
+    ctx.fps_overlay.reset();ctx.fps_notice.text("",""); // the window restarts after Reset; visibility is kept
     ctx.bloom_effective_frame=UINT64_MAX;
     revoke_compositor(ctx);
     ctx.capture=false; ctx.remaining=0;ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
@@ -2289,6 +2332,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
+    { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
+      hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
@@ -2477,6 +2522,9 @@ void initialize_log(HMODULE module) {
         if(stop!=setting&&*stop==L'\0'&&v>=1&&v<=frame_end_stride_max)frame_end_stride=unsigned(v);
         if(frame_end_stride!=frame_end_stride_default)log("frame_end_stride_mode stride=%u",frame_end_stride);
     }
+    // X3M_FPS_OVERLAY=1 (default off): the on-screen frame-rate line.
+    fps_overlay_requested=GetEnvironmentVariableW(L"X3M_FPS_OVERLAY",setting,32)==1 && setting[0]==L'1';
+    if(fps_overlay_requested)log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000 key=ctrl_alt_f7");
     scene_depth_capture_requested=GetEnvironmentVariableW(L"X3M_SCENE_DEPTH_CAPTURE",setting,32)==1 && setting[0]==L'1';
     finite_positions_requested=GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS",setting,32)==1 && setting[0]==L'1';
     motion_capture_requested=GetEnvironmentVariableW(L"X3M_MOTION_CAPTURE",setting,32)==1 && setting[0]==L'1' &&

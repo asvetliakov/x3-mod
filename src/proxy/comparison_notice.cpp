@@ -41,14 +41,14 @@ void ComparisonNotice::text(const char* first, const char* second) noexcept {
     char next[2][columns+1]{};
     std::strncpy(next[0], first, columns); std::strncpy(next[1], second, columns);
     if (!std::memcmp(next, lines_, sizeof next)) return;
-    std::memcpy(lines_, next, sizeof next); count_=0; width_=0;
+    std::memcpy(lines_, next, sizeof next); count_=0; width_=0; clipped_width_=clipped_height_=0; // the cached clip is stale
     for (unsigned line=0; line<2; ++line) {
         const unsigned length=unsigned(std::strlen(lines_[line]));
         width_=std::max(width_, length*12+16);
         for(unsigned col=0; col<length; ++col) {
             const auto* rows=glyph(lines_[line][col]);
             for(unsigned y=0;y<7;++y) for(unsigned x=0;x<5;++x) if(rows[y]&(16u>>x)) {
-                const LONG left=24+LONG(col*12+x*2), top=24+LONG(line*20+y*2);
+                const LONG left=24+LONG(col*12+x*2), top=top_+8+LONG(line*20+y*2);
                 pixels_[count_++]={left,top,left+2,top+2};
             }
         }
@@ -89,13 +89,19 @@ ComparisonNoticeResult ComparisonNotice::draw(IDirect3DDevice9* device, void* co
         FAILED(hr=reinterpret_cast<Backbuffer>(native[18])(device,0,0,D3DBACKBUFFER_TYPE_MONO,&back)) || !back ||
         FAILED(hr=back->GetDesc(&desc))) { result.operation=FAILED(hr)?hr:E_FAIL;release();return result; }
     if (!desc.Width || !desc.Height) {result.operation=E_FAIL;release();return result;}
-    unsigned clipped_count=0;
-    for(unsigned i=0;i<count_;++i) {
-        auto rect=pixels_[i];
-        rect.x2=std::min(rect.x2,LONG(desc.Width)); rect.y2=std::min(rect.y2,LONG(desc.Height));
-        if(rect.x1<rect.x2 && rect.y1<rect.y2)clipped_[clipped_count++]=rect;
+    // The clip depends on the text and the target size only: recomputed when
+    // either changed (text() voids it), otherwise the cached list is reused.
+    if(clipped_width_!=desc.Width || clipped_height_!=desc.Height) {
+        clipped_count_=0; ++clip_passes_;
+        for(unsigned i=0;i<count_;++i) {
+            auto rect=pixels_[i];
+            rect.x2=std::min(rect.x2,LONG(desc.Width)); rect.y2=std::min(rect.y2,LONG(desc.Height));
+            if(rect.x1<rect.x2 && rect.y1<rect.y2)clipped_[clipped_count_++]=rect;
+        }
+        panel_={16,top_,std::min(LONG(16+width_),LONG(desc.Width)),std::min(top_+48,LONG(desc.Height))};
+        clipped_width_=desc.Width; clipped_height_=desc.Height;
     }
-    D3DRECT panel{16,16,std::min(LONG(16+width_),LONG(desc.Width)),std::min(LONG(64),LONG(desc.Height))};
+    const unsigned clipped_count=clipped_count_; const D3DRECT panel=panel_;
     if(!clipped_count || panel.x2<=panel.x1 || panel.y2<=panel.y1) {release();return result;}
     attempted_depth=true; hr=set_ds(device,nullptr);
     // A failed setter can still mutate. Mark every attempt before the call;

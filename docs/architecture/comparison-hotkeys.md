@@ -123,6 +123,67 @@ records the frame actually produced. `bloom_off_filter_runs=1` makes the OFF
 path's remaining filtering cost explicit. Normal HDR frame telemetry uses the
 HdrPass's current mode and EV as before.
 
+## FPS overlay
+
+`--fps-overlay` (`X3M_FPS_OVERLAY=1`, default off, no prerequisite) draws one
+line on the presented image, one panel below the hotkey notice:
+`FPS 61.3  16.3 MS  DRAWS 638`, and `SHADOWS ON|OFF` under it when
+`--sun-shadow-apply` is on (the Ctrl+Shift+F12 state). **Ctrl+Alt+F7** (Alt
+is the Option key under Wine on macOS) hides and shows it; each press logs one
+`fps_overlay_toggle` line. Every Ctrl+Shift function key is owned (F4–F6 and
+F9–F12 above, F7 the telemetry phase marker, F8 the capture key) and F1–F3
+are the engine's cockpit, external and target views, so the overlay uses the
+Alt variant: the chord requires Ctrl and Alt down and Shift up, and the
+marker (`telemetry.cpp`) requires Ctrl and Shift. Pressed Shift-first
+(Ctrl+Shift+F7) the marker fires and the overlay never does; pressing Shift
+while Ctrl+Alt+F7 is still held stamps one `telemetry_phase_marker` line
+(harmless) and toggles nothing more, because the overlay edges on the raw F7
+latch. The sampler applies the Alt/Shift rule outside its Ctrl+Shift arm,
+under the same focus latch as the other keys. A launch with only
+`--fps-overlay` polls this chord and nothing else: the emitter keys F4–F6 are
+polled only with an emitter option on.
+
+The numbers come from a one-second sliding window of four 250 ms buckets over
+the same `QueryPerformanceCounter` clock as the `frame_end` line: FPS is
+frames per second over the window, the ms figure is the mean Present-to-Present
+interval (the frame interval, not GPU time; a driver that queues frames shows
+the throughput, not the latency), and DRAWS is the mean hooked draw count per
+frame. The text is rebuilt when a bucket closes, about four times per second,
+and each rebuild costs the same glyph pass as a notice change; the
+`SHADOWS` line follows the Ctrl+Shift+F12 state the frame it changes (one
+compare per shown frame). Showing the overlay again after hiding it starts a
+fresh window, so the hidden span never enters the interval; the first line
+appears 250 ms after that. A load stall shows as one low reading for at most
+a second.
+
+Mechanism and cost: the `FpsOverlay` accumulator (`src/proxy/fps_overlay.h`)
+is pure tick arithmetic, and the bitmap is a second `ComparisonNotice` instance
+with its panel row at 72, so it shares the glyph table, the two `Clear` calls,
+the state transaction and its restore order. The draw runs at the notice's
+site in `present`, after the tonemap and apply passes, under the same
+foreground, Reset, compositor, bloom and comparison-boundary admission and the
+same device pin; a failed draw or restore logs one `renderer_fps_overlay`
+line once per failure episode (`FpsOverlay::draw_outcome`), keeps the mode
+on and retries the next frame, so a lost device recovers on its own after
+Reset. Shown, a
+frame pays one `QueryPerformanceCounter`, three integer adds, one compare,
+the foreground query and the notice draw: two `Clear` calls, one with the
+panel and one with N glyph rectangles (about 500 for a two-line overlay),
+plus the state reads and restores around them. The rectangle clip is cached
+per text and target size (`ComparisonNotice::clip_passes`), so it and the
+text rebuild run about four times per second, not per frame. The overlay
+therefore perturbs its own reading by exactly that per-frame cost, which is
+unmeasured in game; two `Clear` calls need not be two backend operations, so
+the driver-side cost of the N rectangles is unknown. Hidden or off, one
+branch, and without the option the key is not polled. Device Reset empties
+the window and the bitmap and keeps the visibility. Host coverage:
+`verification/analysis/test_fps_overlay.py` (the accumulator's window
+arithmetic, ms rounding, toggle, Reset and second-line semantics, no
+allocation; the Present-path wiring; the launcher environment), the sampler
+fixture (the Ctrl+Alt+F7 edge, Shift exclusion, Alt and Ctrl requirements,
+focus latch) and the notice fixture (the row-72 instance, the clip cache).
+In-game and native Windows behavior are unverified.
+
 ## Exposure handoff and capability preparation
 
 `HdrConfig` retains its old component default for standalone callers and

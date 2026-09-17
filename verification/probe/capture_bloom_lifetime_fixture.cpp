@@ -236,6 +236,8 @@ struct Device : Hooks {
             std::snprintf(first,sizeof first,"%s",a);std::snprintf(second,sizeof second,"%s",b);
         }
     } comparison_notice;
+    struct Overlay { unsigned resets=0; void reset() noexcept {++resets;} } fps_overlay; // inert mirror of the --fps-overlay accumulator
+    Notice fps_notice; // inert mirror of the overlay bitmap
     bool comparison_report_pending=false,bloom_effective_on=false;
     char comparison_emitter_notice[40]{}; // inert mirror of the production field (Ctrl+Shift+F5/F6/F4 notice line)
     std::uint64_t bloom_effective_frame=UINT64_MAX;

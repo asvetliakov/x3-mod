@@ -81,6 +81,40 @@ int main(){
     x3m::ComparisonControls startup; // a key held before the first foreground sample is not a press
     x3m::ComparisonKeys held{};held.foreground=true;held.control=held.shift=held.sun_shadow=true;
     CHECK(!startup.sample(held).sun_shadow);CHECK(!startup.sample(held).sun_shadow);
+    // F7 (the FPS overlay): Ctrl+Alt with Shift up, so the Ctrl+Shift+F7
+    // telemetry marker chord never fires it; the same raw-key edge and focus
+    // rules as the other keys, independent of the Ctrl+Shift arm.
+    x3m::ComparisonControls overlay;
+    x3m::ComparisonKeys o{};o.foreground=true;overlay.sample(o);
+    o.control=o.alt=o.fps_overlay=true;{const auto a=overlay.sample(o);CHECK(a.fps_overlay&&!a.exposure&&!a.bloom&&!a.sun_shadow);}
+    for(unsigned i=0;i<1000;++i)CHECK(!overlay.sample(o).fps_overlay); // held is not a second press
+    o.fps_overlay=false;overlay.sample(o);o.fps_overlay=true;CHECK(overlay.sample(o).fps_overlay);
+    o.fps_overlay=false;overlay.sample(o);o.shift=true;o.fps_overlay=true;CHECK(!overlay.sample(o).fps_overlay); // Ctrl+Shift+Alt+F7: Shift excludes it
+    o.shift=false;CHECK(!overlay.sample(o).fps_overlay); // releasing Shift on a held F7 is not a press
+    o.fps_overlay=false;overlay.sample(o);o.alt=false;o.fps_overlay=true;CHECK(!overlay.sample(o).fps_overlay); // Ctrl+F7 without Alt
+    o.alt=true;CHECK(!overlay.sample(o).fps_overlay); // adding Alt to a held F7 is not a press
+    o.fps_overlay=false;overlay.sample(o);o.control=false;o.fps_overlay=true;CHECK(!overlay.sample(o).fps_overlay); // Alt+F7 without Ctrl
+    o.control=true;o.fps_overlay=false;overlay.sample(o);o.fps_overlay=true;CHECK(overlay.sample(o).fps_overlay);
+    o.foreground=false;CHECK(!overlay.sample(o).fps_overlay);
+    o.foreground=true;CHECK(!overlay.sample(o).fps_overlay); // held through alt-tab
+    o.fps_overlay=false;overlay.sample(o);o.fps_overlay=true;CHECK(overlay.sample(o).fps_overlay);
+    o.shift=true;o.exposure=true;o.fps_overlay=false;overlay.sample(o);o.exposure=false;overlay.sample(o);o.exposure=true;
+    {const auto a=overlay.sample(o);CHECK(a.exposure&&!a.fps_overlay);} // the Ctrl+Shift arm is untouched by the Alt key
+    overlay.reset_focus();o.shift=false;o.exposure=false;o.fps_overlay=true;CHECK(!overlay.sample(o).fps_overlay); // first sample after a focus reset only latches
+    CHECK(!overlay.sample(o).fps_overlay); // and the key is now held
+    o.fps_overlay=false;overlay.sample(o);o.fps_overlay=true;CHECK(overlay.sample(o).fps_overlay);
+    // A launch with only --fps-overlay: the caller leaves every other key
+    // false (their polls are gated on their own options), so the overlay chord
+    // is the only action the sampler can ever produce, edge after edge.
+    {x3m::ComparisonControls alone;x3m::ComparisonKeys only{};only.foreground=true;alone.sample(only);
+     for(unsigned i=0;i<50;++i){
+        only.control=only.alt=true;only.shift=(i%5==0);only.fps_overlay=true;const auto a=alone.sample(only);
+        CHECK(a.fps_overlay==!only.shift&&!a.exposure&&!a.bloom&&!a.ambient_occlusion&&!a.screen_additive&&!a.source_gain&&!a.hull_gain&&!a.sun_shadow);
+        only.fps_overlay=false;const auto b=alone.sample(only);
+        CHECK(!b.fps_overlay&&!b.exposure&&!b.bloom&&!b.ambient_occlusion&&!b.screen_additive&&!b.source_gain&&!b.hull_gain&&!b.sun_shadow);
+     }}
+    x3m::ComparisonControls marker;x3m::ComparisonKeys m{};m.foreground=true;m.control=m.shift=m.fps_overlay=true;marker.sample(m);
+    m.fps_overlay=false;marker.sample(m);m.fps_overlay=true;CHECK(!marker.sample(m).fps_overlay); // the marker chord alone, Alt up: never the overlay
 
     HdrPass hdr; IDirect3DPixelShader9 shader;
     hdr.config_.tonemap=HdrTonemap::Agx;hdr.config_.allow_auto_toggle=true;
