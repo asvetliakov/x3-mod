@@ -154,7 +154,8 @@ def shape_vertices(shape, scale=1.0):
     F (origin 300 units away, vertices 225 units away: nothing on the map).
     `scale` scales x and y (the pool script's sized casters; z stays 0.5)."""
     tri = {'A': ((-1, 1), (3, 1), (-1, -3)), 'B': ((-.9, .9), (-.3, .9), (-.9, .3)),
-           'L': ((-214, 8), (-214, -8), (-195, 0)), 'F': ((-60, 4), (-60, -4), (-56, 0))}[shape]
+           'L': ((-214, 8), (-214, -8), (-195, 0)), 'F': ((-60, 4), (-60, -4), (-56, 0)),
+           'W': ((-100, -5), (100, -5), (0, -4.5))}[shape]  # W: the pool script's wide sliver (a 200-unit extent below the unit casters)
     return [(x * scale, y * scale, .5) for x, y in tri]
 
 

@@ -2208,7 +2208,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
           for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) sizes[i] = depth_cascades_.cascades[i < depth_cascades_.count ? i : 0].size;
           renderer::ShadowCascadeSet narrowed{};
           if (count == depth_cascades_.count && renderer::shadow_cascade_set(extents, count, sizes, depth_cascades_.caps, depth_cascades_.budget, narrowed, false)
-              && renderer::shadow_cascade_pool(narrowed, depth_cascades_.records, depth_cascades_.static_from, depth_cascades_.importance)) depth_cascades_ = narrowed; // the pool policy stays the configured one
+              && renderer::shadow_cascade_pool(narrowed, depth_cascades_.records, depth_cascades_.static_from, depth_cascades_.importance, depth_cascades_.large_min)) depth_cascades_ = narrowed; // the pool policy stays the configured one
       } }
 #endif
     // The record list's storage for the set's records (the inline arrays
@@ -6552,12 +6552,15 @@ bool MotionOutput::attach_candidate_storage() noexcept {
     for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) depth_cascade_draw_caps_[i] = set.count && set.importance ? candidate_capacity_ : set.bound(i);
     if (set.count && set.importance) {
         if (!candidate_select_scratch_) candidate_select_scratch_.reset(new (std::nothrow) std::uint16_t[shadow_replay::record_capacity_max]);
-        if (!candidate_select_scratch_) return false;
-    }
+        if (!candidate_kept_last_) candidate_kept_last_.reset(new (std::nothrow) shadow_replay::KeptEntry[2u * shadow_replay::record_capacity_max]);
+        if (!candidate_select_scratch_ || !candidate_kept_last_) return false;
+        candidates_.attach_kept(candidate_kept_last_.get(), 2u * candidate_capacity_); // per device: cleared
+    } else candidates_.attach_kept(nullptr, 0);
     depth_cascade_static_mask_ = set.count ? set.static_only_mask() : std::uint8_t(0);
     if (depth_cascade_static_mask_) {
-        if (!candidate_class_ring_) candidate_class_ring_.reset(new (std::nothrow) shadow_caster_class::Ring);
-        if (!candidate_class_ring_) return false;
+        // Two ring entries per record of the list: a full list of distinct casters fits (shadow-cascade-extents.md, the ring's limit).
+        if (!candidate_class_ring_ || candidate_class_ring_->sets < candidate_capacity_ || !candidate_class_ring_->valid()) candidate_class_ring_.reset(new (std::nothrow) shadow_caster_class::Ring(candidate_capacity_));
+        if (!candidate_class_ring_ || !candidate_class_ring_->valid()) { candidate_class_ring_.reset(); return false; }
         candidate_class_ring_->clear(); // per device: a previous device's sightings are not this one's
     }
     return true;
@@ -6566,24 +6569,24 @@ bool MotionOutput::attach_candidate_storage() noexcept {
 // cascades (shadow_caster_class.h): the retention store's for a node it
 // knows (its eight verified sightings), else the ring's previous-sighting
 // test on this draw's world rows; unknown (no serial, no rows, first
-// sighting) is moving for this frame and counted class_miss.
-bool MotionOutput::classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept {
+// sighting) is a miss: moving for this frame, counted class_miss<i> by the caller per cascade it met.
+shadow_caster_class::Verdict MotionOutput::classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept {
+    using shadow_caster_class::Verdict;
     auto& c = candidates_.counts;
     const std::uint64_t serial = route.key.object_lifetime;
     if (retention_ && serial) {
         const std::uint16_t index = retention_->store.find_node(serial);
-        if (index != shadow_retention::none) { ++c.class_store; return retention_->store.nodes[index].is_static; }
+        if (index != shadow_retention::none) { ++c.class_store; return retention_->store.nodes[index].is_static ? Verdict::Static : Verdict::Moving; }
     }
     double world[12];
-    if (!candidate_class_ring_ || !serial || !rows || !shadow_retention::world_rows(camera_scene_, rows, world)) { ++c.class_miss; return false; }
+    if (!candidate_class_ring_ || !serial || !rows || !shadow_retention::world_rows(camera_scene_, rows, world)) return Verdict::Miss;
     const auto& k = route.key;
     const std::uint32_t count = k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives);
-    const std::uint64_t key = shadow_caster_class::Ring::key_of(serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first, k.indexed ? k.base_vertex : 0, count);
+    const std::uint64_t key = shadow_replay::caster_key(serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first, k.indexed ? k.base_vertex : 0, count);
     const float zero[3] = {0.f, 0.f, 0.f};
-    const auto verdict = candidate_class_ring_->test(key, world, lo ? lo : zero, hi ? hi : zero, retention_eps_, std::uint32_t(frame_));
-    if (verdict == shadow_caster_class::Verdict::Miss) { ++c.class_miss; return false; }
-    ++c.class_ring;
-    return verdict == shadow_caster_class::Verdict::Static;
+    const Verdict verdict = candidate_class_ring_->test(key, world, lo ? lo : zero, hi ? hi : zero, retention_eps_, std::uint32_t(frame_));
+    if (verdict != Verdict::Miss) ++c.class_ring;
+    return verdict;
 }
 void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     // Gate 4 required ZENABLE=1 and ZWRITEENABLE=1 for every routed draw except
@@ -6620,6 +6623,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     const shadow_replay::ExtentEntry* exact_extent = nullptr; // the range's own extent of this revision (caster retention's payload)
     const float* class_lo = nullptr; const float* class_hi = nullptr; // the extent the box test used (the static test's corners)
     float projected = 0.f; // importance drop order: the draw's projected size at the camera (0 without an extent)
+    float box_extent = 0.f; // static-only cascades: the draw's world AABB extent (0 without an extent), the large-caster admission's measure
     // The draw's own clip rows: the box test's, the static test's.
     const auto draw_rows = [this]() noexcept -> const float* {
         const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register : ~0u;
@@ -6668,7 +6672,8 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                     else if (e->state == shadow_replay::ExtentState::Known) {
                         const float* rows = draw_rows();
                         if (cascades) {
-                            const int mask = rows ? renderer::shadow_cascade_bounds_mask(camera_scene_, rows, candidate_cascade_bounds_, e->lo, e->hi, depth_cascades_.importance ? &projected : nullptr) : -1;
+                            const int mask = rows ? renderer::shadow_cascade_bounds_mask(camera_scene_, rows, candidate_cascade_bounds_, e->lo, e->hi, depth_cascades_.importance ? &projected : nullptr,
+                                                                                            depth_cascade_static_mask_ && depth_cascades_.large_min > 0.f ? &box_extent : nullptr) : -1;
                             if (mask >= 0) { by_bounds = true; cascade_mask = near_ok ? std::uint8_t(mask) : std::uint8_t(0); admitted = cascade_mask != 0; class_lo = e->lo; class_hi = e->hi; }
                         } else {
                             const int verdict = rows ? renderer::shadow_replay_bounds_verdict(camera_scene_, rows, candidate_bounds_rows_, e->lo, e->hi) : -1;
@@ -6682,12 +6687,20 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     }
     // Static-only cascades (shadow-cascade-extents.md, "Caster pool control"): a
     // draw meeting one of them is classified once; not static drops those bits
-    // (counted per cascade) before the caps and the record are decided.
-    if (cascades && (cascade_mask & depth_cascade_static_mask_) && zwrite && shadow_ok && managed && !route.alpha_tested
-        && !classify_candidate_static(route, draw_rows(), class_lo, class_hi)) {
-        for (unsigned i = 0; i < depth_cascades_.count; ++i) if (cascade_mask & depth_cascade_static_mask_ & (1u << i)) ++candidates_.counts.static_only_refused[i];
-        cascade_mask = std::uint8_t(cascade_mask & ~depth_cascade_static_mask_);
-        admitted = cascade_mask != 0;
+    // (counted per cascade) before the caps and the record are decided, unless
+    // the draw's world extent reaches large_min (a capital hull part: admitted
+    // moving, counted large_admitted<i>).
+    if (cascades && (cascade_mask & depth_cascade_static_mask_) && zwrite && shadow_ok && managed && !route.alpha_tested) {
+        const auto verdict = classify_candidate_static(route, draw_rows(), class_lo, class_hi);
+        if (verdict != shadow_caster_class::Verdict::Static) {
+            const bool large = depth_cascades_.large_min > 0.f && box_extent >= depth_cascades_.large_min;
+            for (unsigned i = 0; i < depth_cascades_.count; ++i) {
+                if (!(cascade_mask & depth_cascade_static_mask_ & (1u << i))) continue;
+                ++(large ? candidates_.counts.large_admitted : candidates_.counts.static_only_refused)[i];
+                if (verdict == shadow_caster_class::Verdict::Miss && !large) ++candidates_.counts.class_miss[i];
+            }
+            if (!large) { cascade_mask = std::uint8_t(cascade_mask & ~depth_cascade_static_mask_); admitted = cascade_mask != 0; }
+        }
     }
     if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, route.alpha_tested, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed,
                           cascades ? candidate_capacity_ : candidate_cap_, cascades ? &cascade_mask : nullptr, cascades ? depth_cascade_draw_caps_ : nullptr)) return;
@@ -6698,6 +6711,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     auto& r = candidates_.record(cascades ? cascade_mask : std::uint8_t(1));
     if (cascades) candidates_.count_cascades(cascade_mask);
     r.verdict = verdict_source; r.serial = route.key.object_lifetime; r.size = projected;
+    if (depth_cascades_.importance) { const auto& k = route.key; r.key = shadow_replay::caster_key(r.serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first, k.indexed ? k.base_vertex : 0, k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives)); }
     r.vb = route.key.vertex_buffer; r.vb_identity = shadow_.stream0_identity;
     r.ib = route.key.indexed ? route.key.index_buffer : 0; r.ib_identity = route.key.indexed ? shadow_.indices_identity : 0;
     r.vb_view = static_cast<const ownership::BufferLockObservation&>(vb);
@@ -6865,7 +6879,8 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // leases retired, the parallel geometry compacted with the records) and
     // count as the draw-time cap would have counted them.
     if (depth_cascades_on() && depth_cascades_.importance && candidate_select_scratch_) {
-        LARGE_INTEGER t0{}, t1{}, f{};
+        const DWORD error = GetLastError(); // the retired leases' Release calls keep the application's last error
+        LARGE_INTEGER t0{}, t1{};
         QueryPerformanceCounter(&t0);
         unsigned caps[renderer::shadow_cascade_max]{};
         for (unsigned i = 0; i < depth_cascades_.count; ++i) caps[i] = depth_cascades_.bound(i);
@@ -6874,8 +6889,9 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             [this](unsigned i) noexcept { if (!depth_replay_requested_) return; auto& g = depth_geometry_[i]; release(g.declaration); release(g.vertex_buffer); release(g.index_buffer); g = {}; },
             [this](unsigned from, unsigned to) noexcept { if (!depth_replay_requested_) return; depth_geometry_[to] = depth_geometry_[from]; depth_geometry_[from] = {}; }); // the lease moves with the record
         QueryPerformanceCounter(&t1);
-        QueryPerformanceFrequency(&f);
-        c.select_us = f.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) : 0.;
+        if (!qpc_frequency_) { LARGE_INTEGER f{}; if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart); }
+        c.select_us = qpc_frequency_ ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(qpc_frequency_) : 0.;
+        SetLastError(error);
     }
     bool quiet_inline[shadow_replay::record_capacity]{}; // per record: compared, not stale, every buffer quiet (depth replay admission)
     bool* const quiet_records = candidate_capacity_ > shadow_replay::record_capacity && candidate_quiet_ext_ ? candidate_quiet_ext_.get() : quiet_inline;
@@ -7045,7 +7061,9 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" capped%u=%u", i, c.cascade_capped[i]);
         if (depth_cascade_static_mask_) {
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" static_only_refused%u=%u", i, c.static_only_refused[i]);
-            if (used >= 0 && used < int(sizeof cascade_fields)) used += std::snprintf(cascade_fields + used, sizeof cascade_fields - used, " class_store=%u class_ring=%u class_miss=%u", c.class_store, c.class_ring, c.class_miss);
+            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" large_admitted%u=%u", i, c.large_admitted[i]);
+            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" class_miss%u=%u", i, c.class_miss[i]);
+            if (used >= 0 && used < int(sizeof cascade_fields)) used += std::snprintf(cascade_fields + used, sizeof cascade_fields - used, " class_store=%u class_ring=%u", c.class_store, c.class_ring);
         }
         if (depth_cascades_.importance) {
             for (unsigned i = 0; i < depth_cascades_.count && used >= 0 && used < int(sizeof cascade_fields); ++i) used += std::snprintf(cascade_fields + used, sizeof cascade_fields - used, " dropped_min_size%u=%.4g", i, double(c.dropped_size[i]));

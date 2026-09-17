@@ -355,8 +355,14 @@ CASES += [case(SHADOW_RETENTION_POLL_CASE, 'shadowretention', 'ownership', camer
 # at the full list), the far cascade alternating over the budget.
 SHADOW_POOL_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SHADOW_CASCADES='250,1500', X3M_FIXTURE_SHADOW_CASCADES='8,40',
                        X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_BUDGET='640', X3M_TELEMETRY_DRAW='0')
-SHADOW_POOL_STATIC_CASES = {'seam-ownership-shadow-pool-static-off': {}, 'seam-ownership-shadow-pool-static-census': dict(X3M_SHADOW_RETENTION_CENSUS='1'),
-                            'seam-ownership-shadow-pool-static-live': dict(X3M_SHADOW_CASTER_RETENTION='1')}
+# importance: ids 3 and 4 share one scale; 3 sits at the cap boundary and moves 0.02 row units farther on
+# even frames (a few % smaller than 4): the hysteresis keeps it, so the kept set never flips.
+# The static script's W (a 200-unit moving sliver, the capital-hull stand-in) enters cascade 1 under
+# --shadow-cascade-large-min 100 on the three store settings and never in the strict case.
+SHADOW_POOL_STATIC_CASES = {'seam-ownership-shadow-pool-static-off': dict(X3M_SHADOW_CASCADE_LARGE_MIN='100'),
+                            'seam-ownership-shadow-pool-static-census': dict(X3M_SHADOW_RETENTION_CENSUS='1', X3M_SHADOW_CASCADE_LARGE_MIN='100'),
+                            'seam-ownership-shadow-pool-static-live': dict(X3M_SHADOW_CASTER_RETENTION='1', X3M_SHADOW_CASCADE_LARGE_MIN='100'),
+                            'seam-ownership-shadow-pool-static-strict': {}}
 CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='static', X3M_SHADOW_CASCADE_CAPS='1024', X3M_SHADOW_CASCADE_STATIC_FROM='1', **extra))
           for name, extra in SHADOW_POOL_STATIC_CASES.items()]
 CASES += [case('seam-ownership-shadow-pool-importance', 'shadowpool', 'ownership', camera=True,
@@ -1479,8 +1485,8 @@ def validate_shadow_pool(name, text, trace, directory, env):
     budget = int(env['X3M_SHADOW_CASCADE_BUDGET'])
     mode = [fields(l) for l in tl if l.startswith('shadow_cascades_mode ')]
     assert len(mode) == 1 and (mode[0]['enabled'], mode[0]['reason'], mode[0]['cascades']) == ('1', 'ok', '2'), (name, mode)
-    assert (mode[0]['records'], mode[0]['static_from'], mode[0]['drop_order']) == (env.get('X3M_SHADOW_CASCADE_RECORDS', '1024,1024') + ',1024,1024',
-                                                                                    env.get('X3M_SHADOW_CASCADE_STATIC_FROM', '0'), env.get('X3M_SHADOW_CASCADE_DROP_ORDER', 'submission')), (name, mode)
+    assert (mode[0]['records'], mode[0]['static_from'], mode[0]['drop_order'], float(mode[0]['large_min'])) == (env.get('X3M_SHADOW_CASCADE_RECORDS', '1024,1024') + ',1024,1024',
+                                                                                    env.get('X3M_SHADOW_CASCADE_STATIC_FROM', 'none'), env.get('X3M_SHADOW_CASCADE_DROP_ORDER', 'submission'), float(env.get('X3M_SHADOW_CASCADE_LARGE_MIN', '0'))), (name, mode)
     store_on = int(mode_line['store']) != 0
     frames = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('POOL_FRAME ')}
     expect = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('POOL_EXPECT ')}
@@ -1502,13 +1508,13 @@ def validate_shadow_pool(name, text, trace, directory, env):
         assert c_row['leased'] == int(frames[frame]['drawn']) - c_row['capped'] and c_row['overflow'] == 0 and c_row['capped'] == (capped[1] if script == 'records' else 0), (name, frame, c_row)
         assert ('static_only_refused' in cascades) == static_on and ('dropped_min_size' in cascades) == importance, (name, frame, cascades)
         if static_on:
-            assert cascades['static_only_refused'] == [0, int(e['static_only_refused1'])], (name, frame, cascades, e)
+            assert cascades['static_only_refused'] == [0, int(e['static_only_refused1'])] and cascades['large_admitted'] == [0, int(e['large_admitted1'])], (name, frame, cascades, e)
             classified, drawn = cascades['classified'], int(frames[frame]['drawn'])
-            assert sum(classified.values()) == drawn, (name, frame, classified)
-            # Frame 0: every draw misses (no previous sighting). Later: the store answers for S and M once it knows
-            # them (the anchor's class is excluded from it), the ring for the rest; nothing misses.
+            assert sum(classified.values()) + cascades['class_miss'][1] == drawn and cascades['class_miss'][0] == 0, (name, frame, classified, cascades['class_miss'])
+            # Frame 0: every draw misses (no anchor yet). Later: the store answers for S, M and W once it knows
+            # them (the anchor node's class is excluded from it), the ring for the rest; nothing misses.
             expected_store = drawn - 1 if store_on and frame >= 1 else 0
-            assert classified == {'class_store': expected_store, 'class_ring': 0 if frame == 0 else drawn - expected_store, 'class_miss': drawn if frame == 0 else 0}, (name, frame, classified)
+            assert classified == {'class_store': expected_store, 'class_ring': 0 if frame == 0 else drawn - expected_store} and cascades['class_miss'][1] == (drawn if frame == 0 else 0), (name, frame, classified)
         if importance:
             assert cascades['select_us'] >= 0, (name, frame, cascades)
             if frame >= 1:
@@ -1580,6 +1586,12 @@ def validate_shadow_pool(name, text, trace, directory, env):
         case['select_us'] = {'median': sorted(r['cascades']['select_us'] for r in candidate_rows)[len(candidate_rows) // 2], 'max': max(r['cascades']['select_us'] for r in candidate_rows)}
     if static_on:
         case['classified'] = {k: sum(r['cascades']['classified'][k] for r in candidate_rows) for k in candidates_analysis.CLASS_FIELDS}
+        case['class_miss'] = [sum(r['cascades']['class_miss'][i] for r in candidate_rows) for i in range(count)]
+        case['large_admitted'] = [sum(r['cascades']['large_admitted'][i] for r in candidate_rows) for i in range(count)]
+        if script == 'static':
+            large = fields(next(l for l in lines if l.startswith('POOL_LARGE_MIN ')))
+            case['large_min'] = float(large['units'])
+            assert (case['large_admitted'][1] > 0) == (large['wide_admitted'] == '1'), (name, case['large_admitted'], large)
     return case
 
 

@@ -1,5 +1,5 @@
 {
- "case": "seam-ownership-shadow-pool-static-live",
+ "case": "seam-ownership-shadow-pool-static-strict",
  "bottle": {
   "name": "X3",
   "wine_arch": "arm64",
@@ -15,9 +15,9 @@
   "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "f8bbcb717b9d0f187f4a3ee3337a0e3fff098155e338c39a0392e8d09561872e"
  },
  "script": "static",
- "store": 2,
+ "store": 0,
  "frames": 14,
- "checks": 181,
+ "checks": 165,
  "compared_frames": 14,
  "absent_maps": 1,
  "color_sha256": "d5e47b25453cf050b11910f8d05a60c4a74707d7bb74551dd0e160c9aebac63b",
@@ -72,15 +72,15 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
@@ -105,15 +105,15 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
@@ -138,15 +138,15 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
@@ -171,15 +171,15 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
@@ -204,15 +204,15 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
@@ -237,15 +237,15 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
@@ -270,15 +270,15 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
@@ -303,15 +303,15 @@
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
@@ -324,7 +324,7 @@
     "count": 2,
     "records": [
      4,
-     3
+     2
     ],
     "capped": [
      0,
@@ -332,24 +332,24 @@
     ],
     "static_only_refused": [
      0,
-     1
+     2
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
     4,
-    3
+    2
    ]
   },
   "10": {
@@ -357,7 +357,7 @@
     "count": 2,
     "records": [
      4,
-     3
+     2
     ],
     "capped": [
      0,
@@ -365,24 +365,24 @@
     ],
     "static_only_refused": [
      0,
-     1
+     2
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
     4,
-    3
+    2
    ]
   },
   "11": {
@@ -390,7 +390,7 @@
     "count": 2,
     "records": [
      4,
-     3
+     2
     ],
     "capped": [
      0,
@@ -398,24 +398,24 @@
     ],
     "static_only_refused": [
      0,
-     1
+     2
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
     4,
-    3
+    2
    ]
   },
   "12": {
@@ -423,7 +423,7 @@
     "count": 2,
     "records": [
      4,
-     3
+     2
     ],
     "capped": [
      0,
@@ -431,24 +431,24 @@
     ],
     "static_only_refused": [
      0,
-     1
+     2
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
     4,
-    3
+    2
    ]
   },
   "13": {
@@ -456,7 +456,7 @@
     "count": 2,
     "records": [
      4,
-     3
+     2
     ],
     "capped": [
      0,
@@ -464,42 +464,42 @@
     ],
     "static_only_refused": [
      0,
-     1
+     2
     ],
     "large_admitted": [
      0,
-     1
+     0
     ],
     "class_miss": [
      0,
      0
     ],
     "classified": {
-     "class_store": 3,
-     "class_ring": 1
+     "class_store": 0,
+     "class_ring": 4
     }
    },
    "draws": [
     4,
-    3
+    2
    ]
   }
  },
  "map": {
-  "max_depth_error": 4.412964153133192e-05,
-  "covered_texels": 10747,
+  "max_depth_error": 3.7744857035226786e-05,
+  "covered_texels": 9399,
   "coverage_disagreements": 0,
   "maps": 27
  },
  "us": {
   "frames": 14,
-  "min": 46.9,
-  "median": 55.25,
-  "max": 1432.9
+  "min": 41.5,
+  "median": 54.1,
+  "max": 1571.0
  },
  "classified": {
-  "class_store": 39,
-  "class_ring": 13
+  "class_store": 0,
+  "class_ring": 52
  },
  "class_miss": [
   0,
@@ -507,16 +507,17 @@
  ],
  "large_admitted": [
   0,
-  13
+  0
  ],
- "large_min": 100.0,
+ "large_min": 0.0,
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-live-20260917-225905-167684",
- "trace_sha256": "76c3aac69b15e9f0d21c3f2d8e82608534552b26105664d22cd04ba5c6ec8ae8",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-strict-20260917-225906-819071",
+ "trace_sha256": "d62ab7eb6b6a3fb68f04c6e148aaf492e14352cfe8ae5f1eea332be7910afaed",
  "dll_sha256": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
  "exe_sha256": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
  "presented_identical_to": [
   "seam-ownership-shadow-pool-static-off",
-  "seam-ownership-shadow-pool-static-census"
+  "seam-ownership-shadow-pool-static-census",
+  "seam-ownership-shadow-pool-static-live"
  ]
 }

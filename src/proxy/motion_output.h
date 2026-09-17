@@ -1197,10 +1197,11 @@ private:
     std::unique_ptr<renderer::ShadowReplayDraw[]> depth_draws_ext_;
     std::unique_ptr<bool[]> candidate_quiet_ext_;            // the scene end's per-record quiet verdicts beyond the inline stack array
     std::unique_ptr<std::uint16_t[]> candidate_select_scratch_; // importance drop order: one index per record (allocated while the option is on)
-    std::unique_ptr<shadow_caster_class::Ring> candidate_class_ring_; // static-only cascades: the per-draw previous-sighting ring (allocated while the option is on)
+    std::unique_ptr<shadow_caster_class::Ring> candidate_class_ring_; // static-only cascades: the per-draw anchor ring, sized to the record capacity (allocated while the option is on)
+    std::unique_ptr<shadow_replay::KeptEntry[]> candidate_kept_last_;  // importance order: last frame's kept casters (two slots per record; allocated while the option is on)
     unsigned depth_cascade_draw_caps_[renderer::shadow_cascade_max]{}; // the per-cascade bound the draw path applies (the cap, or the record capacity under the importance order)
     std::uint8_t depth_cascade_static_mask_=0; // bit i: cascade i admits static casters only (none by default)
-    bool classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept; // shadow_caster_class.h
+    shadow_caster_class::Verdict classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept; // shadow_caster_class.h
     bool attach_candidate_storage() noexcept; // sizes the arrays above for depth_cascades_; false leaves the cascades off
     renderer::ShadowReplayCascade depth_cascade_{};
     renderer::ShadowReplayBasis depth_basis_{}; // basis of the last replayed frame (seam readback)

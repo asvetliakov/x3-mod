@@ -1974,3 +1974,52 @@ of the extended bench), the analytic and map records identical apart from `repla
 (`class_miss=`) and the importance order's `dropped_min_size3=` under set H are run-39 A2 questions;
 the rows the ring compares come from the frame's camera latch, so a frame without a valid latch
 classifies everything as moving (counted `class_miss`). Native Windows: source only.
+
+### Large-caster admission and the review fix round (2026-09-18, second commit)
+
+Build `f8bbcb717b9d…` (0 warnings), seam `9b68f8463403…`, fixture `01c2daa9b2b6…`; `check_no_x87.py`:
+PASS, 527 reachable functions, 0 violations. `--shadow-cascade-large-min L`
+(`X3M_SHADOW_CASCADE_LARGE_MIN`, default 0): a moving draw enters a static-only cascade when its world
+AABB extent (the largest side of the box the mask test built, `shadow_cascade_bounds_mask(...,
+&extent)`) is `≥ L`, counted `large_admitted<i>=`. **L from the game:** the run-115 F8 census
+(`/tmp/x3-bottleX3-run115`, `shadow_retention_caster half=` per node handle and model, 54 nodes over
+the two F8 frames; run 111 logs no extents) gives, as 2 × max half: static parts 100–610 u (13 in
+100–250, 18 in 250–500, one at 609) and one 38,269-u station hull; moving parts 15–467 u (fighter
+parts and turrets; the 15-u ones are model `4a88` with 1,727 primitives, six of them) and one
+29,939-u moving hull (model `53b8`, 3,874 primitives). Nothing lies between 610 and 29,939, so any
+L in 1,000–10,000 separates this sample; **recommended L = 1,500** from the class scale (M6 ≈ 900 u
+refused, M7 ≈ 3,500 u admitted; the extent is per mesh part, so an M7's turrets stay refused while
+its hull passes). Two F8 frames of one run: run 39 A2's `large_admitted3=` against
+`static_only_refused3=` is the calibration.
+
+Review fixes (30a059b): (1) the ring anchors on the first sighting and re-anchors only on a
+beyond-eps move, so a slow drifter is reclassified when its drift reaches eps (host: 0.02-unit
+steps, moving on the third); (2) the ring is sized to the record list (two entries per record,
+2,048 → 8,192 at 4,096 records) and `class_miss<i>=` counts per cascade; store dependency and limits
+in the contract; (3) hysteresis at the cap boundary (a caster kept last frame stays while its size
+≥ 0.8 × the cutoff, bounded by the cap; host: the a/b pair holds at 0.9, yields at 0.79, retakes at
+1.3); (4) `*projected` / `*extent` are 0 on an unknown mask in both paths; (5) `static_from ≥ count`
+(and 0) refused by launcher and DLL, the mode line logs `static_from=none`; (6) `select_us` from
+the cached `qpc_frequency_` inside a LastError envelope.
+
+**Fixture, retained binaries, all exit 0** (`verification/results/bottle-X3/*-fixture.json`):
+`…-pool-static-{off,census,live}` 165 / 181 / 181 checks with `X3M_SHADOW_CASCADE_LARGE_MIN=100`:
+the new 200-u moving sliver W is admitted to cascade 1 from frame 1 (`large_admitted1=1` on 13
+frames, `class_miss1=4` on frame 0 only), the 1-u mover never, S and the anchor as before; 27 maps
+each equal to the twin of the kept sets (10,747 covered texels, 0 disagreements, max depth error
+4.4e-5); `…-pool-static-strict` (no L) 165 checks refuses W on every frame (`large_admitted1=0`,
+9,399 texels); the four present byte-identical frames (`d5e47b25…`). `…-pool-importance` 99 checks:
+ids 3 and 4 share a scale, 3 sits at the boundary and is 0.02 row units farther on even frames;
+the kept set is {3, 5, 6, 7} on every sized frame (hysteresis holds 3; without it the plain order
+would take 4 on even frames), 16 maps equal to the twin (11,781 texels, 0 disagreements),
+`dropped_min_size1` = 2.136 identical on every frame; `select_us` median 5.0. `…-pool-records` 53
+checks unchanged (`c1=4095 capped1=1`, far cascade on even frames), `select_us` median 71.5 at
+4,096 (the kept-table refill and 4,096 inserts add about 45 µs to the 25 µs selection). Bench: mask
+39.5 ns, mask + size 45.2 ns, classification 39.3 ns/draw, selection at 4,096 records 15.5 / 13.0 µs.
+Regression: `…-shadow-replay-cascades` 278, `…-casters-20` 278, `…-toggle` 277, `…-poll-agree` 281,
+`…-retention-live` 9743, `…-retention-off` 6629: unchanged. Host: the four shadow modules 34 OK, the
+six mock-drift modules 27 OK.
+
+**Open (measured, unexplained).** `select_us` spikes on frame 0 (252 / 377 µs) and once more on
+frame 2 of the importance case (281 µs) against 2–5 µs on the other frames; plausibly first touch
+of the table and scratch pages and the retired leases' Release path, not measured further.

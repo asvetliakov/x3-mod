@@ -17,11 +17,11 @@ cascade i) followed by one `capped<i>=` per cascade (admitted draws whose
 cascade i was dropped by that cascade's cap); a log without them parses as
 before and its rows carry no `cascades` key. Caster pool control
 (shadow-cascade-extents.md, "Caster pool control") adds, each only while its
-option is on: `static_only_refused<i>=` per cascade then `class_store=
-class_ring= class_miss=` (--shadow-cascade-static-from), and
+option is on: `static_only_refused<i>=`, `large_admitted<i>=` and `class_miss<i>=`
+per cascade then `class_store= class_ring=` (--shadow-cascade-static-from), and
 `dropped_min_size<i>=` (a float) per cascade then `select_us=`
 (--shadow-cascade-drop-order importance); parsed into the `cascades` dict as
-`static_only_refused`, `classified`, `dropped_min_size` and `select_us`.
+`static_only_refused`, `large_admitted`, `class_miss`, `classified`, `dropped_min_size` and `select_us`.
 
 A malformed line (missing or non-numeric field, unknown extra field) raises
 MalformedLine; the caller decides whether that fails the run. Sum identities
@@ -50,13 +50,13 @@ class MalformedLine(ValueError):
 CASCADE_MAX = 4
 
 
-CLASS_FIELDS = ('class_store', 'class_ring', 'class_miss')
+CLASS_FIELDS = ('class_store', 'class_ring')
 
 
 def _cascade_suffix(line, pairs):
     """The optional cascade tail of a frame line: c0..c<n-1> then
     capped0..capped<n-1>, 1 <= n <= 4; then optionally the static-only group
-    (static_only_refused0..n-1, class_store, class_ring, class_miss) and
+    (static_only_refused0..n-1, large_admitted0..n-1, class_miss0..n-1, class_store, class_ring) and
     optionally the importance group (dropped_min_size0..n-1, select_us);
     nothing else."""
     if not pairs:
@@ -77,13 +77,15 @@ def _cascade_suffix(line, pairs):
     values = integers(v for _, v in pairs[:2 * count])
     row = {'count': count, 'records': values[:count], 'capped': values[count:]}
     rest = pairs[2 * count:]
-    static_keys = [f'static_only_refused{j}' for j in range(count)] + list(CLASS_FIELDS)
+    static_keys = [f'static_only_refused{j}' for j in range(count)] + [f'large_admitted{j}' for j in range(count)] + [f'class_miss{j}' for j in range(count)] + list(CLASS_FIELDS)
     if rest and rest[0][0] == static_keys[0]:
         if [k for k, _ in rest[:len(static_keys)]] != static_keys:
             raise MalformedLine(line.rstrip('\n'))
         values = integers(v for _, v in rest[:len(static_keys)])
         row['static_only_refused'] = values[:count]
-        row['classified'] = dict(zip(CLASS_FIELDS, values[count:]))
+        row['large_admitted'] = values[count:2 * count]
+        row['class_miss'] = values[2 * count:3 * count]
+        row['classified'] = dict(zip(CLASS_FIELDS, values[3 * count:]))
         rest = rest[len(static_keys):]
     size_keys = [f'dropped_min_size{j}' for j in range(count)] + ['select_us']
     if rest and rest[0][0] == size_keys[0]:
@@ -259,6 +261,8 @@ def summarize(frames, witnesses):
         static_rows = [c for c in cascade_rows if 'static_only_refused' in c]
         if static_rows:
             summary['cascades']['static_only_refused_total'] = [sum(c['static_only_refused'][i] for c in static_rows if i < c['count']) for i in range(count)]
+            summary['cascades']['large_admitted_total'] = [sum(c['large_admitted'][i] for c in static_rows if i < c['count']) for i in range(count)]
+            summary['cascades']['class_miss_total'] = [sum(c['class_miss'][i] for c in static_rows if i < c['count']) for i in range(count)]
             summary['cascades']['classified_total'] = {k: sum(c['classified'][k] for c in static_rows) for k in CLASS_FIELDS}
         size_rows = [c for c in cascade_rows if 'dropped_min_size' in c]
         if size_rows:

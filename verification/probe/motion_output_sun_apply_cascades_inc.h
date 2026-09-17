@@ -534,7 +534,7 @@ void run_sun_apply_cascades(Fixture& f) {
         QueryPerformanceCounter(&t3);
         for (unsigned i = 0; i < rounds; ++i) { clip[3] = float(i & 1023u); float size = 0; sized_masks += r::shadow_cascade_bounds_mask(s.camera, clip, bounds, lo, hi, &size); sizes += size; }
         QueryPerformanceCounter(&t4);
-        static x3m::shadow_caster_class::Ring ring; ring.clear();
+        x3m::shadow_caster_class::Ring ring(x3m::shadow_replay::record_capacity_max); require(ring.valid(), "the bench ring allocates"); ring.clear();
         unsigned statics = 0;
         for (unsigned i = 0; i < rounds; ++i) {
             clip[3] = float(i & 1023u); double world[12];

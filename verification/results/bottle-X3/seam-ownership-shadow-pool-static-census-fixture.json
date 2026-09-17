@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "a315adf507abed232439fc6c2ef14986c7ec7cee0437485f12051b600bb7eba0"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "f8bbcb717b9d0f187f4a3ee3337a0e3fff098155e338c39a0392e8d09561872e"
  },
  "script": "static",
  "store": 1,
@@ -26,7 +26,7 @@
    "c": {
     "count": 2,
     "records": [
-     3,
+     4,
      0
     ],
     "capped": [
@@ -35,16 +35,23 @@
     ],
     "static_only_refused": [
      0,
-     3
+     4
+    ],
+    "large_admitted": [
+     0,
+     0
+    ],
+    "class_miss": [
+     0,
+     4
     ],
     "classified": {
      "class_store": 0,
-     "class_ring": 0,
-     "class_miss": 3
+     "class_ring": 0
     }
    },
    "draws": [
-    3,
+    4,
     0
    ]
   },
@@ -52,8 +59,8 @@
    "c": {
     "count": 2,
     "records": [
-     3,
-     1
+     4,
+     2
     ],
     "capped": [
      0,
@@ -63,23 +70,30 @@
      0,
      2
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    1
+    4,
+    2
    ]
   },
   "2": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     1
+     4,
+     2
     ],
     "capped": [
      0,
@@ -89,23 +103,30 @@
      0,
      2
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    1
+    4,
+    2
    ]
   },
   "3": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     1
+     4,
+     2
     ],
     "capped": [
      0,
@@ -115,23 +136,30 @@
      0,
      2
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    1
+    4,
+    2
    ]
   },
   "4": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     1
+     4,
+     2
     ],
     "capped": [
      0,
@@ -141,23 +169,30 @@
      0,
      2
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    1
+    4,
+    2
    ]
   },
   "5": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     1
+     4,
+     2
     ],
     "capped": [
      0,
@@ -167,23 +202,30 @@
      0,
      2
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    1
+    4,
+    2
    ]
   },
   "6": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     1
+     4,
+     2
     ],
     "capped": [
      0,
@@ -193,23 +235,30 @@
      0,
      2
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    1
+    4,
+    2
    ]
   },
   "7": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     1
+     4,
+     2
     ],
     "capped": [
      0,
@@ -219,23 +268,30 @@
      0,
      2
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    1
+    4,
+    2
    ]
   },
   "8": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     1
+     4,
+     2
     ],
     "capped": [
      0,
@@ -245,23 +301,30 @@
      0,
      2
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    1
+    4,
+    2
    ]
   },
   "9": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     2
+     4,
+     3
     ],
     "capped": [
      0,
@@ -271,23 +334,30 @@
      0,
      1
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    2
+    4,
+    3
    ]
   },
   "10": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     2
+     4,
+     3
     ],
     "capped": [
      0,
@@ -297,23 +367,30 @@
      0,
      1
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    2
+    4,
+    3
    ]
   },
   "11": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     2
+     4,
+     3
     ],
     "capped": [
      0,
@@ -323,23 +400,30 @@
      0,
      1
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    2
+    4,
+    3
    ]
   },
   "12": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     2
+     4,
+     3
     ],
     "capped": [
      0,
@@ -349,23 +433,30 @@
      0,
      1
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    2
+    4,
+    3
    ]
   },
   "13": {
    "c": {
     "count": 2,
     "records": [
-     3,
-     2
+     4,
+     3
     ],
     "capped": [
      0,
@@ -375,40 +466,55 @@
      0,
      1
     ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
     "classified": {
-     "class_store": 2,
-     "class_ring": 1,
-     "class_miss": 0
+     "class_store": 3,
+     "class_ring": 1
     }
    },
    "draws": [
-    3,
-    2
+    4,
+    3
    ]
   }
  },
  "map": {
-  "max_depth_error": 3.7744857035226786e-05,
-  "covered_texels": 615,
+  "max_depth_error": 4.412964153133192e-05,
+  "covered_texels": 10747,
   "coverage_disagreements": 0,
   "maps": 27
  },
  "us": {
   "frames": 14,
-  "min": 40.2,
-  "median": 47.099999999999994,
-  "max": 1521.8
+  "min": 46.0,
+  "median": 50.05,
+  "max": 1479.7
  },
  "classified": {
-  "class_store": 26,
-  "class_ring": 13,
-  "class_miss": 3
+  "class_store": 39,
+  "class_ring": 13
  },
+ "class_miss": [
+  0,
+  4
+ ],
+ "large_admitted": [
+  0,
+  13
+ ],
+ "large_min": 100.0,
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-census-20260917-223804-258115",
- "trace_sha256": "25fa68a209fc5f3751220b96bf5cafb81a9a3d8e8da9b232c52e6932012cbcbe",
- "dll_sha256": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
- "exe_sha256": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-census-20260917-225903-467887",
+ "trace_sha256": "cd56fd83d50e4379be849f90b3efb34ff456e9c7d0ff585fd284e39067dbce98",
+ "dll_sha256": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
+ "exe_sha256": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
  "presented_identical_to": [
   "seam-ownership-shadow-pool-static-off"
  ]
