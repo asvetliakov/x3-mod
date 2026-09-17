@@ -24,6 +24,7 @@ every derived `*_mode` line, so a gameplay log can never lose its provenance:
 
     proxy_identity sha256=<64 hex|unavailable> bytes=<n> path=<dll path> manifest_sha256=<64 hex|none> source_commit=<commit[-dirty]|unknown> attach_us=<n>
     proxy_options [NAME=VALUE ...]
+    proxy_environment [NAME=VALUE ...] count=<n>
 
 The same `initialize_log` writes one wall-clock anchor before the identity
 header, and two `loaded_module` lines identify the DLLs the process actually
@@ -51,7 +52,7 @@ reference across the read.
 
 `manifest_sha256` is the `sha256` value recorded in the `x3-modern-install.json`
 next to the DLL (`none` without a readable manifest); `proxy_options` lists every
-`X3M_*` variable of the process environment, sorted, and nothing else. The digest
+`X3M_*` variable of the process environment, sorted, and nothing else, and `proxy_environment` lists, in the same form and from the same enumeration, every `FEX_*`, `WINE*` and `CX_*` variable sorted, values truncated to 200 characters with `…` and the entry count last, so a run can show which emulation and Wine settings the launcher set actually reached the process. The digest
 is the SHA-256 of the loaded module's own file, computed at attach through
 documented Win32 (`GetModuleFileNameW`, `CreateFileW`/`ReadFile` with
 `FILE_FLAG_SEQUENTIAL_SCAN`, CryptoAPI `PROV_RSA_AES`/`CALG_SHA_256`,

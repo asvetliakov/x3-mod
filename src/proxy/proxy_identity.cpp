@@ -168,16 +168,30 @@ void log_module(HMODULE module,const char* name) {
         name,path_utf8.c_str(),bytes,hex.c_str(),microseconds,
         image.size,image.stamp,image.exports,image.wine_builtin);
 }
-// Every X3M_* variable present in the process environment, name=value, sorted.
-// Names are matched case-insensitively (Win32 environment names are); no
-// unrelated variable is read or logged.
-std::string options() {
-    LPWCH block=GetEnvironmentStringsW();
-    if(!block) return std::string();
+// Longest value kept in the environment line: WINEDLLOVERRIDES and
+// WINE_D3D_CONFIG can be arbitrarily long, and the line is provenance, not a
+// transcript.
+constexpr std::size_t kValueLimit=200;
+bool is_option(const wchar_t* entry) { return _wcsnicmp(entry,L"X3M_",4)==0; }
+// What the launcher sets for the child process: FEX_* (FEX emulation),
+// WINE* (WINEDLLOVERRIDES, WINEDEBUG, WINE_D3D_CONFIG, WINEMSYNC, WINEESYNC)
+// and CX_* (CrossOver). Recorded so a run can show which of them arrived.
+bool is_environment(const wchar_t* entry) {
+    return _wcsnicmp(entry,L"FEX_",4)==0||_wcsnicmp(entry,L"WINE",4)==0||_wcsnicmp(entry,L"CX_",3)==0;
+}
+// The name=value entries of the process environment accepted by `select`,
+// sorted, values truncated to `limit` characters with a trailing ellipsis.
+// Documented Win32 enumeration only (GetEnvironmentStringsW, released with
+// FreeEnvironmentStringsW); one pass, bounded by the block the OS hands back,
+// and no variable outside the filter is read or logged. Names are matched
+// case-insensitively, as Win32 environment names are.
+std::vector<std::string> collect(bool (*select)(const wchar_t*),std::size_t limit) {
     std::vector<std::string> entries;
+    LPWCH block=GetEnvironmentStringsW();
+    if(!block) return entries;
     for(const wchar_t* entry=block;*entry;entry+=std::wcslen(entry)+1){
         if(entry[0]==L'=') continue; // per-drive current directory pseudo-variables
-        if(_wcsnicmp(entry,L"X3M_",4)!=0) continue;
+        if(!select(entry)) continue;
         const std::string pair=utf8(entry);
         if(pair.empty()) continue;
         const std::size_t split=pair.find('=');
@@ -185,12 +199,27 @@ std::string options() {
         std::string value=split==std::string::npos?std::string():pair.substr(split+1);
         sanitize(name);
         if(!value.empty()) sanitize(value);
+        if(value.size()>limit){value.resize(limit);value+="\xe2\x80\xa6";} // U+2026, kept out of sanitize
         entries.push_back(name+"="+value);
     }
     FreeEnvironmentStringsW(block);
     std::sort(entries.begin(),entries.end());
+    return entries;
+}
+// Every X3M_* variable present in the process environment, name=value, sorted;
+// values are not truncated, an option value is the option.
+std::string options() {
+    std::string line;
+    for(const std::string& entry:collect(is_option,std::string::npos)){line+=' ';line+=entry;}
+    return line;
+}
+// The emulation and Wine/CrossOver variables, same form, with the number of
+// entries last so an empty list is still a positive statement.
+std::string environment() {
+    const std::vector<std::string> entries=collect(is_environment,kValueLimit);
     std::string line;
     for(const std::string& entry:entries){line+=' ';line+=entry;}
+    line+=" count="+std::to_string(entries.size());
     return line;
 }
 }
@@ -199,7 +228,7 @@ void log_identity(HMODULE self) {
     const DWORD saved=GetLastError();
     LARGE_INTEGER begin{},end{},frequency{};
     QueryPerformanceCounter(&begin); QueryPerformanceFrequency(&frequency);
-    std::string hex="unavailable",path_utf8="unknown",manifest="none",option_line;
+    std::string hex="unavailable",path_utf8="unknown",manifest="none",option_line,environment_line=" count=0";
     unsigned long long bytes=0;
     // Nothing may escape into initialize_log: a bad_alloc on the 32 KiB buffers
     // or the environment block costs the header, never the session.
@@ -215,8 +244,9 @@ void log_identity(HMODULE self) {
             manifest=manifest_sha256(separator==std::wstring::npos?std::wstring(L"."):path.substr(0,separator));
         }
         option_line=options();
+        environment_line=environment();
     } catch(const std::exception&) {
-        hex="unavailable"; option_line.clear();
+        hex="unavailable"; option_line.clear(); environment_line=" count=0";
     }
     QueryPerformanceCounter(&end);
     const unsigned long long microseconds=frequency.QuadPart>0&&end.QuadPart>begin.QuadPart
@@ -224,6 +254,7 @@ void log_identity(HMODULE self) {
     log("proxy_identity sha256=%s bytes=%llu path=%s manifest_sha256=%s source_commit=%s attach_us=%llu",
         hex.c_str(),bytes,path_utf8.c_str(),manifest.c_str(),X3M_SOURCE_COMMIT,microseconds);
     log("proxy_options%s",option_line.c_str());
+    log("proxy_environment%s",environment_line.c_str());
     SetLastError(saved);
 }
 

@@ -122,6 +122,94 @@ class MappedImageFields(unittest.TestCase):
         self.assertLess(body.index('image=module_image(module);'), body.index('GetModuleFileNameW'))
 
 
+class ProxyEnvironmentLine(unittest.TestCase):
+    """`proxy_environment`: the emulation and Wine/CrossOver variables the
+    launcher sets for the child, recorded in-process so a run can show which of
+    them arrived (run 37 set FEX_TSOENABLED and WINE_D3D_CONFIG with nothing to
+    confirm them). Source text plus the filter/format rule on a synthetic
+    environment block; the values come from GetEnvironmentStringsW only."""
+
+    LIMIT = 200
+    ELLIPSIS = '\u2026'
+
+    def setUp(self):
+        self.source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
+
+    @staticmethod
+    def select(name):
+        upper = name.upper()
+        return upper.startswith('FEX_') or upper.startswith('WINE') or upper.startswith('CX_')
+
+    @classmethod
+    def build(cls, block):
+        """The rule collect()/environment() implements in
+        src/proxy/proxy_identity.cpp, on a synthetic NUL-separated block."""
+        entries = []
+        for entry in block.split('\0'):
+            if not entry or entry.startswith('='):
+                continue
+            name, _, value = entry.partition('=')
+            if not cls.select(name):
+                continue
+            value = ''.join(c if 0x21 <= ord(c) <= 0x7e else '_' for c in value)
+            if len(value) > cls.LIMIT:
+                value = value[:cls.LIMIT] + cls.ELLIPSIS
+            entries.append(f'{name}={value}')
+        entries.sort()
+        return 'proxy_environment' + ''.join(' ' + e for e in entries) + f' count={len(entries)}'
+
+    def test_filter_sort_and_count_on_a_synthetic_block(self):
+        block = '\0'.join(['WINEMSYNC=1', 'PATH=C:\\windows', 'FEX_TSOENABLED=0',
+                           'X3M_TAA=1', 'CX_ROOT=/opt/cxoffice', 'WINE_D3D_CONFIG=csmt=0x0',
+                           '=C:=C:\\X3', 'HOME=/Users/x'])
+        self.assertEqual(self.build(block),
+                         'proxy_environment CX_ROOT=/opt/cxoffice FEX_TSOENABLED=0 '
+                         'WINEMSYNC=1 WINE_D3D_CONFIG=csmt=0x0 count=4')
+        # X3M_* stays on proxy_options; nothing unrelated is listed.
+        self.assertEqual(self.build('X3M_TAA=1\0PATH=/bin'), 'proxy_environment count=0')
+
+    def test_case_insensitive_names_and_empty_value(self):
+        self.assertEqual(self.build('wine_d3d_config=\0Fex_X87ReducedPrecision=1'),
+                         'proxy_environment Fex_X87ReducedPrecision=1 wine_d3d_config= count=2')
+
+    def test_long_value_truncated_with_an_ellipsis(self):
+        overrides = 'd3d9=n,b;' * 40  # 360 characters
+        value = self.build(f'WINEDLLOVERRIDES={overrides}').split(' ')[1].split('=', 1)[1]
+        self.assertEqual(len(value), self.LIMIT + 1)
+        self.assertTrue(value.endswith(self.ELLIPSIS))
+        self.assertEqual(value[:self.LIMIT], overrides[:self.LIMIT])
+        # Exactly at the limit nothing is appended.
+        self.assertEqual(self.build('WINEDEBUG=' + 'a' * self.LIMIT),
+                         'proxy_environment WINEDEBUG=' + 'a' * self.LIMIT + ' count=1')
+
+    def test_non_printable_becomes_underscore_so_no_field_splits(self):
+        self.assertEqual(self.build('WINEDEBUG=warn +tid\0WINEESYNC=\u00e9'),
+                         'proxy_environment WINEDEBUG=warn_+tid WINEESYNC=_ count=2')
+
+    def test_source_emits_the_line_once_after_proxy_options(self):
+        self.assertEqual(self.source.count('log("proxy_environment%s"'), 1)
+        self.assertEqual(self.source.count('log("proxy_options%s"'), 1)
+        self.assertLess(self.source.index('log("proxy_options%s"'),
+                        self.source.index('log("proxy_environment%s"'))
+        # Both lines come from one filtered pass over the documented block.
+        self.assertIn('return _wcsnicmp(entry,L"FEX_",4)==0||_wcsnicmp(entry,L"WINE",4)==0||'
+                      '_wcsnicmp(entry,L"CX_",3)==0;', self.source)
+        self.assertIn('constexpr std::size_t kValueLimit=200;', self.source)
+        self.assertIn(r'value+="\xe2\x80\xa6"', self.source)
+        self.assertIn('LPWCH block=GetEnvironmentStringsW();', self.source)
+        self.assertEqual(self.source.count('GetEnvironmentStringsW()'), 1)
+        self.assertEqual(self.source.count('FreeEnvironmentStringsW(block);'), 1)
+        self.assertIn('line+=" count="+std::to_string(entries.size());', self.source)
+        # X3M_* option values are never truncated.
+        self.assertIn('collect(is_option,std::string::npos)', self.source)
+        self.assertIn('collect(is_environment,kValueLimit)', self.source)
+
+    def test_a_failure_still_yields_a_count(self):
+        body = self.source[self.source.index('void log_identity('):]
+        self.assertIn('environment_line=" count=0"', body[:body.index('catch')])
+        self.assertIn('environment_line=" count=0";', body[body.index('catch'):])
+
+
 class ParseIdentity(unittest.TestCase):
     def test_full_line(self):
         fields = identity.parse_identity(LINE)
