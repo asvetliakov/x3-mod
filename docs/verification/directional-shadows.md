@@ -2423,3 +2423,59 @@ four adaptive, four retention, six pool cases) all exit 0 with the counts above;
 `sun-shadow-apply-cascades-5` 3,117 checks, `edge_beyond_one` 0, `monotone_violations` 0 on all 15
 frames, bench five-cascade mask 59.4 ns against 45.4 ns for four this run (42.3 against 43.5 on the
 previous run: the two are within run-to-run noise of the same corner transform).
+
+## Sliding ladder behind the adaptive C0 (2026-09-18, worktree `agent-a1c40b35073d19a6c`)
+
+Law: [shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md) §5, amendment of
+2026-09-18. The ratio guard (drop `E_i < 3 E_{i−1}`) is replaced: while E0 is above the configured
+value, `E_i' = max(E_i_config, E0 × R^i)` capped at the last cascade's configured extent, a cascade
+whose slid extent reaches the next one's is dropped (`shadow_cascade_ladder_extent`,
+`shadow_cascade_ladder_mask`, `shadow_cascade_adapt_c0(config, e0, out, ratio)`); every changed
+cascade re-anchors its grid and voids its retained map (`ShadowCascadeAdaptive::changed`, one
+`invalidate_retained(i)` per bit); `--shadow-cascade-ladder-ratio R` (`X3M_SHADOW_CASCADE_LADDER_RATIO`,
+[2, 16], default 5, requires the adaptive option). Base: main `84115b4a` (five cascades merged).
+
+- Clean CMake build 0 warnings, `build/d3d9.dll` sha256 `d157b6ee…`; `check_no_x87.py` 534 reachable,
+  0 violations; seam DLL `c423ade7…`, fixture `88495a60…` (strict seam compile clean).
+- Host: `test_shadow_cascades` (driver CHECKs: the 37,500 set at radius 450 → 675 / 3,375 / 16,875 /
+  37,500 all active, with five → 84,375 / 150,000; radius 4,000 → 6,000 / 30,000 / (37,500 capped,
+  dropped) / 37,500, with five active 19; the default set at radius 1,000 → 1,500 / 7,500 / (25,000
+  dropped) / 25,000 with `changed` 7 then 3 at 1,875; the return to the configured set in one commit
+  with `changed` 7, `slid` 0; R 2 / 16 / out of range; E0 at the configured value unslid at any R;
+  the slid box wider across and deeper behind with the light reach unchanged; launcher value / range /
+  requires / no-leak cases), `test_shadow_replay_depth` (the depth line parses five cascades, six
+  refused), `test_shadow_replay_candidates` (`CASCADE_MAX` 5), `test_sun_shadow_apply`,
+  `test_shadow_retention`, `test_motion_output_runner` and the six mock-drift modules: 96 tests OK.
+- Fixture (`X3M_FIXTURE_BOTTLE=X3`), new cases on 8 / 48 / 240 / 1,200 / 4,800 (the 250 / 1,500 /
+  7,500 / 37,500 / 150,000 set at 1/31.25; map sizes 256 / 256 / 512 / 1,024 / 2,048, the far object
+  being one texel of a 256-texel far map), K 1.5, R 5:
+  `seam-ownership-shadow-replay-ladder-corvette` 373 checks — H3 radius 14.46, one `node` commit at
+  frame 1: `e0=21.69`, `extents=21.69,108.45,542.24,2711.19,4800`, `active_mask=31`,
+  `apply_slots=0,1,2,3,4`, `slid=15`, `changed=15` (every ratio ≤ 5, no gap behind C0); cascades 0-3
+  read back at the slid extents with a void basis after frame 1 and all five replay from frame 3;
+  every replayed map equals the twin (`max_depth_error` 1.63e-06; one far map, frame 6 cascade 4,
+  coarse: 5 covered texels on both sides, all edge, nothing to compare in depth).
+  `…-ladder-destroyer` 373 checks — H4 radius 182.5 (E0 273.8 clears the far object's 240-unit
+  reach): `extents=273.76,1368.81,4800,4800,4800`, `active_mask=19`, `apply_slots=0,1,4`: 25 E0 =
+  6,845 capped at the ceiling reaches it, so cascades 2 and 3 are dropped, never replayed, their maps
+  untouched; `max_depth_error` 5.96e-06.
+  `…-ladder-shrink` 376 checks — H3 until frame 5, H1 from it: commits at frames 1 and 5, the second
+  `e0=8 extents=8,48,240,1200,4800 slid=0 changed=15`: the configured set back in one commit,
+  cascades 0-3 voided at that boundary, cascade 4 (the ceiling, never slid) not in the mask.
+- Adaptive cases under the ladder: `…-adaptive-small` 333 checks, record equal to the committed one
+  field for field apart from the added `ladder` key (E0 8, `active_mask=15`, `slid=0` throughout);
+  `…-adaptive-big` 333 / `…-swap` 336 / `…-reuse` 336 — E0 50.59 now slides C1 to 252.95 and drops
+  C2 (240 → 800 capped, reaching C3): `active_mask=11`, `apply_slots=0,1,3`, `changed=7`; the records
+  are regenerated (their `map.covered_texels` moved with the slid C1). Regression on the same
+  binaries: `seam-ownership-shadow-replay-on` 203 / 1.19e-05, `…-cascades` 278 / 4.07e-06,
+  `…-cascades-casters-20` 278 / 3.42e-06, `…-cascades-toggle` 283 / 5.82e-06, `…-cascades-poll-agree`
+  281 / 9.65e-06, `…-shadow-retention-live` 9,743 checks, 1,535 frames, 39 / 28 compared,
+  1.72e-06, `…-shadow-pool-static-live` 181, `sun-shadow-apply-cascades` 4,342 (`edge_beyond_one`
+  28, `ambiguous_max` 1,742), `sun-shadow-apply-cascades-5` 3,117 (`edge_beyond_one` 0): every
+  record equal to the committed one apart from timings (restored).
+- Cost: no per-draw change (the box test, replay and apply read the live set as before); the
+  ladder runs at a commit only (count − 2 multiplications and compares).
+- Limits: the fixture drives no apply quad with a slid set (the slots and `source<s>=` are asserted
+  on the `shadow_cascade_set` line and by the twin's parser); the far maps at the fixture scale are
+  coarse (recorded per map as `ladder.coarse_maps`); a big-ship flight sets K and shows the ladder's
+  seams in play; native Windows unverified as elsewhere.

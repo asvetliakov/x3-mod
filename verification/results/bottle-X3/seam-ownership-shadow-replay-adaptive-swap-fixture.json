@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/verification/probe/build/motion_output_fixture.exe": "c1bd179109aad795e9d7d1f2dfb602722154eb860b3ff797d4e168fdbbf40715",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/verification/probe/build/motion-output-seam/d3d9.dll": "12268e8bc9c28b12c1b49ee64c1f3871aa0e972dda2b9ef0e1c6171c32dd8158",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/build/d3d9.dll": "cc51e4dee8d0879bdb2481a3089a8e70e2c8a035e019b19de83b6e47aea9b861"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion_output_fixture.exe": "88495a6061803c7d701faede38f6bbc646b208c77c1ca676030d8b664a0356ef",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion-output-seam/d3d9.dll": "c423ade7f4a8847596fdba145485b76d96efb52f964bcb0978c654cb8bc89e86",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/build/d3d9.dll": "d157b6eede650e469b010fb3037067e88af4f5e88f46100ddc772091826de34d"
  },
  "checks": 336,
  "depth": true,
@@ -55,20 +55,94 @@
   "6": 50.59026482599262,
   "7": 50.59026482599262
  },
+ "ladder": {
+  "ratio": 5.0,
+  "big_hull": "H2",
+  "sizes": [
+   256,
+   256,
+   256,
+   256
+  ],
+  "extents_by_frame": {
+   "0": [
+    8.0,
+    48.0,
+    240.0,
+    800.0
+   ],
+   "1": [
+    8.0,
+    48.0,
+    240.0,
+    800.0
+   ],
+   "2": [
+    8.0,
+    48.0,
+    240.0,
+    800.0
+   ],
+   "3": [
+    8.0,
+    48.0,
+    240.0,
+    800.0
+   ],
+   "4": [
+    8.0,
+    48.0,
+    240.0,
+    800.0
+   ],
+   "5": [
+    8.0,
+    48.0,
+    240.0,
+    800.0
+   ],
+   "6": [
+    50.59026482599262,
+    252.9513241299631,
+    800.0,
+    800.0
+   ],
+   "7": [
+    50.59026482599262,
+    252.9513241299631,
+    800.0,
+    800.0
+   ]
+  },
+  "active_by_frame": {
+   "0": 15,
+   "1": 15,
+   "2": 15,
+   "3": 15,
+   "4": 15,
+   "5": 15,
+   "6": 11,
+   "7": 11
+  },
+  "voided_frames": [
+   5
+  ],
+  "coarse_maps": []
+ },
  "frames": 8,
  "us": {
   "frames": 5,
-  "min": 70.4,
-  "median": 81.9,
-  "max": 1727.0
+  "min": 66.8,
+  "median": 87.3,
+  "max": 1518.9
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-swap-20260917-231733-374089",
- "trace_sha256": "abeee22a4f571c598c2f72edfb00360c6c8fb157f87bd7a3182f3617e61b0607",
- "dll_sha256": "12268e8bc9c28b12c1b49ee64c1f3871aa0e972dda2b9ef0e1c6171c32dd8158",
- "exe_sha256": "c1bd179109aad795e9d7d1f2dfb602722154eb860b3ff797d4e168fdbbf40715",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-swap-20260918-000406-955486",
+ "trace_sha256": "e670507d0474c31c75c39b3323ab7d2fce1ed931e0433bab3cc62f063d27f675",
+ "dll_sha256": "c423ade7f4a8847596fdba145485b76d96efb52f964bcb0978c654cb8bc89e86",
+ "exe_sha256": "88495a6061803c7d701faede38f6bbc646b208c77c1ca676030d8b664a0356ef",
  "map": {
   "max_depth_error": 8.4620178757433e-06,
-  "covered_texels": 189279
+  "covered_texels": 189273
  }
 }

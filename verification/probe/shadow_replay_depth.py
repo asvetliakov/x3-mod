@@ -83,7 +83,7 @@ def parse_depth_line(line):
         row['retention'] = {'live': values[0::2], 'retained': values[1::2]}
     if tail:
         count = len(tail) - len(CASCADE_FIELDS)
-        if not 1 <= count <= 4 or [k for k, _ in tail] != [f'draws{i}' for i in range(count)] + list(CASCADE_FIELDS):
+        if not 1 <= count <= 5 or [k for k, _ in tail] != [f'draws{i}' for i in range(count)] + list(CASCADE_FIELDS):  # shadow_cascade_max = 5
             raise MalformedLine(line.strip())
         try:
             values = [int(v) for _, v in tail]
@@ -157,8 +157,10 @@ def shape_vertices(shape, scale=1.0):
            'L': ((-214, 8), (-214, -8), (-195, 0)), 'F': ((-60, 4), (-60, -4), (-56, 0)),
            'W': ((-100, -5), (100, -5), (0, -4.5)),  # W: the pool script's wide sliver (a 200-unit extent below the unit casters)
            # The own-ship hulls of the adaptive cascade-0 cases (shadow-cascade-extents.md, section 5): a fighter
-           # (AABB +-1 x +-1.5: radius about 1.7 through the rows) and a capital (+-20 x +-30: about 34).
-           'H1': ((-1, -1.5), (1, -1.5), (0, 1.5)), 'H2': ((-20, -30), (20, -30), (0, 30))}[shape]
+           # (AABB +-1 x +-1.5: radius about 1.7 through the rows), a capital (+-20 x +-30: about 34) and the ladder
+           # cases' corvette (+-8.5 x +-13: about 14.5) and destroyer (+-24 x +-240: about 182).
+           'H1': ((-1, -1.5), (1, -1.5), (0, 1.5)), 'H2': ((-20, -30), (20, -30), (0, 30)),
+           'H3': ((-8.5, -13), (8.5, -13), (0, 13)), 'H4': ((-24, -240), (24, -240), (0, 240))}[shape]
     return [(x * scale, y * scale, .5) for x, y in tri]
 
 

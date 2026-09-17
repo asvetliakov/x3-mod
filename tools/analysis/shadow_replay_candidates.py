@@ -47,7 +47,7 @@ class MalformedLine(ValueError):
     pass
 
 
-CASCADE_MAX = 4
+CASCADE_MAX = 5  # renderer::shadow_cascade_max
 
 
 CLASS_FIELDS = ('class_store', 'class_ring')
@@ -55,7 +55,7 @@ CLASS_FIELDS = ('class_store', 'class_ring')
 
 def _cascade_suffix(line, pairs):
     """The optional cascade tail of a frame line: c0..c<n-1> then
-    capped0..capped<n-1>, 1 <= n <= 4; then optionally the static-only group
+    capped0..capped<n-1>, 1 <= n <= 5; then optionally the static-only group
     (static_only_refused0..n-1, large_admitted0..n-1, class_miss0..n-1, class_store, class_ring) and
     optionally the importance group (dropped_min_size0..n-1, select_us);
     nothing else."""

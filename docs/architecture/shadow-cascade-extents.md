@@ -26,8 +26,8 @@ own-ship-adaptive C0 for now. Launcher: `--shadow-cascades default --shadow-casc
 Ratified by the orchestrator 2026-09-18 with one amendment: run 39 flies set R first and,
 at the same station, a second segment with C3 = 50,000 at 4096² (set H's far cascade on R's
 near cascades) so the far-cascade pool (`c3=`, `capped3=`) and the at-rest frame delta decide
-between 5 km and 10 km reach on measurement. The own-ship-adaptive C0 and the ratio guard are
-scheduled after the first big-ship flight.
+between 5 km and 10 km reach on measurement. The own-ship-adaptive C0 and its sliding ladder
+(§5, implemented, default off) are tuned after the first big-ship flight.
 
 ## 1. Receivers and what they need
 
@@ -239,13 +239,46 @@ beside it against the mask alone, the classification per draw, and the scene-end
 full 4,096-record list are in the ledger section. Native Windows: documented D3D9 only (no new
 device calls; the selection and classification are CPU bookkeeping); unverified natively.
 
-## 5. Own-ship-adaptive C0 and a ratio guard: implemented, default off (2026-09-17)
+## 5. Own-ship-adaptive C0 and the sliding ladder: implemented, default off (2026-09-17)
+
+**Amendment (2026-09-18): the ratio guard is replaced by a sliding ladder.** The guard
+(drop any cascade with `E_i < 3 E_{i−1}`) left a corvette (M6, ~900 u long, radius ~450, K 1.5
+⇒ E0 675) without C1: 675 → 7,500 is a ratio-11 gap, ~4 px per texel right past C0, and a
+destroyer lost two. Now, while E0 is above `E0_config`, the configured ladder slides with it:
+`E_i' = max(E_i_config, E0 × R^i)` for i ≥ 1, each capped at the LAST cascade's configured
+extent (the last cascade keeps its configured extent: the ceiling), and a cascade whose slid
+extent reaches or exceeds the next one's is dropped, so the active set stays strictly
+increasing (`shadow_cascade_ladder_extent`, `shadow_cascade_ladder_mask`,
+`shadow_cascade_adapt_c0(config, e0, out, ratio)`). `R` is `--shadow-cascade-ladder-ratio R`
+(`X3M_SHADOW_CASCADE_LADDER_RATIO`, [2, 16], default 5; requires the adaptive option). E0 at
+the configured value: the configured set as it is, whatever R (a fighter is unchanged). When
+E0 falls back the ladder returns to the configured set; hysteresis and commit cadence are
+unchanged (one commit per ship change or > 20 % size change).
+
+- 250 / 1,500 / 7,500 / 37,500 (/ 150,000): corvette (radius 450) → 675 / 3,375 / 16,875 /
+  37,500 (last capped; with five: 84,375 / 150,000), every cascade kept, no gap above R.
+  Destroyer (radius 4,000) → 6,000 / 30,000, then 25 E0 = 150,000 is capped at the ceiling and
+  reaches it: C2 (and C3 with five) dropped, the last kept: 6,000 / 30,000 / 37,500 (or
+  150,000). The default 250 / 1,500 / 7,500 / 25,000 with a 1,000-radius capital: 1,500 /
+  7,500 / (25,000 capped, dropped) / 25,000.
+- **Swim.** Every cascade whose extent changed at a commit re-anchors its snap grid (its
+  texel changed) and voids its retained map (`state.changed`, `invalidate_retained(i)` per
+  bit); an unchanged cascade (a capped one already at the ceiling, the last one) keeps its
+  grid and map. One pop per commit; commits are rare (ship change, > 20 % size change). Map
+  sizes are unchanged.
+- **Log.** `shadow_cascade_set` gains `slid=` (bit i: cascade i differs from configured),
+  `changed=` (the last commit's re-anchored mask), `extents=` (every cascade's live extent, a
+  dropped one printing its capped extent) and `ratio=`; `shadow_cascades_mode` gains
+  `ladder_ratio=`. The apply slots and `source<s>=` are as before: each active cascade blends
+  into the next active one. Fixture: `seam-ownership-shadow-replay-ladder-{corvette,
+  destroyer,shrink}` on 8 / 48 / 240 / 1,200 / 4,800 (the 37,500 / 150,000 set at 1/31.25),
+  the twin's map comparison per cascade; ledger `docs/verification/directional-shadows.md`.
 
 **Amendment (2026-09-17).** Implemented behind `--shadow-cascade-adaptive-c0 K`
 (`X3M_SHADOW_CASCADE_ADAPTIVE_C0`, K within [0.5, 8], suggested 1.5; absent or 0: the set
 below is byte-identical to before). The law, in `src/renderer/shadow_replay_projection.h`
-(`shadow_cascade_adaptive_update`, `shadow_cascade_adapt_c0`, `shadow_cascade_ratio_guard_mask`)
-and `src/proxy/motion_output_shadow_adaptive_inc.h`:
+(`shadow_cascade_adaptive_update`, `shadow_cascade_adapt_c0`; the ratio guard of this
+amendment is superseded by the ladder above) and `src/proxy/motion_output_shadow_adaptive_inc.h`:
 
 - **Own ship.** The active control cockpit of the registry at `0x608504` (the walk of
   `chase_lead::active` / `object_capture::target`), its ref object `cockpit+0xc` and that
@@ -273,18 +306,20 @@ and `src/proxy/motion_output_shadow_adaptive_inc.h`:
   cascades keep theirs. Log: `shadow_cascade_set reason= own_node= own_status= own_radius= e0=
   texel0= depth_behind0= active_mask= k= pending_radius= pending_frames=` on every commit and
   on F8 frames (`reason=capture`).
-- **Ratio guard.** After each commit, every following cascade whose extent is below 3× the
-  previous *active* cascade's is dropped while that holds (`active_mask`; the reading of
-  "E_{i−1}" as the previous kept cascade: with E0 = 3,000 both 1,500 and 7,500 go, 25,000 stays).
-  A dropped cascade keeps its map, size, cap and records (no reallocation) but has an empty
+- **Ratio guard (superseded 2026-09-18 by the sliding ladder above).** After each commit, every
+  following cascade whose extent was below 3× the previous *active* cascade's was dropped
+  while that held. What remains of it: a dropped cascade (now: one whose slid extent reaches
+  the next) keeps its map, size, cap and records (no reallocation) but has an empty
   box (no record or retained draw carries its bit), replays nothing, its retained basis is
   void, and it is not a slot of the apply quad (`shadow_cascade_apply_slots`: the active
   cascades in order), so the previous cascade's blend band leads into the next active one and
   the shader is unchanged. The `sun_shadow_apply_params` line prints one entry per slot with
   `source<s>=` naming the cascade it samples; the twin reads the extents and map files by it.
-- **Expected in flight.** M5/M3 (radius ≤ 165 at K 1.5): nothing changes. M6 (radius ~500–
-  700): E0 750–1,050, C1 (1,500) dropped, C2 kept (7,500 ≥ 3 E0 up to E0 = 2,500). M2 (radius
-  ~5,000): E0 = 7,500, C1 and C2 dropped, C3 kept: 7,500 / 25,000, two maps.
+- **Expected in flight (under the ladder).** M5/M3 (radius ≤ 165 at K 1.5): nothing changes.
+  M6 (radius ~500–700): E0 750–1,050 and C1/C2 slid to 5 E0 / 25 E0 (3,750–5,250 / 18,750–
+  25,000 on the default set: C2 reaches the 25,000 ceiling above E0 = 1,000 and is dropped).
+  M2 (radius ~5,000): E0 = 7,500, C1 = 25,000 capped and dropped, C2 likewise: 7,500 / 25,000,
+  two maps; on the 37,500 set 7,500 / 37,500; on the five-cascade set 7,500 / 37,500 / 150,000.
 
 **What the first big-ship flight must measure** (to set K, still unknown): `camera_state t`
 against the ship node's position (`node+0xb0`, engine integers × 0.01) in the F8 frames, i.e.

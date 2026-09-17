@@ -2213,20 +2213,23 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 if(reason||!enabled)set=renderer::ShadowCascadeSet{};
                 // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5):
                 // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k within [0.5, 8] (E0 = max(E0, k x
-                // own-ship radius) with hysteresis; the ratio guard on the rest);
-                // absent, "0" or out of range: off.
-                float adaptive_k=0.f;
+                // own-ship radius) with hysteresis; the ladder behind it slides with E0
+                // at X3M_SHADOW_CASCADE_LADDER_RATIO per cascade, within [2, 16], default 5);
+                // absent, "0" or out of range: off (a ratio out of range: the default).
+                float adaptive_k=0.f, ladder_ratio=renderer::shadow_cascade_ladder_ratio_default;
                 if(set.count&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_ADAPTIVE_C0",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
                     if(end!=list&&*end==L'\0'&&v>=double(renderer::shadow_cascade_adaptive_k_min)&&v<=double(renderer::shadow_cascade_adaptive_k_max))adaptive_k=float(v); }
+                if(adaptive_k>0.f&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_LADDER_RATIO",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
+                    if(end!=list&&*end==L'\0'&&v>=double(renderer::shadow_cascade_ladder_ratio_min)&&v<=double(renderer::shadow_cascade_ladder_ratio_max))ladder_ratio=float(v); }
                 static_assert(renderer::shadow_cascade_max==5,"the mode line lists five cascades");
                 const auto ext=[&](unsigned i){ return double(set.count>i?set.cascades[i].half_extent:0.f); };
                 const auto sz=[&](unsigned i){ return set.count>i?set.cascades[i].size:0u; };
-                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g",
+                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g ladder_ratio=%.9g",
                     set.count!=0,reason?reason:enabled?"ok":"replay",set.count,ext(0),ext(1),ext(2),ext(3),ext(4),sz(0),sz(1),sz(2),sz(3),sz(4),
                     set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.caps[4],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
-                    set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k));
+                    set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k),double(ladder_ratio));
                 hooked.motion_output.configure_shadow_cascades(set);
-                hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k); } }
+                hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k,ladder_ratio); } }
           // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:
           // X3M_SHADOW_RETENTION_CENSUS=1 runs the store without references or replay (stage 1),
           // X3M_SHADOW_CASTER_RETENTION=1 replays retained static casters (stage 2; wins over the census).

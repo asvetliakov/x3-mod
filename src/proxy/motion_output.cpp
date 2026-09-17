@@ -7227,7 +7227,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = raster_x + centre_x; in.m21 = raster_y + centre_y;
         in.m22 = ao_default_m22; in.m32 = ao_default_m32; in.jitter_index = counters_.jitter_index; in.exponent = exponent;
         // The quad's slots are the ACTIVE cascades in order (shadow_cascade_apply_slots):
-        // a cascade the ratio guard dropped is not in the list, so the previous
+        // a cascade the ladder dropped is not in the list, so the previous
         // cascade's blend band leads into the next active one. Slot s samples
         // map slots[s]; the params line names it (source<s>) for the twin.
         unsigned slots[renderer::shadow_cascade_max]{};

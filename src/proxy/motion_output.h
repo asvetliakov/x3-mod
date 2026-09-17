@@ -503,8 +503,9 @@ public:
     void configure_shadow_cascades(const renderer::ShadowCascadeSet& set) noexcept { depth_cascade_config_=set; }
     // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5;
     // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k, 0 or absent off): E0 = max(configured,
-    // k x own-ship radius) with hysteresis, and the ratio guard on the rest.
-    void configure_shadow_cascade_adaptive(float k) noexcept { cascade_adaptive_k_=k; }
+    // k x own-ship radius) with hysteresis, and the ladder behind it sliding
+    // with E0 at `ratio` per cascade (X3M_SHADOW_CASCADE_LADDER_RATIO, default 5).
+    void configure_shadow_cascade_adaptive(float k, float ratio=renderer::shadow_cascade_ladder_ratio_default) noexcept { cascade_adaptive_k_=k; cascade_ladder_ratio_=ratio; }
     // Caster retention (shadow-caster-retention.md): census or live, on the cascades only; off by default.
     void configure_shadow_retention(shadow_retention::Mode mode, std::uint32_t age_cap, double eps, bool timing) noexcept {
         retention_mode_=mode; retention_age_cap_=age_cap; retention_eps_=eps; retention_timing_=timing;
@@ -1234,7 +1235,7 @@ private:
     // once per frame at its first candidate draw) and the frame's radius
     // accumulator; the node cache answers "descends from the own root" per
     // scope node without repeating the walk. Off (k = 0): none of it runs.
-    float cascade_adaptive_k_=0.f;
+    float cascade_adaptive_k_=0.f, cascade_ladder_ratio_=renderer::shadow_cascade_ladder_ratio_default;
     renderer::ShadowCascadeSet depth_cascade_base_{};
     renderer::ShadowCascadeAdaptive cascade_adaptive_{};
     std::uint64_t own_ship_frame_=~std::uint64_t(0);
