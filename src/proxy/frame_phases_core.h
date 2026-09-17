@@ -21,7 +21,7 @@
 namespace x3m::frame_phases::detail {
 inline constexpr unsigned core_sites = 7, site_count = 10;
 inline constexpr unsigned phase_count = 9; // pre_render, seven stamp intervals, present
-inline constexpr unsigned pre_render = 0, present_phase = 8;
+inline constexpr unsigned pre_render = 0, views_phase = 4, present_phase = 8;
 inline constexpr unsigned window_frames = 300, slow_slots = 4;
 inline constexpr const char* const phase_names[phase_count] = {
     "pre_render", "prologue", "scene_update", "begin_scene", "views", "overlays", "text", "scene_end", "present"};
@@ -41,6 +41,7 @@ struct Tracker {
     bool pending = false;  // `closed` holds a finished frame not yet taken by frame()
     unsigned phase = 0, fired = 0;
     std::uint64_t last_qpc = 0, setup_begin = 0, submit_begin = 0;
+    std::uint64_t submit_end = 0; // the frame's last view_submit_end clock, retained for the residual group (one store per view)
     std::uint64_t phase_ticks[phase_count]{};
     std::uint64_t setup_ticks = 0, submit_ticks = 0;
     std::uint32_t views = 0;
@@ -51,7 +52,7 @@ struct Tracker {
     } closed{};
 
     void restart(std::uint64_t qpc) noexcept {
-        live = true; phase = pre_render; fired = 0; last_qpc = qpc; setup_begin = submit_begin = 0;
+        live = true; phase = pre_render; fired = 0; last_qpc = qpc; setup_begin = submit_begin = submit_end = 0;
         for (auto& t : phase_ticks) t = 0;
         setup_ticks = submit_ticks = 0; views = 0;
     }
@@ -79,7 +80,7 @@ struct Tracker {
             setup_begin = 0; submit_begin = qpc;
         } else {
             if (submit_begin && qpc >= submit_begin) submit_ticks += qpc - submit_begin;
-            submit_begin = 0;
+            submit_begin = 0; submit_end = qpc;
         }
     }
     // Ahead of the forwarded native Present.

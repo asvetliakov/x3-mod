@@ -31,6 +31,9 @@ void frame_impl(std::uint64_t frame, bool sampled, std::uint64_t view_submit_us)
 inline void frame(std::uint64_t frame_index, bool sampled, std::uint64_t view_submit_us) noexcept {
     if (active.load(std::memory_order_relaxed)) detail::frame_impl(frame_index, sampled, view_submit_us);
 }
+// The per-frame accumulator, for the residual group's pairing clocks and
+// pass count (residual_phases.cpp; owner thread only, never null).
+detail::Accumulator* shared_accumulator() noexcept;
 #ifdef X3M_GAME_PHASE_FIXTURE
 // The production install transaction on fixture spans (plain copies: the
 // fixture supplies its own addresses, the bytes are the real ones).

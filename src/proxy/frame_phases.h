@@ -30,6 +30,9 @@ void frame_impl(std::uint64_t frame) noexcept;
 inline void present_begin() noexcept { if (active.load(std::memory_order_relaxed)) detail::present_begin_impl(); }
 inline void present_end() noexcept { if (active.load(std::memory_order_relaxed)) detail::present_end_impl(); }
 inline void frame(std::uint64_t frame_index) noexcept { if (active.load(std::memory_order_relaxed)) detail::frame_impl(frame_index); }
+// The per-frame tracker, for the residual group's view_submit_end clock
+// (residual_phases.cpp; owner thread only, never null).
+const detail::Tracker* shared_tracker() noexcept;
 #ifdef X3M_GAME_PHASE_FIXTURE
 // The production install transaction on fixture spans: specs carry fixture
 // addresses and bytes, length/rel32 metadata stays the real contract.

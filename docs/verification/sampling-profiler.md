@@ -847,6 +847,108 @@ slow sector):
 | --- | --- | --- | --- |
 | 2026-09-16 | Loop-phase group added (six sites, shared lean stub, `--loop-phases`) | `verify_loop_phase_sites.py` PASS, `source_present: true`; `run_game_phase_cpu.py` under X3: 8274 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=89.7 implied_frame_us_1_sector=0.54 implied_frame_us_200_sectors=108`, fixture arena 17980/32768 B; host `test_loop_phases` 9 tests OK (`loop_phases_host` 40 checks); DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_loop_phase_enter` walked (492 reachable functions). Both DLL figures were measured on the worktree build (31c0c79 plus the uncommitted change), and the fixture record has `fixture_sha256: null` because that run used `--no-build`. The run 33 install candidate re-measured both on committed main a3cafd5 (DLL `03c0c9f4`): `check_no_x87.py` 0 violations, 74 roots / 492 reachable functions with `_x3m_loop_phase_enter` and `_x3m_pass_phase_enter` walked, and `run_game_phase_cpu.py` with a build (`fixture_sha256 377ac95e`) PASS at 8274 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=90.9 implied_frame_us_1_sector=0.55 implied_frame_us_200_sectors=109`; record `verification/results/run33-candidate-build.json`. The run 34 candidate on committed main ee5a406 (DLL `7102a2f1`) repeated both: `check_no_x87.py` 0 violations, 76 roots / 494 reachable, and `run_game_phase_cpu.py` PASS at 8521 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=88.6 implied_frame_us_1_sector=0.53 implied_frame_us_200_sectors=106`, fixture arena 19,448/32,768 B; record `verification/results/run34-candidate-build.json` | not yet run in the game |
 
+## Residual phases (`X3M_RESIDUAL_PHASES=1`)
+
+Run95's busy window leaves two remainders unattributed: `view_submit − sum`
+(4,520 us, "the engine's work between passes", 4.6 us per draw) and the part
+of the `views` phase outside `view_setup` and `view_submit` (23,072 − 20,115
+− setup, roughly 2 ms per busy frame). `--residual-phases` (launcher
+`tools/manage.py`, requires `--telemetry`, implies `--frame-phases` and
+`--pass-phases`; `X3M_RESIDUAL_PHASES=1`) splits each with one
+byte-verified stamp (`src/proxy/residual_phase_sites.h`, studies
+`docs/reverse-engineering/effect-pass-loop.md` section 7 and
+`frame-loop-phases.md` section 5d):
+
+* `material_setup` `0x004c1eab` (`mov edx,[ebx]; mov ecx,[edx+0xfc]`, 8
+  bytes), the `ID3DXEffect::Begin` dispatch of the material submission
+  routine, once per sub-mesh. It is the first instruction of the
+  steady-state D3DX path: the two material-initialisation guards
+  (`0x004c0c67`, `0x004c0ded`), the initialisation path's exit
+  (`0x004c0de5`) and its parameter-loop skip (`0x004c1e23`) all land on the
+  span start.
+* `view_particles` `0x0047230c` (`mov edx,[0x608518]; add esp,4`, 9 bytes),
+  the return of the particles call `0x004bf4c0` in the frame routine's
+  per-view loop, once per view whose `view[0x270] & 0x4000` gate admitted the
+  call (the `je 0x472315` that skips it lands exactly on the span end).
+
+Neither stamp opens an interval of its own: each pairs with a clock a sibling
+group retains on the same owner thread. The pass accumulator keeps
+`end_clock` (the last `pass_end`, one store per pass) and `begin_clock` (the
+first `pass_begin` after this group armed it, one predicted branch per
+`pass_begin`); the frame tracker keeps `submit_end` (the view's
+`view_submit_end`, one store per view). At `material_setup`, `prepare += now
+− end_clock` and the previous material's `setup += begin_clock − p` closes
+(the frame's last material closes at the frame boundary); at
+`view_particles`, `particles += now − submit_end`. The frame boundary
+(`frame_phases::detail::frame_impl`, ahead of the pass group's own reduction
+so the pass count and clocks are still open) computes `other = views −
+view_setup − view_submit − particles`. Same lean stub and handler shape as
+the pass group (`LightCallBoundary`, one `QueryPerformanceCounter`, no log,
+no allocation; `check_no_x87.py` walks `_x3m_residual_phase_enter`); the
+install is the shared transaction and additionally refuses with
+`frame_phases_off` or `pass_phases_off`; `residual_phase_mode` and two
+`residual_phase_site` lines record it. About 1,000 material stamps and a
+handful of view stamps per busy frame.
+
+Per 300-frame window one line, microseconds, nearest-rank percentiles over
+per-frame values, the frame index of the window's last frame:
+
+```
+residual_phases qpc= frame=N frames=300 materials_p50= particle_views_p50= passes_p50= views_p50= prepare_p50_us= prepare_p95_us= setup_p50_us= setup_p95_us= prepare_per_pass_p50_ns= setup_per_pass_p50_ns= particles_p50_us= particles_p95_us= other_p50_us= other_p95_us= self_p50_us= dispatch_cost_ns= prepare_skipped= setup_skipped= view_skipped= other_underflow= clock_errors= clock_failures= unmatched= dropped= early= foreign=
+```
+
+| Field | Interval | Contains |
+| --- | --- | --- |
+| `prepare` | last `pass_end` -> `material_setup` | the engine's per-object preparation: the pass loop's tail, `ID3DXEffect::End`, the routine's exit (SEH unlink), the caller's queue walk or traversal step, cull and world matrix, the next node's entry (SEH record, `0x4c8`-byte frame, `SetSoftwareVertexProcessing`), the sub-mesh head, the three engine-wrapper binds and the two initialisation guards; the D3DX work inside it is `End`, and per draw `GetTechniqueByName` (slot 13) plus `SetTechnique` (slot 58; `FindNextValidTechnique` only on a name miss), never the parameter setters |
+| `setup` | `material_setup` -> first `pass_begin` | D3DX: `Begin(&passes, 1)`, the ~75 parameter setters (`SetInt`/`SetVector`/`SetBool`/`SetFloat`/`SetMatrix`, `GetBool`, `ApplyParameterBlock`, the cached texture setter) and, engine-side, the two render-state writes and the geometry guard |
+| `particles` | `view_submit_end` -> `view_particles` | the particles/stardust pass `0x004bf4c0` of the view (plus the small state reset loop before it) |
+| `other` | `views − view_setup − view_submit − particles` | the rest of the per-view loop: the scene-end composite `0x004c4750` (the proxy's scene hook), the env-map pass, post-view fixup `0x00489bf0`, `0x004715d0`, the loop's own tail |
+| `*_per_pass_ns` | | `prepare`/`setup` × 1000 / the frame's `passes` (the pass group's count), the per-draw figure the pass-replay note estimates |
+| `self` | | `(materials + particle_views) × dispatch_cost_ns / 1000`, not subtracted |
+
+Reading it, against the run95 busy window (`view_submit − sum` 4,520 us at
+981 passes): `setup_p50_us` is what option A of
+`docs/architecture/effect-pass-replay.md` can take over with parameter
+ownership (the setters and `Begin`); `prepare_p50_us` is the engine's own
+cost and is reducible only by engine patches (the O(n²) sort, the SEH frame
+per node). `prepare + setup` should be close to `view_submit − sum −
+(traversal, sort and everything outside the sub-mesh loop)`, so the gap to
+4,520 us is the per-view work outside `0x004c0150`. `particles_p50_us`
+against `other_p50_us` says whether the ~2 ms outside submission is the
+particles pass or the composite/env-map path. `prepare_skipped` is about one
+per frame plus one per material whose geometry guard skipped the pass loop
+(those also count in `setup_skipped`); `view_skipped` counts a second
+particles return against the same view (not expected); `other_underflow`
+counts frames whose `views` phase was shorter than its parts (clock
+granularity; `other` reported as 0); `orphans`-class counters, `clock_*`,
+`unmatched`, `early` and `foreign` should be zero in a healthy run. Off,
+nothing is installed and the frame boundary is one relaxed load.
+
+Verification: `python3 verification/probe/verify_residual_phase_sites.py`
+(exact bytes, whole instructions of both gap-free routine decodes, the exact
+incoming-edge sets, plain copy, the Begin-dispatch and particles-call
+anchors, the `je` landing on the span end, every jump between
+`view_submit_end` and the span staying inside that range, raw
+interior-encoding sweep of `.text`, no data reference, disjoint from the 61
+installed game/frame/pass sites, the scene hook and the point-light patch,
+EXE identity); `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py
+python3 verification/probe/run_game_phase_cpu.py` (both exact spans on a
+synthetic material-plus-view body with the pass group on the same body and
+the frame group on the frame body, so the pairing uses the real retained
+clocks and the frame boundary runs through `frame_phases::frame`: hostile CPU
+state parity, early and foreign stamps ignored, the frame's first material
+skipped, prepare/setup pairing, a skipped pass loop, the pending setup closed
+at the boundary, `other` or its underflow, rollback, byte-mismatch refusal,
+duplicate-claim rollback, late-window refusal, the benchmark row); host
+`verification/analysis/test_residual_phases.py` (`residual_phases_host.cpp`
+accumulator/gate/window probe, wiring, launcher) and the arena accounting in
+`test_game_phase_sites.py` (production arena 24,576 B, 16,380 modelled with
+every optional group on, 8,196 B free). Ledger:
+
+| Date | Change | Checks | Result |
+| --- | --- | --- | --- |
+| 2026-09-17 | Residual group added (two sites, shared lean stub, `--residual-phases`); production arena 20,480 -> 24,576 B (the accounting would still fit in 20,480 with 4,100 B free; the page is headroom); pass accumulator retains `end_clock`/`begin_clock`, frame tracker retains `submit_end` | `verify_residual_phase_sites.py` PASS (61 installed sites checked disjoint), the game/frame/pass/loop verifiers PASS; `run_game_phase_cpu.py` under X3 (worktree build, `fixture_sha256 377ac95e`): 8839 checks, 0 failures, `RESIDUAL PHASE BENCH dispatch_ns=90.7` (92.7 in a first run; documented 91), `PASS PHASE BENCH dispatch_ns=95.8` (91.5 in the first run, 89.1-92.3 in the previous four runs: the retained-clock branch is within noise), `LOOP PHASE BENCH dispatch_ns=91.7`, fixture arena 23,876/32,768 B; host `test_residual_phases` 9 tests OK (`residual_phases_host` probe), `test_game_phase_sites` + `test_media_cue` 26 tests OK; DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_residual_phase_enter` walked (505 reachable) | not yet run in the game |
+
 ## Per-call cost of the hooked state setters under the X3 bottle (2026-09-16)
 
 `verification/probe/state_hook_benchmark.cpp` (build

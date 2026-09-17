@@ -10,34 +10,37 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "exit": 0,
-  "elapsed_s": 8.1,
+  "elapsed_s": 6.6,
   "summary": {
     "stubs": "47",
     "frame_sites": "10",
     "pass_sites": "4",
     "loop_sites": "6",
+    "residual_sites": "2",
     "media_sites": "1",
     "replay_cases": "13",
     "actual_target_handler_cases": "5",
     "frame_cases": "4",
     "pass_cases": "5",
     "loop_cases": "7",
+    "residual_cases": "6",
     "media_cases": "11",
-    "arena_used": "20544",
+    "arena_used": "23876",
     "arena_capacity": "32768",
-    "checks": "8684",
+    "checks": "8839",
     "failures": "0"
   },
   "failures": [],
   "benchmark_lines": [
-    "GAME PHASE BENCH trials=3 batches=128 loops_per_batch=4 marker_calls_per_loop=18 owned_bridges_per_loop=1 cpu_queries_per_enabled_loop=17 baseline_loop_us=19.893880 disabled_loop_us=25.357161 enabled_loop_us=142.042708 disabled_added_loop_us=5.463281 enabled_added_loop_us=122.148828 enabled_added_per_marker_equivalent_us=6.786046 scope=actual_emit_callback_core_owned_bridge_GetThreadTimes harness=paired_same_snapshot normal_tape=yes pump_metadata=valid engine_read_epoch=per_loop warmup_loops_per_batch=1 runtime_report_includes_warmup=yes game_fps=unmeasured",
-    "GAME PHASE TARGET BENCH variant=nonnull_mode3 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=8 cpu_queries_per_request=0 native_request_us=1.127799 disabled_request_us=3.517708 enabled_request_us=6.147005 disabled_added_request_us=2.389909 enabled_added_request_us=5.019206 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
-    "GAME PHASE TARGET BENCH variant=null_mode3 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=2 cpu_queries_per_request=0 native_request_us=1.103255 disabled_request_us=1.701693 enabled_request_us=2.616536 disabled_added_request_us=0.598437 enabled_added_request_us=1.513281 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
-    "GAME PHASE TARGET BENCH variant=rejected_null_mode2 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=2 cpu_queries_per_request=0 native_request_us=1.103646 disabled_request_us=1.706250 enabled_request_us=2.106510 disabled_added_request_us=0.602604 enabled_added_request_us=1.002865 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
-    "PASS PHASE BENCH loops=20000 trials=7 baseline_ns_per_loop=1.8 hooked_ns_per_loop=371.2 dispatch_ns=92.3 implied_busy_frame_us=372 budget_us=1500 within_budget=1 documented_dispatch_ns=91",
-    "LOOP PHASE BENCH loops=20000 trials=7 dispatches_per_loop=16 baseline_ns_per_loop=36.1 hooked_ns_per_loop=1506.2 dispatch_ns=91.9 implied_frame_us_1_sector=0.55 implied_frame_us_200_sectors=110 documented_dispatch_ns=91 arena_used=15916 arena_capacity=32768",
-    "MEDIA CUE BENCH loops=20000 trials=7 baseline_ns_per_call=11.9 pass_ns_per_call=229.5 refuse_ns_per_call=113.5 pass_dispatch_ns=217.6 refuse_dispatch_ns=101.7 documented_pass_ns=280 documented_refuse_ns=116 trace_pass_ns_per_call=239.7 trace_pass_dispatch_ns=227.8 enter_line_ns=2073.6 stub_bytes=300 arena_used=18356 arena_capacity=32768"
+    "GAME PHASE BENCH trials=3 batches=128 loops_per_batch=4 marker_calls_per_loop=18 owned_bridges_per_loop=1 cpu_queries_per_enabled_loop=17 baseline_loop_us=19.281055 disabled_loop_us=24.450911 enabled_loop_us=147.652148 disabled_added_loop_us=5.169857 enabled_added_loop_us=128.371094 enabled_added_per_marker_equivalent_us=7.131727 scope=actual_emit_callback_core_owned_bridge_GetThreadTimes harness=paired_same_snapshot normal_tape=yes pump_metadata=valid engine_read_epoch=per_loop warmup_loops_per_batch=1 runtime_report_includes_warmup=yes game_fps=unmeasured",
+    "GAME PHASE TARGET BENCH variant=nonnull_mode3 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=8 cpu_queries_per_request=0 native_request_us=1.102474 disabled_request_us=3.379557 enabled_request_us=5.988021 disabled_added_request_us=2.277083 enabled_added_request_us=4.885547 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
+    "GAME PHASE TARGET BENCH variant=null_mode3 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=2 cpu_queries_per_request=0 native_request_us=1.036133 disabled_request_us=1.597201 enabled_request_us=2.578776 disabled_added_request_us=0.561068 enabled_added_request_us=1.542643 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
+    "GAME PHASE TARGET BENCH variant=rejected_null_mode2 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=2 cpu_queries_per_request=0 native_request_us=1.107682 disabled_request_us=1.709896 enabled_request_us=2.124674 disabled_added_request_us=0.602214 enabled_added_request_us=1.016992 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
+    "PASS PHASE BENCH loops=20000 trials=7 baseline_ns_per_loop=1.8 hooked_ns_per_loop=385.1 dispatch_ns=95.8 implied_busy_frame_us=386 budget_us=1500 within_budget=1 documented_dispatch_ns=91",
+    "LOOP PHASE BENCH loops=20000 trials=7 dispatches_per_loop=16 baseline_ns_per_loop=35.2 hooked_ns_per_loop=1501.8 dispatch_ns=91.7 implied_frame_us_1_sector=0.55 implied_frame_us_200_sectors=110 documented_dispatch_ns=91 arena_used=15916 arena_capacity=32768",
+    "RESIDUAL PHASE BENCH loops=20000 trials=7 baseline_ns_per_loop=1.7 hooked_ns_per_loop=183.0 dispatch_ns=90.7 implied_busy_frame_us=92 documented_dispatch_ns=91 arena_used=19156 arena_capacity=32768",
+    "MEDIA CUE BENCH loops=20000 trials=7 baseline_ns_per_call=8.5 pass_ns_per_call=265.6 refuse_ns_per_call=113.3 pass_dispatch_ns=257.1 refuse_dispatch_ns=104.8 documented_pass_ns=280 documented_refuse_ns=116 trace_pass_ns_per_call=234.3 trace_pass_dispatch_ns=225.8 enter_line_ns=1862.5 stub_bytes=300 arena_used=21596 arena_capacity=32768"
   ],
-  "fixture_sha256": null,
+  "fixture_sha256": "377ac95ee289ec1ac898e9487041ea61884134fe4278f6c22e73944a097b99f7",
   "stdout": "build/verification/game-phases/stdout.txt"
 }

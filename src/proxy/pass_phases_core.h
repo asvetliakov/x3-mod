@@ -46,6 +46,12 @@ struct Accumulator {
     std::uint64_t ticks[interval_count]{};
     std::uint32_t passes = 0;
     std::uint64_t last = 0; // the previous stamp's clock, 0 = no open interval
+    // Clocks retained for the residual group (residual_phases_core.h), written
+    // here and read on the same owner thread: the last pass_end, and the first
+    // pass_begin after the residual group armed the capture. One store per
+    // pass_end and one predicted branch per pass_begin.
+    std::uint64_t end_clock = 0, begin_clock = 0;
+    bool begin_armed = false;
     // Window counters, reset by the reporter.
     std::uint64_t orphans = 0;        // a closing stamp with no open interval, or an opening stamp over one still open
     std::uint64_t clock_errors = 0;   // a backward clock: the interval is not accumulated
@@ -53,15 +59,16 @@ struct Accumulator {
     std::uint64_t unmatched = 0;      // an index outside the site table
     void stamp(unsigned index, std::uint64_t now) noexcept {
         if (index >= site_count) { ++unmatched; return; }
-        if (!now) { ++clock_failures; last = 0; if (index == site_count - 1) ++passes; return; }
+        if (index == 0 && begin_armed) { begin_armed = false; begin_clock = now; }
+        if (!now) { ++clock_failures; last = 0; if (index == site_count - 1) { ++passes; end_clock = 0; } return; }
         if (index == 0) { if (last) ++orphans; last = now; return; } // a pass whose end never arrived
         if (!last) ++orphans;
         else if (now < last) ++clock_errors;
         else ticks[index - 1] += now - last;
-        if (index == site_count - 1) { ++passes; last = 0; }
+        if (index == site_count - 1) { ++passes; last = 0; end_clock = now; }
         else last = now;
     }
-    void discard() noexcept { for (auto& t : ticks) t = 0; passes = 0; last = 0; }
+    void discard() noexcept { for (auto& t : ticks) t = 0; passes = 0; last = 0; end_clock = begin_clock = 0; begin_armed = false; }
     // Closes the frame's accumulation as a sample in microseconds.
     void take(std::uint64_t frame, std::uint64_t frequency, std::uint64_t view_submit_us, Sample& out) noexcept {
         out = Sample{};
