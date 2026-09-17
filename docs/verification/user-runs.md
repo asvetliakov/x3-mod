@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-17. Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-17 (run 38 queued). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -56,117 +56,55 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 35 | D3DX builtin vs native (no new DLL) | 1 | Completed as run103: visuals unchanged; identity line could not prove the builtin loaded; BeginPass 8.90 vs 6.64 µs/pass confounded by build; repeat as run 36 on one build |
 | 36 | D3DX builtin vs native on one build (A1/A2); first sun shadows on original shading (B) | 0 | A1 run104 / A2 run105: builtin D3DX confirmed loaded (`wine_builtin=1`) and costs +2.1 µs per pass (BeginPass 8.71 vs 6.58 µs); native stays, experiment closed. B run106: no visible shadow; apply path proven correct offline (backlit view, only the own ship cast because casters were chosen by origin); fixed for run 37 |
 | 37 | FEX memory-order relaxation (A1), wined3d command stream off (A2), station shadows side-lit with geometry casters (B), comm dialog with the H.264 avatar file and the blit witness (C) | 0 | A1 run107: FEX TSO off no change (within 1 %); A2 run108: CSMT off doubles the draw call (17.6 vs 8.8 µs), +46 % frame; both closed. B run109: first visible shadows (hull from station, ship on station when close); station-on-station missing because the 250-unit box around the camera admits only nearby casters (casters median 8 / max 49 of 93–930 routed, cap never binding); extent/depth/cap/bias options for run 38. C run110: comm dialog froze after a successful H.264 graph build with zero blits (witness), same stage as the MPEG-1 attempt; codec-independent Wine amstream/DirectDraw block; video parked; original file restored |
+| 38 | Wide single shadow map at 4096 (A), own-ship near map baseline (A2), residual phases at the busy view (B), hull emitters bracket (C) | 4 | Queued: run38 candidate `5b4be52e…` from `e575136` installed 2026-09-17 |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
 
-## 37. Environment experiments, station shadows, avatar video — queued (run37 candidate)
+## 38. Wide shadow map, own-ship baseline, residual phases — queued (run38 candidate)
 
-Installed: DLL `61725145…` from `1f2de5d` (see [status](../status.md)). Original hull shading
-throughout. Sessions A1/A2 are the busy-frame experiments at the run95/run105
-view (two minutes busy, one minute empty, quit); B is the shadow look; C is a
-deliberate throwaway.
+Installed: DLL `5b4be52e…` from `e575136` (see [status](../status.md)). Original hull shading throughout. The cascade
+design ([note](../architecture/shadow-cascades.md)) is calibrated by A and A2.
 
-**Session A1** (FEX memory-ordering relaxation; may expose races: crashes,
-glitches, audio trouble are findings, not surprises):
+**Session A** (one wide map: 1,500-unit half-extent, 3,000 along the sun,
+4096 texels, cap 512):
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases --fex-tso off
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates --shadow-replay-extent 1500 --shadow-replay-depth-half 3000 --shadow-replay-size 4096 --shadow-replay-cap 512 --sun-shadow-bias-clamp-texels 4 --frame-phases
 ```
-**Session A2** (wined3d command-stream thread off):
+Go to the run109 spot above the station deck with the sun to one side and
+look for station parts shadowing each other across the deck (tower, boxes,
+antennae). Press F8 twice: one wide station view, one close to a shadow edge.
+Report: station-on-station shadows yes/no, how far across the station they
+reach, edge sharpness, acne or striping, light leaking at silhouettes,
+flicker while flying, and the frame-rate feel. The log carries the caster
+counts, the replay cost at this size and the resolved bias.
+
+**Session A2** (the near-map baseline for the own ship, same spot, one
+minute): the run37 configuration at 4096 texels:
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases --wined3d csmt=0x0
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates --shadow-replay-size 4096 --frame-phases
 ```
-For both: say whether the game misbehaved in any way and whether it felt
-faster. The log compares per-pass and frame time against run105.
+One F8 close to your own hull with the sun to the side; say whether the
+ship's self-shadow is sharper than in run 37 B.
 
-**Session B** (shadows, geometry casters):
+**Session B** (residual attribution at the busy view, two minutes busy, one
+empty, quit):
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases --residual-phases
 ```
-Go back to the run106 spot above the station deck (tower and box near you),
-but turn so the sun is off to one side (60–120° from your view direction)
-rather than behind you. Station parts within about 250 m of your ship now
-cast; the rest of the complex does not yet. Press F8 twice: once with the
-tower's shadow expected across the deck, once close to your own hull with the
-sun to the side. Report: shadows visible or not, where, edge quality, acne or
-striping, flicker, frame-rate change. The lane costs are in the log.
+Nothing to look at; the log splits the engine's between-pass time into its
+own preparation and the D3DX technique lookup per draw, and the time outside
+submission into particles and the rest.
 
-**Session C** (avatar video through stock decoders; expect a possible freeze):
-before this session the H.264/AVI transcode of `mov\00001.dat` is installed
-over the original with `python3 tools/media_transcode.py install --id 1 --from
-/tmp/x3-media-transcode` (the original is kept as `00001.dat.orig`; restore
-with `python3 tools/media_transcode.py restore --id 1`). Then:
+**Session C** (hull emitters bracket, any station with position lights and
+signs, one minute):
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --media-cue-trace
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --hull-emitters
 ```
-Load, open a comm dialog with any ship or station once, note whether the
-avatar video plays (moving picture, black box, or freeze), quit or force-quit.
-The log's `media_video_blit` lines say whether decoded frames reached
-Direct3D before any freeze. Restore the original file afterwards.
+Press F6 to toggle the emitter gains (engines, effects and now hull lights
+together) and say whether the station's position lights, warning and
+construction signs read as lights at gain 2, and whether anything else on
+the hull brightened that should not have.
 
-## 36. D3DX on one build, first sun shadows — queued (run36 candidate)
-
-Installed: DLL `51a3d764…` from `c9a8145` (see [status](../status.md)). Original hull shading
-throughout; no `--linear-materials` anywhere.
-
-**Session A1** (builtin D3DX, the run95 busy view):
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases --d3dx builtin
-```
-**Session A2** (native D3DX, same spot, same duration):
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases
-```
-For A1 and A2: load the usual save, hold the busy Argon station view about two
-minutes, then an empty view for one minute, quit. Nothing to look at beyond
-"anything rendered wrong?". The log's `loaded_module` line now says
-`wine_builtin=1` when the builtin loaded, and the launcher's first stderr line
-records the command.
-
-**Session B** (first shadows):
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates
-```
-1. Fly near a station in daylight with the sun to one side. Look at the
-   station's own parts shadowing each other and at your ship's hull; also at
-   engine glow and bolts over a shadowed hull (a known limitation darkens
-   effects composed over a shadowed receiver).
-2. Press F8 twice: once at about 1 km facing a station with the sun to the
-   side, once close to your own ship's shadowed side. The capture now dumps
-   the sun map so the mask can be judged offline.
-3. Report what you see in plain words: are there shadows at all, are they in
-   the right place, edge quality, acne or striping, anything flickering, and
-   whether the frame rate changed noticeably. Shadows are expected to be
-   rough on this first look; the run decides bias and cascade tuning.
-If the game misbehaves, the same command without `--sun-shadow-apply` keeps
-the lane and replay diagnostics only.
-
-## 35. D3DX builtin vs native at the busy view — completed (run103)
-
-Installed: DLL `7102a2f1…` from `ee5a406` (see [status](../status.md)); the
-bottle's graphics backend is back on its default. The launcher option
-`--d3dx builtin` forces Wine's builtin `d3dx9_37` for the game child only
-([design](../architecture/effect-pass-replay.md), bottle experiments); the
-proxy's `loaded_module` line reports which `d3dx9_37.dll` actually loaded.
-
-**Session A** (from the repository root):
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --frame-phases --pass-phases --d3dx builtin --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
-```
-1. Load the usual save and go to the run95 busy Argon view (the station
-   complex where the frame was 26.5 ms); hold it for about two minutes, then
-   look away to an empty view for a minute and quit.
-2. Say whether anything rendered differently or failed to render (effects,
-   HUD, text) with the builtin D3DX; the game's effects compile through it.
-3. Optional **A2**: the same command without `--d3dx builtin`, same spot, same
-   duration, as the native control on this build (run95 is the control from the
-   run33 build otherwise).
-
-What is read: the `d3dx9_37` `loaded_module` line (builtin vs the game
-directory's native file), and the `--pass-phases` per-pass BeginPass median
-against run95's 6.7 µs at the same draw count. If the builtin loads and
-BeginPass changes by less than 1 µs, the experiment is void and the pass-replay
-prerequisites follow; if the builtin fails to load, the log says so and the
-override syntax is the suspect.

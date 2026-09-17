@@ -1,7 +1,7 @@
 # Project status
 
-Updated 2026-09-17 (run37 candidate installed; run 37 complete; run 38 candidate in preparation). This is the short current handoff; the current
-session handoff is [handoff-2026-09-17.md](handoff-2026-09-17.md). The day's narrative
+Updated 2026-09-17 (run38 candidate installed; run 38 queued). This is the short current handoff; the current
+session handoff is [handoff-2026-09-18.md](handoff-2026-09-18.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
 [status history 2026-09-14](archive/status-history-2026-09-14.md); earlier
@@ -13,213 +13,33 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`617251450ceaa88db827295199a2aaa46525b0c165008120cf9786c46b8e248d`
-(17,071,654 bytes), built once on Opus from clean committed main `1f2de5d`
-(2026-09-17; marker `X3M_SOURCE_COMMIT=1f2de5d…`, no `-dirty`). The
-[build record](../verification/results/run37-candidate-build.json) binds the
-clean build (14 s, zero warnings), the no-x87 audit (76 roots, 504 reachable,
-0 violations), 17 exports, the four site verifiers, the stamp CPU fixture
-(8,684 checks, 0 failures, media cases 11), the state-hook benchmark
-([record](../verification/results/bottle-X3/state-hook-benchmark-run37.json):
-SetSamplerState 10.5 ns, draw pair 1,010 ns; SetRenderState 15.5 ns in a run
-where native also drifted to 14.9, read as fixture noise), the ownership
-runner (370/563 checks, 0 failures; the surface lock shells changed), seven
-motion-output cases equal to the committed record, the sun-lane live cases
-`shadow_apply`/`original_lane` equal to the 19/19 record, and the four run 37
-dry-runs. The [install record](../verification/results/run37-candidate-install.json)
-binds the installed bytes, unchanged EXE/bottle hashes and the rollback; the
-previous run36 DLL `51a3d764…` and manifest are in
-`/tmp/x3-candidate-uB6Iyy/rollback`. No game launched.
+`5b4be52e890fc25b99c8c69fe057b7f23aed4f81e3a167d010190f770a5f3f40`
+(17,302,194 bytes), built once on Opus from clean committed main `e575136`
+(2026-09-17; marker `X3M_SOURCE_COMMIT=e575136…`, no `-dirty`). The
+[build record](../verification/results/run38-candidate-build.json) binds the
+clean build (13 s, zero warnings), the no-x87 audit (77 roots, 509 reachable,
+0 violations), 17 exports, the five site verifiers (frame, pass, loop,
+residual, media cue), the stamp CPU fixture (8,839 checks, 0 failures), the
+state-hook benchmark ([record](../verification/results/bottle-X3/state-hook-benchmark-run38.json):
+SetSamplerState 10.5 ns, draw pair 1,012 ns, unchanged), the ownership
+runner (370/563, 0 failures), ten motion-output cases (parity equal to the
+committed record; the wide replay/apply cases pass), the sun-lane live cases
+`shadow_apply`/`original_lane`/`hull_emission` equal to the 20/20 record,
+the hull-emission GPU slice (error 0), and the four run 38 dry-runs. The
+[install record](../verification/results/run38-candidate-install.json) binds
+the installed bytes, unchanged EXE/bottle hashes and the rollback; the
+previous run37 DLL `61725145…` and manifest are in
+`/tmp/x3-candidate-Ek2A0u/rollback`. No game launched.
 
-This build adds, on top of run36's: cascade-0 casters chosen by geometry
-(draw-range vertex extents against the map box, cap 512 per frame; the
-station deck under the ship now casts) with the apply quad's raster-jitter
-term and the `sun_shadow_apply_params` capture line; the video blit witness
-(`media_video_blit` under `--media-cue-trace --ownership`); launcher
-`--fex-tso on|off`, `--wined3d CONFIG` (child-only environment experiments).
-Default path unchanged. Appearance defaults unchanged; no shadows unless
-`--sun-shadow-apply`. The run106 diagnosis: the apply path is correct
-(receiver-map residual within one unit, HDR darkening matches the twin); the
-captures were backlit ([ledger](verification/directional-shadows.md)).
-
-## Session 2026-09-17: run 29 received, run 30 candidate
-
-Run 29 came back as `run83` (A), `run84` (A2 with the profiler) and `run85`
-(B). Outcomes and decisions:
-
-- **Engines never responded to any gain:** the ship engine glow is the jump
-  gate's program pair `d5e1c753…/8360f422…`, drawn on 92 of 122 engine
-  materials with the screen blend ONE/INVSRCCOLOR that the gain admission
-  refused ([effect shader users](reverse-engineering/effect-shader-users.md)).
-  Only 39 pixel / 24 vertex programs were ever created across 81 sessions;
-  18 of the 20 gain pairs and 8 of the 9 bullet pairs never were. Decision
-  (user): one gain, one key; screen draws substituted additive under the gain
-  ([cost note](architecture/linear-emission-cost.md), "Screen substitution").
-  Plan and attribution table: [emitter-plan.md](architecture/emitter-plan.md).
-- **Halo persisted with alpha 0 and native bolts:** the bloom source is
-  unbounded, so gained or overlapping bolts saturate the tonemapper into a
-  white disc; the kernel itself is narrow (50 % at 2–3 px). Ratified and
-  merged: `--bloom-source-clamp` ([bloom-falloff.md](architecture/bloom-falloff.md)).
-- **Chase pose:** fixed per the user; no centre-then-jump.
-- **FPS:** busy view 14.7 ms p50 at ~240 draws vs 8.1 ms at ~86 facing away;
-  Present 9–15 µs throughout (CPU-side, scales with draws). The sampling
-  profiler attributes nothing under FEX (every leaf a syscall thunk), so
-  `--frame-timing` gained proxy self-time buckets and the slowest hooked call
-  ([schema](verification/sampling-profiler.md)).
-- **Sun lane:** available on 4,577 of 4,695 frames in run85 under linear
-  materials, the first time in game; no cutout draws occurred, so the cutout
-  admission fix is unexercised. Next shadow step: the original-program share
-  producer and a lane latch without the linear-material prerequisite
-  ([contract](architecture/legacy-sun-application.md)).
-- **Mods:** two Mayhem packages inspected, no shader files; hash-keyed
-  transforms fail closed ([mod-compatibility.md](architecture/mod-compatibility.md)).
-  The unknown-program report (`shader_unknown` / `shader_population`,
-  `36d25a7`) is merged on main and rides the next candidate. Decision: no `.fx`
-  archive edits.
-
-Run 30 is complete (below).
-
-## Session 2026-09-17 (later): run 30 received, run 31 candidate
-
-Run 30 came back as `run87` (A) and `run88` (B). Outcomes and decisions:
-
-- **Engines respond** to the single `--emission-source-gain` (screen draws
-  substituted additive); **bolt halo accepted** at `--bloom-source-clamp 1.0`
-  with `--screen-emission-additive-alpha 0`; the user keeps both values.
-- **Frame split (run87):** a busy frame of 28.5 ms at 457 draws carried
-  ~30,000 hooked state calls, of which the `state` bucket was 8.9 ms; about
-  two thirds of that was the diagnostic's own timing, the rest the proxy's
-  full CPU-state envelope (FNSAVE/FRSTOR, 1,004 ns under FEX) on every draw
-  and binding hook ([attribution](verification/sampling-profiler.md)). The game
-  drives its state through an unfiltered `ID3DXEffectStateManager` and sorts
-  its render list with an O(n²) bubble sort at `0x0047e620`
-  ([frame loop](reverse-engineering/frame-loop-phases.md)).
-- **Merged for run 31:** count-only state timing with `state_top=` and gap
-  attribution (`dcbe43c`); the light envelope (MXCSR + LastError, 9.9 ns) on
-  the draw and binding hooks with an x87-free draw path (`e8bac89`, draw pair
-  4,197 to 1,276 ns); the setter dispatch trim (`79ccb59`/`4adf3dd`,
-  SetRenderState 119.6 to 79.0 ns, SetSamplerState 108.3 to 68.6 ns; the
-  50 ns target waits on a no-exceptions unit for the light hooks,
-  [design](architecture/state-call-fast-path.md)); `--frame-phases`, ten
-  byte-verified stamps in the engine's frame routine `0x00471f50` attributing
-  the game's own time (`fcbddb2`, two reviews, CPU fixture 8,033 checks). The
-  hybrid unhook with `Get*` at draw and the bubble-sort patch are the next
-  fast-path steps, after run 31 shows what is left.
-- **Sun lane (run88):** available on every frame (14,924 of 14,924) under
-  linear materials; still no cutout draws, so the cutout admission is
-  unexercised. Run 31 session B goes to an Argon factory, farm, solar plant or
-  trading station ([ledger](verification/directional-shadows.md)).
-- **Kept:** point-light admission default-off; no `.fx` archive edits; the
-  proxy over engine trampolines for the renderer (trampolines stay for
-  engine-side fixes only); three concurrent agents unless the user raises it.
-
-Run 31 came back as `run89` (A) and `run90` (B), both on the installed build:
-
-- **Busy frame attributed (run89):** 37.5 ms p50 at 987 draws and 61,896
-  hooked state calls; the `views` phase (view submission) carries 32.5 ms,
-  scene update with the O(n²) sort only 65 µs. Inside submission the hooked
-  draws including native cost 7.9 ms; the 23.4 ms between hooked calls is game
-  code, of which the state-call chain (about 63 per draw from the unfiltered
-  effect state manager) is roughly 6 ms proxy plus native and the rest the
-  emulated D3DX apply loop. Empty view 6.8 ms at 51 draws
-  ([ledger](verification/sampling-profiler.md)). Next fast-path steps proposed:
-  a redundant-state counter against the proxy shadow, the hybrid unhook
-  (about 5 ms), then a state-manager filter trampoline if the no-op fraction
-  justifies it; awaiting the user's go.
-- **Sun lane (run90):** available on all 16,041 frames, depth replay 40.7 µs
-  median, zero skips; **zero cutout draws for the third session** although
-  both cutout programs compile at startup. The telemetry has no per-draw
-  shader-pair counter, so which programs the station drew is unknown; the next
-  diagnostic build adds one before any further session B
-  ([ledger](verification/directional-shadows.md)).
-- No unknown programs, claim failures, truncated stamps or chase refusals in
-  either session.
-
-Merged after run 31 and installed as the run32 candidate: the hybrid unhook
-and the three counters (above), the motion-output runner pins for the record's
-pre-`3df7b9f` defaults (`39d9863`: the fade-oracle and auto-exposure drifts
-were defaults drift, not rendering), and the restored linear-emission
-validators (`8ba98c9`, host suite 1,955 tests green). Fast-path state after
-step 5: the proxy's per-call share of the busy frame is ~1 µs per draw plus
-the hooked texture/constant/binding setters; the remaining cost is the
-engine's per-draw work, which the run 32 counters size for a state-manager
-filter and proxy instancing ([design](architecture/state-call-fast-path.md)).
-
-Run 32 came back as `run91` (A1), `run92` (A2), `run93` (B) and `run94` (C):
-
-- **Unhooked proxy (run92):** the same busy view fell from 37.5 ms (run89,
-  hooks and frame timing on) to 26.5 ms p50, hooks confirmed absent, mip-bias
-  apply/restore balanced over 8.1 M calls. The proxy is out of the state path.
-- **Counters (run91):** redundant sets 95 % (render states), 99 % (sampler),
-  40 % (texture) of the ~19,400 shadowed calls per frame; instancing
-  candidates 5 % of draws, material-sortable 6 %. Design decision: no
-  engine-side state filter (bounded at 0.3–1.0 ms, native setters cost
-  11–15 ns) and no proxy instancing or sorting
-  ([engine-state-filter.md](architecture/engine-state-filter.md)). The
-  remaining ~23 ms of game code per busy frame is split next by
-  `--pass-phases`, four accumulate-only stamps in the effect pass loop
-  `0x004c0150` (BeginPass, draw, EndPass; once per draw; RE validated,
-  [effect-pass-loop.md](reverse-engineering/effect-pass-loop.md)), in flight.
-- **Cutout pairs draw everywhere (run91/run93):** ~108 per frame in the busy
-  Argon view, 561 k over run93; under the default configuration they are
-  routed through the tested-opaque arm with the lane share written, which
-  the old counters could not show; `cutout_opaque_*` telemetry merged for the
-  next candidate ([ledger](verification/directional-shadows.md)).
-- **Slow sectors are not rendering (run93/run94):** a quiet sector ran at
-  ~390 ms per frame with 95.7 % in the main loop's broad input region
-  (`0x00403b09`–`0x00403f2a`: input wait, synchronous script and save paths),
-  render 3 %, deferred script VM 1 %; the same stall existed on Windows. The
-  region is being decompiled for stamp sites and a candidate owner
-  ([ledger](verification/sampling-profiler.md), run94 section).
-
-Run 33 came back as `run95` (A), `run96` (B) and `run97` (C):
-
-- **Busy frame per draw (run95):** of 20.1 ms view submission at 981 passes,
-  the device draw call is 8.6 ms (8.7 µs per draw: ~1 µs proxy, the rest
-  Wine's D3D9 path), BeginPass 6.5 ms (6.7 µs), engine work between passes
-  4.5 ms (4.6 µs), EndPass 0.1 ms. Design ratified
-  ([effect-pass-replay.md](architecture/effect-pass-replay.md)): first the
-  no-code bottle experiments (CrossOver's DXVK backend for D3D9; builtin vs
-  native `d3dx9_37`, which the next build identifies with a `loaded_module`
-  line), then host prerequisites (compiled-effect state classification, two
-  residual stamps), and a pass-replay `ID3DXEffect` wrapper at the EXE's
-  `D3DXCreateEffect` import (3–5 ms bound) only if the frame still needs it.
-- **Quiet-sector stall (run96):** 99.8 % of a ~380 ms frame is one call, the
-  per-sector object pass `0x0045b720`, one sector and one container per frame.
-  The user observes GStreamer-CRITICAL bursts on the launcher's stderr once or
-  twice per slow frame (twice per session otherwise), suggesting a per-object
-  media stream created or destroyed and failing each frame; the proxy log
-  cannot confirm it (no stderr capture, no filenames), so the next build tees
-  the launcher's stderr into the session directory with a clock anchor.
-  **Decompiled:** `0x0045b720` is the per-sector media-cue selector
-  ([note](reverse-engineering/sector-post-pass.md)): it scores the `Videos`
-  table against nearby objects and restarts the winning cue through
-  `0x00498140` into the DirectShow graph constructor; a cue whose graph
-  cannot be built is freed and retried every frame, one file probe plus
-  CoCreateInstance and Render per frame, which is the stall (and the
-  GStreamer criticals under Wine; on Windows the same retry with a missing
-  codec). Bounding is behaviour-neutral: a negative cache at `0x00498140`
-  leaves the game in the same state as a real failure. **Decision (user,
-  2026-09-17): both.** Run 34 A1 (run98) named the cue: id 2 =
-  `mov\00002.dat`, a 533 MB MPEG-1 video elementary stream, one failed
-  ~390 ms graph build per frame (no MPEG video decoder in the v4 runtime or
-  CrossOver's set). A2 (run99): the negative cache at `0x00498140` reduces it
-  to one real attempt per 30 s and the sector runs at 7–9 ms; **the stall is
-  gone (user confirmed)** and the launcher default is now on. A3 (run100/101):
-  the v5 decoder runtime (`avdec_mpeg2video`, `mpegpsdemux`) makes the graphs
-  build and the first comm dialog then hangs the main loop in Wine's video
-  path; **v5 is parked**, the cache is the fix, the recipe stays documented
-  ([ledger](verification/media-cues.md)).
-- **Cutout under the lane (run97):** ~90 cutout draws per frame routed through
-  the tested-opaque arm with the lane share written, ~8 refused for no depth
-  write; both cutout pairs write depth so lane = routed. Linear materials plus
-  the lane cost about +3 ms in the busy view, mostly in the draw call.
-
-Run 34 is complete (run98–102): the stall is solved by the media-cue cache
-(default on); the v5 decoder runtime is parked (comm-dialog hang); CrossOver's
-DXVK D3D9 renders black on this Preview, so the bottle's graphics backend must
-be switched back before the next run. No run is queued; next steps are in
-[handoff-2026-09-17.md](handoff-2026-09-17.md).
+This build adds, on top of run37's: shadow map coverage and bias options
+(`--shadow-replay-extent`, `--shadow-replay-depth-half`,
+`--shadow-replay-cap`, `--sun-shadow-bias-units`,
+`--sun-shadow-bias-clamp-texels`; defaults byte-identical), the
+`--residual-phases` stamp group (arena 24,576 B), `--hull-emitters` (emitter
+plan phase 3, whole-output gain on the twelve ONE/ONE hull originals),
+`proxy_environment` identity line, the AO jitter term. Default path
+unchanged; appearance defaults unchanged; no shadows unless
+`--sun-shadow-apply`.
 
 ## Session 2026-09-17 (latest): runs 36–37 complete, first shadows, experiments closed
 

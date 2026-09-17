@@ -1,0 +1,88 @@
+{
+ "installed_utc": "2026-09-17T03:29:20.529433+00:00",
+ "source_commit": "e575136",
+ "manifest_source_commit": "e575136f65c1debdfe54d40e4f49fd26326d8b08",
+ "candidate": "/tmp/x3-candidate-Ek2A0u/candidate/d3d9.dll",
+ "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+ "installed_sha256": "5b4be52e890fc25b99c8c69fe057b7f23aed4f81e3a167d010190f770a5f3f40",
+ "bytes": 17302194,
+ "rollback": "/tmp/x3-candidate-Ek2A0u/rollback",
+ "rollback_sha256": "617251450ceaa88db827295199a2aaa46525b0c165008120cf9786c46b8e248d",
+ "unchanged": {
+  "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "game_launched": false,
+ "build_record": "verification/results/run38-candidate-build.json",
+ "dry_run_sessions": {
+  "a": {
+   "file": "/tmp/x3-candidate-Ek2A0u/dry-run-a.txt",
+   "keys": {
+    "X3M_HULL_EMISSION_GAIN": "1.0",
+    "X3M_RESIDUAL_PHASES": "0",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+    "X3M_SHADOW_REPLAY_CAP": "512",
+    "X3M_SHADOW_REPLAY_DEPTH": "1",
+    "X3M_SHADOW_REPLAY_DEPTH_HALF": "3000.0",
+    "X3M_SHADOW_REPLAY_EXTENT": "1500.0",
+    "X3M_SHADOW_REPLAY_SIZE": "4096",
+    "X3M_SUN_SHADOW_APPLY": "1",
+    "X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS": "4.0",
+    "X3M_SUN_SHADOW_BIAS_UNITS": "0.53571875",
+    "X3M_SUN_SHADOW_LANE": "1"
+   }
+  },
+  "a2": {
+   "file": "/tmp/x3-candidate-Ek2A0u/dry-run-a2.txt",
+   "keys": {
+    "X3M_HULL_EMISSION_GAIN": "1.0",
+    "X3M_RESIDUAL_PHASES": "0",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+    "X3M_SHADOW_REPLAY_CAP": "512",
+    "X3M_SHADOW_REPLAY_DEPTH": "1",
+    "X3M_SHADOW_REPLAY_DEPTH_HALF": "512.0",
+    "X3M_SHADOW_REPLAY_EXTENT": "250.0",
+    "X3M_SHADOW_REPLAY_SIZE": "4096",
+    "X3M_SUN_SHADOW_APPLY": "1",
+    "X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS": "20.97152",
+    "X3M_SUN_SHADOW_BIAS_UNITS": "0.53571875",
+    "X3M_SUN_SHADOW_LANE": "1"
+   }
+  },
+  "b": {
+   "file": "/tmp/x3-candidate-Ek2A0u/dry-run-b.txt",
+   "keys": {
+    "X3M_HULL_EMISSION_GAIN": "1.0",
+    "X3M_RESIDUAL_PHASES": "1",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "0",
+    "X3M_SHADOW_REPLAY_CAP": "512",
+    "X3M_SHADOW_REPLAY_DEPTH": "0",
+    "X3M_SHADOW_REPLAY_DEPTH_HALF": "512.0",
+    "X3M_SHADOW_REPLAY_EXTENT": "250.0",
+    "X3M_SHADOW_REPLAY_SIZE": "1024",
+    "X3M_SUN_SHADOW_APPLY": "0",
+    "X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS": "20.97152",
+    "X3M_SUN_SHADOW_BIAS_UNITS": "0.53571875",
+    "X3M_SUN_SHADOW_LANE": "0"
+   }
+  },
+  "c": {
+   "file": "/tmp/x3-candidate-Ek2A0u/dry-run-c.txt",
+   "keys": {
+    "X3M_HULL_EMISSION_GAIN": "2.0",
+    "X3M_RESIDUAL_PHASES": "0",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "0",
+    "X3M_SHADOW_REPLAY_CAP": "512",
+    "X3M_SHADOW_REPLAY_DEPTH": "0",
+    "X3M_SHADOW_REPLAY_DEPTH_HALF": "512.0",
+    "X3M_SHADOW_REPLAY_EXTENT": "250.0",
+    "X3M_SHADOW_REPLAY_SIZE": "1024",
+    "X3M_SUN_SHADOW_APPLY": "0",
+    "X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS": "20.97152",
+    "X3M_SUN_SHADOW_BIAS_UNITS": "0.53571875",
+    "X3M_SUN_SHADOW_LANE": "0"
+   }
+  }
+ },
+ "native_windows_verified": false
+}
