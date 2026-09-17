@@ -10,6 +10,7 @@
 #include "object_lifetime.h"
 #include "engine_memory.h"
 #include "camera_state.h"
+#include "sun_light_poll.h"
 #include "chase_camera.h"
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
@@ -2159,6 +2160,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     release_depth_leases(); depth_replay_attach_failed_ = false; depth_basis_ = {}; // depth replay state is per device
     release_candidate_extents(); candidate_extents_.clear(); candidate_bounds_state_ = 0; // extent cache and queue are per device
     sun_latch_.reset(); sun_verdict_ = shadow_replay::SunVerdict::None; candidate_ps_written_ = 0; candidate_bounds_unavailable_ = 0; // the validated sun and the register shadow are per device
+    point_sun_.reset(); point_sun_poll_ticks_ = 0; point_sun_sample_ = {}; point_sun_logged_ = shadow_replay::PointSunReason::Count;
     for (unsigned& logged : depth_refusal_logs_) logged = 0;
     depth_cascade_ = renderer::ShadowReplayCascade{}; depth_cascade_.size = depth_replay_size_;
     depth_cascade_.half_extent = depth_replay_extent_; depth_cascade_.set_depth_half(depth_replay_depth_half_);
@@ -3374,7 +3376,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     counters_ = {}; sun_frame_={}; sun_coverage_current_=sun_composition_completed_=false;
     sun_apply_applied_=sun_apply_attempted_=false; // fixture keys 70/71 describe this frame
     sun_original_refused_draws_=0;
-    if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); sun_latch_.begin_frame(); candidate_bounds_unavailable_ = 0; candidate_extents_.begin_frame(); candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
+    if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); sun_latch_.begin_frame(); point_sun_.begin_frame(); point_sun_poll_ticks_ = 0; candidate_bounds_unavailable_ = 0; candidate_extents_.begin_frame(); candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
     // Keep failed-lane storage until the next scene latch can compare its
     // exact dimensions/generation before transactionally replacing it. The
     // reset frame snapshot above is unavailable; no stale lane is published.
@@ -6541,14 +6543,43 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
 // when the sample does not agree with the validated sun.
 bool MotionOutput::sample_candidate_sun(float out[4], int& reg) noexcept {
     reg = shadow_.ps_sun_register;
-    if (reg < 0 || reg >= int(shadow_replay::sun_register_limit) || !((candidate_ps_written_ >> reg) & 1u)) { reg = reg < 0 ? -1 : reg; sun_latch_.no_register(); return false; }
+    if (reg < 0 || reg >= int(shadow_replay::sun_register_limit) || !((candidate_ps_written_ >> reg) & 1u)) { reg = reg < 0 ? -1 : reg; sun_latch_.no_register(); if (depth_cascades_on()) poll_point_sun(out, false); return false; }
     std::memcpy(out, candidate_ps_constants_[reg], 16);
     const bool latched = sun_latch_.valid;
     const bool agrees = sun_latch_.sample(out, reg, shadow_.ps_hash);
     if (!latched && sun_latch_.valid) // two draws agreed: the first one's value, register and program
         log("shadow_replay_sun_latch device=%llu frame=%llu event=latch register=%d program=%016llx sun=%.9g,%.9g,%.9g",
             id_, frame_, sun_latch_.source_register, static_cast<unsigned long long>(sun_latch_.source_program), double(sun_latch_.sun[0]), double(sun_latch_.sun[1]), double(sun_latch_.sun[2]));
+    if (depth_cascades_on()) poll_point_sun(out, agrees);
     return agrees;
+}
+// Cascades: the engine's sun position (sun_light_poll.h), polled at the frame's
+// first routed z-writing draw (the sector view's light array is current then),
+// and cross-checked against the draw's LightDir_Dir0 constant at its own origin
+// for the frame's first point_sun_checks_per_frame latch-agreeing samples
+// (shadow_replay_sun_point.h). Steady state per draw: two compares.
+void MotionOutput::poll_point_sun(const float constant[4], bool agrees) noexcept {
+    if (!point_sun_.polled) {
+        const bool available = sun_light_poll::available();
+        if (!available) { sun_light_poll::read(&point_sun_sample_) /* why: its status */; point_sun_.set_poll(nullptr, shadow_replay::PointSunReason::Unavailable); return; }
+        LARGE_INTEGER t0{}, t1{};
+        QueryPerformanceCounter(&t0);
+        const bool ok = sun_light_poll::read(&point_sun_sample_);
+        QueryPerformanceCounter(&t1);
+        point_sun_poll_ticks_ = t1.QuadPart - t0.QuadPart;
+        point_sun_.set_poll(ok ? point_sun_sample_.position : nullptr, ok ? shadow_replay::PointSunReason::Point
+            : point_sun_sample_.status == sun_light_poll::Status::NoDirectional ? shadow_replay::PointSunReason::NoLight : shadow_replay::PointSunReason::Unavailable);
+    }
+    if (!agrees || !point_sun_.wants_check()) return;
+    const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register : ~0u;
+    const std::size_t window = matrix_register == ~0u ? motion_matrix_windows_max : window_of(matrix_register);
+    double origin[3];
+    if (window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !shadow_replay::PointSun::draw_origin(camera_scene_, shadow_.rows[window], origin)) return;
+    point_sun_.check(constant, origin);
+}
+const float* MotionOutput::cascade_sun(unsigned cascade) noexcept {
+    if (point_sun_.decide(depth_cascades_on(), camera_scene_, depth_cascades_)) return point_sun_.sun(cascade); // an unavailable poll is its own reason
+    return sun_latch_.frame_sun();
 }
 // The frame's view -> sun rows for the draw-time box test, from the camera
 // latch and the frame's sun (this frame's LightDir_Dir0 write, else the
@@ -6561,8 +6592,12 @@ bool MotionOutput::ensure_candidate_bounds_rows() noexcept {
     const float* sun = sun_latch_.frame_sun();
     if (!sun) return false;
     renderer::ShadowReplayBasis basis{};
+    // Cascades: each cascade's own sun (one held direction per cascade from the
+    // polled sun position, else the latch's for all: the shared one-transform path).
+    float suns[renderer::shadow_cascade_max * 4]{};
+    if (depth_cascades_on()) for (unsigned k = 0; k < depth_cascades_.count; ++k) std::memcpy(suns + k * 4, cascade_sun(k), 16);
     const bool ok = sun && camera_scene_.valid && (depth_cascades_on()
-        ? renderer::shadow_cascade_bounds(camera_scene_, sun, depth_cascades_, candidate_cascade_bounds_)
+        ? renderer::shadow_cascade_bounds_suns(camera_scene_, suns, depth_cascades_, candidate_cascade_bounds_, point_sun_.grid_anchors())
         : renderer::shadow_replay_basis(camera_scene_, sun, depth_cascade_, basis)
           && renderer::shadow_replay_view_rows(camera_scene_, basis, depth_cascade_, candidate_bounds_rows_));
     candidate_bounds_state_ = ok ? 1 : -1;
@@ -6719,6 +6754,60 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             id_, frame_, shadow_replay::sun_verdict_name(sun_verdict_), sun_latch_.source_register, samples.samples, samples.agree, samples.disagree, samples.invalid, samples.no_register, samples.unlatched,
             candidate_bounds_state_, candidate_bounds_unavailable_, candidate_extents_.refused_frame /* extent_refused: this frame's refused stores */, double(sun ? sun[0] : 0.f), double(sun ? sun[1] : 0.f), double(sun ? sun[2] : 0.f));
     }
+    // Cascades: the frame's sun source (decided here unless the box test already
+    // did), its validation carried to the next frame. A source change voids
+    // what was retained (those bases are the other source's). The full line
+    // (the light, its distance, both selection rules' winners, the poll/latch
+    // agreement, every cascade's direction) is written on capture (F8) frames
+    // and on a source change or a re-derivation; otherwise one summary per
+    // point_sun_summary_frames frames (the seam build writes every frame for
+    // its runner).
+    if (depth_cascades_on()) {
+        const bool point = point_sun_.decide(true, camera_scene_, depth_cascades_);
+        point_sun_.end_frame();
+        bool event = point_sun_.rederived != 0;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        event = true;
+#endif
+        if (point_sun_logged_ != point_sun_.reason) {
+            event = true;
+            if (point_sun_logged_ != shadow_replay::PointSunReason::Count && depth_replay_ && (point || point_sun_logged_ == shadow_replay::PointSunReason::Point)) depth_replay_->invalidate_retained();
+            log("shadow_replay_sun_source device=%llu frame=%llu source=%s reason=%s previous=%s poll=%s", id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(point_sun_.reason),
+                point_sun_logged_ == shadow_replay::PointSunReason::Count ? "none" : shadow_replay::point_sun_reason_name(point_sun_logged_), sun_light_poll::status_name(point_sun_sample_.status));
+            point_sun_logged_ = point_sun_.reason;
+        }
+        constexpr unsigned point_sun_summary_frames = 300;
+        if (++point_sun_summary_count_ >= point_sun_summary_frames) {
+            point_sun_summary_count_ = 0;
+            const auto& n = point_sun_.frames_latch;
+            using R = shadow_replay::PointSunReason;
+            log("shadow_replay_sun_point_summary device=%llu frame=%llu frames_point=%llu off=%llu unavailable=%llu no_light=%llu camera=%llu near=%llu unchecked=%llu disagrees=%llu cooldown=%llu rederivations=%llu",
+                id_, frame_, static_cast<unsigned long long>(point_sun_.frames_point), static_cast<unsigned long long>(n[unsigned(R::Off)]), static_cast<unsigned long long>(n[unsigned(R::Unavailable)]),
+                static_cast<unsigned long long>(n[unsigned(R::NoLight)]), static_cast<unsigned long long>(n[unsigned(R::Camera)]), static_cast<unsigned long long>(n[unsigned(R::Near)]),
+                static_cast<unsigned long long>(n[unsigned(R::Unchecked)]), static_cast<unsigned long long>(n[unsigned(R::Disagrees)]), static_cast<unsigned long long>(n[unsigned(R::Cooldown)]),
+                static_cast<unsigned long long>(point_sun_.rederivations));
+        }
+        if (event || capture_) {
+        char text[768]; int used = 0;
+        for (unsigned k = 0; k < depth_cascades_.count && used >= 0 && used < int(sizeof text); ++k) {
+            const float* s = cascade_sun(k);
+            const double* a = point_sun_.grid_anchor(k); // the texel grid's anchor (point source only)
+            used += std::snprintf(text + used, sizeof text - used, " dir%u=%.9g,%.9g,%.9g anchor%u=%.12g,%.12g,%.12g", k, double(s ? s[0] : 0.f), double(s ? s[1] : 0.f), double(s ? s[2] : 0.f),
+                                  k, a ? a[0] : 0., a ? a[1] : 0., a ? a[2] : 0.);
+        }
+        if (used < 0 || used >= int(sizeof text)) text[0] = 0;
+        const auto& p = point_sun_; const auto& q = point_sun_sample_;
+        const double scale = q.record_valid && q.position[0] ? double(q.record_position[0]) / double(q.position[0]) : 0.;
+        if (!qpc_frequency_) { LARGE_INTEGER f{}; if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart); }
+        const double poll_us = qpc_frequency_ ? double(point_sun_poll_ticks_) * 1e6 / double(qpc_frequency_) : 0.;
+        log("shadow_replay_sun_point device=%llu frame=%llu source=%s reason=%s poll=%s light=%.9g,%.9g,%.9g native=%d,%d,%d distance=%.9g checks=%u disagreements=%u agreement_deg=%.6f rederived=%u carried=%u"
+            " candidates=%u directional=%u slot_admitted=%u rule=%s rules_agree=%u admission_native=%d,%d,%d score=%u second_score=%u flags=%08x record_scale=%.6g poll_us=%.1f frames_point=%llu%s",
+            id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(p.reason), sun_light_poll::status_name(q.status), p.light_valid ? p.light[0] : 0., p.light_valid ? p.light[1] : 0.,
+            p.light_valid ? p.light[2] : 0., int(q.position[0]), int(q.position[1]), int(q.position[2]), p.distance, p.checks, p.disagreements, p.agreement_degrees(), p.rederived, p.carried_frame ? p.carried : 0u,
+            q.candidates, q.directional, q.slot_admitted, q.engine_rule ? "engine" : "admission", unsigned(q.rules_agree), int(q.admission_position[0]), int(q.admission_position[1]), int(q.admission_position[2]),
+            q.score, q.second_score, q.flags, scale, poll_us, static_cast<unsigned long long>(p.frames_point), text);
+        }
+    }
     // Capture frames: one line per record (what admitted it, into which
     // cascades, and what its own program said the sun was).
     if (capture_) {
@@ -6833,7 +6922,6 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         in.count = depth_cascades_.count;
         renderer::SunShadowBias biases[renderer::shadow_cascade_max]{};
         std::uint64_t map_frames[renderer::shadow_cascade_max]{};
-        const float* sun = sun_latch_.frame_sun();
         for (unsigned i = 0; i < in.count && !skip; ++i) {
             const auto& cascade = depth_cascades_.cascades[i];
             auto& k = in.cascades[i];
@@ -6841,7 +6929,8 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             const bool far_kept = i + 1 == in.count && in.count > 1;
             const bool valid = kept && (kept->frame == frame_ || (far_kept && kept->frame + 1 == frame_)) && depth_replay_->map_texture(i);
             renderer::ShadowReplayBasis current{};
-            if (!valid && (!sun || !renderer::shadow_replay_basis(camera_scene_, sun, cascade, current))) { skip = "basis"; break; }
+            const float* sun = valid ? nullptr : cascade_sun(i); // an absent cascade's would-be basis: its own sun of this frame
+            if (!valid && (!sun || !renderer::shadow_replay_basis(camera_scene_, sun, cascade, current, point_sun_.grid_anchor(i)))) { skip = "basis"; break; }
             if (!renderer::shadow_replay_view_rows(camera_scene_, valid ? kept->basis : current, cascade, k.rows)) { skip = "rows"; break; }
             if (!renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_, double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), biases[i])) { skip = "bias"; break; }
             k.bias_constant = biases[i].constant; k.bias_max = biases[i].max; k.valid = valid; k.map = valid ? depth_replay_->map_texture(i) : nullptr;

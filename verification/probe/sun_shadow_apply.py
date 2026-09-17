@@ -305,7 +305,9 @@ def _hit(o, direction, box_min, box_max):
 def analytic_shadow(d, s, params, scene, size):
     """Hard shadow (1 lit, 0 shadowed) of every receiver pixel and the
     smallest sun-space offset in texels (1, 2 or 0 = none within 2) at which
-    the classification changes."""
+    the classification changes. With scene['light'] (a world position) the
+    shadow is the POINT light's: every receiver's ray runs to that position
+    (a hit counts only before the light); otherwise every ray is scene['sun']."""
     import numpy as np
     height, width = d.shape
     m00, m11, m20, m21, m22, m32 = (params[k] for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32'))
@@ -321,11 +323,14 @@ def analytic_shadow(d, s, params, scene, size):
     boxes = scene.get('boxes') or [scene['box']]  # the cascade scene has several casters
     if 'texel_map' in scene:
         texel = scene['texel_map']              # per pixel: the owning cascade's world texel
+    light = scene.get('light')
     def lit_at(offset_u, offset_v):
         o = [world[c] + (scene['right'][c] * offset_u + scene['up'][c] * offset_v) * texel + sun[c] * 1e-4 for c in range(3)]
         lit = np.ones(z.shape, dtype=bool)
+        direction = [light[c] - o[c] for c in range(3)] if light is not None else [np.full(z.shape, sun[c]) for c in range(3)]
         for box in boxes:
-            lit &= _hit(o, [np.full(z.shape, sun[c]) for c in range(3)], box[:3], box[3:]) <= 0.0
+            t = _hit(o, direction, box[:3], box[3:])
+            lit &= (t <= 0.0) | (t >= 1.0) if light is not None else t <= 0.0
         return lit
     lit = lit_at(0.0, 0.0)
     distance = np.zeros(d.shape, dtype=np.int64)
@@ -428,7 +433,14 @@ def compare_frame_cascades(before, after, d, s, maps, params, scene, extents):
     `interior_wrong` counts plane receivers at least two texels inside a shadow
     or a lit area whose f is not 0 (9/9 shadowed, 0 allowed) or 1: a lit gap or
     a double darkening in a blend band would show there. `monotone`: f lies
-    between the two blended cascades' f everywhere."""
+    between the two blended cascades' f everywhere.
+    A scene with 'light' and 'landings' (the sun at finite distance): the
+    analytic shadow is the point light's, and `regions` holds, per landing
+    (the plane receivers within five box half-sizes of the point a box's
+    shadow lands on, or the box stands on), the owning cascade, the f >= 0.5 mismatches beyond
+    one texel against the point-light shadow and against the PARALLEL shadow of
+    the owning cascade's own sun (what an orthographic map can show at best),
+    and the predicted residual h r / D of the orthographic map in texels."""
     import numpy as np
     expected = expected_factor_cascades(d, s, maps, params)
     factor, valid, ambiguous, selected, f = expected['factor'], expected['valid'], expected['ambiguous'], expected['selected'], expected['f']
@@ -502,6 +514,29 @@ def compare_frame_cascades(before, after, d, s, maps, params, scene, extents):
         alone = plane & first_only['lit'] & ~analytic['lit']
         record['second_caster'] = {'pixels': int(np.count_nonzero(alone)), 'interior': int(np.count_nonzero(alone & interior)),
                                    'darkened': int(np.count_nonzero(alone & (f < 0.5))), 'interior_dark': int(np.count_nonzero(alone & interior & (f == 0.0)))}
+    if scene.get('landings'):
+        parallel_beyond = np.zeros(d.shape, dtype=bool)
+        for c in range(count):  # the parallel shadow of each cascade's own sun, on the pixels it owns
+            flat = analytic_shadow(d, s, params, dict(scene, light=None, sun=scene['suns'][c]), 1)
+            parallel_beyond |= (selected == c) & plane & (half != flat['lit']) & (flat['edge_distance'] != 1)
+        light, cam = scene['light'], scene['camera']
+        distance = math.sqrt(sum((light[k] - cam[k]) ** 2 for k in range(3)))
+        record['regions'] = []
+        for gx, gz, lift, half_size in scene['landings']:
+            near = plane & (np.hypot(world[0] - gx, world[2] - gz) < 5.0 * half_size)
+            owners = [int(np.count_nonzero(near & (selected == c))) for c in range(count)]
+            owner = max(range(count), key=lambda c: owners[c])
+            rel = [gx - cam[0], -cam[1], gz - cam[2]]
+            view = [sum(rel[k] * scene[axis][k] for k in range(3)) for axis in ('cam_right', 'cam_up', 'cam_forward')] + [1.0]
+            rows = params['cascades'][owner]['rows']
+            lateral = extents[owner] * math.hypot(sum(rows[k] * view[k] for k in range(4)), sum(rows[4 + k] * view[k] for k in range(4)))
+            to_light = [light[0] - gx, light[1], light[2] - gz]
+            height = lift * to_light[1] / math.sqrt(sum(v * v for v in to_light))
+            record['regions'].append({'landing': [gx, gz], 'pixels': int(np.count_nonzero(near)), 'owned': owners, 'owner': owner, 'shadowed_point': int(np.count_nonzero(near & ~analytic['lit'])),
+                                      'shadowed_quad': int(np.count_nonzero(near & ~half)), 'mismatch_point': int(np.count_nonzero(near & mismatch)),
+                                      'beyond_one_point': int(np.count_nonzero(near & beyond_one)), 'beyond_one_parallel': int(np.count_nonzero(near & parallel_beyond)),
+                                      'caster_height': height, 'lateral_offset': lateral, 'light_distance': distance,
+                                      'residual_units': height * lateral / distance, 'residual_texels': height * lateral / distance / texels[owner]})
     # The half-texel witness: the best-fit shift of this program's shadow, and of
     # the pre-fix lookup rule on the same maps (the sensitivity of the fit).
     edge = plane & (analytic['edge_distance'] != 0) & ~contact
@@ -527,6 +562,10 @@ def parse_cascade_params(fields):
     scene = {k: triple(k) for k in ('camera', 'cam_right', 'cam_up', 'cam_forward', 'sun', 'right', 'up')}
     scene['boxes'] = [tuple(float(v) for v in text.split(',')) for text in fields['boxes'].split(';')]
     scene['box'] = scene['boxes'][0]
+    if 'light' in fields:  # the sun at finite distance: its position, every cascade's own sun, the shadows' landing points
+        scene['light'] = triple('light')
+        scene['suns'] = [tuple(float(v) for v in text.split(',')) for text in fields['suns'].split(';')]
+        scene['landings'] = [tuple(float(v) for v in text.split(',')) for text in fields['landings'].split(';')]
     extents = [float(fields['extent%d' % c]) for c in range(count)]
     map_frames = [int(fields['map_frame%d' % c]) for c in range(count)]
     return params, scene, extents, map_frames

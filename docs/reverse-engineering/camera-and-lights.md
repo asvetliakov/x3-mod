@@ -593,3 +593,62 @@ multiplier inside `0x0047d5e0`, which can scale a score up and is the one path
 that could in principle put a non-sun into a Dir slot; and how many directional
 lights a real X3 sector authors, which
 lives in the scene files, not the EXE.
+
+### Position units: engine integers × the context scale, not 16.16 (2026-09-17)
+
+Question: are the `+0xb0/b4/b8` integers 16.16 fixed point (the sun then sits
+`1.5689e9 × 2^-16 ≈ 23,900` world units away, inside the far shadow cascades) or
+context-scaled (`× 0.01`, 1.57e7 units)? **Context-scaled.** Three independent
+facts, the last two measured on run111 (`/tmp/x3-bottleX3-run111`, query only):
+
+- *Static.* The world translation is `node[+0xb0/b4/b8] × s` and the view
+  translation `−p·B × s`, `s = *(float*)(context+0x2c)`, 0.01 in every gameplay
+  view ([camera-state-and-frame-routine.md](camera-state-and-frame-routine.md),
+  "View-unit scale"). The `2^-16` at `0x004c23d6` scales only the *length* that
+  normalises the light − node delta; it never touches a position.
+- *World matrix.* A gameplay-view draw (`flags270=0085492d`,
+  `scale_bits=3c23d708`) with `object_position = (−12384560, −931560, −3175560)`
+  carries the world-matrix translation `(−123845.57, −9315.598, −31755.594)`:
+  the integers × 0.01 to the float's last digit.
+- *Camera.* The same frame's camera node position `(−5286982, −237076,
+  −2475731)` × 0.01 is `(−52869.8, −2370.8, −24757.3)`; the position the proxy
+  derives from the view matrix (`−t·Rᵀ`, `camera_reprojection.h`) is
+  `(−52870.3, −2371.3, −24757.7)`, equal within the basis' 1/65536 quantisation
+  over 58,000 units.
+
+So the proxy's camera world position and `integer × 0.01` are the same space and
+unit (0.2 m), and the run-39 sun is **1.57e7 units (3,140 km)** away. The 0.753°
+per-node spread of run111 is what nodes spread over ~2e5 units (40 km) of a
+sector produce at that distance, not evidence of a near light. The cockpit and
+monitor scenes use other scales (their cameras sit at the origin), which is why
+the poll below is taken only while the sector view is current and is
+cross-checked against the shader constants.
+
+### Implemented: `sun_light_poll` (2026-09-17)
+
+`src/proxy/sun_light_poll.{h,cpp}` is the read contract above, hook-free:
+`R = *(uint32_t*)0x00608518`, one 1,024-byte read of `R+0x5e8c … R+0x628b`
+(the 255-entry array and the slot count behind it), one 192-byte read of
+`+0xb0 … +0x16f` per candidate node and 12 bytes of the chosen node's light
+record (`[+0x16c]+0x34`, the engine's own context-scaled position, logged as
+`record_scale` to confirm 0.01 in flight). Every read goes through
+`engine_memory::read`; the gate is `object_trace::executable_verified()`.
+Layout validation per poll: slot count `== 8`, a terminator within 255 entries,
+and `+0x12c & 4` on **every** entry (the builder admits lights only); any miss is
+`layout` and the caller stays on the constant latch. Selection is the engine's
+Dir-slot rule (section 3 above: `+0x12c & 0x800000` or range `+0x158 > 0x256250`;
+score = `round(0.299 R + 0.587 G + 0.114 B)` + `0x300` when directional; a
+long-range point light's per-node distance term is not reproduced, its score is
+an upper bound); the admission rule `(flags & 4) && !(flags & 0x400010)` is
+evaluated beside it, used only while the engine rule admits nothing (the lazy
+`0x800000`), and both winners are logged so a flight shows any divergence. Ties
+go to the farther node. The poll runs at the frame's first routed z-writing draw
+(the sector view's array is current there), never at Present. *No tearing:* the
+game is single-threaded and the draws run on the thread that calls `0x0047c640`
+([voice-startup-sequence.md](voice-startup-sequence.md), section 1), so a poll
+taken inside a draw call cannot interleave with the array's rebuild. Consumer, validation against `LightDir_Dir0`, fallback reasons and the
+per-cascade directions: `src/proxy/shadow_replay_sun_point.h` and
+[directional-shadows.md](../verification/directional-shadows.md), "Sun at finite
+distance". Still not established: whether `0x00420260`'s forced-directional nodes
+enter the array (the cross-check refuses them if they win), and the tie order of
+the engine's `qsort` for equal rounded lumas (`second_luma` is logged).

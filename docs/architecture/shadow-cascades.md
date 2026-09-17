@@ -258,3 +258,13 @@ named constant in `src/renderer/shadow_replay_projection.h`.
 | Near band decision (own-ship map or contact shadows) | not implemented: out of scope until run 38 |
 | Held far centre with a caster-change hash; D16 attachment as a memory option | not implemented (deferred by this note) |
 | Cross-frame caster retention against engine view culling | not implemented; next step, requirements in the ledger section |
+
+### Amendment: one sun per cascade (2026-09-17)
+
+"Sharing the sun basis" now holds only by construction, not by contract: with a validated sun
+position (`sun_light_poll`, `shadow_replay_sun_point.h`) each cascade's basis is
+`normalize(light − its centre)`, held within 1 / size rad; without one, the latch's sun for all, as
+before. Launcher: `--shadow-sun-poll on|off` (`X3M_SHADOW_SUN_POLL`, default on with
+`--shadow-cascades`). The texel grid of a polled-sun cascade is anchored beside its centre, not at the
+world origin, so a re-derived direction keeps the grid phase there. Evidence and the orthographic residual:
+[directional-shadows.md](../verification/directional-shadows.md), "Sun at finite distance".

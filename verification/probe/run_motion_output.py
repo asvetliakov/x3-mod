@@ -298,6 +298,16 @@ CASES += [case('seam-ownership-shadow-replay-sun-programs', 'shadowreplay', 'own
           case('seam-ownership-shadow-replay-cascades', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_CASCADES_ENV),
           case('seam-ownership-shadow-replay-cascades-casters-20', 'shadowreplay', 'ownership', camera=True,
                hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_SHADOW_CASCADE_SIZES='1024', X3M_FIXTURE_SHADOW_CASTERS='20', X3M_SHADOW_CASCADE_CAPS='32,32', X3M_SHADOW_CASCADE_BUDGET='640'))]
+# The sun as a polled world position (docs/verification/directional-shadows.md,
+# "Sun at finite distance"): the cascade script with the fixture's own render
+# context behind the poll seam (X3M_FIXTURE_SHADOW_POLL). agree: the sun node
+# 100,000 units away and every draw's LightDir_Dir0 = normalize(light - its
+# origin): the poll validates and every cascade's basis is normalize(light -
+# centre) held within 1 / size radians. null / disagree: the poll is
+# unavailable / refused by the cross-check, the latch stays the source, counted
+# by reason, and every other expectation is the plain cascade case's.
+SHADOW_POLL_MODES = ('agree', 'null', 'disagree', 'refusals')  # refusals: a layout, pointer or content defect per frame
+CASES += [case(f'seam-ownership-shadow-replay-cascades-poll-{m}', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_FIXTURE_SHADOW_POLL=m)) for m in SHADOW_POLL_MODES]
 CASES += [case('seam-ownership-shadow-replay-wide', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_WIDE_ENV),
           case('seam-ownership-shadow-replay-far-refused', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_FAR_ENV)]
 # Sun-shadow apply quad (legacy-sun-application.md, section 3.3): the
@@ -322,7 +332,7 @@ CASES += [case('sun-shadow-apply-wide', 'sunapply', enabled='0', hdr_env=SUN_APP
 # motion_output_sun_apply_cascades_inc.h: case letter per frame; the far
 # cascade yields to the budget on the odd frames of (d) and (e).
 SUN_APPLY_CASCADES_ENV = dict(X3M_FIXTURE_SUNAPPLY_CASCADES='1')
-SUN_CASCADE_SCRIPT = 'aabbccddeeef' + 'g' * 8  # g: the box at eight sub-texel phases (the half-texel witness)
+SUN_CASCADE_SCRIPT = 'aabbccddeeef' + 'g' * 8 + 'h'  # g: the box at eight sub-texel phases (the half-texel witness); h: the sun at finite distance (a point light, per-cascade suns)
 SUN_CASCADE_FAR_SKIPPED, SUN_CASCADE_RESET_FRAME, SUN_CASCADE_IDENTITY = (7, 9), 9, (8, 10)
 CASES += [case('sun-shadow-apply-cascades', 'sunapply', enabled='0', hdr_env=SUN_APPLY_CASCADES_ENV)]
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
@@ -884,7 +894,7 @@ def validate_sun_apply_cascades(name, text, directory, env):
         params, scene, extents, map_frames = sun_apply.parse_cascade_params(f)
         # The counters, per frame: every record's mask, the issues, what each
         # cascade drew, the far cascade's budgeted frames and what it retains.
-        masks = [int(v) for v in f['masks'].split(',')][:3 if len(scene['boxes']) == 2 else 2]
+        masks = [int(v) for v in f['masks'].split(',')][:min(3, len(scene['boxes']) + 1)] + ([int(f['mask3'])] if 'mask3' in f else [])  # the plane and the boxes (case h draws three)
         records = [sum(1 for m in masks if m >> c & 1) for c in range(count)]
         far_skipped = frame in SUN_CASCADE_FAR_SKIPPED
         assert [int(f[f'c{c}']) for c in range(count)] == records and int(f['issues']) == sum(records), (name, frame, records, f['issues'])
@@ -912,7 +922,19 @@ def validate_sun_apply_cascades(name, text, directory, env):
         # Ambiguity: up to 14 % here against the apply script's 10 % bound, because this scene shows the plane out to its horizon,
         # where the per-pixel view-depth step sits at the plane-fit threshold (the twin's planar_step band); measured, not an error class.
         assert comparison['compared'] > 0 and comparison['ambiguous'] < comparison['valid'] // 5, (name, frame, comparison)
-        assert comparison['edge_beyond_one'] == 0 and comparison['interior_wrong'] == 0, (name, frame, comparison)
+        if letter == 'h':
+            # The sun at finite distance (24,000 units): the analytic shadow is the point light's. A (cascade 0) and B
+            # (cascade 1, near its centre) lie within one texel of it; C (cascade 1's edge, 500 units above its shadow)
+            # shows the orthographic residual h r / D, while against the parallel shadow of its cascade's own sun every
+            # region is within one texel (the map is right for what it is).
+            a, b, c_region = comparison['regions']
+            assert f['point_rederived'] == '3' and float(f['point_agreement_deg']) < .01 and f['suns'].split(';')[0] != f['suns'].split(';')[1] == f['suns'].split(';')[2], (name, frame, f['suns'])
+            assert (a['owner'], b['owner'], c_region['owner']) == (0, 1, 1) and min(a['shadowed_point'], b['shadowed_point'], c_region['shadowed_point']) >= 8, (name, frame, comparison['regions'])
+            assert a['beyond_one_point'] == 0 and b['beyond_one_point'] == 0 and a['residual_texels'] < .5 and b['residual_texels'] < .5, (name, frame, a, b)
+            assert all(region['beyond_one_parallel'] == 0 for region in comparison['regions']), (name, frame, comparison['regions'])
+            assert c_region['residual_texels'] > 1.5 and c_region['beyond_one_point'] > 0, (name, frame, c_region)
+        else:
+            assert comparison['edge_beyond_one'] == 0 and comparison['interior_wrong'] == 0, (name, frame, comparison)
         per = comparison['cascades']
         if letter in 'ag':   # the far plane: the box's shadow is cascade 1's alone (g: the same scene at eight sub-texel phases)
             assert per['1']['shadowed_analytic'] > 100 and per['0']['shadowed_analytic'] == 0 and per['2']['shadowed_analytic'] == 0, (name, frame, per)
@@ -954,8 +976,9 @@ def validate_sun_apply_cascades(name, text, directory, env):
             'config': {k: config[k] for k in ('extents', 'depth_light', 'depth_behind', 'caps', 'bias_units', 'clamp_texels', 'margin', 'band')},
             'program_slots': int(device[0]['slots']), 'cascade_program_slots': int(device[0]['cascade_slots']), 'max_texture': device[0]['max_texture'], 'ps30_slots': int(device[0]['ps30_slots']),
             'depth_format': int(replay_device[0]['depth_format']), 'depth_size': int(replay_device[0]['depth_size']),
-            'bounds_bench_ns': {'single_verdict': float(bench[0]['verdict_ns']), 'cascade_mask_4': float(bench[0]['mask_ns'])},
+            'bounds_bench_ns': {'single_verdict': float(bench[0]['verdict_ns']), 'cascade_mask_4': float(bench[0]['mask_ns']), 'cascade_mask_4_per_cascade_suns': float(bench[0]['split_mask_ns'])},
             'half_texel': {'shift_fit': shift_fit, 'shift_fit_legacy_rule': shift_fit_legacy, 'frames': phase_frames},
+            'point_light': {'frame': SUN_CASCADE_SCRIPT.index('h'), 'regions': comparisons[SUN_CASCADE_SCRIPT.index('h')]['regions']},
             'frames_detail': comparisons, 'worst_codes': max(c['worst_codes'] for c in comparisons.values()), 'ambiguous_max': max(c['ambiguous'] for c in comparisons.values()),
             'edge_mismatch': {'mismatch': sum(v['edge_mismatch'] for c in comparisons.values() for v in c['cascades'].values()), 'beyond_one_texel': sum(c['edge_beyond_one'] for c in comparisons.values())},
             'us': {'min': us[0], 'median': us[len(us) // 2], 'max': us[-1]},
@@ -991,6 +1014,93 @@ def validate_shadow_replay_sun(name, trace, routed, sun_programs, expected_sun):
     program = 'fffdabd910793aba' if sun_programs else '8759c7838bbc86c2'
     assert len(events) == 1 and (events[0]['event'], events[0]['frame'], int(events[0]['register']), events[0]['program']) == ('latch', '0', register, program), (name, events)
     return {'frames': len(lines), 'register': register, 'program': program, 'changing_frame': SHADOW_REPLAY_NO_SUN_FRAME, 'samples_per_frame': routed}
+
+
+SUN_POINT_FIELDS = ('device', 'frame', 'source', 'reason', 'poll', 'light', 'native', 'distance', 'checks', 'disagreements', 'agreement_deg', 'rederived', 'carried', 'candidates', 'directional',
+                    'slot_admitted', 'rule', 'rules_agree', 'admission_native', 'score', 'second_score', 'flags', 'record_scale', 'poll_us', 'frames_point')
+SUN_POINT_SELECTION = ('4', '3', '3', 'engine', '1', '955', '896')  # the fixture's block: the sun 187 + 0x300 before the forced-directional node 128 + 0x300, both rules on the same node
+
+
+def validate_shadow_replay_poll(name, text, trace, mode, count, sizes, cameras, maps, routed):
+    """The sun-position poll (shadow_replay_sun_point.h): one
+    `shadow_replay_sun_point` line per frame. Without the seam the poll is
+    unavailable (the fixture is not the verified executable): source latch,
+    reason unavailable. agree: source point on every frame, the light as
+    installed, 1..8 checks without a disagreement within 0.1 degrees (none on
+    the sun-changing frame, whose validation is carried), every cascade's
+    direction within 1 / size radians of normalize(light - camera), held bit
+    for bit unless the line reports a re-derivation, and every replayed map's
+    basis forward is minus that direction. null: unavailable / null_context.
+    disagree: disagrees on frame 0 with every check disagreeing, cooldown after."""
+    lines = [fields(l) for l in trace.splitlines() if l.startswith('shadow_replay_sun_point ')]
+    assert [int(l['frame']) for l in lines] == list(range(SHADOW_REPLAY_FRAMES)) and all(tuple(l)[:len(SUN_POINT_FIELDS)] == SUN_POINT_FIELDS for l in lines), (name, lines[:1])
+    events = [(int(fields(l)['frame']), fields(l)['source'], fields(l)['reason']) for l in trace.splitlines() if l.startswith('shadow_replay_sun_source ')]
+    poll = [fields(l) for l in text.splitlines() if l.startswith('SHADOW_POLL ')]
+    reasons, worst, held, rederivations, poll_us, phases, previous_point = {}, 0.0, None, 0, [], [], None
+    for l in lines:
+        frame = int(l['frame'])
+        reasons[l['reason']] = reasons.get(l['reason'], 0) + 1
+        dirs = [tuple(float(v) for v in l[f'dir{c}'].split(',')) for c in range(count)]
+        selection = (l['candidates'], l['directional'], l['slot_admitted'], l['rule'], l['rules_agree'], l['score'], l['second_score'])
+        if mode == 'refusals':
+            expected = fields([x for x in text.splitlines() if x.startswith(f'SHADOW_POLL_REFUSAL frame={frame} ')][0])['expect']
+            assert expected == ('layout', 'layout', 'layout', 'unreadable', 'no_directional', 'null_context', 'null_context', 'null_context')[frame], (name, frame, expected)
+            assert (l['source'], l['reason'], l['poll'], l['checks']) == ('latch', 'no_light' if expected == 'no_directional' else 'unavailable', expected, '0'), (name, l)
+        elif mode in (None, 'null'):
+            assert (l['source'], l['reason'], l['checks']) == ('latch', 'unavailable', '0') and l['poll'] in (('null_context',) if mode else ('disabled', 'executable_mismatch')), (name, l)
+        elif mode == 'disagree':
+            assert l['source'] == 'latch' and l['reason'] == ('disagrees' if frame == 0 else 'cooldown') and l['poll'] == 'ok' and selection == SUN_POINT_SELECTION, (name, l)
+            if frame != SHADOW_REPLAY_NO_SUN_FRAME:
+                assert int(l['checks']) == min(8, routed - (1 if frame == 0 else 0)) == int(l['disagreements']) and float(l['agreement_deg']) > 10.0, (name, l)
+        else:
+            light = tuple(float(v) for v in poll[0]['light'].split(','))
+            assert l['source'] == 'point' and l['reason'] == 'point' and l['poll'] == 'ok' and selection == SUN_POINT_SELECTION and l['carried'] == '0' and l['admission_native'] == l['native'], (name, l)
+            assert all(abs(float(v) - e) <= 6e-3 for v, e in zip(l['light'].split(','), light)) and abs(float(l['record_scale']) - .01) < 1e-6 and int(l['frames_point']) == frame + 1, (name, l)
+            changing = frame == SHADOW_REPLAY_NO_SUN_FRAME
+            assert int(l['disagreements']) == 0 and int(l['checks']) == (0 if changing else min(8, routed - (1 if frame == 0 else 0))), (name, l)
+            if not changing:
+                assert 0.0 <= float(l['agreement_deg']) < 0.1, (name, l)
+                worst = max(worst, float(l['agreement_deg']))
+            cam = cameras[frame]
+            r, t = [float(v) for v in cam['r'].split(',')], [float(v) for v in cam['t'].split(',')]
+            position = [-sum(t[j] * r[i * 3 + j] for j in range(3)) for i in range(3)]
+            ideal = [light[i] - position[i] for i in range(3)]
+            norm = math.sqrt(sum(v * v for v in ideal))
+            assert abs(float(l['distance']) - norm) < 1e-3 * norm, (name, l, norm)
+            for c in range(count):
+                error = math.sqrt(sum((dirs[c][i] - ideal[i] / norm) ** 2 for i in range(3)))
+                assert error <= 1.0 / sizes[c] + 1e-6, (name, frame, c, error)
+                m = maps[(frame, c)]
+                if m['valid'] == '1' and int(float(m['replayed_frame'])) == frame:
+                    assert all(abs(-float(v) - d) < 1e-6 for v, d in zip(m['forward'].split(','), dirs[c])), (name, frame, c, m['forward'], dirs[c])
+            assert (int(l['rederived']) > 0) == (held != dirs) and (frame > 0 or int(l['rederived']) == count), (name, l, held)
+            # The grid anchor: a re-derivation moves each cascade's anchor to a point of its OLD grid (the old axes from the
+            # old direction by the basis law), so the grid phase at the centre survives the turn.
+            anchors = [tuple(float(v) for v in l[f'anchor{c}'].split(',')) for c in range(count)]
+            if frame and int(l['rederived']) and previous_point:
+                for c in range(count):
+                    f_axis = [-v for v in previous_point[0][c]]
+                    hint = (1.0, 0.0, 0.0) if abs(f_axis[1]) > .99 else (0.0, 1.0, 0.0)
+                    right = [hint[1] * f_axis[2] - hint[2] * f_axis[1], hint[2] * f_axis[0] - hint[0] * f_axis[2], hint[0] * f_axis[1] - hint[1] * f_axis[0]]
+                    norm_r = math.sqrt(sum(v * v for v in right)); right = [v / norm_r for v in right]
+                    up = [f_axis[1] * right[2] - f_axis[2] * right[1], f_axis[2] * right[0] - f_axis[0] * right[2], f_axis[0] * right[1] - f_axis[1] * right[0]]
+                    texel = 2.0 * float(maps[(frame, c)]['extent']) / sizes[c] if maps[(frame, c)]['available'] == '1' else None
+                    if texel and anchors[c] != previous_point[1][c]:
+                        for axis in (right, up):
+                            u = sum((a - b) * x for a, b, x in zip(anchors[c], previous_point[1][c], axis)) / texel
+                            assert abs(u - round(u)) < 1e-2, (name, frame, c, u)
+                            phases.append(abs(u - round(u)))
+            previous_point = (dirs, anchors)
+            held = dirs; rederivations += int(l['rederived'])
+        poll_us.append(float(l['poll_us']))
+    expected_events = {None: [(0, 'latch', 'unavailable')], 'null': [(0, 'latch', 'unavailable')], 'agree': [(0, 'point', 'point')], 'disagree': [(0, 'latch', 'disagrees'), (1, 'latch', 'cooldown')],
+                       'refusals': [(0, 'latch', 'unavailable'), (4, 'latch', 'no_light'), (5, 'latch', 'unavailable')]}[mode]
+    assert events == expected_events, (name, events)
+    statuses = {}
+    for l in lines:
+        statuses[l['poll']] = statuses.get(l['poll'], 0) + 1
+    assert mode != 'agree' or len(phases) >= 2, (name, 'a re-derivation between two replays of one cascade', phases)
+    return {'mode': mode or 'no_seam', 'reasons': reasons, 'poll_statuses': statuses, 'rederivation_grid_phase_texels': max(phases) if phases else None, 'events': events, 'worst_agreement_deg': worst, 'rederivations': rederivations, 'poll_us_median': sorted(poll_us)[len(poll_us) // 2], 'poll_us_max': max(poll_us)}
 
 
 def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
@@ -1099,8 +1209,9 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
             triple = lambda key: tuple(float(v) for v in m[key].split(','))
             basis = {'right': triple('right'), 'up': triple('up'), 'forward': triple('forward'), 'center': triple('center'), 'extent': float(m['extent']),
                      'depth_light': float(m['depth_light']), 'depth_behind': float(m['depth_behind'])}
-            expected_sun = tuple(float(v) for v in suns[frame]['direction'].split(','))
-            assert all(abs(-basis['forward'][i] - expected_sun[i]) < 1e-5 for i in range(3)), (name, frame, c, basis['forward'])
+            expected_sun = tuple(float(v) for v in suns[0]['direction'].split(','))  # the latch keeps frame 0's first constant
+            if env.get('X3M_FIXTURE_SHADOW_POLL') != 'agree':  # agree: the basis is the polled light's (validate_shadow_replay_poll)
+                assert all(abs(-basis['forward'][i] - expected_sun[i]) < 1e-5 for i in range(3)), (name, frame, c, basis['forward'])
             assert (basis['extent'], basis['depth_light'], basis['depth_behind']) == (extents[c], 2.0 * extents[-1], 2.0 * extents[c]), (name, frame, c, basis)
             cam = cameras[frame]
             camera = {'m00': float(cam['m00']), 'm11': float(cam['m11']), 'r': [float(v) for v in cam['r'].split(',')], 't': [float(v) for v in cam['t'].split(',')]}
@@ -1110,7 +1221,8 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
             assert comparison['ok'] and comparison['covered_cpu'] >= 1, (name, frame, c, comparison)
             comparisons[f'{frame}/{c}'] = comparison
     sun = validate_shadow_replay_sun(name, trace, len(order), False, tuple(float(v) for v in suns[0]['direction'].split(',')))
-    case = {'checks': checks + 6 + 6 * SHADOW_REPLAY_FRAMES + 3 * SHADOW_REPLAY_FRAMES * count, 'depth': True, 'taa': taa, 'casters': casters, 'cascades': count, 'extents': extents, 'sizes': sizes, 'caps': caps, 'budget': budget,
+    sun_point = validate_shadow_replay_poll(name, text, trace, env.get('X3M_FIXTURE_SHADOW_POLL'), count, sizes, cameras, maps, len(order))
+    case = {'checks': checks + 6 + 6 * SHADOW_REPLAY_FRAMES + 3 * SHADOW_REPLAY_FRAMES * count + 1 + 4 * SHADOW_REPLAY_FRAMES, 'sun_point': sun_point, 'depth': True, 'taa': taa, 'casters': casters, 'cascades': count, 'extents': extents, 'sizes': sizes, 'caps': caps, 'budget': budget,
             'frames': SHADOW_REPLAY_FRAMES, 'per_frame': expectations, 'refusals': refused, 'targets': targets, 'sun': sun,
             'map': {'frames': comparisons, 'max_depth_error': max(v.get('max_depth_error', 0.0) for v in comparisons.values()), 'covered_texels': sum(v.get('covered_gpu', 0) for v in comparisons.values())}}
     case['us'] = depth_replay.us_summary(depth_rows)

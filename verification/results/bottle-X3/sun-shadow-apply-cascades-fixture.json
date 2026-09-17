@@ -10,14 +10,14 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion_output_fixture.exe": "8b08e9640a4a5b9700cd05e20960ef74f5e8011e134e955d2f72cb3f4bd9758c",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion-output-seam/d3d9.dll": "365398438f80391d20357c7ca2dc958dabbc9c5756f339d3abda36e070c11f62",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/build/d3d9.dll": "3495fc3c0a9313765013bac27a57c4e57ef11537c13b5e0d5c35909ae45f8280"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a206a11144997ac2f/verification/probe/build/motion_output_fixture.exe": "1a9cc114e154175770ba2be7ec542f469817efdaeb60cdb29ddb8c2cc951dab4",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a206a11144997ac2f/verification/probe/build/motion-output-seam/d3d9.dll": "5313c4aee111e00ff2e687373410e31981debfebfe3d9f23f112a81c06ce5795",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a206a11144997ac2f/build/d3d9.dll": "4f61c7b862131bfa70f6b4cff2a94e4adf954cacb064338e2b1524500dd4b0a2"
  },
- "checks": 2651,
- "fixture_checks": 2463,
- "validator_checks": 188,
- "frames": 20,
+ "checks": 2891,
+ "fixture_checks": 2694,
+ "validator_checks": 197,
+ "frames": 21,
  "map_size": 256,
  "cascades": 3,
  "config": {
@@ -37,8 +37,9 @@
  "depth_format": 77,
  "depth_size": 256,
  "bounds_bench_ns": {
-  "single_verdict": 45.1,
-  "cascade_mask_4": 44.0
+  "single_verdict": 45.2,
+  "cascade_mask_4": 45.0,
+  "cascade_mask_4_per_cascade_suns": 137.3
  },
  "half_texel": {
   "shift_fit": {
@@ -200,6 +201,80 @@
    19
   ]
  },
+ "point_light": {
+  "frame": 20,
+  "regions": [
+   {
+    "landing": [
+     62.5525368,
+     -175.147103
+    ],
+    "pixels": 560,
+    "owned": [
+     560,
+     0,
+     0
+    ],
+    "owner": 0,
+    "shadowed_point": 82,
+    "shadowed_quad": 73,
+    "mismatch_point": 11,
+    "beyond_one_point": 0,
+    "beyond_one_parallel": 0,
+    "caster_height": 60.63306546757978,
+    "lateral_offset": 184.09642370209573,
+    "light_distance": 23999.995429499566,
+    "residual_units": 0.465097193183475,
+    "residual_texels": 0.2381297629099392
+   },
+   {
+    "landing": [
+     -34.9850183,
+     97.9580514
+    ],
+    "pixels": 2184,
+    "owned": [
+     133,
+     2051,
+     0
+    ],
+    "owner": 1,
+    "shadowed_point": 156,
+    "shadowed_quad": 175,
+    "mismatch_point": 25,
+    "beyond_one_point": 0,
+    "beyond_one_parallel": 0,
+    "caster_height": 80.6128448558335,
+    "lateral_offset": 542.6680211793504,
+    "light_distance": 23999.995429499566,
+    "residual_units": 1.822750888768203,
+    "residual_texels": 0.15554140917488665
+   },
+   {
+    "landing": [
+     -253.603676,
+     710.090294
+    ],
+    "pixels": 590,
+    "owned": [
+     0,
+     590,
+     0
+    ],
+    "owner": 1,
+    "shadowed_point": 43,
+    "shadowed_quad": 71,
+    "mismatch_point": 34,
+    "beyond_one_point": 22,
+    "beyond_one_parallel": 0,
+    "caster_height": 500.3784984396386,
+    "lateral_offset": 1159.4154904646189,
+    "light_distance": 23999.995429499566,
+    "residual_units": 24.172778861168304,
+    "residual_texels": 2.0627437961530286
+   }
+  ]
+ },
  "frames_detail": {
   "0": {
    "valid": 11856,
@@ -270,8 +345,8 @@
    "case": "a",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 11097.7,
-   "replay_us": 16545.8,
+   "us": 11133.3,
+   "replay_us": 16589.4,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 0,
@@ -350,8 +425,8 @@
    "case": "a",
    "scale": 100.0,
    "elevation": 30.0,
-   "us": 1740.5,
-   "replay_us": 6540.8,
+   "us": 1934.9,
+   "replay_us": 6859.8,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 1,
@@ -430,8 +505,8 @@
    "case": "b",
    "scale": 60.0,
    "elevation": 30.0,
-   "us": 1749.9,
-   "replay_us": 6183.8,
+   "us": 1833.1,
+   "replay_us": 6462.7,
    "issues": 6,
    "far_replayed": true,
    "far_frame": 2,
@@ -510,8 +585,8 @@
    "case": "b",
    "scale": 60.0,
    "elevation": 50.0,
-   "us": 1718.1,
-   "replay_us": 6096.0,
+   "us": 1765.7,
+   "replay_us": 6126.0,
    "issues": 6,
    "far_replayed": true,
    "far_frame": 3,
@@ -596,8 +671,8 @@
    "case": "c",
    "scale": 40.0,
    "elevation": 50.0,
-   "us": 1766.9,
-   "replay_us": 8770.5,
+   "us": 1757.0,
+   "replay_us": 8989.1,
    "issues": 9,
    "far_replayed": true,
    "far_frame": 4,
@@ -682,8 +757,8 @@
    "case": "c",
    "scale": 40.0,
    "elevation": 70.0,
-   "us": 1738.7,
-   "replay_us": 8569.3,
+   "us": 1733.9,
+   "replay_us": 8552.8,
    "issues": 9,
    "far_replayed": true,
    "far_frame": 5,
@@ -762,8 +837,8 @@
    "case": "d",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 1725.7,
-   "replay_us": 4483.0,
+   "us": 1751.9,
+   "replay_us": 4465.8,
    "issues": 4,
    "far_replayed": true,
    "far_frame": 6,
@@ -842,8 +917,8 @@
    "case": "d",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 1882.6,
-   "replay_us": 2856.6,
+   "us": 1739.0,
+   "replay_us": 2601.8,
    "issues": 2,
    "far_replayed": false,
    "far_frame": 6,
@@ -922,8 +997,8 @@
    "case": "e",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 1737.8,
-   "replay_us": 4441.0,
+   "us": 1616.9,
+   "replay_us": 4540.7,
    "issues": 4,
    "far_replayed": true,
    "far_frame": 8,
@@ -1002,8 +1077,8 @@
    "case": "e",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 7736.8,
-   "replay_us": 2406.6,
+   "us": 7828.5,
+   "replay_us": 2396.3,
    "issues": 2,
    "far_replayed": false,
    "far_frame": -1,
@@ -1082,8 +1157,8 @@
    "case": "e",
    "scale": 600.0,
    "elevation": 50.0,
-   "us": 692.6,
-   "replay_us": 689.1,
+   "us": 712.3,
+   "replay_us": 684.3,
    "issues": 4,
    "far_replayed": true,
    "far_frame": 10,
@@ -1168,8 +1243,8 @@
    "case": "f",
    "scale": 40.0,
    "elevation": 50.0,
-   "us": 710.1,
-   "replay_us": 820.0,
+   "us": 710.8,
+   "replay_us": 713.3,
    "issues": 9,
    "far_replayed": true,
    "far_frame": 11,
@@ -1248,8 +1323,8 @@
    "case": "g",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 798.8,
-   "replay_us": 897.2,
+   "us": 698.0,
+   "replay_us": 616.7,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 12,
@@ -1328,8 +1403,8 @@
    "case": "g",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 708.1,
-   "replay_us": 765.9,
+   "us": 709.8,
+   "replay_us": 675.8,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 13,
@@ -1408,8 +1483,8 @@
    "case": "g",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 724.5,
-   "replay_us": 786.6,
+   "us": 878.8,
+   "replay_us": 664.3,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 14,
@@ -1488,8 +1563,8 @@
    "case": "g",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 693.7,
-   "replay_us": 759.5,
+   "us": 594.6,
+   "replay_us": 640.5,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 15,
@@ -1568,8 +1643,8 @@
    "case": "g",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 713.0,
-   "replay_us": 812.7,
+   "us": 713.5,
+   "replay_us": 653.0,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 16,
@@ -1648,8 +1723,8 @@
    "case": "g",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 769.4,
-   "replay_us": 822.2,
+   "us": 815.0,
+   "replay_us": 708.6,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 17,
@@ -1728,8 +1803,8 @@
    "case": "g",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 751.9,
-   "replay_us": 756.1,
+   "us": 699.4,
+   "replay_us": 629.0,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 18,
@@ -1808,8 +1883,8 @@
    "case": "g",
    "scale": 100.0,
    "elevation": 50.0,
-   "us": 727.1,
-   "replay_us": 849.7,
+   "us": 735.5,
+   "replay_us": 729.4,
    "issues": 5,
    "far_replayed": true,
    "far_frame": 19,
@@ -1818,28 +1893,185 @@
     2,
     2
    ]
+  },
+  "20": {
+   "valid": 11856,
+   "compared": 10500,
+   "ambiguous": 1356,
+   "violations": 0,
+   "worst_codes": 0.997572124004364,
+   "identity_changed": 0,
+   "alpha_changed": 0,
+   "shadowed": 875,
+   "penumbra": 660,
+   "monotone_violations": 0,
+   "cascades": {
+    "0": {
+     "owned": 4652,
+     "band": 480,
+     "shadowed": 164,
+     "shadowed_analytic": 82,
+     "edge_mismatch": 11,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 1.953125
+    },
+    "1": {
+     "owned": 5957,
+     "band": 268,
+     "shadowed": 711,
+     "shadowed_analytic": 199,
+     "edge_mismatch": 59,
+     "edge_beyond_one": 22,
+     "interior_wrong": 32,
+     "band_shadowed": 0,
+     "texel_world": 11.71875
+    },
+    "2": {
+     "owned": 1247,
+     "band": 0,
+     "shadowed": 0,
+     "shadowed_analytic": 0,
+     "edge_mismatch": 0,
+     "edge_beyond_one": 0,
+     "interior_wrong": 0,
+     "band_shadowed": 0,
+     "texel_world": 58.59375
+    }
+   },
+   "edge_beyond_one": 22,
+   "interior_wrong": 32,
+   "second_caster": {
+    "pixels": 199,
+    "interior": 52,
+    "darkened": 193,
+    "interior_dark": 52
+   },
+   "regions": [
+    {
+     "landing": [
+      62.5525368,
+      -175.147103
+     ],
+     "pixels": 560,
+     "owned": [
+      560,
+      0,
+      0
+     ],
+     "owner": 0,
+     "shadowed_point": 82,
+     "shadowed_quad": 73,
+     "mismatch_point": 11,
+     "beyond_one_point": 0,
+     "beyond_one_parallel": 0,
+     "caster_height": 60.63306546757978,
+     "lateral_offset": 184.09642370209573,
+     "light_distance": 23999.995429499566,
+     "residual_units": 0.465097193183475,
+     "residual_texels": 0.2381297629099392
+    },
+    {
+     "landing": [
+      -34.9850183,
+      97.9580514
+     ],
+     "pixels": 2184,
+     "owned": [
+      133,
+      2051,
+      0
+     ],
+     "owner": 1,
+     "shadowed_point": 156,
+     "shadowed_quad": 175,
+     "mismatch_point": 25,
+     "beyond_one_point": 0,
+     "beyond_one_parallel": 0,
+     "caster_height": 80.6128448558335,
+     "lateral_offset": 542.6680211793504,
+     "light_distance": 23999.995429499566,
+     "residual_units": 1.822750888768203,
+     "residual_texels": 0.15554140917488665
+    },
+    {
+     "landing": [
+      -253.603676,
+      710.090294
+     ],
+     "pixels": 590,
+     "owned": [
+      0,
+      590,
+      0
+     ],
+     "owner": 1,
+     "shadowed_point": 43,
+     "shadowed_quad": 71,
+     "mismatch_point": 34,
+     "beyond_one_point": 22,
+     "beyond_one_parallel": 0,
+     "caster_height": 500.3784984396386,
+     "lateral_offset": 1159.4154904646189,
+     "light_distance": 23999.995429499566,
+     "residual_units": 24.172778861168304,
+     "residual_texels": 2.0627437961530286
+    }
+   ],
+   "shift_fit": {
+    "shift": [
+     0.5,
+     0.25
+    ],
+    "mismatch": 40,
+    "mismatch_at_zero": 53,
+    "edge_pixels": 441
+   },
+   "shift_fit_legacy_rule": {
+    "shift": [
+     0.0,
+     -0.25
+    ],
+    "mismatch": 43,
+    "mismatch_at_zero": 51
+   },
+   "ok": true,
+   "case": "h",
+   "scale": 60.0,
+   "elevation": 30.0,
+   "us": 692.1,
+   "replay_us": 691.1,
+   "issues": 10,
+   "far_replayed": true,
+   "far_frame": 20,
+   "records": [
+    2,
+    4,
+    4
+   ]
   }
  },
  "worst_codes": 0.9999969154596329,
  "ambiguous_max": 1691,
  "edge_mismatch": {
-  "mismatch": 931,
-  "beyond_one_texel": 0
+  "mismatch": 1001,
+  "beyond_one_texel": 22
  },
  "us": {
-  "min": 692.6,
-  "median": 1718.1,
-  "max": 11097.7
+  "min": 594.6,
+  "median": 878.8,
+  "max": 11133.3
  },
  "replay_us": {
-  "min": 689.1,
-  "median": 2406.6,
-  "max": 16545.8,
-  "per_issue_median": 952.1444444444444
+  "min": 616.7,
+  "median": 729.4,
+  "max": 16589.4,
+  "per_issue_median": 171.075
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-20260917-092602-006482",
- "trace_sha256": "9637a7c4840ff29001156c573477c33aec013acd267d44f80342bd91dd2c9f8c",
- "dll_sha256": "3495fc3c0a9313765013bac27a57c4e57ef11537c13b5e0d5c35909ae45f8280",
- "exe_sha256": "8b08e9640a4a5b9700cd05e20960ef74f5e8011e134e955d2f72cb3f4bd9758c"
+ "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-20260917-103154-175037",
+ "trace_sha256": "ffbb7f623b7616ad013558233a54f18dcf99951c5107dcadb1626d80f598e79d",
+ "dll_sha256": "4f61c7b862131bfa70f6b4cff2a94e4adf954cacb064338e2b1524500dd4b0a2",
+ "exe_sha256": "1a9cc114e154175770ba2be7ec542f469817efdaeb60cdb29ddb8c2cc951dab4"
 }

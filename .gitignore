@@ -43,3 +43,5 @@ verification/results/bottle-*/ambient-occlusion-gpu1-wine.log
 # Port-distance fixture: the Wine stderr log stays local; the JSON/text records are tracked.
 verification/results/bottle-*/port-distance*-wine.log
 verification/results/bottle-*/effect-beginpass-wine.log
+verification/results/bottle-*/motion-output-partial.txt
+verification/results/bottle-*/motion-output-wine.log
