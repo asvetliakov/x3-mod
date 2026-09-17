@@ -176,3 +176,32 @@ top byte and exponent, offsets 39–153 of the slots at 32–159), i.e. FXSAVE/F
 Host: `test_object_lifetime_runner` 8 tests (new: journal line required) and
 the six extracted-snippet modules, 35 tests OK. Scratch clean build of
 `d3d9.dll`: 0 warnings; `check_no_x87.py`: 511 reachable, 0 violations.
+
+### Review fixes (2026-09-17, second commit)
+
+Ring raised to 2,048 entries (64 KB static, still allocation-free) so a
+gate-jump burst of about 600 retirements drains in one frame. `journal_drain`
+with a null buffer or zero capacity returns `invalid` with `count=0`,
+`more=false` and an unmoved cursor. Registration at a saturated consumer count
+is refused with an invalid cursor (default `JournalCursor` is invalid, never
+becomes valid by draining, and owes no unregister). The header now states the
+consumer contract: revalidate fully at registration/re-registration, on
+`overflow` and on `available=false`; `FlushAll` is an unconditional drop and
+epoch comparisons use `JournalDrain`; `Retired` is not proof of death. The
+figures of the section above (512, 648 checks, costs) are superseded by these.
+
+Fixture rerun, bottle X3: 673 checks; the runner now requires twelve
+`JOURNAL_CASE ... result=PASS` lines and all twelve pass: `no_consumer`,
+`retire_in_order`, `partial_drain`, `invalid_drain`, `flush_load_epoch`,
+`flush_registry_destroy`, `flush_registry_rebind`, `overflow_and_recovery`
+(2,136 lost; one recovers; exactly 2,048 drains; 2,049 overflows), `cost`,
+`reregistration_and_shutdown`, `flush_capacity_exhausted`,
+`saturated_registration`. Cost, 20,000 hooked insert+remove cycles, best of two
+passes: 1.4900 us without a consumer, 1.2392 us with one (the append is below
+the run-to-run noise of the hooked cycle under FEX; the first run measured
+1.2965/1.2926); empty drain 0.0063 us.
+
+The run still exits failed on **10 FX-state checks, accepted as the baseline**:
+the same ten labels fail on main's committed X3 record (x87 register slots do
+not round-trip through FXSAVE/FXRSTOR under `FEX_X87REDUCEDPRECISION=1`); no
+journal check is among them.

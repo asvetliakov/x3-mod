@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-17T04:51:24.464987+00:00",
+  "started_utc": "2026-09-17T05:01:15.731007+00:00",
   "game_launched": false,
   "bottle": {
     "name": "X3",
@@ -13,25 +13,25 @@
   "fresh_build": true,
   "passed": false,
   "sources_before": {
-    "src/proxy/object_lifetime.cpp": "be53441c075697437f78396135dfe61e2ac534530b4c7d6648240dad2cdd4f17",
-    "src/proxy/object_lifetime.h": "7c1e18cbedfacc46f3f2b68e7a8eea2e3239784ffab8cc95921914d8c8fa83f0",
+    "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
+    "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "36662d47bfa5144f192ced1ca773b4986be11ff3529da8992b7460f3f8bdbce9",
+    "verification/probe/object_lifetime.cpp": "c0677f8eb3d6438e9c2b7fa12a507793f18b1bc4a2cb3cff5d33b38d3d4728e4",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "196d1fbe702677e2ceaf2752cff6371444b52a0f220047f1d65e08dee4bb24b4"
+    "verification/probe/run_object_lifetime.py": "3287213ade8557ec0529d29838b89043cdf03aed5f231aee13bba00bcbf7cbc4"
   },
   "build_exit": 0,
   "sources_after_build": {
-    "src/proxy/object_lifetime.cpp": "be53441c075697437f78396135dfe61e2ac534530b4c7d6648240dad2cdd4f17",
-    "src/proxy/object_lifetime.h": "7c1e18cbedfacc46f3f2b68e7a8eea2e3239784ffab8cc95921914d8c8fa83f0",
+    "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
+    "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "36662d47bfa5144f192ced1ca773b4986be11ff3529da8992b7460f3f8bdbce9",
+    "verification/probe/object_lifetime.cpp": "c0677f8eb3d6438e9c2b7fa12a507793f18b1bc4a2cb3cff5d33b38d3d4728e4",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "196d1fbe702677e2ceaf2752cff6371444b52a0f220047f1d65e08dee4bb24b4"
+    "verification/probe/run_object_lifetime.py": "3287213ade8557ec0529d29838b89043cdf03aed5f231aee13bba00bcbf7cbc4"
   },
-  "executable_sha256": "da690d4c764e91eb261eba5fe1698c999c3aecdac45bc160ee0d046487883dfb",
+  "executable_sha256": "7dfb62b74842c801691cd82d083d87642ca2165c8cfde5a26b94dd0ea5452686",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -42,32 +42,32 @@
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0e1043e25258a052/verification/probe/build/object_lifetime.exe"
   ],
   "exit_code": 1,
-  "executable_sha256_after_run": "da690d4c764e91eb261eba5fe1698c999c3aecdac45bc160ee0d046487883dfb",
+  "executable_sha256_after_run": "7dfb62b74842c801691cd82d083d87642ca2165c8cfde5a26b94dd0ea5452686",
   "sources_after_run": {
-    "src/proxy/object_lifetime.cpp": "be53441c075697437f78396135dfe61e2ac534530b4c7d6648240dad2cdd4f17",
-    "src/proxy/object_lifetime.h": "7c1e18cbedfacc46f3f2b68e7a8eea2e3239784ffab8cc95921914d8c8fa83f0",
+    "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
+    "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "36662d47bfa5144f192ced1ca773b4986be11ff3529da8992b7460f3f8bdbce9",
+    "verification/probe/object_lifetime.cpp": "c0677f8eb3d6438e9c2b7fa12a507793f18b1bc4a2cb3cff5d33b38d3d4728e4",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "196d1fbe702677e2ceaf2752cff6371444b52a0f220047f1d65e08dee4bb24b4"
+    "verification/probe/run_object_lifetime.py": "3287213ade8557ec0529d29838b89043cdf03aed5f231aee13bba00bcbf7cbc4"
   },
-  "report_sha256": "af876b04283a3fa553fef6c3846d995241c65dcac9b3b726493f9de8ea7ef471",
-  "checks": 648,
+  "report_sha256": "c55ed9f4fad60250421e58a41cedad9dbf69d0dfc9ab897be5b2fe4ae548bfb6",
+  "checks": 673,
   "failures": 10,
-  "backend_calls": 162342,
+  "backend_calls": 172592,
   "read_path": {
     "timing": [
       {
         "mode": "rpm",
-        "snapshot_us": "10.897",
+        "snapshot_us": "10.469",
         "reads_per_call": "0.00",
         "queries_per_call": "0.0000",
         "syscalls_per_call": "12.00"
       },
       {
         "mode": "direct",
-        "snapshot_us": "0.778",
+        "snapshot_us": "0.712",
         "reads_per_call": "12.00",
         "queries_per_call": "0.0197",
         "syscalls_per_call": "0.00"
@@ -83,12 +83,26 @@
   },
   "journal": [
     {
-      "capacity": "512",
-      "cycle_idle_us": "1.2965",
-      "cycle_journal_us": "1.2926",
-      "retirement_delta_us": "-0.0039",
-      "empty_drain_us": "0.0058",
+      "capacity": "2048",
+      "cycle_idle_us": "1.4900",
+      "cycle_journal_us": "1.2392",
+      "retirement_delta_us": "-0.2508",
+      "empty_drain_us": "0.0063",
       "drained": "40000"
     }
-  ]
+  ],
+  "journal_cases": {
+    "no_consumer": "PASS",
+    "retire_in_order": "PASS",
+    "partial_drain": "PASS",
+    "invalid_drain": "PASS",
+    "flush_load_epoch": "PASS",
+    "flush_registry_destroy": "PASS",
+    "flush_registry_rebind": "PASS",
+    "overflow_and_recovery": "PASS",
+    "cost": "PASS",
+    "reregistration_and_shutdown": "PASS",
+    "flush_capacity_exhausted": "PASS",
+    "saturated_registration": "PASS"
+  }
 }

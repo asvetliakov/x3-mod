@@ -15,6 +15,9 @@ INPUTS = [
     'verification/probe/object_lifetime.cpp', 'verification/probe/build_object_lifetime.sh',
     'verification/probe/run_object_lifetime.py',
 ]
+JOURNAL_CASES = ('no_consumer', 'retire_in_order', 'partial_drain', 'invalid_drain', 'flush_load_epoch',
+                 'flush_registry_destroy', 'flush_registry_rebind', 'overflow_and_recovery', 'cost',
+                 'reregistration_and_shutdown', 'flush_capacity_exhausted', 'saturated_registration')
 WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 
 
@@ -66,7 +69,10 @@ def run(root):
                                  'identity': [parse(l) for l in lines if l.startswith('IDENTITY ')]}
             # Retirement journal: measured cycle cost without/with a consumer and the empty drain.
             data['journal'] = [parse(l) for l in lines if l.startswith('JOURNAL ')]
-            identical = (len(data['journal']) == 1 and
+            cases = [parse(l) for l in lines if l.startswith('JOURNAL_CASE ')]
+            data['journal_cases'] = {c.get('name'): c.get('result') for c in cases}
+            identical = (len(cases) == len(JOURNAL_CASES) and data['journal_cases'] == dict.fromkeys(JOURNAL_CASES, 'PASS') and
+                         len(data['journal']) == 1 and
                          {'cycle_idle_us', 'cycle_journal_us', 'retirement_delta_us', 'empty_drain_us'} <= set(data['journal'][0]) and
                          len(data['read_path']['identity']) == 1 and data['read_path']['identity'][0].get('equal') == '1'
                          and len(data['read_path']['timing']) == 2)

@@ -479,9 +479,10 @@ bool current(std::uintptr_t map,std::uintptr_t node,std::uint32_t node_handle,
 }
 JournalCursor journal_register(){
     Lock lock;
-    // Skipping a whole ring makes every cursor of an earlier registration drain as overflow.
+    if(journal_consumers==std::numeric_limits<unsigned>::max())return {};
+    // Skipping more than a whole ring makes every cursor of an earlier registration drain as overflow.
     if(!journal_consumers)journal_head+=JournalCapacity+1;
-    if(journal_consumers!=std::numeric_limits<unsigned>::max())++journal_consumers;
+    ++journal_consumers;
     return {journal_head};
 }
 void journal_unregister(){Lock lock;if(journal_consumers)--journal_consumers;}
@@ -489,13 +490,15 @@ JournalStats journal_stats(){Lock lock;return {journal_head,journal_consumers};}
 JournalDrain journal_drain(JournalCursor& cursor,JournalEntry* out,std::uint32_t limit){
     JournalDrain result{};
     Lock lock;
-    result.available=journal_consumers && observation;
+    result.available=journal_consumers && observation && cursor.valid();
     result.load_epoch=load_epoch;result.registry_epoch=registry_epoch;result.mutation_revision=revision;
+    if(!out || !limit){result.invalid=true;return result;}
+    if(!cursor.valid()){result.overflow=true;return result;}
     if(!journal_consumers || cursor.sequence>journal_head || journal_head-cursor.sequence>JournalCapacity){
         result.overflow=true;cursor.sequence=journal_head;return result;
     }
     const std::uint64_t pending=journal_head-cursor.sequence;
-    const std::uint32_t count=!out?0:pending<limit?static_cast<std::uint32_t>(pending):limit;
+    const std::uint32_t count=pending<limit?static_cast<std::uint32_t>(pending):limit;
     for(std::uint32_t i=0;i<count;++i)out[i]=journal[static_cast<unsigned>(cursor.sequence+i)&(JournalCapacity-1)];
     cursor.sequence+=count;result.count=count;result.more=cursor.sequence!=journal_head;
     return result;
@@ -516,5 +519,6 @@ bool fixture_shutdown(unsigned failure,unsigned site){
     {Lock lock;observation=false;clear_entries();increment(revision);disabled_reason=Reason::Disabled;}
     const bool result=restore_all(failure,site);SetLastError(error);return result;
 }
+void fixture_journal_consumers(unsigned count){Lock lock;journal_consumers=count;}
 #endif
 } // namespace x3m::object_lifetime
