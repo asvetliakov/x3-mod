@@ -346,6 +346,102 @@ lines carry `kind=none`/`0x11`; 40 rapid calls after a limiter reset give
 `lines <= 32` and `lines + enter_suppressed == 40`; the trace-off benchmark's
 140,000 proceeded calls write nothing.
 
+## 7. Transcoding experiment (2026-09-17)
+
+**Hypothesis.** The game never demuxes a byte itself: it builds
+`mov\%05d.dat` and hands the *path* to `IAMMultiMediaStream::OpenFile` or
+`AddSourceFilter`+`Render` (`docs/reverse-engineering/media-cue-playback.md`
+§8.5). Container and codec are therefore free as long as the file keeps its
+`%05d.dat` name and location and the graph can autoplug a decoder whose output
+reaches `amstream`'s primary video pin. CrossOver's GStreamer set has no
+MPEG-1 decoder at all (§3) but does ship `avi`, `videoparsersbad`
+(`h264parse`), `isomp4` and `applemedia` (VideoToolbox `vtdec`, H.264/HEVC);
+native Windows DirectShow demuxes AVI and decodes H.264 with the stock
+DTV-DVD decoder but has no stock MP4 source filter. **H.264 in AVI is the one
+combination plausibly decodable on both targets with no custom codec
+runtime**; MP4 is built as the CrossOver-only control.
+
+**Tool.** `tools/media_transcode.py` (host-side, no Wine):
+
+* `probe [--game-dir DIR]` — ffprobe table of every `mov/*.dat`;
+* `build --id N [--container avi|mp4] --out DIR` — libx264, `-pix_fmt
+  yuv420p`, `-profile:v baseline` (Constrained Baseline in practice), CRF 20,
+  `-preset veryfast`, `-threads 0`, `-g 12 -keyint_min 12 -sc_threshold 0`,
+  `-bf 0`, `-fps_mode cfr`, source size and frame rate forced, `-an`;
+  AVI gets `-vtag H264`. Writes `DIR/NNNNN.<container>.dat` plus a
+  `....dat.json` sidecar (source/result sha256, sizes, frame rate, frame count,
+  duration, the exact ffmpeg command, wall time) and fails if frame count or
+  duration drift by more than one frame, or size/rate change. It refuses to
+  write into the game directory.
+* `install --id N --from DIR` / `restore --id N` — the only subcommands that
+  touch the bottle; both refuse while `pgrep -fl X3AP.exe` matches.
+
+Raw MPEG-1 elementary streams carry no index, so ffprobe's `format.duration`
+is bitrate-derived (`00001.dat`: 3011.62 s = size*8/1.7 Mbit) and
+`r_frame_rate` is the *field* rate (60 for a 30 fps stream). The tool takes
+the frame rate from the demuxer's first packet duration in the stream time
+base (40000/1200000 s = exactly 30 fps) and the frame count from
+`-count_packets`, which for an ES is one packet per picture; duration is then
+`frames / fps`. Hence 30 fps / 90295 frames / 3009.833 s for `00001.dat`, not
+the 60 fps / 3011.6 s that a plain `ffprobe -show_streams` suggests.
+
+**Source inventory** (`python3 tools/media_transcode.py probe`, all
+`mpeg1video`; `00144.dat` is the ASF voice archive and has no video stream):
+
+| file | size | fps | frames | duration s | MiB |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 00001.dat | 256x256 | 30 | 90295 | 3009.83 | 610.3 |
+| 00002.dat | 512x512 | 25 | 48488 | 1939.52 | 508.9 |
+| 00800.dat | 512x512 | 30 | 21600 | 720.00 | 314.5 |
+| 00810.dat | 1024x576 | 30 | 7386 | 246.20 | 605.3 |
+| 00811.dat | 1024x576 | 30 | 12150 | 405.00 | 999.4 |
+| 00812-00822.dat | 1024x576 | 30 | 298 | 9.93 | 12.8 each |
+| 00831.dat | 1024x576 | 29.97 | 421 | 14.05 | 12.1 |
+
+**First transcodes** of cue 1, `--out /tmp/x3-media-transcode`, host encode,
+no Wine:
+
+| | source | AVI result | MP4 result |
+| --- | --- | --- | --- |
+| codec | mpeg1video | h264 Constrained Baseline | h264 Constrained Baseline |
+| size / fps / frames | 256x256 / 30 / 90295 | identical | identical |
+| duration | 3009.833 s | 3009.833 s | 3009.833 s |
+| bytes | 639,970,202 | 137,276,460 | 135,196,866 |
+| sha256 | `993357ac...15db3713` | `fb6ac196...07501c3a` | `5d2c9c48...c65dc93b` |
+| encode wall | - | 7.1 s | 7.3 s |
+
+`frame_count_delta = 0` and `duration_delta_s = 0.0` in both sidecars
+(`/tmp/x3-media-transcode/00001.{avi,mp4}.dat.json`); the game directory was
+not touched.
+
+**Install / restore** (run by the user or the orchestrator, game not running):
+
+```sh
+python3 tools/media_transcode.py install --id 1 --from /tmp/x3-media-transcode --container avi
+# ... test, then:
+python3 tools/media_transcode.py restore --id 1
+```
+
+`install` copies the current `mov/00001.dat` to `mov/00001.dat.orig` first,
+prints both sha256s, and refuses when `.orig` already exists and differs from
+the current file (i.e. a transcode is already installed - restore first).
+`restore` copies `.orig` back, verifies the hash and keeps `.orig` in place.
+
+**What this can and cannot decide.** The run100/101 freeze sits *after*
+decoding: §8.5 excludes `Render`/`OpenFile`/`SetState` by evidence and leaves
+`CreateSample(NULL,...)`, `GetSurface`, `GetSurfaceDesc`, `Run`,
+`CompletionStatus`, `Update` and the two `Lock`/`LockRect` calls - the
+DirectDraw-surface and blit side, not the codec. Supplying a decodable
+stream may therefore reproduce exactly the same freeze; that is expected and
+is not evidence against the transcode. **The blit witness line decides**: if
+the per-frame trace reaches `Lock`/`LockRect` and frames advance, the codec
+was the only missing piece; if it stops at the same site as run100/101, the
+fault is in Wine's `amstream`/DirectDraw path and a transcode cannot fix it.
+Also untested here: whether winegstreamer's autoplugged H.264 output
+negotiates to `amstream`'s required RGB16/RGB32 primary video pin (§8.5
+requirement 4) - a black avatar with advancing frames would point there.
+
+
 ## Open issues
 
 * `Videos.pck`/`VideoLists.pck` encoding is unidentified; cue ids and the
