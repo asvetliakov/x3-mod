@@ -1407,3 +1407,31 @@ The comparison is confounded twice: different builds (run95 is the run33 build)
 and unproven module identity. It repeats as **run 36 A1/A2** on one build with
 the new identity fields. The 25 "zero area" lines at 23:10:38 are exit-time
 teardown noise (run98 had 31 of them).
+
+## Run 36 sessions A1/A2 (run104/run105), 2026-09-17: builtin vs native D3DX on one build
+
+Both on the installed run36 build `51a3d764…`, same busy Argon view,
+`--frame-phases --pass-phases`. Identity settled by the new `loaded_module`
+fields: run104 (`--d3dx builtin`) `d3dx9_37.dll image_size=585728
+stamp=00000000 wine_builtin=1`; run105 `image_size=3895296 stamp=47cdef5d
+wine_builtin=0`; the launcher's first stderr line records the override
+string in each. Busy windows matched by pass count (±15 %), 19 pairs;
+empty-view 25 pairs. Medians per pass:
+
+| Per pass | A1 builtin | A2 native |
+|---|---|---|
+| BeginPass (busy) | 8.71 µs | 6.58 µs |
+| BeginPass (empty view) | 8.22 µs | 6.33 µs |
+| Draw | 8.99 µs | 8.76 µs |
+| Engine between passes | 4.77 µs | 4.45 µs |
+| EndPass | 0.111 µs | 0.112 µs |
+| Passes per frame p50 | 844 | 787 |
+| Frame dt p50 | 25.9 ms | 22.2 ms |
+
+Health clean in both (orphans 0, clock errors 0, dropped 1 startup transient;
+no claim failures or unknown shaders; the 25 exit-time "zero area" lines and
+the two GStreamer bursts as before). **Verdict:** Wine's builtin D3DX costs
+about +2.1 to +2.4 µs per pass (+32 %) over the native redistributable on this
+backend; native stays. Run103's 8.90 µs was the builtin after all. The
+experiment is closed; the per-pass split stands at draw 8.8 / BeginPass 6.6 /
+engine 4.5 µs on the native path.

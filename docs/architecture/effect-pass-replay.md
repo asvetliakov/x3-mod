@@ -278,3 +278,12 @@ expression states (classification tool); which `d3dx9_37` loads (one log
 line); whether CrossOver's DXVK switch replaces `syswow64/d3d9.dll` (one
 hash); the residual split (two stamps); the FEX cost of the replay compare
 loop and parameter store (the fixture's benchmark row, before any game run).
+
+**Outcome (run 36 A1/A2, run104/run105, 2026-09-17).** On one build with the
+identity fields readable, the builtin D3DX raises BeginPass from 6.58 to
+8.71 µs per pass (+32 %) in the busy view and from 6.33 to 8.22 µs in the
+empty view; draw and EndPass unchanged. The native redistributable stays and
+`--d3dx builtin` remains only as a diagnostic. Both bottle experiments are now
+closed (DXVK renders black on this CrossOver Preview); what remains of the
+plan is the host prerequisites and the pass-replay wrapper, only if the 3–5 ms
+is still wanted ([ledger](../verification/sampling-profiler.md), run104/105).
