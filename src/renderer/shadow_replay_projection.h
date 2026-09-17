@@ -330,7 +330,8 @@ constexpr unsigned shadow_cascade_adaptive_stable_frames = 8; // scene ends a ch
 // e0 x ratio^i) capped at the last cascade's configured extent; the last
 // cascade itself keeps its configured extent. Configured e0: the configured set.
 inline float shadow_cascade_ladder_extent(const ShadowCascadeSet& config, unsigned i, float e0, float ratio) noexcept {
-    if (!i || i >= config.count) return config.cascades[i < shadow_cascade_max ? i : 0].half_extent;
+    if (i >= config.count || i >= shadow_cascade_max) return 0.f / 0.f; // no such cascade: refused (NaN, never an extent)
+    if (!i) return config.cascades[0].half_extent;
     const float configured = config.cascades[i].half_extent, last = config.cascades[config.count - 1].half_extent;
     if (i + 1 == config.count || !(e0 > config.cascades[0].half_extent)) return configured;
     float slid = e0;
@@ -356,6 +357,53 @@ inline unsigned shadow_cascade_extent_delta_mask(const ShadowCascadeSet& a, cons
     for (unsigned i = 0; i < a.count && i < b.count && i < shadow_cascade_max; ++i) if (a.cascades[i].half_extent != b.cascades[i].half_extent) mask |= 1u << i;
     return mask;
 }
+// Bit i: cascade i's extent OR active bit differs between two sets: what a
+// commit re-anchors and voids (a cascade dropped and restored with its extent
+// unchanged must not republish the basis it retained before the drop).
+inline unsigned shadow_cascade_change_mask(const ShadowCascadeSet& a, const ShadowCascadeSet& b) noexcept {
+    const unsigned count = a.count < b.count ? a.count : b.count;
+    return (shadow_cascade_extent_delta_mask(a, b) | (a.active ^ b.active)) & ((1u << count) - 1u);
+}
+// The configured cascade whose extent a live extent most closely matches (in
+// ratio, a tie going to the larger one): the per-cascade policies of a slid
+// set are those of the configured cascades the live extents now stand at.
+inline unsigned shadow_cascade_policy_match(const ShadowCascadeSet& config, float extent) noexcept {
+    unsigned best = 0; float best_ratio = 0.f;
+    for (unsigned j = 0; j < config.count && j < shadow_cascade_max; ++j) {
+        const float e = config.cascades[j].half_extent;
+        const float r = extent > e ? extent / e : e / extent;
+        if (!j || r <= best_ratio) { best = j; best_ratio = r; }
+    }
+    return best;
+}
+// The index-based policies slid with the extents: every live cascade takes
+// the cap and records of the configured cascade it matches; a dropped cascade
+// keeps no cap (bound 0: idle); the first static-only cascade is the first
+// live cascade matching a configured static-only one; large_min scales with
+// that cascade's extent over its match's (the mover threshold follows the
+// texel); and the active caps are scaled down proportionally when their sum
+// of bounds would exceed the configured sum (the issue storage sized at
+// attach). An unslid set is unchanged.
+inline void shadow_cascade_ladder_policy(const ShadowCascadeSet& config, ShadowCascadeSet& out) noexcept {
+    if (!config.count || !shadow_cascade_extent_delta_mask(config, out)) return;
+    unsigned matched[shadow_cascade_max]{};
+    out.static_from = shadow_cascade_static_from_none; out.large_min = 0.f;
+    unsigned budget = 0, wanted = 0;
+    for (unsigned i = 0; i < out.count && i < shadow_cascade_max; ++i) {
+        const unsigned j = matched[i] = shadow_cascade_policy_match(config, out.cascades[i].half_extent);
+        out.caps[i] = shadow_cascade_active(out, i) ? config.caps[j] : 0u; out.records[i] = config.records[j];
+        budget += config.bound(i); wanted += out.bound(i);
+        if (out.static_from == shadow_cascade_static_from_none && i && shadow_cascade_active(out, i) && config.static_only(j)) {
+            out.static_from = i;
+            out.large_min = config.large_min * (out.cascades[i].half_extent / config.cascades[j].half_extent);
+        }
+    }
+    if (wanted > budget) for (unsigned i = 0; i < out.count && i < shadow_cascade_max; ++i) {
+        if (!out.caps[i]) continue;
+        const unsigned scaled = unsigned(double(out.caps[i]) * double(budget) / double(wanted));
+        out.caps[i] = scaled ? scaled : 1u;
+    }
+}
 // The configured set with cascade 0's half-extent replaced (its forward
 // offset and depth-behind follow the set's own laws; the depth towards the
 // light is the last cascade's and does not change because e0 is clamped to
@@ -367,6 +415,7 @@ inline bool shadow_cascade_adapt_c0(const ShadowCascadeSet& config, float e0, Sh
     for (unsigned i = 0; i < config.count; ++i) {
         auto& c = out.cascades[i];
         const float e = i ? shadow_cascade_ladder_extent(config, i, e0, ratio) : e0;
+        if (!(e > 0.f) || !std::isfinite(e)) return false;
         if (e == c.half_extent) continue; // an unslid cascade keeps its laws (and its grid)
         c.half_extent = e;
         const float forward = e * (shadow_replay_forward_offset_default / shadow_replay_extent_default);
@@ -375,6 +424,7 @@ inline bool shadow_cascade_adapt_c0(const ShadowCascadeSet& config, float e0, Sh
         c.depth_behind = config.checked && behind < shadow_replay_depth_half_default ? shadow_replay_depth_half_default : behind;
     }
     out.active = shadow_cascade_ladder_mask(out);
+    shadow_cascade_ladder_policy(config, out);
     return true;
 }
 // The committed state and the hysteresis law. `node` identifies the own ship
@@ -386,7 +436,7 @@ struct ShadowCascadeAdaptive {
     unsigned pending_frames = 0;
     unsigned held_frames = 0;           // boundaries with no measured own-ship draw (cockpit view, menu, loading): E0 held
     unsigned slid = 0;                  // bit i: cascade i's extent differs from the configured one (cascade 0 included)
-    unsigned changed = 0;               // bit i: cascade i's extent changed at the last commit that changed the set (its grid re-anchored, its retained map void)
+    unsigned changed = 0;               // bit i: cascade i's extent or active bit changed at the last commit that changed the set (its grid re-anchored, its retained map void)
 };
 // The E0 the law yields for a radius: max(config E0, k x radius), clamped to
 // the last cascade's extent (the depth range towards the light stays) and the
@@ -435,7 +485,7 @@ inline bool shadow_cascade_adaptive_update(ShadowCascadeAdaptive& state, std::ui
     if (e0 == state.e0) return false; // the same ship class: the grid stays
     ShadowCascadeSet adapted{};
     if (!shadow_cascade_adapt_c0(config, e0, adapted, ratio)) return false;
-    state.changed = shadow_cascade_extent_delta_mask(set, adapted); state.slid = shadow_cascade_extent_delta_mask(config, adapted);
+    state.changed = shadow_cascade_change_mask(set, adapted); state.slid = shadow_cascade_extent_delta_mask(config, adapted);
     set = adapted; state.e0 = e0;
     return true;
 }

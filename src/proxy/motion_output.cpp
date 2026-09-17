@@ -7109,7 +7109,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         };
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" c%u=%u", i, c.cascade[i]);
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" capped%u=%u", i, c.cascade_capped[i]);
-        if (depth_cascade_static_mask_) {
+        if (depth_cascade_static_mask_ || depth_cascade_base_.static_only_mask()) { // the static group whenever the configured set has a static-only cascade (a slid set may have none this commit)
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" static_only_refused%u=%u", i, c.static_only_refused[i]);
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" large_admitted%u=%u", i, c.large_admitted[i]);
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" class_miss%u=%u", i, c.class_miss[i]);

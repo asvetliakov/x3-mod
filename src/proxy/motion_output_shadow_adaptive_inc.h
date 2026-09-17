@@ -76,7 +76,13 @@ void MotionOutput::update_adaptive_cascades() noexcept {
     const float radius = own_draws_frame_ ? own_radius_frame_ : 0.f;
     const char* reason = nullptr;
     const bool changed = renderer::shadow_cascade_adaptive_update(cascade_adaptive_, node, radius, cascade_adaptive_k_, cascade_ladder_ratio_, depth_cascade_base_, depth_cascades_, &reason);
-    if (changed && depth_replay_) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (cascade_adaptive_.changed >> i & 1u) depth_replay_->invalidate_retained(i);
+    if (changed) {
+        // Every cascade whose extent or active bit moved: its retained basis is void (a dropped-and-restored one must not republish
+        // the map it held before the drop); the slid policies (caps, static-only mask) replace the attach-time ones on the draw path.
+        if (depth_replay_) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (cascade_adaptive_.changed >> i & 1u) depth_replay_->invalidate_retained(i);
+        for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) depth_cascade_draw_caps_[i] = depth_cascades_.importance ? candidate_capacity_ : depth_cascades_.bound(i);
+        depth_cascade_static_mask_ = depth_cascades_.static_only_mask();
+    }
     if (reason || capture_) log_cascade_set(reason ? reason : "capture");
     own_radius_frame_ = 0.f; own_draws_frame_ = 0;
 }
@@ -89,10 +95,15 @@ void MotionOutput::log_cascade_set(const char* reason) noexcept {
     char extent_text[96]; used = 0; // the live set's extents, every configured cascade (a dropped one prints its slid extent; active_mask says which count)
     for (unsigned i = 0; i < depth_cascades_.count && used >= 0 && used < int(sizeof extent_text); ++i) used += std::snprintf(extent_text + used, sizeof extent_text - used, "%s%.9g", i ? "," : "", double(depth_cascades_.cascades[i].half_extent));
     if (used < 0 || used >= int(sizeof extent_text)) extent_text[0] = 0;
-    log("shadow_cascade_set device=%llu frame=%llu reason=%s own_node=%p own_status=%u own_radius=%.9g e0=%.9g texel0=%.9g depth_behind0=%.9g active_mask=%u apply_slots=%s slid=%u changed=%u extents=%s k=%.9g ratio=%.9g pending_radius=%.9g pending_frames=%u held_frames=%u"
+    char cap_text[64]; used = 0; // the slid policies: the live caps (0: a dropped cascade, idle), the first static-only cascade and the mover threshold
+    for (unsigned i = 0; i < depth_cascades_.count && used >= 0 && used < int(sizeof cap_text); ++i) used += std::snprintf(cap_text + used, sizeof cap_text - used, "%s%u", i ? "," : "", depth_cascades_.caps[i]);
+    if (used < 0 || used >= int(sizeof cap_text)) cap_text[0] = 0;
+    char static_text[12]; std::snprintf(static_text, sizeof static_text, "%u", depth_cascades_.static_from < depth_cascades_.count ? depth_cascades_.static_from : 0u);
+    log("shadow_cascade_set device=%llu frame=%llu reason=%s own_node=%p own_status=%u own_radius=%.9g e0=%.9g texel0=%.9g depth_behind0=%.9g active_mask=%u apply_slots=%s slid=%u changed=%u extents=%s caps=%s static_from=%s large_min=%.9g k=%.9g ratio=%.9g pending_radius=%.9g pending_frames=%u held_frames=%u"
         " frame_radius=%.9g own_draws=%u own_hits=%u own_walks=%u own_walk_deferred=%u own_flushes=%u",
         id_, frame_, reason, reinterpret_cast<void*>(cascade_adaptive_.node), own_ship_status_, double(cascade_adaptive_.radius), double(c0.half_extent),
-        renderer::shadow_replay_world_texel(c0), double(c0.depth_behind), depth_cascades_.active, slot_text, cascade_adaptive_.slid, cascade_adaptive_.changed, extent_text, double(cascade_adaptive_k_), double(cascade_ladder_ratio_),
+        renderer::shadow_replay_world_texel(c0), double(c0.depth_behind), depth_cascades_.active, slot_text, cascade_adaptive_.slid, cascade_adaptive_.changed, extent_text, cap_text,
+        depth_cascades_.static_from < depth_cascades_.count ? static_text : "none", double(depth_cascades_.large_min), double(cascade_adaptive_k_), double(cascade_ladder_ratio_),
         double(cascade_adaptive_.pending), cascade_adaptive_.pending_frames,
         cascade_adaptive_.held_frames, double(own_radius_frame_), own_draws_frame_, own_cache_.hits, own_cache_.walks, own_cache_.deferred, own_cache_.flushes);
 }

@@ -371,14 +371,16 @@ int main(int argc, char** argv) {
             // E0 1,875: C1 slides to 9,375 (changed with C0), C2 stays capped at 25,000 (unchanged: its grid and map stay), C3 as configured.
             CHECK(shadow_cascade_adaptive_update(state, 0x2000, 1250.f, K, R, set, live, &why) && why && !std::strcmp(why, "radius") && live.cascades[0].half_extent == 1875.f && live.active == 11
                   && live.cascades[1].half_extent == 9375.f && state.changed == 3 && state.slid == 7);
-            // The clamp: E0 never exceeds the last cascade (every other cascade dropped); the extent maximum bounds it too.
-            CHECK(shadow_cascade_adaptive_update(state, 0x3000, 1e6f, K, R, set, live, &why) && live.cascades[0].half_extent == 25000.f && live.active == 1 && state.changed == 3);
+            // The clamp: E0 never exceeds the last cascade (every other cascade dropped); the extent maximum bounds it too. The last
+            // cascade's extent is unchanged but its active bit dropped: it is in the changed mask (its retained basis is void).
+            CHECK(shadow_cascade_adaptive_update(state, 0x3000, 1e6f, K, R, set, live, &why) && live.cascades[0].half_extent == 25000.f && live.active == 1 && state.changed == 11);
             CHECK(shadow_cascade_adaptive_extent(set, K, 0.f) == 250.f && shadow_cascade_adaptive_extent(set, K, 100.f) == 250.f && shadow_cascade_adaptive_extent(set, 2.f, 200.f) == 400.f);
             // Losing the ship (0: a menu, a loading screen) holds E0 for any number of boundaries; the next measured ship commits and the
             // configured ladder returns in that one commit (every slid cascade changed, nothing slid).
             for (unsigned i = 0; i < 1000; ++i) CHECK(!shadow_cascade_adaptive_update(state, 0, 0.f, K, R, set, live, &why) && why == nullptr && live.cascades[0].half_extent == 25000.f);
+            // (the restored last cascade is in the changed mask too: it must not republish the basis it held before the drop).
             CHECK(shadow_cascade_adaptive_update(state, 0x1000, 50.f, K, R, set, live, &why) && why && !std::strcmp(why, "node") && live.cascades[0].half_extent == 250.f && live.active == 15
-                  && live.cascades[1].half_extent == 1500.f && live.cascades[2].half_extent == 7500.f && state.changed == 7 && state.slid == 0);
+                  && live.cascades[1].half_extent == 1500.f && live.cascades[2].half_extent == 7500.f && state.changed == 15 && state.slid == 0 && live.caps[0] == 128 && live.caps[2] == 1024);
             // The apply quad's slots: the active cascades in order.
             unsigned slots[shadow_cascade_max]{};
             CHECK(shadow_cascade_apply_slots(live, slots) == 4 && slots[3] == 3);
@@ -401,6 +403,20 @@ int main(int argc, char** argv) {
             CHECK(shadow_cascade_adapt_c0(four, 675.f, ladder, 2.f) && ladder.active == 15 && ladder.cascades[1].half_extent == 1500.f && ladder.cascades[2].half_extent == 7500.f && shadow_cascade_extent_delta_mask(four, ladder) == 1);
             CHECK(shadow_cascade_adapt_c0(four, 675.f, ladder, 16.f) && ladder.active == 11 && ladder.cascades[1].half_extent == 10800.f && ladder.cascades[2].half_extent == 37500.f);
             CHECK(!shadow_cascade_adapt_c0(four, 675.f, ladder, 1.f) && !shadow_cascade_adapt_c0(four, 675.f, ladder, 17.f) && !shadow_cascade_adapt_c0(four, 675.f, ladder, 0.f / 0.f));
+            CHECK(std::isnan(shadow_cascade_ladder_extent(four, 4, 675.f, R)) && std::isnan(shadow_cascade_ladder_extent(five5, 7, 675.f, R)) && shadow_cascade_ladder_extent(four, 0, 675.f, R) == 250.f); // no such cascade: refused
+            // The policies slide with the extents (shadow_cascade_ladder_policy): each live cascade takes the cap and records of the configured
+            // cascade its extent most closely matches, a dropped cascade keeps no cap, the first static-only cascade follows, large_min scales.
+            ShadowCascadeSet policed = four; const unsigned rec[4] = {1024, 1024, 2048, 4096};
+            CHECK(shadow_cascade_pool(policed, rec, 3, false, 1500.f) && policed.static_from == 3 && policed.caps[3] == 1024);
+            CHECK(shadow_cascade_adapt_c0(policed, 675.f, ladder) && shadow_cascade_policy_match(four, 675.f) == 1 && shadow_cascade_policy_match(four, 16875.f) == 3 && shadow_cascade_policy_match(four, 250.f) == 0
+                  && ladder.static_from == 2 && ladder.static_only(2) && !ladder.static_only(1) && ladder.large_min == 1500.f * (16875.f / 37500.f) && ladder.records[1] == 2048 && ladder.records[2] == 4096 && ladder.records[3] == 4096
+                  && ladder.record_capacity() == 4096); // 675 -> 1,500's policy, 3,375 -> 7,500's, 16,875 -> 37,500's (static-only, the mover threshold 675), 37,500 its own
+            { unsigned sum = 0, want = 0; for (unsigned i = 0; i < 4; ++i) { sum += ladder.bound(i); want += policed.bound(i); } CHECK(sum <= want && ladder.caps[0] < 512 && ladder.caps[1] < 1024 && ladder.caps[3] == ladder.caps[2]); } // 512/1024/1024/1024 scaled to the configured 2,688
+            CHECK(shadow_cascade_adapt_c0(policed, shadow_cascade_adaptive_extent(policed, K, 4000.f), ladder) && ladder.active == 11 && ladder.caps[2] == 0 && ladder.bound(2) == 0 && ladder.static_from == 1 && ladder.large_min == 1500.f * (30000.f / 37500.f)
+                  && ladder.caps[0] + ladder.caps[1] + ladder.caps[3] <= 128 + 512 + 1024 + 1024); // destroyer: 30,000 matches 37,500 (static-only from cascade 1), the dropped cascade idle
+            CHECK(shadow_cascade_adapt_c0(policed, 250.f, ladder) && ladder.static_from == 3 && ladder.large_min == 1500.f && ladder.caps[1] == 512 && ladder.records[3] == 4096); // unslid: the configured policies
+            CHECK(shadow_cascade_adapt_c0(four, 675.f, ladder) && ladder.static_from == shadow_cascade_static_from_none && ladder.large_min == 0.f); // no static-only cascade configured: none slid in
+            { ShadowCascadeSet before = policed, after{}; CHECK(shadow_cascade_adapt_c0(policed, 37500.f, after) && shadow_cascade_change_mask(before, after) == 15 && shadow_cascade_change_mask(after, after) == 0); } // every bit: three extents and the last's active bit
             // E0 at the configured value: the configured set as it is (no slide, whatever the ratio).
             CHECK(shadow_cascade_adapt_c0(five5, 250.f, ladder, 16.f) && ladder.active == 31 && shadow_cascade_extent_delta_mask(five5, ladder) == 0);
             // The fixture law (unchecked): no forward offset, depth behind exactly 2 E0; a two-cascade set slides nothing (the last is the ceiling).

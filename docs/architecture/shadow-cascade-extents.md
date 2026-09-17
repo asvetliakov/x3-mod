@@ -244,7 +244,8 @@ device calls; the selection and classification are CPU bookkeeping); unverified 
 **Amendment (2026-09-18): the ratio guard is replaced by a sliding ladder.** The guard
 (drop any cascade with `E_i < 3 E_{i−1}`) left a corvette (M6, ~900 u long, radius ~450, K 1.5
 ⇒ E0 675) without C1: 675 → 7,500 is a ratio-11 gap, ~4 px per texel right past C0, and a
-destroyer lost two. Now, while E0 is above `E0_config`, the configured ladder slides with it:
+destroyer lost two. Now, while E0 is at or above `E0_config` (at it: the configured set as it
+is), the configured ladder slides with it:
 `E_i' = max(E_i_config, E0 × R^i)` for i ≥ 1, each capped at the LAST cascade's configured
 extent (the last cascade keeps its configured extent: the ceiling), and a cascade whose slid
 extent reaches or exceeds the next one's is dropped, so the active set stays strictly
@@ -261,11 +262,28 @@ unchanged (one commit per ship change or > 20 % size change).
   reaches it: C2 (and C3 with five) dropped, the last kept: 6,000 / 30,000 / 37,500 (or
   150,000). The default 250 / 1,500 / 7,500 / 25,000 with a 1,000-radius capital: 1,500 /
   7,500 / (25,000 capped, dropped) / 25,000.
-- **Swim.** Every cascade whose extent changed at a commit re-anchors its snap grid (its
-  texel changed) and voids its retained map (`state.changed`, `invalidate_retained(i)` per
-  bit); an unchanged cascade (a capped one already at the ceiling, the last one) keeps its
+- **Swim.** Every cascade whose extent or active bit changed at a commit re-anchors its snap
+  grid and voids its retained map (`state.changed` = `shadow_cascade_change_mask`,
+  `invalidate_retained(i)` per bit: a cascade dropped and restored with its extent unchanged,
+  the last one under an E0 at the ceiling, must not republish the basis it held before the
+  drop); an unchanged cascade (a capped one already at the ceiling, the last one) keeps its
   grid and map. One pop per commit; commits are rare (ship change, > 20 % size change). Map
   sizes are unchanged.
+- **Policies slide with the extents** (`shadow_cascade_ladder_policy`, amendment of
+  2026-09-18, second round). The per-cascade caps and records, `--shadow-cascade-static-from`
+  and `--shadow-cascade-large-min` are index-based; under a slid set each live cascade takes
+  the policy of the configured cascade whose extent it most closely matches (in ratio, a tie
+  to the larger): its cap and records; the first static-only live cascade is the first active
+  one matching a configured static-only cascade (corvette on 250 / 1,500 / 7,500 / 37,500
+  with static-from 3: 16,875 matches 37,500 and is static-only, 3,375 matches 7,500 and is
+  not); `large_min` scales with that cascade's extent over its match's (the mover threshold
+  follows the texel: 1,500 → 675). A dropped cascade keeps no cap (idle, bound 0); when the
+  active bounds would sum above the configured sum (the issue storage sized at attach) the
+  caps are scaled down together (corvette: 512 / 1,024 / 1,024 / 1,024 → 384 / 768 / 768 /
+  768 under a configured 2,688). Records only inherit configured values, so the record
+  storage never grows. The draw path's caps and static mask are refreshed at the commit; an
+  unslid set keeps the configured policies. Log: `shadow_cascade_set caps= static_from=
+  large_min=`.
 - **Log.** `shadow_cascade_set` gains `slid=` (bit i: cascade i differs from configured),
   `changed=` (the last commit's re-anchored mask), `extents=` (every cascade's live extent, a
   dropped one printing its capped extent) and `ratio=`; `shadow_cascades_mode` gains

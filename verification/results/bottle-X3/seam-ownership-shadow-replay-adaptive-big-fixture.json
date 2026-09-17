@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion_output_fixture.exe": "88495a6061803c7d701faede38f6bbc646b208c77c1ca676030d8b664a0356ef",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion-output-seam/d3d9.dll": "c423ade7f4a8847596fdba145485b76d96efb52f964bcb0978c654cb8bc89e86",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/build/d3d9.dll": "d157b6eede650e469b010fb3037067e88af4f5e88f46100ddc772091826de34d"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion_output_fixture.exe": "f8cca8775e552567fd6815be15ac2a47d08d1552496589c5516820bda3f634aa",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/verification/probe/build/motion-output-seam/d3d9.dll": "bb62cda0e0e5f9aa966edffcf1e406bcc1f525d41d54cee73e4e6b858e8f490c",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1c40b35073d19a6c/build/d3d9.dll": "9da9084d0634477e879612e53b738c71b02729f76b6304da126b55a788d2b17b"
  },
  "checks": 333,
  "depth": true,
@@ -121,20 +121,81 @@
   "voided_frames": [
    1
   ],
-  "coarse_maps": []
+  "coarse_maps": [],
+  "static_from": null,
+  "static_from_by_frame": {
+   "0": null,
+   "1": null,
+   "2": null,
+   "3": null,
+   "4": null,
+   "5": null,
+   "6": null,
+   "7": null
+  },
+  "matched_by_frame": {
+   "0": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "1": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "2": [
+    1,
+    2,
+    3,
+    3
+   ],
+   "3": [
+    1,
+    2,
+    3,
+    3
+   ],
+   "4": [
+    1,
+    2,
+    3,
+    3
+   ],
+   "5": [
+    1,
+    2,
+    3,
+    3
+   ],
+   "6": [
+    1,
+    2,
+    3,
+    3
+   ],
+   "7": [
+    1,
+    2,
+    3,
+    3
+   ]
+  }
  },
  "frames": 8,
  "us": {
   "frames": 5,
-  "min": 65.0,
-  "median": 73.7,
-  "max": 1488.8
+  "min": 62.2,
+  "median": 82.5,
+  "max": 1439.7
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-big-20260918-000405-370463",
- "trace_sha256": "2f8092e655e86d2871888158c5673baca88b84514af74a07513f4db84510a366",
- "dll_sha256": "c423ade7f4a8847596fdba145485b76d96efb52f964bcb0978c654cb8bc89e86",
- "exe_sha256": "88495a6061803c7d701faede38f6bbc646b208c77c1ca676030d8b664a0356ef",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-big-20260918-002004-737594",
+ "trace_sha256": "be535d5787315b1587232dd38878d440b626eb52dc2513643b5a999f2ecb438c",
+ "dll_sha256": "bb62cda0e0e5f9aa966edffcf1e406bcc1f525d41d54cee73e4e6b858e8f490c",
+ "exe_sha256": "f8cca8775e552567fd6815be15ac2a47d08d1552496589c5516820bda3f634aa",
  "map": {
   "max_depth_error": 8.4620178757433e-06,
   "covered_texels": 55028
