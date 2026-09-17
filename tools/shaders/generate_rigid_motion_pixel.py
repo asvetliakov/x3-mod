@@ -100,7 +100,7 @@ SHADERS = {
     'sun_shadow_apply': dict(source=ROOT / 'src/temporal/sun_shadow_apply_ps.hlsl',
                              header=ROOT / 'src/renderer/sun_shadow_apply_program_inc.h',
                              provenance=ROOT / 'verification/results/sun-shadow-apply-program.json'),
-    # The same quad over up to four cascades (docs/architecture/shadow-cascades.md, section 2).
+    # The same quad over up to five cascades (docs/architecture/shadow-cascades.md, section 2).
     'sun_shadow_cascade_apply': dict(source=ROOT / 'src/temporal/sun_shadow_cascade_apply_ps.hlsl',
                                      header=ROOT / 'src/renderer/sun_shadow_cascade_apply_program_inc.h',
                                      provenance=ROOT / 'verification/results/sun-shadow-cascade-apply-program.json'),

@@ -409,6 +409,19 @@ SUN_APPLY_CASCADES_ENV = dict(X3M_FIXTURE_SUNAPPLY_CASCADES='1')
 SUN_CASCADE_SCRIPT = 'aabbccddeeef' + 'g' * 8 + 'h'  # g: the box at eight sub-texel phases (the half-texel witness); h: the sun at finite distance (a point light, per-cascade suns)
 SUN_CASCADE_FAR_SKIPPED, SUN_CASCADE_RESET_FRAME, SUN_CASCADE_IDENTITY = (7, 9), 9, (8, 10)
 CASES += [case('sun-shadow-apply-cascades', 'sunapply', enabled='0', hdr_env=SUN_APPLY_CASCADES_ENV)]
+# Five cascades (shadow-cascade-extents.md, section 3): the 30 km set
+# 250 / 1,500 / 7,500 / 37,500 / 150,000 on five 256^2 maps through the fifth
+# sampler and branch of the apply program. The script, mirrored from
+# motion_output_sun_apply_cascades_inc.h (cascade_script_five): (letter, owning
+# cascade) per frame; 'r' places the box's shadow at that cascade's range, owned
+# by it alone; 's' runs it through that cascade's blend band into the next; 'd'
+# and 'e' are the budget pair and the Reset triple of the three-cascade script
+# on the fifth cascade (skipped on the odd frames 11 and 13).
+SUN_CASCADE5_EXTENTS = (250.0, 1500.0, 7500.0, 37500.0, 150000.0)
+SUN_CASCADE5_SCRIPT = (('r', 0), ('r', 1), ('r', 2), ('r', 3), ('r', 4), ('s', 0), ('s', 1), ('s', 2), ('s', 3), ('r', 0), ('d', 4), ('d', 4), ('e', 4), ('e', 4), ('e', 4))
+SUN_CASCADE5_FAR_SKIPPED, SUN_CASCADE5_RESET_FRAME, SUN_CASCADE5_IDENTITY = (11, 13), 13, (12, 14)
+SUN_CASCADE5_EPS_RANGE = 15512.0  # the three-cascade script's cascade-0 depth range, whose EPS_DEPTH the twin keeps in world units here
+CASES += [case('sun-shadow-apply-cascades-5', 'sunapply', enabled='0', hdr_env=dict(X3M_FIXTURE_SUNAPPLY_CASCADES='5'))]
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
 SHADOW_TWINS = {'production-shadow-off': 'production-on', 'seam-shadow-off': 'seam-on', 'seam-taa-shadow-off': 'seam-taa-on',
                 'seam-lazy-shadow-off': 'seam-lazy-on', 'seam-burst-perdraw-shadow-off': 'seam-burst-perdraw', 'seam-burst-lazy-shadow-off': 'seam-burst-lazy'}
@@ -1064,6 +1077,109 @@ def validate_sun_apply_cascades(name, text, directory, env):
                           'per_issue_median': sorted(c['replay_us'] / max(1, c['issues']) for c in comparisons.values())[len(comparisons) // 2]}}
 
 
+def validate_sun_apply_cascades_five(name, text, directory, env):
+    """The five-cascade script (shadow-cascade-extents.md, section 3): the
+    30 km set builds with the fifth cap default, the cascade program fits the
+    device's ps_3_0 slots, five maps attach; per frame the counters against
+    the script (the box in its owning cascade and every farther one, the fifth
+    cascade skipped by the budget on the odd 'd' / 'e' frames), the readback
+    against the cascade twin within one FP16 code, the f >= 0.5 edge of every
+    plane receiver within one texel of its owning cascade, solid interiors
+    and monotone bands; 'r' frames shadow the owner alone, 's' frames run
+    through the owner's band into the next cascade, the Reset frame leaves
+    the fifth cascade absent and lit and the frame after repeats the frame
+    before it byte for byte; the bounds bench for five cascades."""
+    assert 'RESULT PASS' in text, f'{name}: fixture failed'
+    checks = int(fields(next(l for l in text.splitlines() if l.startswith('RESULT PASS')))['checks'])
+    count = len(SUN_CASCADE5_EXTENTS)
+    device = [fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_DEVICE ')]
+    assert len(device) == 1 and device[0]['attached'] == '1' and device[0]['references'] == '4' \
+        and int(device[0]['slots']) < int(device[0]['cascade_slots']) <= int(device[0]['ps30_slots']), (name, device)
+    replay_device = [fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_REPLAY_DEVICE ')]
+    assert len(replay_device) == 1 and replay_device[0]['maps'] == '5' and replay_device[0]['readable'] == '1' and replay_device[0]['halved'] == '0', (name, replay_device)
+    config = [fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_CONFIG ')]
+    assert len(config) == 1 and config[0]['cascades'] == '5' and [float(v) for v in config[0]['extents'].split(',')] == list(SUN_CASCADE5_EXTENTS) and config[0]['depth_light'] == '300000' \
+        and config[0]['depth_behind'] == '512,3000,15000,75000,300000' and config[0]['caps'] == '128,512,1024,1024,1024' \
+        and abs(float(config[0]['margin']) - sun_apply.CASCADE_MARGIN) < 1e-6 and abs(float(config[0]['band']) - sun_apply.CASCADE_BAND) < 1e-6, (name, config)
+    config = config[0]
+    size = int(config['map_size'])
+    frames = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_CASCADES ')}
+    times = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_TIME ')}
+    assert sorted(frames) == sorted(times) == list(range(len(SUN_CASCADE5_SCRIPT))), (name, sorted(frames), sorted(times))
+    bench = [fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_BOUNDS_BENCH ')]
+    assert len(bench) == 1 and float(bench[0]['verdict_ns']) > 0 and float(bench[0]['mask_ns']) > 0 and float(bench[0]['mask5_ns']) > 0, (name, bench)
+    comparisons, images = {}, {}
+    for frame, (letter, owner) in enumerate(SUN_CASCADE5_SCRIPT):
+        f, t = frames[frame], times[frame]
+        assert f['case'] == letter and int(f['owner']) == owner and t['applied'] == '1' and t['result'] == '00000000' and float(t['us']) > 0 and float(t['replay_us']) > 0, (name, frame, f['case'], t)
+        width, height = int(f['width']), int(f['height'])
+        params, scene, extents, map_frames = sun_apply.parse_cascade_params(f)
+        assert extents == list(SUN_CASCADE5_EXTENTS) and len(scene['boxes']) == 1, (name, frame, extents)
+        # The twin's compare ambiguity is EPS_DEPTH of normalized depth over the three-cascade set's 15,512-unit
+        # range (1.55 world units); a cascade of this set spans 300,512..600,000 units, so the same world tolerance.
+        for c, cascade in enumerate(params['cascades']):
+            cascade['eps_depth'] = sun_apply.EPS_DEPTH * SUN_CASCADE5_EPS_RANGE / (float(config['depth_light']) + float(config['depth_behind'].split(',')[c]))
+        params['band_eps'] = sun_apply.EPS_SELECT  # the band weight's uncertainty from the position's (a quarter FP16 code flips the rounding)
+        masks = [int(v) for v in f['masks'].split(',')][:2]  # the plane and the box
+        assert masks[0] == (1 << count) - 1 and masks[1] >> owner & 1 and not masks[1] & ((1 << owner) - 1), (name, frame, masks, owner)
+        records = [sum(1 for m in masks if m >> c & 1) for c in range(count)]
+        far_skipped = frame in SUN_CASCADE5_FAR_SKIPPED
+        assert [int(f[f'c{c}']) for c in range(count)] == records and int(f['issues']) == sum(records), (name, frame, records, f['issues'])
+        assert [int(f[f'draws{c}']) for c in range(count)] == [0 if far_skipped and c == count - 1 else records[c] for c in range(count)], (name, frame)
+        assert int(t['issues']) == sum(records) - (records[-1] if far_skipped else 0), (name, frame, t)
+        assert (f['far_replayed'] == '1') == (not far_skipped), (name, frame, f['far_replayed'])
+        expected_far = -1 if frame == SUN_CASCADE5_RESET_FRAME else frame - 1 if far_skipped else frame
+        assert int(f['far_frame']) == expected_far and map_frames[:count - 1] == [frame] * (count - 1) and map_frames[count - 1] == expected_far, (name, frame, f['far_frame'], map_frames)
+        assert [c['valid'] for c in params['cascades']] == [True] * (count - 1) + [frame != SUN_CASCADE5_RESET_FRAME] and int(t['bound']) == (count - 1 if frame == SUN_CASCADE5_RESET_FRAME else count), (name, frame)
+        assert (int(f['budget']) < int(f['issues'])) == (letter in 'de'), (name, frame, f['budget'], f['issues'])
+        for c in range(count):  # the bias each cascade resolved is the law's at its own texel and depth range
+            resolved = sun_apply.resolve_bias(float(config['bias_units']), extents[c], .5 * (float(config['depth_light']) + float(config['depth_behind'].split(',')[c])), size, float(config['clamp_texels']))
+            assert abs(params['cascades'][c]['bias_constant'] - resolved['bias_constant']) <= 1e-9 and abs(params['cascades'][c]['bias_max'] - resolved['bias_max']) <= 1e-8 \
+                and abs(float(f[f'texel_world{c}']) - resolved['texel_world']) <= 1e-6, (name, frame, c, resolved)
+        read = lambda suffix, at=frame: (directory / f'sunapply_{at}_{suffix}').read_bytes()
+        before, after, rt2 = read('before.rgba16f'), read('after.rgba16f'), read('rt2.g32r32f')
+        assert len(before) == len(after) == len(rt2) == width * height * 8, (name, frame)
+        images[frame] = (before, after)
+        maps = [sun_apply.unpack_map(read(f'map{c}.r32f', map_frames[c]), size) if params['cascades'][c]['valid'] else None for c in range(count)]
+        d, s = sun_apply.unpack_rt2(rt2, width, height)
+        comparison = sun_apply.compare_frame_cascades(sun_apply.unpack_rgba16f(before, width, height), sun_apply.unpack_rgba16f(after, width, height), d, s, maps, params, scene, extents)
+        comparison.update(case=letter, owner=owner, scale=float(f['scale']), elevation=float(f['elevation']), us=float(t['us']), replay_us=float(t['replay_us']), issues=int(t['issues']),
+                          far_replayed=f['far_replayed'] == '1', far_frame=int(f['far_frame']), records=records)
+        assert comparison['ok'] and comparison['compared'] > 0 and comparison['ambiguous'] < comparison['valid'] // 5, (name, frame, comparison)
+        assert comparison['edge_beyond_one'] == 0 and comparison['interior_wrong'] == 0 and comparison['monotone_violations'] == 0, (name, frame, comparison)
+        per = comparison['cascades']
+        if letter == 'r':    # the range: the shadow is the owner's alone
+            assert per[str(owner)]['shadowed_analytic'] > 100 and all(per[str(c)]['shadowed_analytic'] == 0 for c in range(count) if c != owner), (name, frame, per)
+        elif letter == 's':  # the seam: the shadow runs through the owner's band into the next cascade
+            assert per[str(owner)]['band_shadowed'] > 20 and per[str(owner)]['shadowed_analytic'] > 50 and per[str(owner + 1)]['shadowed_analytic'] > 50, (name, frame, per)
+        else:                # the fifth cascade: replayed, retained through a camera move, absent after the Reset
+            far = per[str(count - 1)]
+            assert far['owned'] > 1000, (name, frame, far)
+            if frame == SUN_CASCADE5_RESET_FRAME:
+                assert far['shadowed'] == 0 and far['texel_world'] is None, (name, frame, far)
+            else:
+                assert far['shadowed_analytic'] > 100 and far['edge_beyond_one'] == 0, (name, frame, far)
+        for key in ('shift_fit', 'shift_fit_legacy_rule'):  # the per-frame grids stay out of the record
+            comparison[key].pop('grid')
+        comparisons[frame] = comparison
+    first, second = SUN_CASCADE5_IDENTITY
+    assert images[first] == images[second], f'{name}: the replay after the Reset frames differs from the frame before it'
+    assert frames[11]['camera'] != frames[10]['camera'] and frames[11]['rows4'] != frames[10]['rows4'], (name, 'the retained fifth map is sampled through the moved camera')
+    us, replay_us = sorted(c['us'] for c in comparisons.values()), sorted(c['replay_us'] for c in comparisons.values())
+    validator_checks = 7 + 10 * len(SUN_CASCADE5_SCRIPT)
+    return {'checks': checks + validator_checks, 'fixture_checks': checks, 'validator_checks': validator_checks, 'frames': len(SUN_CASCADE5_SCRIPT), 'map_size': size, 'cascades': count,
+            'config': {k: config[k] for k in ('extents', 'depth_light', 'depth_behind', 'caps', 'bias_units', 'clamp_texels', 'margin', 'band')},
+            'program_slots': int(device[0]['slots']), 'cascade_program_slots': int(device[0]['cascade_slots']), 'max_texture': device[0]['max_texture'], 'ps30_slots': int(device[0]['ps30_slots']),
+            'depth_format': int(replay_device[0]['depth_format']), 'depth_size': int(replay_device[0]['depth_size']),
+            'bounds_bench_ns': {'single_verdict': float(bench[0]['verdict_ns']), 'cascade_mask_4': float(bench[0]['mask_ns']), 'cascade_mask_4_per_cascade_suns': float(bench[0]['split_mask_ns']),
+                                'cascade_mask_5': float(bench[0]['mask5_ns'])},
+            'frames_detail': comparisons, 'worst_codes': max(c['worst_codes'] for c in comparisons.values()), 'ambiguous_max': max(c['ambiguous'] for c in comparisons.values()),
+            'edge_mismatch': {'mismatch': sum(v['edge_mismatch'] for c in comparisons.values() for v in c['cascades'].values()), 'beyond_one_texel': sum(c['edge_beyond_one'] for c in comparisons.values())},
+            'us': {'min': us[0], 'median': us[len(us) // 2], 'max': us[-1]},
+            'replay_us': {'min': replay_us[0], 'median': replay_us[len(replay_us) // 2], 'max': replay_us[-1],
+                          'per_issue_median': sorted(c['replay_us'] / max(1, c['issues']) for c in comparisons.values())[len(comparisons) // 2]}}
+
+
 SUN_LINE_FIELDS = ('device', 'frame', 'verdict', 'register', 'samples', 'agree', 'disagree', 'invalid', 'no_register', 'unlatched', 'bounds_state', 'bounds_unavailable', 'extent_refused', 'sun')
 
 
@@ -1518,7 +1634,7 @@ def validate_shadow_pool(name, text, trace, directory, env):
     budget = int(env['X3M_SHADOW_CASCADE_BUDGET'])
     mode = [fields(l) for l in tl if l.startswith('shadow_cascades_mode ')]
     assert len(mode) == 1 and (mode[0]['enabled'], mode[0]['reason'], mode[0]['cascades']) == ('1', 'ok', '2'), (name, mode)
-    assert (mode[0]['records'], mode[0]['static_from'], mode[0]['drop_order'], float(mode[0]['large_min'])) == (env.get('X3M_SHADOW_CASCADE_RECORDS', '1024,1024') + ',1024,1024',
+    assert (mode[0]['records'], mode[0]['static_from'], mode[0]['drop_order'], float(mode[0]['large_min'])) == (env.get('X3M_SHADOW_CASCADE_RECORDS', '1024,1024') + ',1024,1024,1024',  # the mode line lists shadow_cascade_max (5) slots
                                                                                     env.get('X3M_SHADOW_CASCADE_STATIC_FROM', 'none'), env.get('X3M_SHADOW_CASCADE_DROP_ORDER', 'submission'), float(env.get('X3M_SHADOW_CASCADE_LARGE_MIN', '0'))), (name, mode)
     store_on = int(mode_line['store']) != 0
     frames = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('POOL_FRAME ')}
@@ -4343,7 +4459,8 @@ def main(argv=None):
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} hook_status={case["hook_status"]} sources={case["sources"]}', flush=True)
                 continue
             if mode == 'sunapply':
-                case = (validate_sun_apply_cascades if hdr_env.get('X3M_FIXTURE_SUNAPPLY_CASCADES') == '1' else validate_sun_apply)(name, text, directory, hdr_env)
+                scripted = hdr_env.get('X3M_FIXTURE_SUNAPPLY_CASCADES')
+                case = (validate_sun_apply_cascades_five if scripted == '5' else validate_sun_apply_cascades if scripted == '1' else validate_sun_apply)(name, text, directory, hdr_env)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')

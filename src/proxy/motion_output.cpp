@@ -2208,7 +2208,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
           const float value = std::strtof(extent_text, nullptr);
           if (std::isfinite(value) && value > 0.f) { depth_cascade_.half_extent = value; depth_cascade_.forward_offset = 0.f; depth_cascade_.set_depth_half(2.f * value); }
       }
-      // Seam only: X3M_FIXTURE_SHADOW_CASCADES="e0,e1[,e2[,e3]]" replaces the
+      // Seam only: X3M_FIXTURE_SHADOW_CASCADES="e0,e1[,e2[,e3[,e4]]]" replaces the
       // configured extents by the fixture's unit-size ones (unchecked set: no
       // forward offset, depth behind 2 E_i, towards the light 2 E_last); sizes,
       // caps and the budget stay the configured ones.
@@ -5851,7 +5851,7 @@ void MotionOutput::readback() noexcept {
         // section 3): the basis is the one the map was last replayed with, so
         // the far line's replayed_frame may lag the capture frame; an absent
         // cascade (valid=0) has no readback.
-        static constexpr const wchar_t* stems[renderer::shadow_cascade_max] = {L"shadow_map0", L"shadow_map1", L"shadow_map2", L"shadow_map3"};
+        static constexpr const wchar_t* stems[renderer::shadow_cascade_max] = {L"shadow_map0", L"shadow_map1", L"shadow_map2", L"shadow_map3", L"shadow_map4"};
         for (unsigned i = 0; i < depth_cascades_.count; ++i) {
             const auto* kept = depth_replay_->retained(i);
             const auto& cascade = depth_cascades_.cascades[i];

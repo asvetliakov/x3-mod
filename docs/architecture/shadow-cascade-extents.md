@@ -114,6 +114,22 @@ generator's `--check` compile settles it. Per-pixel cost: three more `dp4`, two 
 weight for every pixel (~1 % of the quad), one more PCF only in its band. The launcher's
 `SHADOW_CASCADE_MAX`, the F8 `shadow_map4` readback and the fixture cases follow.
 
+**Amendment (implemented 2026-09-17).** Run 39 A (run115) showed stations at 5.6 km and 12 km
+receiving no shadows with C3 = 25,000, and the user wants 20–30 km reach; by the px/texel rule
+above (≤ ~2.5 px per texel at each cascade's near end, ratio ≈ 5) that takes five maps
+without a coarse seam: **250 / 1,500 / 7,500 / 37,500 / 150,000** (texels 0.12 / 0.73 / 3.7 /
+18.3 / 73 units at 4096²). The code change above is in: `shadow_cascade_max = 5`
+(`shadow_cascade_default_count = 4` keeps the four-cascade default set), extents up to
+150,000, cap default 1024 for the fifth, the fifth sampler `s5` and `[branch]` PCF with
+constants `c13–c37`; the program is **499 of 512 slots (M)** (was 406; the estimate of ~70 per
+branch held: +93), checked against `MaxPixelShader30InstructionSlots` at attach as before.
+The per-draw bounds pass is the same corner transform plus one more interval test (fixture
+bench `mask5_ns` beside `mask_ns`). Memory at 4096²: five `R32F` maps 320 MiB plus the shared
+`D24X8` attachment 64 MiB = 384 MiB (`--shadow-cascade-sizes` lowers any of them). Budget:
+the alternate-frame rule stays on the last cascade only (C4 here); C3 replays every frame.
+Launcher: `--shadow-cascades 250,1500,7500,37500,150000` (1..5 values within [50, 150000]).
+Fixture: `sun-shadow-apply-cascades-5`, ledger "Five cascades".
+
 ## 4. Caps, budget and cadence
 
 Caps are not the cost control; they bound storage (52 B per issue, 137 KiB at the defaults,

@@ -1,4 +1,4 @@
-// Scene-end sun-shadow application over up to four cascades
+// Scene-end sun-shadow application over up to five cascades
 // (docs/architecture/shadow-cascades.md, section 2). The single-map quad
 // (sun_shadow_apply_ps.hlsl) with the map chosen per pixel: RT2 read, view
 // depth and view position as there; the sun-space position of every cascade
@@ -33,6 +33,7 @@ sampler mapTex0 : register(s1);       // R32F sun-space depth maps, nearest casc
 sampler mapTex1 : register(s2);
 sampler mapTex2 : register(s3);
 sampler mapTex3 : register(s4);
+sampler mapTex4 : register(s5);
 float4 view : register(c0);    // x = m00, y = m11, z = m20, w = m21 (the jittered projection latch)
 float4 terms : register(c1);   // x = m22, y = m32, z = exponent, w = relative view-depth step that voids the plane fit
 float4 select : register(c3);  // x = margin, y = band start, z = 1 / band width
@@ -40,7 +41,7 @@ float4 taps[9] : register(c4); // xy = the 3x3 kernel offsets in texels, rotated
 // Per cascade i at c(13 + 5 i): the three view -> sun rows, (map size, 1 / size,
 // constant bias, receiver-plane clamp) and (valid, last, 0, 0). An unused
 // cascade has zero rows with row 0 w = 2 (never contains a pixel).
-float4 cascades[20] : register(c13);
+float4 cascades[25] : register(c13);
 
 float pcf(sampler tex, float3 sun, float3 dpdx, float3 dpdy, float4 r0, float4 r1, float4 r2, float4 map, bool steady) {
     float2 muv = float2(sun.x, -sun.y) * 0.5 + 0.5;
@@ -73,9 +74,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Derivatives before any branch (undefined under divergent control flow).
     float3 dpdx = ddx(p.xyz), dpdy = ddy(p.xyz);
     bool steady = abs(dpdx.z) + abs(dpdy.z) < terms.w * abs(z);
-    float3 sun[4];
-    float inside[4], band[4];
-    for (int c = 0; c < 4; ++c) {
+    float3 sun[5];
+    float inside[5], band[5];
+    for (int c = 0; c < 5; ++c) {
         sun[c] = float3(dot(p, cascades[c * 5]), dot(p, cascades[c * 5 + 1]), dot(p, cascades[c * 5 + 2]));
         float m = max(abs(sun[c].x), abs(sun[c].y));
         inside[c] = (m <= select.x && sun[c].z >= 0.0 && sun[c].z <= 1.0) ? 1.0 : 0.0;
@@ -88,17 +89,20 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float chosen1 = (1.0 - inside[0]) * inside[1];
     float chosen2 = (1.0 - inside[0]) * (1.0 - inside[1]) * inside[2];
     float chosen3 = (1.0 - inside[0]) * (1.0 - inside[1]) * (1.0 - inside[2]) * inside[3];
-    float covered = chosen0 + chosen1 + chosen2 + chosen3;
+    float chosen4 = (1.0 - inside[0]) * (1.0 - inside[1]) * (1.0 - inside[2]) * (1.0 - inside[3]) * inside[4];
+    float covered = chosen0 + chosen1 + chosen2 + chosen3 + chosen4;
     float w0 = chosen0 * (1.0 - band[0] * max(inside[1], cascades[4].y));
     float w1 = chosen1 * (1.0 - band[1] * max(inside[2], cascades[9].y)) + chosen0 * band[0] * inside[1];
     float w2 = chosen2 * (1.0 - band[2] * max(inside[3], cascades[14].y)) + chosen1 * band[1] * inside[2];
-    float w3 = chosen3 * (1.0 - band[3] * cascades[19].y) + chosen2 * band[2] * inside[3];
-    w0 *= cascades[4].x; w1 *= cascades[9].x; w2 *= cascades[14].x; w3 *= cascades[19].x;
+    float w3 = chosen3 * (1.0 - band[3] * max(inside[4], cascades[19].y)) + chosen2 * band[2] * inside[3];
+    float w4 = chosen4 * (1.0 - band[4] * cascades[24].y) + chosen3 * band[3] * inside[4];
+    w0 *= cascades[4].x; w1 *= cascades[9].x; w2 *= cascades[14].x; w3 *= cascades[19].x; w4 *= cascades[24].x;
     float shade = 0.0;
     [branch] if (w0 > 0.0) shade += w0 * (1.0 - pcf(mapTex0, sun[0], dpdx, dpdy, cascades[0], cascades[1], cascades[2], cascades[3], steady));
     [branch] if (w1 > 0.0) shade += w1 * (1.0 - pcf(mapTex1, sun[1], dpdx, dpdy, cascades[5], cascades[6], cascades[7], cascades[8], steady));
     [branch] if (w2 > 0.0) shade += w2 * (1.0 - pcf(mapTex2, sun[2], dpdx, dpdy, cascades[10], cascades[11], cascades[12], cascades[13], steady));
     [branch] if (w3 > 0.0) shade += w3 * (1.0 - pcf(mapTex3, sun[3], dpdx, dpdy, cascades[15], cascades[16], cascades[17], cascades[18], steady));
+    [branch] if (w4 > 0.0) shade += w4 * (1.0 - pcf(mapTex4, sun[4], dpdx, dpdy, cascades[20], cascades[21], cascades[22], cascades[23], steady));
     float f = saturate(1.0 - shade);
     bool valid = d >= 0.0 && s > 0.0 && covered > 0.0;
     float base = saturate(1.0 - (1.0 - f) * s);

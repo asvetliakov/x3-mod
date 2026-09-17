@@ -201,14 +201,18 @@ def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=Fals
     for c in range(count):
         chosen.append(open_ * inside[c]); open_ = open_ * (1.0 - inside[c])
     covered = sum(chosen) > 0.0
-    weights = []
-    for c in range(count):
-        last = c + 1 == count
-        following = np.ones(d.shape) if last else inside[c + 1]
-        w = chosen[c] * (1.0 - band[c] * following)
-        if c:
-            w = w + chosen[c - 1] * band[c - 1] * inside[c]
-        weights.append(w)
+
+    def weights_of(band):
+        weights = []
+        for c in range(count):
+            last = c + 1 == count
+            following = np.ones(d.shape) if last else inside[c + 1]
+            w = chosen[c] * (1.0 - band[c] * following)
+            if c:
+                w = w + chosen[c - 1] * band[c - 1] * inside[c]
+            weights.append(w)
+        return weights
+    weights = weights_of(band)
     selected = np.full(d.shape, -1, dtype=np.int64)
     for c in range(count - 1, -1, -1):
         selected = np.where(chosen[c] > 0.0, c, selected)
@@ -230,6 +234,7 @@ def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=Fals
         if not cascade.get('valid', True) or sun_map is None:
             per_cascade.append(np.ones(d.shape)); continue
         size = sun_map.shape[0]
+        eps_depth = cascade.get('eps_depth', EPS_DEPTH)  # a cascade with a longer depth range scales the compare ambiguity to the same world depth
         rows, position = cascade['rows'], sun[c]
         active = weights[c] > 0.0
         mu, mv = position[0] * .5 + .5, .5 - position[1] * .5
@@ -259,17 +264,31 @@ def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=Fals
                 iu = np.clip(np.nan_to_num(tap_u), 0, size - 1).astype(np.int64)
                 iv = np.clip(np.nan_to_num(tap_v), 0, size - 1).astype(np.int64)
                 sampled = sun_map[iv, iu]
-                local |= np.abs(sampled - reference) < EPS_DEPTH
+                local |= np.abs(sampled - reference) < eps_depth
                 lit += (sampled >= reference)
         f_c = lit / 9.0
         per_cascade.append(f_c)
         shade += np.where(active, weights[c] * (1.0 - f_c), 0.0)
         ambiguous |= local & active
-    f = np.clip(1.0 - shade, 0.0, 1.0)
     valid = (d >= 0.0) & (s > 0.0) & covered
-    base = np.clip(1.0 - (1.0 - f) * np.clip(s, 0.0, 1.0), 0.0, 1.0)
-    shadowed = np.where(base > 0.0, np.power(np.maximum(base, 1e-30), params['exponent']), 0.0)
-    factor = np.where(valid & (f < 1.0), shadowed, 1.0)
+
+    def factor_of(shade):
+        f = np.clip(1.0 - shade, 0.0, 1.0)
+        base = np.clip(1.0 - (1.0 - f) * np.clip(s, 0.0, 1.0), 0.0, 1.0)
+        shadowed = np.where(base > 0.0, np.power(np.maximum(base, 1e-30), params['exponent']), 0.0)
+        return f, np.where(valid & (f < 1.0), shadowed, 1.0)
+    f, factor = factor_of(shade)
+    # The blend band amplifies the sun-space position's float32 uncertainty
+    # by 1 / band width into the weight t; where a position `band_eps` away
+    # moves the factor by a quarter of an FP16 code or more the GPU's rounding
+    # is its own call (`band_eps`: the position's uncertainty, EPS_SELECT; 0
+    # keeps the older records' stricter model).
+    band_eps = params.get('band_eps', 0.0)
+    if band_eps:
+        for sign in (1.0, -1.0):
+            shifted = weights_of([np.clip((m + sign * band_eps - (margin - band_width)) / band_width, 0.0, 1.0) for m in reach])
+            shade_shifted = sum(np.where(shifted[c] > 0.0, shifted[c] * (1.0 - per_cascade[c]), 0.0) for c in range(count))
+            ambiguous |= np.abs(factor_of(shade_shifted)[1] - factor) > 2.5e-4 * np.maximum(factor, 1e-6)
     if not coarse:
         other = expected_factor_cascades(d, s, maps, params, coarse=True, legacy_floor=legacy_floor)
         ambiguous |= other['factor'] != factor

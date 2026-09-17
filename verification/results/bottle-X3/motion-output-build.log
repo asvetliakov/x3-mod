@@ -1,5 +1,5 @@
-source commit: c0c76b19e99faa0b983706ec71da987cf09eb968-dirty
--- Configuring done (0.6s)
+source commit: 76b72b6f098a2bc17f5d406393b4f44c42592203
+-- Configuring done (0.3s)
 -- Generating done (0.0s)
 CMake Warning (unused-cli):
   Manually-specified variables were not used by the project:
@@ -7,16 +7,16 @@ CMake Warning (unused-cli):
     CMAKE_TOOLCHAIN_FILE
 
 
--- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a18fd4d740a73398e/build
+-- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a76e082432e1ab2af/build
 [  1%] Refreshing compiled-in source commit
-source commit: c0c76b19e99faa0b983706ec71da987cf09eb968-dirty
+source commit: 76b72b6f098a2bc17f5d406393b4f44c42592203
 [  1%] Built target x3m_source_commit
 [  2%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
 [  4%] Building compositor CPU boundary
-/Users/asvetl/x3-mod/.claude/worktrees/agent-a18fd4d740a73398e/build/compositor_bridge
-[  6%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
+/Users/asvetl/x3-mod/.claude/worktrees/agent-a76e082432e1ab2af/build/compositor_bridge
+[  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
 [  6%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
-[  9%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
+[  8%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [  9%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [ 10%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/proxy_identity.cpp.obj
 [ 12%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
@@ -27,7 +27,7 @@ source commit: c0c76b19e99faa0b983706ec71da987cf09eb968-dirty
 [ 18%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission_abi.cpp.obj
 [ 20%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/scene_capture.cpp.obj
 [ 21%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/object_trace.cpp.obj
-[ 22%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/scene_hook.cpp.obj
+[ 24%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/scene_hook.cpp.obj
 [ 24%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/camera_state.cpp.obj
 [ 25%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/sun_light_poll.cpp.obj
 [ 27%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/chase_camera.cpp.obj

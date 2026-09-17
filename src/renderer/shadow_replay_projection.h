@@ -215,19 +215,22 @@ inline int shadow_replay_bounds_verdict(const CameraState& camera, const float r
 }
 
 // ---- cascades (docs/architecture/shadow-cascades.md) --------------------------
-// N <= 4 camera-centred, texel-snapped cascades sharing the sun basis. Every
+// N <= 5 camera-centred, texel-snapped cascades sharing the sun basis. Every
 // default is a single named constant; the launcher options override them
 // (X3M_SHADOW_CASCADES and companions, tools/manage.py). Cascade 0 keeps the
 // own-ship forward offset scaled to its extent; the others centre on the
 // camera. Every cascade's depth range reaches depth_light_factor x the largest
 // extent towards the light (so the smallest cascade containing a pixel contains
 // every occluder of it) and max(the single-map half range, depth_behind_factor
-// x its own extent) behind its centre.
-constexpr unsigned shadow_cascade_max = 4;
-constexpr float shadow_cascade_extent_defaults[shadow_cascade_max] = {250.f, 1500.f, 7500.f, 25000.f}; // the intended set
-constexpr float shadow_cascade_extent_min = 50.f, shadow_cascade_extent_max = 50000.f;
+// x its own extent) behind its centre. The default set stays the four-cascade
+// one; the fifth slot is for a 150,000-unit reach (250 / 1,500 / 7,500 / 37,500
+// / 150,000: docs/architecture/shadow-cascade-extents.md, section 3).
+constexpr unsigned shadow_cascade_max = 5;
+constexpr unsigned shadow_cascade_default_count = 4;
+constexpr float shadow_cascade_extent_defaults[shadow_cascade_default_count] = {250.f, 1500.f, 7500.f, 25000.f}; // the intended set
+constexpr float shadow_cascade_extent_min = 50.f, shadow_cascade_extent_max = 150000.f;
 constexpr unsigned shadow_cascade_size_default = 4096;
-constexpr unsigned shadow_cascade_cap_defaults[shadow_cascade_max] = {128, 512, 1024, 1024};
+constexpr unsigned shadow_cascade_cap_defaults[shadow_cascade_max] = {128, 512, 1024, 1024, 1024};
 constexpr unsigned shadow_cascade_cap_max = 4096; // = shadow_cascade_records_max: a cap beyond its cascade's records is bounded by them (ShadowCascadeSet::bound)
 // Caster pool control (docs/architecture/shadow-cascade-extents.md, "Caster pool control"):
 // per-cascade record capacity (X3M_SHADOW_CASCADE_RECORDS; the record list holds the largest),
@@ -246,7 +249,7 @@ struct ShadowCascadeSet {
     ShadowReplayCascade cascades[shadow_cascade_max]{};
     unsigned caps[shadow_cascade_max]{};
     unsigned budget = shadow_cascade_budget_default;
-    unsigned records[shadow_cascade_max] = {shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default};
+    unsigned records[shadow_cascade_max] = {shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default};
     unsigned static_from = shadow_cascade_static_from_none; // cascades i >= static_from admit static casters only
     bool importance = false;                                // a cascade over its cap keeps the largest projected casters, not the first submitted
     float large_min = 0.f;                                  // a static-only cascade also admits a moving caster whose world AABB extent is >= this (0: never)

@@ -246,13 +246,13 @@ named constant in `src/renderer/shadow_replay_projection.h`.
 
 | Part of this note | State |
 | --- | --- |
-| Decision: N ≤ 4 camera-centred snapped cascades, own `R32F` map each, one shared attachment, one transaction | implemented (`ShadowReplayPass::attach_cascades` / `execute_cascades`); defaults 250 / 1500 / 7500 / 25000 at 4096², per-cascade sizes |
+| Decision: N ≤ 4 camera-centred snapped cascades, own `R32F` map each, one shared attachment, one transaction | implemented (`ShadowReplayPass::attach_cascades` / `execute_cascades`); defaults 250 / 1500 / 7500 / 25000 at 4096², per-cascade sizes; since the fifth-cascade amendment below N ≤ 5 |
 | Depth range towards the light | implemented: `depth_toward_light` = 2 × the largest extent, `depth_behind` = max(512, 2 E); additionally the box test's light side is open and the replay pancakes (run-38 fix) |
 | §1 one bounds pass, cascade mask, storage 1024, per-cascade caps and `capped<i>` | implemented; measured 44.6 ns per draw for four cascades against 45.0 ns for the single verdict |
 | §1 budget B = 640, far cascade in full on even frames when over budget | implemented (`shadow_cascade_replays`); the far map counts as valid when replayed this frame or the previous one, so a map that stops being refreshed expires by itself |
 | §2 apply quad | implemented with two changes (and the half-texel lookup `suv = muv + 0.5 / N` of the review fix round, which the single-map program shares): the nine taps are a ps_3_0 loop over CPU-rotated offsets (406 slots; the unrolled program was 887 and this backend offers 512), and the far fade is the blend band itself (the last cascade's "next" is lit). An absent cascade is lit and still owns its pixels; a cascade without casters is absent |
 | §3 Reset, refusal, device loss void every retained basis | implemented; a re-latched sun voids them too |
-| §3 F8 | implemented: `shadow_map0..3` readbacks of present cascades, one `shadow_replay_map_basis cascade=` line each (with `sun= sun_register= sun_verdict=`), `sun_shadow_apply_params` with `valid<i> map<i> map_frame<i> bias<i> bias_max<i> texel_world<i> extent<i> depth_light<i> depth_behind<i> rows<i>`, and one `shadow_replay_caster` line per record |
+| §3 F8 | implemented: `shadow_map0..4` readbacks of present cascades, one `shadow_replay_map_basis cascade=` line each (with `sun= sun_register= sun_verdict=`), `sun_shadow_apply_params` with `valid<i> map<i> map_frame<i> bias<i> bias_max<i> texel_world<i> extent<i> depth_light<i> depth_behind<i> rows<i>`, and one `shadow_replay_caster` line per record |
 | §4 fixture and twin, counters | implemented: cases (a)–(e) plus (f) pancake in `sun-shadow-apply-cascades`, the DLL script `seam-ownership-shadow-replay-cascades`, the live case `shadow_apply_cascades`; `c<i>= capped<i>=` and `draws<i>= far_replayed= far_frame= issues= budget=` |
 | §6 Native Windows | source documented-API only; row added to platform-portability.md; unverified |
 | Near band decision (own-ship map or contact shadows) | not implemented: out of scope until run 38 |
@@ -269,3 +269,17 @@ before. Launcher: `--shadow-sun-poll on|off` (`X3M_SHADOW_SUN_POLL`, default on 
 `--shadow-cascades`). The texel grid of a polled-sun cascade is anchored beside its centre, not at the
 world origin, so a re-derived direction keeps the grid phase there. Evidence and the orthographic residual:
 [directional-shadows.md](../verification/directional-shadows.md), "Sun at finite distance".
+
+### Amendment: a fifth cascade (2026-09-17)
+
+`shadow_cascade_max` is 5 (`shadow_replay_candidates.h` `cascade_capacity` alike; the mask is a
+5-bit `uint8_t`), so the 30 km set 250 / 1,500 / 7,500 / 37,500 / 150,000 of
+[shadow-cascade-extents.md](shadow-cascade-extents.md) §3 is configurable; the default set stays the
+four-cascade one (`shadow_cascade_default_count`). The apply program carries a fifth sampler (`s5`)
+and `[branch]` PCF, constants `c13–c37`, 499 of 512 ps_3_0 slots; the mode and device lines, the
+`c0..c4` / `capped0..4` / `draws0..4` counters, the `shadow_map0..4` F8 readbacks and the retained
+bases follow. The far-cascade budget rule is unchanged: only the last cascade of the set alternates
+when the frame exceeds the budget, always in full (never a partial map); with five cascades that is
+C4 alone, C3 replays every frame. Memory at 4096²: 5 × 64 MiB maps + 64 MiB depth = 384 MiB.
+Fixture: `sun-shadow-apply-cascades-5` (five 256² maps, the box's shadow at each cascade's range
+and across each seam); evidence in the ledger, "Five cascades".

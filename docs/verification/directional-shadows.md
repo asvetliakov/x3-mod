@@ -2070,3 +2070,57 @@ six mock-drift modules 27 OK.
 **Open (measured, unexplained).** `select_us` spikes on frame 0 (252 / 377 µs) and once more on
 frame 2 of the importance case (281 µs) against 2–5 µs on the other frames; plausibly first touch
 of the table and scratch pages and the retired leases' Release path, not measured further.
+
+## Five cascades (2026-09-17, worktree `agent-a76e082432e1ab2af`)
+
+Design: [../architecture/shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md) §3
+amendment; mechanism: [../architecture/shadow-cascades.md](../architecture/shadow-cascades.md),
+"Amendment: a fifth cascade". `shadow_cascade_max` 4 → 5 (`shadow_cascade_default_count` 4 keeps
+the default set), extents to 150,000, cap default 1024 for the fifth, `cascade_capacity` 5, the
+mode / device lines list five slots (`extents= sizes= caps= records=`), `shadow_map0..4` F8
+readbacks, `c0..c4` counters; launcher `--shadow-cascades` takes 1..5 values within [50, 150000].
+Budget rule unchanged: only the last cascade alternates over budget, always in full (no partial
+map); with five cascades C4 alone, C3 every frame. Rebased onto main `f197960c` (caster pool
+control): its per-cascade `records` default and the pool validator's `records=` expectation grew
+to five slots.
+
+- Apply program `sun_shadow_cascade_apply_ps.hlsl`: fifth sampler `s5`, `cascades[25]` at
+  `c13–c37`, fifth selection weight and `[branch]` PCF. **499 of 512 ps_3_0 slots** (was 406; the
+  estimate of ~70 per branch held at +93), 2,133 words, bytecode sha256 `a1c211e5…1236cf`,
+  checked at attach against `MaxPixelShader30InstructionSlots` (fixture: `ps30_slots=512`,
+  `cascade_slots=499`). No PCF restructuring was needed; margin 13 slots.
+- Memory at 4096²: five `R32F` maps 320 MiB + the shared `D24X8` attachment 64 MiB = 384 MiB.
+- Per-draw bounds pass (fixture bench, 2,000,000 rounds): single verdict 46.8 ns, four-cascade
+  mask 43.5 ns, **five-cascade mask 42.3 ns** (`mask5_ns`; one more interval test after the shared
+  corner transform, within noise of four), per-cascade-sun mask 115.6 ns.
+- Clean CMake build (`cmake --build build --clean-first -j4`, 70 objects): 0 warnings;
+  `build/d3d9.dll` sha256 `dd06ce80…`; `check_no_x87.py`: PASS, 77 roots, 527 reachable, 0
+  violations. Host: `test_shadow_cascades` (five-cascade set, sixth refused, budget policy on
+  cascade 4, launcher values and refusals), `test_shadow_replay_candidates`,
+  `test_shadow_retention`, `test_snapshot_x3_run`, `test_shadow_replay_depth`: 55 OK.
+- New `sun-shadow-apply-cascades-5` (`X3M_FIXTURE_SUNAPPLY_CASCADES=5`; record
+  `sun-shadow-apply-cascades-5-fixture.json`): the 30 km set on five 256² maps, 15 frames,
+  3,102 checks (2,945 fixture + 157 validator), exit 0. Range frames 'r' at scale 40 / 100 / 560 /
+  2,800 / 11,250 put the box's shadow in cascade 0..4 alone (881 / 2,376 / 881 / 884 / 886
+  analytically shadowed plane pixels owned by the owner, 0 by any other); seam frames 's' at
+  60 / 225 / 1,125 / 5,625 run it through cascade k's band into k + 1 (band-shadowed 1,091 / 868 /
+  1,024 / 956, the next cascade 758 / 586 / 591 / 588); the 'd' pair replays C4 on frame 10 and
+  samples the retained map through the moved camera on frame 11 (`draws4=0`, `far_frame=10`);
+  the Reset before frame 13 leaves C4 absent and lit, frame 14 repeats frame 12 byte for byte.
+  Every frame: worst 0.99999 FP16 codes, `edge_beyond_one` 0, `interior_wrong` 0,
+  `monotone_violations` 0, ambiguous ≤ 1,720 of 11,856 valid.
+- Twin (`sun_shadow_apply.py`), two gated additions the five-cascade validator turns on and the
+  older records do not: per-cascade `eps_depth` (the compare ambiguity scaled to the same 1.55
+  world units the three-cascade set has, since every cascade here spans 300,512–600,000 units),
+  and `band_eps` (a position `EPS_SELECT` away that moves the factor by ≥ a quarter FP16 code
+  marks the pixel ambiguous: the band's 1 / 0.10 amplification of the float32 position flipped one
+  dark band pixel by 1.0004 codes on the 60-scale seam frame).
+- Records equal main's apart from timing fields: `sun-shadow-apply-cascades` 3,295 checks
+  (3,293 + the two new refusal checks: six cascades, a sixth map) with every readback comparison
+  identical; `seam-ownership-shadow-replay-cascades` 278, `-casters-20` 278, `-toggle` 283,
+  `toggle-single` 214, `poll-agree/null/disagree/refusals` 281 each; retention live / census / off /
+  live-poll 9,743 / 9,740 / 6,629 / 9,890; pool static-off / census / live / strict / importance /
+  records 165 / 181 / 181 / 165 / 99 / 53 — all identical to main's committed records in every
+  non-timing field.
+- Not done: the optional opposite-parity alternation of the two farthest cascades (the brief's
+  option); no in-game run yet (the 30 km set needs `--shadow-cascades 250,1500,7500,37500,150000`).
