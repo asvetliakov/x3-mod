@@ -155,7 +155,10 @@ def shape_vertices(shape, scale=1.0):
     `scale` scales x and y (the pool script's sized casters; z stays 0.5)."""
     tri = {'A': ((-1, 1), (3, 1), (-1, -3)), 'B': ((-.9, .9), (-.3, .9), (-.9, .3)),
            'L': ((-214, 8), (-214, -8), (-195, 0)), 'F': ((-60, 4), (-60, -4), (-56, 0)),
-           'W': ((-100, -5), (100, -5), (0, -4.5))}[shape]  # W: the pool script's wide sliver (a 200-unit extent below the unit casters)
+           'W': ((-100, -5), (100, -5), (0, -4.5)),  # W: the pool script's wide sliver (a 200-unit extent below the unit casters)
+           # The own-ship hulls of the adaptive cascade-0 cases (shadow-cascade-extents.md, section 5): a fighter
+           # (AABB +-1 x +-1.5: radius about 1.7 through the rows) and a capital (+-20 x +-30: about 34).
+           'H1': ((-1, -1.5), (1, -1.5), (0, 1.5)), 'H2': ((-20, -30), (20, -30), (0, 30))}[shape]
     return [(x * scale, y * scale, .5) for x, y in tri]
 
 
@@ -221,8 +224,12 @@ def rasterize(triangles, size):
             if edge > 0:
                 near |= np.abs(w) * abs(area) / edge < EDGE_EPSILON_PX
         # Pancaking: a caster nearer the light than the near plane is stored at
-        # depth 0 (the replay's pixel program writes max(depth, 0)).
+        # depth 0 (the replay's pixel program writes max(depth, 0)). The far
+        # plane clips: a sample whose depth lies within the depth tolerance of
+        # 1 is on the clip line (a hull larger than the cascade's depth range,
+        # the adaptive cases' capital under the 8-unit box) and is ambiguous.
         z = np.maximum(w0 * z0 + w1 * z1 + w2 * z2, 0.0)
+        near |= inside & (np.abs(z - 1.0) < DEPTH_TOLERANCE)
         window = depth[lo_y:hi_y + 1, lo_x:hi_x + 1]
         window[:] = np.where(inside & (z < window), z, window)
         ambiguous[lo_y:hi_y + 1, lo_x:hi_x + 1] |= near

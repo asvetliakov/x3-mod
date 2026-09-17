@@ -2071,6 +2071,267 @@ six mock-drift modules 27 OK.
 frame 2 of the importance case (281 µs) against 2–5 µs on the other frames; plausibly first touch
 of the table and scratch pages and the retired leases' Release path, not measured further.
 
+## Run 39 A (run115) diagnosis
+
+2026-09-17, no source edits, no Wine. Inputs: run115 F8 frames 11954–11961 (the `shadow-bug2`
+scene: ship over the outpost deck, 2.15–2.36 km), 13985–13992 and 17558–17565 (outpost at
+10–60 km), the per-cascade maps `shadow_map<k>_1_<frame>.r32f` (byte-identical to the bottle's
+capture copies), `sun_shadow_apply_params`, `shadow_replay_map_basis`, `camera_state`. Twin
+`verification/probe/sun_shadow_apply.py` plus scratch scripts (nearest-texel residual per
+cascade, receiver-offset scans). "Measured" = from the capture or code; "inferred" is marked.
+
+### Ranked root causes
+
+**1. The apply quad reconstructs every receiver half a pixel off the RT2 sample position
+(decides the moving line, the dark deck beyond it, its serration and flicker, and the ship's
+speckled self-shadow).** `src/renderer/quad_vertex_program.h:37-42` shifts the strip by
+(−1/W, +1/H) so pixel (i, j) receives `uv = ((i+½)/W, (j+½)/H)` — right for point-sampling RT2 —
+but `src/temporal/sun_shadow_cascade_apply_ps.hlsl:71-72` (and `sun_shadow_apply_ps.hlsl:43-44`)
+take `ndc = uv·2−1` as that pixel's NDC. Under the D3D9 raster (pixel centres at integer window
+coordinates, the same rule the map lookup already honours in the program's header comment) RT2
+texel (i, j) holds the depth at `ndc = (2i/W−1, 1−2j/H) = uv·2−1 − (1/W, −1/H)`. The receiver is
+therefore displaced laterally by `z/(W·m00)` and `z/(H·m11)` (= z/1024 each at 1280×768): 1.2 units
+at 1.2 km, 0.15 units at 150 units — an offset in view space that grows with distance, so on a
+sloped receiver the sun-depth residual grows with z and crosses each cascade's world-unit bias
+(C0 0.66, C1 1.27, C2 4.2, C3 25 units) at a fixed view distance: an iso-distance contour that
+moves with the camera, curved on a flat deck, serrated/flickering by the rotated 3×3 kernel.
+
+Measured on 11954 (own-surface receivers, |residual| < 30 units, C1 at z 300–3200, C2 idem, C0 at
+60–260; residual = receiver sun depth − map at the nearest texel, world units):
+- as is: C1 median 1.657 (p25/p75 1.21/2.17), 71.9 % above bias; C2 2.48, 26.9 %; C0 0.32, 38.9 %.
+- receiver NDC moved by (−1/W, +1/H): C1 −0.025 (−0.41/0.35), **2.0 %**; C2 0.03, 3.4 %; C0 0.07,
+  36.8 % (the ship's remaining fraction is real hull occlusion, p75 4.8 units). Every other sign
+  combination is worse (C1 x−½ alone 93 %, y−½ alone 100 %, x+½ y+½ 7.3 % with median −1.14).
+- best per-receiver lookup offset (scan): −1.5 texels in v in **both** C0 (texel 0.12 u) and C1
+  (0.73 u), i.e. a texel-count constant = a world offset ∝ z, trending −1.0 → −2.25 texels from z
+  400–800 to 1600–3200 (C1). A z-scale hypothesis (m32 −6.0195, which the naive z_map/z fit of
+  1.0033 suggested) makes C1 99.7 % shadowed: rejected.
+- twin with the corrected receiver (m20 + 1/W, m21 − 1/H): 11954 shadowed fraction 0.670 → 0.328,
+  C1-owned 0.833 → 0.178, C2-owned 0.579 → 0.453, factor mean 0.553 → 0.778; 11958 the same;
+  13985 C3-owned 0.935 → 0.681. The corrected factor image has no band on the deck; the remaining
+  darkening is structure shadows and the tower's anti-sun face.
+- the visible line: C1's bin over-bias fraction 37 % at z 400–800, 78 % at 800–1600, 100 % beyond
+  = the contour at ~500–800 units from the camera; C2's 4.2-unit bias hides the same error to ~1.3 km,
+  which is why "the actual area with shadows is small" and the lit disc sits around the ship.
+
+Ruled out (measured): H4 basis/rows mismatch — apply `rows<k>` recomputed from the logged basis and
+camera agree to 6e-8 relative, offsets < 0.005 units, on 11954/13985/17558; H2/H3 — no receiver
+with z < 0 or > 1 inside any box, C3's 2048² map under the 4096 attachment has occupancy 11 % with
+finite depths 0.36–0.62, no stale rows; H1 map content — C1 and C2 maps hold the same deck (the
+nearest-texel depth is within 1 unit of the receiver after the correction in both); H6 — the
+serration is the kernel rotating across the bias threshold, not a band texel mismatch.
+
+**2. (inferred, secondary) The far outpost at 10–60 km stays 68 % shadowed in C3 after the
+correction (13985)** with residuals 730–7300 units (median 1829, ratio 1.16): consistent with the
+camera seeing the station's anti-sun side (forward · to-light = +0.23) and self-occlusion at 24-unit
+texels; not verified against geometry. Revisit after the fix with a user run.
+
+**3. (inferred) The ship's cockpit/nose at z < 100 shows 27-unit residuals** (C0/C1, 6.7 k px):
+a caster the main view does not draw opaque (canopy) replayed as an occluder. Separate issue.
+
+### Fix
+
+`src/proxy/motion_output.cpp:7048` (cascades) and `:7112` (single map): add the D3D9 pixel-centre
+term to the quad's projection latch — `in.m20 = camera_scene_.m20 + jitter_x + 1.f / float(in.width)`,
+`in.m21 = camera_scene_.m21 + jitter_y - 1.f / float(in.height)` — with a comment naming the
+convention (`quad_vertices` delivers texel-centre uv; the pixel's NDC is half a pixel left/up of it).
+No program change; the `sun_shadow_apply_params` line already prints the resulting m20/m21, so the
+twin (which builds `view` from the same m20/m21, `sun_shadow_apply.py:104-107,186`) and its
+`analytic_shadow` follow automatically. The AO quad latches the same law at
+`motion_output.cpp:1965` (`ao_linearize_ps.hlsl`); its horizon test is relative, so the effect is a
+uniform half-pixel shift of the AO field — decide separately.
+
+### Fixture case that would have caught it
+
+The seam cascade case (`run_motion_output.py:994-1043`) compares the quad with a twin and an
+analytic shadow that both place the receiver at `(i+½)/W·2−1`, so the receiver error cancels; its
+geometry is close enough that z/1024 stays under a quarter texel. Two checks:
+1. Host, `verification/analysis/test_sun_shadow_apply.py`: rasterize a tilted plane into a synthetic
+   RT2 under the D3D9 rule (depth at `ndc = 2i/W−1`) and a matching map; `expected_factor_cascades`
+   must light the plane (own-surface residual < bias/4) — fails with the current m20/m21 law, passes
+   with the half-pixel term.
+2. Seam, cascade case: a plane receiver far enough that z/1024 > ¼ of the owning cascade's world
+   texel at a sun slope ≥ 1 unit/texel, asserted through the existing `shift_fit`/`edge_beyond_one`
+   with `analytic_shadow` evaluated at the D3D9 pixel centre. Plus the capture-side self-check that
+   flags this on any F8 frame: per cascade, the median own-surface residual (|r| < 30 units) must be
+   below bias/2 — run115 C1 gives 1.66 vs 0.63.
+
+## 2026-09-17 Own-ship-adaptive C0 and the ratio guard (`--shadow-cascade-adaptive-c0 K`)
+
+Design and law: [shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md), §5
+(amended). Default off; the option is a companion of `--shadow-cascades` (an inherited value
+cannot enable it). Worktree `agent-adaptive-c0`, two commits rebased onto main `c7395bd4` (the caster pool control and the run-115 apply fix merged underneath; the combined tree is what the numbers below were taken on).
+
+- Clean CMake build: 0 warnings, `build/d3d9.dll` sha256 `eff688f0…ef46`;
+  `check_no_x87.py`: 533 reachable functions, no violations. `build_motion_output.sh` (strict
+  seam compile): clean, the new `x3m_shadow_own_ship_fixture_install` export present.
+- Host: `test_shadow_cascades` (driver CHECKs for the commit law, hysteresis, the clamp, the
+  guard's previous-active rule, the empty box of a dropped cascade against a hull spanning
+  every box, the draw radius; launcher value/range/requires cases), `test_shadow_replay_depth`,
+  `test_shadow_retention`, `test_sun_shadow_apply`, `test_shadow_replay_candidates`, `test_comparison_hotkeys` and the six
+  mock-drift modules: 82 tests OK.
+- Fixture (`X3M_FIXTURE_BOTTLE=X3`, bottle X3), the cascade script under 8 / 48 / 240 / 800
+  (set R's ratios), K 1.5, two hulls drawn every frame (H1 radius 1.69, H2 radius 33.7 through
+  the script's camera), the seam naming one of them as the player ship:
+  `seam-ownership-shadow-replay-adaptive-small` 318 checks — one `node` commit at frame 1
+  (radius 1.69, `e0=8`, `active_mask=15`), E0 stays 8 on every map;
+  `…-adaptive-big` 318 checks — one commit at frame 1 (radius 33.7, `e0=50.59`, texel 0.395,
+  depth behind 101.2, `active_mask=13`): from frame 2 cascade 0 reads back at 50.59, cascade 1
+  (48 < 3 × 50.59) is never replayed and stays void, cascades 2 and 3 replay as before, the
+  counter shows `c1=0`; `…-adaptive-swap` 319 checks — H1 until frame 5 and H2 from it: exactly
+  one further `node` commit at frame 5, cascade 0 alone voided at that boundary (its map still
+  holds frame 5's replay), cascades 2 and 3 valid on frame 6 as without the option. Every
+  replayed map of every active cascade equals the CPU projection of the draws it kept, the
+  hulls included (`max_depth_error` 8.46e-06 of the depth range, 0.55 FP16 codes; C0 texel
+  0.395 units at E0 = 50.59). The twin gained a far-clip ambiguity band (a hull larger than a
+  cascade's depth range is clipped at z = 1 on the GPU; samples within the depth tolerance of
+  1 are ambiguous), 1 texel of 42,856 on the small case's frame 4 before the band.
+- Records equal: `seam-ownership-shadow-replay-cascades` 278 checks / 4.0742862848497374e-06,
+  `…-cascades-toggle` 283 / 5.82e-06 (main's follow-up record), `…-cascades-poll-agree` 281 / 9.65e-06,
+  `…-cascades-casters-20` 278 / 3.42e-06, `seam-ownership-shadow-replay-on` 203 / 1.19e-05,
+  `seam-ownership-shadow-retention-live` 9,743 checks, 1,535 frames, 39 / 28 compared,
+  1.7169477474210382e-06, `sun-shadow-apply-cascades` 2,891 checks — all identical to the
+  recorded runs (the tracked result files were restored, only their timestamps differed).
+- Cost (host, clang -O2, one core): `shadow_cascade_draw_radius` 11.7 ns per own-ship draw;
+  the boundary update 7.3 ns; a commit (set rebuild + four bounds) 130 ns, at most once per
+  commit. Per frame in flight with the option on: one registry walk (six to eight bounded
+  reads) and, per z-writing draw with a known extent, one pointer compare (the root) or one
+  direct-mapped cache probe; a miss walks the parent links (≤ 64 walks per frame). The
+  option-OFF path is not free of the change: the origin-rule fallback tests
+  `shadow_cascade_active` per cascade per draw (one compare per cascade per draw, 4 at set R),
+  and the per-frame bounds skip inactive cascades (none while off). The replay and apply
+  transactions are unchanged.
+- Limits. The registry walk and the parent-link ancestry are exercised on synthetic nodes
+  only (the seam injects the root; scope nodes equal it); the first flight with the option
+  must show `own_status=0` and a plausible `own_radius` on the `shadow_cascade_set` lines, and
+  measure the chase-camera distance (`camera_state t` against `node+0xb0`) to set K. No
+  fixture drives the apply quad through the DLL with a dropped cascade (the never-inside rows
+  are covered by source reading and the shader's selection law). Native Windows unverified as
+  elsewhere.
+
+### Review fixes (2026-09-18): walk under test, keyed cache, hold on hull-less frames, compaction
+
+Fable review of the first commit found no blocker and six items; all applied in the second
+commit (`2dbdf623` after the rebase), rerun on the merged tree.
+
+1. `object_capture::own_ship` / `own_ship_descends` now run on the host over a synthetic
+   memory image with the documented layout (`0x608504` → registry → table → bucket → link row →
+   cockpit `+0xc` → ref `+0x70` → node `+0x28`; parents through `+0x18`): ready, a stale row
+   before the live one, null slot, zero active handle (`NoTarget`, never a stale-row match),
+   missing, cycle, malformed bucket count, null ref object (a fresh generation), misaligned
+   node, unreadable handle, a foreign generation (rebound registry → another ship), descent
+   through two parent links, a foreign root, a wrong root handle, an unreadable parent, the
+   16-link bound (`test_shadow_cascades` driver).
+2. `own_ship::Cache` (`src/proxy/own_ship_cache.h`, pure): keyed on (node address, node
+   handle), flushed when the root, its handle, the load epoch or the registry epoch changes,
+   entries expire after 256 frames. Host checks: a reused part address under a new handle
+   misses and re-walks the current memory; every flush cause; the stamp expiry. Fixture
+   `seam-ownership-shadow-replay-adaptive-reuse` (336 checks): H2 declared H1's part until
+   frame 4, then its address kept under another handle: the measured radius drops to H1's
+   (1.69) on every capture line from frame 5, `pending_frames` 2/3/4 under the hysteresis, the
+   committed E0 stays 50.59 and no re-anchor happens (one `voided_at_boundary`, at frame 1).
+3. The probe runs only after the `exact_extent` test (draws without a known extent pay
+   nothing), and at most 64 parent walks per frame: the rest count `own_walk_deferred` on the
+   `shadow_cascade_set` line and are not-own that frame (not cached). Host thrash case: 500
+   distinct nodes a frame over 1,000 frames, 64 walks + 436 deferrals per frame, 2.6 ns per
+   draw at `-O2` (the synthetic walk is one failed read; an engine walk is ≤ 16 bounded
+   `engine_memory::read`s, so the cap bounds the frame at 64 × that).
+4. A boundary without a measured own-ship draw (cockpit view, menu, loading, the ship's first
+   frame, no ship resolved) holds the committed E0 and counts `held_frames`; nothing pends, so
+   a view toggle never voids C0. Host: 1,000 hull-less boundaries hold E0 = 25,000, the next
+   measured ship commits. Fixture: `held_frames=1` on the first commit line of every case.
+5. The apply quad's slots are the ACTIVE cascades in order (`shadow_cascade_apply_slots`):
+   a dropped cascade is not a slot, so the previous cascade's blend band leads into the next
+   active one in the unchanged shader (slot s blends into slot s + 1) and in the twin. The
+   params line prints `source<s>=` (the configured cascade a slot samples; the twin reads its
+   map file by it, older lines default to the slot) and the `shadow_cascade_set` line prints
+   `apply_slots=` (`0,2,3` on the adaptive-big and swap commits, asserted). Host: slot lists
+   for the guard's masks; the twin parses `source<s>` and refuses a non-ascending list.
+6. The four adaptive `-fixture.json` records are tracked under `verification/results/
+   bottle-X3/` (about 1.9 KB each: events, `e0_by_frame`, checks, `max_depth_error`, hashes).
+
+Merged tree: clean CMake build 0 warnings, `build/d3d9.dll` sha256 `cc51e4de…b861`,
+`check_no_x87.py` 534 reachable functions, 0 violations; the 12 host modules 84 tests OK;
+fixture (`X3M_FIXTURE_BOTTLE=X3`): adaptive small/big/swap/reuse 333 / 333 / 336 / 336 checks,
+`max_depth_error` 8.46e-06; records equal for cascades 278, casters-20 278, toggle 283,
+poll-agree 281, replay-on 203, retention-live 9,743 and `sun-shadow-apply-cascades` 3,293
+(main's record); `seam-ownership-shadow-pool-static-live` (the merged pool control on the
+shared draw path) exit 0.
+
+
+## Run 39 A (run115) fix: the pixel-centre term of the apply latch (2026-09-18, worktree `agent-affda091a6929e138`)
+
+Base: main 30ea19ce (rebased onto it after the adaptive C0 merge). Not installed, no game run.
+
+**Fix.** `src/renderer/quad_vertex_program.h` states the convention once: `quad_pixel_centre_m20(W) = +1/W`,
+`quad_pixel_centre_m21(H) = -1/H`, with the D3D9 rule (pixel (i, j) rasterised at window (i, j), NDC
+`(2i/W-1, 1-2j/H)`; `quad_vertices` delivers uv `((i+½)/W, (j+½)/H)`, so `uv*2-1` is half a pixel right/down of the
+pixel). Derived independently from `quad_vertices` (x0 = -1-1/W gives u(window i) = (i+½)/W; y0 = 1+1/H gives
+v(window j) = (j+½)/H) and the raster rule: the sign agrees with the diagnosis. `motion_output.cpp` adds the two terms to
+the cascade latch and the single-map latch beside the jitter (`centre_x/centre_y`); no program change; the logged
+`m20/m21` carry the term, so the twin follows. The AO latch (`motion_output.cpp`, `ao_jitter_x`) is not changed and
+carries a comment: GTAO folds the half-resolution texel-centre ray while the half texel holds the even full pixel, so
+every reconstructed point sits 1/hw in NDC beside its pixel, but AO compares reconstructed points only with each other
+(a uniform shear of view space by z/(hw m00), ~0.1 degrees of horizon angle) and has no externally rasterised
+reference; the CPU reference (`ambient_occlusion_reference.h`, `HalfImage::position`) folds the same ray. Not the same
+defect; changing it would move the AO field.
+
+**Fixture.** Both `sunapply` scripts now synthesise RT2 as the D3D9 rasterizer samples it (`sun_apply_latch` /
+`sun_apply_texel_direction` in `motion_output_sun_apply_inc.h`: texel (i, j) = the scene at NDC `(2i/W-1, 1-2j/H)` of
+the jittered projection) and latch the raster's jitter plus the pixel-centre term, as production does; before, RT2
+was synthesised at `(i+½)/W` like the quad's own reconstruction, so no fixture could see the error. The lines log
+`raster_m20= raster_m21= legacy_latch=`; `analytic_shadow` evaluates the receiver at the D3D9 pixel centre from the
+raster's terms alone (independent of `m20/m21`: it cannot cancel against the twin again) and `parse_params` /
+`parse_cascade_params` require the fields. `X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1` (fixture only) drops the term: the
+pre-fix law against a D3D9-rasterised RT2. New case **i** (`sun-shadow-apply-cascades`, frames 21-28): case a's
+scene at scale 170, 30 degrees, jitter (0.125, 0.375), eight sub-texel phases; the receivers 800-1,250 units out, so
+z/(W m00) = 3-4.5 units against cascade 1's 11.7-unit texel (over a quarter texel) at 10 units/texel of sun slope.
+Runner: the latch law asserted per frame (`m20 = raster_m20 + 1/W`, `m21 = raster_m21 - 1/H`, or the raster's alone
+under the legacy witness), the F8 self-check `own_surface_residual` per frame (cascade 1 own-surface median within a
+quarter texel on case i), a second shift fit over the i frames, `half_pixel_receiver` and `legacy_latch` in the
+record; the cascades inc header joins the sources manifest.
+
+**Twin / F8 self-check.** `sun_shadow_apply.py`: `pixel_centre_terms`, `own_surface_residual` (per cascade, owned
+valid pixels, receiver sun depth minus the map at the nearest texel in world units, |r| < 30 units: median, quartiles,
+fraction over the constant bias, `median_over_half_bias`), `own_surface_residual_line` ("median own-surface residual
+(units): c1 1.626 (bias/2 0.634, over bias 70.9%, n=140791) OVER"), the CLI prints both on cascade frames, and
+`--add-pixel-centre` adds the term to a params line logged by a pre-fix build. `expected_factor_cascades` returns
+`sun`. Host `test_sun_shadow_apply.PixelCentre`: a tilted plane rasterised under the D3D9 rule into a synthetic RT2
+and a 512-texel map: with the term the own-surface median is 0.000 units (bias 0.024, bias/4 0.006) and every core
+receiver is lit in both twins; with `m20 = m21 = 0` the median is 0.133 units (over the bias, 100 % over), 0 % lit.
+`analytic_shadow` is unchanged by any `m20/m21`, changed by the raster's jitter, and places column 16 at x = 0 exactly.
+
+**Evidence.** Clean build 0 warnings; `check_no_x87.py`: PASS, 534 reachable, 0 violations; DLL `a7d40b76…`, seam
+`e74b49f1…`, fixture `0260b6be…`. Host: `test_sun_shadow_apply` 21 OK (3 new), plus `test_motion_output_runner` and
+the six mock-drift modules: 60 tests OK.
+- Twin on run115 (`sun_shadow_apply.py --log … --frame F [--add-pixel-centre]`), without / with the term:
+  11954 C1 own-surface median 1.626 → −0.029 units (bias 1.268), over bias 70.9 % → 1.3 %, C1-owned shadowed
+  fraction 0.833 → 0.178; C2 3.527 → 0.038, 40.6 % → 3.8 %, 0.579 → 0.453; C0 0.236 → 0.020 (18.4 % → 17.5 %: the
+  hull's real occlusion); factor mean 0.553 → 0.778. 11958: C1 1.622 → −0.034, 71.2 % → 1.2 %. 13985: C3 (the outpost
+  at 10-60 km) 19.985 → 1.557 (bias 24.95), 26.0 % → 4.2 %, C3-owned shadowed 0.934 → 0.681; C0 0.049 → 0.005.
+- Witness (`X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1`, the same binaries): `sun-shadow-apply` fails at frame 2
+  (`plane_beyond_two_texels` 2,487 of 3,633 analytic-shadowed plane pixels, `ok` False), `-wide` at frame 2 (5,055),
+  `-cascades` at frame 2 (case b: 3,441 ambiguous of 11,742 valid, over the 1/5 bound: the misplaced receivers sit
+  at compare equality). Case i on the same run's readbacks (host-only, past the aborted frame): cascade 1 own-surface
+  median 7.49-7.58 units per frame (threshold texel/4 = 2.93; over bias 29 % against the 12.25-unit fixture bias), the
+  assertion that fails; the summed map-space shift fit stays (−0.25, 0): the receiver displacement lies mostly along
+  the sun, which the (u, v) fit cannot see, so the residual is the witness and the fit only a bound. Case g under the
+  legacy latch: median 3.68 units.
+- Acceptance (`X3M_FIXTURE_BOTTLE=X3 … wine_lock.py … run_motion_output.py --dll … --seam … --fixture …`, 20 cases):
+  20 / 20 exit 0. `sun-shadow-apply-cascades` 4,340 checks, 29 frames: case i medians −0.35…−0.41 units, its fit
+  (0, 0); case g's fit (0, 0) (was (0, −0.25): the quarter texel was this error), legacy rule (−0.5, −0.5) with
+  `mismatch_at_zero` 715 vs 373; `edge_beyond_one` 0 on every frame but h, whose region C count is 28 (was 22, the
+  same 2.06-texel residual); `ambiguous_max` 1,742. `sun-shadow-apply` 169 checks, `-wide` 173, `plane_beyond_two_texels`
+  0, `worst_codes` unchanged. Cascades 278 / casters-20 278 / toggle 283 / poll 281 ×3 / adaptive-reuse 336 /
+  retention 9,743 / 9,740 / 6,629 / 9,890 / pool 165 / 181 / 181 / 165 / 99 / 53: every record equal to the committed
+  one field for field (timings, hashes, paths aside), so those records are kept; the three apply records are
+  regenerated. Live `run_sun_share_live.py`: 21 / 21 passed; `shadow_apply` and `shadow_apply_cascades` equal to the
+  committed record apart from `apply_us_max`/`elapsed_seconds`/`command` (the live script's receiver is wholly
+  shadowed, 4,032 / 4,096 owned = shadowed), so `sun-share-live.json` is kept.
+
+Open: the far outpost's remaining 68 % C3 shadowing on 13985 (anti-sun face, inferred) and the ship's cockpit
+residual (a canopy replayed as an occluder) are unchanged by this fix; a user run decides. The live cases cannot
+witness the receiver error (whole-receiver shadow); the `sunapply` fixture with its D3D9-rule RT2 is the witness.
 ## Five cascades (2026-09-17, worktree `agent-a76e082432e1ab2af`)
 
 Design: [../architecture/shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md) §3

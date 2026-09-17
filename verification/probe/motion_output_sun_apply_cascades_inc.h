@@ -46,6 +46,15 @@
 //       1's): per-cascade bounds rows, draw rows and apply rows. The runner
 //       holds A's and B's shadow edges to one texel of the analytic POINT-light
 //       shadow and reports C's residual against h r / D.
+//   (i) the half-pixel receiver: case (a)'s scene at scale 170 (the shadow
+//       on the plane 800-1,250 units from the camera, cascade 1's) at 30
+//       degrees elevation under a non-zero jitter, eight sub-texel phases as
+//       (g). RT2 is synthesised under the D3D9 raster (sun_apply_latch), so
+//       the quad's reconstruction is z / (W m00) = 3-4.5 units (over a quarter
+//       of cascade 1's 11.7-unit texel) beside the sampled surface unless its
+//       latch carries the pixel-centre term; on this sloped receiver that
+//       moves the shadow edge 0.5-0.8 texel against the analytic shadow at
+//       the true pixel centres (X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1 shows it).
 // Every frame's RT2, per-cascade map readbacks and target readbacks are
 // written beside the executable for the runner's twin
 // (verification/probe/sun_shadow_apply.py, expected_factor_cascades).
@@ -60,7 +69,7 @@
 // plane quad grows with the scale (24 x scale) so it meets every cascade from
 // every camera while staying inside the 300,000-unit light-side range.
 namespace {
-constexpr unsigned cascade_frames = 21, cascade_map = 256, cascade_frames_five = 15;
+constexpr unsigned cascade_frames = 29, cascade_map = 256, cascade_frames_five = 15;
 constexpr float cascade_extents_five[5] = {250.f, 1500.f, 7500.f, 37500.f, 150000.f};
 constexpr double cascade_point_distance = 24000., cascade_point_side_deg = 75., cascade_point_track[3] = {260., 550., 1200.}, cascade_point_lift[3] = {120., 160., 1000.}, cascade_point_half[3] = {8., 40., 80.};
 constexpr double cascade_phase_texel = 2. * 1500. / cascade_map; // cascade 1's world texel
@@ -82,7 +91,11 @@ constexpr CascadeScript cascade_script[cascade_frames] = {
     {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 2}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 3},
     {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 4}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 5},
     {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 6}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 7},
-    {'h', 60., 30.f, 0., 640, {0, 0, 0}, 2, .125f, -.25f, 1.f, false},          // the sun at finite distance (last: it rebuilds the box buffer)
+    {'h', 60., 30.f, 0., 640, {0, 0, 0}, 2, .125f, -.25f, 1.f, false},          // the sun at finite distance (it rebuilds the box buffer; i's scale differs, so it rebuilds again)
+    {'i', 170., 30.f, 0., 640, {0, 0, 0}, 3, .125f, .375f, 1.f, false, 0}, {'i', 170., 30.f, 0., 640, {0, 0, 0}, 3, .125f, .375f, 1.f, false, 1},
+    {'i', 170., 30.f, 0., 640, {0, 0, 0}, 3, .125f, .375f, 1.f, false, 2}, {'i', 170., 30.f, 0., 640, {0, 0, 0}, 3, .125f, .375f, 1.f, false, 3},
+    {'i', 170., 30.f, 0., 640, {0, 0, 0}, 3, .125f, .375f, 1.f, false, 4}, {'i', 170., 30.f, 0., 640, {0, 0, 0}, 3, .125f, .375f, 1.f, false, 5},
+    {'i', 170., 30.f, 0., 640, {0, 0, 0}, 3, .125f, .375f, 1.f, false, 6}, {'i', 170., 30.f, 0., 640, {0, 0, 0}, 3, .125f, .375f, 1.f, false, 7},
 };
 constexpr CascadeScript cascade_script_five[cascade_frames_five] = {
     {'r', 40., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 0, 0},       // the shadow inside cascade 0 (centre 128 units ahead)
@@ -407,12 +420,12 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         }
         const bool far_skipped = per_cascade[cascade_count - 1] != 0 && !replays[cascade_count - 1];
         require(far_skipped == ((script.name == 'd' || script.name == 'e') && (frame & 1u)), "the far cascade is skipped exactly on the budgeted odd frames");
-        // RT2 from the camera rays (the apply script's law).
-        const float m20 = 2.f * script.jx / float(sun_apply_w), m21 = -2.f * script.jy / float(sun_apply_h);
+        // RT2 from the camera rays under the D3D9 raster (the apply script's law, sun_apply_latch).
+        const SunApplyLatch latch = sun_apply_latch(script.jx, script.jy);
+        const float m20 = latch.m20, m21 = latch.m21;
         unsigned receivers = 0, sentinels = 0, share_free = 0;
         for (unsigned j = 0; j < sun_apply_h; ++j) for (unsigned i = 0; i < sun_apply_w; ++i) {
-            const double ndc_x = (i + .5) / sun_apply_w * 2. - 1., ndc_y = 1. - (j + .5) / sun_apply_h * 2.;
-            const Vec3 dv{(ndc_x - m20) / s.camera.m00, (ndc_y - m21) / s.camera.m11, 1.};
+            const Vec3 dv = sun_apply_texel_direction(i, j, latch, s.camera.m00, s.camera.m11);
             const Vec3 dir = s.right * dv.x + s.up * dv.y + s.forward * dv.z;
             const double t = cascade_hit(s.position, dir, boxes, box_count);
             float* px = &s.rt2_data[(std::size_t(j) * sun_apply_w + i) * 2];
@@ -512,13 +525,13 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         // The record: shared inputs, the scene, per cascade what the twin needs and the counters.
         std::printf("SUNAPPLY_CASCADES frame=%u case=%c width=%u height=%u cascades=%u scale=%.9g elevation=%g jitter_index=%u exponent=%.9g planar_step=%.9g budget=%u issues=%u far_replayed=%u far_frame=%lld "
                     "m00=%.9g m11=%.9g m20=%.9g m21=%.9g m22=%.9g m32=%.9g camera=%.9g,%.9g,%.9g cam_right=%.9g,%.9g,%.9g cam_up=%.9g,%.9g,%.9g cam_forward=%.9g,%.9g,%.9g sun=%.9g,%.9g,%.9g "
-                    "right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u masks=%u,%u,%u legacy_high=%d boxes=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
+                    "right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u masks=%u,%u,%u legacy_high=%d raster_m20=%.9g raster_m21=%.9g legacy_latch=%u boxes=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
                     frame, script.name, sun_apply_w, sun_apply_h, cascade_count, scale, double(script.elevation_deg), script.jitter_index, double(script.exponent), .05, script.budget, issues,
                     unsigned(replays[cascade_count - 1]), far_kept || replays[cascade_count - 1] ? static_cast<long long>(map_frames[cascade_count - 1]) : -1ll,
                     double(s.camera.m00), double(s.camera.m11), double(m20), double(m21), double(s.m22), double(s.m32),
                     s.position.x, s.position.y, s.position.z, s.right.x, s.right.y, s.right.z, s.up.x, s.up.y, s.up.z, s.forward.x, s.forward.y, s.forward.z, double(sun[0]), double(sun[1]), double(sun[2]),
                     double(bases[0].right[0]), double(bases[0].right[1]), double(bases[0].right[2]), double(bases[0].up[0]), double(bases[0].up[1]), double(bases[0].up[2]),
-                    receivers, share_free, sentinels, masks[0], masks[1], masks[2], legacy_high,
+                    receivers, share_free, sentinels, masks[0], masks[1], masks[2], legacy_high, double(latch.raster_m20), double(latch.raster_m21), unsigned(latch.legacy),
                     boxes[0].lo[0], boxes[0].lo[1], boxes[0].lo[2], boxes[0].hi[0], boxes[0].hi[1], boxes[0].hi[2]);
         for (unsigned b = 1; b < box_count; ++b) std::printf(";%.9g,%.9g,%.9g,%.9g,%.9g,%.9g", boxes[b].lo[0], boxes[b].lo[1], boxes[b].lo[2], boxes[b].hi[0], boxes[b].hi[1], boxes[b].hi[2]);
         if (point) {

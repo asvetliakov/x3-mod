@@ -1,0 +1,68 @@
+{
+ "case": "seam-ownership-shadow-replay-adaptive-reuse",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/verification/probe/build/motion_output_fixture.exe": "c1bd179109aad795e9d7d1f2dfb602722154eb860b3ff797d4e168fdbbf40715",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/verification/probe/build/motion-output-seam/d3d9.dll": "12268e8bc9c28b12c1b49ee64c1f3871aa0e972dda2b9ef0e1c6171c32dd8158",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-adaptive-c0/build/d3d9.dll": "cc51e4dee8d0879bdb2481a3089a8e70e2c8a035e019b19de83b6e47aea9b861"
+ },
+ "checks": 336,
+ "depth": true,
+ "taa": false,
+ "casters": 2,
+ "cascades": 4,
+ "extents": [
+  8.0,
+  48.0,
+  240.0,
+  800.0
+ ],
+ "mode": "reuse",
+ "k": 1.5,
+ "radius": {
+  "H1": 1.6863421608664204,
+  "H2": 33.726843217328415
+ },
+ "events": [
+  [
+   1,
+   "node",
+   33.7268448,
+   50.5902672
+  ]
+ ],
+ "e0_by_frame": {
+  "0": 8.0,
+  "1": 8.0,
+  "2": 50.59026482599262,
+  "3": 50.59026482599262,
+  "4": 50.59026482599262,
+  "5": 50.59026482599262,
+  "6": 50.59026482599262,
+  "7": 50.59026482599262
+ },
+ "frames": 8,
+ "us": {
+  "frames": 5,
+  "min": 62.4,
+  "median": 70.7,
+  "max": 1531.6
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-adaptive-reuse-20260917-231735-454682",
+ "trace_sha256": "6b07e1b7ab778656cb238d3d79924b8eda97d1a78d6acfaf9ae851d464b485fe",
+ "dll_sha256": "12268e8bc9c28b12c1b49ee64c1f3871aa0e972dda2b9ef0e1c6171c32dd8158",
+ "exe_sha256": "c1bd179109aad795e9d7d1f2dfb602722154eb860b3ff797d4e168fdbbf40715",
+ "map": {
+  "max_depth_error": 8.4620178757433e-06,
+  "covered_texels": 57785
+ }
+}

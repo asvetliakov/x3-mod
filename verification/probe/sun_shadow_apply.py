@@ -35,6 +35,15 @@ KERNEL = [(math.cos(k * math.pi / 8), math.sin(k * math.pi / 8)) for k in range(
 # `legacy_floor=True` is the rule of the programs before 2026-09-17 (texel
 # floor(muv N), half a texel off), kept for captures made with those builds
 # and as the sensitivity witness of the fixture's shift fit.
+# Receiver convention (src/renderer/quad_vertex_program.h, quad_pixel_centre_
+# m20/m21): the programs take ndc = uv * 2 - 1 of the quad's texel-centre uv,
+# ((i + 1/2) / W, (j + 1/2) / H), and the twin reproduces exactly that; the
+# D3D9 raster sampled RT2 texel (i, j) at NDC (2 i / W - 1, 1 - 2 j / H), half a
+# pixel left/up of it, so the pass's m20/m21 latch carries (+1/W, -1/H) beside
+# the jitter (motion_output.cpp since 2026-09-18; `pixel_centre_terms`). A
+# params line logged by an earlier build lacks the term: `--add-pixel-centre`
+# on the CLI adds it, and `own_surface_residual` is the F8 self-check that
+# shows the error (a median receiver-minus-map residual above bias / 2).
 
 
 def unpack_rt2(data, width, height):
@@ -52,6 +61,12 @@ def unpack_map(data, size):
 def unpack_rgba16f(data, width, height):
     import numpy as np
     return np.frombuffer(data, dtype='<f2').astype(np.float64).reshape(height, width, 4)
+
+
+def pixel_centre_terms(width, height):
+    """The (m20, m21) terms that move the programs' uv * 2 - 1 receiver onto
+    the D3D9 pixel centre RT2 sampled (quad_pixel_centre_m20/m21)."""
+    return 1.0 / width, -1.0 / height
 
 
 def fp16_code(value):
@@ -298,7 +313,55 @@ def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=Fals
     quad_sentinel[0::2, :] |= quad_sentinel[1::2, :].copy(); quad_sentinel[1::2, :] |= quad_sentinel[0::2, :].copy()
     ambiguous |= quad_sentinel & valid
     return {'factor': factor, 'f': f, 'valid': valid, 'ambiguous': ambiguous & valid, 'selected': selected, 'weights': weights,
-            'per_cascade': per_cascade, 'band': band, 'z': z}
+            'per_cascade': per_cascade, 'band': band, 'z': z, 'sun': sun}
+
+
+def own_surface_residual(out, maps, params, ranges, window_units=30.0):
+    """The F8 self-check of the receiver reconstruction, per cascade: on the
+    pixels a cascade owns (valid, `selected` == c) the residual receiver sun
+    depth minus the map at the receiver's nearest texel (round(muv N), no
+    bias, no plane term) in world units (`ranges[c]` = the cascade's depth
+    range, depth_light + depth_behind), restricted to own-surface receivers,
+    |residual| < `window_units`, so real occluders drop out. A correct
+    reconstruction gives a median near 0 and a fraction above the constant
+    bias of a few percent (the texel quantisation on sloped surfaces); the
+    half-pixel receiver error of builds before 2026-09-18 gives a median that
+    grows with view distance (run115 frame 11954: cascade 1 median 1.66 units
+    against a 1.27-unit bias, 72 % over it). Compare the median with bias / 2."""
+    import numpy as np
+    report = []
+    for c, cascade in enumerate(params['cascades']):
+        sun_map = maps[c] if c < len(maps) else None
+        if sun_map is None or not cascade.get('valid', True):
+            report.append(None); continue
+        size = sun_map.shape[0]
+        position = out['sun'][c]
+        mu, mv = position[0] * .5 + .5, .5 - position[1] * .5
+        tu = np.clip(np.floor(np.nan_to_num(mu) * size + .5).astype(np.int64), 0, size - 1)
+        tv = np.clip(np.floor(np.nan_to_num(mv) * size + .5).astype(np.int64), 0, size - 1)
+        residual = (position[2] - sun_map[tv, tu]) * ranges[c]
+        own = out['valid'] & (out['selected'] == c) & (sun_map[tv, tu] < 1.0) & (np.abs(residual) < window_units)
+        bias = cascade['bias_constant'] * ranges[c]
+        entry = {'cascade': c, 'bias_units': float(bias), 'own_surface': int(np.count_nonzero(own)), 'owned': int(np.count_nonzero(out['valid'] & (out['selected'] == c)))}
+        if entry['own_surface']:
+            r = residual[own]
+            entry.update(median=float(np.median(r)), p25=float(np.percentile(r, 25)), p75=float(np.percentile(r, 75)),
+                         over_bias=float(np.mean(r > bias)), median_over_half_bias=bool(abs(np.median(r)) > .5 * bias))
+        report.append(entry)
+    return report
+
+
+def own_surface_residual_line(report):
+    """One line per frame for a triage: 'median own-surface residual' per cascade beside bias / 2."""
+    parts = []
+    for entry in report:
+        if entry is None:
+            parts.append('absent'); continue
+        if not entry['own_surface']:
+            parts.append('c%d none' % entry['cascade']); continue
+        parts.append('c%d %.3f (bias/2 %.3f, over bias %.1f%%, n=%d)%s' % (entry['cascade'], entry['median'], .5 * entry['bias_units'], 100.0 * entry['over_bias'], entry['own_surface'],
+                                                                             ' OVER' if entry['median_over_half_bias'] else ''))
+    return 'median own-surface residual (units): ' + '; '.join(parts)
 
 
 def _hit(o, direction, box_min, box_max):
@@ -329,12 +392,18 @@ def analytic_shadow(d, s, params, scene, size):
     (a hit counts only before the light); otherwise every ray is scene['sun']."""
     import numpy as np
     height, width = d.shape
-    m00, m11, m20, m21, m22, m32 = (params[k] for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32'))
+    m00, m11, m22, m32 = (params[k] for k in ('m00', 'm11', 'm22', 'm32'))
+    # The receiver at the D3D9 pixel centre the fixture's raster sampled, NDC
+    # (2 i / W - 1, 1 - 2 j / H) of the jittered projection (scene['raster_m20'/
+    # 'raster_m21'] = the raster's own jitter terms, logged by the fixture):
+    # independent of the pass's m20/m21 latch, so a latch that reconstructs
+    # the receiver beside the sampled point cannot cancel here.
+    raster_m20, raster_m21 = scene['raster_m20'], scene['raster_m21']
     z = m32 / (d - m22)
     i = np.arange(width, dtype=np.float64)[None, :].repeat(height, 0)
     j = np.arange(height, dtype=np.float64)[:, None].repeat(width, 1)
-    ndc_x = (i + .5) / width * 2.0 - 1.0; ndc_y = 1.0 - (j + .5) / height * 2.0
-    dv = ((ndc_x - m20) / m00, (ndc_y - m21) / m11, np.ones_like(z))
+    ndc_x = 2.0 * i / width - 1.0; ndc_y = 1.0 - 2.0 * j / height
+    dv = ((ndc_x - raster_m20) / m00, (ndc_y - raster_m21) / m11, np.ones_like(z))
     axes = (scene['cam_right'], scene['cam_up'], scene['cam_forward'])
     world = [scene['camera'][c] + z * sum(axes[a][c] * dv[a] for a in range(3)) for c in range(3)]
     sun = scene['sun']
@@ -579,6 +648,7 @@ def parse_cascade_params(fields):
         if len(c['rows']) != 12:
             raise ValueError('cascade rows: expected 12 values')
     scene = {k: triple(k) for k in ('camera', 'cam_right', 'cam_up', 'cam_forward', 'sun', 'right', 'up')}
+    scene['raster_m20'], scene['raster_m21'], scene['legacy_latch'] = float(fields['raster_m20']), float(fields['raster_m21']), fields.get('legacy_latch') == '1'
     scene['boxes'] = [tuple(float(v) for v in text.split(',')) for text in fields['boxes'].split(';')]
     scene['box'] = scene['boxes'][0]
     if 'light' in fields:  # the sun at finite distance: its position, every cascade's own sun, the shadows' landing points
@@ -598,6 +668,7 @@ def parse_params(fields):
     params['jitter_index'] = int(fields['jitter_index'])
     scene = {k: triple(k) for k in ('camera', 'cam_right', 'cam_up', 'cam_forward', 'sun', 'right', 'up', 'forward', 'center')}
     scene['extent'] = float(fields['extent']); scene['depth_half'] = float(fields['depth_half'])
+    scene['raster_m20'], scene['raster_m21'], scene['legacy_latch'] = float(fields['raster_m20']), float(fields['raster_m21']), fields.get('legacy_latch') == '1'
     scene['box'] = tuple(float(v) for v in fields['box'].split(','))
     for key in ('wide', 'scale', 'bias_units', 'clamp_texels', 'texel_world'):  # the wide configuration (absent on the original record)
         if key in fields:
@@ -684,7 +755,12 @@ def parse_apply_cascade_params(fields):
             raise ValueError('rows%d: expected 12 values, got %d' % (c, len(rows)))
         entry = {'rows': rows, 'bias_constant': float(fields['bias%d' % c]), 'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1'}
         detail = {'map': int(fields['map%d' % c]), 'map_frame': int(fields['map_frame%d' % c]), 'texel_world': float(fields['texel_world%d' % c]),
-                  'extent': float(fields['extent%d' % c]), 'depth_light': float(fields['depth_light%d' % c]), 'depth_behind': float(fields['depth_behind%d' % c])}
+                  'extent': float(fields['extent%d' % c]), 'depth_light': float(fields['depth_light%d' % c]), 'depth_behind': float(fields['depth_behind%d' % c]),
+                  # The configured cascade this slot samples (shadow-cascade-extents.md, section 5: the
+                  # ratio guard drops a cascade from the quad's slots; absent on older lines: the slot itself).
+                  'source': int(fields.get('source%d' % c, c))}
+        if detail['source'] < c or (c and detail['source'] <= cascades[-1]['source']):
+            raise ValueError('cascade slot %d: source %d is not ascending' % (c, detail['source']))
         resolved = resolve_bias(bias_units, detail['extent'], .5 * (detail['depth_light'] + detail['depth_behind']), detail['map'], clamp_texels)
         for key, printed in (('bias_constant', entry['bias_constant']), ('bias_max', entry['bias_max']), ('texel_world', detail['texel_world'])):
             if abs(resolved[key] - printed) > 1e-6 * max(1.0, abs(printed)) + 1e-9:
@@ -701,7 +777,7 @@ def load_cascade_maps(directory, device, frame, extra, params):
     from pathlib import Path
     maps = []
     for c, detail in enumerate(extra['cascades']):
-        path = Path(directory) / ('shadow_map%d_%d_%d.r32f' % (c, device, frame))
+        path = Path(directory) / ('shadow_map%d_%d_%d.r32f' % (detail['source'], device, frame))
         maps.append(unpack_map(path.read_bytes(), detail['map']) if params['cascades'][c]['valid'] and path.exists() else None)
     return maps
 
@@ -835,21 +911,30 @@ def main(argv=None):
     parser.add_argument('--bias', type=float, help='override the constant bias')
     parser.add_argument('--no-jitter', action='store_true', help='drop the jitter term from m20/m21 (the run106 pass)')
     parser.add_argument('--legacy-floor', action='store_true', help='the lookup rule of builds before 2026-09-17 (texel floor(muv N), no half-texel offset)')
+    parser.add_argument('--add-pixel-centre', action='store_true', help='add the D3D9 pixel-centre term (+1/W, -1/H) to m20/m21: a params line logged by a build before 2026-09-18 lacks it')
     args = parser.parse_args(argv)
     params, extra, source = frame_params(args.log, args.frame, args.device)
     if args.bias is not None:
         params['bias_constant'] = args.bias
     if args.no_jitter:
         params['m20'] -= 2.0 * extra['jitter_px'][0] / extra['width']; params['m21'] += 2.0 * extra['jitter_px'][1] / extra['height']
+    if args.add_pixel_centre:
+        centre = pixel_centre_terms(extra['width'], extra['height'])
+        params['m20'] += centre[0]; params['m21'] += centre[1]
     if 'cascades' in params:
         import numpy as np
         d, s = unpack_rt2((__import__('pathlib').Path(args.capture) / ('depth_%d_%d.rg32f' % (args.device, args.frame))).read_bytes(), extra['width'], extra['height'])
-        out = expected_factor_cascades(d, s, load_cascade_maps(args.capture, args.device, args.frame, extra, params), params, legacy_floor=args.legacy_floor)
+        maps = load_cascade_maps(args.capture, args.device, args.frame, extra, params)
+        out = expected_factor_cascades(d, s, maps, params, legacy_floor=args.legacy_floor)
         valid = out['valid']
-        print(json.dumps(dict(frame=args.frame, source=source, cascades=extra['cascades'], valid=int(valid.sum()), ambiguous=int(out['ambiguous'].sum()),
+        residual = own_surface_residual(out, maps, params, [c['depth_light'] + c['depth_behind'] for c in extra['cascades']])
+        print(json.dumps(dict(frame=args.frame, source=source, pixel_centre_added=args.add_pixel_centre, m20=params['m20'], m21=params['m21'], cascades=extra['cascades'],
+                              valid=int(valid.sum()), ambiguous=int(out['ambiguous'].sum()),
                               owned=[int((valid & (out['selected'] == c)).sum()) for c in range(len(params['cascades']))],
+                              shadowed_owned=[float((out['f'][valid & (out['selected'] == c)] < 1.0).mean()) if (valid & (out['selected'] == c)).any() else None for c in range(len(params['cascades']))],
                               f_below_0_9=float((out['f'][valid] < .9).mean()) if valid.any() else None,
-                              factor_mean=float(out['factor'][valid].mean()) if valid.any() else None), indent=1))
+                              factor_mean=float(out['factor'][valid].mean()) if valid.any() else None, own_surface=residual), indent=1))
+        print(own_surface_residual_line(residual))
         return
     d, s, sun_map, luminance = load_capture(args.capture, args.device, args.frame, extra['width'], extra['height'], extra['map'])
     region = tuple(int(v) for v in args.region.split(',')) if args.region else None

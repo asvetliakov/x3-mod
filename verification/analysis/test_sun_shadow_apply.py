@@ -95,6 +95,96 @@ class ExpectedFactor(unittest.TestCase):
         self.assertAlmostEqual(float(t[1]), 5.0)  # the plane beside the box
 
 
+def d3d9_plane_scene(width=32, height=32, size=512, slope_x=.5, slope_z=.5):
+    """A tilted plane y = slope_x x + slope_z (z - 6) - 1 rasterised as D3D9
+    does: RT2 texel (i, j) holds the depth along the ray of NDC (2 i / W - 1,
+    1 - 2 j / H) (jitter 0), the map texel (a, b) the plane's sun depth at map
+    position (a, b) / N (PARAMS' sun space). Rays leaving the cascade's box
+    are sentinels."""
+    m00, m11, m22, m32 = PARAMS['m00'], PARAMS['m11'], PARAMS['m22'], PARAMS['m32']
+    plane_y = lambda x, z: slope_x * x + slope_z * (z - 6.0) - 1.0
+    i = np.arange(width, dtype=np.float64)[None, :].repeat(height, 0)
+    j = np.arange(height, dtype=np.float64)[:, None].repeat(width, 1)
+    dx, dy = (2.0 * i / width - 1.0) / m00, (1.0 - 2.0 * j / height) / m11
+    denominator = dy - slope_x * dx - slope_z
+    t = np.where(np.abs(denominator) > 1e-9, (-1.0 - 6.0 * slope_z) / np.where(np.abs(denominator) > 1e-9, denominator, 1.0), -1.0)
+    x, y = dx * t, dy * t
+    inside = (t > 2.5) & (t < 9.5) & (np.abs(x) < 3.9) & (np.abs(y) < 3.9)
+    d = np.where(inside, m22 + m32 / np.where(inside, t, 1.0), -1.0)
+    s = np.where(inside, .5, 0.0)
+    a = np.arange(size, dtype=np.float64)[None, :].repeat(size, 0)
+    b = np.arange(size, dtype=np.float64)[:, None].repeat(size, 1)
+    sun_map = np.clip((4.0 - plane_y(4.0 * (2.0 * a / size - 1.0), 6.0 + 4.0 * (1.0 - 2.0 * b / size))) / 8.0, 0.0, 1.0)
+    return d, s, sun_map
+
+
+class PixelCentre(unittest.TestCase):
+    """The receiver convention (quad_vertex_program.h, quad_pixel_centre_m20/m21;
+    directional-shadows.md, "Run 39 A (run115) diagnosis"): RT2 texel (i, j)
+    holds the depth at the D3D9 pixel centre 2 i / W - 1, the program
+    reconstructs at (i + 1/2) / W * 2 - 1, so the latch carries (+1/W, -1/H)."""
+
+    def test_pixel_centre_terms(self):
+        self.assertEqual(apply.pixel_centre_terms(1280, 768), (1.0 / 1280, -1.0 / 768))
+
+    def test_d3d9_rasterised_tilted_plane_is_lit_only_with_the_pixel_centre_term(self):
+        # 32 x 32 receivers on a plane sloped in x and z, a 512-texel map of the same plane (half a texel of quantisation
+        # is 0.0078 units of slope, under a quarter of the 0.024-unit bias). With the term the twin's own-surface residual
+        # is within bias / 4 and every unambiguous receiver is lit; the pre-fix latch (m20 = m21 = 0 against a D3D9-
+        # rasterised RT2) puts the receiver z / (W m00) = 0.09 units beside the sampled surface: 0.14 units of residual
+        # along the sun, over the bias, and the plane shadows itself.
+        d, s, sun_map = d3d9_plane_scene()
+        centre = apply.pixel_centre_terms(*d.shape[::-1])
+        bias_units = PARAMS['bias_constant'] * 8.0
+        results = {}
+        for label, (m20, m21) in (('fixed', centre), ('legacy', (0.0, 0.0))):
+            params = dict(PARAMS, m20=m20, m21=m21)
+            one_cascade = dict(params, cascades=[dict(rows=PARAMS['rows'], bias_constant=PARAMS['bias_constant'], bias_max=PARAMS['bias_max'], valid=True)])
+            single = apply.expected_factor(d, s, sun_map, params)
+            cascade = apply.expected_factor_cascades(d, s, [sun_map], one_cascade)
+            good = single['valid'] & ~single['ambiguous'] & cascade['valid'] & ~cascade['ambiguous'] & (cascade['band'][0] == 0.0)  # the core: no fade to lit
+            self.assertGreater(int(np.count_nonzero(good)), 200)
+            residual = apply.own_surface_residual(cascade, [sun_map], one_cascade, [8.0])[0]
+            results[label] = dict(lit=float(np.mean(single['f'][good] == 1.0)), lit_cascades=float(np.mean(cascade['f'][good] == 1.0)), median=residual['median'], over_bias=residual['over_bias'])
+        self.assertLess(abs(results['fixed']['median']), bias_units / 4, results)
+        self.assertEqual((results['fixed']['lit'], results['fixed']['lit_cascades']), (1.0, 1.0), results)
+        self.assertGreater(results['legacy']['median'], bias_units, results)          # the half-pixel receiver error, over the bias
+        self.assertGreater(results['legacy']['over_bias'], .9, results)
+        self.assertLess(max(results['legacy']['lit'], results['legacy']['lit_cascades']), .5, results)  # the plane shadows itself
+        line = apply.own_surface_residual_line([dict(cascade=0, bias_units=bias_units, own_surface=1, owned=1, median=results['legacy']['median'], over_bias=1.0, median_over_half_bias=True), None])
+        self.assertTrue(line.startswith('median own-surface residual') and line.count('OVER') == 1 and line.endswith('absent'), line)
+
+    def test_analytic_shadow_is_independent_of_the_latch(self):
+        # The analytic reference evaluates the receiver at the D3D9 pixel centre from the raster's own jitter terms, so a
+        # latch that reconstructs the receiver beside the sampled point (any m20/m21) changes nothing in it, while the
+        # raster's jitter does: the receiver error cannot cancel between the twin and the reference.
+        d, s = receivers(width=32, height=32)
+        scene = dict(camera=(0.0, 0.0, 0.0), cam_right=(1.0, 0.0, 0.0), cam_up=(0.0, 1.0, 0.0), cam_forward=(0.0, 0.0, 1.0), sun=(0.0, -1.0, 0.0),
+                     right=(1.0, 0.0, 0.0), up=(0.0, 0.0, 1.0), box=(-1.0, -6.0, 5.0, 1.0, -4.0, 7.0), boxes=[(-1.0, -6.0, 5.0, 1.0, -4.0, 7.0)], extent=4.0,
+                     raster_m20=0.0, raster_m21=0.0)
+        base = apply.analytic_shadow(d, s, PARAMS, scene, 64)
+        shifted_latch = apply.analytic_shadow(d, s, dict(PARAMS, m20=1.0 / 32, m21=-1.0 / 32), scene, 64)
+        self.assertTrue(np.array_equal(base['lit'], shifted_latch['lit']))
+        self.assertTrue(np.allclose(base['world'][0], shifted_latch['world'][0]))
+        jittered = apply.analytic_shadow(d, s, PARAMS, dict(scene, raster_m20=2.0 * .5 / 32), 64)
+        self.assertFalse(np.allclose(base['world'][0], jittered['world'][0]))
+        # Pixel (i, j)'s receiver lies on the ray of NDC (2 i / W - 1, 1 - 2 j / H): column 16 at depth 6 is x = 0 exactly.
+        self.assertAlmostEqual(float(base['world'][0][4, 16]), 0.0)
+        self.assertAlmostEqual(float(base['world'][0][4, 17]), 2.0 / 32 * 6.0 / PARAMS['m00'])
+        self.assertGreater(int(np.count_nonzero(base['on_plane'])), 0)
+
+    def test_fixture_lines_carry_the_raster_law(self):
+        fields = dict(camera='1,2,3', cam_right='1,0,0', cam_up='0,1,0', cam_forward='0,0,1', sun='0,1,0', right='1,0,0', up='0,0,1', forward='0,-1,0', center='0,0,6',
+                      extent='5', depth_half='8', box='-1,0,-1,1,2,1', m00='2', m11='2', m20='0.0078125', m21='-0.0078125', m22='1', m32='-1', exponent='1',
+                      bias_constant='0.003', bias_max='0.01', planar_step='0.05', rows=','.join('0' for _ in range(12)), jitter_index='0',
+                      raster_m20='0', raster_m21='0', legacy_latch='0')
+        params, scene = apply.parse_params(fields)
+        self.assertEqual((scene['raster_m20'], scene['raster_m21'], scene['legacy_latch']), (0.0, 0.0, False))
+        self.assertEqual(apply.parse_params(dict(fields, legacy_latch='1'))[1]['legacy_latch'], True)
+        with self.assertRaises(KeyError):  # an older fixture line without the raster's law is not accepted (the reference would depend on the latch)
+            apply.parse_params({k: v for k, v in fields.items() if k != 'raster_m20'})
+
+
 class RunInputs(unittest.TestCase):
     """The capture-frame `sun_shadow_apply_params` line (motion_output.cpp
     run_sun_shadow_apply) and the reconstruction from the older lines feed the
@@ -256,6 +346,13 @@ class CascadeFactor(unittest.TestCase):
         self.assertEqual([c['valid'] for c in params['cascades']], [True, False])
         self.assertEqual([(c['map'], c['map_frame'], c['extent'], c['depth_behind']) for c in extra['cascades']], [(4096, 77, 250.0, 512.0), (4096, -1, 1500.0, 3000.0)])
         self.assertAlmostEqual(params['margin'], .95, places=6); self.assertAlmostEqual(params['band'], .10, places=6)
+        self.assertEqual([c['source'] for c in extra['cascades']], [0, 1])  # no source<i>: the slot itself
+        # The ratio guard's compaction (shadow-cascade-extents.md, section 5): slot 1 samples cascade 2's map.
+        compact = line.replace(' rows1=', ' source1=2 rows1=')
+        _, extra_compact = apply.parse_apply_params(apply.line_fields(compact))
+        self.assertEqual([c['source'] for c in extra_compact['cascades']], [0, 2])
+        with self.assertRaises(ValueError):  # slots sample cascades in ascending order
+            apply.parse_apply_params(apply.line_fields(line.replace(' rows0=', ' source0=1 rows0=').replace(' rows1=', ' source1=1 rows1=')))
         with self.assertRaises(ValueError):  # a printed bias that is not the law's at that cascade's texel and range
             apply.parse_apply_params(apply.line_fields(line.replace('bias1=%.9g' % resolved[1]['bias_constant'], 'bias1=0.001')))
         with self.assertRaises(ValueError):

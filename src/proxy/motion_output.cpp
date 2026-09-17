@@ -9,6 +9,7 @@
 #include "object_trace.h"
 #include "object_lifetime.h"
 #include "engine_memory.h"
+#include "object_capture.h"
 #include "camera_state.h"
 #include "sun_light_poll.h"
 #include "chase_camera.h"
@@ -1959,6 +1960,18 @@ void MotionOutput::run_ambient_occlusion() noexcept {
     // the routed rows' clip x/y, +2 jx / width and -2 jy / height in NDC), so
     // the quad's NDC -> view law subtracts the same offset through m20/m21;
     // the engine's own projection latch carries none (camera_state p20/p21 = 0).
+    // No quad_pixel_centre term here, unlike the sun-shadow apply latch: the
+    // GTAO program folds its own half-resolution texel-centre ray (ray.z =
+    // (1 / hw - 1 - m20) / m00, ambient_occlusion_pass.cpp) while the half
+    // texel holds the even full pixel (2 i, 2 j) sampled at NDC 2 i / hw - 1:
+    // every reconstructed point sits 1 / hw in NDC beside its D3D9 pixel, as
+    // the apply quad's did, but AO compares reconstructed points only with
+    // each other (centre, taps, normal): the offset is a uniform shear of view
+    // space by z / (hw m00), about 0.1 degrees of horizon angle, with no
+    // externally rasterised reference (a shadow map) to disagree with. The
+    // CPU reference (ambient_occlusion_reference.h, HalfImage::position) folds
+    // the same ray; changing the latch would move the AO field, not correct a
+    // defect (directional-shadows.md, "Run 39 A (run115) fix").
     const float ao_jitter_x = in.width ? 2.f * jitter_[0] / float(in.width) : 0.f;
     const float ao_jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
     in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11;
@@ -2236,6 +2249,10 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         if (!depth_issues_) { log("shadow_replay_cascades_refused device=%llu reason=allocation issues=%u", id_, capacity); depth_cascades_ = renderer::ShadowCascadeSet{}; }
     }
     if (!depth_cascades_.count) attach_candidate_storage(); // the inline arrays (a refused set drops back to them)
+    // The own-ship-adaptive cascade 0 starts from this device's set as configured (motion_output_shadow_adaptive_inc.h).
+    depth_cascade_base_ = depth_cascades_; renderer::shadow_cascade_adaptive_reset(cascade_adaptive_, depth_cascade_base_);
+    own_ship_frame_ = ~std::uint64_t(0); own_ship_node_ = 0; own_ship_handle_ = 0; own_ship_status_ = 0; own_radius_frame_ = 0.f; own_draws_frame_ = 0;
+    own_cache_ = own_ship::Cache{};
     if (retention_mode_ != shadow_retention::Mode::Off || retention_) attach_shadow_retention(); // caster retention rides the cascades (off: nothing runs)
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { // Seam only: X3M_FIXTURE_SLICE_NEAR moves the slice-0 near bound so the
@@ -3412,6 +3429,7 @@ bool MotionOutput::scene_bound() const noexcept {
 
 void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     flush_taa_invalidate_log(); // sites that fired since the last flush (Reset) carry the frame begun at the last Present
+    if (cascade_adaptive_on() && frame != frame_) update_adaptive_cascades(); // the previous frame's own ship and radius commit at the boundary (its frame number and capture flag); a Reset's repeated begin of the same frame is no boundary
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
@@ -6633,7 +6651,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     const bool cascades = depth_cascades_on();
     std::uint8_t cascade_mask = 0;
     if (cascades) {
-        if (near_ok) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (d <= depth_cascades_.cascades[i].half_extent) cascade_mask |= std::uint8_t(1u << i);
+        if (near_ok) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (d <= depth_cascades_.cascades[i].half_extent && renderer::shadow_cascade_active(depth_cascades_, i)) cascade_mask |= std::uint8_t(1u << i);
         admitted = cascade_mask != 0;
     }
     const shadow_replay::ExtentEntry* exact_extent = nullptr; // the range's own extent of this revision (caster retention's payload)
@@ -6718,6 +6736,8 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
             if (!large) { cascade_mask = std::uint8_t(cascade_mask & ~depth_cascade_static_mask_); admitted = cascade_mask != 0; }
         }
     }
+    // Own-ship-adaptive cascade 0: the own ship's z-writing draws with a known extent feed the frame's radius.
+    if (zwrite && cascade_adaptive_on() && exact_extent && own_ship_draw(std::uintptr_t(route.key.node), route.key.node_handle, route.load_epoch, route.registry_epoch)) note_own_ship_draw(*exact_extent);
     if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, route.alpha_tested, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed,
                           cascades ? candidate_capacity_ : candidate_cap_, cascades ? &cascade_mask : nullptr, cascades ? depth_cascade_draw_caps_ : nullptr)) return;
     // A managed candidate without a known view for every buffer it uses is
@@ -7178,26 +7198,38 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         // (lit) and takes this frame's would-be basis for its pixel ownership.
         renderer::SunShadowCascadeFrame in{};
         in.depth_share = depth; in.target = rt0; in.width = target_width_; in.height = target_height_;
+        // The latch: the jitter RT2 was rasterised under (as the single-map
+        // path below) plus the D3D9 pixel-centre term of the quad's uv
+        // (renderer::quad_pixel_centre_m20/m21; the receiver must be the point
+        // RT2 texel (i, j) sampled, not half a pixel beside it).
         const float jitter_x = in.width ? 2.f * jitter_[0] / float(in.width) : 0.f;
         const float jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
-        in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = camera_scene_.m20 + jitter_x; in.m21 = camera_scene_.m21 + jitter_y;
+        const float centre_x = in.width ? renderer::quad_pixel_centre_m20(in.width) : 0.f;
+        const float centre_y = in.height ? renderer::quad_pixel_centre_m21(in.height) : 0.f;
+        in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = camera_scene_.m20 + jitter_x + centre_x; in.m21 = camera_scene_.m21 + jitter_y + centre_y;
         in.m22 = ao_default_m22; in.m32 = ao_default_m32; in.jitter_index = counters_.jitter_index; in.exponent = exponent;
-        in.count = depth_cascades_.count;
+        // The quad's slots are the ACTIVE cascades in order (shadow_cascade_apply_slots):
+        // a cascade the ratio guard dropped is not in the list, so the previous
+        // cascade's blend band leads into the next active one. Slot s samples
+        // map slots[s]; the params line names it (source<s>) for the twin.
+        unsigned slots[renderer::shadow_cascade_max]{};
+        in.count = renderer::shadow_cascade_apply_slots(depth_cascades_, slots);
         renderer::SunShadowBias biases[renderer::shadow_cascade_max]{};
         std::uint64_t map_frames[renderer::shadow_cascade_max]{};
-        for (unsigned i = 0; i < in.count && !skip; ++i) {
+        for (unsigned s = 0; s < in.count && !skip; ++s) {
+            const unsigned i = slots[s];
             const auto& cascade = depth_cascades_.cascades[i];
-            auto& k = in.cascades[i];
+            auto& k = in.cascades[s];
             const auto* kept = depth_replay_->retained(i);
-            const bool far_kept = i + 1 == in.count && in.count > 1;
+            const bool far_kept = s + 1 == in.count && in.count > 1;
             const bool valid = kept && (kept->frame == frame_ || (far_kept && kept->frame + 1 == frame_)) && depth_replay_->map_texture(i);
             renderer::ShadowReplayBasis current{};
             const float* sun = valid ? nullptr : cascade_sun(i); // an absent cascade's would-be basis: its own sun of this frame
             if (!valid && (!sun || !renderer::shadow_replay_basis(camera_scene_, sun, cascade, current, point_sun_.grid_anchor(i)))) { skip = "basis"; break; }
             if (!renderer::shadow_replay_view_rows(camera_scene_, valid ? kept->basis : current, cascade, k.rows)) { skip = "rows"; break; }
-            if (!renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_, double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), biases[i])) { skip = "bias"; break; }
-            k.bias_constant = biases[i].constant; k.bias_max = biases[i].max; k.valid = valid; k.map = valid ? depth_replay_->map_texture(i) : nullptr;
-            map_frames[i] = valid ? kept->frame : ~std::uint64_t(0);
+            if (!renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_, double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), biases[s])) { skip = "bias"; break; }
+            k.bias_constant = biases[s].constant; k.bias_max = biases[s].max; k.valid = valid; k.map = valid ? depth_replay_->map_texture(i) : nullptr;
+            map_frames[s] = valid ? kept->frame : ~std::uint64_t(0);
         }
         in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
         LARGE_INTEGER t0{}, t1{}, f{};
@@ -7217,12 +7249,12 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         // the twin (verification/probe/sun_shadow_apply.py, frame_params).
         if (capture_ && !skip) {
             char text[2560]; int used = 0;
-            for (unsigned i = 0; i < in.count && used >= 0 && used < int(sizeof text); ++i) {
-                const auto& k = in.cascades[i]; const auto& cascade = depth_cascades_.cascades[i];
-                used += std::snprintf(text + used, sizeof text - used, " valid%u=%u map%u=%u map_frame%u=%lld bias%u=%.9g bias_max%u=%.9g texel_world%u=%.9g extent%u=%.9g depth_light%u=%.9g depth_behind%u=%.9g"
+            for (unsigned s = 0; s < in.count && used >= 0 && used < int(sizeof text); ++s) {
+                const unsigned i = slots[s]; const auto& k = in.cascades[s]; const auto& cascade = depth_cascades_.cascades[i];
+                used += std::snprintf(text + used, sizeof text - used, " valid%u=%u map%u=%u map_frame%u=%lld bias%u=%.9g bias_max%u=%.9g texel_world%u=%.9g extent%u=%.9g depth_light%u=%.9g depth_behind%u=%.9g source%u=%u"
                                       " rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
-                                      i, unsigned(k.valid), i, depth_replay_->size(i), i, k.valid ? static_cast<long long>(map_frames[i]) : -1ll, i, double(k.bias_constant), i, double(k.bias_max),
-                                      i, double(biases[i].texel_world), i, double(cascade.half_extent), i, double(cascade.depth_toward_light), i, double(cascade.depth_behind), i,
+                                      s, unsigned(k.valid), s, depth_replay_->size(i), s, k.valid ? static_cast<long long>(map_frames[s]) : -1ll, s, double(k.bias_constant), s, double(k.bias_max),
+                                      s, double(biases[s].texel_world), s, double(cascade.half_extent), s, double(cascade.depth_toward_light), s, double(cascade.depth_behind), s, i, s,
                                       double(k.rows[0]), double(k.rows[1]), double(k.rows[2]), double(k.rows[3]), double(k.rows[4]), double(k.rows[5]),
                                       double(k.rows[6]), double(k.rows[7]), double(k.rows[8]), double(k.rows[9]), double(k.rows[10]), double(k.rows[11]));
             }
@@ -7241,10 +7273,15 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         // the routed rows' clip x/y, +2 jx / width and -2 jy / height in NDC), so
         // the quad's NDC -> view law subtracts the same offset through m20/m21;
         // the engine's own projection latch carries none (camera_state p20/p21 = 0).
+        // Plus the D3D9 pixel-centre term of the quad's uv (renderer::
+        // quad_pixel_centre_m20/m21): RT2 texel (i, j) holds the depth at NDC
+        // (2 i / W - 1, 1 - 2 j / H), half a pixel left of and above uv * 2 - 1.
         const float jitter_x = in.width ? 2.f * jitter_[0] / float(in.width) : 0.f;
         const float jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
+        const float centre_x = in.width ? renderer::quad_pixel_centre_m20(in.width) : 0.f;
+        const float centre_y = in.height ? renderer::quad_pixel_centre_m21(in.height) : 0.f;
         in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11;
-        in.params.m20 = camera_scene_.m20 + jitter_x; in.params.m21 = camera_scene_.m21 + jitter_y;
+        in.params.m20 = camera_scene_.m20 + jitter_x + centre_x; in.params.m21 = camera_scene_.m21 + jitter_y + centre_y;
         in.params.m22 = ao_default_m22; in.params.m32 = ao_default_m32;
         const float* rows = depth_replay_->view_rows();
         for (unsigned i = 0; i < 12; ++i) in.params.rows[i] = rows[i];
@@ -7290,5 +7327,6 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         id_, frame_, unsigned(sun_apply_applied_), skip ? skip : "none", double(exponent), us, out.map_size, out.operation, out.restore, unsigned(out.failed));
 }
 #include "motion_output_shadow_replay_inc.h"
+#include "motion_output_shadow_adaptive_inc.h"
 #include "motion_output_shadow_retention_inc.h"
 } // namespace x3m
