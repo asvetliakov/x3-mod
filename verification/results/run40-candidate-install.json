@@ -1,14 +1,14 @@
 {
- "installed_utc": "2026-09-17T20:33:44.998718+00:00",
- "source_commit": "d415264f",
- "manifest_source_commit": "d415264fa4e693523627abaff009696903b3bb1b",
- "candidate": "/tmp/x3-candidate-eBwRHq/candidate/d3d9.dll",
+ "installed_utc": "2026-09-17T22:52:29.178097+00:00",
+ "source_commit": "e8ae3357",
+ "manifest_source_commit": "e8ae3357832154bfd1aae0518a3849638a7647c1",
+ "candidate": "/tmp/x3-candidate-iK0cir/candidate/d3d9.dll",
  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
- "installed_sha256": "d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4",
- "bytes": 18203719,
- "rollback": "/tmp/x3-candidate-eBwRHq/rollback",
- "rollback_sha256": "9968bf840be6ba4a70988d1d7fe6d0d8aaaec7525f6daba9e94bf4d00ef5b06f",
- "rollback_note": "the first run40 candidate 9968bf84 (ee3ff318), installed briefly and never flown; the run39 DLL cc966fb2 remains in /tmp/x3-candidate-wRyHZV/rollback",
+ "installed_sha256": "c47f039c5c46608be576717f0ab3c0d9fe718a584264214ecf29314a9eee2205",
+ "bytes": 18228604,
+ "rollback": "/tmp/x3-candidate-iK0cir/rollback",
+ "rollback_sha256": "d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4",
+ "rollback_note": "the second run40 candidate d4d824a4 (d415264f), flown as run116 session A; earlier: 9968bf84 in /tmp/x3-candidate-eBwRHq/rollback, run39 cc966fb2 in /tmp/x3-candidate-wRyHZV/rollback",
  "unchanged": {
   "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
   "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
@@ -16,9 +16,9 @@
  "install_method": "tools/manage.py install --dll-source",
  "manifest": {
   "project": "x3-modern-renderer",
-  "sha256": "d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4",
-  "source": "/private/tmp/x3-candidate-eBwRHq/candidate/d3d9.dll",
-  "source_commit": "d415264fa4e693523627abaff009696903b3bb1b",
+  "sha256": "c47f039c5c46608be576717f0ab3c0d9fe718a584264214ecf29314a9eee2205",
+  "source": "/private/tmp/x3-candidate-iK0cir/candidate/d3d9.dll",
+  "source_commit": "e8ae3357832154bfd1aae0518a3849638a7647c1",
   "manifest_source": "dll"
  },
  "game_launched": false,

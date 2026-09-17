@@ -1,33 +1,35 @@
 {
-  "recorded_utc": "2026-09-17T20:32:55Z",
+  "recorded_utc": "2026-09-17T22:51:33Z",
   "run": 40,
   "candidate": {
-    "path": "/tmp/x3-candidate-eBwRHq/candidate/d3d9.dll",
-    "directory": "/tmp/x3-candidate-eBwRHq",
+    "path": "/tmp/x3-candidate-iK0cir/candidate/d3d9.dll",
+    "directory": "/tmp/x3-candidate-iK0cir",
     "subdirectories": [
       "candidate",
       "rollback (empty; the installed DLL is copied here by the installing owner)"
     ],
-    "sha256": "d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4",
-    "bytes": 18203719,
+    "sha256": "c47f039c5c46608be576717f0ab3c0d9fe718a584264214ecf29314a9eee2205",
+    "bytes": 18228604,
     "retained_first_build": true,
     "candidate_directory_file_count": 1,
     "hash_rechecked_after_fixtures": true,
-    "hash_source_after_fixtures": "state-hook-benchmark-run40.json dll.sha256 equals the recorded sha256; shasum rerun after all checks agrees",
-    "supersedes": "the ee3ff318 run 40 candidate 9968bf84\u2026 (/tmp/x3-candidate-wRyHZV), which was never installed"
+    "hash_source_after_fixtures": "state-hook-benchmark-run40.json dll.sha256 equals the recorded sha256",
+    "supersedes": "the d415264f candidate d4d824a4\u2026 (installed); the ee3ff318 candidate 9968bf84\u2026 was never installed"
   },
   "source": {
     "worktree": "/Users/asvetl/x3-mod",
-    "commit": "d415264fa4e693523627abaff009696903b3bb1b",
-    "commit_short": "d415264f",
+    "commit": "e8ae3357832154bfd1aae0518a3849638a7647c1",
+    "commit_short": "e8ae3357",
     "detached": false,
+    "requested_commit": "f8b86162",
+    "commit_note": "main's tip when the build ran was e8ae3357, which is f8b86162 plus one docs-only commit; git diff f8b86162 e8ae3357 is 3 lines of docs/verification/user-runs.md, so the compiled source is identical to f8b86162",
     "status_before_configure": "clean apart from untracked wine logs and benchmark records; no src/, tools/ or verification/ modification",
     "dirty_diff": "none",
-    "status_after_build": "the 24 fixture-touched tracked files under verification/results/bottle-X3/ restored with git checkout after reading; this record (now tracked on main) rewritten in place"
+    "status_after_build": "the 30 fixture-touched tracked files under verification/results/bottle-X3/ restored with git checkout after reading"
   },
   "source_commit_marker": {
-    "command": "strings /tmp/x3-candidate-eBwRHq/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
-    "value": "X3M_SOURCE_COMMIT=d415264fa4e693523627abaff009696903b3bb1b",
+    "command": "strings /tmp/x3-candidate-iK0cir/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+    "value": "X3M_SOURCE_COMMIT=e8ae3357832154bfd1aae0518a3849638a7647c1",
     "dirty_suffix": false,
     "matches_worktree_head": true
   },
@@ -53,36 +55,35 @@
     "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build/candidate-run40",
     "result": "PASS",
     "warning_error_matches": 0,
-    "log": "/tmp/x3-candidate-eBwRHq/configure.log"
+    "log": "/tmp/x3-candidate-iK0cir/configure.log"
   },
   "build": {
     "command": "cmake --build build/candidate-run40 -j4",
     "invocations": 1,
-    "elapsed_seconds": 15,
+    "elapsed_seconds": 16,
     "result": "PASS",
     "warning_error_matches": 0,
-    "log": "/tmp/x3-candidate-eBwRHq/build.log",
-    "note": "build/candidate-run40 removed before configure; the shared ./build tree was not otherwise modified"
+    "log": "/tmp/x3-candidate-iK0cir/build.log",
+    "note": "build/candidate-run40 removed before configure; an earlier mistyped shell chain produced a stale incremental DLL which was discarded with its directory before this clean build"
   },
   "host_audits": {
     "no_x87": {
-      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-eBwRHq/candidate/d3d9.dll",
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-iK0cir/candidate/d3d9.dll",
       "result": "PASS",
       "roots": 77,
-      "reachable_functions": 534,
+      "reachable_functions": 537,
       "violations": 0,
-      "ee3ff318_reachable_functions": 534,
-      "delta_note": "unchanged against the ee3ff318 candidate",
-      "report": "/tmp/x3-candidate-eBwRHq/no-x87.txt"
+      "d415264f_reachable_functions": 534,
+      "delta_note": "+3 reachable with the cycle/back-face/eps work",
+      "report": "/tmp/x3-candidate-iK0cir/no-x87.txt"
     },
     "pe_exports": {
-      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-eBwRHq/candidate/d3d9.dll",
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-iK0cir/candidate/d3d9.dll",
       "result": "PASS",
       "machine": "0x014c",
       "count": 17,
       "names": 17,
-      "matches_run39_count": true,
-      "report": "/tmp/x3-candidate-eBwRHq/pe-exports.json"
+      "report": "/tmp/x3-candidate-iK0cir/pe-exports.json"
     },
     "phase_site_verifiers": {
       "commands": [
@@ -103,7 +104,7 @@
       },
       "exe_identity": "true in all five reports",
       "source_specs": "true in all five; source_present true in the pass, loop, residual and media-cue reports",
-      "reports": "/tmp/x3-candidate-eBwRHq/verify-*.json"
+      "reports": "/tmp/x3-candidate-iK0cir/verify-*.json"
     }
   },
   "bottle": {
@@ -117,16 +118,16 @@
   },
   "scoped_results": {
     "motion_output_source_parity": {
-      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py <35 shadow cases>",
-      "cases_run": 35,
-      "case_groups": "single-map on/off/wide/far-refused; sun-shadow-apply/-wide/-cascades/-cascades-5; cascades, casters-20, sun-programs; four cascades-poll-*; cascades-toggle and toggle-single; four retention; six pool; adaptive small/big/swap/reuse; ladder corvette, corvette-static (new), destroyer, shrink",
-      "result": "PASS (runner status PARTIAL by design; all 35 cases exit 0)",
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py <41 shadow cases>",
+      "cases_run": 41,
+      "case_groups": "single-map on/off/wide/far-refused; sun-shadow-apply/-wide/-cascades/-cascades-5/-cascades-5-faces (new); cascades, casters-20, sun-programs; four cascades-poll-*; cascades-toggle, toggle-single; four retention; eleven pool (static off/census/live/strict, cycle-census/cycle-live, jitter-off/jitter-live, hull \u2014 all new except static and importance/records); adaptive small/big/swap/reuse; ladder corvette/corvette-static/destroyer/shrink",
+      "result": "PASS (runner status PARTIAL by design; all 41 cases exit 0)",
       "exit": 0,
-      "elapsed_seconds": 124,
+      "elapsed_seconds": 145,
       "lock_wait_seconds": 0,
-      "candidate_bytes": "not exercised: the runner built its own fixture DLLs from source; this is a source-parity check of the committed tree",
-      "seam_dll_sha256": "e29599c1c4ff27770f8318e3e166c6ad3fbcd8179d87d7ab320fd4122519271d",
-      "fixture_exe_sha256": "f62a28ed2a1ed182e8dd6b77c68872f04486e7101475faedb030a57f413579da",
+      "candidate_bytes": "not exercised: the runner built its own fixture DLLs from source",
+      "seam_dll_sha256": "b1da2e6ed6e84682b656e5241c3e33262ae2a8d363d29199f718cc1d1acf35ca",
+      "fixture_exe_sha256": "ab1e48c2850445790484dcf81f285a5bda008822f77f5b123dbb8b16f2b961e7",
       "cases": {
         "seam-ownership-shadow-replay-on": {
           "checks": 203,
@@ -135,10 +136,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 36.3,
-            "median": 43.7,
-            "max": 1495.3,
-            "per_draw_median": 21.85
+            "min": 30.1,
+            "median": 36.9,
+            "max": 1431.4,
+            "per_draw_median": 18.45
           }
         },
         "seam-ownership-shadow-replay-off": {
@@ -154,10 +155,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 32.3,
-            "median": 37.7,
-            "max": 1540.7,
-            "per_draw_median": 18.85
+            "min": 41.5,
+            "median": 48.3,
+            "max": 1619.2,
+            "per_draw_median": 24.15
           }
         },
         "seam-ownership-shadow-replay-cascades": {
@@ -167,10 +168,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 42.2,
-            "median": 45.3,
-            "max": 1427.5,
-            "per_issue_median": 7.55,
+            "min": 38.2,
+            "median": 47.8,
+            "max": 1444.1,
+            "per_issue_median": 7.966666666666666,
             "issues_per_frame": [
               6,
               2,
@@ -187,10 +188,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 89.8,
-            "median": 92.8,
-            "max": 1561.1,
-            "per_issue_median": 2.1581395348837207,
+            "min": 86.0,
+            "median": 103.3,
+            "max": 1653.3,
+            "per_issue_median": 2.4023255813953486,
             "issues_per_frame": [
               42,
               43,
@@ -207,10 +208,10 @@
           "frames": 8,
           "us": {
             "frames": 3,
-            "min": 52.6,
-            "median": 60.0,
-            "max": 1592.5,
-            "per_issue_median": 10.0,
+            "min": 50.5,
+            "median": 61.7,
+            "max": 1712.9,
+            "per_issue_median": 10.283333333333333,
             "issues_per_frame": [
               6,
               6,
@@ -225,10 +226,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 31.7,
-            "median": 33.2,
-            "max": 1465.9,
-            "per_draw_median": 16.6
+            "min": 33.5,
+            "median": 42.4,
+            "max": 1902.2,
+            "per_draw_median": 21.2
           }
         },
         "seam-ownership-shadow-replay-cascades-poll-agree": {
@@ -238,10 +239,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 37.7,
-            "median": 46.5,
-            "max": 1473.2,
-            "per_issue_median": 7.75,
+            "min": 39.3,
+            "median": 67.8,
+            "max": 1533.9,
+            "per_issue_median": 11.299999999999999,
             "issues_per_frame": [
               6,
               2,
@@ -258,10 +259,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 37.5,
-            "median": 42.5,
-            "max": 1559.4,
-            "per_issue_median": 7.083333333333333,
+            "min": 41.0,
+            "median": 44.7,
+            "max": 1613.2,
+            "per_issue_median": 7.45,
             "issues_per_frame": [
               6,
               2,
@@ -278,10 +279,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 43.2,
-            "median": 62.1,
-            "max": 1422.9,
-            "per_issue_median": 10.35,
+            "min": 54.3,
+            "median": 63.7,
+            "max": 2428.6,
+            "per_issue_median": 10.616666666666667,
             "issues_per_frame": [
               6,
               2,
@@ -298,10 +299,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 39.8,
-            "median": 44.9,
-            "max": 1423.8,
-            "per_issue_median": 7.483333333333333,
+            "min": 44.3,
+            "median": 96.9,
+            "max": 1773.2,
+            "per_issue_median": 16.150000000000002,
             "issues_per_frame": [
               6,
               2,
@@ -319,9 +320,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 67.4,
-            "median": 82.8,
-            "max": 1441.0
+            "min": 62.2,
+            "median": 81.2,
+            "max": 1697.4
           }
         },
         "seam-ownership-shadow-replay-adaptive-big": {
@@ -332,9 +333,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 57.1,
-            "median": 71.2,
-            "max": 1436.6
+            "min": 70.2,
+            "median": 84.7,
+            "max": 1663.4
           }
         },
         "seam-ownership-shadow-replay-adaptive-swap": {
@@ -345,9 +346,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 63.7,
-            "median": 104.5,
-            "max": 1561.2
+            "min": 75.0,
+            "median": 90.4,
+            "max": 1831.9
           }
         },
         "seam-ownership-shadow-replay-adaptive-reuse": {
@@ -358,9 +359,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 55.1,
-            "median": 67.4,
-            "max": 1591.4
+            "min": 70.8,
+            "median": 105.5,
+            "max": 1783.3
           }
         },
         "seam-ownership-shadow-replay-ladder-corvette": {
@@ -371,9 +372,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 73.9,
-            "median": 85.3,
-            "max": 1505.7
+            "min": 83.0,
+            "median": 125.0,
+            "max": 1621.2
           }
         },
         "seam-ownership-shadow-replay-ladder-destroyer": {
@@ -384,9 +385,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 56.3,
-            "median": 77.0,
-            "max": 1535.4
+            "min": 58.7,
+            "median": 87.8,
+            "max": 1862.2
           }
         },
         "seam-ownership-shadow-replay-ladder-shrink": {
@@ -397,9 +398,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 72.1,
-            "median": 95.7,
-            "max": 1444.5
+            "min": 73.7,
+            "median": 114.9,
+            "max": 1748.7
           }
         },
         "seam-ownership-shadow-replay-ladder-corvette-static": {
@@ -410,9 +411,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 45.6,
-            "median": 63.0,
-            "max": 1618.0
+            "min": 54.3,
+            "median": 63.3,
+            "max": 1661.8
           }
         },
         "seam-ownership-shadow-replay-wide": {
@@ -422,10 +423,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 36.1,
-            "median": 55.9,
-            "max": 1391.1,
-            "per_draw_median": 13.975
+            "min": 43.2,
+            "median": 57.9,
+            "max": 1528.9,
+            "per_draw_median": 14.475
           }
         },
         "seam-ownership-shadow-replay-far-refused": {
@@ -435,10 +436,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 36.3,
-            "median": 52.9,
-            "max": 1422.2,
-            "per_draw_median": 26.45
+            "min": 34.1,
+            "median": 46.5,
+            "max": 1490.8,
+            "per_draw_median": 23.25
           }
         },
         "seam-ownership-shadow-retention-live": {
@@ -447,13 +448,13 @@
           "frames": 1535,
           "us": {
             "frames": 1527,
-            "min": 21.4,
-            "median": 29.6,
-            "max": 2160.2,
+            "min": 21.0,
+            "median": 28.4,
+            "max": 2169.1,
             "bulk": {
               "frames": 16,
               "issues_median": 1450,
-              "us_median": 1447.2
+              "us_median": 1468.1
             }
           }
         },
@@ -463,13 +464,13 @@
           "frames": 1535,
           "us": {
             "frames": 1527,
-            "min": 19.3,
-            "median": 25.5,
-            "max": 1850.1,
+            "min": 19.0,
+            "median": 24.4,
+            "max": 1861.4,
             "bulk": {
               "frames": 5,
               "issues_median": 1450,
-              "us_median": 1658.0
+              "us_median": 1604.6
             }
           }
         },
@@ -479,13 +480,13 @@
           "frames": 1535,
           "us": {
             "frames": 1527,
-            "min": 19.7,
-            "median": 25.8,
-            "max": 1852.5,
+            "min": 19.9,
+            "median": 25.4,
+            "max": 1938.8,
             "bulk": {
               "frames": 5,
               "issues_median": 1450,
-              "us_median": 1618.6
+              "us_median": 1715.5
             }
           }
         },
@@ -495,13 +496,13 @@
           "frames": 1547,
           "us": {
             "frames": 1539,
-            "min": 22.1,
-            "median": 28.7,
-            "max": 2260.5,
+            "min": 20.6,
+            "median": 27.9,
+            "max": 2451.0,
             "bulk": {
               "frames": 16,
               "issues_median": 1450,
-              "us_median": 1481.0
+              "us_median": 1685.0
             }
           }
         },
@@ -512,33 +513,33 @@
           "frames": 14,
           "us": {
             "frames": 14,
-            "min": 40.2,
-            "median": 48.05,
-            "max": 1505.2
+            "min": 35.5,
+            "median": 58.45,
+            "max": 1554.3
           }
         },
         "seam-ownership-shadow-pool-static-census": {
-          "checks": 181,
+          "checks": 182,
           "script": "static",
           "store": 1,
           "frames": 14,
           "us": {
             "frames": 14,
-            "min": 39.2,
-            "median": 46.0,
-            "max": 1456.2
+            "min": 37.4,
+            "median": 50.75,
+            "max": 1947.2
           }
         },
         "seam-ownership-shadow-pool-static-live": {
-          "checks": 181,
+          "checks": 182,
           "script": "static",
           "store": 2,
           "frames": 14,
           "us": {
             "frames": 14,
-            "min": 36.1,
-            "median": 42.2,
-            "max": 1443.5
+            "min": 40.8,
+            "median": 56.95,
+            "max": 2030.2
           }
         },
         "seam-ownership-shadow-pool-static-strict": {
@@ -548,9 +549,69 @@
           "frames": 14,
           "us": {
             "frames": 14,
-            "min": 41.3,
-            "median": 50.8,
-            "max": 1507.4
+            "min": 36.7,
+            "median": 45.75,
+            "max": 1591.9
+          }
+        },
+        "seam-ownership-shadow-pool-cycle-census": {
+          "checks": 193,
+          "script": "cycle",
+          "store": 1,
+          "frames": 12,
+          "us": {
+            "frames": 12,
+            "min": 40.8,
+            "median": 64.6,
+            "max": 1526.3
+          }
+        },
+        "seam-ownership-shadow-pool-cycle-live": {
+          "checks": 193,
+          "script": "cycle",
+          "store": 2,
+          "frames": 12,
+          "us": {
+            "frames": 12,
+            "min": 37.8,
+            "median": 46.95,
+            "max": 1605.1
+          }
+        },
+        "seam-ownership-shadow-pool-jitter-off": {
+          "checks": 143,
+          "script": "jitter",
+          "store": 0,
+          "frames": 12,
+          "us": {
+            "frames": 12,
+            "min": 37.2,
+            "median": 44.25,
+            "max": 1636.9
+          }
+        },
+        "seam-ownership-shadow-pool-jitter-live": {
+          "checks": 192,
+          "script": "jitter",
+          "store": 2,
+          "frames": 12,
+          "us": {
+            "frames": 12,
+            "min": 39.6,
+            "median": 48.75,
+            "max": 1507.6
+          }
+        },
+        "seam-ownership-shadow-pool-hull": {
+          "checks": 77,
+          "script": "hull",
+          "store": 0,
+          "frames": 6,
+          "us": {
+            "frames": 6,
+            "min": 43.7,
+            "median": 54.35,
+            "max": 1663.0
           }
         },
         "seam-ownership-shadow-pool-importance": {
@@ -560,9 +621,9 @@
           "frames": 8,
           "us": {
             "frames": 8,
-            "min": 54.0,
-            "median": 55.8,
-            "max": 1512.7
+            "min": 51.5,
+            "median": 58.55,
+            "max": 1562.8
           }
         },
         "seam-ownership-shadow-pool-records": {
@@ -572,9 +633,9 @@
           "frames": 6,
           "us": {
             "frames": 6,
-            "min": 43.4,
-            "median": 2590.7000000000003,
-            "max": 6139.8
+            "min": 48.8,
+            "median": 2736.75,
+            "max": 6290.0
           }
         },
         "sun-shadow-apply": {
@@ -583,9 +644,9 @@
           "worst_codes": 0.9981839692472931,
           "ambiguous_max": 226,
           "us": {
-            "min": 1602.8,
-            "median": 3239.3,
-            "max": 21401.3
+            "min": 1537.2,
+            "median": 3633.8,
+            "max": 23798.1
           }
         },
         "sun-shadow-apply-wide": {
@@ -594,9 +655,9 @@
           "worst_codes": 0.9984866410393352,
           "ambiguous_max": 216,
           "us": {
-            "min": 1683.8,
-            "median": 3947.5,
-            "max": 21617.8
+            "min": 1723.5,
+            "median": 3784.3,
+            "max": 22858.6
           }
         },
         "sun-shadow-apply-cascades": {
@@ -605,9 +666,9 @@
           "worst_codes": 0.9999969154596329,
           "ambiguous_max": 1742,
           "us": {
-            "min": 622.2,
-            "median": 748.4,
-            "max": 16806.2
+            "min": 396.5,
+            "median": 787.0,
+            "max": 18512.5
           }
         },
         "sun-shadow-apply-cascades-5": {
@@ -616,16 +677,24 @@
           "worst_codes": 0.9999969154596329,
           "ambiguous_max": 1755,
           "us": {
-            "min": 660.2,
-            "median": 1753.5,
-            "max": 11641.7
+            "min": 731.0,
+            "median": 1776.7,
+            "max": 12213.0
+          }
+        },
+        "sun-shadow-apply-cascades-5-faces": {
+          "checks": 2861,
+          "frames": 16,
+          "worst_codes": 0.9999976605176926,
+          "ambiguous_max": 261,
+          "us": {
+            "median": 1726.6
           }
         }
       },
-      "new_case": "seam-ownership-shadow-replay-ladder-corvette-static: 373 checks, max_depth_error 5.997454037842687e-07, record equal to the committed seam-ownership-shadow-replay-ladder-corvette-static-fixture.json",
-      "against_ledger": "every check count as in docs/verification/directional-shadows.md: on/off 203/99, wide/far-refused 203, cascades 278, casters-20 278, sun-programs 205, poll 281x4, cascades-toggle 283, toggle-single 214, retention 9,743/9,740/6,629/9,890, pool 165/181/181/165 + 99 + 53, adaptive 333/333/336/336, ladder corvette/corvette-static/destroyer/shrink 373/373/373/376, sun-shadow-apply 169, -wide 173, -cascades 4,342 (edge beyond_one 28), -cascades-5 3,117 (beyond_one 0)",
-      "against_committed_records": "22 touched per-case fixture records: 7,394 fields compared, 0 value mismatches, 1 field absent from the committed side (an extra presented-twin name from this run's case selection); motion-output-partial.json on main now matches too: 26 common cases, 10,158 fields, 0 mismatches",
-      "artifacts": "all fixture-touched tracked records restored with git checkout after reading; run copy at /tmp/x3-candidate-eBwRHq/motion-output-run40.json"
+      "new_cases": "pool cycle-census/cycle-live 193 checks each (12 frames, 23 maps), jitter-off 143 / jitter-live 192 (7.05e-06), hull 77 (6 frames, 12 maps), sun-shadow-apply-cascades-5-faces 2,861 checks (ambiguous_max 261); pool static-census/-live moved 181 -> 182 with the run116 work",
+      "against_committed_records": "28 touched per-case fixture records: 8,825 fields, 1 difference (the order of the presented-twin names in pool-static-live, a case-selection artifact) and 2 fields absent on the committed side; motion-output-partial.json: 26 common cases, 10,348 fields, 0 mismatches (172 fields absent from the older snapshot)",
+      "artifacts": "all fixture-touched tracked records restored with git checkout after reading; run copy at /tmp/x3-candidate-iK0cir/motion-output-run40.json"
     },
     "sun_share_live": {
       "committed_record": {
@@ -635,91 +704,91 @@
         "game_launched": false
       },
       "rerun": {
-        "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --result /tmp/x3-candidate-eBwRHq/sun-share-live-run40.json",
+        "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --result /tmp/x3-candidate-iK0cir/sun-share-live-run40.json",
         "result": "PASS",
         "exit": 0,
-        "elapsed_seconds": 41,
+        "elapsed_seconds": 39,
         "passed": true,
         "game_launched": false,
         "cases": 21,
         "failed_cases": 0,
-        "case_set": "full set (no --case filter)",
-        "seam_dll_sha256": "e29599c1c4ff27770f8318e3e166c6ad3fbcd8179d87d7ab320fd4122519271d",
-        "fixture_exe_sha256": "f62a28ed2a1ed182e8dd6b77c68872f04486e7101475faedb030a57f413579da",
+        "case_set": "full set",
+        "seam_dll_sha256": "b1da2e6ed6e84682b656e5241c3e33262ae2a8d363d29199f718cc1d1acf35ca",
+        "fixture_exe_sha256": "ab1e48c2850445790484dcf81f285a5bda008822f77f5b123dbb8b16f2b961e7",
         "vs_committed": "633 non-provenance scalar fields across all 21 cases: 0 mismatches, 0 missing",
-        "result_file": "written to /tmp/x3-candidate-eBwRHq only; verification/results/bottle-X3/sun-share-live.json untouched"
+        "result_file": "written to /tmp/x3-candidate-iK0cir only; the committed record untouched"
       }
     },
     "state_hook_benchmark": {
-      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-eBwRHq/candidate/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run40.json",
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-iK0cir/candidate/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run40.json",
       "result": "PASS",
       "exit": 0,
       "elapsed_seconds": 26,
       "lock_wait_seconds": 0,
       "output": "verification/results/bottle-X3/state-hook-benchmark-run40.json (untracked; the paired -run40-wine.log stays local)",
-      "dll_sha256_in_output": "d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4",
-      "fixture_exe_sha256": "c7be13026d2d04a3428fb4939e8f1c428cb9e271830091652c66380c57504490",
+      "dll_sha256_in_output": "c47f039c5c46608be576717f0ab3c0d9fe718a584264214ecf29314a9eee2205",
+      "fixture_exe_sha256": "2bdeb1e11618512dd48d5736d48da61616be656f350ecac06d82211837d07934",
       "ns_per_call_timing_off": {
         "SetRenderState": {
-          "native": 11.4,
-          "production": 11.0,
-          "hooked_shadow": 79.7
+          "native": 11.3,
+          "production": 11.1,
+          "hooked_shadow": 79.3
         },
         "SetSamplerState": {
           "native": 11.2,
-          "production": 10.9,
-          "hooked_shadow": 70.5
+          "production": 11.0,
+          "hooked_shadow": 70.2
         },
         "GetState_draw_set_10": {
-          "native": 93.5,
-          "production": 93.3,
-          "hooked_shadow": 94.2
+          "native": 93.4,
+          "production": 91.6,
+          "hooked_shadow": 93.2
         },
         "routed_draw_mip_bias_2stages": {
-          "native": 78.7,
-          "production": 77.5,
-          "hooked_shadow": 472.6
+          "native": 79.3,
+          "production": 78.7,
+          "hooked_shadow": 474.7
         },
         "SetStreamSource": {
-          "native": 16.0,
-          "production": 133.3,
-          "hooked_shadow": 139.0
+          "native": 16.2,
+          "production": 134.4,
+          "hooked_shadow": 134.9
         },
         "SetStreamSource_DrawIndexedPrimitive_pair": {
-          "native": 392.5,
-          "production": 1024.2,
-          "hooked_shadow": 934.3
+          "native": 380.7,
+          "production": 1021.2,
+          "hooked_shadow": 938.4
         },
         "state_mix": {
-          "native": 15.6,
-          "production": 64.3,
-          "hooked_shadow": 84.7
+          "native": 15.5,
+          "production": 64.9,
+          "hooked_shadow": 84.6
         }
       },
       "frame_timing_on": {
-        "SetRenderState": 155.1,
-        "SetSamplerState": 144.3,
-        "draw_pair": 1488.8
+        "SetRenderState": 156.4,
+        "SetSamplerState": 144.9,
+        "draw_pair": 1461.9
       },
       "attribution": {
-        "proxy_guard_and_shadow_ns": 74.0,
-        "frame_timing_stamps_ns": 75.3,
-        "of_which_qpc_pair_ns": 127.4
+        "proxy_guard_and_shadow_ns": 73.5,
+        "frame_timing_stamps_ns": 76.1,
+        "of_which_qpc_pair_ns": 130.0
       },
       "gates": {
-        "production_SetRenderState_ns": "11.0 (native 11.4; production-minus-native -0.4)",
-        "production_SetSamplerState_ns": "10.9 (native 11.2; production-minus-native -0.3; run38 10.5)",
-        "draw_pair": "1,024.2 ns, over native 631.7 (run38 628.9): the ee3ff318 session's 740.9 ns excursion did not reproduce, so that drift was session noise; repetitions 1,050.0 / 1,023.0 / 1,024.2",
+        "production_SetRenderState_ns": "11.1 (native 11.3; -0.2 over native)",
+        "production_SetSamplerState_ns": "11.0 (native 11.2; -0.2 over native)",
+        "draw_pair": "1,021.2 ns, 640.5 over native (d415264f 631.7, run38 628.9): unchanged",
         "verdict": "PASS on all three gates"
       },
       "cpu_state_preservation": "x87/control/status/tags/mxcsr/error all =1 across 4 configurations x 7 entry points (168 flag fields, 0 non-1)",
-      "scope": "Median of three repetitions per configuration in one process under CrossOver Preview; not a native-Windows run and not game FPS."
+      "scope": "Median of three repetitions per configuration in one process under CrossOver Preview; not game FPS."
     },
     "launcher_dry_run": {
       "command": "python3 tools/manage.py <options> --dry-run launch",
       "shared_options": "--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 (A, B, C; D is vanilla only)",
-      "shadow_base": "--sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,37500,150000 --shadow-sun-poll on --shadow-cascade-static-from 3 --shadow-cascade-large-min 1500 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096",
-      "result": "PASS (all five exit 0; A/A2/B/C print 12 argv elements starting at the CrossOver Preview wine binary, D prints 9)",
+      "shadow_base": "--sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --shadow-sun-trace --frame-end-stride 1 --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 (no --shadow-cascade-static-from / --shadow-cascade-large-min)",
+      "result": "PASS (all five exit 0; A/A2/B/C print 12 argv elements, D prints 9)",
       "variants": {
         "A_five_cascades_4096_census": {
           "argv": 12,
@@ -727,18 +796,18 @@
           "d3dx": "native",
           "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
           "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,4096,4096",
-          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
-          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
           "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
           "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
           "X3M_SHADOW_SUN_POLL": "1",
+          "X3M_SHADOW_SUN_TRACE": "1",
+          "X3M_FRAME_END_STRIDE": "1",
           "X3M_SHADOW_RETENTION_CENSUS": "1",
           "X3M_SHADOW_CASTER_RETENTION": "0",
           "X3M_SUN_SHADOW_APPLY": "1",
           "X3M_HULL_EMISSION_GAIN": "1.0",
           "exit": 0,
-          "extra": "--shadow-cascade-sizes 4096,4096,4096,4096,4096 --shadow-retention-census",
-          "log": "/tmp/x3-candidate-eBwRHq/dry-run-A.log"
+          "extra": "--shadow-cascade-sizes 4096x5 --shadow-retention-census",
+          "log": "/tmp/x3-candidate-iK0cir/dry-run-A.log"
         },
         "A2_five_cascades_2048_census": {
           "argv": 12,
@@ -746,18 +815,18 @@
           "d3dx": "native",
           "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
           "X3M_SHADOW_CASCADE_SIZES": "2048,2048,2048,2048,2048",
-          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
-          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
           "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
           "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
           "X3M_SHADOW_SUN_POLL": "1",
+          "X3M_SHADOW_SUN_TRACE": "1",
+          "X3M_FRAME_END_STRIDE": "1",
           "X3M_SHADOW_RETENTION_CENSUS": "1",
           "X3M_SHADOW_CASTER_RETENTION": "0",
           "X3M_SUN_SHADOW_APPLY": "1",
           "X3M_HULL_EMISSION_GAIN": "1.0",
           "exit": 0,
-          "extra": "--shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census",
-          "log": "/tmp/x3-candidate-eBwRHq/dry-run-A2.log"
+          "extra": "--shadow-cascade-sizes 2048x5 --shadow-retention-census",
+          "log": "/tmp/x3-candidate-iK0cir/dry-run-A2.log"
         },
         "B_caster_retention_adaptive_c0_1_5": {
           "argv": 12,
@@ -765,19 +834,19 @@
           "d3dx": "native",
           "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
           "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,4096,4096",
-          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
-          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
           "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
           "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
           "X3M_SHADOW_CASCADE_ADAPTIVE_C0": "1.5",
           "X3M_SHADOW_SUN_POLL": "1",
+          "X3M_SHADOW_SUN_TRACE": "1",
+          "X3M_FRAME_END_STRIDE": "1",
           "X3M_SHADOW_RETENTION_CENSUS": "0",
           "X3M_SHADOW_CASTER_RETENTION": "1",
           "X3M_SUN_SHADOW_APPLY": "1",
           "X3M_HULL_EMISSION_GAIN": "1.0",
           "exit": 0,
-          "extra": "--shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 (corvette session)",
-          "log": "/tmp/x3-candidate-eBwRHq/dry-run-B.log"
+          "extra": "--shadow-caster-retention --shadow-cascade-adaptive-c0 1.5",
+          "log": "/tmp/x3-candidate-iK0cir/dry-run-B.log"
         },
         "C_hull_emitters_gain_4": {
           "argv": 12,
@@ -785,13 +854,15 @@
           "d3dx": "native",
           "X3M_SHADOW_CASCADES": "0",
           "X3M_SHADOW_SUN_POLL": "0",
+          "X3M_SHADOW_SUN_TRACE": "0",
+          "X3M_FRAME_END_STRIDE": "300",
           "X3M_SHADOW_RETENTION_CENSUS": "0",
           "X3M_SHADOW_CASTER_RETENTION": "0",
           "X3M_SUN_SHADOW_APPLY": "0",
           "X3M_HULL_EMISSION_GAIN": "4.0",
           "exit": 0,
           "extra": "--hull-emitters --hull-emission-gain 4",
-          "log": "/tmp/x3-candidate-eBwRHq/dry-run-C.log"
+          "log": "/tmp/x3-candidate-iK0cir/dry-run-C.log"
         },
         "D_vanilla": {
           "argv": 9,
@@ -799,20 +870,32 @@
           "d3dx": "native",
           "X3M_SHADOW_CASCADES": "0",
           "X3M_SHADOW_SUN_POLL": "0",
+          "X3M_SHADOW_SUN_TRACE": "0",
+          "X3M_FRAME_END_STRIDE": "300",
           "X3M_SHADOW_RETENTION_CENSUS": "0",
           "X3M_SHADOW_CASTER_RETENTION": "0",
           "X3M_SUN_SHADOW_APPLY": "0",
           "X3M_HULL_EMISSION_GAIN": "1.0",
           "exit": 0,
           "command": "python3 tools/manage.py --vanilla --dry-run launch",
-          "log": "/tmp/x3-candidate-eBwRHq/dry-run-D-vanilla.log"
+          "log": "/tmp/x3-candidate-iK0cir/dry-run-D-vanilla.log"
         }
       },
+      "note": "--shadow-sun-trace sets X3M_SHADOW_SUN_TRACE=1 and --frame-end-stride 1 sets X3M_FRAME_END_STRIDE=1 (default 300, seen in C and D)",
       "game_launched": false
     },
-    "reused_from_ee3ff318": {
-      "basis": "git diff --stat ee3ff318 d415264f changes none of their inputs: comparison_controls.h and the phase stamp, ownership, linear-material and object-lifetime sources are all untouched (the changed source files are motion_output.cpp, motion_output_shadow_adaptive_inc.h, shadow_replay_projection.h, manage.py and runner/tests)",
-      "record": "verification/results/run40-candidate-build.json at commit d415264f's parent ee3ff318 (this file's previous revision)",
+    "host_suite": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+      "result": "OK",
+      "tests": 2159,
+      "failures": 0,
+      "errors": 0,
+      "elapsed_seconds": 556,
+      "note": "2,159 tests, one more than the 2,158 the brief expected; no failures"
+    },
+    "reused_from_d415264f": {
+      "basis": "git diff --stat d415264f f8b86162 changes none of their inputs: comparison_controls.h, hdr_pass.h, the phase stamp sources, src/ownership/*, linear_material/linear_emission/material_motion.cpp and object_lifetime/engine_memory are all untouched",
+      "record": "verification/results/run40-candidate-build.json at commit d415264f (this file's previous revision)",
       "comparison_controls_host": {
         "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_comparison_hotkeys",
         "result": "PASS",
@@ -871,8 +954,9 @@
     "note": "five --dry-run launcher variants (A five cascades 4096, A2 five cascades 2048, B caster retention + adaptive C0 1.5, C hull emitters, D vanilla); game never launched"
   },
   "host_suite": {
-    "run": false,
-    "reason": "only the affected host test (test_comparison_hotkeys, driving comparison_controls_fixture.cpp) was run"
+    "run": true,
+    "tests": 2159,
+    "result": "OK"
   },
   "full_fixture_chain_rerun": false,
   "native_windows_verified": false,
@@ -881,8 +965,8 @@
     "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
     "Only the commit marker, no-x87, export-list and state-hook benchmark checks bind these candidate bytes; the fixtures build their own binaries from the same committed source.",
     "The benchmark is a synthetic per-call fixture under CrossOver Preview; it is not measured game FPS.",
-    "Five check groups are reused by reference from the ee3ff318 record (comparison-controls host test, stamp CPU fixture, ownership runner, hull-emission GPU slice, object-lifetime fixture); git diff ee3ff318 d415264f changes none of their inputs.",
-    "The brief's '--shadow-retention census' phrasing maps to the flags --shadow-retention-census / --shadow-caster-retention; every other option spelling matched the launcher.",
+    "Built from main's tip e8ae3357 rather than the requested f8b86162: the two differ only by a 3-line docs commit, so the compiled source is identical.",
+    "Five check groups are reused by reference from the d415264f record (comparison-controls host test, stamp CPU fixture, ownership runner, hull-emission GPU slice, object-lifetime fixture); the diff changes none of their inputs.",
     "Installation and game launch are owned by the main session; nothing was installed and the game was never launched."
   ],
   "changes_since_ee3ff318": {
@@ -896,6 +980,26 @@
       "verification/analysis/test_shadow_cascades.py",
       "verification/probe/run_motion_output.py",
       "8 fixture records"
+    ]
+  },
+  "changes_since_d415264f": {
+    "command": "git diff --stat d415264f f8b86162 (and the docs-only e8ae3357)",
+    "summary": "run116 flicker fix: store/ring verdict cycle, back-face far cascades by the texel law (--shadow-cascade-backface-from), per-cascade eps, origin-behind-camera casters admitted, cull counters, refused-sighting cost; telemetry options --frame-end-stride and --shadow-sun-trace; bloom manifests regenerated",
+    "source_files": [
+      "src/proxy/capture.cpp",
+      "src/proxy/frame_timing.h",
+      "src/proxy/motion_output.cpp/.h",
+      "src/proxy/motion_output_shadow_{adaptive,replay,retention}_inc.h",
+      "src/proxy/shadow_caster_class.h",
+      "src/proxy/shadow_replay_sun_point.h",
+      "src/proxy/shadow_retention.h",
+      "src/proxy/shadow_retention_core.h",
+      "src/renderer/shadow_replay_pass.cpp/.h",
+      "src/renderer/shadow_replay_projection.h",
+      "tools/manage.py",
+      "tools/analysis/*",
+      "verification/probe/*",
+      "verification/analysis/*"
     ]
   }
 }

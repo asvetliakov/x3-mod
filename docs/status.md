@@ -13,23 +13,24 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4`
-(18,203,719 bytes), built once on Opus from clean committed main `d415264f`
-(2026-09-18; marker `X3M_SOURCE_COMMIT=d415264f…`, no `-dirty`), installed
-through `manage.py install` (ownership manifest `d415264f`; includes the
-ladder follow-ups). The
+`c47f039c5c46608be576717f0ab3c0d9fe718a584264214ecf29314a9eee2205`
+(18,228,604 bytes), built once on Opus from clean committed main `e8ae3357`
+(2026-09-18; marker `X3M_SOURCE_COMMIT=e8ae3357…`, no `-dirty`), installed
+through `manage.py install` (ownership manifest `e8ae3357`; includes the run116
+flicker fix and the per-frame telemetry options). The
 [build record](../verification/results/run40-candidate-build.json) binds the
 clean build (15 s, zero warnings), the no-x87 audit (77 roots, 534 reachable,
-0 violations), 17 exports, the five site verifiers, all 35 shadow
+0 violations), 17 exports, the five site verifiers, all 41 shadow
 motion-output cases (0 behavioural diffs against the committed records),
 the comparison-controls fixture (12,231 checks), the sun-lane live set 21/21,
-the state-hook benchmark (SetRenderState −0.4 ns, SetSamplerState −0.3 ns,
-draw pair +632 ns over native, equal to run38), the five run 40 dry-runs, and by reference (inputs unchanged since
+the state-hook benchmark (state calls −0.2 ns, draw pair +641 ns over
+native, equal to run38 within noise), the full host suite (2,159 OK), the five run 40 dry-runs, and by reference (inputs unchanged since
 `7492137`) the stamp CPU, ownership, hull-emission and object-lifetime
 fixtures. The [install record](../verification/results/run40-candidate-install.json)
 binds the installed bytes, unchanged EXE/bottle hashes and the rollback; the
-first run40 build `9968bf84…` (never flown) is in `/tmp/x3-candidate-eBwRHq/rollback`
-and the run39 DLL `cc966fb2…` in `/tmp/x3-candidate-wRyHZV/rollback`.
+second run40 build `d4d824a4…` (flown as run116 A) is in
+`/tmp/x3-candidate-iK0cir/rollback`; earlier builds in `/tmp/x3-candidate-eBwRHq`
+and `/tmp/x3-candidate-wRyHZV` rollback directories.
 No game launched.
 
 This build adds, on top of run39's: the run 39 A fix (apply-quad receiver
@@ -38,8 +39,11 @@ cascades (extent max 150,000; apply program 499/512 slots), caster pool
 control (`--shadow-cascade-static-from`, `--shadow-cascade-large-min`,
 `--shadow-cascade-drop-order importance`, `--shadow-cascade-records`),
 own-ship-adaptive C0 with the sliding ladder (`--shadow-cascade-adaptive-c0`,
-`--shadow-cascade-ladder-ratio`), toggle follow-ups, retention issue-check
-batching, the snapshot tool's per-cascade names. Default path unchanged.
+`--shadow-cascade-ladder-ratio`), the run116 flicker fix (back-face far
+cascades by the texel law, `--shadow-cascade-backface-from`; store/ring verdict
+cycle; per-cascade eps; origin-behind-camera casters), `--shadow-sun-trace`,
+`--frame-end-stride`, toggle follow-ups, retention issue-check batching, the
+snapshot tool's per-cascade names. Default path unchanged.
 
 ## Session 2026-09-18 (later): run 39 A read, reach and ship-size work
 
@@ -55,8 +59,14 @@ batching, the snapshot tool's per-cascade names. Default path unchanged.
   census: nothing between 610 and 29,939 u), importance drop order with
   hysteresis, per-cascade records to 4,096; own-ship-adaptive C0 with the
   sliding ladder for the corvette/capital case. 2048² maps are run 40 A2.
-- Ladder follow-ups merged (`d415264f`, in the installed build). Open: the
-  ~30 s distant flicker; K for the
+- **Run 40 A (run116):** the band is gone and shadows reach 30 km; black areas
+  flickered on distant lit surfaces — measured causes: a store/ring static-verdict
+  feedback cycle (period-2 caster blink), far-cascade self-shadowing on the
+  compare threshold re-rolled by the TAA-jittered receiver (fixed with back-face
+  casters in cascades whose texel ≥ 8 u), thresholds too tight for far texels,
+  and casters with the origin behind the camera refused everywhere; all fixed
+  and installed. The static-only/capital rule is dropped from the run command
+  (no cascade ever hit a cap). Open: the ~30 s distant flicker; K for the
   adaptive C0 from the corvette flight.
 
 ## Session 2026-09-18: run 38 read, shadow system rebuilt
