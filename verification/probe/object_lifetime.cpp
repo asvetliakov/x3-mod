@@ -28,6 +28,7 @@ extern "C" void destroy_entry();
 extern "C" void __cdecl invoke_custom(void*,Map*,std::uint32_t,std::uintptr_t);
 extern "C" {
 alignas(16) unsigned char input_fx[512]{},output_fx[512]{};
+alignas(16) unsigned char control_fx_a[512]{},control_fx_b[512]{},control_fx_c[512]{};
 std::uint32_t input_regs[9]{},output_regs[9]{};
 alignas(16) std::uint32_t xmm_seed[4]={0x11223344,0x55667788,0x99aabbcc,0xddeeff00};
 std::uint32_t mxcsr_seed=0x3fa0;
@@ -71,6 +72,14 @@ extern "C" int __cdecl destroy_backend(Map* map){inside();empty(*map);SetLastErr
 extern "C" int __cdecl load_backend(std::uint32_t stream){inside();SetLastError(0x246);return stream?0x31415926:0;}
 #define CAPTURE_INPUT "pushfl\n\tpushal\n\tmovl %esp,%esi\n\tmovl $_input_regs,%edi\n\tmovl $9,%ecx\n\tcld\n\trep movsl\n\tfxsave _input_fx\n\tpopal\n\tpopfl\n\t"
 #define OUTPUT_STATE "movl $0x789abcde,%ecx\n\tmovl $0xfedcba98,%edx\n\tfld1\n\tmovdqu _xmm_seed,%xmm2\n\tpushl $0x246\n\tpopfl\n\tret\n\t"
+// The x87 seed of the compared target state, shared with the round-trip control.
+#define SEED_X87 "fninit\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfninit\n\tfldcw _x87_control_seed\n\tfldz\n\tfldz\n\tfdivp\n\tfld1\n\t"
+// Control: can this environment express a bit-exact ST0-ST7 comparison at all?
+// Same seeded FP state; A and C are two back-to-back saves of one unchanged state
+// (is FXSAVE itself stable?), B is a save after FXRSTOR of A with nothing between.
+extern "C" __attribute__((naked)) void x87_roundtrip_control(){__asm__ __volatile__(
+    SEED_X87 "ldmxcsr _mxcsr_seed\n\tmovdqu _xmm_seed,%xmm0\n\tmovdqu _xmm_seed,%xmm7\n\t"
+    "fxsave _control_fx_a\n\tfxsave _control_fx_c\n\tfxrstor _control_fx_a\n\tfxsave _control_fx_b\n\tfninit\n\tret\n\t");}
 extern "C" __attribute__((naked)) void insert_entry(){__asm__ __volatile__(
     ".byte 0x55,0x8b,0x6c,0x24,0x08\n\t" CAPTURE_INPUT
     "pushl %ebx\n\tpushl %esi\n\tpushl %edi\n\tpushl 24(%esp)\n\tpushl %ebp\n\tpushl %edi\n\tcall _insert_backend\n\taddl $12,%esp\n\tpopl %edi\n\tpopl %esi\n\tpopl %ebx\n\tpopl %ebp\n\t" OUTPUT_STATE);}
@@ -90,11 +99,40 @@ extern "C" __attribute__((naked)) void __cdecl invoke_custom(void*,Map*,std::uin
     "movl 60(%esp),%eax\n\tmovl %eax,(%esp)\n\tmovl 64(%esp),%eax\n\tmovl %eax,4(%esp)\n\t"
     "movl 56(%esp),%edi\n\tmovl 60(%esp),%edx\n\tmovl $0x12345678,%esi\n\tmovl $0x23456789,%ebx\n\t"
     "movl $0x3456789a,%ecx\n\tmovl $0x456789ab,%eax\n\tmovl $0x56789abc,%ebp\n\t"
-    "fninit\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfld1\n\tfninit\n\tfldcw _x87_control_seed\n\tfldz\n\tfldz\n\tfdivp\n\tfld1\n\tldmxcsr _mxcsr_seed\n\tmovdqu _xmm_seed,%xmm0\n\tmovdqu _xmm_seed,%xmm1\n\t"
+    SEED_X87 "ldmxcsr _mxcsr_seed\n\tmovdqu _xmm_seed,%xmm0\n\tmovdqu _xmm_seed,%xmm1\n\t"
     "movdqu _xmm_seed,%xmm2\n\tmovdqu _xmm_seed,%xmm3\n\tmovdqu _xmm_seed,%xmm4\n\tmovdqu _xmm_seed,%xmm5\n\t"
     "movdqu _xmm_seed,%xmm6\n\tmovdqu _xmm_seed,%xmm7\n\tpushl $0x246\n\tpopfl\n\tmovl %esp,12(%esp)\n\tcall *8(%esp)\n\t"
     "pushfl\n\tpushal\n\tmovl 48(%esp),%eax\n\tmovl %eax,_call_stack_before\n\tleal 36(%esp),%eax\n\tmovl %eax,_call_stack_after\n\tmovl %esp,%esi\n\tmovl $_output_regs,%edi\n\tmovl $9,%ecx\n\tcld\n\trep movsl\n\t"
     "fxsave _output_fx\n\tpopal\n\tpopfl\n\taddl $16,%esp\n\tpopal\n\tret\n\t");}
+// FXSAVE image comparison. FCW/FSW/FTW/FOP/FIP/FDP (0..31), MXCSR (24..31) and
+// XMM0-7 (160..287) are always compared bit-exactly, in every environment.
+// The ST0-ST7 slots (32..159) are compared bit-exactly as well, unless the
+// control above proves that this environment does not carry them through a
+// plain FXSAVE/FXRSTOR round trip with no code in between: the slot contents
+// are then not an observable of the ABI here and are excluded from the
+// comparison (x87_roundtrip_exact=0 in the summary), while the tag word in the
+// header still holds which registers are live. Measured differences are still
+// counted and reported, so a regression in an exact environment stays visible.
+unsigned x87_roundtrip_exact=1,x87_save_stable=1,control_diff_slots=0,control_exponent_diff=0,control_reserved_diff=0,control_max_low_bits=0;
+unsigned compare_exponent_diff=0,compare_reserved_diff=0,compare_max_low_bits=0,compare_diff_slots=0,compare_ftw_a=0,compare_ftw_b=0;
+void slot_diff(const unsigned char* a,const unsigned char* b,unsigned& exponent,unsigned& reserved,unsigned& low_bits,unsigned& slots,unsigned index){
+    std::uint64_t ma=0,mb=0;std::memcpy(&ma,a,8);std::memcpy(&mb,b,8);
+    std::uint16_t sa=0,sb=0;std::memcpy(&sa,a+8,2);std::memcpy(&sb,b+8,2);
+    unsigned bits=0;for(std::uint64_t x=ma^mb;x;x>>=1)++bits;
+    if(bits>low_bits)low_bits=bits;
+    if(sa!=sb)++exponent;
+    if(std::memcmp(a+10,b+10,6))++reserved;
+    if(bits||sa!=sb||std::memcmp(a+10,b+10,6))slots|=1u<<index;
+}
+bool fx_equal(const unsigned char* a,const unsigned char* b){
+    const bool header=!std::memcmp(a,b,32)&&!std::memcmp(a+160,b+160,128);
+    unsigned exponent=0,reserved=0,low=0,slots=0;
+    for(unsigned i=0;i<8;++i)slot_diff(a+32+i*16,b+32+i*16,exponent,reserved,low,slots,i);
+    compare_exponent_diff+=exponent;compare_reserved_diff+=reserved;
+    if(low>compare_max_low_bits)compare_max_low_bits=low;
+    if(slots&&!compare_diff_slots){compare_diff_slots=slots;compare_ftw_a=a[4];compare_ftw_b=b[4];}
+    return x87_roundtrip_exact?header&&!slots:header;
+}
 void insert(Map& map,Node& value){SetLastError(0x145);invoke_custom(reinterpret_cast<void*>(&insert_entry),&map,value.handle,reinterpret_cast<std::uintptr_t>(&value));check(GetLastError()==0x246,"insert backend LastError preserved");check(call_stack_before==call_stack_after,"exact caller ESP preserved");}
 void remove(Map& map,std::uint32_t key){invoke_custom(reinterpret_cast<void*>(&remove_entry),&map,key,0);}
 void destroy(Map& map){invoke_custom(reinterpret_cast<void*>(&destroy_entry),&map,reinterpret_cast<std::uintptr_t>(&map),0);}
@@ -110,6 +148,11 @@ extern "C" __attribute__((naked)) void __cdecl catch_outer(void*,Map*,std::uint3
 void write_bytes(void* address,const void* bytes,unsigned count){DWORD old=0,unused=0;check(VirtualProtect(address,count,PAGE_EXECUTE_READWRITE,&old)!=0,"fixture patch protect");std::memcpy(address,bytes,count);check(FlushInstructionCache(GetCurrentProcess(),address,count)!=0,"fixture patch flush");check(VirtualProtect(address,count,old,&unused)!=0,"fixture patch restore protection");}
 int main(){
     setvbuf(stdout,nullptr,_IONBF,0);engine.registry=&primary;
+    // Establish first whether this environment can express a bit-exact ST comparison.
+    x87_roundtrip_control();
+    for(unsigned i=0;i<8;++i)slot_diff(control_fx_a+32+i*16,control_fx_b+32+i*16,control_exponent_diff,control_reserved_diff,control_max_low_bits,control_diff_slots,i);
+    x87_roundtrip_exact=control_diff_slots?0u:1u;x87_save_stable=std::memcmp(control_fx_a,control_fx_c,288)?0u:1u;
+    check(!std::memcmp(control_fx_a,control_fx_b,32)&&!std::memcmp(control_fx_a+160,control_fx_b+160,128),"FXSAVE control round-trips FCW/FSW/FTW/FOP/MXCSR/XMM exactly");
     auto* memory=static_cast<unsigned char*>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!memory)return 2;
     const unsigned char prefix[]={0xff,0x74,0x24,0x04,0xe8};std::memcpy(memory,prefix,sizeof prefix);
     const std::uint32_t delta=reinterpret_cast<std::uintptr_t>(&load_entry)-(reinterpret_cast<std::uintptr_t>(memory)+9);std::memcpy(memory+5,&delta,4);
@@ -124,7 +167,7 @@ int main(){
     insert(primary,node);std::array<std::uint32_t,9> before_input{},before_output{};std::memcpy(before_input.data(),input_regs,sizeof input_regs);std::memcpy(before_output.data(),output_regs,sizeof output_regs);std::array<unsigned char,512> before_ifx{},before_ofx{};std::memcpy(before_ifx.data(),input_fx,512);std::memcpy(before_ofx.data(),output_fx,512);empty(primary);
     check(lt::fixture_install(sites),"install all four boundaries");check(lt::stats().baseline_complete&&lt::stats().baseline_entries==0,"empty baseline validated");check_inside=true;insert(primary,node);check_inside=false;
     for(unsigned i=0;i<9;++i)if(i!=3){check(input_regs[i]==before_input[i],"input register/flag matches original");check(output_regs[i]==before_output[i],"output register/flag matches original");}
-    check(!std::memcmp(before_ifx.data(),input_fx,160)&&!std::memcmp(before_ifx.data()+160,input_fx+160,128),"input x87/SSE/MXCSR matches original");check(!std::memcmp(before_ofx.data(),output_fx,160)&&!std::memcmp(before_ofx.data()+160,output_fx+160,128),"output x87/SSE/MXCSR matches original");
+    check(fx_equal(before_ifx.data(),input_fx),"input x87/SSE/MXCSR matches original");check(fx_equal(before_ofx.data(),output_fx),"output x87/SSE/MXCSR matches original");
     insert(primary,camera);auto first=snapshot();check(first.known&&first.node_serial&&first.camera_serial&&first.node_serial!=first.camera_serial,"observed births get distinct tokens");check(first.observer_epoch&&first.registry_epoch,"separate epochs nonzero");
     SetLastError(0x567);snapshot();check(GetLastError()==0x567,"snapshot preserves LastError");
     insert(unrelated,third);auto unchanged=snapshot();check(unchanged.known&&unchanged.node_serial==first.node_serial&&unchanged.mutation_revision==first.mutation_revision,"unrelated map operation does not affect lifetimes");
@@ -157,7 +200,7 @@ int main(){
         empty(primary);insert_backend(&primary,node.handle,&node);check(lt::fixture_install(sites),"install per-boundary ABI comparison");
         invoke_custom(target,&primary,arg,reinterpret_cast<std::uintptr_t>(&node));
         for(unsigned i=0;i<9;++i)if(i!=3){check(input_regs[i]==before_input[i],"all boundaries input register/flag preserved");check(output_regs[i]==before_output[i],"all boundaries output register/flag preserved");}
-        check(!std::memcmp(before_ifx.data(),input_fx,288),"all boundaries input FX state preserved");check(!std::memcmp(before_ofx.data(),output_fx,288),"all boundaries output FX state preserved");
+        check(fx_equal(before_ifx.data(),input_fx),"all boundaries input FX state preserved");check(fx_equal(before_ofx.data(),output_fx),"all boundaries output FX state preserved");
         check(call_stack_before==call_stack_after,"all boundaries exact caller ESP preserved");check(lt::shutdown(),"per-boundary ABI shutdown");
     }
     empty(primary);insert(primary,node);insert(primary,camera);
@@ -333,5 +376,15 @@ int main(){
     std::int32_t thunk_delta=0;std::memcpy(&thunk_delta,static_cast<unsigned char*>(sites.insert_entry)+1,4);auto* saved_thunk=reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(sites.insert_entry)+5+thunk_delta);
     check(lt::shutdown()&&!lt::active()&&!lt::recovery_required(),"retained dispatch retires safely");
     invoke_custom(saved_thunk,&primary,node.handle,reinterpret_cast<std::uintptr_t>(&node));check(output_regs[7]==0&&GetLastError()==0x246,"saved foreign-chain thunk still forwards after retirement");check(!snapshot().known,"retired forwarding never publishes a lifetime");check(!lt::fixture_install(sites)&&!lt::initialize(),"retired dispatch forbids reinstallation");
-    empty(primary);empty(unrelated);VirtualFree(memory,0,MEM_RELEASE);std::printf("RESULT %s checks=%u failures=%u backend_calls=%u\n",failures?"FAIL":"PASS",checks,failures,calls);return failures?1:0;
+    empty(primary);empty(unrelated);VirtualFree(memory,0,MEM_RELEASE);
+    std::uint64_t st0_a=0,st0_b=0;std::uint16_t se_a=0,se_b=0;
+    std::memcpy(&st0_a,control_fx_a+32,8);std::memcpy(&se_a,control_fx_a+40,2);
+    std::memcpy(&st0_b,control_fx_b+32,8);std::memcpy(&se_b,control_fx_b+40,2);
+    std::printf("X87 roundtrip_exact=%u save_stable=%u control_diff_slots=0x%02x control_exponent_diff=%u control_reserved_diff=%u control_max_low_bits=%u"
+                " control_st0=%04x%016llx/%04x%016llx control_ftw=0x%02x/0x%02x"
+                " compare_diff_slots=0x%02x compare_exponent_diff=%u compare_reserved_diff=%u compare_max_low_bits=%u compare_ftw=0x%02x/0x%02x\n",
+        x87_roundtrip_exact,x87_save_stable,control_diff_slots,control_exponent_diff,control_reserved_diff,control_max_low_bits,
+        se_a,static_cast<unsigned long long>(st0_a),se_b,static_cast<unsigned long long>(st0_b),control_fx_a[4],control_fx_b[4],
+        compare_diff_slots,compare_exponent_diff,compare_reserved_diff,compare_max_low_bits,compare_ftw_a,compare_ftw_b);
+    std::printf("RESULT %s checks=%u failures=%u backend_calls=%u\n",failures?"FAIL":"PASS",checks,failures,calls);return failures?1:0;
 }

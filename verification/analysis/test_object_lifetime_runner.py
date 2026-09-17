@@ -33,7 +33,11 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
     READ_PATH = (b'TIMING mode=rpm snapshot_us=9.000 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00\n'
                  b'TIMING mode=direct snapshot_us=0.500 reads_per_call=12.00 queries_per_call=0.0200 syscalls_per_call=0.00\n'
                  b'IDENTITY rpm=0123456789abcdef direct=0123456789abcdef equal=1\n'
-                 b'JOURNAL capacity=2048 cycle_idle_us=1.0000 cycle_journal_us=1.0100 retirement_delta_us=0.0100 empty_drain_us=0.0200 drained=40000\n')
+                 b'JOURNAL capacity=2048 cycle_idle_us=1.0000 cycle_journal_us=1.0100 retirement_delta_us=0.0100 empty_drain_us=0.0200 drained=40000\n'
+                 b'X87 roundtrip_exact=0 save_stable=1 control_diff_slots=0xff control_exponent_diff=8'
+                 b' control_reserved_diff=0 control_max_low_bits=64 control_st0=3fff8000000000000000/00000000000000000000'
+                 b' control_ftw=0xc0/0xc0 compare_diff_slots=0xff compare_exponent_diff=80 compare_reserved_diff=0'
+                 b' compare_max_low_bits=64 compare_ftw=0xc0/0xc0\n')
     READ_PATH += b''.join(b'JOURNAL_CASE name=%s result=PASS\n' % n.encode() for n in RUNNER.JOURNAL_CASES)
     RESULT = b'RESULT PASS checks=1 failures=0 backend_calls=1\n'
 
@@ -81,6 +85,26 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
         self.assertEqual(result['read_path']['identity'][0]['equal'], '1')
         self.assertEqual([t['mode'] for t in result['read_path']['timing']], ['rpm', 'direct'])
         self.assertEqual(result['journal'][0]['capacity'], '2048')
+        self.assertFalse(result['x87_roundtrip_exact'])
+        self.assertEqual(result['x87']['control_diff_slots'], '0xff')
+
+    # The ST-slot comparison fidelity has to be reported, and an exact
+    # environment must be recorded as exact rather than inherited from a lossy run.
+    def test_x87_control_result_required_and_recorded(self):
+        lines = self.READ_PATH.split(b'\n')
+        x87 = next(l for l in lines if l.startswith(b'X87 '))
+        missing = b'\n'.join(l for l in lines if not l.startswith(b'X87 ')) + self.RESULT
+        duplicated = self.READ_PATH + x87 + b'\n' + self.RESULT
+        unreported = self.READ_PATH.replace(b'roundtrip_exact=0', b'roundtrip_exact=unknown') + self.RESULT
+        truncated = self.READ_PATH.replace(b' control_max_low_bits=64', b'') + self.RESULT
+        for output in (missing, duplicated, unreported, truncated):
+            with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
+                self.assert_failed(RUNNER.run(self.root))
+        exact = self.READ_PATH.replace(b'roundtrip_exact=0', b'roundtrip_exact=1') + self.RESULT
+        with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(exact)):
+            result = RUNNER.run(self.root)
+        self.assertTrue(result['passed'])
+        self.assertTrue(result['x87_roundtrip_exact'])
 
     def test_journal_measurement_required(self):
         lines = self.READ_PATH.split(b'\n')

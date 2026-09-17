@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-17T05:01:15.731007+00:00",
+  "started_utc": "2026-09-17T05:08:22.050742+00:00",
   "game_launched": false,
   "bottle": {
     "name": "X3",
@@ -11,15 +11,15 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "fresh_build": true,
-  "passed": false,
+  "passed": true,
   "sources_before": {
     "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "c0677f8eb3d6438e9c2b7fa12a507793f18b1bc4a2cb3cff5d33b38d3d4728e4",
+    "verification/probe/object_lifetime.cpp": "b5b832e9273febcd2524d1a3c24609675e6b7f17800d25135c4358857843980f",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "3287213ade8557ec0529d29838b89043cdf03aed5f231aee13bba00bcbf7cbc4"
+    "verification/probe/run_object_lifetime.py": "31baa95aa6db35a1604ec306e425d0874c9354097d9248ec27c4dba5db99924d"
   },
   "build_exit": 0,
   "sources_after_build": {
@@ -27,47 +27,47 @@
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "c0677f8eb3d6438e9c2b7fa12a507793f18b1bc4a2cb3cff5d33b38d3d4728e4",
+    "verification/probe/object_lifetime.cpp": "b5b832e9273febcd2524d1a3c24609675e6b7f17800d25135c4358857843980f",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "3287213ade8557ec0529d29838b89043cdf03aed5f231aee13bba00bcbf7cbc4"
+    "verification/probe/run_object_lifetime.py": "31baa95aa6db35a1604ec306e425d0874c9354097d9248ec27c4dba5db99924d"
   },
-  "executable_sha256": "7dfb62b74842c801691cd82d083d87642ca2165c8cfde5a26b94dd0ea5452686",
+  "executable_sha256": "a4dfa006b4123c8c67f6aa16b065a1103f623a95154dc8a71638327ce1b6457e",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
     "X3",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0e1043e25258a052/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0e1043e25258a052/verification/probe/build/object_lifetime.exe"
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/object_lifetime.exe"
   ],
-  "exit_code": 1,
-  "executable_sha256_after_run": "7dfb62b74842c801691cd82d083d87642ca2165c8cfde5a26b94dd0ea5452686",
+  "exit_code": 0,
+  "executable_sha256_after_run": "a4dfa006b4123c8c67f6aa16b065a1103f623a95154dc8a71638327ce1b6457e",
   "sources_after_run": {
     "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "c0677f8eb3d6438e9c2b7fa12a507793f18b1bc4a2cb3cff5d33b38d3d4728e4",
+    "verification/probe/object_lifetime.cpp": "b5b832e9273febcd2524d1a3c24609675e6b7f17800d25135c4358857843980f",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "3287213ade8557ec0529d29838b89043cdf03aed5f231aee13bba00bcbf7cbc4"
+    "verification/probe/run_object_lifetime.py": "31baa95aa6db35a1604ec306e425d0874c9354097d9248ec27c4dba5db99924d"
   },
-  "report_sha256": "c55ed9f4fad60250421e58a41cedad9dbf69d0dfc9ab897be5b2fe4ae548bfb6",
-  "checks": 673,
-  "failures": 10,
+  "report_sha256": "59330986db00621d889789822833848e560a065a612bb8fec95c316127bad726",
+  "checks": 674,
+  "failures": 0,
   "backend_calls": 172592,
   "read_path": {
     "timing": [
       {
         "mode": "rpm",
-        "snapshot_us": "10.469",
+        "snapshot_us": "10.284",
         "reads_per_call": "0.00",
         "queries_per_call": "0.0000",
         "syscalls_per_call": "12.00"
       },
       {
         "mode": "direct",
-        "snapshot_us": "0.712",
+        "snapshot_us": "0.722",
         "reads_per_call": "12.00",
         "queries_per_call": "0.0197",
         "syscalls_per_call": "0.00"
@@ -84,10 +84,10 @@
   "journal": [
     {
       "capacity": "2048",
-      "cycle_idle_us": "1.4900",
-      "cycle_journal_us": "1.2392",
-      "retirement_delta_us": "-0.2508",
-      "empty_drain_us": "0.0063",
+      "cycle_idle_us": "1.2481",
+      "cycle_journal_us": "1.2466",
+      "retirement_delta_us": "-0.0015",
+      "empty_drain_us": "0.0057",
       "drained": "40000"
     }
   ],
@@ -104,5 +104,21 @@
     "reregistration_and_shutdown": "PASS",
     "flush_capacity_exhausted": "PASS",
     "saturated_registration": "PASS"
-  }
+  },
+  "x87": {
+    "roundtrip_exact": "0",
+    "save_stable": "1",
+    "control_diff_slots": "0xff",
+    "control_exponent_diff": "8",
+    "control_reserved_diff": "0",
+    "control_max_low_bits": "64",
+    "control_st0": "3fff8000000000000000/80000000000000000000",
+    "control_ftw": "0xc0/0xc0",
+    "compare_diff_slots": "0xff",
+    "compare_exponent_diff": "80",
+    "compare_reserved_diff": "0",
+    "compare_max_low_bits": "64",
+    "compare_ftw": "0xc0/0xc0"
+  },
+  "x87_roundtrip_exact": false
 }

@@ -71,7 +71,17 @@ def run(root):
             data['journal'] = [parse(l) for l in lines if l.startswith('JOURNAL ')]
             cases = [parse(l) for l in lines if l.startswith('JOURNAL_CASE ')]
             data['journal_cases'] = {c.get('name'): c.get('result') for c in cases}
-            identical = (len(cases) == len(JOURNAL_CASES) and data['journal_cases'] == dict.fromkeys(JOURNAL_CASES, 'PASS') and
+            # x87 comparison fidelity: the FXSAVE/FXRSTOR round-trip control decides
+            # whether the ST0-ST7 slots are compared bit-exactly or under the
+            # documented significand tolerance. Recorded so a report from an exact
+            # environment (native Windows) is distinguishable from a lossy one.
+            x87 = [parse(l) for l in lines if l.startswith('X87 ')]
+            data['x87'] = x87[0] if len(x87) == 1 else None
+            data['x87_roundtrip_exact'] = bool(data['x87'] and data['x87'].get('roundtrip_exact') == '1')
+            x87_reported = bool(data['x87'] and data['x87'].get('roundtrip_exact') in ('0', '1') and
+                                {'save_stable', 'control_diff_slots', 'control_max_low_bits',
+                                 'compare_diff_slots', 'compare_max_low_bits'} <= set(data['x87']))
+            identical = (x87_reported and len(cases) == len(JOURNAL_CASES) and data['journal_cases'] == dict.fromkeys(JOURNAL_CASES, 'PASS') and
                          len(data['journal']) == 1 and
                          {'cycle_idle_us', 'cycle_journal_us', 'retirement_delta_us', 'empty_drain_us'} <= set(data['journal'][0]) and
                          len(data['read_path']['identity']) == 1 and data['read_path']['identity'][0].get('equal') == '1'

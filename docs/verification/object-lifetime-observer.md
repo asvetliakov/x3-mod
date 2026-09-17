@@ -205,3 +205,40 @@ The run still exits failed on **10 FX-state checks, accepted as the baseline**:
 the same ten labels fail on main's committed X3 record (x87 register slots do
 not round-trip through FXSAVE/FXRSTOR under `FEX_X87REDUCEDPRECISION=1`); no
 journal check is among them.
+
+## FXSAVE ST-slot comparison: control-gated, no longer a permanent failure
+
+The ten FX-state failures accepted as a baseline above were proved to be an
+environment limit, not hook damage, by a control in the fixture itself: the same
+seeded x87/SSE state, `FXSAVE` A, `FXSAVE` C, `FXRSTOR` A, `FXSAVE` B, with no
+hook and no instruction in between. On bottle X3 (arm64 Wine + FEX,
+`FEX_X87REDUCEDPRECISION=1`) the control fails: all eight ST slots differ
+(`control_diff_slots=0xff`, `control_exponent_diff=8`, highest differing
+significand bit 64). ST0 is `3fff 8000000000000000` (exactly 1.0) in the saved
+image and `8000 0000000000000000` after the round trip, i.e. `FXRSTOR` does not
+reload the x87 register file here at all; the loss is not a reduced-precision
+significand. `save_stable=1`: two back-to-back `FXSAVE`s of one unchanged state
+are identical, so `FXSAVE` itself is deterministic, and the header is exact
+across the round trip (`FCW/FSW/FTW/FOP/FIP/FDP`, `MXCSR`, `XMM0-7` all equal;
+`control_ftw=0xc0/0xc0`, the two live registers). The measured hooked-vs-original
+differences are of the same kind and magnitude (`compare_diff_slots=0xff`,
+`compare_exponent_diff=80` over the five comparisons, `compare_max_low_bits=64`).
+
+Policy now in the fixture: the FXSAVE header (`0..31`, including `FTW` and
+`MXCSR`) and `XMM0-7` (`160..287`) are always compared bit-exactly; the ST slots
+(`32..159`) are compared bit-exactly only when the control round-trips, and are
+excluded otherwise, because they are not an observable of the ABI in that
+environment. No tolerance or masked-significand comparison is used: the measured
+loss is total, so a partial comparison would not have been justified. Every
+difference is still counted and published in one `X87` line, and the runner
+requires exactly one such line with `roundtrip_exact` in `{0,1}` and records
+`x87_roundtrip_exact` in the summary JSON, so a native-Windows or otherwise
+exact run keeps the strict ST comparison in force and is distinguishable from
+this one.
+
+Fixture rerun, bottle X3, after the change: `passed=true`, exit 0, 674 checks,
+**0 failures** (the previous 673 checks / 10 failures, plus the one control
+check), all twelve `JOURNAL_CASE` lines PASS,
+`x87_roundtrip_exact=false`. Host test
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_object_lifetime_runner`:
+9 tests, OK.
