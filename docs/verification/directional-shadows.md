@@ -2509,3 +2509,97 @@ the configured 1,200 / 4,800 / 4,800) refuse every draw (`static_only_refused2..
 3-4; replayed maps 6.0e-07. ladder-corvette 373 / destroyer 373 / shrink 376, adaptive small 333 /
 big 333 / swap 336 / reuse 336 and pool-static-live 181: equal to the committed records apart from
 the added `ladder.static_from*` / `matched_by_frame` keys and timings (the pool record restored).
+
+## Run 40 A (run116)
+
+Capture `/private/tmp/x3-bottleX3-run116` (319 non-log files, `session-20260918-003512-216.log`,
+329,902,274 bytes / 4,590,648 lines), candidate d4d824a4 from d415264f, five cascades
+250/1,500/7,500/37,500/150,000 at 4096² each, `--shadow-cascade-static-from 3
+--shadow-cascade-large-min 1500 --shadow-cascade-drop-order importance --shadow-cascade-records
+1024,1024,2048,4096,4096`, sun poll on, retention census, `sun-shadow-apply` on. Read via
+`tools/analysis/shadow_replay_candidates.py`, `shadow_retention.py`,
+`verification/probe/shadow_replay_depth.py`, `verification/probe/sun_shadow_apply.py --log --capture
+--frame` (F8 self-check), and grep/Python against a pre-filtered subset of the shadow/sun/frame_end
+lines (log never read whole).
+
+1. **Cascades** (24,296 `shadow_replay_candidates` frame lines, 23,870 `shadow_replay_depth` frame
+   lines — the 426-frame gap matches the toggle-off windows below byte for byte). Per-cascade
+   `records`/`draws` median/max: c0 8/51, c1 9/51, c2 26/70, c3 40/110, c4 83/356; **0 capped frames
+   and 0 capped total on every cascade** (`shadow_replay_candidates.py` `capped_total`=[0,0,0,0,0]).
+   `static_only_refused3/4`: sum 1,003,845 / 2,849,841 (median 33 / 108 per frame, max 140 / 628).
+   `large_admitted3/4`: sum 693,231 / 2,138,767 (median 33 / 65, max 66 / 331) — most static-eligible
+   draws in c3/c4 are admitted by size, not refused. `class_miss3/4`: 409 / 1,535 of 24,296 frames'
+   candidates, a fraction of 0.00043 / 0.00052 — negligible. `class_store`/`class_ring` totals
+   3,729,505 / 2,064,716. `dropped_min_size3/4` is 0.0 on every frame (the importance drop never
+   triggers: no cascade ever hits its record cap, consistent with 0 capped frames). `select_us`
+   median 7.4, p90 19.2, max 155.0. `draws0..4` medians match `records0..4` exactly (no cap drops).
+   `far_replayed` fraction 0.99996 (23,869/23,870); `far_frame` equals the current frame on every
+   replayed row but one (the far cascade is never retained/stale this session — no parity split to
+   report). `us` vs total draws (23,870 replayed frames): slope 1.216 µs/draw, intercept 25.7 µs at
+   five 4096² maps (run39's four-cascade baseline: slope 1.194, intercept 33.8 — consistent order of
+   magnitude, intercept slightly lower despite the extra cascade). `sun_shadow_apply_frame`: 23,870
+   lines, `skip_reason`=`none` on all 23,870 (100% applied, 0 skips of any kind — unlike run39's
+   102 `replay`/16 `sun` skips). **Candidates-line truncation: 0** (`MalformedLine` count from a full
+   streamed re-parse of every `shadow_replay_candidates` line = 0).
+2. **Frame cost.** Direct per-frame cost (the reliable number): replay `us` median at the regression
+   above ≈ 1.216×166(median total draws)+25.7 ≈ 227 µs, plus `sun_shadow_apply_frame` `us` median
+   60.0 (p90 70.6, max 10,125.1 — one spike) ⇒ **shadows cost ≈ 0.29 ms/frame at rest**, well under
+   run115's reported 1–3 ms despite five 4096² maps vs four maps at up to 4096/2048. The
+   `sun_shadow_toggle` A/B (36 events, frames 10396–12346 rapid-toggled plus one late pair
+   23115/23166) cannot be cleanly read off the 300-frame-stride `frame_end` (115 lines total): dt_ms
+   per 300-frame window is ~3,200–4,900 ms (≈11–16 ms/frame) before frame 10200, jumps to
+   7,330–7,699 ms (≈24–26 ms/frame) for the whole 10500–12900 stretch that contains the toggle
+   bursts, but an equally elevated 7,321–8,355 ms plateau recurs at 22800–24000 with **no** toggle
+   event nearby and `draws` differing too (877 at 10200 vs 634–651 in the toggle window) — the coarse
+   stride is confounded by scene/draw-count changes, so this run cannot isolate the toggle's own
+   cost; the direct replay+apply `us` sum above is the trustworthy figure.
+3. **Sun.** `shadow_replay_sun` (24,296 lines): `verdict`=`sampled` on all, `unlatched`=1 frame,
+   `disagree`=0, `invalid`=0, `bounds_unavailable`=0, `extent_refused`=0 total. `shadow_replay_sun_point`
+   (140 sampled rows, `reason`=`point`/`poll`=`ok` on every row — no fallback ever fires):
+   `agreement_deg` median 0.000691/max 0.000979; `distance` median 15,679,716; `candidates` median
+   4/max 5; `directional` median/max 1 (never the forced-directional path). `rederived` sums to 275
+   over 140 polled rows (median 1, max 5 per poll); `frames_point` spans 1–23,941, i.e. one poll per
+   ~171 frames — too sparse in this log to split a moving-vs-at-rest re-derivation rate per 1,000
+   frames; the per-cascade `dir<i>`/`anchor<i>` fields in the same rows show 1–2 of the 5 cascade
+   slots changing between consecutive polls, not a per-cascade counter. `shadow_replay_sun_source`
+   and `_sun_latch` log once each (session start), not per frame — no source-per-frame series exists
+   in this log; a diagnostic that timestamps `source<i>=` per cascade every N frames (already present
+   in the sparse `sun_shadow_apply_params`, 32 lines) at a finer stride would answer "source per
+   frame" and the fallback/re-derivation rate directly.
+4. **Apply.** `skip_reason` counts: `none`=23,870 (100%), no `replay`/`sun`/other skip this run. F8
+   self-check (`sun_shadow_apply.py --frame`, the four F8 clusters 16788/19405/22251/24291): median
+   own-surface residual per cascade, all comfortably under bias/2 —
+   16788: c0 0.041 (bias/2 0.329, 26.9% over bias, n=13,966), c3 -0.096 (bias/2 9.423, 13.3% over,
+   n=75), c4 -1.503 (bias/2 36.889, 0.0% over, n=282), c1/c2 no own-surface samples this frame;
+   19405: c0 0.043 (26.9%→21.8% over, n=15,964), c3 0.108 (11.0% over, n=3,138), c4 7.981 (0.0% over,
+   n=123); 22251: c0 0.029 (n=18,363), c1 0.128 (bias/2 0.634, 4.3% over, n=19,999), c2 0.145
+   (bias/2 2.099, 3.2% over, n=205,123), c3 1.299 (7.1% over, n=1,462), c4 2.223 (0.0% over,
+   n=1,460); 24291: c0 -0.000 (5.9% over, n=24,178), c3 3.966 (0.0% over, n=13), c4 -1.035 (0.0%
+   over, n=1,736). Every `median_over_half_bias` flag is `false` on all four frames/all cascades —
+   the self-check passes.
+5. **Retention census** (24,296 `shadow_retention_frame` lines, mode `census` throughout, via
+   `shadow_retention.py`): peak levels nodes_live 84 / nodes_unseen 14 / records 373 /
+   records_unseen 120 / static 24 / moving 84 / refs_held 0 / age_max 7200; `would_c0..3` peaks
+   40/40/41/65, `live_c0..3` peaks 51/51/70/110, `capped_c0..3` peaks all 0 (matches the candidates'
+   0 capped frames). `us` median 79.2, p99 179.9, max 672.3; `moving_share` median 0.842. Totals:
+   `new_nodes`=127,830, `promoted`=11,609, `superseded`=22,619, `reclassified`=392,
+   `reclassified_after_unseen`=29, `journal_overflow`=2, `retired`=0, `buffer_gone`/`buffer_orphaned`/
+   `box_exit`/`evicted`=0 (no journal/buffer failure, no eviction fired this session). **0 flush
+   lines** (`shadow_retention_flush`=0, all reasons including `sun`=0), **0 `sun_relatch`, 0
+   `cam_jump`** over all 24,296 frames — no relatch/re-derivation event fired at all, unlike run39's
+   2 sun-relatch flushes; positions were never force-reset. Drift: 8,175 verified frames, 73,755
+   samples, max 34.23, p99 median 0.0087 against eps 0.05, 61 frames over eps. Resight table (last
+   cumulative row, frame 24600): `<60`=16 moved/1 changed/0 same, `<600`=1 moved, `<3600`=2 moved/2
+   changed, `<14400`=7 moved/2 changed, `>=14400`=0; `age_cap_below_bucket`=`<60` (same as run39).
+   `expired_{retired,box,gone}` all 0 in every bucket — no store-driven eviction fired. 6,304 F8
+   `shadow_retention_caster` lines.
+6. **Periodicity.** No ~30 s-period signal in the 300-frame-stride `frame_end` sequence or in
+   `sun_relatch`/`cam_jump`/flush counts (all zero — nothing periodic to latch onto). The dt_ms trace
+   itself shows two multi-window elevated-cost plateaus (frames ≈10200–13200 and ≈22800–24291,
+   each several consecutive 300-frame windows at 2x the baseline) but neither repeats on a fixed
+   interval and the first coincides with, the second does not coincide with, a toggle burst — not
+   periodic, and the 300-frame (~10 s at this framerate) stride is too coarse to rule out a
+   sub-300-frame stutter. A finer per-frame `frame_end` diagnostic (every frame, not every 300) is
+   what one more launch should record to settle periodicity.
+
+Files changed: `docs/verification/directional-shadows.md` (this section only).
