@@ -10,6 +10,7 @@
 #include "pass_phases.h"
 #include "loop_phases.h"
 #include "media_cue.h"
+#include "media_cue_sites.h"
 #include "point_light_admission.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
@@ -774,6 +775,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
         voice_dmo_fallback::shutdown(); // disarms the fault witness; the site patch stays with the other claims
+        ownership::set_surface_lock_observer(nullptr); // the video blit witness: no surface outlives the last device, and the log closes after this
     }
     if(!refs){
         // A nested final factory Release can report this device root still
@@ -2628,6 +2630,10 @@ void initialize_log(HMODULE module) {
     pass_phases::initialize(); // X3M_PASS_PHASES=1 only: four effect-pass stamps through the lean stub, needs the frame group, same window
     loop_phases::initialize(); // X3M_LOOP_PHASES=1 only: six per-sector update stamps through the lean stub, needs the frame group, same window
     media_cue::initialize(); // X3M_MEDIA_CUE_TRACE=1 / X3M_MEDIA_CUE_CACHE=1 only: one gate on the media-record allocator, same window
+    if(const auto observer=media_cue::video_lock_observer()){ // trace on: the surface shell's lock witness (needs --ownership to see the game's surfaces)
+        ownership::set_surface_lock_observer(observer);
+        log("media_video_witness registered=1 blit_range=%08lx-%08lx interval=%u",static_cast<unsigned long>(media_cue::sites::kVideoBlitBegin),static_cast<unsigned long>(media_cue::sites::kVideoBlitEnd),media_cue::detail::video_blit_line_interval);
+    }
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
     frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
     lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window

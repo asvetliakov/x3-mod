@@ -126,6 +126,28 @@ int main() {
     check(!window.close(s));
     for (unsigned f = 0; f < window_frames; ++f) window.frame(f, 0);
     check(window.full() && window.close(s) && s.frames == window_frames && s.attempts == 0 && s.attempts_frame_p50 == 0 && s.id_count == 0);
+    // Video blit witness: the consumer's return range and the line cadence.
+    Addresses video_game = game; video_game.blit_begin = 0x004d0c40; video_game.blit_end = 0x004d14e0;
+    check(video_blit_caller(0x004d0d27, video_game) && video_blit_caller(0x004d14ba, video_game) && video_blit_caller(0x004d0c40, video_game) && video_blit_caller(0x004d14df, video_game));
+    check(!video_blit_caller(0x004d14e0, video_game) && !video_blit_caller(0x004d0c3f, video_game) && !video_blit_caller(0x00401000, video_game));
+    check(!video_blit_caller(0x004d0d27, game) && !video_blit_caller(0, game));  // an empty range admits nothing
+    VideoBlit video;
+    check(video.lock_enter() && video.lock_result(false) && !video.lock_result(false) && video.locks == 1 && video.locks_total == 1 && video.depth == 0);
+    unsigned lines = 0;
+    for (unsigned i = 1; i < 3 * video_blit_line_interval; ++i) { const bool line = video.lock_enter(); lines += line; check(video.lock_result(i == 7) == line); }
+    check(lines == 2 && video.locks == 3 * video_blit_line_interval && video.failures == 1);
+    check(video.unlock_enter() && video.unlock_result(true) && !video.unlock_enter() && !video.unlock_result(false) && video.unlocks == 2 && video.failures == 2);
+    // A re-entrant in-range call between an enter and its result: counted, no line, the outer pair still matched.
+    check(video.lock_enter() && video.depth == 1);                       // blit 181 is on the interval
+    check(!video.lock_enter() && video.reentries == 1 && video.depth == 2 && video.locks == 3 * video_blit_line_interval + 1);
+    check(!video.lock_result(true) && video.depth == 1 && video.failures == 3);
+    check(video.lock_result(false) && video.depth == 0);                 // the outer result keeps its line
+    for (unsigned i = 0; i < video_blit_line_interval - 1; ++i) { check(!video.lock_enter()); check(!video.lock_result(false)); }  // blits 182..240
+    check(video.lock_enter() && video.depth == 1 && video.locks_total == 4 * video_blit_line_interval + 1);  // blit 241 is on the interval
+    check(!video.unlock_enter() && video.reentries == 2 && !video.unlock_result(false) && video.depth == 1);  // a nested unlock does not steal the outer line
+    check(video.lock_result(false) && video.depth == 0);
+    video.close();
+    check(video.locks == 0 && video.unlocks == 0 && video.failures == 0 && video.reentries == 0 && video.locks_total == 4 * video_blit_line_interval + 1 && video.unlock_written);
     refuse_allocation = false;
     std::printf("media_cue_host checks=%u failures=0 cache_bytes=%zu pending_bytes=%zu ring_bytes=%zu window_bytes=%zu cache_entries=%u pending_depth=%u lines_per_second=%u\n",
                 checks, sizeof cache, sizeof pending, sizeof ring, sizeof window, cache_entries, pending_depth, lines_per_second);

@@ -5,6 +5,7 @@
 #include "finite_buffer_evidence.h"
 #include "execution_state.h"
 #include "buffer_lock_observation.h"
+#include "surface_lock_observation.h"
 
 // Opt-in normal-D3D9 ownership boundary. Application COM references are separate from renderer-owned
 // backend resources, so persistent history cannot keep its own owner alive.

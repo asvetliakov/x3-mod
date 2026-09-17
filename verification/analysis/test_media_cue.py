@@ -163,7 +163,83 @@ class SourceAndPolicy(unittest.TestCase):
                       'documented trace-off REFUSE dispatch cost within 2x of the measured cost'):
             self.assertIn(label, fixture)
         self.assertIn('HANDLE log_handle() noexcept {return media_log_handle;}', fixture)
-        self.assertIn('media_cases=10', fixture)
+        self.assertIn('media_cases=11', fixture)
+
+    def test_video_blit_witness(self):
+        source = (ROOT / 'src/proxy/media_cue.cpp').read_text()
+        header = (ROOT / 'src/proxy/media_cue.h').read_text()
+        core = (ROOT / 'src/proxy/media_cue_core.h').read_text()
+        sites = (ROOT / 'src/proxy/media_cue_sites.h').read_text()
+        # The consumer's range (media-cue-playback.md, 8.3/8.6) and the cadence.
+        self.assertIn('inline constexpr std::uint32_t kVideoBlitBegin = 0x004d0c40;', sites)
+        self.assertIn('inline constexpr std::uint32_t kVideoBlitEnd = 0x004d14e0;', sites)  # the next function, the pump (RE note 8.6)
+        self.assertIn('inline constexpr unsigned video_blit_line_interval = 60;', core)
+        self.assertIn('return ret - a.blit_begin < a.blit_end - a.blit_begin;', core)
+        self.assertIn('sites::kVideoBlitBegin,sites::kVideoBlitEnd};', source)
+        # Off: nothing is published, so the shell pays its one predicate; on:
+        # the observer classifies by the shell's return address, owner thread
+        # only, restores LastError and writes through the direct handle path.
+        self.assertIn('return trace_on&&active.load(std::memory_order_acquire)?&video_lock_observe:nullptr;', source)
+        observer = source[source.index('void video_lock_observe(const ownership::SurfaceLockEvent& e) {'):]
+        observer = observer[:observer.index('\n}')]
+        self.assertIn('if(!active.load(std::memory_order_relaxed))return;', observer)
+        self.assertIn('if(!detail::video_blit_caller(std::uint32_t(reinterpret_cast<std::uintptr_t>(e.return_address)),addresses))return;', observer)
+        self.assertIn('const DWORD owner=gate.owner.load(std::memory_order_relaxed);', observer)
+        self.assertIn('(owner?video_foreign:video_early).fetch_add(1,std::memory_order_relaxed);', observer)
+        self.assertNotIn('log(', observer)
+        self.assertIn('unsigned depth = 0;', core)
+        self.assertIn('if (depth++) { ++reentries; return false; }', core)
+        writer = source[source.index('void write_video_line(const ownership::SurfaceLockEvent& e,const char* stage) {'):]
+        writer = writer[:writer.index('\n}')]
+        self.assertIn('const HANDLE handle=log_handle();', writer)
+        self.assertIn('"media_video_blit frame=%llu qpc=%llu texture=%p width=%u height=%u format=%u flags=0x%lx result=%s stage=%s blits=%llu unlocks=%llu\\n"', writer)
+        self.assertIn('written_whole=n>0&&unsigned(n)<sizeof line&&WriteFile(handle,line,DWORD(n),&written,nullptr)&&written==DWORD(n);', writer)
+        self.assertIn('if(!written_whole)++video.suppressed;', writer)
+        self.assertNotIn('log(', writer.replace('log_handle()', ''))
+        self.assertIn('video_blits=%llu video_unlocks=%llu video_failures=%llu video_suppressed=%llu video_reentries=%llu video_foreign=%llu video_early=%llu', source)
+        self.assertIn('    video.close();\n', source)
+        self.assertIn('ownership::SurfaceLockObserver video_lock_observer() noexcept;', header)
+        # The ownership shell: the return address is taken at the shell's
+        # entry, the observer slot is one relaxed load, the observed arm is out
+        # of line, and the generator (not the generated file) is the source.
+        generator = (ROOT / 'tools/ownership/generate_d3d9_forwarders.py').read_text()
+        self.assertIn('body = f"return surface_lock(this, __builtin_return_address(0), {\', \'.join(args)});"', generator)
+        self.assertIn('body = "return surface_unlock(this, __builtin_return_address(0));"', generator)
+        forwarders = (ROOT / 'src/ownership/d3d9_forwarders_inc.h').read_text()
+        self.assertIn('    return surface_lock(this, __builtin_return_address(0), locked_rect, rect, flags);', forwarders)
+        self.assertIn('    return surface_unlock(this, __builtin_return_address(0));', forwarders)
+        ownership = (ROOT / 'src/ownership/d3d9_ownership.cpp').read_text()
+        self.assertIn('std::atomic<SurfaceLockObserver> surface_lock_observer{nullptr};', ownership)
+        self.assertEqual(ownership.count('const SurfaceLockObserver observer=surface_lock_observer.load(std::memory_order_relaxed);'), 2)
+        self.assertIn('if(!observer)return observe_result(device_of(node), static_cast<Surface*>(node)->native_->LockRect(locked_rect, rect, flags));', ownership)
+        self.assertIn('__attribute__((noinline)) HRESULT observed_surface_lock(', ownership)
+        # The shell owns the CPU-state envelope: incoming state restored before
+        # the native call, native outgoing state restored after the second observer call.
+        for name in ('observed_surface_lock', 'observed_surface_unlock'):
+            arm = ownership[ownership.index(f'__attribute__((noinline)) HRESULT {name}('):]
+            arm = arm[:arm.index('\n}')]
+            self.assertEqual(arm.count('observer(e);'), 2)
+            self.assertLess(arm.index('ExecutionState incoming;'), arm.index('observer(e);'))
+            self.assertLess(arm.index('observer(e);'), arm.index('incoming.restore();'))
+            self.assertLess(arm.index('incoming.restore();'), arm.index('native_->'))
+            self.assertLess(arm.index('native_->'), arm.index('ExecutionState outgoing;'))
+            self.assertLess(arm.index('ExecutionState outgoing;'), arm.rindex('observer(e);'))
+            self.assertLess(arm.rindex('observer(e);'), arm.index('outgoing.restore();'))
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertLess(capture.index('media_cue::initialize();'), capture.index('ownership::set_surface_lock_observer(observer);'))
+        self.assertLess(capture.index('voice_dmo_fallback::shutdown();'), capture.index('ownership::set_surface_lock_observer(nullptr);'))
+        self.assertIn('x3m::ownership::set_surface_lock_observer(nullptr);', (ROOT / 'src/proxy/loader.cpp').read_text())
+        fixture = (ROOT / 'verification/probe/game_phase_cpu_fixture.cpp').read_text()
+        for label in ('trace off: no video witness published',
+                      "lock from outside the consumer's range writes no line and is not counted",
+                      'first in-range lock writes its enter and result lines with one GetDesc each',
+                      'video result line carries the native HRESULT after the lock',
+                      'one enter/result pair per interval of in-range locks',
+                      'first in-range unlock writes its enter and result lines',
+                      'foreign-thread in-range lock writes no line and counts as video_foreign',
+                      'video lock before the owner is admitted writes no line and counts as video_early',
+                      're-entrant in-range lock writes no line and leaves the outer enter/result pair matched'):
+            self.assertIn(label, fixture)
 
 
 class MediaCueLaunchOptions(unittest.TestCase):

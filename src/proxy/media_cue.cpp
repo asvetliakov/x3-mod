@@ -20,7 +20,8 @@ bool initialized=false,trace_on=false,cache_on=false;
 std::uint64_t frequency=0,retry_ticks=0;
 constexpr unsigned default_retry_s=30,max_retry_s=3600;
 detail::Addresses addresses{sites::kQueryReturn,sites::kSavegameReturn,sites::kScriptReturn,sites::kSpeechReturn,
-                            sites::kHelperReturn,sites::kSelectorReturn,sites::kSelectorKind};
+                            sites::kHelperReturn,sites::kSelectorReturn,sites::kSelectorKind,
+                            sites::kVideoBlitBegin,sites::kVideoBlitEnd};
 detail::Gate gate;
 detail::NegativeCache cache;
 detail::PendingStack pending;
@@ -28,6 +29,8 @@ detail::TraceRing ring;
 detail::RateLimit limit;        // the drained outcome lines
 detail::RateLimit enter_limit;  // the synchronous entry lines
 detail::Window window;
+detail::VideoBlit video;        // the surface-lock witness, owner thread only
+std::atomic<std::uint64_t> video_foreign{0},video_early{0}; // in-range enters dropped: another thread / before the owner is admitted
 std::uint32_t attempts_frame=0;            // owner thread only, reset at the frame boundary
 std::uint64_t attempts_total=0,refused_total=0;
 std::atomic<std::uint64_t> current_frame{0};
@@ -83,7 +86,8 @@ void* emit_gate(const void* enter,const void* ret_handler,void*** next_out,void*
 }
 void* emit(unsigned index,void*** next_out);
 void reset_state() {
-    gate.reset();cache.clear();pending={};ring={};limit={};enter_limit={};window.reset();
+    gate.reset();cache.clear();pending={};ring={};limit={};enter_limit={};window.reset();video={};
+    video_foreign.store(0,std::memory_order_relaxed);video_early.store(0,std::memory_order_relaxed);
     attempts_frame=0;attempts_total=refused_total=0;current_frame.store(0);lost_reported=false;
 }
 bool install_group(const engine_patch::SiteSpec* specs,const char*& status) {
@@ -125,6 +129,55 @@ void write_enter_line(const detail::Entry& e) {
     });
     if(!written_whole)++enter_limit.suppressed;
 }
+// The video blit witness line, the same direct handle write: the enter line
+// goes down before the native LockRect/UnlockRect (either may be the call
+// that never returns), the result line after it. Reached only for calls from
+// the consumer's range on the owner thread with the trace on; GetDesc on the
+// borrowed native surface is the only D3D call, made per written line (at
+// most two per `video_blit_line_interval` blits plus the first unlock).
+void write_video_line(const ownership::SurfaceLockEvent& e,const char* stage) {
+    const HANDLE handle=log_handle();
+    bool written_whole=false;
+    if(handle!=INVALID_HANDLE_VALUE&&handle){
+        D3DSURFACE_DESC desc{};
+        if(!e.native||FAILED(e.native->GetDesc(&desc)))desc=D3DSURFACE_DESC{};
+        char result[16];
+        if(e.phase==ownership::SurfaceLockPhase::LockEnter||e.phase==ownership::SurfaceLockPhase::UnlockEnter)std::snprintf(result,sizeof result,"pending");
+        else std::snprintf(result,sizeof result,"0x%08lx",static_cast<unsigned long>(e.result));
+        char line[224];
+        const int n=std::snprintf(line,sizeof line,"media_video_blit frame=%llu qpc=%llu texture=%p width=%u height=%u format=%u flags=0x%lx result=%s stage=%s blits=%llu unlocks=%llu\n",
+            current_frame.load(std::memory_order_relaxed),qpc(),static_cast<void*>(e.surface),unsigned(desc.Width),unsigned(desc.Height),unsigned(desc.Format),
+            static_cast<unsigned long>(e.flags),result,stage,video.locks_total,video.unlocks);
+        DWORD written=0;
+        written_whole=n>0&&unsigned(n)<sizeof line&&WriteFile(handle,line,DWORD(n),&written,nullptr)&&written==DWORD(n);
+    }
+    if(!written_whole)++video.suppressed;
+}
+// The observer the ownership shell calls twice per Surface::LockRect/UnlockRect
+// once registered (trace on only): everything outside the consumer's return
+// range costs the range compare; inside it, the counters and the cadenced
+// lines. The shell's envelope restores x87/MXCSR/LastError around each call,
+// so nothing is guarded here. An in-range call off the owner thread or before
+// the owner is admitted is counted (video_foreign=/video_early=) and dropped,
+// so a log with no blit line still tells "no blit" from "blit elsewhere".
+// Never allocates, never takes the log mutex, never touches the surface
+// beyond GetDesc.
+void video_lock_observe(const ownership::SurfaceLockEvent& e) {
+    if(!active.load(std::memory_order_relaxed))return;
+    if(!detail::video_blit_caller(std::uint32_t(reinterpret_cast<std::uintptr_t>(e.return_address)),addresses))return;
+    const DWORD owner=gate.owner.load(std::memory_order_relaxed);
+    if(owner!=GetCurrentThreadId()){
+        if(e.phase==ownership::SurfaceLockPhase::LockEnter||e.phase==ownership::SurfaceLockPhase::UnlockEnter)
+            (owner?video_foreign:video_early).fetch_add(1,std::memory_order_relaxed);
+        return;
+    }
+    switch(e.phase){
+    case ownership::SurfaceLockPhase::LockEnter: if(video.lock_enter())write_video_line(e,"lock_enter"); break;
+    case ownership::SurfaceLockPhase::LockResult: if(video.lock_result(FAILED(e.result)))write_video_line(e,"lock"); break;
+    case ownership::SurfaceLockPhase::UnlockEnter: if(video.unlock_enter())write_video_line(e,"unlock_enter"); break;
+    case ownership::SurfaceLockPhase::UnlockResult: if(video.unlock_result(FAILED(e.result)))write_video_line(e,"unlock"); break;
+    }
+}
 void emit_entry(const detail::Entry& e) {
     char result[16];char kind[16];kind_text(e,kind);
     log("media_cue frame=%llu qpc=%llu id=%lu kind=%s caller=%s flags=0x%lx result=%s us=%llu attempts_frame=%lu cached=%u",
@@ -140,11 +193,14 @@ void emit_window() {
         if(n<=0||unsigned(n)>=sizeof ids-used)break;
         used+=unsigned(n);
     }
-    log("media_cue_window qpc=%llu frame=%llu frames=%u attempts=%llu failures=%llu successes=%llu refused=%llu unobserved=%llu attempts_frame_p50=%llu attempts_frame_max=%lu ids=%s id_overflow=%llu cache_used=%u evictions=%llu depth_max=%u overflow=%llu stale=%llu mismatched=%llu lost=%llu suppressed=%llu enter_suppressed=%llu dropped=%llu early=%u foreign=%u",
+    log("media_cue_window qpc=%llu frame=%llu frames=%u attempts=%llu failures=%llu successes=%llu refused=%llu unobserved=%llu attempts_frame_p50=%llu attempts_frame_max=%lu ids=%s id_overflow=%llu cache_used=%u evictions=%llu depth_max=%u overflow=%llu stale=%llu mismatched=%llu lost=%llu suppressed=%llu enter_suppressed=%llu dropped=%llu early=%u foreign=%u video_blits=%llu video_unlocks=%llu video_failures=%llu video_suppressed=%llu video_reentries=%llu video_foreign=%llu video_early=%llu",
         qpc(),s.frame,s.frames,s.attempts,s.failures,s.successes,s.refused,s.unobserved,s.attempts_frame_p50,static_cast<unsigned long>(s.attempts_frame_max),
         s.id_count?ids:"none",s.id_overflow,cache.used,cache.evictions,pending.max_depth,pending.overflow,pending.stale,pending.mismatched,pending.lost,
-        limit.suppressed,enter_limit.suppressed,ring.dropped,gate.early.exchange(0,std::memory_order_relaxed),gate.foreign.exchange(0,std::memory_order_relaxed));
+        limit.suppressed,enter_limit.suppressed,ring.dropped,gate.early.exchange(0,std::memory_order_relaxed),gate.foreign.exchange(0,std::memory_order_relaxed),
+        video.locks,video.unlocks,video.failures,video.suppressed,video.reentries,
+        video_foreign.exchange(0,std::memory_order_relaxed),video_early.exchange(0,std::memory_order_relaxed));
     limit.suppressed=0;enter_limit.suppressed=0;ring.dropped=0;
+    video.close();
     if(pending.lost&&!lost_reported){lost_reported=true;log("media_cue_lost count=%llu last_return=%08lx note=return_matched_no_pending_entry_fail_safe_used",pending.lost,static_cast<unsigned long>(pending.last_return));}
 }
 }
@@ -212,6 +268,9 @@ namespace {
 void* emit(unsigned,void*** next_out) {
     return emit_gate(reinterpret_cast<const void*>(&x3m_media_cue_enter),reinterpret_cast<const void*>(&x3m_media_cue_return),next_out,&return_trampoline);
 }
+}
+ownership::SurfaceLockObserver video_lock_observer() noexcept {
+    return trace_on&&active.load(std::memory_order_acquire)?&video_lock_observe:nullptr;
 }
 bool initialize() {
     ErrorGuard error;
@@ -285,5 +344,8 @@ const char* fixture_site_status(){return patches[0].status;}
 void fixture_drop_pending(){pending.depth=0;} // models a return whose entry vanished: the next return is `lost`
 const detail::RateLimit* fixture_enter_limit(){return &enter_limit;}
 void fixture_reset_enter_limit(){enter_limit={};}
+const detail::VideoBlit* fixture_video(){return &video;}
+std::uint64_t fixture_video_dropped(bool foreign){return (foreign?video_foreign:video_early).load(std::memory_order_relaxed);}
+void fixture_reset_video(){video={};video_foreign.store(0);video_early.store(0);}
 #endif
 }

@@ -115,6 +115,10 @@ def generate(parsed, directory):
                 body = f"return buffer_lock(this, {', '.join(args)});"
             elif kind in {"VertexBuffer", "IndexBuffer"} and name == "Unlock":
                 body = "return buffer_unlock(this);"
+            elif kind == "Surface" and name == "LockRect":
+                body = f"return surface_lock(this, __builtin_return_address(0), {', '.join(args)});"
+            elif kind == "Surface" and name == "UnlockRect":
+                body = "return surface_unlock(this, __builtin_return_address(0));"
             elif kind in {"VertexBuffer", "IndexBuffer"} and name in {"SetPrivateData", "FreePrivateData"}:
                 body = f"return buffer_private_result(this, {args[0]}, native_->{name}({', '.join(args)}));"
             elif kind == "Device" and name == "ProcessVertices":

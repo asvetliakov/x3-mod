@@ -22,6 +22,7 @@ struct Addresses {
     std::uint32_t helper_return = 0;    // [esp]: the play helper 0x004f65f0
     std::uint32_t selector_return = 0;  // [esp+0xc] behind the helper: the sector selector
     std::uint32_t selector_kind = 0;    // [esp+0x10] behind the helper: the cue kind
+    std::uint32_t blit_begin = 0, blit_end = 0;  // the video consumer 0x004d0c40 up to the next function 0x004d14e0 (media-cue-playback.md, 8.6)
 };
 // `ret` is [esp] at entry, `slot_c` is [esp+0xc]. The selector is the play
 // helper called from the selector; every other helper caller is `other`.
@@ -165,6 +166,46 @@ struct RateLimit {
         ++suppressed;
         return false;
     }
+};
+
+// Video blit witness (docs/reverse-engineering/media-cue-playback.md, 8.3 and
+// 8.7): the consumer 0x004d0c40 locks the D3D9 destination surface with
+// Flags = 0 once per decoded frame (0x004d0d24) and unlocks it after the CPU
+// copy (0x004d14b7). A surface LockRect/UnlockRect whose caller lies in
+// [blit_begin, blit_end) is a video blit; the first lock, then one per
+// `video_blit_line_interval`, and the first unlock are written as
+// `media_video_blit` lines (enter and result, since either call may never
+// return). Counters close into the window line. Owner thread only. A call
+// that re-enters the range between an enter and its result (COM apartment
+// dispatch inside the native call, not statically excluded: 8.6) is counted
+// as a re-entry and writes nothing, so the outer pair stays matched.
+inline constexpr unsigned video_blit_line_interval = 60;
+inline bool video_blit_caller(std::uint32_t ret, const Addresses& a) noexcept {
+    return ret - a.blit_begin < a.blit_end - a.blit_begin;  // unsigned wrap: an empty range admits nothing
+}
+struct VideoBlit {
+    std::uint64_t locks = 0, unlocks = 0, failures = 0, suppressed = 0, reentries = 0;  // the window's counters
+    std::uint64_t locks_total = 0;                                                      // the line cadence
+    unsigned depth = 0;                                                                 // entered, not yet resulted
+    bool unlock_written = false, lock_line = false, unlock_line = false;
+    // Enter-side decisions; the matching result line follows the same decision.
+    bool lock_enter() noexcept {
+        if (depth++) { ++reentries; return false; }
+        ++locks; ++locks_total; lock_line = (locks_total - 1) % video_blit_line_interval == 0; return lock_line;
+    }
+    bool unlock_enter() noexcept {
+        if (depth++) { ++reentries; return false; }
+        ++unlocks; unlock_line = !unlock_written; unlock_written = true; return unlock_line;
+    }
+    bool lock_result(bool failed) noexcept {
+        failures += failed; if (depth) --depth; if (depth) return false;
+        const bool line = lock_line; lock_line = false; return line;
+    }
+    bool unlock_result(bool failed) noexcept {
+        failures += failed; if (depth) --depth; if (depth) return false;
+        const bool line = unlock_line; unlock_line = false; return line;
+    }
+    void close() noexcept { locks = unlocks = failures = suppressed = reentries = 0; }
 };
 
 // Documented per-dispatch cost of the gate with the trace off (run 34 record,

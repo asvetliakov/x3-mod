@@ -34,4 +34,13 @@ inline constexpr std::uint32_t kSpeechReturn = 0x00498efd;     // 0x00498e30 spe
 inline constexpr std::uint32_t kHelperReturn = 0x004f6615;     // 0x004f65f0 track/emitter play helper
 inline constexpr std::uint32_t kSelectorReturn = 0x0045c60c;   // 0x0045b720 sector selector, `call 0x004f65f0` at 0x0045c607
 inline constexpr std::uint32_t kSelectorKind = 0x5a;
+// The video consumer `0x004d0c40(IDirectDrawSurface*, IDirect3DSurface9*)`
+// decodes gap-free to its `ret`, which lies before the next function, the
+// pump `0x004d14e0` (media-cue-playback.md, 8.6: both are direct-call-only
+// routines with no interior edge). `dst->LockRect(&lr, NULL, 0)` at
+// 0x004d0d24 and `dst->UnlockRect()` at 0x004d14b7 return into
+// [kVideoBlitBegin, kVideoBlitEnd). Not a patch site: the proxy's own surface
+// shell classifies its caller by return address (media_cue.cpp video witness).
+inline constexpr std::uint32_t kVideoBlitBegin = 0x004d0c40;
+inline constexpr std::uint32_t kVideoBlitEnd = 0x004d14e0;
 }

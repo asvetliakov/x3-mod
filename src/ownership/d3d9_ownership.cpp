@@ -90,6 +90,8 @@ HRESULT buffer_desc(Node*, D3DVERTEXBUFFER_DESC*);
 HRESULT buffer_desc(Node*, D3DINDEXBUFFER_DESC*);
 HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags);
 HRESULT buffer_unlock(Node* node);
+HRESULT surface_lock(Node* node, const void* return_address, D3DLOCKED_RECT* locked_rect, const RECT* rect, DWORD flags);
+HRESULT surface_unlock(Node* node, const void* return_address);
 HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr);
 HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     IDirect3DVertexBuffer9* buffer, IDirect3DVertexDeclaration9* declaration, DWORD flags);
@@ -1157,6 +1159,52 @@ HRESULT buffer_unlock(Node* node) {
     if(device->options.track_buffer_lock_attempts)complete_buffer_call(node,true,hr);
     outgoing.restore();return hr;
 }
+// Surface lock witness (surface_lock_observation.h). The observer pointer is
+// loaded once per call; unset, the call is the ordinary forward behind one
+// predicate. The observed arm is kept out of line so the common path stays
+// the size of the generated shell, and it owns the CPU-state envelope the
+// layer uses for interposed work (ExecutionState above): the game's incoming
+// x87/MXCSR/LastError state is restored before the native call and the native
+// outgoing state after the second observer call, so the observer's own CRT or
+// Win32 work never reaches the game or the native surface.
+std::atomic<SurfaceLockObserver> surface_lock_observer{nullptr};
+__attribute__((noinline)) HRESULT observed_surface_lock(Node* node, SurfaceLockObserver observer, const void* return_address,
+                                                        D3DLOCKED_RECT* locked_rect, const RECT* rect, DWORD flags) {
+    ExecutionState incoming;
+    auto* surface=static_cast<Surface*>(node);
+    SurfaceLockEvent e{surface, surface->native_, return_address, rect, flags, S_FALSE, SurfaceLockPhase::LockEnter};
+    observer(e);
+    incoming.restore();
+    e.result=observe_result(device_of(node), surface->native_->LockRect(locked_rect, rect, flags));
+    ExecutionState outgoing;
+    e.phase=SurfaceLockPhase::LockResult;
+    observer(e);
+    outgoing.restore();
+    return e.result;
+}
+__attribute__((noinline)) HRESULT observed_surface_unlock(Node* node, SurfaceLockObserver observer, const void* return_address) {
+    ExecutionState incoming;
+    auto* surface=static_cast<Surface*>(node);
+    SurfaceLockEvent e{surface, surface->native_, return_address, nullptr, 0, S_FALSE, SurfaceLockPhase::UnlockEnter};
+    observer(e);
+    incoming.restore();
+    e.result=observe_result(device_of(node), surface->native_->UnlockRect());
+    ExecutionState outgoing;
+    e.phase=SurfaceLockPhase::UnlockResult;
+    observer(e);
+    outgoing.restore();
+    return e.result;
+}
+HRESULT surface_lock(Node* node, const void* return_address, D3DLOCKED_RECT* locked_rect, const RECT* rect, DWORD flags) {
+    const SurfaceLockObserver observer=surface_lock_observer.load(std::memory_order_relaxed);
+    if(!observer)return observe_result(device_of(node), static_cast<Surface*>(node)->native_->LockRect(locked_rect, rect, flags));
+    return observed_surface_lock(node, observer, return_address, locked_rect, rect, flags);
+}
+HRESULT surface_unlock(Node* node, const void* return_address) {
+    const SurfaceLockObserver observer=surface_lock_observer.load(std::memory_order_relaxed);
+    if(!observer)return observe_result(device_of(node), static_cast<Surface*>(node)->native_->UnlockRect());
+    return observed_surface_unlock(node, observer, return_address);
+}
 HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr) {
     PreserveExecution preserve;Device* device=device_of(node);
     if(SUCCEEDED(hr)&&(guid==buffer_content_guid||guid==finite_sidecar_guid||guid==lock_sidecar_guid)){
@@ -1580,6 +1628,10 @@ HRESULT copy_depth(Device* node) {
 
 #include "d3d9_forwarders_inc.h"
 } // namespace
+
+void set_surface_lock_observer(SurfaceLockObserver observer) noexcept {
+    surface_lock_observer.store(observer, std::memory_order_relaxed);
+}
 
 HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out, const Options& options) noexcept {
     if (!out) return E_POINTER;

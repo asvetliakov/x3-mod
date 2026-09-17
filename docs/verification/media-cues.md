@@ -346,6 +346,76 @@ lines carry `kind=none`/`0x11`; 40 rapid calls after a limiter reset give
 `lines <= 32` and `lines + enter_suppressed == 40`; the trace-off benchmark's
 140,000 proceeded calls write nothing.
 
+### Video blit witness (2026-09-17, worktree)
+
+The RE note's §8.3 places the only D3D9 traffic of a playing video in the
+consumer `0x004d0c40`: `dst->LockRect(&lr, NULL, 0)` at `0x004d0d24` and
+`dst->UnlockRect()` at `0x004d14b7`, on a surface the proxy handed out. With
+`--media-cue-trace` (and `--ownership`, which every user run carries: without
+the wrapper no proxy shell sees the game's surfaces) the ownership layer's
+`Surface::LockRect`/`UnlockRect` shell reports each call to
+`media_cue.cpp`'s witness with the caller's return address taken at the
+shell's entry (`__builtin_return_address(0)` in the generated forwarder, so a
+helper frame cannot shift it). A caller in `[0x004d0c40, 0x004d14e0)` (the
+consumer decodes gap-free to its `ret` before the next function, the pump
+`0x004d14e0`; RE note §8.6) is a video blit and writes:
+
+    media_video_blit frame= qpc= texture=%p width= height= format= flags= result=<pending|0x%08lx> stage=<lock_enter|lock|unlock_enter|unlock> blits= unlocks=
+
+Two lines per witnessed call, on the first lock and then one lock in every
+60 (`video_blit_line_interval`), and on the first unlock: the `*_enter` line
+goes down before the native call with `result=pending`, the result line after
+it with the native HRESULT, so a hang inside `LockRect`/`UnlockRect` (an
+`_enter` line with no result line) is told apart from a hang in the copy
+between them (a `lock` line with no `unlock_enter`) and from a hang before the
+first frame ever reached D3D (no line at all). `width/height/format` come from
+`GetDesc` on the borrowed native surface (one call per written line, the only
+D3D call the witness makes). Delivery is the `media_cue_enter` path: `WriteFile`
+to the session log's OS handle, no ring, no `log()`, no mutex; a line that does
+not reach the file whole counts as `video_suppressed`. The window line gains
+`video_blits= video_unlocks= video_failures= video_suppressed= video_reentries=
+video_foreign= video_early=` (per window). Owner thread only: an in-range call
+from another thread or before the owner is admitted writes nothing and counts
+as `video_foreign`/`video_early`, so a log with no blit line still tells "no
+blit" from "blit elsewhere"; a call that re-enters the range between an enter
+and its result (COM apartment dispatch inside the native call, §8.6) counts
+as `video_reentries`, writes nothing and leaves the outer pair matched. The
+shell owns the CPU-state envelope (the layer's `ExecutionState`: x87, MXCSR,
+LastError): the game's incoming state is restored before the native call and
+the native outgoing state after the second observer call, so the witness
+itself guards nothing. The observer is withdrawn when the last device is
+destroyed (before the log closes) and at `DLL_PROCESS_DETACH`. The startup
+line `media_video_witness registered=1 blit_range=004d0c40-004d14e0
+interval=60` confirms registration. **Off:** nothing is registered and the shell's
+`Surface::LockRect`/`UnlockRect` pay one relaxed load of the observer slot,
+a `test` and a `je` and the return-slot load (four instructions read from the
+built object) before the unchanged native forward; the observed arm is out of
+line. **On, outside the range:** the call through the observer pointer, the
+`active` load and one range compare, twice per call.
+
+| Check | Result |
+| --- | --- |
+| `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_cue verification.analysis.test_capture_device_creation` | 7 + 1 tests OK (`media_cue_host` range/cadence checks, wiring, generator route, fixture labels) |
+| `rm -rf build && cmake -S . -B build ... && cmake --build build -j8` (clean worktree configure, RelWithDebInfo; after review fixes) | exit 0, 0 warnings |
+| `python3 verification/probe/check_no_x87.py build/d3d9.dll` | PASS, 498 reachable, 0 violations |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py --no-build` | PASS, 8684 checks, 0 failures, 8.1 s, `media_cases=11` (after review fixes) |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ownership.py` | baseline 370 and wrapped 563 checks, 0 failures, both exit 0 (run from the worktree; the runner writes `verification/results/bottle-X3/ownership-*`) |
+
+The fixture's video case drives the published observer with synthetic
+events through a stand-in `IDirect3DSurface9` that answers `GetDesc` only: a
+lock returning to `0x004d0d27` writes the enter and result pair (byte-checked
+after the varying `qpc=`: `texture=<p> width=512 height=256 format=22
+flags=0x0 result=0x00000000 stage=lock blits=1 unlocks=0`), one from
+`0x00401000` or from the range's end bound writes nothing and is not counted,
+a call before the owner is admitted or from a foreign thread writes nothing,
+119 further locks (one failing) write exactly the blit-61 pair and count one
+failure, the first unlock writes its pair and the second only counts, a lock
+re-entering the range inside blit 121 writes nothing and leaves the outer pair
+matched, the pre-admission and foreign-thread calls count as `video_early=1`
+and `video_foreign=1`, and with the trace off `video_lock_observer()` is null.
+Not yet observed in the game: the next comm-dialog run with the trace on is
+the first real witness.
+
 ## Open issues
 
 * `Videos.pck`/`VideoLists.pck` encoding is unidentified; cue ids and the
