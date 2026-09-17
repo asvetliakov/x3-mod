@@ -589,3 +589,30 @@ Wine's parser documents, unverified here) — one host-side step, no Wine.
 Native preshader precision: not answerable without disassembling
 `d3dx9_37`, which the setter-dedup path never needs. The residual split: the
 two stamps of § "The 4.5 ms residual", still pending.
+
+### Fixture outcome (2026-09-17): the setter-dedup wrapper is dead
+
+The no-game fixture ran (`verification/probe/run_effect_beginpass.py`,
+`verification/results/bottle-X3/effect-beginpass.json`, numbers and scope in
+[sampling-profiler.md](../verification/sampling-profiler.md), "Native
+BeginPass attribution fixture"): on `shader/3_0/argon.fb` DEFAULT/P0 with the
+game's own native `d3dx9_37` (`image_size=3895296`, `wine_builtin=0`), per
+`BeginPass` regime (i) same-value `Set*` costs 1.60 µs, regime (iii) no
+`Set*` 1.50 µs, and both issue **exactly the same 57 state-manager
+callbacks**; a changed value costs 3.30 µs. So (i) ≈ (iii) by the decision
+rule above — **native D3DX already charges nothing for a same-value write,
+the thin setter-dedup wrapper has no gain to recover, and it is rejected**.
+The rule's other branch now applies: the walk is fixed cost, and only full
+replay could touch it. The fixture also narrows what replay would win: D3DX
+re-applies all 57 pass states on every `BeginPass` (19 render, 28 sampler, 4
+texture, 2 shader, 4 constant calls / 52 registers), so a replay must issue
+those device calls too and can only save D3DX's own walk plus the 1.8 µs
+dirty-driven evaluation that a changed parameter costs — and the game's real
+per-draw parameter writes do change values, so that 1.8 µs is inside the
+in-game 6.58 µs, not additional to it. The remaining decision (full replay
+versus stopping at 22 ms) waits on the profiler session, which is the only
+thing that can say how much of the in-game 6.58 µs is D3DX's own code rather
+than the 57 device calls; this fixture's 1.5 µs floor on an idle device is a
+lower bound on the walk, not a measurement of the in-game figure. Wine's
+builtin was 6–13 % slower on `BeginPass` and ~3× slower on the parameter
+setters, consistent in direction with run104/105 but far smaller here.
