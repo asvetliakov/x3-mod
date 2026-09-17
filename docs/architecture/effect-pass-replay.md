@@ -616,3 +616,18 @@ than the 57 device calls; this fixture's 1.5 µs floor on an idle device is a
 lower bound on the walk, not a measurement of the in-game figure. Wine's
 builtin was 6–13 % slower on `BeginPass` and ~3× slower on the parameter
 setters, consistent in direction with run104/105 but far smaller here.
+
+## Decision (2026-09-17, ratified): stop at the native path
+
+The attribution fixture shows native D3DX's own BeginPass walk on the busy
+view's material pass costs about 1.5 µs with all 57 state callbacks issued and
+that a same-value `Set*` costs nothing (no dirty marking), so neither a
+setter-dedup wrapper nor a constant-only replay has anything to remove; the
+remaining ~5 µs of the in-game 6.58 µs per BeginPass is wined3d processing
+the 57 forwarded calls against real state changes, which a proxy replay would
+have to issue as well. With the bottle and environment experiments closed,
+the busy frame stays at ~22 ms on this backend: draw 8.8 µs, BeginPass 6.6,
+engine 4.5 per pass. The `--residual-phases` group remains available to
+attribute the engine share if a future lever appears; no pass replay is
+scheduled.
+
