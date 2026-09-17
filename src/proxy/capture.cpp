@@ -106,7 +106,7 @@ bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen 
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
 float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
-float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires the effects gain)
+float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only; independent of the effects gain, own key Ctrl+Shift+F4)
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
@@ -1091,12 +1091,13 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // Ctrl+Shift+F11 (ambient occlusion on/off) polls with the same sampler
     // when --ambient-occlusion is on; it has no notice and no report.
     const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;
-    // Emitter A/B keys (comparison-hotkeys.md): Ctrl+Shift+F5 the additive
-    // bullets, F6 the emission source gain (F7 is the telemetry marker and
-    // F8 the capture key). Any requested emitter option opens the sampler;
-    // the individual keys are polled unconditionally inside it so an
-    // unrequested option answers with a logged refusal.
-    const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f;
+    // Emitter A/B keys (comparison-hotkeys.md): Ctrl+Shift+F4 the hull-program
+    // emitters, F5 the additive bullets, F6 the emission source gain (F7 is
+    // the telemetry marker and F8 the capture key). Any requested emitter
+    // option opens the sampler; the individual keys are polled
+    // unconditionally inside it so an unrequested option answers with a
+    // logged refusal.
+    const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || hull_emission_gain!=1.f;
     if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare)return;
     ComparisonKeys keys{};
     keys.foreground=comparison_foreground();
@@ -1107,10 +1108,12 @@ void comparison_begin_frame(Device& ctx) noexcept {
     keys.ambient_occlusion=ambient_occlusion_requested && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
     keys.screen_additive=(GetAsyncKeyState(VK_F5)&0x8000)!=0;
     keys.source_gain=(GetAsyncKeyState(VK_F6)&0x8000)!=0;
+    keys.hull_gain=(GetAsyncKeyState(VK_F4)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
     if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();
-    const bool emitter=action.screen_additive||action.source_gain;
+    const bool emitter=action.screen_additive||action.source_gain||action.hull_gain;
     if(emitter)ctx.comparison_emitter_notice[0]='\0';
+    if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","HULL",ctx.motion_output.hull_emission_gain_toggle());
     if(action.screen_additive)comparison_emitter(ctx,"ctrl_shift_f5","BULLETS",ctx.motion_output.screen_emission_additive_toggle());
     if(action.source_gain)comparison_emitter(ctx,"ctrl_shift_f6","EMISSION",ctx.motion_output.emission_source_gain_toggle());
     if(emitter){ctx.comparison_notice.show(GetTickCount64());ctx.comparison_report_pending=true;}
@@ -2553,21 +2556,23 @@ void initialize_log(HMODULE module) {
      const bool excluded=linear_emission_requested;
      if(!hdr_requested||excluded)emission_source_gain=1.f;
      if(!gain_valid||value!=1.f)log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",emission_source_gain!=1.f,hdr_requested,unsigned(excluded),double(emission_source_gain),unsigned(gain_valid),excluded?" refused=linear_emissions":"");}
-    // X3M_HULL_EMISSION_GAIN=<g>: the same gain over the twelve hull programs'
-    // ADD ONE/ONE emitter draws (emitter plan phase 3; the launcher passes the
-    // effects gain's value under --hull-emitters): finite 1..8, 1 (the
-    // launcher default) is off. Needs the effects gain enabled (which carries
-    // the HDR and linear-emission gates and the F6 key); the DLL refuses with
-    // the reason logged. Unparsable or out of range keeps 1 and logs.
+    // X3M_HULL_EMISSION_GAIN=<g>: a source gain over the twelve hull programs'
+    // ADD ONE/ONE emitter draws (emitter plan phase 3; the launcher passes
+    // --hull-emission-gain G, or the effects gain's value under
+    // --hull-emitters): finite 1..8, 1 (the launcher default) is off. Needs
+    // the FP16 scene only (X3M_HDR=1), independent of the effects gain so the
+    // population can be bracketed alone, with its own key (Ctrl+Shift+F4);
+    // the DLL refuses without HDR with the reason logged. Unparsable or out
+    // of range keeps 1 and logs.
     {hull_emission_gain=1.f;bool gain_valid=true;float value=1.f;
      SetLastError(ERROR_SUCCESS);
      const DWORD gain_length=GetEnvironmentVariableW(L"X3M_HULL_EMISSION_GAIN",setting,32);
      if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
          wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)hull_emission_gain=value;else gain_valid=false;}
-     const bool excluded=emission_source_gain==1.f;
+     const bool excluded=!hdr_requested;
      if(excluded)hull_emission_gain=1.f;
-     if(!gain_valid||value!=1.f)log("hull_emission_gain_mode requested=1 enabled=%u source_gain=%g gain=%g gain_valid=%u%s",hull_emission_gain!=1.f,double(emission_source_gain),double(hull_emission_gain),unsigned(gain_valid),excluded?" refused=emission_source_gain":"");}
+     if(!gain_valid||value!=1.f)log("hull_emission_gain_mode requested=1 enabled=%u source_gain=%g gain=%g gain_valid=%u%s",hull_emission_gain!=1.f,double(emission_source_gain),double(hull_emission_gain),unsigned(gain_valid),excluded?" refused=hdr":"");}
     // X3M_ORIGINAL_FILL=<k>: fill in linear light inside the ORIGINAL hull
     // pixel programs (docs/architecture/original-shading-critique.md 1a,
     // option C): finite 0..0.5, 0 (the launcher default) is off. The variant
@@ -2934,5 +2939,12 @@ extern "C" __declspec(dllexport) int x3m_ambient_occlusion_fixture_toggle(IDirec
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return -2;
     return it->second->motion_output.ambient_occlusion_toggle();
+}
+// The Ctrl+Shift+F4 action without the key: the same toggle the sampler calls.
+extern "C" __declspec(dllexport) int x3m_hull_emission_fixture_toggle(IDirect3DDevice9* device) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    if(it==x3m::devices.end()) return -2;
+    return it->second->motion_output.hull_emission_gain_toggle();
 }
 #endif

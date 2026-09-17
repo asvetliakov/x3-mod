@@ -127,21 +127,25 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
         self.assertLess(polling.index('if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();'),
                         polling.index('if(!action.exposure && !action.bloom)return;'))
-        # Emitter A/B keys: F5 additive, F6 the emission source gain of all
-        # twenty pairs (F7 is the telemetry marker, F8 the capture key; the
-        # 2026-09-16 F4 effect key is removed with the family split). The
+        # Emitter A/B keys: F4 the hull-program emitters (its own flag, so the
+        # population is judged apart from the effects gain), F5 additive, F6
+        # the emission source gain of all twenty pairs (F7 is the telemetry
+        # marker, F8 the capture key; the 2026-09-16 effect-family key and its
+        # option stay removed). The
         # keys are polled only inside the comparison sampler, so an ordinary
         # launch stays at zero queries; inside it they are unconditional, so
         # an option that was not requested answers with a logged refusal.
         self.assertIn('const bool emitter_compare=screen_emission_additive_requested'
-                      ' || emission_source_gain!=1.f;', polling)
-        for key, call in (('VK_F5', 'ctx.motion_output.screen_emission_additive_toggle()'),
+                      ' || emission_source_gain!=1.f || hull_emission_gain!=1.f;', polling)
+        for key, call in (('VK_F4', 'ctx.motion_output.hull_emission_gain_toggle()'),
+                          ('VK_F5', 'ctx.motion_output.screen_emission_additive_toggle()'),
                           ('VK_F6', 'ctx.motion_output.emission_source_gain_toggle()')):
             self.assertIn(f'(GetAsyncKeyState({key})&0x8000)!=0;', polling)
+            self.assertEqual(capture.count(f'GetAsyncKeyState({key})'), 1, 'one owner per function key')
             self.assertIn(call, polling)
-        for key, label in (('ctrl_shift_f5', 'BULLETS'), ('ctrl_shift_f6', 'EMISSION')):
+        for key, label in (('ctrl_shift_f4', 'HULL'), ('ctrl_shift_f5', 'BULLETS'), ('ctrl_shift_f6', 'EMISSION')):
             self.assertIn(f'comparison_emitter(ctx,"{key}","{label}"', polling)
-        for removed in ('VK_F4', 'ctrl_shift_f4', 'effect_source_gain', 'X3M_EFFECT_SOURCE_GAIN'):
+        for removed in ('effect_source_gain', 'X3M_EFFECT_SOURCE_GAIN'):
             self.assertNotIn(removed, capture)
         self.assertNotIn('VK_F7', capture)  # telemetry.cpp owns Ctrl+Shift+F7
         emitter = extract_function(capture, 'void comparison_emitter(')
@@ -154,7 +158,9 @@ class ComparisonHotkeys(unittest.TestCase):
         for signature, flag in (('int MotionOutput::screen_emission_additive_toggle(',
                                  'screen_additive_enabled_ = !screen_additive_enabled_;'),
                                 ('int MotionOutput::emission_source_gain_toggle(',
-                                 'source_gain_enabled_ = !source_gain_enabled_;')):
+                                 'source_gain_enabled_ = !source_gain_enabled_;'),
+                                ('int MotionOutput::hull_emission_gain_toggle(',
+                                 'hull_gain_enabled_ = !hull_gain_enabled_;')):
             body = extract_function(motion_source, signature)
             self.assertIn(f'if (available) {flag}', body)
             self.assertIn('return available ?', body)
@@ -172,6 +178,11 @@ class ComparisonHotkeys(unittest.TestCase):
         draws = extract_function(motion_source, 'MotionRoute MotionOutput::before_draw(')
         self.assertIn('shadow_.screen_additive_pair && screen_additive_enabled_ &&', draws)
         self.assertIn('shadow_.source_gain_eligible_variant && source_gain_enabled_', draws)
+        # The hull emitters read their own flag: F6 no longer reaches them.
+        self.assertIn('shadow_.ps_hull_program && hull_gain_enabled_ && route.submit', draws)
+        self.assertNotIn('hull', extract_function(motion_source, 'int MotionOutput::emission_source_gain_toggle('))
+        self.assertIn('const bool available = hull_emission_gain_requested_;',
+                      extract_function(motion_source, 'int MotionOutput::hull_emission_gain_toggle('))
         # One additive telemetry line per Present, counters reset every frame.
         additive = extract_function(motion_source, 'void MotionOutput::log_screen_additive_frame(')
         self.assertIn('screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x toggled=%u', additive)

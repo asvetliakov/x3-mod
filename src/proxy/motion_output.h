@@ -629,8 +629,11 @@ public:
     void configure_emission_source_gain(float gain) noexcept; // one gain for all twenty pairs
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
     // Emitter plan phase 3: the same gain over the twelve hull programs' ADD
-    // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. Shares the F6 toggle.
+    // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. Own toggle
+    // (Ctrl+Shift+F4): 1 on, 0 off, -1 not requested (logged no-op); the
+    // prebuilt variants stay, nothing is created or released.
     void configure_hull_emission_gain(float gain) noexcept;
+    int hull_emission_gain_toggle() noexcept;
     bool hull_emission_gain_requested() const noexcept { return hull_emission_gain_requested_; }
     // Runtime A/B of the source gain (Ctrl+Shift+F6, comparison-hotkeys.md):
     // the prebuilt variants stay; the per-draw path stops selecting them (and
@@ -1213,6 +1216,7 @@ private:
     // the PS bind (rolled back on failure) and the restore after the draw.
     void prepare_hull_gain(const MotionDrawCall&, MotionRoute&) noexcept;
     void finish_hull_gain(MotionRoute&) noexcept;
+    void log_hull_emission_draw(const MotionDrawCall&, unsigned program) noexcept; // F8 capture frames only
     // Additive option: the exact-state admission, the DESTBLEND/PS apply
     // (rolled back on a failed second step) and the restore after the draw.
     void prepare_screen_additive(const MotionDrawCall&, MotionRoute&) noexcept;
@@ -1402,16 +1406,19 @@ private:
     std::uint32_t source_gain_logged_[4]{};
     std::uint32_t source_gain_pair_logged_ = 0; // bit per registry pair: first admission logged this device epoch (at most 20 lines)
     // Hull-emitter gain (emitter plan phase 3): X3M_HULL_EMISSION_GAIN=G
-    // (finite 1..8, 1 = off, needs the effects gain), one whole-output variant
-    // per covered hull program at creation, ONE/ONE admission per draw; the
-    // F6 toggle (source_gain_enabled_) covers it. Per-frame accounting:
-    // admitted draws, refusals by blend state, covered draws without a
-    // variant, routed draws (the motion route took the draw), unknown state,
-    // device state, bind failures; programs = bit per admitted program.
+    // (finite 1..8, 1 = off, needs HDR only), one whole-output variant
+    // per covered hull program at creation, ONE/ONE admission per draw; its
+    // own F4 toggle (hull_gain_enabled_). Per-frame accounting: admitted
+    // draws, refusals by blend state (of which refused_opaque = blend off,
+    // refused_alpha = SRCALPHA/INVSRCALPHA), covered draws without a variant,
+    // ONE/ONE draws a route already took (expected 0: the routes admit no
+    // ONE/ONE draw), unknown state, device state, bind failures; programs =
+    // bit per admitted program.
     bool hull_emission_gain_requested_ = false;
     float hull_emission_gain_ = 1.f;
-    struct { std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0, programs = 0; } hull_gain_counts_;
-    std::uint32_t hull_gain_logged_[3]{}; // per-device sample caps: blend, bind_failed, state
+    bool hull_gain_enabled_ = true; // Ctrl+Shift+F4, default on; gates entry to prepare_hull_gain only
+    struct { std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0, programs = 0, refused_opaque = 0, refused_alpha = 0; } hull_gain_counts_;
+    std::uint32_t hull_gain_logged_[4]{}; // per-device sample caps: blend, bind_failed, state, routed
     std::uint32_t hull_gain_program_logged_ = 0; // bit per hull program: first admission logged this device epoch (at most 12 lines)
     bool original_fill_requested_ = false; // X3M_ORIGINAL_FILL=K (finite 0..0.5), exclusive with linear materials
     float original_fill_ = 0.f;

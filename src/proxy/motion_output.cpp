@@ -2062,11 +2062,20 @@ int MotionOutput::screen_emission_additive_toggle() noexcept {
 int MotionOutput::emission_source_gain_toggle() noexcept {
     const bool available = emission_source_gain_requested_ && emission_source_gain_ != 1.f;
     if (available) source_gain_enabled_ = !source_gain_enabled_;
-    // One key for the effects pairs and the hull emitters: the hull admission
-    // reads the same flag (hull=1 when its population is configured).
-    log("emission_source_gain_toggle device=%llu frame=%llu accepted=%u enabled=%u requested=%u gain=%g hull=%u",
-        id_, frame_, unsigned(available), unsigned(source_gain_enabled_), unsigned(emission_source_gain_requested_), double(emission_source_gain_), unsigned(hull_emission_gain_requested_));
+    // The twenty effects pairs only; the phase-3 population has its own key (F4).
+    log("emission_source_gain_toggle device=%llu frame=%llu accepted=%u enabled=%u requested=%u gain=%g",
+        id_, frame_, unsigned(available), unsigned(source_gain_enabled_), unsigned(emission_source_gain_requested_), double(emission_source_gain_));
     return available ? (source_gain_enabled_ ? 1 : 0) : -1;
+}
+// Ctrl+Shift+F4: the hull-program emitters alone (emitter plan phase 3), so
+// the population can be judged apart from the effects gain. The variants were
+// created at registration; off means prepare_hull_gain is never entered.
+int MotionOutput::hull_emission_gain_toggle() noexcept {
+    const bool available = hull_emission_gain_requested_;
+    if (available) hull_gain_enabled_ = !hull_gain_enabled_;
+    log("hull_emission_gain_toggle device=%llu frame=%llu accepted=%u enabled=%u requested=%u gain=%g",
+        id_, frame_, unsigned(available), unsigned(hull_gain_enabled_), unsigned(hull_emission_gain_requested_), double(hull_emission_gain_));
+    return available ? (hull_gain_enabled_ ? 1 : 0) : -1;
 }
 int MotionOutput::ambient_occlusion_toggle() noexcept {
     if (!ao_requested_) return -1;
@@ -3700,9 +3709,9 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     if (shadow_.source_gain_eligible_variant && source_gain_enabled_
             && !route.routed && !route.composition && route.submit) prepare_source_gain(call, route);
     // Hull-emitter gain: one bool test when the option is off or the bound PS
-    // is not one of the twelve; the F6 flag is shared with the effects gain.
-    // A routed or composed draw is refused inside (counted refused_routed).
-    if (shadow_.ps_hull_program && source_gain_enabled_ && route.submit) prepare_hull_gain(call, route);
+    // is not one of the twelve; its own F4 flag (F6 is the effects gain's).
+    // A routed or composed draw takes the same blend verdict inside.
+    if (shadow_.ps_hull_program && hull_gain_enabled_ && route.submit) prepare_hull_gain(call, route);
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
         mark_cutout_candidate(route);
     if (telemetry::draw_enabled()) {
@@ -4546,16 +4555,24 @@ void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
 // brightness change of what the draw adds only under ADD ONE/ONE into the
 // FP16 scene target; the law is renderer::linear_emission_hull_source_gain_blend
 // (no screen substitution in this population: an opaque or screen draw of the
-// same program stays native, counted refused_blend). A draw the motion or
-// composition route already took keeps its routed pair (refused_routed): the
-// route binds opaque draws only, so a ONE/ONE emitter is never routed and the
-// two never compose. Any other state, an unknown blend shadow or a covered
-// program without a variant keeps the native program: fail closed, counted
-// per reason, the first failure_log_limit samples of blend/state/bind logged
-// per device epoch. Per-draw cost: one bool test for every draw of an
-// uncovered program; the blend reads are the cached draw-time shadow.
+// same program stays native, counted refused_blend). The blend verdict comes
+// first, whatever route took the draw: the motion route admits blend-off
+// draws and the SRCALPHA/INVSRCALPHA fade band only (gate 4, fade_arm_admits)
+// and the composition route the fade band, the SM1 screen pairs and the
+// effects pairs, so a routed or composed draw of a covered program is never
+// ONE/ONE and is counted with the other opaque/alpha refusals
+// (refused_blend, of which opaque = blend off, alpha = source-over);
+// refused_routed is the fail-closed witness of the impossible remainder, a
+// ONE/ONE draw a route already took (its routed pair is kept). Any other
+// state, an unknown blend shadow or a covered program without a variant
+// keeps the native program: fail closed, counted per reason, the first
+// failure_log_limit samples of blended-refusal/state/bind logged per device
+// epoch (a blend-off draw is counted, not sampled). Per-draw cost: one bool
+// test for every draw of an uncovered program; a blend-off draw of a covered
+// program ends at the ALPHABLENDENABLE shadow (the value gate 4 just read, a
+// cache hit with the hooks off); the factor reads are the cached draw-time
+// shadow.
 void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& route) noexcept {
-    if (route.routed || route.composition) { ++hull_gain_counts_.refused_routed; return; }
     if (hdr_state_ != HdrState::Active || !route.scene || !scene_open_ || shadow_.recording || !call.primitives || main_msaa_) {
         ++hull_gain_counts_.refused_state;
         if (hull_gain_logged_[2] < failure_log_limit) {
@@ -4567,18 +4584,30 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
         }
         return;
     }
-    bool known = state_known(3); known = state_known(5) && known;
+    if (!state_known(3)) { ++hull_gain_counts_.refused_unknown; return; }
+    if (!shadow_.states[3]) { ++hull_gain_counts_.refused_blend; ++hull_gain_counts_.refused_opaque; return; } // the law refuses blend off whatever the factors are
+    bool known = state_known(5);
     for (unsigned i = 0; i < 3; ++i) known = blend_known(i) && known; // the colour triple gates; the alpha triple is native either way
     if (!known) { ++hull_gain_counts_.refused_unknown; return; }
     const auto verdict = renderer::linear_emission_hull_source_gain_blend(shadow_.states[3], shadow_.states[5],
         shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2]);
     if (verdict != renderer::SourceGainBlend::Admit) {
         ++hull_gain_counts_.refused_blend;
+        if (shadow_.composition_blend[0] == D3DBLEND_SRCALPHA && shadow_.composition_blend[1] == D3DBLEND_INVSRCALPHA) ++hull_gain_counts_.refused_alpha;
         if (hull_gain_logged_[0] < failure_log_limit) {
             ++hull_gain_logged_[0];
             log("hull_emission_refused device=%llu frame=%llu vs=%016llx ps=%016llx reason=blend blend=%lu src=%lu dst=%lu op=%lu sepalpha=%ld srgb=%lu",
                 id_, frame_, shadow_.vs_hash, shadow_.ps_hash, shadow_.states[3], shadow_.composition_blend[0], shadow_.composition_blend[1],
                 shadow_.composition_blend[2], composition_blend_field(3), shadow_.states[5]);
+        }
+        return;
+    }
+    if (route.routed || route.composition) { // unreachable by the routes' own blend gates; the routed pair is kept
+        ++hull_gain_counts_.refused_routed;
+        if (hull_gain_logged_[3] < failure_log_limit) {
+            ++hull_gain_logged_[3];
+            log("hull_emission_refused device=%llu frame=%llu vs=%016llx ps=%016llx reason=routed routed=%u composition=%u fade_arm=%u",
+                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, unsigned(route.routed), unsigned(route.composition), unsigned(route.fade_arm));
         }
         return;
     }
@@ -4611,6 +4640,40 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
         hull_gain_program_logged_ |= bit;
         log("hull_emission_program device=%llu frame=%llu vs=%016llx ps=%016llx program=%u gain=%g", id_, frame_, shadow_.vs_hash, shadow_.ps_hash, program, double(hull_emission_gain_));
     }
+    if (capture_) log_hull_emission_draw(call, program);
+}
+// F8 capture frames only: one line per admitted hull-emitter draw naming the
+// object that carries the emitter. The ONE/ONE draw is never routed, so the
+// node identity is sampled here exactly as the route samples it (sample_scope
+// on a scratch route: node/camera handles and serials, model, LOD, epochs; the
+// fixture's scope under the fixture seam), known=0 with zero fields when the
+// scope is unavailable. Screen position: the projected object origin of the
+// VS row's clip-row window (translation column over w, in target pixels) when
+// the VS has a profile row and its rows are known; an unrouted draw has no
+// rectangle (the locked-prefix bound belongs to the SM1 screen pairs).
+// tools/analysis/summarize_hull_emitters.py joins these lines per model.
+void MotionOutput::log_hull_emission_draw(const MotionDrawCall& call, unsigned program) noexcept {
+    MotionRoute identity{};
+    const bool known = sample_scope(identity);
+    const auto& k = identity.key;
+    bool origin = false; float x = 0.f, y = 0.f, w = 0.f;
+    if (shadow_.vs_row) {
+        const std::size_t window = window_of(shadow_.vs_row->matrix_register);
+        if (window < motion_matrix_windows_max && shadow_.rows_known[window]) {
+            const float* c = shadow_.rows[window];
+            w = c[15];
+            if (w > 1e-6f) {
+                x = (c[3] / w * .5f + .5f) * float(target_width_); y = (.5f - c[7] / w * .5f) * float(target_height_);
+                origin = std::isfinite(x) && std::isfinite(y);
+            }
+        }
+    }
+    log("hull_emission_draw device=%llu frame=%llu index=%lu vs=%016llx ps=%016llx program=%u routed=0 gain=%g known=%u node=%p node_handle=%lu node_serial=%llu camera_handle=%lu model=%08lx lod=%08lx load_epoch=%llu registry_epoch=%llu primitives=%lu vertices=%lu indexed=%u origin_known=%u origin_px=%.1f,%.1f origin_w=%.6g",
+        id_, frame_, counters_.draws, shadow_.vs_hash, shadow_.ps_hash, program, double(hull_emission_gain_), unsigned(known),
+        reinterpret_cast<void*>(k.node), static_cast<unsigned long>(k.node_handle), k.object_lifetime, static_cast<unsigned long>(k.camera_handle),
+        static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod), identity.load_epoch, identity.registry_epoch,
+        static_cast<unsigned long>(call.primitives), static_cast<unsigned long>(call.vertex_count), unsigned(call.indexed),
+        unsigned(origin), double(x), double(y), double(w));
 }
 // After the native draw: the application's program back (the shadowed
 // pointer; nothing of the application's runs between prepare and finish,
@@ -6102,12 +6165,15 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (hull_emission_gain_requested_) {
         // Same shape for the hull emitters: one line per frame that saw a
         // covered program reach prepare_hull_gain; programs = bit per admitted
-        // program (twelve); refused_other = routed + unknown + state + bind.
+        // program (twelve); refused_other = routed + unknown + state + bind;
+        // opaque and alpha are the blend-off and source-over parts of
+        // refused_blend; toggled is the F4 flag.
         const auto& g = hull_gain_counts_;
         const std::uint32_t other = g.refused_routed + g.refused_unknown + g.refused_state + g.bind_failures;
         if (g.admitted || g.refused_blend || g.refused_variant || other)
-            log("hull_emission_frame device=%llu frame=%llu gain=%g admitted=%u refused_blend=%u refused_variant=%u programs=%03x refused_other=%u refused_routed=%u refused_unknown=%u refused_state=%u bind_failures=%u",
-                id_, frame_, double(hull_emission_gain_), g.admitted, g.refused_blend, g.refused_variant, g.programs, other, g.refused_routed, g.refused_unknown, g.refused_state, g.bind_failures);
+            log("hull_emission_frame device=%llu frame=%llu gain=%g admitted=%u refused_blend=%u refused_variant=%u programs=%03x refused_other=%u refused_routed=%u refused_unknown=%u refused_state=%u bind_failures=%u opaque=%u alpha=%u toggled=%u",
+                id_, frame_, double(hull_emission_gain_), g.admitted, g.refused_blend, g.refused_variant, g.programs, other, g.refused_routed, g.refused_unknown, g.refused_state, g.bind_failures,
+                g.refused_opaque, g.refused_alpha, unsigned(hull_gain_enabled_));
         hull_gain_counts_ = {};
     }
     if (original_fill_requested_ && original_fill_draws_) {

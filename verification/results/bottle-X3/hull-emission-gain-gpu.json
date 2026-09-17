@@ -48,7 +48,7 @@
     "vs_4944d81dfe531b37.bin": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
     "vs_494fe349b8bc12ec.bin": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7"
   },
-  "executable_sha256": "5ca472b1159c26546693d8909ad331d439f0cbed575cd92989b89a5952c38e1a",
+  "executable_sha256": "e19f89beef3dee342d20d6ea99fa87f78428ba1d9fd159996517bab269cef0ed",
   "code_sha256": {
     "src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
     "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",

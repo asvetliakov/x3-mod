@@ -18,7 +18,7 @@ question is which *materials* get a gain, not which shaders.
 | Sun flare sprites (62) | effects pair | 60 additive | Gain (same option); watch Auto exposure, the sun is the meter's anchor |
 | Impact / shockwave / shield-hit sprites | effects pair | screen | Gain (same option); transient, judge in combat |
 | Dock tunnels, station shields, Goner beams, hive lightning | effects pair | mixed | Gain (same option) |
-| Position lights, deco flares, warning signs, warp tunnels | hull programs (`standard_lighting`, `XT_standard_lighting`) with ONE/ONE materials | additive | Phase 3: same `--emission-source-gain G` over twelve covered hull programs, opt-in with `--hull-emitters`, blend-keyed on ONE/ONE, whole-output gain; wired in the proxy (2026-09-17), first user bracket pending |
+| Position lights, deco flares, warning signs, warp tunnels | hull programs (`standard_lighting`, `XT_standard_lighting`) with ONE/ONE materials | additive | Phase 3: own gain `--hull-emitters --hull-emission-gain G` over twelve covered hull programs (falls back to the `--emission-source-gain` value), own key Ctrl+Shift+F4, blend-keyed on ONE/ONE, whole-output gain; wired in the proxy (2026-09-17), first isolated user bracket pending |
 | Explosions, particles | unwitnessed program | unknown | Capture one in the next combat run; if it is the effects pair it is already covered |
 | Nebula fog (`nebulafog`, 277 materials), nebula stars, planet atmosphere | own programs | screen / alpha | Not emitters: no gain |
 | Alpha-blended smoke, dust, trails | SRCALPHA materials | alpha | No gain (they are occluders, not sources) |
@@ -59,21 +59,40 @@ question is which *materials* get a gain, not which shaders.
    closed: a covered program whose creation failed is counted
    `refused_variant` per draw), per-draw admission only when the draw-time
    blend shadow reads ADD ONE/ONE with sRGB write off
-   (`linear_emission_hull_source_gain_blend`; opaque and screen draws of the
-   same program are `refused_blend`, a routed draw `refused_routed`), the
+   (`linear_emission_hull_source_gain_blend`; opaque and alpha/screen draws
+   of the same program are `refused_blend`, split `opaque=` / `alpha=`), the
    variant bound for that draw and the application's program restored after
-   it; the same `--emission-source-gain G` carries the gain,
-   `--hull-emitters` opts the population in (`X3M_HULL_EMISSION_GAIN`,
-   refused in the DLL without the effects gain) and Ctrl+Shift+F6 toggles both
-   populations. Telemetry: `hull_emission_frame ... admitted= refused_blend=
-   refused_variant= programs=` (bit per admitted program) per Present, the
-   first admission per program (`hull_emission_program`) and capped refusal
-   samples. Default path: one bool test per draw. Evidence: host oracle, the
+   it. `--hull-emitters` opts the population in with its own
+   `--hull-emission-gain G` (`X3M_HULL_EMISSION_GAIN`, needs `--hdr` only;
+   without it the value of `--emission-source-gain` is taken) and its own key,
+   Ctrl+Shift+F4 (`hull_emission_gain_toggle`; F6 stays the effects gain).
+   *Routed draws (run 38 C finding, 2026-09-17)*: the motion route admits
+   blend-off draws and the SRCALPHA/INVSRCALPHA fade band only (gate 4,
+   `fade_arm_admits`), the composition route the fade band, the SM1 screen
+   pairs and the effects pairs, so a routed draw of a covered program is
+   never ONE/ONE: run 114's 1,467,914 `refused_routed` were the opaque
+   station-hull draws of the same twelve programs, which the ONE/ONE law
+   refuses anyway. The admission now takes the blend verdict first for every
+   draw (a blend-off draw ends at the ALPHABLENDENABLE shadow, a cache hit),
+   and `refused_routed` is the fail-closed witness of a ONE/ONE draw a route
+   took, expected 0; no gained routed variant exists because none could ever
+   be selected under the ONE/ONE law. `refused_state` is the frames outside
+   the FP16 scene (main menu, exit to menu: `hdr=0 scene=0`), rightly refused.
+   Telemetry: `hull_emission_frame ... admitted= refused_blend= opaque=
+   alpha= refused_routed= programs= toggled=` (bit per admitted program) per
+   Present, the first admission per program (`hull_emission_program`), capped
+   samples of blended refusals, and on an F8 capture frame one
+   `hull_emission_draw` line per admitted draw (program, node handle/serial,
+   model, LOD, epochs, primitives, projected object origin in pixels), joined
+   per model by `tools/analysis/summarize_hull_emitters.py`. Default path:
+   one bool test per draw. Evidence: host oracle, the
    `run_linear_material.py --hull-emission-gain` GPU slice (diffuse-authored
    emitter face x G at 0 FP16 codes, black face identical) and the
-   `run_sun_share_live.py --case hull_emission` live case
-   ([screen-emission ledger](../verification/screen-emission.md)). The
-   first user bracket at G = 2 is the open step.
+   `run_sun_share_live.py --case hull_emission` live case (admitted, refused,
+   toggled-off and toggled-on frames, the routed opaque frame identical
+   across gains; [screen-emission ledger](../verification/screen-emission.md)).
+   The first isolated user bracket (`--hull-emitters --hull-emission-gain 4`,
+   F4) is the open step.
 4. **Bloom**: `--bloom-source-clamp` bounds what a gained emitter feeds the
    halo; gains then change brightness and exposure but not halo size
    ([bloom falloff](bloom-falloff.md)). The user brackets 1.0 / 2.0 / none.

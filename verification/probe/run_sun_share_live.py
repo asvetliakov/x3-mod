@@ -343,17 +343,21 @@ def validate(text, trace, work, case):
                 negative_selftest=case in ('cutout_drop', 'alpha_mask'), linear_materials=case not in ORIGINAL_CASES, **original)
 
 def validate_hull_emission(text, trace, gain):
-    # Fixture: three frames on B (opaque, additive, screen); the additive frame
-    # is gain x base within one FP16 code, the others the base, alpha native.
+    # Fixture: five frames on B (opaque, additive, screen, additive after the
+    # F4 action switched the population off, additive after it switched it on
+    # again); an admitted additive frame is gain x base within one FP16 code,
+    # every other frame the base, alpha native.
     lines = text.splitlines()
     assert any(l.startswith('RESULT PASS ') for l in lines) and not any(l.startswith('RESULT FAIL') for l in lines), 'native fixture completion'
     rows = [fields(l) for l in lines if l.startswith('HULL_EMISSION ')]
-    assert [(r['kind'], int(r['frame'])) for r in rows] == [('opaque', 0), ('additive', 1), ('screen', 2)], rows
+    assert [(r['kind'], int(r['frame'])) for r in rows] == [('opaque', 0), ('additive', 1), ('screen', 2), ('additive_off', 3), ('additive_on', 4)], rows
     for r in rows:
         assert float(r['gain']) == gain and int(r['mismatches']) == 0 and int(r['alpha_mismatches']) == 0 and int(r['max_codes']) <= 1, r
         assert int(r['pixels']) >= 100 and int(r['positive']) == 3 * int(r['pixels']), r
-        assert float(r['factor']) == (gain if r['kind'] == 'additive' else 1.0), r
+        assert float(r['factor']) == (gain if r['kind'] in ('additive', 'additive_on') else 1.0), r
     assert not any(l.startswith('HULL_EMISSION_DIFF ') for l in lines)
+    toggles = [(int(r['frame']), int(r['state'])) for r in (fields(l) for l in lines if l.startswith('HULL_EMISSION_TOGGLE '))]
+    assert toggles == ([(3, -1), (4, -1)] if gain == 1.0 else [(3, 0), (4, 1)]), toggles
     # DLL: one whole-output variant of the covered program at the gain, the
     # ONE/ONE draw admitted (programs bit 7) and the two other draws refused
     # on blend state; with the option off, no hull line at all.
@@ -362,24 +366,49 @@ def validate_hull_emission(text, trace, gain):
     frames = [fields(l) for l in traces if l.startswith('hull_emission_frame ')]
     programs = [fields(l) for l in traces if l.startswith('hull_emission_program ')]
     modes = [l for l in traces if l.startswith('hull_emission_gain_mode ')]
+    draws = [fields(l) for l in traces if l.startswith('hull_emission_draw ')]
+    routes = [fields(l) for l in traces if l.startswith('motion_route ') and l.split(' ps=')[1][:16] == '7c83ed50c9894e44']
+    # The capture window opens at frame 1 (capture_start counts Presents), so
+    # the per-draw record covers the four blended draws of the covered pair:
+    # none is routed, with the option on or off (gate 4 refuses blending).
+    # Frame 0's blend-off draw is the routed one; its witness is the hull
+    # accounting (opaque=1, refused_routed=0) and, across the two gains, the
+    # identical colour hash of that frame (checked by the caller).
+    assert [(int(r['frame']), r['routed'], r['blend']) for r in routes] == [(1, '0', '1'), (2, '0', '1'), (3, '0', '1'), (4, '0', '1')], routes
     if gain == 1.0:
-        assert not variants and not frames and not programs and not modes, (variants, frames, programs, modes)
-        assert not any(l.startswith('hull_emission') for l in traces), 'gain 1 leaves no hull trace'
+        assert not variants and not frames and not programs and not modes and not draws, (variants, frames, programs, modes, draws)
+        # The refused F4 action is the only hull line of an option-off run.
+        hull = [l for l in traces if l.startswith('hull_emission')]
+        assert len(hull) == 2 and all(l.startswith('hull_emission_gain_toggle ') and ' accepted=0 enabled=1 requested=0 ' in l for l in hull), hull
     else:
-        assert modes == ['hull_emission_gain_mode requested=1 enabled=1 source_gain=%g gain=%g gain_valid=1' % (gain, gain)], modes
+        # No effects gain in this run: the hull population stands alone.
+        assert modes == ['hull_emission_gain_mode requested=1 enabled=1 source_gain=1 gain=%g gain_valid=1' % gain], modes
+        assert not any(l.startswith('emission_source_gain') for l in traces)
         assert len(variants) == 1 and (variants[0]['original'], int(variants[0]['program']), variants[0]['transform'], variants[0]['create']) == ('7c83ed50c9894e44', HULL_PROGRAM_INDEX, '0', '00000000'), variants
         assert float(variants[0]['gain']) == gain, variants
-        # Frame 0's opaque draw of the reviewed pair is taken by the motion
-        # route, so the hull gain refuses it as routed (the routed pair keeps
-        # its bytes); the screen draw is refused on blend state.
-        assert [(int(r['frame']), int(r['admitted']), int(r['refused_blend']), int(r['refused_variant']), r['programs'], int(r['refused_other']), int(r['refused_routed'])) for r in frames] == \
-            [(0, 0, 0, 0, '000', 1, 1), (1, 1, 0, 0, '%03x' % (1 << HULL_PROGRAM_INDEX), 0, 0), (2, 0, 1, 0, '000', 0, 0)], frames
+        # Frame 0's blend-off draw of the reviewed pair is the one the motion
+        # route takes: the hull gain counts it opaque, never routed (the
+        # routed pair keeps its bytes); the screen draw is refused on blend
+        # state; frame 3 (population off) never enters the admission, so it
+        # has no line; frame 4 admits again.
+        bit = '%03x' % (1 << HULL_PROGRAM_INDEX)
+        assert [(int(r['frame']), int(r['admitted']), int(r['refused_blend']), int(r['opaque']), int(r['alpha']), r['programs'], int(r['refused_other']), int(r['refused_routed']), int(r['refused_variant']), r['toggled']) for r in frames] == \
+            [(0, 0, 1, 1, 0, '000', 0, 0, 0, '1'), (1, 1, 0, 0, 0, bit, 0, 0, 0, '1'), (2, 0, 1, 0, 0, '000', 0, 0, 0, '1'), (4, 1, 0, 0, 0, bit, 0, 0, 0, '1')], frames
         assert [(int(r['frame']), int(r['program']), r['ps']) for r in programs] == [(1, HULL_PROGRAM_INDEX, '7c83ed50c9894e44')], programs
         refused = [fields(l) for l in traces if l.startswith('hull_emission_refused ')]
         assert [(int(r['frame']), r['reason'], r['blend'], r['src'], r['dst']) for r in refused] == [(2, 'blend', '1', '2', '4')], refused
         assert not any(l.startswith(('hull_emission_bind_failed', 'hull_emission_refused_state', 'motion_output_restore_failed')) for l in traces)
+        pressed = [fields(l) for l in traces if l.startswith('hull_emission_gain_toggle ')]
+        assert [(int(r['frame']), r['accepted'], r['enabled'], r['requested']) for r in pressed] == [(3, '1', '0', '1'), (4, '1', '1', '1')], pressed
+        # Capture frames: one line per admitted draw naming object B (the
+        # fixture scope: node 0x1100, handle 8, serial 12, model 0x12, LOD 2).
+        assert [(int(r['frame']), int(r['program']), r['ps'], r['routed'], r['known'], int(r['node_handle']), int(r['node_serial']), r['model'], r['lod'], int(r['primitives'])) for r in draws] == \
+            [(f, HULL_PROGRAM_INDEX, '7c83ed50c9894e44', '0', '1', 8, 12, '00000012', '00000002', 1) for f in (1, 4)], draws
+        assert all(float(r['gain']) == gain and int(r['node'], 16) == 0x1100 for r in draws), draws
+    colour = [(int(r['frame']), r['hash']) for r in (fields(l) for l in lines if l.startswith('COLOR '))]
     return dict(gain=gain, frames=[dict(kind=r['kind'], pixels=int(r['pixels']), max_codes=int(r['max_codes'])) for r in rows],
-                variants=len(variants), admitted=sum(int(r['admitted']) for r in frames), refused_blend=sum(int(r['refused_blend']) for r in frames))
+                variants=len(variants), admitted=sum(int(r['admitted']) for r in frames), refused_blend=sum(int(r['refused_blend']) for r in frames),
+                refused_routed=sum(int(r['refused_routed']) for r in frames), draw_lines=len(draws), colour=colour)
 
 def validate_cascade_capture(trace, work):
     """The F8 record of the cascade apply: per applied capture frame one basis
@@ -453,10 +482,14 @@ def main():
                     work = raw/case/('gain-%g' % gain); work.mkdir(parents=True)
                     shutil.copy2(fixture, work/'fixture.exe'); shutil.copy2(dll, work/'d3d9.dll')
                     env = {k:v for k,v in os.environ.items() if not k.startswith('X3M_')}
+                    # No effects gain: the hull population stands alone (its own
+                    # option and key). The capture window covers every frame of
+                    # the script, so the per-draw hull_emission_draw lines and
+                    # the motion_route lines of the covered pair are on record.
                     env.update(X3M_MOTION_OUTPUT='1', X3M_TAA='0', X3M_HDR='1', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
                                X3M_SCENE_HOOK='0', X3M_OWNERSHIP='0', X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1',
-                               X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0', X3M_MOTION_RT_MODE='perdraw', X3M_STATE_SHADOW='1',
-                               X3M_EMISSION_SOURCE_GAIN=repr(HULL_GAIN), WINEDLLOVERRIDES='d3d9=n,b')
+                               X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='8', X3M_MOTION_RT_MODE='perdraw', X3M_STATE_SHADOW='1',
+                               WINEDLLOVERRIDES='d3d9=n,b')
                     if gain != 1.0: env['X3M_HULL_EMISSION_GAIN'] = repr(gain)
                     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work/'fixture.exe'),
                                *('Z:'+str(p) for p in programs[:2]), 'hullemission']
@@ -467,6 +500,14 @@ def main():
                     logs = list((work/'x3-modern-captures').glob('session-*.log')); assert len(logs) == 1
                     check = validate_hull_emission((work/'stdout.txt').read_text(), logs[0].read_text(), gain)
                     report['cases'][case]['gain-%g' % gain] = dict(check, elapsed_seconds=time.monotonic()-start, command=command)
+                # Across the two runs the refused frames (0 opaque/routed, 2
+                # screen, 3 toggled off) present the same colour hash: the
+                # option changes only the admitted ONE/ONE frames (1 and 4).
+                on, off = (dict(report['cases'][case]['gain-%g' % g]['colour']) for g in (HULL_GAIN, 1.0))
+                assert set(on) == set(off) == {0, 1, 2, 3, 4}, (on, off)
+                same = sorted(f for f in on if on[f] == off[f])
+                assert same == [0, 2, 3], (on, off)
+                report['cases'][case]['identical_frames_across_gains'] = same
                 continue
             work = raw/case; work.mkdir()
             shutil.copy2(fixture, work/'fixture.exe'); shutil.copy2(dll, work/'d3d9.dll')

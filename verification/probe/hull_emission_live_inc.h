@@ -6,8 +6,15 @@
 // ONE/ONE emitter materials bind their slots. Three frames over an opaque
 // black underlay on B: opaque (blend off: refused, the base), ADD ONE/ONE
 // (admitted: G x base within one FP16 code, alpha native) and screen
-// ONE/INVSRCCOLOR (refused: base). With X3M_HULL_EMISSION_GAIN unset (1) the
-// same script must leave every frame at the base (no variant, no admission).
+// ONE/INVSRCCOLOR (refused: base), then the same ONE/ONE draw after the
+// Ctrl+Shift+F4 action switched the population off (base) and on again
+// (G x base). The hull draw runs under object B's scope, so a capture frame
+// names B in its hull_emission_draw line. Frame 0's blend-off draw is the one
+// the motion route takes: the hull gain counts it opaque (never routed), and
+// the runner compares its colour hash with the gain-1 run (the routed pair's
+// output is the option-off output). With X3M_HULL_EMISSION_GAIN unset (1) the
+// same script must leave every frame at the base (no variant, no admission,
+// the toggle a refused no-op).
 void run_hull_emission(const char* bootstrap_vertex) {
     require(seam&&enabled&&hdr&&hdr_readback&&!taa,"hull emission live needs the HDR seam, its readback and TAA off");
     char gain_text[32]{};
@@ -30,9 +37,17 @@ void run_hull_emission(const char* bootstrap_vertex) {
         for(unsigned c=0;c<4;++c)static_cast<unsigned short*>(locked.pBits)[c]=float_to_half((which?black_texel:art_texel)[c]);
         api(t->UnlockRect(0),"hull emitter texture unlock");
     }
-    const char* kinds[]={"opaque","additive","screen"};
-    std::vector<float> base;unsigned base_pixels=0;
-    for(unsigned step=0;step<3;++step){
+    const char* kinds[]={"opaque","additive","screen","additive_off","additive_on"};
+    require(hull_toggle!=nullptr,"hull toggle export");
+    std::vector<float> base;unsigned base_pixels=0;bool toggled_on=true;
+    for(unsigned step=0;step<5;++step){
+        if(step>=3){
+            // The F4 action without the key, between frames like the sampler.
+            const int state=hull_toggle(d.p);toggled_on=gain!=1.f?!toggled_on:toggled_on;
+            std::printf("HULL_EMISSION_TOGGLE frame=%llu state=%d\n",frame,state);
+            require(state==(gain==1.f?-1:toggled_on?1:0),"toggle state: off, then on; refused without the option");
+        }
+        const bool additive=step==1||step>=3;
         frame_begin();
         // Opaque black underlay on B (the constant program, c0 = 0), so the
         // blended draws add to zero and the FP16 sums are exact.
@@ -47,6 +62,7 @@ void run_hull_emission(const char* bootstrap_vertex) {
         // The hull pair: material_state's lights and constants, the
         // application-class coefficients (c8..c11: specular, power,
         // reflection, diffuse) and the emitter slots.
+        scope(&b);
         material_state();
         const float coefficients[4][4]={{0,0,0,0},{8,0,0,0},{0,0,0,0},{1,0,0,0}};
         api(d->SetPixelShaderConstantF(8,coefficients[0],4),"hull coefficients");
@@ -54,7 +70,7 @@ void run_hull_emission(const char* bootstrap_vertex) {
         api(d->SetVertexShader(hull_vs.p),"hull VS");api(d->SetPixelShader(hull_ps.p),"hull PS");
         if(step){
             api(d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE),"blend on");api(d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_ONE),"src one");
-            api(d->SetRenderState(D3DRS_DESTBLEND,step==1?D3DBLEND_ONE:D3DBLEND_INVSRCCOLOR),"dest");api(d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD),"blend add");
+            api(d->SetRenderState(D3DRS_DESTBLEND,additive?D3DBLEND_ONE:D3DBLEND_INVSRCCOLOR),"dest");api(d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD),"blend add");
         }
         const Snapshot before=snapshot();
         api(d->DrawPrimitive(D3DPT_TRIANGLELIST,0,1),"hull emitter draw");++draw_index;
@@ -68,7 +84,7 @@ void run_hull_emission(const char* bootstrap_vertex) {
         unsigned w=0,h=0;const auto fp16=hdr_image(&w,&h);
         require(w==W&&h==H,"the FP16 target matches the main dimensions");
         // Inside B (edge band excluded): base on frame 0, the laws after.
-        const float factor=step==1?gain:1.f;
+        const float factor=additive&&toggled_on?gain:1.f;
         unsigned pixels=0,mismatches=0,alpha_mismatches=0,positive=0,max_codes=0,samples=0;
         if(step==0)base.assign(fp16.begin(),fp16.end());
         for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){
@@ -93,7 +109,7 @@ void run_hull_emission(const char* bootstrap_vertex) {
                     frame,kinds[step],double(gain),double(factor),pixels,positive,max_codes,mismatches,alpha_mismatches);
         require(pixels==base_pixels&&pixels>=100,"B covers the same pixel set on every frame");
         require(positive==3*pixels,"the emitter draw writes a positive colour on every lane of B");
-        require(!mismatches&&!alpha_mismatches,step==1?"ONE/ONE draw: gain x base within one FP16 code, alpha native":"refused draw: base within one FP16 code, alpha native");
+        require(!mismatches&&!alpha_mismatches,factor!=1.f?"ONE/ONE draw: gain x base within one FP16 code, alpha native":"refused or toggled-off draw: base within one FP16 code, alpha native");
         api(d->Present(nullptr,nullptr,nullptr,nullptr),"Present");
         ++frame;++frames_since_reset;
     }
