@@ -170,3 +170,19 @@ there is no sun-weighted AO v2 and no further scale work. The pass, its
 resources and its Reset/recovery handling are retained only as a base for
 screen-space shadow work, should the directional-shadows design choose that
 route (`docs/architecture/directional-shadows.md`, pending).
+
+## Jitter term in the AO projection (2026-09-17)
+
+`run_ambient_occlusion` fed the projection latch's `m20`/`m21` (both zero) while
+RT2 it reconstructs from is on the jittered raster, so the AO view positions
+were displaced by the raster jitter, up to 0.5 px. It now adds the same term the
+sun-shadow apply quad uses, from the same `jitter_` pair and the same
+`main_.width`/`main_.height` the pass already takes for `in.width`/`in.height`:
+`m20 += 2*jx/width`, `m21 += -2*jy/height` (NDC). Behaviour is unchanged on the
+default path, AO being default-off (`--ambient-occlusion`). Reverified: the four
+AO host test modules (13 tests, OK) and all seven live twins of
+`run_ambient_occlusion_live.py` (`ao-on`, `ao-off`, `ao-fault`, `ao-debug`,
+`ao-hdr`, `ao-toggle`, `ao-pollfault`) in bottle X3, PASS with 112/112/112/58/
+106/125/112 checks. The runner's own pass-level fixture
+(`run_ambient_occlusion.py`) covers `ambient_occlusion_pass.cpp`, which this
+change does not touch; `run_motion_output.py` carries no AO cases.

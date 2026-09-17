@@ -1945,7 +1945,14 @@ void MotionOutput::run_ambient_occlusion() noexcept {
     if (FAILED(hr)) { release(rt0); a.result = hr; return skip("depth_container"); }
     renderer::AmbientOcclusionFrame in{};
     in.depth = depth; in.target = rt0; in.width = main_.width; in.height = main_.height;
-    in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11; in.params.m20 = camera_scene_.m20; in.params.m21 = camera_scene_.m21;
+    // RT2 is on the jittered raster (jitter_rows adds jitter_ in pixels to
+    // the routed rows' clip x/y, +2 jx / width and -2 jy / height in NDC), so
+    // the quad's NDC -> view law subtracts the same offset through m20/m21;
+    // the engine's own projection latch carries none (camera_state p20/p21 = 0).
+    const float ao_jitter_x = in.width ? 2.f * jitter_[0] / float(in.width) : 0.f;
+    const float ao_jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
+    in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11;
+    in.params.m20 = camera_scene_.m20 + ao_jitter_x; in.params.m21 = camera_scene_.m21 + ao_jitter_y;
     in.params.m22 = ao_default_m22; in.params.m32 = ao_default_m32;
     in.params.radius_metres = ao_radius_metres_; in.params.units_per_metre = ao_units_per_metre; in.params.strength = ao_strength_;
     in.params.jitter_index = counters_.jitter_index;
