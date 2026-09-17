@@ -279,7 +279,7 @@ shadow_retention_frame device frame mode=census|live known
   buffer_changed buffer_gone buffer_orphaned orphan_probe
   box_exit age evicted flush=<none|epoch|reset|device|teardown|sun|observer>
   unseen_in_frustum unseen_outside                                   (level)
-  live_c0..live_c3 would_c0..would_c3 capped_c0..capped_c3           (level)
+  live_c0..live_c4 would_c0..would_c4 capped_c0..capped_c4           (level)
   drift_n drift_p99 drift_max                                        (units, static nodes re-verified this frame)
   age_max refs_held                                                  (level)
   sun_relatch cam_jump transit_survivors

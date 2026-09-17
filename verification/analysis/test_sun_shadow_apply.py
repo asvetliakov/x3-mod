@@ -205,6 +205,31 @@ class RunInputs(unittest.TestCase):
         with self.assertRaises(ValueError):
             apply.parse_apply_params(apply.line_fields(self.LINE.rsplit(',', 1)[0]))
 
+    def test_latch_law_fields(self):
+        # Since 2026-09-18 the line names the raster latch and pixel_centre=1;
+        # an older line has neither (the CLI's --add-pixel-centre supplies the
+        # term then); a line whose m20/m21 do not carry the term it claims is refused.
+        old_params, old_extra = apply.parse_apply_params(apply.line_fields(self.LINE))
+        self.assertFalse(old_extra['pixel_centre']); self.assertNotIn('raster_m20', old_extra)
+        centre = apply.pixel_centre_terms(1280, 768)
+        m20, m21 = -2 * .25 / 1280 + centre[0], -2 * .166667 / 768 + centre[1]
+        new = self.LINE.replace('m20=-0.000390625 m21=-0.000434028637', 'm20=%.9g m21=%.9g' % (m20, m21)) + ' raster_m20=-0.000390625 raster_m21=-0.000434028637 pixel_centre=1'
+        params, extra = apply.parse_apply_params(apply.line_fields(new))
+        self.assertTrue(extra['pixel_centre']); self.assertEqual((extra['raster_m20'], extra['raster_m21']), (-0.000390625, -0.000434028637))
+        self.assertAlmostEqual(params['m20'] - extra['raster_m20'], centre[0], places=9); self.assertAlmostEqual(params['m21'] - extra['raster_m21'], centre[1], places=9)
+        with self.assertRaises(ValueError):  # claims the term but m20 is the raster's
+            apply.parse_apply_params(apply.line_fields(self.LINE + ' raster_m20=-0.000390625 raster_m21=-0.000434028637 pixel_centre=1'))
+        with self.assertRaises(ValueError):  # the claim without the raster fields
+            apply.parse_apply_params(apply.line_fields(self.LINE + ' pixel_centre=1'))
+        cascade = ('sun_shadow_apply_params device=1 frame=2 m00=0.800000012 m11=1.33333302 jitter_x=0 jitter_y=0 m20=%.9g m21=%.9g m22=1.00000298 m32=-6.00001812'
+                   ' planar_step=0.05 exponent=1 jitter_index=0 width=1280 height=768 bias_units=0.53571875 clamp_texels=20.97152 cascades=1 margin=0.95 band=0.1'
+                   ' raster_m20=0 raster_m21=0 pixel_centre=1 valid0=1 map0=1024 map_frame0=2 bias0=0.00100000005 bias_max0=0.00999999978 texel_world0=0.48828125 extent0=250'
+                   ' depth_light0=512 depth_behind0=512 rows0=' + self.ROWS) % centre
+        params, extra = apply.parse_apply_params(apply.line_fields(cascade))
+        self.assertTrue(extra['pixel_centre']); self.assertEqual(len(params['cascades']), 1)
+        params, extra = apply.parse_apply_params(apply.line_fields(cascade.replace(' raster_m20=0 raster_m21=0 pixel_centre=1', '')))
+        self.assertFalse(extra['pixel_centre'])
+
     def test_resolved_bias(self):
         # The world-unit bias (sun_shadow_apply_bias): the default resolves to
         # exactly the former float32 constants at 250 / 512 / 1024, and the

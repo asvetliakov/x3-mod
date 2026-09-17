@@ -7089,23 +7089,40 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // Static-only cascades on: static_only_refused<i> per cascade then the
     // classification sources; importance order on: dropped_min_size<i> per
     // cascade then select_us. Absent while their option is off.
-    char cascade_fields[400]; cascade_fields[0] = 0;
+    // The tail's bound from its format strings, every option on, at
+    // shadow_cascade_max cascades with one-digit indices: per cascade " c%u=%u"
+    // (14 with a ten-digit value), " capped%u=%u" (20), " static_only_refused%u=%u"
+    // (33), " large_admitted%u=%u" (28), " class_miss%u=%u" (24) and
+    // " dropped_min_size%u=%.4g" (31: "-1.235e+308"); once " class_store=%u
+    // class_ring=%u" (45) and " select_us=%.1f" (12 + a double's 20 digits);
+    // the terminator. A field that does not fit is not appended at all (the
+    // line stays well formed), counted in candidates_line_truncated_ and
+    // reported on its own line, never blanked silently.
+    static_assert(renderer::shadow_cascade_max <= 10, "the bound assumes one-digit cascade indices");
+    constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max * (14 + 20 + 33 + 28 + 24 + 31) + 45 + 32 + 1;
+    char cascade_fields[cascade_fields_bound]; cascade_fields[0] = 0;
     if (depth_cascades_on()) {
-        int used = 0;
-        const auto put = [&](const char* format, unsigned i, unsigned value) { if (used >= 0 && used < int(sizeof cascade_fields)) used += std::snprintf(cascade_fields + used, sizeof cascade_fields - used, format, i, value); };
+        std::size_t used = 0; bool truncated = false;
+        const auto put = [&](const char* format, auto... values) {
+            const int n = std::snprintf(cascade_fields + used, sizeof cascade_fields - used, format, values...);
+            if (n < 0 || std::size_t(n) >= sizeof cascade_fields - used) { cascade_fields[used] = 0; truncated = true; } else used += std::size_t(n);
+        };
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" c%u=%u", i, c.cascade[i]);
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" capped%u=%u", i, c.cascade_capped[i]);
         if (depth_cascade_static_mask_) {
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" static_only_refused%u=%u", i, c.static_only_refused[i]);
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" large_admitted%u=%u", i, c.large_admitted[i]);
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" class_miss%u=%u", i, c.class_miss[i]);
-            if (used >= 0 && used < int(sizeof cascade_fields)) used += std::snprintf(cascade_fields + used, sizeof cascade_fields - used, " class_store=%u class_ring=%u", c.class_store, c.class_ring);
+            put(" class_store=%u class_ring=%u", c.class_store, c.class_ring);
         }
         if (depth_cascades_.importance) {
-            for (unsigned i = 0; i < depth_cascades_.count && used >= 0 && used < int(sizeof cascade_fields); ++i) used += std::snprintf(cascade_fields + used, sizeof cascade_fields - used, " dropped_min_size%u=%.4g", i, double(c.dropped_size[i]));
-            if (used >= 0 && used < int(sizeof cascade_fields)) used += std::snprintf(cascade_fields + used, sizeof cascade_fields - used, " select_us=%.1f", c.select_us);
+            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" dropped_min_size%u=%.4g", i, double(c.dropped_size[i]));
+            put(" select_us=%.1f", c.select_us);
         }
-        if (used < 0 || used >= int(sizeof cascade_fields)) cascade_fields[0] = 0;
+        if (truncated) {
+            ++candidates_line_truncated_;
+            log("shadow_replay_candidates_truncated device=%llu frame=%llu count=%u bound=%u used=%u total=%u", id_, frame_, depth_cascades_.count, unsigned(cascade_fields_bound), unsigned(used), candidates_line_truncated_);
+        }
     }
     log("shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u bounds=%u origin=%u fallback=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u"
         " leased=%u capped=%u reads=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u%s",
@@ -7206,7 +7223,8 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         const float jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
         const float centre_x = in.width ? renderer::quad_pixel_centre_m20(in.width) : 0.f;
         const float centre_y = in.height ? renderer::quad_pixel_centre_m21(in.height) : 0.f;
-        in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = camera_scene_.m20 + jitter_x + centre_x; in.m21 = camera_scene_.m21 + jitter_y + centre_y;
+        const float raster_x = camera_scene_.m20 + jitter_x, raster_y = camera_scene_.m21 + jitter_y; // the latch RT2 was rasterised under
+        in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = raster_x + centre_x; in.m21 = raster_y + centre_y;
         in.m22 = ao_default_m22; in.m32 = ao_default_m32; in.jitter_index = counters_.jitter_index; in.exponent = exponent;
         // The quad's slots are the ACTIVE cascades in order (shadow_cascade_apply_slots):
         // a cascade the ratio guard dropped is not in the list, so the previous
@@ -7259,11 +7277,14 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
                                       double(k.rows[6]), double(k.rows[7]), double(k.rows[8]), double(k.rows[9]), double(k.rows[10]), double(k.rows[11]));
             }
             if (used < 0 || used >= int(sizeof text)) text[0] = 0;
+            // raster_m20/m21: the latch without the pixel-centre term, and pixel_centre=1 says m20/m21 carry it
+            // (the twin tells a pre-fix log from this one without an operator flag: sun_shadow_apply.py).
             log("sun_shadow_apply_params device=%llu frame=%llu m00=%.9g m11=%.9g jitter_x=%.6f jitter_y=%.6f m20=%.9g m21=%.9g m22=%.9g m32=%.9g"
-                " planar_step=%.9g exponent=%.6f jitter_index=%u width=%u height=%u bias_units=%.9g clamp_texels=%.9g cascades=%u margin=%.9g band=%.9g%s",
+                " planar_step=%.9g exponent=%.6f jitter_index=%u width=%u height=%u bias_units=%.9g clamp_texels=%.9g cascades=%u margin=%.9g band=%.9g"
+                " raster_m20=%.9g raster_m21=%.9g pixel_centre=1%s",
                 id_, frame_, double(in.m00), double(in.m11), double(jitter_[0]), double(jitter_[1]), double(in.m20), double(in.m21), double(in.m22), double(in.m32),
                 double(in.planar_step), double(in.exponent), in.jitter_index, in.width, in.height, sun_apply_bias_units_, sun_apply_clamp_texels_, in.count,
-                double(renderer::shadow_cascade_select_margin), double(renderer::shadow_cascade_blend_band), text);
+                double(renderer::shadow_cascade_select_margin), double(renderer::shadow_cascade_blend_band), double(raster_x), double(raster_y), text);
         }
     } else if (!skip) {
         renderer::SunShadowApplyFrame in{};
@@ -7280,8 +7301,9 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         const float jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
         const float centre_x = in.width ? renderer::quad_pixel_centre_m20(in.width) : 0.f;
         const float centre_y = in.height ? renderer::quad_pixel_centre_m21(in.height) : 0.f;
+        const float raster_x = camera_scene_.m20 + jitter_x, raster_y = camera_scene_.m21 + jitter_y; // the latch RT2 was rasterised under
         in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11;
-        in.params.m20 = camera_scene_.m20 + jitter_x + centre_x; in.params.m21 = camera_scene_.m21 + jitter_y + centre_y;
+        in.params.m20 = raster_x + centre_x; in.params.m21 = raster_y + centre_y;
         in.params.m22 = ao_default_m22; in.params.m32 = ao_default_m32;
         const float* rows = depth_replay_->view_rows();
         for (unsigned i = 0; i < 12; ++i) in.params.rows[i] = rows[i];
@@ -7313,13 +7335,13 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             log("sun_shadow_apply_params device=%llu frame=%llu m00=%.9g m11=%.9g jitter_x=%.6f jitter_y=%.6f m20=%.9g m21=%.9g m22=%.9g m32=%.9g"
                 " texel=%.9g bias=%.9g bias_max=%.9g planar_step=%.9g exponent=%.6f jitter_index=%u map=%u width=%u height=%u"
                 " bias_units=%.9g clamp_texels=%.9g texel_world=%.9g extent=%.9g depth_half=%.9g"
-                " rows=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
+                " rows=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g raster_m20=%.9g raster_m21=%.9g pixel_centre=1",
                 id_, frame_, double(q.m00), double(q.m11), double(jitter_[0]), double(jitter_[1]), double(q.m20), double(q.m21), double(q.m22), double(q.m32),
                 out.map_size ? 1. / double(out.map_size) : 0., double(q.bias_constant), double(q.bias_max), double(q.planar_step), double(q.exponent),
                 q.jitter_index, out.map_size, in.width, in.height,
                 sun_apply_bias_units_, sun_apply_clamp_texels_, double(bias.texel_world), double(depth_cascade_.half_extent), depth_cascade_.depth_half(),
                 double(q.rows[0]), double(q.rows[1]), double(q.rows[2]), double(q.rows[3]), double(q.rows[4]), double(q.rows[5]),
-                double(q.rows[6]), double(q.rows[7]), double(q.rows[8]), double(q.rows[9]), double(q.rows[10]), double(q.rows[11]));
+                double(q.rows[6]), double(q.rows[7]), double(q.rows[8]), double(q.rows[9]), double(q.rows[10]), double(q.rows[11]), double(raster_x), double(raster_y));
         }
     }
     release(depth); release(rt0);

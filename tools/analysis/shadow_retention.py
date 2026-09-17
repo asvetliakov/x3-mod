@@ -31,7 +31,7 @@ FRAME_FIELDS = ('device', 'frame', 'mode', 'known', 'nodes_live', 'nodes_unseen'
                 'excluded_class', 'unscoped', 'new_nodes', 'first_seen_in_range', 'promoted', 'superseded', 'lod_replaced', 'model_replaced', 'reclassified',
                 'retired', 'journal_overflow', 'revalidated', 'mutation_delta', 'buffer_changed', 'buffer_gone', 'buffer_orphaned', 'orphan_probe',
                 'box_exit', 'age', 'evicted', 'flush', 'unseen_in_frustum', 'unseen_outside',
-                'live_c0', 'live_c1', 'live_c2', 'live_c3', 'would_c0', 'would_c1', 'would_c2', 'would_c3', 'capped_c0', 'capped_c1', 'capped_c2', 'capped_c3',
+                'live_c0', 'live_c1', 'live_c2', 'live_c3', 'live_c4', 'would_c0', 'would_c1', 'would_c2', 'would_c3', 'would_c4', 'capped_c0', 'capped_c1', 'capped_c2', 'capped_c3', 'capped_c4',
                 'drift_n', 'drift_p99', 'drift_max', 'age_max', 'refs_held', 'sun_relatch', 'cam_jump', 'transit_survivors', 'us',
                 # beyond the contract's list (implementation diagnostics)
                 'refused', 'moving_dropped', 'abandoned', 'deferred', 'journal_us', 'walk_us', 'draw_us', 'draw_calls',

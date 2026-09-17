@@ -712,6 +712,31 @@ class PureHeaders(unittest.TestCase):
             self.assertEqual(result.stdout.count('REGISTER '), 6 + real)
 
 
+class CandidatesLineTail(unittest.TestCase):
+    """The cascade tail of the shadow_replay_candidates line (motion_output.cpp)
+    formatted at its worst case, every option on at shadow_cascade_max cascades
+    with ten-digit counters, fits the bound the source computes from the same
+    format strings (the tail is never truncated silently: a field that does not
+    fit is left off and counted)."""
+
+    def test_worst_case_fits_bound(self):
+        import re
+        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        header = (ROOT / 'src/renderer/shadow_replay_projection.h').read_text()
+        cascades = int(re.search(r'constexpr unsigned shadow_cascade_max = (\d+);', header).group(1))
+        bound = re.search(r'constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max \* \((.*?)\) \+ (\d+) \+ (\d+) \+ 1;', source)
+        self.assertIsNotNone(bound)
+        total = cascades * eval(bound.group(1)) + int(bound.group(2)) + int(bound.group(3)) + 1
+        per_cascade = [' c%u=%u', ' capped%u=%u', ' static_only_refused%u=%u', ' large_admitted%u=%u', ' class_miss%u=%u']
+        for fmt in per_cascade:
+            self.assertIn(fmt, source)
+        tail = ''.join(fmt.replace('%u', '%d') % (cascades - 1, 4294967295) for fmt in per_cascade) * cascades
+        tail += ' class_store=%d class_ring=%d' % (4294967295, 4294967295)
+        tail += (' dropped_min_size%d=%.4g' % (cascades - 1, -1.2345e308)) * cascades
+        tail += ' select_us=%.1f' % 1e19  # a double's twenty digits: more than 300,000 years of microseconds
+        self.assertLessEqual(len(tail) + 1, total, (len(tail), total))
+
+
 def launch(directory, *args, inherited=None):
     spec = importlib.util.spec_from_file_location('cascade_manage', ROOT / 'tools/manage.py')
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)

@@ -1140,6 +1140,7 @@ private:
     shadow_replay::PoolCache candidate_pools_{};
     unsigned candidate_witnesses_=0;
     std::uint64_t candidates_published_frame_=~std::uint64_t(0); // frame serial of the last frame line (once per frame)
+    std::uint32_t candidates_line_truncated_=0; // frame lines whose cascade tail did not fit its bound (never expected; shadow_replay_candidates_truncated lines)
     float candidate_slice_near_=shadow_replay::slice0_near; // production constant; the seam fixture may lower it
     unsigned candidate_cap_=shadow_replay::record_capacity;
     // Casters by bounds (shadow-replay-gates.md): the vertex-extent cache, the

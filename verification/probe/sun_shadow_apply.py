@@ -708,6 +708,24 @@ def line_fields(line):
     return dict(LINE_FIELDS.findall(line))
 
 
+def parse_latch_law(fields, params, extra):
+    """Since 2026-09-18 the params line names the raster latch beside m20/m21
+    (`raster_m20= raster_m21= pixel_centre=1`): extra['pixel_centre'] says the
+    logged m20/m21 already carry the D3D9 pixel-centre term, and the two must
+    differ from the raster's by exactly that term. An older line has neither
+    (pixel_centre False: `--add-pixel-centre` on the CLI supplies it)."""
+    extra['pixel_centre'] = fields.get('pixel_centre') == '1'
+    if 'raster_m20' in fields or 'raster_m21' in fields:
+        extra['raster_m20'], extra['raster_m21'] = float(fields['raster_m20']), float(fields['raster_m21'])
+        centre = pixel_centre_terms(extra['width'], extra['height']) if extra['pixel_centre'] else (0.0, 0.0)
+        for key, raster, term in (('m20', extra['raster_m20'], centre[0]), ('m21', extra['raster_m21'], centre[1])):
+            if abs(params[key] - raster - term) > 1e-6 * max(1.0, abs(params[key])) + 1e-9:
+                raise ValueError('%s %.9g is not raster_%s %.9g plus the pixel-centre term %.9g' % (key, params[key], key, raster, term))
+    elif extra['pixel_centre']:
+        raise ValueError('pixel_centre=1 without raster_m20/raster_m21')
+    return extra
+
+
 def parse_apply_params(fields):
     """A `sun_shadow_apply_params` line (capture frames; motion_output.cpp
     run_sun_shadow_apply) -> the params dict of expected_factor plus the
@@ -735,7 +753,7 @@ def parse_apply_params(fields):
             if abs(resolved[key] - printed) > 1e-6 * max(1.0, abs(printed)) + 1e-9:
                 raise ValueError('%s %.9g does not resolve from bias_units %g extent %g depth_half %g map %d (%.9g)'
                                  % (key, printed, extra['bias_units'], extra['extent'], extra['depth_half'], extra['map'], resolved[key]))
-    return params, extra
+    return params, parse_latch_law(fields, params, extra)
 
 
 def parse_apply_cascade_params(fields):
@@ -768,7 +786,7 @@ def parse_apply_cascade_params(fields):
         params['cascades'].append(entry); cascades.append(detail)
     extra = dict(width=int(fields['width']), height=int(fields['height']), jitter_px=(float(fields['jitter_x']), float(fields['jitter_y'])),
                  bias_units=bias_units, clamp_texels=clamp_texels, cascades=cascades, map=cascades[0]['map'])
-    return params, extra
+    return params, parse_latch_law(fields, params, extra)
 
 
 def load_cascade_maps(directory, device, frame, extra, params):
@@ -911,14 +929,15 @@ def main(argv=None):
     parser.add_argument('--bias', type=float, help='override the constant bias')
     parser.add_argument('--no-jitter', action='store_true', help='drop the jitter term from m20/m21 (the run106 pass)')
     parser.add_argument('--legacy-floor', action='store_true', help='the lookup rule of builds before 2026-09-17 (texel floor(muv N), no half-texel offset)')
-    parser.add_argument('--add-pixel-centre', action='store_true', help='add the D3D9 pixel-centre term (+1/W, -1/H) to m20/m21: a params line logged by a build before 2026-09-18 lacks it')
+    parser.add_argument('--add-pixel-centre', action='store_true', help='add the D3D9 pixel-centre term (+1/W, -1/H) to m20/m21: a params line logged by a build before 2026-09-18 lacks it; a line that logs pixel_centre=1 already carries it and the flag is ignored')
     args = parser.parse_args(argv)
     params, extra, source = frame_params(args.log, args.frame, args.device)
     if args.bias is not None:
         params['bias_constant'] = args.bias
     if args.no_jitter:
         params['m20'] -= 2.0 * extra['jitter_px'][0] / extra['width']; params['m21'] += 2.0 * extra['jitter_px'][1] / extra['height']
-    if args.add_pixel_centre:
+    add_pixel_centre = args.add_pixel_centre and not extra.get('pixel_centre')  # the logged law wins over the operator's flag
+    if add_pixel_centre:
         centre = pixel_centre_terms(extra['width'], extra['height'])
         params['m20'] += centre[0]; params['m21'] += centre[1]
     if 'cascades' in params:
@@ -928,7 +947,7 @@ def main(argv=None):
         out = expected_factor_cascades(d, s, maps, params, legacy_floor=args.legacy_floor)
         valid = out['valid']
         residual = own_surface_residual(out, maps, params, [c['depth_light'] + c['depth_behind'] for c in extra['cascades']])
-        print(json.dumps(dict(frame=args.frame, source=source, pixel_centre_added=args.add_pixel_centre, m20=params['m20'], m21=params['m21'], cascades=extra['cascades'],
+        print(json.dumps(dict(frame=args.frame, source=source, pixel_centre_added=add_pixel_centre, pixel_centre_logged=bool(extra.get('pixel_centre')), m20=params['m20'], m21=params['m21'], cascades=extra['cascades'],
                               valid=int(valid.sum()), ambiguous=int(out['ambiguous'].sum()),
                               owned=[int((valid & (out['selected'] == c)).sum()) for c in range(len(params['cascades']))],
                               shadowed_owned=[float((out['f'][valid & (out['selected'] == c)] < 1.0).mean()) if (valid & (out['selected'] == c)).any() else None for c in range(len(params['cascades']))],

@@ -2376,12 +2376,50 @@ to five slots.
   and `band_eps` (a position `EPS_SELECT` away that moves the factor by ≥ a quarter FP16 code
   marks the pixel ambiguous: the band's 1 / 0.10 amplification of the float32 position flipped one
   dark band pixel by 1.0004 codes on the 60-scale seam frame).
-- Records equal main's apart from timing fields: `sun-shadow-apply-cascades` 3,295 checks
-  (3,293 + the two new refusal checks: six cascades, a sixth map) with every readback comparison
-  identical; `seam-ownership-shadow-replay-cascades` 278, `-casters-20` 278, `-toggle` 283,
-  `toggle-single` 214, `poll-agree/null/disagree/refusals` 281 each; retention live / census / off /
-  live-poll 9,743 / 9,740 / 6,629 / 9,890; pool static-off / census / live / strict / importance /
-  records 165 / 181 / 181 / 165 / 99 / 53 — all identical to main's committed records in every
-  non-timing field.
+- Records against main's committed ones (non-timing fields; `*-fixture.json`): `sun-shadow-apply-cascades`
+  changes in exactly two fields, `cascade_program_slots` 406 → 499 and `checks`/`fixture_checks` +2
+  (4,340 → 4,342: the new refusal checks "six cascades" and "a sixth map"); every readback comparison,
+  edge and half-texel/half-pixel record is byte-identical. `seam-ownership-shadow-retention-off` differs
+  only in `presented_identical_to` (two siblings listed instead of one: the runner names the sibling
+  cases of the same partial run, not a behaviour). `sun-shadow-apply`, `sun-shadow-apply-wide`, retention
+  live / census / live-poll, the six pool cases and the four adaptive cases are identical in every
+  non-timing field. Cases without a committed record equal the ledger's counts: replay-cascades 278,
+  `-casters-20` 278, `toggle-single` 214, `poll-agree/null/disagree/refusals` 281 each; the toggle case
+  reports 283 checks, which is main's own follow-up schedule (the ledger's 277 predates the ON-edge
+  full-replay fix on main), not a change of this branch.
 - Not done: the optional opposite-parity alternation of the two farthest cascades (the brief's
   option); no in-game run yet (the 30 km set needs `--shadow-cascades 250,1500,7500,37500,150000`).
+
+### Review fixes (2026-09-18, on main `7c9e67f6`; commits `914f2868` merge, `8e756cca` fixes)
+
+Merged main `7c9e67f6` (caster pool control, own-ship-adaptive C0 with the ratio guard's active mask and
+the compacted apply slots, the pixel-centre apply latch): the five-slot arrays cover the active mask and
+the slot list (`shadow_cascade_apply_slots` writes `out[shadow_cascade_max]`), the mode line lists five
+`records=` slots beside `adaptive_c0=`, the five-cascade script runs under the raster-rule RT2 and checks
+the latch law per frame (validator 172 checks). Review findings, no blocker:
+
+1. `shadow_replay_candidates` cascade tail: `cascade_fields[400]` overflowed at five cascades with the
+   pool options (the worst case needs 528 bytes for the counters alone) and the overflow path blanked every
+   per-cascade counter. Now sized from the format strings for `shadow_cascade_max` (bound 866 bytes;
+   `static_assert` on one-digit indices; host test `CandidatesLineTail` formats the worst case with
+   ten-digit counters and a twenty-digit `select_us` against the bound the source declares), a field that
+   does not fit is left off and counted (`candidates_line_truncated_`, one
+   `shadow_replay_candidates_truncated` line), never blanked.
+2. `shadow_retention_frame` lists `live_c0..4 would_c0..4 capped_c0..4` (parser `FRAME_FIELDS`, the
+   retention note and `test_shadow_retention` follow; the fifth slot reads 0 on every existing case).
+3. `shadow_replay_pass.h` comment: five maps.
+4. `sun-shadow-cascade-apply-program.json` regenerated on this tree: `--check` PASS (2,133 words,
+   `a1c211e5…`, 499 slots).
+5. `sun_shadow_apply_params` (both apply paths) logs `raster_m20= raster_m21= pixel_centre=1` like the
+   fixture line; `sun_shadow_apply.py` reads the logged law when present (`--add-pixel-centre` is ignored
+   then and reported as `pixel_centre_logged`), keeps the flag for older logs, and refuses a line whose
+   m20/m21 do not carry the term it claims (`test_latch_law_fields`: both forms).
+
+Evidence on `8e756cca`: clean CMake build 0 warnings (70 objects), `build/d3d9.dll` sha256 `9421907e…`,
+`check_no_x87.py` PASS 77 roots / 534 reachable / 0 violations; host `test_shadow_cascades`
+`test_shadow_replay_candidates` `test_shadow_retention` `test_snapshot_x3_run` `test_shadow_replay_depth`
+`test_sun_shadow_apply` 77 OK; the 26-case set (the four `sun-shadow-apply*`, eight replay-cascade,
+four adaptive, four retention, six pool cases) all exit 0 with the counts above;
+`sun-shadow-apply-cascades-5` 3,117 checks, `edge_beyond_one` 0, `monotone_violations` 0 on all 15
+frames, bench five-cascade mask 59.4 ns against 45.4 ns for four this run (42.3 against 43.5 on the
+previous run: the two are within run-to-run noise of the same corner transform).
