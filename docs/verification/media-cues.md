@@ -691,3 +691,24 @@ run 99); the v5 audio decoders bring nothing the cache does not already cover
 sector videos; the recipe stays for that case, and the next trace build adds
 an entry-side `media_cue_enter` line so a hung build is attributable.
 
+
+### Run 37 session C (run110), 2026-09-17: H.264/AVI avatar file, freeze reproduced
+
+`mov\00001.dat` replaced by the H.264 AVI transcode (original restored after
+the session, hash verified), v4 audio runtime only, `--media-cue-trace
+--ownership`. The comm dialog froze the game exactly as run100/101 did with
+the MPEG-1 runtime: the script-triggered `media_cue id=1` graph build
+succeeded (226 ms), the next frame's telemetry is the last line, and the blit
+witness (registered, range `004d0c40–004d14e0`) recorded zero entries, so no
+decoded frame ever reached the DirectDraw `Lock`/D3D9 `LockRect` blit. The two
+`gst_video_info_from_caps: caps not fixed` assertions on stderr align with
+the two graph builds (the startup probe and the comm build's completion), not
+with a later `Update`. Remaining candidate blocking sites (RE §8.5):
+`CreateSample`, `GetSurface`, `GetSurfaceDesc`, `Run`, `CompletionStatus`,
+`Update`; the witness excludes the two lock sites. **Conclusion:** the block
+is codec- and container-independent (H.264 and MPEG-1 freeze at the same
+post-create stage) inside Wine's `amstream`/DirectDraw hand-off; a
+transcode cannot fix it. Pinning the exact site needs entry stamps at the six
+calls (three hookable enclosing functions, §8.6); even then the fix would be
+a Wine-side workaround or a proxy-side replacement of the media stream
+object. **Parked** unless the user wants avatars badly enough to fund that.
