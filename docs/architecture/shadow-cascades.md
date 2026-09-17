@@ -1,6 +1,6 @@
 # Sun-shadow cascades: from the own-ship map to a whole complex
 
-Ratified by the orchestrator 2026-09-17 as the direction (three camera-centred texel-snapped cascades, asymmetric depth range towards the light, per-pixel selection by sun-space extent with a blend band, C2 on alternate frames). Implementation starts after run 38 calibrates the single wide map (4096² at 1500 units); the run-38 numbers set the caster budgets.
+Ratified by the orchestrator 2026-09-17 as the direction (three camera-centred texel-snapped cascades, asymmetric depth range towards the light, per-pixel selection by sun-space extent with a blend band, C2 on alternate frames). Implementation starts after run 38 calibrates the single wide map (4096² at 1500 units); the run-38 numbers set the caster budgets. Amendment (user, 2026-09-17): the near cascade C0 is 4096², not 1024²: screen parity at its far edge is the wrong criterion for the own ship at 20–40 units, where a 0.49-unit texel spans about eight screen pixels and a 0.06-unit texel about one; C0 carries 8–49 draws, so the fill is trivial and the cost is 64 MiB. All three cascades at 4096² (192 MiB) is the intended default; 1024² for C0 is the fallback only if run 38 shows the 4096² clear/fill cost matters.
 
 Design note for ratification, written 2026-09-17 after run 37 session B (run109: first
 visible shadows; casters median 8 / max 49 of 93–930 routed depth writers per frame because
