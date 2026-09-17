@@ -2070,3 +2070,88 @@ six mock-drift modules 27 OK.
 **Open (measured, unexplained).** `select_us` spikes on frame 0 (252 / 377 µs) and once more on
 frame 2 of the importance case (281 µs) against 2–5 µs on the other frames; plausibly first touch
 of the table and scratch pages and the retired leases' Release path, not measured further.
+
+## Run 39 A (run115) diagnosis
+
+2026-09-17, no source edits, no Wine. Inputs: run115 F8 frames 11954–11961 (the `shadow-bug2`
+scene: ship over the outpost deck, 2.15–2.36 km), 13985–13992 and 17558–17565 (outpost at
+10–60 km), the per-cascade maps `shadow_map<k>_1_<frame>.r32f` (byte-identical to the bottle's
+capture copies), `sun_shadow_apply_params`, `shadow_replay_map_basis`, `camera_state`. Twin
+`verification/probe/sun_shadow_apply.py` plus scratch scripts (nearest-texel residual per
+cascade, receiver-offset scans). "Measured" = from the capture or code; "inferred" is marked.
+
+### Ranked root causes
+
+**1. The apply quad reconstructs every receiver half a pixel off the RT2 sample position
+(decides the moving line, the dark deck beyond it, its serration and flicker, and the ship's
+speckled self-shadow).** `src/renderer/quad_vertex_program.h:37-42` shifts the strip by
+(−1/W, +1/H) so pixel (i, j) receives `uv = ((i+½)/W, (j+½)/H)` — right for point-sampling RT2 —
+but `src/temporal/sun_shadow_cascade_apply_ps.hlsl:71-72` (and `sun_shadow_apply_ps.hlsl:43-44`)
+take `ndc = uv·2−1` as that pixel's NDC. Under the D3D9 raster (pixel centres at integer window
+coordinates, the same rule the map lookup already honours in the program's header comment) RT2
+texel (i, j) holds the depth at `ndc = (2i/W−1, 1−2j/H) = uv·2−1 − (1/W, −1/H)`. The receiver is
+therefore displaced laterally by `z/(W·m00)` and `z/(H·m11)` (= z/1024 each at 1280×768): 1.2 units
+at 1.2 km, 0.15 units at 150 units — an offset in view space that grows with distance, so on a
+sloped receiver the sun-depth residual grows with z and crosses each cascade's world-unit bias
+(C0 0.66, C1 1.27, C2 4.2, C3 25 units) at a fixed view distance: an iso-distance contour that
+moves with the camera, curved on a flat deck, serrated/flickering by the rotated 3×3 kernel.
+
+Measured on 11954 (own-surface receivers, |residual| < 30 units, C1 at z 300–3200, C2 idem, C0 at
+60–260; residual = receiver sun depth − map at the nearest texel, world units):
+- as is: C1 median 1.657 (p25/p75 1.21/2.17), 71.9 % above bias; C2 2.48, 26.9 %; C0 0.32, 38.9 %.
+- receiver NDC moved by (−1/W, +1/H): C1 −0.025 (−0.41/0.35), **2.0 %**; C2 0.03, 3.4 %; C0 0.07,
+  36.8 % (the ship's remaining fraction is real hull occlusion, p75 4.8 units). Every other sign
+  combination is worse (C1 x−½ alone 93 %, y−½ alone 100 %, x+½ y+½ 7.3 % with median −1.14).
+- best per-receiver lookup offset (scan): −1.5 texels in v in **both** C0 (texel 0.12 u) and C1
+  (0.73 u), i.e. a texel-count constant = a world offset ∝ z, trending −1.0 → −2.25 texels from z
+  400–800 to 1600–3200 (C1). A z-scale hypothesis (m32 −6.0195, which the naive z_map/z fit of
+  1.0033 suggested) makes C1 99.7 % shadowed: rejected.
+- twin with the corrected receiver (m20 + 1/W, m21 − 1/H): 11954 shadowed fraction 0.670 → 0.328,
+  C1-owned 0.833 → 0.178, C2-owned 0.579 → 0.453, factor mean 0.553 → 0.778; 11958 the same;
+  13985 C3-owned 0.935 → 0.681. The corrected factor image has no band on the deck; the remaining
+  darkening is structure shadows and the tower's anti-sun face.
+- the visible line: C1's bin over-bias fraction 37 % at z 400–800, 78 % at 800–1600, 100 % beyond
+  = the contour at ~500–800 units from the camera; C2's 4.2-unit bias hides the same error to ~1.3 km,
+  which is why "the actual area with shadows is small" and the lit disc sits around the ship.
+
+Ruled out (measured): H4 basis/rows mismatch — apply `rows<k>` recomputed from the logged basis and
+camera agree to 6e-8 relative, offsets < 0.005 units, on 11954/13985/17558; H2/H3 — no receiver
+with z < 0 or > 1 inside any box, C3's 2048² map under the 4096 attachment has occupancy 11 % with
+finite depths 0.36–0.62, no stale rows; H1 map content — C1 and C2 maps hold the same deck (the
+nearest-texel depth is within 1 unit of the receiver after the correction in both); H6 — the
+serration is the kernel rotating across the bias threshold, not a band texel mismatch.
+
+**2. (inferred, secondary) The far outpost at 10–60 km stays 68 % shadowed in C3 after the
+correction (13985)** with residuals 730–7300 units (median 1829, ratio 1.16): consistent with the
+camera seeing the station's anti-sun side (forward · to-light = +0.23) and self-occlusion at 24-unit
+texels; not verified against geometry. Revisit after the fix with a user run.
+
+**3. (inferred) The ship's cockpit/nose at z < 100 shows 27-unit residuals** (C0/C1, 6.7 k px):
+a caster the main view does not draw opaque (canopy) replayed as an occluder. Separate issue.
+
+### Fix
+
+`src/proxy/motion_output.cpp:7048` (cascades) and `:7112` (single map): add the D3D9 pixel-centre
+term to the quad's projection latch — `in.m20 = camera_scene_.m20 + jitter_x + 1.f / float(in.width)`,
+`in.m21 = camera_scene_.m21 + jitter_y - 1.f / float(in.height)` — with a comment naming the
+convention (`quad_vertices` delivers texel-centre uv; the pixel's NDC is half a pixel left/up of it).
+No program change; the `sun_shadow_apply_params` line already prints the resulting m20/m21, so the
+twin (which builds `view` from the same m20/m21, `sun_shadow_apply.py:104-107,186`) and its
+`analytic_shadow` follow automatically. The AO quad latches the same law at
+`motion_output.cpp:1965` (`ao_linearize_ps.hlsl`); its horizon test is relative, so the effect is a
+uniform half-pixel shift of the AO field — decide separately.
+
+### Fixture case that would have caught it
+
+The seam cascade case (`run_motion_output.py:994-1043`) compares the quad with a twin and an
+analytic shadow that both place the receiver at `(i+½)/W·2−1`, so the receiver error cancels; its
+geometry is close enough that z/1024 stays under a quarter texel. Two checks:
+1. Host, `verification/analysis/test_sun_shadow_apply.py`: rasterize a tilted plane into a synthetic
+   RT2 under the D3D9 rule (depth at `ndc = 2i/W−1`) and a matching map; `expected_factor_cascades`
+   must light the plane (own-surface residual < bias/4) — fails with the current m20/m21 law, passes
+   with the half-pixel term.
+2. Seam, cascade case: a plane receiver far enough that z/1024 > ¼ of the owning cascade's world
+   texel at a sun slope ≥ 1 unit/texel, asserted through the existing `shift_fit`/`edge_beyond_one`
+   with `analytic_shadow` evaluated at the D3D9 pixel centre. Plus the capture-side self-check that
+   flags this on any F8 frame: per cascade, the median own-surface residual (|r| < 30 units) must be
+   below bias/2 — run115 C1 gives 1.66 vs 0.63.
