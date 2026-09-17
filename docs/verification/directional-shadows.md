@@ -1663,6 +1663,44 @@ Open after the round: the issue-time check is the dominant scene-end cost at a f
 lookups per buffer, or a revision counter the registry publishes without a lock, would bring it back
 towards the contract's 0.1 ms.
 
+### Issue-time check batched per buffer (2026-09-17, worktree `agent-a18fd4d740a73398e`)
+
+Design chosen: (a) one registry lookup per distinct buffer identity per scene end, records inherit
+the view. `Store::end_scene` now takes `view(identity) -> BufferView`; `Store::buffer_view` is a
+direct-mapped 1,024-slot per-walk cache (identity hash, walk serial; a collision re-queries) and
+`buffer_verdict` makes the same allocation / generation / revision / pending-Lock compare per record
+as before, in the core (host-testable). Not chosen: (b) a lock-free per-buffer revision has no stable
+cell to publish (the registry keeps buffer metadata in D3D private data, read by copy) and would add
+a store to the Lock hook; (c) event-driven dirty slots couple the ownership layer to the store's slot
+table and also touch the Lock hook. (a) leaves the Lock hook and the draw path unchanged by
+construction (no hook delta to measure), adds no locking, allocates nothing, and the option-off cost
+is unchanged (the walk does not run). The correctness property holds unchanged: every lookup of a
+walk precedes that walk's issue on the game thread, so a buffer re-Locked before the scene end is
+seen by every record naming it; the next scene end looks every buffer up again (the cache is keyed
+by the walk serial, not the frame number, so two scene ends of one frame never share a view). The
+frame line gains `buffer_views` (lookups this frame); `admitted_checked` keeps counting records.
+
+Evidence, both runs from fresh builds in this worktree on the unchanged fixture (`run_motion_output.py`
+partial run of the four retention cases, Wine/FEX, bottle X3). Before (main `c0c76b1`, DLL `eba8ef82…`):
+full-store scene end 512.8 µs median / 573.4 µs worst walk (live), 516.3 / 570.3 (census), 509.7 / 576.8
+(live-poll). After (DLL `27878db3…f39e`, seam `3f80bde6…9060`, fixture `8cddae78…8add`; clean build, 0
+compiler warnings; `check_no_x87.py` PASS, 526 reachable functions, 0 violations): 44.5 µs median /
+104.0 µs worst walk (live), 52.6 / 111.3 (census), 43.4 / 97.4 (live-poll). Full-store frames: 716
+records compared (`admitted_checked=716`) against 1 lookup (`buffer_views=1`, the shared mesh); the
+worst walk is the first full-store frame (104 µs), the following ones 43–46 µs. Record hook per draw
+0.20 µs median (unchanged); burst frame 143.6 → 55.0 µs; overflow + revalidation 172.9 µs (unchanged).
+Twin results equal before and after: map `max_depth_error` 1.72e-06 (live) / 1.70e-06 (census, off) /
+1.40e-05 (live-poll), 0 coverage disagreements, 78 / 78 / 78 / 80 maps; presented-frame
+`color_sha256` `4b6e6748…` identical across live, census and off, the poll case's `446b5534…` equal to
+before; `RETENTION_LOCK_DROP frames=1` in every case (the re-Locked buffer drops before the next issue);
+orphan drop 4 / 1 / 2 / 4 frames and the failed-Reset result as before. Host:
+`test_shadow_retention` gained the shared-buffer scenario (40 records, 2 lookups; one lookup drops all
+40 on a rewrite; a second buffer's record survives); the eight affected modules 44 tests OK.
+
+Open: the gain scales with sharing. Retained records on all-distinct buffers still cost one registry
+lookup (about 0.3 µs, two map lookups under the registry mutex) per buffer per frame; a bulk
+`get_buffer_lock_views` taking the mutex once would be the next step if in-game stores show that shape.
+
 
 ## Sun at finite distance: polled light position, per-cascade suns (2026-09-17)
 

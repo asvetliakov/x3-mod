@@ -464,8 +464,17 @@ Review fix round (2026-09-17, two reviews):
 - **Issue-time buffer check.** Every retained record that may be issued is checked every frame with
   the live loop's revision compare before it enters the admitted list; a rewritten buffer is never
   replayed with the old range or declaration. The round-robin 1-in-8 check stays for records outside
-  every cascade. Cost: about 0.3 µs per checked record under Wine (two registry lookups); 716 admitted
-  records raise the full-store scene end from 86 to about 490 µs median.
+  every cascade. The registry is asked once per *distinct buffer identity* per scene end
+  (`Store::buffer_view`: a direct-mapped per-walk cache of `BufferView`, keyed by identity and the
+  walk serial, no allocation); every record naming that buffer is compared against the one view
+  (`buffer_verdict`: allocation, generation, revision, pending or in-flight Lock), so the cost is one
+  registry lookup (about 0.3 µs under Wine) per distinct buffer plus a few integer compares per
+  record. `admitted_checked` still counts records compared; `buffer_views` counts the lookups. The
+  Lock hook and the draw path are untouched; the option-off cost stays zero. Correctness is the
+  same as the per-record lookups: every lookup of a walk precedes that walk's issue on the game
+  thread, so a buffer re-Locked before the scene end is seen by every record naming it, and the
+  next scene end looks every buffer up again. Full-store fixture (716 retained records on one
+  mesh): scene end 513 → 45 µs median, worst walk 573 → 104 µs.
 - **Static class.** Every sighting is verified (the 1-in-16 schedule is gone), so a node that starts
   moving while seen is reclassified on that sighting. A node that starts moving while *unseen* is the
   accepted residual, bounded by `age_cap`; its resighting counts `reclassified_after_unseen`.

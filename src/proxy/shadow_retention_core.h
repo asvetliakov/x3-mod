@@ -96,6 +96,21 @@ struct BufferStamp {
     std::uintptr_t identity = 0; std::uint64_t allocation = 0, generation = 0, revision = 0;
     bool same_object(const BufferStamp& o) const noexcept { return identity == o.identity && allocation == o.allocation && generation == o.generation; }
 };
+// The registry's current view of one buffer identity, as the owner's lookup returns it
+// (the core never touches the registry). present: the identity is a tracked buffer;
+// quiet: no pending or in-flight Lock/Unlock.
+struct BufferView {
+    std::uint64_t allocation = 0, generation = 0, revision = 0;
+    bool present = false, known = false, quiet = false;
+};
+// The live loop's revision compare of one stamped buffer against its current view. Census
+// mode holds no reference, so another allocation or generation means the buffer is gone.
+inline BufferState buffer_verdict(const BufferStamp& b, const BufferView& v, bool hold) noexcept {
+    if (!v.present) return BufferState::Gone;
+    if (v.allocation != b.allocation || v.generation != b.generation) return hold ? BufferState::Changed : BufferState::Gone;
+    if (!v.known || v.revision != b.revision || !v.quiet) return BufferState::Changed;
+    return BufferState::Quiet;
+}
 struct Draw {
     DrawKey key{};
     BufferStamp vb{}, ib{};
@@ -157,6 +172,7 @@ struct FrameStats {
     std::uint32_t release_queue_full = 0;            // acquisitions refused while owed references still hold the resource table (diagnostic; the queue itself cannot drop a reference)
     std::uint32_t reclassified_after_unseen = 0;     // a retained node resubmitted beyond eps of its stored rows: the moved-while-unseen residual, observed
     std::uint32_t admitted_checked = 0;              // retained records whose buffers were checked before issue this frame
+    std::uint32_t buffer_views = 0;                  // distinct buffer identities looked up in the registry this frame (records sharing a buffer inherit its view)
     std::uint32_t refused = 0, moving_dropped = 0, abandoned = 0, deferred = 0; // beyond the contract's list: capacity refusals, moving nodes dropped unseen, sightings of a frame without a scene end, draws ignored while a flush is pending
     std::uint32_t nodes_live = 0, nodes_unseen = 0, records = 0, records_unseen = 0, statics = 0, moving = 0; // levels
     std::uint64_t age_max = 0;
@@ -243,6 +259,12 @@ struct Store {
     std::uint16_t admitted[draw_capacity]; unsigned admitted_count = 0;   // this frame's unseen records with a cascade (draw indices)
     float scratch_key[draw_capacity]; std::uint16_t scratch_index[draw_capacity];
     float drift_samples[node_capacity]; unsigned drift_count = 0;
+    // One scene end's registry views, one per distinct buffer identity: direct-mapped by the
+    // identity's hash, valid for the walk that filled the slot (a collision or an older walk
+    // simply looks the identity up again). No allocation; nothing outlives the walk.
+    struct ViewSlot { std::uintptr_t identity = 0; std::uint64_t walk = 0; BufferView view{}; };
+    ViewSlot views[resource_capacity];
+    std::uint64_t walk_serial = 0; // scene ends since attach: the key of `views`
     std::uint64_t load_epoch = 0, registry_epoch = 0, observer_epoch = 0;
     bool epochs_set = false, hold = false, eye_valid = false;
     Flush flush_pending = Flush::None;
@@ -259,6 +281,7 @@ struct Store {
         for (auto& n : nodes) n = Node{};
         for (auto& d : draws) d = Draw{};
         for (auto& r : resources) r = Resource{};
+        for (auto& v : views) v = ViewSlot{};
         node_map.clear(); resource_map.clear();
         for (unsigned i = 0; i < node_capacity; ++i) node_free[i] = std::uint16_t(node_capacity - 1 - i);
         for (unsigned i = 0; i < draw_capacity; ++i) draw_free[i] = std::uint16_t(draw_capacity - 1 - i);
@@ -378,15 +401,23 @@ struct Store {
     }
 
     // ---- the scene end -----------------------------------------------------------
-    // `check(draw)`: the buffer-lock verdict of an unseen record (the owner's registry lookups).
-    template <class Check> void end_scene(const FrameInput& in, Check check) noexcept {
-        admitted_count = 0; drift_count = 0;
+    // `view(identity)`: the registry's current BufferView of one buffer identity (the owner's
+    // lookup). It is called once per distinct identity per scene end: every record naming that
+    // buffer is compared against the one view (buffer_verdict), so the walk costs one lookup per
+    // distinct buffer, not per record. All lookups of a walk precede its issue on the same thread,
+    // exactly as the per-record lookups did: a Lock before the walk is seen by every record.
+    template <class View> void end_scene(const FrameInput& in, View view) noexcept {
+        admitted_count = 0; drift_count = 0; ++walk_serial;
         if (flush_pending != Flush::None) flush(flush_pending);
         const bool jumped = note_camera(in);
         // Capacity: the reserve is refilled here, once per frame, never at a draw (farthest unseen nodes first).
         for (unsigned guard = 0; guard < node_reserve && (node_free_count < node_reserve || draw_free_count < draw_reserve); ++guard) if (!evict_farthest(in.frame)) break;
         finalize_seen(in);
-        walk_unseen(in, check);
+        const auto stamp_state = [&](const BufferStamp& b) noexcept { return buffer_verdict(b, buffer_view(b.identity, view), hold); };
+        walk_unseen(in, [&](const Draw& d) noexcept {
+            const BufferState s = stamp_state(d.vb);
+            return s != BufferState::Quiet || !d.key.indexed ? s : stamp_state(d.ib);
+        });
         apply_caps(in);
         if (jumped) { transit_frame = in.frame; transit_open = true; for (auto& n : nodes) n.pre_transit = n.used; }
         else if (transit_open && in.frame >= transit_frame + transit_window) {
@@ -402,6 +433,12 @@ struct Store {
     }
 
 private:
+    // This walk's view of one buffer identity: the cached one, or one registry lookup.
+    template <class View> const BufferView& buffer_view(std::uintptr_t identity, View& view) noexcept {
+        ViewSlot& s = views[IndexMap<resource_capacity>::home(std::uint64_t(identity)) & (resource_capacity - 1)];
+        if (s.identity != identity || s.walk != walk_serial) { s.identity = identity; s.walk = walk_serial; s.view = view(identity); ++frame.buffer_views; }
+        return s.view;
+    }
     void count_refused() noexcept { ++frame.refused; ++totals.refused; }
     static void set_extent(Draw& d, const float lo[3], const float hi[3]) noexcept {
         if (d.extent_known && !std::memcmp(d.lo, lo, sizeof d.lo) && !std::memcmp(d.hi, hi, sizeof d.hi)) return;

@@ -76,7 +76,8 @@ struct Rig {
     std::uint64_t frame = 1;
     unsigned room[4] = {1024, 1024, 1024, 1024};
     std::uint32_t age_cap = sr::age_cap_default;
-    std::uint64_t changed_vb = 0; // the check callback reports this allocation as rewritten
+    std::uint64_t changed_vb = 0; // the view callback reports this allocation as rewritten
+    unsigned views = 0;           // registry lookups the view callback answered
     const float* outer_sun = nullptr; // the positional sun: cascade 1 holds another direction than cascade 0
     Rig(bool hold = true) { const float extents[2] = {250.f, 1500.f}; renderer::shadow_cascade_set(extents, 2, nullptr, nullptr, 640, set); store->configure(hold); }
     sr::Seen draw(std::uint64_t serial, const float world[12], std::uint64_t vb = 100, std::uint32_t lod = 0, std::uint32_t flags12c = 0, std::uint32_t flags130 = 0, std::uint64_t epoch = 1, std::uint64_t revision = 1) {
@@ -95,7 +96,10 @@ struct Rig {
         in.bases_valid = true;
         for (unsigned c = 0; c < set.count; ++c) in.bases_valid = in.bases_valid && renderer::shadow_replay_basis(in.camera, c && outer_sun ? outer_sun : sun, set.cascades[c], in.bases[c]);
         for (unsigned c = 0; c < 4; ++c) in.room[c] = room[c];
-        store->end_scene(in, [&](const sr::Draw& d) { return changed_vb && d.key.vb == changed_vb ? sr::BufferState::Changed : sr::BufferState::Quiet; });
+        // The registry stand-in: identities 0x100000 + vb (allocation vb) and 0x200000 + vb (the index buffer, allocation vb + 1),
+        // generation 1, revision 1; the rewritten vertex buffer reads revision 2.
+        store->end_scene(in, [&](std::uintptr_t id) { ++views; sr::BufferView v; v.present = v.known = v.quiet = true; v.generation = 1; const bool ib = id >= 0x200000;
+                                                      v.allocation = ib ? id - 0x200000 + 1 : id - 0x100000; v.revision = !ib && changed_vb && v.allocation == changed_vb ? 2 : 1; return v; });
         release();
     }
     void release() { while (const auto id = store->pop_owed()) { if (--refs[id] == 0) refs.erase(id); } }
@@ -187,6 +191,19 @@ int main() {
         CHECK(frames >= 1 && frames <= 8 && far_rig.store->totals.buffer_changed == 1 && far_rig.held() == 0);
         // seen with another revision: the record stays, counted
         Rig q; q.settle(10, w); q.draw(10, w, 100, 0, 0, 0, 1, 2); q.end(); const auto g = q.next(); CHECK(g.buffer_changed == 1 && q.store->draws_used == 1);
+    }
+    { // records sharing a buffer: one registry lookup per distinct buffer per scene end, every record compared against it
+        Rig r; float ws[40][12];
+        for (unsigned i = 0; i < 40; ++i) place(ws[i], 20 + 3. * i, 0, 60);
+        for (unsigned f = 0; f < 10; ++f) { for (unsigned i = 0; i < 40; ++i) r.draw(200 + i, ws[i], 100); r.end(); r.next(); }
+        r.views = 0; r.end(); auto f = r.next();
+        CHECK(f.nodes_unseen == 40 && f.admitted_checked == 40 && f.buffer_views == 2 && r.views == 2 && r.store->admitted_count == 40); // the vertex and the index buffer, once each
+        r.views = 0; r.end(); f = r.next(); CHECK(f.buffer_views == 2 && r.views == 2); // the next scene end looks them up again (the cache is per walk)
+        r.changed_vb = 100; r.views = 0; r.end(); f = r.next();
+        CHECK(f.buffer_changed == 40 && f.buffer_views == 1 && r.views == 1 && r.store->nodes_used == 0 && r.store->admitted_count == 0 && r.held() == 0); // one lookup drops every record of the rewritten buffer before issue
+        Rig two; for (unsigned f = 0; f < 10; ++f) { two.draw(300, ws[0], 100); two.draw(301, ws[1], 500); two.end(); two.next(); }
+        two.changed_vb = 500; two.views = 0; two.end(); f = two.next();
+        CHECK(f.buffer_changed == 1 && f.nodes_unseen == 1 && f.admitted_checked == 2 && f.buffer_views == 3 && two.store->admitted_count == 1); // the other buffer's record is kept and issued
     }
     { // the age cap
         Rig r; r.age_cap = 5; place(w, 20, 0, 60); r.settle(11, w);

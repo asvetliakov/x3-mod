@@ -301,20 +301,17 @@ void MotionOutput::retention_scene_end(bool sun_source_switched) noexcept {
         const unsigned cap = depth_cascades_.caps[c] < shadow_replay::record_capacity ? depth_cascades_.caps[c] : shadow_replay::record_capacity;
         in.room[c] = live < cap ? cap - live : 0;
     }
-    const bool live_mode = st.mode == shadow_retention::Mode::Live;
-    store.end_scene(in, [&](const shadow_retention::Draw& d) noexcept {
-        // The buffer-lock view of a held unseen buffer: another allocation or
-        // generation, a moved revision, a pending or in-flight Lock. Census
-        // mode holds no reference: a view that is gone counts buffer_gone.
-        const shadow_retention::BufferStamp* stamps[2] = {&d.vb, d.key.indexed ? &d.ib : nullptr};
-        for (const auto* b : stamps) {
-            if (!b) continue;
-            ownership::BufferLockView view{};
-            if (FAILED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(b->identity), &view)) || !view.requested) return shadow_retention::BufferState::Gone;
-            if (view.allocation_id != b->allocation || view.generation != b->generation) return live_mode ? shadow_retention::BufferState::Changed : shadow_retention::BufferState::Gone;
-            if (!view.known || view.revision != b->revision || view.pending_locks || view.in_flight_locks || view.in_flight_unlocks) return shadow_retention::BufferState::Changed;
-        }
-        return shadow_retention::BufferState::Quiet;
+    store.end_scene(in, [](std::uintptr_t identity) noexcept {
+        // The buffer-lock view of an unseen buffer, one registry lookup per distinct buffer per
+        // scene end (the store compares every record naming it: allocation, generation, revision,
+        // pending or in-flight Lock; shadow_retention::buffer_verdict). Census mode holds no
+        // reference: a view that is gone counts buffer_gone there.
+        shadow_retention::BufferView v;
+        ownership::BufferLockView view{};
+        if (FAILED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(identity), &view)) || !view.requested) return v;
+        v.present = true; v.allocation = view.allocation_id; v.generation = view.generation; v.revision = view.revision;
+        v.known = view.known; v.quiet = !view.pending_locks && !view.in_flight_locks && !view.in_flight_unlocks;
+        return v;
     });
     release_retention_pending();
     SetLastError(error);
@@ -338,7 +335,7 @@ void MotionOutput::publish_shadow_retention() noexcept {
         " would_c0=%u would_c1=%u would_c2=%u would_c3=%u capped_c0=%u capped_c1=%u capped_c2=%u capped_c3=%u drift_n=%u drift_p99=%.6g drift_max=%.6g"
         " age_max=%llu refs_held=%u sun_relatch=%u cam_jump=%u transit_survivors=%u us=%.1f"
         " refused=%u moving_dropped=%u abandoned=%u deferred=%u journal_us=%.1f walk_us=%.1f draw_us=%.1f draw_calls=%u"
-        " far_alternate_due_to_retained=%u revalidate_context_lost=%u release_queue_full=%u reclassified_after_unseen=%u admitted_checked=%u idle_frames=%u",
+        " far_alternate_due_to_retained=%u revalidate_context_lost=%u release_queue_full=%u reclassified_after_unseen=%u admitted_checked=%u buffer_views=%u idle_frames=%u",
         id_, frame_, live ? "live" : "census", unsigned(st.registered && st.available), f.nodes_live, f.nodes_unseen, f.records, f.records_unseen, f.statics, f.moving,
         f.excluded_class, f.unscoped, f.new_nodes, f.first_seen_in_range, f.promoted, f.superseded, f.lod_replaced, f.model_replaced, f.reclassified,
         f.retired, f.journal_overflow, f.revalidated, static_cast<unsigned long long>(f.mutation_delta), f.buffer_changed, f.buffer_gone, f.buffer_orphaned, unsigned(live && st.orphan_probe),
@@ -346,7 +343,7 @@ void MotionOutput::publish_shadow_retention() noexcept {
         f.would[0], f.would[1], f.would[2], f.would[3], f.capped[0], f.capped[1], f.capped[2], f.capped[3], f.drift_n, double(f.drift_p99), double(f.drift_max),
         static_cast<unsigned long long>(f.age_max), store.references(), f.sun_relatch, f.cam_jump, f.transit_survivors, st.us,
         f.refused, f.moving_dropped, f.abandoned, f.deferred, st.journal_us, st.walk_us, retention_us(st.draw_ticks), st.draw_calls,
-        f.far_alternate_due_to_retained, f.revalidate_context_lost, f.release_queue_full, f.reclassified_after_unseen, f.admitted_checked, st.idle_frames);
+        f.far_alternate_due_to_retained, f.revalidate_context_lost, f.release_queue_full, f.reclassified_after_unseen, f.admitted_checked, f.buffer_views, st.idle_frames);
     if (capture_) {
         for (unsigned i = 0; i < shadow_retention::node_capacity; ++i) {
             const auto& n = store.nodes[i];
