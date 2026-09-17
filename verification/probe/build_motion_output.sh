@@ -34,20 +34,22 @@ DEFINES="-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DX3M_MOTION_OUTPUT_FIXTURE -DX3M_QUAD
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/capture.cpp -o build/motion-output-seam/capture.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/motion_output.cpp -o build/motion-output-seam/motion_output.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/camera_state.cpp -o build/motion-output-seam/camera_state.o
+i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/sun_light_poll.cpp -o build/motion-output-seam/sun_light_poll.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -fno-exceptions -c ../../src/proxy/scene_hook.cpp -o build/motion-output-seam/scene_hook.o
 # The HDR pass carries the fault-injection seam of the design's case 4; the
 # temporal pass carries the quad twin switch.
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/renderer/hdr_pass.cpp -o build/motion-output-seam/hdr_pass.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/renderer/temporal_pass.cpp -o build/motion-output-seam/temporal_pass.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/renderer/linear_emission_pass.cpp -o build/motion-output-seam/linear_emission_pass.o
-SHARED=$(find "$OBJECTS" -name '*.obj' ! -name 'capture.cpp.obj' ! -name 'motion_output.cpp.obj' ! -name 'camera_state.cpp.obj' ! -name 'scene_hook.cpp.obj' ! -name 'hdr_pass.cpp.obj' ! -name 'temporal_pass.cpp.obj' ! -name 'linear_emission_pass.cpp.obj' | sort)
+SHARED=$(find "$OBJECTS" -name '*.obj' ! -name 'capture.cpp.obj' ! -name 'motion_output.cpp.obj' ! -name 'camera_state.cpp.obj' ! -name 'sun_light_poll.cpp.obj' ! -name 'scene_hook.cpp.obj' ! -name 'hdr_pass.cpp.obj' ! -name 'temporal_pass.cpp.obj' ! -name 'linear_emission_pass.cpp.obj' | sort)
 i686-w64-mingw32-g++ -shared -static -static-libgcc -static-libstdc++ -Wl,--kill-at -Wl,--enable-stdcall-fixup \
-  -o build/motion-output-seam/d3d9.dll build/motion-output-seam/capture.o build/motion-output-seam/motion_output.o build/motion-output-seam/camera_state.o build/motion-output-seam/scene_hook.o build/motion-output-seam/hdr_pass.o build/motion-output-seam/temporal_pass.o build/motion-output-seam/linear_emission_pass.o $SHARED \
+  -o build/motion-output-seam/d3d9.dll build/motion-output-seam/capture.o build/motion-output-seam/motion_output.o build/motion-output-seam/camera_state.o build/motion-output-seam/sun_light_poll.o build/motion-output-seam/scene_hook.o build/motion-output-seam/hdr_pass.o build/motion-output-seam/temporal_pass.o build/motion-output-seam/linear_emission_pass.o $SHARED \
   "$BRIDGE/compositor_bridge.o" "$BRIDGE/compositor_bridge_seh_gnu.obj" \
   "$BRIDGE/libx3m_compositor_seh_runtime.a" ../../src/proxy/d3d9.def -ldxguid -ladvapi32
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_motion_output_fixture_configure
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_camera_state_fixture_install
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_scene_hook_fixture_install
+i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_sun_light_poll_fixture_install
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_hdr_fixture_fault
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_hdr_fixture_exposure
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_shadow_replay_fixture_readback

@@ -9,10 +9,10 @@
     },
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
-  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh",
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i",
   "inputs": {
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion_output_fixture.exe": "8b08e9640a4a5b9700cd05e20960ef74f5e8011e134e955d2f72cb3f4bd9758c",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4dbb527a4114ffa9/verification/probe/build/motion-output-seam/d3d9.dll": "365398438f80391d20357c7ca2dc958dabbc9c5756f339d3abda36e070c11f62",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a206a11144997ac2f/verification/probe/build/motion_output_fixture.exe": "4c31522a3598f8f8b8cbd4f8e8fa7ae08fc4c7664733f5b46d28148db933b26c",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a206a11144997ac2f/verification/probe/build/motion-output-seam/d3d9.dll": "27b4c22a2716f8e457fe0843abde7614401513cd388387a211d4736cbc32d3ca",
     "/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
     "/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
     "/private/tmp/x3-shader-sweep/programs/vs_089091aab2d5eb13.bin": "2a3270292daf99a296801100e52c052967b4c80fee3b31216c8908dfb3233835",
@@ -36,7 +36,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 4.224582708,
+      "elapsed_seconds": 4.231456082999999,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -45,8 +45,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/positive",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/positive/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/positive",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/positive/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -65,7 +65,7 @@
       "zero_frames": 0,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.516368334,
+      "elapsed_seconds": 1.5795889169999997,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -74,8 +74,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/caps",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/caps/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/caps",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/caps/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -94,7 +94,7 @@
       "zero_frames": 0,
       "negative_selftest": true,
       "linear_materials": true,
-      "elapsed_seconds": 1.7019488330000003,
+      "elapsed_seconds": 1.534561041,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -103,8 +103,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/cutout_drop",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/cutout_drop/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/cutout_drop",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/cutout_drop/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -123,7 +123,7 @@
       "zero_frames": 0,
       "negative_selftest": true,
       "linear_materials": true,
-      "elapsed_seconds": 1.5629804170000003,
+      "elapsed_seconds": 1.5048234589999998,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -132,8 +132,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/alpha_mask",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/alpha_mask/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/alpha_mask",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/alpha_mask/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -152,7 +152,7 @@
       "zero_frames": 0,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.6261569999999992,
+      "elapsed_seconds": 1.5047034999999997,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -161,8 +161,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/allocation",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/allocation/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/allocation",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/allocation/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -181,7 +181,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.529126959000001,
+      "elapsed_seconds": 1.5098034589999987,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -190,8 +190,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/late_shader",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/late_shader/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/late_shader",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/late_shader/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -210,7 +210,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.511490834,
+      "elapsed_seconds": 1.5269058750000006,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -219,8 +219,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/bind",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/bind/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/bind",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/bind/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -239,7 +239,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.61224275,
+      "elapsed_seconds": 1.5415945830000002,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -248,8 +248,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/untracked",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/untracked/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/untracked",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/untracked/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -268,7 +268,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.5277989160000018,
+      "elapsed_seconds": 1.5172027499999992,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -277,8 +277,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/composition",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/composition/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/composition",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/composition/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -297,7 +297,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.5489510419999988,
+      "elapsed_seconds": 1.5765684170000007,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -306,8 +306,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/composition_missing",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/composition_missing/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/composition_missing",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/composition_missing/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -326,7 +326,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.7049172080000012,
+      "elapsed_seconds": 1.6195057909999981,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -335,8 +335,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/composition_failed",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/composition_failed/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/composition_failed",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/composition_failed/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -355,7 +355,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.518384042000001,
+      "elapsed_seconds": 1.5806650410000032,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -364,8 +364,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/xt_state",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/xt_state/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/xt_state",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/xt_state/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -384,7 +384,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.510571917,
+      "elapsed_seconds": 1.563425125000002,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -393,8 +393,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/effects",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/effects/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/effects",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/effects/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -413,7 +413,7 @@
       "zero_frames": 0,
       "negative_selftest": false,
       "lane_off": true,
-      "elapsed_seconds": 1.5180654580000024,
+      "elapsed_seconds": 1.551786290999999,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -422,8 +422,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/xt_state_lane_off",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/xt_state_lane_off/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/xt_state_lane_off",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/xt_state_lane_off/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -442,7 +442,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.7138399999999976,
+      "elapsed_seconds": 1.584367499999999,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -451,8 +451,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/cutout_pair",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/cutout_pair/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/cutout_pair",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/cutout_pair/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -471,7 +471,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": true,
-      "elapsed_seconds": 1.5479284159999978,
+      "elapsed_seconds": 1.6460494170000004,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -480,8 +480,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/cutout_pair_bias",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/cutout_pair_bias/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/cutout_pair_bias",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/cutout_pair_bias/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -500,7 +500,7 @@
       "zero_frames": 1,
       "negative_selftest": false,
       "linear_materials": false,
-      "elapsed_seconds": 1.5816337500000017,
+      "elapsed_seconds": 1.5319468330000028,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -509,8 +509,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/original_lane",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/original_lane/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/original_lane",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/original_lane/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -534,7 +534,7 @@
         "0": "replay",
         "2": "lane"
       },
-      "apply_us_max": 1270.4,
+      "apply_us_max": 1209.7,
       "shadowed_pixels_min": 3969,
       "bias": {
         "bias_units": 0.53571875,
@@ -550,7 +550,7 @@
           "texel_world": 0.125
         }
       },
-      "elapsed_seconds": 1.8559475830000025,
+      "elapsed_seconds": 1.8493885419999998,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -559,8 +559,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/shadow_apply",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/shadow_apply/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/shadow_apply",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/shadow_apply/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -579,7 +579,7 @@
       "zero_frames": 0,
       "negative_selftest": false,
       "linear_materials": false,
-      "elapsed_seconds": 1.6389330830000013,
+      "elapsed_seconds": 1.7171358329999968,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -588,8 +588,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/original_share_refused",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/original_share_refused/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/original_share_refused",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/original_share_refused/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"
@@ -618,7 +618,7 @@
         "variants": 1,
         "admitted": 1,
         "refused_blend": 1,
-        "elapsed_seconds": 1.3754162500000007,
+        "elapsed_seconds": 1.375943624999998,
         "command": [
           "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
           "--bottle",
@@ -627,8 +627,8 @@
           "--dll",
           "d3d9=n,b",
           "--workdir",
-          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/hull_emission/gain-2",
-          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/hull_emission/gain-2/fixture.exe",
+          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/hull_emission/gain-2",
+          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/hull_emission/gain-2/fixture.exe",
           "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
           "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
           "hullemission"
@@ -656,7 +656,7 @@
         "variants": 0,
         "admitted": 0,
         "refused_blend": 0,
-        "elapsed_seconds": 1.3398892080000024,
+        "elapsed_seconds": 1.3299624169999973,
         "command": [
           "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
           "--bottle",
@@ -665,8 +665,8 @@
           "--dll",
           "d3d9=n,b",
           "--workdir",
-          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/hull_emission/gain-1",
-          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/hull_emission/gain-1/fixture.exe",
+          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/hull_emission/gain-1",
+          "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/hull_emission/gain-1/fixture.exe",
           "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
           "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
           "hullemission"
@@ -691,7 +691,7 @@
         "0": "replay",
         "2": "lane"
       },
-      "apply_us_max": 1316.6,
+      "apply_us_max": 1479.5,
       "shadowed_pixels_min": 3969,
       "bias": {
         "bias_units": 0.53571875,
@@ -745,7 +745,7 @@
           }
         }
       },
-      "elapsed_seconds": 1.796625665999997,
+      "elapsed_seconds": 1.6679375840000006,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
         "--bottle",
@@ -754,8 +754,8 @@
         "--dll",
         "d3d9=n,b",
         "--workdir",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/shadow_apply_cascades",
-        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-9hi792wh/shadow_apply_cascades/fixture.exe",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/shadow_apply_cascades",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-ey8lfa0i/shadow_apply_cascades/fixture.exe",
         "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sunlane"

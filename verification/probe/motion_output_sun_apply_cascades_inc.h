@@ -30,11 +30,28 @@
 //       world-fixed texel grid; the runner sums the shift fit over the eight
 //       frames (one frame's edges sit at one phase, which alone is worth up
 //       to half a texel either way) and finds the lookup unbiased.
+//   (h) sun at finite distance: a point light 24,000 units from the camera, 75
+//       degrees to the side of the view direction at 30 degrees elevation, and
+//       three boxes on the camera's ground track: A floating, its shadow
+//       landing 260 units ahead inside cascade 0; B standing on the plane 550
+//       units ahead, 80 units tall, the nearest to cascade 1's centre that
+//       cascade 1 owns; C floating 500 units above its shadow 1,200 units
+//       ahead, near cascade 1's edge. The
+//       production PointSun (src/proxy/shadow_replay_sun_point.h) validates the
+//       light against the constants of three draw origins and gives every
+//       cascade its own sun, normalize(light - cascade centre): cascade 0's
+//       centre lies 128 units ahead, 118 of them across the light, 4.9e-3 rad
+//       at this distance, beyond the 1 / 256 rad hold of a 256-texel map, so
+//       cascade 0's basis differs from cascade 1's (cascade 2 adopts cascade
+//       1's): per-cascade bounds rows, draw rows and apply rows. The runner
+//       holds A's and B's shadow edges to one texel of the analytic POINT-light
+//       shadow and reports C's residual against h r / D.
 // Every frame's RT2, per-cascade map readbacks and target readbacks are
 // written beside the executable for the runner's twin
 // (verification/probe/sun_shadow_apply.py, expected_factor_cascades).
 namespace {
-constexpr unsigned cascade_frames = 20, cascade_map = 256, cascade_count = 3;
+constexpr unsigned cascade_frames = 21, cascade_map = 256, cascade_count = 3;
+constexpr double cascade_point_distance = 24000., cascade_point_side_deg = 75., cascade_point_track[3] = {260., 550., 1200.}, cascade_point_lift[3] = {120., 160., 1000.}, cascade_point_half[3] = {8., 40., 80.};
 constexpr double cascade_phase_texel = 2. * 1500. / cascade_map; // cascade 1's world texel
 struct CascadeScript { char name; double scale; float elevation_deg; double high_box; unsigned budget; double shift[3]; unsigned jitter_index; float jx, jy; float exponent; bool reset_before; unsigned phase = 0; };
 constexpr CascadeScript cascade_script[cascade_frames] = {
@@ -54,6 +71,7 @@ constexpr CascadeScript cascade_script[cascade_frames] = {
     {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 2}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 3},
     {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 4}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 5},
     {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 6}, {'g', 100., 50.f, 0., 640, {0, 0, 0}, 0, 0.f, 0.f, 1.f, false, 7},
+    {'h', 60., 30.f, 0., 640, {0, 0, 0}, 2, .125f, -.25f, 1.f, false},          // the sun at finite distance (last: it rebuilds the box buffer)
 };
 struct CascadeBox { double lo[3], hi[3]; };
 // Nearest positive hit of the plane y = 0 and the boxes along o + t dir, or a negative value.
@@ -167,7 +185,7 @@ void run_sun_apply_cascades(Fixture& f) {
                 double(r::shadow_cascade_select_margin), double(r::shadow_cascade_blend_band));
     s.rt2_data.resize(std::size_t(sun_apply_w) * sun_apply_h * 2);
     LARGE_INTEGER frequency; QueryPerformanceFrequency(&frequency);
-    CascadeObject plane, box, high;
+    CascadeObject plane, box, high, third;
     std::vector<unsigned char> reset_reference_before, reset_reference_after;
     std::uint64_t map_frames[cascade_count] = {~0ull, ~0ull, ~0ull};
     double built_scale = 0.; unsigned built_phase = 0;
@@ -187,12 +205,13 @@ void run_sun_apply_cascades(Fixture& f) {
         }
         // The scene at this frame's scale.
         const double scale = script.scale;
-        CascadeBox boxes[2]; unsigned box_count = 1;
+        const bool point = script.name == 'h';
+        CascadeBox boxes[3]; unsigned box_count = 1;
         for (unsigned k = 0; k < 3; ++k) { boxes[0].lo[k] = sun_apply_box_min[k] * scale; boxes[0].hi[k] = sun_apply_box_max[k] * scale; }
         { const double phase = script.phase / 8. * cascade_phase_texel; // case g: the box at eight sub-texel phases
           boxes[0].lo[0] += phase; boxes[0].hi[0] += phase; boxes[0].lo[2] += .61 * phase; boxes[0].hi[2] += .61 * phase; }
         const double az = sun_apply_azimuth_deg * 3.14159265358979323846 / 180., el = double(script.elevation_deg) * 3.14159265358979323846 / 180.;
-        const float sun[4] = {float(std::sin(az) * std::cos(el)), float(std::sin(el)), float(std::cos(az) * std::cos(el)), 0.f};
+        float sun[4] = {float(std::sin(az) * std::cos(el)), float(std::sin(el)), float(std::cos(az) * std::cos(el)), 0.f};
         if (script.high_box > 0.) {
             // Towards the light above the ground point P, 30 units across.
             const Vec3 p{.75 * scale, 0., -2.5 * scale}, centre = p + Vec3{sun[0], sun[1], sun[2]} * script.high_box;
@@ -223,12 +242,65 @@ void run_sun_apply_cascades(Fixture& f) {
             clip[row * 4 + 3] = float(-dot(axes[j], s.position) * scale_j);
         }
         for (unsigned k = 0; k < 4; ++k) clip[8 + k] = clip[12 + k] * s.m22 + (k == 3 ? s.m32 : 0.f);
+        // Every cascade's sun: the frame's one direction, or (h) the production PointSun's per-cascade directions.
+        float suns[r::shadow_cascade_max * 4]{};
+        for (unsigned c = 0; c < r::shadow_cascade_max; ++c) std::memcpy(suns + c * 4, sun, sizeof sun);
+        Vec3 light{0, 0, 0}; double point_agreement = -1.; unsigned point_rederived = 0;
+        if (point) {
+            const Vec3 ahead = normalize(Vec3{s.forward.x, 0., s.forward.z}), side = cross(Vec3{0, 1, 0}, ahead);
+            const double phi = cascade_point_side_deg * 3.14159265358979323846 / 180.;
+            const Vec3 to_light = ahead * (-std::cos(phi) * std::cos(el)) + Vec3{0, 1, 0} * std::sin(el) + side * (std::sin(phi) * std::cos(el));
+            light = s.position + to_light * cascade_point_distance;
+            sun[0] = float(to_light.x); sun[1] = float(to_light.y); sun[2] = float(to_light.z); // the scene record's nominal direction (at the camera)
+            const Vec3 ground{s.position.x, 0., s.position.z};
+            for (unsigned b = 0; b < 3; ++b) {
+                const Vec3 landing = ground + ahead * cascade_point_track[b];
+                const Vec3 centre = b == 1 ? landing + Vec3{0, 1, 0} * cascade_point_half[b] : landing + normalize(light - landing) * cascade_point_lift[b]; // B stands on the plane (its top: lift x sin 30)
+                const double c[3] = {centre.x, centre.y, centre.z};
+                for (unsigned k = 0; k < 3; ++k) { boxes[b].lo[k] = c[k] - cascade_point_half[b]; boxes[b].hi[k] = c[k] + cascade_point_half[b]; }
+            }
+            box_count = 3;
+            cascade_make_box(f, box, boxes[0]); cascade_make_box(f, high, boxes[1]); cascade_make_box(f, third, boxes[2]);
+            // The production decision: the light as the engine stores it (integers x 0.01), validated against the
+            // LightDir_Dir0 the engine would upload at three draw origins, then one held direction per cascade.
+            x3m::shadow_replay::PointSun ps;
+            ps.begin_frame();
+            const std::int32_t native[3] = {std::int32_t(std::llround(light.x * 100.)), std::int32_t(std::llround(light.y * 100.)), std::int32_t(std::llround(light.z * 100.))};
+            ps.set_poll(native, x3m::shadow_replay::PointSunReason::Point);
+            light = Vec3{native[0] * .01, native[1] * .01, native[2] * .01};
+            require(!ps.decide(true, s.camera, set) && ps.reason == x3m::shadow_replay::PointSunReason::Unchecked, "an unvalidated light position is not a sun source");
+            ps.begin_frame(); ps.set_poll(native, x3m::shadow_replay::PointSunReason::Point);
+            for (unsigned b = 0; b < 3; ++b) {
+                const Vec3 origin{.5 * (boxes[b].lo[0] + boxes[b].hi[0]), .5 * (boxes[b].lo[1] + boxes[b].hi[1]), .5 * (boxes[b].lo[2] + boxes[b].hi[2])}, d = normalize(light - origin);
+                const float constant[4] = {float(d.x), float(d.y), float(d.z), 0.f}; const double o[3] = {origin.x, origin.y, origin.z};
+                require(ps.check(constant, o), "the engine's constant at a draw origin agrees with the polled light");
+            }
+            require(ps.decide(true, s.camera, set) && ps.rederived == cascade_count && ps.checks == 3 && ps.disagreements == 0 && ps.agreement_degrees() < .01, "the validated light is the frame's sun source");
+            std::memcpy(suns, ps.suns, sizeof suns); point_agreement = ps.agreement_degrees(); point_rederived = ps.rederived;
+            require(std::memcmp(suns, suns + 4, 12) != 0 && std::memcmp(suns + 4, suns + 8, 12) == 0, "cascade 0 holds its own direction, cascade 2 adopts cascade 1's");
+            ps.end_frame();
+            // The next frame: the same camera holds every direction bit for bit without a new check (validation carried);
+            // a light inside the cascades' volume, a disagreeing constant and a missing light fall back with their reasons.
+            ps.begin_frame(); ps.set_poll(native, x3m::shadow_replay::PointSunReason::Point);
+            require(ps.decide(true, s.camera, set) && ps.rederived == 0 && std::memcmp(suns, ps.suns, sizeof suns) == 0, "held directions are bit-stable under a carried validation");
+            ps.end_frame();
+            { auto inside = ps; inside.begin_frame(); const std::int32_t close[3] = {std::int32_t(std::llround(s.position.x * 100.)), std::int32_t(std::llround((s.position.y + 20000.) * 100.)), std::int32_t(std::llround(s.position.z * 100.))};
+              inside.set_poll(close, x3m::shadow_replay::PointSunReason::Point); const float up[4] = {0, 1, 0, 0}; const double o[3] = {s.position.x, s.position.y, s.position.z};
+              require(inside.check(up, o) && !inside.decide(true, s.camera, set) && inside.reason == x3m::shadow_replay::PointSunReason::Near && inside.sun(0) == nullptr, "a light inside the cascades' volume is refused (near)"); }
+            { auto wrong = ps; wrong.begin_frame(); wrong.set_poll(native, x3m::shadow_replay::PointSunReason::Point); const float up[4] = {0, 1, 0, 0}; const double o[3] = {0, 0, 0};
+              require(!wrong.check(up, o) && !wrong.decide(true, s.camera, set) && wrong.reason == x3m::shadow_replay::PointSunReason::Disagrees, "a disagreeing constant refuses the poll");
+              wrong.end_frame(); wrong.begin_frame(); wrong.set_poll(native, x3m::shadow_replay::PointSunReason::Point);
+              require(!wrong.decide(true, s.camera, set) && wrong.reason == x3m::shadow_replay::PointSunReason::Cooldown && wrong.frames_latch[unsigned(x3m::shadow_replay::PointSunReason::Disagrees)] == 1, "the refusal cools down, counted by reason"); }
+            { auto none = ps; none.begin_frame(); none.set_poll(nullptr, x3m::shadow_replay::PointSunReason::NoLight);
+              require(!none.decide(true, s.camera, set) && none.reason == x3m::shadow_replay::PointSunReason::NoLight, "no directional light: the latch stays"); }
+        }
         // One bounds pass per object: the cascade mask, under the per-cascade caps.
         r::ShadowCascadeBounds bounds{};
-        require(r::shadow_cascade_bounds(s.camera, sun, set, bounds), "the frame's cascade boxes build");
-        const CascadeObject* objects[3] = {&plane, &box, script.high_box > 0. ? &high : nullptr};
-        const unsigned object_count = script.high_box > 0. ? 3 : 2;
-        unsigned masks[3]{}, per_cascade[cascade_count]{}, issues = 0;
+        require(r::shadow_cascade_bounds_suns(s.camera, suns, set, bounds) && bounds.shared == !point, "the frame's cascade boxes build");
+        if (!point) { r::ShadowCascadeBounds one{}; require(r::shadow_cascade_bounds(s.camera, sun, set, one) && one.count == bounds.count && one.shared && !std::memcmp(one.rows, bounds.rows, sizeof one.rows) && !std::memcmp(one.lo, bounds.lo, sizeof one.lo) && !std::memcmp(one.hi, bounds.hi, sizeof one.hi), "the one-sun bounds equal the per-cascade bounds of equal suns"); }
+        const CascadeObject* objects[4] = {&plane, &box, script.high_box > 0. || point ? &high : nullptr, point ? &third : nullptr};
+        const unsigned object_count = point ? 4 : script.high_box > 0. ? 3 : 2;
+        unsigned masks[4]{}, per_cascade[cascade_count]{}, issues = 0;
         for (unsigned o = 0; o < object_count; ++o) {
             const int mask = r::shadow_cascade_bounds_mask(s.camera, clip, bounds, objects[o]->lo, objects[o]->hi);
             require(mask >= 0, "the bounds mask is known");
@@ -255,8 +327,8 @@ void run_sun_apply_cascades(Fixture& f) {
         // The transaction: the far cascade yields to the budget on odd frames.
         r::ShadowReplayBasis bases[cascade_count]{};
         bool replays[cascade_count]{};
-        r::ShadowReplayDraw draws[3]{};
-        r::ShadowReplayIssue issue_store[9]{};
+        r::ShadowReplayDraw draws[4]{};
+        r::ShadowReplayIssue issue_store[12]{};
         r::ShadowReplayMapList lists[cascade_count]{};
         unsigned list_count = 0, used = 0;
         for (unsigned o = 0; o < object_count; ++o) {
@@ -264,14 +336,14 @@ void run_sun_apply_cascades(Fixture& f) {
             d.vertex_buffer = objects[o]->buffer.p; d.declaration = declaration.p; d.stride = 12; d.topology = D3DPT_TRIANGLELIST; d.primitives = objects[o]->triangles; d.cull_mode = D3DCULL_NONE;
         }
         for (unsigned c = 0; c < cascade_count; ++c) {
-            require(r::shadow_replay_basis(s.camera, sun, set.cascades[c], bases[c]), "the cascade basis builds");
+            require(r::shadow_replay_basis(s.camera, suns + c * 4, set.cascades[c], bases[c]), "the cascade basis builds");
             replays[c] = per_cascade[c] != 0 && r::shadow_cascade_replays(c, cascade_count, issues, script.budget, frame);
             if (!replays[c]) continue;
             lists[list_count].map = c; lists[list_count].issues = issue_store + used;
             for (unsigned o = 0; o < object_count; ++o) {
                 if (!(masks[o] & (1u << c))) continue;
                 double base[3][4];
-                require(r::shadow_cascade_draw_rows(s.camera, clip, bases[0], base), "the draw's sun rows build");
+                require(r::shadow_cascade_draw_rows(s.camera, clip, bases[c], base), "the draw's sun rows build"); // bases[c]: equal axes on a one-sun frame
                 auto& issue = issue_store[used++];
                 issue.draw = std::uint16_t(o);
                 require(r::shadow_cascade_light_rows(base, bases[c], set.cascades[c], issue.rows), "the cascade light rows build");
@@ -398,7 +470,13 @@ void run_sun_apply_cascades(Fixture& f) {
                     double(bases[0].right[0]), double(bases[0].right[1]), double(bases[0].right[2]), double(bases[0].up[0]), double(bases[0].up[1]), double(bases[0].up[2]),
                     receivers, share_free, sentinels, masks[0], masks[1], masks[2], legacy_high,
                     boxes[0].lo[0], boxes[0].lo[1], boxes[0].lo[2], boxes[0].hi[0], boxes[0].hi[1], boxes[0].hi[2]);
-        if (box_count == 2) std::printf(";%.9g,%.9g,%.9g,%.9g,%.9g,%.9g", boxes[1].lo[0], boxes[1].lo[1], boxes[1].lo[2], boxes[1].hi[0], boxes[1].hi[1], boxes[1].hi[2]);
+        for (unsigned b = 1; b < box_count; ++b) std::printf(";%.9g,%.9g,%.9g,%.9g,%.9g,%.9g", boxes[b].lo[0], boxes[b].lo[1], boxes[b].lo[2], boxes[b].hi[0], boxes[b].hi[1], boxes[b].hi[2]);
+        if (point) {
+            const Vec3 ground{s.position.x, 0., s.position.z}, ahead = normalize(Vec3{s.forward.x, 0., s.forward.z});
+            std::printf(" light=%.12g,%.12g,%.12g light_distance=%.9g point_agreement_deg=%.6f point_rederived=%u mask3=%u suns=%.9g,%.9g,%.9g;%.9g,%.9g,%.9g;%.9g,%.9g,%.9g landings=", light.x, light.y, light.z,
+                        cascade_point_distance, point_agreement, point_rederived, masks[3], suns[0], suns[1], suns[2], suns[4], suns[5], suns[6], suns[8], suns[9], suns[10]);
+            for (unsigned b = 0; b < 3; ++b) { const Vec3 g = ground + ahead * cascade_point_track[b]; std::printf("%s%.9g,%.9g,%.9g,%.9g", b ? ";" : "", g.x, g.z, cascade_point_lift[b], cascade_point_half[b]); }
+        }
         for (unsigned c = 0; c < cascade_count; ++c) {
             const auto& k = in.cascades[c];
             std::printf(" c%u=%u draws%u=%u valid%u=%u map_frame%u=%lld extent%u=%.9g bias%u=%.9g bias_max%u=%.9g texel_world%u=%.9g rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
@@ -433,15 +511,22 @@ void run_sun_apply_cascades(Fixture& f) {
                 r::shadow_replay_basis(s.camera, sun, single, basis) && r::shadow_replay_view_rows(s.camera, basis, single, rows), "the bench inputs build");
         constexpr unsigned rounds = 2000000;
         const float lo[3] = {-3, -2, -1}, hi[3] = {4, 5, 6};
-        long long verdicts = 0, masks = 0;
-        LARGE_INTEGER t0, t1, t2;
+        // The same four cascades under four different suns (per-cascade rows: the corners transformed once per cascade).
+        r::ShadowCascadeBounds split{};
+        float split_suns[16]; for (unsigned c = 0; c < 4; ++c) { std::memcpy(split_suns + c * 4, sun, sizeof sun); split_suns[c * 4] += .001f * float(c); }
+        require(r::shadow_cascade_bounds_suns(s.camera, split_suns, four, split) && !split.shared && bounds.shared, "the per-cascade bench bounds build");
+        long long verdicts = 0, masks = 0, split_masks = 0;
+        LARGE_INTEGER t0, t1, t2, t3;
         QueryPerformanceCounter(&t0);
         for (unsigned i = 0; i < rounds; ++i) { clip[3] = float(i & 1023u); verdicts += r::shadow_replay_bounds_verdict(s.camera, clip, rows, lo, hi); }
         QueryPerformanceCounter(&t1);
         for (unsigned i = 0; i < rounds; ++i) { clip[3] = float(i & 1023u); masks += r::shadow_cascade_bounds_mask(s.camera, clip, bounds, lo, hi); }
         QueryPerformanceCounter(&t2);
-        std::printf("SUNAPPLY_BOUNDS_BENCH rounds=%u verdict_ns=%.1f mask_ns=%.1f cascades=4 verdicts=%lld masks=%lld\n", rounds,
-                    1e9 * double(t1.QuadPart - t0.QuadPart) / double(frequency.QuadPart) / rounds, 1e9 * double(t2.QuadPart - t1.QuadPart) / double(frequency.QuadPart) / rounds, verdicts, masks);
+        for (unsigned i = 0; i < rounds; ++i) { clip[3] = float(i & 1023u); split_masks += r::shadow_cascade_bounds_mask(s.camera, clip, split, lo, hi); }
+        QueryPerformanceCounter(&t3);
+        std::printf("SUNAPPLY_BOUNDS_BENCH rounds=%u verdict_ns=%.1f mask_ns=%.1f cascades=4 verdicts=%lld masks=%lld split_mask_ns=%.1f split_masks=%lld\n", rounds,
+                    1e9 * double(t1.QuadPart - t0.QuadPart) / double(frequency.QuadPart) / rounds, 1e9 * double(t2.QuadPart - t1.QuadPart) / double(frequency.QuadPart) / rounds, verdicts, masks,
+                    1e9 * double(t3.QuadPart - t2.QuadPart) / double(frequency.QuadPart) / rounds, split_masks);
     }
     sun_apply_release_targets(s); map_copy.reset();
     replay.detach(); s.pass.detach();

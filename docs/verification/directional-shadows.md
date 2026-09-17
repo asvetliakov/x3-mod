@@ -1519,3 +1519,108 @@ Two reviews of `3f14880`, no blocker; seven items. Final binaries `build/d3d9.dl
 - The shift fit's v axis is weaker than u in this scene (flat valley along v in single frames); the
   eight-phase sum is what is asserted.
 
+
+## Sun at finite distance: polled light position, per-cascade suns (2026-09-17)
+
+Default off as the cascades are; without `--shadow-cascades`, and with the poll unavailable, every
+record equals main's (below). Not installed, no game launch.
+
+**Premise corrected.** The brief's hypothesis (light ≈ 24,000 units away, "if positions are 16.16")
+is false: node and light positions are engine integers × the context scale 0.01, the same unit as
+the proxy's camera position (three facts, two measured on run111:
+[camera-and-lights.md](../reverse-engineering/camera-and-lights.md), "Position units"). The sun is
+**1.57e7 units** away; the 0.753° per-node spread is sector-wide node spread, and the error it
+causes is the *latch's*: the latch keeps the constant of an arbitrary node, up to 0.75° from the
+direction at the camera (13 units of shadow displacement per 1,000 units of caster distance, 107
+cascade-0 texels). That error is what this change removes; the orthographic residual is small (table).
+
+**What was built.**
+- `src/proxy/sun_light_poll.{h,cpp}`: hook-free poll of the brightest directional light node
+  (`*0x00608518`, array `+0x5e8c`, exact-executable gate, `engine_memory::read` only, layout validated
+  per poll: slot count 8, terminator, light bit on every entry). Statuses `disabled`,
+  `executable_mismatch`, `slot_unreadable`, `null_context`, `unreadable`, `layout`, `no_directional`.
+- `src/proxy/shadow_replay_sun_point.h` (`PointSun`, pure): light = integers × 0.01; up to 8 routed
+  draws per frame whose `LightDir_Dir0` agrees with the latch are cross-checked,
+  `normalize(light − draw origin)` against the constant within **0.1°** (engine quantisation 0.0008°);
+  the frame's source is decided once (first box test or scene end) and holds for the frame; reasons
+  counted: `unavailable`, `no_light`, `camera`, `near` (light inside the cascades' volume:
+  distance ≤ depth-towards-light + largest extent), `unchecked`, `disagrees`, `cooldown` (120 frames
+  after a disagreement), `off`. A source change voids retained maps. The latch still gates the frame
+  (`no_sun`, `sun_changing`) and is the portable source (native Windows without the verified EXE:
+  `executable_mismatch`, behaviour = main).
+- Per-cascade direction: `normalize(light − (camera + forward × forward_offset))`, the unsnapped
+  centre (the snapped one differs by < 1 texel, 1e-8 rad). **Swim bound:** a cascade's direction is
+  held bit for bit while the ideal stays within `1 / size` rad, so between re-derivations the basis is
+  exactly as stable under texel snapping as main's; a re-derivation (camera travel of
+  distance / size across the light: 3,830 units at 4096 texels) turns the basis by ≤ `2 / size` rad:
+  a shadow whose caster is D units light-ward of its receiver moves ≤ 2 D / size, ≤ 1 texel of that
+  cascade for D ≤ its half-extent, once per 3,830 units of travel. A re-deriving cascade adopts the
+  next smaller cascade's held direction when within its own threshold, so camera-centred cascades
+  normally share one direction bit for bit: `ShadowCascadeBounds::shared` keeps the one-transform
+  box test and one draw-rows product per draw; otherwise per-cascade rows
+  (`shadow_cascade_bounds_suns`, `shadow_replay_axes_equal`). The apply already took per-cascade rows.
+- Log, every cascade frame (the F8 record): `shadow_replay_sun_point … source reason poll light
+  native distance checks disagreements agreement_deg rederived candidates directional luma
+  second_luma flags record_scale poll_us frames_point dir<i>`; `shadow_replay_sun_source` on a change.
+  `record_scale` is the engine's own D3DLIGHT position / integer: 0.01 expected in flight.
+
+**Orthographic-per-cascade residual against the true point light**, D = 1.5689e7 units, 4096² maps.
+Direction error at the cascade edge = atan(E / D); shadow displacement = h · E / D for a caster h
+units light-ward of the receiver; in texels it is h · size / (2 D), the same for every cascade: one
+texel at h = 7,660 units (5,420 at the corner).
+
+| Extent | texel | edge (corner) angle | h = extent | h = 50,000 (depth limit) |
+| --- | --- | --- | --- | --- |
+| 250 | 0.122 | 0.0009° (0.0013°) | 0.004 u = 0.03 tx | 0.80 u = 6.5 tx (corner 9.2) |
+| 1,500 | 0.732 | 0.0055° (0.0077°) | 0.14 u = 0.20 tx | 4.8 u = 6.5 tx |
+| 7,500 | 3.66 | 0.027° (0.039°) | 3.6 u = 0.98 tx | 23.9 u = 6.5 tx |
+| 25,000 | 12.2 | 0.091° (0.129°) | 39.8 u = 3.3 tx | 79.7 u = 6.5 tx |
+
+**Recommendation:** no perspective (point-light) projection for the far cascades at the measured
+distance: the worst case is 80 units (16 m) on a 5 km cascade for a caster 10 km up-light, 0.13° of
+direction, an eighth of what the latch alone was wrong by. A sector whose light lies within 75,000
+units is refused as `near` and counted; if flight logs show that reason (or `distance` below ~1e6),
+a perspective far cascade becomes the fix. Inference, not measured: that every sector's sun is as
+far as run 39's; the first flight's `distance` field settles it.
+
+**Evidence** (build `547eb606…dada`, clean, 0 warnings; `check_no_x87.py`: PASS, 520 reachable
+functions, 0 violations (the poll's QPC delta stays an integer on the draw path); seam
+`27b4c22a…d3ca`, fixture `4c31522a…b26c`; bottle X3):
+- `X3M_FIXTURE_BOTTLE=X3 … wine_lock.py … run_motion_output.py --dll … --seam … --fixture …` with 19
+  cases: 19 / 19 pass (`verification/results/bottle-X3/motion-output-partial.json`). The 16 cases of
+  main's record are equal field for field (timings, hashes and paths aside) except: the two cascade
+  cases gain `sun_point` (`no_seam`: 8 frames `latch / unavailable / executable_mismatch`) and 33
+  checks; `sun-shadow-apply-cascades` gains frame 20 (case h), `point_light` and 240 checks, and its
+  total `beyond_one_texel` 0 → 25 is case h's region C alone (the stated residual; frames 0–19: 0).
+  `sun-shadow-apply`, `-wide`, single-map and caster-count cases: identical.
+- Case h (`sun-shadow-apply-cascades`, production passes + production `PointSun`): light 24,000 units
+  away (the brief's hypothetical, so the effect is measurable on 256² maps), 75° to the side, 30°
+  elevation; cascade 0's sun differs from cascade 1's (4.9e-3 rad > 1/256), cascade 2 adopts
+  cascade 1's: per-cascade bounds rows, draw rows and apply rows on the GPU. Against the analytic
+  **point-light** shadow: A (cascade 0, lateral 185, h 61): 0 pixels beyond one texel (predicted
+  residual 0.24 tx); B (cascade 1, the nearest to its centre it owns, lateral 546, h 81): 0
+  (0.16 tx); C (cascade 1's edge, lateral 1,162, h 500): 25 pixels beyond one texel, predicted
+  h r / D = 24.2 units = 2.07 tx. Against the parallel shadow of each cascade's own sun: 0 in all
+  three (the maps are right for what they are). In-fixture: unchecked → refused; 3 checks
+  < 0.01°; carried validation holds bit for bit; `near`, `disagrees` → `cooldown`, `no_light`.
+- Poll through the DLL (`…-cascades-poll-{agree,null,disagree}`, the fixture's own context block
+  behind the seam; 4 candidates: point light, sun, fill, forced-directional at the origin):
+  agree: 8 / 8 frames `point`, luma 186580 / second 128000, `record_scale` 0.01, 3–4 checks per
+  frame, worst agreement 4e-6°, every direction within 1 / size of normalize(light − camera), every
+  replayed map's forward = −dir, held bit for bit except 2 re-derivations at the script's camera
+  jump, the sun-changing frame carried without checks; null: 8 × `unavailable / null_context`;
+  disagree (light 35° away): frame 0 `disagrees` (every check), 7 × `cooldown`; both fall back to
+  maps whose bases equal the latch's. Poll cost: median 5.7 µs, first frame 74 µs (region queries).
+- Box test per draw (2M rounds, 4 cascades): shared suns 45.0 ns (single-map verdict 45.6 ns, main:
+  the same path), per-cascade suns 137 ns (only on frames where holds differ).
+- Live: `run_sun_share_live.py`: 21 / 21, record equal to main's (temp paths aside).
+- Host: `test_shadow_cascades` (PointSun at the run-39 distance: latch error 0.42° at run111's node,
+  hold 3,000 / re-derive 5,000 units, ≤ 2 / size turn, every reason, per-cascade masks = each
+  cascade's one-sun mask on 28 boxes), `test_sun_shadow_apply`, `test_shadow_replay_depth`,
+  `test_shadow_replay_candidates` and the six mock-drift modules: 69 tests OK.
+
+**Not verified / open.** Nothing was read from a live process: the array's content while the sector
+view is current, whether `0x00420260`'s nodes enter it, and the engine's tie order are flight
+questions the line's `candidates / directional / luma / second_luma / agreement_deg` answer in one
+run. The twin's edge offsets use cascade 0's right/up for every cascade (exact to the 0.3° between
+suns). `X3M_SHADOW_SUN_POLL=0` disables the poll (environment only, no launcher flag).

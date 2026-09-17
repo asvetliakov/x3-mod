@@ -32,6 +32,7 @@
 #include "chase_transition.h"
 #include "chase_lead.h"
 #include "camera_state.h"
+#include "sun_light_poll.h"
 #include "object_lifetime.h"
 #include "draw_input.h"
 #include "motion_capture.h"
@@ -2822,6 +2823,12 @@ extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback(IDir
 extern "C" __declspec(dllexport) void x3m_camera_state_fixture_install(const float* const* projection_slot,const float* const* view_slot) {
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
     x3m::camera_state::fixture_install(projection_slot,view_slot);
+}
+// The fixture executable's own render-context slot stands in for 0x00608518
+// (sun_light_poll::fixture_install); the identity gate is bypassed.
+extern "C" __declspec(dllexport) void x3m_sun_light_poll_fixture_install(const std::uint32_t* context_slot) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::sun_light_poll::fixture_install(context_slot);
 }
 // Engine scene-end hook seam: the fixture executable's own E8 callsite and
 // compositor stand in for 0x004721b1 / 0x004c4750; identity gate bypassed.

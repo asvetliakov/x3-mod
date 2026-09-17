@@ -43,6 +43,8 @@
 #include "fade_route_core.h"
 #include "shadow_replay_candidates.h"
 #include "shadow_replay_depth.h"
+#include "shadow_replay_sun_point.h"
+#include "sun_light_poll.h"
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
 #include "../renderer/sun_shadow_apply_pass.h"
@@ -1116,6 +1118,15 @@ private:
     shadow_replay::SunLatch sun_latch_{};
     shadow_replay::SunVerdict sun_verdict_=shadow_replay::SunVerdict::None; // this frame's, resolved once at the scene end
     std::uint32_t candidate_bounds_unavailable_=0; // this frame's extent-known draws that found no sun for the box test
+    // Cascades: the sun as a polled world position, one held direction per
+    // cascade (shadow_replay_sun_point.h); the latch above stays the source
+    // whenever the poll is unavailable, unvalidated or implausible.
+    shadow_replay::PointSun point_sun_{};
+    std::int64_t point_sun_poll_ticks_=0; // this frame's poll in QPC ticks (the draw path stays integer-only: a 64-bit conversion is x87 on i686)
+    sun_light_poll::Sample point_sun_sample_{};
+    shadow_replay::PointSunReason point_sun_logged_=shadow_replay::PointSunReason::Count; // the last source/reason an event line reported
+    void poll_point_sun(const float constant[4], bool agrees) noexcept;
+    const float* cascade_sun(unsigned cascade) noexcept; // the frame's sun of one cascade: the held point direction, else the latch's
     bool sample_candidate_sun(float out[4], int& reg) noexcept;
     shadow_replay::PoolClass candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept;
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
