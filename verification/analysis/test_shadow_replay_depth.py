@@ -93,13 +93,18 @@ class CascadeFields(unittest.TestCase):
             with self.assertRaises(depth.MalformedLine, msg=bad[-40:]):
                 depth.parse_depth_line(bad)
 
+    def test_five_cascades(self):
+        good = line(6, replayed=4, draws=4) + self.TAIL
+        row = depth.parse_depth_line(good.replace('draws0=2 draws1=4', 'draws0=1 draws1=1 draws2=1 draws3=1 draws4=2'))
+        self.assertEqual(row['cascades']['count'], 5); self.assertEqual(row['cascades']['draws'], [1, 1, 1, 1, 2])
+
     def test_malformed_tails(self):
         good = line(6, replayed=4, draws=4) + self.TAIL
         for bad in (good.replace(' draws0=2', ''), good.replace('far_frame=6', 'far_frame=-2'), good.replace('far_replayed=1', 'far_replayed=2'), good.replace(' budget=5', ''),
                     good.replace('issues=6', 'issues=5'),                       # more draws than issues
                     good.replace('draws1=4', 'draws1=0'),                      # far_replayed without far draws
                     good + ' draws2=1', good.replace('draws0=2', 'draws0=x'), good.replace('budget=5', 'budget=0'),
-                    good.replace('draws0=2 draws1=4', 'draws0=1 draws1=1 draws2=1 draws3=1 draws4=1')):
+                    good.replace('draws0=2 draws1=4', 'draws0=1 draws1=1 draws2=1 draws3=1 draws4=1 draws5=1')):  # a sixth cascade: beyond shadow_cascade_max
             with self.assertRaises(depth.MalformedLine, msg=bad[-70:]):
                 depth.parse_depth_line(bad)
 

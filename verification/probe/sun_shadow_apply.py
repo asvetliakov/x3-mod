@@ -775,7 +775,8 @@ def parse_apply_cascade_params(fields):
         detail = {'map': int(fields['map%d' % c]), 'map_frame': int(fields['map_frame%d' % c]), 'texel_world': float(fields['texel_world%d' % c]),
                   'extent': float(fields['extent%d' % c]), 'depth_light': float(fields['depth_light%d' % c]), 'depth_behind': float(fields['depth_behind%d' % c]),
                   # The configured cascade this slot samples (shadow-cascade-extents.md, section 5: the
-                  # ratio guard drops a cascade from the quad's slots; absent on older lines: the slot itself).
+                  # sliding ladder drops a cascade whose slid extent reaches the next one's from the quad's
+                  # slots, and the slid extents arrive on this line; absent on older lines: the slot itself).
                   'source': int(fields.get('source%d' % c, c))}
         if detail['source'] < c or (c and detail['source'] <= cascades[-1]['source']):
             raise ValueError('cascade slot %d: source %d is not ascending' % (c, detail['source']))

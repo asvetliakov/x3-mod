@@ -700,7 +700,7 @@ private:
                 double mid[3], radius[3];
                 int computed = -1; // the cascade whose axes mid/radius hold (0 for every cascade sharing cascade 0's)
                 for (unsigned c = 0; c < cascades; ++c) {
-                    if (!renderer::shadow_cascade_active(in.set, c)) continue; // dropped by the ratio guard: no record carries it
+                    if (!renderer::shadow_cascade_active(in.set, c)) continue; // dropped by the ladder: no record carries it
                     const int want = !c || !shared_axes[c] ? int(c) : 0;
                     if (want != computed) { for (unsigned a = 0; a < 3; ++a) sun_interval(in.bases[want], a, d.centre, d.half, mid[a], radius[a]); computed = want; }
                     const auto& box = in.set.cascades[c];
