@@ -378,6 +378,9 @@ def analyze(path, threshold=2.0, hash_source=True, symbols=None, labels=None, to
         source=provenance, clock=clock, threshold_seconds=threshold, gap_source=gap_source,
         probe_sites=anchors['probe_sites'], probe_paths=anchors['probe_paths'],
         frame_ends=len(anchors['frame_ends']),
+        # The stride the log was written with (--frame-end-stride, 300 by
+        # default), per device: it sets how coarse a frame_end gap bound is.
+        frame_end_stride=loading.frame_end_stride(anchors['frame_ends']),
         coverage_begin_seconds=(loading.seconds(anchors['coverage_begin_qpc'], clock)
                                 if anchors['coverage_begin_qpc'] and clock else None),
         hooks=anchors['hooks'], first_presents=anchors['first_presents'],
@@ -641,8 +644,10 @@ def render(result):
              f"last Present at {result['last_present_seconds']:.3f} s.",
              '']
     if result.get('gap_source') == 'frame_end':
-        lines.append(f"**Gaps come from the {result.get('frame_ends', 0)} `frame_end` lines** (every 300 frames or a capture frame): "
-                     'each gap is the interval between two lines whose dt_ms exceeds the threshold, so it also contains up to 300 ordinary frames.')
+        strides = sorted({v for v in (result.get('frame_end_stride') or {}).values() if v})
+        stride = strides[0] if len(strides) == 1 else 300
+        lines.append(f"**Gaps come from the {result.get('frame_ends', 0)} `frame_end` lines** (every {stride} frames or a capture frame): "
+                     f'each gap is the interval between two lines whose dt_ms exceeds the threshold, so it also contains up to {stride} ordinary frames.')
         lines.append('')
     if result.get('probe_sites'):
         active = sorted(name for name, site in result['probe_sites'].items() if site.get('status') == 'active')

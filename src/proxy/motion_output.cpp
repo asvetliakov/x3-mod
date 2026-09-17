@@ -7033,6 +7033,16 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
                 static_cast<unsigned long long>(n[unsigned(R::Unchecked)]), static_cast<unsigned long long>(n[unsigned(R::Disagrees)]), static_cast<unsigned long long>(n[unsigned(R::Cooldown)]),
                 static_cast<unsigned long long>(point_sun_.rederivations));
         }
+        // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, default off): the source,
+        // why it was taken, which cascades re-derived their direction this frame
+        // (bit k = cascade k), the poll/constant agreement and the light's
+        // distance. One bounded line per frame from the scene end; nothing else
+        // reads it, so the sparse lines above keep their cadence.
+        if (point_sun_trace_)
+            log("shadow_sun_frame device=%llu frame=%llu source=%s reason=%s poll=%s rederived=%u rederived_mask=%u carried=%u checks=%u disagreements=%u agreement_deg=%.6f distance=%.9g cascades=%u",
+                id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(point_sun_.reason), sun_light_poll::status_name(point_sun_sample_.status),
+                point_sun_.rederived, point_sun_.rederived_mask, point_sun_.carried_frame ? point_sun_.carried : 0u, point_sun_.checks, point_sun_.disagreements,
+                point_sun_.agreement_degrees(), point_sun_.distance, depth_cascades_.count);
         if (event || capture_) {
         char text[768]; int used = 0;
         for (unsigned k = 0; k < depth_cascades_.count && used >= 0 && used < int(sizeof text); ++k) {

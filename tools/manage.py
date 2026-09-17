@@ -223,6 +223,8 @@ def main():
                              "beyond behaviour and frame time; compare --pass-phases medians and frame dt.")
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
     parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles, the proxy draw/scene/state buckets with the state call mix, the pre-draw/between-draws/post-draw split of the game time between hooked calls, and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
+    parser.add_argument('--frame-end-stride', type=int, default=300, metavar='N',
+                        help='Frames between two frame_end lines, 1..100000, default 300 (X3M_FRAME_END_STRIDE; no prerequisite: frame_end exists in every mode): 1 logs every frame, which makes the frame cost readable per toggle state and shows periodic events the 300-frame cadence hides, at about 100 B of log per frame. Capture frames always log one. The other 300-frame reports of the Present path (chase camera, admission, finite upload) keep their own cadence')
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
                         help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
@@ -286,6 +288,7 @@ def main():
     parser.add_argument('--shadow-cascade-large-min', type=float, default=None, metavar='UNITS', help='A static-only cascade (--shadow-cascade-static-from) also admits a moving caster whose world AABB extent is at least UNITS (0..1000000; X3M_SHADOW_CASCADE_LARGE_MIN; requires --shadow-cascades; default 0: static only). The extent is the draw\'s (a mesh part, not the whole ship): 1500 passes M7 and larger hulls (M7 about 3,500 u, TL 5,000, M2/M1 7,500-10,000) and refuses fighters and small parts (M3 250 u, M6 900 u; run-115 census parts 100-610 u). Admissions count large_admitted<i>')
     parser.add_argument('--shadow-cascade-drop-order', choices=('submission', 'importance'), default=None, help='What a cascade drops when its candidates exceed its cap (X3M_SHADOW_CASCADE_DROP_ORDER; requires --shadow-cascades): submission (default: the last submitted) or importance (the smallest projected size at the camera, decided at the scene end; stable across submission order; dropped_min_size<i> shows the largest caster dropped)')
     parser.add_argument('--shadow-sun-poll', choices=('on', 'off'), default=None, help='Sun position for the cascades from the engine\'s brightest directional light node instead of one LightDir_Dir0 constant (X3M_SHADOW_SUN_POLL; default on with --shadow-cascades; verified executable only, cross-checked against the constants, the constant latch otherwise; requires --shadow-cascades).')
+    parser.add_argument('--shadow-sun-trace', action='store_true', help='Per-frame sun trace of the cascades (X3M_SHADOW_SUN_TRACE=1; default off; requires --shadow-cascades): one shadow_sun_frame line per frame with the frame\'s sun source, the reason and the poll status, the cascades that re-derived their direction (rederived= and the bit mask rederived_mask=), the poll/constant agreement angle and the light distance, so the re-derivation rate while moving and at rest is measurable between the sparse shadow_replay_sun_point lines (about 200 B per frame; read by tools/analysis/shadow_sun_frame.py)')
     parser.add_argument('--shadow-cascade-budget', type=int, default=None, metavar='B', help='Draw issues per frame above which the far cascade replays on even frames only, 1..4096, default 640 (X3M_SHADOW_CASCADE_BUDGET; requires --shadow-cascades)')
     parser.add_argument('--shadow-cascade-adaptive-c0', type=float, default=None, metavar='K', help='Own-ship-adaptive near cascade (X3M_SHADOW_CASCADE_ADAPTIVE_C0; default off; requires --shadow-cascades; suggested 1.5): the first cascade\'s half-extent becomes max(its configured value, K x the own ship\'s radius), the radius being the largest object-space AABB corner distance over the player ship\'s z-writing draws (the ship is the active cockpit\'s ref object of the verified executable), committed at once on a ship change and after eight stable frames on a > 20 %% size change, clamped to the last cascade\'s extent; the texel is 2 E0 / size. While E0 is above its configured value the configured ladder slides with it (--shadow-cascade-ladder-ratio): cascade i becomes max(its configured extent, E0 x R^i), capped at the last cascade\'s configured extent, and a cascade whose slid extent reaches the next one\'s is dropped (its map stays allocated, nothing replays into it, the apply owns no pixel with it); every slid cascade re-anchors its texel grid once per commit. One shadow_cascade_set line (own_radius= e0= texel0= active_mask= slid= extents=) per commit and per F8 frame (docs/architecture/shadow-cascade-extents.md, 5)')
     parser.add_argument('--shadow-cascade-ladder-ratio', type=float, default=None, metavar='R', help='Ratio between consecutive cascades of the slid ladder under --shadow-cascade-adaptive-c0 (X3M_SHADOW_CASCADE_LADDER_RATIO; 2..16, default 5; requires --shadow-cascade-adaptive-c0): with a corvette at E0 675 the set 250 / 1500 / 7500 / 37500 becomes 675 / 3375 / 16875 / 37500; a fighter at the configured E0 keeps the configured set. The per-cascade caps and records, --shadow-cascade-static-from and --shadow-cascade-large-min slide with the extents: each live cascade takes the policy of the configured cascade its extent most closely matches (a dropped cascade keeps no cap; the active caps are scaled down together when their sum would exceed the configured storage); every slid or dropped/restored cascade re-anchors its grid once per commit')
@@ -395,6 +398,8 @@ def main():
         parser.error('--frame-timing-state-stamps requires --frame-timing.')
     if not 0 <= args.frame_timing_state_stamps <= 100000:
         parser.error('--frame-timing-state-stamps must be between 0 and 100000.')
+    if not 1 <= args.frame_end_stride <= 100000:
+        parser.error('--frame-end-stride must be within [1, 100000].')
     if args.media_cue_trace and not args.telemetry:
         parser.error('--media-cue-trace requires --telemetry.')
     if args.media_cue_retry_s != 30 and args.media_cue_cache != 'on':
@@ -493,12 +498,13 @@ def main():
                       ('--shadow-cascade-budget', args.shadow_cascade_budget), ('--shadow-sun-poll', args.shadow_sun_poll),
                       ('--shadow-cascade-records', args.shadow_cascade_records), ('--shadow-cascade-static-from', args.shadow_cascade_static_from),
                       ('--shadow-cascade-drop-order', args.shadow_cascade_drop_order), ('--shadow-cascade-large-min', args.shadow_cascade_large_min),
-                      ('--shadow-cascade-adaptive-c0', args.shadow_cascade_adaptive_c0), ('--shadow-cascade-ladder-ratio', args.shadow_cascade_ladder_ratio))
+                      ('--shadow-cascade-adaptive-c0', args.shadow_cascade_adaptive_c0), ('--shadow-cascade-ladder-ratio', args.shadow_cascade_ladder_ratio),
+                      ('--shadow-sun-trace', args.shadow_sun_trace or None))
         if args.shadow_cascades is None:
             for option, value in companions:
                 if value is not None:
                     parser.error(f'{option} requires --shadow-cascades.')
-            return {'X3M_SHADOW_CASCADES': '0', 'X3M_SHADOW_SUN_POLL': '0'}
+            return {'X3M_SHADOW_CASCADES': '0', 'X3M_SHADOW_SUN_POLL': '0', 'X3M_SHADOW_SUN_TRACE': '0'}
         if not args.shadow_replay_depth:
             parser.error('--shadow-cascades requires --shadow-replay-depth.')
         try:
@@ -509,7 +515,8 @@ def main():
         if not 1 <= len(extents) <= SHADOW_CASCADE_MAX or not all(math.isfinite(e) and low <= e <= high for e in extents) \
                 or any(b <= a for a, b in zip(extents, extents[1:])):
             parser.error(f'--shadow-cascades takes 1..{SHADOW_CASCADE_MAX} ascending half-extents within [{low:g}, {high:g}].')
-        env = {'X3M_SHADOW_CASCADES': ','.join(repr(e) for e in extents), 'X3M_SHADOW_SUN_POLL': '0' if args.shadow_sun_poll == 'off' else '1'}
+        env = {'X3M_SHADOW_CASCADES': ','.join(repr(e) for e in extents), 'X3M_SHADOW_SUN_POLL': '0' if args.shadow_sun_poll == 'off' else '1',
+               'X3M_SHADOW_SUN_TRACE': '1' if args.shadow_sun_trace else '0'}
 
         def integers(option, text, low, high):
             try:
@@ -747,6 +754,7 @@ def main():
         env['X3M_TELEMETRY'] = '1' if args.telemetry else '0'
         env['X3M_GAME_PHASES'] = '1' if args.game_phases else '0'
         env['X3M_FRAME_TIMING'] = '1' if args.frame_timing else '0'
+        env['X3M_FRAME_END_STRIDE'] = str(args.frame_end_stride)  # explicit, so an inherited value cannot change the cadence
         env['X3M_FRAME_PHASES'] = '1' if args.frame_phases else '0'  # implied by --residual-phases above
         env['X3M_PASS_PHASES'] = '1' if args.pass_phases else '0'
         env['X3M_RESIDUAL_PHASES'] = '1' if args.residual_phases else '0'
@@ -821,7 +829,7 @@ def main():
         # inherited value cannot enable or reshape the cascades.
         for name in ('X3M_SHADOW_CASCADES', 'X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET',
                      'X3M_SHADOW_CASCADE_RECORDS', 'X3M_SHADOW_CASCADE_STATIC_FROM', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_SHADOW_CASCADE_LARGE_MIN', 'X3M_SHADOW_CASCADE_ADAPTIVE_C0',
-                     'X3M_SHADOW_CASCADE_LADDER_RATIO'):
+                     'X3M_SHADOW_CASCADE_LADDER_RATIO', 'X3M_SHADOW_SUN_TRACE'):
             env.pop(name, None)
         env.update(args.shadow_cascade_env)
         # Caster retention: explicit switches, companions only when given.

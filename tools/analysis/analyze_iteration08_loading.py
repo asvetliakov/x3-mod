@@ -103,7 +103,9 @@ def parse(lines):
         event = line.partition(' ')[0]
         f = fields(line)
         if event == 'frame_end':
-            # Every mode writes these (every 300 frames or a capture frame) with
+            # Every mode writes these (every --frame-end-stride frames, 300 by
+            # default, or a capture frame; frame_end_stride() reads what a log
+            # actually used) with
             # elapsed_ms since DllMain and dt_ms since the previous line, so a
             # plain --direct log still bounds its load gaps (frame_end_gaps).
             if 'elapsed_ms' in f:
@@ -269,10 +271,33 @@ def probe_exclusive(table):
     return table
 
 
-def frame_end_gaps(frame_ends, threshold, clock=None):
-    """Gaps bounded by consecutive frame_end lines of one device (a 300-frame cadence).
+def frame_end_stride(frame_ends):
+    """The frame_end stride a log was written with (X3M_FRAME_END_STRIDE,
+    launcher --frame-end-stride; 300 by default), per device.
 
-    dt_seconds between two lines contains up to 300 ordinary frames as well as
+    Capture frames add an off-cadence line, so the stride is the most common
+    positive frame delta of the device's lines, not their mean. A device with
+    fewer than two lines has no stride (None)."""
+    deltas = {}
+    previous = {}
+    for item in frame_ends:
+        last = previous.get(item['device'])
+        if last is not None and item['frame'] > last['frame']:
+            deltas.setdefault(item['device'], []).append(item['frame'] - last['frame'])
+        previous[item['device']] = item
+    out = {}
+    for device, found in deltas.items():
+        out[device] = max(sorted(set(found)), key=found.count)
+    for device in previous:
+        out.setdefault(device, None)
+    return out
+
+
+def frame_end_gaps(frame_ends, threshold, clock=None):
+    """Gaps bounded by consecutive frame_end lines of one device (the frame_end
+    stride, 300 frames by default; frame_end_stride() reads a log's own).
+
+    dt_seconds between two lines contains up to one stride of ordinary frames as well as
     any load stall, so the bounds are coarse: the stall lies inside
     [previous line, this line]. With a telemetry clock the bounds use the qpc
     field on the same axis as the report windows; otherwise seconds since

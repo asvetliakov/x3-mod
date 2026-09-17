@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'analysis'))
-from analyze_iteration08_loading import analyze, combine, gaps, parse, repeats, trim
+from analyze_iteration08_loading import analyze, combine, frame_end_stride, gaps, parse, repeats, trim
 
 HEADER = ('telemetry_start schema=1 qpc_frequency=1000 qpc=10000 anchor=proxy_initialize\n'
           'loading_trace coverage_begin=10010 frequency=1000 hooks=16 module=main\n'
@@ -125,6 +125,17 @@ class Iteration08Loading(unittest.TestCase):
     def test_missing_clock_is_rejected(self):
         with self.assertRaises(ValueError):
             parse(['telemetry_summary device=0 frame=0 qpc=1'])
+
+    def test_frame_end_stride_is_read_from_the_lines(self):
+        """--frame-end-stride N changes the cadence; the reader takes the most
+        common frame delta per device, so the capture frame's off-cadence line
+        and a device with one line do not distort it."""
+        def line(device, frame, capture=0):
+            return (f'frame_end device={device} frame={frame} draws=10 capture={capture} present=00000000 '
+                    f'elapsed_ms={frame * 16} dt_ms=16 qpc={10000 + frame}\n')
+        text = HEADER + ''.join(line(1, f) for f in (300, 600, 900)) + line(1, 1001, capture=1) + line(1, 1200) + line(2, 5)
+        anchors = parse(text.splitlines())[1]
+        self.assertEqual(frame_end_stride(anchors['frame_ends']), {1: 300, 2: None})
 
     def test_source_digest_matches_the_file(self):
         import hashlib

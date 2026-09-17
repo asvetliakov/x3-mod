@@ -197,6 +197,24 @@ class FrameTimingLaunchOption(unittest.TestCase):
             self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING_STATE_STAMPS'], '0')
 
 
+    def test_frame_end_stride_is_exported_with_its_default_and_bounded(self):
+        """--frame-end-stride has no prerequisite (frame_end exists in every
+        mode), defaults to the historical 300 and is always exported, so an
+        inherited value cannot change the cadence."""
+        from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
+        helper = LodScaleLaunchOption()
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, error = helper.launch(directory, inherited={'X3M_FRAME_END_STRIDE': '1'})
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_FRAME_END_STRIDE'], '300')
+            code, output, error = helper.launch(directory, '--frame-end-stride', '1')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_FRAME_END_STRIDE'], '1')
+            for value in ('0', '100001', '-1'):
+                code, _, error = helper.launch(directory, '--frame-end-stride', value)
+                self.assertEqual(code, 2, value)
+                self.assertIn('--frame-end-stride must be within [1, 100000]', error)
+
     def test_state_shadow_modes_select_auto_on_and_off(self):
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
