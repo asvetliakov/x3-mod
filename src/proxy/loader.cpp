@@ -344,6 +344,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
     } else if (reason == DLL_PROCESS_DETACH) {
         x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock, idempotent
+        x3m::ownership::set_surface_lock_observer(nullptr); // one relaxed store, idempotent: a late surface call forwards natively
         // Dynamic unload only (reserved == NULL, FreeLibrary): the six original
         // bytes go back before the operand's storage disappears. The module is
         // pinned once the patch is live, so this path is unreachable then; at

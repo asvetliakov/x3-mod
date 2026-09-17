@@ -610,6 +610,15 @@ functions are hookable; the indirect `call edx`/`call eax` sites themselves are
   overlay. What is established is that id 1 is the only video-building cue in
   run101, that it is the last event before the freeze, and that its destination
   slot is fixed at `0x42` by the map.
+* The cheaper first step of §8.6 is implemented: with `--media-cue-trace
+  --ownership` the proxy's surface shell writes `media_video_blit` lines for
+  every `LockRect`/`UnlockRect` returning into `[0x004d0c40, 0x004d14e0)` —
+  the bound is the next function, the pump of §8.6, since the consumer decodes
+  gap-free to its `ret` and the pump has no interior edge (enter and result,
+  first lock, one per 60, first unlock;
+  [docs/verification/media-cues.md](../verification/media-cues.md) §6), so the
+  next comm-dialog log separates "no frame reached D3D", "hung inside the
+  lock/unlock" and "hung in the copy" without a new hook.
 
 ## Reproduce
 

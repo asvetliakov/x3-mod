@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "engine_patch.h"
 #include "media_cue_core.h"
+#include "../ownership/surface_lock_observation.h"
 
 // Default-off gate on the media-record allocator 0x00498140
 // (X3M_MEDIA_CUE_TRACE=1, launcher --media-cue-trace, requires --telemetry;
@@ -27,8 +28,19 @@
 // path, the owner thread) drains the trace ring into `media_cue` lines (32 per
 // second) and one `media_cue_window` line per 300 frames. Off, nothing is
 // installed and the per-frame cost is one relaxed load.
+// Video blit witness (media-cue-playback.md, 8): with the trace on, the
+// ownership layer's Surface::LockRect/UnlockRect shell reports each call with
+// its caller's return address; calls from the consumer 0x004d0c40..0x004d14e0
+// write `media_video_blit` lines through the same direct handle write as
+// `media_cue_enter` (enter and result, since the process may not return from
+// either call) and count into the window line. Needs --ownership: without the
+// wrapper no shell sees the game's surfaces.
 namespace x3m::media_cue {
 bool initialize(); // after loop_phases::initialize, while the install window is open
+// The witness to publish through ownership::set_surface_lock_observer, or
+// nullptr when the trace is off (nothing is registered, the shell pays one
+// relaxed load). Valid after initialize().
+ownership::SurfaceLockObserver video_lock_observer() noexcept;
 extern std::atomic<bool> active;
 namespace detail {
 void frame_impl(std::uint64_t frame) noexcept;
@@ -71,5 +83,8 @@ const char* fixture_site_status();
 void fixture_drop_pending();
 const detail::RateLimit* fixture_enter_limit();  // the media_cue_enter line limiter
 void fixture_reset_enter_limit();
+const detail::VideoBlit* fixture_video();        // the blit witness counters
+std::uint64_t fixture_video_dropped(bool foreign); // in-range enters dropped: foreign thread / before admission
+void fixture_reset_video();
 #endif
 }

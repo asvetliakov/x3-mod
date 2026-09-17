@@ -929,11 +929,11 @@ HRESULT WINAPI Surface::GetDesc(D3DSURFACE_DESC* pDesc) {
 }
 HRESULT WINAPI Surface::LockRect(D3DLOCKED_RECT * locked_rect, const RECT * rect, DWORD flags) {
     ApplicationAdmissionAbi admission(process_admission_monitor());
-    return observe_result(device_of(this), native_->LockRect(locked_rect, rect, flags));
+    return surface_lock(this, __builtin_return_address(0), locked_rect, rect, flags);
 }
 HRESULT WINAPI Surface::UnlockRect() {
     ApplicationAdmissionAbi admission(process_admission_monitor());
-    return observe_result(device_of(this), native_->UnlockRect());
+    return surface_unlock(this, __builtin_return_address(0));
 }
 HRESULT WINAPI Surface::GetDC(HDC* phdc) {
     ApplicationAdmissionAbi admission(process_admission_monitor());

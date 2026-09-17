@@ -173,7 +173,10 @@ i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror \
 ```
 
 Handwritten code owns QueryInterface, lifetime, factory/device parents,
-containers, reset/loss and renderer resource retirement. The generator routes
+containers, reset/loss and renderer resource retirement, and the surface lock
+witness (`surface_lock_observation.h`: `Surface::LockRect`/`UnlockRect` take
+their caller's return address at entry and consult one observer slot, one
+relaxed load when unset). The generator routes
 every typed interface output through adoption and every interface input through
 unwrapping. Building does not require running the generator. Verification lives
 under `verification/`; SDK ABI overrides and concrete class instantiation provide

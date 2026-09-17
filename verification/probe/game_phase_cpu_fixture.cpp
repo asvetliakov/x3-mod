@@ -1311,6 +1311,108 @@ static void media_replay_checks(){
     check(!std::memcmp(corrupted,c.body,c.length)&&!media::active,"no media span patched after the preflight refusal");
     media::fixture_uninstall();
 }
+// The video blit witness (media_cue.cpp video_lock_observe): the observer the
+// ownership shell would call, driven here with synthetic events. A stand-in
+// IDirect3DSurface9 answers GetDesc only; every other method is unreachable.
+struct FakeSurface final : IDirect3DSurface9 {
+    unsigned desc_calls=0;
+    HRESULT WINAPI QueryInterface(REFIID,void**) override {return E_NOINTERFACE;}
+    ULONG WINAPI AddRef() override {return 1;}
+    ULONG WINAPI Release() override {return 1;}
+    HRESULT WINAPI GetDevice(IDirect3DDevice9**) override {return E_NOTIMPL;}
+    HRESULT WINAPI SetPrivateData(REFGUID,const void*,DWORD,DWORD) override {return E_NOTIMPL;}
+    HRESULT WINAPI GetPrivateData(REFGUID,void*,DWORD*) override {return E_NOTIMPL;}
+    HRESULT WINAPI FreePrivateData(REFGUID) override {return E_NOTIMPL;}
+    DWORD WINAPI SetPriority(DWORD) override {return 0;}
+    DWORD WINAPI GetPriority() override {return 0;}
+    void WINAPI PreLoad() override {}
+    D3DRESOURCETYPE WINAPI GetType() override {return D3DRTYPE_SURFACE;}
+    HRESULT WINAPI GetContainer(REFIID,void**) override {return E_NOTIMPL;}
+    HRESULT WINAPI GetDesc(D3DSURFACE_DESC* d) override {++desc_calls;*d=D3DSURFACE_DESC{};d->Format=D3DFMT_X8R8G8B8;d->Type=D3DRTYPE_SURFACE;d->Pool=D3DPOOL_DEFAULT;d->Width=512;d->Height=256;return S_OK;}
+    HRESULT WINAPI LockRect(D3DLOCKED_RECT*,const RECT*,DWORD) override {return E_NOTIMPL;}
+    HRESULT WINAPI UnlockRect() override {return E_NOTIMPL;}
+    HRESULT WINAPI GetDC(HDC*) override {return E_NOTIMPL;}
+    HRESULT WINAPI ReleaseDC(HDC) override {return E_NOTIMPL;}
+};
+static unsigned media_video_lines(const char* text){
+    unsigned lines=0;
+    for(const char* p=text;*p;){const char* nl=std::strchr(p,'\n');if(!nl)break;lines+=!std::strncmp(p,"media_video_blit ",17);p=nl+1;}
+    return lines;
+}
+namespace own=x3m::ownership;
+static own::SurfaceLockObserver media_video_observer=nullptr;
+static own::SurfaceLockEvent media_video_event{};
+static DWORD WINAPI media_video_foreign_thread(LPVOID){media_video_observer(media_video_event);return 0;}
+// One lock or unlock as the shell reports it: the enter phase, then the result phase.
+static void media_video_call(own::SurfaceLockObserver observer,IDirect3DSurface9* surface,std::uint32_t ret,bool unlock,HRESULT result){
+    own::SurfaceLockEvent e{surface,surface,reinterpret_cast<const void*>(ret),nullptr,0,S_FALSE,unlock?own::SurfaceLockPhase::UnlockEnter:own::SurfaceLockPhase::LockEnter};
+    observer(e);
+    e.result=result;e.phase=unlock?own::SurfaceLockPhase::UnlockResult:own::SurfaceLockPhase::LockResult;
+    observer(e);
+}
+static void media_video_checks(){
+    MediaBody r=make_media_body();check(r.body!=nullptr,"video witness allocator emitted");if(!r.body)return;
+    patch::SiteSpec specs[media_marker::Count];if(!media_specs(r,specs))return;
+    check(media_log_open(),"video witness stand-in log opened");
+    static char lines[8192];char expected[192];
+    media::detail::Addresses addresses=r.addresses;
+    addresses.blit_begin=media_marker::kVideoBlitBegin;addresses.blit_end=media_marker::kVideoBlitEnd;
+    const char* status=nullptr;
+    const std::uint32_t in_range=0x004d0d27,unlock_ret=0x004d14ba,outside=0x00401000; // the LockRect/UnlockRect call sites' return addresses and a foreign caller
+    check(media::fixture_install(specs,addresses,false,true,1,&status),"video witness gate installed with the trace off");
+    check(media::video_lock_observer()==nullptr,"trace off: no video witness published");
+    check(media::fixture_uninstall(),"trace-off video witness gate rolled back");
+    check(media::fixture_install(specs,addresses,true,true,1,&status),"video witness gate installed with the trace on");
+    own::SurfaceLockObserver observer=media::video_lock_observer();
+    check(observer!=nullptr,"trace on: video witness published");
+    if(!observer){media::fixture_uninstall();return;}
+    FakeSurface surface;
+    media_log_take(lines,sizeof lines);
+    media_video_call(observer,&surface,in_range,false,S_OK); // before the owner is admitted: nothing
+    check(media_log_take(lines,sizeof lines)==0&&media::fixture_video()->locks_total==0&&media::fixture_video_dropped(false)==1&&media::fixture_video_dropped(true)==0,"video lock before the owner is admitted writes no line and counts as video_early");
+    media::frame(1);
+    media_video_call(observer,&surface,outside,false,S_OK);
+    check(media_log_take(lines,sizeof lines)==0&&media::fixture_video()->locks_total==0,"lock from outside the consumer's range writes no line and is not counted");
+    media_video_call(observer,&surface,media_marker::kVideoBlitEnd,false,S_OK);
+    check(media_log_take(lines,sizeof lines)==0&&media::fixture_video()->locks_total==0,"lock returning to the range's end bound is outside");
+    media_video_call(observer,&surface,in_range,false,S_OK);
+    media_log_take(lines,sizeof lines);
+    check(media_video_lines(lines)==2&&surface.desc_calls==2,"first in-range lock writes its enter and result lines with one GetDesc each");
+    std::snprintf(expected,sizeof expected," texture=%p width=512 height=256 format=22 flags=0x0 result=pending stage=lock_enter blits=1 unlocks=0\n",static_cast<void*>(&surface));
+    const char* second=std::strchr(lines,'\n');second=second?second+1:lines;
+    check(!std::strncmp(lines,"media_video_blit frame=1 qpc=",29)&&std::strstr(lines,expected)&&std::strstr(lines,expected)<second,"video enter line carries frame, qpc, texture, size, format, flags, result=pending and the blit count");
+    std::snprintf(expected,sizeof expected," texture=%p width=512 height=256 format=22 flags=0x0 result=0x00000000 stage=lock blits=1 unlocks=0\n",static_cast<void*>(&surface));
+    check(!std::strncmp(second,"media_video_blit frame=1 qpc=",29)&&std::strstr(second,expected),"video result line carries the native HRESULT after the lock");
+    if(!std::strstr(second,expected))std::printf("media_video_blit got=%s",lines);
+    for(unsigned i=1;i<media::detail::video_blit_line_interval*2;++i)media_video_call(observer,&surface,in_range,false,i==5?E_FAIL:S_OK);
+    media_log_take(lines,sizeof lines);
+    check(media_video_lines(lines)==2&&std::strstr(lines,"stage=lock_enter blits=61 unlocks=0\n")&&std::strstr(lines,"stage=lock blits=61 unlocks=0\n"),"one enter/result pair per interval of in-range locks");
+    check(media::fixture_video()->locks_total==media::detail::video_blit_line_interval*2&&media::fixture_video()->failures==1,"in-range locks and the failed lock counted");
+    media_video_call(observer,&surface,unlock_ret,true,S_OK);
+    media_log_take(lines,sizeof lines);
+    std::snprintf(expected,sizeof expected," texture=%p width=512 height=256 format=22 flags=0x0 result=0x00000000 stage=unlock blits=120 unlocks=1\n",static_cast<void*>(&surface));
+    check(media_video_lines(lines)==2&&std::strstr(lines,"result=pending stage=unlock_enter blits=120 unlocks=1\n")&&std::strstr(lines,expected),"first in-range unlock writes its enter and result lines");
+    media_video_call(observer,&surface,unlock_ret,true,S_OK);
+    check(media_log_take(lines,sizeof lines)==0&&media::fixture_video()->unlocks==2,"later unlocks are counted without a line");
+    { // a re-entrant in-range lock between the enter and the result of blit 121 (on the interval): counted, no line of its own, the outer pair matched
+        own::SurfaceLockEvent outer{&surface,&surface,reinterpret_cast<const void*>(in_range),nullptr,0,S_FALSE,own::SurfaceLockPhase::LockEnter};
+        observer(outer);
+        media_video_call(observer,&surface,in_range,false,E_FAIL);
+        outer.result=S_OK;outer.phase=own::SurfaceLockPhase::LockResult;observer(outer);
+        media_log_take(lines,sizeof lines);
+        check(media_video_lines(lines)==2&&std::strstr(lines,"stage=lock_enter blits=121 unlocks=2\n")&&std::strstr(lines,"result=0x00000000 stage=lock blits=121 unlocks=2\n"),"re-entrant in-range lock writes no line and leaves the outer enter/result pair matched");
+        check(media::fixture_video()->reentries==1&&media::fixture_video()->depth==0&&media::fixture_video()->failures==2,"re-entry counted once, its failure counted, depth back to zero");
+    }
+    media_video_observer=observer;
+    media_video_event=own::SurfaceLockEvent{&surface,&surface,reinterpret_cast<const void*>(in_range),nullptr,0,S_FALSE,own::SurfaceLockPhase::LockEnter};
+    HANDLE thread=CreateThread(nullptr,0,&media_video_foreign_thread,nullptr,0,nullptr);
+    check(thread!=nullptr,"video foreign thread started");
+    if(thread){WaitForSingleObject(thread,INFINITE);CloseHandle(thread);}
+    check(media_log_take(lines,sizeof lines)==0&&media::fixture_video()->locks_total==media::detail::video_blit_line_interval*2+1&&media::fixture_video_dropped(true)==1,"foreign-thread in-range lock writes no line and counts as video_foreign");
+    check(media::fixture_video()->suppressed==0,"every admitted video line reached the file whole");
+    check(media::fixture_uninstall(),"video witness gate rolled back");
+    check(media::video_lock_observer()==nullptr,"video witness withdrawn after rollback");
+}
 static void media_late_window_checks(){ // after the frame checks closed the install window
     MediaBody r=make_media_body();check(r.body!=nullptr,"late-window allocator emitted");if(!r.body)return;
     patch::SiteSpec specs[media_marker::Count];if(!media_specs(r,specs))return;
@@ -1416,9 +1518,9 @@ int main(){
     targeted_benchmark(continuation,stubs);
     pass_replay_checks();pass_benchmark();
     loop_replay_checks();loop_benchmark();
-    media_replay_checks();media_benchmark();
+    media_replay_checks();media_video_checks();media_benchmark();
     frame_replay_checks(); // closes the install window
     pass_late_window_checks();loop_late_window_checks();media_late_window_checks();
-    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 media_cases=10 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),unsigned(media_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);
+    std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 media_cases=11 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),unsigned(media_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);
     return failures?1:0;
 }
