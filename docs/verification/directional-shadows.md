@@ -925,3 +925,25 @@ edge={mismatch 376, within one texel 345, two 31, beyond 0} us=3286.4` (median, 
 the same counts as the pass's original record; the runner's single-case status is `PARTIAL`
 by design. The runner needs `verification/probe/build/` to exist (a fresh worktree lacks it:
 `abi_check.o` cannot be created), which the first attempt hit before any Wine work.
+
+### Run 37 session B (run109), 2026-09-17: first visible shadows; station box too small
+
+Installed run37 build `61725145…` (geometry casters, jitter term), original
+shading, `--sun-shadow-lane --shadow-replay-depth --sun-shadow-apply`. User
+report: shadows on the ship's hull from station geometry, and the ship's
+shadow on station geometry only when very close; no station-on-station
+shadowing. Log (39,499 frames): routed depth writers median 93 / max 930 per
+frame; admitted casters (`leased` = `replayed` = `draws`) median 8 / max 49;
+`capped` 0 everywhere; `dynamic`/`default_pool`/`excluded`/`unknown` 0;
+`bounds` admissions on 66 % of frames, `fallback` on 34 %; reads ≤ 5 per
+frame, no unreadable. Basis: `extent=250`, `depth_half=512` around the camera
+on every capture. F8 frame 32256 (at the station): map 20.5 % occupied with
+station structure, twin `covered=61 %`, `f<0.9` on 35 % of covered pixels,
+HDR darkening ratio 0.526 vs predicted 0.483 (shadows real and applied);
+frame 39454: map 1.2 % occupied (near-camera content only), `f<0.9` 33 %.
+**Conclusion:** the apply and replay work; the 250-unit box around the camera
+is what limits station-on-station shadows to the parts near the ship. The
+extent, depth half-range, cap and bias become launcher options for run 38
+(extent 1000–1500 at 2048–4096 texels); cascades remain the answer for a
+whole complex. Frame-time comparison not possible at fine granularity (no
+`--frame-phases` in this session).
