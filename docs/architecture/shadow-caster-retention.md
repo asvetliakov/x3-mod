@@ -212,12 +212,16 @@ A retired node's records are flushed at the retirement signal, which the proxy c
 before any replay that could use them:
 
 - The lifetime observer gains a bounded **retirement journal**: the removal, overwrite and
-  failed-membership paths append the retired node serial to a fixed ring (512 entries, CPU
+  failed-membership paths append the retired node serial to a fixed ring (2,048 entries, 64 KB static, CPU
   append only, no allocation, inside the wrapper's existing envelope). The store drains it at
   scene end before the unseen path and at frame begin: cost O(retired), so the burst of a few
   hundred individual removals of a gate jump is absorbed in one frame.
-- Ring overflow, a `mutation_revision` that moved without journal entries, or an unavailable
-  journal forces a **full revalidation** through `object_lifetime::current` (0.69 µs per call
+- The store revalidates fully only on three events: a drain that reports `overflow`, a drain
+  that reports `available=false`, and registration or re-registration (a fresh cursor starts
+  at the head). A moved `mutation_revision` is not such an event: it moves on every birth. A
+  `FlushAll` entry drops the whole store unconditionally; epoch comparisons use the drain's
+  fields, never the entry's; `Retired` means the observer dropped the key, not proof of death.
+  **Full revalidation** goes through `object_lifetime::current` (0.69 µs per call
   on the direct-read path, route-cost-run1: ≤ 0.71 ms once for a full store), and any node
   whose snapshot is unknown or whose serial differs is flushed. At rest the revision moves on
   ≈ 4 % of frames (39 mutations in 1,061).
@@ -339,7 +343,7 @@ readback is compared with the CPU twin. Each case has a retention-off control.
 | f. buffer Lock | writable Lock on a held unseen buffer: record dropped within 8 frames, `buffer_changed` = 1 |
 | g. release before retirement | the fixture releases its VB/IB (the engine order) and retires the serial one frame later: the intervening replay is valid (no stale or recycled object: the fixture immediately creates a same-size VB and asserts a different allocation id), `buffer_orphaned` fires within 8 frames when the retirement never comes (the `0x00487e30` case) |
 | h. Reset, failed Reset, device loss, teardown | all references back to baseline **before** the native Reset; store empty; a default-pool control buffer owned by the fixture proves Reset succeeds; retention resumes on resubmission |
-| i. capacity | the 1,025th node evicts the farthest unseen node, `evicted` = 1, no overflow write; a burst of 600 retirements in one frame drains in that frame |
+| i. capacity | the 1,025th node evicts the farthest unseen node, `evicted` = 1, no overflow write; a burst of 600 retirements in one frame drains in that frame without overflow (ring 2,048; 2,049 between drains is overflow and a full revalidation) |
 | j. excluded class and unknown lifetime | a node with `flags12c & 0x20` (and each other excluded bit), and a draw with `known = 0`: never retained, replay identical to retention-off |
 | k. age cap and sun re-latch | unseen past `age_cap`: gone, `age` = 1; validated sun changes beyond the gate: store flushed the same frame, `flush=sun` |
 | l. precision twin | retained rows from camera 1 against live rows from camera 2 at an 81,000-unit offset: ≤ `eps` at the AABB corner |

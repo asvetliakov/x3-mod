@@ -69,7 +69,18 @@ bool increment(std::uint64_t& value){
     if(value==std::numeric_limits<std::uint64_t>::max()) {fail(Reason::CounterExhausted,"counter_exhausted");return false;}
     ++value;return true;
 }
-void clear_entries(){for(auto& entry:entries)entry={};}
+// Retirement journal: written only under model_lock and only for a registered consumer.
+using x3m::object_lifetime::JournalCapacity;
+using x3m::object_lifetime::JournalKind;
+static_assert(JournalCapacity && !(JournalCapacity&(JournalCapacity-1)));
+std::array<x3m::object_lifetime::JournalEntry,JournalCapacity> journal{};
+std::uint64_t journal_head=0;
+unsigned journal_consumers=0;
+void journal_append(JournalKind kind,std::uint64_t serial){
+    if(!journal_consumers)return;
+    journal[static_cast<unsigned>(journal_head)&(JournalCapacity-1)]={kind,0,load_epoch,registry_epoch,serial};++journal_head;
+}
+void clear_entries(){for(auto& entry:entries)entry={};journal_append(JournalKind::FlushAll,0);}
 bool read_registry(std::uintptr_t& result){
     std::uintptr_t engine=0;result=0;
     return read_memory(engine_slot,&engine,4) && engine && engine<=0xfffffff3u && read_memory(engine+12,&result,4) && result;
@@ -91,7 +102,7 @@ Entry* find(std::uint32_t key,bool create){
     }
     return create?vacant:nullptr;
 }
-void retire(std::uint32_t key){if(auto* entry=find(key,false)){entry->state=2;entry->value=0;entry->serial=0;}}
+void retire(std::uint32_t key){if(auto* entry=find(key,false)){journal_append(JournalKind::Retired,entry->serial);entry->state=2;entry->value=0;entry->serial=0;}}
 enum class Lookup { Found, Missing, Unavailable };
 Lookup lookup(std::uintptr_t map,std::uint32_t key,std::uintptr_t& value){
     value=0;std::uint32_t header[4]{};
@@ -466,6 +477,32 @@ bool current(std::uintptr_t map,std::uintptr_t node,std::uint32_t node_handle,
     }
     SetLastError(error);return out->known;
 }
+JournalCursor journal_register(){
+    Lock lock;
+    if(journal_consumers==std::numeric_limits<unsigned>::max())return {};
+    // Skipping more than a whole ring makes every cursor of an earlier registration drain as overflow.
+    if(!journal_consumers)journal_head+=JournalCapacity+1;
+    ++journal_consumers;
+    return {journal_head};
+}
+void journal_unregister(){Lock lock;if(journal_consumers)--journal_consumers;}
+JournalStats journal_stats(){Lock lock;return {journal_head,journal_consumers};}
+JournalDrain journal_drain(JournalCursor& cursor,JournalEntry* out,std::uint32_t limit){
+    JournalDrain result{};
+    Lock lock;
+    result.available=journal_consumers && observation && cursor.valid();
+    result.load_epoch=load_epoch;result.registry_epoch=registry_epoch;result.mutation_revision=revision;
+    if(!out || !limit){result.invalid=true;return result;}
+    if(!cursor.valid()){result.overflow=true;return result;}
+    if(!journal_consumers || cursor.sequence>journal_head || journal_head-cursor.sequence>JournalCapacity){
+        result.overflow=true;cursor.sequence=journal_head;return result;
+    }
+    const std::uint64_t pending=journal_head-cursor.sequence;
+    const std::uint32_t count=pending<limit?static_cast<std::uint32_t>(pending):limit;
+    for(std::uint32_t i=0;i<count;++i)out[i]=journal[static_cast<unsigned>(cursor.sequence+i)&(JournalCapacity-1)];
+    cursor.sequence+=count;result.count=count;result.more=cursor.sequence!=journal_head;
+    return result;
+}
 bool shutdown(){
     const DWORD error=GetLastError();
     {Lock lock;observation=false;clear_entries();increment(revision);disabled_reason=Reason::Disabled;}
@@ -482,5 +519,6 @@ bool fixture_shutdown(unsigned failure,unsigned site){
     {Lock lock;observation=false;clear_entries();increment(revision);disabled_reason=Reason::Disabled;}
     const bool result=restore_all(failure,site);SetLastError(error);return result;
 }
+void fixture_journal_consumers(unsigned count){Lock lock;journal_consumers=count;}
 #endif
 } // namespace x3m::object_lifetime

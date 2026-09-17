@@ -32,7 +32,9 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
     # is part of a passing report since the engine_memory change.
     READ_PATH = (b'TIMING mode=rpm snapshot_us=9.000 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00\n'
                  b'TIMING mode=direct snapshot_us=0.500 reads_per_call=12.00 queries_per_call=0.0200 syscalls_per_call=0.00\n'
-                 b'IDENTITY rpm=0123456789abcdef direct=0123456789abcdef equal=1\n')
+                 b'IDENTITY rpm=0123456789abcdef direct=0123456789abcdef equal=1\n'
+                 b'JOURNAL capacity=2048 cycle_idle_us=1.0000 cycle_journal_us=1.0100 retirement_delta_us=0.0100 empty_drain_us=0.0200 drained=40000\n')
+    READ_PATH += b''.join(b'JOURNAL_CASE name=%s result=PASS\n' % n.encode() for n in RUNNER.JOURNAL_CASES)
     RESULT = b'RESULT PASS checks=1 failures=0 backend_calls=1\n'
 
     def fake_run(self, output=READ_PATH + RESULT, mutate=None):
@@ -78,6 +80,17 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
         self.assertTrue(result['passed'])
         self.assertEqual(result['read_path']['identity'][0]['equal'], '1')
         self.assertEqual([t['mode'] for t in result['read_path']['timing']], ['rpm', 'direct'])
+        self.assertEqual(result['journal'][0]['capacity'], '2048')
+
+    def test_journal_measurement_required(self):
+        lines = self.READ_PATH.split(b'\n')
+        missing = b'\n'.join(l for l in lines if not l.startswith(b'JOURNAL ')) + self.RESULT
+        partial = self.READ_PATH.replace(b' empty_drain_us=0.0200', b'') + self.RESULT
+        failed_case = self.READ_PATH.replace(b'name=cost result=PASS', b'name=cost result=FAIL') + self.RESULT
+        absent_case = self.READ_PATH.replace(b'JOURNAL_CASE name=cost result=PASS\n', b'') + self.RESULT
+        for output in (missing, partial, failed_case, absent_case, self.READ_PATH + lines[3] + b'\n' + self.RESULT):
+            with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
+                self.assert_failed(RUNNER.run(self.root))
 
     def test_read_path_identity_required(self):
         unequal = self.READ_PATH.replace(b'equal=1', b'equal=0') + self.RESULT

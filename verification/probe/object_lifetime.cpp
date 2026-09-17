@@ -231,6 +231,102 @@ int main(){
         SetEnvironmentVariableW(L"X3M_ENGINE_READS",nullptr);em::configure();
         insert(primary,node);insert(primary,camera); // the retirement case below expects both present
     }
+    // Retirement journal: bounded ring, written only for a registered consumer.
+    {
+        using K=lt::JournalKind;
+        static Node burst[6];for(unsigned i=0;i<6;++i)burst[i].handle=100+i;
+        static lt::JournalEntry out[lt::JournalCapacity];
+        auto serial_of=[&](Node& n){lt::Snapshot s{};lt::current(reinterpret_cast<std::uintptr_t>(&primary),reinterpret_cast<std::uintptr_t>(&n),n.handle,reinterpret_cast<std::uintptr_t>(&camera),camera.handle,&s);return s.known?s.node_serial:0;};
+        auto raw_insert=[&](Node& n){invoke_custom(reinterpret_cast<void*>(&insert_entry),&primary,n.handle,reinterpret_cast<std::uintptr_t>(&n));};
+        unsigned case_failures=failures;auto end_case=[&](const char* name){std::printf("JOURNAL_CASE name=%s result=%s\n",name,failures==case_failures?"PASS":"FAIL");case_failures=failures;};
+        empty(primary);check(lt::fixture_install(sites),"install journal case");
+        const auto idle=lt::journal_stats();insert(primary,node);insert(primary,camera);insert(primary,node);remove(primary,node.handle);load(1);
+        check(lt::journal_stats().head==idle.head&&lt::journal_stats().consumers==0,"no consumer: retirements and epoch bumps write nothing");
+        lt::JournalCursor stale{};auto unregistered=lt::journal_drain(stale,out,lt::JournalCapacity);
+        check(unregistered.overflow&&!unregistered.available&&!unregistered.count,"drain without a consumer demands revalidation");
+        check(!stale.valid(),"refused drain leaves an invalid cursor invalid");end_case("no_consumer");
+        auto cursor=lt::journal_register();check(cursor.valid()&&lt::journal_stats().consumers==1,"consumer registered");
+        auto quiet=lt::journal_drain(cursor,out,lt::JournalCapacity);check(quiet.available&&!quiet.overflow&&!quiet.count&&!quiet.more,"fresh cursor starts at the head");
+        insert(primary,camera);std::uint64_t serials[6]{};for(unsigned i=0;i<6;++i){insert(primary,burst[i]);serials[i]=serial_of(burst[i]);check(serials[i]!=0,"journal node born");}
+        check(!lt::journal_drain(cursor,out,lt::JournalCapacity).count,"births of fresh keys append nothing");
+        for(unsigned i=0;i<4;++i)remove(primary,burst[i].handle);
+        remove(primary,54321); // absent key: nothing retired
+        insert(primary,burst[4]); // overwrite retires the old lifetime
+        remove_backend(&primary,burst[5].handle);check(!serial_of(burst[5]),"failed membership retires"); // behind the observer's back
+        SetLastError(0x321);auto drained=lt::journal_drain(cursor,out,lt::JournalCapacity);check(GetLastError()==0x321,"drain preserves LastError");
+        check(drained.available&&!drained.overflow&&!drained.more&&drained.count==7,"retire N below capacity: all drained");
+        bool ordered=drained.count==7;for(unsigned i=0;ordered&&i<5;++i)ordered=out[i].kind==K::Retired&&out[i].node_serial==serials[i]&&out[i].load_epoch==drained.load_epoch&&out[i].registry_epoch==drained.registry_epoch;
+        check(ordered&&out[5].kind==K::Retired&&out[5].node_serial==serials[5]&&out[6].kind==K::Retired&&out[6].node_serial!=0,"journal order and keys: removals, overwrite, failed membership (node then camera)");
+        check(serial_of(burst[4])==0,"failed membership retired the camera too");insert(primary,camera);check(serial_of(burst[4])!=0&&serial_of(burst[4])!=serials[4],"overwritten node has a new serial");
+        end_case("retire_in_order");
+        // Partial drain through a small buffer keeps order and position.
+        insert(primary,burst[0]);insert(primary,burst[1]);insert(primary,burst[2]);const std::uint64_t a=serial_of(burst[0]),b=serial_of(burst[1]),c=serial_of(burst[2]);
+        remove(primary,burst[0].handle);remove(primary,burst[1].handle);remove(primary,burst[2].handle);
+        auto part=lt::journal_drain(cursor,out,2);check(part.count==2&&part.more&&out[0].node_serial==a&&out[1].node_serial==b,"small buffer drains the oldest first");
+        part=lt::journal_drain(cursor,out,2);check(part.count==1&&!part.more&&out[0].node_serial==c,"remainder drained from the cursor");
+        end_case("partial_drain");
+        // A drain that cannot deliver is invalid, never an endless more=true.
+        raw_insert(burst[0]);remove(primary,burst[0].handle);const auto held=cursor;
+        auto refused=lt::journal_drain(cursor,nullptr,lt::JournalCapacity);check(refused.invalid&&!refused.count&&!refused.more&&!refused.overflow&&cursor.sequence==held.sequence,"null buffer: invalid, no more, cursor unmoved");
+        refused=lt::journal_drain(cursor,out,0);check(refused.invalid&&!refused.count&&!refused.more&&!refused.overflow&&cursor.sequence==held.sequence,"zero capacity: invalid, no more, cursor unmoved");
+        refused=lt::journal_drain(cursor,out,lt::JournalCapacity);check(!refused.invalid&&refused.count==1,"entry still delivered to a valid drain");end_case("invalid_drain");
+        // Epoch bumps and table clears are flush-all entries.
+        const auto pre=lt::journal_drain(cursor,out,lt::JournalCapacity);load(1);auto flushed=lt::journal_drain(cursor,out,lt::JournalCapacity);
+        check(flushed.count==1&&out[0].kind==K::FlushAll&&flushed.load_epoch!=pre.load_epoch&&flushed.mutation_revision!=pre.mutation_revision,"load epoch bump is one flush-all entry");
+        end_case("flush_load_epoch");
+        insert(primary,node);insert(primary,camera);lt::journal_drain(cursor,out,lt::JournalCapacity);destroy(primary);flushed=lt::journal_drain(cursor,out,lt::JournalCapacity);
+        check(flushed.count==1&&out[0].kind==K::FlushAll&&flushed.registry_epoch!=pre.registry_epoch,"registry destruction is a flush-all entry");
+        end_case("flush_registry_destroy");
+        insert(primary,node);insert(primary,camera);lt::journal_drain(cursor,out,lt::JournalCapacity);
+        {const auto bound=lt::journal_drain(cursor,out,lt::JournalCapacity);engine.registry=&unrelated;insert(unrelated,third);auto rebound=lt::journal_drain(cursor,out,lt::JournalCapacity);
+         check(rebound.count==1&&out[0].kind==K::FlushAll&&rebound.registry_epoch!=bound.registry_epoch&&rebound.available,"registry rebind is one flush-all entry");
+         engine.registry=&primary;insert(primary,node);insert(primary,camera);rebound=lt::journal_drain(cursor,out,lt::JournalCapacity);check(rebound.count==1&&out[0].kind==K::FlushAll&&snapshot().known,"rebinding back flushes again and births recover");}
+        end_case("flush_registry_rebind");
+        // Overflow: more retirements than the ring holds between two drains.
+        const unsigned flood=lt::JournalCapacity+88;for(unsigned i=0;i<flood;++i){raw_insert(burst[0]);remove(primary,burst[0].handle);}
+        auto lost=lt::journal_drain(cursor,out,lt::JournalCapacity);check(lost.overflow&&lost.available&&!lost.count&&!lost.more,"overflow reported, nothing partial delivered");
+        check(snapshot().known,"full revalidation through current() works after overflow");
+        raw_insert(burst[0]);const auto survivor=serial_of(burst[0]);remove(primary,burst[0].handle);lost=lt::journal_drain(cursor,out,lt::JournalCapacity);
+        check(!lost.overflow&&lost.count==1&&out[0].node_serial==survivor,"cursor recovers after overflow");
+        for(unsigned i=0;i<lt::JournalCapacity;++i){raw_insert(burst[0]);remove(primary,burst[0].handle);}
+        lost=lt::journal_drain(cursor,out,lt::JournalCapacity);check(!lost.overflow&&lost.count==lt::JournalCapacity&&!lost.more,"exactly one full ring drains without overflow");
+        for(unsigned i=0;i<lt::JournalCapacity+1;++i){raw_insert(burst[0]);remove(primary,burst[0].handle);}
+        lost=lt::journal_drain(cursor,out,lt::JournalCapacity);check(lost.overflow&&!lost.count&&!lost.more,"capacity+1 between drains is overflow");
+        lost=lt::journal_drain(cursor,out,lt::JournalCapacity);check(!lost.overflow&&!lost.count,"cursor at the head after the boundary overflow");end_case("overflow_and_recovery");
+        // Costs: hooked insert+remove cycle without and with a consumer, and the empty drain.
+        {
+            LARGE_INTEGER frequency{},begin{},end{};QueryPerformanceFrequency(&frequency);const unsigned cycles=20000;double cost[2]{};std::uint64_t seen=0,overflows=0;
+            for(unsigned pass=0;pass<4;++pass){
+                const bool journaled=pass&1;if(!journaled)lt::journal_unregister();else cursor=lt::journal_register();
+                QueryPerformanceCounter(&begin);
+                for(unsigned i=0;i<cycles;++i){raw_insert(burst[0]);remove(primary,burst[0].handle);if(journaled&&(i&255)==255){auto d=lt::journal_drain(cursor,out,lt::JournalCapacity);seen+=d.count;overflows+=d.overflow;}}
+                QueryPerformanceCounter(&end);
+                if(journaled){auto d=lt::journal_drain(cursor,out,lt::JournalCapacity);seen+=d.count;overflows+=d.overflow;}
+                const double us=double(end.QuadPart-begin.QuadPart)*1e6/double(frequency.QuadPart)/cycles;if(pass<2||us<cost[journaled])cost[journaled]=us;
+            }
+            check(seen==2ull*cycles&&!overflows,"every timed retirement was journaled once");
+            QueryPerformanceCounter(&begin);for(unsigned i=0;i<cycles;++i)lt::journal_drain(cursor,out,lt::JournalCapacity);QueryPerformanceCounter(&end);
+            std::printf("JOURNAL capacity=%u cycle_idle_us=%.4f cycle_journal_us=%.4f retirement_delta_us=%.4f empty_drain_us=%.4f drained=%llu\n",unsigned(lt::JournalCapacity),cost[0],cost[1],cost[1]-cost[0],
+                double(end.QuadPart-begin.QuadPart)*1e6/double(frequency.QuadPart)/cycles,static_cast<unsigned long long>(seen));
+        }
+        end_case("cost");
+        // A cursor of an ended registration is foreign; shutdown flushes and reports unavailable.
+        const auto old_cursor=cursor;lt::journal_unregister();const auto silent=lt::journal_stats();raw_insert(burst[0]);remove(primary,burst[0].handle);check(lt::journal_stats().head==silent.head,"unregistered: writes stop again");
+        cursor=lt::journal_register();auto foreign=old_cursor;check(lt::journal_drain(foreign,out,lt::JournalCapacity).overflow&&foreign.sequence==cursor.sequence,"cursor of an ended registration drains as overflow");
+        check(lt::shutdown(),"journal case shutdown");auto final=lt::journal_drain(cursor,out,lt::JournalCapacity);
+        check(!final.available&&final.count==1&&out[0].kind==K::FlushAll,"shutdown appends flush-all and reports the journal unavailable");
+        end_case("reregistration_and_shutdown");
+        // Capacity exhaustion clears the table: flush-all, then unavailable.
+        empty(primary);check(lt::fixture_install(sites,2),"install bounded journal case");insert(primary,node);insert(primary,camera);lt::journal_drain(cursor,out,lt::JournalCapacity);
+        insert(primary,third);final=lt::journal_drain(cursor,out,lt::JournalCapacity);check(!lt::active()&&!final.available&&final.count==1&&out[0].kind==K::FlushAll,"capacity exhaustion is a flush-all entry and an unavailable journal");
+        check(lt::shutdown(),"bounded journal shutdown");lt::journal_drain(cursor,out,lt::JournalCapacity);end_case("flush_capacity_exhausted");
+        // Saturated consumer count: registration refused, nothing owed, count unchanged.
+        lt::fixture_journal_consumers(~0u);auto refused_cursor=lt::journal_register();check(!refused_cursor.valid()&&lt::journal_stats().consumers==~0u,"saturated registration refused with an invalid cursor");
+        auto saturated=lt::journal_drain(refused_cursor,out,lt::JournalCapacity);check(saturated.overflow&&!saturated.available&&!saturated.count&&!refused_cursor.valid(),"invalid cursor never becomes valid by draining");
+        lt::fixture_journal_consumers(1);end_case("saturated_registration");
+        lt::journal_unregister();check(lt::journal_stats().consumers==0,"consumer unregistered");
+        empty(primary);insert(primary,node);insert(primary,camera); // the retirement case below expects both present
+    }
     // Production retirement keeps a previously published dispatcher callable,
     // while the fixture-only repeated-install seam above promises no such callers.
     check(lt::fixture_install(sites,16384,0,0,true,true),"retained production-style installation");

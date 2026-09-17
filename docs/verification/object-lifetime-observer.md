@@ -121,3 +121,87 @@ and reject any mid-frame change of epoch, revision or serial.
 A user-controlled game capture remains required to measure baseline usefulness,
 node/camera birth and retirement coverage, reload epochs and camera-switch
 behavior. The mechanism is opt-in and synthetic success is not a live-TAA claim.
+
+## Retirement journal (2026-09-17)
+
+Prerequisite of shadow caster retention
+([shadow-caster-retention.md](../architecture/shadow-caster-retention.md),
+"Retirement"). API in `src/proxy/object_lifetime.h`: `journal_register`,
+`journal_unregister`, `journal_drain(cursor, out, capacity)`, `journal_stats`.
+No new EXE patch site and no change to the dispatcher or its envelope.
+
+- Fixed ring of 512 `JournalEntry` (32 bytes each, 16 KB static), 64-bit
+  sequence numbers, no allocation. Appended under the observer's existing
+  spinlock, so it inherits the observer's threading contract: callable from any
+  thread, never from inside an observed engine call (non-recursive lock). The
+  journal functions make no Win32 call and leave LastError untouched.
+- `Retired` carries `(load_epoch, registry_epoch, node_serial)` and is written
+  at the single existing retirement point `retire()`: removal hook, overwrite
+  (insert pre-retire) and failed membership in `current()` (node, then camera).
+  Untracked keys append nothing. The engine has already released the node's
+  buffers when the removal is observed
+  ([shadow-caster-lifetime.md](../reverse-engineering/shadow-caster-lifetime.md) §4c).
+- `FlushAll` is written with every whole-table clear: load epoch, registry
+  rebind/destruction/loss, foreign unwind, ownership loss, capacity exhaustion,
+  install and shutdown. Its epochs are those at the append (the clear can
+  precede the bump); `JournalDrain` returns the current epochs and revision.
+- Nothing is written with no consumer (one integer test per retirement). The
+  first registration skips a whole ring of sequence numbers, so a cursor of an
+  ended registration, a zero cursor or a backlog above 512 drains as
+  `overflow` with the cursor moved to the head; `available=false` when the
+  observer is disabled or unregistered. Both mean full revalidation through
+  `current()`. A short output buffer returns the oldest entries and `more`.
+
+Fixture (`run_object_lifetime.py`, bottle X3, arm64 Wine, FEX reduced
+precision, executable `da690d4c…`): 648 checks (574 before), no journal check
+fails: no consumer writes nothing; 7 retirements (4 removals, overwrite, failed
+membership node+camera) drained in order with matching keys; absent-key
+removal and fresh births append nothing; 2+1 partial drain; load and registry
+destruction each one `FlushAll`; 600 retirements between drains give
+`overflow` with nothing partial, the next retirement drains normally, exactly
+512 drains without overflow; stale cursor after re-registration overflows;
+shutdown appends `FlushAll` and reports unavailable; drain preserves LastError.
+Measured, 20,000 hooked insert+remove cycles, best of two passes each:
+1.2965 µs without a consumer, 1.2926 µs with one draining every 256 cycles
+(delta −0.004 µs, below noise); empty drain 0.0058 µs; 40,000 of 40,000 timed
+retirements journaled once. The runner requires exactly one `JOURNAL` line.
+
+The run as a whole reports **10 failures, all pre-existing and outside the
+journal**: the same ten FX-state comparisons fail in the committed X3 record of
+2026-09-12 (574 checks, 10 failures). A scratch diagnostic shows the differing
+bytes lie only in the x87 register slots ST0–ST7 of the FXSAVE image (mantissa
+top byte and exponent, offsets 39–153 of the slots at 32–159), i.e. FXSAVE/FXRSTOR does not round-trip the 80-bit registers bit-exactly under
+`FEX_X87REDUCEDPRECISION=1`; control, status, MXCSR and XMM compare equal.
+
+Host: `test_object_lifetime_runner` 8 tests (new: journal line required) and
+the six extracted-snippet modules, 35 tests OK. Scratch clean build of
+`d3d9.dll`: 0 warnings; `check_no_x87.py`: 511 reachable, 0 violations.
+
+### Review fixes (2026-09-17, second commit)
+
+Ring raised to 2,048 entries (64 KB static, still allocation-free) so a
+gate-jump burst of about 600 retirements drains in one frame. `journal_drain`
+with a null buffer or zero capacity returns `invalid` with `count=0`,
+`more=false` and an unmoved cursor. Registration at a saturated consumer count
+is refused with an invalid cursor (default `JournalCursor` is invalid, never
+becomes valid by draining, and owes no unregister). The header now states the
+consumer contract: revalidate fully at registration/re-registration, on
+`overflow` and on `available=false`; `FlushAll` is an unconditional drop and
+epoch comparisons use `JournalDrain`; `Retired` is not proof of death. The
+figures of the section above (512, 648 checks, costs) are superseded by these.
+
+Fixture rerun, bottle X3: 673 checks; the runner now requires twelve
+`JOURNAL_CASE ... result=PASS` lines and all twelve pass: `no_consumer`,
+`retire_in_order`, `partial_drain`, `invalid_drain`, `flush_load_epoch`,
+`flush_registry_destroy`, `flush_registry_rebind`, `overflow_and_recovery`
+(2,136 lost; one recovers; exactly 2,048 drains; 2,049 overflows), `cost`,
+`reregistration_and_shutdown`, `flush_capacity_exhausted`,
+`saturated_registration`. Cost, 20,000 hooked insert+remove cycles, best of two
+passes: 1.4900 us without a consumer, 1.2392 us with one (the append is below
+the run-to-run noise of the hooked cycle under FEX; the first run measured
+1.2965/1.2926); empty drain 0.0063 us.
+
+The run still exits failed on **10 FX-state checks, accepted as the baseline**:
+the same ten labels fail on main's committed X3 record (x87 register slots do
+not round-trip through FXSAVE/FXRSTOR under `FEX_X87REDUCEDPRECISION=1`); no
+journal check is among them.
