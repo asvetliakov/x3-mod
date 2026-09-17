@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-17 (run36 candidate installed; run 36 queued). This is the short current handoff; the current
+Updated 2026-09-17 (run37 candidate installed; run 37 queued: FEX/wined3d experiments, station shadows, avatar video). This is the short current handoff; the current
 session handoff is [handoff-2026-09-17.md](handoff-2026-09-17.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -13,36 +13,34 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`51a3d764b53cf6add973c3a17a13f56ed3c9192bbb1a68c5e5410bc31f7f3ee0`
-(17,004,352 bytes), built once on Opus from clean committed main `c9a8145`
-(2026-09-17; marker `X3M_SOURCE_COMMIT=c9a8145…`, no `-dirty`). The
-[build record](../verification/results/run36-candidate-build.json) binds the
-clean build (13 s, zero warnings), the no-x87 audit (76 roots, 498 reachable,
-0 violations), 17 exports, the four site verifiers against the EXE, the stamp
-CPU fixture (8,659 checks, 0 failures; media-cue pass 288 ns / refuse 126 ns /
-entry line 1.9 µs per dispatch), the state-hook benchmark on the candidate
-bytes ([record](../verification/results/bottle-X3/state-hook-benchmark-run36.json):
-SetRenderState 11.1 ns, SetSamplerState 10.6, draw pair 1,021 ns, unchanged
-from run34 within 0.1 %), five motion-output parity cases equal to the
-committed record, the sun-lane live runner 19/19 on the seam DLL, and the
-launcher dry-runs of the three run 36 sessions. The
-[install record](../verification/results/run36-candidate-install.json) binds the
-installed bytes, unchanged EXE/bottle hashes and the rollback; the previous
-run34 DLL `7102a2f1…` and manifest are in `/tmp/x3-candidate-rPJp5y/rollback`.
-No game launched.
+`617251450ceaa88db827295199a2aaa46525b0c165008120cf9786c46b8e248d`
+(17,071,654 bytes), built once on Opus from clean committed main `1f2de5d`
+(2026-09-17; marker `X3M_SOURCE_COMMIT=1f2de5d…`, no `-dirty`). The
+[build record](../verification/results/run37-candidate-build.json) binds the
+clean build (14 s, zero warnings), the no-x87 audit (76 roots, 504 reachable,
+0 violations), 17 exports, the four site verifiers, the stamp CPU fixture
+(8,684 checks, 0 failures, media cases 11), the state-hook benchmark
+([record](../verification/results/bottle-X3/state-hook-benchmark-run37.json):
+SetSamplerState 10.5 ns, draw pair 1,010 ns; SetRenderState 15.5 ns in a run
+where native also drifted to 14.9, read as fixture noise), the ownership
+runner (370/563 checks, 0 failures; the surface lock shells changed), seven
+motion-output cases equal to the committed record, the sun-lane live cases
+`shadow_apply`/`original_lane` equal to the 19/19 record, and the four run 37
+dry-runs. The [install record](../verification/results/run37-candidate-install.json)
+binds the installed bytes, unchanged EXE/bottle hashes and the rollback; the
+previous run36 DLL `51a3d764…` and manifest are in
+`/tmp/x3-candidate-uB6Iyy/rollback`. No game launched.
 
-This build adds, on top of run34's: the sun lane on original shading with the
-original-program share producer, the cutout pairs admitted, the one-cascade
-depth replay and the scene-end shadow apply quad behind `--sun-shadow-apply`
-(default off; [contract](architecture/legacy-sun-application.md),
-[ledger](verification/directional-shadows.md)); the F8 sun-map dump; the
-`media_cue_enter` trace line; `loaded_module` image fields
-(`image_size`, `stamp`, `exports`, `wine_builtin`); the launcher's command
-line as the first line of `launcher-stderr.log`; `--d3dx native|builtin`.
-Default path unchanged: with none of the lane options the draw path pays
-nothing new. Appearance defaults unchanged: camera 0.5°/0.50, EV ceiling
-+1.3, mip bias -0.5, sharpen 0.75, fill 0.05 (linear only); original hull
-shading; no shadows unless `--sun-shadow-apply`. Decoder runtime v4.
+This build adds, on top of run36's: cascade-0 casters chosen by geometry
+(draw-range vertex extents against the map box, cap 512 per frame; the
+station deck under the ship now casts) with the apply quad's raster-jitter
+term and the `sun_shadow_apply_params` capture line; the video blit witness
+(`media_video_blit` under `--media-cue-trace --ownership`); launcher
+`--fex-tso on|off`, `--wined3d CONFIG` (child-only environment experiments).
+Default path unchanged. Appearance defaults unchanged; no shadows unless
+`--sun-shadow-apply`. The run106 diagnosis: the apply path is correct
+(receiver-map residual within one unit, HDR darkening matches the twin); the
+captures were backlit ([ledger](verification/directional-shadows.md)).
 
 ## Session 2026-09-17: run 29 received, run 30 candidate
 

@@ -91,4 +91,6 @@ conclusion as above: no shader is touched; new bodies reach only stock programs.
    [shader-fingerprints.md](../reverse-engineering/shader-fingerprints.md)
    as a fallback when the exact hash misses, so a small `.fx` edit still
    resolves to the same family; keep exact-hash matching authoritative for
-   anything that inserts instructions.
+   anything that inserts instructions. Design awaiting ratification:
+   [shader-fingerprint-fallback.md](shader-fingerprint-fallback.md)
+   (layout-preserving literal-blind match, same planners, fail closed).

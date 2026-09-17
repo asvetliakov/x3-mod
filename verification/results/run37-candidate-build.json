@@ -1,0 +1,404 @@
+{
+ "recorded_utc": "2026-09-17T01:52:31Z",
+ "run": 37,
+ "candidate": {
+  "path": "/tmp/x3-candidate-uB6Iyy/candidate/d3d9.dll",
+  "directory": "/tmp/x3-candidate-uB6Iyy",
+  "subdirectories": [
+   "candidate",
+   "rollback (empty; the installed DLL is copied here by the installing owner)"
+  ],
+  "sha256": "617251450ceaa88db827295199a2aaa46525b0c165008120cf9786c46b8e248d",
+  "bytes": 17071654,
+  "retained_first_build": true,
+  "candidate_directory_file_count": 1,
+  "hash_rechecked_after_benchmark": true,
+  "hash_source_after_benchmark": "state-hook-benchmark-run37.json dll.sha256 equals the recorded sha256; shasum rerun after all fixtures agrees"
+ },
+ "source": {
+  "worktree": "/Users/asvetl/x3-mod",
+  "commit": "1f2de5df25fbe8a78c463e9a6f5e4ae1c4f04dcf",
+  "commit_short": "1f2de5d",
+  "detached": false,
+  "status_before_configure": "clean; untracked only state-hook-benchmark-run32/33/34/36-wine.log",
+  "dirty_diff": "none",
+  "status_after_build": "docs/verification/user-runs.md is modified in the worktree by another writer (not the candidate owner); no production source, CMake or toolchain file changed. Fixture-touched tracked result files (game_phase_cpu.json, ownership-build-verification.json, motion-output-partial.json/.txt, -build.log, -wine.log, sun-shadow-apply-fixture.json) were restored with git checkout after reading."
+ },
+ "source_commit_marker": {
+  "command": "strings /tmp/x3-candidate-uB6Iyy/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+  "value": "X3M_SOURCE_COMMIT=1f2de5df25fbe8a78c463e9a6f5e4ae1c4f04dcf",
+  "dirty_suffix": false,
+  "matches_worktree_head": true
+ },
+ "changes_since_run36": [
+  "video blit witness: Surface LockRect/UnlockRect shells take the caller's return address and consult one observer slot; media_video_blit enter/result lines under --media-cue-trace --ownership",
+  "cascade-0 casters by geometry: draw-range vertex extents read via the wrapper's READONLY Lock behind the lock-view guard, cached; X3M_SHADOW_REPLAY_CAP (512); bounds/origin/fallback/capped/reads counters",
+  "launcher --fex-tso on|off (FEX_TSOENABLED) and --wined3d CONFIG (WINE_D3D_CONFIG) child-only experiment options recorded in dry-run env and the launcher header"
+ ],
+ "toolchain": {
+  "toolchain_file": "cmake/mingw-i686.cmake",
+  "cmake": "4.4.3",
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "target": "32-bit Windows PE",
+  "native_windows_execution": "not performed"
+ },
+ "configure": {
+  "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build/candidate-run37",
+  "elapsed_seconds": 2,
+  "result": "PASS",
+  "warning_error_matches": 0,
+  "log": "/tmp/x3-candidate-uB6Iyy/configure.log"
+ },
+ "build": {
+  "command": "cmake --build build/candidate-run37 -j4",
+  "invocations": 1,
+  "elapsed_seconds": 14,
+  "result": "PASS",
+  "warning_error_matches": 0,
+  "log": "/tmp/x3-candidate-uB6Iyy/build.log",
+  "note": "build/candidate-run37 removed before configure; the shared ./build tree was not used or modified"
+ },
+ "host_audits": {
+  "no_x87": {
+   "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-uB6Iyy/candidate/d3d9.dll",
+   "result": "PASS",
+   "roots": 76,
+   "reachable_functions": 504,
+   "violations": 0,
+   "run36_roots": 76,
+   "run36_reachable_functions": 498,
+   "delta_note": "same root set as run36; reachable 498 -> 504 with the surface lock shells and the caster-extent reader",
+   "report": "/tmp/x3-candidate-uB6Iyy/no-x87.txt"
+  },
+  "pe_exports": {
+   "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-uB6Iyy/candidate/d3d9.dll",
+   "result": "PASS",
+   "machine": "0x014c",
+   "count": 17,
+   "names": 17,
+   "matches_run36_count": true,
+   "report": "/tmp/x3-candidate-uB6Iyy/pe-exports.json"
+  },
+  "phase_site_verifiers": {
+   "commands": [
+    "python3 verification/probe/verify_frame_phase_sites.py",
+    "python3 verification/probe/verify_pass_phase_sites.py",
+    "python3 verification/probe/verify_loop_phase_sites.py",
+    "python3 verification/probe/verify_media_cue_site.py"
+   ],
+   "result": "PASS (all four, exit 0, read-only against the bottle EXE)",
+   "exe_identity": "true in all four reports",
+   "source_specs": "true in all four; source_present true in the pass, loop and media-cue reports"
+  }
+ },
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "scoped_results": {
+  "game_phase_cpu": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_game_phase_cpu.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 10,
+   "lock_wait_seconds": 0,
+   "checks": 8684,
+   "failures": 0,
+   "run36_checks": 8659,
+   "frame_sites": 10,
+   "pass_sites": 4,
+   "loop_sites": 6,
+   "media_sites": 1,
+   "media_cases": 11,
+   "run36_media_cases": 10,
+   "replay_cases": 13,
+   "stubs": 47,
+   "arena_used": "20544/32768 B",
+   "fixture_sha256": "377ac95ee289ec1ac898e9487041ea61884134fe4278f6c22e73944a097b99f7",
+   "media_cue_bench": "MEDIA CUE BENCH loops=20000 trials=7 baseline_ns_per_call=6.9 pass_ns_per_call=225.3 refuse_ns_per_call=109.1 pass_dispatch_ns=218.4 refuse_dispatch_ns=102.2 documented_pass_ns=280 documented_refuse_ns=116 trace_pass_ns_per_call=233.5 trace_pass_dispatch_ns=226.6 enter_line_ns=2190.3 stub_bytes=300",
+   "media_cue_vs_run36": "pass 287.9 -> 225.3 ns, refuse 125.8 -> 109.1 ns, enter_line 1937.1 -> 2190.3 ns",
+   "pass_phase_bench": "PASS PHASE BENCH loops=20000 trials=7 baseline_ns_per_loop=1.7 hooked_ns_per_loop=348.4 dispatch_ns=86.7 implied_busy_frame_us=349 budget_us=1500 within_budget=1",
+   "loop_phase_bench": "LOOP PHASE BENCH loops=20000 trials=7 dispatches_per_loop=16 baseline_ns_per_loop=34.1 hooked_ns_per_loop=1464.3 dispatch_ns=89.4 implied_frame_us_200_sectors=107 arena_used=15916",
+   "candidate_impact": "none: this fixture compiles its own objects from source and never loads the candidate DLL",
+   "artifacts": "verification/results/bottle-X3/game_phase_cpu.json restored with git checkout after reading; run37 copy kept at /tmp/x3-candidate-uB6Iyy/game_phase_cpu-run37.json"
+  },
+  "state_hook_benchmark": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-uB6Iyy/candidate/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run37.json",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 26,
+   "lock_wait_seconds": 0,
+   "output": "verification/results/bottle-X3/state-hook-benchmark-run37.json (untracked; the paired -run37-wine.log stays local)",
+   "dll_sha256_in_output": "617251450ceaa88db827295199a2aaa46525b0c165008120cf9786c46b8e248d",
+   "fixture_exe_sha256": "2c9b0e389501c442a68fc79ecdf7dc661e5b4d998d2a9d7652e8f058080f69c6",
+   "baseline_untouched": "verification/results/bottle-X3/state-hook-benchmark.json was not written (--out redirected); git status showed it unmodified",
+   "ns_per_call_timing_off": {
+    "SetRenderState": {
+     "native": 11.3,
+     "production": 15.5,
+     "hooked_shadow": 78.5
+    },
+    "SetSamplerState": {
+     "native": 11.1,
+     "production": 10.5,
+     "hooked_shadow": 70.0
+    },
+    "GetState_draw_set_10": {
+     "native": 93.4,
+     "production": 93.0,
+     "hooked_shadow": 92.0
+    },
+    "routed_draw_mip_bias_2stages": {
+     "native": 78.1,
+     "production": 79.0,
+     "hooked_shadow": 473.3
+    },
+    "SetStreamSource": {
+     "native": 16.1,
+     "production": 132.7,
+     "hooked_shadow": 132.2
+    },
+    "SetStreamSource_DrawIndexedPrimitive_pair": {
+     "native": 401.2,
+     "production": 1009.5,
+     "hooked_shadow": 940.6
+    },
+    "state_mix": {
+     "native": 15.5,
+     "production": 63.7,
+     "hooked_shadow": 84.6
+    }
+   },
+   "frame_timing_on": {
+    "SetRenderState": 154.0,
+    "SetSamplerState": 145.1,
+    "draw_pair": 1495.9
+   },
+   "attribution": {
+    "proxy_guard_and_shadow_ns": 72.7,
+    "frame_timing_stamps_ns": 77.1,
+    "of_which_qpc_pair_ns": 127.2
+   },
+   "gates": {
+    "production_SetRenderState_vs_run36_ns": "15.5 vs 11.1 (+40%); native in the same process also moved (11.3 vs run36 14.9), and the three repetitions were 12.2/15.5/16.1, so the median is noisy",
+    "production_SetSamplerState_vs_run36_ns": "10.5 vs 10.6 (-1%)",
+    "draw_pair_vs_run36": "1009.5 vs 1020.8 (-1.1%)",
+    "production_SetRenderState_minus_native_ns": 4.2,
+    "production_SetSamplerState_minus_native_ns": -0.6,
+    "verdict": "PASS on the draw pair and SetSamplerState; SetRenderState production is 4.2 ns above native this run (run36 was 3.8 ns below native). No production code path in the setters changed between the two commits; treat as fixture noise unless a rerun reproduces it."
+   },
+   "cpu_state_preservation": "x87/control/status/tags/mxcsr/error flags all =1 across 4 configurations x 7 entry points (168 flag fields, 0 non-1) for SetStreamSource, SetIndices, SetVertexDeclaration, SetFVF, SetRenderState, DrawIndexedPrimitive, DrawPrimitive; mxcsr bf80 before/after, LastError 940 before/after",
+   "scope": "Median of three repetitions per configuration in one process under CrossOver Preview; not a native-Windows run and not game FPS."
+  },
+  "ownership": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ownership.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 11,
+   "lock_wait_seconds": 0,
+   "passed": true,
+   "fresh_build": true,
+   "phase": "complete",
+   "baseline": {
+    "exit": 0,
+    "checks": 370,
+    "failures": 0,
+    "exe_sha256": "2a0ec4ebfa82983cbaa549e7fb8d7cc2063bf426621f16f5122bc5c7fdd9adc1"
+   },
+   "wrapped": {
+    "exit": 0,
+    "checks": 563,
+    "failures": 0,
+    "exe_sha256": "a34dc55301d43bdac1b7e380fdd9729f50518a2afb755076d21f0fffca20780b"
+   },
+   "reason": "the surface LockRect/UnlockRect shells changed in this commit",
+   "candidate_impact": "none: the fixture builds its own baseline and wrapped binaries from source",
+   "artifacts": "verification/results/bottle-X3/ownership-build-verification.json restored with git checkout after reading"
+  },
+  "motion_output_source_parity": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py production-on production-shadow-off seam-on seam-shadow-off seam-taa-cutout-opaque-get seam-ownership-shadow-replay-on sun-shadow-apply",
+   "result": "PASS (runner status PARTIAL by design: a selected run does no cross-case block)",
+   "exit": 0,
+   "elapsed_seconds": 45,
+   "lock_wait_seconds": 0,
+   "candidate_bytes": "not exercised: the runner built its own fixture DLLs from source; this is a source-parity check of the committed tree",
+   "cases": {
+    "production-on": {
+     "exit": 0,
+     "checks": 43,
+     "motion_pixels": 0
+    },
+    "production-shadow-off": {
+     "exit": 0,
+     "checks": 43,
+     "motion_pixels": 0
+    },
+    "seam-on": {
+     "exit": 0,
+     "checks": 103,
+     "motion_pixels": 44284
+    },
+    "seam-shadow-off": {
+     "exit": 0,
+     "checks": 103,
+     "motion_pixels": 44284
+    },
+    "seam-taa-cutout-opaque-get": {
+     "exit": 0,
+     "checks": 49612,
+     "history_frames": 0,
+     "cutout_missed_frames": 11
+    },
+    "seam-ownership-shadow-replay-on": {
+     "exit": 0,
+     "checks": 168,
+     "depth": true,
+     "casters": 2,
+     "us": 69.5,
+     "max_depth_error": 1.17e-05
+    },
+    "sun-shadow-apply": {
+     "exit": 0,
+     "checks": 156,
+     "worst_codes": 0.998,
+     "ambiguous_max": 245,
+     "edge_mismatch": 376,
+     "edge_within_one_texel": 345,
+     "edge_within_two_texels": 31,
+     "edge_beyond_two_texels": 0,
+     "us": 3231.3
+    }
+   },
+   "against_committed_record": "for the four cases present in verification/results/bottle-X3/motion-output-summary.json (production-on, production-shadow-off, seam-on, seam-shadow-off): 116 scalar fields compared, 16 differ and all 16 are build provenance (directory, trace_sha256, dll_sha256, exe_sha256, rebuilt this run). All behavioral fields (checks, motion_pixels, state/color hashes, restorations) are equal. seam-ownership-shadow-replay-on, sun-shadow-apply and seam-taa-cutout-opaque-get have no row in that summary.",
+   "artifacts": "motion-output-partial.json/.txt, -build.log, -wine.log and sun-shadow-apply-fixture.json restored with git checkout after reading"
+  },
+  "sun_share_live": {
+   "committed_record": {
+    "path": "verification/results/bottle-X3/sun-share-live.json",
+    "cases": 19,
+    "passed": true,
+    "game_launched": false
+   },
+   "rerun": {
+    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --case shadow_apply --case original_lane --result /tmp/x3-candidate-uB6Iyy/sun-share-live-run37.json",
+    "result": "PASS",
+    "exit": 0,
+    "elapsed_seconds": 6,
+    "passed": true,
+    "game_launched": false,
+    "seam_dll_sha256": "9cb1d3b3ef110e0db37ed6424d35c74fcce9f1fe309769097c7a677f1da024e7",
+    "seam_dll_note": "built from this tree by the motion-output run in this task (the committed record's 22fe99dd predates this commit)",
+    "fixture_exe_sha256": "2e485a8f02b673833c09a7ed7e7208d0293c3e72833f85d2ef1a01a529e4b0cb",
+    "shadow_apply": {
+     "frames": 6,
+     "histories": 4,
+     "resets": 1,
+     "exact_taa_frames": 6,
+     "refusal_frames": 1,
+     "writer_signatures": 1,
+     "positive_frames": 5,
+     "zero_frames": 1,
+     "apply_frames": 4,
+     "apply_us_max": 1700.6,
+     "shadowed_pixels_min": 3969,
+     "linear_materials": false
+    },
+    "original_lane": {
+     "frames": 6,
+     "histories": 4,
+     "resets": 1,
+     "exact_taa_frames": 6,
+     "refusal_frames": 0,
+     "positive_frames": 5,
+     "zero_frames": 1,
+     "linear_materials": false
+    },
+    "vs_committed": "every non-timing field equals the committed 19-case record for both cases; only apply_us_max moved (1490.6 -> 1700.6 us) and elapsed_seconds",
+    "result_file": "written to /tmp only; verification/results/bottle-X3/sun-share-live.json untouched"
+   }
+  },
+  "launcher_dry_run": {
+   "command": "python3 tools/manage.py <options> --dry-run launch",
+   "shared_options": "--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8",
+   "result": "PASS (all four exit 0, each printed its command: 12 argv elements starting at the CrossOver Preview wine binary)",
+   "argument_order": "feature options are global and precede the launch subcommand; manage.py rejects them after it",
+   "variants": {
+    "A1_frame_pass_phases_fex_tso_off": {
+     "exit": 0,
+     "extra_options": "--frame-phases --pass-phases --fex-tso off",
+     "overrides": "d3d9=n,b",
+     "d3dx": "native",
+     "FEX_TSOENABLED": "0",
+     "WINE_D3D_CONFIG": "absent",
+     "X3M_FRAME_PHASES": "1",
+     "X3M_PASS_PHASES": "1",
+     "X3M_SUN_SHADOW_APPLY": "0",
+     "X3M_LINEAR_MATERIALS": "0"
+    },
+    "A2_frame_pass_phases_wined3d_csmt0": {
+     "exit": 0,
+     "extra_options": "--frame-phases --pass-phases --wined3d csmt=0x0",
+     "overrides": "d3d9=n,b",
+     "d3dx": "native",
+     "WINE_D3D_CONFIG": "csmt=0x0",
+     "FEX_TSOENABLED": "absent",
+     "X3M_FRAME_PHASES": "1",
+     "X3M_PASS_PHASES": "1",
+     "X3M_SUN_SHADOW_APPLY": "0",
+     "X3M_LINEAR_MATERIALS": "0"
+    },
+    "B_sun_shadow_lane_replay_depth_apply_candidates": {
+     "exit": 0,
+     "extra_options": "--sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates",
+     "overrides": "d3d9=n,b",
+     "d3dx": "native",
+     "X3M_SUN_SHADOW_APPLY": "1",
+     "X3M_LINEAR_MATERIALS": "0",
+     "X3M_SUN_SHADOW_LANE": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1",
+     "X3M_SHADOW_REPLAY_CANDIDATES": "1"
+    },
+    "C_media_cue_trace": {
+     "exit": 0,
+     "extra_options": "--media-cue-trace",
+     "overrides": "d3d9=n,b",
+     "d3dx": "native",
+     "X3M_MEDIA_CUE_TRACE": "1",
+     "X3M_OWNERSHIP": "1",
+     "X3M_SUN_SHADOW_APPLY": "0",
+     "X3M_LINEAR_MATERIALS": "0"
+    }
+   },
+   "game_launched": false
+  }
+ },
+ "load_check": {
+  "performed": true,
+  "how": "the state-hook benchmark loaded the candidate d3d9.dll as the process proxy in three device configurations (proxy-timing-off, proxy-shadow-timing-off, proxy-timing-on), each exiting 0",
+  "run_d3d9_exports": "not run; not in this task's scoped set"
+ },
+ "dry_run": {
+  "performed": true,
+  "note": "four --dry-run launcher variants above; vanilla not run"
+ },
+ "host_suite": {
+  "run": false,
+  "reason": "not in this task's scoped set"
+ },
+ "full_fixture_chain_rerun": false,
+ "native_windows_verified": false,
+ "installed": false,
+ "limitations": [
+  "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+  "Only the commit marker, no-x87, export-list and state-hook benchmark checks bind these candidate bytes; the game-phase, ownership, motion-output and sun-lane fixtures build their own binaries from the same committed source.",
+  "The benchmark is a synthetic per-call fixture under CrossOver Preview; it is not measured game FPS.",
+  "The host suite was not rerun for this candidate.",
+  "docs/verification/user-runs.md was modified in the worktree by another writer during this task and was left as found.",
+  "Installation and game launch are owned by the main session; nothing was installed and the game was never launched."
+ ]
+}
