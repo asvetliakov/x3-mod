@@ -2854,3 +2854,83 @@ ladder carry-over of the texel law is host-tested (the corvette's slid 16,875-u 
 8 u: mask 8 → 12; an index law slides with the policy match). Rerun after the follow-up: 22 cases
 (the six pool run116 cases, the six other pool cases, four cascade replay cases, three retention
 cases, replay-on, cascades-5, faces) PASS; no-x87 537 reachable / 0 violations; host 59 tests OK.
+
+## Run 40 A (run117) diagnosis: residual lit-station flicker (2026-09-18, worktree `agent-ae3e1d2f57d104caf`)
+
+No source edits, no Wine, no build. Inputs: `/tmp/x3-bottleX3-run117` (installed run40 candidate
+from `e8ae3357`; five cascades 250 / 1,500 / 7,500 / 37,500 / 150,000 at 4096², back faces in C3/C4),
+the four F8 bursts 5778–5785, 11333–11340, 14780–14787 (far-only outpost, C3 z p50 37.6 km),
+24624–24631 (station, C3 z p50 21.2 km), `shadow_map<k>_1_<f>.r32f`, `depth_1_<f>.rg32f`,
+`sun_shadow_apply_params`, `shadow_replay_map_basis`, `shadow_replay_caster`, `camera_state`. Twin
+`verification/probe/sun_shadow_apply.py` (`expected_factor_cascades`, coarse derivatives) driven by
+scratch scripts outside the repository. The triage note's premise (far-map churn 55–86 % per frame)
+is answered first; the measured cause is on the receiver side.
+
+### 1. The map churn is a comparison artefact; the caster pass is stable
+
+The camera moved in every burst (basis centre drift per burst 15–73 / 102–123 / 172–192 / 173–183 u;
+14780: ≈ 156 u/frame, so the C3 grid stepped 6–7 × 3–4 texels and C4 1–2 × 0–1 per frame). Raw
+same-texel deltas, burst 14780: C3 707–729 k occupied texels, 36–41 k occupied↔empty flips (5.5 %),
+|Δz| > 1e-4 on 555–606 k (83 %), > 1e-3 on 145–160 k, > 1e-2 on 21–25 k, at most 19 texels bit-equal,
+p50 |Δz| 2.7–3.0e-4; C4 59.4 k occupied, 3.6–6.6 k flips, > 1e-4 on 38–49 k, p50 1.7–2.1e-4. The p50
+is exactly the camera's advance along the sun axis over the depth range, (Δcentre · forward) / R =
+2.66e-4 (C3, R 375 km) and 1.66e-4 (C4, R 600 km): `shadow_replay_basis` snaps the centre in x/y
+only (`shadow_replay_projection.h:112`), the depth origin follows the camera, and every texel's
+stored depth drifts by the same amount (harmless for the apply, which uses the same basis).
+Re-aligned (shift by the snapped centre step in whole texels, subtract the depth-origin drift):
+C3 flips 80–100, |Δz| > 1e-3 on 0–5 texels, > 1e-2 on ≤ 1; C4 flips 32–56, > 1e-3 on 15–30, > 1e-2 on
+0. Burst 5778 (2–9 u/frame, close station with traffic): C3 aligned flips 629–2,090, > 1e-3 on
+1.6–3.3 k (0.2–0.4 %), > 1e-2 on 146–360; C4 flips 95–318 — moving ships, not re-rasterisation
+noise. Map storage is not the limit either: normalized sun depth over R in R32F resolves
+0.02–0.04 u. The replay's light rows come from the application's unjittered rows (`apply_jitter`,
+`motion_output.cpp:3676`); the aligned stability confirms no jitter reaches the caster pass.
+Duplicate admission: 0 duplicate (`vb`, `primitives`, `origin`) records among the 284 at 24624 and
+the 424 at 14780. The caster-count rise (C4 p50 83 → 251) is the run116 fixes working as designed:
+run116 refused 231 C4 / 10 C3 draws per frame under the static-only gate at 24291 (310 admitted);
+run117 has `refused=0` session-wide (the store/ring cycle fix and the texel-law eps admit the
+km-scale station parts that were cycling), not a defect.
+
+### 2. Measured cause: the receiver's RT2 depth precision at 20–90 km on fine single-sided geometry
+
+RT2 holds device depth z/w in fp32 (`current_depth_ps.hlsl`); the apply reconstructs
+z = m32 / (d − m22) with m32 = −6.0000186 (6-u near plane). One ULP of d (2^-24 near 1) is a view-depth
+step of z² / 1e8 u: 4.4 u at 21 km, 13.6 u at 37 km, 21 u at 46 km, 85 u at 92 km, and the same
+laterally in sun space where the view ray is across the sun (14780: ray · sun = 0.10), i.e.
+0.24–0.74 C3 texel and 0.3–1.2 C4 texel. Twin sensitivity to ±1 ULP of the whole RT2 (rows, maps,
+kernel unchanged): f changes on 12–15 % of C3-owned pixels and 23–25 % of C4-owned; |Δf| ≥ 2/9 on
+9.1 % (24624 C3, 90.8 k owned), 14.2 % (14780 C3, 26.5 k) and 15.7 % (14780 C4, 3.0 k); the kernel
+rotation (jitter index + 1) alone changes 0 pixels. The unstable pixels are whole faces, not
+silhouettes (pixel-scale map of 24624): partially shaded and ULP-sensitive on 10.4 / 11.9 / 27.5 %
+of the owned pixels. On them the map depth at the nearest texel minus the receiver depth is
+p25/50/75 = −41 / −8 / +36 u (24624) and −49 / −14 / +80 u (14780): the map holds the receiver's own
+surface — single-sided station geometry has no back face to put thickness between receiver and
+map (which is why the asteroids stopped flickering and these parts did not) — and the 3×3 texel
+depth spread is p50 316 / 384 u (72 u on stable lit pixels): girder-scale structure at 18-u texels
+under a 2.9 / 4.7-texel pixel footprint. Every frame re-rolls d by more than one ULP (camera motion
+or the jitter), so the re-roll rate above is the flicker.
+
+Apply-side mitigations, twin, |Δf| ≥ 2/9 under ±1 ULP (24624 C3 / 14780 C3 / 14780 C4, base
+9.1 / 14.2 / 15.7 %): constant bias + k receiver quanta, k = 2: 8.4 / 10.9 / 13.6, k = 4: 7.7 / 8.7 /
+11.2; slope-scaled bias ×1 of the plane term: 4.3 / 11.7 / 9.5; both (k = 4 + plane-noise ×4): 5.9 /
+6.3 / 7.0; 5×5 and 7×7 PCF: 4.6 / 9.8 / — and 2.9 / 7.8 / — with 22–58 % more partially shaded pixels;
+5-px derivative stencil (not ps_3_0-cheap): 8.2 / 13.2 / —. Selecting C4 instead of C3 by pixel
+footprint: 14.9 → 3.0 % ([1.5, 2.5) texels), 7.1 → 2.8, 5.4 → 1.8 (24624), 15.7 → 9.3, 15.4 → 5.9,
+8.6 → 2.9 (14780), mean f +0.02–0.05 (coarser). None reaches 1 %: the bias law, the kernel and the
+selection only trim a precision problem. The run116 section's "constant bias ×8 leaves 27 %" is the
+same limit seen from the other side.
+
+### 3. Fix: receiver depth with ≤ 1e-5 relative error (design decision, not made here)
+
+Needed: |receiver error| ≤ 0.05 texel at 92 km in C4 (≈ 4 u, 4e-5 of z); fp32 linear view depth
+gives 6e-8. Options, all changes to the RT2 lane ABI (bytecode transformer
+`material_motion.cpp` / `linear_sun_share_inc.h`, TAA resolve, AO linearize, the cascade and
+single-map apply, the depth dumps, the twins and the committed apply records): (a) reversed
+encoding d′ = (w − z) / w with the vertex variant exporting w − z (formed in the VS from
+v.z (1 − m22) − m32, precise) and every consumer decoding z = −m32 / (d′ − (1 − m22)) with the
+constant folded on the CPU; (b) a third R32F channel with w (A32B32G32R32F, +8 B/px on RT2);
+(c) the share quantized into the integer part of G and frac(w / 2048) in its fraction (0.06 u,
+share to 8 bits). (a) keeps the format and bandwidth. Until then the only measured interim is
+footprint-aware cascade selection (2.5–5× on C3 receivers at 20–40 km); the proving fixture for the
+real fix is a ±1 ULP RT2 invariance check in the apply twin on a single-sided plate with a girder
+pattern at 37 km (today ≥ 9 % of its pixels flip; target ≤ 1 %), which cannot pass before the lane
+change and was therefore not added.
