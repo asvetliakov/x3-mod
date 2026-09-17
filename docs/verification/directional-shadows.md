@@ -2155,3 +2155,106 @@ geometry is close enough that z/1024 stays under a quarter texel. Two checks:
    with `analytic_shadow` evaluated at the D3D9 pixel centre. Plus the capture-side self-check that
    flags this on any F8 frame: per cascade, the median own-surface residual (|r| < 30 units) must be
    below bias/2 — run115 C1 gives 1.66 vs 0.63.
+
+## 2026-09-17 Own-ship-adaptive C0 and the ratio guard (`--shadow-cascade-adaptive-c0 K`)
+
+Design and law: [shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md), §5
+(amended). Default off; the option is a companion of `--shadow-cascades` (an inherited value
+cannot enable it). Worktree `agent-adaptive-c0`, two commits rebased onto main `c7395bd4` (the caster pool control and the run-115 apply fix merged underneath; the combined tree is what the numbers below were taken on).
+
+- Clean CMake build: 0 warnings, `build/d3d9.dll` sha256 `eff688f0…ef46`;
+  `check_no_x87.py`: 533 reachable functions, no violations. `build_motion_output.sh` (strict
+  seam compile): clean, the new `x3m_shadow_own_ship_fixture_install` export present.
+- Host: `test_shadow_cascades` (driver CHECKs for the commit law, hysteresis, the clamp, the
+  guard's previous-active rule, the empty box of a dropped cascade against a hull spanning
+  every box, the draw radius; launcher value/range/requires cases), `test_shadow_replay_depth`,
+  `test_shadow_retention`, `test_sun_shadow_apply`, `test_shadow_replay_candidates`, `test_comparison_hotkeys` and the six
+  mock-drift modules: 82 tests OK.
+- Fixture (`X3M_FIXTURE_BOTTLE=X3`, bottle X3), the cascade script under 8 / 48 / 240 / 800
+  (set R's ratios), K 1.5, two hulls drawn every frame (H1 radius 1.69, H2 radius 33.7 through
+  the script's camera), the seam naming one of them as the player ship:
+  `seam-ownership-shadow-replay-adaptive-small` 318 checks — one `node` commit at frame 1
+  (radius 1.69, `e0=8`, `active_mask=15`), E0 stays 8 on every map;
+  `…-adaptive-big` 318 checks — one commit at frame 1 (radius 33.7, `e0=50.59`, texel 0.395,
+  depth behind 101.2, `active_mask=13`): from frame 2 cascade 0 reads back at 50.59, cascade 1
+  (48 < 3 × 50.59) is never replayed and stays void, cascades 2 and 3 replay as before, the
+  counter shows `c1=0`; `…-adaptive-swap` 319 checks — H1 until frame 5 and H2 from it: exactly
+  one further `node` commit at frame 5, cascade 0 alone voided at that boundary (its map still
+  holds frame 5's replay), cascades 2 and 3 valid on frame 6 as without the option. Every
+  replayed map of every active cascade equals the CPU projection of the draws it kept, the
+  hulls included (`max_depth_error` 8.46e-06 of the depth range, 0.55 FP16 codes; C0 texel
+  0.395 units at E0 = 50.59). The twin gained a far-clip ambiguity band (a hull larger than a
+  cascade's depth range is clipped at z = 1 on the GPU; samples within the depth tolerance of
+  1 are ambiguous), 1 texel of 42,856 on the small case's frame 4 before the band.
+- Records equal: `seam-ownership-shadow-replay-cascades` 278 checks / 4.0742862848497374e-06,
+  `…-cascades-toggle` 283 / 5.82e-06 (main's follow-up record), `…-cascades-poll-agree` 281 / 9.65e-06,
+  `…-cascades-casters-20` 278 / 3.42e-06, `seam-ownership-shadow-replay-on` 203 / 1.19e-05,
+  `seam-ownership-shadow-retention-live` 9,743 checks, 1,535 frames, 39 / 28 compared,
+  1.7169477474210382e-06, `sun-shadow-apply-cascades` 2,891 checks — all identical to the
+  recorded runs (the tracked result files were restored, only their timestamps differed).
+- Cost (host, clang -O2, one core): `shadow_cascade_draw_radius` 11.7 ns per own-ship draw;
+  the boundary update 7.3 ns; a commit (set rebuild + four bounds) 130 ns, at most once per
+  commit. Per frame in flight with the option on: one registry walk (six to eight bounded
+  reads) and, per z-writing draw with a known extent, one pointer compare (the root) or one
+  direct-mapped cache probe; a miss walks the parent links (≤ 64 walks per frame). The
+  option-OFF path is not free of the change: the origin-rule fallback tests
+  `shadow_cascade_active` per cascade per draw (one compare per cascade per draw, 4 at set R),
+  and the per-frame bounds skip inactive cascades (none while off). The replay and apply
+  transactions are unchanged.
+- Limits. The registry walk and the parent-link ancestry are exercised on synthetic nodes
+  only (the seam injects the root; scope nodes equal it); the first flight with the option
+  must show `own_status=0` and a plausible `own_radius` on the `shadow_cascade_set` lines, and
+  measure the chase-camera distance (`camera_state t` against `node+0xb0`) to set K. No
+  fixture drives the apply quad through the DLL with a dropped cascade (the never-inside rows
+  are covered by source reading and the shader's selection law). Native Windows unverified as
+  elsewhere.
+
+### Review fixes (2026-09-18): walk under test, keyed cache, hold on hull-less frames, compaction
+
+Fable review of the first commit found no blocker and six items; all applied in the second
+commit (`2dbdf623` after the rebase), rerun on the merged tree.
+
+1. `object_capture::own_ship` / `own_ship_descends` now run on the host over a synthetic
+   memory image with the documented layout (`0x608504` → registry → table → bucket → link row →
+   cockpit `+0xc` → ref `+0x70` → node `+0x28`; parents through `+0x18`): ready, a stale row
+   before the live one, null slot, zero active handle (`NoTarget`, never a stale-row match),
+   missing, cycle, malformed bucket count, null ref object (a fresh generation), misaligned
+   node, unreadable handle, a foreign generation (rebound registry → another ship), descent
+   through two parent links, a foreign root, a wrong root handle, an unreadable parent, the
+   16-link bound (`test_shadow_cascades` driver).
+2. `own_ship::Cache` (`src/proxy/own_ship_cache.h`, pure): keyed on (node address, node
+   handle), flushed when the root, its handle, the load epoch or the registry epoch changes,
+   entries expire after 256 frames. Host checks: a reused part address under a new handle
+   misses and re-walks the current memory; every flush cause; the stamp expiry. Fixture
+   `seam-ownership-shadow-replay-adaptive-reuse` (336 checks): H2 declared H1's part until
+   frame 4, then its address kept under another handle: the measured radius drops to H1's
+   (1.69) on every capture line from frame 5, `pending_frames` 2/3/4 under the hysteresis, the
+   committed E0 stays 50.59 and no re-anchor happens (one `voided_at_boundary`, at frame 1).
+3. The probe runs only after the `exact_extent` test (draws without a known extent pay
+   nothing), and at most 64 parent walks per frame: the rest count `own_walk_deferred` on the
+   `shadow_cascade_set` line and are not-own that frame (not cached). Host thrash case: 500
+   distinct nodes a frame over 1,000 frames, 64 walks + 436 deferrals per frame, 2.6 ns per
+   draw at `-O2` (the synthetic walk is one failed read; an engine walk is ≤ 16 bounded
+   `engine_memory::read`s, so the cap bounds the frame at 64 × that).
+4. A boundary without a measured own-ship draw (cockpit view, menu, loading, the ship's first
+   frame, no ship resolved) holds the committed E0 and counts `held_frames`; nothing pends, so
+   a view toggle never voids C0. Host: 1,000 hull-less boundaries hold E0 = 25,000, the next
+   measured ship commits. Fixture: `held_frames=1` on the first commit line of every case.
+5. The apply quad's slots are the ACTIVE cascades in order (`shadow_cascade_apply_slots`):
+   a dropped cascade is not a slot, so the previous cascade's blend band leads into the next
+   active one in the unchanged shader (slot s blends into slot s + 1) and in the twin. The
+   params line prints `source<s>=` (the configured cascade a slot samples; the twin reads its
+   map file by it, older lines default to the slot) and the `shadow_cascade_set` line prints
+   `apply_slots=` (`0,2,3` on the adaptive-big and swap commits, asserted). Host: slot lists
+   for the guard's masks; the twin parses `source<s>` and refuses a non-ascending list.
+6. The four adaptive `-fixture.json` records are tracked under `verification/results/
+   bottle-X3/` (about 1.9 KB each: events, `e0_by_frame`, checks, `max_depth_error`, hashes).
+
+Merged tree: clean CMake build 0 warnings, `build/d3d9.dll` sha256 `cc51e4de…b861`,
+`check_no_x87.py` 534 reachable functions, 0 violations; the 12 host modules 84 tests OK;
+fixture (`X3M_FIXTURE_BOTTLE=X3`): adaptive small/big/swap/reuse 333 / 333 / 336 / 336 checks,
+`max_depth_error` 8.46e-06; records equal for cascades 278, casters-20 278, toggle 283,
+poll-agree 281, replay-on 203, retention-live 9,743 and `sun-shadow-apply-cascades` 3,293
+(main's record); `seam-ownership-shadow-pool-static-live` (the merged pool control on the
+shared draw path) exit 0.
+

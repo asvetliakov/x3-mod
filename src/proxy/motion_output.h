@@ -25,6 +25,7 @@
 #include <memory>
 #include <vector>
 #include "chase_camera.h"
+#include "own_ship_cache.h"
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/depth_prepass_profiles.h"
@@ -500,6 +501,10 @@ public:
     // cascade apply program. Requires the depth replay (the caller enables
     // both); count 0 (the default) leaves the single-map path untouched.
     void configure_shadow_cascades(const renderer::ShadowCascadeSet& set) noexcept { depth_cascade_config_=set; }
+    // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5;
+    // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k, 0 or absent off): E0 = max(configured,
+    // k x own-ship radius) with hysteresis, and the ratio guard on the rest.
+    void configure_shadow_cascade_adaptive(float k) noexcept { cascade_adaptive_k_=k; }
     // Caster retention (shadow-caster-retention.md): census or live, on the cascades only; off by default.
     void configure_shadow_retention(shadow_retention::Mode mode, std::uint32_t age_cap, double eps, bool timing) noexcept {
         retention_mode_=mode; retention_age_cap_=age_cap; retention_eps_=eps; retention_timing_=timing;
@@ -1222,6 +1227,34 @@ private:
     bool depth_cascade_frame_ok_=false; // this frame's cascade transaction was not refused (the apply's precondition)
     bool depth_cascades_on() const noexcept { return depth_replay_requested_&&depth_cascades_.count!=0; }
     void run_shadow_replay_cascades(const bool* quiet) noexcept;
+    // Own-ship-adaptive cascade 0 (motion_output_shadow_adaptive_inc.h): the
+    // device's configured set (the seam narrowing and the halved sizes applied)
+    // that E0 adapts from, the committed state, this frame's own ship (resolved
+    // once per frame at its first candidate draw) and the frame's radius
+    // accumulator; the node cache answers "descends from the own root" per
+    // scope node without repeating the walk. Off (k = 0): none of it runs.
+    float cascade_adaptive_k_=0.f;
+    renderer::ShadowCascadeSet depth_cascade_base_{};
+    renderer::ShadowCascadeAdaptive cascade_adaptive_{};
+    std::uint64_t own_ship_frame_=~std::uint64_t(0);
+    std::uintptr_t own_ship_node_=0; std::uint32_t own_ship_handle_=0, own_ship_status_=0;
+    float own_radius_frame_=0.f; unsigned own_draws_frame_=0;
+    own_ship::Cache own_cache_{}; // (node, handle) -> descends from the root; flushed on root / epoch change (own_ship_cache.h)
+    bool cascade_adaptive_on() const noexcept { return cascade_adaptive_k_>0.f&&depth_cascades_on(); }
+    void resolve_own_ship() noexcept;
+    bool own_ship_draw(std::uintptr_t node, std::uint32_t handle, std::uint64_t load_epoch, std::uint64_t registry_epoch) noexcept;
+    void note_own_ship_draw(const shadow_replay::ExtentEntry& extent) noexcept;
+    void update_adaptive_cascades() noexcept;
+    void log_cascade_set(const char* reason) noexcept;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    bool fixture_own_ship_set_=false; std::uintptr_t fixture_own_ship_node_=0, fixture_own_part_node_=0; std::uint32_t fixture_own_ship_handle_=0, fixture_own_part_handle_=0;
+public:
+    // The seam's player ship (root node and handle) and one synthetic part (node, handle) that the walk treats as descending from it.
+    void fixture_own_ship(std::uintptr_t node, std::uint32_t handle, std::uintptr_t part, std::uint32_t part_handle) noexcept {
+        fixture_own_ship_set_=true; fixture_own_ship_node_=node; fixture_own_ship_handle_=handle; fixture_own_part_node_=part; fixture_own_part_handle_=part_handle; own_ship_frame_=~std::uint64_t(0);
+    }
+private:
+#endif
     void note_depth_geometry(const MotionRoute& route, unsigned index) noexcept;
     void release_depth_leases() noexcept;
     bool ensure_shadow_replay_depth() noexcept;

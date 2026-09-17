@@ -256,6 +256,12 @@ struct ShadowCascadeSet {
     unsigned record_capacity() const noexcept { unsigned m = 0; for (unsigned i = 0; i < count; ++i) if (records[i] > m) m = records[i]; return m; }
     bool static_only(unsigned i) const noexcept { return i >= static_from; }
     std::uint8_t static_only_mask() const noexcept { std::uint8_t m = 0; for (unsigned i = static_from; i < count; ++i) m |= std::uint8_t(1u << i); return m; }
+    // Bit i: cascade i is active. A cascade the ratio guard dropped
+    // (shadow_cascade_ratio_guard_mask) keeps its map, size, cap and records
+    // but has an empty box (no record carries its bit, nothing replays into
+    // it, the apply quad has no slot for it). Cascade 0 is always active.
+    unsigned active = 0;
+    bool checked = true; // the production laws (forward offset, depth-behind floor); false: the fixture seam's unit geometry
 };
 // The pool policy on a built set: records (one per cascade, null = default), the first
 // static-only cascade (shadow_cascade_static_from_none = none; count or more means none too)
@@ -271,6 +277,7 @@ inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, 
     out.large_min = large_min;
     return true;
 }
+inline bool shadow_cascade_active(const ShadowCascadeSet& set, unsigned cascade) noexcept { return cascade < set.count && (set.active >> cascade & 1u) != 0; }
 // Builds the set from ascending half-extents; sizes/caps may be null (defaults).
 // `checked` false is the fixture seam (unit-size geometry below the production
 // minimum: no forward offset, depth behind exactly the factor). False on a
@@ -294,8 +301,136 @@ inline bool shadow_cascade_set(const float* extents, unsigned count, const unsig
         c.depth_behind = checked && behind < shadow_replay_depth_half_default ? shadow_replay_depth_half_default : behind;
         c.depth_toward_light = extents[count - 1] * shadow_cascade_depth_light_factor;
     }
-    out.count = count; out.budget = budget;
+    out.count = count; out.budget = budget; out.active = (1u << count) - 1u; out.checked = checked;
     return true;
+}
+// ---- own-ship-adaptive cascade 0 (docs/architecture/shadow-cascade-extents.md, section 5) ----
+// E0 = max(E0_config, k x own-ship radius), the radius being the largest
+// object-space AABB corner distance (through the node's rows, world units)
+// over the own ship's z-writing draws of a frame; the value is committed with
+// hysteresis (a new ship at once, a > hysteresis relative size change after
+// stable_frames consecutive scene ends) so E0 never moves per frame. The
+// ratio guard then drops every following cascade whose extent is below
+// ratio_guard x the previous *active* cascade's (equal or overlapping boxes
+// buy nothing and cost a clear); maps stay allocated at their configured sizes.
+constexpr float shadow_cascade_adaptive_k_default = 1.5f, shadow_cascade_adaptive_k_min = .5f, shadow_cascade_adaptive_k_max = 8.f;
+constexpr float shadow_cascade_ratio_guard = 3.f;
+constexpr float shadow_cascade_adaptive_hysteresis = .2f; // relative radius change that moves E0
+constexpr unsigned shadow_cascade_adaptive_stable_frames = 8; // scene ends a changed radius must persist (a ship change commits at once)
+inline unsigned shadow_cascade_ratio_guard_mask(const ShadowCascadeSet& set) noexcept {
+    if (!set.count) return 0;
+    unsigned mask = 1; float previous = set.cascades[0].half_extent;
+    for (unsigned i = 1; i < set.count; ++i) {
+        if (!(set.cascades[i].half_extent < shadow_cascade_ratio_guard * previous)) { mask |= 1u << i; previous = set.cascades[i].half_extent; }
+    }
+    return mask;
+}
+// The configured set with cascade 0's half-extent replaced (its forward
+// offset and depth-behind follow the set's own laws; the depth towards the
+// light is the last cascade's and does not change because e0 is clamped to
+// it) and the ratio guard applied. False on a nonfinite or non-positive e0.
+inline bool shadow_cascade_adapt_c0(const ShadowCascadeSet& config, float e0, ShadowCascadeSet& out) noexcept {
+    out = config;
+    if (!config.count || !std::isfinite(e0) || !(e0 > 0.f)) return false;
+    auto& c = out.cascades[0];
+    c.half_extent = e0;
+    const float forward = e0 * (shadow_replay_forward_offset_default / shadow_replay_extent_default);
+    c.forward_offset = !config.checked ? 0.f : forward < shadow_replay_forward_offset_default ? forward : shadow_replay_forward_offset_default;
+    const float behind = e0 * shadow_cascade_depth_behind_factor;
+    c.depth_behind = config.checked && behind < shadow_replay_depth_half_default ? shadow_replay_depth_half_default : behind;
+    out.active = shadow_cascade_ratio_guard_mask(out);
+    return true;
+}
+// The committed state and the hysteresis law. `node` identifies the own ship
+// (0: none, E0 stays configured); `radius` is the committed radius.
+struct ShadowCascadeAdaptive {
+    std::uintptr_t node = 0;
+    float radius = 0.f, e0 = 0.f;      // committed radius and the E0 it produced
+    float pending = 0.f;                // a candidate radius outside the hysteresis band, and how many frame boundaries it held
+    unsigned pending_frames = 0;
+    unsigned held_frames = 0;           // boundaries with no measured own-ship draw (cockpit view, menu, loading): E0 held
+};
+// The E0 the law yields for a radius: max(config E0, k x radius), clamped to
+// the last cascade's extent (the depth range towards the light stays) and the
+// option maximum.
+inline float shadow_cascade_adaptive_extent(const ShadowCascadeSet& config, float k, float radius) noexcept {
+    const float base = config.cascades[0].half_extent;
+    float e0 = radius > 0.f && std::isfinite(radius) ? k * radius : base;
+    if (!(e0 > base)) e0 = base;
+    const float last = config.cascades[config.count ? config.count - 1 : 0].half_extent;
+    if (e0 > last) e0 = last;
+    if (e0 > shadow_cascade_extent_max) e0 = shadow_cascade_extent_max;
+    return e0;
+}
+// One frame boundary: `node` and `radius` are the frame's own ship (0: none
+// resolved) and its measured radius (0: no z-writing draw of it had a known
+// extent; a ship's extents are read at the scene end after its first draw).
+// A boundary without a measured radius (cockpit view, menu, loading, the
+// ship's first frame, no ship at all) HOLDS the committed E0 and counts
+// held_frames: a view toggle never voids cascade 0. With a measurement:
+// another ship commits at once, as does the first measurement of the
+// committed ship; a > hysteresis size change of the same ship commits after
+// stable_frames consistent boundaries (a LOD flicker never moves E0). Returns
+// true when E0 changed: `set` then holds the adapted set (cascade 0 re-snaps
+// to its new texel grid and its retained map is void; the others keep theirs).
+// `reason` names a commit: "node", "radius", or null.
+inline bool shadow_cascade_adaptive_update(ShadowCascadeAdaptive& state, std::uintptr_t node, float radius, float k,
+                                           const ShadowCascadeSet& config, ShadowCascadeSet& set, const char** reason = nullptr) noexcept {
+    if (reason) *reason = nullptr;
+    if (!std::isfinite(radius) || !(radius > 0.f) || !node) { ++state.held_frames; return false; }
+    const float band = shadow_cascade_adaptive_hysteresis * state.radius;
+    const float delta = radius > state.radius ? radius - state.radius : state.radius - radius;
+    bool commit = false; const char* why = nullptr;
+    if (node != state.node) { commit = true; why = "node"; }
+    else if (state.radius == 0.f) { commit = true; why = "radius"; }
+    else if (delta > band) {
+        const float pending_band = shadow_cascade_adaptive_hysteresis * state.pending;
+        const float pending_delta = radius > state.pending ? radius - state.pending : state.pending - radius;
+        if (state.pending_frames && pending_delta <= pending_band) ++state.pending_frames;
+        else { state.pending = radius; state.pending_frames = 1; }
+        if (state.pending_frames >= shadow_cascade_adaptive_stable_frames) { commit = true; why = "radius"; radius = state.pending; }
+    } else state.pending_frames = 0;
+    if (!commit) return false;
+    state.node = node; state.radius = radius; state.pending = 0.f; state.pending_frames = 0;
+    if (reason) *reason = why;
+    const float e0 = shadow_cascade_adaptive_extent(config, k, state.radius);
+    if (e0 == state.e0) return false; // the same ship class: the grid stays
+    ShadowCascadeSet adapted{};
+    if (!shadow_cascade_adapt_c0(config, e0, adapted)) return false;
+    set = adapted; state.e0 = e0;
+    return true;
+}
+// The apply quad's slots: the active cascades in order, so a dropped cascade
+// is not in the list at all and the previous cascade's blend band leads into
+// the next ACTIVE one (the shader blends slot s into slot s + 1; a dropped
+// cascade left in place would end the band at a hard edge). Returns the count.
+inline unsigned shadow_cascade_apply_slots(const ShadowCascadeSet& set, unsigned out[shadow_cascade_max]) noexcept {
+    unsigned n = 0;
+    for (unsigned i = 0; i < set.count && i < shadow_cascade_max; ++i) if (shadow_cascade_active(set, i)) out[n++] = i;
+    return n;
+}
+// The state at attach and after a device reset: the configured set as it is.
+inline void shadow_cascade_adaptive_reset(ShadowCascadeAdaptive& state, const ShadowCascadeSet& config) noexcept {
+    state = ShadowCascadeAdaptive{};
+    state.e0 = config.count ? config.cascades[0].half_extent : 0.f;
+}
+// The own-ship radius contribution of one draw: the largest distance, in view
+// units (world-scaled: the view is a rotation of the world), from the draw's
+// object origin to a corner of its object-space AABB through its clip rows,
+// as shadow_cascade_bounds_mask maps the corners. Nonfinite: 0.
+inline float shadow_cascade_draw_radius(const CameraState& camera, const float rows[16], const float lo[3], const float hi[3]) noexcept {
+    if (!camera.valid || !rows || !lo || !hi || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return 0.f;
+    // corner - origin through the rows is the linear part alone (the offset column cancels).
+    const float ix = 1.f / camera.m00, iy = 1.f / camera.m11;
+    float best = 0.f;
+    for (unsigned corner = 0; corner < 8; ++corner) {
+        const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1], z = (corner & 4) ? hi[2] : lo[2];
+        const float dx = (rows[0] * x + rows[1] * y + rows[2] * z) * ix, dy = (rows[4] * x + rows[5] * y + rows[6] * z) * iy, dw = rows[12] * x + rows[13] * y + rows[14] * z;
+        const float d2 = dx * dx + dy * dy + dw * dw;
+        if (!std::isfinite(d2)) return 0.f;
+        if (d2 > best) best = d2;
+    }
+    return float(sqrt_sd(double(best)));
 }
 // The far-cascade policy: the last cascade of a multi-cascade set replays every
 // frame while the frame's issues fit the budget, otherwise on even frames only
@@ -326,6 +461,10 @@ inline bool shadow_cascade_bounds_suns(const CameraState& camera, const float* s
     double position[3];
     for (unsigned i = 0; i < 3; ++i) { position[i] = 0; for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
     for (unsigned c = 0; c < set.count; ++c) {
+        if (c && !shadow_cascade_active(set, c)) { // dropped by the ratio guard: an empty box (in world units: no extent spans it), no bit for any draw
+            for (unsigned a = 0; a < 3; ++a) { out.lo[c][a] = 3.4028235e38f; out.hi[c][a] = -3.4028235e38f; }
+            continue;
+        }
         ShadowReplayBasis basis{};
         if (!shadow_replay_basis(camera, suns + c * 4, set.cascades[c], basis, anchors ? anchors + c * 3 : nullptr)) return false;
         const auto& axes = basis.axes;

@@ -2211,13 +2211,21 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_LARGE_MIN",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end); if(end==list||*end!=L'\0'||!(v>=0.)||v>double(renderer::shadow_cascade_large_min_max))reason="large_min"; else large_min=float(v); }
                 if(!reason&&!renderer::shadow_cascade_pool(set,records,static_from,importance,large_min))reason="pool";
                 if(reason||!enabled)set=renderer::ShadowCascadeSet{};
-                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u caps=%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g",
+                // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5):
+                // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k within [0.5, 8] (E0 = max(E0, k x
+                // own-ship radius) with hysteresis; the ratio guard on the rest);
+                // absent, "0" or out of range: off.
+                float adaptive_k=0.f;
+                if(set.count&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_ADAPTIVE_C0",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
+                    if(end!=list&&*end==L'\0'&&v>=double(renderer::shadow_cascade_adaptive_k_min)&&v<=double(renderer::shadow_cascade_adaptive_k_max))adaptive_k=float(v); }
+                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u caps=%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g",
                     set.count!=0,reason?reason:enabled?"ok":"replay",set.count,double(set.cascades[0].half_extent),double(set.count>1?set.cascades[1].half_extent:0.f),
                     double(set.count>2?set.cascades[2].half_extent:0.f),double(set.count>3?set.cascades[3].half_extent:0.f),
                     set.count?set.cascades[0].size:0u,set.count>1?set.cascades[1].size:0u,set.count>2?set.cascades[2].size:0u,set.count>3?set.cascades[3].size:0u,
                     set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
-                    set.records[0],set.records[1],set.records[2],set.records[3],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min));
-                hooked.motion_output.configure_shadow_cascades(set); } }
+                    set.records[0],set.records[1],set.records[2],set.records[3],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k));
+                hooked.motion_output.configure_shadow_cascades(set);
+                hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k); } }
           // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:
           // X3M_SHADOW_RETENTION_CENSUS=1 runs the store without references or replay (stage 1),
           // X3M_SHADOW_CASTER_RETENTION=1 replays retained static casters (stage 2; wins over the census).
@@ -2974,6 +2982,17 @@ extern "C" __declspec(dllexport) int x3m_sun_shadow_fixture_toggle(IDirect3DDevi
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
     const auto it=x3m::devices.find(device);
     return it==x3m::devices.end()?-1:it->second->motion_output.sun_shadow_toggle();
+}
+// Own-ship-adaptive cascade 0 seam (shadow-cascade-extents.md, section 5):
+// the fixture executable's synthetic own-ship root node stands in for the
+// registry walk of the verified executable; the scope nodes of its draws are
+// compared against it. Pressed at a frame boundary, before the frame's draws.
+extern "C" __declspec(dllexport) int x3m_shadow_own_ship_fixture_install(IDirect3DDevice9* device,std::uintptr_t node,std::uint32_t handle,std::uintptr_t part,std::uint32_t part_handle) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    if(it==x3m::devices.end())return -1;
+    it->second->motion_output.fixture_own_ship(node,handle,part,part_handle);
+    return 0;
 }
 // Caster retention seam (shadow-caster-retention.md): the store's levels and
 // counters, and the synthetic lifetime observer (births, retirements, journal).

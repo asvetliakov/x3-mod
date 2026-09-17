@@ -223,7 +223,60 @@ beside it against the mask alone, the classification per draw, and the scene-end
 full 4,096-record list are in the ledger section. Native Windows: documented D3D9 only (no new
 device calls; the selection and classification are CPU bookkeeping); unverified natively.
 
-## 5. Own-ship-adaptive C0 and a ratio guard: not needed now
+## 5. Own-ship-adaptive C0 and a ratio guard: implemented, default off (2026-09-17)
+
+**Amendment (2026-09-17).** Implemented behind `--shadow-cascade-adaptive-c0 K`
+(`X3M_SHADOW_CASCADE_ADAPTIVE_C0`, K within [0.5, 8], suggested 1.5; absent or 0: the set
+below is byte-identical to before). The law, in `src/renderer/shadow_replay_projection.h`
+(`shadow_cascade_adaptive_update`, `shadow_cascade_adapt_c0`, `shadow_cascade_ratio_guard_mask`)
+and `src/proxy/motion_output_shadow_adaptive_inc.h`:
+
+- **Own ship.** The active control cockpit of the registry at `0x608504` (the walk of
+  `chase_lead::active` / `object_capture::target`), its ref object `cockpit+0xc` and that
+  object's root render node `ref+0x70` with the node's handle `+0x28`
+  (`object_capture::own_ship`; the chase camera's anchor, chase-camera-first-flight.md). Resolved
+  once per frame at the first candidate draw, behind `object_trace::executable_verified()`;
+  a draw belongs to the ship when its scope node is the root or reaches it through the parent
+  links `+0x18` (`own_ship_cache.h`: cached per (node, handle), flushed on a root, handle, load
+  or registry epoch change, expiring after 256 frames, at most 64 walks per frame with the
+  rest deferred as not-own). No new hook. Both readers run on the host over a synthetic image
+  (`test_shadow_cascades`).
+- **Radius.** Per frame the largest AABB-corner distance from the object origin through the
+  draw's rows (view units = world units) over the ship's z-writing draws with a known extent
+  (`shadow_cascade_draw_radius`, 12 ns on the host per own-ship draw; other draws pay one
+  pointer compare or one cache probe).
+- **Commit, at the frame boundary** (`begin_frame`, so one frame's box test, replay and apply
+  share one set): another ship with a measured radius commits at once, as does the first
+  measurement of the current ship; a > 20 % size change of the same ship commits after 8
+  consistent boundaries. A boundary without a measured own-ship draw (menu, loading, cockpit
+  view without hull draws, the ship's first frame) holds E0 and counts `held_frames`: a view
+  toggle never re-anchors C0. `E0 = max(E0_config, K × radius)`, clamped to the last cascade's
+  extent (the depth towards the light stays `2 E_last`) and the 50,000 maximum; texel
+  `2 E0 / size`, depth behind `max(512, 2 E0)`, forward offset `min(128, E0 × 128/250)`. A
+  changed E0 re-snaps C0's grid (its texel changed) and voids only C0's retained map; the far
+  cascades keep theirs. Log: `shadow_cascade_set reason= own_node= own_status= own_radius= e0=
+  texel0= depth_behind0= active_mask= k= pending_radius= pending_frames=` on every commit and
+  on F8 frames (`reason=capture`).
+- **Ratio guard.** After each commit, every following cascade whose extent is below 3× the
+  previous *active* cascade's is dropped while that holds (`active_mask`; the reading of
+  "E_{i−1}" as the previous kept cascade: with E0 = 3,000 both 1,500 and 7,500 go, 25,000 stays).
+  A dropped cascade keeps its map, size, cap and records (no reallocation) but has an empty
+  box (no record or retained draw carries its bit), replays nothing, its retained basis is
+  void, and it is not a slot of the apply quad (`shadow_cascade_apply_slots`: the active
+  cascades in order), so the previous cascade's blend band leads into the next active one and
+  the shader is unchanged. The `sun_shadow_apply_params` line prints one entry per slot with
+  `source<s>=` naming the cascade it samples; the twin reads the extents and map files by it.
+- **Expected in flight.** M5/M3 (radius ≤ 165 at K 1.5): nothing changes. M6 (radius ~500–
+  700): E0 750–1,050, C1 (1,500) dropped, C2 kept (7,500 ≥ 3 E0 up to E0 = 2,500). M2 (radius
+  ~5,000): E0 = 7,500, C1 and C2 dropped, C3 kept: 7,500 / 25,000, two maps.
+
+**What the first big-ship flight must measure** (to set K, still unknown): `camera_state t`
+against the ship node's position (`node+0xb0`, engine integers × 0.01) in the F8 frames, i.e.
+the chase-camera distance as a fraction of the hull radius; K ≈ 1 + that fraction keeps the
+whole hull and its shadow inside C0. The `shadow_cascade_set` lines give `own_radius`; the
+`sun_shadow_apply_params` line gives `texel_world0` to judge the hull's px per texel.
+
+The original argument, kept for the record:
 
 The fighter is the hard case, not the capital: its camera sits at 0.1–0.2× the hull length,
 while X3's chase view frames the whole ship for bigger classes (**A**: the chase-camera RE note
@@ -312,6 +365,8 @@ and in open space; a busy-station at-rest segment of ≥ 600 frames).
 - C2/C3 issue counts with retention on: run 39 §8.1–2.
 - Chase-camera distance for M6 and above (the §5 argument rests on it): `camera_state t`
   against the own hull's records the first time the user flies a bigger class.
-- Own-ship node identity for an adaptive C0: a disassembly note on the chase camera's follow
-  target and the node's bounding sphere, only if §5's deferral is revisited.
+- Own-ship node identity for an adaptive C0: resolved in code from the chase camera's ref
+  object (§5); whether every hull part's scope node reaches the ship's root through `+0x18`
+  is assumed from the ancestry captures (station-material-distance.md) and is confirmed by
+  `own_radius` on the first flight with the option.
 - Resident 272–320 MiB of render targets in the 32-bit process under wined3d: the attach log.

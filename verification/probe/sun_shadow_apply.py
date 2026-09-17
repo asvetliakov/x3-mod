@@ -665,7 +665,12 @@ def parse_apply_cascade_params(fields):
             raise ValueError('rows%d: expected 12 values, got %d' % (c, len(rows)))
         entry = {'rows': rows, 'bias_constant': float(fields['bias%d' % c]), 'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1'}
         detail = {'map': int(fields['map%d' % c]), 'map_frame': int(fields['map_frame%d' % c]), 'texel_world': float(fields['texel_world%d' % c]),
-                  'extent': float(fields['extent%d' % c]), 'depth_light': float(fields['depth_light%d' % c]), 'depth_behind': float(fields['depth_behind%d' % c])}
+                  'extent': float(fields['extent%d' % c]), 'depth_light': float(fields['depth_light%d' % c]), 'depth_behind': float(fields['depth_behind%d' % c]),
+                  # The configured cascade this slot samples (shadow-cascade-extents.md, section 5: the
+                  # ratio guard drops a cascade from the quad's slots; absent on older lines: the slot itself).
+                  'source': int(fields.get('source%d' % c, c))}
+        if detail['source'] < c or (c and detail['source'] <= cascades[-1]['source']):
+            raise ValueError('cascade slot %d: source %d is not ascending' % (c, detail['source']))
         resolved = resolve_bias(bias_units, detail['extent'], .5 * (detail['depth_light'] + detail['depth_behind']), detail['map'], clamp_texels)
         for key, printed in (('bias_constant', entry['bias_constant']), ('bias_max', entry['bias_max']), ('texel_world', detail['texel_world'])):
             if abs(resolved[key] - printed) > 1e-6 * max(1.0, abs(printed)) + 1e-9:
@@ -682,7 +687,7 @@ def load_cascade_maps(directory, device, frame, extra, params):
     from pathlib import Path
     maps = []
     for c, detail in enumerate(extra['cascades']):
-        path = Path(directory) / ('shadow_map%d_%d_%d.r32f' % (c, device, frame))
+        path = Path(directory) / ('shadow_map%d_%d_%d.r32f' % (detail['source'], device, frame))
         maps.append(unpack_map(path.read_bytes(), detail['map']) if params['cascades'][c]['valid'] and path.exists() else None)
     return maps
 

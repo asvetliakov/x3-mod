@@ -81,7 +81,7 @@ bool MotionOutput::ensure_shadow_replay_depth() noexcept {
             unsigned sizes[renderer::shadow_cascade_max]{};
             for (unsigned i = 0; i < depth_cascades_.count; ++i) sizes[i] = depth_cascades_.cascades[i].size;
             taa_call([&] { hr = depth_replay_->attach_cascades(device_, native_, caps_, display.Format, sizes, depth_cascades_.count); });
-            if (SUCCEEDED(hr)) for (unsigned i = 0; i < depth_cascades_.count; ++i) depth_cascades_.cascades[i].size = depth_replay_->size(i);
+            if (SUCCEEDED(hr)) for (unsigned i = 0; i < depth_cascades_.count; ++i) depth_cascades_.cascades[i].size = depth_cascade_base_.cascades[i].size = depth_replay_->size(i);
         } else
         taa_call([&] { hr = depth_replay_->attach(device_, native_, caps_, display.Format, depth_replay_size_); });
         reason = depth_replay_->caps().reason;
