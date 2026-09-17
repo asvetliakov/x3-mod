@@ -68,6 +68,20 @@ snapshot tool's per-cascade names. Default path unchanged.
   and installed. The static-only/capital rule is dropped from the run command
   (no cascade ever hit a cap). Open: the ~30 s distant flicker; K for the
   adaptive C0 from the corvette flight.
+- **Run 40 A re-flown (run117, this build):** most flicker gone (period-2
+  frames 23.8 % → 0.79 %, longest run 7); asteroids clean, lit station faces
+  still flicker. Diagnosis on Fable: the raw far-map churn was a moving-box
+  comparison artefact (aligned maps stable, no jitter leak, no duplicate
+  admission; caster counts up because run116 refused ~230 far draws per frame);
+  the residual is receiver precision — RT2 stores fp32 z/w, one ULP is 13.6 u of
+  view depth at 37 km, and ±1 ULP alone re-rolls the factor on 9–16 % of far-cascade
+  pixels on single-sided station faces ([ledger](verification/directional-shadows.md),
+  "Run 40 A (run117) diagnosis"). Fix is an RT2 encoding change; design note in
+  flight for ratification. Merged meanwhile: retention summariser five-cascade
+  fix (the c4 record cap fired on 1.6 % of run117 frames), basis-aligned
+  `tools/analysis/shadow_map_diff.py`, and the default-off FPS overlay
+  (`--fps-overlay`, Ctrl+Alt+F7, [hotkeys note](architecture/comparison-hotkeys.md))
+  for the next candidate. A2/B/C fly on the installed build.
 
 ## Session 2026-09-18: run 38 read, shadow system rebuilt
 
