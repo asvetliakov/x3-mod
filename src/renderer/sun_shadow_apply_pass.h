@@ -29,6 +29,28 @@ struct SunShadowApplyParams {
     float bias_max = .01f;            // clamp of the receiver-plane term per tap, and the tap bias where the plane fit is dropped
     float planar_step = .05f;         // relative view-depth change per pixel above which the plane fit is dropped
 };
+// Bias in world units (legacy-sun-application.md, section 2, "Bias"): the
+// constant subtracted from every compare is bias_units plus one world texel
+// of the map (2 half_extent / size: what a receiver-plane fit expects to be
+// off by across a texel); the receiver-plane clamp, which is also the
+// non-planar fallback, is clamp_texels world texels (the plane term
+// extrapolates the depth slope over at most ~1.9 texels, so its bound scales
+// with the texel, not with the depth range; X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS);
+// both divided by the map's depth range 2 depth_half into normalized sun
+// depth. The defaults resolve to exactly the pre-tunable constants (0.001
+// and 0.01) at the default cascade 250 / 512 / 1024: 0.53571875 + 0.48828125
+// = 1.024 = 0.001 x 1024 and 20.97152 x 0.48828125 = 10.24 = 0.01 x 1024.
+// Double arithmetic, one rounding to float per value.
+constexpr double sun_shadow_bias_units_default = 0.53571875, sun_shadow_bias_units_min = 0., sun_shadow_bias_units_max = 1000.;
+constexpr double sun_shadow_bias_clamp_texels_default = 20.97152, sun_shadow_bias_clamp_texels_min = 1., sun_shadow_bias_clamp_texels_max = 64.;
+struct SunShadowBias { float constant = 0.f, max = 0.f; float texel_world = 0.f; };
+inline bool sun_shadow_apply_bias(double bias_units, double clamp_texels, double half_extent, double depth_half, unsigned size, SunShadowBias& out) noexcept {
+    out = {};
+    if (!(bias_units >= 0.) || !(clamp_texels > 0.) || !(half_extent > 0.) || !(depth_half > 0.) || !size) return false;
+    const double texel = 2. * half_extent / double(size), constant = (bias_units + texel) / (2. * depth_half);
+    out.constant = float(constant); out.max = float(clamp_texels * texel / (2. * depth_half)); out.texel_world = float(texel);
+    return out.constant >= 0.f && out.max >= 0.f && out.max <= 1.f && out.constant <= 1.f;
+}
 struct SunShadowApplyFrame {
     IDirect3DTexture9* depth_share = nullptr; // RT2 G32R32F, width x height (.r = z/w with -1 sentinel, .g = share)
     IDirect3DTexture9* map = nullptr;         // the replay's R32F square map of this frame

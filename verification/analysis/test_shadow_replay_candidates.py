@@ -120,6 +120,15 @@ class Parser(unittest.TestCase):
 
 
 class LauncherGate(unittest.TestCase):
+    def test_cap_option(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, _ = launch(directory, '--motion-output', '--ownership', '--shadow-replay-candidates')
+            self.assertEqual(code, 0); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_REPLAY_CAP'], '512')
+            code, output, _ = launch(directory, '--motion-output', '--ownership', '--shadow-replay-candidates', '--shadow-replay-cap', '1024')
+            self.assertEqual(code, 0); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_REPLAY_CAP'], '1024')
+            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-cap', '4')
+            self.assertNotEqual(code, 0); self.assertIn('--shadow-replay-cap requires --shadow-replay-candidates or --shadow-replay-depth', error)
+
     def test_requires_motion_output_and_ownership(self):
         with tempfile.TemporaryDirectory() as directory:
             for args in (['--shadow-replay-candidates'], ['--shadow-replay-candidates', '--motion-output'],

@@ -2159,6 +2159,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     release_candidate_extents(); candidate_extents_.clear(); candidate_bounds_state_ = 0; depth_sun_previous_known_ = false; // extent cache and queue are per device
     for (unsigned& logged : depth_refusal_logs_) logged = 0;
     depth_cascade_ = renderer::ShadowReplayCascade{}; depth_cascade_.size = depth_replay_size_;
+    depth_cascade_.half_extent = depth_replay_extent_; depth_cascade_.depth_half_range = depth_replay_depth_half_;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { // Seam only: X3M_FIXTURE_SHADOW_EXTENT narrows cascade 0 (half-extent E,
       // centred on the camera, depth +-2E) to the fixture's unit-size geometry.
@@ -6645,17 +6646,24 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         const float* rows = depth_replay_->view_rows();
         for (unsigned i = 0; i < 12; ++i) in.params.rows[i] = rows[i];
         in.params.jitter_index = counters_.jitter_index; in.params.exponent = exponent;
+        // The bias in world units resolved against this device's cascade (the
+        // map's depth range and world texel): scale-independent across
+        // --shadow-replay-extent/-depth-half/-size (sun_shadow_apply_pass.h).
+        renderer::SunShadowBias bias{};
+        if (!renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_, double(depth_cascade_.half_extent), double(depth_cascade_.depth_half_range), depth_cascade_.size, bias)) skip = "bias";
+        in.params.bias_constant = bias.constant; in.params.bias_max = bias.max;
         in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
         LARGE_INTEGER t0{}, t1{}, f{};
         QueryPerformanceCounter(&t0);
-        taa_call([&] { hr = sun_apply_->execute(in, &out); });
+        if (!skip) taa_call([&] { hr = sun_apply_->execute(in, &out); });
         QueryPerformanceCounter(&t1);
         QueryPerformanceFrequency(&f);
         us = f.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) : 0.;
         if (FAILED(out.restore)) invalidate_render_states();
-        if (out.skipped) skip = out.skipped_reason;
+        if (skip) {}
+        else if (out.skipped) skip = out.skipped_reason;
         else if (FAILED(hr)) skip = "failed";
-        sun_apply_applied_ = SUCCEEDED(hr) && out.applied;
+        sun_apply_applied_ = !skip && SUCCEEDED(hr) && out.applied;
         // Capture frames: the quad's exact inputs (c0-c6 of sun_shadow_apply_ps.hlsl)
         // beside the RT2, map and HDR dumps, so the CPU twin
         // (verification/probe/sun_shadow_apply.py, frame_params) reproduces the
@@ -6664,10 +6672,12 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             const auto& q = in.params;
             log("sun_shadow_apply_params device=%llu frame=%llu m00=%.9g m11=%.9g jitter_x=%.6f jitter_y=%.6f m20=%.9g m21=%.9g m22=%.9g m32=%.9g"
                 " texel=%.9g bias=%.9g bias_max=%.9g planar_step=%.9g exponent=%.6f jitter_index=%u map=%u width=%u height=%u"
+                " bias_units=%.9g clamp_texels=%.9g texel_world=%.9g extent=%.9g depth_half=%.9g"
                 " rows=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
                 id_, frame_, double(q.m00), double(q.m11), double(jitter_[0]), double(jitter_[1]), double(q.m20), double(q.m21), double(q.m22), double(q.m32),
                 out.map_size ? 1. / double(out.map_size) : 0., double(q.bias_constant), double(q.bias_max), double(q.planar_step), double(q.exponent),
                 q.jitter_index, out.map_size, in.width, in.height,
+                sun_apply_bias_units_, sun_apply_clamp_texels_, double(bias.texel_world), double(depth_cascade_.half_extent), double(depth_cascade_.depth_half_range),
                 double(q.rows[0]), double(q.rows[1]), double(q.rows[2]), double(q.rows[3]), double(q.rows[4]), double(q.rows[5]),
                 double(q.rows[6]), double(q.rows[7]), double(q.rows[8]), double(q.rows[9]), double(q.rows[10]), double(q.rows[11]));
         }

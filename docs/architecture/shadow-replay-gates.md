@@ -240,8 +240,8 @@ all-zero line):
   that setter hook (`CpuCallBoundary`, LastError kept), cached per allocation id in a
   128-entry direct-mapped table, so a repeated binding costs a table probe.
 - `leased`: managed candidates whose buffer-lock views were `known` at the draw and were
-  recorded (512 records of storage; the per-frame cap `X3M_SHADOW_REPLAY_CAP`, 1..512,
-  default 512, is the replay budget: `capped` counts managed candidates beyond it, and
+  recorded (1024 records of storage since 2026-09-17, fixed arrays; the per-frame cap `X3M_SHADOW_REPLAY_CAP`,
+  1..1024, default 512, `--shadow-replay-cap`, is the replay budget: `capped` counts managed candidates beyond it, and
   `overflow` those beyond the storage, always 0 while the cap is at most the storage).
   Drop order is submission order: the first `cap` managed candidates of the frame are
   recorded and the later ones dropped, whatever their bounds, so a frame over the cap
@@ -385,7 +385,7 @@ state, Clears to far, replays, restores; a failed restore invalidates the render
 Grammar (per device; the frame line at every scene end):
 
 ```
-shadow_replay_depth_mode requested=1 enabled=%u size=%u motion_output=%u ownership=%u
+shadow_replay_depth_mode requested=1 enabled=%u size=%u extent=%.9g depth_half=%.9g cap=%u motion_output=%u ownership=%u
 shadow_replay_depth_device device=%llu attached=%u reason=%s result=%08lx size=%u map_format=%u depth_format=%u readable=%u adapter_format=%u
 shadow_replay_depth_target device=%llu frame=%llu size=%u map_format=%u depth_format=%u allocations=%u
 shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f

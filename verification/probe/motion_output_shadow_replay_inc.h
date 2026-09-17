@@ -14,7 +14,9 @@
 // (outside the origin rule's 250 units, the run-36 station case) but whose
 // vertices cross the 8-unit box, and F, drawn last, a small triangle whose
 // origin lies 300 units away and whose vertices lie 225 units away (outside
-// both rules). Neither shows on the presented frame: L lies beyond the far
+// both rules; X3M_FIXTURE_SHADOW_FAR_T moves it: t = 720 puts the origin at
+// 900 units and the vertices at 825, outside the default 250-unit box and
+// inside a 1000-unit one). Neither shows on the presented frame: L lies beyond the far
 // plane (clip z / w > 1, its tilt .004 keeps its plane from crossing the
 // casters' planes inside their triangles), F behind the camera (w < 0). The
 // DLL learns every extent at frame 0's scene end; frame 0 admits the casters
@@ -29,6 +31,7 @@ constexpr float shadow_tri_a[3][2] = {{-1, 1}, {3, 1}, {-1, -3}}, shadow_tri_b[3
 constexpr float shadow_tri_l[3][2] = {{-214, 8}, {-214, -8}, {-195, 0}}, shadow_tri_f[3][2] = {{-60, 4}, {-60, -4}, {-56, 0}};
 constexpr float shadow_t_l = 204.8f, shadow_p_l = .004f; // L: origin at view x = 204.8 / m00 (0.8) = 256 units; vertices at view x -11.5..12.25, w .14..0.22
 constexpr float shadow_t_f = 240.f;                    // F: origin at 300 units; vertices at view x 225..230, w -6.5 (behind the camera)
+float shadow_t_far = shadow_t_f;                       // F's row offset this run (X3M_FIXTURE_SHADOW_FAR_T, 240..4000)
 // Coverage on the presented frame: the triangle test at the raster sample's
 // object point. L's points have z / w > 1 (the oracles' depth test rejects
 // them as the far plane does); F's inverse-mapped points lie behind the
@@ -93,8 +96,10 @@ void run_shadow_replay_integration(Fixture& f) {
     const bool depth_on = GetEnvironmentVariableA("X3M_SHADOW_REPLAY_DEPTH", setting, sizeof setting) == 1 && setting[0] == '1';
     unsigned casters = 2;
     if (GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_CASTERS", setting, sizeof setting) > 0) { const int n = std::atoi(setting); if (n >= 2 && n <= 64) casters = unsigned(n); }
+    shadow_t_far = shadow_t_f;
+    if (GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_FAR_T", setting, sizeof setting) > 0) { const float t = std::strtof(setting, nullptr); if (t >= shadow_t_f && t <= 4000.f) shadow_t_far = t; }
     const auto readback = symbol<ShadowReadbackFn>(f.runtime, "x3m_shadow_replay_fixture_readback", false);
-    std::printf("SHADOW_MODE depth=%u casters=%u taa=%u export=%u\n", depth_on, casters, f.taa, readback != nullptr);
+    std::printf("SHADOW_MODE depth=%u casters=%u taa=%u export=%u far_t=%.9g far_origin=%.9g\n", depth_on, casters, f.taa, readback != nullptr, double(shadow_t_far), double(shadow_t_far / .8f));
     // Casters: A and B, then copies of their shapes in their own managed
     // buffers (distinct route keys) with their own scope identities; then the
     // two bounds objects L (index casters) and F (index casters + 1).
@@ -124,7 +129,7 @@ void run_shadow_replay_integration(Fixture& f) {
         const bool b = i & 1; const float k = float(i / 2);
         t = (b ? -.05f : .8f) - .1f * k; p = .125f; zo = .05f * float(i);
         if (i == casters) { t = shadow_t_l; p = shadow_p_l; } // L: origin beyond the origin rule, geometry across the box
-        else if (i == casters + 1) t = shadow_t_f;            // F: origin and geometry outside both rules
+        else if (i == casters + 1) t = shadow_t_far;          // F: origin and geometry outside both rules (or inside a wide box)
     };
     // Submission order: L, the casters, F (the cap drops the last submitted).
     auto order_of = [&](unsigned k) { return k == 0 ? casters : k <= casters ? k - 1 : casters + 1; };

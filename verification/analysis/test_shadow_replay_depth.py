@@ -24,14 +24,14 @@ def line(frame, replayed=2, lease=0, state=0, caps=0, draws=2, us=12.5):
     return LINE.format(frame=frame, replayed=replayed, lease=lease, state=state, caps=caps, draws=draws, us=us)
 
 
-def launch(directory, *args):
+def launch(directory, *args, inherited=None):
     spec = importlib.util.spec_from_file_location('depth_manage', ROOT / 'tools/manage.py')
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     game = Path(directory) / 'game'; game.mkdir(exist_ok=True); (game / 'X3AP.exe').touch()
     wine = Path(directory) / 'wine'; wine.touch()
     argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', str(game), *args]
     output, error = io.StringIO(), io.StringIO()
-    with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), \
+    with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), mock.patch.dict(module.os.environ, inherited or {}), \
             mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
             contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
         try: module.main()
@@ -168,6 +168,62 @@ class LauncherGate(unittest.TestCase):
             code, output, _ = launch(directory, '--motion-output', '--ownership')
             self.assertEqual(code, 0); env = json.loads(output)['env']
             self.assertEqual(env['X3M_SHADOW_REPLAY_DEPTH'], '0'); self.assertEqual(env['X3M_SHADOW_REPLAY_CANDIDATES'], '0')
+
+    def test_cascade_box_options(self):
+        # --shadow-replay-extent / --shadow-replay-depth-half: the defaults are
+        # explicit (an inherited value cannot leak), the values are carried,
+        # the ranges and the --shadow-replay-depth prerequisite are enforced.
+        with tempfile.TemporaryDirectory() as directory:
+            base = ['--motion-output', '--ownership', '--shadow-replay-depth']
+            code, output, _ = launch(directory, *base, inherited={'X3M_SHADOW_REPLAY_EXTENT': '3000', 'X3M_SHADOW_REPLAY_DEPTH_HALF': '9', 'X3M_SHADOW_REPLAY_CAP': '3'})
+            self.assertEqual(code, 0); env = json.loads(output)['env']
+            self.assertEqual((env['X3M_SHADOW_REPLAY_EXTENT'], env['X3M_SHADOW_REPLAY_DEPTH_HALF'], env['X3M_SHADOW_REPLAY_CAP'], env['X3M_SHADOW_REPLAY_SIZE']), ('250.0', '512.0', '512', '1024'))
+            code, output, _ = launch(directory, *base, '--shadow-replay-extent', '1500', '--shadow-replay-depth-half', '3000', '--shadow-replay-size', '4096', '--shadow-replay-cap', '1024')
+            self.assertEqual(code, 0); env = json.loads(output)['env']
+            self.assertEqual((env['X3M_SHADOW_REPLAY_EXTENT'], env['X3M_SHADOW_REPLAY_DEPTH_HALF'], env['X3M_SHADOW_REPLAY_SIZE'], env['X3M_SHADOW_REPLAY_CAP']), ('1500.0', '3000.0', '4096', '1024'))
+            for option, value, message in (('--shadow-replay-extent', '49', '--shadow-replay-extent must be within [50, 4000]'),
+                                           ('--shadow-replay-extent', '4001', '--shadow-replay-extent must be within [50, 4000]'),
+                                           ('--shadow-replay-extent', 'nan', '--shadow-replay-extent must be within [50, 4000]'),
+                                           ('--shadow-replay-depth-half', '127', '--shadow-replay-depth-half must be within [128, 8192]'),
+                                           ('--shadow-replay-depth-half', '8193', '--shadow-replay-depth-half must be within [128, 8192]'),
+                                           ('--shadow-replay-cap', '0', '--shadow-replay-cap must be within [1, 1024]'),
+                                           ('--shadow-replay-cap', '1025', '--shadow-replay-cap must be within [1, 1024]')):
+                code, _, error = launch(directory, *base, option, value)
+                self.assertNotEqual(code, 0, (option, value)); self.assertIn(message, error)
+            for option, value in (('--shadow-replay-extent', '1000'), ('--shadow-replay-depth-half', '2048')):
+                code, _, error = launch(directory, '--motion-output', '--ownership', option, value)
+                self.assertNotEqual(code, 0, option); self.assertIn('--shadow-replay-extent and --shadow-replay-depth-half require --shadow-replay-depth', error)
+            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-cap', '8')
+            self.assertNotEqual(code, 0); self.assertIn('--shadow-replay-cap requires --shadow-replay-candidates or --shadow-replay-depth', error)
+            code, output, _ = launch(directory, '--motion-output', '--ownership', '--shadow-replay-candidates', '--shadow-replay-cap', '8')
+            self.assertEqual(code, 0); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_REPLAY_CAP'], '8')
+
+    def test_bias_units_option(self):
+        # --sun-shadow-bias-units rides --sun-shadow-apply (which needs the
+        # lane and the replay); the default is the value that resolves to the
+        # former 0.001 / 0.01 at the default cascade.
+        with tempfile.TemporaryDirectory() as directory:
+            apply = ['--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa', '--hdr', '--sun-shadow-lane', '--shadow-replay-depth', '--sun-shadow-apply']
+            code, output, error = launch(directory, *apply, inherited={'X3M_SUN_SHADOW_BIAS_UNITS': '7'})
+            self.assertEqual(code, 0, error); env = json.loads(output)['env']
+            self.assertEqual((env['X3M_SUN_SHADOW_APPLY'], env['X3M_SUN_SHADOW_BIAS_UNITS']), ('1', '0.53571875'))
+            code, output, error = launch(directory, *apply, '--sun-shadow-bias-units', '2.5')
+            self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SUN_SHADOW_BIAS_UNITS'], '2.5')
+            for value in ('-1', '1001', 'inf'):
+                code, _, error = launch(directory, *apply, '--sun-shadow-bias-units', value)
+                self.assertNotEqual(code, 0, value); self.assertIn('--sun-shadow-bias-units must be within [0, 1000]', error)
+            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', '--sun-shadow-bias-units', '1')
+            self.assertNotEqual(code, 0); self.assertIn('--sun-shadow-bias-units requires --sun-shadow-apply', error)
+            # The clamp in texels: default explicit (the former 0.01 at the default cascade), value carried, range and prerequisite.
+            code, output, error = launch(directory, *apply, inherited={'X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS': '3'})
+            self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS'], '20.97152')
+            code, output, error = launch(directory, *apply, '--sun-shadow-bias-clamp-texels', '4')
+            self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS'], '4.0')
+            for value in ('0.5', '65', 'nan'):
+                code, _, error = launch(directory, *apply, '--sun-shadow-bias-clamp-texels', value)
+                self.assertNotEqual(code, 0, value); self.assertIn('--sun-shadow-bias-clamp-texels must be within [1, 64]', error)
+            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', '--sun-shadow-bias-clamp-texels', '4')
+            self.assertNotEqual(code, 0); self.assertIn('--sun-shadow-bias-clamp-texels requires --sun-shadow-apply', error)
 
 
 if __name__ == '__main__':

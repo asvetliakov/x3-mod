@@ -15,12 +15,20 @@ namespace x3m::renderer {
 // The own-ship cascade: centred on the camera position plus forward x
 // forward_offset, half-extent in sun-space x/y, z within +-depth_half_range,
 // texel-snapped in sun space (the sun is world-fixed, so snapping removes
-// camera-translation swim). Production constants per the note; the seam
-// fixture narrows them to its unit-size geometry.
+// camera-translation swim). Production defaults per the note; half_extent
+// (X3M_SHADOW_REPLAY_EXTENT), depth_half_range (X3M_SHADOW_REPLAY_DEPTH_HALF)
+// and size (X3M_SHADOW_REPLAY_SIZE) are read once at device creation within
+// the ranges below; the seam fixture narrows them to its unit-size geometry.
+// The world texel is 2 half_extent / size (legacy-sun-application.md, section 2).
+constexpr float shadow_replay_extent_default = 250.f, shadow_replay_extent_min = 50.f, shadow_replay_extent_max = 4000.f;
+constexpr float shadow_replay_depth_half_default = 512.f, shadow_replay_depth_half_min = 128.f, shadow_replay_depth_half_max = 8192.f;
+constexpr unsigned shadow_replay_size_default = 1024, shadow_replay_size_min = 64, shadow_replay_size_max = 4096;
+constexpr float shadow_replay_forward_offset_default = 128.f;
 struct ShadowReplayCascade {
-    float half_extent = 250.f, forward_offset = 128.f, depth_half_range = 512.f;
-    unsigned size = 1024;
+    float half_extent = shadow_replay_extent_default, forward_offset = shadow_replay_forward_offset_default, depth_half_range = shadow_replay_depth_half_default;
+    unsigned size = shadow_replay_size_default;
 };
+inline double shadow_replay_world_texel(const ShadowReplayCascade& c) noexcept { return c.size ? 2. * double(c.half_extent) / double(c.size) : 0.; }
 struct ShadowReplayBasis {
     bool valid = false;
     float right[3]{}, up[3]{}, forward[3]{}; // sun-space axes in world space (forward = direction the light travels)

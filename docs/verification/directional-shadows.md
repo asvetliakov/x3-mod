@@ -947,3 +947,94 @@ extent, depth half-range, cap and bias become launcher options for run 38
 (extent 1000–1500 at 2048–4096 texels); cascades remain the answer for a
 whole complex. Frame-time comparison not possible at fine granularity (no
 `--frame-phases` in this session).
+
+## Tunable cascade-0 box, cap and world-unit bias (2026-09-17, worktree `agent-ae233fa95aef3fdd5`)
+
+Run 37 B showed the map box (half-extent 250, depth ±512 around the camera, hard-coded) admitting
+a median 8 / max 49 casters of 93 / 930 routed depth writers, `capped` never firing; the user
+wants station-on-station shadows across 2–3 km. Change: `--shadow-replay-extent E` (50–4000,
+default 250, `X3M_SHADOW_REPLAY_EXTENT`), `--shadow-replay-depth-half D` (128–8192, default
+512, `X3M_SHADOW_REPLAY_DEPTH_HALF`), `--shadow-replay-cap N` (1–1024, default 512,
+`X3M_SHADOW_REPLAY_CAP`; record storage 512 → 1024 fixed entries, `Record`, `DepthGeometry` and
+`ShadowReplayDraw` arrays in `MotionOutput`, no allocation), `--sun-shadow-bias-units B`
+(0–1000, default 0.53571875, `X3M_SUN_SHADOW_BIAS_UNITS`) and `--sun-shadow-bias-clamp-texels T`
+(1–64, default 20.97152, `X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS`). All read once at device creation
+(`capture.cpp`); the candidate box test, the replay projection and the apply quad take the box
+from the one `ShadowReplayCascade`; `shadow_replay_depth_mode` prints `extent= depth_half= cap=`.
+Bias (`sun_shadow_apply_bias`, `sun_shadow_apply_pass.h`): constant `(B + 2E/N) / 2D`, clamp and
+non-planar fallback `T · (2E/N) / 2D` (world texels: the plane term extrapolates a slope over
+at most ~1.9 texels), resolved per frame in `run_sun_shadow_apply` (`skip_reason=bias` when
+the law does not resolve);
+the defaults are `1.024 − 0.48828125` and `10.24 / 0.48828125` so 250 / 512 / 1024 resolves to
+exactly the former float32 0.001 / 0.01 (`test_resolved_bias`). A first version scaled the clamp
+with the constant (10 : 1); it made the live `shadow_apply` case's clamp 6.6 units on its 32 / 64 /
+512 cascade, above the 4-unit occluder gap, and lit the receiver's sentinel-edge quads through the
+fallback (frame 4, TAA off the CPU reference by more than one code); the texel law gives 2.62
+units there. The capture-frame
+`sun_shadow_apply_params` line gained `bias_units= clamp_texels= texel_world= extent= depth_half=` and the twin's
+`parse_apply_params` refuses a line whose printed `bias`/`bias_max` do not resolve from them. (The
+brief named 0.003 / 0.01 as today's constants; those are the fixture's literals, production was
+0.001 / 0.01 since run 36 and stays so.)
+
+**Cost model.** Map memory `4 N²` bytes R32F plus the D24X8 attachment: 4 + 4 MiB at 1024²,
+16 + 16 MiB at 2048², 64 + 64 MiB at 4096². World texel `2E/N`: 0.488 (250 / 1024), 0.977
+(1000 / 2048), 0.732 (1500 / 4096). Replay transaction (fixture, CPU-inclusive `us` medians over
+the 5 replayed frames): 40.6 µs at 2 draws / 256², 45.8 at 2 draws / 1024² (250 box), 55.8 at
+4 draws / 2048² (1000 box: 14.0 µs per draw), first frame after a target creation 1.4–1.6 ms;
+the earlier 2 / 8 / 20-draw series (40.7 / 50.4 / 65.8 µs at 1024²) gives ≈ 35 µs fixed plus
+≈ 1.4 µs per draw, so a 512-caster frame costs ≈ 0.75 ms CPU before the GPU's own rasterization,
+which scales with the casters' triangle counts, not with N. The map size costs the clear and the
+apply quad's cache footprint only; the fixture's apply quad median was 3.84 ms at 256² and 3.72 ms
+at 2048² (128² target, CPU-inclusive, first frame 22 ms in both).
+
+**Fixture (`run_motion_output.py` on the tree rebased onto `eb5cdab`, clean cmake build, 0 warnings;
+`check_no_x87.py` 0 violations).**
+`seam-ownership-shadow-replay-on` 169 checks and `seam-ownership-taa-shadow-replay-on` 192: unchanged
+behaviour under the new mode line (`extent=250 depth_half=512 cap=2`; the seam narrowing to 8 / 16
+still applies), map versus the CPU projection max depth error 1.17e-05, 40,681 covered texels.
+New `seam-ownership-shadow-replay-wide` (169 checks; `X3M_SHADOW_REPLAY_EXTENT=1000 …DEPTH_HALF=2048
+…SIZE=2048 …CAP=4`, F moved to origin 900 / vertices 825 units by `X3M_FIXTURE_SHADOW_FAR_T=720`, no
+narrowing): from frame 1 `bounds=4 capped=0` (L, both casters and F admitted; F replays too),
+`replayed=4 draws=4`, frame 0 `fallback=2 reads=4`; map versus CPU 0 coverage disagreements, max
+depth error 1.42e-06 over the 4,096-unit depth range, 199 covered texels (48–52 per replayed
+frame at the 0.977-unit texel; the unit-size casters cover 2). New
+`seam-ownership-shadow-replay-far-refused` (169 checks; the production 250 / 512 box, 1024², same
+F at 825 units): `bounds=3 capped=1`, F refused as in the narrow cases, max depth error 3.28e-06,
+710 covered texels. Both keep the Lock / no-sun / two-stream refusals and the Reset re-creation.
+`sun-shadow-apply` (default): 163 checks (126 fixture, unchanged, plus the new configuration and
+per-frame bias checks), `worst_codes=0.998 ambiguous_max=245 edge={376, 345, 31, 0}`, the same
+counts as the committed record: the literal .003 / .01 path is byte-identical. New
+`sun-shadow-apply-wide` (167 checks; `X3M_FIXTURE_SUNAPPLY_WIDE=1`, the scene scaled ×200 — a
+400-unit box, the camera 1,500 units away — under 1000 / 2048 / 2048², bias resolved from the
+default B: constant 3.69e-4 = 1.51 units = 1.55 texels, clamp 5.0e-3 = 20.5 units = 21 texels):
+0 FP16 violations in 35,266 strict comparisons against the twin, worst 0.998 codes; the analytic
+box-on-plane shadow on the plane receivers: 33 disagreements, 29 within one texel of an edge,
+4 within two, 0 beyond (the twin's kernel reach); on the box's own faces 14 pixels beyond two
+texels (7 / 5 / 1 / 1 at 30° / 50° / 70° / 70°; 8 with the earlier 15-texel clamp), all
+camera-silhouette quads where the plane fit is dropped and the fallback pulls the receiver
+21 texels towards the light: with the clamp at 4 texels the twin shows 0 such pixels (scratch
+analysis of the 30° frame). The validator holds the plane receivers to `beyond_two_texels = 0`
+and bounds the box faces at 16. Frames 0, 1 and the Reset identity as before.
+
+**Live** (`run_sun_share_live.py --fixture … --dll …`, the full set after the rebase onto
+`eb5cdab`; `shadow_apply` on the seam's 32 / 64 / 512 cascade, where the law gives 5.16e-3 /
+2.05e-2 = 0.66 / 2.62 units under the 4-unit occluder gap, recorded as `bias.resolved_by_law`
+from the mode line's `bias_units= clamp_texels=`; the DLL prints resolved values only on capture
+all 20 cases pass, 32.2 s of fixture time; `shadow_apply` 4 applied frames, shadowed pixels
+≥ 3,969 per applied frame, 6 TAA frames exact against the CPU-shadowed reference. Record
+`verification/results/bottle-X3/sun-share-live.json` (the earlier `--case shadow_apply` run had
+overwritten the 19-case record with one case; restored and rerun in full).
+
+**Host tests.** `test_shadow_replay_depth` (8: new `test_cascade_box_options`,
+`test_bias_units_option`), `test_shadow_replay_candidates` (7: new `test_cap_option`),
+`test_sun_shadow_apply` (11: new `test_resolved_bias`), `test_lod_scale_launch` OK; launch
+`--dry-run` with `--shadow-replay-extent 1500 --shadow-replay-depth-half 3000 --shadow-replay-size
+4096 --shadow-replay-cap 512` prints `X3M_SHADOW_REPLAY_EXTENT=1500.0 …DEPTH_HALF=3000.0
+…SIZE=4096 …CAP=512 X3M_SUN_SHADOW_BIAS_UNITS=0.53571875`.
+
+**Open.** The 21-texel clamp (today's production 0.01 kept for identity) lights a few
+silhouette pixels of a receiver's own faces in the wide fixture (14 of 35,266) while 4 texels
+(the detached fixture's tuned literal) does not; whether the game's hulls need the wide fallback
+(run 36 tuned only the constant) is a run-38 question (`--sun-shadow-bias-clamp-texels 4`, no
+rebuild), as is the visible result of a station-wide box. The bias in texels at the wide setting (1.55) is what the receiver-plane term expects; the
+default B alone (0.536 units) is close to one production texel (0.488).

@@ -200,14 +200,21 @@ def analytic_shadow(d, s, params, scene, size):
                 if du or dvv:
                     change |= lit_at(float(du), float(dvv)) != lit
         distance = np.where(change, radius, distance)
-    return {'lit': lit, 'edge_distance': distance}
+    # Receivers on the plane (y = 0) versus on the box's own faces: the box-on-
+    # plane shadow edge is the plane subset; a box face at its camera silhouette
+    # is a non-planar quad whose fallback bias (the clamp) can light it.
+    on_plane = np.abs(world[1]) < 1e-3 * max(1.0, max(abs(v) for v in scene['box']))
+    return {'lit': lit, 'edge_distance': distance, 'on_plane': on_plane}
 
 
-def compare_frame(before, after, d, s, sun_map, params, scene=None):
+def compare_frame(before, after, d, s, sun_map, params, scene=None, strict_box=True):
     """The readbacks (H x W x 4 float64 from FP16) against before * factor.
     Returns counts: compared pixels, violations beyond one FP16 code, the
     worst error in codes, identity pixels that changed, ambiguous pixels, and
-    (with `scene`) the analytic edge record."""
+    (with `scene`) the analytic edge record. `ok` requires no hard-shadow
+    disagreement beyond two texels of an analytic edge; with strict_box=False
+    only the plane receivers are held to that (the box faces' silhouette
+    quads are reported under box_beyond_two_texels)."""
     import numpy as np
     expected = expected_factor(d, s, sun_map, params)
     factor, valid, ambiguous = expected['factor'], expected['valid'], expected['ambiguous']
@@ -229,10 +236,13 @@ def compare_frame(before, after, d, s, sun_map, params, scene=None):
         mismatch = strict & (hard != analytic['lit'])
         far = mismatch & (analytic['edge_distance'] == 0)
         within_one = mismatch & (analytic['edge_distance'] == 1)
+        plane = analytic['on_plane']
         record['analytic'] = {'mismatch': int(np.count_nonzero(mismatch)), 'within_one_texel': int(np.count_nonzero(within_one)),
                               'within_two_texels': int(np.count_nonzero(mismatch & (analytic['edge_distance'] == 2))),
-                              'beyond_two_texels': int(np.count_nonzero(far)), 'shadowed_analytic': int(np.count_nonzero(strict & ~analytic['lit']))}
-        record['ok'] = record['ok'] and record['analytic']['beyond_two_texels'] == 0
+                              'beyond_two_texels': int(np.count_nonzero(far)), 'shadowed_analytic': int(np.count_nonzero(strict & ~analytic['lit'])),
+                              'plane_mismatch': int(np.count_nonzero(mismatch & plane)), 'plane_within_one_texel': int(np.count_nonzero(within_one & plane)),
+                              'plane_beyond_two_texels': int(np.count_nonzero(far & plane)), 'box_beyond_two_texels': int(np.count_nonzero(far & ~plane))}
+        record['ok'] = record['ok'] and (record['analytic']['beyond_two_texels'] if strict_box else record['analytic']['plane_beyond_two_texels']) == 0
     return record
 
 
@@ -245,6 +255,9 @@ def parse_params(fields):
     scene = {k: triple(k) for k in ('camera', 'cam_right', 'cam_up', 'cam_forward', 'sun', 'right', 'up', 'forward', 'center')}
     scene['extent'] = float(fields['extent']); scene['depth_half'] = float(fields['depth_half'])
     scene['box'] = tuple(float(v) for v in fields['box'].split(','))
+    for key in ('wide', 'scale', 'bias_units', 'clamp_texels', 'texel_world'):  # the wide configuration (absent on the original record)
+        if key in fields:
+            scene[key] = float(fields[key])
     return params, scene
 
 
@@ -257,8 +270,23 @@ def half_bytes(values):
 # "Run 36 session B (run106)"): the pass's inputs come from the session log, the
 # RT2, map and HDR dumps from the capture directory. No Wine, no game.
 PRODUCTION_M22, PRODUCTION_M32 = 1.000003, -6.0000184   # ao_default_m22/m32 (motion_output.cpp)
-PRODUCTION_BIAS = dict(bias_constant=.001, bias_max=.01, planar_step=.05)  # SunShadowApplyParams defaults
+PRODUCTION_BIAS = dict(bias_constant=.001, bias_max=.01, planar_step=.05)  # SunShadowApplyParams defaults (= the resolved default below at 250 / 512 / 1024)
 LINE_FIELDS = __import__('re').compile(r'(\w+)=([^\s]+)')
+# The world-unit bias (sun_shadow_apply_pass.h, sun_shadow_apply_bias): the
+# constant is bias_units plus one world texel (2 extent / size) over the map's
+# depth range 2 depth_half; the receiver-plane clamp (and non-planar fallback)
+# is BIAS_CLAMP_TEXELS world texels over the same range. The defaults
+# 0.53571875 + 0.48828125 = 1.024 and 20.97152 x 0.48828125 = 10.24 resolve
+# to exactly 0.001 / 0.01 at the default cascade. Double arithmetic, one
+# rounding to float32 per value.
+BIAS_UNITS_DEFAULT, BIAS_CLAMP_TEXELS = 0.53571875, 20.97152
+
+
+def resolve_bias(bias_units, extent, depth_half, size, clamp_texels=BIAS_CLAMP_TEXELS):
+    import numpy as np
+    texel = 2.0 * extent / size
+    constant = (bias_units + texel) / (2.0 * depth_half)
+    return {'bias_constant': float(np.float32(constant)), 'bias_max': float(np.float32(clamp_texels * texel / (2.0 * depth_half))), 'texel_world': float(np.float32(texel))}
 
 
 def line_fields(line):
@@ -279,6 +307,17 @@ def parse_apply_params(fields):
                  jitter_px=(float(fields['jitter_x']), float(fields['jitter_y'])), texel=float(fields['texel']))
     if extra['map'] and abs(extra['texel'] * extra['map'] - 1.0) > 1e-6:
         raise ValueError('texel %g does not match map %d' % (extra['texel'], extra['map']))
+    # Since the tunable cascade: the world-unit inputs the line resolved the
+    # bias from; the printed normalized values must be their resolution.
+    if 'bias_units' in fields:
+        for key in ('bias_units', 'texel_world', 'extent', 'depth_half'):
+            extra[key] = float(fields[key])
+        extra['clamp_texels'] = float(fields.get('clamp_texels', BIAS_CLAMP_TEXELS))
+        resolved = resolve_bias(extra['bias_units'], extra['extent'], extra['depth_half'], extra['map'], extra['clamp_texels'])
+        for key, printed in (('bias_constant', params['bias_constant']), ('bias_max', params['bias_max']), ('texel_world', extra['texel_world'])):
+            if abs(resolved[key] - printed) > 1e-6 * max(1.0, abs(printed)) + 1e-9:
+                raise ValueError('%s %.9g does not resolve from bias_units %g extent %g depth_half %g map %d (%.9g)'
+                                 % (key, printed, extra['bias_units'], extra['extent'], extra['depth_half'], extra['map'], resolved[key]))
     return params, extra
 
 

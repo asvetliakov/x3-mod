@@ -2125,21 +2125,33 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
       const bool enabled=(asked||depth_asked)&&motion_output_requested&&wrapped;
       if(asked||depth_asked)log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
-      unsigned cap=shadow_replay::record_capacity; // X3M_SHADOW_REPLAY_CAP (1..512): managed candidates recorded per frame
+      unsigned cap=shadow_replay::default_cap; // X3M_SHADOW_REPLAY_CAP (1..record_capacity, default 512): managed candidates recorded per frame
       { wchar_t text[16]{}; if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CAP",text,16)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=1&&v<=shadow_replay::record_capacity)cap=unsigned(v); } }
       hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr,cap);
       if(depth_asked){
-          unsigned size=1024; wchar_t text[16]{};
-          if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_SIZE",text,16)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=64&&v<=4096)size=unsigned(v); }
-          log("shadow_replay_depth_mode requested=1 enabled=%u size=%u motion_output=%u ownership=%u",enabled,size,motion_output_requested,wrapped);
-          hooked.motion_output.configure_shadow_replay_depth(enabled,size); }
+          // The cascade-0 box, read once here (shadow_replay_projection.h ranges):
+          // X3M_SHADOW_REPLAY_SIZE (64..4096, default 1024), X3M_SHADOW_REPLAY_EXTENT
+          // (half-extent, 50..4000, default 250), X3M_SHADOW_REPLAY_DEPTH_HALF (128..8192, default 512).
+          unsigned size=renderer::shadow_replay_size_default; float extent=renderer::shadow_replay_extent_default, depth_half=renderer::shadow_replay_depth_half_default; wchar_t text[32]{}; wchar_t* end=nullptr;
+          if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_SIZE",text,32)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=renderer::shadow_replay_size_min&&v<=renderer::shadow_replay_size_max)size=unsigned(v); }
+          if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_EXTENT",text,32)>0){ end=nullptr; const float v=wcstof(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::shadow_replay_extent_min&&v<=renderer::shadow_replay_extent_max)extent=v; }
+          if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH_HALF",text,32)>0){ end=nullptr; const float v=wcstof(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::shadow_replay_depth_half_min&&v<=renderer::shadow_replay_depth_half_max)depth_half=v; }
+          log("shadow_replay_depth_mode requested=1 enabled=%u size=%u extent=%.9g depth_half=%.9g cap=%u motion_output=%u ownership=%u",enabled,size,double(extent),double(depth_half),cap,motion_output_requested,wrapped);
+          hooked.motion_output.configure_shadow_replay_depth(enabled,size,extent,depth_half); }
       // Scene-end sun-shadow application (legacy-sun-application.md section 2;
       // X3M_SUN_SHADOW_APPLY=1): the lane and the depth replay of the same
       // frame; exponent 1 on original shading, 1 / 2.2 with linear materials.
+      // X3M_SUN_SHADOW_BIAS_UNITS (world units, 0..1000, default 0.53571875)
+      // is the constant compare bias and X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS
+      // (1..64, default 20.97152) the receiver-plane clamp and non-planar
+      // fallback in world texels, both resolved per frame with the cascade.
       { const bool apply_asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_APPLY",setting,4)==1&&setting[0]==L'1';
         const bool apply_enabled=apply_asked&&sun_lane_enabled&&depth_asked&&enabled;
-        if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested);
-        hooked.motion_output.configure_sun_shadow_apply(apply_enabled); } }
+        double bias_units=renderer::sun_shadow_bias_units_default, clamp_texels=renderer::sun_shadow_bias_clamp_texels_default; wchar_t text[32]{}; wchar_t* end=nullptr;
+        if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_UNITS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_units_min&&v<=renderer::sun_shadow_bias_units_max)bias_units=v; }
+        if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_clamp_texels_min&&v<=renderer::sun_shadow_bias_clamp_texels_max)clamp_texels=v; }
+        if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels);
+        hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);

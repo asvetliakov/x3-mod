@@ -274,7 +274,12 @@ def main():
     parser.add_argument('--sun-shadow-apply', action='store_true', help='Scene-end sun-shadow application (X3M_SUN_SHADOW_APPLY=1; default off; requires --sun-shadow-lane --shadow-replay-depth): one quad multiplies the FP16 scene by 1 - (1 - f) s, s the lane share and f a 3x3 PCF of the same frame\'s replay map, before AO and the TAA resolve; exponent 1 on original shading (code values both sides), 1/2.2 with --linear-materials (the converted lane\'s linear law); one sun_shadow_apply_frame line per frame; a frame missing the lane, the replay or the FP16 owner is left byte-identical (docs/architecture/legacy-sun-application.md, 2).')
     parser.add_argument('--shadow-replay-candidates', action='store_true', help='Lane-independent caster-candidate counter of the motion route (X3M_SHADOW_REPLAY_CANDIDATES=1; requires --motion-output --ownership only, works with original hull shading; default off): one shadow_replay_candidates line per scene end and at most 16 shadow_replay_lock_witness lines per device; integer bookkeeping per routed draw, no allocation, no shadows (docs/architecture/shadow-replay-gates.md, "Implemented")')
     parser.add_argument('--shadow-replay-depth', action='store_true', help='One-cascade depth replay of the slice-0 caster candidates into a private sun-space map at every scene end (X3M_SHADOW_REPLAY_DEPTH=1; implies --shadow-replay-candidates and requires its prerequisites --motion-output --ownership only; default off): one shadow_replay_depth line per frame, nothing samples the map, no shadows are applied (docs/architecture/shadow-replay-gates.md, "Implemented: cascade-0 depth replay fixture")')
-    parser.add_argument('--shadow-replay-size', type=int, default=None, metavar='N', help='Side of the square depth replay map in texels, 64..4096, default 1024 (X3M_SHADOW_REPLAY_SIZE; requires --shadow-replay-depth)')
+    parser.add_argument('--shadow-replay-size', type=int, default=None, metavar='N', help='Side of the square depth replay map in texels, 64..4096, default 1024 (X3M_SHADOW_REPLAY_SIZE; requires --shadow-replay-depth); map memory is 4 N^2 bytes (R32F) plus the depth attachment')
+    parser.add_argument('--shadow-replay-extent', type=float, default=None, metavar='E', help='Half-extent of the cascade-0 map box in world units in the sun basis, 50..4000, default 250 (X3M_SHADOW_REPLAY_EXTENT; requires --shadow-replay-depth): the world texel is 2 E / N, so a station-wide box (E 1000-1500) needs --shadow-replay-size 2048-4096 for the same texel; the candidate box test, the replay projection and the apply quad share the value')
+    parser.add_argument('--shadow-replay-depth-half', type=float, default=None, metavar='D', help='Half depth range of the cascade-0 map box along the sun in world units, 128..8192, default 512 (X3M_SHADOW_REPLAY_DEPTH_HALF; requires --shadow-replay-depth); the apply bias is expressed in world units and rescaled from it per frame')
+    parser.add_argument('--shadow-replay-cap', type=int, default=None, metavar='N', help='Managed caster candidates recorded and replayed per frame, 1..1024, default 512 (X3M_SHADOW_REPLAY_CAP; requires --shadow-replay-candidates or --shadow-replay-depth); the rest count capped in the shadow_replay_candidates line')
+    parser.add_argument('--sun-shadow-bias-units', type=float, default=None, metavar='B', help='Constant sun-shadow compare bias in world units, 0..1000, default 0.53571875 (X3M_SUN_SHADOW_BIAS_UNITS; requires --sun-shadow-apply): the quad subtracts B plus one world texel of the map, divided by 2 D, from every compare; with --sun-shadow-bias-clamp-texels the defaults resolve to the former 0.001 / 0.01 at the default 250 / 512 / 1024 cascade; capture frames print the resolved values in sun_shadow_apply_params')
+    parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
     parser.add_argument('--ambient-occlusion', action='store_true', help='Half-resolution GTAO at the scene-end hook, multiplied into the scene target before the temporal resolve (X3M_AMBIENT_OCCLUSION=1; requires --motion-output --taa; default off). Ctrl+Shift+F11 toggles the chain off/on during play for a same-scene comparison (one ambient_occlusion_toggle log line per press; the pass stays attached). docs/architecture/ambient-occlusion.md, "Step 2"')
     parser.add_argument('--ao-radius', type=float, default=None, metavar='METRES', help='Ambient occlusion world radius in metres, 0.1..100, default 2 (X3M_AO_RADIUS; requires --ambient-occlusion; view units are 0.2 m, the calibration is tunable because the view-unit check is inconclusive)')
     parser.add_argument('--ao-strength', type=float, default=None, help='Ambient occlusion strength s of the factor 1 - s (1 - ao), 0..1, default 0.5 (X3M_AO_STRENGTH; requires --ambient-occlusion)')
@@ -448,6 +453,24 @@ def main():
         parser.error('--shadow-replay-size requires --shadow-replay-depth.')
     if args.shadow_replay_size is not None and not 64 <= args.shadow_replay_size <= 4096:
         parser.error('--shadow-replay-size must be within [64, 4096].')
+    if (args.shadow_replay_extent is not None or args.shadow_replay_depth_half is not None) and not args.shadow_replay_depth:
+        parser.error('--shadow-replay-extent and --shadow-replay-depth-half require --shadow-replay-depth.')
+    if args.shadow_replay_extent is not None and not (math.isfinite(args.shadow_replay_extent) and 50.0 <= args.shadow_replay_extent <= 4000.0):
+        parser.error('--shadow-replay-extent must be within [50, 4000].')
+    if args.shadow_replay_depth_half is not None and not (math.isfinite(args.shadow_replay_depth_half) and 128.0 <= args.shadow_replay_depth_half <= 8192.0):
+        parser.error('--shadow-replay-depth-half must be within [128, 8192].')
+    if args.shadow_replay_cap is not None and not (args.shadow_replay_candidates or args.shadow_replay_depth):
+        parser.error('--shadow-replay-cap requires --shadow-replay-candidates or --shadow-replay-depth.')
+    if args.shadow_replay_cap is not None and not 1 <= args.shadow_replay_cap <= 1024:
+        parser.error('--shadow-replay-cap must be within [1, 1024].')
+    if args.sun_shadow_bias_units is not None and not args.sun_shadow_apply:
+        parser.error('--sun-shadow-bias-units requires --sun-shadow-apply.')
+    if args.sun_shadow_bias_units is not None and not (math.isfinite(args.sun_shadow_bias_units) and 0.0 <= args.sun_shadow_bias_units <= 1000.0):
+        parser.error('--sun-shadow-bias-units must be within [0, 1000].')
+    if args.sun_shadow_bias_clamp_texels is not None and not args.sun_shadow_apply:
+        parser.error('--sun-shadow-bias-clamp-texels requires --sun-shadow-apply.')
+    if args.sun_shadow_bias_clamp_texels is not None and not (math.isfinite(args.sun_shadow_bias_clamp_texels) and 1.0 <= args.sun_shadow_bias_clamp_texels <= 64.0):
+        parser.error('--sun-shadow-bias-clamp-texels must be within [1, 64].')
     if args.ambient_occlusion and not (args.motion_output and args.taa):
         parser.error('--ambient-occlusion requires --motion-output --taa.')
     if not args.ambient_occlusion and (args.ao_radius is not None or args.ao_strength is not None or args.ao_debug or args.ao_timing):
@@ -687,6 +710,11 @@ def main():
         env['X3M_SHADOW_REPLAY_CANDIDATES'] = '1' if (args.shadow_replay_candidates or args.shadow_replay_depth) else '0'
         env['X3M_SHADOW_REPLAY_DEPTH'] = '1' if args.shadow_replay_depth else '0'
         env['X3M_SHADOW_REPLAY_SIZE'] = str(args.shadow_replay_size if args.shadow_replay_size is not None else 1024)
+        env['X3M_SHADOW_REPLAY_EXTENT'] = repr(args.shadow_replay_extent if args.shadow_replay_extent is not None else 250.0)
+        env['X3M_SHADOW_REPLAY_DEPTH_HALF'] = repr(args.shadow_replay_depth_half if args.shadow_replay_depth_half is not None else 512.0)
+        env['X3M_SHADOW_REPLAY_CAP'] = str(args.shadow_replay_cap if args.shadow_replay_cap is not None else 512)
+        env['X3M_SUN_SHADOW_BIAS_UNITS'] = repr(args.sun_shadow_bias_units if args.sun_shadow_bias_units is not None else 0.53571875)
+        env['X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS'] = repr(args.sun_shadow_bias_clamp_texels if args.sun_shadow_bias_clamp_texels is not None else 20.97152)
         env['X3M_AMBIENT_OCCLUSION'] = '1' if args.ambient_occlusion else '0'
         env['X3M_AO_RADIUS'] = repr(args.ao_radius if args.ao_radius is not None else 2.0)
         env['X3M_AO_STRENGTH'] = repr(args.ao_strength if args.ao_strength is not None else 0.5)

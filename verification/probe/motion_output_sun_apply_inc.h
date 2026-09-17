@@ -16,10 +16,20 @@
 // device mismatches, recording caller, pending Reset), the state restoration
 // around hostile caller state, the pass-owned scene on odd frames, the
 // ShadowReplayPass accessors the wiring consumes, and the timing.
+// Wide configuration (X3M_FIXTURE_SUNAPPLY_WIDE=1 with X3M_SHADOW_REPLAY_EXTENT,
+// X3M_SHADOW_REPLAY_DEPTH_HALF and X3M_SHADOW_REPLAY_SIZE, the production variables): the scene is scaled
+// by extent / 5 (box, camera, near and far plane), so the geometry keeps its
+// proportions while the map resolves it at the requested world texel, and the
+// bias comes from the production world-unit conversion (sun_shadow_apply_bias
+// with X3M_SUN_SHADOW_BIAS_UNITS, default) instead of the literal fixture
+// constants .003 / .01 of the default run, whose output stays byte-identical.
 // Headers: sun_shadow_apply_pass.h and shadow_replay_projection.h, included by the fixture at file scope.
 namespace {
-constexpr unsigned sun_apply_w = 128, sun_apply_h = 128, sun_apply_map = 256, sun_apply_frames = 6, sun_apply_reset_before = 5;
-constexpr float sun_apply_box_min[3] = {-1.f, 0.f, -1.f}, sun_apply_box_max[3] = {1.f, 2.f, 1.f};
+constexpr unsigned sun_apply_w = 128, sun_apply_h = 128, sun_apply_frames = 6, sun_apply_reset_before = 5;
+unsigned sun_apply_map = 256;  // map side this run (default 256; the wide run's X3M_SHADOW_REPLAY_SIZE)
+double sun_apply_scale = 1.;   // scene scale this run (1; extent / 5 in the wide run)
+constexpr float sun_apply_box_min[3] = {-1.f, 0.f, -1.f}, sun_apply_box_max[3] = {1.f, 2.f, 1.f}; // the unit scene
+double sun_apply_box_lo[3] = {-1., 0., -1.}, sun_apply_box_hi[3] = {1., 2., 1.};                 // scaled
 constexpr float sun_apply_camera[3] = {2.5f, 3.5f, -7.f}, sun_apply_look[3] = {0.f, .8f, 0.f};
 constexpr float sun_apply_azimuth_deg = 340.f;
 struct SunApplyScript { float elevation_deg; unsigned map_mode; unsigned jitter_index; float jx, jy; float exponent; };
@@ -43,7 +53,7 @@ double sun_apply_hit(Vec3 o, Vec3 dir) {
     double best = -1.;
     if (dir.y < 0. && o.y > 0.) best = -o.y / dir.y;
     double enter = -1e30, leave = 1e30;
-    const double lo[3] = {sun_apply_box_min[0], sun_apply_box_min[1], sun_apply_box_min[2]}, hi[3] = {sun_apply_box_max[0], sun_apply_box_max[1], sun_apply_box_max[2]};
+    const double* lo = sun_apply_box_lo; const double* hi = sun_apply_box_hi;
     const double oo[3] = {o.x, o.y, o.z}, dd[3] = {dir.x, dir.y, dir.z};
     for (unsigned k = 0; k < 3; ++k) {
         if (std::fabs(dd[k]) < 1e-12) { if (oo[k] < lo[k] || oo[k] > hi[k]) return best; continue; }
@@ -111,15 +121,46 @@ void sun_apply_fill(Fixture& f, SunApplyState& s) {
 }
 void run_sun_apply_integration(Fixture& f) {
     SunApplyState s;
+    // The configuration: default (5 / 8 / 256, literal bias) or wide (the
+    // production variables, the scene scaled by extent / 5, the bias resolved).
+    x3m::renderer::ShadowReplayCascade cascade{}; cascade.half_extent = 5.f; cascade.depth_half_range = 8.f; cascade.size = 256;
+    bool wide = false; double bias_units = x3m::renderer::sun_shadow_bias_units_default, clamp_texels = x3m::renderer::sun_shadow_bias_clamp_texels_default;
+    {
+        char text[32]{};
+        const bool asked = GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_WIDE", text, sizeof text) == 1 && text[0] == '1';
+        if (asked) {
+            require(GetEnvironmentVariableA("X3M_SHADOW_REPLAY_EXTENT", text, sizeof text) > 0, "the wide run names X3M_SHADOW_REPLAY_EXTENT");
+            const float extent = std::strtof(text, nullptr);
+            require(extent >= x3m::renderer::shadow_replay_extent_min && extent <= x3m::renderer::shadow_replay_extent_max, "X3M_SHADOW_REPLAY_EXTENT within the production range");
+            wide = true; cascade.half_extent = extent; cascade.depth_half_range = x3m::renderer::shadow_replay_depth_half_default; cascade.size = x3m::renderer::shadow_replay_size_default;
+            if (GetEnvironmentVariableA("X3M_SHADOW_REPLAY_DEPTH_HALF", text, sizeof text) > 0) cascade.depth_half_range = std::strtof(text, nullptr);
+            if (GetEnvironmentVariableA("X3M_SHADOW_REPLAY_SIZE", text, sizeof text) > 0) cascade.size = unsigned(std::atoi(text));
+            if (GetEnvironmentVariableA("X3M_SUN_SHADOW_BIAS_UNITS", text, sizeof text) > 0) bias_units = std::strtod(text, nullptr);
+            if (GetEnvironmentVariableA("X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS", text, sizeof text) > 0) clamp_texels = std::strtod(text, nullptr);
+            require(cascade.depth_half_range >= x3m::renderer::shadow_replay_depth_half_min && cascade.depth_half_range <= x3m::renderer::shadow_replay_depth_half_max
+                    && cascade.size >= x3m::renderer::shadow_replay_size_min && cascade.size <= x3m::renderer::shadow_replay_size_max, "wide cascade within the production ranges");
+        }
+    }
+    sun_apply_map = cascade.size; sun_apply_scale = wide ? double(cascade.half_extent) / 5. : 1.;
+    for (unsigned k = 0; k < 3; ++k) { sun_apply_box_lo[k] = sun_apply_box_min[k] * sun_apply_scale; sun_apply_box_hi[k] = sun_apply_box_max[k] * sun_apply_scale; }
+    float bias_constant = .003f, bias_max = .01f, texel_world = 0.f;
+    if (wide) {
+        x3m::renderer::SunShadowBias bias{};
+        require(x3m::renderer::sun_shadow_apply_bias(bias_units, clamp_texels, cascade.half_extent, cascade.depth_half_range, cascade.size, bias), "the world-unit bias resolves for the wide cascade");
+        bias_constant = bias.constant; bias_max = bias.max; texel_world = bias.texel_world;
+    }
+    std::printf("SUNAPPLY_CONFIG wide=%u extent=%.9g depth_half=%.9g map_size=%u scale=%.9g bias_units=%.9g clamp_texels=%.9g texel_world=%.9g bias_constant=%.9g bias_max=%.9g\n",
+                unsigned(wide), double(cascade.half_extent), double(cascade.depth_half_range), sun_apply_map, sun_apply_scale, bias_units, clamp_texels, double(texel_world), double(bias_constant), double(bias_max));
     D3DCAPS9 caps{}; api(f.d->GetDeviceCaps(&caps), "GetDeviceCaps");
     const HRESULT attached = s.pass.attach(f.d.p, nullptr, caps, D3DFMT_X8R8G8B8, D3DFMT_A16B16G16R16F);
     std::printf("SUNAPPLY_DEVICE attached=%u result=%08lx reason=%s slots=%u references=%u\n", SUCCEEDED(attached), attached, s.pass.caps().reason, s.pass.caps().program_slots, s.pass.references());
     require(SUCCEEDED(attached) && s.pass.caps().enabled, "the apply pass attaches on this device");
     // Camera: position, look-at, D3D left-handed view axes (columns of R).
-    s.position = {sun_apply_camera[0], sun_apply_camera[1], sun_apply_camera[2]};
-    s.forward = normalize(Vec3{sun_apply_look[0], sun_apply_look[1], sun_apply_look[2]} - s.position);
+    const Vec3 look = Vec3{sun_apply_look[0], sun_apply_look[1], sun_apply_look[2]} * sun_apply_scale;
+    s.position = Vec3{sun_apply_camera[0], sun_apply_camera[1], sun_apply_camera[2]} * sun_apply_scale;
+    s.forward = normalize(look - s.position);
     s.right = normalize(cross(Vec3{0, 1, 0}, s.forward)); s.up = cross(s.forward, s.right);
-    const double fov_half = 25. * 3.14159265358979323846 / 180., near_z = 1., far_z = 50.;
+    const double fov_half = 25. * 3.14159265358979323846 / 180., near_z = 1. * sun_apply_scale, far_z = 50. * sun_apply_scale;
     s.camera.valid = true; s.camera.m00 = s.camera.m11 = float(1. / std::tan(fov_half));
     s.m22 = float(far_z / (far_z - near_z)); s.m32 = float(-near_z * far_z / (far_z - near_z));
     const Vec3 axes[3] = {s.right, s.up, s.forward};
@@ -128,8 +169,7 @@ void run_sun_apply_integration(Fixture& f) {
         const Vec3 a = axes[j]; s.camera.r[i * 3 + j] = float(i == 0 ? a.x : i == 1 ? a.y : a.z);
     }
     for (unsigned j = 0; j < 3; ++j) s.camera.t[j] = float(-dot(axes[j], s.position));
-    x3m::renderer::ShadowReplayCascade cascade{}; cascade.half_extent = 5.f; cascade.depth_half_range = 8.f; cascade.size = sun_apply_map;
-    cascade.forward_offset = float(std::sqrt(dot(Vec3{sun_apply_look[0], sun_apply_look[1], sun_apply_look[2]} - s.position, Vec3{sun_apply_look[0], sun_apply_look[1], sun_apply_look[2]} - s.position)));
+    cascade.forward_offset = float(std::sqrt(dot(look - s.position, look - s.position)));
     sun_apply_create_targets(f, s);
     // What the wiring consumes from ShadowReplayPass: the rows round-trip
     // detached and attached, before_reset invalidates them and drops the map,
@@ -237,7 +277,7 @@ void run_sun_apply_integration(Fixture& f) {
         in.params.m00 = s.camera.m00; in.params.m11 = s.camera.m11; in.params.m20 = m20; in.params.m21 = m21; in.params.m22 = s.m22; in.params.m32 = s.m32;
         for (unsigned k = 0; k < 12; ++k) in.params.rows[k] = rows[k];
         in.params.jitter_index = script.jitter_index; in.params.exponent = script.exponent;
-        in.params.bias_constant = .003f; in.params.bias_max = .01f; in.params.planar_step = .05f;
+        in.params.bias_constant = bias_constant; in.params.bias_max = bias_max; in.params.planar_step = .05f;
         // Skip paths touch nothing: a missing map, a wrong RT2 format, a stateblock recording caller.
         x3m::renderer::SunShadowApplyResult skipped{};
         { auto missing = in; missing.map = nullptr; require(s.pass.execute(missing, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "input"), "a missing map skips the quad"); }
@@ -280,14 +320,14 @@ void run_sun_apply_integration(Fixture& f) {
                     "m00=%.9g m11=%.9g m20=%.9g m21=%.9g m22=%.9g m32=%.9g rows=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g "
                     "camera=%.9g,%.9g,%.9g cam_right=%.9g,%.9g,%.9g cam_up=%.9g,%.9g,%.9g cam_forward=%.9g,%.9g,%.9g sun=%.9g,%.9g,%.9g "
                     "right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.9g,%.9g,%.9g extent=%.9g depth_half=%.9g "
-                    "box=%g,%g,%g,%g,%g,%g receivers=%u share_free=%u sentinels=%u\n",
-                    f.frame, sun_apply_w, sun_apply_h, sun_apply_map, script.map_mode, double(script.elevation_deg), script.jitter_index, double(script.exponent), .003, .01, .05,
+                    "box=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u wide=%u scale=%.9g bias_units=%.9g texel_world=%.9g\n",
+                    f.frame, sun_apply_w, sun_apply_h, sun_apply_map, script.map_mode, double(script.elevation_deg), script.jitter_index, double(script.exponent), double(bias_constant), double(bias_max), .05,
                     double(s.camera.m00), double(s.camera.m11), double(m20), double(m21), double(s.m22), double(s.m32),
                     double(rows[0]), double(rows[1]), double(rows[2]), double(rows[3]), double(rows[4]), double(rows[5]), double(rows[6]), double(rows[7]), double(rows[8]), double(rows[9]), double(rows[10]), double(rows[11]),
                     s.position.x, s.position.y, s.position.z, s.right.x, s.right.y, s.right.z, s.up.x, s.up.y, s.up.z, s.forward.x, s.forward.y, s.forward.z, double(sun[0]), double(sun[1]), double(sun[2]),
                     s_right.x, s_right.y, s_right.z, s_up.x, s_up.y, s_up.z, s_fwd.x, s_fwd.y, s_fwd.z, s_center.x, s_center.y, s_center.z, double(cascade.half_extent), double(cascade.depth_half_range),
-                    double(sun_apply_box_min[0]), double(sun_apply_box_min[1]), double(sun_apply_box_min[2]), double(sun_apply_box_max[0]), double(sun_apply_box_max[1]), double(sun_apply_box_max[2]),
-                    receivers, share_free, sentinels);
+                    sun_apply_box_lo[0], sun_apply_box_lo[1], sun_apply_box_lo[2], sun_apply_box_hi[0], sun_apply_box_hi[1], sun_apply_box_hi[2],
+                    receivers, share_free, sentinels, unsigned(wide), sun_apply_scale, bias_units, double(texel_world));
         sun_apply_write("before.rgba16f", f.frame, s.before.data(), s.before.size());
         sun_apply_write("after.rgba16f", f.frame, s.after.data(), s.after.size());
         sun_apply_write("rt2.g32r32f", f.frame, s.rt2_data.data(), s.rt2_data.size() * 4);

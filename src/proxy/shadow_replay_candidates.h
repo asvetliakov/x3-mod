@@ -9,7 +9,8 @@
 #include "../ownership/buffer_lock_observation.h"
 
 namespace x3m::shadow_replay {
-constexpr unsigned record_capacity = 512;  // storage; the per-frame cap (X3M_SHADOW_REPLAY_CAP, default 512) is at most this
+constexpr unsigned record_capacity = 1024; // storage (fixed arrays in MotionOutput, no allocation); the per-frame cap is at most this
+constexpr unsigned default_cap = 512;       // X3M_SHADOW_REPLAY_CAP default (1..record_capacity): managed candidates recorded and replayed per frame
 constexpr unsigned witness_capacity = 16;  // per device, section 3
 constexpr float slice0_near = 6.f, slice0_far = 250.f; // own-ship slice of cascade 0 (origin distance, view units)
 constexpr unsigned extent_reads_per_frame = 32;               // vertex-extent reads queued per frame (one per unseen buffer range)

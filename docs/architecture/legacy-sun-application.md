@@ -157,7 +157,12 @@ mask change. There is no separate mask texture to jitter or to keep.
 `ShadowReplayPass`/`AmbientOcclusionPass`. The map is rebuilt by the replay pass, RT2 by the
 route. The quad runs only when, in the same frame, `sun_shadow_lane_frame available=1`,
 `shadow_replay_depth replayed>0`, the owner is valid and HDR is active; any missing input
-skips the quad, leaving the frame byte-identical.
+skips the quad, leaving the frame byte-identical. `sun_shadow_apply_frame … skip_reason=`
+names the miss: `lane` (not published available), `replay` (no map / rows of this frame),
+`owner`, `depth` (RT2 absent), `recording`, `queries`, `camera`, `target` (RT0 not the FP16
+target), `attach`, `reset_pending`, `depth_container`, `bias` (the world-unit bias does not
+resolve for the cascade), then the pass's own `input`, `params`, `format`, `device`, `detached`,
+and `failed` (a device call failed; restored); `none` when applied.
 
 **Run106 (first apply in game) finding.** The quad, the rows and the map agree to the
 map's quantization and the HDR carries the twin's factor
@@ -170,6 +175,30 @@ needs the ship side-lit (sun 60–120° off the view axis), where the wing and f
 shadows span tens of units. The quad's NDC → view law now subtracts the route's raster
 jitter through `m20/m21` (the latch carries none); capture frames log the pass inputs
 (`sun_shadow_apply_params`) so the CPU twin runs on the run's data without assumptions.
+
+**Cascade-0 coverage, resolution and the bias (2026-09-17).** The map box is tunable:
+`--shadow-replay-extent E` (half-extent in the sun basis, 50–4000, default 250),
+`--shadow-replay-depth-half D` (128–8192, default 512) and `--shadow-replay-size N`
+(64–4096, default 1024), read once at device creation; the candidate box test, the replay
+projection and the apply quad take all three from the same `ShadowReplayCascade`. The world
+texel is `2 E / N`: 0.49 units at 250 / 1024, 0.98 at 1000 / 2048, 0.73 at 1500 / 4096; map
+memory is `4 N²` bytes plus the depth attachment (4 MiB at 1024², 16 MiB at 2048², 64 MiB at
+4096²). A station-wide box (E 1000–1500) at the default N therefore quadruples to octuples the
+texel and needs N 2048–4096 to keep it; replay cost grows with the admitted casters, not with
+N. The bias is expressed in world units so this rescaling does not change it:
+`--sun-shadow-bias-units B` (default 0.53571875), the compare subtracts `(B + texel) / 2 D`
+and clamps the receiver-plane term (also the non-planar fallback) at
+`--sun-shadow-bias-clamp-texels T` world texels (1–64, default 20.97152;
+`sun_shadow_apply_bias`), which at the default cascade resolves to exactly the former
+0.001 / 0.01; the texel term is what a receiver-plane fit expects to be off by across one
+texel, and the clamp scales with the texel because the plane term extrapolates a slope over
+at most ~1.9 texels. The 21-texel default is today's production value kept for identity; the
+detached fixture's tuned literals correspond to 4 texels, and the wide fixture shows the large
+fallback lighting a few silhouette pixels of a receiver's own faces (directional-shadows.md),
+so `--sun-shadow-bias-clamp-texels 4` is the tuning run 38 can try without a rebuild. One cascade remains a compromise
+between covering a complex and resolving the own ship: cascades (the architecture note's
+cascade 1–2 with their own extents) are the real answer for a station complex, and this
+tunable is the way to measure what the one map can carry before they exist.
 
 **Known limitation.** Colour-only draws over a receiver (blended effects, no depth write)
 never veto the lane and are multiplied by the receiver's factor at scene end, because the

@@ -17,8 +17,13 @@ import subprocess
 import tempfile
 import time
 import bottle
+import sun_shadow_apply as sun_apply  # the bias law (resolve_bias) for the shadow_apply record
 
 ROOT = Path(__file__).resolve().parents[2]
+# sun_shadow_apply_frame skip reasons (motion_output.cpp run_sun_shadow_apply and
+# SunShadowApplyPass::execute; legacy-sun-application.md section 2).
+APPLY_SKIP_REASONS = frozenset(('none', 'lane', 'replay', 'owner', 'depth', 'recording', 'queries', 'camera', 'target', 'attach',
+                                'reset_pending', 'depth_container', 'bias', 'failed', 'detached', 'input', 'params', 'format', 'device'))
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
          'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission')
 # hull_emission (emitter plan phase 3, hull_emission_live_inc.h): the covered
@@ -116,9 +121,11 @@ def validate_original(text, trace, case, publications):
     devices = [fields(l) for l in lines if l.startswith('sun_shadow_apply_device ')]
     assert 1 <= len(devices) <= 2 and all(r['attached'] == '1' and r['reason'] == 'ok' for r in devices), devices  # attached once; the programs survive Reset
     modes = [l for l in lines if l.startswith('sun_shadow_apply_mode ')]
-    assert modes == ['sun_shadow_apply_mode requested=1 enabled=1 lane=1 replay=1 linear_materials=0'], modes
+    assert len(modes) == 1 and modes[0].startswith('sun_shadow_apply_mode requested=1 enabled=1 lane=1 replay=1 linear_materials=0'), modes
+    mode = fields(modes[0])
     applies = [fields(l) for l in lines if l.startswith('sun_shadow_apply_frame ')]
     assert [int(r['frame']) for r in applies] == list(range(6)), applies
+    assert all(r['skip_reason'] in APPLY_SKIP_REASONS for r in applies), [r['skip_reason'] for r in applies]
     replays = {int(r['frame']): r for r in (fields(l) for l in lines if l.startswith('shadow_replay_depth '))}
     assert set(replays) == set(range(6)), sorted(replays)
     expected = {0: 'replay', 1: 'none', 2: 'lane', 3: 'none', 4: 'none', 5: 'none'}
@@ -136,8 +143,15 @@ def validate_original(text, trace, case, publications):
         i = int(r['frame'])
         assert (r['applied'], r['attempted'], r['expect_applied']) == (str(int(expected[i] == 'none')), '1', str(int(expected[i] == 'none'))), r
         assert (int(r['replayed']) > 0) == (i != 0) and int(r['inner']) >= (400 if i >= 3 else 0) and int(r['changed']) >= (400 if i >= 3 else 0), r
+    # The bias this case ran under: the mode line's world-unit inputs and their
+    # resolution by the law (sun_shadow_apply.resolve_bias) on the case's
+    # 32 / 64 / 512 cascade; the DLL prints the resolved values only on capture
+    # frames, which this script has none of.
+    bias_units, clamp_texels = float(mode.get('bias_units', sun_apply.BIAS_UNITS_DEFAULT)), float(mode.get('clamp_texels', sun_apply.BIAS_CLAMP_TEXELS))
     return dict(apply_frames=sum(int(r['applied']) for r in applies), apply_skipped={i: expected[i] for i in expected if expected[i] != 'none'},
-                apply_us_max=max(float(r['us']) for r in applies), shadowed_pixels_min=min(int(r['inner']) for r in witnesses if int(r['frame']) >= 3))
+                apply_us_max=max(float(r['us']) for r in applies), shadowed_pixels_min=min(int(r['inner']) for r in witnesses if int(r['frame']) >= 3),
+                bias=dict(bias_units=bias_units, clamp_texels=clamp_texels, cascade=dict(extent=32.0, depth_half=64.0, size=512),
+                          resolved_by_law=sun_apply.resolve_bias(bias_units, 32.0, 64.0, 512, clamp_texels)))
 
 def validate(text, trace, work, case):
     rows = [fields(line) for line in text.splitlines() if line.startswith('SUN_LIVE ')]

@@ -95,6 +95,38 @@ class RunInputs(unittest.TestCase):
         with self.assertRaises(ValueError):
             apply.parse_apply_params(apply.line_fields(self.LINE.rsplit(',', 1)[0]))
 
+    def test_resolved_bias(self):
+        # The world-unit bias (sun_shadow_apply_bias): the default resolves to
+        # exactly the former float32 constants at 250 / 512 / 1024, and the
+        # texel term scales with the map's world texel.
+        default = apply.resolve_bias(apply.BIAS_UNITS_DEFAULT, 250.0, 512.0, 1024)
+        self.assertEqual((default['bias_constant'], default['bias_max']), (float(np.float32(.001)), float(np.float32(.01))))
+        self.assertEqual(default['texel_world'], .48828125)
+        wide = apply.resolve_bias(apply.BIAS_UNITS_DEFAULT, 1000.0, 2048.0, 2048)
+        self.assertAlmostEqual(wide['texel_world'], .9765625)
+        self.assertAlmostEqual(wide['bias_constant'] * 4096, apply.BIAS_UNITS_DEFAULT + .9765625, places=5)
+        self.assertAlmostEqual(wide['bias_max'] * 4096, apply.BIAS_CLAMP_TEXELS * .9765625, places=5)
+        narrow = apply.resolve_bias(apply.BIAS_UNITS_DEFAULT, 32.0, 64.0, 512)  # the live fixture's cascade: clamp 2.62 units, under its 4-unit occluder gap
+        self.assertAlmostEqual(narrow['bias_max'] * 128, apply.BIAS_CLAMP_TEXELS * .125, places=5)
+        four = apply.resolve_bias(apply.BIAS_UNITS_DEFAULT, 1000.0, 2048.0, 2048, 4.0)  # --sun-shadow-bias-clamp-texels 4 at the wide setting
+        self.assertAlmostEqual(four['bias_max'] * 4096, 4 * .9765625, places=5); self.assertEqual(four['bias_constant'], wide['bias_constant'])
+        line4 = self.LINE.replace(' rows=', ' bias_units=0.53571875 clamp_texels=4 texel_world=0.48828125 extent=250 depth_half=512 rows=').replace('bias_max=0.00999999978', 'bias_max=0.0019073486')
+        params4, extra4 = apply.parse_apply_params(apply.line_fields(line4))
+        self.assertEqual((extra4['clamp_texels'], params4['bias_max']), (4.0, .0019073486))
+        self.assertGreater(apply.resolve_bias(apply.BIAS_UNITS_DEFAULT, 1000.0, 2048.0, 1024)['bias_constant'], wide['bias_constant'])
+        line = self.LINE.replace(' rows=', ' bias_units=0.53571875 texel_world=0.48828125 extent=250 depth_half=512 rows=')
+        params, extra = apply.parse_apply_params(apply.line_fields(line))
+        self.assertEqual((extra['bias_units'], extra['extent'], extra['depth_half'], extra['texel_world']), (.53571875, 250.0, 512.0, .48828125))
+        self.assertEqual(params['bias_constant'], .00100000005)
+        with self.assertRaises(ValueError):
+            apply.parse_apply_params(apply.line_fields(line.replace('extent=250', 'extent=1000')))
+        with self.assertRaises(ValueError):
+            apply.parse_apply_params(apply.line_fields(line.replace('bias=0.00100000005', 'bias=0.003')))
+        with self.assertRaises(KeyError):
+            apply.parse_apply_params(apply.line_fields(line.replace(' extent=250', '')))
+        old_params, old_extra = apply.parse_apply_params(apply.line_fields(self.LINE))  # a pre-tunable line still parses
+        self.assertEqual(old_params['bias_constant'], .00100000005); self.assertNotIn('bias_units', old_extra)
+
     def test_reconstruction_matches_params_line(self):
         camera = apply.line_fields('camera_state device=1 frame=8979 p00=0.8 p11=1.333333 p20=0 p21=0')
         frame = apply.line_fields('motion_output_frame device=1 frame=8979 jitter=1 jitter_index=1 jitter_x=-0.250000 jitter_y=0.166667')

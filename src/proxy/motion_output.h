@@ -444,13 +444,22 @@ public:
     // before AO and the resolve. Requires the lane and the depth replay (the
     // caller enables all three); exponent 1 on original shading, 1 / 2.2 with
     // linear materials. Off: nothing.
-    void configure_sun_shadow_apply(bool requested) noexcept { sun_apply_requested_=requested; }
+    // bias_units: the constant compare bias in world units (X3M_SUN_SHADOW_BIAS_UNITS);
+    // clamp_texels: the receiver-plane clamp and non-planar fallback in world
+    // texels (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS); renderer::sun_shadow_apply_bias
+    // resolves both per frame with the cascade. Out-of-range values keep the defaults.
+    void configure_sun_shadow_apply(bool requested, double bias_units=renderer::sun_shadow_bias_units_default,
+                                    double clamp_texels=renderer::sun_shadow_bias_clamp_texels_default) noexcept {
+        sun_apply_requested_=requested;
+        sun_apply_bias_units_=bias_units>=renderer::sun_shadow_bias_units_min&&bias_units<=renderer::sun_shadow_bias_units_max?bias_units:renderer::sun_shadow_bias_units_default;
+        sun_apply_clamp_texels_=clamp_texels>=renderer::sun_shadow_bias_clamp_texels_min&&clamp_texels<=renderer::sun_shadow_bias_clamp_texels_max?clamp_texels:renderer::sun_shadow_bias_clamp_texels_default;
+    }
     // Caster-candidate counter (shadow_replay_candidates.h; X3M_SHADOW_REPLAY_CANDIDATES=1):
     // integer bookkeeping per routed draw, one shadow_replay_candidates line per
     // scene end, at most 16 shadow_replay_lock_witness lines per device. Off: nothing.
     // cap: managed candidates recorded (and replayed) per frame, 1..record_capacity
-    // (X3M_SHADOW_REPLAY_CAP, default 512); the rest count `capped`.
-    void configure_shadow_replay_candidates(bool requested, ownership::AdmissionMonitor* monitor, unsigned cap=shadow_replay::record_capacity) noexcept {
+    // (X3M_SHADOW_REPLAY_CAP, default shadow_replay::default_cap); the rest count `capped`.
+    void configure_shadow_replay_candidates(bool requested, ownership::AdmissionMonitor* monitor, unsigned cap=shadow_replay::default_cap) noexcept {
         candidates_requested_=requested; candidates_monitor_=requested?monitor:nullptr;
         candidate_cap_=cap<1u?1u:cap>shadow_replay::record_capacity?shadow_replay::record_capacity:cap;
     }
@@ -458,9 +467,20 @@ public:
     // the leased slice-0 candidates re-issued into a private sun-space map at
     // the scene end, one shadow_replay_depth line per frame. Requires the
     // counter above (the caller enables both). Off: nothing.
-    void configure_shadow_replay_depth(bool requested, unsigned size) noexcept {
-        depth_replay_requested_=requested&&candidates_requested_; depth_replay_size_=size; depth_cascade_.size=size;
+    // size, extent (half-extent in the sun basis) and depth_half (world units)
+    // are the cascade-0 box (X3M_SHADOW_REPLAY_SIZE/_EXTENT/_DEPTH_HALF, read
+    // once at device creation); the candidate box test, the replay projection
+    // and the apply quad all take them from depth_cascade_. Out-of-range values
+    // keep the defaults.
+    void configure_shadow_replay_depth(bool requested, unsigned size, float extent=renderer::shadow_replay_extent_default,
+                                       float depth_half=renderer::shadow_replay_depth_half_default) noexcept {
+        depth_replay_requested_=requested&&candidates_requested_;
+        depth_replay_size_=size>=renderer::shadow_replay_size_min&&size<=renderer::shadow_replay_size_max?size:renderer::shadow_replay_size_default;
+        depth_replay_extent_=extent>=renderer::shadow_replay_extent_min&&extent<=renderer::shadow_replay_extent_max?extent:renderer::shadow_replay_extent_default;
+        depth_replay_depth_half_=depth_half>=renderer::shadow_replay_depth_half_min&&depth_half<=renderer::shadow_replay_depth_half_max?depth_half:renderer::shadow_replay_depth_half_default;
+        depth_cascade_.size=depth_replay_size_; depth_cascade_.half_extent=depth_replay_extent_; depth_cascade_.depth_half_range=depth_replay_depth_half_;
     }
+    const renderer::ShadowReplayCascade& shadow_replay_cascade() const noexcept { return depth_cascade_; }
     bool sun_shadow_lane_enabled() const noexcept { return sun_lane_active_; }
     // Diagnostic snapshot at scene end BEFORE AO/TAA; not a later color-owner lease.
     const renderer::SunShareFrame& sun_shadow_frame() const noexcept { return sun_frame_; }
@@ -1025,6 +1045,8 @@ private:
     // epoch for the FP16 target (a refusal is final until Reset), run once per
     // frame after the depth replay. Storage only: no per-draw cost.
     bool sun_apply_requested_=false, sun_apply_attach_failed_=false, sun_apply_applied_=false, sun_apply_attempted_=false;
+    double sun_apply_bias_units_=renderer::sun_shadow_bias_units_default;         // world units; resolved per frame with the cascade (sun_shadow_apply_bias)
+    double sun_apply_clamp_texels_=renderer::sun_shadow_bias_clamp_texels_default; // world texels; the receiver-plane clamp and non-planar fallback
     std::unique_ptr<renderer::SunShadowApplyPass> sun_apply_;
     HRESULT sun_apply_attach_result_=S_FALSE;
     std::uint64_t sun_apply_frame_=~std::uint64_t(0);
@@ -1085,7 +1107,8 @@ private:
     // leases parallel to candidates_.records, the frame's sun constant as the
     // slot-109 hook last saw it, the pass and its attach verdict.
     bool depth_replay_requested_=false, depth_replay_attach_failed_=false;
-    unsigned depth_replay_size_=1024;
+    unsigned depth_replay_size_=renderer::shadow_replay_size_default;
+    float depth_replay_extent_=renderer::shadow_replay_extent_default, depth_replay_depth_half_=renderer::shadow_replay_depth_half_default;
     std::unique_ptr<renderer::ShadowReplayPass> depth_replay_;
     HRESULT depth_replay_attach_result_=S_FALSE;
     shadow_replay::DepthGeometry depth_geometry_[shadow_replay::record_capacity]{};
