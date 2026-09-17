@@ -2854,3 +2854,14 @@ ladder carry-over of the texel law is host-tested (the corvette's slid 16,875-u 
 8 u: mask 8 → 12; an index law slides with the policy match). Rerun after the follow-up: 22 cases
 (the six pool run116 cases, the six other pool cases, four cascade replay cases, three retention
 cases, replay-on, cascades-5, faces) PASS; no-x87 537 reachable / 0 violations; host 59 tests OK.
+
+**Retention summariser cap scope (2026-09-18, run117 triage).** `tools/analysis/shadow_retention.py`
+reduced the per-cascade `would_c<k>` / `capped_c<k>` / `live_c<k>` tail over `range(4)` while the
+lines carry five cascades, so the record-capacity cap — which in run117 fires only on c4 — was
+invisible in `capped_peak` and unchecked by the `capped <= would` identity. Fixed with a `CASCADES`
+constant; `capped_total` and `capped_frames` were added so the summary states the same figure a
+raw grep does. On `run117` (session-20260918-025333-212.log, 26,466 frame lines) the summary now
+reports `capped_peak=[0,0,0,0,41]`, `capped_total=[0,0,0,0,5917]`, `capped_frames=[0,0,0,0,435]`,
+matching `grep -o 'capped_c4=[0-9]*'` (435 nonzero frames, sum 5,917, max 41). The field is the
+retention store's record-capacity cap and is distinct from `shadow_replay_candidates`' draw-selection
+cap, which is `[0,0,0,0,0]` in the same run. Host test: `test_capped_covers_the_fifth_cascade`.

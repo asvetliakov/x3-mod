@@ -356,6 +356,19 @@ class Lines(unittest.TestCase):
         self.assertEqual(result['resight']['expired']['retired'][0], 2)
         self.assertEqual(result['totals']['admitted_checked'], 0)
 
+    def test_capped_covers_the_fifth_cascade(self):
+        """run117 gap: the cap only fired on c4 and the summary reported four entries."""
+        frames, _, _, _, _ = retention.parse_text('\n'.join([
+            frame_line(frame=1, would_c4=40, capped_c4=11), frame_line(frame=2, would_c4=40, capped_c4=30), frame_line(frame=3)]))
+        result = retention.summary(frames, [])
+        self.assertEqual(len(result['capped_peak']), retention.CASCADES)
+        self.assertEqual(result['capped_peak'], [0, 0, 0, 0, 30])
+        self.assertEqual(result['capped_total'][4], 41)
+        self.assertEqual(result['capped_frames'], [0, 0, 0, 0, 2])
+        self.assertEqual(result['would_peak'][4], 40)
+        with self.assertRaises(retention.MalformedLine):  # the identity is checked on c4 too
+            retention.parse_frame_line(frame_line(would_c4=1, capped_c4=2))
+
     def test_malformed(self):
         for line in (frame_line().replace(' known=1', ''), frame_line(mode='other'), frame_line(flush='maybe'), frame_line(nodes_live='x'),
                      frame_line(nodes_live=2, static=1), frame_line(records=1, records_unseen=2), frame_line(would_c1=1, capped_c1=2),

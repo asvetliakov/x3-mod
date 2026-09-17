@@ -40,6 +40,7 @@ FRAME_FIELDS = ('device', 'frame', 'mode', 'known', 'nodes_live', 'nodes_unseen'
                 'reclassified_c0', 'reclassified_c1', 'reclassified_c2', 'reclassified_c3', 'reclassified_c4', 'gate_sightings', 'gate_us')
 FLOAT_FIELDS = ('drift_p99', 'drift_max', 'us', 'journal_us', 'walk_us', 'draw_us', 'gate_us')
 TEXT_FIELDS = {'mode': ('census', 'live'), 'flush': ('none', 'epoch', 'reset', 'device', 'teardown', 'sun', 'observer', 'idle')}
+CASCADES = 5  # c0..c4; the per-cascade would/capped/live tail carries one entry per cascade
 BUCKETS = 5
 BUCKET_LABELS = ('<60', '<600', '<3600', '<14400', '>=14400')
 RESIGHT_FIELDS = ('device', 'frame') + tuple(f'b{b}_{k}' for b in range(BUCKETS) for k in ('same', 'moved', 'changed')) \
@@ -87,7 +88,7 @@ def check_frame(row):
         raise MalformedLine(f'levels inconsistent: {row}')
     if row['unseen_in_frustum'] + row['unseen_outside'] > row['nodes_unseen']:
         raise MalformedLine(f'frustum split exceeds the unseen nodes: {row}')
-    if any(row[f'capped_c{c}'] > row[f'would_c{c}'] for c in range(4)):
+    if any(row[f'capped_c{c}'] > row[f'would_c{c}'] for c in range(CASCADES)):
         raise MalformedLine(f'capped exceeds would: {row}')
     if row['mode'] == 'census' and (row['refs_held'] or row['buffer_orphaned'] or row['orphan_probe']):
         raise MalformedLine(f'the census holds no references and probes nothing: {row}')
@@ -153,7 +154,10 @@ def summary(frames, resights, eps=0.05):
     draws = [r['draw_us'] / r['draw_calls'] for r in frames if r['draw_calls']]
     out = {'frames': len(frames), 'modes': sorted({r['mode'] for r in frames}), 'known_frames': total('known'),
            'levels': {k: peak(k) for k in ('nodes_live', 'nodes_unseen', 'records', 'records_unseen', 'static', 'moving', 'refs_held', 'age_max')},
-           'would_peak': [peak(f'would_c{c}') for c in range(4)], 'capped_peak': [peak(f'capped_c{c}') for c in range(4)], 'live_peak': [peak(f'live_c{c}') for c in range(4)],
+           'would_peak': [peak(f'would_c{c}') for c in range(CASCADES)], 'capped_peak': [peak(f'capped_c{c}') for c in range(CASCADES)],
+           'capped_total': [total(f'capped_c{c}') for c in range(CASCADES)],
+           'capped_frames': [sum(1 for r in frames if r[f'capped_c{c}']) for c in range(CASCADES)],
+           'live_peak': [peak(f'live_c{c}') for c in range(CASCADES)],
            'totals': {k: total(k) for k in ('excluded_class', 'unscoped', 'new_nodes', 'first_seen_in_range', 'promoted', 'superseded', 'lod_replaced', 'model_replaced', 'reclassified',
                                             'retired', 'journal_overflow', 'revalidated', 'mutation_delta', 'buffer_changed', 'buffer_gone', 'buffer_orphaned', 'box_exit', 'age',
                                             'evicted', 'sun_relatch', 'cam_jump', 'transit_survivors', 'refused', 'moving_dropped', 'abandoned', 'deferred',
