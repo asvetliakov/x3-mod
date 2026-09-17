@@ -147,14 +147,15 @@ def us_summary(rows):
 
 # ---- the projection chain -------------------------------------------------
 
-def shape_vertices(shape):
+def shape_vertices(shape, scale=1.0):
     """The fixture's object-space triangles (position (x, y, 0.5, 1)): the
     casters A and B, the large bounds object L (origin 256 units away under
     rows t = 204.8, p = .004; the triangle across the box) and the far object
-    F (origin 300 units away, vertices 225 units away: nothing on the map)."""
+    F (origin 300 units away, vertices 225 units away: nothing on the map).
+    `scale` scales x and y (the pool script's sized casters; z stays 0.5)."""
     tri = {'A': ((-1, 1), (3, 1), (-1, -3)), 'B': ((-.9, .9), (-.3, .9), (-.9, .3)),
            'L': ((-214, 8), (-214, -8), (-195, 0)), 'F': ((-60, 4), (-60, -4), (-56, 0))}[shape]
-    return [(x, y, .5) for x, y in tri]
+    return [(x * scale, y * scale, .5) for x, y in tri]
 
 
 def rows_matrix(t, p, zo):
@@ -233,7 +234,7 @@ def expected_map(draws, camera, basis, size):
     for d in draws:
         rows = rows_matrix(d['t'], d['p'], d['zo'])
         tri = []
-        for v in shape_vertices(d['shape']):
+        for v in shape_vertices(d['shape'], d.get('scale', 1.0)):
             # A retained caster (shadow-caster-retention.md) keeps the world place its rows
             # had under the camera of the frame it was recorded on (`camera` of the draw).
             nx, ny, depth = project_vertex(v, rows, d.get('camera', camera), basis)

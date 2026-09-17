@@ -525,9 +525,44 @@ void run_sun_apply_cascades(Fixture& f) {
         QueryPerformanceCounter(&t2);
         for (unsigned i = 0; i < rounds; ++i) { clip[3] = float(i & 1023u); split_masks += r::shadow_cascade_bounds_mask(s.camera, clip, split, lo, hi); }
         QueryPerformanceCounter(&t3);
-        std::printf("SUNAPPLY_BOUNDS_BENCH rounds=%u verdict_ns=%.1f mask_ns=%.1f cascades=4 verdicts=%lld masks=%lld split_mask_ns=%.1f split_masks=%lld\n", rounds,
+        // Caster pool control (shadow-cascade-extents.md, "Caster pool control"): the mask with the projected size
+        // beside it (the importance order's per-draw delta), the static classification per draw (world rows from the
+        // clip rows, then the ring's previous-sighting test on the box corners), and the scene-end importance selection
+        // over a full 4,096-record list (one nth_element per cascade over its cap: cascade 1 capped at 2,048 and 4,095).
+        LARGE_INTEGER t4, t5, t6, t7;
+        double sizes = 0; long long sized_masks = 0;
+        QueryPerformanceCounter(&t3);
+        for (unsigned i = 0; i < rounds; ++i) { clip[3] = float(i & 1023u); float size = 0; sized_masks += r::shadow_cascade_bounds_mask(s.camera, clip, bounds, lo, hi, &size); sizes += size; }
+        QueryPerformanceCounter(&t4);
+        static x3m::shadow_caster_class::Ring ring; ring.clear();
+        unsigned statics = 0;
+        for (unsigned i = 0; i < rounds; ++i) {
+            clip[3] = float(i & 1023u); double world[12];
+            if (!x3m::shadow_retention::world_rows(s.camera, clip, world)) continue;
+            statics += ring.test(x3m::shadow_caster_class::Ring::key_of(i & 1023u, 5, 0, 0, 3), world, lo, hi, .05, i >> 10) == x3m::shadow_caster_class::Verdict::Static;
+        }
+        QueryPerformanceCounter(&t5);
+        require(statics > rounds / 2, "sightings after a key's first are static under fixed rows (a set of two ways holding three keys evicts)");
+        std::vector<x3m::shadow_replay::Record> pool(x3m::shadow_replay::record_capacity_max);
+        std::vector<std::uint16_t> scratch(x3m::shadow_replay::record_capacity_max);
+        static x3m::shadow_replay::Frame frame; frame.attach_storage(pool.data(), unsigned(pool.size()));
+        constexpr unsigned select_rounds = 200;
+        double select_half_us = 0, select_one_us = 0;
+        for (unsigned round = 0; round < 2 * select_rounds; ++round) {
+            frame.reset();
+            for (unsigned i = 0; i < x3m::shadow_replay::record_capacity_max; ++i) { auto& rec = frame.record(3); frame.count_cascades(3); ++frame.counts.leased; rec.serial = 1000 + ((i * 2654435761u) & 0xFFFF); rec.size = float((i * 40503u) & 0xFFFF) / 65536.f; }
+            const unsigned caps[4] = {x3m::shadow_replay::record_capacity_max, round < select_rounds ? 2048u : 4095u, 16, 16};
+            QueryPerformanceCounter(&t6);
+            frame.select_cascades(caps, 2, scratch.data());
+            QueryPerformanceCounter(&t7);
+            (round < select_rounds ? select_half_us : select_one_us) += 1e6 * double(t7.QuadPart - t6.QuadPart) / double(frequency.QuadPart);
+            require(frame.counts.cascade[1] == caps[1] && frame.counts.cascade_capped[1] == x3m::shadow_replay::record_capacity_max - caps[1], "the selection keeps the cap");
+        }
+        std::printf("SUNAPPLY_BOUNDS_BENCH rounds=%u verdict_ns=%.1f mask_ns=%.1f cascades=4 verdicts=%lld masks=%lld split_mask_ns=%.1f split_masks=%lld sized_mask_ns=%.1f sized_masks=%lld size_sum=%.6g class_ns=%.1f select_4096_half_us=%.2f select_4096_one_us=%.2f\n", rounds,
                     1e9 * double(t1.QuadPart - t0.QuadPart) / double(frequency.QuadPart) / rounds, 1e9 * double(t2.QuadPart - t1.QuadPart) / double(frequency.QuadPart) / rounds, verdicts, masks,
-                    1e9 * double(t3.QuadPart - t2.QuadPart) / double(frequency.QuadPart) / rounds, split_masks);
+                    1e9 * double(t3.QuadPart - t2.QuadPart) / double(frequency.QuadPart) / rounds, split_masks,
+                    1e9 * double(t4.QuadPart - t3.QuadPart) / double(frequency.QuadPart) / rounds, sized_masks, sizes, 1e9 * double(t5.QuadPart - t4.QuadPart) / double(frequency.QuadPart) / rounds,
+                    select_half_us / select_rounds, select_one_us / select_rounds);
     }
     sun_apply_release_targets(s); map_copy.reset();
     replay.detach(); s.pass.detach();

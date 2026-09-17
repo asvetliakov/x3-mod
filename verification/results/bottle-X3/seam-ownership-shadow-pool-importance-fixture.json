@@ -1,0 +1,224 @@
+{
+ "case": "seam-ownership-shadow-pool-importance",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "a315adf507abed232439fc6c2ef14986c7ec7cee0437485f12051b600bb7eba0"
+ },
+ "script": "importance",
+ "store": 0,
+ "frames": 8,
+ "checks": 99,
+ "compared_frames": 8,
+ "absent_maps": 0,
+ "color_sha256": "38ba2225b57f011ddbd1271613df4c8d6e33a02e4a73663c4ba90065f012f888",
+ "per_frame": {
+  "0": {
+   "c": {
+    "count": 2,
+    "records": [
+     8,
+     4
+    ],
+    "capped": [
+     0,
+     4
+    ],
+    "dropped_min_size": [
+     0.0,
+     0.0
+    ],
+    "select_us": 174.7
+   },
+   "draws": [
+    8,
+    4
+   ]
+  },
+  "1": {
+   "c": {
+    "count": 2,
+    "records": [
+     8,
+     4
+    ],
+    "capped": [
+     0,
+     4
+    ],
+    "dropped_min_size": [
+     0.0,
+     1.615
+    ],
+    "select_us": 2.0
+   },
+   "draws": [
+    8,
+    4
+   ]
+  },
+  "2": {
+   "c": {
+    "count": 2,
+    "records": [
+     8,
+     4
+    ],
+    "capped": [
+     0,
+     4
+    ],
+    "dropped_min_size": [
+     0.0,
+     1.615
+    ],
+    "select_us": 0.9
+   },
+   "draws": [
+    8,
+    4
+   ]
+  },
+  "3": {
+   "c": {
+    "count": 2,
+    "records": [
+     8,
+     4
+    ],
+    "capped": [
+     0,
+     4
+    ],
+    "dropped_min_size": [
+     0.0,
+     1.615
+    ],
+    "select_us": 0.9
+   },
+   "draws": [
+    8,
+    4
+   ]
+  },
+  "4": {
+   "c": {
+    "count": 2,
+    "records": [
+     8,
+     4
+    ],
+    "capped": [
+     0,
+     4
+    ],
+    "dropped_min_size": [
+     0.0,
+     1.615
+    ],
+    "select_us": 1.0
+   },
+   "draws": [
+    8,
+    4
+   ]
+  },
+  "5": {
+   "c": {
+    "count": 2,
+    "records": [
+     8,
+     4
+    ],
+    "capped": [
+     0,
+     4
+    ],
+    "dropped_min_size": [
+     0.0,
+     1.615
+    ],
+    "select_us": 0.9
+   },
+   "draws": [
+    8,
+    4
+   ]
+  },
+  "6": {
+   "c": {
+    "count": 2,
+    "records": [
+     8,
+     4
+    ],
+    "capped": [
+     0,
+     4
+    ],
+    "dropped_min_size": [
+     0.0,
+     1.615
+    ],
+    "select_us": 1.2
+   },
+   "draws": [
+    8,
+    4
+   ]
+  },
+  "7": {
+   "c": {
+    "count": 2,
+    "records": [
+     8,
+     4
+    ],
+    "capped": [
+     0,
+     4
+    ],
+    "dropped_min_size": [
+     0.0,
+     1.615
+    ],
+    "select_us": 1.0
+   },
+   "draws": [
+    8,
+    4
+   ]
+  }
+ },
+ "map": {
+  "max_depth_error": 3.6239815189575975e-05,
+  "covered_texels": 11777,
+  "coverage_disagreements": 0,
+  "maps": 16
+ },
+ "us": {
+  "frames": 8,
+  "min": 50.2,
+  "median": 57.55,
+  "max": 1622.5
+ },
+ "dropped_min_size1": 1.615,
+ "select_us": {
+  "median": 1.0,
+  "max": 174.7
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-importance-20260917-223807-864843",
+ "trace_sha256": "5ef689566e78a5c2bfb3b62a63a1f54dd752578634dc296aa38809edc3a294d3",
+ "dll_sha256": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
+ "exe_sha256": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3"
+}

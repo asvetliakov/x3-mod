@@ -174,6 +174,23 @@ class CascadeFields(unittest.TestCase):
             with self.assertRaises(counter.MalformedLine, msg=bad[-80:]):
                 counter.parse_text(bad + '\n')
 
+    def test_pool_tails(self):
+        """Caster pool control (shadow-cascade-extents.md, "Caster pool control"): the static-only group,
+        the importance group, both, and their malformed forms."""
+        static = ' static_only_refused0=0 static_only_refused1=1 static_only_refused2=2 class_store=2 class_ring=3 class_miss=1'
+        importance = ' dropped_min_size0=0 dropped_min_size1=0.3125 dropped_min_size2=1.5e-05 select_us=12.5'
+        rows, _ = counter.parse_text(cascade_frame(1) + static + '\n' + cascade_frame(2) + importance + '\n' + cascade_frame(3) + static + importance + '\n')
+        self.assertEqual(rows[0]['cascades'], {'count': 3, 'records': [3, 5, 5], 'capped': [2, 0, 0], 'static_only_refused': [0, 1, 2], 'classified': {'class_store': 2, 'class_ring': 3, 'class_miss': 1}})
+        self.assertEqual(rows[1]['cascades'], {'count': 3, 'records': [3, 5, 5], 'capped': [2, 0, 0], 'dropped_min_size': [0.0, 0.3125, 1.5e-05], 'select_us': 12.5})
+        self.assertEqual(rows[2]['cascades']['static_only_refused'], [0, 1, 2]); self.assertEqual(rows[2]['cascades']['dropped_min_size'], [0.0, 0.3125, 1.5e-05])
+        summary = counter.summarize(rows, [])['cascades']
+        self.assertEqual((summary['static_only_refused_total'], summary['classified_total'], summary['dropped_min_size_max'], summary['select_us_max']),
+                         ([0, 2, 4], {'class_store': 4, 'class_ring': 6, 'class_miss': 2}, [0.0, 0.3125, 1.5e-05], 12.5))
+        for bad in (importance + static, static.replace(' class_miss=1', ''), static.replace('static_only_refused2=2 ', ''), importance.replace(' select_us=12.5', ''),
+                    importance.replace('0.3125', '-1'), importance.replace('0.3125', 'nan'), static.replace('class_ring=3', 'class_ring=x'), static + ' extra=1'):
+            with self.assertRaises(counter.MalformedLine, msg=bad):
+                counter.parse_text(cascade_frame(4) + bad + '\n')
+
     def test_identities(self):
         with self.assertRaises(counter.MalformedLine):  # a cascade with more records than were leased
             counter.parse_text(cascade_frame(4, c=(6, 5, 5)) + '\n')

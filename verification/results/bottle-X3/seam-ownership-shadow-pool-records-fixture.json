@@ -1,0 +1,180 @@
+{
+ "case": "seam-ownership-shadow-pool-records",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "a315adf507abed232439fc6c2ef14986c7ec7cee0437485f12051b600bb7eba0"
+ },
+ "script": "records",
+ "store": 0,
+ "frames": 6,
+ "checks": 53,
+ "compared_frames": 0,
+ "absent_maps": 0,
+ "color_sha256": "360b37ec35cef14362b1ae14c702b523900ff1a6311ab80df85959ce499e49cb",
+ "per_frame": {
+  "0": {
+   "c": {
+    "count": 2,
+    "records": [
+     1,
+     4095
+    ],
+    "capped": [
+     0,
+     1
+    ],
+    "dropped_min_size": [
+     0.0,
+     0.0
+    ],
+    "select_us": 227.8
+   },
+   "draws": [
+    1,
+    4095
+   ]
+  },
+  "1": {
+   "c": {
+    "count": 2,
+    "records": [
+     1,
+     4095
+    ],
+    "capped": [
+     0,
+     1
+    ],
+    "dropped_min_size": [
+     0.0,
+     0.02977
+    ],
+    "select_us": 24.9
+   },
+   "draws": [
+    1,
+    0
+   ]
+  },
+  "2": {
+   "c": {
+    "count": 2,
+    "records": [
+     1,
+     4095
+    ],
+    "capped": [
+     0,
+     1
+    ],
+    "dropped_min_size": [
+     0.0,
+     0.02977
+    ],
+    "select_us": 25.9
+   },
+   "draws": [
+    1,
+    4095
+   ]
+  },
+  "3": {
+   "c": {
+    "count": 2,
+    "records": [
+     1,
+     4095
+    ],
+    "capped": [
+     0,
+     1
+    ],
+    "dropped_min_size": [
+     0.0,
+     0.02977
+    ],
+    "select_us": 23.9
+   },
+   "draws": [
+    1,
+    0
+   ]
+  },
+  "4": {
+   "c": {
+    "count": 2,
+    "records": [
+     1,
+     4095
+    ],
+    "capped": [
+     0,
+     1
+    ],
+    "dropped_min_size": [
+     0.0,
+     0.02977
+    ],
+    "select_us": 24.2
+   },
+   "draws": [
+    1,
+    4095
+   ]
+  },
+  "5": {
+   "c": {
+    "count": 2,
+    "records": [
+     1,
+     4095
+    ],
+    "capped": [
+     0,
+     1
+    ],
+    "dropped_min_size": [
+     0.0,
+     0.02977
+    ],
+    "select_us": 23.8
+   },
+   "draws": [
+    1,
+    0
+   ]
+  }
+ },
+ "map": {
+  "max_depth_error": 0.0,
+  "covered_texels": 0,
+  "coverage_disagreements": 0,
+  "maps": 0
+ },
+ "us": {
+  "frames": 6,
+  "min": 42.9,
+  "median": 2726.8,
+  "max": 5749.7
+ },
+ "dropped_min_size1": 0.02977,
+ "select_us": {
+  "median": 24.9,
+  "max": 227.8
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-records-20260917-223837-900875",
+ "trace_sha256": "5638e338fb7c36fdd4961fd0fb5e24c249d997a17c1bf5a1a6965675de43eb79",
+ "dll_sha256": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
+ "exe_sha256": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3"
+}

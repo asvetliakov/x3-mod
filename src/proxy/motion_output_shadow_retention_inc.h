@@ -102,7 +102,7 @@ void MotionOutput::attach_shadow_retention() noexcept {
     if (ok) {
         retention_.reset(new (std::nothrow) ShadowRetention);
         if (retention_ && live) {
-            retention_->draw_capacity = shadow_replay::record_capacity + shadow_retention::draw_capacity;
+            retention_->draw_capacity = candidate_capacity_ + shadow_retention::draw_capacity; // the record list's capacity (attach_candidate_storage ran first)
             retention_->draws.reset(new (std::nothrow) renderer::ShadowReplayDraw[retention_->draw_capacity]);
             if (!retention_->draws) retention_.reset();
         }
@@ -298,7 +298,7 @@ void MotionOutput::retention_scene_end(bool sun_source_switched) noexcept {
     // exceed its storage: they are the ones dropped first.
     for (unsigned c = 0; c < depth_cascades_.count; ++c) {
         const unsigned live = candidates_.counts.cascade[c];
-        const unsigned cap = depth_cascades_.caps[c] < shadow_replay::record_capacity ? depth_cascades_.caps[c] : shadow_replay::record_capacity;
+        const unsigned cap = depth_cascades_.bound(c);
         in.room[c] = live < cap ? cap - live : 0;
     }
     store.end_scene(in, [](std::uintptr_t identity) noexcept {

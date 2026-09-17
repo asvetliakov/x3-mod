@@ -1,0 +1,416 @@
+{
+ "case": "seam-ownership-shadow-pool-static-live",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "a315adf507abed232439fc6c2ef14986c7ec7cee0437485f12051b600bb7eba0"
+ },
+ "script": "static",
+ "store": 2,
+ "frames": 14,
+ "checks": 181,
+ "compared_frames": 14,
+ "absent_maps": 1,
+ "color_sha256": "d5e47b25453cf050b11910f8d05a60c4a74707d7bb74551dd0e160c9aebac63b",
+ "per_frame": {
+  "0": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     0
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     3
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 0,
+     "class_miss": 3
+    }
+   },
+   "draws": [
+    3,
+    0
+   ]
+  },
+  "1": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    1
+   ]
+  },
+  "2": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    1
+   ]
+  },
+  "3": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    1
+   ]
+  },
+  "4": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    1
+   ]
+  },
+  "5": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    1
+   ]
+  },
+  "6": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    1
+   ]
+  },
+  "7": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    1
+   ]
+  },
+  "8": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    1
+   ]
+  },
+  "9": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "10": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "11": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "12": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "13": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 2,
+     "class_ring": 1,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  }
+ },
+ "map": {
+  "max_depth_error": 3.7744857035226786e-05,
+  "covered_texels": 615,
+  "coverage_disagreements": 0,
+  "maps": 27
+ },
+ "us": {
+  "frames": 14,
+  "min": 35.0,
+  "median": 46.05,
+  "max": 1481.0
+ },
+ "classified": {
+  "class_store": 26,
+  "class_ring": 13,
+  "class_miss": 3
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-live-20260917-223806-117022",
+ "trace_sha256": "52dc5c26aed517482a0c8831f9c1cc4c6b8c15e4eb5ba7cd19b0a0afffeb42ed",
+ "dll_sha256": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
+ "exe_sha256": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3",
+ "presented_identical_to": [
+  "seam-ownership-shadow-pool-static-off",
+  "seam-ownership-shadow-pool-static-census"
+ ]
+}

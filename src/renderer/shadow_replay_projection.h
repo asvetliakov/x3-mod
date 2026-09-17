@@ -228,7 +228,14 @@ constexpr float shadow_cascade_extent_defaults[shadow_cascade_max] = {250.f, 150
 constexpr float shadow_cascade_extent_min = 50.f, shadow_cascade_extent_max = 50000.f;
 constexpr unsigned shadow_cascade_size_default = 4096;
 constexpr unsigned shadow_cascade_cap_defaults[shadow_cascade_max] = {128, 512, 1024, 1024};
-constexpr unsigned shadow_cascade_cap_max = 1024; // = shadow_replay::record_capacity (one record list)
+constexpr unsigned shadow_cascade_cap_max = 4096; // = shadow_cascade_records_max: a cap beyond its cascade's records is bounded by them (ShadowCascadeSet::bound)
+// Caster pool control (docs/architecture/shadow-cascade-extents.md, "Caster pool control"):
+// per-cascade record capacity (X3M_SHADOW_CASCADE_RECORDS; the record list holds the largest),
+// the first static-only cascade (X3M_SHADOW_CASCADE_STATIC_FROM; shadow_cascade_max = none) and
+// the drop order at a cap (X3M_SHADOW_CASCADE_DROP_ORDER: submission, or importance = largest
+// projected size first). Every default reproduces the single 1,024-record list byte for byte.
+constexpr unsigned shadow_cascade_records_default = 1024, shadow_cascade_records_min = 1, shadow_cascade_records_max = 4096;
+constexpr unsigned shadow_cascade_static_from_none = shadow_cascade_max;
 constexpr unsigned shadow_cascade_budget_default = 640, shadow_cascade_budget_min = 1, shadow_cascade_budget_max = 4096; // draw issues per frame
 constexpr float shadow_cascade_depth_light_factor = 2.f, shadow_cascade_depth_behind_factor = 2.f;
 constexpr float shadow_cascade_select_margin = .95f; // a pixel belongs to the first cascade with max(|x|, |y|) <= margin (room for the 3x3 kernel)
@@ -238,7 +245,28 @@ struct ShadowCascadeSet {
     ShadowReplayCascade cascades[shadow_cascade_max]{};
     unsigned caps[shadow_cascade_max]{};
     unsigned budget = shadow_cascade_budget_default;
+    unsigned records[shadow_cascade_max] = {shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default};
+    unsigned static_from = shadow_cascade_static_from_none; // cascades i >= static_from admit static casters only
+    bool importance = false;                                // a cascade over its cap keeps the largest projected casters, not the first submitted
+    // The issues cascade i can carry: its cap bounded by its records (the storage the issue list was sized with).
+    unsigned bound(unsigned i) const noexcept { return i < shadow_cascade_max ? (caps[i] < records[i] ? caps[i] : records[i]) : 0u; }
+    // The record list's capacity: the largest per-cascade records (the boxes nest, so the union of the cascades' casters is about the outermost's).
+    unsigned record_capacity() const noexcept { unsigned m = 0; for (unsigned i = 0; i < count; ++i) if (records[i] > m) m = records[i]; return m; }
+    bool static_only(unsigned i) const noexcept { return i >= static_from; }
+    std::uint8_t static_only_mask() const noexcept { std::uint8_t m = 0; for (unsigned i = static_from; i < count; ++i) m |= std::uint8_t(1u << i); return m; }
 };
+// The pool policy on a built set: records (one per cascade, null = default), the first
+// static-only cascade (shadow_cascade_static_from_none = none; count or more means none too)
+// and the drop order. False on an out-of-range value; `out` is untouched then.
+inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, unsigned static_from, bool importance) noexcept {
+    if (!out.count) return false;
+    if (static_from > shadow_cascade_max) return false;
+    for (unsigned i = 0; records && i < out.count; ++i) if (records[i] < shadow_cascade_records_min || records[i] > shadow_cascade_records_max) return false;
+    for (unsigned i = 0; records && i < out.count; ++i) out.records[i] = records[i];
+    out.static_from = static_from < out.count ? static_from : shadow_cascade_static_from_none;
+    out.importance = importance;
+    return true;
+}
 // Builds the set from ascending half-extents; sizes/caps may be null (defaults).
 // `checked` false is the fixture seam (unit-size geometry below the production
 // minimum: no forward offset, depth behind exactly the factor). False on a
@@ -323,8 +351,23 @@ inline bool shadow_cascade_bounds(const CameraState& camera, const float sun[4],
 // Bit i set: the draw's object-space AABB (eight corners through its clip rows,
 // as shadow_replay_bounds_verdict) meets cascade i's box, whose light side is
 // open as there. -1: unknown.
+// The draw's projected size at the camera from the sun-space AABB the mask
+// test built: its diagonal over the distance of its centre from the camera
+// (the rows are relative to the camera position, so |centre| is that distance;
+// both are rigid quantities of the world-space box). Zero for a degenerate box.
+inline float shadow_cascade_projected_size(const float smin[3], const float smax[3]) noexcept {
+    float diag2 = 0.f, dist2 = 0.f;
+    for (unsigned a = 0; a < 3; ++a) { const float e = smax[a] - smin[a], c = .5f * (smax[a] + smin[a]); diag2 += e * e; dist2 += c * c; }
+    // SSE square roots (sqrt_sd): this runs on the draw path under the light call boundary (no x87).
+    const float dist = float(sqrt_sd(double(dist2 > 1.f ? dist2 : 1.f))); // within one unit of the eye the size is the diagonal itself
+    const float size = float(sqrt_sd(double(diag2))) / dist;
+    return std::isfinite(size) ? size : 0.f;
+}
+// `projected`: when non-null, receives shadow_cascade_projected_size of the
+// draw (cascade 0's rows when the suns differ), or 0 when the mask is unknown.
 inline int shadow_cascade_bounds_mask(const CameraState& camera, const float rows[16], const ShadowCascadeBounds& bounds,
-                                      const float lo[3], const float hi[3]) noexcept {
+                                      const float lo[3], const float hi[3], float* projected = nullptr) noexcept {
+    if (projected) *projected = 0.f;
     if (!camera.valid || !rows || !lo || !hi || !bounds.count || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return -1;
     float smin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f}, smax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
     const float ix = 1.f / camera.m00, iy = 1.f / camera.m11;
@@ -345,6 +388,7 @@ inline int shadow_cascade_bounds_mask(const CameraState& camera, const float row
                 if (s < cmin[a]) cmin[a] = s;
                 if (s > cmax[a]) cmax[a] = s;
             }
+            if (c == 0 && projected) *projected = shadow_cascade_projected_size(cmin, cmax);
             const float* l = bounds.lo[c]; const float* h = bounds.hi[c];
             if (cmax[0] >= l[0] && cmin[0] <= h[0] && cmax[1] >= l[1] && cmin[1] <= h[1] && cmin[2] <= h[2]) mask |= 1 << c; // the light side is open (pancaked)
         }
@@ -361,6 +405,7 @@ inline int shadow_cascade_bounds_mask(const CameraState& camera, const float row
             if (s > smax[a]) smax[a] = s;
         }
     }
+    if (projected) *projected = shadow_cascade_projected_size(smin, smax);
     int mask = 0;
     for (unsigned c = 0; c < bounds.count; ++c) {
         const float* l = bounds.lo[c]; const float* h = bounds.hi[c];

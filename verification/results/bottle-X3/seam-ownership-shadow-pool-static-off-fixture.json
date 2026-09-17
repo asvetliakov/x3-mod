@@ -1,0 +1,412 @@
+{
+ "case": "seam-ownership-shadow-pool-static-off",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "a315adf507abed232439fc6c2ef14986c7ec7cee0437485f12051b600bb7eba0"
+ },
+ "script": "static",
+ "store": 0,
+ "frames": 14,
+ "checks": 165,
+ "compared_frames": 14,
+ "absent_maps": 1,
+ "color_sha256": "d5e47b25453cf050b11910f8d05a60c4a74707d7bb74551dd0e160c9aebac63b",
+ "per_frame": {
+  "0": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     0
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     3
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 0,
+     "class_miss": 3
+    }
+   },
+   "draws": [
+    3,
+    0
+   ]
+  },
+  "1": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "2": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "3": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "4": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "5": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "6": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "7": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "8": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "9": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "10": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "11": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "12": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  },
+  "13": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 3,
+     "class_miss": 0
+    }
+   },
+   "draws": [
+    3,
+    2
+   ]
+  }
+ },
+ "map": {
+  "max_depth_error": 3.7744857035226786e-05,
+  "covered_texels": 615,
+  "coverage_disagreements": 0,
+  "maps": 27
+ },
+ "us": {
+  "frames": 14,
+  "min": 40.9,
+  "median": 49.0,
+  "max": 1662.6
+ },
+ "classified": {
+  "class_store": 0,
+  "class_ring": 39,
+  "class_miss": 3
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-off-20260917-223801-982030",
+ "trace_sha256": "4b8820365b0af1e4513a7470d8608f1b80260f749d298add679669ab8cf8a97e",
+ "dll_sha256": "c3a1f68af0834fb82baad4cc97b49e6f57025f5494411a79b0f7cb64142ef767",
+ "exe_sha256": "4664fc55003aad61669324e4fbe541fdde77aa33759eb53fa4d28cb90c18c6c3"
+}

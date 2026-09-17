@@ -15,7 +15,13 @@ With sun-shadow cascades on (docs/architecture/shadow-cascades.md, section 4) th
 frame line ends with one `c<i>=` per configured cascade (records carrying
 cascade i) followed by one `capped<i>=` per cascade (admitted draws whose
 cascade i was dropped by that cascade's cap); a log without them parses as
-before and its rows carry no `cascades` key.
+before and its rows carry no `cascades` key. Caster pool control
+(shadow-cascade-extents.md, "Caster pool control") adds, each only while its
+option is on: `static_only_refused<i>=` per cascade then `class_store=
+class_ring= class_miss=` (--shadow-cascade-static-from), and
+`dropped_min_size<i>=` (a float) per cascade then `select_us=`
+(--shadow-cascade-drop-order importance); parsed into the `cascades` dict as
+`static_only_refused`, `classified`, `dropped_min_size` and `select_us`.
 
 A malformed line (missing or non-numeric field, unknown extra field) raises
 MalformedLine; the caller decides whether that fails the run. Sum identities
@@ -44,24 +50,57 @@ class MalformedLine(ValueError):
 CASCADE_MAX = 4
 
 
+CLASS_FIELDS = ('class_store', 'class_ring', 'class_miss')
+
+
 def _cascade_suffix(line, pairs):
     """The optional cascade tail of a frame line: c0..c<n-1> then
-    capped0..capped<n-1>, 1 <= n <= 4, nothing else."""
+    capped0..capped<n-1>, 1 <= n <= 4; then optionally the static-only group
+    (static_only_refused0..n-1, class_store, class_ring, class_miss) and
+    optionally the importance group (dropped_min_size0..n-1, select_us);
+    nothing else."""
     if not pairs:
         return None
-    if len(pairs) % 2 or len(pairs) // 2 > CASCADE_MAX:
+    keys = [k for k, _ in pairs]
+    count = next((i for i in range(1, CASCADE_MAX + 1) if keys[:2 * i] == [f'c{j}' for j in range(i)] + [f'capped{j}' for j in range(i)]), None)
+    if count is None or keys[:count] != [f'c{j}' for j in range(count)]:
         raise MalformedLine(line.rstrip('\n'))
-    count = len(pairs) // 2
-    expected = [f'c{i}' for i in range(count)] + [f'capped{i}' for i in range(count)]
-    if [k for k, _ in pairs] != expected:
+
+    def integers(values):
+        try:
+            values = [int(v) for v in values]
+        except ValueError as error:
+            raise MalformedLine(line.rstrip('\n')) from error
+        if any(v < 0 for v in values):
+            raise MalformedLine(line.rstrip('\n'))
+        return values
+    values = integers(v for _, v in pairs[:2 * count])
+    row = {'count': count, 'records': values[:count], 'capped': values[count:]}
+    rest = pairs[2 * count:]
+    static_keys = [f'static_only_refused{j}' for j in range(count)] + list(CLASS_FIELDS)
+    if rest and rest[0][0] == static_keys[0]:
+        if [k for k, _ in rest[:len(static_keys)]] != static_keys:
+            raise MalformedLine(line.rstrip('\n'))
+        values = integers(v for _, v in rest[:len(static_keys)])
+        row['static_only_refused'] = values[:count]
+        row['classified'] = dict(zip(CLASS_FIELDS, values[count:]))
+        rest = rest[len(static_keys):]
+    size_keys = [f'dropped_min_size{j}' for j in range(count)] + ['select_us']
+    if rest and rest[0][0] == size_keys[0]:
+        if [k for k, _ in rest[:len(size_keys)]] != size_keys:
+            raise MalformedLine(line.rstrip('\n'))
+        try:
+            floats = [float(v) for _, v in rest[:len(size_keys)]]
+        except ValueError as error:
+            raise MalformedLine(line.rstrip('\n')) from error
+        if any(v < 0 or v != v for v in floats):
+            raise MalformedLine(line.rstrip('\n'))
+        row['dropped_min_size'] = floats[:count]
+        row['select_us'] = floats[count]
+        rest = rest[len(size_keys):]
+    if rest:
         raise MalformedLine(line.rstrip('\n'))
-    try:
-        values = [int(v) for _, v in pairs]
-    except ValueError as error:
-        raise MalformedLine(line.rstrip('\n')) from error
-    if any(v < 0 for v in values):
-        raise MalformedLine(line.rstrip('\n'))
-    return {'count': count, 'records': values[:count], 'capped': values[count:]}
+    return row
 
 
 def _parse(line, prefix, names, suffix=False):
@@ -217,6 +256,15 @@ def summarize(frames, witnesses):
                                'records_max': [max(column('records', i)) for i in range(count)],
                                'capped_total': [sum(column('capped', i)) for i in range(count)],
                                'capped_frames': [sum(1 for v in column('capped', i) if v) for i in range(count)]}
+        static_rows = [c for c in cascade_rows if 'static_only_refused' in c]
+        if static_rows:
+            summary['cascades']['static_only_refused_total'] = [sum(c['static_only_refused'][i] for c in static_rows if i < c['count']) for i in range(count)]
+            summary['cascades']['classified_total'] = {k: sum(c['classified'][k] for c in static_rows) for k in CLASS_FIELDS}
+        size_rows = [c for c in cascade_rows if 'dropped_min_size' in c]
+        if size_rows:
+            summary['cascades']['dropped_min_size_max'] = [max((c['dropped_min_size'][i] for c in size_rows if i < c['count']), default=0.0) for i in range(count)]
+            summary['cascades']['select_us_p50'] = percentile([c['select_us'] for c in size_rows], 0.5)
+            summary['cascades']['select_us_max'] = max(c['select_us'] for c in size_rows)
     summary['predicates'] = {
         'managed_boundary': (summary['slice0_p50'] is not None and summary['slice0_p50'] >= 5
                              and summary['managed_equals_slice0_share'] >= 0.95),

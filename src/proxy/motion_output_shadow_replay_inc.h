@@ -14,7 +14,7 @@
 // record whose rows window is unknown or whose declaration cannot be read is
 // left unleased (counted skipped_state at the scene end). LastError is kept.
 void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index) noexcept {
-    if (index >= shadow_replay::record_capacity) return;
+    if (index >= candidate_capacity_) return;
     auto& g = depth_geometry_[index];
     g = {};
     const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register : ~0u;
@@ -50,7 +50,8 @@ void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index)
 // end, before Reset and at teardown). The caller holds the capture mutex, so a
 // final Release reaching the hooked buffer paths reenters safely.
 void MotionOutput::release_depth_leases() noexcept {
-    for (auto& g : depth_geometry_) {
+    for (unsigned i = 0; i < candidate_capacity_; ++i) {
+        auto& g = depth_geometry_[i];
         if (!g.leased && !g.declaration && !g.vertex_buffer && !g.index_buffer) continue;
         release(g.declaration); release(g.vertex_buffer); release(g.index_buffer);
         g.leased = false;
