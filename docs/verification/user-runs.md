@@ -56,55 +56,64 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 35 | D3DX builtin vs native (no new DLL) | 1 | Completed as run103: visuals unchanged; identity line could not prove the builtin loaded; BeginPass 8.90 vs 6.64 µs/pass confounded by build; repeat as run 36 on one build |
 | 36 | D3DX builtin vs native on one build (A1/A2); first sun shadows on original shading (B) | 0 | A1 run104 / A2 run105: builtin D3DX confirmed loaded (`wine_builtin=1`) and costs +2.1 µs per pass (BeginPass 8.71 vs 6.58 µs); native stays, experiment closed. B run106: no visible shadow; apply path proven correct offline (backlit view, only the own ship cast because casters were chosen by origin); fixed for run 37 |
 | 37 | FEX memory-order relaxation (A1), wined3d command stream off (A2), station shadows side-lit with geometry casters (B), comm dialog with the H.264 avatar file and the blit witness (C) | 0 | A1 run107: FEX TSO off no change (within 1 %); A2 run108: CSMT off doubles the draw call (17.6 vs 8.8 µs), +46 % frame; both closed. B run109: first visible shadows (hull from station, ship on station when close); station-on-station missing because the 250-unit box around the camera admits only nearby casters (casters median 8 / max 49 of 93–930 routed, cap never binding); extent/depth/cap/bias options for run 38. C run110: comm dialog froze after a successful H.264 graph build with zero blits (witness), same stage as the MPEG-1 attempt; codec-independent Wine amstream/DirectDraw block; video parked; original file restored |
-| 38 | Wide single shadow map at 4096 (A), own-ship near map baseline (A2), residual phases at the busy view (B), hull emitters bracket (C) | 4 | Queued: run38 candidate `5b4be52e…` from `e575136` installed 2026-09-17 |
+| 38 | Wide single shadow map at 4096 (A), own-ship near map baseline (A2), residual phases at the busy view (B), hull emitters bracket (C) | 0 | A run111 / A2 run112: shadows popped with camera pitch, wrong direction, own-ship flicker — root cause the sun read from PS c4 regardless of program (42 % of frames no sun ⇒ 250-unit fallback, 57 % a bogus (1,0,0) sun, 789 flips); plus extent-cache thrash, near-plane clipping, half-texel lookup; all fixed on main. B run113: one stamp only, `prepare` 6.36 µs/draw bundled; the technique lookup measured offline at 0.007 ms/frame, trampoline dropped. C run114: 2 of 12 programs fired; 71 % refusals were opaque routed hull draws (never ONE/ONE), F6 shared with the effects gain; own toggle and gain option on main |
+| 39 | Cascades with positional sun and caster census (A), 50k far cascade (A2), retained casters live (B), hull emitters at gain 4 (C) | 4 | Queued: run39 candidate `cc966fb2…` from `7492137` installed 2026-09-18 |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
 
-## 38. Wide shadow map, own-ship baseline, residual phases — queued (run38 candidate)
+## 39. Cascades, positional sun, caster retention census, hull emitters — queued (run39 candidate)
 
-Installed: DLL `5b4be52e…` from `e575136` (see [status](../status.md)). Original hull shading throughout. The cascade
-design ([note](../architecture/shadow-cascades.md)) is calibrated by A and A2.
+Installed: run39 candidate `cc966fb2…` from `7492137` (see [status](../status.md)). Original hull
+shading throughout. Design: [cascade extents](../architecture/shadow-cascade-extents.md)
+set R, [caster retention](../architecture/shadow-caster-retention.md) stage 1 census.
+Hotkeys: **Ctrl+Shift+F12** toggles the shadows (replay + apply) at rest for the fill-cost
+A/B; **Ctrl+Shift+F4** toggles the hull emitters; F6 the engine/effect gains; F8 capture.
 
-**Session A** (one wide map: 1,500-unit half-extent, 3,000 along the sun,
-4096 texels, cap 512):
+Common prefix for every session:
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates --shadow-replay-extent 1500 --shadow-replay-depth-half 3000 --shadow-replay-size 4096 --shadow-replay-cap 512 --sun-shadow-bias-clamp-texels 4 --frame-phases
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases
 ```
-Go to the run109 spot above the station deck with the sun to one side and
-look for station parts shadowing each other across the deck (tower, boxes,
-antennae). Press F8 twice: one wide station view, one close to a shadow edge.
-Report: station-on-station shadows yes/no, how far across the station they
-reach, edge sharpness, acne or striping, light leaking at silhouettes,
-flicker while flying, and the frame-rate feel. The log carries the caster
-counts, the replay cost at this size and the resolved bias.
 
-**Session A2** (the near-map baseline for the own ship, same spot, one
-minute): the run37 configuration at 4096 texels:
+**Session A** (set R, census only — retained casters are counted, not drawn; 5–8 minutes):
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates --shadow-replay-size 4096 --frame-phases
+<prefix> --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,25000 --shadow-cascade-sizes 4096,4096,4096,2048 --shadow-sun-poll on --shadow-retention-census
 ```
-One F8 close to your own hull with the sun to the side; say whether the
-ship's self-shadow is sharper than in run 37 B.
+1. Same station as run109/run111, sun to one side. Look at: your ship's shadow on the deck,
+   station parts shadowing each other across the whole station, the far edge of the shadows,
+   and whether anything pops when you pitch or turn the camera (the run 38 defect).
+2. At rest above the deck, press **Ctrl+Shift+F12** off for ~10 s, on for ~10 s, twice
+   (the fill-cost A/B; note the frame-rate feel each time).
+3. F8 twice: one wide station view, one close to a shadow edge on your hull.
+4. Fly 1–2 km away and look back at the station; then one **gate jump** and one **save load**
+   (the retention census needs both transitions), then quit.
+Report: correct direction and placement yes/no, popping yes/no, self-shadow flicker yes/no,
+how far shadows reach, seams between cascades (a visible change in softness), the distant
+flicker every ~30 s seen in run 38 A (still there?), and the frame-rate feel with the toggle.
 
-**Session B** (residual attribution at the busy view, two minutes busy, one
-empty, quit):
+**Session A2** (same spot, 2–3 minutes, the 10 km far cascade):
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases --residual-phases
+<prefix> --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,50000 --shadow-cascade-sizes 4096,4096,4096,4096 --shadow-sun-poll on --shadow-retention-census
 ```
-Nothing to look at; the log splits the engine's between-pass time into its
-own preparation and the D3DX technique lookup per draw, and the time outside
-submission into particles and the rest.
+Look at distant stations (5–10 km) for shadows between their parts, and at the frame-rate
+feel; one Ctrl+Shift+F12 A/B; one F8 on a distant station. The log's `c3=` / `capped3=`
+counters decide 5 km vs 10 km.
 
-**Session C** (hull emitters bracket, any station with position lights and
-signs, one minute):
+**Session B** (retained casters drawn; 2–3 minutes, only after A ran):
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --hull-emitters
+<prefix> --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,25000 --shadow-cascade-sizes 4096,4096,4096,2048 --shadow-sun-poll on --shadow-caster-retention
 ```
-Press F6 to toggle the emitter gains (engines, effects and now hull lights
-together) and say whether the station's position lights, warning and
-construction signs read as lights at gain 2, and whether anything else on
-the hull brightened that should not have.
+At the station, turn the camera so a shadow-casting part leaves the screen: its shadow
+must stay. Report any shadow that lingers after its caster is destroyed or moves, or any
+crash/hang (this session holds references to game buffers across frames).
+
+**Session C** (hull emitters, any station with position lights and signs, 1–2 minutes):
+```sh
+<prefix> --hull-emitters --hull-emission-gain 4
+```
+Press **Ctrl+Shift+F4** to toggle only the hull emitters; one F8 on the station. Report
+whether position lights and signs read as lights at gain 4 and whether anything else on the
+hull brightened. The F8 lines name the models that carry these emitters.
 

@@ -1326,3 +1326,49 @@ Load, open a comm dialog with any ship or station once, note whether the
 avatar video plays (moving picture, black box, or freeze), quit or force-quit.
 The log's `media_video_blit` lines say whether decoded frames reached
 Direct3D before any freeze. Restore the original file afterwards.
+
+## 38. Wide shadow map, own-ship baseline, residual phases — completed as run111–114
+
+Installed: DLL `5b4be52e…` from `e575136` (see [status](../status.md)). Original hull shading throughout. The cascade
+design ([note](../architecture/shadow-cascades.md)) is calibrated by A and A2.
+
+**Session A** (one wide map: 1,500-unit half-extent, 3,000 along the sun,
+4096 texels, cap 512):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates --shadow-replay-extent 1500 --shadow-replay-depth-half 3000 --shadow-replay-size 4096 --shadow-replay-cap 512 --sun-shadow-bias-clamp-texels 4 --frame-phases
+```
+Go to the run109 spot above the station deck with the sun to one side and
+look for station parts shadowing each other across the deck (tower, boxes,
+antennae). Press F8 twice: one wide station view, one close to a shadow edge.
+Report: station-on-station shadows yes/no, how far across the station they
+reach, edge sharpness, acne or striping, light leaking at silhouettes,
+flicker while flying, and the frame-rate feel. The log carries the caster
+counts, the replay cost at this size and the resolved bias.
+
+**Session A2** (the near-map baseline for the own ship, same spot, one
+minute): the run37 configuration at 4096 texels:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates --shadow-replay-size 4096 --frame-phases
+```
+One F8 close to your own hull with the sun to the side; say whether the
+ship's self-shadow is sharper than in run 37 B.
+
+**Session B** (residual attribution at the busy view, two minutes busy, one
+empty, quit):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --pass-phases --residual-phases
+```
+Nothing to look at; the log splits the engine's between-pass time into its
+own preparation and the D3DX technique lookup per draw, and the time outside
+submission into particles and the rest.
+
+**Session C** (hull emitters bracket, any station with position lights and
+signs, one minute):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --hull-emitters
+```
+Press F6 to toggle the emitter gains (engines, effects and now hull lights
+together) and say whether the station's position lights, warning and
+construction signs read as lights at gain 2, and whether anything else on
+the hull brightened that should not have.
+

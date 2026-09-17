@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-17 (run38 candidate installed; run 38 queued). This is the short current handoff; the current
+Updated 2026-09-18 (run39 candidate installed; run 39 queued). This is the short current handoff; the current
 session handoff is [handoff-2026-09-18.md](handoff-2026-09-18.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -13,33 +13,64 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`5b4be52e890fc25b99c8c69fe057b7f23aed4f81e3a167d010190f770a5f3f40`
-(17,302,194 bytes), built once on Opus from clean committed main `e575136`
-(2026-09-17; marker `X3M_SOURCE_COMMIT=e575136…`, no `-dirty`). The
-[build record](../verification/results/run38-candidate-build.json) binds the
-clean build (13 s, zero warnings), the no-x87 audit (77 roots, 509 reachable,
-0 violations), 17 exports, the five site verifiers (frame, pass, loop,
-residual, media cue), the stamp CPU fixture (8,839 checks, 0 failures), the
-state-hook benchmark ([record](../verification/results/bottle-X3/state-hook-benchmark-run38.json):
-SetSamplerState 10.5 ns, draw pair 1,012 ns, unchanged), the ownership
-runner (370/563, 0 failures), ten motion-output cases (parity equal to the
-committed record; the wide replay/apply cases pass), the sun-lane live cases
-`shadow_apply`/`original_lane`/`hull_emission` equal to the 20/20 record,
-the hull-emission GPU slice (error 0), and the four run 38 dry-runs. The
-[install record](../verification/results/run38-candidate-install.json) binds
-the installed bytes, unchanged EXE/bottle hashes and the rollback; the
-previous run37 DLL `61725145…` and manifest are in
-`/tmp/x3-candidate-Ek2A0u/rollback`. No game launched.
+`cc966fb2fe6e5609a4c29fc91aa3192a0db4d1c67defe2e8d07562b856ca0ea6`
+(17,851,070 bytes), built once on Opus from clean committed main `7492137`
+(2026-09-18; marker `X3M_SOURCE_COMMIT=7492137…`, no `-dirty`). The
+[build record](../verification/results/run39-candidate-build.json) binds the
+clean build (15 s, zero warnings), the no-x87 audit (77 roots, 526 reachable,
+0 violations), 17 exports, the five site verifiers, 16 shadow motion-output
+cases (cascades, casters, four poll cases, sun-programs, on/off, wide,
+far-refused, toggle, three retention cases and live-poll; 0 behavioural diffs
+against the committed records), the comparison-controls fixture (12,231
+checks), the sun-lane live set 21/21, the state-hook benchmark
+(SetSamplerState +0.3 ns, draw pair +681 ns over native; run38 +0.0/+629),
+the four run 39 dry-runs, and by reference (inputs unchanged since `c0c76b1`)
+the stamp CPU fixture (8,839/0), ownership runner (370/563/0), hull-emission
+slice (gains 2/4, error 0) and object-lifetime fixture (674/0, 12 journal
+cases). The [install record](../verification/results/run39-candidate-install.json)
+binds the installed bytes, unchanged EXE/bottle hashes and the rollback; the
+previous run38 DLL `5b4be52e…` and its install record are in
+`/tmp/x3-candidate-pnXpbE/rollback`. No game launched.
 
-This build adds, on top of run37's: shadow map coverage and bias options
-(`--shadow-replay-extent`, `--shadow-replay-depth-half`,
-`--shadow-replay-cap`, `--sun-shadow-bias-units`,
-`--sun-shadow-bias-clamp-texels`; defaults byte-identical), the
-`--residual-phases` stamp group (arena 24,576 B), `--hull-emitters` (emitter
-plan phase 3, whole-output gain on the twelve ONE/ONE hull originals),
-`proxy_environment` identity line, the AO jitter term. Default path
-unchanged; appearance defaults unchanged; no shadows unless
-`--sun-shadow-apply`.
+This build adds, on top of run38's: the run 38 shadow fixes (sun register
+resolved per program from its constant table with a latched, validated sun;
+collision-tolerant extent cache; pancaking; half-texel lookup; double
+snapped centre), N ≤ 4 sun-shadow cascades (`--shadow-cascades`,
+`--shadow-cascade-sizes`, caps, budget, far-cascade alternate frames and
+fade), the positional sun (`--shadow-sun-poll`, engine light position read
+hook-free and cross-checked per draw, per-cascade anchored bases), caster
+retention stages 1–2 (`--shadow-retention-census`, `--shadow-caster-retention`;
+retirement journal in the lifetime observer), the at-rest shadow toggle
+**Ctrl+Shift+F12**, hull emitters with their own toggle **Ctrl+Shift+F4** and
+`--hull-emission-gain`. Default path unchanged; no shadows unless
+`--sun-shadow-apply`. Design: [cascade extents](architecture/shadow-cascade-extents.md)
+(set R ratified), [caster retention](architecture/shadow-caster-retention.md).
+
+## Session 2026-09-18: run 38 read, shadow system rebuilt
+
+- **Run 38 root cause** (run111/112): the sun was read from PS register `c4`
+  whatever program was bound; `c4` is `LightDir_Dir0` in 16 of 38 programs.
+  42 % of frames had no valid sun (silent 250-unit fallback), 57 % a bogus
+  (1,0,0) sun 107° off, 789 flips following the camera: the popping,
+  wrong-direction and sliding shadows. Secondary: extent-cache thrash,
+  near-plane clipping, half-texel lookup, engine view culling of off-screen
+  casters. All fixed on main; caster counts from run 38 are void for
+  calibration ([ledger](verification/directional-shadows.md), "Run 38 A").
+- **Sun semantics** ([RE](reverse-engineering/camera-and-lights.md)): world
+  space, object→light, positions are engine integers × 0.01, the sun ≈1.57e7
+  units away; the engine's light array is polled hook-free per frame.
+- **Run 38 B**: one stamp only, `prepare` 6.36 µs/draw bundled; the technique
+  lookup measured offline at 0.007 ms/frame ⇒ trampoline dropped
+  ([ledger](verification/sampling-profiler.md)).
+- **Run 38 C**: 2 of 12 hull programs fired; 71 % of refusals were opaque
+  routed draws that are never ONE/ONE; F6 was shared ⇒ own toggle and gain.
+- Object-lifetime fixture: the ten FX-state failures were the environment
+  (FXRSTOR does not reload x87 under FEX); control added, 0 failures.
+- In flight for the next candidate: far-cascade caster policy (static-only
+  cascades, importance drop order, per-cascade records), own-ship-adaptive
+  C0 with ratio guard, toggle follow-ups, retention issue-check already
+  batched (513 → 44.5 µs). Open: distant flicker every ~30 s (run 38 A);
+  recheck in run 39.
 
 ## Session 2026-09-17 (latest): runs 36–37 complete, first shadows, experiments closed
 

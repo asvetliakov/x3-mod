@@ -1,0 +1,638 @@
+{
+  "recorded_utc": "2026-09-17T13:06:21Z",
+  "run": 39,
+  "candidate": {
+    "path": "/tmp/x3-candidate-pnXpbE/candidate/d3d9.dll",
+    "directory": "/tmp/x3-candidate-pnXpbE",
+    "subdirectories": [
+      "candidate",
+      "rollback (empty; the installed DLL is copied here by the installing owner)"
+    ],
+    "sha256": "cc966fb2fe6e5609a4c29fc91aa3192a0db4d1c67defe2e8d07562b856ca0ea6",
+    "bytes": 17851070,
+    "retained_first_build": true,
+    "candidate_directory_file_count": 1,
+    "hash_rechecked_after_fixtures": true,
+    "hash_source_after_fixtures": "state-hook-benchmark-run39.json dll.sha256 equals the recorded sha256; shasum rerun after all checks agrees",
+    "supersedes": "the earlier c0c76b1 candidate 92829e3c\u2026, /tmp/x3-candidate-LGSzoO (kept on disk, not the install candidate)"
+  },
+  "source": {
+    "worktree": "/Users/asvetl/x3-mod",
+    "commit": "7492137f6e5b0b956eac9ff4734568b43831390e",
+    "commit_short": "7492137",
+    "detached": false,
+    "status_before_configure": "clean apart from untracked verification/results/bottle-X3/*-wine.log, state-hook-benchmark-run39.json and this record; no src/, tools/ or verification/probe/ modification",
+    "dirty_diff": "none",
+    "status_after_build": "clean apart from those untracked files; motion-output-partial.json, -build.log and the four seam-ownership-shadow-retention-*-fixture.json restored with git checkout after reading"
+  },
+  "source_commit_marker": {
+    "command": "strings /tmp/x3-candidate-pnXpbE/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+    "value": "X3M_SOURCE_COMMIT=7492137f6e5b0b956eac9ff4734568b43831390e",
+    "dirty_suffix": false,
+    "matches_worktree_head": true
+  },
+  "changes_since_run38": [
+    "sun-shadow cascades (--shadow-cascades/-sizes/-caps/-budget) with per-sector validated sun, extent cache, pancaked replay and half-texel lookup",
+    "positional sun: engine light-position poll with per-draw cross-check, per-cascade anchored bases, engine Dir-slot selection, hysteretic source (--shadow-sun-poll)",
+    "caster retention stages 1-2 default off: --shadow-retention-census, --shadow-caster-retention (+-age/-eps/--shadow-retention-timing); node-keyed store with own VB/IB/declaration references, owed resource table with release queue, journal consumer, per-cascade masks, idle watchdog",
+    "object-lifetime retirement journal (2048-entry ring, FlushAll on table clears, consumer register/drain)",
+    "hull emitters blend-first admission with refused_routed witness, independent Ctrl+Shift+F4 toggle, --hull-emission-gain requires --hdr only, hull_emission_draw F8 lines",
+    "114 files, 23,585 insertions / 3,056 deletions since e575136; 27 files under src/",
+    "retention issue-time buffer check batched per buffer at scene end (shadow_retention_core.h, motion_output_shadow_retention_inc.h)",
+    "Ctrl+Shift+F12 sun-shadow at-rest toggle: scene-end gate for replay and apply, retained bases voided on both edges, sun_shadow_toggle line and shadow_toggle= field (comparison_controls.h, capture.cpp, motion_output.cpp, motion_output_shadow_replay_inc.h, manage.py)"
+  ],
+  "changes_since_c0c76b1": {
+    "command": "git diff --stat c0c76b1 7492137",
+    "files": 27,
+    "insertions": 1506,
+    "deletions": 7267,
+    "source_files": [
+      "src/proxy/capture.cpp",
+      "src/proxy/comparison_controls.h",
+      "src/proxy/motion_output.cpp",
+      "src/proxy/motion_output.h",
+      "src/proxy/motion_output_shadow_replay_inc.h",
+      "src/proxy/motion_output_shadow_retention_inc.h",
+      "src/proxy/shadow_retention_core.h",
+      "tools/analysis/shadow_retention.py",
+      "tools/manage.py"
+    ]
+  },
+  "toolchain": {
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "cmake": "4.4.3",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "target": "32-bit Windows PE",
+    "native_windows_execution": "not performed"
+  },
+  "configure": {
+    "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build/candidate-run39",
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-pnXpbE/configure.log"
+  },
+  "build": {
+    "command": "cmake --build build/candidate-run39 -j4",
+    "invocations": 1,
+    "elapsed_seconds": 15,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-pnXpbE/build.log",
+    "note": "build/candidate-run39 removed before configure; the shared ./build tree was not otherwise modified"
+  },
+  "host_audits": {
+    "no_x87": {
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-pnXpbE/candidate/d3d9.dll",
+      "result": "PASS",
+      "roots": 77,
+      "reachable_functions": 526,
+      "violations": 0,
+      "c0c76b1_roots": 77,
+      "c0c76b1_reachable_functions": 526,
+      "run38_reachable_functions": 509,
+      "delta_note": "unchanged against the c0c76b1 candidate (77 roots, 526 reachable); +17 reachable against run38",
+      "report": "/tmp/x3-candidate-pnXpbE/no-x87.txt"
+    },
+    "pe_exports": {
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-pnXpbE/candidate/d3d9.dll",
+      "result": "PASS",
+      "machine": "0x014c",
+      "count": 17,
+      "names": 17,
+      "matches_run38_count": true,
+      "report": "/tmp/x3-candidate-pnXpbE/pe-exports.json"
+    },
+    "phase_site_verifiers": {
+      "commands": [
+        "python3 verification/probe/verify_frame_phase_sites.py",
+        "python3 verification/probe/verify_pass_phase_sites.py",
+        "python3 verification/probe/verify_loop_phase_sites.py",
+        "python3 verification/probe/verify_residual_phase_sites.py",
+        "python3 verification/probe/verify_media_cue_site.py"
+      ],
+      "result": "PASS (all five, exit 0, read-only against the bottle EXE)",
+      "boolean_gates": {
+        "frame": 11,
+        "pass": 16,
+        "loop": 20,
+        "residual": 18,
+        "media_cue": 19,
+        "false": 0
+      },
+      "exe_identity": "true in all five reports",
+      "source_specs": "true in all five; source_present true in the pass, loop, residual and media-cue reports",
+      "reports": "/tmp/x3-candidate-pnXpbE/verify-*.json"
+    }
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "scoped_results": {
+    "motion_output_source_parity": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py <16 shadow cases>",
+      "cases_run": 16,
+      "result": "PASS (runner status PARTIAL by design: a selected run does no cross-case block; all 16 cases exit 0)",
+      "exit": 0,
+      "elapsed_seconds": 94,
+      "lock_wait_seconds": 0,
+      "candidate_bytes": "not exercised: the runner built its own fixture DLLs from source; this is a source-parity check of the committed tree",
+      "seam_dll_sha256": "f6276d88113961aaddc56000467808406f13ea16ce29000b423ee52cf3e5c6f2",
+      "fixture_exe_sha256": "a1b4a2b2c0b2eebafa45629caf6bf5c27844a3673e566647c1054b3590a9c0c6",
+      "cases": {
+        "seam-ownership-shadow-replay-on": {
+          "checks": 203,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 35.8,
+            "median": 40.2,
+            "max": 1439.3,
+            "per_draw_median": 20.1
+          }
+        },
+        "seam-ownership-shadow-replay-off": {
+          "checks": 99,
+          "depth": false,
+          "casters": 2,
+          "frames": 8
+        },
+        "seam-ownership-shadow-replay-sun-programs": {
+          "checks": 205,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 40.7,
+            "median": 63.5,
+            "max": 1557.7,
+            "per_draw_median": 31.75
+          }
+        },
+        "seam-ownership-shadow-replay-cascades": {
+          "checks": 278,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 37.0,
+            "median": 48.2,
+            "max": 1543.9,
+            "per_issue_median": 8.033333333333333,
+            "issues_per_frame": [
+              6,
+              2,
+              2,
+              6,
+              6
+            ]
+          }
+        },
+        "seam-ownership-shadow-replay-cascades-casters-20": {
+          "checks": 278,
+          "depth": true,
+          "casters": 20,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 106.9,
+            "median": 109.7,
+            "max": 1558.4,
+            "per_issue_median": 2.5511627906976746,
+            "issues_per_frame": [
+              42,
+              43,
+              43,
+              43,
+              43
+            ]
+          }
+        },
+        "seam-ownership-shadow-replay-cascades-toggle": {
+          "checks": 277,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 3,
+            "min": 45.2,
+            "median": 130.6,
+            "max": 1574.1,
+            "per_issue_median": 21.766666666666666,
+            "issues_per_frame": [
+              6,
+              2,
+              6
+            ]
+          }
+        },
+        "seam-ownership-shadow-replay-cascades-poll-agree": {
+          "checks": 281,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 42.5,
+            "median": 49.5,
+            "max": 1654.0,
+            "per_issue_median": 8.25,
+            "issues_per_frame": [
+              6,
+              2,
+              2,
+              6,
+              6
+            ]
+          }
+        },
+        "seam-ownership-shadow-replay-cascades-poll-null": {
+          "checks": 281,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 63.7,
+            "median": 98.2,
+            "max": 2757.1,
+            "per_issue_median": 16.366666666666667,
+            "issues_per_frame": [
+              6,
+              2,
+              2,
+              6,
+              6
+            ]
+          }
+        },
+        "seam-ownership-shadow-replay-cascades-poll-disagree": {
+          "checks": 281,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 53.0,
+            "median": 61.2,
+            "max": 1586.0,
+            "per_issue_median": 10.200000000000001,
+            "issues_per_frame": [
+              6,
+              2,
+              2,
+              6,
+              6
+            ]
+          }
+        },
+        "seam-ownership-shadow-replay-cascades-poll-refusals": {
+          "checks": 281,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 51.0,
+            "median": 63.8,
+            "max": 2754.3,
+            "per_issue_median": 10.633333333333333,
+            "issues_per_frame": [
+              6,
+              2,
+              2,
+              6,
+              6
+            ]
+          }
+        },
+        "seam-ownership-shadow-replay-wide": {
+          "checks": 203,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 47.8,
+            "median": 56.3,
+            "max": 2298.5,
+            "per_draw_median": 14.075
+          }
+        },
+        "seam-ownership-shadow-replay-far-refused": {
+          "checks": 203,
+          "depth": true,
+          "casters": 2,
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 97.5,
+            "median": 142.2,
+            "max": 2173.4,
+            "per_draw_median": 71.1
+          }
+        },
+        "seam-ownership-shadow-retention-live": {
+          "checks": 9743,
+          "mode": "live",
+          "frames": 1535,
+          "us": {
+            "frames": 1527,
+            "min": 23.0,
+            "median": 37.0,
+            "max": 2903.4,
+            "bulk": {
+              "frames": 16,
+              "issues_median": 1450,
+              "us_median": 1686.1
+            }
+          }
+        },
+        "seam-ownership-shadow-retention-census": {
+          "checks": 9740,
+          "mode": "census",
+          "frames": 1535,
+          "us": {
+            "frames": 1527,
+            "min": 20.0,
+            "median": 30.7,
+            "max": 3354.1,
+            "bulk": {
+              "frames": 5,
+              "issues_median": 1450,
+              "us_median": 1698.7
+            }
+          }
+        },
+        "seam-ownership-shadow-retention-off": {
+          "checks": 6629,
+          "mode": "off",
+          "frames": 1535,
+          "us": {
+            "frames": 1527,
+            "min": 20.5,
+            "median": 29.1,
+            "max": 1674.7,
+            "bulk": {
+              "frames": 5,
+              "issues_median": 1450,
+              "us_median": 1610.4
+            }
+          }
+        },
+        "seam-ownership-shadow-retention-live-poll": {
+          "checks": 9890,
+          "mode": "live",
+          "frames": 1547,
+          "us": {
+            "frames": 1539,
+            "min": 23.9,
+            "median": 43.2,
+            "max": 2832.6,
+            "bulk": {
+              "frames": 16,
+              "issues_median": 1450,
+              "us_median": 1798.8
+            }
+          }
+        }
+      },
+      "against_ledger": "checks equal to docs/verification/directional-shadows.md: -cascades 278, -cascades-casters-20 278, -cascades-toggle 277 (max_depth_error 1.83e-06), the four -cascades-poll-* 281, -sun-programs 205, -on/-off 203/99, -wide/-far-refused 203; retention live 9,743 / census 9,740 / off 6,629 / live-poll 9,890, frames 1,535/1,535/1,535/1,547, compared 39(28)/39(0)/39(0)/40(29)",
+      "against_committed_records": "the four retention fixture records compared field by field against HEAD (163/164/51/164 fields): 0 behavioral differences, every diff provenance; motion-output-partial.json at HEAD holds only the four retention cases, 506 fields compared, 0 behavioral differences",
+      "artifacts": "motion-output-partial.json, -build.log and the four retention fixture records restored with git checkout after reading; run copy at /tmp/x3-candidate-pnXpbE/motion-output-run39.json"
+    },
+    "comparison_controls_host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_comparison_hotkeys -v",
+      "result": "PASS",
+      "tests": 6,
+      "elapsed_seconds": 7.5,
+      "fixture_checks": {
+        "comparison_controls": "12,231 checks / 0 failures (release and sanitized)",
+        "comparison_bloom_handoff": "45 / 0 (release and sanitized)",
+        "comparison_notice": "108,073 / 0, 0 allocations (release and sanitized)"
+      },
+      "covers": "the new Ctrl+Shift+F12 sun-shadow at-rest edge in src/proxy/comparison_controls.h"
+    },
+    "sun_share_live": {
+      "committed_record": {
+        "path": "verification/results/bottle-X3/sun-share-live.json",
+        "cases": 21,
+        "passed": true,
+        "game_launched": false
+      },
+      "rerun": {
+        "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --result /tmp/x3-candidate-pnXpbE/sun-share-live-run39.json",
+        "result": "PASS",
+        "exit": 0,
+        "elapsed_seconds": 53,
+        "passed": true,
+        "game_launched": false,
+        "cases": 21,
+        "failed_cases": 0,
+        "case_set": "full set (no --case filter)",
+        "seam_dll_sha256": "f6276d88113961aaddc56000467808406f13ea16ce29000b423ee52cf3e5c6f2",
+        "fixture_exe_sha256": "a1b4a2b2c0b2eebafa45629caf6bf5c27844a3673e566647c1054b3590a9c0c6",
+        "vs_committed": "633 non-provenance scalar fields across all 21 cases: 0 behavioral differences",
+        "result_file": "written to /tmp/x3-candidate-pnXpbE only; verification/results/bottle-X3/sun-share-live.json untouched"
+      }
+    },
+    "state_hook_benchmark": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-pnXpbE/candidate/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run39.json",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 29,
+      "lock_wait_seconds": 0,
+      "rerun_reason": "the candidate bytes changed at 7492137; this is the only check that loads them",
+      "output": "verification/results/bottle-X3/state-hook-benchmark-run39.json (untracked; the paired -run39-wine.log stays local)",
+      "dll_sha256_in_output": "cc966fb2fe6e5609a4c29fc91aa3192a0db4d1c67defe2e8d07562b856ca0ea6",
+      "fixture_exe_sha256": "f5b1c4c39834caf3417e3d1103402da25daa0ed9073001a9f5cbb7dd2139280b",
+      "ns_per_call_timing_off": {
+        "SetRenderState": {
+          "native": 13.1,
+          "production": 13.6,
+          "hooked_shadow": 85.7
+        },
+        "SetSamplerState": {
+          "native": 11.9,
+          "production": 12.2,
+          "hooked_shadow": 74.7
+        },
+        "GetState_draw_set_10": {
+          "native": 98.4,
+          "production": 100.9,
+          "hooked_shadow": 97.6
+        },
+        "routed_draw_mip_bias_2stages": {
+          "native": 81.7,
+          "production": 85.1,
+          "hooked_shadow": 498.6
+        },
+        "SetStreamSource": {
+          "native": 17.3,
+          "production": 143.8,
+          "hooked_shadow": 142.1
+        },
+        "SetStreamSource_DrawIndexedPrimitive_pair": {
+          "native": 395.5,
+          "production": 1076.4,
+          "hooked_shadow": 892.3
+        },
+        "state_mix": {
+          "native": 17.1,
+          "production": 71.2,
+          "hooked_shadow": 91.1
+        }
+      },
+      "frame_timing_on": {
+        "SetRenderState": 165.1,
+        "SetSamplerState": 154.2,
+        "draw_pair": 1539.0
+      },
+      "attribution": {
+        "proxy_guard_and_shadow_ns": 78.2,
+        "frame_timing_stamps_ns": 81.6,
+        "of_which_qpc_pair_ns": 133.8
+      },
+      "gates": {
+        "production_SetSamplerState_ns": "12.2 (run38 10.5, c0c76b1 10.7); native moved 11.0 -> 11.9 in the same run, production-minus-native +0.3 ns",
+        "draw_pair": "1,076.4 vs run38 1,012.2 (+6.3 %); native 395.5 vs 383.3 in the same run, production-minus-native 680.9 vs 628.9 ns",
+        "production_SetRenderState_ns": "13.6 (run38 13.2), production-minus-native +0.5 ns",
+        "verdict": "PASS: the per-call guard deltas over native are unchanged within the fixture's noise; the whole machine scale was higher this run (one native draw-pair repetition 481.7 ns)"
+      },
+      "cpu_state_preservation": "x87/control/status/tags/mxcsr/error all =1 across 4 configurations x 7 entry points (168 flag fields, 0 non-1)",
+      "scope": "Median of three repetitions per configuration in one process under CrossOver Preview; not a native-Windows run and not game FPS."
+    },
+    "reused_from_c0c76b1": {
+      "basis": "git diff --stat c0c76b1 7492137 touches no source input of these fixtures (none of them compiles capture.cpp, motion_output*, comparison_controls.h, shadow_retention_core.h or the changed tools/verification files)",
+      "record": "verification/results/run39-candidate-build.json at commit c0c76b1 (this file's previous revision); figures repeated here",
+      "game_phase_cpu": {
+        "result": "PASS",
+        "checks": 8839,
+        "failures": 0,
+        "fixture_sha256": "377ac95ee289ec1ac898e9487041ea61884134fe4278f6c22e73944a097b99f7",
+        "arena_used": "23876/32768 B",
+        "note": "equal to run38"
+      },
+      "ownership": {
+        "result": "PASS",
+        "baseline_checks": 370,
+        "wrapped_checks": 563,
+        "failures": 0,
+        "source_sha256": "9342ee69e47c368e39b38ba5c53321d8d661d7160b7dfe94677105bca96f5db0"
+      },
+      "linear_material_hull_emission_gain": {
+        "result": "PASS",
+        "gains": [
+          2.0,
+          4.0
+        ],
+        "cases": 20,
+        "programs": 10,
+        "samples": 180,
+        "max_fp16_code_error": 0,
+        "bit_identical_control_pixels": 2560,
+        "alpha": "exact"
+      },
+      "object_lifetime": {
+        "result": "PASS",
+        "checks": 674,
+        "failures": 0,
+        "journal_cases": "12 PASS",
+        "backend_calls": 172592
+      }
+    },
+    "launcher_dry_run": {
+      "command": "python3 tools/manage.py <options> --dry-run launch",
+      "shared_options": "--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 (A, B, C; D is vanilla only)",
+      "shadow_prerequisites": "--sun-shadow-lane --shadow-replay-depth --sun-shadow-apply --shadow-replay-candidates --shadow-sun-poll on",
+      "result": "PASS (all five exit 0; A/A2/B/C print 12 argv elements starting at the CrossOver Preview wine binary, D prints 9)",
+      "variants": {
+        "A_25000_2048_census": {
+          "exit": 0,
+          "extra_options": "--shadow-cascades 250,1500,7500,25000 --shadow-cascade-sizes 4096,4096,4096,2048 --shadow-retention-census",
+          "overrides": "d3d9=n,b",
+          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,25000.0",
+          "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,2048",
+          "X3M_SHADOW_SUN_POLL": "1",
+          "X3M_SHADOW_RETENTION_CENSUS": "1",
+          "X3M_SHADOW_CASTER_RETENTION": "0",
+          "X3M_SUN_SHADOW_APPLY": "1",
+          "log": "/tmp/x3-candidate-pnXpbE/dry-run-A.log"
+        },
+        "A2_50000_4096_census": {
+          "exit": 0,
+          "extra_options": "--shadow-cascades 250,1500,7500,50000 --shadow-cascade-sizes 4096,4096,4096,4096 --shadow-retention-census",
+          "overrides": "d3d9=n,b",
+          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,50000.0",
+          "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,4096",
+          "X3M_SHADOW_SUN_POLL": "1",
+          "X3M_SHADOW_RETENTION_CENSUS": "1",
+          "X3M_SUN_SHADOW_APPLY": "1",
+          "log": "/tmp/x3-candidate-pnXpbE/dry-run-A2.log"
+        },
+        "B_25000_2048_caster_retention": {
+          "exit": 0,
+          "extra_options": "A with --shadow-caster-retention instead of --shadow-retention-census",
+          "overrides": "d3d9=n,b",
+          "X3M_SHADOW_CASTER_RETENTION": "1",
+          "X3M_SHADOW_RETENTION_CENSUS": "0",
+          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,25000.0",
+          "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,2048",
+          "X3M_SUN_SHADOW_APPLY": "1",
+          "log": "/tmp/x3-candidate-pnXpbE/dry-run-B.log"
+        },
+        "C_hull_emitters_gain_4": {
+          "exit": 0,
+          "extra_options": "--hull-emitters --hull-emission-gain 4",
+          "overrides": "d3d9=n,b",
+          "X3M_HULL_EMISSION_GAIN": "4.0",
+          "X3M_SHADOW_CASCADES": "0",
+          "X3M_SUN_SHADOW_APPLY": "0",
+          "log": "/tmp/x3-candidate-pnXpbE/dry-run-C.log"
+        },
+        "D_vanilla": {
+          "exit": 0,
+          "command": "python3 tools/manage.py --vanilla --dry-run launch",
+          "overrides": "d3d9=b",
+          "note": "builtin D3D9, proxy ignored",
+          "log": "/tmp/x3-candidate-pnXpbE/dry-run-D-vanilla.log"
+        }
+      },
+      "game_launched": false
+    }
+  },
+  "load_check": {
+    "performed": true,
+    "how": "the state-hook benchmark loaded the candidate d3d9.dll as the process proxy in three device configurations (proxy-timing-off, proxy-shadow-timing-off, proxy-timing-on), each exiting 0",
+    "run_d3d9_exports": "not run; not in this task's scoped set"
+  },
+  "dry_run": {
+    "performed": true,
+    "note": "five --dry-run launcher variants (A 25000/2048 census, A2 50000/4096 census, B retention, C hull emitters, D vanilla); game never launched"
+  },
+  "host_suite": {
+    "run": false,
+    "reason": "only the affected host test (test_comparison_hotkeys) was run"
+  },
+  "full_fixture_chain_rerun": false,
+  "native_windows_verified": false,
+  "installed": false,
+  "limitations": [
+    "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+    "Only the commit marker, no-x87, export-list and state-hook benchmark checks bind these candidate bytes; the fixtures build their own binaries from the same committed source.",
+    "The benchmark is a synthetic per-call fixture under CrossOver Preview; it is not measured game FPS. This run's whole machine scale was higher than the c0c76b1/run38 runs (native draw pair 395.5 vs 383.3 ns); production-over-native deltas are the comparable figures.",
+    "Five check groups are reused by reference from the c0c76b1 record (stamp CPU fixture, ownership runner, hull-emission GPU slice, object-lifetime fixture; the state-hook benchmark was rerun because the candidate bytes changed). git diff --stat c0c76b1 7492137 touches no source input of any reused fixture.",
+    "The host suite was not rerun; only verification/analysis/test_comparison_hotkeys.py, which drives comparison_controls_fixture.cpp.",
+    "The brief's '--shadow-retention census' is not a manage.py spelling: the flags are --shadow-retention-census and --shadow-caster-retention. --shadow-cascades requires --shadow-replay-depth and --sun-shadow-apply requires --sun-shadow-lane --shadow-replay-depth; both supplied.",
+    "Installation and game launch are owned by the main session; nothing was installed and the game was never launched."
+  ]
+}
