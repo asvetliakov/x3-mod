@@ -75,8 +75,14 @@ inline bool shadow_replay_sun_valid(const float sun[4]) noexcept {
 }
 // Basis from the camera latch and the object->light direction. The camera
 // position is -t R^T (row-vector view), forward is the third view axis.
+// `anchor` (world, null: the world origin, the one-sun law): the point the texel
+// grid passes through. A sun direction that is re-derived now and then
+// (src/proxy/shadow_replay_sun_point.h) turns the axes; a grid anchored at the
+// origin would move by |centre| x turn under the cascade (tens of units at
+// 1e5 units out: a new sub-texel phase for every edge), one anchored at a grid
+// point beside the centre moves by (distance from the centre) x turn only.
 inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], const ShadowReplayCascade& cascade,
-                                ShadowReplayBasis& out) noexcept {
+                                ShadowReplayBasis& out, const double* anchor = nullptr) noexcept {
     out = ShadowReplayBasis{};
     if (!camera.valid || !shadow_replay_sun_valid(sun) || !cascade.size) return false;
     if (!(cascade.half_extent > 0.f) || !(cascade.depth_toward_light > 0.f) || !(cascade.depth_behind > 0.f) || !std::isfinite(cascade.forward_offset)) return false;
@@ -102,10 +108,10 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
     // Snap the centre to the texel grid in sun space.
     const double texel = 2. * double(cascade.half_extent) / double(cascade.size);
     double cx = 0, cy = 0, cz = 0;
-    for (unsigned i = 0; i < 3; ++i) { cx += center[i] * right[i]; cy += center[i] * up[i]; cz += center[i] * f[i]; }
+    for (unsigned i = 0; i < 3; ++i) { const double rel = anchor ? center[i] - anchor[i] : center[i]; cx += rel * right[i]; cy += rel * up[i]; cz += rel * f[i]; }
     cx = snap_floor(cx / texel + .5) * texel; cy = snap_floor(cy / texel + .5) * texel;
     for (unsigned i = 0; i < 3; ++i) {
-        const double c = right[i] * cx + up[i] * cy + f[i] * cz;
+        const double c = right[i] * cx + up[i] * cy + f[i] * cz + (anchor ? anchor[i] : 0.);
         if (!std::isfinite(c)) return false;
         out.center[i] = float(c); out.right[i] = float(right[i]); out.up[i] = float(up[i]); out.forward[i] = float(f[i]);
         out.center_d[i] = c; out.axes[0][i] = right[i]; out.axes[1][i] = up[i]; out.axes[2][i] = f[i];
@@ -280,8 +286,8 @@ struct ShadowCascadeBounds {
     float cascade_rows[shadow_cascade_max][9]{}; // read when !shared
     float lo[shadow_cascade_max][3]{}, hi[shadow_cascade_max][3]{};
 };
-// `suns`: four floats per cascade (object -> light, world space).
-inline bool shadow_cascade_bounds_suns(const CameraState& camera, const float* suns, const ShadowCascadeSet& set, ShadowCascadeBounds& out) noexcept {
+// `suns`: four floats per cascade (object -> light, world space); `anchors`: three doubles per cascade or null (shadow_replay_basis).
+inline bool shadow_cascade_bounds_suns(const CameraState& camera, const float* suns, const ShadowCascadeSet& set, ShadowCascadeBounds& out, const double* anchors = nullptr) noexcept {
     out = ShadowCascadeBounds{};
     if (!suns || !set.count || set.count > shadow_cascade_max) return false;
     for (unsigned c = 1; c < set.count; ++c) for (unsigned i = 0; i < 3; ++i) if (suns[c * 4 + i] != suns[i]) out.shared = false;
@@ -289,7 +295,7 @@ inline bool shadow_cascade_bounds_suns(const CameraState& camera, const float* s
     for (unsigned i = 0; i < 3; ++i) { position[i] = 0; for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
     for (unsigned c = 0; c < set.count; ++c) {
         ShadowReplayBasis basis{};
-        if (!shadow_replay_basis(camera, suns + c * 4, set.cascades[c], basis)) return false;
+        if (!shadow_replay_basis(camera, suns + c * 4, set.cascades[c], basis, anchors ? anchors + c * 3 : nullptr)) return false;
         const auto& axes = basis.axes;
         for (unsigned a = 0; a < 3; ++a) {
             if (!c || !out.shared) for (unsigned j = 0; j < 3; ++j) { // sun_rel[a] = sum_j (sum_k axes[a][k] r[k*3+j]) view_j

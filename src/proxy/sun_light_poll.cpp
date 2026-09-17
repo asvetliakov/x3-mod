@@ -59,29 +59,36 @@ bool read(Sample* out) {
     while(count<array_entries&&entries[count])++count;
     if(count==array_entries)return finish(Status::Layout); // no terminator
     out->candidates=count;
-    bool found=false;std::uint64_t best_reach=0;std::uint32_t best_record=0;
+    struct Best{bool found=false;std::uint32_t score=0,second=0,node=0,flags=0,record=0;std::uint64_t reach=0;std::int32_t position[3]{};};
+    Best engine,admission;
+    const auto offer=[](Best& best,std::uint32_t score,std::uint64_t reach,std::uint32_t node,std::uint32_t flags,std::uint32_t record,const std::int32_t* position){
+        if(!best.found||score>best.score||(score==best.score&&reach>best.reach)){
+            if(best.found)best.second=best.score;
+            best.found=true;best.score=score;best.reach=reach;best.node=node;best.flags=flags;best.record=record;std::memcpy(best.position,position,12);
+        } else if(score>best.second)best.second=score;
+    };
     for(std::uint32_t i=0;i<count;++i){
         unsigned char block[node_block_size];
         if(entries[i]>0xffffffffu-node_block-node_block_size||!engine_memory::read(entries[i]+node_block,block,sizeof block))return finish(Status::Unreadable);
         const std::uint32_t flags=word(block,0x12c);
         if(!(flags&4u))return finish(Status::Layout); // 0x0047c640 admits lights only
-        if(flags&0x400010u)continue;                  // point or spot
-        ++out->directional;
+        const bool directional=(flags&0x800000u)!=0,slot=directional||std::int32_t(word(block,0x158))>0x256250,admitted=!(flags&0x400010u);
+        if(!slot&&!admitted)continue;
         const std::int32_t r=colour(block,0x150),g=colour(block,0x152),b=colour(block,0x154);
         const std::int32_t weighted=299*r+587*g+114*b;
-        const std::uint32_t luma=weighted>0?std::uint32_t(weighted):0u;
+        const std::uint32_t luma=weighted>0?std::uint32_t(weighted+500)/1000u:0u; // the engine's rounded luma
         std::int32_t position[3];std::memcpy(position,block,12);
         std::uint64_t reach=0;
         for(std::int32_t p:position){const std::uint64_t a=p<0?std::uint64_t(-std::int64_t(p)):std::uint64_t(p);if(a>reach)reach=a;}
-        const bool better=!found||luma>out->luma1000||(luma==out->luma1000&&reach>best_reach);
-        if(better){
-            if(found)out->second_luma1000=out->luma1000;
-            found=true;out->luma1000=luma;best_reach=reach;out->flags=flags;best_record=word(block,0x16c);
-            std::memcpy(out->position,position,12);
-        } else if(luma>out->second_luma1000)out->second_luma1000=luma;
+        if(slot){++out->slot_admitted;offer(engine,luma+(directional?0x300u:0u),reach,entries[i],flags,word(block,0x16c),position);}
+        if(admitted){++out->directional;offer(admission,luma+0x300u,reach,entries[i],flags,word(block,0x16c),position);}
     }
-    if(!found)return finish(Status::NoDirectional);
-    if(best_record&&best_record<=0xffffffffu-0x40u&&engine_memory::read(best_record+0x34,out->record_position,12))out->record_valid=true;
+    if(!engine.found&&!admission.found)return finish(Status::NoDirectional);
+    const Best& best=engine.found?engine:admission;
+    out->engine_rule=engine.found;out->rules_agree=engine.found&&admission.found&&engine.node==admission.node;
+    out->score=best.score;out->second_score=best.second;out->flags=best.flags;std::memcpy(out->position,best.position,12);
+    if(admission.found)std::memcpy(out->admission_position,admission.position,12);
+    if(best.record&&best.record<=0xffffffffu-0x40u&&engine_memory::read(best.record+0x34,out->record_position,12))out->record_valid=true;
     return finish(Status::Ok);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE

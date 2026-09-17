@@ -238,7 +238,8 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     if (!refused && !state) {
         unsigned offset = 0;
         for (unsigned k = 0; k < cascades && !state; ++k) {
-            if (!renderer::shadow_replay_basis(camera_scene_, cascade_sun(k), depth_cascades_.cascades[k], bases[k])) { state = "basis"; break; }
+            const float* own = cascade_sun(k); // decides the frame's source: the grid anchor below is the same source's
+            if (!renderer::shadow_replay_basis(camera_scene_, own, depth_cascades_.cascades[k], bases[k], point_sun_.grid_anchor(k))) { state = "basis"; break; }
             replays[k] = per_cascade[k] != 0 && renderer::shadow_cascade_replays(k, cascades, issues, depth_cascades_.budget, frame_);
             offsets[k] = offset;
             if (replays[k]) { lists[list_count].map = k; lists[list_count].issues = depth_issues_.get() + offset; lists[list_count].count = 0; ++list_count; offset += per_cascade[k]; }

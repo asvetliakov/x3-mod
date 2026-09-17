@@ -246,6 +246,7 @@ void run_sun_apply_cascades(Fixture& f) {
         float suns[r::shadow_cascade_max * 4]{};
         for (unsigned c = 0; c < r::shadow_cascade_max; ++c) std::memcpy(suns + c * 4, sun, sizeof sun);
         Vec3 light{0, 0, 0}; double point_agreement = -1.; unsigned point_rederived = 0;
+        double anchors[r::shadow_cascade_max * 3]{}; // (h) the texel grids' anchors the PointSun holds
         if (point) {
             const Vec3 ahead = normalize(Vec3{s.forward.x, 0., s.forward.z}), side = cross(Vec3{0, 1, 0}, ahead);
             const double phi = cascade_point_side_deg * 3.14159265358979323846 / 180.;
@@ -276,7 +277,7 @@ void run_sun_apply_cascades(Fixture& f) {
                 require(ps.check(constant, o), "the engine's constant at a draw origin agrees with the polled light");
             }
             require(ps.decide(true, s.camera, set) && ps.rederived == cascade_count && ps.checks == 3 && ps.disagreements == 0 && ps.agreement_degrees() < .01, "the validated light is the frame's sun source");
-            std::memcpy(suns, ps.suns, sizeof suns); point_agreement = ps.agreement_degrees(); point_rederived = ps.rederived;
+            std::memcpy(suns, ps.suns, sizeof suns); std::memcpy(anchors, ps.grid_anchors(), sizeof anchors); point_agreement = ps.agreement_degrees(); point_rederived = ps.rederived;
             require(std::memcmp(suns, suns + 4, 12) != 0 && std::memcmp(suns + 4, suns + 8, 12) == 0, "cascade 0 holds its own direction, cascade 2 adopts cascade 1's");
             ps.end_frame();
             // The next frame: the same camera holds every direction bit for bit without a new check (validation carried);
@@ -296,7 +297,7 @@ void run_sun_apply_cascades(Fixture& f) {
         }
         // One bounds pass per object: the cascade mask, under the per-cascade caps.
         r::ShadowCascadeBounds bounds{};
-        require(r::shadow_cascade_bounds_suns(s.camera, suns, set, bounds) && bounds.shared == !point, "the frame's cascade boxes build");
+        require(r::shadow_cascade_bounds_suns(s.camera, suns, set, bounds, point ? anchors : nullptr) && bounds.shared == !point, "the frame's cascade boxes build");
         if (!point) { r::ShadowCascadeBounds one{}; require(r::shadow_cascade_bounds(s.camera, sun, set, one) && one.count == bounds.count && one.shared && !std::memcmp(one.rows, bounds.rows, sizeof one.rows) && !std::memcmp(one.lo, bounds.lo, sizeof one.lo) && !std::memcmp(one.hi, bounds.hi, sizeof one.hi), "the one-sun bounds equal the per-cascade bounds of equal suns"); }
         const CascadeObject* objects[4] = {&plane, &box, script.high_box > 0. || point ? &high : nullptr, point ? &third : nullptr};
         const unsigned object_count = point ? 4 : script.high_box > 0. ? 3 : 2;
@@ -336,7 +337,7 @@ void run_sun_apply_cascades(Fixture& f) {
             d.vertex_buffer = objects[o]->buffer.p; d.declaration = declaration.p; d.stride = 12; d.topology = D3DPT_TRIANGLELIST; d.primitives = objects[o]->triangles; d.cull_mode = D3DCULL_NONE;
         }
         for (unsigned c = 0; c < cascade_count; ++c) {
-            require(r::shadow_replay_basis(s.camera, suns + c * 4, set.cascades[c], bases[c]), "the cascade basis builds");
+            require(r::shadow_replay_basis(s.camera, suns + c * 4, set.cascades[c], bases[c], point ? anchors + c * 3 : nullptr), "the cascade basis builds");
             replays[c] = per_cascade[c] != 0 && r::shadow_cascade_replays(c, cascade_count, issues, script.budget, frame);
             if (!replays[c]) continue;
             lists[list_count].map = c; lists[list_count].issues = issue_store + used;

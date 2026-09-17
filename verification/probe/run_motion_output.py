@@ -306,7 +306,7 @@ CASES += [case('seam-ownership-shadow-replay-sun-programs', 'shadowreplay', 'own
 # centre) held within 1 / size radians. null / disagree: the poll is
 # unavailable / refused by the cross-check, the latch stays the source, counted
 # by reason, and every other expectation is the plain cascade case's.
-SHADOW_POLL_MODES = ('agree', 'null', 'disagree')
+SHADOW_POLL_MODES = ('agree', 'null', 'disagree', 'refusals')  # refusals: a layout, pointer or content defect per frame
 CASES += [case(f'seam-ownership-shadow-replay-cascades-poll-{m}', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_FIXTURE_SHADOW_POLL=m)) for m in SHADOW_POLL_MODES]
 CASES += [case('seam-ownership-shadow-replay-wide', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_WIDE_ENV),
           case('seam-ownership-shadow-replay-far-refused', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_FAR_ENV)]
@@ -1016,8 +1016,9 @@ def validate_shadow_replay_sun(name, trace, routed, sun_programs, expected_sun):
     return {'frames': len(lines), 'register': register, 'program': program, 'changing_frame': SHADOW_REPLAY_NO_SUN_FRAME, 'samples_per_frame': routed}
 
 
-SUN_POINT_FIELDS = ('device', 'frame', 'source', 'reason', 'poll', 'light', 'native', 'distance', 'checks', 'disagreements', 'agreement_deg', 'rederived', 'candidates', 'directional',
-                    'luma', 'second_luma', 'flags', 'record_scale', 'poll_us', 'frames_point')
+SUN_POINT_FIELDS = ('device', 'frame', 'source', 'reason', 'poll', 'light', 'native', 'distance', 'checks', 'disagreements', 'agreement_deg', 'rederived', 'carried', 'candidates', 'directional',
+                    'slot_admitted', 'rule', 'rules_agree', 'admission_native', 'score', 'second_score', 'flags', 'record_scale', 'poll_us', 'frames_point')
+SUN_POINT_SELECTION = ('4', '3', '3', 'engine', '1', '955', '896')  # the fixture's block: the sun 187 + 0x300 before the forced-directional node 128 + 0x300, both rules on the same node
 
 
 def validate_shadow_replay_poll(name, text, trace, mode, count, sizes, cameras, maps, routed):
@@ -1035,20 +1036,25 @@ def validate_shadow_replay_poll(name, text, trace, mode, count, sizes, cameras, 
     assert [int(l['frame']) for l in lines] == list(range(SHADOW_REPLAY_FRAMES)) and all(tuple(l)[:len(SUN_POINT_FIELDS)] == SUN_POINT_FIELDS for l in lines), (name, lines[:1])
     events = [(int(fields(l)['frame']), fields(l)['source'], fields(l)['reason']) for l in trace.splitlines() if l.startswith('shadow_replay_sun_source ')]
     poll = [fields(l) for l in text.splitlines() if l.startswith('SHADOW_POLL ')]
-    reasons, worst, held, rederivations, poll_us = {}, 0.0, None, 0, []
+    reasons, worst, held, rederivations, poll_us, phases, previous_point = {}, 0.0, None, 0, [], [], None
     for l in lines:
         frame = int(l['frame'])
         reasons[l['reason']] = reasons.get(l['reason'], 0) + 1
         dirs = [tuple(float(v) for v in l[f'dir{c}'].split(',')) for c in range(count)]
-        if mode in (None, 'null'):
+        selection = (l['candidates'], l['directional'], l['slot_admitted'], l['rule'], l['rules_agree'], l['score'], l['second_score'])
+        if mode == 'refusals':
+            expected = fields([x for x in text.splitlines() if x.startswith(f'SHADOW_POLL_REFUSAL frame={frame} ')][0])['expect']
+            assert expected == ('layout', 'layout', 'layout', 'unreadable', 'no_directional', 'null_context', 'null_context', 'null_context')[frame], (name, frame, expected)
+            assert (l['source'], l['reason'], l['poll'], l['checks']) == ('latch', 'no_light' if expected == 'no_directional' else 'unavailable', expected, '0'), (name, l)
+        elif mode in (None, 'null'):
             assert (l['source'], l['reason'], l['checks']) == ('latch', 'unavailable', '0') and l['poll'] in (('null_context',) if mode else ('disabled', 'executable_mismatch')), (name, l)
         elif mode == 'disagree':
-            assert l['source'] == 'latch' and l['reason'] == ('disagrees' if frame == 0 else 'cooldown') and l['poll'] == 'ok' and (l['candidates'], l['directional'], l['luma']) == ('4', '3', '186580'), (name, l)
+            assert l['source'] == 'latch' and l['reason'] == ('disagrees' if frame == 0 else 'cooldown') and l['poll'] == 'ok' and selection == SUN_POINT_SELECTION, (name, l)
             if frame != SHADOW_REPLAY_NO_SUN_FRAME:
                 assert int(l['checks']) == min(8, routed - (1 if frame == 0 else 0)) == int(l['disagreements']) and float(l['agreement_deg']) > 10.0, (name, l)
         else:
             light = tuple(float(v) for v in poll[0]['light'].split(','))
-            assert l['source'] == 'point' and l['reason'] == 'point' and l['poll'] == 'ok' and (l['candidates'], l['directional'], l['luma'], l['second_luma']) == ('4', '3', '186580', '128000'), (name, l)
+            assert l['source'] == 'point' and l['reason'] == 'point' and l['poll'] == 'ok' and selection == SUN_POINT_SELECTION and l['carried'] == '0' and l['admission_native'] == l['native'], (name, l)
             assert all(abs(float(v) - e) <= 6e-3 for v, e in zip(l['light'].split(','), light)) and abs(float(l['record_scale']) - .01) < 1e-6 and int(l['frames_point']) == frame + 1, (name, l)
             changing = frame == SHADOW_REPLAY_NO_SUN_FRAME
             assert int(l['disagreements']) == 0 and int(l['checks']) == (0 if changing else min(8, routed - (1 if frame == 0 else 0))), (name, l)
@@ -1068,11 +1074,33 @@ def validate_shadow_replay_poll(name, text, trace, mode, count, sizes, cameras, 
                 if m['valid'] == '1' and int(float(m['replayed_frame'])) == frame:
                     assert all(abs(-float(v) - d) < 1e-6 for v, d in zip(m['forward'].split(','), dirs[c])), (name, frame, c, m['forward'], dirs[c])
             assert (int(l['rederived']) > 0) == (held != dirs) and (frame > 0 or int(l['rederived']) == count), (name, l, held)
+            # The grid anchor: a re-derivation moves each cascade's anchor to a point of its OLD grid (the old axes from the
+            # old direction by the basis law), so the grid phase at the centre survives the turn.
+            anchors = [tuple(float(v) for v in l[f'anchor{c}'].split(',')) for c in range(count)]
+            if frame and int(l['rederived']) and previous_point:
+                for c in range(count):
+                    f_axis = [-v for v in previous_point[0][c]]
+                    hint = (1.0, 0.0, 0.0) if abs(f_axis[1]) > .99 else (0.0, 1.0, 0.0)
+                    right = [hint[1] * f_axis[2] - hint[2] * f_axis[1], hint[2] * f_axis[0] - hint[0] * f_axis[2], hint[0] * f_axis[1] - hint[1] * f_axis[0]]
+                    norm_r = math.sqrt(sum(v * v for v in right)); right = [v / norm_r for v in right]
+                    up = [f_axis[1] * right[2] - f_axis[2] * right[1], f_axis[2] * right[0] - f_axis[0] * right[2], f_axis[0] * right[1] - f_axis[1] * right[0]]
+                    texel = 2.0 * float(maps[(frame, c)]['extent']) / sizes[c] if maps[(frame, c)]['available'] == '1' else None
+                    if texel and anchors[c] != previous_point[1][c]:
+                        for axis in (right, up):
+                            u = sum((a - b) * x for a, b, x in zip(anchors[c], previous_point[1][c], axis)) / texel
+                            assert abs(u - round(u)) < 1e-2, (name, frame, c, u)
+                            phases.append(abs(u - round(u)))
+            previous_point = (dirs, anchors)
             held = dirs; rederivations += int(l['rederived'])
         poll_us.append(float(l['poll_us']))
-    expected_events = {None: [(0, 'latch', 'unavailable')], 'null': [(0, 'latch', 'unavailable')], 'agree': [(0, 'point', 'point')], 'disagree': [(0, 'latch', 'disagrees'), (1, 'latch', 'cooldown')]}[mode]
+    expected_events = {None: [(0, 'latch', 'unavailable')], 'null': [(0, 'latch', 'unavailable')], 'agree': [(0, 'point', 'point')], 'disagree': [(0, 'latch', 'disagrees'), (1, 'latch', 'cooldown')],
+                       'refusals': [(0, 'latch', 'unavailable'), (4, 'latch', 'no_light'), (5, 'latch', 'unavailable')]}[mode]
     assert events == expected_events, (name, events)
-    return {'mode': mode or 'no_seam', 'reasons': reasons, 'events': events, 'worst_agreement_deg': worst, 'rederivations': rederivations, 'poll_us_median': sorted(poll_us)[len(poll_us) // 2], 'poll_us_max': max(poll_us)}
+    statuses = {}
+    for l in lines:
+        statuses[l['poll']] = statuses.get(l['poll'], 0) + 1
+    assert mode != 'agree' or len(phases) >= 2, (name, 'a re-derivation between two replays of one cascade', phases)
+    return {'mode': mode or 'no_seam', 'reasons': reasons, 'poll_statuses': statuses, 'rederivation_grid_phase_texels': max(phases) if phases else None, 'events': events, 'worst_agreement_deg': worst, 'rederivations': rederivations, 'poll_us_median': sorted(poll_us)[len(poll_us) // 2], 'poll_us_max': max(poll_us)}
 
 
 def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):

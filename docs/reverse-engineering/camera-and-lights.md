@@ -635,10 +635,18 @@ record (`[+0x16c]+0x34`, the engine's own context-scaled position, logged as
 `engine_memory::read`; the gate is `object_trace::executable_verified()`.
 Layout validation per poll: slot count `== 8`, a terminator within 255 entries,
 and `+0x12c & 4` on **every** entry (the builder admits lights only); any miss is
-`layout` and the caller stays on the constant latch. Ranking is integer
-(`299 R + 587 G + 114 B`), ties to the farther node. The poll runs at the frame's
-first routed z-writing draw (the sector view's array is current there), never at
-Present. Consumer, validation against `LightDir_Dir0`, fallback reasons and the
+`layout` and the caller stays on the constant latch. Selection is the engine's
+Dir-slot rule (section 3 above: `+0x12c & 0x800000` or range `+0x158 > 0x256250`;
+score = `round(0.299 R + 0.587 G + 0.114 B)` + `0x300` when directional; a
+long-range point light's per-node distance term is not reproduced, its score is
+an upper bound); the admission rule `(flags & 4) && !(flags & 0x400010)` is
+evaluated beside it, used only while the engine rule admits nothing (the lazy
+`0x800000`), and both winners are logged so a flight shows any divergence. Ties
+go to the farther node. The poll runs at the frame's first routed z-writing draw
+(the sector view's array is current there), never at Present. *No tearing:* the
+game is single-threaded and the draws run on the thread that calls `0x0047c640`
+([voice-startup-sequence.md](voice-startup-sequence.md), section 1), so a poll
+taken inside a draw call cannot interleave with the array's rebuild. Consumer, validation against `LightDir_Dir0`, fallback reasons and the
 per-cascade directions: `src/proxy/shadow_replay_sun_point.h` and
 [directional-shadows.md](../verification/directional-shadows.md), "Sun at finite
 distance". Still not established: whether `0x00420260`'s forced-directional nodes

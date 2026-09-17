@@ -1122,6 +1122,7 @@ private:
     // cascade (shadow_replay_sun_point.h); the latch above stays the source
     // whenever the poll is unavailable, unvalidated or implausible.
     shadow_replay::PointSun point_sun_{};
+    unsigned point_sun_summary_count_=0;  // frames since the last shadow_replay_sun_point_summary line
     std::int64_t point_sun_poll_ticks_=0; // this frame's poll in QPC ticks (the draw path stays integer-only: a 64-bit conversion is x87 on i686)
     sun_light_poll::Sample point_sun_sample_{};
     shadow_replay::PointSunReason point_sun_logged_=shadow_replay::PointSunReason::Count; // the last source/reason an event line reported

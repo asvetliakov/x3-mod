@@ -12,17 +12,29 @@
 // LightDir_Dir0 constant latch, shadow_replay_sun.h). The caller polls from
 // the render thread while the sector view is current (at a routed main-scene
 // draw), never at Present: the array then holds the last rendered view's
-// lights. A node pointer is never kept across frames.
+// lights. A node pointer is never kept across frames. No tearing: the game is
+// single-threaded and the draws run on the thread that calls 0x0047c640
+// (docs/reverse-engineering/voice-startup-sequence.md, section 1), so a poll
+// taken inside a draw call cannot interleave with the array's rebuild.
 //
 // Layout validation per read: *(int32_t*)(R+0x6288) == 8 (the slot count the
 // engine writes beside the array), a terminator within 255 entries, and the
 // "is a light" bit (+0x12c & 4) on EVERY entry, which 0x0047c640 guarantees
-// for the array it builds. Directional = (flags & 4) && !(flags & 0x400010),
-// the engine's own admission test; brightest = largest Rec.601 luma of the
-// colour words (the engine's ranking; ties go to the farther node, which
-// disfavours the 16 forced-directional nodes of the secondary scene 0x00420260
-// that sit near the origin). The caller cross-checks the position against the
-// shader constants before trusting it (shadow_replay_sun_point.h).
+// for the array it builds. Two selection rules are evaluated on every poll:
+//  * engine (the result): the Dir-slot rule of 0x004c5030-0x004c508f on the
+//    score of 0x0047d641: admitted when flags & 0x800000 (directional) or the
+//    range at +0x158 exceeds 0x256250; score = round(0.299 R + 0.587 G + 0.114 B)
+//    + 0x300 for a directional light. A long-range point light's distance term
+//    (luma x d / (2 range), per node) is not reproduced: its score here is an
+//    upper bound, still below any directional light's.
+//  * admission (diagnostics, and the result while the engine rule admits
+//    nothing: 0x800000 is set lazily by 0x004bdbf0): (flags & 4) &&
+//    !(flags & 0x400010), 0x0047c640's own test, ranked by the same rounded luma.
+// Ties go to the farther node (the 16 forced-directional nodes of the secondary
+// scene 0x00420260 sit near the origin; the engine's qsort order on a tie is not
+// established). Both winners are reported so a flight shows any divergence; the
+// caller cross-checks the result against the shader constants before trusting
+// it (shadow_replay_sun_point.h).
 #include <cstdint>
 
 namespace x3m::sun_light_poll {
@@ -31,9 +43,12 @@ const char* status_name(Status status);
 struct Sample {
     Status status = Status::Disabled;
     std::int32_t position[3]{};      // engine integers (world units = x 0.01 in a gameplay view)
-    std::uint32_t luma1000 = 0;      // 299 R + 587 G + 114 B of the chosen node's colour words
-    std::uint32_t second_luma1000 = 0; // the next directional candidate's (0: none); equal rounded lumas are an engine tie
-    std::uint32_t candidates = 0, directional = 0;
+    std::uint32_t score = 0;         // the chosen node's engine score (rounded luma, + 0x300 when directional)
+    std::uint32_t second_score = 0;  // the next candidate's under the same rule (0: none); equal scores are an engine tie
+    bool engine_rule = false;        // the result is the engine rule's winner (else the admission rule's)
+    bool rules_agree = false;        // both rules chose the same node
+    std::int32_t admission_position[3]{}; // the admission rule's winner
+    std::uint32_t candidates = 0, directional = 0, slot_admitted = 0; // array entries; admission-rule and engine-rule candidates
     std::uint32_t flags = 0;         // the chosen node's +0x12c
     float record_position[3]{};      // [node+0x16c]+0x34: the D3DLIGHT9 position the engine derived (context-scaled), diagnostics
     bool record_valid = false;

@@ -316,16 +316,55 @@ int main(int argc, char** argv) {
         CHECK(sun.decide(true, moved, set) && sun.rederived == 4 && std::memcmp(held0, sun.sun(0), 12) != 0); sun.end_frame();
         { double a[3] = {held0[0], held0[1], held0[2]}, b[3] = {sun.sun(0)[0], sun.sun(0)[1], sun.sun(0)[2]}, s2 = 0; bool opposed = false;
           CHECK(PointSun::sine2(a, b, s2, opposed) && s2 <= (2. / 4096.) * (2. / 4096.)); } // the re-derivation turns the basis by at most 2 / size
-        // A changed light position is unchecked until a draw confirms it; a disagreement cools down; near and no light fall back.
+        // Hysteresis: a changed light position that no draw has checked yet (and a frame without a poll) keeps `point` on
+        // the last validated position, every held direction bit for bit, for point_sun_carry_frames frames; then unchecked.
         std::int32_t other[3] = {native[0] + 100000, native[1], native[2]};
-        sun.begin_frame(); sun.set_poll(other, PointSunReason::Point); CHECK(!sun.decide(true, moved, set) && sun.reason == PointSunReason::Unchecked); sun.end_frame();
-        sun.begin_frame(); sun.set_poll(native, PointSunReason::Point); const float wrong[4] = {0, 0, 1, 0};
-        CHECK(!sun.check(wrong, node) && sun.agreement_degrees() > 90. && !sun.decide(true, moved, set) && sun.reason == PointSunReason::Disagrees); sun.end_frame();
-        for (unsigned i = 0; i < point_sun_cooldown_frames; ++i) {
-            sun.begin_frame(); sun.set_poll(native, PointSunReason::Point); CHECK(sun.check(c, node));
-            const bool point = sun.decide(true, moved, set); CHECK(point == (i + 1 == point_sun_cooldown_frames) || sun.reason == PointSunReason::Cooldown); sun.end_frame();
+        float held1[16]; std::memcpy(held1, sun.suns, sizeof held1);
+        for (unsigned i = 0; i < point_sun_carry_frames; ++i) {
+            sun.begin_frame(); if (i & 1) sun.set_poll(other, PointSunReason::Point);
+            CHECK(sun.decide(true, moved, set) && sun.carried_frame && sun.rederived == 0 && !std::memcmp(held1, sun.suns, sizeof held1) && sun.used[0] == light[0]); sun.end_frame();
+            CHECK(sun.carried == i + 1);
         }
-        sun.begin_frame(); sun.set_poll(native, PointSunReason::Point); CHECK(sun.decide(true, moved, set)); sun.end_frame();
+        sun.begin_frame(); sun.set_poll(other, PointSunReason::Point); CHECK(!sun.decide(true, moved, set) && sun.reason == PointSunReason::Unchecked); sun.end_frame();
+        sun.begin_frame(); sun.set_poll(native, PointSunReason::Point); CHECK(sun.check(c, node) && sun.decide(true, moved, set) && !sun.carried_frame); sun.end_frame(); CHECK(sun.carried == 0);
+        // A disagreement before the decision: the frame is the latch's (disagrees), then exactly point_sun_cooldown_frames of cooldown.
+        const float wrong[4] = {0, 0, 1, 0};
+        sun.begin_frame(); sun.set_poll(native, PointSunReason::Point);
+        CHECK(!sun.check(wrong, node) && sun.agreement_degrees() > 90. && !sun.decide(true, moved, set) && sun.reason == PointSunReason::Disagrees); sun.end_frame();
+        auto cools_down = [&] {
+            for (unsigned i = 0; i < point_sun_cooldown_frames; ++i) {
+                sun.begin_frame(); sun.set_poll(native, PointSunReason::Point); CHECK(sun.check(c, node));
+                CHECK(!sun.decide(true, moved, set) && sun.reason == PointSunReason::Cooldown && sun.sun(0) == nullptr); sun.end_frame();
+            }
+            sun.begin_frame(); sun.set_poll(native, PointSunReason::Point); CHECK(sun.check(c, node)); CHECK(sun.decide(true, moved, set) && sun.reason == PointSunReason::Point); sun.end_frame();
+        };
+        cools_down();
+        // The production order: the box test decides `point` first, a later draw of the same frame disagrees. The frame
+        // finishes as `point` (its masks and bases agree); the switch and the cooldown start on the next frame.
+        const std::uint64_t point_frames = sun.frames_point;
+        sun.begin_frame(); sun.set_poll(native, PointSunReason::Point); CHECK(sun.check(c, node) && sun.decide(true, moved, set));
+        CHECK(!sun.check(wrong, node) && sun.decide(true, moved, set) && sun.sun(0) != nullptr && sun.reason == PointSunReason::Point); sun.end_frame();
+        CHECK(sun.frames_point == point_frames + 1 && sun.cooldown == point_sun_cooldown_frames && !sun.validated);
+        cools_down();
+        // The grid anchor: 1e5 units out, a re-derivation keeps the grid phase at the centre (an origin-anchored grid
+        // moves by |centre| x turn there) and moves a texel at the cascade's edge by at most one texel.
+        {
+            CameraState out = camera(); out.t[0] = -100000.f; out.t[2] = -40000.f;
+            const double there[3] = {100000., 50., 40000.}; float k[4]; constant_at(there, k);
+            PointSun far; far.begin_frame(); far.set_poll(native, PointSunReason::Point); CHECK(far.check(k, there) && far.decide(true, out, set));
+            ShadowReplayBasis before{}; CHECK(shadow_replay_basis(out, far.sun(1), set.cascades[1], before, far.grid_anchor(1))); far.end_frame();
+            out.t[0] -= 5000.f;
+            far.begin_frame(); far.set_poll(native, PointSunReason::Point); CHECK(far.decide(true, out, set) && far.rederived == 4);
+            ShadowReplayBasis anchored{}, origin{}; CHECK(shadow_replay_basis(out, far.sun(1), set.cascades[1], anchored, far.grid_anchor(1)) && shadow_replay_basis(out, far.sun(1), set.cascades[1], origin));
+            const double texel = shadow_replay_world_texel(set.cascades[1]);
+            auto phase = [&](const ShadowReplayBasis& b) { double worst = 0; for (unsigned a = 0; a < 2; ++a) { double u = 0; for (unsigned i = 0; i < 3; ++i) u += (b.center_d[i] - before.center_d[i]) * before.axes[a][i];
+                u /= texel; worst = std::fmax(worst, std::fabs(u - std::round(u))); } return worst; }; // the new centre against the OLD grid, in texels
+            double edge = 0; // a texel at the cascade's edge along the old right axis: its new-grid coordinate against its old-grid one
+            for (unsigned a = 0; a < 2; ++a) { double now = 0, was = 0; for (unsigned i = 0; i < 3; ++i) { const double p = before.axes[0][i] * 1500.; now += p * anchored.axes[a][i]; was += p * before.axes[a][i]; } edge = std::fmax(edge, std::fabs(now - was) / texel); }
+            std::printf("POINT_SUN anchor phase_anchored=%.6f phase_origin=%.6f edge_shift_texels=%.4f\n", phase(anchored), phase(origin), edge);
+            CHECK(phase(anchored) < 1e-3 && phase(origin) > .02 && edge <= 1.);
+            far.end_frame();
+        }
         const std::int32_t close[3] = {10000, 5000 + 7000000, -2500}; // 70,000 units above the camera: inside 50,000 + 25,000
         sun.begin_frame(); sun.set_poll(close, PointSunReason::Point); const float up[4] = {0, 1, 0, 0}; const double here[3] = {100., 50., -25.};
         CHECK(sun.check(up, here) && !sun.decide(true, cam, set) && sun.reason == PointSunReason::Near); sun.end_frame();
@@ -430,10 +469,11 @@ class LauncherOptions(unittest.TestCase):
 
     def test_default_is_off_and_inherited_values_cannot_leak(self):
         with tempfile.TemporaryDirectory() as directory:
-            code, output, error = launch(directory, *self.BASE, inherited={'X3M_SHADOW_CASCADES': '250,1500', 'X3M_SHADOW_CASCADE_SIZES': '64', 'X3M_SHADOW_CASCADE_CAPS': '1',
+            code, output, error = launch(directory, *self.BASE, inherited={'X3M_SHADOW_CASCADES': '250,1500', 'X3M_SHADOW_SUN_POLL': '1', 'X3M_SHADOW_CASCADE_SIZES': '64', 'X3M_SHADOW_CASCADE_CAPS': '1',
                                                                           'X3M_SHADOW_CASCADE_BUDGET': '1'})
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
             self.assertEqual(env['X3M_SHADOW_CASCADES'], '0')
+            self.assertEqual(env['X3M_SHADOW_SUN_POLL'], '0')  # the poll exists only with the cascades; an inherited 1 cannot leak
             for name in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET'):
                 self.assertNotIn(name, env)
             # The single-map variables are untouched by the new options.
@@ -444,6 +484,10 @@ class LauncherOptions(unittest.TestCase):
             code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default')
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
             self.assertEqual(env['X3M_SHADOW_CASCADES'], '250.0,1500.0,7500.0,25000.0'); self.assertNotIn('X3M_SHADOW_CASCADE_SIZES', env)
+            self.assertEqual(env['X3M_SHADOW_SUN_POLL'], '1')  # default on with the cascades
+            for value, expected in (('off', '0'), ('on', '1')):
+                code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-sun-poll', value, inherited={'X3M_SHADOW_SUN_POLL': '1' if value == 'off' else '0'})
+                self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_SUN_POLL'], expected)
             code, output, error = launch(directory, *self.BASE, '--shadow-cascades', '250,1500,7500', '--shadow-cascade-sizes', '4096,2048,1024', '--shadow-cascade-caps', '64',
                                          '--shadow-cascade-budget', '900')
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
@@ -464,7 +508,7 @@ class LauncherOptions(unittest.TestCase):
                 self.assertNotEqual(code, 0, (option, value)); self.assertIn(message, error)
             code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-cascades', 'default')
             self.assertNotEqual(code, 0); self.assertIn('--shadow-cascades requires --shadow-replay-depth', error)
-            for option, value in (('--shadow-cascade-sizes', '1024'), ('--shadow-cascade-caps', '8'), ('--shadow-cascade-budget', '64')):
+            for option, value in (('--shadow-cascade-sizes', '1024'), ('--shadow-cascade-caps', '8'), ('--shadow-cascade-budget', '64'), ('--shadow-sun-poll', 'on')):
                 code, _, error = launch(directory, *self.BASE, option, value)
                 self.assertNotEqual(code, 0, option); self.assertIn(f'{option} requires --shadow-cascades', error)
 

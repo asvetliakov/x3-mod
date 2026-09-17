@@ -6597,7 +6597,7 @@ bool MotionOutput::ensure_candidate_bounds_rows() noexcept {
     float suns[renderer::shadow_cascade_max * 4]{};
     if (depth_cascades_on()) for (unsigned k = 0; k < depth_cascades_.count; ++k) std::memcpy(suns + k * 4, cascade_sun(k), 16);
     const bool ok = sun && camera_scene_.valid && (depth_cascades_on()
-        ? renderer::shadow_cascade_bounds_suns(camera_scene_, suns, depth_cascades_, candidate_cascade_bounds_)
+        ? renderer::shadow_cascade_bounds_suns(camera_scene_, suns, depth_cascades_, candidate_cascade_bounds_, point_sun_.grid_anchors())
         : renderer::shadow_replay_basis(camera_scene_, sun, depth_cascade_, basis)
           && renderer::shadow_replay_view_rows(camera_scene_, basis, depth_cascade_, candidate_bounds_rows_));
     candidate_bounds_state_ = ok ? 1 : -1;
@@ -6755,35 +6755,58 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             candidate_bounds_state_, candidate_bounds_unavailable_, candidate_extents_.refused_frame /* extent_refused: this frame's refused stores */, double(sun ? sun[0] : 0.f), double(sun ? sun[1] : 0.f), double(sun ? sun[2] : 0.f));
     }
     // Cascades: the frame's sun source (decided here unless the box test already
-    // did), its validation carried to the next frame, and one line: the light,
-    // its distance, the poll/latch agreement and every cascade's direction (the
-    // capture frames' F8 record is this line). A source change voids what was
-    // retained (those bases are the other source's).
+    // did), its validation carried to the next frame. A source change voids
+    // what was retained (those bases are the other source's). The full line
+    // (the light, its distance, both selection rules' winners, the poll/latch
+    // agreement, every cascade's direction) is written on capture (F8) frames
+    // and on a source change or a re-derivation; otherwise one summary per
+    // point_sun_summary_frames frames (the seam build writes every frame for
+    // its runner).
     if (depth_cascades_on()) {
         const bool point = point_sun_.decide(true, camera_scene_, depth_cascades_);
         point_sun_.end_frame();
+        bool event = point_sun_.rederived != 0;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        event = true;
+#endif
         if (point_sun_logged_ != point_sun_.reason) {
+            event = true;
             if (point_sun_logged_ != shadow_replay::PointSunReason::Count && depth_replay_ && (point || point_sun_logged_ == shadow_replay::PointSunReason::Point)) depth_replay_->invalidate_retained();
             log("shadow_replay_sun_source device=%llu frame=%llu source=%s reason=%s previous=%s poll=%s", id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(point_sun_.reason),
                 point_sun_logged_ == shadow_replay::PointSunReason::Count ? "none" : shadow_replay::point_sun_reason_name(point_sun_logged_), sun_light_poll::status_name(point_sun_sample_.status));
             point_sun_logged_ = point_sun_.reason;
         }
-        char text[384]; int used = 0;
+        constexpr unsigned point_sun_summary_frames = 300;
+        if (++point_sun_summary_count_ >= point_sun_summary_frames) {
+            point_sun_summary_count_ = 0;
+            const auto& n = point_sun_.frames_latch;
+            using R = shadow_replay::PointSunReason;
+            log("shadow_replay_sun_point_summary device=%llu frame=%llu frames_point=%llu off=%llu unavailable=%llu no_light=%llu camera=%llu near=%llu unchecked=%llu disagrees=%llu cooldown=%llu rederivations=%llu",
+                id_, frame_, static_cast<unsigned long long>(point_sun_.frames_point), static_cast<unsigned long long>(n[unsigned(R::Off)]), static_cast<unsigned long long>(n[unsigned(R::Unavailable)]),
+                static_cast<unsigned long long>(n[unsigned(R::NoLight)]), static_cast<unsigned long long>(n[unsigned(R::Camera)]), static_cast<unsigned long long>(n[unsigned(R::Near)]),
+                static_cast<unsigned long long>(n[unsigned(R::Unchecked)]), static_cast<unsigned long long>(n[unsigned(R::Disagrees)]), static_cast<unsigned long long>(n[unsigned(R::Cooldown)]),
+                static_cast<unsigned long long>(point_sun_.rederivations));
+        }
+        if (event || capture_) {
+        char text[768]; int used = 0;
         for (unsigned k = 0; k < depth_cascades_.count && used >= 0 && used < int(sizeof text); ++k) {
             const float* s = cascade_sun(k);
-            used += std::snprintf(text + used, sizeof text - used, " dir%u=%.9g,%.9g,%.9g", k, double(s ? s[0] : 0.f), double(s ? s[1] : 0.f), double(s ? s[2] : 0.f));
+            const double* a = point_sun_.grid_anchor(k); // the texel grid's anchor (point source only)
+            used += std::snprintf(text + used, sizeof text - used, " dir%u=%.9g,%.9g,%.9g anchor%u=%.12g,%.12g,%.12g", k, double(s ? s[0] : 0.f), double(s ? s[1] : 0.f), double(s ? s[2] : 0.f),
+                                  k, a ? a[0] : 0., a ? a[1] : 0., a ? a[2] : 0.);
         }
         if (used < 0 || used >= int(sizeof text)) text[0] = 0;
         const auto& p = point_sun_; const auto& q = point_sun_sample_;
         const double scale = q.record_valid && q.position[0] ? double(q.record_position[0]) / double(q.position[0]) : 0.;
-        LARGE_INTEGER f{};
-        QueryPerformanceFrequency(&f);
-        const double poll_us = f.QuadPart ? double(point_sun_poll_ticks_) * 1e6 / double(f.QuadPart) : 0.;
-        log("shadow_replay_sun_point device=%llu frame=%llu source=%s reason=%s poll=%s light=%.9g,%.9g,%.9g native=%d,%d,%d distance=%.9g checks=%u disagreements=%u agreement_deg=%.6f rederived=%u"
-            " candidates=%u directional=%u luma=%u second_luma=%u flags=%08x record_scale=%.6g poll_us=%.1f frames_point=%llu%s",
+        if (!qpc_frequency_) { LARGE_INTEGER f{}; if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart); }
+        const double poll_us = qpc_frequency_ ? double(point_sun_poll_ticks_) * 1e6 / double(qpc_frequency_) : 0.;
+        log("shadow_replay_sun_point device=%llu frame=%llu source=%s reason=%s poll=%s light=%.9g,%.9g,%.9g native=%d,%d,%d distance=%.9g checks=%u disagreements=%u agreement_deg=%.6f rederived=%u carried=%u"
+            " candidates=%u directional=%u slot_admitted=%u rule=%s rules_agree=%u admission_native=%d,%d,%d score=%u second_score=%u flags=%08x record_scale=%.6g poll_us=%.1f frames_point=%llu%s",
             id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(p.reason), sun_light_poll::status_name(q.status), p.light_valid ? p.light[0] : 0., p.light_valid ? p.light[1] : 0.,
-            p.light_valid ? p.light[2] : 0., int(q.position[0]), int(q.position[1]), int(q.position[2]), p.distance, p.checks, p.disagreements, p.agreement_degrees(), p.rederived,
-            q.candidates, q.directional, q.luma1000, q.second_luma1000, q.flags, scale, poll_us, static_cast<unsigned long long>(p.frames_point), text);
+            p.light_valid ? p.light[2] : 0., int(q.position[0]), int(q.position[1]), int(q.position[2]), p.distance, p.checks, p.disagreements, p.agreement_degrees(), p.rederived, p.carried_frame ? p.carried : 0u,
+            q.candidates, q.directional, q.slot_admitted, q.engine_rule ? "engine" : "admission", unsigned(q.rules_agree), int(q.admission_position[0]), int(q.admission_position[1]), int(q.admission_position[2]),
+            q.score, q.second_score, q.flags, scale, poll_us, static_cast<unsigned long long>(p.frames_point), text);
+        }
     }
     // Capture frames: one line per record (what admitted it, into which
     // cascades, and what its own program said the sun was).
@@ -6907,7 +6930,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             const bool valid = kept && (kept->frame == frame_ || (far_kept && kept->frame + 1 == frame_)) && depth_replay_->map_texture(i);
             renderer::ShadowReplayBasis current{};
             const float* sun = valid ? nullptr : cascade_sun(i); // an absent cascade's would-be basis: its own sun of this frame
-            if (!valid && (!sun || !renderer::shadow_replay_basis(camera_scene_, sun, cascade, current))) { skip = "basis"; break; }
+            if (!valid && (!sun || !renderer::shadow_replay_basis(camera_scene_, sun, cascade, current, point_sun_.grid_anchor(i)))) { skip = "basis"; break; }
             if (!renderer::shadow_replay_view_rows(camera_scene_, valid ? kept->basis : current, cascade, k.rows)) { skip = "rows"; break; }
             if (!renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_, double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), biases[i])) { skip = "bias"; break; }
             k.bias_constant = biases[i].constant; k.bias_max = biases[i].max; k.valid = valid; k.map = valid ? depth_replay_->map_texture(i) : nullptr;

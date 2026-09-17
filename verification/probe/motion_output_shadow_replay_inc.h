@@ -51,6 +51,9 @@
 // the draws keep the script's constant sun: the poll is refused (disagrees,
 // then cooldown) and the latch stays the source. `null`: the context pointer is
 // null (before the engine's constructor): unavailable, the latch stays.
+// `refusals`: the block changes before every frame: slot count 7, no
+// terminator, an entry without the light bit (three layout refusals), an
+// unreadable node pointer, no directional light, then a null context.
 namespace {
 struct ShadowPollContext {
     std::vector<unsigned char> context = std::vector<unsigned char>(0x6290, 0);
@@ -76,6 +79,19 @@ struct ShadowPollContext {
         put32(nodes[1], 0x16c, std::uint32_t(reinterpret_cast<std::uintptr_t>(record)));
         put32(context, 0x6288, 8);
         slot = null_context ? 0u : std::uint32_t(reinterpret_cast<std::uintptr_t>(context.data()));
+    }
+    // The refusals script: one defect per frame on a freshly built block.
+    const char* refuse(unsigned frame, const double light[3]) {
+        std::fill(context.begin(), context.end(), static_cast<unsigned char>(0));
+        build(light, frame >= 5);
+        switch (frame) {
+        case 0: put32(context, 0x6288, 7); return "layout";                                                   // not the context this reader knows
+        case 1: for (unsigned i = 0; i < 255; ++i) put32(context, 0x5e8c + 4 * i, std::uint32_t(reinterpret_cast<std::uintptr_t>(nodes[1].data()))); return "layout"; // no terminator
+        case 2: put32(nodes[3], 0x12c, 0x800000u); return "layout";                                           // an entry that is not a light
+        case 3: put32(context, 0x5e8c, 0x10u); return "unreadable";                                           // a node pointer into the null page
+        case 4: for (unsigned i = 1; i < 4; ++i) put32(nodes[i], 0x12c, 0x400004u); return "no_directional";  // point lights only (range 0)
+        default: return "null_context";
+        }
     }
 };
 constexpr double shadow_poll_distance = 100000.;
@@ -182,16 +198,16 @@ void run_shadow_replay_integration(Fixture& f) {
     // The sun-position poll seam.
     char poll_mode[16]{};
     const bool poll = GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_POLL", poll_mode, sizeof poll_mode) > 0;
-    const bool poll_agree = poll && !std::strcmp(poll_mode, "agree"), poll_null = poll && !std::strcmp(poll_mode, "null");
+    const bool poll_agree = poll && !std::strcmp(poll_mode, "agree"), poll_null = poll && !std::strcmp(poll_mode, "null"), poll_refusals = poll && !std::strcmp(poll_mode, "refusals");
     static ShadowPollContext poll_context; // the DLL reads it until the process ends
     double poll_light[3] = {0., 0., 0.};
     if (poll) {
         require(GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_SUN_PROGRAMS", nullptr, 0) == 0, "the poll seam runs without the sun-register pairs");
-        require(cascades != 0 && (poll_agree || poll_null || !std::strcmp(poll_mode, "disagree")), "the poll seam runs with cascades in one of its three modes");
+        require(cascades != 0 && (poll_agree || poll_null || poll_refusals || !std::strcmp(poll_mode, "disagree")), "the poll seam runs with cascades in one of its four modes");
         const auto install = symbol<void (*)(const std::uint32_t*)>(f.runtime, "x3m_sun_light_poll_fixture_install", false);
         require(install != nullptr, "the seam DLL exports the sun-position poll seam");
         const double elsewhere[3] = {-shadow_sun[0], shadow_sun[1], -shadow_sun[2]}; // 35 degrees from the script's sun
-        for (unsigned k = 0; k < 3; ++k) poll_light[k] = shadow_poll_distance * (poll_agree || poll_null ? double(shadow_sun[k]) : elsewhere[k]);
+        for (unsigned k = 0; k < 3; ++k) poll_light[k] = shadow_poll_distance * (poll_agree || poll_null || poll_refusals ? double(shadow_sun[k]) : elsewhere[k]);
         poll_context.build(poll_light, poll_null);
         install(&poll_context.slot);
         std::printf("SHADOW_POLL mode=%s light=%.9g,%.9g,%.9g candidates=4 directional=3\n", poll_mode, poll_light[0], poll_light[1], poll_light[2]);
@@ -274,6 +290,7 @@ void run_shadow_replay_integration(Fixture& f) {
     for (unsigned frame = 0; frame < shadow_frames; ++frame) {
         if (frame == shadow_reset_before) { f.reset(); shadow_ensure_bloom(f); }
         const bool no_sun = frame == shadow_no_sun_frame, multistream = frame == shadow_multistream_frame;
+        if (poll_refusals) std::printf("SHADOW_POLL_REFUSAL frame=%u expect=%s\n", frame, poll_context.refuse(frame, poll_light));
         f.frame_begin();
         const float* frame_sun = no_sun ? shadow_sun_flip : shadow_sun; // the sun-changing frame: one frame of another direction
         if (sun_programs) {

@@ -1559,7 +1559,7 @@ cascade-0 texels). That error is what this change removes; the orthographic resi
   normally share one direction bit for bit: `ShadowCascadeBounds::shared` keeps the one-transform
   box test and one draw-rows product per draw; otherwise per-cascade rows
   (`shadow_cascade_bounds_suns`, `shadow_replay_axes_equal`). The apply already took per-cascade rows.
-- Log, every cascade frame (the F8 record): `shadow_replay_sun_point … source reason poll light
+- Log (every cascade frame in this commit; F8 frames and events only, and renamed selection fields, since the fix round below): `shadow_replay_sun_point … source reason poll light
   native distance checks disagreements agreement_deg rederived candidates directional luma
   second_luma flags record_scale poll_us frames_point dir<i>`; `shadow_replay_sun_source` on a change.
   `record_scale` is the engine's own D3DLIGHT position / integer: 0.01 expected in flight.
@@ -1607,8 +1607,9 @@ functions, 0 violations (the poll's QPC delta stays an integer on the draw path)
   behind the seam; 4 candidates: point light, sun, fill, forced-directional at the origin):
   agree: 8 / 8 frames `point`, luma 186580 / second 128000, `record_scale` 0.01, 3–4 checks per
   frame, worst agreement 4e-6°, every direction within 1 / size of normalize(light − camera), every
-  replayed map's forward = −dir, held bit for bit except 2 re-derivations at the script's camera
-  jump, the sun-changing frame carried without checks; null: 8 × `unavailable / null_context`;
+  replayed map's forward = −dir; 4 re-derivations in the record: both cascades on frame 0 (the first
+  derivation) and both on frame 7 (the script's camera jump), held bit for bit on frames 1–6; the
+  sun-changing frame carried without checks; null: 8 × `unavailable / null_context`;
   disagree (light 35° away): frame 0 `disagrees` (every check), 7 × `cooldown`; both fall back to
   maps whose bases equal the latch's. Poll cost: median 5.7 µs, first frame 74 µs (region queries).
 - Box test per draw (2M rounds, 4 cascades): shared suns 45.0 ns (single-map verdict 45.6 ns, main:
@@ -1623,4 +1624,55 @@ functions, 0 violations (the poll's QPC delta stays an integer on the draw path)
 view is current, whether `0x00420260`'s nodes enter it, and the engine's tie order are flight
 questions the line's `candidates / directional / luma / second_luma / agreement_deg` answer in one
 run. The twin's edge offsets use cascade 0's right/up for every cascade (exact to the 0.3° between
-suns). `X3M_SHADOW_SUN_POLL=0` disables the poll (environment only, no launcher flag).
+suns). `X3M_SHADOW_SUN_POLL=0` disables the poll (launcher flag: fix round below).
+
+### Fix round after review (2026-09-17, second commit)
+
+Build `4f61c7b8…b0a2` (clean, 0 warnings; `check_no_x87.py` PASS, 0 violations), seam `5313c4ae…5795`,
+fixture `1a9cc114…dab4`.
+
+1. **Grid anchor.** The texel grid was anchored at the world origin, so a re-derivation (turn ≤ 2 / size)
+   moved it by |centre| × turn under the cascade (49 units at 1e5 units out): a new sub-texel phase for
+   every edge, which the first bound did not count. `shadow_replay_basis` takes an optional anchor the
+   grid passes through (null = the origin law, bit-identical: every one-sun record is unchanged);
+   `PointSun` holds one per cascade and a re-derivation moves it to the OLD grid's point beside the
+   current centre (the old basis' snapped centre). **Restated swim bound:** between re-derivations none
+   (as main); at a re-derivation the grid phase at the centre is preserved (< 1e-3 texel) and a texel r
+   units from the centre moves r × turn, ≤ 1 texel at the cascade's edge; separately a shadow whose caster
+   is D units light-ward moves ≤ 2 D / size. A retained far map keeps its anchor implicitly (its basis
+   stores the snapped centre and axes its rows are built from). Measured: host driver, camera 1e5 units
+   out, 5,000-unit move: phase anchored 0.000000 texel, origin-anchored 0.144, edge shift 0.31 texel
+   (≤ 1 asserted); through the DLL (`…-poll-agree`, the frame-7 re-derivation, from the logged anchors and
+   the old direction's axes): 5.7e-5 texel (< 1e-2 asserted, ≥ 2 samples required).
+2. **Selection rule.** The poll's result is now the engine's Dir-slot rule (`flags & 0x800000` or range
+   `+0x158 > 0x256250`; score = rounded luma + 0x300 when directional); the admission rule
+   (`(flags & 4) && !(flags & 0x400010)`) is evaluated beside it, is the result only while the engine rule
+   admits nothing (the lazy flag), and both winners are on the line: `rule`, `rules_agree`,
+   `admission_native`, `slot_admitted`, `score`, `second_score`. Not reproduced: a long-range point
+   light's per-node distance term (its score here is an upper bound, below any directional light's).
+   Fixture block: score 955 / second 896, `rule=engine rules_agree=1`.
+3. **Hysteresis.** Once validated, a frame whose poll cannot vouch for itself yet (changed position before
+   a checkable draw, or no poll) stays `point` on the last validated position for up to 30 consecutive
+   frames (`carried` on the line); only `unavailable` / `no_light`, `near` and `disagrees` (→ `cooldown`)
+   switch. A camera-less frame no longer drops the held directions. Host: 30 carried frames bit for bit,
+   then `unchecked`; the production order (box test decides `point`, a later draw disagrees: the frame
+   finishes `point`, then exactly 120 `cooldown` frames, asserted frame by frame, then `point`).
+4. **Refusals through the DLL** (`…-poll-refusals`, one defect per frame on the fixture's block): slot
+   count 7, no terminator, an entry without the light bit → `layout` ×3; node pointer 0x10 →
+   `unreadable`; point lights only → `no_directional` (reason `no_light`); null context ×3; every frame
+   `latch`, maps equal the latch's, events `unavailable → no_light → unavailable`.
+5. **Cost.** `QueryPerformanceFrequency` cached (`qpc_frequency_`); the `shadow_replay_sun_point` line is
+   written on F8 frames, source changes and re-derivations only, plus one
+   `shadow_replay_sun_point_summary` per 300 frames (reason counters); the seam build writes every frame
+   for its runner. Poll median 6.2 µs; box test 45.0 ns shared / 137 ns per-cascade suns (unchanged).
+6. **Docs / launcher.** The read contract cites
+   [voice-startup-sequence.md](../reverse-engineering/voice-startup-sequence.md) §1 (single-threaded game;
+   the draws run on the thread that calls `0x0047c640`) as the no-tearing basis. `tools/manage.py
+   --shadow-sun-poll on|off` (default on with `--shadow-cascades`, requires it; `X3M_SHADOW_SUN_POLL`
+   always written, `0` without cascades so an inherited value cannot leak); launcher tests added.
+7. `motion-output-partial.txt` and `motion-output-wine.log` are untracked and ignored; the JSON is the record.
+
+Evidence: `run_motion_output.py` (retained binaries) 20 cases: 20 / 20 pass; main's 16 records equal as
+before (case h: 22 pixels beyond one texel in region C, predicted 24.2 units = 2.06 tx; A and B 0; all 0
+against their own parallel shadow). `run_sun_share_live.py`: 21 / 21, record equal (temp paths aside).
+Host: the ten affected modules 69 tests OK; the sixteen other launcher-option modules 214 tests OK.
