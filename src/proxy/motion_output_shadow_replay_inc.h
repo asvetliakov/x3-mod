@@ -98,7 +98,7 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
     depth_replayed_ = 0; depth_replayed_frame_ = frame_;
     if (depth_replay_) depth_replay_->set_view_rows(nullptr); // a refused frame leaves no rows for the apply quad
     const unsigned n = candidates_.record_count;
-    renderer::ShadowReplayDraw draws[shadow_replay::record_capacity];
+    renderer::ShadowReplayDraw* const draws = depth_draws_;
     unsigned admitted = 0;
     const float* sun = nullptr;
     const char* unleased = nullptr;

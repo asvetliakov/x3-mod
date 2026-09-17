@@ -15,16 +15,16 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import shadow_replay_candidates as counter  # noqa: E402
 
-FRAME = ('shadow_replay_candidates device=1 frame={frame} routed=12 zwrite=10 slice0=7 managed={managed} dynamic=1 default_pool=0'
-         ' excluded=1 unknown=0 shadow_mismatch=0 leased={leased} serial_changed={serial} readonly_after=0 writable_after={writable} pending=0'
+FRAME = ('shadow_replay_candidates device=1 frame={frame} routed=12 zwrite=10 slice0=7 bounds=6 origin=8 fallback=1 managed={managed} dynamic=1 default_pool=0'
+         ' excluded=1 unknown=0 shadow_mismatch=0 leased={leased} capped={capped} reads=2 serial_changed={serial} readonly_after=0 writable_after={writable} pending=0'
          ' in_flight=0 quiet={quiet} cold_thread=0 stale=0 roots=1 waiting=0 nested=0 overflow=0')
 WITNESS = ('shadow_replay_lock_witness device={device} frame={frame} allocation=77 flags=00000010 offset=0 size=0 thread=220'
            ' serial_delta=1 revision_delta=0')
 
 
-def frame(index, managed=5, leased=5, serial=0, writable=0, quiet=None):
+def frame(index, managed=5, leased=5, serial=0, writable=0, quiet=None, capped=0):
     return FRAME.format(frame=index, managed=managed, leased=leased, serial=serial, writable=writable,
-                        quiet=leased - serial if quiet is None else quiet)
+                        quiet=leased - serial if quiet is None else quiet, capped=capped)
 
 
 def launch(directory, *args):
@@ -62,9 +62,30 @@ class Parser(unittest.TestCase):
         self.assertAlmostEqual(summary['managed_equals_slice0_share'], 0.0)
         self.assertAlmostEqual(summary['quiet_equals_leased_share'], 2 / 3)
         self.assertEqual(summary['predicates'], dict(managed_boundary=False, lease_contract=False, single_thread=True, promotion_possible=True))
+        self.assertEqual((frames[0]['bounds'], frames[0]['origin'], frames[0]['fallback'], frames[0]['capped'], frames[0]['reads']), (6, 8, 1, 0, 2))
+        self.assertEqual((summary['capped_frames'], summary['capped_total'], summary['reads_total'], summary['origin_p50']), (0, 0, 6, 8))
+        self.assertAlmostEqual(summary['bounds_share'], 0.0)
+
+    def test_bounds_and_cap(self):
+        # Casters by bounds: slice0 = bounds + fallback, origin is a statistic bounded by zwrite,
+        # and the per-frame cap partitions managed with leased and overflow.
+        capped = frame(0, managed=5, leased=3, quiet=3, capped=2)
+        rows, _ = counter.parse_text(capped)
+        self.assertEqual((rows[0]['capped'], rows[0]['leased'], rows[0]['managed']), (2, 3, 5))
+        summary = counter.summarize(rows, [])
+        self.assertEqual((summary['capped_frames'], summary['capped_total']), (1, 2))
+        steady = frame(1).replace('bounds=6 origin=8 fallback=1', 'bounds=7 origin=8 fallback=0')
+        self.assertAlmostEqual(counter.summarize(counter.parse_text(steady)[0], [])['bounds_share'], 1.0)
+        for bad in (frame(0).replace('bounds=6', 'bounds=5'),                       # bounds + fallback != slice0
+                    frame(0).replace('origin=8', 'origin=11'),                      # origin exceeds zwrite
+                    frame(0, managed=5, leased=3, quiet=3, capped=3),               # leased + capped exceeds managed
+                    frame(0).replace(' capped=0', ''),                             # missing field
+                    frame(0).replace('reads=2', 'reads=-1')):                      # negative
+            with self.assertRaises(counter.MalformedLine, msg=bad):
+                counter.parse_text(bad)
 
     def test_predicates_pass(self):
-        lines = [FRAME.format(frame=i, managed=7, leased=7, serial=0, writable=0, quiet=7).replace('dynamic=1', 'dynamic=0').replace('excluded=1', 'excluded=0')
+        lines = [FRAME.format(frame=i, managed=7, leased=7, serial=0, writable=0, quiet=7, capped=0).replace('dynamic=1', 'dynamic=0').replace('excluded=1', 'excluded=0')
                  for i in range(100)]
         frames, witnesses = counter.parse_text('\n'.join(lines))
         summary = counter.summarize(frames, witnesses)

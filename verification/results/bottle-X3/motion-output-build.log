@@ -1,16 +1,21 @@
-source commit: fe492b21abe08e5ddfad82ce07ebe8ffd7ced951-dirty
 -- Configuring done (0.3s)
--- Generating done (0.0s)
--- Build files have been written to: /Users/asvetl/x3-mod/build
+-- Generating done (0.1s)
+CMake Warning (unused-cli):
+  Manually-specified variables were not used by the project:
+
+    CMAKE_TOOLCHAIN_FILE
+
+
+-- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a7e2c2470cc482842/build
 [  1%] Refreshing compiled-in source commit
-source commit: fe492b21abe08e5ddfad82ce07ebe8ffd7ced951-dirty
+source commit: 96e125327698a50a4151818787e019149ac34b64-dirty
 [  1%] Built target x3m_source_commit
 [  2%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
 [  4%] Building compositor CPU boundary
-/Users/asvetl/x3-mod/build/compositor_bridge
+/Users/asvetl/x3-mod/.claude/worktrees/agent-a7e2c2470cc482842/build/compositor_bridge
 [  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
-[  9%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
-[  9%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
+[  6%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
+[  8%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [  9%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [ 11%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/proxy_identity.cpp.obj
 [ 12%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj

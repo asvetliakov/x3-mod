@@ -6,6 +6,9 @@
 // a 4x4 is four dp4 rows applied to (x, y, z, 1) as the vertex program does.
 #include <cmath>
 #include <cstdint>
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 #include "camera_reprojection.h"
 
 namespace x3m::renderer {
@@ -23,11 +26,27 @@ struct ShadowReplayBasis {
     float right[3]{}, up[3]{}, forward[3]{}; // sun-space axes in world space (forward = direction the light travels)
     float center[3]{};                        // snapped cascade centre in world space
 };
+// No libm on the i686 build (check_no_x87.py): GCC's std::sqrt(double) keeps
+// an errno call whose result returns on the x87 stack, and floor/fabs are x87
+// routines there; sqrtsd and a cvttsd2si truncation stay in SSE (host builds
+// without SSE2 use <cmath>). The snap is skipped beyond +-2^30 texels.
+inline double sqrt_sd(double x) noexcept {
+#if defined(__SSE2__)
+    return _mm_cvtsd_f64(_mm_sqrt_sd(_mm_set_sd(x), _mm_set_sd(x)));
+#else
+    return std::sqrt(x);
+#endif
+}
+inline double snap_floor(double v) noexcept {
+    if (!(v > -1073741824. && v < 1073741824.)) return v;
+    const double t = double(std::int32_t(v));
+    return t > v ? t - 1. : t;
+}
 // World sun direction validity: finite, unit within 5 % (the engine writes a
 // normalized object->light vector quantized to 1/65536, w = 0).
 inline bool shadow_replay_sun_valid(const float sun[4]) noexcept {
     for (unsigned i = 0; i < 3; ++i) if (!std::isfinite(sun[i])) return false;
-    const double n = std::sqrt(double(sun[0]) * sun[0] + double(sun[1]) * sun[1] + double(sun[2]) * sun[2]);
+    const double n = sqrt_sd(double(sun[0]) * sun[0] + double(sun[1]) * sun[1] + double(sun[2]) * sun[2]);
     return n > .95 && n < 1.05;
 }
 // Basis from the camera latch and the object->light direction. The camera
@@ -39,12 +58,12 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
     if (!(cascade.half_extent > 0.f) || !(cascade.depth_half_range > 0.f) || !std::isfinite(cascade.forward_offset)) return false;
     double f[3], n = 0;
     for (unsigned i = 0; i < 3; ++i) { f[i] = -double(sun[i]); n += f[i] * f[i]; }
-    n = std::sqrt(n);
+    n = sqrt_sd(n);
     for (double& v : f) v /= n;
     double hint[3] = {0, 1, 0};
-    if (std::fabs(f[1]) > .99) { hint[0] = 1; hint[1] = 0; }
+    if (f[1] > .99 || f[1] < -.99) { hint[0] = 1; hint[1] = 0; } // no std::fabs: the mingw build emits x87 fabs for it
     double right[3] = {hint[1] * f[2] - hint[2] * f[1], hint[2] * f[0] - hint[0] * f[2], hint[0] * f[1] - hint[1] * f[0]};
-    double rn = std::sqrt(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
+    double rn = sqrt_sd(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
     if (!(rn > 1e-6)) return false;
     for (double& v : right) v /= rn;
     const double up[3] = {f[1] * right[2] - f[2] * right[1], f[2] * right[0] - f[0] * right[2], f[0] * right[1] - f[1] * right[0]};
@@ -60,7 +79,7 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
     const double texel = 2. * double(cascade.half_extent) / double(cascade.size);
     double cx = 0, cy = 0, cz = 0;
     for (unsigned i = 0; i < 3; ++i) { cx += center[i] * right[i]; cy += center[i] * up[i]; cz += center[i] * f[i]; }
-    cx = std::floor(cx / texel + .5) * texel; cy = std::floor(cy / texel + .5) * texel;
+    cx = snap_floor(cx / texel + .5) * texel; cy = snap_floor(cy / texel + .5) * texel;
     for (unsigned i = 0; i < 3; ++i) {
         const double c = right[i] * cx + up[i] * cy + f[i] * cz;
         if (!std::isfinite(c)) return false;
@@ -102,7 +121,7 @@ inline bool shadow_replay_light_rows(const CameraState& camera, const float rows
     for (unsigned i = 0; i < 4; ++i) for (unsigned j = 0; j < 4; ++j) for (unsigned k = 0; k < 4; ++k) WA[i][j] += W[i][k] * A[k][j];
     for (unsigned i = 0; i < 4; ++i) for (unsigned j = 0; j < 4; ++j) for (unsigned k = 0; k < 4; ++k) M[i][j] += S[i][k] * WA[k][j];
     for (unsigned i = 0; i < 4; ++i) for (unsigned j = 0; j < 4; ++j) {
-        if (!std::isfinite(M[i][j]) || std::fabs(M[i][j]) > 1e15) return false;
+        if (!std::isfinite(M[i][j]) || M[i][j] > 1e15 || M[i][j] < -1e15) return false;
         out[i * 4 + j] = float(M[i][j]);
     }
     return true;
@@ -129,10 +148,36 @@ inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowRepla
         for (unsigned j = 0; j < 4; ++j) {
             double m = j == 3 ? offset : 0.;
             for (unsigned k = 0; k < 3; ++k) m += double(axes[a][k]) * scale * W[k][j];
-            if (!std::isfinite(m) || std::fabs(m) > 1e15) return false;
+            if (!std::isfinite(m) || m > 1e15 || m < -1e15) return false;
             out[a * 4 + j] = float(m);
         }
     }
     return true;
+}
+// Draw-time caster test (shadow-replay-gates.md, "Casters by bounds"): the
+// eight corners of the draw's object-space AABB through the draw's clip rows
+// (x, y, w only: p_view = (clip.x / m00, clip.y / m11, clip.w)) and the
+// frame's view -> sun rows (shadow_replay_view_rows); the corners' sun-space
+// AABB meets the map box when it overlaps [-1, 1]^2 x [0, 1]. Conservative
+// for a rotated box. 1 meets, 0 misses, -1 unknown (nonfinite input).
+inline int shadow_replay_bounds_verdict(const CameraState& camera, const float rows[16], const float view_rows[12],
+                                        const float lo[3], const float hi[3]) noexcept {
+    if (!camera.valid || !rows || !view_rows || !lo || !hi || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return -1;
+    float smin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f}, smax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
+    for (unsigned corner = 0; corner < 8; ++corner) {
+        const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1], z = (corner & 4) ? hi[2] : lo[2];
+        const float cx = rows[0] * x + rows[1] * y + rows[2] * z + rows[3];
+        const float cy = rows[4] * x + rows[5] * y + rows[6] * z + rows[7];
+        const float cw = rows[12] * x + rows[13] * y + rows[14] * z + rows[15];
+        const float v[3] = {cx / camera.m00, cy / camera.m11, cw};
+        for (unsigned a = 0; a < 3; ++a) {
+            const float s = view_rows[a * 4] * v[0] + view_rows[a * 4 + 1] * v[1] + view_rows[a * 4 + 2] * v[2] + view_rows[a * 4 + 3];
+            if (!std::isfinite(s)) return -1;
+            if (s < smin[a]) smin[a] = s;
+            if (s > smax[a]) smax[a] = s;
+        }
+    }
+    const bool meets = smax[0] >= -1.f && smin[0] <= 1.f && smax[1] >= -1.f && smin[1] <= 1.f && smax[2] >= 0.f && smin[2] <= 1.f;
+    return meets ? 1 : 0;
 }
 } // namespace x3m::renderer

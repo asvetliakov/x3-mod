@@ -109,6 +109,43 @@ class Projection(unittest.TestCase):
         missing = [1.0 if i < 64 * 40 else v for i, v in enumerate(flat)]
         self.assertFalse(depth.compare_map(missing, draws, camera, self.basis, 64)['ok'])
 
+    def test_bounds_objects(self):
+        # The fixture's bounds objects under its own camera terms (m00 0.8, m11 4/3), the 8-unit cascade
+        # centred on the camera and the fixture's sun: L's origin (rows translation 204.8 -> view x 256)
+        # lies beyond the origin rule's 250 units (the run-36 station: origin far, deck under the ship),
+        # yet L covers map texels; F's origin (300 units) and vertices (225 units) lie outside both rules
+        # and it rasterizes nothing. The runner expects the cap = casters to drop the last caster on the
+        # frames where L is admitted (draw order L, casters, F).
+        try:
+            import numpy  # noqa: F401
+        except ImportError:
+            self.skipTest('numpy')
+        camera = {'m00': 0.8, 'm11': 4 / 3, 'r': [1, 0, 0, 0, 1, 0, 0, 0, 1], 't': [0.0, 0.0, 0.0]}
+        sun = (1 / 11 ** .5, 3 / 11 ** .5, -1 / 11 ** .5)
+        f = tuple(-s for s in sun)
+        hint = (1, 0, 0) if abs(f[1]) > .99 else (0, 1, 0)
+        right = (hint[1] * f[2] - hint[2] * f[1], hint[2] * f[0] - hint[0] * f[2], hint[0] * f[1] - hint[1] * f[0])
+        norm = sum(v * v for v in right) ** .5; right = tuple(v / norm for v in right)
+        up = (f[1] * right[2] - f[2] * right[1], f[2] * right[0] - f[0] * right[2], f[0] * right[1] - f[1] * right[0])
+        basis = {'right': right, 'up': up, 'forward': f, 'center': (0, 0, 0), 'extent': 8.0, 'depth_half': 16.0}
+        large = {'caster': 2, 'shape': 'L', 't': 204.8, 'p': 0.004, 'zo': 0.1}
+        far = {'caster': 3, 'shape': 'F', 't': 240.0, 'p': 0.125, 'zo': 0.15}
+        origin = lambda d: (sum(c * c for c in ((d['t'] / camera['m00']), 0.0, 1.0))) ** .5  # noqa: E731  origin_distance of rows(t, p, zo)
+        self.assertGreater(origin(large), 250.0)                                # beyond the origin rule (run 36)
+        self.assertGreater(origin(far), 250.0)                                  # F: outside both rules
+        for vertex in depth.shape_vertices('L'):                                 # L's vertices within the box's depth range, w > 0
+            w = large['p'] * vertex[0] + 1
+            self.assertGreater(w, 0); self.assertGreater((0.5 + large['zo']) / w, 1.0)  # beyond the far plane on screen
+        for vertex in depth.shape_vertices('F'):                                 # every F vertex far outside the box
+            nx, ny, d = depth.project_vertex(vertex, depth.rows_matrix(far['t'], far['p'], far['zo']), camera, basis)
+            self.assertTrue(abs(nx) > 1 or abs(ny) > 1 or d < 0 or d > 1)
+        large_map, _ = depth.expected_map([large], camera, basis, 64)
+        far_map, _ = depth.expected_map([far], camera, basis, 64)
+        self.assertGreater(int((large_map < 1.0).sum()), 100)
+        self.assertEqual(int((far_map < 1.0).sum()), 0)
+        both = depth.expected_map([large, far], camera, basis, 64)[0]
+        self.assertTrue(depth.compare_map(both.reshape(-1).tolist(), [large], camera, basis, 64)['ok'])
+
 
 class LauncherGate(unittest.TestCase):
     def test_requires_motion_output_and_ownership(self):

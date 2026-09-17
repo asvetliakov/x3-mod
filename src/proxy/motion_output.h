@@ -447,8 +447,11 @@ public:
     // Caster-candidate counter (shadow_replay_candidates.h; X3M_SHADOW_REPLAY_CANDIDATES=1):
     // integer bookkeeping per routed draw, one shadow_replay_candidates line per
     // scene end, at most 16 shadow_replay_lock_witness lines per device. Off: nothing.
-    void configure_shadow_replay_candidates(bool requested, ownership::AdmissionMonitor* monitor) noexcept {
+    // cap: managed candidates recorded (and replayed) per frame, 1..record_capacity
+    // (X3M_SHADOW_REPLAY_CAP, default 512); the rest count `capped`.
+    void configure_shadow_replay_candidates(bool requested, ownership::AdmissionMonitor* monitor, unsigned cap=shadow_replay::record_capacity) noexcept {
         candidates_requested_=requested; candidates_monitor_=requested?monitor:nullptr;
+        candidate_cap_=cap<1u?1u:cap>shadow_replay::record_capacity?shadow_replay::record_capacity:cap;
     }
     // One-cascade depth replay (shadow_replay_depth.h; X3M_SHADOW_REPLAY_DEPTH=1):
     // the leased slice-0 candidates re-issued into a private sun-space map at
@@ -1039,9 +1042,26 @@ private:
     unsigned candidate_witnesses_=0;
     std::uint64_t candidates_published_frame_=~std::uint64_t(0); // frame serial of the last frame line (once per frame)
     float candidate_slice_near_=shadow_replay::slice0_near; // production constant; the seam fixture may lower it
+    unsigned candidate_cap_=shadow_replay::record_capacity;
+    // Casters by bounds (shadow-replay-gates.md): the vertex-extent cache, the
+    // frame's queued extent reads (wrapper AddRef held until the scene-end
+    // read or the release), and the frame's view -> sun rows for the box test
+    // (computed at the first draw that needs them; the sun is this frame's
+    // LightDir_Dir0 write or, before one, the previous frame's).
+    shadow_replay::ExtentCache candidate_extents_{};
+    shadow_replay::PendingExtent candidate_extent_reads_[shadow_replay::extent_reads_per_frame]{};
+    unsigned candidate_extent_read_count_=0;
+    float candidate_bounds_rows_[12]{};
+    int candidate_bounds_state_=0; // 0 not computed this frame, 1 valid, -1 unavailable
+    float depth_sun_previous_[4]{};
+    bool depth_sun_previous_known_=false;
     shadow_replay::PoolClass candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept;
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
     void note_candidate_draw(const MotionRoute& route) noexcept;
+    bool ensure_candidate_bounds_rows() noexcept;
+    void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept;
+    void read_candidate_extents() noexcept;    // the scene end: Lock READONLY through the wrapper, scan, cache, release
+    void release_candidate_extents() noexcept; // drop the queue without reading (frame without scene end, Reset, teardown)
     // Count-only tested-opaque-arm bookkeeping for a cutout pair (after_draw).
     void note_cutout_opaque(const MotionRoute& route, HRESULT result) noexcept;
     void publish_shadow_replay_candidates() noexcept;
@@ -1053,6 +1073,7 @@ private:
     std::unique_ptr<renderer::ShadowReplayPass> depth_replay_;
     HRESULT depth_replay_attach_result_=S_FALSE;
     shadow_replay::DepthGeometry depth_geometry_[shadow_replay::record_capacity]{};
+    renderer::ShadowReplayDraw depth_draws_[shadow_replay::record_capacity]{}; // the scene-end transaction's draw list (too large for the stack at 512)
     float depth_sun_constant_[4]{};
     bool depth_sun_written_=false;
     renderer::ShadowReplayCascade depth_cascade_{};

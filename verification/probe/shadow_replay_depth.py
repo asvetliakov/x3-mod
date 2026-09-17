@@ -104,8 +104,12 @@ def us_summary(rows):
 # ---- the projection chain -------------------------------------------------
 
 def shape_vertices(shape):
-    """The fixture's object-space triangles (position (x, y, 0.5, 1))."""
-    tri = {'A': ((-1, 1), (3, 1), (-1, -3)), 'B': ((-.9, .9), (-.3, .9), (-.9, .3))}[shape]
+    """The fixture's object-space triangles (position (x, y, 0.5, 1)): the
+    casters A and B, the large bounds object L (origin 256 units away under
+    rows t = 204.8, p = .004; the triangle across the box) and the far object
+    F (origin 300 units away, vertices 225 units away: nothing on the map)."""
+    tri = {'A': ((-1, 1), (3, 1), (-1, -3)), 'B': ((-.9, .9), (-.3, .9), (-.9, .3)),
+           'L': ((-214, 8), (-214, -8), (-195, 0)), 'F': ((-60, 4), (-60, -4), (-56, 0))}[shape]
     return [(x, y, .5) for x, y in tri]
 
 
