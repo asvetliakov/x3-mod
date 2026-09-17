@@ -173,6 +173,39 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.assertEqual((destination / 'depth_1_8979.rg32f').read_bytes(), b'ab' * 6)
         self.assertEqual((destination / 'shadow_map_1_8979.r32f').read_bytes(), b'cd' * 4)
 
+    def test_per_cascade_shadow_map_names_are_preserved_and_bad_ones_refused(self):
+        # Real cascade dumps glue the cascade index to the prefix; the
+        # single-map name stays valid and nothing else does.
+        rows = []
+        for cascade in range(snapshot.CASCADES):
+            name = f'shadow_map{cascade}_1_11954.r32f'
+            (self.capture / name).write_bytes(b'ef' * 4)
+            rows.append(f'shadow_replay_map_readback device=1 frame=11954 file={name} '
+                        f'width=1024 height=1024 format=r32f_row_major result=00000000 bytes=8\n')
+        (self.capture / 'shadow_map_1_11954.r32f').write_bytes(b'ef' * 4)
+        rows.append('shadow_replay_map_readback device=1 frame=11954 file=shadow_map_1_11954.r32f '
+                    'width=1024 height=1024 format=r32f_row_major result=00000000 bytes=8\n')
+        self.log.write_text(''.join(rows))
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual((count, issues), (snapshot.CASCADES + 1, []))
+        self.assertEqual((destination / 'shadow_map0_1_11954.r32f').read_bytes(), b'ef' * 4)
+        for name in ('shadow_map8_1_2.r32f', 'shadow_map00_1_2.r32f', 'shadow_map0_1_2.r32f/../x',
+                     '../shadow_map0_1_2.r32f', 'shadow_map0/../1_2.r32f', 'depth0_1_2.r32f'):
+            with self.subTest(name=name):
+                tag = 'motion_output_depth_readback' if name.startswith('depth') else 'shadow_replay_map_readback'
+                self.log.write_text(f'{tag} device=1 frame=2 file={name} result=00000000 bytes=4\n')
+                destination, count, issues = self.save(log=self.log)
+                self.assertEqual(count, 0); self.assertTrue(issues)
+                self.assertEqual([path.name for path in destination.iterdir()], [self.log.name])
+
+    def test_readback_basename_longer_than_the_bound_is_refused(self):
+        name = 'shadow_map0_1_' + '1' * snapshot.MAX_BASENAME + '.r32f'
+        self.log.write_text('shadow_replay_map_readback device=1 frame=' + '1' * snapshot.MAX_BASENAME
+                            + f' file={name} result=00000000 bytes=4\n')
+        _, count, issues = self.save(log=self.log)
+        self.assertEqual(count, 0)
+        self.assertTrue(any('unsafe or unexpected readback basename' in issue for issue in issues))
+
     def test_extension_outside_the_tag_allowance_is_refused(self):
         for tag, name in (('motion_output_depth_readback', 'depth_1_2.rgba32f'),
                           ('shadow_replay_map_readback', 'shadow_map_1_2.rg32f'),

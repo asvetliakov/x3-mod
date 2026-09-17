@@ -37,6 +37,15 @@ READBACKS = {
     'hdr_readback': ('hdr', ('rgba16f',)),
     'shadow_replay_map_readback': ('shadow_map', ('r32f',)),
 }
+# The sun lane dumps one map per cascade as shadow_map<k>_<device>_<frame>.r32f
+# (k is the cascade index, glued to the prefix); the single-map name without an
+# index stays valid. No other writer appends an index to its prefix.
+CASCADED = {'shadow_replay_map_readback'}
+CASCADES = 8
+# Every accepted readback basename is device/frame digits plus a short
+# extension, so this bound is far above any real name and below any path a
+# malformed record could smuggle through.
+MAX_BASENAME = 64
 FIELDS = re.compile(r'(?:^|\s)(\w+)=([^\s]+)')
 
 
@@ -121,8 +130,10 @@ def references(log):
                 # Basename only: the shape below admits no separator, no '..'
                 # and no absolute path, and the device/frame must be the ones
                 # this record reports.
-                shape = re.fullmatch(re.escape(prefix) + r'_(\d+)_(\d+)\.([a-z0-9]+)', row['file'])
-                if (shape is None or int(shape[1]) != int(row['device'])
+                index = f'[0-{CASCADES - 1}]?' if tag in CASCADED else ''
+                shape = re.fullmatch(re.escape(prefix) + index + r'_(\d+)_(\d+)\.([a-z0-9]+)', row['file'])
+                if (shape is None or len(row['file']) > MAX_BASENAME
+                        or int(shape[1]) != int(row['device'])
                         or int(shape[2]) != int(row['frame']) or shape[3] not in extensions):
                     raise ValueError('unsafe or unexpected readback basename')
                 name = row['file']
