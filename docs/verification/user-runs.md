@@ -58,7 +58,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 37 | FEX memory-order relaxation (A1), wined3d command stream off (A2), station shadows side-lit with geometry casters (B), comm dialog with the H.264 avatar file and the blit witness (C) | 0 | A1 run107: FEX TSO off no change (within 1 %); A2 run108: CSMT off doubles the draw call (17.6 vs 8.8 µs), +46 % frame; both closed. B run109: first visible shadows (hull from station, ship on station when close); station-on-station missing because the 250-unit box around the camera admits only nearby casters (casters median 8 / max 49 of 93–930 routed, cap never binding); extent/depth/cap/bias options for run 38. C run110: comm dialog froze after a successful H.264 graph build with zero blits (witness), same stage as the MPEG-1 attempt; codec-independent Wine amstream/DirectDraw block; video parked; original file restored |
 | 38 | Wide single shadow map at 4096 (A), own-ship near map baseline (A2), residual phases at the busy view (B), hull emitters bracket (C) | 0 | A run111 / A2 run112: shadows popped with camera pitch, wrong direction, own-ship flicker — root cause the sun read from PS c4 regardless of program (42 % of frames no sun ⇒ 250-unit fallback, 57 % a bogus (1,0,0) sun, 789 flips); plus extent-cache thrash, near-plane clipping, half-texel lookup; all fixed on main. B run113: one stamp only, `prepare` 6.36 µs/draw bundled; the technique lookup measured offline at 0.007 ms/frame, trampoline dropped. C run114: 2 of 12 programs fired; 71 % refusals were opaque routed hull draws (never ONE/ONE), F6 shared with the effects gain; own toggle and gain option on main |
 | 39 | Cascades with positional sun and caster census (A), 50k far cascade (A2), retained casters live (B), hull emitters at gain 4 (C) | 0 | A run115 only: sun poll on every frame, no cap hit, replay 1.19 µs/draw, shadows 1–3 ms at rest, retention census clean through a gate jump and a load; a camera-following serrated shadow band — root cause the apply quad reconstructing receivers half a pixel off the RT2 sample (C1 over-bias 71.9 % → 1.3 % corrected), fixed on main; stations at 5.6/12 km unshadowed (C3 = 5 km reach). A2/B/C not flown, carried into run 40 |
-| 40 | 30 km five-cascade set (A), 2048² maps (A2), corvette with the adaptive ladder + retained casters (B), hull emitters at gain 4 (C) | 4 | Queued: run40 candidate `9968bf84…` from `ee3ff318` installed 2026-09-18 |
+| 40 | 30 km five-cascade set (A), 2048² maps (A2), corvette with the adaptive ladder + retained casters (B), hull emitters at gain 4 (C) | 4 | Queued: run40 candidate `d4d824a4…` from `d415264f` installed 2026-09-18 |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
@@ -67,7 +67,7 @@ not rerun requests.
 
 ## 40. Five cascades to 30 km, 2048² A/B, corvette ladder, retained casters, hull emitters — queued (run40 candidate)
 
-Installed: run40 candidate `9968bf84…` from `ee3ff318` (see [status](../status.md)). Original hull
+Installed: run40 candidate `d4d824a4…` from `d415264f` (see [status](../status.md)). Original hull
 shading. New since run 39: the apply-quad half-pixel fix (the moving serrated band), five
 cascades with a 30 km reach, caster pool control (static-only far cascades with capital
 ships admitted, importance drop order, per-cascade records), own-ship-adaptive C0 with the

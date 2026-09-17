@@ -13,21 +13,23 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`9968bf840be6ba4a70988d1d7fe6d0d8aaaec7525f6daba9e94bf4d00ef5b06f`
-(18,197,575 bytes), built once on Opus from clean committed main `ee3ff318`
-(2026-09-18; marker `X3M_SOURCE_COMMIT=ee3ff318…`, no `-dirty`), installed
-through `manage.py install` (ownership manifest `ee3ff318`). The
+`d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4`
+(18,203,719 bytes), built once on Opus from clean committed main `d415264f`
+(2026-09-18; marker `X3M_SOURCE_COMMIT=d415264f…`, no `-dirty`), installed
+through `manage.py install` (ownership manifest `d415264f`; includes the
+ladder follow-ups). The
 [build record](../verification/results/run40-candidate-build.json) binds the
 clean build (15 s, zero warnings), the no-x87 audit (77 roots, 534 reachable,
-0 violations), 17 exports, the five site verifiers, all 34 shadow
+0 violations), 17 exports, the five site verifiers, all 35 shadow
 motion-output cases (0 behavioural diffs against the committed records),
 the comparison-controls fixture (12,231 checks), the sun-lane live set 21/21,
-the state-hook benchmark (SetRenderState +0.1 ns, SetSamplerState +0.2 ns over
-native), the five run 40 dry-runs, and by reference (inputs unchanged since
+the state-hook benchmark (SetRenderState −0.4 ns, SetSamplerState −0.3 ns,
+draw pair +632 ns over native, equal to run38), the five run 40 dry-runs, and by reference (inputs unchanged since
 `7492137`) the stamp CPU, ownership, hull-emission and object-lifetime
 fixtures. The [install record](../verification/results/run40-candidate-install.json)
 binds the installed bytes, unchanged EXE/bottle hashes and the rollback; the
-run39 DLL `cc966fb2…` and its records are in `/tmp/x3-candidate-wRyHZV/rollback`.
+first run40 build `9968bf84…` (never flown) is in `/tmp/x3-candidate-eBwRHq/rollback`
+and the run39 DLL `cc966fb2…` in `/tmp/x3-candidate-wRyHZV/rollback`.
 No game launched.
 
 This build adds, on top of run39's: the run 39 A fix (apply-quad receiver
@@ -53,8 +55,8 @@ batching, the snapshot tool's per-cascade names. Default path unchanged.
   census: nothing between 610 and 29,939 u), importance drop order with
   hysteresis, per-cascade records to 4,096; own-ship-adaptive C0 with the
   sliding ladder for the corvette/capital case. 2048² maps are run 40 A2.
-- Open: ladder follow-ups (void on active-bit change; index-based policies
-  sliding with extents) on a branch; the ~30 s distant flicker; K for the
+- Ladder follow-ups merged (`d415264f`, in the installed build). Open: the
+  ~30 s distant flicker; K for the
   adaptive C0 from the corvette flight.
 
 ## Session 2026-09-18: run 38 read, shadow system rebuilt

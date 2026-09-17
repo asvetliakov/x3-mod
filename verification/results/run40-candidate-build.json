@@ -1,33 +1,33 @@
 {
-  "recorded_utc": "2026-09-17T20:15:37Z",
+  "recorded_utc": "2026-09-17T20:32:55Z",
   "run": 40,
   "candidate": {
-    "path": "/tmp/x3-candidate-wRyHZV/candidate/d3d9.dll",
-    "directory": "/tmp/x3-candidate-wRyHZV",
+    "path": "/tmp/x3-candidate-eBwRHq/candidate/d3d9.dll",
+    "directory": "/tmp/x3-candidate-eBwRHq",
     "subdirectories": [
       "candidate",
       "rollback (empty; the installed DLL is copied here by the installing owner)"
     ],
-    "sha256": "9968bf840be6ba4a70988d1d7fe6d0d8aaaec7525f6daba9e94bf4d00ef5b06f",
-    "bytes": 18197575,
+    "sha256": "d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4",
+    "bytes": 18203719,
     "retained_first_build": true,
     "candidate_directory_file_count": 1,
     "hash_rechecked_after_fixtures": true,
     "hash_source_after_fixtures": "state-hook-benchmark-run40.json dll.sha256 equals the recorded sha256; shasum rerun after all checks agrees",
-    "previous_candidate": "run39 installed candidate 7492137 / cc966fb2\u2026 (/tmp/x3-candidate-pnXpbE)"
+    "supersedes": "the ee3ff318 run 40 candidate 9968bf84\u2026 (/tmp/x3-candidate-wRyHZV), which was never installed"
   },
   "source": {
     "worktree": "/Users/asvetl/x3-mod",
-    "commit": "ee3ff318530133b6387e1a5d4a0c6f0a1a40f116",
-    "commit_short": "ee3ff318",
+    "commit": "d415264fa4e693523627abaff009696903b3bb1b",
+    "commit_short": "d415264f",
     "detached": false,
-    "status_before_configure": "no src/, tools/ or verification/ modification; docs/verification/user-runs.md and docs/archive/user-runs-completed.md were already modified by another writer and were left as found; untracked wine logs and benchmark records only",
-    "dirty_diff": "none in production source",
-    "status_after_build": "unchanged; the 23 fixture-touched tracked files under verification/results/bottle-X3/ were restored with git checkout after reading"
+    "status_before_configure": "clean apart from untracked wine logs and benchmark records; no src/, tools/ or verification/ modification",
+    "dirty_diff": "none",
+    "status_after_build": "the 24 fixture-touched tracked files under verification/results/bottle-X3/ restored with git checkout after reading; this record (now tracked on main) rewritten in place"
   },
   "source_commit_marker": {
-    "command": "strings /tmp/x3-candidate-wRyHZV/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
-    "value": "X3M_SOURCE_COMMIT=ee3ff318530133b6387e1a5d4a0c6f0a1a40f116",
+    "command": "strings /tmp/x3-candidate-eBwRHq/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+    "value": "X3M_SOURCE_COMMIT=d415264fa4e693523627abaff009696903b3bb1b",
     "dirty_suffix": false,
     "matches_worktree_head": true
   },
@@ -53,7 +53,7 @@
     "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build/candidate-run40",
     "result": "PASS",
     "warning_error_matches": 0,
-    "log": "/tmp/x3-candidate-wRyHZV/configure.log"
+    "log": "/tmp/x3-candidate-eBwRHq/configure.log"
   },
   "build": {
     "command": "cmake --build build/candidate-run40 -j4",
@@ -61,29 +61,28 @@
     "elapsed_seconds": 15,
     "result": "PASS",
     "warning_error_matches": 0,
-    "log": "/tmp/x3-candidate-wRyHZV/build.log",
+    "log": "/tmp/x3-candidate-eBwRHq/build.log",
     "note": "build/candidate-run40 removed before configure; the shared ./build tree was not otherwise modified"
   },
   "host_audits": {
     "no_x87": {
-      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-wRyHZV/candidate/d3d9.dll",
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-eBwRHq/candidate/d3d9.dll",
       "result": "PASS",
       "roots": 77,
       "reachable_functions": 534,
       "violations": 0,
-      "run39_roots": 77,
-      "run39_reachable_functions": 526,
-      "delta_note": "+8 reachable with the ladder, pool control and pixel-centre apply; roots unchanged",
-      "report": "/tmp/x3-candidate-wRyHZV/no-x87.txt"
+      "ee3ff318_reachable_functions": 534,
+      "delta_note": "unchanged against the ee3ff318 candidate",
+      "report": "/tmp/x3-candidate-eBwRHq/no-x87.txt"
     },
     "pe_exports": {
-      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-wRyHZV/candidate/d3d9.dll",
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-eBwRHq/candidate/d3d9.dll",
       "result": "PASS",
       "machine": "0x014c",
       "count": 17,
       "names": 17,
       "matches_run39_count": true,
-      "report": "/tmp/x3-candidate-wRyHZV/pe-exports.json"
+      "report": "/tmp/x3-candidate-eBwRHq/pe-exports.json"
     },
     "phase_site_verifiers": {
       "commands": [
@@ -104,7 +103,7 @@
       },
       "exe_identity": "true in all five reports",
       "source_specs": "true in all five; source_present true in the pass, loop, residual and media-cue reports",
-      "reports": "/tmp/x3-candidate-wRyHZV/verify-*.json"
+      "reports": "/tmp/x3-candidate-eBwRHq/verify-*.json"
     }
   },
   "bottle": {
@@ -118,16 +117,16 @@
   },
   "scoped_results": {
     "motion_output_source_parity": {
-      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py <34 shadow cases>",
-      "cases_run": 34,
-      "case_groups": "single-map on/off/wide/far-refused; sun-shadow-apply/-wide/-cascades/-cascades-5; cascades, cascades-casters-20, sun-programs; the four cascades-poll-*; cascades-toggle and toggle-single; the four retention cases; the six pool cases; adaptive small/big/swap/reuse; ladder corvette/destroyer/shrink",
-      "result": "PASS (runner status PARTIAL by design: a selected run does no cross-case block; all 34 cases exit 0)",
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py <35 shadow cases>",
+      "cases_run": 35,
+      "case_groups": "single-map on/off/wide/far-refused; sun-shadow-apply/-wide/-cascades/-cascades-5; cascades, casters-20, sun-programs; four cascades-poll-*; cascades-toggle and toggle-single; four retention; six pool; adaptive small/big/swap/reuse; ladder corvette, corvette-static (new), destroyer, shrink",
+      "result": "PASS (runner status PARTIAL by design; all 35 cases exit 0)",
       "exit": 0,
       "elapsed_seconds": 124,
       "lock_wait_seconds": 0,
       "candidate_bytes": "not exercised: the runner built its own fixture DLLs from source; this is a source-parity check of the committed tree",
-      "seam_dll_sha256": "273df66773d29f397d83292b72c5c7e7d03b8f302013fa43023ddb634a73d80c",
-      "fixture_exe_sha256": "fbabe5166fa15dcb0dcb99e4a5342b3e98fe384dbec84db43cc37446bd5b8187",
+      "seam_dll_sha256": "e29599c1c4ff27770f8318e3e166c6ad3fbcd8179d87d7ab320fd4122519271d",
+      "fixture_exe_sha256": "f62a28ed2a1ed182e8dd6b77c68872f04486e7101475faedb030a57f413579da",
       "cases": {
         "seam-ownership-shadow-replay-on": {
           "checks": 203,
@@ -136,10 +135,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 32.4,
-            "median": 40.8,
-            "max": 1478.2,
-            "per_draw_median": 20.4
+            "min": 36.3,
+            "median": 43.7,
+            "max": 1495.3,
+            "per_draw_median": 21.85
           }
         },
         "seam-ownership-shadow-replay-off": {
@@ -155,10 +154,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 35.3,
-            "median": 44.0,
-            "max": 1556.6,
-            "per_draw_median": 22.0
+            "min": 32.3,
+            "median": 37.7,
+            "max": 1540.7,
+            "per_draw_median": 18.85
           }
         },
         "seam-ownership-shadow-replay-cascades": {
@@ -168,10 +167,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 43.3,
-            "median": 49.9,
-            "max": 1495.7,
-            "per_issue_median": 8.316666666666666,
+            "min": 42.2,
+            "median": 45.3,
+            "max": 1427.5,
+            "per_issue_median": 7.55,
             "issues_per_frame": [
               6,
               2,
@@ -188,10 +187,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 108.2,
-            "median": 123.6,
-            "max": 1611.2,
-            "per_issue_median": 2.874418604651163,
+            "min": 89.8,
+            "median": 92.8,
+            "max": 1561.1,
+            "per_issue_median": 2.1581395348837207,
             "issues_per_frame": [
               42,
               43,
@@ -208,10 +207,10 @@
           "frames": 8,
           "us": {
             "frames": 3,
-            "min": 57.4,
-            "median": 67.7,
-            "max": 1635.7,
-            "per_issue_median": 11.283333333333333,
+            "min": 52.6,
+            "median": 60.0,
+            "max": 1592.5,
+            "per_issue_median": 10.0,
             "issues_per_frame": [
               6,
               6,
@@ -226,10 +225,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 33.0,
-            "median": 34.6,
-            "max": 1433.0,
-            "per_draw_median": 17.3
+            "min": 31.7,
+            "median": 33.2,
+            "max": 1465.9,
+            "per_draw_median": 16.6
           }
         },
         "seam-ownership-shadow-replay-cascades-poll-agree": {
@@ -239,10 +238,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 41.3,
-            "median": 70.6,
-            "max": 1420.8,
-            "per_issue_median": 11.766666666666666,
+            "min": 37.7,
+            "median": 46.5,
+            "max": 1473.2,
+            "per_issue_median": 7.75,
             "issues_per_frame": [
               6,
               2,
@@ -259,10 +258,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 40.6,
-            "median": 54.3,
-            "max": 1478.3,
-            "per_issue_median": 9.049999999999999,
+            "min": 37.5,
+            "median": 42.5,
+            "max": 1559.4,
+            "per_issue_median": 7.083333333333333,
             "issues_per_frame": [
               6,
               2,
@@ -279,10 +278,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 40.0,
-            "median": 80.2,
-            "max": 1508.0,
-            "per_issue_median": 13.366666666666667,
+            "min": 43.2,
+            "median": 62.1,
+            "max": 1422.9,
+            "per_issue_median": 10.35,
             "issues_per_frame": [
               6,
               2,
@@ -299,10 +298,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 39.7,
-            "median": 49.1,
-            "max": 1501.4,
-            "per_issue_median": 8.183333333333334,
+            "min": 39.8,
+            "median": 44.9,
+            "max": 1423.8,
+            "per_issue_median": 7.483333333333333,
             "issues_per_frame": [
               6,
               2,
@@ -320,9 +319,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 75.4,
-            "median": 81.5,
-            "max": 1491.1
+            "min": 67.4,
+            "median": 82.8,
+            "max": 1441.0
           }
         },
         "seam-ownership-shadow-replay-adaptive-big": {
@@ -333,9 +332,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 75.7,
-            "median": 98.9,
-            "max": 1576.0
+            "min": 57.1,
+            "median": 71.2,
+            "max": 1436.6
           }
         },
         "seam-ownership-shadow-replay-adaptive-swap": {
@@ -346,9 +345,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 66.2,
-            "median": 80.4,
-            "max": 1534.4
+            "min": 63.7,
+            "median": 104.5,
+            "max": 1561.2
           }
         },
         "seam-ownership-shadow-replay-adaptive-reuse": {
@@ -359,9 +358,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 67.3,
-            "median": 75.6,
-            "max": 1669.0
+            "min": 55.1,
+            "median": 67.4,
+            "max": 1591.4
           }
         },
         "seam-ownership-shadow-replay-ladder-corvette": {
@@ -372,9 +371,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 85.8,
-            "median": 102.0,
-            "max": 1603.7
+            "min": 73.9,
+            "median": 85.3,
+            "max": 1505.7
           }
         },
         "seam-ownership-shadow-replay-ladder-destroyer": {
@@ -385,9 +384,9 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 62.2,
-            "median": 87.7,
-            "max": 1533.5
+            "min": 56.3,
+            "median": 77.0,
+            "max": 1535.4
           }
         },
         "seam-ownership-shadow-replay-ladder-shrink": {
@@ -398,9 +397,22 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 85.7,
-            "median": 102.7,
-            "max": 1612.2
+            "min": 72.1,
+            "median": 95.7,
+            "max": 1444.5
+          }
+        },
+        "seam-ownership-shadow-replay-ladder-corvette-static": {
+          "checks": 373,
+          "depth": true,
+          "casters": 2,
+          "mode": "corvette",
+          "frames": 8,
+          "us": {
+            "frames": 5,
+            "min": 45.6,
+            "median": 63.0,
+            "max": 1618.0
           }
         },
         "seam-ownership-shadow-replay-wide": {
@@ -410,10 +422,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 43.1,
-            "median": 43.5,
-            "max": 1421.3,
-            "per_draw_median": 10.875
+            "min": 36.1,
+            "median": 55.9,
+            "max": 1391.1,
+            "per_draw_median": 13.975
           }
         },
         "seam-ownership-shadow-replay-far-refused": {
@@ -423,10 +435,10 @@
           "frames": 8,
           "us": {
             "frames": 5,
-            "min": 33.6,
-            "median": 41.1,
-            "max": 1560.2,
-            "per_draw_median": 20.55
+            "min": 36.3,
+            "median": 52.9,
+            "max": 1422.2,
+            "per_draw_median": 26.45
           }
         },
         "seam-ownership-shadow-retention-live": {
@@ -435,13 +447,13 @@
           "frames": 1535,
           "us": {
             "frames": 1527,
-            "min": 21.2,
-            "median": 30.6,
-            "max": 2576.3,
+            "min": 21.4,
+            "median": 29.6,
+            "max": 2160.2,
             "bulk": {
               "frames": 16,
               "issues_median": 1450,
-              "us_median": 1834.1
+              "us_median": 1447.2
             }
           }
         },
@@ -451,13 +463,13 @@
           "frames": 1535,
           "us": {
             "frames": 1527,
-            "min": 19.0,
-            "median": 25.1,
-            "max": 1987.2,
+            "min": 19.3,
+            "median": 25.5,
+            "max": 1850.1,
             "bulk": {
               "frames": 5,
               "issues_median": 1450,
-              "us_median": 1978.6
+              "us_median": 1658.0
             }
           }
         },
@@ -467,13 +479,13 @@
           "frames": 1535,
           "us": {
             "frames": 1527,
-            "min": 18.6,
-            "median": 25.5,
-            "max": 2163.7,
+            "min": 19.7,
+            "median": 25.8,
+            "max": 1852.5,
             "bulk": {
               "frames": 5,
               "issues_median": 1450,
-              "us_median": 1918.2
+              "us_median": 1618.6
             }
           }
         },
@@ -483,13 +495,13 @@
           "frames": 1547,
           "us": {
             "frames": 1539,
-            "min": 21.8,
-            "median": 29.2,
-            "max": 2753.1,
+            "min": 22.1,
+            "median": 28.7,
+            "max": 2260.5,
             "bulk": {
               "frames": 16,
               "issues_median": 1450,
-              "us_median": 1914.2
+              "us_median": 1481.0
             }
           }
         },
@@ -500,9 +512,9 @@
           "frames": 14,
           "us": {
             "frames": 14,
-            "min": 41.2,
-            "median": 50.35,
-            "max": 1574.4
+            "min": 40.2,
+            "median": 48.05,
+            "max": 1505.2
           }
         },
         "seam-ownership-shadow-pool-static-census": {
@@ -512,9 +524,9 @@
           "frames": 14,
           "us": {
             "frames": 14,
-            "min": 40.8,
-            "median": 48.35,
-            "max": 1489.6
+            "min": 39.2,
+            "median": 46.0,
+            "max": 1456.2
           }
         },
         "seam-ownership-shadow-pool-static-live": {
@@ -524,9 +536,9 @@
           "frames": 14,
           "us": {
             "frames": 14,
-            "min": 41.7,
-            "median": 50.7,
-            "max": 1570.3
+            "min": 36.1,
+            "median": 42.2,
+            "max": 1443.5
           }
         },
         "seam-ownership-shadow-pool-static-strict": {
@@ -536,9 +548,9 @@
           "frames": 14,
           "us": {
             "frames": 14,
-            "min": 38.5,
-            "median": 50.1,
-            "max": 1499.1
+            "min": 41.3,
+            "median": 50.8,
+            "max": 1507.4
           }
         },
         "seam-ownership-shadow-pool-importance": {
@@ -548,9 +560,9 @@
           "frames": 8,
           "us": {
             "frames": 8,
-            "min": 58.4,
-            "median": 63.3,
-            "max": 1585.9
+            "min": 54.0,
+            "median": 55.8,
+            "max": 1512.7
           }
         },
         "seam-ownership-shadow-pool-records": {
@@ -560,9 +572,9 @@
           "frames": 6,
           "us": {
             "frames": 6,
-            "min": 46.2,
-            "median": 2995.65,
-            "max": 7608.6
+            "min": 43.4,
+            "median": 2590.7000000000003,
+            "max": 6139.8
           }
         },
         "sun-shadow-apply": {
@@ -571,9 +583,9 @@
           "worst_codes": 0.9981839692472931,
           "ambiguous_max": 226,
           "us": {
-            "min": 1667.3,
-            "median": 3259.3,
-            "max": 22013.2
+            "min": 1602.8,
+            "median": 3239.3,
+            "max": 21401.3
           }
         },
         "sun-shadow-apply-wide": {
@@ -582,9 +594,9 @@
           "worst_codes": 0.9984866410393352,
           "ambiguous_max": 216,
           "us": {
-            "min": 1718.7,
-            "median": 3461.2,
-            "max": 20780.5
+            "min": 1683.8,
+            "median": 3947.5,
+            "max": 21617.8
           }
         },
         "sun-shadow-apply-cascades": {
@@ -593,9 +605,9 @@
           "worst_codes": 0.9999969154596329,
           "ambiguous_max": 1742,
           "us": {
-            "min": 621.2,
-            "median": 712.1,
-            "max": 13532.2
+            "min": 622.2,
+            "median": 748.4,
+            "max": 16806.2
           }
         },
         "sun-shadow-apply-cascades-5": {
@@ -604,27 +616,16 @@
           "worst_codes": 0.9999969154596329,
           "ambiguous_max": 1755,
           "us": {
-            "min": 652.0,
-            "median": 1788.5,
-            "max": 12213.5
+            "min": 660.2,
+            "median": 1753.5,
+            "max": 11641.7
           }
         }
       },
-      "against_ledger": "every check count equals docs/verification/directional-shadows.md: on/off 203/99, wide/far-refused 203, cascades 278, casters-20 278, sun-programs 205, poll-* 281 each, cascades-toggle 283 (5.82e-06), toggle-single 214, retention live/census/off/live-poll 9,743/9,740/6,629/9,890, pool static off/census/live/strict 165/181/181/165, pool importance 99, pool records 53, adaptive small/big/swap/reuse 333/333/336/336, ladder corvette/destroyer/shrink 373/373/376, sun-shadow-apply 169, -wide 173, -cascades 4,342 (edge beyond_one 28, ambiguous_max 1,742), -cascades-5 3,117 (edge beyond_one 0)",
-      "against_committed_records": "21 touched per-case fixture records compared field by field against HEAD: 6,931 fields, 10 differences, of which 9 are bounds_bench_ns timings and one is an extra presented-twin name from this run's case selection (0 behavioral)",
-      "partial_record_note": "verification/results/bottle-X3/motion-output-partial.json on main (commit 01a5e13f) predates the ladder merge: 26 common cases, 9,994 fields, 435 fields absent from the old snapshot and 70 value mismatches, all three of them in adaptive-big/swap/reuse (active_mask 11 vs 13, C1 slid, C2 dropped) exactly as the ledger records for the regenerated adaptive records",
-      "artifacts": "all fixture-touched tracked records restored with git checkout after reading; run copy at /tmp/x3-candidate-wRyHZV/motion-output-run40.json"
-    },
-    "comparison_controls_host": {
-      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_comparison_hotkeys",
-      "result": "PASS",
-      "tests": 6,
-      "elapsed_seconds": 5.7,
-      "fixture_checks": {
-        "comparison_controls": "12,231 checks / 0 failures (release and sanitized)",
-        "comparison_bloom_handoff": "45 / 0 (release and sanitized)",
-        "comparison_notice": "108,073 / 0, 0 allocations (release and sanitized)"
-      }
+      "new_case": "seam-ownership-shadow-replay-ladder-corvette-static: 373 checks, max_depth_error 5.997454037842687e-07, record equal to the committed seam-ownership-shadow-replay-ladder-corvette-static-fixture.json",
+      "against_ledger": "every check count as in docs/verification/directional-shadows.md: on/off 203/99, wide/far-refused 203, cascades 278, casters-20 278, sun-programs 205, poll 281x4, cascades-toggle 283, toggle-single 214, retention 9,743/9,740/6,629/9,890, pool 165/181/181/165 + 99 + 53, adaptive 333/333/336/336, ladder corvette/corvette-static/destroyer/shrink 373/373/373/376, sun-shadow-apply 169, -wide 173, -cascades 4,342 (edge beyond_one 28), -cascades-5 3,117 (beyond_one 0)",
+      "against_committed_records": "22 touched per-case fixture records: 7,394 fields compared, 0 value mismatches, 1 field absent from the committed side (an extra presented-twin name from this run's case selection); motion-output-partial.json on main now matches too: 26 common cases, 10,158 fields, 0 mismatches",
+      "artifacts": "all fixture-touched tracked records restored with git checkout after reading; run copy at /tmp/x3-candidate-eBwRHq/motion-output-run40.json"
     },
     "sun_share_live": {
       "committed_record": {
@@ -634,89 +635,195 @@
         "game_launched": false
       },
       "rerun": {
-        "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --result /tmp/x3-candidate-wRyHZV/sun-share-live-run40.json",
+        "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --result /tmp/x3-candidate-eBwRHq/sun-share-live-run40.json",
         "result": "PASS",
         "exit": 0,
-        "elapsed_seconds": 38,
+        "elapsed_seconds": 41,
         "passed": true,
         "game_launched": false,
         "cases": 21,
         "failed_cases": 0,
         "case_set": "full set (no --case filter)",
-        "seam_dll_sha256": "273df66773d29f397d83292b72c5c7e7d03b8f302013fa43023ddb634a73d80c",
-        "fixture_exe_sha256": "fbabe5166fa15dcb0dcb99e4a5342b3e98fe384dbec84db43cc37446bd5b8187",
-        "vs_committed": "633 non-provenance scalar fields across all 21 cases: 0 value mismatches, 0 missing fields",
-        "result_file": "written to /tmp/x3-candidate-wRyHZV only; verification/results/bottle-X3/sun-share-live.json untouched"
+        "seam_dll_sha256": "e29599c1c4ff27770f8318e3e166c6ad3fbcd8179d87d7ab320fd4122519271d",
+        "fixture_exe_sha256": "f62a28ed2a1ed182e8dd6b77c68872f04486e7101475faedb030a57f413579da",
+        "vs_committed": "633 non-provenance scalar fields across all 21 cases: 0 mismatches, 0 missing",
+        "result_file": "written to /tmp/x3-candidate-eBwRHq only; verification/results/bottle-X3/sun-share-live.json untouched"
       }
     },
     "state_hook_benchmark": {
-      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-wRyHZV/candidate/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run40.json",
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-eBwRHq/candidate/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run40.json",
       "result": "PASS",
       "exit": 0,
-      "elapsed_seconds": 27,
+      "elapsed_seconds": 26,
       "lock_wait_seconds": 0,
       "output": "verification/results/bottle-X3/state-hook-benchmark-run40.json (untracked; the paired -run40-wine.log stays local)",
-      "dll_sha256_in_output": "9968bf840be6ba4a70988d1d7fe6d0d8aaaec7525f6daba9e94bf4d00ef5b06f",
-      "fixture_exe_sha256": "c2980c4949c1ffb3bf461fc1ec18e11c4f7542c0dc092ba12ce00d2002cec973",
+      "dll_sha256_in_output": "d4d824a40aaf4c134167959f32db8d9d3aa9bf3efe8ee7e50be93eaeabe5fad4",
+      "fixture_exe_sha256": "c7be13026d2d04a3428fb4939e8f1c428cb9e271830091652c66380c57504490",
       "ns_per_call_timing_off": {
         "SetRenderState": {
-          "native": 14.6,
-          "production": 14.7,
-          "hooked_shadow": 79.6
+          "native": 11.4,
+          "production": 11.0,
+          "hooked_shadow": 79.7
         },
         "SetSamplerState": {
-          "native": 11.0,
-          "production": 11.2,
-          "hooked_shadow": 69.2
+          "native": 11.2,
+          "production": 10.9,
+          "hooked_shadow": 70.5
         },
         "GetState_draw_set_10": {
-          "native": 92.4,
-          "production": 92.6,
-          "hooked_shadow": 91.8
+          "native": 93.5,
+          "production": 93.3,
+          "hooked_shadow": 94.2
         },
         "routed_draw_mip_bias_2stages": {
-          "native": 77.1,
-          "production": 79.0,
-          "hooked_shadow": 471.3
+          "native": 78.7,
+          "production": 77.5,
+          "hooked_shadow": 472.6
         },
         "SetStreamSource": {
-          "native": 16.1,
-          "production": 137.3,
-          "hooked_shadow": 133.6
+          "native": 16.0,
+          "production": 133.3,
+          "hooked_shadow": 139.0
         },
         "SetStreamSource_DrawIndexedPrimitive_pair": {
-          "native": 385.6,
-          "production": 1126.5,
-          "hooked_shadow": 890.4
+          "native": 392.5,
+          "production": 1024.2,
+          "hooked_shadow": 934.3
         },
         "state_mix": {
-          "native": 15.5,
-          "production": 65.4,
-          "hooked_shadow": 84.6
+          "native": 15.6,
+          "production": 64.3,
+          "hooked_shadow": 84.7
         }
       },
       "frame_timing_on": {
-        "SetRenderState": 154.7,
-        "SetSamplerState": 142.6,
-        "draw_pair": 1452.2
+        "SetRenderState": 155.1,
+        "SetSamplerState": 144.3,
+        "draw_pair": 1488.8
       },
       "attribution": {
-        "proxy_guard_and_shadow_ns": 72.5,
-        "frame_timing_stamps_ns": 75.5,
-        "of_which_qpc_pair_ns": 126.0
+        "proxy_guard_and_shadow_ns": 74.0,
+        "frame_timing_stamps_ns": 75.3,
+        "of_which_qpc_pair_ns": 127.4
       },
       "gates": {
-        "production_SetSamplerState_ns": "11.2 (run39 12.2, run38 10.5); production-minus-native +0.2 ns",
-        "production_SetRenderState_ns": "14.7 (run39 13.6); production-minus-native +0.1 ns",
-        "draw_pair": "1,126.5 ns vs run39 1,076.4 and run38 1,012.2; over native 740.9 vs 680.9 and 628.9 ns, but the three repetitions span 1,118.9-1,557.4 ns and the hooked-shadow configuration measured 890.4, so the figure is not separable from session noise here",
-        "verdict": "PASS on the setter gates; the draw-pair drift across runs 38-40 is flagged as an open concern, not a measured regression"
+        "production_SetRenderState_ns": "11.0 (native 11.4; production-minus-native -0.4)",
+        "production_SetSamplerState_ns": "10.9 (native 11.2; production-minus-native -0.3; run38 10.5)",
+        "draw_pair": "1,024.2 ns, over native 631.7 (run38 628.9): the ee3ff318 session's 740.9 ns excursion did not reproduce, so that drift was session noise; repetitions 1,050.0 / 1,023.0 / 1,024.2",
+        "verdict": "PASS on all three gates"
       },
       "cpu_state_preservation": "x87/control/status/tags/mxcsr/error all =1 across 4 configurations x 7 entry points (168 flag fields, 0 non-1)",
       "scope": "Median of three repetitions per configuration in one process under CrossOver Preview; not a native-Windows run and not game FPS."
     },
-    "reused_from_run39": {
-      "basis": "git diff --stat 7492137 ee3ff318 changes no compiled input of these four fixtures (verified file by file against build_game_phase_cpu.py, build_ownership.sh, build_linear_material.sh and build_object_lifetime.sh)",
-      "record": "verification/results/run39-candidate-build.json (commit 7492137 candidate) and its c0c76b1 predecessor",
+    "launcher_dry_run": {
+      "command": "python3 tools/manage.py <options> --dry-run launch",
+      "shared_options": "--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 (A, B, C; D is vanilla only)",
+      "shadow_base": "--sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,37500,150000 --shadow-sun-poll on --shadow-cascade-static-from 3 --shadow-cascade-large-min 1500 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096",
+      "result": "PASS (all five exit 0; A/A2/B/C print 12 argv elements starting at the CrossOver Preview wine binary, D prints 9)",
+      "variants": {
+        "A_five_cascades_4096_census": {
+          "argv": 12,
+          "overrides": "d3d9=n,b",
+          "d3dx": "native",
+          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+          "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,4096,4096",
+          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
+          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
+          "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
+          "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
+          "X3M_SHADOW_SUN_POLL": "1",
+          "X3M_SHADOW_RETENTION_CENSUS": "1",
+          "X3M_SHADOW_CASTER_RETENTION": "0",
+          "X3M_SUN_SHADOW_APPLY": "1",
+          "X3M_HULL_EMISSION_GAIN": "1.0",
+          "exit": 0,
+          "extra": "--shadow-cascade-sizes 4096,4096,4096,4096,4096 --shadow-retention-census",
+          "log": "/tmp/x3-candidate-eBwRHq/dry-run-A.log"
+        },
+        "A2_five_cascades_2048_census": {
+          "argv": 12,
+          "overrides": "d3d9=n,b",
+          "d3dx": "native",
+          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+          "X3M_SHADOW_CASCADE_SIZES": "2048,2048,2048,2048,2048",
+          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
+          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
+          "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
+          "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
+          "X3M_SHADOW_SUN_POLL": "1",
+          "X3M_SHADOW_RETENTION_CENSUS": "1",
+          "X3M_SHADOW_CASTER_RETENTION": "0",
+          "X3M_SUN_SHADOW_APPLY": "1",
+          "X3M_HULL_EMISSION_GAIN": "1.0",
+          "exit": 0,
+          "extra": "--shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census",
+          "log": "/tmp/x3-candidate-eBwRHq/dry-run-A2.log"
+        },
+        "B_caster_retention_adaptive_c0_1_5": {
+          "argv": 12,
+          "overrides": "d3d9=n,b",
+          "d3dx": "native",
+          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+          "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,4096,4096",
+          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
+          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
+          "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
+          "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
+          "X3M_SHADOW_CASCADE_ADAPTIVE_C0": "1.5",
+          "X3M_SHADOW_SUN_POLL": "1",
+          "X3M_SHADOW_RETENTION_CENSUS": "0",
+          "X3M_SHADOW_CASTER_RETENTION": "1",
+          "X3M_SUN_SHADOW_APPLY": "1",
+          "X3M_HULL_EMISSION_GAIN": "1.0",
+          "exit": 0,
+          "extra": "--shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 (corvette session)",
+          "log": "/tmp/x3-candidate-eBwRHq/dry-run-B.log"
+        },
+        "C_hull_emitters_gain_4": {
+          "argv": 12,
+          "overrides": "d3d9=n,b",
+          "d3dx": "native",
+          "X3M_SHADOW_CASCADES": "0",
+          "X3M_SHADOW_SUN_POLL": "0",
+          "X3M_SHADOW_RETENTION_CENSUS": "0",
+          "X3M_SHADOW_CASTER_RETENTION": "0",
+          "X3M_SUN_SHADOW_APPLY": "0",
+          "X3M_HULL_EMISSION_GAIN": "4.0",
+          "exit": 0,
+          "extra": "--hull-emitters --hull-emission-gain 4",
+          "log": "/tmp/x3-candidate-eBwRHq/dry-run-C.log"
+        },
+        "D_vanilla": {
+          "argv": 9,
+          "overrides": "d3d9=b",
+          "d3dx": "native",
+          "X3M_SHADOW_CASCADES": "0",
+          "X3M_SHADOW_SUN_POLL": "0",
+          "X3M_SHADOW_RETENTION_CENSUS": "0",
+          "X3M_SHADOW_CASTER_RETENTION": "0",
+          "X3M_SUN_SHADOW_APPLY": "0",
+          "X3M_HULL_EMISSION_GAIN": "1.0",
+          "exit": 0,
+          "command": "python3 tools/manage.py --vanilla --dry-run launch",
+          "log": "/tmp/x3-candidate-eBwRHq/dry-run-D-vanilla.log"
+        }
+      },
+      "game_launched": false
+    },
+    "reused_from_ee3ff318": {
+      "basis": "git diff --stat ee3ff318 d415264f changes none of their inputs: comparison_controls.h and the phase stamp, ownership, linear-material and object-lifetime sources are all untouched (the changed source files are motion_output.cpp, motion_output_shadow_adaptive_inc.h, shadow_replay_projection.h, manage.py and runner/tests)",
+      "record": "verification/results/run40-candidate-build.json at commit d415264f's parent ee3ff318 (this file's previous revision)",
+      "comparison_controls_host": {
+        "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_comparison_hotkeys",
+        "result": "PASS",
+        "tests": 6,
+        "elapsed_seconds": 5.7,
+        "fixture_checks": {
+          "comparison_controls": "12,231 checks / 0 failures (release and sanitized)",
+          "comparison_bloom_handoff": "45 / 0 (release and sanitized)",
+          "comparison_notice": "108,073 / 0, 0 allocations (release and sanitized)"
+        }
+      },
       "game_phase_cpu": {
         "result": "PASS",
         "checks": 8839,
@@ -752,101 +859,6 @@
         "journal_cases": "12 PASS",
         "backend_calls": 172592
       }
-    },
-    "launcher_dry_run": {
-      "command": "python3 tools/manage.py <options> --dry-run launch",
-      "shared_options": "--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 (A, B, C; D is vanilla only)",
-      "shadow_base": "--sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,37500,150000 --shadow-sun-poll on --shadow-cascade-static-from 3 --shadow-cascade-large-min 1500 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096",
-      "result": "PASS (all five exit 0; A/A2/B/C print 12 argv elements starting at the CrossOver Preview wine binary, D prints 9)",
-      "variants": {
-        "A_five_cascades_4096_census": {
-          "argv": 12,
-          "overrides": "d3d9=n,b",
-          "d3dx": "native",
-          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
-          "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,4096,4096",
-          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
-          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
-          "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
-          "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
-          "X3M_SHADOW_SUN_POLL": "1",
-          "X3M_SHADOW_RETENTION_CENSUS": "1",
-          "X3M_SHADOW_CASTER_RETENTION": "0",
-          "X3M_SUN_SHADOW_APPLY": "1",
-          "X3M_HULL_EMISSION_GAIN": "1.0",
-          "exit": 0,
-          "extra": "--shadow-cascade-sizes 4096,4096,4096,4096,4096 --shadow-retention-census",
-          "log": "/tmp/x3-candidate-wRyHZV/dry-run-A.log"
-        },
-        "A2_five_cascades_2048_census": {
-          "argv": 12,
-          "overrides": "d3d9=n,b",
-          "d3dx": "native",
-          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
-          "X3M_SHADOW_CASCADE_SIZES": "2048,2048,2048,2048,2048",
-          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
-          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
-          "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
-          "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
-          "X3M_SHADOW_SUN_POLL": "1",
-          "X3M_SHADOW_RETENTION_CENSUS": "1",
-          "X3M_SHADOW_CASTER_RETENTION": "0",
-          "X3M_SUN_SHADOW_APPLY": "1",
-          "X3M_HULL_EMISSION_GAIN": "1.0",
-          "exit": 0,
-          "extra": "--shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census",
-          "log": "/tmp/x3-candidate-wRyHZV/dry-run-A2.log"
-        },
-        "B_caster_retention_adaptive_c0_1_5": {
-          "argv": 12,
-          "overrides": "d3d9=n,b",
-          "d3dx": "native",
-          "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
-          "X3M_SHADOW_CASCADE_SIZES": "4096,4096,4096,4096,4096",
-          "X3M_SHADOW_CASCADE_STATIC_FROM": "3",
-          "X3M_SHADOW_CASCADE_LARGE_MIN": "1500.0",
-          "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
-          "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
-          "X3M_SHADOW_CASCADE_ADAPTIVE_C0": "1.5",
-          "X3M_SHADOW_SUN_POLL": "1",
-          "X3M_SHADOW_RETENTION_CENSUS": "0",
-          "X3M_SHADOW_CASTER_RETENTION": "1",
-          "X3M_SUN_SHADOW_APPLY": "1",
-          "X3M_HULL_EMISSION_GAIN": "1.0",
-          "exit": 0,
-          "extra": "--shadow-cascade-sizes 4096,\u2026 --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 (corvette session)",
-          "log": "/tmp/x3-candidate-wRyHZV/dry-run-B.log"
-        },
-        "C_hull_emitters_gain_4": {
-          "argv": 12,
-          "overrides": "d3d9=n,b",
-          "d3dx": "native",
-          "X3M_SHADOW_CASCADES": "0",
-          "X3M_SHADOW_SUN_POLL": "0",
-          "X3M_SHADOW_RETENTION_CENSUS": "0",
-          "X3M_SHADOW_CASTER_RETENTION": "0",
-          "X3M_SUN_SHADOW_APPLY": "0",
-          "X3M_HULL_EMISSION_GAIN": "4.0",
-          "exit": 0,
-          "extra": "--hull-emitters --hull-emission-gain 4",
-          "log": "/tmp/x3-candidate-wRyHZV/dry-run-C.log"
-        },
-        "D_vanilla": {
-          "argv": 9,
-          "overrides": "d3d9=b",
-          "d3dx": "native",
-          "X3M_SHADOW_CASCADES": "0",
-          "X3M_SHADOW_SUN_POLL": "0",
-          "X3M_SHADOW_RETENTION_CENSUS": "0",
-          "X3M_SHADOW_CASTER_RETENTION": "0",
-          "X3M_SUN_SHADOW_APPLY": "0",
-          "X3M_HULL_EMISSION_GAIN": "1.0",
-          "exit": 0,
-          "command": "python3 tools/manage.py --vanilla --dry-run launch",
-          "log": "/tmp/x3-candidate-wRyHZV/dry-run-D-vanilla.log"
-        }
-      },
-      "game_launched": false
     }
   },
   "load_check": {
@@ -868,10 +880,22 @@
   "limitations": [
     "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
     "Only the commit marker, no-x87, export-list and state-hook benchmark checks bind these candidate bytes; the fixtures build their own binaries from the same committed source.",
-    "The benchmark is a synthetic per-call fixture under CrossOver Preview; not game FPS. The draw-pair figure is noisy this session (production repetitions 1,118.9 / 1,126.5 / 1,557.4 ns, native 375.9 / 385.6 / 473.5, and the hooked-shadow configuration measured lower than production).",
-    "Four check groups are reused by reference from the run39 records (stamp CPU fixture, ownership runner, hull-emission GPU slice, object-lifetime fixture): git diff 7492137 ee3ff318 changes none of their compiled inputs (object_lifetime.cpp/.h, engine_memory.cpp/.h, linear_material.cpp, linear_emission.cpp, material_motion.cpp, the phase stamp and ownership sources are all untouched), contrary to the brief's expectation that the object-lifetime journal source changed.",
-    "motion-output-partial.json on main predates the ladder merge for the adaptive cases; parity for those is against the regenerated per-case fixture records.",
-    "The brief's '--shadow-retention census' phrasing maps to the flags --shadow-retention-census / --shadow-caster-retention; all other option spellings in the brief matched the launcher exactly.",
+    "The benchmark is a synthetic per-call fixture under CrossOver Preview; it is not measured game FPS.",
+    "Five check groups are reused by reference from the ee3ff318 record (comparison-controls host test, stamp CPU fixture, ownership runner, hull-emission GPU slice, object-lifetime fixture); git diff ee3ff318 d415264f changes none of their inputs.",
+    "The brief's '--shadow-retention census' phrasing maps to the flags --shadow-retention-census / --shadow-caster-retention; every other option spelling matched the launcher.",
     "Installation and game launch are owned by the main session; nothing was installed and the game was never launched."
-  ]
+  ],
+  "changes_since_ee3ff318": {
+    "command": "git diff --stat ee3ff318 d415264f",
+    "summary": "ladder follow-ups: void on active-bit change, per-cascade policies (caps/records/static_from/large_min) slide with the extents, NaN refusal for out-of-range indices, corvette-static fixture case",
+    "source_files": [
+      "src/proxy/motion_output.cpp",
+      "src/proxy/motion_output_shadow_adaptive_inc.h",
+      "src/renderer/shadow_replay_projection.h",
+      "tools/manage.py",
+      "verification/analysis/test_shadow_cascades.py",
+      "verification/probe/run_motion_output.py",
+      "8 fixture records"
+    ]
+  }
 }
