@@ -1,0 +1,28 @@
+{
+ "installed_utc": "2026-09-17T20:16:14.393915+00:00",
+ "source_commit": "ee3ff318",
+ "manifest_source_commit": "ee3ff318530133b6387e1a5d4a0c6f0a1a40f116",
+ "candidate": "/tmp/x3-candidate-wRyHZV/candidate/d3d9.dll",
+ "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+ "installed_sha256": "9968bf840be6ba4a70988d1d7fe6d0d8aaaec7525f6daba9e94bf4d00ef5b06f",
+ "bytes": 18197575,
+ "rollback": "/tmp/x3-candidate-wRyHZV/rollback",
+ "rollback_sha256": "cc966fb2fe6e5609a4c29fc91aa3192a0db4d1c67defe2e8d07562b856ca0ea6",
+ "previous_install_record": "/tmp/x3-candidate-wRyHZV/rollback/run39-candidate-install.json",
+ "unchanged": {
+  "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "install_method": "tools/manage.py install --dll-source",
+ "manifest": {
+  "project": "x3-modern-renderer",
+  "sha256": "9968bf840be6ba4a70988d1d7fe6d0d8aaaec7525f6daba9e94bf4d00ef5b06f",
+  "source": "/private/tmp/x3-candidate-wRyHZV/candidate/d3d9.dll",
+  "source_commit": "ee3ff318530133b6387e1a5d4a0c6f0a1a40f116",
+  "manifest_source": "dll"
+ },
+ "game_launched": false,
+ "build_record": "verification/results/run40-candidate-build.json",
+ "dry_run_sessions": "see build record (A, A2, B, C, D)",
+ "native_windows_verified": false
+}

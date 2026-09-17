@@ -1372,3 +1372,56 @@ together) and say whether the station's position lights, warning and
 construction signs read as lights at gain 2, and whether anything else on
 the hull brightened that should not have.
 
+## 39. Cascades, positional sun, caster retention census, hull emitters — completed as run115 (session A only; A2/B/C carried into run 40)
+
+Installed: run39 candidate `cc966fb2…` from `7492137` (see [status](../status.md)). Original hull
+shading throughout. Design: [cascade extents](../architecture/shadow-cascade-extents.md)
+set R, [caster retention](../architecture/shadow-caster-retention.md) stage 1 census.
+Hotkeys: **Ctrl+Shift+F12** toggles the shadows (replay + apply) at rest for the fill-cost
+A/B; **Ctrl+Shift+F4** toggles the hull emitters; F6 the engine/effect gains; F8 capture.
+
+Common prefix for every session:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases
+```
+
+**Session A** (set R, census only — retained casters are counted, not drawn; 5–8 minutes):
+```sh
+<prefix> --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,25000 --shadow-cascade-sizes 4096,4096,4096,2048 --shadow-sun-poll on --shadow-retention-census
+```
+1. Same station as run109/run111, sun to one side. Look at: your ship's shadow on the deck,
+   station parts shadowing each other across the whole station, the far edge of the shadows,
+   and whether anything pops when you pitch or turn the camera (the run 38 defect).
+2. At rest above the deck, press **Ctrl+Shift+F12** off for ~10 s, on for ~10 s, twice
+   (the fill-cost A/B; note the frame-rate feel each time).
+3. F8 twice: one wide station view, one close to a shadow edge on your hull.
+4. Fly 1–2 km away and look back at the station; then one **gate jump** and one **save load**
+   (the retention census needs both transitions), then quit.
+Report: correct direction and placement yes/no, popping yes/no, self-shadow flicker yes/no,
+how far shadows reach, seams between cascades (a visible change in softness), the distant
+flicker every ~30 s seen in run 38 A (still there?), and the frame-rate feel with the toggle.
+
+**Session A2** (same spot, 2–3 minutes, the 10 km far cascade):
+```sh
+<prefix> --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,50000 --shadow-cascade-sizes 4096,4096,4096,4096 --shadow-sun-poll on --shadow-retention-census
+```
+Look at distant stations (5–10 km) for shadows between their parts, and at the frame-rate
+feel; one Ctrl+Shift+F12 A/B; one F8 on a distant station. The log's `c3=` / `capped3=`
+counters decide 5 km vs 10 km.
+
+**Session B** (retained casters drawn; 2–3 minutes, only after A ran):
+```sh
+<prefix> --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-cascades 250,1500,7500,25000 --shadow-cascade-sizes 4096,4096,4096,2048 --shadow-sun-poll on --shadow-caster-retention
+```
+At the station, turn the camera so a shadow-casting part leaves the screen: its shadow
+must stay. Report any shadow that lingers after its caster is destroyed or moves, or any
+crash/hang (this session holds references to game buffers across frames).
+
+**Session C** (hull emitters, any station with position lights and signs, 1–2 minutes):
+```sh
+<prefix> --hull-emitters --hull-emission-gain 4
+```
+Press **Ctrl+Shift+F4** to toggle only the hull emitters; one F8 on the station. Report
+whether position lights and signs read as lights at gain 4 and whether anything else on the
+hull brightened. The F8 lines name the models that carry these emitters.
+

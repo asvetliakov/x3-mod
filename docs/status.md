@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-18 (run39 candidate installed; run 39 queued). This is the short current handoff; the current
+Updated 2026-09-18 (run40 candidate installed; run 40 queued). This is the short current handoff; the current
 session handoff is [handoff-2026-09-18.md](handoff-2026-09-18.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -13,38 +13,49 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`cc966fb2fe6e5609a4c29fc91aa3192a0db4d1c67defe2e8d07562b856ca0ea6`
-(17,851,070 bytes), built once on Opus from clean committed main `7492137`
-(2026-09-18; marker `X3M_SOURCE_COMMIT=7492137…`, no `-dirty`). The
-[build record](../verification/results/run39-candidate-build.json) binds the
-clean build (15 s, zero warnings), the no-x87 audit (77 roots, 526 reachable,
-0 violations), 17 exports, the five site verifiers, 16 shadow motion-output
-cases (cascades, casters, four poll cases, sun-programs, on/off, wide,
-far-refused, toggle, three retention cases and live-poll; 0 behavioural diffs
-against the committed records), the comparison-controls fixture (12,231
-checks), the sun-lane live set 21/21, the state-hook benchmark
-(SetSamplerState +0.3 ns, draw pair +681 ns over native; run38 +0.0/+629),
-the four run 39 dry-runs, and by reference (inputs unchanged since `c0c76b1`)
-the stamp CPU fixture (8,839/0), ownership runner (370/563/0), hull-emission
-slice (gains 2/4, error 0) and object-lifetime fixture (674/0, 12 journal
-cases). The [install record](../verification/results/run39-candidate-install.json)
+`9968bf840be6ba4a70988d1d7fe6d0d8aaaec7525f6daba9e94bf4d00ef5b06f`
+(18,197,575 bytes), built once on Opus from clean committed main `ee3ff318`
+(2026-09-18; marker `X3M_SOURCE_COMMIT=ee3ff318…`, no `-dirty`), installed
+through `manage.py install` (ownership manifest `ee3ff318`). The
+[build record](../verification/results/run40-candidate-build.json) binds the
+clean build (15 s, zero warnings), the no-x87 audit (77 roots, 534 reachable,
+0 violations), 17 exports, the five site verifiers, all 34 shadow
+motion-output cases (0 behavioural diffs against the committed records),
+the comparison-controls fixture (12,231 checks), the sun-lane live set 21/21,
+the state-hook benchmark (SetRenderState +0.1 ns, SetSamplerState +0.2 ns over
+native), the five run 40 dry-runs, and by reference (inputs unchanged since
+`7492137`) the stamp CPU, ownership, hull-emission and object-lifetime
+fixtures. The [install record](../verification/results/run40-candidate-install.json)
 binds the installed bytes, unchanged EXE/bottle hashes and the rollback; the
-previous run38 DLL `5b4be52e…` and its install record are in
-`/tmp/x3-candidate-pnXpbE/rollback`. No game launched.
+run39 DLL `cc966fb2…` and its records are in `/tmp/x3-candidate-wRyHZV/rollback`.
+No game launched.
 
-This build adds, on top of run38's: the run 38 shadow fixes (sun register
-resolved per program from its constant table with a latched, validated sun;
-collision-tolerant extent cache; pancaking; half-texel lookup; double
-snapped centre), N ≤ 4 sun-shadow cascades (`--shadow-cascades`,
-`--shadow-cascade-sizes`, caps, budget, far-cascade alternate frames and
-fade), the positional sun (`--shadow-sun-poll`, engine light position read
-hook-free and cross-checked per draw, per-cascade anchored bases), caster
-retention stages 1–2 (`--shadow-retention-census`, `--shadow-caster-retention`;
-retirement journal in the lifetime observer), the at-rest shadow toggle
-**Ctrl+Shift+F12**, hull emitters with their own toggle **Ctrl+Shift+F4** and
-`--hull-emission-gain`. Default path unchanged; no shadows unless
-`--sun-shadow-apply`. Design: [cascade extents](architecture/shadow-cascade-extents.md)
-(set R ratified), [caster retention](architecture/shadow-caster-retention.md).
+This build adds, on top of run39's: the run 39 A fix (apply-quad receiver
+reconstruction at the D3D9 pixel centre; the moving serrated band), five
+cascades (extent max 150,000; apply program 499/512 slots), caster pool
+control (`--shadow-cascade-static-from`, `--shadow-cascade-large-min`,
+`--shadow-cascade-drop-order importance`, `--shadow-cascade-records`),
+own-ship-adaptive C0 with the sliding ladder (`--shadow-cascade-adaptive-c0`,
+`--shadow-cascade-ladder-ratio`), toggle follow-ups, retention issue-check
+batching, the snapshot tool's per-cascade names. Default path unchanged.
+
+## Session 2026-09-18 (later): run 39 A read, reach and ship-size work
+
+- **Run 39 A (run115):** sun poll on every frame, no cap hit, replay
+  1.19 µs/draw + 34 µs, shadows 1–3 ms at rest, retention census clean through
+  a gate jump and a load. Defect: a camera-following serrated band — the apply
+  quad reconstructed receivers half a pixel off the RT2 sample (C1 over-bias
+  71.9 % → 1.3 % corrected; sign verified by independent derivation). Stations
+  at 5.6 / 12 km unshadowed: C3 reached 5 km. A2/B/C carried into run 40.
+- **Reach:** five cascades 250 / 1,500 / 7,500 / 37,500 / 150,000 (30 km) at
+  ratio 5 ([extents note](architecture/shadow-cascade-extents.md)); far
+  cascades static-only with capital ships ≥ 1,500 u admitted (run115 extent
+  census: nothing between 610 and 29,939 u), importance drop order with
+  hysteresis, per-cascade records to 4,096; own-ship-adaptive C0 with the
+  sliding ladder for the corvette/capital case. 2048² maps are run 40 A2.
+- Open: ladder follow-ups (void on active-bit change; index-based policies
+  sliding with extents) on a branch; the ~30 s distant flicker; K for the
+  adaptive C0 from the corvette flight.
 
 ## Session 2026-09-18: run 38 read, shadow system rebuilt
 
