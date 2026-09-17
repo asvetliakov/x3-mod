@@ -2960,3 +2960,38 @@ depth_offset 2.662e-4, aligned flips 80–100 and |Δz| > 1e-3 on 0–4 texels a
 p50 2.72–3.00e-4; C4 shift (−1…−2, 0…+1), depth_offset 1.664e-4, aligned flips 32–56 and > 1e-3 on
 12–20 (the section's hand figure was 15–30), unaligned flips 3.6–6.6 k, p50 1.69–2.13e-4. Host
 contracts: `verification/analysis/test_shadow_map_diff.py` (10 tests, synthetic 64² maps and log).
+
+### 5. Receiver re-roll witness (run117)
+
+Section 2's ±1 ULP experiment is now `tools/analysis/shadow_receiver_reroll.py`, and it runs the
+second encoding beside it: the receiver moved by ±1 ULP of the stored fp32 `z/w` (today) and by
+±1 ULP of fp32 linear view depth `w` (`shadow-receiver-depth.md`, the proposed `.b` channel). It
+reads the frame's `sun_shadow_apply_params` line out of the session log (streamed), the RT2 dump
+and the cascade maps, and drives `expected_factor_cascades` (coarse derivatives) six times per
+frame; a pixel is flipped when the owning cascade's own 3×3 `f` moves by ≥ 2/9 under either sign.
+No Wine, no build, nothing copied out of the burst directory.
+
+`--run /tmp/x3-bottleX3-run117 --frames 24624,14780 --cascade 3 --cascade 4` (9.8 s, device 1):
+
+| frame / cascade | owned px | ULP step (u) | z/w changed | z/w flipped | w flipped | margin p25/50/75 (u) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 24624 C3 | 90,797 | 4.46 | 14.13 % | **9.07 %** | 0.00 % (0 px) | −33 / −9 / +16 |
+| 24624 C4 | 845 | 58.8 | 40.12 % | 21.54 % | 0.00 % (0 px) | −85 / +41 / +207 |
+| 14780 C3 | 26,528 | 14.1 | 19.10 % | **14.20 %** | 0.004 % (1 px) | −39 / −14 / +13 |
+| 14780 C4 | 2,961 | 21.8 | 34.45 % | **15.74 %** | 0.00 % (0 px) | −191 / +30 / +245 |
+
+The three bolded figures are section 2's 9.1 / 14.2 / 15.7 %, reproduced to 0.03 pp. Under the `w`
+encoding the median receiver step falls from 4.5–59 u to 2.0–7.8e-3 u and the flipped class empties
+(≤ 0.004 %, below the design's < 0.05 % prediction); `changed` at all falls to ≤ 0.01 %. The margin
+percentiles on the flipped class repeat the own-surface finding: at the C3 receivers the map holds
+the receiver's own single-sided face within a texel or two (p50 −9 and −14 u against an 18.3-u
+texel and an 18.8-u constant bias), so nothing separates receiver from caster and the compare is
+decided by the receiver's own quantisation. The blended factor that reaches the screen flips on
+the same pixels except inside the C3→C4 blend band at 14780 (12.53 % against 14.20 %), where the
+next cascade dilutes the re-roll.
+
+Host contracts: `verification/analysis/test_shadow_receiver_reroll.py` (12 tests) — the two quanta
+on a row of depths (z/w: z²/1e8, 13.7 u at 37 km; w: one fp32 ULP, 3.9e-3 u), and a synthetic
+single-sided girder plate at 37 km under 18.3-u texels and a 2.9-texel pixel footprint whose map is
+its own supersampled depth: 19.6 % of its pixels flip under the z/w quantum and none under the w
+quantum (margin p50 −6 u), the design note's § 4 plate case on the host side.
