@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T17:18:33.803845+00:00",
+  "started_utc": "2026-09-17T04:51:24.464987+00:00",
   "game_launched": false,
   "bottle": {
     "name": "X3",
@@ -13,61 +13,61 @@
   "fresh_build": true,
   "passed": false,
   "sources_before": {
-    "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
-    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "src/proxy/object_lifetime.cpp": "be53441c075697437f78396135dfe61e2ac534530b4c7d6648240dad2cdd4f17",
+    "src/proxy/object_lifetime.h": "7c1e18cbedfacc46f3f2b68e7a8eea2e3239784ffab8cc95921914d8c8fa83f0",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "00d4c6325c288ced72042b93df60766471d184e62c8fc3618c35a1e23b7baca6",
+    "verification/probe/object_lifetime.cpp": "36662d47bfa5144f192ced1ca773b4986be11ff3529da8992b7460f3f8bdbce9",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
+    "verification/probe/run_object_lifetime.py": "196d1fbe702677e2ceaf2752cff6371444b52a0f220047f1d65e08dee4bb24b4"
   },
   "build_exit": 0,
   "sources_after_build": {
-    "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
-    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "src/proxy/object_lifetime.cpp": "be53441c075697437f78396135dfe61e2ac534530b4c7d6648240dad2cdd4f17",
+    "src/proxy/object_lifetime.h": "7c1e18cbedfacc46f3f2b68e7a8eea2e3239784ffab8cc95921914d8c8fa83f0",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "00d4c6325c288ced72042b93df60766471d184e62c8fc3618c35a1e23b7baca6",
+    "verification/probe/object_lifetime.cpp": "36662d47bfa5144f192ced1ca773b4986be11ff3529da8992b7460f3f8bdbce9",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
+    "verification/probe/run_object_lifetime.py": "196d1fbe702677e2ceaf2752cff6371444b52a0f220047f1d65e08dee4bb24b4"
   },
-  "executable_sha256": "4f2c6f18b67cefea831a689a54785c424285bdf1bba78ff86b55f45881f5da27",
+  "executable_sha256": "da690d4c764e91eb261eba5fe1698c999c3aecdac45bc160ee0d046487883dfb",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
     "X3",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build/object_lifetime.exe"
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0e1043e25258a052/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0e1043e25258a052/verification/probe/build/object_lifetime.exe"
   ],
   "exit_code": 1,
-  "executable_sha256_after_run": "4f2c6f18b67cefea831a689a54785c424285bdf1bba78ff86b55f45881f5da27",
+  "executable_sha256_after_run": "da690d4c764e91eb261eba5fe1698c999c3aecdac45bc160ee0d046487883dfb",
   "sources_after_run": {
-    "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
-    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "src/proxy/object_lifetime.cpp": "be53441c075697437f78396135dfe61e2ac534530b4c7d6648240dad2cdd4f17",
+    "src/proxy/object_lifetime.h": "7c1e18cbedfacc46f3f2b68e7a8eea2e3239784ffab8cc95921914d8c8fa83f0",
     "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
     "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "verification/probe/object_lifetime.cpp": "00d4c6325c288ced72042b93df60766471d184e62c8fc3618c35a1e23b7baca6",
+    "verification/probe/object_lifetime.cpp": "36662d47bfa5144f192ced1ca773b4986be11ff3529da8992b7460f3f8bdbce9",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
+    "verification/probe/run_object_lifetime.py": "196d1fbe702677e2ceaf2752cff6371444b52a0f220047f1d65e08dee4bb24b4"
   },
-  "report_sha256": "bf4d4238fd05b633e380cf727ef2f75b717ca7bbd7f55b37560152a264e8df55",
-  "checks": 574,
+  "report_sha256": "af876b04283a3fa553fef6c3846d995241c65dcac9b3b726493f9de8ea7ef471",
+  "checks": 648,
   "failures": 10,
-  "backend_calls": 80,
+  "backend_calls": 162342,
   "read_path": {
     "timing": [
       {
         "mode": "rpm",
-        "snapshot_us": "10.895",
+        "snapshot_us": "10.897",
         "reads_per_call": "0.00",
         "queries_per_call": "0.0000",
         "syscalls_per_call": "12.00"
       },
       {
         "mode": "direct",
-        "snapshot_us": "0.771",
+        "snapshot_us": "0.778",
         "reads_per_call": "12.00",
         "queries_per_call": "0.0197",
         "syscalls_per_call": "0.00"
@@ -80,5 +80,15 @@
         "equal": "1"
       }
     ]
-  }
+  },
+  "journal": [
+    {
+      "capacity": "512",
+      "cycle_idle_us": "1.2965",
+      "cycle_journal_us": "1.2926",
+      "retirement_delta_us": "-0.0039",
+      "empty_drain_us": "0.0058",
+      "drained": "40000"
+    }
+  ]
 }

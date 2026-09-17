@@ -64,7 +64,11 @@ def run(root):
                 return {k: v for k, v in (kv.split('=', 1) for kv in line.split()[1:])}
             data['read_path'] = {'timing': [parse(l) for l in lines if l.startswith('TIMING ')],
                                  'identity': [parse(l) for l in lines if l.startswith('IDENTITY ')]}
-            identical = (len(data['read_path']['identity']) == 1 and data['read_path']['identity'][0].get('equal') == '1'
+            # Retirement journal: measured cycle cost without/with a consumer and the empty drain.
+            data['journal'] = [parse(l) for l in lines if l.startswith('JOURNAL ')]
+            identical = (len(data['journal']) == 1 and
+                         {'cycle_idle_us', 'cycle_journal_us', 'retirement_delta_us', 'empty_drain_us'} <= set(data['journal'][0]) and
+                         len(data['read_path']['identity']) == 1 and data['read_path']['identity'][0].get('equal') == '1'
                          and len(data['read_path']['timing']) == 2)
             data['passed'] = bool(data['exit_code'] == 0 and match and match[0] == last and identical and
                                   match[1] == 'PASS' and data['failures'] == 0 and data['checks'] > 0 and

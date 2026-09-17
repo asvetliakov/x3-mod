@@ -8,7 +8,8 @@ FAIL all boundaries input FX state preserved
 FAIL all boundaries output FX state preserved
 FAIL all boundaries input FX state preserved
 FAIL all boundaries output FX state preserved
-TIMING mode=rpm snapshot_us=10.895 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00
-TIMING mode=direct snapshot_us=0.771 reads_per_call=12.00 queries_per_call=0.0197 syscalls_per_call=0.00
+TIMING mode=rpm snapshot_us=10.897 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00
+TIMING mode=direct snapshot_us=0.778 reads_per_call=12.00 queries_per_call=0.0197 syscalls_per_call=0.00
 IDENTITY rpm=853bfaca11e07f83 direct=853bfaca11e07f83 equal=1
-RESULT FAIL checks=574 failures=10 backend_calls=80
+JOURNAL capacity=512 cycle_idle_us=1.2965 cycle_journal_us=1.2926 retirement_delta_us=-0.0039 empty_drain_us=0.0058 drained=40000
+RESULT FAIL checks=648 failures=10 backend_calls=162342
