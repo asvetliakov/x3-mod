@@ -56,6 +56,22 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('sun_shadow_enabled_ = !sun_shadow_enabled_;', toggle)
         self.assertIn('if (depth_replay_) depth_replay_->invalidate_retained();', toggle)
         self.assertIn('sun_shadow_toggle device=%llu state=%u frame=%llu', toggle)
+        # A device with neither the replay nor the apply: a logged no-op, as an
+        # unrequested ambient-occlusion press is.
+        self.assertIn('if (!sun_apply_requested_ && !depth_replay_requested_) {', toggle)
+        self.assertIn('return -1;', toggle)
+        self.assertLess(toggle.index('return -1;'), toggle.index('sun_shadow_enabled_ = !sun_shadow_enabled_;'))
+        # The single map's publication goes with the retained cascade bases,
+        # and the frame back on replays every cascade whatever the budget says.
+        self.assertIn('depth_basis_ = {};', toggle)
+        self.assertIn('sun_shadow_force_replay_ = sun_shadow_enabled_;', toggle)
+        self.assertIn('view_rows_valid_ = false; }', (ROOT / 'src/renderer/shadow_replay_pass.h').read_text())
+        cascades = extract_function(replay, 'void MotionOutput::run_shadow_replay_cascades(')
+        self.assertIn('(sun_shadow_force_replay_ || renderer::shadow_cascade_replays(', cascades)
+        self.assertIn('sun_shadow_force_replay_ = false;', cascades)
+        # An F8 while off dumps no stale map (the basis line still reports valid=0).
+        dump = extract_function(motion_source, 'void MotionOutput::readback(')
+        self.assertIn('if (rows && depth_replayed_frame_ == frame_ && depth_replayed_)', dump)
         for absent in ('CreateTexture', 'execute', 'Clear'):
             self.assertNotIn(absent, toggle)
         # The scene end: one boolean test, both the replay transaction and the
