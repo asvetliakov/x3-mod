@@ -15,9 +15,9 @@
 #include "../renderer/shadow_replay_projection.h"
 
 namespace x3m::shadow_retention {
-constexpr unsigned node_capacity = 1024, draw_capacity = 4096, resource_capacity = 1024, pending_capacity = 2048; // powers of two
+constexpr unsigned node_capacity = 1024, draw_capacity = 4096, resource_capacity = 1024; // powers of two
 constexpr unsigned static_sightings = 8;  // consecutive sightings within eps before a record counts static
-constexpr unsigned reverify_period = 16;  // a static node's rows are recomputed on one sighting in 16
+constexpr unsigned node_reserve = 8, draw_reserve = 64; // headroom kept free by scene-end eviction, so the draw site never scans the table
 constexpr unsigned check_period = 8;      // an unseen node's buffers and a resource's orphan probe: one slice in 8 per frame
 constexpr unsigned transit_window = 60, resight_period = 300, resight_buckets = 5;
 constexpr double eps_default = .05, eps_min = 1e-4, eps_max = 100.;
@@ -29,12 +29,15 @@ constexpr std::uint32_t excluded_flags12c = 0x20u | 0x200u | 0x4000u | 0x1000000
 constexpr bool excluded_class(std::uint32_t flags12c, std::uint32_t flags130) noexcept { return (flags12c & excluded_flags12c) || (flags130 & excluded_flags130); }
 
 enum class Mode : std::uint8_t { Off = 0, Census = 1, Live = 2 };
-enum class Flush : std::uint8_t { None = 0, Epoch, Reset, Device, Teardown, Sun, Observer };
+enum class Flush : std::uint8_t { None = 0, Epoch, Reset, Device, Teardown, Sun, Observer, Idle, Count };
+constexpr unsigned idle_flush_frames = 300; // presented frames without a scene end (menus, loading) before the store is flushed
 constexpr const char* flush_name(Flush f) noexcept {
     switch (f) { case Flush::Epoch: return "epoch"; case Flush::Reset: return "reset"; case Flush::Device: return "device"; case Flush::Teardown: return "teardown";
-                 case Flush::Sun: return "sun"; case Flush::Observer: return "observer"; default: return "none"; }
+                 case Flush::Sun: return "sun"; case Flush::Observer: return "observer"; case Flush::Idle: return "idle"; default: return "none"; }
 }
-enum class Expiry : std::uint8_t { Retired, BoxExit, Age, Evicted, BufferChanged, BufferGone, BufferOrphaned, Moving, Flushed, Abandoned, Empty };
+enum class Expiry : std::uint8_t { Retired, BoxExit, Age, Evicted, BufferChanged, BufferGone, BufferOrphaned, Moving, Flushed, Abandoned, Empty, ContextLost };
+// The owner's verdict on one node during a full revalidation.
+enum class Revalidation : std::uint8_t { Known = 0, Dead = 1, ContextLost = 2 }; // ContextLost: the node's recorded registry or camera is gone; the node cannot be confirmed
 enum class Seen : std::uint8_t { Excluded, Deferred, Refused, Known, New };
 enum class BufferState : std::uint8_t { Quiet = 0, Changed = 1, Gone = 2 };
 
@@ -110,19 +113,22 @@ struct Draw {
 };
 struct Node {
     std::uint64_t serial = 0, last_seen = 0, first_seen = 0, unseen_before = 0;
-    std::uintptr_t node = 0;
-    std::uint32_t handle = 0, model = 0, lod = 0, flags12c = 0;
+    std::uintptr_t node = 0, registry = 0, camera = 0; // the scope of the last sighting: the full revalidation's arguments
+    std::uint32_t handle = 0, camera_handle = 0, model = 0, lod = 0, flags12c = 0;
     double centre[3]{}; float half[3]{};
     std::uint16_t head = none, tail = none, cursor = none, draws = 0;
     bool used = false, is_static = false, dirty = false, fresh = false, changed = false, lod_changed = false, model_changed = false;
     bool partial = false, pre_transit = false, bounds_valid = false;
 };
-struct Resource { std::uintptr_t identity = 0; std::uint32_t uses = 0; bool used = false; };
+// owed: no record names it; one Release is owed to the owner (pop_owed). single_node: the one node whose
+// records name it while uses were only ever taken by that node (none once shared), so an orphan drop
+// walks that node's records instead of the draw pool.
+struct Resource { std::uintptr_t identity = 0; std::uint32_t uses = 0; bool used = false, owed = false; std::uint16_t single_node = none; };
 
 struct Sighting {
     std::uint64_t serial = 0, load_epoch = 0, registry_epoch = 0, observer_epoch = 0;
-    std::uintptr_t node = 0;
-    std::uint32_t handle = 0, model = 0, lod = 0, flags12c = 0, flags130 = 0;
+    std::uintptr_t node = 0, registry = 0, camera = 0;
+    std::uint32_t handle = 0, camera_handle = 0, model = 0, lod = 0, flags12c = 0, flags130 = 0;
     DrawKey key{};
     BufferStamp vb{}, ib{};
     std::uintptr_t declaration = 0;
@@ -146,6 +152,11 @@ struct FrameStats {
     std::uint32_t would[renderer::shadow_cascade_max]{}, capped[renderer::shadow_cascade_max]{};
     std::uint32_t drift_n = 0; float drift_p99 = 0, drift_max = 0;
     std::uint32_t sun_relatch = 0, cam_jump = 0, transit_survivors = 0;
+    std::uint32_t far_alternate_due_to_retained = 0; // the far cascade skipped by the budget this frame only because of retained issues (live issues alone fit)
+    std::uint32_t revalidate_context_lost = 0;       // nodes a full revalidation could not confirm because their recorded registry or camera is gone
+    std::uint32_t release_queue_full = 0;            // acquisitions refused while owed references still hold the resource table (diagnostic; the queue itself cannot drop a reference)
+    std::uint32_t reclassified_after_unseen = 0;     // a retained node resubmitted beyond eps of its stored rows: the moved-while-unseen residual, observed
+    std::uint32_t admitted_checked = 0;              // retained records whose buffers were checked before issue this frame
     std::uint32_t refused = 0, moving_dropped = 0, abandoned = 0, deferred = 0; // beyond the contract's list: capacity refusals, moving nodes dropped unseen, sightings of a frame without a scene end, draws ignored while a flush is pending
     std::uint32_t nodes_live = 0, nodes_unseen = 0, records = 0, records_unseen = 0, statics = 0, moving = 0; // levels
     std::uint64_t age_max = 0;
@@ -156,7 +167,8 @@ struct Totals {
     std::uint64_t expired_retired[resight_buckets]{}, expired_box[resight_buckets]{}, expired_gone[resight_buckets]{};
     std::uint64_t retired = 0, box_exit = 0, age = 0, evicted = 0, buffer_changed = 0, buffer_gone = 0, buffer_orphaned = 0, reclassified = 0;
     std::uint64_t lod_replaced = 0, model_replaced = 0, moving_dropped = 0, revalidated = 0, journal_overflow = 0, refused = 0, promoted = 0;
-    std::uint64_t flushes[7]{};
+    std::uint64_t revalidate_context_lost = 0, far_alternate_due_to_retained = 0, reclassified_after_unseen = 0;
+    std::uint64_t flushes[unsigned(Flush::Count)]{};
 };
 struct FrameInput {
     std::uint64_t frame = 0;
@@ -227,7 +239,7 @@ struct Store {
     std::uint16_t node_free[node_capacity], draw_free[draw_capacity], resource_free[resource_capacity];
     unsigned node_free_count = 0, draw_free_count = 0, resource_free_count = 0;
     std::uint16_t dirty[node_capacity]; unsigned dirty_count = 0;
-    std::uintptr_t pending[pending_capacity]; unsigned pending_count = 0; // identities owed one Release by the owner
+    unsigned pending_count = 0; // resource slots owed one Release by the owner (pop_owed)
     std::uint16_t admitted[draw_capacity]; unsigned admitted_count = 0;   // this frame's unseen records with a cascade (draw indices)
     float scratch_key[draw_capacity]; std::uint16_t scratch_index[draw_capacity];
     float drift_samples[node_capacity]; unsigned drift_count = 0;
@@ -270,10 +282,11 @@ struct Store {
         }
         std::uint16_t index = find_node(s.serial);
         if (index == none) {
-            if (!node_free_count && !evict_farthest(now)) { count_refused(); return Seen::Refused; }
+            if (!node_free_count) { count_refused(); return Seen::Refused; } // the scene end evicts into the reserve; this node is recorded from its next sighting
             index = node_free[--node_free_count]; ++nodes_used;
             Node& n = nodes[index]; n = Node{};
             n.used = true; n.fresh = true; n.serial = s.serial; n.node = s.node; n.handle = s.handle; n.model = s.model; n.lod = s.lod; n.flags12c = s.flags12c;
+            n.registry = s.registry; n.camera = s.camera; n.camera_handle = s.camera_handle;
             n.first_seen = now; n.last_seen = ~std::uint64_t(0);
             node_map.insert(s.serial, index); ++frame.new_nodes;
         }
@@ -282,6 +295,7 @@ struct Store {
             n.unseen_before = n.fresh ? 0 : now - n.last_seen - 1; n.last_seen = now; n.cursor = n.head; n.partial = false;
             if (!n.fresh) { n.model_changed = n.model != s.model; n.lod_changed = n.lod != s.lod; }
             n.model = s.model; n.lod = s.lod; n.node = s.node; n.handle = s.handle; n.flags12c = s.flags12c;
+            n.registry = s.registry; n.camera = s.camera; n.camera_handle = s.camera_handle;
             if (!n.dirty) { n.dirty = true; if (dirty_count < node_capacity) dirty[dirty_count++] = index; }
         }
         const auto matches = [&](const Draw& d) noexcept { return d.stamp != now && d.key == s.key && d.vb.same_object(s.vb) && d.ib.same_object(s.ib) && (!hold || d.declaration == s.declaration); };
@@ -297,7 +311,7 @@ struct Store {
             if (s.lo && s.hi) set_extent(d, s.lo, s.hi);
             return Seen::Known;
         }
-        if (!draw_free_count && !evict_farthest(now)) { n.partial = true; count_refused(); return Seen::Refused; }
+        if (!draw_free_count) { n.partial = true; count_refused(); return Seen::Refused; }
         const std::uint16_t slot = draw_free[--draw_free_count]; ++draws_used;
         Draw& d = draws[slot]; d = Draw{};
         d.used = true; d.key = s.key; d.vb = s.vb; d.ib = s.ib; d.cull_mode = s.cull_mode; d.stamp = now; d.node = index;
@@ -307,7 +321,7 @@ struct Store {
             d.declaration = s.declaration;
             const std::uintptr_t wanted[3] = {s.vb.identity, s.key.indexed ? s.ib.identity : 0, s.declaration};
             bool ok = wanted[0] != 0 && wanted[2] != 0 && (!s.key.indexed || wanted[1] != 0);
-            for (unsigned i = 0; ok && i < 3; ++i) if (wanted[i]) ok = acquire(wanted[i], d.resource[i], acquired);
+            for (unsigned i = 0; ok && i < 3; ++i) if (wanted[i]) ok = acquire(wanted[i], d.resource[i], acquired, index);
             if (!ok) { // table full or an identity missing: nothing was AddRef'd yet, so the fresh entries simply leave
                 for (unsigned i = 0; i < 3; ++i) if (d.resource[i] != none) unacquire(d.resource[i], acquired);
                 acquired.count = 0; d = Draw{}; draw_free[draw_free_count++] = slot; --draws_used;
@@ -333,16 +347,23 @@ struct Store {
         dirty_count = admitted_count = 0; epochs_set = false; flush_pending = Flush::None; transit_open = false;
         frame.flush = reason; ++totals.flushes[unsigned(reason)];
     }
-    // Full revalidation: `known(node)` false flushes the node.
-    template <class Known> void revalidate(Known known, std::uint64_t now) noexcept {
+    // Full revalidation through the owner: every node is confirmed with its own
+    // recorded registry, node and camera identity; Dead leaves as retired, a
+    // lost context leaves too (fail closed) under its own count.
+    template <class Verdict> void revalidate(Verdict verdict, std::uint64_t now) noexcept {
         for (unsigned i = 0; i < node_capacity; ++i) {
             if (!nodes[i].used) continue;
             ++frame.revalidated; ++totals.revalidated;
-            if (!known(static_cast<const Node&>(nodes[i]))) remove_node(std::uint16_t(i), Expiry::Retired, now);
+            const Revalidation v = verdict(static_cast<const Node&>(nodes[i]));
+            if (v == Revalidation::Dead) remove_node(std::uint16_t(i), Expiry::Retired, now);
+            else if (v == Revalidation::ContextLost) remove_node(std::uint16_t(i), Expiry::ContextLost, now);
         }
     }
-    // The store's reference is the last one on this resource: every node naming it goes.
+    // The store's reference is the last one on this resource: every node naming it goes
+    // (O(its records) while one node owns it; the draw pool is walked only for a shared mesh).
     void drop_resource(std::uint16_t slot, std::uint64_t now) noexcept {
+        const std::uint16_t owner = resources[slot].single_node;
+        if (owner != none) { if (nodes[owner].used) remove_node(owner, Expiry::BufferOrphaned, now); return; }
         for (unsigned i = 0; i < draw_capacity; ++i) {
             const Draw& d = draws[i];
             if (!d.used || (d.resource[0] != slot && d.resource[1] != slot && d.resource[2] != slot)) continue;
@@ -362,6 +383,8 @@ struct Store {
         admitted_count = 0; drift_count = 0;
         if (flush_pending != Flush::None) flush(flush_pending);
         const bool jumped = note_camera(in);
+        // Capacity: the reserve is refilled here, once per frame, never at a draw (farthest unseen nodes first).
+        for (unsigned guard = 0; guard < node_reserve && (node_free_count < node_reserve || draw_free_count < draw_reserve); ++guard) if (!evict_farthest(in.frame)) break;
         finalize_seen(in);
         walk_unseen(in, check);
         apply_caps(in);
@@ -384,12 +407,17 @@ private:
         if (d.extent_known && !std::memcmp(d.lo, lo, sizeof d.lo) && !std::memcmp(d.hi, hi, sizeof d.hi)) return;
         std::memcpy(d.lo, lo, sizeof d.lo); std::memcpy(d.hi, hi, sizeof d.hi); d.extent_known = true; d.bounds_dirty = true;
     }
-    bool acquire(std::uintptr_t identity, std::uint16_t& slot, Acquired& acquired) noexcept {
+    bool acquire(std::uintptr_t identity, std::uint16_t& slot, Acquired& acquired, std::uint16_t node) noexcept {
         const std::uint16_t known = resource_map.find(identity, [this](std::uint16_t i) { return std::uint64_t(resources[i].identity); });
-        if (known != none) { ++resources[known].uses; slot = known; return true; }
-        if (!resource_free_count) return false;
+        if (known != none) {
+            Resource& r = resources[known];
+            if (r.owed && !r.uses) { r.owed = false; --pending_count; r.single_node = node; } // the reference still held is reused: no Release owed, no AddRef needed
+            else if (r.single_node != node) r.single_node = none;
+            ++r.uses; slot = known; return true;
+        }
+        if (!resource_free_count) { if (pending_count) ++frame.release_queue_full; return false; } // owed slots hold the table until the owner releases them
         slot = resource_free[--resource_free_count]; ++resources_used;
-        resources[slot] = Resource{identity, 1, true};
+        resources[slot] = Resource{identity, 1, true, false, node};
         resource_map.insert(identity, slot);
         acquired.identity[acquired.count++] = identity;
         return true;
@@ -402,12 +430,34 @@ private:
         for (unsigned i = 0; i < acquired.count; ++i) fresh |= acquired.identity[i] == r.identity;
         free_resource(slot, !fresh);
     }
+    // A resource no record names any more. Owed: the held reference stays in the
+    // table (still mapped, so a re-acquire before the owner's Release reuses it)
+    // until pop_owed hands it to the owner. The queue is the table itself, so it
+    // cannot fill: every owed reference is released.
     void free_resource(std::uint16_t slot, bool owed) noexcept {
         Resource& r = resources[slot];
-        if (owed && pending_count < pending_capacity) pending[pending_count++] = r.identity;
+        if (owed) { r.owed = true; ++pending_count; return; }
         resource_map.erase(r.identity, slot, [this](std::uint16_t i) { return std::uint64_t(resources[i].identity); });
         r = Resource{}; resource_free[resource_free_count++] = slot; --resources_used;
     }
+public:
+    // The next identity the owner owes one Release (0 when none); the slot is freed as it is handed out.
+    std::uintptr_t pop_owed() noexcept {
+        for (unsigned n = 0; pending_count && n < resource_capacity; ++n) {
+            const unsigned slot = (owed_cursor_ + n) % resource_capacity;
+            Resource& r = resources[slot];
+            if (!r.used || !r.owed || r.uses) continue;
+            const std::uintptr_t identity = r.identity;
+            r.owed = false; --pending_count;
+            free_resource(std::uint16_t(slot), false);
+            owed_cursor_ = (slot + 1) % resource_capacity;
+            return identity;
+        }
+        pending_count = 0; // nothing owed remains (defensive: the count and the flags agree by construction)
+        return 0;
+    }
+private:
+    unsigned owed_cursor_ = 0;
     void free_draw(std::uint16_t slot) noexcept {
         Draw& d = draws[slot];
         for (unsigned i = 0; i < 3; ++i) if (d.resource[i] != none && !--resources[d.resource[i]].uses) free_resource(d.resource[i], true);
@@ -428,6 +478,7 @@ private:
         case Expiry::BufferOrphaned: ++frame.buffer_orphaned; ++totals.buffer_orphaned; if (unseen_static) ++totals.expired_gone[bucket]; break;
         case Expiry::Moving: ++frame.moving_dropped; ++totals.moving_dropped; break;
         case Expiry::Abandoned: ++frame.abandoned; break;
+        case Expiry::ContextLost: ++frame.revalidate_context_lost; ++totals.revalidate_context_lost; break;
         default: break;
         }
         for (std::uint16_t i = n.head; i != none;) { const std::uint16_t next = draws[i].next; free_draw(i); i = next; }
@@ -484,7 +535,10 @@ private:
             if (!n.fresh && n.lod_changed) { ++frame.lod_replaced; ++totals.lod_replaced; }
             if (!n.fresh && n.model_changed) { ++frame.model_replaced; ++totals.model_replaced; }
             const bool was_static = n.is_static, resight = was_static && n.unseen_before > 0;
-            const bool verify = n.fresh || !n.is_static || n.unseen_before > 0 || set_changed || (in.frame + index) % reverify_period == 0;
+            // Every sighting is verified (about 0.15 us per record): a node that starts moving while seen is
+            // reclassified on that sighting, not up to 15 sightings later. One that starts moving while
+            // unseen is the accepted residual, bounded by age_cap; its resighting counts reclassified_after_unseen.
+            const bool verify = true;
             bool moved = false, all_static = !n.partial;
             double worst = 0;
             for (std::uint16_t i = n.head; i != none; i = draws[i].next) {
@@ -509,7 +563,7 @@ private:
                 drift_samples[drift_count++] = units;
                 if (units > frame.drift_max) frame.drift_max = units;
             }
-            if (was_static && moved) { ++frame.reclassified; ++totals.reclassified; }
+            if (was_static && moved) { ++frame.reclassified; ++totals.reclassified; if (n.unseen_before) { ++frame.reclassified_after_unseen; ++totals.reclassified_after_unseen; } }
             n.is_static = all_static && !moved;
             if (!was_static && n.is_static) { ++frame.promoted; ++totals.promoted; }
             if (resight) {
@@ -583,6 +637,18 @@ private:
                 BufferState worst = BufferState::Quiet;
                 for (std::uint16_t i = n.head; i != none && worst != BufferState::Gone; i = draws[i].next) { const BufferState s = check(static_cast<const Draw&>(draws[i])); if (unsigned(s) > unsigned(worst)) worst = s; }
                 if (worst != BufferState::Quiet) { remove_node(std::uint16_t(index), worst == BufferState::Gone ? Expiry::BufferGone : Expiry::BufferChanged, in.frame); continue; }
+            }
+            if (cascades) {
+                // Every record that may be issued this frame is checked every frame (the revision compare
+                // the live loop's bookends make): a buffer the application re-Locked is never replayed
+                // with the old range or declaration.
+                BufferState issue_state = BufferState::Quiet;
+                for (std::uint16_t i = n.head; i != none && issue_state == BufferState::Quiet; i = draws[i].next) {
+                    if (!draws[i].complete()) continue;
+                    ++frame.admitted_checked;
+                    issue_state = check(static_cast<const Draw&>(draws[i]));
+                }
+                if (issue_state != BufferState::Quiet) { remove_node(std::uint16_t(index), issue_state == BufferState::Gone ? Expiry::BufferGone : Expiry::BufferChanged, in.frame); continue; }
             }
             ++frame.nodes_unseen; ++frame.statics; frame.records += n.draws; frame.records_unseen += n.draws;
             if (age > frame.age_max) frame.age_max = age;

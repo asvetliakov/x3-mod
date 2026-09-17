@@ -1621,6 +1621,48 @@ affected modules, 100 tests OK. Not exercised through the DLL: retained records 
 cascades' directions really differ (the retention script runs on the latch source; the poll cases
 retain nothing), and the source-switch flush.
 
+**Review fix round (2026-09-17; the two reviews' items are listed in the contract note,
+"Review fix round").** Binaries: seam DLL `b018f715…` and fixture `0c6535cb…` (the four records below
+cite these; the seam cases load the seam DLL); production DLL `f7acf09c…` from the incremental build
+the audit ran on, `54a43369…` from the final clean build of the same sources (0 warnings; the build is
+not byte-reproducible). No-x87: PASS, 525 reachable, 0 violations. `run_motion_output.py --dll … --seam … --fixture …`, 15 cases, all exit 0:
+
+| Case | Checks | Frames | Compared (with kept) | Maps, worst depth error, disagreements |
+| --- | --- | --- | --- | --- |
+| `seam-ownership-shadow-retention-live` | 9,743 | 1,535 | 39 (28) | 78, 1.7e-6, 0 |
+| `…-census` | 9,740 | 1,535 | 39 (0) | 78, 1.7e-6, 0 |
+| `…-off` | 6,629 | 1,535 | 39 (0) | 78, 1.7e-6, 0 |
+| `…-live-poll` (positional sun, source switch at frame 1516) | 9,890 | 1,547 | 40 (29) | 80, 1.4e-5, 0 |
+
+Live, census and off present byte-identical frames. New script coverage: case m (observer unavailable →
+full revalidation, 2 nodes under `revalidate_context_lost`, `flush=observer`; a lost camera under an
+overflow's revalidation → 2 more; `FlushAll` through the drain; the drain's epoch moved → `flush=epoch`;
+the observer epoch as a key → a deferred `flush=epoch`; device loss through the seam → `flush=device`,
+every count at baseline), `model_replaced` in case d, the capacity case with the scene-end reserve
+(the filling frame evicts 8, the 1,025th node one more, nothing refused, 591 of 600 retirements found:
+9 were the evicted nodes; `far_alternate_due_to_retained` 6 frames with 301 live × 2 = 602 issues under
+the 640 budget and 716 retained nodes), and the poll case (`shadow_replay_sun_source` `point` at frame 0,
+`latch unavailable` at the switch, `flush=sun` twice). Totals per run: `journal_overflow` 3, `evicted` 9,
+`revalidate_context_lost` 4, `reclassified_after_unseen` 1, `refused` 0, `release_queue_full` 0,
+`admitted_checked` 9,877.
+
+Cost after the round (Wine/FEX): record hook unchanged at 0.15 µs per recorded draw (census 0.20); the
+full-store scene end 491 µs median / 541 µs worst walk (716 retained records checked before issue every
+frame at about 0.3 µs each, plus the 1,024-node walk), from 86 / 238 µs before the issue-time check;
+599-retirement burst frame 129 µs (journal 32 µs); overflow + revalidation 162 µs; replay of 1,450
+issues 1.62 ms median (1.1 µs per issue). Unchanged cases on the same binaries: `-cascades` and
+`-cascades-casters-20` 278, the four `-cascades-poll-*` 281, `-sun-programs` 205, `-on`/`-off` 203/99,
+`-wide`/`-far-refused` 203: pass. `run_sun_share_live.py` `shadow_apply`, `shadow_apply_cascades`,
+`original_lane`: pass, equal to the record except `apply_us_max`. Host: the store driver gained the owed
+reuse, lost-context, every-sighting reclassification, issue-time check and reserve-eviction scenarios;
+`test_capture_bloom_lifetime` 42 scenarios / 194 checks; the affected modules 100 tests OK. Launcher:
+`--shadow-retention-timing` (X3M_SHADOW_RETENTION_TIMING=1) reproduces the per-draw figure.
+
+Open after the round: the issue-time check is the dominant scene-end cost at a full store (about
+0.3 µs per retained record per frame, two registry lookups under the registry mutex); batching the
+lookups per buffer, or a revision counter the registry publishes without a lock, would bring it back
+towards the contract's 0.1 ms.
+
 
 ## Sun at finite distance: polled light position, per-cascade suns (2026-09-17)
 

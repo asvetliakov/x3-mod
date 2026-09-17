@@ -287,6 +287,7 @@ def main():
     parser.add_argument('--shadow-caster-retention', action='store_true', help='Retention of static sun-shadow casters the engine stopped submitting (X3M_SHADOW_CASTER_RETENTION=1; default off; requires --shadow-cascades; wins over --shadow-retention-census): nodes whose world rows held still for 8 sightings keep their draws, with the store\'s own references on VB, IB and declaration, and are replayed into the cascades they meet inside the per-cascade caps and the issue budget until the node retires, leaves 2 x the outermost box, its buffers change, the age cap passes, the sun re-latches or the device resets (docs/architecture/shadow-caster-retention.md, stage 2)')
     parser.add_argument('--shadow-caster-retention-age', type=int, default=None, metavar='FRAMES', help='Frames an unseen static caster is kept, 1..10000000, default 7200 (X3M_SHADOW_CASTER_RETENTION_AGE; requires --shadow-retention-census or --shadow-caster-retention)')
     parser.add_argument('--shadow-caster-retention-eps', type=float, default=None, metavar='UNITS', help='Largest AABB-corner displacement between two sightings of a static caster in world units, 0.0001..100, default 0.05 (X3M_SHADOW_CASTER_RETENTION_EPS; requires --shadow-retention-census or --shadow-caster-retention)')
+    parser.add_argument('--shadow-retention-timing', action='store_true', help='Per-draw cost of the caster retention record hook on the shadow_retention_frame line (X3M_SHADOW_RETENTION_TIMING=1; default off; requires --shadow-retention-census or --shadow-caster-retention): two counter reads per recorded draw, draw_us / draw_calls')
     parser.add_argument('--sun-shadow-bias-units', type=float, default=None, metavar='B', help='Constant sun-shadow compare bias in world units, 0..1000, default 0.53571875 (X3M_SUN_SHADOW_BIAS_UNITS; requires --sun-shadow-apply): the quad subtracts B plus one world texel of the map, divided by 2 D, from every compare; with --sun-shadow-bias-clamp-texels the defaults resolve to the former 0.001 / 0.01 at the default 250 / 512 / 1024 cascade; capture frames print the resolved values in sun_shadow_apply_params')
     parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
     parser.add_argument('--ambient-occlusion', action='store_true', help='Half-resolution GTAO at the scene-end hook, multiplied into the scene target before the temporal resolve (X3M_AMBIENT_OCCLUSION=1; requires --motion-output --taa; default off). Ctrl+Shift+F11 toggles the chain off/on during play for a same-scene comparison (one ambient_occlusion_toggle log line per press; the pass stays attached). docs/architecture/ambient-occlusion.md, "Step 2"')
@@ -520,8 +521,8 @@ def main():
     # Caster retention (docs/architecture/shadow-caster-retention.md): rides the cascades.
     if (args.shadow_retention_census or args.shadow_caster_retention) and args.shadow_cascades is None:
         parser.error('--shadow-retention-census and --shadow-caster-retention require --shadow-cascades.')
-    if (args.shadow_caster_retention_age is not None or args.shadow_caster_retention_eps is not None) and not (args.shadow_retention_census or args.shadow_caster_retention):
-        parser.error('--shadow-caster-retention-age and --shadow-caster-retention-eps require --shadow-retention-census or --shadow-caster-retention.')
+    if (args.shadow_caster_retention_age is not None or args.shadow_caster_retention_eps is not None or args.shadow_retention_timing) and not (args.shadow_retention_census or args.shadow_caster_retention):
+        parser.error('--shadow-caster-retention-age, --shadow-caster-retention-eps and --shadow-retention-timing require --shadow-retention-census or --shadow-caster-retention.')
     if args.shadow_caster_retention_age is not None and not 1 <= args.shadow_caster_retention_age <= 10000000:
         parser.error('--shadow-caster-retention-age must be within [1, 10000000].')
     if args.shadow_caster_retention_eps is not None and not (math.isfinite(args.shadow_caster_retention_eps) and 1e-4 <= args.shadow_caster_retention_eps <= 100.0):
@@ -790,6 +791,8 @@ def main():
             env['X3M_SHADOW_CASTER_RETENTION_AGE'] = str(args.shadow_caster_retention_age)
         if args.shadow_caster_retention_eps is not None:
             env['X3M_SHADOW_CASTER_RETENTION_EPS'] = repr(args.shadow_caster_retention_eps)
+        if args.shadow_retention_timing:
+            env['X3M_SHADOW_RETENTION_TIMING'] = '1'
         env['X3M_SUN_SHADOW_BIAS_UNITS'] = repr(args.sun_shadow_bias_units if args.sun_shadow_bias_units is not None else 0.53571875)
         env['X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS'] = repr(args.sun_shadow_bias_clamp_texels if args.sun_shadow_bias_clamp_texels is not None else 20.97152)
         env['X3M_AMBIENT_OCCLUSION'] = '1' if args.ambient_occlusion else '0'

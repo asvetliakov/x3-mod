@@ -1,5 +1,5 @@
 {
- "case": "seam-ownership-shadow-retention-census",
+ "case": "seam-ownership-shadow-retention-live-poll",
  "bottle": {
   "name": "X3",
   "wine_arch": "arm64",
@@ -14,8 +14,8 @@
   "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/verification/probe/build/motion-output-seam/d3d9.dll": "b018f715064b21e9c02bd3f7dcf9110aa8e15749279452eb43a74c4cfa7bd418",
   "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/build/d3d9.dll": "f7acf09ce1bb58fb3634fdb793324aabadf6915e320d9007eabaeb478826106e"
  },
- "mode": "census",
- "frames": 1535,
+ "mode": "live",
+ "frames": 1547,
  "cases": [
   "a_turn_away",
   "b_moving",
@@ -31,13 +31,14 @@
   "k_age_and_sun",
   "teardown"
  ],
+ "source_switch_frame": 1516,
  "retention": {
   "summary": {
-   "frames": 1535,
+   "frames": 1547,
    "modes": [
-    "census"
+    "live"
    ],
-   "known_frames": 1534,
+   "known_frames": 1546,
    "levels": {
     "nodes_live": 724,
     "nodes_unseen": 716,
@@ -45,7 +46,7 @@
     "records_unseen": 716,
     "static": 1016,
     "moving": 724,
-    "refs_held": 0,
+    "refs_held": 3,
     "age_max": 640
    },
    "would_peak": [
@@ -67,11 +68,11 @@
     0
    ],
    "totals": {
-    "excluded_class": 1585,
+    "excluded_class": 1597,
     "unscoped": 10,
-    "new_nodes": 1063,
-    "first_seen_in_range": 318,
-    "promoted": 1061,
+    "new_nodes": 1065,
+    "first_seen_in_range": 320,
+    "promoted": 1063,
     "superseded": 2,
     "lod_replaced": 1,
     "model_replaced": 1,
@@ -81,50 +82,50 @@
     "revalidated": 430,
     "mutation_delta": 8246,
     "buffer_changed": 1,
-    "buffer_gone": 1,
-    "buffer_orphaned": 0,
+    "buffer_gone": 0,
+    "buffer_orphaned": 1,
     "box_exit": 0,
     "age": 1,
     "evicted": 9,
-    "sun_relatch": 1,
+    "sun_relatch": 2,
     "cam_jump": 0,
     "transit_survivors": 0,
     "refused": 0,
     "moving_dropped": 1,
     "abandoned": 0,
     "deferred": 1,
-    "far_alternate_due_to_retained": 0,
+    "far_alternate_due_to_retained": 6,
     "revalidate_context_lost": 4,
     "release_queue_full": 0,
     "reclassified_after_unseen": 1,
-    "admitted_checked": 9875
+    "admitted_checked": 9878
    },
    "flushes": {
     "epoch": 2,
     "reset": 2,
     "device": 1,
     "teardown": 0,
-    "sun": 1,
+    "sun": 2,
     "observer": 2,
     "idle": 0
    },
    "retired_burst_peak": 591,
    "drift": {
-    "frames": 709,
-    "samples": 2348,
+    "frames": 711,
+    "samples": 2351,
     "max": 0.75,
     "p99_median": 0.0,
     "eps": 0.05,
     "frames_over_eps": 1
    },
    "us": {
-    "median": 4.0,
-    "max": 562.1,
-    "p99": 54.1
+    "median": 3.8,
+    "max": 584.4,
+    "p99": 59.1
    },
    "draw_us_per_call": {
     "median": 0.2,
-    "max": 0.85
+    "max": 42.2
    },
    "moving_share_median": 0.0,
    "resight": {
@@ -183,47 +184,44 @@
    }
   },
   "full_store_frames": 11,
-  "full_store_us_median": 520.1,
-  "full_store_walk_us_max": 561.5,
-  "overflow_frame_us": 185.9,
+  "full_store_us_median": 525.0,
+  "full_store_walk_us_max": 584.1,
+  "overflow_frame_us": 173.8,
   "burst_frame": {
    "retired": 591,
-   "us": 141.8,
-   "journal_us": 37.1
+   "us": 147.5,
+   "journal_us": 40.9
   }
  },
  "failed_reset": "8876086c",
  "lock_drop_frames": 1,
- "orphan_drop_frames": 1,
- "orphan_probe": 0,
- "checks": 9740,
- "compared_frames": 39,
- "retained_compared_frames": 0,
+ "orphan_drop_frames": 4,
+ "orphan_probe": 1,
+ "checks": 9890,
+ "compared_frames": 40,
+ "retained_compared_frames": 29,
  "absent_maps": 0,
- "color_sha256": "4b6e674803dc98b783ef13a1abac7d48aaeb979a2209e2e0b62822e487b4c237",
+ "color_sha256": "446b55341c37e5e443692ec8666d771188d875a037bce3cbd2151bba5c1c5af8",
  "map": {
-  "max_depth_error": 1.6996652858480843e-06,
-  "covered_texels": 820,
+  "max_depth_error": 1.4041989986557368e-05,
+  "covered_texels": 3059,
   "coverage_disagreements": 0,
-  "maps": 78
+  "maps": 80
  },
  "us": {
-  "frames": 1527,
-  "min": 19.4,
-  "median": 26.1,
-  "max": 1587.6,
+  "frames": 1539,
+  "min": 21.8,
+  "median": 30.9,
+  "max": 2201.0,
   "bulk": {
-   "frames": 5,
+   "frames": 16,
    "issues_median": 1450,
-   "us_median": 1518.2
+   "us_median": 1890.6
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-census-20260917-162713-641261",
- "trace_sha256": "0d995f675425ec846ac75985e568725a2a9d397761817e06f7b0fc56ac000233",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-poll-20260917-162723-969519",
+ "trace_sha256": "97a0c9dcc88786b0dcb7a4c83e3defd5b40df61b77c7a67655344b4d7b1a27f5",
  "dll_sha256": "b018f715064b21e9c02bd3f7dcf9110aa8e15749279452eb43a74c4cfa7bd418",
- "exe_sha256": "0c6535cb5566c94c0d782451c8e6e164951e62d744036894ad5ecd6f4a3fa560",
- "presented_identical_to": [
-  "seam-ownership-shadow-retention-live"
- ]
+ "exe_sha256": "0c6535cb5566c94c0d782451c8e6e164951e62d744036894ad5ecd6f4a3fa560"
 }

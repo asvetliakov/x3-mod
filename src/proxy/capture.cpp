@@ -2204,7 +2204,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 if(GetEnvironmentVariableW(L"X3M_SHADOW_CASTER_RETENTION_AGE",number,32)>0){ const unsigned long v=wcstoul(number,&stop,10); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::age_cap_min&&v<=shadow_retention::age_cap_max)age=std::uint32_t(v); }
                 if(GetEnvironmentVariableW(L"X3M_SHADOW_CASTER_RETENTION_EPS",number,32)>0){ stop=nullptr; const double v=wcstod(number,&stop); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::eps_min&&v<=shadow_retention::eps_max)eps=v; }
                 const shadow_retention::Mode mode=!enabled?shadow_retention::Mode::Off:live?shadow_retention::Mode::Live:shadow_retention::Mode::Census;
-                log("shadow_retention_mode requested=1 enabled=%u mode=%s age_cap=%u eps=%.9g",enabled,live?"live":"census",unsigned(age),eps);
+                log("shadow_retention_mode requested=1 enabled=%u mode=%s age_cap=%u eps=%.9g",enabled,!enabled?"off":live?"live":"census",unsigned(age),eps);
                 hooked.motion_output.configure_shadow_retention(mode,age,eps,flag(L"X3M_SHADOW_RETENTION_TIMING")); } } }
       // Scene-end sun-shadow application (legacy-sun-application.md section 2;
       // X3M_SUN_SHADOW_APPLY=1): the lane and the depth replay of the same
@@ -2945,6 +2945,7 @@ extern "C" __declspec(dllexport) unsigned x3m_shadow_retention_fixture_stats(IDi
 }
 extern "C" __declspec(dllexport) void x3m_shadow_retention_fixture_lifetime(unsigned op,std::uint64_t a,std::uint64_t b) {
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    if(op==8){ for(auto& entry:x3m::devices) entry.second->motion_output.fixture_shadow_retention_device_lost(); return; } // 8: device loss on every hooked device
     x3m::shadow_retention_fixture_lifetime(op,a,b);
 }
 // HDR seam: fault injection (renderer::HdrFault kinds, `count` firings; a null

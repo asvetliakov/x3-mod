@@ -377,9 +377,9 @@ Files: the store `src/proxy/shadow_retention_core.h` (pure CPU, host-compiled by
 `src/proxy/shadow_retention.h`, the owner `src/proxy/motion_output_shadow_retention_inc.h`; the
 record hook at the end of `note_candidate_draw`, the scene-end call before the capture lines and
 the issue loop in `run_shadow_replay_cascades`; the launcher options `--shadow-retention-census`,
-`--shadow-caster-retention`, `--shadow-caster-retention-age`, `--shadow-caster-retention-eps`
-(`X3M_SHADOW_RETENTION_CENSUS`, `X3M_SHADOW_CASTER_RETENTION`, `…_AGE`, `…_EPS`;
-`X3M_SHADOW_RETENTION_TIMING=1` adds the per-draw cost to the frame line); the parser and census
+`--shadow-caster-retention`, `--shadow-caster-retention-age`, `--shadow-caster-retention-eps`,
+`--shadow-retention-timing` (`X3M_SHADOW_RETENTION_CENSUS`, `X3M_SHADOW_CASTER_RETENTION`, `…_AGE`,
+`…_EPS`; `X3M_SHADOW_RETENTION_TIMING=1` adds the per-draw cost to the frame line); the parser and census
 summary `tools/analysis/shadow_retention.py`. Both modes need `--shadow-cascades` (the single map
 is unchanged); `shadow_retention_device … enabled=0 reason=cascades|lifetime|allocation|journal`
 names a refusal. Evidence: [directional-shadows.md](../verification/directional-shadows.md),
@@ -425,7 +425,7 @@ Where the build differs from, or sharpens, the text above:
   is within the store's references of the final one; a false positive costs only the off-screen
   shadows. The store's Releases run with the reference accounting held busy, as `taa_call` and
   `release_resources` do.
-- **Device loss** is a failed `Present` (`flush=device`). Not reachable in the fixture.
+- **Device loss** is a failed `Present` (`flush=device`); the fixture drives the same flush through its seam.
 - **`flush_sun`** fires on the latch's `Relatched` verdict. "The first validated sun after a
   period with none" cannot occur on one device: the latch stays valid until attach.
 - **Positional sun (merged with main c27e974).** The unseen walk builds each cascade's basis as
@@ -446,7 +446,50 @@ Where the build differs from, or sharpens, the text above:
   random pairs of unrelated cameras at the run111 offset, 600-unit AABB: worst 0.012 units
   against `eps` 0.05); the Wine script places its camera at the same offset.
 
-Unverified: native Windows; device loss; the game (no census run yet), hence `eps`,
+Review fix round (2026-09-17, two reviews):
+
+- **Release queue.** The owed references live in the resource table itself (`owed` flag, `pop_owed`),
+  so the queue cannot fill and no reference is ever dropped; a re-acquire of an owed resource before
+  the owner's Release reuses the held reference (no AddRef, no Release). `release_queue_full` counts
+  acquisitions refused while owed slots hold the table (diagnostic).
+- **Caps.** The room per cascade is `min(cap, record_capacity) − live`, so retained issues never
+  exceed the issue storage and a frame is never refused `issues` because of them.
+- **Budget.** Retained issues count into the far-cascade budget; a frame whose live issues alone fit
+  the budget but whose total does not moves the far cascade (its live records included) to alternate
+  frames: `far_alternate_due_to_retained` counts such frames.
+- **Revalidation** confirms each node with its own recorded registry, node and camera identity; an
+  observer that cannot answer about the node (camera or registry gone, observer disabled or
+  mid-mutation) drops the node under `revalidate_context_lost`, not as `retired` (fail closed
+  either way).
+- **Issue-time buffer check.** Every retained record that may be issued is checked every frame with
+  the live loop's revision compare before it enters the admitted list; a rewritten buffer is never
+  replayed with the old range or declaration. The round-robin 1-in-8 check stays for records outside
+  every cascade. Cost: about 0.3 µs per checked record under Wine (two registry lookups); 716 admitted
+  records raise the full-store scene end from 86 to about 490 µs median.
+- **Static class.** Every sighting is verified (the 1-in-16 schedule is gone), so a node that starts
+  moving while seen is reclassified on that sighting. A node that starts moving while *unseen* is the
+  accepted residual, bounded by `age_cap`; its resighting counts `reclassified_after_unseen`.
+- **Capacity.** Eviction moved to the scene end: it keeps `node_reserve` (8) node slots and
+  `draw_reserve` (64) record slots free by evicting the farthest unseen nodes once per frame; the draw
+  site never scans the table (a sighting that finds the reserve empty is `refused` and recorded from
+  its next sighting). `drop_resource` walks one node's records while a resource belongs to one node
+  (`single_node`), the draw pool only for a shared mesh. Worst cases: eviction 8 × 1,024 node reads
+  per scene end; orphan drop of a shared mesh 4,096 record reads per orphan.
+- **Idle watchdog.** `idle_flush_frames` (300) consecutive frame begins without a scene end (menus,
+  loading) flush the store (`flush=idle`, `idle_frames` on the line).
+- **Orphan probe, precisely.** The `AddRef`/`Release` pair runs on the application's own binding
+  identities, which under the ownership layer are its wrappers with exact reference counts (the
+  fixture's own counts read through the same pointers): there the signal is exact, and the
+  capability self-test decides only whether the runtime beneath reports counts. Where the ownership
+  layer is absent the objects are native and the signal is the documented advisory return value.
+  The self-test's buffer is created and destroyed natively within attach before any reference probe
+  runs, outside `taa_call`: its device reference comes and goes inside one call, so the accounting
+  never sees it.
+- **Poll.** The fixture's `-live-poll` case runs the script on the positional sun (every draw uploads
+  its own direction) with a source switch (context null) before case k: retained records under
+  per-cascade bases and the switch flush run through the DLL.
+
+Unverified: native Windows; the game (no census run yet), hence `eps`,
 `age_cap`, the transit behaviour and whether `0x0046d080`'s batches arrive as managed draws.
 
 ## Open RE (not blocking stages 1–2)

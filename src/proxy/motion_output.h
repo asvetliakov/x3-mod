@@ -386,6 +386,7 @@ struct MotionOutputFixtureScope {
     std::uintptr_t node = 0, camera = 0, registry = 0, mesh = 0;
     std::uint32_t node_handle = 0, camera_handle = 0, model = 0, lod = 0;
     std::uint32_t flags12c = 0, flags130 = 0; // node class bits (caster retention's excluded classes)
+    std::uint64_t observer_epoch = 0;         // the lifetime observer's epoch (a retention key component)
 };
 struct MotionOutputFixtureConfig {
     std::uint32_t size = sizeof(MotionOutputFixtureConfig);
@@ -1211,6 +1212,7 @@ public:
     HRESULT fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats, unsigned cascade=0) noexcept;
     // Retention seam: the store's levels and cumulative counters (index list in the inc file).
     unsigned fixture_shadow_retention_stats(std::uint64_t* out, unsigned count) noexcept;
+    void fixture_shadow_retention_device_lost() noexcept { flush_shadow_retention(shadow_retention::Flush::Device); } // as a failed Present reports it
 private:
 #endif
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;

@@ -17,7 +17,9 @@ using RetentionStatsFn = unsigned (*)(IDirect3DDevice9*, std::uint64_t*, unsigne
 using RetentionLifetimeFn = void (*)(unsigned, std::uint64_t, std::uint64_t);
 enum RetentionStat : unsigned { RsEnabled, RsMode, RsNodes, RsRecords, RsRefs, RsStatics, RsUnseen, RsRetainedIssues, RsRetired, RsBoxExit, RsAge, RsEvicted, RsBufferChanged, RsBufferGone,
                                 RsBufferOrphaned, RsReclassified, RsLodReplaced, RsModelReplaced, RsMovingDropped, RsRevalidated, RsJournalOverflow, RsRefused, RsPromoted,
-                                RsFlushNone, RsFlushEpoch, RsFlushReset, RsFlushDevice, RsFlushTeardown, RsFlushSun, RsFlushObserver, RsOrphanProbe, RsPending, RsCount };
+                                RsFlushNone, RsFlushEpoch, RsFlushReset, RsFlushDevice, RsFlushTeardown, RsFlushSun, RsFlushObserver, RsOrphanProbe, RsPending,
+                                RsContextLost, RsFarAlternate, RsFlushIdle, RsReclassifiedAfterUnseen, RsCount };
+constexpr unsigned retention_node_reserve = 8; // shadow_retention::node_reserve: the scene end keeps this many node slots free
 constexpr double retention_eye[3] = {55962., 20286., 55517.}; // the run111 world offset
 constexpr unsigned retention_settle = 10;                      // sightings: the ninth agreeing one makes a node static
 struct RetentionNode {
@@ -74,18 +76,27 @@ struct RetentionScript {
         std::vector<RetentionNode*> drawn{anchor}; drawn.insert(drawn.end(), listed.begin(), listed.end());
         f.camera_scripted = true;
         f.frame_begin();
-        api(f.d->SetPixelShaderConstantF(4, sun, 1), "SetPixelShaderConstantF LightDir_Dir0");
+        if (!poll) api(f.d->SetPixelShaderConstantF(4, sun, 1), "SetPixelShaderConstantF LightDir_Dir0");
         const auto& cam = f.camera_current;
         const unsigned long long now = f.frame;
         if (compare) {
             std::printf("SHADOW_CAMERA frame=%llu m00=%.9g m11=%.9g r=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g t=%.9g,%.9g,%.9g\n", now, cam.m00, cam.m11,
                         cam.r[0], cam.r[1], cam.r[2], cam.r[3], cam.r[4], cam.r[5], cam.r[6], cam.r[7], cam.r[8], cam.t[0], cam.t[1], cam.t[2]);
-            std::printf("SHADOW_SUN frame=%llu direction=%.9g,%.9g,%.9g\n", now, sun[0], sun[1], sun[2]);
+            // The effective sun: the script's constant, or under the point source the direction from the camera
+            // position to the light (what the cascade centres and the nodes, a few units apart, see within 1e-4).
+            double effective[3] = {sun[0], sun[1], sun[2]};
+            if (poll) {
+                double eye[3], length = 0;
+                for (unsigned i = 0; i < 3; ++i) { eye[i] = 0; for (unsigned j = 0; j < 3; ++j) eye[i] -= double(cam.t[j]) * double(cam.r[i * 3 + j]); effective[i] = poll_light[i] - eye[i]; length += effective[i] * effective[i]; }
+                for (double& v : effective) v /= std::sqrt(length);
+            }
+            std::printf("SHADOW_SUN frame=%llu direction=%.9g,%.9g,%.9g\n", now, effective[0], effective[1], effective[2]);
         }
         for (auto* n : drawn) {
             const bool known = n->object.scope.known != 0;
             const bool matched = known && n->last_drawn == static_cast<long long>(now) - 1 && f.frames_since_reset > 0;
             if (compare) std::printf("SHADOW_DRAW frame=%llu caster=%u shape=%c t=%.9g p=%.9g zo=%.9g\n", now, n->id, n->shape, n->t, n->p, n->zo);
+            if (poll) upload_sun(*n);
             f.draw(n->object, n->t, n->p, n->zo, known, known, matched, Alter::None, oracle && drawn.size() <= 8);
             n->last_drawn = static_cast<long long>(now);
             if (known && (n->placed_frame < 0 || n->placed_t != n->t)) { n->placed_frame = static_cast<long long>(now); n->placed_t = n->t; camera_of[now] = cam; }
@@ -120,6 +131,19 @@ struct RetentionScript {
     void end() { std::printf("RETENTION_CASE name=%s state=PASS frame=%llu\n", name, f.frame); }
     std::map<unsigned long long, x3m::renderer::CameraState> camera_of;
     RetentionNode* anchor = nullptr;
+    // X3M_FIXTURE_SHADOW_POLL=agree: the sun is a point light 100,000 units along the script's sun from the
+    // world origin; every draw uploads LightDir_Dir0 = normalize(light - its own origin) as the engine does.
+    bool poll = false; double poll_light[3] = {0, 0, 0};
+    void upload_sun(const RetentionNode& n) {
+        if (!poll) { api(f.d->SetPixelShaderConstantF(4, sun, 1), "SetPixelShaderConstantF LightDir_Dir0"); return; }
+        const auto& c = f.camera_current;
+        const double view[3] = {double(n.t) / c.m00, 0., 1.}; // the object origin through the rows (t, 0, zo, 1)
+        double world[3], direction[4] = {0, 0, 0, 0}, length = 0;
+        for (unsigned i = 0; i < 3; ++i) { world[i] = 0; for (unsigned j = 0; j < 3; ++j) world[i] += (view[j] - double(c.t[j])) * double(c.r[i * 3 + j]); direction[i] = poll_light[i] - world[i]; length += direction[i] * direction[i]; }
+        length = std::sqrt(length);
+        float constant[4] = {float(direction[0] / length), float(direction[1] / length), float(direction[2] / length), 0.f};
+        api(f.d->SetPixelShaderConstantF(4, constant, 1), "SetPixelShaderConstantF LightDir_Dir0 (point)");
+    }
 };
 void run_shadow_retention_integration(Fixture& f) {
     require(f.seam && f.camera && f.enabled && !f.taa, "shadowretention runs on the seam DLL with the route and the scripted camera");
@@ -133,6 +157,17 @@ void run_shadow_retention_integration(Fixture& f) {
     require(age_cap >= 620 && age_cap <= 2000, "the script expects an age cap above case a's 600 frames");
     std::printf("RETENTION_MODE mode=%u age_cap=%u\n", s.mode, age_cap);
     s.lifetime(7, 0, 0); s.lifetime(3, f.b.scope.load_epoch, f.b.scope.registry_epoch);
+    // The sun-position poll seam (the replay script's `agree` block): the DLL builds every cascade's basis from the polled light.
+    static ShadowPollContext poll_context; // read by the DLL until the process ends
+    char poll_mode[16]{};
+    if (GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_POLL", poll_mode, sizeof poll_mode) > 0) {
+        require(!std::strcmp(poll_mode, "agree"), "the retention script runs the poll seam in its agree mode only");
+        const auto install = symbol<void (*)(const std::uint32_t*)>(f.runtime, "x3m_sun_light_poll_fixture_install", false);
+        require(install != nullptr, "the seam DLL exports the sun-position poll seam");
+        for (unsigned k = 0; k < 3; ++k) s.poll_light[k] = shadow_poll_distance * double(shadow_sun[k]);
+        poll_context.build(s.poll_light, false); install(&poll_context.slot); s.poll = true;
+        std::printf("SHADOW_POLL mode=agree light=%.9g,%.9g,%.9g candidates=4 directional=3\n", s.poll_light[0], s.poll_light[1], s.poll_light[2]);
+    }
     std::memcpy(f.camera_position, retention_eye, sizeof retention_eye); f.camera_yaw = 0;
     shadow_ensure_bloom(f);
     s.read(); require(s.s[RsEnabled] == (s.on() ? 1u : 0u) && s.s[RsMode] == s.mode, "the store exists exactly while the option is on");
@@ -202,6 +237,11 @@ void run_shadow_retention_integration(Fixture& f) {
         s.frame({&lod1, &partner}, {}, true);
         s.expect(RsLodReplaced, replaced + 1, "the resubmission with another lod replaces the draw set"); s.expect(RsRecords, 2, "replaced, not added"); s.expect(RsNodes, 2, "the same node");
         require(retention_count(lod0.buffer.p) == base0 && retention_count(lod1.buffer.p) == held(base1), "the old mesh's reference is released, the new one's held");
+        auto& other_model = s.make(29, 'B', .8f, 0.f, nullptr, 1, 0, 0, 7); other_model.object.scope.model = lod0.object.scope.model + 0x100; // the same serial with another model
+        const std::uint64_t models = s.s[RsModelReplaced]; const ULONG base_other = retention_count(other_model.buffer.p);
+        s.frame({&other_model, &partner}, {}, true);
+        s.expect(RsModelReplaced, models + 1, "the resubmission with another model replaces the draw set"); s.expect(RsRecords, 2, "replaced, not added");
+        require(retention_count(lod1.buffer.p) == base1 && retention_count(other_model.buffer.p) == held(base_other), "the lod-1 mesh is released, the new model's mesh held");
         s.retire(lod0); s.retire(partner); s.frame({}, {}, false); s.expect(RsNodes, 0, "case d leaves nothing");
         s.end();
     }
@@ -283,6 +323,40 @@ void run_shadow_retention_integration(Fixture& f) {
         s.retire(n16); s.retire(n17); s.frame({}, {}, false); s.expect(RsNodes, 0, "case h leaves nothing");
         s.end();
     }
+    { // m. the observer's other signals: unavailable, FlushAll, an epoch that moved in the drain, the observer epoch as a key, a lost camera, device loss
+        s.begin("m_observer");
+        auto& n30 = s.make(30, 'B', -.05f, .05f); auto& n31 = s.make(31, 'B', .7f, .10f);
+        const ULONG base30 = retention_count(n30.buffer.p);
+        auto retained_pair = [&] { s.settle({&n30, &n31}); s.frame({}, {&n30, &n31}, false); s.expect(RsNodes, 2, "both retained"); };
+        // available=false: full revalidation, every node unconfirmed (a lost context, not a death), flush=observer
+        retained_pair();
+        std::uint64_t observer_flushes = s.s[RsFlushObserver], context_lost = s.s[RsContextLost], retired = s.s[RsRetired];
+        s.lifetime(4, 0, 0); s.frame({}, {}, false); s.lifetime(4, 1, 0);
+        s.expect(RsNodes, 0, "an unavailable observer empties the store"); s.expect(RsFlushObserver, observer_flushes + 1, "flush=observer"); s.expect(RsContextLost, context_lost + 2, "unconfirmed nodes leave under their own count");
+        s.expect(RsRetired, retired, "not counted as retired"); require(retention_count(n30.buffer.p) == base30, "baseline");
+        // a lost camera: the observer answers about the camera, not the node
+        retained_pair(); context_lost = s.s[RsContextLost];
+        s.lifetime(2, 0xFFFFFFFFull, 0); s.lifetime(6, 2049, 0); s.lifetime(9, 1, 0); s.frame({}, {}, false); s.lifetime(9, 0, 0); // an overflow forces the revalidation while the camera is unknown
+        s.expect(RsNodes, 0, "unconfirmed nodes leave"); s.expect(RsContextLost, context_lost + 2, "revalidate_context_lost counts them"); require(retention_count(n30.buffer.p) == base30, "baseline");
+        // FlushAll through the drain
+        retained_pair(); observer_flushes = s.s[RsFlushObserver];
+        s.lifetime(5, 0, 0); s.frame({}, {}, false);
+        s.expect(RsNodes, 0, "FlushAll drops the store"); s.expect(RsFlushObserver, observer_flushes + 1, "FlushAll counts as an observer flush");
+        // the drain's epochs moved
+        retained_pair(); const std::uint64_t epoch_flushes = s.s[RsFlushEpoch];
+        s.lifetime(3, f.b.scope.load_epoch + 1, f.b.scope.registry_epoch); s.frame({}, {}, false); s.lifetime(3, f.b.scope.load_epoch, f.b.scope.registry_epoch);
+        s.expect(RsNodes, 0, "another epoch in the drain flushes the store"); s.expect(RsFlushEpoch, epoch_flushes + 1, "flush=epoch"); require(retention_count(n30.buffer.p) == base30, "baseline");
+        // the observer epoch is a key component: a draw under another one defers a flush to the scene end
+        retained_pair(); n31.object.scope.observer_epoch = 1; s.frame({&n31}, {}, false); n31.object.scope.observer_epoch = 0;
+        s.expect(RsFlushEpoch, epoch_flushes + 2, "another observer epoch flushes the store at the scene end"); s.expect(RsNodes, 0, "nothing is retained across it");
+        // device loss, as a failed Present reports it
+        retained_pair(); const std::uint64_t device_flushes = s.s[RsFlushDevice];
+        s.lifetime(8, 0, 0); s.read();
+        s.expect(RsFlushDevice, device_flushes + 1, "flush=device"); s.expect(RsNodes, 0, "the store is empty"); s.expect(RsRefs, 0, "no reference survives"); require(retention_count(n30.buffer.p) == base30, "baseline after device loss");
+        s.frame({}, {}, false);
+        s.retire(n30); s.retire(n31); s.frame({}, {}, false); s.expect(RsNodes, 0, "case m leaves nothing");
+        s.end();
+    }
     { // j. excluded classes and an unknown lifetime: never retained
         s.begin("j_excluded");
         auto& partner = s.make(18, 'B', -.05f, .05f);
@@ -303,24 +377,27 @@ void run_shadow_retention_integration(Fixture& f) {
         Com<IDirect3DVertexBuffer9> mesh; s.make_buffer('B', mesh);
         const ULONG base = retention_count(mesh.p);
         std::vector<RetentionNode*> first, second;
-        for (unsigned i = 0; i < 700; ++i) first.push_back(&s.make(2000 + i, 'B', -3.f + .006f * float(i), 0, mesh.p));
-        for (unsigned i = 0; i < 324; ++i) second.push_back(&s.make(2700 + i, 'B', 1.3f + .006f * float(i), 0, mesh.p));
+        for (unsigned i = 0; i < 724; ++i) first.push_back(&s.make(2000 + i, 'B', -3.2f + .006f * float(i), 0, mesh.p));
+        for (unsigned i = 0; i < 300; ++i) second.push_back(&s.make(2800 + i, 'B', 1.3f + .006f * float(i), 0, mesh.p));
         s.check_issues = false; // bulk frames: the kept list is not spelled out
-        s.settle(first, {}, retention_settle, false); s.expect(RsStatics, 700, "the first batch is static");
+        s.settle(first, {}, retention_settle, false); s.expect(RsStatics, 724, "the first batch is static");
         s.settle(second, {}, retention_settle, false);
-        s.expect(RsNodes, 1024, "the store is full"); s.expect(RsUnseen, 700, "the first batch is retained unseen"); s.expect_live(RsRefs, 2, 0, "one mesh and the declaration for 1,024 records");
-        if (s.live()) require(s.s[RsRetainedIssues] >= 700, "the retained records are issued"); // the far cascade alternates above the budget
-        const std::uint64_t evicted = s.s[RsEvicted], refused = s.s[RsRefused], retired = s.s[RsRetired], overflow = s.s[RsJournalOverflow];
+        // The frame that filled the table evicted the reserve's worth of the farthest unseen nodes at its scene end (never at a draw).
+        s.expect(RsNodes, 1024 - retention_node_reserve, "the store keeps its reserve free"); s.expect(RsEvicted, retention_node_reserve, "the reserve was made by evicting unseen nodes, once");
+        s.expect(RsUnseen, 724 - retention_node_reserve, "the first batch is retained unseen"); s.expect_live(RsRefs, 2, 0, "one mesh and the declaration for the records");
+        if (s.live()) require(s.s[RsRetainedIssues] >= 690, "the retained records are issued"); // the far cascade alternates above the budget
+        const std::uint64_t evicted = s.s[RsEvicted], refused = s.s[RsRefused], retired = s.s[RsRetired], overflow = s.s[RsJournalOverflow], far_alternate = s.s[RsFarAlternate];
+        if (s.live()) require(far_alternate >= 1, "the far cascade alternated because of retained issues (live issues alone fit the budget)");
         second.push_back(&s.make(3100, 'B', -3.3f, 0, mesh.p));
         s.frame(second, {}, false, false);
-        s.expect(RsEvicted, evicted + 1, "the 1,025th node evicts one unseen node"); s.expect(RsNodes, 1024, "no overflow write"); s.expect(RsRefused, refused, "nothing is refused while an unseen node can leave");
+        s.expect(RsEvicted, evicted + 1, "the new node takes a reserve slot and the scene end refills it by one eviction"); s.expect(RsNodes, 1024 - retention_node_reserve, "no overflow write"); s.expect(RsRefused, refused, "nothing is refused while the reserve holds");
         unsigned burst = 0;
-        for (unsigned i = 0; i < 700 && burst < 600; ++i) { s.retire(*first[i]); ++burst; }
+        for (unsigned i = 0; i < 724 && burst < 600; ++i) { s.retire(*first[i]); ++burst; }
         s.frame(second, {}, false, false);
-        if (s.on()) require(s.s[RsRetired] >= retired + 599 && s.s[RsRetired] <= retired + 600, "600 retirements drain in one frame"); // one of them may be the evicted node
+        if (s.on()) require(s.s[RsRetired] >= retired + 600 - retention_node_reserve - 1 && s.s[RsRetired] <= retired + 600, "600 retirements drain in one frame"); // up to nine of them were the evicted nodes
         s.expect(RsJournalOverflow, overflow, "600 entries do not overflow the ring");
         for (auto* n : second) s.lifetime(2, n->object.scope.node_serial, 0);
-        for (unsigned i = 600; i < 700; ++i) s.lifetime(2, first[i]->object.scope.node_serial, 0);
+        for (unsigned i = 600; i < 724; ++i) s.lifetime(2, first[i]->object.scope.node_serial, 0);
         s.lifetime(6, 2049, 0);
         s.frame({}, {}, false, false);
         s.expect(RsJournalOverflow, overflow + 1, "2,049 entries overflow"); s.expect(RsNodes, 0, "the revalidation empties the store"); s.expect(RsRefs, 0, "no reference remains");
@@ -339,8 +416,15 @@ void run_shadow_retention_integration(Fixture& f) {
         s.frame({&n26}, {}, true);
         s.expect(RsAge, aged + 1, "unseen past the age cap: gone"); s.expect(RsNodes, 1, "only the live node"); require(retention_count(n25.buffer.p) == base25, "its reference is released");
         s.settle({&n25, &n26}); s.frame({&n26}, {&n25}, true);
+        if (s.poll) { // the sun source switches point -> latch (the context pointer goes null): flushed like a re-latch
+            const std::uint64_t switches = s.s[RsFlushSun];
+            poll_context.slot = 0; s.check_issues = false; s.frame({&n26}, {}, false, false); s.check_issues = true;
+            std::printf("RETENTION_SOURCE_SWITCH frame=%llu\n", f.frame - 1);
+            s.expect(RsFlushSun, switches + 1, "a sun source switch flushes the store"); s.expect(RsNodes, 0, "nothing retained across the switch");
+            s.settle({&n25, &n26}); s.frame({&n26}, {&n25}, true); // under the latch now
+        }
         const std::uint64_t sun_flushes = s.s[RsFlushSun];
-        s.sun = shadow_sun_flip; // another validated direction, persisting: re-latched after 8 frames
+        s.sun = shadow_sun_flip; s.poll = false; // another validated direction, persisting: re-latched after 8 frames (the poll case is on the latch by now)
         unsigned frames = 0; s.check_issues = false;
         for (unsigned i = 1; i <= 8; ++i) { s.frame({&n26}, {}, false, false); if (!frames && s.s[RsFlushSun] != sun_flushes) frames = i; }
         s.check_issues = true;

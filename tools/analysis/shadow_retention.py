@@ -34,9 +34,10 @@ FRAME_FIELDS = ('device', 'frame', 'mode', 'known', 'nodes_live', 'nodes_unseen'
                 'live_c0', 'live_c1', 'live_c2', 'live_c3', 'would_c0', 'would_c1', 'would_c2', 'would_c3', 'capped_c0', 'capped_c1', 'capped_c2', 'capped_c3',
                 'drift_n', 'drift_p99', 'drift_max', 'age_max', 'refs_held', 'sun_relatch', 'cam_jump', 'transit_survivors', 'us',
                 # beyond the contract's list (implementation diagnostics)
-                'refused', 'moving_dropped', 'abandoned', 'deferred', 'journal_us', 'walk_us', 'draw_us', 'draw_calls')
+                'refused', 'moving_dropped', 'abandoned', 'deferred', 'journal_us', 'walk_us', 'draw_us', 'draw_calls',
+                'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'idle_frames')
 FLOAT_FIELDS = ('drift_p99', 'drift_max', 'us', 'journal_us', 'walk_us', 'draw_us')
-TEXT_FIELDS = {'mode': ('census', 'live'), 'flush': ('none', 'epoch', 'reset', 'device', 'teardown', 'sun', 'observer')}
+TEXT_FIELDS = {'mode': ('census', 'live'), 'flush': ('none', 'epoch', 'reset', 'device', 'teardown', 'sun', 'observer', 'idle')}
 BUCKETS = 5
 BUCKET_LABELS = ('<60', '<600', '<3600', '<14400', '>=14400')
 RESIGHT_FIELDS = ('device', 'frame') + tuple(f'b{b}_{k}' for b in range(BUCKETS) for k in ('same', 'moved', 'changed')) \
@@ -153,7 +154,8 @@ def summary(frames, resights, eps=0.05):
            'would_peak': [peak(f'would_c{c}') for c in range(4)], 'capped_peak': [peak(f'capped_c{c}') for c in range(4)], 'live_peak': [peak(f'live_c{c}') for c in range(4)],
            'totals': {k: total(k) for k in ('excluded_class', 'unscoped', 'new_nodes', 'first_seen_in_range', 'promoted', 'superseded', 'lod_replaced', 'model_replaced', 'reclassified',
                                             'retired', 'journal_overflow', 'revalidated', 'mutation_delta', 'buffer_changed', 'buffer_gone', 'buffer_orphaned', 'box_exit', 'age',
-                                            'evicted', 'sun_relatch', 'cam_jump', 'transit_survivors', 'refused', 'moving_dropped', 'abandoned', 'deferred')},
+                                            'evicted', 'sun_relatch', 'cam_jump', 'transit_survivors', 'refused', 'moving_dropped', 'abandoned', 'deferred',
+                                            'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked')},
            'flushes': {name: sum(1 for r in frames if r['flush'] == name) for name in TEXT_FIELDS['flush'] if name != 'none'},
            'retired_burst_peak': peak('retired'),
            'drift': {'frames': len(verified), 'samples': sum(r['drift_n'] for r in verified), 'max': max((r['drift_max'] for r in verified), default=0.0),

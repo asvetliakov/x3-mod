@@ -222,6 +222,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
         if (!quiet[i]) { ++c.skipped_lease; continue; }
         for (unsigned k = 0; k < cascades; ++k) if (candidates_.records[i].cascades & (1u << k)) { ++per_cascade[k]; ++issues; }
     }
+    const unsigned live_issues = issues;
     for (unsigned q = 0; q < m; ++q) {
         const unsigned mask = retention_->store.draws[retention_->store.admitted[q]].cascades;
         for (unsigned k = 0; k < cascades; ++k) if (mask & (1u << k)) { ++per_cascade[k]; ++issues; }
@@ -333,6 +334,10 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
                 else if (!per_cascade[k]) depth_replay_->invalidate_retained(k);
             }
             far_replayed = cascades > 1 && replays[cascades - 1];
+            // Retained issues count into the far cascade's budget: a far cascade skipped this frame that
+            // the live issues alone would have replayed is charged to retention (shadow-caster-retention.md).
+            if (retained_on && cascades > 1 && !far_replayed && per_cascade[cascades - 1] && issues > depth_cascades_.budget && live_issues <= depth_cascades_.budget)
+                ++retention_->store.frame.far_alternate_due_to_retained, ++retention_->store.totals.far_alternate_due_to_retained;
             c.replayed = c.draws; depth_replayed_ = out.drawn; depth_cascade_frame_ok_ = true; depth_basis_ = bases[0];
         }
     }

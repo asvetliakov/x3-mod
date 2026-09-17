@@ -49,5 +49,6 @@ struct ShadowRetention {
     std::int64_t draw_ticks = 0; std::uint32_t draw_calls = 0;
     double us = 0, journal_us = 0, walk_us = 0;
     std::uint64_t published_frame = ~std::uint64_t(0);
+    unsigned idle_frames = 0; // consecutive frame begins without a scene end since the last one (the idle watchdog)
 };
 } // namespace x3m

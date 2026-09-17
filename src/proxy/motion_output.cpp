@@ -3541,7 +3541,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
         key.node = s.node; key.camera = s.camera; key.mesh = s.mesh;
         key.node_handle = s.node_handle; key.camera_handle = s.camera_handle; key.model = s.model; key.lod = s.lod;
         route.load_epoch = s.load_epoch; route.registry_epoch = s.registry_epoch;
-        route.registry = s.registry; route.node_flags12c = s.flags12c; route.node_flags130 = s.flags130;
+        route.registry = s.registry; route.node_flags12c = s.flags12c; route.node_flags130 = s.flags130; route.observer_epoch = s.observer_epoch;
         key.draw_domain = (((s.load_epoch & 0xffffffffull) << 32) | (s.registry_epoch & 0xffffffffull)) + 1;
         return true;
     }

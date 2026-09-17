@@ -27,7 +27,7 @@ inline double retention_us(std::int64_t ticks) noexcept {
 namespace retention_fixture {
 using namespace object_lifetime;
 struct Birth { std::uint32_t handle = 0; std::uint64_t serial = 0; bool alive = false; };
-JournalEntry ring[JournalCapacity]; std::uint64_t head = 0; unsigned consumers = 0; bool available = true;
+JournalEntry ring[JournalCapacity]; std::uint64_t head = 0; unsigned consumers = 0; bool available = true, camera_dead = false;
 std::uint64_t load_epoch = 1, registry_epoch = 1, revision = 0;
 Birth births[4096]; unsigned birth_count = 0;
 void append(JournalKind kind, std::uint64_t serial) noexcept {
@@ -54,6 +54,7 @@ JournalDrain journal_drain(JournalCursor& cursor, JournalEntry* out, std::uint32
 bool current(std::uintptr_t, std::uintptr_t, std::uint32_t node_handle, std::uintptr_t, std::uint32_t, Snapshot* out) {
     *out = {}; out->load_epoch = load_epoch; out->registry_epoch = registry_epoch; out->mutation_revision = revision;
     if (!available) { out->reason = Reason::Disabled; return false; }
+    if (camera_dead) { out->reason = Reason::UnknownCameraBirth; return false; } // op 9: the recorded camera is gone
     for (unsigned i = 0; i < birth_count; ++i) if (births[i].handle == node_handle && births[i].alive) { out->known = true; out->reason = Reason::Known; out->node_serial = births[i].serial; out->camera_serial = 1; return true; }
     out->reason = Reason::UnknownNodeBirth; return false;
 }
@@ -62,7 +63,8 @@ bool current(std::uintptr_t, std::uintptr_t, std::uint32_t node_handle, std::uin
 } // namespace
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam: 0 birth(handle, serial), 1 retire(serial) through the journal, 2 kill(serial) with no entry,
-// 3 epochs(load, registry), 4 available(flag), 5 FlushAll, 6 `a` retirements of unknown serials, 7 reset.
+// 3 epochs(load, registry), 4 available(flag), 5 FlushAll, 6 `a` retirements of unknown serials, 7 reset,
+// 8 device loss (handled by the export: every hooked device), 9 camera_dead(flag).
 void shadow_retention_fixture_lifetime(unsigned op, std::uint64_t a, std::uint64_t b) noexcept {
     namespace fx = retention_fixture;
     const auto kill = [](std::uint64_t serial) { for (unsigned i = 0; i < fx::birth_count; ++i) if (fx::births[i].serial == serial) fx::births[i].alive = false; };
@@ -74,7 +76,8 @@ void shadow_retention_fixture_lifetime(unsigned op, std::uint64_t a, std::uint64
     case 4: fx::available = a != 0; break;
     case 5: fx::append(object_lifetime::JournalKind::FlushAll, 0); break;
     case 6: for (std::uint64_t i = 0; i < a; ++i) fx::append(object_lifetime::JournalKind::Retired, 0xFFFF000000000000ull + i); break;
-    default: fx::birth_count = 0; fx::available = true; fx::load_epoch = fx::registry_epoch = 1; break;
+    case 9: fx::camera_dead = a != 0; break; // the camera of every recorded scope is unknown to the observer (a lost context, not a death)
+    default: fx::birth_count = 0; fx::available = true; fx::camera_dead = false; fx::load_epoch = fx::registry_epoch = 1; break;
     }
 }
 #endif
@@ -88,14 +91,15 @@ void MotionOutput::attach_shadow_retention() noexcept {
     if (retention_mode_ == shadow_retention::Mode::Off) return;
     const bool live = retention_mode_ == shadow_retention::Mode::Live;
     const char* reason = "ok";
+    bool ok = true;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     const bool observer = true; // the seam's scope and observer are synthetic
 #else
     const bool observer = object_trace::active() && object_lifetime::active(); // the executable gate and a known lifetime snapshot
 #endif
-    if (!depth_cascades_on()) reason = "cascades";
-    else if (!observer) reason = "lifetime";
-    if (reason[0] == 'o') {
+    if (!depth_cascades_on()) { reason = "cascades"; ok = false; }
+    else if (!observer) { reason = "lifetime"; ok = false; }
+    if (ok) {
         retention_.reset(new (std::nothrow) ShadowRetention);
         if (retention_ && live) {
             retention_->draw_capacity = shadow_replay::record_capacity + shadow_retention::draw_capacity;
@@ -144,6 +148,7 @@ void MotionOutput::release_retention_pending() noexcept {
     auto& store = retention_->store;
     if (!store.pending_count) return;
     const DWORD error = GetLastError();
+    // The queue is the store's resource table (pop_owed): no owed reference can be dropped.
     // A final Release of a resource the application already released drops the
     // device reference it pinned and re-enters the device Release hook through
     // the wrapper's parent release: the accounting is held busy meanwhile (as
@@ -151,7 +156,7 @@ void MotionOutput::release_retention_pending() noexcept {
     // cannot match on a count in motion and nothing tears this object down
     // under the loop. Each entry leaves the list before its Release.
     const bool busy = taa_busy_; taa_busy_ = true;
-    while (store.pending_count) reinterpret_cast<IUnknown*>(store.pending[--store.pending_count])->Release();
+    while (const std::uintptr_t identity = store.pop_owed()) reinterpret_cast<IUnknown*>(identity)->Release();
     taa_busy_ = busy;
     SetLastError(error);
 }
@@ -193,10 +198,18 @@ void MotionOutput::drain_retention_journal() noexcept {
     if (flush || epoch_moved) { store.flush(epoch_moved ? shadow_retention::Flush::Epoch : shadow_retention::Flush::Observer); return; }
     if (revalidate && store.nodes_used) {
         const unsigned before = store.nodes_used;
+        // Per node with its own recorded registry, node and camera identity. A node whose camera or
+        // registry is gone cannot be confirmed: it leaves under revalidate_context_lost, not as retired.
         store.revalidate([&](const shadow_retention::Node& n) noexcept {
             object_lifetime::Snapshot s{};
-            return st.lifetime.current(st.registry, n.node, n.handle, st.camera, st.camera_handle, &s) && s.known && s.node_serial == n.serial
-                && s.load_epoch == store.load_epoch && s.registry_epoch == store.registry_epoch;
+            using shadow_retention::Revalidation;
+            if (st.lifetime.current(n.registry, n.node, n.handle, n.camera, n.camera_handle, &s) && s.known && s.node_serial == n.serial
+                && s.load_epoch == store.load_epoch && s.registry_epoch == store.registry_epoch) return Revalidation::Known;
+            using object_lifetime::Reason;
+            // Dead: the observer answered about this node (unknown birth, another pointer, another serial or epoch).
+            // Anything else (camera or registry gone, observer disabled or mid-mutation) is a lost context.
+            const bool answered = s.known || s.reason == Reason::UnknownNodeBirth || s.reason == Reason::PointerMismatch;
+            return answered ? Revalidation::Dead : Revalidation::ContextLost;
         }, frame_);
         if (!drain.available && before && !store.nodes_used) { store.frame.flush = shadow_retention::Flush::Observer; ++store.totals.flushes[unsigned(shadow_retention::Flush::Observer)]; }
     }
@@ -206,6 +219,9 @@ void MotionOutput::drain_retention_journal() noexcept {
 void MotionOutput::retention_frame_begin() noexcept {
     auto& st = *retention_;
     if (st.store.dirty_count) st.store.abandon_sightings();
+    // The idle watchdog: presented frames without a scene end (menus, loading) keep up to the whole
+    // store's wrappers alive; after idle_flush_frames of them the store is flushed (flush=idle).
+    if (st.published_frame != frame_ - 1 && st.store.nodes_used && ++st.idle_frames >= shadow_retention::idle_flush_frames) { st.idle_frames = 0; flush_shadow_retention(shadow_retention::Flush::Idle); }
     drain_retention_journal();
     release_retention_pending();
 }
@@ -220,7 +236,7 @@ void MotionOutput::note_retention_draw(const MotionRoute& route, const shadow_re
     if (!g.leased) { ++st.store.frame.refused; return; } // no rows window or an unreadable declaration: nothing to retain
     shadow_retention::Sighting s;
     s.serial = k.object_lifetime; s.load_epoch = route.load_epoch; s.registry_epoch = route.registry_epoch; s.observer_epoch = route.observer_epoch;
-    s.node = std::uintptr_t(k.node); s.handle = k.node_handle; s.model = k.model; s.lod = k.lod; s.flags12c = route.node_flags12c; s.flags130 = route.node_flags130;
+    s.node = std::uintptr_t(k.node); s.handle = k.node_handle; s.registry = route.registry; s.camera = std::uintptr_t(k.camera); s.camera_handle = k.camera_handle; s.model = k.model; s.lod = k.lod; s.flags12c = route.node_flags12c; s.flags130 = route.node_flags130;
     s.key.vb = k.vertex_buffer; s.key.ib = k.indexed ? k.index_buffer : 0; s.key.declaration = k.declaration;
     s.key.stream_offset = k.stream_offset; s.key.stride = k.stride; s.key.topology = k.topology; s.key.primitives = k.primitives; s.key.first = k.first;
     s.key.min_vertex = k.min_vertex; s.key.vertex_count = k.vertex_count; s.key.base_vertex = k.base_vertex; s.key.indexed = k.indexed;
@@ -246,6 +262,7 @@ void MotionOutput::retention_scene_end(bool sun_source_switched) noexcept {
     if (st.published_frame == frame_) return;
     const std::int64_t t0 = retention_ticks();
     const DWORD error = GetLastError();
+    st.idle_frames = 0; // a scene end: the frame is not idle
     drain_retention_journal();
     const std::int64_t t1 = retention_ticks();
     // The validated sun changed beyond the gate, or is the first after a period with none.
@@ -276,7 +293,14 @@ void MotionOutput::retention_scene_end(bool sun_source_switched) noexcept {
     // Each cascade's own current basis, exactly as the transaction builds it (its own sun and grid anchor).
     for (unsigned c = 0; in.bases_valid && c < depth_cascades_.count; ++c)
         in.bases_valid = renderer::shadow_replay_basis(camera_scene_, cascade_sun(c), depth_cascades_.cascades[c], in.bases[c], point_sun_.grid_anchor(c));
-    for (unsigned c = 0; c < depth_cascades_.count; ++c) { const unsigned live = candidates_.counts.cascade[c], cap = depth_cascades_.caps[c]; in.room[c] = live < cap ? cap - live : 0; }
+    // Room per cascade: the cap, bounded by the record capacity the issue storage was sized with (the env
+    // cap parser accepts more), minus this frame's live records. Retained issues never make a cascade
+    // exceed its storage: they are the ones dropped first.
+    for (unsigned c = 0; c < depth_cascades_.count; ++c) {
+        const unsigned live = candidates_.counts.cascade[c];
+        const unsigned cap = depth_cascades_.caps[c] < shadow_replay::record_capacity ? depth_cascades_.caps[c] : shadow_replay::record_capacity;
+        in.room[c] = live < cap ? cap - live : 0;
+    }
     const bool live_mode = st.mode == shadow_retention::Mode::Live;
     store.end_scene(in, [&](const shadow_retention::Draw& d) noexcept {
         // The buffer-lock view of a held unseen buffer: another allocation or
@@ -313,14 +337,16 @@ void MotionOutput::publish_shadow_retention() noexcept {
         " box_exit=%u age=%u evicted=%u flush=%s unseen_in_frustum=%u unseen_outside=%u live_c0=%u live_c1=%u live_c2=%u live_c3=%u"
         " would_c0=%u would_c1=%u would_c2=%u would_c3=%u capped_c0=%u capped_c1=%u capped_c2=%u capped_c3=%u drift_n=%u drift_p99=%.6g drift_max=%.6g"
         " age_max=%llu refs_held=%u sun_relatch=%u cam_jump=%u transit_survivors=%u us=%.1f"
-        " refused=%u moving_dropped=%u abandoned=%u deferred=%u journal_us=%.1f walk_us=%.1f draw_us=%.1f draw_calls=%u",
+        " refused=%u moving_dropped=%u abandoned=%u deferred=%u journal_us=%.1f walk_us=%.1f draw_us=%.1f draw_calls=%u"
+        " far_alternate_due_to_retained=%u revalidate_context_lost=%u release_queue_full=%u reclassified_after_unseen=%u admitted_checked=%u idle_frames=%u",
         id_, frame_, live ? "live" : "census", unsigned(st.registered && st.available), f.nodes_live, f.nodes_unseen, f.records, f.records_unseen, f.statics, f.moving,
         f.excluded_class, f.unscoped, f.new_nodes, f.first_seen_in_range, f.promoted, f.superseded, f.lod_replaced, f.model_replaced, f.reclassified,
         f.retired, f.journal_overflow, f.revalidated, static_cast<unsigned long long>(f.mutation_delta), f.buffer_changed, f.buffer_gone, f.buffer_orphaned, unsigned(live && st.orphan_probe),
         f.box_exit, f.age, f.evicted, shadow_retention::flush_name(f.flush), f.unseen_in_frustum, f.unseen_outside, c.cascade[0], c.cascade[1], c.cascade[2], c.cascade[3],
         f.would[0], f.would[1], f.would[2], f.would[3], f.capped[0], f.capped[1], f.capped[2], f.capped[3], f.drift_n, double(f.drift_p99), double(f.drift_max),
         static_cast<unsigned long long>(f.age_max), store.references(), f.sun_relatch, f.cam_jump, f.transit_survivors, st.us,
-        f.refused, f.moving_dropped, f.abandoned, f.deferred, st.journal_us, st.walk_us, retention_us(st.draw_ticks), st.draw_calls);
+        f.refused, f.moving_dropped, f.abandoned, f.deferred, st.journal_us, st.walk_us, retention_us(st.draw_ticks), st.draw_calls,
+        f.far_alternate_due_to_retained, f.revalidate_context_lost, f.release_queue_full, f.reclassified_after_unseen, f.admitted_checked, st.idle_frames);
     if (capture_) {
         for (unsigned i = 0; i < shadow_retention::node_capacity; ++i) {
             const auto& n = store.nodes[i];
@@ -353,9 +379,11 @@ void MotionOutput::publish_shadow_retention() noexcept {
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam: 0 enabled, 1 mode, 2 nodes, 3 records, 4 refs_held, 5 static nodes, 6 unseen nodes, 7 retained issues of the last replay,
 // 8 retired, 9 box_exit, 10 age, 11 evicted, 12 buffer_changed, 13 buffer_gone, 14 buffer_orphaned, 15 reclassified, 16 lod_replaced,
-// 17 model_replaced, 18 moving_dropped, 19 revalidated, 20 journal_overflow, 21 refused, 22 promoted, 23..29 flushes by reason, 30 orphan_probe, 31 pending releases.
+// 17 model_replaced, 18 moving_dropped, 19 revalidated, 20 journal_overflow, 21 refused, 22 promoted, 23..29 flushes by reason, 30 orphan_probe, 31 pending releases,
+// 32 revalidate_context_lost, 33 far_alternate_due_to_retained, 34 flush idle, 35 reclassified_after_unseen.
 unsigned MotionOutput::fixture_shadow_retention_stats(std::uint64_t* out, unsigned count) noexcept {
-    std::uint64_t v[32]{};
+    constexpr unsigned stats = 36;
+    std::uint64_t v[stats]{};
     if (retention_) {
         const auto& s = retention_->store; const auto& t = s.totals;
         unsigned statics = 0;
@@ -363,10 +391,10 @@ unsigned MotionOutput::fixture_shadow_retention_stats(std::uint64_t* out, unsign
         const std::uint64_t values[] = {1, std::uint64_t(retention_->mode), s.nodes_used, s.draws_used, s.references(), statics, retention_->last_nodes_unseen, retention_->retained_issues,
             t.retired, t.box_exit, t.age, t.evicted, t.buffer_changed, t.buffer_gone, t.buffer_orphaned, t.reclassified, t.lod_replaced, t.model_replaced, t.moving_dropped,
             t.revalidated, t.journal_overflow, t.refused, t.promoted, t.flushes[0], t.flushes[1], t.flushes[2], t.flushes[3], t.flushes[4], t.flushes[5], t.flushes[6],
-            std::uint64_t(retention_->orphan_probe), s.pending_count};
+            std::uint64_t(retention_->orphan_probe), s.pending_count, t.revalidate_context_lost, t.far_alternate_due_to_retained, t.flushes[7], t.reclassified_after_unseen};
         std::memcpy(v, values, sizeof values);
     }
-    const unsigned n = count < 32 ? count : 32;
+    const unsigned n = count < stats ? count : stats;
     if (out) std::memcpy(out, v, n * sizeof *v);
     return n;
 }

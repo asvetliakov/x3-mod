@@ -98,7 +98,7 @@ struct Rig {
         store->end_scene(in, [&](const sr::Draw& d) { return changed_vb && d.key.vb == changed_vb ? sr::BufferState::Changed : sr::BufferState::Quiet; });
         release();
     }
-    void release() { while (store->pending_count) { const auto id = store->pending[--store->pending_count]; if (--refs[id] == 0) refs.erase(id); } }
+    void release() { while (const auto id = store->pop_owed()) { if (--refs[id] == 0) refs.erase(id); } }
     sr::FrameStats next() { const sr::FrameStats f = store->frame; store->frame = {}; ++frame; return f; }
     // `frames` sightings of one static node, then the last frame's stats.
     void settle(std::uint64_t serial, const float world[12], unsigned frames = 10, std::uint64_t vb = 100) { for (unsigned i = 0; i < frames; ++i) { draw(serial, world, vb); end(); next(); } }
@@ -113,7 +113,7 @@ int main() {
         r.pose.yaw = 2.5; r.end(); // turned away, unsubmitted
         CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].cascades == 3);
         auto f = r.next(); CHECK(f.nodes_unseen == 1 && f.would[0] == 1 && f.would[1] == 1 && f.unseen_outside == 1 && f.statics == 1);
-        r.pose.yaw = 0; r.end(); f = r.next(); CHECK(f.unseen_in_frustum == 1); // inside the frustum and unsubmitted: still retained
+        r.pose.yaw = 0; r.end(); f = r.next(); CHECK(f.unseen_in_frustum == 1 && f.admitted_checked == 1); // inside the frustum and unsubmitted: still retained, its buffer checked before issue
         r.pose.pos[0] = 600; r.end(); CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].cascades == 2); f = r.next(); CHECK(f.would[0] == 0 && f.would[1] == 1);
         CHECK(r.held() == 3 && r.store->references() == 3);
         r.pose.pos[0] = 20000; r.end(); f = r.next(); CHECK(f.box_exit == 1 && r.store->nodes_used == 0 && r.held() == 0); // beyond 2 x the outermost box
@@ -128,7 +128,10 @@ int main() {
         Rig r; place(w, 20, 0, 60); r.settle(3, w);
         for (unsigned i = 0; i < 5; ++i) { r.end(); r.next(); }
         place(w2, 25, 0, 60); r.draw(3, w2); r.end(); auto f = r.next();
-        CHECK(f.reclassified == 1 && r.store->totals.moved[0] == 1 && r.store->totals.same[0] == 0 && r.store->admitted_count == 0 && !r.store->nodes[r.store->find_node(3)].is_static);
+        CHECK(f.reclassified == 1 && f.reclassified_after_unseen == 1 && r.store->totals.moved[0] == 1 && r.store->totals.same[0] == 0 && r.store->admitted_count == 0 && !r.store->nodes[r.store->find_node(3)].is_static);
+        // A static node that starts moving while seen is reclassified on that very sighting (every sighting is verified).
+        Rig m; place(w, 20, 0, 60); m.settle(3, w); place(w2, 20.2, 0, 60); m.draw(3, w2); m.end(); f = m.next();
+        CHECK(f.reclassified == 1 && f.reclassified_after_unseen == 0 && !m.store->nodes[m.store->find_node(3)].is_static);
         r.end(); f = r.next(); CHECK(f.moving_dropped == 1);
         // ... and one resubmitted where it was counts `same`
         Rig q; q.settle(3, w); for (unsigned i = 0; i < 70; ++i) { q.end(); q.next(); }
@@ -155,21 +158,35 @@ int main() {
     { // revalidation, flush, the deferred epoch flush, abandoned sightings
         Rig r; place(w, 20, 0, 60); place(w2, -40, 10, 90);
         for (unsigned i = 0; i < 10; ++i) { r.draw(7, w); r.draw(8, w2, 300); r.end(); r.next(); }
-        r.store->revalidate([](const sr::Node& n) { return n.serial != 7; }, r.frame); r.release();
-        CHECK(r.store->nodes_used == 1 && r.store->find_node(7) == sr::none && r.store->frame.revalidated == 2 && r.held() == 3);
+        r.store->revalidate([](const sr::Node& n) { return n.serial != 7 ? sr::Revalidation::Known : sr::Revalidation::Dead; }, r.frame); r.release();
+        CHECK(r.store->nodes_used == 1 && r.store->find_node(7) == sr::none && r.store->frame.revalidated == 2 && r.held() == 3 && r.store->frame.retired == 1);
+        // A re-acquire before the owner's Release reuses the owed reference: no AddRef, no Release.
+        const int before = r.held();
+        r.store->retire(8, r.frame); CHECK(r.store->pending_count == 3 && r.held() == before);
+        r.draw(8, w2, 300); CHECK(r.store->pending_count == 0 && r.held() == before && r.store->references() == 3);
+        r.release(); CHECK(r.held() == before);
+        r.end(); r.next(); r.store->retire(8, r.frame); r.release(); CHECK(r.held() == 0 && r.store->references() == 0);
+        // A lost context is its own reason.
+        r.settle(8, w2, 10, 300);
+        r.store->revalidate([](const sr::Node&) { return sr::Revalidation::ContextLost; }, r.frame); r.release();
+        CHECK(r.store->nodes_used == 0 && r.store->frame.revalidate_context_lost == 1 && r.held() == 0);
+        r.settle(8, w2, 10, 300); CHECK(r.held() == 3);
         CHECK(r.draw(9, w, 400, 0, 0, 0, 2) == sr::Seen::Deferred && r.held() == 3); // another load epoch: nothing released at the draw
         r.end(); auto f = r.next(); CHECK(f.flush == sr::Flush::Epoch && r.store->nodes_used == 0 && r.held() == 0);
         r.draw(9, w, 400, 0, 0, 0, 2); CHECK(r.store->nodes_used == 1); r.next(); // no scene end
         r.store->abandon_sightings(); r.release(); CHECK(r.store->nodes_used == 0 && r.held() == 0);
         r.settle(9, w, 10, 400); r.store->flush(sr::Flush::Reset); r.release(); CHECK(r.held() == 0 && r.store->nodes_used == 0 && r.store->draws_used == 0 && r.store->totals.flushes[unsigned(sr::Flush::Reset)] == 1);
     }
-    { // a rewritten held buffer: gone within 8 frames unseen
+    { // a rewritten held buffer: a record that would be issued is checked every frame and never issued; one outside every cascade within 8 frames
         Rig r; place(w, 20, 0, 60); r.settle(10, w);
-        r.changed_vb = 100; unsigned frames = 0;
-        while (r.store->nodes_used && frames < 20) { r.end(); r.next(); ++frames; }
-        CHECK(frames >= 1 && frames <= 8 && r.store->totals.buffer_changed == 1 && r.held() == 0);
+        r.changed_vb = 100; r.end(); const auto f = r.next();
+        CHECK(f.admitted_checked == 1 && f.buffer_changed == 1 && r.store->admitted_count == 0 && r.store->nodes_used == 0 && r.held() == 0 && f.nodes_unseen == 0 && f.records == 0);
+        Rig far_rig; place(w, 20, 0, 60); far_rig.settle(10, w); far_rig.pose.pos[0] = 4000; // outside both cascades, inside 2 x the outer box: not issued, round-robin checked
+        far_rig.changed_vb = 100; unsigned frames = 0;
+        while (far_rig.store->nodes_used && frames < 20) { far_rig.end(); far_rig.next(); ++frames; }
+        CHECK(frames >= 1 && frames <= 8 && far_rig.store->totals.buffer_changed == 1 && far_rig.held() == 0);
         // seen with another revision: the record stays, counted
-        Rig q; q.settle(10, w); q.draw(10, w, 100, 0, 0, 0, 1, 2); q.end(); auto f = q.next(); CHECK(f.buffer_changed == 1 && q.store->draws_used == 1);
+        Rig q; q.settle(10, w); q.draw(10, w, 100, 0, 0, 0, 1, 2); q.end(); const auto g = q.next(); CHECK(g.buffer_changed == 1 && q.store->draws_used == 1);
     }
     { // the age cap
         Rig r; r.age_cap = 5; place(w, 20, 0, 60); r.settle(11, w);
@@ -206,12 +223,13 @@ int main() {
     { // capacity: the 1,025th node evicts the farthest unseen one; a node seen this frame is never evicted
         Rig r(false);
         for (unsigned f = 0; f < 10; ++f) { for (unsigned i = 0; i < sr::node_capacity; ++i) { place(w, 5. * (i % 32), 0, 50. + 8. * (i / 32)); r.draw(1000 + i, w, 5000 + 2 * i); } r.end(); r.next(); }
-        CHECK(r.store->nodes_used == sr::node_capacity);
-        r.end(); auto f = r.next(); CHECK(f.nodes_unseen == sr::node_capacity);
-        place(w, 0, 0, 40); CHECK(r.draw(5000, w, 9000) == sr::Seen::New);
+        CHECK(r.store->nodes_used == sr::node_capacity); // every node seen: nothing to evict into the reserve
+        r.end(); auto f = r.next(); // all unseen: the scene end evicts the node_reserve farthest ones, never at a draw
+        CHECK(f.evicted == sr::node_reserve && f.nodes_unseen == sr::node_capacity - sr::node_reserve);
         std::uint16_t farthest = r.store->find_node(1000 + 31 + 31 * 32); // the far corner of the grid
-        CHECK(farthest == sr::none && r.store->nodes_used == sr::node_capacity && r.store->frame.evicted == 1);
-        r.end(); r.next();
+        CHECK(farthest == sr::none && r.store->find_node(1000) != sr::none);
+        place(w, 0, 0, 40); CHECK(r.draw(5000, w, 9000) == sr::Seen::New && r.store->nodes_used == sr::node_capacity - sr::node_reserve + 1 && r.store->frame.evicted == 0);
+        r.end(); f = r.next(); CHECK(f.evicted == 1 && r.store->nodes_used == sr::node_capacity - sr::node_reserve); // the reserve refilled once, at the scene end
         Rig q(false);
         for (unsigned i = 0; i < sr::node_capacity; ++i) { place(w, 5. * (i % 32), 0, 50. + 8. * (i / 32)); q.draw(1000 + i, w, 5000 + 2 * i); }
         place(w, 0, 0, 40); CHECK(q.draw(5000, w, 9000) == sr::Seen::Refused && q.store->frame.refused == 1 && q.store->frame.evicted == 0);
@@ -294,14 +312,15 @@ class Lines(unittest.TestCase):
         self.assertEqual(result['drift']['max'], 0.006); self.assertEqual(result['drift']['frames_over_eps'], 0)
         self.assertEqual(result['resight']['age_cap_below_bucket'], '<600')  # 1 of 50 moved is 2 %: not negligible
         self.assertEqual(result['resight']['expired']['retired'][0], 2)
+        self.assertEqual(result['totals']['admitted_checked'], 0)
 
     def test_malformed(self):
         for line in (frame_line().replace(' known=1', ''), frame_line(mode='other'), frame_line(flush='maybe'), frame_line(nodes_live='x'),
                      frame_line(nodes_live=2, static=1), frame_line(records=1, records_unseen=2), frame_line(would_c1=1, capped_c1=2),
-                     frame_line(refs_held=1), frame_line(mode='live', nodes_live=1025, static=1025), frame_line() + ' extra=1', frame_line(drift_max='0.5')):
+                     frame_line(refs_held=1), frame_line(mode='live', nodes_live=1025, static=1025), frame_line() + ' extra=1', frame_line(drift_max='0.5'), frame_line(flush='lost')):
             with self.assertRaises(retention.MalformedLine, msg=line):
                 retention.parse_frame_line(line)
-        self.assertEqual(retention.parse_frame_line(frame_line(mode='live', refs_held=12, orphan_probe=1, buffer_orphaned=1))['refs_held'], 12)
+        self.assertEqual(retention.parse_frame_line(frame_line(mode='live', refs_held=12, orphan_probe=1, buffer_orphaned=1, flush='idle'))['refs_held'], 12)
         with self.assertRaises(retention.MalformedLine):
             retention.parse_resight_line(resight_line().replace(' b0_moved=0', ''))
 
@@ -348,16 +367,18 @@ class LauncherOptions(unittest.TestCase):
             code, output, error = launch(directory, *self.BASE, '--shadow-retention-census', '--shadow-caster-retention-age', '3600', '--shadow-caster-retention-eps', '0.1')
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
             self.assertEqual((env['X3M_SHADOW_RETENTION_CENSUS'], env['X3M_SHADOW_CASTER_RETENTION'], env['X3M_SHADOW_CASTER_RETENTION_AGE'], env['X3M_SHADOW_CASTER_RETENTION_EPS']), ('1', '0', '3600', '0.1'))
-            code, output, error = launch(directory, *self.BASE, '--shadow-caster-retention')
-            self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_CASTER_RETENTION'], '1')
+            code, output, error = launch(directory, *self.BASE, '--shadow-caster-retention', '--shadow-retention-timing')
+            self.assertEqual(code, 0, error); env = json.loads(output)['env']
+            self.assertEqual((env['X3M_SHADOW_CASTER_RETENTION'], env['X3M_SHADOW_RETENTION_TIMING']), ('1', '1'))
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
             for option in ('--shadow-retention-census', '--shadow-caster-retention'):
                 code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', option)
                 self.assertNotEqual(code, 0); self.assertIn('require --shadow-cascades', error)
-            code, _, error = launch(directory, *self.BASE, '--shadow-caster-retention-age', '100')
-            self.assertNotEqual(code, 0); self.assertIn('require --shadow-retention-census or --shadow-caster-retention', error)
+            for option in (('--shadow-caster-retention-age', '100'), ('--shadow-retention-timing',)):
+                code, _, error = launch(directory, *self.BASE, *option)
+                self.assertNotEqual(code, 0, option); self.assertIn('require --shadow-retention-census or --shadow-caster-retention', error)
             for option, value, message in (('--shadow-caster-retention-age', '0', 'must be within [1, 10000000]'), ('--shadow-caster-retention-eps', '0', 'must be within [0.0001, 100]'),
                                            ('--shadow-caster-retention-eps', 'nan', 'must be within [0.0001, 100]')):
                 code, _, error = launch(directory, *self.BASE, '--shadow-caster-retention', option, value)

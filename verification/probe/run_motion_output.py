@@ -325,8 +325,14 @@ SHADOW_RETENTION_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE=
                             X3M_TELEMETRY_DRAW='0', X3M_CAPTURE_START='10', X3M_SHADOW_RETENTION_TIMING='1')
 SHADOW_RETENTION_CASES = {'seam-ownership-shadow-retention-live': dict(X3M_SHADOW_CASTER_RETENTION='1'), 'seam-ownership-shadow-retention-census': dict(X3M_SHADOW_RETENTION_CENSUS='1'),
                           'seam-ownership-shadow-retention-off': {}}
-SHADOW_RETENTION_SCRIPT = ('a_turn_away', 'b_moving', 'c_retired', 'd_lod_swap', 'e_shared_mesh', 'f_buffer_lock', 'g_release_first', 'h_reset', 'j_excluded', 'i_capacity', 'k_age_and_sun', 'teardown')
+SHADOW_RETENTION_SCRIPT = ('a_turn_away', 'b_moving', 'c_retired', 'd_lod_swap', 'e_shared_mesh', 'f_buffer_lock', 'g_release_first', 'h_reset', 'm_observer', 'j_excluded', 'i_capacity', 'k_age_and_sun', 'teardown')
 CASES += [case(name, 'shadowretention', 'ownership', camera=True, hdr_env=dict(SHADOW_RETENTION_ENV, **extra)) for name, extra in SHADOW_RETENTION_CASES.items()]
+# The same script live under the positional sun (X3M_FIXTURE_SHADOW_POLL=agree): every cascade's basis
+# from the polled light, retained records on the point source, then a source switch (the context
+# pointer goes null before case k) flushes the store like a re-latch. Its presented frames differ from
+# the three above (the draws upload their own LightDir_Dir0), so it is not one of their twins.
+SHADOW_RETENTION_POLL_CASE = 'seam-ownership-shadow-retention-live-poll'
+CASES += [case(SHADOW_RETENTION_POLL_CASE, 'shadowretention', 'ownership', camera=True, hdr_env=dict(SHADOW_RETENTION_ENV, X3M_SHADOW_CASTER_RETENTION='1', X3M_FIXTURE_SHADOW_POLL='agree'))]
 # Sun-shadow apply quad (legacy-sun-application.md, section 3.3): the
 # production SunShadowApplyPass linked into the fixture and driven directly
 # (no proxy wiring; the DLL is passive): synthetic G32R32F RT2 and R32F map of
@@ -1285,7 +1291,8 @@ def validate_shadow_retention(name, text, trace, directory, env):
         device = [fields(l) for l in tl if l.startswith('shadow_retention_device ')]
         assert len(mode_line) == 1 and (mode_line[0]['enabled'], mode_line[0]['mode'], mode_line[0]['age_cap']) == ('1', label, env['X3M_SHADOW_CASTER_RETENTION_AGE']), (name, mode_line)
         assert len(device) == 1 and (device[0]['enabled'], device[0]['mode'], device[0]['reason']) == ('1', label, 'ok'), (name, device)
-        assert [r['frame'] for r in frame_rows] == sorted(frames) and all(r['mode'] == label and r['known'] == 1 for r in frame_rows), (name, len(frame_rows))
+        assert [r['frame'] for r in frame_rows] == sorted(frames) and all(r['mode'] == label for r in frame_rows), (name, len(frame_rows))
+        assert sum(1 for r in frame_rows if r['known'] == 0) == 1, (name, 'case m makes the observer unavailable for exactly one frame')
         assert len(resights) == (len(frames) - 1) // 300, (name, len(resights))
         assert all(('retention' in r) == (mode == 2) for r in depth_rows), name
         assert all(not r['refs_held'] and not r['buffer_orphaned'] for r in frame_rows) if mode == 1 else max(r['refs_held'] for r in frame_rows) >= 3, name
@@ -1298,12 +1305,23 @@ def validate_shadow_retention(name, text, trace, directory, env):
         assert len(teardown) == 1 and len(destroyed) == 1 and teardown[0] < destroyed[0], (name, teardown, destroyed)
         assert fields(tl[teardown[0]])['nodes'] == '2' and fields(tl[teardown[0]])['refs'] == ('3' if mode == 2 else '0'), (name, tl[teardown[0]])
         summary = retention_analysis.summary(frame_rows, resights, float(env.get('X3M_SHADOW_CASTER_RETENTION_EPS', '0.05')))
-        assert summary['levels']['nodes_live'] + 0 <= 1024 and summary['totals']['evicted'] == 1 and summary['totals']['journal_overflow'] == 2 and summary['drift']['frames_over_eps'] == 1, (name, summary['totals'], summary['drift'])
-        assert summary['flushes'] == {'epoch': 0, 'reset': 2, 'device': 0, 'teardown': 0, 'sun': 1, 'observer': 0}, (name, summary['flushes'])
+        # Case i: the frame that fills the table evicts the reserve (8) at its scene end and the 1,025th node one more; cases c, m and i overflow the ring once each.
+        assert summary['levels']['nodes_live'] + 0 <= 1024 and summary['totals']['evicted'] == 9 and summary['totals']['journal_overflow'] == 3 and summary['drift']['frames_over_eps'] == 1, (name, summary['totals'], summary['drift'])
+        assert summary['totals']['refused'] == 0 and summary['totals']['release_queue_full'] == 0 and summary['totals']['revalidate_context_lost'] == 4 and summary['totals']['reclassified_after_unseen'] == 1, (name, summary['totals'])
+        assert (summary['totals']['far_alternate_due_to_retained'] >= 1) == (mode == 2) and summary['totals']['admitted_checked'] >= (7000 if mode == 2 else 1), (name, summary['totals'])
+        poll = env.get('X3M_FIXTURE_SHADOW_POLL') == 'agree'
+        assert summary['flushes'] == {'epoch': 2, 'reset': 2, 'device': 1, 'teardown': 0, 'sun': 2 if poll else 1, 'observer': 2, 'idle': 0}, (name, summary['flushes'])
+        sources = [(int(fields(l)['frame']), fields(l)['source'], fields(l)['reason']) for l in tl if l.startswith('shadow_replay_sun_source ')]
+        if poll:
+            switch = int(fields(next(l for l in lines if l.startswith('RETENTION_SOURCE_SWITCH ')))['frame'])
+            assert sources[:2] == [(0, 'point', 'point'), (switch, 'latch', 'unavailable')], (name, sources[:3], switch)
+            case['source_switch_frame'] = switch
+        else:
+            assert sources == [(0, 'latch', 'unavailable')], (name, sources)
         full = [r for r in frame_rows if r['nodes_live'] + r['nodes_unseen'] >= 1000]
         case['retention'] = {'summary': summary, 'full_store_frames': len(full), 'full_store_us_median': sorted(r['us'] for r in full)[len(full) // 2] if full else None,
                              'full_store_walk_us_max': max((r['walk_us'] for r in full), default=None), 'overflow_frame_us': max(r['us'] for r in frame_rows if r['journal_overflow']),
-                             'burst_frame': next(({'retired': r['retired'], 'us': r['us'], 'journal_us': r['journal_us']} for r in frame_rows if r['retired'] >= 599), None)}
+                             'burst_frame': next(({'retired': r['retired'], 'us': r['us'], 'journal_us': r['journal_us']} for r in frame_rows if r['retired'] >= 590), None)}
         assert case['retention']['burst_frame'] is not None, name
     assert len([i for i, l in enumerate(tl) if l.startswith('device_destroy ')]) == 1, f'{name}: the device was not destroyed'
     case['failed_reset'] = fields(next(l for l in lines if l.startswith('RETENTION_FAILED_RESET ')))['result']
@@ -1344,7 +1362,10 @@ def validate_shadow_retention(name, text, trace, directory, env):
             basis = {'right': triple('right'), 'up': triple('up'), 'forward': triple('forward'), 'center': triple('center'), 'extent': float(m['extent']),
                      'depth_light': float(m['depth_light']), 'depth_behind': float(m['depth_behind'])}
             expected_sun = tuple(float(v) for v in suns[frame]['direction'].split(','))
-            assert all(abs(-basis['forward'][i] - expected_sun[i]) < 1e-5 for i in range(3)) and basis['extent'] == extents[c], (name, frame, c, basis)
+            # The point source: the fixture prints the direction from the camera position to the light, the DLL's is from the
+            # cascade centre (snapped) or, after the switch, the latch of the draws' own directions: a few units apart at 100,000+.
+            tolerance = 1e-4 if env.get('X3M_FIXTURE_SHADOW_POLL') == 'agree' else 1e-5
+            assert all(abs(-basis['forward'][i] - expected_sun[i]) < tolerance for i in range(3)) and basis['extent'] == extents[c], (name, frame, c, basis, expected_sun)
             cam = cameras[frame]
             camera = {'m00': float(cam['m00']), 'm11': float(cam['m11']), 'r': [float(v) for v in cam['r'].split(',')], 't': [float(v) for v in cam['t'].split(',')]}
             comparison = depth_replay.compare_map(struct.unpack(f'<{sizes[c] * sizes[c]}f', data), expected, camera, basis, sizes[c])
@@ -4060,7 +4081,7 @@ def main(argv=None):
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 # The three settings present byte-identical frames (the option changes no presented pixel).
                 for sibling in SHADOW_RETENTION_CASES:
-                    if sibling != name and sibling in result['cases']:
+                    if sibling != name and name != SHADOW_RETENTION_POLL_CASE and sibling in result['cases']:
                         assert result['cases'][sibling]['color_sha256'] == case['color_sha256'], f'{name}: presented frames differ from {sibling}'
                         case.setdefault('presented_identical_to', []).append(sibling)
                 result['cases'][name] = case
