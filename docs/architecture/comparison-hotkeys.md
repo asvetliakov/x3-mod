@@ -86,19 +86,26 @@ bookkeeping, TAA and F8 capture. The presented image is simply the un-shadowed
 one. Nothing is created or released by a press, and there is no per-draw cost:
 the gate is one bool test at the scene end.
 
-Both edges void every retained basis, as a Reset and a refusal do, so an off
-interval can never leave a stale map for the apply quad: the first frame back
-on replays every cascade, the far one included, instead of publishing what it
-held before. A Reset inside an off interval releases the maps and no
-transaction recreates them until the toggle comes back.
+Both edges void everything a past replay published — the retained per-cascade
+bases, the single map's view rows and its basis — as a Reset and a refusal do,
+so an off interval can never leave a stale map for the apply quad or for an F8
+dump: while off the map reports itself invalid and is not dumped at all, and
+the first frame back on replays every cascade in full, the far one included
+whatever the budget's alternate-frame rule would say (its retained basis is
+gone, so it must not stay absent for a frame). A Reset inside an off interval
+releases the maps and no transaction recreates them until the toggle comes back.
 
-Each press logs `sun_shadow_toggle device= state= frame=` (state 1 on, 0 off);
-there is no notice line and no `renderer_comparison` record, as with F11. The
-per-frame `shadow_replay_depth` line carries `shadow_toggle=` (the state that
-frame replayed under), so a triage splits `frame_end` medians by state: the
-toggle events bound the intervals and every shadow line inside an on interval
-states its own state. The key follows the same edge, chord and focus rules as
-F4-F6 and F9-F11; a held key, a modifier change or a focus loss is not a press.
+Each press logs `sun_shadow_toggle device= state= frame= accepted=`; a device
+with neither the replay nor the apply requested answers `accepted=0` and
+changes nothing, as an unrequested ambient-occlusion press does. There is no
+notice line and no `renderer_comparison` record, as with F11. `shadow_toggle=`
+on the `shadow_replay_depth` line is printed on enabled frames only — a frame
+toggled off writes no such line at all. A triage therefore splits `frame_end`
+medians by the `sun_shadow_toggle` events, which bound the intervals, and by
+the absence of the shadow line inside an off interval; `shadow_toggle=` states
+what each written line ran under. The key follows the same edge, chord and
+focus rules as F4-F6 and F9-F11; a held key, a modifier change or a focus loss
+is not a press.
 
 A dark two-line top-left panel lasts three seconds. It shows AUTO/fixed effective
 EV and bloom ON/OFF only when the current frame used the relevant processing;

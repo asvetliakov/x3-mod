@@ -106,7 +106,10 @@ public:
     void retain(unsigned map, const ShadowReplayBasis& basis, std::uint64_t frame, unsigned draws) noexcept {
         if (map < count_ && basis.valid && maps_[map]) { retained_[map].basis = basis; retained_[map].frame = frame; retained_[map].draws = draws; retained_[map].valid = true; }
     }
-    void invalidate_retained() noexcept { for (auto& r : retained_) r.valid = false; }
+    // Everything a past replay published: the per-cascade bases and the single
+    // map's view rows, so no consumer (the apply quad, the F8 dump) can read a
+    // map the current state no longer stands behind.
+    void invalidate_retained() noexcept { for (auto& r : retained_) r.valid = false; view_rows_valid_ = false; }
     void invalidate_retained(unsigned map) noexcept { if (map < shadow_replay_maps_max) retained_[map].valid = false; }
     const float* view_rows() const noexcept { return view_rows_valid_ ? view_rows_ : nullptr; }
     void set_view_rows(const float rows[12]) noexcept {

@@ -175,7 +175,7 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
         if (FAILED(out.restore)) invalidate_render_states();
         if (FAILED(hr)) { c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, "transaction", out.operation, unsigned(out.failed)); }
         else {
-            c.replayed = out.drawn; depth_basis_ = basis;
+            c.replayed = out.drawn; depth_basis_ = basis; sun_shadow_force_replay_ = false; // the single map replays whole every frame; the demand is spent here too
             // This frame's view -> sun rows for the scene-end apply quad
             // (legacy-sun-application.md section 2); a row failure leaves the
             // map unconsumable this frame (the quad skips with reason replay).
@@ -252,7 +252,11 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
         for (unsigned k = 0; k < cascades && !state; ++k) {
             const float* own = cascade_sun(k); // decides the frame's source: the grid anchor below is the same source's
             if (!renderer::shadow_replay_basis(camera_scene_, own, depth_cascades_.cascades[k], bases[k], point_sun_.grid_anchor(k))) { state = "basis"; break; }
-            replays[k] = per_cascade[k] != 0 && renderer::shadow_cascade_replays(k, cascades, issues, depth_cascades_.budget, frame_);
+            // The first frame after the A/B came back on replays every cascade
+            // with casters: the far map's retained basis was voided by the
+            // press, so the budget's alternate-frame rule must not leave it
+            // absent for a frame (comparison-hotkeys.md, "Sun shadows at rest").
+            replays[k] = per_cascade[k] != 0 && (sun_shadow_force_replay_ || renderer::shadow_cascade_replays(k, cascades, issues, depth_cascades_.budget, frame_));
             offsets[k] = offset;
             if (replays[k]) { lists[list_count].map = k; lists[list_count].issues = depth_issues_.get() + offset; lists[list_count].count = 0; ++list_count; offset += per_cascade[k]; }
         }
@@ -339,6 +343,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             if (retained_on && cascades > 1 && !far_replayed && per_cascade[cascades - 1] && issues > depth_cascades_.budget && live_issues <= depth_cascades_.budget)
                 ++retention_->store.frame.far_alternate_due_to_retained, ++retention_->store.totals.far_alternate_due_to_retained;
             c.replayed = c.draws; depth_replayed_ = out.drawn; depth_cascade_frame_ok_ = true; depth_basis_ = bases[0];
+            sun_shadow_force_replay_ = false; // consumed: a refused frame keeps the demand for the next transaction
         }
     }
     release_depth_leases();

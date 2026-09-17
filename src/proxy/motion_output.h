@@ -785,8 +785,11 @@ public:
     // retained caster issued) nor the apply quad; everything else (the lane,
     // the candidate counter, TAA, capture) is unchanged. Every retained basis
     // is dropped on both edges, so the first frame back on replays every
-    // cascade instead of publishing a stale map. Returns the new state
-    // (1 on / 0 off); one bool test at the scene end, nothing per draw.
+    // cascade instead of publishing a stale map, the far one included whatever
+    // the budget's alternate-frame rule would say. Returns the new state
+    // (1 on / 0 off), or -1 on a device with neither the replay nor the apply
+    // requested (a logged no-op, nothing changed); one bool test at the scene
+    // end, nothing per draw.
     int sun_shadow_toggle() noexcept;
     bool sun_shadow_enabled() const noexcept { return sun_shadow_enabled_; }
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
@@ -1096,6 +1099,7 @@ private:
     // frame after the depth replay. Storage only: no per-draw cost.
     bool sun_apply_requested_=false, sun_apply_attach_failed_=false, sun_apply_applied_=false, sun_apply_attempted_=false;
     bool sun_shadow_enabled_=true; // Ctrl+Shift+F12: the scene-end replay/apply gate (on until a press)
+    bool sun_shadow_force_replay_=false; // the frame back on replays every cascade, whatever the budget's parity rule says
     double sun_apply_bias_units_=renderer::sun_shadow_bias_units_default;         // world units; resolved per frame with the cascade (sun_shadow_apply_bias)
     double sun_apply_clamp_texels_=renderer::sun_shadow_bias_clamp_texels_default; // world texels; the receiver-plane clamp and non-planar fallback
     std::unique_ptr<renderer::SunShadowApplyPass> sun_apply_;

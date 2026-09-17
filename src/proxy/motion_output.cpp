@@ -2085,10 +2085,22 @@ int MotionOutput::hull_emission_gain_toggle() noexcept {
 // cascade's included): an off interval must never leave a stale map for the
 // apply quad to publish when it comes back. Nothing is created or released.
 int MotionOutput::sun_shadow_toggle() noexcept {
+    // Nothing to gate on this device: a logged no-op, as an unrequested
+    // ambient-occlusion press is. The state is left alone.
+    if (!sun_apply_requested_ && !depth_replay_requested_) {
+        log("sun_shadow_toggle device=%llu state=%u frame=%llu accepted=0", id_, unsigned(sun_shadow_enabled_), frame_);
+        return -1;
+    }
     sun_shadow_enabled_ = !sun_shadow_enabled_;
+    // Every published product of a past replay goes: the retained per-cascade
+    // bases, the single map's view rows and its basis. The frame back on
+    // replays every cascade in full (sun_shadow_force_replay_), so the far
+    // cascade cannot be published from the budget's alternate-frame rule
+    // against a basis that no longer exists.
     if (depth_replay_) depth_replay_->invalidate_retained();
-    depth_replayed_ = 0; depth_cascade_frame_ok_ = false;
-    log("sun_shadow_toggle device=%llu state=%u frame=%llu", id_, unsigned(sun_shadow_enabled_), frame_);
+    depth_replayed_ = 0; depth_cascade_frame_ok_ = false; depth_basis_ = {};
+    sun_shadow_force_replay_ = sun_shadow_enabled_;
+    log("sun_shadow_toggle device=%llu state=%u frame=%llu accepted=1", id_, unsigned(sun_shadow_enabled_), frame_);
     return sun_shadow_enabled_ ? 1 : 0;
 }
 int MotionOutput::ambient_occlusion_toggle() noexcept {
@@ -5852,8 +5864,12 @@ void MotionOutput::readback() noexcept {
         }
     } else if (depth_replay_requested_ && depth_replay_ && depth_replay_->map_surface() && depth_replay_->caps().readable) {
         const unsigned size = depth_replay_->size();
-        readback_surface(depth_replay_->map_surface(), D3DFMT_R32F, 4, L"shadow_map", L"r32f", "shadow_replay_map_readback", "r32f_row_major", size, size);
         const float* rows = depth_replay_->view_rows();
+        // As an absent cascade has no readback: a map this frame did not
+        // publish (refused, or the A/B off) is not dumped, so an F8 while the
+        // shadows are off leaves no stale map beside the basis line's valid=0.
+        if (rows && depth_replayed_frame_ == frame_ && depth_replayed_)
+            readback_surface(depth_replay_->map_surface(), D3DFMT_R32F, 4, L"shadow_map", L"r32f", "shadow_replay_map_readback", "r32f_row_major", size, size);
         const auto& b = depth_basis_;
         const float* frame_sun = sun_latch_.frame_sun();
         log("shadow_replay_map_basis device=%llu frame=%llu replayed=%u replayed_frame=%llu size=%u valid=%u right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.12g,%.12g,%.12g extent=%.9g depth_half=%.9g rows=%s%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g"
@@ -6945,8 +6961,11 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // boolean test, then no transaction at all this frame (no map cleared,
     // nothing drawn, no retained caster issued). The frame's leases are still
     // retired here, as a replayed frame retires them.
+    // `depth_replayed_frame_` deliberately keeps the frame of the last real
+    // transaction: every consumer (the apply quad's precondition, the F8 map
+    // dump) then sees that this frame published nothing.
     if (!sun_shadow_enabled_) {
-        depth_replayed_ = 0; depth_replayed_frame_ = frame_; depth_cascade_frame_ok_ = false;
+        depth_replayed_ = 0; depth_cascade_frame_ok_ = false;
         if (depth_replay_requested_) release_depth_leases();
     }
     else if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);

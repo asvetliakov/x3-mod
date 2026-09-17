@@ -1904,3 +1904,37 @@ unchanged).
   quad's half of the gate is covered by source and the host case only; the
   absence of `sun_shadow_apply_frame` lines while off is not measured in game
   yet. Native Windows behavior is unverified as elsewhere.
+
+### Review fixes (three low findings on the A/B)
+
+1. The ON edge now demands a full replay (`sun_shadow_force_replay_`, consumed
+   by the transaction that runs): the frame back on replays every cascade with
+   casters whatever `shadow_cascade_replays` would say, because the press voided
+   the far map's retained basis. 2. `sun_shadow_toggle` returns -1 and changes
+   nothing on a device with neither `sun_apply_requested_` nor
+   `depth_replay_requested_`, logging `accepted=0` like an unrequested
+   ambient-occlusion press. 3. The single-map path publishes nothing while off:
+   `invalidate_retained()` also clears the pass's view rows, the toggle clears
+   `depth_basis_`, the off scene end no longer stamps `depth_replayed_frame_`,
+   and the F8 map dump is gated on a map this frame actually published, so an
+   F8 while off writes no map beside its `valid=0` basis line.
+
+- Host: `test_comparison_hotkeys` 6 OK (controls fixture 12,231 checks, release
+  and ASan/UBSan), `test_shadow_replay_depth` 12 OK. Clean build 0 warnings,
+  `build/d3d9.dll` sha256 `8c50e2ae…152fa9`, `check_no_x87.py` 526 reachable,
+  no violations; seam build clean.
+- `seam-ownership-shadow-replay-cascades-toggle` (presses 1 off, 3 on, 4 off,
+  6 on; the Reset falls in the second off window): 283 checks, exit 0. Off
+  frames 1-2 and 4-5 carry no replay line and read back invalid; frame 3 — odd,
+  6 issues against budget 5, so the budget rule alone would skip the far map —
+  replays both cascades (`draws=[2,4]`, `far_frame=3`), as does frame 6 after
+  the Reset (targets recreated there, `allocations=2`).
+- New `seam-ownership-shadow-replay-toggle-single` (single map, press 2 off /
+  3 on, F8 over both): 214 checks, exit 0. Frame 2 off: `valid=0` with the
+  stale `replayed_frame=1` and **no** `shadow_replay_map_readback`; frame 3 on:
+  `valid=1` and its map dumped. Both `sun_shadow_toggle` lines `accepted=1`.
+- Records equal: `seam-ownership-shadow-replay-cascades` 278 checks /
+  4.0742862848497374e-06; `seam-ownership-shadow-retention-live` 9,743 checks /
+  1,535 frames / 39 compared / 28 retained / 1.7169477474210382e-06. All eight
+  presented frames of both toggle cases are byte-identical to the plain cascade
+  case.
