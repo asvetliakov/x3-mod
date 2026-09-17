@@ -1,0 +1,109 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "render_contract": {
+    "sampler_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "sampler_srgb": false,
+    "srgb_write": false,
+    "msaa": false,
+    "targets": [
+      "RGBA16F"
+    ]
+  },
+  "scope": "--hull-emission-gain (emitter plan phase 3): 10 of the twelve covered hull programs, one pair each, emitter and lit faces at gains [2.0, 4.0]. The baseline is the untransformed original pair (mode 0, MRTs off); the gain variant is the same original PS with one DEF and one MUL at its emission term, and gain 1 is required byte-identical at creation. Detached; no live route, no blend-keyed admission and no native Windows proof. Pairs 148/149 are excluded: no fixture mode submits their original DEFAULT linkage.",
+  "timing_scope": "No benchmark in the bounded hull-emitter correctness slice.",
+  "gains": [
+    2.0,
+    4.0
+  ],
+  "original_sha256": {
+    "ps_0c1f3f0f440e4a0c.bin": "f3bb3510fa2b09cdfae2356202c18b51086308370a7cd91167ada4515f3e1ff3",
+    "ps_496049cec2066ed3.bin": "20fe53ef998ebd1b4d00805c5d6b994b17ad8b5a084c2eb02330123812947ba3",
+    "ps_5f82ecacd39529cd.bin": "e62d0f041430e54fdea5800ef6576d812a2486f12a980f921553e7292349d8c2",
+    "ps_64bac8bb307eb896.bin": "84eeded40acc811b109221fe5c7e1b5a898f3b9a34a1b4685937a24f6b1bc4a7",
+    "ps_6733b119142c8d42.bin": "054e5a62f0e2776e23e976a4712b12a17b733b74d8044414aab2848319e8316b",
+    "ps_7c83ed50c9894e44.bin": "a171c7d7e3dcdfc87816fc651bf93918399594ec457ce1822dcd47a0cff2374a",
+    "ps_99153c144030c396.bin": "09cef378940fd33685ae5db4c914d055fc06aaf270f36c04b6714057692efe43",
+    "ps_c1452981fd0bff64.bin": "f9e660057d8f01271ff0ba08465b6e788b2c1bc62b66b9f33892675a5a4290db",
+    "ps_e70adc744a38ca59.bin": "b53cbb5b14b17f2e2f61a52687f753cc47cd48fcad6f8f79084f0de05657d59e",
+    "ps_f1b0e820c7b488c3.bin": "8f6517d6730a53d52712a335253d272663e34d05e3cdcdccc93c05249014515e",
+    "vs_37c34a7478544c14.bin": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+    "vs_4944d81dfe531b37.bin": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+    "vs_494fe349b8bc12ec.bin": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7"
+  },
+  "executable_sha256": "772aeb3622cebfbc315fc5be8eff4c09984e3fd46ed9131518f476e30e6a10bb",
+  "code_sha256": {
+    "src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
+    "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
+    "verification/probe/sun_share_material_inc.h": "8b629c7ca49adf072d97ca455770fb5376d18f5d1fbe8542591d80395004bcbe",
+    "src/renderer/linear_material.cpp": "72a85db39088ed5a6e292d82e1a7052d09c6dc7e1fa06d5a1876a38b3423c000",
+    "src/renderer/linear_material.h": "707778cb75f469f44f680b6bdce8a9024b4706c157ec00d9351b9a0445618f2d",
+    "src/renderer/linear_emission.cpp": "c37d655319c31da775bee710613f3da4bb213cd728a5bf0a10fb11c00d996a9b",
+    "src/renderer/linear_emission.h": "c69f2b31cf82817868bf52370913f735d17183036847169cbe0c030c1a4e5b6a",
+    "src/renderer/linear_sun_share_inc.h": "de0b29729de6952a2a681e8985fef5bda35650e7bf6849a23a62d63524bfd1dc",
+    "src/renderer/linear_xt_material_inc.h": "f1ee00093072d456bdcdc2843cf4a006760aef154e2c1a5c5db004a0e079c9fa",
+    "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
+    "src/renderer/material_motion.cpp": "5eb7a712d1320ac4429754c60f2760b417591fcd40b85b9f218e543036f29ab3",
+    "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
+    "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+    "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
+    "docs/reverse-engineering/linear-material-profiles.json": "be7f68d17075a04cd661e2c0675f3ebbc57c6f13b79e7b020697c3d0a1efbaa8",
+    "docs/reverse-engineering/xt-material-profiles.json": "3c8715479e0fe53c1336d891c09ccb6a2fd88e92873e6ac9e4f16a5167c6c80f",
+    "verification/probe/linear_material_fixture.cpp": "5cd0e1a023ec2939b7bfb28984ef1d826b72738a0336dc92465c058dd486ae37",
+    "verification/probe/linear_alpha_test_fixture_inc.h": "6de6729442ba425b791256c30110c9b4f0dae8b16d7c024ba14e2d3809e52b47",
+    "verification/probe/linear_material_reference.py": "23ac64ae3a0c35afbc1ca234b8dbc0d66829308676afb1ba08f3cdfeb5795b18",
+    "verification/probe/linear_xt_fixture_reference.py": "19e2ada0cd4e7d79086c364fa4b5ccae5c8931aa7fabddc2a4f8cf10740307e9",
+    "verification/probe/linear_glass_fixture_reference.py": "6e364915c820a21854dcada9ac563fdd0fe20d34f4aadc3909729d57fc600c1f",
+    "verification/analysis/xt_material_reference.py": "f6918184dbd201a26c81f167eab9d8968f740d498a722cf21de6d70ea86cce14",
+    "verification/probe/run_linear_material.py": "13c66b70615ed6b3fd2c7d1bd92c80c6862450b8b8e057048232a453ec21c9cf"
+  },
+  "runs": {
+    "2.0": {
+      "raw_report": "/tmp/x3-linear-material-gpu/report-hull-2.txt",
+      "exit_code": 0,
+      "cases": 20,
+      "programs": 10,
+      "emitter_cases": 10,
+      "control_cases": 10,
+      "samples": 180,
+      "gain": 2.0,
+      "fp16_code_tolerance": 1,
+      "max_fp16_code_error": 0,
+      "bit_identical_control_pixels": 2560,
+      "alpha": "exact",
+      "variants": 10
+    },
+    "4.0": {
+      "raw_report": "/tmp/x3-linear-material-gpu/report-hull-4.txt",
+      "exit_code": 0,
+      "cases": 20,
+      "programs": 10,
+      "emitter_cases": 10,
+      "control_cases": 10,
+      "samples": 180,
+      "gain": 4.0,
+      "fp16_code_tolerance": 1,
+      "max_fp16_code_error": 0,
+      "bit_identical_control_pixels": 2560,
+      "alpha": "exact",
+      "variants": 10
+    }
+  }
+}
