@@ -202,7 +202,14 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     if (depth_replayed_frame_ == frame_) return; // once per frame, as the single map
     depth_replayed_ = 0; depth_replayed_frame_ = frame_; depth_cascade_frame_ok_ = false;
     const unsigned n = candidates_.record_count, cascades = depth_cascades_.count;
-    renderer::ShadowReplayDraw* const draws = depth_draws_;
+    // Live caster retention (shadow-caster-retention.md): the unseen static
+    // records the store admitted this frame (masks against the current boxes,
+    // inside each cascade's cap behind the live records) are issued after the
+    // live ones from the store's own references and retained world rows; they
+    // count in the issues and the budget. Off: m = 0 and nothing below differs.
+    const bool retained_on = retention_live();
+    const unsigned m = retained_on ? retention_->store.admitted_count : 0;
+    renderer::ShadowReplayDraw* const draws = retained_on ? retention_->draws.get() : depth_draws_;
     // The latch's verdict gates the frame; each cascade's basis takes its own sun (cascade_sun: one held direction per
     // cascade from the polled sun position, else the latch's sun for all).
     const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr;
@@ -215,7 +222,12 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
         if (!quiet[i]) { ++c.skipped_lease; continue; }
         for (unsigned k = 0; k < cascades; ++k) if (candidates_.records[i].cascades & (1u << k)) { ++per_cascade[k]; ++issues; }
     }
-    bool refused = c.draws == 0;
+    const unsigned live_issues = issues;
+    for (unsigned q = 0; q < m; ++q) {
+        const unsigned mask = retention_->store.draws[retention_->store.admitted[q]].cascades;
+        for (unsigned k = 0; k < cascades; ++k) if (mask & (1u << k)) { ++per_cascade[k]; ++issues; }
+    }
+    bool refused = c.draws == 0 && m == 0;
     if (!refused && c.skipped_lease) { refused = true; log_depth_refusal(shadow_replay::DepthReason::Lease, "bookends", S_OK, 0); }
     if (!refused && c.skipped_state) { refused = true; log_depth_refusal(shadow_replay::DepthReason::State, unleased, S_OK, 0); }
     if (!refused && !ensure_shadow_replay_depth()) {
@@ -268,6 +280,28 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
                 if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }
             }
         }
+        unsigned live_fill[renderer::shadow_cascade_max]{};
+        for (unsigned k = 0; k < cascades; ++k) live_fill[k] = fill[k];
+        for (unsigned q = 0; q < m && !state; ++q) {
+            const auto& r = retention_->store.draws[retention_->store.admitted[q]];
+            auto& d = draws[n + q];
+            d = {};
+            d.vertex_buffer = reinterpret_cast<IDirect3DVertexBuffer9*>(r.vb.identity); d.declaration = reinterpret_cast<IDirect3DVertexDeclaration9*>(r.declaration);
+            d.index_buffer = r.key.indexed ? reinterpret_cast<IDirect3DIndexBuffer9*>(r.ib.identity) : nullptr;
+            d.stream_offset = r.key.stream_offset; d.stride = r.key.stride; d.topology = static_cast<D3DPRIMITIVETYPE>(r.key.topology); d.primitives = r.key.primitives; d.first = r.key.first;
+            d.min_vertex = r.key.min_vertex; d.vertex_count = r.key.vertex_count; d.base_vertex = r.key.base_vertex; d.indexed = r.key.indexed != 0; d.cull_mode = r.cull_mode;
+            double base[3][4];
+            unsigned base_of = 0; // as the live loop: one product while the cascades share their axes, another per cascade whose sun differs
+            shadow_retention::sun_rows(r.world, bases[0], base); // S(sun basis) . W_retained: no camera enters
+            for (unsigned k = 0; k < cascades; ++k) {
+                if (!replays[k] || !(r.cascades & (1u << k))) continue;
+                if (k != base_of && !renderer::shadow_replay_axes_equal(bases[k], bases[base_of])) { shadow_retention::sun_rows(r.world, bases[k], base); base_of = k; }
+                auto& issue = depth_issues_[offsets[k] + fill[k]++];
+                issue.draw = std::uint16_t(n + q);
+                if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }
+            }
+        }
+        if (retained_on) for (unsigned k = 0; k < cascades; ++k) { retention_->replayed_live[k] = live_fill[k]; retention_->replayed_retained[k] = fill[k] - live_fill[k]; retention_->retained_issues += fill[k] - live_fill[k]; }
         for (unsigned l = 0; l < list_count; ++l) lists[l].count = fill[lists[l].map];
     }
     if (!refused && state) { refused = true; c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, state, S_OK, 0); }
@@ -278,7 +312,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
         LARGE_INTEGER t0{}, t1{}, f{};
         HRESULT hr = E_FAIL;
         QueryPerformanceCounter(&t0);
-        taa_call([&] { hr = depth_replay_->execute_cascades(draws, n, lists, list_count, scene_open_, shadow_.recording, &out); });
+        taa_call([&] { hr = depth_replay_->execute_cascades(draws, n + m, lists, list_count, scene_open_, shadow_.recording, &out); });
         QueryPerformanceCounter(&t1);
         QueryPerformanceFrequency(&f);
         c.us = f.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) : 0.;
@@ -300,6 +334,10 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
                 else if (!per_cascade[k]) depth_replay_->invalidate_retained(k);
             }
             far_replayed = cascades > 1 && replays[cascades - 1];
+            // Retained issues count into the far cascade's budget: a far cascade skipped this frame that
+            // the live issues alone would have replayed is charged to retention (shadow-caster-retention.md).
+            if (retained_on && cascades > 1 && !far_replayed && per_cascade[cascades - 1] && issues > depth_cascades_.budget && live_issues <= depth_cascades_.budget)
+                ++retention_->store.frame.far_alternate_due_to_retained, ++retention_->store.totals.far_alternate_due_to_retained;
             c.replayed = c.draws; depth_replayed_ = out.drawn; depth_cascade_frame_ok_ = true; depth_basis_ = bases[0];
         }
     }
@@ -308,9 +346,18 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     for (unsigned k = 0; k < cascades && used >= 0 && used < int(sizeof text); ++k) used += std::snprintf(text + used, sizeof text - used, " draws%u=%u", k, refused ? 0u : out.drawn_map[k]);
     if (used < 0 || used >= int(sizeof text)) text[0] = 0;
     const auto* far_kept = depth_replay_ && cascades ? depth_replay_->retained(cascades - 1) : nullptr;
-    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f%s far_replayed=%u far_frame=%lld issues=%u budget=%u",
+    // Live retention: the issues each replayed cascade took from live and from retained records (absent while the option is off).
+    char retained_text[192]; retained_text[0] = 0;
+    if (retained_on) {
+        int length = 0;
+        if (refused) { retention_->retained_issues = 0; for (unsigned k = 0; k < cascades; ++k) retention_->replayed_live[k] = retention_->replayed_retained[k] = 0; }
+        for (unsigned k = 0; k < cascades && length >= 0 && length < int(sizeof retained_text); ++k)
+            length += std::snprintf(retained_text + length, sizeof retained_text - length, " replayed_live%u=%u replayed_retained%u=%u", k, retention_->replayed_live[k], k, retention_->replayed_retained[k]);
+        if (length < 0 || length >= int(sizeof retained_text)) retained_text[0] = 0;
+    }
+    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s",
         id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, text, unsigned(far_replayed),
-        far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget);
+        far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget, retained_text);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam: the map as floats (R32F only) and the last replayed frame's basis:

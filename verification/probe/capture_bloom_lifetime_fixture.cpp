@@ -182,6 +182,19 @@ struct MotionOutput {
         for (auto* resource : resources) resource->Release();
         resources.clear(); releasing_ = prior;
     }
+    // Caster retention (shadow-caster-retention.md, "References"): application
+    // resources the store still holds after the application released them; each
+    // pins one device reference that device_references() does not count.
+    std::vector<Surface*> retained;
+    unsigned retention_flushes = 0;
+    unsigned retention_references() const noexcept { return reference_accounting_busy() ? 0u : static_cast<unsigned>(retained.size()); }
+    void retention_before_final_release() noexcept {
+        ++retention_flushes;
+        std::vector<Surface*> pending; pending.swap(retained);
+        const bool prior = taa_busy_; taa_busy_ = true; // as the production flush: the accounting is busy while the references go
+        for (auto* resource : pending) resource->Release();
+        taa_busy_ = prior;
+    }
     void before_reset() noexcept { ++resets; release_resources(); }
     void after_reset(HRESULT) noexcept { ++after_resets; }
     bool bloom_boundary_available() const noexcept { return boundary_available; }
@@ -535,6 +548,28 @@ static void final_during_invocation(AliasModel model, bool worker) {
     check(cpu.expired() && Device::destructors == 1, "CPU pin outlives map erase and is destroyed last");
 }
 
+// Caster retention: the store still holds application resources the
+// application has released; each pins one device reference the accounting
+// cannot see. A nonterminal Release far from the final count leaves the store
+// alone; the application's final Release flushes it first, so the final-Release
+// probe matches and the device retires.
+static void retained_orphans_release(AliasModel model) {
+    ++scenarios;
+    Environment env(model);
+    std::vector<std::unique_ptr<Surface>> orphans, application;
+    for (unsigned i = 0; i < 3; ++i) { orphans.push_back(std::make_unique<Surface>(&env.device, model)); env.ctx->motion_output.retained.push_back(orphans.back().get()); }
+    for (unsigned i = 0; i < 8; ++i) application.push_back(std::make_unique<Surface>(&env.device, model)); // the application's own live resources
+    native_addref(&env.device); // scripted GetDevice
+    release_device(&env.device);
+    check(env.ctx->motion_output.retention_flushes == 0 && env.ctx->motion_output.retained.size() == 3, "a Release far from the final count leaves the store alone");
+    for (auto& resource : application) resource->Release(); // teardown: the application releases its resources, then the device
+    const ULONG result = release_device(&env.device);
+    // Within the store's references of the final count the flush may come one Release early (a false positive costs only the off-screen shadows).
+    check(env.ctx->motion_output.retention_flushes >= 1 && env.ctx->motion_output.retained.empty(), "the store is flushed by the final Release at the latest");
+    check(orphans[0]->dead && orphans[1]->dead && orphans[2]->dead, "every retained reference is released");
+    check(result == 0 && env.native.destroyed == 1 && devices.count(&env.device) == 0, "the device retires although the store held orphaned resources");
+}
+
 static void nested_busy_release(AliasModel model) {
     ++scenarios;
     Environment env(model, 1, 2);
@@ -702,6 +737,7 @@ int main() {
         final_during_invocation(model, false);
         final_during_invocation(model, true);
         nested_busy_release(model);
+        retained_orphans_release(model);
         for(unsigned drop_at:{0u,1u,2u})notice_pin_lifetime(model,drop_at);
         for (bool extended : {false, true}) for (bool success : {false, true})
             reset_case(model, extended, success);

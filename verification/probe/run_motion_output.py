@@ -168,6 +168,7 @@ import agx_reference as agx_ref  # noqa: E402  (stage 2: the tonemap oracle)
 import exposure_reference as exposure_ref  # noqa: E402  (stage 2: the meter/adaptation oracle)
 import shadow_replay_candidates as candidates_analysis  # noqa: E402  (caster-candidate counter lines)
 import shadow_replay_depth as depth_replay  # noqa: E402  (cascade-0 depth replay lines and the CPU projection of the map)
+import shadow_retention as retention_analysis  # noqa: E402  (caster-retention frame, resight and caster lines)
 import sun_shadow_apply as sun_apply  # noqa: E402  (the CPU twin of the sun-shadow apply quad)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
@@ -310,6 +311,28 @@ SHADOW_POLL_MODES = ('agree', 'null', 'disagree', 'refusals')  # refusals: a lay
 CASES += [case(f'seam-ownership-shadow-replay-cascades-poll-{m}', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_FIXTURE_SHADOW_POLL=m)) for m in SHADOW_POLL_MODES]
 CASES += [case('seam-ownership-shadow-replay-wide', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_WIDE_ENV),
           case('seam-ownership-shadow-replay-far-refused', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_FAR_ENV)]
+# Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md,
+# "Fixture and twin cases"): the "shadowretention" script under the three
+# settings of the DLL. Live: every compared cascade map equals the CPU twin of
+# the submitted draws plus the draws the script says a live store must replay
+# (each placed by the camera of the frame it was recorded on). Census and off:
+# the submitted draws only (the control of every case); the census runs the same
+# store without references or replay. The three present byte-identical frames.
+# The capture window covers the first retained frames (F8 diagnostics); the
+# per-draw telemetry is off (the capacity case submits about 10,000 draws).
+SHADOW_RETENTION_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SHADOW_CASCADES='250,1500', X3M_FIXTURE_SHADOW_CASCADES='8,400',
+                            X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_CAPS='1024,1024', X3M_SHADOW_CASCADE_BUDGET='640', X3M_SHADOW_CASTER_RETENTION_AGE='640',
+                            X3M_TELEMETRY_DRAW='0', X3M_CAPTURE_START='10', X3M_SHADOW_RETENTION_TIMING='1')
+SHADOW_RETENTION_CASES = {'seam-ownership-shadow-retention-live': dict(X3M_SHADOW_CASTER_RETENTION='1'), 'seam-ownership-shadow-retention-census': dict(X3M_SHADOW_RETENTION_CENSUS='1'),
+                          'seam-ownership-shadow-retention-off': {}}
+SHADOW_RETENTION_SCRIPT = ('a_turn_away', 'b_moving', 'c_retired', 'd_lod_swap', 'e_shared_mesh', 'f_buffer_lock', 'g_release_first', 'h_reset', 'm_observer', 'j_excluded', 'i_capacity', 'k_age_and_sun', 'teardown')
+CASES += [case(name, 'shadowretention', 'ownership', camera=True, hdr_env=dict(SHADOW_RETENTION_ENV, **extra)) for name, extra in SHADOW_RETENTION_CASES.items()]
+# The same script live under the positional sun (X3M_FIXTURE_SHADOW_POLL=agree): every cascade's basis
+# from the polled light, retained records on the point source, then a source switch (the context
+# pointer goes null before case k) flushes the store like a re-latch. Its presented frames differ from
+# the three above (the draws upload their own LightDir_Dir0), so it is not one of their twins.
+SHADOW_RETENTION_POLL_CASE = 'seam-ownership-shadow-retention-live-poll'
+CASES += [case(SHADOW_RETENTION_POLL_CASE, 'shadowretention', 'ownership', camera=True, hdr_env=dict(SHADOW_RETENTION_ENV, X3M_SHADOW_CASTER_RETENTION='1', X3M_FIXTURE_SHADOW_POLL='agree'))]
 # Sun-shadow apply quad (legacy-sun-application.md, section 3.3): the
 # production SunShadowApplyPass linked into the fixture and driven directly
 # (no proxy wiring; the DLL is passive): synthetic G32R32F RT2 and R32F map of
@@ -716,7 +739,8 @@ def sources():
         'exposure_reference.py', 'agx_reference.py', 'analyze_motion_readback.py', 'summarize_capture.py')]
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
-        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h')]
+        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_shadow_retention_inc.h')]
+    paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
 
 
@@ -1229,6 +1253,138 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
     replayed_issues = [sum(r['cascades']['draws']) for r in depth_rows if r['replayed'] and sum(r['cascades']['draws'])]
     case['us']['per_issue_median'] = case['us']['median'] / (sorted(replayed_issues)[len(replayed_issues) // 2]) if replayed_issues else None
     case['us']['issues_per_frame'] = replayed_issues
+    return case
+
+
+def validate_shadow_retention(name, text, trace, directory, env):
+    """The caster-retention script (shadow-caster-retention.md, "Fixture and
+    twin cases") under one setting of the DLL. The fixture asserted the store's
+    levels, counters and its own buffers' COM reference counts through the
+    seam; here: every case of the script passed; the DLL's lines parse with
+    their identities (none at all with the option off); every compared cascade
+    map equals the CPU twin of the submitted draws plus, live only, the kept
+    draws placed by the camera of the frame that recorded them, and is invalid
+    when that list is empty; the Reset and teardown flushes released what was
+    held before the device went; the cost fields are recorded."""
+    assert 'RESULT PASS' in text, f'{name}: fixture failed'
+    lines, tl = text.splitlines(), trace.splitlines()
+    checks = int(fields(next(l for l in lines if l.startswith('RESULT PASS')))['checks'])
+    mode = int(fields(next(l for l in lines if l.startswith('RETENTION_MODE ')))['mode'])
+    assert mode == (2 if env.get('X3M_SHADOW_CASTER_RETENTION') == '1' else 1 if env.get('X3M_SHADOW_RETENTION_CENSUS') == '1' else 0), (name, mode)
+    passed = [fields(l)['name'] for l in lines if l.startswith('RETENTION_CASE ') and ' state=PASS ' in l]
+    assert passed == list(SHADOW_RETENTION_SCRIPT), (name, passed)
+    sizes, count = [int(env['X3M_SHADOW_CASCADE_SIZES'])] * 2, 2
+    extents = [float(v) for v in env['X3M_FIXTURE_SHADOW_CASCADES'].split(',')]
+    frames = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('RETENTION_FRAME ')}
+    assert sorted(frames) == list(range(len(frames))) and len(frames) > 1200, (name, len(frames))
+    depth_rows, refused, _ = depth_replay.parse_text(trace)
+    assert [r['frame'] for r in depth_rows] == sorted(frames), (name, len(depth_rows), len(frames))
+    # The DLL's lines.
+    retention_lines = [l for l in tl if 'shadow_retention' in l]
+    frame_rows, resights, casters, flushes, replay_flags = retention_analysis.parse_lines(tl)
+    case = {'mode': ('off', 'census', 'live')[mode], 'frames': len(frames), 'cases': passed}
+    if mode == 0:
+        assert not retention_lines and replay_flags == {'0': 0, '1': 0} and not any('retention' in r for r in depth_rows), (name, retention_lines[:2], replay_flags)
+    else:
+        label = case['mode']
+        mode_line = [fields(l) for l in tl if l.startswith('shadow_retention_mode ')]
+        device = [fields(l) for l in tl if l.startswith('shadow_retention_device ')]
+        assert len(mode_line) == 1 and (mode_line[0]['enabled'], mode_line[0]['mode'], mode_line[0]['age_cap']) == ('1', label, env['X3M_SHADOW_CASTER_RETENTION_AGE']), (name, mode_line)
+        assert len(device) == 1 and (device[0]['enabled'], device[0]['mode'], device[0]['reason']) == ('1', label, 'ok'), (name, device)
+        assert [r['frame'] for r in frame_rows] == sorted(frames) and all(r['mode'] == label for r in frame_rows), (name, len(frame_rows))
+        assert sum(1 for r in frame_rows if r['known'] == 0) == 1, (name, 'case m makes the observer unavailable for exactly one frame')
+        assert len(resights) == (len(frames) - 1) // 300, (name, len(resights))
+        assert all(('retention' in r) == (mode == 2) for r in depth_rows), name
+        assert all(not r['refs_held'] and not r['buffer_orphaned'] for r in frame_rows) if mode == 1 else max(r['refs_held'] for r in frame_rows) >= 3, name
+        # F8 frames: one shadow_retention_caster line per retained record; the live flag on every replay caster line.
+        assert any(c['class'] == 'static' and int(c['unseen']) >= 1 for c in casters) and replay_flags['0'] >= 1 and (replay_flags['1'] >= 1) == (mode == 2), (name, len(casters), replay_flags)
+        resets = [f for f in flushes if f['reason'] == 'reset']
+        assert len(resets) == 2 and all(int(f['nodes']) == 2 and int(f['refs']) == (3 if mode == 2 else 0) for f in resets), (name, flushes)
+        teardown = [i for i, l in enumerate(tl) if l.startswith('shadow_retention_flush ') and ' reason=teardown ' in l]
+        destroyed = [i for i, l in enumerate(tl) if l.startswith('device_destroy ')]
+        assert len(teardown) == 1 and len(destroyed) == 1 and teardown[0] < destroyed[0], (name, teardown, destroyed)
+        assert fields(tl[teardown[0]])['nodes'] == '2' and fields(tl[teardown[0]])['refs'] == ('3' if mode == 2 else '0'), (name, tl[teardown[0]])
+        summary = retention_analysis.summary(frame_rows, resights, float(env.get('X3M_SHADOW_CASTER_RETENTION_EPS', '0.05')))
+        # Case i: the frame that fills the table evicts the reserve (8) at its scene end and the 1,025th node one more; cases c, m and i overflow the ring once each.
+        assert summary['levels']['nodes_live'] + 0 <= 1024 and summary['totals']['evicted'] == 9 and summary['totals']['journal_overflow'] == 3 and summary['drift']['frames_over_eps'] == 1, (name, summary['totals'], summary['drift'])
+        assert summary['totals']['refused'] == 0 and summary['totals']['release_queue_full'] == 0 and summary['totals']['revalidate_context_lost'] == 4 and summary['totals']['reclassified_after_unseen'] == 1, (name, summary['totals'])
+        assert (summary['totals']['far_alternate_due_to_retained'] >= 1) == (mode == 2) and summary['totals']['admitted_checked'] >= (7000 if mode == 2 else 1), (name, summary['totals'])
+        poll = env.get('X3M_FIXTURE_SHADOW_POLL') == 'agree'
+        assert summary['flushes'] == {'epoch': 2, 'reset': 2, 'device': 1, 'teardown': 0, 'sun': 2 if poll else 1, 'observer': 2, 'idle': 0}, (name, summary['flushes'])
+        sources = [(int(fields(l)['frame']), fields(l)['source'], fields(l)['reason']) for l in tl if l.startswith('shadow_replay_sun_source ')]
+        if poll:
+            switch = int(fields(next(l for l in lines if l.startswith('RETENTION_SOURCE_SWITCH ')))['frame'])
+            assert sources[:2] == [(0, 'point', 'point'), (switch, 'latch', 'unavailable')], (name, sources[:3], switch)
+            case['source_switch_frame'] = switch
+        else:
+            assert sources == [(0, 'latch', 'unavailable')], (name, sources)
+        full = [r for r in frame_rows if r['nodes_live'] + r['nodes_unseen'] >= 1000]
+        case['retention'] = {'summary': summary, 'full_store_frames': len(full), 'full_store_us_median': sorted(r['us'] for r in full)[len(full) // 2] if full else None,
+                             'full_store_walk_us_max': max((r['walk_us'] for r in full), default=None), 'overflow_frame_us': max(r['us'] for r in frame_rows if r['journal_overflow']),
+                             'burst_frame': next(({'retired': r['retired'], 'us': r['us'], 'journal_us': r['journal_us']} for r in frame_rows if r['retired'] >= 590), None)}
+        assert case['retention']['burst_frame'] is not None, name
+    assert len([i for i, l in enumerate(tl) if l.startswith('device_destroy ')]) == 1, f'{name}: the device was not destroyed'
+    case['failed_reset'] = fields(next(l for l in lines if l.startswith('RETENTION_FAILED_RESET ')))['result']
+    case['lock_drop_frames'] = int(fields(next(l for l in lines if l.startswith('RETENTION_LOCK_DROP ')))['frames'])
+    orphan = fields(next(l for l in lines if l.startswith('RETENTION_ORPHAN_DROP ')))
+    case['orphan_drop_frames'], case['orphan_probe'] = int(orphan['frames']), int(orphan['orphan_probe'])
+    # The maps against the twin.
+    maps, cameras, suns, draws, kept = {}, {}, {}, {}, {}
+    for l in lines:
+        if l.startswith('SHADOW_CASCADE_MAP '):
+            m = fields(l); maps[(int(m['frame']), int(m['cascade']))] = m
+        elif l.startswith('SHADOW_CAMERA '):
+            cameras[int(fields(l)['frame'])] = fields(l)
+        elif l.startswith('SHADOW_SUN '):
+            suns[int(fields(l)['frame'])] = fields(l)
+        elif l.startswith('SHADOW_DRAW ') or l.startswith('RETENTION_KEPT '):
+            f = fields(l); d = {'caster': int(f['caster']), 'shape': f['shape'], 't': float(f['t']), 'p': float(f['p']), 'zo': float(f['zo'])}
+            if l.startswith('RETENTION_KEPT '):
+                d['camera'] = {'m00': float(f['m00']), 'm11': float(f['m11']), 'r': [float(v) for v in f['r'].split(',')], 't': [float(v) for v in f['ct'].split(',')]}
+                d['placed_frame'] = int(f['placed_frame'])
+            (kept if 'camera' in d else draws).setdefault(int(f['frame']), []).append(d)
+    compared = sorted(f for f, row in frames.items() if row['compare'] == '1')
+    comparisons, absent, retained_frames = {}, 0, 0
+    for frame in compared:
+        expected = draws.get(frame, []) + (kept.get(frame, []) if mode == 2 else [])
+        retained_frames += bool(mode == 2 and kept.get(frame))
+        row = depth_rows[frame]
+        if mode == 2:
+            assert sum(row['retention']['retained']) == 2 * len(kept.get(frame, [])), (name, frame, row, kept.get(frame))
+        for c in range(count):
+            m = maps[(frame, c)]
+            if not expected:
+                assert m['valid'] == '0', (name, frame, c, m); absent += 1
+                continue
+            assert m['available'] == '1' and m['valid'] == '1' and int(float(m['replayed_frame'])) == frame and int(m['width']) == sizes[c], (name, frame, c, m)
+            data = (directory / f'shadow_{frame}_c{c}.r32f').read_bytes()
+            triple = lambda key: tuple(float(v) for v in m[key].split(','))
+            basis = {'right': triple('right'), 'up': triple('up'), 'forward': triple('forward'), 'center': triple('center'), 'extent': float(m['extent']),
+                     'depth_light': float(m['depth_light']), 'depth_behind': float(m['depth_behind'])}
+            expected_sun = tuple(float(v) for v in suns[frame]['direction'].split(','))
+            # The point source: the fixture prints the direction from the camera position to the light, the DLL's is from the
+            # cascade centre (snapped) or, after the switch, the latch of the draws' own directions: a few units apart at 100,000+.
+            tolerance = 1e-4 if env.get('X3M_FIXTURE_SHADOW_POLL') == 'agree' else 1e-5
+            assert all(abs(-basis['forward'][i] - expected_sun[i]) < tolerance for i in range(3)) and basis['extent'] == extents[c], (name, frame, c, basis, expected_sun)
+            cam = cameras[frame]
+            camera = {'m00': float(cam['m00']), 'm11': float(cam['m11']), 'r': [float(v) for v in cam['r'].split(',')], 't': [float(v) for v in cam['t'].split(',')]}
+            comparison = depth_replay.compare_map(struct.unpack(f'<{sizes[c] * sizes[c]}f', data), expected, camera, basis, sizes[c])
+            # The unit-size casters are smaller than a texel of the 400-unit cascade (3.1 units): there the twin may
+            # cover no sample at all, and then the map must not either; cascade 0 (0.0625-unit texels) carries the blobs.
+            sub_texel = c > 0 and comparison['covered_cpu'] == 0 and comparison['covered_gpu'] == 0 and comparison['coverage_disagreements'] == 0 and comparison['finite']
+            assert (comparison['ok'] and comparison['covered_cpu'] >= 1) or sub_texel, (name, frame, c, frames[frame]['case'], comparison)
+            comparisons[f'{frame}/{c}'] = {k: comparison[k] for k in ('covered_cpu', 'covered_gpu', 'coverage_disagreements', 'max_depth_error')}
+    assert len(compared) >= 30 and (retained_frames >= 20) == (mode == 2), (name, len(compared), retained_frames)
+    colors = [l for l in lines if l.startswith('COLOR ')]
+    assert len(colors) == len(frames), (name, len(colors))
+    case.update(checks=checks + len(passed) + 3 * len(compared) + 8, compared_frames=len(compared), retained_compared_frames=retained_frames, absent_maps=absent,
+                color_sha256=hashlib.sha256('\n'.join(colors).encode()).hexdigest(),
+                map={'max_depth_error': max((v['max_depth_error'] for v in comparisons.values()), default=0.0), 'covered_texels': sum(v['covered_gpu'] for v in comparisons.values()),
+                     'coverage_disagreements': sum(v['coverage_disagreements'] for v in comparisons.values()), 'maps': len(comparisons)},
+                us=depth_replay.us_summary(depth_rows))
+    issue_rows = [r for r in depth_rows if r['replayed'] and sum(r['cascades']['draws']) >= 1000]
+    case['us']['bulk'] = {'frames': len(issue_rows), 'issues_median': sorted(sum(r['cascades']['draws']) for r in issue_rows)[len(issue_rows) // 2] if issue_rows else 0,
+                          'us_median': sorted(r['us'] for r in issue_rows)[len(issue_rows) // 2] if issue_rows else None}
     return case
 
 
@@ -3786,7 +3942,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'shadowreplay') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'shadowreplay', 'shadowretention') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -3812,8 +3968,11 @@ def main(argv=None):
                        X3M_SUN_SHADOW_BIAS_UNITS=repr(sun_apply.BIAS_UNITS_DEFAULT), X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS=repr(sun_apply.BIAS_CLAMP_TEXELS),
                        X3M_FIXTURE_SUNAPPLY_WIDE='0', X3M_FIXTURE_SHADOW_FAR_T='240',
                        # Cascades off unless a case sets them (the single-map path is the default).
-                       X3M_SHADOW_CASCADES='0', X3M_FIXTURE_SUNAPPLY_CASCADES='0')
-            for inherited in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET', 'X3M_FIXTURE_SHADOW_CASCADES'):
+                       X3M_SHADOW_CASCADES='0', X3M_FIXTURE_SUNAPPLY_CASCADES='0',
+                       # Caster retention off unless a case sets it.
+                       X3M_SHADOW_RETENTION_CENSUS='0', X3M_SHADOW_CASTER_RETENTION='0', X3M_SHADOW_RETENTION_TIMING='0')
+            for inherited in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET', 'X3M_FIXTURE_SHADOW_CASCADES',
+                              'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS'):
                 env.pop(inherited, None)
             env.update(VARIANTS[variant])
             env.update(hdr_env)
@@ -3915,6 +4074,21 @@ def main(argv=None):
                 (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} worst_codes={case["worst_codes"]:.3f} ambiguous_max={case["ambiguous_max"]} edge={case["edge_mismatch"]} us={case["us"]["median"]}', flush=True)
+                continue
+            if mode == 'shadowretention':
+                case = validate_shadow_retention(name, text, trace, directory, hdr_env)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                # The three settings present byte-identical frames (the option changes no presented pixel).
+                for sibling in SHADOW_RETENTION_CASES:
+                    if sibling != name and name != SHADOW_RETENTION_POLL_CASE and sibling in result['cases']:
+                        assert result['cases'][sibling]['color_sha256'] == case['color_sha256'], f'{name}: presented frames differ from {sibling}'
+                        case.setdefault('presented_identical_to', []).append(sibling)
+                result['cases'][name] = case
+                # The compact per-case record the ledger cites (no maps, no logs).
+                (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} mode={case["mode"]} frames={case["frames"]} compared={case["compared_frames"]} retained_compared={case["retained_compared_frames"]} max_depth_error={case["map"]["max_depth_error"]}', flush=True)
                 continue
             if mode == 'shadowreplay':
                 case = (validate_shadow_replay_cascades if 'X3M_FIXTURE_SHADOW_CASCADES' in hdr_env else validate_shadow_replay)(name, text, trace, directory, hdr_env, taa)  # the wrapper's own frame lines belong to the 12-frame seam script (validate_ownership); this script has 8 frames and a Reset

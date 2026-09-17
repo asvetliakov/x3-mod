@@ -399,6 +399,7 @@ void MotionOutput::release_resources() noexcept {
     if (taa_) { taa_call([&] { taa_->shutdown(); }); taa_.reset(); }
     if (ao_ || ao_timing_created_) { taa_call([&] { ao_timing_release(); if (ao_) ao_->detach(); }); ao_.reset(); }
     release_depth_leases(); release_candidate_extents();
+    detach_shadow_retention(); // every held reference goes before the device does (flush=teardown)
     if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }
     if (sun_apply_) { taa_call([&] { sun_apply_->detach(); }); sun_apply_.reset(); }
     release(sentinel_ps_);
@@ -2205,6 +2206,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         if (capacity > depth_issue_capacity_) { depth_issues_.reset(new (std::nothrow) renderer::ShadowReplayIssue[capacity]); depth_issue_capacity_ = depth_issues_ ? capacity : 0; }
         if (!depth_issues_) { log("shadow_replay_cascades_refused device=%llu reason=allocation issues=%u", id_, capacity); depth_cascades_ = renderer::ShadowCascadeSet{}; }
     }
+    if (retention_mode_ != shadow_retention::Mode::Off || retention_) attach_shadow_retention(); // caster retention rides the cascades (off: nothing runs)
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { // Seam only: X3M_FIXTURE_SLICE_NEAR moves the slice-0 near bound so the
       // fixture's unit-distance triangles are candidates; production keeps 6.
@@ -2721,6 +2723,7 @@ void MotionOutput::before_reset() noexcept {
     if (ao_ || ao_timing_created_) taa_call([&] { ao_timing_release(); if (ao_) ao_->before_reset(); });
     ao_timing_failed_ = false; ao_timing_lost_ = false; ao_chain_failures_ = 0;
     if (candidates_requested_) release_candidate_extents();
+    if (retention_) flush_shadow_retention(shadow_retention::Flush::Reset); // every Reset attempt, before the native call: all held references released, the store empty
     if (depth_replay_requested_) { release_depth_leases(); if (depth_replay_) taa_call([&] { depth_replay_->before_reset(); }); depth_replay_attach_failed_ = false; }
     depth_replayed_ = 0; depth_cascade_frame_ok_ = false; sun_apply_applied_ = sun_apply_attempted_ = false;
     candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed and stays
@@ -3385,6 +3388,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     counters_ = {}; sun_frame_={}; sun_coverage_current_=sun_composition_completed_=false;
     sun_apply_applied_=sun_apply_attempted_=false; // fixture keys 70/71 describe this frame
     sun_original_refused_draws_=0;
+    if (retention_) retention_frame_begin(); // retirements are consumed here too; sightings of a frame without a scene end leave
     if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); sun_latch_.begin_frame(); point_sun_.begin_frame(); point_sun_poll_ticks_ = 0; candidate_bounds_unavailable_ = 0; candidate_extents_.begin_frame(); candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
     // Keep failed-lane storage until the next scene latch can compare its
     // exact dimensions/generation before transactionally replacing it. The
@@ -3546,6 +3550,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
         key.node = s.node; key.camera = s.camera; key.mesh = s.mesh;
         key.node_handle = s.node_handle; key.camera_handle = s.camera_handle; key.model = s.model; key.lod = s.lod;
         route.load_epoch = s.load_epoch; route.registry_epoch = s.registry_epoch;
+        route.registry = s.registry; route.node_flags12c = s.flags12c; route.node_flags130 = s.flags130; route.observer_epoch = s.observer_epoch;
         key.draw_domain = (((s.load_epoch & 0xffffffffull) << 32) | (s.registry_epoch & 0xffffffffull)) + 1;
         return true;
     }
@@ -3562,6 +3567,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
     key.node = scope.node; key.camera = scope.camera; key.mesh = scope.mesh;
     key.node_handle = scope.node_handle; key.camera_handle = scope.camera_handle; key.model = scope.model; key.lod = scope.lod;
     route.load_epoch = lifetime.load_epoch; route.registry_epoch = lifetime.registry_epoch;
+    route.observer_epoch = lifetime.observer_epoch; route.registry = scope.registry; route.node_flags12c = scope.flags12c; route.node_flags130 = scope.flags130;
     key.draw_domain = (((lifetime.load_epoch & 0xffffffffull) << 32) | (lifetime.registry_epoch & 0xffffffffull)) + 1;
     return true;
 }
@@ -6140,6 +6146,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();
     report_mip_bias_game_write_failure();
     release_mip_bias_retry_bound();
+    if (retention_ && FAILED(result)) flush_shadow_retention(shadow_retention::Flush::Device); // a lost device: an outstanding reference would outlive it
     if (!enabled_) return;
     if (FAILED(result)) invalidate_taa(TaaInvalidateSite::PresentFailed);
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
@@ -6528,6 +6535,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
         if (near_ok) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (d <= depth_cascades_.cascades[i].half_extent) cascade_mask |= std::uint8_t(1u << i);
         admitted = cascade_mask != 0;
     }
+    const shadow_replay::ExtentEntry* exact_extent = nullptr; // the range's own extent of this revision (caster retention's payload)
     ownership::BufferLockView vb{}, ib{};
     const auto view = [](std::uintptr_t identity, ownership::BufferLockView& out) noexcept {
         return identity && SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(identity), &out)) && out.known;
@@ -6556,6 +6564,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                 // being trusted as it is.
                 const shadow_replay::ExtentEntry* stale = nullptr;
                 const shadow_replay::ExtentEntry* e = candidate_extents_.find(key, &stale);
+                if (e && e->state == shadow_replay::ExtentState::Known) exact_extent = e;
                 if (!e && !(stale && stale->abandoned())) queue_candidate_extent(key, shadow_.stream0_identity, stale != nullptr);
                 shadow_replay::ExtentEntry inflated{};
                 bool old = false;
@@ -6602,6 +6611,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
         note_depth_geometry(route, candidates_.record_count - 1);
         auto& g = depth_geometry_[candidates_.record_count - 1];
         g.sun_register = std::int8_t(draw_sun_register); g.sun_known = draw_sun_agrees; std::memcpy(g.sun, draw_sun, sizeof g.sun);
+        if (retention_ && candidates_published_frame_ != frame_) note_retention_draw(route, r, g, exact_extent); // a draw after the frame's scene end is not a sighting
     }
 }
 // The bound program's LightDir_Dir0 as the application last wrote it, fed to
@@ -6820,6 +6830,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             id_, frame_, shadow_replay::sun_verdict_name(sun_verdict_), sun_latch_.source_register, samples.samples, samples.agree, samples.disagree, samples.invalid, samples.no_register, samples.unlatched,
             candidate_bounds_state_, candidate_bounds_unavailable_, candidate_extents_.refused_frame /* extent_refused: this frame's refused stores */, double(sun ? sun[0] : 0.f), double(sun ? sun[1] : 0.f), double(sun ? sun[2] : 0.f));
     }
+    bool sun_source_switched = false; // point <-> latch: caster retention treats it as a sun re-latch
     // Cascades: the frame's sun source (decided here unless the box test already
     // did), its validation carried to the next frame. A source change voids
     // what was retained (those bases are the other source's). The full line
@@ -6837,7 +6848,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
 #endif
         if (point_sun_logged_ != point_sun_.reason) {
             event = true;
-            if (point_sun_logged_ != shadow_replay::PointSunReason::Count && depth_replay_ && (point || point_sun_logged_ == shadow_replay::PointSunReason::Point)) depth_replay_->invalidate_retained();
+            if (point_sun_logged_ != shadow_replay::PointSunReason::Count && (point || point_sun_logged_ == shadow_replay::PointSunReason::Point)) { sun_source_switched = true; if (depth_replay_) depth_replay_->invalidate_retained(); }
             log("shadow_replay_sun_source device=%llu frame=%llu source=%s reason=%s previous=%s poll=%s", id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(point_sun_.reason),
                 point_sun_logged_ == shadow_replay::PointSunReason::Count ? "none" : shadow_replay::point_sun_reason_name(point_sun_logged_), sun_light_poll::status_name(point_sun_sample_.status));
             point_sun_logged_ = point_sun_.reason;
@@ -6874,6 +6885,10 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             q.score, q.second_score, q.flags, scale, poll_us, static_cast<unsigned long long>(p.frames_point), text);
         }
     }
+    // Caster retention: retirements, the sun flush, the seen nodes' classes and
+    // the unseen walk, before the replay that issues the admitted records and
+    // after the frame's sun source is decided (each cascade's own basis).
+    if (retention_) retention_scene_end(sun_source_switched);
     // Capture frames: one line per record (what admitted it, into which
     // cascades, and what its own program said the sun was).
     if (capture_) {
@@ -6889,9 +6904,15 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
                 const double view[3] = {double(g.rows[3]) / camera_scene_.m00, double(g.rows[7]) / camera_scene_.m11, double(g.rows[15])};
                 for (unsigned k = 0; k < 3; ++k) for (unsigned j = 0; j < 3; ++j) origin[k] += (view[j] - double(camera_scene_.t[j])) * double(camera_scene_.r[k * 3 + j]);
             }
-            log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=%s leased=%u quiet=%u sun_register=%d sun_agrees=%u sun=%.9g,%.9g,%.9g primitives=%u origin=%.9g,%.9g,%.9g",
+            log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=%s leased=%u quiet=%u sun_register=%d sun_agrees=%u sun=%.9g,%.9g,%.9g primitives=%u origin=%.9g,%.9g,%.9g%s",
                 id_, frame_, i, static_cast<unsigned long long>(r.vb), unsigned(r.cascades), shadow_replay::verdict_source_name(r.verdict), unsigned(g.leased), unsigned(quiet_records[i]),
-                int(g.sun_register), unsigned(g.sun_known), double(g.sun[0]), double(g.sun[1]), double(g.sun[2]), unsigned(g.primitives), origin[0], origin[1], origin[2]);
+                int(g.sun_register), unsigned(g.sun_known), double(g.sun[0]), double(g.sun[1]), double(g.sun[2]), unsigned(g.primitives), origin[0], origin[1], origin[2], retention_ ? " retained=0" : "");
+        }
+        // Retained records the replay issues this frame (live retention): the node's last recorded draw, not submitted now.
+        if (retention_live()) for (unsigned q = 0; q < retention_->store.admitted_count; ++q) {
+            const auto& d = retention_->store.draws[retention_->store.admitted[q]];
+            log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=node leased=1 quiet=1 sun_register=-1 sun_agrees=0 sun=0,0,0 primitives=%u origin=%.9g,%.9g,%.9g retained=1",
+                id_, frame_, candidates_.record_count + q, static_cast<unsigned long long>(d.key.vb), unsigned(d.cascades), unsigned(d.key.primitives), d.world[3], d.world[7], d.world[11]);
         }
     }
     // Cascades on: the per-cascade record counts and cap drops follow the
@@ -6909,6 +6930,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         static_cast<unsigned long long>(c.roots), static_cast<unsigned long long>(c.waiting), c.nested, c.overflow, cascade_fields);
     if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);
     else if (depth_replay_requested_) run_shadow_replay_depth(quiet_records);
+    if (retention_) publish_shadow_retention(); // the frame line reads this frame's live counts: before the reset
     candidates_.reset();
 }
 // ---- sun-shadow application at the scene end (legacy-sun-application.md, 2) ----
@@ -7093,4 +7115,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         id_, frame_, unsigned(sun_apply_applied_), skip ? skip : "none", double(exponent), us, out.map_size, out.operation, out.restore, unsigned(out.failed));
 }
 #include "motion_output_shadow_replay_inc.h"
+#include "motion_output_shadow_retention_inc.h"
 } // namespace x3m
