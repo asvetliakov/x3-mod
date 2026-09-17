@@ -1960,6 +1960,18 @@ void MotionOutput::run_ambient_occlusion() noexcept {
     // the routed rows' clip x/y, +2 jx / width and -2 jy / height in NDC), so
     // the quad's NDC -> view law subtracts the same offset through m20/m21;
     // the engine's own projection latch carries none (camera_state p20/p21 = 0).
+    // No quad_pixel_centre term here, unlike the sun-shadow apply latch: the
+    // GTAO program folds its own half-resolution texel-centre ray (ray.z =
+    // (1 / hw - 1 - m20) / m00, ambient_occlusion_pass.cpp) while the half
+    // texel holds the even full pixel (2 i, 2 j) sampled at NDC 2 i / hw - 1:
+    // every reconstructed point sits 1 / hw in NDC beside its D3D9 pixel, as
+    // the apply quad's did, but AO compares reconstructed points only with
+    // each other (centre, taps, normal): the offset is a uniform shear of view
+    // space by z / (hw m00), about 0.1 degrees of horizon angle, with no
+    // externally rasterised reference (a shadow map) to disagree with. The
+    // CPU reference (ambient_occlusion_reference.h, HalfImage::position) folds
+    // the same ray; changing the latch would move the AO field, not correct a
+    // defect (directional-shadows.md, "Run 39 A (run115) fix").
     const float ao_jitter_x = in.width ? 2.f * jitter_[0] / float(in.width) : 0.f;
     const float ao_jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
     in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11;
@@ -7186,9 +7198,15 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         // (lit) and takes this frame's would-be basis for its pixel ownership.
         renderer::SunShadowCascadeFrame in{};
         in.depth_share = depth; in.target = rt0; in.width = target_width_; in.height = target_height_;
+        // The latch: the jitter RT2 was rasterised under (as the single-map
+        // path below) plus the D3D9 pixel-centre term of the quad's uv
+        // (renderer::quad_pixel_centre_m20/m21; the receiver must be the point
+        // RT2 texel (i, j) sampled, not half a pixel beside it).
         const float jitter_x = in.width ? 2.f * jitter_[0] / float(in.width) : 0.f;
         const float jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
-        in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = camera_scene_.m20 + jitter_x; in.m21 = camera_scene_.m21 + jitter_y;
+        const float centre_x = in.width ? renderer::quad_pixel_centre_m20(in.width) : 0.f;
+        const float centre_y = in.height ? renderer::quad_pixel_centre_m21(in.height) : 0.f;
+        in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = camera_scene_.m20 + jitter_x + centre_x; in.m21 = camera_scene_.m21 + jitter_y + centre_y;
         in.m22 = ao_default_m22; in.m32 = ao_default_m32; in.jitter_index = counters_.jitter_index; in.exponent = exponent;
         // The quad's slots are the ACTIVE cascades in order (shadow_cascade_apply_slots):
         // a cascade the ratio guard dropped is not in the list, so the previous
@@ -7255,10 +7273,15 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         // the routed rows' clip x/y, +2 jx / width and -2 jy / height in NDC), so
         // the quad's NDC -> view law subtracts the same offset through m20/m21;
         // the engine's own projection latch carries none (camera_state p20/p21 = 0).
+        // Plus the D3D9 pixel-centre term of the quad's uv (renderer::
+        // quad_pixel_centre_m20/m21): RT2 texel (i, j) holds the depth at NDC
+        // (2 i / W - 1, 1 - 2 j / H), half a pixel left of and above uv * 2 - 1.
         const float jitter_x = in.width ? 2.f * jitter_[0] / float(in.width) : 0.f;
         const float jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
+        const float centre_x = in.width ? renderer::quad_pixel_centre_m20(in.width) : 0.f;
+        const float centre_y = in.height ? renderer::quad_pixel_centre_m21(in.height) : 0.f;
         in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11;
-        in.params.m20 = camera_scene_.m20 + jitter_x; in.params.m21 = camera_scene_.m21 + jitter_y;
+        in.params.m20 = camera_scene_.m20 + jitter_x + centre_x; in.params.m21 = camera_scene_.m21 + jitter_y + centre_y;
         in.params.m22 = ao_default_m22; in.params.m32 = ao_default_m32;
         const float* rows = depth_replay_->view_rows();
         for (unsigned i = 0; i < 12; ++i) in.params.rows[i] = rows[i];

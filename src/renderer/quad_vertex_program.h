@@ -40,6 +40,21 @@ inline void quad_vertices(UINT width, UINT height, QuadVertex (&out)[4]) noexcep
     out[0] = {x0, y0, 0.f, 1.f, 0.f, 0.f}; out[1] = {x1, y0, 0.f, 1.f, 1.f, 0.f};
     out[2] = {x0, y1, 0.f, 1.f, 0.f, 1.f}; out[3] = {x1, y1, 0.f, 1.f, 1.f, 1.f};
 }
+// The pixel-centre term of a quad program that reconstructs the pixel's
+// position from its interpolated uv. D3D9 rasterises pixel (i, j) at window
+// coordinate (i, j) (integer pixel centres: "Directly Mapping Texels to
+// Pixels"), i.e. at NDC (2 i / W - 1, 1 - 2 j / H); that is where the scene's
+// depth in RT2 texel (i, j) was sampled. quad_vertices delivers that pixel
+// uv = ((i + 1/2) / W, (j + 1/2) / H) (right for point-sampling the texel),
+// so uv * 2 - 1 lies half a pixel right of and below the pixel: (+1/W, -1/H)
+// in NDC. A program forming the view position as ((ndc.x - m20) z / m00,
+// (ndc.y - m21) z / m11) from ndc = uv * 2 - 1 (sun_shadow_apply_ps.hlsl,
+// sun_shadow_cascade_apply_ps.hlsl) removes it by adding these two terms to
+// the m20 / m21 it latches. Without them every receiver sits z / (W m00)
+// beside the surface RT2 sampled, an error that grows with view distance
+// (directional-shadows.md, "Run 39 A (run115) diagnosis").
+inline constexpr float quad_pixel_centre_m20(UINT width) noexcept { return 1.f / float(width); }
+inline constexpr float quad_pixel_centre_m21(UINT height) noexcept { return -1.f / float(height); }
 // The pre-transformed twin of quad_vertices: raster coordinates shifted by
 // -0.5, rhw 1 (the path every pass drew before the vs_3_0 program). Fixture
 // builds compiled with X3M_QUAD_FVF_SWITCH select it through the environment

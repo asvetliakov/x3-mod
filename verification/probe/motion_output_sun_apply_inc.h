@@ -2,7 +2,8 @@
 // legacy-sun-application.md, section 3.3). The production SunShadowApplyPass
 // is linked into the fixture and driven directly (no proxy wiring): a
 // synthetic G32R32F RT2 (device depth of a box on a plane under the jittered
-// projection, a share pattern with share-free columns and sentinel sky) and a
+// projection as the D3D9 rasterizer samples it, sun_apply_latch; a share
+// pattern with share-free columns and sentinel sky) and a
 // synthetic R32F map (the same scene ray-cast along the sun through the
 // cascade shadow_replay_basis builds for the fixture camera) at three sun
 // elevations, applied to a 128x128 FP16 target filled with 64 colour tiles.
@@ -101,6 +102,33 @@ std::vector<unsigned char> sun_apply_read(Fixture& f, SunApplyState& s) {
     for (unsigned y = 0; y < sun_apply_h; ++y) std::memcpy(&image[std::size_t(y) * sun_apply_w * 8], static_cast<const unsigned char*>(lock.pBits) + y * lock.Pitch, sun_apply_w * 8);
     s.readback->UnlockRect();
     return image;
+}
+// The raster and the latch of both scripts. RT2 is synthesised as the D3D9
+// rasterizer fills it: texel (i, j) holds the scene at NDC (2 i / W - 1,
+// 1 - 2 j / H) of the JITTERED projection (raster_m20/m21 = the jitter in NDC,
+// as jitter_rows applies it), so the quad's latch is that jitter plus the
+// pixel-centre term of the quad's uv, exactly as motion_output.cpp latches it
+// (renderer::quad_pixel_centre_m20/m21). X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1
+// (fixture only) drops the term: the law of builds before 2026-09-18, the
+// witness that the runner's analytic edge fit (evaluated at the D3D9 pixel
+// centre, independent of the latch) catches the half-pixel receiver error.
+bool sun_apply_legacy_latch() {
+    char text[4]{};
+    return GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH", text, sizeof text) == 1 && text[0] == '1';
+}
+struct SunApplyLatch { float raster_m20, raster_m21, m20, m21; bool legacy; };
+SunApplyLatch sun_apply_latch(float jx, float jy) {
+    SunApplyLatch l{};
+    l.raster_m20 = 2.f * jx / float(sun_apply_w); l.raster_m21 = -2.f * jy / float(sun_apply_h);
+    l.legacy = sun_apply_legacy_latch();
+    l.m20 = l.raster_m20 + (l.legacy ? 0.f : x3m::renderer::quad_pixel_centre_m20(sun_apply_w));
+    l.m21 = l.raster_m21 + (l.legacy ? 0.f : x3m::renderer::quad_pixel_centre_m21(sun_apply_h));
+    return l;
+}
+// The view-space direction of RT2 texel (i, j) under the raster's law.
+Vec3 sun_apply_texel_direction(unsigned i, unsigned j, const SunApplyLatch& l, float m00, float m11) {
+    const double ndc_x = 2. * i / sun_apply_w - 1., ndc_y = 1. - 2. * j / sun_apply_h;
+    return {(ndc_x - l.raster_m20) / m00, (ndc_y - l.raster_m21) / m11, 1.};
 }
 void sun_apply_write(const char* name, unsigned long long frame, const void* data, std::size_t bytes) {
     char path[64]; std::snprintf(path, sizeof path, "sunapply_%llu_%s", frame, name);
@@ -230,12 +258,12 @@ void run_sun_apply_integration(Fixture& f) {
         require(x3m::renderer::shadow_replay_view_rows(s.camera, basis, cascade, rows), "the view -> sun rows build");
         const Vec3 s_right{basis.right[0], basis.right[1], basis.right[2]}, s_up{basis.up[0], basis.up[1], basis.up[2]}, s_fwd{basis.forward[0], basis.forward[1], basis.forward[2]},
                    s_center{basis.center[0], basis.center[1], basis.center[2]};
-        // RT2: the jittered projection's device depth of the nearest surface and the share pattern.
-        const float m20 = 2.f * script.jx / float(sun_apply_w), m21 = -2.f * script.jy / float(sun_apply_h);
+        // RT2: the jittered projection's device depth of the nearest surface under the D3D9 raster (sun_apply_latch) and the share pattern.
+        const SunApplyLatch latch = sun_apply_latch(script.jx, script.jy);
+        const float m20 = latch.m20, m21 = latch.m21;
         unsigned receivers = 0, sentinels = 0, share_free = 0;
         for (unsigned j = 0; j < sun_apply_h; ++j) for (unsigned i = 0; i < sun_apply_w; ++i) {
-            const double ndc_x = (i + .5) / sun_apply_w * 2. - 1., ndc_y = 1. - (j + .5) / sun_apply_h * 2.;
-            const Vec3 dv{(ndc_x - m20) / s.camera.m00, (ndc_y - m21) / s.camera.m11, 1.};
+            const Vec3 dv = sun_apply_texel_direction(i, j, latch, s.camera.m00, s.camera.m11);
             const Vec3 dir = s.right * dv.x + s.up * dv.y + s.forward * dv.z;
             const double t = sun_apply_hit(s.position, dir);
             float* px = &s.rt2_data[(std::size_t(j) * sun_apply_w + i) * 2];
@@ -322,14 +350,14 @@ void run_sun_apply_integration(Fixture& f) {
                     "m00=%.9g m11=%.9g m20=%.9g m21=%.9g m22=%.9g m32=%.9g rows=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g "
                     "camera=%.9g,%.9g,%.9g cam_right=%.9g,%.9g,%.9g cam_up=%.9g,%.9g,%.9g cam_forward=%.9g,%.9g,%.9g sun=%.9g,%.9g,%.9g "
                     "right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.9g,%.9g,%.9g extent=%.9g depth_half=%.9g "
-                    "box=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u wide=%u scale=%.9g bias_units=%.9g texel_world=%.9g\n",
+                    "box=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u wide=%u scale=%.9g bias_units=%.9g texel_world=%.9g raster_m20=%.9g raster_m21=%.9g legacy_latch=%u\n",
                     f.frame, sun_apply_w, sun_apply_h, sun_apply_map, script.map_mode, double(script.elevation_deg), script.jitter_index, double(script.exponent), double(bias_constant), double(bias_max), .05,
                     double(s.camera.m00), double(s.camera.m11), double(m20), double(m21), double(s.m22), double(s.m32),
                     double(rows[0]), double(rows[1]), double(rows[2]), double(rows[3]), double(rows[4]), double(rows[5]), double(rows[6]), double(rows[7]), double(rows[8]), double(rows[9]), double(rows[10]), double(rows[11]),
                     s.position.x, s.position.y, s.position.z, s.right.x, s.right.y, s.right.z, s.up.x, s.up.y, s.up.z, s.forward.x, s.forward.y, s.forward.z, double(sun[0]), double(sun[1]), double(sun[2]),
                     s_right.x, s_right.y, s_right.z, s_up.x, s_up.y, s_up.z, s_fwd.x, s_fwd.y, s_fwd.z, s_center.x, s_center.y, s_center.z, double(cascade.half_extent), double(float(cascade.depth_half())),
                     sun_apply_box_lo[0], sun_apply_box_lo[1], sun_apply_box_lo[2], sun_apply_box_hi[0], sun_apply_box_hi[1], sun_apply_box_hi[2],
-                    receivers, share_free, sentinels, unsigned(wide), sun_apply_scale, bias_units, double(texel_world));
+                    receivers, share_free, sentinels, unsigned(wide), sun_apply_scale, bias_units, double(texel_world), double(latch.raster_m20), double(latch.raster_m21), unsigned(latch.legacy));
         sun_apply_write("before.rgba16f", f.frame, s.before.data(), s.before.size());
         sun_apply_write("after.rgba16f", f.frame, s.after.data(), s.after.size());
         sun_apply_write("rt2.g32r32f", f.frame, s.rt2_data.data(), s.rt2_data.size() * 4);

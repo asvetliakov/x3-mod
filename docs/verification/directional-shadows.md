@@ -2258,3 +2258,77 @@ poll-agree 281, replay-on 203, retention-live 9,743 and `sun-shadow-apply-cascad
 (main's record); `seam-ownership-shadow-pool-static-live` (the merged pool control on the
 shared draw path) exit 0.
 
+
+## Run 39 A (run115) fix: the pixel-centre term of the apply latch (2026-09-18, worktree `agent-affda091a6929e138`)
+
+Base: main 30ea19ce (rebased onto it after the adaptive C0 merge). Not installed, no game run.
+
+**Fix.** `src/renderer/quad_vertex_program.h` states the convention once: `quad_pixel_centre_m20(W) = +1/W`,
+`quad_pixel_centre_m21(H) = -1/H`, with the D3D9 rule (pixel (i, j) rasterised at window (i, j), NDC
+`(2i/W-1, 1-2j/H)`; `quad_vertices` delivers uv `((i+½)/W, (j+½)/H)`, so `uv*2-1` is half a pixel right/down of the
+pixel). Derived independently from `quad_vertices` (x0 = -1-1/W gives u(window i) = (i+½)/W; y0 = 1+1/H gives
+v(window j) = (j+½)/H) and the raster rule: the sign agrees with the diagnosis. `motion_output.cpp` adds the two terms to
+the cascade latch and the single-map latch beside the jitter (`centre_x/centre_y`); no program change; the logged
+`m20/m21` carry the term, so the twin follows. The AO latch (`motion_output.cpp`, `ao_jitter_x`) is not changed and
+carries a comment: GTAO folds the half-resolution texel-centre ray while the half texel holds the even full pixel, so
+every reconstructed point sits 1/hw in NDC beside its pixel, but AO compares reconstructed points only with each other
+(a uniform shear of view space by z/(hw m00), ~0.1 degrees of horizon angle) and has no externally rasterised
+reference; the CPU reference (`ambient_occlusion_reference.h`, `HalfImage::position`) folds the same ray. Not the same
+defect; changing it would move the AO field.
+
+**Fixture.** Both `sunapply` scripts now synthesise RT2 as the D3D9 rasterizer samples it (`sun_apply_latch` /
+`sun_apply_texel_direction` in `motion_output_sun_apply_inc.h`: texel (i, j) = the scene at NDC `(2i/W-1, 1-2j/H)` of
+the jittered projection) and latch the raster's jitter plus the pixel-centre term, as production does; before, RT2
+was synthesised at `(i+½)/W` like the quad's own reconstruction, so no fixture could see the error. The lines log
+`raster_m20= raster_m21= legacy_latch=`; `analytic_shadow` evaluates the receiver at the D3D9 pixel centre from the
+raster's terms alone (independent of `m20/m21`: it cannot cancel against the twin again) and `parse_params` /
+`parse_cascade_params` require the fields. `X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1` (fixture only) drops the term: the
+pre-fix law against a D3D9-rasterised RT2. New case **i** (`sun-shadow-apply-cascades`, frames 21-28): case a's
+scene at scale 170, 30 degrees, jitter (0.125, 0.375), eight sub-texel phases; the receivers 800-1,250 units out, so
+z/(W m00) = 3-4.5 units against cascade 1's 11.7-unit texel (over a quarter texel) at 10 units/texel of sun slope.
+Runner: the latch law asserted per frame (`m20 = raster_m20 + 1/W`, `m21 = raster_m21 - 1/H`, or the raster's alone
+under the legacy witness), the F8 self-check `own_surface_residual` per frame (cascade 1 own-surface median within a
+quarter texel on case i), a second shift fit over the i frames, `half_pixel_receiver` and `legacy_latch` in the
+record; the cascades inc header joins the sources manifest.
+
+**Twin / F8 self-check.** `sun_shadow_apply.py`: `pixel_centre_terms`, `own_surface_residual` (per cascade, owned
+valid pixels, receiver sun depth minus the map at the nearest texel in world units, |r| < 30 units: median, quartiles,
+fraction over the constant bias, `median_over_half_bias`), `own_surface_residual_line` ("median own-surface residual
+(units): c1 1.626 (bias/2 0.634, over bias 70.9%, n=140791) OVER"), the CLI prints both on cascade frames, and
+`--add-pixel-centre` adds the term to a params line logged by a pre-fix build. `expected_factor_cascades` returns
+`sun`. Host `test_sun_shadow_apply.PixelCentre`: a tilted plane rasterised under the D3D9 rule into a synthetic RT2
+and a 512-texel map: with the term the own-surface median is 0.000 units (bias 0.024, bias/4 0.006) and every core
+receiver is lit in both twins; with `m20 = m21 = 0` the median is 0.133 units (over the bias, 100 % over), 0 % lit.
+`analytic_shadow` is unchanged by any `m20/m21`, changed by the raster's jitter, and places column 16 at x = 0 exactly.
+
+**Evidence.** Clean build 0 warnings; `check_no_x87.py`: PASS, 534 reachable, 0 violations; DLL `a7d40b76…`, seam
+`e74b49f1…`, fixture `0260b6be…`. Host: `test_sun_shadow_apply` 21 OK (3 new), plus `test_motion_output_runner` and
+the six mock-drift modules: 60 tests OK.
+- Twin on run115 (`sun_shadow_apply.py --log … --frame F [--add-pixel-centre]`), without / with the term:
+  11954 C1 own-surface median 1.626 → −0.029 units (bias 1.268), over bias 70.9 % → 1.3 %, C1-owned shadowed
+  fraction 0.833 → 0.178; C2 3.527 → 0.038, 40.6 % → 3.8 %, 0.579 → 0.453; C0 0.236 → 0.020 (18.4 % → 17.5 %: the
+  hull's real occlusion); factor mean 0.553 → 0.778. 11958: C1 1.622 → −0.034, 71.2 % → 1.2 %. 13985: C3 (the outpost
+  at 10-60 km) 19.985 → 1.557 (bias 24.95), 26.0 % → 4.2 %, C3-owned shadowed 0.934 → 0.681; C0 0.049 → 0.005.
+- Witness (`X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1`, the same binaries): `sun-shadow-apply` fails at frame 2
+  (`plane_beyond_two_texels` 2,487 of 3,633 analytic-shadowed plane pixels, `ok` False), `-wide` at frame 2 (5,055),
+  `-cascades` at frame 2 (case b: 3,441 ambiguous of 11,742 valid, over the 1/5 bound: the misplaced receivers sit
+  at compare equality). Case i on the same run's readbacks (host-only, past the aborted frame): cascade 1 own-surface
+  median 7.49-7.58 units per frame (threshold texel/4 = 2.93; over bias 29 % against the 12.25-unit fixture bias), the
+  assertion that fails; the summed map-space shift fit stays (−0.25, 0): the receiver displacement lies mostly along
+  the sun, which the (u, v) fit cannot see, so the residual is the witness and the fit only a bound. Case g under the
+  legacy latch: median 3.68 units.
+- Acceptance (`X3M_FIXTURE_BOTTLE=X3 … wine_lock.py … run_motion_output.py --dll … --seam … --fixture …`, 20 cases):
+  20 / 20 exit 0. `sun-shadow-apply-cascades` 4,340 checks, 29 frames: case i medians −0.35…−0.41 units, its fit
+  (0, 0); case g's fit (0, 0) (was (0, −0.25): the quarter texel was this error), legacy rule (−0.5, −0.5) with
+  `mismatch_at_zero` 715 vs 373; `edge_beyond_one` 0 on every frame but h, whose region C count is 28 (was 22, the
+  same 2.06-texel residual); `ambiguous_max` 1,742. `sun-shadow-apply` 169 checks, `-wide` 173, `plane_beyond_two_texels`
+  0, `worst_codes` unchanged. Cascades 278 / casters-20 278 / toggle 283 / poll 281 ×3 / adaptive-reuse 336 /
+  retention 9,743 / 9,740 / 6,629 / 9,890 / pool 165 / 181 / 181 / 165 / 99 / 53: every record equal to the committed
+  one field for field (timings, hashes, paths aside), so those records are kept; the three apply records are
+  regenerated. Live `run_sun_share_live.py`: 21 / 21 passed; `shadow_apply` and `shadow_apply_cascades` equal to the
+  committed record apart from `apply_us_max`/`elapsed_seconds`/`command` (the live script's receiver is wholly
+  shadowed, 4,032 / 4,096 owned = shadowed), so `sun-share-live.json` is kept.
+
+Open: the far outpost's remaining 68 % C3 shadowing on 13985 (anti-sun face, inferred) and the ship's cockpit
+residual (a canopy replayed as an occluder) are unchanged by this fix; a user run decides. The live cases cannot
+witness the receiver error (whole-receiver shadow); the `sunapply` fixture with its D3D9-rule RT2 is the witness.
