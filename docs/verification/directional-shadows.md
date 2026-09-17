@@ -2332,3 +2332,94 @@ the six mock-drift modules: 60 tests OK.
 Open: the far outpost's remaining 68 % C3 shadowing on 13985 (anti-sun face, inferred) and the ship's cockpit
 residual (a canopy replayed as an occluder) are unchanged by this fix; a user run decides. The live cases cannot
 witness the receiver error (whole-receiver shadow); the `sunapply` fixture with its D3D9-rule RT2 is the witness.
+## Five cascades (2026-09-17, worktree `agent-a76e082432e1ab2af`)
+
+Design: [../architecture/shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md) §3
+amendment; mechanism: [../architecture/shadow-cascades.md](../architecture/shadow-cascades.md),
+"Amendment: a fifth cascade". `shadow_cascade_max` 4 → 5 (`shadow_cascade_default_count` 4 keeps
+the default set), extents to 150,000, cap default 1024 for the fifth, `cascade_capacity` 5, the
+mode / device lines list five slots (`extents= sizes= caps= records=`), `shadow_map0..4` F8
+readbacks, `c0..c4` counters; launcher `--shadow-cascades` takes 1..5 values within [50, 150000].
+Budget rule unchanged: only the last cascade alternates over budget, always in full (no partial
+map); with five cascades C4 alone, C3 every frame. Rebased onto main `f197960c` (caster pool
+control): its per-cascade `records` default and the pool validator's `records=` expectation grew
+to five slots.
+
+- Apply program `sun_shadow_cascade_apply_ps.hlsl`: fifth sampler `s5`, `cascades[25]` at
+  `c13–c37`, fifth selection weight and `[branch]` PCF. **499 of 512 ps_3_0 slots** (was 406; the
+  estimate of ~70 per branch held at +93), 2,133 words, bytecode sha256 `a1c211e5…1236cf`,
+  checked at attach against `MaxPixelShader30InstructionSlots` (fixture: `ps30_slots=512`,
+  `cascade_slots=499`). No PCF restructuring was needed; margin 13 slots.
+- Memory at 4096²: five `R32F` maps 320 MiB + the shared `D24X8` attachment 64 MiB = 384 MiB.
+- Per-draw bounds pass (fixture bench, 2,000,000 rounds): single verdict 46.8 ns, four-cascade
+  mask 43.5 ns, **five-cascade mask 42.3 ns** (`mask5_ns`; one more interval test after the shared
+  corner transform, within noise of four), per-cascade-sun mask 115.6 ns.
+- Clean CMake build (`cmake --build build --clean-first -j4`, 70 objects): 0 warnings;
+  `build/d3d9.dll` sha256 `dd06ce80…`; `check_no_x87.py`: PASS, 77 roots, 527 reachable, 0
+  violations. Host: `test_shadow_cascades` (five-cascade set, sixth refused, budget policy on
+  cascade 4, launcher values and refusals), `test_shadow_replay_candidates`,
+  `test_shadow_retention`, `test_snapshot_x3_run`, `test_shadow_replay_depth`: 55 OK.
+- New `sun-shadow-apply-cascades-5` (`X3M_FIXTURE_SUNAPPLY_CASCADES=5`; record
+  `sun-shadow-apply-cascades-5-fixture.json`): the 30 km set on five 256² maps, 15 frames,
+  3,102 checks (2,945 fixture + 157 validator), exit 0. Range frames 'r' at scale 40 / 100 / 560 /
+  2,800 / 11,250 put the box's shadow in cascade 0..4 alone (881 / 2,376 / 881 / 884 / 886
+  analytically shadowed plane pixels owned by the owner, 0 by any other); seam frames 's' at
+  60 / 225 / 1,125 / 5,625 run it through cascade k's band into k + 1 (band-shadowed 1,091 / 868 /
+  1,024 / 956, the next cascade 758 / 586 / 591 / 588); the 'd' pair replays C4 on frame 10 and
+  samples the retained map through the moved camera on frame 11 (`draws4=0`, `far_frame=10`);
+  the Reset before frame 13 leaves C4 absent and lit, frame 14 repeats frame 12 byte for byte.
+  Every frame: worst 0.99999 FP16 codes, `edge_beyond_one` 0, `interior_wrong` 0,
+  `monotone_violations` 0, ambiguous ≤ 1,720 of 11,856 valid.
+- Twin (`sun_shadow_apply.py`), two gated additions the five-cascade validator turns on and the
+  older records do not: per-cascade `eps_depth` (the compare ambiguity scaled to the same 1.55
+  world units the three-cascade set has, since every cascade here spans 300,512–600,000 units),
+  and `band_eps` (a position `EPS_SELECT` away that moves the factor by ≥ a quarter FP16 code
+  marks the pixel ambiguous: the band's 1 / 0.10 amplification of the float32 position flipped one
+  dark band pixel by 1.0004 codes on the 60-scale seam frame).
+- Records against main's committed ones (non-timing fields; `*-fixture.json`): `sun-shadow-apply-cascades`
+  changes in exactly two fields, `cascade_program_slots` 406 → 499 and `checks`/`fixture_checks` +2
+  (4,340 → 4,342: the new refusal checks "six cascades" and "a sixth map"); every readback comparison,
+  edge and half-texel/half-pixel record is byte-identical. `seam-ownership-shadow-retention-off` differs
+  only in `presented_identical_to` (two siblings listed instead of one: the runner names the sibling
+  cases of the same partial run, not a behaviour). `sun-shadow-apply`, `sun-shadow-apply-wide`, retention
+  live / census / live-poll, the six pool cases and the four adaptive cases are identical in every
+  non-timing field. Cases without a committed record equal the ledger's counts: replay-cascades 278,
+  `-casters-20` 278, `toggle-single` 214, `poll-agree/null/disagree/refusals` 281 each; the toggle case
+  reports 283 checks, which is main's own follow-up schedule (the ledger's 277 predates the ON-edge
+  full-replay fix on main), not a change of this branch.
+- Not done: the optional opposite-parity alternation of the two farthest cascades (the brief's
+  option); no in-game run yet (the 30 km set needs `--shadow-cascades 250,1500,7500,37500,150000`).
+
+### Review fixes (2026-09-18, on main `7c9e67f6`; commits `914f2868` merge, `8e756cca` fixes)
+
+Merged main `7c9e67f6` (caster pool control, own-ship-adaptive C0 with the ratio guard's active mask and
+the compacted apply slots, the pixel-centre apply latch): the five-slot arrays cover the active mask and
+the slot list (`shadow_cascade_apply_slots` writes `out[shadow_cascade_max]`), the mode line lists five
+`records=` slots beside `adaptive_c0=`, the five-cascade script runs under the raster-rule RT2 and checks
+the latch law per frame (validator 172 checks). Review findings, no blocker:
+
+1. `shadow_replay_candidates` cascade tail: `cascade_fields[400]` overflowed at five cascades with the
+   pool options (the worst case needs 528 bytes for the counters alone) and the overflow path blanked every
+   per-cascade counter. Now sized from the format strings for `shadow_cascade_max` (bound 866 bytes;
+   `static_assert` on one-digit indices; host test `CandidatesLineTail` formats the worst case with
+   ten-digit counters and a twenty-digit `select_us` against the bound the source declares), a field that
+   does not fit is left off and counted (`candidates_line_truncated_`, one
+   `shadow_replay_candidates_truncated` line), never blanked.
+2. `shadow_retention_frame` lists `live_c0..4 would_c0..4 capped_c0..4` (parser `FRAME_FIELDS`, the
+   retention note and `test_shadow_retention` follow; the fifth slot reads 0 on every existing case).
+3. `shadow_replay_pass.h` comment: five maps.
+4. `sun-shadow-cascade-apply-program.json` regenerated on this tree: `--check` PASS (2,133 words,
+   `a1c211e5…`, 499 slots).
+5. `sun_shadow_apply_params` (both apply paths) logs `raster_m20= raster_m21= pixel_centre=1` like the
+   fixture line; `sun_shadow_apply.py` reads the logged law when present (`--add-pixel-centre` is ignored
+   then and reported as `pixel_centre_logged`), keeps the flag for older logs, and refuses a line whose
+   m20/m21 do not carry the term it claims (`test_latch_law_fields`: both forms).
+
+Evidence on `8e756cca`: clean CMake build 0 warnings (70 objects), `build/d3d9.dll` sha256 `9421907e…`,
+`check_no_x87.py` PASS 77 roots / 534 reachable / 0 violations; host `test_shadow_cascades`
+`test_shadow_replay_candidates` `test_shadow_retention` `test_snapshot_x3_run` `test_shadow_replay_depth`
+`test_sun_shadow_apply` 77 OK; the 26-case set (the four `sun-shadow-apply*`, eight replay-cascade,
+four adaptive, four retention, six pool cases) all exit 0 with the counts above;
+`sun-shadow-apply-cascades-5` 3,117 checks, `edge_beyond_one` 0, `monotone_violations` 0 on all 15
+frames, bench five-cascade mask 59.4 ns against 45.4 ns for four this run (42.3 against 43.5 on the
+previous run: the two are within run-to-run noise of the same corner transform).

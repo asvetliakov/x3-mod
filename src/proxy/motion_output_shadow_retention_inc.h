@@ -331,16 +331,16 @@ void MotionOutput::publish_shadow_retention() noexcept {
     log("shadow_retention_frame device=%llu frame=%llu mode=%s known=%u nodes_live=%u nodes_unseen=%u records=%u records_unseen=%u static=%u moving=%u"
         " excluded_class=%u unscoped=%u new_nodes=%u first_seen_in_range=%u promoted=%u superseded=%u lod_replaced=%u model_replaced=%u reclassified=%u"
         " retired=%u journal_overflow=%u revalidated=%u mutation_delta=%llu buffer_changed=%u buffer_gone=%u buffer_orphaned=%u orphan_probe=%u"
-        " box_exit=%u age=%u evicted=%u flush=%s unseen_in_frustum=%u unseen_outside=%u live_c0=%u live_c1=%u live_c2=%u live_c3=%u"
-        " would_c0=%u would_c1=%u would_c2=%u would_c3=%u capped_c0=%u capped_c1=%u capped_c2=%u capped_c3=%u drift_n=%u drift_p99=%.6g drift_max=%.6g"
+        " box_exit=%u age=%u evicted=%u flush=%s unseen_in_frustum=%u unseen_outside=%u live_c0=%u live_c1=%u live_c2=%u live_c3=%u live_c4=%u"
+        " would_c0=%u would_c1=%u would_c2=%u would_c3=%u would_c4=%u capped_c0=%u capped_c1=%u capped_c2=%u capped_c3=%u capped_c4=%u drift_n=%u drift_p99=%.6g drift_max=%.6g"
         " age_max=%llu refs_held=%u sun_relatch=%u cam_jump=%u transit_survivors=%u us=%.1f"
         " refused=%u moving_dropped=%u abandoned=%u deferred=%u journal_us=%.1f walk_us=%.1f draw_us=%.1f draw_calls=%u"
         " far_alternate_due_to_retained=%u revalidate_context_lost=%u release_queue_full=%u reclassified_after_unseen=%u admitted_checked=%u buffer_views=%u idle_frames=%u",
         id_, frame_, live ? "live" : "census", unsigned(st.registered && st.available), f.nodes_live, f.nodes_unseen, f.records, f.records_unseen, f.statics, f.moving,
         f.excluded_class, f.unscoped, f.new_nodes, f.first_seen_in_range, f.promoted, f.superseded, f.lod_replaced, f.model_replaced, f.reclassified,
         f.retired, f.journal_overflow, f.revalidated, static_cast<unsigned long long>(f.mutation_delta), f.buffer_changed, f.buffer_gone, f.buffer_orphaned, unsigned(live && st.orphan_probe),
-        f.box_exit, f.age, f.evicted, shadow_retention::flush_name(f.flush), f.unseen_in_frustum, f.unseen_outside, c.cascade[0], c.cascade[1], c.cascade[2], c.cascade[3],
-        f.would[0], f.would[1], f.would[2], f.would[3], f.capped[0], f.capped[1], f.capped[2], f.capped[3], f.drift_n, double(f.drift_p99), double(f.drift_max),
+        f.box_exit, f.age, f.evicted, shadow_retention::flush_name(f.flush), f.unseen_in_frustum, f.unseen_outside, c.cascade[0], c.cascade[1], c.cascade[2], c.cascade[3], c.cascade[4],
+        f.would[0], f.would[1], f.would[2], f.would[3], f.would[4], f.capped[0], f.capped[1], f.capped[2], f.capped[3], f.capped[4], f.drift_n, double(f.drift_p99), double(f.drift_max),
         static_cast<unsigned long long>(f.age_max), store.references(), f.sun_relatch, f.cam_jump, f.transit_survivors, st.us,
         f.refused, f.moving_dropped, f.abandoned, f.deferred, st.journal_us, st.walk_us, retention_us(st.draw_ticks), st.draw_calls,
         f.far_alternate_due_to_retained, f.revalidate_context_lost, f.release_queue_full, f.reclassified_after_unseen, f.admitted_checked, f.buffer_views, st.idle_frames);

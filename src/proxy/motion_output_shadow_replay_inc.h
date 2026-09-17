@@ -95,10 +95,11 @@ bool MotionOutput::ensure_shadow_replay_depth() noexcept {
     if (depth_cascades_on()) {
         // The caps line of the cascade attach (shadow-cascades.md, "Unknown"):
         // the device limits beside what the pass kept.
-        log("shadow_replay_cascades_device device=%llu attached=%u cascades=%u sizes=%u,%u,%u,%u depth_size=%u halved=%u max_texture=%lux%lu budget=%u caps=%u,%u,%u,%u",
-            id_, !depth_replay_attach_failed_, depth_cascades_.count, depth_replay_->size(0), depth_replay_->size(1), depth_replay_->size(2), depth_replay_->size(3),
+        static_assert(renderer::shadow_cascade_max == 5, "the device line lists five cascades");
+        log("shadow_replay_cascades_device device=%llu attached=%u cascades=%u sizes=%u,%u,%u,%u,%u depth_size=%u halved=%u max_texture=%lux%lu budget=%u caps=%u,%u,%u,%u,%u",
+            id_, !depth_replay_attach_failed_, depth_cascades_.count, depth_replay_->size(0), depth_replay_->size(1), depth_replay_->size(2), depth_replay_->size(3), depth_replay_->size(4),
             depth_replay_->depth_size(), caps.halved, static_cast<unsigned long>(caps_.MaxTextureWidth), static_cast<unsigned long>(caps_.MaxTextureHeight), depth_cascades_.budget,
-            depth_cascades_.caps[0], depth_cascades_.caps[1], depth_cascades_.caps[2], depth_cascades_.caps[3]);
+            depth_cascades_.caps[0], depth_cascades_.caps[1], depth_cascades_.caps[2], depth_cascades_.caps[3], depth_cascades_.caps[4]);
     }
     return !depth_replay_attach_failed_;
 }

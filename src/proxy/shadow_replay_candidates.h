@@ -13,7 +13,7 @@ namespace x3m::shadow_replay {
 constexpr unsigned record_capacity = 1024; // inline storage (fixed arrays in MotionOutput, no allocation); the per-frame cap is at most this unless a cascade set asks for more records
 constexpr unsigned record_capacity_max = 4096; // X3M_SHADOW_CASCADE_RECORDS: the largest per-cascade record capacity; storage beyond record_capacity is allocated once at attach
 constexpr unsigned default_cap = 512;       // X3M_SHADOW_REPLAY_CAP default (1..record_capacity): managed candidates recorded and replayed per frame
-constexpr unsigned cascade_capacity = 4;    // = renderer::shadow_cascade_max (docs/architecture/shadow-cascades.md); this header stays D3D- and renderer-free
+constexpr unsigned cascade_capacity = 5;    // = renderer::shadow_cascade_max (docs/architecture/shadow-cascades.md); this header stays D3D- and renderer-free
 constexpr unsigned witness_capacity = 16;  // per device, section 3
 constexpr float slice0_near = 6.f, slice0_far = 250.f; // own-ship slice of cascade 0 (origin distance, view units)
 constexpr unsigned extent_reads_per_frame = 32;               // vertex-extent reads queued per frame (one per unseen buffer range)

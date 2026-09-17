@@ -2167,10 +2167,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           log("shadow_replay_depth_mode requested=1 enabled=%u size=%u extent=%.9g depth_half=%.9g cap=%u motion_output=%u ownership=%u",enabled,size,double(extent),double(depth_half),cap,motion_output_requested,wrapped);
           hooked.motion_output.configure_shadow_replay_depth(enabled,size,extent,depth_half);
           // Sun-shadow cascades (docs/architecture/shadow-cascades.md): X3M_SHADOW_CASCADES
-          // is the ascending half-extent list (1..4 values, 50..50000 units); absent,
+          // is the ascending half-extent list (1..5 values, 50..150000 units); absent,
           // empty or "0" keeps the single map above. X3M_SHADOW_CASCADE_SIZES (one
           // value for all or one per cascade, 64..4096, default 4096),
-          // X3M_SHADOW_CASCADE_CAPS (likewise, 1..4096, defaults 128,512,1024,1024)
+          // X3M_SHADOW_CASCADE_CAPS (likewise, 1..4096, defaults 128,512,1024,1024,1024)
           // and X3M_SHADOW_CASCADE_BUDGET (issues per frame, 1..4096, default 640).
           // Caster pool control (shadow-cascade-extents.md): X3M_SHADOW_CASCADE_RECORDS
           // (records per cascade, 1..4096, default 1024), X3M_SHADOW_CASCADE_STATIC_FROM
@@ -2218,12 +2218,13 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 float adaptive_k=0.f;
                 if(set.count&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_ADAPTIVE_C0",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
                     if(end!=list&&*end==L'\0'&&v>=double(renderer::shadow_cascade_adaptive_k_min)&&v<=double(renderer::shadow_cascade_adaptive_k_max))adaptive_k=float(v); }
-                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u caps=%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g",
-                    set.count!=0,reason?reason:enabled?"ok":"replay",set.count,double(set.cascades[0].half_extent),double(set.count>1?set.cascades[1].half_extent:0.f),
-                    double(set.count>2?set.cascades[2].half_extent:0.f),double(set.count>3?set.cascades[3].half_extent:0.f),
-                    set.count?set.cascades[0].size:0u,set.count>1?set.cascades[1].size:0u,set.count>2?set.cascades[2].size:0u,set.count>3?set.cascades[3].size:0u,
-                    set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
-                    set.records[0],set.records[1],set.records[2],set.records[3],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k));
+                static_assert(renderer::shadow_cascade_max==5,"the mode line lists five cascades");
+                const auto ext=[&](unsigned i){ return double(set.count>i?set.cascades[i].half_extent:0.f); };
+                const auto sz=[&](unsigned i){ return set.count>i?set.cascades[i].size:0u; };
+                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g",
+                    set.count!=0,reason?reason:enabled?"ok":"replay",set.count,ext(0),ext(1),ext(2),ext(3),ext(4),sz(0),sz(1),sz(2),sz(3),sz(4),
+                    set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.caps[4],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
+                    set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k));
                 hooked.motion_output.configure_shadow_cascades(set);
                 hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k); } }
           // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:

@@ -326,11 +326,17 @@ int main(int argc, char** argv) {
               && set.cascades[3].depth_behind == 50000.f && set.cascades[2].size == 4096 && set.caps[0] == 128 && set.caps[3] == 1024 && set.budget == 640
               && set.cascades[0].forward_offset == 128.f && set.cascades[1].forward_offset == 0.f);
         ShadowCascadeSet bad{};
-        const float descending[2] = {1500, 250}, small[1] = {49}, huge[1] = {50001};
+        const float descending[2] = {1500, 250}, small[1] = {49}, huge[1] = {150001};
+        const float five[5] = {250, 1500, 7500, 37500, 150000}, six[6] = {250, 1500, 7500, 37500, 150000, 150001};
         const unsigned big[1] = {8192}, zero[1] = {0};
         CHECK(!shadow_cascade_set(descending, 2, nullptr, nullptr, 640, bad) && !shadow_cascade_set(small, 1, nullptr, nullptr, 640, bad) && !shadow_cascade_set(huge, 1, nullptr, nullptr, 640, bad)
               && !shadow_cascade_set(shadow_cascade_extent_defaults, 1, big, nullptr, 640, bad) && !shadow_cascade_set(shadow_cascade_extent_defaults, 1, nullptr, zero, 640, bad)
               && !shadow_cascade_set(shadow_cascade_extent_defaults, 1, nullptr, nullptr, 4097, bad) && !shadow_cascade_set(shadow_cascade_extent_defaults, 0, nullptr, nullptr, 640, bad) && bad.count == 0);
+        // Five cascades (the 30 km set): built with the fifth cap default, the depth ranges from the 150,000 extent; a sixth is refused.
+        CHECK(shadow_cascade_max == 5 && shadow_cascade_default_count == 4 && shadow_cascade_set(five, 5, nullptr, nullptr, 640, bad) && bad.count == 5 && bad.cascades[4].half_extent == 150000.f
+              && bad.cascades[0].depth_toward_light == 300000.f && bad.cascades[4].depth_behind == 300000.f && bad.caps[4] == 1024 && bad.cascades[4].size == 4096);
+        CHECK(!shadow_cascade_set(six, 6, nullptr, nullptr, 640, bad) && bad.count == 0);
+        CHECK(shadow_cascade_replays(4, 5, 641, 640, 0) && !shadow_cascade_replays(4, 5, 641, 640, 1) && shadow_cascade_replays(3, 5, 9999, 640, 1) && shadow_cascade_replays(4, 5, 640, 640, 1));
         CHECK(shadow_cascade_set(small, 1, nullptr, nullptr, 640, bad, false) && bad.cascades[0].forward_offset == 0.f && bad.cascades[0].depth_behind == 98.f);
         // ---- own-ship-adaptive cascade 0 and the ratio guard (shadow-cascade-extents.md, section 5)
         {
@@ -706,6 +712,31 @@ class PureHeaders(unittest.TestCase):
             self.assertEqual(result.stdout.count('REGISTER '), 6 + real)
 
 
+class CandidatesLineTail(unittest.TestCase):
+    """The cascade tail of the shadow_replay_candidates line (motion_output.cpp)
+    formatted at its worst case, every option on at shadow_cascade_max cascades
+    with ten-digit counters, fits the bound the source computes from the same
+    format strings (the tail is never truncated silently: a field that does not
+    fit is left off and counted)."""
+
+    def test_worst_case_fits_bound(self):
+        import re
+        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        header = (ROOT / 'src/renderer/shadow_replay_projection.h').read_text()
+        cascades = int(re.search(r'constexpr unsigned shadow_cascade_max = (\d+);', header).group(1))
+        bound = re.search(r'constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max \* \((.*?)\) \+ (\d+) \+ (\d+) \+ 1;', source)
+        self.assertIsNotNone(bound)
+        total = cascades * eval(bound.group(1)) + int(bound.group(2)) + int(bound.group(3)) + 1
+        per_cascade = [' c%u=%u', ' capped%u=%u', ' static_only_refused%u=%u', ' large_admitted%u=%u', ' class_miss%u=%u']
+        for fmt in per_cascade:
+            self.assertIn(fmt, source)
+        tail = ''.join(fmt.replace('%u', '%d') % (cascades - 1, 4294967295) for fmt in per_cascade) * cascades
+        tail += ' class_store=%d class_ring=%d' % (4294967295, 4294967295)
+        tail += (' dropped_min_size%d=%.4g' % (cascades - 1, -1.2345e308)) * cascades
+        tail += ' select_us=%.1f' % 1e19  # a double's twenty digits: more than 300,000 years of microseconds
+        self.assertLessEqual(len(tail) + 1, total, (len(tail), total))
+
+
 def launch(directory, *args, inherited=None):
     spec = importlib.util.spec_from_file_location('cascade_manage', ROOT / 'tools/manage.py')
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
@@ -747,6 +778,9 @@ class LauncherOptions(unittest.TestCase):
             for value, expected in (('off', '0'), ('on', '1')):
                 code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-sun-poll', value, inherited={'X3M_SHADOW_SUN_POLL': '1' if value == 'off' else '0'})
                 self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_SUN_POLL'], expected)
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', '250,1500,7500,37500,150000', '--shadow-cascade-caps', '128,512,1024,1024,1024')
+            self.assertEqual(code, 0, error); env = json.loads(output)['env']
+            self.assertEqual((env['X3M_SHADOW_CASCADES'], env['X3M_SHADOW_CASCADE_CAPS']), ('250.0,1500.0,7500.0,37500.0,150000.0', '128,512,1024,1024,1024'))
             code, output, error = launch(directory, *self.BASE, '--shadow-cascades', '250,1500,7500', '--shadow-cascade-sizes', '4096,2048,1024', '--shadow-cascade-caps', '64',
                                          '--shadow-cascade-budget', '900')
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
@@ -760,9 +794,9 @@ class LauncherOptions(unittest.TestCase):
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
-            for value in ('1500,250', '250,250', '49', '50001', '1,2,3,4,5', 'abc', '250,,1500', 'nan'):
+            for value in ('1500,250', '250,250', '49', '150001', '1,2,3,4,5,6', 'abc', '250,,1500', 'nan'):
                 code, _, error = launch(directory, *self.BASE, '--shadow-cascades', value)
-                self.assertNotEqual(code, 0, value); self.assertIn('--shadow-cascades takes 1..4 ascending half-extents within [50, 50000]', error)
+                self.assertNotEqual(code, 0, value); self.assertIn('--shadow-cascades takes 1..5 ascending half-extents within [50, 150000]', error)
             for option, value, message in (('--shadow-cascade-sizes', '63', '--shadow-cascade-sizes takes one value or one per cascade within [64, 4096]'),
                                            ('--shadow-cascade-sizes', '4096,4096', '--shadow-cascade-sizes takes one value or one per cascade'),
                                            ('--shadow-cascade-caps', '4097', '--shadow-cascade-caps takes one value or one per cascade within [1, 4096]'),

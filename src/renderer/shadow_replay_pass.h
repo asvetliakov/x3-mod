@@ -9,7 +9,7 @@
 // the map; the caller (MotionOutput) decides the frame, proves the leases and
 // serializes rendering, Reset and teardown. Documented D3D9 only.
 // Cascades (docs/architecture/shadow-cascades.md): attach_cascades gives the
-// pass up to four maps of their own sizes and one depth attachment of the
+// pass up to five maps (shadow_replay_maps_max) of their own sizes and one depth attachment of the
 // largest size (a depth-stencil surface larger than the render target is
 // documented D3D9); execute_cascades fills any subset of them in one
 // transaction (one block capture/apply); per map the pass keeps the basis the

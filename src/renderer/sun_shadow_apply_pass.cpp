@@ -193,7 +193,7 @@ HRESULT SunShadowApplyPass::ensure_block() noexcept {
 // The quad's whole device state: the target alone (depth and the other
 // targets unbound, RT0 bound before its full viewport: a viewport must fit
 // the bound target), the quad program pair, the multiply blend, point/clamp
-// samplers 0-1 (0-4 for the cascade program).
+// samplers 0-1 (0-5 for the cascade program).
 HRESULT SunShadowApplyPass::normalize(IDirect3DSurface9* target, UINT w, UINT h, IDirect3DPixelShader9* program, UINT samplers) noexcept {
     D d = device_;
 #define STEP(call) do { const HRESULT hresult = (call); if (FAILED(hresult)) return hresult; } while (false)
@@ -325,8 +325,8 @@ HRESULT SunShadowApplyPass::execute_cascades(const SunShadowCascadeFrame& in, Su
     if (FAILED(same_device(device_, in.depth_share)) || FAILED(same_device(device_, in.target))) return skip("device");
     // c0-c3, the nine rotated kernel offsets (c4-c12, row-major as the
     // single-map program's j, i loops) and five constants per cascade from
-    // c13; an unused cascade keeps zero rows with row 0 w = 2, so it never
-    // contains a pixel.
+    // c13 (c13-c37 for five cascades); an unused cascade keeps zero rows with
+    // row 0 w = 2, so it never contains a pixel.
     const unsigned rotation = in.jitter_index & 7u;
     constexpr unsigned cascade_base = 13, constants = cascade_base + 5 * shadow_cascade_max;
     float block[constants][4] = {

@@ -1,21 +1,15 @@
-source commit: c0c76b19e99faa0b983706ec71da987cf09eb968-dirty
--- Configuring done (0.6s)
--- Generating done (0.0s)
-CMake Warning (unused-cli):
-  Manually-specified variables were not used by the project:
-
-    CMAKE_TOOLCHAIN_FILE
-
-
--- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a18fd4d740a73398e/build
+source commit: 8e756cca24ab5b17ff775988b257940c4f739058
+-- Configuring done (0.3s)
+-- Generating done (0.1s)
+-- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a76e082432e1ab2af/build
 [  1%] Refreshing compiled-in source commit
-source commit: c0c76b19e99faa0b983706ec71da987cf09eb968-dirty
+source commit: 8e756cca24ab5b17ff775988b257940c4f739058
 [  1%] Built target x3m_source_commit
 [  2%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
 [  4%] Building compositor CPU boundary
-/Users/asvetl/x3-mod/.claude/worktrees/agent-a18fd4d740a73398e/build/compositor_bridge
-[  6%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
-[  6%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
+/Users/asvetl/x3-mod/.claude/worktrees/agent-a76e082432e1ab2af/build/compositor_bridge
+[  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
+[  9%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
 [  9%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [  9%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [ 10%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/proxy_identity.cpp.obj
