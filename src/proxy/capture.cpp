@@ -749,6 +749,20 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         // device references or manufacture a zero return for the application.
         const bool accounting = !ctx.compositor && !ctx.bloom_busy
             && !ctx.motion_output.reference_accounting_busy() && !ctx.bloom.releasing();
+        // Caster retention (shadow-caster-retention.md, "References"): a retained
+        // resource the application already released pins one device reference the
+        // accounting below cannot see, so the final-Release probe would never
+        // match. While the count is within the store's references of the final
+        // one the store is flushed first (flush=teardown); zero cost while the
+        // store holds nothing, which is always the case with the option off.
+        if (accounting) {
+            const unsigned retained = ctx.motion_output.retention_references();
+            if (retained) {
+                ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
+                const ULONG now = fn(d);
+                if (now <= ctx.motion_output.device_references() + ctx.bloom.references() + 1 + retained) ctx.motion_output.retention_before_final_release();
+            }
+        }
         const unsigned held = accounting
             ? ctx.motion_output.device_references() + ctx.bloom.references() : 0;
         if (held) {
@@ -2175,7 +2189,22 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                     double(set.count>2?set.cascades[2].half_extent:0.f),double(set.count>3?set.cascades[3].half_extent:0.f),
                     set.count?set.cascades[0].size:0u,set.count>1?set.cascades[1].size:0u,set.count>2?set.cascades[2].size:0u,set.count>3?set.cascades[3].size:0u,
                     set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f));
-                hooked.motion_output.configure_shadow_cascades(set); } } }
+                hooked.motion_output.configure_shadow_cascades(set); } }
+          // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:
+          // X3M_SHADOW_RETENTION_CENSUS=1 runs the store without references or replay (stage 1),
+          // X3M_SHADOW_CASTER_RETENTION=1 replays retained static casters (stage 2; wins over the census).
+          // X3M_SHADOW_CASTER_RETENTION_AGE (frames, 1..10000000, default 7200) and
+          // X3M_SHADOW_CASTER_RETENTION_EPS (units, 1e-4..100, default 0.05) calibrate both;
+          // X3M_SHADOW_RETENTION_TIMING=1 adds the per-draw cost to the frame line (two counter reads per recorded draw).
+          { const auto flag=[&](const wchar_t* name){ return GetEnvironmentVariableW(name,setting,4)==1&&setting[0]==L'1'; };
+            const bool census=flag(L"X3M_SHADOW_RETENTION_CENSUS"), live=flag(L"X3M_SHADOW_CASTER_RETENTION");
+            if(census||live){
+                std::uint32_t age=shadow_retention::age_cap_default; double eps=shadow_retention::eps_default; wchar_t number[32]{}; wchar_t* stop=nullptr;
+                if(GetEnvironmentVariableW(L"X3M_SHADOW_CASTER_RETENTION_AGE",number,32)>0){ const unsigned long v=wcstoul(number,&stop,10); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::age_cap_min&&v<=shadow_retention::age_cap_max)age=std::uint32_t(v); }
+                if(GetEnvironmentVariableW(L"X3M_SHADOW_CASTER_RETENTION_EPS",number,32)>0){ stop=nullptr; const double v=wcstod(number,&stop); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::eps_min&&v<=shadow_retention::eps_max)eps=v; }
+                const shadow_retention::Mode mode=!enabled?shadow_retention::Mode::Off:live?shadow_retention::Mode::Live:shadow_retention::Mode::Census;
+                log("shadow_retention_mode requested=1 enabled=%u mode=%s age_cap=%u eps=%.9g",enabled,live?"live":"census",unsigned(age),eps);
+                hooked.motion_output.configure_shadow_retention(mode,age,eps,flag(L"X3M_SHADOW_RETENTION_TIMING")); } } }
       // Scene-end sun-shadow application (legacy-sun-application.md section 2;
       // X3M_SUN_SHADOW_APPLY=1): the lane and the depth replay of the same
       // frame; exponent 1 on original shading, 1 / 2.2 with linear materials.
@@ -2899,6 +2928,17 @@ extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_cascade_readb
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_shadow_replay_readback(out,floats,width,height,params,param_floats,cascade);
+}
+// Caster retention seam (shadow-caster-retention.md): the store's levels and
+// counters, and the synthetic lifetime observer (births, retirements, journal).
+extern "C" __declspec(dllexport) unsigned x3m_shadow_retention_fixture_stats(IDirect3DDevice9* device,std::uint64_t* out,unsigned count) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    return it==x3m::devices.end()?0u:it->second->motion_output.fixture_shadow_retention_stats(out,count);
+}
+extern "C" __declspec(dllexport) void x3m_shadow_retention_fixture_lifetime(unsigned op,std::uint64_t a,std::uint64_t b) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::shadow_retention_fixture_lifetime(op,a,b);
 }
 // HDR seam: fault injection (renderer::HdrFault kinds, `count` firings; a null
 // device queues the fault for every hooked device and the next attach) and

@@ -7,9 +7,15 @@ stage 1 (census) and stage 2 (static retention)** after the RE answers in
 [shadow-cascades.md](shadow-cascades.md) §1 (one record list, per-cascade masks and caps) and
 [shadow-replay-gates.md](shadow-replay-gates.md) ("Casters by bounds", the geometry lease);
 ledger [../verification/directional-shadows.md](../verification/directional-shadows.md) ("Run 38
-A (run111) diagnosis", cause 3). Nothing here is implemented. It assumes the diagnosis' fixes 1
+A (run111) diagnosis", cause 3). It assumes the diagnosis' fixes 1
 and 2 (one validated frame sun from the bound program's own `LightDir_Dir0`; an extent cache
 that does not thrash) and the N-cascade replay.
+
+**Status 2026-09-17: stages 1 and 2 are implemented, default off, fixture-qualified on bottle
+X3, not installed and not yet run in the game** (see "Implemented" at the end for what was
+built, where it differs from the text below, and what is unverified). Stage 3 and the census
+calibration (`eps`, `age_cap`, transit behaviour) are open; stage 2 stays off until a census
+run settles them.
 
 ## Problem
 
@@ -363,6 +369,80 @@ existing executable-hash gate; with the gate closed the feature is off, not degr
 export, lock or layout is involved. Windows-compatible source only; native behaviour
 unverified ([platform-portability.md](platform-portability.md) gets the line when stage 2
 lands).
+
+## Implemented (2026-09-17)
+
+Files: the store `src/proxy/shadow_retention_core.h` (pure CPU, host-compiled by
+`verification/analysis/test_shadow_retention.py`), its per-device state
+`src/proxy/shadow_retention.h`, the owner `src/proxy/motion_output_shadow_retention_inc.h`; the
+record hook at the end of `note_candidate_draw`, the scene-end call before the capture lines and
+the issue loop in `run_shadow_replay_cascades`; the launcher options `--shadow-retention-census`,
+`--shadow-caster-retention`, `--shadow-caster-retention-age`, `--shadow-caster-retention-eps`
+(`X3M_SHADOW_RETENTION_CENSUS`, `X3M_SHADOW_CASTER_RETENTION`, `…_AGE`, `…_EPS`;
+`X3M_SHADOW_RETENTION_TIMING=1` adds the per-draw cost to the frame line); the parser and census
+summary `tools/analysis/shadow_retention.py`. Both modes need `--shadow-cascades` (the single map
+is unchanged); `shadow_retention_device … enabled=0 reason=cascades|lifetime|allocation|journal`
+names a refusal. Evidence: [directional-shadows.md](../verification/directional-shadows.md),
+"Caster retention, stages 1 and 2".
+
+Implemented as written: the node key, the payload with double world rows and the world AABB,
+whole-set supersede, the excluded classes, every expiry of the table, the held-resource table
+(one native reference per distinct resource, taken at the draw), managed non-dynamic buffers
+only (the candidate filter), flush before every Reset attempt, at teardown and on a sun
+re-latch, the journal consumer rules (drain at the scene end and the frame begin; full
+revalidation on overflow, on `available=false` and at registration; `FlushAll` drops the
+store; epochs from the drain), the orphan probe behind the attach self-test
+(`orphan_probe=`), the two census lines and the F8 `shadow_retention_caster` line, the
+`retained=` flag on `shadow_replay_caster` and `replayed_live<i>` / `replayed_retained<i>` on
+`shadow_replay_depth` (both only while the option is on: off is byte-identical), per-frame
+cascade masks of retained records against the current boxes, retained issues inside the
+per-cascade caps (live first, retained nearest first) and inside the issue budget.
+
+Where the build differs from, or sharpens, the text above:
+
+- **Static class.** Per record: the first sighting stores the rows, each later verified
+  sighting within `eps` of the *stored* rows (not of the previous sighting, so slow drift
+  accumulates against one reference) raises the record's streak; a node is static when every
+  record of it has a known extent and a streak of 8, i.e. from its ninth sighting. A record
+  that joins a static node (another draw admitted, a LOD swap) returns the node to the moving
+  class until that record has earned its streak. Verification runs on every sighting of a
+  moving node, on a resighting after any unseen frame, after a set change, and on 1 sighting in
+  16 otherwise.
+- **The seen path keeps today's per-frame lease.** The store takes its own references beside
+  it; the contract's reuse of the held references for live draws (no per-frame
+  `GetVertexDeclaration` / `AddRef` / `Release`) is not built. It is an optimisation of the
+  live path, not a retention rule.
+- **`unscoped`.** A draw the scope gate refuses is still routed (unmatched) and recorded, so it
+  reaches the record hook: it is counted there and never retained. Before this was handled the
+  fixture showed such a draw flushing the whole store every frame as an epoch change (its
+  epochs read 0).
+- **A retained replay needs a scene end.** The route finds the bloom copy only behind a scene
+  draw, so a frame with no routed scene draw replays nothing, as today; the fixture submits an
+  excluded-class anchor draw on every frame for this reason.
+- **Teardown.** A held resource the application already released pins one device reference
+  that the device-Release hook's accounting cannot see, so its final-Release probe would never
+  match. The hook (`release_device`, `src/proxy/capture.cpp`) flushes the store when the count
+  is within the store's references of the final one; a false positive costs only the off-screen
+  shadows. The store's Releases run with the reference accounting held busy, as `taa_call` and
+  `release_resources` do.
+- **Device loss** is a failed `Present` (`flush=device`). Not reachable in the fixture.
+- **`flush_sun`** fires on the latch's `Relatched` verdict. "The first validated sun after a
+  period with none" cannot occur on one device: the latch stays valid until attach.
+- **Draws after the frame's scene end** are not sightings, and a frame that never reaches a
+  scene end drops its sightings at the next frame begin (`abandoned`): their rows belong to a
+  camera latch that is gone.
+- **`first_seen_in_range`**: a new node whose world AABB centre lies within 0.8 × the outermost
+  half-extent of the eye on its first sighting (it did not enter through the box edge).
+- Fields after `us` on the frame line: `refused` (capacity with no unseen node to evict, a
+  full resource table, an unleased draw), `moving_dropped`, `abandoned`, `deferred` (draws
+  ignored while an epoch flush is pending: nothing is released at a draw), `journal_us`,
+  `walk_us`, `draw_us`, `draw_calls`.
+- Fixture case l runs on the host (the store's recovery in double from float32 rows, 2,000
+  random pairs of unrelated cameras at the run111 offset, 600-unit AABB: worst 0.012 units
+  against `eps` 0.05); the Wine script places its camera at the same offset.
+
+Unverified: native Windows; device loss; the game (no census run yet), hence `eps`,
+`age_cap`, the transit behaviour and whether `0x0046d080`'s batches arrive as managed draws.
 
 ## Open RE (not blocking stages 1–2)
 

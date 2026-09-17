@@ -108,6 +108,21 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   export, layout or hash. Cross-compiled and fixture-qualified under CrossOver; native
   execution, and a native driver's handling of the loop inside the branch, are unverified.
 
+- Sun-shadow caster retention ([shadow-caster-retention.md](shadow-caster-retention.md),
+  `--shadow-retention-census`, `--shadow-caster-retention`, default off) is documented D3D9 and
+  COM only: `AddRef`/`Release` on the application's own managed vertex buffer, index buffer and
+  vertex declaration (one reference per distinct resource, taken at the draw), the same
+  `SetStreamSource`/`SetIndices`/`SetVertexDeclaration` replay as the live records, every
+  reference released before every Reset attempt, on a failed Present, at teardown and before
+  the application's final device Release. The orphan probe reads the documented
+  `AddRef`/`Release` return values in an advisory, fail-safe role behind a capability flag that
+  one private managed buffer decides at attach (`orphan_probe=` in `shadow_retention_device`);
+  a runtime that does not report counts only delays a drop to the age cap, box exit or
+  retirement. Node identity, class bits and the retirement journal come from the game-EXE
+  observers behind the executable gate; with the gate closed the feature is off. No Wine
+  export, lock, layout or hash. Cross-compiled and fixture-qualified under CrossOver (where
+  the probe reports counts); native execution is unverified.
+
 - The point-light root-admission patch (`--point-light-root-admission`,
   [camera-and-lights.md](../reverse-engineering/camera-and-lights.md)
   "Implementation") is documented Win32 only: `VirtualProtect`,

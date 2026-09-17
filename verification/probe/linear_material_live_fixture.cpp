@@ -247,6 +247,7 @@ namespace telemetry{enum class Metric{RouteGate,RouteSetRenderTarget,RouteLazyFl
 // Inert mirror of the X3M_FRAME_TIMING redundant-state counters
 // (src/proxy/frame_timing.h): the extracted shadow updates report into them
 // and they measure nothing here.
+namespace shadow_retention {enum class Flush:std::uint8_t{None,Epoch,Reset,Device,Teardown,Sun,Observer};}
 namespace frame_timing {
 enum class StateSet : unsigned { RenderState = 0, SamplerState = 1, Texture = 2 };
 inline void state_write(StateSet, unsigned, bool, bool) noexcept {}
@@ -443,6 +444,10 @@ public:
  void release_depth_leases()noexcept{++depth_lease_releases_;}
  // Scene-end sun-shadow apply quad (sun_shadow_apply_pass.h) and the candidate
  // extent queue: lifetime seams only, counted here.
+ // Caster retention (default off): teardown and Reset flush seams only.
+ bool retention_=false;unsigned retention_detaches_=0,retention_reset_flushes_=0;
+ void detach_shadow_retention()noexcept{++retention_detaches_;}
+ void flush_shadow_retention(shadow_retention::Flush reason)noexcept{retention_reset_flushes_+=reason==shadow_retention::Flush::Reset;}
  std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
  void release_candidate_extents()noexcept{++candidate_extent_releases_;}
  bool candidates_requested_=false,sun_apply_applied_=false,sun_apply_attempted_=false,sun_apply_attach_failed_=false,depth_cascade_frame_ok_=false;

@@ -1,0 +1,68 @@
+{
+ "case": "seam-ownership-shadow-retention-off",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/verification/probe/build/motion_output_fixture.exe": "f59928eaee748a46b111bcf3b5305f1d98e73265e0f342d270355dfeae5b2282",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/verification/probe/build/motion-output-seam/d3d9.dll": "da34a3f09d2367b090660420fa460f2e337865a2d19a887ba5a63178b9b17070",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a463ae19400a37a2f/build/d3d9.dll": "acdd32c94e5e22362d7d802e0a61bcd753db0c8665409de822d93d667715945e"
+ },
+ "mode": "off",
+ "frames": 1461,
+ "cases": [
+  "a_turn_away",
+  "b_moving",
+  "c_retired",
+  "d_lod_swap",
+  "e_shared_mesh",
+  "f_buffer_lock",
+  "g_release_first",
+  "h_reset",
+  "j_excluded",
+  "i_capacity",
+  "k_age_and_sun",
+  "teardown"
+ ],
+ "failed_reset": "8876086c",
+ "lock_drop_frames": 1,
+ "orphan_drop_frames": 2,
+ "orphan_probe": 0,
+ "checks": 5876,
+ "compared_frames": 38,
+ "retained_compared_frames": 0,
+ "absent_maps": 0,
+ "color_sha256": "a887c9ae16c7c106baf67e2e3ed9a9529365cacd265d69bc5c7277482208d238",
+ "map": {
+  "max_depth_error": 1.6996652858480843e-06,
+  "covered_texels": 776,
+  "coverage_disagreements": 0,
+  "maps": 76
+ },
+ "us": {
+  "frames": 1453,
+  "min": 19.5,
+  "median": 24.6,
+  "max": 1881.3,
+  "bulk": {
+   "frames": 5,
+   "issues_median": 1402,
+   "us_median": 1874.3
+  }
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260917-103315-360355",
+ "trace_sha256": "84c8e267f93939147ccb139e1fa5af7641d5c5bff0d9ae4dd094277c3946c552",
+ "dll_sha256": "da34a3f09d2367b090660420fa460f2e337865a2d19a887ba5a63178b9b17070",
+ "exe_sha256": "f59928eaee748a46b111bcf3b5305f1d98e73265e0f342d270355dfeae5b2282",
+ "presented_identical_to": [
+  "seam-ownership-shadow-retention-live",
+  "seam-ownership-shadow-retention-census"
+ ]
+}

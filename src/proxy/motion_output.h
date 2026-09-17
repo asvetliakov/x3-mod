@@ -43,6 +43,7 @@
 #include "fade_route_core.h"
 #include "shadow_replay_candidates.h"
 #include "shadow_replay_depth.h"
+#include "shadow_retention.h"
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
 #include "../renderer/sun_shadow_apply_pass.h"
@@ -118,6 +119,11 @@ struct MotionRoute {
     renderer::RigidDrawKey key{};
     std::uint64_t rows_hash = 0;
     std::uint64_t load_epoch = 0, registry_epoch = 0;
+    // Caster retention (shadow-caster-retention.md): the scope's observer epoch,
+    // registry and node class bits, from the reads sample_scope already makes.
+    std::uint64_t observer_epoch = 0;
+    std::uintptr_t registry = 0;
+    std::uint32_t node_flags12c = 0, node_flags130 = 0;
     std::uint64_t ticks = 0;  // CPU ticks of apply (before_draw) plus undo (after_draw); telemetry only.
     // Conservative screen rectangle of an admitted distance-fade draw
     // (docs/architecture/linear-distance-fade-region.md, step 1): derived
@@ -377,6 +383,7 @@ struct MotionOutputFixtureScope {
     std::uint64_t load_epoch = 0, registry_epoch = 0, node_serial = 0, camera_serial = 0;
     std::uintptr_t node = 0, camera = 0, registry = 0, mesh = 0;
     std::uint32_t node_handle = 0, camera_handle = 0, model = 0, lod = 0;
+    std::uint32_t flags12c = 0, flags130 = 0; // node class bits (caster retention's excluded classes)
 };
 struct MotionOutputFixtureConfig {
     std::uint32_t size = sizeof(MotionOutputFixtureConfig);
@@ -388,6 +395,8 @@ struct MotionOutputFixtureConfig {
 };
 // Device-owned last native indexed submission. Failure is diagnostic only and
 // never changes source submission, route state, or the caller's WRAP values.
+// Caster retention seam: the synthetic lifetime observer (motion_output_shadow_retention_inc.h lists the operations).
+void shadow_retention_fixture_lifetime(unsigned op, std::uint64_t a, std::uint64_t b) noexcept;
 struct MotionOutputFixtureWrapSnapshot {
     std::uint64_t sequence = 0;
     HRESULT result = D3DERR_NOTFOUND;
@@ -487,6 +496,17 @@ public:
     // cascade apply program. Requires the depth replay (the caller enables
     // both); count 0 (the default) leaves the single-map path untouched.
     void configure_shadow_cascades(const renderer::ShadowCascadeSet& set) noexcept { depth_cascade_config_=set; }
+    // Caster retention (shadow-caster-retention.md): census or live, on the cascades only; off by default.
+    void configure_shadow_retention(shadow_retention::Mode mode, std::uint32_t age_cap, double eps, bool timing) noexcept {
+        retention_mode_=mode; retention_age_cap_=age_cap; retention_eps_=eps; retention_timing_=timing;
+    }
+    // The device Release hook: a held application resource the application has
+    // already released pins one device reference that device_references() cannot
+    // count. When a Release could be the application's final one (the count is
+    // within retention_references() of it) the hook flushes the store first;
+    // a false positive costs only the off-screen shadows until resubmission.
+    unsigned retention_references() const noexcept { return retention_&&!reference_accounting_busy()?retention_->store.references():0u; }
+    void retention_before_final_release() noexcept { flush_shadow_retention(shadow_retention::Flush::Teardown); }
     const renderer::ShadowCascadeSet& shadow_cascades() const noexcept { return depth_cascades_; }
     const renderer::ShadowReplayCascade& shadow_replay_cascade() const noexcept { return depth_cascade_; }
     bool sun_shadow_lane_enabled() const noexcept { return sun_lane_active_; }
@@ -1157,9 +1177,28 @@ private:
     bool ensure_shadow_replay_depth() noexcept;
     void run_shadow_replay_depth(const bool* quiet) noexcept;
     void log_depth_refusal(shadow_replay::DepthReason reason, const char* detail, HRESULT result, unsigned stage) noexcept;
+    // Caster retention (motion_output_shadow_retention_inc.h): the configured
+    // mode and this device's state (null while off: every site tests it).
+    shadow_retention::Mode retention_mode_=shadow_retention::Mode::Off;
+    std::uint32_t retention_age_cap_=shadow_retention::age_cap_default;
+    double retention_eps_=shadow_retention::eps_default;
+    bool retention_timing_=false;
+    std::unique_ptr<ShadowRetention> retention_;
+    bool retention_live() const noexcept { return retention_&&retention_->mode==shadow_retention::Mode::Live; }
+    void attach_shadow_retention() noexcept;
+    void note_retention_draw(const MotionRoute& route, const shadow_replay::Record& record, const shadow_replay::DepthGeometry& geometry, const shadow_replay::ExtentEntry* extent) noexcept;
+    void retention_scene_end() noexcept;
+    void publish_shadow_retention() noexcept;
+    void flush_shadow_retention(shadow_retention::Flush reason) noexcept;
+    void retention_frame_begin() noexcept;
+    void drain_retention_journal() noexcept;
+    void release_retention_pending() noexcept;
+    void detach_shadow_retention() noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 public:
     HRESULT fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats, unsigned cascade=0) noexcept;
+    // Retention seam: the store's levels and cumulative counters (index list in the inc file).
+    unsigned fixture_shadow_retention_stats(std::uint64_t* out, unsigned count) noexcept;
 private:
 #endif
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;

@@ -1519,3 +1519,89 @@ Two reviews of `3f14880`, no blocker; seven items. Final binaries `build/d3d9.dl
 - The shift fit's v axis is weaker than u in this scene (flat valley along v in single frames); the
   eight-phase sum is what is asserted.
 
+## Caster retention, stages 1 and 2 (2026-09-17)
+
+Contract and what was built: [shadow-caster-retention.md](../architecture/shadow-caster-retention.md),
+"Implemented". Default off (`--shadow-retention-census`, `--shadow-caster-retention`; cascades only).
+Base a517042, bottle X3 (arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), not installed, not run in
+the game. Every Wine command ran as `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py …`.
+
+**Build.** `cmake --build build --clean-first -j8`: 70 objects, 0 warnings, DLL `acdd32c9…`;
+`verification/probe/build_motion_output.sh` (seam DLL `da34a3f0…`, fixture `f59928ea…`, `-Werror`).
+`verification/probe/check_no_x87.py build/d3d9.dll`: PASS, 77 roots, 520 reachable functions, 0
+violations (the record hook runs on the audited draw path).
+
+**Fixture** (`run_motion_output.py --dll … --seam … --fixture …` with the case names; new mode
+`shadowretention`, script `verification/probe/motion_output_shadow_retention_inc.h`; records
+`verification/results/bottle-X3/seam-ownership-shadow-retention-{live,census,off}-fixture.json`). One
+1,461-frame script under the three settings of the DLL, the scripted camera 81,400 units from the
+origin, two cascades (seam extents 8 / 400, 256² maps), synthetic nodes born in a synthetic lifetime
+observer with the journal's semantics, age cap 640. The fixture asserts the store's levels and
+counters through the seam and the COM reference counts of its own buffers and declaration by
+`AddRef`/`Release`; the runner compares every sampled cascade map with the CPU twin of the submitted
+draws plus, live only, the draws the script says must be kept, each placed by the camera of the frame
+that recorded it.
+
+| Setting | Fixture + runner checks | Compared frames (with kept draws) | Maps, worst depth error, coverage disagreements |
+| --- | --- | --- | --- |
+| live | 8,816 | 38 (28) | 76, 1.7e-6, 0 |
+| census | 8,814 | 38 (0) | 76, 1.7e-6, 0 |
+| off | 5,876 | 38 (0) | 76, 1.7e-6, 0 |
+
+The three settings present byte-identical frames (one SHA-256 over the 1,461 `COLOR` hashes); with
+the option off the log holds no `shadow_retention` line, no `retained=` and no `replayed_` field.
+
+| Case | Result (live; the census takes the same decisions without references or replay) |
+| --- | --- |
+| a. camera turns away | both casters static from the ninth sighting; kept 3 frames inside the frustum unsubmitted, then 600 frames at yaw 120° + 0.5°/frame, maps equal to the twin on the 9 sampled frames; each buffer and the declaration at baseline + 1 throughout, baseline after retirement. Control (off / census): the blob is absent on the first culled frame |
+| b. moving | a node whose rows change every frame never becomes static and leaves on its first unseen frame (`moving_dropped` +1, map = the static node alone); a static node moved while unseen shows once, at the new place, `reclassified` +1, drift 0.75 units |
+| c. retired | journal entry: gone before the next replay, its buffer at baseline, the other node kept; 2,049 entries between drains with the node killed silently: `journal_overflow` +1, full revalidation, store empty, baseline |
+| d. LOD swap | same serial, `lod` 0 → 1, another buffer: `lod_replaced` +1, records 2 → 2, map = the new mesh only on the swap frame, old buffer at baseline |
+| e. shared mesh | two nodes, one buffer: two blobs, `refs_held` 2 (buffer + declaration), buffer at baseline + 1 for two records and still after one node retires, baseline after the second |
+| f. buffer Lock | writable Lock of the held unseen buffer: dropped after 2 frames (bound 8), `buffer_changed` +1, baseline |
+| g. release before retirement | the fixture releases its last reference; the next replay runs from the store's reference and matches the twin; with no retirement the orphan probe (capability `orphan_probe=1` on this runtime: 2 after `AddRef`, 1 after `Release` on a private managed buffer) drops the record after 3 frames, `buffer_orphaned` +1. Census: `buffer_gone` +1 after 4 frames |
+| h. Reset | store empty, `refs_held` 0 and every count at baseline after `Reset`; then a Reset that really fails (`D3DERR_INVALIDCALL` 8876086c, a fixture-owned default-pool buffer alive): flushed all the same (`shadow_retention_flush reason=reset nodes=2 refs=3` twice), baseline, the second Reset succeeds; retention resumes on resubmission and matches the twin |
+| i. capacity | 700 static nodes retained unseen + 324 live = 1,024; the 1,025th node: `evicted` +1, `refused` +0, 1,024 nodes; 600 retirements in one frame drained in that frame (599 found: one was the evicted node) with no overflow; 2,049 entries: overflow, revalidation, store empty, the shared mesh at baseline |
+| j. excluded classes | one node per bit (`flags12c` 0x20, 0x200, 0x4000, 0x10000000; `flags130` 0x200) and one draw with `known=0`: drawn and replayed live, never in the store (`excluded_class`, `unscoped` counted), maps equal to the off control |
+| k. age cap, sun | retained through 640 unseen frames, gone on the 641st (`age` +1, baseline); a persisting second sun direction re-latches on its 8th frame and the store is flushed that frame (`flush=sun`), nothing retained under the old sun; retention resumes under the new one and matches the twin |
+| teardown | the script ends with two nodes retained and their buffers already released by the fixture: `shadow_retention_flush reason=teardown nodes=2 refs=3` precedes `device_destroy` (the device-Release hook flushes before its final-Release probe). Host model of the same hook in both alias models: `test_capture_bloom_lifetime`, 42 scenarios, 194 checks |
+| l. precision twin | host, `test_shadow_retention`: 2,000 pairs of unrelated cameras at the run111 offset, 600-unit AABB, engine product in float32, recovery in double: worst 0.012 units against `eps` 0.05 |
+
+F8 window (frames 10–17): `shadow_retention_caster` lines with `class=static unseen≥1`,
+`shadow_replay_caster … retained=0` on live records and `retained=1` on the issued retained ones.
+
+**Cost** (CPU wall time under Wine/FEX, `X3M_SHADOW_RETENTION_TIMING=1`; not game FPS). Record hook:
+median 0.15 µs per recorded draw including its two counter reads (census 0.20). Scene end (`us`):
+median 2.6 µs at the script's small stores, 92 µs median and 271 µs worst walk with 1,024 nodes /
+1,024 records (700 unseen, box and cascade tests, 1/8 buffer checks, the probe slice); 416 µs the
+worst frame of the run; 599 retirements 52 µs (journal 33 µs); overflow + full
+revalidation of the store 162 µs. Replay of 1,402 issues (700 retained + 325 live, two cascades):
+1.81 ms median, 1.29 µs per issue, the same as live issues (census / off, 1,402 live issues: 1.79 /
+1.87 ms). No allocation after attach (the store is 1.77 MB, the live draw list 5,120 entries); no
+device call per draw (a new record in live mode takes up to three `AddRef`); no lock added.
+
+**Unchanged cases on the same binaries**: `seam-ownership-shadow-replay-on` 203, `-off` 99,
+`-taa-…-on` 226, `-taa-…-off` 122, `-casters-20` 203, `-sun-programs` 205, `-cascades` 245,
+`-cascades-casters-20` 245 (max depth error 4.07e-6, as recorded), `-wide` 203, `-far-refused` 203,
+`seam-ownership-taa-camera-candidates-on` 216: all pass. Live (`run_sun_share_live.py`, cases
+`shadow_apply`, `shadow_apply_cascades`, `original_lane`): pass; equal to the committed
+`sun-share-live.json` except `apply_us_max` (timing).
+
+**Host**: `test_shadow_retention` 6 (the store natively: 13 scenario groups incl. the index map
+against `std::map`; the line parsers; the launcher options), the six mock modules and the
+shadow/runner modules: 135 tests OK; the 16 other launcher modules: 214 OK. Mock updates:
+`capture_bloom_lifetime_fixture.cpp` (retention seams of the Release hook + the orphan scenario),
+`linear_material_live_fixture.cpp` (teardown and Reset seams).
+
+**Open.**
+- Not run in the game. The census run (station approach, 180° turns, a parked minute facing away,
+  one gate jump, one load) has to settle `eps`, `age_cap`, `transit_survivors`, the moving share and
+  `us` before stage 2 is trusted; `tools/analysis/shadow_retention.py <log>` prints the summary.
+- Device loss (`flush=device` on a failed `Present`) is not reachable in the fixture; native Windows
+  is cross-compiled only.
+- The live path still takes its per-frame lease; the contract's reuse of the held references for
+  seen draws is not built.
+- Under a cascade's cap the retained records are cut nearest-first per cascade; a record capped out
+  of cascade 0 can still be issued into the outer ones (one draw, fewer issues).
+- A frame without a routed scene draw has no scene end and replays nothing (as before retention).
+

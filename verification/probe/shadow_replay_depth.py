@@ -58,6 +58,21 @@ def parse_depth_line(line):
         raise MalformedLine(line.strip())
     tail, pairs = pairs[len(DEPTH_FIELDS):], pairs[:len(DEPTH_FIELDS)]
     row = {}
+    # Live caster retention (shadow-caster-retention.md): after the cascade
+    # fields, replayed_live<i> replayed_retained<i> per cascade.
+    retained = [(k, v) for k, v in tail if k.startswith('replayed_')]
+    if retained:
+        tail = tail[:len(tail) - len(retained)]
+        count = len(retained) // 2
+        if not tail or len(retained) % 2 or [k for k, _ in retained] != [f'replayed_{kind}{i}' for i in range(count) for kind in ('live', 'retained')]:
+            raise MalformedLine(line.strip())
+        try:
+            values = [int(v) for _, v in retained]
+        except ValueError as error:
+            raise MalformedLine(line.strip()) from error
+        if any(v < 0 for v in values) or count != len(tail) - len(CASCADE_FIELDS):
+            raise MalformedLine(line.strip())
+        row['retention'] = {'live': values[0::2], 'retained': values[1::2]}
     if tail:
         count = len(tail) - len(CASCADE_FIELDS)
         if not 1 <= count <= 4 or [k for k, _ in tail] != [f'draws{i}' for i in range(count)] + list(CASCADE_FIELDS):
@@ -73,6 +88,8 @@ def parse_depth_line(line):
         if sum(cascades['draws']) > cascades['issues'] or (cascades['far_replayed'] and count > 1 and not cascades['draws'][-1]):
             raise MalformedLine(f'cascade draws inconsistent: {line.strip()}')
         row['cascades'] = cascades
+        if 'retention' in row and [a + b for a, b in zip(row['retention']['live'], row['retention']['retained'])] != cascades['draws']:
+            raise MalformedLine(f'live + retained issues differ from the cascade draws: {line.strip()}')
     for key, value in pairs:
         try:
             row[key] = float(value) if key == 'us' else int(value)
@@ -209,7 +226,9 @@ def expected_map(draws, camera, basis, size):
         rows = rows_matrix(d['t'], d['p'], d['zo'])
         tri = []
         for v in shape_vertices(d['shape']):
-            nx, ny, depth = project_vertex(v, rows, camera, basis)
+            # A retained caster (shadow-caster-retention.md) keeps the world place its rows
+            # had under the camera of the frame it was recorded on (`camera` of the draw).
+            nx, ny, depth = project_vertex(v, rows, d.get('camera', camera), basis)
             px, py = to_texels(nx, ny, size)
             tri.append((px, py, depth))
         triangles.append(tri)
