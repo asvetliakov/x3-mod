@@ -1,7 +1,9 @@
 #pragma once
 // Default-off frame-time diagnostic (X3M_FRAME_TIMING=1, launcher
-// --frame-timing, requires --telemetry). frame_end logs only every 300 frames,
-// so a slow window cannot be located inside it; this collects one sample per
+// --frame-timing, requires --telemetry). frame_end logs every 300 frames by
+// default (--frame-end-stride widens or narrows that cadence, at one line per
+// frame at stride 1), so a slow window cannot be located inside a default-stride
+// log without per-frame statistics; this collects one sample per
 // frame into fixed-size arrays and reduces them at the window boundary into a
 // single `frame_timing` line plus up to four `frame_timing_slow` witnesses.
 // Diagnostic timings, never game FPS: dt is the Present-to-Present interval

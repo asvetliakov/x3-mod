@@ -89,6 +89,7 @@ struct PointSun {
     PointSunReason reason = PointSunReason::Off;
     double distance = 0.;              // camera -> light at the decision
     unsigned rederived = 0;            // cascades whose held direction changed this frame
+    unsigned rederived_mask = 0;       // ... and which ones (bit k = cascade k; X3M_SHADOW_SUN_TRACE reports it per frame)
     bool carried_frame = false;        // decided on the last validated position, not on this frame's poll
     double used[3]{};                  // the position the decision used
     // Carried.
@@ -103,7 +104,7 @@ struct PointSun {
     void reset() noexcept { *this = PointSun{}; }
     void begin_frame() noexcept {
         polled = light_valid = false; poll_reason = PointSunReason::Off; checks = disagreements = 0; worst_sin2 = 0.; worst_opposed = false;
-        decided = 0; reason = PointSunReason::Off; distance = 0.; rederived = 0; carried_frame = false;
+        decided = 0; reason = PointSunReason::Off; distance = 0.; rederived = 0; rederived_mask = 0; carried_frame = false;
     }
     // The frame's poll result: a light (engine integers) or why there is none.
     void set_poll(const std::int32_t* position, PointSunReason why) noexcept {
@@ -190,7 +191,7 @@ struct PointSun {
                     for (unsigned i = 0; i < 3; ++i) anchor[k][i] = keep ? old.center_d[i] : centre[i];
                     const bool adopt = k && sine2(held[k - 1], ideal, sin2, opposed) && !opposed && sin2 <= limit2;
                     for (unsigned i = 0; i < 3; ++i) { held[k][i] = adopt ? held[k - 1][i] : ideal[i]; suns[k * 4 + i] = adopt ? suns[(k - 1) * 4 + i] : float(ideal[i]); }
-                    suns[k * 4 + 3] = 0.f; held_valid[k] = true; ++rederived; ++rederivations;
+                    suns[k * 4 + 3] = 0.f; held_valid[k] = true; ++rederived; rederived_mask |= 1u << k; ++rederivations;
                 }
             }
         }

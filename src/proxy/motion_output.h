@@ -506,6 +506,11 @@ public:
     // k x own-ship radius) with hysteresis, and the ladder behind it sliding
     // with E0 at `ratio` per cascade (X3M_SHADOW_CASCADE_LADDER_RATIO, default 5).
     void configure_shadow_cascade_adaptive(float k, float ratio=renderer::shadow_cascade_ladder_ratio_default) noexcept { cascade_adaptive_k_=k; cascade_ladder_ratio_=ratio; }
+    // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, launcher --shadow-sun-trace;
+    // default off): one `shadow_sun_frame` line per frame while the cascades are
+    // on, so the re-derivation rate is measurable between the sparse
+    // shadow_replay_sun_point lines. No effect on any decision.
+    void configure_shadow_sun_trace(bool trace) noexcept { point_sun_trace_=trace; }
     // Caster retention (shadow-caster-retention.md): census or live, on the cascades only; off by default.
     void configure_shadow_retention(shadow_retention::Mode mode, std::uint32_t age_cap, double eps, bool timing) noexcept {
         retention_mode_=mode; retention_age_cap_=age_cap; retention_eps_=eps; retention_timing_=timing;
@@ -1173,6 +1178,7 @@ private:
     std::int64_t point_sun_poll_ticks_=0; // this frame's poll in QPC ticks (the draw path stays integer-only: a 64-bit conversion is x87 on i686)
     sun_light_poll::Sample point_sun_sample_{};
     shadow_replay::PointSunReason point_sun_logged_=shadow_replay::PointSunReason::Count; // the last source/reason an event line reported
+    bool point_sun_trace_=false;          // X3M_SHADOW_SUN_TRACE: one shadow_sun_frame line per cascaded frame
     void poll_point_sun(const float constant[4], bool agrees) noexcept;
     const float* cascade_sun(unsigned cascade) noexcept; // the frame's sun of one cascade: the held point direction, else the latch's
     bool sample_candidate_sun(float out[4], int& reg) noexcept;

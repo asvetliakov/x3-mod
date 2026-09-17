@@ -2603,3 +2603,37 @@ lines (log never read whole).
    what one more launch should record to settle periodicity.
 
 Files changed: `docs/verification/directional-shadows.md` (this section only).
+
+## Run 40 A telemetry gaps closed: `--frame-end-stride` and `--shadow-sun-trace` (2026-09-18, worktree `agent-a6f12dc94bd8bda55`)
+
+Both options are default-off and byte-identical when off; neither changes a decision.
+
+1. **`--frame-end-stride N`** (`X3M_FRAME_END_STRIDE`, 1..100000, default 300; no prerequisite —
+   `frame_end` is written in every mode). The Present path's `frame_end` line now divides by the
+   stride instead of the literal 300; `N=1` writes one line per frame (~100 B) so frame cost can be
+   split by toggle state and a sub-300-frame periodic event becomes visible. Capture frames still
+   always log one. The other 300-frame reports of that path (chase camera/aim/transition/lead,
+   `admission_metric`, `finite_upload_metrics`) keep their own 300-frame cadence, so only the
+   `frame_end` volume changes. The DLL reads the variable once at attach (range-checked, malformed or
+   out-of-range keeps 300) and writes `frame_end_stride_mode stride=N` only when it is not the default.
+   Reader: `frame_end_stride()` in `tools/analysis/analyze_iteration08_loading.py` reports the stride a
+   log was actually written with, per device (most common positive frame delta, so a capture frame's
+   off-cadence line does not distort it); `analyze_loading_profile.py` carries it as `frame_end_stride`
+   and its gap paragraph names the observed stride instead of a hard-coded 300.
+2. **`--shadow-sun-trace`** (`X3M_SHADOW_SUN_TRACE=1`; requires `--shadow-cascades`). One
+   `shadow_sun_frame device= frame= source= reason= poll= rederived= rederived_mask= carried= checks=
+   disagreements= agreement_deg= distance= cascades=` line per frame from the scene end while the
+   cascades are on, beside the existing event/F8-only `shadow_replay_sun_point` (140 rows over 24,296
+   frames in run 40 A, too sparse to measure the re-derivation rate moving vs at rest).
+   `rederived_mask` is new state on `PointSun` (bit k = cascade k re-derived its held direction this
+   frame, one OR per re-derivation, nothing on the draw path). Reader:
+   `tools/analysis/shadow_sun_frame.py` — exact field list, mask/count consistency checked at parse
+   time, `summary()` gives the source/reason/poll mix, the frames that re-derived anything and the
+   per-cascade re-derivation rate, and the agreement/distance spread.
+
+Evidence: clean MinGW i686 RelWithDebInfo build, exit 0, 0 warnings.
+`verification.analysis.test_frame_timing` (7), `test_iteration08_loading` (11),
+`test_shadow_sun_frame` (5, new), `test_shadow_cascades` + `test_shadow_replay_depth` +
+`test_shadow_retention` + `test_loading_profile` (44) all pass. `manage.py launch --dry-run --vanilla`
+shows `X3M_FRAME_END_STRIDE=300`, `X3M_SHADOW_SUN_TRACE=0` by default and `1`/`1` with
+`--frame-end-stride 1 --shadow-sun-trace`. Not yet exercised under Wine or in a game session.

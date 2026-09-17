@@ -66,6 +66,13 @@ HANDLE log_os_handle=INVALID_HANDLE_VALUE; // log_handle(): exception-context wr
 std::wstring directory;
 unsigned capture_start = 120;
 unsigned capture_count = 1;
+// X3M_FRAME_END_STRIDE (1..frame_end_stride_max, default 300; launcher
+// --frame-end-stride): frames between two frame_end lines. Read once at attach,
+// used as a divisor on the Present path only; 1 logs every frame (about 100 B
+// per frame). The default keeps the historical 300-frame cadence, and the
+// other 300-frame reports of that path keep it whatever this is.
+constexpr unsigned frame_end_stride_default = 300, frame_end_stride_max = 100000;
+unsigned frame_end_stride = frame_end_stride_default;
 bool scene_depth_capture_requested = false;
 bool finite_positions_requested = false;
 bool motion_capture_requested = false;
@@ -1246,8 +1253,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     // was created; the population line follows the 300-frame cadence and only
     // when the counts moved.
     report_shader_population(ctx.frame%300==0);
-    if (ctx.capture || ctx.frame%300==0) {
-        // One QPC per logged line (every 300 frames or a capture frame), in every
+    if (ctx.capture || ctx.frame%frame_end_stride==0) {
+        // One QPC per logged line (every frame_end_stride frames or a capture frame), in every
         // mode: elapsed_ms since DllMain and dt_ms since the previous frame_end
         // line make load times readable from a plain --direct log. Integer only.
         static uint64_t frequency=0;
@@ -1257,6 +1264,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         const uint64_t dt_ms=ctx.frame_end_qpc?(now-ctx.frame_end_qpc)*1000ull/frequency:0;
         ctx.frame_end_qpc=now;
         log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr,elapsed_ms,dt_ms,now);
+    }
+    // The chase reports keep their own 300-frame cadence: --frame-end-stride
+    // shortens the frame_end line only.
+    if (ctx.capture || ctx.frame%300==0) {
         chase_camera::report(ctx.frame); // X3M_CAMERA=chase only (no line otherwise)
         chase_aim_trace::report(ctx.frame); // bounded cursor-fire diagnostics with telemetry
         chase_transition::report(ctx.frame); // bounded native view/lifetime observations
@@ -2229,7 +2240,13 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                     set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.caps[4],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
                     set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k),double(ladder_ratio));
                 hooked.motion_output.configure_shadow_cascades(set);
-                hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k,ladder_ratio); } }
+                hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k,ladder_ratio);
+                // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, default off): one
+                // shadow_sun_frame line per frame while the cascades are on, for the
+                // re-derivation rate between the sparse shadow_replay_sun_point lines.
+                { const bool trace_asked=GetEnvironmentVariableW(L"X3M_SHADOW_SUN_TRACE",setting,4)==1&&setting[0]==L'1';
+                  if(trace_asked)log("shadow_sun_trace_mode requested=1 enabled=%u cascades=%u",set.count!=0,set.count);
+                  hooked.motion_output.configure_shadow_sun_trace(trace_asked&&set.count!=0); } } }
           // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:
           // X3M_SHADOW_RETENTION_CENSUS=1 runs the store without references or replay (stage 1),
           // X3M_SHADOW_CASTER_RETENTION=1 replays retained static casters (stage 2; wins over the census).
@@ -2441,6 +2458,14 @@ void initialize_log(HMODULE module) {
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
     if(capture_count>8) capture_count=8;
+    // X3M_FRAME_END_STRIDE (1..100000, default 300): frames between frame_end
+    // lines. Out of range or malformed keeps the default; the line is written
+    // only when the stride is not the default, so a default run is unchanged.
+    if(GetEnvironmentVariableW(L"X3M_FRAME_END_STRIDE",setting,32)>0){
+        wchar_t* stop=nullptr; const unsigned long v=wcstoul(setting,&stop,10);
+        if(stop!=setting&&*stop==L'\0'&&v>=1&&v<=frame_end_stride_max)frame_end_stride=unsigned(v);
+        if(frame_end_stride!=frame_end_stride_default)log("frame_end_stride_mode stride=%u",frame_end_stride);
+    }
     scene_depth_capture_requested=GetEnvironmentVariableW(L"X3M_SCENE_DEPTH_CAPTURE",setting,32)==1 && setting[0]==L'1';
     finite_positions_requested=GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS",setting,32)==1 && setting[0]==L'1';
     motion_capture_requested=GetEnvironmentVariableW(L"X3M_MOTION_CAPTURE",setting,32)==1 && setting[0]==L'1' &&
