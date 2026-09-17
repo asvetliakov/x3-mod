@@ -11,6 +11,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -208,6 +209,18 @@ def main():
                              "bottle decides (usually the native redistributable in the game directory); builtin appends "
                              "d3dx9_37=b to this child's --dll override, forcing Wine's builtin D3DX. The installed DLL's "
                              "loaded_module line reports which one actually loaded.")
+    parser.add_argument('--fex-tso', choices=['on', 'off'], default=None, help="FEX-Emu memory-ordering experiment for the busy frame (docs/architecture/effect-pass-replay.md, "
+                             "\"Environment experiments\"): off sets FEX_TSOENABLED=0 in this child's environment, on sets it to 1 "
+                             "explicitly, unset (default) leaves the bottle's FEX configuration alone. off trades the x86 "
+                             "total-store-order guarantees FEX emulates for speed and can expose latent multithreading races in the "
+                             "game and in Wine, so it is an experiment, never a default; a session that misbehaves must be rerun "
+                             "without it before its result counts.")
+    parser.add_argument('--wined3d', default=None, metavar='CONFIG', help="Wine Direct3D settings for this child only (WINE_D3D_CONFIG=CONFIG), the documented environment "
+                             "override of the HKCU\\Software\\Wine\\Direct3D registry keys; several settings are separated by ';', "
+                             "e.g. 'csmt=0x0;renderer=vulkan'. The experiment in docs/architecture/effect-pass-replay.md uses csmt "
+                             "(the command-stream thread, 0x0 runs the draw path on the calling thread) and renderer (gl or vulkan). "
+                             "The proxy's loaded_module line for d3d9.dll does not reflect either key, so there is no log evidence "
+                             "beyond behaviour and frame time; compare --pass-phases medians and frame dt.")
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
     parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles, the proxy draw/scene/state buckets with the state call mix, the pre-draw/between-draws/post-draw split of the game time between hooked calls, and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
@@ -321,6 +334,13 @@ def main():
         parser.error('--dry-run applies to launch only.')
     if args.voice_decoder is not None and args.action != 'launch':
         parser.error('--voice-decoder applies to launch only.')
+    if args.fex_tso is not None and args.action != 'launch':
+        parser.error('--fex-tso applies to launch only.')
+    if args.wined3d is not None:
+        if args.action != 'launch':
+            parser.error('--wined3d applies to launch only.')
+        if not re.fullmatch(r'[A-Za-z0-9_]+=[A-Za-z0-9_x]+(;[A-Za-z0-9_]+=[A-Za-z0-9_x]+)*', args.wined3d):
+            parser.error("--wined3d: expected key=value settings separated by ';', e.g. 'csmt=0x0;renderer=vulkan'.")
     if args.depth_copy and not args.ownership:
         parser.error('--depth-copy requires --ownership.')
     if args.scene_depth_capture and not (args.ownership and args.depth_copy):
@@ -763,6 +783,22 @@ def main():
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
                          'X3M_VOICE_DMO_FALLBACK': '1'}  # the DMO wrapper fallback hook travels with the decoder
             env.update(voice_env)
+        # Busy-frame environment experiments, set only when requested so an unset
+        # option leaves the bottle's FEX and Wine Direct3D configuration exactly
+        # as it is (docs/architecture/effect-pass-replay.md, "Environment
+        # experiments"). CrossOver's wine script passes its own environment on to
+        # the child, adding the bottle's [EnvironmentVariables] on top, so these
+        # two variables (which the bottle does not set) reach the game.
+        experiment_env = {}
+        if args.fex_tso is not None:
+            experiment_env['FEX_TSOENABLED'] = '1' if args.fex_tso == 'on' else '0'
+        if args.wined3d is not None:
+            experiment_env['WINE_D3D_CONFIG'] = args.wined3d
+        for name in ('FEX_TSOENABLED', 'WINE_D3D_CONFIG'):
+            if name in experiment_env:
+                env[name] = experiment_env[name]
+            else:
+                env.pop(name, None)  # a stale shell value must not enter the experiment
         # --dll applies to this child only, preserving the user's other overrides;
         # ';' separates entries exactly as in WINEDLLOVERRIDES, which is what
         # CrossOver's wine --dll feeds (docs/architecture/effect-pass-replay.md,
@@ -779,12 +815,14 @@ def main():
         if args.dry_run:
             print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
                               'overrides': overrides, 'd3dx': args.d3dx,
-                              'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')}, **voice_env}}, indent=2))
+                              'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')}, **voice_env,
+                                      **experiment_env}}, indent=2))
             return
         print(f'Launching X3AP through CrossOver Preview; terminal output is also teed to {launcher_log}.', flush=True)
         # What was actually launched, first in the preserved log: the exact
         # argv, the --dll string this child got and the resolved --d3dx choice.
-        header = (f'launcher command={json.dumps(command)} overrides={overrides} d3dx={args.d3dx}')
+        header = (f'launcher command={json.dumps(command)} overrides={overrides} d3dx={args.d3dx}'
+                  f' fex_tso={args.fex_tso or "unset"} wined3d={args.wined3d or "unset"}')
         raise SystemExit(launch_teed(command, env, game, launcher_log, header=header))
 
 
