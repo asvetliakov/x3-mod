@@ -87,17 +87,22 @@ bool linear_emission_hull_program_reviewed(std::uint64_t pixel) noexcept;
 // refusal; the returned verdict is never Screen.
 SourceGainBlend linear_emission_hull_source_gain_blend(std::uint32_t blend_enable, std::uint32_t srgb_write,
     std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept;
-// Pure creation-time gain of the ORIGINAL hull program's emission term: one
-// `def c223 = (gain, 0, 0, 0)` before the first declaration and one
-// `mul r0.xyz, r0, c223.x` immediately before the final colour instruction,
-// whose added operand is that r0 (`add oC0.xyz, r1, r0` in standard_lighting,
-// `mad oC0.xyz, r1, r2.z, r0` in XT_standard_lighting). No linear material, no
-// decode, no extra output: original hull shading, the lit term and the native
-// alpha (`mul oC0.w, r2.w, v0.w`) are untouched, so a pixel whose emission
-// sample is zero is bit-identical. Gain 1 returns the original words. Gain is
-// finite 1..8. Any other program, any other tail, any use of c223 and any
-// relative addressing fail closed. Failure leaves output intact; input may
-// alias output. No D3D calls or per-draw work here.
+// Pure creation-time gain of the ORIGINAL hull program's whole colour output
+// (the emitter art of the ONE/ONE materials is diffuse-authored with the
+// lightmap slot black, so the r0 sample alone carries nothing: archive check
+// 2026-09-17, docs/architecture/emitter-plan.md phase 3): one
+// `def c223 = (gain, 0, 0, 0)` before the first declaration, the final colour
+// instruction (`add oC0.xyz, r1, r0` in standard_lighting, `mad oC0.xyz, r1,
+// r2.z, r0` in XT_standard_lighting) redirected to write r0.xyz with its
+// opcode, _pp, mask and operands kept (r0 is dead after it), and one
+// `mul oC0.xyz, r0, c223.x` with the original destination token in its place.
+// No linear material, no decode, no extra output: every instruction before
+// the colour site and the native alpha (`mul oC0.w, r2.w, v0.w`) are
+// verbatim, so the alpha lane and a black pixel are bit-identical. Gain 1
+// returns the original words. Gain is finite 1..8. Any other program, any
+// other tail, any use of c223 and any relative addressing fail closed.
+// Failure leaves output intact; input may alias output. No D3D calls or
+// per-draw work here.
 LinearEmissionResult linear_emission_hull_source_gain_variant(const std::uint32_t* original,
     std::size_t words, float gain, std::vector<std::uint32_t>& output) noexcept;
 } // namespace x3m::renderer

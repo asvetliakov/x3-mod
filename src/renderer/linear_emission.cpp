@@ -219,8 +219,13 @@ void source_output(Words& words,bool fade) {
 // by material programs"): six XT_standard_lighting and six standard_lighting
 // material programs. Derived whole-original identities and DWORD sites, never
 // game shader words. `definition` is the first DEF/DCL dword (the CTAB comment
-// ends there) and `emission` the final colour instruction, whose added operand
-// is r0, the unlit emission sample.
+// ends there) and `emission` the final colour instruction (`add oC0.xyz, r1,
+// r0` or, XT, `mad oC0.xyz, r1, r2.z, r0`). The emitter art of every ONE/ONE
+// material sits in the diffuse slot with the lightmap slot (the r0 sample)
+// black or unbound (archive check, 2026-09-17), so the gain scales the whole
+// colour output of the draw, not the r0 sample: the final colour instruction
+// is redirected to r0 (dead after it: only the alpha MUL follows, reading r2.w
+// and v0.w) and one `mul oC0.xyz, r0, c223.x` follows it.
 struct HullProfile { std::uint64_t pixel; unsigned words, definition, emission; bool modulated; };
 constexpr HullProfile hull_profiles[] = {
     {0x5f82ecacd39529cdull,1765,1307,1755,true},
@@ -302,9 +307,15 @@ const HullProfile* hull_profile_of(const Word* original,std::size_t count) noexc
     return nullptr;
 }
 // The pinned tail: the final colour instruction, then the native alpha MUL and
-// the end token. Nothing after the emission site is copied or rewritten.
-bool hull_tail(const Word* code,const HullProfile& profile) noexcept {
-    const Word colour_destination=dst(output,0,7)|pp;
+// the end token. Nothing after the colour site is rewritten except that
+// instruction's destination; the alpha MUL and the end token are copied.
+// `transformed`: the colour instruction writes r0.xyz (its _pp and mask kept)
+// and the gain MUL writes oC0.xyz with the original destination token.
+const Word hull_colour_destination=dst(output,0,7)|pp;
+bool hull_tail(const Word* code,const HullProfile& profile,bool transformed=false) noexcept {
+    const Word colour_destination=transformed ? (dst(temporary,hull_emission_temporary,7)|pp) : hull_colour_destination;
+    const Word gain[] = {(3u<<24)|mul,hull_colour_destination,src(temporary,hull_emission_temporary),
+                         lane(constant,hull_gain_constant,0)};
     const Word alpha[] = {(3u<<24)|mul,dst(output,0,8)|pp,lane(temporary,2,3),lane(color,0,3)};
     std::size_t at=profile.emission;
     if (profile.modulated) {
@@ -317,6 +328,10 @@ bool hull_tail(const Word* code,const HullProfile& profile) noexcept {
                              src(temporary,hull_emission_temporary)};
         if (!std::equal(std::begin(site),std::end(site),code+at)) return false;
         at+=sizeof site/sizeof site[0];
+    }
+    if (transformed) {
+        if (!std::equal(std::begin(gain),std::end(gain),code+at)) return false;
+        at+=sizeof gain/sizeof gain[0];
     }
     return std::equal(std::begin(alpha),std::end(alpha),code+at) &&
            at+sizeof alpha/sizeof alpha[0]==profile.words-1;
@@ -453,22 +468,26 @@ LinearEmissionResult linear_emission_hull_source_gain_variant(const Word* origin
         result.insert(result.end(),original,original+profile.definition);
         emit(result,def,{dst(constant,hull_gain_constant,15),bits(gain),bits(0),bits(0),bits(0)});
         result.insert(result.end(),original+profile.definition,original+profile.emission);
-        // Colour lanes of the emission sample only: r0.w (the native alpha's
-        // lightmap lane, already consumed by the preceding LRP) is untouched,
-        // and so is every lit term the final instruction adds it to. The MUL
-        // deliberately carries no _pp although its neighbours do: full
-        // precision on one multiply is never worse than the native partial
-        // precision, changes no emitted original word, and keeps the inserted
-        // instruction identical to the effects gain's (which also omits _pp).
-        emit(result,mul,{dst(temporary,hull_emission_temporary),src(temporary,hull_emission_temporary),
+        // Whole colour output of the draw: the final colour instruction keeps
+        // its opcode, _pp, mask and operands but writes r0.xyz (r0 is dead
+        // after it; the pinned tail proves only the alpha MUL follows, which
+        // reads r2.w and v0.w), then one MUL scales it into oC0.xyz with the
+        // original destination token (same _pp). r0.w, r1 (the lit term as
+        // computed), r2.w and the native alpha MUL are untouched, so the
+        // draw's alpha lane and every other emitted original word are verbatim.
+        const std::size_t site=profile.modulated ? 5u : 4u;
+        result.push_back(original[profile.emission]);
+        result.push_back(dst(temporary,hull_emission_temporary,7)|pp);
+        result.insert(result.end(),original+profile.emission+2,original+profile.emission+site);
+        emit(result,mul,{hull_colour_destination,src(temporary,hull_emission_temporary),
                          lane(constant,hull_gain_constant,0)});
-        result.insert(result.end(),original+profile.emission,original+count);
+        result.insert(result.end(),original+profile.emission+site,original+count);
         std::size_t transformed_declaration=0; unsigned transformed_instructions=0;
         HullProfile moved=profile;
-        moved.definition=profile.definition; moved.emission=profile.emission+10; moved.words=profile.words+10;
+        moved.definition=profile.definition; moved.emission=profile.emission+6; moved.words=profile.words+10;
         if (result.size()!=count+10 || !hull_structure(result.data(),result.size(),transformed_declaration,transformed_instructions,false) ||
             transformed_declaration!=profile.definition || transformed_instructions!=instructions+2 ||
-            !hull_tail(result.data(),moved)) return LinearEmissionResult::ResourceLimit;
+            !hull_tail(result.data(),moved,true)) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);
         return LinearEmissionResult::Applied;
     } catch (...) { return LinearEmissionResult::AllocationFailure; }

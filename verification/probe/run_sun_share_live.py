@@ -20,7 +20,16 @@ import bottle
 
 ROOT = Path(__file__).resolve().parents[2]
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
-         'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused')
+         'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission')
+# hull_emission (emitter plan phase 3, hull_emission_live_inc.h): the covered
+# standard_lighting pair vs_494fe349b8bc12ec / ps_7c83ed50c9894e44 under the
+# HDR scene with X3M_HULL_EMISSION_GAIN=2 (variant created, the ONE/ONE draw
+# admitted at 2 x base, opaque and screen draws refused) and then unset (no
+# variant, no admission, every frame at the base). Sun lane, linear materials
+# and TAA off; the fixture mode is `hullemission`.
+HULL_PROGRAMS = ('vs_494fe349b8bc12ec.bin', 'ps_7c83ed50c9894e44.bin')
+HULL_PROGRAM_INDEX = 7  # ps_7c83ed50c9894e44 in linear_emission_hull_program_index order
+HULL_GAIN = 2.0
 # original_lane / shadow_apply run without linear materials (docs/architecture/
 # legacy-sun-application.md sections 4.1-4.2 and 3.4): the original share
 # producer, the cutout pair through the tested-opaque arm, and the scene-end
@@ -308,6 +317,45 @@ def validate(text, trace, work, case):
                 zero_frames=sum(int(r['zero']) > 0 for r in rows),
                 negative_selftest=case in ('cutout_drop', 'alpha_mask'), linear_materials=case not in ORIGINAL_CASES, **original)
 
+def validate_hull_emission(text, trace, gain):
+    # Fixture: three frames on B (opaque, additive, screen); the additive frame
+    # is gain x base within one FP16 code, the others the base, alpha native.
+    lines = text.splitlines()
+    assert any(l.startswith('RESULT PASS ') for l in lines) and not any(l.startswith('RESULT FAIL') for l in lines), 'native fixture completion'
+    rows = [fields(l) for l in lines if l.startswith('HULL_EMISSION ')]
+    assert [(r['kind'], int(r['frame'])) for r in rows] == [('opaque', 0), ('additive', 1), ('screen', 2)], rows
+    for r in rows:
+        assert float(r['gain']) == gain and int(r['mismatches']) == 0 and int(r['alpha_mismatches']) == 0 and int(r['max_codes']) <= 1, r
+        assert int(r['pixels']) >= 100 and int(r['positive']) == 3 * int(r['pixels']), r
+        assert float(r['factor']) == (gain if r['kind'] == 'additive' else 1.0), r
+    assert not any(l.startswith('HULL_EMISSION_DIFF ') for l in lines)
+    # DLL: one whole-output variant of the covered program at the gain, the
+    # ONE/ONE draw admitted (programs bit 7) and the two other draws refused
+    # on blend state; with the option off, no hull line at all.
+    traces = trace.splitlines()
+    variants = [fields(l) for l in traces if l.startswith('hull_emission_variant ')]
+    frames = [fields(l) for l in traces if l.startswith('hull_emission_frame ')]
+    programs = [fields(l) for l in traces if l.startswith('hull_emission_program ')]
+    modes = [l for l in traces if l.startswith('hull_emission_gain_mode ')]
+    if gain == 1.0:
+        assert not variants and not frames and not programs and not modes, (variants, frames, programs, modes)
+        assert not any(l.startswith('hull_emission') for l in traces), 'gain 1 leaves no hull trace'
+    else:
+        assert modes == ['hull_emission_gain_mode requested=1 enabled=1 source_gain=%g gain=%g gain_valid=1' % (gain, gain)], modes
+        assert len(variants) == 1 and (variants[0]['original'], int(variants[0]['program']), variants[0]['transform'], variants[0]['create']) == ('7c83ed50c9894e44', HULL_PROGRAM_INDEX, '0', '00000000'), variants
+        assert float(variants[0]['gain']) == gain, variants
+        # Frame 0's opaque draw of the reviewed pair is taken by the motion
+        # route, so the hull gain refuses it as routed (the routed pair keeps
+        # its bytes); the screen draw is refused on blend state.
+        assert [(int(r['frame']), int(r['admitted']), int(r['refused_blend']), int(r['refused_variant']), r['programs'], int(r['refused_other']), int(r['refused_routed'])) for r in frames] == \
+            [(0, 0, 0, 0, '000', 1, 1), (1, 1, 0, 0, '%03x' % (1 << HULL_PROGRAM_INDEX), 0, 0), (2, 0, 1, 0, '000', 0, 0)], frames
+        assert [(int(r['frame']), int(r['program']), r['ps']) for r in programs] == [(1, HULL_PROGRAM_INDEX, '7c83ed50c9894e44')], programs
+        refused = [fields(l) for l in traces if l.startswith('hull_emission_refused ')]
+        assert [(int(r['frame']), r['reason'], r['blend'], r['src'], r['dst']) for r in refused] == [(2, 'blend', '1', '2', '4')], refused
+        assert not any(l.startswith(('hull_emission_bind_failed', 'hull_emission_refused_state', 'motion_output_restore_failed')) for l in traces)
+    return dict(gain=gain, frames=[dict(kind=r['kind'], pixels=int(r['pixels']), max_codes=int(r['max_codes'])) for r in rows],
+                variants=len(variants), admitted=sum(int(r['admitted']) for r in frames), refused_blend=sum(int(r['refused_blend']) for r in frames))
+
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -325,6 +373,7 @@ def main():
     names = ['vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin']
     if any(case.startswith('composition') for case in selected): names += ['vs_089091aab2d5eb13.bin', 'ps_8559522220507d5e.bin']
     if any(case in selected for case in ('cutout_pair', 'cutout_pair_bias', 'original_lane')): names += ['ps_63f96eba9eea7880.bin']
+    if 'hull_emission' in selected: names += list(HULL_PROGRAMS)
     programs = [args.programs.resolve()/name for name in names]
     inputs = {str(p): sha(p) for p in (fixture, dll, *programs)}
     raw = Path(tempfile.mkdtemp(prefix='x3-sun-share-live-'))
@@ -332,6 +381,27 @@ def main():
     report = dict(passed=False, bottle=bottle.describe(), raw=str(raw), inputs=inputs, game_launched=False, cases={})
     try:
         for case in selected:
+            if case == 'hull_emission':
+                report['cases'][case] = {}
+                for gain in (HULL_GAIN, 1.0):
+                    work = raw/case/('gain-%g' % gain); work.mkdir(parents=True)
+                    shutil.copy2(fixture, work/'fixture.exe'); shutil.copy2(dll, work/'d3d9.dll')
+                    env = {k:v for k,v in os.environ.items() if not k.startswith('X3M_')}
+                    env.update(X3M_MOTION_OUTPUT='1', X3M_TAA='0', X3M_HDR='1', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
+                               X3M_SCENE_HOOK='0', X3M_OWNERSHIP='0', X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1',
+                               X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0', X3M_MOTION_RT_MODE='perdraw', X3M_STATE_SHADOW='1',
+                               X3M_EMISSION_SOURCE_GAIN=repr(HULL_GAIN), WINEDLLOVERRIDES='d3d9=n,b')
+                    if gain != 1.0: env['X3M_HULL_EMISSION_GAIN'] = repr(gain)
+                    command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work/'fixture.exe'),
+                               *('Z:'+str(p) for p in programs[:2]), 'hullemission']
+                    start = time.monotonic()
+                    with (work/'stdout.txt').open('w') as out, (work/'wine.log').open('w') as error:
+                        completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
+                    assert completed.returncode == 0, (case, gain, completed.returncode, str(work))
+                    logs = list((work/'x3-modern-captures').glob('session-*.log')); assert len(logs) == 1
+                    check = validate_hull_emission((work/'stdout.txt').read_text(), logs[0].read_text(), gain)
+                    report['cases'][case]['gain-%g' % gain] = dict(check, elapsed_seconds=time.monotonic()-start, command=command)
+                continue
             work = raw/case; work.mkdir()
             shutil.copy2(fixture, work/'fixture.exe'); shutil.copy2(dll, work/'d3d9.dll')
             env = {k:v for k,v in os.environ.items() if not k.startswith('X3M_')}

@@ -105,6 +105,7 @@ bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen 
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
 float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
+float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires the effects gain)
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
@@ -2097,6 +2098,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
     hooked.motion_output.configure_emission_source_gain(emission_source_gain);
+    hooked.motion_output.configure_hull_emission_gain(hull_emission_gain);
     hooked.motion_output.configure_original_fill(original_fill);
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
@@ -2500,6 +2502,21 @@ void initialize_log(HMODULE module) {
      const bool excluded=linear_emission_requested;
      if(!hdr_requested||excluded)emission_source_gain=1.f;
      if(!gain_valid||value!=1.f)log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",emission_source_gain!=1.f,hdr_requested,unsigned(excluded),double(emission_source_gain),unsigned(gain_valid),excluded?" refused=linear_emissions":"");}
+    // X3M_HULL_EMISSION_GAIN=<g>: the same gain over the twelve hull programs'
+    // ADD ONE/ONE emitter draws (emitter plan phase 3; the launcher passes the
+    // effects gain's value under --hull-emitters): finite 1..8, 1 (the
+    // launcher default) is off. Needs the effects gain enabled (which carries
+    // the HDR and linear-emission gates and the F6 key); the DLL refuses with
+    // the reason logged. Unparsable or out of range keeps 1 and logs.
+    {hull_emission_gain=1.f;bool gain_valid=true;float value=1.f;
+     SetLastError(ERROR_SUCCESS);
+     const DWORD gain_length=GetEnvironmentVariableW(L"X3M_HULL_EMISSION_GAIN",setting,32);
+     if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
+         wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
+         if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)hull_emission_gain=value;else gain_valid=false;}
+     const bool excluded=emission_source_gain==1.f;
+     if(excluded)hull_emission_gain=1.f;
+     if(!gain_valid||value!=1.f)log("hull_emission_gain_mode requested=1 enabled=%u source_gain=%g gain=%g gain_valid=%u%s",hull_emission_gain!=1.f,double(emission_source_gain),double(hull_emission_gain),unsigned(gain_valid),excluded?" refused=emission_source_gain":"");}
     // X3M_ORIGINAL_FILL=<k>: fill in linear light inside the ORIGINAL hull
     // pixel programs (docs/architecture/original-shading-critique.md 1a,
     // option C): finite 0..0.5, 0 (the launcher default) is off. The variant
