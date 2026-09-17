@@ -2170,8 +2170,13 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           // is the ascending half-extent list (1..4 values, 50..50000 units); absent,
           // empty or "0" keeps the single map above. X3M_SHADOW_CASCADE_SIZES (one
           // value for all or one per cascade, 64..4096, default 4096),
-          // X3M_SHADOW_CASCADE_CAPS (likewise, 1..1024, defaults 128,512,1024,1024)
+          // X3M_SHADOW_CASCADE_CAPS (likewise, 1..4096, defaults 128,512,1024,1024)
           // and X3M_SHADOW_CASCADE_BUDGET (issues per frame, 1..4096, default 640).
+          // Caster pool control (shadow-cascade-extents.md): X3M_SHADOW_CASCADE_RECORDS
+          // (records per cascade, 1..4096, default 1024), X3M_SHADOW_CASCADE_STATIC_FROM
+          // (the first static-only cascade, 1..count-1; absent: none; the count or more is refused) and
+          // X3M_SHADOW_CASCADE_DROP_ORDER (submission | importance) and X3M_SHADOW_CASCADE_LARGE_MIN
+          // (world units, 0..1e6, default 0: a static-only cascade also admits moving casters of that extent).
           // A malformed list leaves the cascades off (the single map stays).
           { wchar_t list[128]{};
             const auto parse=[](const wchar_t* text,double* out,unsigned capacity)->unsigned{
@@ -2195,14 +2200,23 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 if(!reason&&!integers(L"X3M_SHADOW_CASCADE_SIZES",sizes))reason="sizes";
                 if(!reason&&!integers(L"X3M_SHADOW_CASCADE_CAPS",caps))reason="caps";
                 if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_BUDGET",list,128)>0){ wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v<renderer::shadow_cascade_budget_min||v>renderer::shadow_cascade_budget_max)reason="budget"; else budget=unsigned(v); }
+                unsigned records[renderer::shadow_cascade_max]; for(unsigned i=0;i<renderer::shadow_cascade_max;++i)records[i]=renderer::shadow_cascade_records_default;
+                unsigned static_from=renderer::shadow_cascade_static_from_none; bool importance=false; float large_min=0.f;
+                if(!reason&&!integers(L"X3M_SHADOW_CASCADE_RECORDS",records))reason="records";
+                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_STATIC_FROM",list,128)>0){ wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v<1||v>=count)reason="static_from"; else static_from=unsigned(v); }
+                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_DROP_ORDER",list,128)>0){ if(!wcscmp(list,L"importance"))importance=true; else if(wcscmp(list,L"submission"))reason="drop_order"; }
                 renderer::ShadowCascadeSet set{};
+                char static_text[12]; std::snprintf(static_text,sizeof static_text,"%u",static_from<renderer::shadow_cascade_max?static_from:0u);
                 if(!reason&&!renderer::shadow_cascade_set(extents,count,sizes,caps,budget,set))reason="range";
+                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_LARGE_MIN",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end); if(end==list||*end!=L'\0'||!(v>=0.)||v>double(renderer::shadow_cascade_large_min_max))reason="large_min"; else large_min=float(v); }
+                if(!reason&&!renderer::shadow_cascade_pool(set,records,static_from,importance,large_min))reason="pool";
                 if(reason||!enabled)set=renderer::ShadowCascadeSet{};
-                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u caps=%u,%u,%u,%u budget=%u depth_light=%.9g",
+                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u caps=%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g",
                     set.count!=0,reason?reason:enabled?"ok":"replay",set.count,double(set.cascades[0].half_extent),double(set.count>1?set.cascades[1].half_extent:0.f),
                     double(set.count>2?set.cascades[2].half_extent:0.f),double(set.count>3?set.cascades[3].half_extent:0.f),
                     set.count?set.cascades[0].size:0u,set.count>1?set.cascades[1].size:0u,set.count>2?set.cascades[2].size:0u,set.count>3?set.cascades[3].size:0u,
-                    set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f));
+                    set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
+                    set.records[0],set.records[1],set.records[2],set.records[3],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min));
                 hooked.motion_output.configure_shadow_cascades(set); } }
           // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:
           // X3M_SHADOW_RETENTION_CENSUS=1 runs the store without references or replay (stage 1),

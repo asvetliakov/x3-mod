@@ -1,0 +1,522 @@
+{
+ "case": "seam-ownership-shadow-pool-static-live",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion_output_fixture.exe": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/verification/probe/build/motion-output-seam/d3d9.dll": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a46f2892f9578bec0/build/d3d9.dll": "f8bbcb717b9d0f187f4a3ee3337a0e3fff098155e338c39a0392e8d09561872e"
+ },
+ "script": "static",
+ "store": 2,
+ "frames": 14,
+ "checks": 181,
+ "compared_frames": 14,
+ "absent_maps": 1,
+ "color_sha256": "d5e47b25453cf050b11910f8d05a60c4a74707d7bb74551dd0e160c9aebac63b",
+ "per_frame": {
+  "0": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     0
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     4
+    ],
+    "large_admitted": [
+     0,
+     0
+    ],
+    "class_miss": [
+     0,
+     4
+    ],
+    "classified": {
+     "class_store": 0,
+     "class_ring": 0
+    }
+   },
+   "draws": [
+    4,
+    0
+   ]
+  },
+  "1": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    2
+   ]
+  },
+  "2": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    2
+   ]
+  },
+  "3": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    2
+   ]
+  },
+  "4": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    2
+   ]
+  },
+  "5": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    2
+   ]
+  },
+  "6": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    2
+   ]
+  },
+  "7": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    2
+   ]
+  },
+  "8": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     2
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     2
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    2
+   ]
+  },
+  "9": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     3
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    3
+   ]
+  },
+  "10": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     3
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    3
+   ]
+  },
+  "11": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     3
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    3
+   ]
+  },
+  "12": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     3
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    3
+   ]
+  },
+  "13": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     3
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "static_only_refused": [
+     0,
+     1
+    ],
+    "large_admitted": [
+     0,
+     1
+    ],
+    "class_miss": [
+     0,
+     0
+    ],
+    "classified": {
+     "class_store": 3,
+     "class_ring": 1
+    }
+   },
+   "draws": [
+    4,
+    3
+   ]
+  }
+ },
+ "map": {
+  "max_depth_error": 4.412964153133192e-05,
+  "covered_texels": 10747,
+  "coverage_disagreements": 0,
+  "maps": 27
+ },
+ "us": {
+  "frames": 14,
+  "min": 46.9,
+  "median": 55.25,
+  "max": 1432.9
+ },
+ "classified": {
+  "class_store": 39,
+  "class_ring": 13
+ },
+ "class_miss": [
+  0,
+  4
+ ],
+ "large_admitted": [
+  0,
+  13
+ ],
+ "large_min": 100.0,
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-live-20260917-225905-167684",
+ "trace_sha256": "76c3aac69b15e9f0d21c3f2d8e82608534552b26105664d22cd04ba5c6ec8ae8",
+ "dll_sha256": "9b68f8463403a61c1b07c3023c354604e90cf06a11fe95e91f1e1071c6040917",
+ "exe_sha256": "01c2daa9b2b66ffdf2eb058b6ff2ca9073c3f980b07a0f545d1f7543cde2be2e",
+ "presented_identical_to": [
+  "seam-ownership-shadow-pool-static-off",
+  "seam-ownership-shadow-pool-static-census"
+ ]
+}

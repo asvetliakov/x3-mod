@@ -18,7 +18,15 @@ Wine, no D3D) into one driver:
 * src/renderer/shadow_replay_projection.h: the default cascade set, the budget
   policy, the bounds mask with its open light side, and the shared-product
   light rows against shadow_replay_light_rows, and the rows' accuracy 70,000
-  units from the origin (the snapped centre is folded in as a double).
+  units from the origin (the snapped centre is folded in as a double);
+* caster pool control (docs/architecture/shadow-cascade-extents.md, "Caster
+  pool control"): the pool policy on the set (records, the static-only mask,
+  the per-cascade bound), the projected size the mask test yields, the
+  scene-end importance selection (the same kept set under every submission
+  order, the serial tie-break, dropped_min_size, the compaction of records
+  left without a cascade) and the static classification ring
+  (src/proxy/shadow_caster_class.h: static within eps, moving beyond, a miss
+  on the first sighting and after an eviction).
 The launcher options are checked through tools/manage.py --dry-run.
 """
 import contextlib
@@ -41,6 +49,7 @@ DRIVER = r'''
 #include "proxy/shadow_replay_candidates.h"
 #include "proxy/shadow_replay_sun.h"
 #include "proxy/shadow_replay_sun_point.h"
+#include "proxy/shadow_caster_class.h"
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -198,6 +207,112 @@ int main(int argc, char** argv) {
         CHECK(!frame.draw(true, true, true, false, false, true, PoolClass::Managed, PoolClass::Managed, false, record_capacity, &mask, caps) && mask == 0 && frame.counts.capped == 1
               && frame.counts.cascade_capped[0] == 2 && frame.counts.cascade_capped[1] == 1 && frame.counts.cascade[0] == 1 && frame.counts.cascade[1] == 2 && frame.counts.cascade[2] == 2);
         CHECK(frame.records[1].cascades == 6 && frame.record_count == 2);
+    }
+    // ---- caster pool control: the policy on the set, the projected size, the importance selection, the classification ring
+    {
+        using namespace renderer;
+        ShadowCascadeSet set{};
+        CHECK(shadow_cascade_set(shadow_cascade_extent_defaults, 4, nullptr, nullptr, 640, set));
+        CHECK(set.records[3] == 1024 && set.static_from == shadow_cascade_static_from_none && !set.importance && set.record_capacity() == 1024 && set.static_only_mask() == 0 && set.bound(3) == 1024);
+        const unsigned records[4] = {1024, 1024, 2048, 4096}, caps[4] = {128, 512, 4096, 4096}, too_many[4] = {1, 1, 1, 4097}, zero[4] = {0, 1, 1, 1};
+        CHECK(shadow_cascade_set(shadow_cascade_extent_defaults, 4, nullptr, caps, 640, set) && set.caps[2] == 4096);
+        CHECK(!shadow_cascade_pool(set, too_many, 3, true) && !shadow_cascade_pool(set, zero, 3, true) && !shadow_cascade_pool(set, records, 5, true) && !shadow_cascade_pool(set, records, 4, true)
+              && !shadow_cascade_pool(set, records, 0, true) && set.records[3] == 1024 && !set.importance); // the count itself is refused: it would be a no-op, and 0 would starve cascade 0
+        CHECK(shadow_cascade_pool(set, records, 2, true) && set.records[3] == 4096 && set.record_capacity() == 4096 && set.static_from == 2 && set.static_only_mask() == 12 && set.importance
+              && set.bound(2) == 2048 && set.bound(3) == 4096 && set.bound(0) == 128 && set.static_only(3) && !set.static_only(1));
+        CHECK(shadow_cascade_pool(set, nullptr, shadow_cascade_static_from_none, false) && set.static_from == shadow_cascade_static_from_none && set.records[3] == 4096 && set.large_min == 0.f && !set.static_only(3) && set.static_only_mask() == 0);
+        CHECK(shadow_cascade_pool(set, nullptr, 3, false, 1500.f) && set.large_min == 1500.f && !shadow_cascade_pool(set, nullptr, 3, false, -1.f) && !shadow_cascade_pool(set, nullptr, 3, false, 1e7f)
+              && !shadow_cascade_pool(set, nullptr, 3, false, std::nanf("")) && set.large_min == 1500.f);
+        ShadowCascadeSet none{}; CHECK(!shadow_cascade_pool(none, records, 1, true));
+        // The projected size: the box diagonal over the distance; a nearer or larger box is larger, an unknown mask yields 0.
+        const CameraState c = camera();
+        const float sun[4] = {0, 1, 0, 0};
+        ShadowCascadeBounds bounds{}; CHECK(shadow_cascade_set(shadow_cascade_extent_defaults, 4, nullptr, nullptr, 640, set) && shadow_cascade_bounds(c, sun, set, bounds));
+        float clip[16] = {c.m00, 0, 0, 0, 0, c.m11, 0, 0, 0, 0, 1, 0, 0, 0, 1, 50};
+        const float lo[3] = {-1, -1, -1}, hi[3] = {1, 1, 1}, hi2[3] = {2, 2, 2};
+        float near_size = 0, far_size = 0, big_size = 0, none_size = 1;
+        CHECK(shadow_cascade_bounds_mask(c, clip, bounds, lo, hi, &near_size) >= 0 && near_size > 0.f);
+        clip[15] = 500; CHECK(shadow_cascade_bounds_mask(c, clip, bounds, lo, hi, &far_size) >= 0 && far_size > 0.f && far_size < near_size);
+        CHECK(shadow_cascade_bounds_mask(c, clip, bounds, lo, hi2, &big_size) >= 0 && big_size > far_size && big_size < near_size);
+        CHECK(shadow_cascade_bounds_mask(c, nullptr, bounds, lo, hi, &none_size) == -1 && none_size == 0.f);
+        CHECK(shadow_cascade_bounds_mask(c, clip, bounds, lo, hi) == shadow_cascade_bounds_mask(c, clip, bounds, lo, hi, &far_size)); // the size is a pure output
+        { // the box extent: the largest side of the world box, whatever the distance; 0 when unknown
+          float e1 = 0, e2 = 0, e3 = 1; const float lo2[3] = {-50, -1, -1}, hi2b[3] = {50, 1, 1};
+          clip[15] = 50; CHECK(shadow_cascade_bounds_mask(c, clip, bounds, lo, hi, nullptr, &e1) >= 0 && e1 > 1.9f && e1 < 3.6f); // a 2-unit cube: 2 .. 2 sqrt 3 in a rotated frame
+          clip[15] = 500; CHECK(shadow_cascade_bounds_mask(c, clip, bounds, lo, hi, nullptr, &e2) >= 0 && std::fabs(e2 - e1) < 1e-3f);
+          CHECK(shadow_cascade_bounds_mask(c, clip, bounds, lo2, hi2b, nullptr, &e2) >= 0 && e2 >= 100.f * .57f && e2 <= 100.f * 1.01f + 2.f);
+          CHECK(shadow_cascade_bounds_mask(c, nullptr, bounds, lo, hi, nullptr, &e3) == -1 && e3 == 0.f); }
+        // The importance selection: eight casters of distinct sizes into a cascade capped at 4 under every rotation of the
+        // submission order keep the four largest; ties fall to the lower serial; the dropped records compact away.
+        static shadow_replay::Frame frame;
+        std::uint16_t scratch[shadow_replay::record_capacity];
+        const float sizes[8] = {.13f, .2f, .3f, .44f, .67f, 1.f, 1.5f, .05f};
+        const unsigned select_caps[4] = {16, 4, 16, 16};
+        for (unsigned rotation = 0; rotation < 8; ++rotation) {
+            frame.reset();
+            for (unsigned k = 0; k < 8; ++k) {
+                const unsigned i = (k + rotation) % 8;
+                std::uint8_t mask = 3;
+                CHECK(frame.draw(true, true, true, false, false, true, shadow_replay::PoolClass::Managed, shadow_replay::PoolClass::Managed, false, shadow_replay::record_capacity, &mask, nullptr) && mask == 3);
+                auto& r = frame.record(mask); frame.count_cascades(mask); ++frame.counts.leased;
+                r.serial = 1000 + i; r.size = sizes[i]; r.vb = 100 + i;
+            }
+            frame.select_cascades(select_caps, 2, scratch);
+            CHECK(frame.counts.cascade[1] == 4 && frame.counts.cascade_capped[1] == 4 && frame.counts.cascade[0] == 8 && frame.counts.cascade_capped[0] == 0 && frame.counts.dropped_size[1] == .3f && frame.counts.dropped_size[0] == 0.f);
+            unsigned kept = 0; bool right = true;
+            for (unsigned k = 0; k < frame.record_count; ++k) if (frame.records[k].cascades & 2) { ++kept; right &= frame.records[k].size >= .44f; }
+            CHECK(kept == 4 && right);
+            unsigned dropped = 0, moved = 0;
+            CHECK(frame.compact([&](unsigned) { ++dropped; }, [&](unsigned, unsigned) { ++moved; }) == 0 && dropped == 0 && moved == 0 && frame.record_count == 8); // every record keeps cascade 0
+        }
+        // Ties: equal sizes keep the lower serials; a record dropped from every cascade compacts out, the survivors keep their order.
+        frame.reset();
+        for (unsigned i = 0; i < 6; ++i) { std::uint8_t mask = 2; frame.draw(true, true, true, false, false, true, shadow_replay::PoolClass::Managed, shadow_replay::PoolClass::Managed, false, shadow_replay::record_capacity, &mask, nullptr); auto& r = frame.record(mask); frame.count_cascades(mask); ++frame.counts.leased; r.serial = 2000 - i; r.size = 1.f; r.vb = 300 + i; }
+        const unsigned tie_caps[4] = {16, 3, 16, 16};
+        frame.select_cascades(tie_caps, 2, scratch);
+        unsigned dropped = 0; std::uint64_t order[3]; unsigned n = 0;
+        CHECK(frame.compact([&](unsigned) { ++dropped; }, [&](unsigned from, unsigned to) { CHECK(from > to); }) == 3 && dropped == 3 && frame.record_count == 3 && frame.counts.capped == 3 && frame.counts.leased == 3 && frame.counts.dropped_size[1] == 1.f);
+        for (unsigned k = 0; k < frame.record_count; ++k) order[n++] = frame.records[k].vb;
+        CHECK(order[0] == 303 && order[1] == 304 && order[2] == 305); // serials 1997, 1996, 1995: the lowest three, in submission order
+        // The ring: a first sighting misses, the same rows are static, rows beyond eps are moving and become the new sighting, an eviction misses again.
+        shadow_caster_class::Ring ring(1024); CHECK(ring.valid() && ring.size() == 2048); ring.clear();
+        double world[12] = {1, 0, 0, 10, 0, 1, 0, 20, 0, 0, 1, 30}, moved_rows[12] = {1, 0, 0, 10.08, 0, 1, 0, 20, 0, 0, 1, 30}, near_rows[12] = {1, 0, 0, 10.03, 0, 1, 0, 20, 0, 0, 1, 30};
+        const std::uint64_t key = shadow_caster_class::Ring::key_of(77, 5, 0, 0, 3);
+        using shadow_caster_class::Verdict;
+        CHECK(ring.test(key, world, lo, hi, .05, 1) == Verdict::Miss && ring.test(key, world, lo, hi, .05, 2) == Verdict::Static && ring.test(key, near_rows, lo, hi, .05, 3) == Verdict::Static);
+        CHECK(ring.test(key, moved_rows, lo, hi, .05, 4) == Verdict::Moving && ring.test(key, moved_rows, lo, hi, .05, 5) == Verdict::Static && ring.test(key, moved_rows, lo, hi, .05, 5) == Verdict::Static);
+        { // a slow drifter (0.02 per sighting, below eps) accumulates against the anchor and is moving on its third step (0.06 > 0.05): the anchor never re-anchors under it
+          double drift[12]; std::memcpy(drift, moved_rows, sizeof drift);
+          drift[3] += .02; CHECK(ring.test(key, drift, lo, hi, .05, 6) == Verdict::Static);
+          drift[3] += .02; CHECK(ring.test(key, drift, lo, hi, .05, 7) == Verdict::Static);
+          drift[3] += .02; CHECK(ring.test(key, drift, lo, hi, .05, 8) == Verdict::Moving);   // 0.06 from the anchor: reclassified, the new anchor
+          drift[3] += .02; CHECK(ring.test(key, drift, lo, hi, .05, 9) == Verdict::Static); }
+        CHECK(shadow_caster_class::Ring::key_of(77, 5, 0, 0, 3) != shadow_caster_class::Ring::key_of(78, 5, 0, 0, 3) && shadow_caster_class::Ring::key_of(77, 5, 3, 0, 3) != key
+              && shadow_caster_class::Ring::key_of(77, 5, 0, 0, 3) == shadow_replay::caster_key(77, 5, 0, 0, 3));
+        std::uint64_t colliders[3]; unsigned found = 0; // three keys of one set evict the oldest way
+        for (std::uint64_t s = 1; found < 3 && s < 1000000; ++s) { const std::uint64_t k = shadow_caster_class::Ring::key_of(s, 9, 0, 0, 3); if (k % ring.sets == key % ring.sets && k != key) colliders[found++] = k; }
+        CHECK(found == 3);
+        CHECK(ring.test(colliders[0], world, lo, hi, .05, 10) == Verdict::Miss && ring.test(colliders[1], world, lo, hi, .05, 11) == Verdict::Miss); // key (stamp 9) is evicted by the second
+        CHECK(ring.test(key, world, lo, hi, .05, 12) == Verdict::Miss && ring.test(colliders[1], world, lo, hi, .05, 12) == Verdict::Static);
+        shadow_caster_class::Ring small(0); CHECK(small.valid() && small.sets == 1 && small.test(key, world, lo, hi, .05, 1) == Verdict::Miss && small.test(key, world, lo, hi, .05, 2) == Verdict::Static);
+        // Hysteresis at the cap boundary: with the kept-last table attached, a caster kept last frame stays kept while its
+        // size is at least 0.8 x the cutoff; a caster that fell below it yields. Two candidates a (kept) and b at the boundary of cap 1.
+        static shadow_replay::KeptEntry kept[2 * shadow_replay::record_capacity];
+        frame.attach_kept(kept, 2 * shadow_replay::record_capacity);
+        const unsigned one_cap[4] = {16, 1, 16, 16};
+        auto pair_frame = [&](float size_a, float size_b) {
+            frame.reset();
+            for (unsigned i = 0; i < 2; ++i) { std::uint8_t mask = 2; frame.draw(true, true, true, false, false, true, shadow_replay::PoolClass::Managed, shadow_replay::PoolClass::Managed, false, shadow_replay::record_capacity, &mask, nullptr); auto& r = frame.record(mask); frame.count_cascades(mask); ++frame.counts.leased; r.serial = 500 + i; r.key = shadow_replay::caster_key(500 + i, 7, 0, 0, 3); r.size = i ? size_b : size_a; r.vb = 700 + i; }
+            frame.select_cascades(one_cap, 2, scratch);
+            return frame.records[0].cascades ? 'a' : 'b';
+        };
+        CHECK(pair_frame(1.f, .9f) == 'a');   // a leads
+        CHECK(pair_frame(.9f, 1.f) == 'a');   // b leads by 11 %: a stays (0.9 >= 0.8 x 1.0)
+        CHECK(pair_frame(.79f, 1.f) == 'b');  // a fell below 0.8 x the cutoff: b takes over
+        CHECK(pair_frame(.85f, 1.f) == 'b');  // ... and stays while a is within its band
+        CHECK(pair_frame(1.f, .9f) == 'b' && pair_frame(1.3f, 1.f) == 'a'); // b holds at 0.9 >= 0.8; a retakes at 1.3 (b at 1.0 < 0.8 x 1.3)
+        frame.attach_kept(nullptr, 0);
+        CHECK(pair_frame(1.f, .9f) == 'a' && pair_frame(.9f, 1.f) == 'b'); // without the table: the plain order
     }
     // ---- the cascade set, the budget policy, the bounds mask, the light rows
     {
@@ -501,16 +616,43 @@ class LauncherOptions(unittest.TestCase):
                 self.assertNotEqual(code, 0, value); self.assertIn('--shadow-cascades takes 1..4 ascending half-extents within [50, 50000]', error)
             for option, value, message in (('--shadow-cascade-sizes', '63', '--shadow-cascade-sizes takes one value or one per cascade within [64, 4096]'),
                                            ('--shadow-cascade-sizes', '4096,4096', '--shadow-cascade-sizes takes one value or one per cascade'),
-                                           ('--shadow-cascade-caps', '1025', '--shadow-cascade-caps takes one value or one per cascade within [1, 1024]'),
+                                           ('--shadow-cascade-caps', '4097', '--shadow-cascade-caps takes one value or one per cascade within [1, 4096]'),
+                                           ('--shadow-cascade-records', '4097', '--shadow-cascade-records takes one value or one per cascade within [1, 4096]'),
+                                           ('--shadow-cascade-records', '1024,4096', '--shadow-cascade-records takes one value or one per cascade'),
+                                           ('--shadow-cascade-static-from', '0', '--shadow-cascade-static-from must be within [1, cascades-1]'),
+                                           ('--shadow-cascade-static-from', '3', '--shadow-cascade-static-from must be within [1, cascades-1] (3 cascades configured)'),
+                                           ('--shadow-cascade-large-min', '-1', '--shadow-cascade-large-min must be within [0, 1000000]'),
+                                           ('--shadow-cascade-large-min', '1000001', '--shadow-cascade-large-min must be within [0, 1000000]'),
+                                           ('--shadow-cascade-large-min', 'nan', '--shadow-cascade-large-min must be within [0, 1000000]'),
                                            ('--shadow-cascade-budget', '0', '--shadow-cascade-budget must be within [1, 4096]'),
                                            ('--shadow-cascade-budget', '4097', '--shadow-cascade-budget must be within [1, 4096]')):
                 code, _, error = launch(directory, *self.BASE, '--shadow-cascades', '250,1500,7500', option, value)
                 self.assertNotEqual(code, 0, (option, value)); self.assertIn(message, error)
             code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-cascades', 'default')
             self.assertNotEqual(code, 0); self.assertIn('--shadow-cascades requires --shadow-replay-depth', error)
-            for option, value in (('--shadow-cascade-sizes', '1024'), ('--shadow-cascade-caps', '8'), ('--shadow-cascade-budget', '64'), ('--shadow-sun-poll', 'on')):
+            for option, value in (('--shadow-cascade-sizes', '1024'), ('--shadow-cascade-caps', '8'), ('--shadow-cascade-budget', '64'), ('--shadow-sun-poll', 'on'),
+                                  ('--shadow-cascade-records', '4096'), ('--shadow-cascade-static-from', '3'), ('--shadow-cascade-drop-order', 'importance'), ('--shadow-cascade-large-min', '1500')):
                 code, _, error = launch(directory, *self.BASE, option, value)
                 self.assertNotEqual(code, 0, option); self.assertIn(f'{option} requires --shadow-cascades', error)
+            code, _, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-drop-order', 'largest')
+            self.assertNotEqual(code, 0); self.assertIn('invalid choice', error)
+
+    def test_pool_options(self):
+        """Caster pool control (shadow-cascade-extents.md, "Caster pool control"): absent by default, an inherited value cannot leak, the values pass through."""
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default',
+                                         inherited={'X3M_SHADOW_CASCADE_RECORDS': '4096', 'X3M_SHADOW_CASCADE_STATIC_FROM': '1', 'X3M_SHADOW_CASCADE_DROP_ORDER': 'importance', 'X3M_SHADOW_CASCADE_LARGE_MIN': '1'})
+            self.assertEqual(code, 0, error); env = json.loads(output)['env']
+            for name in ('X3M_SHADOW_CASCADE_RECORDS', 'X3M_SHADOW_CASCADE_STATIC_FROM', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_SHADOW_CASCADE_LARGE_MIN'):
+                self.assertNotIn(name, env)
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-records', '1024,1024,2048,4096', '--shadow-cascade-caps', '128,512,2048,4096',
+                                         '--shadow-cascade-static-from', '3', '--shadow-cascade-drop-order', 'importance', '--shadow-cascade-large-min', '1500')
+            self.assertEqual(code, 0, error); env = json.loads(output)['env']
+            self.assertEqual((env['X3M_SHADOW_CASCADE_RECORDS'], env['X3M_SHADOW_CASCADE_CAPS'], env['X3M_SHADOW_CASCADE_STATIC_FROM'], env['X3M_SHADOW_CASCADE_DROP_ORDER'], env['X3M_SHADOW_CASCADE_LARGE_MIN']),
+                             ('1024,1024,2048,4096', '128,512,2048,4096', '3', 'importance', '1500.0'))
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-records', '4096', '--shadow-cascade-drop-order', 'submission')
+            self.assertEqual(code, 0, error); env = json.loads(output)['env']
+            self.assertEqual((env['X3M_SHADOW_CASCADE_RECORDS'], env['X3M_SHADOW_CASCADE_DROP_ORDER']), ('4096', 'submission')); self.assertNotIn('X3M_SHADOW_CASCADE_STATIC_FROM', env)
 
 
 if __name__ == '__main__':

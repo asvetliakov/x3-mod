@@ -44,6 +44,7 @@
 #include "shadow_replay_candidates.h"
 #include "shadow_replay_depth.h"
 #include "shadow_retention.h"
+#include "shadow_caster_class.h"
 #include "shadow_replay_sun_point.h"
 #include "sun_light_poll.h"
 #include "../renderer/shadow_replay_pass.h"
@@ -1186,8 +1187,26 @@ private:
     float depth_replay_extent_=renderer::shadow_replay_extent_default, depth_replay_depth_half_=renderer::shadow_replay_depth_half_default;
     std::unique_ptr<renderer::ShadowReplayPass> depth_replay_;
     HRESULT depth_replay_attach_result_=S_FALSE;
-    shadow_replay::DepthGeometry depth_geometry_[shadow_replay::record_capacity]{};
-    renderer::ShadowReplayDraw depth_draws_[shadow_replay::record_capacity]{}; // the scene-end transaction's draw list (too large for the stack at 512)
+    // The record list's parallel arrays: the inline storage for record_capacity
+    // records, or (a cascade set with more records: shadow-cascade-extents.md,
+    // "Caster pool control") storage allocated once at attach, candidate_capacity_
+    // entries each; the pointers select which. No allocation after attach.
+    shadow_replay::DepthGeometry depth_geometry_inline_[shadow_replay::record_capacity]{};
+    renderer::ShadowReplayDraw depth_draws_inline_[shadow_replay::record_capacity]{}; // the scene-end transaction's draw list (too large for the stack at 512)
+    shadow_replay::DepthGeometry* depth_geometry_=depth_geometry_inline_;
+    renderer::ShadowReplayDraw* depth_draws_=depth_draws_inline_;
+    unsigned candidate_capacity_=shadow_replay::record_capacity;
+    std::unique_ptr<shadow_replay::Record[]> candidate_records_ext_;
+    std::unique_ptr<shadow_replay::DepthGeometry[]> depth_geometry_ext_;
+    std::unique_ptr<renderer::ShadowReplayDraw[]> depth_draws_ext_;
+    std::unique_ptr<bool[]> candidate_quiet_ext_;            // the scene end's per-record quiet verdicts beyond the inline stack array
+    std::unique_ptr<std::uint16_t[]> candidate_select_scratch_; // importance drop order: one index per record (allocated while the option is on)
+    std::unique_ptr<shadow_caster_class::Ring> candidate_class_ring_; // static-only cascades: the per-draw anchor ring, sized to the record capacity (allocated while the option is on)
+    std::unique_ptr<shadow_replay::KeptEntry[]> candidate_kept_last_;  // importance order: last frame's kept casters (two slots per record; allocated while the option is on)
+    unsigned depth_cascade_draw_caps_[renderer::shadow_cascade_max]{}; // the per-cascade bound the draw path applies (the cap, or the record capacity under the importance order)
+    std::uint8_t depth_cascade_static_mask_=0; // bit i: cascade i admits static casters only (none by default)
+    shadow_caster_class::Verdict classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept; // shadow_caster_class.h
+    bool attach_candidate_storage() noexcept; // sizes the arrays above for depth_cascades_; false leaves the cascades off
     renderer::ShadowReplayCascade depth_cascade_{};
     renderer::ShadowReplayBasis depth_basis_{}; // basis of the last replayed frame (seam readback)
     unsigned depth_replayed_=0;                  // draws replayed on depth_replayed_frame_ (0: the map is not this frame's)

@@ -4,12 +4,14 @@
 // CPU bookkeeping only: fixed storage, no allocation, no D3D or COM access.
 // The route feeds one draw() per routed draw and compares the recorded
 // buffer-lock bookends (src/ownership/buffer_lock_observation.h) at scene end.
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include "../ownership/buffer_lock_observation.h"
 
 namespace x3m::shadow_replay {
-constexpr unsigned record_capacity = 1024; // storage (fixed arrays in MotionOutput, no allocation); the per-frame cap is at most this
+constexpr unsigned record_capacity = 1024; // inline storage (fixed arrays in MotionOutput, no allocation); the per-frame cap is at most this unless a cascade set asks for more records
+constexpr unsigned record_capacity_max = 4096; // X3M_SHADOW_CASCADE_RECORDS: the largest per-cascade record capacity; storage beyond record_capacity is allocated once at attach
 constexpr unsigned default_cap = 512;       // X3M_SHADOW_REPLAY_CAP default (1..record_capacity): managed candidates recorded and replayed per frame
 constexpr unsigned cascade_capacity = 4;    // = renderer::shadow_cascade_max (docs/architecture/shadow-cascades.md); this header stays D3D- and renderer-free
 constexpr unsigned witness_capacity = 16;  // per device, section 3
@@ -26,6 +28,16 @@ constexpr unsigned extent_read_attempts = 8;                  // scene ends a ra
 // inside that) and the verdict is reported as `inflated`.
 constexpr unsigned extent_stale_frames = 8;
 
+// The identity of one caster draw across frames: the node's lifetime serial
+// and the draw's vertex range (a node's parts carry their own rows). Never 0.
+inline std::uint64_t caster_key(std::uint64_t serial, std::uint64_t vb, std::uint32_t first, std::int32_t base_vertex, std::uint32_t count) noexcept {
+    std::uint64_t h = serial * 0x9E3779B97F4A7C15ull;
+    h ^= vb * 0xC2B2AE3D27D4EB4Full;
+    h ^= (std::uint64_t(first) << 32 | std::uint32_t(base_vertex)) * 0x165667B19E3779F9ull;
+    h ^= std::uint64_t(count) * 0x27D4EB2F165667C5ull;
+    h ^= h >> 29; h *= 0xBF58476D1CE4E5B9ull; h ^= h >> 32;
+    return h ? h : 1u;
+}
 // Pool/usage class of a bound buffer, from the documented GetDesc of the
 // application's own SetStreamSource/SetIndices argument (cached per allocation).
 enum class PoolClass : std::uint8_t { Unknown = 0, Managed = 1, Dynamic = 2, Other = 3 };
@@ -65,12 +77,27 @@ struct FrameCounts {
     // cascade i was dropped by that cascade's cap (capped<i>=); `capped` then
     // counts the draws every one of whose cascades was dropped.
     std::uint32_t cascade[cascade_capacity]{}, cascade_capped[cascade_capacity]{};
+    // Static-only cascades (X3M_SHADOW_CASCADE_STATIC_FROM): draws whose cascade i
+    // was refused because the caster is not classified static (static_only_refused<i>=),
+    // and how the frame's classifications were decided (shadow_caster_class.h).
+    std::uint32_t static_only_refused[cascade_capacity]{};
+    std::uint32_t large_admitted[cascade_capacity]{}; // ... and moving draws admitted to cascade i by their extent (X3M_SHADOW_CASCADE_LARGE_MIN)
+    std::uint32_t class_store = 0, class_ring = 0; // draws classified by the retention store's verdict; by the ring's anchor
+    std::uint32_t class_miss[cascade_capacity]{}; // draws refused from cascade i with no anchor at all (first sighting, evicted, no serial or rows): the ring's limit, per cascade
+    // Importance drop order (X3M_SHADOW_CASCADE_DROP_ORDER=importance): per cascade the
+    // largest projected size among the casters its cap dropped this frame (dropped_min_size<i>=;
+    // 0 while nothing was dropped) and the selection's cost.
+    float dropped_size[cascade_capacity]{};
+    double select_us = 0;
 };
 struct Record {
     std::uint64_t vb = 0, ib = 0;                 // route allocation ids (RigidDrawKey)
     std::uintptr_t vb_identity = 0, ib_identity = 0; // wrapper identities: registry keys only, never dereferenced
     std::uint64_t vb_generation = 0, ib_generation = 0; // BufferLockView::generation at the draw (changes before every Reset)
     ownership::BufferLockObservation vb_view{}, ib_view{}; // bookend views at the draw
+    std::uint64_t serial = 0; // the node's lifetime serial (0 unknown): the importance order's tie-break
+    std::uint64_t key = 0;    // caster_key of the draw: the importance order's kept-last-frame identity
+    float size = 0.f;         // projected size at the camera (renderer::shadow_cascade_projected_size; 0 without an extent)
     std::uint8_t cascades = 1; // bit i: the draw is replayed into cascade i (the single map is cascade 0)
     std::uint8_t verdict = 0;  // VerdictSource: what admitted the draw (capture-frame diagnostics)
 };
@@ -110,11 +137,49 @@ inline BufferVerdict compare(const ownership::BufferLockObservation& at_draw,
     return v;
 }
 
+// The importance order's memory of the previous frame's kept casters: an
+// open-addressed table of caster keys with the cascade mask each was kept
+// in, refilled at every scene end (owner storage, 2 slots per record).
+struct KeptEntry { std::uint64_t key = 0; std::uint8_t mask = 0; };
+constexpr float importance_hysteresis = .8f; // a caster kept last frame stays kept while its size >= this x the cascade's cutoff
 // One frame's population. Reset at the frame begin and after publication.
+// `records` is the inline array unless the owner attached larger storage
+// (attach-time allocation for a cascade set with more than record_capacity
+// records); never copied (the pointer would dangle).
 struct Frame {
     FrameCounts counts{};
-    Record records[record_capacity]{};
+    Record inline_records[record_capacity]{};
+    Record* records = inline_records;
+    unsigned capacity = record_capacity;
     unsigned record_count = 0;
+    KeptEntry* kept_last = nullptr; unsigned kept_slots = 0; // the owner's table (importance order on); persists across frames
+    void attach_kept(KeptEntry* table, unsigned slots) noexcept { kept_last = table; kept_slots = slots; if (table) for (unsigned i = 0; i < slots; ++i) table[i] = KeptEntry{}; }
+    std::uint8_t kept_mask(std::uint64_t key) const noexcept {
+        if (!kept_last || !kept_slots) return 0;
+        for (unsigned probe = 0, i = unsigned(key % kept_slots); probe < kept_slots; ++probe, i = i + 1 == kept_slots ? 0 : i + 1) {
+            if (kept_last[i].key == key) return kept_last[i].mask;
+            if (!kept_last[i].key) return 0;
+        }
+        return 0;
+    }
+    void remember_kept() noexcept {
+        if (!kept_last || !kept_slots) return;
+        for (unsigned i = 0; i < kept_slots; ++i) kept_last[i] = KeptEntry{};
+        for (unsigned r = 0; r < record_count; ++r) {
+            const Record& rec = records[r];
+            if (!rec.cascades || !rec.key) continue;
+            for (unsigned probe = 0, i = unsigned(rec.key % kept_slots); probe < kept_slots; ++probe, i = i + 1 == kept_slots ? 0 : i + 1) {
+                if (!kept_last[i].key || kept_last[i].key == rec.key) { kept_last[i].key = rec.key; kept_last[i].mask |= rec.cascades; break; }
+            }
+        }
+    }
+    Frame() noexcept = default;
+    Frame(const Frame&) = delete;
+    Frame& operator=(const Frame&) = delete;
+    void attach_storage(Record* storage, unsigned storage_capacity) noexcept {
+        records = storage && storage_capacity > record_capacity ? storage : inline_records;
+        capacity = records == inline_records ? record_capacity : storage_capacity;
+    }
     void reset() noexcept { counts = {}; record_count = 0; }
     // Per routed draw (successful native draw only). admitted: the draw is a
     // cascade-0 caster (by_bounds: its vertex extent meets the map box; else
@@ -142,7 +207,7 @@ struct Frame {
         if (vb == PoolClass::Unknown || second == PoolClass::Unknown) { ++counts.unknown; return false; }
         if (vb != PoolClass::Managed || second != PoolClass::Managed) { ++counts.default_pool; return false; }
         ++counts.managed;
-        if (record_count >= record_capacity) { ++counts.overflow; return false; }
+        if (record_count >= capacity) { ++counts.overflow; return false; }
         if (record_count >= cap) { ++counts.capped; return false; }
         if (cascade_mask && cascade_caps) {
             std::uint8_t kept = 0;
@@ -163,6 +228,75 @@ struct Frame {
     // Cascades on: the per-cascade record counts (the caps' ledger).
     void count_cascades(std::uint8_t cascade_mask) noexcept {
         for (unsigned i = 0; i < cascade_capacity; ++i) if (cascade_mask & (1u << i)) ++counts.cascade[i];
+    }
+    // Importance drop order (docs/architecture/shadow-cascade-extents.md, "Caster
+    // pool control"): at the scene end, a cascade whose records exceed its cap
+    // keeps the `cap` largest projected casters; the order is size descending,
+    // then node serial ascending, then record index ascending, so the kept set
+    // is a function of the frame's casters and not of their submission order.
+    // Hysteresis at the cap boundary: a caster this cascade kept last frame
+    // (kept_last) ranks above the rest while its size is at least
+    // importance_hysteresis x the cutoff (the smallest size the plain order
+    // would keep), still bounded by the cap, so near-equal sizes do not flip
+    // between frames. Two nth_elements over the cascade's records (`scratch`:
+    // capacity indices, the owner's); the drop moves the bit off the record and
+    // counts as the draw-time cap does (cascade_capped<i>, then `capped` for a
+    // record left without a cascade: the owner compacts those out with
+    // `compact`). dropped_size<i>: the largest size among the dropped (what
+    // popping costs). The frame's final kept set is remembered at the end.
+    void select_cascades(const unsigned* caps, unsigned cascades, std::uint16_t* scratch) noexcept {
+        if (!caps || !scratch) return;
+        for (unsigned k = 0; k < cascades && k < cascade_capacity; ++k) {
+            counts.dropped_size[k] = 0.f;
+            if (counts.cascade[k] <= caps[k]) continue;
+            unsigned n = 0;
+            for (unsigned i = 0; i < record_count; ++i) if (records[i].cascades & (1u << k)) scratch[n++] = std::uint16_t(i);
+            const Record* r = records;
+            const auto better = [r](std::uint16_t a, std::uint16_t b) noexcept {
+                if (r[a].size != r[b].size) return r[a].size > r[b].size;
+                if (r[a].serial != r[b].serial) return r[a].serial < r[b].serial;
+                return a < b;
+            };
+            const unsigned keep = caps[k];
+            std::nth_element(scratch, scratch + keep, scratch + n, better);
+            if (kept_last && kept_slots) {
+                float boundary = r[scratch[0]].size; // the plain order's smallest kept size
+                for (unsigned q = 1; q < keep; ++q) if (r[scratch[q]].size < boundary) boundary = r[scratch[q]].size;
+                const float cutoff = boundary * importance_hysteresis;
+                const std::uint8_t bit = std::uint8_t(1u << k);
+                const auto sticky = [this, r, cutoff, bit](std::uint16_t a) noexcept { return r[a].size >= cutoff && (kept_mask(r[a].key) & bit) != 0; };
+                bool any = false;
+                for (unsigned q = keep; q < n && !any; ++q) any = sticky(scratch[q]); // a dropped caster that was kept: re-rank with the priority
+                if (any) std::nth_element(scratch, scratch + keep, scratch + n, [&](std::uint16_t a, std::uint16_t b) noexcept {
+                    const bool sa = sticky(a), sb = sticky(b);
+                    return sa != sb ? sa : better(a, b);
+                });
+            }
+            float largest = 0.f;
+            for (unsigned q = keep; q < n; ++q) {
+                Record& d = records[scratch[q]];
+                d.cascades = std::uint8_t(d.cascades & ~(1u << k));
+                if (d.size > largest) largest = d.size;
+                ++counts.cascade_capped[k];
+            }
+            counts.cascade[k] = keep;
+            counts.dropped_size[k] = largest;
+        }
+        remember_kept();
+    }
+    // Removes the records left without a cascade (stable). `dropped(i)` is
+    // called for each such record before it goes; `moved(from, to)` for each
+    // surviving record that changes index, so the owner's parallel arrays follow.
+    template <class Dropped, class Moved> unsigned compact(Dropped dropped, Moved moved) noexcept {
+        unsigned w = 0;
+        for (unsigned i = 0; i < record_count; ++i) {
+            if (!records[i].cascades) { dropped(i); ++counts.capped; --counts.leased; continue; }
+            if (w != i) { records[w] = records[i]; moved(i, w); }
+            ++w;
+        }
+        const unsigned removed = record_count - w;
+        record_count = w;
+        return removed;
     }
 };
 

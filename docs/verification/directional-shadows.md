@@ -1951,3 +1951,122 @@ Capture `/private/tmp/x3-bottleX3-run115` (137 non-log files, `session-20260917-
 6. **Readback basename rejection**: `shadow_replay_map_readback` appears 96 times (4 cascades × 24 captured frames: 11954-11961, 13985-13992, 17558-17565), e.g. `file=shadow_map0_1_11954.r32f`. Running `tools/analysis/snapshot_x3_run.py` `references()` against this log directly gives **96** issues, all `shadow_replay_map_readback: ignored invalid record (unsafe or unexpected readback basename)` — not the ×7 stated in the brief; that number is not reproduced from this log and is left as a discrepancy. Cause (`tools/analysis/snapshot_x3_run.py:37,118-124`): `READBACKS['shadow_replay_map_readback'] = ('shadow_map', ('r32f',))` and the basename regex is `re.escape(prefix) + r'_(\d+)_(\d+)\.ext'`, i.e. it requires exactly `shadow_map_<device>_<frame>.r32f`. The actual per-cascade names are `shadow_map<k>_<device>_<frame>.r32f` (k=0..3), which fail the regex because the cascade digit sits directly after `shadow_map` with no separating underscore. Fix direction: extend the pattern (or add per-cascade prefixes `shadow_map0`..`shadow_map3`) to admit the cascade index, not widen the regex generally.
 
 Files changed: `docs/verification/directional-shadows.md` (this section only).
+
+## Caster pool control for wide far cascades (2026-09-18, worktree `agent-a46f2892f9578bec0`)
+
+Contract: [../architecture/shadow-cascade-extents.md](../architecture/shadow-cascade-extents.md),
+"Caster pool control" (`--shadow-cascade-static-from`, `--shadow-cascade-drop-order importance`,
+`--shadow-cascade-records`; set H's blocker lifted when they are on). Base db4a509 merged. Default
+off; every default reproduces main byte for byte (same records, drops and log lines). Not installed,
+not run in the game. Every Wine command ran as `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py …`.
+
+**Build.** `cmake --build build --clean-first -j8`: 0 warnings, DLL `a315adf507ab…`;
+`verification/probe/build_motion_output.sh` (`-Werror`): seam `c3a1f68af083…`, fixture
+`4664fc55003a…`. `check_no_x87.py build/d3d9.dll`: PASS, 77 roots, 527 reachable functions, 0
+violations (a first build had 3: `std::sqrt(float)` in the projected size pulled libm's x87 `sqrtf`
+onto the draw path; replaced by `sqrt_sd`).
+
+**Fixture** (new mode `shadowpool`, `verification/probe/motion_output_shadow_pool_inc.h`; records
+`verification/results/bottle-X3/seam-ownership-shadow-pool-*-fixture.json`; two cascades of 8 / 40
+units, 256² maps, the retention script's world-placed camera and synthetic nodes, an anchor node of
+class 0x20 first every frame).
+- (a) `…-pool-static-{off,census,live}` (`X3M_SHADOW_CASCADE_STATIC_FROM=1`), 14 frames, 165 / 181 / 181
+  checks: the moving node (1/16 row unit per frame = 0.078 u > eps 0.05) shadows cascade 0 on every
+  frame and cascade 1 never; the static node and the anchor shadow both (from frame 1 by the ring;
+  with a store on, the store's verdict holds the static node out until its eight verified sightings,
+  frame 9, the anchor's class being excluded from the store). Per frame `static_only_refused1` = 3, 1,
+  1 … (off) and 3, 2 … 2, 1 … (store); `class_store / class_ring / class_miss` totals 0 / 39 / 3
+  (off) and 26 / 13 / 3 (census, live). 27 maps per case against the CPU twin of the kept set: 615
+  covered texels, 0 coverage disagreements, max depth error 3.8e-5; the three settings present
+  byte-identical frames (`color_sha256 d5e47b25…`).
+- (b) `…-pool-importance` (caps 16 / 4, `X3M_SHADOW_CASCADE_DROP_ORDER=importance`), 8 frames, 99
+  checks: seven scaled casters (1.5 … 0.13) plus the anchor at one distance, the submission order
+  rotated every frame. Cascade 1 keeps the four largest on every sized frame (frame 0, no extents:
+  the four lowest serials) with `c1=4 capped1=4`, the 16 maps equal to the twin of exactly that set
+  (11,777 covered texels, 0 disagreements, max depth error 3.6e-5); `dropped_min_size1` = 1.615 on
+  every sized frame (identical: the selection is a function of the casters, not of the order);
+  `select_us` median 1.0 (max 174.7 on the first frame).
+- (c) `…-pool-records` (`X3M_SHADOW_CASCADE_RECORDS=1024,4096`, caps 1024 / 4095, importance), 6
+  frames, 53 checks: 4,095 nodes on one mesh inside cascade 1 only plus the anchor: every frame
+  `routed=4096 leased=4095 overflow=0 c0=1 c1=4095 capped1=1 capped=1` (the farthest node, size
+  0.0298, dropped), issues 4,096 over the budget 640 so `draws1` = 4095 on even frames and 0 on odd
+  ones with the far basis retained, `draws0` = 1 every frame; replay median 2.73 ms for 4,096 issues
+  (0.67 µs per issue); `select_us` median 24.9 at 4,096 candidates (max 227.8, frame 0).
+- Bench (`sun-shadow-apply-cascades`, `SUNAPPLY_BOUNDS_BENCH`, 2 M rounds): single verdict 45.7 ns,
+  four-cascade mask 39.0 ns, the mask with the projected size 45.8 ns (+6.8 ns per draw), the static
+  classification (world rows + ring test) 41.2 ns per draw; the scene-end selection over a full
+  4,096-record list 15.5 µs (cap 2,048) and 13.5 µs (cap 4,095), 200 rounds each.
+
+**Host.** `test_shadow_cascades` (driver: pool policy ranges and bounds, projected size ordering, the
+selection identical under eight rotations, the serial tie-break, compaction, the ring's miss /
+static / moving / eviction; launcher: the three options, ranges, absence by default, no leak of an
+inherited value), `test_shadow_replay_candidates` (the two optional tails, malformed forms, the
+summary), `test_shadow_replay_depth`, `test_shadow_retention`: 34 tests OK.
+`tools/analysis/shadow_replay_candidates.py` parses `static_only_refused<i>= class_store= class_ring=
+class_miss=` and `dropped_min_size<i>= select_us=`.
+
+**Defaults byte-identical (regression, retained binaries, 13 cases, all exit 0).**
+`seam-ownership-shadow-replay-{on,off}` 203 / 99 checks, `…-cascades` 278, `…-cascades-casters-20` 278,
+`…-cascades-toggle` 277, `…-cascades-poll-{agree,null,disagree,refusals}` 281 each: the check counts
+and the per-frame records of the run-39 candidate record (`verification/results/run39-candidate-build.json`,
+`scoped_results.motion_output_source_parity`), map twins 40,693 / 665,266 / 20,665 covered texels
+with max depth error ≤ 1.2e-5. `seam-ownership-shadow-retention-{live,census,off,live-poll}` 9743 /
+9740 / 6629 / 9890 checks: the committed fixture records are identical apart from the per-draw
+timing fields (`draw_us_per_call`). `sun-shadow-apply-cascades` 3292 checks (2891 + the 401 checks
+of the extended bench), the analytic and map records identical apart from `replay_us`. Records:
+`verification/results/bottle-X3/motion-output-partial.json` and the `*-fixture.json` beside it.
+
+**Not verified.** Nothing ran in the game: the classification ring's miss rate at a busy station
+(`class_miss=`) and the importance order's `dropped_min_size3=` under set H are run-39 A2 questions;
+the rows the ring compares come from the frame's camera latch, so a frame without a valid latch
+classifies everything as moving (counted `class_miss`). Native Windows: source only.
+
+### Large-caster admission and the review fix round (2026-09-18, second commit)
+
+Build `f8bbcb717b9d…` (0 warnings), seam `9b68f8463403…`, fixture `01c2daa9b2b6…`; `check_no_x87.py`:
+PASS, 527 reachable functions, 0 violations. `--shadow-cascade-large-min L`
+(`X3M_SHADOW_CASCADE_LARGE_MIN`, default 0): a moving draw enters a static-only cascade when its world
+AABB extent (the largest side of the box the mask test built, `shadow_cascade_bounds_mask(...,
+&extent)`) is `≥ L`, counted `large_admitted<i>=`. **L from the game:** the run-115 F8 census
+(`/tmp/x3-bottleX3-run115`, `shadow_retention_caster half=` per node handle and model, 54 nodes over
+the two F8 frames; run 111 logs no extents) gives, as 2 × max half: static parts 100–610 u (13 in
+100–250, 18 in 250–500, one at 609) and one 38,269-u station hull; moving parts 15–467 u (fighter
+parts and turrets; the 15-u ones are model `4a88` with 1,727 primitives, six of them) and one
+29,939-u moving hull (model `53b8`, 3,874 primitives). Nothing lies between 610 and 29,939, so any
+L in 1,000–10,000 separates this sample; **recommended L = 1,500** from the class scale (M6 ≈ 900 u
+refused, M7 ≈ 3,500 u admitted; the extent is per mesh part, so an M7's turrets stay refused while
+its hull passes). Two F8 frames of one run: run 39 A2's `large_admitted3=` against
+`static_only_refused3=` is the calibration.
+
+Review fixes (30a059b): (1) the ring anchors on the first sighting and re-anchors only on a
+beyond-eps move, so a slow drifter is reclassified when its drift reaches eps (host: 0.02-unit
+steps, moving on the third); (2) the ring is sized to the record list (two entries per record,
+2,048 → 8,192 at 4,096 records) and `class_miss<i>=` counts per cascade; store dependency and limits
+in the contract; (3) hysteresis at the cap boundary (a caster kept last frame stays while its size
+≥ 0.8 × the cutoff, bounded by the cap; host: the a/b pair holds at 0.9, yields at 0.79, retakes at
+1.3); (4) `*projected` / `*extent` are 0 on an unknown mask in both paths; (5) `static_from ≥ count`
+(and 0) refused by launcher and DLL, the mode line logs `static_from=none`; (6) `select_us` from
+the cached `qpc_frequency_` inside a LastError envelope.
+
+**Fixture, retained binaries, all exit 0** (`verification/results/bottle-X3/*-fixture.json`):
+`…-pool-static-{off,census,live}` 165 / 181 / 181 checks with `X3M_SHADOW_CASCADE_LARGE_MIN=100`:
+the new 200-u moving sliver W is admitted to cascade 1 from frame 1 (`large_admitted1=1` on 13
+frames, `class_miss1=4` on frame 0 only), the 1-u mover never, S and the anchor as before; 27 maps
+each equal to the twin of the kept sets (10,747 covered texels, 0 disagreements, max depth error
+4.4e-5); `…-pool-static-strict` (no L) 165 checks refuses W on every frame (`large_admitted1=0`,
+9,399 texels); the four present byte-identical frames (`d5e47b25…`). `…-pool-importance` 99 checks:
+ids 3 and 4 share a scale, 3 sits at the boundary and is 0.02 row units farther on even frames;
+the kept set is {3, 5, 6, 7} on every sized frame (hysteresis holds 3; without it the plain order
+would take 4 on even frames), 16 maps equal to the twin (11,781 texels, 0 disagreements),
+`dropped_min_size1` = 2.136 identical on every frame; `select_us` median 5.0. `…-pool-records` 53
+checks unchanged (`c1=4095 capped1=1`, far cascade on even frames), `select_us` median 71.5 at
+4,096 (the kept-table refill and 4,096 inserts add about 45 µs to the 25 µs selection). Bench: mask
+39.5 ns, mask + size 45.2 ns, classification 39.3 ns/draw, selection at 4,096 records 15.5 / 13.0 µs.
+Regression: `…-shadow-replay-cascades` 278, `…-casters-20` 278, `…-toggle` 277, `…-poll-agree` 281,
+`…-retention-live` 9743, `…-retention-off` 6629: unchanged. Host: the four shadow modules 34 OK, the
+six mock-drift modules 27 OK.
+
+**Open (measured, unexplained).** `select_us` spikes on frame 0 (252 / 377 µs) and once more on
+frame 2 of the importance case (281 µs) against 2–5 µs on the other frames; plausibly first touch
+of the table and scratch pages and the retired leases' Release path, not measured further.

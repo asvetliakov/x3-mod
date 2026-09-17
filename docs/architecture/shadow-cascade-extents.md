@@ -83,6 +83,13 @@ within 10 km, likely above the 1,024-record capacity at a busy sector, and a cap
 in submission order (popping) unless the retention store's "live first, then nearest" fill is
 in. Not for run 39.
 
+*Amendment (2026-09-18, "Caster pool control" below):* that blocker is lifted when the three pool
+options are on: `--shadow-cascade-records 1024,1024,2048,4096` sizes the record list for C3,
+`--shadow-cascade-drop-order importance` replaces submission-order drops (popping) by size-ordered
+ones, and `--shadow-cascade-static-from 3` keeps moving casters out of C3 so its pool is the
+static geometry alone. H is then a configuration, not a code change; its cost is what run 39 A2
+measures (`c3=`, `capped3=`, `dropped_min_size3=`, `static_only_refused3=`, `select_us=`).
+
 **When C3 at 4096 versus 2048 matters.** Only between 7,500 and ~15,000 u (1.5–3 km), where
 2048 gives 2.5–1.25 px per texel against 1.25–0.6; beyond 3 km both are sub-pixel. At the C2/C3
 seam the softness steps 0.4 → 2.5 px (6.7×) with 2048 against 0.4 → 1.25 px (3.3×) with 4096,
@@ -113,7 +120,8 @@ Caps are not the cost control; they bound storage (52 B per issue, 137 KiB at th
 **M**) and drop casters in submission order when exceeded, which pops shadows. Keep 128 / 512 /
 1024 / 1024: C0/C1 measured maxima (52) leave 2–10× headroom for retained off-screen parts;
 C2/C3 at 1024 equal the record capacity, so they can never engage before the record list is
-full. Raise nothing.
+full. Raise nothing for set R. (Set H raises C3's records and cap to 4,096 and drops by importance:
+"Caster pool control" below.)
 
 Budget 640 stays. Cost model at 1.3 µs per issue (**M** run 81/109; 1.0–1.4 in the cascade
 fixture) plus ≈ 40 µs fixed and 15–20 µs per further map (**M**): fixed ≈ 95 µs for four maps.
@@ -135,6 +143,85 @@ station at 300 m. If run 39 puts the CPU replay above ~2 ms at stations, the nex
 retention store's static/moving classification: skip a far cascade's replay entirely while no
 moving caster is in its box and the camera has moved less than a quarter extent (a held basis is
 already how odd frames are applied), which also lets C2 skip. Not a fixed cadence for C2.
+
+### Caster pool control (implemented 2026-09-18, default off)
+
+Three launcher options control the far cascades' pool instead of the map; every default reproduces
+the previous behaviour byte for byte (same records, same drops, same log lines). Evidence:
+[../verification/directional-shadows.md](../verification/directional-shadows.md), "Caster pool
+control".
+
+1. **`--shadow-cascade-static-from K`** (`X3M_SHADOW_CASCADE_STATIC_FROM`, 1..N−1 for N cascades;
+   K = N or 0 is refused by the launcher and the DLL, never a silent no-op): cascades `i ≥ K`
+   admit static casters only. Classification per draw, before the caps: the retention store's
+   verdict for a node it knows (`--shadow-retention-census` or `--shadow-caster-retention`: eight
+   verified sightings within eps; the store's node-level verdict is the stronger one and is the
+   intended companion of this option); otherwise `src/proxy/shadow_caster_class.h`, a two-way ring
+   with two entries per record of the list (2,048 at the default 1,024 records, 8,192 at 4,096;
+   112 B each) keyed by the node serial and the draw's vertex range, holding the draw's object →
+   world rows at its *anchor* sighting: within `--shadow-caster-retention-eps` (0.05 u, the store's
+   law, `drift2` on the draw's own extent) of the anchor is static; beyond it is moving and the
+   sighting becomes the new anchor, so a slow drifter accumulates against its anchor and is
+   reclassified once its drift reaches eps (the store's `d.world` rule), never re-anchored under
+   it. A first sighting, an evicted entry, a draw without a lifetime serial or without rows is a
+   miss and counts as moving for that frame. The ring's limit: it knows nothing across a device
+   re-attach or a ring eviction (a frame with more distinct static-only candidates than twice the
+   record list evicts), and its anchor is per draw range, so a node whose parts are re-keyed (LOD
+   swap) misses once; the store carries none of these. A draw refused from every cascade it met is
+   not a candidate at all (it neither leases nor consumes cap room). Counters on the
+   `shadow_replay_candidates` line, only while the option is on: `static_only_refused<i>=`,
+   `large_admitted<i>=` and `class_miss<i>=` (misses that refused cascade i) per cascade, then
+   `class_store= class_ring=` (draws classified by each source). **Large casters (`--shadow-cascade-large-min L`, `X3M_SHADOW_CASCADE_LARGE_MIN`,
+   world units, default 0 = strict):** a moving draw is admitted to a static-only cascade anyway
+   when its world AABB extent (the largest side of the box the mask test built; a rigid quantity of
+   the draw's own box, so a mesh part's, not the whole ship's) is `≥ L`, counted `large_admitted<i>`;
+   a draw without an extent yet (origin rule) has extent 0. Recommended **L = 1,500**: X3 hull
+   parts scale with the class (1 m = 5 u: M5 ≈ 100 u, M3 ≈ 250, M6 ≈ 900, M7 ≈ 3,500, TL ≈ 5,000,
+   M2/M1 7,500–10,000), and the run-115 F8 census (`shadow_retention_caster half=`, 54 nodes, max
+   per node handle and model) measured fighter, turret and small station parts at 100–610 u, one
+   moving hull at 29,939 u and one station hull at 38,269 u with nothing between 610 and 29,939:
+   1,500 admits M7 and larger hulls (and TL, M2, M1) and refuses everything a fighter or a
+   station's small parts submit; the sample is two F8 frames of one run, so `large_admitted3=`
+   against `static_only_refused3=` in run 39 A2 is the calibration. Retained
+   records (the store's own replays) are static by construction and pass unfiltered. Memory: the
+   ring, 224 KiB at 1,024 records (896 KiB at 4,096), allocated once at attach while the option is
+   on. A stopped mover becomes static on its next sighting within eps of where it stopped; a
+   moving caster that the store already classified static keeps the store's verdict until the
+   store reclassifies it (its next verified sighting).
+2. **`--shadow-cascade-drop-order importance`** (`X3M_SHADOW_CASCADE_DROP_ORDER`, default
+   `submission`): the draw path records every admitted caster (up to the record list) and the
+   scene end selects, per cascade over its cap, the `cap` largest by projected size = sun-space AABB
+   diagonal / distance of its centre from the camera, both from the corner transform the bounds
+   mask already performs (`shadow_cascade_bounds_mask(..., &projected)`); a draw without an extent
+   (origin rule) has size 0. Order: size descending, node serial ascending, record index ascending,
+   so the kept set is a function of the frame's casters and not of their submission order (a
+   permuted order keeps the same set; two parts of one node with equal size fall back to
+   submission order). Hysteresis at the cap boundary: a caster the cascade kept last frame ranks
+   above the rest while its size is at least 0.8 × the cutoff (the smallest size the plain order
+   would keep this frame), still bounded by the cap, so two near-equal casters at the boundary do
+   not alternate; the previous frame's kept set is an open-addressed table of caster keys (two
+   slots per record, 16 B each, refilled at every scene end). One `std::nth_element` per over-cap
+   cascade over its records, a second one only when a dropped caster was kept last frame within
+   the band; the records left without a cascade are compacted out with their geometry leases
+   retired and counted as the draw-time cap counted them (`capped<i>=`, `capped=`). Line fields,
+   only while on: `dropped_min_size<i>=` (the largest size among the dropped, 0 while nothing was
+   dropped: what popping would cost) and `select_us=` (the selection, the table refill and the
+   compaction, under the LastError envelope). With the retention store on, every admitted draw
+   is a sighting (previously the capped ones were not).
+3. **`--shadow-cascade-records N[,N...]`** (`X3M_SHADOW_CASCADE_RECORDS`, 1..4096, default 1024):
+   the record capacity per cascade; a cascade's issues are bounded by `min(cap, records)`
+   (`ShadowCascadeSet::bound`), `--shadow-cascade-caps` now accepts 1..4096, and the issue storage
+   is the sum of the bounds. The record list (records, geometry leases, draw list, quiet flags) is
+   sized to the largest per-cascade records at device creation (about 400 bytes per record: 1.6 MiB
+   at 4,096, allocated once at attach; the inline 1,024 arrays serve the default); the boxes nest,
+   so the union of the cascades' casters is about the outermost's, and a frame with more distinct
+   casters than the list counts `overflow=` as before. The retention store's draw list follows
+   (`records + 4096`). The issue budget and the far-cascade cadence are unchanged.
+
+Costs (`sun-shadow-apply-cascades` bench, `SUNAPPLY_BOUNDS_BENCH`): the mask with the size
+beside it against the mask alone, the classification per draw, and the scene-end selection at a
+full 4,096-record list are in the ledger section. Native Windows: documented D3D9 only (no new
+device calls; the selection and classification are CPU bookkeeping); unverified natively.
 
 ## 5. Own-ship-adaptive C0 and a ratio guard: not needed now
 

@@ -358,6 +358,32 @@ CASES += [case(name, 'shadowretention', 'ownership', camera=True, hdr_env=dict(S
 # the three above (the draws upload their own LightDir_Dir0), so it is not one of their twins.
 SHADOW_RETENTION_POLL_CASE = 'seam-ownership-shadow-retention-live-poll'
 CASES += [case(SHADOW_RETENTION_POLL_CASE, 'shadowretention', 'ownership', camera=True, hdr_env=dict(SHADOW_RETENTION_ENV, X3M_SHADOW_CASTER_RETENTION='1', X3M_FIXTURE_SHADOW_POLL='agree'))]
+# Far-cascade caster pool control (docs/architecture/shadow-cascade-extents.md,
+# "Caster pool control"): the "shadowpool" script (motion_output_shadow_pool_inc.h)
+# under two cascades of 8 and 40 units. static: cascade 1 static-only, the
+# classification by the ring (store off), by the store's verdict (census and
+# live: S enters cascade 1 on frame 9); the three present byte-identical
+# frames. importance: cascade 1 capped at 4 keeps the four largest of eight
+# under a rotated submission order. records: 4,096 records on cascade 1,
+# capped at 4,095 under the importance order (the scene-end selection timed
+# at the full list), the far cascade alternating over the budget.
+SHADOW_POOL_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SHADOW_CASCADES='250,1500', X3M_FIXTURE_SHADOW_CASCADES='8,40',
+                       X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_BUDGET='640', X3M_TELEMETRY_DRAW='0')
+# importance: ids 3 and 4 share one scale; 3 sits at the cap boundary and moves 0.02 row units farther on
+# even frames (a few % smaller than 4): the hysteresis keeps it, so the kept set never flips.
+# The static script's W (a 200-unit moving sliver, the capital-hull stand-in) enters cascade 1 under
+# --shadow-cascade-large-min 100 on the three store settings and never in the strict case.
+SHADOW_POOL_STATIC_CASES = {'seam-ownership-shadow-pool-static-off': dict(X3M_SHADOW_CASCADE_LARGE_MIN='100'),
+                            'seam-ownership-shadow-pool-static-census': dict(X3M_SHADOW_RETENTION_CENSUS='1', X3M_SHADOW_CASCADE_LARGE_MIN='100'),
+                            'seam-ownership-shadow-pool-static-live': dict(X3M_SHADOW_CASTER_RETENTION='1', X3M_SHADOW_CASCADE_LARGE_MIN='100'),
+                            'seam-ownership-shadow-pool-static-strict': {}}
+CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='static', X3M_SHADOW_CASCADE_CAPS='1024', X3M_SHADOW_CASCADE_STATIC_FROM='1', **extra))
+          for name, extra in SHADOW_POOL_STATIC_CASES.items()]
+CASES += [case('seam-ownership-shadow-pool-importance', 'shadowpool', 'ownership', camera=True,
+               hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='importance', X3M_SHADOW_CASCADE_CAPS='16,4', X3M_SHADOW_CASCADE_DROP_ORDER='importance')),
+          case('seam-ownership-shadow-pool-records', 'shadowpool', 'ownership', camera=True,
+               hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='records', X3M_SHADOW_CASCADE_CAPS='1024,4095', X3M_SHADOW_CASCADE_RECORDS='1024,4096',
+                            X3M_SHADOW_CASCADE_DROP_ORDER='importance', X3M_CAPTURE_START='1000'))]
 # Sun-shadow apply quad (legacy-sun-application.md, section 3.3): the
 # production SunShadowApplyPass linked into the fixture and driven directly
 # (no proxy wiring; the DLL is passive): synthetic G32R32F RT2 and R32F map of
@@ -764,7 +790,8 @@ def sources():
         'exposure_reference.py', 'agx_reference.py', 'analyze_motion_readback.py', 'summarize_capture.py')]
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
-        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_shadow_retention_inc.h')]
+        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_shadow_retention_inc.h',
+        'motion_output_shadow_pool_inc.h')]
     paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
 
@@ -1025,7 +1052,9 @@ def validate_sun_apply_cascades(name, text, directory, env):
             'config': {k: config[k] for k in ('extents', 'depth_light', 'depth_behind', 'caps', 'bias_units', 'clamp_texels', 'margin', 'band')},
             'program_slots': int(device[0]['slots']), 'cascade_program_slots': int(device[0]['cascade_slots']), 'max_texture': device[0]['max_texture'], 'ps30_slots': int(device[0]['ps30_slots']),
             'depth_format': int(replay_device[0]['depth_format']), 'depth_size': int(replay_device[0]['depth_size']),
-            'bounds_bench_ns': {'single_verdict': float(bench[0]['verdict_ns']), 'cascade_mask_4': float(bench[0]['mask_ns']), 'cascade_mask_4_per_cascade_suns': float(bench[0]['split_mask_ns'])},
+            'bounds_bench_ns': {'single_verdict': float(bench[0]['verdict_ns']), 'cascade_mask_4': float(bench[0]['mask_ns']), 'cascade_mask_4_per_cascade_suns': float(bench[0]['split_mask_ns']),
+                                'cascade_mask_4_with_size': float(bench[0]['sized_mask_ns']), 'static_classification': float(bench[0]['class_ns'])},
+            'select_bench_us': {'records_4096_cap_2048': float(bench[0]['select_4096_half_us']), 'records_4096_cap_4095': float(bench[0]['select_4096_one_us'])},
             'half_texel': {'shift_fit': shift_fit, 'shift_fit_legacy_rule': shift_fit_legacy, 'frames': phase_frames},
             'point_light': {'frame': SUN_CASCADE_SCRIPT.index('h'), 'regions': comparisons[SUN_CASCADE_SCRIPT.index('h')]['regions']},
             'frames_detail': comparisons, 'worst_codes': max(c['worst_codes'] for c in comparisons.values()), 'ambiguous_max': max(c['ambiguous'] for c in comparisons.values()),
@@ -1465,6 +1494,137 @@ def validate_shadow_retention(name, text, trace, directory, env):
     issue_rows = [r for r in depth_rows if r['replayed'] and sum(r['cascades']['draws']) >= 1000]
     case['us']['bulk'] = {'frames': len(issue_rows), 'issues_median': sorted(sum(r['cascades']['draws']) for r in issue_rows)[len(issue_rows) // 2] if issue_rows else 0,
                           'us_median': sorted(r['us'] for r in issue_rows)[len(issue_rows) // 2] if issue_rows else None}
+    return case
+
+
+def validate_shadow_pool(name, text, trace, directory, env):
+    """The caster pool script (shadow-cascade-extents.md, "Caster pool
+    control"): per frame the counter line's c<i>, capped<i>,
+    static_only_refused<i> and leased against POOL_EXPECT, the depth line's
+    draws<i> / far cadence against the kept counts and the budget, every
+    compared cascade map against the CPU twin of POOL_KEPT (the casters the
+    policy must keep, with their scales); importance: dropped_min_size1 > 0
+    and identical on every sized frame, the kept set identical across the
+    rotated orders; records: 4,096 records per frame with no overflow."""
+    assert 'RESULT PASS' in text, f'{name}: fixture failed'
+    lines, tl = text.splitlines(), trace.splitlines()
+    checks = int(fields(next(l for l in lines if l.startswith('RESULT PASS')))['checks'])
+    script = env['X3M_FIXTURE_SHADOW_POOL']
+    mode_line = fields(next(l for l in lines if l.startswith('POOL_MODE ')))
+    assert mode_line['script'] == script and int(mode_line['store']) == (2 if env.get('X3M_SHADOW_CASTER_RETENTION') == '1' else 1 if env.get('X3M_SHADOW_RETENTION_CENSUS') == '1' else 0), (name, mode_line)
+    sizes, count = [int(env['X3M_SHADOW_CASCADE_SIZES'])] * 2, 2
+    extents = [float(v) for v in env['X3M_FIXTURE_SHADOW_CASCADES'].split(',')]
+    caps = [int(v) for v in env['X3M_SHADOW_CASCADE_CAPS'].split(',')]; caps = caps * (count if len(caps) == 1 else 1)
+    budget = int(env['X3M_SHADOW_CASCADE_BUDGET'])
+    mode = [fields(l) for l in tl if l.startswith('shadow_cascades_mode ')]
+    assert len(mode) == 1 and (mode[0]['enabled'], mode[0]['reason'], mode[0]['cascades']) == ('1', 'ok', '2'), (name, mode)
+    assert (mode[0]['records'], mode[0]['static_from'], mode[0]['drop_order'], float(mode[0]['large_min'])) == (env.get('X3M_SHADOW_CASCADE_RECORDS', '1024,1024') + ',1024,1024',
+                                                                                    env.get('X3M_SHADOW_CASCADE_STATIC_FROM', 'none'), env.get('X3M_SHADOW_CASCADE_DROP_ORDER', 'submission'), float(env.get('X3M_SHADOW_CASCADE_LARGE_MIN', '0'))), (name, mode)
+    store_on = int(mode_line['store']) != 0
+    frames = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('POOL_FRAME ')}
+    expect = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('POOL_EXPECT ')}
+    assert sorted(frames) == sorted(expect) == list(range(len(frames))) and len(frames) >= 6, (name, sorted(frames))
+    depth_rows, refused, _ = depth_replay.parse_text(trace)
+    candidate_rows, _ = candidates_analysis.parse_text(trace)
+    by_frame = {r['frame']: r for r in candidate_rows}
+    depth_by_frame = {r['frame']: r for r in depth_rows}
+    assert sorted(by_frame) == sorted(depth_by_frame) == sorted(frames) and not refused, (name, sorted(by_frame), refused)
+    static_on, importance = env.get('X3M_SHADOW_CASCADE_STATIC_FROM') is not None, env.get('X3M_SHADOW_CASCADE_DROP_ORDER') == 'importance'
+    far_frame, dropped_sizes = -1, []
+    for frame in sorted(frames):
+        e, c_row, d_row = expect[frame], by_frame[frame], depth_by_frame[frame]
+        records = [int(e['c0']), int(e['c1'])]
+        capped = [0, int(e['capped1'])]
+        cascades = c_row['cascades']
+        assert (cascades['count'], cascades['records'], cascades['capped']) == (count, records, capped), (name, frame, c_row, e)
+        # A drop from cascade 1 drops the whole draw only where the draw met no other cascade (the records script's nodes).
+        assert c_row['leased'] == int(frames[frame]['drawn']) - c_row['capped'] and c_row['overflow'] == 0 and c_row['capped'] == (capped[1] if script == 'records' else 0), (name, frame, c_row)
+        assert ('static_only_refused' in cascades) == static_on and ('dropped_min_size' in cascades) == importance, (name, frame, cascades)
+        if static_on:
+            assert cascades['static_only_refused'] == [0, int(e['static_only_refused1'])] and cascades['large_admitted'] == [0, int(e['large_admitted1'])], (name, frame, cascades, e)
+            classified, drawn = cascades['classified'], int(frames[frame]['drawn'])
+            assert sum(classified.values()) + cascades['class_miss'][1] == drawn and cascades['class_miss'][0] == 0, (name, frame, classified, cascades['class_miss'])
+            # Frame 0: every draw misses (no anchor yet). Later: the store answers for S, M and W once it knows
+            # them (the anchor node's class is excluded from it), the ring for the rest; nothing misses.
+            expected_store = drawn - 1 if store_on and frame >= 1 else 0
+            assert classified == {'class_store': expected_store, 'class_ring': 0 if frame == 0 else drawn - expected_store} and cascades['class_miss'][1] == (drawn if frame == 0 else 0), (name, frame, classified)
+        if importance:
+            assert cascades['select_us'] >= 0, (name, frame, cascades)
+            if frame >= 1:
+                assert cascades['dropped_min_size'][1] > 0, (name, frame, cascades)
+                dropped_sizes.append(cascades['dropped_min_size'][1])
+            else:
+                assert cascades['dropped_min_size'][1] == 0, (name, frame, cascades)
+        issues = sum(records)
+        far_replays = records[1] > 0 and (issues <= budget or frame % 2 == 0)
+        if far_replays:
+            far_frame = frame
+        draws = [records[0], records[1] if far_replays else 0]
+        assert d_row['cascades'] == {'count': count, 'draws': draws, 'far_replayed': int(far_replays), 'far_frame': far_frame, 'issues': issues, 'budget': budget}, (name, frame, d_row, records)
+        assert d_row['draws'] == c_row['leased'] and d_row['replayed'] == d_row['draws'], (name, frame, d_row)
+    if importance:
+        assert len(set(dropped_sizes)) == 1, (name, 'dropped_min_size1 must be identical on every sized frame', dropped_sizes)
+    # The maps against the twin of the kept casters.
+    maps, cameras, suns, draws, kept = {}, {}, {}, {}, {}
+    for l in lines:
+        if l.startswith('SHADOW_CASCADE_MAP '):
+            m = fields(l); maps[(int(m['frame']), int(m['cascade']))] = m
+        elif l.startswith('SHADOW_CAMERA '):
+            cameras[int(fields(l)['frame'])] = fields(l)
+        elif l.startswith('SHADOW_SUN '):
+            suns[int(fields(l)['frame'])] = fields(l)
+        elif l.startswith('SHADOW_DRAW '):
+            f = fields(l); draws.setdefault(int(f['frame']), []).append({'caster': int(f['caster']), 'shape': f['shape'], 't': float(f['t']), 'p': float(f['p']), 'zo': float(f['zo']), 'scale': float(f['scale'])})
+        elif l.startswith('POOL_KEPT '):
+            f = fields(l); kept[(int(f['frame']), int(f['cascade']))] = [] if f['casters'] == '-' else [int(v) for v in f['casters'].split(',')]
+    compared = sorted(f for f, row in frames.items() if row['compare'] == '1')
+    comparisons, absent = {}, 0
+    for frame in compared:
+        cam = cameras[frame]
+        camera = {'m00': float(cam['m00']), 'm11': float(cam['m11']), 'r': [float(v) for v in cam['r'].split(',')], 't': [float(v) for v in cam['t'].split(',')]}
+        expected_sun = tuple(float(v) for v in suns[frame]['direction'].split(','))
+        for c in range(count):
+            m, ids = maps[(frame, c)], kept[(frame, c)]
+            assert len(ids) == int(expect[frame][f'c{c}']) and ids == sorted(ids), (name, frame, c, ids, expect[frame])
+            expected = [d for d in draws[frame] if d['caster'] in ids]
+            assert len(expected) == len(ids), (name, frame, c, ids)
+            if not expected or (c == count - 1 and depth_by_frame[frame]['cascades']['far_frame'] < 0):
+                assert m['valid'] == '0', (name, frame, c, m); absent += 1
+                continue
+            replayed_now = depth_by_frame[frame]['cascades']['draws'][c] > 0
+            assert m['available'] == '1' and m['valid'] == '1' and int(m['width']) == sizes[c], (name, frame, c, m)
+            assert int(float(m['replayed_frame'])) == (frame if replayed_now else depth_by_frame[frame]['cascades']['far_frame']), (name, frame, c, m)
+            if not replayed_now:
+                comparisons[f'{frame}/{c}'] = {'retained': True}
+                continue
+            data = (directory / f'shadow_{frame}_c{c}.r32f').read_bytes()
+            triple = lambda key: tuple(float(v) for v in m[key].split(','))
+            basis = {'right': triple('right'), 'up': triple('up'), 'forward': triple('forward'), 'center': triple('center'), 'extent': float(m['extent']),
+                     'depth_light': float(m['depth_light']), 'depth_behind': float(m['depth_behind'])}
+            assert all(abs(-basis['forward'][i] - expected_sun[i]) < 1e-5 for i in range(3)) and basis['extent'] == extents[c], (name, frame, c, basis, expected_sun)
+            comparison = depth_replay.compare_map(struct.unpack(f'<{sizes[c] * sizes[c]}f', data), expected, camera, basis, sizes[c])
+            assert comparison['ok'] and comparison['covered_cpu'] >= 1, (name, frame, c, frames[frame]['case'], comparison)
+            comparisons[f'{frame}/{c}'] = {k: comparison[k] for k in ('covered_cpu', 'covered_gpu', 'coverage_disagreements', 'max_depth_error')}
+    if script != 'records':
+        assert len(compared) == len(frames) and len(comparisons) >= len(frames), (name, len(compared), len(comparisons))
+    colors = [l for l in lines if l.startswith('COLOR ')]
+    assert len(colors) == len(frames), (name, len(colors))
+    case = {'script': script, 'store': int(mode_line['store']), 'frames': len(frames), 'checks': checks + 4 * len(frames) + 2, 'compared_frames': len(compared), 'absent_maps': absent,
+            'color_sha256': hashlib.sha256('\n'.join(colors).encode()).hexdigest(), 'per_frame': {f: {'c': by_frame[f]['cascades'], 'draws': depth_by_frame[f]['cascades']['draws']} for f in sorted(frames)},
+            'map': {'max_depth_error': max((v.get('max_depth_error', 0.0) for v in comparisons.values()), default=0.0), 'covered_texels': sum(v.get('covered_gpu', 0) for v in comparisons.values()),
+                    'coverage_disagreements': sum(v.get('coverage_disagreements', 0) for v in comparisons.values()), 'maps': len(comparisons)},
+            'us': depth_replay.us_summary(depth_rows)}
+    if importance:
+        case['dropped_min_size1'] = dropped_sizes[0]
+        case['select_us'] = {'median': sorted(r['cascades']['select_us'] for r in candidate_rows)[len(candidate_rows) // 2], 'max': max(r['cascades']['select_us'] for r in candidate_rows)}
+    if static_on:
+        case['classified'] = {k: sum(r['cascades']['classified'][k] for r in candidate_rows) for k in candidates_analysis.CLASS_FIELDS}
+        case['class_miss'] = [sum(r['cascades']['class_miss'][i] for r in candidate_rows) for i in range(count)]
+        case['large_admitted'] = [sum(r['cascades']['large_admitted'][i] for r in candidate_rows) for i in range(count)]
+        if script == 'static':
+            large = fields(next(l for l in lines if l.startswith('POOL_LARGE_MIN ')))
+            case['large_min'] = float(large['units'])
+            assert (case['large_admitted'][1] > 0) == (large['wide_admitted'] == '1'), (name, case['large_admitted'], large)
     return case
 
 
@@ -4060,7 +4220,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'shadowreplay', 'shadowretention') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'shadowreplay', 'shadowretention', 'shadowpool') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -4207,6 +4367,20 @@ def main(argv=None):
                 (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} mode={case["mode"]} frames={case["frames"]} compared={case["compared_frames"]} retained_compared={case["retained_compared_frames"]} max_depth_error={case["map"]["max_depth_error"]}', flush=True)
+                continue
+            if mode == 'shadowpool':
+                case = validate_shadow_pool(name, text, trace, directory, hdr_env)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                # The three store settings of the static script present byte-identical frames.
+                for sibling in SHADOW_POOL_STATIC_CASES:
+                    if name in SHADOW_POOL_STATIC_CASES and sibling != name and sibling in result['cases']:
+                        assert result['cases'][sibling]['color_sha256'] == case['color_sha256'], f'{name}: presented frames differ from {sibling}'
+                        case.setdefault('presented_identical_to', []).append(sibling)
+                result['cases'][name] = case
+                (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} script={case["script"]} store={case["store"]} frames={case["frames"]} maps={case["map"]["maps"]} max_depth_error={case["map"]["max_depth_error"]} us={case["us"].get("median")}', flush=True)
                 continue
             if mode == 'shadowreplay':
                 case = (validate_shadow_replay_cascades if 'X3M_FIXTURE_SHADOW_CASCADES' in hdr_env else validate_shadow_replay)(name, text, trace, directory, hdr_env, taa)  # the wrapper's own frame lines belong to the 12-frame seam script (validate_ownership); this script has 8 frames and a Reset

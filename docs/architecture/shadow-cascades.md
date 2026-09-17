@@ -257,7 +257,8 @@ named constant in `src/renderer/shadow_replay_projection.h`.
 | §6 Native Windows | source documented-API only; row added to platform-portability.md; unverified |
 | Near band decision (own-ship map or contact shadows) | not implemented: out of scope until run 38 |
 | Held far centre with a caster-change hash; D16 attachment as a memory option | not implemented (deferred by this note) |
-| Cross-frame caster retention against engine view culling | not implemented; next step, requirements in the ledger section |
+| Cross-frame caster retention against engine view culling | implemented: [shadow-caster-retention.md](shadow-caster-retention.md) |
+| Caster pool control for wide far cascades: per-cascade records up to 4,096, importance drop order, static-only far cascades | implemented 2026-09-18, default off: [shadow-cascade-extents.md](shadow-cascade-extents.md), "Caster pool control" (`--shadow-cascade-records`, `--shadow-cascade-drop-order`, `--shadow-cascade-static-from`) |
 
 ### Amendment: one sun per cascade (2026-09-17)
 
