@@ -143,6 +143,10 @@ void MotionOutput::release_composition_identity() noexcept {}
 renderer::LinearEmissionPass::~LinearEmissionPass() = default;
 renderer::AmbientOcclusionPass::~AmbientOcclusionPass() = default;
 renderer::ShadowReplayPass::~ShadowReplayPass() = default; // the depth-replay pass is never constructed here; only the member destructor is needed
+renderer::SunShadowApplyPass::~SunShadowApplyPass() = default; // likewise: only the unique_ptr member destructor is needed
+// The scene-end apply quad is gated on sun_apply_requested_, which no scenario
+// here sets; inert so it cannot perturb the recorded call sequences.
+void MotionOutput::run_sun_shadow_apply() noexcept {}
 bool renderer::LinearEmissionPass::reference_accounting_busy() const noexcept { return false; }
 bool renderer::LinearEmissionPass::coverage_valid() const noexcept { return true; }
 // Shadow-replay candidate publication is a separate per-frame diagnostic with

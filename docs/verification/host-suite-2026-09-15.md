@@ -91,3 +91,20 @@ Canonical discovery after the repair:
 `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'`
 → `Ran 1926 tests in 540.589s`, `OK (skipped=2)` (the two build-artifact skips), on main c0a435a.
 `linear_material_live checks=20495 failures=0`, `motion_wrap_states checks=34773 failures=0`.
+
+## Census and repair (2026-09-17)
+
+Census on main `0f18324`: `Ran 2101 tests`, 12 failures, all the same drift
+class (extracted-snippet mocks behind reviewed production commits). No
+production source changed.
+
+| Test | Cause | Fix |
+| --- | --- | --- |
+| `test_capture_bloom_lifetime.test_production_control_flow` | the last device destroy clears the surface-lock witness (`ownership::set_surface_lock_observer`, `src/ownership/surface_lock_observation.h`) | inert `SurfaceLockEvent`/`SurfaceLockObserver`/`set_surface_lock_observer` in the fixture's `ownership` namespace |
+| `test_linear_material_live.test_production_control_flow` | the original-share lane, the sun-shadow apply pass and the candidate-extent queue reached the registration/Reset seams (`ShaderEntry::sun_original_variant`, `sun_apply_*`, `release_candidate_extents`, `depth_replayed_*`, `candidates_requested_`) | mirrored the entry member, a counting `release_candidate_extents()`, the `sun_apply_` pass double and the flag/counter storage, plus a `linear_material_original_sun_share_pixel_variant` double shaped like the original-fill one |
+| `test_motion_hdr_scene.test_synchronous_handoff_and_default_null_parity` | link needed the new out-of-line symbols | `renderer::SunShadowApplyPass::~SunShadowApplyPass() = default;` and an inert `MotionOutput::run_sun_shadow_apply()` (the gate is never on in these scenarios), the way `AmbientOcclusionPass`/`run_ambient_occlusion` are satisfied |
+| 9x `test_bloom_programs.test_all_nine_embedded_records_match_words_and_current_inputs` | not bytecode drift: a41e028 added the `sun_shadow_apply` table entry to the shared driver `tools/shaders/generate_rigid_motion_pixel.py`, so every bloom manifest's `tool_sources` hash (`be12cce1...`) lagged the current file (`3a9c6f69...`) | regenerated through the documented path, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_bloom_programs.py --d3dx <X3 bottle d3dx9_37.dll>` (`passed=true programs=9 old_programs_recompiled=false`). All nine programs recompiled byte-identical: word shas unchanged (e.g. `bloom_agx 7a5f651beee4a3a0dcfcfe4eb843022126789f04459b0cec8ca5f984402d94e6`, `bloom_extract_gamma 012bba4ceb06c1c0acceb795a0b6051b17a5b2d34702aadee8c209dfb5580506`); the `*_program_inc.h` headers are unchanged and each manifest differs by the one `tool_sources` line |
+
+Canonical discovery after the repair:
+`PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'`
+-> `Ran 2101 tests in 528.070s`, `OK (skipped=2)` (the two build-artifact skips).

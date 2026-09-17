@@ -317,6 +317,12 @@ struct ApplicationAdmissionAbi {
     explicit ApplicationAdmissionAbi(AdmissionMonitor*) noexcept {}
     void finish() noexcept {}
 };
+// Surface lock witness (src/ownership/surface_lock_observation.h): the last
+// device destroy clears the observer. Inert here; the lifetime seam only needs
+// the clearing call to compile.
+struct SurfaceLockEvent;
+using SurfaceLockObserver = void (*)(const SurfaceLockEvent&);
+static void set_surface_lock_observer(SurfaceLockObserver) noexcept {}
 } // namespace ownership
 namespace telemetry {
 enum class Metric { Reset };
