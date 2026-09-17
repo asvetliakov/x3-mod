@@ -170,6 +170,14 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint
  ++original_fill_transforms;fill_applied=false;
  if(original_fill_reject)return LinearMaterialResult::UnsupportedShader;
  fill_applied=original_fill_applies&&fill>0.f;o={*p+900};return LinearMaterialResult::Applied;}
+// Original-shading share producer (legacy-sun-application.md 1): same shape as
+// the fill transform. share_applied=0 is the fail-closed refusal; the real
+// transform has its own fixture.
+unsigned original_share_transforms=0;bool original_share_reject=false,original_share_applies=true;
+LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t*p,std::size_t,float,std::vector<std::uint32_t>&o,bool,bool&share_applied){
+ ++original_share_transforms;share_applied=false;
+ if(original_share_reject)return LinearMaterialResult::UnsupportedShader;
+ share_applied=original_share_applies;o={*p+950};return LinearMaterialResult::Applied;}
 }
 namespace renderer {
 enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2,DistanceFadeInPlace=4,PackedScreenInPlace=8};
@@ -316,7 +324,7 @@ HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept;
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr,*sun_original_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
@@ -421,6 +429,13 @@ public:
  // control flow touches - lease release, detach, Reset and re-attach state.
  bool depth_replay_requested_=false,depth_replay_attach_failed_=false;std::unique_ptr<Pass>depth_replay_;unsigned depth_lease_releases_=0;
  void release_depth_leases()noexcept{++depth_lease_releases_;}
+ // Scene-end sun-shadow apply quad (sun_shadow_apply_pass.h) and the candidate
+ // extent queue: lifetime seams only, counted here.
+ std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
+ void release_candidate_extents()noexcept{++candidate_extent_releases_;}
+ bool candidates_requested_=false,sun_apply_applied_=false,sun_apply_attempted_=false,sun_apply_attach_failed_=false;
+ unsigned depth_replayed_=0,sun_original_refused_=0,sun_original_variants_=0;
+ std::uint64_t sun_apply_frame_=~std::uint64_t(0),depth_replayed_frame_=~std::uint64_t(0);
  IUnknown*target_surface_=nullptr,*depth_surface_=nullptr,*sentinel_ps_=nullptr,*sentinel_mrt_ps_=nullptr,*quad_vs_=nullptr,*quad_declaration_=nullptr;
  IDirect3DPixelShader9*sun_sentinel_ps_=nullptr;
  enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;renderer::HdrConfig hdr_config_;

@@ -20,7 +20,7 @@
   "header_sha256": "972f049e883fe2068771bd4b3791960f35844f08b5cc869e43e8b9ae2f2fe5e7",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
-    "tools/shaders/generate_rigid_motion_pixel.py": "be12cce107bb045035e2508bc60aa9db57d08825b25a1937265a04b37c943c80",
+    "tools/shaders/generate_rigid_motion_pixel.py": "3a9c6f6975eb24d8929848323e198905744e21328cac9af5177c80078191ee6b",
     "tools/shaders/generate_bloom_programs.py": "010f35e00529db0b6456bc222b2932e75d7a808342603ba532f4f966073bbe81"
   },
   "header_annotation_tool": "tools/shaders/generate_bloom_programs.py"
