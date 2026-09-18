@@ -244,6 +244,10 @@ def main():
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
                         help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
+    parser.add_argument('--game-phase-threshold-ms', type=int, default=20, metavar='N',
+                        help='Frame time at or above which the game-phase group writes its segment tape: one game_phase_slow_frame line plus its game_phase_segment rows (X3M_GAME_PHASE_THRESHOLD_MS; requires --game-phases; 1..10000, default 20, lowered from the built-in 50 so a 25-45 ms frame is attributed). Each qualifying frame writes up to 96 segment rows, so a low threshold on a steadily slow scene is verbose')
+    parser.add_argument('--telemetry-draw', action='store_true',
+                        help='Per-draw proxy cost metrics (X3M_TELEMETRY_DRAW=1; requires --telemetry): gate_us, route_draw_us, set_rt_us, lazy_flush_us and jitter_us on the motion_output_frame line. Off, the route takes no QueryPerformanceCounter stamp per draw (under Wine each stamp is a syscall; docs/verification/route-cost-run1.md)')
     parser.add_argument('--frame-phases', action='store_true', help='Per-frame engine phase stamps: ten byte-verified sites inside the render routine partition the frame into pre_render, prologue, scene_update, begin_scene, views, overlays, text, scene_end and present, plus per-view setup/submit sums; one frame_phases line per 300-frame window and up to four frame_phases_slow witnesses keyed by frame (X3M_FRAME_PHASES=1; requires --telemetry; independent of --game-phases; docs/verification/sampling-profiler.md, "Frame phases")')
     parser.add_argument('--pass-phases', action='store_true', help='Per-draw effect-pass stamps: four byte-verified sites in the D3DX pass loop of the material submission routine split each material draw into pass-apply (BeginPass), the device draw and EndPass, accumulated per frame through a lean stub (no x87 save) and reduced at the frame-phase boundary; one pass_phases line per 300-frame window with passes, apply/draw/end p50/p95, their sum, the same window\'s view_submit and the stamps\' own estimated cost self_p50_us (X3M_PASS_PHASES=1; requires --telemetry and --frame-phases; about 4,000 dispatches per busy frame, budget under 1.5 ms; docs/verification/sampling-profiler.md, "Pass phases")')
     parser.add_argument('--residual-phases', action='store_true', help='Residual attribution stamps: two byte-verified sites split what the pass and frame groups leave unattributed, the ID3DXEffect::Begin dispatch of the material submission routine (engine per-object preparation from the last pass_end, D3DX setup to the first pass_begin) and the particles-call return of the frame routine\'s per-view loop (the particles pass from view_submit_end; the rest of the views phase is computed as views - view_setup - view_submit - particles), accumulated per frame through the lean stub and reduced at the frame-phase boundary; one residual_phases line per 300-frame window with materials/particle views/passes/views, prepare/setup/particles/other p50/p95, prepare and setup per pass in ns, and the stamps\' own estimated cost (X3M_RESIDUAL_PHASES=1; requires --telemetry and implies --frame-phases and --pass-phases, which it pairs with; about 1,000 dispatches per busy frame; docs/verification/sampling-profiler.md, "Residual phases")')
@@ -402,6 +406,12 @@ def main():
         parser.error('--loading-probes requires --telemetry (the probe rows and trampolines are installed by the loading-trace initialization).')
     if args.game_phases and not args.telemetry:
         parser.error('--game-phases requires --telemetry.')
+    if args.game_phase_threshold_ms != 20 and not args.game_phases:
+        parser.error('--game-phase-threshold-ms requires --game-phases.')
+    if not 1 <= args.game_phase_threshold_ms <= 10000:
+        parser.error('--game-phase-threshold-ms must be between 1 and 10000.')
+    if args.telemetry_draw and not args.telemetry:
+        parser.error('--telemetry-draw requires --telemetry.')
     if args.frame_timing and not args.telemetry:
         parser.error('--frame-timing requires --telemetry.')
     if args.frame_phases and not args.telemetry:
@@ -793,6 +803,8 @@ def main():
         env['X3M_CAPTURE_FRAMES'] = str(args.capture_frames)
         env['X3M_TELEMETRY'] = '1' if args.telemetry else '0'
         env['X3M_GAME_PHASES'] = '1' if args.game_phases else '0'
+        env['X3M_GAME_PHASE_THRESHOLD_MS'] = str(args.game_phase_threshold_ms)
+        env['X3M_TELEMETRY_DRAW'] = '1' if args.telemetry_draw else '0'
         env['X3M_FRAME_TIMING'] = '1' if args.frame_timing else '0'
         env['X3M_FRAME_END_STRIDE'] = str(args.frame_end_stride)  # explicit, so an inherited value cannot change the cadence
         env['X3M_FPS_OVERLAY'] = '1' if args.fps_overlay else '0'

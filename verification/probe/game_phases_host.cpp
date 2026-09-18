@@ -10,10 +10,10 @@ static std::uint64_t time_now=100;
 static Present last;
 static void reset(){core={};core.frequency=1000000;time_now=100;last={};}
 // Ordinary full loop, with an optional400ms synchronous event inside cockpit.
-static void loop(unsigned frame,bool slow=false,bool finish=true,std::uint64_t reset_id=0){
+static void loop(unsigned frame,bool slow=false,bool finish=true,std::uint64_t reset_id=0,std::uint64_t stall=400000){
     for(unsigned i=0;i<13;++i){
         time_now+=100;core.boundary(i,at(time_now));
-        if(i==8&&slow){core.begin(0,at(time_now+10),{0x10,0x20,3});time_now+=400000;core.end(0,at(time_now),1);}
+        if(i==8&&slow){core.begin(0,at(time_now+10),{0x10,0x20,3});time_now+=stall;core.end(0,at(time_now),1);}
     }
     time_now+=100;core.begin(3,at(time_now),{},0x1234);
     time_now+=100;last={7,reset_id,frame,time_now,0x1234,0,false};core.bridge(last,at(time_now+2));
@@ -189,5 +189,29 @@ int main(){
     LoadingPhases pair;pair.stall_ticks=3000; // two devices presenting alternately never anchor a same-device gap
     for(unsigned i=0;i<6;++i)check(pair.present(1+(i&1),0,i,1000+i*5000,m)==0);
     check(pair.emitted==0);
+    // Segment tape threshold. Default (frame_threshold==0): the built-in 50 ms,
+    // so a 25 ms frame stages nothing. The runtime sets frame_threshold from
+    // X3M_GAME_PHASE_THRESHOLD_MS (launcher --game-phase-threshold-ms, 20 ms
+    // default), and the same 25 ms frame is staged with its segment rows.
+    reset();loop(0);loop(1,true,false,0,25000);
+    check(!core.stack[0].detail);
+    time_now+=100;core.end(3,at(time_now),0);check(core.slow_frames.count==0);
+
+    reset();core.frame_threshold=core.frequency*20/1000;loop(0);loop(1,true,false,0,25000);
+    check(core.stack[0].detail&&core.stack[0].staged.current.frame==1);
+    time_now+=100;core.end(3,at(time_now),0);
+    check(core.slow_frames.count==1);
+    {
+        const auto& t=core.slow_frames.first[0];
+        check(t.used>0&&t.current.qpc-t.previous.qpc>=25000);
+        unsigned stalled=0;
+        for(unsigned i=0;i<t.used;++i)if(t.segments[i].phase==8&&t.segments[i].end.qpc-t.segments[i].begin.qpc>=25000)++stalled;
+        check(stalled==1);
+    }
+    // A frame under the configured threshold still stages nothing.
+    reset();core.frame_threshold=core.frequency*20/1000;loop(0);loop(1,true,false,0,10000);
+    check(!core.stack[0].detail);
+    time_now+=100;core.end(3,at(time_now),0);check(core.slow_frames.count==0);
+
     std::printf("game_phases_host checks=%u failures=0 core_bytes=%zu\n",checks,sizeof(Core));
 }
