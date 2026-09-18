@@ -165,6 +165,16 @@ O(n_bucket0 × N) with a square root per element and a hard cap only on the
 
 ## 5. Why 26 ms, flat, for 66 s
 
+> **Superseded in part by §11 (2026-09-19).** The measured `collide_census` of
+> run134 falsifies this section's leading explanation. The §3 generic pair path
+> runs ≈ 205 times per frame, not 10⁵, and its count does not move while the
+> bracket swings 100×. The claim below that "the cost is set by the sector's
+> object population and nothing else" is wrong: it is set by how many pairs pass
+> the engine's own `dist ≤ R` compare and enter the narrow phase
+> (`0x0048ac80` → `0x0048a890` → `0x0047f1b0` → `0x004e2530`), which depends on
+> proximity, not population. The instruction-bracket arithmetic below is left
+> intact as the record of what was inferred before the counters existed.
+
 Established: the cost of `0x0045d250` is set by the sector's object population
 and nothing else in the routine — no accumulator, no catch-up, no retry, no
 cache, no dependence on frame rate, dt, draws or the renderer. That is exactly
@@ -436,6 +446,235 @@ P2-claim-fails-after-P1 rollback is not executed by a fixture; `StubWriter::jcc`
 the counters' plain `inc` against `InterlockedExchange` at Present is race-free only if the loop and Present share
 a thread (diagnostics only). Pairs the box keeps cost 4-5 % more; run 43 A decides.
 
+## 11. Run 43 A: the cost is not the pair reject
+
+2026-09-19. Same image and method as the rest of this note (nothing launched);
+instruction text below re-read from the bottle EXE through the PE section map
+(`.text` VA `0x00401000`, raw `0x400`, `0x130630` bytes) with `objdump -d
+--x86-asm-syntax=intel` over the file in place. The run-log numbers are from
+`grep`/`awk` over the session logs, never read whole.
+
+### 11.1 How the 26 ms was attributed, and why no address histogram exists
+
+The run129 figure was a **bracket, not a leaf-EIP histogram**.
+`src/proxy/loop_phase_sites.h` defines `loop_phase_sector_collide` at
+`0x0043a38e` (`56 e8 bc 2e 02 00`) and `loop_phase_sector_simulate` at
+`0x0043a394`; the `collide` interval is the span between the two stamps, i.e.
+the whole `call 0x0045d250` **including every callee**. The sampling profiler
+was not enabled in that session: `grep -c profile_ session-20260918-090339-216.log`
+returns **0** in run129 and 0 in run130/131/132/133/134 as well. The
+address histogram the brief asks for therefore cannot be built from existing
+data; §11.2–§11.4 are a static attribution constrained by counters.
+
+### 11.2 The measurement that falsifies §5
+
+From `/tmp/x3-bottleX3-run134/session-20260919-030610-212.log` (option on) and
+`.../run133/session-20260919-030256-212.log` (option off), 300-frame windows:
+
+| window (frame) | 599 | 2999 | 5099 | 5399 | 5999 | 6599 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `collide_p50_us` | 1069 | 1383 | 2379 | 13394 | 21442 | 21667 |
+| `p1_pairs_p50` | 200 | 210 | 208 | 208 | 209 | 202 |
+| `p1_rejected_p50` | 36 | 36 | 36 | 36 | 36 | 36 |
+| `p2_cands_p50` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `post_p50_us` | 9 | 5 | 7 | 10 | 9 | 9 |
+| `simulate_p50_us` | 35 | 33 | 37 | 43 | 44 | 46 |
+
+`p1_rejected_sum` is **exactly 10800 = 36 × 300** in every window from 899 to
+6599: the same 36 pairs, every frame, deterministically. Three consequences:
+
+1. **The §3 generic pair path is ~205 pairs/frame, and it is constant.** The
+   broadphase input to the square root does not change at all while the bracket
+   goes 1.07 ms → 21.7 ms (20×). Whatever ramps is not the pair loop.
+2. **L1 never runs its candidate loop.** `p2_cands = 0` in all 22 windows, so
+   bucket 0 is empty or fully gated; `0x0045cab0` contributes nothing here.
+3. **The sector population is constant.** `post` is the bracket around
+   `0x0045b720` ([sector-post-pass.md](sector-post-pass.md)), an O(N) walk over
+   the same 32 bucket lists; it sits at 5–13 µs for the entire session, as do
+   `simulate` (`0x00452ad0`, 32–46 µs) and `passb` (90–134 µs). An N² effect in
+   the same lists is impossible without `post` moving.
+
+The ramp is also **reversible**, which no accumulating structure explains. In
+run129 `collide_p50_us` goes 203 µs (frame 3600) → 26345 µs (7800, plateau to
+9000) → **683 µs (9600)** and stays at 400–500 µs for the following 8000 frames.
+The "ramp over ~6000 frames" is the approach to a position and the plateau is
+holding it; run129 adds the departure, which run133/134 did not capture.
+
+### 11.3 Where the time actually is: the narrow phase on accepted pairs
+
+The uncounted branch is the accepted one. At the compare §3 decodes:
+
+```
+0045d604  cmp ecx,eax / jg 0045d6cc       ; dist > R -> reject (uncounted)
+0045d60c  push esi / push ebx
+0045d60e  call 0045c780                   ; gate, returns 1 = skip pair
+0045d615  test eax,eax / jne 0045d6cc
+0045d620  or [ebx+0x44],1 / or [esi+0x44],1
+0045d665  call 0048ac80(physA, physB, rA, rB)   ; NARROW PHASE
+0045d66f  jle 0045d6cc                    ; <=0 -> no contact
+0045d691  call 0045e130                   ; contact response
+```
+
+`0x0045c780` was decompiled this session: 806 B of class/flag/parent tests, one
+bounded parent-chain walk at `0x0045c881`, no geometry — it is a filter, not a
+cost. `0x0048ac80` zeroes `[phys+0x180..0x190]` on **both** objects and tails
+into `0x0048a890`.
+
+`0x0048a890` is **recursive over the two objects' scene-node part trees**:
+
+- Head `0x0048a890`–`0x0048a928`: Chebyshev distance between the nodes' saved
+  positions `[node+0xb0/0xb4/0xb8]` against `0x00488170(node)` radii (itself
+  recursive over children, cached in `[node+0xa4]`); far ⇒ return 0.
+- `0x0048a929`: both nodes must carry `[node+0x12c] & 0x1000000` and not
+  `0x8000000`; otherwise ⇒ `0x0048aa46`, the descent.
+- `0x0048aa46`–`0x0048ab7b`: **for each child of A (`[A+0xc]`, `[n] = next`,
+  sentinel first-dword 0) recurse (child, B); if none hit, for each child of B
+  recurse (A, child)** — an O(parts_A × parts_B) double walk. On a hit it
+  transforms the contact point (`0x004f0da0`, `0x0040e780`) into
+  `[obj+0x180..0x18c]` and unwinds.
+- Leaf × leaf `0x0048a963`–`0x0048a9a5`: `[node+0x140]` model id →
+  `0x004863c0` (the body cache: a **hash** lookup, bucket mask `[t+4]-1`, chain
+  walk at `0x00486410` — O(1), not a growing scan, with an SEH frame per call)
+  → `call 0x0047f1b0(bodyA, bodyB, 2, 1, 0.0f)`.
+
+`0x0047f1b0` (0x191 B) builds two 3×3 matrices plus translations from
+`[node+0xb0..0xe8]` (16.16 fixed, 18 `fild`/`fmul`/`fstp` pairs) and calls
+`0x004e29f0` → `0x004e2780` → **`0x004e2530`**, the mesh collider:
+
+```
+004e2530  mov eax,[0x0060854c]           ; hits so far
+004e253d  if ([0x00596934] && hits>0) return 0     ; mode 2 stops at first hit
+004e257d  add dword [0x00608544],1       ; GLOBAL node-pair visit counter
+004e25a3  call 0x004e3280                ; separating-axis / OBB reject (0x556
+                                         ;  insns in the function, x87 + 0x40e710)
+004e25cd  call 0x004e2190                ; leaf x leaf (-> 0x004e2ba0, 0x504 insns)
+004e264c/004e269f/004e2705/004e2767      ; four recursive calls to 0x004e2530
+```
+
+`[node+0x3c]`/`[node+0x40]` are the two children of a **static binary BVH stored
+in the model data**, and the recursion descends whichever side has the larger
+`[node+0x30]` radius. So per accepted pair the cost is
+`parts_A × parts_B × (BVH_A × BVH_B node pairs)`, all of it x87, with
+`0x004e3280` (an SAT test) executed at every node pair. A node-pair visit is on
+the order of 100–400 executed instructions (**estimate**, the path through
+`0x004e3280` is data-dependent); at the §5 FEX bracket of 300–800 M insn/s that
+is ≈ 0.2–1.3 µs, so the 21.7 ms plateau is **≈ 20 k–100 k node-pair visits per
+frame**. Nothing else in the routine can absorb that budget.
+
+**Why mode 2 makes a near-miss the worst case.** `0x0048a9a5` passes mode `2`,
+max-hits `1`, tolerance `0.0f`; `0x004e29f0` stores them in `[0x00608534]` /
+`[0x00608538]` and `0x004e27d3` sets `[0x00596934] = 1` for mode 2, which is the
+"stop at the first hit" predicate at `0x004e253a`. A pair that **does** collide
+therefore aborts early. A pair whose bounding spheres overlap (`dist ≤
+r_sum·1.01`) but whose meshes do not touch runs the **full** BVH × BVH descent
+to exhaustion, every frame, forever. That is the expensive state.
+
+### 11.4 What this explains, and what it leaves open
+
+Consistent with every number in §11.2: the broadphase counts are constant
+because the sector is unchanged; `--collide-box-cull` cannot help because the 36
+pairs it removes are ~36 × ~58 instructions ≈ single-digit µs; the "107 µs per
+pair" of the profiler note is an artifact of dividing by the broadphase
+denominator instead of the accepted-pair one; the cost is reversible because it
+is a function of where the objects are, not of anything that accumulates.
+
+**Inferred, not measured:** that the dominant accepted pair or pairs involve the
+player's ship parked inside a large object's bounding radius (station, and note
+that `[obj+0xa4]` is a single sphere radius, so an elongated station overlaps a
+large volume it does not occupy). A static pair of permanently overlapping
+sector fixtures would produce a constant cost, which is not what run129 shows,
+but a mixture of the two is not excluded.
+
+**Unknown:** the number of accepted pairs per frame (nothing counts the
+`dist ≤ R` branch); which objects they are; the part counts and BVH depths of
+the models involved; the real per-node-pair instruction count.
+
+**Ruled out as the ramp mechanism, by reading:** there is no list append in
+`0x0045d250`, `0x0048ac80`, `0x0048a890` or `0x004e2530`. The only per-pair
+writes are `[obj+0x44] |= 1/2` flag bits (cleared by L0 at `0x0045d275` in the
+same call and by L3 at `0x0045e000`) and the contact scratch
+`[phys+0x180..0x190]`, which `0x0048ac80` **zeroes on entry** for both objects.
+The child lists (`[node+0xc]`) and BVH links (`[node+0x3c]`/`[node+0x40]`) are
+model data. `0x004863c0` is a hash lookup, not a linear scan of a growing cache.
+The `0x0060854c`/`0x00608544`/`0x00608538` globals are reset per top-level query
+at `0x004e2947`–`0x004e2951`. An image-wide scan for the four-byte little-endian
+address finds references to `0x00608544` only at `0x004e0c01`, `0x004e0c8c`,
+`0x004e0cf6`, `0x004e257f`, `0x004e27a2`, `0x004e2948`, `0x004e29b5`,
+`0x004e38bb` — all inside this collision subsystem.
+
+### 11.5 Smallest diagnostics (one flight), with hook-site suitability
+
+Three `inc dword [abs32]` counter sites in the `--collide-census` shape, read and
+zeroed once per Present alongside the existing four. Bytes below were re-read
+from the image this session; no rel32 `call`/`jmp`/`jcc` target and no abs32
+pointer anywhere in `.text` lands inside `+1..+4` of any of the three, and the
+enclosing decoded regions (`0x0045d5fd`–`0x0045d6d4`, `0x0048a890`–`0x0048ac20`,
+`0x004e2530`–`0x004e2780`) contain no short jump into them either; the
+whole-function check belongs in `verify_collide_sites.py`.
+
+| # | Site | Displaced span | Counts | Rate/frame |
+| --- | --- | --- | --- | --- |
+| 5 | `0x0045d665` | `e8 16 d6 02 00` (5, one `call`) | **accepted pairs** — the missing denominator | 0–200 |
+| 6 | `0x0048a9a5` | `e8 06 48 ff ff` (5, one `call`) | mesh-pair tests = leaf part-node pairs | 10⁰–10³ |
+| 7 | `0x004e2530` | `a1 4c 85 60 00` (5, `mov eax,[0x60854c]`, the function's first instruction; 5 inbound calls `0x004e264c`, `0x004e269f`, `0x004e2705`, `0x004e2767`, `0x004e2956`, all to the entry) | **BVH node-pair visits** — the actual unit of cost | 10⁴–10⁵ |
+
+Site 5 and 6 are `call` redirects: the stub increments and jumps to the original
+target, so the callee's `ret`/`add esp` contract is unchanged and no register or
+flag state is displaced — the flags at a `call` boundary are dead by the same
+argument §10 makes for P1. Site 7 displaces the callee's first instruction, so
+the stub must `inc` a slot, re-execute `mov eax,[0x0060854c]` and jump to
+`0x004e2535`; EAX is defined by that very instruction and flags are not written
+by it, so nothing needs saving; the stub is called on a fresh frame before
+`sub esp,0x40`, so ESP handling is a balanced `push`/`pop` as in §10.
+Reentrancy: none of the three stubs calls anything or keeps state beyond the
+counter, and site 7 is on a recursive path where only a plain increment is
+admissible (no QPC, no tracker).
+
+Timing, if the counts alone do not settle it: an accumulate-only `game_phases`
+pair around `0x0045d665` gives narrow-phase microseconds per frame directly at
+≤ 200 QPC pairs per frame. Do **not** put a clock at site 7.
+
+A cheaper zero-patch alternative for site 7 exists in principle — `[0x00608544]`
+is already the engine's own node-pair counter — but it is reset per top-level
+query at `0x004e2948`, so reading it once per frame yields only the last mesh
+pair's count; accumulating it needs a hook anyway.
+
+### 11.6 Candidate fixes, and their gameplay risk
+
+The shape of the problem changed: at the narrow phase the pair count is ~10²,
+not ~10⁵, so a **cross-frame memo is affordable here** — the objection in §6
+("Not proposed") applied to the broadphase, not to this site.
+
+1. **Temporal memo on the no-contact result** (leading candidate). Key: the two
+   object pointers plus both physics blocks' integer position `[phys+0x30/34/38]`
+   and the orientation words the node matrices derive from
+   (`[node+0xc0..0xe8]`). If both are bit-identical to the previous frame and
+   the previous result was "no contact", return 0 and reproduce the only side
+   effect a no-contact call has: `0x0048ac80`'s zeroing of
+   `[phys+0x180..0x190]` on both objects. *Equivalence:* `0x004e2530` reads only
+   the two node transforms, the static model BVHs, and globals that
+   `0x004e2780` resets on entry; it writes `[obj+0x180..0x18c]` **only on a hit**.
+   So for identical inputs it is a pure function. *Risk:* a wrong key (missing a
+   transform input, or an object mutating its model — `[node+0x140]` and
+   `[node+0x12c]` must be in the key) turns a real collision into a silent
+   miss. Needs the same enumerate-the-boundary fixture discipline as §8, plus a
+   bounded memo (a fixed ring keyed on the pair, no allocation) and a hard
+   invalidation on any flag change in `[obj+0x40]`/`[obj+0x44]`.
+   *Expected saving:* the whole plateau, if the accepted pairs are static.
+2. **Tighter bound before `0x0045d665`.** The engine gates on a single sphere
+   radius `[obj+0xa4]`; an AABB/OBB test using the top node's own extents would
+   turn many "spheres overlap, meshes far" pairs away before the descent.
+   Lower risk than (1) (it is another conservative reject, provable the same way
+   as P1) but it only helps when the bound is genuinely loose; if the player is
+   truly inside the station's box it saves nothing.
+3. **Not proposed.** Capping the descent (`[0x00608534]`/`[0x00608538]`) or
+   skipping `0x0045d665` on a frame stride: both drop real collisions and both
+   are visible in gameplay.
+
+Measurement (§11.5) must come first: fix (1) is worth its verification cost only
+if site 5 shows a small number of accepted pairs holding a large share of
+site 7's count.
+
 ## Reproduce
 
 ```sh
@@ -449,3 +688,18 @@ Instruction listings and switch tables were taken with a local
 `X3DumpRange.java` / `X3RefsTo.java` (address-range listing, references-to) kept
 in the session scratchpad, and cross-checked against the on-disk bytes with the
 PE section map; the byte strings in §6 and §7 are the check.
+
+§11 used no Ghidra project. Listings came straight off the bottle EXE (the
+image is non-relocatable, so file addresses are virtual addresses):
+
+```sh
+objdump -d --no-show-raw-insn --x86-asm-syntax=intel \
+  --start-address=0x4e2530 --stop-address=0x4e2780 \
+  "$HOME/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe"
+```
+
+Run-log figures came from `grep`/`awk` over
+`/tmp/x3-bottleX3-run{129,133,134}/session-*.log` (116 MB, 26 MB, 27 MB — never
+read whole): `collide_census` lines for the pair counts, `loop_phases` lines for
+`collide_p50_us`/`post_p50_us`/`simulate_p50_us`, and
+`grep -c profile_ …run129/session-20260918-090339-216.log` → 0 for §11.1.

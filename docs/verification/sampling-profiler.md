@@ -1828,3 +1828,51 @@ per-draw breakdown and trims (engine-frame-time.md §2.2).
 user reading ≈ 1.5 fps gained by "High" over "Very High"; `frame_end` 30 s busy windows 923 draws / 33.4 ms
 (Very High) vs 861 / 31.2 ms (High). The LOD-bias lever (engine-frame-time.md §2.4) is closed: one full LOD
 step buys ≈ 7 % of the draws.
+
+**Run 43 A (run133/run134, 2026-09-19).** `--collide-box-cull` A/B at the same held spot (~60 s each), 25 fps
+observed in both. Sources: `/tmp/x3-bottleX3-run133/session-20260919-030256-212.log` (option off, 25.7 MB) and
+`/tmp/x3-bottleX3-run134/session-20260919-030610-212.log` (option on, 27.2 MB); queried with grep/python only,
+never read whole.
+
+1. **Install.** run134: `collide_box_cull requested=1 patched=1 reason=ok p1_site=0x0045d58e p2_site=0x0045cc7c
+   write_p1=plain write_p2=plain stub_p1=0x01d70b44 stub_p2=0x01d70bd4 counters=1 enabled=1` (1 line, matches the
+   brief's two sites). run133: 0 matches for `collide_box_cull requested` — the flag was off, no install attempt.
+
+2. **`collide_census` (run134, 22 windows of 300 frames, `p1_pairs`/`p1_rejected`/`p2_cands`/`p2_rejected`
+   p50/max/sum).** Steady-hold windows (frames 899–6599, 21 windows, excluding the two loading-spike windows at
+   299/599): p1_pairs_p50 197–210 (median ≈ 205), p1_rejected_p50 constant at 36, reject share 17.1–18.2%
+   (median ≈ 17.4%). **`p2_cands` is 0 in every one of the 22 windows, start to end** — the P2 site
+   (0x0045cc7c) never counted an entered pair in this session, so `p2_rejected` is also 0 throughout. With the
+   reject share ~17–18% of ~205 pairs/frame, ≈ 34 pairs/frame are turned away at P1 and ≈ 170 pairs/frame reach
+   the engine's own comparison at P1's continuation; none of them are observed reaching P2 at all.
+
+3. **loop_phases (`collide_p50_us`, `sum_p50_us`) and `frame_phases` (`dt_p50_us`).** Both sessions show collide
+   time and frame dt climbing steadily over the hold and converging to the same plateau: run133 collide_p50 rises
+   from ~1.3 ms (window 300) to 22.1 ms (window 6300, max window 25.97 ms p95); run134 rises from ~1.4 ms
+   (window 300) to 21.7 ms (window 6600, p95 23.1 ms) — same shape, timing offset by ~1 window (run134's climb
+   starts later: windows 300–4800 stay under 3.1 ms then jump at 5100–6600, vs run133's jump at 4200–4800).
+   `frame_phases dt_p50_us` mirrors this: both plateau at 37.4–37.9 ms (≈ 26–27 fps), matching the user's 25 fps
+   read. No `loop_phases_slow` lines were emitted in either session (window `slow=0` throughout) even at the
+   22 ms plateau, so the slow-frame threshold was never crossed. **The 26 ms collide episode is present in both**;
+   the option does not visibly change the plateau value or the frame-time plateau — the difference between runs
+   is consistent with run-to-run timing noise in when the ramp starts, not with an effect of the cull.
+
+4. **Implied cost per pair vs. the ~70 ns/pair fixture number.** At the run134 plateau (collide_p50 ≈ 21.5–21.7 ms,
+   p1_pairs_p50 ≈ 202–210/frame): 21667000 ns / 202 pairs ≈ **107,000 ns/pair**, roughly 1500× the fixture's
+   ~70 ns/pair for the pair test alone. Evidence supports: the two probed pair-test sites (P1/P2) account for a
+   small, bounded fraction of the 0x0045d250 budget — cutting ~17–18% of P1's own candidates (and P2 apparently
+   not being reached at all) left the collide-phase plateau and frame dt plateau unchanged within noise. Evidence
+   does not distinguish which of the other candidates (per-object work ahead of the pair loops, the swept query
+   0x0045cab0, or narrow-phase work on accepted pairs) is responsible — no counters/timestamps in either session
+   isolate those paths. **Resolved statically (2026-09-19):** the narrow phase on accepted pairs, see
+   [sector-collide.md](../reverse-engineering/sector-collide.md) §11. The 107,000 ns/pair above divides by the
+   broadphase denominator; the accepted-pair count (the `dist <= R` branch at `0x0045d665`) is not counted by
+   any site in this session. §11 also records that run129 carries **zero** `profile_*` lines, so the 26 ms was a
+   `loop_phases` bracket around the whole call, never a leaf-EIP attribution.
+
+5. **Anomalies (run134).** No error/refused/exception lines beyond routine zero-valued startup counters
+   (`error=0`, `failures=0`, `refused=0` throughout steady state — checked with grep for
+   error|refus|except|fail|mismatch). The one real anomaly is `p2_cands=0` for all 22 windows (item 2): either
+   the P2 site is not on the execution path for this sector/spot, or its counter/stub is not being reached for
+   another reason not visible in these logs — needs a targeted check (e.g., a build that logs whether the P2
+   stub's trampoline is ever entered, independent of the 300-frame window) to settle which.
