@@ -181,10 +181,16 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint
 // the fill transform. share_applied=0 is the fail-closed refusal; the real
 // transform has its own fixture.
 unsigned original_share_transforms=0;bool original_share_reject=false,original_share_applies=true;
-LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t*p,std::size_t,float,std::vector<std::uint32_t>&o,bool,bool&share_applied){
- ++original_share_transforms;share_applied=false;
+LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t*p,std::size_t,float,std::vector<std::uint32_t>&o,bool,bool&share_applied,float=1.f,bool*gain_applied=nullptr){
+ ++original_share_transforms;share_applied=false;if(gain_applied)*gain_applied=false;
  if(original_share_reject)return LinearMaterialResult::UnsupportedShader;
  share_applied=original_share_applies;o={*p+950};return LinearMaterialResult::Applied;}
+// Hull light-map gain double (--hull-lightmap-gain): inert unless a test arms it.
+unsigned hull_lightmap_transforms=0;bool hull_lightmap_reject=false,hull_lightmap_applies=true;
+LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const std::uint32_t*p,std::size_t,float,float,std::vector<std::uint32_t>&o,bool,bool&fill_applied,bool&gain_applied){
+ ++hull_lightmap_transforms;fill_applied=gain_applied=false;
+ if(hull_lightmap_reject)return LinearMaterialResult::UnsupportedShader;
+ gain_applied=hull_lightmap_applies;o={*p+960};return LinearMaterialResult::Applied;}
 }
 namespace renderer {
 enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2,DistanceFadeInPlace=4,PackedScreenInPlace=8};
@@ -257,7 +263,7 @@ struct MotionRoute {
  renderer::LinearCompositionPolicy composition_policy=renderer::LinearCompositionPolicy::AdditiveEmission;
  MotionGate gate=MotionGate::Feature;bool routed=false,composition=false,scene=true,submit=true,evaluated=false;HRESULT submission_error=D3DERR_INVALIDCALL,preparation_error=S_OK;std::uint64_t ticks=0;
  bool depth=false,linear_material=false,fade_arm=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
- bool vs_constants_set=false,ps_constants_set=false,jittered=true;
+ bool vs_constants_set=false,ps_constants_set=false,jittered=true,hull_lightmap=false;
  DWORD saved_write1=15,saved_write2=15;
  struct Region {RECT rect{};unsigned reason=0;bool bound=false;};
  Region fade_region{};bool fade_region_evaluated=false;unsigned fade_region_permille=0;
@@ -332,7 +338,7 @@ HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept;
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*hull_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr,*sun_original_variant=nullptr;bool hull_program=false;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;std::int8_t sun_register=-1;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*hull_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr,*sun_original_variant=nullptr,*sun_original_lightmap_variant=nullptr,*hull_lightmap_variant=nullptr;bool hull_program=false;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;std::int8_t sun_register=-1;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
@@ -340,6 +346,7 @@ public:
  bool vs_registered=false,ps_registered=false;std::int8_t ps_sun_register=-1;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  IDirect3DPixelShader9*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
  IDirect3DPixelShader9*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
+ IDirect3DPixelShader9*ps_sun_original_lightmap=nullptr,*ps_hull_lightmap_variant=nullptr;bool hull_lightmap_pair=false; // hull light-map gain variants (hull-self-illumination.md 5)
  IDirect3DPixelShader9*ps_source_gain_variant=nullptr,*source_gain_eligible_variant=nullptr;unsigned source_gain_pair=renderer::linear_emission_pair_count;
  bool ps_hull_program=false;IDirect3DPixelShader9*ps_hull_gain_variant=nullptr;
  bool screen_additive_pair=false;unsigned screen_additive_index=screen_emission::pair_count;IDirect3DPixelShader9*ps_screen_additive_variant=nullptr;
@@ -414,6 +421,7 @@ public:
  bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
  bool emission_source_gain_requested_=false;float emission_source_gain_=1;
  bool hull_emission_gain_requested_=false;float hull_emission_gain_=1;
+ bool hull_lightmap_gain_requested_=false;float hull_lightmap_gain_=1.f;std::uint32_t hull_lightmap_draws_=0,sun_original_lightmap_variants_=0;
  struct{std::uint32_t admitted=0,refused_blend=0,refused_variant=0,refused_routed=0,refused_unknown=0,refused_state=0,bind_failures=0,programs=0;}hull_gain_counts_;
  std::uint32_t hull_gain_logged_[3]{};std::uint32_t hull_gain_program_logged_=0;unsigned hull_gain_prepares_=0;
  void prepare_hull_gain(const MotionDrawCall&,MotionRoute&)noexcept{++hull_gain_prepares_;}
@@ -532,6 +540,7 @@ unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emissio
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
 float emission_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN, parsed by the same extracted setting reader
 float hull_emission_gain=1.f;   // X3M_HULL_EMISSION_GAIN (emitter plan phase 3), same reader
+float hull_lightmap_gain=1.f;   // X3M_HULL_LIGHTMAP_GAIN (hull-self-illumination.md 5), same reader
 bool screen_emission_additive_requested=false;float screen_emission_additive_gain=1.f; // X3M_SCREEN_EMISSION_ADDITIVE=G
 bool screen_emission_additive_alpha_requested=false;float screen_emission_additive_alpha=1.f; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K, mirrored inertly
 float original_fill=0.f; // X3M_ORIGINAL_FILL=K, parsed by the same extracted setting reader

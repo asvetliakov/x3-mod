@@ -34,6 +34,7 @@ struct MotionRoute {
  DWORD saved_write1=15,saved_write2=15,saved_wrap[6]{};std::uint8_t wrap_index[6]{},wrap_count=0,wrap_attempted=0;
  bool fade_arm=false,sun_receiver=false; // fade-band arm and sun-share lane flags read by the bind path
  bool original_fill=false; // X3M_ORIGINAL_FILL: the bind path records the fill variant it selected
+ bool hull_lightmap=false; // hull light-map gain PS selected in the routed pair
 };
 static unsigned failures=0,checks=0,allocations=0;
 void* operator new(std::size_t n){++allocations;if(void*p=std::malloc(n))return p;throw std::bad_alloc();}
@@ -83,6 +84,7 @@ public:
     bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
   void*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
   void*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
+  void*ps_sun_original_lightmap=nullptr,*ps_hull_lightmap_variant=nullptr;bool hull_lightmap_pair=false; // hull light-map gain variants; inert here
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
  }shadow_;
  explicit MotionOutput(Device&d):device_(&d){}
@@ -98,6 +100,7 @@ public:
  // extracted bind path only reads the flags and reports a failed creation.
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
  bool original_fill_requested_=false; unsigned sun_original_refused_draws_=0; // read by the bind path's original-share gate
+ bool hull_gain_enabled_=true; std::uint32_t hull_lightmap_draws_=0; // F4 flag and light-map draw counter read by the bind/after-draw paths
  unsigned sun_qualifications_=0;void qualify_sun_lane(){++sun_qualifications_;}
  struct{bool failed=false,published=false,available=false,coverage_required=false;unsigned receivers=0,covered=0,untracked=0;}sun_frame_;
  bool screen_emission_bound_=false; // step B locked-prefix request; inert for the wrap-state seam

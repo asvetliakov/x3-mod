@@ -382,7 +382,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for path in outputs:
             data = self.legacy_material_bytes(path)
             digest.update(path.name.encode() + b'\0' + struct.pack('<I', len(data)) + data)
-        self.assertEqual(digest.hexdigest(), 'cc686e0591a846de910c4ec58a244a9a1c491900a57a3b8653c12234554d5cc8')
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(digest.hexdigest(), 'f23b2be9aa8124157ac624b7dbf6836f8404ee2e76b2d660e98c980a6a23c5ba')
 
     def test_all_664_color1_outputs_after_constant_port_repair_are_byte_exact(self):
         digest = hashlib.sha256()
@@ -392,7 +393,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for path in paths:
             data=path.read_bytes()
             digest.update(path.name.encode()+b'\0'+struct.pack('<I',len(data))+data)
-        self.assertEqual(digest.hexdigest(),'b3b3bfd1780e1959fa3cd1c9b200c8a70dd4e46e5c26432eac4620791d526dcd')
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(digest.hexdigest(),'2ec939487b932bc4bc5efc996a17782b1ed80486f63418bb4a2e9cb9e9268c0c')
 
     def test_all_392_preceding_outputs_have_only_semantic_change(self):
         # Captured from qualified checkpoint 73f5c51 before the next hull rows:
@@ -406,7 +408,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             digest.update(path.name.encode() + b'\0')
             digest.update(struct.pack('<I', len(data)))
             digest.update(data)
-        self.assertEqual(digest.hexdigest(), 'b97c735636748d5d054edcaf502267f301cd90cec96287bb03178e5554132413')
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(digest.hexdigest(), 'a3bc9af33f598b982c0ad3b8685d8d21ea5923117ce4ddedf6c0089623436964')
 
     def test_all_584_preceding_hull_outputs_have_only_semantic_change(self):
         # Captured from 10e447b before Asteroid edits: all 73 originals,
@@ -419,7 +422,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for path in outputs:
             data = self.legacy_material_bytes(path)
             digest.update(path.name.encode() + b'\0' + struct.pack('<I', len(data)) + data)
-        self.assertEqual(digest.hexdigest(), 'e4219185882fddb0f925fbe41ecf69514f4228019d65110e8bac33a9eb9e8555')
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(digest.hexdigest(), '462414c727b992b5f131c1d634abda86980f7356b54fc85da6ab22aac6383337')
 
     def test_all_192_installed_outputs_have_only_semantic_change(self):
         # Captured before this 40-pair extension from the accepted 24-program
@@ -433,7 +437,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             digest.update(path.name.encode() + b'\0')
             digest.update(struct.pack('<I', len(data)))
             digest.update(data)
-        self.assertEqual(digest.hexdigest(), '32deefc195add5e6423c177b5161472679942c7a233df7cbf8de36e7ad516c97')
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(digest.hexdigest(), '4582dbc45a13906aa37a9ed9332c8ba402502758bc7c1e90f4b7b50eff30086b')
 
     def test_all_previous_default_outputs_have_only_semantic_change(self):
         # Frozen before BUMPMAP core edits at 40ee4e1: all 120 DEFAULT
@@ -447,7 +452,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             digest.update(path.name.encode() + b'\0')
             digest.update(struct.pack('<I', len(data)))
             digest.update(data)
-        self.assertEqual(digest.hexdigest(), '532784fb0e6cf686bb9d62fa26f7378b5b1aac695075d0a8f75ebe5affb44f9f')
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(digest.hexdigest(), '1c691e4577df182719ca11979d40f4ddc2122748ced9b0cc31683ab5a4c48476')
 
     def test_previous_argon_outputs_have_only_semantic_change(self):
         # Captured from the qualified pre-extension transformer at c558b00:
@@ -463,7 +469,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             digest.update(path.name.encode() + b'\0')
             digest.update(struct.pack('<I', len(data)))
             digest.update(data)
-        self.assertEqual(digest.hexdigest(), 'b15faa03a1ca478ac6898979bb6416ba3884f0feda1fdea1d2fede125d51d857')
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(digest.hexdigest(), '136f64e455d0d78ef79c19b7ae92acad8a42d5b72a975fa1094350f799e03ed9')
 
     def test_original_instruction_alpha_position_and_comment_invariants(self):
         for profile, depth, gain, combined, changed_items in self.each():
@@ -786,8 +793,9 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for family in ('default', 'bump'):
             self.assertEqual([maxima[family]['vs'], maxima[family]['ps']],
                              self.driver[f'weighted_slots_{family}_vs_ps_depth_off_on'])
-        self.assertEqual(maxima['default'], {'vs':[98,100], 'ps':[178,180]})
-        self.assertEqual(maxima['bump'], {'vs':[106,108], 'ps':[190,192]})
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(maxima['default'], {'vs':[98,100], 'ps':[178,181]})
+        self.assertEqual(maxima['bump'], {'vs':[106,108], 'ps':[190,193]})
 
     def test_sample_conversion_boundaries_preserve_data_and_use_proved_rgb_registers(self):
         # Distinguish affine r4 from DEFAULT r3 and both BUMP data samplers;

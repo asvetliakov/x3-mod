@@ -247,13 +247,14 @@ class LinearMaterialConstantPortTests(unittest.TestCase):
                             'fill' if after.suffix == '.dat' else 'legacy') == group]
             slot_maxima[group] = (max(weighted_slots(before) for before, _ in selected),
                                   max(weighted_slots(after) for _, after in selected))
-        self.assertEqual(slot_maxima, {'legacy': (298, 305), 'fill': (299, 306),
-                                       'fade': (214, 216), 'sun': (342, 349)})
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+        self.assertEqual(slot_maxima, {'legacy': (299, 306), 'fill': (300, 307),
+                                       'fade': (214, 216), 'sun': (343, 350)})
         print('Maximum weighted PS slots before/after:', slot_maxima)
         report = self.reports['new']['linear_material_structure']
         self.assertEqual((report['weighted_slots_default_vs_ps_depth_off_on'][1][1],
                           report['weighted_slots_bump_vs_ps_depth_off_on'][1][1],
-                          report['fill_weighted_slots_default_bump']), (180, 192, [181, 193]))
+                          report['fill_weighted_slots_default_bump']), (181, 193, [182, 194]))
 
     def test_staging_preserves_ordered_sanitize_values(self):
         cap = 65504.0

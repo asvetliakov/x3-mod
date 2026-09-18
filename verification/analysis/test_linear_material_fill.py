@@ -26,7 +26,8 @@ FILL_CONSTANT = 215
 LIGHT0_TEMPORARY = 12
 # Every explicit zero-fill variant of the three drivers, byte for byte.
 # The constant-port migration is qualified in linear-material-constant-port.md.
-ZERO_FILL_DIGEST = '0e41b93663e77e7725a5d6bda8f5a84cff2193ee281af10519cf7cdda8267c6c'
+# Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on); gain-1 outputs are otherwise unchanged.
+ZERO_FILL_DIGEST = '9679d043e888414ee8ecac4e9ab77736edd78becf1a1a5a8546656aa00bed07a'
 ZERO_FILL_OUTPUTS = 1388
 DRIVERS = ('linear_material_structure', 'glass_material_structure', 'xt_material_structure')
 
@@ -134,7 +135,8 @@ class LinearMaterialFillTests(unittest.TestCase):
         report = self.reports['linear_material_structure']
         base = [report['weighted_slots_default_vs_ps_depth_off_on'][1][1],
                 report['weighted_slots_bump_vs_ps_depth_off_on'][1][1]]
-        self.assertEqual(base, [180, 192])
+        # Re-pinned after 11c4a615 (sun-shadow receiver depth): the depth fragment gained `mov oC2.zw` (+1 PS slot with depth on).
+        self.assertEqual(base, [181, 193])
         self.assertEqual(report['fill_weighted_slots_default_bump'], [base[0] + 1, base[1] + 1])
         self.assertLessEqual(max(report['fill_weighted_slots_default_bump']), 512)
 
