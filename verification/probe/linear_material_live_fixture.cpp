@@ -415,6 +415,7 @@ public:
  cutout::Capability cutout_caps_=cutout::Capability::Pending;HRESULT cutout_cap_result_=S_FALSE;
  bool cutout_probe_frame_known_=false,cutout_reset_pending_=false,shimmer_trace_=false;
  unsigned cutout_probes_=0;void probe_cutout_caps(bool=false)noexcept{++cutout_probes_;}
+ std::uint64_t last_routed_node_=0,last_routed_lifetime_=0,last_routed_frame_=~std::uint64_t{0};std::uint32_t last_routed_draw_=0; // overlay witness latch, cleared by before_reset
  bool distance_fade_requested_=false;unsigned fade_route_threshold_=500;fade_route::Hysteresis fade_hysteresis_;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
  bool original_fill_requested_=false;float original_fill_=0.f;std::uint32_t original_fill_draws_=0;unsigned sun_original_refused_draws_=0;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};

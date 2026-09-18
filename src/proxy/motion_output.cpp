@@ -990,8 +990,26 @@ bool MotionOutput::cutout_draw_state() noexcept {
 // cutout probe's verdict, whose caps (MRT post-pixel-shader blending,
 // independent write masks, RGBA32F/R32F blend queries) are exactly what the
 // masked RT2 and the alpha-1 RT1 blend rely on.
+// Overlay arm (asteroid-fog-temporal.md "Run 130"): any other reviewed pair
+// (gate 3 passed) drawn in the same exact fade-band state right after a
+// routed draw of the same node is that node's source-over sub-mesh (the
+// hull pair's glass/window layer: own vertex buffer and textures, the node's
+// rows and cube map); it is admitted at permille 1000 without the fraction
+// (its alpha is the material's, not a distance fade) or the hysteresis,
+// counted as overlay_routed/overlay_refused. "Right after" is exact: the
+// very next draw index of the same frame, the same node identity here and
+// the same lifetime serial once sample_scope has read it (the scope gate
+// turns a mismatch back into the gate-4 refusal before anything is applied
+// or recorded). Original shading only: with linear materials requested a
+// blended reviewed pair may belong to the composition or glass bracket,
+// whose colour path no fixture has verified through this arm. Cost: a
+// refused reviewed-pair draw with z on and z write off pays up to eight
+// render-state reads (blend, test, sRGB, mask, the blend triple and the
+// separate-alpha switch; shadow slots with the hooks on), the frequency
+// getter and one identity read; a draw with z write on reaches no getter.
 bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& call, DWORD z, DWORD z_write, std::size_t window, bool loop_bounded) noexcept {
-    if (!shadow_.fade_route_pair || call.user_memory) return false;
+    const bool overlay = !shadow_.fade_route_pair;
+    if ((overlay && (fade_route_threshold_ > 1000u || linear_material_requested_)) || call.user_memory || z != 1 || z_write != 0) return false;
     DWORD blend = 0, test = 1, srgb = 1, color = 0, factor[4] = {0, 0, 0, 1};
     if (FAILED(render_state(D3DRS_ALPHABLENDENABLE, &blend)) || !blend) return false;
     if (FAILED(render_state(D3DRS_ALPHATESTENABLE, &test)) || FAILED(render_state(D3DRS_SRGBWRITEENABLE, &srgb))
@@ -1011,17 +1029,41 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
         || (frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1
         || window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !loop_bounded
         || !shadow_.stream0 || !shadow_.stream0_stride || !shadow_.declaration || !call.primitives
-        || (call.indexed && !shadow_.indices)) { ++counters_.fade_refused; return false; }
+        || (call.indexed && !shadow_.indices)) {
+        // Diagnostics (unmatched=): the first failing group, in the chain's order.
+        route.unmatched = cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ || !hdr_enabled_
+                || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F ? UnmatchedReason::FadeCaps
+            : (frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1 ? UnmatchedReason::FadeInstanced
+            : window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !loop_bounded ? UnmatchedReason::FadeRows
+            : UnmatchedReason::FadeGeometry; // a failed frequency getter counts as geometry: frequency stays 0
+        ++(overlay ? counters_.overlay_refused : counters_.fade_refused); return false;
+    }
+    if (overlay) {
+        const std::uint64_t node = fade_identity();
+        if (!node || last_routed_frame_ != frame_ || counters_.draws != last_routed_draw_ + 1 || node != last_routed_node_) {
+            route.unmatched = UnmatchedReason::OverlayNode; ++counters_.overlay_refused; return false;
+        }
+        route.fade_permille = 1000u; route.fade_arm = true; route.overlay = true;
+        return true;
+    }
     float alpha[4]{}, fog[4]{}; BOOL enable = FALSE; float distance = 0.f;
     const auto& r = shadow_.fade_route_registers;
     if (FAILED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, r.alpha, alpha, 1))
         || FAILED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, r.fog, fog, 1))
-        || FAILED(native<GetConstantsBFn>(GetVertexShaderConstantB)(device_, 0, &enable, 1))
-        || !fade_route::origin_distance(shadow_.rows[window], camera_scene_.valid, camera_scene_.m00, camera_scene_.m11,
-                                        camera_scene_.m20, camera_scene_.m21, distance)) { ++counters_.fade_refused; return false; }
+        || FAILED(native<GetConstantsBFn>(GetVertexShaderConstantB)(device_, 0, &enable, 1))) {
+        route.unmatched = UnmatchedReason::FadeConstants; ++counters_.fade_refused; return false;
+    }
+    // Run 130: the origin distance is defined for an origin behind the camera
+    // plane too (fade_route_core.h); only a nonfinite row or camera refuses.
+    if (!fade_route::origin_distance(shadow_.rows[window], camera_scene_.valid, camera_scene_.m00, camera_scene_.m11,
+                                     camera_scene_.m20, camera_scene_.m21, distance)) {
+        route.unmatched = UnmatchedReason::FadeOrigin; ++counters_.fade_refused; return false;
+    }
     route.fade_permille = fade_route::permille(fade_route::fraction(alpha[0], enable != FALSE, fog[0], fog[1], distance));
     bool held = false;
-    if (!fade_hysteresis_.admit(fade_identity(), frame_, route.fade_permille, fade_route_threshold_, held)) { ++counters_.fade_refused; return false; }
+    if (!fade_hysteresis_.admit(fade_identity(), frame_, route.fade_permille, fade_route_threshold_, held)) {
+        route.unmatched = UnmatchedReason::FadeThreshold; ++counters_.fade_refused; return false;
+    }
     route.fade_arm = true; route.fade_held = held;
     return true;
 }
@@ -2791,6 +2833,7 @@ void MotionOutput::before_reset() noexcept {
     if (composition_) { composition_busy_ = true; composition_->before_reset(); composition_busy_ = false; }
     fade_bounds_.clear(); // relearned after Reset; allocation ids never recur
     fade_hysteresis_.clear(); // the arm starts again at the threshold after Reset
+    last_routed_node_ = last_routed_lifetime_ = 0; last_routed_frame_ = ~std::uint64_t{0}; last_routed_draw_ = 0; // no overlay witness survives Reset
     release_fade_witness(); release_packed_sample(); // the M target is recreated after Reset; the copies follow its size
     composition_state_lost_ = false; composition_frame_stopped_ = false; composition_attach_attempted_ = false;
     composition_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format.
@@ -4874,14 +4917,14 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // for the cross-check (a disagreement when the bloom copy follows it).
     if (counters_.hook_scene_end && state == renderer::BoundaryState::Scene && !counters_.bloom_copy_seen) ++counters_.draws_after_hook;
     // Gate 1: feature/capability, target owned, not recording a state block.
-    if (!target_surface_ || shadow_.recording || main_msaa_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Feature); return; }
+    if (!target_surface_ || shadow_.recording || main_msaa_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Feature); route.unmatched = UnmatchedReason::Feature; return; }
     // Gate 2: scene phase with the latched main color/depth bound.
-    if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scene); return; }
+    if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scene); route.unmatched = UnmatchedReason::Scene; return; }
     route.scene = true;
     // Unavailable repair is feature refusal, not an enhanced fallback through
     // the malformed original linkage. Preserve the original bindings and rows.
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready) {
-        route.gate = MotionGate::Pair; ++counters_.gates[3]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Pair); return;
+        route.gate = MotionGate::Pair; ++counters_.gates[3]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Pair); route.unmatched = UnmatchedReason::XtPair; return;
     }
     // Every scene draw whose VS has a table row or is a reviewed depth-only
     // prepass program is jittered, routed or not, so the rasterized coverage
@@ -4901,6 +4944,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         // a profile row) versus a registered row without a reviewed pair.
         route.sun_refusal = std::uint8_t(!shadow_.ps_hash || !shadow_.ps_registered || !shadow_.vs_row
             ? renderer::SunUntrackedReason::Unregistered : renderer::SunUntrackedReason::Pair);
+        route.unmatched = !shadow_.ps_hash || !shadow_.ps_registered || !shadow_.vs_row ? UnmatchedReason::Unregistered : UnmatchedReason::Pair;
         return;
     }
     route.depth = depth_enabled_ && renderer::material_motion_pixel_writes_depth(*pair, depth_enabled_);
@@ -4976,6 +5020,20 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // masked); every other refusal stays gate 4.
     if (!draw_state_ok && !fade_arm_admits(route, call, z, write, window, loop_bounded)) {
         route.gate = MotionGate::DrawState; ++counters_.gates[4];
+        // Diagnostics only (unmatched=): the fade arm recorded its own step for a
+        // recognised fade-band draw; otherwise the first failing check of the
+        // opaque chain, from the values it read (no getter is repeated).
+        if (route.unmatched == UnmatchedReason::None)
+            route.unmatched =
+                call.user_memory ? UnmatchedReason::UserMemory
+                : (read_failed || FAILED(z_hr) || FAILED(write_hr)) ? UnmatchedReason::ReadFailed
+                : !(z == 1 && write == 1) ? UnmatchedReason::NoZWrite
+                : blend ? UnmatchedReason::Blended
+                : (srgb || !((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && cutout_ok)
+                             || (sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0))) ? UnmatchedReason::State
+                : ((frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1) ? UnmatchedReason::Instanced
+                : (!shadow_.rows_known[window] || !loop_bounded) ? UnmatchedReason::Rows
+                : UnmatchedReason::Geometry; // stream, declaration, primitives or indices
         // Diagnostics only (lane on): the first failing check in the chain's
         // order, using the values the chain read (a failed getter is its own
         // bucket; the cutout verdict is the one the chain computed). No
@@ -5021,8 +5079,17 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // Gate 5: verified object/camera scope. Failure still routes with mode 0 so
     // covered pixels of this material carry the sentinel, never stale history.
     bool matched = false;
-    if (!sample_scope(route)) { route.gate = MotionGate::Scope; ++counters_.gates[5]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scope); }
-    else if (!history_.lookup_and_record(key, rows, previous)) { route.gate = MotionGate::History; ++counters_.gates[6]; ++counters_.keyed; ++counters_.missing; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::History); }
+    // Overlay arm, second half of the same-node witness: the scope must verify
+    // and carry the last routed draw's node and lifetime serial. Nothing has
+    // been applied or recorded yet, so the mismatch is the plain gate-4 refusal.
+    if (route.overlay && (!sample_scope(route) || key.node != last_routed_node_ || key.object_lifetime != last_routed_lifetime_)) {
+        route.overlay = false; route.fade_arm = false; route.fade_permille = 0; route.key = {};
+        route.gate = MotionGate::DrawState; ++counters_.gates[4]; ++counters_.overlay_refused;
+        route.unmatched = UnmatchedReason::OverlayNode;
+        return;
+    }
+    if (!route.overlay && !sample_scope(route)) { route.gate = MotionGate::Scope; ++counters_.gates[5]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scope); route.unmatched = UnmatchedReason::Scope; }
+    else if (!history_.lookup_and_record(key, rows, previous)) { route.gate = MotionGate::History; ++counters_.gates[6]; ++counters_.keyed; ++counters_.missing; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::History); route.unmatched = UnmatchedReason::History; }
     else { matched = true; route.gate = MotionGate::None; ++counters_.gates[0]; ++counters_.keyed; }
     if (matched) {
         // Cut detector sample: screen displacement of the projected object
@@ -5104,7 +5171,9 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     route.routed = true; route.matched = matched;
-    if (route.fade_arm) { ++counters_.fade_routed; if (route.fade_held) ++counters_.fade_held; }
+    last_routed_node_ = key.node; last_routed_lifetime_ = key.object_lifetime; last_routed_frame_ = frame_; last_routed_draw_ = counters_.draws; // the overlay arm's witness
+    if (route.overlay) ++counters_.overlay_routed;
+    else if (route.fade_arm) { ++counters_.fade_routed; if (route.fade_held) ++counters_.fade_held; }
     if (route.linear_material) {
         ++counters_.material_routed;
         if (shadow_.material_contract.bump) ++counters_.material_bump_routed;
@@ -5627,7 +5696,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (capture_ && route.scene) {
         const auto& k = route.key;
         log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u depth=%u jittered=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u pass=%lu rows_hash=%016llx result=%08lx"
-            " zwrite=%ld blend=%ld src=%ld dst=%ld atest=%ld mask=%ld sepalpha=%ld fog=%ld fade_arm=%u fade_permille=%u fade_held=%u",
+            " zwrite=%ld blend=%ld src=%ld dst=%ld atest=%ld mask=%ld sepalpha=%ld fog=%ld fade_arm=%u fade_permille=%u fade_held=%u unmatched=%s",
             id_, frame_, counters_.draws, unsigned(route.gate), route.routed, route.matched, route.routed && route.depth, jittered, shadow_.vs_hash, shadow_.ps_hash,
             reinterpret_cast<void*>(k.node), reinterpret_cast<void*>(k.camera), static_cast<unsigned long>(k.node_handle),
             static_cast<unsigned long>(k.camera_handle), k.object_lifetime, k.camera_lifetime, route.load_epoch, route.registry_epoch,
@@ -5637,7 +5706,8 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
             shadow_state_field(D3DRS_ZWRITEENABLE), shadow_state_field(D3DRS_ALPHABLENDENABLE),
             composition_blend_field(0), composition_blend_field(1),
             shadow_state_field(D3DRS_ALPHATESTENABLE), shadow_state_field(D3DRS_COLORWRITEENABLE),
-            composition_blend_field(3), shadow_state_field(D3DRS_FOGENABLE), unsigned(route.fade_arm), route.fade_permille, unsigned(route.fade_held));
+            composition_blend_field(3), shadow_state_field(D3DRS_FOGENABLE), unsigned(route.fade_arm), route.fade_permille, unsigned(route.fade_held),
+            unmatched_reason_name(route.unmatched));
     }
 }
 
@@ -6409,20 +6479,21 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 written += unsigned(length);
             }
             log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu cutout_routed=%lu cutout_missed=%lu cutout_unavailable=%u cutout_caps=%u fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u"
-                " cutout_opaque_routed=%lu cutout_opaque_refused=%lu cutout_opaque_lane=%lu cutout_opaque_refused_top=%s",
+                " cutout_opaque_routed=%lu cutout_opaque_refused=%lu cutout_opaque_lane=%lu cutout_opaque_refused_top=%s overlay_routed=%lu overlay_refused=%lu",
                 id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
                 static_cast<unsigned long>(c.material_bind_failures), static_cast<unsigned long>(c.cutout_routed),
                 static_cast<unsigned long>(c.cutout_missed), unsigned(cutout_coverage_missed_), unsigned(cutout_caps_),
                 static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held), fade_route_threshold_,
                 static_cast<unsigned long>(c.cutout_opaque_routed), static_cast<unsigned long>(c.cutout_opaque_refused),
-                static_cast<unsigned long>(c.cutout_opaque_lane), cutout_top);
+                static_cast<unsigned long>(c.cutout_opaque_lane), cutout_top,
+                static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused));
         } else if (fade_route_threshold_ <= 1000u) {
             // Original shading: the fade-band arm's frame counters and the
             // probe's verdict (run 125: frame-level evidence for the arm
             // without the linear_material_frame line).
-            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u",
+            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu",
                 id_, frame_, static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held),
-                fade_route_threshold_, unsigned(cutout_caps_));
+                fade_route_threshold_, unsigned(cutout_caps_), static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused));
         }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
@@ -6562,6 +6633,8 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 51: return counters_.fade_refused;
     case 52: return fade_route_threshold_;
     case 53: return counters_.fade_held;
+    case 54: return counters_.overlay_routed;
+    case 55: return counters_.overlay_refused;
     case 36: { static_assert(motion_shadow_state_count <= 32); unsigned mask=0;
         for (unsigned i=0;i<motion_shadow_state_count;++i) if (shadow_.states_known[i]) mask |= std::uint32_t{1} << i;
         return mask; }
