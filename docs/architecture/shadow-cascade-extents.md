@@ -497,3 +497,13 @@ and in open space; a busy-station at-rest segment of ≥ 600 frames).
   is assumed from the ancestry captures (station-material-distance.md) and is confirmed by
   `own_radius` on the first flight with the option.
 - Resident 272–320 MiB of render targets in the 32-bit process under wined3d: the attach log.
+
+## Reach geometry (clarified after run 118, 2026-09-18)
+
+The cascade extents above are **half-extents** of the light-space box centred on the
+camera (`cascade.half_extent`, `shadow_replay_projection.h`). The 150,000 u far cascade is
+therefore a 300,000 u (60 km) square whose corner lies 30 km·√2 ≈ 42 km from the ship, with
+`depth_light = depth_behind = 300,000` (120 km along the sun axis). "30 km reach" means the
+lateral reach to each side of the sun line; objects up to ≈ 42 km diagonally, or farther
+along the sun axis, are inside the box (run118 admitted C4 casters to 44.6 km from the box
+centre; run117 to 21 km). The C4 texel at 2048² is 146 u (29 m), at 4096² 73 u (15 m).
