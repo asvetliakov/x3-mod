@@ -101,6 +101,10 @@ struct Core {
     // per-frame sample (X3M_LOOP_PHASES with X3M_GAME_PHASES).
     std::uint64_t input_ticks=0,input_last=0;
     bool input_valid=false;
+    // Frame time at or above which bridge() stages the segment tape, in ticks.
+    // 0 keeps the built-in 50 ms; the runtime sets it from
+    // X3M_GAME_PHASE_THRESHOLD_MS (launcher --game-phase-threshold-ms, 20 ms).
+    std::uint64_t frame_threshold=0;
 
     void invalidate() noexcept {
         ++invalidated;
@@ -167,7 +171,7 @@ struct Core {
             else {
                 const auto elapsed=p.qpc-anchor.qpc;++frame_count;
                 if(elapsed>frame_max){frame_max=elapsed;frame_max_begin=anchor.qpc;frame_max_end=p.qpc;frame_max_id=p.frame;frame_max_device=p.device;}
-                if(frequency&&elapsed>=frequency/20){
+                if(frequency&&elapsed>=(frame_threshold?frame_threshold:frequency/20)){
                     auto& f=t.staged;f.previous=anchor;f.current=p;f.used=used;f.overflow=tape_overflow;
                     f.dispatch_begin=t.begin.qpc;f.dispatch_end=0;f.covered=0;
                     for(unsigned i=0;i<used;++i){f.segments[i]=tape[i];f.covered+=tape[i].end.qpc-tape[i].begin.qpc;}

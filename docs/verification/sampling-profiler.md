@@ -949,6 +949,35 @@ every optional group on, 8,196 B free). Ledger:
 | --- | --- | --- | --- |
 | 2026-09-17 | Residual group added (two sites, shared lean stub, `--residual-phases`); production arena 20,480 -> 24,576 B (the accounting would still fit in 20,480 with 4,100 B free; the page is headroom); pass accumulator retains `end_clock`/`begin_clock`, frame tracker retains `submit_end` | `verify_residual_phase_sites.py` PASS (61 installed sites checked disjoint), the game/frame/pass/loop verifiers PASS; `run_game_phase_cpu.py` under X3 (worktree build, `fixture_sha256 377ac95e`): 8839 checks, 0 failures, `RESIDUAL PHASE BENCH dispatch_ns=90.7` (92.7 in a first run; documented 91), `PASS PHASE BENCH dispatch_ns=95.8` (91.5 in the first run, 89.1-92.3 in the previous four runs: the retained-clock branch is within noise), `LOOP PHASE BENCH dispatch_ns=91.7`, fixture arena 23,876/32,768 B; host `test_residual_phases` 9 tests OK (`residual_phases_host` probe), `test_game_phase_sites` + `test_media_cue` 26 tests OK; DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_residual_phase_enter` walked (505 reachable) | not yet run in the game |
 
+## Attribution options: segment threshold and per-draw cost (2026-09-18)
+
+Two launcher options serve the run of `docs/architecture/engine-frame-time.md`
+section 3. `--game-phase-threshold-ms N` (requires `--game-phases`, 1..10000,
+default **20**, written as `X3M_GAME_PHASE_THRESHOLD_MS` on every launch so an
+inherited value cannot change it) sets the frame time at or above which the
+game-phase group stages its segment tape, so a 25-45 ms frame now produces a
+`game_phase_slow_frame` line and its up to 96 `game_phase_segment` rows; the
+recorder keeps its built-in 50 ms when the variable is absent or out of range
+(`frame_threshold` 0 in `game_phases_core.h`, one branch per frame in
+`bridge()`, nothing extra when the option is off), and the chosen value is
+echoed on the `game_phase_mode` line as `frame_threshold_ms=`. A low threshold
+on a steadily slow scene is verbose: 96 rows per qualifying frame.
+`--telemetry-draw` (requires `--telemetry`) sets `X3M_TELEMETRY_DRAW=1`, which
+the DLL already honours: the per-draw metrics add `gate_us`, `route_draw_us`,
+`set_rt_us`, `lazy_flush_us` and `jitter_us` to the `motion_output_frame` line
+(off, the route takes no QPC stamp per draw; each stamp is a Wine syscall,
+`docs/verification/route-cost-run1.md`). Run recipe: `python3 tools/manage.py
+launch --bottle X3 --direct --motion-output --hdr --telemetry --frame-phases
+--loop-phases --game-phases --pass-phases --residual-phases --telemetry-draw
+--frame-end-stride 10 --capture-frames 0`, stand in the run125 corvette area
+(90 s), empty space (30 s) as control and the run117 station view (60 s); read
+`loop_phases` intervals against `input_p50_us`, `residual_phases`
+`prepare`/`other`, `pass_phases` apply/draw, the new `game_phase_segment` rows
+and `motion_output_frame` `gate_us`/`route_draw_us`/`set_rt_us`. Host checks:
+`verification/analysis/test_game_phases.py` (the core probe stages a 25 ms
+synthetic frame at the 20 ms threshold and nothing at the built-in 50 ms; both
+launcher options, their refusals and the production wiring).
+
 ## Per-call cost of the hooked state setters under the X3 bottle (2026-09-16)
 
 `verification/probe/state_hook_benchmark.cpp` (build

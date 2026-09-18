@@ -12,6 +12,7 @@
 #include "capture.h"
 #include <atomic>
 #include <cstdio>
+#include <cwchar>
 
 static_assert(sizeof(void*)==4,"Reviewed x86 game ABI only");
 namespace x3m::game_phases {
@@ -255,8 +256,19 @@ bool initialize() {
     const bool audio_wanted=GetEnvironmentVariableW(L"X3M_AUDIO_SITES",audio,4)==1&&audio[0]==L'1';
     site_count=audio_wanted?sites::Count:sites::PhaseCount;
     const char* status="telemetry_off";
+    // Segment-tape threshold in milliseconds (default 20; the built-in used to
+    // be 50). Out-of-range or unparsable values keep the default.
+    unsigned threshold_ms=20;
+    {
+        wchar_t raw[16]{};
+        if(GetEnvironmentVariableW(L"X3M_GAME_PHASE_THRESHOLD_MS",raw,16)>0){
+            const unsigned long n=wcstoul(raw,nullptr,10);
+            if(n>=1&&n<=10000)threshold_ms=unsigned(n);
+        }
+    }
     if(telemetry::enabled()){
         core.frequency=telemetry::frequency();
+        core.frame_threshold=core.frequency*threshold_ms/1000;
         if(!core.frequency)status="clock_unavailable";
         else if(!object_trace::executable_verified())status="executable_unverified";
         else install_group(status);
@@ -265,8 +277,8 @@ bool initialize() {
     // Timed emission while frame progression is stopped: the sampler thread
     // (X3M_PROFILE=1) runs the callback every 2 s outside its suspended window.
     if(audio_enabled)sampling_profiler::set_periodic([](std::uint64_t qpc_stamp){audio_report("timed",qpc_stamp);},2);
-    log("game_phase_mode requested=1 enabled=%u status=%s sites=%u audio_sites_requested=%u audio_sites=%u owner=main_loop frame_threshold_ms=50 call_threshold_ms=10 tape=96 nesting=8 first=4 recent=4 qpc_frequency=%llu cpu_clock=GetThreadTimes",
-        unsigned(active.load()),status,site_count,unsigned(audio_wanted),unsigned(audio_enabled),core.frequency);
+    log("game_phase_mode requested=1 enabled=%u status=%s sites=%u audio_sites_requested=%u audio_sites=%u owner=main_loop frame_threshold_ms=%u call_threshold_ms=10 tape=96 nesting=8 first=4 recent=4 qpc_frequency=%llu cpu_clock=GetThreadTimes",
+        unsigned(active.load()),status,site_count,unsigned(audio_wanted),unsigned(audio_enabled),threshold_ms,core.frequency);
     for(unsigned i=0;i<sites::Count;++i)log("game_phase_site index=%u address=%08lx length=%u rel32=%u patched=%u status=%s",i,
         static_cast<unsigned long>(sites::kSites[i].address),sites::kSites[i].length,sites::kSites[i].rel32_offset,unsigned(patches[i].patched_in),patches[i].status);
     return active.load(std::memory_order_acquire);
