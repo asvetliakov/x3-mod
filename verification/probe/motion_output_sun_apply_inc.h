@@ -1,7 +1,7 @@
 // Sun-shadow apply quad script ("sunapply" mode; docs/architecture/
 // legacy-sun-application.md, section 3.3). The production SunShadowApplyPass
 // is linked into the fixture and driven directly (no proxy wiring): a
-// synthetic G32R32F RT2 (device depth of a box on a plane under the jittered
+// synthetic A32B32G32R32F RT2 (device depth of a box on a plane under the jittered
 // projection as the D3D9 rasterizer samples it, sun_apply_latch; a share
 // pattern with share-free columns and sentinel sky) and a
 // synthetic R32F map (the same scene ray-cast along the sun through the
@@ -29,26 +29,19 @@ namespace {
 constexpr unsigned sun_apply_w = 128, sun_apply_h = 128, sun_apply_frames = 6, sun_apply_reset_before = 5;
 unsigned sun_apply_map = 256;  // map side this run (default 256; the wide run's X3M_SHADOW_REPLAY_SIZE)
 double sun_apply_scale = 1.;   // scene scale this run (1; extent / 5 in the wide run)
-// The receiver-depth encoding of this run (docs/architecture/shadow-receiver-depth.md;
-// X3M_SUN_SHADOW_RECEIVER_DEPTH=linear, the production option's name): device, the
-// G32R32F RT2 (.r = z/w, .g = share; the records before 2026-09-18); linear, the
-// A32B32G32R32F RT2 whose .b (and .a) carry the view depth itself. The pass
-// gates the format per frame and reports which law it applied (linear_depth).
-bool sun_apply_linear = false;
-unsigned sun_apply_lanes = 2;
-bool sun_apply_linear_requested() {
-    char text[16]{};
-    return GetEnvironmentVariableA("X3M_SUN_SHADOW_RECEIVER_DEPTH", text, sizeof text) == 6 && !std::strcmp(text, "linear");
-}
-D3DFORMAT sun_apply_rt2_format() { return sun_apply_linear ? D3DFMT_A32B32G32R32F : D3DFMT_G32R32F; }
-const char* sun_apply_rt2_file() { return sun_apply_linear ? "rt2.rgba32f" : "rt2.g32r32f"; }
-const char* sun_apply_encoding_name() { return sun_apply_linear ? "linear" : "device"; }
-// One RT2 texel: .r = device depth by the AO law (or the -1 sentinel), .g = share, and on
-// the wide lane .b = .a = the view depth t (the sentinel's -1 there too).
+// The RT2 of the lane (docs/architecture/shadow-receiver-depth.md, the only encoding
+// since 2026-09-18): A32B32G32R32F, .r = z/w (the -1 sentinel), .g = share, .b = .a = the
+// view depth itself, which the quads read as the receiver depth. The records before the
+// flip (G32R32F, depth_encoding=device) are gone; the twin keeps loading them by key.
+constexpr unsigned sun_apply_lanes = 4;
+D3DFORMAT sun_apply_rt2_format() { return D3DFMT_A32B32G32R32F; }
+const char* sun_apply_rt2_file() { return "rt2.rgba32f"; }
+const char* sun_apply_encoding_name() { return "linear"; }
+// One RT2 texel: .r = device depth by the AO law (or the -1 sentinel), .g = share,
+// .b = .a = the view depth t (the sentinel's -1 there too).
 void sun_apply_rt2_texel(float* px, double m22, double m32, double t, float share) {
-    if (t <= 0.) { px[0] = -1.f; px[1] = 0.f; if (sun_apply_lanes == 4) px[2] = px[3] = -1.f; return; }
-    px[0] = float(m22 + m32 / t); px[1] = share;
-    if (sun_apply_lanes == 4) px[2] = px[3] = float(t);
+    if (t <= 0.) { px[0] = -1.f; px[1] = 0.f; px[2] = px[3] = -1.f; return; }
+    px[0] = float(m22 + m32 / t); px[1] = share; px[2] = px[3] = float(t);
 }
 constexpr float sun_apply_box_min[3] = {-1.f, 0.f, -1.f}, sun_apply_box_max[3] = {1.f, 2.f, 1.f}; // the unit scene
 double sun_apply_box_lo[3] = {-1., 0., -1.}, sun_apply_box_hi[3] = {1., 2., 1.};                 // scaled
@@ -88,7 +81,7 @@ double sun_apply_hit(Vec3 o, Vec3 dir) {
 }
 struct SunApplyState {
     x3m::renderer::SunShadowApplyPass pass;
-    Com<IDirect3DTexture9> color, rt2, map, rt2_sys, map_sys;
+    Com<IDirect3DTexture9> color, rt2, map, rt2_sys, map_sys, rt2_narrow; // rt2_narrow: a G32R32F RT2 of the lane before the flip, which the quads must skip
     Com<IDirect3DSurface9> color_surface, readback;
     Com<IDirect3DQuery9> event;
     std::vector<float> rt2_data, map_data;           // this frame's CPU inputs
@@ -98,18 +91,18 @@ struct SunApplyState {
     float m22 = 0, m32 = 0;
 };
 void sun_apply_create_targets(Fixture& f, SunApplyState& s) {
-    sun_apply_linear = sun_apply_linear_requested(); sun_apply_lanes = sun_apply_linear ? 4u : 2u;
     api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &s.color.p, nullptr), "CreateTexture FP16 target");
     api(s.color->GetSurfaceLevel(0, &s.color_surface.p), "FP16 target level");
     api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, sun_apply_rt2_format(), D3DPOOL_DEFAULT, &s.rt2.p, nullptr), "CreateTexture RT2");
     api(f.d->CreateTexture(sun_apply_map, sun_apply_map, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, &s.map.p, nullptr), "CreateTexture map");
     api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, sun_apply_rt2_format(), D3DPOOL_SYSTEMMEM, &s.rt2_sys.p, nullptr), "CreateTexture RT2 sysmem");
+    api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, D3DFMT_G32R32F, D3DPOOL_DEFAULT, &s.rt2_narrow.p, nullptr), "CreateTexture G32R32F RT2");
     api(f.d->CreateTexture(sun_apply_map, sun_apply_map, 1, 0, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &s.map_sys.p, nullptr), "CreateTexture map sysmem");
     api(f.d->CreateOffscreenPlainSurface(sun_apply_w, sun_apply_h, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &s.readback.p, nullptr), "CreateOffscreenPlainSurface FP16");
     api(f.d->CreateQuery(D3DQUERYTYPE_EVENT, &s.event.p), "CreateQuery EVENT");
 }
 void sun_apply_release_targets(SunApplyState& s) {
-    s.event.reset(); s.readback.reset(); s.map_sys.reset(); s.rt2_sys.reset(); s.map.reset(); s.rt2.reset(); s.color_surface.reset(); s.color.reset();
+    s.event.reset(); s.readback.reset(); s.map_sys.reset(); s.rt2_sys.reset(); s.map.reset(); s.rt2.reset(); s.rt2_narrow.reset(); s.color_surface.reset(); s.color.reset();
 }
 void sun_apply_upload(Fixture& f, IDirect3DTexture9* sys, IDirect3DTexture9* target, const std::vector<float>& data, unsigned width, unsigned height, unsigned floats) {
     D3DLOCKED_RECT lock{}; api(sys->LockRect(0, &lock, nullptr, 0), "LockRect sysmem");
@@ -333,6 +326,7 @@ void run_sun_apply_integration(Fixture& f) {
         x3m::renderer::SunShadowApplyResult skipped{};
         { auto missing = in; missing.map = nullptr; require(s.pass.execute(missing, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "input"), "a missing map skips the quad"); }
         { auto wrong = in; wrong.depth_share = s.map.p; require(s.pass.execute(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "format"), "an R32F RT2 skips the quad"); }
+        { auto wrong = in; wrong.depth_share = s.rt2_narrow.p; require(s.pass.execute(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "format"), "a G32R32F RT2 (the z/w law before the flip) skips the quad"); }
         { auto recording = in; recording.caller_stateblock_recording = true; require(s.pass.execute(recording, &skipped) == S_FALSE && skipped.skipped, "a recording caller skips the quad"); }
         { auto bad = in; bad.params.m22 = .5f; require(s.pass.execute(bad, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "params"), "an invalid projection skips the quad"); }
         { auto wrong = in; wrong.target = f.back.p; require(s.pass.execute(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "format"), "an A8R8G8B8 target skips the quad"); }
@@ -355,7 +349,6 @@ void run_sun_apply_integration(Fixture& f) {
         const double us = 1e6 * double(end.QuadPart - begin.QuadPart) / double(frequency.QuadPart);
         std::printf("SUNAPPLY_TIME frame=%llu us=%.1f result=%08lx applied=%u stage=%u map_size=%u caller_scene_open=%u\n", f.frame, us, hr, result.applied, unsigned(result.failed), result.map_size, caller_scene_open);
         require(hr == S_OK && result.applied && !result.skipped && result.map_size == sun_apply_map, "the quad applied");
-        require(result.linear_depth == sun_apply_linear, "the quad read the receiver depth by the bound RT2's encoding");
         f.compare(before_state, f.snapshot(), "sunapply");
         if (caller_scene_open) api(f.d->EndScene(), "EndScene");
         else { api(f.d->BeginScene(), "BeginScene after the quad"); api(f.d->EndScene(), "EndScene after the quad"); } // a scene of the caller's own remains legal after the pass closed its scene

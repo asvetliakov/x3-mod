@@ -439,35 +439,32 @@ CASES += [case('seam-ownership-shadow-pool-importance', 'shadowpool', 'ownership
                             X3M_SHADOW_CASCADE_DROP_ORDER='importance', X3M_CAPTURE_START='1000'))]
 # Sun-shadow apply quad (legacy-sun-application.md, section 3.3): the
 # production SunShadowApplyPass linked into the fixture and driven directly
-# (no proxy wiring; the DLL is passive): synthetic G32R32F RT2 and R32F map of
+# (no proxy wiring; the DLL is passive): synthetic A32B32G32R32F RT2 and R32F map of
 # a box on a plane at three sun elevations against the CPU twin of the program
 # within one FP16 code, hard-shadow edges within the kernel's reach, a far map
 # byte-identical, a Reset between two identical frames byte-identical.
 SUN_APPLY_FRAMES, SUN_APPLY_RESET_FRAME, SUN_APPLY_FAR_FRAME, SUN_APPLY_ZERO_FRAME = 6, 5, 0, 1
-# The receiver depth (docs/architecture/shadow-receiver-depth.md): every apply case runs twice,
-# under `device` (G32R32F RT2, the z/w law on .r: the shipping default, the `<name>-fixture.json`
-# records) and under `linear` (A32B32G32R32F, .b = the view depth: the `<name>-linear-fixture.json`
-# siblings), through X3M_SUN_SHADOW_RECEIVER_DEPTH, the production option's name; every SUNAPPLY
-# line logs depth_encoding= and the RT2 dump is rt2.g32r32f or rt2.rgba32f. The validators follow
-# the line against the case's option, and every record carries `depth_encoding`.
-SUN_APPLY_RECEIVER_DEPTH_ENV = 'X3M_SUN_SHADOW_RECEIVER_DEPTH'
-SUN_APPLY_ENCODINGS = ('device', 'linear')
+# The receiver depth (docs/architecture/shadow-receiver-depth.md, flipped 2026-09-18 after run 41
+# A2): the RT2 is A32B32G32R32F (.b = the view depth) and every SUNAPPLY line says
+# depth_encoding=linear; the RT2 dump is rt2.rgba32f. The `<name>-fixture.json` records are the
+# former `-linear` siblings; the device records (G32R32F, the z/w law) are gone with the path.
+SUN_APPLY_ENCODING = 'linear'
 
 
 def sun_apply_cases(name, **env):
-    return [case(name if encoding == 'device' else f'{name}-linear', 'sunapply', enabled='0',
-                 hdr_env=dict(env, **{SUN_APPLY_RECEIVER_DEPTH_ENV: encoding})) for encoding in SUN_APPLY_ENCODINGS]
+    return [case(name, 'sunapply', enabled='0', hdr_env=dict(env))]
 
 
 def rt2_file(depth_encoding):
-    return 'rt2.rgba32f' if depth_encoding == 'linear' else 'rt2.g32r32f'
+    assert depth_encoding == SUN_APPLY_ENCODING, depth_encoding
+    return 'rt2.rgba32f'
 
 
 def rt2_lanes(fixture_line, hdr_env):
-    """The fixture's RT2 lanes: the line's depth_encoding must match the case's option (absent = device)."""
+    """The fixture's RT2 lanes: the line's depth_encoding must be linear (the only encoding; hdr_env unused)."""
     encoding = sun_apply.parse_depth_encoding(fixture_line)
-    assert encoding == hdr_env.get(SUN_APPLY_RECEIVER_DEPTH_ENV, 'device'), (encoding, hdr_env.get(SUN_APPLY_RECEIVER_DEPTH_ENV))
-    return 4 if encoding == 'linear' else 2
+    assert encoding == SUN_APPLY_ENCODING, (encoding, hdr_env)
+    return 4
 
 
 CASES += sun_apply_cases('sun-shadow-apply')
@@ -4903,8 +4900,7 @@ def main(argv=None):
                               'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS'):
                 env.pop(inherited, None)
             env.update(VARIANTS[variant])
-            if mode != 'sunapply':
-                env[SUN_APPLY_RECEIVER_DEPTH_ENV] = 'device'  # an inherited value must not widen the route's RT2 in the other cases
+            env.pop('X3M_SUN_SHADOW_RECEIVER_DEPTH', None)  # the former option: the DLL and the fixtures read no such variable
             env.update(hdr_env)
             if taa:
                 # ca6ad2e made --taa default to sharpen 0.75 and mip bias -0.5;
@@ -5001,7 +4997,7 @@ def main(argv=None):
                 case = validator(name, text, directory, hdr_env)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name),
-                            depth_encoding=hdr_env.get(SUN_APPLY_RECEIVER_DEPTH_ENV, 'device'))
+                            depth_encoding=SUN_APPLY_ENCODING)
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
                 result['cases'][name] = case
                 # The compact per-case record the ledger cites (no readbacks).

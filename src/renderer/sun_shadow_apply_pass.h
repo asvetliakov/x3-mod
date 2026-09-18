@@ -2,8 +2,8 @@
 // Scene-end sun-shadow application (docs/architecture/legacy-sun-application.md,
 // section 2): one full-screen quad multiplying the owning FP16 scene target by
 // 1 - (1 - f) s under ZERO/SRCCOLOR blending, s from the route's RT2.g share,
-// the receiver's view depth from RT2.b (A32B32G32R32F) or the z/w law on
-// RT2.r (G32R32F), and f from a 3x3 PCF of the same frame's cascade-0 replay map
+// the receiver's view depth from RT2.b (the A32B32G32R32F lane's interpolated
+// clip w), and f from a 3x3 PCF of the same frame's cascade-0 replay map
 // (src/temporal/sun_shadow_apply_ps.hlsl). The pass owns only its two
 // programs, the quad declaration and a D3DSBT_ALL block; the caller
 // (MotionOutput's scene-end hook) supplies RT2, the map, the replay frame's
@@ -79,7 +79,7 @@ struct SunShadowCascadeInput {
     bool valid = false;
 };
 struct SunShadowCascadeFrame {
-    IDirect3DTexture9* depth_share = nullptr;       // RT2 G32R32F or A32B32G32R32F (as SunShadowApplyFrame)
+    IDirect3DTexture9* depth_share = nullptr;       // RT2 A32B32G32R32F (as SunShadowApplyFrame)
     IDirect3DSurface9* target = nullptr;
     UINT width = 0, height = 0;
     float m00 = 0, m11 = 0, m20 = 0, m21 = 0, m22 = 0, m32 = 0;
@@ -91,7 +91,7 @@ struct SunShadowCascadeFrame {
     bool caller_stateblock_recording = false;
 };
 struct SunShadowApplyFrame {
-    IDirect3DTexture9* depth_share = nullptr; // RT2 G32R32F or A32B32G32R32F, width x height (.r = z/w with -1 sentinel, .g = share, .b = view depth on the wide format)
+    IDirect3DTexture9* depth_share = nullptr; // RT2 A32B32G32R32F, width x height (.r = z/w with -1 sentinel, .g = share, .b = view depth); R32F/G32R32F skip("format")
     IDirect3DTexture9* map = nullptr;         // the replay's R32F square map of this frame
     IDirect3DSurface9* target = nullptr;      // owning scene target of the attached format
     UINT width = 0, height = 0;
@@ -108,7 +108,6 @@ struct SunShadowApplyResult {
     const char* skipped_reason = "";  // detached, reset_pending, input, params, format, device
     unsigned map_size = 0;
     unsigned cascades_bound = 0;      // execute_cascades: maps sampled (valid cascades)
-    bool linear_depth = false;        // the receiver depth came from RT2.b (A32B32G32R32F), not the z/w law on .r
 };
 class SunShadowApplyPass {
 public:
@@ -117,11 +116,9 @@ public:
     SunShadowApplyPass(const SunShadowApplyPass&) = delete;
     SunShadowApplyPass& operator=(const SunShadowApplyPass&) = delete;
     // Device and native table borrowed (no AddRef). Gates shader model 3,
-    // the program's slot count, ZERO/SRCCOLOR blend caps, G32R32F/R32F
-    // textures and post-pixel-shader blending on target_format, then creates
-    // (an A32B32G32R32F RT2 is admitted per frame; its creation by the route
-    // is the lane's own CheckDeviceFormat gate, sun_share_lane_inc.h)
-    // the programs and the declaration (surviving Reset). A refusal leaves
+    // the program's slot count, ZERO/SRCCOLOR blend caps, A32B32G32R32F/R32F
+    // render-target textures and post-pixel-shader blending on target_format,
+    // then creates the programs and the declaration (surviving Reset). A refusal leaves
     // the pass detached with caps().reason set.
     // `cascades` additionally gates and creates the cascade program (its slot
     // count against MaxPixelShader30InstructionSlots, five samplers); without

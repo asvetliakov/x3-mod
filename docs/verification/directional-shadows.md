@@ -3214,3 +3214,54 @@ cascades-5 0.9999969 (device) / 1.0001320 (linear, the committed linear baseline
 two-sided `beyond_one_code`), 5-faces 0.9999977 / 0.9999977; violations 0 on every frame; ambiguous_max 1842,
 1778, 259; edge beyond one texel 28, 0. Host: `test_shadow_grazing_plate`, `test_sun_shadow_apply`,
 `test_shadow_receiver_reroll` (43), `test_shadow_replay_depth` (13), `test_shader_compiler_provenance` (1) OK.
+
+## Receiver depth default flipped (2026-09-18, worktree `agent-a6ec2f585ad680ead`)
+
+Run 41 A2 (`/tmp/x3-bottleX3-run124`) ratified `linear`: per `shadow-receiver-depth.md` §5 the device
+path is deleted. The lane's RT2 is `A32B32G32R32F` unconditionally (`lane_depth_format()`; R32F off the
+lane); `capture.cpp` reads no `X3M_SUN_SHADOW_RECEIVER_DEPTH`; both apply quads read `z = ds.b` with no
+`cmp` (`limits.z` / `select.w` = 0, reserved; `terms.x/.y` uploaded, unread); `depth_share_format` admits
+only the wide format (R32F or `G32R32F` ⇒ `skip("format")`, new fixture checks on both quads) and the
+attach gate checks `A32B32G32R32F`; the F8 RT2 readback is always 16 B/px `rgba32f`; `sun_shadow_apply_params`
+logs `depth_encoding=linear` as a literal. TAA and AO still admit R32F, `G32R32F` and the wide format
+(their `.r` read is format-agnostic; the AO fixture's `g32r32f_input_bit_identical` stands).
+`manage.py`: `--sun-shadow-receiver-depth linear` is a deprecated no-op (no env forwarded; the queued
+run-41 B/C lines stay valid), `device` is refused with a message. The twin keeps `depth_encoding`
+(absent = device) for old records and `.rg32f` dumps; the runners run only the linear cases: the eight
+`sun-shadow-apply*-fixture.json` records are the former `-linear` siblings (renamed, `case` field
+updated), the device records deleted; `run_sun_share_live.py` drops `shadow_apply_linear` /
+`shadow_apply_cascades_linear` and requires format 116 on the plain cases.
+
+- Programs (`generate_rigid_motion_pixel.py`, `--check` PASS): `sun_shadow_apply` 998 → 981 words,
+  **226 → 221 slots**; `sun_shadow_cascade_apply` 2138 → 2173 words, **509 → 509 slots**: −5
+  instructions (the `cmp`, the divide and their moves), +1 `mad` forming `p`, +1 `dsx`/`dsy` pair
+  (2 slots each) hoisted before the first `ifc`/`rep` where derivatives must sit; headroom 3.
+- Host: `test_sun_shadow_apply`, `test_sun_share_lane` (host mock `SUN_TARGET_HOST_PASS checks=49`),
+  `test_motion_readback`, `test_snapshot_x3_run`, `test_shadow_receiver_reroll`,
+  `test_material_motion_report`, `test_original_sun_share`, `test_motion_output_runner`,
+  `test_shadow_cascades`, `test_linear_sun_share`: 171 tests OK.
+- Clean mingw build (`cmake --build build --clean-first`) 0 warnings; `check_no_x87.py` PASS, 537
+  reachable, 0 violations.
+- `run_motion_output.py` (eight apply cases, `build/d3d9.dll` of this tree): sun-shadow-apply 175 checks
+  worst 0.998 codes; -wide 179 / 0.998; -cascades 4,374 / 1.000, edge beyond one texel 28; -cascades-5
+  3,135 / 1.000 / 0; -5-faces 2,880 / 1.000; the three `-slope` siblings 4,374 / 3,135 / 2,880, worst
+  1.000. Against the former `-linear` records: **0 behavioural diffs** (only `bounds_bench_ns` moved;
+  check counts equal, the removed `linear_depth` require replaced by the G32R32F skip check).
+- `run_sun_share_live.py` full suite (seam DLL, after the lane-qualification fix; tracked record
+  `verification/results/bottle-X3/sun-share-live.json`): 22 / 22 passed, the self test on the wide MRT
+  triple (positive, cutout_drop and alpha_mask faults); `shadow_apply` / `shadow_apply_cascades` each
+  4 applied frames, frames 0 (replay) and 2 (lane) skipped, `receiver_depth=linear`, `rt2_format=116`,
+  shadowed ≥ 3,969; the cascades case logs 2 `depth_encoding=linear` params lines (the single-map case
+  has no capture window and proves the encoding by format 116 alone); cascades capture frames 1 / 3
+  owned 4,032 / 4,096, shadowed 4,032 / 4,096.
+- `run_material_motion.py` passed (82 configurations, 42 wide RT2 / 40 R32F, 1,470 checks, clip-w ≤ 52.6
+  ULP on the 32×32 configurations as before); `run_temporal_pass.py` passed; `run_ambient_occlusion.py`
+  114 checks, `g32r32f_input_bit_identical` and `a32b32g32r32f_input_bit_identical` kept.
+- `manage.py launch --dry-run` with the run-41 B line plus `--sun-shadow-receiver-depth linear`: exit 0,
+  no receiver-depth variable in the environment; with `device`: refused (exit 2).
+- Lane qualification (`sun_share_lane_inc.h`, review fix): the prerequisite loops check
+  `A16B16G16R16F` and `A32B32G32R32F` only (render target + blending, sampled, depth-stencil match;
+  `G32R32F` dropped), and the self test draws the production MRT triple (64 + 128 + 128 bits) with a
+  wide sampled-copy target; its depth reads compare `.rg` of each 16-byte texel. R32F lane-off case kept.
+- Not changed: `linear_material_fixture.cpp`'s gained-variant lane target stays `G32R32F`;
+  `sun-share-live-receiver-depth.json` (the gated A/B record) is history.

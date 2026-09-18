@@ -23,7 +23,10 @@ void MotionOutput::qualify_sun_lane() noexcept {
         else {if(SUCCEEDED(hr))hr=E_FAIL;break;}
         if(FAILED(hr))break;
         reason="formats";
-        for(const auto format:{D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F,D3DFMT_G32R32F}){
+        // The lane's MRT triple: RT0 A16B16G16R16F, RT1 and RT2 A32B32G32R32F (the RT2 of
+        // shadow-receiver-depth.md; the former G32R32F RT2 is gone): render target with
+        // post-pixel-shader blending, sampled, and matched against the depth-stencil below.
+        for(const auto format:{D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F}){
             hr=factory->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,display.Format,
                 D3DUSAGE_RENDERTARGET|D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,D3DRTYPE_TEXTURE,format);
             if(FAILED(hr))break;
@@ -39,8 +42,7 @@ void MotionOutput::qualify_sun_lane() noexcept {
         if(!sun_sentinel_ps_){
             DWORD code[std::size(sentinel_mrt_program)];std::copy(std::begin(sentinel_mrt_program),std::end(sentinel_mrt_program),code);
             // oC1 = c0.wxww -> (-1,0,-1,-1): .r sentinel, .g zero share, and on the
-            // A32B32G32R32F RT2 (shadow-receiver-depth.md) the .b/.a sentinel too
-            // (G32R32F stores .rg only, so its bits are unchanged).
+            // A32B32G32R32F RT2 (shadow-receiver-depth.md) the .b/.a sentinel too.
             code[std::size(code)-2]=0xa0f30000u;
             if(FAILED(hr=native<CreatePsFn>(CreatePixelShader)(device_,code,&sun_sentinel_ps_))||!sun_sentinel_ps_)break;
         }
@@ -54,7 +56,7 @@ void MotionOutput::qualify_sun_lane() noexcept {
         for(unsigned i=0;i<count&&!motion_state_lost_;++i){
             const auto candidate=candidates[i];
             hr=factory->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,display.Format,D3DUSAGE_DEPTHSTENCIL,D3DRTYPE_SURFACE,candidate);
-            for(const auto format:{D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F,D3DFMT_G32R32F}){
+            for(const auto format:{D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F}){
                 if(FAILED(hr))break;
                 hr=factory->CheckDepthStencilMatch(creation.AdapterOrdinal,creation.DeviceType,display.Format,format,candidate);
             }
@@ -85,7 +87,11 @@ bool MotionOutput::sun_lane_self_test(D3DFORMAT depth_format,char* reason,std::s
     IDirect3DStateBlock9* block=nullptr;
     SavedState saved;bool captured=false,ok=false;HRESULT hr=S_OK,restore=S_OK;
     const char* stage="create";unsigned checks=0;
-    const D3DFORMAT formats[]={D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F,D3DFMT_G32R32F,D3DFMT_G32R32F,D3DFMT_R32F};
+    // The production MRT triple (64 + 128 + 128 bits: RT0, RT1, the wide RT2), the wide
+    // sampled-copy target and the R32F lane-off / history target. The self test's depth
+    // comparisons read .rg (8 bytes) of each 16-byte RT2 texel: the writer's .b/.a are
+    // its own c2.zw, not part of the lane contract.
+    const D3DFORMAT formats[]={D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F,D3DFMT_A32B32G32R32F,D3DFMT_A32B32G32R32F,D3DFMT_R32F};
     auto step=[&](HRESULT value){if(SUCCEEDED(hr)&&FAILED(value))hr=value;return SUCCEEDED(hr);};
     auto state=[&](D3DRENDERSTATETYPE key,DWORD value){return step(native<SetRenderStateFn>(SetRenderState)(device_,key,value));};
     auto draw=[&](IDirect3DPixelShader9* shader,float z){
@@ -98,8 +104,9 @@ bool MotionOutput::sun_lane_self_test(D3DFORMAT depth_format,char* reason,std::s
     auto read=[&](unsigned index,const void* expected,unsigned bytes){
         if(!step(native<GetRtDataFn>(GetRenderTargetData)(device_,targets[index],copies[index])))return false;
         D3DLOCKED_RECT lock{};if(!step(copies[index]->LockRect(&lock,nullptr,D3DLOCK_READONLY)))return false;
+        const unsigned stride=formats[index]==D3DFMT_A32B32G32R32F?16u:formats[index]==D3DFMT_A16B16G16R16F?8u:4u; // texel stride; `bytes` is the compared prefix
         bool equal=true;for(unsigned y=0;y<4;++y)for(unsigned x=0;x<4;++x)
-            equal=equal&&!std::memcmp(static_cast<const char*>(lock.pBits)+y*lock.Pitch+x*bytes,expected,bytes);
+            equal=equal&&!std::memcmp(static_cast<const char*>(lock.pBits)+y*lock.Pitch+x*stride,expected,bytes);
         step(copies[index]->UnlockRect());++checks;if(!equal)hr=E_FAIL;return SUCCEEDED(hr);
     };
     const std::uint16_t initial_color[]={0x3400,0x3800,0x3a00,0x3c00},other_color[]={0x3a00,0x3400,0x3800,0};

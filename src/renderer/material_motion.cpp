@@ -402,7 +402,7 @@ bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& toke
 // declaration, no definitions, a straight-line body (rcp, mul, mov) and two
 // color output writes: .r (and .g) = z / w, then .zw = w (the sun-shadow
 // lane's precise receiver depth, docs/architecture/shadow-receiver-depth.md;
-// dropped by an R32F or G32R32F target). Its shape is fixed at compile time
+// dropped by the lane-off R32F target). Its shape is fixed at compile time
 // of the fragment.
 bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body) {
     const auto& code = current_depth_pixel_program();

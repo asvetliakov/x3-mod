@@ -2174,9 +2174,9 @@ bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
         // The variants of depth rows write oC2 unconditionally, so a device
         // producing depth must own RT2 whenever it routes: a failed depth
         // allocation disables routing like a failed motion allocation.
-        // The lane's RT2: G32R32F, or A32B32G32R32F when the receiver-depth
-        // option asks for the clip-w lane (.b); both are in the lane's
-        // CheckDeviceFormat list (sun_share_lane_inc.h).
+        // The lane's RT2: A32B32G32R32F (.b = the clip-w receiver depth,
+        // shadow-receiver-depth.md), in the lane's CheckDeviceFormat list
+        // (sun_share_lane_inc.h); R32F off the lane.
         depth_hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
             lane_depth_format(), D3DPOOL_DEFAULT, &texture, nullptr);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -5929,13 +5929,13 @@ HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT for
 }
 // Capture frames: RT1 as motion_<device>_<frame>.rgba32f and, when produced,
 // RT2 as depth_<device>_<frame>.r32f (R32F device depth, -1 where no routed
-// depth row covered the pixel).
+// depth row covered the pixel) or, on the sun-shadow lane, .rgba32f (16 B/px:
+// .r = z/w, .g = share, .b = .a = clip w).
 void MotionOutput::readback() noexcept {
     if (!target_surface_ || !counters_.filled) return;
     readback_surface(target_surface_, D3DFMT_A32B32G32R32F, 16, L"motion", L"rgba32f", "motion_output_readback", "rgba32f_row_major", target_width_, target_height_);
     if (depth_enabled_ && depth_surface_)
-        { const D3DFORMAT rt2=lane_depth_format(); const bool wide=rt2==D3DFMT_A32B32G32R32F;
-          readback_surface(depth_surface_, rt2, wide?16:sun_lane_active_?8:4, L"depth", wide?L"rgba32f":sun_lane_active_?L"rg32f":L"r32f", "motion_output_depth_readback", wide?"rgba32f_row_major":sun_lane_active_?"rg32f_row_major":"r32f_row_major", target_width_, target_height_); }
+        readback_surface(depth_surface_, lane_depth_format(), sun_lane_active_?16:4, L"depth", sun_lane_active_?L"rgba32f":L"r32f", "motion_output_depth_readback", sun_lane_active_?"rgba32f_row_major":"r32f_row_major", target_width_, target_height_);
     if(sun_lane_active_&&sun_frame_.available&&sun_frame_.coverage_required&&sun_coverage_current_&&composition_)
         readback_surface(composition_->coverage_target(),D3DFMT_A16B16G16R16F,8,L"sun_coverage",L"rgba16f","sun_shadow_lane_coverage_readback","rgba16f_row_major",target_width_,target_height_);
     // The depth replay's map (R32F, size x size, 4 MiB at 1024^2) beside the
@@ -6577,7 +6577,7 @@ HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t 
     if (height) *height = target_height_;
     if (target != 1 && target != 2 && target != 3) return D3DERR_INVALIDCALL;
     IDirect3DSurface9* surface = target == 1 ? target_surface_ : target == 2 ? depth_surface_ : composition_ ? composition_->coverage_target() : nullptr;
-    const unsigned components = target == 2 ? (lane_depth_format()==D3DFMT_A32B32G32R32F?4u:sun_lane_active_?2u:1u) : 4u;
+    const unsigned components = target == 2 ? (sun_lane_active_?4u:1u) : 4u;
     if (!surface) return D3DERR_NOTFOUND;
     if (!out || floats < std::size_t(target_width_) * target_height_ * components) return D3DERR_MOREDATA;
     IDirect3DSurface9* copy = nullptr;
@@ -7455,7 +7455,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
                 id_, frame_, double(in.m00), double(in.m11), double(jitter_[0]), double(jitter_[1]), double(in.m20), double(in.m21), double(in.m22), double(in.m32),
                 double(in.planar_step), double(in.exponent), in.jitter_index, in.width, in.height, sun_apply_bias_units_, sun_apply_clamp_texels_, in.count,
                 double(renderer::shadow_cascade_select_margin), double(renderer::shadow_cascade_blend_band), double(raster_x), double(raster_y), unsigned(depth_cascade_backface_mask_),
-                out.linear_depth ? "linear" : "device", text);
+                "linear", text); // depth_encoding: the twin's key; linear is the only encoding (old device records keep theirs)
         }
     } else if (!skip) {
         renderer::SunShadowApplyFrame in{};
@@ -7514,7 +7514,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
                 sun_apply_bias_units_, sun_apply_clamp_texels_, double(bias.texel_world), double(depth_cascade_.half_extent), depth_cascade_.depth_half(),
                 double(q.rows[0]), double(q.rows[1]), double(q.rows[2]), double(q.rows[3]), double(q.rows[4]), double(q.rows[5]),
                 double(q.rows[6]), double(q.rows[7]), double(q.rows[8]), double(q.rows[9]), double(q.rows[10]), double(q.rows[11]), double(raster_x), double(raster_y),
-                out.linear_depth ? "linear" : "device");
+                "linear");
         }
     }
     release(depth); release(rt0);

@@ -128,10 +128,8 @@ void run_sun_lane(const char* bootstrap_vertex) {
         // fail-closed until that cache is replaced or the device is destroyed.
         const bool missing_cache=!std::strcmp(mode,"late_shader")&&step>=4;
         const bool expected_lane=!fallback&&!(late&&step==3)&&!missing_cache&&!lane_off;
-        // RT2 lanes: R32F (1) off the lane, G32R32F (2) on it, A32B32G32R32F (4) under
-        // X3M_SUN_SHADOW_RECEIVER_DEPTH=linear (docs/architecture/shadow-receiver-depth.md; .b = .a = clip w).
-        char receiver_text[16]{};const bool receiver_linear=GetEnvironmentVariableA("X3M_SUN_SHADOW_RECEIVER_DEPTH",receiver_text,sizeof receiver_text)==6&&!std::strcmp(receiver_text,"linear");
-        const unsigned lane_stride=expected_lane?(receiver_linear?4u:2u):1u;
+        // RT2 lanes: R32F (1) off the lane, A32B32G32R32F (4) on it (docs/architecture/shadow-receiver-depth.md; .b = .a = clip w).
+        const unsigned lane_stride=expected_lane?4u:1u;
         if(!lane_off)require(emission_status(d.p,90)==unsigned(!refused&&!missing_cache),"sun exact capability qualification");
         require(emission_status(d.p,91)==unsigned(expected_lane),"sun format selected only at frame latch");
         const unsigned routed_before=emission_status(d.p,89),gate4_before=emission_status(d.p,99);

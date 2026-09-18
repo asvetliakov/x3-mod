@@ -1,8 +1,8 @@
 // Scene-end sun-shadow application over up to five cascades
 // (docs/architecture/shadow-cascades.md, section 2). The single-map quad
 // (sun_shadow_apply_ps.hlsl) with the map chosen per pixel: RT2 read, view
-// depth (RT2.b when select.w > 0, the A32B32G32R32F lane of
-// docs/architecture/shadow-receiver-depth.md; else the z/w law) and view
+// depth (RT2.b, the interpolated clip w of the A32B32G32R32F lane,
+// docs/architecture/shadow-receiver-depth.md) and view
 // position as there; the sun-space position of every cascade
 // (three dp4 each) and ddx/ddy of the *view position* once, before any branch
 // (the sun rows are affine in the view position, so each cascade's map-UV and
@@ -30,15 +30,15 @@
 // receiver's lookup position is therefore suv = muv + 0.5 / N: its nearest
 // texel is floor(suv N) (= round(muv N)), and a tap at tapUV holds the depth
 // of the point tapUV - suv away from the receiver (the receiver-plane term).
-sampler depthShareTex : register(s0); // G32R32F or A32B32G32R32F: r = device depth (z/w, -1 sentinel), g = sun share s, b = view depth w (wide only)
+sampler depthShareTex : register(s0); // A32B32G32R32F: r = device depth (z/w, -1 sentinel), g = sun share s, b = view depth w
 sampler mapTex0 : register(s1);       // R32F sun-space depth maps, nearest cascade first
 sampler mapTex1 : register(s2);
 sampler mapTex2 : register(s3);
 sampler mapTex3 : register(s4);
 sampler mapTex4 : register(s5);
 float4 view : register(c0);    // x = m00, y = m11, z = m20, w = m21 (the jittered projection latch)
-float4 terms : register(c1);   // x = m22, y = m32, z = exponent, w = relative view-depth step that voids the plane fit
-float4 select : register(c3);  // x = margin, y = band start, z = 1 / band width, w = 1 when RT2.b carries the view depth (A32B32G32R32F), 0 for the z/w law
+float4 terms : register(c1);   // x = m22, y = m32 (uploaded, unread: the receiver depth is .b), z = exponent, w = relative view-depth step that voids the plane fit
+float4 select : register(c3);  // x = margin, y = band start, z = 1 / band width, w = 0 (reserved)
 float4 taps[9] : register(c4); // xy = the 3x3 kernel offsets in texels, rotated by the frame's jitter index (row-major, j then i)
 // Per cascade i at c(13 + 5 i): the three view -> sun rows, (map size, 1 / size,
 // constant bias, receiver-plane clamp) and (valid, last, slope margin / size, 0).
@@ -80,7 +80,7 @@ float pcf(sampler tex, float3 sun, float3 dpdx, float3 dpdy, float4 r0, float4 r
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float4 ds = tex2D(depthShareTex, uv);
     float d = ds.r, s = saturate(ds.g);
-    float z = select.w > 0.0 ? ds.b : terms.y / (d - terms.x);
+    float z = ds.b;
     float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
     float4 p = float4((ndc.x - view.z) * z / view.x, (ndc.y - view.w) * z / view.y, z, 1.0);
     // Derivatives before any branch (undefined under divergent control flow).

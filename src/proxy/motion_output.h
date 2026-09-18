@@ -452,13 +452,13 @@ public:
     // RT2 (R32F current depth) is produced on this device: three simultaneous
     // targets, R32F render-target support and the three-format self test.
     bool depth_enabled() const noexcept { return depth_enabled_; }
-    // linear_receiver_depth (X3M_SUN_SHADOW_RECEIVER_DEPTH=linear; docs/architecture/
-    // shadow-receiver-depth.md): the lane's RT2 is A32B32G32R32F and .b carries the
-    // routed fragments' interpolated clip w, the apply quad's precise receiver depth;
-    // off, RT2 stays G32R32F and the quad uses the z/w law on .r. Read once at device
-    // creation; the format is fixed at target creation and rebuilt after Reset.
-    void configure_sun_shadow_lane(bool requested, bool linear_receiver_depth=false) noexcept { sun_lane_requested_=requested; sun_lane_linear_depth_=linear_receiver_depth; }
-    D3DFORMAT lane_depth_format() const noexcept { return sun_lane_active_?(sun_lane_linear_depth_?D3DFMT_A32B32G32R32F:D3DFMT_G32R32F):D3DFMT_R32F; }
+    // The lane's RT2 is A32B32G32R32F (docs/architecture/shadow-receiver-depth.md,
+    // the only encoding since 2026-09-18): .r = z/w, .g = share, .b (= .a) = the
+    // routed fragments' interpolated clip w, the apply quad's receiver depth. Off
+    // the lane RT2 is R32F. The format is fixed at target creation and rebuilt
+    // after Reset.
+    void configure_sun_shadow_lane(bool requested) noexcept { sun_lane_requested_=requested; }
+    D3DFORMAT lane_depth_format() const noexcept { return sun_lane_active_?D3DFMT_A32B32G32R32F:D3DFMT_R32F; }
     // Scene-end sun-shadow application (docs/architecture/legacy-sun-application.md,
     // section 2; X3M_SUN_SHADOW_APPLY=1): one quad multiplying the FP16 scene
     // target by 1 - (1 - f) s after the depth replay of the same frame and
@@ -1132,7 +1132,6 @@ private:
     void qualify_sun_lane() noexcept;
     void publish_sun_lane(const char* source) noexcept;
     bool sun_lane_requested_=false, sun_lane_qualified_=false, sun_lane_active_=false, sun_lane_failed_=false;
-    bool sun_lane_linear_depth_=false; // the lane's RT2 is A32B32G32R32F with .b = view depth (configure_sun_shadow_lane)
     bool sun_owner_valid_=false; // publish_sun_lane's owner term of this frame (the apply quad's precondition)
     unsigned sun_original_variants_=0, sun_original_refused_=0; // original share producer: created / refused (fail closed to the fill or motion variant)
     unsigned sun_original_refused_draws_=0; // this frame's routed depth writers of a share-refused reviewed pair (frame failed)

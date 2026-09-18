@@ -17,7 +17,7 @@
   "native_module_mapping": "32-bit process logical C:\\windows\\system32 maps host bottle windows/syswow64 PE32 files",
   "sources_before_build": {
     "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
-    "src/renderer/material_motion.cpp": "323cc398f73f98c17bce629f939289021bc4d427e12a19eb79ee65496ad35497",
+    "src/renderer/material_motion.cpp": "0b18298f65374b4be5fc992ca7292e65a4c77caa8c4e497bcb0e00ec69a1d157",
     "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151",
     "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
     "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
@@ -33,7 +33,7 @@
     "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
     "src/renderer/current_depth_pixel_program_inc.h": "971d4671296b4c6ca6228c949b4fde4e75f076ec186bc8d84ac0721b2ed136d1",
-    "src/temporal/current_depth_ps.hlsl": "2f6a803e7c1ad908bbc78a86f45581fb2026961cc2e3f69ced0392ed7532d588",
+    "src/temporal/current_depth_ps.hlsl": "27afe27a8b79fcc3b2705e8dd0c436c8acab8a719ddbc85c961eeff2af995e5f",
     "verification/probe/material_motion_fixture.cpp": "2e52a063fb8dfa4f5d3aed82eb8ed59fab7d8c6e6cab5a1f8e01d835b8a8afdf",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
     "verification/probe/run_material_motion.py": "7fd94cab57e3bdae912871ef4ddd7bc40cf0e5f0cd3fff1fdc19b6434b934aeb"
@@ -51,7 +51,7 @@
   "programs_directory": "/tmp/x3-shader-sweep/programs",
   "profiles_json_sha256": "1f579d212695c7d6202d2032dfe0849c4d52defd784e5ed4db0ced976fb34c74",
   "profiles_source": "tracked_fallback",
-  "profiles_path": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/results/motion-output-profiles.json",
+  "profiles_path": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/verification/results/motion-output-profiles.json",
   "row_inputs": [
     {
       "vs": {
@@ -2112,7 +2112,7 @@
   },
   "sources_after_build": {
     "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
-    "src/renderer/material_motion.cpp": "323cc398f73f98c17bce629f939289021bc4d427e12a19eb79ee65496ad35497",
+    "src/renderer/material_motion.cpp": "0b18298f65374b4be5fc992ca7292e65a4c77caa8c4e497bcb0e00ec69a1d157",
     "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151",
     "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
     "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
@@ -2128,7 +2128,7 @@
     "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
     "src/renderer/current_depth_pixel_program_inc.h": "971d4671296b4c6ca6228c949b4fde4e75f076ec186bc8d84ac0721b2ed136d1",
-    "src/temporal/current_depth_ps.hlsl": "2f6a803e7c1ad908bbc78a86f45581fb2026961cc2e3f69ced0392ed7532d588",
+    "src/temporal/current_depth_ps.hlsl": "27afe27a8b79fcc3b2705e8dd0c436c8acab8a719ddbc85c961eeff2af995e5f",
     "verification/probe/material_motion_fixture.cpp": "2e52a063fb8dfa4f5d3aed82eb8ed59fab7d8c6e6cab5a1f8e01d835b8a8afdf",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
     "verification/probe/run_material_motion.py": "7fd94cab57e3bdae912871ef4ddd7bc40cf0e5f0cd3fff1fdc19b6434b934aeb"
@@ -2139,7 +2139,7 @@
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
-  "executable_sha256": "58c1c6158ed07ed5feaadcbcee865f471e2702b387a8fa6e7c87443d9743c2de",
+  "executable_sha256": "e868d1acc4592622173b0481dc235bfc892e38bdb10c3f8d5f751dd7b94e40a7",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -2147,7 +2147,7 @@
     "--no-update",
     "--dll",
     "d3d9=b",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/material_motion_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/verification/probe/build/material_motion_fixture.exe",
     "Z:/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
     "Z:/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
     "Z:/tmp/x3-shader-sweep/programs"
@@ -2168,60 +2168,60 @@
       "height": 768,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 0.5791666666666666,
-      "median_ms": 0.5643,
-      "minimum_ms": 0.4274,
-      "maximum_ms": 0.7873
+      "mean_ms": 0.58235,
+      "median_ms": 0.5632,
+      "minimum_ms": 0.4299,
+      "maximum_ms": 0.8286
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 0.7916666666666666,
-      "median_ms": 0.903,
-      "minimum_ms": 0.5482,
-      "maximum_ms": 0.9103
+      "mean_ms": 0.8320666666666667,
+      "median_ms": 0.90105,
+      "minimum_ms": 0.6743,
+      "maximum_ms": 0.9126
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 0.7889666666666667,
-      "median_ms": 0.8248500000000001,
-      "minimum_ms": 0.6004,
-      "maximum_ms": 0.8465
+      "mean_ms": 0.7857000000000001,
+      "median_ms": 0.8229500000000001,
+      "minimum_ms": 0.5795,
+      "maximum_ms": 0.8419
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 0.6914,
-      "median_ms": 0.6799999999999999,
-      "minimum_ms": 0.6556,
-      "maximum_ms": 0.7863
+      "mean_ms": 1.1232,
+      "median_ms": 1.1401,
+      "minimum_ms": 0.659,
+      "maximum_ms": 1.7195
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 1.4807166666666667,
-      "median_ms": 1.4791,
-      "minimum_ms": 1.4674,
-      "maximum_ms": 1.5045
+      "mean_ms": 2.4911333333333334,
+      "median_ms": 2.9480500000000003,
+      "minimum_ms": 1.3691,
+      "maximum_ms": 3.1613
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 1.1603333333333334,
-      "median_ms": 1.15895,
-      "minimum_ms": 1.1465,
-      "maximum_ms": 1.1831
+      "mean_ms": 1.8121666666666667,
+      "median_ms": 1.97785,
+      "minimum_ms": 1.1687,
+      "maximum_ms": 2.4706
     }
   ],
   "current_depth_samples": 1116,
@@ -6186,7 +6186,7 @@
   },
   "sources_after_run": {
     "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
-    "src/renderer/material_motion.cpp": "323cc398f73f98c17bce629f939289021bc4d427e12a19eb79ee65496ad35497",
+    "src/renderer/material_motion.cpp": "0b18298f65374b4be5fc992ca7292e65a4c77caa8c4e497bcb0e00ec69a1d157",
     "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151",
     "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
     "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
@@ -6202,7 +6202,7 @@
     "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
     "src/renderer/current_depth_pixel_program_inc.h": "971d4671296b4c6ca6228c949b4fde4e75f076ec186bc8d84ac0721b2ed136d1",
-    "src/temporal/current_depth_ps.hlsl": "2f6a803e7c1ad908bbc78a86f45581fb2026961cc2e3f69ced0392ed7532d588",
+    "src/temporal/current_depth_ps.hlsl": "27afe27a8b79fcc3b2705e8dd0c436c8acab8a719ddbc85c961eeff2af995e5f",
     "verification/probe/material_motion_fixture.cpp": "2e52a063fb8dfa4f5d3aed82eb8ed59fab7d8c6e6cab5a1f8e01d835b8a8afdf",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
     "verification/probe/run_material_motion.py": "7fd94cab57e3bdae912871ef4ddd7bc40cf0e5f0cd3fff1fdc19b6434b934aeb"
@@ -6214,5 +6214,5 @@
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
   "wine_stderr_sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31",
-  "report_sha256": "aa1328d7540019dc71f593c4a9981c0c658ea4cc5a7a3b16b9becd23d14984b6"
+  "report_sha256": "e23206da5766a4d463d3ab14e1838976f0983e36f8f92cb051991cd4af9a2568"
 }

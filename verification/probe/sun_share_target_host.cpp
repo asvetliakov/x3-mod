@@ -20,8 +20,7 @@ HRESULT create(D,UINT,UINT,UINT,DWORD,D3DFORMAT format,DWORD,IDirect3DTexture9**
 }
 struct MotionOutput {
     D device_=nullptr;bool sun_lane_requested_=true,sun_lane_qualified_=true,sun_lane_active_=false,sun_lane_failed_=false,target_failed_=false,depth_enabled_=true;
-    bool sun_lane_linear_depth_=false; // the receiver-depth option (motion_output.h lane_depth_format)
-    D3DFORMAT lane_depth_format() const noexcept { return sun_lane_active_?(sun_lane_linear_depth_?D3DFMT_A32B32G32R32F:D3DFMT_G32R32F):D3DFMT_R32F; }
+    D3DFORMAT lane_depth_format() const noexcept { return sun_lane_active_?D3DFMT_A32B32G32R32F:D3DFMT_R32F; } // motion_output.h: the lane's RT2 is A32B32G32R32F
     struct {unsigned format=77;} main_depth_;
     std::uint64_t id_=1,generation_=1,target_generation_=0;
     UINT target_width_=0,target_height_=0;

@@ -41,7 +41,7 @@
   "mean_abs": 0.002,
   "within_002_fraction": 0.999
  },
- "executable_sha256": "04160c4720b9e87ca1cc29b4117d2cdba41da9cde85b8eef7b5ef555209ca3a2",
+ "executable_sha256": "fc79b1300d3febdd5a5909197b995738557dc66f2a7156abbe2edb5fcf52dd28",
  "command": [
   "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
   "--bottle",
@@ -50,11 +50,11 @@
   "--dll",
   "d3d9=b",
   "--workdir",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/ambient-occlusion",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/ambient-occlusion/ambient_occlusion_fixture.exe"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/verification/probe/build/ambient-occlusion",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/verification/probe/build/ambient-occlusion/ambient_occlusion_fixture.exe"
  ],
  "exit_code": 0,
- "report_sha256": "4a895f73fb15dfaea3b7555fb6cb57b9eb2165766a5d40493ac2e45ae6ec2061",
+ "report_sha256": "066311719ef96bf7d173e8bbe71e07e9493337f32736dcdc3beea0b2d02976b1",
  "report": {
   "checks": [
    [
@@ -727,29 +727,29 @@
    {
     "width": 1280,
     "height": 768,
-    "fenced_on_ms": 0.7631,
+    "fenced_on_ms": 1.1274,
     "fenced_off_ms": 0.0144,
-    "submit_ms": 0.0969,
-    "chain_ms": 0.7487,
-    "chain_min_ms": 0.7349,
-    "gpu_ms": 0.6518,
+    "submit_ms": 0.0981,
+    "chain_ms": 1.113,
+    "chain_min_ms": 0.7465,
+    "gpu_ms": 1.0149,
     "samples": 15,
     "budget": {
      "cap_ms": 0.8,
      "acceptance_ms": 0.5,
      "within_acceptance": false,
-     "within_cap": true
+     "within_cap": false
     }
    },
    {
     "width": 1920,
     "height": 1080,
-    "fenced_on_ms": 1.3384,
-    "fenced_off_ms": 0.014,
-    "submit_ms": 0.092,
-    "chain_ms": 1.3244,
-    "chain_min_ms": 1.251,
-    "gpu_ms": 1.2324,
+    "fenced_on_ms": 1.3477,
+    "fenced_off_ms": 0.0153,
+    "submit_ms": 0.1027,
+    "chain_ms": 1.3324,
+    "chain_min_ms": 1.2241,
+    "gpu_ms": 1.2297,
     "samples": 15,
     "budget": {
      "cap_ms": 0.8,
@@ -761,12 +761,12 @@
    {
     "width": 1280,
     "height": 768,
-    "fenced_on_ms": 0.5624,
-    "fenced_off_ms": 0.0151,
-    "submit_ms": 0.0924,
-    "chain_ms": 0.5473,
-    "chain_min_ms": 0.5092,
-    "gpu_ms": 0.4549,
+    "fenced_on_ms": 0.528,
+    "fenced_off_ms": 0.0154,
+    "submit_ms": 0.0885,
+    "chain_ms": 0.5126,
+    "chain_min_ms": 0.5043,
+    "gpu_ms": 0.4241,
     "samples": 15,
     "budget": {
      "cap_ms": 0.8,
@@ -780,31 +780,31 @@
    {
     "width": 1280,
     "height": 768,
-    "linearize_ms": 0.329,
-    "gtao_ms": 0.5336,
-    "blur_ms": 0.3023,
-    "apply_ms": 0.419,
-    "sum_ms": 1.5839,
+    "linearize_ms": 0.3179,
+    "gtao_ms": 0.5403,
+    "blur_ms": 0.3045,
+    "apply_ms": 0.4381,
+    "sum_ms": 1.6008,
     "samples": 6
    },
    {
     "width": 1920,
     "height": 1080,
-    "linearize_ms": 0.317,
-    "gtao_ms": 0.42,
-    "blur_ms": 0.2999,
-    "apply_ms": 0.3097,
-    "sum_ms": 1.3466,
+    "linearize_ms": 0.3155,
+    "gtao_ms": 0.4264,
+    "blur_ms": 0.3164,
+    "apply_ms": 0.3352,
+    "sum_ms": 1.3935,
     "samples": 6
    },
    {
     "width": 1280,
     "height": 768,
-    "linearize_ms": 0.2005,
-    "gtao_ms": 0.3119,
-    "blur_ms": 0.1844,
-    "apply_ms": 0.3108,
-    "sum_ms": 1.0076,
+    "linearize_ms": 0.1969,
+    "gtao_ms": 0.3046,
+    "blur_ms": 0.1882,
+    "apply_ms": 0.3062,
+    "sum_ms": 0.9959,
     "samples": 6
    }
   ],
@@ -842,24 +842,24 @@
     "width": 1280,
     "height": 768,
     "variant": "no_blur",
-    "fenced_on_ms": 0.7659,
-    "chain_ms": 0.7515,
+    "fenced_on_ms": 0.7469,
+    "chain_ms": 0.7325,
     "samples": 4
    },
    {
     "width": 1920,
     "height": 1080,
     "variant": "no_blur",
-    "fenced_on_ms": 0.7368,
-    "chain_ms": 0.7228,
+    "fenced_on_ms": 0.7472,
+    "chain_ms": 0.7319,
     "samples": 4
    },
    {
     "width": 1280,
     "height": 768,
     "variant": "no_blur",
-    "fenced_on_ms": 0.5042,
-    "chain_ms": 0.4891,
+    "fenced_on_ms": 0.5356,
+    "chain_ms": 0.5202,
     "samples": 4
    }
   ],
