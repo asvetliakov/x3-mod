@@ -348,6 +348,94 @@ frame from the frame counter the existing telemetry already keeps.
   to the player's sector in practice — the same open question as
   [main-loop-input-region.md](main-loop-input-region.md) §"Not established".
 
+## 10. Implemented: `--collide-box-cull` (2026-09-18)
+
+`X3M_COLLIDE_BOX_CULL=1` (launcher `--collide-box-cull`, default off), `src/proxy/collide_box_cull.{h,cpp}` and
+`collide_box_cull_core.h`: two `engine_patch` trampolines, P1 `0x0045d58e` and P2 `0x0045cc7c`, six displaced bytes
+each (two whole `mov`s), stubs of 139 and 117 bytes (127/105 without counters). It replaces the separate census of §7:
+the stubs count pairs entering each site and pairs the box rejected.
+
+**Corrections to §6 found while verifying against the image.**
+
+- *The engine does not reject a saturated distance.* `0x0052b5d0` ends in `CVTTSD2SI`, which returns `0x80000000` when
+  the value is ≥ 2³¹; `cmp ecx,eax / jg` then reads INT_MIN as "not far" and the pair goes to the narrow phase. That
+  needs `sqrt(Σd²) ≥ 2³¹`, i.e. some `|d| ≥ 1.24e9` units (no real sector), but a box that rejected such a pair would
+  differ from the engine. The stub therefore rejects only when **every** `|d| < 2³⁰` (then `dist < 1.86e9 < 2³¹`);
+  `|d| = INT_MIN` (whose negation is itself) is caught by the same unsigned compare. The fixture exercises both.
+- *Margin.* With `m = max|d| < 2³⁰`: `dist ≥ m·(1 − 2⁻²⁵) − 1` (float32 unit roundoff 2⁻²⁴, halved by the square root,
+  plus truncation; the x87 intermediates, 64-bit under `FEX_X87REDUCEDPRECISION`, add < 2⁻⁵¹ relative), so
+  `dist > m − 34`. P1: `T = r + (r >> 5) + 64 ≥ R + 35` because `R = (r·0x1028f + 0x8000) >> 16 ≤ 1.01·r + 0.5`.
+  P2: the engine compares against the raw sum `R = [cand+0xa4] + [esp+0x20]` (no 1.01 factor), `T = R + 64`.
+  `m > T ⇒ dist > R` in both. A negative radius sum (P1) or a signed overflow of any threshold add (`jo`) leaves the
+  engine path; when `R` would wrap (`r ≥ 2.126e9`), `T` has already overflowed (`r ≥ 2.082e9`).
+- *Jump tables* (order as stored): `0x0045e0b8 = [0x45dfd9, 0x45d339]`, `0x0045e0dc = [0x45d3b1, 0x45dfad, 0x45d3b6,
+  0x45d3c0]`, `0x0045e108 = [0x45dfad, 0x45d3e6]`.
+
+**Radius source.** P1 reads `[esp+0x24]`, the sum `[A+0xa4] + [B+0xa4]` the engine stored at `0x0045d48a` and scales at
+`0x0045d5ed` (nothing writes the slot in between). P2 reads `[EDI+0xa4]` and `[esp+0x20]` exactly as `0x0045cce6` does.
+Differences are the engine's own wrapped 32-bit subtractions of `[[obj+0x70]+0x30/0x34/0x38]`; `|d|` uses the
+class-7 box idiom (negate when negative).
+
+**State contract, verified on the decoded routines** (CFG with the three jump tables, forward search for a read not
+preceded by a write):
+
+| | P1 `0x0045d58e` | P2 `0x0045cc7c` |
+| --- | --- | --- |
+| Scratch registers | EAX, ECX, EDX, EDI: no read reachable from the site or from `0x0045df90` before a write (EDI: `0x0045d6d0` on both reject paths, reloaded on every survivor path) | EAX, ECX, EDX, ESI: same from the site and from `0x0045ce07` (ESI is written at `0x0045cc82`) |
+| Preserved | EBX, ESI (the pair), EBP, ESP (one balanced `push`/`pop`) | EBX (swept object), EDI (candidate), EBP, ESP |
+| Reject path mirrors | `mov edi,7` (as `0x0045d6d0`) | `mov esi,[ebx+0x70]` (as `0x0045cc82`) |
+| EFLAGS | dead: next writer `0x0045d597 sub`, no reader before; `cmp` at `0x0045df94` on the reject path | dead: `0x0045cc85 sub`; `cmp` at `0x0045ce09` |
+| x87 | untouched; the span precedes the first push (`FILD` at `0x0045d5a4`); the engine's own sequence is net zero at its `jg`, so both reject paths leave the same depth | same (`FILD` at `0x0045cc9b`) |
+| Locals the engine's reject path writes and the stub's does not | `[esp+0x1c]` (dist), `[esp+0x28]` (dz): not live at `0x0045df90` (`[esp+0x1c]` is read only behind `0x0045d6e4`, class 7) | `[esp+0x30/0x34/0x38]`, `[esp+0x60..0x6c]` (the latter written as `[esp+0x64..0x70]` after `push ecx`): read only on the survivor path of the same visit |
+| Inbound references | `0x0045d516` + fall-through; none into `+1..+5` | `0x0045cc5e`, `0x0045cc70`; none into `+1..+5` |
+
+**Gameplay risk.** A pair rejected by the box that the engine would have collided is impossible by construction: the
+stub rejects a subset of the pairs for which the engine's own `dist > R` compare is true (margin above; fixture on the
+engine's bytes; 10.7 M model pairs on the host), and for those the engine goes `0x0045d6cc → 0x0045df90` (neither class
+is 7, which the stub checks first) or `→ 0x0045ce07`, writing nothing that is read again. No script callback is
+skipped: `"CanWarp"`, `"CanLand"`, `"NotifyPlanetCollision"`, `"MakeDamage"`, `"KilledBy"` sit behind the narrow phase
+or the class-7/class-4 paths, none of which a rejected pair reaches in the unpatched engine either; `"CollisionWarn"`
+is in L3. The stub keeps no state but the counters and calls nothing, so re-entry through `0x0049f4c0` cannot observe it.
+
+**Install.** Backend-load path inside the `engine_patch` window, after the exact-executable check, seven byte windows
+(site 26/35 bytes, compare 37/18, P1 reject 24, continue 11/9, at offsets relative to each site), the two helper
+bodies and the four `call` targets; module pinned; P2 failure rolls P1 back; `late_claim` after the first Present;
+LastError preserved. `verification/probe/verify_collide_sites.py` (29 checks) also asserts the claim windows are
+disjoint from every other site the proxy patches (119 collected from `src/proxy` and the chase verifiers).
+
+**Fixture.** `verification/probe/collide_box_cull_fixture.cpp`: the fixture cannot execute the engine's loop body from
+the EXE in-process, so it carries layout-preserving synthetic copies of both pair tests: every byte from the site to
+the `jg`, the P1 reject block and both continue labels is the engine's, at the engine's relative offsets (so the rel32
+of `jg +0xc0`, `jne +0x8ac`, `jg +0x10f` are exact); only the four `call` rel32s differ, targeting byte-exact replicas
+of `0x00412440` and of the SSE2 path of `0x0052b5d0`. 445,882 P1 pairs (12 class combinations including 7 on either
+side, 11 radius sums, magnitudes on `R±1`, `T±1`, `T+40`, 2³⁰±1, 2³¹−1, INT_MIN, random offsets and 100 k random
+positions) and 146,064 P2 candidates run through the unpatched and the patched bytes: same exit
+(continue/survivor/class-7), same EBX/ESI/EBP/ESP (EDI wherever the engine defines it), same x87 depth and values,
+same locals except the dead scratch above; counters equal to the host model pair by pair. Ledger:
+[collide-box-cull.md](../verification/collide-box-cull.md).
+
+**Counters.** `inc dword [abs32]` on entry and on reject, four slots, read and zeroed once per Present:
+`collide_census frame= frames=300 {p1_pairs,p1_rejected,p2_cands,p2_rejected}_{p50,max,sum}` per 300-frame window and
+`collide_census_frame` on F8 frames. Self-cost: below the fixture's resolution (armed with counters 67.0 ns/pair,
+without 67.1, harness included); two memory increments per rejected pair, one otherwise.
+
+### 10.1 Reviews (2026-09-19)
+
+Opus review and Fable second review: no correctness defect; spans, liveness, image-wide absence of interior branch
+targets (whole-`.text` objdump scan by the reviewer; `verify_collide_sites.py` itself scans only the decoded
+function) and the subset proof confirmed independently. Margins: P1 `T - R >= 0.021 r + 63`, P2 `T = R + 64`,
+against an engine conversion error under 33 for `m < 2^30` (double intermediates, which is also what
+`FEX_X87REDUCEDPRECISION=1` gives). The second conversion path of `0x0052b5d0` at `0x0052b606` (`fistp qword` plus
+a truncation correction, taken when `*0x006619ec == 0`) equals truncation for distances below 2^31, so under the
+2^30 cap both paths agree; it is not pinned or modelled. No engine write to an object, stamp or list precedes
+either site's reject. Accepted open points: under 24-bit x87 precision control (the game's software-vertex-processing
+CreateDevice branch omits `FPU_PRESERVE`) the engine error grows to about `2.5 * 2^-24 * m`; P1 stays safe, P2's
+fixed margin would fail only for a radius sum above about 4.2e8 units (84,000 km), which no sector object has — if
+ever needed, test `m - (m >> 20) > T` at P2 or refuse at install on a non-53/64-bit control word. The
+P2-claim-fails-after-P1 rollback is not executed by a fixture; `StubWriter::jcc` has no bound on `fix_[16]` (8 used);
+the counters' plain `inc` against `InterlockedExchange` at Present is race-free only if the loop and Present share
+a thread (diagnostics only). Pairs the box keeps cost 4-5 % more; run 43 A decides.
+
 ## Reproduce
 
 ```sh
