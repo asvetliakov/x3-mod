@@ -153,13 +153,21 @@ measure `s = r*640/D` per node and culls against the per-node thresholds
 EAX/EFLAGS dead, x87 empty) can scale `s` or raise that threshold so parts
 under N screen pixels are never queued. Each removed draw saves ~23.7 us plus
 its share of the caster census. Saving depends on how many of the 930 draws
-are sub-pixel greebles; unmeasured. What settles it without a run: an offline
-census of run124's capture frames 3494-3501 (`object_context`,
-`object_position`, `object_basis`, `camera_state`, `draw` per draw) giving
-projected radius per draw: 30 % under 4 px is ~6.6 ms, 5 % is ~1 ms. Risk:
-visible popping of clamps and antennas; a hot-path stub per node per view
-(~0.1 us x nodes, I). Native parity by construction. Effort: M (site verifier,
-CPU fixture like `lod_scale`).
+are sub-pixel greebles. The offline census of run124's frames 3494-3501 used
+the world-transform scale as the radius proxy (no per-node radius is logged)
+and put 50-65 % of the 890 draws under 2 px (~12 ms at 23.7 us/draw); it is a
+proxy, not the engine's measure. What settles it: one capture at the station
+view with `--cull-census` (`X3M_CULL_CENSUS=1`, default off), which logs the
+engine's own `s = r*640/D`, small-object measure, thresholds, verdict and
+selected LOD per node on capture frames from two read-only trampolines on
+the pass (`0x0047d258`, `0x0047d528`; lod-selection.md, "Cull census sites"),
+and `tools/analysis/cull_census.py`, which buckets the nodes (< 1, 1-2, 2-4,
+4-8, 8-16, > 16 in `s` units and in pixels), joins the draws per node and
+prices the buckets at 23.7 us/draw. Risk: visible popping of clamps and
+antennas; a hot-path stub per node per view (measured in the fixture: 0.234
+-> 0.244 us per 12-node pass with the census installed and disarmed, 0.311
+armed, Wine/FEX). Native parity by construction. Effort of the lever itself
+once sized: S (the `lod_scale`-style patch of the threshold or the measure).
 
 ### 2.4 Distance LOD bias in code — 0 to several ms (A), engine patch
 
