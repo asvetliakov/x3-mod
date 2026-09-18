@@ -29,7 +29,7 @@ constexpr HRESULT D3DERR_NOTFOUND = static_cast<HRESULT>(0x88760866u);
 
 struct D3DCAPS9 {};
 struct D3DSURFACE_DESC { UINT Width = 1, Height = 1; };
-struct D3DPRESENT_PARAMETERS { HWND hDeviceWindow = nullptr; };
+struct D3DPRESENT_PARAMETERS { UINT BackBufferWidth = 0; HWND hDeviceWindow = nullptr; };
 struct D3DDISPLAYMODEEX {};
 struct IDirect3DDevice9;
 
@@ -360,6 +360,7 @@ namespace chase_camera { static void note_last_device() noexcept {} }
 // lifetime paths only retire the per-frame root verdicts.
 namespace point_light_admission { unsigned frame_retires = 0; static void next_frame() noexcept { ++frame_retires; } }
 namespace cull_census { static void begin_frame(bool) noexcept {} } // X3M_CULL_CENSUS disarm on Reset (src/proxy/cull_census.h); no-op on the host
+namespace cull_small_parts { static void after_reset(unsigned) noexcept {} } // X3M_CULL_SMALL_PARTS_PX disarm on Reset (src/proxy/cull_small_parts.h); no-op on the host
 namespace lod_scale { static void refresh() noexcept {} } // X3M_LOD_SCALE mirror refresh called from the Reset/Present paths (src/proxy/lod_scale.h); no-op on the host
 namespace resource_reader { static void report() noexcept {} }
 namespace loading_trace { static void crypt_cache_report(const char*) noexcept {} }

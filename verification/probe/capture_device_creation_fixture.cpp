@@ -207,6 +207,7 @@ std::vector<char> events;
 std::recursive_mutex mutex;
 
 struct LightCallBoundary { LightCallBoundary() {} ~LightCallBoundary() {} }; // mirrors capture.cpp: inert, non-trivial so the scoped variable is not "unused"
+namespace cull_small_parts { inline void set_backbuffer_width(unsigned) {} } // X3M_CULL_SMALL_PARTS_PX pixel scale at CreateDevice (src/proxy/cull_small_parts.h); inert on the host
 namespace proxy_identity { inline void log_loaded_module(const wchar_t*) {} } // mirrors the loaded_module line (inert)
 struct CpuCallBoundary {
     CpuCallBoundary() { events.push_back('C'); }

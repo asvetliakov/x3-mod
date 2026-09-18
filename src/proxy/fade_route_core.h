@@ -70,6 +70,16 @@ inline bool origin_distance(const float rows[16], bool camera_valid, float m00, 
     if (!std::isfinite(d)) return false;
     out = d; return true;
 }
+// The shadow-caster candidate's origin distance (MotionOutput::
+// note_candidate_distance, shadow_replay admission): the pre-run-130 contract.
+// An origin at or behind the camera plane (w <= 0, or a NaN w) has no origin
+// distance, so the candidate has no origin rule and only its extent decides
+// (motion_output.cpp, note_candidate_draw). Only the fade arm takes the
+// behind-camera distance above.
+inline bool origin_distance_front(const float rows[16], bool camera_valid, float m00, float m11, float m20, float m21,
+                                  float& out) noexcept {
+    return rows[15] > 0.f && origin_distance(rows, camera_valid, m00, m11, m20, m21, out);
+}
 // The vertex program's alpha (asteroid-fog-temporal.md, "Exact shader alpha"):
 // COLOR0.a = g_AlphaValue.x * saturate(g_FogClip.x - g_FogClip.y * distance)
 // with fog, g_AlphaValue.x without. Evaluated at the origin distance, so a
