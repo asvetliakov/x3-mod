@@ -214,6 +214,7 @@ public:
     D3DCAPS9 caps_{};
     std::uint64_t id_ = 1, frame_ = 0, cutout_probe_frame_ = 0;
     bool linear_material_requested_ = true, cutout_probe_frame_known_ = false;
+    unsigned fade_route_threshold_ = 1001; // fade_route::threshold_off: the fade-band arm is the probe's second consumer
     bool cutout_reset_pending_ = false, hdr_enabled_ = true;
     bool enabled_ = true, composition_requested_value = true;
     bool motion_state_lost_ = false, composition_effective_ = false;
@@ -355,6 +356,14 @@ void capability_contract() {
     check(good.output.cutout_cap_queries_==1 && good.device.factory.format_calls==3,"one complete probe");
     check(good.device.direct_calls==1 && good.device.creation_calls==1 && good.device.display_calls==1,"public native queries");
     check(good.device.factory.releases==1 && !good.device.factory.wrong_arguments,"factory release and arguments");
+    // Original shading (run 125): the fade-band arm is the verdict's second
+    // consumer, so a configured arm probes without linear materials; the cutout
+    // arm itself stays off. Neither consumer configured: no probe at all.
+    { scenario(); Harness fade; fade.output.linear_material_requested_=false; fade.output.fade_route_threshold_=500; fade.output.probe_cutout_caps();
+      check(fade.output.cutout_caps_==Capability::Ready && fade.output.cutout_cap_queries_==1,"fade-band arm configured: probe runs without linear materials");
+      check(!fade.output.cutout_arm_active_,"a Ready verdict without linear materials leaves the cutout arm off"); }
+    { scenario(); Harness none; none.output.linear_material_requested_=false; none.output.probe_cutout_caps();
+      check(none.output.cutout_caps_==Capability::Pending && none.output.cutout_cap_queries_==0 && none.device.direct_calls==0,"neither consumer configured: no probe"); }
 
     for (unsigned missing=0;missing<5;++missing) {
         scenario(); Harness h;

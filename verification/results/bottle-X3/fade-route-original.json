@@ -1,0 +1,59 @@
+{
+  "tool": "verification/probe/run_motion_output.py (retained binaries, partial scope: the three fade-route cases)",
+  "purpose": "Run 125: fade-band arm under original shading (docs/verification/motion-output.md 2026-09-18; asteroid-fog-temporal.md \"Run 125\")",
+  "date": "2026-09-18",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "source_commit": "44e6b5f0 + working tree (uncommitted change under review)",
+  "binaries": {
+    "seam_dll_sha256": "32d2377f092f8b4131e49ec7640a7add97d25a78cff7a9c05ea03da1d024e83b",
+    "production_dll_sha256": "9e4c298a3584dc053bedfd9c56b3186ee705ec63f555082897ca307f34f90bc4",
+    "fixture_sha256": "2fbede18d21c31fb0a96c9121f99db1e22b3aa3246202b180e8e8b72c31a407a"
+  },
+  "partial_status": "PARTIAL",
+  "cases": {
+    "seam-taa-fade-route-routed": {
+      "script": "routed",
+      "checks": 5100,
+      "routed_frames": 12,
+      "held_frames": 0,
+      "history_frames": 10,
+      "raw_evidence": 22,
+      "resolved_evidence": 16,
+      "worst_raw_error_px": 0.006277896302098962,
+      "worst_resolved_residual_px": 0.06881372920206728,
+      "max_code_error": 1.0
+    },
+    "seam-taa-fade-route-sentinel": {
+      "script": "sentinel",
+      "checks": 5100,
+      "routed_frames": 12,
+      "held_frames": 0,
+      "history_frames": 10,
+      "raw_evidence": 22,
+      "resolved_evidence": 16,
+      "worst_raw_error_px": 0.006277896302098962,
+      "worst_resolved_residual_px": 0.06881372920206728,
+      "max_code_error": 1.0
+    },
+    "seam-taa-fade-route-original": {
+      "script": "original",
+      "checks": 3461,
+      "routed_frames": 8,
+      "held_frames": 5,
+      "history_frames": 10,
+      "raw_evidence": 22,
+      "resolved_evidence": 10,
+      "worst_raw_error_px": 0.004416532841086229,
+      "worst_resolved_residual_px": 0.05507287093764471,
+      "max_code_error": 0.0
+    }
+  }
+}

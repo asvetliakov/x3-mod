@@ -714,7 +714,16 @@ CASES += [case('seam-taa-cutout-opaque-get', 'cutout', jitter=True, taa=True, la
 # stays refused until 507 arms it again; the composite switch step between a
 # held (native encoded-space mix) and a refused (bracket, linear source-over)
 # frame at 449 is measured at the P samples. The routed script runs in both
-# RT binding modes.
+# RT binding modes. `original`: the sentinel inputs under original shading
+# (X3M_LINEAR_MATERIALS=0, X3M_LINEAR_DISTANCE_FADE=0: no bracket, no
+# composition, no M, no linear_material_frame line), the run-125 production
+# configuration in which the arm was inert because the cutout capability probe
+# only ran with linear materials requested (asteroid-fog-temporal.md, "Run
+# 125"), on the hover schedule over the sentinel fill: the DLL's verdict is
+# Ready, the arm routes, holds and refuses exactly the hover frames without a
+# bracket (a refused frame is the plain native draw over the far-plane path,
+# stable under the rotating camera), the routed frames' resolved shift stays a
+# fraction of the raw one, and the `fade_route_frame` line carries the counters.
 FADE_ROUTE_FRAMES = 12
 FADE_ROUTE_CUT_FRAME = 7
 FADE_ROUTE_CAPTURE = (2, 3, 4)
@@ -726,13 +735,13 @@ FADE_ROUTE_HOVER_BAND = 400  # threshold - fade_route::Hysteresis::band
 
 def fade_route_routed(script, frame):
     """The arm's decision for the script's frame (motion_output_fade_route_inc.h)."""
-    if script == 'hover':
+    if script in ('hover', 'original'):
         return FADE_ROUTE_HOVER_PERMILLE[frame] >= FADE_ROUTE_THRESHOLD or (fade_route_routed(script, frame - 1) and FADE_ROUTE_HOVER_PERMILLE[frame] >= FADE_ROUTE_HOVER_BAND)
     return script in ('routed', 'sentinel')
 
 
 def fade_route_permille(script, frame):
-    return FADE_ROUTE_HOVER_PERMILLE[frame] if script == 'hover' else 1000 if script in ('routed', 'sentinel') else 390
+    return FADE_ROUTE_HOVER_PERMILLE[frame] if script in ('hover', 'original') else 1000 if script in ('routed', 'sentinel') else 390
 
 
 def fade_route_held(script, frame):
@@ -747,9 +756,12 @@ FADE_ROUTE_STABLE_FRACTION = 0.3          # routed: |resolved shift| <= fraction
 FADE_ROUTE_NOISE = 0.08                   # px: FP16 raster and resolve
 FADE_ROUTE_MIN_EVIDENCE = 4               # (frame, axis) samples per image kind
 FADE_ROUTE_ENV = dict(CUTOUT_ENV, X3M_LINEAR_DISTANCE_FADE='1', X3M_CAPTURE_START=str(FADE_ROUTE_CAPTURE[0]), X3M_CAPTURE_FRAMES=str(len(FADE_ROUTE_CAPTURE)))
-FADE_ROUTE_CASES = (('routed', True), ('routed-perdraw', False), ('masked', True), ('sentinel', True), ('hover', True))
+FADE_ROUTE_CASES = (('routed', True), ('routed-perdraw', False), ('masked', True), ('sentinel', True), ('hover', True), ('original', True))
+# original shading: linear materials and the fade bracket off (the run-125 production configuration).
+FADE_ROUTE_ORIGINAL_ENV = dict(X3M_LINEAR_MATERIALS='0', X3M_LINEAR_DISTANCE_FADE='0')
 CASES += [case(f'seam-taa-fade-route-{name}', 'faderoute', jitter=True, taa=True, lazy=lazy, hdr=True,
-               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT=name.split('-')[0])) for name, lazy in FADE_ROUTE_CASES]
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT=name.split('-')[0], **(FADE_ROUTE_ORIGINAL_ENV if name == 'original' else {})))
+          for name, lazy in FADE_ROUTE_CASES]
 # Mip-bias script (motion_output_fixture.cpp run_mipbias): eight frames,
 # capture in frame 5 only (the capture diagnostics restore the bias before
 # every draw, so that frame re-sets it per routed draw), the frame line every
@@ -4576,6 +4588,7 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
     routed_at = {f: fade_route_routed(script, f) for f in range(FADE_ROUTE_FRAMES)}
     held_at = {f: fade_route_held(script, f) for f in range(FADE_ROUTE_FRAMES)}
     matched_at = {f: routed_at[f] and f > 0 and routed_at[f - 1] for f in range(FADE_ROUTE_FRAMES)}  # the row history keeps one frame
+    original = script == 'original'  # original shading: no composition (mask_valid 0), no linear oracle, no linear_material_frame line
     lines = text.splitlines()
     terminal = [fields(l) for l in lines if l.startswith('RESULT PASS ')]
     assert len(terminal) == 1 and not any(l.startswith('RESULT FAIL') for l in lines), f'{name}: fixture did not complete'
@@ -4587,9 +4600,9 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
     for frame, row in live.items():
         routed = routed_at[frame]
         expected = dict(script=script, routed=str(int(routed)), matched=str(int(matched_at[frame])), fade_routed=str(2 * int(routed)),
-                        fade_refused=str(2 * int(not routed)), fade_held=str(2 * int(held_at[frame])), prepared=str(2 * int(not routed)),
+                        fade_refused=str(2 * int(not routed)), fade_held=str(2 * int(held_at[frame])), prepared=str(0 if original else 2 * int(not routed)),
                         own_motion=str(2 * FADE_ROUTE_QUAD_PIXELS * int(routed)),
-                        mask_set=str(2 * FADE_ROUTE_QUAD_PIXELS * int(not routed)), mask_valid='1', threshold=str(FADE_ROUTE_THRESHOLD), draws='2')
+                        mask_set=str(0 if original else 2 * FADE_ROUTE_QUAD_PIXELS * int(not routed)), mask_valid=str(int(not original)), threshold=str(FADE_ROUTE_THRESHOLD), draws='2')
         actual = {k: row[k] for k in expected}
         assert actual == expected, (name, frame, actual, expected)
         assert int(row['covered']) >= 2 * FADE_ROUTE_QUAD_PIXELS, (name, frame, 'both quads must write pixels', row['covered'])
@@ -4625,6 +4638,12 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
         before, after = live_fade.rgba(row['before']), live_fade.rgba(row['after'])
         assert after[3] == before[3], (name, row, 'RGB-masked draw keeps alpha')
         composites[(frame, int(row['x']), int(row['y']))] = (before, after)
+        if original:
+            # Original shading binds the pair's ordinary motion variant (the
+            # original pixel program's own colour, no linear oracle): the routed
+            # draw must have written the sample, alpha kept as above.
+            assert after[:3] != before[:3], (name, row, 'original-shading fade draw (routed or the plain native draw) writes the sample')
+            continue
         if script == 'hover':
             alpha = .125 * FADE_ROUTE_HOVER_ALPHA[frame]
             expected = tuple(component.fp16_rt_store(e * alpha + b * (1 - alpha)) for e, b in zip(encoded, before)) if routed else \
@@ -4665,10 +4684,23 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
             expected = dict(gate='0' if routed else '4', routed=str(int(routed)), matched=str(int(matched_at[frame])), depth=str(int(routed)), jittered='1',
                             zwrite='0', blend='1', src='5', dst='6', atest='0', mask='7', sepalpha='0', fade_arm=str(int(routed)),
                             fade_permille=str(fade_route_permille(script, frame)), fade_held=str(int(held_at[frame])), result='00000000')
+            if original:
+                # The record's blend triple is the composition shadow's (diagnostics only:
+                # composition_blend_field); the composition shadow is absent under original
+                # shading, so the record carries the unknown marker while the arm read the
+                # triple itself (fade_arm_admits).
+                expected.update(src='-1', dst='-1', sepalpha='-1')
             actual = {k: r[k] for k in expected}
             assert actual == expected, (name, frame, actual, expected)
     materials = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('linear_material_frame ')}
-    assert sorted(materials) == list(range(FADE_ROUTE_FRAMES)), (name, sorted(materials))
+    # The linear_material_frame line is written with linear materials requested only;
+    # original shading writes fade_route_frame with the arm's counters instead.
+    assert sorted(materials) == ([] if original else list(range(FADE_ROUTE_FRAMES))), (name, sorted(materials))
+    fade_frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('fade_route_frame ')}
+    assert sorted(fade_frames) == (list(range(FADE_ROUTE_FRAMES)) if original else []), (name, sorted(fade_frames))
+    for f, row in fade_frames.items():
+        expected = (str(2 * int(routed_at[f])), str(2 * int(not routed_at[f])), str(2 * int(held_at[f])), str(FADE_ROUTE_THRESHOLD), '1')
+        assert (row['fade_routed'], row['fade_refused'], row['fade_held'], row['fade_route'], row['cutout_caps']) == expected, (name, f, row)
     for f, row in materials.items():
         expected = (str(2 * int(routed_at[f])), str(2 * int(not routed_at[f])), str(2 * int(held_at[f])), str(FADE_ROUTE_THRESHOLD))
         assert (row['fade_routed'], row['fade_refused'], row['fade_held'], row['fade_route']) == expected, (name, f, row)
@@ -4691,6 +4723,10 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
         raw = fade_route_shift(raw_previous, raw_current, FADE_ROUTE_WINDOW, 64)
         resolved = fade_route_shift(shown_previous, shown_current, FADE_ROUTE_WINDOW, 64)
         stable, follows = matched_at[frame], not routed_at[frame] and not routed_at[frame - 1]
+        if original and follows:
+            # No bracket, no M: a refused quad over the sentinel fill takes the far-plane
+            # camera path, exact under the rotating camera, so it stays put too.
+            stable, follows = True, False
         shifts[frame] = dict(jitter_delta=delta, raw=raw, resolved=resolved, history=history[frame], stable=stable, follows=follows)
         for axis in range(2):
             if abs(delta[axis]) < FADE_ROUTE_MIN_SHIFT:
