@@ -6594,6 +6594,15 @@ bool MotionOutput::attach_candidate_storage() noexcept {
         if (!candidate_select_scratch_ || !candidate_kept_last_) return false;
         candidates_.attach_kept(candidate_kept_last_.get(), 2u * candidate_capacity_); // per device: cleared
     } else candidates_.attach_kept(nullptr, 0);
+    // Cascade-membership flips (shadow-caster-retention.md, "Membership flips"):
+    // one table per device while cascades are on, two slots per record as the
+    // kept table; allocated once here, never per frame. Cascades off: detached,
+    // no key is built and no field is emitted.
+    if (set.count) {
+        if (!candidate_flip_entries_) candidate_flip_entries_.reset(new (std::nothrow) shadow_replay::FlipEntry[2u * shadow_replay::record_capacity_max]);
+        if (!candidate_flip_entries_) return false;
+        candidate_flips_.attach(candidate_flip_entries_.get(), 2u * candidate_capacity_); // per device: cleared
+    } else candidate_flips_.attach(nullptr, 0);
     refresh_cascade_policy();
     if (depth_cascade_static_mask_) {
         // Two ring entries per record of the list: a full list of distinct casters fits (shadow-cascade-extents.md, the ring's limit).
@@ -6797,7 +6806,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     auto& r = candidates_.record(cascades ? cascade_mask : std::uint8_t(1));
     if (cascades) candidates_.count_cascades(cascade_mask);
     r.verdict = verdict_source; r.serial = route.key.object_lifetime; r.size = projected;
-    if (depth_cascades_.importance) { const auto& k = route.key; r.key = shadow_replay::caster_key(r.serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first, k.indexed ? k.base_vertex : 0, k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives)); }
+    if (cascades) { const auto& k = route.key; r.key = shadow_replay::caster_key(r.serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first, k.indexed ? k.base_vertex : 0, k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives)); }
     r.vb = route.key.vertex_buffer; r.vb_identity = shadow_.stream0_identity;
     r.ib = route.key.indexed ? route.key.index_buffer : 0; r.ib_identity = route.key.indexed ? shadow_.indices_identity : 0;
     r.vb_view = static_cast<const ownership::BufferLockObservation&>(vb);
@@ -7152,14 +7161,15 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // The tail's bound from its format strings, every option on, at
     // shadow_cascade_max cascades with one-digit indices: per cascade " c%u=%u"
     // (14 with a ten-digit value), " capped%u=%u" (20), " static_only_refused%u=%u"
-    // (33), " large_admitted%u=%u" (28), " class_miss%u=%u" (24) and
-    // " dropped_min_size%u=%.4g" (31: "-1.235e+308"); once " class_store=%u
-    // class_ring=%u" (45) and " select_us=%.1f" (12 + a double's 20 digits);
-    // the terminator. A field that does not fit is not appended at all (the
+    // (33), " large_admitted%u=%u" (28), " class_miss%u=%u" (24),
+    // " dropped_min_size%u=%.4g" (31: "-1.235e+308"), " flip_c%u=%u" (19) and
+    // " period2_c%u=%u" (22); once " class_store=%u
+    // class_ring=%u" (45), " select_us=%.1f" (12 + a double's 20 digits) and
+    // " flip_untracked=%u flip_reset=%u" (42); the terminator. A field that does not fit is not appended at all (the
     // line stays well formed), counted in candidates_line_truncated_ and
     // reported on its own line, never blanked silently.
     static_assert(renderer::shadow_cascade_max <= 10, "the bound assumes one-digit cascade indices");
-    constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max * (14 + 20 + 33 + 28 + 24 + 31) + 45 + 32 + 1;
+    constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max * (14 + 20 + 33 + 28 + 24 + 31 + 19 + 22) + 45 + 32 + 42 + 1;
     char cascade_fields[cascade_fields_bound]; cascade_fields[0] = 0;
     if (depth_cascades_on()) {
         std::size_t used = 0; bool truncated = false;
@@ -7179,6 +7189,21 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" dropped_min_size%u=%.4g", i, double(c.dropped_size[i]));
             put(" select_us=%.1f", c.select_us);
         }
+        // Cascade-membership flips since the previous frame (shadow-caster-retention.md,
+        // "Membership flips"): per cascade the casters whose bit entered or left it
+        // (flip_c<i>=), and those whose bit also flipped on the previous frame
+        // (period2_c<i>=: a caster blinking every frame is counted every frame).
+        // The records' masks are final here (the importance order dropped its casters above).
+        // flip_untracked= casters the table's bounded probe could not place (an
+        // undercount is never silent); flip_reset=1 a seeded frame whose counts
+        // are all zero because this frame and the last are not comparable: the
+        // first frame, a gap in the scene ends (menu, load, the A/B off), or a
+        // cascade shape change (count or the adaptive ladder's active mask).
+        std::uint32_t flips[renderer::shadow_cascade_max]{}, period2[renderer::shadow_cascade_max]{};
+        candidate_flips_.update(candidates_.records, candidates_.record_count, depth_cascades_.count, depth_cascades_.active, frame_, flips, period2);
+        for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" flip_c%u=%u", i, flips[i]);
+        for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" period2_c%u=%u", i, period2[i]);
+        put(" flip_untracked=%u flip_reset=%u", candidate_flips_.untracked, unsigned(candidate_flips_.reset));
         if (truncated) {
             ++candidates_line_truncated_;
             log("shadow_replay_candidates_truncated device=%llu frame=%llu count=%u bound=%u used=%u total=%u", id_, frame_, depth_cascades_.count, unsigned(cascade_fields_bound), unsigned(used), candidates_line_truncated_);
@@ -7244,6 +7269,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
     IDirect3DSurface9* rt0 = nullptr; IDirect3DTexture9* depth = nullptr;
     renderer::SunShadowApplyResult out{};
     double us = 0.;
+    unsigned sampled = 0; // cascade maps the quad actually sampled this frame (apply_cascades=)
     HRESULT hr = S_FALSE;
     if (!sun_lane_active_ || !sun_frame_.published || !sun_frame_.available) skip = "lane";
     else if (depth_cascades_on() && !shadow_replay::sun_verdict_usable(sun_verdict_)) skip = "sun"; // no latched sun, or every sample of this frame disagreed with it
@@ -7312,6 +7338,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             map_frames[s] = valid ? kept->frame : ~std::uint64_t(0);
         }
         in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
+        for (unsigned s = 0; s < in.count; ++s) if (in.cascades[s].valid) ++sampled; // an absent cascade is lit: its slot samples no map
         LARGE_INTEGER t0{}, t1{}, f{};
         QueryPerformanceCounter(&t0);
         if (!skip) taa_call([&] { hr = sun_apply_->execute_cascades(in, &out); });
@@ -7381,6 +7408,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         LARGE_INTEGER t0{}, t1{}, f{};
         QueryPerformanceCounter(&t0);
         if (!skip) taa_call([&] { hr = sun_apply_->execute(in, &out); });
+        sampled = 1; // the single map
         QueryPerformanceCounter(&t1);
         QueryPerformanceFrequency(&f);
         us = f.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) : 0.;
@@ -7409,6 +7437,11 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         }
     }
     release(depth); release(rt0);
+    // The pass's own cost and reach for the shadow frame line (apply_us=,
+    // apply_cascades=): the apply runs after the replay of the same frame, so
+    // the next frame's line carries these (run 40 triage: the replay's us= and
+    // the apply's cost on one line, without joining two line kinds).
+    sun_apply_us_ = us; sun_apply_sampled_ = sun_apply_applied_ ? sampled : 0;
     log("sun_shadow_apply_frame device=%llu frame=%llu applied=%u skip_reason=%s exponent=%.6f us=%.1f map=%u result=%08lx restore=%08lx stage=%u",
         id_, frame_, unsigned(sun_apply_applied_), skip ? skip : "none", double(exponent), us, out.map_size, out.operation, out.restore, unsigned(out.failed));
 }

@@ -6,7 +6,9 @@ Two parts, both without Wine:
 
 * the parser of the DLL's per-frame `shadow_replay_depth` line and its
   refusal samples, with the identities the note states (replayed is either
-  draws or 0; every skipped bucket is bounded by draws);
+  draws or 0; every skipped bucket is bounded by draws), including the
+  optional `apply_us= apply_cascades=` pair at the end of the line (the
+  sun-shadow apply pass's own cost and reach, one frame behind);
 * the CPU projection of the fixture's geometry through the same chain the
   authored vertex program applies (clip rows -> p_view -> world -> sun-space
   NDC) and a rasterizer of the resulting triangles at the D3D9 sample
@@ -66,6 +68,24 @@ def parse_depth_line(line):
             raise MalformedLine(line.strip())
         row['shadow_toggle'] = int(tail[0][1])
         tail = tail[1:]
+    # Sun-shadow apply cost (legacy-sun-application.md, 2): apply_us= is the
+    # QPC around the apply pass's submission and apply_cascades= the cascade
+    # maps that quad sampled. The apply runs after the replay of the same
+    # frame, so a line's pair describes the *previous* frame's apply and reads
+    # 0 when that frame ran none (never a stale repeat); both are absent while
+    # the apply lane is off or the shadows are switched off. At the end of the line.
+    apply_pairs = [(k, v) for k, v in tail if k in ('apply_us', 'apply_cascades')]
+    if apply_pairs:
+        if [k for k, _ in apply_pairs] != ['apply_us', 'apply_cascades'] or [k for k, _ in tail[-2:]] != ['apply_us', 'apply_cascades']:
+            raise MalformedLine(line.strip())
+        tail = tail[:-2]
+        try:
+            apply_us, apply_cascades = float(apply_pairs[0][1]), int(apply_pairs[1][1])
+        except ValueError as error:
+            raise MalformedLine(line.strip()) from error
+        if apply_us < 0 or apply_us != apply_us or not 0 <= apply_cascades <= 5:  # shadow_cascade_max = 5
+            raise MalformedLine(line.strip())
+        row['apply'] = {'us': apply_us, 'cascades': apply_cascades}
     # Back-face cascades (shadow-cascade-extents.md, "Caster pool control" amendments): the
     # issued records by cull mode per cascade, cull_none<i> cull_inverted<i>, at the end of the line.
     culls = [(k, v) for k, v in tail if k.startswith('cull_')]

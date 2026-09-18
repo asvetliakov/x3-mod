@@ -142,6 +142,104 @@ inline BufferVerdict compare(const ownership::BufferLockObservation& at_draw,
 // in, refilled at every scene end (owner storage, 2 slots per record).
 struct KeptEntry { std::uint64_t key = 0; std::uint8_t mask = 0; };
 constexpr float importance_hysteresis = .8f; // a caster kept last frame stays kept while its size >= this x the cascade's cutoff
+// Cascade-membership flip counter (docs/architecture/shadow-caster-retention.md,
+// "Membership flips"): the previous frame's cascade mask of every caster key,
+// so the frame line can report, per cascade, how many casters entered or left
+// it since the previous frame (flip_c<k>=) and how many flipped on each of the
+// last two frames (period2_c<k>=: the period-2 blink signature). Fixed owner
+// storage, refreshed in place once per frame; no allocation and no per-draw
+// work beyond the key the record already carries.
+//
+// `stamp` is the frame the entry was last written on. An entry not written on
+// the previous frame contributes mask 0 and no flip history (a caster that was
+// away for two frames and returns counts one flip, not a period-2 blink). A
+// slot older than `flip_stale_frames` is dead and is reused by the next key
+// that probes over it; slots are never emptied, so probe chains stay intact.
+//
+// Two frames are not comparable and are seeded instead of counted (`reset`,
+// reported as flip_reset=1 with every count zero): the first frame of a table,
+// a frame that does not directly follow the previously counted one (the scene
+// ends stopped: a menu, a load, the A/B off), and a frame whose cascade shape
+// changed (count, or the adaptive ladder's active mask: a dropped cascade
+// takes its bit from every caster, which is a configuration change, not a
+// blink). A key that does not fit its probe chain is counted in `untracked`
+// (reported as flip_untracked=): an undercount is never silent.
+struct FlipEntry {
+    std::uint64_t key = 0;
+    std::uint32_t stamp = 0;         // frame `mask`/`flipped` describe
+    std::uint32_t pending_stamp = 0; // frame `pending` was accumulated on
+    std::uint8_t mask = 0, flipped = 0, pending = 0;
+};
+constexpr unsigned flip_probe_limit = 16;      // bounded probe: a key that does not fit its chain is not tracked this frame
+constexpr std::uint32_t flip_stale_frames = 2; // an entry unseen this long is reusable (its bits have already been reported leaving)
+struct FlipTable {
+    FlipEntry* entries = nullptr; unsigned slots = 0;
+    std::uint32_t untracked = 0;   // casters the probe limit could not place this frame
+    bool reset = false;            // this frame was seeded, not counted
+    void attach(FlipEntry* storage, unsigned count) noexcept {
+        entries = storage; slots = storage ? count : 0;
+        untracked = 0; reset = false; primed_ = false; last_frame_ = 0; last_cascades_ = 0; last_active_ = 0;
+        for (unsigned i = 0; i < slots; ++i) entries[i] = FlipEntry{};
+    }
+    // The frame's flips from the records' final cascade masks: two passes over
+    // fixed storage (the records' keys, then the slots), one mask compare and a
+    // counter increment per caster. `flips` and `period2` take `cascades`
+    // entries; `active` is the set's active-cascade mask. `frame_number` must
+    // increase. A seeded frame answers all zeros with `reset` set.
+    void update(const Record* records, unsigned count, unsigned cascades, unsigned active, std::uint64_t frame_number,
+                std::uint32_t* flips, std::uint32_t* period2) noexcept {
+        for (unsigned k = 0; k < cascades; ++k) flips[k] = period2[k] = 0;
+        untracked = 0; reset = false;
+        if (!entries || !slots || !cascades) return;
+        const std::uint32_t frame = std::uint32_t(frame_number);
+        const std::uint8_t bits = std::uint8_t(cascades >= 8 ? 0xFFu : (1u << cascades) - 1u);
+        // Comparable with the previous counted frame?
+        reset = !primed_ || last_frame_ + 1 != frame || last_cascades_ != cascades || last_active_ != active;
+        // This frame's mask per key (two records of one key contribute their union).
+        for (unsigned r = 0; r < count; ++r) {
+            const std::uint64_t key = records[r].key;
+            if (!key) continue;
+            const std::uint8_t mask = std::uint8_t(records[r].cascades & bits);
+            FlipEntry* found = nullptr; FlipEntry* reusable = nullptr;
+            for (unsigned probe = 0, i = unsigned(key % slots); probe < flip_probe_limit; ++probe, i = i + 1 == slots ? 0 : i + 1) {
+                FlipEntry& e = entries[i];
+                if (e.key == key) { found = &e; break; }
+                if (!e.key) { if (!reusable) reusable = &e; break; }
+                if (!reusable && frame - e.stamp > flip_stale_frames && frame - e.pending_stamp > flip_stale_frames) reusable = &e;
+            }
+            if (!found && !reusable) { ++untracked; continue; } // chain full: this caster is not tracked this frame
+            if (!found) { *reusable = FlipEntry{}; reusable->key = key; found = reusable; }
+            found->pending = found->pending_stamp == frame ? std::uint8_t(found->pending | mask) : mask;
+            found->pending_stamp = frame;
+        }
+        // One pass over the slots: the casters seen this frame against their
+        // previous mask, and the ones that left (mask 0 now) beside them.
+        for (unsigned i = 0; i < slots; ++i) {
+            FlipEntry& e = entries[i];
+            if (!e.key) continue;
+            const std::uint8_t now = e.pending_stamp == frame ? std::uint8_t(e.pending & bits) : 0;
+            if (reset) { // seeded: this frame becomes the baseline, nothing is counted
+                if (!now && e.stamp + 1 != frame && e.stamp != frame) continue; // stale: left to age out of its slot
+                e.mask = now; e.flipped = 0; e.stamp = frame;
+                continue;
+            }
+            const bool fresh = e.stamp + 1 == frame; // the entry describes the previous frame: its mask and flips carry over
+            const std::uint8_t previous = fresh ? std::uint8_t(e.mask & bits) : 0;
+            const std::uint8_t before = fresh ? e.flipped : 0; // the bits that flipped on the previous frame
+            if (!now && !previous) continue;                   // absent both frames: left to age out of its slot
+            const std::uint8_t changed = std::uint8_t(previous ^ now);
+            for (unsigned k = 0; k < cascades; ++k) if (changed >> k & 1u) { ++flips[k]; if (before >> k & 1u) ++period2[k]; }
+            e.mask = now; e.flipped = changed; e.stamp = frame;
+        }
+        primed_ = true; last_frame_ = frame; last_cascades_ = cascades; last_active_ = active;
+    }
+
+private:
+    std::uint32_t last_frame_ = 0;
+    unsigned last_cascades_ = 0, last_active_ = 0;
+    bool primed_ = false;
+};
+
 // One frame's population. Reset at the frame begin and after publication.
 // `records` is the inline array unless the owner attached larger storage
 // (attach-time allocation for a cascade set with more than record_capacity

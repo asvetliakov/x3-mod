@@ -513,6 +513,67 @@ Review fix round (2026-09-17, two reviews):
   its own direction) with a source switch (context null) before case k: retained records under
   per-cascade bases and the switch flush run through the DLL.
 
+## Membership flips (telemetry, 2026-09-18)
+
+Two counters the run118/run119 triage could not get from the logs.
+
+**Flips.** `src/proxy/shadow_replay_candidates.h`'s `FlipTable` keeps the
+previous frame's cascade mask per caster key (`caster_key`: node serial and
+vertex range, the identity the importance order already uses) in one fixed
+table per device, two slots per record, allocated with the cascade set and
+refreshed in place: no per-frame allocation, one bounded probe and one mask
+compare per caster. At each scene end the frame line `shadow_replay_candidates`
+carries, after the existing cascade groups, `flip_c<k>=` — casters whose
+cascade-k bit entered or left since the previous frame, a caster that vanished
+from the frame counting its bits as leaving — then `period2_c<k>=`, those of
+them whose bit k also flipped on the previous frame, which is the period-2
+blink signature, then `flip_untracked=` and `flip_reset=`. A caster absent for
+two frames or longer returns as one flip, not a blink.
+
+`flip_untracked=` is the number of casters the table's bounded 16-step probe
+could not place that frame (a saturated table undercounts, and the undercount
+is reported rather than silent). `flip_reset=1` marks a *seeded* frame, whose
+counts are all zero because the frame and its predecessor are not comparable:
+the first frame of a table, a frame that does not directly follow the
+previously counted one (the scene ends stopped — a menu, a load, the sun-shadow
+A/B switched off — so the resuming frame's arrivals are not flips), and a frame
+whose cascade shape changed. The shape is the cascade count together with the
+set's active mask: the own-ship-adaptive path (`shadow_cascade_adapt_c0`) never
+changes `count`, but it does re-derive `active`, and a cascade the sliding
+ladder drops takes its bit from every caster at once, which is a configuration
+change rather than a blink.
+
+Two interpretation caveats. The counters read the *candidate records* of the
+frame, so they live under `candidates_requested_` (the candidate counter, which
+the depth replay implies) and see only what the engine submitted this frame:
+live-retained draws issued from the store are not candidate records, so a
+caster that stops being submitted and is carried by retention instead reads as
+leaving every cascade — its shadow does not blink, only its admission path
+changed. Cost: `caster_key` is now built for every recorded caster while
+cascades are on (previously only under the importance order) — a handful of
+multiplies and xors per recorded candidate, bounded by the per-frame cap, on
+the scene-end record path and not per draw; not separately benchmarked.
+
+**Apply cost.** The shadow frame line `shadow_replay_depth` ends with
+`apply_us=` (the QPC around `SunShadowApplyPass`'s submission,
+`execute`/`execute_cascades` only) and `apply_cascades=` (the cascade maps the
+quad actually sampled, 0 on a skipped or absent-map frame), so the replay's
+`us=` and the apply's cost are read from one line. The apply runs after the
+replay of the same frame, so the pair describes the *previous* frame's apply
+and reads `apply_us=0.0 apply_cascades=0` whenever that frame ran no apply at
+all — never a stale repeat. Both fields appear under the same condition that
+runs the pass (`sun_apply_requested_ && sun_shadow_enabled_`): one branch, and
+nothing on the line while the lane is off or the shadows are switched off at
+the A/B hotkey.
+
+Parsers: `tools/analysis/shadow_replay_candidates.py` (`flip`, `period2`,
+`flip_untracked`, `flip_reset` in the `cascades` dict; `flip_total`,
+`period2_total`, `period2_frames`, `flip_untracked_total`, `flip_reset_frames`
+in the summary) and `verification/probe/shadow_replay_depth.py` (`apply`), with
+host tests in `verification/analysis/` (parser groups, and the table's
+semantics — seeding, departure, period-2, shape change, probe saturation — in
+the pure-header driver of `test_shadow_cascades.py`).
+
 Unverified: native Windows; the game (no census run yet), hence `eps`,
 `age_cap`, the transit behaviour and whether `0x0046d080`'s batches arrive as managed draws.
 

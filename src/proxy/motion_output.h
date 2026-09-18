@@ -1125,6 +1125,13 @@ private:
     HRESULT sun_apply_attach_result_=S_FALSE;
     std::uint64_t sun_apply_frame_=~std::uint64_t(0);
     unsigned sun_apply_logs_=0;
+    // Sun-shadow apply cost, as the shadow frame line reports it (apply_us=,
+    // apply_cascades=): the QPC around the pass's submission and the number of
+    // cascade maps the quad actually sampled. The apply runs after the replay of
+    // the same frame, so the frame line carries the previous frame's apply, and
+    // zeros when that frame ran no apply (`sun_apply_frame_` says which).
+    double sun_apply_us_=0.;
+    unsigned sun_apply_sampled_=0;
     void run_sun_shadow_apply() noexcept;
     bool ensure_sun_shadow_apply() noexcept;
     D3DFORMAT sun_lane_depth_formats_[3]{};
@@ -1223,6 +1230,8 @@ private:
     std::unique_ptr<std::uint16_t[]> candidate_select_scratch_; // importance drop order: one index per record (allocated while the option is on)
     std::unique_ptr<shadow_caster_class::Ring> candidate_class_ring_; // static-only cascades: the per-draw anchor ring, sized to the record capacity (allocated while the option is on)
     std::unique_ptr<shadow_replay::KeptEntry[]> candidate_kept_last_;  // importance order: last frame's kept casters (two slots per record; allocated while the option is on)
+    std::unique_ptr<shadow_replay::FlipEntry[]> candidate_flip_entries_; // cascade-membership flips: the previous frame's mask per caster key (two slots per record; allocated while cascades are on)
+    shadow_replay::FlipTable candidate_flips_;                           // the table over that storage (detached while cascades are off: no work, no fields)
     unsigned depth_cascade_draw_caps_[renderer::shadow_cascade_max]{}; // the per-cascade bound the draw path applies (the cap, or the record capacity under the importance order)
     std::uint8_t depth_cascade_static_mask_=0; // bit i: cascade i admits static casters only (none by default)
     std::uint8_t depth_cascade_backface_mask_=0; // bit i: cascade i replays back faces (ShadowCascadeSet::backface_mask; the texel law by default)
