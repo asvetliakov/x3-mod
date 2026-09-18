@@ -74,6 +74,17 @@ inline bool parse_px(const char* text, double* out) {
     if (*p != '\0' || digits == 0) return false;
     *out = value; return true;
 }
+// Scope of the cull (X3M_CULL_SMALL_PARTS_SCOPE): `bodies` (the default, also
+// when the variable is unset) culls only nodes without a parent link
+// (`[node+0x18] == 0`, the test the displaced instruction performs: whole
+// objects), `all` every node below the threshold. Anything else is refused.
+enum class Scope : unsigned char { bodies = 0, all = 1 };
+inline bool parse_scope(const char* text, Scope* out) {
+    if (!text || !*text || !std::strcmp(text, "bodies")) { *out = Scope::bodies; return true; }
+    if (!std::strcmp(text, "all")) { *out = Scope::all; return true; }
+    return false;
+}
+inline const char* scope_name(Scope scope) { return scope == Scope::all ? "all" : "bodies"; }
 inline bool valid_px(double px) { return std::isfinite(px) && px > px_min && px <= px_max; }
 // The pixel scale of `s`: px = s * m00 * width / 1280 (tools/analysis/cull_census.py,
 // the census bucket rule; s is the projected radius at a 640-wide reference,
@@ -113,8 +124,21 @@ inline std::int32_t threshold_for(double px, float m00, unsigned width) {
 //   58  ff 25 abs32         JMP  [next]                 ; continue: the tail (displaced MOV+TEST, jump back to 0x0047d2a7)
 // No call, no Win32, no floating point: LastError and the x87 stack are
 // untouched by construction; EFLAGS are dead on both exits.
-constexpr unsigned stub_length = 64, stub_cull = 47, stub_continue = 58;
-inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t culled, std::uint32_t cull_target, std::uint32_t next_slot, unsigned char out[stub_length]) {
+//
+// Scope `bodies` keeps the layout and replaces bytes 27..46: the replayed
+// parent test decides, a parented node continues, a parentless one is culled
+// with EAX/ECX exactly as the engine's JE path leaves them (ECX = 0, EAX = own):
+//   22  8b 4f 18            MOV  ECX,[EDI+0x18]
+//   25  85 c9               TEST ECX,ECX
+//   27  75 1d               JNE  continue               ; has a parent: the engine's own compare. The tail
+//                                                       ;   re-executes the displaced MOV+TEST, so ECX and
+//                                                       ;   EFLAGS reach 0x0047d2a7 as native; EAX untouched
+//   29  8b 87 d8 01 00 00   MOV  EAX,[EDI+0x1d8]
+//   35  eb 0a               JMP  cull
+//   37  cc * 10
+// One extra taken-or-not branch on nodes already below the threshold only.
+constexpr unsigned stub_length = 64, stub_cull = 47, stub_continue = 58, stub_scope_branch = 27;
+inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t culled, std::uint32_t cull_target, std::uint32_t next_slot, unsigned char out[stub_length], Scope scope) {
     out[0] = 0x83; out[1] = 0x3d; std::memcpy(out + 2, &threshold, 4); out[6] = 0x00;
     out[7] = 0x7e; out[8] = static_cast<unsigned char>(stub_continue - 9);
     out[9] = 0x50;
@@ -133,5 +157,11 @@ inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t
     out[47] = 0xff; out[48] = 0x05; std::memcpy(out + 49, &culled, 4);
     out[53] = 0xe9; const std::uint32_t rel = cull_target - (at + 58); std::memcpy(out + 54, &rel, 4);
     out[58] = 0xff; out[59] = 0x25; std::memcpy(out + 60, &next_slot, 4);
+    if (scope == Scope::bodies) {
+        out[27] = 0x75; out[28] = static_cast<unsigned char>(stub_continue - 29);
+        out[29] = 0x8b; out[30] = 0x87; out[31] = 0xd8; out[32] = 0x01; out[33] = 0x00; out[34] = 0x00;
+        out[35] = 0xeb; out[36] = static_cast<unsigned char>(stub_cull - 37);
+        std::memset(out + 37, 0xcc, stub_cull - 37);
+    }
 }
 }

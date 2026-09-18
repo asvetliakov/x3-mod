@@ -25,8 +25,11 @@ bool shutdown();    // restores the site (dynamic-unload detach only); true when
 // copy of the engine bytes), claims it, emits the stub and chains it in; the
 // production initialize() passes the engine site. cull_target is the address
 // of the engine's `and [edi+0x12c],~2` (window offset 47).
-bool install_at(std::uintptr_t site, std::uintptr_t cull_target);
+// bodies_only: the stub culls only parentless nodes (`[node+0x18] == 0`;
+// X3M_CULL_SMALL_PARTS_SCOPE=bodies, the default); false = every node (`all`).
+bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool bodies_only);
 const char* state();
+const char* scope();                // "bodies" or "all": the installed stub's scope (the default before an install)
 std::uintptr_t stub_address();
 double requested_px();
 bool set_px(double px);             // the setting without a relaunch (fixture and diagnostics); false outside the band

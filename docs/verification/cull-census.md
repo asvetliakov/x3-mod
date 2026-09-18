@@ -42,3 +42,17 @@ limit = 0 (no per-node threshold), top model `35ba45c3` 150 draws at LOD 0. The 
 proxy (50–65 % under 2 px) overstated the under-2 px share by 6–20 points and matched the under-4 px share.
 Only one vantage was captured (both frames the same static view). Lever ratified: `--cull-small-parts <px>`
 (engine patch) for run 43 at 2 and 4 px.
+
+**Scope and the model join (2026-09-19).** `Entry` records the node's parent link (`+0x18`, 60 bytes per entry) and
+`classify` takes cull_small_parts' scope: under `bodies` a parented node below the threshold is never named
+`culled_small`; `culled_small` rows end with ` scope=all|bodies` (appended after `verdict=`, the existing row
+parsers are unaffected). `tools/analysis/cull_census.py` lists the models of kept / `culled_small` nodes under
+`--bodies-px` (default 4) with body flags (`flags_in & 0x09000000`), radius class, D range, nodes and draws.
+Gap: the repository has no model-id -> object-type table (the game's type files are not extracted), so bodies are
+named by model id and flag class only, and the rows print no parent link, so the flag class stands in for the
+stub's `[node+0x18] == 0` test. Notes for reading a census beside `--cull-small-parts`: a static caster culled
+by the stub keeps casting under `--shadow-caster-retention`; the script occluder list `0x00488aef`/`0x004886a0`
+loses culled nodes; the `cull_small_parts_value` line is capped at 16 and `m00` lags a zoom by one frame;
+`camera_state::reset()` is unreachable with only that option on. The small-parts site verifier is 19/19
+(18/18 before the scope check; "16/16" in earlier small-parts records was stale). Host:
+`verification.analysis.test_cull_census` + `test_cull_small_parts` 26 tests OK.

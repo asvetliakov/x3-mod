@@ -45,7 +45,7 @@ int main() {
     double px = 0;
     check(parse_px("2", &px) && px == 2.0 && parse_px("+2.5", &px) && px == 2.5 && parse_px(".5", &px) && px == 0.5 && !parse_px("2,5", &px) && !parse_px("1e1", &px) && !parse_px("", &px) && !parse_px(nullptr, &px), "parser");
     check(valid_px(64.0) && !valid_px(64.01) && !valid_px(0.0), "band");
-    unsigned char s[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x0047d2c3, 0x10000044, s);
+    unsigned char s[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x0047d2c3, 0x10000044, s, Scope::all);
     std::uint32_t v = 0;
     std::memcpy(&v, s + 2, 4); check(s[0] == 0x83 && s[1] == 0x3d && v == 0x20000000 && s[6] == 0 && s[7] == 0x7e && s[8] == stub_continue - 9, "cmp dword [threshold],0; jle continue");
     std::memcpy(&v, s + 11, 4); check(s[9] == 0x50 && s[10] == 0xa1 && v == 0x20000000 && !std::memcmp(s + 15, "\x39\x44\x24\x30\x58\x7d", 6) && s[21] == stub_continue - 22, "push eax; mov eax,[threshold]; cmp [esp+0x30],eax; pop eax; jge continue");
@@ -53,6 +53,12 @@ int main() {
     std::memcpy(&v, s + 49, 4); check(s[47] == 0xff && s[48] == 0x05 && v == 0x20000004, "inc dword [culled]");
     std::memcpy(&v, s + 54, 4); check(s[53] == 0xe9 && 0x1000003a + v == 0x0047d2c3, "jmp cull target");
     std::memcpy(&v, s + 60, 4); check(s[58] == 0xff && s[59] == 0x25 && v == 0x10000044, "jmp [next]");
+    unsigned char b[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x0047d2c3, 0x10000044, b, Scope::bodies);
+    check(!std::memcmp(b, s, stub_scope_branch) && !std::memcmp(b + stub_cull, s + stub_cull, stub_length - stub_cull), "bodies stub: only bytes 27..46 differ");
+    check(!std::memcmp(b + 22, site, site_length) && b[27] == 0x75 && 29 + b[28] == stub_continue && !std::memcmp(b + 29, "\x8b\x87\xd8\x01\x00\x00\xeb", 7) && 37 + b[36] == stub_cull && b[37] == 0xcc && b[46] == 0xcc, "bodies stub: displaced test; jne continue; mov eax,[edi+0x1d8]; jmp cull");
+    Scope sc = Scope::all;
+    check(parse_scope(nullptr, &sc) && sc == Scope::bodies && parse_scope("all", &sc) && sc == Scope::all && parse_scope("bodies", &sc) && sc == Scope::bodies && !parse_scope("All", &sc) && !parse_scope("parts", &sc), "scope parser");
+    check(!std::strcmp(scope_name(Scope::bodies), "bodies") && !std::strcmp(scope_name(Scope::all), "all"), "scope names");
     check(std::memcmp(window + site_offset, site, site_length) == 0 && window[cull_offset] == 0x83 && window[cull_offset + 1] == 0xa7 && window[window_length - 2] == 0xeb && window[window_length - 1] == 0x05, "site and cull bytes inside the window");
     check(window_va + site_offset == site_va && site_va + site_length == next_va && window_va + cull_offset == cull_va && window_va + window_length + 5 == after_cull_va, "address relations");
     using namespace x3m::cull_census::core;
@@ -61,6 +67,9 @@ int main() {
     e.limit = 8; check(classify(e, 3) == Verdict::culled_size, "census: the engine's size cull named first");
     e.limit = 0; e.measure = 0; e.s = 1; check(classify(e, 3) == Verdict::culled_min, "census: the engine's degenerate cull named first");
     e.flags_in = 0x4001002; check(classify(e, 3) == Verdict::culled_small, "census: a 0x4000000 node below the threshold is the stub's");
+    check(classify(e, 3, true) == Verdict::culled_small, "census, scope bodies: a parentless node below the threshold is the stub's");
+    e.parent = 0x1000; check(classify(e, 3, true) == Verdict::culled_other && classify(e, 3, false) == Verdict::culled_small, "census, scope bodies: a parented node is never the stub's");
+    e.parent = 0;
     e.flags_out = 0x1002; check(classify(e, 3) == Verdict::kept, "census: kept stays kept");
     check(!std::strcmp(verdict_name(Verdict::culled_small), "culled_small") && verdict_count == 6, "verdict name");
     std::printf("cull_small_parts_core checks_failed=%u\n", failures);
@@ -98,7 +107,7 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertFalse(report['checks']['exe_identity'])
         self.assertEqual(report['site_sources'], ['0x47d28c', '0x47d297'])
         self.assertEqual(report['interior_branches'], [])
-        self.assertEqual(len(report['checks']), 18)
+        self.assertEqual(len(report['checks']), 19)
 
     def test_changed_bytes_and_branches_refused(self):
         cases = {
@@ -143,8 +152,14 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertEqual(stub[47:53], b'\xff\x05' + struct.pack('<I', 0x20000004))
         self.assertEqual(struct.unpack('<i', stub[54:58])[0], probe.CULL_VA - (0x10000000 + 58))
         self.assertEqual(stub[58:64], b'\xff\x25' + struct.pack('<I', 0x10000044))
+        bodies = probe.encode_stub(0x10000000, 0x20000000, 0x20000004, probe.CULL_VA, 0x10000044, scope='bodies')
+        self.assertEqual((bodies[:27], bodies[47:]), (stub[:27], stub[47:]))
+        self.assertEqual(bodies[27:47], bytes.fromhex('751d 8b87d8010000 eb0a'.replace(' ', '')) + b'\xcc' * 10)
+        self.assertTrue(probe.scope_stub_ok())
         with self.assertRaises(ValueError):
             probe.encode_stub(1 << 32, 0, 0, 0, 0)
+        with self.assertRaises(ValueError):
+            probe.encode_stub(0, 0, 0, 0, 0, scope='parts')
         m00 = struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0]
         self.assertEqual((probe.threshold_for(2, m00, 1280), probe.threshold_for(4, m00, 1280), probe.threshold_for(8, m00, 1280)), (3, 6, 11))
         self.assertEqual(probe.threshold_for(2, 0.8, 1920), 2)
@@ -161,16 +176,28 @@ class CullSmallPartsSite(unittest.TestCase):
                 self.assertEqual(threshold, expected['threshold_s'])
                 flipped = [r for r in rows if r[8] == 0 and r[0] < threshold]
                 self.assertEqual((len(flipped), sum(r[9] for r in flipped)), (expected['nodes'], expected['draws']))
+        # The rows carry no parent link: `bodies` is pinned as the fixture assigns parents (proven by limit > thr_1d8, else no body flag).
+        mask = int(document['body_flags_mask'], 16)
+        self.assertEqual(mask, 0x09000000)
+        for px, expected in document['expected'].items():
+            with self.subTest(px=px, scope='bodies'):
+                flipped = [r for r in rows if r[8] == 0 and r[0] < expected['threshold_s'] and r[7] & mask and not r[6] > r[5]]
+                self.assertEqual((len(flipped), sum(r[9] for r in flipped)), (expected['bodies_nodes'], expected['bodies_draws']))
+        self.assertEqual([(document['expected'][px]['bodies_nodes'], document['expected'][px]['bodies_draws']) for px in ('2', '4', '8')], [(89, 395), (120, 450), (131, 471)])
+        self.assertEqual(sum(1 for r in rows if r[6] > r[5] and r[8] == 0 and r[0] < 11), 0)
         self.assertEqual((document['expected']['2']['draws'], document['expected']['4']['draws'], document['expected']['8']['draws']), (403, 458, 479))
         self.assertTrue(all(r[7] & 2 for r in rows))
 
     def test_line_parsers(self):
         row = probe.parse_log_line('00:00:01.234 cull_small_parts requested=2 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active')
-        self.assertEqual(row, {'requested': '2', 'px': 2.0, 'patched': True, 'reason': 'ok', 'site': 0x47d2a2, 'cull': 0x47d2c3, 'write': 'atomic', 'stub': 0x0a100000, 'camera': 'active'})
+        self.assertEqual(row, {'requested': '2', 'px': 2.0, 'patched': True, 'reason': 'ok', 'site': 0x47d2a2, 'cull': 0x47d2c3, 'write': 'atomic', 'stub': 0x0a100000, 'camera': 'active', 'scope': None})
+        self.assertEqual(probe.parse_log_line(' cull_small_parts requested=2 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=bodies')['scope'], 'bodies')
         self.assertIsNone(probe.parse_log_line('cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch'))
         self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3'), {'px': 2.0, 'm00': 0.799999952, 'width': 1280, 'threshold': 3})
         frame = probe.parse_frame_line('cull_small_parts_frame device=1 frame=4991 px=2 threshold=3 culled=1147 m00=0.799999952 width=1280')
         self.assertEqual((frame['frame'], frame['threshold'], frame['culled'], frame['width']), (4991, 3, 1147, 1280))
+        self.assertIsNone(frame['scope'])
+        self.assertEqual(probe.parse_frame_line('cull_small_parts_frame device=1 frame=4991 px=2 threshold=3 culled=806 m00=0.799999952 width=1280 scope=bodies')['scope'], 'bodies')
         self.assertIsNone(probe.parse_frame_line('cull_small_parts_value px=2 m00=0.8 width=1280 threshold=3'))
 
     def test_core_compiled(self):
@@ -216,9 +243,10 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
     def test_absent_or_zero_drops_the_variable_even_when_inherited(self):
         with tempfile.TemporaryDirectory() as directory:
             for args in ((), ('--cull-small-parts', '0')):
-                code, output, _ = self.launch(directory, *args, inherited={'X3M_CULL_SMALL_PARTS_PX': '2'})
+                code, output, _ = self.launch(directory, *args, inherited={'X3M_CULL_SMALL_PARTS_PX': '2', 'X3M_CULL_SMALL_PARTS_SCOPE': 'all'})
                 self.assertEqual(code, 0)
                 self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', json.loads(output)['env'])
+                self.assertNotIn('X3M_CULL_SMALL_PARTS_SCOPE', json.loads(output)['env'])
 
     def test_dry_run_carries_the_value(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -227,7 +255,24 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             self.assertEqual(code, 0, error)
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
-            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_CULL_SMALL_PARTS_PX': '2.0000'})
+            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_SCOPE': 'bodies'})
+
+    def test_scope_forwarded_and_default_overrides_inherited(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for args, expected in ((('--cull-small-parts-scope', 'all'), 'all'), (('--cull-small-parts-scope', 'bodies'), 'bodies'), ((), 'bodies')):
+                code, output, error = self.launch(directory, '--cull-small-parts', '2', *args, inherited={'X3M_CULL_SMALL_PARTS_SCOPE': 'all'})
+                self.assertEqual(code, 0, error)
+                self.assertEqual(json.loads(output)['env']['X3M_CULL_SMALL_PARTS_SCOPE'], expected)
+
+    def test_scope_refused_without_the_cull_or_with_an_unknown_value(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for args in (('--cull-small-parts-scope', 'all'), ('--cull-small-parts', '0', '--cull-small-parts-scope', 'bodies')):
+                code, _, error = self.launch(directory, *args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('--cull-small-parts-scope requires a non-zero --cull-small-parts', error)
+            code, _, error = self.launch(directory, '--cull-small-parts', '2', '--cull-small-parts-scope', 'parts')
+            self.assertEqual(code, 2)
+            self.assertIn('invalid choice', error)
 
     def test_out_of_range_refused(self):
         with tempfile.TemporaryDirectory() as directory:

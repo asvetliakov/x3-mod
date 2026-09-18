@@ -30,6 +30,7 @@ Entry* ring_ = nullptr;
 // loads and stores plain words without inviting the compiler to cache them.
 std::atomic<std::uint32_t> count_{0}, overflow_{0}, unmeasured_{0}, exited_{0};
 std::uint32_t pending_node_ = 0, pending_index_ = no_index;
+bool small_bodies_only_ = false;   // cull_small_parts' scope for the frame being recorded
 std::int32_t small_threshold_ = 0; // cull_small_parts' threshold for the frame being recorded (0 = none)
 
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
@@ -95,6 +96,7 @@ extern "C" void x3m_cull_census_measure(std::uint32_t node, std::int32_t measure
     e.s = s; e.measure = measure; e.d = d; e.radius = std::int32_t(n[radius_offset / 4]);
     e.thr_1dc = std::int32_t(n[threshold_1dc_offset / 4]); e.thr_1d8 = std::int32_t(n[threshold_1d8_offset / 4]);
     const std::uint32_t parent = n[parent_offset / 4];
+    e.parent = parent;
     e.limit = size_limit(e.thr_1d8, parent != 0, parent ? std::int32_t(reinterpret_cast<const std::uint32_t*>(parent)[threshold_1d8_offset / 4]) : 0);
     e.flags_in = n[flags12c_offset / 4]; e.flags_out = 0; e.lod = 0; e.exited = 0;
     pending_index_ = index;
@@ -187,7 +189,7 @@ void begin_frame(bool capture) {
     pending_node_ = 0; pending_index_ = no_index;
     x3m_cull_census_enabled = capture ? 1 : 0;
 }
-void note_small_threshold(std::int32_t threshold) { small_threshold_ = threshold; }
+void note_small_threshold(std::int32_t threshold, bool bodies_only) { small_threshold_ = threshold; small_bodies_only_ = bodies_only; }
 Stats stats() {
     Stats s{};
     s.entries = count_.load(std::memory_order_relaxed); s.overflow = overflow_.load(std::memory_order_relaxed);
@@ -206,9 +208,12 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
             device, frame, (unsigned long)entries, (unsigned long)s.overflow, (unsigned long)s.unmeasured, (unsigned long)s.exited, ring_size);
         for (std::uint32_t i = 0; i < entries && ring_; ++i) {
             const Entry& e = ring_[i];
-            log("cull_census device=%llu frame=%llu view=%08lx node=%08lx model=%08lx s=%ld measure=%ld d=%ld radius=%ld thr_1dc=%ld thr_1d8=%ld limit=%ld flags_in=%08lx flags_out=%08lx lod=%ld verdict=%s",
+            // A culled_small row names the scope that culled it (appended: the row parsers anchor on the fields before it).
+            const Verdict verdict = classify(e, small_threshold_, small_bodies_only_);
+            log("cull_census device=%llu frame=%llu view=%08lx node=%08lx model=%08lx s=%ld measure=%ld d=%ld radius=%ld thr_1dc=%ld thr_1d8=%ld limit=%ld flags_in=%08lx flags_out=%08lx lod=%ld verdict=%s%s",
                 device, frame, (unsigned long)e.view, (unsigned long)e.node, (unsigned long)e.model, (long)e.s, (long)e.measure, (long)e.d, (long)e.radius,
-                (long)e.thr_1dc, (long)e.thr_1d8, (long)e.limit, (unsigned long)e.flags_in, (unsigned long)e.flags_out, (long)e.lod, verdict_name(classify(e, small_threshold_)));
+                (long)e.thr_1dc, (long)e.thr_1d8, (long)e.limit, (unsigned long)e.flags_in, (unsigned long)e.flags_out, (long)e.lod, verdict_name(verdict),
+                verdict == Verdict::culled_small ? (small_bodies_only_ ? " scope=bodies" : " scope=all") : "");
         }
     }
     count_.store(0, std::memory_order_relaxed); overflow_.store(0, std::memory_order_relaxed);

@@ -440,11 +440,52 @@ read once per frame from the engine's projection buffer through the
 frame vanilla with threshold 0), the width from the back buffer at
 CreateDevice/Reset. The engine's measure in this session was `r·640/D` as
 well (`[0x608518]+0x5c = 640`), so the rows replay exactly. Culling by `s`
-alone treats an antenna (small radius, long) like a sphere of its radius: the
-engine's own `+0x1d8` cull has the same bias, so nothing new is introduced,
-but the popping risk is real for thin parts.
+alone treats a node as a sphere of its radius `+0xa0`. Correction (the earlier
+sentence here had it inverted): taking `+0xa0` as the bounding radius, a long
+thin part such as an antenna has a *large* radius for its visible area, so it
+is kept until its whole length is under the threshold, not culled early; the
+parts that go first are the compact ones (clamps, lamps, small pods), and the
+visible risk is the loss of their glow while it still reads as a few pixels.
+The engine's own `+0x1d8` cull has the same sphere bias. That `+0xa0` bounds
+the mesh was not measured separately.
 
-**Verified.** Site verifier 16/16 on the installed EXE; CPU fixture 78 checks
+**Scope** (`X3M_CULL_SMALL_PARTS_SCOPE`, `--cull-small-parts-scope all|bodies`,
+default `bodies`). `bodies` culls only nodes without a parent link
+(`[node+0x18] == 0`), the test the displaced `mov ecx,[edi+0x18]; test ecx,ecx`
+already performs; `all` is the behaviour described above. The scope is fixed at
+install and selects the emitted stub, so there is no per-node scope read: the
+`bodies` stub keeps the 64-byte layout and replaces bytes 27..46 with `jne
+continue; mov eax,[edi+0x1d8]; jmp cull` (int3 padding). A parented node below
+the threshold leaves through the same `jmp [next]` as every kept node: the tail
+re-executes the displaced `mov`/`test`, so ECX and EFLAGS reach `0047d2a7`
+exactly as native and EAX is not written; a parentless one arrives at
+`0047d2c3` with ECX = 0 and EAX = `+0x1d8`, as the engine's own `je` path
+leaves them. Cost: one extra branch, only on nodes already below the threshold.
+An unknown scope value fails closed (`reason=invalid_scope`, nothing patched).
+Rationale (user, 2026-09-18): a whole station of 2 px is invisible anyway,
+while the glowing sub-parts of a nearer station are a few px and visible; the
+review of the run131 replay found the 2 px class to be mostly whole distant
+objects (89 of 97 nodes body-flagged `0x1000000`/`0x8000000`, 395 of 403
+draws). Run 43 B flies `bodies` against `all`. The census rows carry no parent
+link, so the 89 / 395 (4 px: 120 / 450) figures are the fixture's parent
+assignment (proven parent when `limit > +0x1d8`, otherwise no body flag), not a
+measured parentless set; census rows now record `+0x18` for the verdict and
+print `scope=` on `culled_small` rows.
+
+**Further consequences (second review, 2026-09-18).** With
+`--shadow-caster-retention` a culled static caster keeps casting: the retention
+store replays it although the node left the pass. The script occluder list
+built at `0x00488aef` / `0x004886a0` is the one non-render consumer of the
+renderable bit and loses culled nodes. The `m00` latch follows a zoom with one
+frame of lag (read at frame begin, from the previous frame's last activated
+view) and its `cull_small_parts_value` log line is capped at 16 per session.
+`camera_state::reset()` is called only from the motion-output Reset path, so it
+is unreachable with only this option on; `cull_small_parts::after_reset`
+disarms the threshold until the next `begin_frame` re-reads the live buffer.
+
+**Verified.** Site verifier 19/19 on the installed EXE (18/18 before the scope's
+`encoder_bodies` check; an earlier "16/16" here was stale); CPU fixture 113
+checks with the scope cases (78 before). Earlier record: CPU fixture 78 checks
 (native fidelity of all 1,214 rows, 403 / 458 / 479 draws flip at 2 / 4 / 8 px
 and nothing else changes, census + stub together, registers/ESP/x87/LastError,
 rollback, refusals). Cost in the fixture harness: 0.235 µs per 12-node pass

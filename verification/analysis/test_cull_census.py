@@ -57,7 +57,7 @@ int main() {
     std::memcpy(&v, x + 26, 4); check(!std::memcmp(x + 18, "\x83\xc4\x04\x5a\x59\x58\xff\x25", 8) && v == 0x10000120, "exit stub: add esp,4; pops; jmp [next]");
     check(std::memcmp(measure_window + measure_site_offset, measure_site, site_length) == 0 && std::memcmp(exit_window + exit_site_offset, exit_site, site_length) == 0, "site bytes inside the windows");
     check(measure_window_va + measure_site_offset == measure_site_va && measure_site_va + site_length == measure_next_va && exit_window_va + exit_site_offset == exit_site_va && exit_site_va + site_length == exit_next_va, "address relations");
-    check(sizeof(Entry) == 56 && ring_size == 8192, "entry size and ring bound");
+    check(sizeof(Entry) == 60 && ring_size == 8192, "entry size and ring bound (the parent link included)");
     std::printf("cull_census_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
@@ -241,6 +241,24 @@ class CullCensusSummary(unittest.TestCase):
         self.assertIn('frame 3494: view=34766bf8 nodes=4', text)
         self.assertIn('| >16 | 1 | 1 | 0 | 2 | 800 | 0.047 |', text)
         self.assertIn('under_4px: 1 draws (0.024 ms)', text)
+
+    def test_model_join_names_flags_radius_class_and_scope(self):
+        summary = load_summariser()
+        extra = ('cull_census device=1 frame=3494 view=34766bf8 node=34763300 model=000050ed s=2 measure=4 d=2600000 radius=30000 thr_1dc=0 thr_1d8=0 limit=0 '
+                 'flags_in=01001002 flags_out=01001000 lod=0 verdict=culled_small scope=bodies\n')
+        parsed = summary.parse((SYNTHETIC_LOG + extra).splitlines())
+        self.assertEqual(parsed['rows'][3494][-1]['scope'], 'bodies')
+        self.assertEqual(parsed['rows'][3494][0]['flags_in'], 0x1002)
+        frame = summary.summarize(parsed)['frames'][3494]
+        self.assertEqual(frame['bodies_px'], 4.0)
+        models = {m['model']: m for m in frame['models']}
+        self.assertEqual(set(models), {0x50e9, 0x50ed})            # s=3 kept (2.4 px) and the culled_small body; culled_size/other rows are the engine's
+        self.assertEqual((models[0x50ed]['body_flags'], models[0x50ed]['radius_class'], models[0x50ed]['verdict'], models[0x50ed]['scope'], models[0x50ed]['draws']), (0x1000000, '>20k', 'culled_small', 'bodies', 0))
+        self.assertEqual((models[0x50e9]['body_flags'], models[0x50e9]['radius_class'], models[0x50e9]['draws'], models[0x50e9]['scope']), (0, '<1k', 1, None))
+        text = summary.render(summary.summarize(parsed))
+        self.assertIn('| 000050ed | 01000000 | >20k | 30000 | 2600000-2600000 | 1 | 0 | culled_small | bodies |', text)
+        self.assertIn('no model -> object-type table in the repository', text)
+        self.assertEqual(summary.summarize(parsed, bodies_px=2.0)['frames'][3494]['models'][0]['model'], 0x50ed)
 
     def test_view_and_frame_selection(self):
         summary = load_summariser()

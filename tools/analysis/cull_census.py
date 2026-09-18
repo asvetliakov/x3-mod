@@ -10,7 +10,14 @@ main view (the view with the most rows, or --view) by `s` in the engine's
 frame's projection row, width from the rt0 surface row; both overridable),
 joins the frame's `object_context`/`draw` rows on the node pointer to count
 draws and triangles per bucket, and prices the buckets at --us-per-draw
-(docs/architecture/engine-frame-time.md 2.3). Read-only; streams the log.
+(docs/architecture/engine-frame-time.md 2.3). It also names what sits under
+--bodies-px: the repository has no model-id -> object-type table (the game's
+type files are not extracted), so each model under the threshold is listed by
+its model id with the node's body flags (`flags_in & 0x09000000`: 0x1000000 =
+body tree built, 0x8000000 = body cache early-out, loading-profile-run1.md),
+a radius class, distance range, draws and, on `culled_small` rows, the
+cull_small_parts scope. The rows carry no parent link, so "body" here is the
+flag class, not the stub's `[node+0x18] == 0` test. Read-only; streams the log.
 """
 import argparse
 from collections import defaultdict
@@ -23,7 +30,10 @@ EDGES = (1, 2, 4, 8, 16)
 BUCKETS = ('<1', '1-2', '2-4', '4-8', '8-16', '>16')
 FRAME_RE = re.compile(r'\bcull_census_frame device=(\d+) frame=(\d+) entries=(\d+) overflow=(\d+) unmeasured=(\d+) exited=(\d+) ring=(\d+)')
 ROW_RE = re.compile(r'\bcull_census device=\d+ frame=(\d+) view=([0-9a-f]{8}) node=([0-9a-f]{8}) model=([0-9a-f]{8}) s=(-?\d+) measure=(-?\d+) d=(-?\d+) '
-                    r'radius=(-?\d+) thr_1dc=(-?\d+) thr_1d8=(-?\d+) limit=(-?\d+) flags_in=[0-9a-f]{8} flags_out=[0-9a-f]{8} lod=(-?\d+) verdict=(\w+)')
+                    r'radius=(-?\d+) thr_1dc=(-?\d+) thr_1d8=(-?\d+) limit=(-?\d+) flags_in=([0-9a-f]{8}) flags_out=[0-9a-f]{8} lod=(-?\d+) verdict=(\w+)(?: scope=(\w+))?')
+BODY_FLAGS = 0x09000000
+RADIUS_EDGES = (1000, 5000, 20000)
+RADIUS_CLASSES = ('<1k', '1k-5k', '5k-20k', '>20k')
 CONTEXT_RE = re.compile(r'\bobject_context device=\d+ frame=(\d+) index=(\d+) .*?\bnode=([0-9a-f]{8}) .*?\bmodel=([0-9a-f]{8}) lod=([0-9a-f]{8})')
 DRAW_RE = re.compile(r'\bdraw device=\d+ frame=(\d+) index=(\d+) kind=\w+ topology=\d+ primitives=(\d+)')
 SURFACE_RE = re.compile(r'\bsurface role=rt0 .*?\bwidth=(\d+) height=(\d+)')
@@ -57,7 +67,7 @@ def parse(lines):
                 frame = int(m.group(1))
                 rows[frame].append({'view': int(m.group(2), 16), 'node': int(m.group(3), 16), 'model': int(m.group(4), 16), 's': int(m.group(5)),
                                     'measure': int(m.group(6)), 'd': int(m.group(7)), 'radius': int(m.group(8)), 'thr_1dc': int(m.group(9)),
-                                    'thr_1d8': int(m.group(10)), 'limit': int(m.group(11)), 'lod': int(m.group(12)), 'verdict': m.group(13)})
+                                    'thr_1d8': int(m.group(10)), 'limit': int(m.group(11)), 'flags_in': int(m.group(12), 16), 'lod': int(m.group(13)), 'verdict': m.group(14), 'scope': m.group(15)})
                 continue
             m = FRAME_RE.search(line)
             if m:
@@ -87,7 +97,7 @@ def parse(lines):
     return {'frames': frames, 'rows': dict(rows), 'context': context, 'primitives': primitives, 'width': width, 'm00': m00, 'm00_by_frame': m00_by_frame}
 
 
-def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=None):
+def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=None, bodies_px=4.0):
     """Bucket table per frame and the per-frame average over the selected frames."""
     width = width or parsed['width'] or 1280
     selected = sorted(f for f in parsed['rows'] if frames is None or frames[0] <= f <= frames[1])
@@ -107,10 +117,21 @@ def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=
         table = [{'bucket': name, 'nodes': 0, 'kept': 0, 'culled': 0, 'draws': 0, 'tris': 0} for name in BUCKETS]
         px_table = [{'bucket': name, 'nodes': 0, 'kept': 0, 'draws': 0, 'tris': 0} for name in BUCKETS]
         joined_nodes = set()
+        models = {}
         for r in rows:
             if r['view'] != main_view:
                 continue
             draws = draws_by_node.get(r['node'], [])
+            # The model join: nodes that would draw (kept) or that the small-parts stub culled, under bodies_px.
+            if r['verdict'] in ('kept', 'culled_small') and r['s'] * px_per_s < bodies_px:
+                body = r.get('flags_in', 0) & BODY_FLAGS
+                key = (r['model'], body, r['verdict'], r.get('scope'))
+                m = models.setdefault(key, {'model': r['model'], 'body_flags': body, 'verdict': r['verdict'], 'scope': r.get('scope'), 'nodes': 0, 'draws': 0,
+                                            'radius_max': 0, 'd_min': r['d'], 'd_max': r['d']})
+                m['nodes'] += 1
+                m['draws'] += len(draws)
+                m['radius_max'] = max(m['radius_max'], r['radius'])
+                m['d_min'], m['d_max'] = min(m['d_min'], r['d']), max(m['d_max'], r['d'])
             if draws:
                 joined_nodes.add(r['node'])
             for t, value in ((table, r['s']), (px_table, r['s'] * px_per_s)):
@@ -133,7 +154,10 @@ def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=
             savings[f'under_{edge}px'] = {'draws': under, 'ms': under * us_per_draw / 1000.0}
         result['frames'][frame] = {'view': main_view, 'views': dict(by_view), 'm00': frame_m00, 'px_per_s': px_per_s,
                                    'nodes': by_view[main_view], 'frame': parsed['frames'].get(frame),
-                                   'draws': frame_draws, 'joined_draws': joined_draws, 'table': table, 'px_table': px_table, 'savings': savings}
+                                   'draws': frame_draws, 'joined_draws': joined_draws, 'table': table, 'px_table': px_table, 'savings': savings,
+                                   'bodies_px': bodies_px,
+                                   'models': sorted(({**m, 'radius_class': RADIUS_CLASSES[sum(m['radius_max'] >= e for e in RADIUS_EDGES)]} for m in models.values()),
+                                                    key=lambda m: (-m['draws'], -m['nodes'], m['model']))}
     if result['frames']:
         n = len(result['frames'])
         average = [{'bucket': name, 'nodes': 0.0, 'kept': 0.0, 'draws': 0.0, 'tris': 0.0, 'ms': 0.0} for name in BUCKETS]
@@ -162,6 +186,16 @@ def render(result):
         for c in fr['px_table']:
             out.append(f"| {c['bucket']} | {c['nodes']} | {c['kept']} | {c['draws']} | {c['tris']} | {c['ms']:.3f} |")
         out.append('savings: ' + ', '.join(f"{k}: {v['draws']} draws ({v['ms']:.3f} ms)" for k, v in fr['savings'].items()))
+        models = fr.get('models') or []
+        if models:
+            flagged = [m for m in models if m['body_flags']]
+            out.append(f"models under {fr['bodies_px']:g} px (kept or culled_small): {len(models)} groups, body-flagged {sum(m['nodes'] for m in flagged)} nodes / "
+                       f"{sum(m['draws'] for m in flagged)} draws, unflagged {sum(m['nodes'] for m in models if not m['body_flags'])} nodes / "
+                       f"{sum(m['draws'] for m in models if not m['body_flags'])} draws (no model -> object-type table in the repository; no parent link in the rows)")
+            out.append('| model | body flags | radius class | max radius | D range | nodes | draws | verdict | scope |')
+            out.append('|---|---|---|---|---|---|---|---|---|')
+            for m in models:
+                out.append(f"| {m['model']:08x} | {m['body_flags']:08x} | {m['radius_class']} | {m['radius_max']} | {m['d_min']}-{m['d_max']} | {m['nodes']} | {m['draws']} | {m['verdict']} | {m['scope'] or '-'} |")
         out.append('')
     if result['average']:
         avg = result['average']
@@ -189,11 +223,12 @@ def main(argv=None):
     parser.add_argument('--us-per-draw', type=float, default=23.7)
     parser.add_argument('--width', type=int, default=None, help='viewport width (default: the rt0 surface row, else 1280)')
     parser.add_argument('--m00', type=float, default=None, help='projection m00 (default: the frame\'s projection row, else 1.0)')
+    parser.add_argument('--bodies-px', type=float, default=4.0, help='list the models of kept/culled_small nodes under this many pixels (default 4)')
     parser.add_argument('--json', action='store_true')
     args = parser.parse_args(argv)
     with open(args.log, errors='replace') as handle:
         parsed = parse(handle)
-    result = summarize(parsed, frames=args.frames, view=args.view, us_per_draw=args.us_per_draw, width=args.width, m00=args.m00)
+    result = summarize(parsed, frames=args.frames, view=args.view, us_per_draw=args.us_per_draw, width=args.width, m00=args.m00, bodies_px=args.bodies_px)
     if args.json:
         json.dump(result, sys.stdout, indent=1)
         sys.stdout.write('\n')

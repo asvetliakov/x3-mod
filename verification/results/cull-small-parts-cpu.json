@@ -2,7 +2,7 @@
  "fixture": "build/verification/cull-small-parts/cull_small_parts_fixture.exe",
  "exit_status": 0,
  "elapsed_s": 5.5,
- "checks": 78,
+ "checks": 113,
  "failures": 0,
  "failure_lines": [],
  "replay_lines": [
@@ -10,18 +10,23 @@
   "REPLAY px=2 threshold=3 flipped=97 draws=403 other_changes=0 culled_count=1147",
   "REPLAY px=4 threshold=6 flipped=128 draws=458 other_changes=0",
   "REPLAY px=8 threshold=11 flipped=139 draws=479 other_changes=0",
-  "CENSUS rows=1214 fidelity=1214 kept=67 culled_size=624 culled_min=426 culled_small=97 other=0"
+  "CENSUS rows=1214 fidelity=1214 kept=67 culled_size=624 culled_min=426 culled_small=97 other=0",
+  "REPLAY scope=bodies px=2 threshold=3 flipped=89 draws=395 other_changes=0 culled_count=806 parented_below=341",
+  "REPLAY scope=bodies px=4 threshold=6 flipped=120 draws=450 other_changes=0 culled_count=837 parented_below=341",
+  "REPLAY scope=bodies px=8 threshold=11 flipped=131 draws=471 other_changes=0 culled_count=848 parented_below=341"
  ],
  "bench_us": {
-  "native_pass": 0.2351,
-  "patched_disarmed": 0.2435,
-  "patched_armed": 0.2366
+  "native_pass": 0.2267,
+  "patched_disarmed": 0.2367,
+  "patched_armed": 0.2337
  },
  "install_lines": [
-  "cull_small_parts requested=0 px=0 patched=0 reason=disabled site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled",
-  "cull_small_parts requested=abc px=0 patched=0 reason=invalid_px site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled",
-  "cull_small_parts requested=65 px=0 patched=0 reason=invalid_px site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled",
-  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled"
+  "cull_small_parts requested=0 px=0 patched=0 reason=disabled site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=bodies",
+  "cull_small_parts requested=abc px=0 patched=0 reason=invalid_px site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=bodies",
+  "cull_small_parts requested=65 px=0 patched=0 reason=invalid_px site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=bodies",
+  "cull_small_parts requested=2 px=0 patched=0 reason=invalid_scope site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=invalid",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=bodies"
  ],
  "bottle": {
   "name": "X3",

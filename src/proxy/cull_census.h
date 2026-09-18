@@ -38,7 +38,7 @@ Stats stats();
 // The small-parts stub's threshold for the current frame (cull_small_parts,
 // 0 = none): rows whose `s` is below it and that the engine's own limit did
 // not cull are reported as `culled_small`. One plain store per frame.
-void note_small_threshold(std::int32_t threshold);
+void note_small_threshold(std::int32_t threshold, bool bodies_only = false);   // bodies_only: the stub's scope (parentless nodes only)
 }
 // The stubs' cdecl targets: integer only, no Win32 call, LastError untouched by
 // construction; EBX/ESI/EDI/EBP preserved by the ABI, the stubs save EAX/ECX/EDX.

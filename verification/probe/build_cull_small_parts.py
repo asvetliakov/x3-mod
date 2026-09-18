@@ -25,8 +25,9 @@ def render_rows(document):
              'struct RowData { std::int32_t s, measure, d, radius, thr_1dc, thr_1d8, limit; std::uint32_t flags_in; std::int32_t verdict, draws, lod; };',
              f'static const std::uint32_t kRowsM00Bits = 0x{document["projection_m00_bits"]};',
              f'static const unsigned kRowsWidth = {int(document["width"])}u, kRowsMeasureReference = {int(document["measure_reference"])}u, kRowsViewScale = {int(document["view_scale"])}u;',
-             'struct RowsExpected { double px; std::int32_t threshold_s; std::uint32_t nodes, draws; };',
-             'static const RowsExpected kRowsExpected[] = {' + ', '.join(f'{{{float(px)}, {e["threshold_s"]}, {e["nodes"]}u, {e["draws"]}u}}' for px, e in sorted(document['expected'].items(), key=lambda kv: float(kv[0]))) + '};',
+             'struct RowsExpected { double px; std::int32_t threshold_s; std::uint32_t nodes, draws, bodies_nodes, bodies_draws; };',
+             f'static const std::uint32_t kRowsBodyFlagsMask = 0x{document["body_flags_mask"]}u;',
+             'static const RowsExpected kRowsExpected[] = {' + ', '.join(f'{{{float(px)}, {e["threshold_s"]}, {e["nodes"]}u, {e["draws"]}u, {e["bodies_nodes"]}u, {e["bodies_draws"]}u}}' for px, e in sorted(document['expected'].items(), key=lambda kv: float(kv[0]))) + '};',
              f'static const unsigned kRowsExpectedCount = {len(document["expected"])}u;',
              f'static const unsigned kRowCount = {len(document["rows"])}u;',
              'static const RowData kRows[] = {']
