@@ -1,5 +1,5 @@
-TIMING mode=rpm snapshot_us=10.404 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00
-TIMING mode=direct snapshot_us=0.792 reads_per_call=12.00 queries_per_call=0.0197 syscalls_per_call=0.00
+TIMING mode=rpm snapshot_us=10.324 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00
+TIMING mode=direct snapshot_us=0.729 reads_per_call=12.00 queries_per_call=0.0197 syscalls_per_call=0.00
 IDENTITY rpm=853bfaca11e07f83 direct=853bfaca11e07f83 equal=1
 JOURNAL_CASE name=no_consumer result=PASS
 JOURNAL_CASE name=retire_in_order result=PASS
@@ -9,7 +9,7 @@ JOURNAL_CASE name=flush_load_epoch result=PASS
 JOURNAL_CASE name=flush_registry_destroy result=PASS
 JOURNAL_CASE name=flush_registry_rebind result=PASS
 JOURNAL_CASE name=overflow_and_recovery result=PASS
-JOURNAL capacity=2048 cycle_idle_us=1.3094 cycle_journal_us=1.3143 retirement_delta_us=0.0049 empty_drain_us=0.0062 drained=40000
+JOURNAL capacity=2048 cycle_idle_us=1.2670 cycle_journal_us=1.2614 retirement_delta_us=-0.0057 empty_drain_us=0.0059 drained=40000
 JOURNAL_CASE name=cost result=PASS
 JOURNAL_CASE name=reregistration_and_shutdown result=PASS
 JOURNAL_CASE name=flush_capacity_exhausted result=PASS

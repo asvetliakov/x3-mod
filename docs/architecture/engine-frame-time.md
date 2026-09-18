@@ -144,30 +144,36 @@ fixtures). What settles it: `X3M_TELEMETRY_DRAW=1` (`gate_us`/`route_draw_us`/
 `set_rt_us` in `motion_output_frame`; no launcher flag yet) plus
 `--frame-timing` for `draw` vs `draw_native`.
 
-### 2.3 Projected-size culling of small parts — 0 to ~6 ms (A), engine patch
+### 2.3 Projected-size culling of small parts — 9.6 ms at 2 px (M, census), implemented as `--cull-small-parts <px>`, unflown
 
-Mechanism: the cull/LOD pass `0x0047cfe0` already computes a small-object
-measure `s = r*640/D` per node and culls against the per-node thresholds
-`+0x1d8`/`+0x1dc` at `0x0047d258`-`0x0047d2cf` (static, M). A stub at the
-7-byte site `0x0047d42f` (option 3 of lod-selection.md: `engine_patch` claim,
-EAX/EFLAGS dead, x87 empty) can scale `s` or raise that threshold so parts
-under N screen pixels are never queued. Each removed draw saves ~23.7 us plus
-its share of the caster census. Saving depends on how many of the 930 draws
-are sub-pixel greebles. The offline census of run124's frames 3494-3501 used
-the world-transform scale as the radius proxy (no per-node radius is logged)
-and put 50-65 % of the 890 draws under 2 px (~12 ms at 23.7 us/draw); it is a
-proxy, not the engine's measure. What settles it: one capture at the station
-view with `--cull-census` (`X3M_CULL_CENSUS=1`, default off), which logs the
-engine's own `s = r*640/D`, small-object measure, thresholds, verdict and
-selected LOD per node on capture frames from two read-only trampolines on
-the pass (`0x0047d258`, `0x0047d528`; lod-selection.md, "Cull census sites"),
-and `tools/analysis/cull_census.py`, which buckets the nodes (< 1, 1-2, 2-4,
-4-8, 8-16, > 16 in `s` units and in pixels), joins the draws per node and
-prices the buckets at 23.7 us/draw. Risk: visible popping of clamps and
-antennas; a hot-path stub per node per view (measured in the fixture: 0.234
--> 0.244 us per 12-node pass with the census installed and disarmed, 0.311
-armed, Wine/FEX). Native parity by construction. Effort of the lever itself
-once sized: S (the `lod_scale`-style patch of the threshold or the measure).
+Mechanism: the cull/LOD pass `0x0047cfe0` computes a small-object measure
+`s = r*640/D` per node and culls against the per-node thresholds
+`+0x1d8`/`+0x1dc` at `0x0047d258`-`0x0047d2cf` (static, M). The run131 census
+(`--cull-census`, frame 4991 of the run117 station view, 901 draws / 32 ms,
+`tools/analysis/cull_census.py`) measured the classes with the engine's own
+numbers: nodes under 2 px are 403 draws (9.55 ms at 23.7 us/draw), under 4 px
+458 (10.85 ms), under 8 px 479; the engine's own cull already removes 91.5 % of
+the sub-2 px nodes, and every surviving tiny node has `+0x1d8 = +0x1dc = 0`,
+so the lever is a floor under a threshold the assets leave at zero.
+Implemented (2026-09-18) as `tools/manage.py launch --cull-small-parts <px>`
+(`X3M_CULL_SMALL_PARTS_PX`, default absent or 0 = vanilla): one `engine_patch`
+trampoline at `0x0047d2a2` (lod-selection.md, "Cull small parts site")
+compares the pass's `s` against a per-frame threshold derived from the live
+projection scale and the back-buffer width with the census's own bucket rule
+and sends a node below it down the engine's size-cull instruction at
+`0x0047d2c3`; disjoint from the census's and the lod_scale's claims, all three
+coexist. Expected saving at the flight settings: 2 px about 9.6 ms of the
+32 ms frame (403 of the 878 census-attributed draws; 901 in the frame), 4 px about 10.9 ms (458), from the census, both lower bounds (a culled node also culls its `0x40000`-flagged children at `0x0047d055`-`0x0047d076`); the
+per-draw proxy work saved with them is on top. Not yet flown: the first
+session with the option on should capture the same station view with
+`--cull-census` too, so the rows name the stub's culls (`verdict=culled_small`)
+and `frame_end draws`/`dt` give the real saving. Risk: popping of thin parts
+(antennas, clamps) whose radius is small but whose length is not, the same
+bias as the engine's own radius cull, and the pop can cascade to descendants; the threshold applies in every view, so small casters leave the shadow and env maps too, and the one main-view `m00` scales every view; the hot-path cost is one compare and a dead
+branch per node per view when the frame's threshold is 0 and the stub's
+straight-line integer code otherwise (fixture: 0.235 -> 0.244 us per 12-node
+pass disarmed, 0.237 armed with 7 culled, Wine/FEX). Native parity by
+construction (documented Win32 only).
 
 ### 2.4 Distance LOD bias in code — 0 to several ms (A), engine patch
 

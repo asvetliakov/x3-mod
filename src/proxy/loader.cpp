@@ -3,6 +3,7 @@
 #include "voice_dmo_fallback.h"
 #include "lod_scale.h"
 #include "cull_census.h"
+#include "cull_small_parts.h"
 #include "point_light_admission.h"
 #include "telemetry.h"
 #include "object_trace.h"
@@ -357,6 +358,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr) x3m::lod_scale::shutdown();
         if (reserved == nullptr) x3m::point_light_admission::shutdown(); // same rule: six bytes back only on FreeLibrary
         if (reserved == nullptr) x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
+        if (reserved == nullptr) x3m::cull_small_parts::shutdown(); // same rule: the small-parts site back only on FreeLibrary
     }
     return TRUE;
 }

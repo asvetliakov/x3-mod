@@ -12,7 +12,7 @@
   "game_launched": false,
   "fixtures": {
     "baseline": {
-      "exe_sha256": "8c448e71b979fdfd68e928560f9950e72753c60d3f5ea6e8809a5585881dd566",
+      "exe_sha256": "f49c511517d7257ccd8f1219e9b7329b0e98e411ce0142b68fc9dcb88de7ff99",
       "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
       "exit": 0,
       "command": [
@@ -23,12 +23,12 @@
         "--dll",
         "d3d9=b",
         "--workdir",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a499c7e16915aae8e/verification/probe/build/ownership-20260918-082515-124688-baseline",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a499c7e16915aae8e/verification/probe/build/ownership-20260918-082515-124688-baseline/ownership_baseline.exe"
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3761c08ffa8afc7e/verification/probe/build/ownership-20260918-095334-723826-baseline",
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3761c08ffa8afc7e/verification/probe/build/ownership-20260918-095334-723826-baseline/ownership_baseline.exe"
       ]
     },
     "wrapped": {
-      "exe_sha256": "4aab86cc09358a3c60340b810fabaa320cedafc71ca9601aeca781442a9418d1",
+      "exe_sha256": "09bf98e9a902450ff1787f4efcfc7c9c1c41458a59a6cafafe3568b2111c7c8b",
       "report_sha256": "f4a2e48f4797b85b483ce43016c6515d3adad524dc44ab8e4b761eb802121048",
       "exit": 0,
       "command": [
@@ -39,8 +39,8 @@
         "--dll",
         "d3d9=b",
         "--workdir",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a499c7e16915aae8e/verification/probe/build/ownership-20260918-082519-356183-wrapped",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a499c7e16915aae8e/verification/probe/build/ownership-20260918-082519-356183-wrapped/ownership_wrapped.exe"
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3761c08ffa8afc7e/verification/probe/build/ownership-20260918-095338-668521-wrapped",
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3761c08ffa8afc7e/verification/probe/build/ownership-20260918-095338-668521-wrapped/ownership_wrapped.exe"
       ]
     }
   },
@@ -96,8 +96,8 @@
     "src/ownership/surface_lock_observation.h": "810e3931317548565aeb5727e0158e4dbb2cf7f33feb402a8973dee58e304c0f"
   },
   "binaries_before": {
-    "baseline": "8c448e71b979fdfd68e928560f9950e72753c60d3f5ea6e8809a5585881dd566",
-    "wrapped": "4aab86cc09358a3c60340b810fabaa320cedafc71ca9601aeca781442a9418d1"
+    "baseline": "f49c511517d7257ccd8f1219e9b7329b0e98e411ce0142b68fc9dcb88de7ff99",
+    "wrapped": "09bf98e9a902450ff1787f4efcfc7c9c1c41458a59a6cafafe3568b2111c7c8b"
   },
   "sources": {
     "verification/probe/ownership_fixture.cpp": "07591f27b912519f34031e4263e25507c4bb72a20114d5dcf1e33c0b1d6cde95",
@@ -124,8 +124,8 @@
     "src/ownership/surface_lock_observation.h": "810e3931317548565aeb5727e0158e4dbb2cf7f33feb402a8973dee58e304c0f"
   },
   "binaries_after": {
-    "baseline": "8c448e71b979fdfd68e928560f9950e72753c60d3f5ea6e8809a5585881dd566",
-    "wrapped": "4aab86cc09358a3c60340b810fabaa320cedafc71ca9601aeca781442a9418d1"
+    "baseline": "f49c511517d7257ccd8f1219e9b7329b0e98e411ce0142b68fc9dcb88de7ff99",
+    "wrapped": "09bf98e9a902450ff1787f4efcfc7c9c1c41458a59a6cafafe3568b2111c7c8b"
   },
   "source_sha256": "9342ee69e47c368e39b38ba5c53321d8d661d7160b7dfe94677105bca96f5db0"
 }
