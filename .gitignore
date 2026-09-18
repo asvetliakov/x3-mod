@@ -45,3 +45,4 @@ verification/results/bottle-*/port-distance*-wine.log
 verification/results/bottle-*/effect-beginpass-wine.log
 verification/results/bottle-*/motion-output-partial.txt
 verification/results/bottle-*/motion-output-wine.log
+verification/results/bottle-X3/material-motion.txt
