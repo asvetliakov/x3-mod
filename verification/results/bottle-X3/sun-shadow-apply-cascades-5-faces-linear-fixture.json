@@ -1,5 +1,5 @@
 {
- "case": "sun-shadow-apply-cascades-5-faces",
+ "case": "sun-shadow-apply-cascades-5-faces-linear",
  "bottle": {
   "name": "X3",
   "wine_arch": "arm64",
@@ -51,8 +51,8 @@
    "ambiguous": 235,
    "plane_shadowed": 885,
    "plane_edge_beyond_one": 0,
-   "us": 11705.7,
-   "replay_us": 16623.2
+   "us": 12017.7,
+   "replay_us": 16851.5
   },
   "1": {
    "frame": 1,
@@ -70,8 +70,8 @@
    "ambiguous": 227,
    "plane_shadowed": 882,
    "plane_edge_beyond_one": 0,
-   "us": 1769.4,
-   "replay_us": 7506.0
+   "us": 1764.4,
+   "replay_us": 7615.9
   },
   "2": {
    "frame": 2,
@@ -89,8 +89,8 @@
    "ambiguous": 198,
    "plane_shadowed": 886,
    "plane_edge_beyond_one": 0,
-   "us": 1733.6,
-   "replay_us": 6248.2
+   "us": 1725.4,
+   "replay_us": 6236.5
   },
   "3": {
    "frame": 3,
@@ -108,8 +108,8 @@
    "ambiguous": 212,
    "plane_shadowed": 882,
    "plane_edge_beyond_one": 0,
-   "us": 1733.7,
-   "replay_us": 6234.0
+   "us": 1746.0,
+   "replay_us": 6229.9
   },
   "4": {
    "frame": 4,
@@ -127,8 +127,8 @@
    "ambiguous": 209,
    "plane_shadowed": 885,
    "plane_edge_beyond_one": 0,
-   "us": 1743.5,
-   "replay_us": 6208.7
+   "us": 1743.7,
+   "replay_us": 6172.5
   },
   "5": {
    "frame": 5,
@@ -146,8 +146,8 @@
    "ambiguous": 211,
    "plane_shadowed": 882,
    "plane_edge_beyond_one": 0,
-   "us": 1761.3,
-   "replay_us": 6780.8
+   "us": 1748.6,
+   "replay_us": 6486.3
   },
   "6": {
    "frame": 6,
@@ -165,8 +165,8 @@
    "ambiguous": 238,
    "plane_shadowed": 863,
    "plane_edge_beyond_one": 0,
-   "us": 1772.6,
-   "replay_us": 6224.7
+   "us": 1833.2,
+   "replay_us": 6192.1
   },
   "7": {
    "frame": 7,
@@ -184,8 +184,8 @@
    "ambiguous": 199,
    "plane_shadowed": 882,
    "plane_edge_beyond_one": 0,
-   "us": 1755.0,
-   "replay_us": 6203.8
+   "us": 1707.5,
+   "replay_us": 6292.8
   },
   "8": {
    "frame": 8,
@@ -203,8 +203,8 @@
    "ambiguous": 258,
    "plane_shadowed": 872,
    "plane_edge_beyond_one": 17,
-   "us": 1739.6,
-   "replay_us": 6105.0
+   "us": 1706.4,
+   "replay_us": 6201.1
   },
   "9": {
    "frame": 9,
@@ -222,8 +222,8 @@
    "ambiguous": 254,
    "plane_shadowed": 871,
    "plane_edge_beyond_one": 23,
-   "us": 805.8,
-   "replay_us": 753.8
+   "us": 659.9,
+   "replay_us": 759.2
   },
   "10": {
    "frame": 10,
@@ -241,8 +241,8 @@
    "ambiguous": 217,
    "plane_shadowed": 876,
    "plane_edge_beyond_one": 19,
-   "us": 831.7,
-   "replay_us": 778.2
+   "us": 680.6,
+   "replay_us": 751.2
   },
   "11": {
    "frame": 11,
@@ -260,8 +260,8 @@
    "ambiguous": 230,
    "plane_shadowed": 872,
    "plane_edge_beyond_one": 18,
-   "us": 650.7,
-   "replay_us": 753.8
+   "us": 679.4,
+   "replay_us": 770.8
   },
   "12": {
    "frame": 12,
@@ -279,8 +279,8 @@
    "ambiguous": 237,
    "plane_shadowed": 870,
    "plane_edge_beyond_one": 18,
-   "us": 670.5,
-   "replay_us": 763.6
+   "us": 798.5,
+   "replay_us": 721.7
   },
   "13": {
    "frame": 13,
@@ -298,8 +298,8 @@
    "ambiguous": 236,
    "plane_shadowed": 869,
    "plane_edge_beyond_one": 14,
-   "us": 895.0,
-   "replay_us": 716.6
+   "us": 644.0,
+   "replay_us": 737.1
   },
   "14": {
    "frame": 14,
@@ -317,8 +317,8 @@
    "ambiguous": 261,
    "plane_shadowed": 851,
    "plane_edge_beyond_one": 17,
-   "us": 655.7,
-   "replay_us": 620.9
+   "us": 659.0,
+   "replay_us": 744.8
   },
   "15": {
    "frame": 15,
@@ -336,20 +336,20 @@
    "ambiguous": 231,
    "plane_shadowed": 867,
    "plane_edge_beyond_one": 18,
-   "us": 705.1,
-   "replay_us": 814.2
+   "us": 653.0,
+   "replay_us": 753.9
   }
  },
  "worst_codes": 0.9999976605176926,
  "ambiguous_max": 261,
  "edge_mismatch": null,
  "us": {
-  "median": 1733.7
+  "median": 1707.5
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-5-faces-20260918-045947-218948",
- "trace_sha256": "aa49b5bb1932f0277636f2bf8ba63593f946ee019da61e4c431c04703506f7a8",
+ "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-5-faces-linear-20260918-045951-407586",
+ "trace_sha256": "4cd40068b715bfe4f60d9da60f2ac611671a50517b8540e1e94321bca6cb4371",
  "dll_sha256": "aa40c16fe70616fa59e36b63128547c0076b7d53e081db05d9ac6838400d0b5f",
  "exe_sha256": "92202ecc0618dbcb50f5fd2c31ccceeb3330e09dadabea56f85366dd4202e106",
- "depth_encoding": "device"
+ "depth_encoding": "linear"
 }

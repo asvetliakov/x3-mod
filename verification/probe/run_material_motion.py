@@ -44,11 +44,17 @@ RAW = {
     PROGRAMS / 'ps_8759c7838bbc86c2.bin': '9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0'}
 HEADER = ROOT / 'src/renderer/motion_output_profiles_inc.h'
 PROFILES = RESULTS / 'motion-output-profiles.json'
+PROFILES_SOURCE = 'bottle'
+if not PROFILES.is_file():  # the profile inventory is tracked once, bottle-independent (verification/results/motion-output-profiles.json)
+    PROFILES = ROOT / 'verification/results/motion-output-profiles.json'
+    PROFILES_SOURCE = 'tracked_fallback'
+    print(f'WARNING: {RESULTS / "motion-output-profiles.json"} missing; using the tracked inventory {PROFILES}', flush=True)
 ROW_PATTERN = re.compile(
     r'\{0x([0-9a-f]{16})ull, (\d+), 0xfffe0300u,\s*0x([0-9a-f]{16})ull, (\d+), 0xffff0300u,\s*'
     r'MotionOutputClass::(\w+),')
 CLASS_LETTER = {'ReferenceRegisters': 'A', 'RelocatedRegisters': 'B', 'RelocatedRegistersWithBranches': 'C', 'BoundedDamageBranches': 'D'}
-ROW_CHECKS_PER_CONFIG = 17  # same_draw, depth coverage, depth reference, replay reference, 9 covered samples, depth samples, 2 bilateral, changed depth
+ROW_CHECKS_PER_CONFIG = 17  # same_draw, depth coverage, depth reference, replay reference, 9 covered samples, depth samples, 2 bilateral, changed depth; +1 (depth w samples) per wide-RT2 configuration
+WIDE_RT2 = 116  # D3DFMT_A32B32G32R32F: the configurations that carry the clip-w samples (CONFIG rt2=); 114 = R32F, the lane-off route
 DEPTH_SAMPLES_PER_CONFIG = 9
 ROW_SAMPLES_PER_CONFIG = 36
 # Pixel boolean settings (b0 = bit 0, b1 = bit 1) per row class: class C repeats
@@ -110,7 +116,9 @@ def validate_rows(lines, mixed, first_config, rows, inputs):
         at += 2
         end = next(k for k in range(at, len(lines)) if lines[k].startswith('ROW '))
         block, at = lines[at:end], end + 1
-        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=(\d) perspective=(\d) lights=0 valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=(\d) depth_slope=([-\d.]+)$', '\n'.join(block), re.M)
+        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=(\d) perspective=(\d) lights=0 valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=(\d) depth_slope=([-\d.]+)(?: rt2=(\d+))?$', '\n'.join(block), re.M)
+        wide = [c for c in configs if c[10] == str(WIDE_RT2)]
+        assert all(c[10] in ('', str(WIDE_RT2)) if int(c[1]) == 116 else c[10] in ('', '114') for c in configs), 'rows: the RGBA32F colour target runs the wide RT2, the 8-bit one R32F (no rt2= field on a transcript before 2026-09-18)'
         formats = [116, 21] if mixed else [116]
         combinations = BOOLEAN_COMBINATIONS[letter]
         assert [int(c[0]) for c in configs] == list(range(config_id, config_id + 3 * len(formats) * len(combinations)))
@@ -140,9 +148,9 @@ def validate_rows(lines, mixed, first_config, rows, inputs):
             if k == 2: depth = max(depth, values[2])
         reference = re.findall(r'^REFERENCE config=(\d+) components=4096 mismatches=(\d+) max=([^\s]+)$', '\n'.join(block), re.M)
         assert len(reference) == len(configs) and all(int(r[1]) == 0 and float(r[2]) <= 2e-6 for r in reference)
-        depth_samples, depth_coverage, depth_reference, max_current_depth = validate_depth(block, len(configs))
+        depth_samples, depth_coverage, depth_reference, max_current_depth, max_w_ulp = validate_depth(block, len(configs), len(wide))
         checks = [l for l in block if l.startswith('CHECK ')]
-        assert len(checks) == ROW_CHECKS_PER_CONFIG * len(configs) + len(controls) and all(l.endswith(' PASS') for l in checks)
+        assert len(checks) == ROW_CHECKS_PER_CONFIG * len(configs) + len(wide) + len(controls) and all(l.endswith(' PASS') for l in checks)
         assert lines[end] == head + f'PASS configurations={len(configs)}', lines[end]
         assert len(block) == len(configs) + len(color) + len(samples) + len(reference) + len(checks) + len(depth_samples) + len(depth_coverage) + len(depth_reference), 'unexpected lines in row block'
         totals['checks'] += 1 + len(checks); totals['numerical'] += len(samples)
@@ -155,25 +163,48 @@ def validate_rows(lines, mixed, first_config, rows, inputs):
                             max_analytic_uv_error_pixels=uv, max_analytic_previous_depth_error=depth,
                             max_replay_reference_error=max(float(r[2]) for r in reference),
                             current_depth_samples=len(depth_samples), current_depth_reference_pixels=sum(int(r[1]) for r in depth_reference),
-                            max_current_depth_error=max_current_depth))
+                            max_current_depth_error=max_current_depth, max_current_depth_w_ulp=max_w_ulp))
     assert at == len(lines), 'trailing row output'
     return results, totals
 
-def validate_depth(text_or_lines, config_count):
+def depth_w_ulp_limit(width):
+    """docs/architecture/shadow-receiver-depth.md, section 1: the interpolated clip w
+    within 4 fp32 ULP of the analytic one at game resolution (>= 1280 wide); the
+    32-pixel configurations admit 64 (the rasterizer's sub-pixel vertex snapping of a
+    64-pixel triangle scales with 1 / width; measured 52.6 there, 3.41 at 1280x768)."""
+    return 4.0 if width >= 1280 else 64.0
+
+
+
+
+def validate_depth(text_or_lines, config_count, wide_count=None):
     """RT2 evidence per configuration: nine analytic z/w samples (4e-6, the route
-    oracle's tolerance), the covered/uncovered pattern and the ZFUNC EQUAL replay
-    comparison (2e-6); returns the line groups and the largest analytic error."""
+    oracle's tolerance), nine clip-w samples of the wide RT2's .z lane (within
+    DEPTH_W_ULP_LIMIT fp32 ULP, .w equal), the covered/uncovered pattern and the
+    ZFUNC EQUAL replay comparison (2e-6); returns the sample lines (z/w then w),
+    the coverage and reference groups, the largest analytic z/w error and the
+    largest w error in ULP."""
     text = '\n'.join(text_or_lines) if isinstance(text_or_lines, list) else text_or_lines
     samples = re.findall(r'^DEPTH_SAMPLE config=(\d+) x=(\d+) y=(\d+) actual=([^ ]+) expected=([^ ]+) error=([^ ]+) PASS$', text, re.M)
     assert len(samples) == DEPTH_SAMPLES_PER_CONFIG * config_count, (len(samples), config_count)
     for _, _, _, actual, want, error in samples:
         values = list(map(float, (actual, want, error)))
         assert all(map(math.isfinite, values)) and 0 <= values[0] <= 1 and abs(abs(values[0] - values[1]) - values[2]) <= 1e-8 and values[2] <= 4e-6
+    w_samples = re.findall(r'^DEPTH_W_SAMPLE config=(\d+) x=(\d+) y=(\d+) width=(\d+) actual=([^ ]+) expected=([^ ]+) ulp=([^ ]+) limit=([^ ]+) alpha_equal=1 PASS$', text, re.M)
+    # Nine clip-w samples per wide-RT2 configuration (CONFIG rt2=116); none on the R32F ones or on a transcript before 2026-09-18.
+    if wide_count is None:
+        wide_count = len(re.findall(r'^CONFIG .* rt2=%d$' % WIDE_RT2, text, re.M))
+    assert len(w_samples) == DEPTH_SAMPLES_PER_CONFIG * wide_count, (len(w_samples), wide_count, config_count)
+    for _, _, _, width, actual, want, ulp, limit in w_samples:
+        values = list(map(float, (actual, want, ulp)))
+        assert float(limit) == depth_w_ulp_limit(int(width)), (width, limit)
+        assert all(map(math.isfinite, values)) and values[0] > 0 and values[1] > 0 and 0 <= values[2] <= float(limit), values
+        assert abs(values[0] - values[1]) <= (values[2] + .1) * math.ldexp(1.0, math.frexp(values[1])[1] - 24), values  # .1: the printed 9-digit actual
     coverage = re.findall(r'^DEPTH_COVERAGE config=(\d+) covered=(\d+) bad=(\d+)$', text, re.M)
     assert len(coverage) == config_count and all(int(c[1]) > 0 and int(c[2]) == 0 for c in coverage)
     reference = re.findall(r'^DEPTH_REFERENCE config=(\d+) compared=(\d+) mismatches=(\d+) max=([^\s]+)$', text, re.M)
     assert len(reference) == config_count and all(int(r[1]) > 0 and int(r[2]) == 0 and float(r[3]) <= 2e-6 for r in reference)
-    return samples, coverage, reference, max(float(s[5]) for s in samples)
+    return samples + w_samples, coverage, reference, max(float(s[5]) for s in samples), max(float(s[6]) for s in w_samples) if w_samples else None
 
 def validate_report(text, expected_table=None):
     """Validate the current inventory by default; callers checking retained historical
@@ -188,7 +219,9 @@ def validate_report(text, expected_table=None):
     mixed = devices[0][1] == '1'
     # Per configuration three more checks than checkpoint B1 (RT2 coverage,
     # RT2 replay reference, RT2 analytic samples): 82 configurations -> +246.
-    expected = (1428, 2952, 101318656, 164, 82) if mixed else (732, 1512, 100794368, 84, 42)
+    legacy = 'DEPTH_W_SAMPLE' not in text  # a transcript before the wide RT2's clip-w samples (no rt2= field, no w checks)
+    wide_argon = 0 if legacy else len(re.findall(r'^CONFIG .* rt2=%d$' % WIDE_RT2, text.split('ROWS_BEGIN')[0], re.M))
+    expected = (1428 + wide_argon, 2952, 101318656, 164, 82) if mixed else (732 + wide_argon, 1512, 100794368, 84, 42)
     assert all_lines[begin[0]] == 'ROWS_BEGIN checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u' % expected
     assert [s for s in all_lines if s.startswith('RESULT ')] == [terminal_line]
     assert 'FAIL' not in text
@@ -213,10 +246,15 @@ def validate_report(text, expected_table=None):
     for name in ('d3d9.dll', 'wined3d.dll'):
         modules = re.findall(r'^MODULE name=' + re.escape(name) + r' path=(.+)$', text, re.M)
         assert len(modules) == 2 and all(p.lower().rstrip('\r') == 'c:\\windows\\system32\\' + name for p in modules)
-    configs = re.findall(r'^CONFIG id=(\d+) width=(\d+) height=(\d+) format=(\d+) packed=(\d) perspective=(\d) lights=(\d+) valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=0 depth_slope=([-\d.]+)$', text, re.M)
+    configs = re.findall(r'^CONFIG id=(\d+) width=(\d+) height=(\d+) format=(\d+) packed=(\d) perspective=(\d) lights=(\d+) valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=0 depth_slope=([-\d.]+)(?: rt2=(\d+))?$', text, re.M)
     assert len(configs) == expected[4] and [int(c[0]) for c in configs] == list(range(1, expected[4]+1))
+    # RT2 per configuration: the Argon 32x32 sweep runs generation 0 on R32F (the lane-off route) and
+    # generation 1 (after the Reset) on the wide format; the game-resolution configurations are wide.
+    wide = [c for c in configs if c[12] == str(WIDE_RT2)]
+    if not legacy:
+        assert {c[12] for c in configs} == {'114', str(WIDE_RT2)} and all(c[12] == str(WIDE_RT2) for c in configs if int(c[1]) >= 1280), sorted({c[12] for c in configs})
     assert all(float(c[11]) == (0.05 if c[5] == '1' else 0.0) for c in configs), 'perspective configurations tilt the current depth'
-    depth_samples, depth_coverage, depth_reference, max_current_depth = validate_depth(text, expected[4])
+    depth_samples, depth_coverage, depth_reference, max_current_depth, max_w_ulp = validate_depth(text.split('ROWS_BEGIN')[0], expected[4], len(wide))
     assert {(int(c[1]), int(c[2])) for c in configs} == {(32,32),(1280,768),(5120,1440)}
     assert {int(c[6]) for c in configs} == {0,1,8} and {int(c[7]) for c in configs} == {0,1}
     samples = re.findall(r'^SAMPLE config=(\d+) x=(\d+) y=(\d+) channel=(\d) actual=([^ ]+) expected=([^ ]+) error=([^ ]+) pixel_error=([^ ]+) PASS$', text, re.M)
@@ -252,7 +290,8 @@ def validate_report(text, expected_table=None):
         ('same-draw output matches independent authored replay',expected[4]),
         ('current depth written exactly where the original covered',expected[4]),
         ('current depth matches the ZFUNC EQUAL replay of the rasterized depth',expected[4]),
-        ('current depth samples match the analytic z/w',expected[4])):
+        ('current depth samples match the analytic z/w',expected[4]),
+        ('current depth w lanes match the analytic clip w within 4 ULP',len(wide))):
         assert lines.count('CHECK ' + label + ' PASS') == count
     reference = re.findall(r'^REFERENCE config=(\d+) components=(\d+) mismatches=(\d+) max=([^\s]+)$',text,re.M)
     assert len(reference) == expected[4] and [int(r[0]) for r in reference] == list(range(1,expected[4]+1))
@@ -273,7 +312,8 @@ def validate_report(text, expected_table=None):
                 max_analytic_uv_error_pixels=maximum_uv_pixels,max_analytic_previous_depth_error=maximum_depth,
                 max_replay_reference_error=max(float(r[3]) for r in reference),timings=timing_summary,
                 current_depth_samples=len(depth_samples),current_depth_reference_pixels=sum(int(r[1]) for r in depth_reference),
-                max_current_depth_error=max_current_depth,
+                max_current_depth_error=max_current_depth,max_current_depth_w_ulp=max_w_ulp,wide_rt2_configurations=len(wide),r32f_rt2_configurations=len(configs)-len(wide),
+                max_current_depth_w_ulp_game_resolution=max((float(s[6]) for s in depth_samples if len(s) == 8 and int(s[3]) >= 1280), default=None),
                 rows=len(table),row_transformed=transformed,row_skipped=len(table)-transformed,
                 row_configurations=row_totals['configurations'],row_checks=row_totals['checks'],
                 row_samples=row_totals['numerical'],row_color_components=row_totals['color_components'],
@@ -340,7 +380,7 @@ def validate_damage_report(text):
         assert block.count('CHECK adjacent damage IFC false threshold true native witness PASS') == 1
         key = (ps, generation, depth, poison, fmt, booleans)
         face_signs.setdefault(key, {})[winding] = int(witness[0][5])
-        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=([01]) perspective=([01]) lights=0 valid=([01]) translation=([^ ]+) jitter=([^ ]+) booleans=([0-3]) depth_slope=([^ ]+)$', block, re.M)
+        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=([01]) perspective=([01]) lights=0 valid=([01]) translation=([^ ]+) jitter=([^ ]+) booleans=([0-3]) depth_slope=([^ ]+)(?: rt2=114)?$', block, re.M)
         assert len(configs) == 3
         assert [int(c[0]) for c in configs] == [config_id, config_id + 1, config_id + 2]
         assert all(c[1] == fmt and c[2] == str(int(booleans) & 1) and c[7] == booleans for c in configs)
@@ -360,8 +400,8 @@ def validate_damage_report(text):
         assert len(references) == 3 and [int(r[0]) for r in references] == [config_id, config_id+1, config_id+2]
         assert all(r[1:3] == ('4096', '0') and math.isfinite(float(r[3])) and 0 <= float(r[3]) <= 2e-6 for r in references)
         if depth == '1':
-            ds, dc, dr, _ = validate_depth(block, 3)
-            assert [int(s[0]) for s in ds] == [config_id]*9 + [config_id+1]*9 + [config_id+2]*9
+            ds, dc, dr, _, w_ulp = validate_depth(block, 3)
+            assert [int(s[0]) for s in ds] == ([config_id]*9 + [config_id+1]*9 + [config_id+2]*9) * (2 if w_ulp is not None else 1)  # z/w samples then w samples
             assert [int(r[0]) for r in dc] == [config_id, config_id+1, config_id+2] and [int(r[0]) for r in dr] == [config_id, config_id+1, config_id+2]
         else:
             assert 'DEPTH_' not in block and block.count('CHECK motion-only depth target remains clear PASS') == 3
@@ -446,7 +486,7 @@ def main():
             assert data[offset:offset+6]==b'PE\0\0\x4c\x01', 'Expected actual x86 native module'
         result['sources_before_build']=source_hashes();result['native_before_build']=native_hashes()
         result['local_inputs']={str(p):sha(p) for p in RAW};assert all(sha(p)==h for p,h in RAW.items())
-        rows=table_rows();result['programs_directory']=str(PROGRAMS);result['profiles_json_sha256']=sha(PROFILES)
+        rows=table_rows();result['programs_directory']=str(PROGRAMS);result['profiles_json_sha256']=sha(PROFILES);result['profiles_source']=PROFILES_SOURCE;result['profiles_path']=str(PROFILES)
         result['row_inputs']=row_inputs(rows)
         def rows_unchanged(): return row_inputs(rows)==result['row_inputs']
         subprocess.run(['sh',str(ROOT/'verification/probe/build_material_motion.sh')],check=True,cwd=ROOT)

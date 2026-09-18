@@ -1490,6 +1490,8 @@ def validate_original_sun_share_report(text, cases, fill):
         pixels = int(row['pixels'])
         assert int(row['pair']) == c['pair'] and pixels == 256
         assert (row['color_bad'], row['motion_bad'], row['depth_bad']) == ('0', '0', '0'), (c['id'], c['label'])
+        # The wide lane target's clip-w lanes (.b = .a) survive the share's later .g write on every drawn pixel (shadow-receiver-depth.md).
+        assert row['w_bad'] == '0' and int(row['w_positive']) == pixels, (c['id'], c['label'], row.get('w_bad'), row.get('w_positive'))
         assert int(row['invalid']) == 0, (c['id'], c['label'], 'invalid share sentinel on a drawn pixel')
         codes = float(row['max_codes']); assert math.isfinite(codes) and codes <= 1., (c['id'], c['label'], codes)
         max_codes = max(max_codes, codes); max_share = max(max_share, float(row['max_share']))

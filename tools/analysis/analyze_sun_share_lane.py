@@ -82,13 +82,16 @@ def analyze(log, directory):
             continue
         try:
             depth = records.get('depth', {})
-            if depth.get('result') != '00000000' or depth.get('format') != 'rg32f_row_major':
+            # The lane's RT2: G32R32F (rg32f) or, under the receiver-depth option, A32B32G32R32F (rgba32f; .b/.a = clip w).
+            lanes = {'rg32f_row_major': 2, 'rgba32f_row_major': 4}.get(depth.get('format'))
+            if depth.get('result') != '00000000' or lanes is None:
                 raise ValueError('enhanced_depth_unavailable')
             width, height = int(depth['width']), int(depth['height'])
             pixels = width*height
             data = (Path(directory)/depth['file']).read_bytes()
-            if len(data) != pixels*8:
+            if len(data) != pixels*4*lanes:
                 raise ValueError('depth_size')
+            row['rt2_lanes'] = lanes
             mask = [0.0]*pixels
             if publication.get('exclusion_required') == '1':
                 coverage = records.get('coverage', {})
@@ -103,7 +106,8 @@ def analyze(log, directory):
                 if any(not math.isfinite(value) or value < 0 for value in mask):
                     raise ValueError('coverage_invalid')
             candidates = valid_zero = excluded = invalid = 0
-            for (depth_value, share), coverage in zip(struct.iter_unpack('<2f', data), mask):
+            for texel, coverage in zip(struct.iter_unpack('<%df' % lanes, data), mask):
+                depth_value, share = texel[0], texel[1]
                 if not math.isfinite(depth_value) or not 0 <= depth_value <= 1:
                     continue
                 if not math.isfinite(share) or not 0 <= share <= 1:

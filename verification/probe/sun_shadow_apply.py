@@ -46,11 +46,38 @@ KERNEL = [(math.cos(k * math.pi / 8), math.sin(k * math.pi / 8)) for k in range(
 # shows the error (a median receiver-minus-map residual above bias / 2).
 
 
-def unpack_rt2(data, width, height):
-    """G32R32F bytes -> (d, s) float64 arrays."""
+DEPTH_ENCODINGS = ('device', 'linear')
+
+
+def unpack_rt2(data, width, height, depth_encoding='device'):
+    """RT2 bytes -> (d, s) float64 arrays: G32R32F (8 B/px) or A32B32G32R32F
+    (16 B/px). `d` is the receiver depth in the named encoding: `device`, the
+    .r lane (z/w, -1 sentinel) the z/w law linearizes; `linear`, the .b lane
+    (the interpolated clip w, docs/architecture/shadow-receiver-depth.md),
+    which needs the wide format. Old G32R32F records load under `device`."""
     import numpy as np
-    values = np.frombuffer(data, dtype='<f4').astype(np.float64).reshape(height, width, 2)
-    return values[..., 0], values[..., 1]
+    if depth_encoding not in DEPTH_ENCODINGS:
+        raise ValueError('depth_encoding %r' % (depth_encoding,))
+    pixels = width * height
+    if pixels == 0 or len(data) % (4 * pixels) or len(data) // (4 * pixels) not in (2, 4):
+        raise ValueError('RT2: %d bytes is neither G32R32F nor A32B32G32R32F at %dx%d' % (len(data), width, height))
+    lanes = len(data) // (4 * pixels)
+    if depth_encoding == 'linear' and lanes != 4:
+        raise ValueError('linear receiver depth needs the A32B32G32R32F RT2 (.b); got %d lanes' % lanes)
+    values = np.frombuffer(data, dtype='<f4').astype(np.float64).reshape(height, width, lanes)
+    return values[..., 2 if depth_encoding == 'linear' else 0], values[..., 1]
+
+
+def view_depth(d, params, depth_encoding=None):
+    """The receiver's view depth from RT2: `linear`, d itself (RT2.b, the clip
+    w); `device`, the z/w law m32 / (d - m22) on RT2.r. `depth_encoding` None
+    takes params['depth_encoding'] (default device)."""
+    encoding = params.get('depth_encoding', 'device') if depth_encoding is None else depth_encoding
+    if encoding not in DEPTH_ENCODINGS:
+        raise ValueError('depth_encoding %r' % (encoding,))
+    if encoding == 'linear':
+        return d * 1.0
+    return params['m32'] / (d - params['m22'])
 
 
 def unpack_map(data, size):
@@ -105,15 +132,17 @@ def _coarse(value, axis):
     return coarse
 
 
-def expected_factor(d, s, sun_map, params, coarse=False, legacy_floor=False):
+def expected_factor(d, s, sun_map, params, coarse=False, legacy_floor=False, depth_encoding=None):
     """Per-pixel factor and the ambiguity mask. `params`: m00 m11 m20 m21
-    m22 m32 rows(12) jitter_index exponent bias_constant bias_max planar_step."""
+    m22 m32 rows(12) jitter_index exponent bias_constant bias_max planar_step,
+    optional depth_encoding (device: d is RT2.r, z by the z/w law; linear: d
+    is RT2.b, the view depth itself); `depth_encoding` overrides it."""
     import numpy as np
     height, width = d.shape
     size = sun_map.shape[0]
-    m00, m11, m20, m21, m22, m32 = (params[k] for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32'))
+    m00, m11, m20, m21 = (params[k] for k in ('m00', 'm11', 'm20', 'm21'))
     rows = params['rows']
-    z = m32 / (d - m22)
+    z = view_depth(d, params, depth_encoding)
     i = np.arange(width, dtype=np.float64)[None, :].repeat(height, 0)
     j = np.arange(height, dtype=np.float64)[:, None].repeat(width, 1)
     ndc_x = (i + .5) / width * 2.0 - 1.0
@@ -183,19 +212,20 @@ CASCADE_MARGIN, CASCADE_BAND = .95, .10   # shadow_cascade_select_margin / _blen
 EPS_SELECT = 1e-5                          # selection-threshold ambiguity in sun-space NDC (float32 rows on the GPU)
 
 
-def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=False):
+def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=False, depth_encoding=None):
     """The cascade program's twin. `params`: m00 m11 m20 m21 m22 m32 exponent
-    planar_step jitter_index, optional margin/band, and `cascades`: a list of
+    planar_step jitter_index, optional margin/band and depth_encoding (as
+    expected_factor), and `cascades`: a list of
     dicts rows(12) bias_constant bias_max valid. `maps[i]` is cascade i's map
     (None while absent). Returns factor, f, valid, ambiguous, selected (index
     of the owning cascade, -1 outside every one), weights and per-cascade f."""
     import numpy as np
     height, width = d.shape
-    m00, m11, m20, m21, m22, m32 = (params[k] for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32'))
+    m00, m11, m20, m21 = (params[k] for k in ('m00', 'm11', 'm20', 'm21'))
     margin, band_width = params.get('margin', CASCADE_MARGIN), params.get('band', CASCADE_BAND)
     cascades = params['cascades']
     count = len(cascades)
-    z = m32 / (d - m22)
+    z = view_depth(d, params, depth_encoding)
     i = np.arange(width, dtype=np.float64)[None, :].repeat(height, 0)
     j = np.arange(height, dtype=np.float64)[:, None].repeat(width, 1)
     view = [((i + .5) / width * 2.0 - 1.0 - m20) * z / m00, (1.0 - (j + .5) / height * 2.0 - m21) * z / m11, z]
@@ -407,14 +437,14 @@ def analytic_shadow(d, s, params, scene, size):
     (a hit counts only before the light); otherwise every ray is scene['sun']."""
     import numpy as np
     height, width = d.shape
-    m00, m11, m22, m32 = (params[k] for k in ('m00', 'm11', 'm22', 'm32'))
+    m00, m11 = params['m00'], params['m11']
     # The receiver at the D3D9 pixel centre the fixture's raster sampled, NDC
     # (2 i / W - 1, 1 - 2 j / H) of the jittered projection (scene['raster_m20'/
     # 'raster_m21'] = the raster's own jitter terms, logged by the fixture):
     # independent of the pass's m20/m21 latch, so a latch that reconstructs
     # the receiver beside the sampled point cannot cancel here.
     raster_m20, raster_m21 = scene['raster_m20'], scene['raster_m21']
-    z = m32 / (d - m22)
+    z = view_depth(d, params)
     i = np.arange(width, dtype=np.float64)[None, :].repeat(height, 0)
     j = np.arange(height, dtype=np.float64)[:, None].repeat(width, 1)
     ndc_x = 2.0 * i / width - 1.0; ndc_y = 1.0 - 2.0 * j / height
@@ -451,6 +481,33 @@ def analytic_shadow(d, s, params, scene, size):
     return {'lit': lit, 'edge_distance': distance, 'on_plane': on_plane, 'world': world, 'lit_at': lit_at}
 
 
+def fp16_ordered_code(values):
+    """FP16 bit patterns as ordered integers (monotonic in value, one step = one
+    code): negatives have their low 15 bits flipped and the sign kept, so
+    -0 sits next to +0 and the code distance is exact on either side of zero."""
+    import numpy as np
+    bits = np.asarray(np.asarray(values, dtype=np.float16).view(np.uint16), dtype=np.int64)
+    return np.where(bits & 0x8000, -(bits & 0x7fff), bits)
+
+
+def beyond_one_code(after, reference, codes):
+    """Per pixel: some channel's readback lies more than one FP16 code from the
+    reference. `codes` is the fractional distance |after - reference| /
+    fp16_code(reference); it decides outright away from 1 (below 1 - eps: within;
+    above 1.5: beyond). In between the code spacing at the reference can
+    misstate the step in either direction (an FP16 exponent boundary between
+    the reference and the readback: the spacing halves or doubles across it),
+    so the exact ordered-code distance between the readback and the reference
+    rounded to FP16 decides."""
+    import numpy as np
+    over = codes > 1.0 + 1e-9
+    marginal = (codes > 0.5) & (codes < 1.5)
+    if np.any(marginal):
+        steps = np.abs(fp16_ordered_code(after) - fp16_ordered_code(reference))
+        over = np.where(marginal, steps > 1, over)
+    return np.any(over, axis=-1)
+
+
 def compare_frame(before, after, d, s, sun_map, params, scene=None, strict_box=True):
     """The readbacks (H x W x 4 float64 from FP16) against before * factor.
     Returns counts: compared pixels, violations beyond one FP16 code, the
@@ -468,7 +525,7 @@ def compare_frame(before, after, d, s, sun_map, params, scene=None, strict_box=T
     identity = (factor == 1.0)
     identity_changed = int(np.count_nonzero(identity & np.any(after != before, axis=-1)))
     worst = float(np.max(np.where(strict[..., None], codes, 0.0))) if np.any(strict) else 0.0
-    violations = int(np.count_nonzero(strict & np.any(codes > 1.0 + 1e-9, axis=-1)))
+    violations = int(np.count_nonzero(strict & beyond_one_code(after[..., :3], reference, codes)))
     alpha_changed = int(np.count_nonzero(after[..., 3] != before[..., 3]))
     record = {'valid': int(np.count_nonzero(valid)), 'compared': int(np.count_nonzero(strict)), 'ambiguous': int(np.count_nonzero(ambiguous)),
               'violations': violations, 'worst_codes': worst, 'identity_changed': identity_changed, 'alpha_changed': alpha_changed,
@@ -552,7 +609,7 @@ def compare_frame_cascades(before, after, d, s, maps, params, scene, extents):
     codes = np.abs(after[..., :3] - reference) / fp16_code(reference)
     identity_changed = int(np.count_nonzero((factor == 1.0) & np.any(after != before, axis=-1)))
     worst = float(np.max(np.where(strict[..., None], codes, 0.0))) if np.any(strict) else 0.0
-    violations = int(np.count_nonzero(strict & np.any(codes > 1.0 + 1e-9, axis=-1)))
+    violations = int(np.count_nonzero(strict & beyond_one_code(after[..., :3], reference, codes)))
     alpha_changed = int(np.count_nonzero(after[..., 3] != before[..., 3]))
     count = len(params['cascades'])
     sizes = [m.shape[0] if m is not None else None for m in maps]
@@ -656,6 +713,7 @@ def parse_cascade_params(fields):
     triple = lambda key: tuple(float(v) for v in fields[key].split(','))
     params = {k: float(fields[k]) for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'planar_step')}
     params['jitter_index'] = int(fields['jitter_index'])
+    params['depth_encoding'] = parse_depth_encoding(fields)
     count = int(fields['cascades'])
     params['cascades'] = [{'rows': tuple(float(v) for v in fields['rows%d' % c].split(',')), 'bias_constant': float(fields['bias%d' % c]),
                            'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1',
@@ -683,6 +741,7 @@ def parse_params(fields):
     params = {k: float(fields[k]) for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'bias_constant', 'bias_max', 'planar_step')}
     params['rows'] = tuple(float(v) for v in fields['rows'].split(','))
     params['jitter_index'] = int(fields['jitter_index'])
+    params['depth_encoding'] = parse_depth_encoding(fields)
     scene = {k: triple(k) for k in ('camera', 'cam_right', 'cam_up', 'cam_forward', 'sun', 'right', 'up', 'forward', 'center')}
     scene['extent'] = float(fields['extent']); scene['depth_half'] = float(fields['depth_half'])
     scene['raster_m20'], scene['raster_m21'], scene['legacy_latch'] = float(fields['raster_m20']), float(fields['raster_m21']), fields.get('legacy_latch') == '1'
@@ -691,6 +750,20 @@ def parse_params(fields):
         if key in fields:
             scene[key] = float(fields[key])
     return params, scene
+
+
+def parse_depth_encoding(fields):
+    """depth_encoding= of a params or fixture line: absent (a record before the
+    wide RT2) is `device`."""
+    encoding = fields.get('depth_encoding', 'device')
+    if encoding not in DEPTH_ENCODINGS:
+        raise ValueError('depth_encoding %r' % (encoding,))
+    return encoding
+
+
+def rt2_suffix(depth_encoding):
+    """The F8 dump extension of RT2 under the encoding: rg32f (G32R32F) or rgba32f (A32B32G32R32F)."""
+    return 'rgba32f' if depth_encoding == 'linear' else 'rg32f'
 
 
 def half_bytes(values):
@@ -753,6 +826,7 @@ def parse_apply_params(fields):
     params['bias_constant'] = float(fields['bias'])
     params['rows'] = tuple(float(v) for v in fields['rows'].split(','))
     params['jitter_index'] = int(fields['jitter_index'])
+    params['depth_encoding'] = parse_depth_encoding(fields)
     if len(params['rows']) != 12:
         raise ValueError('rows: expected 12 values, got %d' % len(params['rows']))
     extra = dict(width=int(fields['width']), height=int(fields['height']), map=int(fields['map']),
@@ -781,6 +855,7 @@ def parse_apply_cascade_params(fields):
     own world-unit inputs."""
     params = {k: float(fields[k]) for k in ('m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'planar_step', 'margin', 'band')}
     params['jitter_index'] = int(fields['jitter_index'])
+    params['depth_encoding'] = parse_depth_encoding(fields)
     count = int(fields['cascades'])
     bias_units, clamp_texels = float(fields['bias_units']), float(fields['clamp_texels'])
     params['cascades'], cascades = [], []
@@ -846,7 +921,7 @@ def reconstruct_params(camera, frame_line, basis, width, height):
     params = dict(m00=float(camera['p00']), m11=float(camera['p11']),
                   m20=float(camera['p20']) + 2.0 * jx / width, m21=float(camera['p21']) - 2.0 * jy / height,
                   m22=PRODUCTION_M22, m32=PRODUCTION_M32, exponent=1.0, jitter_index=int(frame_line['jitter_index']),
-                  rows=tuple(float(v) for v in basis['rows'].split(',')), **PRODUCTION_BIAS)
+                  rows=tuple(float(v) for v in basis['rows'].split(',')), depth_encoding='device', **PRODUCTION_BIAS)
     if len(params['rows']) != 12:
         raise ValueError('basis rows: expected 12 values')
     return params
@@ -877,11 +952,11 @@ def frame_params(log_path, frame, device=1):
     return params, extra, 'reconstructed'
 
 
-def load_capture(directory, device, frame, width, height, size):
+def load_capture(directory, device, frame, width, height, size, depth_encoding='device'):
     """The frame's RT2 (d, s), map and, when present, HDR luminance."""
     from pathlib import Path
     base = Path(directory)
-    d, s = unpack_rt2((base / ('depth_%d_%d.rg32f' % (device, frame))).read_bytes(), width, height)
+    d, s = unpack_rt2((base / ('depth_%d_%d.%s' % (device, frame, rt2_suffix(depth_encoding)))).read_bytes(), width, height, depth_encoding)
     sun_map = unpack_map((base / ('shadow_map_%d_%d.r32f' % (device, frame))).read_bytes(), size)
     hdr = base / ('hdr_%d_%d.rgba16f' % (device, frame))
     luminance = None
@@ -978,7 +1053,8 @@ def main(argv=None):
         params['m20'] += centre[0]; params['m21'] += centre[1]
     if 'cascades' in params:
         import numpy as np
-        d, s = unpack_rt2((__import__('pathlib').Path(args.capture) / ('depth_%d_%d.rg32f' % (args.device, args.frame))).read_bytes(), extra['width'], extra['height'])
+        encoding = params.get('depth_encoding', 'device')
+        d, s = unpack_rt2((__import__('pathlib').Path(args.capture) / ('depth_%d_%d.%s' % (args.device, args.frame, rt2_suffix(encoding)))).read_bytes(), extra['width'], extra['height'], encoding)
         maps = load_cascade_maps(args.capture, args.device, args.frame, extra, params)
         out = expected_factor_cascades(d, s, maps, params, legacy_floor=args.legacy_floor)
         valid = out['valid']
@@ -991,7 +1067,7 @@ def main(argv=None):
                               factor_mean=float(out['factor'][valid].mean()) if valid.any() else None, own_surface=residual), indent=1))
         print(own_surface_residual_line(residual))
         return
-    d, s, sun_map, luminance = load_capture(args.capture, args.device, args.frame, extra['width'], extra['height'], extra['map'])
+    d, s, sun_map, luminance = load_capture(args.capture, args.device, args.frame, extra['width'], extra['height'], extra['map'], params.get('depth_encoding', 'device'))
     region = tuple(int(v) for v in args.region.split(',')) if args.region else None
     report = frame_report(d, s, sun_map, params, luminance, region, legacy_floor=args.legacy_floor)
     mask = report.pop('mask')

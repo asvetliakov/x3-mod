@@ -117,6 +117,10 @@ void run_sun_lane(const char* bootstrap_vertex) {
         // fail-closed until that cache is replaced or the device is destroyed.
         const bool missing_cache=!std::strcmp(mode,"late_shader")&&step>=4;
         const bool expected_lane=!fallback&&!(late&&step==3)&&!missing_cache&&!lane_off;
+        // RT2 lanes: R32F (1) off the lane, G32R32F (2) on it, A32B32G32R32F (4) under
+        // X3M_SUN_SHADOW_RECEIVER_DEPTH=linear (docs/architecture/shadow-receiver-depth.md; .b = .a = clip w).
+        char receiver_text[16]{};const bool receiver_linear=GetEnvironmentVariableA("X3M_SUN_SHADOW_RECEIVER_DEPTH",receiver_text,sizeof receiver_text)==6&&!std::strcmp(receiver_text,"linear");
+        const unsigned lane_stride=expected_lane?(receiver_linear?4u:2u):1u;
         if(!lane_off)require(emission_status(d.p,90)==unsigned(!refused&&!missing_cache),"sun exact capability qualification");
         require(emission_status(d.p,91)==unsigned(expected_lane),"sun format selected only at frame latch");
         const unsigned routed_before=emission_status(d.p,89),gate4_before=emission_status(d.p,99);
@@ -153,7 +157,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
         if((late||suncomposition)&&!(late&&step==2)&&!(suncomposition&&step==3))
             draw(b,0,0,0,true,true,frames_since_reset!=0);
         auto lane_read=[&](){
-            std::vector<float> data(std::size_t(W)*H*(expected_lane?2:1));unsigned w=0,h=0;
+            std::vector<float> data(std::size_t(W)*H*lane_stride);unsigned w=0,h=0;
             api(emission_readback(d.p,2,data.data(),unsigned(data.size()),&w,&h),"sun actual RT2 readback");
             require(w==W&&h==H,"sun RT2 readback dimensions");return data;
         };
@@ -161,17 +165,18 @@ void run_sun_lane(const char* bootstrap_vertex) {
         unsigned drawn=0,positive=0,zeros=0;
         // Lane off: the receiver was refused, so RT2 holds no receiver depth.
         for(unsigned y=2;y+2<H&&!lane_off;++y)for(unsigned x=2;x+2<W;++x){
-            const unsigned pixel=y*W+x;const float depth_value=lane[pixel*(expected_lane?2:1)];
+            const unsigned pixel=y*W+x;const float depth_value=lane[pixel*lane_stride];
             // Interior coverage is fixed by the authored full-screen triangle,
             // not inferred from clear values or the share being tested.
             require_quiet(depth_value==.5f,"sun receiver interior actually wrote exact depth");++drawn;
-            if(expected_lane){const float share=lane[2*pixel+1];
+            if(expected_lane){const float share=lane[pixel*lane_stride+1];
                 if(!share_refused)require_quiet(std::isfinite(share)&&share>=0&&share<=1,"sun receiver interior valid share");
+                if(lane_stride==4){const float w_lane=lane[pixel*4+2];require_quiet(std::isfinite(w_lane)&&w_lane>0.f&&lane[pixel*4+3]==w_lane,"sun receiver interior clip w lane positive and paired with .a");}
                 positive+=share>0;zeros+=share==0;
             }
         }
         require(lane_off||drawn==(W-4)*(H-4),"sun receiver coverage positive control");
-        if(expected_lane){auto at=[&](unsigned x,unsigned y){return double(lane[2*(y*W+x)+1]);};
+        if(expected_lane){auto at=[&](unsigned x,unsigned y){return double(lane[(y*W+x)*lane_stride+1]);};
             std::printf("SUN_SHARE_STATS frame=%llu drawn=%u positive=%u zero=%u center=%.6g left=%.6g right=%.6g top=%.6g bottom=%.6g corner=%.6g\n",frame,drawn,positive,zeros,at(W/2,H/2),at(3,H/2),at(W-4,H/2),at(W/2,3),at(W/2,H-4),at(3,3));}
         if(expected_lane&&!share_refused){require(step==1?zeros==drawn:positive==drawn,"drawn positive and zero-sun controls");positive_frames+=positive>0;zero_frames+=zeros>0;}
         if(share_refused){
@@ -261,7 +266,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
                     "refused cutout pair counted once with its no_zwrite reason");
             require(emission_status(d.p,94)==0,"a colour-only refusal never vetoes the lane");
             lane=lane_read();
-            for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x)require_quiet(lane[(y*W+x)*2]==.5f,"tracked cutout pair rewrote the interior depth exactly");
+            for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x)require_quiet(lane[(y*W+x)*lane_stride]==.5f,"tracked cutout pair rewrote the interior depth exactly");
         }
         if(original_lane&&step==2){
             // The cutout pair in its exact cutout state on original shading:
@@ -283,8 +288,8 @@ void run_sun_lane(const char* bootstrap_vertex) {
             require(emission_status(d.p,37)==1&&emission_status(d.p,39)==1&&emission_status(d.p,38)==0,"admitted cutout pair counted with its original share written");
             require(emission_status(d.p,94)==0,"tracked cutout pair is not an untracked writer");
             lane=lane_read();
-            for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x){const unsigned pixel=y*W+x;require_quiet(lane[pixel*2]==.5f,"admitted cutout pair rewrote the interior depth exactly");
-                const float share=lane[2*pixel+1];require_quiet(std::isfinite(share)&&share>=0&&share<=1,"cutout pair original share valid");}
+            for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x){const unsigned pixel=y*W+x;require_quiet(lane[pixel*lane_stride]==.5f,"admitted cutout pair rewrote the interior depth exactly");
+                const float share=lane[pixel*lane_stride+1];require_quiet(std::isfinite(share)&&share>=0&&share<=1,"cutout pair original share valid");}
         }
         if(effects&&step==2){
             // Additive blend, z test on, z write off: color-only over the
@@ -363,7 +368,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
         // R32F Reference; the owner runner compares every FP16 output byte.
         std::vector<float> motion(std::size_t(W)*H*4),depth_values(std::size_t(W)*H);unsigned w=0,h=0;
         api(readback(d.p,motion.data(),unsigned(motion.size()),&w,&h),"sun live motion input");
-        for(std::size_t p=0;p<depth_values.size();++p)depth_values[p]=lane[p*(expected_lane?2:1)];
+        for(std::size_t p=0;p<depth_values.size();++p)depth_values[p]=lane[p*lane_stride];
         reference.upload(std::vector<DWORD>(depth_values.size()),motion,depth_values);
         const float k=hdr_reference_input();decide();
         // shadow_apply: the CPU reference of the shadowed scene. The caster at
@@ -381,7 +386,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
             std::vector<unsigned char> apply_mask(std::size_t(W)*H,step>=3?1:0);
             for(unsigned y=0;y<H;++y)for(unsigned x=0;x<W;++x){
                 const std::size_t pixel=std::size_t(y)*W+x;
-                const float share=expected_lane?lane[2*pixel+1]:0.f,depth_value=lane[pixel*(expected_lane?2:1)];
+                const float share=expected_lane?lane[pixel*lane_stride+1]:0.f,depth_value=lane[pixel*lane_stride];
                 if(!(apply_frame&&depth_value>=0&&share>0))continue;
                 ++apply_inner;
                 const float factor=1.f-std::min(share,1.f);

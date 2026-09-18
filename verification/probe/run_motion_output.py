@@ -444,13 +444,39 @@ CASES += [case('seam-ownership-shadow-pool-importance', 'shadowpool', 'ownership
 # within one FP16 code, hard-shadow edges within the kernel's reach, a far map
 # byte-identical, a Reset between two identical frames byte-identical.
 SUN_APPLY_FRAMES, SUN_APPLY_RESET_FRAME, SUN_APPLY_FAR_FRAME, SUN_APPLY_ZERO_FRAME = 6, 5, 0, 1
-CASES += [case('sun-shadow-apply', 'sunapply', enabled='0')]
+# The receiver depth (docs/architecture/shadow-receiver-depth.md): every apply case runs twice,
+# under `device` (G32R32F RT2, the z/w law on .r: the shipping default, the `<name>-fixture.json`
+# records) and under `linear` (A32B32G32R32F, .b = the view depth: the `<name>-linear-fixture.json`
+# siblings), through X3M_SUN_SHADOW_RECEIVER_DEPTH, the production option's name; every SUNAPPLY
+# line logs depth_encoding= and the RT2 dump is rt2.g32r32f or rt2.rgba32f. The validators follow
+# the line against the case's option, and every record carries `depth_encoding`.
+SUN_APPLY_RECEIVER_DEPTH_ENV = 'X3M_SUN_SHADOW_RECEIVER_DEPTH'
+SUN_APPLY_ENCODINGS = ('device', 'linear')
+
+
+def sun_apply_cases(name, **env):
+    return [case(name if encoding == 'device' else f'{name}-linear', 'sunapply', enabled='0',
+                 hdr_env=dict(env, **{SUN_APPLY_RECEIVER_DEPTH_ENV: encoding})) for encoding in SUN_APPLY_ENCODINGS]
+
+
+def rt2_file(depth_encoding):
+    return 'rt2.rgba32f' if depth_encoding == 'linear' else 'rt2.g32r32f'
+
+
+def rt2_lanes(fixture_line, hdr_env):
+    """The fixture's RT2 lanes: the line's depth_encoding must match the case's option (absent = device)."""
+    encoding = sun_apply.parse_depth_encoding(fixture_line)
+    assert encoding == hdr_env.get(SUN_APPLY_RECEIVER_DEPTH_ENV, 'device'), (encoding, hdr_env.get(SUN_APPLY_RECEIVER_DEPTH_ENV))
+    return 4 if encoding == 'linear' else 2
+
+
+CASES += sun_apply_cases('sun-shadow-apply')
 # The wide configuration: the same scene scaled by 200 (a 400-unit box, the
 # camera 1,500 units away) under the production cascade 1000 / 2048 / 2048^2
 # (world texel 0.977) with the bias resolved from world units
 # (sun_shadow_apply_bias, default X3M_SUN_SHADOW_BIAS_UNITS).
 SUN_APPLY_WIDE_ENV = dict(X3M_FIXTURE_SUNAPPLY_WIDE='1', X3M_SHADOW_REPLAY_SIZE='2048', X3M_SHADOW_REPLAY_EXTENT='1000', X3M_SHADOW_REPLAY_DEPTH_HALF='2048')
-CASES += [case('sun-shadow-apply-wide', 'sunapply', enabled='0', hdr_env=SUN_APPLY_WIDE_ENV)]
+CASES += sun_apply_cases('sun-shadow-apply-wide', **SUN_APPLY_WIDE_ENV)
 # Sun-shadow cascades (docs/architecture/shadow-cascades.md, section 4): the
 # production ShadowReplayPass (three 256^2 maps, one transaction) and the
 # cascade apply program driven directly on real geometry, against the twin:
@@ -465,7 +491,7 @@ SUN_APPLY_CASCADES_ENV = dict(X3M_FIXTURE_SUNAPPLY_CASCADES='1')
 # the pixel-centre term of its latch (quad_pixel_centre_m20/m21); X3M_FIXTURE_SUNAPPLY_LEGACY_LATCH=1 drops it and fails.
 SUN_CASCADE_SCRIPT = 'aabbccddeeef' + 'g' * 8 + 'h' + 'i' * 8
 SUN_CASCADE_FAR_SKIPPED, SUN_CASCADE_RESET_FRAME, SUN_CASCADE_IDENTITY = (7, 9), 9, (8, 10)
-CASES += [case('sun-shadow-apply-cascades', 'sunapply', enabled='0', hdr_env=SUN_APPLY_CASCADES_ENV)]
+CASES += sun_apply_cases('sun-shadow-apply-cascades', **SUN_APPLY_CASCADES_ENV)
 # Five cascades (shadow-cascade-extents.md, section 3): the 30 km set
 # 250 / 1,500 / 7,500 / 37,500 / 150,000 on five 256^2 maps through the fifth
 # sampler and branch of the apply program. The script, mirrored from
@@ -478,7 +504,7 @@ SUN_CASCADE5_EXTENTS = (250.0, 1500.0, 7500.0, 37500.0, 150000.0)
 SUN_CASCADE5_SCRIPT = (('r', 0), ('r', 1), ('r', 2), ('r', 3), ('r', 4), ('s', 0), ('s', 1), ('s', 2), ('s', 3), ('r', 0), ('d', 4), ('d', 4), ('e', 4), ('e', 4), ('e', 4))
 SUN_CASCADE5_FAR_SKIPPED, SUN_CASCADE5_RESET_FRAME, SUN_CASCADE5_IDENTITY = (11, 13), 13, (12, 14)
 SUN_CASCADE5_EPS_RANGE = 15512.0  # the three-cascade script's cascade-0 depth range, whose EPS_DEPTH the twin keeps in world units here
-CASES += [case('sun-shadow-apply-cascades-5', 'sunapply', enabled='0', hdr_env=dict(X3M_FIXTURE_SUNAPPLY_CASCADES='5'))]
+CASES += sun_apply_cases('sun-shadow-apply-cascades-5', X3M_FIXTURE_SUNAPPLY_CASCADES='5')
 # The run 40 A (run116) faces case (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 2;
 # motion_output_sun_apply_cascades_inc.h, the faces script): the fifth cascade's box under the eight
 # jitter offsets, eight control frames (front-face maps: the box's lit faces darken themselves and
@@ -487,7 +513,7 @@ CASES += [case('sun-shadow-apply-cascades-5', 'sunapply', enabled='0', hdr_env=d
 # from the sun stay shadowed. With X3M_FIXTURE_SUNAPPLY_FACES_FIX=0 the second half is the control
 # too, and the validator fails: the pre-fix witness.
 SUN_FACES_FRAMES, SUN_FACES_FIXED_FROM = 16, 8
-CASES += [case('sun-shadow-apply-cascades-5-faces', 'sunapply', enabled='0', hdr_env=dict(X3M_FIXTURE_SUNAPPLY_CASCADES='5', X3M_FIXTURE_SUNAPPLY_FACES='1'))]
+CASES += sun_apply_cases('sun-shadow-apply-cascades-5-faces', X3M_FIXTURE_SUNAPPLY_CASCADES='5', X3M_FIXTURE_SUNAPPLY_FACES='1')
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
 SHADOW_TWINS = {'production-shadow-off': 'production-on', 'seam-shadow-off': 'seam-on', 'seam-taa-shadow-off': 'seam-taa-on',
                 'seam-lazy-shadow-off': 'seam-lazy-on', 'seam-burst-perdraw-shadow-off': 'seam-burst-perdraw', 'seam-burst-lazy-shadow-off': 'seam-burst-lazy'}
@@ -971,12 +997,13 @@ def validate_sun_apply(name, text, directory, env):
         f = frames[frame]
         read = lambda suffix, count: (directory / f'sunapply_{frame}_{suffix}').read_bytes()
         before, after = read('before.rgba16f', 8), read('after.rgba16f', 8)
-        rt2, sun_map = read('rt2.g32r32f', 8), read('map.r32f', 4)
-        assert len(before) == len(after) == width * height * 8 and len(rt2) == width * height * 8 and len(sun_map) == size * size * 4, (name, frame)
-        images[frame] = (before, after)
         params, scene = sun_apply.parse_params(f)
+        encoding, lanes = params['depth_encoding'], rt2_lanes(f, env)
+        rt2, sun_map = read(rt2_file(encoding), lanes * 4), read('map.r32f', 4)
+        assert len(before) == len(after) == width * height * 8 and len(rt2) == width * height * lanes * 4 and len(sun_map) == size * size * 4, (name, frame)
+        images[frame] = (before, after)
         assert (params['bias_constant'], params['bias_max']) == (float(config['bias_constant']), float(config['bias_max'])), (name, frame, params, config)
-        d, s = sun_apply.unpack_rt2(rt2, width, height)
+        d, s = sun_apply.unpack_rt2(rt2, width, height, encoding)
         # The wide run holds the plane receivers (the box-on-plane shadow) to
         # the two-texel edge rule; the box faces at their camera silhouette are
         # non-planar quads whose fallback bias (the 21-texel clamp) can light a
@@ -1069,11 +1096,12 @@ def validate_sun_apply_cascades(name, text, directory, env):
             assert abs(params['cascades'][c]['bias_constant'] - resolved['bias_constant']) <= 1e-9 and abs(params['cascades'][c]['bias_max'] - resolved['bias_max']) <= 1e-8 \
                 and abs(float(f[f'texel_world{c}']) - resolved['texel_world']) <= 1e-6, (name, frame, c, resolved)
         read = lambda suffix, at=frame: (directory / f'sunapply_{at}_{suffix}').read_bytes()
-        before, after, rt2 = read('before.rgba16f'), read('after.rgba16f'), read('rt2.g32r32f')
-        assert len(before) == len(after) == len(rt2) == width * height * 8, (name, frame)
+        encoding, lanes = params['depth_encoding'], rt2_lanes(f, env)
+        before, after, rt2 = read('before.rgba16f'), read('after.rgba16f'), read(rt2_file(encoding))
+        assert len(before) == len(after) == width * height * 8 and len(rt2) == width * height * lanes * 4, (name, frame)
         images[frame] = (before, after)
         maps = [sun_apply.unpack_map(read(f'map{c}.r32f', map_frames[c]), size) if params['cascades'][c]['valid'] else None for c in range(count)]
-        d, s = sun_apply.unpack_rt2(rt2, width, height)
+        d, s = sun_apply.unpack_rt2(rt2, width, height, encoding)
         comparison = sun_apply.compare_frame_cascades(sun_apply.unpack_rgba16f(before, width, height), sun_apply.unpack_rgba16f(after, width, height), d, s, maps, params, scene, extents)
         # The F8 self-check on the fixture's own frame: the receiver-minus-map residual of own-surface receivers per
         # cascade, in world units against the cascade's depth range (depth_light + depth_behind<c>).
@@ -1212,9 +1240,11 @@ def validate_sun_apply_cascades_faces(name, text, directory, env):
             cascade['eps_depth'] = sun_apply.EPS_DEPTH * SUN_CASCADE5_EPS_RANGE / (float(config['depth_light']) + float(config['depth_behind'].split(',')[c]))
         params['band_eps'] = sun_apply.EPS_SELECT
         read = lambda suffix, at=frame: (directory / f'sunapply_{at}_{suffix}').read_bytes()
-        before, after, rt2 = read('before.rgba16f'), read('after.rgba16f'), read('rt2.g32r32f')
+        encoding, lanes = params['depth_encoding'], rt2_lanes(f, env)
+        before, after, rt2 = read('before.rgba16f'), read('after.rgba16f'), read(rt2_file(encoding))
+        assert len(before) == len(after) == width * height * 8 and len(rt2) == width * height * lanes * 4, (name, frame)
         maps = [sun_apply.unpack_map(read(f'map{c}.r32f', map_frames[c]), size) if params['cascades'][c]['valid'] else None for c in range(count)]
-        d, s = sun_apply.unpack_rt2(rt2, width, height)
+        d, s = sun_apply.unpack_rt2(rt2, width, height, encoding)
         comparison = sun_apply.compare_frame_cascades(sun_apply.unpack_rgba16f(before, width, height), sun_apply.unpack_rgba16f(after, width, height), d, s, maps, params, scene, extents)
         assert comparison['ok'] and comparison['compared'] > 0, (name, frame, 'the readback differs from the twin', {k: comparison[k] for k in ('ok', 'compared', 'worst_codes', 'violations') if k in comparison})
         far = comparison['cascades'][str(count - 1)]
@@ -1310,11 +1340,12 @@ def validate_sun_apply_cascades_five(name, text, directory, env):
             assert abs(params['cascades'][c]['bias_constant'] - resolved['bias_constant']) <= 1e-9 and abs(params['cascades'][c]['bias_max'] - resolved['bias_max']) <= 1e-8 \
                 and abs(float(f[f'texel_world{c}']) - resolved['texel_world']) <= 1e-6, (name, frame, c, resolved)
         read = lambda suffix, at=frame: (directory / f'sunapply_{at}_{suffix}').read_bytes()
-        before, after, rt2 = read('before.rgba16f'), read('after.rgba16f'), read('rt2.g32r32f')
-        assert len(before) == len(after) == len(rt2) == width * height * 8, (name, frame)
+        encoding, lanes = params['depth_encoding'], rt2_lanes(f, env)
+        before, after, rt2 = read('before.rgba16f'), read('after.rgba16f'), read(rt2_file(encoding))
+        assert len(before) == len(after) == width * height * 8 and len(rt2) == width * height * lanes * 4, (name, frame)
         images[frame] = (before, after)
         maps = [sun_apply.unpack_map(read(f'map{c}.r32f', map_frames[c]), size) if params['cascades'][c]['valid'] else None for c in range(count)]
-        d, s = sun_apply.unpack_rt2(rt2, width, height)
+        d, s = sun_apply.unpack_rt2(rt2, width, height, encoding)
         comparison = sun_apply.compare_frame_cascades(sun_apply.unpack_rgba16f(before, width, height), sun_apply.unpack_rgba16f(after, width, height), d, s, maps, params, scene, extents)
         comparison.update(case=letter, owner=owner, scale=float(f['scale']), elevation=float(f['elevation']), us=float(t['us']), replay_us=float(t['replay_us']), issues=int(t['issues']),
                           far_replayed=f['far_replayed'] == '1', far_frame=int(f['far_frame']), records=records)
@@ -4846,6 +4877,8 @@ def main(argv=None):
                               'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS'):
                 env.pop(inherited, None)
             env.update(VARIANTS[variant])
+            if mode != 'sunapply':
+                env[SUN_APPLY_RECEIVER_DEPTH_ENV] = 'device'  # an inherited value must not widen the route's RT2 in the other cases
             env.update(hdr_env)
             if taa:
                 # ca6ad2e made --taa default to sharpen 0.75 and mip bias -0.5;
@@ -4941,7 +4974,8 @@ def main(argv=None):
                 validator = validate_sun_apply_cascades_faces if hdr_env.get('X3M_FIXTURE_SUNAPPLY_FACES') == '1' else validate_sun_apply_cascades_five if scripted == '5' else validate_sun_apply_cascades if scripted == '1' else validate_sun_apply
                 case = validator(name, text, directory, hdr_env)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
-                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name),
+                            depth_encoding=hdr_env.get(SUN_APPLY_RECEIVER_DEPTH_ENV, 'device'))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
                 result['cases'][name] = case
                 # The compact per-case record the ledger cites (no readbacks).

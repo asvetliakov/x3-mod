@@ -257,10 +257,37 @@ class Files(unittest.TestCase):
         self.assertEqual((extra['width'], extra['height']), (WIDTH, HEIGHT))
         self.assertEqual(len(params['cascades']), 1)
         self.assertAlmostEqual(params['cascades'][0]['bias_constant'], BIAS['bias_constant'])
-        d, s, maps = srr.load_frame(self.dir, 1, 1, params, extra)
+        d, s, maps, w = srr.load_frame(self.dir, 1, 1, params, extra)
         self.assertEqual(d.shape, (HEIGHT, WIDTH))
         self.assertEqual(maps[0].shape, (SIZE, SIZE))
         self.assertTrue((s == 1.0).all())
+        self.assertIsNone(w)
+
+    def test_wide_dump_reads_the_stored_view_depth(self):
+        # The receiver-depth option's 16 B/px dump (depth_encoding=linear on the params line): .r is
+        # still the z/w lane the tool perturbs, .b the stored fp32 view depth that seeds the `w` encoding.
+        import numpy as np
+        log = srr.find_log(self.dir)
+        text = log.read_text()
+        log.write_text(text.replace('pixel_centre=1 ', 'pixel_centre=1 depth_encoding=linear '))
+        params, extra = srr.read_apply_params(log, [1])[1]
+        self.assertEqual(params['depth_encoding'], 'linear')
+        d0, s0, _ = plate_capture()
+        view = np.float32(M32 / (d0 - M22))
+        wide = np.stack([d0, s0, view, view], axis=-1).astype('<f4')
+        (self.dir / 'depth_1_1.rgba32f').write_bytes(wide.tobytes())
+        d, s, maps, w = srr.load_frame(self.dir, 1, 1, params, extra)
+        self.assertTrue(np.array_equal(d, d0) and np.array_equal(w, view.astype(np.float64)))
+        base, plus, minus = srr.perturbed_depth(d, params, 'w', w)
+        step = np.abs(M32 / (plus - M22) - M32 / (base - M22))
+        ulp = np.ldexp(1.0, (np.floor(np.log2(view.astype(np.float64))) - 23).astype(np.int64))
+        self.assertTrue(np.allclose(step, ulp, rtol=1e-3))
+        record = srr.reroll_frame(d, s, maps, params, extra, frame=1, w=w)
+        self.assertEqual(record['cascades'][0]['encodings']['w']['flipped'], 0)
+        self.assertGreaterEqual(record['cascades'][0]['encodings']['zw']['flipped_fraction'], .05)
+        (self.dir / 'depth_1_1.rgba32f').write_bytes(wide.tobytes()[:-16])
+        with self.assertRaises(srr.MalformedInput):
+            srr.load_frame(self.dir, 1, 1, params, extra)
 
     def test_cli_json(self):
         out = self.dir / 'reroll.json'

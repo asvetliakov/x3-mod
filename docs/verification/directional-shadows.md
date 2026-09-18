@@ -2995,3 +2995,62 @@ on a row of depths (z/w: z²/1e8, 13.7 u at 37 km; w: one fp32 ULP, 3.9e-3 u), a
 single-sided girder plate at 37 km under 18.3-u texels and a 2.9-texel pixel footprint whose map is
 its own supersampled depth: 19.6 % of its pixels flip under the z/w quantum and none under the w
 quantum (margin p50 −6 u), the design note's § 4 plate case on the host side.
+## Receiver depth (RT2 .b) (2026-09-18, worktree `agent-a2fa66402c00c2891`)
+
+Implementation of `docs/architecture/shadow-receiver-depth.md`: `--sun-shadow-receiver-depth
+{device,linear}` (`X3M_SUN_SHADOW_RECEIVER_DEPTH`, default `device`) widens the lane's RT2 to
+`A32B32G32R32F`; the depth fragment appends `mov oC2.zw, v.y` (3 slots, no literal; the
+enforcer accepts rcp/mul/mov with two `oC2` writes), the apply quads read `z = RT2.b` when the
+pass finds the wide format bound (`limits.z` / `select.w = 1`, set per frame from
+`GetLevelDesc`), TAA and AO admit the format and keep reading `.r`. With the option absent the
+route creates `G32R32F` as before and every consumer's bits are unchanged. Fixture build
+`build/receiver-depth/d3d9.dll` sha256 `ab4833c8…` (mingw i686, zero warnings, `check_no_x87`
+537 reachable / 0 violations); not a candidate.
+
+- Native compile: `current_depth` 35 → 38 words (2 → 3 slots), `sun_shadow_apply` 993 → 998
+  words (225 → 226 slots), `sun_shadow_cascade_apply` 2133 → 2138 words (499 → 500 slots;
+  `--check` PASS).
+- Host: `ReceiverDepthPrecision` (girder plate, 25,600 owned pixels per cascade, 87 % / 75 %
+  self-shadowed): ±1 ULP re-roll device 18.8 % (C3 37 km) / 83.5 % (C4 92 km), linear 0.004 % /
+  0 %; linear `f` equal to the float64 `f` on 99.996 % / 99.992 %. `test_sun_shadow_apply` 25
+  tests, `test_original_sun_share` 5 (the `.b .a` lanes are the control's), structure fixture
+  171 rows / 1,711 checks (pixel depth words 7 → 10).
+- Sentinels: the ordinary fill writes `c0.wwww = (−1,−1,−1,−1)`; the lane's sentinel program now
+  writes `c0.wxww = (−1, 0, −1, −1)` (it wrote `.wxxx`, `.b = 0`, before this change; `G32R32F`
+  stores `.rg` only, so its bits are unchanged), so `.b = −1` on uncovered pixels as the design note
+  says. The quads keep `valid` on `.r ≥ 0` (the same pixels either way).
+- `run_material_motion.py`: 1,510 checks / 82 configurations, `.r` analytic max 2.56e-6, ZFUNC
+  EQUAL exact, 1,476 depth samples; clip-w lanes (`.z = .w`) against the analytic `w`: **≤ 3.41
+  ULP at 1280×768, ≤ 0.41 at 5120×1440**; the 32×32 configurations reach 52.6 ULP, the
+  rasterizer's sub-pixel vertex snapping of the 64-pixel triangle (∝ 1 / width), admitted at 64
+  there. The note's ≤ 4 ULP assumption holds at game resolution.
+- `run_linear_material.py --original-sun-share`: 648 OSHARE rows, `w_bad=0 w_positive=256` on
+  every one (the wide lane target's `.b = .a > 0` survive the share's `.g` write), colour /
+  motion / depth byte-identical, max 0.00019 FP16 codes.
+- `run_motion_output.py` apply cases run under both encodings: `device` (the committed
+  `<name>-fixture.json` records, `depth_encoding=device`) differs from the records before this
+  change only in the added per-frame check (+6 / +6 / +29 / +15 / +16), the +1 slot and bench
+  nanoseconds: 0 behavioural diffs; `linear` (the `<name>-linear-fixture.json` siblings,
+  `rt2.rgba32f`):
+  sun-shadow-apply 175 checks worst 0.998 codes; -wide 179 / 0.998; -cascades 4,371 / 1.000,
+  edge beyond one texel 28 (as before); -cascades-5 3,132 / 1.000 / 0; -5-faces 2,877 / 1.000.
+  One cascades-5 frame-6 pixel sat at 1.00013 codes: an FP16 exponent boundary between the
+  reference and the readback; the twin now arbitrates marginal cases by the exact code count
+  (`beyond_one_code`), so exactly one code is one code.
+- `run_ambient_occlusion.py`: 114 checks, 0 failures; `g32r32f_input_bit_identical` and
+  `a32b32g32r32f_input_bit_identical` (the same `.r` beside junk lanes gives the bit-identical
+  term).
+- `run_sun_share_live.py` (`--dll verification/probe/build/motion-output-seam/d3d9.dll`: the live
+  script needs the fixture-seam DLL, the production one fails "sun live needs the HDR/TAA native
+  seam"): `shadow_apply` / `shadow_apply_cascades` on the shipping `G32R32F` lane (`format=115`,
+  `depth_encoding=device`) and their `-linear` siblings on the wide lane (`format=116`,
+  `depth_encoding=linear`): each 6 / 6 TAA frames equal to the CPU reference, quad applied on 4
+  frames, frames 0 (replay) and 2 (lane) skipped byte-identical, Reset at frame 4; cascades
+  capture frames 1 and 3 owned 4,096 / 0, shadowed 4,096. Record:
+  `verification/results/bottle-X3/sun-share-live-receiver-depth.json`.
+- `run_sun_share_temporal.py`: both enhanced formats through the depth-draw copy, counts
+  16 / 8 / 8 / 2, 210 checks, R32F history equal to every source `.r` bit.
+- `tools/manage.py launch --dry-run … --sun-shadow-receiver-depth linear` forwards
+  `X3M_SUN_SHADOW_RECEIVER_DEPTH=linear` (the lane's own prerequisites must be on the line).
+- Not done: `tools/analysis/shadow_receiver_reroll.py` (the note's captured-data witness) needs
+  an F8 burst directory; the flight's `frame_end` delta and burst are the user's.

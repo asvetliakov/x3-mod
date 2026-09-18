@@ -165,33 +165,35 @@
     "vs_c30104cb0efb6675.bin": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
     "vs_e2ad860d5fbb3e59.bin": "c0aa7effc40cfcfc4c3b936c3809446f3be1048576b6a5138f6de3155f778d5d"
   },
-  "executable_sha256": "277789c1dc2ff9f2e90fc50037c54f04b47c030e8ac4ed6930bccaef4878e9c0",
+  "executable_sha256": "c6866ad424b4169641fe85627dae3fc781e3835f0ce16d3cb961244e97c096dd",
   "code_sha256": {
-    "src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
+    "src/renderer/quad_vertex_program.h": "a802779a98bb3a1e1c69129558be76aa25b46c111ecd8913f10e7ec4aad8b410",
     "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
     "verification/probe/sun_share_material_inc.h": "8b629c7ca49adf072d97ca455770fb5376d18f5d1fbe8542591d80395004bcbe",
-    "src/renderer/linear_material.cpp": "f9b2cc9689d86f7062ee770be18efccc2ecfcffc900aa1d4d4f65da6cbe1793a",
+    "src/renderer/linear_material.cpp": "72a85db39088ed5a6e292d82e1a7052d09c6dc7e1fa06d5a1876a38b3423c000",
     "src/renderer/linear_material.h": "707778cb75f469f44f680b6bdce8a9024b4706c157ec00d9351b9a0445618f2d",
+    "src/renderer/linear_emission.cpp": "74685608acd0129cc1ed49a00894de1812ae74287445ea6a144b3c0b28f67a99",
+    "src/renderer/linear_emission.h": "f76c7bca3e2691af2ed30e344e1d9913af61005523d3b38461426f914bac4c36",
     "src/renderer/linear_sun_share_inc.h": "de0b29729de6952a2a681e8985fef5bda35650e7bf6849a23a62d63524bfd1dc",
     "src/renderer/linear_xt_material_inc.h": "f1ee00093072d456bdcdc2843cf4a006760aef154e2c1a5c5db004a0e079c9fa",
     "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
-    "src/renderer/material_motion.cpp": "5eb7a712d1320ac4429754c60f2760b417591fcd40b85b9f218e543036f29ab3",
+    "src/renderer/material_motion.cpp": "323cc398f73f98c17bce629f939289021bc4d427e12a19eb79ee65496ad35497",
     "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
     "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
     "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
     "docs/reverse-engineering/linear-material-profiles.json": "be7f68d17075a04cd661e2c0675f3ebbc57c6f13b79e7b020697c3d0a1efbaa8",
     "docs/reverse-engineering/xt-material-profiles.json": "3c8715479e0fe53c1336d891c09ccb6a2fd88e92873e6ac9e4f16a5167c6c80f",
-    "verification/probe/linear_material_fixture.cpp": "b775a42041d8a328d67d109610575a3025423defb93723b7ab9a080d5557312d",
+    "verification/probe/linear_material_fixture.cpp": "ce424d67ed46793dc46a3783a8283b9ec86f4dc76bfb24556202d64b766e9c6f",
     "verification/probe/linear_alpha_test_fixture_inc.h": "6de6729442ba425b791256c30110c9b4f0dae8b16d7c024ba14e2d3809e52b47",
     "verification/probe/linear_material_reference.py": "23ac64ae3a0c35afbc1ca234b8dbc0d66829308676afb1ba08f3cdfeb5795b18",
     "verification/probe/linear_xt_fixture_reference.py": "19e2ada0cd4e7d79086c364fa4b5ccae5c8931aa7fabddc2a4f8cf10740307e9",
     "verification/probe/linear_glass_fixture_reference.py": "6e364915c820a21854dcada9ac563fdd0fe20d34f4aadc3909729d57fc600c1f",
     "verification/analysis/xt_material_reference.py": "f6918184dbd201a26c81f167eab9d8968f740d498a722cf21de6d70ea86cce14",
-    "verification/probe/run_linear_material.py": "c6347fec03d1b7b0ba9138d1fee7c9b532a1c1b1820b08703010e3c26db5c917"
+    "verification/probe/run_linear_material.py": "eefe98db44474167f6a2e5ae92a64ddb7674c1fb047176e90cc28aab4bbfb632"
   },
   "runs": {
     "0.0": {
-      "raw_report": "/tmp/x3-original-sun-share-gpu/share-report-0.txt",
+      "raw_report": "/tmp/x3-linear-material-gpu/share-report-0.txt",
       "exit_code": 0,
       "cases": 324,
       "programs": 108,
@@ -203,11 +205,11 @@
       "max_fp16_code_error": 0.00011387195,
       "max_share": 1.0,
       "colour_alpha_motion_depth": "byte-identical to the control on every pixel (FP16 and RGBA32F)",
-      "max_share_ps_instructions": 175,
+      "max_share_ps_instructions": 176,
       "share_ps": 108
     },
     "0.05": {
-      "raw_report": "/tmp/x3-original-sun-share-gpu/share-report-0.05.txt",
+      "raw_report": "/tmp/x3-linear-material-gpu/share-report-0.05.txt",
       "exit_code": 0,
       "cases": 324,
       "programs": 108,
@@ -219,7 +221,7 @@
       "max_fp16_code_error": 0.000191543819,
       "max_share": 0.749394059,
       "colour_alpha_motion_depth": "byte-identical to the control on every pixel (FP16 and RGBA32F)",
-      "max_share_ps_instructions": 205,
+      "max_share_ps_instructions": 206,
       "share_ps": 108
     }
   }

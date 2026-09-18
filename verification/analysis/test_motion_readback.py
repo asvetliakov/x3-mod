@@ -76,7 +76,7 @@ def draw_block(frame, index, gate, key, rows, rows_hash, viewport=(0, 0, W, H), 
 
 
 def frame_lines(frame, draws, captured=True, readback=True, committed=1, counters=None, reset_after=None,
-                depth_readback=False, extra='', cut=None, taa_readback=False):
+                depth_readback=False, extra='', cut=None, taa_readback=False, depth_format='r32f'):
     """draws: list of (gate, key_name, rows, rows_hash); index 1 is a non-scene background draw.
     depth_readback adds the RT2 readback line, extra is appended to the frame summary
     (jitter and cut fields of temporal step 1), cut adds a motion_output_cut line."""
@@ -90,8 +90,9 @@ def frame_lines(frame, draws, captured=True, readback=True, committed=1, counter
         lines.append(f'motion_output_readback device=1 frame={frame} file=motion_1_{frame}.rgba32f width={W} '
                      f'height={H} format=rgba32f_row_major result=00000000 bytes={W * H * 16}')
     if depth_readback:
-        lines.append(f'motion_output_depth_readback device=1 frame={frame} file=depth_1_{frame}.r32f width={W} '
-                     f'height={H} format=r32f_row_major result=00000000 bytes={W * H * 4}')
+        lanes = {'r32f': 1, 'rg32f': 2, 'rgba32f': 4}[depth_format]
+        lines.append(f'motion_output_depth_readback device=1 frame={frame} file=depth_1_{frame}.{depth_format} width={W} '
+                     f'height={H} format={depth_format}_row_major result=00000000 bytes={W * H * 4 * lanes}')
     if cut:
         lines.append(f'motion_output_cut device=1 frame={frame} ' + ' '.join(f'{k}={v}' for k, v in cut.items()))
     if taa_readback:
@@ -210,7 +211,7 @@ def build_scenario(directory, **variant):
                        readback=not variant.get('no_readback_frame2', False),
                        depth_readback=variant.get('depth_readback_lines', False),
                        extra=variant.get('frame2_extra', ''), cut=variant.get('frame2_cut'),
-                       taa_readback=variant.get('taa_image', False))
+                       taa_readback=variant.get('taa_image', False), depth_format=variant.get('depth_format', 'r32f'))
     image2 = Image()
     paint_affine(image2, FOOT_A2, A2, A0)
     # B's object points sit at z=0.65: depth 0.75 under B0 (tz=0.1) in frame 1, 0.65 under B2 now.
@@ -237,12 +238,16 @@ def build_scenario(directory, **variant):
             stream.write(struct.pack('<%df' % (W * H), *depth))
         if variant.get('depth_readback_lines'):
             log = [line for line in log]
+            depth_format = variant.get('depth_format', 'r32f')
+            lanes = {'r32f': 1, 'rg32f': 2, 'rgba32f': 4}[depth_format]
             for number in (0, 2):
                 image = [-1.0] * (W * H)
                 for px, py in (FOOT_A2 + FOOT_B2 + FOOT_C2) if number == 2 else []:
                     image[py * W + px] = 0.25
-                with (directory / f'depth_1_{number}.r32f').open('wb') as stream:
-                    stream.write(struct.pack('<%df' % (W * H), *image))
+                # The lane formats carry .r beside a share and, wide, the clip-w lanes; the analyzer reads .r only.
+                texels = [v for value in image for v in ([value] + [0.5, 37000.0, 37000.0][:lanes - 1])]
+                with (directory / f'depth_1_{number}.{depth_format}').open('wb') as stream:
+                    stream.write(struct.pack('<%df' % (W * H * lanes), *texels))
     if variant.get('taa_image'):
         # Frame 2's pre-resolve color (gray 128 everywhere) and the resolved FP16
         # image: unchanged outside A's footprint, moved by 8/255 inside it (history
@@ -462,6 +467,17 @@ class MotionReadbackTests(unittest.TestCase):
         # Frame 2's logged readback names the file; its stats follow the RT2 contract.
         image = frame(summary, 2)['depth_image']
         self.assertEqual((image['status'], image['file']), ('loaded', 'depth_1_2.r32f'))
+        # The lane's two- and four-lane dumps (rg32f, rgba32f: the receiver-depth option) load with the same statistics from .r.
+        for depth_format in ('rg32f', 'rgba32f'):
+            build_scenario(self.dir, depth_image='sentinel', depth_readback_lines=True, depth_format=depth_format,
+                           frame2_extra=' depth=1 depth_routed=3 jitter=0 jitter_index=0 jitter_x=0.000000 jitter_y=0.000000'
+                                        ' jitter_previous_x=0.000000 jitter_previous_y=0.000000 jittered=0 cut=0'
+                                        ' cut_median_px=1.2500 cut_missing=0.0000 cut_samples=3',
+                           frame2_cut={'samples': 3, 'median_px': '1.2500', 'keyed': 3, 'missing': 0, 'missing_fraction': '0.0000',
+                                       'bound_px': '0.600', 'bound_missing': '0.250', 'cut': 0})
+            wide = frame(run(self.dir), 2)['depth_image']
+            self.assertEqual((wide['status'], wide['file'], wide['written'], wide['sentinel'], wide['written_range'], wide['clean']),
+                             ('loaded', f'depth_1_2.{depth_format}', image['written'], image['sentinel'], image['written_range'], True))
         self.assertEqual(image['written'], len(FOOT_A2) + len(FOOT_B2) + len(FOOT_C2))
         self.assertEqual(image['sentinel'], W * H - image['written'])
         self.assertEqual(image['written_range'], [0.25, 0.25])

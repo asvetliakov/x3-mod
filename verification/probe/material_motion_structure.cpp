@@ -120,8 +120,9 @@ static void authored(const MotionOutputProfile& row, const Words& defs, const Wo
     require(d == 18 && d == defs.size() && b == 111 && b == body.size() && declarations == 1 && output_count == 1);
 }
 // The relocated depth fragment: one TEXCOORD input declaration moved to the
-// row's depth input/index, rcp and mul with r0 -> first motion temporary,
-// v0 -> depth input, oC0 -> oC2; no literal definitions.
+// row's depth input/index, rcp, mul and the .zw mov (the clip w lanes of the
+// wide sun-shadow RT2) with r0 -> first motion temporary, v0 -> depth input,
+// oC0 -> oC2 (two writes); no literal definitions.
 static void authored_depth(const MotionOutputProfile& row, const Words& declaration, const Words& body) {
     const auto& source = current_depth_pixel_program();
     const std::size_t extent = std::size(source);
@@ -137,7 +138,7 @@ static void authored_depth(const MotionOutputProfile& row, const Words& declarat
                                           0x90030000u | row.pixel_depth_input_register}));
             ++declarations; i += 3; continue;
         }
-        const unsigned arity = op == 6 ? 2 : op == 5 ? 3 : 0;
+        const unsigned arity = op == 6 || op == 1 ? 2 : op == 5 ? 3 : 0;
         require(arity != 0 && instruction == ((arity << 24) | op));
         require(i + arity + 1 <= extent - 1 && b + arity + 1 <= body.size() && body[b] == instruction);
         for (unsigned k = 1; k <= arity; ++k) {
@@ -155,7 +156,7 @@ static void authored_depth(const MotionOutputProfile& row, const Words& declarat
         if (kind(source[i+1]) == 8) ++output_count;
         i += arity + 1; b += arity + 1;
     }
-    require(b == 7 && b == body.size() && declarations == 1 && output_count == 1);
+    require(b == 10 && b == body.size() && declarations == 1 && output_count == 2);
 }
 static bool same(const MaterialMotionVariant& a, const MaterialMotionVariant& b) {
     return a.vertex == b.vertex && a.pixel == b.pixel;
@@ -167,8 +168,8 @@ constexpr std::uint64_t argon_vertex_variant_fnv = 0x07805a216f19b9b6ull;
 constexpr std::uint64_t argon_pixel_variant_fnv = 0x92bd1a32ae7d2a6dull;
 constexpr std::size_t vertex_added = 3 + 16, pixel_added = 18 + 3 + 111;
 // Depth export: one more declaration and two dots in the VS; one declaration
-// and the rcp/mul pair in the PS.
-constexpr std::size_t vertex_depth_added = 3 + 8, pixel_depth_added = 3 + 7;
+// and the rcp/mul/mov triple in the PS.
+constexpr std::size_t vertex_depth_added = 3 + 8, pixel_depth_added = 3 + 10;
 
 static void test_row(unsigned index, const MotionOutputProfile& row, const Words& vs, const Words& ps) {
     require(vs.size() == row.vertex_dword_count && ps.size() == row.pixel_dword_count, "local program length differs from the row");
@@ -203,7 +204,7 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         require(material_motion_fingerprint(motion_only.pixel.data(), motion_only.pixel.size()) == argon_pixel_variant_fnv);
         passed(index, "argon_output_byte_identical_to_previous_transformer");
     }
-    const std::size_t vs_dcl = 3 + 3 * vd, vs_dots = 16 + 8 * vd, ps_dcl = 3 + 3 * pd, ps_body = 111 + 7 * pd;
+    const std::size_t vs_dcl = 3 + 3 * vd, vs_dots = 16 + 8 * vd, ps_dcl = 3 + 3 * pd, ps_body = 111 + 10 * pd;
     auto stripped_vs = output.vertex, stripped_ps = output.pixel;
     stripped_vs.erase(stripped_vs.begin() + A + vs_dcl, stripped_vs.begin() + A + vs_dcl + vs_dots);
     stripped_vs.erase(stripped_vs.begin() + D, stripped_vs.begin() + D + vs_dcl);

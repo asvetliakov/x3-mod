@@ -33,7 +33,7 @@ READBACKS = {
     'motion_output_taa_readback': ('taa', ('rgba16f',)),
     'motion_output_present_readback': ('present', ('bgra8',)),
     'motion_output_readback': ('motion', ('rgba32f',)),
-    'motion_output_depth_readback': ('depth', ('r32f', 'rg32f')),
+    'motion_output_depth_readback': ('depth', ('r32f', 'rg32f', 'rgba32f')),  # rgba32f: the receiver-depth option's wide RT2
     'hdr_readback': ('hdr', ('rgba16f',)),
     'shadow_replay_map_readback': ('shadow_map', ('r32f',)),
 }

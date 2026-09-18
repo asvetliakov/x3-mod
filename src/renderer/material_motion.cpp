@@ -399,8 +399,11 @@ bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& toke
     return true;
 }
 // Relocate only our authored current-depth program: one TEXCOORD1 input
-// declaration, no definitions, a straight-line body (rcp, mul) and one color
-// output write. Its shape is fixed at compile time of the fragment.
+// declaration, no definitions, a straight-line body (rcp, mul, mov) and two
+// color output writes: .r (and .g) = z / w, then .zw = w (the sun-shadow
+// lane's precise receiver depth, docs/architecture/shadow-receiver-depth.md;
+// dropped by an R32F or G32R32F target). Its shape is fixed at compile time
+// of the fragment.
 bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body) {
     const auto& code = current_depth_pixel_program();
     if (code[0] != 0xffff0300u) return false;
@@ -409,7 +412,7 @@ bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body) 
     for (std::size_t at = 1; at < std::size(code);) {
         const auto token = code[at], opcode = token & 0xffff;
         if (opcode == op_end)
-            return token == end_token && at == std::size(code) - 1 && declarations == 1 && outputs == 1;
+            return token == end_token && at == std::size(code) - 1 && declarations == 1 && outputs == 2;
         const std::size_t operands = instruction_length(token);
         if (operands > std::size(code) - at - 1) return false;
         if (opcode == op_comment) { at += operands + 1; continue; }
@@ -427,8 +430,8 @@ bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body) 
             body_started = true;
             unsigned expected;
             switch (opcode) {
-            case 6: expected = 2; break;  // RCP
-            case 5: expected = 3; break;  // MUL
+            case 1: case 6: expected = 2; break;  // MOV, RCP
+            case 5: expected = 3; break;          // MUL
             default: return false;
             }
             if (token != (expected << 24 | opcode) || operands != expected) return false;
@@ -662,7 +665,7 @@ MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile
         Words constants, inputs, body;
         if (!motion_fragment(row, constants, inputs, body)) return MaterialMotionResult::ProfileMismatch;
         // The depth fragment follows the motion fragment: its declaration after
-        // the motion input, its two instructions after the motion body.
+        // the motion input, its instructions after the motion body.
         if (depth && !depth_fragment(row, inputs, body)) return MaterialMotionResult::ProfileMismatch;
         Words variant;
         variant.reserve(pixel_words + constants.size() + inputs.size() + body.size());

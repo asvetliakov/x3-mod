@@ -322,6 +322,7 @@ class OriginalSunShareTests(unittest.TestCase):
                     c = vm.execute(reference, copy.deepcopy(state), stop_after_oc0=False).registers
                     self.assertEqual(a['oC0'], c['oC0'], (name, f, branch, 'colour and alpha are the control\'s'))
                     self.assertEqual(a['oC2'][0], c['oC2'][0], (name, 'depth is the control\'s'))
+                    self.assertEqual(a['oC2'][2:], c['oC2'][2:], (name, 'the clip-w lanes (.b .a) survive the share write'))
                     total, without = luma(a['oC0'][:3]), luma(b['oC0'][:3])
                     share = a['oC2'][1]
                     self.assertGreater(total, without, (name, f, branch))

@@ -1,15 +1,15 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "8976a5a8115ecd1f7ec96558f348749796a345c9365a3203554d24500599ca2c",
-    "src/renderer/temporal_pass.cpp": "c667e67e49ce2066baa1f119bec648c22ef7637535eae797c27bd14001e5c8f8",
+    "src/renderer/temporal_pass.h": "faf72ae8afb0d9f516f30c86bdb57777416379fc498122df6709f3daf420e948",
+    "src/renderer/temporal_pass.cpp": "894df435c96374d83313953704eaaafbd911f242b750ec855141cc214f406f23",
     "src/temporal/resolve.h": "68f4b7a9e727c617cf76b75e1a669d90d8254e991f9d833cb12353f6432cec02",
-    "src/temporal/resolve.hlsl": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16",
+    "src/temporal/resolve.hlsl": "d3b7a1ea3b0082a39d6c410a3bc47587d1537c7f62f827959a51bcf88e341594",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "c742c2a6077204f7365a1c7cd32aed43250eb3ea055e440ed392705e5d8a02d7",
+    "verification/probe/temporal_pass_fixture.cpp": "479ff61c76299f421fab6658c726f6d9a11135ab1511b85cd6712d3ef8c094be",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
     "verification/probe/run_temporal_pass.py": "40deeb92678a6845936a24bb861921216666133f52b419884b102bcbe5f0866b"
   },
@@ -24,7 +24,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "e1b8db0cdafb2b3ab61fe58ca3bd1a76721c0a049881f055bb457a33355559e1",
+  "executable_sha256": "a320211c547ddca416521059b06897371b3fe637bb469b06aa9c30d3a220ec3f",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -33,18 +33,18 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "2a3a2a8f5f52a89b038d9bdd027958f13756273391fca297c97a61fd965d8858",
+  "report_sha256": "9b6db45ebfcbbff611c8760c3f527ba61d08de9e70fbe96d6707ca255877e81d",
   "samples": 386,
   "state_restorations": 278,
   "generations": 2,

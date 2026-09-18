@@ -48,7 +48,7 @@ ROW_CHECKS = [
 # into oC2 adds one declaration and the rcp/mul pair (10 DWORDs), two row
 # perturbations and three program perturbation sites.
 DEPTH_NONE = 255
-VERTEX_DEPTH_WORDS, PIXEL_DEPTH_WORDS = 11, 10
+VERTEX_DEPTH_WORDS, PIXEL_DEPTH_WORDS = 11, 13  # PS: dcl (3) + rcp (3) + mul (4) + the .zw mov (3) of the wide RT2 (shadow-receiver-depth.md)
 VERTEX_DEPTH_ROW_PERTURBATIONS, PIXEL_DEPTH_ROW_PERTURBATIONS = 3, 2
 VERTEX_DEPTH_PROGRAM_PERTURBATIONS, PIXEL_DEPTH_PROGRAM_PERTURBATIONS = 2, 3
 DEPTH_CHECK_NAMES = {
