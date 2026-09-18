@@ -60,7 +60,7 @@ HRESULT texture_input(IDirect3DDevice9* device,IDirect3DTexture9* texture,UINT w
     if(!texture)return E_INVALIDARG;
     D3DSURFACE_DESC desc{};
     HRESULT hr=texture->GetLevelDesc(0,&desc);if(FAILED(hr))return hr;
-    if(desc.Width!=w||desc.Height!=h||(desc.Format!=format&&!(depth_format&&desc.Format==D3DFMT_G32R32F))||desc.MultiSampleType!=D3DMULTISAMPLE_NONE)return E_INVALIDARG;
+    if(desc.Width!=w||desc.Height!=h||(desc.Format!=format&&!(depth_format&&(desc.Format==D3DFMT_G32R32F||desc.Format==D3DFMT_A32B32G32R32F)))||desc.MultiSampleType!=D3DMULTISAMPLE_NONE)return E_INVALIDARG;
     if(depth_format)*depth_format=desc.Format;
     return same_device(device,texture);
 }
@@ -271,7 +271,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(SUCCEEDED(hr)&&in.motion_policy==MotionPolicy::PerPixel)hr=texture_input(device_,in.motion,in.width,in.height,D3DFMT_A32B32G32R32F);
     if(SUCCEEDED(hr)&&mask)hr=texture_input(device_,in.reactive,in.width,in.height,supplemental?D3DFMT_A16B16G16R16F:D3DFMT_R32F);
     if(FAILED(hr))return fail(hr);
-    const bool depth_draw=depth_format==D3DFMT_G32R32F;
+    const bool depth_draw=depth_format==D3DFMT_G32R32F||depth_format==D3DFMT_A32B32G32R32F; // the lane's RT2: the point-sampled .r copy; R32F StretchRects, the D24X8 snapshot decodes
     if(depth_draw&&!copy_)return fail(E_INVALIDARG);
     hr=allocate(in.width,in.height,mask);if(FAILED(hr))return fail(hr);
     hr=ensure_block();if(FAILED(hr))return fail(hr);
@@ -320,8 +320,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     mark=stamp();
     if(SUCCEEDED(hr)&&!in.caller_scene_open){hr=call<SceneFn>(BeginScene)(d);own_scene=SUCCEEDED(hr);}
     // Enhanced RT2 retains R32F histories. The identity program point-samples
-    // the two-channel source; R32F stores only .r, exactly preserving sentinels.
-    // Never request an unsupported G32R32F -> R32F StretchRect conversion.
+    // the two- or four-channel source; R32F stores only .r, exactly preserving
+    // sentinels. Never request an unsupported G32R32F/A32B32G32R32F -> R32F
+    // StretchRect conversion.
     if(SUCCEEDED(hr)&&depth_draw){
         const auto depth_mark=stamp();
         if(step(call<SetRtFn>(SetRenderTarget)(d,0,depth_surfaces_[next]))&&

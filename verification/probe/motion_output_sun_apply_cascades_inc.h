@@ -275,7 +275,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
     std::printf(" caps=");
     for (unsigned c = 0; c < cascade_count; ++c) std::printf("%s%u", c ? "," : "", set.caps[c]);
     std::printf(" bias_units=%.9g clamp_texels=%.9g margin=%.9g band=%.9g\n", bias_units, clamp_texels, double(r::shadow_cascade_select_margin), double(r::shadow_cascade_blend_band));
-    s.rt2_data.resize(std::size_t(sun_apply_w) * sun_apply_h * 2);
+    s.rt2_data.resize(std::size_t(sun_apply_w) * sun_apply_h * sun_apply_lanes);
     LARGE_INTEGER frequency; QueryPerformanceFrequency(&frequency);
     CascadeObject plane, box, high, third;
     std::vector<unsigned char> reset_reference_before, reset_reference_after;
@@ -472,15 +472,14 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
             const Vec3 dir = s.right * dv.x + s.up * dv.y + s.forward * dv.z;
             Vec3 normal{0., 0., 0.}; int hit_object = -1;
             const double t = cascade_hit(s.position, dir, boxes, box_count, &normal, &hit_object);
-            float* px = &s.rt2_data[(std::size_t(j) * sun_apply_w + i) * 2];
-            if (t <= 0. || t >= far_z) { px[0] = -1.f; px[1] = 0.f; ++sentinels; continue; }
+            float* px = &s.rt2_data[(std::size_t(j) * sun_apply_w + i) * sun_apply_lanes];
+            if (t <= 0. || t >= far_z) { sun_apply_rt2_texel(px, s.m22, s.m32, -1., 0.f); ++sentinels; continue; }
             if (faces && hit_object >= 0) { const double facing = normal.x * sun[0] + normal.y * sun[1] + normal.z * sun[2]; face_kind[std::size_t(j) * sun_apply_w + i] = facing > .05 ? 1 : facing < -.05 ? -1 : 0; }
             const Vec3 hit = s.position + dir * t;
-            px[0] = float(double(s.m22) + double(s.m32) / t);
-            px[1] = (i % 9 == 4) ? 0.f : hit.y > 1e-6 * scale ? .85f : float(.2 + .75 * ((i * 3 + j * 5) % 17) / 16.);
+            sun_apply_rt2_texel(px, s.m22, s.m32, t, (i % 9 == 4) ? 0.f : hit.y > 1e-6 * scale ? .85f : float(.2 + .75 * ((i * 3 + j * 5) % 17) / 16.));
             if (px[1] <= 0.f) ++share_free; else ++receivers;
         }
-        sun_apply_upload(f, s.rt2_sys.p, s.rt2.p, s.rt2_data, sun_apply_w, sun_apply_h, 2);
+        sun_apply_upload(f, s.rt2_sys.p, s.rt2.p, s.rt2_data, sun_apply_w, sun_apply_h, sun_apply_lanes);
         api(f.d->BeginScene(), "BeginScene");
         sun_apply_fill(f, s);
         s.before = sun_apply_read(f, s);
@@ -553,6 +552,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         std::printf("SUNAPPLY_TIME frame=%u us=%.1f result=%08lx applied=%u stage=%u bound=%u caller_scene_open=%u replay_us=%.1f issues=%u\n", frame, us, hr, result.applied, unsigned(result.failed),
                     result.cascades_bound, caller_scene_open, replay_us, used);
         require(hr == S_OK && result.applied && !result.skipped && result.cascades_bound == valid_count, "the cascade quad applied");
+        require(result.linear_depth == sun_apply_linear, "the cascade quad read the receiver depth by the bound RT2's encoding");
         f.compare(before_state, f.snapshot(), "cascade_apply");
         if (caller_scene_open) api(f.d->EndScene(), "EndScene");
         else { api(f.d->BeginScene(), "BeginScene after the quad"); api(f.d->EndScene(), "EndScene after the quad"); }
@@ -562,7 +562,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         else require(s.after != s.before, "the cascades shadow the target");
         unsigned untouched_diff = 0;
         for (std::size_t p = 0; p < std::size_t(sun_apply_w) * sun_apply_h; ++p)
-            if (s.rt2_data[p * 2 + 1] <= 0.f && std::memcmp(&s.before[p * 8], &s.after[p * 8], 8) != 0) ++untouched_diff;
+            if (s.rt2_data[p * sun_apply_lanes + 1] <= 0.f && std::memcmp(&s.before[p * 8], &s.after[p * 8], 8) != 0) ++untouched_diff;
         require(untouched_diff == 0, "sentinel and share-free pixels are byte-identical");
         if (faces) {
             // The box's faces as receivers: a darkened pixel is one the quad changed (factor < 1). Lit-face flips
@@ -571,9 +571,9 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
             // face edges, where the kernel's taps leave the face, are counted apart).
             unsigned lit = 0, lit_dark = 0, dark = 0, dark_dark = 0, flips = 0, common = 0, interior = 0, interior_dark = 0, interior_common = 0, interior_flips = 0;
             std::vector<signed char> now(face_kind.size(), 0);
-            const auto lit_at = [&](int x, int y) { return x >= 0 && y >= 0 && x < int(sun_apply_w) && y < int(sun_apply_h) && face_kind[std::size_t(y) * sun_apply_w + x] > 0 && s.rt2_data[(std::size_t(y) * sun_apply_w + x) * 2 + 1] > 0.f; };
+            const auto lit_at = [&](int x, int y) { return x >= 0 && y >= 0 && x < int(sun_apply_w) && y < int(sun_apply_h) && face_kind[std::size_t(y) * sun_apply_w + x] > 0 && s.rt2_data[(std::size_t(y) * sun_apply_w + x) * sun_apply_lanes + 1] > 0.f; };
             for (std::size_t p = 0; p < face_kind.size(); ++p) {
-                if (s.rt2_data[p * 2 + 1] <= 0.f || !face_kind[p]) continue;
+                if (s.rt2_data[p * sun_apply_lanes + 1] <= 0.f || !face_kind[p]) continue;
                 const bool darkened = std::memcmp(&s.before[p * 8], &s.after[p * 8], 8) != 0;
                 if (face_kind[p] > 0) {
                     const int x = int(p % sun_apply_w), y = int(p / sun_apply_w);
@@ -590,10 +590,10 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         if (!faces && frame == reset_pair) { reset_reference_before = s.before; reset_reference_after = s.after; }
         if (!faces && frame == reset_pair + 2) require(s.before == reset_reference_before && s.after == reset_reference_after, "the replay after the Reset frames equals the frame before the Reset byte for byte");
         // The record: shared inputs, the scene, per cascade what the twin needs and the counters.
-        std::printf("SUNAPPLY_CASCADES frame=%u case=%c width=%u height=%u cascades=%u scale=%.9g elevation=%g jitter_index=%u exponent=%.9g planar_step=%.9g budget=%u issues=%u far_replayed=%u far_frame=%lld "
+        std::printf("SUNAPPLY_CASCADES frame=%u case=%c depth_encoding=%s width=%u height=%u cascades=%u scale=%.9g elevation=%g jitter_index=%u exponent=%.9g planar_step=%.9g budget=%u issues=%u far_replayed=%u far_frame=%lld "
                     "m00=%.9g m11=%.9g m20=%.9g m21=%.9g m22=%.9g m32=%.9g camera=%.9g,%.9g,%.9g cam_right=%.9g,%.9g,%.9g cam_up=%.9g,%.9g,%.9g cam_forward=%.9g,%.9g,%.9g sun=%.9g,%.9g,%.9g "
                     "right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u masks=%u,%u,%u legacy_high=%d raster_m20=%.9g raster_m21=%.9g legacy_latch=%u boxes=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
-                    frame, script.name, sun_apply_w, sun_apply_h, cascade_count, scale, double(script.elevation_deg), script.jitter_index, double(script.exponent), .05, script.budget, issues,
+                    frame, script.name, sun_apply_encoding_name(), sun_apply_w, sun_apply_h, cascade_count, scale, double(script.elevation_deg), script.jitter_index, double(script.exponent), .05, script.budget, issues,
                     unsigned(replays[cascade_count - 1]), far_kept || replays[cascade_count - 1] ? static_cast<long long>(map_frames[cascade_count - 1]) : -1ll,
                     double(s.camera.m00), double(s.camera.m11), double(m20), double(m21), double(s.m22), double(s.m32),
                     s.position.x, s.position.y, s.position.z, s.right.x, s.right.y, s.right.z, s.up.x, s.up.y, s.up.z, s.forward.x, s.forward.y, s.forward.z, double(sun[0]), double(sun[1]), double(sun[2]),
@@ -619,7 +619,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         std::printf("\n");
         sun_apply_write("before.rgba16f", frame, s.before.data(), s.before.size());
         sun_apply_write("after.rgba16f", frame, s.after.data(), s.after.size());
-        sun_apply_write("rt2.g32r32f", frame, s.rt2_data.data(), s.rt2_data.size() * 4);
+        sun_apply_write(sun_apply_rt2_file(), frame, s.rt2_data.data(), s.rt2_data.size() * 4);
         for (unsigned c = 0; c < cascade_count; ++c) {
             if (!replays[c]) continue; // a retained map's file is the one of the frame it was replayed on
             const std::vector<float> map = cascade_read_map(f, replay.map_surface(c), map_copy.p, cascade_map);

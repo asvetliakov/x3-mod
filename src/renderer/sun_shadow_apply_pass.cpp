@@ -66,6 +66,14 @@ template<class Resource> HRESULT same_device(IDirect3DDevice9* device, Resource*
     drop(owner);
     return same ? S_OK : E_INVALIDARG;
 }
+// RT2 of the lane: G32R32F (view depth from .r by the z/w law) or
+// A32B32G32R32F (.b carries the interpolated clip w; the receiver-depth
+// option, docs/architecture/shadow-receiver-depth.md). Gated per frame from
+// the bound texture's format; the program's flag constant follows it.
+bool depth_share_format(D3DFORMAT format, bool& linear) noexcept {
+    linear = format == D3DFMT_A32B32G32R32F;
+    return linear || format == D3DFMT_G32R32F;
+}
 bool finite_params(const SunShadowApplyParams& p) noexcept {
     for (float v : {p.m00, p.m11, p.m20, p.m21, p.m22, p.m32, p.exponent, p.bias_constant, p.bias_max, p.planar_step})
         if (!std::isfinite(v)) return false;
@@ -248,7 +256,8 @@ HRESULT SunShadowApplyPass::execute(const SunShadowApplyFrame& in, SunShadowAppl
     if (!in.depth_share || !in.map || !in.target || !in.width || !in.height || in.caller_stateblock_recording) return skip("input");
     if (!finite_params(in.params)) return skip("params");
     D3DSURFACE_DESC desc{};
-    if (FAILED(in.depth_share->GetLevelDesc(0, &desc)) || desc.Width != in.width || desc.Height != in.height || desc.Format != D3DFMT_G32R32F ||
+    bool linear_depth = false;
+    if (FAILED(in.depth_share->GetLevelDesc(0, &desc)) || desc.Width != in.width || desc.Height != in.height || !depth_share_format(desc.Format, linear_depth) ||
         desc.MultiSampleType != D3DMULTISAMPLE_NONE)
         return skip("format");
     if (FAILED(in.map->GetLevelDesc(0, &desc)) || desc.Width != desc.Height || desc.Width < 64 || desc.Format != D3DFMT_R32F ||
@@ -282,7 +291,7 @@ HRESULT SunShadowApplyPass::execute(const SunShadowApplyFrame& in, SunShadowAppl
         {p.rows[4], p.rows[5], p.rows[6], p.rows[7]},
         {p.rows[8], p.rows[9], p.rows[10], p.rows[11]},
         {float(map_size), 1.f / float(map_size), kernel_cos[rotation], kernel_sin[rotation]},
-        {p.bias_max, p.planar_step, 0.f, 0.f},
+        {p.bias_max, p.planar_step, linear_depth ? 1.f : 0.f, 0.f},
     };
     if (SUCCEEDED(hr)) step(SunShadowApplyStage::Constants, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, &block[0][0], 7));
     if (SUCCEEDED(hr)) step(SunShadowApplyStage::Apply, call<SetTextureFn>(SetTexture)(d, 0, in.depth_share));
@@ -300,7 +309,7 @@ HRESULT SunShadowApplyPass::execute(const SunShadowApplyFrame& in, SunShadowAppl
         out->failed = FAILED(hr) ? stage : SunShadowApplyStage::Restore;
         return FAILED(out->restore) ? out->restore : hr;
     }
-    out->applied = applied; out->map_size = map_size;
+    out->applied = applied; out->map_size = map_size; out->linear_depth = linear_depth;
     return S_OK;
 }
 HRESULT SunShadowApplyPass::execute_cascades(const SunShadowCascadeFrame& in, SunShadowApplyResult* out) noexcept {
@@ -316,7 +325,8 @@ HRESULT SunShadowApplyPass::execute_cascades(const SunShadowCascadeFrame& in, Su
         !(in.exponent > 0.f) || !(in.exponent <= 1.f) || !(in.planar_step > 0.f))
         return skip("params");
     D3DSURFACE_DESC desc{};
-    if (FAILED(in.depth_share->GetLevelDesc(0, &desc)) || desc.Width != in.width || desc.Height != in.height || desc.Format != D3DFMT_G32R32F ||
+    bool linear_depth = false;
+    if (FAILED(in.depth_share->GetLevelDesc(0, &desc)) || desc.Width != in.width || desc.Height != in.height || !depth_share_format(desc.Format, linear_depth) ||
         desc.MultiSampleType != D3DMULTISAMPLE_NONE)
         return skip("format");
     if (FAILED(in.target->GetDesc(&desc)) || desc.Width != in.width || desc.Height != in.height || desc.Format != target_format_ ||
@@ -333,7 +343,7 @@ HRESULT SunShadowApplyPass::execute_cascades(const SunShadowCascadeFrame& in, Su
         {in.m00, in.m11, in.m20, in.m21},
         {in.m22, in.m32, in.exponent, in.planar_step},
         {0.f, 0.f, 0.f, 0.f},
-        {shadow_cascade_select_margin, shadow_cascade_select_margin - shadow_cascade_blend_band, 1.f / shadow_cascade_blend_band, 0.f},
+        {shadow_cascade_select_margin, shadow_cascade_select_margin - shadow_cascade_blend_band, 1.f / shadow_cascade_blend_band, linear_depth ? 1.f : 0.f},
     };
     for (int j = -1; j <= 1; ++j) for (int i = -1; i <= 1; ++i) {
         float* tap = block[4 + (j + 1) * 3 + (i + 1)];
@@ -391,7 +401,7 @@ HRESULT SunShadowApplyPass::execute_cascades(const SunShadowCascadeFrame& in, Su
         out->failed = FAILED(hr) ? stage : SunShadowApplyStage::Restore;
         return FAILED(out->restore) ? out->restore : hr;
     }
-    out->applied = applied; out->cascades_bound = bound;
+    out->applied = applied; out->cascades_bound = bound; out->linear_depth = linear_depth;
     return S_OK;
 }
 } // namespace x3m::renderer

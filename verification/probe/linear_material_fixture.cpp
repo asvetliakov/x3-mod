@@ -1187,14 +1187,17 @@ struct Gpu {
 // --original-sun-share K (legacy-sun-application.md 3.2): the share variant
 // (mode 8) against its control (mode 7 at K=0, the fill PS at K>0): colour,
 // alpha and motion byte-identical on FP16 and RGBA32F targets, depth bits
-// identical in the G32R32F lane target, and oC2.g against a second control
+// identical in the A32B32G32R32F lane target (whose .b = .a clip-w lanes,
+// the sun-shadow receiver depth of docs/architecture/shadow-receiver-depth.md,
+// must survive the share's later oC2.g write bit for bit and stay positive on
+// every drawn pixel), and oC2.g against a second control
 // draw with the sun constant zeroed (at K > 0 the fill tint stays through
 // c200, mode 9): |s*Y(C) - (Y(C) - Y(C_nosun))| within one FP16 code of Y(C),
 // on the RGBA32F colour. Detached; no live route claim.
 void original_sun_share_fixture(IDirect3DDevice9* d, Shaders& shaders, const std::vector<Case>& cases, float fill) {
   Gpu gpu(d, shaders, 16);
   gpu.current.p->Release(); gpu.current.p = nullptr;
-  api(d->CreateRenderTarget(16, 16, D3DFMT_G32R32F, D3DMULTISAMPLE_NONE, 0, FALSE, &gpu.current.p, nullptr));
+  api(d->CreateRenderTarget(16, 16, D3DFMT_A32B32G32R32F, D3DMULTISAMPLE_NONE, 0, FALSE, &gpu.current.p, nullptr));
   const unsigned control_mode = fill > 0.0f ? 5u : 7u, dark_mode = fill > 0.0f ? 9u : 7u;
   struct Readback { std::vector<Pixel> color, motion, lane; };
   auto pass = [&](const Case& which, unsigned mode, const float* sun = nullptr) {
@@ -1205,7 +1208,7 @@ void original_sun_share_fixture(IDirect3DDevice9* d, Shaders& shaders, const std
     Readback r;
     r.color = gpu.read(gpu.color[which.fp16].p, which.fp16 ? D3DFMT_A16B16G16R16F : D3DFMT_A32B32G32R32F);
     r.motion = gpu.read(gpu.motion.p, D3DFMT_A32B32G32R32F);
-    r.lane = gpu.read(gpu.current.p, D3DFMT_G32R32F);
+    r.lane = gpu.read(gpu.current.p, D3DFMT_A32B32G32R32F);
     return r;
   };
   unsigned run = 0, total_invalid = 0, total_zero = 0, total_positive = 0; double max_codes = 0;
@@ -1218,13 +1221,15 @@ void original_sun_share_fixture(IDirect3DDevice9* d, Shaders& shaders, const std
     Case dark = c32; std::fill(dark.f + 22, dark.f + 25, 0.f);
     const float sun[4] = {c.f[22], c.f[23], c.f[24], 0.f};
     const auto dark32 = pass(dark, dark_mode, dark_mode == 9 ? sun : nullptr);
-    unsigned color_bad = 0, motion_bad = 0, depth_bad = 0, invalid = 0, zero = 0, positive = 0, below_one = 0;
+    unsigned color_bad = 0, motion_bad = 0, depth_bad = 0, w_bad = 0, w_positive = 0, invalid = 0, zero = 0, positive = 0, below_one = 0;
     double codes = 0, max_share = 0;
     const unsigned pixels = gpu.width * gpu.width;
     for (unsigned i = 0; i < pixels; ++i) {
       color_bad += std::memcmp(&base16.color[i], &share16.color[i], 16) != 0 || std::memcmp(&base32.color[i], &share32.color[i], 16) != 0;
       motion_bad += std::memcmp(&base16.motion[i], &share16.motion[i], 16) != 0 || std::memcmp(&base32.motion[i], &share32.motion[i], 16) != 0;
       depth_bad += std::memcmp(&base16.lane[i].f[0], &share16.lane[i].f[0], 4) != 0 || std::memcmp(&base32.lane[i].f[0], &share32.lane[i].f[0], 4) != 0;
+      w_bad += std::memcmp(&base16.lane[i].f[2], &share16.lane[i].f[2], 8) != 0 || std::memcmp(&base32.lane[i].f[2], &share32.lane[i].f[2], 8) != 0;
+      w_positive += std::isfinite(share32.lane[i].f[2]) && share32.lane[i].f[2] > 0.f && share32.lane[i].f[3] == share32.lane[i].f[2];
       const float s = share32.lane[i].f[1];
       require(std::memcmp(&s, &share16.lane[i].f[1], 4) == 0, "share is independent of the colour target format");
       if (s == -1.f) { ++invalid; continue; }
@@ -1238,9 +1243,10 @@ void original_sun_share_fixture(IDirect3DDevice9* d, Shaders& shaders, const std
       codes = std::max(codes, error / ulp);
     }
     require(!color_bad && !motion_bad && !depth_bad, "original share: colour, alpha, motion and depth are the control's");
+    require(!w_bad && w_positive == pixels, "original share: the clip-w lanes (.b = .a > 0) survive the share write bit for bit");
     require(codes <= 1.0, "share agrees with the zero-sun control draw within one FP16 code of Y(C)");
-    std::printf("OSHARE id=%u pair=%u pixels=%u invalid=%u zero=%u positive=%u below_one=%u max_codes=%.9g max_share=%.9g color_bad=%u motion_bad=%u depth_bad=%u\n",
-                c.id, c.pair, pixels, invalid, zero, positive, below_one, codes, max_share, color_bad, motion_bad, depth_bad);
+    std::printf("OSHARE id=%u pair=%u pixels=%u invalid=%u zero=%u positive=%u below_one=%u max_codes=%.9g max_share=%.9g color_bad=%u motion_bad=%u depth_bad=%u w_bad=%u w_positive=%u\n",
+                c.id, c.pair, pixels, invalid, zero, positive, below_one, codes, max_share, color_bad, motion_bad, depth_bad, w_bad, w_positive);
     total_invalid += invalid; total_zero += zero; total_positive += positive; max_codes = std::max(max_codes, codes); ++run;
   }
   require(total_positive > 0, "share producer writes positive pixels");

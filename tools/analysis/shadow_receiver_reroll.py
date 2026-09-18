@@ -12,7 +12,9 @@ compare every frame. The proposed encoding stores linear view depth w in fp32,
 whose ULP is 6e-8 z (2e-3 u at 37 km).
 
 This tool measures both on captured data. For one F8 frame it loads the RT2
-dump (`depth_<device>_<frame>.rg32f`, G32R32F, .r = z/w, .g = share), the
+dump (`depth_<device>_<frame>.rg32f`, G32R32F, .r = z/w, .g = share, or the
+receiver-depth option's `.rgba32f`, A32B32G32R32F, whose .b is the stored fp32
+view depth itself and then seeds the `w` encoding exactly), the
 cascade maps (`shadow_map<k>_<device>_<frame>.r32f`, R32F) and the frame's
 `sun_shadow_apply_params` line out of the session log (streamed, never loaded
 whole), runs `expected_factor_cascades` (verification/probe/sun_shadow_apply.py)
@@ -83,21 +85,27 @@ def read_apply_params(log, frames, device=1):
 
 
 def load_frame(directory, device, frame, params, extra):
-    """The frame's RT2 (d, s) and its cascade maps (None where absent)."""
+    """The frame's RT2 (d = .r, the z/w lane; s), its cascade maps (None where
+    absent) and, from a 16 B/px dump, the stored fp32 view depth .b (else None)."""
     twin = _twin()
     width, height = extra['width'], extra['height']
-    path = Path(directory) / ('depth_%d_%d.rg32f' % (device, frame))
+    encoding = params.get('depth_encoding', 'device')
+    path = Path(directory) / ('depth_%d_%d.%s' % (device, frame, twin.rt2_suffix(encoding)))
     if not path.is_file():
         raise MalformedInput('no RT2 dump %s' % path)
     data = path.read_bytes()
-    if len(data) != width * height * 8:
-        raise MalformedInput('%s: %d bytes != %d x %d x 8 (G32R32F)' % (path.name, len(data), width, height))
-    d, s = twin.unpack_rt2(data, width, height)
-    return d, s, twin.load_cascade_maps(directory, device, frame, extra, params)
+    lanes = 4 if encoding == 'linear' else 2
+    if len(data) != width * height * 4 * lanes:
+        raise MalformedInput('%s: %d bytes != %d x %d x %d (%s)' % (path.name, len(data), width, height, 4 * lanes, 'A32B32G32R32F' if lanes == 4 else 'G32R32F'))
+    d, s = twin.unpack_rt2(data, width, height, 'device')
+    w = twin.unpack_rt2(data, width, height, 'linear')[0] if lanes == 4 else None
+    return d, s, twin.load_cascade_maps(directory, device, frame, extra, params), w
 
 
-def perturbed_depth(d, params, encoding):
+def perturbed_depth(d, params, encoding, w=None):
     """(baseline, plus, minus) stored-depth arrays for one receiver encoding.
+    `w`: the stored fp32 view depth of a wide dump (RT2.b), which seeds the `w`
+    encoding directly instead of the float64 reconstruction from `d`.
 
     Every array is the `d` the apply would read back, in float64, such that the
     twin's z = m32 / (d - m22) is the encoded receiver depth. `zw`: the RT2
@@ -121,7 +129,9 @@ def perturbed_depth(d, params, encoding):
     with np.errstate(divide='ignore', invalid='ignore'):
         z = m32 / (stored - m22)
     usable = np.isfinite(z) & (z > 0.0) & (stored >= 0.0)
-    w32 = np.float32(np.where(usable, z, 1.0))
+    if w is not None:
+        usable &= np.isfinite(w) & (w > 0.0)
+    w32 = np.float32(np.where(usable, z if w is None else w, 1.0))
     out = []
     for target in (w32, np.nextafter(w32, np.float32(np.inf)), np.nextafter(w32, np.float32(-np.inf))):
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -142,7 +152,7 @@ def _nearest_map_depth(sun_position, sun_map):
     return sun_map[tv, tu]
 
 
-def reroll_frame(d, s, maps, params, extra, cascades=None, threshold=DEFAULT_THRESHOLD, coarse=True, frame=None):
+def reroll_frame(d, s, maps, params, extra, cascades=None, threshold=DEFAULT_THRESHOLD, coarse=True, frame=None, w=None):
     """The +-1 ULP experiment on one frame, per cascade. Returns a record."""
     import numpy as np
     twin = _twin()
@@ -152,8 +162,9 @@ def reroll_frame(d, s, maps, params, extra, cascades=None, threshold=DEFAULT_THR
         if not 0 <= c < count:
             raise MalformedInput('cascade %d outside the frame\'s %d slots' % (c, count))
     factors, steps = {}, {}
+    params = dict(params, depth_encoding='device')  # every array below is a z/w receiver (the twin's device law)
     for encoding in ENCODINGS:
-        base, plus, minus = perturbed_depth(d, params, encoding)
+        base, plus, minus = perturbed_depth(d, params, encoding, w)
         factors[encoding] = [twin.expected_factor_cascades(value, s, maps, params, coarse=coarse)
                              for value in (base, plus, minus)]
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -210,9 +221,9 @@ def reroll(directory, log, frames, cascades=None, device=1, threshold=DEFAULT_TH
     records = []
     for frame in sorted(set(frames)):
         params, extra = lines[frame]
-        d, s, maps = load_frame(directory, device, frame, params, extra)
-        records.append(reroll_frame(d, s, maps, params, extra, cascades, threshold, coarse, frame))
-        del d, s, maps
+        d, s, maps, w = load_frame(directory, device, frame, params, extra)
+        records.append(reroll_frame(d, s, maps, params, extra, cascades, threshold, coarse, frame, w))
+        del d, s, maps, w
     return records
 
 

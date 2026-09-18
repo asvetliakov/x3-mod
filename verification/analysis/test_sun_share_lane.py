@@ -97,6 +97,14 @@ class SunShareLane(unittest.TestCase):
                 row = analyze(log, root)['frames'][0]
                 self.assertFalse(row['available'])
                 self.assertEqual(row['eligible_pixels'], 0)
+            # The receiver-depth option's wide RT2 (rgba32f, 16 B/px): the same .r/.g beside clip-w lanes give the same counts.
+            (root/'depth.rgba32f').write_bytes(b''.join(struct.pack('<4f', d, s, 37000.0, 37000.0) for d, s in ((.5,0), (.5,.75), (.5,-1), (-1,0), (.5,1), (.5,float('nan')))))
+            wide = depth.replace('depth.rg32f', 'depth.rgba32f').replace('rg32f_row_major', 'rgba32f_row_major')
+            log.write_text(publication+wide+coverage)
+            row = analyze(log, root)['frames'][0]
+            self.assertEqual((row['eligible_pixels'], row['zero_sun_pixels'], row['excluded_pixels'], row['invalid_share_pixels'], row['rt2_lanes']), (2,1,1,2,4))
+            log.write_text(publication+depth.replace('rg32f_row_major', 'rgba32f_row_major')+coverage)  # a label that does not match the bytes
+            self.assertFalse(analyze(log, root)['frames'][0]['available'])
 
     def test_refusal_diagnostics_grammar(self):
         """Bucket line and capped writer signatures of the untracked-writer veto (diagnostics only)."""

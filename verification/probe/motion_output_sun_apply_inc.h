@@ -29,6 +29,27 @@ namespace {
 constexpr unsigned sun_apply_w = 128, sun_apply_h = 128, sun_apply_frames = 6, sun_apply_reset_before = 5;
 unsigned sun_apply_map = 256;  // map side this run (default 256; the wide run's X3M_SHADOW_REPLAY_SIZE)
 double sun_apply_scale = 1.;   // scene scale this run (1; extent / 5 in the wide run)
+// The receiver-depth encoding of this run (docs/architecture/shadow-receiver-depth.md;
+// X3M_SUN_SHADOW_RECEIVER_DEPTH=linear, the production option's name): device, the
+// G32R32F RT2 (.r = z/w, .g = share; the records before 2026-09-18); linear, the
+// A32B32G32R32F RT2 whose .b (and .a) carry the view depth itself. The pass
+// gates the format per frame and reports which law it applied (linear_depth).
+bool sun_apply_linear = false;
+unsigned sun_apply_lanes = 2;
+bool sun_apply_linear_requested() {
+    char text[16]{};
+    return GetEnvironmentVariableA("X3M_SUN_SHADOW_RECEIVER_DEPTH", text, sizeof text) == 6 && !std::strcmp(text, "linear");
+}
+D3DFORMAT sun_apply_rt2_format() { return sun_apply_linear ? D3DFMT_A32B32G32R32F : D3DFMT_G32R32F; }
+const char* sun_apply_rt2_file() { return sun_apply_linear ? "rt2.rgba32f" : "rt2.g32r32f"; }
+const char* sun_apply_encoding_name() { return sun_apply_linear ? "linear" : "device"; }
+// One RT2 texel: .r = device depth by the AO law (or the -1 sentinel), .g = share, and on
+// the wide lane .b = .a = the view depth t (the sentinel's -1 there too).
+void sun_apply_rt2_texel(float* px, double m22, double m32, double t, float share) {
+    if (t <= 0.) { px[0] = -1.f; px[1] = 0.f; if (sun_apply_lanes == 4) px[2] = px[3] = -1.f; return; }
+    px[0] = float(m22 + m32 / t); px[1] = share;
+    if (sun_apply_lanes == 4) px[2] = px[3] = float(t);
+}
 constexpr float sun_apply_box_min[3] = {-1.f, 0.f, -1.f}, sun_apply_box_max[3] = {1.f, 2.f, 1.f}; // the unit scene
 double sun_apply_box_lo[3] = {-1., 0., -1.}, sun_apply_box_hi[3] = {1., 2., 1.};                 // scaled
 constexpr float sun_apply_camera[3] = {2.5f, 3.5f, -7.f}, sun_apply_look[3] = {0.f, .8f, 0.f};
@@ -77,11 +98,12 @@ struct SunApplyState {
     float m22 = 0, m32 = 0;
 };
 void sun_apply_create_targets(Fixture& f, SunApplyState& s) {
+    sun_apply_linear = sun_apply_linear_requested(); sun_apply_lanes = sun_apply_linear ? 4u : 2u;
     api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &s.color.p, nullptr), "CreateTexture FP16 target");
     api(s.color->GetSurfaceLevel(0, &s.color_surface.p), "FP16 target level");
-    api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, D3DFMT_G32R32F, D3DPOOL_DEFAULT, &s.rt2.p, nullptr), "CreateTexture RT2");
+    api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, sun_apply_rt2_format(), D3DPOOL_DEFAULT, &s.rt2.p, nullptr), "CreateTexture RT2");
     api(f.d->CreateTexture(sun_apply_map, sun_apply_map, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, &s.map.p, nullptr), "CreateTexture map");
-    api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, D3DFMT_G32R32F, D3DPOOL_SYSTEMMEM, &s.rt2_sys.p, nullptr), "CreateTexture RT2 sysmem");
+    api(f.d->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, sun_apply_rt2_format(), D3DPOOL_SYSTEMMEM, &s.rt2_sys.p, nullptr), "CreateTexture RT2 sysmem");
     api(f.d->CreateTexture(sun_apply_map, sun_apply_map, 1, 0, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &s.map_sys.p, nullptr), "CreateTexture map sysmem");
     api(f.d->CreateOffscreenPlainSurface(sun_apply_w, sun_apply_h, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &s.readback.p, nullptr), "CreateOffscreenPlainSurface FP16");
     api(f.d->CreateQuery(D3DQUERYTYPE_EVENT, &s.event.p), "CreateQuery EVENT");
@@ -230,9 +252,9 @@ void run_sun_apply_integration(Fixture& f) {
     {
         D3DPRESENT_PARAMETERS pp = f.pp;
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, f.window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &other.p), "CreateDevice other");
-        api(other->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, D3DFMT_G32R32F, D3DPOOL_DEFAULT, &other_rt2.p, nullptr), "CreateTexture RT2 other device");
+        api(other->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, sun_apply_rt2_format(), D3DPOOL_DEFAULT, &other_rt2.p, nullptr), "CreateTexture RT2 other device");
     }
-    s.rt2_data.resize(std::size_t(sun_apply_w) * sun_apply_h * 2); s.map_data.resize(std::size_t(sun_apply_map) * sun_apply_map);
+    s.rt2_data.resize(std::size_t(sun_apply_w) * sun_apply_h * sun_apply_lanes); s.map_data.resize(std::size_t(sun_apply_map) * sun_apply_map);
     LARGE_INTEGER frequency; QueryPerformanceFrequency(&frequency);
     for (unsigned frame = 0; frame < sun_apply_frames; ++frame) {
         const SunApplyScript& script = sun_apply_script[frame];
@@ -266,12 +288,11 @@ void run_sun_apply_integration(Fixture& f) {
             const Vec3 dv = sun_apply_texel_direction(i, j, latch, s.camera.m00, s.camera.m11);
             const Vec3 dir = s.right * dv.x + s.up * dv.y + s.forward * dv.z;
             const double t = sun_apply_hit(s.position, dir);
-            float* px = &s.rt2_data[(std::size_t(j) * sun_apply_w + i) * 2];
-            if (t <= 0.) { px[0] = -1.f; px[1] = 0.f; ++sentinels; continue; }
+            float* px = &s.rt2_data[(std::size_t(j) * sun_apply_w + i) * sun_apply_lanes];
+            if (t <= 0.) { sun_apply_rt2_texel(px, s.m22, s.m32, t, 0.f); ++sentinels; continue; }
             const Vec3 hit = s.position + dir * t;
             const bool on_box = hit.y > 1e-6;
-            px[0] = float(double(s.m22) + double(s.m32) / t);
-            px[1] = (i % 9 == 4) ? 0.f : on_box ? .85f : float(.2 + .75 * ((i * 3 + j * 5) % 17) / 16.);
+            sun_apply_rt2_texel(px, s.m22, s.m32, t, (i % 9 == 4) ? 0.f : on_box ? .85f : float(.2 + .75 * ((i * 3 + j * 5) % 17) / 16.));
             if (px[1] <= 0.f) ++share_free; else ++receivers;
         }
         // The map: depth along the sun through every texel of the cascade (1 where nothing is hit).
@@ -288,7 +309,7 @@ void run_sun_apply_integration(Fixture& f) {
             }
             s.map_data[std::size_t(b) * sun_apply_map + a] = value;
         }
-        sun_apply_upload(f, s.rt2_sys.p, s.rt2.p, s.rt2_data, sun_apply_w, sun_apply_h, 2);
+        sun_apply_upload(f, s.rt2_sys.p, s.rt2.p, s.rt2_data, sun_apply_w, sun_apply_h, sun_apply_lanes);
         sun_apply_upload(f, s.map_sys.p, s.map.p, s.map_data, sun_apply_map, sun_apply_map, 1);
         api(f.d->BeginScene(), "BeginScene");
         sun_apply_fill(f, s);
@@ -334,6 +355,7 @@ void run_sun_apply_integration(Fixture& f) {
         const double us = 1e6 * double(end.QuadPart - begin.QuadPart) / double(frequency.QuadPart);
         std::printf("SUNAPPLY_TIME frame=%llu us=%.1f result=%08lx applied=%u stage=%u map_size=%u caller_scene_open=%u\n", f.frame, us, hr, result.applied, unsigned(result.failed), result.map_size, caller_scene_open);
         require(hr == S_OK && result.applied && !result.skipped && result.map_size == sun_apply_map, "the quad applied");
+        require(result.linear_depth == sun_apply_linear, "the quad read the receiver depth by the bound RT2's encoding");
         f.compare(before_state, f.snapshot(), "sunapply");
         if (caller_scene_open) api(f.d->EndScene(), "EndScene");
         else { api(f.d->BeginScene(), "BeginScene after the quad"); api(f.d->EndScene(), "EndScene after the quad"); } // a scene of the caller's own remains legal after the pass closed its scene
@@ -344,14 +366,14 @@ void run_sun_apply_integration(Fixture& f) {
         // Share-free and sentinel pixels are byte-identical in every frame.
         unsigned untouched_diff = 0;
         for (std::size_t p = 0; p < std::size_t(sun_apply_w) * sun_apply_h; ++p)
-            if (s.rt2_data[p * 2 + 1] <= 0.f && std::memcmp(&s.before[p * 8], &s.after[p * 8], 8) != 0) ++untouched_diff;
+            if (s.rt2_data[p * sun_apply_lanes + 1] <= 0.f && std::memcmp(&s.before[p * 8], &s.after[p * 8], 8) != 0) ++untouched_diff;
         require(untouched_diff == 0, "sentinel and share-free pixels are byte-identical");
-        std::printf("SUNAPPLY frame=%llu width=%u height=%u map_size=%u map_mode=%u elevation=%g jitter_index=%u exponent=%.9g bias_constant=%.9g bias_max=%.9g planar_step=%.9g "
+        std::printf("SUNAPPLY frame=%llu depth_encoding=%s width=%u height=%u map_size=%u map_mode=%u elevation=%g jitter_index=%u exponent=%.9g bias_constant=%.9g bias_max=%.9g planar_step=%.9g "
                     "m00=%.9g m11=%.9g m20=%.9g m21=%.9g m22=%.9g m32=%.9g rows=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g "
                     "camera=%.9g,%.9g,%.9g cam_right=%.9g,%.9g,%.9g cam_up=%.9g,%.9g,%.9g cam_forward=%.9g,%.9g,%.9g sun=%.9g,%.9g,%.9g "
                     "right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.9g,%.9g,%.9g extent=%.9g depth_half=%.9g "
                     "box=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u wide=%u scale=%.9g bias_units=%.9g texel_world=%.9g raster_m20=%.9g raster_m21=%.9g legacy_latch=%u\n",
-                    f.frame, sun_apply_w, sun_apply_h, sun_apply_map, script.map_mode, double(script.elevation_deg), script.jitter_index, double(script.exponent), double(bias_constant), double(bias_max), .05,
+                    f.frame, sun_apply_encoding_name(), sun_apply_w, sun_apply_h, sun_apply_map, script.map_mode, double(script.elevation_deg), script.jitter_index, double(script.exponent), double(bias_constant), double(bias_max), .05,
                     double(s.camera.m00), double(s.camera.m11), double(m20), double(m21), double(s.m22), double(s.m32),
                     double(rows[0]), double(rows[1]), double(rows[2]), double(rows[3]), double(rows[4]), double(rows[5]), double(rows[6]), double(rows[7]), double(rows[8]), double(rows[9]), double(rows[10]), double(rows[11]),
                     s.position.x, s.position.y, s.position.z, s.right.x, s.right.y, s.right.z, s.up.x, s.up.y, s.up.z, s.forward.x, s.forward.y, s.forward.z, double(sun[0]), double(sun[1]), double(sun[2]),
@@ -360,7 +382,7 @@ void run_sun_apply_integration(Fixture& f) {
                     receivers, share_free, sentinels, unsigned(wide), sun_apply_scale, bias_units, double(texel_world), double(latch.raster_m20), double(latch.raster_m21), unsigned(latch.legacy));
         sun_apply_write("before.rgba16f", f.frame, s.before.data(), s.before.size());
         sun_apply_write("after.rgba16f", f.frame, s.after.data(), s.after.size());
-        sun_apply_write("rt2.g32r32f", f.frame, s.rt2_data.data(), s.rt2_data.size() * 4);
+        sun_apply_write(sun_apply_rt2_file(), f.frame, s.rt2_data.data(), s.rt2_data.size() * 4);
         sun_apply_write("map.r32f", f.frame, s.map_data.data(), s.map_data.size() * 4);
         s.previous_after = s.after;
         api(f.d->Present(nullptr, nullptr, nullptr, nullptr), "Present");

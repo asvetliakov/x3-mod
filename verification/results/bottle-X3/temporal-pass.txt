@@ -1414,13 +1414,13 @@ CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
-CAMERA_FRAME label=pitch-builder frame=16 shift_px=-0.018,-0.142 baseline_px=-0.020,-0.058 drift_px=0.0837 error=0.01361 used=1 policy=2
+CAMERA_FRAME label=pitch-builder frame=16 shift_px=-0.018,-0.142 baseline_px=-0.020,-0.058 drift_px=0.0837 error=0.01362 used=1 policy=2
 CAMERA_FRAME label=pitch-builder frame=24 shift_px=-0.026,-0.224 baseline_px=-0.032,-0.048 drift_px=0.1764 error=0.01561 used=1 policy=2
 CAMERA_FRAME label=pitch-builder frame=32 shift_px=0.001,-0.148 baseline_px=-0.024,-0.041 drift_px=0.1072 error=0.01289 used=1 policy=2
 CAMERA_FRAME label=pitch-builder frame=40 shift_px=-0.066,-0.082 baseline_px=-0.033,-0.040 drift_px=0.0419 error=0.01611 used=1 policy=2
 CAMERA label=pitch-builder frames=48 from=16 drift_px=0.1764 error=0.01611 baseline=1
-SAMPLE camera pitch: resolved background tracks the current render (drift px against the static control) actual=0.176362054 expected=0.000000000 tolerance=0.200000000 PASS
-SAMPLE camera pitch: mean absolute error against the unjittered render actual=0.016111298 expected=0.000000000 tolerance=0.030000000 PASS
+SAMPLE camera pitch: resolved background tracks the current render (drift px against the static control) actual=0.176356904 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera pitch: mean absolute error against the unjittered render actual=0.016110077 expected=0.000000000 tolerance=0.030000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
@@ -1620,7 +1620,7 @@ CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=16 shift_px=-0.020,-0.000 baseline_px=0.000,0.000 drift_px=0.0201 error=0.00602 used=1 policy=2
-CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.023,0.000 baseline_px=0.000,0.000 drift_px=0.0225 error=0.00656 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.023,0.000 baseline_px=0.000,0.000 drift_px=0.0226 error=0.00655 used=1 policy=2
 CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=32 shift_px=-0.025,-0.000 baseline_px=0.000,0.000 drift_px=0.0253 error=0.00738 used=1 policy=2
 CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=40 shift_px=-0.026,-0.000 baseline_px=0.000,0.000 drift_px=0.0258 error=0.00731 used=1 policy=2
 CAMERA label=narrow-yaw-builder-unjittered frames=48 from=16 drift_px=0.0263 error=0.00807 baseline=0
@@ -3703,13 +3703,13 @@ CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
-CAMERA_FRAME label=pitch-builder frame=16 shift_px=-0.018,-0.142 baseline_px=-0.020,-0.058 drift_px=0.0837 error=0.01361 used=1 policy=2
+CAMERA_FRAME label=pitch-builder frame=16 shift_px=-0.018,-0.142 baseline_px=-0.020,-0.058 drift_px=0.0837 error=0.01362 used=1 policy=2
 CAMERA_FRAME label=pitch-builder frame=24 shift_px=-0.026,-0.224 baseline_px=-0.032,-0.048 drift_px=0.1764 error=0.01561 used=1 policy=2
 CAMERA_FRAME label=pitch-builder frame=32 shift_px=0.001,-0.148 baseline_px=-0.024,-0.041 drift_px=0.1072 error=0.01289 used=1 policy=2
 CAMERA_FRAME label=pitch-builder frame=40 shift_px=-0.066,-0.082 baseline_px=-0.033,-0.040 drift_px=0.0419 error=0.01611 used=1 policy=2
 CAMERA label=pitch-builder frames=48 from=16 drift_px=0.1764 error=0.01611 baseline=1
-SAMPLE camera pitch: resolved background tracks the current render (drift px against the static control) actual=0.176362054 expected=0.000000000 tolerance=0.200000000 PASS
-SAMPLE camera pitch: mean absolute error against the unjittered render actual=0.016111298 expected=0.000000000 tolerance=0.030000000 PASS
+SAMPLE camera pitch: resolved background tracks the current render (drift px against the static control) actual=0.176356904 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera pitch: mean absolute error against the unjittered render actual=0.016110077 expected=0.000000000 tolerance=0.030000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
@@ -3909,7 +3909,7 @@ CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=16 shift_px=-0.020,-0.000 baseline_px=0.000,0.000 drift_px=0.0201 error=0.00602 used=1 policy=2
-CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.023,0.000 baseline_px=0.000,0.000 drift_px=0.0225 error=0.00656 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.023,0.000 baseline_px=0.000,0.000 drift_px=0.0226 error=0.00655 used=1 policy=2
 CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=32 shift_px=-0.025,-0.000 baseline_px=0.000,0.000 drift_px=0.0253 error=0.00738 used=1 policy=2
 CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=40 shift_px=-0.026,-0.000 baseline_px=0.000,0.000 drift_px=0.0258 error=0.00731 used=1 policy=2
 CAMERA label=narrow-yaw-builder-unjittered frames=48 from=16 drift_px=0.0263 error=0.00807 baseline=0

@@ -50,8 +50,11 @@ View depth `w` in fp32 has relative error 2^-24; device depth `d = m22 + m32 / w
 | 92 km | 84 u | 1.15 (C4) | 7.8e-3 u | 1.1e-4 | C4 |
 
 Noise budget after the change (**I**): the VS `dp4` rounds `w` to ≈ 1 ULP of its largest
-partial (the translation term ≈ w), the interpolator adds a few ULP (**A**: ≤ 4 in total,
-0.016 u at 37 km, 0.03 u at 92 km), the map's normalized depth is stored in R32F over R =
+partial (the translation term ≈ w), the interpolator adds a few ULP (**M** 2026-09-18,
+`run_material_motion.py`: ≤ 3.41 ULP at 1280×768 and ≤ 0.41 at 5120×1440 against the analytic
+`w`; the fixture's 32×32 configurations show up to 52.6, the rasterizer's sub-pixel vertex
+snapping of a 64-pixel triangle, which scales with 1 / width and does not apply at game
+resolution; 0.016 u at 37 km, 0.03 u at 92 km at 4 ULP), the map's normalized depth is stored in R32F over R =
 375–600 km (0.02–0.04 u, **M**, diagnosis §1). Combined ≤ 0.07 u = 4e-3 C3 texel, 1e-3 C4
 texel, against the diagnosis' requirement of ≤ 0.05 texel (4 u at 92 km): a 50× margin.
 
@@ -90,7 +93,8 @@ only the flight's burst measures it (§4).
 Budgets: the transformed programs are all ps_3_0 (`material_motion.cpp:333, :406, :721`
 refuse anything but `0xffff0300`; ps_2_0 never enters the lane), the largest original share
 variant ≈ 230 of 512 slots, +1 here. The cascade apply is 499 of 512 (`shadow-cascades.md
-:280`); this change removes its `rcp` (−1) and, while gated, adds a `cmp` (+2): ≤ 501.
+:280`); this change removes its `rcp` (−1) and, while gated, adds a `cmp` (+2): ≤ 501
+(**M**: 500 gated; the single-map apply 225 → 226; the depth fragment 2 → 3).
 
 ## 3. Consumers and what each changes
 
@@ -124,7 +128,10 @@ receivers the analytic surface on the pixel grid. Encode the receiver as fp32 `z
 fp32 `w`, run `expected_factor_cascades` at ±1 ULP of each encoding: the old encoding must
 show ≥ 5 % of owned pixels with |Δf| ≥ 2/9 (the run117 class reproduced), the new ≤ 1 %
 (expected ≈ 0.02 %), and the new-encoding `f` must equal the float64-exact `f` on ≥ 99.9 %
-of pixels. Second, on captured data: `tools/analysis/shadow_receiver_reroll.py` takes an F8
+of pixels. **M** 2026-09-18 (`ReceiverDepthPrecision`, 25,600 owned pixels per cascade, a
+sinusoidal 300 u girder relief, 87 % / 75 % of the plate self-shadowed): device 18.8 % (C3) /
+83.5 % (C4) re-roll at ±1 ULP, linear 0.004 % / 0 %, linear `f` equal to the float64 `f` on
+99.996 % / 99.992 %. Second, on captured data: `tools/analysis/shadow_receiver_reroll.py` takes an F8
 burst directory (untracked) and repeats the diagnosis' ±1 ULP test on 24624 / 14780
 (baseline 9.1 / 14.2 / 15.7 %), then with ±ULP(w) applied to the reconstructed view depth;
 the result goes into the ledger and is the witness on real geometry. Both run before any
@@ -186,8 +193,10 @@ bit-stable maps are wanted for offline diffs.
 
 ## Unknown, and what settles it
 
-1. Interpolator precision of a `w`-valued attribute on this backend (FEX / wined3d / Metal)
-   and natively: assumed ≤ 4 ULP; `run_material_motion.py`'s new `.b` samples measure it.
+1. Interpolator precision of a `w`-valued attribute on this backend (FEX / wined3d / Metal):
+   measured ≤ 3.41 ULP at 1280×768 and ≤ 0.41 at 5120×1440 (`run_material_motion.py`
+   `DEPTH_W_SAMPLE`, 2026-09-18; the 32×32 configurations' 52.6 ULP is the rasterizer's
+   sub-pixel vertex snapping of a 64-pixel triangle, ∝ 1 / width). Natively: unknown.
 2. The bandwidth cost of a 16 B/px RT2 on the hot path: the flight's `frame_end` delta.
 3. The geometric jitter term of the residual, not in the twin: the flight's F8 burst.
 4. Native Windows execution of the wide MRT: unverified, as the rest of the renderer.

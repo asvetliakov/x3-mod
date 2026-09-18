@@ -1,0 +1,213 @@
+MODULE C:\windows\system32\d3d9.dll
+MODULE C:\X3\d3dx9_37.dll
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK sun copy restores hostile state PASS
+CHECK failed history copy refuses atomic publication PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK enhanced input requires copy program PASS
+CHECK missing copy leaves state untouched PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK sun copy restores hostile state PASS
+CHECK failed history copy refuses atomic publication PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK enhanced input requires copy program PASS
+CHECK missing copy leaves state untouched PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK sun copy restores hostile state PASS
+CHECK failed history copy refuses atomic publication PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK enhanced input requires copy program PASS
+CHECK missing copy leaves state untouched PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK sun copy restores hostile state PASS
+CHECK failed history copy refuses atomic publication PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK enhanced input requires copy program PASS
+CHECK missing copy leaves state untouched PASS
+CHECK Reset drops both histories PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK sun copy restores hostile state PASS
+CHECK failed history copy refuses atomic publication PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK enhanced input requires copy program PASS
+CHECK missing copy leaves state untouched PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK sun copy restores hostile state PASS
+CHECK failed history copy refuses atomic publication PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK enhanced input requires copy program PASS
+CHECK missing copy leaves state untouched PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK sun copy restores hostile state PASS
+CHECK failed history copy refuses atomic publication PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK enhanced input requires copy program PASS
+CHECK missing copy leaves state untouched PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK R32F history equals every source .r bit PASS
+CHECK ordinary and enhanced color/depth history exact twins PASS
+CHECK ordinary and enhanced history validity twins PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK sun copy restores hostile state PASS
+CHECK failed history copy refuses atomic publication PASS
+CHECK no G32R32F/A32B32G32R32F to R32F StretchRect PASS
+CHECK enhanced depth adds exactly one draw PASS
+CHECK sun copy restores hostile state PASS
+CHECK enhanced input requires copy program PASS
+CHECK missing copy leaves state untouched PASS
+CHECK Reset drops both histories PASS
+SUN_LANE_PASS histories=16 copy_failures=8 sizes=8 resets=2 native_runtime_claim=0

@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "executable_sha256": "05ecd146ef698ffcab5870cfcb718c8b7667f8252dc9921407d75377709f56e0",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "--workdir",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/temporal_pass_fixture.exe",
+    "C:\\X3\\d3dx9_37.dll",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/src/temporal/taa_sharpen_ps.hlsl",
+    "sun-lane-only"
+  ],
+  "game_launched": false,
+  "exit_code": 0,
+  "elapsed_seconds": 4.1099499999999995,
+  "counts": [
+    16,
+    8,
+    8,
+    2
+  ],
+  "state_restorations": 48,
+  "executable_unchanged": true
+}

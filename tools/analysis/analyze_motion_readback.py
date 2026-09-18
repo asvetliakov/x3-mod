@@ -424,9 +424,20 @@ def load_readback(path, width, height):
 DEPTH_SENTINEL = -1.0
 
 
+DEPTH_FORMAT_LANES = {'r32f_row_major': 1, 'rg32f_row_major': 2, 'rgba32f_row_major': 4}  # R32F, the lane's G32R32F, the receiver-depth option's A32B32G32R32F
+
+
+def depth_lanes(readback):
+    """Lanes per texel of an RT2 dump from its readback line's format label (absent: R32F)."""
+    label = (readback or {}).get('format', 'r32f_row_major')
+    if label not in DEPTH_FORMAT_LANES:
+        raise MalformedInput(f'unknown depth readback format {label}')
+    return DEPTH_FORMAT_LANES[label]
+
+
 def load_r32f(path, width, height, components=1):
-    if components not in (1, 2):
-        raise MalformedInput("depth components must be 1 or 2")
+    if components not in (1, 2, 4):
+        raise MalformedInput("depth components must be 1, 2 or 4")
     size = path.stat().st_size
     if size != width * height * 4 * components:
         raise MalformedInput(f'{path.name}: size {size} != {width}x{height}x{4 * components}')
@@ -1129,7 +1140,7 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
                 hard_errors.append(f'{depth_name}: depth readback result {frame.depth_readback.get("result")}')
             elif depth_path.is_file():
                 try:
-                    depth = load_r32f(depth_path, width, height, 2 if (frame.depth_readback or {}).get("format") == "rg32f_row_major" else 1)
+                    depth = load_r32f(depth_path, width, height, depth_lanes(frame.depth_readback))
                     stats = depth_image_stats(depth)
                     report['depth_image'] = {'file': depth_path.name, 'status': 'loaded', 'sha256': sha256_stream(depth_path), **stats}
                     depth_images.append(report)

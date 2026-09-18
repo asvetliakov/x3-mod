@@ -3,8 +3,9 @@
 legacy-sun-application.md, section 3.3): the far map is the identity, a map
 at depth 0 gives 1 - s on every valid pixel and leaves sentinel, share-free
 and off-cascade pixels at 1, the exponent applies only to shadowed pixels,
-the quad derivative helper, the FP16 code spacing and the analytic box hit.
-No Wine, no game."""
+the quad derivative helper, the FP16 code spacing, the analytic box hit and
+the receiver-depth precision of the two RT2 encodings (docs/architecture/
+shadow-receiver-depth.md, section 4). No Wine, no game."""
 import sys
 import unittest
 from pathlib import Path
@@ -196,7 +197,9 @@ class RunInputs(unittest.TestCase):
 
     def test_params_line(self):
         params, extra = apply.parse_apply_params(apply.line_fields(self.LINE))
-        self.assertEqual(set(params), {'m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'bias_constant', 'bias_max', 'planar_step', 'rows', 'jitter_index'})
+        self.assertEqual(set(params), {'m00', 'm11', 'm20', 'm21', 'm22', 'm32', 'exponent', 'bias_constant', 'bias_max', 'planar_step', 'rows', 'jitter_index', 'depth_encoding'})
+        self.assertEqual(params['depth_encoding'], 'device')  # a line before the wide RT2
+        self.assertEqual(apply.parse_apply_params(apply.line_fields(self.LINE + ' depth_encoding=linear'))[0]['depth_encoding'], 'linear')
         self.assertAlmostEqual(params['m20'], -2 * .25 / 1280); self.assertAlmostEqual(params['m21'], -2 * .166667 / 768, places=7)
         self.assertEqual((params['jitter_index'], params['bias_constant'], len(params['rows'])), (1, .00100000005, 12))
         self.assertEqual((extra['width'], extra['height'], extra['map'], extra['jitter_px']), (1280, 768, 1024, (-.25, .166667)))
@@ -271,6 +274,8 @@ class RunInputs(unittest.TestCase):
         for key in expected:
             if key == 'rows':
                 self.assertEqual(got[key], expected[key])
+            elif key == 'depth_encoding':
+                self.assertEqual(expected[key], 'device')  # reconstruction predates the wide RT2
             else:
                 self.assertAlmostEqual(got[key], expected[key], places=6, msg=key)
 
@@ -386,3 +391,130 @@ class CascadeFactor(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def receiver_depth_scene(range_units, half_extent, depth_half, size=4096, width=160, height=160, m00=5.45, amplitude=150.0, texels=3.0, seed=7):
+    """A single-sided plate at `range_units` down the camera axis, corrugated
+    like a girder (`amplitude` x 2 = 300 u of depth spread over `texels` map
+    texels, the run117 p50), under one cascade of `half_extent` / `depth_half`
+    / `size` with the sun tilted off the view axis. The map is the plate's own
+    sun depth at the D3D9 texel positions; the receivers are the first hit of
+    every pixel's camera ray (the pixel centre, m20 = m21 = 0) in float64.
+    Returns (w, s, maps, params) with w the exact view depth."""
+    rng = np.random.default_rng(seed)
+    forward = np.array([.35, -.25, 1.0]); forward /= np.linalg.norm(forward)
+    right = np.cross([0.0, 1.0, 0.0], forward); right /= np.linalg.norm(right)
+    up = np.cross(forward, right)
+    centre = np.array([0.0, 0.0, range_units])
+    period = texels * 2.0 * half_extent / size
+
+    def relief(u, v):  # sun-space height field along the sun (u, v in world units of the map plane)
+        return amplitude * np.sin(2.0 * np.pi * u / period) * np.sin(2.0 * np.pi * v / period + .7)
+
+    rows = (right[0] / half_extent, right[1] / half_extent, right[2] / half_extent, -np.dot(centre, right) / half_extent,
+            up[0] / half_extent, up[1] / half_extent, up[2] / half_extent, -np.dot(centre, up) / half_extent,
+            forward[0] / (2.0 * depth_half), forward[1] / (2.0 * depth_half), forward[2] / (2.0 * depth_half), (depth_half - np.dot(centre, forward)) / (2.0 * depth_half))
+    a = np.arange(size, dtype=np.float64)
+    mu = a[None, :] / size * 2.0 - 1.0; mv = 1.0 - a[:, None] / size * 2.0   # D3D9 texel (a, b) at map position (a, b) / N
+    sun_map = (relief(mu * half_extent, mv * half_extent) + depth_half) / (2.0 * depth_half)
+    i = np.arange(width, dtype=np.float64)[None, :].repeat(height, 0); j = np.arange(height, dtype=np.float64)[:, None].repeat(width, 1)
+    dv = np.stack([((i + .5) / width * 2.0 - 1.0) / m00, (1.0 - (j + .5) / height * 2.0) / m00, np.ones_like(i)], -1)
+    du, dvv, dw = dv @ right, dv @ up, dv @ forward
+    cu, cv, cw = np.dot(centre, right), np.dot(centre, up), np.dot(centre, forward)
+
+    def gap(z):  # sun depth of the ray point minus the plate's height there: zero on the surface
+        return z * dw - cw - relief(z * du - cu, z * dvv - cv)
+    # First root along every ray: a 1 u march over +-4 amplitude about the
+    # flat plate's hit (the plate is tilted against the view), then bisection.
+    lo = cw / dw - 4.0 * amplitude; found = np.zeros(i.shape, dtype=bool); bracket_lo = lo.copy(); bracket_hi = lo.copy()
+    previous = gap(lo)
+    for step in range(1, int(8.0 * amplitude) + 1):
+        z = lo + float(step)
+        current = gap(z)
+        crossing = ~found & (np.sign(current) != np.sign(previous))
+        bracket_lo = np.where(crossing, z - 1.0, bracket_lo); bracket_hi = np.where(crossing, z, bracket_hi); found |= crossing
+        previous = current
+    assert found.all(), 'every camera ray meets the plate'
+    for _ in range(60):
+        mid = .5 * (bracket_lo + bracket_hi)
+        low_side = np.sign(gap(mid)) == np.sign(gap(bracket_lo))
+        bracket_lo = np.where(low_side, mid, bracket_lo); bracket_hi = np.where(low_side, bracket_hi, mid)
+    w = .5 * (bracket_lo + bracket_hi)
+    s = rng.uniform(.3, .9, i.shape)
+    bias = apply.resolve_bias(apply.BIAS_UNITS_DEFAULT, half_extent, depth_half, size)
+    params = dict(m00=m00, m11=m00, m20=0.0, m21=0.0, m22=apply.PRODUCTION_M22, m32=apply.PRODUCTION_M32, exponent=1.0, planar_step=.05, jitter_index=3,
+                  cascades=[dict(rows=rows, bias_constant=bias['bias_constant'], bias_max=bias['bias_max'], valid=True)])
+    return w, s, [sun_map], params
+
+
+class ReceiverDepthPrecision(unittest.TestCase):
+    """docs/architecture/shadow-receiver-depth.md, section 4: the girder plate
+    at C3 (37 km, 18.3 u texel) and C4 (92 km, 73.2 u texel) rows, the
+    receiver encoded as fp32 z/w (`device`, the G32R32F lane) and as fp32 w
+    (`linear`, RT2.b of the A32B32G32R32F lane), the twin at +-1 ULP of each:
+    the device encoding re-rolls (|delta f| >= 2/9) at least 5 % of the owned
+    pixels (the run117 class), the linear one at most 1 %, and the linear f
+    equals the float64-exact f on at least 99.9 % of the pixels."""
+    CASCADES = {'C3': (37000.0, 37500.0, 187500.0), 'C4': (92000.0, 150000.0, 300000.0)}
+
+    @staticmethod
+    def reroll(w, s, maps, params, encoding):
+        exact = apply.expected_factor_cascades(w, s, maps, params, depth_encoding='linear')
+        owned = exact['valid'] & (exact['selected'] == 0)
+        stored = (params['m22'] + params['m32'] / w if encoding == 'device' else w).astype(np.float32)
+        plus, minus = np.nextafter(stored, np.float32(np.inf)), np.nextafter(stored, np.float32(-np.inf))
+        f = [apply.expected_factor_cascades(v.astype(np.float64), s, maps, params, depth_encoding=encoding)['f'] for v in (stored, plus, minus)]
+        flips = np.abs(f[1] - f[2]) >= 2.0 / 9.0 - 1e-12
+        return dict(owned=int(owned.sum()), flip_fraction=float(flips[owned].mean()), exact_fraction=float((f[0][owned] == exact['f'][owned]).mean()),
+                    shadowed_fraction=float((exact['f'][owned] < 1.0).mean()))
+
+    def test_linear_w_stops_the_one_ulp_reroll(self):
+        for name, (range_units, half_extent, depth_half) in self.CASCADES.items():
+            w, s, maps, params = receiver_depth_scene(range_units, half_extent, depth_half)
+            device, linear = self.reroll(w, s, maps, params, 'device'), self.reroll(w, s, maps, params, 'linear')
+            self.assertGreater(device['owned'], 20000, name)
+            self.assertEqual(device['owned'], linear['owned'], name)
+            self.assertGreater(device['shadowed_fraction'], .05, (name, 'the plate self-shadows its girders'))
+            self.assertGreaterEqual(device['flip_fraction'], .05, (name, device))
+            self.assertLessEqual(linear['flip_fraction'], .01, (name, linear))
+            self.assertGreaterEqual(linear['exact_fraction'], .999, (name, linear))
+            print('RECEIVER_DEPTH cascade=%s owned=%d device_flip=%.5f linear_flip=%.5f linear_exact=%.5f shadowed=%.4f'
+                  % (name, device['owned'], device['flip_fraction'], linear['flip_fraction'], linear['exact_fraction'], device['shadowed_fraction']))
+
+    def test_beyond_one_code_decides_by_exact_fp16_distance(self):
+        def call(after, reference):
+            a, r = np.array([[after]], dtype=np.float64), np.array([[reference]], dtype=np.float64)
+            return bool(apply.beyond_one_code(a, r, np.abs(a - r) / apply.fp16_code(r))[0])
+        one = lambda v, direction: float(np.nextafter(np.float16(v), np.float16(direction)))
+        # The cascades-5 frame-6 witness: 1.000132 codes by the spacing at the reference, exactly one code across the exponent boundary.
+        self.assertFalse(call(one(0.947709, 0.0), 0.947709))
+        self.assertFalse(call(one(0.5, 0.0), 0.5)); self.assertFalse(call(one(0.5, 1.0), 0.5))  # both sides of a power of two
+        self.assertTrue(call(one(one(0.5, 0.0), 0.0), 0.5)); self.assertTrue(call(one(one(0.5, 1.0), 1.0), 0.5))  # two codes either way
+        # Where the spacing understates the step (the reference just below a power of two, the readback above it): one code is one code, two are beyond.
+        below = one(1.0, 0.0)
+        self.assertFalse(call(1.0, below)); self.assertTrue(call(one(1.0, 2.0), below))
+        # Negative pairs: sign-magnitude patterns must not read as far apart.
+        self.assertFalse(call(one(-0.25, -1.0), -0.25)); self.assertTrue(call(one(one(-0.25, -1.0), -1.0), -0.25))
+        self.assertFalse(call(float(np.float16(-0.0)), 0.0))
+        self.assertTrue(np.array_equal(apply.fp16_ordered_code(np.array([-1.0, -0.0, 0.0, 1.0])) < apply.fp16_ordered_code(np.array([-0.5, 0.0, 0.5, 2.0])), [True, False, True, True]))
+
+    def test_unpack_rt2_lanes_and_encodings(self):
+        wide = np.arange(2 * 3 * 4, dtype='<f4').tobytes(); narrow = np.arange(2 * 3 * 2, dtype='<f4').tobytes()
+        d, s = apply.unpack_rt2(wide, 3, 2, 'linear'); self.assertEqual((d[0, 1], s[0, 1]), (6.0, 5.0))
+        d, s = apply.unpack_rt2(wide, 3, 2); self.assertEqual((d[0, 1], s[0, 1]), (4.0, 5.0))
+        d, s = apply.unpack_rt2(narrow, 3, 2); self.assertEqual((d[1, 0], s[1, 0]), (6.0, 7.0))
+        with self.assertRaises(ValueError):
+            apply.unpack_rt2(narrow, 3, 2, 'linear')
+        with self.assertRaises(ValueError):
+            apply.unpack_rt2(wide, 3, 2, 'wrong')
+        self.assertEqual(apply.parse_depth_encoding({}), 'device'); self.assertEqual(apply.parse_depth_encoding({'depth_encoding': 'linear'}), 'linear')
+        self.assertEqual((apply.rt2_suffix('device'), apply.rt2_suffix('linear')), ('rg32f', 'rgba32f'))
+        params = dict(PARAMS, depth_encoding='linear')
+        self.assertTrue(np.array_equal(apply.view_depth(np.array([6.0, 12.0]), params), [6.0, 12.0]))
+        self.assertTrue(np.allclose(apply.view_depth(np.array([PARAMS['m22'] + PARAMS['m32'] / 6.0]), PARAMS), [6.0]))
+        # The linear twin at the device twin's receivers: the same factors.
+        d, s = receivers()
+        w = np.where(d >= 0.0, PARAMS['m32'] / (d - PARAMS['m22']), -1.0)
+        device_f = apply.expected_factor(d, s, np.zeros((64, 64)), PARAMS)
+        linear_f = apply.expected_factor(w, s, np.zeros((64, 64)), params)
+        self.assertTrue(np.allclose(device_f['factor'], linear_f['factor']) and np.array_equal(device_f['valid'], linear_f['valid']))

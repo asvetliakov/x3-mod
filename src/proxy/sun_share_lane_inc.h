@@ -38,8 +38,10 @@ void MotionOutput::qualify_sun_lane() noexcept {
         reason="sentinel";
         if(!sun_sentinel_ps_){
             DWORD code[std::size(sentinel_mrt_program)];std::copy(std::begin(sentinel_mrt_program),std::end(sentinel_mrt_program),code);
-            // oC1 = c0.wxxx -> (-1,0,0,0), independently of ordinary (-1,...).
-            code[std::size(code)-2]=0xa0030000u;
+            // oC1 = c0.wxww -> (-1,0,-1,-1): .r sentinel, .g zero share, and on the
+            // A32B32G32R32F RT2 (shadow-receiver-depth.md) the .b/.a sentinel too
+            // (G32R32F stores .rg only, so its bits are unchanged).
+            code[std::size(code)-2]=0xa0f30000u;
             if(FAILED(hr=native<CreatePsFn>(CreatePixelShader)(device_,code,&sun_sentinel_ps_))||!sun_sentinel_ps_)break;
         }
         reason="shader_cache";

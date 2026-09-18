@@ -3,8 +3,10 @@
 // target by 1 - (1 - f) s under ZERO/SRCCOLOR blending, where s is the sun
 // share the route's programs wrote to RT2.g and f the 3x3 PCF visibility of
 // the same frame's cascade-0 depth replay map. Per pixel: RT2 (.r = device
-// z/w with the -1 sentinel, .g = share) point-sampled at the pixel; view depth
-// by the AO law z = m32 / (d - m22) (ao_linearize_ps.hlsl); NDC from the quad
+// z/w with the -1 sentinel, .g = share, .b = the interpolated clip w on the
+// A32B32G32R32F lane) point-sampled at the pixel; view depth z = .b when
+// limits.z > 0 (the wide RT2, docs/architecture/shadow-receiver-depth.md),
+// else by the AO law z = m32 / (d - m22) (ao_linearize_ps.hlsl); NDC from the quad
 // UV minus the frame's jitter (the latched m20/m21, as ao_gtao_ps.hlsl); the
 // view position (x z / m00, y z / m11, z); sun-space NDC x, y and normalized
 // depth through the replay frame's three view -> sun rows; the map UV snapped
@@ -26,7 +28,7 @@
 // receiver's lookup position is therefore suv = muv + 0.5 / N: its nearest
 // texel is floor(suv N) (= round(muv N)), and a tap at tapUV holds the depth
 // of the point tapUV - suv away from the receiver (the receiver-plane term).
-sampler depthShareTex : register(s0); // G32R32F: r = device depth (z/w, -1 sentinel), g = sun share s
+sampler depthShareTex : register(s0); // G32R32F or A32B32G32R32F: r = device depth (z/w, -1 sentinel), g = sun share s, b = view depth w (wide only)
 sampler sunMapTex : register(s1);     // R32F sun-space depth map of the same frame
 float4 view : register(c0);     // x = m00, y = m11, z = m20, w = m21 (the jittered projection latch)
 float4 terms : register(c1);    // x = m22, y = m32, z = exponent, w = constant bias (normalized sun depth)
@@ -34,12 +36,12 @@ float4 sunRow0 : register(c2);  // view (x, y, z, 1) -> sun NDC x
 float4 sunRow1 : register(c3);  // -> sun NDC y
 float4 sunRow2 : register(c4);  // -> normalized sun depth
 float4 map : register(c5);      // x = map size, y = 1 / size, z = cos, w = sin of the kernel rotation
-float4 limits : register(c6);   // x = receiver-plane bias clamp and non-planar fallback, y = relative view-depth step that voids the plane fit
+float4 limits : register(c6);   // x = receiver-plane bias clamp and non-planar fallback, y = relative view-depth step that voids the plane fit, z = 1 when RT2.b carries the view depth (A32B32G32R32F), 0 for the z/w law
 
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
-    float2 ds = tex2D(depthShareTex, uv).rg;
+    float4 ds = tex2D(depthShareTex, uv);
     float d = ds.r, s = saturate(ds.g); // the share is a fraction; a producer fault above 1 must not zero the pixel
-    float z = terms.y / (d - terms.x);
+    float z = limits.z > 0.0 ? ds.b : terms.y / (d - terms.x);
     float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
     float4 p = float4((ndc.x - view.z) * z / view.x, (ndc.y - view.w) * z / view.y, z, 1.0);
     float3 sun = float3(dot(p, sunRow0), dot(p, sunRow1), dot(p, sunRow2));

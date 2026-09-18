@@ -156,7 +156,7 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.log.write_text(''.join(rows))
         _, count, issues = self.save(log=self.log)
         self.assertEqual((count, issues), (expected, []))
-        self.assertEqual(expected, 8)  # Seven writers; the depth tag has two formats.
+        self.assertEqual(expected, 9)  # Seven writers; the depth tag has three formats (r32f, rg32f, rgba32f).
 
     def test_sun_lane_depth_and_shadow_map_records_are_preserved(self):
         # Sun lane active: RT2 is G32R32F (.r depth, .g share) and the replayed
@@ -206,8 +206,16 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.assertEqual(count, 0)
         self.assertTrue(any('unsafe or unexpected readback basename' in issue for issue in issues))
 
+    def test_wide_depth_dump_is_copied(self):
+        (self.capture / 'depth_1_8979.rgba32f').write_bytes(b'abcd' * 8)
+        self.log.write_text('motion_output_depth_readback device=1 frame=8979 file=depth_1_8979.rgba32f '
+                            'width=1280 height=768 format=rgba32f_row_major result=00000000 bytes=32\n')
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual((count, issues), (1, []))
+        self.assertEqual((destination / 'depth_1_8979.rgba32f').read_bytes(), b'abcd' * 8)
+
     def test_extension_outside_the_tag_allowance_is_refused(self):
-        for tag, name in (('motion_output_depth_readback', 'depth_1_2.rgba32f'),
+        for tag, name in (('motion_output_depth_readback', 'depth_1_2.rgb32f'),
                           ('shadow_replay_map_readback', 'shadow_map_1_2.rg32f'),
                           ('hdr_readback', 'hdr_1_2.rg32f'),
                           ('motion_output_depth_readback', 'depth_1_2.r32f.rg32f'),

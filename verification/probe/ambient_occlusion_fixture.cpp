@@ -574,6 +574,26 @@ int main() {
                 require((std::string("oracle_") + name + "_flat_identity").c_str(), pass);
             } else if (!std::strcmp(name, "sphere")) {
                 clean_sphere = r.term;
+                // The lane's RT2 formats (G32R32F; A32B32G32R32F under the receiver-depth option,
+                // docs/architecture/shadow-receiver-depth.md): the same .r beside junk in the other
+                // lanes gives the bit-identical term. AO reads .r only.
+                for (const auto wide : {std::pair<D3DFORMAT, unsigned>{D3DFMT_G32R32F, 2u}, {D3DFMT_A32B32G32R32F, 4u}}) {
+                    Com<IDirect3DTexture9> lanes, lanes_sys;
+                    check("wide depth texture", d->CreateTexture(f.w, f.h, 1, 0, wide.first, D3DPOOL_DEFAULT, &lanes.p, nullptr));
+                    check("wide depth staging", d->CreateTexture(f.w, f.h, 1, 0, wide.first, D3DPOOL_SYSTEMMEM, &lanes_sys.p, nullptr));
+                    D3DLOCKED_RECT lr{}; check("lock wide depth", lanes_sys->LockRect(0, &lr, nullptr, 0));
+                    for (unsigned y = 0; y < f.h; ++y) for (unsigned x = 0; x < f.w; ++x) {
+                        float texel[4] = {s.depth[std::size_t(y) * f.w + x], .375f, 12345.f, -1.f};
+                        std::memcpy(static_cast<char*>(lr.pBits) + y * lr.Pitch + x * wide.second * 4, texel, wide.second * 4);
+                    }
+                    check("unlock wide depth", lanes_sys->UnlockRect(0));
+                    check("update wide depth", d->UpdateTexture(lanes_sys.p, lanes.p));
+                    f.fill_target(d);
+                    AmbientOcclusionFrame in = frame_inputs(f, p, true); in.depth = lanes.p;
+                    AmbientOcclusionResult out; const HRESULT hr = pass.execute(in, &out);
+                    require(wide.second == 2 ? "g32r32f_input_bit_identical" : "a32b32g32r32f_input_bit_identical",
+                            SUCCEEDED(hr) && out.applied && out.term && term_values(f, d, out.term) == clean_sphere);
+                }
                 // Contact ring on the floor (radial distance 0.1..0.4 r from the contact point): darkened; floor farther than r + 1.3 R from the sphere surface: no halo; upper sphere: unoccluded.
                 mean = region_mean(s, r.term, f.hw, f.hh, p, [](double x, double y, double z) { const double r = std::hypot(x, z - kSphereZ); return std::fabs(y - kFloor) < 1e-9 && r >= .1 * kSphereR && r <= .4 * kSphereR; }, &count, &minimum);
                 oracle_line(name, "contact_ring", mean, minimum, count, count > 0 && mean < .97 && minimum < .9);

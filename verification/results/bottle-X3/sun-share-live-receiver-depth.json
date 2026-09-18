@@ -1,0 +1,310 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw",
+  "inputs": {
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/motion_output_fixture.exe": "92202ecc0618dbcb50f5fd2c31ccceeb3330e09dadabea56f85366dd4202e106",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/motion-output-seam/d3d9.dll": "76a259511257ec5ade2e0c467acca8a3cfce19a720fa5f0ae0a1db4108947d32",
+    "/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
+  },
+  "game_launched": false,
+  "cases": {
+    "shadow_apply": {
+      "frames": 6,
+      "histories": 4,
+      "resets": 1,
+      "exact_taa_frames": 6,
+      "refusal_frames": 1,
+      "writer_signatures": 1,
+      "composition_frames": 0,
+      "mask_union_pixels": 0,
+      "positive_frames": 5,
+      "zero_frames": 1,
+      "negative_selftest": false,
+      "linear_materials": false,
+      "apply_frames": 4,
+      "apply_skipped": {
+        "0": "replay",
+        "2": "lane"
+      },
+      "receiver_depth": "device",
+      "rt2_format": 115,
+      "apply_us_max": 1808.2,
+      "shadowed_pixels_min": 3969,
+      "bias": {
+        "bias_units": 0.53571875,
+        "clamp_texels": 20.97152,
+        "cascade": {
+          "extent": 32.0,
+          "depth_half": 64.0,
+          "size": 512
+        },
+        "resolved_by_law": {
+          "bias_constant": 0.005161865148693323,
+          "bias_max": 0.020479999482631683,
+          "texel_world": 0.125
+        }
+      },
+      "elapsed_seconds": 5.378376959,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw/shadow_apply",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw/shadow_apply/fixture.exe",
+        "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
+        "sunlane"
+      ]
+    },
+    "shadow_apply_cascades": {
+      "frames": 6,
+      "histories": 4,
+      "resets": 1,
+      "exact_taa_frames": 6,
+      "refusal_frames": 1,
+      "writer_signatures": 1,
+      "composition_frames": 0,
+      "mask_union_pixels": 0,
+      "positive_frames": 5,
+      "zero_frames": 1,
+      "negative_selftest": false,
+      "linear_materials": false,
+      "apply_frames": 4,
+      "apply_skipped": {
+        "0": "replay",
+        "2": "lane"
+      },
+      "receiver_depth": "device",
+      "rt2_format": 115,
+      "apply_us_max": 1207.6,
+      "shadowed_pixels_min": 3969,
+      "bias": {
+        "bias_units": 0.53571875,
+        "clamp_texels": 20.97152,
+        "cascade": {
+          "extent": 32.0,
+          "depth_half": 64.0,
+          "size": 512
+        },
+        "resolved_by_law": {
+          "bias_constant": 0.005161865148693323,
+          "bias_max": 0.020479999482631683,
+          "texel_world": 0.125
+        }
+      },
+      "cascades": {
+        "capture_frames": [
+          1,
+          3
+        ],
+        "frames": {
+          "1": {
+            "owned": [
+              4032,
+              0
+            ],
+            "shadowed": 4032,
+            "bias": [
+              0.00114708114,
+              0.00149972539
+            ],
+            "texel_world": [
+              0.125,
+              1.0
+            ],
+            "depth_encoding": "device"
+          },
+          "3": {
+            "owned": [
+              4096,
+              0
+            ],
+            "shadowed": 4096,
+            "bias": [
+              0.00114708114,
+              0.00149972539
+            ],
+            "texel_world": [
+              0.125,
+              1.0
+            ],
+            "depth_encoding": "device"
+          }
+        }
+      },
+      "elapsed_seconds": 1.734133,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw/shadow_apply_cascades",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw/shadow_apply_cascades/fixture.exe",
+        "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
+        "sunlane"
+      ]
+    },
+    "shadow_apply_linear": {
+      "frames": 6,
+      "histories": 4,
+      "resets": 1,
+      "exact_taa_frames": 6,
+      "refusal_frames": 1,
+      "writer_signatures": 1,
+      "composition_frames": 0,
+      "mask_union_pixels": 0,
+      "positive_frames": 5,
+      "zero_frames": 1,
+      "negative_selftest": false,
+      "linear_materials": false,
+      "apply_frames": 4,
+      "apply_skipped": {
+        "0": "replay",
+        "2": "lane"
+      },
+      "receiver_depth": "linear",
+      "rt2_format": 116,
+      "apply_us_max": 1362.7,
+      "shadowed_pixels_min": 3969,
+      "bias": {
+        "bias_units": 0.53571875,
+        "clamp_texels": 20.97152,
+        "cascade": {
+          "extent": 32.0,
+          "depth_half": 64.0,
+          "size": 512
+        },
+        "resolved_by_law": {
+          "bias_constant": 0.005161865148693323,
+          "bias_max": 0.020479999482631683,
+          "texel_world": 0.125
+        }
+      },
+      "elapsed_seconds": 1.689024374999999,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw/shadow_apply_linear",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw/shadow_apply_linear/fixture.exe",
+        "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
+        "sunlane"
+      ]
+    },
+    "shadow_apply_cascades_linear": {
+      "frames": 6,
+      "histories": 4,
+      "resets": 1,
+      "exact_taa_frames": 6,
+      "refusal_frames": 1,
+      "writer_signatures": 1,
+      "composition_frames": 0,
+      "mask_union_pixels": 0,
+      "positive_frames": 5,
+      "zero_frames": 1,
+      "negative_selftest": false,
+      "linear_materials": false,
+      "apply_frames": 4,
+      "apply_skipped": {
+        "0": "replay",
+        "2": "lane"
+      },
+      "receiver_depth": "linear",
+      "rt2_format": 116,
+      "apply_us_max": 1242.3,
+      "shadowed_pixels_min": 3969,
+      "bias": {
+        "bias_units": 0.53571875,
+        "clamp_texels": 20.97152,
+        "cascade": {
+          "extent": 32.0,
+          "depth_half": 64.0,
+          "size": 512
+        },
+        "resolved_by_law": {
+          "bias_constant": 0.005161865148693323,
+          "bias_max": 0.020479999482631683,
+          "texel_world": 0.125
+        }
+      },
+      "cascades": {
+        "capture_frames": [
+          1,
+          3
+        ],
+        "frames": {
+          "1": {
+            "owned": [
+              4032,
+              0
+            ],
+            "shadowed": 4032,
+            "bias": [
+              0.00114708114,
+              0.00149972539
+            ],
+            "texel_world": [
+              0.125,
+              1.0
+            ],
+            "depth_encoding": "linear"
+          },
+          "3": {
+            "owned": [
+              4096,
+              0
+            ],
+            "shadowed": 4096,
+            "bias": [
+              0.00114708114,
+              0.00149972539
+            ],
+            "texel_world": [
+              0.125,
+              1.0
+            ],
+            "depth_encoding": "linear"
+          }
+        }
+      },
+      "elapsed_seconds": 1.7915878339999995,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw/shadow_apply_cascades_linear",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-xgd0ovlw/shadow_apply_cascades_linear/fixture.exe",
+        "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
+        "sunlane"
+      ]
+    }
+  }
+}

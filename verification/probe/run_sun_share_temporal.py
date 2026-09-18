@@ -35,7 +35,7 @@ def main():
         report['counts'] = list(map(int, match.groups())) if match else None
         report['state_restorations'] = text.count('CHECK sun copy restores hostile state PASS')
         report['executable_unchanged'] = hashlib.sha256(exe.read_bytes()).hexdigest() == digest
-        report['passed'] = result.returncode == 0 and report['counts'] == [8, 4, 4, 2] and 'FAIL' not in text and report['executable_unchanged']
+        report['passed'] = result.returncode == 0 and report['counts'] == [16, 8, 8, 2]  # two enhanced formats (G32R32F, A32B32G32R32F) x two widths x two frames x two generations and 'FAIL' not in text and report['executable_unchanged']
         if not report['passed']:
             raise RuntimeError('sun-share temporal fixture failed; see scoped log')
     finally:

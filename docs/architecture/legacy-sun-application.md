@@ -128,7 +128,12 @@ pattern: one quad, `SRCBLEND = ZERO, DESTBLEND = SRCCOLOR` into the owning FP16 
 and same-frame lane: no lag.
 
 **Per pixel** (all inputs on the jittered raster): read RT2 `G32R32F` (`.r = z/w`,
-`.g = s`); skip when `s ≤ 0` or the sentinel (`−1`); linearize `z/w` to view depth with AO's
+`.g = s`) or, under `--sun-shadow-receiver-depth linear` (`X3M_SUN_SHADOW_RECEIVER_DEPTH`,
+`docs/architecture/shadow-receiver-depth.md`), RT2 `A32B32G32R32F` (`.r = z/w`, `.g = s`,
+`.b = .a = the interpolated clip w`, written by the depth fragment's `mov oC2.zw` before the
+share's `.g`); skip when `s ≤ 0` or the sentinel (`.r = −1`); the view depth is `.b` on the
+wide format (`limits.z` / `select.w = 1`, set by the pass from the bound RT2's format) and
+otherwise `z/w` linearized with AO's
 law (`ao_linearize_ps.hlsl`); NDC from the quad UV minus the frame's jitter; view position
 `(x·w/m00, y·w/m11, w)`; `S = SunProj₀·SunView·V⁻¹` of the replay's own frame (the projection
 `shadow_replay_projection.h` already builds on the CPU), 3 `dp4`; texel-snapped map UV;
@@ -138,7 +143,8 @@ architecture note: "A's quad with a 3×3 manual PCF"), two texture sources, once
 pixel, no overdraw.
 
 **Cost per frame.** GPU: the producer's +32–45 slots per routed hull fragment (static; the
-detached fixture measures it), RT2 `G32R32F` +4 B/px (+3.75 MiB at 768p), the apply quad
+detached fixture measures it), RT2 `G32R32F` +4 B/px (+3.75 MiB at 768p; `A32B32G32R32F`
++12 B/px, +11.25 MiB, under the receiver-depth option), the apply quad
 bounded above by the whole AO chain's measured 0.51–0.78 ms, the map 42.3 µs median at 8
 replayed draws (run81, 2,106 of 2,123 frames replayed; 783 µs on the first frame). CPU: the
 lane's existing bookkeeping per draw, ≈ 15 device calls and one stateblock per frame for the
