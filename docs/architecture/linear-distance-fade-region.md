@@ -892,6 +892,21 @@ Rule (`src/proxy/fade_route_core.h`, `MotionOutput::fade_arm_admits`, gate 4):
   `linear_material_frame` line and flagged `fade_held=1` on the capture
   `motion_route` line. The switch still happens, once, at the band's lower
   edge rather than every frame at the threshold.
+- **Startup evidence.** `capture.cpp` logs one unconditional line at
+  configuration, whether or not `X3M_FADE_ROUTE` is set, so the default-on arm
+  is visible in every session log:
+  `fade_route_mode threshold=<permille|1001> hysteresis=100 enabled=<0|1>
+  taa=<0|1> hdr=<0|1> linear_materials=<0|1> source=<default|env>`.
+  `enabled` is the arm's real predicate — threshold ≤ 1000, TAA and the FP16
+  HDR scene — and *not* the material route, which is reported beside it as
+  `linear_materials`; `hysteresis` is the band in per mille
+  (`fade_route::Hysteresis::band`); `source=env` only when a usable
+  `X3M_FADE_ROUTE` value (`off` or 0..1000) was applied, so an unparsable or
+  out-of-range value shows the default 500 with `source=default`. Until
+  2026-09-18 the line was emitted only with the variable set and folded
+  `linear_material_requested` into `enabled`, reporting `enabled=0` for an
+  active arm. Grammar test: `verification/analysis/test_fade_region.py`,
+  `FadeRouteStartupLine`.
 - **What the route does.** The same variant pair, rows, jitter, history key
   and gates 5–6 as an opaque draw: RT1 carries the draw's own previous
   unjittered UV and depth with alpha 1, which the draw's own

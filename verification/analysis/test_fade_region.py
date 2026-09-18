@@ -597,4 +597,44 @@ class FadeRegion(unittest.TestCase):
         self.assertLess(float(summary['scan_ns_1056']),float(summary['scan_ns_window']),'the sentinel scan costs less than the whole window')
         self.assertLess(float(summary['scan_ns_window']),2e6,'a 6144-vertex scan stays well under a millisecond on the host')
 
+
+class FadeRouteStartupLine(unittest.TestCase):
+    """Grammar of the startup `fade_route_mode` line (capture.cpp) against the arm's real
+    prerequisites (docs/architecture/linear-distance-fade-region.md, "Fade-band route"):
+    the arm runs under original shading, so `enabled` is threshold + TAA + HDR and the
+    material request is reported beside it. The line is unconditional: the default-on
+    threshold (500) must leave startup evidence even with X3M_FADE_ROUTE unset."""
+    SOURCE=(ROOT/'src/proxy/capture.cpp').read_text()
+    START=SOURCE.rindex('X3M_FADE_ROUTE=<permille>')  # the configuration block, not the variable's declaration comment
+    BLOCK=SOURCE[START:SOURCE.index('X3M_SCREEN_EMISSION=1',START)]
+
+    def test_line_is_unconditional_with_the_arms_true_predicate(self):
+        line=self.BLOCK[self.BLOCK.index('log("fade_route_mode'):]
+        line=line[:line.index(';')]
+        self.assertEqual(re.findall(r'(\w+)=(?:%\w+|\S+)',line.split('"')[1]),
+                         ['threshold','hysteresis','enabled','taa','hdr','linear_materials','source'])
+        # enabled: the threshold, TAA and the FP16 scene; never the material route.
+        self.assertIn('fade_route_threshold<=1000u&&taa_requested&&hdr_requested',line.replace(' ','').replace('\n',''))
+        self.assertIn('linear_material_requested',line)
+        self.assertNotIn('linear_material_requested&&',line.replace(' ',''))
+        self.assertIn('fade_route_from_env?"env":"default"',line.replace(' ',''))
+        # Emitted whatever the environment holds: no `if(...)` guard around the log call.
+        statements=self.BLOCK[:self.BLOCK.index('log("fade_route_mode')]
+        self.assertEqual(statements.rstrip()[-1],'}','the parse block is closed and no if/else guards the log')
+        self.assertIn('fade_route_threshold=500;',statements.replace(' ',''))
+
+    def test_hysteresis_field_reports_the_production_band(self):
+        self.assertIn('unsigned(x3m::fade_route::Hysteresis::band)',self.BLOCK.replace(' ',''))
+        core=(ROOT/'src/proxy/fade_route_core.h').read_text()
+        self.assertIn('band = 100u',core)
+
+    def test_source_field_distinguishes_default_from_env(self):
+        # `off` and an in-range per mille come from the environment; an unparsable
+        # or out-of-range value keeps 500 and stays source=default.
+        parse=self.BLOCK[self.BLOCK.index('fade_route_from_env=false;'):self.BLOCK.index('log("fade_route_mode')].replace(' ','')
+        self.assertIn('if(!wcscmp(setting,L"off")){fade_route_threshold=x3m::fade_route::threshold_off;fade_route_from_env=true;}',parse)
+        self.assertIn('if(digits&&n<=1000ul){fade_route_threshold=unsigned(n);fade_route_from_env=true;}',parse)
+        self.assertEqual(parse.count('fade_route_from_env=true;'),2)
+
+
 if __name__=='__main__':unittest.main()

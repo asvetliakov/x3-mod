@@ -2670,15 +2670,26 @@ void initialize_log(HMODULE module) {
     if(fade_requested)log("linear_distance_fade_mode requested=1 enabled=%u materials=%u taa=%u",linear_distance_fade_requested,linear_material_requested,taa_requested);
     // X3M_FADE_ROUTE=<permille>|off (default 500): the fade-band motion arm
     // threshold (docs/architecture/linear-distance-fade-region.md, "Fade-band
-    // route"). Needs the material route, TAA and HDR like the fade route; the
-    // route evaluates those at the draw. An unparsable value keeps the default.
+    // route"). The arm needs TAA and the FP16 HDR scene, not the material
+    // route: since 2026-09-18 it runs under original shading too, so
+    // linear_materials is reported beside the predicate, not part of it. The
+    // route evaluates the device state at the draw. An unparsable value keeps
+    // the default and is reported as source=default. The line is emitted at
+    // startup whether or not the variable is set: the default-on arm leaves
+    // startup evidence of its threshold.
     fade_route_threshold=500;
+    bool fade_route_from_env=false;
     {const DWORD length=GetEnvironmentVariableW(L"X3M_FADE_ROUTE",setting,32);
      if(length>0&&length<32){
-        if(!wcscmp(setting,L"off"))fade_route_threshold=x3m::fade_route::threshold_off;
+        if(!wcscmp(setting,L"off")){fade_route_threshold=x3m::fade_route::threshold_off;fade_route_from_env=true;}
         else{bool digits=true;for(DWORD i=0;i<length;++i)digits=digits&&setting[i]>=L'0'&&setting[i]<=L'9';
-             const unsigned long n=digits?wcstoul(setting,nullptr,10):1001ul;if(digits&&n<=1000ul)fade_route_threshold=unsigned(n);}
-        log("fade_route_mode requested=%ls threshold=%u enabled=%u",setting,fade_route_threshold,fade_route_threshold<=1000u&&linear_material_requested&&taa_requested&&hdr_requested);}}
+             const unsigned long n=digits?wcstoul(setting,nullptr,10):1001ul;
+             if(digits&&n<=1000ul){fade_route_threshold=unsigned(n);fade_route_from_env=true;}}}}
+    log("fade_route_mode threshold=%u hysteresis=%u enabled=%u taa=%u hdr=%u linear_materials=%u source=%s",
+        fade_route_threshold,unsigned(x3m::fade_route::Hysteresis::band),
+        unsigned(fade_route_threshold<=1000u&&taa_requested&&hdr_requested),
+        unsigned(taa_requested),unsigned(hdr_requested),unsigned(linear_material_requested),
+        fade_route_from_env?"env":"default");
     // X3M_SCREEN_EMISSION=1: the packed screen bracket (policy 8) for the
     // nine SM1 screen pairs; the same HDR/TAA prerequisites as the additive
     // emission route (the pass composes into the AgX FP16 scene, whose
