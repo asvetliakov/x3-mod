@@ -419,6 +419,23 @@ same locals except the dead scratch above; counters equal to the host model pair
 `collide_census_frame` on F8 frames. Self-cost: below the fixture's resolution (armed with counters 67.0 ns/pair,
 without 67.1, harness included); two memory increments per rejected pair, one otherwise.
 
+### 10.1 Reviews (2026-09-19)
+
+Opus review and Fable second review: no correctness defect; spans, liveness, image-wide absence of interior branch
+targets (whole-`.text` objdump scan by the reviewer; `verify_collide_sites.py` itself scans only the decoded
+function) and the subset proof confirmed independently. Margins: P1 `T - R >= 0.021 r + 63`, P2 `T = R + 64`,
+against an engine conversion error under 33 for `m < 2^30` (double intermediates, which is also what
+`FEX_X87REDUCEDPRECISION=1` gives). The second conversion path of `0x0052b5d0` at `0x0052b606` (`fistp qword` plus
+a truncation correction, taken when `*0x006619ec == 0`) equals truncation for distances below 2^31, so under the
+2^30 cap both paths agree; it is not pinned or modelled. No engine write to an object, stamp or list precedes
+either site's reject. Accepted open points: under 24-bit x87 precision control (the game's software-vertex-processing
+CreateDevice branch omits `FPU_PRESERVE`) the engine error grows to about `2.5 * 2^-24 * m`; P1 stays safe, P2's
+fixed margin would fail only for a radius sum above about 4.2e8 units (84,000 km), which no sector object has — if
+ever needed, test `m - (m >> 20) > T` at P2 or refuse at install on a non-53/64-bit control word. The
+P2-claim-fails-after-P1 rollback is not executed by a fixture; `StubWriter::jcc` has no bound on `fix_[16]` (8 used);
+the counters' plain `inc` against `InterlockedExchange` at Present is race-free only if the loop and Present share
+a thread (diagnostics only). Pairs the box keeps cost 4-5 % more; run 43 A decides.
+
 ## Reproduce
 
 ```sh
