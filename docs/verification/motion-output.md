@@ -1238,3 +1238,14 @@ every scene `motion_route` row now carries `unmatched=<reason>`.
 - Host: `test_fade_region` (16 tests: `w = −1` at distance 1, `w = 0` at the
   camera, off-axis `w = ±2` equal, nonfinite refused),
   `test_motion_output_runner` (12 tests, 60 HDR cases).
+
+### 2026-09-19 — fade route behind/overlay: Fable second review
+
+After merging main: seven fade-route cases reproduce `fade-route-cases.json` (behind 3461, original 3461, hover 3536,
+overlay 5101, foreign 397, cutout-blended 49624, cutout-opaque 49612 checks; resolved ≤ 0.071 px). Blocking finding
+fixed: the `linear_material_live` snippet mock lacked the `last_routed_*` latch (host module now 22 tests OK;
+the module was missing from the earlier host list). Accepted as non-blocking, to read in run 43: `overlay_refused`
+and `unmatched=overlay_node` also count ordinary source-over draws in the fade-band state that were never overlay
+candidates; such draws now pay up to eight state reads (unmeasured); a first-frame overlay writes an unmatched
+motion row for one frame; overlays take the plain motion variant (no fill or light-map gain, as the native draw);
+no fixture covers a Reset between a routed draw and its overlay (checked by reading).
