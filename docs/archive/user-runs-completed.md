@@ -1425,3 +1425,52 @@ Press **Ctrl+Shift+F4** to toggle only the hull emitters; one F8 on the station.
 whether position lights and signs read as lights at gain 4 and whether anything else on the
 hull brightened. The F8 lines name the models that carry these emitters.
 
+## 40. Five cascades to 30 km, 2048² A/B, corvette ladder, retained casters, hull emitters — completed as run117 (A), run118 (A2), run119 (B), run121/run122 (C)
+
+Installed: run40 candidate `c47f039c…` from `e8ae3357` (see [status](../status.md)). Original hull
+shading. New since run 39: the apply-quad half-pixel fix (the moving serrated band), the run116
+flicker fix (back-face far cascades, verdict cycle), five cascades with a 30 km reach, caster pool control (importance drop order, per-cascade records; the
+static-only rule stays available but is off after run116), own-ship-adaptive C0 with the
+sliding ladder. Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull
+emitters, F6 effect gains, F8 capture.
+
+Common prefix:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --shadow-sun-trace --frame-end-stride 1
+```
+Shadow set (add to every shadow session):
+```sh
+--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096
+```
+
+**Session A** (fighter save, 4096² maps, 5–8 minutes):
+```sh
+<prefix> <shadow set> --shadow-cascade-sizes 4096,4096,4096,4096,4096 --shadow-retention-census
+```
+Same station as run115. Check: the serrated band is gone; shadows correct in direction and
+placement near and far; stations at 5–12 km now shadowed (fly out to the distance of your
+distance1/distance2 screenshots and look again); seams between cascades. Ctrl+Shift+F12
+off/on twice at rest. F8 twice (one close, one on a distant station). Report frame-rate feel.
+
+**Session A2** (same save and spot, 2048² maps, 2–3 minutes):
+```sh
+<prefix> <shadow set> --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census
+```
+Compare the hull self-shadow and the nearest station wall against A; one Ctrl+Shift+F12 A/B;
+one F8. Say which you prefer.
+
+**Session B** (corvette save; retained casters drawn; 3–5 minutes):
+```sh
+<prefix> <shadow set> --shadow-cascade-sizes 4096,4096,4096,4096,4096 --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5
+```
+Look at the corvette's self-shadow and its shadow on a station. Turn the camera so a
+shadow-casting station part leaves the screen: its shadow must stay. Report any lingering
+shadow after a caster moves or is destroyed, any crash/hang, and the frame-rate feel. The log
+gives the measured hull radius, the slid cascade set and the chase-camera distance.
+
+**Session C** (hull emitters, any station with position lights and signs, 1–2 minutes):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --hull-emitters --hull-emission-gain 4
+```
+Ctrl+Shift+F4 toggles only the hull emitters; one F8 on the station. Report whether position
+lights and signs read as lights at gain 4 and whether anything else brightened.

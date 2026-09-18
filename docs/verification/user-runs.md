@@ -65,53 +65,57 @@ Completed run commands and instructions are preserved in
 not rerun requests.
 
 
-## 40. Five cascades to 30 km, 2048² A/B, corvette ladder, retained casters, hull emitters — queued (run40 candidate)
+## 41. Receiver depth A/B, slope margin A/B, hull light-map gain, FPS overlay — queued (run41 candidate)
 
-Installed: run40 candidate `c47f039c…` from `e8ae3357` (see [status](../status.md)). Original hull
-shading. New since run 39: the apply-quad half-pixel fix (the moving serrated band), the run116
-flicker fix (back-face far cascades, verdict cycle), five cascades with a 30 km reach, caster pool control (importance drop order, per-cascade records; the
-static-only rule stays available but is off after run116), own-ship-adaptive C0 with the
-sliding ladder. Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull
-emitters, F6 effect gains, F8 capture.
+Installed: run41 candidate from `e1c4afcc` (hash in [status](../status.md)). New since run 40:
+`--sun-shadow-receiver-depth linear` (RT2 stores linear view depth; the far-station flicker fix; default
+`device` = old behaviour), the cascade apply slope margin (default on, `--sun-shadow-bias-slope-texels 0`
+turns it off; the run119 grazing-plane flicker), `--hull-lightmap-gain G` (windows and hull lights in the
+original hull programs; Ctrl+Shift+F4 toggles it together with the guide-light gain), `--fps-overlay`
+(Ctrl+Alt+F7 = Option+Ctrl+F7 toggles; line 1 FPS / frame ms / draws, line 2 shadows on/off), and the
+telemetry fields `apply_us=` and `flip_c<k>=`. 2048² maps and K 1.5 are now the defaults in the shadow set.
+Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull emission, **Ctrl+Alt+F7** FPS overlay, F8 capture.
 
 Common prefix:
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --shadow-sun-trace --frame-end-stride 1
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --frame-end-stride 1 --fps-overlay
 ```
-Shadow set (add to every shadow session):
+Shadow set (every shadow session):
 ```sh
---shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096
+--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census
 ```
 
-**Session A** (fighter save, 4096² maps, 5–8 minutes):
+**Session A** (fighter save, run117 station, old receiver encoding, 3–4 minutes):
 ```sh
-<prefix> <shadow set> --shadow-cascade-sizes 4096,4096,4096,4096,4096 --shadow-retention-census
+<prefix> <shadow set>
 ```
-Same station as run115. Check: the serrated band is gone; shadows correct in direction and
-placement near and far; stations at 5–12 km now shadowed (fly out to the distance of your
-distance1/distance2 screenshots and look again); seams between cascades. Ctrl+Shift+F12
-off/on twice at rest. F8 twice (one close, one on a distant station). Report frame-rate feel.
+Fly to the spot of your run117 distant-station flicker. At rest: F8 twice (one close station, one distant lit
+station), Ctrl+Shift+F12 off/on twice, read the FPS overlay in the busy view and note the numbers with
+shadows on and off.
 
-**Session A2** (same save and spot, 2048² maps, 2–3 minutes):
+**Session A2** (same save and spot, new receiver encoding, 3–4 minutes):
 ```sh
-<prefix> <shadow set> --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census
+<prefix> <shadow set> --sun-shadow-receiver-depth linear
 ```
-Compare the hull self-shadow and the nearest station wall against A; one Ctrl+Shift+F12 A/B;
-one F8. Say which you prefer.
+Same two F8 spots, same toggles, same FPS reading. Report: is the distant-station flicker gone; anything
+changed near; FPS with and without shadows compared to A.
 
-**Session B** (corvette save; retained casters drawn; 3–5 minutes):
+**Session B** (corvette save, retention live, new encoding, 2–3 minutes):
 ```sh
-<prefix> <shadow set> --shadow-cascade-sizes 4096,4096,4096,4096,4096 --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5
+<prefix> <shadow set> --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --sun-shadow-receiver-depth linear
 ```
-Look at the corvette's self-shadow and its shadow on a station. Turn the camera so a
-shadow-casting station part leaves the screen: its shadow must stay. Report any lingering
-shadow after a caster moves or is destroyed, any crash/hang, and the frame-rate feel. The log
-gives the measured hull radius, the slid cascade set and the chase-camera distance.
+Go to the station part that flickered in run119; F8 there. Then relaunch the same command with
+`--sun-shadow-bias-slope-texels 0` added, same spot, F8 again: report which of the two shows the
+flicker. If a Terran solar power plant is reachable, look at the noisy leg and press Ctrl+Shift+F12: report
+whether the noise stops with shadows off.
 
-**Session C** (hull emitters, any station with position lights and signs, 1–2 minutes):
+**Session C** (run122 station with windows, new encoding, hull light-map gain, 2 minutes):
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --hull-emitters --hull-emission-gain 4
+<prefix> <shadow set> --sun-shadow-receiver-depth linear --hull-emitters --hull-emission-gain 4 --hull-lightmap-gain 4
 ```
-Ctrl+Shift+F4 toggles only the hull emitters; one F8 on the station. Report whether position
-lights and signs read as lights at gain 4 and whether anything else brightened.
+At rest with the station filling the view: F8, Ctrl+Shift+F4, F8. Report whether windows and station
+lights now read as lights at gain 4, whether anything else brightened (panels, decals, hull stripes), and
+whether a window inside a shadow still glows. Say what gain you would want (2, 4, 8).
+
+Report frame-rate feel per session and the time into the session of each F8.
 
