@@ -1,0 +1,18 @@
+{
+ "installed_utc": "2026-09-18T23:00:45.228101Z",
+ "source_commit": "09a3b8d99e3615f60e472c4fabfb5f41e7da5c52",
+ "manifest_source_commit": "09a3b8d9",
+ "candidate": "/tmp/x3-candidate-HeaDRN/d3d9.dll",
+ "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+ "installed_sha256": "2cac537a5ae7a7b9329278ff33ff3a235e11c4758e59e4421b27f44d84982ed4",
+ "bytes": 18482072,
+ "rollback": "/tmp/x3-candidate-HeaDRN/rollback (d3d9.dll + x3-modern-install.json)",
+ "rollback_sha256": "1a5dd46c63cf4177f5b1035a44a552592c2afd9ba701be191cbff40414d7f4b6",
+ "rollback_note": "run42 candidate 1a5dd46c (903be726), flown as run129-run132; earlier: run41 b6ea8569 in /tmp/x3-candidate-Iv6Z6G/rollback. A first run43 build 532e1688 (5360d460) in /tmp/x3-candidate-7kxCZ4 was rejected (shadow candidate origin rule regression) and must not be installed",
+ "unchanged": {
+  "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "install_method": "tools/manage.py install --dll-source",
+ "build_record": "verification/results/run43-candidate-build.json"
+}

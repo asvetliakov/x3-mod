@@ -1,7 +1,7 @@
 # Project status
 
 Updated 2026-09-18 (late night; run42 candidate installed; run 42 read; run 43 drafted, four changes in worktrees). This is the short current handoff; the current
-session handoff is [handoff-2026-09-18.md](handoff-2026-09-18.md). The day's narrative
+session handoff is [handoff-2026-09-19.md](handoff-2026-09-19.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
 [status history 2026-09-14](archive/status-history-2026-09-14.md); earlier
@@ -13,32 +13,49 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`1a5dd46c63cf4177f5b1035a44a552592c2afd9ba701be191cbff40414d7f4b6`
-(18,352,538 bytes), built once on Opus from clean committed main `903be726`
-(2026-09-18; marker `X3M_SOURCE_COMMIT=903be726…`, no `-dirty`), installed
-through `manage.py install` (ownership manifest `903be726`). The
-[build record](../verification/results/run42-candidate-build.json) binds the
-clean build, the no-x87 audit (539 reachable, both cull-census handlers walked),
-17 exports, the site verifiers incl. the cull census (16/16), the full shadow
-motion-output case set incl. the fade-route cases (0 behavioural diffs), the
-sun-lane live set, the cull-census CPU fixture, object lifetime, ownership,
-material motion, temporal pass, AO, the state-hook benchmark and the full host
-suite. The [install record](../verification/results/run42-candidate-install.json)
-binds the installed bytes, unchanged EXE/bottle hashes and the rollback: run41
-`b6ea8569…` in `/tmp/x3-candidate-Iv6Z6G/rollback`; run40 `c47f039c…` in
-`/tmp/x3-candidate-gHUSU7/rollback`. No game launched.
+`2cac537a5ae7a7b9329278ff33ff3a235e11c4758e59e4421b27f44d84982ed4`
+(18,482,072 bytes), built once on Opus from clean committed main `09a3b8d9`
+(2026-09-19; marker `X3M_SOURCE_COMMIT=09a3b8d9…`, no `-dirty`), installed
+through `manage.py install` (ownership manifest `09a3b8d9`). The
+[build record](../verification/results/run43-candidate-build.json) binds the
+clean build, the no-x87 audit (539 reachable), 17 exports, eight site verifiers
+incl. cull small parts 19/19 and collide 29/29, 55 motion-output cases incl. the
+seven fade-route cases (0 behavioural regressions over 12,702 fields), the
+sun-lane live set, cull census 71, cull small parts 113, collide box cull 38,
+object lifetime, ownership, material motion, temporal pass, AO, comparison
+controls, the state-hook benchmark, the full host suite (2246 OK) and the five
+§43 dry-runs. The [install record](../verification/results/run43-candidate-install.json)
+binds the installed bytes, unchanged EXE/bottle hashes and the rollback: run42
+`1a5dd46c…` in `/tmp/x3-candidate-HeaDRN/rollback`. A first run43 build
+(`532e1688…`, `/tmp/x3-candidate-7kxCZ4`) was rejected and must not be
+installed. No game launched.
 
-This build adds, on top of run41's: linear receiver depth as the only encoding
-(the far-station flicker fix ratified by run 41 A2; `--sun-shadow-receiver-depth
-linear` is a no-op, `device` refused); the fade-band motion route working under
-original shading (run125 solar-panel shimmer: the cutout-caps probe never ran
-without linear materials, so every fading surface got the raw jittered sample);
-Ctrl+Shift+F4 = hull light-map gain alone (launcher default 4 under `--hdr`),
-Ctrl+Shift+F6 = effects + guide lights (guide lights take `--emission-source-gain`);
-`--cull-census` (read-only engine trampolines at the cull/LOD pass, capture
-frames only); `--game-phase-threshold-ms` (default 20) and `--telemetry-draw`;
-`fade_route_mode` always logged. Default path: the fade route and the light-map
-gain 4 are now on by default under HDR + TAA.
+This build adds, on top of run42's: the fade-band motion route for modules
+behind the camera plane and the overlay arm for a node's translucent sub-mesh
+(the run130 residual shimmer), `unmatched=<reason>` on route rows;
+`--cull-small-parts <px>` with `--cull-small-parts-scope all|bodies` (default
+`bodies`; engine trampoline `0x0047d2a2`, default off); `--collide-box-cull`
+(integer box early-out at `0x0045d58e`/`0x0045cc7c` in the sector collide loop
+with pair counters, default off); the route bench and a noise-level lease trim.
+Default path change: only the fade route/overlay arm under HDR + TAA.
+
+## Session 2026-09-19: four changes merged, run43 candidate installed
+
+- Merged after their remaining reviews (Fable second review each): shimmer
+  fixes, `--cull-small-parts` with the scope A/B the user asked for (run131
+  rows: `all` 403 draws, `bodies` 395 at 2 px; the 8-draw difference is
+  flag-derived, the rows carry no parent link), `--collide-box-cull` (margins
+  and open points in [sector-collide.md](reverse-engineering/sector-collide.md)
+  §10.1), the route bench and lease trim.
+- The first candidate qualification caught a regression the reviews missed:
+  the fade route's behind-camera `origin_distance` also fed shadow-caster
+  admission (`seam-ownership-shadow-pool-hull` 2 admitted for 1). Fixed with
+  `origin_distance_front` for the shadow caller; three host-suite drifts fixed.
+- [route-per-draw-cost.md](architecture/route-per-draw-cost.md) ratified:
+  lever 1 stage A + 2a (ownership-wrapper bypass for value-only calls, failing
+  HRESULTs still observed on a cold path; light lock view) is the next proxy
+  work item; lever 3 after it (fixtures, then one flight); 2b closed.
+- Run 43 is queued ([user-runs.md](verification/user-runs.md) §43).
 
 ## Session 2026-09-18 (late night): run 42 read, four changes in flight
 
@@ -49,7 +66,7 @@ gain 4 are now on by default under HDR + TAA.
   route cost 9.7 µs per routed draw; residual shimmer = fade module behind the camera plane + the node's
   translucent sub-mesh (zwrite 0), both fixed on a branch; no other unrouted class exists.
 - **Unmerged, in worktrees** (table with state and next step in the
-  [handoff](handoff-2026-09-18.md)): shimmer fixes + `unmatched=` reasons, `--cull-small-parts`,
+  [handoff](archive/handoff-2026-09-18-late-night.md)): shimmer fixes + `unmatched=` reasons, `--cull-small-parts`,
   `--collide-box-cull`, per-draw trims + route bench; design note `route-per-draw-cost.md` in progress.
   Brief for that note: attribute and rank the three big proxy per-routed-draw pieces (ownership wrapper
   2.0 µs on the route's own calls, depth-replay lease 1.5 µs, hook-free lazy RT ≈ 2 µs; the current lazy
