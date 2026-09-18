@@ -1,0 +1,27 @@
+{
+ "fixture": "build/verification/cull-census/cull_census_fixture.exe",
+ "exit_status": 0,
+ "elapsed_s": 5.5,
+ "checks": 71,
+ "failures": 0,
+ "failure_lines": [],
+ "bench_us": {
+  "native_pass": 0.2344,
+  "patched_disarmed": 0.2443,
+  "patched_armed": 0.3106
+ },
+ "install_lines": [
+  "cull_census requested=0 patched=0 reason=disabled measure_site=0x0047d258 exit_site=0x0047d528 write_measure=none write_exit=none stub_measure=0x00000000 stub_exit=0x00000000 ring=8192",
+  "cull_census requested=1 patched=0 reason=bytes_mismatch measure_site=0x0047d258 exit_site=0x0047d528 write_measure=none write_exit=none stub_measure=0x00000000 stub_exit=0x00000000 ring=8192"
+ ],
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "note": "harness-inclusive per-pass estimates over a 12-node tree (10 measured), not game FPS"
+}

@@ -359,6 +359,7 @@ namespace chase_camera { static void note_last_device() noexcept {} }
 // Point-light root admission (src/proxy/point_light_admission.h): the extracted
 // lifetime paths only retire the per-frame root verdicts.
 namespace point_light_admission { unsigned frame_retires = 0; static void next_frame() noexcept { ++frame_retires; } }
+namespace cull_census { static void begin_frame(bool) noexcept {} } // X3M_CULL_CENSUS disarm on Reset (src/proxy/cull_census.h); no-op on the host
 namespace lod_scale { static void refresh() noexcept {} } // X3M_LOD_SCALE mirror refresh called from the Reset/Present paths (src/proxy/lod_scale.h); no-op on the host
 namespace resource_reader { static void report() noexcept {} }
 namespace loading_trace { static void crypt_cache_report(const char*) noexcept {} }

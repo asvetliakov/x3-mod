@@ -5,6 +5,7 @@
 #include "game_phases.h"
 #include "voice_dmo_fallback.h"
 #include "lod_scale.h"
+#include "cull_census.h"
 #include "frame_timing.h"
 #include "frame_phases.h"
 #include "pass_phases.h"
@@ -1274,6 +1275,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     voice_dmo_fallback::report(); // one atomic load per Present; lines only after an activation
     lod_scale::refresh(); // X3M_LOD_SCALE only: two bounded reads per Present, one store when the game value changed
     point_light_admission::present(ctx.id,ctx.frame,ctx.capture); // option on only: one point_light_admission_frame line, point_light_node samples on capture frames, memo serial bump
+    cull_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_CENSUS=1 only: the cull_census_frame row and the entry rows of a captured frame, then the ring is cleared
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(ctx.fps_overlay.visible()){
         // Shown only: one QueryPerformanceCounter per Present (the frame_end
@@ -1346,6 +1348,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     if ((down&&!ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
+    cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
     ctx.scene_depth.begin_frame(d,ctx.id,ctx.frame,ctx.capture);
     ctx.motion_output.begin_frame(ctx.frame,ctx.capture);
     comparison_begin_frame(ctx);
@@ -1403,6 +1406,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     ctx.motion_output.after_reset(hr);
     lod_scale::refresh(); // the multiplier may be rewritten if the device bring-up path re-runs
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
+    cull_census::begin_frame(false); // a Reset disarms the census stubs and drops the partial frame
     ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
     finite_upload_metrics(d,ctx,"reset_after");
     if(SUCCEEDED(hr)&&p&&p->hDeviceWindow)ctx.stats.window=p->hDeviceWindow;
@@ -2909,6 +2913,7 @@ void initialize_log(HMODULE module) {
     frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
     lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window
     point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same window
+    cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
     resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists

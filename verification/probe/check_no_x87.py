@@ -65,7 +65,9 @@ LIGHT_NAMESPACE = '__ZN3x3m13loading_trace5light'   # x3m::loading_trace::light:
 # behind the same lean stub.
 EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry', '_x3m_pool_fopen', '_x3m_pool_fclose',
                 '_x3m_point_light_root_admits', '_x3m_pass_phase_enter', '_x3m_loop_phase_enter', '_x3m_residual_phase_enter',
-                '_x3m_media_cue_enter', '_x3m_media_cue_return']
+                '_x3m_media_cue_enter', '_x3m_media_cue_return',
+                # the cull-census handlers (src/proxy/cull_census.cpp, X3M_CULL_CENSUS=1) run inside the cull/LOD pass, no boundary
+                '_x3m_cull_census_measure', '_x3m_cull_census_exit']
 ALLOWED = {'fnsave', 'fninit', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}  # fninit only follows fnsave in CpuState::capture
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')

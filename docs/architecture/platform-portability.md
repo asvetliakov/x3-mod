@@ -381,3 +381,8 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   in timing mode only, `CreateQuery` for `TIMESTAMPDISJOINT`/`TIMESTAMPFREQ`/`TIMESTAMP` polled with
   `D3DGETDATA_FLUSH`; a refused query type falls back to CPU wall time (the Preview backend refuses
   them; native drivers generally provide them, unverified here).
+
+- **Cull census** (`--cull-census`, 2026-09-18): two read-only `engine_patch`
+  trampolines on the cull/LOD pass, gated on the same EXE hash as the other
+  patches; qualified by the site verifier and the CPU fixture under CrossOver
+  only. Native Windows: source-compatible, unverified.

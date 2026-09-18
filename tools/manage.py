@@ -379,6 +379,7 @@ def main():
     parser.add_argument('--voice-decoder', type=Path, default=None, metavar='DIR', help='launch only, opt-in, default off: deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing. Also sets X3M_VOICE_DMO_FALLBACK=1 so the proxy re-initialises the DMO wrapper the game creates with the registered WMA decoder DMO when the speech decoder class is unregistered (byte-verified hook at 0x004cfd46, inert where Init succeeds; docs/architecture/voice-decoder-adapter.md)')
     parser.add_argument('--lod-scale', type=float, default=None, metavar='FACTOR', help='Push the engine\'s mesh LOD switch distances out by FACTOR, 1..4 (X3M_LOD_SCALE; default absent = vanilla; no other option needed): the LOD threshold multiplier read at 0x0047d44b is replaced by a proxy-owned mirror holding the game\'s value divided by FACTOR (same-length instruction, exact executable and bytes only, otherwise fails closed to vanilla; one lod_scale line in the session log). Cost: about 4-7x the triangles and 13-15x the draw calls per distant station body at 2-3x; the cap of 4 keeps the integer-truncated thresholds away from collapse (docs/architecture/lod-scale.md)')
     parser.add_argument('--point-light-root-admission', action='store_true', help='Admit a point light for a mesh node whose root object is in range, not only when the node itself is (X3M_POINT_LIGHT_ROOT_ADMISSION=1; default absent = vanilla per-node cull): the six-byte range-test branch at 0x004c27af is replaced by a detour that keeps the native decision for an in-range node and otherwise walks the node\'s parent chain (at most 8 bounds-checked hops) and applies the same range predicate to the root; exact executable and bytes only, otherwise fails closed to vanilla; one point_light_root_admission line in the session log (docs/reverse-engineering/camera-and-lights.md, "Point-light admission site")')
+    parser.add_argument('--cull-census', action='store_true', help='Log the engine\'s own cull/LOD census on F8 capture frames (X3M_CULL_CENSUS=1; default absent = nothing patched): two read-only trampolines on the per-node cull/LOD pass 0x0047cfe0 record, per node, the LOD metric s = r*640/D, the small-object measure, the two per-node thresholds, the cull verdict and the selected LOD index into a bounded ring (8192 entries, overflow= counted), emitted as cull_census rows at Present; outside capture frames each stub is one compare and a dead branch. Exact executable and bytes only, otherwise fails closed to vanilla; summarise with tools/analysis/cull_census.py (docs/reverse-engineering/lod-selection.md, "Cull census sites")')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -982,6 +983,12 @@ def main():
             env['X3M_POINT_LIGHT_ROOT_ADMISSION'] = '1'
         else:
             env.pop('X3M_POINT_LIGHT_ROOT_ADMISSION', None)
+        # Cull census: same rule, set only when requested so a stale shell
+        # value cannot patch the cull/LOD pass.
+        if args.cull_census:
+            env['X3M_CULL_CENSUS'] = '1'
+        else:
+            env.pop('X3M_CULL_CENSUS', None)
         # The two framing constants are always forwarded at their production
         # defaults so a stale shell value cannot reframe the camera; the rest
         # fall through to the DLL's compiled defaults when unset.

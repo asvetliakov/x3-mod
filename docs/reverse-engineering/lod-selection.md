@@ -320,3 +320,69 @@ then `-process X3AP.exe -noanalysis -postScript` with the scan/dump scripts kept
 in the session scratchpad (a displacement scan over `0x760`/`0x768`/`0x754` and a
 byte/disassembly/xref dumper); the capture join is a 20-line reduction over
 `object_context` and `draw` records keyed on `(frame, index)`.
+
+## Cull census sites (`--cull-census`, 2026-09-18)
+
+Read-only telemetry on the same pass, so the projected-size lever of
+[engine-frame-time.md](../architecture/engine-frame-time.md) 2.3 can be sized
+from the engine's own numbers instead of the world-scale proxy of the run124
+census. Objdump of the installed EXE (`fdbf3418…`), function `0047cfe0..0047d551`
+(373 instructions, `ret 8` at `0047d54f`). Code: `src/proxy/cull_census.{h,cpp}`,
+`src/proxy/cull_census_core.h`; verifier `verification/probe/verify_cull_census_sites.py`;
+fixture `verification/probe/cull_census_fixture.cpp`; summariser
+`tools/analysis/cull_census.py`; ledger [cull-census.md](../verification/cull-census.md).
+
+**Why not the 7-byte site `0047d42f`.** It sits inside the threshold loop's
+branch, which only nodes that survived the small-object cull and resolved a
+model reach (`[ESP+0x18] == 0`, `EBP > 0`); the culled nodes, the ones the
+lever is about, never execute it, and the selected index is not final there.
+Two sites see every evaluated node instead:
+
+| site | bytes | displaced | reached from | dead at the site |
+| --- | --- | --- | --- | --- |
+| **measure** `0047d258` | `8b 87 dc 01 00 00` = `mov eax,[edi+0x1dc]` | one instruction, 6 bytes | `0047d231` (jmp), `0047d24e` (jne), fall-through; nothing branches into `0047d259..0047d25d` | EAX (written by the displaced load), ECX (`mov ecx,0x180000` at `0047d260`), EDX (never read before `0047d3e4`/`0047d472`, and the cdecl call at `0047d2fe` clobbers it), EFLAGS (`test eax,eax` at `0047d25e` writes them first) |
+| **exit** `0047d528` | `8b 7f 0c 83 3f 00` = `mov edi,[edi+0xc]; cmp dword [edi],0` | two instructions, 6 bytes | `0047d085`, `0047d0a4`, `0047d0ea`, `0047d112`, `0047d1a2`, `0047d1af`, `0047d2e7`, `0047d51c` and fall-through; nothing branches into `0047d529..0047d52d` | EFLAGS (the displaced `cmp` regenerates them for the `je 0047d548` at `0047d52e`); EAX/ECX/EDX are saved anyway because they reach the caller on a leaf's return path (the callers `0047e7a5` and `0047d53c` ignore EAX) |
+
+Live at the measure site and read by the stub: `EDI` = node, `ESI` = the
+small-object measure `r·W/D` (`0047d218`, or `0x7000000`), `[ESP+0x2c]` = the
+LOD metric `s = r·640/D` (`0047d24a`/`0047d250`, or `0x7000000`), `[ESP+0x10]` =
+`D` after the `camera+0x298/0x4000` scale, `[ESP+0x28]` = the view. The stub
+also reads node `+0x140` (model id, the key of `object_context model=`),
+`+0xa0`, `+0x12c`, `+0x1d8`, `+0x1dc` and `parent+0x1d8` through `+0x18`: every
+one dereferenced by the pass itself on the same node before the site
+(`0047d08b`, `0047d19b`, `0047d1af`, `0047d258`, `0047d2a2..0047d2af`). The exit
+stub reads `+0x12c` (renderable bit 2, final) and `+0x14c` (the LOD index after
+the `0047d48b..0047d4d1` adjustments, final). The x87 stack is empty at both
+sites (`fld`/`fstp` at `0047d0f2`/`0047d0fa` and `fild`/ftol at `0047d442`/`0047d451`
+are balanced). Both stubs are `cmp byte [enabled],0; je continue` outside a
+capture frame and otherwise push `EAX/ECX/EDX`, call an integer-only cdecl
+handler (`-mno-sse -mfpmath=387`, no Win32 call, LastError untouched) and pop;
+`engine_patch::claim` provides the tails and the atomic five-byte writes, and a
+failed second claim restores the first.
+
+**Recording.** Ring of 8,192 entries committed once at install; per node the
+measure handler stores node, model, view, `s`, measure, `D`, radius, `+0x1dc`,
+`+0x1d8`, the effective limit `max(+0x1d8, parent+0x1d8)` and `+0x12c`; the exit
+handler completes the last entry with the final `+0x12c` and `+0x14c`. A node
+that exits without a measure entry (rejected before `0047d1b5`: behind the eye,
+frustum, distance, hidden latch) is counted as `unmeasured`; a node measured
+when the ring is full is counted as `overflow`. Rows at Present, capture frames
+only: `cull_census_frame … entries= overflow= unmeasured= exited=` and one
+`cull_census … s= measure= d= radius= thr_1dc= thr_1d8= limit= flags_in=
+flags_out= lod= verdict=` per entry, `verdict` ∈ `kept` (bit 2 survives),
+`culled_size` (`measure < limit > 0`), `culled_min` (`measure < 1` without
+`0x4000000`), `culled_other` (cleared later: the env-map view's `< 20` test or
+the last-LOD fade), `no_exit`. Pixels: `px = s · m00 · width / 1280` (`s` is the
+projected radius at a 640-wide reference; the fixture and summariser use the
+frame's projection `m00` and the rt0 width).
+
+**Verified.** The CPU fixture re-implements the pass with the two windows
+byte-exact and proves the patched copy leaves every node with the same
+renderable bit, LOD and flags as the unpatched copy over a 12-node tree in the
+main, env-map and view-distance-4 cases, returns the same EAX/ECX/EDX/EFLAGS,
+preserves EBX/ESI/EDI/EBP/ESP and the empty x87 stack, records the expected
+rows (order, values, verdicts), counts two early exits as unmeasured, keeps
+8,192 of 8,201 nodes with `overflow=9`, records nothing when disarmed,
+preserves LastError, restores both sites exactly and refuses changed window
+bytes and the closed window. Cost in the fixture harness: 0.234 µs per
+12-node pass native, 0.244 disarmed, 0.311 armed (Wine/FEX, not game FPS).
