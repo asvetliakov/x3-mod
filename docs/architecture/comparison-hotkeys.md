@@ -26,19 +26,25 @@ ON ↔ OFF (**F11** toggles the ambient occlusion chain when `--ambient-occlusio
 notice, one `ambient_occlusion_toggle` log line per press, `docs/architecture/ambient-occlusion.md`
 "Step 2"; **F12** switches the sun shadows off and on with `--sun-shadow-apply`,
 "Sun shadows at rest" below). Three more keys switch one emitter gain between its configured
-gain and native, without recreating anything: **F4** hull emission as one
-population: the hull-program emitters (`--hull-emitters --hull-emission-gain G`,
-the twelve hull programs' ONE/ONE draws of `emitter-plan.md` phase 3) and,
-since 2026-09-18, the hull light-map gain (`--hull-lightmap-gain G`, the
-self-illumination term of the 100 opaque hull programs,
-`linear-emission-cost.md` "Hull light-map gain") under one flag, the toggle
-line logging both states (its own flag since 2026-09-17 so
-the population is judged apart from the engines; the 2026-09-16 F4 effect
-key had gone with the undone family split, `linear-emission-cost.md` "Screen
-substitution"), **F5** the additive bullets (`--screen-emission-additive G`,
-the nine SM1 screen pairs) and **F6** the emission source gain
-(`--emission-source-gain G`, all twenty engine/effects pairs; F7 is the
-telemetry phase marker and F8 the capture key). Each key only decides
+gain and native, without recreating anything: **F4** the hull light-map gain
+alone (`--hull-lightmap-gain G`, the self-illumination term of the 100 opaque
+hull programs, `linear-emission-cost.md` "Hull light-map gain"), **F5** the
+additive bullets (`--screen-emission-additive G`, the nine SM1 screen pairs)
+and **F6** the effects group: the emission source gain
+(`--emission-source-gain G`, all twenty engine/effects pairs) together with the
+docking and gate guide lights (`--hull-emitters`, the twelve hull programs'
+ONE/ONE draws of `emitter-plan.md` phase 3), which follow that gain
+(`--hull-emission-gain G` overrides the value; F7 is the telemetry phase marker
+and F8 the capture key). The two hull families were paired on F4 between
+2026-09-18 and the run 41 regrouping; each still has its own flag and option,
+so the light map is judged apart from the emitters, and the 2026-09-16 F4
+effect key had gone with the undone family split (`linear-emission-cost.md`
+"Screen substitution"). One F6 press logs `emission_source_gain_toggle` and
+`hull_emission_gain_toggle`, and with them two `renderer_comparison` lines
+under `key=ctrl_shift_f6`, one per half (the guide light's refusal is written
+`GUIDE N/A` so both halves fit the notice's 36 columns); the hull line carries `key=ctrl_shift_f4` or
+`key=ctrl_shift_f6`, the state of the family the key drove in `enabled=`, and
+both families' states in `hull_enabled=`/`lightmap_enabled=`. Each key only decides
 whether the per-draw path selects the variant that was already built at
 CreatePixelShader time (and, for F6, whether a screen draw gets its DESTBLEND
 ONE substitution), so an off option draws with the native program, the native
@@ -53,8 +59,9 @@ being silently dropped. Each press logs `hull_emission_gain_toggle`,
 `screen_emission_additive_toggle` or `emission_source_gain_toggle` with the
 acceptance, new state and gain, plus the usual `renderer_comparison`
 line under key `ctrl_shift_f4`/`f5`/`f6`, and takes over the notice's second
-line (HULL/BULLETS/EMISSION ON/OFF/UNAVAILABLE, all of them when several keys
-land in one sample) until the next F9/F10 press.
+line (LIGHTMAP/BULLETS/EMISSION/GUIDE ON/OFF/UNAVAILABLE, all of them when
+several keys land in one sample, and both EMISSION and GUIDE for one F6 press)
+until the next F9/F10 press.
 With `--telemetry`, the additive option also logs one
 `screen_emission_additive_frame device=… frame=… admitted=… refused=… pairs=<hex
 mask of the nine table indices admitted this frame> toggled=<option currently

@@ -673,11 +673,14 @@ public:
     void configure_emission_source_gain(float gain) noexcept; // one gain for all twenty pairs
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
     // Emitter plan phase 3: the same gain over the twelve hull programs' ADD
-    // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. Own toggle
-    // (Ctrl+Shift+F4): 1 on, 0 off, -1 not requested (logged no-op); the
+    // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. The guide lights are
+    // switched with the effects gain (Ctrl+Shift+F6), the hull light-map gain
+    // alone (Ctrl+Shift+F4): one entry point, lightmap = true for the F4
+    // family, false for the guide lights. Returns the new state of the family
+    // the key drove: 1 on, 0 off, -1 not requested (logged no-op); the
     // prebuilt variants stay, nothing is created or released.
     void configure_hull_emission_gain(float gain) noexcept;
-    int hull_emission_gain_toggle() noexcept;
+    int hull_emission_gain_toggle(bool lightmap) noexcept;
     bool hull_emission_gain_requested() const noexcept { return hull_emission_gain_requested_; }
     // Runtime A/B of the source gain (Ctrl+Shift+F6, comparison-hotkeys.md):
     // the prebuilt variants stay; the per-draw path stops selecting them (and
@@ -697,7 +700,8 @@ public:
     // programs plus one MUL of the sampled light map by G, finite 1..8, 1 is
     // off (no variant is created). Excludes linear materials; needs HDR only;
     // configure after configure_linear_materials and configure_original_fill,
-    // before attach. Shares the Ctrl+Shift+F4 flag with the hull emitters.
+    // before attach. Ctrl+Shift+F4 switches this gain alone
+    // (hull_lightmap_enabled_); the guide lights follow Ctrl+Shift+F6.
     void configure_hull_lightmap_gain(float gain) noexcept;
     bool hull_lightmap_gain_requested() const noexcept { return hull_lightmap_gain_requested_; }
     void configure_linear_distance_fade(bool requested) noexcept;
@@ -1568,7 +1572,8 @@ private:
     // Hull-emitter gain (emitter plan phase 3): X3M_HULL_EMISSION_GAIN=G
     // (finite 1..8, 1 = off, needs HDR only), one whole-output variant
     // per covered hull program at creation, ONE/ONE admission per draw; its
-    // own F4 toggle (hull_gain_enabled_). Per-frame accounting: admitted
+    // toggle with the effects gain, Ctrl+Shift+F6 (hull_gain_enabled_).
+    // Per-frame accounting: admitted
     // draws, refusals by blend state (of which refused_opaque = blend off,
     // refused_alpha = SRCALPHA/INVSRCALPHA), covered draws without a variant,
     // ONE/ONE draws a route already took (expected 0: the routes admit no
@@ -1576,7 +1581,7 @@ private:
     // bit per admitted program.
     bool hull_emission_gain_requested_ = false;
     float hull_emission_gain_ = 1.f;
-    bool hull_gain_enabled_ = true; // Ctrl+Shift+F4, default on; gates entry to prepare_hull_gain and the light-map variant selection only
+    bool hull_gain_enabled_ = true; // Ctrl+Shift+F6 with the effects gain, default on; gates entry to prepare_hull_gain only
     struct { std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0, programs = 0, refused_opaque = 0, refused_alpha = 0; } hull_gain_counts_;
     std::uint32_t hull_gain_logged_[4]{}; // per-device sample caps: blend, bind_failed, state, routed
     std::uint32_t hull_gain_program_logged_ = 0; // bit per hull program: first admission logged this device epoch (at most 12 lines)
@@ -1585,6 +1590,7 @@ private:
     std::uint32_t original_fill_draws_ = 0; // routed draws that bound the fill variant this frame (frame line only)
     bool hull_lightmap_gain_requested_ = false; // X3M_HULL_LIGHTMAP_GAIN=G (finite 1..8, 1 = off), exclusive with linear materials
     float hull_lightmap_gain_ = 1.f;
+    bool hull_lightmap_enabled_ = true; // Ctrl+Shift+F4, default on; gates the light-map variant selection only
     std::uint32_t hull_lightmap_draws_ = 0; // routed draws that bound a light-map gain variant (plain or share) this frame (frame line only)
     std::uint32_t sun_original_lightmap_variants_ = 0; // gained share variants created (fixture counter)
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route

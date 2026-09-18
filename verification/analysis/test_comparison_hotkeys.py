@@ -22,7 +22,12 @@ class ComparisonHotkeys(unittest.TestCase):
         source = (ROOT / 'src/renderer/hdr_pass.cpp').read_text()
         functions = [extract_function(source, signature) for signature in (
             'void HdrPass::prepare_constants(', 'bool HdrPass::comparison_exposure(')]
-        self.run_host('comparison_controls_fixture.cpp', functions, exposure=True)
+        # The two emitter toggles the F4 and F6 actions drive run in the same
+        # fixture, on a stand-in carrying only the members they touch.
+        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        toggles = [extract_function(motion, signature) for signature in (
+            'int MotionOutput::emission_source_gain_toggle(', 'int MotionOutput::hull_emission_gain_toggle(')]
+        self.run_host('comparison_controls_fixture.cpp', functions, exposure=True, toggles=toggles)
 
     def test_production_notice_state_failure_and_allocation_contract(self):
         self.run_host('comparison_notice_fixture.cpp', [], notice=True)
@@ -87,12 +92,14 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertEqual(replay.count('us=%.1f shadow_toggle=%u'), 2)  # the single map and the cascades
         self.assertEqual(replay.count('us=%.1f shadow_toggle=%u%s far_replayed='), 1)
 
-    def run_host(self, fixture, functions, exposure=False, notice=False, handoff=False):
+    def run_host(self, fixture, functions, exposure=False, notice=False, handoff=False, toggles=()):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
         with tempfile.TemporaryDirectory(prefix='x3-comparison-') as temporary:
             directory = Path(temporary)
             (directory / ('comparison_handoff_under_test_inc.h' if handoff else 'comparison_exposure_under_test_inc.h')).write_text('\n'.join(functions))
+            if toggles:
+                (directory / 'comparison_toggles_under_test_inc.h').write_text('\n'.join(toggles))
             stub = ROOT / 'verification/probe/hdr_display_snapshot_stubs/d3d9.h'
             (directory / 'd3d9.h').write_text(f'#include "{stub}"\n' + textwrap.dedent('''
                 #define WINAPI
@@ -182,24 +189,29 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
         self.assertLess(polling.index('if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();'),
                         polling.index('if(!action.exposure && !action.bloom)return;'))
-        # Emitter A/B keys: F4 the hull-program emitters (its own flag, so the
-        # population is judged apart from the effects gain), F5 additive, F6
-        # the emission source gain of all twenty pairs (F7 is the telemetry
-        # marker, F8 the capture key; the 2026-09-16 effect-family key and its
-        # option stay removed). The
+        # Emitter A/B keys: F4 the hull light-map gain alone (its own flag), F5
+        # additive, F6 the effects group: the twenty emission-source pairs and
+        # the ONE/ONE guide lights, which take the same gain (F7 is the
+        # telemetry marker, F8 the capture key; the 2026-09-16 effect-family key
+        # and its option stay removed). The
         # keys are polled only inside the comparison sampler, so an ordinary
         # launch stays at zero queries; inside it they are unconditional, so
         # an option that was not requested answers with a logged refusal.
         self.assertIn('const bool emitter_compare=screen_emission_additive_requested'
                       ' || emission_source_gain!=1.f || hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;', polling)
-        for key, call in (('VK_F4', 'ctx.motion_output.hull_emission_gain_toggle()'),
+        for key, call in (('VK_F4', 'ctx.motion_output.hull_emission_gain_toggle(true)'),
                           ('VK_F5', 'ctx.motion_output.screen_emission_additive_toggle()'),
                           ('VK_F6', 'ctx.motion_output.emission_source_gain_toggle()')):
             self.assertIn(f'(GetAsyncKeyState({key})&0x8000)!=0;', polling)
             self.assertEqual(capture.count(f'GetAsyncKeyState({key})'), 1, 'one owner per function key')
             self.assertIn(call, polling)
-        for key, label in (('ctrl_shift_f4', 'HULL'), ('ctrl_shift_f5', 'BULLETS'), ('ctrl_shift_f6', 'EMISSION')):
+        for key, label in (('ctrl_shift_f4', 'LIGHTMAP'), ('ctrl_shift_f5', 'BULLETS'),
+                           ('ctrl_shift_f6', 'EMISSION'), ('ctrl_shift_f6', 'GUIDE')):
             self.assertIn(f'comparison_emitter(ctx,"{key}","{label}"', polling)
+        # One F6 press drives both halves of the effects group; F4 drives the
+        # light map alone (one hull_emission_gain_toggle call per key).
+        self.assertIn('comparison_emitter(ctx,"ctrl_shift_f6","GUIDE",ctx.motion_output.hull_emission_gain_toggle(false),"N/A");', polling)
+        self.assertEqual(polling.count('hull_emission_gain_toggle('), 2)
         for removed in ('effect_source_gain', 'X3M_EFFECT_SOURCE_GAIN'):
             self.assertNotIn(removed, capture)
         # F7 rule: telemetry.cpp owns Ctrl+Shift+F7 (its marker requires Shift);
@@ -214,7 +226,12 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertEqual(telemetry_source.count('GetAsyncKeyState(VK_F7)'), 1)
         self.assertIn('(GetAsyncKeyState(VK_F7)&0x8000)!=0 && (GetAsyncKeyState(VK_CONTROL)&0x8000)!=0 && (GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;', telemetry_source)
         emitter = extract_function(capture, 'void comparison_emitter(')
-        self.assertIn('state<0?"UNAVAILABLE":state?"ON":"OFF"', emitter)
+        self.assertIn('state<0?refused:state?"ON":"OFF"', emitter)
+        self.assertIn('const char* refused="UNAVAILABLE"', emitter)
+        # One F6 press writes both halves: the guide light's refusal uses the
+        # short word so EMISSION UNAVAILABLE GUIDE N/A fits the 36 columns.
+        self.assertIn('"GUIDE",ctx.motion_output.hull_emission_gain_toggle(false),"N/A");', polling)
+        self.assertLessEqual(len('EMISSION UNAVAILABLE GUIDE N/A'), 36)
         self.assertIn('comparison_log(ctx,"request",key,state>=0);', emitter)
         notice = extract_function(capture, 'void comparison_notice_text(')
         self.assertIn('if(ctx.comparison_emitter_notice[0])', notice)
@@ -223,9 +240,7 @@ class ComparisonHotkeys(unittest.TestCase):
         for signature, flag in (('int MotionOutput::screen_emission_additive_toggle(',
                                  'screen_additive_enabled_ = !screen_additive_enabled_;'),
                                 ('int MotionOutput::emission_source_gain_toggle(',
-                                 'source_gain_enabled_ = !source_gain_enabled_;'),
-                                ('int MotionOutput::hull_emission_gain_toggle(',
-                                 'hull_gain_enabled_ = !hull_gain_enabled_;')):
+                                 'source_gain_enabled_ = !source_gain_enabled_;')):
             body = extract_function(motion_source, signature)
             self.assertIn(f'if (available) {flag}', body)
             self.assertIn('return available ?', body)
@@ -243,15 +258,22 @@ class ComparisonHotkeys(unittest.TestCase):
         draws = extract_function(motion_source, 'MotionRoute MotionOutput::before_draw(')
         self.assertIn('shadow_.screen_additive_pair && screen_additive_enabled_ &&', draws)
         self.assertIn('shadow_.source_gain_eligible_variant && source_gain_enabled_', draws)
-        # The hull emitters read their own flag: F6 no longer reaches them.
+        # The guide lights keep their own flag (the options stay independent);
+        # F6 now drives it beside the effects gain, and the effects toggle
+        # itself still touches no hull state.
         self.assertIn('shadow_.ps_hull_program && hull_gain_enabled_ && route.submit', draws)
         self.assertNotIn('hull', extract_function(motion_source, 'int MotionOutput::emission_source_gain_toggle('))
-        # One hull-emission flag: the ONE/ONE emitters and the hull light-map gain
-        # (--hull-lightmap-gain) share F4; the toggle logs both states.
+        # One flag per family: F4 the light map, F6 the guide lights; the one
+        # toggle logs the driving key and both states, and creates nothing.
         hull_toggle = extract_function(motion_source, 'int MotionOutput::hull_emission_gain_toggle(')
-        self.assertIn('const bool available = hull_emission_gain_requested_ || hull_lightmap_gain_requested_;', hull_toggle)
-        self.assertIn('lightmap_requested=%u lightmap_gain=%g', hull_toggle)
-        self.assertIn('shadow_.hull_lightmap_pair && hull_gain_enabled_ &&', extract_function(motion_source, 'HRESULT MotionOutput::bind_variant_pair('))
+        self.assertIn('const bool available = lightmap ? hull_lightmap_gain_requested_ : hull_emission_gain_requested_;', hull_toggle)
+        self.assertIn('if (lightmap) hull_lightmap_enabled_ = !hull_lightmap_enabled_;', hull_toggle)
+        self.assertIn('else hull_gain_enabled_ = !hull_gain_enabled_;', hull_toggle)
+        self.assertIn('lightmap ? "ctrl_shift_f4" : "ctrl_shift_f6"', hull_toggle)
+        self.assertIn('lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u', hull_toggle)
+        self.assertIn('return available ?', hull_toggle)
+        self.assertNotIn('CreatePixelShader', hull_toggle)
+        self.assertIn('shadow_.hull_lightmap_pair && hull_lightmap_enabled_ &&', extract_function(motion_source, 'HRESULT MotionOutput::bind_variant_pair('))
         # One additive telemetry line per Present, counters reset every frame.
         additive = extract_function(motion_source, 'void MotionOutput::log_screen_additive_frame(')
         self.assertIn('screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x toggled=%u', additive)

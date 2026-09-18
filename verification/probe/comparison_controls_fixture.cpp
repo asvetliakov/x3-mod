@@ -1,8 +1,34 @@
 // Runs production input edges and HdrPass comparison handoff on the host.
+#include <cstdarg>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
 #include "../../src/proxy/comparison_controls.h"
+// The two production emitter toggles the sampler's F4 and F6 actions drive,
+// on a stand-in that carries only the members they read and write. F4 is the
+// hull light-map gain alone; F6 is the effects group: the twenty engine and
+// effects pairs plus the ONE/ONE guide lights that take the same gain
+// (docs/architecture/comparison-hotkeys.md).
+namespace toggles {
+static char lines[16][256];
+static unsigned line_count=0;
+static void log(const char* format,...) {
+    if(line_count>=16)return;
+    std::va_list args;va_start(args,format);
+    std::vsnprintf(lines[line_count++],sizeof lines[0],format,args);va_end(args);
+}
+struct MotionOutput {
+    std::uint64_t id_=3,frame_=11;
+    bool emission_source_gain_requested_=false,hull_emission_gain_requested_=false,hull_lightmap_gain_requested_=false;
+    float emission_source_gain_=1.f,hull_emission_gain_=1.f,hull_lightmap_gain_=1.f;
+    bool source_gain_enabled_=true,hull_gain_enabled_=true,hull_lightmap_enabled_=true;
+    int emission_source_gain_toggle() noexcept;
+    int hull_emission_gain_toggle(bool lightmap) noexcept;
+};
+#include "comparison_toggles_under_test_inc.h"
+static bool logged(const char* needle) { return line_count && std::strstr(lines[line_count-1],needle)!=nullptr; }
+}
 #define private public
 #include "../../src/renderer/hdr_pass.h"
 #undef private
@@ -54,9 +80,8 @@ int main(){
     e.foreground=true;CHECK(!emitters.sample(e).screen_additive); // held through alt-tab
     e.screen_additive=false;emitters.sample(e);e.screen_additive=true;CHECK(emitters.sample(e).screen_additive);
     emitters.reset_focus();{const auto a=emitters.sample(e);CHECK(!a.screen_additive&&!a.source_gain);}
-    // F4 (hull emission: the ONE/ONE hull emitters and the hull light-map gain
-    // share the one edge; MotionOutput::hull_emission_gain_toggle flips both):
-    // its own edge, independent of F6; held is not a press; focus loss disarms it.
+    // F4 (the hull light-map gain alone; the guide lights moved to F6): its own
+    // edge, independent of F6; held is not a press; focus loss disarms it.
     x3m::ComparisonControls hull;
     x3m::ComparisonKeys k{};k.foreground=true;k.control=k.shift=true;hull.sample(k);
     k.hull_gain=true;{const auto a=hull.sample(k);CHECK(a.hull_gain&&!a.source_gain&&!a.screen_additive);}
@@ -117,6 +142,45 @@ int main(){
      }}
     x3m::ComparisonControls marker;x3m::ComparisonKeys m{};m.foreground=true;m.control=m.shift=m.fps_overlay=true;marker.sample(m);
     m.fps_overlay=false;marker.sample(m);m.fps_overlay=true;CHECK(!marker.sample(m).fps_overlay); // the marker chord alone, Alt up: never the overlay
+
+    // The grouping behind those two keys: F4 flips the light-map gain alone,
+    // F6 flips the effects gain and the guide lights together, each family on
+    // its own flag, and every press logs both states and the driving key.
+    {
+        toggles::MotionOutput m;
+        m.emission_source_gain_requested_=true;m.emission_source_gain_=2.f;
+        m.hull_emission_gain_requested_=true;m.hull_emission_gain_=2.f;
+        m.hull_lightmap_gain_requested_=true;m.hull_lightmap_gain_=4.f;
+        CHECK(m.hull_emission_gain_toggle(true)==0); // F4
+        CHECK(!m.hull_lightmap_enabled_&&m.hull_gain_enabled_&&m.source_gain_enabled_);
+        CHECK(toggles::logged("key=ctrl_shift_f4")&&toggles::logged("accepted=1 enabled=0"));
+        CHECK(toggles::logged("hull_enabled=1 lightmap_enabled=0")&&toggles::logged("lightmap_gain=4"));
+        CHECK(m.emission_source_gain_toggle()==0&&m.hull_emission_gain_toggle(false)==0); // F6
+        CHECK(!m.source_gain_enabled_&&!m.hull_gain_enabled_&&!m.hull_lightmap_enabled_); // the light map is untouched by F6
+        CHECK(toggles::logged("key=ctrl_shift_f6")&&toggles::logged("hull_enabled=0 lightmap_enabled=0"));
+        CHECK(m.hull_emission_gain_toggle(true)==1&&m.hull_lightmap_enabled_&&!m.hull_gain_enabled_);
+        CHECK(m.hull_emission_gain_toggle(false)==1&&m.hull_gain_enabled_&&m.hull_lightmap_enabled_);
+        // Each option stays independent: an unrequested family refuses its own
+        // key (a logged no-op) while the other one still switches.
+        toggles::MotionOutput lightmap_only;
+        lightmap_only.hull_lightmap_gain_requested_=true;lightmap_only.hull_lightmap_gain_=4.f;
+        CHECK(lightmap_only.hull_emission_gain_toggle(false)==-1);
+        CHECK(lightmap_only.hull_gain_enabled_&&lightmap_only.hull_lightmap_enabled_);
+        CHECK(toggles::logged("key=ctrl_shift_f6 accepted=0"));
+        CHECK(lightmap_only.hull_emission_gain_toggle(true)==0&&!lightmap_only.hull_lightmap_enabled_);
+        toggles::MotionOutput guide_only;
+        guide_only.hull_emission_gain_requested_=true;guide_only.hull_emission_gain_=2.f;
+        CHECK(guide_only.hull_emission_gain_toggle(true)==-1);
+        CHECK(guide_only.hull_lightmap_enabled_&&guide_only.hull_gain_enabled_);
+        CHECK(toggles::logged("key=ctrl_shift_f4 accepted=0"));
+        CHECK(guide_only.hull_emission_gain_toggle(false)==0&&!guide_only.hull_gain_enabled_);
+        // Gain 1 is off for the effects pairs: F6 refuses that half and still
+        // switches the guide lights.
+        toggles::MotionOutput unity;
+        unity.emission_source_gain_requested_=true;unity.hull_emission_gain_requested_=true;unity.hull_emission_gain_=2.f;
+        CHECK(unity.emission_source_gain_toggle()==-1&&unity.source_gain_enabled_);
+        CHECK(unity.hull_emission_gain_toggle(false)==0&&!unity.hull_gain_enabled_);
+    }
 
     HdrPass hdr; IDirect3DPixelShader9 shader;
     hdr.config_.tonemap=HdrTonemap::Agx;hdr.config_.allow_auto_toggle=true;

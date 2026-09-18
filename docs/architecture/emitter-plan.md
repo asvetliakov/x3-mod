@@ -18,7 +18,7 @@ question is which *materials* get a gain, not which shaders.
 | Sun flare sprites (62) | effects pair | 60 additive | Gain (same option); watch Auto exposure, the sun is the meter's anchor |
 | Impact / shockwave / shield-hit sprites | effects pair | screen | Gain (same option); transient, judge in combat |
 | Dock tunnels, station shields, Goner beams, hive lightning | effects pair | mixed | Gain (same option) |
-| Position lights, deco flares, warning signs, warp tunnels | hull programs (`standard_lighting`, `XT_standard_lighting`) with ONE/ONE materials | additive | Phase 3: own gain `--hull-emitters --hull-emission-gain G` over twelve covered hull programs (falls back to the `--emission-source-gain` value), own key Ctrl+Shift+F4, blend-keyed on ONE/ONE, whole-output gain; wired in the proxy (2026-09-17), first isolated user bracket pending |
+| Position lights, deco flares, warning signs, warp tunnels | hull programs (`standard_lighting`, `XT_standard_lighting`) with ONE/ONE materials | additive | Phase 3: own gain `--hull-emitters --hull-emission-gain G` over twelve covered hull programs (falls back to the `--emission-source-gain` value, which above 1 implies the option), blend-keyed on ONE/ONE, whole-output gain; wired in the proxy (2026-09-17), switched with the effects gain on Ctrl+Shift+F6 since the run 41 regrouping |
 | Explosions, particles | unwitnessed program | unknown | Capture one in the next combat run; if it is the effects pair it is already covered |
 | Nebula fog (`nebulafog`, 277 materials), nebula stars, planet atmosphere | own programs | screen / alpha | Not emitters: no gain |
 | Alpha-blended smoke, dust, trails | SRCALPHA materials | alpha | No gain (they are occluders, not sources) |
@@ -64,8 +64,11 @@ question is which *materials* get a gain, not which shaders.
    variant bound for that draw and the application's program restored after
    it. `--hull-emitters` opts the population in with its own
    `--hull-emission-gain G` (`X3M_HULL_EMISSION_GAIN`, needs `--hdr` only;
-   without it the value of `--emission-source-gain` is taken) and its own key,
-   Ctrl+Shift+F4 (`hull_emission_gain_toggle`; F6 stays the effects gain).
+   without it the value of `--emission-source-gain` is taken, which above 1
+   also implies `--hull-emitters`). Since the run 41 regrouping the guide
+   lights switch with the effects gain on Ctrl+Shift+**F6**
+   (`hull_emission_gain_toggle key=ctrl_shift_f6`, their own flag; F4 is the
+   hull light-map gain alone).
    *Routed draws (run 38 C finding, 2026-09-17)*: the motion route admits
    blend-off draws and the SRCALPHA/INVSRCALPHA fade band only (gate 4,
    `fade_arm_admits`), the composition route the fade band, the SM1 screen

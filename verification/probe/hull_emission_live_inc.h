@@ -42,8 +42,9 @@ void run_hull_emission(const char* bootstrap_vertex) {
     std::vector<float> base;unsigned base_pixels=0;bool toggled_on=true;
     for(unsigned step=0;step<5;++step){
         if(step>=3){
-            // The F4 action without the key, between frames like the sampler.
-            const int state=hull_toggle(d.p);toggled_on=gain!=1.f?!toggled_on:toggled_on;
+            // The guide-light half of the F6 action without the key, between
+            // frames like the sampler (F4 is the light-map gain).
+            const int state=hull_toggle(d.p,0);toggled_on=gain!=1.f?!toggled_on:toggled_on;
             std::printf("HULL_EMISSION_TOGGLE frame=%llu state=%d\n",frame,state);
             require(state==(gain==1.f?-1:toggled_on?1:0),"toggle state: off, then on; refused without the option");
         }

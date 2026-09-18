@@ -243,14 +243,23 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
 class LauncherAndProxyGateTests(unittest.TestCase):
     def test_default_off_requires_hdr_excludes_linear_materials_and_composes_with_the_fill(self):
         with tempfile.TemporaryDirectory() as directory:
+            # Launcher default (user selection after run 41 C): 4 in HDR mode,
+            # the same environment an explicit --hull-lightmap-gain 4 writes;
+            # the DLL's own default stays 1 = off.
             code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
             baseline = json.loads(output)['env']
-            self.assertEqual(baseline['X3M_HULL_LIGHTMAP_GAIN'], '1.0')
+            self.assertEqual(baseline['X3M_HULL_LIGHTMAP_GAIN'], '4.0')
             code, output, error = launch(directory, *PREREQUISITES, '--hull-lightmap-gain', '4'); self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_HULL_LIGHTMAP_GAIN'], '4.0')
-            self.assertEqual({k: v for k, v in env.items() if k != 'X3M_HULL_LIGHTMAP_GAIN'},
-                             {k: v for k, v in baseline.items() if k != 'X3M_HULL_LIGHTMAP_GAIN'})
+            self.assertEqual(env, baseline)
+            # Without --hdr the option is refused, but the default never fires:
+            # the variable is written off, with no error.
+            code, output, error = launch(directory, '--motion-output'); self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_HULL_LIGHTMAP_GAIN'], '1.0')
+            # An explicit 1 turns the default off again.
+            code, output, error = launch(directory, *PREREQUISITES, '--hull-lightmap-gain', '1'); self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_HULL_LIGHTMAP_GAIN'], '1.0')
             linear = ['--hdr-tonemap', '--linear-materials']
             for bad in (('--motion-output', '--hull-lightmap-gain', '4'),
                         (*PREREQUISITES, *linear, '--hull-lightmap-gain', '4'),
@@ -281,7 +290,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
             self.assertNotIn(absent, block)
         polling = extract_function(source, 'void comparison_begin_frame(')
         self.assertIn('|| hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;', polling)
-        self.assertIn('if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","HULL",ctx.motion_output.hull_emission_gain_toggle());', polling)
+        self.assertIn('if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","LIGHTMAP",ctx.motion_output.hull_emission_gain_toggle(true));', polling)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         self.assertIn('hull_lightmap_gain_requested_ = std::isfinite(gain) && gain > 1.f && gain <= 8.f && !linear_material_requested_;', motion)
         # Created once at registration beside the fill variant, composed with the fill K.
@@ -290,25 +299,28 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertIn('hull_lightmap_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g gain=%g fill_applied=%u gain_applied=%u', motion)
         # Selected in the one bind pair over the plain or fill variant while the F4 flag is on; undone with the route.
         bind = extract_function(motion, 'HRESULT MotionOutput::bind_variant_pair(')
-        self.assertIn('shadow_.hull_lightmap_pair && hull_gain_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active', bind)
+        self.assertIn('shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active', bind)
         self.assertIn('(ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant))', bind)
         self.assertIn('route.hull_lightmap = true', bind)
         self.assertLess(bind.index('ps = shadow_.ps_original_fill_variant; fill = true;'), bind.index('ps = shadow_.ps_hull_lightmap_variant; lightmap = true;'))
         self.assertNotIn('GetRenderState', bind)
         contract = motion[motion.index('void MotionOutput::refresh_linear_material_contract'):][:3000]
         self.assertIn('shadow_.hull_lightmap_pair = hull_lightmap_gain_requested_ && shadow_.ps_hull_lightmap_variant && shadow_.vs_variant', contract)
-        # One F4 flag for hull emission: the ONE/ONE emitters and the light-map gain, both states logged.
+        # F4 is the light-map gain alone (its own flag); the guide lights moved
+        # to F6 with the effects gain. Both states and the driving key are logged.
         toggle = extract_function(motion, 'int MotionOutput::hull_emission_gain_toggle(')
-        self.assertIn('const bool available = hull_emission_gain_requested_ || hull_lightmap_gain_requested_;', toggle)
-        self.assertIn('if (available) hull_gain_enabled_ = !hull_gain_enabled_;', toggle)
-        self.assertIn('gain=%g lightmap_requested=%u lightmap_gain=%g', toggle)
+        self.assertIn('const bool available = lightmap ? hull_lightmap_gain_requested_ : hull_emission_gain_requested_;', toggle)
+        self.assertIn('if (lightmap) hull_lightmap_enabled_ = !hull_lightmap_enabled_;', toggle)
+        self.assertIn('else hull_gain_enabled_ = !hull_gain_enabled_;', toggle)
+        self.assertIn('key=%s accepted=%u enabled=%u requested=%u gain=%g lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u', toggle)
+        self.assertIn('lightmap ? "ctrl_shift_f4" : "ctrl_shift_f6"', toggle)
         self.assertNotIn('CreatePixelShader', toggle)
         self.assertIn('hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u', motion)
         # The sun-share lane: a gained share variant beside every share variant, selected under the same flag.
         self.assertIn('renderer::linear_material_original_sun_share_pixel_variant(', motion)
         self.assertIn('hull_lightmap_gain_, &gain_applied);', motion)
         self.assertIn('sun_shadow_original_lightmap_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g gain=%g share_applied=%u gain_applied=%u', motion)
-        self.assertIn('const bool gained_original=original&&hull_gain_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;', bind)
+        self.assertIn('const bool gained_original=original&&hull_lightmap_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;', bind)
         self.assertIn('gained_original?shadow_.ps_sun_original_lightmap:original?shadow_.ps_sun_original:', bind)
         self.assertIn('lightmap=gained_original;', bind)
         self.assertIn('IDirect3DPixelShader9* sun_original_lightmap_variant = nullptr;', (ROOT / 'src/proxy/motion_output.h').read_text())

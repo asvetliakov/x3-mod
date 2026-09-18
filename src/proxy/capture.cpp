@@ -116,7 +116,7 @@ float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E comp
 float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
 float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only; independent of the effects gain, own key Ctrl+Shift+F4)
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
-float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; shares Ctrl+Shift+F4 with the hull emitters)
+float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; Ctrl+Shift+F4 switches it alone)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
 bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom attenuation of the additive draw (bloom-per-source-attenuation.md, option 1)
@@ -233,7 +233,7 @@ struct Device : Hooks {
     ComparisonControls comparison;
     ComparisonNotice comparison_notice;
     bool comparison_report_pending = false;
-    char comparison_emitter_notice[40]{}; // last emitter-key result (Ctrl+Shift+F5/F6); empty = show the bloom line
+    char comparison_emitter_notice[40]{}; // last emitter-key result (F4 LIGHTMAP, F5 BULLETS, F6 EMISSION + GUIDE); empty = show the bloom line
     FpsOverlay fps_overlay; // --fps-overlay accumulator and Ctrl+Alt+F7 visibility
     ComparisonNotice fps_notice{72}; // its bitmap, one panel below the hotkey notice
 
@@ -1110,12 +1110,14 @@ void comparison_log(Device& ctx,const char* phase,const char* key,bool accepted)
 // its family and gain; this adds the key identity to the comparison record
 // and the notice line. state<0 is the refusal (option not requested, or gain
 // 1 so no variant exists); nothing is created or released either way.
-void comparison_emitter(Device& ctx,const char* key,const char* label,int state) noexcept {
+// refused is the refusal word: the short form for the second half of a key
+// that reports two families, so one F6 press fits the notice's 36 columns.
+void comparison_emitter(Device& ctx,const char* key,const char* label,int state,const char* refused="UNAVAILABLE") noexcept {
     // Appends, so two or three keys sampled in the same frame each keep their
     // label; the caller clears the line before the first of them.
     const std::size_t used=std::strlen(ctx.comparison_emitter_notice);
     std::snprintf(ctx.comparison_emitter_notice+used,sizeof ctx.comparison_emitter_notice-used,"%s%s %s",
-        used?" ":"",label,state<0?"UNAVAILABLE":state?"ON":"OFF");
+        used?" ":"",label,state<0?refused:state?"ON":"OFF");
     comparison_log(ctx,"request",key,state>=0);
 }
 void comparison_begin_frame(Device& ctx) noexcept {
@@ -1124,8 +1126,9 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // Ctrl+Shift+F11 (ambient occlusion on/off) polls with the same sampler
     // when --ambient-occlusion is on; it has no notice and no report.
     const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;
-    // Emitter A/B keys (comparison-hotkeys.md): Ctrl+Shift+F4 the hull-program
-    // emitters, F5 the additive bullets, F6 the emission source gain (F7 is
+    // Emitter A/B keys (comparison-hotkeys.md): Ctrl+Shift+F4 the hull
+    // light-map gain, F5 the additive bullets, F6 the emission source gain
+    // together with the guide lights that follow it (F7 is
     // the telemetry marker and F8 the capture key). Any requested emitter
     // option opens the sampler; the individual keys are polled
     // unconditionally inside it so an unrequested option answers with a
@@ -1162,9 +1165,12 @@ void comparison_begin_frame(Device& ctx) noexcept {
     if(action.fps_overlay)log("fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key",ctx.id,ctx.frame,unsigned(ctx.fps_overlay.toggle()));
     const bool emitter=action.screen_additive||action.source_gain||action.hull_gain;
     if(emitter)ctx.comparison_emitter_notice[0]='\0';
-    if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","HULL",ctx.motion_output.hull_emission_gain_toggle());
+    if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","LIGHTMAP",ctx.motion_output.hull_emission_gain_toggle(true));
     if(action.screen_additive)comparison_emitter(ctx,"ctrl_shift_f5","BULLETS",ctx.motion_output.screen_emission_additive_toggle());
-    if(action.source_gain)comparison_emitter(ctx,"ctrl_shift_f6","EMISSION",ctx.motion_output.emission_source_gain_toggle());
+    // F6 is the effects group: the twenty engine/effects pairs and the ONE/ONE
+    // guide lights, which take the same gain (comparison-hotkeys.md).
+    if(action.source_gain){comparison_emitter(ctx,"ctrl_shift_f6","EMISSION",ctx.motion_output.emission_source_gain_toggle());
+        comparison_emitter(ctx,"ctrl_shift_f6","GUIDE",ctx.motion_output.hull_emission_gain_toggle(false),"N/A");}
     if(emitter){ctx.comparison_notice.show(GetTickCount64());ctx.comparison_report_pending=true;}
     if(!action.exposure && !action.bloom)return;
     ctx.comparison_emitter_notice[0]='\0'; // an exposure/bloom press owns the second line again
@@ -2757,9 +2763,9 @@ void initialize_log(HMODULE module) {
     // 1..8, 1 (the launcher default) is off. The variant is the fill/motion
     // program plus one MUL, so it needs the motion-output registry and the
     // FP16 scene (X3M_HDR=1) only; exclusive with the linear-material route,
-    // whose converted programs carry X3M_LIGHTMAP_EMISSIVE_GAIN. Shares the
-    // Ctrl+Shift+F4 key with the hull emitters. Unparsable or out of range
-    // keeps 1 and logs.
+    // whose converted programs carry X3M_LIGHTMAP_EMISSIVE_GAIN. Ctrl+Shift+F4
+    // switches this gain alone (the guide lights follow the effects gain on
+    // Ctrl+Shift+F6). Unparsable or out of range keeps 1 and logs.
     {hull_lightmap_gain=1.f;bool gain_valid=true;float value=1.f;
      SetLastError(ERROR_SUCCESS);
      const DWORD gain_length=GetEnvironmentVariableW(L"X3M_HULL_LIGHTMAP_GAIN",setting,32);
@@ -3149,11 +3155,13 @@ extern "C" __declspec(dllexport) int x3m_ambient_occlusion_fixture_toggle(IDirec
     if(it==x3m::devices.end()) return -2;
     return it->second->motion_output.ambient_occlusion_toggle();
 }
-// The Ctrl+Shift+F4 action without the key: the same toggle the sampler calls.
-extern "C" __declspec(dllexport) int x3m_hull_emission_fixture_toggle(IDirect3DDevice9* device) {
+// The two hull-family actions without their keys: the same toggle the sampler
+// calls, lightmap!=0 for Ctrl+Shift+F4 (the light-map gain), 0 for the guide
+// lights that Ctrl+Shift+F6 drives beside the effects gain.
+extern "C" __declspec(dllexport) int x3m_hull_emission_fixture_toggle(IDirect3DDevice9* device,int lightmap) {
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return -2;
-    return it->second->motion_output.hull_emission_gain_toggle();
+    return it->second->motion_output.hull_emission_gain_toggle(lightmap!=0);
 }
 #endif
