@@ -100,7 +100,7 @@ public:
  // extracted bind path only reads the flags and reports a failed creation.
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
  bool original_fill_requested_=false; unsigned sun_original_refused_draws_=0; // read by the bind path's original-share gate
- bool hull_gain_enabled_=true; std::uint32_t hull_lightmap_draws_=0; // F4 flag and light-map draw counter read by the bind/after-draw paths
+ bool hull_gain_enabled_=true,hull_lightmap_enabled_=true; std::uint32_t hull_lightmap_draws_=0; // F6 guide-light flag, F4 light-map flag and light-map draw counter read by the bind/after-draw paths
  unsigned sun_qualifications_=0;void qualify_sun_lane(){++sun_qualifications_;}
  struct{bool failed=false,published=false,available=false,coverage_required=false;unsigned receivers=0,covered=0,untracked=0;}sun_frame_;
  bool screen_emission_bound_=false; // step B locked-prefix request; inert for the wrap-state seam
