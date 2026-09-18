@@ -108,8 +108,13 @@ redundant per-frame scan (the media-cue negative cache at `0x00498140` was
 exactly this kind of fix, 390 ms -> normal), memoise a per-object lookup, or
 replace a hot x87 routine with an SSE2 trampoline. Candidates, from the
 main-loop note: per-object simulation `0x00452ad0` (27 KB, 401 calls, per
-object per frame), collision `0x0045d250` (its swept query `0x0045cab0` is the
-one place an O(n^2) pair cost can hide), the timed tick `0x004596e0` (own
+object per frame), collision `0x0045d250` (**resolved for run129's 26 ms
+plateau**: it holds an explicit unguarded all-pairs loop over the sector's class
+buckets with a `FSQRT` per pair for all class combinations except a short list,
+and the swept query `0x0045cab0` scans every sector object per bucket-0 object;
+loop structure, two broadphase hook sites and the census that must precede them
+are in [../reverse-engineering/sector-collide.md](../reverse-engineering/sector-collide.md)),
+the timed tick `0x004596e0` (own
 accumulator, catch-up work independent of frame rate), the script VM
 (`PendingVm` was 70.8 % of run94's lightest recorded slow frame), cockpit
 update `0x0041cde0`, and the proxy's own post-Present work (bounded by run89's
@@ -176,6 +181,10 @@ pass disarmed, 0.237 armed with 7 culled, Wine/FEX). Native parity by
 construction (documented Win32 only).
 
 ### 2.4 Distance LOD bias in code — 0 to several ms (A), engine patch
+
+**Closed 2026-09-18 (run 42 D, run132):** View Distance Very High → High at the run117 station gave the
+user ≈ 1.5 fps; the 30 s busy windows read 923 draws / 33.4 ms against 861 / 31.2 (M), a ≈ 7 % draw
+reduction for one full LOD step on every body. A fractional bias would give less. Not worth a patch.
 
 View Distance "Very High" subtracts one from every selected LOD index
 (`0x0047d48b`, M static) and raises the far plane to 500 M; "High" keeps the
