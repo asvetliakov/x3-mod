@@ -1189,3 +1189,116 @@ retained-binary run of the three fade-route cases on that DLL,
 Open: whether the resolved panels still re-roll on the 512² grid texture with
 the arm active (raw dumps only in run125; no resolved or reactive-mask dump)
 is for the next user run with the candidate that carries this change.
+
+## User run 42 B (run130): one leg still shimmers — fade-band origin behind the camera (2026-09-18)
+
+Snapshot `/tmp/x3-bottleX3-run130` (run42 candidate `1a5dd46c`, fade route
+active, original shading). Diagnosis in
+[asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md),
+"Run 130": leg 2's one refused fade draw per frame (index 336, frames
+5354–5361) has its object node resolved (`object_context node=1d879878
+valid=127`) and the exact fade-band state, but its clip translation `w`
+is −7611.6 … −8563.2 (origin behind the camera plane), which
+`fade_route::origin_distance` refused; 8 of 248 fade-state rows in the run,
+exactly the 8 with `w ≤ 0`. Fix: the distance is defined for any finite `w`;
+every scene `motion_route` row now carries `unmatched=<reason>`.
+
+- `seam-taa-fade-route-behind` (new: the `original` script with the quads'
+  origin at `w = −1`): exit 0, 3461 checks, 10 history frames, worst raw
+  error 0.004 px, worst resolved residual 0.055 px; capture rows frame 2
+  `routed=1 fade_permille=449 fade_held=1 unmatched=none`, frames 3–4
+  `gate=4 fade_permille=390/449 unmatched=fade_threshold`.
+- `seam-taa-fade-route-original`: exit 0, 3461 checks, 0.004 / 0.055 px;
+  `seam-taa-fade-route-hover`: exit 0, 3536 checks, 0.006 / 0.053 px (both
+  validate the new `unmatched` field). Partial run (selected cases, no
+  cross-case comparison); `motion-output-partial.json` stays at HEAD.
+- Overlay arm (the distant object's glass/window sub-mesh: the hull pair
+  `53a0a641…`/`63f96eba…` in the fade-band state right after the same node's
+  routed draw; run131 2/frame, run130 16 rows in B3, 20/20 same-node):
+  `seam-taa-fade-route-overlay` (new): exit 0, 5101 checks, 10 history
+  frames, worst raw error 0.004 px, worst resolved residual 0.071 px; capture
+  rows frames 2–4 `gate=0 routed=1 matched=1 node=00001000 fade_arm=1
+  fade_permille=1000 unmatched=none`, `fade_route_frame overlay_routed=2
+  overlay_refused=0 fade_routed=0`, depth target unchanged by each draw.
+  `seam-taa-cutout-blended` (alpha-tested source-over pass, must stay native):
+  exit 0, 49624 checks, 10 history frames, 0 missed frames,
+  `overlay_routed=0 overlay_refused=0`; `seam-taa-cutout-opaque`: exit 0,
+  49612 checks, 11 missed frames (as before); `seam-taa-fade-route-original`
+  rerun on the same DLL: 3461 checks, 0.004 / 0.055 px.
+- Review fixes (same day): the overlay witness is the very next draw index of
+  the same frame, the node identity at gate 4 and the lifetime serial at the
+  scope gate, cleared at Reset; the arm is off with linear materials
+  requested. `seam-taa-fade-route-foreign` (new; P on A's node address under
+  another lifetime serial, Q on its own node): exit 0, 397 checks, both
+  refused every frame (`gate=4 unmatched=overlay_node`, `overlay_refused=2`),
+  resolved residual 0.070 px. One run of the seven cases (behind, hover,
+  original, overlay, foreign, cutout-blended, cutout-opaque) on the final
+  seam DLL `8e2dd29e…` reproduced the numbers above; compact record
+  `verification/results/bottle-X3/fade-route-cases.json`.
+- Host: `test_fade_region` (16 tests: `w = −1` at distance 1, `w = 0` at the
+  camera, off-axis `w = ±2` equal, nonfinite refused),
+  `test_motion_output_runner` (12 tests, 60 HDR cases).
+
+### 2026-09-19 — fade route behind/overlay: Fable second review
+
+After merging main: seven fade-route cases reproduce `fade-route-cases.json` (behind 3461, original 3461, hover 3536,
+overlay 5101, foreign 397, cutout-blended 49624, cutout-opaque 49612 checks; resolved ≤ 0.071 px). Blocking finding
+fixed: the `linear_material_live` snippet mock lacked the `last_routed_*` latch (host module now 22 tests OK;
+the module was missing from the earlier host list). Accepted as non-blocking, to read in run 43: `overlay_refused`
+and `unmatched=overlay_node` also count ordinary source-over draws in the fade-band state that were never overlay
+candidates; such draws now pay up to eight state reads (unmeasured); a first-frame overlay writes an unmatched
+motion row for one frame; overlays take the plain motion variant (no fill or light-map gain, as the native draw);
+no fixture covers a Reset between a routed draw and its overlay (checked by reading).
+
+## 2026-09-18 — routed-draw cost bench and the depth-lease trim
+
+Numbers and attribution: [engine-frame-time.md](../architecture/engine-frame-time.md)
+§2.2 "Measured 2026-09-18". Final worktree build: production DLL `da272a78…`,
+seam `d6b3ca77…`, fixture `3b6a61eb…`; pre-trim build (same tree before the
+source change, fixture with the bench mode) production `25fad8dc…`, seam
+`1ddfbbbe…`, fixture `dfebac3b…`. A second trim (pixel-ABI upload skip) was
+built, found inert on a real device in review and removed; nothing below was
+measured on it.
+
+- New fixture mode `routebench [draws]` (`motion_output_fixture.cpp`, fixture
+  only) and runner `verification/probe/run_route_bench.py` (thirteen
+  configurations; `--label`, `--configs`, `--seam`, `--fixture`). Tracked
+  results, X3 bottle, WineArch arm64, `FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1`:
+  `route-bench-before.json`, `-before-rest.json`, `-before-attr.json`
+  (pre-trim attribution), `-final.json`, and the alternating A/B
+  `-ab-base-{1,2,3}.json` / `-ab-final-{1,2,3}.json` (pre-trim seam via
+  `--seam`). QPC pair 0.06-0.12 µs in every process.
+- Pre-trim comparison, retained witness
+  `verification/results/bottle-X3/route-trim-pretrim-comparison.json`: ten
+  cases run on the pre-trim build and on the final build in this session
+  (seam-burst-perdraw/-lazy, seam-taa-cutout-opaque-get,
+  seam-ownership-shadow-replay-on/-cascades/-cascades-casters-20/-far-refused,
+  seam-ownership-shadow-retention-live/-census, seam-taa-fade-route-original);
+  per case the binary hashes, checks, restorations and a SHA-256 of the case
+  record with timing/hash/path keys removed. `all_equal: true` (10/10): checks
+  86/86/49612/203/278/278/203/9743/9740/3461 on both builds. The multistream
+  refusal frame of the shadow-replay script (its verdict now comes from the
+  declaration hook) is inside those records. seam-on, seam-taa-on and
+  production-on also ran on the final build (exit 0; `final_only` in the
+  witness).
+- Against the committed record (`motion-output-summary.json`, 2026-09-15),
+  measured on the intermediate build that still carried the dropped skip:
+  production-off/on, seam-off/on, seam-taa-on, production-lazy-on,
+  seam-lazy-on, seam-taa-hook-default, seam-taa-fade-route-routed/-masked
+  equal after dropping binary hashes and the harness's later schema
+  (`render_state[].mode`, `frames_changed_by_history`); the two burst cases
+  differ from that record in `state_hashes` only and equal the pre-trim build,
+  so that drift predates this change.
+- `run_state_hook_benchmark.py --dll build/d3d9.dll` on the final DLL
+  (`state-hook-benchmark-route-trim.json`): native/production/hooked
+  SetRenderState 13.4/13.7/80.3 ns, SetSamplerState 13.1/11.3/70.8, ten-read
+  set 94.6/94.3/93.7, mip-bias routed draw 79.8/79.4/476.9, draw pair
+  345.5/1043.2/919.1; every PRESERVE line (SetVertexDeclaration and SetFVF
+  included) x87/MXCSR/LastError intact. The committed
+  `state-hook-benchmark-hybrid.json` (2026-09-16, DLL `c136e425…`) is a
+  different build: compare magnitudes, not digits.
+- `run_sun_share_live.py --fixture … --dll <final seam>`: 22 cases,
+  `passed: true`.
+- The runner's `motion-output-partial.json`, the two retention fixture JSONs,
+  `state-hook-benchmark.json` and `sun-share-live.json` were rewritten by
+  these runs and restored to HEAD.

@@ -78,9 +78,32 @@ struct MotionDrawCall {
 // The first gate that refused a draw; None means every gate passed. Numbers
 // match the design document's gate list.
 enum class MotionGate : unsigned { None = 0, Feature = 1, Scene = 2, Pair = 3, DrawState = 4, Scope = 5, History = 6 };
+// Why a scene draw did not match (diagnostics only: the capture `motion_route`
+// row's `unmatched=` field, asteroid-fog-temporal.md "Run 130"). Recorded on
+// the refusal path from values the gate already read; no getter, no lookup.
+// Gate 4 records the first failing check of the opaque chain, or, for a
+// recognised fade-band draw of a fade pair, the fade arm's own refusal step.
+enum class UnmatchedReason : std::uint8_t {
+    None = 0,
+    Feature, Scene, XtPair, Unregistered, Pair,                       // gates 1-3
+    UserMemory, ReadFailed, NoZWrite, Blended, State, Instanced, Rows, Geometry, // gate 4, opaque chain
+    FadeCaps, FadeInstanced, FadeRows, FadeGeometry, FadeConstants, FadeOrigin, FadeThreshold, // gate 4, fade arm
+    OverlayNode,                                                      // gate 4, overlay arm: not right after a routed draw of the same node
+    Scope, History,                                                   // gates 5-6 (routed, mode 0 / no previous rows)
+    Count
+};
+constexpr const char* unmatched_reason_name(UnmatchedReason reason) noexcept {
+    constexpr const char* names[unsigned(UnmatchedReason::Count)] = {
+        "none", "feature", "scene", "xt_pair", "unregistered", "pair",
+        "user_memory", "read_failed", "no_zwrite", "blended", "state", "instanced", "rows", "geometry",
+        "fade_caps", "fade_instanced", "fade_rows", "fade_geometry", "fade_constants", "fade_origin", "fade_threshold",
+        "overlay_node", "scope", "history"};
+    return unsigned(reason) < unsigned(UnmatchedReason::Count) ? names[unsigned(reason)] : "unknown";
+}
 // Per-draw decision. Stack object; carries what after_draw must undo.
 struct MotionRoute {
     MotionGate gate = MotionGate::Feature;
+    UnmatchedReason unmatched = UnmatchedReason::None;
     bool routed = false, matched = false, scene = false;
     bool composition = false, submit = true, evaluated = false;
     HRESULT submission_error = D3DERR_INVALIDCALL;
@@ -114,6 +137,7 @@ struct MotionRoute {
     // matches the native draw (biased stages are restored before the draw).
     bool native_mip_bias = false;
     bool depth = false, rt2_set = false, write2_set = false;   // RT2 bound for this draw (row has depth_output).
+    bool stream0_frequency_known = false; UINT stream0_frequency = 0; // gate 4's GetStreamSourceFreq(0) of this draw, reused by the depth lease
     bool jittered = false;                                     // Jittered rows written; restore after the draw.
     UINT jitter_register = 0;                                  // The VS row's clip-row window base.
     DWORD saved_write1 = 15, saved_write2 = 15;
@@ -151,6 +175,12 @@ struct MotionRoute {
     // exactly (motion alpha 1 under SRCALPHA/INVSRCALPHA).
     bool fade_arm = false;
     bool fade_held = false; // admitted below the threshold by the hysteresis band only
+    // Overlay arm (asteroid-fog-temporal.md "Run 130"): a reviewed non-fade
+    // pair's source-over sub-mesh (the hull glass/window layer) drawn right
+    // after a routed draw of the same node, admitted through the fade arm at
+    // permille 1000 with no fraction or hysteresis (its alpha is material, not
+    // distance).
+    bool overlay = false;
     unsigned fade_permille = 0;
     // Additive option: DESTBLEND ONE applied for this draw (restored to the
     // shadowed INVSRCCOLOR after it) and, with gain != 1, the gained PS bound.
@@ -287,6 +317,7 @@ struct MotionFrameCounters {
     // threshold, unreadable constants, device not ready), which then take
     // the fade bracket or the native path exactly as before.
     std::uint32_t fade_routed = 0, fade_refused = 0, fade_held = 0; // fade_held: of fade_routed, admitted by the hysteresis band
+    std::uint32_t overlay_routed = 0, overlay_refused = 0; // overlay arm (same-node source-over sub-mesh); not in fade_routed/fade_refused
     std::uint32_t depth_routed = 0, jittered = 0;
     // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered
     // while the jitter was active: every one breaks the "whole scene moves
@@ -1114,6 +1145,10 @@ private:
         DWORD fill_mode = 0;          // D3DRS_FILLMODE, kept only with composition requested
         bool fill_mode_known = false;
         std::uint32_t position_offset = 0, position_type = 0;
+        // Every element of the bound declaration reads stream 0 (from the same
+        // GetDeclaration read that hashes it): the depth lease's multistream
+        // verdict, once per SetVertexDeclaration instead of per leased draw.
+        bool declaration_stream0_only = false;
         renderer::Surface rt0, depth;
         bool extra_rt[4]{};
         renderer::Viewport viewport;
@@ -1616,6 +1651,14 @@ private:
     unsigned screen_additive_frame_admitted_ = 0, screen_additive_frame_refused_ = 0, screen_additive_frame_pairs_ = 0;
     unsigned fade_route_threshold_ = 500; // per mille; fade_route::threshold_off = arm off
     fade_route::Hysteresis fade_hysteresis_; // per node identity; cleared at Reset
+    // The last routed scene draw: node identity, lifetime serial, frame and
+    // draw index. The overlay arm admits a source-over sub-mesh only as the
+    // very next draw of the same frame, same node (gate 4, identity only) and
+    // same lifetime serial (checked once sample_scope has read it, so a node
+    // freed and reallocated at the same address within the frame is refused).
+    // Cleared at Reset.
+    std::uint64_t last_routed_node_ = 0, last_routed_lifetime_ = 0, last_routed_frame_ = ~std::uint64_t{0};
+    std::uint32_t last_routed_draw_ = 0;
     unsigned composition_required_producers_ = 0;
     HRESULT composition_attach_result_ = S_FALSE;
     renderer::LinearEmissionConfig linear_emission_config_{1.f, true};

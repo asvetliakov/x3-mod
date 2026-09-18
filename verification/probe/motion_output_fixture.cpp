@@ -387,6 +387,7 @@ struct Fixture {
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
+    bool routebench = false; unsigned routebench_draws = 400; // "routebench [draws]": per-routed-draw CPU cost (run_route_bench.py)
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
     bool hook = false, wrap = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     // aohook script (ambient occlusion at the scene-end hook): the DLL's switches
@@ -1123,6 +1124,51 @@ struct Fixture {
         std::sort(bench_ms.begin(), bench_ms.end());
         std::printf("BENCH_SUMMARY width=%u height=%u frames=%u min_ms=%.4f median_ms=%.4f max_ms=%.4f timing=cpu_inclusive_event_synchronized\n",
                     W, H, unsigned(bench_ms.size()), bench_ms.front(), bench_ms[bench_ms.size() / 2], bench_ms.back());
+    }
+    // Per-routed-draw CPU cost of the proxy (engine-frame-time.md 2.2):
+    // `draws` consecutive scene draws of the reviewed pair per frame, objects
+    // A and B alternating so every draw after the first two matches history,
+    // with only the application's own per-draw calls between them (stream,
+    // shaders, rows) and no getter, so the lazy RT mode keeps its bindings
+    // across the run. Timed: the DrawPrimitive call alone (one QPC pair per
+    // draw; the pair's own cost is measured in the same process and printed
+    // beside it) and the whole run including the application's calls. Frames
+    // 0-1 warm the history and are excluded from the summary. No coverage or
+    // colour check: the twin scripts prove the route, this measures it.
+    void run_route_bench(unsigned frames, unsigned draws) {
+        LARGE_INTEGER frequency; QueryPerformanceFrequency(&frequency);
+        const double us = 1e6 / double(frequency.QuadPart);
+        std::vector<double> draw_us, run_us;
+        long long pair_ticks = 0;
+        for (unsigned i = 0; i < draws; ++i) { LARGE_INTEGER q0, q1; QueryPerformanceCounter(&q0); QueryPerformanceCounter(&q1); pair_ticks += q1.QuadPart - q0.QuadPart; }
+        const double pair_us = double(pair_ticks) * us / double(draws);
+        for (unsigned i = 0; i < frames; ++i) {
+            frame_begin();
+            long long inside = 0;
+            LARGE_INTEGER r0, r1; QueryPerformanceCounter(&r0);
+            for (unsigned k = 0; k < draws; ++k) {
+                Object& o = k % 2 ? b : a;
+                scope(&o);
+                api(d->SetStreamSource(0, o.vb, 0, 24), "SetStreamSource object");
+                api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(ps.p), "SetPixelShader");
+                rows(k % 2 ? 0.f : .75f, 0, k % 2 ? .1f : 0);
+                LARGE_INTEGER t0, t1; QueryPerformanceCounter(&t0);
+                const HRESULT hr = d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);
+                QueryPerformanceCounter(&t1);
+                api(hr, "DrawPrimitive object");
+                inside += t1.QuadPart - t0.QuadPart; ++draw_index;
+            }
+            QueryPerformanceCounter(&r1);
+            const double per_draw = double(inside) * us / double(draws), per_run = double(r1.QuadPart - r0.QuadPart) * us / double(draws);
+            std::printf("ROUTEBENCH frame=%llu draws=%u draw_us=%.3f run_us=%.3f qpc_pair_us=%.3f\n", frame, draws, per_draw, per_run, pair_us);
+            if (i >= 2) { draw_us.push_back(per_draw); run_us.push_back(per_run); }
+            api(d->EndScene(), "EndScene");
+            api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+            ++frame; ++frames_since_reset;
+        }
+        std::sort(draw_us.begin(), draw_us.end()); std::sort(run_us.begin(), run_us.end());
+        std::printf("ROUTEBENCH_SUMMARY draws=%u frames=%u draw_us_min=%.3f draw_us_median=%.3f draw_us_max=%.3f run_us_median=%.3f qpc_pair_us=%.3f timing=cpu_qpc_draw_call\n",
+                    draws, unsigned(draw_us.size()), draw_us.front(), draw_us[draw_us.size() / 2], draw_us.back(), run_us[run_us.size() / 2], pair_us);
     }
     // Lazy RT mode equivalence script (both modes run it; the runner compares
     // the colour, the STATE signature, the seam's RT1/RT2 hashes, the DLL's
@@ -3065,11 +3111,13 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute|shadowreplay [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|routebench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
         f.bench = mode == "bench";
+        f.routebench = mode == "routebench";
+        if (f.routebench && argc == 5) { const int n = std::atoi(argv[4]); if (n < 1 || n > 4096) throw std::runtime_error("routebench draws 1..4096"); f.routebench_draws = unsigned(n); }
         f.burst = mode == "burst";
         f.mipbias = mode == "mipbias";
         f.zonly = mode == "zonly";
@@ -3125,7 +3173,7 @@ int main(int argc, char** argv) {
         f.emission_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime,"x3m_linear_emission_fixture_fault",false);
         f.emission_readback = symbol<HRESULT (*)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*)>(runtime,"x3m_motion_output_fixture_readback_target",false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.sunlane || f.hullemission || f.emissions || mode == "shadowreplay" || mode == "shadowretention" || mode == "shadowpool" || mode == "sunapply" || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.routebench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.sunlane || f.hullemission || f.emissions || mode == "shadowreplay" || mode == "shadowretention" || mode == "shadowpool" || mode == "sunapply" || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
@@ -3188,7 +3236,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if ((f.taa || f.cutout || f.faderoute) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "shadowretention") run_shadow_retention_integration(f); else if (mode == "shadowpool") run_shadow_pool_integration(f); else if (mode == "sunapply") { char cascades[4]{}; const bool scripted = GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_CASCADES", cascades, sizeof cascades) == 1; if (scripted && cascades[0] == '1') run_sun_apply_cascades(f, 3); else if (scripted && cascades[0] == '5') run_sun_apply_cascades(f, 5); else run_sun_apply_integration(f); } else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
+        if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "shadowretention") run_shadow_retention_integration(f); else if (mode == "shadowpool") run_shadow_pool_integration(f); else if (mode == "sunapply") { char cascades[4]{}; const bool scripted = GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_CASCADES", cascades, sizeof cascades) == 1; if (scripted && cascades[0] == '1') run_sun_apply_cascades(f, 3); else if (scripted && cascades[0] == '5') run_sun_apply_cascades(f, 5); else run_sun_apply_integration(f); } else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.routebench) f.run_route_bench(12, f.routebench_draws); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

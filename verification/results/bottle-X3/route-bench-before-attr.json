@@ -1,0 +1,349 @@
+{
+ "bottle": "X3",
+ "bottle_label": "X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1",
+ "seam_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+ "fixture_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f",
+ "draws": 400,
+ "started": "2026-09-18T09:34:46",
+ "configs": {
+  "perdraw-nojitter": {
+   "env": {
+    "X3M_MOTION_JITTER": "0"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-nojitter-20260918-093446-797031",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 8.089,
+    "draw_us_median": 8.806,
+    "draw_us_max": 9.169,
+    "run_us_median": 9.835,
+    "qpc_pair_us": 0.124,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "1600",
+    "lazy_flushes": "0",
+    "jitter_writes": "0",
+    "rs_mode": "get",
+    "rs_queries": "4002",
+    "rs_hits": "0",
+    "rs_gets": "4016",
+    "state_shadow": "0",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "retention": {},
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  },
+  "perdraw-nodepth": {
+   "env": {
+    "X3M_FIXTURE_MOTION_DEPTH": "0"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-nodepth-20260918-093452-305750",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 6.992,
+    "draw_us_median": 8.083,
+    "draw_us_max": 8.186,
+    "run_us_median": 9.182,
+    "qpc_pair_us": 0.068,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "800",
+    "lazy_flushes": "0",
+    "jitter_writes": "800",
+    "rs_mode": "get",
+    "rs_queries": "3202",
+    "rs_hits": "0",
+    "rs_gets": "3216",
+    "state_shadow": "0",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "retention": {},
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  },
+  "off-ownership": {
+   "env": {
+    "X3M_MOTION_OUTPUT": "0",
+    "X3M_OWNERSHIP": "1"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-off-ownership-20260918-093454-097787",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 1.407,
+    "draw_us_median": 1.584,
+    "draw_us_max": 1.614,
+    "run_us_median": 2.754,
+    "qpc_pair_us": 0.067,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {},
+   "retention": {},
+   "frames_logged": 0,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  },
+  "perdraw-ownership": {
+   "env": {
+    "X3M_OWNERSHIP": "1"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-ownership-20260918-093455-637846",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 9.493,
+    "draw_us_median": 11.036,
+    "draw_us_max": 11.241,
+    "run_us_median": 12.521,
+    "qpc_pair_us": 0.077,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "1600",
+    "lazy_flushes": "0",
+    "jitter_writes": "800",
+    "rs_mode": "get",
+    "rs_queries": "4002",
+    "rs_hits": "0",
+    "rs_gets": "4016",
+    "state_shadow": "0",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "retention": {},
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  },
+  "perdraw-depth": {
+   "env": {
+    "X3M_OWNERSHIP": "1",
+    "X3M_SHADOW_REPLAY_DEPTH": "1",
+    "X3M_SHADOW_REPLAY_SIZE": "256",
+    "X3M_FIXTURE_SLICE_NEAR": "0.5"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-depth-20260918-093457-126819",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 12.797,
+    "draw_us_median": 12.903,
+    "draw_us_max": 13.056,
+    "run_us_median": 14.393,
+    "qpc_pair_us": 0.071,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "1600",
+    "lazy_flushes": "0",
+    "jitter_writes": "800",
+    "rs_mode": "get",
+    "rs_queries": "4402",
+    "rs_hits": "0",
+    "rs_gets": "4416",
+    "state_shadow": "0",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "retention": {},
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  },
+  "perdraw-cascades-noretention": {
+   "env": {
+    "X3M_OWNERSHIP": "1",
+    "X3M_SHADOW_REPLAY_DEPTH": "1",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+    "X3M_SHADOW_REPLAY_SIZE": "256",
+    "X3M_FIXTURE_SLICE_NEAR": "0.5",
+    "X3M_SHADOW_CASCADES": "250,1500,4000,12000,30000",
+    "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
+    "X3M_SHADOW_CASTER_RETENTION": "0"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-cascades-noretention-20260918-093458-685928",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 12.307,
+    "draw_us_median": 13.155,
+    "draw_us_max": 13.914,
+    "run_us_median": 14.683,
+    "qpc_pair_us": 0.067,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "1600",
+    "lazy_flushes": "0",
+    "jitter_writes": "800",
+    "rs_mode": "get",
+    "rs_queries": "4402",
+    "rs_hits": "0",
+    "rs_gets": "4416",
+    "state_shadow": "0",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "retention": {},
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  },
+  "perdraw-cascades-timing": {
+   "env": {
+    "X3M_OWNERSHIP": "1",
+    "X3M_SHADOW_REPLAY_DEPTH": "1",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+    "X3M_SHADOW_REPLAY_SIZE": "256",
+    "X3M_FIXTURE_SLICE_NEAR": "0.5",
+    "X3M_SHADOW_CASCADES": "250,1500,4000,12000,30000",
+    "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
+    "X3M_SHADOW_CASTER_RETENTION": "1",
+    "X3M_SHADOW_RETENTION_TIMING": "1"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-cascades-timing-20260918-093500-338626",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 13.406,
+    "draw_us_median": 13.623,
+    "draw_us_max": 14.013,
+    "run_us_median": 15.124,
+    "qpc_pair_us": 0.075,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "1600",
+    "lazy_flushes": "0",
+    "jitter_writes": "800",
+    "rs_mode": "get",
+    "rs_queries": "4402",
+    "rs_hits": "0",
+    "rs_gets": "4416",
+    "state_shadow": "0",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "retention": {},
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  }
+ }
+}

@@ -877,7 +877,26 @@ Rule (`src/proxy/fade_route_core.h`, `MotionOutput::fade_arm_admits`, gate 4):
   `fade_region` line is the rectangle's viewport-area share, not this
   fraction; the estimate is logged as `fade_permille` on the capture
   `motion_route` line. The per-vertex fade of a large mesh straddling the
-  band is admitted by its origin.
+  band is admitted by its origin. The sign of `w` does not matter:
+  an origin behind the camera plane (a station module the camera has
+  entered, run 130) is at the same Euclidean distance; only a nonfinite row
+  refuses (before 2026-09-18 `w ≤ 0` refused, and such a draw fell to the
+  plain jittered native path under original shading:
+  asteroid-fog-temporal.md, "Run 130").
+- **Overlay arm (run 130).** Original shading only (not with linear
+  materials requested: a blended reviewed pair may belong to the composition
+  or glass bracket, unverified through this arm). A reviewed pair that is
+  not a fade program, drawn in the same exact fade-band state as the very
+  next draw after a routed draw of the same node (same frame, adjacent draw
+  index, same node identity at gate 4 and same lifetime serial at the scope
+  gate; the latch is cleared at Reset) — the hull pair's glass/window
+  sub-mesh: own vertex buffer and textures, the node's rows — is admitted at
+  permille 1000 without the fraction or the hysteresis (`route.overlay`;
+  counters `overlay_routed`, `overlay_refused`; refusal
+  `unmatched=overlay_node`). An alpha-tested source-over draw (the documented
+  cutout pass) stays native. Cost: a refused reviewed-pair draw with Z on and
+  Z-write off pays up to eight render-state reads, the frequency getter and
+  one identity read; a draw with Z-write on reaches no getter.
 - **Hysteresis.** An object whose estimate hovers about the threshold would
   otherwise alternate between the route and the bracket every frame, and the
   two composites differ: the bracket mixes linear values, the route lets the

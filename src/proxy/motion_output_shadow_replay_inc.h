@@ -38,11 +38,15 @@ bool MotionOutput::fill_depth_geometry(const MotionRoute& route, shadow_replay::
     // Only stream 0 is leased: a declaration that reads another stream, or an
     // instanced stream 0, would replay against whatever is bound at the scene
     // end, so such a record is refused (skipped_state, detail multistream).
-    D3DVERTEXELEMENT9 elements[MAXD3DDECLLENGTH + 1]{};
-    UINT count = MAXD3DDECLLENGTH + 1, frequency = 0;
-    bool stream0_only = SUCCEEDED(declaration->GetDeclaration(elements, &count)) && count >= 2 && count <= MAXD3DDECLLENGTH + 1;
-    for (UINT i = 0; stream0_only && i + 1 < count; ++i) stream0_only = elements[i].Stream == 0;
-    if (stream0_only) stream0_only = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) && frequency == 1;
+    // The element verdict comes from the declaration hook's own GetDeclaration
+    // read (shadow_.declaration_stream0_only, the same elements the key hashes;
+    // the gate required the hashed declaration) and the frequency from gate 4's
+    // read of this draw when it has one: no per-lease GetDeclaration copy or
+    // second GetStreamSourceFreq (route-bench: 1.9 us per leased draw before).
+    UINT frequency = 0;
+    bool stream0_only = shadow_.declaration_stream0_only;
+    if (stream0_only) stream0_only = (route.stream0_frequency_known ? (frequency = route.stream0_frequency, true)
+        : SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency))) && frequency == 1;
     if (!stream0_only) { release(declaration); g.multistream = true; SetLastError(error); return false; }
     g.declaration = declaration;
     g.vertex_buffer = reinterpret_cast<IDirect3DVertexBuffer9*>(shadow_.stream0_identity);
