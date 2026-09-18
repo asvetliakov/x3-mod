@@ -477,10 +477,19 @@ class FadeRegion(unittest.TestCase):
         # An off-centre projection (m20, m21) cancels: x_c = w * m20 is the axis.
         rows=[1,0,0,1, 0,1,0,-.5, 0,0,1,0, 0,0,0,2]
         self.assertEqual(self.fade_route(1,1,(1,.25),rows,(1,1,1,.5,-.25))[1:3],(2.,.5))
-        # Behind the camera, at it, or nonfinite: never admitted; the fraction saturates at both ends.
+        # Behind the camera plane or at it (run 130: a station module the camera has entered), the
+        # origin is at its Euclidean distance, sign of w regardless: w -1 is distance 1 like w 1,
+        # w 0 with the translation column (0, 0) sits at the camera (distance 0). Nonfinite refuses.
         for w in (0,-1,'nan','inf'):
             rows=list(IDENTITY);rows[15]=w
-            self.assertEqual(self.fade_route(1,1,(1,0),rows,camera)[0],0,w)
+            self.assertEqual(self.fade_route(1,1,(1,0),rows,camera)[0],int(w in (0,-1)),w)
+        rows=list(IDENTITY);rows[15]=-1
+        self.assertEqual(self.fade_route(.625,1,(.75,.125),rows,camera),(1,1.,.390625,390,0))
+        off_axis=[1,0,0,3, 0,1,0,4, 0,0,1,0, 0,0,0,2]
+        behind=off_axis[:15]+[-2]
+        self.assertEqual(self.fade_route(1,1,(1,.1),behind,(1,1.5,2,0,0))[1],self.fade_route(1,1,(1,.1),off_axis,(1,1.5,2,0,0))[1])
+        rows=list(IDENTITY);rows[15]=0
+        self.assertEqual(self.fade_route(.5,1,(.75,.125),rows,camera)[1:4],(0.,.375,375))
         self.assertEqual(self.fade_route('nan',1,(1,0),IDENTITY,camera)[2:],(0.,0,0))
         self.assertEqual(self.fade_route(1,1,('inf',0),IDENTITY,camera)[2:],(0.,0,0))
         self.assertEqual(self.fade_route(1,1,(.5,1),IDENTITY,camera)[2:],(0.,0,0))     # .5 - 1 < 0 -> 0

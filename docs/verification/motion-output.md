@@ -1189,3 +1189,63 @@ retained-binary run of the three fade-route cases on that DLL,
 Open: whether the resolved panels still re-roll on the 512² grid texture with
 the arm active (raw dumps only in run125; no resolved or reactive-mask dump)
 is for the next user run with the candidate that carries this change.
+
+## User run 42 B (run130): one leg still shimmers — fade-band origin behind the camera (2026-09-18)
+
+Snapshot `/tmp/x3-bottleX3-run130` (run42 candidate `1a5dd46c`, fade route
+active, original shading). Diagnosis in
+[asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md),
+"Run 130": leg 2's one refused fade draw per frame (index 336, frames
+5354–5361) has its object node resolved (`object_context node=1d879878
+valid=127`) and the exact fade-band state, but its clip translation `w`
+is −7611.6 … −8563.2 (origin behind the camera plane), which
+`fade_route::origin_distance` refused; 8 of 248 fade-state rows in the run,
+exactly the 8 with `w ≤ 0`. Fix: the distance is defined for any finite `w`;
+every scene `motion_route` row now carries `unmatched=<reason>`.
+
+- `seam-taa-fade-route-behind` (new: the `original` script with the quads'
+  origin at `w = −1`): exit 0, 3461 checks, 10 history frames, worst raw
+  error 0.004 px, worst resolved residual 0.055 px; capture rows frame 2
+  `routed=1 fade_permille=449 fade_held=1 unmatched=none`, frames 3–4
+  `gate=4 fade_permille=390/449 unmatched=fade_threshold`.
+- `seam-taa-fade-route-original`: exit 0, 3461 checks, 0.004 / 0.055 px;
+  `seam-taa-fade-route-hover`: exit 0, 3536 checks, 0.006 / 0.053 px (both
+  validate the new `unmatched` field). Partial run (selected cases, no
+  cross-case comparison); `motion-output-partial.json` stays at HEAD.
+- Overlay arm (the distant object's glass/window sub-mesh: the hull pair
+  `53a0a641…`/`63f96eba…` in the fade-band state right after the same node's
+  routed draw; run131 2/frame, run130 16 rows in B3, 20/20 same-node):
+  `seam-taa-fade-route-overlay` (new): exit 0, 5101 checks, 10 history
+  frames, worst raw error 0.004 px, worst resolved residual 0.071 px; capture
+  rows frames 2–4 `gate=0 routed=1 matched=1 node=00001000 fade_arm=1
+  fade_permille=1000 unmatched=none`, `fade_route_frame overlay_routed=2
+  overlay_refused=0 fade_routed=0`, depth target unchanged by each draw.
+  `seam-taa-cutout-blended` (alpha-tested source-over pass, must stay native):
+  exit 0, 49624 checks, 10 history frames, 0 missed frames,
+  `overlay_routed=0 overlay_refused=0`; `seam-taa-cutout-opaque`: exit 0,
+  49612 checks, 11 missed frames (as before); `seam-taa-fade-route-original`
+  rerun on the same DLL: 3461 checks, 0.004 / 0.055 px.
+- Review fixes (same day): the overlay witness is the very next draw index of
+  the same frame, the node identity at gate 4 and the lifetime serial at the
+  scope gate, cleared at Reset; the arm is off with linear materials
+  requested. `seam-taa-fade-route-foreign` (new; P on A's node address under
+  another lifetime serial, Q on its own node): exit 0, 397 checks, both
+  refused every frame (`gate=4 unmatched=overlay_node`, `overlay_refused=2`),
+  resolved residual 0.070 px. One run of the seven cases (behind, hover,
+  original, overlay, foreign, cutout-blended, cutout-opaque) on the final
+  seam DLL `8e2dd29e…` reproduced the numbers above; compact record
+  `verification/results/bottle-X3/fade-route-cases.json`.
+- Host: `test_fade_region` (16 tests: `w = −1` at distance 1, `w = 0` at the
+  camera, off-axis `w = ±2` equal, nonfinite refused),
+  `test_motion_output_runner` (12 tests, 60 HDR cases).
+
+### 2026-09-19 — fade route behind/overlay: Fable second review
+
+After merging main: seven fade-route cases reproduce `fade-route-cases.json` (behind 3461, original 3461, hover 3536,
+overlay 5101, foreign 397, cutout-blended 49624, cutout-opaque 49612 checks; resolved ≤ 0.071 px). Blocking finding
+fixed: the `linear_material_live` snippet mock lacked the `last_routed_*` latch (host module now 22 tests OK;
+the module was missing from the earlier host list). Accepted as non-blocking, to read in run 43: `overlay_refused`
+and `unmatched=overlay_node` also count ordinary source-over draws in the fade-band state that were never overlay
+candidates; such draws now pay up to eight state reads (unmeasured); a first-frame overlay writes an unmatched
+motion row for one frame; overlays take the plain motion variant (no fill or light-map gain, as the native draw);
+no fixture covers a Reset between a routed draw and its overlay (checked by reading).

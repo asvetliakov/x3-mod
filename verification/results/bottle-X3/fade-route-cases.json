@@ -1,0 +1,118 @@
+{
+ "tool": "verification/probe/run_motion_output.py (partial scope: the seven selected cases, one run under wine_lock)",
+ "purpose": "Run 130: fade-band origin behind the camera, unmatched= field, overlay arm and its fail-safe (docs/verification/motion-output.md 2026-09-18; asteroid-fog-temporal.md \"Run 130\")",
+ "date": "2026-09-18",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "source_commit": "8ab858b2 + working tree (uncommitted change under review)",
+ "binaries": {
+  "seam_dll_sha256": "8e2dd29ee6c8082b056875ec55d35cf879a55785a5a170bdc7f37af7c4648028",
+  "production_dll_sha256": "97bb0080b071ad55478a1d908c4fa85e651b87da2f0fb7ad56a8f1650aff8c97",
+  "fixture_sha256": "82f3f945075f83fd366569b284929a0b341be1c408235b844389bc2e8a2e17c1"
+ },
+ "partial_status": "PARTIAL",
+ "selected_cases": [
+  "seam-taa-cutout-blended",
+  "seam-taa-cutout-opaque",
+  "seam-taa-fade-route-behind",
+  "seam-taa-fade-route-foreign",
+  "seam-taa-fade-route-hover",
+  "seam-taa-fade-route-original",
+  "seam-taa-fade-route-overlay"
+ ],
+ "cases": {
+  "seam-taa-cutout-blended": {
+   "script": "blended",
+   "checks": 49624,
+   "history_frames": 10,
+   "cutout_missed_frames": 0,
+   "frames": 12,
+   "exit": 0
+  },
+  "seam-taa-cutout-opaque": {
+   "script": "opaque",
+   "checks": 49612,
+   "history_frames": 0,
+   "cutout_missed_frames": 11,
+   "frames": 12,
+   "exit": 0
+  },
+  "seam-taa-fade-route-hover": {
+   "script": "hover",
+   "checks": 3536,
+   "routed_frames": 8,
+   "held_frames": 5,
+   "history_frames": 10,
+   "raw_evidence": 22,
+   "resolved_evidence": 10,
+   "worst_raw_error_px": 0.005539625204070919,
+   "worst_resolved_residual_px": 0.05315238975100379,
+   "max_code_error": 0.0,
+   "frames": 12,
+   "exit": 0
+  },
+  "seam-taa-fade-route-original": {
+   "script": "original",
+   "checks": 3461,
+   "routed_frames": 8,
+   "held_frames": 5,
+   "history_frames": 10,
+   "raw_evidence": 22,
+   "resolved_evidence": 10,
+   "worst_raw_error_px": 0.004416532841086229,
+   "worst_resolved_residual_px": 0.05507287093764471,
+   "max_code_error": 0.0,
+   "frames": 12,
+   "exit": 0
+  },
+  "seam-taa-fade-route-behind": {
+   "script": "behind",
+   "checks": 3461,
+   "routed_frames": 8,
+   "held_frames": 5,
+   "history_frames": 10,
+   "raw_evidence": 22,
+   "resolved_evidence": 10,
+   "worst_raw_error_px": 0.004416532841086229,
+   "worst_resolved_residual_px": 0.05507287093764471,
+   "max_code_error": 0.0,
+   "frames": 12,
+   "exit": 0
+  },
+  "seam-taa-fade-route-overlay": {
+   "script": "overlay",
+   "checks": 5101,
+   "routed_frames": 12,
+   "held_frames": 0,
+   "history_frames": 10,
+   "raw_evidence": 22,
+   "resolved_evidence": 16,
+   "worst_raw_error_px": 0.004245333166363663,
+   "worst_resolved_residual_px": 0.07054601545657384,
+   "max_code_error": 0.0,
+   "frames": 12,
+   "exit": 0
+  },
+  "seam-taa-fade-route-foreign": {
+   "script": "foreign",
+   "checks": 397,
+   "routed_frames": 0,
+   "held_frames": 0,
+   "history_frames": 10,
+   "raw_evidence": 22,
+   "resolved_evidence": 16,
+   "worst_raw_error_px": 0.004245333166363663,
+   "worst_resolved_residual_px": 0.07046346900849602,
+   "max_code_error": 0.0,
+   "frames": 12,
+   "exit": 0
+  }
+ }
+}
