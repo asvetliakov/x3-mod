@@ -114,6 +114,7 @@ struct MotionRoute {
     // matches the native draw (biased stages are restored before the draw).
     bool native_mip_bias = false;
     bool depth = false, rt2_set = false, write2_set = false;   // RT2 bound for this draw (row has depth_output).
+    bool stream0_frequency_known = false; UINT stream0_frequency = 0; // gate 4's GetStreamSourceFreq(0) of this draw, reused by the depth lease
     bool jittered = false;                                     // Jittered rows written; restore after the draw.
     UINT jitter_register = 0;                                  // The VS row's clip-row window base.
     DWORD saved_write1 = 15, saved_write2 = 15;
@@ -1114,6 +1115,10 @@ private:
         DWORD fill_mode = 0;          // D3DRS_FILLMODE, kept only with composition requested
         bool fill_mode_known = false;
         std::uint32_t position_offset = 0, position_type = 0;
+        // Every element of the bound declaration reads stream 0 (from the same
+        // GetDeclaration read that hashes it): the depth lease's multistream
+        // verdict, once per SetVertexDeclaration instead of per leased draw.
+        bool declaration_stream0_only = false;
         renderer::Surface rt0, depth;
         bool extra_rt[4]{};
         renderer::Viewport viewport;

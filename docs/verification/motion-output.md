@@ -1189,3 +1189,56 @@ retained-binary run of the three fade-route cases on that DLL,
 Open: whether the resolved panels still re-roll on the 512² grid texture with
 the arm active (raw dumps only in run125; no resolved or reactive-mask dump)
 is for the next user run with the candidate that carries this change.
+
+## 2026-09-18 — routed-draw cost bench and the depth-lease trim
+
+Numbers and attribution: [engine-frame-time.md](../architecture/engine-frame-time.md)
+§2.2 "Measured 2026-09-18". Final worktree build: production DLL `da272a78…`,
+seam `d6b3ca77…`, fixture `3b6a61eb…`; pre-trim build (same tree before the
+source change, fixture with the bench mode) production `25fad8dc…`, seam
+`1ddfbbbe…`, fixture `dfebac3b…`. A second trim (pixel-ABI upload skip) was
+built, found inert on a real device in review and removed; nothing below was
+measured on it.
+
+- New fixture mode `routebench [draws]` (`motion_output_fixture.cpp`, fixture
+  only) and runner `verification/probe/run_route_bench.py` (thirteen
+  configurations; `--label`, `--configs`, `--seam`, `--fixture`). Tracked
+  results, X3 bottle, WineArch arm64, `FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1`:
+  `route-bench-before.json`, `-before-rest.json`, `-before-attr.json`
+  (pre-trim attribution), `-final.json`, and the alternating A/B
+  `-ab-base-{1,2,3}.json` / `-ab-final-{1,2,3}.json` (pre-trim seam via
+  `--seam`). QPC pair 0.06-0.12 µs in every process.
+- Pre-trim comparison, retained witness
+  `verification/results/bottle-X3/route-trim-pretrim-comparison.json`: ten
+  cases run on the pre-trim build and on the final build in this session
+  (seam-burst-perdraw/-lazy, seam-taa-cutout-opaque-get,
+  seam-ownership-shadow-replay-on/-cascades/-cascades-casters-20/-far-refused,
+  seam-ownership-shadow-retention-live/-census, seam-taa-fade-route-original);
+  per case the binary hashes, checks, restorations and a SHA-256 of the case
+  record with timing/hash/path keys removed. `all_equal: true` (10/10): checks
+  86/86/49612/203/278/278/203/9743/9740/3461 on both builds. The multistream
+  refusal frame of the shadow-replay script (its verdict now comes from the
+  declaration hook) is inside those records. seam-on, seam-taa-on and
+  production-on also ran on the final build (exit 0; `final_only` in the
+  witness).
+- Against the committed record (`motion-output-summary.json`, 2026-09-15),
+  measured on the intermediate build that still carried the dropped skip:
+  production-off/on, seam-off/on, seam-taa-on, production-lazy-on,
+  seam-lazy-on, seam-taa-hook-default, seam-taa-fade-route-routed/-masked
+  equal after dropping binary hashes and the harness's later schema
+  (`render_state[].mode`, `frames_changed_by_history`); the two burst cases
+  differ from that record in `state_hashes` only and equal the pre-trim build,
+  so that drift predates this change.
+- `run_state_hook_benchmark.py --dll build/d3d9.dll` on the final DLL
+  (`state-hook-benchmark-route-trim.json`): native/production/hooked
+  SetRenderState 13.4/13.7/80.3 ns, SetSamplerState 13.1/11.3/70.8, ten-read
+  set 94.6/94.3/93.7, mip-bias routed draw 79.8/79.4/476.9, draw pair
+  345.5/1043.2/919.1; every PRESERVE line (SetVertexDeclaration and SetFVF
+  included) x87/MXCSR/LastError intact. The committed
+  `state-hook-benchmark-hybrid.json` (2026-09-16, DLL `c136e425…`) is a
+  different build: compare magnitudes, not digits.
+- `run_sun_share_live.py --fixture … --dll <final seam>`: 22 cases,
+  `passed: true`.
+- The runner's `motion-output-partial.json`, the two retention fixture JSONs,
+  `state-hook-benchmark.json` and `sun-share-live.json` were rewritten by
+  these runs and restored to HEAD.

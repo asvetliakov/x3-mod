@@ -1,0 +1,209 @@
+{
+ "bottle": "X3",
+ "bottle_label": "X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1",
+ "seam_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+ "fixture_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f",
+ "draws": 400,
+ "started": "2026-09-18T09:32:36",
+ "configs": {
+  "perdraw-telemetry-draw": {
+   "env": {
+    "X3M_TELEMETRY_DRAW": "1"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-telemetry-draw-20260918-093236-692953",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 9.598,
+    "draw_us_median": 10.515,
+    "draw_us_max": 10.69,
+    "run_us_median": 11.406,
+    "qpc_pair_us": 0.112,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "1600",
+    "lazy_flushes": "0",
+    "jitter_writes": "800",
+    "rs_mode": "get",
+    "rs_queries": "4002",
+    "rs_hits": "0",
+    "rs_gets": "4016",
+    "state_shadow": "0",
+    "gate_us": "457.0",
+    "route_draw_us": "2598.4",
+    "set_rt_us": "699.8",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "76.4",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  },
+  "perdraw-shadow": {
+   "env": {
+    "X3M_STATE_SHADOW": "1"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-shadow-20260918-093240-123548",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 8.075,
+    "draw_us_median": 9.071,
+    "draw_us_max": 9.294,
+    "run_us_median": 10.122,
+    "qpc_pair_us": 0.077,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "1600",
+    "lazy_flushes": "0",
+    "jitter_writes": "800",
+    "rs_mode": "shadow",
+    "rs_queries": "4002",
+    "rs_hits": "4002",
+    "rs_gets": "14",
+    "state_shadow": "1",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "1",
+    "reason": "explicit",
+    "state_shadow": "1",
+    "rs_mode": "shadow"
+   }
+  },
+  "lazy": {
+   "env": {
+    "X3M_MOTION_RT_MODE": "lazy"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-lazy-20260918-093241-140979",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 6.167,
+    "draw_us_median": 6.932,
+    "draw_us_max": 7.045,
+    "run_us_median": 7.971,
+    "qpc_pair_us": 0.069,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "4",
+    "lazy_flushes": "1",
+    "jitter_writes": "800",
+    "rs_mode": "shadow",
+    "rs_queries": "3204",
+    "rs_hits": "3204",
+    "rs_gets": "14",
+    "state_shadow": "1",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "1",
+    "reason": "lazy_rt",
+    "state_shadow": "1",
+    "rs_mode": "shadow"
+   }
+  },
+  "perdraw-cascades": {
+   "env": {
+    "X3M_OWNERSHIP": "1",
+    "X3M_SHADOW_REPLAY_DEPTH": "1",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+    "X3M_SHADOW_REPLAY_SIZE": "256",
+    "X3M_FIXTURE_SLICE_NEAR": "0.5",
+    "X3M_SHADOW_CASCADES": "250,1500,4000,12000,30000",
+    "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
+    "X3M_SHADOW_CASTER_RETENTION": "1"
+   },
+   "directory": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aae4564ee5361c29e/verification/probe/build/route-bench-perdraw-cascades-20260918-093242-630011",
+   "summary": {
+    "draws": 400.0,
+    "frames": 10.0,
+    "draw_us_min": 13.338,
+    "draw_us_median": 13.412,
+    "draw_us_max": 13.588,
+    "run_us_median": 14.899,
+    "qpc_pair_us": 0.077,
+    "timing": "cpu_qpc_draw_call"
+   },
+   "frame": {
+    "draws": "401",
+    "routed": "400",
+    "matched": "0",
+    "set_rt": "1600",
+    "lazy_flushes": "0",
+    "jitter_writes": "800",
+    "rs_mode": "get",
+    "rs_queries": "4402",
+    "rs_hits": "0",
+    "rs_gets": "4416",
+    "state_shadow": "0",
+    "gate_us": "0.0",
+    "route_draw_us": "0.0",
+    "set_rt_us": "0.0",
+    "lazy_flush_us": "0.0",
+    "jitter_us": "0.0",
+    "gate1": "0",
+    "gate2": "1",
+    "gate3": "0",
+    "gate4": "0",
+    "gate5": "0",
+    "gate6": "400"
+   },
+   "frames_logged": 12,
+   "state_hooks": {
+    "device": "1",
+    "installed": "0",
+    "reason": "none",
+    "state_shadow": "0",
+    "rs_mode": "get"
+   }
+  }
+ }
+}

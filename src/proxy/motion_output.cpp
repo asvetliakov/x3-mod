@@ -1007,6 +1007,7 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
     if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ || !hdr_enabled_
         || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F
         || FAILED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency))
+        || (route.stream0_frequency = frequency, route.stream0_frequency_known = true, false) // the read travels with the route as in the opaque chain
         || (frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1
         || window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !loop_bounded
         || !shadow_.stream0 || !shadow_.stream0_stride || !shadow_.declaration || !call.primitives
@@ -3366,19 +3367,22 @@ void MotionOutput::set_indices(IDirect3DIndexBuffer9* buffer) noexcept {
 // the stream-0 POSITION0 layout the key records.
 void MotionOutput::set_vertex_declaration(IDirect3DVertexDeclaration9* declaration) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.declaration = 0; shadow_.position_offset = shadow_.position_type = 0;
+    shadow_.declaration = 0; shadow_.position_offset = shadow_.position_type = 0; shadow_.declaration_stream0_only = false;
     if (!declaration) return;
     D3DVERTEXELEMENT9 elements[MAXD3DDECLLENGTH + 1]{};
     UINT count = MAXD3DDECLLENGTH + 1;
     if (FAILED(declaration->GetDeclaration(elements, &count)) || count < 2 || count > MAXD3DDECLLENGTH + 1) return;
-    bool position = false;
-    for (UINT i = 0; i + 1 < count; ++i)
+    bool position = false, stream0_only = true;
+    for (UINT i = 0; i + 1 < count; ++i) {
+        if (elements[i].Stream != 0) stream0_only = false;
         if (elements[i].Stream == 0 && elements[i].Usage == D3DDECLUSAGE_POSITION && elements[i].UsageIndex == 0) {
             position = true; shadow_.position_offset = elements[i].Offset; shadow_.position_type = elements[i].Type;
         }
+    }
     if (!position) return;
     shadow_.declaration = hash_bytes(elements, count * sizeof(elements[0]));
     if (!shadow_.declaration) shadow_.declaration = 1;
+    shadow_.declaration_stream0_only = stream0_only;
 }
 void MotionOutput::set_fvf(DWORD) noexcept {
     if (!enabled_ || shadow_.recording) return;
@@ -4948,7 +4952,12 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         if (ok) read_ok |= state == D3DRS_ALPHATESTENABLE ? 1u : state == D3DRS_COLORWRITEENABLE ? 2u : state == D3DRS_SRGBWRITEENABLE ? 4u : 0u;
         return ok;
     };
-    const auto read_frequency = [&]() noexcept { const bool ok = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)); read_failed |= !ok; return ok; };
+    // The frequency read travels with the route: the depth lease (fill_depth_geometry) reuses it instead of a second getter.
+    const auto read_frequency = [&]() noexcept {
+        const bool ok = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)); read_failed |= !ok;
+        if (ok) { route.stream0_frequency = frequency; route.stream0_frequency_known = true; }
+        return ok;
+    };
     const bool draw_state_ok = !call.user_memory && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1 &&
         read(D3DRS_ALPHABLENDENABLE, &blend) && !blend &&
         read(D3DRS_ALPHATESTENABLE, &test) &&
