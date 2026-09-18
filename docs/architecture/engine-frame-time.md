@@ -171,6 +171,10 @@ once sized: S (the `lod_scale`-style patch of the threshold or the measure).
 
 ### 2.4 Distance LOD bias in code — 0 to several ms (A), engine patch
 
+**Closed 2026-09-18 (run 42 D, run132):** View Distance Very High → High at the run117 station gave the
+user ≈ 1.5 fps; the 30 s busy windows read 923 draws / 33.4 ms against 861 / 31.2 (M), a ≈ 7 % draw
+reduction for one full LOD step on every body. A fractional bias would give less. Not worth a patch.
+
 View Distance "Very High" subtracts one from every selected LOD index
 (`0x0047d48b`, M static) and raises the far plane to 500 M; "High" keeps the
 ladder. A distant station body is 15 draws / 11.5 k triangles at LOD 2 against

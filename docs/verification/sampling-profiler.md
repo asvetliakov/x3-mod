@@ -1823,3 +1823,8 @@ quoted. Self-cost: pass_phases 124 µs, residual 31 µs per frame; frame_phases/
 field. Sanity: threshold 20 ms, `fade_route_mode enabled=1`, light-map gain 4, guide lights 2, 0 DEVICELOST.
 Next: disassembly of `0x0045d250`/`0x0045cab0` (docs/reverse-engineering/sector-collide.md) and the proxy
 per-draw breakdown and trims (engine-frame-time.md §2.2).
+
+**Run 42 D (run132, 2026-09-18).** View Distance A/B by the FPS overlay at the run117 station, no proxy option:
+user reading ≈ 1.5 fps gained by "High" over "Very High"; `frame_end` 30 s busy windows 923 draws / 33.4 ms
+(Very High) vs 861 / 31.2 ms (High). The LOD-bias lever (engine-frame-time.md §2.4) is closed: one full LOD
+step buys ≈ 7 % of the draws.
