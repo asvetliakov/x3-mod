@@ -204,8 +204,11 @@ still preferable if the container count is the full sector list.
   `0x0043054e`, `0x0047a060` and `0x00486dbb`.
 - "Sector" for the class-1 container, and "collision query"/"collision response"
   for `0x0045cab0`/`0x0045e130`, are inferences from layout and string xrefs.
-  Whether `0x0045cab0` is O(n) or O(n²) in sector objects was not decided; that
-  is the first thing to decompile if site 0's interval wins. `0x00452ad0` was
+  Whether `0x0045cab0` is O(n) or O(n²) in sector objects was not decided here;
+  site 0's interval did win in run129 and the answer is in
+  [sector-collide.md](sector-collide.md): `0x0045cab0` is O(n) per bucket-0
+  object (so O(n₀·N) overall), and `0x0045d250` additionally holds an explicit
+  O(N²) pair loop over the class buckets. `0x00452ad0` was
   surveyed by call histogram and string xrefs only; it was not decompiled.
 
 ## Reproduce
