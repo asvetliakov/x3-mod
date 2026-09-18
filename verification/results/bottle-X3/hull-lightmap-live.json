@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-hd001_bt",
+  "inputs": {
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0f6b3508b852cb7a/verification/probe/build/motion_output_fixture.exe": "8d70eff42a516b9f8afae3d89046dc1c9470849a571c9517503f64d05d01ba37",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0f6b3508b852cb7a/verification/probe/build/motion-output-seam/d3d9.dll": "00bc24bf4f0412923a6c35a9cef7237b538c48d35a35d4db84eddad28c4b6c52",
+    "/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+    "/private/tmp/x3-shader-sweep/programs/ps_63f96eba9eea7880.bin": "2046f15c8d3c761508a5abf8e4b540c7d6aa8902d131f02533377e68a9bfa75b"
+  },
+  "game_launched": false,
+  "cases": {
+    "original_lane_lightmap": {
+      "frames": 6,
+      "histories": 4,
+      "resets": 1,
+      "exact_taa_frames": 6,
+      "refusal_frames": 0,
+      "writer_signatures": 0,
+      "composition_frames": 0,
+      "mask_union_pixels": 0,
+      "positive_frames": 5,
+      "zero_frames": 1,
+      "negative_selftest": false,
+      "linear_materials": false,
+      "lightmap": {
+        "lightmap_gain": 4.0,
+        "gained_share_variants": 2,
+        "gained_frames": [
+          0,
+          1,
+          2,
+          5
+        ],
+        "gained_draws": 5,
+        "toggles": [
+          3,
+          5
+        ]
+      },
+      "elapsed_seconds": 5.591995792,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-hd001_bt/original_lane_lightmap",
+        "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-hd001_bt/original_lane_lightmap/fixture.exe",
+        "Z:/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "Z:/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
+        "sunlane"
+      ]
+    }
+  }
+}

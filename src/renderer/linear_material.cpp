@@ -986,18 +986,108 @@ bool palette_sites(const Word* code, const Structure& s, const PaletteProgram& p
            (vertex || style!=2 || palette_declarations==1);
 }
 
-// The fill DEF may only be added to a program that never reads or defines it.
-bool fill_constant_free(const Word* code, const Structure& s) noexcept {
+// Definitions and operand reads of one float constant over the walked program
+// (DCL payloads and DEF literals excluded).
+void constant_uses(const Word* code, const Structure& s, unsigned number, unsigned& definitions, unsigned& reads) noexcept {
+    definitions=0; reads=0;
     for (const auto& instruction:s.instructions) {
         if (instruction.opcode==dcl) continue;
         if (instruction.opcode==def) {
-            if (kind(code[instruction.at+1])==constant && index(code[instruction.at+1])==fill_constant) return false;
+            if (kind(code[instruction.at+1])==constant && index(code[instruction.at+1])==number) ++definitions;
             continue;
         }
         for (unsigned operand=1; operand<=instruction.count; ++operand)
-            if (kind(code[instruction.at+operand])==constant && index(code[instruction.at+operand])==fill_constant) return false;
+            if (kind(code[instruction.at+operand])==constant && index(code[instruction.at+operand])==number) ++reads;
     }
-    return true;
+}
+// A shader-local DEF may only be added to a program that never reads or defines it.
+bool constant_free(const Word* code, const Structure& s, unsigned number) noexcept {
+    unsigned definitions=0, reads=0;
+    constant_uses(code,s,number,definitions,reads);
+    return definitions==0 && reads==0;
+}
+bool fill_constant_free(const Word* code, const Structure& s) noexcept { return constant_free(code,s,fill_constant); }
+// Hull self-illumination gain (docs/reverse-engineering/hull-self-illumination.md
+// 5): the light-map fetch of an opaque hull program is the profile-pinned
+// `texld rL.xyzw_pp, vN, s{2|3}` (Pixel::texture[bump?3:2],
+// XtPixel::texture[bump?3:2]); its RGB is consumed once, by the final colour
+// instruction (`add oC0.xyz, r1, rL`, the XT `mad oC0.xyz, r1, r2.z, rL`) or
+// first by the one intervening `mad rL.xyz, r2, r3.w, rL` of the XT terra
+// rows; rL.w feeds the alpha LRP. One `mul rL.xyz, rL, c223.x` directly after
+// the fetch gains the term alone. c223 is the last ps_3_0 constant, read by
+// no original (max c26) and by no other reservation of this unit (c212-c222);
+// it is a shader-local DEF, as the ONE/ONE hull-emission variant's is.
+constexpr unsigned lightmap_gain_constant = 223;
+bool reads_rgb(Word operand, unsigned reg) noexcept {
+    if (kind(operand)!=temp || index(operand)!=reg) return false;
+    const unsigned swizzle=(operand>>16)&0xff;
+    for (unsigned c=0;c<4;++c) if (((swizzle>>(2*c))&3)<3) return true;
+    return false;
+}
+bool writes_rgb(Word destination, unsigned reg) noexcept {
+    return kind(destination)==temp && index(destination)==reg && (mask(destination)&xyz)!=0;
+}
+void lightmap_gain_instruction(Words& out, unsigned reg) {
+    emit(out,mul,{dst(temp,reg),src(temp,reg),lane(constant,lightmap_gain_constant,0)});
+}
+// The term's liveness between the fetch at `site` and the final colour
+// instruction at `final_rgb` (instruction DWORDs of `code`): the fetch samples
+// `stage` into rL.xyzw; with `gained` the exact gain MUL follows it; from there
+// to the final no instruction writes rL.xyz, reads it (an unswizzled read by
+// the single terra MAD writing rL.xyz excepted) or branches; the final writes
+// `final_destination`.xyz from exactly one unmodified rL operand; nothing
+// after it reads rL.xyz. Returns rL, or -1 when the program has no such term.
+int lightmap_term(const Word* code, const Structure& s, std::size_t site, std::size_t final_rgb,
+                  unsigned stage, bool gained, Word final_destination) noexcept {
+    std::size_t i=0;
+    while (i<s.instructions.size() && s.instructions[i].at!=site) ++i;
+    if (i>=s.instructions.size() || site>=final_rgb) return -1;
+    const auto& fetch=s.instructions[i];
+    const Word target=code[fetch.at+1];
+    if (fetch.opcode!=texld || fetch.count!=3 || kind(target)!=temp || (target&~pp)!=dst(temp,index(target),xyzw) ||
+        kind(code[fetch.at+3])!=10 || index(code[fetch.at+3])!=stage || (code[fetch.at+3]&relative)) return -1;
+    const unsigned reg=index(target);
+    // The stage must be a declared 2D sampler: the glass programs fetch their
+    // cube at s2 into r0 and add it in the same final form.
+    bool two_dimensional=false;
+    for (const auto& in:s.instructions)
+        if (in.opcode==dcl && kind(code[in.at+2])==10 && index(code[in.at+2])==stage) two_dimensional=((code[in.at+1]>>27)&15)==2;
+    if (!two_dimensional) return -1;
+    if (gained) {
+        if (++i>=s.instructions.size()) return -1;
+        const auto& gain=s.instructions[i];
+        if (gain.opcode!=mul || gain.count!=3 || code[gain.at+1]!=dst(temp,reg) || code[gain.at+2]!=src(temp,reg) ||
+            code[gain.at+3]!=lane(constant,lightmap_gain_constant,0)) return -1;
+    }
+    bool terra=false, final=false;
+    for (++i; i<s.instructions.size(); ++i) {
+        const auto& in=s.instructions[i];
+        if (in.opcode==dcl || in.opcode==def) return -1;
+        if (final) {
+            for (unsigned q=1;q<=in.count;++q) if (reads_rgb(code[in.at+q],reg)) return -1;
+            continue;
+        }
+        // Opcode set coupled to structure()'s body_shape: it admits only these flow-control forms in a pixel program.
+        if (in.opcode>=38 && in.opcode<=43) return -1; // rep/endrep/if/ifc/else/endif
+        unsigned reads=0; bool exact=false;
+        for (unsigned q=2;q<=in.count;++q) {
+            if (reads_rgb(code[in.at+q],reg)) ++reads;
+            if (code[in.at+q]==src(temp,reg) && q==in.count) exact=true;
+        }
+        if (in.at==final_rgb) {
+            if ((in.opcode!=add && in.opcode!=mad) || (code[in.at+1]&~pp)!=final_destination || reads!=1) return -1;
+            bool operand=false;
+            for (unsigned q=2;q<=in.count;++q) if (code[in.at+q]==src(temp,reg)) operand=true;
+            if (!operand) return -1;
+            final=true; continue;
+        }
+        if (reads) {
+            if (terra || in.opcode!=mad || !exact || reads!=1 || (code[in.at+1]&~pp)!=dst(temp,reg)) return -1;
+            terra=true; continue;
+        }
+        if (in.count && writes_rgb(code[in.at+1],reg)) return -1;
+    }
+    return final ? int(reg) : -1;
 }
 struct Insertion { std::size_t at, begin, end; };
 // Prove the exact original -> ordinary-motion partition before editing. All
@@ -1621,12 +1711,19 @@ bool original_sun_plan(const Word* original, const Structure& source, const std:
 // conversion edits. The output is the motion variant plus the DEF and block.
 // With share_applied the same skeleton also carries the share producer; a
 // refused plan keeps the fill/motion variant byte for byte (fail closed).
+// With lightmap_gain != 1 it also carries the hull self-illumination gain
+// (one DEF, one MUL after the light-map fetch, lightmap_term above); a
+// program without the term (glass, asteroid) keeps the fill/motion variant
+// byte for byte and reports lightmap_gain_applied = false.
 LinearMaterialResult original_fill_transform(const Word* original, std::size_t words, float fill,
-    Words& output, bool current_depth, bool& fill_applied, bool* share_applied=nullptr) noexcept {
+    Words& output, bool current_depth, bool& fill_applied, bool* share_applied=nullptr,
+    float lightmap_gain=1.0f, bool* lightmap_gain_applied=nullptr) noexcept {
     fill_applied=false;
     if (share_applied) *share_applied=false;
+    if (lightmap_gain_applied) *lightmap_gain_applied=false;
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!std::isfinite(fill) || fill<0.0f || fill>0.5f) return LinearMaterialResult::InvalidConfig;
+    if (!std::isfinite(lightmap_gain) || lightmap_gain<1.0f || lightmap_gain>8.0f) return LinearMaterialResult::InvalidConfig;
     if (words>1791 || original[0]!=0xffff0300u) return LinearMaterialResult::UnsupportedShader;
     const auto hash=material_motion_fingerprint(original,words);
     const XtPixel* xt=nullptr;
@@ -1664,6 +1761,19 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         // operands (hull rows color_source[0..1]; XT lights with value 6).
         std::vector<SunEdit> edits; Word final_destination=0; bool share=false;
         unsigned final_rgb=xt ? xt->final_rgb : p->final_rgb;
+        // Light-map gain site: the pinned fetch, its stage and register proved
+        // by lightmap_term on the original (the term proof alone refuses the
+        // asteroid and glass layouts: product final, cube at s2); c223 must be
+        // free of the original.
+        unsigned lightmap_stage=0, lightmap_site=0, lightmap_reg=0; bool lightmap_on=false;
+        if (lightmap_gain!=1.0f) {
+            lightmap_stage=(xt ? xt->bump : p->bump) ? 3u : 2u;
+            lightmap_site=xt ? xt->texture[lightmap_stage] : p->texture[lightmap_stage];
+            const int reg=lightmap_term(original,s,lightmap_site,final_rgb,lightmap_stage,false,dst(color_output,0));
+            lightmap_on=reg>=0 && (xt ? unsigned(reg)==xt->texture_reg[lightmap_stage] : reg==0) &&
+                        constant_free(original,s,lightmap_gain_constant);
+            if (lightmap_on) lightmap_reg=unsigned(reg);
+        }
         if (share_applied) {
             std::array<unsigned,2> seeds{};
             if (xt) {
@@ -1690,9 +1800,9 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             Words block; original_fill_block(block,sum,light);
             if (!original_share_range_free(block.data(),0,block.size(),true,sum,light)) return LinearMaterialResult::ResourceLimit;
         }
-        if (!fill_on && !share) { output.swap(motion); return LinearMaterialResult::Applied; }
-        Words combined; combined.reserve(motion.size()+(share?640:64)); combined.push_back(original[0]);
-        std::size_t inserted=0, edited=0;
+        if (!fill_on && !share && !lightmap_on) { output.swap(motion); return LinearMaterialResult::Applied; }
+        Words combined; combined.reserve(motion.size()+(share?640:80)); combined.push_back(original[0]);
+        std::size_t inserted=0, edited=0, combined_site=0, combined_final=0;
         const auto flush_edits=[&](std::size_t at) {
             while (edited<edits.size() && edits[edited].at==at) {
                 const auto& e=edits[edited++]; combined.insert(combined.end(),e.words.begin(),e.words.end());
@@ -1710,6 +1820,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                     emit(combined,def,{dst(constant,original_share_domain,xyzw),bits(2.2f),bits(0.0f),bits(65504.0f),bits(original_share_slack)});
                     emit(combined,def,{dst(constant,sun_constant,xyzw),bits(0.2126f),bits(0.7152f),bits(0.0722f),bits(0x1p-20f)});
                 }
+                if (lightmap_on) emit(combined,def,{dst(constant,lightmap_gain_constant,xyzw),bits(lightmap_gain),bits(0.0f),bits(0.0f),bits(0.0f)});
             }
             if (original[at]==end_token) {
                 // After the motion body's depth write: the sole oC2.g MOV.
@@ -1733,15 +1844,31 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             const std::size_t copy=combined.size();
             combined.insert(combined.end(),original+at,original+at+n+1);
             if (share && at==final_rgb) combined[copy+1]=final_destination;
+            if (at==final_rgb) combined_final=copy;
+            // The gain MUL immediately after the light-map fetch, before any
+            // motion insertion keyed on the next original instruction.
+            if (lightmap_on && at==lightmap_site) { combined_site=copy; lightmap_gain_instruction(combined,lightmap_reg); }
             at+=n+1;
         }
         if (inserted!=insertions.size() || edited!=edits.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final_structure;
         if (!structure(combined.data(),combined.size(),false,final_structure,false,abi,temp_count,false,false,xt!=nullptr))
             return LinearMaterialResult::ResourceLimit;
+        if (lightmap_on) {
+            // The emitted program re-proves the term: one DEF and one read of
+            // c223, the fetch followed by the exact MUL, rL.xyz untouched by
+            // every motion/fill/share insertion until the final instruction.
+            unsigned definitions=0, reads=0;
+            constant_uses(combined.data(),final_structure,lightmap_gain_constant,definitions,reads);
+            if (definitions!=1 || reads!=1 || combined_site==0 || combined_final==0 ||
+                lightmap_term(combined.data(),final_structure,combined_site,combined_final,lightmap_stage,true,
+                              share ? dst(temp,original_share_total) : dst(color_output,0))!=int(lightmap_reg))
+                return LinearMaterialResult::ProfileMismatch;
+        }
         output.swap(combined);
         fill_applied=fill_on;
         if (share_applied) *share_applied=share;
+        if (lightmap_gain_applied) *lightmap_gain_applied=lightmap_on;
         return LinearMaterialResult::Applied;
     } catch (...) { return LinearMaterialResult::AllocationFailure; }
 }
@@ -1751,9 +1878,13 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const Word* ori
     return original_fill_transform(original,words,fill,output,current_depth,fill_applied);
 }
 LinearMaterialResult linear_material_original_sun_share_pixel_variant(const Word* original, std::size_t words,
-    float fill, Words& output, bool current_depth, bool& share_applied) noexcept {
+    float fill, Words& output, bool current_depth, bool& share_applied, float lightmap_gain, bool* lightmap_gain_applied) noexcept {
     bool fill_applied=false;
-    return original_fill_transform(original,words,fill,output,current_depth,fill_applied,&share_applied);
+    return original_fill_transform(original,words,fill,output,current_depth,fill_applied,&share_applied,lightmap_gain,lightmap_gain_applied);
+}
+LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const Word* original, std::size_t words,
+    float fill, float gain, Words& output, bool current_depth, bool& fill_applied, bool& gain_applied) noexcept {
+    return original_fill_transform(original,words,fill,output,current_depth,fill_applied,nullptr,gain,&gain_applied);
 }
 } // namespace x3m::renderer
 

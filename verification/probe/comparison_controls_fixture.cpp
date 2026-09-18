@@ -54,7 +54,9 @@ int main(){
     e.foreground=true;CHECK(!emitters.sample(e).screen_additive); // held through alt-tab
     e.screen_additive=false;emitters.sample(e);e.screen_additive=true;CHECK(emitters.sample(e).screen_additive);
     emitters.reset_focus();{const auto a=emitters.sample(e);CHECK(!a.screen_additive&&!a.source_gain);}
-    // F4 (hull emitters): its own edge, independent of F6; held is not a press; focus loss disarms it.
+    // F4 (hull emission: the ONE/ONE hull emitters and the hull light-map gain
+    // share the one edge; MotionOutput::hull_emission_gain_toggle flips both):
+    // its own edge, independent of F6; held is not a press; focus loss disarms it.
     x3m::ComparisonControls hull;
     x3m::ComparisonKeys k{};k.foreground=true;k.control=k.shift=true;hull.sample(k);
     k.hull_gain=true;{const auto a=hull.sample(k);CHECK(a.hull_gain&&!a.source_gain&&!a.screen_additive);}

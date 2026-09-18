@@ -27,7 +27,7 @@ APPLY_SKIP_REASONS = frozenset(('none', 'lane', 'replay', 'owner', 'depth', 'rec
                                 'sun', 'basis', 'rows', 'cascades', 'absent'))  # the cascade branch's own
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
          'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission',
-         'shadow_apply_cascades', 'shadow_apply_linear', 'shadow_apply_cascades_linear')
+         'shadow_apply_cascades', 'original_lane_lightmap', 'shadow_apply_linear', 'shadow_apply_cascades_linear')
 # shadow_apply_linear / shadow_apply_cascades_linear: the same scripts under the receiver-depth
 # option (X3M_SUN_SHADOW_RECEIVER_DEPTH=linear, docs/architecture/shadow-receiver-depth.md): the
 # lane's RT2 is A32B32G32R32F (116) and the params lines say depth_encoding=linear; the plain
@@ -60,7 +60,36 @@ HULL_GAIN = 2.0
 # legacy-sun-application.md sections 4.1-4.2 and 3.4): the original share
 # producer, the cutout pair through the tested-opaque arm, and the scene-end
 # apply quad over the depth replay of the same frame.
-ORIGINAL_CASES = ('original_lane', 'shadow_apply', 'original_share_refused')  # by apply_base(case)
+ORIGINAL_CASES = ('original_lane', 'shadow_apply', 'original_share_refused', 'original_lane_lightmap')  # by apply_base(case)
+# original_lane_lightmap (hull-self-illumination.md 5): the original_lane
+# script under X3M_HULL_LIGHTMAP_GAIN=4: both registered originals get a
+# gained share variant beside the share variant, the lane binds it on every
+# flag-on frame (hull_lightmap_frame), the fixture presses the shared F4 action
+# before frames 3 (off; the Reset after frame 3 keeps the flag, so frame 4 is
+# off too) and 5 (on), and the TAA frames stay exact.
+LIGHTMAP_GAIN = 4.0
+
+
+def validate_lightmap(text, trace):
+    lines = trace.splitlines()
+    variants = [fields(l) for l in lines if l.startswith('sun_shadow_original_lightmap_variant ')]
+    assert len(variants) >= 2 and {r['original'] for r in variants} >= {'8759c7838bbc86c2', '63f96eba9eea7880'}, variants
+    assert all(r['share_applied'] == '1' and r['gain_applied'] == '1' and r['create'] == '00000000' and r['transform'] == '0' and float(r['gain']) == LIGHTMAP_GAIN for r in variants), variants
+    plain = [fields(l) for l in lines if l.startswith('hull_lightmap_variant ')]
+    assert len(plain) >= 2 and all(r['gain_applied'] == '1' and r['create'] == '00000000' for r in plain), plain
+    frames = [fields(l) for l in lines if l.startswith('hull_lightmap_frame ')]
+    assert [(int(r['frame']), int(r['admitted']), r['toggled']) for r in frames] == [(0, 1, '1'), (1, 1, '1'), (2, 2, '1'), (5, 1, '1')], frames
+    assert all(float(r['gain']) == LIGHTMAP_GAIN for r in frames), frames
+    toggles = [fields(l) for l in lines if l.startswith('hull_emission_gain_toggle ')]
+    assert [(int(r['frame']), r['accepted'], r['enabled'], r['requested'], r['lightmap_requested'], float(r['lightmap_gain'])) for r in toggles] == \
+        [(3, '1', '0', '0', '1', LIGHTMAP_GAIN), (5, '1', '1', '0', '1', LIGHTMAP_GAIN)], toggles
+    presses = [fields(l) for l in text.splitlines() if l.startswith('SUN_LIGHTMAP_TOGGLE ')]
+    assert [(int(r['frame']), r['state']) for r in presses] == [(3, '0'), (5, '1')], presses
+    witnesses = [fields(l) for l in text.splitlines() if l.startswith('SUN_LIGHTMAP ')]
+    assert [(int(r['frame']), int(r['gained_draws'])) for r in witnesses] == [(0, 1), (1, 1), (2, 2), (3, 0), (4, 0), (5, 1)], witnesses
+    assert 'hull_lightmap_gain_mode requested=1 enabled=1 hdr=1 linear_materials=0 gain=4 gain_valid=1' in trace
+    return dict(lightmap_gain=LIGHTMAP_GAIN, gained_share_variants=len(variants), gained_frames=[int(r['frame']) for r in frames],
+                gained_draws=sum(int(r['admitted']) for r in frames), toggles=[int(r['frame']) for r in toggles])
 # Bucket names of the sun_shadow_lane_refusals line (src/renderer/sun_share_frame.h, SunUntrackedReason order).
 REASONS = ('unknown', 'feature', 'scene', 'unregistered', 'pair', 'no_zwrite', 'blended', 'state', 'rows',
            'geometry', 'no_depth', 'fade_arm', 'apply_failed', 'scope', 'history', 'read_failed')
@@ -490,7 +519,7 @@ def main():
     selected = args.case or CASES
     names = ['vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin']
     if any(case.startswith('composition') for case in selected): names += ['vs_089091aab2d5eb13.bin', 'ps_8559522220507d5e.bin']
-    if any(case in selected for case in ('cutout_pair', 'cutout_pair_bias', 'original_lane')): names += ['ps_63f96eba9eea7880.bin']
+    if any(case in selected for case in ('cutout_pair', 'cutout_pair_bias', 'original_lane', 'original_lane_lightmap')): names += ['ps_63f96eba9eea7880.bin']
     if 'hull_emission' in selected: names += list(HULL_PROGRAMS)
     programs = [args.programs.resolve()/name for name in names]
     inputs = {str(p): sha(p) for p in (fixture, dll, *programs)}
@@ -558,6 +587,8 @@ def main():
                 env['X3M_LINEAR_MATERIALS'] = '0'
             if case == 'original_share_refused':
                 env.update(X3M_FIXTURE_SUN_LANE_FAULT='original_share', X3M_ORIGINAL_FILL='0.05')
+            if case == 'original_lane_lightmap':
+                env['X3M_HULL_LIGHTMAP_GAIN'] = repr(LIGHTMAP_GAIN)
             if case in APPLY_CASES:
                 # The depth replay (ownership bookends, rotating camera seam, a
                 # 512^2 map over a 32-unit half-extent centred on the camera so
@@ -574,7 +605,10 @@ def main():
                 completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
             assert completed.returncode == 0, (case, completed.returncode, str(work))
             logs = list((work/'x3-modern-captures').glob('session-*.log')); assert len(logs) == 1
-            check = validate((work/'stdout.txt').read_text(), logs[0].read_text(), work, 'shadow_apply' if apply_base(case) == 'shadow_apply_cascades' else apply_base(case))
+            script = 'shadow_apply' if apply_base(case) == 'shadow_apply_cascades' else 'original_lane' if case == 'original_lane_lightmap' else apply_base(case)
+            check = validate((work/'stdout.txt').read_text(), logs[0].read_text(), work, script)
+            if case == 'original_lane_lightmap':
+                check['lightmap'] = validate_lightmap((work/'stdout.txt').read_text(), logs[0].read_text())
             if case in APPLY_CASES:
                 wanted = ('linear', 116) if case.endswith('_linear') else ('device', 115)
                 assert (check.get('receiver_depth'), check.get('rt2_format')) == wanted, (case, 'RT2 encoding and format of this case', check.get('receiver_depth'), check.get('rt2_format'), wanted)

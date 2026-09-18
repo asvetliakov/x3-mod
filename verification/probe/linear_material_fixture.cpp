@@ -236,6 +236,31 @@ unsigned instructions(const Words &w) {
   }
   throw std::runtime_error("missing shader END");
 }
+// Round-to-nearest-even binary16 encode (the FP16 store's rounding), for the
+// hull light-map twin below; the runner mirrors it with linear_material_reference.
+unsigned short to_half(float f) {
+  unsigned b;
+  std::memcpy(&b, &f, 4);
+  const unsigned sign = (b >> 16) & 0x8000, biased = (b >> 23) & 255;
+  unsigned man = b & 0x7fffff;
+  if (biased == 255) return static_cast<unsigned short>(sign | 0x7c00 | (man ? 0x200 : 0));
+  const int exponent = int(biased) - 127 + 15;
+  if (exponent >= 31) return static_cast<unsigned short>(sign | 0x7c00);
+  if (exponent <= 0) {
+    if (exponent < -10) return static_cast<unsigned short>(sign);
+    man |= 0x800000;
+    const unsigned shift = unsigned(14 - exponent);
+    unsigned half = man >> shift;
+    const unsigned rest = man & ((1u << shift) - 1), halfway = 1u << (shift - 1);
+    if (rest > halfway || (rest == halfway && (half & 1))) ++half;
+    return static_cast<unsigned short>(sign | half);
+  }
+  unsigned half = sign | (unsigned(exponent) << 10) | (man >> 13);
+  const unsigned rest = man & 0x1fff;
+  if (rest > 0x1000 || (rest == 0x1000 && (half & 1))) ++half;
+  return static_cast<unsigned short>(half);
+}
+int half_code(unsigned short h) { return (h & 0x8000) ? -int(h & 0x7fff) : int(h & 0x7fff); }
 float from_half(unsigned short h) {
   unsigned sign = unsigned(h & 0x8000) << 16, exponent = (h >> 10) & 31,
            mantissa = h & 1023, b;
@@ -269,14 +294,19 @@ struct Shaders {
   // gain variant of the ORIGINAL pixel program; its VS and its baseline are
   // mode 0, the untransformed original pair with the MRTs disabled.
   float hull_gain = 0.0f;
+  // --hull-lightmap-gain G K (hull-self-illumination.md 5): mode 13 is the
+  // hull light-map gain variant of the ORIGINAL pixel program composed with
+  // the fill K (K=0: the motion PS plus the gain); its VS is mode 1's and its
+  // baseline is mode 5 (K>0) or 7 (K=0).
+  float lightmap_gain = 0.0f;
   D3DCAPS9 caps;
   Words originals[2][108];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path,
           const std::vector<Case>& cases, float fill_value = 0.0f, float original_fill_value = 0.0f,
-          float hull_gain_value = 0.0f)
-      : d(device), fill(fill_value), original_fill(original_fill_value), hull_gain(hull_gain_value) {
+          float hull_gain_value = 0.0f, float lightmap_gain_value = 0.0f)
+      : d(device), fill(fill_value), original_fill(original_fill_value), hull_gain(hull_gain_value), lightmap_gain(lightmap_gain_value) {
     api(d->GetDeviceCaps(&caps));
     // Scoped runs require only their selected originals. Load each once, after
     // validating the case index; variant creation remains lazy in bind().
@@ -302,6 +332,11 @@ struct Shaders {
     if (mode == 12) {
       if (!pixel) return key(c, 0, false);
       std::snprintf(buffer, sizeof buffer, "%s_12_hull_%.9g", id, hull_gain);
+      return buffer;
+    }
+    if (mode == 13 || mode == 14) {
+      if (!pixel) return key(c, 1, false);
+      std::snprintf(buffer, sizeof buffer, mode == 13 ? "%s_13_%u_olight_%.9g_%.9g" : "%s_14_%u_oshare_light_%.9g_%.9g", id, c.depth, original_fill, lightmap_gain);
       return buffer;
     }
     if (mode >= 5) {
@@ -389,6 +424,41 @@ struct Shaders {
           at += count + 1;
         }
         require(staged == 1, "exactly one fill tint staging MOV in the fill PS");
+      } else if (mode == 13) {
+        // Hull light-map gain: the fill variant with K (the motion PS at K=0)
+        // as the control; gain 1 must be the control byte for byte; the gain
+        // applies to exactly the programs with the term (not glass, not
+        // asteroid), where it adds one DEF and one MUL; elsewhere the output
+        // is the control.
+        Words control; bool control_fill = false, identity_fill = false, identity_gain = true, applied_fill = false, applied = false;
+        require(linear_material_original_fill_pixel_variant(original.data(), original.size(), original_fill, control, c.depth, control_fill) ==
+                LinearMaterialResult::Applied, "hull light-map control transform");
+        require(control_fill == (original_fill > 0.0f), "hull light-map control fill report");
+        Words identity = {0xdeadbeef};
+        require(linear_material_hull_lightmap_gain_pixel_variant(original.data(), original.size(), original_fill, 1.0f, identity, c.depth, identity_fill, identity_gain) ==
+                LinearMaterialResult::Applied && identity == control && identity_fill == control_fill && !identity_gain, "gain 1 is the control program");
+        require(linear_material_hull_lightmap_gain_pixel_variant(original.data(), original.size(), original_fill, lightmap_gain, output, c.depth, applied_fill, applied) ==
+                LinearMaterialResult::Applied, "hull light-map gain transform");
+        const bool term = !is_glass(c) && !(c.pair >= 110 && c.pair < 116);
+        require(applied == term && applied_fill == control_fill, "the gain applies to exactly the light-map programs");
+        if (applied) require(output.size() == control.size() + 10, "one DEF and one MUL added");
+        else require(output == control, "a program without the term keeps the control");
+      } else if (mode == 14) {
+        // The share producer (mode 8) composed with the light-map gain: gain 1
+        // is the share variant byte for byte, the gain adds the same DEF and
+        // MUL in exactly the light-map programs.
+        Words control; bool control_share = false, identity_share = false, identity_gain = true, share = false, applied = false;
+        require(linear_material_original_sun_share_pixel_variant(original.data(), original.size(), original_fill, control, c.depth, control_share) ==
+                LinearMaterialResult::Applied && control_share, "share control transform");
+        Words identity = {0xdeadbeef};
+        require(linear_material_original_sun_share_pixel_variant(original.data(), original.size(), original_fill, identity, c.depth, identity_share, 1.0f, &identity_gain) ==
+                LinearMaterialResult::Applied && identity == control && identity_share && !identity_gain, "gain 1 is the share control program");
+        require(linear_material_original_sun_share_pixel_variant(original.data(), original.size(), original_fill, output, c.depth, share, lightmap_gain, &applied) ==
+                LinearMaterialResult::Applied && share, "gained share transform");
+        const bool term = !is_glass(c) && !(c.pair >= 110 && c.pair < 116);
+        require(applied == term, "the gain applies to exactly the light-map programs");
+        if (applied) require(output.size() == control.size() + 10, "one DEF and one MUL added to the share variant");
+        else require(output == control, "a program without the term keeps the share control");
       } else {
         bool applied = false;
         require(linear_material_original_fill_pixel_variant(original.data(), original.size(),
@@ -1050,6 +1120,87 @@ struct Gpu {
                     c.id, x, y, b.f[0], b.f[1], b.f[2], b.f[3], g.f[0], g.f[1], g.f[2], g.f[3]);
       }
   }
+  // --hull-lightmap-gain G K: the fill variant (K>0: mode 5; K=0: the plain
+  // motion PS, mode 7) as the baseline in RGBA32F and FP16, the gained variant
+  // (mode 13) in both. The 1x1 light-map texel L is exact, so the CPU twin of
+  // every pixel is base32 + (G-1)*L (the term is added at weight 1 after all
+  // lighting; the terra rows' intervening MAD is linear in it); the FP16
+  // output must sit within one binary16 code of the twin's binary16 encode.
+  // Alpha, motion and depth are identical to the baseline; a program without
+  // the term (glass, asteroid) is bit-identical to it.
+  // The share producer (mode 8, baseline) against its gained sibling (mode
+  // 14) with the same twin; RT2 (G32R32F here: .r depth, .g share): the depth
+  // is bit-identical and the share follows its law on the gained colour,
+  // s' Y(C') = s Y(C) = Y(S) within one FP16 code of Y(C) (the light map is
+  // unlit, so the sun's code-value contribution is the same and its fraction
+  // of the brighter pixel is smaller); a program without the term keeps the
+  // share bit for bit.
+  void test_hull_lightmap_gain(const Case &c) {
+    Case c32 = c; c32.fp16 = 0;
+    Case c16 = c; c16.fp16 = 1;
+    auto pass = [&](const Case& which, unsigned mode) {
+      state(which, mode);
+      api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+      draw(which);
+      return read(color[which.fp16].p, which.fp16 ? D3DFMT_A16B16G16R16F : D3DFMT_A32B32G32R32F);
+    };
+    const bool term = !is_glass(c) && !(c.pair >= 110 && c.pair < 116);
+    require(c.depth == 1, "hull light-map cases require depth (the share producer needs RT2)");
+    for (unsigned share = 0; share < 2; ++share) {
+      const unsigned baseline = share ? 8 : shaders.original_fill > 0.0f ? 5 : 7, gained = share ? 14 : 13;
+      const auto base32 = pass(c32, baseline);
+      const auto base16 = pass(c16, baseline);
+      const auto motion_before = read(motion.p, D3DFMT_A32B32G32R32F);
+      const auto lane_before = read(current.p, D3DFMT_G32R32F);
+      const auto gained16 = pass(c16, gained);
+      const auto motion_after = read(motion.p, D3DFMT_A32B32G32R32F);
+      const auto lane_after = read(current.p, D3DFMT_G32R32F);
+      const auto gained32 = pass(c32, gained);
+      unsigned alpha_bad = 0, motion_bad = 0, depth_bad = 0, share_bad = 0, rgb_bad = 0, codes_bad = 0, identical = 0, positive = 0, share_positive = 0;
+      int max_codes = 0; double share_codes = 0;
+      const double weights[] = {.2126, .7152, .0722};
+      for (unsigned i = 0; i < width * width; ++i) {
+        for (unsigned k = 0; k < 3; ++k) {
+          rgb_bad += !std::isfinite(gained16[i].f[k]) || gained16[i].f[k] < 0 || !std::isfinite(gained32[i].f[k]) || gained32[i].f[k] < 0;
+          positive += base32[i].f[k] > 0;
+          const float twin = term ? base32[i].f[k] + (shaders.lightmap_gain - 1.0f) * c.f[7 + k] : base32[i].f[k];
+          const int codes = std::abs(half_code(to_half(gained16[i].f[k])) - half_code(to_half(twin)));
+          max_codes = std::max(max_codes, codes);
+          codes_bad += codes > 1;
+        }
+        alpha_bad += std::memcmp(&base16[i].f[3], &gained16[i].f[3], 4) != 0 || std::memcmp(&base32[i].f[3], &gained32[i].f[3], 4) != 0;
+        motion_bad += std::memcmp(&motion_before[i], &motion_after[i], 16) != 0;
+        depth_bad += std::memcmp(&lane_before[i].f[0], &lane_after[i].f[0], 4) != 0;
+        if (share) {
+          const float s = lane_before[i].f[1], sg = lane_after[i].f[1];
+          share_positive += sg > 0.f;
+          if (!term || s == -1.f || sg == -1.f) share_bad += std::memcmp(&s, &sg, 4) != 0;
+          else {
+            require(std::isfinite(s) && s >= 0.f && s <= 1.f && std::isfinite(sg) && sg >= 0.f && sg <= 1.f, "share domain");
+            double y = 0, yg = 0;
+            for (unsigned k = 0; k < 3; ++k) { y += weights[k] * base32[i].f[k]; yg += weights[k] * gained32[i].f[k]; }
+            const double error = std::abs(double(sg) * yg - double(s) * y);
+            const double ulp = y >= std::ldexp(1., -14) ? std::ldexp(1., int(std::floor(std::log2(y))) - 10) : std::ldexp(1., -24);
+            share_codes = std::max(share_codes, error / ulp);
+            share_bad += error / ulp > 1.0;
+          }
+        }
+        identical += std::memcmp(&base16[i], &gained16[i], 16) == 0;
+      }
+      std::printf("HULLLIGHT id=%u pair=%u share=%u pixels=%u term=%u alpha_bad=%u motion_bad=%u depth_bad=%u share_bad=%u share_codes=%.9g rgb_bad=%u codes_bad=%u max_codes=%d identical=%u positive=%u share_positive=%u gain=%.9g fill=%.9g lightmap=%.9g,%.9g,%.9g\n",
+                  c.id, c.pair, share, width * width, unsigned(term), alpha_bad, motion_bad, depth_bad, share_bad, share_codes, rgb_bad, codes_bad, max_codes, identical, positive, share_positive,
+                  shaders.lightmap_gain, shaders.original_fill, c.f[7], c.f[8], c.f[9]);
+      require(!alpha_bad && !motion_bad && !depth_bad && !share_bad && !rgb_bad && !codes_bad && (term || identical == width * width),
+              "hull light-map gain: alpha, temporal identity, the share law, finite RGB, the one-code twin or the untouched program's bit identity");
+      for (unsigned y : {width / 4, width / 2, 3 * width / 4})
+        for (unsigned x : {width / 4, width / 2, 3 * width / 4}) {
+          const auto& b = base32[y * width + x]; const auto& g = gained16[y * width + x]; const auto& g32 = gained32[y * width + x];
+          std::printf("HULLLIGHTSAMPLE id=%u share=%u x=%u y=%u base32=%.9g,%.9g,%.9g,%.9g gained16=%.9g,%.9g,%.9g,%.9g gained32=%.9g,%.9g,%.9g,%.9g lane=%.9g,%.9g\n",
+                      c.id, share, x, y, b.f[0], b.f[1], b.f[2], b.f[3], g.f[0], g.f[1], g.f[2], g.f[3], g32.f[0], g32.f[1], g32.f[2], g32.f[3],
+                      lane_after[y * width + x].f[0], lane_after[y * width + x].f[1]);
+        }
+    }
+  }
   void classify_flat() {
     // Independent color-ramp sentinel: distinguish effective flat COLOR
     // interpolation from a backend that accepts FLAT but interpolates smoothly.
@@ -1273,6 +1424,13 @@ int main(int argc, char **argv) {
     const float hull_gain=hull_gain_mode ? std::strtof(argv[4],&hull_gain_end) : 0.0f;
     require(!hull_gain_mode || (hull_gain_end && *hull_gain_end=='\0' && std::isfinite(hull_gain) && hull_gain>1.0f && hull_gain<=8.0f),
             "hull emitter gain must be finite and within (1,8]");
+    const bool hull_lightmap_mode=argc==6 && std::strcmp(argv[3],"--hull-lightmap-gain")==0;
+    char* lightmap_gain_end=nullptr; char* lightmap_fill_end=nullptr;
+    const float lightmap_gain=hull_lightmap_mode ? std::strtof(argv[4],&lightmap_gain_end) : 0.0f;
+    const float lightmap_fill=hull_lightmap_mode ? std::strtof(argv[5],&lightmap_fill_end) : 0.0f;
+    require(!hull_lightmap_mode || (lightmap_gain_end && *lightmap_gain_end=='\0' && std::isfinite(lightmap_gain) && lightmap_gain>1.0f && lightmap_gain<=8.0f &&
+                                    lightmap_fill_end && *lightmap_fill_end=='\0' && std::isfinite(lightmap_fill) && lightmap_fill>=0.0f && lightmap_fill<=0.5f),
+            "hull light-map gain must be finite and within (1,8], its fill finite and in [0,0.5]");
     const bool original_share_mode=argc==5 && std::strcmp(argv[3],"--original-sun-share")==0;
     char* original_share_end=nullptr;
     const float original_share_fill=original_share_mode ? std::strtof(argv[4],&original_share_end) : 0.0f;
@@ -1280,9 +1438,9 @@ int main(int argc, char **argv) {
             "original sun share fill must be finite and in [0,0.5]");
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     const bool fade_mode=argc==5 && std::strcmp(argv[3],"--distance-fade")==0;
-    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode || hull_gain_mode,"args: programs cases [--distance-fade composite.bin] [--fill K] [--original-fill K] [--original-sun-share K] [--hull-emission-gain G]");
+    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode || hull_gain_mode || hull_lightmap_mode,"args: programs cases [--distance-fade composite.bin] [--fill K] [--original-fill K] [--original-sun-share K] [--hull-emission-gain G] [--hull-lightmap-gain G K]");
 #else
-    require(argc == 3 || sun_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode || hull_gain_mode, "args: programs cases [--alpha-test-cutout] [--fill K] [--original-fill K] [--original-sun-share K] [--hull-emission-gain G]");
+    require(argc == 3 || sun_mode || cutout_mode || fill_mode || original_fill_mode || original_share_mode || hull_gain_mode || hull_lightmap_mode, "args: programs cases [--alpha-test-cutout] [--fill K] [--original-fill K] [--original-sun-share K] [--hull-emission-gain G] [--hull-lightmap-gain G K]");
 #endif
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
@@ -1321,7 +1479,7 @@ int main(int argc, char **argv) {
       api(factory->CreateDevice(0, D3DDEVTYPE_HAL, window,
                                 D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp,
                                 &device.p));
-      Shaders shaders(device.p, argv[1], cases, fill, original_share_mode ? original_share_fill : original_fill, hull_gain);
+      Shaders shaders(device.p, argv[1], cases, fill, original_share_mode ? original_share_fill : hull_lightmap_mode ? lightmap_fill : original_fill, hull_gain, lightmap_gain);
       std::printf("CAPS mrt=%lu vs_slots=%lu ps_slots=%lu\n",
                   shaders.caps.NumSimultaneousRTs,
                   shaders.caps.MaxVertexShader30InstructionSlots,
@@ -1342,6 +1500,16 @@ int main(int argc, char **argv) {
         for (const auto &c : cases) {
           require(c.pair < std::size(pair_v) && c.depth < 2, "case bounds");
           gpu.test_original_fill(c);
+        }
+      }
+      else if (hull_lightmap_mode) {
+        Gpu gpu(device.p, shaders, 16);
+        // RT2 as the share fixture binds it: .r depth, .g the share.
+        gpu.current.p->Release(); gpu.current.p = nullptr;
+        api(device->CreateRenderTarget(16, 16, D3DFMT_G32R32F, D3DMULTISAMPLE_NONE, 0, FALSE, &gpu.current.p, nullptr));
+        for (const auto &c : cases) {
+          require(c.pair < std::size(pair_v) && c.depth < 2, "case bounds");
+          gpu.test_hull_lightmap_gain(c);
         }
       }
       else {
