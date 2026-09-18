@@ -380,6 +380,8 @@ def main():
     parser.add_argument('--lod-scale', type=float, default=None, metavar='FACTOR', help='Push the engine\'s mesh LOD switch distances out by FACTOR, 1..4 (X3M_LOD_SCALE; default absent = vanilla; no other option needed): the LOD threshold multiplier read at 0x0047d44b is replaced by a proxy-owned mirror holding the game\'s value divided by FACTOR (same-length instruction, exact executable and bytes only, otherwise fails closed to vanilla; one lod_scale line in the session log). Cost: about 4-7x the triangles and 13-15x the draw calls per distant station body at 2-3x; the cap of 4 keeps the integer-truncated thresholds away from collapse (docs/architecture/lod-scale.md)')
     parser.add_argument('--point-light-root-admission', action='store_true', help='Admit a point light for a mesh node whose root object is in range, not only when the node itself is (X3M_POINT_LIGHT_ROOT_ADMISSION=1; default absent = vanilla per-node cull): the six-byte range-test branch at 0x004c27af is replaced by a detour that keeps the native decision for an in-range node and otherwise walks the node\'s parent chain (at most 8 bounds-checked hops) and applies the same range predicate to the root; exact executable and bytes only, otherwise fails closed to vanilla; one point_light_root_admission line in the session log (docs/reverse-engineering/camera-and-lights.md, "Point-light admission site")')
     parser.add_argument('--cull-census', action='store_true', help='Log the engine\'s own cull/LOD census on F8 capture frames (X3M_CULL_CENSUS=1; default absent = nothing patched): two read-only trampolines on the per-node cull/LOD pass 0x0047cfe0 record, per node, the LOD metric s = r*640/D, the small-object measure, the two per-node thresholds, the cull verdict and the selected LOD index into a bounded ring (8192 entries, overflow= counted), emitted as cull_census rows at Present; outside capture frames each stub is one compare and a dead branch. Exact executable and bytes only, otherwise fails closed to vanilla; summarise with tools/analysis/cull_census.py (docs/reverse-engineering/lod-selection.md, "Cull census sites")')
+    parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; default absent or 0 = vanilla, nothing patched): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
+    parser.add_argument('--cull-small-parts-scope', choices=('all', 'bodies'), default=None, help='Which nodes --cull-small-parts may cull (X3M_CULL_SMALL_PARTS_SCOPE; default bodies; refused without a non-zero --cull-small-parts, enables nothing on its own). bodies = only nodes without a parent link ([node+0x18] == 0, the test the displaced instruction already performs): whole distant objects, which at 2 px are invisible anyway, while the glowing sub-parts of nearer stations (a few px, visible) stay. all = every node under the threshold. Fixture replay of the run131 rows at 2 px: all 97 nodes / 403 draws, bodies 89 / 395 (body-flagged rows; the rows carry no parent link, docs/verification/cull-small-parts.md). Run 43 B flies bodies against all')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -736,6 +738,11 @@ def main():
             parser.error(f'{name} out of range: {value} (expected {"[" if low_inclusive else "("}{low}, {high}])')
     if args.lod_scale is not None and not (math.isfinite(args.lod_scale) and 1.0 <= args.lod_scale <= 4.0):
         parser.error(f'--lod-scale out of range: {args.lod_scale} (expected [1.0, 4.0])')
+    # 0 is off; otherwise the value must survive the DLL's fixed-point parser ([+]digits[.digits], (0, 64]).
+    if args.cull_small_parts is not None and not (math.isfinite(args.cull_small_parts) and (args.cull_small_parts == 0.0 or 0.0001 <= args.cull_small_parts <= 64.0)):
+        parser.error(f'--cull-small-parts out of range: {args.cull_small_parts} (expected 0 or [0.0001, 64])')
+    if args.cull_small_parts_scope is not None and not args.cull_small_parts:
+        parser.error('--cull-small-parts-scope requires a non-zero --cull-small-parts')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.gz_buffer_kb != 256 and not args.gz_buffer:
@@ -989,6 +996,13 @@ def main():
             env['X3M_CULL_CENSUS'] = '1'
         else:
             env.pop('X3M_CULL_CENSUS', None)
+        # Small-parts cull: same rule; 0 is the documented off and is not forwarded.
+        if args.cull_small_parts:
+            env['X3M_CULL_SMALL_PARTS_PX'] = f'{args.cull_small_parts:.4f}'  # fixed-point: the DLL parser takes no exponent form
+            env['X3M_CULL_SMALL_PARTS_SCOPE'] = args.cull_small_parts_scope or 'bodies'
+        else:
+            env.pop('X3M_CULL_SMALL_PARTS_PX', None)
+            env.pop('X3M_CULL_SMALL_PARTS_SCOPE', None)
         # The two framing constants are always forwarded at their production
         # defaults so a stale shell value cannot reframe the camera; the rest
         # fall through to the DLL's compiled defaults when unset.

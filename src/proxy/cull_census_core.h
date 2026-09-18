@@ -64,28 +64,35 @@ struct Entry {
     std::uint32_t flags_in, flags_out;
     std::int32_t lod;
     std::uint32_t exited;
+    std::uint32_t parent;   // node+0x18 at the measure site (0 = a parentless node: a body for cull_small_parts' scope)
 };
 // The engine's effective size threshold: max(node+0x1d8, parent+0x1d8) when the
 // node has a parent, node+0x1d8 otherwise (0x0047d2a2..0x0047d2b9, signed).
 inline std::int32_t size_limit(std::int32_t own, bool has_parent, std::int32_t parent) {
     return has_parent && parent > own ? parent : own;
 }
-enum class Verdict : unsigned char { kept = 0, culled_size, culled_min, culled_other, no_exit };
-constexpr unsigned verdict_count = 5;
+enum class Verdict : unsigned char { kept = 0, culled_size, culled_min, culled_other, no_exit, culled_small };
+constexpr unsigned verdict_count = 6;
 inline const char* verdict_name(Verdict v) {
-    static const char* const names[verdict_count] = {"kept", "culled_size", "culled_min", "culled_other", "no_exit"};
+    static const char* const names[verdict_count] = {"kept", "culled_size", "culled_min", "culled_other", "no_exit", "culled_small"};
     return unsigned(v) < verdict_count ? names[unsigned(v)] : "?";
 }
 // Classification from the recorded fields, mirroring 0x0047d2a2..0x0047d2e1:
 // a node whose renderable bit is clear at the exit was culled by the size
 // threshold when measure < limit > 0, by the degenerate-size test when
-// measure < 1 (bit 0x4000000 clear), otherwise by a later step (the
-// env-map view's < 20 test with the bit set, or the last-LOD fade).
-inline Verdict classify(const Entry& e) {
+// measure < 1 (bit 0x4000000 clear), by the small-parts stub when its `s`
+// is below the frame's pixel threshold (X3M_CULL_SMALL_PARTS_PX; the stub
+// runs before both engine tests, but the engine's own rules are named first
+// so the census keeps showing the engine's share), otherwise by a later
+// step (the env-map view's < 20 test with the bit set, or the last-LOD fade).
+// small_bodies_only mirrors the stub's scope (X3M_CULL_SMALL_PARTS_SCOPE=bodies):
+// it never culls a parented node, so such a node is not named culled_small.
+inline Verdict classify(const Entry& e, std::int32_t small_threshold = 0, bool small_bodies_only = false) {
     if (!e.exited) return Verdict::no_exit;
     if (e.flags_out & 2u) return Verdict::kept;
     if (e.limit > 0 && e.measure < e.limit) return Verdict::culled_size;
     if (e.measure < 1 && !(e.flags_in & 0x4000000u)) return Verdict::culled_min;
+    if (small_threshold > 0 && e.s < small_threshold && !(small_bodies_only && e.parent)) return Verdict::culled_small;
     return Verdict::culled_other;
 }
 

@@ -1,3 +1,4 @@
+#include "cull_small_parts_core.h"
 #include "camera_state.h"
 #include "object_trace.h"
 #include <windows.h>
@@ -45,7 +46,17 @@ bool initialize() {
     const bool consumer=(GetEnvironmentVariableW(L"X3M_TAA",setting,4)==1&&setting[0]==L'1')||
         (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1')||
         (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1');
-    const bool requested=motion&&consumer;
+    // The small-parts cull (X3M_CULL_SMALL_PARTS_PX, cull_small_parts.cpp)
+    // reads P[0] once per frame for its pixel threshold: same read-only latch.
+    wchar_t px[16]{};
+    const DWORD px_length=GetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PX",px,16);
+    // Armed only for a value the DLL's own parser accepts (in band, > 0).
+    char px_text[16]{};
+    bool px_ascii=px_length>=1&&px_length<16;
+    for(DWORD i=0;px_ascii&&i<px_length;++i){px_ascii=px[i]>=0x21&&px[i]<=0x7e;px_text[i]=static_cast<char>(px[i]);}
+    double px_value=0;
+    const bool small_parts=px_ascii&&cull_small_parts::core::parse_px(px_text,&px_value)&&cull_small_parts::core::valid_px(px_value);
+    const bool requested=(motion&&consumer)||small_parts;
     if(!requested){state="disabled";SetLastError(error);return false;}
     if(!object_trace::executable_verified()){state="executable_mismatch";SetLastError(error);return false;}
     const uintptr_t base=0x400000;
