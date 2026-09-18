@@ -59,69 +59,61 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 38 | Wide single shadow map at 4096 (A), own-ship near map baseline (A2), residual phases at the busy view (B), hull emitters bracket (C) | 0 | A run111 / A2 run112: shadows popped with camera pitch, wrong direction, own-ship flicker — root cause the sun read from PS c4 regardless of program (42 % of frames no sun ⇒ 250-unit fallback, 57 % a bogus (1,0,0) sun, 789 flips); plus extent-cache thrash, near-plane clipping, half-texel lookup; all fixed on main. B run113: one stamp only, `prepare` 6.36 µs/draw bundled; the technique lookup measured offline at 0.007 ms/frame, trampoline dropped. C run114: 2 of 12 programs fired; 71 % refusals were opaque routed hull draws (never ONE/ONE), F6 shared with the effects gain; own toggle and gain option on main |
 | 39 | Cascades with positional sun and caster census (A), 50k far cascade (A2), retained casters live (B), hull emitters at gain 4 (C) | 0 | A run115 only: sun poll on every frame, no cap hit, replay 1.19 µs/draw, shadows 1–3 ms at rest, retention census clean through a gate jump and a load; a camera-following serrated shadow band — root cause the apply quad reconstructing receivers half a pixel off the RT2 sample (C1 over-bias 71.9 % → 1.3 % corrected), fixed on main; stations at 5.6/12 km unshadowed (C3 = 5 km reach). A2/B/C not flown, carried into run 40 |
 | 40 | 30 km five-cascade set (A), 2048² maps (A2), corvette with the adaptive ladder + retained casters (B), hull emitters at gain 4 (C) | 0 | A run116 on the previous build (band gone, 30 km reach, distant flicker → run116 fix); A re-flown as run117: period-2 blink 23.8 % → 0.79 %, asteroids clean, lit station faces still flicker = RT2 fp32 z/w receiver precision (13.6 u per ULP at 37 km), fixed on main behind `--sun-shadow-receiver-depth linear` (run 41 A/B); A2 run118: 2048² accepted as default, replay 539 → 386 µs, c4 record cap never fired, far casters admitted to 44.6 km (150,000 is a half-extent); B run119: own radius 449 u, K 1.5 keeps the corvette in C0 with margin, retention clean (no caps, no orphans, 4 retirements, no crash); near flicker on a sun-grazing plane = receiver-plane extrapolation, slope margin fix in review; C run121/run122: Ctrl+Shift+F4 reaches only the two additive guide-light programs; windows are the light-map term inside 100 opaque hull programs (`--hull-lightmap-gain` in implementation). |
+| 41 | Receiver depth A/B (A/A2), slope margin A/B (B), hull light-map gain 4 (C), FPS overlay | 0 | A run123 / A2 run124: distant flicker gone with the linear encoding (±1 ULP flips 7–20 % of far-cascade pixels under z/w, 0 under w); shadows ≈ 1.4 ms (toggle) / 0.8–1.7 ms (apply+replay); ≥ 30 ms frames are the engine's > 800-draw view submission (28 of 33 ms), not a proxy phase; B run125/run126: retention clean, K 1.5 confirmed, no near flicker seen; the Terran solar-panel shimmer is unaffected by shadows and was the fade-band route inert under original shading (fixed on main); the 24 fps area is an 18 ms engine pre-render episode; C run128: hull light-map gain accepted at 4 (default), guide lights moved to the effects key and gain. |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
 
-## 41. Receiver depth A/B, slope margin A/B, hull light-map gain, FPS overlay — queued (run41 candidate)
+## 42. Pre-render attribution, fade-route shimmer check, cull census, View Distance A/B — queued (run42 candidate)
 
-Installed: run41 candidate from `e1c4afcc` (hash in [status](../status.md)). New since run 40:
-`--sun-shadow-receiver-depth linear` (RT2 stores linear view depth; the far-station flicker fix; in the
-installed run41 build the default was `device` = old behaviour, the A/B; on main since A2 ratified it,
-`linear` is the only encoding, the option a no-op and `device` refused), the cascade apply slope margin
-(default on, `--sun-shadow-bias-slope-texels 0`
-turns it off; the run119 grazing-plane flicker), `--hull-lightmap-gain G` (windows and hull lights in the
-original hull programs; in this build Ctrl+Shift+F4 toggles it together with the guide-light gain, and
-from the next candidate F4 is the light-map gain alone while Ctrl+Shift+F6 switches the effects gain and
-the guide lights together, the launcher defaulting `--hull-lightmap-gain` to 4 under `--hdr`), `--fps-overlay`
-(Ctrl+Alt+F7 = Option+Ctrl+F7 toggles; line 1 FPS / frame ms / draws, line 2 shadows on/off), and the
-telemetry fields `apply_us=` and `flip_c<k>=`. 2048² maps and K 1.5 are now the defaults in the shadow set.
-Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull emission (light-map gain plus the guide
-lights in this build; the light-map gain alone from the next one, with **Ctrl+Shift+F6** taking the effects
-gain and the guide lights), **Ctrl+Alt+F7** FPS overlay, F8 capture.
+Installed: run42 candidate (hash in [status](../status.md)). New since run 41: linear receiver depth is the
+only encoding (`--sun-shadow-receiver-depth linear` is a no-op, `device` refused); the fade-band motion
+route now works under original shading (the run125 solar-panel shimmer: fading surfaces got the raw
+jittered sample); Ctrl+Shift+F4 toggles the hull light-map gain alone (launcher default 4 under `--hdr`),
+Ctrl+Shift+F6 toggles effects and guide lights together (guide lights take `--emission-source-gain`);
+`--cull-census` (engine cull-pass rows on capture frames); `--game-phase-threshold-ms` (default 20) and
+`--telemetry-draw`; `fade_route_mode` startup line. Hotkeys: **Ctrl+Shift+F12** shadows at rest,
+**Ctrl+Shift+F4** hull light maps, **Ctrl+Shift+F6** effects + guide lights, **Ctrl+Alt+F7** FPS overlay, F8.
 
 Common prefix:
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --frame-end-stride 1 --fps-overlay
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay
 ```
-Shadow set (every shadow session):
+Shadow set (every session):
 ```sh
 --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census
 ```
 
-**Session A** (fighter save, run117 station, old receiver encoding, 3–4 minutes):
+**Session A** (telemetry only, no captures; corvette save; ≈ 4 minutes):
 ```sh
-<prefix> <shadow set>
+<prefix> <shadow set> --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --loop-phases --game-phases --pass-phases --residual-phases --telemetry-draw --frame-end-stride 10 --capture-start 999999 --capture-frames 0
 ```
-Fly to the spot of your run117 distant-station flicker. At rest: F8 twice (one close station, one distant lit
-station), Ctrl+Shift+F12 off/on twice, read the FPS overlay in the busy view and note the numbers with
-shadows on and off.
+Stand (a) in the run125 area where you saw ≈ 24 fps for 90 s (if it recurs, stay in it), (b) facing empty
+space 30 s, (c) at the run117 station's ≈ 900-draw view 60 s. Note the FPS overlay at each spot. This
+attributes the pre-render episode and measures the proxy's per-draw cost on the current build.
 
-**Session A2** (same save and spot, new receiver encoding, 3–4 minutes):
+**Session B** (fade-route check; corvette save; ≈ 3 minutes):
 ```sh
-<prefix> <shadow set> --sun-shadow-receiver-depth linear
+<prefix> <shadow set> --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --capture-start 999999 --capture-frames 8 --frame-end-stride 1
 ```
-Same two F8 spots, same toggles, same FPS reading. Report: is the distant-station flicker gone; anything
-changed near; FPS with and without shadows compared to A.
+Go back to the Terran solar power plant (run125 spots): are the panel arrays still shimmering? F8 once
+near. Then find a thin distant object (an antenna or a mast at 3–10 km): does it still shimmer? F8 once on
+it. Report both by eye.
 
-**Session B** (corvette save, retention live, new encoding, 2–3 minutes):
+**Session C** (cull census; fighter save; ≈ 2 minutes):
 ```sh
-<prefix> <shadow set> --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --sun-shadow-receiver-depth linear
+<prefix> <shadow set> --cull-census --capture-start 999999 --capture-frames 2 --frame-end-stride 1
 ```
-Go to the station part that flickered in run119; F8 there. Then relaunch the same command with
-`--sun-shadow-bias-slope-texels 0` added, same spot, F8 again: report which of the two shows the
-flicker. If a Terran solar power plant is reachable, look at the noisy leg and press Ctrl+Shift+F12: report
-whether the noise stops with shadows off.
+At the run117 station, the same ≈ 900-draw view as run124 (FPS overlay ≈ 32 ms): F8 once at rest. One
+more F8 at a second dense view if convenient. (Each captured frame writes up to 8,192 census rows.)
 
-**Session C** (run122 station with windows, new encoding, hull light-map gain, 2 minutes):
-```sh
-<prefix> <shadow set> --sun-shadow-receiver-depth linear --hull-emitters --hull-emission-gain 4 --hull-lightmap-gain 4
-```
-At rest with the station filling the view: F8, Ctrl+Shift+F4, F8. Report whether windows and station
-lights now read as lights at gain 4, whether anything else brightened (panels, decals, hull stripes), and
-whether a window inside a shadow still glows. Say what gain you would want (2, 4, 8).
+**Session D** (View Distance A/B, no proxy option; fighter save; ≈ 3 minutes):
+Same command as C without `--cull-census`. At the same station view, read the FPS overlay (ms and
+draws) for 30 s with View Distance **Very High** (current), then change the in-game graphics option to
+**High**, return to the same view and read it again for 30 s. Report both readings; restore Very High
+afterwards.
 
 Report frame-rate feel per session and the time into the session of each F8.
 

@@ -1474,3 +1474,63 @@ gives the measured hull radius, the slid cascade set and the chase-camera distan
 ```
 Ctrl+Shift+F4 toggles only the hull emitters; one F8 on the station. Report whether position
 lights and signs read as lights at gain 4 and whether anything else brightened.
+
+## 41. Receiver depth A/B, slope margin A/B, hull light-map gain, FPS overlay — completed as run123 (A), run124 (A2), run125/run126 (B), run128 (C)
+
+Installed: run41 candidate from `e1c4afcc` (hash in [status](../status.md)). New since run 40:
+`--sun-shadow-receiver-depth linear` (RT2 stores linear view depth; the far-station flicker fix; in the
+installed run41 build the default was `device` = old behaviour, the A/B; on main since A2 ratified it,
+`linear` is the only encoding, the option a no-op and `device` refused), the cascade apply slope margin
+(default on, `--sun-shadow-bias-slope-texels 0`
+turns it off; the run119 grazing-plane flicker), `--hull-lightmap-gain G` (windows and hull lights in the
+original hull programs; in this build Ctrl+Shift+F4 toggles it together with the guide-light gain, and
+from the next candidate F4 is the light-map gain alone while Ctrl+Shift+F6 switches the effects gain and
+the guide lights together, the launcher defaulting `--hull-lightmap-gain` to 4 under `--hdr`), `--fps-overlay`
+(Ctrl+Alt+F7 = Option+Ctrl+F7 toggles; line 1 FPS / frame ms / draws, line 2 shadows on/off), and the
+telemetry fields `apply_us=` and `flip_c<k>=`. 2048² maps and K 1.5 are now the defaults in the shadow set.
+Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull emission (light-map gain plus the guide
+lights in this build; the light-map gain alone from the next one, with **Ctrl+Shift+F6** taking the effects
+gain and the guide lights), **Ctrl+Alt+F7** FPS overlay, F8 capture.
+
+Common prefix:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --capture-start 999999 --capture-frames 8 --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --frame-end-stride 1 --fps-overlay
+```
+Shadow set (every shadow session):
+```sh
+--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census
+```
+
+**Session A** (fighter save, run117 station, old receiver encoding, 3–4 minutes):
+```sh
+<prefix> <shadow set>
+```
+Fly to the spot of your run117 distant-station flicker. At rest: F8 twice (one close station, one distant lit
+station), Ctrl+Shift+F12 off/on twice, read the FPS overlay in the busy view and note the numbers with
+shadows on and off.
+
+**Session A2** (same save and spot, new receiver encoding, 3–4 minutes):
+```sh
+<prefix> <shadow set> --sun-shadow-receiver-depth linear
+```
+Same two F8 spots, same toggles, same FPS reading. Report: is the distant-station flicker gone; anything
+changed near; FPS with and without shadows compared to A.
+
+**Session B** (corvette save, retention live, new encoding, 2–3 minutes):
+```sh
+<prefix> <shadow set> --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --sun-shadow-receiver-depth linear
+```
+Go to the station part that flickered in run119; F8 there. Then relaunch the same command with
+`--sun-shadow-bias-slope-texels 0` added, same spot, F8 again: report which of the two shows the
+flicker. If a Terran solar power plant is reachable, look at the noisy leg and press Ctrl+Shift+F12: report
+whether the noise stops with shadows off.
+
+**Session C** (run122 station with windows, new encoding, hull light-map gain, 2 minutes):
+```sh
+<prefix> <shadow set> --sun-shadow-receiver-depth linear --hull-emitters --hull-emission-gain 4 --hull-lightmap-gain 4
+```
+At rest with the station filling the view: F8, Ctrl+Shift+F4, F8. Report whether windows and station
+lights now read as lights at gain 4, whether anything else brightened (panels, decals, hull stripes), and
+whether a window inside a shadow still glows. Say what gain you would want (2, 4, 8).
+
+Report frame-rate feel per session and the time into the session of each F8.
