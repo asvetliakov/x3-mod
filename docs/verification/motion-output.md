@@ -1138,3 +1138,54 @@ the A/B of the four drifted HDR cases and the harness findings (the TAA
 sharpen/mip-bias pin; the fade-route and HDR drift resolved on main by
 39d9863): [state-call-fast-path.md](../architecture/state-call-fast-path.md),
 "Hybrid unhook (step 5, implemented)".
+
+## User run 41 B (run125): solar-panel arrays shimmer — fade-band arm inert under original shading (2026-09-18)
+
+Snapshot `/tmp/x3-bottleX3-run125` (run41 candidate, `X3M_LINEAR_MATERIALS=0`,
+`X3M_TAA_SENTINEL=auto` → policy 2, mip bias −0.5, sharpen 0.75), bursts
+22624–22631 and 24486–24493 (`screenshots/flicker1.png`). Diagnosis in
+[asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md),
+"Run 125": the panel faces are the station fade pair
+`4944d81dfe531b37`/`64bac8bb307eb896` drawn in the exact fade-band state at
+fraction 1000 (c39/c41 = 1, b0 = 0), 16 draws per frame refused at gate 4
+because `probe_cutout_caps` never ran without linear materials, so
+`fade_arm_admits` failed its readiness check (`fade_permille=0` on every
+record, no `fade_refused_rect`, no `linear_cutout_device` row). The faces
+carry the fill sentinel (big-array box: 64k sentinel vs 32k routed pixels)
+and take the far-plane camera path, which has zero flow (rotation 0.0000°)
+while the routed struts beside them move 3.0–3.8 px/frame (near) and 0.2–0.5
+px/frame (far): the history is fetched that far off every frame.
+
+Fix: the probe runs when either consumer is configured (linear materials or
+the fade-band threshold ≤ 1000); the cutout arm stays gated on the
+linear-material request. Evidence (worktree build of `44e6b5f0` + this change,
+seam DLL `32d2377f…` and fixture from `build_motion_output.sh`; one
+retained-binary run of the three fade-route cases on that DLL,
+`X3M_FIXTURE_BOTTLE=X3`, compact record
+`verification/results/bottle-X3/fade-route-original.json`, 2026-09-18):
+
+- `seam-taa-fade-route-original` (new: the hover schedule over the sentinel
+  fill with `X3M_LINEAR_MATERIALS=0`, `X3M_LINEAR_DISTANCE_FADE=0`): the DLL's
+  verdict is Ready without linear materials (`linear_cutout_device …
+  verdict=1`, fixture status 30); the arm routes 8, holds 5 and refuses 4
+  frames exactly as the hover tables say, without a bracket (`prepared=0`,
+  `mask_valid=0`, no `linear_material_frame` line; the new
+  `fade_route_frame` line carries `fade_routed/fade_refused/fade_held/
+  fade_route/cutout_caps` per frame); the route records pin the blend
+  triple `-1/-1/-1` (no composition shadow under original shading); raw
+  shift equals the jitter delta and the resolved residual is ≤ 0.056 px (10 samples; 3461
+  fixture checks) on routed and refused frames alike (a refused quad over the sentinel fill
+  takes the far-plane path, exact under the rotating camera). The case was
+  not run against the pre-fix DLL (the pre-fix witness is the run125 log).
+- `seam-taa-fade-route-routed` and `-sentinel` (linear materials on) on the
+  same DLL, in the same record: 5100 checks each, worst raw error 0.0063 px,
+  worst resolved residual 0.0688 px (16 samples). The runner's
+  `motion-output-partial.json` is a run artifact and stays at HEAD.
+- Host: `test_motion_output_runner` (12 tests), `test_linear_cutout_contract`
+  (43 scenarios, 287 checks: a configured arm probes without linear
+  materials, the cutout arm stays off; neither consumer → no probe),
+  `test_fade_region` (13 tests).
+
+Open: whether the resolved panels still re-roll on the 512² grid texture with
+the arm active (raw dumps only in run125; no resolved or reactive-mask dump)
+is for the next user run with the candidate that carries this change.

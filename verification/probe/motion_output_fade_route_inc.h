@@ -24,9 +24,16 @@
 // g_AlphaValue 1 and camera distance 4, where the shader's factor saturates
 // at 1: its raster keeps a constant alpha (the shift witness needs a constant
 // amplitude) while the CPU estimate at the origin distance 1 hovers.
+// original: the hover schedule over the sentinel fill (A scissored) under
+// original shading (X3M_LINEAR_MATERIALS=0, X3M_LINEAR_DISTANCE_FADE=0: no fade
+// bracket, no composition, no M; a refused frame is the plain native draw),
+// the run-125 production configuration in which the station panel pair was
+// refused at gate 4 for the never-probed cutout verdict alone
+// (asteroid-fog-temporal.md, "Run 125"): the probe's verdict must be Ready
+// (status 30) and the arm routes both quads over the sentinel fill.
 // Twelve frames across the eight jitter phases with the rotating camera (cut
-// at frame 7); the raw FP16 scene after the quads, RT1, M and the presented
-// frame are dumped per frame.
+// at frame 7); the raw FP16 scene after the quads, RT1, M (not under
+// original) and the presented frame are dumped per frame.
 void run_fade_route_integration(Fixture& f,const char* original_path) {
     require(f.seam&&f.enabled&&f.taa&&f.hdr&&f.hdr_agx&&f.camera&&f.emission_readback&&f.emission_status,"fade route HDR TAA seam with camera");
     require(f.reference_ready,"fade route reference resolve device");
@@ -34,17 +41,24 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     require(slash!=std::string::npos,"fade route original directory");
     char script_setting[16]{};GetEnvironmentVariableA("X3M_FIXTURE_FADE_SCRIPT",script_setting,sizeof script_setting);
     const bool routed_script=std::strcmp(script_setting,"routed")==0,masked_script=std::strcmp(script_setting,"masked")==0,
-               sentinel_script=std::strcmp(script_setting,"sentinel")==0,hover_script=std::strcmp(script_setting,"hover")==0;
-    require(routed_script||masked_script||sentinel_script||hover_script,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover");
+               sentinel_script=std::strcmp(script_setting,"sentinel")==0,hover_script=std::strcmp(script_setting,"hover")==0,
+               original_script=std::strcmp(script_setting,"original")==0;
+    require(routed_script||masked_script||sentinel_script||hover_script||original_script,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original");
+    // original: the hover schedule over the sentinel fill under original shading
+    // (X3M_LINEAR_MATERIALS=0, no fade bracket, no composition, no M): the arm alone decides.
+    const bool over_sentinel=sentinel_script||original_script;
+    if(original_script)require(f.emission_status(f.d.p,30)==1u,"fade route original shading: the cutout probe's verdict is Ready without linear materials");
     constexpr unsigned frames=12;
     // hover: g_AlphaValue.x per frame (binary fractions: the fraction .625 * alpha is exact in float) and the arm's decision.
     constexpr float hover_alpha[frames]={.8125f,.71875f,.71875f,.625f,.71875f,.71875f,.8125f,.71875f,.625f,.8125f,.71875f,.71875f};
     constexpr float hover_fog_x[frames]={-.4921875f,-.55078125f,-.55078125f,-.609375f,-.55078125f,-.55078125f,-.4921875f,-.55078125f,-.609375f,-.4921875f,-.55078125f,-.55078125f}; // Q: fraction 1 * (fog_x + 1)
     constexpr bool hover_routed[frames]={1,1,1,0,0,0,1,1,0,1,1,1},hover_held[frames]={0,1,1,0,0,0,0,1,0,0,1,1};
     const bool full_alpha=routed_script||sentinel_script; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000
-    const auto routed_frame=[&](unsigned plan){return hover_script?hover_routed[plan]:full_alpha;};
-    const auto held_frame=[&](unsigned plan){return hover_script&&hover_held[plan];};
-    const auto alpha_value=[&](unsigned plan){return hover_script?hover_alpha[plan]:full_alpha?1.f:.625f;};
+    // original follows the hover schedule (routed, held and below-threshold frames) over the sentinel fill.
+    const bool hover_schedule=hover_script||original_script;
+    const auto routed_frame=[&](unsigned plan){return hover_schedule?hover_routed[plan]:full_alpha;};
+    const auto held_frame=[&](unsigned plan){return hover_schedule&&hover_held[plan];};
+    const auto alpha_value=[&](unsigned plan){return hover_schedule?hover_alpha[plan]:full_alpha?1.f:.625f;};
     Com<IDirect3DVertexShader9> vs;Com<IDirect3DPixelShader9> ps;
     {
         auto v=load((supplied.substr(0,slash+1)+"vs_b0602757fce6e870.bin").c_str());auto p=load((supplied.substr(0,slash+1)+"ps_517540ae6d5e5410.bin").c_str());
@@ -108,7 +122,7 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         float vc[48][4]{},pc[12][4]{};
         for(unsigned i=0;i<4;++i)vc[24+i][i]=1;
         for(unsigned i=0;i<3;++i)vc[31+i][i]=1;
-        const bool hover_q=hover_script&&which==1;
+        const bool hover_q=hover_schedule&&which==1;
         if(which){vc[37][0]=1;vc[38][1]=1;if(hover_q)vc[36][3]=4;}else{vc[36][3]=4;vc[37][2]=.0625f;vc[38][2]=.1875f;}
         vc[39][0]=hover_q?1.f:alpha_value(plan);vc[40][0]=.25f;vc[40][1]=.125f;vc[40][2]=.0625f;
         vc[41][0]=hover_q?hover_fog_x[plan]:full_alpha?1.f:.75f;vc[41][1]=hover_q?-1.f:full_alpha?0.f:.125f;
@@ -135,10 +149,10 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     for(unsigned plan=0;plan<frames;++plan) {
         const bool routed_plan=routed_frame(plan);
         f.frame_begin();f.linear_material_inputs();f.write_reserved();
-        if(sentinel_script){const RECT lower{0,LONG(f.H/2),LONG(f.W),LONG(f.H)};api(f.d->SetScissorRect(&lower),"fade route A below the quads");}
+        if(over_sentinel){const RECT lower{0,LONG(f.H/2),LONG(f.W),LONG(f.H)};api(f.d->SetScissorRect(&lower),"fade route A below the quads");}
         f.draw(f.a,0,0,0,true,true,f.a.recorded,Alter::None,false);
         const unsigned required=f.emission_status(f.d.p,16);
-        require(required==2,"fade route: the fade producer is the required one");
+        require(required==(original_script?0u:2u),"fade route: the fade producer is the required one (none under original shading)");
         unsigned covered=0,own_motion=0,mask_set=0,preserved=1,alpha_kept=1;
         for(unsigned which=0;which<2;++which) {
             f.scope(&objects[which]);bind(which,plan);
@@ -147,9 +161,9 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
             const unsigned prepared_before=f.emission_status(f.d.p,4),routed_before=f.emission_status(f.d.p,50),refused_before=f.emission_status(f.d.p,51);
             api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"fade route actual original DIP");++f.draw_index;
             f.compare(state,f.snapshot(),"fade route complete draw restoration");
-            const auto after=scene(),motion=read(1),mask=read(3);
+            const auto after=scene(),motion=read(1),mask=original_script?std::vector<float>():read(3); // no composition, no M under original shading
             const unsigned prepared=f.emission_status(f.d.p,4)-prepared_before,routed_delta=f.emission_status(f.d.p,50)-routed_before,refused_delta=f.emission_status(f.d.p,51)-refused_before;
-            require(routed_delta==unsigned(routed_plan)&&refused_delta==unsigned(!routed_plan)&&prepared==unsigned(!routed_plan),"fade route arm decision matches the script");
+            require(routed_delta==unsigned(routed_plan)&&refused_delta==unsigned(!routed_plan)&&prepared==(original_script?0u:unsigned(!routed_plan)),"fade route arm decision matches the script (no bracket preparation under original shading)");
             const bool matched=routed_plan&&objects[which].recorded;
             for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x) {
                 const unsigned n=y*f.W+x,i=4*n;
@@ -157,7 +171,7 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
                 if(after[i+3]!=before[i+3])alpha_kept=0;
                 if(!routed_plan&&std::memcmp(&motion[i],&before_motion[i],16))preserved=0;
                 if(!interior(which,x,y))continue;
-                if(mask[i]>0||mask[i+1]>0||mask[i+2]>0)++mask_set;
+                if(!original_script&&(mask[i]>0||mask[i+1]>0||mask[i+2]>0))++mask_set;
                 if(routed_plan) {
                     const double u=(x-f.jx)/f.W+.5/f.W,v=(y-f.jy)/f.H+.5/f.H;
                     // Unmatched (mode 0, alpha -1 under SRCALPHA/INVSRCALPHA: -src + 2 dst): over the fill sentinel it stays the
@@ -172,13 +186,18 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
             if(which==0)for(unsigned s=0;s<2;++s){const unsigned x=s?20:12,y=x,i=(y*f.W+x)*4;std::printf("FADE_ROUTE_SAMPLE frame=%llu x=%u y=%u before=%.17g,%.17g,%.17g,%.17g after=%.17g,%.17g,%.17g,%.17g\n",f.frame,x,y,before[i],before[i+1],before[i+2],before[i+3],after[i],after[i+1],after[i+2],after[i+3]);}
             objects[which].recorded=routed_plan; // the row history keeps one frame: a refused frame loses the match
         }
-        const auto color=scene(),motion=read(1),mask=read(3);
-        write("color",color);write("motion",motion);write("mask",mask);
+        const auto color=scene(),motion=read(1),mask=original_script?std::vector<float>():read(3);
+        write("color",color);write("motion",motion);if(!original_script)write("mask",mask);
         require(alpha_kept,"fade route RGB-masked draws keep the destination alpha");
-        if(!routed_plan)require(preserved,"fade route bracketed draws preserve RT1");
-        require(mask_set==(routed_plan?0u:2u*14u*14u),"fade route M covers exactly the bracketed quads");
+        if(!routed_plan&&!original_script)require(preserved,"fade route bracketed draws preserve RT1");
+        require(mask_set==((routed_plan||original_script)?0u:2u*14u*14u),"fade route M covers exactly the bracketed quads (no M under original shading)");
         require(f.emission_status(f.d.p,53)==(held_frame(plan)?2u:0u),"fade route hysteresis holds exactly the script's held frames");
-        f.emission_reference_color=color;f.emission_reference_mask=mask;f.emissions_enabled=true;f.emission_mask_valid=f.emission_status(f.d.p,1)!=0;
+        // The raw scene after the quads is the reference resolve's current image
+        // in every script. original: no composition, so the reference keeps the
+        // plain depth-sentinel reactive policy (emissions stay disabled, no M,
+        // mask_valid 0).
+        f.emission_reference_color=color;
+        if(!original_script){f.emission_reference_mask=mask;f.emissions_enabled=true;f.emission_mask_valid=f.emission_status(f.d.p,1)!=0;}
         std::printf("FADE_ROUTE frame=%llu script=%s routed=%u matched=%u fade_routed=%u fade_refused=%u fade_held=%u prepared=%u covered=%u own_motion=%u mask_set=%u mask_valid=%u threshold=%u draws=2\n",
                     f.frame,script_setting,routed_plan,routed_plan&&plan>0&&routed_frame(plan-1),f.emission_status(f.d.p,50),f.emission_status(f.d.p,51),f.emission_status(f.d.p,53),f.emission_status(f.d.p,4),covered,own_motion,mask_set,f.emission_mask_valid,f.emission_status(f.d.p,52));
         f.boundary();

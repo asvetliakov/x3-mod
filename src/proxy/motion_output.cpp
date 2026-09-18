@@ -887,7 +887,16 @@ static_assert(D3DCMP_GREATEREQUAL == cutout::values[0] && D3DCMP_LESSEQUAL == cu
     && D3DCULL_NONE == cutout::values[6] && D3DFILL_SOLID == cutout::values[7]);
 static_assert(static_cast<std::uint32_t>(D3DERR_NOTAVAILABLE) == 0x8876086au);
 void MotionOutput::probe_cutout_caps(bool force) noexcept {
-    if (!linear_material_requested_ || !device_ || cutout_reset_pending_) return;
+    // Two consumers share the verdict: the linear-material cutout arm and the
+    // fade-band motion arm (fade_arm_admits), whose RT2 mask and alpha-1 RT1
+    // blend need the same MRT caps under original shading. Run 125
+    // (asteroid-fog-temporal.md, "Run 125"): with X3M_LINEAR_MATERIALS=0 the
+    // probe never ran, the verdict stayed Pending and every fade-band draw
+    // (the station panel pair 4944d81dfe531b37/64bac8bb307eb896 at fraction
+    // 1000) was refused at gate 4 for the missing verdict alone. The probe
+    // runs when either consumer is configured; the cutout arm itself stays
+    // gated on the linear-material request (cutout_arm_configured).
+    if ((!linear_material_requested_ && fade_route_threshold_ > 1000u) || !device_ || cutout_reset_pending_) return;
     if (!force && (cutout_caps_ == cutout::Capability::Ready || cutout_caps_ == cutout::Capability::Unsupported
         || (cutout_probe_frame_known_ && cutout_probe_frame_ == frame_))) return;
     cutout_probe_frame_ = frame_; cutout_probe_frame_known_ = true; ++cutout_cap_queries_;
@@ -6398,6 +6407,13 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held), fade_route_threshold_,
                 static_cast<unsigned long>(c.cutout_opaque_routed), static_cast<unsigned long>(c.cutout_opaque_refused),
                 static_cast<unsigned long>(c.cutout_opaque_lane), cutout_top);
+        } else if (fade_route_threshold_ <= 1000u) {
+            // Original shading: the fade-band arm's frame counters and the
+            // probe's verdict (run 125: frame-level evidence for the arm
+            // without the linear_material_frame line).
+            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u",
+                id_, frame_, static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held),
+                fade_route_threshold_, unsigned(cutout_caps_));
         }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"

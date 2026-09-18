@@ -842,7 +842,22 @@ Rule (`src/proxy/fade_route_core.h`, `MotionOutput::fade_arm_admits`, gate 4):
   cutout probe's verdict (`D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING`,
   `INDEPENDENTWRITEMASKS`, `QUERY_POSTPIXELSHADER_BLENDING` on RGBA32F/R32F/
   FP16), plus TAA and the active FP16 HDR target; user-memory, instanced,
-  unknown-row or unbounded-loop draws are refused as before.
+  unknown-row or unbounded-loop draws are refused as before. The probe
+  (`probe_cutout_caps`) runs when either consumer is configured — linear
+  materials requested *or* the arm's threshold ≤ 1000 — at attach, after a
+  Reset and at the HDR latch; until 2026-09-18 it ran only with
+  `X3M_LINEAR_MATERIALS=1`, so under original shading the verdict stayed
+  Pending and the arm refused every fade-band draw at this check alone (run
+  125, asteroid-fog-temporal.md "Run 125": the Terran solar plant's panel
+  pair `4944d81dfe531b37`/`64bac8bb307eb896` at fraction 1000). The cutout
+  arm itself stays gated on the linear-material request
+  (`cutout_arm_configured`). With the default `X3M_FADE_ROUTE=500` the probe
+  and the arm therefore run in every default HDR + TAA configuration, linear
+  materials on or off; `X3M_FADE_ROUTE=off` disables both. Fixture:
+  `seam-taa-fade-route-original` (the hover schedule over the sentinel fill
+  with linear materials and the bracket off) requires the verdict Ready
+  (status 30) and the hover decisions without a bracket; record
+  `verification/results/bottle-X3/fade-route-original.json`.
 - **Threshold.** The fade fraction is the program's own alpha,
   `COLOR0.a = g_AlphaValue.x · saturate(g_FogClip.x − g_FogClip.y · distance)`
   (with `b0 = g_EnableFog`; `g_AlphaValue.x` alone without fog), read at the

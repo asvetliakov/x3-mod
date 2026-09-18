@@ -463,3 +463,95 @@ reviewed pair with blend on inside a bound fade region across the 8 jitter
 phases and checks the route record (`gate=0 routed=1 jittered=1`, RT1 alpha 1
 on covered pixels, M clear there) and a resolved readback whose per-tile shift
 is 0 while the raw shift equals Δjitter.
+
+## Run 125: solar-panel arrays shimmer under original shading
+
+Offline diagnosis (no build for the diagnosis, no Wine, no launch) on the
+run-41 B snapshot `/tmp/x3-bottleX3-run125` (`session-20260918-070846-216.log`,
+378 MB, queried with grep/Python only), screenshot `screenshots/flicker1.png`
+(the presented frame at 1280×768, the two marked arrays: the upper-right array
+x 700–1000, y 80–320 and the large right array x 900–1270, y 300–560).
+Bursts 22624–22631 (the plant at linear-depth lane 117k–153k) and
+24486–24493 (the screenshot pose; big array at lane 18.9k, upper array 51k).
+Dump kinds in the bursts: `hdr_1_<f>.rgba16f` (the raw FP16 scene before the
+write-back — stage 3 keeps the resolved image in its own texture, so no
+resolved dump exists; `X3M_TAA_DEBUG=0`), `motion_1_<f>.rgba32f` (RT1),
+`depth_1_<f>.rgba32f` (RT2, four lanes: device depth, share, linear depth) and
+shadow maps; no reactive-mask dump.
+
+### Mechanism (witnessed): the panel faces are fade-band draws the arm never got to judge
+
+- **The draws.** Every burst frame has 16 gate-4 (`DrawState`) draws of the
+  pair `4944d81dfe531b37`/`64bac8bb307eb896` (four station nodes × four draws,
+  4752 primitives each, 512² textures on stages 0–2) in exactly the fade-band
+  state: Z on, Z-write off, alpha test off, `SRCALPHA/INVSRCALPHA` ADD,
+  separate alpha off, RGB mask 7 — `linear_material.cpp`'s `station_fade`
+  pair and one of the seven `fade_route::vertex_programs`. The same nodes'
+  hull (`ca6bfa4a…`, 40258 primitives) and alpha-tested (`5e0a10fe…`) draws
+  route at gate 0. In the near burst all 16 gate-4 draws are the station
+  pair; the far burst adds two or three two-primitive
+  `494fe349…`/`7c83ed50…` quads (HUD sprites).
+- **Coverage.** In RT1/RT2 the panel *faces* carry the fill sentinel
+  (alpha −1, depth −1) and only the frames and dividing struts are routed:
+  big-array box 64k sentinel vs 32k routed pixels, upper-array box 58.6k vs
+  13.4k (`validity_24486.png` in the session scratchpad matches the
+  screenshot panel by panel). No opaque draw lies under the faces: the
+  blended pass is the only one that paints them.
+- **What the resolve does with them.** `X3M_TAA_SENTINEL=auto` selected
+  policy 2 on every burst frame (`camera_policy=2`): a sentinel pixel is
+  reprojected through the camera path at the far plane. The camera does not
+  rotate in either burst (`camera_rotation_deg=0.0000`) but translates 136
+  units per frame, so the far-plane path has **zero** flow while the routed
+  strut pixels beside the faces move **3.0–3.8 px/frame** (big array, p50 of
+  `|previousUV − uv|` over the routed pixels of the box, frames 24487–24493),
+  0.4–1.2 px/frame (upper array) and 0.2–0.5 px/frame in the far burst. The
+  panel history is therefore fetched 3–4 px (near) or a sub-pixel amount
+  (far) off every frame; the neighbourhood clamp turns that into a
+  per-frame re-roll of the fine dividing lines — the shimmer. Shadows do not
+  enter (run126 toggles agree).
+- **Why the arm refused.** The route rows show `fade_permille=0` for all
+  sixteen draws although the draw's own constants give fraction 1.0:
+  `c39 = (1,0,0,0)` (`g_AlphaValue`), `c41 = (1,0,0,0)` (`g_FogClip`),
+  `b0 = 0` → 1000 permille ≥ the default threshold 500. No
+  `fade_refused_rect` row exists in the whole log. The arm returned before
+  the fraction: `fade_arm_admits` requires `cutout_caps_ == Ready`, and
+  `probe_cutout_caps` returned early with `X3M_LINEAR_MATERIALS=0` (the run's
+  configuration; `linear_materials=0` on the sun-shadow line, no
+  `linear_cutout_device` row in the log). The run-49 fade-band route was
+  inert under original shading since it was written; run 51 verified it with
+  linear materials on.
+
+### Ranking
+
+(a) confirmed, in its policy-2 form: not "masked current-only" (there is no M
+without the composition) but "sentinel → far-plane camera path", missing the
+panels' own parallax. (b) and (c) are not needed to explain the symptom and
+are not separable in the raw dumps: in the raw FP16 scene the panel faces
+(sentinel pixels with luma > 0.12) have a temporal luma standard deviation of
+0.0095 (7 % of their mean, 34 % of pixels change by > 10 % frame to frame) in
+the near burst and 0.0015 (1.2 %) in the far one, against 0.14 (23 %) on the
+routed struts and 0.032 (20 %) on the corvette hull; the raw-shift predictor
+correlates with the jitter delta at +0.3 to +0.56 on routed geometry and at
+−0.03 on the faces (low-gradient content). Whether the resolved output
+re-rolls on the panel texture after the fix is a run-42 question.
+
+### Fix (2026-09-18)
+
+`probe_cutout_caps` runs when either consumer is configured (linear materials
+requested or the fade-band threshold ≤ 1000); the cutout arm itself stays
+gated on the linear-material request. The admission predicate is unchanged
+(`fade_route::state` on a `fade_route::vertex_programs` pair, fraction ≥
+threshold); the cutout-miss exemption and the reactive-mask rules are
+untouched. Fixture `seam-taa-fade-route-original` (`run_motion_output.py`):
+the sentinel script with `X3M_LINEAR_MATERIALS=0`, `X3M_LINEAR_DISTANCE_FADE=0`
+on the hover schedule — the verdict must be Ready without linear materials,
+the arm routes, holds and refuses the hover frames without a bracket, routed
+quads carry their own RT1 rows and the resolved shift stays a fraction of the
+raw one; the new `fade_route_frame` log line carries the arm's counters under
+original shading (ledger: `docs/verification/motion-output.md`, 2026-09-18;
+record `verification/results/bottle-X3/fade-route-original.json`).
+
+Not derived: the texel footprint of the panel texture (the UV mapping is not
+in the capture rows), so a mip-bias or per-program reactive tuning stays
+unassessed until a run-42 capture with the arm active shows whether any
+residual re-roll remains.
