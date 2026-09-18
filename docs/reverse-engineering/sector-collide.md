@@ -675,6 +675,104 @@ Measurement (§11.5) must come first: fix (1) is worth its verification cost onl
 if site 5 shows a small number of accepted pairs holding a large share of
 site 7's count.
 
+### 11.7 Implemented: `--collide-narrow-census` (2026-09-19)
+
+`X3M_COLLIDE_NARROW_CENSUS=1` (launcher `--collide-narrow-census`, default off, independent of
+`--collide-box-cull`; both may be on), `src/proxy/collide_narrow_census.{h,cpp}` and
+`collide_narrow_census_core.h`. It answers §11.4's unknowns in one flight: accepted pairs per frame, BVH work per
+pair, which objects, and whether fix 1 of §11.6 would hit.
+
+**Correction to §11.3/§11.5 found at the bytes: both callees take register arguments.** `0x0048ac80` receives
+`physA` in **ECX** and `physB` in **EAX** (`0045d65e mov ecx,[ebx+0x70]` / `0045d662 mov eax,[esi+0x70]`, first use
+`0048ac84 mov [ecx+0x190],edx`), plus two stack words (`rA`, `rB`; the caller pops 8, the callee ends in a plain
+`ret`); `0x0047f1b0` receives the two nodes in ECX/EAX and `EDI = 0` besides five stack words. So `[obj+0x70]`, the
+"physics block", **is** the scene node of §11.3 (`[+0x30..0x38]` position, `[+0xb0..0xbc]` saved position,
+`[+0xc0..0xe8]` matrix, `[+0x12c]` flags, `[+0x140]` model id, `[+0x180..0x190]` contact scratch), and a stub at
+either call may not clobber any register. `0x0048a890` ends at `0x0048ac27` (919 B, not 910).
+
+| Site | Patch | Stub |
+| --- | --- | --- |
+| 5 `0x0045d665` | `engine_patch::claim_call`: only the rel32 changes, the instruction stays a `call` | 289 B, below |
+| 6 `0x0048a9a5` | `claim_call` | `inc dword [mesh]; jmp 0x0047f1b0` (11 B) |
+| 7 `0x004e2530` | `engine_patch::claim`, 5 bytes = the one `mov eax,[0x0060854c]` | `inc dword [node]; mov eax,[0x0060854c]; jmp 0x004e2535` (16 B; no clock, no call; reached through the dispatcher's one `jmp [entry]`) |
+
+**Site-5 bracket.** `cmp dword [esp],0x0045d66a; jne foreign` / `cmp byte [busy],0; jne nested` / `mov byte [busy],1`
+/ *save*, `push esi; push ebx; call pre`, *restore* / `lea esp,[esp+4]` (drops the engine's return address without
+touching EFLAGS) / `call 0x0048ac80` (pushes the stub's return into the same slot, so the callee sees the engine's
+exact stack and register arguments and keeps its `ret` contract) / *save*, `push eax; call post`, *restore* /
+`mov byte [busy],0` / `jmp 0x0045d66a`. *save/restore* = `pushfd; pushad; cld; sub esp,0x80; movups [esp+16i],xmm_i`
+and the reverse, so EAX (the result), ECX/EDX, the callee-saved registers, EFLAGS and XMM0-7 reach the engine exactly
+as the callee left them. x87/MMX are never touched: the stubs contain no such instruction (build audit of the exact
+instruction sequence) and the two C++ handlers are roots of `check_no_x87.py` and run under `LightCallBoundary`
+(MXCSR and LastError; `QueryPerformanceCounter` may set the latter). A re-entered narrow phase (`busy`) or a caller
+other than the patched site (`[esp]` mismatch) passes straight through and is counted (`nested`, `foreign`); an
+unwind past the stub leaves `busy` set, which fails safe to pass-through.
+
+**Liveness, checked by `verify_collide_sites.py` on the image** (51 checks, 22 new): each site is one whole
+instruction with the documented target; the pre/post windows, the 103 bytes of `0x0048ac80` (its rel32 as a target),
+the head of `0x0047f1b0` and the first 35 bytes of `0x004e2530`; **image-wide** no rel32 `call/jmp/jcc` (byte scan of
+all of `.text`, a superset of the real branches) and no abs32 dword anywhere in the file lands in `+1..+4` of any
+span, nor a decoded short jump of the enclosing functions; the inbound references of `0x004e2530` are exactly the
+five calls of §11.5; EFLAGS are dead at both callee entries (`xor edx,edx`, `sub esp,0x64` are the first flag
+instructions), at site 5's return (`add esp,8`) and after site 7 (`sub esp,0x40`), which is what the stubs' `cmp`
+and `inc` rely on; EBX/ESI are still the pair at site 5 (`or [ebx+0x44]` / `or [esi+0x44]` at `0x0045d620`, no
+write to either and no call up to the site, used again at `0x0045d676`); the claim windows are disjoint from all 129
+other claims, the box cull's seven windows and `cull_small_parts` `0x0047d2a2` included.
+
+**Per pair** (pre handler, before the clock starts): both object pointers, class `[obj+0x48]`, subtype
+`[obj+0x4a]`, flags `[obj+0x40]`/`[obj+0x44]`, radius `[obj+0xa4]`, the node pointer, position `[node+0x30/34/38]`,
+model id `[node+0x140]`, node flags `[node+0x12c]`, a 32-bit hash of `[node+0xc0..0xe8]` + model id + node flags
+(the memo key of §11.6) and, separately, a hash of the saved position `[node+0xb0..0xbc]` that `0x0047f1b0` uses as
+the translation (kept apart so that a key component that never repeats is visible on its own). Post handler: QPC
+ticks, the result, and the deltas of the site-7 and site-6 counters across the call = BVH node-pair visits and
+mesh-pair tests **attributed to this pair**. Entries go into a fixed ring of 256 per frame (three static rings
+rotated at Present: writing, this frame, previous frame; no allocation); further pairs are counted in the totals and
+as `ring_overflow`. Every field read lies inside a block the engine itself dereferences on the same pair
+(`[node+0x190]` is written by `0x0048ac80` unconditionally).
+
+**Threads.** The stubs run on the engine's main-loop thread, which is also the Present thread: `loop_phases`
+accumulates its `collide` interval only on the Present thread and measures it in every flight. The module does not
+rely on it. The stub counters are monotonic, written by one thread, and Present only takes deltas of aligned 32-bit
+loads (it never writes them, so no increment can be lost to a zeroing). The ring and the frame totals sit behind a
+try-lock neither side waits on: a contended post handler counts `dropped`, a contended Present defers its frame
+into the next. The window line reports `dropped`, `deferred` and `cross_thread_frames`; all three must be 0 in a
+normal flight. The fixture runs Present on a second thread against 20,000 pairs and accounts for every one.
+
+**Output.** One `collide_narrow` line per 300 frames: `accepted`, `mesh_pairs`, `node_pairs`, `narrow_us`, each
+`_p50/_max/_sum`; `recorded_sum`, `with_previous_sum`, `unchanged_sum` (same pointers, positions, transform hash and
+saved hash as the previous frame's entry of the same pair), `memo_would_hit_sum` / `_permille` (unchanged **and**
+no contact in both frames, over all accepted pairs), `memo_visits_sum` / `_permille` (the node-pair visits those
+pairs cost, over all visits: the saving fix 1 would realise), `memo_unsafe_sum` (unchanged key, no contact before,
+contact now: the key misses an input), `memo_visits_differ_sum` (unchanged key and result but another visit count:
+the routine is not a pure function of the key, e.g. animated child parts, which the key does not hash),
+`changed_pos/xform/saved_sum`, `ring_overflow`, `dropped`, `deferred`, `nested`, `foreign`,
+`cross_thread_frames`. On F8 frames one `collide_narrow_pair` row per entry ordered by visits: `a`/`b`, class,
+subtype, model, radius, flags, positions, `d_max` (Chebyshev distance), `r_sum`, `visits`, `mesh_pairs`, `us`,
+`result`/`contact`, `previous`, `same_pos/xform/saved`, `unchanged`, `memo_hit`, `memo_unsafe`, `visits_differ`.
+Parsers: `parse_narrow_window_line`, `parse_narrow_pair_line` in `verify_collide_sites.py`.
+
+**Reading it.** Fix 1 is worth its verification cost if `memo_visits_permille` is high with `memo_unsafe_sum = 0`
+and `memo_visits_differ_sum = 0`. A non-zero `memo_visits_differ_sum` means child-node transforms must join the
+key; `changed_saved_sum` without `changed_pos_sum` means the saved position moves on its own and must be in (or
+provably out of) the key. The pair rows name the objects: a station class with `d_max` well inside `r_sum` and tens
+of thousands of visits is the §11.4 inference confirmed.
+
+**Install.** Backend-load path inside the `engine_patch` window after the exact-executable check, the windows, both
+callee bodies and both call targets; module pinned; claimed 7, 6, 5 and a failed later claim restores the earlier
+ones; `late_claim` after the first Present; LastError preserved.
+
+**Fixture.** `verification/probe/collide_narrow_census_fixture.cpp` (40 checks): the engine's bytes around all three
+sites at the engine's offsets, a byte-exact replica of `0x0048ac80`, stand-ins for `0x0048a890`/`0x0047f1b0` that use
+x87 and record their register and stack arguments; only rel32/abs32 operands differ. 1,500 scenarios (results
+-1/0/1/7, 0-3 mesh pairs, 0-5 node visits each, both paths of the `0x004e2530` head, four x87 control words)
+unpatched and patched: same exit, all eight registers, EFLAGS (AF excepted: undefined after the engine's own `test
+eax,eax`, and FEX derives it lazily), the whole `fnstenv` image, `st(0)/st(1)`, the engine locals, callee
+arguments, zeroed contact scratch and LastError; counters and ring entries exact; overflow 256 + 44; the memo
+classes; rows and window line; nested/foreign; cross-thread Present; refusals; a partial install (sites 7 and 6
+patched, site 5 refused) rolled back byte-exact; restore; closed window. Self-cost there (harness-inclusive, FEX):
++220 ns per accepted pair, +1.5 ns per node-pair visit, i.e. about 0.04 ms + 0.15 ms per frame at 200 pairs and
+10^5 visits. Ledger: [sampling-profiler.md](../verification/sampling-profiler.md), "Collide narrow census".
+
 ## Reproduce
 
 ```sh
