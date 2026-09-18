@@ -149,6 +149,80 @@ fixtures). What settles it: `X3M_TELEMETRY_DRAW=1` (`gate_us`/`route_draw_us`/
 `set_rt_us` in `motion_output_frame`; no launcher flag yet) plus
 `--frame-timing` for `draw` vs `draw_native`.
 
+**Measured 2026-09-18 (run129 A and the route bench).** What the frame-line
+fields bracket (`motion_output.cpp`, `draw_stamp` pairs): `gate_us` is
+`before_draw` minus the apply, the sentinel fill and a lazy flush;
+`route_draw_us` is the apply (before the native draw; the four
+`SetRenderTarget` calls are inside it, so `set_rt_us` is a sub-span, not an
+addend) plus the undo after the draw; `jitter_us` is the two clip-row writes.
+None of them contains the native draw, `after_draw`'s candidate, retention,
+sun-lane or cutout work, or the hook envelope. Run129 c2 (825 routed draws,
+`rs_mode=get`, `state_shadow=0`, `rt_mode=perdraw`): gate 3.7 + route_draw 5.7
+(set_rt 2.55 inside it, 0.64 per bind with its stamps) + jitter 0.32 = **9.7 µs
+proxy-only per routed draw** (M), not the 12.3 of the triage table, which added
+`set_rt_us` twice. The `--telemetry-draw` stamps themselves (18 QPC per routed
+draw; QPC is 0.07 µs on this bottle, not a 0.75 µs syscall) are inside those
+spans: +1.5 µs per routed draw (M, bench).
+
+Route bench (`verification/probe/run_route_bench.py`, fixture mode
+`routebench`: 400 consecutive routed draws of the reviewed pair per frame on
+the fixture device under the seam DLL, DrawPrimitive wall time, median of ten
+frames; `off` is the proxy's draw hook with the route off, 1.48 µs; results
+`verification/results/bottle-X3/route-bench-*.json`). Proxy cost per routed
+draw before the trims (M): per-draw production route **7.5**; with the
+ownership wrapper (the gameplay configuration: the route's ~21 changing
+native calls go through the wrapper) **9.5**; plus the single-map depth-replay
+lease per candidate draw (`GetVertexDeclaration` through the wrapper, two
+buffer-lock views under the registry mutex, three AddRefs, the record)
+**+1.9**; five cascades (mask, `caster_key`, extent lookup) **+0.25**; caster
+retention (journal) **+0.26**; `X3M_TELEMETRY_DRAW=1` **+1.5**. Inside the
+plain 7.5: RT2 (two binds, two masks, one read) 0.9 and the RT1 pair about the
+same (lazy mode removes 2.05: three binds, two masks, two reads); the jitter's
+two row writes 0.18; the eleven per-draw `GetRenderState` reads of the hybrid
+unhook < 0.1 (the shadow configuration measures 9.07 against 8.98: no gain to
+be had from caching state reads); the rest is the variant VS/PS binds and
+restores, the two constant uploads and the wrap-state reads/sets, about 21
+changing wined3d calls at ~0.3 µs each. The bench's prediction for run129's
+configuration (ownership + cascades + retention + telemetry-draw, 704 leased
+records of 825 routed draws) is ≈ 13 µs per routed draw; the 9.7 the fields
+report is that minus the unbracketed `after_draw` work and the wrapper's share
+of the hook envelope.
+
+Trim implemented: the depth lease takes the stream-0 verdict from the
+declaration hook's own `GetDeclaration` read
+(`shadow_.declaration_stream0_only`) and gate 4's `GetStreamSourceFreq` value
+carried on the route, dropping two calls per leased draw. Its gain is at the
+bench's noise floor: three alternating runs of the pre-trim and the final seam
+DLL (`route-bench-ab-base-N.json` / `-ab-final-N.json`, DrawPrimitive µs per
+draw, median of the three, pre-trim -> final): ownership 11.27 -> 11.18, depth
+lease 12.94 -> 12.79, cascades + retention 13.58 -> 13.41, i.e. 0.1-0.2 µs per
+leased draw against a run-to-run spread of ±0.2 (≈ 0.1 ms per 825-draw frame,
+not resolved). Every compared fixture case equals the pre-trim build
+([motion-output.md](../verification/motion-output.md), "2026-09-18 —
+routed-draw cost bench").
+
+Dropped after review: skipping the pixel-ABI upload (c216-c217) while the
+device still holds it. `resync_shadow` runs at enable and after Reset and sets
+`ps_reserved_written` from a successful `GetPixelShaderConstantF(216)`, so on a
+real device the undo restores the range after every routed draw and the skip
+can never fire; making it fire means not restoring c216 per draw, which is a
+restore-contract change. The 0.24 µs the first bench showed for it was noise.
+
+Refused: `--motion-rt-mode lazy` as the default. Lazy re-installs the
+SetRenderState/SetSamplerState hooks (`state_hooks reason=lazy_rt`; the held
+write masks need the write observation): +64/+57 ns per call on the 49,598
+light-pair calls of run89's 987-draw frame ≈ 3.1 ms against 2.05 µs × ~900
+routed draws ≈ 1.85 ms saved, a net loss of ≈ 1.2 ms (I, from measured
+per-call and per-draw numbers) unless lazy can hold the masks without the
+hooks, which is a restore-contract change. Levers left, all outside a
+per-draw trim: the ownership wrapper's share of the route's own calls (2.0
+µs per routed draw ≈ 1.7 ms at 825, a direct native path for the route's
+setters under the wrapper's identity contract); the lease's per-draw wrapper
+work (1.5 µs per leased draw; a per-frame declaration reference dedupe would
+change the identities the retention store keys); the per-draw telemetry
+(diagnostic only: do not read route cost off a `--telemetry-draw` session
+without subtracting it).
+
 ### 2.3 Projected-size culling of small parts — 0 to ~6 ms (A), engine patch
 
 Mechanism: the cull/LOD pass `0x0047cfe0` already computes a small-object

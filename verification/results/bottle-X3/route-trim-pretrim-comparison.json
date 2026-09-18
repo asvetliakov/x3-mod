@@ -1,0 +1,218 @@
+{
+ "note": "behaviour_sha256 hashes each case record of run_motion_output.py with timing, hash, path and directory keys removed (key is dropped when it equals, or has an underscore-separated part equal to, one of skipped_key_parts)",
+ "skipped_key_parts": [
+  "us",
+  "ms",
+  "ticks",
+  "directory",
+  "sha",
+  "path",
+  "time",
+  "started",
+  "elapsed",
+  "bench",
+  "cost",
+  "timing",
+  "wine",
+  "select",
+  "ns",
+  "sha256"
+ ],
+ "bottle": "X3",
+ "cases": {
+  "seam-burst-lazy": {
+   "pre_trim": {
+    "behaviour_sha256": "2beb0d7da90babf6fe16ea93166724d718eeacea4d61f06a3d3a65f93ff347a5",
+    "checks": 86,
+    "restorations": 18,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "2beb0d7da90babf6fe16ea93166724d718eeacea4d61f06a3d3a65f93ff347a5",
+    "checks": 86,
+    "restorations": 18,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-burst-perdraw": {
+   "pre_trim": {
+    "behaviour_sha256": "0ade237fa12d95cc975f2602f0e7d4a3b522c7714e924127ab57205d05652e5a",
+    "checks": 86,
+    "restorations": 18,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "0ade237fa12d95cc975f2602f0e7d4a3b522c7714e924127ab57205d05652e5a",
+    "checks": 86,
+    "restorations": 18,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-ownership-shadow-replay-cascades": {
+   "pre_trim": {
+    "behaviour_sha256": "2382e4b2e694db101aef1db2eb61fd810e1f5e41c0104f9fe2eb152f859e45ff",
+    "checks": 278,
+    "restorations": null,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "2382e4b2e694db101aef1db2eb61fd810e1f5e41c0104f9fe2eb152f859e45ff",
+    "checks": 278,
+    "restorations": null,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-ownership-shadow-replay-cascades-casters-20": {
+   "pre_trim": {
+    "behaviour_sha256": "4ffcb32715be73849aaded887a7efa26e5dd201e7bb32b0582df209f448ba8bd",
+    "checks": 278,
+    "restorations": null,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "4ffcb32715be73849aaded887a7efa26e5dd201e7bb32b0582df209f448ba8bd",
+    "checks": 278,
+    "restorations": null,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-ownership-shadow-replay-far-refused": {
+   "pre_trim": {
+    "behaviour_sha256": "9bf2b35277aed9e6966916fb7fcf30966518bf1973c60de08debbc9a7eb2e7ea",
+    "checks": 203,
+    "restorations": null,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "9bf2b35277aed9e6966916fb7fcf30966518bf1973c60de08debbc9a7eb2e7ea",
+    "checks": 203,
+    "restorations": null,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-ownership-shadow-replay-on": {
+   "pre_trim": {
+    "behaviour_sha256": "f3ba8ffe60a108f368c0ffedd752d17be8e80d46c4db63f9a5744ab13dde7ec3",
+    "checks": 203,
+    "restorations": null,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "f3ba8ffe60a108f368c0ffedd752d17be8e80d46c4db63f9a5744ab13dde7ec3",
+    "checks": 203,
+    "restorations": null,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-ownership-shadow-retention-census": {
+   "pre_trim": {
+    "behaviour_sha256": "6a36874e1a82e048eb0a540503d7dc95621288d4d8b25975401f8d23fea4fc8a",
+    "checks": 9740,
+    "restorations": null,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "6a36874e1a82e048eb0a540503d7dc95621288d4d8b25975401f8d23fea4fc8a",
+    "checks": 9740,
+    "restorations": null,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-ownership-shadow-retention-live": {
+   "pre_trim": {
+    "behaviour_sha256": "b54977dbf959eac7a82533e69dd1d2fb070bc9fa62a682766a3d7085514b2746",
+    "checks": 9743,
+    "restorations": null,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "b54977dbf959eac7a82533e69dd1d2fb070bc9fa62a682766a3d7085514b2746",
+    "checks": 9743,
+    "restorations": null,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-taa-cutout-opaque-get": {
+   "pre_trim": {
+    "behaviour_sha256": "6a447b369a21e58e4f2c757020d0c8869a5b3b154ff2bfc91ccefecee06ef693",
+    "checks": 49612,
+    "restorations": null,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "6a447b369a21e58e4f2c757020d0c8869a5b3b154ff2bfc91ccefecee06ef693",
+    "checks": 49612,
+    "restorations": null,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  },
+  "seam-taa-fade-route-original": {
+   "pre_trim": {
+    "behaviour_sha256": "cdd09e2d31007bd9f30a39e5329d5e83972ec55d1100c5717f611ae740a83daf",
+    "checks": 3461,
+    "restorations": null,
+    "dll_sha256": "1ddfbbbe426f703c118318b88c22051c144a4a8ddfebb786d6e25bfd51264f6b",
+    "exe_sha256": "dfebac3bcea6532f150ca57d141b74f21fcbf7e0b54ce98853203573f0cc094f"
+   },
+   "final": {
+    "behaviour_sha256": "cdd09e2d31007bd9f30a39e5329d5e83972ec55d1100c5717f611ae740a83daf",
+    "checks": 3461,
+    "restorations": null,
+    "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+    "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+   },
+   "equal": true
+  }
+ },
+ "final_only": {
+  "production-on": {
+   "behaviour_sha256": "65ec2d4643b4b36227309a105678c86ad080c47fb5f5a491c865fd67c211e265",
+   "checks": 43,
+   "restorations": 39,
+   "dll_sha256": "da272a78bd222823cffdb664e07364494a8353d9ba4a671cc220f5403d39acb5",
+   "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+  },
+  "seam-on": {
+   "behaviour_sha256": "69c9ac02ea7738f0b0c113cce114df987dc18b98aa1a70ada2f3cda2c55d02b9",
+   "checks": 103,
+   "restorations": 39,
+   "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+   "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+  },
+  "seam-taa-on": {
+   "behaviour_sha256": "3efbc467322a7899ae88dabbf8759b4741195f357a3a3729bce16fe079f817c9",
+   "checks": 164,
+   "restorations": 51,
+   "dll_sha256": "d6b3ca77e0b09c361d607aabf8415fcc0f14eb56dd3f00e175d6fa1b63294db5",
+   "exe_sha256": "3b6a61eb8edcdfdc82ad2c9f03a973c538d37ac43fa35c6e294be993d3eb781c"
+  }
+ },
+ "all_equal": true
+}
