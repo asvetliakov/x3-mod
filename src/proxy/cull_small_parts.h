@@ -26,7 +26,7 @@ bool shutdown();    // restores the site (dynamic-unload detach only); true when
 // production initialize() passes the engine site. cull_target is the address
 // of the engine's `and [edi+0x12c],~2` (window offset 47).
 // bodies_only: the stub culls only parentless nodes (`[node+0x18] == 0`;
-// X3M_CULL_SMALL_PARTS_SCOPE=bodies, the default); false = every node (`all`).
+// X3M_CULL_SMALL_PARTS_SCOPE=bodies); false = every node (`all`, the default).
 bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool bodies_only);
 const char* state();
 const char* scope();                // "bodies" or "all": the installed stub's scope (the default before an install)

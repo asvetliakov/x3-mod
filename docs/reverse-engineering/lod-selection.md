@@ -450,7 +450,8 @@ The engine's own `+0x1d8` cull has the same sphere bias. That `+0xa0` bounds
 the mesh was not measured separately.
 
 **Scope** (`X3M_CULL_SMALL_PARTS_SCOPE`, `--cull-small-parts-scope all|bodies`,
-default `bodies`). `bodies` culls only nodes without a parent link
+default `all` since 2026-09-19; an absent or empty variable is `all` too).
+`bodies` culls only nodes without a parent link
 (`[node+0x18] == 0`), the test the displaced `mov ecx,[edi+0x18]; test ecx,ecx`
 already performs; `all` is the behaviour described above. The scope is fixed at
 install and selects the emitted stub, so there is no per-node scope read: the
@@ -466,7 +467,11 @@ Rationale (user, 2026-09-18): a whole station of 2 px is invisible anyway,
 while the glowing sub-parts of a nearer station are a few px and visible; the
 review of the run131 replay found the 2 px class to be mostly whole distant
 objects (89 of 97 nodes body-flagged `0x1000000`/`0x8000000`, 395 of 403
-draws). Run 43 B flies `bodies` against `all`. The census rows carry no parent
+draws). Run 43 B flew `bodies` against `all` and settled it the other way: at
+2 px `bodies` culled only 36 nodes per frame and saved nothing (nearly every
+small node has a parent), while `all` took the busy view from 884 to 477 draws
+and ~30 to ~42 fps with no visible pop-in, so `all` is the default and 2 px the
+launcher default (docs/verification/cull-small-parts.md). The census rows carry no parent
 link, so the 89 / 395 (4 px: 120 / 450) figures are the fixture's parent
 assignment (proven parent when `limit > +0x1d8`, otherwise no body flag), not a
 measured parentless set; census rows now record `+0x18` for the verdict and

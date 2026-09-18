@@ -19,6 +19,7 @@ back-buffer width; a frame without a valid projection read runs vanilla.
 | 2026-09-18 | Launcher dry run | `python3 tools/manage.py launch --cull-small-parts 2 --dry-run` | env carries `X3M_CULL_SMALL_PARTS_PX=2.0000` (fixed-point; the DLL parser takes no exponent); no launch |
 | 2026-09-18 | Unaffected fixtures rerun (engine_patch neighbours) | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_object_lifetime.py`; `… run_ownership.py` | object lifetime 674 checks, 0 failures; ownership wrapped 563 checks / baseline 370 checks, 0 failures (`verification/results/bottle-X3/`) |
 | 2026-09-19 | Scope option `--cull-small-parts-scope all\|bodies` (`X3M_CULL_SMALL_PARTS_SCOPE`, default `bodies` = parentless nodes only, `[node+0x18] == 0`; stub bytes 27..46 `jne continue; mov eax,[edi+0x1d8]; jmp cull`). Replay: `all` 97 nodes / 403 draws at 2 px, 128 / 458 at 4 px, 139 / 479 at 8 px (unchanged); `bodies` 89 / 395, 120 / 450, 131 / 471, stub count 806 / 837 / 848 (341 parented nodes below the threshold take the engine's compare), registers/ESP/x87/EFLAGS/LastError as native, census rows `culled_small scope=bodies` 89 and `scope=all` 97, bench tree (every sub-threshold node parented) byte-identical to native, unknown scope `invalid_scope`, rollback exact. The rows carry no parent link: parents are proven for `limit > +0x1d8` (50 rows, none in a flip class) and synthetic for rows without a body flag `0x09000000` (`bodies_basis` in the rows file) | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py`; `python3 verification/probe/verify_cull_small_parts_site.py`; clean build `build/clean-csp-scope` + `check_no_x87.py`; objdump of the emitted `bodies` stub | fixture 113 checks / 0 failures (bench 0.227 native / 0.237 disarmed / 0.234 armed us per 12-node pass, not game FPS); verifier PASS 19/19 (18/18 before `encoder_bodies`; the "16/16" above predates the review fixes); DLL 0 warnings, 539 reachable functions, no x87 violations; stub integer-only; host 78 tests OK; dry run carries `X3M_CULL_SMALL_PARTS_SCOPE=all`, scope without the cull refused |
+| 2026-09-19 | **Default 2026-09-19: 2 px, scope `all`.** Run 43 B decided it: at 2 px scope `all` took the busy view from 884 to 477 draws and ~30 to ~42 fps with no visible pop-in, while scope `bodies` culled only 36 nodes per frame and saved nothing, because nearly every small node has a parent. The launcher now forwards `X3M_CULL_SMALL_PARTS_PX=2.0000` and `X3M_CULL_SMALL_PARTS_SCOPE=all` on every modded launch (`--cull-small-parts 0` is the explicit off, `--vanilla` forwards nothing), and the DLL's scope parser takes an absent/empty `X3M_CULL_SMALL_PARTS_SCOPE` as `all`; `bodies` stays selectable and its stub is unchanged. The DLL's own fallback stays off: without the PX variable nothing is patched | `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*cull*.py'`; `… -p 'test_*launch*.py'`; `python3 tools/manage.py launch --dry-run --hdr --motion-output --ownership --taa --object-trace --object-lifetime` | 37 tests OK and 30 tests OK; modded dry run carries `X3M_CULL_SMALL_PARTS_PX=2.0000` `X3M_CULL_SMALL_PARTS_SCOPE=all`, `--cull-small-parts 0` and `--vanilla` carry neither |
 
 ## Open
 
@@ -47,3 +48,24 @@ back-buffer width; a frame without a valid projection read runs vanilla.
 - With `--shadow-caster-retention` a culled static caster keeps casting from the retention store; the script
   occluder list `0x00488aef`/`0x004886a0` loses culled nodes; `camera_state::reset()` is unreachable with only
   this option on (after_reset disarms until the next begin_frame).
+
+## Run 43 B (run135-138)
+
+Same busy-station view (~900 draws baseline), one F8 capture per session, `--cull-small-parts <px> --cull-small-parts-scope <scope>`.
+
+| Session | px | scope | culled (capture frames) | draws (capture frames) | dt_p50 near capture (fps) |
+| --- | --- | --- | --- | --- | --- |
+| run131 (baseline, cull off) | - | - | - | 901 | 32 ms (~31 fps) |
+| run135 | 2 | bodies | 36, 36 | 884, 884 | 33638 us bucket (frame 2400) -> ~29.7 fps |
+| run136 | 2 | all | 1212, 1256 | 477, 477 | 23684 us bucket (frame 3600) -> ~42.2 fps |
+| run137 | 4 | bodies | 23, 23 | 891, 896 | 31101 us bucket (frame 2400) -> ~32.1 fps |
+| run138 | 4 | all | 1244, 1274, 1193, 1240 | 447 (all 4 capture frames) | 21408-22212 us buckets (frames 3900/4200) -> ~45-47 fps |
+
+`cull_small_parts_frame` and `motion_output_frame` lines (grep, not read whole):
+`cull_small_parts requested=... px=... patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 scope=bodies|all` is the install line in all four sessions (px 2/4 correctly forwarded, scope correctly forwarded).
+
+Answer to Q2: `bodies` does not fail to save time because draws are unchanged and nodes uncalled - it fails because almost none of the small on-screen nodes are actually parentless. Culled counts in `bodies` scope are 23-36 per frame vs 1193-1274 in `all` scope at the same px in the same view; draws drop only 901->884-896 (bodies) vs 901->447-477 (all). The flag-derived parent guess (predicting 395 of 403 culled draws kept in bodies) was wrong in the opposite direction: it isn't that bodies keeps most of the culled set, it's that almost none of the visible small nodes have `[node+0x18]==0` in this view, so the `bodies` scope filter itself, not the engine's downstream culling, is what discards the saving.
+
+Q3 (2px vs 4px, `all` scope): culled count is flat (1212-1256 at 2px vs 1193-1274 at 4px, same order), draws are flat (477 at 2px vs 447 at 4px, both capture pairs), and the fps gain from 2px->4px is real but modest (~42 fps -> ~45-47 fps) - consistent with a few more marginal nodes crossing the larger threshold, not a step change.
+
+Q4: no `cull_small_parts`/`motion_output_frame` error, warn, mismatch or fail lines in any of the four sessions; `apply_failures`/`restore_failures` are 0 throughout. `incomplete=N>0` frame_phases buckets appear only at session startup (frame 300/600) in all four, plus one late bucket in run137 (frame 3300) outside the analyzed capture window - ordinary settling, not evidence of a cull-path fault.
