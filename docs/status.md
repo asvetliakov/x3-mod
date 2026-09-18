@@ -13,35 +13,53 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`b6ea856927b56cdc1c4be5f42be3c07c80240dbe7b51c0c9e48e9dcbe9fab2a4`
-(18,319,107 bytes), built once on Opus from clean committed main `e29d6399`
-(2026-09-18; marker `X3M_SOURCE_COMMIT=e29d6399…`, no `-dirty`), installed
-through `manage.py install` (ownership manifest `e29d6399`). The
-[build record](../verification/results/run41-candidate-build.json) binds the
-clean build (zero warnings), the no-x87 audit (77 roots, 537 reachable,
-0 violations), 17 exports, the five site verifiers, all 52 shadow
-motion-output cases (0 behavioural diffs; the 41 committed plus 11 `-linear`/`-slope`
-siblings), the comparison-controls fixture (13,347 checks), the sun-lane live set
-24/24, the hull light-map GPU cases (108 × fill {0, 0.05} within one FP16 code),
-material motion, temporal pass, AO, the state-hook benchmark (draw pair +657 ns
-over native, run40 +641, within noise), the full host suite (2,204 OK) and the
-run 41 dry-runs. The [install record](../verification/results/run41-candidate-install.json)
-binds the installed bytes, unchanged EXE/bottle hashes and the rollback: run40
-`c47f039c…` in `/tmp/x3-candidate-gHUSU7/rollback`; earlier builds in the
-`/tmp/x3-candidate-iK0cir`, `-eBwRHq`, `-wRyHZV` rollback directories.
-No game launched.
+`1a5dd46c63cf4177f5b1035a44a552592c2afd9ba701be191cbff40414d7f4b6`
+(18,352,538 bytes), built once on Opus from clean committed main `903be726`
+(2026-09-18; marker `X3M_SOURCE_COMMIT=903be726…`, no `-dirty`), installed
+through `manage.py install` (ownership manifest `903be726`). The
+[build record](../verification/results/run42-candidate-build.json) binds the
+clean build, the no-x87 audit (539 reachable, both cull-census handlers walked),
+17 exports, the site verifiers incl. the cull census (16/16), the full shadow
+motion-output case set incl. the fade-route cases (0 behavioural diffs), the
+sun-lane live set, the cull-census CPU fixture, object lifetime, ownership,
+material motion, temporal pass, AO, the state-hook benchmark and the full host
+suite. The [install record](../verification/results/run42-candidate-install.json)
+binds the installed bytes, unchanged EXE/bottle hashes and the rollback: run41
+`b6ea8569…` in `/tmp/x3-candidate-Iv6Z6G/rollback`; run40 `c47f039c…` in
+`/tmp/x3-candidate-gHUSU7/rollback`. No game launched.
 
-This build adds, on top of run40's: `--sun-shadow-receiver-depth {device,linear}`
-(RT2 `A32B32G32R32F` with clip w in `.b`, the far-station flicker fix; default
-device = old behaviour; [design](architecture/shadow-receiver-depth.md)); the
-cascade apply slope margin (`--sun-shadow-bias-slope-texels`, default 0.2; the
-run119 grazing-plane flicker; program 509/512 slots); `--hull-lightmap-gain G`
-(the light-map term in 100 of 108 original hull programs, plain/fill/sun-share
-variants, Ctrl+Shift+F4 pairs it with the guide-light gain;
-[RE](reverse-engineering/hull-self-illumination.md)); `--fps-overlay`
-(Ctrl+Alt+F7, [hotkeys](architecture/comparison-hotkeys.md)); telemetry
-`apply_us=`, `flip_c<k>=`, `period2_c<k>=`, `flip_untracked=`, `flip_reset=`.
-Default path unchanged.
+This build adds, on top of run41's: linear receiver depth as the only encoding
+(the far-station flicker fix ratified by run 41 A2; `--sun-shadow-receiver-depth
+linear` is a no-op, `device` refused); the fade-band motion route working under
+original shading (run125 solar-panel shimmer: the cutout-caps probe never ran
+without linear materials, so every fading surface got the raw jittered sample);
+Ctrl+Shift+F4 = hull light-map gain alone (launcher default 4 under `--hdr`),
+Ctrl+Shift+F6 = effects + guide lights (guide lights take `--emission-source-gain`);
+`--cull-census` (read-only engine trampolines at the cull/LOD pass, capture
+frames only); `--game-phase-threshold-ms` (default 20) and `--telemetry-draw`;
+`fade_route_mode` always logged. Default path: the fade route and the light-map
+gain 4 are now on by default under HDR + TAA.
+
+## Session 2026-09-18 (night): run 41 read, linear default, fade route, engine levers
+
+- **Run 41** (run123 A, run124 A2, run125/126 B, run128 C; outcomes in the
+  [run table](verification/user-runs.md)): distant flicker gone under the linear
+  encoding (±1 ULP flips 0 vs 7–20 % of far-cascade pixels); shadows ≈ 1.4 ms;
+  ≥ 30 ms frames are the engine's > 800-draw view submission (28 of 33 ms);
+  retention clean, K 1.5 confirmed; hull light-map gain accepted at 4.
+- **Solar-panel shimmer** = the fade-band route inert under original shading
+  since 2026-09-15 (probe gated on linear materials); fixed, fixture
+  `seam-taa-fade-route-original` (resolved residual ≤ 0.055 px). An audit of
+  every linear-material gate found no second functional instance
+  ([asteroid-fog-temporal.md](reverse-engineering/asteroid-fog-temporal.md) "Run 125").
+- **Engine frame time** ([design](architecture/engine-frame-time.md), ratified):
+  the 24 fps corvette area is an 18 ms game-side pre-render episode (owner
+  unknown; telemetry run 42 A attributes it); the busy station frame is 22 of
+  32 ms view submission at 23.7 µs/draw; an offline census (world-scale proxy)
+  puts 50–65 % of the 890 draws under 2 px (≈ 12 ms if culled) — the cull
+  census hook sizes it from the engine's own measure in run 42 C; other levers:
+  proxy per-draw hook work 1–3 ms, LOD bias (View Distance A/B, run 42 D).
+  Closed with numbers: state filter, pass replay, instancing, threading.
 
 ## Session 2026-09-18 (evening): run 40 read, receiver precision, windows
 
