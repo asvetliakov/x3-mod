@@ -1807,3 +1807,19 @@ These are diagnostic microbenchmark timings on an idle synthetic device, not
 game FPS; they bound the D3DX call cost, and the in-game call may differ by
 cache state, but not by the three orders of magnitude the conclusion has in
 hand.
+
+**Run 42 A (run129, 2026-09-18).** Telemetry-only session on the run42 candidate (`--loop-phases --game-phases
+--pass-phases --residual-phases --telemetry-draw --frame-end-stride 10`), corvette save. Stands from `frame_end`:
+(a) the run125 24 fps area, frames 7000–9000, 89 s, dt p50 44.3 ms at 448 draws; (b) empty space, dt 8.4 ms at
+70 draws; (c1) 558 draws, dt 26.7 ms; (c2) 865 draws, dt 35.2 ms (another save; no `loading_phase` marker for that
+load, two hitches of 6.7 s and 17.7 s instead). **Pre-render owner:** `loop_phases` windows 7200–9000 have
+`collide` (call site `0x0043a38e` → `0x0045d250`) at 26.1–26.3 ms = 96 % of `input_p50` 27–29 ms, flat for ≈ 66 s,
+`max_interval_owner=collide` in every window; `game_phase_segment` (11,968 rows at the 20 ms threshold) gives the
+Input site 27.4 ms/frame and `PendingVm` 0.81 ms; baseline window 6900 pre_render 9.25 ms. **Proxy per-draw:**
+`motion_output_frame` (67 sampled frames) totals ≈ 6.5 ms at ≈ 530 routed draws (12.0–12.8 µs/draw) and ≈ 10.2 ms
+at ≈ 830 (11.3–13.3 µs/draw), `lazy_flush_us=0`; `view_submit` 17.8 ms / 574 draws (31.1 µs) and 25.5 ms / 841
+(30.3 µs). Whether the draw fields include the forwarded native draw is being established before the share is
+quoted. Self-cost: pass_phases 124 µs, residual 31 µs per frame; frame_phases/motion_output_frame have no self
+field. Sanity: threshold 20 ms, `fade_route_mode enabled=1`, light-map gain 4, guide lights 2, 0 DEVICELOST.
+Next: disassembly of `0x0045d250`/`0x0045cab0` (docs/reverse-engineering/sector-collide.md) and the proxy
+per-draw breakdown and trims (engine-frame-time.md §2.2).
