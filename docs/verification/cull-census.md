@@ -30,3 +30,14 @@ record and never change a verdict.
   run on the same thread (the frame routine `0x00471f50` issues both); a pass
   on another thread would at worst tear one frame's rows, never the engine's
   verdicts.
+
+**Run 42 C (run131, 2026-09-18).** First in-game census on the run42 candidate, fighter save at the run117
+station, F8 on the ≈ 900-draw view (frames 4991/4992, dt 31–32 ms before the capture stall): 1,296 / 1,324
+census entries per frame, overflow 0, unmeasured 3,881 / 3,853 (nodes the pass rejects before the measure).
+`tools/analysis/cull_census.py --frames 4991`: kept nodes under 2 px = 403 draws of 901 (44.7 %, 9.55 ms at
+23.7 µs/draw), under 4 px 458 (50.8 %, 10.85 ms), under 8 px 479 (53.2 %, 11.35 ms). The engine's own cull
+already removes 1,050 of 1,147 sub-2 px nodes (91.5 %); every surviving tiny node has `+0x1d8` = `+0x1dc` =
+limit = 0 (no per-node threshold), top model `35ba45c3` 150 draws at LOD 0. The run124 offline world-scale
+proxy (50–65 % under 2 px) overstated the under-2 px share by 6–20 points and matched the under-4 px share.
+Only one vantage was captured (both frames the same static view). Lever ratified: `--cull-small-parts <px>`
+(engine patch) for run 43 at 2 and 4 px.
