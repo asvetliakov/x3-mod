@@ -1,0 +1,18 @@
+{
+  "installed_utc": "2026-09-18T02:51:09.155172Z",
+  "source_commit": "e29d6399d501952542c637e5fc2716fd5c9e6354",
+  "manifest_source_commit": "e29d6399",
+  "candidate": "/tmp/x3-candidate-gHUSU7/candidate/d3d9.dll",
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "installed_sha256": "b6ea856927b56cdc1c4be5f42be3c07c80240dbe7b51c0c9e48e9dcbe9fab2a4",
+  "bytes": 18319107,
+  "rollback": "/tmp/x3-candidate-gHUSU7/rollback",
+  "rollback_sha256": "c47f039c5c46608be576717f0ab3c0d9fe718a584264214ecf29314a9eee2205",
+  "rollback_note": "run40 candidate c47f039c (e8ae3357), flown as run117-run122; earlier: d4d824a4 in /tmp/x3-candidate-iK0cir/rollback",
+  "unchanged": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+  },
+  "install_method": "tools/manage.py install --dll-source",
+  "build_record": "verification/results/run41-candidate-build.json"
+}
