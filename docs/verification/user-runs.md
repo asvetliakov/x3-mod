@@ -89,13 +89,15 @@ spot, 60 s, read again. Then fly normally for 2 minutes with the option on: any 
 happen (ramming an asteroid or a station part must still stop you), any docking oddity, any script event
 that looks wrong. Report the two readings and anything odd.
 
-**Session B** (small-parts cull; fighter save, the run117 station ≈ 900-draw view; ≈ 4 minutes):
+**Session B** (small-parts cull A/B; fighter save, the run117 station ≈ 900-draw view; ≈ 6 minutes, three launches):
 ```sh
-<prefix> <shadow set> --cull-small-parts 2 --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+<prefix> <shadow set> --cull-small-parts 2 --cull-small-parts-scope bodies --capture-start 999999 --capture-frames 2 --frame-end-stride 1
 ```
-At the run131 view: FPS overlay reading, F8 once. Look for popping of small parts (antennas, clamps,
-greebles) while approaching a station from 10 km to 1 km. Relaunch with `--cull-small-parts 4`, same
-view, same reading, same approach. Report the readings and which of 2 / 4 / off you would keep.
+At the run131 view: FPS overlay reading (ms and draws), F8 once. Then approach a station from 10 km to
+1 km and watch for pop-in. Relaunch with `--cull-small-parts-scope all` (whole far objects *and* small
+sub-parts), same view, same reading, same approach: do small glowing parts of the station you are near
+disappear, and is the extra frame time worth it? Optionally a third launch with `--cull-small-parts 4
+--cull-small-parts-scope bodies`. Report the readings and which you would keep: off / bodies 2 / bodies 4 / all 2.
 
 **Session C** (shimmer check; corvette save; ≈ 3 minutes):
 ```sh
