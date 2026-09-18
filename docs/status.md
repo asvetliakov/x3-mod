@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-18 (evening; run41 candidate installed; run 41 queued). This is the short current handoff; the current
+Updated 2026-09-18 (late night; run42 candidate installed; run 42 read; run 43 drafted, four changes in worktrees). This is the short current handoff; the current
 session handoff is [handoff-2026-09-18.md](handoff-2026-09-18.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -39,6 +39,24 @@ Ctrl+Shift+F6 = effects + guide lights (guide lights take `--emission-source-gai
 frames only); `--game-phase-threshold-ms` (default 20) and `--telemetry-draw`;
 `fade_route_mode` always logged. Default path: the fade route and the light-map
 gain 4 are now on by default under HDR + TAA.
+
+## Session 2026-09-18 (late night): run 42 read, four changes in flight
+
+- **Run 42** (run129–132, outcomes in the [run table](verification/user-runs.md)): the 24 fps area is the
+  sector collide routine `0x0045d250` (26 ms/frame flat, all-pairs loop with an x87 sqrt per pair,
+  [RE](reverse-engineering/sector-collide.md)); the busy station has 403 of 901 draws under 2 px (9.55 ms)
+  whose nodes carry zero size thresholds; View Distance High buys ≈ 1.5 fps (LOD lever closed); proxy-only
+  route cost 9.7 µs per routed draw; residual shimmer = fade module behind the camera plane + the node's
+  translucent sub-mesh (zwrite 0), both fixed on a branch; no other unrouted class exists.
+- **Unmerged, in worktrees** (table with state and next step in the
+  [handoff](handoff-2026-09-18.md)): shimmer fixes + `unmatched=` reasons, `--cull-small-parts`,
+  `--collide-box-cull`, per-draw trims + route bench; design note `route-per-draw-cost.md` in progress.
+  Brief for that note: attribute and rank the three big proxy per-routed-draw pieces (ownership wrapper
+  2.0 µs on the route's own calls, depth-replay lease 1.5 µs, hook-free lazy RT ≈ 2 µs; the current lazy
+  mode is a net loss because it re-installs the light setter hooks), plus the hook envelope count per
+  draw, with arithmetic at 830 draws, recommended order, acceptance evidence, what stays closed.
+- Installed build unchanged (run42 candidate). Run 43 is drafted (§43), not flyable until the run43
+  candidate exists.
 
 ## Session 2026-09-18 (night): run 41 read, linear default, fade route, engine levers
 
