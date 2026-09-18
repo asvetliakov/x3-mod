@@ -47,3 +47,24 @@ back-buffer width; a frame without a valid projection read runs vanilla.
 - With `--shadow-caster-retention` a culled static caster keeps casting from the retention store; the script
   occluder list `0x00488aef`/`0x004886a0` loses culled nodes; `camera_state::reset()` is unreachable with only
   this option on (after_reset disarms until the next begin_frame).
+
+## Run 43 B (run135-138)
+
+Same busy-station view (~900 draws baseline), one F8 capture per session, `--cull-small-parts <px> --cull-small-parts-scope <scope>`.
+
+| Session | px | scope | culled (capture frames) | draws (capture frames) | dt_p50 near capture (fps) |
+| --- | --- | --- | --- | --- | --- |
+| run131 (baseline, cull off) | - | - | - | 901 | 32 ms (~31 fps) |
+| run135 | 2 | bodies | 36, 36 | 884, 884 | 33638 us bucket (frame 2400) -> ~29.7 fps |
+| run136 | 2 | all | 1212, 1256 | 477, 477 | 23684 us bucket (frame 3600) -> ~42.2 fps |
+| run137 | 4 | bodies | 23, 23 | 891, 896 | 31101 us bucket (frame 2400) -> ~32.1 fps |
+| run138 | 4 | all | 1244, 1274, 1193, 1240 | 447 (all 4 capture frames) | 21408-22212 us buckets (frames 3900/4200) -> ~45-47 fps |
+
+`cull_small_parts_frame` and `motion_output_frame` lines (grep, not read whole):
+`cull_small_parts requested=... px=... patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 scope=bodies|all` is the install line in all four sessions (px 2/4 correctly forwarded, scope correctly forwarded).
+
+Answer to Q2: `bodies` does not fail to save time because draws are unchanged and nodes uncalled - it fails because almost none of the small on-screen nodes are actually parentless. Culled counts in `bodies` scope are 23-36 per frame vs 1193-1274 in `all` scope at the same px in the same view; draws drop only 901->884-896 (bodies) vs 901->447-477 (all). The flag-derived parent guess (predicting 395 of 403 culled draws kept in bodies) was wrong in the opposite direction: it isn't that bodies keeps most of the culled set, it's that almost none of the visible small nodes have `[node+0x18]==0` in this view, so the `bodies` scope filter itself, not the engine's downstream culling, is what discards the saving.
+
+Q3 (2px vs 4px, `all` scope): culled count is flat (1212-1256 at 2px vs 1193-1274 at 4px, same order), draws are flat (477 at 2px vs 447 at 4px, both capture pairs), and the fps gain from 2px->4px is real but modest (~42 fps -> ~45-47 fps) - consistent with a few more marginal nodes crossing the larger threshold, not a step change.
+
+Q4: no `cull_small_parts`/`motion_output_frame` error, warn, mismatch or fail lines in any of the four sessions; `apply_failures`/`restore_failures` are 0 throughout. `incomplete=N>0` frame_phases buckets appear only at session startup (frame 300/600) in all four, plus one late bucket in run137 (frame 3300) outside the analyzed capture window - ordinary settling, not evidence of a cull-path fault.
