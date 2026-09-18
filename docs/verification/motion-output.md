@@ -1327,3 +1327,90 @@ measured on it.
   tested-opaque arm (gate, `UnmatchedReason::State` mirror,
   `SunUntrackedReason::State` diagnostic mirror), none with a linear-material
   prerequisite. Seven-module host set: 51 tests OK.
+
+## Run 43 C (run139) — triage: solar-plant / distant-station shimmer persists, evidence points away from unrouted draws
+
+Source: `/tmp/x3-bottleX3-run139/session-20260919-032345-212.log` (375 MB,
+queried with grep/Python, never read whole). Four F8 captures, 8 frames each:
+cap1 frames 4126-4133 (solar plant ~4-5 km), cap2 frames 4326-4333 (same,
+~4-5 km, second pass), cap3 frames 5367-5374 (same plant, ~1 km), cap4 frames
+8126-8133 (after a save load, fighter, busy distant station).
+
+**Q1 — startup.** `fade_route_mode threshold=500 hysteresis=100 enabled=1
+taa=1 hdr=1 linear_materials=0 source=default` (line 9). `linear_cutout_device
+… verdict=1` (line 142); `fade_route_frame frame=0 … cutout_caps=1` (line
+157) — cutout caps Ready. No separate "overlay arm enabled" startup line
+exists; the overlay arm is unconditionally compiled in and only visible via
+its per-frame `overlay_routed`/`overlay_refused` counters (first nonzero in
+capture 4, see below). `X3M_LINEAR_MATERIALS=0` — original (non-linear)
+shading, per `proxy_options` line 4.
+
+**Q2 — per-capture totals** (sum of the 8 frames' `motion_output_frame` /
+`fade_route_frame` lines):
+
+| capture | draws | routed | unrouted | gate2(scene) | gate3(pair/unreg) | gate4(drawstate) | gate6(history) | fade_routed | fade_refused | overlay_routed | overlay_refused |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 (4126-4133) | 3290 | 3088 | 202 | 168 | 8 | 26 | 0 | 128 | 0 | 0 | 0 |
+| 2 (4326-4333) | 3266 | 3090 | 176 | 168 | 8 | 0 | 2 | 128 | 0 | 0 | 0 |
+| 3 (5367-5374) | 3192 | 3016 | 176 | 168 | 8 | 0 | 0 | 128 | 0 | 0 | 0 |
+| 4 (8126-8133) | 7220 | 6920 | 300 | 160 | 56 | 84 | 0 | 8 | 0 | 16 | 0 |
+
+Unmatched-reason histogram over `motion_route` lines whose `routed=0` (only
+gate3/gate4/gate6 draws get an individual `motion_route` row; gate2 "scene"
+refusals are frame-counted only, no per-draw row exists for them):
+cap1 `no_zwrite=26 unregistered=8`; cap2 `unregistered=8` (+2 `history`,
+frame 4333 only); cap3 `unregistered=8`; cap4
+`no_zwrite=84 unregistered=104`. Across the whole log only three
+`UnmatchedReason` values ever fire: `no_zwrite`, `unregistered`, `history`.
+None of `FadeCaps/FadeInstanced/FadeRows/FadeGeometry/FadeConstants/
+FadeOrigin/FadeThreshold/OverlayNode/Blended/State/Instanced/Rows/Geometry`
+appear anywhere in this session (`grep -o 'unmatched=[A-Za-z_0-9]*' | sort |
+uniq -c`).
+
+**Q3 — grouping the unrouted draws.** Every `no_zwrite`/`unregistered`
+`motion_route` row in all four captures has `node=00000000 node_handle=0
+primitives=0 vertex_count=0 indexed=0` (e.g. line for frame 4126 index=386:
+`vs=494fe349b8bc12ec ps=7c83ed50c9894e44 … node=00000000 … primitives=0 …
+zwrite=0 blend=1 … unmatched=no_zwrite`; index=398:
+`vs=5e484a06672e28fb ps=0a523f33ac47ae05 node=00000000 … unmatched=
+unregistered`). These are the same two vs/ps pairs (plus one more,
+`36f98d151fd6b0c6`/`222bee0defcb1852`, and `d5e1c75351ed3f04`/
+`8360f422de08b5bd`, only in capture 4) in every capture, zero geometry, no
+scene node — screen-space/post passes, not solar-plant or station mesh
+geometry. **No group of large on-screen unrouted geometry exists in any
+capture; nothing in the unrouted set is plausibly the shimmering panel legs
+or window glow.**
+
+**Q4 — did fade/overlay arms fire?** Fade arm: 128 `fade_routed` per capture
+in captures 1-3 (16/frame, `fade_refused=0` throughout); only 8 total (1/frame)
+in capture 4. Overlay arm: `overlay_routed=0` in captures 1-3, `16` total
+(2/frame) in capture 4, `overlay_refused=0` everywhere. Both arms fire and
+never refuse in this session — they are not blocked/starved here. Since the
+unrouted set contains no plant/station geometry (Q3), the remaining shimmer
+cannot be attributed to a class these arms are failing to catch.
+
+**Q5 — evidence the shimmer is not an unrouted-draw problem.** Routed draws in
+captures 1-3 include `atest=1` (alpha-tested) rows at 800/capture (100/frame,
+vs=`4944d81dfe531b37`, ps=`64bac8bb307eb896`/`5e0a10fe752b6140`, 128
+primitives each) — these *are* routed with `matched=1`, i.e. they do get
+motion vectors. `motion_output_frame` TAA fields for every capture frame:
+`taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0`,
+`cut=0`, `cut_missing=0.0000` (0.0052 once, frame 4333),
+`cut_median_px` ranging 0.005-0.17 px — no history rejection spikes, no
+disocclusion counter in this schema beyond `cut`/`cut_missing`, both near
+zero. `history_previous` equals the frame's `routed` count every frame
+(e.g. 386/386, 377/377, 865/865) confirming history carries forward
+correctly. This is consistent with the alpha-tested/thin-geometry hypothesis
+(sub-pixel panel struts and window cutouts, routed but under-sampled by TAA
+jitter) rather than a routing gap; the log cannot further distinguish
+sub-pixel coverage failure from light-map gain amplification — no per-pixel
+luminance/variance counter exists in this schema to test that separately.
+
+**Open issue / what one more launch should record:** this schema has no
+per-draw screen-space bounding-box or triangle-density field, so "sub-pixel
+geometry" here is inferred from `primitives<50` per draw plus known distance,
+not measured directly. A diagnostic that logs each routed draw's screen-space
+AABB area in pixels (or a coverage/derivative estimate) alongside its
+`unmatched`/`fade_arm`/`atest` fields would let a future triage confirm or
+rule out sub-pixel coverage as the shimmer cause without guessing from
+primitive counts.
