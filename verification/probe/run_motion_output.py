@@ -514,6 +514,13 @@ CASES += sun_apply_cases('sun-shadow-apply-cascades-5', X3M_FIXTURE_SUNAPPLY_CAS
 # too, and the validator fails: the pre-fix witness.
 SUN_FACES_FRAMES, SUN_FACES_FIXED_FROM = 16, 8
 CASES += sun_apply_cases('sun-shadow-apply-cascades-5-faces', X3M_FIXTURE_SUNAPPLY_CASCADES='5', X3M_FIXTURE_SUNAPPLY_FACES='1')
+# The slope-scaled margin (directional-shadows.md, "Run 40 B (run119) near flicker"): the three cascade cases again with
+# X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS at the production default 0.2 (the fixture's own default stays 0, so the records above
+# are the baseline law), as sibling records for both receiver encodings; the same validators, the GPU against the twin's slope term.
+SUN_APPLY_SLOPE = '0.2'
+for _name, _env in (('sun-shadow-apply-cascades', SUN_APPLY_CASCADES_ENV), ('sun-shadow-apply-cascades-5', dict(X3M_FIXTURE_SUNAPPLY_CASCADES='5')),
+                    ('sun-shadow-apply-cascades-5-faces', dict(X3M_FIXTURE_SUNAPPLY_CASCADES='5', X3M_FIXTURE_SUNAPPLY_FACES='1'))):
+    CASES += [dict(c, name=c['name'].replace(_name, _name + '-slope')) for c in sun_apply_cases(_name, **dict(_env, X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS=SUN_APPLY_SLOPE))]
 # Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
 SHADOW_TWINS = {'production-shadow-off': 'production-on', 'seam-shadow-off': 'seam-on', 'seam-taa-shadow-off': 'seam-taa-on',
                 'seam-lazy-shadow-off': 'seam-lazy-on', 'seam-burst-perdraw-shadow-off': 'seam-burst-perdraw', 'seam-burst-lazy-shadow-off': 'seam-burst-lazy'}
@@ -1067,6 +1074,7 @@ def validate_sun_apply_cascades(name, text, directory, env):
         and config[0]['caps'] == '128,512,1024' and abs(float(config[0]['margin']) - sun_apply.CASCADE_MARGIN) < 1e-6 and abs(float(config[0]['band']) - sun_apply.CASCADE_BAND) < 1e-6, (name, config)  # the float32 constants
     config = config[0]
     size, count = int(config['map_size']), 3
+    assert float(config['slope_texels']) == float(env.get('X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS', '0')), (name, 'the slope margin the fixture ran', config['slope_texels'])  # the -slope siblings: 0.2
     frames = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_CASCADES ')}
     times = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_TIME ')}
     assert sorted(frames) == sorted(times) == list(range(len(SUN_CASCADE_SCRIPT))), (name, sorted(frames), sorted(times))
@@ -1093,6 +1101,7 @@ def validate_sun_apply_cascades(name, text, directory, env):
         assert (int(f['budget']) < int(f['issues'])) == (letter in 'de'), (name, frame, f['budget'], f['issues'])
         for c in range(count):  # the bias each cascade resolved is the law's at its own texel and depth range
             resolved = sun_apply.resolve_bias(float(config['bias_units']), extents[c], .5 * (float(config['depth_light']) + float(config['depth_behind'].split(',')[c])), size, float(config['clamp_texels']))
+            assert abs(float(params['cascades'][c]['slope_texels']) - float(config['slope_texels'])) <= 1e-7 * max(1.0, float(config['slope_texels'])), (name, frame, c, 'the slope margin on this cascade (the float32 the pass received)', params['cascades'][c]['slope_texels'], config['slope_texels'])
             assert abs(params['cascades'][c]['bias_constant'] - resolved['bias_constant']) <= 1e-9 and abs(params['cascades'][c]['bias_max'] - resolved['bias_max']) <= 1e-8 \
                 and abs(float(f[f'texel_world{c}']) - resolved['texel_world']) <= 1e-6, (name, frame, c, resolved)
         read = lambda suffix, at=frame: (directory / f'sunapply_{at}_{suffix}').read_bytes()
@@ -1180,7 +1189,7 @@ def validate_sun_apply_cascades(name, text, directory, env):
     validator_checks = 10 + 10 * len(SUN_CASCADE_SCRIPT)
     return {'checks': checks + validator_checks, 'fixture_checks': checks, 'validator_checks': validator_checks, 'frames': len(SUN_CASCADE_SCRIPT), 'map_size': size, 'cascades': count,
             'legacy_latch': legacy_latch,
-            'config': {k: config[k] for k in ('extents', 'depth_light', 'depth_behind', 'caps', 'bias_units', 'clamp_texels', 'margin', 'band')},
+            'config': {k: config[k] for k in ('extents', 'depth_light', 'depth_behind', 'caps', 'bias_units', 'clamp_texels', 'slope_texels', 'margin', 'band')},
             'program_slots': int(device[0]['slots']), 'cascade_program_slots': int(device[0]['cascade_slots']), 'max_texture': device[0]['max_texture'], 'ps30_slots': int(device[0]['ps30_slots']),
             'depth_format': int(replay_device[0]['depth_format']), 'depth_size': int(replay_device[0]['depth_size']),
             'bounds_bench_ns': {'single_verdict': float(bench[0]['verdict_ns']), 'cascade_mask_4': float(bench[0]['mask_ns']), 'cascade_mask_4_per_cascade_suns': float(bench[0]['split_mask_ns']),
@@ -1221,6 +1230,7 @@ def validate_sun_apply_cascades_faces(name, text, directory, env):
     assert len(config) == 1 and config[0]['cascades'] == '5', (name, config)
     config = config[0]
     size = int(config['map_size'])
+    assert float(config['slope_texels']) == float(env.get('X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS', '0')), (name, 'the slope margin the fixture ran', config['slope_texels'])  # the -slope siblings: 0.2
     frames = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_CASCADES ')}
     times = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_TIME ')}
     faces = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_FACES ')}
@@ -1303,6 +1313,7 @@ def validate_sun_apply_cascades_five(name, text, directory, env):
         and abs(float(config[0]['margin']) - sun_apply.CASCADE_MARGIN) < 1e-6 and abs(float(config[0]['band']) - sun_apply.CASCADE_BAND) < 1e-6, (name, config)
     config = config[0]
     size = int(config['map_size'])
+    assert float(config['slope_texels']) == float(env.get('X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS', '0')), (name, 'the slope margin the fixture ran', config['slope_texels'])  # the -slope siblings: 0.2
     frames = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_CASCADES ')}
     times = {int(fields(l)['frame']): fields(l) for l in text.splitlines() if l.startswith('SUNAPPLY_TIME ')}
     assert sorted(frames) == sorted(times) == list(range(len(SUN_CASCADE5_SCRIPT))), (name, sorted(frames), sorted(times))
@@ -1337,6 +1348,7 @@ def validate_sun_apply_cascades_five(name, text, directory, env):
         assert (int(f['budget']) < int(f['issues'])) == (letter in 'de'), (name, frame, f['budget'], f['issues'])
         for c in range(count):  # the bias each cascade resolved is the law's at its own texel and depth range
             resolved = sun_apply.resolve_bias(float(config['bias_units']), extents[c], .5 * (float(config['depth_light']) + float(config['depth_behind'].split(',')[c])), size, float(config['clamp_texels']))
+            assert abs(float(params['cascades'][c]['slope_texels']) - float(config['slope_texels'])) <= 1e-7 * max(1.0, float(config['slope_texels'])), (name, frame, c, 'the slope margin on this cascade (the float32 the pass received)', params['cascades'][c]['slope_texels'], config['slope_texels'])
             assert abs(params['cascades'][c]['bias_constant'] - resolved['bias_constant']) <= 1e-9 and abs(params['cascades'][c]['bias_max'] - resolved['bias_max']) <= 1e-8 \
                 and abs(float(f[f'texel_world{c}']) - resolved['texel_world']) <= 1e-6, (name, frame, c, resolved)
         read = lambda suffix, at=frame: (directory / f'sunapply_{at}_{suffix}').read_bytes()
@@ -1372,7 +1384,7 @@ def validate_sun_apply_cascades_five(name, text, directory, env):
     us, replay_us = sorted(c['us'] for c in comparisons.values()), sorted(c['replay_us'] for c in comparisons.values())
     validator_checks = 7 + 11 * len(SUN_CASCADE5_SCRIPT)
     return {'checks': checks + validator_checks, 'fixture_checks': checks, 'validator_checks': validator_checks, 'frames': len(SUN_CASCADE5_SCRIPT), 'map_size': size, 'cascades': count,
-            'config': {k: config[k] for k in ('extents', 'depth_light', 'depth_behind', 'caps', 'bias_units', 'clamp_texels', 'margin', 'band')},
+            'config': {k: config[k] for k in ('extents', 'depth_light', 'depth_behind', 'caps', 'bias_units', 'clamp_texels', 'slope_texels', 'margin', 'band')},
             'program_slots': int(device[0]['slots']), 'cascade_program_slots': int(device[0]['cascade_slots']), 'max_texture': device[0]['max_texture'], 'ps30_slots': int(device[0]['ps30_slots']),
             'depth_format': int(replay_device[0]['depth_format']), 'depth_size': int(replay_device[0]['depth_size']),
             'bounds_bench_ns': {'single_verdict': float(bench[0]['verdict_ns']), 'cascade_mask_4': float(bench[0]['mask_ns']), 'cascade_mask_4_per_cascade_suns': float(bench[0]['split_mask_ns']),
@@ -4881,6 +4893,7 @@ def main(argv=None):
                        # defaults unless a case sets them (an inherited value must not).
                        X3M_SHADOW_REPLAY_EXTENT='250', X3M_SHADOW_REPLAY_DEPTH_HALF='512', X3M_SHADOW_REPLAY_CAP='512',
                        X3M_SUN_SHADOW_BIAS_UNITS=repr(sun_apply.BIAS_UNITS_DEFAULT), X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS=repr(sun_apply.BIAS_CLAMP_TEXELS),
+                       X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS='0',  # the cascade fixture's baseline law; the -slope cases set 0.2
                        X3M_FIXTURE_SUNAPPLY_WIDE='0', X3M_FIXTURE_SHADOW_FAR_T='240',
                        # Cascades off unless a case sets them (the single-map path is the default).
                        X3M_SHADOW_CASCADES='0', X3M_FIXTURE_SUNAPPLY_CASCADES='0',

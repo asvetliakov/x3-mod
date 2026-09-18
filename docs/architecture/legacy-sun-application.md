@@ -198,7 +198,11 @@ and clamps the receiver-plane term (also the non-planar fallback) at
 `sun_shadow_apply_bias`), which at the default cascade resolves to exactly the former
 0.001 / 0.01; the texel term is what a receiver-plane fit expects to be off by across one
 texel, and the clamp scales with the texel because the plane term extrapolates a slope over
-at most ~1.9 texels. The 21-texel default is today's production value kept for identity; the
+at most ~1.9 texels. The cascade program additionally lowers every tap's plane term by
+`--sun-shadow-bias-slope-texels S` texels of |dz/du| + |dz/dv| before the clamp (0–8, default
+0.2; `directional-shadows.md`, "Run 40 B (run119) near flicker": a sun-grazing plane's plane
+term is extrapolated from a sub-texel baseline and misses the taps by a tenth of the 27-u
+texel slope). The 21-texel default is today's production value kept for identity; the
 detached fixture's tuned literals correspond to 4 texels, and the wide fixture shows the large
 fallback lighting a few silhouette pixels of a receiver's own faces (directional-shadows.md),
 so `--sun-shadow-bias-clamp-texels 4` is the tuning run 38 can try without a rebuild. One cascade remains a compromise

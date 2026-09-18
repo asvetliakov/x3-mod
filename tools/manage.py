@@ -302,6 +302,7 @@ def main():
     parser.add_argument('--sun-shadow-receiver-depth', choices=('device', 'linear'), default='device', help='Receiver depth of the sun-shadow apply quad (X3M_SUN_SHADOW_RECEIVER_DEPTH; default device; requires --sun-shadow-lane): device keeps the lane\'s G32R32F RT2 and the z/w law on .r; linear widens RT2 to A32B32G32R32F and the routed fragments write the interpolated clip w to .b, which the quad reads as the receiver\'s view depth (one fp32 ULP of view depth instead of one ULP of z/w at 20-40 km); TAA and AO keep reading .r. Fixed at device creation, rebuilt after Reset; an A/B is two launches (docs/architecture/shadow-receiver-depth.md)')
     parser.add_argument('--sun-shadow-bias-units', type=float, default=None, metavar='B', help='Constant sun-shadow compare bias in world units, 0..1000, default 0.53571875 (X3M_SUN_SHADOW_BIAS_UNITS; requires --sun-shadow-apply): the quad subtracts B plus one world texel of the map, divided by 2 D, from every compare; with --sun-shadow-bias-clamp-texels the defaults resolve to the former 0.001 / 0.01 at the default 250 / 512 / 1024 cascade; capture frames print the resolved values in sun_shadow_apply_params')
     parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
+    parser.add_argument('--sun-shadow-bias-slope-texels', type=float, default=None, metavar='S', help='Slope-scaled margin of the cascade sun-shadow compare in texels of the receiver plane\'s depth slope, 0..8, default 0.2 (X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS; requires --sun-shadow-apply; 0 keeps the constant + plane law)')
     parser.add_argument('--ambient-occlusion', action='store_true', help='Half-resolution GTAO at the scene-end hook, multiplied into the scene target before the temporal resolve (X3M_AMBIENT_OCCLUSION=1; requires --motion-output --taa; default off). Ctrl+Shift+F11 toggles the chain off/on during play for a same-scene comparison (one ambient_occlusion_toggle log line per press; the pass stays attached). docs/architecture/ambient-occlusion.md, "Step 2"')
     parser.add_argument('--ao-radius', type=float, default=None, metavar='METRES', help='Ambient occlusion world radius in metres, 0.1..100, default 2 (X3M_AO_RADIUS; requires --ambient-occlusion; view units are 0.2 m, the calibration is tunable because the view-unit check is inconclusive)')
     parser.add_argument('--ao-strength', type=float, default=None, help='Ambient occlusion strength s of the factor 1 - s (1 - ao), 0..1, default 0.5 (X3M_AO_STRENGTH; requires --ambient-occlusion)')
@@ -591,6 +592,10 @@ def main():
         parser.error('--sun-shadow-bias-clamp-texels requires --sun-shadow-apply.')
     if args.sun_shadow_bias_clamp_texels is not None and not (math.isfinite(args.sun_shadow_bias_clamp_texels) and 1.0 <= args.sun_shadow_bias_clamp_texels <= 64.0):
         parser.error('--sun-shadow-bias-clamp-texels must be within [1, 64].')
+    if args.sun_shadow_bias_slope_texels is not None and not args.sun_shadow_apply:
+        parser.error('--sun-shadow-bias-slope-texels requires --sun-shadow-apply.')
+    if args.sun_shadow_bias_slope_texels is not None and not (math.isfinite(args.sun_shadow_bias_slope_texels) and 0.0 <= args.sun_shadow_bias_slope_texels <= 8.0):
+        parser.error('--sun-shadow-bias-slope-texels must be within [0, 8].')
     if args.ambient_occlusion and not (args.motion_output and args.taa):
         parser.error('--ambient-occlusion requires --motion-output --taa.')
     if not args.ambient_occlusion and (args.ao_radius is not None or args.ao_strength is not None or args.ao_debug or args.ao_timing):
@@ -861,6 +866,7 @@ def main():
             env['X3M_SHADOW_RETENTION_TIMING'] = '1'
         env['X3M_SUN_SHADOW_BIAS_UNITS'] = repr(args.sun_shadow_bias_units if args.sun_shadow_bias_units is not None else 0.53571875)
         env['X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS'] = repr(args.sun_shadow_bias_clamp_texels if args.sun_shadow_bias_clamp_texels is not None else 20.97152)
+        env['X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS'] = repr(args.sun_shadow_bias_slope_texels if args.sun_shadow_bias_slope_texels is not None else 0.2)
         env['X3M_AMBIENT_OCCLUSION'] = '1' if args.ambient_occlusion else '0'
         env['X3M_AO_RADIUS'] = repr(args.ao_radius if args.ao_radius is not None else 2.0)
         env['X3M_AO_STRENGTH'] = repr(args.ao_strength if args.ao_strength is not None else 0.5)

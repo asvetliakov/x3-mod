@@ -41,11 +41,17 @@ float4 terms : register(c1);   // x = m22, y = m32, z = exponent, w = relative v
 float4 select : register(c3);  // x = margin, y = band start, z = 1 / band width, w = 1 when RT2.b carries the view depth (A32B32G32R32F), 0 for the z/w law
 float4 taps[9] : register(c4); // xy = the 3x3 kernel offsets in texels, rotated by the frame's jitter index (row-major, j then i)
 // Per cascade i at c(13 + 5 i): the three view -> sun rows, (map size, 1 / size,
-// constant bias, receiver-plane clamp) and (valid, last, 0, 0). An unused
-// cascade has zero rows with row 0 w = 2 (never contains a pixel).
+// constant bias, receiver-plane clamp) and (valid, last, slope margin / size, 0).
+// An unused cascade has zero rows with row 0 w = 2 (never contains a pixel).
+// Slope margin (sun_shadow_apply_pass.h, sun_shadow_bias_slope_texels_*): every
+// tap's plane term is lowered by slope_texels texels of the plane's depth slope
+// |g.x| + |g.y| (g per uv, so flags.z carries texels / size) before its clamp; on
+// a sun-grazing plane the plane term extrapolates a whole texel of depth from a
+// sub-texel derivative baseline, so the receiver's fp32 noise reaches the taps
+// as a tenth of that texel, above the constant bias. Zero keeps the older law.
 float4 cascades[25] : register(c13);
 
-float pcf(sampler tex, float3 sun, float3 dpdx, float3 dpdy, float4 r0, float4 r1, float4 r2, float4 map, bool steady) {
+float pcf(sampler tex, float3 sun, float3 dpdx, float3 dpdy, float4 r0, float4 r1, float4 r2, float4 map, float4 flags, bool steady) {
     float2 muv = float2(sun.x, -sun.y) * 0.5 + 0.5;
     float2 duvdx = float2(dot(r0.xyz, dpdx), -dot(r1.xyz, dpdx)) * 0.5;
     float2 duvdy = float2(dot(r0.xyz, dpdy), -dot(r1.xyz, dpdy)) * 0.5;
@@ -57,10 +63,14 @@ float pcf(sampler tex, float3 sun, float3 dpdx, float3 dpdy, float4 r0, float4 r
     float2 g = float2(dzdx * duvdy.y - dzdy * duvdx.y, dzdy * duvdx.x - dzdx * duvdy.x) * inv;
     float2 suv = muv + 0.5 * map.y;
     float2 texel = floor(suv * map.x);
+    // Slope margin: flags.z texels of |dz/du| + |dz/dv| (the pass uploads texels / size), folded
+    // into the plane term before its clamp so the lowering stays within map.w (two slots per
+    // cascade: g is 0 where the fit is dropped, and the dot's third operand takes the subtraction).
+    float slope = (abs(g.x) + abs(g.y)) * flags.z;
     float lit = 0.0;
     [loop] for (int k = 0; k < 9; ++k) {
         float2 tapUV = (floor(texel + 0.5 + taps[k].xy) + 0.5) * map.y;
-        float bias = planar ? clamp(dot(tapUV - suv, g), -map.w, map.w) : -map.w;
+        float bias = planar ? clamp(dot(tapUV - suv, g) - slope, -map.w, map.w) : -map.w;
         float reference = sun.z + bias - map.z;
         lit += (tex2Dlod(tex, float4(tapUV, 0.0, 0.0)).r >= reference) ? 1.0 : 0.0;
     }
@@ -100,11 +110,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float w4 = chosen4 * (1.0 - band[4] * cascades[24].y) + chosen3 * band[3] * inside[4];
     w0 *= cascades[4].x; w1 *= cascades[9].x; w2 *= cascades[14].x; w3 *= cascades[19].x; w4 *= cascades[24].x;
     float shade = 0.0;
-    [branch] if (w0 > 0.0) shade += w0 * (1.0 - pcf(mapTex0, sun[0], dpdx, dpdy, cascades[0], cascades[1], cascades[2], cascades[3], steady));
-    [branch] if (w1 > 0.0) shade += w1 * (1.0 - pcf(mapTex1, sun[1], dpdx, dpdy, cascades[5], cascades[6], cascades[7], cascades[8], steady));
-    [branch] if (w2 > 0.0) shade += w2 * (1.0 - pcf(mapTex2, sun[2], dpdx, dpdy, cascades[10], cascades[11], cascades[12], cascades[13], steady));
-    [branch] if (w3 > 0.0) shade += w3 * (1.0 - pcf(mapTex3, sun[3], dpdx, dpdy, cascades[15], cascades[16], cascades[17], cascades[18], steady));
-    [branch] if (w4 > 0.0) shade += w4 * (1.0 - pcf(mapTex4, sun[4], dpdx, dpdy, cascades[20], cascades[21], cascades[22], cascades[23], steady));
+    [branch] if (w0 > 0.0) shade += w0 * (1.0 - pcf(mapTex0, sun[0], dpdx, dpdy, cascades[0], cascades[1], cascades[2], cascades[3], cascades[4], steady));
+    [branch] if (w1 > 0.0) shade += w1 * (1.0 - pcf(mapTex1, sun[1], dpdx, dpdy, cascades[5], cascades[6], cascades[7], cascades[8], cascades[9], steady));
+    [branch] if (w2 > 0.0) shade += w2 * (1.0 - pcf(mapTex2, sun[2], dpdx, dpdy, cascades[10], cascades[11], cascades[12], cascades[13], cascades[14], steady));
+    [branch] if (w3 > 0.0) shade += w3 * (1.0 - pcf(mapTex3, sun[3], dpdx, dpdy, cascades[15], cascades[16], cascades[17], cascades[18], cascades[19], steady));
+    [branch] if (w4 > 0.0) shade += w4 * (1.0 - pcf(mapTex4, sun[4], dpdx, dpdy, cascades[20], cascades[21], cascades[22], cascades[23], cascades[24], steady));
     float f = saturate(1.0 - shade);
     bool valid = d >= 0.0 && s > 0.0 && covered > 0.0;
     float base = saturate(1.0 - (1.0 - f) * s);

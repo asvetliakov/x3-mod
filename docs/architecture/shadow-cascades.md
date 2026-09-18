@@ -125,6 +125,11 @@ footprint scales with the texel: 1.5 / 4.4 / 11 units), rotated by `jitter_index
 receiver-plane gradient `g` from that cascade's derivatives; constants per cascade in
 normalized depth from world units, `bias_i = (b_const + b_texel · texel_i) / range_i` and
 `bias_max_i` likewise (`c1.w`, `c6.x` become per-cascade float4s; ≈ 16 constants in all).
+Since the run119 fix (`directional-shadows.md`, "Run 40 B (run119) near flicker") every tap's
+plane term is also lowered by `slope_texels` (default 0.2, `X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS`)
+texels of |dz/du| + |dz/dv| before its clamp, the margin a sun-grazing plane needs against the
+plane fit's sub-texel derivative baseline; the pass uploads texels / size in the cascade's
+flags `.z`, the twin reads `slope<i>` off the params line (absent: 0).
 Slot estimate ≈ 110–120 (today ≈ 50), four samplers, one quad; expected < +0.1 ms on the
 0.3–0.5 ms class quad at 768p.
 

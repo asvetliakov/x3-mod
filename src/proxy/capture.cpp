@@ -2332,12 +2332,16 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       // fallback in world texels, both resolved per frame with the cascade.
       { const bool apply_asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_APPLY",setting,4)==1&&setting[0]==L'1';
         const bool apply_enabled=apply_asked&&sun_lane_enabled&&depth_asked&&enabled;
-        double bias_units=renderer::sun_shadow_bias_units_default, clamp_texels=renderer::sun_shadow_bias_clamp_texels_default; wchar_t text[32]{}; wchar_t* end=nullptr;
+        // X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS (0..8, default 0.2) is the cascade
+        // program's slope-scaled margin in texels of the receiver plane's
+        // depth slope (sun_shadow_apply_pass.h).
+        double bias_units=renderer::sun_shadow_bias_units_default, clamp_texels=renderer::sun_shadow_bias_clamp_texels_default, slope_texels=renderer::sun_shadow_bias_slope_texels_default; wchar_t text[32]{}; wchar_t* end=nullptr;
         if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_UNITS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_units_min&&v<=renderer::sun_shadow_bias_units_max)bias_units=v; }
         if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_clamp_texels_min&&v<=renderer::sun_shadow_bias_clamp_texels_max)clamp_texels=v; }
-        if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels);
+        { wchar_t slope_text[32]{}; if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS",slope_text,32)>0){ end=nullptr; const double v=wcstod(slope_text,&end); if(end!=slope_text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_slope_texels_min&&v<=renderer::sun_shadow_bias_slope_texels_max)slope_texels=v; } }
+        if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels,slope_texels);
         sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
-        hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels); } }
+        hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }

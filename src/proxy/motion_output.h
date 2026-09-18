@@ -467,12 +467,16 @@ public:
     // bias_units: the constant compare bias in world units (X3M_SUN_SHADOW_BIAS_UNITS);
     // clamp_texels: the receiver-plane clamp and non-planar fallback in world
     // texels (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS); renderer::sun_shadow_apply_bias
-    // resolves both per frame with the cascade. Out-of-range values keep the defaults.
+    // resolves both per frame with the cascade. slope_texels: the cascade
+    // program's slope-scaled margin in texels of the receiver plane's depth
+    // slope (X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS; sun_shadow_apply_pass.h). Out-of-range values keep the defaults.
     void configure_sun_shadow_apply(bool requested, double bias_units=renderer::sun_shadow_bias_units_default,
-                                    double clamp_texels=renderer::sun_shadow_bias_clamp_texels_default) noexcept {
+                                    double clamp_texels=renderer::sun_shadow_bias_clamp_texels_default,
+                                    double slope_texels=renderer::sun_shadow_bias_slope_texels_default) noexcept {
         sun_apply_requested_=requested;
         sun_apply_bias_units_=bias_units>=renderer::sun_shadow_bias_units_min&&bias_units<=renderer::sun_shadow_bias_units_max?bias_units:renderer::sun_shadow_bias_units_default;
         sun_apply_clamp_texels_=clamp_texels>=renderer::sun_shadow_bias_clamp_texels_min&&clamp_texels<=renderer::sun_shadow_bias_clamp_texels_max?clamp_texels:renderer::sun_shadow_bias_clamp_texels_default;
+        sun_apply_slope_texels_=slope_texels>=renderer::sun_shadow_bias_slope_texels_min&&slope_texels<=renderer::sun_shadow_bias_slope_texels_max?slope_texels:renderer::sun_shadow_bias_slope_texels_default;
     }
     // Caster-candidate counter (shadow_replay_candidates.h; X3M_SHADOW_REPLAY_CANDIDATES=1):
     // integer bookkeeping per routed draw, one shadow_replay_candidates line per
@@ -1121,6 +1125,7 @@ private:
     bool sun_shadow_force_replay_=false; // the frame back on replays every cascade, whatever the budget's parity rule says
     double sun_apply_bias_units_=renderer::sun_shadow_bias_units_default;         // world units; resolved per frame with the cascade (sun_shadow_apply_bias)
     double sun_apply_clamp_texels_=renderer::sun_shadow_bias_clamp_texels_default; // world texels; the receiver-plane clamp and non-planar fallback
+    double sun_apply_slope_texels_=renderer::sun_shadow_bias_slope_texels_default; // texels of the plane's depth slope; the cascade program's slope-scaled margin
     std::unique_ptr<renderer::SunShadowApplyPass> sun_apply_;
     HRESULT sun_apply_attach_result_=S_FALSE;
     std::uint64_t sun_apply_frame_=~std::uint64_t(0);

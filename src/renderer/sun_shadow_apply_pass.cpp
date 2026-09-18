@@ -362,12 +362,13 @@ HRESULT SunShadowApplyPass::execute_cascades(const SunShadowCascadeFrame& in, Su
         k[4][1] = c + 1 == in.count ? 1.f : 0.f;
         if (!cascade.valid || !cascade.map) continue;
         if (!std::isfinite(cascade.bias_constant) || !std::isfinite(cascade.bias_max) || cascade.bias_constant < 0.f || cascade.bias_max < 0.f) return skip("params");
+        if (!std::isfinite(cascade.slope_texels) || cascade.slope_texels < 0.f || cascade.slope_texels > float(sun_shadow_bias_slope_texels_max)) return skip("params");
         if (FAILED(cascade.map->GetLevelDesc(0, &desc)) || desc.Width != desc.Height || desc.Width < 64 || desc.Format != D3DFMT_R32F ||
             desc.MultiSampleType != D3DMULTISAMPLE_NONE)
             return skip("format");
         if (FAILED(same_device(device_, cascade.map))) return skip("device");
         k[3][0] = float(desc.Width); k[3][1] = 1.f / float(desc.Width); k[3][2] = cascade.bias_constant; k[3][3] = cascade.bias_max;
-        k[4][0] = 1.f;
+        k[4][0] = 1.f; k[4][2] = cascade.slope_texels / float(desc.Width); // the program's g is per uv: texels / size
         ++bound; if (!out->map_size) out->map_size = desc.Width;
     }
     if (!bound) return skip("absent");

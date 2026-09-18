@@ -3054,3 +3054,163 @@ route creates `G32R32F` as before and every consumer's bits are unchanged. Fixtu
   `X3M_SUN_SHADOW_RECEIVER_DEPTH=linear` (the lane's own prerequisites must be on the line).
 - Not done: `tools/analysis/shadow_receiver_reroll.py` (the note's captured-data witness) needs
   an F8 burst directory; the flight's `frame_end` delta and burst are the user's.
+
+
+## Run 40 B (run119) near flicker: the sun-grazing receiver plane on C1 (2026-09-18, worktree `agent-ad56f3afbd1f807a3`)
+
+Inputs: `/tmp/x3-bottleX3-run119` (corvette, live retention, adaptive C0 K 1.5, C0 half-extent 674 u),
+burst 2 (16528–16535, the station; C1 owns 90.8 k pixels) with bursts 1 and 3 for the C0/C1 map
+comparison, `depth_1_<f>.rg32f`, `shadow_map<k>_1_<f>.r32f`, `sun_shadow_apply_params`,
+`shadow_replay_map_basis`, `shadow_replay_caster`, `camera_state`; the twin
+(`expected_factor_cascades`, coarse derivatives), `shadow_receiver_reroll.py`, `shadow_map_diff.py`
+and scratch scripts outside the repository. No game; Wine only for the two shader recompilations.
+
+### 1. Where the C1 flips are
+
+The ±1 ULP class at 16528 (9,646 px = 10.6 % of C1's owned pixels, own 3×3 f moved by ≥ 2/9) is one
+region: screen i p5/50/95 895/947/1168, j 515/689/761 (lower right), view depth 1.41–2.78 km
+(p5–p95), receiver quantum z²/1e8 = 0.026 u p50. Its surface is a single plane seen 65° off its
+normal (ray · n p50 0.42) with the sun 3.4° above it (|sun · n| p5/50/95 0.051/0.061/0.148,
+share 0.31–0.67), planar on 99.8 % (clamp hit 0.2 %), sun-depth slope 25–28 u per C1 texel
+(the map's own gradient at the sliver is −27.543 u/texel everywhere, dz/du = 0). The texel under
+the receiver is the receiver's own front face: map − receiver p25/50/75 −6.6 / −1.7 / +3.3 u, 70 %
+within 8 u (own surface; the 3×3 depth spread is 55 u because the sliver is 5 texel rows wide p50
+and the outer taps reach the neighbouring geometry). Against the compare reference the nearest
+tap's margin is p25/50/75 −0.08 / +0.17 / +0.67 u (stable lit pixels: +2.04 u = the 2.18-u
+constant bias), so the flipping taps sit within ±1 u of the threshold; the 9-tap minimum |margin|
+is < 0.033 u on 25 % of the class and < 2 quanta on 38 %.
+
+Frame to frame (same screen pixel, C1-owned in both frames, own f change ≥ 2/9): 30.5 / 28.4 /
+20.9 / 28.3 / 26.2 / 26.3 / 20.6 % over the seven consecutive pairs of the burst (blended f
+29.4–20.2 %, the on-screen factor 16.5–10.1 %). 5,690 of the 9,646 ULP-flipped pixels change
+between 16528 and 16529, but they are 22 % of the 25,415 changed pixels: the ±ULP class marks the
+same surface, not the whole re-roll. Caster set and verdicts are stable (triage), the C1 map at
+the sliver's world texels is reproducible frame to frame to ±0.24 u (p5–p95 of the aligned
+delta once a uniform per-frame offset is removed, §2), and the receiver latch is right: a screen
+offset scan of ±1 px in 0.25-px steps moves the own-surface residual by 20 u per 0.25 px in x
+and 44 u in y, with the minimum at (0, 0) on three of four frames.
+
+### 2. Why a tenth of the pixels sit on the threshold
+
+Own-surface residual r = map depth at the receiver's texel − plane-predicted depth at that
+texel (the plane term at the tap), on the grazing class (cos < 0.1, own surface, planar,
+unclamped; 15–17 k px per frame): p5/25/50/75/95 = −3.2 / −2.2 / −1.6 / −0.6 / +0.6 u at 16528,
+−3.1 / −1.7 / −0.8 / −0.2 / +0.8 at 16529, −1.6 / −0.4 / +0.5 / +1.0 / +1.9 at 16530; on the
+face-on class (cos > 0.5) −0.13 / −0.03 / −0.06 / +0.05 u p50 across the same frames. Two terms:
+
+1. **The plane-fit gradient.** The plate's projection onto the map is compressed by |sun · n| =
+   0.06 along its normal, so a 2×2 pixel quad spans dv 0.032 (y) / 0.115 (x) texel across that
+   axis while the depth changes 27.4 u per texel along it. The solved gradient gv spreads
+   −35.6 / −29.8 / −27.4 / −25.1 / −21.8 u/texel (p5–p95) against the map's −27.5 (fine
+   derivatives −33.1 … −22.8): a ±10 % error from the receiver's RT2 noise (0.013 u p50 off a
+   local 5×5 plane along the ray, twice the fp32 z/w quantum's share, with dz/dy of 4.5 u per
+   pixel) divided by a 0.03–0.12-texel baseline. On the ±1-texel taps that is ±3 u of prediction
+   error against a 2.18-u constant bias; r is linear in the sub-texel phase (r = +1.9 (0.5 − fv)
+   − 1.3 at 16528, slope 7 % of gv), the signature of a gradient error, not of a lateral offset.
+   The RT2 quantum itself reaches the compare amplified by (ray · n) / (sun · n) = 4.5–11
+   (p5–p95), i.e. one ULP moves the reference 0.1–0.3 u.
+2. **A per-frame uniform along-ray receiver offset of −0.2 … +0.3 u** (fit over all C1
+   own-surface pixels: −0.17, −0.13, +0.05, +0.02, −0.20, −0.16, +0.31, +0.07 u on 16528–16535,
+   r² 0.02–0.43; the face class drifts with the same sign at 1/12 the amplitude, the amplification
+   ratio). It is not the jitter latch (no correlation with jitter_x/y), not the projection
+   constants (m22/m32 identical on every capture frame), not the map (stable, above) and not a
+   moving part (the world-aligned C1 map delta at the sliver is uniform over the whole class);
+   at 1.6 km it is 1.2e-4 of z, the order of the game's fp32 world→clip rounding at 1.6e5-u
+   world coordinates (inference, not measured at the source). Amplified ×7 on the grazing
+   plane it is the ±1.5-u per-frame drift of r.
+
+Neither the texel snap nor the TAA jitter contributes: `shadow_map_diff.py` aligned shifts are
+whole texels (residual 0.000) on C0/C1 in all three bursts; the burst-1 "reslide" of 135.7 u
+(24 × 49 C0 texels) is the own ship flying at 135 u/frame with its ship-anchored C0/C1 boxes
+(the *unaligned* C0/C1 comparison is the stable one there: 67 % / 1–90 % of texels past 3e-6 with
+p50 3.7e-6 / 3.6e-7–1.7e-5, the aligned one 81 % at exactly the depth-origin drift 2.66e-4), and
+the receiver is reconstructed at the jittered pixel by design (the latch scan above). A tool note:
+on burst 2 the aligned C1 map at the sliver differs from the basis-line arithmetic by a uniform
++3.4 / −6.8 / +0.2 u per frame (1.1e-5 normalized) although the apply's rows and the map agree to
+0.2 u on the face class; the `shadow_replay_map_basis` centre/forward reproduce the caster pass's
+depth origin only to ~3 u per frame at 73 u/frame of camera motion, which `shadow_map_diff.py`
+reports as |Δz| > 3e-6 on 16–18 % of C1's texels. Unresolved; it does not enter the compare.
+
+### 3. Ranking and fix
+
+1. Confirmed, apply-side: the bias law has no term for the plane fit's baseline error, which on a
+   sun-grazing plane is a tenth of a 27-u texel slope. **Fix:** every tap's plane term is lowered by
+   `slope_texels` texels of |dz/du| + |dz/dv| before its clamp (`sun_shadow_cascade_apply_ps.hlsl`
+   `slope`; `SunShadowCascadeInput::slope_texels`, uploaded as texels / size in the cascade's flags
+   `.z`; `X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS` / `--sun-shadow-bias-slope-texels`, 0–8, default 0.2;
+   `slope<i>` on the params line; the twin's `slope_texels`, absent = 0). Twin on 16528 (owned px;
+   ULP flipped; own f ≥ 2/9 between 16528→16529 / 16529→16530; mean C1 shade), slope 0 → 0.2:
+   C1 90,852 px 10.62 → **1.36 %**, 30.5 / 28.4 → **15.9 / 15.3 %**, shade 0.237 → 0.144; C0
+   0.09 → 0.09 %, 11.5 / 9.4 → 11.1 / 9.2 %; C2 2.72 → 2.61 %, 14.7 / 15.8 → 14.5 / 15.5 %; C3
+   2.16 → 2.04 %, 16.3 / 16.7 → 15.4 / 15.8 %; C4 16.5 → 16.5 % (the run117 precision defect,
+   unchanged). What remains on C1 is the clamp: the diagonal taps' plane term (1.4 texels × 27.4 u =
+   38 u, plus up to half a texel) exceeds the 20.97-texel clamp (34.5 u), and a margin folded before
+   the clamp cannot reach them. The unfolded form (a separate `min(slope, clamp)` after the clamp)
+   measures 1.12 % / 10.9 / 8.5 % but costs 528 conservative ps_3_0 slots against the 512 the
+   program promises every device; the folded form is 508 (499 before). Raising the clamp to 32
+   texels with the folded form measures 1.24 % / 12.1 % (twin, 16528→16529): an option for the
+   orchestrator, since the clamp is also the non-planar fallback on every cascade.
+2. Contributing, not fixed: the ±0.2-u per-frame along-ray receiver offset (§2.2), amplified ×7
+   here; its source is not identified.
+3. Excluded: caster admission and verdicts (stable), map churn (stable at the sliver), the texel
+   snap (whole texels), the jitter latch (scan), the far-cascade precision defect (0.006–0.02 texel
+   quanta here).
+
+Cost of the margin on a grazing surface: the compare threshold moves 0.2 × 27 u = 5.5 u along the
+sun, i.e. a shadow cast onto a 3.4°-grazing plane retracts by 5.5 / sin 3.4° ≈ 90 u along it (6 %
+of a 100-u-tall caster's 1.6-km shadow). A face-on surface gains ~0 extra bias (dz/du, dz/dv → 0); a
+plane tilted diagonally to the map axes gets up to √2 over-count from the L1 form |dz/du| + |dz/dv|,
+in the conservative direction. The single-map path (cascades off, `sun_shadow_apply_ps.hlsl`)
+intentionally has no margin. Slot headroom after the term: 3 of 512. Shader: two
+slots per cascade (`abs` modifiers on one `add`, one `mul`; the subtraction rides the plane dot's
+third operand); word count 2,133 → 2,170, provenance `verification/results/sun-shadow-cascade-apply-program.json`.
+
+Fixture: `verification/analysis/test_shadow_grazing_plate.py` (5 tests, 0.4 s): a single plane at
+1.0–3.7 km, 65° off its normal, the sun 3.4° above it, C1's texel, range and bias law, the map's v
+axis along the compressed direction, the plate's own analytic map, and run119's measured receiver
+error (±0.02 u of surface noise then fp32 z/w). Slope 0: 5.2 % of the pixels re-roll under ±1 ULP,
+12.6 % under a 0.2-u receiver shift, 8.2 % shaded (no occluder: acne); slope 0.2: 1.4 % / 5.2 % /
+5.3 %, the clamp-bound taps. With the sun's in-plane direction along the plate's horizontal the
+same plate shows 0.2 % / 0.6 % and no dependence on the margin: the class needs the quad's steps
+to cross the compressed axis with a component along the ray, which the azimuth scan (0–165°, worst
+at 150–165°) sets.
+
+Host checks (all pass): `test_shadow_grazing_plate` 5, `test_sun_shadow_apply` + `test_shadow_receiver_reroll`
+34, `test_shader_compiler_provenance` 1, `test_shadow_replay_depth.LauncherGate.test_bias_units_option`
+(the new option's default, range and prerequisite). Syntax check of the three changed translation
+units with the DLL's flags: clean. Not built, not installed.
+
+Open: the own ship's C0 re-rolls 9–11 % of its pixels per frame at 135 u/frame (its box snaps to
+the world texel grid, so the hull's sub-texel phase changes every frame); the C0/C1 alignment
+convention of `shadow_map_diff.py` assumes world-static content and misreads the ship-anchored
+boxes; the basis-line depth-origin mismatch above.
+
+### 4. GPU evidence (2026-09-18, same worktree)
+
+`run_motion_output.py` fresh build (`cmake --build build --clean-first`: zero compiler warnings; the log's one
+"CMake Warning (unused-cli)" is the configure step reporting `CMAKE_TOOLCHAIN_FILE` as unused on a re-configure
+of an existing build tree) and the three cascade apply cases twice: at the fixture's slope 0 (the committed
+records; identical to `HEAD` in every behavioural key, `checks` +1 for the fixture's new range `require`,
+`cascade_program_slots` 499 → 508) and as `-slope` siblings with `X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS=0.2` (the
+fixture reads the variable, prints `slope_texels=` on `SUNAPPLY_CONFIG` and `slope<c>=` per cascade; the twin's
+`parse_cascade_params` reads it; records
+`verification/results/bottle-X3/sun-shadow-apply-cascades{,-5,-5-faces}-slope-fixture.json`). GPU against the
+twin, worst FP16 codes (slope 0 / 0.2): cascades 0.9999969 / 0.9999969, cascades-5 0.9999969 / 0.9999969,
+5-faces 0.9999977 / 0.9999977; violations 0 / 0 on every frame; ambiguous_max 1742 / 1842, 1755 / 1778,
+261 / 259; edge mismatch 1264 / 1266 (beyond one texel 28 / 28), 722 / 721 (0 / 0); the faces predicates hold at
+0.2 (fixed half: lit darkened ≤ 1.6 %, interior 0, dark shadowed ≤ 14.5 %; control half dark shadowed ≥ 97 %).
+The compare set differs between the two runs on 27 of 29 and 14 of 15 frames (the margin moves taps); the worst
+code does not: the program and the twin agree on the new term within one FP16 code. Quad medians differ
+within run noise (slope 0 vs 0.2: 762 vs 727 µs device, 742 vs 770 linear, 1,753 vs 1,773 five-cascade), and
+the slope-0 rerun itself moved 646 → 762 µs against the committed record (fixture timing on the synthetic
+device, not game FPS); the frame-0 `us.max` of the first case of a run is the device's warm-up spike (185 ms), so the committed baseline was re-run with the faces case first: cascades slope-0 `us` 608 / 737 / 12,923 µs min / median / max.
+
+After the merge of the RT2 `.b` receiver (main `62221253`, merge `29e26158` in this worktree): program
+recompiled (word count 2,175, conservative slots 500 → 509 of 512), clean rebuild with zero compiler warnings,
+and the twelve cascade apply cases re-run under the lock: the six slope-0 records (device and `-linear`) match
+the committed ones in every behavioural key (`checks` +1 for the fixture's slope range `require`, slots 500 →
+509); the `-slope` and `-slope-linear` siblings at 0.2: worst FP16 codes cascades 0.9999969 / 0.9999969,
+cascades-5 0.9999969 (device) / 1.0001320 (linear, the committed linear baseline's own figure, within main's
+two-sided `beyond_one_code`), 5-faces 0.9999977 / 0.9999977; violations 0 on every frame; ambiguous_max 1842,
+1778, 259; edge beyond one texel 28, 0. Host: `test_shadow_grazing_plate`, `test_sun_shadow_apply`,
+`test_shadow_receiver_reroll` (43), `test_shadow_replay_depth` (13), `test_shader_compiler_provenance` (1) OK.

@@ -266,6 +266,13 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
       api(f.d->CreateVertexDeclaration(elements, &declaration.p), "CreateVertexDeclaration position"); }
     r::SunShadowBias biases[r::shadow_cascade_max]{};
     const double bias_units = r::sun_shadow_bias_units_default, clamp_texels = 4.; // the detached fixture's clamp (a 256^2 map's texel is 16 x the production one)
+    // The slope-scaled margin (sun_shadow_bias_slope_texels_*): 0 unless the run names X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS,
+    // so the committed slope-0 records stay the baseline and the slope-0.2 run is a sibling case.
+    double slope_texels = 0.;
+    { char text[32]{}; const DWORD n = GetEnvironmentVariableA("X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS", text, sizeof text);
+      if (n > 0) { require(n < sizeof text, "X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS fits its buffer"); char* end = nullptr; slope_texels = std::strtod(text, &end);
+                   require(end != text && *end == '\0', "X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS parses whole"); } }
+    require(slope_texels >= r::sun_shadow_bias_slope_texels_min && slope_texels <= r::sun_shadow_bias_slope_texels_max, "X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS within the production range");
     for (unsigned c = 0; c < cascade_count; ++c)
         require(r::sun_shadow_apply_bias(bias_units, clamp_texels, set.cascades[c].half_extent, set.cascades[c].depth_half(), set.cascades[c].size, biases[c]), "the world-unit bias resolves per cascade");
     std::printf("SUNAPPLY_CONFIG cascades=%u map_size=%u extents=", cascade_count, cascade_map);
@@ -274,7 +281,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
     for (unsigned c = 0; c < cascade_count; ++c) std::printf("%s%.9g", c ? "," : "", double(set.cascades[c].depth_behind));
     std::printf(" caps=");
     for (unsigned c = 0; c < cascade_count; ++c) std::printf("%s%u", c ? "," : "", set.caps[c]);
-    std::printf(" bias_units=%.9g clamp_texels=%.9g margin=%.9g band=%.9g\n", bias_units, clamp_texels, double(r::shadow_cascade_select_margin), double(r::shadow_cascade_blend_band));
+    std::printf(" bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g margin=%.9g band=%.9g\n", bias_units, clamp_texels, slope_texels, double(r::shadow_cascade_select_margin), double(r::shadow_cascade_blend_band));
     s.rt2_data.resize(std::size_t(sun_apply_w) * sun_apply_h * sun_apply_lanes);
     LARGE_INTEGER frequency; QueryPerformanceFrequency(&frequency);
     CascadeObject plane, box, high, third;
@@ -527,7 +534,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
             const bool valid = kept && (kept->frame == frame || (c + 1 == cascade_count && kept->frame + 1 == frame));
             require(r::shadow_replay_view_rows(s.camera, valid ? kept->basis : bases[c], set.cascades[c], in.cascades[c].rows), "the view -> sun rows build");
             in.cascades[c].valid = valid; in.cascades[c].map = valid ? replay.map_texture(c) : nullptr;
-            in.cascades[c].bias_constant = biases[c].constant; in.cascades[c].bias_max = biases[c].max;
+            in.cascades[c].bias_constant = biases[c].constant; in.cascades[c].bias_max = biases[c].max; in.cascades[c].slope_texels = float(slope_texels);
         }
         r::SunShadowApplyResult skipped{};
         { auto absent = in; for (auto& c : absent.cascades) { c.valid = false; c.map = nullptr; }
@@ -609,9 +616,9 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         }
         for (unsigned c = 0; c < cascade_count; ++c) {
             const auto& k = in.cascades[c];
-            std::printf(" c%u=%u draws%u=%u valid%u=%u map_frame%u=%lld extent%u=%.9g bias%u=%.9g bias_max%u=%.9g texel_world%u=%.9g backface%u=%u rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
+            std::printf(" c%u=%u draws%u=%u valid%u=%u map_frame%u=%lld extent%u=%.9g bias%u=%.9g bias_max%u=%.9g slope%u=%.9g texel_world%u=%.9g backface%u=%u rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
                         c, per_cascade[c], c, replayed.drawn_map[c], c, unsigned(k.valid), c, k.valid ? static_cast<long long>(map_frames[c]) : -1ll, c, double(set.cascades[c].half_extent),
-                        c, double(k.bias_constant), c, double(k.bias_max), c, double(biases[c].texel_world), c, unsigned(backface_mask >> c & 1u), c,
+                        c, double(k.bias_constant), c, double(k.bias_max), c, double(k.slope_texels), c, double(biases[c].texel_world), c, unsigned(backface_mask >> c & 1u), c,
                         double(k.rows[0]), double(k.rows[1]), double(k.rows[2]), double(k.rows[3]), double(k.rows[4]), double(k.rows[5]), double(k.rows[6]), double(k.rows[7]),
                         double(k.rows[8]), double(k.rows[9]), double(k.rows[10]), double(k.rows[11]));
         }

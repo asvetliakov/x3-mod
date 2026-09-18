@@ -7334,7 +7334,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             if (!valid && (!sun || !renderer::shadow_replay_basis(camera_scene_, sun, cascade, current, point_sun_.grid_anchor(i)))) { skip = "basis"; break; }
             if (!renderer::shadow_replay_view_rows(camera_scene_, valid ? kept->basis : current, cascade, k.rows)) { skip = "rows"; break; }
             if (!renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_, double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), biases[s])) { skip = "bias"; break; }
-            k.bias_constant = biases[s].constant; k.bias_max = biases[s].max; k.valid = valid; k.map = valid ? depth_replay_->map_texture(i) : nullptr;
+            k.bias_constant = biases[s].constant; k.bias_max = biases[s].max; k.slope_texels = float(sun_apply_slope_texels_); k.valid = valid; k.map = valid ? depth_replay_->map_texture(i) : nullptr;
             map_frames[s] = valid ? kept->frame : ~std::uint64_t(0);
         }
         in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
@@ -7352,15 +7352,15 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         sun_apply_applied_ = !skip && SUCCEEDED(hr) && out.applied;
         // Capture frames: the shared inputs and, per cascade i, valid<i> map<i>
         // map_frame<i> (the frame its map was replayed on) bias<i> bias_max<i>
-        // texel_world<i> extent<i> depth_light<i> depth_behind<i> rows<i>, for
+        // slope<i> texel_world<i> extent<i> depth_light<i> depth_behind<i> rows<i>, for
         // the twin (verification/probe/sun_shadow_apply.py, frame_params).
         if (capture_ && !skip) {
             char text[2560]; int used = 0;
             for (unsigned s = 0; s < in.count && used >= 0 && used < int(sizeof text); ++s) {
                 const unsigned i = slots[s]; const auto& k = in.cascades[s]; const auto& cascade = depth_cascades_.cascades[i];
-                used += std::snprintf(text + used, sizeof text - used, " valid%u=%u map%u=%u map_frame%u=%lld bias%u=%.9g bias_max%u=%.9g texel_world%u=%.9g extent%u=%.9g depth_light%u=%.9g depth_behind%u=%.9g source%u=%u backface%u=%u"
+                used += std::snprintf(text + used, sizeof text - used, " valid%u=%u map%u=%u map_frame%u=%lld bias%u=%.9g bias_max%u=%.9g slope%u=%.9g texel_world%u=%.9g extent%u=%.9g depth_light%u=%.9g depth_behind%u=%.9g source%u=%u backface%u=%u"
                                       " rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
-                                      s, unsigned(k.valid), s, depth_replay_->size(i), s, k.valid ? static_cast<long long>(map_frames[s]) : -1ll, s, double(k.bias_constant), s, double(k.bias_max),
+                                      s, unsigned(k.valid), s, depth_replay_->size(i), s, k.valid ? static_cast<long long>(map_frames[s]) : -1ll, s, double(k.bias_constant), s, double(k.bias_max), s, double(k.slope_texels),
                                       s, double(biases[s].texel_world), s, double(cascade.half_extent), s, double(cascade.depth_toward_light), s, double(cascade.depth_behind), s, i, s, unsigned(depth_cascade_backface_mask_ >> i & 1u), s,
                                       double(k.rows[0]), double(k.rows[1]), double(k.rows[2]), double(k.rows[3]), double(k.rows[4]), double(k.rows[5]),
                                       double(k.rows[6]), double(k.rows[7]), double(k.rows[8]), double(k.rows[9]), double(k.rows[10]), double(k.rows[11]));

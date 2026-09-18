@@ -304,6 +304,16 @@ class LauncherGate(unittest.TestCase):
                 self.assertNotEqual(code, 0, value); self.assertIn('--sun-shadow-bias-clamp-texels must be within [1, 64]', error)
             code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', '--sun-shadow-bias-clamp-texels', '4')
             self.assertNotEqual(code, 0); self.assertIn('--sun-shadow-bias-clamp-texels requires --sun-shadow-apply', error)
+            # The slope-scaled margin in texels (run119 fix): default explicit, value carried, range and prerequisite.
+            code, output, error = launch(directory, *apply, inherited={'X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS': '1'})
+            self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS'], '0.2')
+            code, output, error = launch(directory, *apply, '--sun-shadow-bias-slope-texels', '0')
+            self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS'], '0.0')
+            for value in ('-0.1', '9', 'nan'):
+                code, _, error = launch(directory, *apply, '--sun-shadow-bias-slope-texels', value)
+                self.assertNotEqual(code, 0, value); self.assertIn('--sun-shadow-bias-slope-texels must be within [0, 8]', error)
+            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', '--sun-shadow-bias-slope-texels', '0.3')
+            self.assertNotEqual(code, 0); self.assertIn('--sun-shadow-bias-slope-texels requires --sun-shadow-apply', error)
 
 
 if __name__ == '__main__':

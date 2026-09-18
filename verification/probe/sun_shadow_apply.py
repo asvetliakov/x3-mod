@@ -295,6 +295,14 @@ def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=Fals
         su, sv = mu + half, mv + half
         texel_u, texel_v = np.floor(su * size), np.floor(sv * size)
         local = near_boundary(su * size) | near_boundary(sv * size)
+        # Slope-scaled margin (directional-shadows.md, "Run 40 B (run119) near flicker"): on a
+        # sun-grazing plane the plane term extrapolates a whole texel of depth (27 u on run119's
+        # C1) from a derivative measured over a 0.03-0.12-texel baseline, so the receiver's fp32
+        # noise lands on the taps as +-10 % of that texel; `slope_texels` texels of the depth
+        # slope |dz/du| + |dz/dv| are subtracted from every tap's plane term before its clamp
+        # where the plane fit holds (g is 0 otherwise, and that path takes the full clamp), as
+        # the program does. 0 = the constant + plane law alone.
+        slope = cascade.get('slope_texels', 0.0) * (np.abs(gu) + np.abs(gv)) / size
         lit = np.zeros(d.shape)
         for kj in (-1, 0, 1):
             for ki in (-1, 0, 1):
@@ -304,7 +312,7 @@ def expected_factor_cascades(d, s, maps, params, coarse=False, legacy_floor=Fals
                     local |= near_boundary(raw_u) | near_boundary(raw_v)
                 tap_u, tap_v = np.floor(raw_u), np.floor(raw_v)
                 tap_uv_u, tap_uv_v = (tap_u + .5) / size, (tap_v + .5) / size
-                bias = np.where(planar, np.clip((tap_uv_u - su) * gu + (tap_uv_v - sv) * gv, -cascade['bias_max'], cascade['bias_max']), -cascade['bias_max'])
+                bias = np.where(planar, np.clip((tap_uv_u - su) * gu + (tap_uv_v - sv) * gv - slope, -cascade['bias_max'], cascade['bias_max']), -cascade['bias_max'])
                 reference = position[2] + bias - cascade['bias_constant']
                 iu = np.clip(np.nan_to_num(tap_u), 0, size - 1).astype(np.int64)
                 iv = np.clip(np.nan_to_num(tap_v), 0, size - 1).astype(np.int64)
@@ -718,7 +726,12 @@ def parse_cascade_params(fields):
     params['cascades'] = [{'rows': tuple(float(v) for v in fields['rows%d' % c].split(',')), 'bias_constant': float(fields['bias%d' % c]),
                            'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1',
                            # The map holds the casters' back faces (backface<c>=1; absent on older records).
-                           'backface': fields.get('backface%d' % c) == '1'} for c in range(count)]
+                           'backface': fields.get('backface%d' % c) == '1',
+                           # The slope-scaled margin in texels (slope<c>; absent on older records: 0, the constant + plane law).
+                           'slope_texels': float(fields.get('slope%d' % c, 0.0))} for c in range(count)]
+    for c, entry in enumerate(params['cascades']):
+        if not (entry['slope_texels'] >= 0.0):
+            raise ValueError('cascade %d: slope %r is not >= 0' % (c, fields.get('slope%d' % c)))
     for c in params['cascades']:
         if len(c['rows']) != 12:
             raise ValueError('cascade rows: expected 12 values')
@@ -865,7 +878,11 @@ def parse_apply_cascade_params(fields):
             raise ValueError('rows%d: expected 12 values, got %d' % (c, len(rows)))
         # backface<c>: the map holds the casters' back faces (a cascade of the texel law, shadow_replay_projection.h); absent on older lines.
         entry = {'rows': rows, 'bias_constant': float(fields['bias%d' % c]), 'bias_max': float(fields['bias_max%d' % c]), 'valid': fields['valid%d' % c] == '1',
-                 'backface': fields.get('backface%d' % c) == '1'}
+                 'backface': fields.get('backface%d' % c) == '1',
+                 # slope<c>: the slope-scaled margin in texels (since the run119 fix); absent on older lines: 0, the constant + plane law.
+                 'slope_texels': float(fields.get('slope%d' % c, 0.0))}
+        if not (entry['slope_texels'] >= 0.0):
+            raise ValueError('cascade %d: slope %r is not >= 0' % (c, fields.get('slope%d' % c)))
         detail = {'map': int(fields['map%d' % c]), 'map_frame': int(fields['map_frame%d' % c]), 'texel_world': float(fields['texel_world%d' % c]),
                   'extent': float(fields['extent%d' % c]), 'depth_light': float(fields['depth_light%d' % c]), 'depth_behind': float(fields['depth_behind%d' % c]),
                   # The configured cascade this slot samples (shadow-cascade-extents.md, section 5: the

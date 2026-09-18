@@ -47,6 +47,17 @@ struct SunShadowApplyParams {
 // Double arithmetic, one rounding to float per value.
 constexpr double sun_shadow_bias_units_default = 0.53571875, sun_shadow_bias_units_min = 0., sun_shadow_bias_units_max = 1000.;
 constexpr double sun_shadow_bias_clamp_texels_default = 20.97152, sun_shadow_bias_clamp_texels_min = 1., sun_shadow_bias_clamp_texels_max = 64.;
+// Slope-scaled margin of the cascade program (directional-shadows.md, "Run 40 B
+// (run119) near flicker"): every tap's reference is lowered by slope_texels
+// texels of the receiver plane's depth slope |dz/du| + |dz/dv| (clamped like
+// the plane term; 0 where the plane fit is dropped, which already uses the
+// clamp). On a sun-grazing plane the plane term extrapolates a whole texel of
+// depth (27 u on run119's C1) from a derivative measured over a 0.03-0.12-texel
+// baseline, so the receiver's fp32 noise reaches the taps as +-10 % of that
+// texel, above the constant bias; 0.2 texels put the reference under it
+// (run119 16528 C1: 10.6 % -> 1.1 % of the owned pixels re-roll under +-1 ULP;
+// the face-on cascades move by < 0.6 pp). X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS, 0..8.
+constexpr double sun_shadow_bias_slope_texels_default = 0.2, sun_shadow_bias_slope_texels_min = 0., sun_shadow_bias_slope_texels_max = 8.;
 struct SunShadowBias { float constant = 0.f, max = 0.f; float texel_world = 0.f; };
 inline bool sun_shadow_apply_bias(double bias_units, double clamp_texels, double half_extent, double depth_half, unsigned size, SunShadowBias& out) noexcept {
     out = {};
@@ -64,6 +75,7 @@ struct SunShadowCascadeInput {
     IDirect3DTexture9* map = nullptr;
     float rows[12]{};
     float bias_constant = 0.f, bias_max = 0.f;
+    float slope_texels = 0.f;         // slope-scaled margin in texels of the plane's depth slope (sun_shadow_bias_slope_texels_*); 0 = the constant + plane law alone
     bool valid = false;
 };
 struct SunShadowCascadeFrame {
