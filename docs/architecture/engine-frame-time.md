@@ -108,8 +108,13 @@ redundant per-frame scan (the media-cue negative cache at `0x00498140` was
 exactly this kind of fix, 390 ms -> normal), memoise a per-object lookup, or
 replace a hot x87 routine with an SSE2 trampoline. Candidates, from the
 main-loop note: per-object simulation `0x00452ad0` (27 KB, 401 calls, per
-object per frame), collision `0x0045d250` (its swept query `0x0045cab0` is the
-one place an O(n^2) pair cost can hide), the timed tick `0x004596e0` (own
+object per frame), collision `0x0045d250` (**resolved for run129's 26 ms
+plateau**: it holds an explicit unguarded all-pairs loop over the sector's class
+buckets with a `FSQRT` per pair for all class combinations except a short list,
+and the swept query `0x0045cab0` scans every sector object per bucket-0 object;
+loop structure, two broadphase hook sites and the census that must precede them
+are in [../reverse-engineering/sector-collide.md](../reverse-engineering/sector-collide.md)),
+the timed tick `0x004596e0` (own
 accumulator, catch-up work independent of frame rate), the script VM
 (`PendingVm` was 70.8 % of run94's lightest recorded slow frame), cockpit
 update `0x0041cde0`, and the proxy's own post-Present work (bounded by run89's
