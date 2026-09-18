@@ -27,7 +27,7 @@ unsigned width_ = 0;
 float last_m00_ = 0;
 std::int32_t last_threshold_ = 0;
 unsigned value_lines_ = 0;
-core::Scope scope_ = core::Scope::bodies;
+core::Scope scope_ = core::Scope::all;
 
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[core::window_length]{};
@@ -110,8 +110,8 @@ bool initialize() {
     char setting[32]{};
     if (!read_setting(L"X3M_CULL_SMALL_PARTS_PX", setting, sizeof setting)) { state_ = "disabled"; SetLastError(error); return false; }
     char scope_text[32]{};
-    read_setting(L"X3M_CULL_SMALL_PARTS_SCOPE", scope_text, sizeof scope_text);   // unset = the default, bodies
-    core::Scope scope = core::Scope::bodies;
+    read_setting(L"X3M_CULL_SMALL_PARTS_SCOPE", scope_text, sizeof scope_text);   // unset = the default, all
+    core::Scope scope = core::Scope::all;
     const bool scope_ok = core::parse_scope(scope_text, &scope);
     double px = 0;
     const bool parsed = core::parse_px(setting, &px);
