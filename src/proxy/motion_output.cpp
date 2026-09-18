@@ -6744,8 +6744,9 @@ shadow_replay::PoolClass MotionOutput::candidate_pool_of(std::uint64_t id, IDire
 }
 void MotionOutput::note_candidate_distance(MotionRoute& route, const float* rows) noexcept {
     float distance = 0.f;
-    route.candidate_distance = fade_route::origin_distance(rows, camera_scene_.valid, camera_scene_.m00, camera_scene_.m11,
-                                                           camera_scene_.m20, camera_scene_.m21, distance) ? distance : -1.f;
+    // The w > 0 form: the fade arm's behind-camera distance (run 130) must not give a shadow candidate an origin rule.
+    route.candidate_distance = fade_route::origin_distance_front(rows, camera_scene_.valid, camera_scene_.m00, camera_scene_.m11,
+                                                                 camera_scene_.m20, camera_scene_.m21, distance) ? distance : -1.f;
 }
 // The record list's parallel arrays for this device's cascade set
 // (shadow-cascade-extents.md, "Caster pool control"): the inline
@@ -6865,7 +6866,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     const bool near_ok = d >= candidate_slice_near_;
     const bool origin_rule = near_ok && d <= shadow_replay::slice0_far;
     // A draw whose origin distance is unknown (d < 0: the object origin at or behind the camera
-    // plane, fade_route::origin_distance) has no origin rule, but its known extent still decides:
+    // plane, fade_route::origin_distance_front) has no origin rule, but its known extent still decides:
     // a station hull around the camera, or a body behind the camera inside the sun-space box,
     // meets every cascade its AABB meets (run116 frame 24291: 312 z-writing draws of the outpost
     // at 1-10 km refused with their AABBs inside every box; directional-shadows.md, "Run 40 A

@@ -1302,3 +1302,28 @@ measured on it.
 - The runner's `motion-output-partial.json`, the two retention fixture JSONs,
   `state-hook-benchmark.json` and `sun-share-live.json` were rewritten by
   these runs and restored to HEAD.
+
+## 2026-09-19 — run43 qualification: behind-camera origin leaked into shadow-caster admission
+
+- Leak: the run-130 change dropped `w > 0` from `fade_route::origin_distance`,
+  which `MotionOutput::note_candidate_distance` shares. A shadow candidate
+  whose origin is behind the camera plane then got a distance (an origin rule)
+  instead of `d = -1` (extent only). `seam-ownership-shadow-pool-hull` on main
+  5360d460: `shadow_replay_candidates` frame 0 origin/slice0/fallback/managed/
+  leased/c0/c1 = 2 each; accepted is 1 each (origin 1 on frames 1-5).
+- Fix: `fade_route::origin_distance_front` (`rows[15] > 0.f &&
+  origin_distance(...)`, the pre-run-130 contract; one SSE compare, no x87) is
+  the shadow caller's entry; the fade arm keeps `origin_distance`. Shadow rule
+  and `POOL_EXPECT` untouched.
+- Evidence (one `wine_lock` run, bottle X3, fresh build, 27 selected cases,
+  all exit 0): pool-hull 77 checks, frame 0 origin=1 slice0=1 fallback=1
+  managed=1 leased=1, frames 1-5 origin=1; the other ten `shadow-pool-*` and
+  eleven `shadow-replay-*` cases pass; fade-route behind 3461, original 3461,
+  hover 3536, overlay 5101, foreign 397 (equal to `fade-route-cases.json`).
+  Rewritten tracked results restored to HEAD.
+- Host drift fixed in tests only: `cull_small_parts` mocks and
+  `D3DPRESENT_PARAMETERS::BackBufferWidth` in the bloom-lifetime and
+  device-creation fixtures; `test_sun_share_lane` pins 3 copies of the
+  tested-opaque arm (gate, `UnmatchedReason::State` mirror,
+  `SunUntrackedReason::State` diagnostic mirror), none with a linear-material
+  prerequisite. Seven-module host set: 51 tests OK.

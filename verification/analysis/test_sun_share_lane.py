@@ -59,7 +59,11 @@ class SunShareLane(unittest.TestCase):
         # longer require linear materials; the cutout identity is unconditional
         # and the exact cutout arm keeps its linear-material key.
         motion = (ROOT/'src/proxy/motion_output.cpp').read_text()
-        self.assertEqual(motion.count('(sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0)'), 2)
+        # Three copies of the tested-opaque arm, all without linear_material_requested_:
+        # the draw_state_ok gate, its UnmatchedReason::State mirror, and the
+        # SunUntrackedReason::State mirror of the lane's refusal diagnostic
+        # (route.sun_refusal). The mirrors must repeat the gate term for term.
+        self.assertEqual(motion.count('(sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0)'), 3)
         self.assertNotIn('sun_lane_active_ && linear_material_requested_', motion)
         self.assertIn('shadow_.cutout_pair = (linear_material_requested_ || sun_lane_requested_) && cutout::pair(shadow_.vs_hash, shadow_.ps_hash);', motion)
         self.assertIn('(test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && (cutout_ok = cutout_draw_state()))', motion)
