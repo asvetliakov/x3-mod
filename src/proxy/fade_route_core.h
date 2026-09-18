@@ -54,11 +54,16 @@ constexpr bool state(std::uint32_t z, std::uint32_t z_write, std::uint32_t alpha
 // z_v m21, w_c = z_v; camera_reprojection.h). Without a valid camera the
 // draw is refused (the bracket keeps it): the view depth w alone is a lower
 // bound of the distance, so it overestimates the fraction and would route
-// draws below the threshold. False for w <= 0 or a nonfinite input.
+// draws below the threshold. The sign of w does not matter: an origin behind
+// the camera plane (w <= 0: a station module the camera has entered or
+// passed, asteroid-fog-temporal.md "Run 130") is at the same Euclidean
+// distance the inversion yields for w > 0, and the mesh in front of the
+// camera is admitted by its origin exactly as any straddling mesh is. False
+// for a nonfinite input only.
 inline bool origin_distance(const float rows[16], bool camera_valid, float m00, float m11, float m20, float m21,
                             float& out) noexcept {
     const float xc = rows[3], yc = rows[7], w = rows[15];
-    if (!std::isfinite(xc) || !std::isfinite(yc) || !std::isfinite(w) || !(w > 0.f)) return false;
+    if (!std::isfinite(xc) || !std::isfinite(yc) || !std::isfinite(w)) return false;
     if (!camera_valid || !(m00 > 0.f) || !(m11 > 0.f) || !std::isfinite(m20) || !std::isfinite(m21)) return false;
     const float xv = (xc - w * m20) / m00, yv = (yc - w * m21) / m11;
     const float d = scalar::sqrt(xv * xv + yv * yv + w * w);

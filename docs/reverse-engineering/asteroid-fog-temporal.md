@@ -555,3 +555,112 @@ Not derived: the texel footprint of the panel texture (the UV mapping is not
 in the capture rows), so a mip-bias or per-program reactive tuning stays
 unassessed until a run-42 capture with the arm active shows whether any
 residual re-roll remains.
+
+## Run 130: one leg still shimmers — the station module's origin is behind the camera
+
+Run 42 B (`/tmp/x3-bottleX3-run130`, run42 candidate `1a5dd46c`, fade route
+active, original shading). Plant leg 1 (frames 3501–3508) routes all 16
+fade-pair draws (`4944d81dfe531b37`/`64bac8bb307eb896`, `fade_permille=1000`);
+leg 2 (5354–5361) routes 13 of 14 and refuses one draw per frame (index 336,
+`gate=4 routed=0 matched=0 node=00000000 fade_arm=0 fade_permille=0`), the
+residual "one leg" shimmer. The distant-object burst (12801–12808) carries no
+fade-pair refusal: its gate-4 rows are 8 HUD sprites and 2 hull draws
+(`53a0a641…`/`63f96eba…`) with `zwrite=0` (no depth writer, the opaque chain's
+`no_zwrite` step), a different class.
+
+### Mechanism (witnessed): the arm's origin-distance step refuses w ≤ 0
+
+`node=00000000` on the row is not a trace miss: gate 4 precedes scope
+sampling, so a gate-4 row never carries the key. The `object_context` row of
+the same draw (`index=336 scoped=1 valid=127 node=1d879878 node_handle=25074
+camera=2ab2ee78`) shows the trace resolved node, camera and registry on every
+frame. Draw 336 is in the exact fade-band state (`blend=1 src=5 dst=6 mask=7
+atest=0 zwrite=0`, c39 = c41 = (1, 0, 0, 0): fraction 1 regardless of
+distance) like its routed neighbours 334/335; what differs is its clip
+translation column: `c27.w = c5eddc74 = −7611.6` (5354) through `−8563.2`
+(5361), i.e. the module's origin lies behind the camera plane (the ship is
+flying through or past the module; draw 335 has `c27.w = +8837`).
+`fade_route::origin_distance` refused `w ≤ 0` ("False for w <= 0"), so
+`fade_arm_admits` returned before the fraction was computed
+(`fade_permille` stayed 0) and the draw took the plain jittered native path.
+Across the whole run: 248 fade-state rows of this pair, 8 at gate 4, and
+exactly those 8 have `w ≤ 0`; the 240 with `w > 0` are routed
+(`scan_w.py` over the session log). The same class appears in run125 only as
+part of its 512/512 refusals (the arm was inert there) and not in run129 or
+run131 (0 and 2 fade-state rows, none refused).
+
+The guard was unnecessary: with a valid camera the inversion
+`x_v = (x_c − w·m20)/m00`, `y_v = (y_c − w·m21)/m11`, `z_v = w` holds for any
+sign of `w`, and the Euclidean origin distance is the same quantity; the
+mesh in front of the camera is admitted by its origin exactly as any
+straddling mesh (the estimate for this pair is distance-independent anyway).
+The cut detector keeps its own `w > 1e-6` sample guard.
+
+### Fix (2026-09-18)
+
+- `fade_route_core.h`: `origin_distance` refuses nonfinite inputs and an
+  invalid camera only; `w ≤ 0` yields the distance. Host: `test_fade_region`
+  (`w = −1` at distance 1 like `w = 1`, `w = 0` at the camera, off-axis
+  `w = ±2` equal, nonfinite refused).
+- Every scene `motion_route` row carries `unmatched=<reason>`: the first
+  failing step, recorded on the refusal path from values the gate already
+  read (gates 1–3 `feature|scene|xt_pair|unregistered|pair`; gate 4 opaque
+  chain `user_memory|read_failed|no_zwrite|blended|state|instanced|rows|
+  geometry`; a recognised fade-band draw the arm's own step `fade_caps|
+  fade_instanced|fade_rows|fade_geometry|fade_constants|fade_origin|
+  fade_threshold`; routed rows `scope|history`; matched `none`). No getter,
+  lookup or allocation; the name lookup is on the capture log path only.
+- Fixture `seam-taa-fade-route-behind` (`motion_output_fade_route_inc.h`):
+  the `original` script (original shading, hover schedule over the sentinel
+  fill) with the quads' clip rows `diag(2, 2, 2)`, row 3 = (0, 0, 10, −1):
+  every vertex keeps `w = 2` (raster, depth .3 and jitter shift identical to
+  the identity rows) while the origin's clip is (0, 0, 0, −1), which the
+  previous guard refused (the host test's former `w = −1 → ok 0` case). With
+  the fix the schedule routes, holds and refuses exactly as `original`
+  (capture rows frame 2 `routed=1 fade_permille=449 fade_held=1`, frames 3–4
+  `gate=4 unmatched=fade_threshold`; ledger:
+  `docs/verification/motion-output.md`).
+
+### The distant object's own class: the hull pair's same-node source-over sub-mesh
+
+The B3 burst's two refused hull draws per frame (`53a0a641107ed76c`/
+`63f96eba9eea7880`, `argon2s.fb`, the cutout pair) are not a second pass of
+the hull: each is its own vertex buffer in the node's sub-mesh sequence
+(run130 frame 12801: node `286daa70` draws vb 6613, 6615, 6617, 6619, 6621
+routed, then vb 6623 refused, then 6625 routed; node `2e804920` likewise at
+index 535), with its own stage-0..2 textures (1024² DXT5 diffuse, 1024² DXT1,
+32²) and the node's cube map at stage 3, drawn in the exact fade-band state
+(`state id=7 1, 14 0, 15 0, 27 1, 19 5, 20 6, 171 1, 168 7`: Z on, Z-write
+off, alpha test off, SRCALPHA/INVSRCALPHA ADD, mask 7) — the model's
+translucent material layer (glass/window panes, the "glowing windows" the
+user sees). Census over both logs (`scan_zw0.py`): run131 (run117 station,
+frames 4991–4992) 4 such rows, 2 per frame; run130 16 rows, all in B3; every
+one immediately after a routed draw of the same node (20/20), always in that
+state. No other reviewed pair appears with Z-write off: the remaining
+`zwrite=0` scene rows are HUD sprites (`494fe349…`, ONE/ONE, 8/frame),
+`d5e1c75351…`, `36f98d15…` and `5e484a06…` (gate 3, unreviewed). The refusal
+was the opaque chain's `no_zwrite`, so the layer took the plain jittered
+native path and its history resolved current-only — the same trembling as
+the fade band's, on the ship's windows. It is distinct from the documented
+alpha-tested source-over pass of the cutout pair (`atest=1`,
+alpha-tested-materials.md, runs 11/14), which keeps its native path.
+
+Fix (2026-09-18, the overlay arm): a reviewed pair that is not a fade
+program, drawn under original shading in the exact fade-band state as the
+very next draw after a routed draw of the same node (same frame, adjacent
+draw index, node identity at gate 4, lifetime serial at the scope gate; latch
+cleared at Reset), is admitted through the fade arm at permille 1000 with no
+fraction or hysteresis (its alpha is the material's): own RT1 rows from its
+own clip rows, RT2 masked, counted `overlay_routed`/`overlay_refused` on the
+`fade_route_frame` and `linear_material_frame` lines, refusals attributed
+`unmatched=overlay_node`. The arm is on with `X3M_FADE_ROUTE` ≤ 1000. Fixture
+`seam-taa-fade-route-overlay`: the hull pair's quads carry A's scope with
+their own vertex buffers right after A, over A, original shading — both
+routed every frame (`overlay_routed=2`, `fade_routed=0`), the depth target
+unchanged by the draw, worst resolved residual 0.071 px against a raw shift
+equal to the jitter; `seam-taa-fade-route-foreign` (the quads on their own
+nodes) is refused every frame (`overlay_refused=2`, `unmatched=overlay_node`);
+`seam-taa-cutout-blended` (alpha test on) is unchanged.
+
+Remaining, attributed by the new field next run: the HUD sprites
+(`494fe349…`, ONE/ONE, no engine node) and any `overlay_node` refusal.
