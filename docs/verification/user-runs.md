@@ -67,7 +67,7 @@ Completed run commands and instructions are preserved in
 not rerun requests.
 
 
-## 43. Collide box cull, small-parts cull, shimmer fixes — DRAFT, not flyable yet (the run43 candidate is not built; see the handoff)
+## 43. Collide box cull, small-parts cull, shimmer fixes — queued (run43 candidate installed)
 
 Installed: run43 candidate (hash in [status](../status.md)). New since run 42: `--collide-box-cull`
 (integer bounding-box early-out in the sector collide loop `0x0045d250`; the run129 26 ms pre-render
@@ -78,30 +78,38 @@ residual shimmer), `unmatched=<reason>` on every route row, and two per-draw tri
 **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull light maps, **Ctrl+Shift+F6** effects + guide
 lights, **Ctrl+Alt+F7** FPS overlay, F8.
 
-Common prefix and shadow set: as run 42 (archived §42 in [the completed-run archive](../archive/user-runs-completed.md)); copy them into this section when the candidate is installed.
+Every command below is complete (run 42 prefix and shadow set included); run from the repository root.
 
 **Session A** (collide A/B; corvette save, the run125/run129 24 fps area; ≈ 4 minutes):
 ```sh
-<prefix> <shadow set> --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --loop-phases --frame-end-stride 10 --capture-start 999999 --capture-frames 0
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --loop-phases --frame-end-stride 10 --capture-start 999999 --capture-frames 0
 ```
-Hold the 24 fps spot 60 s and read the FPS overlay. Then relaunch with `--collide-box-cull` added, same
-spot, 60 s, read again. Then fly normally for 2 minutes with the option on: any collision that does not
+Hold the 24 fps spot 60 s and read the FPS overlay. Then relaunch with the same command plus
+`--collide-box-cull`:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --loop-phases --frame-end-stride 10 --capture-start 999999 --capture-frames 0 --collide-box-cull
+```
+Same spot, 60 s, read again (the pair counters are logged only in this launch). Then fly normally for 2 minutes with the option on: any collision that does not
 happen (ramming an asteroid or a station part must still stop you), any docking oddity, any script event
 that looks wrong. Report the two readings and anything odd.
 
 **Session B** (small-parts cull A/B; fighter save, the run117 station ≈ 900-draw view; ≈ 6 minutes, three launches):
 ```sh
-<prefix> <shadow set> --cull-small-parts 2 --cull-small-parts-scope bodies --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --cull-small-parts 2 --cull-small-parts-scope bodies --capture-start 999999 --capture-frames 2 --frame-end-stride 1
 ```
 At the run131 view: FPS overlay reading (ms and draws), F8 once. Then approach a station from 10 km to
-1 km and watch for pop-in. Relaunch with `--cull-small-parts-scope all` (whole far objects *and* small
-sub-parts), same view, same reading, same approach: do small glowing parts of the station you are near
+1 km and watch for pop-in. Relaunch with `--cull-small-parts-scope all` in place of `bodies` (whole far objects *and* small
+sub-parts):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --cull-small-parts 2 --cull-small-parts-scope all --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+```
+Same view, same reading, same approach: do small glowing parts of the station you are near
 disappear, and is the extra frame time worth it? Optionally a third launch with `--cull-small-parts 4
 --cull-small-parts-scope bodies`. Report the readings and which you would keep: off / bodies 2 / bodies 4 / all 2.
 
 **Session C** (shimmer check; corvette save; ≈ 3 minutes):
 ```sh
-<prefix> <shadow set> --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --cull-small-parts 2 --capture-start 999999 --capture-frames 8 --frame-end-stride 1
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --cull-small-parts 2 --cull-small-parts-scope bodies --capture-start 999999 --capture-frames 8 --frame-end-stride 1
 ```
 The Terran solar power plant (both legs) and the distant object of run130: still shimmering? F8 once on
 each. Then Ctrl+Shift+F4 off/on once at a station with windows to confirm the glow itself is stable.
