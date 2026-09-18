@@ -290,6 +290,73 @@ screen draws are admitted through a blend substitution.
   the native screen law within one FP16 code
   ([screen-emission.md](../verification/screen-emission.md)).
 
+## Hull light-map gain (2026-09-18): `--hull-lightmap-gain G`
+
+What `--hull-emitters` reaches and what it does not
+([hull-self-illumination.md](../reverse-engineering/hull-self-illumination.md)
+§3): its twelve `standard_lighting` / `XT_standard_lighting` programs are the
+ONE/ONE emitter materials (position lights, deco flares, warning signs, warp
+tunnels) and its admission takes only ADD ONE/ONE draws, so station windows
+and hull lights, which are opaque draws of the **race** hull programs
+(`argon.fb`, `argon2s.fb`, `split.fb`, `khaak/teladi/xenon.fb`), never see
+it. Those windows are the light-map (self-illumination) term: 100 of the 108
+reviewed material pixel originals (66 hull, 20 palette, 14 XT; the four glass
+and four asteroid programs have no such term) fetch `LightMapTexSampler` as
+their last `texld` (s2 in the DEFAULT layouts, s3 in BUMPMAP) and add its RGB
+at weight 1 to the lit colour in the final colour instruction (`add oC0.xyz,
+r1, r0`; XT `mad oC0.xyz, r1, r2.z, r0`; the six XT `terra` rows through one
+intervening `mad r1.xyz, r2, r3.w, r1`), while `.w` feeds the alpha `lrp`
+(`g_EnableGlow`). No constant scales the RGB.
+
+**Implemented.** Option `--hull-lightmap-gain G` (`X3M_HULL_LIGHTMAP_GAIN`,
+finite 1..8, default 1 = off; requires `--hdr`; excludes `--linear-materials`,
+whose converted programs carry `--lightmap-emissive-gain`; composes with
+`--original-fill`). The transform lives in the original-program transformer
+(`original_fill_transform`, exposed as
+`linear_material_hull_lightmap_gain_pixel_variant`): the fill variant (K, or
+the plain motion/depth variant at K = 0) plus one shader-local
+`def c223 = (G, 0, 0, 0)` and one `mul rL.xyz, rL, c223.x` immediately after
+the pinned fetch (`Pixel::texture[bump?3:2]`, `XtPixel::texture[bump?3:2]`
+with `texture_reg`), +10 DWORDs, +1 executable instruction, +1 weighted slot
+(max base 184, gained plain variant 185, gained share variant 264 of 512). `lightmap_term` proves the term on the original
+(fetch form and stage, no write or read of rL.xyz before the single consumer,
+no flow control in the tail, nothing after the final reads it, c223 unread)
+and again on the emitted program (one DEF, one read, the MUL directly after
+the fetch, no motion/fill/share insertion touching rL.xyz), so G = 1 and the
+eight programs without the term are byte-identical to the fill variant and
+anything else fails closed. Native Windows: documented ps_3_0 bytecode; c223
+is the last float constant and is read by no original (max c26).
+
+Runtime: one variant per reviewed program at registration
+(`hull_lightmap_variant`, beside the fill variant), selected in
+`bind_variant_pair` over the plain or fill-composed motion variant of the
+routed reviewed pair while the FP16 scene is active and the F4 flag is on;
+undone with the route. Per-draw cost: one bool test
+(`shadow_.hull_lightmap_pair`, false without the option) and two pointer
+compares on the routed path, no state read, no allocation; creation cost is
+one more transform and `CreatePixelShader` per reviewed program (108). Every
+routed opaque draw of the 100 programs carries the gain (unrouted draws keep the
+original program, as with `--original-fill`): the black 32x32 placeholder
+light maps of props and emitter materials multiply to zero, so no admission
+policy is needed, and any non-window light-map art (panel stripes, decals)
+brightens with the windows. **Ctrl+Shift+F4** toggles this gain together with
+`--hull-emitters` (one hull-emission flag, `hull_emission_gain_toggle` logs
+both states); per-frame `hull_lightmap_frame gain= fill= admitted= toggled=`.
+The sun-share lane (`--sun-shadow-lane`, the user's configuration) carries it
+too: the original share producer (`linear_material_original_sun_share_pixel_variant`,
+its c212/c221 DEFs and r11-r23 disjoint from c223 and rL) takes the same
+fragment, a gained share variant (`sun_original_lightmap_variant`) is created
+beside every share variant and the lane binds it while the flag is on. The
+share follows its law on the gained colour, `s' Y(C') = s Y(C) = Y(S)`: the
+light map is unlit, so the sun's code-value contribution is unchanged and its
+fraction of the brighter pixel is smaller, which is what the apply must
+darken by. The apply removes `s'·C'` from the pixel, so a shadowed pixel's
+chroma follows the gained colour (inherent to the scalar luma share: the
+window tint is not separated from the sunlit hull). The game light maps'
+texel content is unverified (the RE note infers windows from the term's
+position, not from decoded art); a user bracket settles it. Evidence: [screen-emission.md](../verification/screen-emission.md)
+(2026-09-18 rows).
+
 ## 5. Options for the linear route, ranked
 
 | Rank | Option | Saving | Basis | Risk | Windows (documented D3D9) |

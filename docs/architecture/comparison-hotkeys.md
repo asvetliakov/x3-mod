@@ -26,9 +26,13 @@ ON ↔ OFF (**F11** toggles the ambient occlusion chain when `--ambient-occlusio
 notice, one `ambient_occlusion_toggle` log line per press, `docs/architecture/ambient-occlusion.md`
 "Step 2"; **F12** switches the sun shadows off and on with `--sun-shadow-apply`,
 "Sun shadows at rest" below). Three more keys switch one emitter gain between its configured
-gain and native, without recreating anything: **F4** the hull-program
-emitters (`--hull-emitters --hull-emission-gain G`, the twelve hull programs'
-ONE/ONE draws of `emitter-plan.md` phase 3, its own flag since 2026-09-17 so
+gain and native, without recreating anything: **F4** hull emission as one
+population: the hull-program emitters (`--hull-emitters --hull-emission-gain G`,
+the twelve hull programs' ONE/ONE draws of `emitter-plan.md` phase 3) and,
+since 2026-09-18, the hull light-map gain (`--hull-lightmap-gain G`, the
+self-illumination term of the 100 opaque hull programs,
+`linear-emission-cost.md` "Hull light-map gain") under one flag, the toggle
+line logging both states (its own flag since 2026-09-17 so
 the population is judged apart from the engines; the 2026-09-16 F4 effect
 key had gone with the undone family split, `linear-emission-cost.md` "Screen
 substitution"), **F5** the additive bullets (`--screen-emission-additive G`,

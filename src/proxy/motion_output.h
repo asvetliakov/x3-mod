@@ -96,6 +96,7 @@ struct MotionRoute {
     bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen substitution); restored after it.
     bool hull_gain = false;       // Hull-emitter gain PS bound natively for this ONE/ONE draw (emitter plan phase 3); restored after it.
     bool original_fill = false;   // Original-fill PS selected in the routed pair (undone with the route).
+    bool hull_lightmap = false;   // Hull light-map gain PS (fill K composed) selected in the routed pair (undone with the route).
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     bool sun_receiver = false, sun_color_writer = false;
@@ -687,6 +688,14 @@ public:
     // after configure_linear_materials and before attach.
     void configure_original_fill(float fill) noexcept;
     bool original_fill_requested() const noexcept { return original_fill_requested_; }
+    // Hull self-illumination gain (hull-self-illumination.md 5,
+    // X3M_HULL_LIGHTMAP_GAIN): the fill variant of the 100 reviewed light-map
+    // programs plus one MUL of the sampled light map by G, finite 1..8, 1 is
+    // off (no variant is created). Excludes linear materials; needs HDR only;
+    // configure after configure_linear_materials and configure_original_fill,
+    // before attach. Shares the Ctrl+Shift+F4 flag with the hull emitters.
+    void configure_hull_lightmap_gain(float gain) noexcept;
+    bool hull_lightmap_gain_requested() const noexcept { return hull_lightmap_gain_requested_; }
     void configure_linear_distance_fade(bool requested) noexcept;
     // Step C of docs/architecture/screen-emission-region.md: the packed screen
     // bracket (policy 8) for the nine SM1 screen pairs of
@@ -965,6 +974,10 @@ private:
                          // only; created once at registration with the lane on and
                          // linear materials off; null is the fail-closed refusal.
                          IDirect3DPixelShader9* sun_original_variant = nullptr;
+                         // The same share variant composed with the hull light-map gain
+                         // (X3M_HULL_LIGHTMAP_GAIN); selected over sun_original_variant while
+                         // the F4 flag is on; null without the option or the term.
+                         IDirect3DPixelShader9* sun_original_lightmap_variant = nullptr;
                          // XT DEFAULT is pair-specific: the shared VS retains
                          // its generic objects for every earlier exact pair.
                          IUnknown* xt_default_ordinary_variant = nullptr;
@@ -978,6 +991,7 @@ private:
                          IDirect3DPixelShader9* hull_gain_variant = nullptr;
                          bool hull_program = false;
                          IDirect3DPixelShader9* original_fill_variant = nullptr; // motion variant plus the option C fill block (PS only)
+                         IDirect3DPixelShader9* hull_lightmap_variant = nullptr; // the fill variant (K, or the motion variant at K=0) plus the light-map gain MUL (PS only)
                          IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
                          IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
                          IUnknown* distance_fade_variant = nullptr;
@@ -1002,6 +1016,7 @@ private:
         // is a reviewed pair with both motion variants under original shading
         // (refreshed with the pair identities, never at a draw).
         IDirect3DPixelShader9* ps_sun_original = nullptr;
+        IDirect3DPixelShader9* ps_sun_original_lightmap = nullptr; // the bound PS's gained share variant (light-map gain)
         bool original_share_pair = false;
         bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion variant, frame failed
         std::uint64_t vs_hash = 0, ps_hash = 0;
@@ -1023,6 +1038,10 @@ private:
         // (refreshed with the pair identities, never at a draw).
         IDirect3DPixelShader9* ps_original_fill_variant = nullptr;
         bool original_fill_pair = false;
+        // Hull light-map gain: the bound PS's gained variant and the same
+        // reviewed-pair predicate (refreshed with the pair identities).
+        IDirect3DPixelShader9* ps_hull_lightmap_variant = nullptr;
+        bool hull_lightmap_pair = false;
         IDirect3DPixelShader9* ps_screen_variant = nullptr;
         // Exact SM1 screen pair (screen_emission_admission.h) and its created
         // packed producer; shader eligibility only, admission is per draw.
@@ -1544,13 +1563,17 @@ private:
     // bit per admitted program.
     bool hull_emission_gain_requested_ = false;
     float hull_emission_gain_ = 1.f;
-    bool hull_gain_enabled_ = true; // Ctrl+Shift+F4, default on; gates entry to prepare_hull_gain only
+    bool hull_gain_enabled_ = true; // Ctrl+Shift+F4, default on; gates entry to prepare_hull_gain and the light-map variant selection only
     struct { std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0, programs = 0, refused_opaque = 0, refused_alpha = 0; } hull_gain_counts_;
     std::uint32_t hull_gain_logged_[4]{}; // per-device sample caps: blend, bind_failed, state, routed
     std::uint32_t hull_gain_program_logged_ = 0; // bit per hull program: first admission logged this device epoch (at most 12 lines)
     bool original_fill_requested_ = false; // X3M_ORIGINAL_FILL=K (finite 0..0.5), exclusive with linear materials
     float original_fill_ = 0.f;
     std::uint32_t original_fill_draws_ = 0; // routed draws that bound the fill variant this frame (frame line only)
+    bool hull_lightmap_gain_requested_ = false; // X3M_HULL_LIGHTMAP_GAIN=G (finite 1..8, 1 = off), exclusive with linear materials
+    float hull_lightmap_gain_ = 1.f;
+    std::uint32_t hull_lightmap_draws_ = 0; // routed draws that bound a light-map gain variant (plain or share) this frame (frame line only)
+    std::uint32_t sun_original_lightmap_variants_ = 0; // gained share variants created (fixture counter)
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
     float screen_additive_gain_ = 1.f;
     bool screen_additive_enabled_ = true; // Ctrl+Shift+F5 runtime A/B; the variant stays created

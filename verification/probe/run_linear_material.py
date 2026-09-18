@@ -1438,6 +1438,161 @@ def run_original_fill(args):
         print(json.dumps({k:v for k,v in result.items() if k in ('passed','runs','error')}))
 
 
+# --hull-lightmap-gain (docs/reverse-engineering/hull-self-illumination.md 5):
+# one case per reviewed pixel program (108), a lit face with a non-black
+# light-map texel, at gain 4 with the fill off (K=0) and on (K=0.05).
+HULL_LIGHTMAP_GAIN = 4.0
+HULL_LIGHTMAP_FILLS = (0.0, 0.05)
+HULL_LIGHTMAP_TEXEL = [.5, .25, .125, .25]
+
+
+def hull_lightmap_cases():
+    """Per reviewed pixel program (108): one lit face (vertex M=1, sun towards
+    the normal) with the light-map slot bound to a non-black texel, depth on
+    (the share producer needs RT2); inputs otherwise as the original-fill
+    slice. The 100 light-map programs must gain the texel by G, the four glass
+    and four asteroid programs (no term) must stay bit-identical; the fixture
+    runs every case twice, over the plain/fill variant and over the sun-share
+    producer variant."""
+    selected = {}
+    for case in fixture_cases():
+        pixel = PAIRS[case['pair']][1]
+        if case['depth'] == 1 and case['fp16'] == 1 and pixel not in selected:
+            selected[pixel] = case
+    assert len(selected) == 108
+    result = []
+    for case in selected.values():
+        c = copy.deepcopy(case)
+        fixed = PAIRS[c['pair']][0] in FIXED_VERTICES
+        c.update(lights=1 if fixed else 0, reverse=0, affine=0, valid=1, fp16=1, depth=1, flags=0,
+                 gains=[1., 1., 1.], diffuse=[.5, .25, .75, .75], lightmap=list(HULL_LIGHTMAP_TEXEL),
+                 cube=[0., 0., 0., 1.], mask=0., material=[1., 1., 1.], point=[0., 0., 0.],
+                 dir0=[.375, .25, .5], dir1=[0., 0., 0.], normal=[0., 0., 1.], glow=0.,
+                 normal_sample=[.5, .5, 1., .5], binormal=[0., 1., 0.], tangent=[1., 0., 0.], camera=[0., 0., -4.],
+                 id=len(result), label='hull_lightmap_' + PAIRS[c['pair']][1])
+        result.append(c)
+    return result
+
+
+def hull_lightmap_term(pair):
+    """The four asteroid pairs (110..115 share four programs) and the glass pairs carry no light-map term."""
+    return not (110 <= pair < 116 or pair >= glass_fixture.START)
+
+
+def validate_hull_lightmap_report(text, cases, gain, fill):
+    """Every pixel of every case passed the fixture's twin (base32 + (G-1)*L within
+    one binary16 code, alpha/motion/depth identical); the runner re-derives the
+    twin on the nine printed samples, requires the 100 term programs to change
+    and the 8 others to stay bit-identical."""
+    lines = text.splitlines()
+    assert lines and lines[-1] == f'RESULT PASS cases={len(cases)}'
+    assert not any('FAIL' in line for line in lines)
+    rows = re.findall(r'^HULLLIGHT id=(\d+) pair=(\d+) share=(\d) pixels=256 term=(\d) alpha_bad=0 motion_bad=0 depth_bad=0 share_bad=0 share_codes=(\S+) rgb_bad=0 codes_bad=0 '
+                      r'max_codes=(\d+) identical=(\d+) positive=(\d+) share_positive=(\d+) gain=(\S+) fill=(\S+) lightmap=(\S+)$', text, re.M)
+    assert [(int(row[0]), int(row[2])) for row in rows] == [(cid, share) for cid in range(len(cases)) for share in (0, 1)], 'one plain and one share row per case'
+    f32 = lambda x: struct.unpack('<f', struct.pack('<f', x))[0]
+    assert {float(row[9]) for row in rows} == {f32(gain)} and {f32(float(row[10])) for row in rows} == {f32(fill)}, 'the fixture ran the requested gain and fill'
+    assert {row[11] for row in rows} == {','.join('%.9g' % v for v in HULL_LIGHTMAP_TEXEL[:3])}, 'the light-map texel'
+    by_id = {(int(row[0]), int(row[2])): row for row in rows}
+    samples = re.findall(r'^HULLLIGHTSAMPLE id=(\d+) share=(\d) x=(\d+) y=(\d+) base32=(\S+) gained16=(\S+) gained32=(\S+) lane=(\S+)$', text, re.M)
+    assert len(samples) == 18 * len(cases)
+    parsed = {}
+    for cid, share, x, y, base, gained, gained32, lane in samples:
+        key = (int(cid), int(share), int(x), int(y))
+        assert key not in parsed and int(x) in (4, 8, 12) and int(y) in (4, 8, 12)
+        parsed[key] = tuple(tuple(map(float, v.split(','))) for v in (base, gained, gained32, lane))
+    max_codes = 0; checked = 0; term_cases = 0; untouched = 0; identical_pixels = 0; share_pixels = 0; share_codes = 0.0
+    for c in cases:
+        term = hull_lightmap_term(c['pair'])
+        for share in (0, 1):
+            row = by_id[(c['id'], share)]
+            assert int(row[3]) == int(term), (c['id'], c['label'], 'the fixture agrees on which programs carry the term')
+            assert int(c['pair']) == int(row[1])
+            max_codes = max(max_codes, int(row[5]))
+            if term:
+                term_cases += 1
+                assert int(row[6]) < 256, (c['id'], c['label'], share, 'a gained light map changes the output')
+            else:
+                untouched += 1
+                assert int(row[6]) == 256, (c['id'], c['label'], share, 'no term: bit-identical')
+                identical_pixels += 256
+            if share:
+                assert int(row[8]) > 0, (c['id'], c['label'], 'the lit face writes a positive share')
+                share_pixels += int(row[8])
+                share_codes = max(share_codes, float(row[4]))
+                assert float(row[4]) <= 1.0, (c['id'], c['label'], 'share law within one FP16 code of Y(C)')
+            for x in (4, 8, 12):
+                for y in (4, 8, 12):
+                    base, gained, gained32, lane = parsed[(c['id'], share, x, y)]
+                    assert base[3] == gained[3] == gained32[3], (c['id'], share, 'alpha')
+                    if share:
+                        assert 0.0 <= lane[1] <= 1.0, (c['id'], 'share domain')
+                        # s' Y(C') = s Y(C) with C' = C + (G-1) L: the share drops as the unlit term brightens the pixel.
+                        luma = lambda rgb: sum(w * v for w, v in zip((.2126, .7152, .0722), rgb))
+                        if term: assert lane[1] * luma(gained32[:3]) <= luma(base[:3]) + 1e-4 * max(1.0, luma(base[:3])), (c['id'], 'share law bound')
+                    for k in range(3):
+                        want = base[k] + (gain - 1.0) * HULL_LIGHTMAP_TEXEL[k] if term else base[k]
+                        codes = abs(_half_code(gained[k]) - _half_code(ref.half(want)))
+                        assert codes <= 1, (c['id'], c['label'], share, k, base[k], gained[k], want, codes)
+                        assert math.isfinite(gained32[k]) and abs(gained32[k] - want) <= 1e-5 * max(1.0, abs(want)), (c['id'], c['label'], share, k, gained32[k], want)
+                    checked += 1
+    assert term_cases == 200 and untouched == 16, (term_cases, untouched)
+    allowed = ('CAPS ', 'CREATE ', 'HULLLIGHT ', 'HULLLIGHTSAMPLE ', 'RESULT PASS ')
+    assert all(line.startswith(allowed) for line in lines), 'unexpected hull light-map output row'
+    creates = re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$', text, re.M)
+    gained_ps = sorted({key for stage, key, *_ in creates if stage == 'ps' and '_13_' in key and '_olight_' in key})
+    gained_share_ps = sorted({key for stage, key, *_ in creates if stage == 'ps' and '_14_' in key and '_oshare_light_' in key})
+    assert len(gained_ps) == len(gained_share_ps) == 108, 'one mode-13 and one mode-14 PS per program (the eight untouched ones are their controls)'
+    return dict(cases=len(cases), programs=108, term_cases=term_cases // 2, untouched_cases=untouched // 2, samples=checked,
+                gain=gain, fill=fill, fp16_code_tolerance=1, max_fp16_code_error=max_codes,
+                bit_identical_untouched_pixels=identical_pixels, alpha='exact', motion_depth='identical',
+                share="law s'*Y(C')=s*Y(C) within one FP16 code of Y(C); bit-identical without the term", max_share_code_error=share_codes,
+                share_positive_pixels=share_pixels, variants=len(gained_ps), share_variants=len(gained_share_ps))
+
+
+def run_hull_lightmap(args):
+    cases = hull_lightmap_cases()
+    args.raw_dir.mkdir(parents=True, exist_ok=True)
+    case_file = args.raw_dir / 'cases.bin'
+    case_file.write_bytes(binary_cases(cases))
+    result_path = bottle.results_dir(ROOT) / 'hull-lightmap-gain-gpu.json'
+    inputs = original_provenance(cases, args.programs)
+    result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
+                  render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
+                  scope=('--hull-lightmap-gain (hull-self-illumination.md 5): 108 reviewed original PS x one lit face with light-map texel %s at gain %g, fill K %s, '
+                         'each over the plain/fill variant and over the sun-share producer variant. The baseline is the fill variant (K>0) or the plain motion PS (K=0), '
+                         'or the share variant (mode 8), of the original program; the gained variant is the same program plus one DEF and one MUL after the light-map '
+                         'fetch; every pixel of the FP16 output is within one binary16 code of base32 + (G-1)*L, alpha, motion, depth and the share channel (RT2.g) '
+                         'identical; the four glass and four asteroid programs (no term) are bit-identical. Detached; no native Windows proof.')
+                        % (HULL_LIGHTMAP_TEXEL[:3], HULL_LIGHTMAP_GAIN, list(HULL_LIGHTMAP_FILLS)),
+                  timing_scope='No benchmark in the bounded hull light-map correctness slice.',
+                  gain=HULL_LIGHTMAP_GAIN, fills=list(HULL_LIGHTMAP_FILLS), original_sha256=inputs, executable_sha256=sha(args.exe),
+                  code_sha256={name:sha(ROOT/name) for name in CODE_INPUTS}, runs={})
+    wine=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
+    try:
+        for fill in HULL_LIGHTMAP_FILLS:
+            report = args.raw_dir / ('report-lightmap-%g.txt' % fill)
+            command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(args.exe),'Z:'+str(args.programs),'Z:'+str(case_file),
+                     '--hull-lightmap-gain',repr(HULL_LIGHTMAP_GAIN),repr(fill)]
+            with report.open('w') as out,(args.raw_dir/('wine-lightmap-%g.log' % fill)).open('w') as err:
+                process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1200)
+            assert process.returncode==0, 'fixture failed; see '+str(report)
+            result['runs'][repr(fill)] = dict(raw_report=report.name, raw_dir_note='local scratch, untracked', exit_code=process.returncode,
+                                              **validate_hull_lightmap_report(report.read_text(), cases, HULL_LIGHTMAP_GAIN, fill))
+        assert sha(args.exe)==result['executable_sha256'], 'executable changed'
+        assert result['code_sha256']=={name:sha(ROOT/name) for name in CODE_INPUTS}, 'fixture/core/reference changed during run'
+        assert all(sha(args.programs/name)==value for name,value in inputs.items()), 'original changed'
+        result['passed']=True
+    except BaseException as error:
+        result['error']=repr(error)
+        raise
+    finally:
+        destination=result_path if result['passed'] else args.raw_dir/'failed-result.json'
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        destination.write_text(json.dumps(result,indent=2)+'\n')
+        print(json.dumps({k:v for k,v in result.items() if k in ('passed','runs','error')}))
+
+
 ORIGINAL_SUN_SHARE_FILLS = (0.0, 0.05)
 
 
@@ -1567,6 +1722,7 @@ def parse_arguments(argv=None):
     selection.add_argument('--fill', action='store_true', help='Run the bounded K=0.06 sun-averted fill oracle slice')
     selection.add_argument('--original-fill', action='store_true', help='Run the original-shading fill (option C) slice at K 0.03 and 0.05: calibration/black/0.10/0.40 faces per fill pair, K=0 bit-exact')
     selection.add_argument('--hull-emission-gain', action='store_true', help='Run the hull-program emitter gain slice (emitter plan phase 3): one pair per covered hull program, a diffuse-authored emitter face (lightmap black) and a black face at gains 2 and 4; the emitter face scales by the gain within one FP16 code (the whole colour output is gained) and the black face is bit-identical')
+    selection.add_argument('--hull-lightmap-gain', action='store_true', help='Run the hull light-map gain slice (hull-self-illumination.md 5): one lit face per reviewed pixel program (108) with a non-black light-map texel at gain 4, fill 0 and 0.05; the FP16 output within one binary16 code of base + (G-1)*L, the eight programs without the term bit-identical')
     selection.add_argument('--original-sun-share', action='store_true', help='Run the original-shading share producer slice: 108 PS x lit/zero-sun/sun-only faces at K 0 and 0.05; colour twins and oC2.g against a zero-sun draw')
     return parser.parse_args(argv)
 
@@ -1581,6 +1737,8 @@ def main():
         return run_original_sun_share(args)
     if args.hull_emission_gain:
         return run_hull_gain(args)
+    if args.hull_lightmap_gain:
+        return run_hull_lightmap(args)
     cases = sun_share_cases() if args.sun_share else alpha_cutout_cases() if args.alpha_test_cutout else fill_cases() if args.fill else fixture_cases()
     if args.glass_only: cases = [c for c in cases if c['pair'] >= glass_fixture.START]
     args.raw_dir.mkdir(parents=True, exist_ok=True)

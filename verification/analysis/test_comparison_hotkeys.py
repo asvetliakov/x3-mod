@@ -191,7 +191,7 @@ class ComparisonHotkeys(unittest.TestCase):
         # launch stays at zero queries; inside it they are unconditional, so
         # an option that was not requested answers with a logged refusal.
         self.assertIn('const bool emitter_compare=screen_emission_additive_requested'
-                      ' || emission_source_gain!=1.f || hull_emission_gain!=1.f;', polling)
+                      ' || emission_source_gain!=1.f || hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;', polling)
         for key, call in (('VK_F4', 'ctx.motion_output.hull_emission_gain_toggle()'),
                           ('VK_F5', 'ctx.motion_output.screen_emission_additive_toggle()'),
                           ('VK_F6', 'ctx.motion_output.emission_source_gain_toggle()')):
@@ -246,8 +246,12 @@ class ComparisonHotkeys(unittest.TestCase):
         # The hull emitters read their own flag: F6 no longer reaches them.
         self.assertIn('shadow_.ps_hull_program && hull_gain_enabled_ && route.submit', draws)
         self.assertNotIn('hull', extract_function(motion_source, 'int MotionOutput::emission_source_gain_toggle('))
-        self.assertIn('const bool available = hull_emission_gain_requested_;',
-                      extract_function(motion_source, 'int MotionOutput::hull_emission_gain_toggle('))
+        # One hull-emission flag: the ONE/ONE emitters and the hull light-map gain
+        # (--hull-lightmap-gain) share F4; the toggle logs both states.
+        hull_toggle = extract_function(motion_source, 'int MotionOutput::hull_emission_gain_toggle(')
+        self.assertIn('const bool available = hull_emission_gain_requested_ || hull_lightmap_gain_requested_;', hull_toggle)
+        self.assertIn('lightmap_requested=%u lightmap_gain=%g', hull_toggle)
+        self.assertIn('shadow_.hull_lightmap_pair && hull_gain_enabled_ &&', extract_function(motion_source, 'HRESULT MotionOutput::bind_variant_pair('))
         # One additive telemetry line per Present, counters reset every frame.
         additive = extract_function(motion_source, 'void MotionOutput::log_screen_additive_frame(')
         self.assertIn('screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x toggled=%u', additive)

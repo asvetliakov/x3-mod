@@ -116,6 +116,7 @@ float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E comp
 float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
 float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only; independent of the effects gain, own key Ctrl+Shift+F4)
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
+float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; shares Ctrl+Shift+F4 with the hull emitters)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
 bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom attenuation of the additive draw (bloom-per-source-attenuation.md, option 1)
@@ -1129,7 +1130,7 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // option opens the sampler; the individual keys are polled
     // unconditionally inside it so an unrequested option answers with a
     // logged refusal.
-    const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || hull_emission_gain!=1.f;
+    const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;
     if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;
     ComparisonKeys keys{};
     keys.foreground=comparison_foreground();
@@ -2182,6 +2183,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_emission_source_gain(emission_source_gain);
     hooked.motion_output.configure_hull_emission_gain(hull_emission_gain);
     hooked.motion_output.configure_original_fill(original_fill);
+    hooked.motion_output.configure_hull_lightmap_gain(hull_lightmap_gain);
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
@@ -2749,6 +2751,24 @@ void initialize_log(HMODULE module) {
      const bool excluded=linear_material_requested;
      if(!hdr_requested||excluded)original_fill=0.f;
      if(!fill_valid||value!=0.f)log("original_fill_mode requested=1 enabled=%u hdr=%u linear_materials=%u fill=%g fill_valid=%u%s",original_fill!=0.f,hdr_requested,unsigned(excluded),double(original_fill),unsigned(fill_valid),excluded?" refused=linear_materials":"");}
+    // X3M_HULL_LIGHTMAP_GAIN=<g>: a gain on the light-map (self-illumination)
+    // term inside the ORIGINAL hull pixel programs (station windows and hull
+    // lights; docs/reverse-engineering/hull-self-illumination.md 5): finite
+    // 1..8, 1 (the launcher default) is off. The variant is the fill/motion
+    // program plus one MUL, so it needs the motion-output registry and the
+    // FP16 scene (X3M_HDR=1) only; exclusive with the linear-material route,
+    // whose converted programs carry X3M_LIGHTMAP_EMISSIVE_GAIN. Shares the
+    // Ctrl+Shift+F4 key with the hull emitters. Unparsable or out of range
+    // keeps 1 and logs.
+    {hull_lightmap_gain=1.f;bool gain_valid=true;float value=1.f;
+     SetLastError(ERROR_SUCCESS);
+     const DWORD gain_length=GetEnvironmentVariableW(L"X3M_HULL_LIGHTMAP_GAIN",setting,32);
+     if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
+         wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
+         if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)hull_lightmap_gain=value;else gain_valid=false;}
+     const bool excluded=linear_material_requested;
+     if(!hdr_requested||excluded)hull_lightmap_gain=1.f;
+     if(!gain_valid||value!=1.f)log("hull_lightmap_gain_mode requested=1 enabled=%u hdr=%u linear_materials=%u gain=%g gain_valid=%u%s",hull_lightmap_gain!=1.f,hdr_requested,unsigned(excluded),double(hull_lightmap_gain),unsigned(gain_valid),excluded?" refused=linear_materials":!hdr_requested?" refused=hdr":"");}
     // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8; unset, 0 or invalid = off):
     // the additive option of the same nine screen pairs, drawn in place with
     // DESTBLEND ONE and a colour gain G into the FP16 target. Needs the

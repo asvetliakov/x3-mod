@@ -151,9 +151,28 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint
 // byte and reports share_applied = false; vertex and unreviewed programs are
 // UnsupportedShader. Pure, allocation-bounded, no D3D; input may alias output;
 // failure leaves output intact. Depth-off generation establishes no oC2.r.
+// lightmap_gain (default 1 = none) composes the hull self-illumination gain
+// below with the share producer (its c212/c221 DEFs and r11-r23 are disjoint
+// from c223 and rL): the same DEF and MUL, the share reduction unchanged;
+// lightmap_gain_applied reports it as the dedicated entry point does.
 LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
-    bool& share_applied) noexcept;
+    bool& share_applied, float lightmap_gain = 1.0f, bool* lightmap_gain_applied = nullptr) noexcept;
+// Hull self-illumination gain (docs/reverse-engineering/hull-self-illumination.md
+// 5, --hull-lightmap-gain): the fill variant above (K = fill, K = 0 the plain
+// motion variant) plus, in the 100 reviewed programs that add a light-map
+// term, one shader-local `def c223 = (G, 0, 0, 0)` and one
+// `mul rL.xyz, rL, c223.x` immediately after the pinned light-map fetch
+// (+2 instructions, +1 slot); rL.w and every other word stay as they are, so
+// the alpha LRP, the lit colour, motion and depth are the fill variant's. G
+// must be finite in [1, 8]; G = 1 writes the fill variant byte for byte and
+// reports gain_applied = false. A program without the term (the four glass
+// and four asteroid originals) keeps the fill variant byte for byte and
+// reports gain_applied = false (fail closed). Pure, allocation-bounded, no
+// D3D; input may alias output; failure leaves output intact.
+LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const std::uint32_t* original,
+    std::size_t words, float fill, float gain, std::vector<std::uint32_t>& output, bool current_depth,
+    bool& fill_applied, bool& gain_applied) noexcept;
 // Four XT DEFAULT programs require an explicitly authored producer repair.
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.

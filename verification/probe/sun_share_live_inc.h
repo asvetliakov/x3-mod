@@ -24,7 +24,13 @@ void run_sun_lane(const char* bootstrap_vertex) {
     // (X3M_FIXTURE_SUN_LANE_FAULT=original_share) under --original-fill 0.05:
     // the draw keeps its fill variant (the fill is never dropped), writes no
     // share, and the frame's lane is failed (available=0) with the draw counted.
-    const bool original_lane=!std::strcmp(mode,"original_lane"),shadow_apply=!std::strcmp(mode,"shadow_apply"),share_refused=!std::strcmp(mode,"original_share_refused");
+    // original_lane_lightmap: original_lane under X3M_HULL_LIGHTMAP_GAIN=4
+    // (hull-self-illumination.md 5): the reviewed pair binds the gained share
+    // variant on every lane frame; the F4 action (hull_toggle, between frames
+    // like the sampler) switches it off before frame 3 and on before frame 5.
+    const bool lightmap=!std::strcmp(mode,"original_lane_lightmap");
+    const bool original_lane=!std::strcmp(mode,"original_lane")||lightmap,shadow_apply=!std::strcmp(mode,"shadow_apply"),share_refused=!std::strcmp(mode,"original_share_refused");
+    if(lightmap)require(hull_toggle!=nullptr,"hull toggle export");
     const bool untracked=!std::strcmp(mode,"untracked")||shadow_apply;
     const bool refused=!std::strcmp(mode,"caps")||!std::strcmp(mode,"cutout_drop")||!std::strcmp(mode,"alpha_mask");
     const bool allocation=!std::strcmp(mode,"allocation");
@@ -107,6 +113,11 @@ void run_sun_lane(const char* bootstrap_vertex) {
     for(unsigned step=0;step<6;++step){
         // FrameClear is the real M initialization operation at the scene latch.
         if(missing&&step==2)emission_fault(d.p,9,1);
+        if(lightmap&&(step==3||step==5)){
+            const int state=hull_toggle(d.p);
+            std::printf("SUN_LIGHTMAP_TOGGLE frame=%llu state=%d\n",frame,state);
+            require(state==(step==3?0:1),"the shared F4 flag: off before frame 3, on before frame 5");
+        }
         frame_begin();linear_material_inputs();write_reserved();
         // D0 points toward the authored +Z normal. D1/points/emission are zero;
         // a unit lightmap keeps L positive on the exact-zero D0 control frame.
@@ -405,6 +416,15 @@ void run_sun_lane(const char* bootstrap_vertex) {
         const auto before=snapshot();
         api(d->StretchRect(back.p,nullptr,bloom_surface.p,nullptr,D3DTEXF_NONE),"sun scene-end publication and TAA");
         compare(before,snapshot(),"sun boundary");
+        if(lightmap){
+            // The gained share variant bound on every lane frame with the flag on
+            // (frame 2 adds the cutout pair), none on the toggled-off frames 3
+            // and 4 (the Reset between them keeps the flag).
+            const unsigned gained_draws=emission_status(d.p,78),gained_variants=emission_status(d.p,79);
+            std::printf("SUN_LIGHTMAP frame=%llu step=%u gained_draws=%u gained_variants=%u share_variants=%u\n",frame,step,gained_draws,gained_variants,emission_status(d.p,73));
+            require(gained_variants>=2&&gained_variants==emission_status(d.p,73),"a gained share variant beside every share variant");
+            require(gained_draws==((step==3||step==4)?0u:step==2?2u:1u),"the gained share variant bound exactly on the flag-on lane draws");
+        }
         const bool available=expected_lane&&!(step==2&&(late||untracked||cutout_pair))&&!bad_mask&&!share_refused;
         require(emission_status(d.p,92)==unsigned(available),"sun publication follows actual writers and faults");
         require(emission_status(d.p,97)==1,"sun unavailable frame still resolves TAA");
