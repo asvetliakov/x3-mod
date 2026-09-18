@@ -494,9 +494,9 @@ int main() {
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_SCOPE", L"all");
     check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") && install_lines.back().find(" scope=all") != std::string::npos, "scope all: parsed and logged");
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_SCOPE", nullptr);
-    { score::Scope sc = score::Scope::all; check(score::parse_scope("", &sc) && sc == score::Scope::bodies && score::parse_scope("all", &sc) && sc == score::Scope::all && score::parse_scope("bodies", &sc) && sc == score::Scope::bodies && !score::parse_scope("ALL", &sc) && !score::parse_scope("body", &sc), "scope parser: bodies (default), all, nothing else"); }
+    { score::Scope sc = score::Scope::bodies; check(score::parse_scope("", &sc) && sc == score::Scope::all && score::parse_scope("bodies", &sc) && sc == score::Scope::bodies && !score::parse_scope("ALL", &sc) && !score::parse_scope("body", &sc) && score::parse_scope("all", &sc) && sc == score::Scope::all, "scope parser: all (default), bodies, nothing else"); }
     check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") && small::stub_address() == 0, "engine site absent in this process: bytes_mismatch, nothing patched");
-    check(install_lines.back().find(" scope=bodies") != std::string::npos, "unset scope: the install line says scope=bodies (default)");
+    check(install_lines.back().find(" scope=all") != std::string::npos, "unset scope: the install line says scope=all (default)");
     const std::uintptr_t site = addr(small_site()), cull = addr(small_cull());
     synthetic_small_window[2] ^= 1;
     check(!small::install_at(site, cull, false) && !std::strcmp(small::state(), "bytes_mismatch") && small_window_original() == false, "changed window byte: bytes_mismatch");
