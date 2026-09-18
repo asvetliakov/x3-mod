@@ -241,7 +241,7 @@ namespace fade_route {
 struct Registers{std::uint8_t alpha=0,fog=0;};
 bool registers(std::uint64_t vs,Registers&out){if(vs<70||vs>=76)return false;out={39,41};return true;}
 constexpr unsigned threshold_off=1001;
-struct Hysteresis{void clear()noexcept{}};
+struct Hysteresis{static constexpr unsigned band=100u;void clear()noexcept{}};
 }
 // Mirrors src/proxy/motion_output.h's TaaInvalidateSite; the extracted code
 // names sites, and this double only counts the calls.
