@@ -27,17 +27,16 @@ APPLY_SKIP_REASONS = frozenset(('none', 'lane', 'replay', 'owner', 'depth', 'rec
                                 'sun', 'basis', 'rows', 'cascades', 'absent'))  # the cascade branch's own
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
          'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission',
-         'shadow_apply_cascades', 'original_lane_lightmap', 'shadow_apply_linear', 'shadow_apply_cascades_linear')
-# shadow_apply_linear / shadow_apply_cascades_linear: the same scripts under the receiver-depth
-# option (X3M_SUN_SHADOW_RECEIVER_DEPTH=linear, docs/architecture/shadow-receiver-depth.md): the
-# lane's RT2 is A32B32G32R32F (116) and the params lines say depth_encoding=linear; the plain
-# cases keep G32R32F (115), the shipping default. Both are validated by the shadow_apply checks.
-APPLY_CASES = ('shadow_apply', 'shadow_apply_cascades', 'shadow_apply_linear', 'shadow_apply_cascades_linear')
+         'shadow_apply_cascades', 'original_lane_lightmap')
+# shadow_apply / shadow_apply_cascades run on the lane's A32B32G32R32F RT2 (116; the params lines say
+# depth_encoding=linear), the only encoding since 2026-09-18 (docs/architecture/shadow-receiver-depth.md);
+# the former G32R32F (115, device) cases and their -linear siblings are gone with the option.
+APPLY_CASES = ('shadow_apply', 'shadow_apply_cascades')
 
 
 def apply_base(case):
-    """The script a case runs: the -linear siblings run shadow_apply / shadow_apply_cascades."""
-    return case[:-len('_linear')] if case.endswith('_linear') else case
+    """The script a case runs (the former -linear siblings are gone; the name is the script)."""
+    return case
 # shadow_apply_cascades (docs/architecture/shadow-cascades.md): the shadow_apply
 # script and its validation unchanged, with two cascades through the DLL's own
 # wiring (the seam narrows them to 32 and 256 units; cascade 0 is the single
@@ -172,17 +171,18 @@ def validate_original(text, trace, case, publications):
     assert 1 <= len(devices) <= 2 and all(r['attached'] == '1' and r['reason'] == 'ok' for r in devices), devices  # attached once; the programs survive Reset
     modes = [l for l in lines if l.startswith('sun_shadow_apply_mode ')]
     assert len(modes) == 1 and modes[0].startswith('sun_shadow_apply_mode requested=1 enabled=1 lane=1 replay=1 linear_materials=0'), modes
-    # The receiver-depth option (shadow-receiver-depth.md): with the DLL's sun_shadow_receiver_depth line
-    # (X3M_SUN_SHADOW_RECEIVER_DEPTH=linear) the lane's RT2 is A32B32G32R32F (116) on every published frame
-    # and every params line names the linear encoding; without it (a trace before the option) G32R32F (115).
-    receiver = [fields(l) for l in lines if l.startswith('sun_shadow_receiver_depth ')]  # logged whenever the variable is set, either value
-    assert len(receiver) <= 1 and all(r['lane'] == '1' and r['enabled'] == str(int(r['requested'] == 'linear')) for r in receiver), receiver
-    linear = bool(receiver) and receiver[0]['requested'] == 'linear'
+    # The receiver depth (shadow-receiver-depth.md, the only encoding since 2026-09-18): the lane's RT2 is
+    # A32B32G32R32F (116) on every published frame and every params line names the linear encoding; the DLL
+    # logs no sun_shadow_receiver_depth line any more (a trace with one is from before the flip).
+    assert not any(l.startswith('sun_shadow_receiver_depth ') for l in lines), 'a trace from before the receiver-depth flip'
     lane_frames = [fields(l) for l in lines if l.startswith('sun_shadow_lane_frame ')]
     formats = sorted({r['format'] for r in lane_frames if 'format' in r})  # the synthetic host traces abbreviate the line
-    assert formats in ([], ['116' if linear else '115']), (linear, formats)
+    assert formats in ([], ['116']), formats
+    # sun_shadow_apply_params is logged on capture frames only: the cascades case opens the capture window
+    # and its lines must say linear (validate_cascade_capture reads them); the single-map shadow_apply case
+    # has no capture window, logs no params line, and proves the encoding by the RT2 format (116) alone.
     params_lines = [fields(l) for l in lines if l.startswith('sun_shadow_apply_params ')]
-    assert all(r.get('depth_encoding', 'device') == ('linear' if linear else 'device') for r in params_lines), sorted({r.get('depth_encoding') for r in params_lines})
+    assert all(r.get('depth_encoding') == 'linear' for r in params_lines), sorted({r.get('depth_encoding') for r in params_lines})
     mode = fields(modes[0])
     applies = [fields(l) for l in lines if l.startswith('sun_shadow_apply_frame ')]
     assert [int(r['frame']) for r in applies] == list(range(6)), applies
@@ -210,7 +210,7 @@ def validate_original(text, trace, case, publications):
     # frames, which this script has none of.
     bias_units, clamp_texels = float(mode.get('bias_units', sun_apply.BIAS_UNITS_DEFAULT)), float(mode.get('clamp_texels', sun_apply.BIAS_CLAMP_TEXELS))
     return dict(apply_frames=sum(int(r['applied']) for r in applies), apply_skipped={i: expected[i] for i in expected if expected[i] != 'none'},
-                receiver_depth='linear' if linear else 'device', rt2_format=int(formats[0]) if formats else None,
+                receiver_depth='linear', rt2_format=int(formats[0]) if formats else None, params_lines_linear=len(params_lines),
                 apply_us_max=max(float(r['us']) for r in applies), shadowed_pixels_min=min(int(r['inner']) for r in witnesses if int(r['frame']) >= 3),
                 bias=dict(bias_units=bias_units, clamp_texels=clamp_texels, cascade=dict(extent=32.0, depth_half=64.0, size=512),
                           resolved_by_law=sun_apply.resolve_bias(bias_units, 32.0, 64.0, 512, clamp_texels)))
@@ -594,8 +594,7 @@ def main():
                 # 512^2 map over a 32-unit half-extent centred on the camera so
                 # the receiver at view depth 12 and the caster at 16 lie inside cascade 0) and the quad.
                 env.update(X3M_OWNERSHIP='1', X3M_FIXTURE_CAMERA='rotate', X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='512',
-                           X3M_FIXTURE_SLICE_NEAR='0.5', X3M_FIXTURE_SHADOW_EXTENT='32', X3M_SUN_SHADOW_APPLY='1', X3M_FIXTURE_SUN_LIVE_CASE='shadow_apply',
-                           X3M_SUN_SHADOW_RECEIVER_DEPTH='linear' if case.endswith('_linear') else 'device')  # the wide RT2 (.b = view depth) on the -linear siblings; TAA reads .r unchanged either way
+                           X3M_FIXTURE_SLICE_NEAR='0.5', X3M_FIXTURE_SHADOW_EXTENT='32', X3M_SUN_SHADOW_APPLY='1', X3M_FIXTURE_SUN_LIVE_CASE='shadow_apply')
             if apply_base(case) == 'shadow_apply_cascades':
                 env.update(CASCADE_LIVE_ENV)  # the same script; only the DLL's options differ
             command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work/'fixture.exe'),
@@ -610,9 +609,10 @@ def main():
             if case == 'original_lane_lightmap':
                 check['lightmap'] = validate_lightmap((work/'stdout.txt').read_text(), logs[0].read_text())
             if case in APPLY_CASES:
-                wanted = ('linear', 116) if case.endswith('_linear') else ('device', 115)
+                wanted = ('linear', 116)  # the lane's A32B32G32R32F RT2, the only encoding
                 assert (check.get('receiver_depth'), check.get('rt2_format')) == wanted, (case, 'RT2 encoding and format of this case', check.get('receiver_depth'), check.get('rt2_format'), wanted)
             if apply_base(case) == 'shadow_apply_cascades':
+                assert check['params_lines_linear'] >= 1, (case, 'the capture window must log a depth_encoding=linear params line')
                 check['cascades'] = validate_cascade_capture(logs[0].read_text(), work)
             report['cases'][case] = dict(check, elapsed_seconds=time.monotonic()-start, command=command)
         assert all(sha(Path(p)) == digest for p,digest in inputs.items()), 'prebuilt inputs changed'

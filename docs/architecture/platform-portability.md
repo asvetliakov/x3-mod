@@ -203,8 +203,8 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   native Windows creation or runtime, which remain unverified.
 
 - The default-off directional sun-share lane now uses documented D3D9 format,
-  MRT, state and shader APIs, with portable G32R32F/A32B32G32R32F-to-R32F shader copying
-  (the wide RT2 of `--sun-shadow-receiver-depth linear`, `shadow-receiver-depth.md`: a
+  MRT, state and shader APIs, with portable A32B32G32R32F-to-R32F shader copying
+  (the lane's wide RT2, `shadow-receiver-depth.md`, the only encoding since 2026-09-18: a
   128-bit third MRT beside the 64- and 128-bit first two rests on the already required
   `D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`; a partial `oC2.zw` write mask; unverified natively).
   CrossOver GPU qualification covers extraction, temporal copying and actual
@@ -360,9 +360,9 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   programs; verified on CrossOver only (R32F render targets, the depth match, state-block
   capture/apply cost and the single-thread Lock assumption remain unverified natively).
 - The sun-shadow apply pass (`src/renderer/sun_shadow_apply_pass.cpp`, standalone, not yet wired
-  into the scene end) uses documented D3D9 only: `CheckDeviceFormat` gates for `G32R32F`/`R32F`
-  render-target textures (an `A32B32G32R32F` RT2 is admitted per frame from its `GetLevelDesc`;
-  the route creates it behind the lane's own `CheckDeviceFormat` list) and post-pixel-shader
+  into the scene end) uses documented D3D9 only: `CheckDeviceFormat` gates for `A32B32G32R32F`/`R32F`
+  render-target textures (the `A32B32G32R32F` RT2 is checked per frame from its `GetLevelDesc`;
+  an R32F or G32R32F RT2 skips the quad) and post-pixel-shader
   blending on the owning `A16B16G16R16F` format,
   ZERO/SRCCOLOR blend caps, `MaxPixelShader30InstructionSlots` against the embedded ps_3_0 program
   (`dsx`/`dsy` receiver-plane bias, nine point taps), one `D3DSBT_ALL` block, one `DrawPrimitiveUP`

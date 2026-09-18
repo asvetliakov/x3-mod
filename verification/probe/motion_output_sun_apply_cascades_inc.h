@@ -539,7 +539,8 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         r::SunShadowApplyResult skipped{};
         { auto absent = in; for (auto& c : absent.cascades) { c.valid = false; c.map = nullptr; }
           require(s.pass.execute_cascades(absent, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "absent"), "no valid cascade skips the quad"); }
-        { auto wrong = in; wrong.cascades[0].map = s.rt2.p; wrong.cascades[0].valid = true; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && !std::strcmp(skipped.skipped_reason, "format"), "a G32R32F cascade map skips the quad"); }
+        { auto wrong = in; wrong.cascades[0].map = s.rt2.p; wrong.cascades[0].valid = true; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && !std::strcmp(skipped.skipped_reason, "format"), "an A32B32G32R32F cascade map skips the quad"); }
+        { auto wrong = in; wrong.depth_share = s.rt2_narrow.p; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "format"), "a G32R32F RT2 (the z/w law before the flip) skips the cascade quad"); }
         { auto wrong = in; wrong.count = 6; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && !std::strcmp(skipped.skipped_reason, "input"), "six cascades skip the quad"); }
         { auto wrong = in; wrong.caller_stateblock_recording = true; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped, "a recording caller skips the quad"); }
         { auto wrong = in; wrong.m22 = .5f; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && !std::strcmp(skipped.skipped_reason, "params"), "an invalid projection skips the quad"); }
@@ -559,7 +560,6 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         std::printf("SUNAPPLY_TIME frame=%u us=%.1f result=%08lx applied=%u stage=%u bound=%u caller_scene_open=%u replay_us=%.1f issues=%u\n", frame, us, hr, result.applied, unsigned(result.failed),
                     result.cascades_bound, caller_scene_open, replay_us, used);
         require(hr == S_OK && result.applied && !result.skipped && result.cascades_bound == valid_count, "the cascade quad applied");
-        require(result.linear_depth == sun_apply_linear, "the cascade quad read the receiver depth by the bound RT2's encoding");
         f.compare(before_state, f.snapshot(), "cascade_apply");
         if (caller_scene_open) api(f.d->EndScene(), "EndScene");
         else { api(f.d->BeginScene(), "BeginScene after the quad"); api(f.d->EndScene(), "EndScene after the quad"); }

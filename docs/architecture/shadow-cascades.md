@@ -104,10 +104,10 @@ invalidates the retained C2 (absent cascade = lit) until the next full replay.
 
 ## 2. The apply quad
 
-Per pixel: RT2 read and view position as today (RT2 format: `G32R32F`, view depth
-`m32 / (.r − m22)`; or `A32B32G32R32F` with `select.w = 1`, view depth `= .b`, the clip `w`
-of `docs/architecture/shadow-receiver-depth.md`; the pass sets the flag from the bound
-texture's format, `sun_shadow_apply_pass.cpp`); three sun-space projections (9 `dp4`, all
+Per pixel: RT2 read and view position as today (RT2 format: `A32B32G32R32F`, view depth
+`= .b`, the clip `w` of `docs/architecture/shadow-receiver-depth.md`, the only encoding since
+2026-09-18; the pass skips an R32F or G32R32F RT2 with `format`, `sun_shadow_apply_pass.cpp`;
+`select.w` is 0, reserved); three sun-space projections (9 `dp4`, all
 cascades, before any branch); `ddx/ddy` of the *view position* once (6 derivatives) instead
 of per-cascade `muv`/`z` derivatives — the sun rows are affine in `p_view`, so each cascade's
 `duvdx/duvdy/dzdx/dzdy` is arithmetic on those, safe after a branch. Selection: the first

@@ -1,6 +1,6 @@
 # Sun-shadow receiver depth: a precise channel in the lane's RT2
 
-Design note, 2026-09-18, **ratified by the orchestrator 2026-09-18** (gated first flight, default `device`; flip after the flight). Question: how the apply pass's
+Design note, 2026-09-18, **ratified by the orchestrator 2026-09-18** (gated first flight, default `device`; flip after the flight). **Flipped 2026-09-18 after run 41 A2** (§5): `linear` is the only encoding. Question: how the apply pass's
 receiver depth is made precise enough that the cascade PCF at 20–40 km no longer re-rolls
 from one fp32 ULP of RT2 (`docs/verification/directional-shadows.md`, "Run 40 A (run117)
 diagnosis"; `shadow-cascade-extents.md` §6 "Depth precision"), without breaking the other
@@ -156,7 +156,24 @@ method) < 1 %, and the `frame_end` median delta (§6).
 
 ## 5. ABI, gate, Reset, rollback
 
-RT2's format is fixed at creation (`sun_lane_active_ ? G32R32F : R32F`) and recreated by
+**Flipped 2026-09-18 after run 41 A2** (`/tmp/x3-bottleX3-run124`: the distant-station flicker
+gone under `linear`, still present under `device` in A). The lane's RT2 is `A32B32G32R32F`
+unconditionally (`lane_depth_format()`: wide on the lane, R32F off it); the quads read
+`z = ds.b` with no `cmp` (`limits.z` / `select.w` uploaded as 0, reserved; `terms.x/.y`
+uploaded, unread); the apply gates require the wide format (R32F or `G32R32F` ⇒
+`skip("format")`; the attach gate checks `A32B32G32R32F` instead of `G32R32F`); the F8 RT2
+readback is always 16 B/px `rgba32f`; the DLL reads no `X3M_SUN_SHADOW_RECEIVER_DEPTH`.
+`manage.py` keeps `--sun-shadow-receiver-depth linear` as a deprecated no-op (the queued run-41
+lines stay valid) and refuses `device`. The twin (`sun_shadow_apply.py`) keeps `depth_encoding`
+so old device records and F8 dumps (`.rg32f`) still load; the fixtures and runners run only the
+linear cases and the committed apply records are the former `-linear` siblings under the base
+names. Slots after the flip: single-map 226 → 221; cascades 509 → 509: the `cmp`, the
+divide and their moves leave (−5 instructions) but the compiler now forms `p` with one more
+`mad` and hoists one more `dsx`/`dsy` pair (2 slots each) before the first `ifc`/`rep`, where
+derivatives must sit, so the count is unchanged (2173 words, headroom 3 of 512). The paragraph
+below is the gated design as flown.
+
+RT2's format was fixed at creation (`sun_lane_active_ ? G32R32F : R32F`) and recreated by
 the route after Reset; the apply, TAA and AO passes gate the format per frame. One option,
 `--sun-shadow-receiver-depth {device,linear}` (`X3M_SUN_SHADOW_RECEIVER_DEPTH`, read once at
 device creation, default `device` for the first candidate), selects `G32R32F` or

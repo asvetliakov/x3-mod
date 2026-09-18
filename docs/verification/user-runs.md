@@ -68,8 +68,10 @@ not rerun requests.
 ## 41. Receiver depth A/B, slope margin A/B, hull light-map gain, FPS overlay — queued (run41 candidate)
 
 Installed: run41 candidate from `e1c4afcc` (hash in [status](../status.md)). New since run 40:
-`--sun-shadow-receiver-depth linear` (RT2 stores linear view depth; the far-station flicker fix; default
-`device` = old behaviour), the cascade apply slope margin (default on, `--sun-shadow-bias-slope-texels 0`
+`--sun-shadow-receiver-depth linear` (RT2 stores linear view depth; the far-station flicker fix; in the
+installed run41 build the default was `device` = old behaviour, the A/B; on main since A2 ratified it,
+`linear` is the only encoding, the option a no-op and `device` refused), the cascade apply slope margin
+(default on, `--sun-shadow-bias-slope-texels 0`
 turns it off; the run119 grazing-plane flicker), `--hull-lightmap-gain G` (windows and hull lights in the
 original hull programs; Ctrl+Shift+F4 toggles it together with the guide-light gain), `--fps-overlay`
 (Ctrl+Alt+F7 = Option+Ctrl+F7 toggles; line 1 FPS / frame ms / draws, line 2 shadows on/off), and the

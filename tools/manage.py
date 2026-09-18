@@ -299,7 +299,7 @@ def main():
     parser.add_argument('--shadow-caster-retention-age', type=int, default=None, metavar='FRAMES', help='Frames an unseen static caster is kept, 1..10000000, default 7200 (X3M_SHADOW_CASTER_RETENTION_AGE; requires --shadow-retention-census or --shadow-caster-retention)')
     parser.add_argument('--shadow-caster-retention-eps', type=float, default=None, metavar='UNITS', help='Largest AABB-corner displacement between two sightings of a static caster in world units, 0.0001..100, default 0.05 (X3M_SHADOW_CASTER_RETENTION_EPS; requires --shadow-retention-census or --shadow-caster-retention)')
     parser.add_argument('--shadow-retention-timing', action='store_true', help='Per-draw cost of the caster retention record hook on the shadow_retention_frame line (X3M_SHADOW_RETENTION_TIMING=1; default off; requires --shadow-retention-census or --shadow-caster-retention): two counter reads per recorded draw, draw_us / draw_calls')
-    parser.add_argument('--sun-shadow-receiver-depth', choices=('device', 'linear'), default='device', help='Receiver depth of the sun-shadow apply quad (X3M_SUN_SHADOW_RECEIVER_DEPTH; default device; requires --sun-shadow-lane): device keeps the lane\'s G32R32F RT2 and the z/w law on .r; linear widens RT2 to A32B32G32R32F and the routed fragments write the interpolated clip w to .b, which the quad reads as the receiver\'s view depth (one fp32 ULP of view depth instead of one ULP of z/w at 20-40 km); TAA and AO keep reading .r. Fixed at device creation, rebuilt after Reset; an A/B is two launches (docs/architecture/shadow-receiver-depth.md)')
+    parser.add_argument('--sun-shadow-receiver-depth', choices=('device', 'linear'), default=None, help='Deprecated no-op: the sun-shadow apply quad always reads the receiver depth from the lane\'s A32B32G32R32F RT2 (.b = linear view depth; docs/architecture/shadow-receiver-depth.md, flipped 2026-09-18 after run 41 A2). `linear` is accepted for run-41 command lines and forwards nothing; `device` (the old G32R32F z/w law) no longer exists and is refused')
     parser.add_argument('--sun-shadow-bias-units', type=float, default=None, metavar='B', help='Constant sun-shadow compare bias in world units, 0..1000, default 0.53571875 (X3M_SUN_SHADOW_BIAS_UNITS; requires --sun-shadow-apply): the quad subtracts B plus one world texel of the map, divided by 2 D, from every compare; with --sun-shadow-bias-clamp-texels the defaults resolve to the former 0.001 / 0.01 at the default 250 / 512 / 1024 cascade; capture frames print the resolved values in sun_shadow_apply_params')
     parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
     parser.add_argument('--sun-shadow-bias-slope-texels', type=float, default=None, metavar='S', help='Slope-scaled margin of the cascade sun-shadow compare in texels of the receiver plane\'s depth slope, 0..8, default 0.2 (X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS; requires --sun-shadow-apply; 0 keeps the constant + plane law)')
@@ -472,8 +472,8 @@ def main():
         parser.error('--sun-shadow-lane requires --motion-output --taa --hdr.')
     if args.sun_shadow_apply and not (args.sun_shadow_lane and args.shadow_replay_depth):
         parser.error('--sun-shadow-apply requires --sun-shadow-lane --shadow-replay-depth.')
-    if args.sun_shadow_receiver_depth != 'device' and not args.sun_shadow_lane:
-        parser.error('--sun-shadow-receiver-depth linear requires --sun-shadow-lane.')
+    if args.sun_shadow_receiver_depth == 'device':
+        parser.error('--sun-shadow-receiver-depth device is gone: the lane\'s RT2 is always A32B32G32R32F with the linear receiver depth (docs/architecture/shadow-receiver-depth.md). Drop the option (linear is the only encoding).')
     if args.shadow_replay_candidates and not (args.motion_output and args.ownership):
         parser.error('--shadow-replay-candidates requires --motion-output --ownership.')
     if args.shadow_replay_depth and not (args.motion_output and args.ownership):
@@ -845,7 +845,6 @@ def main():
         # Ambient occlusion: every switch explicit so an inherited value cannot enable it.
         env['X3M_SUN_SHADOW_LANE'] = '1' if args.sun_shadow_lane else '0'
         env['X3M_SUN_SHADOW_APPLY'] = '1' if args.sun_shadow_apply else '0'
-        env['X3M_SUN_SHADOW_RECEIVER_DEPTH'] = args.sun_shadow_receiver_depth
         env['X3M_SHADOW_REPLAY_CANDIDATES'] = '1' if (args.shadow_replay_candidates or args.shadow_replay_depth) else '0'
         env['X3M_SHADOW_REPLAY_DEPTH'] = '1' if args.shadow_replay_depth else '0'
         env['X3M_SHADOW_REPLAY_SIZE'] = str(args.shadow_replay_size if args.shadow_replay_size is not None else 1024)

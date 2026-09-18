@@ -46,7 +46,7 @@ KERNEL = [(math.cos(k * math.pi / 8), math.sin(k * math.pi / 8)) for k in range(
 # shows the error (a median receiver-minus-map residual above bias / 2).
 
 
-DEPTH_ENCODINGS = ('device', 'linear')
+DEPTH_ENCODINGS = ('device', 'linear')  # device: the G32R32F z/w law of records and F8 dumps before 2026-09-18; linear (RT2.b) is the only production encoding since
 
 
 def unpack_rt2(data, width, height, depth_encoding='device'):

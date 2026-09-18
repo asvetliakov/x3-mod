@@ -2196,14 +2196,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     { wchar_t lane[4]{};
       const bool asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_LANE",lane,4)==1&&lane[0]==L'1';
       sun_lane_enabled=asked&&motion_output_requested&&taa_requested&&hdr_requested;
-      // Receiver depth (shadow-receiver-depth.md; X3M_SUN_SHADOW_RECEIVER_DEPTH=linear):
-      // the lane's RT2 widens to A32B32G32R32F and .b carries the clip w. Any
-      // other value, or none, is `device` (G32R32F, the z/w law). Read once here.
-      wchar_t receiver[16]{};
-      const bool linear_asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_RECEIVER_DEPTH",receiver,16)==6&&!wcscmp(receiver,L"linear");
-      const bool linear_enabled=linear_asked&&sun_lane_enabled;
-      if(receiver[0])log("sun_shadow_receiver_depth requested=%s enabled=%u lane=%u",linear_asked?"linear":"device",linear_enabled,sun_lane_enabled);
-      hooked.motion_output.configure_sun_shadow_lane(sun_lane_enabled,linear_enabled); }
+      // The lane's RT2 is A32B32G32R32F with .b = the clip w (shadow-receiver-depth.md);
+      // the former X3M_SUN_SHADOW_RECEIVER_DEPTH option is gone (the launcher refuses
+      // `device`, accepts `linear` as a no-op) and the DLL reads no such variable.
+      hooked.motion_output.configure_sun_shadow_lane(sun_lane_enabled); }
     // Caster-candidate counter (shadow-replay-gates.md section 3): the route
     // plus the ownership wrapper (loader.cpp enables the lock bookends on the
     // same switch); no TAA, HDR, linear-material or lane prerequisite.
