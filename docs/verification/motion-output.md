@@ -1414,3 +1414,113 @@ AABB area in pixels (or a coverage/derivative estimate) alongside its
 `unmatched`/`fade_arm`/`atest` fields would let a future triage confirm or
 rule out sub-pixel coverage as the shimmer cause without guessing from
 primitive counts.
+
+## Run 139: resolve-side shimmer diagnosis
+
+Inputs: the run139 capture dumps only (`hdr_1_<f>.rgba16f` = the jittered FP16
+scene BEFORE the resolve, `motion_1_<f>.rgba32f`, `depth_1_<f>.rgba32f`,
+1280x768) and the `motion_output_frame` lines. `taa_debug=0` in this session,
+so **no resolved or presented frame was dumped**: every output number below is
+from an offline numpy re-implementation of `src/temporal/resolve.hlsl`
+(dilation, producer motion, disocclusion test, 16-tap Catmull-Rom, luma
+weighting k, min/max box intersected with mean +/- 1.25 sigma, w = 0.9), history
+seeded with the first capture frame (7 resolves, so not converged), far-plane
+pixels reprojected as static, display proxy = Reinhard(k*luma)^(1/2.2) in 8-bit
+codes, RCAS approximated on luma at the run's `--taa-sharpen 0.75`. It is a
+model, not a measurement of the installed resolve. Flicker metric: half the
+temporal second difference (removes convergence drift), frames 5-7 of each
+capture.
+
+Session facts: jitter = 8-sample Halton(2,3), full +/-0.5 px, index advances
+every frame (4126: idx 4 ... 4133: idx 3); `taa_k=2.4276` (2.4153 in capture 4);
+`taa_skip=0`; camera `cut_median_px` 0.08 (cap 1/2), 0.16 (cap 3), 0.025 (cap 4).
+
+**1. Signature.** The shimmer is in the input, and it is sub-pixel geometry
+coverage, not texture, not emissive fireflies, not a period-2 artefact.
+- Cap 1 plant ROI (y 180-520, x 520-900): 13 826 px carry valid depth in all 8
+  frames, 16 345 px toggle between geometry and the depth sentinel with the
+  jitter phase (more than half of the plant's footprint), background px (99 029)
+  have raw range 0.5 codes. Raw range of the toggling px: mean 79.5 codes, p90
+  126; of the always-covered px: mean 54, p90 138; 1-px horizontal neighbour
+  contrast inside the panels: mean 29, p90 90 codes (a ~1 px bright lattice, ~240
+  codes, against ~90). Hottest 32-px blocks: (x 832, y 224), (x 704, y 384),
+  (x 800, y 256) — the panel arms.
+- Raw flicker on geometry: cap 1 mean 23.2 codes, p99 133, 51% of px > 8 codes;
+  cap 4 station ROI (y 120-420, x 300-900) mean 27.1, 68% > 8; cap 3 (motion
+  compensated) mean 11.7, 33% > 8.
+- Period: the period-2 component is 7.4 codes against a total temporal std of
+  18.8; a linear model in (jitter_x, jitter_y) explains 43% of the variance. It
+  follows the 8-phase jitter sequence, as toggling coverage should.
+- Motion: cap 1 routed px move 0.12 px/frame median (p95 0.37); in cap 3 the
+  plant's parts move 1.6-3.2 px/frame on screen (blocks x 1088-1152, y 448)
+  while the camera median is 0.16 px: the arms rotate. E.g. px (1132,443),
+  (1130,453), (1131,449): raw 88/215/88/186/160 codes over frames 5370-5374 with
+  depth valid 1/0/1/1 — a ~1 px strut passing, which a fixed-pixel metric
+  misreads as flicker; cap 3 is therefore measured along the motion vectors.
+
+**2. What the resolve does with it (model).**
+- Nothing is rejected: disocclusion rejections 0.0000 of geometry px and valid
+  = 1.0000 in all three scenes (the relative depth tolerance 0.02 exceeds the
+  whole depth span 0.98-1.0 at these distances, so the test is inert here;
+  harmless for this symptom).
+- Closest-depth 3x3 dilation exists; history filter is Catmull-Rom, not
+  bilinear; the blend is already luma weighted (k = exposure). Removing the
+  weighting makes it worse (cap 1 px > 8 codes 2.2% -> 4.2%, p99 10.5 -> 13.9),
+  so "linear HDR blend" is not the cause.
+- The clamp is a minor contributor: it moves history by > 1 code on 5.1% of
+  plant px (mean 6.8 codes). Disabling it entirely: cap 1 mean 1.61 -> 1.37,
+  cap 4 1.88 -> 1.61, cap 3 0.90 -> 0.79. Widening gamma 1.25 -> 2.0 or 99 (box
+  only) changes nothing (1.61 -> 1.58): the min/max box, not the sigma clip, is
+  what bites, and a lattice px has both extremes in its 3x3 most frames.
+- The residual is the exponential-average ripple (1 - w) x input contrast:
+
+| scene (geometry px) | raw mean / >8 | base mean / p90 / p99 / >8 | sharpened p99 / >8 | w 0.95 mean / >8 | filtered current (a=1.0) mean / >8 | both |
+|---|---|---|---|---|---|---|
+| cap 1 plant 4-5 km | 23.2 / 51% | 1.61 / 4.5 / 10.5 / 2.2% | 12.1 / 4.0% | 1.00 / 1.2% | 0.84 / 0.8% | 0.76 / 1.0% (a=2.29) |
+| cap 4 station | 27.1 / 68% | 1.88 / 4.8 / 12.7 / 3.7% | 14.3 / 5.1% | 1.16 / 1.6% | 0.95 / 0.7% | 0.82 / 1.0% (a=2.29) |
+| cap 3, speed < 0.5 px | 11.7 / 33% | 0.90 / 2.5 / 8.3 / 1.1% | 9.5 / 1.5% | 0.57 / 0.5% | 0.51 / 0.5% | 0.38 / 0.4% (a=1.0) |
+| cap 3, speed 0.5-8 px | 9.7 / 37% | 1.30 / 3.2 / 6.7 / 0.5% | 8.7 / 1.5% | 1.08 / 0.3% | 0.95 / 0.2% | 0.94 / 0.3% (a=1.0) |
+
+  The resolve removes ~93% of the input flicker; what is left is 2-5% of the
+  object's pixels swinging 16-25 codes peak to peak at the jitter cadence, and
+  RCAS at 0.75 adds ~25% to the mean and doubles the count above 8 codes.
+  Bright lattice/window pixels next to dark ones are where it is largest simply
+  because the contrast is largest (gain 4 raises the contrast, hence "less
+  visible" with the gain off).
+
+**3. Ranked mechanisms and smallest fixes.**
+1. *(1 - w) ripple of a full-contrast sub-pixel input* (supported by every row
+   above; ~85% of the residual). Fixes, both resolve-side:
+   a. Filtered current sample: replace the point current colour in the blend
+      (not in the clamp statistics) by the 3x3 Gaussian exp(-a d^2) of the
+      neighbourhood the shader already fetches, d measured from the pixel
+      centre to each neighbour's jittered sample position. Model: -35% (a=2.29,
+      Blackman-Harris-like) to -48% (a=1.0) mean, px > 8 codes 2.2% -> 0.8%. Cost:
+      zero extra fetches, 9 exp or a 9-entry constant table per frame; slight
+      softening (RCAS is already there); no ghosting risk.
+   b. History weight 0.9 -> 0.95: -38% mean. Cost: none in GPU time;
+      clamp-bounded ghost trails last twice as long, convergence after a cut 20
+      -> 40 frames. There is no launcher option for w today.
+   Combined the model gives -53% to -58%.
+2. *Min/max box clamp on lattice pixels* (~15% of the residual in cap 1/4). Not
+   worth touching alone: removing it costs all ghost protection, and gamma has
+   no effect.
+3. *RCAS amplification* (+25%). `--taa-sharpen 0` is an existing A/B.
+Not supported by the dumps: routing, disocclusion rejection, missing dilation,
+bilinear history blur, unweighted HDR blend, jitter/resolve phase mismatch (a
+static px reads f = 0 exactly in the shader contract; not checkable without a
+resolved dump).
+
+**4. Not implemented.** The model is not validated against a resolved frame
+and cannot see anything slower than 8 frames (a 1-px lattice drifting at
+0.06-0.4 px/frame beats against the pixel grid with a period of 3-16 frames,
+which would look like the reported "tremble" and is outside this evidence).
+The discriminating flight is the same scenes with `--taa-debug` (dumps
+`taa_1_<f>.rgba16f` resolved FP16 and the presented target) and
+`X3M_CAPTURE_FRAMES=32` or more: (i) compare the resolved dump with the model
+(if the real second difference is well above the table, the installed resolve
+departs from its source contract and that is the bug); (ii) the 32-frame
+spectrum separates 8-frame ripple from slow lattice crawl. A second capture
+with `--taa-sharpen 0` bounds mechanism 3. If (i) agrees with the model,
+implement 1a behind a default-off option, verified by the temporal-pass fixture
+with a 1-px lattice case.
