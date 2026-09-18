@@ -211,7 +211,10 @@ ONE/INVSRCCOLOR (screen), which the source gain refused as `screen_blend`
 (run 28: refused_screen 124,827, refused_state 101,263, admitted 78,307 =
 the ONE/ONE gate materials). That is why the engines never responded to the
 gain. Two decisions follow: one option, one hotkey, one gain for all twenty
-pairs (`X3M_EMISSION_SOURCE_GAIN`, Ctrl+Shift+**F6**; a passed
+pairs (`X3M_EMISSION_SOURCE_GAIN`, Ctrl+Shift+**F6**, which since the run 41
+regrouping also carries the `--hull-emitters` guide lights: an
+`--emission-source-gain` above 1 implies them and hands them its value, which
+an explicit `--hull-emission-gain G` still overrides; a passed
 `--effect-source-gain` is a launcher error naming the replacement), and the
 screen draws are admitted through a blend substitution.
 
@@ -339,9 +342,13 @@ routed opaque draw of the 100 programs carries the gain (unrouted draws keep the
 original program, as with `--original-fill`): the black 32x32 placeholder
 light maps of props and emitter materials multiply to zero, so no admission
 policy is needed, and any non-window light-map art (panel stripes, decals)
-brightens with the windows. **Ctrl+Shift+F4** toggles this gain together with
-`--hull-emitters` (one hull-emission flag, `hull_emission_gain_toggle` logs
-both states); per-frame `hull_lightmap_frame gain= fill= admitted= toggled=`.
+brightens with the windows. **Ctrl+Shift+F4** toggles this gain alone
+(its own flag since the run 41 regrouping; the guide lights of
+`--hull-emitters` moved to Ctrl+Shift+F6 with the effects gain they now take
+by default, and `hull_emission_gain_toggle` logs the driving key and both
+families' states); per-frame `hull_lightmap_frame gain= fill= admitted= toggled=`.
+The launcher forwards G = 4 with `--hdr` unless another value is given (user
+selection after run 41 C / run128); the DLL's own default stays 1 = off.
 The sun-share lane (`--sun-shadow-lane`, the user's configuration) carries it
 too: the original share producer (`linear_material_original_sun_share_pixel_variant`,
 its c212/c221 DEFs and r11-r23 disjoint from c223 and rL) takes the same

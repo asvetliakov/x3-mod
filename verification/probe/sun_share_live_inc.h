@@ -114,7 +114,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
         // FrameClear is the real M initialization operation at the scene latch.
         if(missing&&step==2)emission_fault(d.p,9,1);
         if(lightmap&&(step==3||step==5)){
-            const int state=hull_toggle(d.p);
+            const int state=hull_toggle(d.p,1); // Ctrl+Shift+F4: the light-map gain
             std::printf("SUN_LIGHTMAP_TOGGLE frame=%llu state=%d\n",frame,state);
             require(state==(step==3?0:1),"the shared F4 flag: off before frame 3, on before frame 5");
         }

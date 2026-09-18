@@ -219,16 +219,35 @@ class LauncherGateTests(unittest.TestCase):
             code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
             baseline = json.loads(output)['env']
             self.assertEqual(baseline['X3M_HULL_EMISSION_GAIN'], '1.0')
+            # The guide lights follow the effects gain and its key: an
+            # --emission-source-gain above 1 implies --hull-emitters and hands
+            # them its value, so the user selects both with one option.
             code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2')
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], '1.0', 'the gain alone leaves the hull population off')
+            implied = json.loads(output)['env']
+            self.assertEqual((implied['X3M_HULL_EMISSION_GAIN'], implied['X3M_EMISSION_SOURCE_GAIN']), ('2.0', '2.0'))
             code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2', '--hull-emitters')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
             self.assertEqual((env['X3M_HULL_EMISSION_GAIN'], env['X3M_EMISSION_SOURCE_GAIN']), ('2.0', '2.0'))
-            self.assertEqual({k: v for k, v in env.items() if k != 'X3M_HULL_EMISSION_GAIN'},
-                             {k: v for k, v in json.loads(launch(directory, *PREREQUISITES, '--emission-source-gain', '2')[1])['env'].items()
-                              if k != 'X3M_HULL_EMISSION_GAIN'}, 'only the hull key changes')
+            self.assertEqual(env, implied, 'the explicit switch adds nothing to the implied population')
+            # Gain 1 is off: no variant, so nothing is implied either.
+            code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '1')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], '1.0')
+            # The converted route takes the same implication: the guide lights
+            # are the effects family (the twelve programs are original hull
+            # programs either way), so --linear-materials changes nothing here.
+            code, output, error = launch(directory, *PREREQUISITES, '--hdr-tonemap', '--linear-materials',
+                                         '--emission-source-gain', '2')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], '2.0')
+            # An explicit hull gain still overrides the effects gain's value,
+            # with or without the switch.
+            code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2', '--hull-emission-gain', '3')
+            self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            self.assertEqual((env['X3M_HULL_EMISSION_GAIN'], env['X3M_EMISSION_SOURCE_GAIN']), ('3.0', '2.0'))
             # Own gain: --hull-emission-gain G stands without the effects gain
             # (the hull population is bracketed alone) and wins over it.
             code, output, error = launch(directory, *PREREQUISITES, '--hull-emitters', '--hull-emission-gain', '4')
@@ -257,7 +276,7 @@ class LauncherGateTests(unittest.TestCase):
                 self.assertEqual(code, 0, error)
         help_text = launch_help()
         self.assertIn('--hull-emitters', help_text); self.assertIn('--hull-emission-gain', help_text)
-        self.assertIn('Ctrl+Shift+F4', help_text)
+        self.assertIn('Ctrl+Shift+F6', help_text)  # the guide lights moved to the effects key
 
 
 class FixtureCoverageTests(unittest.TestCase):

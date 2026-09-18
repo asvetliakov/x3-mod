@@ -2088,18 +2088,27 @@ int MotionOutput::emission_source_gain_toggle() noexcept {
         id_, frame_, unsigned(available), unsigned(source_gain_enabled_), unsigned(emission_source_gain_requested_), double(emission_source_gain_));
     return available ? (source_gain_enabled_ ? 1 : 0) : -1;
 }
-// Ctrl+Shift+F4: hull emission as one population, apart from the effects
-// gain: the ONE/ONE hull-program emitters (emitter plan phase 3) and the
-// hull light-map gain (hull-self-illumination.md 5) share the flag. The
-// variants were created at registration; off means prepare_hull_gain is
-// never entered and bind_variant_pair keeps the fill/motion variant.
-int MotionOutput::hull_emission_gain_toggle() noexcept {
-    const bool available = hull_emission_gain_requested_ || hull_lightmap_gain_requested_;
-    if (available) hull_gain_enabled_ = !hull_gain_enabled_;
-    log("hull_emission_gain_toggle device=%llu frame=%llu accepted=%u enabled=%u requested=%u gain=%g lightmap_requested=%u lightmap_gain=%g",
-        id_, frame_, unsigned(available), unsigned(hull_gain_enabled_), unsigned(hull_emission_gain_requested_), double(hull_emission_gain_),
-        unsigned(hull_lightmap_gain_requested_), double(hull_lightmap_gain_));
-    return available ? (hull_gain_enabled_ ? 1 : 0) : -1;
+// The two hull families, each on its own key (comparison-hotkeys.md): the
+// hull light-map gain (hull-self-illumination.md 5) alone on Ctrl+Shift+F4,
+// and the ONE/ONE guide-light emitters (emitter plan phase 3) with the
+// effects gain on Ctrl+Shift+F6, whose value they take. One flag each, so the
+// two options stay independent; the variants were created at registration, so
+// off only means prepare_hull_gain is never entered (guide lights) and
+// bind_variant_pair keeps the fill/motion variant (light map). enabled= is the
+// state of the family the key drove; both states are logged either way.
+int MotionOutput::hull_emission_gain_toggle(bool lightmap) noexcept {
+    const bool available = lightmap ? hull_lightmap_gain_requested_ : hull_emission_gain_requested_;
+    if (available) {
+        if (lightmap) hull_lightmap_enabled_ = !hull_lightmap_enabled_;
+        else hull_gain_enabled_ = !hull_gain_enabled_;
+    }
+    const bool state = lightmap ? hull_lightmap_enabled_ : hull_gain_enabled_;
+    log("hull_emission_gain_toggle device=%llu frame=%llu key=%s accepted=%u enabled=%u requested=%u gain=%g lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u",
+        id_, frame_, lightmap ? "ctrl_shift_f4" : "ctrl_shift_f6", unsigned(available), unsigned(state),
+        unsigned(hull_emission_gain_requested_), double(hull_emission_gain_),
+        unsigned(hull_lightmap_gain_requested_), double(hull_lightmap_gain_),
+        unsigned(hull_gain_enabled_), unsigned(hull_lightmap_enabled_));
+    return available ? (state ? 1 : 0) : -1;
 }
 // Ctrl+Shift+F12: the sun shadows at rest (comparison-hotkeys.md, "Sun shadows
 // at rest"), the A/B that makes the cascades' fill/clear cost readable in
@@ -4497,7 +4506,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
             &&(!original_fill_requested_||hdr_state_==HdrState::Active);
         // The gained share variant (hull light-map gain) over the plain one
         // while the F4 flag is on; the same reviewed pair, the FP16 scene.
-        const bool gained_original=original&&hull_gain_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;
+        const bool gained_original=original&&hull_lightmap_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;
         const auto lane=material?shadow_.ps_sun_material:gained_original?shadow_.ps_sun_original_lightmap:original?shadow_.ps_sun_original:shadow_.xt_default_ready?shadow_.ps_sun_xt:shadow_.ps_sun_motion;
         if(lane){ps=lane;route.sun_receiver=material?shadow_.ps_sun_extraction:original;fill=original&&original_fill_requested_;lightmap=gained_original;}
         else {sun_frame_.failed=true;sun_lane_failed_=true;}
@@ -4511,7 +4520,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     // the same one bind pair while the F4 flag is on; the gained variant
     // carries the fill K itself. Never over a sun-lane, XT repaired or
     // material program, only into the FP16 scene target.
-    if (shadow_.hull_lightmap_pair && hull_gain_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active
+    if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active
         && (ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant)) && !route.fade_arm && shadow_.ps_hull_lightmap_variant) {
         ps = shadow_.ps_hull_lightmap_variant; lightmap = true;
     }
@@ -6319,7 +6328,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     }
     if (hull_lightmap_gain_requested_ && hull_lightmap_draws_) {
         log("hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u",
-            id_, frame_, double(hull_lightmap_gain_), double(original_fill_), hull_lightmap_draws_, unsigned(hull_gain_enabled_));
+            id_, frame_, double(hull_lightmap_gain_), double(original_fill_), hull_lightmap_draws_, unsigned(hull_lightmap_enabled_));
         hull_lightmap_draws_ = 0;
     }
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {

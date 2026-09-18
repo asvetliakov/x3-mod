@@ -71,10 +71,14 @@ Installed: run41 candidate from `e1c4afcc` (hash in [status](../status.md)). New
 `--sun-shadow-receiver-depth linear` (RT2 stores linear view depth; the far-station flicker fix; default
 `device` = old behaviour), the cascade apply slope margin (default on, `--sun-shadow-bias-slope-texels 0`
 turns it off; the run119 grazing-plane flicker), `--hull-lightmap-gain G` (windows and hull lights in the
-original hull programs; Ctrl+Shift+F4 toggles it together with the guide-light gain), `--fps-overlay`
+original hull programs; in this build Ctrl+Shift+F4 toggles it together with the guide-light gain, and
+from the next candidate F4 is the light-map gain alone while Ctrl+Shift+F6 switches the effects gain and
+the guide lights together, the launcher defaulting `--hull-lightmap-gain` to 4 under `--hdr`), `--fps-overlay`
 (Ctrl+Alt+F7 = Option+Ctrl+F7 toggles; line 1 FPS / frame ms / draws, line 2 shadows on/off), and the
 telemetry fields `apply_us=` and `flip_c<k>=`. 2048² maps and K 1.5 are now the defaults in the shadow set.
-Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull emission, **Ctrl+Alt+F7** FPS overlay, F8 capture.
+Hotkeys: **Ctrl+Shift+F12** shadows at rest, **Ctrl+Shift+F4** hull emission (light-map gain plus the guide
+lights in this build; the light-map gain alone from the next one, with **Ctrl+Shift+F6** taking the effects
+gain and the guide lights), **Ctrl+Alt+F7** FPS overlay, F8 capture.
 
 Common prefix:
 ```sh
