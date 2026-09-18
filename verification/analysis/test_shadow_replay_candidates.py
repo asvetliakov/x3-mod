@@ -191,6 +191,32 @@ class CascadeFields(unittest.TestCase):
             with self.assertRaises(counter.MalformedLine, msg=bad):
                 counter.parse_text(cascade_frame(4) + bad + '\n')
 
+    def test_flip_tail(self):
+        """Cascade-membership flips (shadow-caster-retention.md, "Membership flips"):
+        flip_c<i> then period2_c<i>, at the end of the line, alone and after the
+        pool groups; a period-2 count above its frame's flip count is malformed."""
+        flips = ' flip_c0=4 flip_c1=2 flip_c2=0 period2_c0=3 period2_c1=0 period2_c2=0 flip_untracked=0 flip_reset=0'
+        importance = ' dropped_min_size0=0 dropped_min_size1=0.3125 dropped_min_size2=1.5e-05 select_us=12.5'
+        rows, _ = counter.parse_text(cascade_frame(1) + flips + '\n' + cascade_frame(2) + importance + flips + '\n' + cascade_frame(3) + '\n')
+        self.assertEqual(rows[0]['cascades'], {'count': 3, 'records': [3, 5, 5], 'capped': [2, 0, 0], 'flip': [4, 2, 0], 'period2': [3, 0, 0],
+                                              'flip_untracked': 0, 'flip_reset': 0})
+        self.assertEqual(rows[1]['cascades']['flip'], [4, 2, 0]); self.assertEqual(rows[1]['cascades']['select_us'], 12.5)
+        self.assertNotIn('flip', rows[2]['cascades'])  # a log written before the counters existed
+        seeded = cascade_frame(5) + ' flip_c0=0 flip_c1=0 flip_c2=0 period2_c0=0 period2_c1=0 period2_c2=0 flip_untracked=7 flip_reset=1'
+        seed_row = counter.parse_text(seeded + '\n')[0][0]['cascades']
+        self.assertEqual((seed_row['flip_reset'], seed_row['flip_untracked'], seed_row['flip']), (1, 7, [0, 0, 0]))
+        summary = counter.summarize(rows, [])['cascades']
+        self.assertEqual((summary['flip_total'], summary['flip_max'], summary['period2_total'], summary['period2_max'], summary['period2_frames'],
+                          summary['flip_untracked_total'], summary['flip_reset_frames']),
+                         ([8, 4, 0], [4, 2, 0], [6, 0, 0], [3, 0, 0], [2, 0, 0], 0, 0))
+        self.assertNotIn('flip_total', counter.summarize(rows[2:], [])['cascades'])
+        for bad in (flips.replace(' flip_c1=2', ''), flips.replace(' period2_c2=0', ''), flips.replace('period2_c1=0', 'period2_c1=3'),
+                    flips.replace('flip_c0=4', 'flip_c0=-1'), flips.replace('flip_c0=4', 'flip_c0=x'), flips + ' extra=1', flips + importance,
+                    flips.replace(' flip_untracked=0', ''), flips.replace(' flip_reset=0', ''), flips.replace('flip_reset=0', 'flip_reset=2'),
+                    flips.replace('flip_reset=0', 'flip_reset=1')):  # a seeded frame cannot report flips
+            with self.assertRaises(counter.MalformedLine, msg=bad):
+                counter.parse_text(cascade_frame(4) + bad + '\n')
+
     def test_identities(self):
         with self.assertRaises(counter.MalformedLine):  # a cascade with more records than were leased
             counter.parse_text(cascade_frame(4, c=(6, 5, 5)) + '\n')

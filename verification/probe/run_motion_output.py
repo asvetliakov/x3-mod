@@ -1573,7 +1573,20 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
         expectations[frame] = dict(records=records, capped=capped, dropped=dropped, issues=issues, draws=draws, far_replayed=int(far_replays), far_frame=far_frame, toggle=int(not is_off))
         kept_by_frame[frame] = kept
         c_row = by_frame[frame]
-        assert c_row['cascades'] == {'count': count, 'records': records, 'capped': capped} and c_row['capped'] == dropped and c_row['leased'] == len(order) - dropped, (name, frame, c_row, expectations[frame])
+        groups = {k: v for k, v in c_row['cascades'].items() if k not in ('flip', 'period2', 'flip_untracked', 'flip_reset')}
+        assert groups == {'count': count, 'records': records, 'capped': capped} and c_row['capped'] == dropped and c_row['leased'] == len(order) - dropped, (name, frame, c_row, expectations[frame])
+        # Cascade-membership flips (shadow-caster-retention.md, "Membership
+        # flips"): on every cascade frame line. The first frame is seeded
+        # (flip_reset=1, no counts); a counted frame cannot flip more bits than
+        # the two frames' records hold, a period-2 count is bounded by its
+        # flips, and this fixture's handful of casters always fit the table.
+        flip, period2 = c_row['cascades']['flip'], c_row['cascades']['period2']
+        assert len(flip) == count and len(period2) == count and all(0 <= p <= f for f, p in zip(flip, period2)), (name, frame, c_row['cascades'])
+        assert c_row['cascades']['flip_untracked'] == 0 and c_row['cascades']['flip_reset'] in (0, 1), (name, frame, c_row['cascades'])
+        if frame == 0:
+            assert c_row['cascades']['flip_reset'] == 1 and flip == [0] * count and period2 == [0] * count, (name, frame, c_row['cascades'])
+        elif not c_row['cascades']['flip_reset'] and frame - 1 in expectations:
+            assert all(f <= records[c] + expectations[frame - 1]['records'][c] for c, f in enumerate(flip)), (name, frame, c_row['cascades'], expectations[frame - 1])
         if is_off:
             assert frame not in depth_by_frame, (name, frame, 'the A/B off: no replay transaction and no line')
             continue

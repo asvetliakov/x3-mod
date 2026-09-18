@@ -22,6 +22,16 @@ per cascade then `class_store= class_ring=` (--shadow-cascade-static-from), and
 `dropped_min_size<i>=` (a float) per cascade then `select_us=`
 (--shadow-cascade-drop-order importance); parsed into the `cascades` dict as
 `static_only_refused`, `large_admitted`, `class_miss`, `classified`, `dropped_min_size` and `select_us`.
+The line then ends with the cascade-membership flip counters
+(docs/architecture/shadow-caster-retention.md, "Membership flips"):
+`flip_c<i>=` per cascade, the casters whose cascade-i bit entered or left since
+the previous frame, then `period2_c<i>=` per cascade, those of them that also
+flipped on the previous frame (the period-2 blink signature), then
+`flip_untracked=` (casters the table's bounded probe could not place, so an
+undercount is never silent) and `flip_reset=` (1 on a seeded frame whose counts
+are all zero: the first frame, a gap in the scene ends, or a cascade shape
+change); parsed as `flip`, `period2`, `flip_untracked` and `flip_reset`. A log
+written before the counters existed parses as before.
 
 A malformed line (missing or non-numeric field, unknown extra field) raises
 MalformedLine; the caller decides whether that fails the run. Sum identities
@@ -57,8 +67,9 @@ def _cascade_suffix(line, pairs):
     """The optional cascade tail of a frame line: c0..c<n-1> then
     capped0..capped<n-1>, 1 <= n <= 5; then optionally the static-only group
     (static_only_refused0..n-1, large_admitted0..n-1, class_miss0..n-1, class_store, class_ring) and
-    optionally the importance group (dropped_min_size0..n-1, select_us);
-    nothing else."""
+    optionally the importance group (dropped_min_size0..n-1, select_us), then
+    optionally the flip group (flip_c0..n-1, period2_c0..n-1, flip_untracked,
+    flip_reset); nothing else."""
     if not pairs:
         return None
     keys = [k for k, _ in pairs]
@@ -100,6 +111,20 @@ def _cascade_suffix(line, pairs):
         row['dropped_min_size'] = floats[:count]
         row['select_us'] = floats[count]
         rest = rest[len(size_keys):]
+    flip_keys = [f'flip_c{j}' for j in range(count)] + [f'period2_c{j}' for j in range(count)] + ['flip_untracked', 'flip_reset']
+    if rest and rest[0][0] == flip_keys[0]:
+        if [k for k, _ in rest[:len(flip_keys)]] != flip_keys:
+            raise MalformedLine(line.rstrip('\n'))
+        values = integers(v for _, v in rest[:len(flip_keys)])
+        row['flip'] = values[:count]
+        row['period2'] = values[count:2 * count]
+        row['flip_untracked'], row['flip_reset'] = values[2 * count], values[2 * count + 1]
+        # A caster can only blink on both of the last two frames if it flipped on this one,
+        # and a seeded frame (flip_reset=1) counts nothing at all.
+        if any(b > a for a, b in zip(row['flip'], row['period2'])) or row['flip_reset'] > 1 \
+                or (row['flip_reset'] and (any(row['flip']) or any(row['period2']))):
+            raise MalformedLine(line.rstrip('\n'))
+        rest = rest[len(flip_keys):]
     if rest:
         raise MalformedLine(line.rstrip('\n'))
     return row
@@ -264,6 +289,15 @@ def summarize(frames, witnesses):
             summary['cascades']['large_admitted_total'] = [sum(c['large_admitted'][i] for c in static_rows if i < c['count']) for i in range(count)]
             summary['cascades']['class_miss_total'] = [sum(c['class_miss'][i] for c in static_rows if i < c['count']) for i in range(count)]
             summary['cascades']['classified_total'] = {k: sum(c['classified'][k] for c in static_rows) for k in CLASS_FIELDS}
+        flip_rows = [c for c in cascade_rows if 'flip' in c]
+        if flip_rows:
+            summary['cascades']['flip_total'] = [sum(c['flip'][i] for c in flip_rows if i < c['count']) for i in range(count)]
+            summary['cascades']['flip_max'] = [max((c['flip'][i] for c in flip_rows if i < c['count']), default=0) for i in range(count)]
+            summary['cascades']['period2_total'] = [sum(c['period2'][i] for c in flip_rows if i < c['count']) for i in range(count)]
+            summary['cascades']['period2_max'] = [max((c['period2'][i] for c in flip_rows if i < c['count']), default=0) for i in range(count)]
+            summary['cascades']['period2_frames'] = [sum(1 for c in flip_rows if i < c['count'] and c['period2'][i]) for i in range(count)]
+            summary['cascades']['flip_untracked_total'] = sum(c['flip_untracked'] for c in flip_rows)
+            summary['cascades']['flip_reset_frames'] = sum(c['flip_reset'] for c in flip_rows)
         size_rows = [c for c in cascade_rows if 'dropped_min_size' in c]
         if size_rows:
             summary['cascades']['dropped_min_size_max'] = [max((c['dropped_min_size'][i] for c in size_rows if i < c['count']), default=0.0) for i in range(count)]

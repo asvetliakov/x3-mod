@@ -256,8 +256,22 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
         }
     }
     release_depth_leases();
-    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u",
-        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, unsigned(sun_shadow_enabled_));
+    // Sun-shadow apply cost (legacy-sun-application.md, 2): the previous
+    // frame's apply, its QPC micros and the cascade maps it sampled, on this
+    // line so the replay's cost and the apply's are read together. The fields
+    // appear under the same condition that runs the pass (the lane requested
+    // and the shadows switched on: one branch, nothing while it is off), and
+    // read 0 whenever the previous frame ran no apply at all - never a stale
+    // repeat of an older frame's numbers.
+    char apply_text[48]; apply_text[0] = 0;
+    if (sun_apply_requested_ && sun_shadow_enabled_) {
+        const bool previous = sun_apply_frame_ != ~std::uint64_t(0) && sun_apply_frame_ + 1 == frame_;
+        const int n = std::snprintf(apply_text, sizeof apply_text, " apply_us=%.1f apply_cascades=%u",
+                                    previous ? sun_apply_us_ : 0., previous ? sun_apply_sampled_ : 0u);
+        if (n < 0 || n >= int(sizeof apply_text)) apply_text[0] = 0;
+    }
+    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s",
+        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, unsigned(sun_shadow_enabled_), apply_text);
 }
 // The cascade transaction (docs/architecture/shadow-cascades.md, section 1):
 // the single-map admission and refusal rules on the same records, then per
@@ -445,9 +459,23 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             length += std::snprintf(cull_text + length, sizeof cull_text - length, " cull_none%u=%u cull_inverted%u=%u", k, refused ? 0u : cull_none[k], k, refused ? 0u : cull_inverted[k]);
         if (length < 0 || length >= int(sizeof cull_text)) cull_text[0] = 0;
     }
-    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s%s",
+    // Sun-shadow apply cost (legacy-sun-application.md, 2): the previous
+    // frame's apply, its QPC micros and the cascade maps it sampled, on this
+    // line so the replay's cost and the apply's are read together. The fields
+    // appear under the same condition that runs the pass (the lane requested
+    // and the shadows switched on: one branch, nothing while it is off), and
+    // read 0 whenever the previous frame ran no apply at all - never a stale
+    // repeat of an older frame's numbers.
+    char apply_text[48]; apply_text[0] = 0;
+    if (sun_apply_requested_ && sun_shadow_enabled_) {
+        const bool previous = sun_apply_frame_ != ~std::uint64_t(0) && sun_apply_frame_ + 1 == frame_;
+        const int n = std::snprintf(apply_text, sizeof apply_text, " apply_us=%.1f apply_cascades=%u",
+                                    previous ? sun_apply_us_ : 0., previous ? sun_apply_sampled_ : 0u);
+        if (n < 0 || n >= int(sizeof apply_text)) apply_text[0] = 0;
+    }
+    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s%s%s",
         id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, unsigned(sun_shadow_enabled_), text, unsigned(far_replayed),
-        far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget, retained_text, cull_text);
+        far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget, retained_text, cull_text, apply_text);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam: the map as floats (R32F only) and the last replayed frame's basis:

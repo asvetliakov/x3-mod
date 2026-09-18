@@ -93,6 +93,24 @@ class CascadeFields(unittest.TestCase):
             with self.assertRaises(depth.MalformedLine, msg=bad[-40:]):
                 depth.parse_depth_line(bad)
 
+    def test_apply_cost_pair(self):
+        """The sun-shadow apply's own cost (legacy-sun-application.md, 2):
+        apply_us= apply_cascades= at the end of the line, with and without the
+        cascade tail; absent while the apply lane is off."""
+        row = depth.parse_depth_line(line(6, replayed=4, draws=4) + ' shadow_toggle=1' + self.TAIL + ' apply_us=310.5 apply_cascades=3')
+        self.assertEqual(row['apply'], {'us': 310.5, 'cascades': 3})
+        self.assertEqual(row['cascades']['draws'], [2, 4])
+        single = depth.parse_depth_line(line(7) + ' apply_us=0.0 apply_cascades=0')  # the quad skipped this frame
+        self.assertEqual(single['apply'], {'us': 0.0, 'cascades': 0})
+        self.assertNotIn('apply', depth.parse_depth_line(line(7)))
+        good = line(6, replayed=4, draws=4) + self.TAIL + ' apply_us=310.5 apply_cascades=3'
+        for bad in (good.replace(' apply_cascades=3', ''), good.replace(' apply_us=310.5', ''), good.replace('apply_us=310.5', 'apply_us=-1'),
+                    good.replace('apply_us=310.5', 'apply_us=nan'), good.replace('apply_cascades=3', 'apply_cascades=6'),
+                    good.replace('apply_cascades=3', 'apply_cascades=x'),
+                    line(6, replayed=4, draws=4) + ' apply_us=310.5 apply_cascades=3' + self.TAIL):  # not at the end of the line
+            with self.assertRaises(depth.MalformedLine, msg=bad[-60:]):
+                depth.parse_depth_line(bad)
+
     def test_five_cascades(self):
         good = line(6, replayed=4, draws=4) + self.TAIL
         row = depth.parse_depth_line(good.replace('draws0=2 draws1=4', 'draws0=1 draws1=1 draws2=1 draws3=1 draws4=2'))

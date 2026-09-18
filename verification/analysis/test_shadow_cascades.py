@@ -33,6 +33,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import shutil
 import struct
 import subprocess
@@ -725,6 +726,86 @@ int main(int argc, char** argv) {
         }
         std::printf("POINT_SUN compared_masks=%u\n", compared);
     }
+    // ---- cascade-membership flips (shadow-caster-retention.md, "Membership flips")
+    {
+        using shadow_replay::FlipEntry; using shadow_replay::FlipTable; using shadow_replay::Record;
+        static FlipEntry storage[64];
+        FlipTable table; table.attach(storage, 64);
+        Record records[3]{};
+        for (unsigned i = 0; i < 3; ++i) { records[i].key = 1000 + i * 37; records[i].cascades = 1; }
+        std::uint32_t flips[3]{}, period2[3]{};
+        // Frame 1: the first frame is seeded, never counted (nothing to compare with).
+        table.update(records, 3, 3, 7, 1, flips, period2);
+        CHECK(table.reset && flips[0] == 0 && flips[1] == 0 && period2[0] == 0 && table.untracked == 0);
+        // Frame 2: unchanged.
+        table.update(records, 3, 3, 7, 2, flips, period2);
+        CHECK(!table.reset && flips[0] == 0 && period2[0] == 0);
+        // Frame 3: one caster moves from cascade 0 to cascade 1 (two bits flip).
+        records[0].cascades = 2;
+        table.update(records, 3, 3, 7, 3, flips, period2);
+        CHECK(flips[0] == 1 && flips[1] == 1 && period2[0] == 0 && period2[1] == 0);
+        // Frame 4: it moves back: both bits flipped on two consecutive frames.
+        records[0].cascades = 1;
+        table.update(records, 3, 3, 7, 4, flips, period2);
+        CHECK(flips[0] == 1 && flips[1] == 1 && period2[0] == 1 && period2[1] == 1);
+        // Frame 5: a caster leaves the frame entirely: its bit leaves with it.
+        table.update(records, 2, 3, 7, 5, flips, period2);
+        CHECK(flips[0] == 1 && period2[0] == 0);
+        // Frame 6: it returns after one frame away: a flip, and a period-2 blink.
+        table.update(records, 3, 3, 7, 6, flips, period2);
+        CHECK(flips[0] == 1 && period2[0] == 1);
+        // Frames 7 and 8: away for two frames, then back: one flip, no blink.
+        table.update(records, 2, 3, 7, 7, flips, period2);
+        CHECK(flips[0] == 1 && period2[0] == 1); // leaving, on the frame after it flipped back
+        table.update(records, 2, 3, 7, 8, flips, period2);
+        CHECK(flips[0] == 0 && period2[0] == 0);
+        table.update(records, 3, 3, 7, 9, flips, period2);
+        CHECK(flips[0] == 1 && period2[0] == 0);
+        // Two records of one key contribute their union, and count once (its own table).
+        static FlipEntry pair_storage[32];
+        FlipTable pairs; pairs.attach(pair_storage, 32);
+        Record pair[2]{}; pair[0].key = pair[1].key = 4242; pair[0].cascades = 1; pair[1].cascades = 2;
+        pairs.update(pair, 2, 3, 7, 1, flips, period2);
+        CHECK(pairs.reset && flips[0] == 0 && flips[1] == 0); // the pair table's first frame is seeded
+        pairs.update(pair, 2, 3, 7, 2, flips, period2);
+        CHECK(flips[0] == 0 && flips[1] == 0 && flips[2] == 0); // unchanged: the union is one caster's mask
+        pair[1].cascades = 4; // the union moves from {0,1} to {0,2}
+        pairs.update(pair, 2, 3, 7, 3, flips, period2);
+        CHECK(flips[0] == 0 && flips[1] == 1 && flips[2] == 1 && !pairs.reset);
+        // A gap in the frames (no scene end: a menu, a load, the A/B off) seeds
+        // instead of counting: the resuming frame's arrivals are not flips.
+        pairs.update(pair, 2, 3, 7, 9, flips, period2);
+        CHECK(pairs.reset && flips[0] == 0 && flips[1] == 0 && flips[2] == 0);
+        pairs.update(pair, 2, 3, 7, 10, flips, period2);
+        CHECK(!pairs.reset && flips[0] == 0 && flips[1] == 0 && flips[2] == 0); // the seeded baseline holds
+        // A cascade shape change (the adaptive ladder dropping cascade 2, or a
+        // different count) is a configuration change, not a blink: seeded too.
+        pairs.update(pair, 2, 3, 3, 11, flips, period2);
+        CHECK(pairs.reset && flips[0] == 0 && flips[1] == 0 && flips[2] == 0);
+        pairs.update(pair, 2, 2, 3, 12, flips, period2);
+        CHECK(pairs.reset && flips[0] == 0 && flips[1] == 0);
+        pairs.update(pair, 2, 2, 3, 13, flips, period2);
+        CHECK(!pairs.reset && flips[0] == 0 && flips[1] == 0);
+        // A cascade beyond the frame's count is never reported, and a detached table counts nothing.
+        FlipTable off; off.attach(nullptr, 0);
+        off.update(records, 3, 3, 7, 12, flips, period2);
+        CHECK(flips[0] == 0 && flips[1] == 0 && flips[2] == 0 && period2[0] == 0);
+        // Saturation: more distinct keys than slots is bounded (no write outside
+        // the table, no hang) and the casters the probe limit could not place are
+        // counted, never silently dropped. The same keys fit a table with room.
+        static Record many[256]{};
+        for (unsigned i = 0; i < 256; ++i) { many[i].key = 900000 + i; many[i].cascades = 1; }
+        table.update(many, 256, 3, 7, 13, flips, period2);
+        CHECK(table.untracked >= 256 - 64 && table.untracked < 256 && flips[0] <= 64);
+        const std::uint32_t saturated = table.untracked;
+        static FlipEntry roomy_storage[512];
+        FlipTable roomy; roomy.attach(roomy_storage, 512);
+        roomy.update(many, 256, 3, 7, 1, flips, period2);
+        CHECK(roomy.untracked == 0 && roomy.reset);
+        roomy.update(many, 256, 3, 7, 2, flips, period2);
+        CHECK(roomy.untracked == 0 && flips[0] == 0 && !roomy.reset);
+        std::printf("FLIPS untracked_saturated=%u untracked_roomy=%u\n", saturated, roomy.untracked);
+    }
     std::printf("RESULT %s failures=%d\n", failures ? "FAIL" : "PASS", failures);
     return failures ? 1 : 0;
 }
@@ -784,6 +865,14 @@ class PureHeaders(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout[-2000:] + result.stderr[-2000:])
             self.assertIn('RESULT PASS failures=0', result.stdout)
             self.assertEqual(result.stdout.count('REGISTER '), 6 + real)
+            # The flip table's probe saturation is a counted number, not a note:
+            # 256 distinct keys in 64 slots leave at least 192 untracked, the same
+            # keys in 512 slots none.
+            saturation = re.search(r'FLIPS untracked_saturated=(\d+) untracked_roomy=(\d+)', result.stdout)
+            self.assertIsNotNone(saturation, result.stdout[-2000:])
+            self.assertGreaterEqual(int(saturation.group(1)), 192)
+            self.assertLess(int(saturation.group(1)), 256)
+            self.assertEqual(int(saturation.group(2)), 0)
 
 
 class CandidatesLineTail(unittest.TestCase):
@@ -798,16 +887,17 @@ class CandidatesLineTail(unittest.TestCase):
         source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         header = (ROOT / 'src/renderer/shadow_replay_projection.h').read_text()
         cascades = int(re.search(r'constexpr unsigned shadow_cascade_max = (\d+);', header).group(1))
-        bound = re.search(r'constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max \* \((.*?)\) \+ (\d+) \+ (\d+) \+ 1;', source)
+        bound = re.search(r'constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max \* \((.*?)\) \+ ([\d +]+) \+ 1;', source)
         self.assertIsNotNone(bound)
-        total = cascades * eval(bound.group(1)) + int(bound.group(2)) + int(bound.group(3)) + 1
-        per_cascade = [' c%u=%u', ' capped%u=%u', ' static_only_refused%u=%u', ' large_admitted%u=%u', ' class_miss%u=%u']
+        total = cascades * eval(bound.group(1)) + eval(bound.group(2)) + 1
+        per_cascade = [' c%u=%u', ' capped%u=%u', ' static_only_refused%u=%u', ' large_admitted%u=%u', ' class_miss%u=%u', ' flip_c%u=%u', ' period2_c%u=%u']
         for fmt in per_cascade:
             self.assertIn(fmt, source)
         tail = ''.join(fmt.replace('%u', '%d') % (cascades - 1, 4294967295) for fmt in per_cascade) * cascades
         tail += ' class_store=%d class_ring=%d' % (4294967295, 4294967295)
         tail += (' dropped_min_size%d=%.4g' % (cascades - 1, -1.2345e308)) * cascades
         tail += ' select_us=%.1f' % 1e19  # a double's twenty digits: more than 300,000 years of microseconds
+        tail += ' flip_untracked=%d flip_reset=%d' % (4294967295, 1)
         self.assertLessEqual(len(tail) + 1, total, (len(tail), total))
 
 
