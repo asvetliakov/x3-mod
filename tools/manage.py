@@ -380,6 +380,7 @@ def main():
     parser.add_argument('--lod-scale', type=float, default=None, metavar='FACTOR', help='Push the engine\'s mesh LOD switch distances out by FACTOR, 1..4 (X3M_LOD_SCALE; default absent = vanilla; no other option needed): the LOD threshold multiplier read at 0x0047d44b is replaced by a proxy-owned mirror holding the game\'s value divided by FACTOR (same-length instruction, exact executable and bytes only, otherwise fails closed to vanilla; one lod_scale line in the session log). Cost: about 4-7x the triangles and 13-15x the draw calls per distant station body at 2-3x; the cap of 4 keeps the integer-truncated thresholds away from collapse (docs/architecture/lod-scale.md)')
     parser.add_argument('--point-light-root-admission', action='store_true', help='Admit a point light for a mesh node whose root object is in range, not only when the node itself is (X3M_POINT_LIGHT_ROOT_ADMISSION=1; default absent = vanilla per-node cull): the six-byte range-test branch at 0x004c27af is replaced by a detour that keeps the native decision for an in-range node and otherwise walks the node\'s parent chain (at most 8 bounds-checked hops) and applies the same range predicate to the root; exact executable and bytes only, otherwise fails closed to vanilla; one point_light_root_admission line in the session log (docs/reverse-engineering/camera-and-lights.md, "Point-light admission site")')
     parser.add_argument('--cull-census', action='store_true', help='Log the engine\'s own cull/LOD census on F8 capture frames (X3M_CULL_CENSUS=1; default absent = nothing patched): two read-only trampolines on the per-node cull/LOD pass 0x0047cfe0 record, per node, the LOD metric s = r*640/D, the small-object measure, the two per-node thresholds, the cull verdict and the selected LOD index into a bounded ring (8192 entries, overflow= counted), emitted as cull_census rows at Present; outside capture frames each stub is one compare and a dead branch. Exact executable and bytes only, otherwise fails closed to vanilla; summarise with tools/analysis/cull_census.py (docs/reverse-engineering/lod-selection.md, "Cull census sites")')
+    parser.add_argument('--collide-box-cull', action='store_true', help='Insert the missing integer bounding-box early-out in the engine\'s sector collision pass (X3M_COLLIDE_BOX_CULL=1; default absent = nothing patched): two trampolines at the square-root pair tests 0x0045d58e (all-pairs loop of 0x0045d250) and 0x0045cc7c (swept scan of 0x0045cab0) jump to the engine\'s own continue label when max(|dx|,|dy|,|dz|) exceeds the engine\'s reject radius plus a margin that covers its float32 and truncation error, so only pairs the engine\'s own compare discards are skipped; class-7 pairs always take the engine path. Counts pairs and box rejects per frame (collide_census line per 300 frames, collide_census_frame on F8 frames); compare loop_phases collide_p50_us with the option on and off (--loop-phases). Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 10)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -983,6 +984,12 @@ def main():
             env['X3M_POINT_LIGHT_ROOT_ADMISSION'] = '1'
         else:
             env.pop('X3M_POINT_LIGHT_ROOT_ADMISSION', None)
+        # Collide box cull: same rule, set only when requested so a stale shell
+        # value cannot patch the collision pair tests.
+        if args.collide_box_cull:
+            env['X3M_COLLIDE_BOX_CULL'] = '1'
+        else:
+            env.pop('X3M_COLLIDE_BOX_CULL', None)
         # Cull census: same rule, set only when requested so a stale shell
         # value cannot patch the cull/LOD pass.
         if args.cull_census:

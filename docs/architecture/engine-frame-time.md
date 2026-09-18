@@ -128,6 +128,19 @@ residual (`input - sum`) or `PendingVm` sends the call tape, not the
 loading-interval recorder, after the routine; then the disassemble agent on
 that routine's inner loops.
 
+**Implemented 2026-09-18 (not yet flown): `--collide-box-cull`.** Run 42 A named the owner: sector collide
+`0x0045d250`, 26.2 ms flat (96 % of pre_render). Its all-pairs loop square-roots every allowed pair with no
+bounding-box reject ([sector-collide.md](../reverse-engineering/sector-collide.md)). `X3M_COLLIDE_BOX_CULL=1` inserts
+the integer box at the two pair tests (`0x0045d58e`, `0x0045cc7c`) and jumps to the engine's own continue label for
+pairs its `dist > R` compare would discard anyway; nothing else changes (section 10 of the note; ledger
+[collide-box-cull.md](../verification/collide-box-cull.md)). How the flight measures it: the same stand twice with
+`--telemetry --frame-phases --loop-phases`, once with `--collide-box-cull`; compare `loop_phases collide_p50_us`
+(saving) and read `collide_census p1_pairs_p50 / p1_rejected_p50 / p2_cands_p50 / p2_rejected_p50` (pair count and
+reject share per frame; F8 gives exact `collide_census_frame` rows). Fixture estimate, harness included, Wine/FEX:
+75.6 -> 67.0 ns per box-rejected pair, 74.4 -> 78.6 ns per pair the box keeps; per-pair engine cost under FEX is what
+the flight supplies (`collide_p50_us / p1_pairs_p50` with the option off is not available, since the counters live
+in the stubs: use `p1_pairs_p50` from the on run for both).
+
 ### 2.2 Cut the proxy's per-draw hook work — 1-3 ms (I), proxy-owned
 
 Not an engine lever, but the same size as the engine ones and cheaper.

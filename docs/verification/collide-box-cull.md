@@ -1,0 +1,33 @@
+# Collide box cull: verification ledger
+
+Feature: `--collide-box-cull` / `X3M_COLLIDE_BOX_CULL=1`, `src/proxy/collide_box_cull.cpp`, sites `0x0045d58e` (P1,
+all-pairs loop of the sector collision pass `0x0045d250`) and `0x0045cc7c` (P2, swept scan of `0x0045cab0`)
+([sector-collide.md](../reverse-engineering/sector-collide.md) sections 6 and 10;
+[engine-frame-time.md](../architecture/engine-frame-time.md) 2.1). Default off; nothing is written unless the variable
+is exactly `1`, the executable hash matches, and the seven byte windows, the two helper bodies and the four call
+targets verify. The stubs skip only pairs the engine's own `dist > R` compare discards; class-7 pairs always take the
+engine path.
+
+| Date | Check | Command | Result |
+| --- | --- | --- | --- |
+| 2026-09-18 | Site qualification on the installed EXE (`fdbf3418…`): all windows, two whole `mov`s at each site, no direct branch into either displaced span, inbound sources exactly `0x0045d516` and `0x0045cc5e`/`0x0045cc70`, first x87 instruction after each span, EFLAGS rewritten before any reader, `jg`/`jne` targets (`0x0045d6cc`, `0x0045df90`, `0x0045ce07`), the three class-7 box rejects to `0x0045df90`, ESI written at `0x0045cc82`, helper bytes and the four calls, constants `0x1028f`/`0x30000`/`0x3d090`/`0x8200404`/`0x20000`, single `ret 4`, three jump tables, claim windows disjoint from 119 other claimed sites (`src/proxy` SiteSpecs and `site_va` constants, chase verifiers), source constants, encoder lengths | `python3 verification/probe/verify_collide_sites.py` | PASS, 29/29 checks; 1,051 + 339 instructions decoded |
+| 2026-09-18 | Liveness (scratch scripts, not committed): CFG of both routines with jump-table edges, forward search for a read not preceded by a write | session scratch | EAX/ECX/EDX/EDI: 0 reads reachable from `0x0045d58e` and `0x0045df90`; EAX/ECX/EDX/ESI: 0 from `0x0045ce07`; `[esp+0x1c]`, `[esp+0x28]` not live at `0x0045df90`; `[esp+0x30..0x38]`, `[esp+0x60..0x6c]` not live at `0x0045ce07` |
+| 2026-09-18 | Host tests: verifier on the installed image and on 15 patched copies (changed constant, site, interior branch, extra source, `jg`→`jl`, reject target, P2 operand, removed source, ESI write, `CVTTSD2SI`→`CVTSD2SI`, call target, `ret`, jump table all refused), claim collection and overlap detection, constants, C++/Python encoder parity byte for byte, install/frame/window parsers, the margin proof on the host models (box reject ⇒ engine reject over the `R−2..T+2` band, the 2³⁰ cap, INT_MIN, saturation, overflow and 3 M random pairs), counter window, production wiring, launcher gate | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_collide_box_cull` | 10 tests OK; 10,681,516 model pairs, 5,309,497 box rejects, 0 counter-examples |
+| 2026-09-18 | X3 CPU fixture: layout-preserving synthetic copies of both pair tests (engine bytes from each site to its `jg`, the P1 reject block and both continue labels at the engine's offsets; helper replicas), production module patching them. 445,882 P1 pairs and 146,064 P2 candidates through the unpatched and patched bytes: identical exit (P1 continue 193,580 / survivor 141,088 / class-7 111,214; P2 90,013 / 56,051), EBX/ESI/EBP/ESP, EDI where the engine defines it, x87 depth 2 with both values, all locals except the dead distance scratch on box-rejected pairs; host engine model equals the engine bytes on every pair; counters equal the host box model pair by pair (box rejects 102,345 P1 / 55,327 P2, all inside the engine's reject set, none with a class-7 side); disarmed = native with nothing counted; `collide_census_frame` and 300-frame `collide_census` lines; LastError preserved by install and present; exact rollback and native replay; no-counter stubs; option unset/`0`/`1` without the engine image untouched; null site, changed compare constant, changed continue label refused; closed window `late_claim` | `python3 verification/probe/build_collide_box_cull.py` (stub audit: 139/117/127/105 bytes, no x87/MMX/SSE/call/pushf, one balanced push/pop; fixture `-Werror` clean) then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_box_cull.py` | 38 checks, 0 failures; `verification/results/collide-box-cull-cpu.json`; bench ns per pair, harness included (frame copy, x87 load, exit record ≈ 60 ns in every variant): box-rejected pairs native 75.6 / disarmed 74.5 / armed with counters 67.0 / without 67.1; pairs the box keeps 74.4 / 75.0 / 78.6 / 79.8. Per 1,000 pairs: −8.6 µs when rejected, +4.2 µs when kept; disarmed and the counters are inside the noise (Wine/FEX, not game FPS) |
+| 2026-09-18 | Clean DLL build and the no-x87 walk (the module has no per-pair C++ handler; the stubs are audited by the build script) | `cmake -S . -B build/clean-collide -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build/clean-collide -j8`; `python3 verification/probe/check_no_x87.py build/clean-collide/d3d9.dll` | 0 warnings; PASS, 79 roots, 539 reachable functions, 0 violations; sha256 `761a18db…6f2d` (worktree build, not a candidate) |
+| 2026-09-18 | Launcher dry run | `python3 tools/manage.py launch --collide-box-cull --dry-run` | env carries `X3M_COLLIDE_BOX_CULL=1`; absent option drops an inherited value (host test); no launch |
+| 2026-09-18 | Unaffected fixtures rerun | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_object_lifetime.py`; `… run_ownership.py` | object lifetime 674 checks, 0 failures; ownership exit 0 |
+
+## Open
+
+- Not flown. First flight: the run125-area stand twice with `--telemetry --frame-phases --loop-phases`, once adding
+  `--collide-box-cull`; compare `loop_phases collide_p50_us` and read `collide_census`. If `p1_rejected / p1_pairs` is
+  small the plateau is owned by survivors, class-7 pairs or L1 (`p2_cands`), and the lever is the second-stage
+  broadphase of the note, not this patch.
+- The counters are published per 300-frame window (p50/max/sum) and exactly on F8 frames, not as one line per frame,
+  to keep the session log bounded; the window is keyed on Present frames, `loop_phases` on sampled frames, so the two
+  lines join by nearest `frame=`.
+- The fixture bench is dominated by its harness (≈ 60 of 75 ns); the engine's per-pair cost under FEX inside the real
+  loop comes from the flight.
+- The counters assume the collision pass and Present share a thread (as `loop_phases` observes); otherwise a count
+  could be torn, never a verdict.
