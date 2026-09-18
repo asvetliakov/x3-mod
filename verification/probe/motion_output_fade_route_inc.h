@@ -31,6 +31,29 @@
 // refused at gate 4 for the never-probed cutout verdict alone
 // (asteroid-fog-temporal.md, "Run 125"): the probe's verdict must be Ready
 // (status 30) and the arm routes both quads over the sentinel fill.
+// behind: the original script with the quads' clip rows placing the object
+// origin behind the camera plane (rows diag(2, 2, 2) with row 3 = (0, 0, 10,
+// -1): every vertex at z .3 keeps w 2, so the raster, depth .3 and the jitter
+// shift are the identity rows' bit for bit, while the origin's clip is (0, 0,
+// 0, -1), w < 0 at distance 1). Run 130's leg-2 station module: the arm
+// refused it at the origin-distance step every frame (gate 4, `unmatched=
+// fade_origin`) although the trace had resolved its node; the distance is
+// defined for w <= 0 and the hover schedule must route, hold and refuse
+// exactly as `original` does, the refused frames attributed `fade_threshold`.
+// overlay: the run-130 distant-object class, the hull pair
+// 53a0a641107ed76c/63f96eba9eea7880 (the cutout pair) drawn as the same
+// node's source-over sub-mesh (blend on, SRCALPHA/INVSRCALPHA, Z-write off,
+// alpha test off, mask 7: the ship's glass/window layer, own vertex buffer
+// and textures, the node's rows) right after the node's routed opaque draw:
+// P and Q carry A's scope (node 0x1000) with their own vertex buffers, drawn
+// over A under original shading (no bracket, no M). The overlay arm routes
+// both quads every frame at permille 1000 (own RT1 rows, RT2 masked so the
+// depth target is unchanged, counted as overlay_routed), so the resolved
+// shift of Q stays a fraction of the raw one.
+// foreign: the overlay script with P on A's node address under another
+// lifetime serial (scope-gate refusal) and Q on its own node (gate 4): the arm's fail-safe refuses both
+// every frame (gate 4, `unmatched=overlay_node`,
+// overlay_refused 2) and they stay plain native draws.
 // Twelve frames across the eight jitter phases with the rotating camera (cut
 // at frame 7); the raw FP16 scene after the quads, RT1, M (not under
 // original) and the presented frame are dumped per frame.
@@ -42,27 +65,31 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     char script_setting[16]{};GetEnvironmentVariableA("X3M_FIXTURE_FADE_SCRIPT",script_setting,sizeof script_setting);
     const bool routed_script=std::strcmp(script_setting,"routed")==0,masked_script=std::strcmp(script_setting,"masked")==0,
                sentinel_script=std::strcmp(script_setting,"sentinel")==0,hover_script=std::strcmp(script_setting,"hover")==0,
-               original_script=std::strcmp(script_setting,"original")==0;
-    require(routed_script||masked_script||sentinel_script||hover_script||original_script,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original");
-    // original: the hover schedule over the sentinel fill under original shading
-    // (X3M_LINEAR_MATERIALS=0, no fade bracket, no composition, no M): the arm alone decides.
-    const bool over_sentinel=sentinel_script||original_script;
+               behind_script=std::strcmp(script_setting,"behind")==0,foreign_script=std::strcmp(script_setting,"foreign")==0,overlay_script=std::strcmp(script_setting,"overlay")==0||foreign_script;
+    // original (and behind, the origin-behind-the-camera rows): the hover schedule over the sentinel fill under original shading
+    // (X3M_LINEAR_MATERIALS=0, no fade bracket, no composition, no M): the arm alone decides. overlay: the hull pair's
+    // same-node source-over sub-mesh over A under original shading (the overlay arm alone decides).
+    const bool original_script=std::strcmp(script_setting,"original")==0||behind_script||overlay_script;
+    require(routed_script||masked_script||sentinel_script||hover_script||original_script,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original|behind|overlay|foreign");
+    const bool over_sentinel=sentinel_script||(original_script&&!overlay_script);
     if(original_script)require(f.emission_status(f.d.p,30)==1u,"fade route original shading: the cutout probe's verdict is Ready without linear materials");
     constexpr unsigned frames=12;
     // hover: g_AlphaValue.x per frame (binary fractions: the fraction .625 * alpha is exact in float) and the arm's decision.
     constexpr float hover_alpha[frames]={.8125f,.71875f,.71875f,.625f,.71875f,.71875f,.8125f,.71875f,.625f,.8125f,.71875f,.71875f};
     constexpr float hover_fog_x[frames]={-.4921875f,-.55078125f,-.55078125f,-.609375f,-.55078125f,-.55078125f,-.4921875f,-.55078125f,-.609375f,-.4921875f,-.55078125f,-.55078125f}; // Q: fraction 1 * (fog_x + 1)
     constexpr bool hover_routed[frames]={1,1,1,0,0,0,1,1,0,1,1,1},hover_held[frames]={0,1,1,0,0,0,0,1,0,0,1,1};
-    const bool full_alpha=routed_script||sentinel_script; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000
-    // original follows the hover schedule (routed, held and below-threshold frames) over the sentinel fill.
-    const bool hover_schedule=hover_script||original_script;
-    const auto routed_frame=[&](unsigned plan){return hover_schedule?hover_routed[plan]:full_alpha;};
+    const bool full_alpha=routed_script||sentinel_script||overlay_script; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000 (overlay: routed by the same-node rule)
+    // original and behind follow the hover schedule (routed, held and below-threshold frames) over the sentinel fill.
+    const bool hover_schedule=hover_script||(original_script&&!overlay_script);
+    const auto routed_frame=[&](unsigned plan){return hover_schedule?hover_routed[plan]:full_alpha&&!foreign_script;};
     const auto held_frame=[&](unsigned plan){return hover_schedule&&hover_held[plan];};
     const auto alpha_value=[&](unsigned plan){return hover_schedule?hover_alpha[plan]:full_alpha?1.f:.625f;};
     Com<IDirect3DVertexShader9> vs;Com<IDirect3DPixelShader9> ps;
     {
-        auto v=load((supplied.substr(0,slash+1)+"vs_b0602757fce6e870.bin").c_str());auto p=load((supplied.substr(0,slash+1)+"ps_517540ae6d5e5410.bin").c_str());
-        require(fnv(v.data(),v.size()*4)==0xb0602757fce6e870ull&&fnv(p.data(),p.size()*4)==0x517540ae6d5e5410ull,"fade route exact originals");
+        // overlay: the hull (cutout) pair; every other script the fade pair.
+        const char* vs_id=overlay_script?"53a0a641107ed76c":"b0602757fce6e870";const char* ps_id=overlay_script?"63f96eba9eea7880":"517540ae6d5e5410";
+        auto v=load((supplied.substr(0,slash+1)+"vs_"+vs_id+".bin").c_str());auto p=load((supplied.substr(0,slash+1)+"ps_"+ps_id+".bin").c_str());
+        require(fnv(v.data(),v.size()*4)==std::strtoull(vs_id,nullptr,16)&&fnv(p.data(),p.size()*4)==std::strtoull(ps_id,nullptr,16),"fade route exact originals");
         api(f.d->CreateVertexShader(reinterpret_cast<const DWORD*>(v.data()),&vs.p),"fade route original VS");
         api(f.d->CreatePixelShader(reinterpret_cast<const DWORD*>(p.data()),&ps.p),"fade route original PS");
     }
@@ -93,6 +120,12 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         api(f.d->CreateTexture(1,1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&textures[i].p,nullptr),"fade route texture");
         D3DLOCKED_RECT lock{};api(textures[i]->LockRect(0,&lock,nullptr,0),"fade route texture lock");std::memcpy(lock.pBits,texels[i],16);api(textures[i]->UnlockRect(0),"fade route texture unlock");
     }
+    // overlay: the hull pair samples the node's cube map at stage 3 (one constant texel per face).
+    Com<IDirect3DCubeTexture9> cube;
+    if(overlay_script){
+        api(f.d->CreateCubeTexture(1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&cube.p,nullptr),"fade route overlay cube");
+        for(unsigned face=0;face<6;++face){D3DLOCKED_RECT lock{};api(cube->LockRect(D3DCUBEMAP_FACES(face),0,&lock,nullptr,0),"fade route overlay cube lock");const float value[]={.25f,.5f,.125f,1};std::memcpy(lock.pBits,value,16);api(cube->UnlockRect(D3DCUBEMAP_FACES(face),0),"fade route overlay cube unlock");}
+    }
     {
         api(f.d->CreateTexture(16,16,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&ramp.p,nullptr),"fade route ramp");
         D3DLOCKED_RECT lock{};api(ramp->LockRect(0,&lock,nullptr,0),"fade route ramp lock");
@@ -120,18 +153,21 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         api(f.d->SetVertexDeclaration(declaration.p),"fade route declaration bind");api(f.d->SetStreamSource(0,vertices[which].p,0,sizeof(SourceVertex)),"fade route stream");api(f.d->SetStreamSourceFreq(0,1),"fade route frequency");api(f.d->SetIndices(indices.p),"fade route index binding");
         api(f.d->SetVertexShader(vs.p),"fade route VS bind");api(f.d->SetPixelShader(ps.p),"fade route PS bind");
         float vc[48][4]{},pc[12][4]{};
-        for(unsigned i=0;i<4;++i)vc[24+i][i]=1;
+        // behind: the same raster as the identity rows (w 2 at every vertex, z .3) with the origin's w = -1 (see the header comment).
+        if(behind_script){vc[24][0]=2;vc[25][1]=2;vc[26][2]=2;vc[27][2]=10;vc[27][3]=-1;}else for(unsigned i=0;i<4;++i)vc[24+i][i]=1;
         for(unsigned i=0;i<3;++i)vc[31+i][i]=1;
         const bool hover_q=hover_schedule&&which==1;
         if(which){vc[37][0]=1;vc[38][1]=1;if(hover_q)vc[36][3]=4;}else{vc[36][3]=4;vc[37][2]=.0625f;vc[38][2]=.1875f;}
         vc[39][0]=hover_q?1.f:alpha_value(plan);vc[40][0]=.25f;vc[40][1]=.125f;vc[40][2]=.0625f;
         vc[41][0]=hover_q?hover_fog_x[plan]:full_alpha?1.f:.75f;vc[41][1]=hover_q?-1.f:full_alpha?0.f:.125f;
         vc[0][2]=2;vc[1][0]=.5f;vc[1][1]=.25f;vc[1][2]=.125f;vc[2][0]=2;vc[2][1]=.25f;vc[2][2]=.125f;
-        pc[0][2]=1;pc[1][0]=.375f;pc[1][1]=.25f;pc[1][2]=.5f;pc[2][2]=-1;pc[3][0]=.125f;pc[3][1]=.5f;pc[3][2]=.25f;pc[4][0]=.5f;pc[5][0]=1;
+        // The hull pair's pixel inputs and sampler roles are the cutout fixture's (motion_output_cutout_inc.h pair 0).
+        if(overlay_script){pc[0][0]=pc[1][1]=pc[2][2]=1;pc[4][2]=1;pc[5][0]=.375f;pc[5][1]=.25f;pc[5][2]=.5f;pc[6][2]=-1;pc[7][0]=.125f;pc[7][1]=.5f;pc[7][2]=.25f;}
+        else{pc[0][2]=1;pc[1][0]=.375f;pc[1][1]=.25f;pc[1][2]=.5f;pc[2][2]=-1;pc[3][0]=.125f;pc[3][1]=.5f;pc[3][2]=.25f;pc[4][0]=.5f;pc[5][0]=1;}
         api(f.d->SetVertexShaderConstantF(0,vc[0],48),"fade route VS inputs");api(f.d->SetPixelShaderConstantF(0,pc[0],12),"fade route PS inputs");
-        const int count[4]={1,0,1,0};const BOOL fog=TRUE;api(f.d->SetVertexShaderConstantI(0,count,1),"fade route point count");api(f.d->SetVertexShaderConstantB(0,&fog,1),"fade route fog");
+        const int count[4]={1,0,1,0};const BOOL fog=!overlay_script;api(f.d->SetVertexShaderConstantI(0,count,1),"fade route point count");api(f.d->SetVertexShaderConstantB(0,&fog,1),"fade route fog");
         for(unsigned stage=0;stage<7;++stage) {
-            IDirect3DBaseTexture9* texture=stage==0?(which?ramp.p:textures[0].p):stage==1?textures[1].p:stage==2?textures[2].p:nullptr;
+            IDirect3DBaseTexture9* texture=stage==0?(which?ramp.p:textures[0].p):stage==1?(overlay_script?textures[2].p:textures[1].p):stage==2?(overlay_script?textures[1].p:textures[2].p):(stage==3&&overlay_script)?static_cast<IDirect3DBaseTexture9*>(cube.p):nullptr;
             api(f.d->SetTexture(stage,texture),"fade route sampler role");
             for(auto filter:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(f.d->SetSamplerState(stage,filter,which&&stage==0?D3DTEXF_LINEAR:D3DTEXF_POINT),"fade route sampling");
             api(f.d->SetSamplerState(stage,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"fade route no mip");api(f.d->SetSamplerState(stage,D3DSAMP_SRGBTEXTURE,FALSE),"fade route numeric sampler");
@@ -144,6 +180,12 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     const auto write=[&](const char* kind,const std::vector<float>& values){char path[96];std::snprintf(path,sizeof path,"fade_route_%s_%llu.f32",kind,f.frame);FILE* file=std::fopen(path,"wb");require(file!=nullptr,"fade route evidence file");require(std::fwrite(values.data(),4,values.size(),file)==values.size(),"fade route evidence bytes");std::fclose(file);};
     Object objects[2]={f.b,f.b};
     for(unsigned i=0;i<2;++i){objects[i].scope.node_serial=9100+i;objects[i].scope.node=0x910000+i*0x100;objects[i].scope.mesh=0x920000+i*0x100;objects[i].vb=vertices[i].p;objects[i].recorded=false;}
+    // overlay: both quads are A's node (its scope; their own vertex buffers key the rows), drawn right after A.
+    if(overlay_script&&!foreign_script)for(unsigned i=0;i<2;++i)objects[i].scope=f.a.scope;
+    // foreign: P, the draw right after A, is A's node address with another lifetime serial (a node freed and
+    // reallocated within the frame: passes the gate-4 identity, refused at the scope gate); Q keeps its own
+    // node (refused at gate 4 by identity and adjacency).
+    if(foreign_script){objects[0].scope=f.a.scope;objects[0].scope.node_serial=9100;}
     // Interior pixels of each quad (edges excluded): P columns 9..22, Q 41..54, rows 9..22.
     const auto interior=[&](unsigned which,unsigned x,unsigned y){const unsigned l=which?41:9,r=which?55:23;return x>=l&&x<r&&y>=9&&y<23;};
     for(unsigned plan=0;plan<frames;++plan) {
@@ -156,14 +198,17 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         unsigned covered=0,own_motion=0,mask_set=0,preserved=1,alpha_kept=1;
         for(unsigned which=0;which<2;++which) {
             f.scope(&objects[which]);bind(which,plan);
-            const auto before=scene(),before_motion=read(1);
+            const auto before=scene(),before_motion=read(1),before_depth=overlay_script?read(2):std::vector<float>();
             const auto state=f.snapshot();
-            const unsigned prepared_before=f.emission_status(f.d.p,4),routed_before=f.emission_status(f.d.p,50),refused_before=f.emission_status(f.d.p,51);
+            // overlay: the arm's decision is counted as overlay_routed/overlay_refused (54/55), never as a fade draw.
+            const unsigned routed_status=overlay_script?54u:50u,refused_status=overlay_script?55u:51u;
+            const unsigned prepared_before=f.emission_status(f.d.p,4),routed_before=f.emission_status(f.d.p,routed_status),refused_before=f.emission_status(f.d.p,refused_status);
             api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"fade route actual original DIP");++f.draw_index;
             f.compare(state,f.snapshot(),"fade route complete draw restoration");
             const auto after=scene(),motion=read(1),mask=original_script?std::vector<float>():read(3); // no composition, no M under original shading
-            const unsigned prepared=f.emission_status(f.d.p,4)-prepared_before,routed_delta=f.emission_status(f.d.p,50)-routed_before,refused_delta=f.emission_status(f.d.p,51)-refused_before;
+            const unsigned prepared=f.emission_status(f.d.p,4)-prepared_before,routed_delta=f.emission_status(f.d.p,routed_status)-routed_before,refused_delta=f.emission_status(f.d.p,refused_status)-refused_before;
             require(routed_delta==unsigned(routed_plan)&&refused_delta==unsigned(!routed_plan)&&prepared==(original_script?0u:unsigned(!routed_plan)),"fade route arm decision matches the script (no bracket preparation under original shading)");
+            if(overlay_script)require(read(2)==before_depth,"fade route overlay draw masks RT2: the depth target is unchanged");
             const bool matched=routed_plan&&objects[which].recorded;
             for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x) {
                 const unsigned n=y*f.W+x,i=4*n;
@@ -198,8 +243,8 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         // mask_valid 0).
         f.emission_reference_color=color;
         if(!original_script){f.emission_reference_mask=mask;f.emissions_enabled=true;f.emission_mask_valid=f.emission_status(f.d.p,1)!=0;}
-        std::printf("FADE_ROUTE frame=%llu script=%s routed=%u matched=%u fade_routed=%u fade_refused=%u fade_held=%u prepared=%u covered=%u own_motion=%u mask_set=%u mask_valid=%u threshold=%u draws=2\n",
-                    f.frame,script_setting,routed_plan,routed_plan&&plan>0&&routed_frame(plan-1),f.emission_status(f.d.p,50),f.emission_status(f.d.p,51),f.emission_status(f.d.p,53),f.emission_status(f.d.p,4),covered,own_motion,mask_set,f.emission_mask_valid,f.emission_status(f.d.p,52));
+        std::printf("FADE_ROUTE frame=%llu script=%s routed=%u matched=%u fade_routed=%u fade_refused=%u fade_held=%u prepared=%u covered=%u own_motion=%u mask_set=%u mask_valid=%u threshold=%u draws=2 overlay_routed=%u overlay_refused=%u\n",
+                    f.frame,script_setting,routed_plan,routed_plan&&plan>0&&routed_frame(plan-1),f.emission_status(f.d.p,50),f.emission_status(f.d.p,51),f.emission_status(f.d.p,53),f.emission_status(f.d.p,4),covered,own_motion,mask_set,f.emission_mask_valid,f.emission_status(f.d.p,52),f.emission_status(f.d.p,54),f.emission_status(f.d.p,55));
         f.boundary();
         api(f.d->EndScene(),"fade route EndScene");f.write_presented(f.color_image());api(f.d->SetDepthStencilSurface(f.depth.p),"fade route depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"fade route Present");++f.frame;++f.frames_since_reset;
     }

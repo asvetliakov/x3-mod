@@ -162,30 +162,110 @@ fixtures). What settles it: `X3M_TELEMETRY_DRAW=1` (`gate_us`/`route_draw_us`/
 `set_rt_us` in `motion_output_frame`; no launcher flag yet) plus
 `--frame-timing` for `draw` vs `draw_native`.
 
-### 2.3 Projected-size culling of small parts — 0 to ~6 ms (A), engine patch
+**Measured 2026-09-18 (run129 A and the route bench).** What the frame-line
+fields bracket (`motion_output.cpp`, `draw_stamp` pairs): `gate_us` is
+`before_draw` minus the apply, the sentinel fill and a lazy flush;
+`route_draw_us` is the apply (before the native draw; the four
+`SetRenderTarget` calls are inside it, so `set_rt_us` is a sub-span, not an
+addend) plus the undo after the draw; `jitter_us` is the two clip-row writes.
+None of them contains the native draw, `after_draw`'s candidate, retention,
+sun-lane or cutout work, or the hook envelope. Run129 c2 (825 routed draws,
+`rs_mode=get`, `state_shadow=0`, `rt_mode=perdraw`): gate 3.7 + route_draw 5.7
+(set_rt 2.55 inside it, 0.64 per bind with its stamps) + jitter 0.32 = **9.7 µs
+proxy-only per routed draw** (M), not the 12.3 of the triage table, which added
+`set_rt_us` twice. The `--telemetry-draw` stamps themselves (18 QPC per routed
+draw; QPC is 0.07 µs on this bottle, not a 0.75 µs syscall) are inside those
+spans: +1.5 µs per routed draw (M, bench).
 
-Mechanism: the cull/LOD pass `0x0047cfe0` already computes a small-object
-measure `s = r*640/D` per node and culls against the per-node thresholds
-`+0x1d8`/`+0x1dc` at `0x0047d258`-`0x0047d2cf` (static, M). A stub at the
-7-byte site `0x0047d42f` (option 3 of lod-selection.md: `engine_patch` claim,
-EAX/EFLAGS dead, x87 empty) can scale `s` or raise that threshold so parts
-under N screen pixels are never queued. Each removed draw saves ~23.7 us plus
-its share of the caster census. Saving depends on how many of the 930 draws
-are sub-pixel greebles. The offline census of run124's frames 3494-3501 used
-the world-transform scale as the radius proxy (no per-node radius is logged)
-and put 50-65 % of the 890 draws under 2 px (~12 ms at 23.7 us/draw); it is a
-proxy, not the engine's measure. What settles it: one capture at the station
-view with `--cull-census` (`X3M_CULL_CENSUS=1`, default off), which logs the
-engine's own `s = r*640/D`, small-object measure, thresholds, verdict and
-selected LOD per node on capture frames from two read-only trampolines on
-the pass (`0x0047d258`, `0x0047d528`; lod-selection.md, "Cull census sites"),
-and `tools/analysis/cull_census.py`, which buckets the nodes (< 1, 1-2, 2-4,
-4-8, 8-16, > 16 in `s` units and in pixels), joins the draws per node and
-prices the buckets at 23.7 us/draw. Risk: visible popping of clamps and
-antennas; a hot-path stub per node per view (measured in the fixture: 0.234
--> 0.244 us per 12-node pass with the census installed and disarmed, 0.311
-armed, Wine/FEX). Native parity by construction. Effort of the lever itself
-once sized: S (the `lod_scale`-style patch of the threshold or the measure).
+Route bench (`verification/probe/run_route_bench.py`, fixture mode
+`routebench`: 400 consecutive routed draws of the reviewed pair per frame on
+the fixture device under the seam DLL, DrawPrimitive wall time, median of ten
+frames; `off` is the proxy's draw hook with the route off, 1.48 µs; results
+`verification/results/bottle-X3/route-bench-*.json`). Proxy cost per routed
+draw before the trims (M): per-draw production route **7.5**; with the
+ownership wrapper (the gameplay configuration: the route's ~21 changing
+native calls go through the wrapper) **9.5**; plus the single-map depth-replay
+lease per candidate draw (`GetVertexDeclaration` through the wrapper, two
+buffer-lock views under the registry mutex, three AddRefs, the record)
+**+1.9**; five cascades (mask, `caster_key`, extent lookup) **+0.25**; caster
+retention (journal) **+0.26**; `X3M_TELEMETRY_DRAW=1` **+1.5**. Inside the
+plain 7.5: RT2 (two binds, two masks, one read) 0.9 and the RT1 pair about the
+same (lazy mode removes 2.05: three binds, two masks, two reads); the jitter's
+two row writes 0.18; the eleven per-draw `GetRenderState` reads of the hybrid
+unhook < 0.1 (the shadow configuration measures 9.07 against 8.98: no gain to
+be had from caching state reads); the rest is the variant VS/PS binds and
+restores, the two constant uploads and the wrap-state reads/sets, about 21
+changing wined3d calls at ~0.3 µs each. The bench's prediction for run129's
+configuration (ownership + cascades + retention + telemetry-draw, 704 leased
+records of 825 routed draws) is ≈ 13 µs per routed draw; the 9.7 the fields
+report is that minus the unbracketed `after_draw` work and the wrapper's share
+of the hook envelope.
+
+Trim implemented: the depth lease takes the stream-0 verdict from the
+declaration hook's own `GetDeclaration` read
+(`shadow_.declaration_stream0_only`) and gate 4's `GetStreamSourceFreq` value
+carried on the route, dropping two calls per leased draw. Its gain is at the
+bench's noise floor: three alternating runs of the pre-trim and the final seam
+DLL (`route-bench-ab-base-N.json` / `-ab-final-N.json`, DrawPrimitive µs per
+draw, median of the three, pre-trim -> final): ownership 11.27 -> 11.18, depth
+lease 12.94 -> 12.79, cascades + retention 13.58 -> 13.41, i.e. 0.1-0.2 µs per
+leased draw against a run-to-run spread of ±0.2 (≈ 0.1 ms per 825-draw frame,
+not resolved). Every compared fixture case equals the pre-trim build
+([motion-output.md](../verification/motion-output.md), "2026-09-18 —
+routed-draw cost bench").
+
+Dropped after review: skipping the pixel-ABI upload (c216-c217) while the
+device still holds it. `resync_shadow` runs at enable and after Reset and sets
+`ps_reserved_written` from a successful `GetPixelShaderConstantF(216)`, so on a
+real device the undo restores the range after every routed draw and the skip
+can never fire; making it fire means not restoring c216 per draw, which is a
+restore-contract change. The 0.24 µs the first bench showed for it was noise.
+
+Refused: `--motion-rt-mode lazy` as the default. Lazy re-installs the
+SetRenderState/SetSamplerState hooks (`state_hooks reason=lazy_rt`; the held
+write masks need the write observation): +64/+57 ns per call on the 49,598
+light-pair calls of run89's 987-draw frame ≈ 3.1 ms against 2.05 µs × ~900
+routed draws ≈ 1.85 ms saved, a net loss of ≈ 1.2 ms (I, from measured
+per-call and per-draw numbers) unless lazy can hold the masks without the
+hooks, which is a restore-contract change. Levers left, all outside a
+per-draw trim: the ownership wrapper's share of the route's own calls (2.0
+µs per routed draw ≈ 1.7 ms at 825, a direct native path for the route's
+setters under the wrapper's identity contract); the lease's per-draw wrapper
+work (1.5 µs per leased draw; a per-frame declaration reference dedupe would
+change the identities the retention store keys); the per-draw telemetry
+(diagnostic only: do not read route cost off a `--telemetry-draw` session
+without subtracting it).
+
+### 2.3 Projected-size culling of small parts — 9.6 ms at 2 px (M, census), implemented as `--cull-small-parts <px>`, unflown
+
+Mechanism: the cull/LOD pass `0x0047cfe0` computes a small-object measure
+`s = r*640/D` per node and culls against the per-node thresholds
+`+0x1d8`/`+0x1dc` at `0x0047d258`-`0x0047d2cf` (static, M). The run131 census
+(`--cull-census`, frame 4991 of the run117 station view, 901 draws / 32 ms,
+`tools/analysis/cull_census.py`) measured the classes with the engine's own
+numbers: nodes under 2 px are 403 draws (9.55 ms at 23.7 us/draw), under 4 px
+458 (10.85 ms), under 8 px 479; the engine's own cull already removes 91.5 % of
+the sub-2 px nodes, and every surviving tiny node has `+0x1d8 = +0x1dc = 0`,
+so the lever is a floor under a threshold the assets leave at zero.
+Implemented (2026-09-18) as `tools/manage.py launch --cull-small-parts <px>`
+(`X3M_CULL_SMALL_PARTS_PX`, default absent or 0 = vanilla): one `engine_patch`
+trampoline at `0x0047d2a2` (lod-selection.md, "Cull small parts site")
+compares the pass's `s` against a per-frame threshold derived from the live
+projection scale and the back-buffer width with the census's own bucket rule
+and sends a node below it down the engine's size-cull instruction at
+`0x0047d2c3`; disjoint from the census's and the lod_scale's claims, all three
+coexist. Expected saving at the flight settings: 2 px about 9.6 ms of the
+32 ms frame (403 of the 878 census-attributed draws; 901 in the frame), 4 px about 10.9 ms (458), from the census, both lower bounds (a culled node also culls its `0x40000`-flagged children at `0x0047d055`-`0x0047d076`); the
+per-draw proxy work saved with them is on top. Not yet flown: the first
+session with the option on should capture the same station view with
+`--cull-census` too, so the rows name the stub's culls (`verdict=culled_small`)
+and `frame_end draws`/`dt` give the real saving. Risk: popping of thin parts
+(antennas, clamps) whose radius is small but whose length is not, the same
+bias as the engine's own radius cull, and the pop can cascade to descendants; the threshold applies in every view, so small casters leave the shadow and env maps too, and the one main-view `m00` scales every view; the hot-path cost is one compare and a dead
+branch per node per view when the frame's threshold is 0 and the stub's
+straight-line integer code otherwise (fixture: 0.235 -> 0.244 us per 12-node
+pass disarmed, 0.237 armed with 7 culled, Wine/FEX). Native parity by
+construction (documented Win32 only).
 
 ### 2.4 Distance LOD bias in code — 0 to several ms (A), engine patch
 

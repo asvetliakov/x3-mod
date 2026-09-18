@@ -16,6 +16,7 @@ record and never change a verdict.
 | 2026-09-18 | Clean DLL build and the no-x87 walk including both handlers | `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build -j4` (fresh directory); `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 0 warnings; PASS, 539 reachable functions, `_x3m_cull_census_measure` and `_x3m_cull_census_exit` walked, no violations; `build/d3d9.dll` sha256 `6b86763e15d0e9a62e31c60fcfa7f41fd79f462550e1c46c9c40b7e2cbd2a16b` (worktree build, not a candidate) |
 | 2026-09-18 | Launcher dry run | `python3 tools/manage.py launch --cull-census --dry-run` | env carries `X3M_CULL_CENSUS=1`; no launch |
 | 2026-09-18 | Unaffected fixtures rerun (engine_patch and capture-path neighbours) | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_object_lifetime.py`; `… run_ownership.py` | object lifetime 674 checks, 0 failures, 13 cases PASS; ownership baseline and wrapped fixtures exit 0 (`verification/results/bottle-X3/`) |
+| 2026-09-18 | Verdict `culled_small` for the small-parts stub (`classify(e, small_threshold)`, named after the engine's own `culled_size`/`culled_min`; `note_small_threshold` stores the frame's threshold, 0 without the option): host tests and the CPU fixture rerun with the changed module | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_cull_census`; `python3 verification/probe/build_cull_census.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_census.py` | 12 tests OK; 71 checks, 0 failures (13 functions in the module audit, no x87/MMX/XMM); both stubs armed beside the small-parts stub: [cull-small-parts.md](cull-small-parts.md) |
 
 ## Open
 
@@ -41,3 +42,17 @@ limit = 0 (no per-node threshold), top model `35ba45c3` 150 draws at LOD 0. The 
 proxy (50–65 % under 2 px) overstated the under-2 px share by 6–20 points and matched the under-4 px share.
 Only one vantage was captured (both frames the same static view). Lever ratified: `--cull-small-parts <px>`
 (engine patch) for run 43 at 2 and 4 px.
+
+**Scope and the model join (2026-09-19).** `Entry` records the node's parent link (`+0x18`, 60 bytes per entry) and
+`classify` takes cull_small_parts' scope: under `bodies` a parented node below the threshold is never named
+`culled_small`; `culled_small` rows end with ` scope=all|bodies` (appended after `verdict=`, the existing row
+parsers are unaffected). `tools/analysis/cull_census.py` lists the models of kept / `culled_small` nodes under
+`--bodies-px` (default 4) with body flags (`flags_in & 0x09000000`), radius class, D range, nodes and draws.
+Gap: the repository has no model-id -> object-type table (the game's type files are not extracted), so bodies are
+named by model id and flag class only, and the rows print no parent link, so the flag class stands in for the
+stub's `[node+0x18] == 0` test. Notes for reading a census beside `--cull-small-parts`: a static caster culled
+by the stub keeps casting under `--shadow-caster-retention`; the script occluder list `0x00488aef`/`0x004886a0`
+loses culled nodes; the `cull_small_parts_value` line is capped at 16 and `m00` lags a zoom by one frame;
+`camera_state::reset()` is unreachable with only that option on. The small-parts site verifier is 19/19
+(18/18 before the scope check; "16/16" in earlier small-parts records was stale). Host:
+`verification.analysis.test_cull_census` + `test_cull_small_parts` 26 tests OK.

@@ -7,6 +7,7 @@
 #include "lod_scale.h"
 #include "cull_census.h"
 #include "collide_box_cull.h"
+#include "cull_small_parts.h"
 #include "frame_timing.h"
 #include "frame_phases.h"
 #include "pass_phases.h"
@@ -1278,6 +1279,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     point_light_admission::present(ctx.id,ctx.frame,ctx.capture); // option on only: one point_light_admission_frame line, point_light_node samples on capture frames, memo serial bump
     cull_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_CENSUS=1 only: the cull_census_frame row and the entry rows of a captured frame, then the ring is cleared
     collide_box_cull::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_BOX_CULL=1 only: reads and zeroes the four pair counters; one collide_census line per 300 frames, one collide_census_frame line per capture frame
+    cull_small_parts::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold and culled count on a captured frame
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(ctx.fps_overlay.visible()){
         // Shown only: one QueryPerformanceCounter per Present (the frame_end
@@ -1351,6 +1353,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
+    cull_small_parts::begin_frame(); // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the live projection scale and the back-buffer width
     ctx.scene_depth.begin_frame(d,ctx.id,ctx.frame,ctx.capture);
     ctx.motion_output.begin_frame(ctx.frame,ctx.capture);
     comparison_begin_frame(ctx);
@@ -1409,6 +1412,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     lod_scale::refresh(); // the multiplier may be rewritten if the device bring-up path re-runs
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::begin_frame(false); // a Reset disarms the census stubs and drops the partial frame
+    cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next frame's projection read; new back-buffer width
     ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
     finite_upload_metrics(d,ctx,"reset_after");
     if(SUCCEEDED(hr)&&p&&p->hDeviceWindow)ctx.stats.window=p->hDeviceWindow;
@@ -2445,6 +2449,7 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     HRESULT hr=factories.at(d)->get<HRESULT (WINAPI*)(IDirect3D9*,UINT,D3DDEVTYPE,HWND,DWORD,D3DPRESENT_PARAMETERS*,IDirect3DDevice9**)>(16)(d,adapter,type,window,effective_flags,p,out);cpu.after_original();
     telemetry::record(telemetry::process(),telemetry::Metric::CreateDevice,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("create_after",0,window,p);
+    if(SUCCEEDED(hr)&&p) cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // X3M_CULL_SMALL_PARTS_PX only: the pixel scale of the threshold
     log("create_device_result hr=%08lx",hr);
     if(SUCCEEDED(hr)&&out&&*out) hook_device(*out,p&&p->hDeviceWindow?p->hDeviceWindow:window,window);
     return hr;
@@ -2917,6 +2922,7 @@ void initialize_log(HMODULE module) {
     point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same window
     collide_box_cull::initialize(); // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector collision pair tests (0x0045d58e, 0x0045cc7c), same window
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
+    cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2), same window, disjoint from the census claims
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
     resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists

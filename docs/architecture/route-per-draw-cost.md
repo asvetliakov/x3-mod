@@ -8,6 +8,16 @@ entry "2026-09-18 — routed-draw cost bench" in
 [motion-output.md](../verification/motion-output.md) and
 `verification/results/bottle-X3/route-bench-{before-attr,after2}.json`.
 
+**Ratified 2026-09-19 (orchestrator)** with these conditions. Lever 1 stage A
+with 2a is scheduled after the run43 candidate. Condition (2) of lever 1 is
+not left as an assumption: a direct value-only call that returns any failing
+HRESULT hands that result to the wrapper's `observe_result` on a cold path, so
+a device-loss code is observed exactly as today and nothing rests on reading
+wined3d (Windows parity by construction). Lever 3 follows lever 1 as fixtures
+first, then one flight with a `mask != 15` counter and `lazy_flushes` on the
+frame line; it does not become default before that flight. 2b stays closed
+until `retention_scene_end` ordering is traced. Stage B stays closed.
+
 ## Budget
 
 Run129 c2: 9.7 µs proxy-only per routed draw (M) × 830 = **8.05 ms** of a

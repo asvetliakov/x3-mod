@@ -54,7 +54,7 @@ FRAME_RE = re.compile(r'\bcull_census_frame device=(?P<device>\d+) frame=(?P<fra
 ROW_RE = re.compile(r'\bcull_census device=(?P<device>\d+) frame=(?P<frame>\d+) view=(?P<view>[0-9a-f]{8}) node=(?P<node>[0-9a-f]{8}) model=(?P<model>[0-9a-f]{8}) '
                     r's=(?P<s>-?\d+) measure=(?P<measure>-?\d+) d=(?P<d>-?\d+) radius=(?P<radius>-?\d+) thr_1dc=(?P<thr_1dc>-?\d+) thr_1d8=(?P<thr_1d8>-?\d+) '
                     r'limit=(?P<limit>-?\d+) flags_in=(?P<flags_in>[0-9a-f]{8}) flags_out=(?P<flags_out>[0-9a-f]{8}) lod=(?P<lod>-?\d+) verdict=(?P<verdict>\w+)')
-VERDICTS = ('kept', 'culled_size', 'culled_min', 'culled_other', 'no_exit')
+VERDICTS = ('kept', 'culled_size', 'culled_min', 'culled_other', 'no_exit', 'culled_small')
 HEX_FIELDS = ('view', 'node', 'model', 'flags_in', 'flags_out')
 
 
