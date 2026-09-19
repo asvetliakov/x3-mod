@@ -1900,3 +1900,99 @@ per node-pair visit (diagnostic timing, not game FPS).
 
 Not verified: anything in the game. The first flight must show `dropped=0 deferred=0 cross_thread_frames=0
 foreign=0` and `accepted_sum = recorded_sum + ring_overflow`.
+
+## Run 44 A (run140/run141): `--collide-narrow-census` triage of two preserved sessions
+
+Two sessions, `--loop-phases --collide-narrow-census`, bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,
+WINEMSYNC=1. Not launched here; both logs pre-existed under `/tmp/x3-bottleX3-run140` (53 MB) and
+`/tmp/x3-bottleX3-run141` (55 MB), queried with grep/python only. run140: same spot, one F8, player died in a
+collision before flying away. run141: same spot, hold 30 s, F8, 30 s, fly away until FPS recovers, F8 (complete).
+
+### 1. Install
+
+Both sessions: `collide_narrow_census requested=1 patched=1 reason=ok n5_site=0x0045d665 n6_site=0x0048a9a5
+n7_site=0x004e2530 write_n5=plain write_n6=plain write_n7=atomic ring=256 qpc_frequency=10000000` — matches
+§11.8's expectation exactly. Every one of the 29 `collide_narrow` window lines in each session has
+`nested=0 foreign=0 dropped=0 deferred=0 ring_overflow=0 cross_thread_frames=0`, and `accepted_sum ==
+recorded_sum + ring_overflow` in all 58 windows (verified by direct comparison, no window mismatched).
+
+### 2. Time series (300-frame windows), `narrow_us` net of census self-cost (1.5 ns/visit + 220 ns/accepted pair)
+
+run140 (frame = window end; `collide_p50`/`dt_p50` from `loop_phases`/`frame_phases` of the next frame):
+
+| f | acc p50 | mesh p50 | visits p50 | narrow_us p50 (net) | narrow_us max (net) | collide_p50 (loop_phases) | dt_p50 |
+|---|---|---|---|---|---|---|---|
+| 299 | 101 | 474 | 482 | 1196 | 2139 | 1393 | 10177 |
+| 1499 | 13 | 130 | 6548 | 1538 | 2292 | 1807 | 12800 |
+| 3899 | 14 | 178 | 16639 | 1984 | 3096 | 2144 | 9747 |
+| 5699 | 15 | 206 | 61654 | 7113 | 15976 | 7446 | 21416 |
+| 5999 | 16 | 201 | 154525 | 17684 | 18875 | 18065 | 32033 |
+| 6299 | 16 | 195 | 219880 | 25141 | 27953 | 25619 | 39559 |
+| 6599–7799 (plateau) | 19–20 | 178–221 | 215–219k | 25024–25141 | 25545–30032 | 25107–25619 | 38957–39602 |
+| 8099 | 19 | 135 | 141 | 88 | 2334 | 259 | 14542 |
+| 8699 | 18 | 142 | 142 | 90 | 284 | 271 | 13694 |
+
+run141: same shape; plateau f=5999–7199 has visits_p50 231–235k, narrow_us_p50 net 26362–26761,
+collide_p50 26856–27275, dt_p50 40842–41323; falls to visits_p50 30402/net 3523/collide_p50 3652 at f=7499 (already
+descending, mid fly-away) and to visits_p50 1437/net 257/collide_p50 434/dt_p50 7935 by f=8699 (after the second F8).
+
+At the plateau in both sessions `narrow_us_p50` net of census cost tracks `collide_p50_us` within ~2–5% (e.g. run140
+f=6599: 25092 vs 25575; run141 f=6299: 26724 vs 27216) — the narrow phase (net of the census's own overhead)
+accounts for essentially all of the `collide` phase there. Cost per node-pair visit at the plateau, computed from
+window sums: **run140 114.3–114.6 ns/visit, run141 113.7–115.9 ns/visit** (both outside plateau windows are noisier
+because the denominator is small: e.g. f=299 shows 2504–2527 ns/visit, an artifact of very few visits, not a
+different cost). Visits per accepted pair at the plateau: run140 ~10,200–12,760; run141 ~10,760–13,210 (vs. ~5–30 at
+the spawn/cruise windows) — the plateau is one or two pairs each doing tens of thousands of BVH node-pair visits,
+not more accepted pairs.
+
+### 3. F8 `collide_narrow_pair` rows
+
+run140, one capture at frame=7021/7022 (20 rows each; during the plateau): rank 0 pair alone is **99.9%** of the
+window's 218,804 visits (218,634 visits, 32 mesh-pair tests, 25,273 us); top 3 = 99.9%, top 10 = 100.0%.
+`a=0x12777048` (class=5, subtype=26) is the same pointer in every one of the 20 rows; `b` varies (class=7, subtype
+211–223) — a single class-5/26 object paired against many class-7 (station) parts. The evidence does not itself
+label the class-5 object; its constancy across every row and every session is consistent with it being the player
+ship, not established by a field named "player" in the log. Rank-0 row: `contact=0`, `unchanged=1 same_pos=1
+same_xform=1 memo_hit=1` — both sides unchanged frame to frame (holding position), not one moving object.
+
+run141 F8#1 (frame=6547/6548, during the plateau): rank 0 is **99.1%** of 235,095 visits (232,978 visits), top 3 =
+100.0%, top 10 = 100.0%; same `a=0x12777048`, same dominant `b=0x11b21bb8`, same `contact=0 unchanged=1 same_pos=1
+same_xform=1 memo_hit=1`.
+
+run141 F8#2 (frame=8120/8121, after flying away): total window visits collapsed to 4,452 (from 235,095); rank 0 is
+still `b=0x11b21bb8` but now only 3,326 visits (74.7% of the smaller total; top 3 = 97.2%, top 10 = 99.0%) and
+`contact=0 unchanged=0 same_pos=0 same_xform=1 memo_hit=0` (player moved). Comparing the `b` sets between the two
+F8s: 18 of 19 F8#1 pairs are still present in F8#2 (only `0x1bea2f10` dropped out; 4 new low-visit pairs appear,
+e.g. `0x11b1fc78`), so **no pair disappeared from the accepted set** — the same ~20 station parts stay in range;
+what collapsed is the per-pair visit count of the dominant pair (232,978 -> 3,326, ~70x), i.e. real BVH descent
+depth fell as the player moved away, not a change in which objects are queried.
+
+### 4. Memo would-hit
+
+`memo_would_hit_permille` and `memo_visits_permille` are non-zero **only** in the spawn window (f=299/599, ~70–75%
+and ~7–8%) and in the plateau windows (run140 f=6599–7799: 32–51‰ pairs, 618–999‰ of visits; run141 f=6299–7499:
+1–54‰ pairs, 101–992‰ of visits) — elsewhere both are 0. `memo_unsafe_sum` and `memo_visits_differ_sum` are **0 in
+every one of the 58 windows in both sessions**: the transform-hash key never produced a false "unchanged" against a
+later contact or a differing visit count in this data. At the plateau, `memo_visits_permille` reaches 930–999‰ in
+several windows — i.e. a no-contact memo keyed as documented would have skipped 93–99.9% of node-pair visits in
+those windows, consistent with the single dominant pair (rank 0, `memo_hit=1`) being almost the entire cost.
+
+### 5. run140 fatal collision
+
+No `contact=1` row exists anywhere in run140's log (0 matches), and the only `collide_narrow_pair` capture
+(frame=7021/7022) predates the collision with `contact=0` throughout. The session log has no line type naming
+death, hull-zero, destruction or a crash/exception (checked against the full set of ~ (line-type) prefixes and
+against `restore_failed|rollback_failed|crash|exception|abort|SEH|fault`: 0 matches). The last **closed**
+`collide_narrow` window is frame=8699 (covering frames 8400–8699); `frame_end` continues cleanly to frame=8984
+(`dt_ms` 8–9, no stall) and then the log stops — the fatal collision, if it is in this trace at all, falls inside
+frames 8700–8984, which sit in an open 300-frame window that never closed and so produced no `collide_narrow`
+aggregate, and no F8 was pressed there to produce per-pair rows. **The evidence cannot show what the census recorded
+at the moment of the fatal contact** — narrower diagnostics (e.g. always flushing the open window and the last N
+ring entries on process exit, or a dedicated contact=1 trigger) would be needed to see it.
+
+### 6. Anomalies
+
+None found in either session: no error/warn/fail/mismatch/anomaly-named log line type, no
+`rollback_failed`/`restore_failed`/`bytes_mismatch`/`arena_full`/`late_claim`/`chain_failed`, and every
+`collide_narrow` window's `nested/dropped/deferred/cross_thread_frames/ring_overflow` fields are 0 (58/58 windows
+across both sessions).
