@@ -74,14 +74,17 @@ inline bool parse_px(const char* text, double* out) {
     if (*p != '\0' || digits == 0) return false;
     *out = value; return true;
 }
-// Scope of the cull (X3M_CULL_SMALL_PARTS_SCOPE): `bodies` (the default, also
-// when the variable is unset) culls only nodes without a parent link
+// Scope of the cull (X3M_CULL_SMALL_PARTS_SCOPE): `all` (the default since
+// 2026-09-19, also when the variable is unset) culls every node below the
+// threshold; `bodies` culls only nodes without a parent link
 // (`[node+0x18] == 0`, the test the displaced instruction performs: whole
-// objects), `all` every node below the threshold. Anything else is refused.
+// objects), which saves almost nothing because nearly every small node has a
+// parent (docs/verification/cull-small-parts.md, run 43 B). Anything else is
+// refused.
 enum class Scope : unsigned char { bodies = 0, all = 1 };
 inline bool parse_scope(const char* text, Scope* out) {
-    if (!text || !*text || !std::strcmp(text, "bodies")) { *out = Scope::bodies; return true; }
-    if (!std::strcmp(text, "all")) { *out = Scope::all; return true; }
+    if (!text || !*text || !std::strcmp(text, "all")) { *out = Scope::all; return true; }
+    if (!std::strcmp(text, "bodies")) { *out = Scope::bodies; return true; }
     return false;
 }
 inline const char* scope_name(Scope scope) { return scope == Scope::all ? "all" : "bodies"; }

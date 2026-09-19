@@ -38,6 +38,23 @@ TAA_SHARPEN_DEFAULT = 0.75
 # and the converted route (--linear-materials) keeps 1.0 because its own
 # --lightmap-emissive-gain applies there instead.
 HULL_LIGHTMAP_GAIN_DEFAULT = 4.0
+# Small-parts cull the launcher forwards on every modded launch when the option
+# is unset (user selection after run 43 B, 2026-09-19,
+# docs/verification/cull-small-parts.md): 2 px at scope `all` took the busy view
+# from 884 to 477 draws and ~30 to ~42 fps with no visible pop-in. The DLL's own
+# fallback stays off (no variable = nothing patched); an explicit
+# --cull-small-parts 0 turns it off, and a --vanilla launch forwards nothing.
+CULL_SMALL_PARTS_DEFAULT_PX = 2.0
+CULL_SMALL_PARTS_DEFAULT_SCOPE = 'all'
+
+
+def cull_small_parts_px(args):
+    """The PX the launcher forwards: the explicit --cull-small-parts when given
+    (0 = off), else the launcher default on a modded launch and nothing under
+    --vanilla."""
+    if args.cull_small_parts is not None:
+        return args.cull_small_parts
+    return 0.0 if args.vanilla else CULL_SMALL_PARTS_DEFAULT_PX
 
 
 def hull_emitters_requested(args):
@@ -381,8 +398,8 @@ def main():
     parser.add_argument('--point-light-root-admission', action='store_true', help='Admit a point light for a mesh node whose root object is in range, not only when the node itself is (X3M_POINT_LIGHT_ROOT_ADMISSION=1; default absent = vanilla per-node cull): the six-byte range-test branch at 0x004c27af is replaced by a detour that keeps the native decision for an in-range node and otherwise walks the node\'s parent chain (at most 8 bounds-checked hops) and applies the same range predicate to the root; exact executable and bytes only, otherwise fails closed to vanilla; one point_light_root_admission line in the session log (docs/reverse-engineering/camera-and-lights.md, "Point-light admission site")')
     parser.add_argument('--cull-census', action='store_true', help='Log the engine\'s own cull/LOD census on F8 capture frames (X3M_CULL_CENSUS=1; default absent = nothing patched): two read-only trampolines on the per-node cull/LOD pass 0x0047cfe0 record, per node, the LOD metric s = r*640/D, the small-object measure, the two per-node thresholds, the cull verdict and the selected LOD index into a bounded ring (8192 entries, overflow= counted), emitted as cull_census rows at Present; outside capture frames each stub is one compare and a dead branch. Exact executable and bytes only, otherwise fails closed to vanilla; summarise with tools/analysis/cull_census.py (docs/reverse-engineering/lod-selection.md, "Cull census sites")')
     parser.add_argument('--collide-box-cull', action='store_true', help='Insert the missing integer bounding-box early-out in the engine\'s sector collision pass (X3M_COLLIDE_BOX_CULL=1; default absent = nothing patched): two trampolines at the square-root pair tests 0x0045d58e (all-pairs loop of 0x0045d250) and 0x0045cc7c (swept scan of 0x0045cab0) jump to the engine\'s own continue label when max(|dx|,|dy|,|dz|) exceeds the engine\'s reject radius plus a margin that covers its float32 and truncation error, so only pairs the engine\'s own compare discards are skipped; class-7 pairs always take the engine path. Counts pairs and box rejects per frame (collide_census line per 300 frames, collide_census_frame on F8 frames); compare loop_phases collide_p50_us with the option on and off (--loop-phases). Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 10)')
-    parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; default absent or 0 = vanilla, nothing patched): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
-    parser.add_argument('--cull-small-parts-scope', choices=('all', 'bodies'), default=None, help='Which nodes --cull-small-parts may cull (X3M_CULL_SMALL_PARTS_SCOPE; default bodies; refused without a non-zero --cull-small-parts, enables nothing on its own). bodies = only nodes without a parent link ([node+0x18] == 0, the test the displaced instruction already performs): whole distant objects, which at 2 px are invisible anyway, while the glowing sub-parts of nearer stations (a few px, visible) stay. all = every node under the threshold. Fixture replay of the run131 rows at 2 px: all 97 nodes / 403 draws, bodies 89 / 395 (body-flagged rows; the rows carry no parent link, docs/verification/cull-small-parts.md). Run 43 B flies bodies against all')
+    parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; launcher default 2 on every modded launch, --cull-small-parts 0 = off, nothing patched; --vanilla forwards nothing and the DLL\'s own fallback stays off): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (none seen at 2 px in run 43 B) (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
+    parser.add_argument('--cull-small-parts-scope', choices=('all', 'bodies'), default=None, help='Which nodes --cull-small-parts may cull (X3M_CULL_SMALL_PARTS_SCOPE; default all; refused when the cull is off, enables nothing on its own). bodies = only nodes without a parent link ([node+0x18] == 0, the test the displaced instruction already performs): whole distant objects, which at 2 px are invisible anyway, while the glowing sub-parts of nearer stations (a few px, visible) stay. all = every node under the threshold. Fixture replay of the run131 rows at 2 px: all 97 nodes / 403 draws, bodies 89 / 395 (body-flagged rows; the rows carry no parent link, docs/verification/cull-small-parts.md). Run 43 B: at 2 px `all` took the busy view from 884 to 477 draws and ~30 to ~42 fps with no visible pop-in, while `bodies` culled 36 nodes/frame and saved nothing (nearly every small node has a parent), so `all` is the default in the launcher and in the DLL')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -742,7 +759,7 @@ def main():
     # 0 is off; otherwise the value must survive the DLL's fixed-point parser ([+]digits[.digits], (0, 64]).
     if args.cull_small_parts is not None and not (math.isfinite(args.cull_small_parts) and (args.cull_small_parts == 0.0 or 0.0001 <= args.cull_small_parts <= 64.0)):
         parser.error(f'--cull-small-parts out of range: {args.cull_small_parts} (expected 0 or [0.0001, 64])')
-    if args.cull_small_parts_scope is not None and not args.cull_small_parts:
+    if args.cull_small_parts_scope is not None and not cull_small_parts_px(args):
         parser.error('--cull-small-parts-scope requires a non-zero --cull-small-parts')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
@@ -1003,10 +1020,13 @@ def main():
             env['X3M_CULL_CENSUS'] = '1'
         else:
             env.pop('X3M_CULL_CENSUS', None)
-        # Small-parts cull: same rule; 0 is the documented off and is not forwarded.
-        if args.cull_small_parts:
-            env['X3M_CULL_SMALL_PARTS_PX'] = f'{args.cull_small_parts:.4f}'  # fixed-point: the DLL parser takes no exponent form
-            env['X3M_CULL_SMALL_PARTS_SCOPE'] = args.cull_small_parts_scope or 'bodies'
+        # Small-parts cull: same rule; 0 is the documented off and is not
+        # forwarded, and neither is anything under --vanilla. When the option is
+        # unset a modded launch takes the production default (2 px, scope all).
+        cull_px = cull_small_parts_px(args)
+        if cull_px:
+            env['X3M_CULL_SMALL_PARTS_PX'] = f'{cull_px:.4f}'  # fixed-point: the DLL parser takes no exponent form
+            env['X3M_CULL_SMALL_PARTS_SCOPE'] = args.cull_small_parts_scope or CULL_SMALL_PARTS_DEFAULT_SCOPE
         else:
             env.pop('X3M_CULL_SMALL_PARTS_PX', None)
             env.pop('X3M_CULL_SMALL_PARTS_SCOPE', None)

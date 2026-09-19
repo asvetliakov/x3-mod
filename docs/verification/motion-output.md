@@ -1328,6 +1328,203 @@ measured on it.
   `SunUntrackedReason::State` diagnostic mirror), none with a linear-material
   prerequisite. Seven-module host set: 51 tests OK.
 
+## Run 43 C (run139) — triage: solar-plant / distant-station shimmer persists, evidence points away from unrouted draws
+
+Source: `/tmp/x3-bottleX3-run139/session-20260919-032345-212.log` (375 MB,
+queried with grep/Python, never read whole). Four F8 captures, 8 frames each:
+cap1 frames 4126-4133 (solar plant ~4-5 km), cap2 frames 4326-4333 (same,
+~4-5 km, second pass), cap3 frames 5367-5374 (same plant, ~1 km), cap4 frames
+8126-8133 (after a save load, fighter, busy distant station).
+
+**Q1 — startup.** `fade_route_mode threshold=500 hysteresis=100 enabled=1
+taa=1 hdr=1 linear_materials=0 source=default` (line 9). `linear_cutout_device
+… verdict=1` (line 142); `fade_route_frame frame=0 … cutout_caps=1` (line
+157) — cutout caps Ready. No separate "overlay arm enabled" startup line
+exists; the overlay arm is unconditionally compiled in and only visible via
+its per-frame `overlay_routed`/`overlay_refused` counters (first nonzero in
+capture 4, see below). `X3M_LINEAR_MATERIALS=0` — original (non-linear)
+shading, per `proxy_options` line 4.
+
+**Q2 — per-capture totals** (sum of the 8 frames' `motion_output_frame` /
+`fade_route_frame` lines):
+
+| capture | draws | routed | unrouted | gate2(scene) | gate3(pair/unreg) | gate4(drawstate) | gate6(history) | fade_routed | fade_refused | overlay_routed | overlay_refused |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 (4126-4133) | 3290 | 3088 | 202 | 168 | 8 | 26 | 0 | 128 | 0 | 0 | 0 |
+| 2 (4326-4333) | 3266 | 3090 | 176 | 168 | 8 | 0 | 2 | 128 | 0 | 0 | 0 |
+| 3 (5367-5374) | 3192 | 3016 | 176 | 168 | 8 | 0 | 0 | 128 | 0 | 0 | 0 |
+| 4 (8126-8133) | 7220 | 6920 | 300 | 160 | 56 | 84 | 0 | 8 | 0 | 16 | 0 |
+
+Unmatched-reason histogram over `motion_route` lines whose `routed=0` (only
+gate3/gate4/gate6 draws get an individual `motion_route` row; gate2 "scene"
+refusals are frame-counted only, no per-draw row exists for them):
+cap1 `no_zwrite=26 unregistered=8`; cap2 `unregistered=8` (+2 `history`,
+frame 4333 only); cap3 `unregistered=8`; cap4
+`no_zwrite=84 unregistered=104`. Across the whole log only three
+`UnmatchedReason` values ever fire: `no_zwrite`, `unregistered`, `history`.
+None of `FadeCaps/FadeInstanced/FadeRows/FadeGeometry/FadeConstants/
+FadeOrigin/FadeThreshold/OverlayNode/Blended/State/Instanced/Rows/Geometry`
+appear anywhere in this session (`grep -o 'unmatched=[A-Za-z_0-9]*' | sort |
+uniq -c`).
+
+**Q3 — grouping the unrouted draws.** Every `no_zwrite`/`unregistered`
+`motion_route` row in all four captures has `node=00000000 node_handle=0
+primitives=0 vertex_count=0 indexed=0` (e.g. line for frame 4126 index=386:
+`vs=494fe349b8bc12ec ps=7c83ed50c9894e44 … node=00000000 … primitives=0 …
+zwrite=0 blend=1 … unmatched=no_zwrite`; index=398:
+`vs=5e484a06672e28fb ps=0a523f33ac47ae05 node=00000000 … unmatched=
+unregistered`). These are the same two vs/ps pairs (plus one more,
+`36f98d151fd6b0c6`/`222bee0defcb1852`, and `d5e1c75351ed3f04`/
+`8360f422de08b5bd`, only in capture 4) in every capture, zero geometry, no
+scene node — screen-space/post passes, not solar-plant or station mesh
+geometry. **No group of large on-screen unrouted geometry exists in any
+capture; nothing in the unrouted set is plausibly the shimmering panel legs
+or window glow.**
+
+**Q4 — did fade/overlay arms fire?** Fade arm: 128 `fade_routed` per capture
+in captures 1-3 (16/frame, `fade_refused=0` throughout); only 8 total (1/frame)
+in capture 4. Overlay arm: `overlay_routed=0` in captures 1-3, `16` total
+(2/frame) in capture 4, `overlay_refused=0` everywhere. Both arms fire and
+never refuse in this session — they are not blocked/starved here. Since the
+unrouted set contains no plant/station geometry (Q3), the remaining shimmer
+cannot be attributed to a class these arms are failing to catch.
+
+**Q5 — evidence the shimmer is not an unrouted-draw problem.** Routed draws in
+captures 1-3 include `atest=1` (alpha-tested) rows at 800/capture (100/frame,
+vs=`4944d81dfe531b37`, ps=`64bac8bb307eb896`/`5e0a10fe752b6140`, 128
+primitives each) — these *are* routed with `matched=1`, i.e. they do get
+motion vectors. `motion_output_frame` TAA fields for every capture frame:
+`taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0`,
+`cut=0`, `cut_missing=0.0000` (0.0052 once, frame 4333),
+`cut_median_px` ranging 0.005-0.17 px — no history rejection spikes, no
+disocclusion counter in this schema beyond `cut`/`cut_missing`, both near
+zero. `history_previous` equals the frame's `routed` count every frame
+(e.g. 386/386, 377/377, 865/865) confirming history carries forward
+correctly. This is consistent with the alpha-tested/thin-geometry hypothesis
+(sub-pixel panel struts and window cutouts, routed but under-sampled by TAA
+jitter) rather than a routing gap; the log cannot further distinguish
+sub-pixel coverage failure from light-map gain amplification — no per-pixel
+luminance/variance counter exists in this schema to test that separately.
+
+**Open issue / what one more launch should record:** this schema has no
+per-draw screen-space bounding-box or triangle-density field, so "sub-pixel
+geometry" here is inferred from `primitives<50` per draw plus known distance,
+not measured directly. A diagnostic that logs each routed draw's screen-space
+AABB area in pixels (or a coverage/derivative estimate) alongside its
+`unmatched`/`fade_arm`/`atest` fields would let a future triage confirm or
+rule out sub-pixel coverage as the shimmer cause without guessing from
+primitive counts.
+
+## Run 139: resolve-side shimmer diagnosis
+
+Inputs: the run139 capture dumps only (`hdr_1_<f>.rgba16f` = the jittered FP16
+scene BEFORE the resolve, `motion_1_<f>.rgba32f`, `depth_1_<f>.rgba32f`,
+1280x768) and the `motion_output_frame` lines. `taa_debug=0` in this session,
+so **no resolved or presented frame was dumped**: every output number below is
+from an offline numpy re-implementation of `src/temporal/resolve.hlsl`
+(dilation, producer motion, disocclusion test, 16-tap Catmull-Rom, luma
+weighting k, min/max box intersected with mean +/- 1.25 sigma, w = 0.9), history
+seeded with the first capture frame (7 resolves, so not converged), far-plane
+pixels reprojected as static, display proxy = Reinhard(k*luma)^(1/2.2) in 8-bit
+codes, RCAS approximated on luma at the run's `--taa-sharpen 0.75`. It is a
+model, not a measurement of the installed resolve. Flicker metric: half the
+temporal second difference (removes convergence drift), frames 5-7 of each
+capture.
+
+Session facts: jitter = 8-sample Halton(2,3), full +/-0.5 px, index advances
+every frame (4126: idx 4 ... 4133: idx 3); `taa_k=2.4276` (2.4153 in capture 4);
+`taa_skip=0`; camera `cut_median_px` 0.08 (cap 1/2), 0.16 (cap 3), 0.025 (cap 4).
+
+**1. Signature.** The shimmer is in the input, and it is sub-pixel geometry
+coverage, not texture, not emissive fireflies, not a period-2 artefact.
+- Cap 1 plant ROI (y 180-520, x 520-900): 13 826 px carry valid depth in all 8
+  frames, 16 345 px toggle between geometry and the depth sentinel with the
+  jitter phase (more than half of the plant's footprint), background px (99 029)
+  have raw range 0.5 codes. Raw range of the toggling px: mean 79.5 codes, p90
+  126; of the always-covered px: mean 54, p90 138; 1-px horizontal neighbour
+  contrast inside the panels: mean 29, p90 90 codes (a ~1 px bright lattice, ~240
+  codes, against ~90). Hottest 32-px blocks: (x 832, y 224), (x 704, y 384),
+  (x 800, y 256) — the panel arms.
+- Raw flicker on geometry: cap 1 mean 23.2 codes, p99 133, 51% of px > 8 codes;
+  cap 4 station ROI (y 120-420, x 300-900) mean 27.1, 68% > 8; cap 3 (motion
+  compensated) mean 11.7, 33% > 8.
+- Period: the period-2 component is 7.4 codes against a total temporal std of
+  18.8; a linear model in (jitter_x, jitter_y) explains 43% of the variance. It
+  follows the 8-phase jitter sequence, as toggling coverage should.
+- Motion: cap 1 routed px move 0.12 px/frame median (p95 0.37); in cap 3 the
+  plant's parts move 1.6-3.2 px/frame on screen (blocks x 1088-1152, y 448)
+  while the camera median is 0.16 px: the arms rotate. E.g. px (1132,443),
+  (1130,453), (1131,449): raw 88/215/88/186/160 codes over frames 5370-5374 with
+  depth valid 1/0/1/1 — a ~1 px strut passing, which a fixed-pixel metric
+  misreads as flicker; cap 3 is therefore measured along the motion vectors.
+
+**2. What the resolve does with it (model).**
+- Nothing is rejected: disocclusion rejections 0.0000 of geometry px and valid
+  = 1.0000 in all three scenes (the relative depth tolerance 0.02 exceeds the
+  whole depth span 0.98-1.0 at these distances, so the test is inert here;
+  harmless for this symptom).
+- Closest-depth 3x3 dilation exists; history filter is Catmull-Rom, not
+  bilinear; the blend is already luma weighted (k = exposure). Removing the
+  weighting makes it worse (cap 1 px > 8 codes 2.2% -> 4.2%, p99 10.5 -> 13.9),
+  so "linear HDR blend" is not the cause.
+- The clamp is a minor contributor: it moves history by > 1 code on 5.1% of
+  plant px (mean 6.8 codes). Disabling it entirely: cap 1 mean 1.61 -> 1.37,
+  cap 4 1.88 -> 1.61, cap 3 0.90 -> 0.79. Widening gamma 1.25 -> 2.0 or 99 (box
+  only) changes nothing (1.61 -> 1.58): the min/max box, not the sigma clip, is
+  what bites, and a lattice px has both extremes in its 3x3 most frames.
+- The residual is the exponential-average ripple (1 - w) x input contrast:
+
+| scene (geometry px) | raw mean / >8 | base mean / p90 / p99 / >8 | sharpened p99 / >8 | w 0.95 mean / >8 | filtered current (a=1.0) mean / >8 | both |
+|---|---|---|---|---|---|---|
+| cap 1 plant 4-5 km | 23.2 / 51% | 1.61 / 4.5 / 10.5 / 2.2% | 12.1 / 4.0% | 1.00 / 1.2% | 0.84 / 0.8% | 0.76 / 1.0% (a=2.29) |
+| cap 4 station | 27.1 / 68% | 1.88 / 4.8 / 12.7 / 3.7% | 14.3 / 5.1% | 1.16 / 1.6% | 0.95 / 0.7% | 0.82 / 1.0% (a=2.29) |
+| cap 3, speed < 0.5 px | 11.7 / 33% | 0.90 / 2.5 / 8.3 / 1.1% | 9.5 / 1.5% | 0.57 / 0.5% | 0.51 / 0.5% | 0.38 / 0.4% (a=1.0) |
+| cap 3, speed 0.5-8 px | 9.7 / 37% | 1.30 / 3.2 / 6.7 / 0.5% | 8.7 / 1.5% | 1.08 / 0.3% | 0.95 / 0.2% | 0.94 / 0.3% (a=1.0) |
+
+  The resolve removes ~93% of the input flicker; what is left is 2-5% of the
+  object's pixels swinging 16-25 codes peak to peak at the jitter cadence, and
+  RCAS at 0.75 adds ~25% to the mean and doubles the count above 8 codes.
+  Bright lattice/window pixels next to dark ones are where it is largest simply
+  because the contrast is largest (gain 4 raises the contrast, hence "less
+  visible" with the gain off).
+
+**3. Ranked mechanisms and smallest fixes.**
+1. *(1 - w) ripple of a full-contrast sub-pixel input* (supported by every row
+   above; ~85% of the residual). Fixes, both resolve-side:
+   a. Filtered current sample: replace the point current colour in the blend
+      (not in the clamp statistics) by the 3x3 Gaussian exp(-a d^2) of the
+      neighbourhood the shader already fetches, d measured from the pixel
+      centre to each neighbour's jittered sample position. Model: -35% (a=2.29,
+      Blackman-Harris-like) to -48% (a=1.0) mean, px > 8 codes 2.2% -> 0.8%. Cost:
+      zero extra fetches, 9 exp or a 9-entry constant table per frame; slight
+      softening (RCAS is already there); no ghosting risk.
+   b. History weight 0.9 -> 0.95: -38% mean. Cost: none in GPU time;
+      clamp-bounded ghost trails last twice as long, convergence after a cut 20
+      -> 40 frames. There is no launcher option for w today.
+   Combined the model gives -53% to -58%.
+2. *Min/max box clamp on lattice pixels* (~15% of the residual in cap 1/4). Not
+   worth touching alone: removing it costs all ghost protection, and gamma has
+   no effect.
+3. *RCAS amplification* (+25%). `--taa-sharpen 0` is an existing A/B.
+Not supported by the dumps: routing, disocclusion rejection, missing dilation,
+bilinear history blur, unweighted HDR blend, jitter/resolve phase mismatch (a
+static px reads f = 0 exactly in the shader contract; not checkable without a
+resolved dump).
+
+**4. Not implemented.** The model is not validated against a resolved frame
+and cannot see anything slower than 8 frames (a 1-px lattice drifting at
+0.06-0.4 px/frame beats against the pixel grid with a period of 3-16 frames,
+which would look like the reported "tremble" and is outside this evidence).
+The discriminating flight is the same scenes with `--taa-debug` (dumps
+`taa_1_<f>.rgba16f` resolved FP16 and the presented target) and
+`X3M_CAPTURE_FRAMES=32` or more: (i) compare the resolved dump with the model
+(if the real second difference is well above the table, the installed resolve
+departs from its source contract and that is the bug); (ii) the 32-frame
+spectrum separates 8-frame ripple from slow lattice crawl. A second capture
+with `--taa-sharpen 0` bounds mechanism 3. If (i) agrees with the model,
+implement 1a behind a default-off option, verified by the temporal-pass fixture
+with a 1-px lattice case.
+
 ## 2026-09-19 — lever 1 stage A and 2a (route-per-draw-cost.md): implemented, unflown
 
 - Change: the route's seven value-only calls go to the borrowed native device

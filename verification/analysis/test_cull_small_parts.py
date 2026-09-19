@@ -10,6 +10,7 @@ with the host compiler, the census classification with a threshold, and the
 installed executable is only read when present. No Wine, no game.
 """
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -56,8 +57,8 @@ int main() {
     unsigned char b[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x0047d2c3, 0x10000044, b, Scope::bodies);
     check(!std::memcmp(b, s, stub_scope_branch) && !std::memcmp(b + stub_cull, s + stub_cull, stub_length - stub_cull), "bodies stub: only bytes 27..46 differ");
     check(!std::memcmp(b + 22, site, site_length) && b[27] == 0x75 && 29 + b[28] == stub_continue && !std::memcmp(b + 29, "\x8b\x87\xd8\x01\x00\x00\xeb", 7) && 37 + b[36] == stub_cull && b[37] == 0xcc && b[46] == 0xcc, "bodies stub: displaced test; jne continue; mov eax,[edi+0x1d8]; jmp cull");
-    Scope sc = Scope::all;
-    check(parse_scope(nullptr, &sc) && sc == Scope::bodies && parse_scope("all", &sc) && sc == Scope::all && parse_scope("bodies", &sc) && sc == Scope::bodies && !parse_scope("All", &sc) && !parse_scope("parts", &sc), "scope parser");
+    Scope sc = Scope::bodies;
+    check(parse_scope(nullptr, &sc) && sc == Scope::all && parse_scope("bodies", &sc) && sc == Scope::bodies && !parse_scope("All", &sc) && !parse_scope("parts", &sc) && parse_scope("all", &sc) && sc == Scope::all, "scope parser");
     check(!std::strcmp(scope_name(Scope::bodies), "bodies") && !std::strcmp(scope_name(Scope::all), "all"), "scope names");
     check(std::memcmp(window + site_offset, site, site_length) == 0 && window[cull_offset] == 0x83 && window[cull_offset + 1] == 0xa7 && window[window_length - 2] == 0xeb && window[window_length - 1] == 0x05, "site and cull bytes inside the window");
     check(window_va + site_offset == site_va && site_va + site_length == next_va && window_va + cull_offset == cull_va && window_va + window_length + 5 == after_cull_va, "address relations");
@@ -255,11 +256,11 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             self.assertEqual(code, 0, error)
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
-            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_SCOPE': 'bodies'})
+            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_SCOPE': 'all'})
 
     def test_scope_forwarded_and_default_overrides_inherited(self):
         with tempfile.TemporaryDirectory() as directory:
-            for args, expected in ((('--cull-small-parts-scope', 'all'), 'all'), (('--cull-small-parts-scope', 'bodies'), 'bodies'), ((), 'bodies')):
+            for args, expected in ((('--cull-small-parts-scope', 'all'), 'all'), (('--cull-small-parts-scope', 'bodies'), 'bodies'), ((), 'all')):
                 code, output, error = self.launch(directory, '--cull-small-parts', '2', *args, inherited={'X3M_CULL_SMALL_PARTS_SCOPE': 'all'})
                 self.assertEqual(code, 0, error)
                 self.assertEqual(json.loads(output)['env']['X3M_CULL_SMALL_PARTS_SCOPE'], expected)
@@ -273,6 +274,52 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             code, _, error = self.launch(directory, '--cull-small-parts', '2', '--cull-small-parts-scope', 'parts')
             self.assertEqual(code, 2)
             self.assertIn('invalid choice', error)
+
+    def modded_launch(self, directory, *args, inherited=None):
+        """A dry-run launch against a fake installed proxy, so the launcher
+        default applies (no --vanilla)."""
+        module = load_manage()
+        game = Path(directory) / 'modded'
+        game.mkdir(exist_ok=True)
+        (game / 'X3AP.exe').touch()
+        (game / 'd3d9.dll').write_bytes(b'proxy')
+        (game / 'x3-modern-install.json').write_text(json.dumps({'sha256': hashlib.sha256(b'proxy').hexdigest()}))
+        wine = Path(directory) / 'wine'
+        wine.touch()
+        argv = ['manage.py', 'launch', '--dry-run', '--game-dir', str(game), *args]
+        output, error = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), \
+                mock.patch.dict(module.os.environ, inherited or {}), \
+                mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+            try:
+                module.main()
+            except SystemExit as exit_error:
+                return exit_error.code, output.getvalue(), error.getvalue()
+        return 0, output.getvalue(), error.getvalue()
+
+    def test_modded_launch_defaults_to_two_px_scope_all(self):
+        """Run 43 B default: every modded launch culls at 2 px over all nodes;
+        an explicit 0 is the off switch and --vanilla forwards nothing."""
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, error = self.modded_launch(directory)
+            self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            self.assertEqual((env['X3M_CULL_SMALL_PARTS_PX'], env['X3M_CULL_SMALL_PARTS_SCOPE']), ('2.0000', 'all'))
+            # An explicit value and an explicit scope still win.
+            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '4', '--cull-small-parts-scope', 'bodies')[1])['env']
+            self.assertEqual((env['X3M_CULL_SMALL_PARTS_PX'], env['X3M_CULL_SMALL_PARTS_SCOPE']), ('4.0000', 'bodies'))
+            # The scope alone is enough on a modded launch: the cull is on by default.
+            code, output, error = self.modded_launch(directory, '--cull-small-parts-scope', 'bodies')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_CULL_SMALL_PARTS_SCOPE'], 'bodies')
+            # Explicit off, even with the variables inherited.
+            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '0',
+                                                inherited={'X3M_CULL_SMALL_PARTS_PX': '8', 'X3M_CULL_SMALL_PARTS_SCOPE': 'bodies'})[1])['env']
+            self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', env)
+            self.assertNotIn('X3M_CULL_SMALL_PARTS_SCOPE', env)
+            # --vanilla sets nothing and still refuses a bare scope.
+            self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', json.loads(self.launch(directory)[1])['env'])
 
     def test_out_of_range_refused(self):
         with tempfile.TemporaryDirectory() as directory:
