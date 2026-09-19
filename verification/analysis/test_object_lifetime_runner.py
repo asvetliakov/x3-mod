@@ -17,8 +17,7 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.summary = self.root / 'verification/results/object-lifetime-summary.json'
-        self.summary.parent.mkdir(parents=True)
+        self.summary = RUNNER.bottle.results_dir(self.root) / 'object-lifetime-summary.json'
         self.summary.write_text('{"passed":true}')
         for name in RUNNER.INPUTS:
             target = self.root / name

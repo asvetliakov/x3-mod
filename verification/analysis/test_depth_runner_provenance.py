@@ -55,7 +55,7 @@ class DepthRunnerProvenanceTests(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()):
                 code = runner.main()
             stem = 'depth-decode' if kind == 'decode' else 'depth-resolve-d24s8-intz'
-            report = json.loads((root / f'verification/results/{stem}-summary.json').read_text())
+            report = json.loads((runner.bottle.results_dir(root) / f'{stem}-summary.json').read_text())
             self.assertEqual(code, 0 if scenario == 'stable' else 1)
             self.assertEqual(report['passed'], scenario == 'stable')
             self.assertEqual(len(launches), 0 if scenario.startswith('build_') else 1)
