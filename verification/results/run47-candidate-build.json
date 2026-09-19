@@ -1,0 +1,639 @@
+{
+ "recorded_utc": "2026-09-19T14:03:18Z",
+ "run": 47,
+ "candidate": {
+  "path": "/tmp/x3-candidate-Fk7EJk/d3d9.dll",
+  "directory": "/tmp/x3-candidate-Fk7EJk",
+  "subdirectories": [
+   "rollback (empty; the installed DLL is copied here by the installing owner)"
+  ],
+  "sha256": "95d6306ba8f4b138b243a4a82ca688710d1d180e99f386110015c9f0bcd0317e",
+  "bytes": 18897411,
+  "retained_first_build": true,
+  "candidate_directory_file_count_scope": "exactly one DLL (d3d9.dll); the other entries are this run's logs and JSON reports plus the empty rollback directory",
+  "hash_rechecked_after_fixtures": true,
+  "hash_source_after_fixtures": "state-hook-benchmark-run47.json carries dll sha256 95d6306b...; a shasum after the full host suite and build/d3d9.dll (the host-suite copy) both equal the recorded sha256",
+  "supersedes": "the run46 candidate fc3dd232... from 8ba92765; no DLL from an older /tmp/x3-candidate-* directory was reused",
+  "not_installed_reason": "installation is the main session's; this owner does not install"
+ },
+ "source": {
+  "worktree": "/Users/asvetl/x3-mod",
+  "commit": "0c55c55b343fd3f591c332639bc1b089a158eba6",
+  "commit_short": "0c55c55b",
+  "detached": false,
+  "requested_commit": "0c55c55b or later; HEAD was 0c55c55b",
+  "dirty_diff": "none",
+  "status_before_configure": "0 tracked modifications; `git status --porcelain -- src cmake tools CMakeLists.txt` (the exact marker inputs of tools/build/write_source_commit.py) was empty, so concurrent untracked files could not flip the marker.",
+  "status_after_build": "all fixture-touched tracked records under verification/results/ restored with git checkout after being compared; final `git status --porcelain` shows 0 tracked modifications besides this new record"
+ },
+ "source_commit_marker": {
+  "command": "strings -a /tmp/x3-candidate-Fk7EJk/d3d9.dll | grep X3M_SOURCE_COMMIT",
+  "value": "X3M_SOURCE_COMMIT=0c55c55b343fd3f591c332639bc1b089a158eba6",
+  "dirty_suffix": false,
+  "matches_worktree_head": true,
+  "previous": "run46 candidate carried X3M_SOURCE_COMMIT=8ba92765...",
+  "marker_inputs": "src, cmake, tools, CMakeLists.txt (tools/build/write_source_commit.py INPUTS); docs/ is not an input"
+ },
+ "changes_since_run46": [
+  "per-draw lever 3: --motion-rt-mode lazy, a hook-free mode that keeps the motion render targets bound across routed draws (src/proxy/motion_output.{h,cpp}, capture.cpp set_depth flush); six new mask-burst cases in the default motion-output CASES list (178 -> 184) and lazy configurations in run_route_bench.py",
+  "collide memo: running-minimum relaxation (a pair whose only difference is the engine's running minimum is answered when the stored run never reached a triangle test) plus per-miss-reason counters",
+  "--collide-sat-sse2 and --collide-memo become launcher defaults, with --no-collide-sat-sse2 / --no-collide-memo to switch them off",
+  "far stabiliser speed gate narrowed to 0.03-0.25 px/frame and made settable (constants only; no shader bytecode change)",
+  "verification/probe/capture_bloom_lifetime_fixture.cpp: host mock stub for collide_memo::device_reset (the run46 host-suite blocker)",
+  "replay tool modes"
+ ],
+ "toolchain": {
+  "toolchain_file": "cmake/mingw-i686.cmake",
+  "cmake": "4.4.3",
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "target": "32-bit Windows PE",
+  "native_windows_execution": "not performed"
+ },
+ "configure": {
+  "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build/candidate-run47",
+  "result": "PASS",
+  "warning_error_matches": 0,
+  "log": "/tmp/x3-candidate-Fk7EJk/configure.log"
+ },
+ "build": {
+  "command": "cmake --build build/candidate-run47 -j4",
+  "invocations": 1,
+  "elapsed_seconds": 16,
+  "result": "PASS",
+  "warning_error_matches": 0,
+  "log": "/tmp/x3-candidate-Fk7EJk/build.log",
+  "note": "one clean build into a fresh build directory (build/candidate-run47 removed first), copied once to the fresh candidate directory and retained unchanged"
+ },
+ "host_audits": {
+  "no_x87": {
+   "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-Fk7EJk/d3d9.dll",
+   "result": "PASS",
+   "roots": 87,
+   "reachable_functions": 554,
+   "violations": 0,
+   "run46_roots": 87,
+   "run46_reachable_functions": 555,
+   "delta_note": "same 87 roots as run46 (the three collide-memo roots included); one fewer reachable function, consistent with the lazy render-target mode removing a setter-hook callee from the reachable set; 0 violations",
+   "report": "/tmp/x3-candidate-Fk7EJk/no-x87.txt"
+  },
+  "pe_exports": {
+   "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-Fk7EJk/d3d9.dll",
+   "result": "PASS",
+   "machine": "0x014c",
+   "count": 17,
+   "names": 17,
+   "image_base": "0x6fb40000",
+   "report": "/tmp/x3-candidate-Fk7EJk/pe-exports.json"
+  },
+  "phase_site_verifiers": {
+   "commands": [
+    "python3 verification/probe/verify_frame_phase_sites.py",
+    "python3 verification/probe/verify_pass_phase_sites.py",
+    "python3 verification/probe/verify_loop_phase_sites.py",
+    "python3 verification/probe/verify_residual_phase_sites.py",
+    "python3 verification/probe/verify_media_cue_site.py",
+    "python3 verification/probe/verify_cull_census_sites.py",
+    "python3 verification/probe/verify_cull_small_parts_site.py",
+    "python3 verification/probe/verify_collide_sites.py",
+    "python3 verification/probe/verify_collide_memo_site.py"
+   ],
+   "result": "PASS (all nine, exit 0, read-only against the bottle EXE fdbf3418...)",
+   "boolean_gates": {
+    "frame": 11,
+    "pass": 16,
+    "loop": 20,
+    "residual": 18,
+    "media_cue": 19,
+    "cull_census": 16,
+    "cull_small_parts": 19,
+    "collide": 72,
+    "collide_memo": 30,
+    "false": 0
+   },
+   "collide_memo_site": "0x47f329 -> target 0x4e29f0, 30/30 boolean gates (run46 29; the relaxation adds one gate), 127 other claims checked, 32 collider globals enumerated, 0 false",
+   "unchanged": "the eight run46 verifiers report the same gate counts as run46",
+   "reports": "/tmp/x3-candidate-Fk7EJk/verify-*.json"
+  },
+  "shader_generator": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --check --shader <name>  (and generate_bloom_programs.py --check)",
+   "result": "PASS for all fifteen selected shaders and the nine bloom programs; every invocation went through wine_lock.py, one at a time",
+   "vs_run46": "all fifteen word counts and bytecode hashes are bit-identical to run46: the far stabiliser speed gate is constants only, 0 programs differ",
+   "shaders": {
+    "current_depth": {
+     "word_count": 38,
+     "bytecode_sha256": "33185f650fa2b17ce1c96751b13908a8bcd8a646c756a6861196c16458c856ec"
+    },
+    "sun_shadow_apply": {
+     "word_count": 981,
+     "bytecode_sha256": "fc9e5b8f876d23c44b1df80cdc31b09fb866973715225ffc35b46b36cf823b37"
+    },
+    "sun_shadow_cascade_apply": {
+     "word_count": 2173,
+     "bytecode_sha256": "f6be2867d8c457be16ae8ee04f3c0947d44bba3834e5fdde107b08a475501802"
+    },
+    "temporal_line_mask": {
+     "word_count": 604,
+     "bytecode_sha256": "6706ae676b8e4bcff4acbd4099aeb70655fe51c4d5797475524f450381aaf6e3"
+    },
+    "temporal_resolve": {
+     "word_count": 1706,
+     "bytecode_sha256": "32063822d6e89be67667d628547b9658b22a2296caa4611f52501fcd40b7e8c1"
+    },
+    "temporal_resolve_age": {
+     "word_count": 1949,
+     "bytecode_sha256": "3f552f9b59335d6d1f5892972bb984ca358872e65ab1ab76e44280fbb7c30393"
+    },
+    "temporal_resolve_age_filter": {
+     "word_count": 1998,
+     "bytecode_sha256": "073e3198392786151652e62340b459734208bfaebbf17804daaf36dfacc81604"
+    },
+    "temporal_resolve_age_line": {
+     "word_count": 2016,
+     "bytecode_sha256": "05b9ab0d4f49442d27605e56b6b1fa311ef8424f081933623edc43153d8d1401"
+    },
+    "temporal_resolve_far": {
+     "word_count": 2014,
+     "bytecode_sha256": "e0c33a2e9a85bc649e05041323c495678b2c06b8715f9e92bb277cda5c81c984"
+    },
+    "temporal_resolve_filter": {
+     "word_count": 1745,
+     "bytecode_sha256": "fa1fc67111c92b715cbfae090b74a6c8ff4ea0d3a61b36406839f13962bb22df"
+    },
+    "temporal_resolve_line": {
+     "word_count": 1760,
+     "bytecode_sha256": "698a9e1bb05b8dcb9f09aedbb0e974124f4e9d8a3a028ddc7f6133f077ca7326"
+    },
+    "temporal_resolve_snapshot": {
+     "word_count": 187,
+     "bytecode_sha256": "d52292b76736b542fcea385b570505e5e17475326796a3bcf7d0dcd1b7340c57"
+    },
+    "temporal_resolve_thin": {
+     "word_count": 1840,
+     "bytecode_sha256": "ecd5cf0d2a6e73a1ff8d4bfc1a0204fa7c50b86813943281336f94f0b9930c68"
+    },
+    "temporal_resolve_thin_filter": {
+     "word_count": 1883,
+     "bytecode_sha256": "51f6d10357e95211d01e3fc40f6d2114862aab864e2ff358a6bf5c772e44b8f1"
+    },
+    "temporal_resolve_thin_line": {
+     "word_count": 1901,
+     "bytecode_sha256": "185eee25846d7c17c4ea8663fdd9c431b24c08c40f30e92a4737f8bf614cb672"
+    }
+   },
+   "shader_hash_note": "copied verbatim from /tmp/x3-candidate-Fk7EJk/shader-summary.json (built from the fifteen --check invocations)",
+   "bloom": {
+    "passed": true,
+    "programs": 9,
+    "mode": "check",
+    "old_programs_recompiled": false
+   },
+   "slot_budget": "instruction slots come from run_temporal_pass (see scoped_results.temporal_pass.lattice_budget), not from this tool"
+  }
+ },
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "load_check": {
+  "performed": true,
+  "how": "the state-hook benchmark loaded the candidate d3d9.dll as the process proxy in its device configurations, each exiting 0"
+ },
+ "scoped_results": {
+  "motion_output_source_parity": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py",
+   "case_set": "the full suite (no case names): a fresh clean build of build/, the fixture and the seam, then every case",
+   "cases_run": 184,
+   "result": "PASS",
+   "status": "PASS (full run)",
+   "exit": 0,
+   "elapsed_seconds": 396,
+   "seam_dll_sha256": "265738befba8f8e7a758a8f438a2450b0a62a52c0547ee48def181cfd919736a",
+   "fixture_exe_sha256": "db0b838bfb7359a3e22e03c1529520dbb8742aaa6e7de1ec679099a8fa89e42d",
+   "runner_line": "'mask burst: 4 lazy run(s) equal their per-draw twin'; the six new mask-burst cases (production-burst-*-mask, seam-burst-*-mask, seam-burst-lazy-mask-shadow, seam-ownership-burst-lazy-mask) all pass",
+   "against_committed_records": "31 touched tracked fixture records: 13,397 non-timing scalar fields compared, 0 behavioural regressions; 785 new keys, 0 removed, 217 provenance diffs, 427 timing/float diffs and the single known value change - the presented-twin name order in seam-ownership-shadow-pool-static-live, the same artifact recorded run40..run46. motion-output-summary.json is treated separately below.",
+   "motion_output_summary_staleness": {
+    "question": "the lever-3 agent reported the tracked motion-output-summary.json stale against HEAD's own DLL for burst state_hashes/render_state counts",
+    "established": "confirmed, and the staleness predates run47. Against the committed copy (last written at 31ae7c03) the burst state_hash changes uniformly 8be220239701f656 -> 9b0d2de6ec75aec0 in all 9 slots of all six pre-existing burst cases (production/seam, perdraw and lazy alike) and render_state counters move. Against run46's own retained run copy (/tmp/x3-candidate-Uvr1Rh/motion-output-run46.json) those state_hash fields are IDENTICAL (0 of 378 shared burst state/render keys differ in state_hash), so run46's run already produced 9b0d2de6..., i.e. the committed record is stale, not HEAD regressing.",
+    "fields_differing_run46_to_run47": {
+     "production-burst-lazy": {
+      "gets": "14 -> 71 (x9 slots)",
+      "hits": "53 -> 0 (x7), 57 -> 0 (x2)",
+      "queries": "53 -> 57 (x7)",
+      "mode": "shadow -> get (x9)"
+     },
+     "seam-burst-lazy": {
+      "hits": "53 -> 57 (x7)",
+      "queries": "53 -> 57 (x7)"
+     },
+     "seam-burst-lazy-shadow-off": {
+      "gets": "67 -> 71 (x7)",
+      "queries": "53 -> 57 (x7)",
+      "mode": "native -> get (x9)"
+     },
+     "perdraw cases": "unchanged between run46 and run47 (0 fields differ)",
+     "state_hashes": "unchanged between run46 and run47 (0 fields differ)"
+    },
+    "reading": "every run46->run47 burst delta is confined to lazy-mode cases and to render_state bookkeeping (mode/gets/hits/queries), which is exactly what --motion-rt-mode lazy changes (no setter hooks, state answered by GetRenderState); the perdraw twins are untouched and the runner's lazy==perdraw equality assertions pass.",
+    "fields_differing_committed_to_run47": "in addition to the above: the 9 burst state_hash slots (8be22023 -> 9b0d2de6) in all six pre-existing burst cases, production-burst-perdraw gets 14 -> 71 and hits 57 -> 0, plus 432 new keys for the six new mask-burst cases. Overall the committed copy has 27,758 fields against 51,362 now, 23,604 added, 0 removed, 3,426 changed (mostly bench timings).",
+    "decision": "re-pinning the committed motion-output-summary.json is the orchestrator's call; not re-pinned here."
+   },
+   "artifacts": "all fixture-touched tracked records restored with git checkout after being read; run copies at /tmp/x3-candidate-Fk7EJk/motion-output-run47.json and motion-output-run47.txt, comparison at /tmp/x3-candidate-Fk7EJk/motion-record-compare.txt"
+  },
+  "route_bench": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_route_bench.py --label run47",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 32,
+   "invocations": 1,
+   "output": "verification/results/bottle-X3/route-bench-run47.json (untracked)",
+   "proxy_us_per_routed_draw": {
+    "off": 0.0,
+    "perdraw": 7.272,
+    "perdraw-telemetry-draw": 9.796,
+    "perdraw-shadow": 7.24,
+    "lazy": 5.377,
+    "lazy-ownership": 5.96,
+    "perdraw-masked": 8.104,
+    "lazy-masked": 5.867,
+    "perdraw-cascades": 10.835,
+    "perdraw-nojitter": 7.121,
+    "perdraw-nodepth": 6.345,
+    "off-ownership": -0.028,
+    "perdraw-ownership": 11.412,
+    "perdraw-depth": 9.033,
+    "lazy-depth": 6.614,
+    "lazy-cascades": 7.09,
+    "perdraw-cascades-noretention": 9.034,
+    "perdraw-cascades-timing": 10.104
+   },
+   "perdraw_vs_lazy": {
+    "plain": "perdraw 7.272 -> lazy 5.377 us/draw (-1.895), inside the 1.7-2.5 us/draw the change claims",
+    "ownership": "perdraw-ownership 11.412 -> lazy-ownership 5.960 (-5.452)",
+    "depth": "perdraw-depth 9.033 -> lazy-depth 6.614 (-2.419)",
+    "cascades": "perdraw-cascades 10.835 -> lazy-cascades 7.090 (-3.745)",
+    "masked (the write-mask fallback)": "perdraw-masked 8.104 -> lazy-masked 5.867 (-2.237): even on the fallback path lazy is ahead"
+   },
+   "set_rt_counters": "lazy configurations show set_rt=4 with flushes=1 over 400 routed draws against set_rt=1600 flushes=0 for the per-draw twins",
+   "scope": "synthetic per-routed-draw fixture cost under CrossOver Preview; not game FPS"
+  },
+  "sun_share_live": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --result /tmp/x3-candidate-Fk7EJk/sun-share-live-run47.json",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 45,
+   "passed": true,
+   "cases": 22,
+   "failed_cases": 0,
+   "game_launched": false
+  },
+  "cull_census": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_census.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 5,
+   "checks": 71,
+   "failures": 0,
+   "bench_us": {
+    "native_pass": 0.2234,
+    "patched_disarmed": 0.2486,
+    "patched_armed": 0.3101
+   }
+  },
+  "cull_small_parts": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 6,
+   "checks": 113,
+   "failures": 0,
+   "bench_us": {
+    "native_pass": 0.2307,
+    "patched_disarmed": 0.2456,
+    "patched_armed": 0.2305
+   },
+   "default_scope_change": "the rewritten cull-small-parts-cpu.json differs from the committed copy only in four install lines reading scope=all where the committed copy reads scope=bodies: the default changed in run43 and the committed record predates it (the same note run45 and run46 recorded)"
+  },
+  "collide_box_cull": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_box_cull.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 5,
+   "checks": 38,
+   "failures": 0,
+   "pairs": "p1=445882 p2=146064; stub rejects p1=102345 p2=55327",
+   "bench_ns_per_pair": {
+    "far": {
+     "native": 71.6,
+     "armed_counted": 66.8
+    },
+    "near": {
+     "native": 74.4,
+     "armed_counted": 76.6
+    }
+   },
+   "against_committed_record": "22 fields compared, 0 non-timing changes"
+  },
+  "collide_narrow_census": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_narrow_census.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 5,
+   "checks": 42,
+   "failures": 0,
+   "bench_ns": {
+    "pair_native": 81.8,
+    "pair_patched": 455.9,
+    "node_visit_native": 1.98,
+    "node_visit_patched": 3.43
+   },
+   "cross_thread": "frames=13090 accepted=19751 dropped=249 (run46 13061/19649/351, committed record 10199/19433/567: a scheduling-dependent count, not a behavioural field)"
+  },
+  "collide_sat_sse2": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_sat_sse2.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 7,
+   "checks": 41,
+   "failures": 0,
+   "cases": 2560000,
+   "violations": 0,
+   "sse_keeps": 241149,
+   "speed_ratios": {
+    "early": 9.5,
+    "full": 6.06
+   },
+   "mxcsr": "roundtrip in=3fbf out=3f80, sticky_flags_tracked=0",
+   "precision": "sample=20000, cw037f_violations=0, cw007f_violations=0",
+   "against_committed_record": "90 fields compared, 0 non-timing changes"
+  },
+  "collide_memo": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_memo.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 8,
+   "checks": 59,
+   "failures": 0,
+   "summary": {
+    "queries": 58410,
+    "hits": 37478,
+    "contacts": 3779,
+    "differences": 0,
+    "stale_hits": 0,
+    "hits_on_contact": 0,
+    "register_differences": 0,
+    "stored": 33021,
+    "evictions": 21296,
+    "ineligible": 4,
+    "skipped_visits": 332178634,
+    "verified": 130,
+    "verify_mismatches": 1
+   },
+   "misses": {
+    "min_relaxed_hits": 18622,
+    "none_found": 2980,
+    "xform_a": 1174,
+    "xform_b": 25057,
+    "scale": 367,
+    "mode": 3,
+    "models": 2,
+    "min_value": 7207,
+    "expired": 11,
+    "min_value_visits": 7832665,
+    "xform_b_visits": 982531
+   },
+   "verify_mismatch_note": "the single verify mismatch is the fixture's own injected mismatch (verify.injected_mismatches = 1), the negative control; 0 differences, 0 stale hits and 0 hits on contact across all eleven scenarios including the new running_minimum scenario (180 queries, 79 hits, 49 contacts, 0 differences)",
+   "bench_ns": {
+    "hit": 91.6,
+    "tiny_hit": 98.0,
+    "tiny_miss_store": 271.7,
+    "miss_store_overhead": 176.5
+   },
+   "determinism": "run twice under the lock; summary and every miss-reason counter identical both times",
+   "against_committed_record": "the rewritten collide-memo-cpu.json differs from the committed copy in 12 non-timing fields, all small counter drift (hits 37476->37478, stored 33023->33021, scale 369->367, none_found 2982->2980, xform_a 1172->1174, xform_b 25046->25057, min_value 7218->7207, min_value_visits 7844036->7832665, xform_b_visits 985884->982531, skipped_visits +2, overflow hits 1538->1540, the window line). The committed copy was written at the WIP commit 56664b8b and the memo review fixes landed after it in 8388a70c/0c55c55b; differences, stale_hits and hits_on_contact are 0 in both. Attribution is inference, not a rebuild of the older source."
+  },
+  "object_lifetime": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_object_lifetime.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 4,
+   "passed": true,
+   "checks": 674,
+   "failures": 0,
+   "backend_calls": 172592
+  },
+  "ownership": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ownership.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 10,
+   "passed": true,
+   "phase": "complete",
+   "fresh_build": true,
+   "note": "the four binary hashes in ownership-build-verification.json differ from the committed copy (rebuilt baseline/wrapped fixtures); provenance, not behaviour"
+  },
+  "ownership_admission": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ownership_admission.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 100,
+   "modes": 12,
+   "checks": 147,
+   "failures": 0
+  },
+  "material_motion": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_material_motion.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 31,
+   "passed": true,
+   "checks": 1470,
+   "rows": 171,
+   "row_checks": 21718,
+   "configurations": 82,
+   "game_launched": false,
+   "against_committed_record": "4,468 fields compared, 0 non-timing changes"
+  },
+  "temporal_pass": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 75,
+   "passed": true,
+   "samples": 386,
+   "state_restorations": 278,
+   "generations": 2,
+   "lattice": "RESULT PASS numerical=377 state_restorations=17 lattice=1, the expected 377/17",
+   "far_gate_coverage": "temporal-lattice.txt carries 'a non-default speed gate is followed (a hard-coded default would give the default ramp) PASS' and the far custom-speed-gate SAMPLE, so the new settable gate is exercised in the fixture",
+   "lattice_budget": {
+    "programs": 14,
+    "all_within_guaranteed_512": true,
+    "tightest": {
+     "embedded_age_line": 509,
+     "embedded_far": 508,
+     "embedded_age_filter": 506,
+     "embedded_thin_line": 483
+    },
+    "others": {
+     "embedded_thin_filter": 480,
+     "embedded_thin": 468,
+     "embedded_line": 446,
+     "current_filter": 444,
+     "embedded_current_filter": 444,
+     "plain": 433,
+     "embedded_plain": 433,
+     "embedded_line_mask": 153,
+     "embedded_snapshot": 46
+    }
+   },
+   "temporal_lattice_txt": "2 diff lines against the committed record, both TIMING"
+  },
+  "ambient_occlusion": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ambient_occlusion.py",
+   "result": "PASS (on the second attempt; see note)",
+   "exit": 0,
+   "elapsed_seconds": 13,
+   "passed": true,
+   "checks": 114,
+   "check_failures": 0,
+   "first_attempt": "the first invocation produced a complete, passing report (ambient-occlusion-gpu1.txt ends 'RESULT PASS checks=114 failures=0') but the fixture process never exited, so the runner's own 900 s subprocess timeout fired and it reported passed=false with exit_code=null. The orphaned process (pid 40677, still alive after the timeout) was terminated and the run repeated cleanly in 13 s. The AO fixture runs under --dll d3d9=b (builtin d3d9) and never loads the candidate, so the hang cannot be attributed to these bytes; recorded as an environment/teardown flake.",
+   "note": "the rewritten ambient-occlusion-gpu1.txt differs from the committed copy in 18 TIMING lines only; the JSON compares 533 fields with 0 non-timing changes"
+  },
+  "comparison_controls": {
+   "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_comparison_hotkeys",
+   "result": "PASS",
+   "tests": 6,
+   "elapsed_seconds": 10,
+   "fixture_checks": "comparison_controls 13,366 checks / 0 failures; comparison_notice 157,052 checks / 0 failures / 0 allocations, release and sanitized"
+  },
+  "state_hook_benchmark": {
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-Fk7EJk/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run47.json",
+   "result": "PASS",
+   "exit": 0,
+   "elapsed_seconds": 26,
+   "output": "verification/results/bottle-X3/state-hook-benchmark-run47.json (untracked)",
+   "dll_sha256_in_output": "95d6306ba8f4b138b243a4a82ca688710d1d180e99f386110015c9f0bcd0317e",
+   "ns_per_call_timing_off": {
+    "SetRenderState": {
+     "native": 11.3,
+     "production": 13.9
+    },
+    "SetSamplerState": {
+     "native": 11.1,
+     "production": 10.8
+    },
+    "SetStreamSource_DrawIndexedPrimitive_pair": {
+     "native": 383.3,
+     "production": 1019.3,
+     "hooked_shadow": 944.2
+    }
+   },
+   "gates": {
+    "how": "the runner's own assertions are the gates (status=pass per configuration, x87/MXCSR preservation, LastError, hooked/unhooked slot occupancy); it exited 0, so all of them hold",
+    "production_SetRenderState_ns": "13.9 against native 11.3 (+2.6). run46 read 11.8 against native 14.6; this is the fixture's noisiest figure and it moves with the native sample, not with the proxy",
+    "production_SetSamplerState_ns": "10.8 against native 11.1 (-0.3 under native)",
+    "draw_pair": "1,019.3 ns, +636.0 over native (run46 +626.8, run45 +643.8, run44 +664.3): inside the run-to-run spread, no regression from lever 3 or the memo relaxation",
+    "verdict": "PASS"
+   },
+   "cpu_state_preservation": "x87/control/status/tags/mxcsr/error all = 1 across the 4 preserve configurations x 7 entry points (168 integer flag fields, 0 non-1); 28 result fields all 00000000 and 28 LastError before/after pairs preserved",
+   "scope": "median of three repetitions per configuration in one process under CrossOver Preview; not game FPS"
+  },
+  "host_suite": {
+   "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+   "result": "OK",
+   "tests": 2281,
+   "failures": 0,
+   "errors": 0,
+   "elapsed_seconds": 601,
+   "log": "/tmp/x3-candidate-Fk7EJk/host-suite.log",
+   "d3d9_exports_prerequisite": "the candidate DLL was copied to build/d3d9.dll before the suite (hash rechecked identical afterwards) so test_d3d9_exports ran against these candidate bytes instead of skipping",
+   "run46_comparison": "run46 ran 2,278 tests with 1 failure (test_capture_bloom_lifetime, the missing collide_memo::device_reset stub); run47 runs 2,281 (3 added) fully OK - the stub landed on main and that blocker is closed"
+  }
+ },
+ "dry_run": {
+  "performed": true,
+  "game_launched": false,
+  "command": "python3 verification/probe/wine_lock.py python3 tools/manage.py launch --bottle X3 <session options> --dry-run",
+  "session_source": "docs/verification/user-runs.md section 47; the eight ./x3run commands converted verbatim by replacing the leading ./x3run with `python3 tools/manage.py launch --bottle X3` and appending --dry-run, plus the two session C alternates named in the prose (./x3run itself calls exactly that under wine_lock; it was never run and the game was never launched)",
+  "result": "PASS (all ten exit 0; every variant prints 12 command elements with overrides d3d9=n,b)",
+  "confirmations": {
+   "X3M_COLLIDE_SAT_SSE2": "1 in all ten, from the new default (no session passes --collide-sat-sse2)",
+   "X3M_COLLIDE_MEMO": "1 in all ten, from the new default",
+   "X3M_COLLIDE_MEMO_VERIFY": "1 in A1 only",
+   "X3M_MOTION_RT_MODE": "perdraw in A1, A2, C (all three), D1, D2 and B1; lazy in B2 and B3",
+   "X3M_PROFILE / X3M_PROFILE_INTERVAL_US": "1 / 500 in B3; 0 / 2000 (the default interval) elsewhere",
+   "X3M_TAA_FAR_STABILISER": "0.985,0,80,130,0.03,0.25 in C (the launcher fills the filter flag, the two distances and the new 0.03-0.25 speed gate); the two alternates parse to 0.985,0,80,130,0.02,0.15 and 0.985,0,80,130,0.05,0.5; absent elsewhere",
+   "X3M_TAA_LINE_FILTER / X3M_TAA_HISTORY_WEIGHT": "1,2 / 0.97 in D2 only",
+   "X3M_CAPTURE_FRAMES": "2 in A1, A2, B1-B3; 32 in the three C variants; 64 accepted in D1 and D2",
+   "X3M_TAA_DEBUG": "1 in C and D; 0 in A and B",
+   "X3M_FRAME_TIMING": "1 in B1 and B2 (the two that pass --frame-timing); 0 elsewhere including B3",
+   "X3M_LOOP_PHASES": "1 in A1 and A2 (the two commands that pass --loop-phases); 0 elsewhere",
+   "X3M_CULL_SMALL_PARTS_PX": "2.0000 in all ten, from the default",
+   "X3M_CULL_SMALL_PARTS_SCOPE": "all in all ten, from the default"
+  },
+  "variants": {
+   "A1_memo_verify": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "A2_defaults": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "B1_perdraw": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "B2_lazy": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "B3_lazy_profile": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "C_far_stabiliser": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "C_alt_tight": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "C_alt_wide": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "D1_baseline": {
+    "command_elements": 12,
+    "exit": 0
+   },
+   "D2_line_filter": {
+    "command_elements": 12,
+    "exit": 0
+   }
+  },
+  "logs": "/tmp/x3-candidate-Fk7EJk/dry-run-*.log, dry-run-summary.json, dry-run-exits.json and run47-cmds.json"
+ },
+ "full_fixture_chain_rerun": false,
+ "native_windows_verified": false,
+ "installed": false,
+ "qualification_verdict": "QUALIFIED. Clean zero-warning configure and build on committed 0c55c55b with the marker X3M_SOURCE_COMMIT=0c55c55b and no -dirty suffix; candidate 95d6306b..., 18,897,411 bytes, retained at /tmp/x3-candidate-Fk7EJk/d3d9.dll and hash-rechecked after the fixtures. no-x87 87 roots / 554 reachable / 0 violations; 17 exports; all nine site verifiers clean including verify_collide_memo_site.py 30/30 at 0x47f329 -> 0x4e29f0 with 127 other claims checked; the fifteen shader --check invocations and the nine bloom programs PASS through wine_lock.py with every bytecode hash bit-identical to run46 (the far stabiliser speed gate is constants only, 0 programs differ), and all fourteen resolve/mask programs inside the guaranteed 512 ps_3_0 slots (tightest age_line 509, far 508). Every Wine fixture PASS: motion output full 184-case suite (the six new mask-burst cases included, 'mask burst: 4 lazy run(s) equal their per-draw twin') with 0 behavioural regressions over 13,397 compared fields in 31 tracked records; route bench once, lazy 5.377 us/draw against perdraw 7.272 (-1.895) and -2.2 to -5.5 on the depth, cascade, masked and ownership variants; sun-share live 22/0; cull census 71; cull small parts 113; collide box cull 38; collide narrow census 42; collide SAT SSE2 41 with 0 violations over 2,560,000 cases and 9.5x / 6.06x; collide memo 59 with 0 differences, 0 stale hits, 0 hits on contact and only the fixture's injected verify mismatch, deterministic over two runs; object lifetime 674; ownership complete; ownership admission 12 modes / 147 checks; material motion 1470; temporal pass lattice RESULT PASS numerical=377 state_restorations=17 including the non-default speed-gate check; ambient occlusion 114/0. Benchmark gates PASS with 168 preservation flags all 1, 28 LastError pairs preserved and a draw-pair overhead of +636.0 ns against run46's +626.8. The full host suite runs 2,281 tests fully OK with the candidate at build/d3d9.dll, closing the run46 blocker. All ten section 47 dry-runs exit 0 with SAT_SSE2=1 and COLLIDE_MEMO=1 by default everywhere, MEMO_VERIFY only in A1, perdraw/lazy in B, PROFILE + interval 500 in B3, the 0.03-0.25 far gate in C (both alternates parse), LINE_FILTER 1,2 with history weight 0.97 in D2, 64 capture frames accepted in D and the 2.0000 / all cull defaults. Not installed; installation is the main session's.",
+ "limitations": [
+  "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+  "Only the commit marker, no-x87, export-list, state-hook benchmark and test_d3d9_exports checks bind these candidate bytes; the other fixtures build their own binaries from the same committed source.",
+  "The benchmark, route-bench, cull, collide and memo figures are synthetic per-call/per-pair/per-draw/per-visit fixtures under CrossOver Preview; none is measured game FPS.",
+  "The first ambient-occlusion attempt hung after producing a passing report and was killed; the clean retry passed in 13 s. The fixture uses builtin d3d9, so the hang is not attributable to the candidate, but the cause was not investigated.",
+  "The full `generate_rigid_motion_pixel.py --check` remains known stale on main for ao_apply, ao_blur, ao_gtao, ao_linearize, hdr_meter_level0, hdr_meter_reduce, hdr_tonemap, hdr_tonemap_sharpen, hdr_writeback, taa_sharpen, quad_vertex and rigid_motion, from before run 44; only the fifteen shaders of this cycle plus the nine bloom programs were checked. Recorded, not fixed and not re-verified here.",
+  "The committed motion-output-summary.json is stale (23,604 added fields, 3,426 changed against this run); the burst state_hashes were already at their current value in run46's own run copy. Not re-pinned here.",
+  "The committed collide-memo-cpu.json counter drift is attributed to memo review fixes landing after 56664b8b; that attribution is inference, not a rebuild of the older source. The committed cull-small-parts scope=bodies lines predate the run43 default change.",
+  "The lazy render-target mode, the relaxed memo and the far speed gate are exercised as fixture behaviour and cost; their in-game effect is the section 47 user-run judgement, not established here.",
+  "The collide-narrow cross-thread counters and the AO/lattice TIMING lines vary run to run; they are recorded as non-behavioural.",
+  "Another agent shares this checkout's build/ tree; every Wine command here ran serialised through verification/probe/wine_lock.py, one at a time, and build/d3d9.dll now holds the candidate bytes.",
+  "Installation and game launch are owned by the main session; nothing was installed and the game was never launched."
+ ]
+}

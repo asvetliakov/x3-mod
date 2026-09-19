@@ -13,32 +13,33 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`fc3dd232d622a8ada8243f90ee5e18d0bbb05d0976c79938c3f43c49094b5c4a`
-(18,903,793 bytes), built once on Opus from clean committed main `8ba92765`
+`95d6306ba8f4b138b243a4a82ca688710d1d180e99f386110015c9f0bcd0317e`
+(18,897,411 bytes), built once on Opus from clean committed main `0c55c55b`
 (2026-09-19; marker without `-dirty`), installed through `manage.py install`.
-The [build record](../verification/results/run46-candidate-build.json) binds the
-clean build, the no-x87 audit (87 roots, 555 reachable), 17 exports, nine site
-verifiers (collide memo 29), fifteen shader checks (fourteen resolve/mask programs
-≤ 512 ps_3_0 slots; tightest 509), the full 178-case motion-output suite (0
-behavioural regressions), collide memo 55/0, SAT SSE2, temporal pass with the line
-and far cases, the state-hook benchmark (+626.8 ns draw pair vs +643.8), the full
-host suite (2,278; its one failure was a missing host mock stub, fixed in the
-following commit without touching a production input) and the eight §46 dry-runs.
-The [install record](../verification/results/run46-candidate-install.json) binds the
-installed bytes, unchanged EXE/bottle hashes and the rollback: run45
-`563a40f5…` in `/tmp/x3-candidate-Uvr1Rh/rollback`. No game launched.
+The [build record](../verification/results/run47-candidate-build.json) binds the
+clean build, the no-x87 audit (87 roots, 554 reachable), 17 exports, nine site
+verifiers (collide memo 30), fifteen shader checks (all program hashes identical to
+run46), the full 184-case motion-output suite (0 behavioural regressions), the route
+bench (lazy 5.38 vs per-draw 7.27 µs/draw; depth 6.61 vs 9.03), collide memo 59/0,
+temporal pass 377/17, the state-hook benchmark (+636.0 ns draw pair), the full host
+suite (2,281 OK) and the ten §47 dry-runs. The
+[install record](../verification/results/run47-candidate-install.json) binds the
+installed bytes, unchanged EXE/bottle hashes and the rollback: run46
+`fc3dd232…` in `/tmp/x3-candidate-Fk7EJk/rollback`. No game launched.
 
-This build adds, on top of run45's (all default off): `--collide-memo` /
-`--collide-memo-verify` ([sector-collide.md](reverse-engineering/sector-collide.md) §14),
-`--taa-line-filter` ([taa-lattice-crawl.md](architecture/taa-lattice-crawl.md)) and
-`--taa-far-stabiliser` ([taa-distant-line-fade.md](architecture/taa-distant-line-fade.md)).
-Run 45 is read; run 46 (§46 of [user-runs.md](verification/user-runs.md)) is queued.
-Merged after this build, for run 47: per-draw lever 3 (`--motion-rt-mode lazy` without
-setter hooks, 1.7–2.5 µs per routed draw in the bench;
-[route-per-draw-cost.md](architecture/route-per-draw-cost.md)). Evaluated and closed:
-whole-descent SSE2 collision rewrite (no gain), SSR (NO-GO on real frames,
-[screen-space-reflections.md](architecture/screen-space-reflections.md)), flare occlusion
-(MINOR, [lens-flare-visibility.md](reverse-engineering/lens-flare-visibility.md)).
+This build adds, on top of run46's: `--collide-sat-sse2` and `--collide-memo` **on by
+default** (`--no-…` switches), the memo's running-minimum relaxation and miss-reason
+counters ([sector-collide.md](reverse-engineering/sector-collide.md) §14.6), per-draw
+lever 3 `--motion-rt-mode lazy` (default `perdraw`;
+[route-per-draw-cost.md](architecture/route-per-draw-cost.md)) and the far stabiliser's
+speed gate 0.03–0.25 px/frame ([taa-distant-line-fade.md](architecture/taa-distant-line-fade.md) §10).
+Run 46 is read; run 47 (§47 of [user-runs.md](verification/user-runs.md)) is queued.
+Open designs: [volumetric-fog.md](architecture/volumetric-fog.md) (mock-ups in
+`build/fog-mock/`; 35 sectors have genuine fog cards,
+[sector-fog.md](reverse-engineering/sector-fog.md); needs one capture in Atreus' Clouds,
+Great Reef or Paranid Prime), [view-submit-hot-path.md](reverse-engineering/view-submit-hot-path.md)
+(engine arithmetic in view_submit is < 0.65 ms: redundancy and D3DX effect overhead are
+the candidates; run 47 B3 decides). Closed: SSR, flare occlusion, descent SSE2 rewrite.
 
 ## Session 2026-09-19: four changes merged, run43 candidate installed
 
