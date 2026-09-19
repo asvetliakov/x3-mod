@@ -1,0 +1,53 @@
+adapter=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll
+ms format=X8R8G8B8 type=1 hr=00000000 quality_levels=3
+ms format=X8R8G8B8 type=2 hr=00000000 quality_levels=1
+ms format=X8R8G8B8 type=4 hr=00000000 quality_levels=1
+ms format=X8R8G8B8 type=8 hr=00000000 quality_levels=1
+ms format=A8R8G8B8 type=1 hr=00000000 quality_levels=3
+ms format=A8R8G8B8 type=2 hr=00000000 quality_levels=1
+ms format=A8R8G8B8 type=4 hr=00000000 quality_levels=1
+ms format=A8R8G8B8 type=8 hr=00000000 quality_levels=1
+ms format=A16B16G16R16F type=1 hr=00000000 quality_levels=3
+ms format=A16B16G16R16F type=2 hr=00000000 quality_levels=1
+ms format=A16B16G16R16F type=4 hr=00000000 quality_levels=1
+ms format=A16B16G16R16F type=8 hr=00000000 quality_levels=1
+ms format=A32B32G32R32F type=1 hr=00000000 quality_levels=3
+ms format=A32B32G32R32F type=2 hr=00000000 quality_levels=1
+ms format=A32B32G32R32F type=4 hr=00000000 quality_levels=1
+ms format=A32B32G32R32F type=8 hr=00000000 quality_levels=1
+ms format=G32R32F type=1 hr=00000000 quality_levels=3
+ms format=G32R32F type=2 hr=00000000 quality_levels=1
+ms format=G32R32F type=4 hr=00000000 quality_levels=1
+ms format=G32R32F type=8 hr=00000000 quality_levels=1
+ms format=R32F type=1 hr=00000000 quality_levels=3
+ms format=R32F type=2 hr=00000000 quality_levels=1
+ms format=R32F type=4 hr=00000000 quality_levels=1
+ms format=R32F type=8 hr=00000000 quality_levels=1
+ms format=G16R16F type=1 hr=00000000 quality_levels=3
+ms format=G16R16F type=2 hr=00000000 quality_levels=1
+ms format=G16R16F type=4 hr=00000000 quality_levels=1
+ms format=G16R16F type=8 hr=00000000 quality_levels=1
+ms format=D24S8 type=1 hr=00000000 quality_levels=3
+ms format=D24S8 type=2 hr=00000000 quality_levels=1
+ms format=D24S8 type=4 hr=00000000 quality_levels=1
+ms format=D24S8 type=8 hr=00000000 quality_levels=1
+ms format=D24X8 type=1 hr=00000000 quality_levels=3
+ms format=D24X8 type=2 hr=00000000 quality_levels=1
+ms format=D24X8 type=4 hr=00000000 quality_levels=1
+ms format=D24X8 type=8 hr=00000000 quality_levels=1
+create_device hr=00000000
+caps NumSimultaneousRTs=4 mrt_independent_bitdepths=1 mrt_postpixelshader_blending=1 stretchrect_caps=03000300
+x2 create fp16=00000000 rgba32f_a=00000000 rgba32f_b=00000000 d24x8=00000000
+x2 bind rt0=00000000 rt1=00000000 rt2=00000000 ds=00000000 clear=00000000 draw=00000000 resolve fp16_none=00000000 fp16_linear=00000000 rgba32f_point=00000000 rgba32f_none=00000000
+x2 resolved full=27267 partial=566 distinct_values=3
+x2 mrt_pixel_shader create=00000000
+x2 rgba32f resolve filter=POINT full=27267 partial(averaged)=566
+x2 rgba32f resolve filter=NONE full=27267 partial(averaged)=566
+x2 mixed ms_colour+plain_depth set=00000000 draw=00000000
+x4 create fp16=00000000 rgba32f_a=00000000 rgba32f_b=00000000 d24x8=00000000
+x4 bind rt0=00000000 rt1=00000000 rt2=00000000 ds=00000000 clear=00000000 draw=00000000 resolve fp16_none=00000000 fp16_linear=00000000 rgba32f_point=00000000 rgba32f_none=00000000
+x4 resolved full=27217 partial=667 distinct_values=5
+x4 mrt_pixel_shader create=00000000
+x4 rgba32f resolve filter=POINT full=27217 partial(averaged)=667
+x4 rgba32f resolve filter=NONE full=27217 partial(averaged)=667
+x4 mixed ms_colour+plain_depth set=00000000 draw=00000000
