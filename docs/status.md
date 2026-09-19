@@ -13,29 +13,29 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`3caa48a02166eda93e14daab78c2d53afa8963761b5cc2ce63de273fa832f300`
-(18,615,808 bytes), built once on Opus from clean committed main `5f218771`
-(2026-09-19; marker without `-dirty`), installed through `manage.py install`
-(ownership manifest `5f218771`). The
-[build record](../verification/results/run44-candidate-build.json) binds the
-clean build, the no-x87 audit (82 roots, 550 reachable), 17 exports, eight site
-verifiers (collide 51, cull small parts 19), five shader checks, 68
-motion-output cases incl. all 49 `seam-ownership-*` (0 behavioural
-regressions), sun-share live, cull census, cull small parts, collide box cull,
-collide narrow census 40, ownership admission 147, object lifetime, ownership,
-material motion, temporal pass with the lattice case, AO, comparison controls,
-the state-hook benchmark, the full host suite (2259 OK) and the seven §44
-dry-runs. The [install record](../verification/results/run44-candidate-install.json)
-binds the installed bytes, unchanged EXE/bottle hashes and the rollback: run43
-`2cac537a…` in `/tmp/x3-candidate-IWGGQF/rollback`. No game launched.
+`563a40f539f3d3610697b0ea4dc6a249a5871db54eb15db4b19244a45c745922`
+(18,758,397 bytes), built once on Opus from clean committed main `96892be7`
+(2026-09-19; marker without `-dirty`), installed through `manage.py install`.
+The [build record](../verification/results/run45-candidate-build.json) binds the
+clean build, the no-x87 audit (84 roots, 552 reachable), 17 exports, eight site
+verifiers (collide 72), ten shader program checks (seven resolve programs, all
+≤ 512 ps_3_0 slots), 68 motion-output cases (0 behavioural regressions), the
+collide SAT SSE2 fixture (2,560,000 cases, 0 violations, 9.0× / 6.1×), collide
+narrow census 42, temporal pass with the lattice case, the state-hook benchmark,
+the full host suite (2269 OK) and the five §45 dry-runs. The
+[install record](../verification/results/run45-candidate-install.json) binds the
+installed bytes, unchanged EXE/bottle hashes and the rollback: run44
+`3caa48a0…` in `/tmp/x3-candidate-YcICrW/rollback`. No game launched.
 
-This build adds, on top of run43's: `--cull-small-parts 2` scope `all` **on by
-default** for modded launches (`0` = off); per-draw lever 1 stage A + 2a (the
-route's value-only calls go to the native device under ownership; light
-buffer-lock view); `--collide-narrow-census` (default off); `--taa-current-filter`
-and `--taa-history-weight` (default off; the filtered resolve is 521 ps_3_0
-slots, see [platform-portability.md](architecture/platform-portability.md));
-`--capture-frames` up to 64.
+This build adds, on top of run44's (all default off): `--collide-sat-sse2` (SSE2
+replacement of the engine's RAPID OBB box test `0x004e3280`,
+[sector-collide.md](reverse-engineering/sector-collide.md) §12), the census
+leaf-triangle counter, and TAA flicker steps 0–3 (`--taa-thin-clip`,
+`--taa-adaptive-weight`, `--taa-alpha-history`;
+[taa-flicker-suppression.md](architecture/taa-flicker-suppression.md)).
+Run 44 is read (run table in [user-runs.md](verification/user-runs.md)); run 45
+(§45) is queued. In flight: the lattice-crawl masked current-sample filter
+([taa-lattice-crawl.md](architecture/taa-lattice-crawl.md)), for the run46 candidate.
 
 ## Session 2026-09-19: four changes merged, run43 candidate installed
 
