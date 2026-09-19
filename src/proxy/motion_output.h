@@ -846,7 +846,7 @@ public:
     // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1]] (docs/architecture/taa-distant-line-fade.md
     // section 9), off by default: far history weight W (0 off), far current
     // filter A (0 off), gate footprints F0 < F1 in world units per pixel.
-    void configure_taa_far(float weight, float filter, float f0, float f1) noexcept { taa_far_weight_ = weight; taa_far_filter_ = filter; taa_far_f0_ = f0; taa_far_f1_ = f1; }
+    void configure_taa_far(float weight, float filter, float f0, float f1, float lo, float hi) noexcept { taa_far_weight_ = weight; taa_far_filter_ = filter; taa_far_f0_ = f0; taa_far_f1_ = f1; taa_far_lo_ = lo; taa_far_hi_ = hi; }
     void configure_taa_flicker(float thin_clip, float adaptive_weight, float adaptive_lo, float adaptive_hi, bool alpha_history) noexcept {
         taa_thin_clip_ = thin_clip; taa_adaptive_weight_ = adaptive_weight; taa_adaptive_lo_ = adaptive_lo; taa_adaptive_hi_ = adaptive_hi; taa_alpha_history_ = alpha_history;
     }
@@ -1955,7 +1955,7 @@ private:
     float taa_current_filter_ = 0.f;          // X3M_TAA_CURRENT_FILTER (0: off, the plain resolve program)
     float taa_line_filter_ = 0.f;             // X3M_TAA_LINE_FILTER (0: off)
     unsigned taa_line_width_ = 1;             // X3M_TAA_LINE_FILTER=A,W: mask width 1 or 2 px
-    float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 80.f, taa_far_f1_ = 130.f; // X3M_TAA_FAR_STABILISER
+    float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 80.f, taa_far_f1_ = 130.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
     float taa_thin_clip_ = 0.f;               // X3M_TAA_THIN_CLIP (0: off)
     float taa_adaptive_weight_ = 0.f, taa_adaptive_lo_ = .1f, taa_adaptive_hi_ = .5f; // X3M_TAA_ADAPTIVE_WEIGHT (0: off)

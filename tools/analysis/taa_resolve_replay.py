@@ -107,9 +107,14 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
     if opt.get('remedy'): disocc &= ~remedy_px
     accept = ok & ~disocc
     # Catmull-Rom history
+    # Keys cubic with parameter a (-0.5 = Catmull-Rom); opt['fara']: a sharper kernel (a < -0.5) on far pixels, a = -0.5 + farw * (fara + 0.5)
+    ka = -.5
+    if opt.get('fara') is not None and opt.get('far'):
+        F0_, F1_ = opt['far'][:2]; dof_ = lambda F: FAR_P22 + FAR_P32 / (F * P[0] * W / 2)
+        ka = -.5 + np.where(far, 0., np.clip((dc - dof_(F0_)) / (dof_(F1_) - dof_(F0_)), 0, 1)) * (opt['fara'] + .5)
     def crw(f):
         f2, f3 = f * f, f * f * f
-        return [-.5 * f + f2 - .5 * f3, 1 - 2.5 * f2 + 1.5 * f3, .5 * f + 2 * f2 - 1.5 * f3, -.5 * f2 + .5 * f3]
+        return [ka * (f3 - 2 * f2 + f), (ka + 2) * f3 - (ka + 3) * f2 + 1, -(ka + 2) * f3 + (2 * ka + 3) * f2 - ka * f, -ka * f3 + ka * f2]
     wx, wy = crw(fx), crw(fy); acc = np.zeros((h, wd, 4)); tot = np.zeros((h, wd))
     for jj in range(4):
         for ii in range(4):
@@ -147,7 +152,7 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
         farw = np.where(far, 0., np.clip((dc - dof(F0)) / (dof(F1) - dof(F0)), 0, 1)) if F1 > F0 else np.ones((h, wd))
         if WF:
             ay = np.clip(by + (fy >= .5) - Y0, 0, h - 1); ax = np.clip(bx + (fx >= .5) - X0, 0, wd - 1); a = age[ay, ax]; a = np.where((a >= 1) & (a <= 64), a, 1)
-            keep = w + farw * (1 - np.clip((speed - .5) / 1.5, 0, 1)) * (np.minimum(a / (a + 1), WF) - w); newage = np.where(accept, np.minimum(a + 1, 64), 1)
+            glo, ghi = opt.get('fargate', (.5, 2.)); keep = w + farw * (1 - np.clip((speed - glo) / (ghi - glo), 0, 1)) * (np.minimum(a / (a + 1), WF) - w); newage = np.where(accept, np.minimum(a + 1, 64), 1)
         if AF:
             g9 = np.zeros_like(wc); gt = 0.
             for ny_ in (-1, 0, 1):
@@ -375,7 +380,9 @@ if MODE == 'far':
     mc = np.hypot(vx, vy) > .01  # drifting capture: one global translation (the routed median), as the note's metmc.py
     print('interior px %d of %d; routed median velocity %.3f %.3f px/frame%s; gate F0 %g F1 %g units/px; sharpen gain %.4f' % (inter.sum(), inter.size, vx, vy, ' (motion-compensated)' if mc else '', F0, F1, GAIN))
     ref = {}; hot = {}
-    for name, opt, soff in (('base', {}, False), ('weight 0.985', dict(far=(F0, F1, .985, 0)), False), ('filter A=1', dict(far=(F0, F1, 0, 1.)), False), ('weight+filter', dict(far=(F0, F1, .985, 1.)), False),
+    # GATES=0.5:2,0.2:0.6 : weight-only rows per speed gate LO:HI px/frame (section 10 of the note) instead of the component rows
+    gates = [tuple(map(float, g_.split(':'))) for g_ in os.environ['GATES'].split(',')] if os.environ.get('GATES') else []
+    for name, opt, soff in [('base', {}, False)] + [('weight %g gate %g-%g%s%s' % (w_, *g_, ' no clip' if nc_ else '', '' if ka_ is None else ' cubic a=%g' % ka_), dict(far=(F0, F1, w_, 0), fargate=g_, fara=ka_, **(dict(thin=1., allthin=True) if nc_ else {})), False) for g_ in gates for w_ in map(float, os.environ.get('WS', '0.985').split(',')) for nc_ in ((False, True) if os.environ.get('NOCLIP') else (False,)) for ka_ in ([None] + list(map(float, os.environ['KEYS'].split(','))) if os.environ.get('KEYS') else [None])] if gates else (('base', {}, False), ('weight 0.985', dict(far=(F0, F1, .985, 0)), False), ('filter A=1', dict(far=(F0, F1, 0, 1.)), False), ('weight+filter', dict(far=(F0, F1, .985, 1.)), False),
                             ('sharpen off', dict(far=(F0, F1, 0, 0)), True), ('weight+sharpen off', dict(far=(F0, F1, .985, 0)), True), ('all three', dict(far=(F0, F1, .985, 1.)), True)):
         if os.environ.get('ONLY') and name != 'base' and name not in os.environ['ONLY'].split('|'): continue
         outs, diags, _ = run(opt, 1); st = {'resolve': [], 'presented': []}

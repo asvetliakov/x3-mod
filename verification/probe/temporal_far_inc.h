@@ -77,6 +77,7 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         TemporalPass pass;check("far validation initialize",pass.initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,resolver));check("far validation configure",pass.configure_far());check("far validation flicker",pass.configure_flicker());check("far validation line",pass.configure_line_filter());
         for(float bad:{-.1f,.5f,.995f,NAN}){in.far_weight=bad;require(pass.run(in,&out)==E_INVALIDARG,"far weight outside {0} U [weight, 0.99] is refused");}in.far_weight=.985f;
         for(float bad:{-1.f,4.5f,NAN}){in.far_filter=bad;require(pass.run(in,&out)==E_INVALIDARG,"far filter outside [0, 4] is refused");}in.far_filter=0;
+        for(auto gate:{std::pair<float,float>{-.1f,.25f},{.25f,.25f},{.3f,.25f},{.03f,65.f},{NAN,.25f}}){in.far_speed_lo=gate.first;in.far_speed_hi=gate.second;require(pass.run(in,&out)==E_INVALIDARG,"far speed gate needs 0 <= LO < HI <= 64");}in.far_speed_lo=x3::temporal::kFarSpeedLo;in.far_speed_hi=x3::temporal::kFarSpeedHi;
         for(float bad:{-1.f,NAN,INFINITY}){in.far_inv=bad;require(pass.run(in,&out)==E_INVALIDARG,"far gate slope must be finite and >= 0");}in.far_inv=farInv;
         in.weight=0;require(pass.run(in,&out)==E_INVALIDARG,"far weight over a history weight of 0 is refused");in.weight=.9f;
         in.motion_policy=MotionPolicy::KnownCameraOnly;in.motion=nullptr;require(pass.run(in,&out)==E_INVALIDARG,"far stabiliser without per-pixel motion is refused");in.motion_policy=MotionPolicy::PerPixel;in.motion=s.motion.p;
@@ -93,7 +94,9 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         pass.before_reset();pass.after_reset(S_OK);check("far after Reset",pass.run(in,&out));require(out.color&&!out.used_history&&pass.far_available()&&!pass.line_masks_failed(),"Reset protocol keeps the far program and recreates the masks");
         check("far unbind s8",d->SetTexture(8,nullptr));state_checks+=1;s.target(s.colorSurface.p);}
     // ---- static and drifting facets ----
-    for(double drift:{0.,.04}){farDrift=drift;const auto baseRun=far_sequence(s,resolver,base,farFrames);const double baseRipple[3]={far_ripple(baseRun,0),far_ripple(baseRun,1),far_ripple(baseRun,2)};
+    // Speed ramp of the far weight (default gate 0.03 .. 0.25 px/frame): 0 and 0.04 (t = 0 / 0.045), 0.14 (t = 0.5), 0.30 (past HI: the base weight).
+    double rampRatio[4]{};unsigned rampIndex=0;
+    for(double drift:{0.,.04,.14,.3}){farDrift=drift;const auto baseRun=far_sequence(s,resolver,base,farFrames);const double baseRipple[3]={far_ripple(baseRun,0),far_ripple(baseRun,1),far_ripple(baseRun,2)};
         for(const LineConfig* c:{&base,&weight,&filter,&both,&lined,&soft}){const auto run=c==&base?baseRun:far_sequence(s,resolver,*c,farFrames);const auto model=line_model(run,*c);double oracle=0,ageOracle=0;unsigned nearDiffers=0,nearPixels=0;
             for(unsigned n=0;n<farFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
                 if(!run.age.empty())ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));
@@ -110,13 +113,18 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
             if(c->farW>0||c->farA>0){metric((std::string("far ")+c->name+": age target matches the CPU oracle").c_str(),ageOracle,0,0);
                 metric((std::string("far ")+c->name+": published mask equals the quantised gate").c_str(),maskError,0,.5/255);
                 metric((std::string("far ")+c->name+": far-band ripple ratio as the oracle's").c_str(),ripple[2]/baseRipple[2],oracleFar/baseRipple[2],.03);}
+            if(c==&weight){rampRatio[rampIndex]=ripple[2]/baseRipple[2];
+                if(drift>=.25){++numeric_checks;require(same_rgb(run.output,baseRun.output),"far weight at a speed past HI is the plain resolve bit for bit, every pixel");}}
             if(c->A<=0){++numeric_checks;require(nearPixels>0&&nearDiffers==0,"near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels");}
             if(drift==0&&c->farW>0&&c->thin<=0){++numeric_checks;require(ripple[2]<=.25*baseRipple[2]&&ripple[1]<ripple[0]&&ripple[1]>ripple[2],"static far ripple <= 0.25 x base; the mid band lies between");}
             // (The filter alone does not lower this scene's ripple: a 0.3-px facet toggles whole rows and the mean over rows conserves it. Its
             // effect is reported and held to the oracle; the real-dump replay is its evidence.)
             // Over a whole jitter cycle: on a phase whose samples miss every facet the 3x3 box collapses and every config is the background exactly.
             if(c==&filter){double changed=0;for(unsigned n=farFrames-latticePhases;n<farFrames;++n)for(UINT y=4;y<28;++y)for(UINT x=23;x<30;++x)changed=std::max(changed,double(std::fabs(px(run.output[n],x,y)-px(baseRun.output[n],x,y))));
-                std::printf("FAR_FILTER_EFFECT drift=%.2f far_band_max_difference=%.6f\n",drift,changed);++numeric_checks;require(changed>.005,"far filter alone acts on the far band");}}}
+                std::printf("FAR_FILTER_EFFECT drift=%.2f far_band_max_difference=%.6f\n",drift,changed);++numeric_checks;require(changed>.005,"far filter alone acts on the far band");}}
+    ++rampIndex;}
+    std::printf("FAR_SPEED_RAMP lo=%.3f hi=%.3f ratio_v0=%.4f ratio_v0.04=%.4f ratio_v0.14=%.4f ratio_v0.30=%.4f\n",farLo,farHi,rampRatio[0],rampRatio[1],rampRatio[2],rampRatio[3]);
+    ++numeric_checks;require(rampRatio[0]<=rampRatio[1]+.01&&rampRatio[1]<rampRatio[2]&&rampRatio[2]<rampRatio[3]&&rampRatio[3]==1,"far weight falls continuously with the screen speed: ripple ratio monotone from W_FAR to the base weight");
     farDrift=0;
     // ---- gate off (invalid projection this frame) and mask-target creation failure: the plain resolve bit for bit, history kept ----
     {const auto baseRun=far_sequence(s,resolver,base,32),gateOff=far_sequence(s,resolver,both,32,false),failed=far_sequence(s,resolver,both,32,true,true);

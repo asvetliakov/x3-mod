@@ -51,7 +51,11 @@ inline void prepare_flicker(float out[4], float thin_clip, float wmax, float lo,
 // d = p22 + p32 / z. farw = saturate((d - d0) * inv) rises from 0 at footprint f0 to 1 at f1. Returns false (the caller
 // uploads inv = 0: mask off) unless the projection is the engine's perspective form (p00 > 0, p22 > 0, p32 < 0) and
 // 0 < f0 < f1 give finite 0 <= d0 < d1.
-constexpr float kFarWeightMax = .99f, kFarSpeedLo = .5f, kFarSpeedHi = 2.f, kFarFootprintMax = 1e6f;
+// Speed gate of the far weight (px/frame): full W_FAR at or below LO, the base weight at or above HI. The defaults are
+// narrow on purpose (taa-distant-line-fade.md section 10): at W 0.985 the history is resampled about 65 times, which
+// softens far detail as soon as it slides (replay: gradient energy x 0.78 at 0.085 px/frame under the first 0.5 .. 2 gate).
+constexpr float kFarWeightMax = .99f, kFarSpeedLo = .03f, kFarSpeedHi = .25f, kFarSpeedMax = 64.f, kFarFootprintMax = 1e6f;
+inline bool valid_far_speed_gate(float lo, float hi) noexcept { return std::isfinite(lo) && std::isfinite(hi) && lo>=0 && hi>lo && hi<=kFarSpeedMax; }
 // 0 is off; otherwise within [weight, 0.99], and only over a history that is kept at all (weight > 0).
 inline bool valid_far_weight(float w, float weight) noexcept { return std::isfinite(w) && (w==0 || (weight>0 && w>=weight && w<=kFarWeightMax)); }
 inline bool far_gate(float p00, float p22, float p32, unsigned width, float f0, float f1, float& d0, float& inv) noexcept {

@@ -138,12 +138,12 @@ try:
     # Line filter (docs/architecture/taa-lattice-crawl.md section 9): oracle error, mask precision on the square silhouette, roping (bead amplitude) and the pass time.
     report['line_filter']={'cases':fields('LINE_FILTER '),'timing':fields('LINE_TIMING ')}
     # Far stabiliser (docs/architecture/taa-distant-line-fade.md section 9): the CPU gate, oracle error, near-pixel bit-identity, ripple ratios per band.
-    report['far_stabiliser']={'gate':fields('FAR_GATE '),'cases':fields('FAR_STABILISER '),'filter_effect':fields('FAR_FILTER_EFFECT ')}
-    assert len(report['far_stabiliser']['cases'])==12 and all(c['near_differs']=='0' for c in report['far_stabiliser']['cases']),report['far_stabiliser']
+    report['far_stabiliser']={'gate':fields('FAR_GATE '),'speed_ramp':fields('FAR_SPEED_RAMP '),'cases':fields('FAR_STABILISER '),'filter_effect':fields('FAR_FILTER_EFFECT ')}
+    assert len(report['far_stabiliser']['cases'])==24 and all(c['near_differs']=='0' for c in report['far_stabiliser']['cases']),report['far_stabiliser']
     assert len(report['line_filter']['cases'])==10 and all(c['silhouette_masked']=='0' and c['silhouette_differs']=='0' for c in report['line_filter']['cases']),report['line_filter']
-    # 28 / 9 are the run-139 lattice cases (FLICKER_BASE); the line-filter cases add 45 numerical and 2 state checks (LINE_BASE), the far-stabiliser cases 64 and 2.
+    # 28 / 9 are the run-139 lattice cases (FLICKER_BASE); the line-filter cases add 45 numerical and 2 state checks (LINE_BASE), the far-stabiliser cases 120 and 2.
     # 28 / 9 are the run-139 lattice cases (LATTICE_BASE); the flicker cases add 182 numerical and 4 state checks.
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=28 state_restorations=9' in lattice_text and 'FLICKER_BASE numerical=210 state_restorations=13' in lattice_text and 'LINE_BASE numerical=255 state_restorations=15' in lattice_text and 'RESULT PASS numerical=319 state_restorations=17 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=28 state_restorations=9' in lattice_text and 'FLICKER_BASE numerical=210 state_restorations=13' in lattice_text and 'LINE_BASE numerical=255 state_restorations=15' in lattice_text and 'RESULT PASS numerical=375 state_restorations=17 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=512 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
     ripple=report['lattice']['ripple']
     assert len(ripple)==10 and ripple['off']==ripple['baseline'] and report['lattice']['budget']['plain']['instruction_slots']<=512,report['lattice']

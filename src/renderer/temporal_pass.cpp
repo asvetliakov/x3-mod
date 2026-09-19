@@ -330,7 +330,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         !x3::temporal::valid_current_filter(in.current_filter)||(in.current_filter>0&&!resolve_filtered_)||
         !x3::temporal::valid_current_filter(in.line_filter)||(in.line_filter>0&&(in.current_filter>0||(in.line_width!=1&&in.line_width!=2)||!line_filter_available()||(aged&&!far_requested&&!age_line_)))||
         !x3::temporal::valid_far_weight(in.far_weight,in.weight)||!x3::temporal::valid_current_filter(in.far_filter)||!std::isfinite(in.far_d0)||!std::isfinite(in.far_inv)||in.far_inv<0||
-        (far_requested&&(!far_available()||in.motion_policy!=MotionPolicy::PerPixel||adaptive||in.current_filter>0||(lined&&in.far_filter>0&&in.far_filter!=in.line_filter)||(in.line_width!=1&&in.line_width!=2)))||
+        (far_requested&&(!x3::temporal::valid_far_speed_gate(in.far_speed_lo,in.far_speed_hi)||!far_available()||in.motion_policy!=MotionPolicy::PerPixel||adaptive||in.current_filter>0||(lined&&in.far_filter>0&&in.far_filter!=in.line_filter)||(in.line_width!=1&&in.line_width!=2)))||
         !x3::temporal::valid_thin_clip(in.thin_clip)||!x3::temporal::valid_adaptive_weight(in.adaptive_weight,in.adaptive_lo,in.adaptive_hi,in.weight)||
         (flicker&&!far_requested&&!flicker_available())||(adaptive&&(!(in.thin_clip>0)||!age_available()))||(in.alpha_history&&!in.color))return fail(E_INVALIDARG);
     for(UINT i=0;i<2;++i){
@@ -365,7 +365,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     constants.luminance[3]=lined?in.line_filter:far_on?in.far_filter:0.f; // A of the masked filter: line-filter / far variants only
     float flicker_constants[4]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);
     // Far variant: c24.yzw = W_FAR (the base weight when that component is off; its gate channel is 0 then), speed gate 0.5 .. 2 px/frame.
-    if(far_on){flicker_constants[1]=in.far_weight>0?in.far_weight:in.weight;flicker_constants[2]=x3::temporal::kFarSpeedLo;flicker_constants[3]=1.f/(x3::temporal::kFarSpeedHi-x3::temporal::kFarSpeedLo);}
+    if(far_on){flicker_constants[1]=in.far_weight>0?in.far_weight:in.weight;flicker_constants[2]=in.far_speed_lo;flicker_constants[3]=1.f/(in.far_speed_hi-in.far_speed_lo);}
     const float far_constants[4]={in.far_d0,far_on?in.far_inv:0.f,far_on&&in.far_filter>0?1.f:0.f,far_on&&in.far_weight>0?1.f:0.f};
     const bool filtered=in.current_filter>0;
     const bool thin_bound=flicker&&thin_; // after a mask fallback of a far run the thin variants may not exist: plain then

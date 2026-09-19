@@ -90,7 +90,7 @@ struct FrameInputs {
     // caller derives the pair with x3::temporal::far_gate and passes far_inv =
     // 0, mask off, on a frame without a valid projection). far_weight: 0 off,
     // else within [weight, 0.99]: history weight lerp(weight, min(n / (n + 1),
-    // far_weight), farw * (1 - saturate((speed - 0.5) / 1.5))), on the age
+    // far_weight), farw * (1 - saturate((speed - lo) / (hi - lo)))), on the age
     // target. far_filter: 0 off, else A in (0, 4]: current sample lerp(point,
     // exp(-A d^2) average, farw). Either needs configure_far() and
     // MotionPolicy::PerPixel (the speed gate reads the routed motion); refused beside
@@ -98,6 +98,8 @@ struct FrameInputs {
     // of a different A (one Gaussian per frame). farw = 0 pixels are the thin /
     // plain blend bit for bit.
     float far_weight = 0.f, far_filter = 0.f, far_d0 = 0.f, far_inv = 0.f;
+    // Speed gate of far_weight, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
+    float far_speed_lo = x3::temporal::kFarSpeedLo, far_speed_hi = x3::temporal::kFarSpeedHi;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
     // (the default) draws nothing and the run is bit-identical to a run
