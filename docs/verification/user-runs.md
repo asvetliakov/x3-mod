@@ -87,11 +87,11 @@ not comparable to other runs (the census costs time). Report the two F8 times.
 
 **Session B** (TAA shimmer A/B; corvette save at the Terran solar power plant, 4–5 km, camera nearly still;
 five short launches, ≈ 2 minutes each; look at the panel legs and at a distant station with glowing windows):
-1. Baseline with resolved-frame dumps (**about 1.5 GB in /tmp per F8**; press F8 only once):
+1. Baseline with resolved-frame dumps (**about 1.5 GB in /tmp per F8**):
 ```sh
 ./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --capture-frames 32 --frame-end-stride 1
 ```
-2. Filtered current sample, with dumps (again one F8 only):
+2. Filtered current sample, with dumps:
 ```sh
 ./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --capture-frames 32 --frame-end-stride 1 --taa-current-filter 1.0
 ```
@@ -108,7 +108,9 @@ five short launches, ≈ 2 minutes each; look at the panel legs and at a distant
 ./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --capture-start 999999 --capture-frames 8 --frame-end-stride 1 --taa-current-filter 1.0 --taa-history-weight 0.95 --taa-sharpen 0
 ```
 For each: shimmer on the legs / windows / antennas (gone, less, same), softness of the whole image, any
-ghost trails. F8 once per launch at the plant. Report which one you would keep.
+ghost trails. **Two F8 per launch**: one at the plant, then load the fighter save and one at the distant
+station view (hold the view still 5–10 s after loading before F8; launches 1–2 then write about 3 GB each).
+Same spot and view in every launch. Report which one you would keep and which F8 was which.
 
 **Session C** (new defaults; fighter save, the run117 busy station view; ≈ 2 minutes):
 ```sh

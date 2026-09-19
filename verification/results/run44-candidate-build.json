@@ -1,0 +1,547 @@
+{
+  "recorded_utc": "2026-09-19T12:15:00Z",
+  "run": 44,
+  "candidate": {
+    "path": "/tmp/x3-candidate-IWGGQF/d3d9.dll",
+    "directory": "/tmp/x3-candidate-IWGGQF",
+    "subdirectories": [
+      "rollback (empty; the installed DLL is copied here by the installing owner)"
+    ],
+    "sha256": "3caa48a02166eda93e14daab78c2d53afa8963761b5cc2ce63de273fa832f300",
+    "bytes": 18615808,
+    "retained_first_build": true,
+    "candidate_directory_file_count": 1,
+    "hash_rechecked_after_fixtures": true,
+    "hash_source_after_fixtures": "state-hook-benchmark-run44.json dll.sha256 and a shasum after the host suite both equal the recorded sha256",
+    "supersedes": "the run43 candidate 2cac537a… from 09a3b8d9; stale untracked build/candidate-run40..run43 trees were deleted before configure, and no DLL from an older /tmp/x3-candidate-* directory was reused"
+  },
+  "source": {
+    "worktree": "/Users/asvetl/x3-mod",
+    "commit": "5f2187715224f13ca0c3e3577474b37adc790e91",
+    "commit_short": "5f218771",
+    "detached": false,
+    "requested_commit": "5f218771",
+    "dirty_diff": "none",
+    "status_before_configure": "0 tracked modifications; only untracked wine logs and benchmark records",
+    "status_after_build": "all fixture-touched tracked files under verification/results/ restored with git checkout after reading; git status --short shows 0 tracked modifications"
+  },
+  "source_commit_marker": {
+    "command": "strings /tmp/x3-candidate-IWGGQF/d3d9.dll | grep X3M_SOURCE_COMMIT",
+    "value": "X3M_SOURCE_COMMIT=5f2187715224f13ca0c3e3577474b37adc790e91",
+    "dirty_suffix": false,
+    "matches_worktree_head": true,
+    "previous": "run43 candidate carried X3M_SOURCE_COMMIT=09a3b8d9…"
+  },
+  "changes_since_run43": [
+    "shadow candidates keep the w > 0 origin rule via origin_distance_front (already present in run43; unchanged)",
+    "--cull-small-parts default 2 px with --cull-small-parts-scope default all on every modded launch (--cull-small-parts 0 turns it off)",
+    "--collide-narrow-census: three trampolines at 0x0045d665, 0x0048a9a5 and 0x004e2530 counting and timing the engine's exact mesh-vs-mesh tests, with an F8 pair list",
+    "per-draw lever 1 stage A + 2a: direct native value calls under ownership plus a light buffer-lock view (ownership::get_buffer_lock_view_light)",
+    "--taa-current-filter A and --taa-history-weight W with a second resolve variant (temporal_resolve_filter, 521 instruction slots), and --capture-frames raised to 64"
+  ],
+  "toolchain": {
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "cmake": "4.4.3",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "target": "32-bit Windows PE",
+    "native_windows_execution": "not performed"
+  },
+  "configure": {
+    "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build/candidate-run44",
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-IWGGQF/configure.log"
+  },
+  "build": {
+    "command": "cmake --build build/candidate-run44 -j4",
+    "invocations": 1,
+    "elapsed_seconds": 16,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-IWGGQF/build.log",
+    "note": "the stale untracked build/candidate-run40, run41, run42 and run43 trees were removed before configure; one clean build, retained unchanged"
+  },
+  "host_audits": {
+    "no_x87": {
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-IWGGQF/d3d9.dll",
+      "result": "PASS",
+      "roots": 82,
+      "reachable_functions": 550,
+      "violations": 0,
+      "run43_roots": 79,
+      "run43_reachable_functions": 539,
+      "census_roots_walked": [
+        "_x3m_collide_narrow_pre",
+        "_x3m_collide_narrow_post",
+        "ownership::get_buffer_lock_view_light"
+      ],
+      "delta_note": "+3 roots and +11 reachable functions over run43: exactly the two collide narrow-census trampoline handlers and the light buffer-lock view of per-draw lever 1; 0 violations",
+      "report": "/tmp/x3-candidate-IWGGQF/no-x87.txt"
+    },
+    "pe_exports": {
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-IWGGQF/d3d9.dll",
+      "result": "PASS",
+      "machine": "0x014c",
+      "count": 17,
+      "names": 17,
+      "report": "/tmp/x3-candidate-IWGGQF/pe-exports.json"
+    },
+    "phase_site_verifiers": {
+      "commands": [
+        "python3 verification/probe/verify_frame_phase_sites.py",
+        "python3 verification/probe/verify_pass_phase_sites.py",
+        "python3 verification/probe/verify_loop_phase_sites.py",
+        "python3 verification/probe/verify_residual_phase_sites.py",
+        "python3 verification/probe/verify_media_cue_site.py",
+        "python3 verification/probe/verify_cull_census_sites.py",
+        "python3 verification/probe/verify_cull_small_parts_site.py",
+        "python3 verification/probe/verify_collide_sites.py"
+      ],
+      "result": "PASS (all eight, exit 0, read-only against the bottle EXE fdbf3418…)",
+      "boolean_gates": {
+        "frame": 11,
+        "pass": 16,
+        "loop": 20,
+        "residual": 18,
+        "media_cue": 19,
+        "cull_census": 16,
+        "cull_small_parts": 19,
+        "collide": 51,
+        "false": 0
+      },
+      "new_sites": {
+        "collide_narrow_sites": "0x45d665, 0x48a9a5, 0x4e2530 - whole-call/whole-mov windows, flags-dead at callee entry and return, pair registers live, 129 other claims checked, 0 overlaps",
+        "collide_box_cull_sites": "p1 0x45d58e, p2 0x45cc7c (unchanged from run43), 123 other claims checked",
+        "cull_small_parts_site": "0x47d2a2 (cull decision 0x47d2c3), 19/19 gates, 0 interior branches, disjoint from cull_census_measure 0x47d258, cull_census_exit 0x47d528 and lod_scale 0x47d44b",
+        "collide_gate_delta": "29 gates in run43 -> 51 in run44; the 22 new gates are the narrow-census encoders, claim disjointness, window and flags checks"
+      },
+      "reports": "/tmp/x3-candidate-IWGGQF/verify-*.json"
+    },
+    "shader_generator": {
+      "command": "python3 tools/shaders/generate_rigid_motion_pixel.py --check --shader <name>",
+      "result": "PASS for all five selected shaders",
+      "shaders": {
+        "temporal_resolve": {
+          "word_count": 1891,
+          "bytecode_sha256": "2bfba715ac91237011b156336b1a713098a3c6fab08ea22b3ee7a4645b9b09c8"
+        },
+        "temporal_resolve_filter": {
+          "word_count": 1939,
+          "bytecode_sha256": "0f2832356403e01144e32f1e1e4a70130339b5e926a936d7da6cb2e18b60abb9"
+        },
+        "current_depth": {
+          "word_count": 38,
+          "bytecode_sha256": "33185f650fa2b17ce1c96751b13908a8bcd8a646c756a6861196c16458c856ec"
+        },
+        "sun_shadow_apply": {
+          "word_count": 981,
+          "bytecode_sha256": "fc9e5b8f876d23c44b1df80cdc31b09fb866973715225ffc35b46b36cf823b37"
+        },
+        "sun_shadow_cascade_apply": {
+          "word_count": 2173,
+          "bytecode_sha256": "f6be2867d8c457be16ae8ee04f3c0947d44bba3834e5fdde107b08a475501802",
+          "compiler_warning": "X4121 gradient-in-flow-control, pre-existing and non-blocking"
+        }
+      },
+      "not_checked": "ao_apply, ao_blur, ao_gtao, ao_linearize, hdr_meter_level0, hdr_meter_reduce, hdr_tonemap, hdr_tonemap_sharpen, hdr_writeback, taa_sharpen, quad_vertex and rigid_motion: the full --check is known stale for these on main since before this cycle (recorded as a limitation, not fixed here)"
+    }
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "scoped_results": {
+    "motion_output_source_parity": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py <68 cases>",
+      "cases_run": 68,
+      "result": "PASS (runner status PARTIAL by design; all 68 cases exit 0, 0 failures)",
+      "exit": 0,
+      "elapsed_seconds": 206,
+      "lock_wait_seconds": 0,
+      "case_set": "the run43 set of 55 plus the 13 remaining seam-ownership-* cases, so that all 49 seam-ownership cases ran (per-draw lever 1 changes that path)",
+      "seam_dll_sha256": "a69b1de837cc016d317d4bf361335135fbde95e49b66deea74fcddc7554c9853",
+      "fixture_exe_sha256": "adf74bada507f23f3fa9ad4e7193f5320ce139f43e850d5697579bdfdda3822d",
+      "seam_ownership_cases": 49,
+      "seam_ownership_shadow_pool_hull_checks": 77,
+      "fade_route_cases": {
+        "compared_with": "verification/results/bottle-X3/fade-route-cases.json (committed, untouched by this run) and the run43 record",
+        "agreement": "all eleven fade-route/cutout cases match run43 on checks and cutout_missed_frames",
+        "seam-taa-fade-route-behind": {
+          "checks": 3461,
+          "worst_raw_error_px": 0.004,
+          "worst_resolved_residual_px": 0.055
+        },
+        "seam-taa-fade-route-original": {
+          "checks": 3461
+        },
+        "seam-taa-fade-route-hover": {
+          "checks": 3536
+        },
+        "seam-taa-fade-route-overlay": {
+          "checks": 5101,
+          "worst_resolved_residual_px": 0.071
+        },
+        "seam-taa-fade-route-foreign": {
+          "checks": 397
+        },
+        "seam-taa-cutout-blended": {
+          "checks": 49624,
+          "cutout_missed_frames": 0
+        },
+        "seam-taa-cutout-opaque": {
+          "checks": 49612,
+          "cutout_missed_frames": 11
+        },
+        "seam-taa-fade-route-routed": {
+          "checks": 5100
+        },
+        "seam-taa-fade-route-routed-perdraw": {
+          "checks": 5100
+        },
+        "seam-taa-fade-route-sentinel": {
+          "checks": 5100
+        },
+        "seam-taa-fade-route-masked": {
+          "checks": 408
+        }
+      },
+      "against_committed_records": "31 touched tracked fixture records: 13,397 non-timing scalar fields compared, 0 behavioural regressions; 785 fields are new keys added by the current schema, 0 removed, 217 provenance diffs (fixture build directories and binary hashes), 430 timing/float diffs, and 1 value change - the presented-twin name order in pool-static-live, the same artifact run40/41/42/43 recorded. motion-output-partial.json is a per-run scratch record with a different case set and is excluded from the comparison.",
+      "artifacts": "all fixture-touched tracked records restored with git checkout after reading; run copy at /tmp/x3-candidate-IWGGQF/motion-output-run44.json"
+    },
+    "sun_share_live": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --result /tmp/x3-candidate-IWGGQF/sun-share-live-run44.json",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 45,
+      "passed": true,
+      "game_launched": false,
+      "cases": 22,
+      "failed_cases": 0,
+      "case_set": "full live set, unchanged from run43",
+      "seam_dll_sha256": "a69b1de837cc016d317d4bf361335135fbde95e49b66deea74fcddc7554c9853",
+      "result_file": "written to /tmp/x3-candidate-IWGGQF only; the committed record untouched"
+    },
+    "cull_census": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_census.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 5,
+      "checks": 71,
+      "failures": 0,
+      "failure_lines": 0,
+      "bench_us": {
+        "native_pass": 0.2218,
+        "patched_disarmed": 0.248,
+        "patched_armed": 0.3084
+      },
+      "note": "disarmed +0.026 us and armed +0.087 us over the native cull pass in the fixture; equal to run43 within noise; not game FPS"
+    },
+    "cull_small_parts": {
+      "build": "python3 verification/probe/build_cull_small_parts.py (0 warnings)",
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 6,
+      "checks": 113,
+      "failures": 0,
+      "bench_us": {
+        "native_pass": 0.2253,
+        "patched_disarmed": 0.2372,
+        "patched_armed": 0.2311
+      },
+      "replay": {
+        "rows": 1214,
+        "native_mismatches": 0,
+        "scope_all_px2": "threshold 3, flipped 97, draws 403, other_changes 0, culled_count 1147",
+        "scope_bodies_px2": "threshold 3, flipped 89, draws 395, other_changes 0, culled_count 806, parented_below 341",
+        "scope_bodies_px4": "threshold 6, flipped 120, draws 450, other_changes 0",
+        "scope_bodies_px8": "threshold 11, flipped 131, draws 471, other_changes 0",
+        "census": "rows 1214, fidelity 1214, kept 67, culled_size 624, culled_min 426, culled_small 97, other 0"
+      },
+      "default_scope_change": "the committed cull-small-parts-cpu.json install_lines still spell scope=bodies; the rerun prints scope=all on the same lines, which is the intended new default of this cycle and not a regression. The record was restored with git checkout and was not refreshed here."
+    },
+    "collide_box_cull": {
+      "build": "python3 verification/probe/build_collide_box_cull.py (0 warnings)",
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_box_cull.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 5,
+      "checks": 38,
+      "failures": 0,
+      "pairs": {
+        "p1": 445882,
+        "p2": 146064,
+        "stub_rejects_p1": "102345/445882",
+        "stub_rejects_p2": "55327/146064"
+      },
+      "bench_ns_per_pair": {
+        "far": {
+          "native": 74.7,
+          "disarmed": 75.8,
+          "armed_counted": 64.0,
+          "armed_plain": 64.5
+        },
+        "near": {
+          "native": 74.8,
+          "disarmed": 71.5,
+          "armed_counted": 79.9,
+          "armed_plain": 78.7
+        }
+      },
+      "note": "synthetic per-pair fixture timing under CrossOver Preview; not game FPS; pair counts identical to run43"
+    },
+    "collide_narrow_census": {
+      "build": "python3 verification/probe/build_collide_narrow_census.py (0 warnings)",
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_narrow_census.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 5,
+      "checks": 40,
+      "failures": 0,
+      "window_line_parsed": true,
+      "pair_row_parsed": true,
+      "cross_thread": "frames 15161, accepted 19662, dropped 338",
+      "bench_ns": {
+        "pair_native": 79.3,
+        "pair_patched": 301.0,
+        "node_visit_native": 1.95,
+        "node_visit_patched": 2.47
+      },
+      "note": "the census costs ~222 ns per narrow-phase pair in the fixture, consistent with the user-runs warning that FPS with --collide-narrow-census on is not comparable to other runs; not game FPS. The cross-thread frames/accepted/dropped counters differ run to run (committed record 14399/19309/691) and are nondeterministic, not a behavioural regression."
+    },
+    "object_lifetime": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_object_lifetime.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 4,
+      "passed": true,
+      "checks": 674,
+      "failures": 0,
+      "backend_calls": 172592,
+      "vs_run43": "checks, failures and backend_calls all equal to the run43 record"
+    },
+    "ownership": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ownership.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 12,
+      "passed": true,
+      "phase": "complete",
+      "baseline_checks": 370,
+      "wrapped_checks": 563,
+      "failures": 0,
+      "vs_run43": "phase complete and 0 failures; the baseline/wrapped fixture binaries were rebuilt from the lever-1 ownership source (new hashes recorded in the rewritten record, restored afterwards)"
+    },
+    "ownership_admission": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ownership_admission.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 100,
+      "modes": 12,
+      "checks": 147,
+      "failures": 0,
+      "note": "run because per-draw lever 1 stage A + 2a changes the ownership admission path"
+    },
+    "material_motion": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_material_motion.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 32,
+      "checks": 1470,
+      "configurations": 82,
+      "rows": 171,
+      "row_transformed": 169,
+      "row_skipped": 2,
+      "row_checks": 21718,
+      "game_launched": false,
+      "vs_run43": "identical counts"
+    },
+    "temporal_pass": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 27,
+      "passed": true,
+      "samples": 386,
+      "state_restorations": 278,
+      "generations": 2,
+      "lattice": {
+        "exit_code": 0,
+        "sections": "budget 2 configurations, ripple 10, oracle 5, flat 5, moving 4",
+        "budget_plain": "temporal_resolve 1891 dwords / 507 instruction slots, device limit 512, headroom +5, within_guaranteed_512 = 1",
+        "budget_current_filter": "temporal_resolve_filter 1939 dwords / 521 instruction slots, device limit 512, headroom -9, within_guaranteed_512 = 0 - the second resolve variant exceeds the guaranteed ps_3_0 slot count and relies on the device's actual limit; this is the expected 521-slot figure of the brief and the runner still passes",
+        "ripple_filter_1.0": "flicker 0.006415 vs baseline 0.010791 (ratio 0.5945), peak 0.022461 vs 0.040527",
+        "report_sha256": "3774feb7f029f1d233c6425afdbf369ec4d701a276141520e283c8b4adb76620"
+      },
+      "lattice_check_counts": "the runner's JSON exposes the lattice sections above and exit_code 0, but does not emit a '28 numerical / 9 state checks' tally; the temporal-lattice.txt report is written to a temporary directory the runner removes. Recorded as observed rather than as the briefed tally."
+    },
+    "ambient_occlusion": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ambient_occlusion.py",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 8,
+      "passed": true,
+      "checks": 114,
+      "check_failures": 0,
+      "note": "the rewritten record differs from the committed one only in provenance (worktree paths of the fixture build) and timing-derived floats; restored with git checkout"
+    },
+    "comparison_controls": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_comparison_hotkeys",
+      "result": "PASS",
+      "tests": 6,
+      "elapsed_seconds": 10,
+      "fixture_checks": {
+        "comparison_controls": "13,366 checks / 0 failures (release and sanitized)",
+        "comparison_bloom_handoff": "45 / 0 (release and sanitized)",
+        "comparison_notice": "157,052 / 0, 0 allocations (release and sanitized)"
+      },
+      "delta_vs_run43": "identical counts; the run44 hotkey set is unchanged"
+    },
+    "state_hook_benchmark": {
+      "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_state_hook_benchmark.py --dll /tmp/x3-candidate-IWGGQF/d3d9.dll --out verification/results/bottle-X3/state-hook-benchmark-run44.json",
+      "result": "PASS",
+      "exit": 0,
+      "elapsed_seconds": 27,
+      "lock_wait_seconds": 0,
+      "output": "verification/results/bottle-X3/state-hook-benchmark-run44.json (untracked; the paired wine log stays local)",
+      "dll_sha256_in_output": "3caa48a02166eda93e14daab78c2d53afa8963761b5cc2ce63de273fa832f300",
+      "ns_per_call_timing_off": {
+        "SetRenderState": {
+          "native": 15.9,
+          "production": 14.9
+        },
+        "SetSamplerState": {
+          "native": 11.1,
+          "production": 11.0
+        },
+        "SetStreamSource_DrawIndexedPrimitive_pair": {
+          "native": 379.9,
+          "production": 1044.2,
+          "hooked_shadow": 870.3
+        }
+      },
+      "gates": {
+        "production_SetRenderState_ns": "14.9 (native 15.9; -1.0 over native)",
+        "production_SetSamplerState_ns": "11.0 (native 11.1; -0.1 over native)",
+        "draw_pair": "1,044.2 ns, 664.3 over native (run43 630.2, run42 620.0, run41b 657.1): within the run-to-run spread, and lever 1 shows no regression at this resolution",
+        "verdict": "PASS on all three gates"
+      },
+      "vs_run43": "57 of 61 shared ns_per_call figures within 5 %; the outliers are the native and proxy SetRenderState samples, the hooked-shadow draw pair and the CpuCallBoundary envelope - the fixture's noisiest figures, the same set as the run43/run42 comparison",
+      "cpu_state_preservation": "x87/control/status/tags/mxcsr/error all =1 across the 4 preserve configurations x 7 entry points (168 flag fields, 0 non-1); 28 LastError before/after pairs, 0 mismatches",
+      "scope": "Median of three repetitions per configuration in one process under CrossOver Preview; not game FPS."
+    },
+    "launcher_dry_run": {
+      "command": "python3 tools/manage.py launch --bottle X3 <session options> --dry-run",
+      "result": "PASS (all seven exit 0; every variant prints 12 command elements with overrides d3d9=n,b)",
+      "session_source": "docs/verification/user-runs.md § 44, the seven ./x3run commands converted verbatim by replacing the leading ./x3run with python3 tools/manage.py launch --bottle X3 and appending --dry-run (the game was never launched; ./x3run itself was never run)",
+      "confirmations": {
+        "X3M_COLLIDE_NARROW_CENSUS": "1 in A only; absent in B1-B5 and C",
+        "X3M_TAA_CURRENT_FILTER": "1.0 in B2, B4 and B5; absent in A, B1, B3 and C",
+        "X3M_TAA_HISTORY_WEIGHT": "0.95 in B3, B4 and B5; absent in A, B1, B2 and C",
+        "X3M_TAA_SHARPEN": "0.75 (the default) in A, B1-B4 and C; 0.0 in B5 (--taa-sharpen 0). The launcher spells the sharpen strength X3M_TAA_SHARPEN.",
+        "X3M_CULL_SMALL_PARTS_PX": "2.0000 in all seven, from the new default (no session passes --cull-small-parts)",
+        "X3M_CULL_SMALL_PARTS_SCOPE": "all in all seven, from the new default",
+        "X3M_CAPTURE_FRAMES": "32 on B1 and B2, the two --taa-debug commands (X3M_TAA_DEBUG=1 there); 8 on B3, B4, B5 and C; 2 on A"
+      },
+      "variants": {
+        "A_collide_census": {
+          "command_elements": 12,
+          "X3M_COLLIDE_NARROW_CENSUS": "1",
+          "X3M_TAA_DEBUG": "0",
+          "X3M_FRAME_END_STRIDE": "1",
+          "X3M_CAPTURE_FRAMES": "2",
+          "exit": 0
+        },
+        "B1_baseline": {
+          "command_elements": 12,
+          "X3M_TAA_DEBUG": "1",
+          "X3M_TAA_CURRENT_FILTER": "absent",
+          "X3M_TAA_HISTORY_WEIGHT": "absent",
+          "X3M_FRAME_END_STRIDE": "1",
+          "X3M_CAPTURE_FRAMES": "32",
+          "exit": 0
+        },
+        "B2_current_filter": {
+          "command_elements": 12,
+          "X3M_TAA_DEBUG": "1",
+          "X3M_TAA_CURRENT_FILTER": "1.0",
+          "X3M_FRAME_END_STRIDE": "1",
+          "X3M_CAPTURE_FRAMES": "32",
+          "exit": 0
+        },
+        "B3_history_weight": {
+          "command_elements": 12,
+          "X3M_TAA_HISTORY_WEIGHT": "0.95",
+          "X3M_FRAME_END_STRIDE": "1",
+          "X3M_CAPTURE_FRAMES": "8",
+          "exit": 0
+        },
+        "B4_both": {
+          "command_elements": 12,
+          "X3M_TAA_CURRENT_FILTER": "1.0",
+          "X3M_TAA_HISTORY_WEIGHT": "0.95",
+          "X3M_FRAME_END_STRIDE": "1",
+          "X3M_CAPTURE_FRAMES": "8",
+          "exit": 0
+        },
+        "B5_both_no_sharpen": {
+          "command_elements": 12,
+          "X3M_TAA_CURRENT_FILTER": "1.0",
+          "X3M_TAA_HISTORY_WEIGHT": "0.95",
+          "X3M_TAA_SHARPEN": "0.0",
+          "X3M_FRAME_END_STRIDE": "1",
+          "X3M_CAPTURE_FRAMES": "8",
+          "exit": 0
+        },
+        "C_defaults": {
+          "command_elements": 12,
+          "X3M_CULL_SMALL_PARTS_PX": "2.0000",
+          "X3M_CULL_SMALL_PARTS_SCOPE": "all",
+          "X3M_FRAME_END_STRIDE": "1",
+          "X3M_CAPTURE_FRAMES": "8",
+          "exit": 0
+        }
+      },
+      "logs": "/tmp/x3-candidate-IWGGQF/dry-run-*.log, dry-run-summary.json and run44-cmds.json",
+      "game_launched": false
+    },
+    "host_suite": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+      "result": "OK",
+      "tests": 2259,
+      "failures": 0,
+      "errors": 0,
+      "elapsed_seconds": 610,
+      "log": "/tmp/x3-candidate-IWGGQF/host-suite.log",
+      "d3d9_exports_prerequisite": "the candidate DLL was copied to build/d3d9.dll before the suite so test_d3d9_exports ran against these candidate bytes instead of skipping; build/d3d9.dll is an untracked build product",
+      "run43_comparison": "run43 (09a3b8d9) ran 2,246 tests OK; run44 runs 2,259 (13 added), still OK with 0 failures and 0 errors"
+    }
+  },
+  "dry_run": {
+    "performed": true,
+    "note": "the seven § 44 --dry-run launcher variants (A collide census, B1 baseline, B2 current filter, B3 history weight, B4 both, B5 both without sharpen, C new defaults); game never launched"
+  },
+  "load_check": {
+    "performed": true,
+    "how": "the state-hook benchmark loaded the candidate d3d9.dll as the process proxy in its device configurations, each exiting 0"
+  },
+  "full_fixture_chain_rerun": false,
+  "native_windows_verified": false,
+  "installed": false,
+  "qualification_verdict": "QUALIFIED: clean zero-warning configure and build on committed 5f218771 with no -dirty marker, no-x87 82 roots / 550 reachable / 0 violations (the three new roots are the two collide narrow-census trampoline handlers and get_buffer_lock_view_light), 17 exports, all eight site verifiers clean (collide 51/51 with the three narrow sites 0x45d665, 0x48a9a5 and 0x4e2530; cull-small-parts 19/19 at 0x47d2a2), the five selected shader generator checks PASS, every Wine fixture PASS (motion output 68/68 cases covering all 49 seam-ownership cases, pool-hull 77 checks and the eleven fade-route/cutout cases matching run43; sun-share live 22/0; cull census 71; cull small parts 113; collide box cull 38; collide narrow census 40; object lifetime 674; ownership 370/563; ownership admission 12 modes / 147 checks; material motion 1470; temporal pass with lattice; ambient occlusion 114), 0 behavioural regressions against committed records, benchmark and CPU preservation within noise on all three gates (168 preservation flag fields all 1, 0 LastError mismatches), host suite 2,259 tests OK, and all seven § 44 dry-runs exit 0 with cull-small-parts 2.0000/all by default, capture-frames 32 on the two --taa-debug commands and the expected census/filter/weight/sharpen values. Not installed.",
+  "limitations": [
+    "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+    "Only the commit marker, no-x87, export-list and state-hook benchmark checks bind these candidate bytes; the other fixtures build their own binaries from the same committed source.",
+    "The benchmark, cull-census, cull-small-parts, collide-box-cull and collide-narrow-census bench figures are synthetic per-call/per-pair fixtures under CrossOver Preview; none is measured game FPS.",
+    "The full `python3 tools/shaders/generate_rigid_motion_pixel.py --check` is known stale on main for ao_apply, ao_blur, ao_gtao, ao_linearize, hdr_meter_level0, hdr_meter_reduce, hdr_tonemap, hdr_tonemap_sharpen, hdr_writeback, taa_sharpen, quad_vertex and rigid_motion, from before this cycle; only the five shaders touched by this cycle were checked and they all PASS. Not fixed here.",
+    "temporal_resolve_filter needs 521 ps_3_0 instruction slots against the 512 guaranteed by the specification; the second resolve variant therefore depends on the device reporting a higher actual limit. The lattice section passes but this is a real portability exposure for native Windows drivers that enforce 512.",
+    "The collide and cull-small-parts replay evidence comes from recorded engine traces in the fixtures, not from a live game session; the § 44 sessions are what will exercise them in flight.",
+    "The shader --check invocations execute a native D3DX compiler under Wine and were run without the wine_lock.py wrapper, serially and with no other Wine command in flight; every fixture and benchmark command did use the wrapper.",
+    "Installation and game launch are owned by the main session; nothing was installed and the game was never launched."
+  ]
+}

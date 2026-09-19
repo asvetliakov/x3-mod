@@ -13,31 +13,29 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`2cac537a5ae7a7b9329278ff33ff3a235e11c4758e59e4421b27f44d84982ed4`
-(18,482,072 bytes), built once on Opus from clean committed main `09a3b8d9`
-(2026-09-19; marker `X3M_SOURCE_COMMIT=09a3b8d9…`, no `-dirty`), installed
-through `manage.py install` (ownership manifest `09a3b8d9`). The
-[build record](../verification/results/run43-candidate-build.json) binds the
-clean build, the no-x87 audit (539 reachable), 17 exports, eight site verifiers
-incl. cull small parts 19/19 and collide 29/29, 55 motion-output cases incl. the
-seven fade-route cases (0 behavioural regressions over 12,702 fields), the
-sun-lane live set, cull census 71, cull small parts 113, collide box cull 38,
-object lifetime, ownership, material motion, temporal pass, AO, comparison
-controls, the state-hook benchmark, the full host suite (2246 OK) and the five
-§43 dry-runs. The [install record](../verification/results/run43-candidate-install.json)
-binds the installed bytes, unchanged EXE/bottle hashes and the rollback: run42
-`1a5dd46c…` in `/tmp/x3-candidate-HeaDRN/rollback`. A first run43 build
-(`532e1688…`, `/tmp/x3-candidate-7kxCZ4`) was rejected and must not be
-installed. No game launched.
+`3caa48a02166eda93e14daab78c2d53afa8963761b5cc2ce63de273fa832f300`
+(18,615,808 bytes), built once on Opus from clean committed main `5f218771`
+(2026-09-19; marker without `-dirty`), installed through `manage.py install`
+(ownership manifest `5f218771`). The
+[build record](../verification/results/run44-candidate-build.json) binds the
+clean build, the no-x87 audit (82 roots, 550 reachable), 17 exports, eight site
+verifiers (collide 51, cull small parts 19), five shader checks, 68
+motion-output cases incl. all 49 `seam-ownership-*` (0 behavioural
+regressions), sun-share live, cull census, cull small parts, collide box cull,
+collide narrow census 40, ownership admission 147, object lifetime, ownership,
+material motion, temporal pass with the lattice case, AO, comparison controls,
+the state-hook benchmark, the full host suite (2259 OK) and the seven §44
+dry-runs. The [install record](../verification/results/run44-candidate-install.json)
+binds the installed bytes, unchanged EXE/bottle hashes and the rollback: run43
+`2cac537a…` in `/tmp/x3-candidate-IWGGQF/rollback`. No game launched.
 
-This build adds, on top of run42's: the fade-band motion route for modules
-behind the camera plane and the overlay arm for a node's translucent sub-mesh
-(the run130 residual shimmer), `unmatched=<reason>` on route rows;
-`--cull-small-parts <px>` with `--cull-small-parts-scope all|bodies` (default
-`bodies`; engine trampoline `0x0047d2a2`, default off); `--collide-box-cull`
-(integer box early-out at `0x0045d58e`/`0x0045cc7c` in the sector collide loop
-with pair counters, default off); the route bench and a noise-level lease trim.
-Default path change: only the fade route/overlay arm under HDR + TAA.
+This build adds, on top of run43's: `--cull-small-parts 2` scope `all` **on by
+default** for modded launches (`0` = off); per-draw lever 1 stage A + 2a (the
+route's value-only calls go to the native device under ownership; light
+buffer-lock view); `--collide-narrow-census` (default off); `--taa-current-filter`
+and `--taa-history-weight` (default off; the filtered resolve is 521 ps_3_0
+slots, see [platform-portability.md](architecture/platform-portability.md));
+`--capture-frames` up to 64.
 
 ## Session 2026-09-19: four changes merged, run43 candidate installed
 
@@ -55,7 +53,15 @@ Default path change: only the fade route/overlay arm under HDR + TAA.
   lever 1 stage A + 2a (ownership-wrapper bypass for value-only calls, failing
   HRESULTs still observed on a cold path; light lock view) is the next proxy
   work item; lever 3 after it (fixtures, then one flight); 2b closed.
-- Run 43 is queued ([user-runs.md](verification/user-runs.md) §43).
+- **Run 43 read** (run133–139; outcomes in the [run table](verification/user-runs.md)): the collide box cull
+  works but the 22 ms is the narrow phase on accepted pairs
+  ([sector-collide.md](reverse-engineering/sector-collide.md) §11), census built; cull scope `bodies`
+  saves nothing, `all` at 2 px takes 884 → 477 draws and ~30 → ~42 fps, now the default; the shimmer
+  persists with every draw routed: resolve-side ripple on jittered sub-pixel geometry
+  ([motion-output.md](verification/motion-output.md) "Run 139"), two default-off fixes built.
+- Lever 1 stage A + 2a merged: wrapper overhead 2.15 → 0.77–0.92 µs per routed draw, lease 1.98 →
+  0.73–0.90; stage B stays closed.
+- Run 44 is queued ([user-runs.md](verification/user-runs.md) §44).
 
 ## Session 2026-09-18 (late night): run 42 read, four changes in flight
 
