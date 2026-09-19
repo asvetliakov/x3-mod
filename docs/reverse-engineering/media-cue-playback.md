@@ -248,10 +248,12 @@ at `[esp+0x44]` (`0x0045c1e4`/`0x0045c262`) and the stop call `0x00498810` at
 of the retry, not the retry, and the selector's state machine is bit-identical.
 
 **What the player loses**: that cue's music or video stays silent for the
-backoff window instead of being re-attempted every frame, so use an expiring
-backoff keyed on `(id, kind)` and clear it on sector change. Under §2's scoping
-this touches only the per-sector soundtrack/ambience cue; speech, menu videos,
-cutscenes, script playback and savegame restore never reach the gate.
+backoff window instead of being re-attempted every frame. The original design
+recommended `(id, kind)` keys and sector-change clearing; the implementation
+uses ID keys inside the exact selector scope and interval-only recovery, with
+no sector-change clear. That selector can request silent video as well as audio
+(run186 ID2). Speech, script and other callers pass through the allocator hook
+and are not refused by the selector-only cache.
 
 ## 7. What this does not establish
 
@@ -450,9 +452,10 @@ added** and `0x004d017e` skips the `IDirectDrawMediaStream` acquisition
 entirely. So:
 
 * the **sector selector** path of §2 (`0x0045c607` → `0x004f65f0` →
-  `0x004f6610`, cue kind `0x5a`) selects `Videos` ids in `101`–`999` → flags
-  `0x110` → `0x10` set → **audio-only, no video branch at all**. The selector is
-  not on the video path;
+  `0x004f6610`, logged kind `0x5a`) does not determine audio/video by caller
+  identity. IDs101–999 take the audio-only arm except the table's listed
+  exceptions; observed selector ID2 takes flags8 and a video branch. The former
+  universal claim that selectors never play video is corrected by run186;
 * ids `1`, `2`, `3` get flags `8`: `0x10` clear (video stream added) and `8` set
   (primary **audio** stream suppressed, `0x004cf5xx`) — the only silent-video
   kind. For these the `IDirectDrawMediaStream` QI is **mandatory**: the
@@ -637,3 +640,46 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
   /tmp/x3-video-consumer/a.txt dec:004cf460 dec:004d14e0 dec:004d0c40 \
   dec:00498370 dec:004d1870 dec:004d0430 data:00608ad4
 ```
+
+
+## Run50 follow-up: helper destinations and common video playback (2026-09-20)
+
+The helper `0x004f65f0` has three direct caller returns: selector
+`0x0045c60c`, Videos-wrapper `0x00460429`, and object/emitter `0x004f683b`.
+The wrapper's destination is its second argument; the emitter's is signed
+WORD `[emitter+0x70]`. Either can supply 0x520, so that value alone cannot
+identify the observed first-view caller. The existing gate reads the helper
+return in `slot_c` but discards it after classification into `other`; retaining
+it in future telemetry needs no new patch site.
+
+The field logged as **kind is a prospective texture destination** on successful
+helper playback. At `0x004f6641` it overwrites `[record+0x30]`, replacing ID2's
+initial slot0x3d. Manager `0x00498370` bounds-checks the slot and resolves
+`*0x006069ac + slot*0x10 +8`; the target surface comes from the resulting
+object's +0x30. The runtime identity/consumers of slot0x520 are unobserved.
+Records are found by media ID, so successful users can share and retarget one
+record; a replacement cannot assume independent `(ID,target)` players.
+
+Both helper callers run shared `0x00498c90`, which invokes Pause/seek
+`0x004d0430` and sample/run `0x004d1870`; comm scripts enter the same playback
+routine. The manager pump/blit is shared too. An animated-atlas file is therefore
+not evidence of a separate safe playback backend. ID2's host decode supports
+asset readability, not Wine or native game playback.
+
+Allocator result zero means no linked media record. Detailed constructor errors
+are lost before this return; existing resource-recovery/E_OUTOFMEMORY paths
+mean zero alone cannot classify a failure as permanent. A selector-only backoff
+could reduce repeated stalls, and session quarantine could suppress retries,
+but both are policy choices with recovery tradeoffs, not video repairs. No
+permanent retry change or broader caller scope is ratified here. Query ID8100
+also failed in run186; it has callback semantics and stays outside this proposed
+suppression discussion.
+
+Independent deep review matched 490 instruction rows / 1,415 bytes across
+14 ranges with zero EXE mismatches; the site verifier passes with five allocator
+callers, one constructor caller and 67 installed sites checked. Local derived
+proposal: `/tmp/x3-media-failure-policy.md`; raw listings remain local. These
+findings do not establish destination lifetime, Reset behavior, the precise
+post-create blocking call, or a working replacement. A standalone documented-API
+playback fixture is the next investigation; no game launch or decoder change
+was performed.

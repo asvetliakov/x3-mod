@@ -658,3 +658,36 @@ as the requested cloud appearance. Next examine the native cloud texture's
 internal intensity/colour variation before another appearance experiment.
 No final replacement composite, fog-TAA motion proof, GPU qualification,
 automatic sector-strength policy or production patch follows from these masks.
+
+
+### Native-texture appearance experiment: not accepted
+
+Read-only native texture inspection finds fully opaque alpha in both families;
+RGB supplies the visible cavities and bright ridges. Bluewell's ≤0.01 encoded
+luma fraction is 71.16%, versus green's 37.72%. These are texture statistics,
+not physical optical density. A single artistic triplanar construction used
+those textures to modulate the fixed macro-cloud field and derive colour;
+it is not a recovered engine volume.
+
+The 128³ blue/green bakes preserve mean density 0.01975994 using fixed family
+normalization K=1.201995/1.111779, retaining unclamped floating maxima
+1.375/1.257. There is no per-frame strength tuning. The four 24-versus-128-step
+checks pass (worst p99/max transmittance error 0.002007/0.004909), but green
+frame21901 has dense coverage **4.2408%**, below the retained 5% gate. The
+reported outcome remains `FAIL_MORPHOLOGY`.
+
+An appearance sandbox uses pre-feature run153 frame7741: 210 captured draws,
+zero native fog-card shader hits in that frame, matching HDR/depth/camera,
+fixed exposure and assumed white unshadowed illumination. It is explicitly an
+old-scene comparison, not a prediction or reconstructed clean baseline for
+run185. Root and independent review see family colour and some internal
+variation, but still-smooth ellipsoid lobes. This is not the requested final
+cloud appearance and is not promoted to production. The numerical coverage
+miss is not the only reason for that decision.
+
+Local evidence: `/tmp/x3-fog-appearance-assets/` and
+`/tmp/x3-fog-patchy-replay/verification/results/fog-patchy-appearance/`;
+helper `tools/analysis/fog_patchy_appearance.py` in that isolated checkout.
+Host run 12.05 seconds; JSON, finite-value, syntax and independent factual/
+visual checks pass. No game/Wine/build/install was used. Lighting, TAA motion,
+shader budget, runtime cost, Reset and native execution remain unqualified.
