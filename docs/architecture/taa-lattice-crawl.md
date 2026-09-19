@@ -779,3 +779,48 @@ Local helper and results: `/tmp/x3-lattice-display-replay/tools/analysis/taa_lat
 and `/tmp/x3-lattice-display-replay/verification/results/lattice-display-replay/`
 (`rotation`, `static`, `slow159` JSON records). No expanded synthetic stress
 run was needed after failure of the bounded quality screen.
+
+## 17. Moving-truss mesh ownership recovered (2026-09-20)
+
+The captured model key `0x54b3` is a numeric resource-registry ID, not a content
+hash or a filename. The three initially named S/M/L solarplant bodies fail the
+captured fingerprint. Following power-factory aliases identifies
+`objects/stations/x3tc/terran_spp_panel.pbb`, LOD0: all **22 subgroup triangle
+counts** match (54,412 triangles/instance), 20/22 vertex counts match, and body
+scale matches all 1,056 selected draw records. Two runtime groups have three
+additional vertices in total; D3DX splitting is compatible with this difference,
+but the exact split provenance is not established.
+
+A material conversion correction is byte-proven: the point loader reads a
+signed BE32 value, executes `SAR EAX,2` at `0x00482669/676/684`, and stores AX.
+Later `MOVSX` loads at `0x004bc2d5/e0/f0` apply 2^-14 before the captured FP16
+vertex representation. This is floor division for negative values, not C-style
+truncation toward zero. The latter had created an artificial roughly 2% coverage
+mismatch; it must not be attributed to alpha sampling or rasterization.
+
+With corrected positions, captured transforms/culling/viewport and positive
+screen-space jitter, geometry-only projection in the fixed truss crop matches
+raw valid-depth support at IoU **0.99798 / 0.99712 / 0.99795** for frames
+6392/6401/6423. Respective depth matches are **1,972 / 4,143 / 3,878** pixels.
+An independent correct-floor reversed-jitter control falls to IoU0.567546.
+The dominant owning groups are materials4/6/18 (support/grid, 5,684 triangles
+per model), which use alpha-tested programs. That shader classification does
+not itself establish alpha-texture aliasing: mesh projection already explains
+almost all observed support, while UV/alpha execution remains unreconstructed.
+
+**Decision:** ownership is established sufficiently for a current-frame coverage
+experiment. It does **not** establish the cause of the displayed crawl or a
+production fix. Next compare exact visible pixel-area coverage against binary
+sampling on the same moving geometry and fixed material tracks, with independent
+supersampling/depth-overlap witnesses. No current RGB fitting, new flight or
+GPU-cost claim is needed for that bounded oracle. TAA remains required; a
+coverage-only result is not complete TAA/display acceptance.
+
+Local evidence: `/tmp/x3-lattice-ownership/REPORT.md`, `ownership_summary.json`
+and reproducible helpers. Parser census validates 531 groups / 935,531 faces /
+1,569,058 points; independent review confirmed the loader/conversion bytes,
+corrected projections, and all 12 malformed-input/missing-frame/viewport guards
+under optimized Python. Affected syntax checks pass. Exact D3DX half rounding,
+residual pixels, alpha effects and the eventual partial-coverage/depth contract
+remain open. No production edits, Wine, game, build or install accompanied this
+ownership investigation.
