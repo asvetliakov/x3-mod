@@ -1758,3 +1758,19 @@ reads per draw for `atest=`, so the cost is one compare in `apply_mip_bias` and 
 option, the `mipbias` fixture script gains an alpha-tested twin. If (b) changes nothing, the lines are geometry and
 the remaining levers are resolve-side: the period-8 ripple (filter 1.0 measured -52%; weight 0.95) and sharpen
 strength on high-contrast thin features.
+
+**run148/run149: mip bias A/B.** Inputs: `/tmp/x3-bottleX3-run148` (`X3M_TAA_MIP_BIAS=-0.5`, default) and
+`/tmp/x3-bottleX3-run149` (`X3M_TAA_MIP_BIAS=0`), each one 32-frame F8 at the plant, `--taa-debug`. Logged
+`mip_bias=-0.5` / `mip_bias=0` confirmed in `motion_output_frame`. The two poses are **not** the same: geometry
+bbox x355-990/y159-767 (run148, 139 046 px) vs x420-1066/y120-767 (run149, 136 502 px); scene-motion px/frame
+median 0.59 (run148) vs 0.38 (run149) — comparable order of magnitude, not an identical hold, so this is not the
+clean same-pose-twice protocol the diagnostic above calls for. Flip (coverage-toggling) px: 50 244 (run148) vs
+47 908 (run149), -4.6%, under the 20% bar. Resolved fast-band rms on flip px: run148 4.81, run149 6.22 codes
+(period 2-4 rms 2.31/3.05, period 4-8 4.23/5.42, period 8-32 "slow crawl" 11.1/12.3 — the slow band dominates
+both and was not visible in the 8-frame run146 captures). That is +29% with bias 0, **the opposite sign** from the
+diagnostic's alpha-test-cutout prediction (a drop). Resolved mean/p99 on flip px: 1.93/6.25 -> 2.43/9.07 (+26%/+45%);
+presented (post-sharpen) flip-px mean/p99: 3.93/12.30 -> 4.90/16.89. Verdict: flip-px count does not move >20%
+either way; resolved fast-band rms moves >20% but increases, not decreases, so it does not support "bias 0 removes
+alpha-test cutout flicker" and cannot be attributed to the bias alone given the pose difference above — the A/B is
+confounded and inconclusive; a same-pose repeat (identical camera transform logged, only bias varied) is needed to
+settle it.
