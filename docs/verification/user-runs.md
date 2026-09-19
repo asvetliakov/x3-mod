@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-20 (run 48 complete; run 49 A/B reported). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-20 (run 49 A/B and run 50 reported; run 51 media counter ready). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -137,7 +137,14 @@ reviewer will read `sector_background` status around the gate, load, or menu.
 
 ## 50. Argon Prime first-view stutters — existing media trace
 
-Ready on the currently installed build; no new DLL is needed. Run49 A/B are
+**Reported:** `/tmp/x3-bottleX3-run186` (60 referenced files). The user
+reports stutters approximately every 30 seconds. Two fully joined failed ID2
+selector calls account for almost all of their 359/408 ms frames; three later
+entries follow the same cadence/slow-frame pattern with suppressed outcomes.
+Other first-view media calls also stall; one slow frame remains unattributed.
+See the [media ledger](media-cues.md#run50-periodic-retries-directly-explain-argon-freezes-2026-09-20).
+
+Used the currently installed build; no new DLL was needed. Run49 A/B are
 reported. This session is solely for the remaining stutter attribution, not fog
 or lattice acceptance. The command passed launcher `--dry-run` on 2026-09-20;
 no game was launched by the agent.
@@ -163,3 +170,28 @@ constructor duration with the loop/game stall interval, and inspect suppression,
 foreign/early/drop counters before interpreting an absent outcome. An unmatched
 entry alone does not prove a hang. Keep GStreamer-free stalls open. See the
 [run49 timing analysis](../architecture/engine-frame-time.md#argon-prime-stalls-also-occur-with-phase-diagnostics-off).
+
+
+## 51. Media retry counter — same view, longer diagnostic interval
+
+Run186 attributes periodic stutters to failed selector media-ID-2 construction.
+This counter keeps run50's tracing and changes only `--media-cue-retry-s` from
+30 to **3600**. The installed DLL is unchanged; launcher `--dry-run` passes.
+This is a temporary diagnostic setting, not a new default or a decoder fix:
+a failed legitimate selector cue can remain unavailable for up to an hour.
+Successful media and other caller classes retain their existing behavior.
+
+Start the same new game in Argon Prime and repeat the camera sweep/hold for
+about 90 seconds. An initial failed build can still freeze; the question is
+whether the recurring 30-second freezes disappear. Report the preserved run
+and any later camera/view stalls. No F8, fog test or collision sequence is needed.
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --loop-phases --game-phases --game-phase-threshold-ms 20 --residual-phases --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2 --media-cue-trace --media-cue-cache on --media-cue-retry-s 3600
+```
+
+Verify one initial failed selector attempt followed by refusals, with no new
+selector failure attempt during the short observation. A success, eviction,
+clock error or incomplete tracing can invalidate that simple expectation.
+Keep any remaining non-selector/render stalls separate. This counter does not
+authorize a permanent hour-long retry policy.

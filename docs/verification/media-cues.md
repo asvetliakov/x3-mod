@@ -712,3 +712,57 @@ transcode cannot fix it. Pinning the exact site needs entry stamps at the six
 calls (three hookable enclosing functions, §8.6); even then the fix would be
 a Wine-side workaround or a proxy-side replacement of the media stream
 object. **Parked** unless the user wants avatars badly enough to fund that.
+
+
+## Run50: periodic retries directly explain Argon freezes (2026-09-20)
+
+User run186 (60 referenced files) reports roughly 30-second stutters. Current
+selector cache/trace are enabled, retry 30 seconds. Five real selector-ID-2
+entries occur at logged frames 1290/3639/6298/8779/11143, separated by
+30.350/30.399/30.424/30.440 seconds. Trace frame labels precede the enclosing
+measured game-frame labels here; joins use QPC, not log order alone.
+
+Two complete entry/outcome joins return zero after **347.937/397.679 ms**,
+wholly inside measured frames 1291/3640 (**359.282/408.326 ms**) and their
+Input/sector-post segments (**348.813/398.351 ms**). Each constructor interval
+contains eight GStreamer critical lines. These two events directly attribute
+the recurring freeze to failed media construction, rather than merely showing
+a matching cadence. The three later entries align with frames 6299/8780/11144
+(435.586/442.436/429.623 ms) and failure/refusal window counts; their outcome
+lines were suppressed, so exact outcome identity/duration is inferred there.
+
+Camera-valid frames 654–11372 contain twelve >100 ms frames. Eleven have a
+media entry inside the measured interval: five periodic selector events,
+one ID8100 query event and five first-view ID2 `other`/kind0x520 frames
+(some have multiple attempts). Frame655 (111.087 ms) remains unattributed;
+nearby prior outcomes ended before its interval. The first-view `other` path
+is outside the current selector cache, so a longer selector retry interval
+cannot be claimed to solve every observed stall.
+
+Trace inventory: 29 entries, 3,946 outcomes, seven entries without logged
+outcomes and 6,161 rate-suppressed outcomes. Overflow/stale/mismatched/lost,
+entry suppression/dropped/early/foreign are zero. Independent entry/outcome
+limits explain why an entry without an outcome is not a hang witness.
+Join entry `qpc`/`attempt` to outcome `qpc`/`attempts_frame`.
+
+The installed `mov/00002.dat` was rechecked: 533,575,370 bytes, header
+`000001b3` (MPEG-1 video ES). A native FFmpeg decode at ten seconds succeeds
+and shows a grid of glowing symbols/panels, an animated-atlas appearance;
+this is not evidence that the game's Wine playback hand-off succeeds.
+It is not sector music. Existing §run34 file resolution and decoder inventory
+explain the missing MPEG decode path under v4; run186 does not expose the
+constructor's failing HRESULT/filter. Earlier v5/comm and H.264 playback hangs
+remain relevant counterevidence to simply enabling the old decoder experiment.
+
+**Decision:** prepare run51 with only retry 30→3600 changed to separate recurring
+selector failures from first-view failures. This is an explicitly temporary
+counter that delays legitimate recovery, not a default change or playback fix.
+Investigate the non-selector caller and failed-construction semantics before
+broadening cache scope. The user has asked whether actual playback can be
+repaired; no decoder/stream replacement is qualified by this trace.
+
+Local reproducible evidence: `verification/results/run50-media/` (script,
+validated JSON and report); original `/tmp/x3-bottleX3-run186`. Reviewer rerun
+of the reproducer matched its JSON byte-for-byte. Run51 launcher dry-run also
+passes and differs in that one retry value only. No game/Wine run or installed
+file modification was performed by the agent.

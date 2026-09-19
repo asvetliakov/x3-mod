@@ -54,7 +54,9 @@ submission findings are recorded in their owning notes. Run49 A (run183 diagnost
 Argon Prime and corvette saves, in that order. Triage finds about 51 FPS in the
 phase-off busy plateau; R7 light selection is too small to optimize. Argon
 stalls persist with phase diagnostics off and correlate with media-backend
-errors; exact caller/duration tracing remains a separate follow-up. Moving collision is
+errors. [Run50](verification/media-cues.md#run50-periodic-retries-directly-explain-argon-freezes-2026-09-20) now directly attributes two periodic stalls to failed ID2 media
+construction; three later retries follow the same pattern. First-view media
+failures are a separate caller path. The temporary [run51 counter](verification/user-runs.md#51-media-retry-counter--same-view-longer-diagnostic-interval) is ready; retry defaults and decoder remain unchanged. Moving collision is
 about 98% of printed instrumented query time inside descent in the expensive interval, so query setup is not
 the missing lever. Details are in the [frame-time note](architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20) and
 [collision note](reverse-engineering/sector-collide.md#run49-a-moving-query-cost-is-inside-descent-2026-09-20).
@@ -64,8 +66,9 @@ Card replacement with card-only state validation is reviewed and committed
 (`cd004f35`), preserving the normal setter path. The read-only sector diagnostic
 and the reviewed [239-sector fog census](reverse-engineering/sector-fog-census.md)
 (`a104f376`) are complete. The planned family anchors, bluewell 0.01 and
-foggreenoutlands 0.05, remain manual comparisons; automatic sector policy awaits
-the sector-chain flight and is not active. Count-only strength scaling is held.
+foggreenoutlands 0.05, remain manual comparisons. Run185 validates the reader
+in its observed sectors; automatic sector policy remains held during the spatial
+fog redesign. Count-only strength scaling is held.
 
 Light-selection and collision-query timers are integrated, reviewed and committed
 (`9fa4da5a`): 2,093 light-timer checks with zero failures; 142 collision-timer
