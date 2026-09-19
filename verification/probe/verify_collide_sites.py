@@ -619,7 +619,7 @@ def _f32(value):
         return float('inf') if value > 0 else float('-inf')
 
 
-SAT_SLACK, SAT_FINITE_MAX, SAT_REPS = 1.0 + 2.0 ** -45, 3.4028234663852886e38, _f32(1e-6)
+SAT_SLACK, SAT_REPS = 1.0 + 2.0 ** -20, _f32(1e-6)
 _SAT_AXES = (  # per axis: the |T.L| terms (sign, T index, R index or None) and the radius terms (extent 'a'/'b', index, Bf index or None), in the engine's order
     (((1, 0, None),), (('b', 2, 2), ('b', 1, 1), ('b', 0, 0), ('a', 0, None))),
     (((1, 1, 3), (1, 2, 6), (1, 0, 0)), (('a', 2, 6), ('a', 1, 3), ('a', 0, 0), ('b', 0, None))),
@@ -652,8 +652,7 @@ def sat_disjoint(R, b, T, a):
         for k, (which, index, fi) in enumerate(r_terms):
             term = extent[which][index] * (bf[fi] if fi is not None else 1.0)
             radius = term if k == 0 else radius + term
-        limit = radius * SAT_SLACK
-        if t > limit and t <= SAT_FINITE_MAX and limit >= 0.0:
+        if not t <= radius * SAT_SLACK:   # unordered separates, as the engine's fcompp does
             return number
     return 0
 

@@ -36,14 +36,16 @@ inline std::uint64_t fnv1a(const unsigned char* p, unsigned n, std::uint64_t h =
 
 // The engine adds reps = 1e-6f (0x00565600) to |R| and stores each entry back as float32.
 constexpr float reps = 1e-6f;
-// Conservative compare: an axis separates only if |T.L| > (ra + rb) * (1 + 2^-45), both
-// finite and the radius sum non-negative. NaN and infinities never separate (the engine's
-// `fcompp` reports "separated" on unordered; keeping the pair only costs visits).
-constexpr double slack = 1.0 + 0x1p-45, finite_max = 3.4028234663852886e38;
-inline bool separates(double t, double radius_sum) {
-    const double limit = radius_sum * slack;
-    return t > limit && t <= finite_max && limit >= 0.0;
-}
+// The engine's compare is `fcompp; fnstsw; test ah,1`: the axis separates when C0 is set, i.e.
+// when ra + rb < |T.L| OR the compare is unordered. Unordered must separate here too: a kept
+// NaN pair would descend to the leaf triangle test, whose own NaN compares read "not separated"
+// and would report a contact the engine never reports. So: separated = !(t <= limit), which is
+// the engine's predicate bit for bit on NaN, infinities and negative radius sums, with
+// limit = (ra + rb) * (1 + 2^-20). The margin only ever keeps a finite pair the engine prunes
+// (cost: visits); 2^-20 exceeds what an x87 at 24-bit precision control can lose over these four
+// sums (~2^-22), so no x87 mode can keep a finite pair that this prunes.
+constexpr double slack = 1.0 + 0x1p-20;
+inline bool separates(double t, double radius_sum) { return !(t <= radius_sum * slack); }
 // |v| by clearing the sign bit in the integer domain: with -mfpmath=sse GCC still emits x87 `fld; fabs; fstp` for
 // std::fabs of a value it loads from memory, and this code must not touch the x87 state.
 inline float abs_f(float v) { std::uint32_t u; std::memcpy(&u, &v, 4); u &= 0x7fffffffu; std::memcpy(&v, &u, 4); return v; }

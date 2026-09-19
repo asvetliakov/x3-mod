@@ -286,11 +286,20 @@ static void rotation(float* R) {
                          2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)};
     for (unsigned i = 0; i < 9; ++i) R[i] = float(m[i]);
 }
-// Station-scale `a`, ship-scale `b` (model units), a translation of `k` times the two box diagonals in a random direction.
+// Station-scale `a`, ship-scale `b`, a translation of `k` times the two box diagonals in a random direction.
+// world_units = false: model units (extents 1e-3..50 against 1e-4..2). world_units = true: the magnitudes run 44 observed,
+// a station of radius 9.2e6 against a ship of radius 4.3e4, BVH boxes from the root down to 1e-4 of it, `b` multiplied by
+// the per-query relative scale 0.5..2 exactly as 0x004e2530 does before the call (one float32 multiply).
+static bool world_units = false;
 static Case realistic(double k_lo, double k_hi) {
     Case c; rotation(c.R);
     double na = 0, nb = 0, d[3], nd = 0;
-    for (unsigned i = 0; i < 3; ++i) { c.a[i] = float(log_uniform(1e-3, 50)); c.b[i] = float(log_uniform(1e-4, 2)); na += double(c.a[i]) * c.a[i]; nb += double(c.b[i]) * c.b[i]; }
+    const float scale = float(uniform(0.5, 2));
+    for (unsigned i = 0; i < 3; ++i) {
+        c.a[i] = float(world_units ? log_uniform(9.2e2, 9.2e6) : log_uniform(1e-3, 50));
+        c.b[i] = world_units ? float(log_uniform(4.3, 4.3e4)) * scale : float(log_uniform(1e-4, 2));
+        na += double(c.a[i]) * c.a[i]; nb += double(c.b[i]) * c.b[i];
+    }
     do { nd = 0; for (double& v : d) { v = uniform(-1, 1); nd += v * v; } } while (nd < 1e-3 || nd > 1);
     const double reach = uniform(k_lo, k_hi) * (std::sqrt(na) + std::sqrt(nb)) / std::sqrt(nd);
     for (unsigned i = 0; i < 3; ++i) c.T[i] = float(d[i] * reach);
@@ -332,19 +341,22 @@ static std::uint32_t call(void* fn, const Case& c) { return fx_call_fast(fn, c.R
 static void* const replica_fn = fx_sat_replica;
 static void* const thunk_fn = reinterpret_cast<void*>(&x3m_collide_sat_thunk);
 
-struct Tally { unsigned long cases = 0, both_keep = 0, both_prune = 0, sse_keeps = 0, violations = 0, axis_mismatch = 0, axis_earlier = 0; };
+struct Tally { unsigned long cases = 0, both_keep = 0, both_prune = 0, sse_keeps = 0, violations = 0, axis_mismatch = 0, axis_earlier = 0, outside_band = 0, axis_unexplained = 0; };
+// Every disagreement must be the 2^-20 margin and nothing else: every projected distance is linear in T, so with T
+// stretched by (1 + 2^-18), four times the margin, the replacement must prune, at the engine's axis or an earlier one.
+static std::uint32_t stretched(const Case& c) { Case s = c; for (float& v : s.T) v = float(double(v) * (1.0 + 0x1p-18)); return call(thunk_fn, s); }
 static void compare(Tally& t, const Case& c) {
     const std::uint32_t engine = call(replica_fn, c), ours = call(thunk_fn, c);
     ++t.cases;
     if (engine > 15 || ours > 15) { ++t.violations; return; }
     if (!engine) { if (ours) { if (++t.violations <= 3) std::printf("DETAIL violation axis=%lu T=%a,%a,%a\n", (unsigned long)ours, c.T[0], c.T[1], c.T[2]); } else ++t.both_keep; return; }
-    if (!ours) { ++t.sse_keeps; return; }
+    if (!ours) { ++t.sse_keeps; const std::uint32_t s = stretched(c); if (!s || s > engine) ++t.outside_band; return; }
     ++t.both_prune;
-    if (ours != engine) { ++t.axis_mismatch; if (ours < engine) ++t.axis_earlier; }
+    if (ours != engine) { ++t.axis_mismatch; if (ours < engine) ++t.axis_earlier; const std::uint32_t s = stretched(c); if (!s || s > engine) ++t.axis_unexplained; }
 }
 static void report(const char* name, const Tally& t) {
-    std::printf("CATEGORY %s cases=%lu both_keep=%lu both_prune=%lu sse_keeps=%lu violations=%lu axis_mismatch=%lu axis_earlier=%lu\n",
-                name, t.cases, t.both_keep, t.both_prune, t.sse_keeps, t.violations, t.axis_mismatch, t.axis_earlier);
+    std::printf("CATEGORY %s cases=%lu both_keep=%lu both_prune=%lu sse_keeps=%lu violations=%lu axis_mismatch=%lu axis_earlier=%lu outside_band=%lu axis_unexplained=%lu\n",
+                name, t.cases, t.both_keep, t.both_prune, t.sse_keeps, t.violations, t.axis_mismatch, t.axis_earlier, t.outside_band, t.axis_unexplained);
 }
 // Scales T to the replica's own keep/prune boundary by bisection (every projected distance is linear in T, so the
 // verdict is monotone in the scale), then emits the pairs around it: the adversarial near-tangent set.
@@ -354,7 +366,7 @@ static void near_tangent(Tally& t, std::vector<Case>* keep_sample) {
     auto scaled = [&](double k) { Case s = c; for (unsigned i = 0; i < 3; ++i) s.T[i] = float(double(c.T[i]) * k); return s; };
     if (call(replica_fn, scaled(lo)) || !call(replica_fn, scaled(hi))) return;
     for (unsigned i = 0; i < 60 && hi - lo > hi * 1e-16; ++i) { const double mid = 0.5 * (lo + hi); (call(replica_fn, scaled(mid)) ? hi : lo) = mid; }
-    for (int step = -4; step <= 4; ++step) {
+    for (int step : {-64, -16, -4, -2, -1, 0, 1, 2, 4, 16, 64}) {   // float steps of T: the margin is about 16 of them wide
         Case s = scaled(step < 0 ? lo : hi);
         for (unsigned i = 0; i < 3; ++i) for (int n = 0; n < (step < 0 ? -step : step); ++n) s.T[i] = std::nextafter(s.T[i], step < 0 ? 0.0f : (s.T[i] < 0 ? -1e38f : 1e38f));
         compare(t, s);
@@ -433,21 +445,30 @@ int main() {
 
     // ---- (i)-(iii): verdicts over the node-pair population, x87 at 53-bit precision (the engine's D3D-less default is 0x027f) ----
     fx_set_cw(0x027f);
-    Tally real, tangent, degen, host;
+    Tally real, tangent, degen, host, world, world_tangent;
     std::vector<Case> tangent_sample, early, overlap;
     for (unsigned i = 0; i < 1200000; ++i) compare(real, i & 1 ? realistic(0, 2.5) : realistic(0, 0.6));
     for (unsigned i = 0; i < 40000; ++i) near_tangent(tangent, &tangent_sample);
     for (unsigned i = 0; i < 150000; ++i) compare(degen, degenerate(i));
     for (unsigned i = 0; i < 150000; ++i) compare(host, hostile(i));
-    report("realistic", real); report("near_tangent", tangent); report("degenerate", degen); report("hostile", host);
-    check(real.cases == 1200000 && real.both_keep > 100000 && real.both_prune > 100000 && tangent.cases > 300000 && tangent.both_keep > 100000 && tangent.both_prune > 100000
-          && degen.both_keep > 10000 && degen.both_prune > 10000 && host.cases == 150000, "population: > 1e6 realistic pairs, > 3e5 near-tangent, both verdicts well represented");
-    check(real.violations + tangent.violations + degen.violations + host.violations == 0, "(i) replica keeps the pair => SSE2 keeps it, every category");
-    check(real.sse_keeps == 0 && degen.sse_keeps == 0, "(ii) outside the near-tangent and non-finite sets SSE2 prunes everything the replica prunes");
-    check(real.axis_mismatch == 0 && degen.axis_mismatch == 0 && tangent.axis_earlier == 0 && host.axis_earlier == 0, "(iii) same separating axis; never an earlier one");
-    const unsigned long total = real.cases + tangent.cases + degen.cases + host.cases;
-    std::printf("KEEP total=%lu sse_keeps_realistic=%lu sse_keeps_near_tangent=%lu sse_keeps_degenerate=%lu sse_keeps_hostile=%lu axis_mismatch_near_tangent=%lu axis_mismatch_hostile=%lu\n",
-                total, real.sse_keeps, tangent.sse_keeps, degen.sse_keeps, host.sse_keeps, tangent.axis_mismatch, host.axis_mismatch);
+    world_units = true;
+    for (unsigned i = 0; i < 400000; ++i) compare(world, i & 1 ? realistic(0, 2.5) : realistic(0, 0.6));
+    for (unsigned i = 0; i < 20000; ++i) near_tangent(world_tangent, nullptr);
+    world_units = false;
+    report("realistic", real); report("near_tangent", tangent); report("degenerate", degen); report("hostile", host); report("world_scale", world); report("world_near_tangent", world_tangent);
+    check(real.cases == 1200000 && real.both_keep > 100000 && real.both_prune > 100000 && tangent.cases > 300000 && tangent.both_keep > 100000 && tangent.both_prune > 50000
+          && degen.both_keep > 10000 && degen.both_prune > 10000 && host.cases == 150000 && world.both_keep > 30000 && world.both_prune > 100000 && world_tangent.cases > 150000
+          && world_tangent.both_keep > 50000 && world_tangent.both_prune > 25000, "population: > 1e6 realistic pairs, > 3e5 near-tangent, the observed world magnitudes, both verdicts well represented");
+    const Tally* all[6] = {&real, &tangent, &degen, &host, &world, &world_tangent};
+    unsigned long total = 0, violations = 0, outside = 0, earlier = 0, unexplained = 0;
+    for (const Tally* t : all) { total += t->cases; violations += t->violations; outside += t->outside_band; earlier += t->axis_earlier; unexplained += t->axis_unexplained; }
+    check(violations == 0, "(i) replica keeps the pair => SSE2 keeps it, every category, NaN / inf / negative extents included");
+    check(outside == 0, "(ii) every pair SSE2 keeps and the replica prunes lies inside the 2^-20 margin (pruned once T is stretched by 2^-18)");
+    check(host.sse_keeps + host.axis_mismatch <= host.cases / 1000 && real.sse_keeps <= real.cases / 10000 && world.sse_keeps <= world.cases / 10000,
+          "(ii) the extra-keep rate is margin-sized on random pairs, and non-finite inputs get the engine's verdict and axis");
+    check(earlier == 0 && unexplained == 0, "(iii) same separating axis, or a later one only inside the margin; never an earlier one");
+    std::printf("KEEP total=%lu sse_keeps_realistic=%lu sse_keeps_world=%lu sse_keeps_near_tangent=%lu sse_keeps_world_near_tangent=%lu sse_keeps_degenerate=%lu sse_keeps_hostile=%lu axis_mismatch_near_tangent=%lu axis_mismatch_hostile=%lu\n",
+                total, real.sse_keeps, world.sse_keeps, tangent.sse_keeps, world_tangent.sse_keeps, degen.sse_keeps, host.sse_keeps, tangent.axis_mismatch + world_tangent.axis_mismatch, host.axis_mismatch);
     // Other x87 precision controls on the near-tangent sample (FEX's reduced-precision x87 computes in double whatever PC says;
     // a native 24-bit x87 differs from double by ~2^-24, which the geometric argument of 12.8 covers, not this comparison).
     {
@@ -576,7 +597,7 @@ int main() {
         if (!same(native[i], r, why) && ++mismatches <= 8) std::printf("DETAIL scenario %u: %s\n", i, why);
     }
     check(mismatches == 0, "patched: identical exit, EAX, ECX/EDX and callee-saved registers, EFLAGS, x87 control/tag/TOP, MXCSR, engine locals, visit counter and LastError");
-    check(reversed == 0 && disagreements == 0, "patched: no verdict differs on the replay set");
+    check(reversed == 0 && disagreements <= 2, "patched: no pair pruned that the replica keeps on the replay set (a kept pair inside the margin is allowed)");
     check(census_visits - census_before == scenarios.size(), "census site-7 stub counted every visit with the SSE2 SAT on");
 
     // ---- (v) bench: replica against SSE2, both mixes (direct calls; harness cost measured with a null callee) ----

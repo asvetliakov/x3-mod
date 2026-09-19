@@ -8,8 +8,8 @@
 // The rel32 of the sole `call 0x004e3280` at 0x004e25a3 is redirected to
 // x3m_collide_sat_thunk. The box test only prunes the BVH descent (contacts
 // come from the leaf triangle test alone), and the replacement separates only
-// where the engine's own compare separates with a 2^-45 relative margin to
-// spare, so it visits a superset of the engine's node pairs in the same order
+// where the engine's own compare separates with a 2^-20 relative margin to
+// spare (and, like the engine, on an unordered compare), so it visits a superset of the engine's node pairs in the same order
 // and finds the same contacts. Independent of X3M_COLLIDE_BOX_CULL and of
 // X3M_COLLIDE_NARROW_CENSUS (site 7 of the census is the entry 0x004e2530, a
 // different claim): any combination may be on.

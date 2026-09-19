@@ -16,7 +16,7 @@ import bottle
 ROOT = Path(__file__).resolve().parents[2]
 EXE = ROOT / 'build/verification/collide-sat-sse2/collide_sat_sse2_fixture.exe'
 OUT = ROOT / 'verification/results/collide-sat-sse2-cpu.json'
-CATEGORY_RE = re.compile(r'^CATEGORY (\w+) ' + ' '.join(rf'{k}=(?P<{k}>\d+)' for k in ('cases', 'both_keep', 'both_prune', 'sse_keeps', 'violations', 'axis_mismatch', 'axis_earlier')) + '$')
+CATEGORY_RE = re.compile(r'^CATEGORY (\w+) ' + ' '.join(rf'{k}=(?P<{k}>\d+)' for k in ('cases', 'both_keep', 'both_prune', 'sse_keeps', 'violations', 'axis_mismatch', 'axis_earlier', 'outside_band', 'axis_unexplained')) + '$')
 BENCH_KEYS = ('null_ns', 'early_axis_mean', 'early_replica_ns', 'early_sse2_ns', 'early_bracketed_ns', 'full_replica_ns', 'full_sse2_ns', 'full_bracketed_ns')
 
 

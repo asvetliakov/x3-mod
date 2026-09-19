@@ -165,8 +165,8 @@ class SatSite(unittest.TestCase):
         row = probe.parse_sat_install_line('00:01 collide_sat_sse2 requested=1 patched=1 reason=ok site=0x004e25a3 target=0x004e3280 write=plain handler=0x6f123450')
         self.assertEqual((row['patched'], row['reason'], row['site'], row['target'], row['write'], row['handler']), (True, 'ok', 0x4e25a3, 0x4e3280, 'plain', 0x6f123450))
         self.assertIsNone(probe.parse_sat_install_line('collide_sat_sse2 requested=1 patched=0 reason=callee_mismatch'))
-        parsed = runner.parse('CATEGORY realistic cases=10 both_keep=4 both_prune=6 sse_keeps=0 violations=0 axis_mismatch=0 axis_earlier=0\n'
-                              'CATEGORY hostile cases=5 both_keep=1 both_prune=2 sse_keeps=2 violations=0 axis_mismatch=1 axis_earlier=0\n'
+        parsed = runner.parse('CATEGORY realistic cases=10 both_keep=4 both_prune=6 sse_keeps=0 violations=0 axis_mismatch=0 axis_earlier=0 outside_band=0 axis_unexplained=0\n'
+                              'CATEGORY hostile cases=5 both_keep=1 both_prune=2 sse_keeps=2 violations=0 axis_mismatch=1 axis_earlier=0 outside_band=0 axis_unexplained=0\n'
                               'COLLIDE SAT SSE2 BENCH null_ns=3.00 early_axis_mean=1.09 early_replica_ns=63.00 early_sse2_ns=9.00 early_bracketed_ns=11.00 '
                               'full_replica_ns=123.00 full_sse2_ns=23.00 full_bracketed_ns=26.00\nCOLLIDE SAT SSE2 CPU checks=40 failures=0\n')
         self.assertEqual((parsed['checks'], parsed['failures'], parsed['cases'], parsed['sse_keeps'], parsed['violations']), (40, 0, 15, 2, 0))
@@ -181,14 +181,19 @@ class SatSite(unittest.TestCase):
         self.assertEqual(probe.sat_disjoint(identity, unit, [0.0, 0.0, -3.0], unit), 4)
         # Touching faces: reps widens the radius sum, the pair is kept (RAPID's bias toward overlap).
         self.assertEqual(probe.sat_disjoint(identity, unit, [2.0, 0.0, 0.0], unit), 0)
-        # Non-finite inputs never separate; the engine's fcompp would report axis 1 on unordered.
-        for bad in (float('nan'), float('inf'), float('-inf')):
-            self.assertEqual(probe.sat_disjoint(identity, unit, [bad, 0.0, 0.0], unit), 0)
-            self.assertEqual(probe.sat_disjoint(identity, [bad, 1.0, 1.0], [9.0, 0.0, 0.0], unit), 0)   # every axis that could separate carries the bad extent
-        self.assertEqual(probe.sat_disjoint(identity, [-1.0, -1.0, -1.0], [9.0, 0.0, 0.0], [-1.0, -1.0, -1.0]), 0)   # negative radius sum: kept
-        # The margin: separated only beyond (ra + rb) * (1 + 2^-45), i.e. 256 double ulps above the engine's own threshold.
-        self.assertEqual(probe.SAT_SLACK, 1.0 + 2.0 ** -45)
-        self.assertGreater(probe.SAT_SLACK * 2.0, 2.0)
+        # The engine's predicate exactly: unordered separates (fcompp sets C0), so a NaN pair is pruned at the first axis
+        # that sees the NaN and never reaches the leaf triangle test; infinities and negative radius sums compare as ordered.
+        nan, inf = float('nan'), float('inf')
+        self.assertEqual(probe.sat_disjoint(identity, unit, [nan, 0.0, 0.0], unit), 1)
+        self.assertEqual(probe.sat_disjoint(identity, [nan, 1.0, 1.0], [0.0, 0.0, 0.0], unit), 1)
+        self.assertEqual(probe.sat_disjoint(identity, unit, [0.0, 0.0, 0.0], [1.0, nan, 1.0]), 2)     # B0 is the first axis that uses a1
+        self.assertEqual(probe.sat_disjoint(identity, unit, [inf, 0.0, 0.0], unit), 1)
+        self.assertEqual(probe.sat_disjoint(identity, [inf, 1.0, 1.0], [9.0, 0.0, 0.0], unit), 0)     # inf <= inf on every axis that could separate
+        self.assertEqual(probe.sat_disjoint(identity, [-1.0, -1.0, -1.0], [0.0, 0.0, 0.0], [-1.0, -1.0, -1.0]), 1)   # 0 > a negative radius sum
+        # The margin: 2^-20, above what a 24-bit-precision x87 can lose; a finite pair inside the band is kept.
+        self.assertEqual(probe.SAT_SLACK, 1.0 + 2.0 ** -20)
+        self.assertEqual(probe.sat_disjoint(identity, [0.0, 0.0, 0.0], [1.0 + 2.0 ** -21, 0.0, 0.0], [1.0, 0.0, 0.0]), 0)
+        self.assertEqual(probe.sat_disjoint(identity, [0.0, 0.0, 0.0], [1.0 + 2.0 ** -19, 0.0, 0.0], [1.0, 0.0, 0.0]), 1)
 
     def test_core_compiled_against_the_twin(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
@@ -223,6 +228,7 @@ class SatSite(unittest.TestCase):
         for needle in ('install_window_open()', 'executable_verified()', 'callee_mismatch', 'pin_self()', 'engine_patch::claim_call(site_', 'engine_patch::restore_call(site_)',
                        'stmxcsr', 'cmp eax, 0x1f80', 'push ecx', 'push edx'):
             self.assertIn(needle, module)
+        self.assertIn('engine_patch::restore(n7_site_), back8 = engine_patch::restore(n8_site_)', (ROOT / 'src/proxy/collide_narrow_census.cpp').read_text())   # both restores always run
         for absent in ('X3M_COLLIDE_BOX_CULL', 'X3M_COLLIDE_NARROW_CENSUS', 'LightCallBoundary', 'InterlockedExchange', 'QueryPerformanceCounter'):
             self.assertNotIn(absent, module)   # independent of the other options; nothing per call but the test itself
         core = probe.SAT_CORE.read_text()

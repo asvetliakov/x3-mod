@@ -853,12 +853,19 @@ Per-query globals, all reset by `0x004e2780` at `0x004e2947`–`0x004e2951` **[s
 | Global | Role | Value on the narrow-phase path |
 | --- | --- | --- |
 | `0x00608534` | flag word, stored by `0x004e29f0` from ECX | `2`; bit 2 (`&4`) = "cap contacts", bit 3 (`&8`) = distance mode — both clear here |
-| `0x00608538` | contact cap | `1`, **not consulted** because bit 2 is clear |
+| `0x00608538` | contact cap | `1`, **not consulted** because bit 2 is clear — on the `0x0048a9a5` path only, see below |
 | `0x00596934` | first-contact flag, set at `0x004e27e7` when mode == 2 | `1` |
 | `0x00608544` | box-test (node-pair visit) counter, `add …,1` at `0x004e257d` | census site 7 counts the same events |
 | `0x00608548` | **triangle-test counter**, `add …,1` at `0x004e22a5` inside the leaf | never read by the census — see §12.6 |
 | `0x0060854c` | contact counter, incremented at `0x004e24e9`; `0x0047f1b0` returns `!= 0` | 0 for this pair |
 | `0x0059692c`…`0x0059695c`, `0x00596938` | top-level R, T and scale used by the leaf test | set at `0x004e28ae`–`0x004e2925` |
+
+**Second query path (review, §12.9) [s].** `0x0047f1b0` has a second caller, `0x0048a69e`, which passes flags `0xc`
+(bit 2 = cap contacts, bit 3 = distance mode) and a cap of 8 and keeps a running-minimum contact. "Cap inactive" and
+"first contact" above are therefore true only for the `0x0048a9a5` path. The cap at `0x004e2553` compares the
+**contact** counter `[0x0060854c]`, not visits, so a box test that visits a superset of node pairs in the same order
+reaches the same contacts in the same order and hits the cap at the same one: the superset argument of §12.5 holds
+on this path too.
 
 ### 12.3 `0x004e2530` exactly
 
@@ -931,9 +938,14 @@ A box test that is *more permissive* than the engine's therefore explores a supe
 order, finds exactly the same contacts (a subtree the engine's correct test separated cannot contain one) and
 reports the same first contact; it can only cost visits. That makes a conservative replacement **behaviourally
 exact**, with one residual: if the engine's own SAT ever errs toward separation, a permissive replacement could
-find a real contact the engine misses. The engine's own `reps = 1e-6` on box extents of order 1e-2 model units is
-a ~1e-4 relative bias toward overlap, four orders of magnitude above any double-vs-x87 difference, so a relative
-slack of ~2⁻⁴⁵ is inside the engine's existing margin **[s+i]**.
+find a real contact the engine misses. *Corrected in review (§12.9):* the engine's `reps = 1e-6` is **not** a ~1e-4
+relative bias. It adds about `1e-6·Σb` (or `1e-6·Σa`) to the radius sum, which is negligible against `ra` when
+`ra ≫ rb` (a station box against a ship box), so it cannot be relied on to absorb x87-mode differences. The
+implementation therefore carries its own relative margin of 2⁻²⁰ (§12.8), larger than what a 24-bit-precision x87
+can lose over the four sums. And the argument covers **finite** pairs only: on an unordered compare the engine
+*prunes*, and a replacement that kept such a pair would not merely cost visits — the leaf triangle test
+`0x004e2ba0`/`0x004e2a50` reads a NaN compare as "not separated" and would report a contact the engine never
+reports. NaN must separate exactly as in the engine **[s]**.
 
 | | Candidate | Exactness | Expected reduction | Size / risk |
 | --- | --- | --- | --- | --- |
@@ -961,9 +973,10 @@ Numerics for (c) **[s+i]**: under `FEX_X87REDUCEDPRECISION=1` the engine's x87 e
 engine performs (each `Bf` entry is stored back through `fstp dword`, and the scaled `b` extents are stored as
 float32 by `0x004e2530`) is bit-identical in its boolean result there. It is **not** bit-identical on native
 Windows x87 (80-bit registers, and §6 notes the software-vertex-processing device path can leave precision
-control at 24 bits), nor is `fcompp`'s unordered case automatic. Do not aim for bit-equality: implement the
-comparison as "separated only if `|T·axis| > (ra + rb)·(1 + 2⁻⁴⁵)`", treat any NaN as overlap, and rely on the
-pruning argument above. The threshold that could differ is exactly the near-tangent box pair, and there the
+control at 24 bits), nor is `fcompp`'s unordered case automatic. Do not aim for bit-equality on finite pairs:
+implement the comparison as "separated iff `!(|T·axis| <= (ra + rb)·(1 + 2⁻²⁰))`" — unordered separates, as `fcompp`
+does (the first draft of this note said "treat NaN as overlap" with a 2⁻⁴⁵ slack; both were wrong, §12.9) — and rely
+on the pruning argument above. The threshold that could differ is exactly the near-tangent box pair, and there the
 engine's own `reps` already decides in favour of descending.
 
 ### 12.6 First step and the counters that confirm it
@@ -1020,10 +1033,9 @@ Registers: EBX/EBP saved, ECX/EDX/ESI/EDI never written.
 **Replacement.** `core::obb_disjoint`: the same operands in the same association order in `double` (a product of two
 float32 values is exact in double), the two float32 roundings reproduced (`Bf`, and the projected distance before
 `fabs`), `Bf` rows computed when first needed (axis 1 needs row 0 only), and the compare
-`t > (ra + rb)·(1 + 2⁻⁴⁵) && t <= FLT_MAX && (ra + rb)·(1 + 2⁻⁴⁵) >= 0`. So an axis whose computation involves a NaN or
-an infinity never separates, and neither does a negative radius sum; an axis that involves only finite values decides
-as the engine does (a box with one infinite extent is still pruned along an axis that does not use that extent, by
-both). `|x|` is a sign-bit mask in the integer domain: GCC emits x87 `fld; fabs; fstp` for `std::fabs` of a loaded
+`separated = !(t <= (ra + rb)·(1 + 2⁻²⁰))`. That is the engine's predicate (`C0` set: `ra + rb < t` **or unordered**)
+bit for bit on NaN, infinities and negative radius sums — same verdict, same axis number — and differs from it only
+for finite pairs inside the 2⁻²⁰ margin, which it keeps. `|x|` is a sign-bit mask in the integer domain: GCC emits x87 `fld; fabs; fstp` for `std::fabs` of a loaded
 value even under `-mfpmath=sse`, which the build audit caught.
 
 **Thunk** (pure asm, 29 instructions, two paths): `push ecx; push edx; push eax; stmxcsr [esp]`, then if the MXCSR
@@ -1048,27 +1060,32 @@ nothing in an x87-only process reads them, and FEX does not track them at all (`
 `0x3f80`). On hardware with separate rounding state the bracketed path is exact.
 
 **Exactness.** Against the engine as it runs here: FEX's reduced-precision x87 computes in double, so the verdict is
-bit-identical except inside the 2⁻⁴⁵ band, where the replacement keeps the pair. Against geometry, which is what holds
+bit-identical except inside the 2⁻²⁰ band, where the replacement keeps the pair (and may then name a later axis). Against geometry, which is what holds
 on native Windows (80-bit or 24-bit x87, neither equal to double): the replacement prunes only when
 `|T·L| > ra + rb` with `Bf = |R| + 1e-6`, i.e. with RAPID's own bias toward overlap of ~1e-6 × extent against double
 rounding of ~1e-16, so every pair it prunes is a pair of disjoint boxes, and disjoint boxes contain no intersecting
-triangles. The engine's own test can differ from it near tangency by ~2⁻²⁴ under a 24-bit x87, in either direction;
-the visit count can then differ by a few node pairs, the contacts cannot.
+triangles. A 24-bit x87 loses at most ~2⁻²² over the four sums of a radius, so with the 2⁻²⁰ margin no x87 mode can
+keep a finite pair that the replacement prunes; the replacement can keep a few more, which costs visits only.
 
-**Fixture** `verification/probe/collide_sat_sse2_fixture.cpp` (40 checks). The 1,582 engine bytes are **not tracked**:
+**Fixture** `verification/probe/collide_sat_sse2_fixture.cpp` (41 checks). The 1,582 engine bytes are **not tracked**:
 `build_collide_sat_sse2.py` reads them from the installed EXE, pins them by SHA-256, relocates the 24 rel32 and 9
 abs32 operands at decoded instruction boundaries and writes `build/verification/collide-sat-sse2/sat_replica_inc.h`;
-the fixture un-relocates its copy and checks the FNV-1a the production install checks. 1,860,000 node pairs:
+the fixture un-relocates its copy and checks the FNV-1a the production install checks. 2,560,000 node pairs:
 
 | Category | Pairs | both keep | both prune | SSE2 keeps, replica prunes | replica keeps, SSE2 prunes | axis differs |
 | --- | --- | --- | --- | --- | --- | --- |
-| realistic (station 1e-3…50, ship 1e-4…2, random rotation, 0–2.5 diagonals apart) | 1,200,000 | 162,567 | 1,037,433 | 0 | **0** | 0 |
-| near-tangent (bisection on the replica to its own keep/prune boundary, ±4 float steps of T) | 360,000 | 160,006 | 199,994 | 0 | **0** | 0 |
-| degenerate (identity, signed permutations, single-axis rotations incl. exact 90°, non-rotations, zero extents, T = 0, faces touching exactly) | 150,000 | 61,266 | 88,734 | 0 | **0** | 0 |
-| hostile (×1e30, ×1e19, denormal, negative extents, NaN/±inf/FLT_MAX in each of the 18 slots) | 150,000 | 4,966 | 138,709 | 6,325 | **0** | 23,183 (never earlier) |
+| realistic, model units (station 1e-3…50, ship 1e-4…2, random rotation, 0–2.5 diagonals apart) | 1,200,000 | 161,719 | 1,038,281 | 0 | **0** | 0 |
+| realistic, observed world magnitudes (station boxes 9.2e2…9.2e6, ship boxes 4.3…4.3e4 × the descent's scale 0.5…2) | 400,000 | 51,351 | 348,649 | 0 | **0** | 1 |
+| near-tangent, model units (bisection on the replica to its own boundary; 0, ±1, 2, 4, 16, 64 float steps of T) | 440,000 | 200,000 | 79,448 | 160,552 | **0** | 1 |
+| near-tangent, world magnitudes | 220,000 | 100,001 | 39,938 | 80,061 | **0** | 0 |
+| degenerate (identity, signed permutations, single-axis rotations incl. exact 90°, non-rotations, zero extents, T = 0, faces touching exactly) | 150,000 | 60,948 | 88,516 | 536 | **0** | 7 |
+| hostile (×1e30, ×1e19, denormal, negative extents, NaN/±inf/FLT_MAX in each of the 18 slots) | 150,000 | 4,970 | 145,030 | **0** | **0** | **0** |
 
-Keep rate outside non-finite inputs: **0 of 1,710,000**; overall 0.34 %, all of it NaN/inf/negative-extent pairs the
-engine prunes on an unordered compare. The same near-tangent sample under x87 control words `0x037f` and `0x007f`:
+Every one of the 241,149 extra keeps and 9 later axes is the margin and nothing else: with T stretched by 2⁻¹⁸ the
+replacement prunes each of them at the engine's axis or an earlier one (`outside_band = 0`, `axis_unexplained = 0`),
+and it never names an earlier axis. On random pairs the extra-keep rate is **0 of 1,600,000**; the margin is about 16
+float steps of T wide, which is why the bisected set keeps the first steps past the boundary and prunes at 64. NaN,
+infinities and negative extents get the engine's verdict and axis number on all 150,000 pairs. The same near-tangent sample under x87 control words `0x037f` and `0x007f`:
 0 violations (FEX ignores precision control). State across the call, 20,000 direct calls under five MXCSR values
 (default, round-down + sticky, round-up, chop + DAZ, precision exception unmasked) and two x87 control words: all six
 preserved registers, the whole 28-byte `fnstenv` image, both live x87 registers, MXCSR; 3,000 scenarios through a
@@ -1081,15 +1098,15 @@ census's site-7 claim is installed on the same synthetic function first, both ru
 be restored first, bytes exact. Refusals: unset / `0` / no engine image (`callee_mismatch`), null site, changed
 argument set-up, changed return window, another callee (`target_mismatch`), not a call, second install, closed window.
 
-**Cost [m]** (FEX, direct calls, harness 3.1 ns subtracted; diagnostic timing, not game FPS):
+**Cost [m]** (FEX, direct calls, harness 3.1 ns subtracted; after the review changes; diagnostic timing, not game FPS):
 
 | Mix | replica | SSE2 | ratio |
 | --- | --- | --- | --- |
-| early separation (mean axis 1.09) | 56.2 ns | **5.4 ns** | **10.4×** |
-| full overlap (all 15 axes) | 122.5 ns | **20.7 ns** | **5.9×** |
+| early separation (mean axis 1.09) | 53.9 ns | **5.9 ns** | **9.1×** |
+| full overlap (all 15 axes) | 121.5 ns | **19.8 ns** | **6.1×** |
 
-The 5.4 ns is thunk plus axis 1, so the thunk itself is below that; the MXCSR bracket the default path avoids costs
-2.2 ns. Sizing [i]: §12.4's `V = 1 + 2·D` makes about half the visits full-overlap, so the SAT averages ≈ 89 ns of the
+The 5.9 ns is thunk plus axis 1, so the thunk itself is below that; the MXCSR bracket the default path avoids costs
+1.6 ns. Sizing [i]: §12.4's `V = 1 + 2·D` makes about half the visits full-overlap, so the SAT averages ≈ 89 ns of the
 measured 114 ns per visit (78 %, inside §12.5's 71–83 %) and ≈ 13 ns after; a visit would cost ≈ 38 ns, **≈ 3× per
 visit, 25 ms → ≈ 8 ms** at the plateau. That is a projection from a fixture; the flight below measures it. It also
 answers §12.4's open tension: FEX runs this x87 code at ≈ 5 instructions/ns, §5's bracket was too pessimistic.
@@ -1104,7 +1121,7 @@ implemented.
 
 **One flight:** `--collide-sat-sse2 --collide-narrow-census --loop-phases` at the station, then the same without
 `--collide-sat-sse2`. Compare `narrow_us_p50` per `node_pairs_p50` (subtract the census's 1.5 ns/visit, §11.8);
-`node_pairs` must be equal to within the keep band (0 in the fixture) for a parked ship, and `tri_tests` says how much
+`node_pairs` must be equal to within the keep band (0 of 1.6e6 random pairs in the fixture) for a parked ship, and `tri_tests` says how much
 of what remains is the leaf test. Expect `collide_sat_sse2 requested=1 patched=1 reason=ok … write=plain`.
 
 Verifier: `verify_collide_sites.py`, 72 checks (29 box cull, 26 census, 17 SAT): whole call, **sole reference to
@@ -1114,6 +1131,22 @@ windows, the body's SHA-256 and FNV, 24 calls all to the `fabs` helper, 16 plain
 flags written at the return, no XMM/MMX operand on the path, disjoint from 139 other claims including the census's four
 sites and compared windows (and the census and box cull see `0x004e25a3` as foreign). Ledger:
 [sampling-profiler.md](../verification/sampling-profiler.md), "Collide SAT SSE2".
+
+### 12.9 Reviews of `--collide-sat-sse2` (2026-09-19)
+
+**Opus review:** nothing blocking. Confirmed from the image: the ABI at `0x004e25a3` (ESI/EDI/two stack words, caller
+pops 8, EBX/EBP saved, ECX/EDX/ESI/EDI unwritten); axes A0, B0 and A0×B0 operand-exact against the listing; no SIMD
+instruction anywhere on the path; the thunk's pushes and pops balanced on both of its paths.
+
+**Fable review:** one blocking finding, fixed. Confirmed: the SAT's result is never consumed beyond zero / non-zero
+(the axis number is dead), the visit counter `0x00608544` is never read, the child order does not depend on the SAT.
+**Finding:** the first version kept NaN pairs ("NaN = overlap", from this note's own §12.5). The engine prunes them
+(`fcompp` unordered sets C0), and a kept NaN pair reaches the leaf triangle test, whose NaN compares read "not
+separated": a false **contact**, not extra visits. Fixed by `separated = !(t <= limit)`; the fixture now requires the
+engine's verdict and axis on every non-finite input (150,000 pairs, 0 differences). Also from the reviews: the margin
+widened from 2⁻⁴⁵ to 2⁻²⁰ so that a 24-bit-precision x87 (native Windows software-VP path) can never keep a pair the
+replacement prunes; §12.5's "~1e-4 relative bias" corrected; the observed world magnitudes added to the fixture; the
+census's shutdown now runs both entry-site restores unconditionally; the second query path added to §12.2.
 
 ## Reproduce
 

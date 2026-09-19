@@ -199,11 +199,11 @@ bool initialize() {
 bool shutdown() {
     if (!patched_) return true;
     const DWORD error = GetLastError();
-    const bool back5 = engine_patch::restore_call(n5_site_), back6 = engine_patch::restore_call(n6_site_), back7 = engine_patch::restore(n7_site_) && engine_patch::restore(n8_site_);
+    const bool back5 = engine_patch::restore_call(n5_site_), back6 = engine_patch::restore_call(n6_site_), back7 = engine_patch::restore(n7_site_), back8 = engine_patch::restore(n8_site_);
     patched_ = false; stubs_[0] = stubs_[1] = stubs_[2] = stubs_[3] = 0;   // the stubs stay in the arena (a thread may still be inside them)
-    state_ = back5 && back6 && back7 ? "restored" : "restore_failed";
+    state_ = back5 && back6 && back7 && back8 ? "restored" : "restore_failed";
     SetLastError(error);
-    return back5 && back6 && back7;
+    return back5 && back6 && back7 && back8;
 }
 const char* state() { return state_; }
 std::uintptr_t stub_address(unsigned site) { return patched_ && site >= 5 && site <= 8 ? stubs_[site - 5] : 0; }
