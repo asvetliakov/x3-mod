@@ -82,6 +82,18 @@ Use original hull shading, the user-selected
 and `--taa-far-stabiliser 0.985`; neither TAA option is accepted as a moving-camera fix.
 Do not add `--frame-timing`, state stamps, `--profile`, or `--submit-phases`.
 
+**Session A reported (2026-09-20):** diagnostic command =
+`/tmp/x3-bottleX3-run183`; phase-diagnostics-off counter =
+`/tmp/x3-bottleX3-run184` (64 referenced files each). Both sessions used three
+scenes, in order: (1) busy-station save, (2) new game in Argon Prime, where the
+user observes camera-turn stutters, (3) corvette save for collision and the
+solar-plant lattice. The user says those stutters do not occur in the busy-station
+save. Analysis is recorded in the [frame-time note](../architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20):
+phase-off busy plateau is about 51 FPS; Argon stalls persist without phase
+diagnostics and overlap media-backend failures. R7 is too small to optimize;
+moving query time is descent-dominated. **Session B remains pending**. No new lattice
+image-quality verdict is implied by this timing flight.
+
 **A. Busy-station attribution and first-view stalls.** At the busy-station save,
 hold the view 60 seconds stationary, then repeat moving/turning. On a fresh camera
 sweep record each visible freeze and whether revisiting the view is smooth. Then load

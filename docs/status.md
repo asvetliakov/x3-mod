@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (run49 installed; run48 analysis complete; awaiting run49 user flight). This is the
+Updated 2026-09-20 (run49 installed; run48 analysis complete; run49 A reported; B pending). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -50,9 +50,15 @@ after run 48, the user's preferences and the housekeeping list; the
 [goals table](goals.md) is current. Run 48 A evidence is recorded in the [motion-output ledger](verification/motion-output.md):
 stationary improvement confirmed; moving-arm crawl remains open. The moving-lattice
 replay is complete and found no safe fix to promote. Run180 fog/shadows and run181
-submission findings are recorded in their owning notes. Remaining engine/proxy
-costs, moving collision and first-view stalls await the consolidated diagnostic
-flight; run181 did not close those investigations.
+submission findings are recorded in their owning notes. Run49 A (run183 diagnostic / run184 counter) now covers busy-station, new-game
+Argon Prime and corvette saves, in that order. Triage finds about 51 FPS in the
+phase-off busy plateau; R7 light selection is too small to optimize. Argon
+stalls persist with phase diagnostics off and correlate with media-backend
+errors; exact caller/duration tracing is next after B. Moving collision is
+about 98% of printed instrumented query time inside descent in the expensive interval, so query setup is not
+the missing lever. Details are in the [frame-time note](architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20) and
+[collision note](reverse-engineering/sector-collide.md#run49-a-moving-query-cost-is-inside-descent-2026-09-20).
+Run181 did not close the engine/proxy or moving-collision investigations.
 
 Card replacement with card-only state validation is reviewed and committed
 (`cd004f35`), preserving the normal setter path. The read-only sector diagnostic
@@ -63,9 +69,9 @@ the sector-chain flight and is not active. Count-only strength scaling is held.
 
 Light-selection and collision-query timers are integrated, reviewed and committed
 (`9fa4da5a`): 2,093 light-timer checks with zero failures; 142 collision-timer
-checks and 675 queries with zero differences. The next flight combines them with
-the existing loop/game/residual phases. Qualification and installation are complete. [Run49](verification/user-runs.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight) is awaiting
-the user: a matched performance pair, then fog replacement/sector validation.
+checks and 675 queries with zero differences. Run49 A combined them with
+the existing loop/game/residual phases. Qualification and installation are complete. [Run49](verification/user-runs.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight) has its performance pair reported; fog replacement/sector validation (B) remains
+with the user.
 
 Ownership fixture runners and the 563-check inventory are repaired with fresh
 passes; all 31 generated shader checks now pass. Fresh collision memo (59 checks)

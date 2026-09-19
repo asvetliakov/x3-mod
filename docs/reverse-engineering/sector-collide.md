@@ -1709,3 +1709,58 @@ Run-log figures came from `grep`/`awk` over
 read whole): `collide_census` lines for the pair counts, `loop_phases` lines for
 `collide_p50_us`/`post_p50_us`/`simulate_p50_us`, and
 `grep -c profile_ …run129/session-20260918-090339-216.log` → 0 for §11.1.
+
+
+## Run49 A: moving query cost is inside descent (2026-09-20)
+
+User run183 (diagnostic) / run184 (counter) each contain three scenes: busy
+station, new-game Argon Prime, then the corvette collision/solar-plant save.
+This analysis uses complete query windows within the third scene's camera-valid
+range 16664–30253: **44 windows, frames 16805–30004, 13,200 valid frames**,
+zero invalid/discard counters. These are gameplay measurements, not another
+synthetic-tree benchmark.
+
+Across that whole interval: 1,255,359 executed miss queries and matching descents,
+287,000,152 visits, 23,727 triangle tests and 1,344 contacts. Printed same-sample
+query/descent/non-descent totals are 20,311,700 / 19,206,716 / 1,104,968 us;
+16 us difference is per-window display rounding. A low-cost complete window
+(22805–23104) has query/descent/non-descent p50 80/26/53 us, with 17,742
+queries and 22,324 visits. Low-cost and high-cost periods are present in the
+existing capture; another generic stationary-versus-moving flight is not the
+next missing evidence.
+
+The sustained expensive interval, **26705–30004**, contains 3,300 valid frames,
+374,188 miss=query=descent calls, 270,676,835 visits, 21,621 triangle tests and
+two contacts. Same-sample totals are **18,091,083 us query**, **17,762,738 us
+descent**, **328,340 us outside descent** (5 us rounding). Thus **98.185%** of
+printed instrumented query time is inside descent; outside descent averages **99.50 us/frame**.
+Window p50 ranges are query 3,456–7,571 us, descent 3,358–7,482 us, and
+same-sample non-descent 84–116 us. Do not subtract independent percentiles.
+
+Adjacent loop windows end four frames earlier and memo windows five frames
+earlier; neither yields a paired whole-collision residual. Whole-third adjacent
+memo counts show 1,187,640 transform-B misses out of 1,255,388 misses, with
+285,667,036 associated visits; clears, stuck and ineligible are zero. Camera
+motion is observed, but it does not identify which colliding body moved or
+establish stationary-object cost. Counter run184 has no query-phase rows.
+
+**Decision:** query setup is not the missing multi-millisecond optimization.
+The sustained descent ratio is **65.62 ns/visit**, versus the older synthetic
+fixture's 31.4 ns reference. This still does not establish a live per-visit
+floor: actual tree shape, access locality, contacts and query distribution
+are not represented by that small fixture. Diagnostic overhead reference
++1,424.8 ns/query is not subtracted as a flight measurement. Do not reopen the
+previous whole-descent rewrite, front tracking or advancement merely from this
+ratio; never cap/stride collision work.
+
+If traversal optimization proceeds, the next useful evidence is a bounded
+owner-thread snapshot of representative **real OBB trees and queries**, for
+replay against the original engine and candidate on identical inputs. Its
+layout, lifetime, copy limits and hook safety require a design/ABI qualification
+before implementation. No snapshot hook or acceleration patch is implied by
+this finding; retain current collision behavior while run49 qualifies.
+
+Reproduction and compact local witnesses:
+`verification/results/run49a-collision/{reproduce.py,result.json,result.md}`.
+The script was rerun and JSON/count invariants validated. No Wine/game execution
+was used for triage.

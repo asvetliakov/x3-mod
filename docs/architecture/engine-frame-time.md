@@ -817,7 +817,7 @@ They need no new implementation. Preserve the current rendering options and
 and the already-flown 22-site `--submit-phases` group from this attribution
 flight. No F8 during the first-view-stall observation. The new R7 option name
 and the separately owned collision query/descent option are for the parent to
-ratify and add to this same candidate/run; there is no callable R7 flag yet.
+ratify and add to this same candidate/run; the subsequently qualified flag is `--light-phases`.
 
 Bounded offline `i686-w64-mingw32-objdump -d -M intel` on the bottle EXE
 confirmed two direct calls to R7: `0x0042173b` and `0x0047dff1`, returning
@@ -826,8 +826,8 @@ caller-frame address is not this call. R7 has the `node+0xa0` and
 `0x00488170` gates, a conditional `_qsort` at `0x0047d9a3`, and a shared
 `pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret 4` epilogue at
 `0x0047d9ab`. The subsequent targeted RE qualified the entry/common-exit spans and inbound
-edges in [view-submit hot path](../reverse-engineering/view-submit-hot-path.md#r7-whole-call-timing-boundary-qualification-2026-09-20). Runtime instrumentation
-qualification is still in progress. Distinguish both callers
+edges in [view-submit hot path](../reverse-engineering/view-submit-hot-path.md#r7-whole-call-timing-boundary-qualification-2026-09-20). Runtime instrumentation subsequently passed its CPU fixtures and independent
+review; run49 results follow below. Distinguish both callers
 in the timing so non-submission work is not charged to `view_submit` by
 assumption. Full-call timing is enough to decide whether deeper R7 work is
 worthwhile; keep nested qsort detail deferred unless the qualification reveals
@@ -862,3 +862,98 @@ cannot be assigned to the 184.949 ms pre-render stall or summed as independent
 cost. The other four witness windows have no comparable creation summary.
 Instrumentation and loader work therefore remain possible owners; the next
 loop/game-phase flight must establish attribution before a patch is selected.
+
+
+## Run49 A: three-scene diagnostic/counter flight (2026-09-20)
+
+The user flew run183 with phase diagnostics and run184 with them off. Both used
+three scenes in order: busy-station save, **new game in Argon Prime** (the reported
+camera-turn stutters), then the corvette collision/solar-plant save. The user says
+the busy-station save does not exhibit these camera stutters. Both sessions log
+the same DLL/source identity, 18 identical common mode records, original hulls,
+light-map fade 80,220 with floor 1, per-draw RT binding, and `state_hooks=0`
+(`reason=none`). The differing media trampoline address is an allocation address,
+not a setting change. No F8 image burst was taken; this flight gives no new
+moving-lattice image-quality acceptance.
+
+Camera-validity transitions bound run183 gameplay scenes at 408–8050,
+8870–16315 and 16664–30253; run184 Argon is 8568–15701. Only the first load
+has `loading_phase` markers, so those markers must not be used as a complete
+three-scene segmentation. Conservative interior windows exclude transitions.
+
+### Busy station: approximately 50 FPS without phase diagnostics
+
+Run183 plateau windows ending 4800–6900 have 472 pass/material calls per frame,
+479 draws and 454 routed matches, without camera cuts. Median of eight 300-frame
+window medians: frame **20.675 ms**, pre-render 3.749, views 16.073, view setup
+1.621, submission 11.203 and scene end 0.354 ms. The nearby run184 plateau
+(frames 4210–5090) has 477 draws / 452 matches and about **19.5 ms/frame**,
+versus 20.8 ms from the diagnostic ten-frame stream. These separate flights
+support diagnostic-associated overhead, not an exact causal 1.3 ms cost or a
+persistent 40-FPS regression. `frame_end dt_ms` spans ten frames here; it is
+not a single-frame time.
+
+**R7 closed for this view:** all 2,400 selected light-timer frames are valid,
+with 83 traversal calls / 17 us and one cockpit call / 1 us per frame. Reported
+self estimate is 17 us/frame. Unknown callers and all selected-window health
+counters are zero. Do not subtract the self estimate to claim precise native
+cost: the two reported p50s total 18 us and include instrumentation.
+They are not a same-frame combined percentile, but are too small to justify
+this optimization target. The global reducer's startup `dropped=1` lies outside this selection.
+
+Pass apply/draw/end medians are 3.518/4.815/0.056 ms; residual
+prepare/setup/particles/other are 6.488/0.872/0.015/3.159 ms. These nested scopes
+are not an additive frame partition. Sparse proxy rows contain TAA 361.1 us,
+HDR writeback/meter 444.5/399.5 us, replay/apply 791.3/60.5 us.
+For 36 matched HDR rows, the median rowwise writeback-minus-meter is 45.65 us
+(range 41.9–67.8 us); meter is nested. The 3.159 ms other scope includes scene
+composite, environment-map work, fixups and loop tail. These timings do not
+establish new recoverable engine time or justify reopening the rejected state
+filter, sorting, pass-replay or instancing patches. Any next proxy change needs
+an isolated, feature-equivalent comparison and the existing lifetime proof.
+
+### Argon Prime: stalls also occur with phase diagnostics off
+
+Run183 contains 11 complete >100 ms Argon frames: one `pending_vm`, five
+`render`, five `input`. Here `input` contains the sector update, not merely
+OS input. Frame8912 takes 617.247 ms, of which 598.308 ms is PendingVm;
+render witnesses 9108/9109/9121/9364/9420 take 321–892 ms. Sector-post/input
+witnesses 10924/13000/15382/15521/15920 take 247–521 ms. All 187 associated
+segment CPU stamps are valid; fully in-scene timer windows have zero clock,
+failed-clock, unmatched, overflow, order or dropped errors.
+
+Every render witness overlaps 16 GStreamer critical lines in launcher stderr.
+Three later post/input witnesses (10924/13000/15382) overlap eight lines each
+and are spaced about 30 seconds apart. This matches the existing failed-cue
+retry interval; media windows report repeated ID2 failures and cache refusals.
+It is **temporal correlation**, not a measured per-call causal attribution.
+PendingVm8912 and post15521/15920 do not overlap those backend errors and remain
+unattributed. `video_*` counters are zero; tracing was off, so caller tags and
+per-constructor durations are unavailable. Render stalls cannot be assigned to
+shader/resource creation from untimestamped or cumulative loader summaries.
+
+Run184 has large stalls despite phase diagnostics being off: its interior
+Argon ten-frame spans ending 9150 and 9160 take **1,412 and 1,155 ms**. These
+are block durations, not individual-frame latencies or frame-equivalent pairs.
+QPC-mapped counter spans contain 32 and 24 GStreamer critical lines,
+respectively, so the backend correlation also persists with phase diagnostics
+off. Thus the new phase diagnostics are not required for the stall to occur.
+
+The next decisive existing option is `--media-cue-trace` with loop/game phases
+in Argon Prime. It can identify ID, caller and constructor duration before any
+new hook or cache policy is proposed. Keep retry at 30 seconds for this first
+trace; proceed after the pending run49B fog comparison. Refusal outcomes can
+consume the trace's 32/s outcome limit independently of proceeded-entry logging,
+so an entry without an outcome does not itself prove a hang. Check suppressed,
+foreign and dropped counters before treating absence as evidence.
+A longer existing retry interval can test
+periodic retry causality after tracing; it cannot be assumed to solve first-view
+render calls or the other three unattributed witnesses. Increasing retry to an
+hour also delays recovery for legitimate transient failures; it is not a new
+default or a behavior-neutral fix. Keep run49's fog flight
+separate from claims that these timing issues are fixed.
+
+Local reproducible evidence: `verification/results/run49a-busy/` and
+`verification/results/run49a-stutters/`, each with `reproduce.py`, validated
+`result.json` and `result.md`; the original logs remain in `/tmp/x3-bottleX3-run183`
+and `run184`. No Wine or game execution was used for this analysis.
