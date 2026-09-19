@@ -61,7 +61,7 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         double last=-1;bool monotone=true,ends=false;for(unsigned i=0;i<=64;++i){const double z=20000+i*1000.,depth=1.000003-6.000018/z;const double w=std::min(std::max((float(depth)-d0)*inv,0.f),1.f);monotone=monotone&&w>=last;last=w;if(i==0)ends=w==0;}
         ++numeric_checks;require(monotone&&ends&&last==1,"farw is monotone across a depth ramp, 0 near and 1 far");
         float a=1,b=1;bool refused=true;
-        const float invalid[][5]={{0,1.000003f,-6,80,130},{.8f,1.000003f,6,80,130},{.8f,0,-6,80,130},{.8f,1.000003f,-6,130,80},{.8f,1.000003f,-6,0,130},{NAN,1,-6,80,130},{.8f,1.000003f,-6,80,2e6f},{.8f,1.000003f,-6,1e-4f,2e-4f}};
+        const float invalid[][5]={{0,1.000003f,-6,80,130},{.8f,1.000003f,6,80,130},{.8f,0,-6,80,130},{.8f,1.000003f,-6,130,80},{.8f,1.000003f,-6,0,130},{NAN,1,-6,80,130},{.8f,1.000003f,-6,80,2e6f},{.8f,1.000003f,-6,1e-4f,2e-4f},{.8f,1.000003f,-6.000018f,9e5f,1e6f}}; // the last: F0 so near the far plane that d0 and d1 collapse in float32
         for(auto& p:invalid)
             refused=refused&&!x3::temporal::far_gate(p[0],p[1],p[2],1280,p[3],p[4],a,b)&&a==0&&b==0;
         refused=refused&&!x3::temporal::far_gate(.8f,1.000003f,-6,0,80,130,a,b);
@@ -78,6 +78,8 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         for(float bad:{-.1f,.5f,.995f,NAN}){in.far_weight=bad;require(pass.run(in,&out)==E_INVALIDARG,"far weight outside {0} U [weight, 0.99] is refused");}in.far_weight=.985f;
         for(float bad:{-1.f,4.5f,NAN}){in.far_filter=bad;require(pass.run(in,&out)==E_INVALIDARG,"far filter outside [0, 4] is refused");}in.far_filter=0;
         for(float bad:{-1.f,NAN,INFINITY}){in.far_inv=bad;require(pass.run(in,&out)==E_INVALIDARG,"far gate slope must be finite and >= 0");}in.far_inv=farInv;
+        in.weight=0;require(pass.run(in,&out)==E_INVALIDARG,"far weight over a history weight of 0 is refused");in.weight=.9f;
+        in.motion_policy=MotionPolicy::KnownCameraOnly;in.motion=nullptr;require(pass.run(in,&out)==E_INVALIDARG,"far stabiliser without per-pixel motion is refused");in.motion_policy=MotionPolicy::PerPixel;in.motion=s.motion.p;
         in.far_d0=NAN;require(pass.run(in,&out)==E_INVALIDARG,"far gate origin must be finite");in.far_d0=farD0;
         in.thin_clip=.75f;in.adaptive_weight=.97f;in.adaptive_lo=.1f;in.adaptive_hi=.5f;require(pass.run(in,&out)==E_INVALIDARG,"far stabiliser beside the adaptive weight is refused (one gate)");in.adaptive_weight=0;in.thin_clip=0;
         in.current_filter=1;require(pass.run(in,&out)==E_INVALIDARG,"far stabiliser beside the global current filter is refused");in.current_filter=0;
@@ -108,7 +110,7 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
             if(c->farW>0||c->farA>0){metric((std::string("far ")+c->name+": age target matches the CPU oracle").c_str(),ageOracle,0,0);
                 metric((std::string("far ")+c->name+": published mask equals the quantised gate").c_str(),maskError,0,.5/255);
                 metric((std::string("far ")+c->name+": far-band ripple ratio as the oracle's").c_str(),ripple[2]/baseRipple[2],oracleFar/baseRipple[2],.03);}
-            if(c->A<=0&&c->thin<=0){++numeric_checks;require(nearPixels>0&&nearDiffers==0,"near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels");}
+            if(c->A<=0){++numeric_checks;require(nearPixels>0&&nearDiffers==0,"near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels");}
             if(drift==0&&c->farW>0&&c->thin<=0){++numeric_checks;require(ripple[2]<=.25*baseRipple[2]&&ripple[1]<ripple[0]&&ripple[1]>ripple[2],"static far ripple <= 0.25 x base; the mid band lies between");}
             // (The filter alone does not lower this scene's ripple: a 0.3-px facet toggles whole rows and the mean over rows conserves it. Its
             // effect is reported and held to the oracle; the real-dump replay is its evidence.)
@@ -120,6 +122,13 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     {const auto baseRun=far_sequence(s,resolver,base,32),gateOff=far_sequence(s,resolver,both,32,false),failed=far_sequence(s,resolver,both,32,true,true);
         ++numeric_checks;require(same_rgb(baseRun.output,gateOff.output)&&!gateOff.masksFailed,"far stabiliser with inv = 0 (no valid projection) is the plain resolve bit for bit");
         ++numeric_checks;require(same_rgb(baseRun.output,failed.output)&&failed.masksFailed,"mask-target creation failure: option off for the session, plain resolve bit for bit, history kept");
+        // A Reset re-arms one attempt: fail the first run, Reset, and the next run has its masks again.
+        {TemporalPass pass;check("far retry initialize",pass.initialize(d,nullptr,resolver));check("far retry configure",pass.configure_far());const FlickerConfig none{"far-retry",0,0,.1f,.5f,false,false,.9f};
+            s.render(far_objects(0),EdgeBackground{.035f,farBandDepth[0],1},0,0);auto in=flicker_inputs(s,none,0,0,false);in.caller_scene_open=false;in.far_weight=.985f;in.far_d0=farD0;in.far_inv=farInv;Output out;
+            {MaskCreationFault fault(d);check("far retry failed run",pass.run(in,&out));}const bool failedOnce=pass.line_masks_failed()&&!out.stabiliser_mask&&out.color;
+            check("far retry second run",pass.run(in,&out));const bool sticky=pass.line_masks_failed()&&!out.stabiliser_mask&&out.used_history;
+            pass.before_reset();pass.after_reset(S_OK);check("far retry after Reset",pass.run(in,&out));
+            ++numeric_checks;require(failedOnce&&sticky&&!pass.line_masks_failed()&&out.stabiliser_mask,"mask failure is sticky within the session and re-armed once by a Reset");s.target(s.colorSurface.p);}
         const LineConfig lineOnly{"line-A1-mask-failure",true,1,0,0};const auto lineFailed=far_sequence(s,resolver,lineOnly,32,true,true);
         ++numeric_checks;require(same_rgb(baseRun.output,lineFailed.output)&&lineFailed.masksFailed,"mask-target creation failure under the line filter: plain resolve, history kept");}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());

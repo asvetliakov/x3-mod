@@ -240,8 +240,11 @@ program and the history stays valid.
 
 **Fixture** (`temporal_far_inc.h`; lattice mode 316 numerical / 17 state): near / mid / far bands (farw 0 / 0.4 / 1) of
 static geometry with 0.3-px facets of contrast 27, static and 0.04 px/frame, 256 frames. Shader = 2-D CPU oracle within
-0.00024 (bound 0.04 at w 0.985), age target exact, published mask = quantised gate; **near pixels bit-identical to the plain
-resolve in all four channels (0 of 39 936 px-frames differ)** for weight, filter and both; static far ripple x 0.154
+0.00025 (bound 0.04 at w 0.985), age target exact, published mask = quantised gate; **near pixels (farw 0) bit-identical to
+the plain resolve in all four channels, 0 of 39 936 px-frames differing, asserted for the four far configs without a line
+filter** (weight, filter, both, weight + soft clip 0.75; the soft clip is inert on a scene without sentinel); the weight +
+filter + line row reports `near_px=0` because the line filter legitimately changes the near band's facets, so identity is
+not expected there and that row is held to the oracle only; static far ripple x 0.154
 (oracle 0.154), mid x 0.68; `far_gate` against the closed form, monotone over a depth ramp, eight invalid inputs refused;
 `inv = 0` and the mask-creation fault are the plain resolve bit for bit with the history kept; refusals, hostile
 c5 / c22 / c24 / s8 / COLORWRITEENABLE1, failed draw, Reset. Not gated: the drifting motion-compensated ratio of plan
@@ -250,3 +253,19 @@ ripple in this scene (a 0.3-px facet toggles whole rows; the filter's evidence i
 
 **Flight.** `--taa-far-stabiliser 0.985` (weight only) against `--taa-far-stabiliser 0.985,1` (weight + filter), stopped
 at the run153 station and drifting past; watch far blinking lights (remedy W 0.97) and the plant's far end.
+
+**Gate precision.** For 80,130 at 1280 px the band is d0 = 0.99985647 to d1 = 0.99991286, 5.6e-5 wide: about 950 float32
+depth steps (5.96e-8 below 1), so `d - d0` is exact and the binding quantisation is the mask's 8 bits (255 levels, weight
+steps of 0.4 % of `W - w`). Rounding d0 and d1 to float32 moves `inv` by up to 0.1 % (fixture: 17 734.9 against 17 749.3);
+`far_gate` refuses footprints whose two depths collapse in float32 (tested at 9e5,1e6), and wider targets shorten the band
+in depth steps proportionally (3840 px: about 320).
+
+## Ratification amendment (2026-09-19)
+
+The far sharpen removal is dropped. Replayed through the real AgX + RCAS it is worth x 0.97-0.99 alone and nothing on top
+of the other two components (run153 station x 0.19 -> x 0.19, run142 drifting station x 0.43 -> x 0.42), against variants of
+three sharpen sites and a mask hand-over to two modules. The stabiliser is the far history weight and the far current
+filter, separately switchable. Also decided in review: a mask-target allocation failure is sticky within the session
+and re-armed once per Reset; the age pair allocated before such a fallback is left in place (releasing it would cut the
+history); the far stabiliser requires per-pixel motion and a history weight above 0.
+

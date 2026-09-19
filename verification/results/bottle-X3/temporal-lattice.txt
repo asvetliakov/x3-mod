@@ -2133,7 +2133,7 @@ CHECK line mask never holds on the square's silhouette PASS
 CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
 CHECK line mask covers the lattice region PASS
 CHECK line filter lowers the roping at a bounded line-peak cost PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.9948 current_filter_ms=0.9254 line_filter_ms=1.1778 far_stabiliser_ms=1.2551 taps_delta_ms=-0.0694 line_delta_ms=0.1831 far_delta_ms=0.2603 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.8474 current_filter_ms=0.8405 line_filter_ms=1.1117 far_stabiliser_ms=1.0713 taps_delta_ms=-0.0069 line_delta_ms=0.2642 far_delta_ms=0.2238 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -2151,6 +2151,8 @@ CHECK far filter outside [0, 4] is refused PASS
 CHECK far gate slope must be finite and >= 0 PASS
 CHECK far gate slope must be finite and >= 0 PASS
 CHECK far gate slope must be finite and >= 0 PASS
+CHECK far weight over a history weight of 0 is refused PASS
+CHECK far stabiliser without per-pixel motion is refused PASS
 CHECK far gate origin must be finite PASS
 CHECK far stabiliser beside the adaptive weight is refused (one gate) PASS
 CHECK far stabiliser beside the global current filter is refused PASS
@@ -2208,6 +2210,7 @@ SAMPLE far far-weight+soft-0.75: shader matches the 2-D CPU oracle within the FP
 SAMPLE far far-weight+soft-0.75: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE far far-weight+soft-0.75: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+soft-0.75: far-band ripple ratio as the oracle's actual=0.153974616 expected=0.153974616 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 FAR_STABILISER drift=0.04 config=far-base oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.014322 ripple_far=0.014322 ratio_near=1.0000 ratio_mid=1.0000 ratio_far=1.0000 oracle_ratio_far=1.0011 mask_error=0.000000
 SAMPLE far far-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.006000000 PASS
@@ -2252,6 +2255,7 @@ SAMPLE far far-weight+soft-0.75: shader matches the 2-D CPU oracle within the FP
 SAMPLE far far-weight+soft-0.75: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE far far-weight+soft-0.75: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+soft-0.75: far-band ripple ratio as the oracle's actual=0.153974616 expected=0.153974616 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK far-stabiliser program created on this device PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
@@ -2260,7 +2264,8 @@ CHECK mask creation fault reached PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK far stabiliser with inv = 0 (no valid projection) is the plain resolve bit for bit PASS
 CHECK mask-target creation failure: option off for the session, plain resolve bit for bit, history kept PASS
+CHECK mask failure is sticky within the session and re-armed once by a Reset PASS
 CHECK mask creation fault reached PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK mask-target creation failure under the line filter: plain resolve, history kept PASS
-RESULT PASS numerical=316 state_restorations=17 lattice=1
+RESULT PASS numerical=319 state_restorations=17 lattice=1

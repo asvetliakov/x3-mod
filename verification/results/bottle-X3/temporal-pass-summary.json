@@ -1,9 +1,9 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "a2ac0c1a2f7f2ce7f47c781119987f9a5c43bc311f95716521f73402d377c084",
-    "src/renderer/temporal_pass.cpp": "43f84857cb3ded33200a1cd54ec9afa96b53aaf60dd1b2465d13d68674a6dd72",
-    "src/temporal/resolve.h": "d7ca75a49351e8c6d2a599c93149d3a365bfcf6a2266d030ec1275022ecc61e9",
+    "src/renderer/temporal_pass.h": "2858b19d391827cfd68cec2434338eb005692bef8f29bdb2ead4f268ec36b4d9",
+    "src/renderer/temporal_pass.cpp": "8c61f5a23c6de6c5b2fd8af13cd8f2b00d3a6f6210f434fe01034b452cd348ca",
+    "src/temporal/resolve.h": "31594675d49b66cf2965597d3ae7c23f01ce7abbf3bb9d65b6c8e47041749082",
     "src/temporal/resolve.hlsl": "163af6d77c9c71c0e67df367db2c695098d5634eb2f1be427e1c1e93065f45be",
     "src/temporal/resolve_filter.hlsl": "65aedd02762660c77ff6af3530c429edb580ea3ccb52416cd303974ce86d51f6",
     "src/temporal/resolve_snapshot.hlsl": "b7b62bb66523b6e092143fc111a623413cd8d1e9bf7c7ab0afbc83a3f40f126d",
@@ -18,8 +18,8 @@
     "src/temporal/resolve_age_filter.hlsl": "5a13f4045d9128eb7c00a22b4a0c2c088a663d99936b54d71f3e68b4601abcdb",
     "src/renderer/temporal_resolve_age_filter_program_inc.h": "1e047b942856e3ec3230279c6e2047ab3c472d696e5c5f5b72f3e1b161f86c35",
     "verification/probe/temporal_flicker_inc.h": "4c52ec625f011cb22a4251aaccb80bd599d0a26850f8b3335ed14911de6a3b86",
-    "verification/probe/temporal_line_inc.h": "97f1deaa9cbd58a021f0807ccb16f898befb429a853b81b25d099401d34a7b97",
-    "verification/probe/temporal_far_inc.h": "d147bbcfcb1ab5367dc6b2de83054c1d64a6b6378848e324c51108a4e1af45cb",
+    "verification/probe/temporal_line_inc.h": "a38ecb0820b9239674a5c4084124084edad8980f2ad1e154528b49609d9d7329",
+    "verification/probe/temporal_far_inc.h": "56128b6c8072fd5bd0509816d359bdaf0de37ceb6c0cfadc969b5a2042b56012",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
     "src/renderer/temporal_resolve_far_program_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
     "src/temporal/line_mask_ps.hlsl": "f00eb622f7a9d5782eb4724624b3c79293ccada25c0558f8aa0c5d3550e45336",
@@ -36,7 +36,7 @@
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
     "verification/probe/temporal_pass_fixture.cpp": "bc45f7faea1fba7898c817243795ddeb70061cf722331367cd500d25839fe4db",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "5f3ce070e39261119db7b9e180e67c36e9ecaa297748970971fd3e9f833b12bd"
+    "verification/probe/run_temporal_pass.py": "15f97755418f9c43e9d57ccd9c65ccb2147f99a5f5120496d80c7d56944fd439"
   },
   "game_launched": false,
   "bottle": {
@@ -49,7 +49,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "06b51fdc49b94fab59a48370b2bf0adb1aba10d15b1753b24abdfacc6eb5785b",
+  "executable_sha256": "a334d49890b9fdd809d87be5b9124e4b5caea699148d2d7dbfb5fe8b5d275107",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -283,7 +283,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "fea48392ddc8a2fe001cbb9ecdcdc2b1595a2ca143aaf2ed9f9e14c881422e78",
+    "report_sha256": "b2296fd11eaaa71dc639bb4e852d6c3ae19ca1ce1c792e01a8381bb6cbbeba92",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -2064,13 +2064,13 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.9948",
-        "current_filter_ms": "0.9254",
-        "line_filter_ms": "1.1778",
-        "far_stabiliser_ms": "1.2551",
-        "taps_delta_ms": "-0.0694",
-        "line_delta_ms": "0.1831",
-        "far_delta_ms": "0.2603",
+        "plain_ms": "0.8474",
+        "current_filter_ms": "0.8405",
+        "line_filter_ms": "1.1117",
+        "far_stabiliser_ms": "1.0713",
+        "taps_delta_ms": "-0.0069",
+        "line_delta_ms": "0.2642",
+        "far_delta_ms": "0.2238",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

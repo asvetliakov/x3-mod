@@ -92,7 +92,8 @@ struct FrameInputs {
     // else within [weight, 0.99]: history weight lerp(weight, min(n / (n + 1),
     // far_weight), farw * (1 - saturate((speed - 0.5) / 1.5))), on the age
     // target. far_filter: 0 off, else A in (0, 4]: current sample lerp(point,
-    // exp(-A d^2) average, farw). Either needs configure_far(); refused beside
+    // exp(-A d^2) average, farw). Either needs configure_far() and
+    // MotionPolicy::PerPixel (the speed gate reads the routed motion); refused beside
     // adaptive_weight (one gate) and current_filter, and beside a line_filter
     // of a different A (one Gaussian per frame). farw = 0 pixels are the thin /
     // plain blend bit for bit.
@@ -247,7 +248,10 @@ public:
     // The mask targets could not be created (not a lost device): the line
     // filter and the far stabiliser are off for the rest of the session, runs
     // that ask for them proceed without (history kept), and this holds the
-    // HRESULT for the caller's one log line.
+    // HRESULT for the caller's one log line. before_reset re-arms one attempt
+    // (a Reset frees video memory; one CreateTexture pair per Reset cannot
+    // storm). The age pair a far run allocated before the fallback stays
+    // until the next resize or Reset: dropping it would cut the history.
     bool line_masks_failed() const noexcept { return line_masks_failed_; }
     HRESULT line_masks_result() const noexcept { return line_masks_result_; }
     bool flicker_available() const noexcept { return thin_ != nullptr && (!resolve_filtered_ || thin_filtered_ != nullptr); }

@@ -52,7 +52,8 @@ inline void prepare_flicker(float out[4], float thin_clip, float wmax, float lo,
 // uploads inv = 0: mask off) unless the projection is the engine's perspective form (p00 > 0, p22 > 0, p32 < 0) and
 // 0 < f0 < f1 give finite 0 <= d0 < d1.
 constexpr float kFarWeightMax = .99f, kFarSpeedLo = .5f, kFarSpeedHi = 2.f, kFarFootprintMax = 1e6f;
-inline bool valid_far_weight(float w, float weight) noexcept { return std::isfinite(w) && (w==0 || (w>=weight && w<=kFarWeightMax)); }
+// 0 is off; otherwise within [weight, 0.99], and only over a history that is kept at all (weight > 0).
+inline bool valid_far_weight(float w, float weight) noexcept { return std::isfinite(w) && (w==0 || (weight>0 && w>=weight && w<=kFarWeightMax)); }
 inline bool far_gate(float p00, float p22, float p32, unsigned width, float f0, float f1, float& d0, float& inv) noexcept {
     d0=inv=0;
     if(!std::isfinite(p00) || !std::isfinite(p22) || !std::isfinite(p32) || !(p00>0) || !(p22>0) || !(p32<0) || !width
