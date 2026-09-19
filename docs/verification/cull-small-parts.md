@@ -69,3 +69,17 @@ Answer to Q2: `bodies` does not fail to save time because draws are unchanged an
 Q3 (2px vs 4px, `all` scope): culled count is flat (1212-1256 at 2px vs 1193-1274 at 4px, same order), draws are flat (477 at 2px vs 447 at 4px, both capture pairs), and the fps gain from 2px->4px is real but modest (~42 fps -> ~45-47 fps) - consistent with a few more marginal nodes crossing the larger threshold, not a step change.
 
 Q4: no `cull_small_parts`/`motion_output_frame` error, warn, mismatch or fail lines in any of the four sessions; `apply_failures`/`restore_failures` are 0 throughout. `incomplete=N>0` frame_phases buckets appear only at session startup (frame 300/600) in all four, plus one late bucket in run137 (frame 3300) outside the analyzed capture window - ordinary settling, not evidence of a cull-path fault.
+
+## Run 44 C (run147)
+
+Preserved session `/tmp/x3-bottleX3-run147/session-20260919-054326-212.log` (112 MB, queried with grep only), one F8 at frame 4672-4679. Defaults confirmed: `cull_small_parts requested=2.0000 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x01d707cc camera=disabled scope=all` (single install line); `motion_direct device=1 enabled=1 admission=0 slots=7` (single line, `X3M_TELEMETRY_DRAW=0` per `proxy_options`).
+
+Steady busy view (nearest 300-frame buckets straddling the capture): `frame_phases frame=4500 dt_p50_us=19824 dt_p95_us=20954` and `frame=4800 dt_p50_us=19873 dt_p95_us=22756`, i.e. dt_p50 ≈ 19.8-19.9 ms → ~50.3-50.6 fps, matching the user's ~50 fps observation and running above run136's ~42.2 fps at nearly the same draw count (477).
+
+At the F8 capture frames (4672-4679): `motion_output_frame` shows `draws=478 routed=453 matched=453` on every one of the 8 frames (routed/matched flat, no pop-in signature); `cull_small_parts_frame` shows `culled` 1133/1189/1189/1101/1099/1098/1096/1094 (px=2 threshold=3 scope=all) against the same 478-draw base, consistent with run136's 477-draw/1212-1256-culled pair at the same px/scope.
+
+`gate_us`, `route_draw_us`, `set_rt_us`, `lazy_flush_us`, `jitter_us` are all `0.0` on every `motion_output_frame` line in this session — not valid, because `X3M_TELEMETRY_DRAW=0` (per-draw timing off); only `draws`/`routed`/`matched`/`gate1..6` counts are valid here. No comparison to run129's 9.7 µs proxy-only per-routed-draw figure is possible from this session's fields; that number remains the reference from run129 A (`docs/architecture/engine-frame-time.md` §2.2, `X3M_TELEMETRY_DRAW=1`).
+
+Shadow cost: `sun_shadow_apply_frame` at 4672-4679 gives `applied=1 skip_reason=none us=` 1323.0, 207.3, 99.2, 98.6, 112.3, 104.7, 101.1, 87.1 (first F8 frame elevated, rest ~90-110 µs, `result=00000000 restore=00000000` throughout — no apply/restore failure). Session-wide `sun_shadow_apply_frame` count 7832, mean `us`≈68.3, max 5226.0 (isolated spike, not at the capture frames).
+
+No anomalies: `motion_direct_loss_code` — 0 occurrences; `apply_failures`/`restore_failures` — 0 on all 154 `motion_output_frame` lines; no `refused`/error lines tied to `motion_direct` or `cull_small_parts` (the 49053 `refused` hits are unrelated frame types — `screen_emission_additive_frame`, `fade_route_frame`, `chase_camera` — all `refused=0`/`refused_*=0` in the sampled lines).
