@@ -326,6 +326,20 @@ below names a stamp/counter fallback that does not depend on it.
 | R7 per-node light `qsort` (5.6) | `profile_frame` RVA `0x7d5e0` and `profile_pair` (`0x7d5e0`, `0x7d9f6`); leaves inside `_qsort` `0x110510` | one counter at `0x0047d5e0` for entries and one at `0x0047d9a3` for `qsort` calls, with the element count |
 | R8 world matrix (5.5) | `profile_leaf` share inside `0xbdee0`–`0xbe3e3`. **If this is below ~2 % of main-thread samples the candidate is closed for good** | `--residual-phases` `prepare` per draw; the routine is inside it |
 
+**The fallback column is implemented as `--submit-phases`**
+(`X3M_SUBMIT_PHASES=1`, default off, requires `--telemetry --frame-phases`):
+twenty-two byte-verified stamps on R5 (sort time, calls, queue length), R4 (walk
+time, misses, sampled iterations), R3 (`SetTechnique` and `End`), the
+`0x004c1eab`-`0x004c3ff0` block, both `D3DXMatrixInverse` calls, `0x004c0150`
+and `0x004bdee0`, one `submit_phases` row per 300 frames. Sites, row format,
+dispatch budget (~10,800 per busy frame, ~1.1 ms) and qualification are in
+[sampling-profiler.md](../verification/sampling-profiler.md), "Submit phases".
+Three sites differ from section 5's assessment because the real bytes forced
+it: the sort closes at its callers' returns (4-byte epilogues), the walk closes
+at `0x0047e285` / `0x0047e315` (`0x0047e350` is 4 bytes with a rel8 jump), and
+`0x004c0150` closes at `0x004c5230` (the caller's edge `0x004c502a` lands behind
+the `add esp,0x18`). R7 is not stamped.
+
 Two things to read from the same log regardless of which candidate survives:
 `profile_thread leaf_x3ap` vs `leaf_d3dx` vs `leaf_wine` for the main thread —
 that single ratio decides whether the 3.5 ms residual is engine code or

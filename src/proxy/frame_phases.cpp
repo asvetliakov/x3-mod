@@ -4,6 +4,7 @@
 #include "game_phase_sites.h"
 #include "pass_phases.h"
 #include "residual_phases.h"
+#include "submit_phases.h"
 #include "loop_phases.h"
 #include "object_trace.h"
 #include "telemetry.h"
@@ -143,6 +144,7 @@ void frame_impl(std::uint64_t frame) noexcept {
     const bool taken=tracker.take(frame,frequency,last_sample);
     residual_phases::frame(frame,taken,taken?last_sample.phase_us[detail::views_phase]:0,taken?last_sample.view_setup_us:0,taken?last_sample.view_submit_us:0,taken?last_sample.views:0); // X3M_RESIDUAL_PHASES only: same guard, ahead of the pass group so its accumulator is still open
     pass_phases::frame(frame,taken,taken?last_sample.view_submit_us:0); // X3M_PASS_PHASES only: closes the frame's pass accumulators under this guard
+    submit_phases::frame(frame,taken); // X3M_SUBMIT_PHASES only: same guard, closes the frame's view_submit candidate pairs
     loop_phases::frame(frame,taken,taken?last_sample.dt_us:0,taken?last_sample.phase_us[detail::pre_render]:0); // X3M_LOOP_PHASES only: same guard, joins dt and pre_render
     if(!taken)return;
     window.add(last_sample);

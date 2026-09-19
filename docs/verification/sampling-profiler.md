@@ -949,6 +949,125 @@ every optional group on, 8,196 B free). Ledger:
 | --- | --- | --- | --- |
 | 2026-09-17 | Residual group added (two sites, shared lean stub, `--residual-phases`); production arena 20,480 -> 24,576 B (the accounting would still fit in 20,480 with 4,100 B free; the page is headroom); pass accumulator retains `end_clock`/`begin_clock`, frame tracker retains `submit_end` | `verify_residual_phase_sites.py` PASS (61 installed sites checked disjoint), the game/frame/pass/loop verifiers PASS; `run_game_phase_cpu.py` under X3 (worktree build, `fixture_sha256 377ac95e`): 8839 checks, 0 failures, `RESIDUAL PHASE BENCH dispatch_ns=90.7` (92.7 in a first run; documented 91), `PASS PHASE BENCH dispatch_ns=95.8` (91.5 in the first run, 89.1-92.3 in the previous four runs: the retained-clock branch is within noise), `LOOP PHASE BENCH dispatch_ns=91.7`, fixture arena 23,876/32,768 B; host `test_residual_phases` 9 tests OK (`residual_phases_host` probe), `test_game_phase_sites` + `test_media_cue` 26 tests OK; DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_residual_phase_enter` walked (505 reachable) | not yet run in the game |
 
+## Submit phases (`X3M_SUBMIT_PHASES=1`)
+
+The sampling profiler is blind to engine code under FEX (run84, and again run
+47 session B3: 0 of 1,497,596 leaf samples in `X3AP.exe`;
+`docs/reverse-engineering/view-submit-hot-path.md` section 8), so the
+`view_submit` candidates R1-R8 of that note can only be sized by stamps.
+`--submit-phases` (launcher `tools/manage.py`, requires `--telemetry` and
+`--frame-phases`; `X3M_SUBMIT_PHASES=1`, default off) brackets them with
+twenty-two byte-verified sites (`src/proxy/submit_phase_sites.h`). The group
+needs the frame group only for the frame boundary and the owner thread; its
+sites are disjoint from the pass and residual groups and it runs with or
+without them.
+
+| Pair | Open | Close | Candidate |
+| --- | --- | --- | --- |
+| `sort` | `0x0047e620` entry | the instruction after each of the three callers' `call` (`0x004722b4`, `0x00472490`, `0x0047e8f5`) | R5: time, calls, queue length |
+| `walk` | `0x0047e264` | `0x0047e285` (miss: the `malloc` path starts) or `0x0047e315` (hit: the join) | R4: time, lookups, misses, sampled iterations |
+| `technique` | `0x004c0c2a` (`SetTechnique` vtable load) | `0x004c0c36` | R3 |
+| `end` | `0x004c405d` (`End` vtable load) | `0x004c4068` | R3's sibling, never measured |
+| `block` | `0x004c1eb3` (the `Begin` argument pushes) | `0x004c3fde` (pass-loop guard), or `0x004c405d` when the geometry guard `0x004c3fd8` skips it (`block_skipped`) | the per-draw preparation block `0x004c1eab`-`0x004c3ff0`, R1/R2/R6 inside |
+| `inverse_world` / `inverse_view` | the `call 0x004faf0c` at `0x004c2251` / `0x004c2316` | the instruction after it | R1 (view) and its uncacheable twin |
+| `material` | `0x004c0150` entry | `0x004c5230`, one instruction after its only caller's return | the whole routine |
+| `world` | `0x004bdee0` entry | `0x0047e007` / `0x0047e711`, its two callers' returns | R8 |
+
+Site choices the hook-site assessment of the note did not settle, all checked
+by `verification/probe/verify_submit_phase_sites.py`: the sort's two epilogues
+are 4 bytes (`pop; pop; pop; ret`, the second abutting `0x0047e6e0`) and cannot
+host a claim, hence the caller returns (`push reg; call 0x0047e6e0`, the rel32
+re-based in the tail); the walk's hit target `0x0047e350` is 4 bytes with a
+rel8 jump, hence the join; `0x004c0150`'s return `add esp,0x18` cannot start a
+span because the caller's skip edge `0x004c502a` lands behind it. Closes reached
+with nothing open are counted `idle` and are expected: the eleven early-out
+edges onto `0x004c4068`, the walk join after a miss, the caller's skip edge.
+An open on an open pair is `reopened` and should stay 0: none of the nine
+regions is re-entered while open (the traversal recurses, but the walk pair
+holds no call).
+
+Stub and handler. The context variant of the lean stub (`lean_stub.h`
+`emit_context`, 128 bytes): `pushfd; pushad; cld`, XMM0-7 saved, the address of
+the `pushad` frame and the site index passed to
+`x3m_submit_phase_enter(index, saved)`, everything restored, the displaced
+instructions run in the claim tail at the game's ESP. **The x87 stack is never
+touched** by stub or handler (section 5.3 of the note left the `st(0)` liveness
+at `0x004c3bcc` open; no span here holds an x87 instruction either, and
+`check_no_x87.py` walks `_x3m_submit_phase_enter`). The handler runs under
+`LightCallBoundary` (MXCSR + LastError), reads one `QueryPerformanceCounter`,
+never logs or allocates. It reads engine memory at two points, both behind
+pointers the engine dereferences in the same block: the queue length at the
+sort entry (`*0x00608518`, head `+0x40`, sentinel `+0x44`; counted before the
+sort's clock opens) and, on one lookup in 16, the walk length through the
+saved EDI (view, list head `+0x2a0`) and saved ESI (the hit record), counted
+after the walk's clock closed; both chases stop at 65,536. `walk_iterations`
+is the sampled sum x 16.
+
+Install is the shared transaction (`stamp_install.h`): window open, every span
+preflighted, claims in table order, reverse rollback on the first failure;
+refusals `telemetry_off`, `clock_unavailable`, `frame_phases_off`,
+`executable_unverified`, `install_window_closed`, `preflight_bytes` or the
+claim's own reason leave the engine untouched. `submit_phase_mode` and
+twenty-two `submit_phase_site` lines record it. Arena: 3,372 B (22 claims + 22
+x 128), 19,752 of 24,576 with every optional group on
+(`test_game_phase_sites.py`).
+
+Per 300-frame window one line, microseconds, nearest-rank percentiles over
+per-frame sums:
+
+```
+submit_phases qpc= frame=N frames=300 stamps_p50= stamps_p95= self_p50_us= dispatch_cost_ns=102 sort_calls_p50= sort_p50_us= sort_p95_us= sort_nodes_p50= sort_nodes_max= walk_calls_p50= walk_p50_us= walk_p95_us= walk_misses_p50= walk_iterations_p50= walk_iterations_p95= walk_sample_period=16 technique_... end_... block_calls_p50= block_p50_us= block_p95_us= block_net_p50_us= inverse_world_... inverse_view_... material_calls_p50= material_p50_us= material_p95_us= material_net_p50_us= world_... block_skipped= reopened= idle= clock_errors= clock_failures= unmatched= dropped= early= foreign=
+```
+
+`sort_nodes_p50` is the queue length summed over the frame's sorts,
+`sort_nodes_max` the longest single queue of the window. `material_net` and
+`block_net` subtract the dispatches nested inside the pair (`x
+dispatch_cost_ns`); the other pairs hold no nested stamp. `self_p50_us` =
+`stamps x dispatch_cost_ns`. `tools/analysis/summarize_submit_phases.py <log>`
+reduces the rows to the median window, time per call and mean walk length.
+
+Dispatch budget, expected at the busy view (510 draws, ~900 traversed nodes,
+~1,400 world-matrix calls): per draw up to 12 (`material` 2, `technique` 2,
+`block` 2, `end` 2, the two inverses 4, each gated by the material), per node
+2-3 (`walk`) and 2 per `world` call, 4 per sort: about 6,100 + 2,300 + 2,800 =
+**~10,800 dispatches, ~1.1 ms per busy frame**, against the pass group's
+~4,000. No single pair exceeds 0.1 ms at 500 draws, so none is sub-sampled;
+only the walk-length count is (1 in 16). The option perturbs `view_submit` by
+its own self cost: compare pairs with each other and against `self_p50_us`,
+not frame time against an unstamped session.
+
+### Fixture and site qualification (2026-09-19, no game)
+
+* `python3 verification/probe/verify_submit_phase_sites.py`: PASS on the
+  installed EXE (sha256 pinned): 22 spans, whole instructions, no interior
+  branch (decoded regions and raw `.text` scan; three raw hits are operand
+  bytes inside gap-free decoded regions), exact incoming-edge sets, six
+  declared `call rel32` fields with pinned targets replayed at three arenas,
+  no x87 in any span, exact caller sets (3 / 1 / 2), no overlap with 126 other
+  claims (every `SiteSpec` under `src/proxy`, scene hook, point-light patch,
+  cull census and small-parts trampolines, collide patches), no data
+  reference. The twelve other `verify_*_sites.py` still PASS.
+* `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_submit_phase_cpu.py`: PASS, 393 checks, 0 failures
+  (`verification/results/bottle-X3/submit_phase_cpu.json`). All 22 proved
+  spans on a synthetic body (only the rel32 fields relocated), hit, miss and
+  block-skip paths against the unhooked baseline with two live x87 stack
+  values, a non-default control word and MXCSR, seeded XMM0-7, DF and
+  arithmetic flags set: GPRs, EFLAGS, XMM, MXCSR, the 108-byte x87 image, ESP
+  and LastError identical; pairing, idle closes, queue length 3, sampled walk
+  lengths through the saved EDI/ESI, the sample conversion and net figures,
+  early and foreign stamps ignored, rollback byte-identical, `preflight_bytes`
+  refusal, duplicate-claim rollback of twelve patched sites,
+  `install_window_closed` refusal. `SUBMIT PHASE BENCH dispatch_ns=101.2`
+  (baseline 7.9 ns, hooked 2,133.4 ns per 21-stamp loop); the constant is 102.
+* `check_no_x87.py` on a worktree build of `d3d9.dll`: PASS with
+  `_x3m_submit_phase_enter` as a root. Host:
+  `verification.analysis.test_submit_phases` (13 tests: ledger, refusals per
+  site, host accumulator/window probe 79 checks, wiring, launcher, row parser).
+* Not verified: any in-game row. Native Windows: documented Win32 only
+  (`QueryPerformanceCounter`, `VirtualProtect` through `engine_patch`);
+  cross-compiled, not run natively.
+
 ## Attribution options: segment threshold and per-draw cost (2026-09-18)
 
 Two launcher options serve the run of `docs/architecture/engine-frame-time.md`

@@ -72,6 +72,8 @@ def emitter_fixture_source():
         ('pass_phases','lean_stub.cpp','emit','emit(nullptr,0,&next)','constexpr unsigned reserve=160;',()),
         ('loop_phases','lean_stub.cpp','emit','emit(nullptr,0,&next)','constexpr unsigned reserve=160;',()),
         ('residual_phases','lean_stub.cpp','emit','emit(nullptr,0,&next)','constexpr unsigned reserve=160;',()),
+        # The submit-phase stamps use the context variant (pushad frame passed to the handler).
+        ('submit_phases','lean_stub.cpp','emit_context','emit_context(nullptr,0,&next)','constexpr unsigned context_reserve=176;',()),
         # The media-cue gate: two arms plus the return trampoline in one block.
         ('media_cue','media_cue.cpp','emit_gate','emit_gate(nullptr,nullptr,&next,nullptr)','',()),
         ('chase_camera','chase_camera.cpp','emit_stub','emit_stub(&next)','',()),
@@ -170,7 +172,7 @@ class SourceAndReplay(unittest.TestCase):
         # emit() shares emit_stub with the filtered restore path, whose
         # prefilter is sized into the same reservation. Emitted bytes unchanged.
         self.assertEqual(emitted,{
-            'resource_reader':(48,32),'game_phases':(192,128),'pass_phases':(160,124),'loop_phases':(160,124),'residual_phases':(160,124),'media_cue':(320,300),
+            'resource_reader':(48,32),'game_phases':(192,128),'pass_phases':(160,124),'loop_phases':(160,124),'residual_phases':(160,124),'submit_phases':(176,128),'media_cue':(320,300),
             'chase_camera':(160,124),'chase_transition':(320,128),
             'chase_lead':(192,128),'chase_aim_trace':(176,128),
             'chase_fire':(176,124),'voice_dmo_fallback':(192,124),
@@ -188,6 +190,7 @@ class SourceAndReplay(unittest.TestCase):
             'pass_phases':lengths('pass_phase_sites.h'),
             'loop_phases':lengths('loop_phase_sites.h'),
             'residual_phases':lengths('residual_phase_sites.h'),
+            'submit_phases':lengths('submit_phase_sites.h'),
             'media_cue':lengths('media_cue_sites.h'),
             'chase_transition':lengths('chase_transition.cpp'),
             'chase_lead':lengths('chase_lead.cpp'),
@@ -207,7 +210,7 @@ class SourceAndReplay(unittest.TestCase):
         # chase_transition carries 16 rows since 123f98d added the seven
         # byte-verified chase view restore sites.
         self.assertEqual({name:len(value) for name,value in families.items()},
-                         {'resource_reader':1,'game_phases':47,'frame_phases':10,'pass_phases':4,'loop_phases':6,'residual_phases':2,'media_cue':1,'chase_camera':1,
+                         {'resource_reader':1,'game_phases':47,'frame_phases':10,'pass_phases':4,'loop_phases':6,'residual_phases':2,'submit_phases':22,'media_cue':1,'chase_camera':1,
                           'chase_transition':16,'chase_lead':9,'chase_aim_trace':4,'chase_fire':1,'voice_dmo_fallback':1,
                           'loading_probes':12})
         lead_rows=probe.common.parse_source_specs((ROOT/'src/proxy/chase_lead.cpp').read_text())
@@ -257,7 +260,9 @@ class SourceAndReplay(unittest.TestCase):
         # Every optional group on: the six loop stamps (claims of 6/6/6/5/6/5
         # bytes, 6 * 24, plus 6 * 124) with X3M_LOOP_PHASES=1, the two residual
         # stamps (claims of 8/9 bytes, 2 * 28, plus 2 * 124) with
-        # X3M_RESIDUAL_PHASES=1, the media-cue gate (one 5-byte claim, 24, plus
+        # X3M_RESIDUAL_PHASES=1, the twenty-two submit stamps (claims of 5-10
+        # bytes, 22 * 24 or 28, plus 22 * 128 for the context stub) with
+        # X3M_SUBMIT_PHASES=1, the media-cue gate (one 5-byte claim, 24, plus
         # the 300-byte two-arm stub with its return trampoline) with
         # X3M_MEDIA_CUE_TRACE/CACHE, the chase cursor admission site, the voice
         # DMO fallback site and the twelve loading probes (one shared exit stub
@@ -265,7 +270,7 @@ class SourceAndReplay(unittest.TestCase):
         # group can claim; chase_transition's 320-byte reserve is the largest
         # single reservation.
         everything=list(operations)
-        for name in ('loop_phases','residual_phases','media_cue','chase_fire','voice_dmo_fallback'):
+        for name in ('loop_phases','residual_phases','submit_phases','media_cue','chase_fire','voice_dmo_fallback'):
             reserve,stub_used=emitted[name]
             for length in families[name]:
                 everything.extend(((length+23,claim_used(length)),(reserve,stub_used)))
@@ -273,18 +278,20 @@ class SourceAndReplay(unittest.TestCase):
         for length in families['loading_probes']:
             everything.extend(((length+23,claim_used(length)),emitted['loading_probes']))
         accepted_all,used_all=admit(capacity,everything)
-        self.assertTrue(accepted_all);self.assertEqual(used_all,16380)
-        self.assertEqual(capacity-used_all,8196)
-        self.assertEqual(sum(used for _,used in everything)-sum(used for _,used in operations),2472)
-        # 8196 B left after the arena grew by one page for the media-cue gate
+        self.assertTrue(accepted_all);self.assertEqual(used_all,19752)
+        self.assertEqual(capacity-used_all,4824)
+        self.assertEqual(sum(used for _,used in everything)-sum(used for _,used in operations),5844)
+        # 4,824 B left. The arena grew by one page for the media-cue gate
         # (16,076 would have left 308 B in 16,384, below the 320-byte largest
-        # reservation) and by another page with the residual group (16,380
-        # would still have left 4,100 B in 20,480; the page is headroom for
-        # later groups, not a requirement of this accounting).
+        # reservation) and by another with the residual group as headroom for
+        # later groups; the submit group (3,372 B) is the first to use it:
+        # 19,752 would leave 728 B in 20,480, less than a further six-site
+        # lean group needs, while 24,576 still holds two such groups with a
+        # second gate each.
         self.assertGreaterEqual(capacity-used_all,max(reserve for reserve,_ in everything))
         self.assertGreaterEqual(capacity-used_all,2*(6*(24+124)+(24+300))+max(reserve for reserve,_ in everything))
         self.assertLess(16384-used_all,max(reserve for reserve,_ in everything))
-        self.assertGreaterEqual(20480-used_all,6*(24+124)+max(reserve for reserve,_ in everything))
+        self.assertLess(20480-used_all,6*(24+124)+max(reserve for reserve,_ in everything))
         old_game=23
         old_operations=[]
         for name in ('resource_reader','game_phases','chase_camera','chase_transition',
