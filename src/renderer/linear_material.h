@@ -157,7 +157,8 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint
 // lightmap_gain_applied reports it as the dedicated entry point does.
 LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
-    bool& share_applied, float lightmap_gain = 1.0f, bool* lightmap_gain_applied = nullptr) noexcept;
+    bool& share_applied, float lightmap_gain = 1.0f, bool* lightmap_gain_applied = nullptr,
+    bool lightmap_dynamic = false) noexcept;
 // Hull self-illumination gain (docs/reverse-engineering/hull-self-illumination.md
 // 5, --hull-lightmap-gain): the fill variant above (K = fill, K = 0 the plain
 // motion variant) plus, in the 100 reviewed programs that add a light-map
@@ -170,9 +171,14 @@ LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std:
 // and four asteroid originals) keeps the fill variant byte for byte and
 // reports gain_applied = false (fail closed). Pure, allocation-bounded, no
 // D3D; input may alias output; failure leaves output intact.
+// dynamic (--light-map-far-fade, both entry points): no DEF; the MUL reads
+// c217.w, the free lane of the motion ABI's per-draw mode vector
+// (MaterialMotionAbi::pixel_mode_constant), so the caller MUST upload the
+// effective gain there on every draw that binds the variant. dynamic = false
+// is byte for byte the program above.
 LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, float gain, std::vector<std::uint32_t>& output, bool current_depth,
-    bool& fill_applied, bool& gain_applied) noexcept;
+    bool& fill_applied, bool& gain_applied, bool dynamic = false) noexcept;
 // Four XT DEFAULT programs require an explicitly authored producer repair.
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.

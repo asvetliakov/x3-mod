@@ -323,3 +323,50 @@ from the replay's slow captures; if `0.03,0.25` still reads soft, `0.02,0.15` is
 px/frame), if shimmer returns while drifting, `0.05,0.5`. A lossless-enough resample (6-tap Lanczos on gated pixels, 36
 taps) would move the whole curve but needs its own pass; not designed.
 
+
+## 11. Light-map far fade: `--light-map-far-fade P0,P1[,G]` (2026-09-19, implemented, unflown, default off)
+
+**Evidence (run168, `--taa-far-stabiliser 0.985`) [user report].** The thin-line shimmer of the distant station is almost
+gone; what still shimmers is the glowing light-map windows, and Ctrl+Shift+F4 (light-map gain off) makes the station
+"almost ideal". A window of a distant station is a sub-pixel emissive texel; at `--hull-lightmap-gain 4` it is a x4 HDR
+point sample that the jitter switches on and off, and the far gate's variance clip cannot hold a value that is alone in
+its neighbourhood.
+
+**Law.** Per routed draw, `gain_eff = gain` for footprint `<= P0`, `G` for `>= P1`, linear in the footprint between
+(`fade_route::lightmap_far_gain`, `src/proxy/fade_route_core.h`; continuous in distance, both ends returned exactly). The
+footprint is section 4's measure, `2 z / (p00 * width)` world units per pixel, with `z` the object origin's view depth (the
+clip `w` of the draw's own WVP rows, `rows[15]`), `p00` from the latched scene camera and `width` the route's target width.
+`G` defaults to 1 (the game's own brightness) and may be anything in `[0, gain]`. No camera, or an origin at or behind the
+camera plane (a large object around the viewer), keeps the configured gain. The option is its own camera-latch consumer
+(`camera_state::initialize`, `MotionOutput::read_camera`), so it does not depend on `--taa`.
+
+**Mechanism.** The gain was a shader-local `def c223` in the gained variants, which no upload can override. With the
+option on, both gained variants (plain and sun-share; `linear_material.cpp`, `lightmap_dynamic`) are built without the DEF
+and their one MUL reads `c217.w`, a lane of the motion ABI's per-draw mode vector that the motion fragment never reads
+(it reads `c217.x` only). The route already uploads c216-c217 on every routed draw and restores them after it, so the
+per-draw gain costs **no additional `SetPixelShaderConstantF`, no `Get*`, no allocation**: one division and a few
+multiplies on draws whose pair has a gain variant, zero otherwise. With the option off the variants and the upload are
+byte for byte the previous ones (`c217.w = 0`, DEF present). F4 selects or deselects the same variant as before; the
+fade-band and overlay arms never bind a gained variant (unchanged); cutout pairs of the lane use the gained share variant
+and get the same constant; Reset re-creates the variants through the same registration path; documented D3D9 only.
+
+**Per draw, not per pixel.** One object gets one gain, from its origin. Consequences: (a) a big station seen close has
+its origin at a small footprint (at width 1280 and p00 0.8, footprint 40 is z = 20.5 km), so it keeps the full gain over
+its whole body; (b) the gain does not vary across a body that spans a depth range: a part 2 km deeper than its origin
+differs from the per-pixel law by `3.9 / (P1 - P0) * (gain - G)`, 0.17 of 4 for `40,110,1`, invisible; (c) separately
+drawn parts of one station step by the same small amount, never a seam inside a draw. A per-pixel version is affordable
+in slots (largest gained variant 264 of 512 static slots; about +4 instructions and one more constant) but needs view
+depth in the pixel program, which only the depth-exporting rows interpolate, and buys nothing at these distances.
+**Not built.**
+
+**Energy.** Only the light-map (self-illumination) term changes; lit hull, guide lights (F6 gain) and effects do not.
+Beyond `P1` a lit station's windows are `G / gain` of their boosted radiance: 1/4 at the production gain 4 with `G = 1`
+(two stops down, exactly the unmodded game's value), and their bloom feed falls by the same factor.
+
+**Suggested first flight: `--light-map-far-fade 40,110`** [A]. The run153/run168 station sits at 128-150 units/px, past
+`P1`, so its windows return to the game's brightness; the fade starts at 40 units/px where a 10-20 unit window is already
+well under a pixel. Both numbers scale with resolution by construction (a wider target halves the footprint). Unknown
+until flown: whether mid-distance stations (40-110) read too dim, and whether `G = 1` windows still shimmer under the
+stabiliser (then try `G = 0.5`).
+
+Verification: `docs/verification/motion-output.md`, "Light-map far fade".

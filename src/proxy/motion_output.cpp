@@ -646,6 +646,7 @@ void MotionOutput::configure_hull_lightmap_gain(float gain) noexcept {
     // converted route carries its own light-map gain (X3M_LIGHTMAP_EMISSIVE_GAIN).
     hull_lightmap_gain_requested_ = std::isfinite(gain) && gain > 1.f && gain <= 8.f && !linear_material_requested_;
     hull_lightmap_gain_ = hull_lightmap_gain_requested_ ? gain : 1.f;
+    lightmap_far_fade_ = false; // configured after the gain (configure_lightmap_far_fade)
 }
 void MotionOutput::configure_screen_emission(bool requested, float gain) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
@@ -2215,6 +2216,14 @@ int MotionOutput::emission_source_gain_toggle() noexcept {
 // off only means prepare_hull_gain is never entered (guide lights) and
 // bind_variant_pair keeps the fill/motion variant (light map). enabled= is the
 // state of the family the key drove; both states are logged either way.
+bool MotionOutput::configure_lightmap_far_fade(float p0, float p1, float floor) noexcept {
+    lightmap_far_fade_ = hull_lightmap_gain_requested_ && std::isfinite(p0) && std::isfinite(p1) && std::isfinite(floor)
+        && p0 > 0.f && p1 > p0 && floor >= 0.f && floor <= hull_lightmap_gain_;
+    lightmap_fade_p0_ = lightmap_far_fade_ ? p0 : 0.f;
+    lightmap_fade_inv_ = lightmap_far_fade_ ? 1.f / (p1 - p0) : 0.f;
+    lightmap_fade_floor_ = lightmap_far_fade_ ? floor : 1.f;
+    return lightmap_far_fade_;
+}
 int MotionOutput::hull_emission_gain_toggle(bool lightmap) noexcept {
     const bool available = lightmap ? hull_lightmap_gain_requested_ : hull_emission_gain_requested_;
     if (available) {
@@ -3280,7 +3289,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                 bool fill_applied = false, gain_applied = false;
                 const auto gained = renderer::linear_material_hull_lightmap_gain_pixel_variant(
                     reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, hull_lightmap_gain_,
-                    words, depth_enabled_, fill_applied, gain_applied);
+                    words, depth_enabled_, fill_applied, gain_applied, lightmap_far_fade_);
                 IDirect3DPixelShader9* variant = nullptr;
                 HRESULT gain_hr = E_FAIL;
                 if (gained == renderer::LinearMaterialResult::Applied && gain_applied)
@@ -3327,7 +3336,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     bool gained_share = false, gain_applied = false;
                     const auto gained = renderer::linear_material_original_sun_share_pixel_variant(
                         reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, words, depth_enabled_, gained_share,
-                        hull_lightmap_gain_, &gain_applied);
+                        hull_lightmap_gain_, &gain_applied, lightmap_far_fade_);
                     IDirect3DPixelShader9* gained_variant = nullptr;
                     HRESULT gain_hr = E_FAIL;
                     if (gained == renderer::LinearMaterialResult::Applied && gained_share && gain_applied)
@@ -5217,8 +5226,15 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // The previous jitter stays in the frame diagnostics only
     // (counters().jitter_previous, FrameInputs::previous_jitter for ABI stability).
     static const float zeros[16]{};
+    // c217.w: the light-map far fade's per-draw gain (the dynamic gain
+    // variants' MUL operand; every other program ignores the lane). Zero, as
+    // before, with the option off or for a pair without a gain variant.
+    lightmap_fade_gain_ = lightmap_far_fade_ && (shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap)
+        ? fade_route::lightmap_far_gain(rows[15], camera_scene_.valid, camera_scene_.m00, float(target_width_),
+                                        hull_lightmap_gain_, lightmap_fade_floor_, lightmap_fade_p0_, lightmap_fade_inv_)
+        : 0.f;
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
-                            matched ? 1.f : 0.f, 0.f, 0.f, 0.f};
+                            matched ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};
     const std::uint64_t apply_begin = draw_stamp();
     bool material = false;
     if (linear_material_requested_) {
@@ -5776,7 +5792,12 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     // One branch by default (shadow_.cutout_pair is false without the lane or linear materials).
     if (shadow_.cutout_pair && !cutout_arm_active_) note_cutout_opaque(route, result);
     if (route.routed && route.original_fill && SUCCEEDED(result)) ++original_fill_draws_;
-    if (route.routed && route.hull_lightmap && SUCCEEDED(result)) ++hull_lightmap_draws_;
+    if (route.routed && route.hull_lightmap && SUCCEEDED(result)) {
+        if (lightmap_far_fade_ && lightmap_fade_gain_ < hull_lightmap_gain_) {
+            if (!lightmap_fade_draws_++ || lightmap_fade_gain_ < lightmap_fade_min_) lightmap_fade_min_ = lightmap_fade_gain_;
+        }
+        ++hull_lightmap_draws_;
+    }
     if (route.source_gain) finish_source_gain(route);
     if (route.hull_gain) finish_hull_gain(route);
     if (candidates_requested_ && route.routed && SUCCEEDED(result)) note_candidate_draw(route);
@@ -6188,8 +6209,9 @@ void MotionOutput::readback() noexcept {
 // two validated 64-byte copies) into the scene or the background slot.
 void MotionOutput::read_camera(bool scene) noexcept {
     // The resolve's consumer, or the caster-candidate counter (its slice-0 test
-    // and the depth replay's cascade-0 projection need the scene latch, W1).
-    if (!(taa_enabled_ || candidates_requested_) || !camera_state::available()) return;
+    // and the depth replay's cascade-0 projection need the scene latch, W1),
+    // or the light-map far fade (the footprint's P[0]).
+    if (!(taa_enabled_ || candidates_requested_ || lightmap_far_fade_) || !camera_state::available()) return;
     camera_state::Sample sample{};
     const bool valid = camera_state::read(&sample);
     ++counters_.camera_reads;
@@ -6520,7 +6542,11 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (hull_lightmap_gain_requested_ && hull_lightmap_draws_) {
         log("hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u",
             id_, frame_, double(hull_lightmap_gain_), double(original_fill_), hull_lightmap_draws_, unsigned(hull_lightmap_enabled_));
-        hull_lightmap_draws_ = 0;
+        if (lightmap_far_fade_)
+            log("hull_lightmap_far_fade_frame device=%llu frame=%llu admitted=%u faded=%u min_gain=%g floor=%g camera=%u",
+                id_, frame_, hull_lightmap_draws_, lightmap_fade_draws_, double(lightmap_fade_draws_ ? lightmap_fade_min_ : hull_lightmap_gain_),
+                double(lightmap_fade_floor_), unsigned(camera_scene_.valid));
+        hull_lightmap_draws_ = 0; lightmap_fade_draws_ = 0;
     }
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
         // Appended cost fields (totals for this frame; docs/verification/telemetry.md):

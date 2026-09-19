@@ -45,7 +45,11 @@ bool initialize() {
     const bool motion=GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT",setting,4)==1&&setting[0]==L'1';
     const bool consumer=(GetEnvironmentVariableW(L"X3M_TAA",setting,4)==1&&setting[0]==L'1')||
         (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1')||
-        (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1');
+        (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1')||
+        // The light-map far fade reads P[0] for its per-draw footprint (any
+        // nonempty value arms the read-only latch; the DLL's parser decides the option).
+        // A longer value returns its required size: nonzero either way.
+        GetEnvironmentVariableW(L"X3M_LIGHT_MAP_FAR_FADE",setting,4)!=0;
     // The small-parts cull (X3M_CULL_SMALL_PARTS_PX, cull_small_parts.cpp)
     // reads P[0] once per frame for its pixel threshold: same read-only latch.
     wchar_t px[16]{};

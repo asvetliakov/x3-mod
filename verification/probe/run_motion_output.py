@@ -799,6 +799,73 @@ FADE_ROUTE_ORIGINAL_ENV = dict(X3M_LINEAR_MATERIALS='0', X3M_LINEAR_DISTANCE_FAD
 CASES += [case(f'seam-taa-fade-route-{name}', 'faderoute', jitter=True, taa=True, lazy=lazy, hdr=True,
                hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT=name.split('-')[0], **(FADE_ROUTE_ORIGINAL_ENV if name in FADE_ROUTE_ORIGINAL_SCRIPTS else {})))
           for name, lazy in FADE_ROUTE_CASES]
+# Light-map far fade (motion_output_lightmap_fade_inc.h, --light-map-far-fade;
+# docs/architecture/taa-distant-line-fade.md section 11): the original hull
+# pair under X3M_HULL_LIGHTMAP_GAIN=4 drawn at origin view depths 1, 128 and 64
+# (identical raster) with the fixture camera (P[0] 0.8, width 64: footprint
+# w / 25.6). P0,P1 = footprints of w 32 and 96, so near is the configured gain
+# exactly, far is G exactly and mid is t = 0.5. '-off' is the same script with
+# the option unset: every F4-on image is the near image bit for bit and the
+# route's c217.w upload stays 0 (today's records). The near and base images of
+# each fade case must equal the off case's bit for bit (checked when both ran).
+LIGHTMAP_FADE_GAIN = 4.0
+LIGHTMAP_FADE_P = (2 * 32 / (0.8 * 64), 2 * 96 / (0.8 * 64))  # 1.25, 3.75 units/px
+LIGHTMAP_FADE_ENV = dict(X3M_HULL_LIGHTMAP_GAIN=repr(LIGHTMAP_FADE_GAIN), X3M_LINEAR_MATERIALS='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0', X3M_MOTION_FRAME_LOG='1')
+LIGHTMAP_FADE_CASES = {'seam-lightmap-far-fade-off': None, 'seam-lightmap-far-fade-on': 1.0, 'seam-lightmap-far-fade-floor2': 2.0,
+                       'seam-ownership-lightmap-far-fade-on': 1.0}
+CASES += [case(name, 'lightmapfade', 'ownership' if 'ownership' in name else 'plain', camera=True, hdr=True,
+               hdr_env=dict(LIGHTMAP_FADE_ENV, **({} if floor is None else {'X3M_LIGHT_MAP_FAR_FADE': '%g,%g,%g' % (*LIGHTMAP_FADE_P, floor)})))
+          for name, floor in LIGHTMAP_FADE_CASES.items()]
+LIGHTMAP_FADE_STEPS = (('near', 1, True), ('far', 128, True), ('mid', 64, True), ('near_off', 1, False), ('far_off', 128, False),
+                       ('mid_on', 64, True), ('mid_reset', 64, True), ('near_reset', 1, True))
+
+
+def validate_lightmap_fade(name, floor, text, trace):
+    lines = text.splitlines()
+    assert 'RESET PASS' in lines, name
+    rows = [fields(l) for l in lines if l.startswith('LIGHTMAP_FADE ')]
+    images = [fields(l) for l in lines if l.startswith('LIGHTMAP_FADE_IMAGE ')]
+    assert not any(l.startswith('LIGHTMAP_FADE_DIFF ') for l in lines), name
+    assert [(r['kind'], float(r['w']), r['on'] == '1') for r in rows] == list(LIGHTMAP_FADE_STEPS), (name, rows)
+    assert len(images) == len(rows) == 8, name
+    checks = 0
+    gains = {}
+    for row, image in zip(rows, images):
+        kind, w, on = row['kind'], float(row['w']), row['on'] == '1'
+        t = 0.0 if floor is None else min(1.0, max(0.0, (w / 25.6 - LIGHTMAP_FADE_P[0]) / (LIGHTMAP_FADE_P[1] - LIGHTMAP_FADE_P[0])))
+        law = LIGHTMAP_FADE_GAIN + ((floor if floor is not None else 1.0) - LIGHTMAP_FADE_GAIN) * t
+        upload = 0.0 if floor is None else law
+        assert abs(float(row['abi_gain']) - upload) <= 1e-5 * max(1.0, upload), (name, kind, row['abi_gain'], upload)
+        if t in (0.0, 1.0):
+            assert float(row['abi_gain']) == upload, (name, kind, 'the ends are exact')
+        assert int(row['gained_draws']) == int(on) and int(row['fade']) == int(floor is not None), (name, row)
+        gain = law if on else 1.0
+        assert abs(float(image['gain']) - gain) <= 1e-6 and int(image['mismatches']) == 0 and int(image['pixels']) >= 100, (name, image)
+        assert int(image['lit']) == 3 * int(image['pixels']), (name, image)
+        gains[kind] = dict(gain=float(image['gain']), abi_gain=float(row['abi_gain']), max_codes=int(image['max_codes']), hdr_hash=row['hdr_hash'])
+        checks += 6
+    hashes = {k: v['hdr_hash'] for k, v in gains.items()}
+    # Near is the configured gain, the F4-off steps are the base, Reset and the toggle change nothing else.
+    assert hashes['near'] == hashes['near_reset'] and hashes['mid'] == hashes['mid_on'] == hashes['mid_reset'], (name, hashes)
+    assert hashes['near_off'] == hashes['far_off'] and hashes['near'] != hashes['near_off'], (name, hashes)
+    if floor is None:
+        assert hashes['far'] == hashes['mid'] == hashes['near'], (name, 'option off: the constant gain at every distance', hashes)
+        assert 'hull_lightmap_far_fade_frame' not in trace and 'light_map_far_fade_mode' not in trace, name
+    else:
+        assert (hashes['far'] == hashes['near_off']) == (floor == 1.0), (name, 'G = 1 is the base image bit for bit', hashes)
+        assert len({hashes['near'], hashes['mid'], hashes['far']}) == 3, (name, hashes)
+        mode = [fields(l) for l in trace.splitlines() if l.startswith('light_map_far_fade_mode ')]
+        assert len(mode) == 1 and mode[0]['enabled'] == '1' and float(mode[0]['floor']) == floor, (name, mode)
+        frames = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_far_fade_frame ')]
+        # One gain draw per F4-on frame; faded on the far and mid frames, camera latched.
+        assert len(frames) == 6 and all(f['admitted'] == '1' and f['camera'] == '1' for f in frames), (name, frames)
+        assert [f['faded'] for f in frames] == ['0', '1', '1', '1', '1', '0'], (name, frames)
+        assert float(frames[1]['min_gain']) == floor, (name, frames)
+    variants = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_variant ')]
+    assert any(v['original'] == '7c83ed50c9894e44' and v['gain_applied'] == '1' and v['create'] == '00000000' for v in variants), (name, variants)
+    return dict(checks=checks + 8, floor=floor, steps=gains)
+
+
 # Mip-bias script (motion_output_fixture.cpp run_mipbias): eight frames,
 # capture in frame 5 only (the capture diagnostics restore the bias before
 # every draw, so that frame re-sets it per routed draw), the frame line every
@@ -951,7 +1018,7 @@ def sources():
         'exposure_reference.py', 'agx_reference.py', 'analyze_motion_readback.py', 'summarize_capture.py')]
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
-        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_sun_apply_cascades_inc.h',
+        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_sun_apply_cascades_inc.h', 'motion_output_lightmap_fade_inc.h',
         'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h')]
     paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
@@ -4994,7 +5061,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'shadowreplay', 'shadowretention', 'shadowpool') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'shadowreplay', 'shadowretention', 'shadowpool') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -5174,6 +5241,21 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} depth={case["depth"]} casters={case["casters"]} us={case.get("us", {}).get("median")} max_depth_error={case.get("map", {}).get("max_depth_error")}', flush=True)
+                continue
+            if mode == 'lightmapfade':
+                case = validate_lightmap_fade(name, LIGHTMAP_FADE_CASES[name], text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                # Near draw = today's image: the fade cases against the option-off twin, bit for bit.
+                off = result['cases'].get('seam-lightmap-far-fade-off')
+                if off and name != 'seam-lightmap-far-fade-off':
+                    assert case['steps']['near']['hdr_hash'] == off['steps']['near']['hdr_hash'], (name, 'near image differs from the option-off run')
+                    assert case['steps']['near_off']['hdr_hash'] == off['steps']['near_off']['hdr_hash'], (name, 'base image differs from the option-off run')
+                    case['near_matches_off'] = True
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} gains={ {k: v["gain"] for k, v in case["steps"].items()} } near_matches_off={case.get("near_matches_off")}', flush=True)
                 continue
             if mode == 'faderoute':
                 case = validate_fade_route(name, hdr_env['X3M_FIXTURE_FADE_SCRIPT'], lazy, text, trace, directory)

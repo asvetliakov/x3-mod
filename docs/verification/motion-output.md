@@ -2024,3 +2024,33 @@ more than draw count did). **Open**: this run does not settle why lazy's native 
 A/B (toggle RT mode mid-run, same camera script, matched draw count) with `--frame-timing` on both halves
 would isolate whether it is scene variance or a real lazy-mode cost, which the telemetry summarized here
 cannot distinguish.
+
+### Light-map far fade, `--light-map-far-fade P0,P1[,G]` (2026-09-19): implemented, unflown, default off
+
+Design and the law: `docs/architecture/taa-distant-line-fade.md` section 11. Seam DLL `ebb7018c5ed6...`, bottle X3
+(arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), worktree build, nothing installed.
+
+- **Seam cases** (`run_motion_output.py`, mode `lightmapfade`, `motion_output_lightmap_fade_inc.h`): hull pair
+  `494fe349b8bc12ec / 7c83ed50c9894e44`, gain 4, fixture camera (P[0] 0.8, width 64), rows `diag(w)` with w = 1 / 128 / 64
+  (identical raster), `P0,P1 = 1.25,3.75` (w 32 and 96), eight frames: near, far, mid, F4 off near/far, F4 on mid, Reset,
+  mid, near. `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py
+  seam-lightmap-far-fade-off seam-lightmap-far-fade-on seam-lightmap-far-fade-floor2 seam-ownership-lightmap-far-fade-on
+  seam-hdr-on`: all exit 0, 56 checks each (seam-hdr-on 103, unchanged). Lock wait 8 min behind the user's game session.
+  - off: uploaded `c217.w` 0 on every frame, near = far = mid = Reset images one FP16 hash (`..1c3a72`), F4-off base `..c16124`.
+  - on (`G = 1`): uploaded gain 4 / 1 / 2.5 exactly at both ends; near hash = the off run's near hash, **far hash = the
+    F4-off base hash** (the game's own image bit for bit), mid = base + 1.5 x light-map term within 1 FP16 code, the same
+    after the F4 round trip and after Reset; `hull_lightmap_far_fade_frame` faded = 0,1,1,1,1,0, camera latched without TAA.
+  - floor2 (`G = 2`): 4 / 2 / 3, far differs from the base, within 0 / 1 code. Ownership wrapper: identical hashes to plain.
+- **Transformer** (`test_hull_lightmap_gain`, host, 100 programs): 600 dynamic variants (2 fills x 2 depth modes + 2
+  share) equal the constant-gain variant minus its `def c223` with the MUL operand `c223.x -> c217.w`, byte for byte;
+  the 8 programs without the term stay untouched; constant-gain output unchanged (existing oracle). 9 tests OK.
+- **Host**: `test_motion_wrap_states`, `test_linear_material_live` (mock mirrors the option inertly),
+  `test_motion_hdr_scene`, `test_comparison_hotkeys`, `test_original_fill`: OK. Launcher test: default exports no
+  variable and drops an inherited one; `60,120 -> 60,120,1`; 10 malformed or out-of-range values, gain 1, linear
+  materials, no HDR and `G > gain` refuse. `manage.py launch --dry-run ... --taa-far-stabiliser 0.985
+  --light-map-far-fade 40,110` exports `X3M_LIGHT_MAP_FAR_FADE=40,110,1`. Law on the host (scratch): monotone, no step
+  above 8.4e-5 gain per world unit, NaN / behind-camera / no camera keep the gain.
+- **Performance pass**: the gain rides the existing c216-c217 upload (still one `SetPixelShaderConstantF` in
+  `evaluate_draw`, asserted), no `Get*`, no allocation; one division per draw of a pair that has a gain variant.
+- **Not done**: no flight; no offline estimate on the run168 dumps; native Windows is source-compatible (documented D3D9
+  constant upload only), not executed.

@@ -383,6 +383,7 @@ def main():
     parser.add_argument('--material-fill', type=float, default=None, metavar='K', help='Constant hemispherical fill inside the converted material law, finite 0..0.5, default 0.05 with --linear-materials (X3M_MATERIAL_FILL; requires --linear-materials): every converted pixel program adds k*decode(LightDir_Color0)*g_direct to its lobe sum before the albedo multiply, so faces that face no light source keep a floor tinted by the sector sun. Explicit 0 disables fill and keeps the generated programs byte-identical to a build without the option (docs/architecture/fill-light.md)')
     parser.add_argument('--original-fill', type=float, default=None, metavar='K', help='Fill in linear light inside the ORIGINAL hull pixel programs, finite 0..0.5, default 0 = off (X3M_ORIGINAL_FILL; requires --hdr; excludes --linear-materials, whose converted programs take --material-fill instead; needs neither --taa nor --hdr-tonemap): the 108 reviewed hull/asteroid/palette/glass/XT pixel programs get sum = encode(decode(sum) + K*decode(LightDir_Color0)) at their lobe-sum site before the albedo multiply, with the exact 2.2 power law and everything else in the program untouched, so shadow sides keep a floor tinted by the sector sun on original shading. K=0 creates no variant and is byte-identical to a build without the option (docs/architecture/original-shading-critique.md, 1a "Implemented")')
     parser.add_argument('--hull-lightmap-gain', type=float, default=None, metavar='G', help='Gain on the self-illumination (light-map) term inside the ORIGINAL hull pixel programs, finite 1..8, launcher default 4 with --hdr, 1 = off (X3M_HULL_LIGHTMAP_GAIN; requires --hdr; excludes --linear-materials, whose converted programs take --lightmap-emissive-gain instead; composes with --original-fill): 100 of the 108 reviewed hull/palette/XT pixel programs fetch a light map (station windows, hull lights) as their last texture read and add its RGB unscaled to the lit colour, so each gets one variant with one MUL of that sample by G right after the fetch, keeping the alpha, the lit colour and every other word native (docs/reverse-engineering/hull-self-illumination.md); the four glass and four asteroid programs have no such term and stay native. Every opaque draw of those programs carries it (placeholder black light maps multiply to zero). G=1 creates no variant. With --hdr the launcher forwards 4 unless another value is given (the DLL default stays 1); --hull-lightmap-gain 1 turns it off. Ctrl+Shift+F4 switches this gain alone between G and native during play (one hull_emission_gain_toggle line per press, key=ctrl_shift_f4); the guide lights moved to Ctrl+Shift+F6')
+    parser.add_argument('--light-map-far-fade', default=None, metavar='P0,P1[,G]', help='Fade the hull light-map gain with distance: a routed hull draw keeps --hull-lightmap-gain while its pixel footprint (world units per pixel at the object origin, the --taa-far-stabiliser measure) is below P0 and falls linearly to G (default 1 = the game\'s own brightness, within [0, gain]) at P1, so sub-pixel glowing windows of distant objects stop shimmering under TAA. 0 < P0 < P1 <= 1e6; suggested 60,120. The footprint needs the latched camera, so without --taa the gain stays constant. Default off. Requires an active light-map gain (--hdr, not --linear-materials, gain above 1).')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-bloom', action='store_true', help='Replace stock bloom RGB with bloom from the FP16 scene before AgX (X3M_HDR_BLOOM=1; requires --hdr-tonemap and scene hook; default off)')
     parser.add_argument('--bloom-source-clamp', type=float, default=None, metavar='C', help='Decoded-space ceiling on the bloom extraction source only (X3M_BLOOM_SOURCE_CLAMP=C, finite 0 < C <= 64; requires --hdr-bloom; absent keeps today\'s unbounded feed). The pyramid then sees at most code C, so an over-bright emitter (additive bolts at gain 5, overlapping sprites) can no longer feed tens or hundreds of units into the halo and saturate it into a white disk; the presented scene keeps its full HDR value and every source at code C or below is bit-identical to today. Recommended value 1.0, the ceiling of the native A8R8G8B8 scene map the original compositor read (docs/architecture/bloom-falloff.md)')
@@ -809,6 +810,20 @@ def main():
         parser.error('--hull-lightmap-gain excludes --linear-materials (the converted programs take --lightmap-emissive-gain instead).')
     if args.hull_lightmap_gain is not None and not (math.isfinite(args.hull_lightmap_gain) and 1.0 <= args.hull_lightmap_gain <= 8.0):
         parser.error('--hull-lightmap-gain must be finite and within [1, 8].')
+    if args.light_map_far_fade is not None:
+        gain = args.hull_lightmap_gain if args.hull_lightmap_gain is not None else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr and not args.linear_materials else 1.0)
+        if not gain > 1.0:
+            parser.error('--light-map-far-fade requires an active light-map gain (--hdr without --linear-materials, --hull-lightmap-gain above 1).')
+        try:
+            fade = [float(field) for field in args.light_map_far_fade.split(',')]
+        except ValueError:
+            fade = []
+        if len(fade) not in (2, 3):
+            parser.error('--light-map-far-fade takes P0,P1[,G].')
+        fade += [1.0][len(fade) - 2:]
+        if not all(math.isfinite(value) for value in fade) or not 0.0 < fade[0] < fade[1] <= 1e6 or not 0.0 <= fade[2] <= gain:
+            parser.error('--light-map-far-fade: 0 < P0 < P1 <= 1e6 and G within [0, light-map gain].')
+        args.light_map_far_fade = ','.join('%.6g' % value for value in fade)
     if args.hdr_bloom and (not args.hdr_tonemap or args.scene_hook == 'off'):
         parser.error('--hdr-bloom requires --hdr-tonemap and the scene hook.')
     if args.bloom_source_clamp is not None and not args.hdr_bloom:
@@ -1051,6 +1066,11 @@ def main():
         # --hull-lightmap-gain 1 still turns it off.
         env['X3M_HULL_LIGHTMAP_GAIN'] = repr(args.hull_lightmap_gain if args.hull_lightmap_gain is not None
             else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr and not args.linear_materials else 1.0))
+        # Absent means off: drop an inherited value rather than export an empty one.
+        if args.light_map_far_fade is not None:
+            env['X3M_LIGHT_MAP_FAR_FADE'] = args.light_map_far_fade
+        else:
+            env.pop('X3M_LIGHT_MAP_FAR_FADE', None)
         env['X3M_HDR_TONEMAP'] = 'agx' if args.hdr_tonemap else 'identity'
         env['X3M_HDR_BLOOM'] = '1' if args.hdr_bloom else '0'
         # Absent means the unbounded feed: drop the inherited variable entirely

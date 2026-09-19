@@ -181,13 +181,13 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint
 // the fill transform. share_applied=0 is the fail-closed refusal; the real
 // transform has its own fixture.
 unsigned original_share_transforms=0;bool original_share_reject=false,original_share_applies=true;
-LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t*p,std::size_t,float,std::vector<std::uint32_t>&o,bool,bool&share_applied,float=1.f,bool*gain_applied=nullptr){
+LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t*p,std::size_t,float,std::vector<std::uint32_t>&o,bool,bool&share_applied,float=1.f,bool*gain_applied=nullptr,bool=false){
  ++original_share_transforms;share_applied=false;if(gain_applied)*gain_applied=false;
  if(original_share_reject)return LinearMaterialResult::UnsupportedShader;
  share_applied=original_share_applies;o={*p+950};return LinearMaterialResult::Applied;}
 // Hull light-map gain double (--hull-lightmap-gain): inert unless a test arms it.
 unsigned hull_lightmap_transforms=0;bool hull_lightmap_reject=false,hull_lightmap_applies=true;
-LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const std::uint32_t*p,std::size_t,float,float,std::vector<std::uint32_t>&o,bool,bool&fill_applied,bool&gain_applied){
+LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const std::uint32_t*p,std::size_t,float,float,std::vector<std::uint32_t>&o,bool,bool&fill_applied,bool&gain_applied,bool=false){
  ++hull_lightmap_transforms;fill_applied=gain_applied=false;
  if(hull_lightmap_reject)return LinearMaterialResult::UnsupportedShader;
  gain_applied=hull_lightmap_applies;o={*p+960};return LinearMaterialResult::Applied;}
@@ -422,6 +422,7 @@ public:
  bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
  bool emission_source_gain_requested_=false;float emission_source_gain_=1;
  bool hull_emission_gain_requested_=false;float hull_emission_gain_=1;
+ bool lightmap_far_fade_=false; // --light-map-far-fade, mirrored inertly (off)
  bool hull_lightmap_gain_requested_=false;float hull_lightmap_gain_=1.f;std::uint32_t hull_lightmap_draws_=0,sun_original_lightmap_variants_=0;
  struct{std::uint32_t admitted=0,refused_blend=0,refused_variant=0,refused_routed=0,refused_unknown=0,refused_state=0,bind_failures=0,programs=0;}hull_gain_counts_;
  std::uint32_t hull_gain_logged_[3]{};std::uint32_t hull_gain_program_logged_=0;unsigned hull_gain_prepares_=0;
@@ -543,6 +544,7 @@ bool linear_material_requested=false,motion_output_requested=true,hdr_requested=
 float emission_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN, parsed by the same extracted setting reader
 float hull_emission_gain=1.f;   // X3M_HULL_EMISSION_GAIN (emitter plan phase 3), same reader
 float hull_lightmap_gain=1.f;   // X3M_HULL_LIGHTMAP_GAIN (hull-self-illumination.md 5), same reader
+bool lightmap_far_fade_requested=false;float lightmap_far_fade[3]={0.f,0.f,1.f}; // X3M_LIGHT_MAP_FAR_FADE, same reader
 bool screen_emission_additive_requested=false;float screen_emission_additive_gain=1.f; // X3M_SCREEN_EMISSION_ADDITIVE=G
 bool screen_emission_additive_alpha_requested=false;float screen_emission_additive_alpha=1.f; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K, mirrored inertly
 float original_fill=0.f; // X3M_ORIGINAL_FILL=K, parsed by the same extracted setting reader

@@ -36,6 +36,21 @@ void write(const fs::path& path,const Words& words) {
     stream.write(reinterpret_cast<const char*>(words.data()),static_cast<std::streamsize>(words.size()*4));
     require(bool(stream),"write local variant");
 }
+// Far fade (--light-map-far-fade): the dynamic variant is the constant-gain one
+// without its `def c223` (6 words) and with the MUL's c223.x operand replaced
+// by c217.w (the motion ABI's free per-draw lane). Built here from the static
+// variant, independently of the transformer.
+unsigned dynamic_checks=0;
+Words expected_dynamic(const Words& fixed) {
+    Words result; bool dropped=false; unsigned replaced=0;
+    for (std::size_t i=1;i<fixed.size();) {
+        if (!dropped && i+5<fixed.size() && fixed[i]==0x05000051u && (fixed[i+1]&0x70000000u)==0x20000000u && (fixed[i+1]&0x7ffu)==223u) { dropped=true; i+=6; continue; }
+        result.push_back(fixed[i]==0xa00000dfu ? (++replaced,0xa0ff00d9u) : fixed[i]); ++i;
+    }
+    result.insert(result.begin(),fixed[0]);
+    require(dropped && replaced==1,"static variant carries one c223 DEF and one c223.x read");
+    ++dynamic_checks; return result;
+}
 // Independent weighted-slot walk (Microsoft SM3 slot table; the same one the
 // original-fill structural driver uses).
 std::pair<unsigned,unsigned> weighted_slots(const Words& result) {
@@ -124,6 +139,12 @@ int main(int argc,char** argv) {
                         require(slots<=512,"minimum SM3 static slot budget");
                         max_slots=std::max(max_slots,slots);
                     }
+                    {
+                        Words dynamic{0x12345678}; bool dynamic_fill=!fill_applied, dynamic_gain=!gain_applied;
+                        require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],gain,dynamic,depth,dynamic_fill,dynamic_gain,true)==LinearMaterialResult::Applied &&
+                                dynamic_fill==fill_applied && dynamic_gain==gain_applied,"dynamic gain: the same verdict");
+                        require(dynamic==(gain_applied?expected_dynamic(result):base),"dynamic gain: no DEF, the MUL reads c217.w; untouched programs stay the fill variant");
+                    }
                     Words alias=original; bool alias_fill=false, alias_gain=false;
                     require(linear_material_hull_lightmap_gain_pixel_variant(alias.data(),alias.size(),fills[f],gain,alias,depth,alias_fill,alias_gain)==LinearMaterialResult::Applied &&
                             alias==result && alias_fill==fill_applied && alias_gain==gain_applied,"input/output alias");
@@ -150,6 +171,11 @@ int main(int argc,char** argv) {
                     share_gain_any=true; require(result.size()==share.size()+10,"one DEF and one MUL added to the share variant");
                     share_variant_slots[f]=weighted_slots(result).second; require(share_variant_slots[f]<=512,"minimum SM3 static slot budget");
                     max_slots=std::max(max_slots,share_variant_slots[f]);
+                }
+                {
+                    Words dynamic{0x12345678}; bool dynamic_share=false, dynamic_gain=!result_gain;
+                    require(linear_material_original_sun_share_pixel_variant(original.data(),original.size(),fills[f],dynamic,true,dynamic_share,gain,&dynamic_gain,true)==LinearMaterialResult::Applied &&
+                            dynamic_share && dynamic_gain==result_gain && dynamic==(result_gain?expected_dynamic(result):share),"dynamic gained share: no DEF, the MUL reads c217.w");
                 }
                 write(out/(name+"-hlsharegain-"+std::to_string(f)+".bin"),result);
             }
@@ -185,6 +211,6 @@ int main(int argc,char** argv) {
         require(linear_material_hull_lightmap_gain_pixel_variant(authored.data(),authored.size(),0.05f,gain,result,true,authored_fill,authored_gain)==LinearMaterialResult::UnsupportedShader &&
                 result==Words({91,92}) && !authored_fill && !authored_gain,"unreviewed valid framing");
         std::cout<<"],\"programs\":"<<names.size()<<",\"supported\":"<<supported<<",\"applied\":"<<applied<<",\"untouched\":"<<untouched<<",\"gain\":"<<gain
-                 <<",\"max_variant_slots\":"<<max_slots<<",\"checks\":"<<checks<<",\"creates_ns\":"<<create_ns<<"}\n";
+                 <<",\"max_variant_slots\":"<<max_slots<<",\"dynamic_checks\":"<<dynamic_checks<<",\"checks\":"<<checks<<",\"creates_ns\":"<<create_ns<<"}\n";
     } catch (const std::exception& error) { std::cerr<<error.what()<<'\n'; return 1; }
 }

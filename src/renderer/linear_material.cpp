@@ -1027,8 +1027,16 @@ bool reads_rgb(Word operand, unsigned reg) noexcept {
 bool writes_rgb(Word destination, unsigned reg) noexcept {
     return kind(destination)==temp && index(destination)==reg && (mask(destination)&xyz)!=0;
 }
-void lightmap_gain_instruction(Words& out, unsigned reg) {
-    emit(out,mul,{dst(temp,reg),src(temp,reg),lane(constant,lightmap_gain_constant,0)});
+// Far fade (--light-map-far-fade): the same MUL reads the per-draw gain the
+// route uploads in c217.w (MaterialMotionAbi::pixel_mode_constant; the motion
+// fragment reads c217.x only and the route uploads both vectors on every routed
+// draw) instead of the shader-local DEF, which would shadow any uploaded value.
+constexpr unsigned lightmap_dynamic_constant = MaterialMotionAbi::pixel_mode_constant;
+Word lightmap_gain_operand(bool dynamic) noexcept {
+    return dynamic ? lane(constant,lightmap_dynamic_constant,3) : lane(constant,lightmap_gain_constant,0);
+}
+void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic) {
+    emit(out,mul,{dst(temp,reg),src(temp,reg),lightmap_gain_operand(dynamic)});
 }
 // The term's liveness between the fetch at `site` and the final colour
 // instruction at `final_rgb` (instruction DWORDs of `code`): the fetch samples
@@ -1038,7 +1046,7 @@ void lightmap_gain_instruction(Words& out, unsigned reg) {
 // `final_destination`.xyz from exactly one unmodified rL operand; nothing
 // after it reads rL.xyz. Returns rL, or -1 when the program has no such term.
 int lightmap_term(const Word* code, const Structure& s, std::size_t site, std::size_t final_rgb,
-                  unsigned stage, bool gained, Word final_destination) noexcept {
+                  unsigned stage, bool gained, Word final_destination, bool dynamic=false) noexcept {
     std::size_t i=0;
     while (i<s.instructions.size() && s.instructions[i].at!=site) ++i;
     if (i>=s.instructions.size() || site>=final_rgb) return -1;
@@ -1057,7 +1065,7 @@ int lightmap_term(const Word* code, const Structure& s, std::size_t site, std::s
         if (++i>=s.instructions.size()) return -1;
         const auto& gain=s.instructions[i];
         if (gain.opcode!=mul || gain.count!=3 || code[gain.at+1]!=dst(temp,reg) || code[gain.at+2]!=src(temp,reg) ||
-            code[gain.at+3]!=lane(constant,lightmap_gain_constant,0)) return -1;
+            code[gain.at+3]!=lightmap_gain_operand(dynamic)) return -1;
     }
     bool terra=false, final=false;
     for (++i; i<s.instructions.size(); ++i) {
@@ -1717,7 +1725,7 @@ bool original_sun_plan(const Word* original, const Structure& source, const std:
 // byte for byte and reports lightmap_gain_applied = false.
 LinearMaterialResult original_fill_transform(const Word* original, std::size_t words, float fill,
     Words& output, bool current_depth, bool& fill_applied, bool* share_applied=nullptr,
-    float lightmap_gain=1.0f, bool* lightmap_gain_applied=nullptr) noexcept {
+    float lightmap_gain=1.0f, bool* lightmap_gain_applied=nullptr, bool lightmap_dynamic=false) noexcept {
     fill_applied=false;
     if (share_applied) *share_applied=false;
     if (lightmap_gain_applied) *lightmap_gain_applied=false;
@@ -1820,7 +1828,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                     emit(combined,def,{dst(constant,original_share_domain,xyzw),bits(2.2f),bits(0.0f),bits(65504.0f),bits(original_share_slack)});
                     emit(combined,def,{dst(constant,sun_constant,xyzw),bits(0.2126f),bits(0.7152f),bits(0.0722f),bits(0x1p-20f)});
                 }
-                if (lightmap_on) emit(combined,def,{dst(constant,lightmap_gain_constant,xyzw),bits(lightmap_gain),bits(0.0f),bits(0.0f),bits(0.0f)});
+                if (lightmap_on && !lightmap_dynamic) emit(combined,def,{dst(constant,lightmap_gain_constant,xyzw),bits(lightmap_gain),bits(0.0f),bits(0.0f),bits(0.0f)});
             }
             if (original[at]==end_token) {
                 // After the motion body's depth write: the sole oC2.g MOV.
@@ -1847,7 +1855,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             if (at==final_rgb) combined_final=copy;
             // The gain MUL immediately after the light-map fetch, before any
             // motion insertion keyed on the next original instruction.
-            if (lightmap_on && at==lightmap_site) { combined_site=copy; lightmap_gain_instruction(combined,lightmap_reg); }
+            if (lightmap_on && at==lightmap_site) { combined_site=copy; lightmap_gain_instruction(combined,lightmap_reg,lightmap_dynamic); }
             at+=n+1;
         }
         if (inserted!=insertions.size() || edited!=edits.size()) return LinearMaterialResult::ProfileMismatch;
@@ -1858,11 +1866,24 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             // The emitted program re-proves the term: one DEF and one read of
             // c223, the fetch followed by the exact MUL, rL.xyz untouched by
             // every motion/fill/share insertion until the final instruction.
+            // Dynamic: no DEF of c223 or c217 (a DEF would shadow the upload)
+            // and exactly one read of the c217.w lane, the MUL's.
             unsigned definitions=0, reads=0;
             constant_uses(combined.data(),final_structure,lightmap_gain_constant,definitions,reads);
-            if (definitions!=1 || reads!=1 || combined_site==0 || combined_final==0 ||
+            bool constants=definitions==1 && reads==1;
+            if (lightmap_dynamic) {
+                constants=definitions==0 && reads==0;
+                constant_uses(combined.data(),final_structure,lightmap_dynamic_constant,definitions,reads);
+                unsigned lane_reads=0;
+                for (const auto& in:final_structure.instructions) {
+                    if (in.opcode==dcl || in.opcode==def) continue;
+                    for (unsigned q=2;q<=in.count;++q) if (combined[in.at+q]==lightmap_gain_operand(true)) ++lane_reads;
+                }
+                constants=constants && definitions==0 && lane_reads==1;
+            }
+            if (!constants || combined_site==0 || combined_final==0 ||
                 lightmap_term(combined.data(),final_structure,combined_site,combined_final,lightmap_stage,true,
-                              share ? dst(temp,original_share_total) : dst(color_output,0))!=int(lightmap_reg))
+                              share ? dst(temp,original_share_total) : dst(color_output,0),lightmap_dynamic)!=int(lightmap_reg))
                 return LinearMaterialResult::ProfileMismatch;
         }
         output.swap(combined);
@@ -1878,13 +1899,14 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const Word* ori
     return original_fill_transform(original,words,fill,output,current_depth,fill_applied);
 }
 LinearMaterialResult linear_material_original_sun_share_pixel_variant(const Word* original, std::size_t words,
-    float fill, Words& output, bool current_depth, bool& share_applied, float lightmap_gain, bool* lightmap_gain_applied) noexcept {
+    float fill, Words& output, bool current_depth, bool& share_applied, float lightmap_gain, bool* lightmap_gain_applied,
+    bool lightmap_dynamic) noexcept {
     bool fill_applied=false;
-    return original_fill_transform(original,words,fill,output,current_depth,fill_applied,&share_applied,lightmap_gain,lightmap_gain_applied);
+    return original_fill_transform(original,words,fill,output,current_depth,fill_applied,&share_applied,lightmap_gain,lightmap_gain_applied,lightmap_dynamic);
 }
 LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const Word* original, std::size_t words,
-    float fill, float gain, Words& output, bool current_depth, bool& fill_applied, bool& gain_applied) noexcept {
-    return original_fill_transform(original,words,fill,output,current_depth,fill_applied,nullptr,gain,&gain_applied);
+    float fill, float gain, Words& output, bool current_depth, bool& fill_applied, bool& gain_applied, bool dynamic) noexcept {
+    return original_fill_transform(original,words,fill,output,current_depth,fill_applied,nullptr,gain,&gain_applied,dynamic);
 }
 } // namespace x3m::renderer
 
