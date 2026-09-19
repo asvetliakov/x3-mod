@@ -352,12 +352,16 @@ fade-band and overlay arms never bind a gained variant (unchanged); cutout pairs
 and get the same constant; Reset re-creates the variants through the same registration path; documented D3D9 only.
 
 **Per draw, not per pixel.** One object gets one gain, from its origin. Consequences: (a) a big station seen close has
-its origin at a small footprint (at width 1280 and p00 0.8, footprint 40 is z = 20.5 km), so it keeps the full gain over
+its origin at a small footprint (at width 1280 and p00 0.8, footprint 40 is z = 20,480 view units, or 4.096 km), so it keeps the full gain over
 its whole body; (b) the gain does not vary across a body that spans a depth range: a part 2 km deeper than its origin
-differs from the per-pixel law by `3.9 / (P1 - P0) * (gain - G)`, 0.17 of 4 for `40,110,1`, invisible; (c) separately
-drawn parts of one station step by the same small amount, never a seam inside a draw. A per-pixel version is affordable
+has a footprint difference of 19.53 units/px and can differ from the per-pixel law by
+`19.53 / (P1 - P0) * (gain - G)`, up to 0.84 of gain for `40,110,1` within the transition;
+(c) separately drawn parts can therefore have different gains, although there is no seam inside a draw.
+Visibility has not been measured. The distance conversion uses 5 view units/metre
+([camera scale](../reverse-engineering/camera-state-and-frame-routine.md)); the previous 20.5 km / 0.17 example mixed units.
+A per-pixel version is affordable
 in slots (largest gained variant 264 of 512 static slots; about +4 instructions and one more constant) but needs view
-depth in the pixel program, which only the depth-exporting rows interpolate, and buys nothing at these distances.
+depth in the pixel program, which only the depth-exporting rows interpolate, and has not been shown to improve these views.
 **Not built.**
 
 **Energy.** Only the light-map (self-illumination) term changes; lit hull, guide lights (F6 gain) and effects do not.
@@ -371,3 +375,27 @@ until flown: whether mid-distance stations (40-110) read too dim, and whether `G
 stabiliser (then try `G = 0.5`).
 
 Verification: `docs/verification/motion-output.md`, "Light-map far fade".
+
+
+## 12. Run 48 A: distant-station default recommendation (2026-09-20)
+
+**User verdict:** run178 is acceptable, with minor residual flicker especially during
+camera movement. Run176 loaded the baseline plant and then the distant-station save;
+run177 tested the plant with the three proposed options. This is not a captured
+same-view distant-station A/B: run178 contains no frame-image burst.
+
+**Measured telemetry (run178):** `40,110,1`, hull gain 4, far stabiliser 0.985 and
+thin region 0.97 were accepted. All 8,195 light-map fade rows (frames 761–9220)
+report a valid camera and minimum gain 1; 25–517 draws were faded per logged frame.
+The minimum proves some draws reach the floor; it does not identify the particular
+station the user watched. Target 1280×768 and p00 0.8 give P0/P1 view depths of
+4.096/11.264 km (5 view units/metre).
+
+**Recommendation:** retain `--taa-far-stabiliser 0.985` with its existing motion gate
+and `--light-map-far-fade 40,110,1` for the next defaults checkpoint. Raising P0/P1
+preserves the boost farther away and can increase shimmer; lowering them only
+changes draws not already at the floor. No stronger thresholds are justified by
+this flight. `40,110,0.5` is an optional future same-view comparison if the remaining
+window flicker is worth dimmer windows (half the game's light-map radiance at the
+floor). It is not a measured improvement or a recommended default. The setting
+cannot eliminate crawling geometric edges. No launcher default changed here.

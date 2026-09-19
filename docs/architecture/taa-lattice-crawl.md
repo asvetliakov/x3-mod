@@ -613,3 +613,39 @@ remains at rest: W 0.985, then the wider region (open issue).
   `seam-taa-on` 164, `seam-taa-hdr-tonemap-on` 140, `production-taa-hdr-tonemap-on` 59 checks.
 - `run_temporal_pass.py` exit 0: lattice mode 459 numerical / 19 state.
 
+
+
+## 14. Run 48 A: stationary success, camera-rotation limit (2026-09-20)
+
+**User report:** run176 baseline still crawls. With thin region 0.97, far stabiliser
+0.985 and light-map fade 40,110, run177 fixes the stationary arm; crawl remains
+while rotating the camera. This confirms the stationary benefit, not moving
+quality or absence of trails behind independently moving objects.
+
+**Real-dump gate reconstruction:** run177 stationary frames 5674–5705 and rotation
+6392–6423. The inherited run175 crop mostly covers a spar in this changed view;
+use the visually checked gridded-truss crop `900 50 1100 170`. Applying the existing
+replay mask and motion-gate operators to the dumps gives:
+
+| burst | fragmented-region pixel-frames | region speed p50 / p90 / p99 (px/frame) | gate active within region |
+| --- | ---: | --- | ---: |
+| stationary | 376,621 | 0.001 / 0.006 / 0.006 | 100% |
+| camera rotating | 256,122 | 6.852 / 9.230 / 10.142 | 170 pixel-frames, 0.07% |
+
+These are reconstructed gate measurements, not a readback of the shader's mask,
+and the fixed crop does not follow one material point through the pan. They show
+that the treatment is almost entirely gated off where the truss passes through
+this crop during rotation. The user-visible residual is consistent with returning
+to the ordinary resolve above HI=0.25; it is not evidence of a failed stationary
+fix. No raw fixed-pixel variance is used as a moving crawl score.
+
+**Decision:** keep 0.97 as the stationary-benefit candidate; leave camera-motion
+quality open. Do not widen the shared gate into the measured 7–10 px/frame range:
+it would retain unclipped history under substantial motion, contrary to the prior
+blur rejection. A further tuning decision needs motion-compensated analysis of
+the actual truss and trail measurements; a slow-pan capture near the 0.03–0.25
+knee would test a local gate adjustment, whereas this rapid pan does not. No
+additional flight is required before the already queued run 48 B/C.
+
+Local preview and reconstruction results: `verification/results/run48a-lattice-triage/`.
+Flight/environment provenance is in the [motion-output ledger](../verification/motion-output.md).

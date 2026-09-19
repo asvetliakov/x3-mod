@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (run48 candidate installed; run 47 read; run 48 queued). This is the
+Updated 2026-09-20 (run48 candidate installed; run 48 A reported; B/C pending). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -31,20 +31,23 @@ installed bytes, unchanged EXE/bottle hashes and the rollback: run47
 
 Launcher defaults for modded launches: original hull shading; `--cull-small-parts 2`
 scope `all`; `--collide-sat-sse2` and `--collide-memo` on (`--no-…` switches).
-New in this build, default off and **unflown**: `--taa-thin-region` (lattice arm
+New in this build, default off: `--taa-thin-region` (lattice arm
 crawl), `--light-map-far-fade` (distant glowing windows), `--volumetric-fog`
 (Ctrl+Alt+F9 / Ctrl+Alt+F10), `--submit-phases` (diagnostic); always on: the sun-lane
-stamp (Argon Prime shadows). `--taa-far-stabiliser 0.985` was accepted by the user in
-run 47 C and is a default candidate together with the first two.
+stamp (Argon Prime shadows; flight verdict pending). `--taa-far-stabiliser 0.985` was accepted by the user in
+run 47 C. Run 48 A supports keeping far stabiliser 0.985 and light-map fade 40,110,1
+for the next defaults checkpoint. Thin region 0.97 fixes stationary crawl; moving
+quality remains open. Launcher defaults are unchanged.
 
 ## Current state (2026-09-20)
 
-Run 47 is read; **run 48 is queued** ([user-runs.md](verification/user-runs.md) §48):
+Run 47 is read; **run 48 A is reported; B/C remain queued** ([user-runs.md](verification/user-runs.md) §48):
 A lattice arm + distant station (baseline vs the intended defaults), B Argon Prime
 shadows and fog, C `--submit-phases` at the busy station. The
 [handoff](handoff-2026-09-20.md) holds the state of every track, the decisions owed
 after run 48, the user's preferences and the housekeeping list; the
-[goals table](goals.md) is current. Nothing is in flight: no agent is running and every
-worktree branch of the 2026-09-19/20 session is merged. Earlier session sections of this
+[goals table](goals.md) is current. Run 48 A evidence is recorded in the [motion-output ledger](verification/motion-output.md):
+stationary improvement confirmed; moving-arm crawl remains open. No new candidate is qualifying. Every
+worktree branch of the previous 2026-09-19/20 session is merged. Earlier session sections of this
 file moved to [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md).
 

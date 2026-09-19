@@ -2088,3 +2088,40 @@ the route; one shared speed gate made explicit in the launcher. `run_temporal_pa
 state. Seam cases, record `verification/results/bottle-X3/motion-output-partial.json`: 164 / 140 / 59 checks. Generator
 `--check` PASS; only `temporal_line_mask` and `temporal_resolve_far` bytecode moved.
 
+
+
+### Run 48 A (2026-09-20) — plant and distant-station flight
+
+User-supplied sessions `/tmp/x3-bottleX3-run176`, `run177`, `run178` use bottle
+**X3**, CrossOver Preview. Each session logs `FEX_X87REDUCEDPRECISION=1` and
+`WINEMSYNC=1`; current `cxbottle.conf` records `WineArch=arm64` (the session does
+not independently log the WineArch key). No agent launched the game or ran Wine.
+
+- run176: baseline; plant capture, then distant-station save loaded.
+- run177: user confirms stationary arm crawl fixed with thin region 0.97, far
+  stabiliser 0.985, light-map far fade 40,110; crawl remains during camera rotation.
+  Captures: frames 5674–5705 stationary, 6392–6423 rotating.
+- run178: distant station judged acceptable, with minor residual flicker especially
+  during rotation. No frame-image burst. All 8,195 fade records have camera valid
+  and minimum gain 1, with 25–517 faded draws/frame. Aggregate minimum is not a
+  station-specific measurement. Keep 40,110,1 as the next default recommendation;
+  stronger dimming is untested. See [threshold recommendation](../architecture/taa-distant-line-fade.md#12-run-48-a-distant-station-default-recommendation-2026-09-20).
+
+The only launcher edit in this checkpoint aligns its help suggestion with 40,110;
+no resolved default or renderer input changed. Focused host check:
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_hull_lightmap_gain`
+completed successfully (3 tests reported; 1 skipped because the local original
+137-program shader corpus is absent). The check is not shader/runtime validation.
+
+Run177 real-dump gate reconstruction on the visually checked gridded truss
+(`900 50 1100 170`) gives stationary speed p50/p99 0.001/0.006 px/frame,
+100% gate active on fragmented-region samples; rotation 6.852/10.142 px/frame,
+only 170 of 256,122 region pixel-frames active (0.07%). This is replay-derived,
+not a shader mask readback or a motion-compensated flicker score. The inherited
+run175 spar crop was discarded. See [moving-arm limit](../architecture/taa-lattice-crawl.md#14-run-48-a-stationary-success-camera-rotation-limit-2026-09-20).
+
+Reproduce the local gate witness:
+`python3 verification/results/run48a-lattice-triage/reconstruct_gate_witness.py`
+(loads `tools/analysis/taa_resolve_replay.py` with the shipped gate and an ungated
+region). Local results JSON and wrapper syntax validate. Independent review ran
+the host reproducer in 14.7 s and reproduced both burst result dictionaries exactly.

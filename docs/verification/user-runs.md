@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-17 (run 38 queued). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-20 (run 48 A reported; B/C pending). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -72,7 +72,7 @@ Completed run commands and instructions are preserved in
 not rerun requests.
 
 
-## 48. Lattice arm fix, distant windows, Argon Prime shadows and fog, submit stamps — queued (run48 candidate)
+## 48. Lattice arm fix, distant windows, Argon Prime shadows and fog, submit stamps — A reported; B/C pending
 
 Installed: run48 candidate (hash in [status](../status.md)). New since run 47, all default off unless said:
 `--taa-thin-region W` (the lattice ARM crawl: on fragmented thin structure against sky the TAA stops discarding
@@ -82,6 +82,15 @@ shimmering windows of distant stations), the sun-shadow fix for sectors with adv
 `--volumetric-fog S` (sun-lit fog with shadow shafts, only in sectors where the game draws its own fog clouds;
 **Ctrl+Alt+F9** toggles it, **Ctrl+Alt+F10** steps the strength 0.005 / 0.01 / 0.02 / 0.03 / 0.05, shown on the
 FPS overlay) and the `--submit-phases` diagnostic. Every command is complete; run from the repository root.
+
+**Session A reported (2026-09-20):** baseline run176 (plant, then distant-station save);
+run177 with the three options (two plant F8 bursts: stationary, then camera moving);
+run178 distant-station save only. The user confirms the arm crawl is fixed while the
+ship and camera are stationary, but remains during camera rotation. The distant
+station is acceptable with minor residual flicker, especially in camera motion;
+retain far stabiliser 0.985 and light-map fade 40,110,1 as the recommended defaults
+for the next checkpoint. Moving-arm crawl remains open; launcher defaults are unchanged.
+Sessions B and C remain queued; the commands below retain the settings actually flown.
 
 **Session A** (lattice arm + distant station; corvette save at the solar plant where the arm crawls, then the
 fighter save with the distant station; two launches, one F8 each at the plant ≈ 1.5 GB):
