@@ -123,6 +123,7 @@ struct MotionRoute {
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     bool sun_receiver = false, sun_color_writer = false;
+    bool sun_stamp = false; // gate-3 refused scene draw the lane may stamp invalid after the native draw (sun_stamp_call_ holds its arguments)
     // Sun-lane refusal diagnostics (sun_share_frame.h): the gate reason
     // recorded while the lane is on, and the z/z-write states the selector
     // read (bit0 z, bit1 z write, bit2 both known). Never consulted by
@@ -1072,7 +1073,9 @@ private:
                          // constant table (caster counter on; -1: none or beyond
                          // the shadowed c0..c31): the sun is at c4, c5 or c0
                          // depending on the program.
-                         std::int8_t sun_register = -1; };
+                         std::int8_t sun_register = -1;
+                         std::uint8_t major = 0; // version token major (0 until registered)
+                         bool depth_out = false; }; // PS: renderer::pixel_program_writes_depth, one walk at registration
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
@@ -1089,6 +1092,8 @@ private:
         bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion variant, frame failed
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
+        bool ps_depth_out = false; // the bound PS writes oDepth / texdepth (ShaderEntry::depth_out)
+        std::uint8_t vs_major = 0, ps_major = 0; // the bound programs' shader-model major versions (0: unbound or unknown)
         std::int8_t ps_sun_register = -1; // the bound PS's LightDir_Dir0 register (ShaderEntry::sun_register)
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
         IDirect3DPixelShader9* ps_source_gain_variant = nullptr;
@@ -1243,6 +1248,18 @@ private:
     void note_sun_untracked_writer(const MotionRoute& route, renderer::SunUntrackedReason reason) noexcept;
     bool sun_coverage_current_=false, sun_composition_completed_=false;
     IDirect3DPixelShader9* sun_sentinel_ps_=nullptr;
+    // Invalid-share stamp (directional-shadows.md "Unroutable depth writer"): a gate-3
+    // refused depth writer after a receiver is re-issued once with the application's own
+    // VS/geometry, ZFUNC EQUAL, no depth write, RT0/RT1 masked and RT2 masked to .g,
+    // writing share -1 over exactly the pixels it won. [0] ps_2_0 (SM1/SM2 originals),
+    // [1] ps_3_0. A stamp that cannot run or fails keeps the frame veto.
+    IDirect3DPixelShader9* sun_stamp_ps_[2]{};
+    bool sun_stamp_ps_failed_[2]{}; // created on first use; a failed create is not retried on this device
+    MotionDrawCall sun_stamp_call_{};
+    unsigned sun_stamp_prims_=0; // primitives re-issued by this frame's successful stamps (flight sanity figure)
+    unsigned sun_stamps_=0, sun_stamp_refused_=0; // per frame; refused: a candidate whose stamp did not run or failed (vetoes as before)
+    void arm_sun_stamp(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    bool sun_stamp_draw(const MotionRoute& route) noexcept;
     // Caster-candidate counter storage: fixed, cleared at begin_frame and after
     // publication; the witness count is per device (attach clears it).
     bool candidates_requested_=false;

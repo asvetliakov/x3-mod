@@ -28,7 +28,7 @@ class DepthPrepassProfileTests(unittest.TestCase):
     def test_rows_are_the_z_only_aliases(self):
         table = rows()
         doc = {h: int(size) for size, h in re.findall(r'\| z_only \| VS 1\.1 \| (\d+) \| `([0-9a-f]{16})` \|', FINGERPRINTS.read_text())}
-        self.assertEqual(len(doc), 2, 'shader-fingerprints.md names two z_only aliases')
+        self.assertEqual(len(doc), 4, 'shader-fingerprints.md names four z_only aliases (z_only.fb and z_only_0000/0001.fb)')
         self.assertEqual({h: n * 4 for h, n, _, _ in table}, doc)
         self.assertTrue(all(v == 'fffe0101' and r == 0 for _, _, v, r in table), table)
 

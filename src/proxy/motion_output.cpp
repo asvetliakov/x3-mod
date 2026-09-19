@@ -362,6 +362,7 @@ unsigned MotionOutput::device_references() const noexcept {
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
     if (sun_sentinel_ps_) ++count;
+    for (const auto* stamp : sun_stamp_ps_) if (stamp) ++count;
     if (quad_vs_) ++count;
     if (quad_declaration_) ++count;
     for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; }
@@ -406,6 +407,8 @@ void MotionOutput::release_resources() noexcept {
     if (sun_apply_) { taa_call([&] { sun_apply_->detach(); }); sun_apply_.reset(); }
     release(sentinel_ps_);
     release(sentinel_mrt_ps_); release(sun_sentinel_ps_);
+    for (auto& stamp : sun_stamp_ps_) release(stamp);
+    sun_stamp_ps_failed_[0] = sun_stamp_ps_failed_[1] = false;
     release(quad_vs_); release(quad_declaration_);
     for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); }
     for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.source_gain_variant); release(entry.second.hull_gain_variant); entry.second.hull_program = false; release(entry.second.original_fill_variant); release(entry.second.hull_lightmap_variant); release(entry.second.screen_variant); release(entry.second.screen_additive_variant); release(entry.second.sun_motion_variant); release(entry.second.sun_material_variant); release(entry.second.sun_xt_variant); release(entry.second.sun_original_variant); release(entry.second.sun_original_lightmap_variant); }
@@ -1893,9 +1896,9 @@ void MotionOutput::publish_sun_lane(const char* source) noexcept {
     // cutout_opaque_*: the tested-opaque arm's cutout-pair counts of this frame
     // (also on linear_material_frame with linear materials on); original_variants
     // / original_refused: the original share producer's create-time totals.
-    log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u non_depth_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=%u cutout_opaque_routed=%u cutout_opaque_lane=%u cutout_opaque_refused=%u original_variants=%u original_refused=%u original_refused_draws=%u",
+    log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u non_depth_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=%u cutout_opaque_routed=%u cutout_opaque_lane=%u cutout_opaque_refused=%u original_variants=%u original_refused=%u original_refused_draws=%u stamped=%u stamp_refused=%u stamped_prims=%u",
         id_,frame_,source,unsigned(lane_depth_format()),available,sun_frame_.receivers,sun_frame_.covered,sun_frame_.untracked,sun_frame_.non_writers,sun_frame_.failed,owner,sun_frame_.coverage_required,coverage,
-        unsigned(sun_apply_requested_),counters_.cutout_opaque_routed,counters_.cutout_opaque_lane,counters_.cutout_opaque_refused,sun_original_variants_,sun_original_refused_,sun_original_refused_draws_);
+        unsigned(sun_apply_requested_),counters_.cutout_opaque_routed,counters_.cutout_opaque_lane,counters_.cutout_opaque_refused,sun_original_variants_,sun_original_refused_,sun_original_refused_draws_,sun_stamps_,sun_stamp_refused_,sun_stamp_prims_);
     // Refusal buckets for the untracked-writer veto: one line per frame with
     // untracked writers, never per draw (docs/verification/directional-shadows.md).
     if(!sun_frame_.untracked)return;
@@ -3017,6 +3020,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         release(entry.xt_default_linear_variant);
         release(entry.distance_fade_variant);
         entry.hash = hash;
+        entry.major = code && bytes >= 4 && (code[0] >> 16) == 0xfffeu ? std::uint8_t((code[0] >> 8) & 0xffu) : std::uint8_t(0);
         entry.row = nullptr; entry.prepass = nullptr;
         if (!enabled_ || !code || !bytes || bytes % 4) return;
         if (distance_fade_requested_) {
@@ -3124,6 +3128,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         entry.hash = hash;
         entry.row = nullptr;
         entry.sun_register = -1;
+        entry.major = code && bytes >= 4 && (code[0] >> 16) == 0xffffu ? std::uint8_t((code[0] >> 8) & 0xffu) : std::uint8_t(0);
+        entry.depth_out = renderer::pixel_program_writes_depth(reinterpret_cast<const std::uint32_t*>(code), code && bytes % 4 == 0 ? bytes / 4 : 0);
         if (code && bytes && bytes % 4 == 0) {
             // The program's own sun register (c4, c5 or c0 in the engine's hull
             // programs); a program without the constant contributes no sun.
@@ -3413,12 +3419,12 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
-    shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; shadow_.vs_prepass = nullptr;
+    shadow_.vs = shader; shadow_.vs_major = 0; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; shadow_.vs_prepass = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
     shadow_.vs_hash = it->second.hash;
-    shadow_.vs_registered = it->second.registered;
+    shadow_.vs_registered = it->second.registered; shadow_.vs_major = it->second.major;
     shadow_.vs_fade_variant = static_cast<IDirect3DVertexShader9*>(it->second.distance_fade_variant);
     shadow_.vs_variant = static_cast<IDirect3DVertexShader9*>(it->second.variant);
     shadow_.vs_row = it->second.row;
@@ -3438,12 +3444,12 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.ps_sun_motion=nullptr; shadow_.ps_sun_material=nullptr; shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
-    shadow_.ps_sun_register = -1;
+    shadow_.ps_sun_register = -1; shadow_.ps_major = 0; shadow_.ps_depth_out = false;
     if (!shader) return;
     const auto it = pixel_.find(shader);
     if (it == pixel_.end()) return;
     shadow_.ps_hash = it->second.hash;
-    shadow_.ps_sun_register = it->second.sun_register;
+    shadow_.ps_sun_register = it->second.sun_register; shadow_.ps_major = it->second.major; shadow_.ps_depth_out = it->second.depth_out;
     shadow_.ps_registered = it->second.registered;
     shadow_.ps_fade_variant = static_cast<IDirect3DPixelShader9*>(it->second.distance_fade_variant);
     shadow_.ps_emission_variant = it->second.emission_variant;
@@ -3671,7 +3677,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
-    counters_ = {}; sun_frame_={}; sun_coverage_current_=sun_composition_completed_=false;
+    counters_ = {}; sun_frame_={}; sun_stamps_=sun_stamp_refused_=sun_stamp_prims_=0; sun_coverage_current_=sun_composition_completed_=false;
     sun_apply_applied_=sun_apply_attempted_=false; // fixture keys 70/71 describe this frame
     sun_original_refused_draws_=0;
     if (retention_) retention_frame_begin(); // retirements are consumed here too; sightings of a frame without a scene end leave
@@ -3977,6 +3983,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     route.sun_color_writer=sun_lane_active_&&call.primitives&&selector_.state()==renderer::BoundaryState::Scene&&
         !counters_.hook_scene_end&&(hdr_state_==HdrState::Active||scene_bound())&&state_field(4)!=0; // slot 4: COLORWRITEENABLE
     evaluate_draw(call, route);
+    if (route.sun_color_writer && !route.routed) arm_sun_stamp(call, route); // unroutable depth writer: see sun_stamp_draw
     // Step B rectangle before step C's admission: an admitted screen draw
     // composes inside it; without it the draw stays native.
     if (screen_emission_bound_) derive_prefix_region(call, route);
@@ -5770,19 +5777,6 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     const bool jittered = route.jittered;
     if (route.composition) finish_composition(result, route.composition_policy);
     if (route.screen_additive) finish_screen_additive(route);
-    if(sun_lane_active_&&route.sun_color_writer){
-        const bool coverage=route.composition&&sun_composition_completed_&&sun_coverage_current_&&composition_&&composition_->coverage_valid()&&
-            !composition_frame_stopped_&&!composition_state_lost_&&!composition_quarantined_;
-        // Diagnostics only: the refusal reason travels with the draw; the
-        // bookkeeping decides untracked exactly as before.
-        const auto reason=route.routed
-            ?(route.fade_arm?renderer::SunUntrackedReason::FadeArm:!route.depth?renderer::SunUntrackedReason::NoDepth:renderer::SunUntrackedReason(route.sun_refusal))
-            :renderer::SunUntrackedReason(route.sun_refusal);
-        // Only an actual depth writer (z test and z write on, both read) can
-        // veto: a color-only draw leaves the tracked depth intact.
-        if(sun_frame_.draw(route.submit&&SUCCEEDED(result),route.routed&&route.depth&&!route.fade_arm&&route.sun_receiver,coverage,route.routed&&route.depth&&!route.fade_arm,reason,(route.sun_z_state&7u)==7u))
-            note_sun_untracked_writer(route,reason);
-    }
     if (cutout::missed(route.cutout_candidate, route.submit, SUCCEEDED(result), route.routed || route.composition,
             route.cutout_test_known, route.cutout_test, route.cutout_color_known, route.cutout_color,
             route.cutout_alpha_known, route.cutout_alpha, route.cutout_z_known, route.cutout_z,
@@ -5801,6 +5795,29 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     }
     if (route.source_gain) finish_source_gain(route);
     if (route.hull_gain) finish_hull_gain(route);
+    if(sun_lane_active_&&route.sun_color_writer){
+        const bool coverage=route.composition&&sun_composition_completed_&&sun_coverage_current_&&composition_&&composition_->coverage_valid()&&
+            !composition_frame_stopped_&&!composition_state_lost_&&!composition_quarantined_;
+        // Diagnostics only: the refusal reason travels with the draw; the
+        // bookkeeping decides untracked exactly as before.
+        const auto reason=route.routed
+            ?(route.fade_arm?renderer::SunUntrackedReason::FadeArm:!route.depth?renderer::SunUntrackedReason::NoDepth:renderer::SunUntrackedReason(route.sun_refusal))
+            :renderer::SunUntrackedReason(route.sun_refusal);
+        // Only an actual depth writer (z test and z write on, both read) can
+        // veto: a color-only draw leaves the tracked depth intact.
+        // An unroutable depth writer (gate 3) stamps share -1 over the pixels it
+        // won instead of vetoing the frame; a stamp that cannot run or fails
+        // leaves the draw an untracked writer exactly as before.
+        // Runs after finish_source_gain / finish_hull_gain: the device holds the
+        // application's PS and constants again, which the stamp's restore assumes.
+        bool stamped=false;
+        if(route.sun_stamp&&route.submit&&SUCCEEDED(result)&&!route.composition&&!route.screen_additive&&(route.sun_z_state&7u)==7u){
+            stamped=sun_stamp_draw(route);
+            if(stamped){++sun_stamps_;sun_stamp_prims_+=sun_stamp_call_.primitives;}else ++sun_stamp_refused_;
+        }
+        if(sun_frame_.draw(route.submit&&SUCCEEDED(result),route.routed&&route.depth&&!route.fade_arm&&route.sun_receiver,coverage,stamped||(route.routed&&route.depth&&!route.fade_arm),reason,(route.sun_z_state&7u)==7u))
+            note_sun_untracked_writer(route,reason);
+    }
     if (candidates_requested_ && route.routed && SUCCEEDED(result)) note_candidate_draw(route);
     if (route.routed) {
         // route_draw: the apply (before_draw) plus this undo, without the

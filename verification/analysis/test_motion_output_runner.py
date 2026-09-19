@@ -67,10 +67,11 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-fade-route-routed': '0', 'seam-taa-fade-route-routed-perdraw': '0', 'seam-taa-fade-route-masked': '0',
                        'seam-taa-fade-route-sentinel': '0', 'seam-taa-fade-route-hover': '0', 'seam-taa-fade-route-original': '0',
                        'seam-taa-fade-route-behind': '0', 'seam-taa-fade-route-overlay': '0', 'seam-taa-fade-route-foreign': '0',
+                       'seam-taa-fade-route-overlay-lightmap': '0', 'seam-taa-fade-route-overlay-lightmap-far-fade': '0',  # --light-map-far-fade twins
                        'seam-taa-cutout-opaque-get': '0'})
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (60, 14, 29))
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (66, 14, 31))  # 4 seam-*lightmap-far-fade* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:
@@ -362,12 +363,13 @@ class MotionOutputRunnerTests(unittest.TestCase):
                          [('seam-taa-fade-route-routed', True, 'routed'), ('seam-taa-fade-route-routed-perdraw', False, 'routed'), ('seam-taa-fade-route-masked', True, 'masked'),
                           ('seam-taa-fade-route-sentinel', True, 'sentinel'), ('seam-taa-fade-route-hover', True, 'hover'),
                           ('seam-taa-fade-route-original', True, 'original'), ('seam-taa-fade-route-behind', True, 'behind'),
-                          ('seam-taa-fade-route-overlay', True, 'overlay'), ('seam-taa-fade-route-foreign', True, 'foreign')])
+                          ('seam-taa-fade-route-overlay', True, 'overlay'), ('seam-taa-fade-route-foreign', True, 'foreign'),
+                          ('seam-taa-fade-route-overlay-lightmap', True, 'overlay'), ('seam-taa-fade-route-overlay-lightmap-far-fade', True, 'overlay')])
         # The original-shading cases (run 125; run 130's origin behind the camera and same-node overlay) turn linear materials and the fade bracket off; every other case keeps both on.
         self.assertTrue(all(c['jitter'] and c['taa'] and c['hdr'] and c['hdr_env']['X3M_TAA_SENTINEL'] == '2'
                             and c['hdr_env']['X3M_FIXTURE_CAMERA'] == 'rotate' and 'X3M_FADE_ROUTE' not in c['hdr_env'] for c in cases))
         self.assertEqual({c['name']: (c['hdr_env']['X3M_LINEAR_MATERIALS'], c['hdr_env']['X3M_LINEAR_DISTANCE_FADE']) for c in cases},
-                         {c['name']: (('0', '0') if c['name'].endswith(('-original', '-behind', '-overlay', '-foreign')) else ('1', '1')) for c in cases})
+                         {c['name']: (('0', '0') if c['name'].endswith(('-original', '-behind', '-overlay', '-foreign', '-overlay-lightmap', '-overlay-lightmap-far-fade')) else ('1', '1')) for c in cases})
         self.assertEqual((runner.FADE_ROUTE_ENV['X3M_CAPTURE_START'], runner.FADE_ROUTE_ENV['X3M_CAPTURE_FRAMES']), ('2', '3'))
         # The hover tables: 507 arms, 449 is held, 390 disarms, 449 stays refused, 507 arms again.
         self.assertEqual(runner.FADE_ROUTE_HOVER_PERMILLE, (507, 449, 449, 390, 449, 449, 507, 449, 390, 507, 449, 449))
