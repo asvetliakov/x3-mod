@@ -1578,6 +1578,27 @@ private:
 
     IDirect3DDevice9* device_ = nullptr;
     void** native_ = nullptr;
+    // Direct native path of the route's value-only calls
+    // (docs/architecture/route-per-draw-cost.md, lever 1 stage A). Without the
+    // ownership wrapper, or with a published admission monitor, direct_ is
+    // native_ and direct_device_ is device_: the present path. With the
+    // wrapper, attach fills direct_slots_ for the seven value-only slots from
+    // ownership::borrowed_native_device's vtable; drop_direct() returns to the
+    // aliases (release_resources, before the final logical release). The
+    // borrowed device is never AddRef'd, stored elsewhere or handed out.
+    static constexpr unsigned direct_slot_count = 110; // SetPixelShaderConstantF + 1
+    void** direct_ = nullptr;
+    IDirect3DDevice9* direct_device_ = nullptr;
+    void* direct_slots_[direct_slot_count]{};
+    void bind_direct() noexcept;
+    void drop_direct() noexcept { direct_ = native_; direct_device_ = device_; }
+    // A failing direct call: hand the result to the wrapper's observe_result so
+    // device loss is observed as through the forwarder. Cold.
+    HRESULT direct_failed(HRESULT hr) const noexcept;
+    template<typename Fn, typename... Args> HRESULT direct_call(unsigned slot, Args... args) const noexcept {
+        const HRESULT hr = reinterpret_cast<Fn>(direct_[slot])(direct_device_, args...);
+        return __builtin_expect(FAILED(hr), 0) ? direct_failed(hr) : hr;
+    }
     std::uint64_t id_ = 0, frame_ = 0, generation_ = 1, sequence_ = 0;
     D3DCAPS9 caps_{};
     bool requested_ = false, enabled_ = false, depth_enabled_ = false, capture_ = false, telemetry_ = false;

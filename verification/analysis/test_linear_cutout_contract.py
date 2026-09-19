@@ -187,6 +187,7 @@ class MotionOutput {
 public:
     enum class HdrState { Off, Active, Suspended };
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
+    template<typename Fn, typename... Args> HRESULT direct_call(unsigned slot, Args... args) const noexcept { return native<Fn>(slot)(device_, args...); } // the route's value-only entry
     void log(const char*, ...) noexcept {}
     HRESULT render_state(D3DRENDERSTATETYPE state, DWORD* value) noexcept {
         ++render_queries;

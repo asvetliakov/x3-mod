@@ -80,6 +80,13 @@ struct BufferLockView : BufferLockObservation {
     bool requested=false, known=false;
 };
 HRESULT get_buffer_lock_view(IDirect3DResource9* application, BufferLockView* out) noexcept;
+// Same view without the FNSAVE/FRSTOR shell: preserves NOTHING itself. Only for
+// a caller that already runs under a CPU-state boundary restoring MXCSR and
+// LastError and whose whole path is audited x87-free (the proxy's draw hooks
+// under LightCallBoundary; verification/probe/check_no_x87.py walks this entry
+// and its core as a required root and is the build gate). Every other caller
+// uses get_buffer_lock_view.
+HRESULT get_buffer_lock_view_light(IDirect3DResource9* application, BufferLockView* out) noexcept;
 
 // Step B/D locked-prefix positions of an application vertex buffer wrapper
 // for its leading vertex_count vertices (POSITION FLOAT3 at 0, stride 24
@@ -265,6 +272,12 @@ HRESULT copy_auto_depth(IDirect3DDevice9* wrapped) noexcept;
 // wrapper reference throughout use. Never return this pointer to application code.
 // Returns null for an unrecognized pointer without dereferencing that pointer.
 IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9* wrapped) noexcept;
+// Hands the wrapper a failing HRESULT the renderer received from a value-only
+// call it made directly on borrowed_native_device(wrapped), so a device-loss
+// code is observed exactly as if the call had crossed the wrapper (lost flag,
+// geometry/finite/copy-depth retirement). Cold path; returns hr. Preserves
+// x87/MXCSR/LastError when it acts. An unrecognised pointer is ignored.
+HRESULT observe_native_result(IDirect3DDevice9* wrapped, HRESULT hr) noexcept;
 
 // Adopt a native renderer resource created through borrowed_native_device.
 // Success consumes one owned reference; failure leaves ownership with caller.

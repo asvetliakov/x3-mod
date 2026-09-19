@@ -472,6 +472,7 @@ public:
  DWORD mip_bias_bits_=0,sampler_bound_mask_=0,sampler_biased_mask_=0;float mip_bias_=0;bool mip_bias_summary_logged_=false;
  unsigned mip_bias_total_sets_=0,mip_bias_total_restores_=0,mip_bias_total_reads_=0,mip_bias_total_game_writes_=0,mip_bias_total_failures_=0;
  DWORD mip_bias_game_write_stage_=0,mip_bias_game_write_value_=0;
+ template<class F,class...A>HRESULT direct_call(unsigned slot,A...a)const{return native<F>(slot)(device_,a...);} // the route's value-only entry
  template<class F>F native(unsigned slot)const {
   switch(slot){case SetRenderTarget:return reinterpret_cast<F>(reinterpret_cast<void*>(set_target));case SetSamplerState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_sampler));case SetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_vs));case SetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_ps));
   case CreateVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(create_vs));case CreatePixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(create_ps));
@@ -501,7 +502,7 @@ public:
  MotionRoute before_draw(const MotionDrawCall&)noexcept;void evaluate_draw(const MotionDrawCall&,MotionRoute&r){++evaluations;if(route_on_evaluation)r.routed=true;}void log_mip_bias_game_write(){}void record(unsigned,std::uint64_t,bool=false){}
  bool scene_bound()const{return bound_scene;}void invalidate_taa(TaaInvalidateSite){++taa_invalidations;}
  bool reference_accounting_busy()const{return releasing_||taa_busy_||composition_busy_||(composition_&&composition_->reference_accounting_busy());}void before_reset()noexcept;
- void drop_redirect(){release_composition_identity();} void release_target(){release(target_surface_);release(depth_surface_);}
+ void drop_direct(){} void drop_redirect(){release_composition_identity();} void release_target(){release(target_surface_);release(depth_surface_);}
  template<class F>void taa_call(F&&f){f();}void invalidate_render_states(){states_invalidated=true;}
  HRESULT bind_target(unsigned index,IUnknown*p){return set_target(device_,index,static_cast<IDirect3DSurface9*>(p));}
  DWORD dither_=0;HRESULT dither_result_=S_OK;unsigned dither_reads_=0;

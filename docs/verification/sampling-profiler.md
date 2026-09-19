@@ -1876,3 +1876,27 @@ never read whole.
    the P2 site is not on the execution path for this sector/spot, or its counter/stub is not being reached for
    another reason not visible in these logs — needs a targeted check (e.g., a build that logs whether the P2
    stub's trampoline is ever entered, independent of the 300-frame window) to settle which.
+
+## Collide narrow census: fixture and site qualification (2026-09-19, no game)
+
+`--collide-narrow-census` (`X3M_COLLIDE_NARROW_CENSUS=1`); design and output fields in
+[sector-collide.md](../reverse-engineering/sector-collide.md) §11.7. Bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Nothing launched.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Site verifier | `python3 verification/probe/verify_collide_sites.py` | PASS, 51 checks (29 box cull + 22 census), 123 / 129 other claims |
+| x87 audit | `python3 verification/probe/check_no_x87.py` | PASS; roots include `_x3m_collide_narrow_pre`, `_x3m_collide_narrow_post` |
+| Stub audit | `python3 verification/probe/build_collide_narrow_census.py` | exact 66-instruction site-5 sequence, `inc; jmp`, `inc; mov; jmp`; 0 x87 instructions in the module object |
+| CPU fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_narrow_census.py` | 40 checks, 0 failures, 5.2 s; `verification/results/collide-narrow-census-cpu.json` |
+| Box-cull fixture (module unchanged) | same wrapper, `run_collide_box_cull.py` | 38 checks, 0 failures |
+| Host tests | `test_collide_narrow_census.py` (10), `test_collide_box_cull.py` (10) | OK |
+
+The first fixture run failed one check: EFLAGS differed in AF only, on every scenario. AF is undefined after the
+engine's `test eax,eax` (the last flag writer before the exit) and FEX derives it lazily, so a `popfd` earlier on
+the path changes it; the fixture masks that one bit and compares the rest. Cross-thread Present: 14,399 frames,
+19,309 accepted + 691 dropped = 20,000. Harness-inclusive cost: 80.0 -> 300.2 ns per accepted pair, 1.97 -> 3.44 ns
+per node-pair visit (diagnostic timing, not game FPS).
+
+Not verified: anything in the game. The first flight must show `dropped=0 deferred=0 cross_thread_frames=0
+foreign=0` and `accepted_sum = recorded_sum + ring_overflow`.
