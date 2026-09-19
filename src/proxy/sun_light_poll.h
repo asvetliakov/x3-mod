@@ -43,6 +43,7 @@ const char* status_name(Status status);
 struct Sample {
     Status status = Status::Disabled;
     std::int32_t position[3]{};      // engine integers (world units = x 0.01 in a gameplay view)
+    std::int32_t colour[3]{};        // the chosen node's colour words +0x150/152/154 (/ 256 = LightDir_Color0; the volumetric fog's E_sun)
     std::uint32_t score = 0;         // the chosen node's engine score (rounded luma, + 0x300 when directional)
     std::uint32_t second_score = 0;  // the next candidate's under the same rule (0: none); equal scores are an engine tie
     bool engine_rule = false;        // the result is the engine rule's winner (else the admission rule's)

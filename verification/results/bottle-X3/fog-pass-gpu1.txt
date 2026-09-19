@@ -1,0 +1,113 @@
+CAPS ps=ffff0300 vs=fffe0300 ps30_slots=512 rts=4 stretch_from_textures=1
+CHECK twin_ps_2_0 PASS
+CHECK twin_ps_slots PASS
+CHECK twin_ps_slots_512 PASS
+CHECK twin_blend_factors PASS
+CHECK twin_stretch_rect PASS
+CHECK fault_shader_create PASS
+ATTACH enabled=1 largest_program_slots=224 references=6
+CHECK attach_enabled PASS
+CHECK fault_target_create PASS
+CHECK depth_upload_exact PASS
+CHECK refuse_zero_strength PASS
+CHECK refuse_unknown_queries PASS
+CHECK refuse_bad_anisotropy PASS
+CHECK refuse_bad_sun PASS
+CHECK refuse_8bit_target PASS
+CHECK refusal_state_untouched PASS
+CHECK refusal_target_bit_identical PASS
+CHECK refusal_allocates_nothing PASS
+CHECK scene_phase0_execute PASS
+CHECK scene_phase0_state_preserved PASS
+CHECK scene_phase0_references PASS
+REFERENCE scene=phase0 kind=map_twin pixels=245760 mean_abs=0.000143 max=0.0632 within_one_step=245760
+REFERENCE scene=phase0 kind=analytic pixels=245760 mean_abs=0.002013 max=0.1250 within_one_step=245442
+CHECK scene_phase0_lit_map_twin PASS
+CHECK scene_phase0_lit_analytic PASS
+ORACLE scene=phase0 label=shaft mean=0.8595 pixels=6700 PASS
+CHECK scene_phase0_shaft_behind_occluder PASS
+ORACLE scene=phase0 label=sky_clear mean=1.0000 pixels=46513 not_one=0 PASS
+CHECK scene_phase0_sky_marched_lit PASS
+SKY scene=phase0 coverage=0.4457 gpu=0.001372,0.006306,0.028961 cpu=0.001372,0.006306,0.028976 max_rel=0.00050
+CHECK scene_phase0_sky_hue PASS
+APPLY scene=phase0 channels=2949120 over=0 max_rel=0.000975 alpha_changed=0 bound_bad=0 darker=0 gain_bound=0.129391 sky_cap_error=0.00172
+CHECK scene_phase0_composite_law PASS
+CHECK scene_phase0_energy_bound PASS
+CHECK scene_phase0_sky_cap PASS
+CHECK scene_phase0_rt2_untouched PASS
+CHECK scene_phase0_rt1_untouched PASS
+CHECK scene_phase3_execute PASS
+CHECK scene_phase3_state_preserved PASS
+CHECK scene_phase3_references PASS
+REFERENCE scene=phase3 kind=map_twin pixels=245760 mean_abs=0.000141 max=0.0012 within_one_step=245760
+REFERENCE scene=phase3 kind=analytic pixels=245760 mean_abs=0.002025 max=0.1250 within_one_step=245450
+CHECK scene_phase3_lit_map_twin PASS
+CHECK scene_phase3_lit_analytic PASS
+ORACLE scene=phase3 label=shaft mean=0.8595 pixels=6700 PASS
+CHECK scene_phase3_shaft_behind_occluder PASS
+ORACLE scene=phase3 label=sky_clear mean=1.0000 pixels=46513 not_one=0 PASS
+CHECK scene_phase3_sky_marched_lit PASS
+SKY scene=phase3 coverage=0.4457 gpu=0.001372,0.006306,0.028961 cpu=0.001372,0.006306,0.028976 max_rel=0.00050
+CHECK scene_phase3_sky_hue PASS
+APPLY scene=phase3 channels=2949120 over=0 max_rel=0.000975 alpha_changed=0 bound_bad=0 darker=0 gain_bound=0.129391 sky_cap_error=0.00172
+CHECK scene_phase3_composite_law PASS
+CHECK scene_phase3_energy_bound PASS
+CHECK scene_phase3_sky_cap PASS
+CHECK scene_phase3_rt2_untouched PASS
+CHECK scene_phase3_rt1_untouched PASS
+SKY scene=blend max_rel=0.00127
+CHECK sky_history_blend PASS
+CHECK sky_update_skipped PASS
+CHECK sky_history_kept_without_sky PASS
+REFERENCE scene=cascade0_absent kind=map_twin pixels=245760 mean_abs=0.000145 max=0.0635 within_one_step=245760
+CHECK cascade_fallthrough PASS
+CHECK no_cascade_all_lit PASS
+REFERENCE scene=r32f kind=against_view_depth_lane pixels=245760 mean_abs=0.000001 max=0.0627 within_one_step=245760
+CHECK r32f_depth_fallback PASS
+CHECK fault_march_failed PASS
+CHECK fault_copy_failed PASS
+CHECK fault_sky_failed PASS
+CHECK fault_restored_target_untouched PASS
+CHECK fault_recovered_bit_identical PASS
+CHECK fault_lost_mid_chain PASS
+CHECK execute_after_lost_still_runs PASS
+CHECK before_reset_released PASS
+CHECK refuse_while_reset_pending PASS
+CHECK after_reset_accepts PASS
+CHECK reset_bit_identical PASS
+RESET PASS references=15 allocations=2
+TIMING width=1280 height=768 sky=1 fenced_on_ms=1.4187 fenced_off_ms=0.0146 submit_ms=0.2026 chain_ms=1.4041 gpu_ms=1.2015 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
+TIMING width=1280 height=768 sky=0 fenced_on_ms=0.9893 fenced_off_ms=0.0140 submit_ms=0.1448 chain_ms=0.9753 gpu_ms=0.8305 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+TIMING_QUADS width=1280 height=768 march_ms=0.5674 sky_level_ms=0.3180 sky_reduce_ms=0.3116 composite_ms=0.5485 sum_ms=1.7455 samples=6
+TIMING width=1920 height=1080 sky=1 fenced_on_ms=2.0036 fenced_off_ms=0.0134 submit_ms=0.1964 chain_ms=1.9902 gpu_ms=1.7938 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
+TIMING width=1920 height=1080 sky=0 fenced_on_ms=1.3081 fenced_off_ms=0.0143 submit_ms=0.1527 chain_ms=1.2938 gpu_ms=1.1411 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+TIMING_QUADS width=1920 height=1080 march_ms=0.6844 sky_level_ms=0.3132 sky_reduce_ms=0.3120 composite_ms=0.6534 sum_ms=1.9630 samples=6
+TIMING width=1280 height=768 sky=1 fenced_on_ms=1.1762 fenced_off_ms=0.0144 submit_ms=0.2144 chain_ms=1.1618 gpu_ms=0.9474 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
+TIMING width=1280 height=768 sky=0 fenced_on_ms=0.7671 fenced_off_ms=0.0133 submit_ms=0.1356 chain_ms=0.7538 gpu_ms=0.6182 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+TIMING_QUADS width=1280 height=768 march_ms=0.5608 sky_level_ms=0.3249 sky_reduce_ms=0.3068 composite_ms=0.5385 sum_ms=1.7310 samples=6
+CHECK detach_released PASS
+RESULT PASS checks=85 failures=0

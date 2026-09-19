@@ -1,6 +1,6 @@
 # Volumetric sun fog and sector haze
 
-Design note, 2026-09-19, for ratification. Not implemented. Stage 0 (offline mock-up on real dumps) is done,
+Design note, 2026-09-19, ratified. Stage 1 is implemented default off (section "Stage 1 implementation" at the end); not installed or flown. Stage 0 (offline mock-up on real dumps) is done,
 and was redone the same day on the first real fog-sector frames (run174, Argon Prime: section 2b, which
 **revises the rule, the medium colour, the anisotropy and the reference strength** below). The pictures are the
 go/no-go input for the user. Tool: `tools/analysis/fog_offline_mock.py`.
@@ -246,3 +246,100 @@ than estimated from the image. Clear sectors get nothing in stage 1. Shafts requ
 cascade maps, not an applied shadow pass; the pass must work when the shadow apply was
 refused. Default off until flown in several fog families (Argon Prime `bluewell`, one
 16-card sector such as Atreus' Clouds or Great Reef).
+
+## Stage 1 implementation (2026-09-19)
+
+Status: **implemented detached and wired live, default off, not installed, not flown.** Term B only (the
+ratified sun-lit medium). Term A (sector haze) is not built: it needs the sector camera's `N s`, which has
+no production reader, and the ratification did not ask for it. Evidence: `docs/verification/volumetric-fog.md`.
+
+**Files.** `src/renderer/fog_pass.{h,cpp}` (the transaction), `src/renderer/fog_pass_math.h` (d3d9-free:
+ranges, strength ladder, sun radiance, capability gate, sector latch), `src/fog/fog_march_ps.hlsl`,
+`fog_composite_ps.hlsl`, `fog_sky_level0_ps.hlsl`, `fog_sky_reduce_ps.hlsl` ->
+`src/renderer/fog_*_program_inc.h` through `tools/shaders/generate_rigid_motion_pixel.py`
+(`--shader fog_march|fog_composite|fog_sky_level0|fog_sky_reduce`, manifests
+`verification/results/fog-*-program.json`), the live glue `src/proxy/motion_output_fog_inc.h`
+(`MotionOutput::run_volumetric_fog`), the launcher options in `tools/manage.py`.
+
+**Transaction** (one `D3DSBT_ALL` block plus saved target/depth/viewport/scissor, as `AmbientOcclusionPass`):
+
+1. *March*, `ceil(W/2) x ceil(H/2)` `A8R8G8B8`: section 3 step 1 as written, 16 steps, IGN offset by
+   `5.588238 x (jitter index mod 8)`. Cascades: the apply quad's slots **1-3** (slot 0, the own-ship map, is
+   not marched; a single-cascade set uses slot 0), valid by the apply's own rule (replayed this frame, the far
+   one also on the previous frame), the first containing **valid** cascade, one nearest tap at the texel
+   centre, reference lowered by the apply's bias clamp. An invalid cascade is skipped (its samples fall
+   through to the next one, then lit), so a frame whose replay was refused draws the veil without shafts
+   instead of dropping the pass. `.b` of the `A32B32G32R32F` RT2 is the view depth; `R32F`/`G32R32F`, or
+   `.b <= 0`, fall back to `m32 / (d - m22)`. 224 of 512 ps_3_0 slots (the largest of the four programs).
+2. *Copy*: `StretchRect` of the FP16 scene target to an FP16 scratch (no existing scratch is leased: the
+   AO and HDR passes own none of that format and size at this point).
+3. *Sky hue*, every 8th frame and until seeded: scratch + RT2 -> 8x8 FP16 (12x12 point taps per texel =
+   9,216 samples of the frame, sentinel pixels only, linear clamped at 4) -> a 1x1 FP16 history under
+   `SRCALPHA/INVSRCALPHA`, weight 0.25 (the first update after creation or Reset writes unblended: a new
+   target's contents are undefined; under 2 % sky coverage the weight is 0 and the history is kept). This is
+   the note's `Sky_local` reduced to its mean: the mock took the albedo from the mean of all sky pixels too.
+   Nothing is read back; `hue = clamp(sky / luma, 0, 4)`, white while the history is black.
+4. *Composite*, full resolution into the scene target: decode (2.2, or 1 when the HDR path decodes nothing;
+   sRGB is treated as 2.2), `L Tb + hue E_sun p_HG F (1 - Tb)`, encode, alpha carried; the 4-tap depth-aware
+   upsample reads the half texels' depths from RT2 directly, so no half-resolution depth target exists.
+
+Pass point: `scene_end_hook` after the sun apply and AO, before `resolve_hdr` (and the bloom-copy fallback
+site, once per frame). Only the pass's own targets and the scene target are written; RT1.. and the depth
+surface are unbound for the transaction and returned (fixture: RT1 and RT2 byte-identical after).
+
+**Sun.** Direction: `-normalize(row 2)` of the first valid cascade's view rows, else of this frame's
+would-be basis (`cascade_sun`), else the pass skips (`reason=sun`). Radiance: **tracked, not estimated**:
+`sun_light_poll::Sample` now carries the chosen light node's colour words (`+0x150/152/154`, / 256 =
+`LightDir_Color0`); `E_sun = pi x decode(Color0)` per channel (the hull programs shade
+`albedo x Color0 x N.L`, i.e. a Lambert surface under irradiance `pi x Color0`), words clamped to 4 x 256.
+When the poll is not `ok` (foreign executable, `X3M_SHADOW_SUN_POLL=0`) the pass uses Color0 = 1 (`E = pi`)
+and logs one `volumetric_fog_sun source=fallback` line. The mock's image estimator gave 2.6-4.9 in Argon
+Prime; a white sun gives 3.14 here. **Unverified in flight**: the actual colour words of that sector are not
+in any dump.
+
+**Automatic rule: PS presence, chosen over the record read.** The record read needs the current sector
+object (`*(cockpit+0x54)+0x13c`), and no production reader reaches the cockpit; it would add a second
+private pointer chain and an executable gate for a value (D) that stage 1 does not use (the ratified strength
+is `tau_max` itself, without `w(D)`). The `nebulafog` program is instantiated only by a background with
+`NumDustInstances > 0`, so its bind is the same fact, observed through documented D3D9 on any executable:
+`set_pixel_shader` compares the bound hash with `f7e0b6647a3bfa62` (one compare per bind, only with the
+option on) and stamps `FogSectorLatch`. The latch holds the sector foggy for 600 frames after the last
+bind (1-4 of the 8-16 instances are on screen, each fading over ~40 frames) and ramps the medium's weight
+over 90 frames both ways, so a card-free view, a gate jump or the first card does not pop.
+`--volumetric-fog-everywhere` forces the target to 1. Limits: the rule lags a sector change by the ramp, and
+a fog sector viewed for over 600 frames with no card bound loses the medium (not observed in run174: every
+frame bound at least one).
+
+**Options.** `--volumetric-fog [S]` (`X3M_VOLUMETRIC_FOG=1`, `X3M_VOLUMETRIC_FOG_STRENGTH`, `S = tau_max`,
+0..0.1, default 0.02, 0 = off; requires `--motion-output --taa --hdr --shadow-replay-depth
+--shadow-cascades`), `--volumetric-fog-anisotropy G` (0..0.9, default 0.3),
+`--volumetric-fog-everywhere`, `--volumetric-fog-timing` (one `volumetric_fog_frame` line per frame with
+`cpu_us` and `calls`; otherwise one line per change of the skip reason, at most 64). Hotkeys, polled only with
+the option: **Ctrl+Alt+F9** toggles the pass, **Ctrl+Alt+F10** steps the strength through
+0.005/0.01/0.02/0.03/0.05 (a launcher value between steps moves to the next above); Shift must be up, so
+the chords are disjoint from Ctrl+Shift+F9/F10 (exposure, bloom), as Ctrl+Alt+F7 is from the telemetry
+marker. F1-F3 were not used: they are the engine's view keys and `GetAsyncKeyState` does not consume them.
+Each press logs `volumetric_fog_toggle` / `volumetric_fog_strength`; with `--fps-overlay` the second line
+reads `FOG 0.020`, `FOG 0.020 IDLE` (sector rule at zero) or `FOG OFF`.
+
+**Off and failure paths.** Option off: `fog_requested_` guards the three call sites and the bind compare;
+no object is created and no key polled. Any unmet precondition (`toggled_off`, `sector`, `taa`, `owner`,
+`depth`, `recording`, `queries`, `camera`, `cascades`, `target`, `sun`, `reset_pending`) skips before any
+device call. A target allocation failure or an attach refusal disables the pass for the session with one
+`volumetric_fog_disabled ... session=1` line; three consecutive failed transactions do the same. A failed
+step before the composite leaves the scene untouched; a lost device stops restoration. `before_reset`
+releases the four targets and the block (the sky history re-seeds), `after_reset` re-arms.
+
+**Native Windows.** Documented D3D9 only: caps fields (`PixelShaderVersion`,
+`MaxPixelShader30InstructionSlots`, blend caps, `D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES`),
+`CheckDeviceFormat` (A8R8G8B8 target, FP16 target with post-pixel-shader blending, R32F texture), RT-to-RT
+`StretchRect` of equal size and format with `D3DTEXF_NONE`, `texldl` in ps_3_0 loops and branches. The
+rule needs no private layout; the sun colour read is game-private (not Wine-private) and has the portable
+fallback above. Cross-compiled only; native execution unverified.
+
+**Measured cost** (detached fixture, EVENT-fenced, CrossOver Preview; not game frame time): see the ledger.
+The backend refuses `TIMESTAMP` queries, so GPU time is the fenced window minus the submit time.
+
+**Open after stage 1.** `E_sun` calibration and g on display images (user flight); 16-card families; whether
+the own-ship casters need slot 0 in the march (section 3 step 1's open question: not examined); the stage 2
+temporal fixture (shimmer gate) has not been built; term A.

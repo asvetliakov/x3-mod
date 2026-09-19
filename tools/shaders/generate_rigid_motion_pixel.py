@@ -144,6 +144,20 @@ SHADERS = {
     'sun_shadow_cascade_apply': dict(source=ROOT / 'src/temporal/sun_shadow_cascade_apply_ps.hlsl',
                                      header=ROOT / 'src/renderer/sun_shadow_cascade_apply_program_inc.h',
                                      provenance=ROOT / 'verification/results/sun-shadow-cascade-apply-program.json'),
+    # The volumetric sun fog (docs/architecture/volumetric-fog.md, "Stage 1 implementation"):
+    # the half-resolution lit-fraction march, the linear composite and the two sky-hue levels.
+    'fog_march': dict(source=ROOT / 'src/fog/fog_march_ps.hlsl',
+                      header=ROOT / 'src/renderer/fog_march_program_inc.h',
+                      provenance=ROOT / 'verification/results/fog-march-program.json'),
+    'fog_composite': dict(source=ROOT / 'src/fog/fog_composite_ps.hlsl',
+                          header=ROOT / 'src/renderer/fog_composite_program_inc.h',
+                          provenance=ROOT / 'verification/results/fog-composite-program.json'),
+    'fog_sky_level0': dict(source=ROOT / 'src/fog/fog_sky_level0_ps.hlsl',
+                           header=ROOT / 'src/renderer/fog_sky_level0_program_inc.h',
+                           provenance=ROOT / 'verification/results/fog-sky-level0-program.json'),
+    'fog_sky_reduce': dict(source=ROOT / 'src/fog/fog_sky_reduce_ps.hlsl',
+                           header=ROOT / 'src/renderer/fog_sky_reduce_program_inc.h',
+                           provenance=ROOT / 'verification/results/fog-sky-reduce-program.json'),
 }
 VERSION_TOKENS = {'ps_3_0': 0xffff0300, 'vs_3_0': 0xfffe0300}
 INCLUDE = re.compile(r'^#include "([^"]+)"\s*$')

@@ -157,6 +157,14 @@ bool sun_shadow_apply_requested = false;
 // Off, the Present path pays one branch and polls no key.
 bool fps_overlay_requested = false;
 float ambient_occlusion_radius = 2.f, ambient_occlusion_strength = .5f;
+// X3M_VOLUMETRIC_FOG=1 (default off; docs/architecture/volumetric-fog.md, "Stage 1
+// implementation"): X3M_VOLUMETRIC_FOG_STRENGTH=<tau_max> (0..0.1, default 0.02),
+// X3M_VOLUMETRIC_FOG_ANISOTROPY=<g> (0..0.9, default 0.3),
+// X3M_VOLUMETRIC_FOG_EVERYWHERE=1 (the sector rule forced on),
+// X3M_VOLUMETRIC_FOG_TIMING=1 (one volumetric_fog_frame line per frame).
+// Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength (Shift up).
+bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volumetric_fog_timing = false;
+float volumetric_fog_strength = x3m::renderer::fog_strength_default, volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
 float emission_gain = 1.f;
 bool linear_material_requested = false;
 x3m::renderer::LinearMaterialConfig linear_material_config{};
@@ -1151,7 +1159,7 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // unconditionally inside it so an unrequested option answers with a
     // logged refusal.
     const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;
-    if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;
+    if(!hdr_compare && !ambient_occlusion_requested && !volumetric_fog_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;
     ComparisonKeys keys{};
     keys.foreground=comparison_foreground();
     keys.control=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
@@ -1170,15 +1178,21 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // without it never queries the key; no notice and no report, one
     // sun_shadow_toggle line per accepted press.
     keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;
+    // Ctrl+Alt+F9 / F10 with Shift up: the volumetric fog on/off and its strength ladder, polled only with
+    // --volumetric-fog (raw F9/F10 latches of their own; Ctrl+Shift+F9/F10 stay exposure and bloom).
+    keys.fog_toggle=volumetric_fog_requested && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
+    keys.fog_step=volumetric_fog_requested && (GetAsyncKeyState(VK_F10)&0x8000)!=0;
     // Ctrl+Alt+F7 with Shift up: the FPS overlay (comparison-hotkeys.md, "FPS
     // overlay"), polled only with --fps-overlay. The telemetry phase marker
     // is Ctrl+Shift+F7 (telemetry.cpp requires Shift), so the chords are
     // disjoint; the sampler applies the Alt/Shift rule and the F7 edge.
-    keys.alt=fps_overlay_requested && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;
+    keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;
     keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
     if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
+    if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
+    if(action.fog_step)ctx.motion_output.volumetric_fog_step();
     if(action.fps_overlay)log("fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key",ctx.id,ctx.frame,unsigned(ctx.fps_overlay.toggle()));
     const bool emitter=action.screen_additive||action.source_gain||action.hull_gain;
     if(emitter)ctx.comparison_emitter_notice[0]='\0';
@@ -1304,8 +1318,18 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);
         const bool refreshed=ctx.fps_overlay.frame(uint64_t(stamp.QuadPart),ctx.draws);
         const int shadows=!sun_shadow_apply_requested?-1:int(ctx.motion_output.sun_shadow_enabled());
-        if(ctx.fps_overlay.shadows(shadows)||refreshed) // a state change rewrites the line the same frame
-            ctx.fps_notice.text(ctx.fps_overlay.line(),shadows<0?"":shadows?"SHADOWS ON":"SHADOWS OFF");
+        // With --volumetric-fog the second line also carries the fog state and the current
+        // strength (Ctrl+Alt+F9 / F10); IDLE = the sector rule holds the medium at zero.
+        const int fog=ctx.motion_output.volumetric_fog_overlay_state();
+        const bool fog_changed=ctx.fps_overlay.fog(fog); // latched every shown frame
+        if(ctx.fps_overlay.shadows(shadows)||fog_changed||refreshed){ // a state change rewrites the line the same frame
+            const char* at_rest=shadows<0?"":shadows?"SHADOWS ON":"SHADOWS OFF";
+            char second[40];
+            if(fog<0)std::snprintf(second,sizeof second,"%s",at_rest);
+            else if(!(fog&1))std::snprintf(second,sizeof second,"%s%sFOG OFF",at_rest,*at_rest?"  ":"");
+            else std::snprintf(second,sizeof second,"%s%sFOG %.3f%s",at_rest,*at_rest?"  ":"",double(ctx.motion_output.volumetric_fog_strength()),(fog&2)?"":" IDLE");
+            ctx.fps_notice.text(ctx.fps_overlay.line(),second);
+        }
     }
     if(telemetry::enabled()&&(!ctx.stats.present_override_known||ctx.stats.present_override!=w)){
         log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx",ctx.id,ctx.frame,w,ctx.stats.window,hr);
@@ -2373,6 +2397,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
+    hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing);
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -2961,6 +2986,18 @@ void initialize_log(HMODULE module) {
      ambient_occlusion_debug=ambient_occlusion_requested && ao_env(L"X3M_AO_DEBUG")==1 && setting[0]==L'1';
      ambient_occlusion_timing=ambient_occlusion_requested && (ambient_occlusion_debug || (ao_env(L"X3M_AO_TIMING")==1 && setting[0]==L'1'));
      if(asked)log("ambient_occlusion_mode requested=1 enabled=%u motion_output=%u taa=%u radius_m=%g strength=%g debug=%u timing=%u",ambient_occlusion_requested,motion_output_requested,taa_requested,double(ambient_occlusion_radius),double(ambient_occlusion_strength),ambient_occlusion_debug,ambient_occlusion_timing);}
+    // X3M_VOLUMETRIC_FOG=1: the sun-lit medium at the scene end (needs the route and
+    // the resolve, which accumulates the jittered march). Whole strings must
+    // parse; out of range keeps the default. Strength 0 is a detached pass.
+    {const auto fog_env=[&](const wchar_t* name){const DWORD n=GetEnvironmentVariableW(name,setting,32);return n>0&&n<32?n:0ul;};
+     const bool asked=fog_env(L"X3M_VOLUMETRIC_FOG")==1 && setting[0]==L'1';
+     volumetric_fog_strength=renderer::fog_strength_default;volumetric_fog_anisotropy=renderer::fog_anisotropy_default;
+     if(fog_env(L"X3M_VOLUMETRIC_FOG_STRENGTH")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=renderer::fog_strength_min&&v<=renderer::fog_strength_max)volumetric_fog_strength=v;}
+     if(fog_env(L"X3M_VOLUMETRIC_FOG_ANISOTROPY")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=renderer::fog_anisotropy_min&&v<=renderer::fog_anisotropy_max)volumetric_fog_anisotropy=v;}
+     volumetric_fog_requested=asked && motion_output_requested && taa_requested && volumetric_fog_strength>0.f;
+     volumetric_fog_everywhere=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_EVERYWHERE")==1 && setting[0]==L'1';
+     volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
+     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u strength=%g anisotropy=%g everywhere=%u timing=%u rule=nebulafog_ps keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,double(volumetric_fog_strength),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing);}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     if(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted

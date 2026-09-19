@@ -381,6 +381,15 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   in timing mode only, `CreateQuery` for `TIMESTAMPDISJOINT`/`TIMESTAMPFREQ`/`TIMESTAMP` polled with
   `D3DGETDATA_FLUSH`; a refused query type falls back to CPU wall time (the Preview backend refuses
   them; native drivers generally provide them, unverified here).
+- The volumetric fog pass (`src/renderer/fog_pass.cpp`, `--volumetric-fog`, 2026-09-19, default off) uses
+  documented D3D9 only: caps fields (shader versions, `MaxPixelShader30InstructionSlots` against 224 slots,
+  `SRCALPHA`/`INVSRCALPHA`, `D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES`), `CheckDeviceFormat` for an A8R8G8B8
+  target, an FP16 target with post-pixel-shader blending and R32F textures, one equal-size RT-to-RT
+  `StretchRect` with `D3DTEXF_NONE` inside the scene, `texldl` inside ps_3_0 loops and branches, one
+  `D3DSBT_ALL` block. The sector rule observes the engine's `nebulafog` pixel program by hash (no private
+  layout, no executable gate); the sun colour comes from the game-private light node the sun poll already
+  reads, with a neutral fallback when the poll is unavailable. Cross-compiled with the SSE2/four-byte-stack
+  policy; native Windows execution unverified (`docs/verification/volumetric-fog.md`).
 
 - **Cull census** (`--cull-census`, 2026-09-18): two read-only `engine_patch`
   trampolines on the cull/LOD pass, gated on the same EXE hash as the other

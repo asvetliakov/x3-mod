@@ -184,7 +184,7 @@ class ComparisonHotkeys(unittest.TestCase):
         motion_source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         polling = extract_function(capture, 'void comparison_begin_frame(')
         # Ordinary launches (no HDR AgX, no ambient occlusion) return before any key or foreground query.
-        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;'),
+        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested && !volumetric_fog_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;'),
                         polling.index('comparison_foreground()'))
         self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
         self.assertLess(polling.index('if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();'),
@@ -219,7 +219,7 @@ class ComparisonHotkeys(unittest.TestCase):
         # Shift up, so the chords are disjoint (comparison-hotkeys.md, "FPS overlay").
         self.assertEqual(capture.count('GetAsyncKeyState(VK_F7)'), 1)
         controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
-        self.assertIn('keys.alt=fps_overlay_requested && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
+        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
         self.assertIn('keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;', polling)
         self.assertIn('result.fps_overlay = keys.control && keys.alt && !keys.shift && keys.fps_overlay && !fps_overlay_down_;', controls)
         telemetry_source = (ROOT / 'src/proxy/telemetry.cpp').read_text()
