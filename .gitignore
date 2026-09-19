@@ -46,3 +46,17 @@ verification/results/bottle-*/effect-beginpass-wine.log
 verification/results/bottle-*/motion-output-partial.txt
 verification/results/bottle-*/motion-output-wine.log
 verification/results/bottle-X3/material-motion.txt
+
+# Per-candidate and per-run verbose fixture output (the compact figures are bound in
+# verification/results/runNN-candidate-build.json; AGENTS.md: verbose logs stay local).
+verification/results/bottle-*/state-hook-benchmark-run*.json
+verification/results/bottle-*/state-hook-benchmark-run*-wine.log
+verification/results/bottle-*/route-bench-run*.json
+verification/results/bottle-*/route-bench-*-wine.log
+verification/results/bottle-*/ownership-admission-*.txt
+verification/results/bottle-*/ownership-admission-summary*.json
+verification/results/ambient-occlusion-gpu1-wine.log
+verification/results/ambient-occlusion-gpu1.json
+verification/results/ambient-occlusion-gpu1.txt
+verification/results/bottle-*/effect-technique-lookup-wine.log
+verification/results/bottle-*/fog-pass-gpu1-wine.log
