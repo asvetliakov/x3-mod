@@ -243,7 +243,10 @@ no longer reads `c7.z`. The flicker-suppression variants (`resolve_thin*.hlsl`,
 (thin-clip S, age wmax, LO, 1 / (HI - LO)), `c22.z` (alpha history), `s7` (previous
 R32F age) and `COLOR1` (next age); the plain programs read none of them. The line-filter variants
 (`resolve_*line.hlsl`; `docs/architecture/taa-lattice-crawl.md` section 9) add `c22.w` (A) and `s8`, the
-A8R8G8B8 line mask `TemporalPass` draws first with `line_mask_ps.hlsl` (`s1` input, `c4.xy`, `c7.z` pass, `c7.w` width). Ordinary resolve uses zero;
+A8R8G8B8 line mask `TemporalPass` draws first with `line_mask_ps.hlsl` (`s1` input, `c4.xy`, `c7.z` pass, `c7.w` width). The far
+stabiliser (`resolve_far.hlsl`; `docs/architecture/taa-distant-line-fade.md` section 9) is the age variant with that mask's
+`r` (filter weight) and `g` (far history-weight gate); the mask program takes the gate in `c5` (d0, inv, filter on, weight on)
+and `c24.yzw` become W_FAR and the 0.5-2 px/frame speed gate. Ordinary resolve uses zero;
 `prepare` initializes the mode and reserved component to zero. Runtime code must
 not use snapshot mode as a color resolve. `TemporalPass` uses this third GPU draw
 only under `ReactivePolicy::RequiredMask` and owns the resulting ping-pong masks.

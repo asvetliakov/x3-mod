@@ -188,3 +188,84 @@ switchable from the launcher and the flight compares weight-only against weight 
 Implementation follows the lattice masked filter in the same worktree (one writer for the
 resolve programs); plan step 1 (near-plant cost of the gate by replay) comes first. This
 note supersedes section 5 and plan steps 5-6 of [taa-lattice-crawl.md](taa-lattice-crawl.md).
+
+## 9. Implemented, unflown (2026-09-19): `--taa-far-stabiliser W[,A[,F0,F1]]`
+
+**Plan step 1, replay [M].** `tools/analysis/taa_resolve_replay.py <dump> <box> far` (`FAR=F0,F1`, `ONLY=<configs>`): the
+shader-form gate `farw = saturate((d - d0) * inv)` from the footprint inversion (8-bit quantised as the mask stores it is
+not modelled; p22 / p32 are the section-4 constants), the far weight with its 0.5-2 px/frame speed gate, the far filter,
+and the presented stage through the real AgX + RCAS with the sharpen lobe scaled by `1 - farw`. Whole-crop gate (`FAR=0,0`)
+on run153 station reproduces section 4: hot std x 0.19 / 0.45 / 0.14 (w 0.985 / A = 1 / both; note 0.19 / 0.43 / 0.15),
+interior px > 2 codes 68 / 642 / 109 (note 68 / 645 / 109). Presented stage, frames 12-31, hot = top 5 % interior px,
+gradient = per-frame squared x-gradient on interior px against the base:
+
+| capture (box; footprint units/px) | gate | farw on interior | weight 0.985: hot / interior / gradient | filter A = 1 | weight + filter | sharpen off alone | all three |
+|---|---|---|---|---|---|---|---|
+| run153 station 7741-7772 (670 290 870 510; 128-230) | 90,150 | 0.5-1 | x 0.29 / 0.33 / 0.958 | x 0.46 / 0.56 / 0.503 | x 0.19 / 0.32 / 0.712 | x 0.99 / 0.99 / 0.971 | x 0.19 / 0.32 / 0.682 |
+| | **80,130** | 93 % at 1 | x 0.19 / 0.25 / 0.957 | | x 0.14 / 0.29 / 0.748 | | x 0.14 / 0.28 / 0.715 |
+| | 110,170 | 0-0.9 | x 0.54 / 0.55 / 0.969 | | x 0.35 / 0.42 / 0.733 | | x 0.35 / 0.41 / 0.713 |
+| run142 station 10840-10871, drift 0.040 px/frame, motion-compensated (620 290 780 440; 180-340) | 90,150 | 80 % at 1 | x 0.55 / 0.61 / 0.797 | x 0.52 / 0.57 / 0.530 | x 0.43 / 0.54 / 0.682 | x 0.97 / 0.97 / 0.938 | x 0.42 / 0.51 / 0.630 |
+| run153 plant, far end 4948-4979 (552 222 712 382; 107-155) | 90,150 | 0.3-1 | x 0.54 / 0.57 / 0.988 | x 0.59 / 0.64 / 0.622 | x 0.37 / 0.48 / 0.722 | x 0.98 / 0.98 / 0.975 | x 0.36 / 0.47 / 0.693 |
+| | **80,130** | 0.5-1 | x 0.35 / 0.39 / 0.980 | | x 0.24 / 0.41 / 0.694 | | x 0.23 / 0.41 / 0.653 |
+| | 110,170 | 0-0.5 | x 0.84 / 0.86 / 0.997 | | x 0.76 / 0.80 / 0.891 | | x 0.76 / 0.80 / 0.882 |
+| run153 plant, near end (1100 336 1260 496; 25-34) | 90,150 | 0 | x 1.00 / 1.00 / 1.000 | | x 1.00 / 1.00 / 1.000 | | |
+| run148 plant lattice, drift 0.45 px/frame (740 360 880 490; about 90-120) | 90,150 | 0-0.5 | x 1.00 / 1.00 / 0.985 | x 1.00 / 0.99 / 0.972 | x 1.00 / 0.99 / 0.967 | x 1.00 / 0.99 / 0.981 | x 1.00 / 0.99 / 0.952 |
+
+Findings. (1) **Distance cannot separate the run153 station (128-150 units/px) from the far end of the near plant
+(107-155)**: any gate that treats the station fully treats that end too. (2) The cost sits entirely in the filter: the
+weight alone keeps 0.96-0.99 of the gradient energy everywhere (0.80 on the drifting run142 station, where the base
+image itself is unstable), the filter 0.50-0.62 where `farw` is high. So the gate can be generous for the weight:
+**F0, F1 = 80, 130** gives the station the whole-crop effect (x 0.19 weight only, x 0.14 with the filter) at a 2 % gradient
+cost on the plant's far end; with the filter that end keeps 0.69. (3) **The far sharpen removal is worth 1-3 %** (x 0.97-0.99
+alone, x 0.19 -> 0.19 and x 0.43 -> 0.42 on top of the others; section 1's x 0.7 [I] is contradicted by the real operators,
+as the lattice note's section 8 found for the sharpen exclusion). It would need variants of three sharpen sites
+(`TemporalPass`, `HdrPass`, the bloom staging sharpen) and a mask hand-over to two other modules; **not implemented**,
+for the orchestrator to confirm. (4) At 0.45 px/frame (run148) neither component acts: the speed gate and low `farw`.
+
+**Shader / pass.** `resolve_far.hlsl` (`X3M_FAR_STABILIZE`, **508 slots**): the age variant whose LO / HI gate arithmetic
+is replaced by `keep += g * (1 - saturate((speed - 0.5) / 1.5)) * (min(n / (n + 1), W) - keep)` and whose current sample
+is `weighted += r * (filtered - weighted)`; `r` and `g` come from the mask at `s8`, so the gate costs the resolve no
+depth arithmetic. `line_mask_ps.hlsl` (153 slots) now writes `r` = filter weight (dilated line mask and / or `farw`), `g` =
+`farw` for the weight, each multiplied by its component switch (`c5`: d0, inv, filter on, weight on); far alone is one
+mask draw (mode 2), with the line filter two. `farw` is stored in 8 bits (steps of 1/255). Thin clip and alpha history
+work inside the far program; the adaptive weight and the global current filter are refused beside it, and a line filter
+must use the same A. Every other program's bytecode hash is unchanged (only the mask program, bound with these options
+alone, changed). The gate is computed per frame by `x3::temporal::far_gate` from the camera latch (`CameraState` gained
+`m22`, `m32`) and the target width; no valid latch: `inv = 0`, mask off, program still bound (no history cut).
+Review findings of the line filter: (a) the nine `exp()` taps cost nothing measurable (global-filter program against
+plain, 1280x768: -0.07 ms, noise); the line filter's cost is its two mask draws (+0.18 ms; far stabiliser +0.26 ms with the
+age target), left as is; (b) a mask-target creation failure that is not a lost device now turns the line filter and the
+far stabiliser off for the session (`motion_output_taa_masks` log line, once), the run proceeds with the plain / thin
+program and the history stays valid.
+
+**Fixture** (`temporal_far_inc.h`; lattice mode 316 numerical / 17 state): near / mid / far bands (farw 0 / 0.4 / 1) of
+static geometry with 0.3-px facets of contrast 27, static and 0.04 px/frame, 256 frames. Shader = 2-D CPU oracle within
+0.00025 (bound 0.04 at w 0.985), age target exact, published mask = quantised gate; **near pixels (farw 0) bit-identical to
+the plain resolve in all four channels, 0 of 39 936 px-frames differing, asserted for the four far configs without a line
+filter** (weight, filter, both, weight + soft clip 0.75; the soft clip is inert on a scene without sentinel); the weight +
+filter + line row reports `near_px=0` because the line filter legitimately changes the near band's facets, so identity is
+not expected there and that row is held to the oracle only; static far ripple x 0.154
+(oracle 0.154), mid x 0.68; `far_gate` against the closed form, monotone over a depth ramp, eight invalid inputs refused;
+`inv = 0` and the mask-creation fault are the plain resolve bit for bit with the history kept; refusals, hostile
+c5 / c22 / c24 / s8 / COLORWRITEENABLE1, failed draw, Reset. Not gated: the drifting motion-compensated ratio of plan
+step 3 (the fixture reports fixed-pixel ripple only; the run142 replay above is the drift evidence), and the filter's
+ripple in this scene (a 0.3-px facet toggles whole rows; the filter's evidence is the replay).
+
+**Flight.** `--taa-far-stabiliser 0.985` (weight only) against `--taa-far-stabiliser 0.985,1` (weight + filter), stopped
+at the run153 station and drifting past; watch far blinking lights (remedy W 0.97) and the plant's far end.
+
+**Gate precision.** For 80,130 at 1280 px the band is d0 = 0.99985647 to d1 = 0.99991286, 5.6e-5 wide: about 950 float32
+depth steps (5.96e-8 below 1), so `d - d0` is exact and the binding quantisation is the mask's 8 bits (255 levels, weight
+steps of 0.4 % of `W - w`). Rounding d0 and d1 to float32 moves `inv` by up to 0.1 % (fixture: 17 734.9 against 17 749.3);
+`far_gate` refuses footprints whose two depths collapse in float32 (tested at 9e5,1e6), and wider targets shorten the band
+in depth steps proportionally (3840 px: about 320).
+
+## Ratification amendment (2026-09-19)
+
+The far sharpen removal is dropped. Replayed through the real AgX + RCAS it is worth x 0.97-0.99 alone and nothing on top
+of the other two components (run153 station x 0.19 -> x 0.19, run142 drifting station x 0.43 -> x 0.42), against variants of
+three sharpen sites and a mask hand-over to two modules. The stabiliser is the far history weight and the far current
+filter, separately switchable. Also decided in review: a mask-target allocation failure is sticky within the session
+and re-armed once per Reset; the age pair allocated before such a fallback is left in place (releasing it would cut the
+history); the far stabiliser requires per-pixel motion and a history weight above 0.
+

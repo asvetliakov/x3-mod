@@ -1879,3 +1879,16 @@ bytecode unchanged. `run_temporal_pass.py` exit 0 (lattice mode 255 numerical / 
 seam-taa-on seam-taa-hdr-tonemap-on production-taa-hdr-tonemap-on`: 164 / 140 / 59 checks, exit 0; generator `--check` PASS
 for all programs, every manifest and the nine bloom manifests re-pinned to the generator (eight `*_inc.h` headers changed in
 their stale `Reproduce:` comment line only).
+
+### TAA far stabiliser, implemented unflown (2026-09-19)
+
+`docs/architecture/taa-distant-line-fade.md`, section 9. Replay first (`taa_resolve_replay.py ... far`): the note's table
+reproduced (run153 station whole-crop hot std x 0.19 / 0.45 / 0.14); gated 80,130 units/px the station keeps x 0.19 (weight
+0.985 alone) / x 0.14 (with filter A = 1), run142 drifting station x 0.55 / x 0.43 (gate 90,150), the near plant's far end loses 2 % of its
+gradient energy to the weight and 31 % to weight + filter, the near end is untouched; far sharpen removal x 0.97-0.99, not
+implemented. `--taa-far-stabiliser W[,A[,F0,F1]]` (`X3M_TAA_FAR_STABILISER`, default off, W and A separate): `resolve_far`
+508 slots, mask program 153; all other bytecode hashes unchanged. `run_temporal_pass.py` exit 0, lattice mode 316 numerical /
+17 state: oracle error 0.00024, near pixels 0 of 39 936 differing, static far ripple x 0.154 = oracle, gate-off and
+mask-allocation-failure runs bit-identical to the plain resolve with the history kept. Line-filter review findings: the nine
+exp taps measure -0.07 ms (noise, left); mask allocation failure now disables the options for the session with one log line.
+

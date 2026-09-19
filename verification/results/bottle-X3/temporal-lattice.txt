@@ -26,9 +26,12 @@ CHECK embedded_age within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age_filter dwords=1998 instruction_slots=506 device_limit=512 headroom=6 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_filter within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask dwords=497 instruction_slots=125 device_limit=512 headroom=387 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask dwords=604 instruction_slots=153 device_limit=512 headroom=359 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_far dwords=2014 instruction_slots=508 device_limit=512 headroom=4 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_far within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line dwords=1760 instruction_slots=446 device_limit=512 headroom=66 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line within the guaranteed 512 slots PASS
@@ -2130,5 +2133,139 @@ CHECK line mask never holds on the square's silhouette PASS
 CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
 CHECK line mask covers the lattice region PASS
 CHECK line filter lowers the roping at a bounded line-peak cost PASS
-LINE_TIMING width=1280 height=768 content=all_geometry pairs=6 plain_ms=1.1595 line_filter_ms=1.5556 delta_ms=0.3961 scope=cpu_wall_with_event_query_drain
-RESULT PASS numerical=255 state_restorations=15 lattice=1
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.8474 current_filter_ms=0.8405 line_filter_ms=1.1117 far_stabiliser_ms=1.0713 taps_delta_ms=-0.0069 line_delta_ms=0.2642 far_delta_ms=0.2238 scope=cpu_wall_with_event_query_drain
+LINE_BASE numerical=255 state_restorations=15
+FAR_CASES
+FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
+CHECK far gate equals the footprint inversion of the projection PASS
+CHECK farw is monotone across a depth ramp, 0 near and 1 far PASS
+CHECK invalid projection or footprints: no gate (d0 = inv = 0) PASS
+CHECK far stabiliser without configure_far is refused PASS
+CHECK far weight outside {0} U [weight, 0.99] is refused PASS
+CHECK far weight outside {0} U [weight, 0.99] is refused PASS
+CHECK far weight outside {0} U [weight, 0.99] is refused PASS
+CHECK far weight outside {0} U [weight, 0.99] is refused PASS
+CHECK far filter outside [0, 4] is refused PASS
+CHECK far filter outside [0, 4] is refused PASS
+CHECK far filter outside [0, 4] is refused PASS
+CHECK far gate slope must be finite and >= 0 PASS
+CHECK far gate slope must be finite and >= 0 PASS
+CHECK far gate slope must be finite and >= 0 PASS
+CHECK far weight over a history weight of 0 is refused PASS
+CHECK far stabiliser without per-pixel motion is refused PASS
+CHECK far gate origin must be finite PASS
+CHECK far stabiliser beside the adaptive weight is refused (one gate) PASS
+CHECK far stabiliser beside the global current filter is refused PASS
+CHECK far filter beside a line filter of another A is refused PASS
+CHECK far filter beside a line filter of the same A runs PASS
+CHECK far run publishes the age target and the mask PASS
+CHECK far run restores c5, c22, c24, sampler 8, RT1 and COLORWRITEENABLE1 PASS
+CHECK failed far mask draw publishes nothing PASS
+CHECK after a failed run the far resolve restarts without history PASS
+CHECK Reset protocol keeps the far program and recreates the masks PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.00 config=far-base oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.011602 ripple_mid=0.011602 ripple_far=0.011602 ratio_near=1.0000 ratio_mid=1.0000 ratio_far=1.0000 oracle_ratio_far=1.0011 mask_error=0.000000
+SAMPLE far far-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.00 config=far-weight-0.985 oracle_error=0.000244 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.011602 ripple_mid=0.007913 ripple_far=0.001786 ratio_near=1.0000 ratio_mid=0.6820 ratio_far=0.1540 oracle_ratio_far=0.1540 mask_error=0.000000
+SAMPLE far far-weight-0.985: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000244141 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE far far-weight-0.985: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-weight-0.985: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-weight-0.985: far-band ripple ratio as the oracle's actual=0.153974616 expected=0.153974616 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+CHECK static far ripple <= 0.25 x base; the mid band lies between PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.00 config=far-filter-A1 oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.011602 ripple_mid=0.011730 ripple_far=0.011608 ratio_near=1.0000 ratio_mid=1.0110 ratio_far=1.0005 oracle_ratio_far=1.0011 mask_error=0.000000
+SAMPLE far far-filter-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.006000000 PASS
+SAMPLE far far-filter-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-filter-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-filter-A1: far-band ripple ratio as the oracle's actual=1.000501002 expected=1.001073576 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+FAR_FILTER_EFFECT drift=0.00 far_band_max_difference=0.041992
+CHECK far filter alone acts on the far band PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.00 config=far-weight+filter oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.011602 ripple_mid=0.007952 ripple_far=0.001781 ratio_near=1.0000 ratio_mid=0.6854 ratio_far=0.1535 oracle_ratio_far=0.1540 mask_error=0.000000
+SAMPLE far far-weight+filter: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE far far-weight+filter: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-weight+filter: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-weight+filter: far-band ripple ratio as the oracle's actual=0.153473614 expected=0.154046188 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+CHECK static far ripple <= 0.25 x base; the mid band lies between PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.00 config=far-weight+filter+line-A1 oracle_error=0.000122 age_oracle_error=0.000000 near_px=0 near_differs=0 ripple_near=0.011602 ripple_mid=0.007952 ripple_far=0.001781 ratio_near=1.0000 ratio_mid=0.6854 ratio_far=0.1535 oracle_ratio_far=0.1540 mask_error=0.000000
+SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=0.153473614 expected=0.154046188 tolerance=0.030000000 PASS
+CHECK static far ripple <= 0.25 x base; the mid band lies between PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.00 config=far-weight+soft-0.75 oracle_error=0.000244 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.011602 ripple_mid=0.007913 ripple_far=0.001786 ratio_near=1.0000 ratio_mid=0.6820 ratio_far=0.1540 oracle_ratio_far=0.1540 mask_error=0.000000
+SAMPLE far far-weight+soft-0.75: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000244141 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE far far-weight+soft-0.75: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-weight+soft-0.75: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-weight+soft-0.75: far-band ripple ratio as the oracle's actual=0.153974616 expected=0.153974616 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.04 config=far-base oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.014322 ripple_far=0.014322 ratio_near=1.0000 ratio_mid=1.0000 ratio_far=1.0000 oracle_ratio_far=1.0011 mask_error=0.000000
+SAMPLE far far-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.04 config=far-weight-0.985 oracle_error=0.000244 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.009768 ripple_far=0.002205 ratio_near=1.0000 ratio_mid=0.6820 ratio_far=0.1540 oracle_ratio_far=0.1540 mask_error=0.000000
+SAMPLE far far-weight-0.985: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000244141 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE far far-weight-0.985: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-weight-0.985: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-weight-0.985: far-band ripple ratio as the oracle's actual=0.153974616 expected=0.153974616 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.04 config=far-filter-A1 oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.014481 ripple_far=0.014329 ratio_near=1.0000 ratio_mid=1.0111 ratio_far=1.0005 oracle_ratio_far=1.0010 mask_error=0.000000
+SAMPLE far far-filter-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.006000000 PASS
+SAMPLE far far-filter-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-filter-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-filter-A1: far-band ripple ratio as the oracle's actual=1.000481977 expected=1.001000192 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+FAR_FILTER_EFFECT drift=0.04 far_band_max_difference=0.041992
+CHECK far filter alone acts on the far band PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.04 config=far-weight+filter oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.009815 ripple_far=0.002198 ratio_near=1.0000 ratio_mid=0.6853 ratio_far=0.1535 oracle_ratio_far=0.1540 mask_error=0.000000
+SAMPLE far far-weight+filter: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE far far-weight+filter: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-weight+filter: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-weight+filter: far-band ripple ratio as the oracle's actual=0.153492639 expected=0.153978240 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.04 config=far-weight+filter+line-A1 oracle_error=0.000122 age_oracle_error=0.000000 near_px=0 near_differs=0 ripple_near=0.014322 ripple_mid=0.009815 ripple_far=0.002198 ratio_near=1.0000 ratio_mid=0.6853 ratio_far=0.1535 oracle_ratio_far=0.1540 mask_error=0.000000
+SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=0.153492639 expected=0.153978240 tolerance=0.030000000 PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_STABILISER drift=0.04 config=far-weight+soft-0.75 oracle_error=0.000244 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.009768 ripple_far=0.002205 ratio_near=1.0000 ratio_mid=0.6820 ratio_far=0.1540 oracle_ratio_far=0.1540 mask_error=0.000000
+SAMPLE far far-weight+soft-0.75: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000244141 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE far far-weight+soft-0.75: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE far far-weight+soft-0.75: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE far far-weight+soft-0.75: far-band ripple ratio as the oracle's actual=0.153974616 expected=0.153974616 tolerance=0.030000000 PASS
+CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK mask creation fault reached PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+CHECK far stabiliser with inv = 0 (no valid projection) is the plain resolve bit for bit PASS
+CHECK mask-target creation failure: option off for the session, plain resolve bit for bit, history kept PASS
+CHECK mask failure is sticky within the session and re-armed once by a Reset PASS
+CHECK mask creation fault reached PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+CHECK mask-target creation failure under the line filter: plain resolve, history kept PASS
+RESULT PASS numerical=319 state_restorations=17 lattice=1

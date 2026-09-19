@@ -46,6 +46,24 @@ inline void prepare_flicker(float out[4], float thin_clip, float wmax, float lo,
     // With the adaptive weight off the gate fields are not validated: upload zeros, never the caller's values.
     out[0]=thin_clip; out[1]=wmax; out[2]=wmax>0?lo:0.f; out[3]=wmax>0?1.f/(hi-lo):0.f;
 }
+// Far stabiliser (docs/architecture/taa-distant-line-fade.md section 9). The gate is a pixel footprint in world units:
+// view distance z = F * p00 * width / 2 has footprint F units per pixel, and the projection maps it to device depth
+// d = p22 + p32 / z. farw = saturate((d - d0) * inv) rises from 0 at footprint f0 to 1 at f1. Returns false (the caller
+// uploads inv = 0: mask off) unless the projection is the engine's perspective form (p00 > 0, p22 > 0, p32 < 0) and
+// 0 < f0 < f1 give finite 0 <= d0 < d1.
+constexpr float kFarWeightMax = .99f, kFarSpeedLo = .5f, kFarSpeedHi = 2.f, kFarFootprintMax = 1e6f;
+// 0 is off; otherwise within [weight, 0.99], and only over a history that is kept at all (weight > 0).
+inline bool valid_far_weight(float w, float weight) noexcept { return std::isfinite(w) && (w==0 || (weight>0 && w>=weight && w<=kFarWeightMax)); }
+inline bool far_gate(float p00, float p22, float p32, unsigned width, float f0, float f1, float& d0, float& inv) noexcept {
+    d0=inv=0;
+    if(!std::isfinite(p00) || !std::isfinite(p22) || !std::isfinite(p32) || !(p00>0) || !(p22>0) || !(p32<0) || !width
+       || !std::isfinite(f0) || !std::isfinite(f1) || !(f0>0) || !(f1>f0) || f1>kFarFootprintMax) return false;
+    const double scale=double(p00)*width*.5, near0=double(p22)+double(p32)/(double(f0)*scale), near1=double(p22)+double(p32)/(double(f1)*scale);
+    if(!(near0>=0) || !(near1>near0) || !(near1<=1.5)) return false;
+    const float a=float(near0), b=float(near1);
+    if(!(b>a)) return false; // the two depths collapse in float: no gate
+    d0=a; inv=1.f/(b-a); return std::isfinite(inv);
+}
 constexpr float kLuminanceMaxK = 65504.f;       // FP16 max; the weighted domain stays finite
 constexpr float kCurrentFilterMax = 4.f;        // A of exp(-A d^2); the centre weight stays >= exp(-2)
 constexpr float kHistoryWeightDefault = .9f;    // c5.z of the live route

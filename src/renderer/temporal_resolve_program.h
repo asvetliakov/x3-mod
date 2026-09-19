@@ -39,6 +39,11 @@ inline constexpr std::uint32_t temporal_resolve_age_filter_words[] = {
 inline constexpr std::uint32_t temporal_line_mask_words[] = {
 #include "temporal_line_mask_program_inc.h"
 };
+// src/temporal/resolve_far.hlsl: the far-gated stabiliser (docs/architecture/taa-distant-line-fade.md section 9;
+// manifest verification/results/temporal-resolve-far-program.json).
+inline constexpr std::uint32_t temporal_resolve_far_words[] = {
+#include "temporal_resolve_far_program_inc.h"
+};
 inline constexpr std::uint32_t temporal_resolve_line_words[] = {
 #include "temporal_resolve_line_program_inc.h"
 };
@@ -76,6 +81,7 @@ inline constexpr const auto& temporal_resolve_age_program() noexcept { return de
 inline constexpr const auto& temporal_resolve_age_filter_program() noexcept { return detail::temporal_resolve_age_filter_words; }
 // The variants TemporalPass::configure_line_filter creates.
 inline constexpr const auto& temporal_line_mask_program() noexcept { return detail::temporal_line_mask_words; }
+inline constexpr const auto& temporal_resolve_far_program() noexcept { return detail::temporal_resolve_far_words; }
 inline constexpr const auto& temporal_resolve_line_program() noexcept { return detail::temporal_resolve_line_words; }
 inline constexpr const auto& temporal_resolve_thin_line_program() noexcept { return detail::temporal_resolve_thin_line_words; }
 inline constexpr const auto& temporal_resolve_age_line_program() noexcept { return detail::temporal_resolve_age_line_words; }

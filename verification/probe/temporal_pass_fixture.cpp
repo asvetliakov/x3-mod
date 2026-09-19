@@ -742,7 +742,7 @@ struct EdgeScene {
     }
     std::vector<float> read(IDirect3DTexture9* texture){D3DSURFACE_DESC desc{};check("edge level desc",texture->GetLevelDesc(0,&desc));Com<IDirect3DSurface9> level,sys;check("edge level",texture->GetSurfaceLevel(0,&level.p));check("edge readback surface",d->CreateOffscreenPlainSurface(S,S,desc.Format,D3DPOOL_SYSTEMMEM,&sys.p,nullptr));check("edge validation-only readback",d->GetRenderTargetData(level.p,sys.p));D3DLOCKED_RECT lock{};check("edge lock",sys->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<float> out(S*S*4);
         for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)for(UINT c=0;c<4;++c){const char* p=static_cast<const char*>(lock.pBits)+y*lock.Pitch;float v=0;
-            if(desc.Format==D3DFMT_R32F){if(c==0)std::memcpy(&v,p+x*4,4);}else if(desc.Format==D3DFMT_A32B32G32R32F)std::memcpy(&v,p+x*16+c*4,4);else{unsigned short h;std::memcpy(&h,p+x*8+c*2,2);v=halfFloat(h);}
+            if(desc.Format==D3DFMT_R32F){if(c==0)std::memcpy(&v,p+x*4,4);}else if(desc.Format==D3DFMT_A8R8G8B8)v=static_cast<unsigned char>(p[x*4+(c==3?3:2-c)])/255.f;else if(desc.Format==D3DFMT_A32B32G32R32F)std::memcpy(&v,p+x*16+c*4,4);else{unsigned short h;std::memcpy(&h,p+x*8+c*2,2);v=halfFloat(h);}
             out[(y*S+x)*4+c]=v;}
         check("edge unlock",sys->UnlockRect());return out;}
 };
@@ -1589,6 +1589,7 @@ void loop_timings(IDirect3DDevice9* d,const DWORD* baseline,const DWORD* candida
 #include "sun_share_temporal_inc.h"
 #include "temporal_flicker_inc.h"
 #include "temporal_line_inc.h"
+#include "temporal_far_inc.h"
 
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3TemporalPassFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 temporal production module",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
     // Optional sixth argument: "stationary-only" runs just the stationary
@@ -1622,7 +1623,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
                 #define X3M_BUDGET(program,label) require(budgetWords(reinterpret_cast<const DWORD*>(r::program()),sizeof(r::program())/sizeof(DWORD),label)<=512,label " within the guaranteed 512 slots")
                 X3M_BUDGET(temporal_resolve_program,"embedded_plain");X3M_BUDGET(temporal_resolve_filter_program,"embedded_current_filter");X3M_BUDGET(temporal_resolve_snapshot_program,"embedded_snapshot");
                 X3M_BUDGET(temporal_resolve_thin_program,"embedded_thin");X3M_BUDGET(temporal_resolve_thin_filter_program,"embedded_thin_filter");X3M_BUDGET(temporal_resolve_age_program,"embedded_age");X3M_BUDGET(temporal_resolve_age_filter_program,"embedded_age_filter");
-                X3M_BUDGET(temporal_line_mask_program,"embedded_line_mask");X3M_BUDGET(temporal_resolve_line_program,"embedded_line");X3M_BUDGET(temporal_resolve_thin_line_program,"embedded_thin_line");X3M_BUDGET(temporal_resolve_age_line_program,"embedded_age_line");
+                X3M_BUDGET(temporal_line_mask_program,"embedded_line_mask");X3M_BUDGET(temporal_resolve_far_program,"embedded_far");X3M_BUDGET(temporal_resolve_line_program,"embedded_line");X3M_BUDGET(temporal_resolve_thin_line_program,"embedded_thin_line");X3M_BUDGET(temporal_resolve_age_line_program,"embedded_age_line");
                 #undef X3M_BUDGET
             }
             // The retained baseline also exceeds the advertised limit on X3.
@@ -1630,7 +1631,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
             // and execution below qualify only this backend, not cap compliance.
         }
         auto* sharpener=static_cast<DWORD*>(sc->GetBufferPointer());
-        if(lattice){lattice_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),static_cast<DWORD*>(baseline->GetBufferPointer()));const unsigned latticeNumeric=numeric_checks,latticeState=state_checks;std::printf("LATTICE_BASE numerical=%u state_restorations=%u\n",latticeNumeric,latticeState);flicker_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),static_cast<DWORD*>(baseline->GetBufferPointer()));std::printf("FLICKER_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);line_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n",numeric_checks,state_checks);result=0;}
+        if(lattice){lattice_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),static_cast<DWORD*>(baseline->GetBufferPointer()));const unsigned latticeNumeric=numeric_checks,latticeState=state_checks;std::printf("LATTICE_BASE numerical=%u state_restorations=%u\n",latticeNumeric,latticeState);flicker_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),static_cast<DWORD*>(baseline->GetBufferPointer()));std::printf("FLICKER_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);line_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("LINE_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);far_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n",numeric_checks,state_checks);result=0;}
         else if(sunLaneOnly){sun_lane_cases(d.p,pp,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));result=0;}
         else if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
         else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}
