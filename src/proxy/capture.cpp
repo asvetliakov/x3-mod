@@ -1636,7 +1636,11 @@ HRESULT WINAPI set_rt(IDirect3DDevice9* d,DWORD index,IDirect3DSurface9* rt) {
 HRESULT WINAPI set_depth(IDirect3DDevice9* d,IDirect3DSurface9* depth) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);timer.begin();
+    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    // D3D9 validates the depth surface against every bound target, so a held
+    // RT1/RT2 (lazy RT mode) goes back first: the call sees the application's bindings.
+    ctx.motion_output.restore_bindings();
+    timer.begin();
     cpu.before_original();
     const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*)>(39)(d,depth);cpu.after_original();timer.end();
     ctx.scene_depth.after_set_depth(d,result);

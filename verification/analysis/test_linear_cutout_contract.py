@@ -829,6 +829,12 @@ class LinearCutoutContractTests(unittest.TestCase):
             self.assertRegex(run.stdout, r'^linear_cutout_contract scenarios=\d+ checks=\d+ failures=0\n$')
             print(run.stdout.strip())
 
+    def test_depth_surface_change_restores_held_bindings_first(self):
+        # Lazy RT mode holds RT1/RT2 across routed draws; D3D9 relates the depth
+        # surface to every bound target, so the hook restores before the native call.
+        body = extract_function((ROOT / 'src/proxy/capture.cpp').read_text(), 'HRESULT WINAPI set_depth(')
+        self.assertLess(body.index('ctx.motion_output.restore_bindings();'), body.index('cpu.before_original();'))
+
     def test_failure_notifications_keep_native_boundary_and_history_union(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         for name, pre, success, failed in (

@@ -1144,6 +1144,12 @@ struct Fixture {
         const double pair_us = double(pair_ticks) * us / double(draws);
         for (unsigned i = 0; i < frames; ++i) {
             frame_begin();
+            // X3M_FIXTURE_BENCH_MASK=1: the application holds both write masks at
+            // 7 over the whole run (lazy RT mode's mask != 15 fallback on every draw).
+            char masked[4]{};
+            if (GetEnvironmentVariableA("X3M_FIXTURE_BENCH_MASK", masked, sizeof masked) == 1 && masked[0] == '1') {
+                api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 7), "bench COLORWRITEENABLE1"); api(d->SetRenderState(D3DRS_COLORWRITEENABLE2, 7), "bench COLORWRITEENABLE2");
+            }
             long long inside = 0;
             LARGE_INTEGER r0, r1; QueryPerformanceCounter(&r0);
             for (unsigned k = 0; k < draws; ++k) {
@@ -1238,6 +1244,22 @@ struct Fixture {
                 DWORD value = 0; api(d->GetRenderState(D3DRS_WRAP4, &value), "application WRAP4 read");
                 require(value == 6, "application reads exact WRAP4 after routed draw");
                 api(d->SetRenderState(D3DRS_WRAP4, 15), "application WRAP4 restore");
+            }
+            if (burst_mask) {
+                // The application changes its depth surface while RT1/RT2 are
+                // held (the draw above routed and nothing restored since): D3D9
+                // relates the depth surface to every bound target, so the
+                // SetDepthStencilSurface hook must put the application's
+                // bindings back first. A same-size surface, one smaller than the
+                // route's targets (legal under the application's own bindings
+                // as long as nothing draws), then the original. The surfaces
+                // live inside this step: nothing of the pool outlives the Reset frame.
+                D3DSURFACE_DESC desc{}; api(depth->GetDesc(&desc), "depth GetDesc");
+                Com<IDirect3DSurface9> same, small;
+                api(d->CreateDepthStencilSurface(W, H, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, FALSE, &same.p, nullptr), "CreateDepthStencilSurface same size");
+                api(d->CreateDepthStencilSurface(W / 2, H / 2, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, FALSE, &small.p, nullptr), "CreateDepthStencilSurface smaller");
+                const HRESULT s1 = d->SetDepthStencilSurface(same.p), s2 = d->SetDepthStencilSurface(small.p), s3 = d->SetDepthStencilSurface(depth.p);
+                require(SUCCEEDED(s1) && SUCCEEDED(s2) && SUCCEEDED(s3), "MASK the application changes its depth surface (same size, smaller, original) under a held binding");
             }
             if (burst_mask && i % 3 == 2) {
                 // A mid-scene copy off the main target while RT1/RT2 are held

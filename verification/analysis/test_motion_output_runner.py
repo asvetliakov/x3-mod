@@ -206,7 +206,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
                          rs_gets=runner.RS_FILL_GETS, rs_resyncs=0, scene_hook=0, hook_signals=0,
                          scene_end_source='none', scene_end_check=0, selector_state=9, latched=1, filled=1,
                          apply_failures=0, restore_failures=0, present='00000000', rt_mode='perdraw',
-                         timing='cpu_qpc', jitter_writes=0, set_rt=20, lazy_flushes=0,
+                         timing='cpu_qpc', jitter_writes=0, set_rt=20, lazy_flushes=0, lazy_mask_writes=0,
                          readbacks=2 if captured else 0, readback_us=1 if captured else 0,
                          gate_us=1, route_draw_us=1, set_rt_us=1, lazy_flush_us=0, fill_us=1)
             trace.append(line('motion_output_frame', frame))

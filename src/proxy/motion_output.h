@@ -205,7 +205,7 @@ enum class TaaSkip : unsigned { None = 0, Disabled = 1, NotReached = 2, NoJitter
 // with the frame the proxy began at the last Present). Sites on the light
 // setter paths record the bit only.
 enum class TaaInvalidateSite : unsigned {
-    RestoreFailed = 0,          // a route restore point failed (bindings, deferred/mip restore, lazy flush, undo, rollback)
+    RestoreFailed = 0,          // a route restore point failed (bindings, mip restore, lazy flush, undo, rollback)
     StateLost = 1,              // a draw or resolve while motion state is already lost
     Skip = 2,                   // resolve_allowed refused the resolve (taa_skip carries the reason)
     Target = 3,                 // RT0 at the scene end is not the latched main/FP16 target
@@ -367,8 +367,11 @@ struct MotionFrameCounters {
     // time. set_rt counts every route-issued SetRenderTarget of the per-draw
     // apply/undo path and the lazy flush (the fill's and the resolve's own
     // SetRenderTarget calls are inside fill_ticks and the taa phases instead).
-    // lazy_mask_writes: routed draws of lazy mode that met a write mask other
-    // than 15 and took the per-draw mask write/restore for it.
+    // lazy_mask_writes: routed draws of lazy mode (one count per draw) that met
+    // an application COLORWRITEENABLE1, or COLORWRITEENABLE2 on a depth row,
+    // other than 15 and took the per-draw mask write/restore. The route's own
+    // RT2 = 0 write of a fade-band draw under a mask of 15 is not counted: it is
+    // route policy, not the application's mask.
     std::uint32_t set_rt = 0, jitter_writes = 0, lazy_flushes = 0, lazy_mask_writes = 0, readbacks = 0;
     std::uint64_t gate_ticks = 0, route_draw_ticks = 0, set_rt_ticks = 0, jitter_ticks = 0, fill_ticks = 0;
     std::uint64_t lazy_flush_ticks = 0, readback_ticks = 0;
@@ -1499,12 +1502,8 @@ private:
     // the per-draw path and the lazy flush; each counts into counters_.set_rt.
     HRESULT bind_target(DWORD index, IDirect3DSurface9* surface) noexcept;
     HRESULT bind_targets(MotionRoute& route) noexcept;
-    // The lazy-mode flush behind restore_bindings. `quiet` (no production
-    // caller since the write masks stopped being held; kept for a light-hook
-    // restore point) records no telemetry metric and logs nothing: its
-    // metrics and failure line are deferred to the next heavy call.
-    template<bool quiet> HRESULT flush_bindings() noexcept;
-    void record_deferred() noexcept;
+    // The lazy-mode flush behind restore_bindings (two unbinds).
+    HRESULT flush_bindings() noexcept;
     // Mip LOD bias (X3M_TAA_MIP_BIAS): apply on a routed draw, put every
     // biased stage back (a restore point), drop the sampler shadow and re-read
     // the bindings natively (state block Apply, Reset), one stage's restore.
@@ -1999,11 +1998,6 @@ private:
     bool hdr_dirty_ = false, hdr_blocked_ = false, hdr_target_failed_ = false, hdr_latch_pending_ = false;
     unsigned hdr_blocked_latches_ = 0, hdr_logged_ = 0;
     std::uint32_t hdr_pending_state_ = 0; // HdrState the application's SetRenderTarget(0) commits on success
-    // Metrics of quiet lazy flushes (from the light SetRenderState hook),
-    // recorded and logged at the next heavy call.
-    std::uint32_t deferred_flushes_ = 0;
-    std::uint64_t deferred_flush_ticks_ = 0;
-    HRESULT deferred_flush_result_ = S_OK;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     MotionOutputFixtureConfig fixture_{};
     bool fixture_configured_ = false, fixture_abi_known_ = false;

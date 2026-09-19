@@ -226,7 +226,8 @@ WRAP_CASES = [case(f'seam-burst-{rt}-wrap', 'seam', lazy=rt == 'lazy', burst=Tru
                    hdr_env={'X3M_FIXTURE_WRAP': '1'}) for rt in ('perdraw', 'lazy')]
 # Hook-free lazy RT (route-per-draw-cost.md lever 3): the burst with both write
 # masks written under a held binding, a hold that starts masked, a mid-scene
-# StretchRect (frames 2, 5, 8) and a Reset inside the scene under a held
+# StretchRect (frames 2, 5, 8), an application depth-surface change (same size,
+# smaller, original) and a Reset inside the scene under a held
 # binding (frame 4); per-draw twin, production hybrid unhook (`auto`), the
 # explicit shadow and the ownership wrapper. Selected-only like the wrap pair;
 # a selected run holding all of them compares them across the modes.
@@ -235,7 +236,11 @@ MASK_CASES = [case('seam-burst-perdraw-mask', 'seam', burst=True, shadow='auto',
               case('seam-burst-lazy-mask', 'seam', lazy=True, burst=True, shadow='auto', hdr_env=MASK_ENV),
               case('seam-burst-lazy-mask-shadow', 'seam', lazy=True, burst=True, shadow=True, hdr_env=MASK_ENV),
               case('seam-ownership-burst-lazy-mask', 'seam', 'ownership', lazy=True, burst=True, shadow='auto', hdr_env=MASK_ENV),
+              case('production-burst-perdraw-mask', 'production', burst=True, shadow='auto', hdr_env=MASK_ENV),
               case('production-burst-lazy-mask', 'production', lazy=True, burst=True, shadow='auto', hdr_env=MASK_ENV)]
+# Each lazy run is compared with the per-draw run of the same DLL (the wrapper run with the plain seam twin).
+MASK_TWINS = {'seam-burst-lazy-mask': 'seam-burst-perdraw-mask', 'seam-burst-lazy-mask-shadow': 'seam-burst-perdraw-mask',
+              'seam-ownership-burst-lazy-mask': 'seam-burst-perdraw-mask', 'production-burst-lazy-mask': 'production-burst-perdraw-mask'}
 WRAP_CASES += MASK_CASES
 MASK_RESET_FRAME = 4
 # Camera reprojection of sentinel pixels (seam): the switch in its three
@@ -4452,9 +4457,10 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     assert wrap_checks == (['CHECK application reads exact WRAP4 after routed draw PASS'] * BURST_FRAMES if wrap else []), (name, wrap_checks)
     mask_checks = [l for l in lines if l.startswith('CHECK MASK ')]
     assert mask_checks == (['CHECK MASK the application reads back both write masks after a routed draw under a held binding PASS',
-                            'CHECK MASK the application reads back COLORWRITEENABLE2 after a hold that started masked PASS'] * BURST_FRAMES if mask else []), (name, mask_checks)
+                            'CHECK MASK the application reads back COLORWRITEENABLE2 after a hold that started masked PASS',
+                            'CHECK MASK the application changes its depth surface (same size, smaller, original) under a held binding PASS'] * BURST_FRAMES if mask else []), (name, mask_checks)
     assert lines.count('MASK reset inside the scene under a held binding') == int(mask) and lines.count('RESET PASS') == int(mask), name
-    assert int(terminal['checks']) == (86 if seam else 41) + (BURST_FRAMES if wrap else 0) + (2 * BURST_FRAMES if mask else 0), (name, terminal)  # one presented-image check per frame
+    assert int(terminal['checks']) == (86 if seam else 41) + (BURST_FRAMES if wrap else 0) + (3 * BURST_FRAMES if mask else 0), (name, terminal)  # one presented-image check per frame
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
     assert len(restores) == 2 * BURST_FRAMES + mask and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
     labels = ['fill', 'burst'] * BURST_FRAMES
@@ -4512,11 +4518,10 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
             # pair in lazy mode.
             expected_set_rt = 24 if captured or not lazy else BURST_SET_RT['lazy']
             expected_flushes = (6 if captured else BURST_FLUSHES['lazy']) if lazy else 0
-        # Write masks other than 15 met by a lazy routed draw: COLORWRITEENABLE1
-        # = 7 on the draw after the blend draw (a hold that starts masked); the
-        # mask script adds COLORWRITEENABLE2 there and both masks on the draw
-        # under the held binding.
-        assert int(summary.get('lazy_mask_writes', 0)) == ((4 if mask else 1) if lazy else 0), (name, frame, summary)
+        # Lazy routed draws that met an application write mask other than 15
+        # (one count per draw): the draw after the blend draw (a hold that
+        # starts masked) and, mask script, the draw under the held binding.
+        assert int(summary['lazy_mask_writes']) == ((2 if mask else 1) if lazy else 0), (name, frame, summary)
         assert int(summary['set_rt']) == expected_set_rt and int(summary['lazy_flushes']) == expected_flushes, (name, frame, summary)
         assert int(summary['readbacks']) == (2 if captured else 0) and (float(summary['readback_us']) > 0) == captured, (name, frame, summary)
         set_rt[frame] = int(summary['set_rt']); flushes[frame] = int(summary['lazy_flushes'])
@@ -5232,18 +5237,23 @@ def main(argv=None):
             result['status'] = 'PARTIAL'
             save()
             report_path.write_text(''.join(report))
-            if all(entry['name'] in result['cases'] for entry in MASK_CASES):
-                # Lever 3 equivalence: every lazy mask run equals the per-draw twin.
-                per = result['cases']['seam-burst-perdraw-mask']
-                for entry in MASK_CASES[1:]:
-                    lz = result['cases'][entry['name']]
-                    keys = ('color_hashes', 'state_hashes') + (('motion_hashes', 'readback_sha256') if entry['mode'] == 'seam' else ())
-                    for key in keys:
-                        assert per[key] == lz[key], f"{entry['name']}: {key} differs from the per-draw twin"
-                result['mask_equivalence'] = {'twin': 'seam-burst-perdraw-mask', 'identical': [entry['name'] for entry in MASK_CASES[1:]],
-                                              'set_rt_per_frame': {entry['name']: result['cases'][entry['name']]['set_rt_per_frame'] for entry in MASK_CASES}}
+            # Lever 3 equivalence: a selected lazy mask run must equal the per-draw
+            # twin of the same DLL; selecting it without the twin is an error,
+            # never a silent skip.
+            selected_lazy = [n for n in MASK_TWINS if n in result['cases']]
+            if selected_lazy:
+                for lazy_name in selected_lazy:
+                    twin = MASK_TWINS[lazy_name]
+                    assert twin in result['cases'], f'{lazy_name}: select the per-draw twin {twin} in the same run'
+                    per, lz = result['cases'][twin], result['cases'][lazy_name]
+                    for key in ('color_hashes', 'state_hashes', 'motion_hashes', 'readback_sha256'):
+                        assert per[key] == lz[key], f'{lazy_name}: {key} differs from {twin}'
+                result['mask_equivalence'] = {'twins': {n: MASK_TWINS[n] for n in selected_lazy}, 'identical': True,
+                                              'set_rt_per_frame': {n: result['cases'][n]['set_rt_per_frame'] for n in selected_lazy + sorted({MASK_TWINS[n] for n in selected_lazy})}}
                 save()
-                print('mask burst: every lazy run equals the per-draw twin')
+                print(f'mask burst: {len(selected_lazy)} lazy run(s) equal their per-draw twin')
+            elif any(entry['name'] in result['cases'] for entry in MASK_CASES):
+                print('mask burst: equivalence comparison SKIPPED (no lazy mask case selected)')
             print('partial run: no cross-case comparisons, not a pass')
             return
         # Resolve cost: the boundary with the switch on minus off, per size.

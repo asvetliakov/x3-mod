@@ -509,8 +509,9 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
     DWORD write1 = 15, write2 = 15;
     hr = render_state(D3DRS_COLORWRITEENABLE1, &write1);
     if (SUCCEEDED(hr) && !lazy_rt1_) { lazy_rt1_ = true; hr = bind_target(1, target_surface_); }
+    bool masked = false; // the application holds a write mask other than 15 on a target this draw writes
     if (SUCCEEDED(hr) && write1 != 15) {
-        ++counters_.lazy_mask_writes;
+        masked = true;
         route.saved_write1 = write1; route.write_set = true;
         hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 15);
     }
@@ -519,8 +520,8 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
         if (SUCCEEDED(hr) && !lazy_rt2_) { lazy_rt2_ = true; hr = bind_target(2, depth_surface_); }
         // A fade-band draw keeps RT2 bound but masks it off (see above).
         const DWORD wanted = route.fade_arm ? 0 : 15;
+        if (SUCCEEDED(hr) && write2 != 15) masked = true;
         if (SUCCEEDED(hr) && write2 != wanted) {
-            if (!route.fade_arm) ++counters_.lazy_mask_writes;
             route.saved_write2 = write2; route.write2_set = true;
             hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, wanted);
         }
@@ -529,6 +530,7 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
         // RT2 goes back exactly as the per-draw mode would leave it.
         hr = bind_target(2, nullptr); lazy_rt2_ = FAILED(hr);
     }
+    if (masked) ++counters_.lazy_mask_writes;
     return hr;
 }
 // Lazy mode: put the application's RT1/RT2 bindings back (reverse order of
@@ -538,13 +540,12 @@ void MotionOutput::restore_bindings() noexcept {
     restore_bindings_checked(); // The checked path owns sticky quarantine.
 }
 HRESULT MotionOutput::restore_bindings_checked() noexcept {
-    HRESULT first = deferred_flush_result_;
-    record_deferred();
+    HRESULT first = S_OK;
     if (sampler_biased_mask_) {
         const HRESULT mip = restore_mip_bias();
         if (SUCCEEDED(first)) first = mip;
     }
-    // Preserve an earlier deferred/mip restoration failure before a later
+    // Preserve an earlier mip restoration failure before a later
     // lazy flush can latch its own error. Every caller, including a void
     // restore point before draw admission, leaves unknown state quarantined.
     auto quarantine = [&](HRESULT hr) {
@@ -554,7 +555,7 @@ HRESULT MotionOutput::restore_bindings_checked() noexcept {
     };
     quarantine(first);
     if (lazy_rt1_ || lazy_rt2_) {
-        const HRESULT lazy = flush_bindings<false>();
+        const HRESULT lazy = flush_bindings();
         if (SUCCEEDED(first)) first = lazy;
         if (FAILED(first) && logged_failures_ < failure_log_limit) {
             ++logged_failures_;
@@ -564,12 +565,9 @@ HRESULT MotionOutput::restore_bindings_checked() noexcept {
     quarantine(first);
     return first;
 }
-// The flush itself. The quiet instantiation is reached from the light
-// SetRenderState hook (LightCallBoundary: no x87 code on its path, so no
-// telemetry record and no log formatter here); it counts into the frame
-// counters directly and leaves the metric sample and the failure line to
-// record_deferred, which every heavy call runs first.
-template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
+// The flush itself: two unbinds (the write masks are never held). Every caller
+// is a heavy hook, so it records its telemetry sample directly.
+HRESULT MotionOutput::flush_bindings() noexcept {
     const std::uint64_t begin = draw_stamp();
     HRESULT first = S_OK;
     auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
@@ -578,7 +576,7 @@ template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
         const HRESULT hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, index, nullptr);
         const std::uint64_t ticks = draw_stamp() - b;
         ++counters_.set_rt; counters_.set_rt_ticks += ticks;
-        if constexpr (!quiet) record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
+        record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
         return hr;
     };
     if (lazy_rt2_) step(unbind(2));
@@ -588,29 +586,12 @@ template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
     ++counters_.lazy_flushes; counters_.lazy_flush_ticks += ticks;
     if (FAILED(first)) {
         ++counters_.restore_failures; invalidate_render_states();
-        // Integer-only even through the light SetRenderState path. A later
-        // wrapper cannot erase state loss by consuming the deferred HRESULT.
+        // A later wrapper cannot erase state loss by consuming the HRESULT.
         if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; invalidate_taa(TaaInvalidateSite::RestoreFailed); }
         if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
     }
-    if constexpr (quiet) {
-        ++deferred_flushes_; deferred_flush_ticks_ += ticks;
-        if (SUCCEEDED(deferred_flush_result_) && FAILED(first)) deferred_flush_result_ = first;
-    } else record(unsigned(telemetry::Metric::RouteLazyFlush), ticks, FAILED(first));
+    record(unsigned(telemetry::Metric::RouteLazyFlush), ticks, FAILED(first));
     return first;
-}
-// Metric sample and failure line of the quiet flushes since the last heavy
-// call (one aggregated RouteLazyFlush sample; the SetRenderTarget samples
-// inside them are counted, not timed individually).
-void MotionOutput::record_deferred() noexcept {
-    if (!deferred_flushes_) return;
-    record(unsigned(telemetry::Metric::RouteLazyFlush), deferred_flush_ticks_, FAILED(deferred_flush_result_));
-    if (FAILED(deferred_flush_result_) && logged_failures_ < failure_log_limit) {
-        ++logged_failures_;
-        log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=lazy_flush_setstate flushes=%lu",
-            id_, frame_, counters_.draws, deferred_flush_result_, static_cast<unsigned long>(deferred_flushes_));
-    }
-    deferred_flushes_ = 0; deferred_flush_ticks_ = 0; deferred_flush_result_ = S_OK;
 }
 
 // ---- mip LOD bias (X3M_TAA_MIP_BIAS) ---------------------------------------
@@ -1824,7 +1805,6 @@ bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
 // image; with glow off no copy follows and the frame is resolved all the same.
 void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context) noexcept {
     if (!enabled_) return;
-    record_deferred();
     ++counters_.hook_signals;
     const auto state = selector_.state();
     if (state != renderer::BoundaryState::Scene || counters_.hook_scene_end) {

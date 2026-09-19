@@ -108,7 +108,9 @@ capture frames and must be kept out of ordinary-frame estimates.
 Per-frame totals are appended to `motion_output_frame` (fields after
 `taa_references`; earlier fields are unchanged): `rt_mode=perdraw|lazy`,
 `timing=cpu_qpc|off`, the counts `set_rt`, `lazy_flushes`, `lazy_mask_writes`
-(lazy routed draws that met a write mask other than 15), `jitter_writes`,
+(lazy routed draws, one count per draw, that met an application
+`COLORWRITEENABLE1`, or `COLORWRITEENABLE2` on a depth row, other than 15; the
+route's own RT2 = 0 write of a fade-band draw is not counted), `jitter_writes`,
 `readbacks`, and the microsecond totals `gate_us`, `route_draw_us`,
 `set_rt_us`, `lazy_flush_us`, `jitter_us`, `fill_us`, `taa_run_us`,
 `taa_capture_us`, `taa_copy_color_us`, `taa_copy_depth_us`, `taa_draw_us`,
