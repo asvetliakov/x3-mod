@@ -1,18 +1,18 @@
 {
  "fixture": "build/verification/collide-narrow-census/collide_narrow_census_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 5.2,
- "checks": 40,
+ "elapsed_s": 5.1,
+ "checks": 42,
  "failures": 0,
  "failure_lines": [],
- "cross_thread": "cross-thread frames=14399 accepted=19309 dropped=691",
+ "cross_thread": "cross-thread frames=10199 accepted=19433 dropped=567",
  "window_line_parsed": true,
  "pair_row_parsed": true,
  "bench_ns": {
-  "pair_native": 80.0,
-  "pair_patched": 300.2,
-  "node_visit_native": 1.97,
-  "node_visit_patched": 3.44
+  "pair_native": 84.5,
+  "pair_patched": 448.0,
+  "node_visit_native": 2.01,
+  "node_visit_patched": 3.16
  },
  "bottle": {
   "name": "X3",

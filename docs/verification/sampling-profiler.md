@@ -1901,6 +1901,40 @@ per node-pair visit (diagnostic timing, not game FPS).
 Not verified: anything in the game. The first flight must show `dropped=0 deferred=0 cross_thread_frames=0
 foreign=0` and `accepted_sum = recorded_sum + ring_overflow`.
 
+## Collide SAT SSE2 and the triangle-test counter: fixture and site qualification (2026-09-19, no game)
+
+`--collide-sat-sse2` (`X3M_COLLIDE_SAT_SSE2=1`) and site 8 of `--collide-narrow-census`; design, exactness argument and
+the full tables in [sector-collide.md](../reverse-engineering/sector-collide.md) §12.8. Bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Nothing launched, nothing installed.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Site verifier | `python3 verification/probe/verify_collide_sites.py` | PASS, 72 checks (29 box cull + 26 census + 17 SAT), 139 other claims for the SAT site |
+| x87 audit | `python3 verification/probe/check_no_x87.py` | PASS, 552 reachable functions; roots include `_x3m_collide_sat_thunk`, `_x3m_collide_sat_sse2` |
+| Build audit | `python3 verification/probe/build_collide_sat_sse2.py` | replica 1,582 B pinned by SHA-256, 24 rel32 + 9 abs32 relocated; exact 29-instruction thunk; 0 x87/MMX instructions in the module object |
+| SAT fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_sat_sse2.py` | 41 checks, 0 failures; `verification/results/collide-sat-sse2-cpu.json` |
+| Census fixture (site 8 added) | same wrapper, `run_collide_narrow_census.py` | 42 checks, 0 failures |
+| Box-cull fixture (module unchanged) | same wrapper, `run_collide_box_cull.py` | 38 checks, 0 failures |
+| Host tests | `test_collide_sat_sse2.py` (10), `test_collide_narrow_census.py` (10), `test_collide_box_cull.py` (10) | OK |
+
+SAT fixture (after the review fixes of §12.9: unordered separates as in the engine, margin 2⁻²⁰, world magnitudes):
+2,560,000 node pairs, **0** where the replica keeps a pair and SSE2 prunes it. NaN / inf / negative extents: engine's
+verdict and axis on all 150,000. Extra keeps: 0 of 1,600,000 random pairs (model units and station 9.2e6 / ship 4.3e4
+magnitudes), 240,613 of 660,000 pairs bisected onto the replica's boundary and 536 of 150,000 degenerate ones, every
+one inside the margin (pruned once T is stretched by 2⁻¹⁸); 9 later axes, none earlier. ns per call, harness (3.1 ns)
+subtracted: early separation 53.9 → 5.9 (**9.1×**), full overlap 121.5 → 19.8 (**6.1×**); thunk plus axis 1 = 5.9 ns;
+an MXCSR bracket would add 1.6 ns. Diagnostic timing, not game FPS. Before the fixes (2⁻⁴⁵, NaN kept): 10.4× / 5.9×.
+
+Found while qualifying: (1) GCC emitted x87 `fld; fabs; fstp` for `std::fabs` under `-mfpmath=sse`; the build audit
+refused the module and the core now masks the sign bit. (2) FEX does not round-trip the MXCSR sticky flags
+(`0x3fbf` reads back `0x3f80`); the fixture calibrates with a callee that does nothing and says so in its record.
+(3) FEX shares one rounding mode between x87 and SSE: an `ldmxcsr` changes how later x87 arithmetic rounds and an
+`fldcw` changes how SSE rounds. The thunk therefore writes MXCSR only when its control bits are not the default;
+record fields `ROUNDING` in the result. None of this matters with both modes at nearest, which is the game's state.
+
+Not verified: anything in the game, and native Windows (source uses documented instructions only; on hardware with
+separate x87/SSE rounding the bracketed path is exact, and the exactness argument there is geometric, §12.8).
+
 ## Run 44 A (run140/run141): `--collide-narrow-census` triage of two preserved sessions
 
 Two sessions, `--loop-phases --collide-narrow-census`, bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,

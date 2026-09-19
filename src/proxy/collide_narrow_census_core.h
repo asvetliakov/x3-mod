@@ -12,6 +12,7 @@
 // Site 5  0x0045d665  call 0x0048ac80   the narrow phase of one accepted pair (call redirect, bracketed)
 // Site 6  0x0048a9a5  call 0x0047f1b0   one leaf-part mesh-pair test (call redirect, plain counter)
 // Site 7  0x004e2530  mov eax,[0x0060854c]   entry of the recursive BVH node-pair routine (entry trampoline, plain counter)
+// Site 8  0x004e2190  sub esp,0x34; push ebx; push edi   entry of the leaf triangle-triangle test (entry trampoline, plain counter; 12.6)
 //
 // 0045d65d  51                    PUSH ECX                      ; rB (stack argument 2)
 // 0045d65e  8b 4b 70              MOV  ECX,[EBX+0x70]           ; physA: REGISTER argument (EBX = object A)
@@ -35,10 +36,15 @@
 // 004e2538  83 3d 34 69 59 00 00  CMP  dword [0x00596934],0
 // 004e253f  53 55 56 57           PUSH EBX/EBP/ESI/EDI
 // 004e2543  74 0e / 85 c0 / 7e 0a / 33 c0 / 5f 5e 5d 5b / 83 c4 40 / c3
+//
+// 004e2190  83 ec 34              SUB  ESP,0x34                 <- site 8 (function entry; sole caller 0x004e25cd, ESI/EAX register arguments)
+// 004e2193  53 / 57               PUSH EBX; PUSH EDI
+// 004e2195  8b f8 / 8b 46 44 / d9 40 04   MOV EDI,EAX; MOV EAX,[ESI+0x44]; FLD dword [EAX+4]   ; reads no flag
 namespace x3m::collide_narrow_census::core {
 constexpr std::uintptr_t n5_site_va = 0x0045d665, n5_target_va = 0x0048ac80, n5_return_va = 0x0045d66a;
 constexpr std::uintptr_t n6_site_va = 0x0048a9a5, n6_target_va = 0x0047f1b0;
 constexpr std::uintptr_t n7_site_va = 0x004e2530, n7_next_va = 0x004e2535, n7_hits_va = 0x0060854c, n7_mode_va = 0x00596934;
+constexpr std::uintptr_t n8_site_va = 0x004e2190, n8_next_va = 0x004e2195, n8_caller_va = 0x004e25cd;
 constexpr std::uintptr_t n5_function_va = 0x0045d250, n5_function_end_va = 0x0045e0b8;
 constexpr std::uintptr_t n6_function_va = 0x0048a890, n6_function_end_va = 0x0048ac27;
 constexpr std::uintptr_t n7_function_va = 0x004e2530, n7_function_end_va = 0x004e2780;
@@ -57,6 +63,9 @@ constexpr unsigned char n7_window[n7_window_length] = {
 inline void n7_expected(std::uint32_t hits, std::uint32_t mode, unsigned char out[n7_window_length]) {
     std::memcpy(out, n7_window, n7_window_length); std::memcpy(out + n7_hits_operand, &hits, 4); std::memcpy(out + n7_mode_operand, &mode, 4);
 }
+// Site 8: the first 13 bytes of 0x004e2190 (no relocated operand); the first five are the three displaced instructions.
+constexpr unsigned n8_window_length = 13;
+constexpr unsigned char n8_window[n8_window_length] = {0x83,0xec,0x34, 0x53, 0x57, 0x8b,0xf8, 0x8b,0x46,0x44, 0xd9,0x40,0x04};
 // The narrow-phase entry the site-5 stub calls (checked by the production
 // install on the real image; the fixture carries a byte-exact replica): its
 // register convention (ECX = physA, EAX = physB) is what the pre-window loads.
@@ -87,7 +96,7 @@ enum : std::uint8_t { had_previous = 1, same_position = 2, same_xform = 4, same_
 struct Entry {
     ObjectKey a, b;
     std::int32_t result;
-    std::uint32_t visits, mesh_pairs, ticks;
+    std::uint32_t visits, mesh_pairs, ticks, tri_tests;
     std::uint8_t flags;
 };
 inline std::uint32_t load32(const unsigned char* p) { std::uint32_t v; std::memcpy(&v, p, 4); return v; }
@@ -232,7 +241,14 @@ inline unsigned encode_n7_stub(std::uint32_t at, std::uint32_t counter, std::uin
     w.raw({0xff,0x05}); w.dword(counter); w.byte(0xa1); w.dword(hits); w.rel32(0xe9, next);
     return w.length();
 }
-constexpr unsigned n5_stub_length = 289, n6_stub_length = 11, n7_stub_length = 16;
+// Site-8 stub: inc dword [counter] ; sub esp,0x34 ; push ebx ; push edi (the three displaced instructions) ; jmp site+5.
+// The inc's flags are overwritten by the re-executed `sub`, exactly the flags the engine's own `sub` leaves.
+inline unsigned encode_n8_stub(std::uint32_t at, std::uint32_t counter, std::uint32_t next, unsigned char out[stub_capacity]) {
+    StubWriter w(out, at);
+    w.raw({0xff,0x05}); w.dword(counter); w.raw({0x83,0xec,0x34, 0x53, 0x57}); w.rel32(0xe9, next);
+    return w.length();
+}
+constexpr unsigned n5_stub_length = 289, n6_stub_length = 11, n7_stub_length = 16, n8_stub_length = 16;
 
 // ---- per-frame series of the 300-frame window (p50/max/sum each) ----
 constexpr unsigned series_count = 4;   // accepted pairs, mesh-pair tests, BVH node-pair visits, narrow-phase microseconds
