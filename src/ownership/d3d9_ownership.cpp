@@ -1671,6 +1671,19 @@ IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9* wrapped) noexcept {
         ? static_cast<IDirect3DDevice9*>(found->second->backend) : nullptr;
 }
 
+HRESULT observe_native_result(IDirect3DDevice9* wrapped, HRESULT hr) noexcept {
+    if (hr != D3DERR_DEVICELOST && hr != D3DERR_DEVICENOTRESET) return hr; // observe_result acts on these two only
+    PreserveExecution preserve;
+    Device* device = nullptr;
+    {
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        const auto found = application_nodes.find(wrapped);
+        if (found != application_nodes.end() && found->second->kind == Kind::Device) device = static_cast<Device*>(found->second);
+    }
+    if (device) observe_result(device, hr);
+    return hr;
+}
+
 IDirect3DVertexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DVertexBuffer9* wrapped) noexcept {
     return buffer_contract_endpoint(wrapped, Kind::VertexBuffer, vertex_buffer_slots);
 }
@@ -1722,6 +1735,10 @@ static __attribute__((noinline)) HRESULT get_buffer_lock_view_core(IDirect3DReso
         // optional unknown evidence, not a reason to abort the application.
         *out={};out->status=E_FAIL;return S_FALSE;
     }
+}
+// No shell (see the header). noinline/used keep the symbol the x87 audit roots at.
+__attribute__((noinline,used)) HRESULT get_buffer_lock_view_light(IDirect3DResource9* application,BufferLockView* out) noexcept {
+    return get_buffer_lock_view_core(application,out);
 }
 #pragma GCC push_options
 #pragma GCC optimize("no-exceptions")

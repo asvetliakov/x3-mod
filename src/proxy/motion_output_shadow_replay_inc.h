@@ -46,7 +46,7 @@ bool MotionOutput::fill_depth_geometry(const MotionRoute& route, shadow_replay::
     UINT frequency = 0;
     bool stream0_only = shadow_.declaration_stream0_only;
     if (stream0_only) stream0_only = (route.stream0_frequency_known ? (frequency = route.stream0_frequency, true)
-        : SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency))) && frequency == 1;
+        : SUCCEEDED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency))) && frequency == 1;
     if (!stream0_only) { release(declaration); g.multistream = true; SetLastError(error); return false; }
     g.declaration = declaration;
     g.vertex_buffer = reinterpret_cast<IDirect3DVertexBuffer9*>(shadow_.stream0_identity);
@@ -76,7 +76,7 @@ void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index)
 // LastError is kept by the callees.
 void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownership::BufferLockView& vb, const shadow_replay::ExtentEntry* extent) noexcept {
     ownership::BufferLockView ib{};
-    if (route.key.indexed && !(shadow_.indices_identity && SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(shadow_.indices_identity), &ib)) && ib.known)) return;
+    if (route.key.indexed && !(shadow_.indices_identity && SUCCEEDED(ownership::get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(shadow_.indices_identity), &ib)) && ib.known)) return;
     auto& st = *retention_;
     LARGE_INTEGER t0{}, t1{}; // retention_ticks lives in the retention include, which follows this one
     if (st.timing) QueryPerformanceCounter(&t0);

@@ -1327,3 +1327,53 @@ measured on it.
   tested-opaque arm (gate, `UnmatchedReason::State` mirror,
   `SunUntrackedReason::State` diagnostic mirror), none with a linear-material
   prerequisite. Seven-module host set: 51 tests OK.
+
+## 2026-09-19 — lever 1 stage A and 2a (route-per-draw-cost.md): implemented, unflown
+
+- Change: the route's seven value-only calls go to the borrowed native device
+  under `X3M_OWNERSHIP=1` (`bind_direct`, `direct_call`, cold `direct_failed`
+  → `ownership::observe_native_result`; aliases of `native_`/`device_` without
+  a wrapper or with a published admission monitor; dropped first in
+  `release_resources`); the two draw-path lock views use
+  `ownership::get_buffer_lock_view_light` (no FNSAVE/FRSTOR shell). Base
+  `56843d14`, worktree build, seam `53e3a0a8151a`, main's seam `3c5f2ceeecdf`
+  built from `git archive HEAD` for the comparisons. Bottle X3, every Wine
+  command under `wine_lock.py`.
+- Route bench, µs per DrawPrimitive, medians (`route-bench-lever1-base.json`
+  main, `-lever1.json`, `-lever1-r2.json`): off 1.475 / 1.458 / 1.472; perdraw
+  8.721 / 8.848 / 8.861; perdraw-ownership 10.870 / 9.618 / 9.777;
+  perdraw-depth 12.854 / 10.516 / 10.511; perdraw-cascades 13.507 / 11.404.
+  Wrapper (ownership − perdraw): **2.15 → 0.77 and 0.92**; acceptance ≤ 0.6
+  **not met**. Lease (depth − ownership): **1.98 → 0.90 and 0.73**;
+  acceptance ≤ 0.9 met. perdraw-cascades −2.10. Default path unchanged within
+  noise (perdraw +0.13, lazy +0.03).
+- Why 0.6 is out of stage A's reach (I): all 43 value-only sites are direct;
+  what still crosses the wrapper per routed draw is eight interface-input
+  calls (SetRenderTarget ×4, SetVertexShader ×2, SetPixelShader ×2), each with
+  `unwrap` under `registry_mutex`: 0.77 / 8 ≈ 96 ns per entry, not the 65 ns
+  the note averaged. That residue is stage B, which stays closed.
+- `run_motion_output.py` full suite on the change: PASS, 162 cases. The 49
+  `seam-ownership-*` cases against main's binaries (retained-binary partial
+  run): 0 field differences outside `us` timing blocks, equal check counts
+  (retention-live 9743, -census 9740, -live-poll 9890, cascades 278, pool-hull
+  77); `frames_changed_by_history` exists only in full runs and equals the
+  tracked value. Suite logs: `motion_direct enabled=1 admission=0` on 69
+  devices, `enabled=0 admission=1` on 4, no `motion_direct_loss_code`.
+- `check_no_x87.py`: PASS, 548 reachable functions, the light entry a required
+  root, no state transport beneath it. `run_ownership.py`: reports
+  byte-identical to HEAD (370 / 563 checks, 0 failures); `verify_ownership.py`
+  fails on its pinned 553 against HEAD's own tracked 563 (pre-existing).
+  `run_ownership_integration.py`: 26 cases exit 0, verifier PASS.
+  `run_ownership_integration_fallback.py`: link fails on stub symbols missing
+  on main too (`get_buffer_lock_view`, `get_locked_prefix_view`,
+  `set_surface_lock_observer`, `x3m_compositor_bridge_*`), now also the two
+  new entries. `run_ownership_admission.py`: PASS modes=12 checks=147.
+  `run_application_admission_abi.py`: fixture PASS checks=130 samples=21
+  (equal to the tracked record), runner then stops on the
+  `application-admission-abi-initial-summary.json` that bottle-X3 never had.
+  `run_state_hook_benchmark.py --dll build/d3d9.dll`: 28 PRESERVE rows, 0 bad.
+  `run_object_lifetime.py`: 13 PASS, timing-only deltas. Rewritten tracked
+  results restored to HEAD.
+- Host: snippet mocks gained `direct_call`/`drop_direct`
+  (`motion_wrap_state_fixture.cpp`, `linear_material_live_fixture.cpp`,
+  `test_linear_cutout_contract.py`), source-gain pins follow the new call text.

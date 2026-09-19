@@ -68,6 +68,11 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_media_cue_enter', '_x3m_media_cue_return',
                 # the cull-census handlers (src/proxy/cull_census.cpp, X3M_CULL_CENSUS=1) run inside the cull/LOD pass, no boundary
                 '_x3m_cull_census_measure', '_x3m_cull_census_exit']
+# The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
+# route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
+# preserves nothing itself, so it and its core are a required root, and its own
+# reachable set must hold no state transport either (the shell is really gone).
+OWNERSHIP_LIGHT = '__ZN3x3m9ownership26get_buffer_lock_view_lightE'
 ALLOWED = {'fnsave', 'fninit', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}  # fninit only follows fnsave in CpuState::capture
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')
@@ -157,6 +162,17 @@ def main():
             print(json.dumps({'result': 'FAIL', 'error': f'{symbol}: not found'}))
             return 1
         roots[symbol] = symbol
+    light = [n for n in functions if n.startswith(OWNERSHIP_LIGHT)]
+    if len(light) != 1:
+        print(json.dumps({'result': 'FAIL', 'error': f'get_buffer_lock_view_light: {len(light)} symbols {light}'}))
+        return 1
+    roots['ownership::get_buffer_lock_view_light'] = light[0]
+    shell = {name: [l.strip() for l in functions[name] if parse(l)[0] in ('fnsave', 'frstor')]
+             for name in walk(functions, light)}
+    shell = {name: lines for name, lines in shell.items() if lines}
+    if shell:
+        print(json.dumps({'result': 'FAIL', 'error': 'state transport under get_buffer_lock_view_light', 'violations': shell}))
+        return 1
     seen = walk(functions, roots.values())
     violations = {name: lines for name, lines in seen.items() if lines}
     summary = {'result': 'FAIL' if violations else 'PASS', 'dll': str(dll), 'roots': roots,
