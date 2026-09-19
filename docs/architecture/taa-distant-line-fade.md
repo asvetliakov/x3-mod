@@ -191,6 +191,9 @@ note supersedes section 5 and plan steps 5-6 of [taa-lattice-crawl.md](taa-latti
 
 ## 9. Implemented, unflown (2026-09-19): `--taa-far-stabiliser W[,A[,F0,F1]]`
 
+(The fixed 0.5-2 px/frame speed gate of this section and of section 4 is superseded by section 10: `LO,HI` = 0.03,0.25 by
+default and settable. The replay rows below were measured with the 0.5-2 gate.)
+
 **Plan step 1, replay [M].** `tools/analysis/taa_resolve_replay.py <dump> <box> far` (`FAR=F0,F1`, `ONLY=<configs>`): the
 shader-form gate `farw = saturate((d - d0) * inv)` from the footprint inversion (8-bit quantised as the mask stores it is
 not modelled; p22 / p32 are the section-4 constants), the far weight with its 0.5-2 px/frame speed gate, the far filter,
@@ -223,7 +226,7 @@ as the lattice note's section 8 found for the sharpen exclusion). It would need 
 for the orchestrator to confirm. (4) At 0.45 px/frame (run148) neither component acts: the speed gate and low `farw`.
 
 **Shader / pass.** `resolve_far.hlsl` (`X3M_FAR_STABILIZE`, **508 slots**): the age variant whose LO / HI gate arithmetic
-is replaced by `keep += g * (1 - saturate((speed - 0.5) / 1.5)) * (min(n / (n + 1), W) - keep)` and whose current sample
+is replaced by `keep += g * (1 - saturate((speed - LO) / (HI - LO))) * (min(n / (n + 1), W) - keep)` and whose current sample
 is `weighted += r * (filtered - weighted)`; `r` and `g` come from the mask at `s8`, so the gate costs the resolve no
 depth arithmetic. `line_mask_ps.hlsl` (153 slots) now writes `r` = filter weight (dilated line mask and / or `farw`), `g` =
 `farw` for the weight, each multiplied by its component switch (`c5`: d0, inv, filter on, weight on); far alone is one

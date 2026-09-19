@@ -364,7 +364,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     constants.luminance[2]=in.alpha_history?1.f:0.f; // read by the flicker variants only
     constants.luminance[3]=lined?in.line_filter:far_on?in.far_filter:0.f; // A of the masked filter: line-filter / far variants only
     float flicker_constants[4]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);
-    // Far variant: c24.yzw = W_FAR (the base weight when that component is off; its gate channel is 0 then), speed gate 0.5 .. 2 px/frame.
+    // Far variant: c24.yzw = W_FAR (the base weight when that component is off; its gate channel is 0 then), speed gate far_speed_lo .. far_speed_hi px/frame.
     if(far_on){flicker_constants[1]=in.far_weight>0?in.far_weight:in.weight;flicker_constants[2]=in.far_speed_lo;flicker_constants[3]=1.f/(in.far_speed_hi-in.far_speed_lo);}
     const float far_constants[4]={in.far_d0,far_on?in.far_inv:0.f,far_on&&in.far_filter>0?1.f:0.f,far_on&&in.far_weight>0?1.f:0.f};
     const bool filtered=in.current_filter>0;

@@ -843,9 +843,10 @@ public:
     // X3M_TAA_LINE_FILTER (A of the line-masked filtered current sample, 0 off;
     // docs/architecture/taa-lattice-crawl.md section 9). Before attach, like the others.
     void configure_taa_line_filter(float a, unsigned width) noexcept { taa_line_filter_ = a; taa_line_width_ = width == 2 ? 2u : 1u; }
-    // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1]] (docs/architecture/taa-distant-line-fade.md
-    // section 9), off by default: far history weight W (0 off), far current
-    // filter A (0 off), gate footprints F0 < F1 in world units per pixel.
+    // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]] (docs/architecture/taa-distant-line-fade.md
+    // sections 9-10), off by default: far history weight W (0 off), far current
+    // filter A (0 off), gate footprints F0 < F1 in world units per pixel, speed
+    // gate of the weight LO < HI in px/frame.
     void configure_taa_far(float weight, float filter, float f0, float f1, float lo, float hi) noexcept { taa_far_weight_ = weight; taa_far_filter_ = filter; taa_far_f0_ = f0; taa_far_f1_ = f1; taa_far_lo_ = lo; taa_far_hi_ = hi; }
     void configure_taa_flicker(float thin_clip, float adaptive_weight, float adaptive_lo, float adaptive_hi, bool alpha_history) noexcept {
         taa_thin_clip_ = thin_clip; taa_adaptive_weight_ = adaptive_weight; taa_adaptive_lo_ = adaptive_lo; taa_adaptive_hi_ = adaptive_hi; taa_alpha_history_ = alpha_history;

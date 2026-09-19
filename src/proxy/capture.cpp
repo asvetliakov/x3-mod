@@ -2611,7 +2611,7 @@ void initialize_log(HMODULE module) {
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_LINE_FILTER",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&v>=0.f&&v<=4.f){if(*end==L'\0')taa_line_filter=v;else if(*end==L','&&(end[1]==L'1'||end[1]==L'2')&&end[2]==L'\0'){taa_line_filter=v;taa_line_width=unsigned(end[1]-L'0');}}}
     // X3M_TAA_FAR_STABILISER=<W>[,<A>[,<F0>,<F1>[,<LO>,<HI>]]] (0 <= LO < HI <= 64 px/frame, the weight's speed gate) (docs/architecture/taa-distant-line-fade.md section 9; unset: off):
     // W 0 or 0.5..0.99 (checked against the history weight at attach), A 0..4, 0 < F0 < F1 <= 1e6 units per pixel.
-    // The whole string must parse (1, 2 or 4 fields); anything else keeps the option off.
+    // The whole string must parse (1, 2, 4 or 6 fields); anything else keeps the option off.
     {wchar_t far_setting[64];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_FAR_STABILISER",far_setting,64):0;
         if(length>0&&length<64){float v[6]={0.f,0.f,80.f,130.f,.03f,.25f};unsigned count=0;wchar_t* cursor=far_setting;bool ok=true;
             while(ok&&count<6){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==6)ok=false;}

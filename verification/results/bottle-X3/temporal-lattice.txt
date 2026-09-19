@@ -2133,7 +2133,7 @@ CHECK line mask never holds on the square's silhouette PASS
 CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
 CHECK line mask covers the lattice region PASS
 CHECK line filter lowers the roping at a bounded line-peak cost PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.8228 current_filter_ms=0.8208 line_filter_ms=1.1734 far_stabiliser_ms=1.1009 taps_delta_ms=-0.0019 line_delta_ms=0.3506 far_delta_ms=0.2781 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6871 current_filter_ms=0.7004 line_filter_ms=0.9440 far_stabiliser_ms=0.8824 taps_delta_ms=0.0133 line_delta_ms=0.2569 far_delta_ms=0.1954 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -2357,6 +2357,15 @@ CHECK far weight falls continuously with the screen speed: ripple ratio monotone
 CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK far-stabiliser program created on this device PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+FAR_SPEED_GATE_CUSTOM lo=0.100 hi=0.600 ratio_v0.14=0.2218 ratio_v0.30=0.4923 default_v0.14=0.5772 oracle_error=0.000244
+SAMPLE far custom speed gate: shader matches the oracle evaluated with that gate actual=0.000244141 expected=0.000000000 tolerance=0.040000000 PASS
+CHECK a non-default speed gate is followed (a hard-coded default would give the default ramp) PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
+CHECK far-stabiliser program created on this device PASS
+CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK far-stabiliser program created on this device PASS
 CHECK mask creation fault reached PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
@@ -2366,4 +2375,4 @@ CHECK mask failure is sticky within the session and re-armed once by a Reset PAS
 CHECK mask creation fault reached PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK mask-target creation failure under the line filter: plain resolve, history kept PASS
-RESULT PASS numerical=375 state_restorations=17 lattice=1
+RESULT PASS numerical=377 state_restorations=17 lattice=1

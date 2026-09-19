@@ -38,7 +38,7 @@ FarRun far_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsig
     const FlickerConfig f{c.name,c.thin,0,.1f,.5f,false,false,.9f};FarRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         s.render(far_objects(n),EdgeBackground{.035f,farBandDepth[0],1},jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));
-        auto in=flicker_inputs(s,f,jx,jy,false);in.line_filter=c.A;in.line_width=c.width;in.far_weight=c.farW;in.far_filter=c.farA;in.far_d0=farD0;in.far_inv=validGate?farInv:0;
+        auto in=flicker_inputs(s,f,jx,jy,false);in.line_filter=c.A;in.line_width=c.width;in.far_weight=c.farW;in.far_filter=c.farA;in.far_d0=farD0;in.far_inv=validGate?farInv:0;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
         Output out;check("far Begin resolve",s.d->BeginScene());
         if(failMasks&&n==0){MaskCreationFault fault(s.d);check(c.name,pass.run(in,&out));require(MaskCreationFault::refused>0,"mask creation fault reached");}else check(c.name,pass.run(in,&out));
         check("far End resolve",s.d->EndScene());
@@ -125,6 +125,14 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     ++rampIndex;}
     std::printf("FAR_SPEED_RAMP lo=%.3f hi=%.3f ratio_v0=%.4f ratio_v0.04=%.4f ratio_v0.14=%.4f ratio_v0.30=%.4f\n",farLo,farHi,rampRatio[0],rampRatio[1],rampRatio[2],rampRatio[3]);
     ++numeric_checks;require(rampRatio[0]<=rampRatio[1]+.01&&rampRatio[1]<rampRatio[2]&&rampRatio[2]<rampRatio[3]&&rampRatio[3]==1,"far weight falls continuously with the screen speed: ripple ratio monotone from W_FAR to the base weight");
+    // A non-default gate (0.1 .. 0.6) is followed: at 0.14 px/frame t = 0.08 (default gate: 0.5), at 0.30 t = 0.4 (default: the base weight).
+    {const float savedLo=farLo,savedHi=farHi;farLo=.1f;farHi=.6f;double ratio[2]{},error=0;unsigned k=0;
+        for(double drift:{.14,.3}){farDrift=drift;const auto baseRun=far_sequence(s,resolver,base,farFrames),run=far_sequence(s,resolver,weight,farFrames);const auto model=line_model(run,weight);
+            for(unsigned n=0;n<farFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x)error=std::max(error,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
+            ratio[k++]=far_ripple(run,2)/far_ripple(baseRun,2);}
+        farLo=savedLo;farHi=savedHi;std::printf("FAR_SPEED_GATE_CUSTOM lo=0.100 hi=0.600 ratio_v0.14=%.4f ratio_v0.30=%.4f default_v0.14=%.4f oracle_error=%.6f\n",ratio[0],ratio[1],rampRatio[2],error);
+        metric("far custom speed gate: shader matches the oracle evaluated with that gate",error,0,.0006/(1-.985));
+        ++numeric_checks;require(ratio[0]<rampRatio[2]-.2&&ratio[1]>ratio[0]&&ratio[1]<.9,"a non-default speed gate is followed (a hard-coded default would give the default ramp)");}
     farDrift=0;
     // ---- gate off (invalid projection this frame) and mask-target creation failure: the plain resolve bit for bit, history kept ----
     {const auto baseRun=far_sequence(s,resolver,base,32),gateOff=far_sequence(s,resolver,both,32,false),failed=far_sequence(s,resolver,both,32,true,true);
