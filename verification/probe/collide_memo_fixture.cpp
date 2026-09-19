@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
-static char last_log[512];
+static char last_log[2048];
 namespace x3m { void log(const char* format, ...) {
     std::va_list a; va_start(a, format); std::vsnprintf(last_log, sizeof last_log, format, a); va_end(a);
     static unsigned lines = 0; if (lines++ < 12) std::printf("%s\n", last_log);
@@ -332,14 +332,62 @@ int main() {
         rotation(m, 1.0); set_rotation(a, m); rotation(m, 1.0); set_rotation(b, m);
         place(a, models[6], 0, 0, 0, 1); place(b, models[7], 25, 10, 0, 1);
         const Mode modes[5] = {first_contact, distance, distance_near, distance_tolerant, Mode{2, 1, 0.0f, true, 3.0f}};
-        unsigned wrong = 0;
+        unsigned wrong = 0, first_frame_hits = 0;
+        const std::uint32_t relaxed0 = memo::counters().min_relaxed_hits;
         for (unsigned frame = 0; frame < 6; ++frame, next_frame())
-            for (const Mode& mode : modes) { const unsigned long c = tally.contacts; const bool hit = query(a, b, mode, "modes"); if (frame == 0 && hit) ++wrong; if (frame > 0 && !hit && tally.contacts == c) ++wrong; }
-        check(wrong == 0, "modes: five entries for one pair, none shared");
-        Mode moving = distance;
-        for (unsigned frame = 0; frame < 20; ++frame, next_frame()) { moving.minimum_value = float(1000.0 / (frame + 1)); if (query(a, b, moving, "modes")) ++wrong; }
-        check(wrong == 0, "a changed running minimum misses");
+            for (const Mode& mode : modes) { const unsigned long c = tally.contacts; const bool hit = query(a, b, mode, "modes"); if (frame == 0 && hit) ++first_frame_hits; if (frame > 0 && !hit && tally.contacts == c) ++wrong; }
+        // In the first frame a mode may only be answered by another mode's entry through the running-minimum rule (same flags, cap and tolerance, no leaf reached).
+        check(wrong == 0 && first_frame_hits <= memo::counters().min_relaxed_hits - relaxed0 && first_frame_hits <= 1, "modes: flags, cap, tolerance and pointer null-ness each make their own entry");
         section("modes", before);
+    }
+    // 4b. The running minimum alone changes. It is read only inside the leaf, so a run that reached no leaf does not depend on it (answered from
+    //     the memo whatever its value); a run that did reach one must miss on any other value; and a contact that the minimum filters is recomputed.
+    {
+        const Tally before = tally;
+        Object a{}, b{};
+        rotation(m, 1.0); set_rotation(a, m); rotation(m, 1.0); set_rotation(b, m);
+        place(a, models[6], 0, 0, 0, 1);
+        State s{};
+        // Placements by what the un-memoed engine does with them under flags 0xc and a huge minimum: no leaf, leaf without contact, contact.
+        std::int32_t no_leaf[3] = {100000, 0, 0}, leaf[3] = {0, 0, 0}, touching[3] = {0, 0, 0};
+        bool have_leaf = false, have_touching = false;
+        float huge = 1e9f, tolerance = 0.0f;
+        std::uint32_t tolerance_bits = 0;
+        for (unsigned attempt = 0; attempt < 12000 && !(have_leaf && have_touching); ++attempt) {
+            if (attempt % 4000 == 0) { tolerance = attempt == 0 ? 25.0f : attempt == 4000 ? 1000.0f : 1e6f; std::memcpy(&tolerance_bits, &tolerance, 4); have_leaf = false; }   // distance mode counts a contact within its tolerance only
+            const std::int32_t at[3] = {std::int32_t(uniform(-90, 90)), std::int32_t(uniform(-90, 90)), std::int32_t(uniform(-90, 90))};
+            place(b, models[7], at[0], at[1], at[2], 1);
+            minimum_slot = huge;
+            fx_call(reference_va, a.node, b.node, a.body, b.body, 0xc, 8, tolerance_bits, addr(&minimum_slot), &s);
+            const std::uint32_t triangles = engine<std::uint32_t>(0x00608548);
+            if (s.eax == 0 && triangles > 0 && !have_leaf) { std::memcpy(leaf, at, sizeof at); have_leaf = true; }
+            if (s.eax != 0 && !have_touching) { std::memcpy(touching, at, sizeof at); have_touching = true; }
+        }
+        check(have_leaf && have_touching, "placements found: a leaf reached without contact, and a contact");
+        Mode mode = distance;
+        mode.tolerance = tolerance;
+        unsigned no_leaf_hits = 0, leaf_hits_on_change = 0, leaf_hits_on_repeat = 0, filtered = 0, passed = 0;
+        const std::uint32_t relaxed0 = memo::counters().min_relaxed_hits;
+        place(b, models[7], no_leaf[0], no_leaf[1], no_leaf[2], 1);
+        for (unsigned frame = 0; frame < 40; ++frame, next_frame()) { mode.minimum_value = float(1000.0 / (frame + 1)); no_leaf_hits += query(a, b, mode, "running_minimum"); }
+        check(no_leaf_hits == 39 && memo::counters().min_relaxed_hits - relaxed0 == 39, "no leaf reached: every frame after the first is answered although the minimum changed");
+        place(b, models[7], leaf[0], leaf[1], leaf[2], 1);
+        for (unsigned frame = 0; frame < 40; ++frame, next_frame()) {
+            mode.minimum_value = float(2000.0 / (frame + 1));
+            leaf_hits_on_change += query(a, b, mode, "running_minimum");
+            if (!last_contact) leaf_hits_on_repeat += query(a, b, mode, "running_minimum");
+        }
+        check(leaf_hits_on_change == 0 && leaf_hits_on_repeat > 0, "a leaf was reached: another minimum always misses, the same minimum hits");
+        place(b, models[7], touching[0], touching[1], touching[2], 1);
+        for (unsigned frame = 0; frame < 60; ++frame, next_frame()) {
+            mode.minimum_value = frame % 2 ? huge : float(frame) * 0.05f;   // small minima filter the contact away, the huge one lets it through
+            const bool hit = query(a, b, mode, "running_minimum");
+            if (!last_contact) ++filtered; else ++passed;
+            if (hit && last_contact) ++leaf_hits_on_change;
+        }
+        check(leaf_hits_on_change == 0 && filtered > 0 && passed > 0, "a contact that depends on the minimum is never answered from the memo");
+        section("running_minimum", before);
+        std::printf("MINIMUM no_leaf_hits=%u leaf_hits_on_repeat=%u contact_filtered_frames=%u contact_frames=%u tolerance=%.0f\n", no_leaf_hits, leaf_hits_on_repeat, filtered, passed, double(tolerance));
     }
     // 5. Addresses: the same inputs at other node and body addresses are the same query; another model, or other content at the same model address, is not.
     {
@@ -417,7 +465,7 @@ int main() {
                     default: o.node[0xc0 / 4 + rnd() % 3] ^= 1u; break;
                 }
             }
-            for (unsigned k = 0; k < 12; ++k) query(objects[k], objects[(k + 5) % 12], modes[k % 4], "random");   // the same pairs and modes every frame, as the engine's pair loop
+            for (unsigned k = 0; k < 12; ++k) { Mode mode = modes[k % 4]; if (mode.minimum && rnd() % 2) mode.minimum_value = float(uniform(0, 60)); query(objects[k], objects[(k + 5) % 12], mode, "random"); }   // the same pairs and modes every frame, as the engine's pair loop
         }
         check(tally.hits - before.hits > 5000 && tally.contacts - before.contacts > 500, "random: hits and contacts both occur in volume");
         section("random", before);
@@ -528,7 +576,7 @@ int main() {
     const core::Counters normal = memo::counters();
     next_frame();
     while (frame_serial % 300 != 0) next_frame();
-    check(std::strstr(last_log, "collide_memo device=1 ") != nullptr && std::strstr(last_log, " verify=0 ") != nullptr && std::strstr(last_log, "verify_mismatches=0") != nullptr, "window line written every 300 frames");
+    check(std::strstr(last_log, "collide_memo device=1 ") != nullptr && std::strstr(last_log, " verify=0 ") != nullptr && std::strstr(last_log, "verify_mismatches=0") != nullptr && std::strstr(last_log, " miss_expired_visits=") != nullptr, "window line written every 300 frames");
     std::printf("WINDOW %s\n", last_log);
 
     // ---- verify mode: nothing is skipped, every would-be hit is compared; an input outside the key shows up as a mismatch ----
@@ -569,6 +617,9 @@ int main() {
                 tally.queries, tally.hits, tally.contacts, tally.differences, tally.stale, tally.hit_on_contact, tally.register_differences, c.stored, c.evictions, c.ineligible, c.skipped_visits,
                 c.verified, c.verify_mismatches);
     std::printf("GUARDS foreign_thread=%u reentered=%u clears=%u stuck_busy=%u\n", c.foreign_thread, c.reentered, c.clears, c.stuck_busy);
+    std::printf("MISSES min_relaxed_hits=%u none_found=%u xform_a=%u xform_b=%u scale=%u mode=%u models=%u min_value=%u expired=%u min_value_visits=%u xform_b_visits=%u\n", c.min_relaxed_hits,
+                c.miss_count[0], c.miss_count[1], c.miss_count[2], c.miss_count[3], c.miss_count[4], c.miss_count[5], c.miss_count[6], c.miss_count[7], c.miss_visits[6], c.miss_visits[2]);
+    { std::uint32_t classified = 0; for (std::uint32_t n : c.miss_count) classified += n; check(classified == c.misses && c.miss_count[6] > 0 && c.miss_count[2] > 0 && c.miss_count[7] > 0, "every miss is classified; min_value, xform_b and expired all occur"); }
     std::printf("COLLIDE MEMO CPU checks=%u failures=%u\n", checks, failures);
     return failures ? 1 : 0;
 }

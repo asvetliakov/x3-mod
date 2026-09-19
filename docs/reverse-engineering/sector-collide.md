@@ -1016,6 +1016,10 @@ bit-static rows, not a field named "player" in any log.
 
 ### 12.8 Implemented: `--collide-sat-sse2` and the triangle-test counter (2026-09-19)
 
+**Status (2026-09-20): launcher default on every modded launch** (`tools/manage.py`, `collide_default`);
+`--no-collide-sat-sse2` turns it off, `--vanilla` forwards nothing unless the option is given. The DLL's own default
+stays off (no variable = nothing patched). What follows describes the option as first shipped, default off.
+
 `X3M_COLLIDE_SAT_SSE2=1` (launcher `--collide-sat-sse2`, default off, independent of `--collide-box-cull` and
 `--collide-narrow-census`; any combination may be on), `src/proxy/collide_sat_sse2.{h,cpp}` and
 `collide_sat_sse2_core.h`. Candidate (c) of §12.5: `engine_patch::claim_call` on `0x004e25a3`, only the rel32 changes.
@@ -1299,6 +1303,10 @@ thing to measure next. On native Windows x87 is not emulated, so no gain is expe
 
 ## 14. `--collide-memo`: the temporal no-contact memo (fix 1 of §11.6), 2026-09-19
 
+**Status (2026-09-20): launcher default on every modded launch**, with `--no-collide-memo` as the off switch
+(refused together with `--collide-memo-verify`); `--vanilla` forwards nothing unless the option is given; the DLL's
+own default stays off. Flights and the running-minimum rule they led to are in §14.6.
+
 Flight evidence (run150, census): `memo_would_hit_permille=49` of pairs but `memo_visits_permille=828` of visits,
 `memo_unsafe_sum=0`, `memo_visits_differ_sum=0`. Method as in §13; nothing launched. Marks as in §12.
 
@@ -1393,6 +1401,40 @@ while the player holds still; nothing while the hot pair moves.
 `--collide-memo-verify --collide-narrow-census --loop-phases` at the station: `verify_mismatches` must be 0 and
 `verified` large. Then `--collide-memo --collide-sat-sse2 --collide-narrow-census --loop-phases`: compare the `collide`
 phase and `skipped_visits` against run 45 A.
+
+### 14.6 Flights 155/156 and the running-minimum rule (2026-09-20)
+
+Run 155, verify mode **[m]**: 2,009,448 queries, 808,408 would-be hits all confirmed, `verify_mismatches=0`;
+`foreign_thread`, `reentered`, `stuck_busy`, `clears` all 0. Run 156, memo on, the 24 fps spot (now ≈ 43 fps) **[m]**:
+per 300 frames ≈ 56,000 queries (≈ 187 per frame), ≈ 16,700 hits (30 %), contacts 0, `skipped_visits` ≈ 42.4 M —
+≈ 141k of ≈ 225k node pairs per frame, 62 % against the census's 83 %. About 130 queries per frame still ran, with
+≈ 85k node pairs between them, no contact and no triangle test.
+
+**The rule [s].** Key word 30 is the float behind the running-minimum pointer, a local of the `0x0048a69e` caller computed from `[node+0x70]`, `[node+0x188]` and its own arguments (`0x0048a673`–`0x0048a693`), so it can change from frame to frame for a part pair whose transforms do not **[i: that this is what makes run 156's misses is for the next flight's `miss_min_value` / `min_relaxed_hits` to show]**. The collider reads
+that pointer in exactly one instruction, `mov ecx,[0x00608540]` at `0x004e246e` inside the leaf, after a triangle
+pair intersected; and every entry into the leaf runs `add [0x00608548],1` at `0x004e22a5` first, with no branch, call
+or return between the leaf's entry and that instruction (verifier: `minimum_read_in_the_leaf_only`). A stored run
+whose triangle-test count is 0 therefore never read the float, and such an entry now also answers a query that
+differs from it in word 30 alone. The pointer's null-ness, tolerance, flags and cap stay in the key; the count was
+already stored with every entry, so nothing new is recorded. An entry that did reach a leaf still needs the exact
+float. Hypothesis 2 of the brief, keying on the relative transform, is **not** done: the root transform is composed
+in rounded float32 steps from both absolute transforms, so equal relative poses do not give equal bits.
+
+**Miss classes.** On a miss the memo looks up the last entry stored for the same two models with the same transform
+of `a` (failing that, of `b`; two 1,024-slot side indices) and names the first differing key group:
+`none_found`, `xform_a`, `xform_b`, `scale`, `mode` (tolerance, flags, cap, pointer null-ness), `models` (headers,
+root boxes), `min_value`, `expired`. The `collide_memo` row carries `miss_<class>` and `miss_<class>_visits` (node
+pairs those misses went on to cost) and `min_relaxed_hits`. After this change `miss_min_value` can only be runs that
+reached a leaf; if hypothesis 1 holds in flight it collapses and `min_relaxed_hits` takes its place, and what is left
+under `xform_a`/`xform_b` is the share that really moves.
+
+**Fixture [m]**, now 59 checks, 58,410 queries, 37,476 hits, 3,779 contacts, 0 differences, 0 stale hits: a new
+`running_minimum` scenario — no leaf reached: 39 of 40 frames answered although the minimum changed every frame;
+leaf reached without contact: a changed minimum always misses (0 of 40), the same minimum hits (40); a contact that
+the minimum filters (tolerance 25: 11 frames filtered, 49 reported) is never answered from the memo. The random scene
+now draws a fresh minimum for half of its distance-mode queries: 18,622 relaxed hits in the run, all equal to the
+un-memoed engine. Every miss is classified (`xform_b` 25,046, `min_value` 7,218, `none_found` 2,982, …). A miss now
+costs +177 ns on a tiny query (was +123 ns; the classification), ≈ 0.02 ms per frame at 130 misses.
 
 ## Reproduce
 
