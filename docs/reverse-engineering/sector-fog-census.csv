@@ -1,0 +1,240 @@
+x,y,name,name_file,name_resolved,background_index,family,sector_size_native,sector_size_km,dust,body_rates,near_native,far_native,near_km,far_km,stardust_percent,stardust_target,neb_override,stars_override,automatic_body_sizes,present_body_slots,alpha_texture_statuses,alpha_texture_missing,alpha_texture_sha256,positive_rate_missing_slots
+0,0,Kingdom End,Kingdom End,True,19,greenoutlands,14000000,28.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,0,Rolk's Drift,Rolk's Drift,True,19,greenoutlands,12500000,25.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+2,0,Queen's Space,Queen's Space,True,14,foggreenoutlands,22500000,45.0,16,"25,25,25,25,25,25,0,0",3000000,3500000,6.0,7.0,100,512,0,0,55000,"1,2,3,4,5,6",not_referenced,,,
+3,0,Menelaus' Frontier,Menelaus' Frontier,True,19,greenoutlands,25000000,50.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+4,0,Ceo's Buckzoid,Ceo's Buckzoid,True,21,greenvoid,17500000,35.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,0,Teladi Gain,Teladi Gain,True,21,greenvoid,22500000,45.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+6,0,Family Whi,Family Whi,True,21,greenvoid,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,0,Kuiper Belt,Kuiper Belt,True,67,solarsystem,20000000,40.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+10,0,Uranus 2,Uranus 2,True,78,uranus2,30000000,60.0,0,"15,10,5,4,8,1,7,6",500000000,500000000,1000.0,1000.0,100,512,0,0,20508,"1,2,3,4,5,6",missing,dds/nebula_redfire_dust_part_01_alpha8,,"7,8"
+11,0,Titan,Titan,True,67,solarsystem,20000000,40.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+13,0,The Vault,The Vault,True,22,midnightblue,17500000,35.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+16,0,Unknown Sector,Unknown Sector,True,11,fogcyancorner,10000000,20.0,10,"25,25,25,25,25,25,0,0",15500000,19500000,31.0,39.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+17,0,Xenon Sector 534,Xenon Sector 534,True,0,bluedistance,27000000,54.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,75000,"1,2,3,4,5,6",not_referenced,,,7
+19,0,Xenon Sector 596,Xenon Sector 596,True,26,reddawn,45000000,90.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+0,1,Three Worlds,Three Worlds,True,31,standardblack,17500000,35.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,1,Power Circle,Power Circle,True,31,standardblack,17000000,34.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+2,1,Antigone Memorial,Antigone Memorial,True,31,standardblack,22500000,45.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+3,1,Rolk's Fate,Rolk's Fate,True,14,foggreenoutlands,18500000,37.0,16,"25,25,25,25,25,25,0,0",3000000,3500000,6.0,7.0,100,512,0,0,55000,"1,2,3,4,5,6",not_referenced,,,
+4,1,Profit Share,Profit Share,True,31,standardblack,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,1,Seizewell,Seizewell,True,7,deepblue,17500000,35.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+6,1,Family Zein,Family Zein,True,31,standardblack,22500000,45.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+7,1,Oort Cloud,Oort Cloud,True,67,solarsystem,20000000,40.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+8,1,Pluto,Pluto,True,67,solarsystem,30000000,60.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+9,1,Neptune,Neptune,True,67,solarsystem,25000000,50.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+10,1,Uranus,Uranus,True,76,uranus,25000000,50.0,15,"15,10,5,4,8,1,7,6",500000000,500000000,1000.0,1000.0,100,512,0,0,20508,"1,2,3,4,5,6",missing,dds/nebula_redfire_dust_part_01_alpha8,,"7,8"
+11,1,Saturn,Saturn,True,67,solarsystem,37500000,75.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+12,1,Mercury,Mercury,True,67,solarsystem,30000000,60.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+13,1,Shareholder's Fortune,Shareholder's Fortune,True,31,standardblack,27500000,55.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+14,1,Mines of Fortune,Mines of Fortune,True,26,reddawn,20000000,40.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+15,1,Saturn 2,Saturn 2,True,67,solarsystem,20000000,40.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+16,1,Saturn 3,Saturn 3,True,67,solarsystem,20000000,40.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+17,1,Getsu Fune,Getsu Fune,True,10,fogbluedistance,31500000,63.0,8,"25,25,25,25,25,25,0,0",18500000,23500000,37.0,47.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+18,1,Menelaus' Paradise,Menelaus' Paradise,True,10,fogbluedistance,22500000,45.0,8,"25,25,25,25,25,25,0,0",18500000,23500000,37.0,47.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+19,1,Xenon Sector 597,Xenon Sector 597,True,3,brennanstriumph,50000000,100.0,0,"25,50,10,5,5,0,5,0",7500000,10000000,15.0,20.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+20,1,Guiding Star,Guiding Star,True,6,darkhorizon,27500000,55.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+0,2,Cloudbase North West,Cloudbase North West,True,2,bluewell,16500000,33.0,8,"25,25,25,25,25,25,0,0",18000000,18500000,36.0,37.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+1,2,Herron's Nebula,Herron's Nebula,True,2,bluewell,25000000,50.0,8,"25,25,25,25,25,25,0,0",18000000,18500000,36.0,37.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+2,2,The Hole,The Hole,True,14,foggreenoutlands,27500000,55.0,16,"25,25,25,25,25,25,0,0",3000000,3500000,6.0,7.0,100,512,0,0,55000,"1,2,3,4,5,6",not_referenced,,,
+3,2,Atreus' Clouds,Atreus' Clouds,True,14,foggreenoutlands,25000000,50.0,16,"25,25,25,25,25,25,0,0",3000000,3500000,6.0,7.0,100,512,0,0,55000,"1,2,3,4,5,6",not_referenced,,,
+4,2,Spaceweed Drift,Spaceweed Drift,True,7,deepblue,35000000,70.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,2,Greater Profit,Greater Profit,True,7,deepblue,14000000,28.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+6,2,Thuruk's Pride,Thuruk's Pride,True,31,standardblack,22500000,45.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+7,2,Family Pride,Family Pride,True,31,standardblack,12500000,25.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,2,Rhonkar's Might,Rhonkar's Might(Rhonkar's Might),True,5,cyancorner,30000000,60.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+9,2,Patriarch's Retreat,Patriarch's Retreat,True,31,standardblack,45000000,90.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+10,2,Uranus 3,Uranus 3,True,79,uranus3,30000000,60.0,15,"15,10,5,4,8,1,7,6",500000000,500000000,1000.0,1000.0,100,512,0,0,20508,"1,2,3,4,5,6",missing,dds/nebula_redfire_dust_part_01_alpha8,,"7,8"
+11,2,Jupiter,Jupiter,True,67,solarsystem,30000000,60.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+12,2,Venus,Venus,True,67,solarsystem,30000000,60.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+13,2,The Moon,The Moon,True,67,solarsystem,30000000,60.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+14,2,Home of Opportunity,Home of Opportunity,True,26,reddawn,15000000,30.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+15,2,Jupiter 2,Jupiter 2,True,67,solarsystem,20000000,40.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+16,2,Jupiter 3,Jupiter 3,True,67,solarsystem,20000000,40.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+18,2,Bluish Snout,Bluish Snout,True,0,bluedistance,16000000,32.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,75000,"1,2,3,4,5,6",not_referenced,,,7
+19,2,Spires of Elusion,Spires of Elusion,True,0,bluedistance,27500000,55.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,75000,"1,2,3,4,5,6",not_referenced,,,7
+20,2,CEO's Wellspring,CEO's Wellspring,True,29,redreef,27500000,55.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+21,2,Cathedral of Xaar,Cathedral of Xaar,True,30,redsplit,30000000,60.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+0,3,Ringo Moon,Ringo Moon,True,31,standardblack,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,3,Argon Prime,Argon Prime,True,2,bluewell,22500000,45.0,8,"25,25,25,25,25,25,0,0",18000000,18500000,36.0,37.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+2,3,The Wall,The Wall,True,31,standardblack,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+3,3,Farnham's Legend,Farnham's Legend,True,31,standardblack,15000000,30.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+4,3,Bala Gi's Joy,Bala Gi's Joy,True,30,redsplit,22500000,45.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,3,Blue Profit,Blue Profit,True,31,standardblack,25000000,50.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+6,3,Rhonkar's Fire,Rhonkar's Fire,True,27,redfire,17500000,35.0,0,"25,25,20,21,20,15,0,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+7,3,Rhonkar's Clouds,Rhonkar's Clouds,True,27,redfire,20000000,40.0,0,"25,25,20,21,20,15,0,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+8,3,Tharka's Sun,Tharka's Sun,True,31,standardblack,16500000,33.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+9,3,Cho's Defeat,Cho's Defeat,True,31,standardblack,15000000,30.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+11,3,Asteroid Belt,Asteroid Belt,True,67,solarsystem,30000000,60.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+12,3,Mars,Mars,True,67,solarsystem,25000000,50.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+13,3,Earth,Earth,True,67,solarsystem,45000000,90.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+14,3,Family Tkr,Family Tkr,True,26,reddawn,20000000,40.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+15,3,Tkr's Deprivation,Tkr's Deprivation,True,26,reddawn,25000000,50.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+16,3,Ghinn's Escape,Ghinn's Escape,True,31,standardblack,11500000,23.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,3,Hila's Joy,Hila's Joy,True,4,burninghorizon,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,3,Ocean of Fantasy,Ocean of Fantasy,True,31,standardblack,17500000,35.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+20,3,Twisted Skies,Twisted Skies,True,27,redfire,30000000,60.0,0,"25,25,20,21,20,15,0,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+0,4,Red Light,Red Light,True,23,oppositered,16000000,32.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,4,Home of Light,Home of Light,True,23,oppositered,12500000,25.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+2,4,President's End,President's End,True,8,deepred,15000000,30.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+3,4,Elena's Fortune,Elena's Fortune,True,31,standardblack,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+4,4,Olmancketslat's Treaty,Olmancketslat's Treaty,True,30,redsplit,16500000,33.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,4,Ceo's Sprite,Ceo's Sprite,True,24,purpleoutlands,30000000,60.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+6,4,Family Rhonkar,Family Rhonkar,True,27,redfire,30000000,60.0,0,"25,25,20,21,20,15,0,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+7,4,Unknown Sector,Unknown Sector,True,67,solarsystem,15000000,30.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+8,4,Unknown Sector,Unknown Sector,True,67,solarsystem,15000000,30.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+9,4,Patriarch's Keep,Patriarch's Keep,True,22,midnightblue,12500000,25.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+10,4,Two Grand,Two Grand,True,22,midnightblue,35000000,70.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+13,4,Heretic's End,Heretic's End,True,8,deepred,15000000,30.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+14,4,Harmony of Perpetuity,Harmony of Perpetuity,True,8,deepred,27500000,55.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+16,4,Family Njy,Family Njy,True,25,redborderland,17500000,35.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+0,5,Cloudbase South West,Cloudbase South West,True,23,oppositered,10000000,20.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,5,Ore Belt,Ore Belt,True,33,whitenexus,15000000,30.0,16,"25,25,25,25,25,25,0,0",17000000,17500000,34.0,35.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+2,5,Cloudbase South East,Cloudbase South East,True,33,whitenexus,10000000,20.0,16,"25,25,25,25,25,25,0,0",17000000,17500000,34.0,35.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+3,5,Split Fire,Split Fire,True,4,burninghorizon,14500000,29.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+4,5,Brennan's Triumph,Brennan's Triumph,True,3,brennanstriumph,12500000,25.0,0,"25,50,10,5,5,0,5,0",7500000,10000000,15.0,20.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,5,Company Pride,Company Pride,True,24,purpleoutlands,14000000,28.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+6,5,Thuruk's Beard,Thuruk's Beard,True,5,cyancorner,35000000,70.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+7,5,Unknown Sector,Unknown Sector,True,67,solarsystem,15000000,30.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+8,5,Unknown Sector,Unknown Sector,True,67,solarsystem,15000000,30.0,0,"25,50,10,5,5,0,5,0",500000000,500000000,1000.0,1000.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+10,5,Profit Center Alpha,Profit Center Alpha,True,22,midnightblue,27500000,55.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+11,5,PTNI Headquarters,PTNI Headquarters,True,22,midnightblue,13500000,27.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+12,5,Void of Opportunity,Void of Opportunity,True,22,midnightblue,20000000,40.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+13,5,Circle of Labour,Circle of Labour,True,0,bluedistance,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,75000,"1,2,3,4,5,6",not_referenced,,,7
+14,5,Elysium of Light,Elysium of Light,True,25,redborderland,10000000,20.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+15,5,Xenon Sector 472,Xenon Sector 472,True,22,midnightblue,15000000,30.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+16,5,Thyn's Abyss,Thyn's Abyss,True,25,redborderland,18000000,36.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,5,Albion Delta,Albion Delta,True,19,greenoutlands,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+19,5,Zyarth's Dominion,Zyarth's Dominion,True,31,standardblack,50000000,100.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+20,5,Zyarth's Stand,Zyarth's Stand,True,31,standardblack,22500000,45.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+21,5,Xenon Sector 695,Xenon Sector 695,True,31,standardblack,10000000,20.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+0,6,Emperor Mines,Emperor Mines,True,31,standardblack,16500000,33.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,6,Paranid Prime,Paranid Prime,True,16,fogparanid,10000000,20.0,16,"25,25,25,25,25,25,0,0",11500000,12500000,23.0,25.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+2,6,Priest Rings,Priest Rings,True,16,fogparanid,11000000,22.0,16,"25,25,25,25,25,25,0,0",11500000,12500000,23.0,25.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+3,6,Priest's Pity,Priest's Pity,True,31,standardblack,22500000,45.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+4,6,Danna's Chance,Danna's Chance,True,24,purpleoutlands,10000000,20.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,6,Nopileos' Memorial,Nopileos' Memorial,True,62,orangenexus,16500000,33.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+6,6,Hatikvah's Faith,Hatikvah's Faith,True,24,purpleoutlands,17500000,35.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+7,6,Aladna Hill,Aladna Hill,True,31,standardblack,12500000,25.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,6,Akeela's Beacon,Akeela's Beacon,True,28,rednexus,42500000,85.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+11,6,Scale Plate Green,Scale Plate Green,True,31,standardblack,14500000,29.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+12,6,Nyana's Hideout,Nyana's Hideout,True,31,standardblack,25000000,50.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+13,6,Omicron Lyrae,Omicron Lyrae,True,18,greeneye,14000000,28.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+14,6,Treasure Chest,Treasure Chest,True,29,redreef,23000000,46.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+15,6,Black Hole Sun,Black Hole Sun,True,28,rednexus,16000000,32.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+16,6,Albion Alpha,Albion Alpha,True,19,greenoutlands,25000000,50.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,6,Albion Beta,Albion Beta,True,19,greenoutlands,25000000,50.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,6,Albion Gamma,Albion Gamma,True,19,greenoutlands,25000000,50.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+19,6,Xenon Sector 598,Xenon Sector 598,True,31,standardblack,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+20,6,Xenon Sector 627,Xenon Sector 627,True,30,redsplit,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+21,6,Xenon Core 023,Xenon Core 023,True,30,redsplit,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+0,7,Savage Spur,Savage Spur,True,31,standardblack,22500000,45.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,7,Empire's Edge,Empire's Edge,True,16,fogparanid,10000000,20.0,16,"25,25,25,25,25,25,0,0",11500000,12500000,23.0,25.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+2,7,Duke's Domain,Duke's Domain,True,16,fogparanid,10000000,20.0,16,"25,25,25,25,25,25,0,0",11500000,12500000,23.0,25.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+3,7,Emperor's Ridge,Emperor's Ridge,True,31,standardblack,15000000,30.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+4,7,Freedom's Reach,Freedom's Reach,True,31,standardblack,15000000,30.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,7,Xenon Sector 101,Xenon Sector 101,True,30,redsplit,17500000,35.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+7,7,Light of Heart,Light of Heart,True,31,standardblack,30000000,60.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,7,Legend's Home,Legend's Home(Legend's Home OTAS HQ SECTOR),True,64,supercluster,17500000,35.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,5,6",not_referenced,,,"4,7"
+9,7,Unknown Sector,Unknown Sector,True,28,rednexus,27500000,55.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+10,7,Eighteen Billion,Eighteen Billion,True,20,greenspot,17500000,35.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+11,7,Xenon Sector 347,Xenon Sector 347,True,4,burninghorizon,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+14,7,Enduring Light,Enduring Light,True,18,greeneye,30000000,60.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+15,7,Nathan's Voyage,Nathan's Voyage,True,28,rednexus,17000000,34.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+16,7,Wastelands,Wastelands,True,31,standardblack,17500000,35.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,7,Midnight Star,Midnight Star,True,31,standardblack,30000000,60.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,7,Belt of Aguilar,Belt of Aguilar,True,31,standardblack,18000000,36.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+19,7,Grand Exchange,Grand Exchange,True,18,greeneye,22500000,45.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+20,7,Tears of Greed,Tears of Greed(Tears of Greed TELADI SECTOR 20-7),True,0,bluedistance,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,75000,"1,2,3,4,5,6",not_referenced,,,7
+0,8,Ocracoke's Storm,Ocracoke's Storm,True,1,bluenexus,10000000,20.0,0,"25,50,10,5,5,0,5,0",11000000,17000000,22.0,34.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,8,Preacher's Void,Preacher's Void,True,31,standardblack,15000000,30.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+3,8,Pontifex' Realm,Pontifex' Realm,True,31,standardblack,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,8,Light Water,Light Water,True,11,fogcyancorner,20000000,40.0,10,"25,25,25,25,25,25,0,0",15500000,19500000,31.0,39.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+7,8,Montalaar,Montalaar,True,6,darkhorizon,16500000,33.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,8,Avarice,Avarice,True,6,darkhorizon,37500000,75.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+9,8,New Income,New Income,True,6,darkhorizon,24500000,49.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+10,8,Ianamus Zura,Ianamus Zura,True,31,standardblack,17500000,35.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+11,8,Homily of Perpetuity,Homily of Perpetuity(Homily of Perpetuity TELADI SECTOR 11-8),True,0,bluedistance,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,75000,"1,2,3,4,5,6",not_referenced,,,7
+13,8,Unknown Sector,Unknown Sector,True,74,fogdeepred,10000000,20.0,16,"25,25,25,25,25,25,0,0",500000000,500000000,1000.0,1000.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+14,8,Argon Sector M148,Argon Sector M148,True,21,greenvoid,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+16,8,Interworlds,Interworlds,True,31,standardblack,15000000,30.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+19,8,Merchant Haven,Merchant Haven,True,18,greeneye,14500000,29.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+0,9,Senator's Badlands,Senator's Badlands,True,1,bluenexus,22500000,45.0,0,"25,50,10,5,5,0,5,0",11000000,17000000,22.0,34.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,9,Duke's Vision,Duke's Vision,True,1,bluenexus,25000000,50.0,0,"25,50,10,5,5,0,5,0",11000000,17000000,22.0,34.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+2,9,Emperor's Wisdom,Emperor's Wisdom,True,31,standardblack,40000000,80.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+3,9,Trinity Sanctum,Trinity Sanctum,True,5,cyancorner,15000000,30.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+4,9,Preacher's Refuge,Preacher's Refuge,True,5,cyancorner,16500000,33.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,9,Shore of Infinity,Shore of Infinity,True,11,fogcyancorner,14500000,29.0,10,"25,25,25,25,25,25,0,0",15500000,19500000,31.0,39.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+6,9,Lucky Planets,Lucky Planets,True,11,fogcyancorner,15000000,30.0,10,"25,25,25,25,25,25,0,0",15500000,19500000,31.0,39.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+7,9,Rolk's Legacy,Rolk's Legacy,True,5,cyancorner,22500000,45.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,9,Great Trench,Great Trench,True,5,cyancorner,21000000,42.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+9,9,Ceo's Doubt,Ceo's Doubt,True,5,cyancorner,15000000,30.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+11,9,Acquisition Repository,Acquisition Repository(Acquisition Repository TELADI/PIRATE SECTOR 11-9),True,16,fogparanid,20000000,40.0,16,"25,25,25,25,25,25,0,0",11500000,12500000,23.0,25.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+15,9,Althes,Althes,True,22,midnightblue,17500000,35.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+17,9,Gaian Star,Gaian Star(Gaian Star PIRATE SECTOR 17-9),True,28,rednexus,20000000,40.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,9,Mercenaries' Rift,Mercenaries' Rift,True,13,foggreeneye,22500000,45.0,16,"25,25,25,25,25,25,0,0",3500000,5000000,7.0,10.0,100,512,0,0,55000,"1,2,3,4,5,6",not_referenced,,,
+19,9,Maelstrom,Maelstrom,True,13,foggreeneye,40000000,80.0,16,"25,25,25,25,25,25,0,0",3500000,5000000,7.0,10.0,100,512,0,0,55000,"1,2,3,4,5,6",not_referenced,,,
+0,10,Weaver's Tempest,Weaver's Tempest(Weaver's Tempest YAKI CORE SECTOR 0-10),True,6,darkhorizon,25000000,50.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+3,10,Bad Debt,Bad Debt,True,31,standardblack,14000000,28.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+7,10,Gunne's Crusade,Gunne's Crusade(Gunne's Crusade),True,62,orangenexus,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+9,10,LooManckStrat's Legacy,LooManckStrat's Legacy,True,32,void,10000000,20.0,0,"25,50,10,5,5,0,5,0",100000000,125000000,200.0,250.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+11,10,Spaceweed Grove,Spaceweed Grove(Spaceweed Grove TELADI/PIRATE SECTOR 11-10),True,16,fogparanid,20000000,40.0,16,"25,25,25,25,25,25,0,0",11500000,12500000,23.0,25.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+13,10,Aldrin,Aldrin,True,65,orangenexus,150000000,300.0,0,"25,50,10,5,5,0,5,0",100000000,100000000,200.0,200.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+14,10,Aldrin 2,Aldrin 2(Aldrin 2),True,65,orangenexus,15000000,30.0,0,"25,50,10,5,5,0,5,0",100000000,100000000,200.0,200.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+15,10,Megnir,Megnir,True,8,deepred,27500000,55.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+16,10,Segaris,Segaris,True,18,greeneye,32500000,65.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,10,Xenon Sector,Xenon Sector(Xenon Sector),True,18,greeneye,22500000,45.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,10,Lost Order,Lost Order,True,7,deepblue,22500000,45.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,11,Rhy's Crusade,Rhy's Crusade,True,31,standardblack,15500000,31.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+2,11,Rhy's Desire,Rhy's Desire,True,29,redreef,14500000,29.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+3,11,Ministry of Finance,Ministry of Finance,True,29,redreef,37500000,75.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+4,11,Rhonkar's Trial,Rhonkar's Trial(Rhonkar's Trial BORON/SPLIT SECTOR 5-11),True,23,oppositered,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+5,11,Unknown Sector,Unknown Sector,True,20,greenspot,30000000,60.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+6,11,Clarity's End,Clarity's End(Clarity's End ARGON/PARANID SECTOR 6-11),True,1,bluenexus,20000000,40.0,0,"25,50,10,5,5,0,5,0",11000000,17000000,22.0,34.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+7,11,Third Redemption,Third Redemption(Third Redemption ARGON/PARANID SECTOR 7-11),True,18,greeneye,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,11,Perdition's End,Perdition's End(Perdition's End ARGON/PARANID SECTOR 8-11),True,23,oppositered,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+9,11,Mi Ton's Refuge,Mi Ton's Refuge,True,31,standardblack,45000000,90.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,11,Unknown Sector,Unknown Sector,True,25,redborderland,30000000,60.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+2,12,Family Rhy,Family Rhy,True,31,standardblack,17000000,34.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+3,12,Wretched Skies,Wretched Skies(Wretched Skies PIRATE/BORON/SPLIT SECTOR 3-12),True,22,midnightblue,20000000,40.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+4,12,The Shallows,The Shallows(The Shallows BORON/SPLIT SECTOR 4-12),True,23,oppositered,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,12,Desecrated Skies,Desecrated Skies(Desecrated Skies PIRATE/PARANID SECTOR 8-12),True,8,deepred,20000000,40.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+9,12,Moo-Kye's Revenge,Moo-Kye's Revenge,True,8,deepred,17000000,34.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+12,12,Perpetual Sin,Perpetual Sin(Perpetual Sin PARANID/KHAAK SECTOR 12-12),True,31,standardblack,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,12,Bright Profit,Bright Profit(Bright Profit TELADI SECTOR 18-12),True,3,brennanstriumph,20000000,40.0,0,"25,50,10,5,5,0,5,0",7500000,10000000,15.0,20.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+0,13,Depths of Silence,Depths of Silence,True,22,midnightblue,20000000,40.0,0,"25,50,25,0,0,0,0,0",45000000,55000000,90.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+1,13,Dark Waters,Dark Waters,True,17,fogred,27500000,55.0,16,"25,25,25,25,25,25,0,0",8700000,10200000,17.4,20.4,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+2,13,Reservoir of Tranquillity,Reservoir of Tranquillity,True,17,fogred,12500000,25.0,16,"25,25,25,25,25,25,0,0",8700000,10200000,17.4,20.4,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+3,13,Barren Shores,Barren Shores,True,31,standardblack,25000000,50.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,13,Priest Refuge,Priest Refuge,True,12,fogdeepred,37500000,75.0,16,"25,25,25,25,25,25,0,0",20000000,30000000,40.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+9,13,Cardinal's Domain,Cardinal's Domain,True,12,fogdeepred,18000000,36.0,16,"25,25,25,25,25,25,0,0",20000000,30000000,40.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+10,13,Sacred Relic,Sacred Relic,True,8,deepred,32500000,65.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,13,Sanctity of Corruption,Sanctity of Corruption(Sanctity of Corruption TELADI SECTOR 17-13),True,5,cyancorner,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,13,Company Strength,Company Strength(Company Strength TELADI SECTOR 18-13),True,5,cyancorner,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+1,14,Shining Currents,Shining Currents,True,0,bluedistance,34000000,68.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,75000,"1,2,3,4,5,6",not_referenced,,,7
+2,14,Great Reef,Great Reef,True,17,fogred,15000000,30.0,16,"25,25,25,25,25,25,0,0",8700000,10200000,17.4,20.4,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+8,14,Spring of Belief,Spring of Belief,True,12,fogdeepred,20000000,40.0,16,"25,25,25,25,25,25,0,0",20000000,30000000,40.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+9,14,Friar's Retreat,Friar's Retreat,True,8,deepred,14500000,29.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+10,14,Pontifex' Seclusion,Pontifex' Seclusion,True,8,deepred,15000000,30.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+11,14,Duke's Citadel,Duke's Citadel(Duke's Citadel SECRET PARANID MILITARY SECTOR 11-14),True,4,burninghorizon,10000000,20.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,14,Queen's Retribution,Queen's Retribution(Queen's Retribution BORON SECTOR 17-14),True,18,greeneye,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,14,Hollow Infinity,Hollow Infinity(Hollow Infinity BORON SECTOR 18-14),True,1,bluenexus,20000000,40.0,0,"25,50,10,5,5,0,5,0",11000000,17000000,22.0,34.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+2,15,Mists of Elysium,Mists of Elysium,True,17,fogred,50000000,100.0,16,"25,25,25,25,25,25,0,0",8700000,10200000,17.4,20.4,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+3,15,Quiet Tides,Quiet Tides,True,5,cyancorner,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+7,15,Emperor's Pride,Emperor's Pride,True,1,bluenexus,10000000,20.0,0,"25,50,10,5,5,0,5,0",11000000,17000000,22.0,34.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,15,Unholy Descent,Unholy Descent,True,8,deepred,20000000,40.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+9,15,Consecrated Fire,Consecrated Fire,True,31,standardblack,28500000,57.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+10,15,Heaven's Assertion,Heaven's Assertion(Heaven's Assertion PARANID SECTOR 10-15),True,63,bluenova,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+14,15,Patriarch's Conclusion,Patriarch's Conclusion(Patriarch's Collusion SPLIT SECTOR 14-15),True,62,orangenexus,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,,,,,,"1,2,3,4,5,7"
+15,15,Contorted Dominion,Contorted Dominion(Contorted Dominion SPLIT/BORON CONFLICT SECTOR 15-15),True,28,rednexus,20000000,40.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+16,15,Faded Dreams,Faded Dreams(Faded Dreams SPLIT/BORON CONFLICT SECTOR 16-15),True,8,deepred,20000000,40.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+17,15,Queen's Harbour,Queen's Harbour(Queen's Harbour BORON SECTOR 17-15),True,19,greenoutlands,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+18,15,Menelaus' Oasis,Menelaus' Oasis(Menelaus' Oasis BORON SECTOR 18-15),True,21,greenvoid,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+2,16,Vestibule of Creation,Vestibule of Creation(Vestibule of Creation PIRATE SECTOR 2-16),True,49,fogbluedistance,10000000,20.0,8,"25,25,25,25,25,25,0,0",2350000,3850000,4.7,7.7,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+7,16,Unseen Domain,Unseen Domain,True,1,bluenexus,50000000,100.0,0,"25,50,10,5,5,0,5,0",11000000,17000000,22.0,34.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+8,16,Unknown Sector,Unknown Sector,True,31,standardblack,35000000,70.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+10,16,Lasting Vengeance,Lasting Vengeance(Lasting Vengeance),True,7,deepblue,20000000,40.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+15,16,Thyn's Excavation,Thyn's Excavation(Thyn's Excavation SPLIT SECTOR 15-16),True,4,burninghorizon,20000000,40.0,0,"25,50,10,5,5,0,5,0",50000000,55000000,100.0,110.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+16,16,Veil of Delusion,Veil of Delusion(Veil of Delusion PIRATE SECTOR 16-16),True,52,fogdeepred,20000000,40.0,50,"25,25,25,25,25,25,0,0",100000000,125000000,200.0,250.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,
+18,16,Distant Clouds,Distant Clouds,True,28,rednexus,20000000,40.0,0,"25,50,10,5,5,0,5,0",22500000,25000000,45.0,50.0,100,512,0,0,45000,"1,2,3,4,5,6",not_referenced,,,7
+23,19,Unknown Sector,Unknown Sector,True,0,bluedistance,10000000,20.0,0,"25,50,10,5,5,0,5,0",25000000,30000000,50.0,60.0,100,512,0,0,75000,"1,2,3,4,5,6",not_referenced,,,7
