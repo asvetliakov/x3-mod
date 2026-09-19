@@ -114,20 +114,27 @@ void MotionOutput::prepare_fog_card(const MotionDrawCall& call, MotionRoute& rou
     if (!fog_cards_.may_replace()) return;
     static_assert(D3DPT_TRIANGLELIST == 4 && D3DDECLTYPE_FLOAT16_4 == 16 && D3DZB_FALSE == 0 && D3DCULL_NONE == 1 &&
         D3DFILL_SOLID == 3 && D3DBLEND_ONE == 2 && D3DBLEND_INVSRCCOLOR == 4 && D3DBLENDOP_ADD == 1, "captured D3D9 enums");
-    const FogCardShape shape{call.indexed, call.user_memory, shadow_.stream0 != 0, shadow_.indices != 0,
-        shadow_.declaration_stream0_only, shadow_.stream0_frequency_known, unsigned(call.topology), call.primitives, call.vertex_count,
-        shadow_.stream0_stride, shadow_.position_offset, shadow_.position_type, shadow_.stream0_frequency, shadow_.declaration};
-    // Pure cached reads: unknown states refuse without issuing Get*.
-    const FogCardStates states{shadow_state_field(D3DRS_ZENABLE), shadow_state_field(D3DRS_ZWRITEENABLE),
-        shadow_state_field(D3DRS_ALPHATESTENABLE), shadow_state_field(D3DRS_ALPHABLENDENABLE), shadow_state_field(D3DRS_COLORWRITEENABLE),
-        shadow_state_field(D3DRS_CULLMODE), shadow_state_field(D3DRS_STENCILENABLE), shadow_state_field(D3DRS_FILLMODE),
-        composition_blend_field(0), composition_blend_field(1), composition_blend_field(2), composition_blend_field(3)};
-    if (!fog_enabled_ || fog_disabled_ || fog_attach_failed_ || !state_hooks_ || !shadow_.fog_card_pair || !shape.matches() || !states.matches() || !scene_bound() || shadow_.recording || active_queries_ ||
+    FogCardShape shape{call.indexed, call.user_memory, shadow_.stream0 != 0, shadow_.indices != 0,
+        shadow_.declaration_stream0_only, false, unsigned(call.topology), call.primitives, call.vertex_count,
+        shadow_.stream0_stride, shadow_.position_offset, shadow_.position_type, 0, shadow_.declaration};
+    // Cached identity, geometry and caller gates precede all card-specific
+    // reads. Keep production's hybrid unhook: no global setter observation is
+    // needed for the few strict cards in a frame.
+    if (!fog_enabled_ || fog_disabled_ || fog_attach_failed_ || !shadow_.fog_card_pair || !shape.static_matches() || !scene_bound() || shadow_.recording || active_queries_ ||
         composition_busy_ || composition_state_lost_ || motion_state_lost_ || hdr_state_ != HdrState::Active ||
         !hdr_ || !hdr_->target() || main_msaa_ || !taa_enabled_ || taa_failed_ || counters_.taa.attempted ||
         !jitter_active_ || !counters_.filled || !depth_surface_ || !depth_enabled_ || fog_frame_ == frame_) {
         fog_cards_.reject(); return;
     }
+    // Hooks on: validated shadow; hooks off: the existing current-draw cache,
+    // invalidated by before_draw. Never reuse another draw's stream frequency.
+    shape.frequency_known = SUCCEEDED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &shape.frequency));
+    if (!shape.matches()) { fog_cards_.reject(); return; }
+    const FogCardStates states{state_field(0), state_field(1), state_field(2), state_field(3), state_field(4),
+        state_field(30), state_field(29), state_field(31),
+        blend_known(0) ? composition_blend_field(0) : -1, blend_known(1) ? composition_blend_field(1) : -1,
+        blend_known(2) ? composition_blend_field(2) : -1, blend_known(3) ? composition_blend_field(3) : -1};
+    if (!states.matches()) { fog_cards_.reject(); return; }
     if (!fog_card_ready_checked_) {
         fog_card_ready_checked_ = true;
         // Shared parameter/sun validation includes floating ABI returns. Keep

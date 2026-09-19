@@ -417,8 +417,10 @@ run it. Native Windows: source-compatible, unverified.
 ## 2026-09-20: fog-card replacement
 
 `--volumetric-fog-cards replace` uses documented D3D9 colour-write masks and
-stream-frequency state, forwarding the native draw and HRESULT. The slot-102
-SetStreamSourceFreq hook and state resynchronization reject instancing; no
+stream-frequency state, forwarding the native draw and HRESULT. A fresh native
+GetStreamSourceFreq on an eligible card rejects instancing; replacement enables
+no global setter hooks. Checked per-draw state getters or the existing hooked
+cache provide the remaining admission state. No
 backend-private layout or export is required. Cross-compilation and X3-bottle
 mask/readiness/Reset fixtures pass. Native Windows execution, the full live hook
 chain and replacement flight quality remain unverified; see the

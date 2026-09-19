@@ -184,3 +184,38 @@ FogPass readiness/Reset, not the complete live proxy hook chain or captured
 shader pair. Host tests extract the production routing/finalization bodies.
 Per-card latency is unmeasured; two added state calls per suppressed card are
 verified. Native Windows and game-flight replacement quality remain unverified.
+
+
+**Performance qualification reopened before install:** the implementation forces
+all state hooks in replacement mode, whereas run147/run181 used the hybrid
+unhooked setter path. The two mask calls per card therefore do not bound its
+whole-frame overhead. The design is being reconsidered to validate only matching
+card draws through documented getters, retaining the production setter path.
+The source checkpoint is not a flight-ready or performance-qualified candidate.
+
+
+### Card-only state validation revision (2026-09-20)
+
+The performance concern above is resolved in source: replacement no longer
+forces global SetRenderState/SetSamplerState hooks and removes its slot-102
+hook. Strict shader/declaration/shape/query/recording guards precede a fresh
+native GetStreamSourceFreq and checked state reads; getter failure refuses
+suppression. Unhooked per-draw invalidation prevents stale values, while existing
+hooked mode retains its state-block resynchronization. Frequency is never cached.
+
+Independent deep review accepted the revision. Focused host tests: 36 passed
+in 8.772 s, then three expanded card tests passed in 1.878 s. Actual production
+cache methods cover all 12 render-state getter failures, frequency failure and
+instancing, consecutive changed states, hooked/unhooked parity and refusal before
+reads. Material fixture: 20,495 checks, including 14 cache/state-block/Reset
+checks. Maximum six/eight-card work is 90/120 calls: 12 state reads, one frequency
+read and two mask writes per card. Noncards issue no fog-specific getters.
+Both production translation units cross-compile with the required SSE2/stack
+flags; seven changed methods / 11 compiled bodies have zero x87 violations.
+This object audit does not replace the pending linked-candidate audit.
+
+Historical X3 timing-off benchmarks measured about 64 ns per render-state write
+and 57 ns per sampler write from the removed hooks; a roughly 3 ms whole-frame
+projection is not a measured saving for this revision. Getter latency and actual
+flight cost remain unmeasured. The previously qualified native mask/FogPass
+transaction is unchanged; complete live routing and native Windows remain open.

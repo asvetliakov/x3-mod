@@ -349,7 +349,7 @@ class MotionOutput {
 public:
  struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*hull_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr,*sun_original_variant=nullptr,*sun_original_lightmap_variant=nullptr,*hull_lightmap_variant=nullptr;bool hull_program=false;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;std::int8_t sun_register=-1;std::uint8_t major=0;bool depth_out=false;};
  struct Shadow {
- bool fog_card_pair=false,fog_card_source=false,stream0_frequency_known=false;UINT stream0_frequency=0;
+ bool fog_card_pair=false,fog_card_source=false;
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
  bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
@@ -1290,12 +1290,19 @@ void fog_card_shadow_reset_cases(){
  m.set_vertex_shader(nullptr);CHECK(!m.shadow_.fog_card_pair&&m.shadow_.fog_card_source);
  m.set_pixel_shader(nullptr);CHECK(!m.shadow_.fog_card_pair&&!m.shadow_.fog_card_source);
  d.bound_vs=&vs;d.bound_ps=&ps;m.stateblock_applied();
- CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source&&m.shadow_.stream0_frequency_known&&m.shadow_.stream0_frequency==1);
+ CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source);
  for(unsigned i:{29u,30u,31u})CHECK(m.shadow_.states_known[i]);
  m.fog_cards_.fault=true;m.fog_cards_.armed=true;m.fog_card_ready_checked_=m.fog_card_ready_=true;m.fog_card_fault_reason_="injected";
  m.before_reset();
  CHECK(!m.fog_cards_.fault&&!m.fog_cards_.armed&&!m.fog_card_ready_checked_&&!m.fog_card_ready_&&std::strcmp(m.fog_card_fault_reason_,"none")==0);
- m.after_reset(S_OK);CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source&&m.shadow_.stream0_frequency_known);
+ m.after_reset(S_OK);CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source);
+ // Production auto mode: stateblocks refresh identity and discard state;
+ // current-draw readers (exercised by the card seam) fill it only on demand.
+ m.state_hooks_=false;m.stateblock_applied();
+ CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source&&!m.shadow_.states_known[0]&&!m.shadow_.states_known[29]&&!m.shadow_.composition_blend_known[0]);
+ d.fail_get_ps=true;m.stateblock_applied();CHECK(!m.shadow_.fog_card_pair&&!m.shadow_.fog_card_source);
+ d.fail_get_ps=false;m.begin_stateblock();CHECK(m.shadow_.recording);m.end_stateblock();
+ CHECK(!m.shadow_.recording&&m.shadow_.fog_card_pair&&m.shadow_.fog_card_source&&!m.shadow_.states_known[31]);
  m.fog_cards_replace_=false;m.set_pixel_shader(&ps);CHECK(!m.shadow_.fog_card_pair&&!m.shadow_.fog_card_source);
  m.release_resources();
  std::printf("fog_card_shadow_reset checks=%u\n",checks-before);

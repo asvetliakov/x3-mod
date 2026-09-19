@@ -131,7 +131,6 @@ using GetFvfFn = HRESULT(WINAPI*)(D, DWORD*);
 using CreateVsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DVertexShader9**);
 using SetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9*);
 using GetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9**);
-using GetStreamFreqFn = HRESULT(WINAPI*)(D, UINT, UINT*);
 using SetConstantsFFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
 using GetConstantsFFn = HRESULT(WINAPI*)(D, UINT, float*, UINT);
 using GetConstantsIFn = HRESULT(WINAPI*)(D, UINT, int*, UINT);
@@ -3540,11 +3539,6 @@ void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT cou
         candidate_ps_written_ |= (hi - start >= 32 ? ~0u : ((1u << (hi - start)) - 1u) << start);
     }
 }
-void MotionOutput::set_stream_frequency(UINT stream, UINT frequency, HRESULT result) noexcept {
-    if (!enabled_ || shadow_.recording || stream) return;
-    shadow_.stream0_frequency_known = SUCCEEDED(result);
-    if (SUCCEEDED(result)) shadow_.stream0_frequency = frequency;
-}
 void MotionOutput::set_stream_source(UINT stream, IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride) noexcept {
     if (!enabled_ || shadow_.recording || stream) return;
     shadow_.stream0 = buffer ? resource_id(buffer) : 0;
@@ -3663,7 +3657,6 @@ void MotionOutput::resync_shadow() noexcept {
     if ((composition_requested() || screen_emission_bound_) && state_hooks_)
         shadow_.fill_mode_known = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, D3DRS_FILLMODE, &shadow_.fill_mode));
     if (fog_cards_replace_ && state_hooks_) {
-        shadow_.stream0_frequency_known = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &shadow_.stream0_frequency));
         for (unsigned i : {29u, 30u, 31u})
             shadow_.states_known[i] = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, shadow_states[i], &shadow_.states[i]));
     }

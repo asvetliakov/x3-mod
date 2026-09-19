@@ -2044,16 +2044,6 @@ X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_devi
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
 #undef X3M_SHADOW_HOOK
-HRESULT WINAPI set_stream_frequency(IDirect3DDevice9* d,UINT stream,UINT frequency) {
-    LightCallBoundary cpu;
-    LightAdmissionScope admission;
-    PlainHookGuard lock;auto& ctx=hooked_device(d);
-    cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT) noexcept>(102)(d,stream,frequency);cpu.after_original();
-    ctx.motion_output.set_stream_frequency(stream,frequency,hr);
-    return hr;
-}
-
 // Render-state shadow (X3M_STATE_SHADOW, default on). Light boundary like the
 // other hot setters: nothing before the native call (lazy RT mode never holds
 // a write mask: route-per-draw-cost.md lever 3), after it the shadow store;
@@ -2252,7 +2242,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // strips PUREDEVICE, so a non-pure device answers Get*; a device that
     // does not fails closed to the hooked configuration). Both reads go
     // through the saved native entries (58, 68), never through a hook.
-    const char* state_hooks_reason=motion_state_shadow==1?"explicit":frame_timing::active?"frame_timing":volumetric_fog_cards_replace?"fog_cards":nullptr;
+    const char* state_hooks_reason=motion_state_shadow==1?"explicit":frame_timing::active?"frame_timing":nullptr;
     if(!state_hooks_reason){
         DWORD value=0;
         const bool get_ok=SUCCEEDED(hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*)>(58)(d,D3DRS_ZENABLE,&value))
@@ -2456,7 +2446,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         hooked.set(115,draw_rect_patch);hooked.set(116,draw_tri_patch);
         hooked.set(92,set_vs);hooked.set(107,set_ps);hooked.set(94,set_vs_constant_f);hooked.set(96,set_vs_constant_i);
         hooked.set(109,set_ps_constant_f);hooked.set(100,set_stream_source);hooked.set(104,set_indices);
-        if(volumetric_fog_cards_replace)hooked.set(102,set_stream_frequency);
         hooked.set(87,set_declaration);hooked.set(89,set_fvf);hooked.set(47,set_viewport);
         hooked.set(59,create_stateblock);hooked.set(60,begin_stateblock);hooked.set(61,end_stateblock);
         // Scene and query tracking for the resolve's caller contract.

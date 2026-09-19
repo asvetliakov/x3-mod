@@ -990,7 +990,6 @@ public:
     void set_vertex_constants_f(UINT start, const float* data, UINT count) noexcept;
     void set_vertex_constants_i(UINT start, const int* data, UINT count) noexcept;
     void set_pixel_constants_f(UINT start, const float* data, UINT count) noexcept;
-    void set_stream_frequency(UINT stream, UINT frequency, HRESULT result) noexcept;
     void set_stream_source(UINT stream, IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride) noexcept;
     void set_indices(IDirect3DIndexBuffer9* buffer) noexcept;
     void set_vertex_declaration(IDirect3DVertexDeclaration9* declaration) noexcept;
@@ -1202,7 +1201,6 @@ private:
         bool integer0_known = false;
         std::uint64_t stream0 = 0, indices = 0, declaration = 0;
         UINT stream0_offset = 0, stream0_stride = 0;
-        UINT stream0_frequency = 0; bool stream0_frequency_known = false;
         // The application buffer identities of SetStreamSource/SetIndices (the
         // public ownership wrappers the capture hooks observe; never
         // dereferenced here): the fade bound table proves a subset record

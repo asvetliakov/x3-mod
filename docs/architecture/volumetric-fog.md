@@ -403,7 +403,10 @@ pretends the next draw is safe. Preserve the LightCallBoundary/LastError contrac
 Cache exact pair eligibility at shader binds/resync. Admission also requires
 known matching render states, the validated declaration/stride and draw shape,
 main FP16 scene ownership, no routed MRT writes, no concurrent composition,
-non-MSAA, state hooks valid, no state-block recording and no active query. Only
+non-MSAA, checked state getters or valid existing state-hook caches, no
+state-block recording and no active query. Replacement does not enable global
+state hooks. Read stream frequency afresh only after strict card gates; refuse
+failed reads and frequency other than one. Only
 admit draw forms demonstrated by the capture/fixture; unknown forms, state,
 identity, foreign target or bind failure forward unchanged. Keep
 `set_pixel_shader`'s existing `fog_latch_.card(frame_)` before any replacement
@@ -459,10 +462,14 @@ sun apply, AO, fog, TAA. This alternative needs ownership/recovery work and is n
 recommended for the next low-cost optional layer.
 
 **Hot-path cost and portability.** Non-card draws add one cached eligibility gate;
-no new per-draw hashing, engine reads, allocation, lock or Get* validation. Each
-admitted card adds two native render-state calls: 2–8 calls/frame for run174's
-observed 1–4 cards, with zero new targets, copies or full-screen passes. This is a
-call-count estimate, not measured latency; original card rasterization remains.
+no new hashing, engine reads, allocation, lock or fog-specific Get* validation
+on noncards. An eligible card uses at most 12 render-state getters, one fresh
+stream-frequency getter and two colour-mask setters: at most 90–120 calls for
+run180's sampled six to eight cards. Already-read per-draw state reduces the
+incremental count. No new targets, copies or full-screen passes are added.
+This is a checked call-count bound, not measured latency; original card
+rasterization remains. The previous implementation forced global render-state
+and sampler hooks; that behavior was removed before candidate qualification.
 The retained-image alternative adds at least one FP16 full-size target (7.5 MiB
 at 1280x768; 15.82 MiB at 1920x1080) and one copy (15/31.64 MiB read+write traffic),
 plus binding/ownership checks and failure-path reprocessing. Native Windows uses
@@ -500,6 +507,6 @@ Clouds, verifies clear-sector/jump/load behavior and validates §11.5. No agent
 launch. No native-Windows verification may be inferred from CrossOver results.
 
 **Unresolved.** Which run180 card draw forms/states extend §10's allowlist (the
-separate triage owns that evidence); measured two-call cost; whether one-frame
+separate triage owns that evidence); measured card-validation and mask cost; whether one-frame
 TAA reseeding on mode changes is visually acceptable; native query/state parity;
 stage-2 temporal fixture and record-reader flight qualification remain open.

@@ -8,22 +8,33 @@
 #include <cstdint>
 #include <cstdio>
 #include <initializer_list>
+#include <cstring>
 using UINT=unsigned;constexpr int S_OK=0,S_FALSE=1,D3DERR_DEVICELOST=-200,D3DERR_DEVICENOTRESET=-201;
 using DWORD=std::uint32_t; using HRESULT=std::int32_t;
 constexpr bool FAILED(HRESULT hr) { return hr<0; }
 constexpr bool SUCCEEDED(HRESULT hr) { return hr>=0; }
 constexpr unsigned D3DPT_TRIANGLELIST=4,D3DDECLTYPE_FLOAT16_4=16,D3DZB_FALSE=0,D3DCULL_NONE=1,D3DFILL_SOLID=3,
- D3DBLEND_ONE=2,D3DBLEND_INVSRCCOLOR=4,D3DBLENDOP_ADD=1,SetRenderState=57;
+ D3DBLEND_ONE=2,D3DBLEND_INVSRCCOLOR=4,D3DBLENDOP_ADD=1,SetRenderState=57,GetRenderState=58,GetStreamSourceFreq=103;
+using D3DRENDERSTATETYPE=unsigned;
+constexpr unsigned motion_shadow_state_count=32,composition_blend_count=4;
+constexpr unsigned shadow_states[32]={0,1,2,3,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,5,7};
+constexpr unsigned composition_blend_states[4]={8,9,10,11};
 enum { D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE, D3DRS_COLORWRITEENABLE,
  D3DRS_CULLMODE,D3DRS_STENCILENABLE,D3DRS_FILLMODE };
 struct Device {
+ long states[8]={0,0,0,1,7,1,0,3},blends[4]={2,4,1,0};
+ unsigned gets=0,freq_gets=0,frequency=1;int failed_state=-1;bool fail_frequency=false;
+ static HRESULT get(Device* d,unsigned state,DWORD* value){++d->gets;if(int(state)==d->failed_state)return -99;*value=DWORD(state<8?d->states[state]:d->blends[state-8]);return 0;}
+ static HRESULT get_frequency(Device* d,unsigned stream,UINT* value){assert(stream==0);++d->freq_gets;if(d->fail_frequency)return -99;*value=d->frequency;return 0;}
  unsigned calls=0,draws=0; DWORD mask=7; unsigned fail_at=0; bool fail_restore=false,mutate=false;
  static HRESULT set(Device* d,unsigned state,DWORD mask) {
   assert(state==D3DRS_COLORWRITEENABLE); ++d->calls;
-  if(d->calls==d->fail_at || (d->fail_restore&&d->calls==2)) { if(d->mutate)d->mask=mask;return -99; }
-  d->mask=mask;return 0;
+  if(d->calls==d->fail_at || (d->fail_restore&&d->calls==2)) { if(d->mutate){d->mask=mask;d->states[4]=mask;}return -99; }
+  d->mask=mask;d->states[4]=mask;return 0;
  }
 };
+using GetRenderStateFn=HRESULT(*)(Device*,unsigned,DWORD*);
+using GetStreamFreqFn=HRESULT(*)(Device*,UINT,UINT*);
 using SetRenderStateFn=HRESULT(*)(Device*,unsigned,DWORD);
 template<class F> void call_preserved(F&& fn) { fn(); }
 template<class... T> void log(const char*,T...) {}
@@ -40,15 +51,16 @@ struct MockHdr { void* target()const{return (void*)1;} };
 struct MotionOutput {
  Device device_storage{}; Device* device_=&device_storage;
  struct Shadow { bool recording=false,fog_card_pair=true; std::uint64_t stream0=1,indices=2,declaration=0x0cdf6a8c884ad955ull;
-  unsigned stream0_stride=24,position_offset=0,position_type=16,stream0_frequency=1;
-  bool declaration_stream0_only=true,stream0_frequency_known=true;
+  unsigned stream0_stride=24,position_offset=0,position_type=16;
+  bool declaration_stream0_only=true;
+  DWORD states[32]{},composition_blend[4]{};bool states_known[32]{},composition_blend_known[4]{},fill_mode_known=false;
  } shadow_;
- struct Counters { bool filled=true; struct Taa {bool attempted=false;}taa;}counters_;
+ struct Counters { unsigned rs_queries=0,rs_hits=0,rs_gets=0;bool filled=true; struct Taa {bool attempted=false;}taa;}counters_;
  renderer::FogSectorLatch fog_latch_{};
  FogCardPolicy fog_cards_{};
  bool fog_requested_=true,fog_enabled_=true,fog_disabled_=false,fog_attach_failed_=false,fog_cards_replace_=true;
  float fog_strength_=.02f,fog_anisotropy_=.3f;
- bool fog_card_ready_checked_=false,fog_card_ready_=false,state_hooks_=true,composition_busy_=false,
+ bool fog_card_ready_checked_=false,fog_card_ready_=false,state_hooks_=false,composition_busy_=false,
  composition_state_lost_=false,motion_state_lost_=false,main_msaa_=false,taa_enabled_=true,taa_failed_=false,
  jitter_active_=true,depth_enabled_=true,bound=true,parameters_ready=true,prerequisites_ready=true;
  unsigned active_queries_=0,target_width_=64,target_height_=48,fog_card_mode_=0,invalidations=0,state_invalidations=0;
@@ -58,13 +70,23 @@ struct MotionOutput {
  MockHdr hdr_storage{};MockHdr* hdr_=&hdr_storage;
  MockFog fog_storage{};MockFog* fog_=&fog_storage;
  void* depth_surface_=(void*)1;
- long states[8]={0,0,0,1,7,1,0,3},blends[4]={2,4,1,0};
+ struct Sampler {bool srgb_known=false,mipfilter_known=false,biased=false,saved_known=false;}samplers_[1];
+ MotionOutput(){for(unsigned i=0;i<32;++i){shadow_.states[i]=DWORD(device_storage.states[shadow_states[i]]);shadow_.states_known[i]=true;}
+  for(unsigned i=0;i<4;++i){shadow_.composition_blend[i]=DWORD(device_storage.blends[i]);shadow_.composition_blend_known[i]=true;}}
+ template<class F,class... A> HRESULT direct_call(unsigned slot,A...args){
+  assert(slot==GetRenderState||slot==GetStreamSourceFreq);
+  return slot==GetRenderState?Device::get(device_,args...):Device::get_frequency(device_,args...);
+ }
+ HRESULT get_render_state_native(D3DRENDERSTATETYPE,DWORD*)noexcept;
+ bool state_known(unsigned)noexcept;
+ bool blend_known(unsigned)noexcept;
+ long state_field(unsigned)noexcept;
+ void begin_draw_reads()noexcept;
  template<class F> F native(unsigned slot) {assert(slot==SetRenderState);return &Device::set;}
  void invalidate_taa(TaaInvalidateSite) {++invalidations;}
  void invalidate_render_states() {++state_invalidations;}
  bool scene_bound()const{return bound;}
- long shadow_state_field(unsigned state)const{return states[state];}
- long composition_blend_field(unsigned state)const{return blends[state];}
+ long composition_blend_field(unsigned state)const{return shadow_.composition_blend_known[state]?long(shadow_.composition_blend[state]):-1;}
  const char* fog_frame_prerequisite()const{return prerequisites_ready?nullptr:"prerequisite";}
  const char* fog_frame_parameters(renderer::FogFrame&,float,bool&){return parameters_ready?nullptr:"parameters";}
  void fog_card_transition(unsigned)noexcept;
@@ -81,6 +103,7 @@ struct MotionOutput {
  void next() {++frame_;volumetric_fog_begin_frame();}
  void warm() {volumetric_fog_begin_frame();complete(true,"ok");next();}
  HRESULT draw(HRESULT native_result=0,MotionDrawCall call={}) {
+  if(!state_hooks_)begin_draw_reads();
   MotionRoute route;prepare_fog_card(call,route);
   const HRESULT result=route.submit?(++device_storage.draws,native_result):route.submission_error;
   if(route.fog_card_mask.masked)finish_fog_card(route,result);

@@ -86,7 +86,10 @@ class FogCardPolicyTests(unittest.TestCase):
         names = ('fog_card_transition', 'fault_fog_cards', 'prepare_volumetric_fog_targets', 'complete_volumetric_fog', 'volumetric_fog_begin_frame',
                  'prepare_fog_card', 'finish_fog_card', 'volumetric_fog_toggle', 'volumetric_fog_step')
         methods = []
+        cpp = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        names += ('get_render_state_native', 'state_known', 'blend_known', 'state_field', 'begin_draw_reads')
         for name in names:
+            fragment = cpp if name in ('get_render_state_native', 'state_known', 'blend_known', 'state_field', 'begin_draw_reads') else (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
             start = fragment.rfind('\n', 0, fragment.index('MotionOutput::' + name + '(')) + 1
             body = fragment.index('{', start)
             depth, end = 1, body + 1
@@ -105,6 +108,8 @@ class FogCardPolicyTests(unittest.TestCase):
             result = subprocess.run([str(binary)], text=True, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('actual MotionOutput card methods PASS', result.stdout)
+            for cards in (6, 8):
+                self.assertIn(f'card_native_calls cards={cards} rs_get={12*cards} freq_get={cards} mask_set={2*cards} total={15*cards}', result.stdout)
 
     def test_draw_integration_envelope_and_order(self):
         cpp = (ROOT / 'src/proxy/motion_output.cpp').read_text()
@@ -116,14 +121,18 @@ class FogCardPolicyTests(unittest.TestCase):
         self.assertLess(after.index('finish_fog_card(route, result)'), after.index('if (!enabled_'))
         bracket = fog[fog.index('void MotionOutput::prepare_fog_card('):fog.index('int MotionOutput::volumetric_fog_toggle')]
         self.assertNotIn('GetRenderState', bracket)
-        self.assertNotIn('GetStreamSourceFreq', bracket)
+        self.assertIn('direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &shape.frequency)', bracket)
+        self.assertLess(bracket.index('!shape.static_matches()'), bracket.index('direct_call<GetStreamFreqFn>'))
+        self.assertLess(draw.index('if (!state_hooks_) begin_draw_reads()'), draw.index('prepare_fog_card(call, route)'))
+        self.assertNotIn('volumetric_fog_cards_replace?"fog_cards"', capture)
+        self.assertNotIn('hooked.set(102', capture)
         self.assertNotIn('taa_call(', bracket)
         self.assertIn('call_preserved([&]', bracket)
         self.assertIn('motion_state_lost_ = true', bracket)
         self.assertIn('route.submit = false', bracket)
         self.assertLess(bracket.index('fog_latch_.card(frame_)'), bracket.index('may_replace()'))
         self.assertLess(capture.index('if(action.fog_step)'), capture.index('ctx.motion_output.volumetric_fog_begin_frame()'))
-        self.assertIn('set_stream_frequency', (ROOT / 'verification/probe/check_no_x87.py').read_text())
+        self.assertNotIn('set_stream_frequency', capture)
 
 
 if __name__ == '__main__':
