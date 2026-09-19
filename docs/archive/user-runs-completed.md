@@ -1788,3 +1788,65 @@ against the run 45 baseline; any ghost trails behind distant moving ships; far b
 Hold the busy view 60 s, **F8** once. This splits the 11 ms `view_submit` share into engine, proxy and driver.
 
 Report frame-rate feel per session and the time into the session of each F8.
+
+## 47. Relaxed collision memo, lazy render targets, engine profile, far stabiliser speed gate — completed as run163/164 (A), run165–167 (B), run168–171 (C), run172/173 (D); extra: run174 (Argon Prime fog captures), run175 + screenshots/lattice.mov
+
+Installed: run47 candidate (hash in [status](../status.md)). New since run 46: `--collide-sat-sse2` and
+`--collide-memo` are **on by default** (`--no-collide-sat-sse2`, `--no-collide-memo` switch them off); the memo
+also answers a pair whose only difference is the engine's running-minimum value when the stored run never reached
+a triangle test, and its log row names the reason for every miss; `--motion-rt-mode lazy` (the proxy keeps its
+motion targets bound across routed draws; bench 1.7–2.5 µs per draw); the far stabiliser lets go of its long
+history between 0.03 and 0.25 px/frame of screen motion instead of 0.5–2 (the run 46 C blur). Every command is
+complete; run from the repository root.
+
+**Session A** (collision; corvette save, the former 24 fps area; two launches, ≈ 2 minutes each):
+1. Verify mode for the relaxed rule:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --loop-phases --collide-memo-verify --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+```
+Hold the spot 60 s, fly around the station for a minute, one deliberate collision.
+2. Defaults (the FPS that counts):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --loop-phases --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+```
+Same spot, plateau, hold 30 s, note the FPS overlay.
+
+**Session B** (per-draw cost and engine profile; fighter save at the busy station ≈ 480-draw view; three
+launches, hold the view 60 s in each and note the FPS overlay):
+1. Per-draw render-target mode (today's default):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --motion-rt-mode perdraw --frame-timing --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+```
+2. Lazy mode:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --motion-rt-mode lazy --frame-timing --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+```
+3. Lazy mode with the sampling profiler (finds where the engine's ≈ 10 ms between API calls goes):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --motion-rt-mode lazy --profile --profile-interval-us 500 --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+```
+Report the three FPS readings and anything that looks wrong in lazy mode (missing TAA on some objects, smearing,
+flicker of shadows or glows).
+
+**Session C** (distant station, far stabiliser with the new speed gate; fighter save, the distant station view):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --frame-end-stride 1 --capture-frames 32 --taa-far-stabiliser 0.985
+```
+Judge still, drifting slowly, and **turning the camera slowly and fast**: shimmer and blur. **F8** once while
+turning slowly. If it is still soft in slow motion, relaunch with `--taa-far-stabiliser 0.985,0,80,130,0.02,0.15`;
+if the shimmer is back while drifting, with `--taa-far-stabiliser 0.985,0,80,130,0.05,0.5`. Report which you keep.
+
+**Session D** (lattice crawl, one experiment left on the screen side; corvette save at the plant, lattice at the
+crawling angle, drifting at the speed where the crawl looks worst; two launches, **F8** once each ≈ 3 GB):
+1. Baseline, 64 frames:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --frame-end-stride 1 --capture-frames 64
+```
+2. Line filter plus a longer history:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --frame-end-stride 1 --capture-frames 64 --taa-line-filter 1,2 --taa-history-weight 0.97
+```
+Report whether 2 crawls less, and how much dimming of the lattice at that distance you would accept if the fix has
+to fade it.
+
+Report frame-rate feel per session and the time into the session of each F8.
