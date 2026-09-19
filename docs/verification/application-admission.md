@@ -119,3 +119,16 @@ The [compact record](../../verification/results/runner-housekeeping-2026-09-20.j
 retains outcomes and raw-record hashes. New verbose outputs are retained locally
 under `verification/results/retained-run49-housekeeping/`; prior tracked
 transcripts were preserved. Native Windows runtime remains unverified.
+
+
+The separate ownership verifier's stale wrapped count is also repaired:
+**563**, versus baseline **370**. Step D added five sentinel checks across each
+of two wrapped device iterations; the verifier now explicitly requires those
+rows as well as the total. Five focused tests reject malformed/truncated reports,
+duplicate terminals and count-preserving substitutions. Independent review
+accepted the source and corrected owning-note counts. Owner ran
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ownership.py`,
+then host-only `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership.py`:
+370/563 checks passed, backend observations and shared HRESULT outcomes equal.
+Results are appended to the same compact record; previous tracked raw evidence
+is preserved and fresh verbose output retained locally.

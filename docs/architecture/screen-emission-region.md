@@ -227,9 +227,10 @@ DLL); the ≈20 µs host figure is a cached-memory host CPU number. Native D3D9 
 buffers write-combined, where reads are far slower: that cost is unmeasured and bounded by
 the allowlist, not by the scan. Evidence: host `--prefix` (42 scenario lines, 300 random
 superset cases, 0 failures); detached fixture 13 cases (11 bound, 2 refused, 0 violations,
-after-Reset relearn); `ownership_wrapped.exe` 553 checks (61 per device iteration on the
-Lock/Unlock path: unmarked ignored, mark, scan, nested, non-DISCARD, NaN tail, erase at
-Release, clear at Reset); proxy-loaded `run_locked_prefix_live.py` 13 frames under the game
+after-Reset relearn); `ownership_wrapped.exe` 563 checks (66 per device iteration on the
+Lock/Unlock path: unmarked ignored, mark, scan, sentinel Lock/content/Unlock and post-Unlock
+view, nested, non-DISCARD, NaN tail, erase at Release, clear at Reset); proxy-loaded
+`run_locked_prefix_live.py` 13 frames under the game
 bullet VS/PS (8 bound, 5 refused); x87 audit PASS (`check_no_x87.py`, 224 reachable
 functions, no violation; the scan is integer/SSE scalar). Nothing consumes the rectangle yet.
 

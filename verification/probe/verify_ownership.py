@@ -7,6 +7,36 @@ import hashlib
 import re
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 root=Path(__file__).resolve().parents[2];results=bottle.results_dir(root)
+EXPECTED_CHECKS = {'baseline': 370, 'wrapped': 563}
+# Step D added a sentinel Lock/content/Unlock witness and a post-Unlock view to
+# locked_prefix_case. The view emits its own recognition check before the
+# empty-prefix check: five new checks per device iteration, two iterations.
+STEP_D_WRAPPED_COUNTS = {
+    'prefix sentinel lock': 2,
+    'sentinel written at lock': 2,
+    'prefix sentinel unlock': 2,
+    'empty prefix beyond': 2,
+    'prefix view recognised': 40,  # 38 before Step D, plus its two new views.
+}
+
+
+def verify_report(mode, trace):
+    assert mode in EXPECTED_CHECKS, 'unknown ownership fixture mode'
+    assert not re.search(r'^CHECK .* FAIL$', trace, re.M), mode
+    terminal = trace.rstrip().splitlines()[-1] if trace.strip() else ''
+    endings = [line for line in trace.splitlines() if line.startswith('OWNERSHIP RESULT ')]
+    end = re.fullmatch(r'OWNERSHIP RESULT checks=(\d+) failures=(\d+)', terminal) if endings == [terminal] else None
+    check_lines = [line for line in trace.splitlines() if line.startswith('CHECK ')]
+    expected = EXPECTED_CHECKS[mode]
+    assert end and int(end[2]) == 0 and int(end[1]) == len(check_lines) == expected, mode + ' incomplete check inventory'
+    assert all(line.endswith(' PASS') for line in check_lines), mode + ' nonpassing check'
+    if mode == 'wrapped':
+        inventory = Counter(line[6:-5] for line in check_lines)
+        for name, count in STEP_D_WRAPPED_COUNTS.items():
+            assert inventory[name] == count, 'wrapped Step D inventory mismatch: ' + name
+    return {'checks': int(end[1]), 'failures': int(end[2])}
+
+
 def verify():
     (results/'ownership-verification.json').write_text(json.dumps({'result':'RUNNING'})+'\n')
     manifest=json.loads((results/'ownership-build-verification.json').read_text())
@@ -25,14 +55,7 @@ def verify():
     reports={mode:(results/f'ownership-{mode}.txt').read_text() for mode in ('baseline','wrapped')}
     summary={}
     for mode,trace in reports.items():
-        assert not re.search(r'^CHECK .* FAIL$',trace,re.M),mode
-        terminal=trace.rstrip().splitlines()[-1] if trace.strip() else ''
-        endings=[line for line in trace.splitlines() if line.startswith('OWNERSHIP RESULT ')]
-        end=re.fullmatch(r'OWNERSHIP RESULT checks=(\d+) failures=(\d+)',terminal) if endings==[terminal] else None
-        check_lines=[line for line in trace.splitlines() if line.startswith('CHECK ')]
-        assert end and int(end[2])==0 and int(end[1])==len(check_lines)=={'baseline':370,'wrapped':553}[mode],mode+' incomplete check inventory'
-        assert all(line.endswith(' PASS') for line in check_lines),mode+' nonpassing check'
-        summary[mode]={'checks':int(end[1]),'failures':int(end[2])}
+        summary[mode]=verify_report(mode,trace)
     # These are actual backend contracts, including Preview's additional chain
     # enumeration behavior. Native reference-count magnitudes are diagnostic only.
     def observations(trace):

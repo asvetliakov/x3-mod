@@ -74,5 +74,19 @@
     "application-admission-abi-summary.json": "906e4ae4f5a0496020b1593eec16491c0a5c19aaaf30cd18fb2c95216ebac3ea",
     "ownership-integration-build.json": "cf4123e023c838665d8854fb43d0779153ea976f58ee36d87b2cb29a33325f54",
     "ownership-integration-fallback.json": "6738ee01b232f0fc602788fb700da1d549c5270e96c7d15bdb8c46a26687c294"
+  },
+  "ownership_verifier": {
+    "baseline": {
+      "checks": 370,
+      "failures": 0
+    },
+    "wrapped": {
+      "checks": 563,
+      "failures": 0
+    },
+    "result": "PASS",
+    "backend_observations_equal": true,
+    "shared_hresult_outcomes_equal": true,
+    "raw_sha256": "cbe37a0285e9da37bbec0ebc030fb60c45767552bc781d2537728eb99e372a71"
   }
 }
