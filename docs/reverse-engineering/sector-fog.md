@@ -279,6 +279,185 @@ Side finding, not fog: the sun-shadow lane refused 18,585 of 19,311 frames of th
 (`untracked_writers >= 1`, `unregistered = 1`): an opaque depth-writing pair
 VS `ac2319bc3953efc6` / PS `03a16e5c63daa6e8` (924-1000 primitives per draw, 1-3 draws per frame) is not registered, so sun shadows were off in all four captures.
 
+## 11. Runtime access: the active sector's record from inside the process
+
+Static analysis only (Ghidra headless against the existing read-only project, same
+EXE hash as the header). Nothing here was run, hooked or installed.
+
+### 11.1 There is no per-sector runtime copy: the row is used in place, rebased by `+0x44`
+
+Every runtime reader computes `row = *0x00606fc0 + index * 0xdb8` and then works from
+`R = row + 0x44` (the name-pointer field), so a "runtime" offset is its load-time offset
+minus `0x44`. Verbatim at `0x0041efc3`:
+`MOV EDX,[ECX+0x13c]` / `IMUL EDX,EDX,0xdb8` / `MOV ESI,[0x00606fc0]` /
+`LEA EBX,[EDX+ESI*0x1+0x44]`. The same four-instruction shape appears at `0x0042037c`
+(`FUN_00420360`), `0x00421542` (`FUN_004205e0`), `0x00452580` (`FUN_00452570`) and
+`0x004525c6` (`FUN_004525b0`). This closes section 4's "per-sector runtime copy"
+reading: `+0xf0` there **is** `NumDustInstances`, because `0x134 - 0x44 = 0xf0`.
+
+| Field | Load-time row offset (§3) | Rebased `R` offset | Runtime evidence |
+| --- | --- | --- | --- |
+| body family name (`char*`) | `+0x44` | `+0x00` | getter `0x0046778d`; setter writes `[R]` at `0x00467b5f` |
+| dust body ids `[8]` | `+0xf4` | `+0xb0` | §4 (`0x0041f1ca`, `0x0041f3c8`) |
+| `DustBodyRate[8]` | `+0x114` | `+0xd0` | the CDF loop of `FUN_0041efc0` sums `R+0xd0`..`R+0xec`; getter `0x00467892`; setter `LEA EAX,[EBX+0xd0]` at `0x00467b76` |
+| **`NumDustInstances`** | `+0x134` | **`+0xf0`** | `0x0041f0ba`; getter `0x004678c5`; setter `0x00467ba6` |
+| colour A | `+0x138/+0x13c/+0x140` | `+0xf4/+0xf8/+0xfc` | `FUN_00420360` and `FUN_00452570` copy `R+0xf4..+0xfc` into `+0x30/+0x34/+0x38` of their target |
+| **`FogNear`** | `+0x148` | **`+0x104`** | `0x00421548` (row form); getter `0x00467980`; setter `0x00467be0` |
+| **`FogFar`** | `+0x14c` | **`+0x108`** | `0x0042154f` (row form); getter `0x004679b9`; setter `0x00467be9` |
+| stardust percent | `+0x150` | `+0x10c` | `0x0041f0de`; setter `0x00467bf2` |
+| colour B | `+0x154/+0x158/+0x15c` | `+0x110/+0x114/+0x118` | `0x0041efe3`-`0x0041eff5` |
+
+The 16 `SA_GetBgType*` handlers are the independent confirmation: each one does
+`TEST EAX,EAX; JL fail; CMP EAX,[0x00607040]; JGE fail; IMUL EAX,EAX,0xdb8` and then
+reads the **row** offset directly — `+0x134` at `0x004678c5`, `+0x148` at `0x00467980`,
+`+0x14c` at `0x004679b9`, `+0x44` at `0x0046778d`, `+0x114[i<8]` at `0x00467892`.
+
+### 11.2 The pointer chain, anchored on a global the proxy already reads
+
+| Hop | Address / offset | Object | Null / absent | Written by |
+| --- | --- | --- | --- | --- |
+| 1 | `*0x00608504` | cockpit registry (hash header at `+0x0`: bucket array, bucket count; active-control handle at `+0x10`) | null before the UI layer exists; handle `0` = no active control (menus, loading) | engine init; `INS_SetActiveControlCockpit` |
+| 2 | bucket walk `{next, handle, cockpit}` | cockpit | no matching row = `Missing` | registry insert/rehash |
+| 3 | `cockpit + 0x54` | **sector object** (`*(int16*)(sector+0x48) == 1`) | **can be 0** — the engine's own guard is `CMP dword ptr [EBX+0x54],0` at `0x00420e06` | script command `0xb` = **`INS_CockpitSetSectorSpace`**: `MOV [ESI+0x54],EAX; CALL 0x00420360` at `0x0042d670`/`0x0042d673` in the dispatcher `FUN_0042d340` |
+| 4 | `sector + 0x13c` | background index, zero-based into TBackgrounds | never null-checked by the render path; **no bound check either** | universe load; `FUN_004525b0` (script background change, which also re-picks the `neb`/`stars` bodies through `sector+0x140`/`+0x144`) |
+| 5 | `*0x00606fc0 + index*0xdb8 + 0x44` | the record `R` | table pointer null before the type files load | §11.3 |
+| — | `*0x00607040` | record count (83 in the shipped file) | — | §11.3 |
+
+The command-index mapping is settled: the 113 `INS_*` name strings run
+`0x006c7d1c`-`0x006c886c` in **descending** command order (rank `r` = command
+`112 - r`), which reproduces three already-documented cases — `SetSectorCamera` = 5,
+`GetGalaxyCamera` = 9, `SetRefObject` = 0xc — and gives
+`INS_CockpitSetSectorSpace` = 0xb for the `+0x54` writer.
+
+Hops 1-2 are exactly `object_capture::target` / `own_ship` in
+`src/proxy/object_capture.h`, already used in production
+(`motion_output_shadow_adaptive_inc.h`, `chase_lead.cpp`, `chase_fire.cpp`) and in
+capture (`capture.cpp:628`). Adding `sector = *(cockpit+0x54)` is one extra field on a
+walk the proxy already performs.
+
+**Built-in cross-check.** The same cockpit's sector camera (`cockpit+0x58`) is loaded
+with this row's fog every frame: `0x00421533 MOV EDX,[EBX+0x54]` →
+`0x00421548 MOV EDX,[EAX+ECX+0x148]` / `0x0042154f MOV ESI,[EAX+ECX+0x14c]` → camera
+`+0x36c`/`+0x370`, with `camera+0x270 |= 0x10000` and `+0x368 = 0xffffff` when near is
+non-zero. Those two camera words are precisely `near36c`/`far370` on the proxy's
+existing `object_fade` rows (`object_capture::fade`), so the chain validates itself
+against telemetry that already exists.
+
+**Fallback anchor.** If `cockpit+0x54` is 0 while a ship exists, `own_ship` already
+resolves `cockpit+0xc` (ref object) and `[obj+0x54]` is that object's parent sector
+(object layout in [sector-collide.md](sector-collide.md) §1). In flight the two must
+agree; a disagreement means the wrong cockpit was selected.
+
+### 11.3 Mutability, threads, and when the values change
+
+- **The table pointer and the count are not load-only.** `SA_SetBgTypeData`
+  (handler at `0x00467ac3`) reallocates the whole table when the requested index is
+  negative or `>=` the count: `CALL 0x004b8920` with `count*0xdb8 + 0xdb8`, then
+  `ADD dword ptr [0x00607040],0x1` (`0x00467af3`) and `MOV [0x00606fc0],EAX`
+  (`0x00467afa`) — the single write among the 27 references to `0x00606fc0`. It then
+  rewrites the row through the same `+0x44` rebase (`0x00467b38`-`0x00467c1a`),
+  including `R+0xf0` (`NumDustInstances`), `R+0x104`/`R+0x108` (fog) and `R+0xd0[8]`.
+  The loader's `FogFar < FogNear → zero both` clamp (§3) is **not** applied by the
+  setter. Consequence for the proxy: never cache a row pointer or a table pointer
+  across frames; re-read both globals on every sample.
+- **One thread.** The script VM (`game_phase_pending_vm`), the cockpit update
+  (`game_phase_cockpits`, `0x0041cde0 → 0x004205e0`) and the frame routine
+  (`0x00471f50`, called from `0x00403f34`) are all phases of the same main loop
+  `0x00403840` on one thread ([frame-loop-phases.md](frame-loop-phases.md) §0/§1), and
+  the proxy's D3D entry points are called from that same thread. `0x0041cde0` walks the
+  registry and calls `FUN_004205e0` once per cockpit per frame. No second thread writes
+  any hop of the chain while the frame routine runs; the type-file load is the one
+  window in which the table itself is rebuilt.
+- **Change events.** Load: table, count, and every sector's `+0x13c`. Gate jump,
+  jumpdrive or any scripted sector move: `cockpit+0x54` (`INS_CockpitSetSectorSpace`),
+  which takes effect in the same frame because the VM phase precedes the cockpit phase.
+  Scripted background change: `sector+0x13c` (`FUN_004525b0`). Scripted
+  `SA_SetBgTypeData`: the row contents and possibly the table pointer.
+
+### 11.4 Safe read recipe
+
+**Where.** Render thread, at the proxy's scene-begin — the point where the
+object-capture per-frame cache is reset — at most once per frame. By then
+`0x0041cde0` has already run for this frame, so the row and the sector camera's
+`+0x36c/+0x370` are consistent. Not per draw.
+
+**Gate.** `object_trace::executable_verified()` (the EXE identity gate production
+already applies before touching `0x608504`); these offsets are valid only for
+SHA-256 `fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab` at base
+`0x00400000`. Every dereference goes through `engine_memory::read` (committed-page
+validated, bounded) and the reader saves/restores `GetLastError` like the existing
+capture readers.
+
+**Predicates** (absolute pointer ranges are not checkable; these are the
+structural invariants the engine itself relies on):
+
+1. registry walk status is `Ready`; `cockpit != 0`, `(cockpit & 3) == 0`.
+2. `sector = *(cockpit+0x54)`: non-zero, 4-byte aligned, and `*(int16*)(sector+0x48) == 1`
+   (the class word; `FUN_0043a560`, the engine's own sector-by-id lookup, returns 0
+   on exactly this test).
+3. `count = *0x00607040`: `0 < count <= 4096` (83 expected — read it, do not hard-code,
+   because `SA_SetBgTypeData` can grow it).
+4. `index = *(int32*)(sector+0x13c)`: `0 <= index < count`. The render path does not
+   bound-check this; the proxy must.
+5. `table = *0x00606fc0`: non-zero, 4-byte aligned. `R = table + index*0xdb8 + 0x44`.
+   Read the `0x120` bytes of `R` in **one** bounded read, not field by field, so the
+   sample is internally consistent.
+6. `NumDustInstances = R+0xf0`: accept `0..64` (shipped maximum 50). Out of range =
+   unknown, reported as such, never silently clamped.
+7. `FogNear = R+0x104`, `FogFar = R+0x108` (native units; the engine scale seen on
+   `object_fade` is 0.01): accept `(near == 0 && far == 0) || (0 < near && near <= far
+   && far <= 2e9)`. Shipped maximum is 500,000,000.
+8. name `= *(char**)(R+0x00)`: non-zero, then read 32 bytes and require a NUL within
+   them with every preceding byte in `0x20..0x7e`; otherwise report the pointer only.
+9. Free consistency check: when `camera+0x270 & 0x10000` on `cockpit+0x58`,
+   `FogNear/FogFar` must equal the camera's `+0x36c/+0x370` (subject to the
+   `*0x00606f34 + 0x768 >= 3` far floor of 500,000,000 already handled by
+   `object_capture::fade`). A mismatch means the wrong cockpit was picked — report,
+   do not use.
+
+**Hook-site suitability.** None is needed: this is a read-only walk, no trampoline, no
+instruction patch, so there is no instruction-boundary, register- or flag-liveness
+question. It is reentrancy-safe by construction (no engine call, no allocation, no
+device call, no lock beyond the capture lock the caller already holds) and single
+threaded per §11.3. The only residual hazard is the generic one `engine_memory`
+already documents: a page decommitted between validation and copy, which here can only
+happen across a type-file reload.
+
+### 11.5 What a one-flight diagnostic should log
+
+One `sector_background` row per second **and** on any change of
+`(cockpit, sector, index, table, dust, near, far)`:
+
+`frame, status, cockpit, sector, class48, index, count, table, R, name, dust(R+0xf0),
+near(R+0x104), far(R+0x108), stardust(R+0x10c), rate0..rate7 (R+0xd0 array), neb(sector+0x140),
+stars(sector+0x144), camera(cockpit+0x58), cam_near(+0x36c), cam_far(+0x370),
+flags270`.
+
+Validation from one flight:
+
+- `name` must equal the background family listed in §5/§6 for the sector flown
+  (`bluewell` for Argon Prime), and `index` must be that record's row number.
+- `dust` must be 8 in Argon Prime, and the per-frame count of `nebulafog` draws
+  (PS `f7e0b6647a3bfa62`) must never exceed it — §10 measured 1-4 of 8 per frame.
+- `near/far` must equal the `object_fade` `near36c/far370` of the same frame
+  (18,000,000 / 18,500,000 in run174).
+- Across a gate jump, `sector`, `index`, `name` and the fog pair must change in the
+  same frame as the `object_fade` values, not a frame later.
+- In the menu, during loading and in the first frames after a load, `status` must be a
+  named "no cockpit" / "no sector" / "bad index" and never a plausible-looking garbage
+  index; a single out-of-range sample there invalidates the chain.
+
+### 11.6 Still open after this pass
+
+- Whether monitor cockpits (`INS_CockpitSetMonitorNumber`) carry a `+0x54` different
+  from the active-control cockpit's; only the active-control walk was traced.
+- Which other `FUN_0042d340` cases besides `0xb` can write `cockpit+0x54` (only the
+  `0xb` write site was enumerated, from the single decompile).
+- The first frame after a savegame load at which `*0x00606fc0` is settled; the table
+  rebuild window was not timed.
+- Whether any shipped or addon script actually calls `SA_SetBgTypeData` at runtime; the
+  code path exists, its use was not surveyed.
+
 ## Reproduce
 
 Archive side (scratch script, reads the install read-only; no game bytes enter the repo):
@@ -296,3 +475,15 @@ JAVA_HOME='/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home' \
   data:00606fc0 data:0055f95c data:0055faa8 data:0055fa60 data:0055fa54 data:0055fa80 \
   ptr:0057ab70:32 range:004367e0:420 range:00467787:400 dec:0041efc0 dec:004343e0 txt:0xdb8
 ```
+
+Section 11 (runtime access), same invocation with:
+
+```sh
+  dec:0041efc0 data:0041efc0 data:00606fc0 dec:00420360 data:00420360 dec:004205e0 \
+  data:004205e0 data:00607040 txt:0xdb8 range:00467740:340 data:00606fb8 \
+  dec:0042d340 dec:0041cde0 dec:0043a560 dec:00452570 dec:004525b0
+```
+
+The `INS_*` command-index mapping came from a scratch Python pass over the read-only
+EXE that lists the 113 `INS_*` strings in `0x006c7d1c`-`0x006c886c` in address order;
+no game bytes were copied into the repository.
