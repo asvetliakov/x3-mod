@@ -176,6 +176,8 @@ void TemporalPass::release_history() noexcept {
     for(auto& p:reactive_surfaces_)drop(p);
     for(auto& p:age_surfaces_)drop(p);
     for(auto& p:ages_)drop(p);
+    for(auto& p:line_mask_surfaces_)drop(p);
+    for(auto& p:line_masks_)drop(p);
     drop(scratch_surface_);drop(staging_surface_);
     for(auto& p:colors_)drop(p);
     for(auto& p:depths_)drop(p);
@@ -184,7 +186,7 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(resolve_filtered_);drop(thin_);drop(thin_filtered_);drop(age_);drop(age_filtered_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(resolve_filtered_);drop(thin_);drop(thin_filtered_);drop(age_);drop(age_filtered_);drop(line_mask_);drop(line_);drop(thin_line_);drop(age_line_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
 void TemporalPass::before_reset() noexcept {release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
@@ -230,6 +232,18 @@ HRESULT TemporalPass::configure_flicker() noexcept {
     }
     return S_OK;
 }
+HRESULT TemporalPass::configure_line_filter() noexcept {
+    if(!device_||!resolve_)return E_FAIL;
+    if(line_)return S_OK;
+    auto make=[&](const std::uint32_t* words,IDirect3DPixelShader9** out){return call<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words),out);};
+    HRESULT hr=make(temporal_line_mask_program(),&line_mask_);
+    if(SUCCEEDED(hr))hr=make(temporal_resolve_line_program(),&line_);
+    if(SUCCEEDED(hr))hr=make(temporal_resolve_thin_line_program(),&thin_line_);
+    if(FAILED(hr)){drop(line_mask_);drop(line_);drop(thin_line_);return hr;}
+    // Optional on top, as the age variants are: without it a line-filtered aged run is refused.
+    if(mrt_age_&&FAILED(make(temporal_resolve_age_line_program(),&age_line_)))drop(age_line_);
+    return S_OK;
+}
 HRESULT TemporalPass::allocate(UINT w,UINT h,bool reactive,bool age) noexcept {
     if(width_==w&&height_==h&&bool(reactive_[0])==reactive&&bool(ages_[0])==age)return S_OK;
     release_history();HRESULT hr=S_OK;
@@ -264,6 +278,16 @@ HRESULT TemporalPass::ensure_staging(D3DFORMAT format) noexcept {
     if(FAILED(hr)){drop(staging_surface_);drop(staging_);}else staging_format_=format;
     return hr;
 }
+HRESULT TemporalPass::ensure_line_masks() noexcept {
+    if(line_masks_[1])return S_OK;
+    HRESULT hr=S_OK;
+    for(UINT i=0;i<2&&SUCCEEDED(hr);++i){
+        hr=call<CreateTextureFn>(CreateTexture)(device_,width_,height_,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&line_masks_[i],nullptr);
+        if(SUCCEEDED(hr))hr=line_masks_[i]->GetSurfaceLevel(0,&line_mask_surfaces_[i]);
+    }
+    if(FAILED(hr)){for(auto& p:line_mask_surfaces_)drop(p);for(auto& p:line_masks_)drop(p);}
+    return hr;
+}
 HRESULT TemporalPass::ensure_block() noexcept {
     if(block_)return S_OK;
     const HRESULT hr=call<CreateBlockFn>(CreateStateBlock)(device_,D3DSBT_ALL,&block_);
@@ -291,6 +315,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         (in.depth_snapshot&&!decoder_)||(sentinel&&!in.current_depth)||
         !x3::temporal::valid_sharpen(in.sharpen)||(in.sharpen>0&&(!in.color_surface||!sharpen_))||
         !x3::temporal::valid_current_filter(in.current_filter)||(in.current_filter>0&&!resolve_filtered_)||
+        !x3::temporal::valid_current_filter(in.line_filter)||(in.line_filter>0&&(in.current_filter>0||(in.line_width!=1&&in.line_width!=2)||!line_filter_available()||(aged&&!age_line_)))||
         !x3::temporal::valid_thin_clip(in.thin_clip)||!x3::temporal::valid_adaptive_weight(in.adaptive_weight,in.adaptive_lo,in.adaptive_hi,in.weight)||
         (flicker&&!flicker_available())||(aged&&(!(in.thin_clip>0)||!age_available()))||(in.alpha_history&&!in.color))return fail(E_INVALIDARG);
     for(UINT i=0;i<2;++i){
@@ -317,9 +342,11 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
         mask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k,in.current_filter))return fail(E_INVALIDARG);
     constants.luminance[2]=in.alpha_history?1.f:0.f; // read by the flicker variants only
+    constants.luminance[3]=in.line_filter;            // read by the line-filter variants only
     float flicker_constants[4]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);
     const bool filtered=in.current_filter>0;
-    IDirect3DPixelShader9* const program=aged?(filtered?age_filtered_:age_):flicker?(filtered?thin_filtered_:thin_):(filtered?resolve_filtered_:resolve_);
+    const bool lined=in.line_filter>0;
+    IDirect3DPixelShader9* const program=lined?(aged?age_line_:flicker?thin_line_:line_):aged?(filtered?age_filtered_:age_):flicker?(filtered?thin_filtered_:thin_):(filtered?resolve_filtered_:resolve_);
     const bool used=history_.valid&&in.weight>0;
     auto stamp=[&]()->std::uint64_t{if(!timing_)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return std::uint64_t(t.QuadPart);};
     std::uint64_t mark=stamp();
@@ -385,6 +412,26 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1))&&
            step(call<SetTextureFn>(SetTexture)(d,5,in.reactive)))hr=quad(in.width,in.height);
         constants.options[2]=0;
+    }
+    // Line filter: the mask of the current depth (now complete in depths_[next]),
+    // line-like pixels then their 3x3 maximum, bound at s8 for the resolve
+    // (point, clamp, single level; the block restores the sampler). c7.z is
+    // the mask program's mode; the resolve's c7 is uploaded again below.
+    if(SUCCEEDED(hr)&&lined&&step(ensure_line_masks())){
+        const float resolve_policy=constants.options[3];
+        for(UINT pass=0;pass<2&&SUCCEEDED(hr);++pass){
+            constants.options[2]=float(pass);constants.options[3]=float(in.line_width);
+            if(step(call<SetTextureFn>(SetTexture)(d,1,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,line_mask_surfaces_[pass]))&&
+               step(call<SetPsFn>(SetPixelShader)(d,line_mask_))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,4,constants.size_jitter,1))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1))&&
+               step(call<SetTextureFn>(SetTexture)(d,1,pass?line_masks_[0]:depths_[next])))hr=quad(in.width,in.height);
+        }
+        constants.options[2]=0;constants.options[3]=resolve_policy;
+        if(SUCCEEDED(hr)&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MINFILTER,D3DTEXF_POINT))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAGFILTER,D3DTEXF_POINT))&&
+           step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MIPFILTER,D3DTEXF_NONE))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP))&&
+           step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_SRGBTEXTURE,FALSE))&&
+           step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAXMIPLEVEL,0)))hr=call<SetTextureFn>(SetTexture)(d,8,line_masks_[1]);
     }
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,program))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&

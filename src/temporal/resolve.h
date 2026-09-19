@@ -21,7 +21,8 @@ struct ResolveConstants {
     // identity (the 8-bit route, and the migration test); the HDR route uploads
     // the exposure multiplier the write-back applies to the resolved image.
     // y is A of the filtered current sample (0 off; read only by the
-    // resolve_filter.hlsl variant, which the pass binds when A > 0).
+    // resolve_filter.hlsl variant, which the pass binds when A > 0); w is A of
+    // the line-masked filter (resolve_*line.hlsl variants), set by the pass.
     float luminance[4]{};
 };
 static_assert(sizeof(ResolveConstants) == 9 * 4 * sizeof(float));

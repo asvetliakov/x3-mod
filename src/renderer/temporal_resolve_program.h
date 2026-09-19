@@ -32,6 +32,22 @@ inline constexpr std::uint32_t temporal_resolve_age_words[] = {
 inline constexpr std::uint32_t temporal_resolve_age_filter_words[] = {
 #include "temporal_resolve_age_filter_program_inc.h"
 };
+// Line-masked filtered current sample (docs/architecture/taa-lattice-crawl.md section 9;
+// manifests verification/results/temporal-resolve-{line,thin-line,age-line}-program.json).
+// src/temporal/line_mask_ps.hlsl: the two mask draws ahead of a line-filtered resolve
+// (manifest verification/results/temporal-line-mask-program.json).
+inline constexpr std::uint32_t temporal_line_mask_words[] = {
+#include "temporal_line_mask_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_resolve_line_words[] = {
+#include "temporal_resolve_line_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_resolve_thin_line_words[] = {
+#include "temporal_resolve_thin_line_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_resolve_age_line_words[] = {
+#include "temporal_resolve_age_line_program_inc.h"
+};
 }
 // Complete ps_3_0 program of src/temporal/resolve.hlsl (sampler and constant
 // contract in src/temporal/README.md), the resolve the live route runs at the
@@ -58,4 +74,9 @@ inline constexpr const auto& temporal_resolve_thin_program() noexcept { return d
 inline constexpr const auto& temporal_resolve_thin_filter_program() noexcept { return detail::temporal_resolve_thin_filter_words; }
 inline constexpr const auto& temporal_resolve_age_program() noexcept { return detail::temporal_resolve_age_words; }
 inline constexpr const auto& temporal_resolve_age_filter_program() noexcept { return detail::temporal_resolve_age_filter_words; }
+// The variants TemporalPass::configure_line_filter creates.
+inline constexpr const auto& temporal_line_mask_program() noexcept { return detail::temporal_line_mask_words; }
+inline constexpr const auto& temporal_resolve_line_program() noexcept { return detail::temporal_resolve_line_words; }
+inline constexpr const auto& temporal_resolve_thin_line_program() noexcept { return detail::temporal_resolve_thin_line_words; }
+inline constexpr const auto& temporal_resolve_age_line_program() noexcept { return detail::temporal_resolve_age_line_words; }
 } // namespace x3m::renderer

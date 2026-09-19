@@ -1,5 +1,5 @@
 // Generated from our original src/temporal/hdr_meter_level0_ps.hlsl. Do not edit.
-// Reproduce: python3 tools/shaders/generate_rigid_motion_pixel.py --check
+// Reproduce: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --shader hdr_meter_level0 --check
     0xffff0300u, 0x0044fffeu, 0x42415443u, 0x0000001cu, 0x000000dau, 0xffff0300u,
     0x00000005u, 0x0000001cu, 0x20008100u, 0x000000d3u, 0x00000080u, 0x00010002u,
     0x00060001u, 0x0000008cu, 0x00000000u, 0x0000009cu, 0x00020002u, 0x000a0001u,
