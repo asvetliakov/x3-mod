@@ -363,3 +363,73 @@ remedy is source-side: fade the line draw by projected pitch (needs the draw-ind
 supersampled scene target; the user should be asked what loss is acceptable on the lattice (dimmer lines, as accepted for
 far stations, or a flat panel tint at distance).
 
+## 11. Cause of the creep floor; what run172 / run173 contain (2026-09-19) [M unless tagged]
+
+Captures: run172 baseline, run173 `--taa-line-filter 1,2 --taa-history-weight 0.97`, 64 frames each, boxes `814 353 984 503` /
+`852 432 1022 582`. Scratch `crawl/`: `h1.py`, `ripple.py`, `sim2.py`; replay options `noclipmask`, `clipgamma`, `lanczos` in
+`taa_resolve_replay.py ... remedy`.
+
+**0. Both 64-frame captures are of a STATIONARY ship.** `camera_state` translation is identical to seven digits from 200
+frames before the capture to 50 after it (run172 `-13171.99, 12890.15, -110179.3`; run173 likewise from frame 6062); routed
+velocity on the lattice 0.0000 +- 0.0002 px/frame; every temporal component outside the harmonics of the 8-frame jitter
+cycle is 0.00 codes in `hdr`, `taa` and `present`; first against last cycle mean 0.00 / 0.06 codes. (run148 / 157 / 159 did
+move during their captures, so the capture does not freeze the game; the ship was simply at rest.) What these captures hold
+is the static jitter ripple on the lattice, and the flown options remove it:
+
+| presented, lattice px | contrast (std) | temporal rms | of contrast | period 8 / 4 / 2.67 / 2 |
+|---|---|---|---|---|
+| run172 baseline | 40.2 | 2.61 codes | 0.065 | 1.75 / 1.16 / 1.39 / 0.67 |
+| run173 A = 1, W = 2, w 0.97 | 27.2 | 0.25 codes | 0.009 | 0.17 / 0.11 / 0.11 / 0.07 |
+
+x 0.10 in codes, and the presented image of run173 is constant to a quarter of a code. "Still crawling, feels the same"
+therefore cannot refer to what these two captures recorded: either the verdict was formed while moving (not captured), or
+what crawls is added after our present (see 5).
+
+**H1, reprojection error: not at rest, not decidable under motion.** At rest the motion the resolve uses averages exactly 0
+on struts (0.418 of the box), glass cells (0.478) and glass cells with no valid depth in the 3x3 (0.234): medians
+(-0.0002, -0.0001) / (0.0000, 0.0000) / (0.0000, 0.0000) px/frame (run153 static the same), so jitter handling and the
+half-pixel convention are consistent. Glass cells are NOT reprojected as sky: they carry motion alpha 1 with a VALID
+expected depth (`motion.z` median 0.999787 against the struts' 0.999785, valid share 1.000), so `resolve.hlsl` takes the
+object-motion branch for them, dilated or not. Under motion (run159 0.065, run148 0.43 px/frame) struts and glass differ by
+0.006-0.02 px/frame in the median with a within-frame spread of 0.03-0.12 (rotation / perspective across the box);
+registering raw cycle means of a periodic lattice is too ambiguous to test that (tile sd 0.1-0.5 px, residual at the best
+shift 0.4-1.2 of contrast), so a 0.02 px/frame error is neither shown nor excluded. **[unknown]**
+
+**H2, variance clip: no.** Creep residual (presented, codes), replay on run159 (shift 1.0 px, 26 tiles) / run157: clip off on
+the mask x 1.02 / x 1.06; min/max box only (gamma 9) x 1.02 / x 1.03; no clip anywhere x 1.01 / x 1.08; with A = 1, clip off on
+the mask x 0.45 against x 0.46 with it. The x 0.57 of section 10 was 32-frame noise. On a binary lattice every 3x3 holds both
+extremes; the clip never binds (the synthetic resolve with and without it is identical to four digits).
+
+**H3, Catmull-Rom history resampling: no.** Lanczos-3 (36 taps) on the mask: x 0.97 / x 1.00; with clip off x 0.97 / x 1.05;
+Lanczos + clip off + A = 1 x 0.45 / x 0.61 against x 0.46 / x 0.64 for A = 1 alone.
+
+**H4, sampling / reconstruction: yes, this is the floor.** `sim2.py`: binary 0.7-px lines, pitch 3.8 px, 15 deg, through the
+actual resolve ingredients (Catmull-Rom fetch at the true velocity, the clip, w, optional A), 224 frames, steady state:
+
+| creep residual / contrast | 0.022 px/frame (run157) | 0.065 px/frame (run159) | real replay run157 / run159 |
+|---|---|---|---|
+| Halton 8, w 0.9 (installed) | 0.533 | 0.770 | 0.323 / 0.317 |
+| + A = 1 | 0.161 (x 0.30) | 0.240 (x 0.31) | 0.264 / 0.182 |
+| + A = 1, w 0.97 | 0.178 | 0.300 | |
+| Halton 16 w 0.95 / 32 w 0.97 | 0.436 / 0.344 | 0.664 / 0.543 | |
+| R2 8 / 16 (w 0.95) | 0.500 / 0.418 | 0.684 / 0.612 | |
+| rotated grid 8 / 16 (w 0.95) | 0.496 / 0.419 | 0.730 / 0.622 | |
+| Halton 16 or rotated grid 16, w 0.95, + A = 1 | 0.158 / 0.164 | 0.232 / 0.245 | |
+
+The model with the real resolve has the same floor as the real frames once the filter is on (0.16-0.24 against 0.18-0.26):
+section 10's "floor the model does not have" came from comparing against an ideal-reprojection model at one velocity and
+is withdrawn. Sample count and pattern are not the limit: 16 / 32 samples or better 1-D projections buy x 0.8-0.95 without
+the filter and nothing with it (0.158 against 0.161). The residual is the phase dependence of reconstructing a 0.7-px line
+at 3.8-px pitch with a kernel about one pixel wide on a pixel grid: it is a property of the content at this resolution,
+not of a resolve defect. Share of the floor: H4 all of it within the model's accuracy; H2 and H3 at most 3 %; H1 zero at
+rest, undecided under motion.
+
+**5. Recommendation.** No further resolve work on the lattice. (a) Ask the user two things before anything else: was the
+crawl judged with the ship moving (then the 172 / 173 captures miss it and a moving 64-frame pair is needed), and at what
+window / display scaling the game is viewed: the dumps are the 1280x768 back buffer, and a non-integer scale of a 2-4 px
+lattice by the compositor produces its own moire that no present-side change can touch **[A]**. (b) If it is judged moving:
+the only levers left act on the content: lower the lattice contrast with distance (fade the line draw or tint the panel
+by projected pitch; needs the draw-index capture of section 6) or render the scene target at a higher resolution; predicted
+creep for a fade to half contrast is x 0.5 in codes by construction, with the filter x 0.25-0.3 of today's. (c) Keep
+`--taa-line-filter` optional; its measured gain stands (creep x 0.46-0.64 moving, static ripple x 0.10 with w 0.97).
+
