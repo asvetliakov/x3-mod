@@ -96,7 +96,10 @@ view orientation and scene intersection helpers; it is not a shader-time
 visibility calculation.
 
 `0x00471660` changes each lens record's visibility accumulator by 100 and
-clamps it to 0–200, deleting bodies at zero. Active bodies are positioned from
+clamps it to 0–200, deleting bodies at zero. What sets and clears the record's
+visible flag — a CPU mesh-collision probe at `0x00488720`, not a D3D query — and
+what the accumulator does to the picture are established in
+[lens-flare-visibility.md](lens-flare-visibility.md). Active bodies are positioned from
 screen coordinates and lens-table position factors, scaled by viewport size,
 and rotated from the lens-table factor. This is a camera/view-dependent lens
 effect, not established world-geometry motion suitable for a camera-only
