@@ -1774,3 +1774,54 @@ either way; resolved fast-band rms moves >20% but increases, not decreases, so i
 alpha-test cutout flicker" and cannot be attributed to the bias alone given the pose difference above — the A/B is
 confounded and inconclusive; a same-pose repeat (identical camera transform logged, only bias varied) is needed to
 settle it.
+
+**run148: strut draw type and motion-compensated shimmer.** Same input as above (`/tmp/x3-bottleX3-run148`,
+`X3M_TAA_MIP_BIAS=-0.5`, 32-frame F8, plant). Scripts: `tools/analysis/taa_resolve_replay.py` (worktree
+`agent-abfdd9ffa87514720`, not yet on `main`) and a private grep/numpy pair in the scratchpad (paths in the
+triage report), not committed.
+
+*Q1 (triangle vs alpha-test cutout).* `draw` rows for frame 4411 (and 4420/4430/4442, stable to +/-60 prims):
+302 opaque (`D3DRS_ALPHATESTENABLE=0`) draws / 874 077 prims, 92 alpha-tested (`ALPHATESTENABLE=1`,
+`ALPHAREF=1`) draws / 137 544 prims — 13.6% of frame prims, all 394 draws total (this run's own counts; they
+do not match the 256/703 168 + 64/91 328 figures quoted as priors, which were not reproduced from this capture
+and may be a different frame or a node-filtered subset). `src/proxy/capture.cpp`'s `snapshot()` (draw/state
+dump, ~line 672) logs render state, samplers and transforms per draw but **no per-draw screen-space bounds and
+no per-pixel draw-id tag**; the depth/motion dumps have no draw-id channel either. There is therefore no way to
+attribute a specific flip pixel (coverage-toggling across the 32 frames, x355-990/y159-767, 50 238 px) to a
+specific draw from this capture — the question is **not decidable** from the existing dumps. The run148/run149
+mip-bias A/B already in this section is the only indirect evidence and it points away from alpha-test cutouts
+(bias 0 made the flip-px band rms worse, not better) but is confounded by the pose difference. One-capture
+diagnostic that would decide it: an extra debug target written only from alpha-tested draws (stencil tag or a
+spare render-target channel set to 1 in `apply_mip_bias`'s alpha-tested branch, cleared 0 otherwise), dumped
+alongside `motion_1`/`depth_1`, so flip pixels can be classified by draw type directly.
+
+*Q2 (motion-compensated shimmer).* `taa_resolve_replay.py options` on the same bbox (`crop px 386 080, flip px
+50 238, stable interior px 81 453`) reports `CLASSIFY ... median strut speed 0.32 px/frame` — the resolve's own
+per-pixel reprojection (dumped motion vectors where routed, else the logged camera rotation `R`/projection `P`)
+already removes almost all of the logged ~0.3-0.6 px/frame drift before blending; residual reprojected motion is
+sub-pixel. Its output is therefore already a motion-compensated series. Measured on it (`dumped-resolve bands on
+flip px`, ground truth, not the offline model): period 2-4/4-8/8-32 rms = **3.71 / 5.53 / 17.81 codes** (`OPTION
+base` block-mean bands 1.50/1.91/7.17). This does not match the 2.31/4.23/11.1 recorded earlier in this section
+for run148 under the same bbox and script; the discrepancy is unresolved (open issue below) and this entry's
+3.71/5.53/17.81 is the number this session actually reproduced with the command below.
+
+A separate, cruder check — full-frame phase-correlation registering each `taa_1` frame to frame 0 with a single
+global 2D translation, then bilinear-warping before computing the same bands — found a cumulative shift of only
+0.049 px by the last frame (vs. 2.15 px on the raw, un-resolved `hdr_1` sequence), i.e. this scene's drift is not
+a pure translation (consistent with the logged per-frame rotation matrix `R`) and a global-translation warp adds
+essentially nothing beyond the resolve's own per-pixel reprojection: post-warp bands on flip px were 3.74/5.43/
+17.45, matching the dumped-resolve ground truth above within noise. Stable-interior px (81 453 px, valid depth in
+every frame and 8 neighbours) under the same warp: 1.60/1.90/6.50 codes — the warp/measurement noise floor.
+
+Compared with the near-static run142 plant (resolved flip-px rms 1.49/2.42, period 8-32 0.31, no drift, Run 44 B
+section A/B above): run148's motion-compensated flip-px shimmer is **larger in every band**, not comparable — the
+fast bands are ~2.5x (3.71 vs 1.49, 5.53 vs 2.42) and the slow band is ~57x (17.81 vs 0.31). The slow-band
+explosion under drift, absent when static, is the dominant new artefact; it survives the resolve's own per-pixel
+motion compensation and is not attributable to un-compensated true motion (residual reprojection speed measured
+0.32 px/frame, sub-pixel).
+
+Commands run this session:
+```sh
+python3 tools/analysis/taa_resolve_replay.py /tmp/x3-bottleX3-run148 355 159 990 767 options
+```
+(plus a private grep/numpy draw-row parser and a phase-correlation warp script, scratchpad-local, not committed).
