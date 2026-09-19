@@ -1,10 +1,10 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "1cc7b79378e227263124fc168fd5b7b70c22ea731b77086c9bfb9d0ac2d18847",
-    "src/renderer/temporal_pass.cpp": "5f6483cc311770a0782dfd07fe04a8ef505beb2b11882d366f33c52edaa10e4b",
+    "src/renderer/temporal_pass.h": "5201399fc5e116f5f62d89ac81220c09300bc85c589a4e232d52d467916a8314",
+    "src/renderer/temporal_pass.cpp": "fc54c1662d49754e56d11c020c5548dd9f8cc1b3ff9ff6043f01fc245a2267dd",
     "src/temporal/resolve.h": "758911becb4c1c7ea29cc0616511022e0bc7dd555b9837f899b5126cfcb3b660",
-    "src/temporal/resolve.hlsl": "163af6d77c9c71c0e67df367db2c695098d5634eb2f1be427e1c1e93065f45be",
+    "src/temporal/resolve.hlsl": "75417bdfcd7eb94c608f8808bab81559f78fceb9a176f691f1e6914ca93fc7b3",
     "src/temporal/resolve_filter.hlsl": "65aedd02762660c77ff6af3530c429edb580ea3ccb52416cd303974ce86d51f6",
     "src/temporal/resolve_snapshot.hlsl": "b7b62bb66523b6e092143fc111a623413cd8d1e9bf7c7ab0afbc83a3f40f126d",
     "src/renderer/temporal_resolve_snapshot_program_inc.h": "decb661f2c75cdfb7960bff7018c364c0f398fbe399a5e5df6a62fb5d7916d69",
@@ -18,12 +18,13 @@
     "src/temporal/resolve_age_filter.hlsl": "5a13f4045d9128eb7c00a22b4a0c2c088a663d99936b54d71f3e68b4601abcdb",
     "src/renderer/temporal_resolve_age_filter_program_inc.h": "1e047b942856e3ec3230279c6e2047ab3c472d696e5c5f5b72f3e1b161f86c35",
     "verification/probe/temporal_flicker_inc.h": "4c52ec625f011cb22a4251aaccb80bd599d0a26850f8b3335ed14911de6a3b86",
-    "verification/probe/temporal_line_inc.h": "75676470bb25f4a24e628d17fc78a19b2efb698dcec801176e933f89a55de469",
-    "verification/probe/temporal_far_inc.h": "d26eb6c361ad1cba8cd441e07577e6e834f198fa58dc93c45854b8463e4ca53d",
+    "verification/probe/temporal_line_inc.h": "51639d8545e00c1424d2b97d68d9bfb268c4d5158279d404ad0af80b0f15ea08",
+    "verification/probe/temporal_far_inc.h": "420e6e5c0fdf66d81344da5265af186340d4ef580fe1888ecfd269c54673dd85",
+    "verification/probe/temporal_thin_region_inc.h": "8347f768f4bcc9aa1d603722f03a5b2a9b66a30bd84e5ef931f20ab1fd8c0165",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
-    "src/renderer/temporal_resolve_far_program_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
-    "src/temporal/line_mask_ps.hlsl": "f00eb622f7a9d5782eb4724624b3c79293ccada25c0558f8aa0c5d3550e45336",
-    "src/renderer/temporal_line_mask_program_inc.h": "1e76b0791887973603bf1bbaa70d07f431dceca00529917455617f5a94729c77",
+    "src/renderer/temporal_resolve_far_program_inc.h": "14748d157103b5d4fa4f56d6a36100eab1b5786dbe09ead54d2562549fd8eaff",
+    "src/temporal/line_mask_ps.hlsl": "8b5f0a8abee4604401807f4e2b78b857dd85d7ca91f3b8657be7e2bc91dac9aa",
+    "src/renderer/temporal_line_mask_program_inc.h": "be6f94dec7a795e7ad98f20510b4330e6b9b1988d8faae69dae3e8d0f4574504",
     "src/temporal/resolve_line.hlsl": "18807f732512dc66460deda4367c560e733160bb4e75263875fdd0c00bb52f31",
     "src/renderer/temporal_resolve_line_program_inc.h": "543713f79f560dd3136a055415640cc3cae61a0e7700036d88974574a7b0476a",
     "src/temporal/resolve_thin_line.hlsl": "ccb52ae55590b7c196966667583f227a3552722080c17c893f2d352f33ba2c9f",
@@ -34,9 +35,9 @@
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "bc45f7faea1fba7898c817243795ddeb70061cf722331367cd500d25839fe4db",
+    "verification/probe/temporal_pass_fixture.cpp": "72b11c5ddcc6fd58e5bf29f60f8cd60324d5fc8c3bf58c1aef7e19fa19e7eac6",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "7920af2b6967411574109e086a4c30681b59ad1fd44f9cc2b27d77395b5f3304"
+    "verification/probe/run_temporal_pass.py": "9dea2ba1388bbe9b1cc4da137c911b9eccf892909a7130eab0e456d664b9474c"
   },
   "game_launched": false,
   "bottle": {
@@ -49,7 +50,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "e35376911fe24931e94b10ba3851db7a1a1c474fc498ca3813d421d1c0eedea2",
+  "executable_sha256": "ca07a01b9612ff43616d924523de72d3b7fb4b2794591b4dd2c45bff312d8ba6",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -283,7 +284,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "d05c1866209b9799065e0562845fb7d2017e605f46a0d8620183d90d8736b969",
+    "report_sha256": "f7f4e24909b7cbe89db8a8cd65cb02a2b39bb9b80a336d6788229a2e628fd2c8",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -350,17 +351,17 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask": {
-        "dwords": 604.0,
-        "instruction_slots": 153.0,
+        "dwords": 1112.0,
+        "instruction_slots": 270.0,
         "device_limit": 512.0,
-        "headroom": 359.0,
+        "headroom": 242.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_far": {
-        "dwords": 2014.0,
-        "instruction_slots": 508.0,
+        "dwords": 1957.0,
+        "instruction_slots": 495.0,
         "device_limit": 512.0,
-        "headroom": 4.0,
+        "headroom": 17.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_line": {
@@ -2064,13 +2065,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.6871",
-        "current_filter_ms": "0.7004",
-        "line_filter_ms": "0.9440",
-        "far_stabiliser_ms": "0.8824",
-        "taps_delta_ms": "0.0133",
-        "line_delta_ms": "0.2569",
-        "far_delta_ms": "0.1954",
+        "plain_ms": "0.6055",
+        "current_filter_ms": "0.6350",
+        "line_filter_ms": "1.0095",
+        "far_stabiliser_ms": "0.7990",
+        "thin_region_ms": "1.3926",
+        "taps_delta_ms": "0.0295",
+        "line_delta_ms": "0.4040",
+        "far_delta_ms": "0.1935",
+        "thin_region_delta_ms": "0.7872",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -2184,22 +2187,6 @@
         "mask_error": "0.000000"
       },
       {
-        "drift": "0.00",
-        "config": "far-weight+soft-0.75",
-        "oracle_error": "0.000244",
-        "age_oracle_error": "0.000000",
-        "near_px": "39936",
-        "near_differs": "0",
-        "ripple_near": "0.011602",
-        "ripple_mid": "0.007913",
-        "ripple_far": "0.001786",
-        "ratio_near": "1.0000",
-        "ratio_mid": "0.6820",
-        "ratio_far": "0.1540",
-        "oracle_ratio_far": "0.1540",
-        "mask_error": "0.000000"
-      },
-      {
         "drift": "0.04",
         "config": "far-base",
         "oracle_error": "0.000122",
@@ -2277,22 +2264,6 @@
         "ratio_mid": "0.6999",
         "ratio_far": "0.1921",
         "oracle_ratio_far": "0.1925",
-        "mask_error": "0.000000"
-      },
-      {
-        "drift": "0.04",
-        "config": "far-weight+soft-0.75",
-        "oracle_error": "0.000244",
-        "age_oracle_error": "0.000000",
-        "near_px": "39936",
-        "near_differs": "0",
-        "ripple_near": "0.014322",
-        "ripple_mid": "0.009969",
-        "ripple_far": "0.002755",
-        "ratio_near": "1.0000",
-        "ratio_mid": "0.6961",
-        "ratio_far": "0.1924",
-        "oracle_ratio_far": "0.1924",
         "mask_error": "0.000000"
       },
       {
@@ -2376,22 +2347,6 @@
         "mask_error": "0.000000"
       },
       {
-        "drift": "0.14",
-        "config": "far-weight+soft-0.75",
-        "oracle_error": "0.000122",
-        "age_oracle_error": "0.000000",
-        "near_px": "39936",
-        "near_differs": "0",
-        "ripple_near": "0.014866",
-        "ripple_mid": "0.012502",
-        "ripple_far": "0.008580",
-        "ratio_near": "1.0000",
-        "ratio_mid": "0.8410",
-        "ratio_far": "0.5772",
-        "oracle_ratio_far": "0.5777",
-        "mask_error": "0.000000"
-      },
-      {
         "drift": "0.30",
         "config": "far-base",
         "oracle_error": "0.000122",
@@ -2470,22 +2425,6 @@
         "ratio_far": "1.0005",
         "oracle_ratio_far": "1.0010",
         "mask_error": "0.000000"
-      },
-      {
-        "drift": "0.30",
-        "config": "far-weight+soft-0.75",
-        "oracle_error": "0.000122",
-        "age_oracle_error": "0.000000",
-        "near_px": "39936",
-        "near_differs": "0",
-        "ripple_near": "0.012146",
-        "ripple_mid": "0.012146",
-        "ripple_far": "0.012146",
-        "ratio_near": "1.0000",
-        "ratio_mid": "1.0000",
-        "ratio_far": "1.0000",
-        "oracle_ratio_far": "1.0011",
-        "mask_error": "0.000000"
       }
     ],
     "filter_effect": [
@@ -2504,6 +2443,198 @@
       {
         "drift": "0.30",
         "far_band_max_difference": "0.039917"
+      }
+    ]
+  },
+  "thin_region": {
+    "cases": [
+      {
+        "drift": "0.00",
+        "config": "thin-base",
+        "oracle_error": "0.001953",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "16.340",
+        "shard_p2p_codes": "99.4",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.00",
+        "config": "thin-region-0.97",
+        "oracle_error": "0.008301",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "1.403",
+        "shard_p2p_codes": "6.2",
+        "rms_ratio": "0.0858",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.00",
+        "config": "thin-region-0.985",
+        "oracle_error": "0.012207",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "0.717",
+        "shard_p2p_codes": "3.1",
+        "rms_ratio": "0.0439",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.00",
+        "config": "thin-region-0.97-relax-0.5",
+        "oracle_error": "0.002930",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "4.997",
+        "shard_p2p_codes": "31.0",
+        "rms_ratio": "0.3058",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.00",
+        "config": "thin-region-0.97-relax-0",
+        "oracle_error": "0.001465",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "6.490",
+        "shard_p2p_codes": "36.5",
+        "rms_ratio": "0.3972",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.12",
+        "config": "thin-base",
+        "oracle_error": "0.002930",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "24.081",
+        "shard_p2p_codes": "131.7",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.12",
+        "config": "thin-region-0.97",
+        "oracle_error": "0.004883",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "14.747",
+        "shard_p2p_codes": "86.2",
+        "rms_ratio": "0.6124",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.12",
+        "config": "thin-region-0.985",
+        "oracle_error": "0.005371",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "13.135",
+        "shard_p2p_codes": "81.8",
+        "rms_ratio": "0.5455",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.12",
+        "config": "thin-region-0.97-relax-0.5",
+        "oracle_error": "0.004883",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "15.980",
+        "shard_p2p_codes": "100.3",
+        "rms_ratio": "0.6636",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.12",
+        "config": "thin-region-0.97-relax-0",
+        "oracle_error": "0.004883",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "17.814",
+        "shard_p2p_codes": "113.2",
+        "rms_ratio": "0.7398",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.30",
+        "config": "thin-base",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "20.933",
+        "shard_p2p_codes": "95.3",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.30",
+        "config": "thin-region-0.97",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "20.933",
+        "shard_p2p_codes": "95.3",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.30",
+        "config": "thin-region-0.985",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "20.933",
+        "shard_p2p_codes": "95.3",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.30",
+        "config": "thin-region-0.97-relax-0.5",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "20.933",
+        "shard_p2p_codes": "95.3",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.30",
+        "config": "thin-region-0.97-relax-0",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "20.933",
+        "shard_p2p_codes": "95.3",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
+      }
+    ],
+    "motion_start": [
+      {
+        "first_frame_difference": "0.338379",
+        "after_24_frames": "0.000244",
+        "background_trail": "0.247559",
+        "base_background_trail": "0.218994"
       }
     ]
   }

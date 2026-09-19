@@ -433,3 +433,151 @@ by projected pitch; needs the draw-index capture of section 6) or render the sce
 creep for a fade to half contrast is x 0.5 in codes by construction, with the filter x 0.25-0.3 of today's. (c) Keep
 `--taa-line-filter` optional; its measured gain stands (creep x 0.46-0.64 moving, static ripple x 0.10 with w 0.97).
 
+## 12. Screen recording against the run175 dump at the same standstill (2026-09-19) [M unless tagged]
+
+Inputs: `screenshots/lattice.mov` (ReplayKit, h264 yuv420p tv-range, 1280x768, 361 frames in 6.44 s on a 120 Hz timebase, frame
+gaps 16.7 ms x 281, 25 ms x 56, 8.3 ms x 17, 33 ms x 6; 11.5 Mbit/s) and `/tmp/x3-bottleX3-run175` (64 frames 7485-7548, **baseline**:
+`taa_current_filter=0`, `taa_history_weight=0.900`, sharpen 0.75, 8-sample Halton jitter; this build has no line-filter option in
+`proxy_options`). Camera translation identical at 7485 and 7548. Scratch: `mov/` (`met.py`, `mot.py`, `lk.py`, `zf.py`, `thick.py`,
+`fringe.py`, `rem*.py`). Output for the user: `build/lattice-compare/` (movie left, dump right, 4x nearest; GIFs and 8-phase strips).
+
+**Scale.** The recording is the window content at 1:1: phase correlation of the movie mean against the dump mean peaks at (0, 0),
+movie = 0.907 x dump + 2.9 codes (tv-range/codec), no resampling.
+
+**The recording shows what we present.** Luma, pixels with 3x3 contrast > 25 codes:
+
+| region (x0 y0 x1 y1) | source | temporal rms | p2p p50 / p90 / p99 / max | px > 20 / > 40 codes |
+|---|---|---|---|---|
+| edge-on orange arm 760 60 900 200 | dump | 15.5 | 15 / 48 / 151 / 158 | 2618 / 948 of 6952 |
+| | movie | 14.7 | 23 / 57 / 153 / 165 | 3815 / 1161 |
+| face-on panels 740 300 1000 440 | dump | 3.3 | 4 / 17 / 29 / 105 | 1414 / 60 of 25828 |
+| | movie | 3.5 | 14 / 23 / 41 / 227 (HUD box) | 4231 / 260 |
+
+Dump variance is 8-periodic to 1.000 (residual 0.01 codes). Movie spectrum on a 120 Hz hold grid: arm 0.64 of the energy in 6-9 Hz
+(peak 7.5 Hz = 60 fps / 8) with harmonics at 14.9 and 22.5 Hz; nothing at other frequencies except < 1.2 Hz codec/HUD drift on the
+panel crops. No beat with the display or recorder. The movie's larger p2p on the panels is codec noise over 361 samples.
+
+**What crawls is not the section-11 lattice box but the near-edge-on arm** (and the other foreshortened arms, p2p map). Sections 10-11
+measured face-on panels (2.6 codes rms) and missed it: there the ripple is small; on the arm hundreds of pixels swing by 100-160 codes
+every cycle. 3819 arm pixels toggle between valid depth (orange panel, raw rgb 0.61 0.41 0.32) and sentinel depth (dark 0.04) across
+the 8 jitter phases, covered in 1..7 of 8 phases; the dark regions are 1 px thick in the median but up to 4 (p90) / 7 px, and the
+raw pattern anti-correlates between successive phases (r = -0.58). **[I]** moire of the foreshortened line lattice against the pixel
+grid (pitch near 1 px), whose fringes jump several pixels for a sub-pixel jitter step; the shard-shaped fringes are the "triangles".
+History is accepted on all these pixels (accept 1.00, disocc 0.00); the variance clip discards it, because a fringe is wider than
+the 3x3 box, so the box holds only the current state. Only 0.22 of the > 80-code pixels are in `line2x`, 0.45 in `thin`.
+
+**Motion.** No translation is measurable in either source: global Lucas-Kanade step 0.03-0.07 px/frame tracking the jitter delta at
+about 10 % (= 1 - w), net movie dy +0.0025 px/frame on the arm; integer-shift correlation of successive presented frames peaks at
+(0, 0) or is incoherent. The pattern is a cyclic 7.5 Hz shuffle of shards along a diagonal arm. "Upward" is perceptual and not
+measured. **[unknown]** (the y jitter of Halton base 3 is a sawtooth, five +0.333 steps and three -0.556 resets per cycle, a
+candidate cause).
+
+**Replay on run175** (`rem*.py` exec the definitions of `taa_resolve_replay.py`; replayed present vs dumped 0.20 / 0.41 codes; last
+24 of 56 frames, so w >= 0.97 rows still contain some convergence transient; "LK" = rms global step px/frame):
+
+| config | arm rms / p99 / px > 40 / LK | panels rms / p99 / px > 40 / LK |
+|---|---|---|
+| installed | 14.8 / 151 / 1159 / 0.069 | 3.25 / 29 / 54 / 0.048 |
+| jitter order randomised per cycle | 14.4 / 151 / 1651 / 0.075 | 4.43 / 45 / 662 / 0.048 (worse) |
+| no RCAS on `line2x` | 14.8 / 151 / 1101 / 0.070 | 3.12 / 28 / 40 / 0.050 |
+| w 0.97 on `line2x` | 14.0 / 151 / 824 / 0.057 | 1.57 / 19 / 7 / 0.023 |
+| w 0.985 on `line2x` | 13.9 / 151 / 805 / 0.054 | 1.38 / 19 / 7 / 0.018 |
+| A = 1 + w 0.97 on `line2x` (run173 options) | 13.9 / 151 / 809 / 0.056 | 1.65 / 19 / 7 / 0.016 |
+| clip off on `thin` (3x3) + w 0.97 on it | 11.1 / 150 / 324 / 0.050 | 1.42 / 16 / 5 / 0.019 |
+| no clip anywhere, w 0.9 (bound) | 5.9 / 41 / 192 / 0.039 | 3.02 / 26 / 17 / 0.046 |
+| `thin` from a 5x5 depth-validity box: clip off + w 0.9 | 5.6 / 55 / 388 / 0.017 | not run |
+| same, 5x5, w 0.97 | 2.9 / 28 / 25 / 0.009 | not run |
+| same, 7x7, w 0.97 | 2.3 / 22 / 6 / 0.007 | not run |
+| same, 9x9, w 0.97 | 2.0 / 21 / 1 / 0.006 | not run |
+
+A 16-sample sequence cannot be replayed from an 8-phase dump. Reordering does not help (it spreads the same energy off the 8-frame
+period and raises p2p). The flown `--taa-line-filter 1,2 --taa-history-weight 0.97` leaves the arm untouched, which explains "looks the same". What removes it at
+standstill is a wider mixed-depth mask (valid and sentinel depth within 5x5 to 7x7) with the clip off and w 0.97 on it, speed-gated
+like the far stabiliser. Not evaluated: the panels crop and other scenes for ghosting/collateral of the wider mask, behaviour under
+motion, and whether the unjittered game shows a static moire on the arm (expected, not checked).
+
+## 13. Implemented, unflown (2026-09-19): `--taa-thin-region W[,RELAX[,LO,HI]]`
+
+Replay tool: `taa_resolve_replay.py <dump> <box> thin` (`GATES=LO:HI,...`, `WS=`, `GAMMAS=`, `GROW=`, `AGE0=`, `GHOST=1`, `SKIP=`);
+mask survey `crawl/tmask.py`. Presented stage; "textured px" = 3-frame x-contrast > 25 codes, last 24 frames (12 of 31 on the
+32-frame captures). All **[M]**.
+
+**Mask.** A plain valid-and-sentinel 5x5 / 7x7 box holds every silhouette (1.000 of plain-silhouette px). Chosen instead:
+a pixel is FRAGMENTED when one of the four 7-tap lines through it (h, v, two diagonals) changes depth class at least twice,
+a class change being the line mask's test between consecutive taps (one valid, the other the sentinel or farther by
+`(1 - q) * 1.1 < 1 - d`, so it also fires in front of distant geometry); the region is the 7x7 around fragmented pixels. A
+straight silhouette crosses each line once: 0 of the fixture's square. On run175's arm the region holds 0.926 of the px with
+p2p > 40 codes on average over the phases (every phase 0.63, any phase 1.000), 0.90 of those > 80; the undilated test 0.47; a
+two-direction requirement 0.61. Frame share: 0.118 (run175), 0.21 (run153 plant), 0.03-0.04 (run153 / run160 / run174 / run142
+station scenes), 0.078 (run148). Of "plain silhouette" px of real frames (3x3-mixed, next to 5x5-eroded geometry, no small
+geometry within 4 px) it still takes 0.30-0.51, because station silhouettes carry detail within 6 px; what protects those is
+the speed gate, not the mask.
+
+**Action, by numbers (run175, arm `760 60 900 200`: installed rms 16.9 / p2p p99 151 / px > 40 827).**
+
+| on the region | arm rms / p99 / px > 40 | panels `740 300 1000 440` |
+|---|---|---|
+| clip off, W 0.97 (exponential, age 64 from the start) | 3.30 / 23 / 6 | 1.52 / 15 / 4 (installed 4.51 / 36 / 51) |
+| clip off, W 0.97, age restarted at 1: cumulative mean n/(n+1) until the cap binds (cap ~ 32) | 3.20 / 24 / 6 | |
+| clip off, W 0.985 (cap 64): steady / from age 1 | 2.66 / 19 / 6 and 2.77 / 24 / 6 | 1.22 / 15 / 4 |
+| clip off, W 0.9375 (cap 16) | 5.27 / 43 / 74 | |
+| clip widened to mean +- 3 sigma, box dropped, W 0.97 | 12.5 / 145 / 211 | |
+| clip off, W 0.985, region grown by 5 instead of 3 | 1.61 / 18 / 0 | |
+
+Clip off is required (gamma 3 leaves 74 % of the ripple; a fringe is wider than any local statistic). The phase-balanced
+accumulation of the blind review is what the age target already does: `min(n / (n + 1), W)` IS the cumulative mean of the
+jitter cycle until n reaches W / (1 - W) (32 frames at 0.97, 64 at 0.985, the age target's limit), then an exponential of that
+length; it measures the same as the exponential at equal cap (3.20 against 3.30), so no separate mode was built. The rest
+(rms about 3) is not blend ripple but the mask toggling with the phase (region present in every phase on 0.63 of the hot px):
+on a phase without the region the clip snaps the pixel back. Growing the region by 5 removes most of it (1.61, px > 40 = 0) for
+0.51 instead of 0.42 of the crop; not taken yet (open issue). An exactly balanced window (equal weights over whole cycles)
+would need a second history and is not needed at these levels.
+
+**Ghosting under motion: the speed gate, and whose speed.** Added presented colour on masked BACKGROUND px against the
+installed resolve (mean / p99 codes / share of px-frames > 8 codes), gradient energy on the region:
+
+| capture (far-px speed) | no gate | gate 0.03-0.25, own speed | gate 0.03-0.25, fastest px within 6 px (chosen) | gate 0.1-0.5, same |
+|---|---|---|---|---|
+| run148 plant, 0.49 px/frame | 2.07 / 23.3 / 0.219, grad x 0.637 | 0.15 / 4.8 / 0.006 | 0.01 / 0.7 / 0.000, grad x 0.979 | |
+| run161 station, 0.84 | -7.04 / 59 / 0.363, grad x 0.623 | -7.13 / 57 / 0.254 | region closed (mask share 0.000) | same |
+| run159 plant, 0.068 | 2.31 / 27.8 / 0.195, grad x 0.729 | | 1.71 / 21.0 / 0.118, grad x 0.792 | 2.29 / 27.3 / 0.189 |
+| run142 station, 0.045 | -0.17 / 13.9 / 0.035, grad x 0.993 | | -0.16 / 10.2 / 0.019, grad x 0.979 | -0.19 / 13.7 / 0.031 |
+| run160 station, 0.087 | | | -0.14 / 7.2 / 0.007, grad x 0.857 | |
+
+A per-pixel gate fails where it matters: the background pixel a moving edge has just uncovered carries the background's
+speed (run161: a 57-code trail with the gate "on"). The gate is therefore closed by the fastest pixel within 6 px, the
+reach of the region itself (the fixture found the 3-px version leaking at popping shards). Gate 0.03-0.25 as the far
+stabiliser's; slow drift (0.04-0.09 px/frame) keeps most of the effect and pays 0.8-0.86 of the region's gradient energy
+at the plant, nothing measurable at the stations. Static collateral: run153 station 5.31 / 57 / 74 -> 3.96 / 50 / 40; panels
+above; neither regresses. Known residual: a body moving BEHIND a static lattice is not seen by the gate (the lattice and
+its gaps are static); its trail through the gaps lasts about 1 / (1 - W) frames, bounded to the region **[I]**.
+
+**Implementation.** `line_mask_ps.hlsl` (270 slots) gained the fragmented test (25 depth taps), the pixel's own speed closure
+(routed motion, else the camera path `c0..c3` at its depth) and separable maxima: three draws when the line filter or the
+thin region is on (tests -> [0], maxima along x -> [1], along y + composition -> [0]; 13 taps each), one draw for the far
+stabiliser alone. Mask: r filter weight, g far gate, b thin-region strength (already speed-gated), a = b scaled to the
+weight target. `resolve_far.hlsl` carries it: `soft = b * c24.x` replaces the 3x3 sentinel soft clip (not compiled in this
+variant; `--taa-thin-clip` is refused beside the far stabiliser or the thin region) and
+`keep += max(g * slow, a) * (min(n / (n + 1), c24.y) - keep)` with `c24.y = max(W_far, W_thin)` and each gate scaled to its own
+target. **`resolve_far` 495 slots** (was 508: the sentinel tracking left), every other resolve program's bytecode unchanged;
+only the mask program and `resolve_far` changed, both bound with these options alone, so option-off images are identical by
+construction (seam cases unchanged: 164 / 140 / 59 checks). Proposed default set once flown: plain + mask program +
+`resolve_far` (far stabiliser + thin region; line filter optional through the same mask); `resolve_age_line` and the other
+line variants stay for the line filter without them. Pass time 1280x768, all geometry (CPU wall, event-query drained):
+plain 0.61 ms, far stabiliser +0.19, line filter +0.40 (three draws now, was +0.18), thin region +0.79.
+Launcher `--taa-thin-region W[,RELAX[,LO,HI]]` (`X3M_TAA_THIN_REGION`; RELAX default 1 = clip off; LO,HI shared with
+`--taa-far-stabiliser`, a differing pair is refused); log fields `thin_region=`, `thin_relax=` on `motion_output_taa`.
+
+**Fixture** (`temporal_thin_region_inc.h`; lattice mode 420 numerical / 19 state): shards 0.8 px at pitch 2.37 over the
+sentinel plus a plain square. Static: shard ripple 16.3 -> 1.40 codes rms (x 0.086, p2p 99 -> 6) at W 0.97, x 0.044 at 0.985,
+x 0.31 with RELAX 0.5, x 0.40 with the weight alone (the clip is the cause); shader = 2-D oracle (0.0083 at 0.97, bound 0.02),
+age exact, published gate = oracle to 0 codes; the square and everything right of x = 20 bit-identical to the plain resolve
+in all four channels for every config and speed (0 of 29 952 px-frames); drifting 0.12 px/frame x 0.61; at 0.30 px/frame the
+whole image bit-identical to the plain resolve; motion starting after 64 static frames: equal to the installed resolve
+within 0.0002 after 24 frames, uncovered background at most 0.029 above it from frame 8 (bound 0.04); refusals, hostile
+c0..c7 / c22 / c24 / s4 / s8 / COLORWRITEENABLE1, failed second mask draw, Reset, mask-allocation fallback.
+
+**Flight.** `--taa-thin-region 0.97` at the run175 standstill, then the same view drifting and turning; judged on the arm's
+shuffle, trails behind the plant's edges when motion starts, and ships crossing behind lattices. If a residual twinkle
+remains at rest: W 0.985, then the wider region (open issue).
+

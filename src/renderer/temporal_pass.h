@@ -98,7 +98,21 @@ struct FrameInputs {
     // of a different A (one Gaussian per frame). farw = 0 pixels are the thin /
     // plain blend bit for bit.
     float far_weight = 0.f, far_filter = 0.f, far_d0 = 0.f, far_inv = 0.f;
-    // Speed gate of far_weight, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
+    // Thin-region stabiliser (docs/architecture/taa-lattice-crawl.md section 13):
+    // where the depth is FRAGMENTED (some 7-tap line through the pixel changes
+    // between geometry and its background at least twice; the 7x7 around such
+    // pixels), and nothing in that 7x7 moves faster than the speed gate below,
+    // the history is pulled only (1 - thin_region_relax) of the way to the
+    // variance clip (1: clip off) and the history weight rises to
+    // min(n / (n + 1), thin_region_weight): the cumulative mean of the jitter
+    // cycle until the cap binds. 0 off, else within [weight, 0.99]. Runs on the
+    // far-stabiliser program (configure_far(), PerPixel motion, the age target),
+    // shares its speed gate, and like it excludes adaptive_weight and
+    // current_filter; with either of the two, thin_clip must be 0 (the program
+    // has no 3x3 sentinel soft clip). Pixels outside the region are the far /
+    // plain blend bit for bit.
+    float thin_region_weight = 0.f, thin_region_relax = 1.f;
+    // Speed gate of far_weight and of the thin region, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
     float far_speed_lo = x3::temporal::kFarSpeedLo, far_speed_hi = x3::temporal::kFarSpeedHi;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0

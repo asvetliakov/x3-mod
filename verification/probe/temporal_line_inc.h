@@ -16,11 +16,25 @@ constexpr float lineDepth=.99f,squareDepth=.98f;
 std::vector<EdgeObject> line_objects(unsigned n){std::vector<EdgeObject> o;const double phase=std::fmod(lineStart+lineDrift*n,linePitch);
     for(double top=phase-linePitch;top<32;top+=linePitch)for(unsigned x=2;x<18;++x){const double t=top+lineSlope*(x-2);if(t>=2&&t+lineThick<=30)o.push_back({double(x),t,double(x+1),t+lineThick,1,lineDepth,0,lineDrift});}
     o.push_back({21,12,29,20,1,squareDepth,0,0});return o;}
-struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigned width=1; float farW=0,farA=0; };
+struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigned width=1; float farW=0,farA=0,thinW=0,relax=1; };
 // Far stabiliser gate of the far cases (temporal_far_inc.h) and the scene hooks the shared oracle uses.
 float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
+float quantise8(double v){return float(std::lround(std::min(std::max(v,0.),1.)*255.))/255.f;} // as the A8R8G8B8 mask stores it
+// Thin-region gate exactly as line_mask_ps.hlsl computes it (clamped addressing): b = (7x7 maximum of FRAGMENTED) * (1 - 13x13 maximum
+// of the 8-bit speed closure); FRAGMENTED = some 7-tap line through the pixel changes depth class at least twice; the closure uses the
+// pixel's own motion: line_velocity of its depth where routed geometry, 0 on the sentinel background of these scenes.
+float depth_clamped(const std::vector<float>& depth,int x,int y){constexpr int S=int(EdgeScene::S);return px(depth,UINT(std::min(std::max(x,0),S-1)),UINT(std::min(std::max(y,0),S-1)));}
+bool depth_class_change(float a,float b){auto valid=[](float d){return d>=0&&d<=1;};auto background=[&](float q,float d){return q<=-.5f||(valid(q)&&(1-q)*1.1f<1-d);};return (valid(a)&&background(b,a))||(valid(b)&&background(a,b));}
+bool fragmented(const std::vector<float>& depth,int x,int y){const int dirs[4][2]={{1,0},{0,1},{1,1},{1,-1}};
+    for(auto& k:dirs){unsigned changes=0;for(int t=-3;t<3;++t)changes+=depth_class_change(depth_clamped(depth,x+t*k[0],y+t*k[1]),depth_clamped(depth,x+(t+1)*k[0],y+(t+1)*k[1]));if(changes>=2)return true;}return false;}
+double line_velocity_default(double nearest);
 double (*line_velocity)(double)=line_velocity_default;
+float thin_region_strength(const std::vector<float>& depth,int x,int y){bool any=false;float closure=0;
+    for(int dy=-6;dy<=6;++dy)for(int dx=-6;dx<=6;++dx){if(std::abs(dx)<=3&&std::abs(dy)<=3)any=any||fragmented(depth,x+dx,y+dy);const float d=depth_clamped(depth,x+dx,y+dy);const double speed=d>=0&&d<=1?line_velocity(d):0;
+        closure=std::max(closure,quantise8((speed-double(farLo))/(double(farHi)-double(farLo))));}
+    return any?1-closure:0;}
+float far_gate_weight_raw(float depth){if(!(depth>=0&&depth<=1))return 0;return std::min(std::max((depth-farD0)*farInv,0.f),1.f);}
 float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float w=std::min(std::max((depth-farD0)*farInv,0.f),1.f);return float(std::lround(w*255.f))/255.f;} // as the A8R8G8B8 mask stores it
 
 FlickerRun line_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,const EdgeBackground& bg,unsigned frames=lineFrames){
@@ -65,10 +79,15 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             const double f2=fy*fy,f3=f2*fy,cr[4]={-.5*fy+f2-.5*f3,1-2.5*f2+1.5*f3,.5*fy+2*f2-1.5*f3,-.5*f2+.5*f3};
             double old=0,weights=0;for(int t=0;t<4;++t)if(cr[t]!=0){old+=cr[t]*m.color[n-1][UINT(by+t-1)*S+x];weights+=cr[t];}
             old/=weights;
-            const double clamped=std::min(std::max(old,lo),hi),soft=sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;old=clamped+soft*(old-clamped);
-            double keep=w;const bool farOn=c.farW>0||c.farA>0;const double farw=farOn?far_gate_weight(centre):0;
+            const bool farOn=c.farW>0||c.farA>0||c.thinW>0;const double strength=c.thinW>0?thin_region_strength(run.depth[n],int(x),int(y)):0; // the far program has no 3x3 sentinel soft clip
+            const double clamped=std::min(std::max(old,lo),hi),soft=farOn?quantise8(strength)*c.relax:sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;old=clamped+soft*(old-clamped);
+            double keep=w;const double farw=farOn?far_gate_weight(centre):0;
             if(farOn){double a=m.age[n-1][UINT(by+(fy>=.5?1:0))*S+x];if(!(a>=1&&a<=64))a=1;
-                if(c.farW>0){keep=w+farw*(1-std::min(std::max((speed-double(farLo))/(double(farHi)-double(farLo)),0.),1.))*(std::min(a/(a+1),double(c.farW))-w);}
+                const float target=std::max(std::max(c.farW,c.thinW),float(w)),span=target-float(w);auto scale=[&](float v){return v>0&&span>0?(v-float(w))/span:0.f;};
+                const float scaleFar=span>0?scale(c.farW):1.f,raw=far_gate_weight_raw(centre); // two mask draws (line filter / thin region) quantise farw twice
+                const double gateFar=c.farW>0?double(c.thinW>0||c.A>0?quantise8(double(quantise8(raw))*scaleFar):quantise8(double(raw)*scaleFar))*(1-std::min(std::max((speed-double(farLo))/(double(farHi)-double(farLo)),0.),1.)):0;
+                const double gateThin=c.thinW>0?quantise8(strength*scale(c.thinW)):0;
+                keep=w+std::max(gateFar,gateThin)*(std::min(a/(a+1),double(target))-w);
                 m.age[n][i]=float(std::min(a+1,64.));}
             if(c.wmax>0){double a=m.age[n-1][UINT(by+(fy>=.5?1:0))*S+x];if(!(a>=1&&a<=64))a=1;const double t=std::min(std::max((speed-.1)/.4,0.),1.);keep=std::min(a/(a+1),c.wmax+t*(w-c.wmax));m.age[n][i]=float(std::min(a+1,64.));}
             const double filterWeight=std::max(c.A>0&&line_mask(run.depth[n],x,y,c.width)?1.:0.,c.farA>0?farw:0.);
@@ -143,19 +162,19 @@ void line_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         check("line timing depth target",d->SetRenderTarget(0,depthSurface.p));check("line timing depth clear",d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));check("line timing restore",d->SetRenderTarget(0,saved.p));check("line timing restore viewport",d->SetViewport(&vp));
         // Four passes, interleaved: plain; the global current filter (the nine exp() taps alone); the line filter (taps + two mask
         // draws + one fetch); the far stabiliser (taps + one mask draw + the age target).
-        namespace r=x3m::renderer;TemporalPass passes[4];const char* labels[4]={"plain","current_filter","line_filter","far_stabiliser"};
-        for(unsigned i=0;i<4;++i){check("line timing initialize",passes[i].initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,i==1?reinterpret_cast<const DWORD*>(r::temporal_resolve_filter_program()):nullptr));
+        namespace r=x3m::renderer;TemporalPass passes[5];const char* labels[5]={"plain","current_filter","line_filter","far_stabiliser","thin_region"};
+        for(unsigned i=0;i<5;++i){check("line timing initialize",passes[i].initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,i==1?reinterpret_cast<const DWORD*>(r::temporal_resolve_filter_program()):nullptr));
             if(i==2){check("line timing configure",passes[i].configure_line_filter());}
-            if(i==3){check("line timing configure far",passes[i].configure_far());}}
+            if(i>=3){check("line timing configure far",passes[i].configure_far());}}
         FrameInputs base{};base.color=color.p;base.current_depth=depth.p;base.width=W;base.height=H;base.epoch=1;base.weight=.9f;std::copy(identity,identity+16,base.clip_to_previous);base.motion_policy=MotionPolicy::KnownCameraOnly;base.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;base.history_allowed=true;base.caller_queries_idle=true;base.caller_scene_open=false;
         Com<IDirect3DTexture9> motion;Com<IDirect3DSurface9> motionSurface;check("line timing motion",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&motion.p,nullptr));check("line timing motion surface",motion->GetSurfaceLevel(0,&motionSurface.p));
         check("line timing motion target",d->SetRenderTarget(0,motionSurface.p));check("line timing motion clear",d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));check("line timing motion restore",d->SetRenderTarget(0,saved.p));check("line timing motion viewport",d->SetViewport(&vp)); // alpha 0: the camera path
-        FrameInputs ins[4]={base,base,base,base};ins[3].motion_policy=MotionPolicy::PerPixel;ins[3].motion=motion.p;ins[1].current_filter=1;ins[2].line_filter=1;ins[3].far_weight=.985f;ins[3].far_filter=1;ins[3].far_d0=-.5f;ins[3].far_inv=1; // depth 0 everywhere: farw = 0.5
-        Output out;double ms[4]{};
-        for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<4;++which){check("line timing warm",passes[which].run(ins[which],&out));drain();}
-        for(unsigned round=0;round<6;++round)for(unsigned step=0;step<4;++step){const unsigned which=(round+step)%4;drain();const auto start=stamp();check("line timing run",passes[which].run(ins[which],&out));drain();ms[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
+        FrameInputs ins[5]={base,base,base,base,base};for(unsigned i=3;i<5;++i){ins[i].motion_policy=MotionPolicy::PerPixel;ins[i].motion=motion.p;}ins[4].thin_region_weight=.97f;ins[1].current_filter=1;ins[2].line_filter=1;ins[3].far_weight=.985f;ins[3].far_filter=1;ins[3].far_d0=-.5f;ins[3].far_inv=1; // depth 0 everywhere: farw = 0.5
+        Output out;double ms[5]{};
+        for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<5;++which){check("line timing warm",passes[which].run(ins[which],&out));drain();}
+        for(unsigned round=0;round<6;++round)for(unsigned step=0;step<5;++step){const unsigned which=(round+step)%5;drain();const auto start=stamp();check("line timing run",passes[which].run(ins[which],&out));drain();ms[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
         // Clear writes depth 0 (R32F from the ARGB clear colour): valid geometry everywhere, no line-like pixel.
-        std::printf("LINE_TIMING width=%u height=%u content=all_geometry rounds=6 plain_ms=%.4f current_filter_ms=%.4f line_filter_ms=%.4f far_stabiliser_ms=%.4f taps_delta_ms=%.4f line_delta_ms=%.4f far_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[0],ms[1],ms[2],ms[3],ms[1]-ms[0],ms[2]-ms[0],ms[3]-ms[0]);(void)labels;
+        std::printf("LINE_TIMING width=%u height=%u content=all_geometry rounds=6 plain_ms=%.4f current_filter_ms=%.4f line_filter_ms=%.4f far_stabiliser_ms=%.4f thin_region_ms=%.4f taps_delta_ms=%.4f line_delta_ms=%.4f far_delta_ms=%.4f thin_region_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[0],ms[1],ms[2],ms[3],ms[4],ms[1]-ms[0],ms[2]-ms[0],ms[3]-ms[0],ms[4]-ms[0]);(void)labels;
         check("line timing restore target",d->SetRenderTarget(0,saved.p));check("line timing restore vp",d->SetViewport(&vp));}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }

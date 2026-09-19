@@ -316,7 +316,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     const bool mask=in.reactive_policy==ReactivePolicy::RequiredMask||supplemental;
     const bool sentinel=in.reactive_policy==ReactivePolicy::DerivedFromDepthSentinel||supplemental;
     const bool draw_copy=in.color_surface&&copy_by_draw_;
-    const bool far_requested=in.far_weight>0||in.far_filter>0;
+    const bool thin_region=in.thin_region_weight>0;
+    const bool far_requested=in.far_weight>0||in.far_filter>0||thin_region; // everything the far program carries
     const bool adaptive=in.adaptive_weight>0,flicker=in.thin_clip>0||adaptive||in.alpha_history;
     bool lined=in.line_filter>0,far_on=far_requested,aged=adaptive||far_on;
     if(!out||!device_||!resolve_||(mask&&!snapshot_)||!quad_vs_||!quad_declaration_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||(draw_copy&&!copy_)||
@@ -330,7 +331,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         !x3::temporal::valid_current_filter(in.current_filter)||(in.current_filter>0&&!resolve_filtered_)||
         !x3::temporal::valid_current_filter(in.line_filter)||(in.line_filter>0&&(in.current_filter>0||(in.line_width!=1&&in.line_width!=2)||!line_filter_available()||(aged&&!far_requested&&!age_line_)))||
         !x3::temporal::valid_far_weight(in.far_weight,in.weight)||!x3::temporal::valid_current_filter(in.far_filter)||!std::isfinite(in.far_d0)||!std::isfinite(in.far_inv)||in.far_inv<0||
-        (far_requested&&(!x3::temporal::valid_far_speed_gate(in.far_speed_lo,in.far_speed_hi)||!far_available()||in.motion_policy!=MotionPolicy::PerPixel||adaptive||in.current_filter>0||(lined&&in.far_filter>0&&in.far_filter!=in.line_filter)||(in.line_width!=1&&in.line_width!=2)))||
+        !x3::temporal::valid_far_weight(in.thin_region_weight,in.weight)||!x3::temporal::valid_thin_clip(in.thin_region_relax)||
+        (far_requested&&(in.thin_clip>0||!x3::temporal::valid_far_speed_gate(in.far_speed_lo,in.far_speed_hi)||!far_available()||in.motion_policy!=MotionPolicy::PerPixel||adaptive||in.current_filter>0||(lined&&in.far_filter>0&&in.far_filter!=in.line_filter)||(in.line_width!=1&&in.line_width!=2)))||
         !x3::temporal::valid_thin_clip(in.thin_clip)||!x3::temporal::valid_adaptive_weight(in.adaptive_weight,in.adaptive_lo,in.adaptive_hi,in.weight)||
         (flicker&&!far_requested&&!flicker_available())||(adaptive&&(!(in.thin_clip>0)||!age_available()))||(in.alpha_history&&!in.color))return fail(E_INVALIDARG);
     for(UINT i=0;i<2;++i){
@@ -365,9 +367,15 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     constants.luminance[3]=lined?in.line_filter:far_on?in.far_filter:0.f; // A of the masked filter: line-filter / far variants only
     float flicker_constants[4]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);
     // Far variant: c24.yzw = W_FAR (the base weight when that component is off; its gate channel is 0 then), speed gate far_speed_lo .. far_speed_hi px/frame.
-    if(far_on){flicker_constants[1]=in.far_weight>0?in.far_weight:in.weight;flicker_constants[2]=in.far_speed_lo;flicker_constants[3]=1.f/(in.far_speed_hi-in.far_speed_lo);}
-    const float far_constants[4]={in.far_d0,far_on?in.far_inv:0.f,far_on&&in.far_filter>0?1.f:0.f,far_on&&in.far_weight>0?1.f:0.f};
+    // c24.y is the larger of the two weight targets; each gate channel of the mask is scaled to its own target.
+    const float weight_target=std::max(std::max(in.far_weight,in.thin_region_weight),in.weight),weight_span=weight_target-in.weight;
+    auto weight_scale=[&](float w){return w>0&&weight_span>0?(w-in.weight)/weight_span:0.f;};
+    if(far_on){flicker_constants[0]=thin_region?in.thin_region_relax:0.f;flicker_constants[1]=weight_target;flicker_constants[2]=in.far_speed_lo;flicker_constants[3]=1.f/(in.far_speed_hi-in.far_speed_lo);}
+    const float far_constants[4]={in.far_d0,far_on?in.far_inv:0.f,far_on&&in.far_filter>0?1.f:0.f,far_on?(in.far_weight>0&&!(weight_span>0)?1.f:weight_scale(in.far_weight)):0.f};
+    const bool thin_on=far_on&&thin_region;
+    const float thin_constants[4]={thin_on?weight_scale(in.thin_region_weight):0.f,thin_on?1.f:0.f,in.far_speed_lo,far_on?1.f/(in.far_speed_hi-in.far_speed_lo):0.f};
     const bool filtered=in.current_filter>0;
+    UINT final_mask=1; // which owned mask target the resolve reads
     const bool thin_bound=flicker&&thin_; // after a mask fallback of a far run the thin variants may not exist: plain then
     IDirect3DPixelShader9* const program=far_on?far_:lined?(aged?age_line_:flicker?thin_line_:line_):aged?(filtered?age_filtered_:age_):thin_bound?(filtered?thin_filtered_:thin_):(filtered?resolve_filtered_:resolve_);
     const bool used=history_.valid&&in.weight>0;
@@ -442,21 +450,28 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // the mask program's mode; the resolve's c7 is uploaded again below.
     if(SUCCEEDED(hr)&&(lined||far_on)){
         const float resolve_policy=constants.options[3];
-        // Line filter: line-like + farw, then the dilation; far stabiliser alone: one draw (mode 2) into the second target.
-        for(UINT pass=lined?0:1;pass<2&&SUCCEEDED(hr);++pass){
-            constants.options[2]=lined?float(pass):2.f;constants.options[3]=lined?float(in.line_width):0.f;
-            if(step(call<SetTextureFn>(SetTexture)(d,1,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,line_mask_surfaces_[pass]))&&
+        // Line filter / thin region: the per-pixel tests, then the dilations; far stabiliser alone: one draw (mode 2) into the second target.
+        const bool two_pass=lined||thin_on;
+        // two_pass: tests -> [0], maxima along x -> [1], along y and composition -> [0]; far alone: mode 2 -> [1].
+        const UINT draws=two_pass?3:1;final_mask=two_pass?0:1;
+        for(UINT pass=0;pass<draws&&SUCCEEDED(hr);++pass){
+            const UINT target=two_pass?(pass==1?1:0):1;IDirect3DTexture9* const source=pass==0?depths_[next]:line_masks_[pass==1?0:1];
+            constants.options[2]=two_pass?(pass==0?0.f:pass==1?1.f:3.f):2.f;constants.options[3]=lined?float(in.line_width):0.f;
+            if(step(call<SetTextureFn>(SetTexture)(d,1,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,line_mask_surfaces_[target]))&&
                step(call<SetPsFn>(SetPixelShader)(d,line_mask_))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],4))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,4,constants.size_jitter,1))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,5,far_constants,1))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,6,thin_constants,1))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1))&&
-               step(call<SetTextureFn>(SetTexture)(d,1,pass&&lined?line_masks_[0]:depths_[next])))hr=quad(in.width,in.height);
+               step(call<SetTextureFn>(SetTexture)(d,4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
+               step(call<SetTextureFn>(SetTexture)(d,1,source)))hr=quad(in.width,in.height);
         }
         constants.options[2]=0;constants.options[3]=resolve_policy;
         if(SUCCEEDED(hr)&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MINFILTER,D3DTEXF_POINT))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAGFILTER,D3DTEXF_POINT))&&
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MIPFILTER,D3DTEXF_NONE))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP))&&
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_SRGBTEXTURE,FALSE))&&
-           step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAXMIPLEVEL,0)))hr=call<SetTextureFn>(SetTexture)(d,8,line_masks_[1]);
+           step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAXMIPLEVEL,0)))hr=call<SetTextureFn>(SetTexture)(d,8,line_masks_[final_mask]);
     }
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,program))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
@@ -533,6 +548,6 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     current_=next;reactive_policy_=in.reactive_policy;
     if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();
     diagnostics_.history_valid=history_.valid;++diagnostics_.completed_frames;++generation_;
-    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result,copy_result,aged?ages_[current_]:nullptr,lined||far_on?line_masks_[1]:nullptr};return S_OK;
+    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result,copy_result,aged?ages_[current_]:nullptr,lined||far_on?line_masks_[final_mask]:nullptr};return S_OK;
 }
 } // namespace x3m::renderer

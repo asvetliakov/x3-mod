@@ -68,7 +68,7 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         ++numeric_checks;require(refused,"invalid projection or footprints: no gate (d0 = inv = 0)");}
     farD0=.9995f;farInv=1.f/(.9999f-.9995f);
     const LineConfig base{"far-base",false,0,0,0},weight{"far-weight-0.985",false,0,0,0,1,.985f,0},filter{"far-filter-A1",false,0,0,0,1,0,1},both{"far-weight+filter",false,0,0,0,1,.985f,1},
-        lined{"far-weight+filter+line-A1",true,1,0,0,1,.985f,1},soft{"far-weight+soft-0.75",false,0,.75f,0,1,.985f,0};
+        lined{"far-weight+filter+line-A1",true,1,0,0,1,.985f,1};
     // ---- validation and refusals, hostile state, failed draw, Reset ----
     {s.render(far_objects(0),EdgeBackground{.035f,farBandDepth[0],1},0,0);Output out;const FlickerConfig none{"far-validation",0,0,.1f,.5f,false,false,.9f};
         TemporalPass bare;check("far bare initialize",bare.initialize(d,nullptr,resolver));auto in=flicker_inputs(s,none,0,0,false);in.caller_scene_open=false;in.far_weight=.985f;in.far_d0=farD0;in.far_inv=farInv;
@@ -97,7 +97,7 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     // Speed ramp of the far weight (default gate 0.03 .. 0.25 px/frame): 0 and 0.04 (t = 0 / 0.045), 0.14 (t = 0.5), 0.30 (past HI: the base weight).
     double rampRatio[4]{};unsigned rampIndex=0;
     for(double drift:{0.,.04,.14,.3}){farDrift=drift;const auto baseRun=far_sequence(s,resolver,base,farFrames);const double baseRipple[3]={far_ripple(baseRun,0),far_ripple(baseRun,1),far_ripple(baseRun,2)};
-        for(const LineConfig* c:{&base,&weight,&filter,&both,&lined,&soft}){const auto run=c==&base?baseRun:far_sequence(s,resolver,*c,farFrames);const auto model=line_model(run,*c);double oracle=0,ageOracle=0;unsigned nearDiffers=0,nearPixels=0;
+        for(const LineConfig* c:{&base,&weight,&filter,&both,&lined}){const auto run=c==&base?baseRun:far_sequence(s,resolver,*c,farFrames);const auto model=line_model(run,*c);double oracle=0,ageOracle=0;unsigned nearDiffers=0,nearPixels=0;
             for(unsigned n=0;n<farFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
                 if(!run.age.empty())ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));
                 if(x<9&&c->A<=0){++nearPixels;nearDiffers+=std::memcmp(&run.output[n][(y*S+x)*4],&baseRun.output[n][(y*S+x)*4],4*sizeof(float))!=0;}}

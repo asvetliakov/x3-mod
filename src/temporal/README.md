@@ -246,7 +246,9 @@ R32F age) and `COLOR1` (next age); the plain programs read none of them. The lin
 A8R8G8B8 line mask `TemporalPass` draws first with `line_mask_ps.hlsl` (`s1` input, `c4.xy`, `c7.z` pass, `c7.w` width). The far
 stabiliser (`resolve_far.hlsl`; `docs/architecture/taa-distant-line-fade.md` section 9) is the age variant with that mask's
 `r` (filter weight) and `g` (far history-weight gate); the mask program takes the gate in `c5` (d0, inv, filter on, weight on)
-and `c24.yzw` become W_FAR and the 0.5-2 px/frame speed gate. Ordinary resolve uses zero;
+and `c24.yzw` become the weight target and the LO..HI speed gate. The thin region (`taa-lattice-crawl.md` section 13) adds
+the mask's `b` (strength, speed-gated in the mask program: `c6`, `s4` motion, `c0..c3`) and `a`, and `c24.x` = clip relaxation;
+this variant compiles no 3x3 sentinel soft clip. Ordinary resolve uses zero;
 `prepare` initializes the mode and reserved component to zero. Runtime code must
 not use snapshot mode as a color resolve. `TemporalPass` uses this third GPU draw
 only under `ReactivePolicy::RequiredMask` and owns the resulting ping-pong masks.

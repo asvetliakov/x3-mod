@@ -139,6 +139,25 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn('--taa-far-stabiliser requires --taa', error)
 
+    def test_thin_region_is_absent_unless_given(self):
+        # --taa-thin-region W[,RELAX[,LO,HI]] (docs/architecture/taa-lattice-crawl.md section 13).
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertNotIn('X3M_TAA_THIN_REGION', self.env(directory, *TAA, inherited={'X3M_TAA_THIN_REGION': '0.97'}))
+            for given, forwarded in (('0.97', '0.97,1'), ('0.985,0.5', '0.985,0.5'), ('0.97,1,0.05,0.5', '0.97,1,0.05,0.5')):
+                self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', given)['X3M_TAA_THIN_REGION'], forwarded)
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985')['X3M_TAA_THIN_REGION'], '0.97,1')
+            for value in ('0.8', '0.995', 'nan', '0.97,2', '0.97,1,0.5', '0.97,1,0.5,0.5', 'x', '0.97,1,0.03,0.25,1'):
+                code, _, error = self.launch(directory, *TAA, '--taa-thin-region', value)
+                self.assertEqual(code, 2, value)
+                self.assertIn('--taa-thin-region', error)
+            for extra in (('--taa-thin-clip', '0.75'), ('--taa-thin-clip', '0.75', '--taa-adaptive-weight', '0.97'), ('--taa-current-filter', '1'), ('--taa-far-stabiliser', '0.985,0,80,130,0.5,2')):
+                code, _, error = self.launch(directory, *TAA, '--taa-thin-region', '0.97,1,0.03,0.25', *extra)
+                self.assertEqual(code, 2, extra)
+                self.assertIn('--taa-thin-region', error)
+            code, _, error = self.launch(directory, '--motion-output', '--taa-thin-region', '0.97')
+            self.assertEqual(code, 2)
+            self.assertIn('--taa-thin-region requires --taa', error)
+
     def test_taa_debug_accepts_32_capture_frames(self):
         # Run 139: the resolved-frame spectrum needs more than one jitter period.
         with tempfile.TemporaryDirectory() as directory:

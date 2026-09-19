@@ -80,9 +80,16 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // farw for the history weight (0 when that component is off). The current
 // sample is lerp(point, filtered, r) and the history weight
 // lerp(w, min(n / (n + 1), c24.y), g * (1 - saturate((speed - c24.z) * c24.w)));
-// c24.yzw = W_FAR, 0.5, 1 / 1.5 here (one gate: the adaptive weight's own LO /
+// c24.yzw = the weight target, speed LO, 1 / (HI - LO) here (one gate: the adaptive weight's own LO /
 // HI gate is not compiled and the two options exclude each other). r = g = 0
 // is the thin / plain blend exactly: x + 0 * (y - x) with finite y.
+// Thin-region gate (taa-lattice-crawl.md section 13), same mask: b = strength of
+// the fragmented-depth region around this pixel, already closed by the fastest
+// pixel of its 7x7; a = b scaled to the weight target. The history is pulled only
+// (1 - b * c24.x) of the way to the clip box (c24.x = 1: clip off there) and the
+// history weight is lerp(w, min(n / (n + 1), c24.y), max(g * slow, a)). The 3x3
+// sentinel soft clip of the thin variants is not compiled here (its S shares
+// c24.x); b = a = 0 is the clamp and the far blend exactly.
 #ifdef X3M_FAR_STABILIZE
 #define X3M_AGE_WEIGHT 1
 #define X3M_LINE_FILTER 1
@@ -234,7 +241,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // "silhouette", corner pixels).
     float2 dilate = 0;
     float nearest = depth;
-#ifdef X3M_THIN_CLIP
+#if defined(X3M_THIN_CLIP) && !defined(X3M_FAR_STABILIZE)
+#define X3M_SENTINEL_SOFT_CLIP 1
     // thin: the 3x3 (centre included) holds both a valid depth and the sentinel.
     bool sawSentinel = farPlane, sawValid = !farPlane;
 #endif
@@ -243,7 +251,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             if (kx != 0 || ky != 0) {
                 float neighbor = fetch(currentDepth, uv + float2(kx, ky) * sizeJitter.xy).r;
                 if (validDepth(neighbor) && neighbor < nearest) { nearest = neighbor; dilate = float2(kx, ky); }
-#ifdef X3M_THIN_CLIP
+#ifdef X3M_SENTINEL_SOFT_CLIP
                 if (validDepth(neighbor)) sawValid = true;
                 if (neighbor <= -0.5 && neighbor >= -1e30) sawSentinel = true;
 #endif
@@ -416,7 +424,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Screen speed in px/frame: the history lookup against this pixel (both
     // carry the current jitter). S = 0 or thin = 0 is the clamp exactly.
     float speed = length((previousUV - uv) / sizeJitter.xy);
+#ifdef X3M_FAR_STABILIZE
+    float4 stabilise = fetch(lineMask, uv);
+    float soft = stabilise.b * flicker.x;
+#else
     float soft = sawValid && sawSentinel ? flicker.x * (1 - saturate((speed - 2) * 0.5)) : 0;
+#endif
     old = lerp(clamp(old, low, high), old, soft);
 #else
     old = clamp(old, low, high);
@@ -424,7 +437,6 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #ifdef X3M_CURRENT_FILTER
     // The centre sample is finite here, so filterTotal >= exp(-A * 0.5) > 0.
 #ifdef X3M_FAR_STABILIZE
-    float2 stabilise = fetch(lineMask, uv).rg;
     weighted += stabilise.r * (filtered / filterTotal - weighted);
 #elif defined(X3M_LINE_FILTER)
     if (fetch(lineMask, uv).r > 0.5) weighted = filtered / filterTotal;
@@ -439,7 +451,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float age = fetch(previousAge, tap + float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0) * sizeJitter.xy).r;
     age = age >= 1 && age <= 64 ? age : 1;
 #ifdef X3M_FAR_STABILIZE
-    keep += stabilise.g * (1 - saturate((speed - flicker.z) * flicker.w)) * (min(age / (age + 1), flicker.y) - keep);
+    keep += max(stabilise.g * (1 - saturate((speed - flicker.z) * flicker.w)), stabilise.a) * (min(age / (age + 1), flicker.y) - keep);
 #else
     keep = min(age / (age + 1), lerp(flicker.y, history.z, saturate((speed - flicker.z) * flicker.w)));
 #endif

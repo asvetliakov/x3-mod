@@ -26,10 +26,10 @@ CHECK embedded_age within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age_filter dwords=1998 instruction_slots=506 device_limit=512 headroom=6 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_filter within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask dwords=604 instruction_slots=153 device_limit=512 headroom=359 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask dwords=1112 instruction_slots=270 device_limit=512 headroom=242 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far dwords=2014 instruction_slots=508 device_limit=512 headroom=4 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_far dwords=1957 instruction_slots=495 device_limit=512 headroom=17 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line dwords=1760 instruction_slots=446 device_limit=512 headroom=66 within_guaranteed_512=1
@@ -2133,7 +2133,7 @@ CHECK line mask never holds on the square's silhouette PASS
 CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
 CHECK line mask covers the lattice region PASS
 CHECK line filter lowers the roping at a bounded line-peak cost PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6871 current_filter_ms=0.7004 line_filter_ms=0.9440 far_stabiliser_ms=0.8824 taps_delta_ms=0.0133 line_delta_ms=0.2569 far_delta_ms=0.1954 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6055 current_filter_ms=0.6350 line_filter_ms=1.0095 far_stabiliser_ms=0.7990 thin_region_ms=1.3926 taps_delta_ms=0.0295 line_delta_ms=0.4040 far_delta_ms=0.1935 thin_region_delta_ms=0.7872 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -2208,14 +2208,6 @@ SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0
 SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=0.153473614 expected=0.154046188 tolerance=0.030000000 PASS
 CHECK static far ripple <= 0.25 x base; the mid band lies between PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-FAR_STABILISER drift=0.00 config=far-weight+soft-0.75 oracle_error=0.000244 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.011602 ripple_mid=0.007913 ripple_far=0.001786 ratio_near=1.0000 ratio_mid=0.6820 ratio_far=0.1540 oracle_ratio_far=0.1540 mask_error=0.000000
-SAMPLE far far-weight+soft-0.75: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000244141 expected=0.000000000 tolerance=0.040000038 PASS
-SAMPLE far far-weight+soft-0.75: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE far far-weight+soft-0.75: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-SAMPLE far far-weight+soft-0.75: far-band ripple ratio as the oracle's actual=0.153974616 expected=0.153974616 tolerance=0.030000000 PASS
-CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 FAR_STABILISER drift=0.04 config=far-base oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.014322 ripple_far=0.014322 ratio_near=1.0000 ratio_mid=1.0000 ratio_far=1.0000 oracle_ratio_far=1.0011 mask_error=0.000000
 SAMPLE far far-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.006000000 PASS
@@ -2253,14 +2245,6 @@ SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within t
 SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=0.192114186 expected=0.192491070 tolerance=0.030000000 PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-FAR_STABILISER drift=0.04 config=far-weight+soft-0.75 oracle_error=0.000244 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.009969 ripple_far=0.002755 ratio_near=1.0000 ratio_mid=0.6961 ratio_far=0.1924 oracle_ratio_far=0.1924 mask_error=0.000000
-SAMPLE far far-weight+soft-0.75: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000244141 expected=0.000000000 tolerance=0.040000038 PASS
-SAMPLE far far-weight+soft-0.75: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE far far-weight+soft-0.75: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-SAMPLE far far-weight+soft-0.75: far-band ripple ratio as the oracle's actual=0.192384770 expected=0.192384770 tolerance=0.030000000 PASS
-CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 FAR_STABILISER drift=0.14 config=far-base oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014866 ripple_mid=0.014866 ripple_far=0.014866 ratio_near=1.0000 ratio_mid=1.0000 ratio_far=1.0000 oracle_ratio_far=1.0011 mask_error=0.000000
 SAMPLE far far-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.006000000 PASS
@@ -2298,14 +2282,6 @@ SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within t
 SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=0.576820307 expected=0.577672185 tolerance=0.030000000 PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-FAR_STABILISER drift=0.14 config=far-weight+soft-0.75 oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014866 ripple_mid=0.012502 ripple_far=0.008580 ratio_near=1.0000 ratio_mid=0.8410 ratio_far=0.5772 oracle_ratio_far=0.5777 mask_error=0.000000
-SAMPLE far far-weight+soft-0.75: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
-SAMPLE far far-weight+soft-0.75: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE far far-weight+soft-0.75: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-SAMPLE far far-weight+soft-0.75: far-band ripple ratio as the oracle's actual=0.577154309 expected=0.577726882 tolerance=0.030000000 PASS
-CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 FAR_STABILISER drift=0.30 config=far-base oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.012146 ripple_mid=0.012146 ripple_far=0.012146 ratio_near=1.0000 ratio_mid=1.0000 ratio_far=1.0000 oracle_ratio_far=1.0011 mask_error=0.000000
 SAMPLE far far-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.006000000 PASS
@@ -2344,14 +2320,6 @@ SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within t
 SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=1.000468599 expected=1.001011262 tolerance=0.030000000 PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-FAR_STABILISER drift=0.30 config=far-weight+soft-0.75 oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.012146 ripple_mid=0.012146 ripple_far=0.012146 ratio_near=1.0000 ratio_mid=1.0000 ratio_far=1.0000 oracle_ratio_far=1.0011 mask_error=0.000000
-SAMPLE far far-weight+soft-0.75: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
-SAMPLE far far-weight+soft-0.75: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE far far-weight+soft-0.75: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-SAMPLE far far-weight+soft-0.75: far-band ripple ratio as the oracle's actual=1.000000000 expected=1.001145147 tolerance=0.030000000 PASS
-CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
 FAR_SPEED_RAMP lo=0.030 hi=0.250 ratio_v0=0.1540 ratio_v0.04=0.1924 ratio_v0.14=0.5772 ratio_v0.30=1.0000
 CHECK far weight falls continuously with the screen speed: ripple ratio monotone from W_FAR to the base weight PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
@@ -2375,4 +2343,135 @@ CHECK mask failure is sticky within the session and re-armed once by a Reset PAS
 CHECK mask creation fault reached PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK mask-target creation failure under the line filter: plain resolve, history kept PASS
-RESULT PASS numerical=377 state_restorations=17 lattice=1
+FAR_BASE numerical=357 state_restorations=17
+THIN_REGION_CASES
+CHECK thin region without configure_far is refused PASS
+CHECK thin-region weight outside {0} U [weight, 0.99] is refused PASS
+CHECK thin-region weight outside {0} U [weight, 0.99] is refused PASS
+CHECK thin-region weight outside {0} U [weight, 0.99] is refused PASS
+CHECK thin-region weight outside {0} U [weight, 0.99] is refused PASS
+CHECK thin-region relax outside [0, 1] is refused PASS
+CHECK thin-region relax outside [0, 1] is refused PASS
+CHECK thin-region relax outside [0, 1] is refused PASS
+CHECK thin region beside the 3x3 thin clip is refused (the program has no sentinel soft clip) PASS
+CHECK far stabiliser beside the 3x3 thin clip is refused PASS
+CHECK thin region beside the adaptive weight is refused PASS
+CHECK thin region without per-pixel motion is refused PASS
+CHECK thin-region run publishes the age target and the mask PASS
+CHECK thin-region run restores c0..c7, c22, c24, samplers 4 and 8, RT1 and COLORWRITEENABLE1 PASS
+CHECK failed second mask draw publishes nothing PASS
+CHECK after a failed run the thin-region resolve restarts without history PASS
+CHECK Reset protocol recreates the masks and restarts the history PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.00 config=thin-base oracle_error=0.001953 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=16.340 shard_p2p_codes=99.4 rms_ratio=1.0000 square_px=29952 square_differs=0
+SAMPLE thin region thin-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.00 config=thin-region-0.97 oracle_error=0.008301 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=1.403 shard_p2p_codes=6.2 rms_ratio=0.0858 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97: shader matches the 2-D CPU oracle within the FP16 bound actual=0.008300781 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK static shards: ripple <= 0.35 x and peak-to-peak <= 0.5 x the installed resolve PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.00 config=thin-region-0.985 oracle_error=0.012207 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=0.717 shard_p2p_codes=3.1 rms_ratio=0.0439 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.985: shader matches the 2-D CPU oracle within the FP16 bound actual=0.012207031 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE thin region thin-region-0.985: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.00 config=thin-region-0.97-relax-0.5 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=4.997 shard_p2p_codes=31.0 rms_ratio=0.3058 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-relax-0.5: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-relax-0.5: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-relax-0.5: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.00 config=thin-region-0.97-relax-0 oracle_error=0.001465 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=6.490 shard_p2p_codes=36.5 rms_ratio=0.3972 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-relax-0: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001464844 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-relax-0: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-relax-0: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK the weight without the clip relaxation leaves more ripple (the clip is the cause) PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.12 config=thin-base oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=24.081 shard_p2p_codes=131.7 rms_ratio=1.0000 square_px=29952 square_differs=0
+SAMPLE thin region thin-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.12 config=thin-region-0.97 oracle_error=0.004883 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=14.747 shard_p2p_codes=86.2 rms_ratio=0.6124 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97: shader matches the 2-D CPU oracle within the FP16 bound actual=0.004882812 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.12 config=thin-region-0.985 oracle_error=0.005371 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=13.135 shard_p2p_codes=81.8 rms_ratio=0.5455 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.985: shader matches the 2-D CPU oracle within the FP16 bound actual=0.005371094 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE thin region thin-region-0.985: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.12 config=thin-region-0.97-relax-0.5 oracle_error=0.004883 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=15.980 shard_p2p_codes=100.3 rms_ratio=0.6636 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-relax-0.5: shader matches the 2-D CPU oracle within the FP16 bound actual=0.004882812 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-relax-0.5: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-relax-0.5: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.12 config=thin-region-0.97-relax-0 oracle_error=0.004883 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=17.814 shard_p2p_codes=113.2 rms_ratio=0.7398 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-relax-0: shader matches the 2-D CPU oracle within the FP16 bound actual=0.004882812 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-relax-0: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-relax-0: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.30 config=thin-base oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.933 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
+SAMPLE thin region thin-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.30 config=thin-region-0.97 oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.933 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK past the speed gate the thin-region run is the plain resolve bit for bit, every pixel PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.30 config=thin-region-0.985 oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.933 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.985: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.040000038 PASS
+SAMPLE thin region thin-region-0.985: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK past the speed gate the thin-region run is the plain resolve bit for bit, every pixel PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.30 config=thin-region-0.97-relax-0.5 oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.933 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-relax-0.5: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-relax-0.5: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-relax-0.5: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK past the speed gate the thin-region run is the plain resolve bit for bit, every pixel PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.30 config=thin-region-0.97-relax-0 oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.933 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-relax-0: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-relax-0: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-relax-0: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK past the speed gate the thin-region run is the plain resolve bit for bit, every pixel PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_MOTION_START first_frame_difference=0.338379 after_24_frames=0.000244 background_trail=0.247559 base_background_trail=0.218994
+SAMPLE thin region: 24 frames after motion starts the output is the installed resolve's actual=0.000244141 expected=0.000000000 tolerance=0.007843137 PASS
+SAMPLE thin region: from 8 frames after motion starts, uncovered background carries at most 0.04 more shard colour than under the installed resolve (ghost bound; 0 after 24 frames above) actual=0.028564453 expected=0.000000000 tolerance=0.040000000 PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK mask-target creation failure under the thin region: plain resolve, history kept PASS
+RESULT PASS numerical=420 state_restorations=19 lattice=1
