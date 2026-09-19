@@ -19,7 +19,9 @@ Effects share shaders across profile directories and material variants; one hash
 can have several candidate labels. See the full archive sweep for purpose and
 coverage details.
 
-Selected `addon/01.cat` `shader/3_0/` fingerprints:
+Selected `addon/01.cat` `shader/3_0/` fingerprints: The z_only rows `4b63594a775cbde0` and
+`d2e63b1e5b0e24df` are the `z_only_0000.fb` / `z_only_0001.fb` copies in base `01.cat`
+(same code, older compiler string).
 
 | Effect | Stage/model | Bytes | FNV-1a 64 |
 |---|---|---:|---|
@@ -32,6 +34,8 @@ Selected `addon/01.cat` `shader/3_0/` fingerprints:
 | z_only | VS 1.1 | 356 | `c78b4c68a87fce74` |
 | z_only | PS 1.1 | 180 | `652a7c5d1e9909a0` |
 | z_only | VS 1.1 | 380 | `803ebfd17f79e413` |
+| z_only | VS 1.1 | 356 | `4b63594a775cbde0` |
+| z_only | VS 1.1 | 380 | `d2e63b1e5b0e24df` |
 | bloom | PS 3.0 | 1100 | `b40d09effa812ec8` |
 | bloom | PS 3.0 | 7532 | `241c3fa33270f58e` |
 | bloom | PS 3.0 | 7532 | `f3172baa8dd19a40` |

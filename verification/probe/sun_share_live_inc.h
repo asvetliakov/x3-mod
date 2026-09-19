@@ -56,6 +56,37 @@ void run_sun_lane(const char* bootstrap_vertex) {
     const bool lane_off=!std::strcmp(mode,"xt_state_lane_off"),cutout_pair=!std::strcmp(mode,"cutout_pair"),cutout_bias=!std::strcmp(mode,"cutout_pair_bias");
     const bool xt_state=!std::strcmp(mode,"xt_state")||lane_off,effects=!std::strcmp(mode,"effects");
     if(cutout_bias)require(mip_bias!=0,"cutout_pair_bias needs the configured nonzero mip bias");
+    // unregistered (run 174, Argon Prime: the SM2 adeffects pair): an authored
+    // vs_2_0/ps_2_0 pair outside the profile registry draws on frame 2 after
+    // the receiver as an actual depth writer in a hostile state (alpha test on,
+    // RT0 mask 7): the small triangle B nearer than the receiver (wins), then
+    // the full-screen triangle behind it (loses everywhere), then an authored
+    // vs_3_0/ps_3_0 pair, equally unknown, on B moved to the upper right (the
+    // stamp follows the shader-model family of any future program). The route cannot
+    // host it; the lane stamps share -1 over exactly the pixels it won and the
+    // frame stays available. unregistered_fault: the stamp refused before its
+    // first write (X3M_FIXTURE_SUN_LANE_FAULT=stamp): the draws veto as before.
+    // unregistered_mid: the fault after the fourth issued state write (stamp_mid): everything restored, the draws veto.
+    const bool stamp_mid=!std::strcmp(mode,"unregistered_mid");
+    const bool stamp_fault=!std::strcmp(mode,"unregistered_fault")||stamp_mid,unregistered=!std::strcmp(mode,"unregistered")||stamp_fault;
+    Com<IDirect3DVertexShader9> sm2_vs,sm3_vs;Com<IDirect3DPixelShader9> sm2_ps,sm3_ps;
+    if(unregistered){
+        // vs_2_0: def c200,0,0,0,1; dcl_position v0; r0.xyz=v0; r0.w=c200.w; oPos=rows(c24..c27)*r0
+        const DWORD v[]={0xfffe0200u,0x05000051u,0xa00f00c8u,0,0,0,0x3f800000u,0x0200001fu,0x80000000u,0x900f0000u,
+            0x02000001u,0x80070000u,0x90e40000u,0x02000001u,0x80080000u,0xa0ff00c8u,
+            0x03000009u,0xc0010000u,0x80e40000u,0xa0e40018u,0x03000009u,0xc0020000u,0x80e40000u,0xa0e40019u,
+            0x03000009u,0xc0040000u,0x80e40000u,0xa0e4001au,0x03000009u,0xc0080000u,0x80e40000u,0xa0e4001bu,0x0000ffffu};
+        // ps_2_0: def c0,3,3,3,1; mov oC0,c0
+        const DWORD p[]={0xffff0200u,0x05000051u,0xa00f0000u,0x40400000u,0x40400000u,0x40400000u,0x3f800000u,0x02000001u,0x800f0800u,0xa0e40000u,0x0000ffffu};
+        api(d->CreateVertexShader(v,&sm2_vs.p),"authored unregistered vs_2_0");api(d->CreatePixelShader(p,&sm2_ps.p),"authored unregistered ps_2_0");
+        // The same programs as vs_3_0 (dcl_position o0) and ps_3_0 (color 5).
+        const DWORD v3[]={0xfffe0300u,0x05000051u,0xa00f00c8u,0,0,0,0x3f800000u,0x0200001fu,0x80000000u,0x900f0000u,0x0200001fu,0x80000000u,0xe00f0000u,
+            0x02000001u,0x80070000u,0x90e40000u,0x02000001u,0x80080000u,0xa0ff00c8u,
+            0x03000009u,0xe0010000u,0x80e40000u,0xa0e40018u,0x03000009u,0xe0020000u,0x80e40000u,0xa0e40019u,
+            0x03000009u,0xe0040000u,0x80e40000u,0xa0e4001au,0x03000009u,0xe0080000u,0x80e40000u,0xa0e4001bu,0x0000ffffu};
+        const DWORD p3[]={0xffff0300u,0x05000051u,0xa00f0000u,0x40a00000u,0x40a00000u,0x40a00000u,0x3f800000u,0x02000001u,0x800f0800u,0xa0e40000u,0x0000ffffu};
+        api(d->CreateVertexShader(v3,&sm3_vs.p),"authored unregistered vs_3_0");api(d->CreatePixelShader(p3,&sm3_ps.p),"authored unregistered ps_3_0");
+    }
     const std::string bootstrap_path(bootstrap_vertex);const auto bootstrap_slash=bootstrap_path.find_last_of("/\\");
     const auto folder=bootstrap_slash==std::string::npos?std::string{}:bootstrap_path.substr(0,bootstrap_slash+1);
     Com<IDirect3DPixelShader9> cutout_ps;
@@ -214,6 +245,33 @@ void run_sun_lane(const char* bootstrap_vertex) {
             unsigned w=0,h=0;const auto rgb=hdr_image(&w,&h);
             require(rgb[(std::size_t(H/2)*W+W/2)*4]==2,"untracked writer really replaced owning scene color");
             require(lane_read()==lane,"untracked depth write retains stale positive share bytes");
+        }
+        if(unregistered&&step==2){
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"unregistered alpha test on");api(d->SetRenderState(D3DRS_ALPHAREF,1),"unregistered alpha reference 1");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"unregistered alpha GREATEREQUAL");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"unregistered RT0 mask 7");
+            if(stamp_fault)api(SetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",stamp_mid?"stamp_mid":"stamp")?S_OK:E_FAIL,"arm stamp fault");
+            draw(b,0,0,-.25f,false,false,false,Alter::None,true,24,sm2_vs.p,sm2_ps.p); // depth .25: wins over the receiver
+            draw(a,0,0,.25f,false,false,false,Alter::None,true,24,sm2_vs.p,sm2_ps.p);  // depth .75: loses everywhere
+            draw(b,1.f,0,-.25f,false,false,false,Alter::None,true,24,sm3_vs.p,sm3_ps.p); // SM3, B moved right by 1 NDC: wins
+            if(stamp_fault)api(SetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",nullptr)?S_OK:E_FAIL,"disarm stamp fault");
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"unregistered alpha test off");api(d->SetRenderState(D3DRS_ALPHAREF,0),"unregistered alpha reference default");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_ALWAYS),"unregistered alpha func default");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"unregistered RT0 mask restore");
+            api(d->SetVertexShader(vs.p),"retire unregistered VS binding");api(d->SetPixelShader(ps.p),"retire unregistered PS binding");
+            unsigned w=0,h=0;const auto rgb=hdr_image(&w,&h);const auto after=lane_read();
+            require(rgb[(std::size_t(9)*W+9)*4]==3,"unregistered writer really replaced owning scene color inside B");
+            require(rgb[(std::size_t(9)*W+41)*4]==5,"unregistered SM3 writer really replaced owning scene color inside moved B");
+            require(rgb[(std::size_t(H/2)*W+W/2)*4]<3,"the losing full-screen draw changed no color");
+            unsigned stamped_pixels=0,sign_pixels=0;
+            for(unsigned pixel=0;pixel<W*H;++pixel){
+                const bool sign=rgb[std::size_t(pixel)*4]==3||rgb[std::size_t(pixel)*4]==5;sign_pixels+=sign;
+                const float* was=&lane[std::size_t(pixel)*lane_stride];const float* now=&after[std::size_t(pixel)*lane_stride];
+                if(sign&&!stamp_fault){
+                    // The pixels the unroutable draw won, and only those: share -1, every other lane byte kept.
+                    require_quiet(now[1]==-1.f&&now[0]==was[0]&&now[2]==was[2]&&now[3]==was[3],"stamp wrote share -1 alone on a pixel the unroutable draw won");++stamped_pixels;
+                } else require_quiet(!std::memcmp(was,now,sizeof(float)*lane_stride),"pixels the unroutable draw lost (or a refused stamp) keep their lane bytes");
+            }
+            require(sign_pixels>300&&stamped_pixels==(stamp_fault?0u:sign_pixels),"stamp coverage equals the unroutable draw's visible coverage");
+            std::printf("SUN_UNREGISTERED frame=%llu sign_pixels=%u stamped_pixels=%u fault=%u mid=%u\n",frame,sign_pixels,stamped_pixels,unsigned(stamp_fault),unsigned(stamp_mid));
         }
         if(cutout_pair&&step==2){
             // Mask 7 with alpha test off on a cutout pair: neither the opaque
@@ -423,7 +481,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
             require(gained_variants>=2&&gained_variants==emission_status(d.p,73),"a gained share variant beside every share variant");
             require(gained_draws==((step==3||step==4)?0u:step==2?2u:1u),"the gained share variant bound exactly on the flag-on lane draws");
         }
-        const bool available=expected_lane&&!(step==2&&(late||untracked||cutout_pair))&&!bad_mask&&!share_refused;
+        const bool available=expected_lane&&!(step==2&&(late||untracked||cutout_pair||stamp_fault))&&!bad_mask&&!share_refused;
         require(emission_status(d.p,92)==unsigned(available),"sun publication follows actual writers and faults");
         require(emission_status(d.p,97)==1,"sun unavailable frame still resolves TAA");
         if(shadow_apply){

@@ -48,6 +48,19 @@ int main(){
     f={};check(!f.draw(true,false,false,false,SunUntrackedReason::Unknown,false)&&!f.non_writers&&!f.untracked); // Before the first receiver nothing is counted.
     check(std::strcmp(sun_untracked_reason_name(unsigned(SunUntrackedReason::Blended)),"blended")==0&&std::strcmp(sun_untracked_reason_name(unsigned(SunUntrackedReason::ReadFailed)),"read_failed")==0
           &&sun_untracked_reason_count==16&&std::strcmp(sun_untracked_reason_name(sun_untracked_reason_count),"unknown")==0);
+    // The stamp's oDepth verdict (pixel_program_writes_depth), one walk per program.
+    {const std::uint32_t plain[]={0xffff0200u,0x05000051u,0xa00f0000u,0x90000800u,0x90000800u,0,0x3f800000u,0x02000001u,0x800f0800u,0xa0e40000u,0x0000ffffu};
+     check(!pixel_program_writes_depth(plain,std::size(plain))); // def payload words that look like an oDepth operand are skipped
+     const std::uint32_t depth[]={0xffff0200u,0x05000051u,0xa00f0000u,0,0,0,0x3f800000u,0x02000001u,0x800f0800u,0xa0e40000u,0x02000001u,0x900f0800u,0xa0000000u,0x0000ffffu};
+     check(pixel_program_writes_depth(depth,std::size(depth))); // mov oDepth, c0.x
+     const std::uint32_t commented[]={0xffff0300u,0x0002fffeu,0x900f0800u,0x900f0800u,0x02000001u,0x800f0800u,0xa0e40000u,0x0000ffffu};
+     check(!pixel_program_writes_depth(commented,std::size(commented))); // comment payload skipped
+     const std::uint32_t sm1[]={0xffff0101u,0x00000042u,0xb00f0000u,0x00000001u,0x800f0000u,0xb0e40000u,0x0000ffffu};
+     check(!pixel_program_writes_depth(sm1,std::size(sm1)));
+     const std::uint32_t sm1_depth[]={0xffff0104u,0x00000057u,0x800f0005u,0x0000ffffu};
+     check(pixel_program_writes_depth(sm1_depth,std::size(sm1_depth))); // texdepth r5
+     check(pixel_program_writes_depth(plain,std::size(plain)-1)&&pixel_program_writes_depth(nullptr,0)&&pixel_program_writes_depth(depth,9)); // no END / truncated: fail closed
+    }
     f={};f.draw(true,false,false);f.draw(true,true,false);check(f.publish(true,true,false)); // Earlier background.
     check(!f.publish(false,true,true));check(!f.publish(true,false,true));
     f.failed=true;check(!f.publish(true,true,true)); // Late creation/bind failure poisons only lane frame.

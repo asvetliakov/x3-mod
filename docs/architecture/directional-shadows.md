@@ -678,6 +678,20 @@ and unavailable required M refuse the shadow snapshot. A plain depth writer
 with explicit invalid `.g` safely replaces an earlier receiver. The lane veto
 has no independent TAA-invalidation call.
 
+**Unroutable depth writer (run 174).** A scene draw refused at gate 3 as
+`unregistered` (a program outside the SM3 profile registry, e.g. the SM2
+`adeffects` advertising signs of Argon Prime) no longer vetoes the frame when
+it is an actual depth writer after a receiver. `sun_stamp_draw`
+(`src/proxy/sun_share_lane_inc.h`) re-issues it once with the application's
+own VS, geometry and raster state, `ZFUNC EQUAL`, no depth write, RT0/RT1
+masked off and RT2 masked to `.g`, through a constant ps_2_0/ps_3_0 program
+chosen by the bound programs' shader-model family: the pixels the draw won get
+the explicit invalid share -1 and are excluded by the apply pass; every other
+pixel keeps its lane bytes. Only that draw loses shadows. A stamp that cannot
+run (stencil enabled, user-memory geometry, unknown program version, SM3 beside
+a null stage, an original PS that writes oDepth) or fails keeps the veto; `pair`, gate-4 and xt-repair refusals
+keep it too. Ledger: `docs/verification/directional-shadows.md`, "Run 174".
+
 TAA recognizes G32R32F input and reuses its existing authored identity-copy PS
 with point sampling, writing only `.r` into the existing R32F history. It never
 requests G32R32F→R32F StretchRect. Copy failure restores state and leaves history
