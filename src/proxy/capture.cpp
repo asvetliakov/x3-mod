@@ -167,6 +167,7 @@ float ambient_occlusion_radius = 2.f, ambient_occlusion_strength = .5f;
 // X3M_VOLUMETRIC_FOG_TIMING=1 (one volumetric_fog_frame line per frame).
 // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength (Shift up).
 bool sector_background_requested = false; // read-only, independent of the fog pass
+bool volumetric_fog_cards_replace = false;
 bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volumetric_fog_timing = false;
 float volumetric_fog_strength = x3m::renderer::fog_strength_default, volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
 float emission_gain = 1.f;
@@ -1216,6 +1217,7 @@ void comparison_begin_frame(Device& ctx) noexcept {
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
     if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
     if(action.fog_step)ctx.motion_output.volumetric_fog_step();
+    ctx.motion_output.volumetric_fog_begin_frame();
     if(action.fps_overlay)log("fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key",ctx.id,ctx.frame,unsigned(ctx.fps_overlay.toggle()));
     const bool emitter=action.screen_additive||action.source_gain||action.hull_gain;
     if(emitter)ctx.comparison_emitter_notice[0]='\0';
@@ -2042,6 +2044,16 @@ X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_devi
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
 #undef X3M_SHADOW_HOOK
+HRESULT WINAPI set_stream_frequency(IDirect3DDevice9* d,UINT stream,UINT frequency) {
+    LightCallBoundary cpu;
+    LightAdmissionScope admission;
+    PlainHookGuard lock;auto& ctx=hooked_device(d);
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT) noexcept>(102)(d,stream,frequency);cpu.after_original();
+    ctx.motion_output.set_stream_frequency(stream,frequency,hr);
+    return hr;
+}
+
 // Render-state shadow (X3M_STATE_SHADOW, default on). Light boundary like the
 // other hot setters: nothing before the native call (lazy RT mode never holds
 // a write mask: route-per-draw-cost.md lever 3), after it the shadow store;
@@ -2240,7 +2252,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // strips PUREDEVICE, so a non-pure device answers Get*; a device that
     // does not fails closed to the hooked configuration). Both reads go
     // through the saved native entries (58, 68), never through a hook.
-    const char* state_hooks_reason=motion_state_shadow==1?"explicit":frame_timing::active?"frame_timing":nullptr;
+    const char* state_hooks_reason=motion_state_shadow==1?"explicit":frame_timing::active?"frame_timing":volumetric_fog_cards_replace?"fog_cards":nullptr;
     if(!state_hooks_reason){
         DWORD value=0;
         const bool get_ok=SUCCEEDED(hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*)>(58)(d,D3DRS_ZENABLE,&value))
@@ -2424,7 +2436,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
-    hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing);
+    hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace);
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -2444,6 +2456,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         hooked.set(115,draw_rect_patch);hooked.set(116,draw_tri_patch);
         hooked.set(92,set_vs);hooked.set(107,set_ps);hooked.set(94,set_vs_constant_f);hooked.set(96,set_vs_constant_i);
         hooked.set(109,set_ps_constant_f);hooked.set(100,set_stream_source);hooked.set(104,set_indices);
+        if(volumetric_fog_cards_replace)hooked.set(102,set_stream_frequency);
         hooked.set(87,set_declaration);hooked.set(89,set_fvf);hooked.set(47,set_viewport);
         hooked.set(59,create_stateblock);hooked.set(60,begin_stateblock);hooked.set(61,end_stateblock);
         // Scene and query tracking for the resolve's caller contract.
@@ -3039,7 +3052,8 @@ void initialize_log(HMODULE module) {
      volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;
      volumetric_fog_everywhere=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_EVERYWHERE")==1 && setting[0]==L'1';
      volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
-     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g anisotropy=%g everywhere=%u timing=%u rule=nebulafog_ps keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing);}
+     volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
+     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g anisotropy=%g everywhere=%u timing=%u cards=%s rule=nebulafog_ps keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     if(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted

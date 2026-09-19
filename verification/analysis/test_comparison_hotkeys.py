@@ -3,6 +3,7 @@ import argparse
 import ast
 import contextlib
 import io
+import math
 from pathlib import Path
 import shutil
 import subprocess
@@ -145,8 +146,18 @@ class ComparisonHotkeys(unittest.TestCase):
             and isinstance(node.targets[0].slice, ast.Constant)
             and node.targets[0].slice.value in ('X3M_HDR_EXPOSURE', 'X3M_HDR_EV_MANUAL', 'X3M_HDR_EV_MAX')]
         main.body = statements + assignments + [ast.Return(value=ast.Name(id='env', ctx=ast.Load()))]
-        compiled = compile(ast.fix_missing_locations(ast.Module(body=[main], type_ignores=[])), 'manage_under_test.py', 'exec')
-        scope = dict(argparse=argparse, Path=Path, GAME=Path('/unused'), BOTTLE='X3', ROOT=ROOT, __doc__='test')
+        # Include the launcher's literal defaults used by validation, without
+        # executing filesystem/installation setup or duplicating their values.
+        defaults = []
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id.isupper():
+                try:
+                    ast.literal_eval(node.value)
+                except (ValueError, TypeError):
+                    continue
+                defaults.append(node)
+        compiled = compile(ast.fix_missing_locations(ast.Module(body=defaults + [main], type_ignores=[])), 'manage_under_test.py', 'exec')
+        scope = dict(argparse=argparse, math=math, Path=Path, GAME=Path('/unused'), BOTTLE='X3', ROOT=ROOT, __doc__='test')
         exec(compiled, scope)
         base = ['manage.py', 'launch', '--motion-output', '--hdr', '--hdr-tonemap']
         cases = [([], 'auto', ''), (['--hdr-exposure', 'fixed'], 'fixed', ''),
@@ -261,7 +272,7 @@ class ComparisonHotkeys(unittest.TestCase):
         # The guide lights keep their own flag (the options stay independent);
         # F6 now drives it beside the effects gain, and the effects toggle
         # itself still touches no hull state.
-        self.assertIn('shadow_.ps_hull_program && hull_gain_enabled_ && route.submit', draws)
+        self.assertIn('shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit', draws)
         self.assertNotIn('hull', extract_function(motion_source, 'int MotionOutput::emission_source_gain_toggle('))
         # One flag per family: F4 the light map, F6 the guide lights; the one
         # toggle logs the driving key and both states, and creates nothing.

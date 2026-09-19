@@ -59,10 +59,11 @@ class MotionWrapStatesTests(unittest.TestCase):
         self.assertIn('route.submit = false; route.submission_error = motion_state_error_;', rollback)
         before = extract_function(source, 'MotionRoute MotionOutput::before_draw(')
         self.assertLess(before.index('if (motion_state_lost_)'), before.index('evaluate_draw(call, route)'))
-        # c40ee94 (additive bullet option) made this branch a block: the
-        # composition bracket still runs first and the additive option only
-        # after it, on a draw the bracket did not take.
-        self.assertIn('} else if (route.submit) {\n            prepare_composition(call, route);', before)
+        # Restore application bindings before either optional color bracket.
+        # Card replacement and composition are exclusive; additive follows.
+        self.assertLess(before.index('restore_bindings_checked()'), before.index('prepare_fog_card(call, route)'))
+        self.assertIn('} else if (route.submit) {\n            if (shadow_.fog_card_source) prepare_fog_card(call, route);', before)
+        self.assertIn('if (!route.fog_card_mask.masked && route.submit) prepare_composition(call, route);', before)
         self.assertLess(before.index('prepare_composition(call, route);'),
                         before.index('prepare_screen_additive(call, route);'))
         after = extract_function(source, 'void MotionOutput::after_draw(')

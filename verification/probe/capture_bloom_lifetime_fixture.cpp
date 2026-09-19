@@ -225,6 +225,7 @@ struct Device : Hooks {
     Stats stats{};
     SceneCapture scene_depth{};
     MotionCapture motion{};
+    object_capture::Cache sector_background_evidence{}; // diagnostic invalidation only; reader is qualified separately
     object_capture::Cache object_evidence{}; // diagnostic association; inert here
     MotionOutput motion_output{};
     renderer::BloomPass bloom{};
@@ -604,6 +605,7 @@ static void reset_case(AliasModel model, bool extended, bool success) {
     const HRESULT result = extended ? reset_ex(&env.device, &parameters, &mode)
                                     : reset(&env.device, &parameters);
     check(bool(SUCCEEDED(result)) == success, "Reset/ResetEx forwards exact success or failure");
+    check(env.ctx->sector_background_evidence.invalidations == 1, "sector diagnostic invalidates on successful and failed native Reset");
     check(env.native.reset_observed_revoked && env.native.reset_observed_defaults_dropped,
           "invocation aliases and DEFAULT resources drop before native Reset");
     check(env.native.reset_observed_pin_alive && call->native_pin,
@@ -634,6 +636,7 @@ static void composition_busy_reset(AliasModel model, bool extended) {
     const HRESULT result = extended ? reset_ex(&env.device, &parameters, &mode)
                                     : reset(&env.device, &parameters);
     check(result == D3DERR_INVALIDCALL, "active emission rejects reentrant Reset/ResetEx");
+    check(env.ctx->sector_background_evidence.invalidations == 1, "sector diagnostic invalidates even on refused reentrant Reset");
     check(env.native.reset_calls == 0 && env.native.reset_ex_calls == 0,
           "rejected emission Reset never reaches either native slot");
     check(env.ctx->motion_output.resets == 0 && env.ctx->bloom.resets == 0,

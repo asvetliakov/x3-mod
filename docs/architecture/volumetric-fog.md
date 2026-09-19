@@ -1,6 +1,8 @@
 # Volumetric sun fog and sector haze
 
-Design note, 2026-09-19, ratified. Stage 1 is implemented default off (section "Stage 1 implementation" at the end); not installed or flown. Stage 0 (offline mock-up on real dumps) is done,
+Design note, 2026-09-19, ratified. Stage 1 is implemented default off (section "Stage 1 implementation"); run 48 B
+was flown and the user prefers strength 0.02. Card replacement is now ratified
+(section "Card replacement design"); it supersedes the original stacking choice. Stage 0 (offline mock-up on real dumps) is done,
 and was redone the same day on the first real fog-sector frames (run174, Argon Prime: section 2b, which
 **revises the rule, the medium colour, the anisotropy and the reference strength** below). The pictures are the
 go/no-go input for the user. Tool: `tools/analysis/fog_offline_mock.py`.
@@ -18,7 +20,7 @@ scalar "lit fraction"; composited once at the scene-end hook before TAA.**
   `tau(d) = tau_max (1 - exp(-d / R))`, sky `tau_max`. `L <- L Tb + albedo E_sun p_HG(cos) F (1 - Tb)`.
   `Tb` and the phase are analytic per full-resolution pixel; only `F = int sigma T V dt / (1 - Tb)` (V = cascade
   visibility) is marched, at half resolution, 16 jittered steps, one nearest tap in cascades 1-3.
-- **Automatic rule (revised after run174)**: term B is keyed on the background record's `NumDustInstances` D
+- **Historical automatic proposal (held after run180; not implemented)**: term B is keyed on the background record's `NumDustInstances` D
   (`sector-fog.md` section 3; 35 of 239 sectors have D > 0), not on `N s`: `N s` does not separate fog sectors
   from painted ones (Argon Prime, 8 cards, 180,000; the card-less green sectors 250,000; Uranus, 15 cards,
   5,000,000). `tau_max = S x 0.01 x w(D)`, `w(0) = 0.25`, `w(D > 0) = clamp(D / 8, 1, 2)`: Argon Prime 0.01,
@@ -32,11 +34,21 @@ scalar "lit fraction"; composited once at the scene-end hook before TAA.**
   and g = 0.6 one sunward view of run174 turns into grey smog at `tau_max` 0.01 already; g = 0.3 cures that
   but also flattens the shaft glow in the best frame (section 2b), so g is settled in stage 1 once `E_sun` is
   calibrated.
-- **Stack with the engine's fog, do not replace or re-shade it.** The distance fade carries no colour, and the
+- **Original stage-1 choice (superseded by the run 48 B card-replacement design): stack with the engine's fog.** The distance fade carries no colour, and the
   fog cards are a faint, never depth-tested screen-blend veil that the TAA already handles (section 2b).
   Enhancing the cards instead of adding a medium loses (section 6).
 
 A sector-wide homogeneous medium (the brief's starting point) loses; the mock shows why (section 2).
+
+**2026-09-20 scaling revision:** the user's 0.01 for Argon Prime and 0.05 for
+Atreus' Clouds are visual targets, not a universal 8/16-instance mapping. A
+read-only census of the installed sector/background/cloud-body definitions is
+in progress to compare instance counts, weighted body sizes and fog distances.
+The count-only draft is held. Existing stage-1 rendering still uses the selected
+constant strength and card-presence rule; the committed engine-record reader is
+diagnostic only until its live pointer chain is validated. FogNear/FogFar describe
+the separate geometry distance fade; their influence on replacement density must
+be justified by the census and engine consumers before adding another multiplier.
 
 ## 1. How the game expresses fog (evidence)
 
@@ -249,7 +261,7 @@ refused. Default off until flown in several fog families (Argon Prime `bluewell`
 
 ## Stage 1 implementation (2026-09-19)
 
-Status: **implemented detached and wired live, default off, not installed, not flown.** Term B only (the
+Status: **implemented and flown in run 48 B, default off; strength 0.02 preferred.** Term B only (the
 ratified sun-lit medium). Term A (sector haze) is not built: it needs the sector camera's `N s`, which has
 no production reader, and the ratification did not ask for it. Evidence: `docs/verification/volumetric-fog.md`.
 
@@ -294,8 +306,8 @@ would-be basis (`cascade_sun`), else the pass skips (`reason=sun`). Radiance: **
 `albedo x Color0 x N.L`, i.e. a Lambert surface under irradiance `pi x Color0`), words clamped to 4 x 256.
 When the poll is not `ok` (foreign executable, `X3M_SHADOW_SUN_POLL=0`) the pass uses Color0 = 1 (`E = pi`)
 and logs one `volumetric_fog_sun source=fallback` line. The mock's image estimator gave 2.6-4.9 in Argon
-Prime; a white sun gives 3.14 here. **Unverified in flight**: the actual colour words of that sector are not
-in any dump.
+Prime; a white sun gives 3.14 here. **Original stage-1 limitation:** actual colour words were not in the run174
+dumps; run180 reports the tracked sun path (see the flight ledger).
 
 **Automatic rule: PS presence, chosen over the record read.** The record read needs the current sector
 object (`*(cockpit+0x54)+0x13c`), and no production reader reaches the cockpit; it would add a second
@@ -350,3 +362,144 @@ The backend refuses `TIMESTAMP` queries, so GPU time is the fenced window minus 
 **Open after stage 1.** `E_sun` calibration and g on display images (user flight); 16-card families; whether
 the own-ship casters need slot 0 in the march (section 3 step 1's open question: not examined); the stage 2
 temporal fixture (shimmer gate) has not been built; term A.
+
+## Card replacement design — source qualified, candidate pending (2026-09-20)
+
+The design below is implemented and source-reviewed; candidate and game-flight
+qualification remain pending. Scoped evidence and limitations are in the
+[verification ledger](../verification/volumetric-fog.md#card-replacement-source-qualification-2026-09-20). Session B/run180's
+user preference is `tau_max = 0.02` and replacement of the vanilla card veil in
+The Hole and Atreus Clouds. That preference supersedes the earlier artistic
+choice to stack both layers. It does **not** authorize removing geometry's
+`g_FogClip` distance fade, the painted background, stardust or glow draws.
+The orchestrator ratified the bracket, acceptance contract and low-cost
+one-frame-failure tradeoff below on 2026-09-20. Implementation and verification
+remain pending.
+
+**Recommendation.** Add explicit `--volumetric-fog-cards keep|replace`, default
+`keep` for the unflown path; select `replace` explicitly for the next consolidated
+candidate. Suppress only validated card **color writes**, while forwarding the
+original native draw exactly once and returning its actual HRESULT. Do not turn
+`MotionRoute::submit` off with synthetic success: that discards native draw
+validation and any query/rasterization side effects. Keep strength 0.02 and the
+current geometry fade and sector PS-presence rule.
+
+**Evidence and exact interception.** `sector-fog.md` §10 records 422 card draws
+in 128 frames, all with VS `7b6393fe2d3e1d85`, PS `f7e0b6647a3bfa62`, 2 primitives,
+4 vertices, stride 24, Z disabled, Z-write disabled, alpha test disabled,
+`ONE/INVSRCCOLOR/ADD`, no culling, RGB write mask 7. The cards are the last scene
+color writers in that evidence; this order is not proved for all sectors/mods.
+`capture.cpp::{draw_primitive,draw_indexed,draw_primitive_up,draw_indexed_up}`
+forward through `MotionOutput::{before_draw,after_draw}`. Put admission in the
+unrouted branch of `before_draw`, **after** successful
+`restore_bindings_checked()`, exclusive of composition/source-gain brackets.
+Use a small route flag and saved mask: native `SetRenderState(COLORWRITEENABLE,0)`
+then the original draw, then checked restoration to the observed mask (7) in
+`after_draw`, including failed-native-draw exits. Do not mutate the application's
+state shadow. A failed set must recover known state before forwarding; failed
+restoration uses the existing `motion_state_lost_`/submission-error path, never
+pretends the next draw is safe. Preserve the LightCallBoundary/LastError contract.
+
+Cache exact pair eligibility at shader binds/resync. Admission also requires
+known matching render states, the validated declaration/stride and draw shape,
+main FP16 scene ownership, no routed MRT writes, no concurrent composition,
+non-MSAA, state hooks valid, no state-block recording and no active query. Only
+admit draw forms demonstrated by the capture/fixture; unknown forms, state,
+identity, foreign target or bind failure forward unchanged. Keep
+`set_pixel_shader`'s existing `fog_latch_.card(frame_)` before any replacement
+choice; stamp observed matching source draws as well so a reused binding still
+counts. Replacement must never teach the sector detector that its cards vanished.
+No background identity or geometry-fade shader is included in this allowlist.
+
+**Readiness and fallback.** Cache frame eligibility after hotkeys in
+`comparison_begin_frame`; Ctrl+Alt+F9 off and strength zero immediately leave all
+cards native. Require a previous fully successful fog transaction *and* this
+frame's known prerequisites/resources, not previous success alone. Prepare target
+sizes/caps outside individual card brackets; a first warm-up frame after enabling
+or Reset keeps vanilla and runs the medium once. Only a fully successful stacked
+warm-up arms replacement for the following eligible frame; failed/refused warm-up
+keeps vanilla. An ordinary F9 off/on repeats that warm-up, except that it cannot
+clear a fault latch. Check current owner, camera/depth availability, TAA/jitter,
+cascade/sun prerequisites and query/recording status before the first suppression;
+recheck cheap mutable guards on later cards. `run_volumetric_fog` still performs
+its full scene-end validation. Outside that explicit warm-up, if admission is unavailable, keep vanilla and skip
+the replacement-mode medium that frame rather than silently stack both; frames
+without visible cards may still run the medium under the existing latch.
+
+**Material limitation, accepted design tradeoff.** No early predicate can
+promise `FogPass::execute` will succeed later. It can fail at Targets, Block,
+Capture, Normalize, March, Copy, Sky, Composite, EndScene or Restore; the scene-end
+glue can also newly refuse queries, state, target or TAA. Once a card's color was
+not written, this implementation cannot reconstruct it. The first such skip or
+failure after suppression must latch *replacement and the medium* off until
+Reset/session restart, independently of the current three-failure fog policy.
+Thus there can be **one recoverable-failure frame without either fog layer**;
+subsequent frames are vanilla. This is not a strict same-frame fail-open guarantee.
+A device-loss/state-restoration failure uses existing recovery and cannot promise
+a valid displayed frame. F9 off always forwards cards; F9 on must not clear the
+fault latch. Log observed/suppressed counts, the per-frame refused boolean, readiness, current-frame pass
+outcome and fault-latch reason, with bounded/change-only output. TAA history must
+be invalidated on actual keep/replace/off/fault transitions so residual cards or
+fog do not survive the hotkey comparison; not on every card or every frame.
+
+**Alternatives.** Merely skipping the native call is cheaper but loses draw
+semantics. Masking/replacing the PS adds shader ownership for no necessary benefit.
+Prior-success-only suppression or retaining the existing three-failure retry
+permits avoidable missing-fog frames. Strict same-frame fallback needs a retained
+vanilla image, not merely resource preallocation. A feasible larger design copies
+the pre-card scene once, lets all original cards draw into the vanilla owner,
+then processes a clean candidate through sun apply, AO and fog before publishing
+it; retain the vanilla owner until success. Any later non-card color writer must
+invalidate that snapshot, or be mirrored with additional cost. On failure restore
+the vanilla owner and handle sun/AO bookkeeping consistently. Existing
+`HdrPass::exchange_target`/`publish_composition` demonstrate ownership exchange but
+do not implement this transaction. Simply using a pre-card copy as FogPass input
+**after** current sun/AO loses those passes: their order in `scene_end_hook` is
+sun apply, AO, fog, TAA. This alternative needs ownership/recovery work and is not
+recommended for the next low-cost optional layer.
+
+**Hot-path cost and portability.** Non-card draws add one cached eligibility gate;
+no new per-draw hashing, engine reads, allocation, lock or Get* validation. Each
+admitted card adds two native render-state calls: 2–8 calls/frame for run174's
+observed 1–4 cards, with zero new targets, copies or full-screen passes. This is a
+call-count estimate, not measured latency; original card rasterization remains.
+The retained-image alternative adds at least one FP16 full-size target (7.5 MiB
+at 1280x768; 15.82 MiB at 1920x1080) and one copy (15/31.64 MiB read+write traffic),
+plus binding/ownership checks and failure-path reprocessing. Native Windows uses
+the same documented D3D9 render-state/draw/state-block/query contracts. No Wine
+internals are needed; actual native execution remains unverified and must be
+recorded as such in platform-portability.md when implemented.
+
+**One consolidated next candidate / ownership.** The renderer change owns
+`motion_output.{h,cpp}`, `motion_output_fog_inc.h`, the readiness helpers in
+`renderer/fog_pass.{h,cpp}` if needed, and focused fixture cases. The launcher and
+capture owner integrates the option/hotkey diagnostics and the independent
+read-only `sector_background` diagnostic. Coordinate shared `capture.cpp` and
+`tools/manage.py` rather than let both workstreams edit them. Include
+`sector-fog.md` §11.5's once-per-second/change row in this same candidate, with
+bounded validated reads and LastError preservation. The chain is still **static
+RE only**: do not feed dust/index/near/far into replacement or a stage-2 sector
+policy until a user flight establishes §11.5's named-sector, camera-fog, menu/load
+and same-frame jump consistency checks. Diagnostic failure must never alter the
+current card-presence rule or crash rendering.
+
+**Acceptance before candidate publication (planned, not run here).** Extend the
+focused host policy/launcher checks (`test_volumetric_fog.py` and relevant launcher
+tests), then the owner runs the targeted motion-output/fog fixtures through the
+Wine lock in bottle X3. Check exact card-only output suppression; keep/F9-off/
+strength-zero/caps-refused byte equality to vanilla; one successful stacked
+warm-up before first suppression; native draw count and
+HRESULT parity; active-query and recording refusals; captured state-block Apply,
+all relevant setters/resync, RT/depth/viewport and COLORWRITEENABLE restoration;
+unchanged RT1/RT2; source detection while suppressed; rejection of sky/stardust/
+distance-fade/unknown pairs; faults at admission, source draw, every fog failure
+stage and restoration; one-frame-gap fault latch and Reset rearm. Record added
+call counts and focused timings, plus x87/stack contract checks for changed draw
+roots. User flight then compares .02 keep/replace/F9 off in The Hole and Atreus
+Clouds, verifies clear-sector/jump/load behavior and validates §11.5. No agent
+launch. No native-Windows verification may be inferred from CrossOver results.
+
+**Unresolved.** Which run180 card draw forms/states extend §10's allowlist (the
+separate triage owns that evidence); measured two-call cost; whether one-frame
+TAA reseeding on mode changes is visually acceptable; native query/state parity;
+stage-2 temporal fixture and record-reader flight qualification remain open.

@@ -12,6 +12,8 @@
 #include <d3d9.h>
 #include "../../src/renderer/fog_pass.h"
 #include "fog_reference.h"
+#include "../../src/proxy/fog_card_mask.h"
+#include "../../src/proxy/cpu_state.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -261,6 +263,104 @@ struct Frame {
         for (UINT i = 0; i < 4; ++i) { check("unbind texture", d->SetTexture(i, nullptr)); check("unbind vertex texture", d->SetTexture(D3DVERTEXTEXTURESAMPLER0 + i, nullptr)); }
     }
 };
+// Real-device qualification of the production write-mask transaction. Pair,
+// shape and lifecycle admission are exercised by the host policy test; this
+// case isolates D3D's actual RGB/alpha writes and native draw semantics.
+void card_mask_cases(IDirect3DDevice9* d, Frame& f) {
+    Com<IDirect3DStateBlock9> saved; check("card save", d->CreateStateBlock(D3DSBT_ALL, &saved.p));
+    check("card rt0", d->SetRenderTarget(0, f.target_surface.p));
+    check("card rt1", d->SetRenderTarget(1, nullptr)); check("card rt2", d->SetRenderTarget(2, nullptr));
+    check("card depth", d->SetDepthStencilSurface(nullptr));
+    check("card clear", d->ColorFill(f.target_surface.p, nullptr, D3DCOLOR_ARGB(64,32,48,64)));
+    const auto before = f.read<std::uint16_t>(d, f.target_surface.p, f.read_target.p, f.w, f.h, 4);
+    const auto rt1 = f.read<std::uint8_t>(d, f.rt1_surface.p, f.read_rt1.p, f.w, f.h, 4);
+    const auto rt2 = f.read<float>(d, f.depth_surface.p, f.read_depth.p, f.w, f.h, 4);
+    struct Vertex { float x,y,z,rhw; DWORD color, pad; };
+    const Vertex vertices[] = {{-.5f,-.5f,0,1,0xff808080,0}, {float(f.w)-.5f,-.5f,0,1,0xff808080,0},
+        {-.5f,float(f.h)-.5f,0,1,0xff808080,0}, {float(f.w)-.5f,float(f.h)-.5f,0,1,0xff808080,0}};
+    const WORD indices[] = {0,1,2,2,1,3};
+    Com<IDirect3DVertexBuffer9> vb; Com<IDirect3DIndexBuffer9> ib;
+    check("card vb", d->CreateVertexBuffer(sizeof vertices,0,D3DFVF_XYZRHW|D3DFVF_DIFFUSE,D3DPOOL_MANAGED,&vb.p,nullptr));
+    check("card ib", d->CreateIndexBuffer(sizeof indices,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&ib.p,nullptr));
+    void* memory = nullptr;
+    check("card vb lock", vb->Lock(0,0,&memory,0)); std::memcpy(memory,vertices,sizeof vertices); check("card vb unlock", vb->Unlock());
+    check("card ib lock", ib->Lock(0,0,&memory,0)); std::memcpy(memory,indices,sizeof indices); check("card ib unlock", ib->Unlock());
+    check("card stream",d->SetStreamSource(0,vb.p,0,sizeof(Vertex))); check("card indices",d->SetIndices(ib.p));
+    check("card vs",d->SetVertexShader(nullptr)); check("card ps",d->SetPixelShader(nullptr)); check("card fvf",d->SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
+    check("card texture",d->SetTexture(0,nullptr));
+    check("card tss",d->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
+    check("card tss",d->SetTextureStageState(0,D3DTSS_COLORARG1,D3DTA_DIFFUSE));
+    check("card tss",d->SetTextureStageState(0,D3DTSS_ALPHAOP,D3DTOP_SELECTARG1));
+    check("card tss",d->SetTextureStageState(0,D3DTSS_ALPHAARG1,D3DTA_DIFFUSE));
+    check("card tss",d->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE));
+    for (auto [state,value] : {std::pair{D3DRS_ZENABLE,DWORD(0)},std::pair{D3DRS_ZWRITEENABLE,DWORD(0)},
+        std::pair{D3DRS_STENCILENABLE,DWORD(0)},std::pair{D3DRS_ALPHATESTENABLE,DWORD(0)},std::pair{D3DRS_FOGENABLE,DWORD(0)},
+        std::pair{D3DRS_SCISSORTESTENABLE,DWORD(0)},std::pair{D3DRS_LIGHTING,DWORD(0)},std::pair{D3DRS_SRGBWRITEENABLE,DWORD(0)},
+        std::pair{D3DRS_CULLMODE,DWORD(D3DCULL_NONE)},std::pair{D3DRS_FILLMODE,DWORD(D3DFILL_SOLID)},
+        std::pair{D3DRS_ALPHABLENDENABLE,DWORD(1)},std::pair{D3DRS_SRCBLEND,DWORD(D3DBLEND_ONE)},
+        std::pair{D3DRS_DESTBLEND,DWORD(D3DBLEND_INVSRCCOLOR)},std::pair{D3DRS_BLENDOP,DWORD(D3DBLENDOP_ADD)},
+        std::pair{D3DRS_SEPARATEALPHABLENDENABLE,DWORD(0)},std::pair{D3DRS_COLORWRITEENABLE,DWORD(7)}})
+        check("card rs",d->SetRenderState(state,value));
+    D3DVIEWPORT9 vp{0,0,f.w,f.h,0,1}; check("card viewport",d->SetViewport(&vp));
+    unsigned calls=0, draws=0;
+    auto set = [&](DWORD mask) { ++calls; const HRESULT hr=d->SetRenderState(D3DRS_COLORWRITEENABLE,mask); SetLastError(0x1234); return hr; };
+    Snapshot pre(d);
+    check("card begin scene",d->BeginScene());
+    x3m::FogCardMask mask;
+    SetLastError(0x7654);
+    x3m::call_preserved([&] { mask.begin(7,set); });
+    const bool incoming=GetLastError()==0x7654;
+    ++draws; const HRESULT native=d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2);
+    SetLastError(0x4321);
+    x3m::call_preserved([&] { mask.end(set); });
+    const bool outgoing=GetLastError()==0x4321;
+    check("card end scene",d->EndScene());
+    Snapshot post(d);
+    const auto masked=f.read<std::uint16_t>(d,f.target_surface.p,f.read_target.p,f.w,f.h,4);
+    require("card_mask_actual_no_writes",SUCCEEDED(native)&&masked==before);
+    require("card_mask_state_and_calls",pre==post&&calls==2&&draws==1&&mask.restore==S_OK);
+    require("card_mask_lasterror",incoming&&outgoing);
+    check("card native begin",d->BeginScene());
+    const HRESULT vanilla=d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2);
+    check("card native end",d->EndScene());
+    const auto visible=f.read<std::uint16_t>(d,f.target_surface.p,f.read_target.p,f.w,f.h,4);
+    bool alpha=true; for (std::size_t i=3;i<visible.size();i+=4) alpha &= visible[i]==before[i];
+    require("card_mask_native_hresult_rgb_alpha",native==vanilla&&SUCCEEDED(vanilla)&&visible!=before&&alpha);
+    check("card failed begin",d->BeginScene());
+    const HRESULT failed_native=d->DrawIndexedPrimitive(D3DPRIMITIVETYPE(0),0,0,4,0,2);
+    x3m::call_preserved([&] { mask.begin(7,set); });
+    const HRESULT failed_masked=d->DrawIndexedPrimitive(D3DPRIMITIVETYPE(0),0,0,4,0,2);
+    x3m::call_preserved([&] { mask.end(set); });
+    check("card failed end",d->EndScene());
+    DWORD restored=0; check("card mask read",d->GetRenderState(D3DRS_COLORWRITEENABLE,&restored));
+    // An out-of-enum primitive can be accepted as a no-op by a runtime. Keep
+    // its HRESULT as a witness, but do not use it to manufacture a failure.
+    std::printf("CARD_INVALID_TOPOLOGY native=%08lx masked=%08lx mask=%lu restore=%08lx\n",
+        (unsigned long)failed_native,(unsigned long)failed_masked,(unsigned long)restored,(unsigned long)mask.restore);
+    require("card_mask_invalid_topology_parity",failed_native==failed_masked&&restored==7&&mask.restore==S_OK);
+    // Documented D3D9 failure: DrawIndexedPrimitive without an index array.
+    // This also has an existing native-fixture precedent (ownership integration).
+    check("card missing indices",d->SetIndices(nullptr));
+    Snapshot failed_pre(d);
+    check("card missing-index begin",d->BeginScene());
+    const HRESULT missing_native=d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2);
+    const unsigned calls_before_failure=calls;
+    x3m::call_preserved([&] { mask.begin(7,set); });
+    const HRESULT missing_masked=d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2);
+    x3m::call_preserved([&] { mask.end(set); });
+    check("card missing-index end",d->EndScene());
+    Snapshot failed_post(d);
+    check("card failed mask read",d->GetRenderState(D3DRS_COLORWRITEENABLE,&restored));
+    std::printf("CARD_FAILED_DRAW cause=no_indices native=%08lx masked=%08lx operation=%08lx mask=%lu restore=%08lx setter_calls=%u state_equal=%u\n",
+        (unsigned long)missing_native,(unsigned long)missing_masked,(unsigned long)mask.operation,(unsigned long)restored,
+        (unsigned long)mask.restore,calls-calls_before_failure,unsigned(failed_pre==failed_post));
+    require("card_mask_failed_draw_restore",missing_native==D3DERR_INVALIDCALL&&missing_native==missing_masked&&
+        mask.operation==S_OK&&restored==7&&mask.restore==S_OK&&calls-calls_before_failure==2&&failed_pre==failed_post);
+    check("card restore indices",d->SetIndices(ib.p));
+    require("card_mask_auxiliary_unchanged",rt1==f.read<std::uint8_t>(d,f.rt1_surface.p,f.read_rt1.p,f.w,f.h,4)&&
+        rt2==f.read<float>(d,f.depth_surface.p,f.read_depth.p,f.w,f.h,4));
+    check("card restore",saved->Apply());
+}
 FogFrame frame_inputs(Frame& f, const fog_reference::Params& p, const std::vector<fog_reference::Cascade>& cascades) {
     FogFrame in;
     in.depth_share = f.depth.p; in.target = f.target_surface.p; in.width = f.w; in.height = f.h; in.count = 3;
@@ -357,7 +457,8 @@ void timing(IDirect3DDevice9* d, FogPass& pass, unsigned w, unsigned h, LONGLONG
     for (unsigned q = 0; q < 4; ++q) { const double m = median(per_quad[q]); total += m; std::printf(" %s_ms=%.4f", names[q], m); }
     std::printf(" sum_ms=%.4f samples=%zu\n", total, per_quad[0].size());
 }
-int main() {
+int main(int argc, char** argv) {
+    const bool cards_only = argc == 2 && !std::strcmp(argv[1], "--cards-only");
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     try {
         WNDCLASSA cls{}; cls.lpfnWndProc = DefWindowProcA; cls.hInstance = GetModuleHandleA(nullptr); cls.lpszClassName = "X3FogPassFixture"; RegisterClassA(&cls);
@@ -367,7 +468,7 @@ int main() {
         auto address = GetProcAddress(runtime, "Direct3DCreate9"); IDirect3D9*(WINAPI* create)(UINT) = nullptr; std::memcpy(&create, &address, sizeof create);
         if (!create) throw std::runtime_error("Direct3DCreate9");
         Com<IDirect3D9> api; api.p = create(D3D_SDK_VERSION); if (!api.p) throw std::runtime_error("Create9");
-        const unsigned W = 1280, H = 768;
+        const unsigned W = cards_only ? 64 : 1280, H = cards_only ? 48 : 768;
         D3DPRESENT_PARAMETERS pp{}; pp.Windowed = TRUE; pp.SwapEffect = D3DSWAPEFFECT_DISCARD; pp.hDeviceWindow = window; pp.BackBufferWidth = W; pp.BackBufferHeight = H;
         pp.BackBufferFormat = D3DFMT_A8R8G8B8; pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
         pp.EnableAutoDepthStencil = TRUE; pp.AutoDepthStencilFormat = D3DFMT_D24S8;
@@ -413,6 +514,35 @@ int main() {
         const auto depth_before = f->read<float>(d, f->depth_surface.p, f->read_depth.p, W, H, 4);
         const auto rt1_before = f->read<std::uint8_t>(d, f->rt1_surface.p, f->read_rt1.p, W, H, 4);
         require("depth_upload_exact", depth_before == scene.depth);
+        if (cards_only) {
+            card_mask_cases(d, *f);
+            require("card_resources_cold", !pass.resources_ready(W,H));
+            f->fill_target(d,scene,kSkyEngine); f->hostile(d);
+            FogResult out{}; check("card warmup",pass.execute(frame_inputs(*f,p,cascades),&out));
+            require("card_resources_warm",out.applied&&SUCCEEDED(out.restore)&&pass.resources_ready(W,H)&&!pass.resources_ready(W+1,H));
+            pass.before_reset(); require("card_resources_reset",!pass.resources_ready(W,H));
+            f->unbind(d,backbuffer.p); delete f; f=nullptr; backbuffer.reset();
+            check("card Reset",d->Reset(&pp)); pass.after_reset(S_OK);
+            require("card_resources_rewarm",!pass.resources_ready(W,H));
+            pass.detach();
+            require("card_resources_detach",pass.references()==0&&!pass.resources_ready(W,H));
+            // Same device -> factory order as the automatic destructors, but
+            // before RESULT so an unfinished native teardown cannot look done.
+            const auto teardown_mark=[](const char* phase) {
+                std::printf("CARD_TEARDOWN phase=%s\n",phase); std::fflush(stdout);
+            };
+            teardown_mark("device_release_begin"); device.reset(); d=nullptr; teardown_mark("device_release_end");
+            teardown_mark("api_release_begin"); api.reset(); teardown_mark("api_release_end");
+            // The fixture owns this window on the creating thread. Close it
+            // after D3D releases rather than leaving cleanup to process exit.
+            teardown_mark("window_destroy_begin");
+            SetLastError(0); const BOOL destroyed=DestroyWindow(window); const DWORD window_error=GetLastError();
+            std::printf("CARD_TEARDOWN phase=window_destroy_end result=%u last_error=%lu\n",unsigned(destroyed!=FALSE),(unsigned long)window_error);
+            std::fflush(stdout);
+            require("card_teardown_window",destroyed!=FALSE);
+            std::printf("RESULT %s checks=%u failures=%u\n",failures?"FAIL":"PASS",checks,failures);
+            return failures?1:0;
+        }
         // Refusals (the off path): nothing touched, the target byte-identical.
         { std::vector<double> engine = f->fill_target(d, scene, kSkyEngine);
           const auto before = f->read<std::uint16_t>(d, f->target_surface.p, f->read_target.p, W, H, 4);

@@ -34,6 +34,9 @@
 #include "../renderer/camera_reprojection.h"
 #include "../renderer/ambient_occlusion_pass.h"
 #include "../renderer/fog_pass.h"
+#include "fog_card_policy.h"
+#include "fog_card_mask.h"
+#include "fog_card_match.h"
 #include "../renderer/hdr_pass.h"
 #include "../renderer/linear_material.h"
 #include "linear_cutout.h"
@@ -116,6 +119,7 @@ struct MotionRoute {
     bool cutout_blend_known = false, cutout_source_over = false; // exact observed source-over triple: not a miss
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;
     bool linear_material = false; // Combined color+motion pair actually bound.
+    FogCardMask fog_card_mask{};
     bool source_gain = false;     // Source-gain PS bound natively for this draw; restored after it.
     bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen substitution); restored after it.
     bool hull_gain = false;       // Hull-emitter gain PS bound natively for this ONE/ONE draw (emitter plan phase 3); restored after it.
@@ -227,7 +231,8 @@ enum class TaaInvalidateSite : unsigned {
     CompositionPrepare = 17,    // preparing a required composition failed
     CompositionIncomplete = 18, // the composition ended without a linear image
     CutoutMissed = 19,          // a requested cutout pair forwarded natively without owned motion (cutout::missed)
-    Count = 20
+    FogTransition = 20,         // keep/replace/off/fault transitions only
+    Count = 21
 };
 const char* taa_invalidate_site_name(TaaInvalidateSite site) noexcept;
 // Where this frame's resolve ran: at the engine scene-end hook (X3M_SCENE_HOOK,
@@ -804,7 +809,7 @@ public:
     bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_; }
     // The blend-state shadow (SRCBLEND/DESTBLEND/BLENDOP/SEPARATEALPHA) is fed
     // for the composition producers and for the source-gain admission.
-    bool blend_shadow_requested() const noexcept { return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ || screen_additive_requested_; }
+    bool blend_shadow_requested() const noexcept { return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ || screen_additive_requested_ || fog_cards_replace_; }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
     void configure_mip_bias(float bias) noexcept;
@@ -883,12 +888,13 @@ public:
     // Henyey-Greenstein g; `everywhere` forces the sector rule on; `timing`
     // logs one volumetric_fog_frame line per frame. Off: one branch per scene end
     // and one hash compare per pixel-shader bind are skipped entirely.
-    void configure_volumetric_fog(bool requested, float strength, float anisotropy, bool everywhere, bool timing) noexcept {
-        fog_requested_ = requested; fog_strength_ = strength; fog_anisotropy_ = anisotropy; fog_everywhere_ = everywhere; fog_timing_ = timing;
+    void configure_volumetric_fog(bool requested, float strength, float anisotropy, bool everywhere, bool timing, bool replace_cards = false) noexcept {
+        fog_requested_ = requested; fog_strength_ = strength; fog_anisotropy_ = anisotropy; fog_everywhere_ = everywhere; fog_timing_ = timing; fog_cards_replace_ = requested && replace_cards;
     }
     // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength through
     // renderer::fog_strength_steps (comparison-hotkeys.md). One
     // volumetric_fog_toggle / volumetric_fog_strength line per press. -1: option off.
+    void volumetric_fog_begin_frame() noexcept; // after comparison hotkeys
     int volumetric_fog_toggle() noexcept;
     int volumetric_fog_step() noexcept;
     // FPS overlay second line: -1 option off, else (enabled, strength in 1/1000, medium weight > 0).
@@ -984,6 +990,7 @@ public:
     void set_vertex_constants_f(UINT start, const float* data, UINT count) noexcept;
     void set_vertex_constants_i(UINT start, const int* data, UINT count) noexcept;
     void set_pixel_constants_f(UINT start, const float* data, UINT count) noexcept;
+    void set_stream_frequency(UINT stream, UINT frequency, HRESULT result) noexcept;
     void set_stream_source(UINT stream, IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride) noexcept;
     void set_indices(IDirect3DIndexBuffer9* buffer) noexcept;
     void set_vertex_declaration(IDirect3DVertexDeclaration9* declaration) noexcept;
@@ -1117,6 +1124,7 @@ private:
         bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion variant, frame failed
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
+        bool fog_card_pair = false, fog_card_source = false;
         bool ps_depth_out = false; // the bound PS writes oDepth / texdepth (ShaderEntry::depth_out)
         std::uint8_t vs_major = 0, ps_major = 0; // the bound programs' shader-model major versions (0: unbound or unknown)
         std::int8_t ps_sun_register = -1; // the bound PS's LightDir_Dir0 register (ShaderEntry::sun_register)
@@ -1194,6 +1202,7 @@ private:
         bool integer0_known = false;
         std::uint64_t stream0 = 0, indices = 0, declaration = 0;
         UINT stream0_offset = 0, stream0_stride = 0;
+        UINT stream0_frequency = 0; bool stream0_frequency_known = false;
         // The application buffer identities of SetStreamSource/SetIndices (the
         // public ownership wrappers the capture hooks observe; never
         // dereferenced here): the fade bound table proves a subset record
@@ -2040,6 +2049,19 @@ private:
     unsigned fog_failures_ = 0, fog_logs_ = 0;
     std::uint64_t fog_frame_ = ~std::uint64_t(0), fog_applied_frames_ = 0;
     const char* fog_last_reason_ = "";
+    bool fog_cards_replace_ = false, fog_card_ready_checked_ = false, fog_card_ready_ = false;
+    FogCardPolicy fog_cards_{};
+    unsigned fog_card_mode_ = 0, fog_card_logs_ = 0;
+    std::uint64_t fog_card_last_report_ = ~std::uint64_t(0);
+    const char* fog_card_fault_reason_ = "none";
+    void fog_card_transition(unsigned mode) noexcept;
+    void fault_fog_cards(const char* reason) noexcept;
+    void prepare_fog_card(const MotionDrawCall&, MotionRoute&) noexcept;
+    void finish_fog_card(MotionRoute&, HRESULT) noexcept;
+    const char* fog_frame_prerequisite() const noexcept;
+    const char* fog_frame_parameters(renderer::FogFrame&, float weight, bool& sun_tracked) noexcept;
+    void prepare_volumetric_fog_targets(UINT width, UINT height) noexcept;
+    void complete_volumetric_fog(const char* skip, HRESULT result, const renderer::FogResult& out) noexcept;
     void run_volumetric_fog() noexcept;
     void disable_volumetric_fog(const char* why, HRESULT result) noexcept;
     std::unique_ptr<renderer::AmbientOcclusionPass> ao_;

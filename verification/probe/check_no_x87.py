@@ -32,7 +32,7 @@ LIGHT_HOOKS = ['set_vs', 'set_ps', 'set_vs_constant_f', 'set_vs_constant_i', 'se
                # state-call fast path steps 2-3 (docs/architecture/state-call-fast-path.md): the per-draw
                # binding hooks and the four draw hooks are light too; their whole route (before_draw,
                # after_draw, scene depth, draw input, capture logging) is walked from here.
-               'set_stream_source', 'set_indices', 'set_declaration', 'set_fvf',
+               'set_stream_source', 'set_stream_frequency', 'set_indices', 'set_declaration', 'set_fvf',
                'draw_primitive', 'draw_indexed', 'draw_up', 'draw_indexed_up']
 # The gz read-ahead buffer's import entry points (src/proxy/loading_trace.cpp ->
 # src/proxy/gz_buffer.cpp) run with no boundary at all on their fast path, so the

@@ -196,6 +196,17 @@ class FogRunnerTests(unittest.TestCase):
         self.assertFalse(report['timing'][0]['budget']['within_cap'])  # 1.08 ms fenced chain against the 1.0 ms cap: reported, not an acceptance term
         self.assertEqual(report['timing'][0]['device_calls'], 172)
 
+    def test_card_report_requires_each_gpu_witness(self):
+        labels = ('card_mask_actual_no_writes', 'card_mask_state_and_calls', 'card_mask_lasterror',
+                  'card_mask_native_hresult_rgb_alpha', 'card_mask_failed_draw_restore', 'card_mask_auxiliary_unchanged',
+                  'card_resources_cold', 'card_resources_warm', 'card_resources_reset', 'card_resources_rewarm', 'card_resources_detach', 'card_teardown_window')
+        lines = ['CHECK ' + label + ' PASS' for label in labels]
+        self.module.accept(self.module.parse('\n'.join(lines + ['RESULT PASS checks=12 failures=0'])), cards_only=True)
+        with self.assertRaises(AssertionError):
+            self.module.accept(self.module.parse('\n'.join(lines[:-1] + ['RESULT PASS checks=11 failures=0'])), cards_only=True)
+        with self.assertRaises(AssertionError):
+            self.module.accept(self.module.parse('\n'.join([line.replace('PASS', 'FAIL') for line in lines] + ['RESULT FAIL checks=12 failures=12'])), cards_only=True)
+
     def test_accept_refuses_a_bad_reference_and_a_law_violation(self):
         with self.assertRaises(AssertionError):
             self.module.accept(self.report(mean_abs='0.02'))
@@ -239,12 +250,22 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('"X3M_VOLUMETRIC_FOG": "0"', output)
         self.assertIn('"X3M_VOLUMETRIC_FOG_EVERYWHERE": "0"', output)
 
+    def test_card_option(self):
+        for mode in ('keep', 'replace'):
+            status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-cards', mode)
+            self.assertEqual(status, 0, error)
+            self.assertIn('"X3M_VOLUMETRIC_FOG_CARDS": "' + mode + '"', output)
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog', environment={'X3M_VOLUMETRIC_FOG_CARDS': 'replace'})
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_VOLUMETRIC_FOG_CARDS": "keep"', output)
+        self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-cards', 'all')[0], 2)
+
     def test_dependencies_and_ranges(self):
         for missing in ('--taa', '--hdr', '--shadow-replay-depth'):
             with self.subTest(missing=missing):
                 status, _, _ = self.launch(*(a for a in self.BASE if a != missing), '--volumetric-fog')
                 self.assertEqual(status, 2)
-        for dependent in (('--volumetric-fog-anisotropy', '0.5'), ('--volumetric-fog-everywhere',), ('--volumetric-fog-timing',)):
+        for dependent in (('--volumetric-fog-cards', 'replace'), ('--volumetric-fog-anisotropy', '0.5'), ('--volumetric-fog-everywhere',), ('--volumetric-fog-timing',)):
             with self.subTest(dependent=dependent):
                 self.assertEqual(self.launch(*self.BASE, *dependent)[0], 2)
         for bad in (('--volumetric-fog', '0.11'), ('--volumetric-fog', '-0.01'), ('--volumetric-fog', 'nan'), ('--volumetric-fog', '0.02', '--volumetric-fog-anisotropy', '0.95')):

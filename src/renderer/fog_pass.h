@@ -98,6 +98,10 @@ public:
     void before_reset() noexcept;   // releases the targets and the block; refuses execute until after_reset(SUCCEEDED)
     void after_reset(HRESULT) noexcept;
     void detach() noexcept;         // full teardown including programs
+    bool resources_ready(UINT width, UINT height) const noexcept {
+        return caps_.enabled && !reset_pending_ && block_ && width && height && width_ == width && height_ == height &&
+            lit_surface_ && scratch_surface_ && sky_level_surface_ && sky_surface_;
+    }
     bool reset_pending() const noexcept { return reset_pending_; }
     unsigned references() const noexcept;  // persistent interfaces held
     unsigned allocations() const noexcept { return allocations_; }

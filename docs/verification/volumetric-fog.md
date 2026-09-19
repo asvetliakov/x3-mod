@@ -111,3 +111,76 @@ validation/copy race remains. Native Windows execution and the live named-sector
 menu/load and gate-jump comparisons are unverified. No sample is possible without
 D3D frame traffic. The raw-camera/far-floor correction and instruction addresses
 are recorded in [sector-fog §11.4](../reverse-engineering/sector-fog.md#114-safe-read-recipe).
+
+
+## Run 48 B — run180 (2026-09-20)
+
+Bottle X3, CrossOver Preview, arm64 Wine/FEX; session environment records
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1` (WineArch arm64 from the bottle
+configuration, not an independently logged session key). Four 32-frame bursts:
+17726–17757 / 19234–19265 / 51755–51786 / 59600–59631. By the user's chronology
+these are Argon Prime fog on/off, The Hole, Atreus' Clouds; sector names are not
+in the log. Recorded strength 0.02, anisotropy 0.3, fog on/off/on/on. All 128
+captured frames have sun lane available and sun-shadow apply successful. The user
+forgot to inspect advertisement signs specifically and noticed no issue.
+
+The user prefers **0.02**, estimates **about 2 FPS** cost, and now wants the vanilla
+cloud cards replaced. This supersedes the stage-1 stacking preference. Six, seven
+and eight matching card draws occur in the first frames of the fog-on bursts,
+respectively; indexed two-triangle quads, stride 24, exact known fog pair and
+screen-blend/no-depth/no-stencil state. Replacement design is in the owning note.
+The Hole and Atreus' Clouds supply the requested 16-card-family captures, but the
+engine-record chain remains unflown. Do not confuse observed on-screen draw count
+with the record's total dust count.
+
+No fog timing mode was enabled. F8 readbacks dominate captured-frame durations,
+so they cannot measure the live cost; the 2 FPS report is not converted to ms.
+At frame 65785 the pass is idle (`sector`, weight 0, cards 0), but no explicit
+sector-transition marker proves gate association or the fade-out duration.
+Loading and clear-sector consistency remain for the sector diagnostic flight.
+
+Local evidence/reproduction: `verification/results/run48b-triage/`; the contact
+sheet uses presented BGRA colour converted to RGB before resizing (alpha is not
+an opacity mask). The separately reported first-view stutters are outside the
+capture windows; see [engine frame time](../architecture/engine-frame-time.md).
+
+
+## Card replacement source qualification (2026-09-20)
+
+Opt-in `--volumetric-fog-cards replace` masks only RT0 colour writes on strictly
+validated native fog cards, calls the original draw once and restores the exact
+mask. `keep` remains the default. Source observation continues while masked;
+one successful stacked warm-up precedes replacement. F9 off restores vanilla
+immediately; a failed/skipped medium after suppression faults replacement and
+medium off until Reset/restart. One failed frame can lack both layers. The
+per-frame `refused` field is a boolean, not a draw count.
+
+Owner command (bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,
+WINEMSYNC=1):
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_fog_pass.py --cards-only`.
+Final run passed **23 checks**, exited naturally with code 0, and completed
+explicit device/factory release and window destruction. Fixture SHA-256:
+`1864f2141454387d8438b0461ef3ca681a7e317cbb386c91fb83608351a45e2e`.
+Evidence remains local in `verification/results/bottle-X3/fog-card-mask-gpu1.*`.
+The failed-draw witness returns `D3DERR_INVALIDCALL` with no index buffer on both
+native/masked paths, restores mask 7 and identical state, and makes two mask
+setter calls. An earlier topology-zero assumption was invalid on this backend.
+An earlier PASS22 process hung after its assertions and required SIGTERM;
+its wrapper returned zero despite intervention, so that run is excluded from
+clean-exit acceptance. The final fixture explicitly destroys its window.
+
+Scratch full proxy build passed with SSE2 and four-byte incoming-stack flags;
+`check_no_x87.py` passed 89 roots / 565 reachable functions / 0 violations.
+Focused owner checks initially passed 22 tests with one missing-corpus skip.
+The subsequent full host suite (2,177 tests, 452.290 s) exposed test doubles
+missing the new fog/sector fields and incomplete local shader inputs; it did
+not qualify a candidate. Six affected test/mock files were repaired, with
+40 focused tests passing (12.131 s): material fixture 20,491 checks and capture
+lifetime fixture 206 checks. Full host acceptance remains required before a
+candidate, after remaining input issues are resolved.
+
+Limits: the GPU fixture exercises the production colour-mask helper and
+FogPass readiness/Reset, not the complete live proxy hook chain or captured
+shader pair. Host tests extract the production routing/finalization bodies.
+Per-card latency is unmeasured; two added state calls per suppressed card are
+verified. Native Windows and game-flight replacement quality remain unverified.

@@ -9,6 +9,7 @@ counts, tolerances, timing medians against the note's budget). Run through
 wine_lock.py with X3M_FIXTURE_BOTTLE=X3. Never launches the game.
 """
 from pathlib import Path
+import argparse
 import hashlib
 import json
 import os
@@ -19,7 +20,7 @@ import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bot
 
 ROOT = Path(__file__).resolve().parents[2]
 EXE = ROOT / 'verification/probe/build/fog-pass/fog_pass_fixture.exe'
-SOURCES = ('src/renderer/fog_pass.h', 'src/renderer/fog_pass.cpp', 'src/renderer/fog_pass_math.h',
+SOURCES = ('src/proxy/fog_card_mask.h', 'src/proxy/cpu_state.h', 'src/renderer/fog_pass.h', 'src/renderer/fog_pass.cpp', 'src/renderer/fog_pass_math.h',
            'src/renderer/fog_march_program_inc.h', 'src/renderer/fog_composite_program_inc.h',
            'src/renderer/fog_sky_level0_program_inc.h', 'src/renderer/fog_sky_reduce_program_inc.h',
            'src/fog/fog_march_ps.hlsl', 'src/fog/fog_composite_ps.hlsl', 'src/fog/fog_sky_level0_ps.hlsl', 'src/fog/fog_sky_reduce_ps.hlsl',
@@ -93,10 +94,16 @@ def parse(text):
     return report
 
 
-def accept(report):
+def accept(report, cards_only=False):
     """Raises AssertionError naming the first violated acceptance term."""
     assert report['result'] and report['result']['verdict'] == 'PASS' and report['check_failures'] == 0, report['failed_checks']
     assert report['result']['checks'] == report['check_count'], (report['result'], report['check_count'])
+    if cards_only:
+        expected = {'card_mask_actual_no_writes', 'card_mask_state_and_calls', 'card_mask_lasterror',
+                    'card_mask_native_hresult_rgb_alpha', 'card_mask_failed_draw_restore', 'card_mask_auxiliary_unchanged',
+                    'card_resources_cold', 'card_resources_warm', 'card_resources_reset', 'card_resources_rewarm', 'card_resources_detach', 'card_teardown_window'}
+        assert expected <= {label for label, passed in report['checks'] if passed}, report['checks']
+        return
     assert report['attach'] and 0 < report['attach']['largest_program_slots'] <= 512, report['attach']
     assert sorted(set(e['scene'] for e in report['reference'])) == REFERENCE_SCENES, report['reference']
     for entry in report['reference']:
@@ -110,16 +117,20 @@ def accept(report):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--cards-only', action='store_true', help='Only card-mask D3D writes/state and fog readiness/Reset; no benchmark')
+    args = parser.parse_args()
+    stem = 'fog-card-mask-gpu1' if args.cards_only else 'fog-pass-gpu1'
     results = bottle.results_dir(ROOT)
     record = {'passed': False, 'game_launched': False, 'bottle': bottle.describe(), 'sources': {s: sha(ROOT / s) for s in SOURCES},
               'budget_ms': BUDGET_MS, 'reference_tolerance': REFERENCE_TOLERANCE}
-    out_path = results / 'fog-pass-gpu1.json'
+    out_path = results / (stem + '.json')
     try:
         subprocess.run(['sh', str(ROOT / 'verification/probe/build_fog_pass.sh')], check=True, cwd=ROOT)
         record['executable_sha256'] = sha(EXE)
-        command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(EXE.parent), str(EXE)]
+        command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(EXE.parent), str(EXE), *(['--cards-only'] if args.cards_only else [])]
         record['command'] = command
-        text_path, log_path = results / 'fog-pass-gpu1.txt', results / 'fog-pass-gpu1-wine.log'
+        text_path, log_path = results / (stem + '.txt'), results / (stem + '-wine.log')
         with text_path.open('w') as out, log_path.open('w') as err:
             run = subprocess.run(command, stdout=out, stderr=err, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=900)
         record['exit_code'] = run.returncode
@@ -127,7 +138,7 @@ def main():
         record['report_sha256'] = sha(text_path)
         record['report'] = parse(text)
         assert run.returncode == 0, text[-2000:]
-        accept(record['report'])
+        accept(record['report'], args.cards_only)
         assert record['sources'] == {s: sha(ROOT / s) for s in SOURCES} and sha(EXE) == record['executable_sha256'], 'Provenance changed during run'
         record['passed'] = True
     finally:

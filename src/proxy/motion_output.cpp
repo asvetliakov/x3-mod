@@ -1402,7 +1402,7 @@ const char* taa_invalidate_site_name(TaaInvalidateSite site) noexcept {
         "restore_failed", "state_lost", "skip", "target", "container", "resolve_failed", "not_resolved", "present_failed",
         "reset", "comparison_exposure", "comparison_state_failed", "composition_state_lost", "composition_readers",
         "composition_export", "composition_attach", "composition_begin", "composition_refused", "composition_prepare",
-        "composition_incomplete", "cutout_missed"};
+        "composition_incomplete", "cutout_missed", "fog_transition"};
     return unsigned(site) < unsigned(TaaInvalidateSite::Count) ? names[unsigned(site)] : "unknown";
 }
 void MotionOutput::flush_taa_invalidate_log() noexcept {
@@ -2984,6 +2984,7 @@ void MotionOutput::before_reset() noexcept {
     candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed and stays
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
     if (fog_) taa_call([&] { fog_->before_reset(); });
+    fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none";
     fog_failures_ = 0; fog_attach_failed_ = false; // a transient failure or attach refusal is retried after Reset
     sun_apply_attach_failed_ = false; // a transient attach failure is retried after Reset
     ao_attach_failed_ = false; ao_target_format_ = D3DFMT_UNKNOWN; // a transient attach failure is retried after Reset
@@ -3439,11 +3440,13 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
+    shadow_.fog_card_pair = false;
     shadow_.vs = shader; shadow_.vs_major = 0; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; shadow_.vs_prepass = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
     shadow_.vs_hash = it->second.hash;
+    shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
     shadow_.vs_registered = it->second.registered; shadow_.vs_major = it->second.major;
     shadow_.vs_fade_variant = static_cast<IDirect3DVertexShader9*>(it->second.distance_fade_variant);
     shadow_.vs_variant = static_cast<IDirect3DVertexShader9*>(it->second.variant);
@@ -3463,12 +3466,16 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.ps_sun_motion=nullptr; shadow_.ps_sun_material=nullptr; shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
+    shadow_.fog_card_pair = false;
+    shadow_.fog_card_source = false;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.ps_sun_register = -1; shadow_.ps_major = 0; shadow_.ps_depth_out = false;
     if (!shader) return;
     const auto it = pixel_.find(shader);
     if (it == pixel_.end()) return;
     shadow_.ps_hash = it->second.hash;
+    shadow_.fog_card_source = fog_cards_replace_ && shadow_.ps_hash == renderer::fog_card_pixel_hash;
+    shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
     if (fog_requested_ && shadow_.ps_hash == renderer::fog_card_pixel_hash) fog_latch_.card(frame_); // the sector's nebulafog cards: the fog rule's latch
     shadow_.ps_sun_register = it->second.sun_register; shadow_.ps_major = it->second.major; shadow_.ps_depth_out = it->second.depth_out;
     shadow_.ps_registered = it->second.registered;
@@ -3532,6 +3539,11 @@ void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT cou
         std::memcpy(candidate_ps_constants_[start], data, (hi - start) * 16);
         candidate_ps_written_ |= (hi - start >= 32 ? ~0u : ((1u << (hi - start)) - 1u) << start);
     }
+}
+void MotionOutput::set_stream_frequency(UINT stream, UINT frequency, HRESULT result) noexcept {
+    if (!enabled_ || shadow_.recording || stream) return;
+    shadow_.stream0_frequency_known = SUCCEEDED(result);
+    if (SUCCEEDED(result)) shadow_.stream0_frequency = frequency;
 }
 void MotionOutput::set_stream_source(UINT stream, IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride) noexcept {
     if (!enabled_ || shadow_.recording || stream) return;
@@ -3650,6 +3662,11 @@ void MotionOutput::resync_shadow() noexcept {
     }
     if ((composition_requested() || screen_emission_bound_) && state_hooks_)
         shadow_.fill_mode_known = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, D3DRS_FILLMODE, &shadow_.fill_mode));
+    if (fog_cards_replace_ && state_hooks_) {
+        shadow_.stream0_frequency_known = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &shadow_.stream0_frequency));
+        for (unsigned i : {29u, 30u, 31u})
+            shadow_.states_known[i] = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, shadow_states[i], &shadow_.states[i]));
+    }
     resync_samplers();
 }
 
@@ -3695,6 +3712,7 @@ bool MotionOutput::scene_bound() const noexcept {
 void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     flush_taa_invalidate_log(); // sites that fired since the last flush (Reset) carry the frame begun at the last Present
     if (cascade_adaptive_on() && frame != frame_) update_adaptive_cascades(); // the previous frame's own ship and radius commit at the boundary (its frame number and capture flag); a Reset's repeated begin of the same frame is no boundary
+    if (fog_cards_replace_ && fog_cards_.suppressed && !fog_cards_.finished) fault_fog_cards("scene_end_missing");
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
@@ -4018,20 +4036,21 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             if (composition_effective_) { composition_state_lost_ = true; ++composition_counts_.suppressed; }
             invalidate_taa(TaaInvalidateSite::RestoreFailed);
         } else if (route.submit) {
-            prepare_composition(call, route);
+            if (shadow_.fog_card_source) prepare_fog_card(call, route);
+            if (!route.fog_card_mask.masked && route.submit) prepare_composition(call, route);
             // Additive option: its pair check is the only per-draw cost for
             // any other draw; never on a draw the bracket already took.
-            if (shadow_.screen_additive_pair && screen_additive_enabled_ && route.submit && !route.composition) prepare_screen_additive(call, route);
+            if (shadow_.screen_additive_pair && screen_additive_enabled_ && route.submit && !route.composition && !route.fog_card_mask.masked) prepare_screen_additive(call, route);
         }
     }
     // Source-only gain: a null pointer test when the option is off or the
     // bound pair is not one of the twenty; the bracket routes take precedence.
     if (shadow_.source_gain_eligible_variant && source_gain_enabled_
-            && !route.routed && !route.composition && route.submit) prepare_source_gain(call, route);
+            && !route.routed && !route.composition && !route.fog_card_mask.masked && route.submit) prepare_source_gain(call, route);
     // Hull-emitter gain: one bool test when the option is off or the bound PS
     // is not one of the twelve; its own F4 flag (F6 is the effects gain's).
     // A routed or composed draw takes the same blend verdict inside.
-    if (shadow_.ps_hull_program && hull_gain_enabled_ && route.submit) prepare_hull_gain(call, route);
+    if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit) prepare_hull_gain(call, route);
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
         mark_cutout_candidate(route);
     if (telemetry::draw_enabled()) {
@@ -5794,6 +5813,7 @@ void MotionOutput::note_cutout_opaque(const MotionRoute& route, HRESULT result) 
 }
 
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
+    if (route.fog_card_mask.masked) finish_fog_card(route, result);
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
     if (route.composition) finish_composition(result, route.composition_policy);
@@ -5981,6 +6001,7 @@ void MotionOutput::begin_redirect() noexcept {
     hdr_target_ = describe_surface(hdr_->target());
     hdr_state_ = HdrState::Active; hdr_dirty_ = true; hdr_latch_pending_ = true;
     h.redirected = true;
+    if (fog_cards_replace_) prepare_volumetric_fog_targets(pending_.rt.width, pending_.rt.height);
     probe_cutout_caps(); // a transient verdict retries at this boundary, never a draw
     // Stage 2: consume the previous frame's meter and adapt the EV this
     // frame's tonemap consumes (a no-op with the identity write-back).

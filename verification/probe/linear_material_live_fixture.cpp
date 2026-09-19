@@ -12,6 +12,10 @@
 #include <cwchar>
 #include <stdexcept>
 #include <cstring>
+#include "../../src/proxy/fog_card_mask.h"
+#include "../../src/proxy/fog_card_match.h"
+#include "../../src/proxy/fog_card_policy.h"
+using x3m::fog_card_pair;
 using D3DFORMAT=unsigned;constexpr unsigned D3DFMT_UNKNOWN=0;
 using DWORD=std::uint32_t; using UINT=unsigned; using HRESULT=int;
 constexpr HRESULT S_OK=0,S_FALSE=1,E_FAIL=-1,D3DERR_NOTFOUND=-2,D3DERR_INVALIDCALL=-3,E_NOINTERFACE=-4,E_OUTOFMEMORY=-5; constexpr DWORD FALSE=0,TRUE=1;
@@ -31,8 +35,8 @@ constexpr unsigned D3DRS_FILLMODE=8;
 constexpr unsigned D3DRS_DITHERENABLE=26,D3DBLEND_ONE=2,D3DBLEND_INVSRCCOLOR=4;
 constexpr unsigned D3DTSS_TEXTURETRANSFORMFLAGS=24,D3DTTFF_PROJECTED=256;
 struct RECT{long left=0,top=0,right=0,bottom=0;};
-constexpr unsigned motion_shadow_state_count=24;
-constexpr std::array<unsigned,24>shadow_states{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_COLORWRITEENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_COLORWRITEENABLE2,128,129,130,131,132,133,134,135,198,199,200,201,202,203,204,205};
+constexpr unsigned motion_shadow_state_count=32;
+constexpr std::array<unsigned,motion_shadow_state_count>shadow_states{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_COLORWRITEENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_COLORWRITEENABLE2,128,129,130,131,132,133,134,135,198,199,200,201,202,203,204,205,25,24,23,28,D3DRS_DITHERENABLE,52,22,D3DRS_FILLMODE};
 // Mirrors the production blend shadow table (motion_output.cpp): the fade
 // check's triple plus SEPARATEALPHABLENDENABLE, then the separate alpha triple
 // that only the source-gain refusal lines read.
@@ -260,6 +264,7 @@ inline void state_write(StateSet, unsigned, bool, bool) noexcept {}
 }
 std::uint64_t draw_stamp(){return 0;}
 struct MotionRoute {
+ x3m::FogCardMask fog_card_mask{};
  renderer::LinearCompositionPolicy composition_policy=renderer::LinearCompositionPolicy::AdditiveEmission;
  MotionGate gate=MotionGate::Feature;bool routed=false,composition=false,scene=true,submit=true,evaluated=false;HRESULT submission_error=D3DERR_INVALIDCALL,preparation_error=S_OK;std::uint64_t ticks=0;
  bool depth=false,linear_material=false,fade_arm=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
@@ -308,10 +313,11 @@ using GetTextureFn=HRESULT(*)(D,DWORD,IDirect3DBaseTexture9**);
 using SetRenderStateFn=HRESULT(*)(D,DWORD,DWORD);using SetConstantsFFn=HRESULT(*)(D,UINT,const float*,UINT);
 using GetVsFn=HRESULT(*)(D,IDirect3DVertexShader9**);using GetPsFn=HRESULT(*)(D,IDirect3DPixelShader9**);
 using GetConstantsFFn=HRESULT(*)(D,UINT,float*,UINT);using GetConstantsIFn=HRESULT(*)(D,UINT,int*,UINT);
+using GetStreamFreqFn=HRESULT(*)(D,UINT,UINT*);
 using GetStreamFn=HRESULT(*)(D,UINT,IDirect3DVertexBuffer9**,UINT*,UINT*);using GetIndicesFn=HRESULT(*)(D,IDirect3DIndexBuffer9**);
 using GetDeclarationFn=HRESULT(*)(D,IDirect3DVertexDeclaration9**);using GetRenderTargetFn=HRESULT(*)(D,DWORD,IDirect3DSurface9**);
 using GetDepthFn=HRESULT(*)(D,IDirect3DSurface9**);using GetViewportFn=HRESULT(*)(D,D3DVIEWPORT9*);
-enum Slots{SetRenderTarget,SetSamplerState,SetVertexShader,SetPixelShader,CreateVertexShader,CreatePixelShader,GetSamplerState,GetTexture,SetRenderState,SetVertexShaderConstantF,SetPixelShaderConstantF,GetVertexShader,GetPixelShader,GetVertexShaderConstantF,GetVertexShaderConstantI,GetPixelShaderConstantF,GetStreamSource,GetIndices,GetVertexDeclaration,GetRenderTarget,GetDepthStencilSurface,GetViewport,GetRenderState,GetDisplayMode,GetTextureStageState};
+enum Slots{SetRenderTarget,SetSamplerState,SetVertexShader,SetPixelShader,CreateVertexShader,CreatePixelShader,GetSamplerState,GetTexture,SetRenderState,SetVertexShaderConstantF,SetPixelShaderConstantF,GetVertexShader,GetPixelShader,GetVertexShaderConstantF,GetVertexShaderConstantI,GetPixelShaderConstantF,GetStreamSource,GetIndices,GetVertexDeclaration,GetRenderTarget,GetDepthStencilSurface,GetViewport,GetRenderState,GetDisplayMode,GetTextureStageState,GetStreamSourceFreq};
 HRESULT set_vs(D d,IDirect3DVertexShader9*p){d->calls.push_back(1);d->bound_vs=p;if(d->fails())return E_FAIL;return S_OK;}
 HRESULT set_ps(D d,IDirect3DPixelShader9*p){d->calls.push_back(2);d->bound_ps=p;if(d->fails())return E_FAIL;return S_OK;}
 HRESULT create_vs(D d,const DWORD*p,IDirect3DVertexShader9**out){++d->vs_creates;if(*p==d->fail_program){if(d->partial_program)*out=new IDirect3DVertexShader9;return E_FAIL;}if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DVertexShader9;return S_OK;}
@@ -325,6 +331,7 @@ HRESULT set_constants(D d,UINT start,const float*p,UINT count){if(start==252)std
 HRESULT get_vs(D d,IDirect3DVertexShader9**p){if(d->fail_get_vs)return E_FAIL;*p=d->bound_vs;if(*p)(*p)->AddRef();return S_OK;}
 HRESULT get_ps(D d,IDirect3DPixelShader9**p){if(d->fail_get_ps)return E_FAIL;*p=d->bound_ps;if(*p)(*p)->AddRef();return S_OK;}
 HRESULT get_f(D,UINT,float*,UINT){return S_OK;}HRESULT get_i(D,UINT,int*,UINT){return S_OK;}
+HRESULT get_frequency(D,UINT,UINT*out){*out=1;return S_OK;}
 HRESULT get_stream(D,UINT,IDirect3DVertexBuffer9**p,UINT*,UINT*){*p=nullptr;return S_OK;}
 HRESULT get_indices(D,IDirect3DIndexBuffer9**p){*p=nullptr;return S_OK;}
 HRESULT get_declaration(D,IDirect3DVertexDeclaration9**p){*p=nullptr;return S_OK;}
@@ -342,6 +349,7 @@ class MotionOutput {
 public:
  struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*hull_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr,*sun_original_variant=nullptr,*sun_original_lightmap_variant=nullptr,*hull_lightmap_variant=nullptr;bool hull_program=false;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;std::int8_t sun_register=-1;std::uint8_t major=0;bool depth_out=false;};
  struct Shadow {
+ bool fog_card_pair=false,fog_card_source=false,stream0_frequency_known=false;UINT stream0_frequency=0;
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
  bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
@@ -461,6 +469,10 @@ public:
  void detach_shadow_retention()noexcept{++retention_detaches_;}
  void flush_shadow_retention(shadow_retention::Flush reason)noexcept{retention_reset_flushes_+=reason==shadow_retention::Flush::Reset;}
  std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
+ // Other features stay inert; card routing itself is qualified by test_fog_cards.
+ bool fog_cards_replace_=false,fog_card_ready_checked_=false,fog_card_ready_=false;
+ x3m::FogCardPolicy fog_cards_{};const char*fog_card_fault_reason_="none";
+ void prepare_fog_card(const MotionDrawCall&,MotionRoute&)noexcept{CHECK(false);}
  std::unique_ptr<Pass>fog_;renderer::FogSectorLatch fog_latch_{};bool fog_requested_=false,fog_attach_failed_=false;unsigned fog_failures_=0;std::uint64_t fog_frame_=~std::uint64_t(0);
  void release_candidate_extents()noexcept{++candidate_extent_releases_;}
  bool candidates_requested_=false,sun_apply_applied_=false,sun_apply_attempted_=false,sun_apply_attach_failed_=false,depth_cascade_frame_ok_=false;
@@ -486,6 +498,7 @@ public:
   case GetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(get_vs));case GetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(get_ps));
   case GetVertexShaderConstantF:case GetPixelShaderConstantF:return reinterpret_cast<F>(reinterpret_cast<void*>(get_f));
   case GetVertexShaderConstantI:return reinterpret_cast<F>(reinterpret_cast<void*>(get_i));
+  case GetStreamSourceFreq:return reinterpret_cast<F>(reinterpret_cast<void*>(get_frequency));
   case GetStreamSource:return reinterpret_cast<F>(reinterpret_cast<void*>(get_stream));case GetIndices:return reinterpret_cast<F>(reinterpret_cast<void*>(get_indices));
   case GetVertexDeclaration:return reinterpret_cast<F>(reinterpret_cast<void*>(get_declaration));case GetRenderTarget:return reinterpret_cast<F>(reinterpret_cast<void*>(get_target));
   case GetDepthStencilSurface:return reinterpret_cast<F>(reinterpret_cast<void*>(get_depth));case GetViewport:return reinterpret_cast<F>(reinterpret_cast<void*>(get_viewport));
@@ -519,7 +532,7 @@ public:
  bool composition_requested()const noexcept{return linear_emission_requested_||distance_fade_requested_||screen_emission_requested_;}
  // Blend shadow is required by every route that reads the blend states
  // (composition producers, the source-gain lane and the additive option).
- bool blend_shadow_requested()const noexcept{return composition_requested()||emission_source_gain_requested_||screen_additive_requested_;}
+ bool blend_shadow_requested()const noexcept{return composition_requested()||emission_source_gain_requested_||screen_additive_requested_||fog_cards_replace_;}
  void configure_linear_distance_fade(bool)noexcept;void configure_linear_emissions(bool,float)noexcept;void refresh_linear_emission_contract()noexcept;void report_xt_default_unavailable()noexcept;
  void register_vertex_shader(IDirect3DVertexShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
  void register_pixel_shader(IDirect3DPixelShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
@@ -1267,6 +1280,26 @@ void xt_deferred_notice_cases(){
  retired.release_resources();retired.report_xt_default_unavailable();CHECK(xt_notice_log.calls==2);
  std::printf("linear_material_xt_deferred_notice checks=%u\n",checks-before);
 }
+void fog_card_shadow_reset_cases(){
+ const unsigned before=checks;
+ MotionOutput m;Device d;m.device_=&d;m.fog_cards_replace_=true;
+ IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps;
+ m.vertex_[&vs].hash=0x7b6393fe2d3e1d85ull;m.pixel_[&ps].hash=renderer::fog_card_pixel_hash;
+ m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);
+ CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source);
+ m.set_vertex_shader(nullptr);CHECK(!m.shadow_.fog_card_pair&&m.shadow_.fog_card_source);
+ m.set_pixel_shader(nullptr);CHECK(!m.shadow_.fog_card_pair&&!m.shadow_.fog_card_source);
+ d.bound_vs=&vs;d.bound_ps=&ps;m.stateblock_applied();
+ CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source&&m.shadow_.stream0_frequency_known&&m.shadow_.stream0_frequency==1);
+ for(unsigned i:{29u,30u,31u})CHECK(m.shadow_.states_known[i]);
+ m.fog_cards_.fault=true;m.fog_cards_.armed=true;m.fog_card_ready_checked_=m.fog_card_ready_=true;m.fog_card_fault_reason_="injected";
+ m.before_reset();
+ CHECK(!m.fog_cards_.fault&&!m.fog_cards_.armed&&!m.fog_card_ready_checked_&&!m.fog_card_ready_&&std::strcmp(m.fog_card_fault_reason_,"none")==0);
+ m.after_reset(S_OK);CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source&&m.shadow_.stream0_frequency_known);
+ m.fog_cards_replace_=false;m.set_pixel_shader(&ps);CHECK(!m.shadow_.fog_card_pair&&!m.shadow_.fog_card_source);
+ m.release_resources();
+ std::printf("fog_card_shadow_reset checks=%u\n",checks-before);
+}
 int main(){
  xt_deferred_notice_cases();
  environment[L"X3M_HDR_TONEMAP"]=L"agx";environment[L"X3M_LINEAR_MATERIALS"]=L"1";configure_environment();CHECK(linear_material_requested&&linear_material_config.direct_gain==1);
@@ -1333,6 +1366,7 @@ int main(){
  before=releases;m.release_resources();CHECK(releases==before);
  // Default off creates only motion and never performs material sampler reads.
  MotionOutput off;Device quiet;off.device_=&quiet;off.register_vertex_shader(&original_vs,&vs,4,10);CHECK(!off.vertex_[&original_vs].material_variant);off.resync_samplers();CHECK(quiet.sampler_reads==0);off.release_resources();
+ fog_card_shadow_reset_cases();
  attempted_state_cases();
  xt_default_cases();
  contract_lifecycle();
