@@ -8,7 +8,7 @@ sys.path.insert(0,str(root/'tools/analysis'))
 import analyze_iteration09_run2 as it09  # noqa: E402  the run-2 sharpness metrics (gradient energy, edge spread / MTF50)
 results=bottle.results_dir(root)
 exe=root/'verification/probe/build/temporal_pass_fixture.exe'
-paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_filter.hlsl','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
+paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_filter.hlsl','src/temporal/resolve_snapshot.hlsl','src/renderer/temporal_resolve_snapshot_program_inc.h','src/renderer/temporal_resolve_program.h','src/temporal/resolve_thin.hlsl','src/renderer/temporal_resolve_thin_program_inc.h','src/temporal/resolve_thin_filter.hlsl','src/renderer/temporal_resolve_thin_filter_program_inc.h','src/temporal/resolve_age.hlsl','src/renderer/temporal_resolve_age_program_inc.h','src/temporal/resolve_age_filter.hlsl','src/renderer/temporal_resolve_age_filter_program_inc.h','verification/probe/temporal_flicker_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
 d3dx=bottle.game_dir() / 'd3dx9_37.dll'
@@ -124,14 +124,20 @@ try:
     # 'filter unavailable').
     lattice_path=results/'temporal-lattice.txt'
     with lattice_path.open('w') as out,(results/'temporal-pass-wine.log').open('a') as err:
-        lattice=subprocess.run(command+['lattice','Z:'+str(root/'src/temporal/resolve_filter.hlsl')],stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=180)
+        lattice=subprocess.run(command+['lattice','Z:'+str(root/'src/temporal/resolve_filter.hlsl')],stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=600)
     lattice_text=lattice_path.read_text()
     fields=lambda prefix:[dict(re.findall(r'(\w+)=(\S+)',line)) for line in lattice_text.splitlines() if line.startswith(prefix)]
     number=lambda rows,key='config':{row.pop(key):{k:float(v) for k,v in row.items()} for row in rows}
     report['lattice']={'report':lattice_path.name,'report_sha256':sha(lattice_path),'exit_code':lattice.returncode,
                        'budget':number(fields('RESOLVE_BUDGET '),'variant'),'ripple':number(fields('LATTICE config=')),'oracle':number(fields('LATTICE_ORACLE ')),
                        'flat':number(fields('LATTICE_FLAT ')),'moving':number(fields('LATTICE_MOVING '))}
-    assert lattice.returncode==0 and 'RESULT PASS numerical=28 state_restorations=9 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    # Flicker suppression (docs/architecture/taa-flicker-suppression.md, steps 0-3): the embedded programs' budgets, the
+    # drifting-lattice table (per-pixel / 8x8-block band rms in codes, contrast, shader-vs-CPU-oracle error) and the step gates.
+    report['flicker']={'caps':fields('FLICKER_CAPS '),'drift':fields('FLICKER_DRIFT '),'step1':fields('FLICKER_STEP1 '),'speed_gate':fields('FLICKER_SPEED_GATE '),
+                       'near_depth':fields('FLICKER_NEAR_DEPTH '),'ghost':fields('FLICKER_GHOST '),'step2':fields('FLICKER_STEP2 ')+fields('FLICKER_STEP2_FAST '),'alpha':fields('FLICKER_ALPHA ')}
+    # 28 / 9 are the run-139 lattice cases (LATTICE_BASE); the flicker cases add 182 numerical and 4 state checks.
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=28 state_restorations=9' in lattice_text and 'RESULT PASS numerical=210 state_restorations=13 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=512 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
     ripple=report['lattice']['ripple']
     assert len(ripple)==10 and ripple['off']==ripple['baseline'] and report['lattice']['budget']['plain']['instruction_slots']<=512,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'

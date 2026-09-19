@@ -303,6 +303,9 @@ def main():
     parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; default 0.75 with --taa; 0 disables, leaving the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
     parser.add_argument('--taa-current-filter', type=float, default=None, metavar='A', help='Filtered current sample of the TAA resolve, 0..4 (X3M_TAA_CURRENT_FILTER; requires --taa): the current colour that enters the history blend becomes the exp(-A d^2) average of the 3x3 current samples (d in pixels from the pixel centre to each jittered sample position) instead of the point sample; the neighbourhood clip is unchanged. Default 0 = off, the unchanged resolve program; 1.0 is the modelled optimum, 2.29 the sharper setting (docs/verification/motion-output.md, "Run 139")')
     parser.add_argument('--taa-history-weight', type=float, default=None, metavar='W', help='History weight of the TAA resolve, 0.5..0.98 (X3M_TAA_HISTORY_WEIGHT; requires --taa): the fraction of the accepted history kept per frame. Default absent = 0.9; 0.95 halves the per-frame ripple and doubles the convergence time and the life of clamp-bounded ghost trails')
+    parser.add_argument('--taa-thin-clip', type=float, default=None, metavar='S', help='Thin-feature soft clip of the TAA resolve, 0..1 (X3M_TAA_THIN_CLIP; requires --taa; default absent = off; suggested 0.75): where the 3x3 depth mixes the empty-depth sentinel and geometry the history is pulled only (1 - S) of the way to the clip box, fading out between 2 and 4 px/frame (docs/architecture/taa-flicker-suppression.md)')
+    parser.add_argument('--taa-adaptive-weight', default=None, metavar='WMAX[,LO,HI]', help='Per-pixel age/speed history weight, w = min(n/(n+1), wmax(speed)) (X3M_TAA_ADAPTIVE_WEIGHT; requires --taa and --taa-thin-clip; default absent = off; suggested 0.97): WMAX within [history weight, 0.99] for slow content, falling to the history weight between LO and HI px/frame (default 0.1,0.5; the wide gate is 0.8,1.5). Costs two R32F targets (8 bytes per pixel)')
+    parser.add_argument('--taa-alpha-history', action='store_true', help='Time-accumulate the resolved alpha on the HDR route (X3M_TAA_ALPHA_HISTORY=1; requires --taa; has an effect only with --hdr, where bloom reads it as the authored-glow weight)')
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
@@ -505,6 +508,26 @@ def main():
         parser.error('--taa-history-weight requires --taa.')
     if args.taa_history_weight is not None and not 0.5 <= args.taa_history_weight <= 0.98:
         parser.error('--taa-history-weight must be within [0.5, 0.98].')
+    if (args.taa_thin_clip is not None or args.taa_adaptive_weight is not None or args.taa_alpha_history) and not args.taa:
+        parser.error('--taa-thin-clip, --taa-adaptive-weight and --taa-alpha-history require --taa.')
+    if args.taa_thin_clip is not None and not 0.0 <= args.taa_thin_clip <= 1.0:
+        parser.error('--taa-thin-clip must be within [0, 1].')
+    if args.taa_adaptive_weight is not None:
+        try:
+            adaptive = [float(part) for part in args.taa_adaptive_weight.split(',')]
+        except ValueError:
+            adaptive = []
+        if len(adaptive) not in (1, 3):
+            parser.error('--taa-adaptive-weight takes WMAX or WMAX,LO,HI.')
+        history_weight = 0.9 if args.taa_history_weight is None else args.taa_history_weight
+        if not max(history_weight, 0.5) <= adaptive[0] <= 0.99:
+            parser.error('--taa-adaptive-weight WMAX must be within [history weight, 0.99].')
+        if len(adaptive) == 3 and not 0.0 <= adaptive[1] < adaptive[2] <= 64.0:
+            parser.error('--taa-adaptive-weight needs 0 <= LO < HI <= 64 px/frame.')
+        if not (args.taa_thin_clip is not None and args.taa_thin_clip > 0.0):
+            parser.error('--taa-adaptive-weight requires --taa-thin-clip > 0 (alone it dims thin lattices).')
+        # Short fixed format: the DLL reads the value through a 32-character buffer (three components <= 23 characters).
+        args.taa_adaptive_weight = ','.join('%.5g' % value for value in adaptive)
     if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
         parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
@@ -884,9 +907,11 @@ def main():
             env.pop('X3M_TAA_SHARPEN', None)
         # The two resolve A/B options are forwarded only when given: a stale
         # shell value can neither enable the filter nor change the weight.
-        for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight)):
+        for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight),
+                            ('X3M_TAA_THIN_CLIP', args.taa_thin_clip), ('X3M_TAA_ADAPTIVE_WEIGHT', args.taa_adaptive_weight),
+                            ('X3M_TAA_ALPHA_HISTORY', '1' if args.taa_alpha_history else None)):
             if value is not None:
-                env[name] = repr(value)
+                env[name] = value if isinstance(value, str) else ('%.5g' % value if name == 'X3M_TAA_THIN_CLIP' else repr(value))
             else:
                 env.pop(name, None)
         env['X3M_TAA_SENTINEL'] = args.taa_sentinel

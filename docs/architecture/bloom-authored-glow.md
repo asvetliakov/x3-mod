@@ -108,6 +108,17 @@ commit still preserves the genuine destination alpha with RGB-only writes.
 FP16 alpha preserves more precision than native A8 writeback, so the correction
 preserves authored intent rather than promising the native quantized mask.
 
+Amendment 2026-09-19 (`taa-flicker-suppression.md`, step 3; implemented, unflown):
+with `--taa-alpha-history` (`X3M_TAA_ALPHA_HISTORY=1`, default off, HDR route
+only) the resolve blends the alpha too: the Catmull-Rom history alpha, clamped
+to the current 3x3 alpha range, with the pixel's history weight; current-only
+returns keep the current alpha, and a nonfinite result falls back to it. The
+authored-glow weight bloom reads is then time-accumulated like the RGB it
+multiplies, and "HDR and resolved-TAA alpha bit-identical" holds only with the
+option off (fixture: bit for bit). The history's alpha channel is the stored
+state; no new surface. The 8-bit route never sets the option (the pass refuses
+it for a surface input).
+
 ## Bounded extraction policy
 
 For decoded, clamped, exposed RGB `E`, original soft-knee weight `w(E)` and

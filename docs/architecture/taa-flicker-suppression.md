@@ -239,3 +239,128 @@ crawl, distant sharpness, blinking lights and window glow. Flight B only if step
 - Drifting lattice: numpy 1-D model of section 3 (`drift3.py` in the session scratchpad).
 - Alpha: run142 `taa_1_<f>.rgba16f`, frames 8-31, far px = depth > 0.999, top 1 % glow blocks, half second
   difference; the block mean stands in for a bloom pyramid level, the true pulse depends on `bloomRadiance.w`.
+
+## 10. Implementation, 2026-09-19 (steps 0-3 implemented, unflown; all options default off)
+
+Source: `src/temporal/resolve.hlsl` (defines `X3M_THIN_CLIP`, `X3M_AGE_WEIGHT`), `resolve_snapshot.hlsl`,
+`resolve_{thin,thin_filter,age,age_filter}.hlsl`, `src/renderer/temporal_pass.{h,cpp}` (`configure_flicker`,
+`FrameInputs::thin_clip / adaptive_weight / adaptive_lo / adaptive_hi / alpha_history`, `Output::age`),
+`src/proxy/motion_output.cpp`, `capture.cpp`, `tools/manage.py`. Fixture: `verification/probe/temporal_flicker_inc.h`
+(lattice mode of `run_temporal_pass.py`). All numbers **[M]**, bottle X3.
+
+- **Slots**: plain 433, filtered 444, snapshot 46, thin 468, thin + filter 480, age 494, age + filter 506 (sketch: 446 /
+  475 / 487). To fit, the variants drop the resolve's single-tap branch: on the texel grid the Catmull-Rom weights are
+  exactly (0, 1, 0, 0) and zero-weight taps are skipped, so the value is the same (fixture: variant at S = 0 bit-identical
+  to the plain and the filtered program over 64 drifting frames, sentinel and routed background). Cost: a static pixel
+  runs the 16-iteration tap loop with 15 skipped iterations instead of one tap; unmeasured on the game.
+- **Off path**: plain and filtered bytecode hashes are those of step 0 (`32063822...`, `fa1fc671...`); with no option set
+  the pass never creates the variants, and `temporal-pass.txt` (508 / 278 / 386) is byte-identical to the pre-change file.
+  The pass holds one more device reference (the snapshot program): `TAA_BASE_REFERENCES` 4 -> 5.
+- **Fixture depths (re-baselined after the replay of section 10.1).** The drifting-lattice lines now sit at device depth
+  0.99 over the sentinel background, as the real struts do (0.984-0.99996): a far-plane pixel accepts their previous depth
+  and the disocclusion test does not reject. Eight near-depth rows (line depth 0.5, `FLICKER_NEAR_DEPTH`) keep the
+  rejection path under the oracle (ages restart there: 3968 / 1920 age-1 samples in the analysed window). The real-data
+  replay stays the authority; the fixture proves shader = oracle and the invariants.
+- **Step 1, measured against section 3.** Soft 0.75 against the baseline, 16 cases (lines 0.8 and 1.25 px, pitch 4 and 2.37,
+  0 / 0.25 / 0.4 / 0.6 px/frame): block period 2-4 ratio 0.89-1.02 (predicted <= 0.65), no band above 1.03 x the baseline,
+  contrast ratio 0.99-1.04 (predicted static 0.55 -> 0.91); identical at both depths, because on a total-miss phase the
+  all-background clip box and the rejection both return the background. Shader = oracle (max error 0.0034). Mechanism: (a)
+  a line narrower than a pixel is missed by every sample of the 3x3 on some jitter phases (**[I]** 0.8 px at 4.31: jitter x
+  in (0.19, 0.39]); the depth neighbourhood is then all sentinel, `thin` is false exactly when the box collapses, and the
+  clamp erases the line; (b) a line of one pixel or more always has both sides in the 3x3 and the clamp does not bind. The
+  1-D model applied the soft clip without the mask. A mask that remembers the previous depth would reach case (a) in the
+  fixture, but the replay shows total-miss phases on 0.3-23 % of real strut px-frames with the clamp binding on 2-3 %:
+  inert on the game either way.
+- **Step 2.** Lines of 1.25 px, static: ripple ratio 0.284 (closed form 0.29), brightness within 0.0023, flat background
+  identical, error 8 frames after a cut 0.0021 against the baseline's 0.0138 after 20. Lines of 0.8 px at game-like depth,
+  static pitch 4: per-px period 2-4 9.65 -> 3.10 (x 0.32) but contrast 0.21 -> 0.066: the section-3 prediction "a high
+  weight dims a thin lattice" holds in the fixture (the erased history refills at 3 % per frame) and the blind mask does not
+  rescue it; on the real static plant the contrast is x 1.00 (section 10.1), total-miss phases being 0.3 % there. Drifting
+  0.8-px pitch 2.37 at 0.4 px/frame, wide gate: per-px 8.6 / 14.1 / 14.4 -> 3.4 / 5.6 / 6.7, block 3.2 / 3.0 / 4.2 -> 1.3 /
+  1.3 / 1.9, contrast 0.40 -> 0.17. Near depth (0.5) the option is worse than the baseline (9.6 -> 27.8 codes), every
+  rejection restarting the age: relevant to near geometry over empty background only. Screen speed is the content's
+  velocity (`previousUV` after the dilation offset is removed is this pixel's own previous position): the fixture asserts
+  the default gate bit-identical to a 10-20 px/frame gate on the static lattice, where every thin pixel is dilated, and on
+  the real static plant 0.0000 of the thin flip px exceed LO = 0.1. At speed >= HI the run is bit-identical to the thin-clip
+  run when the age ramp cannot bind (weight 0.5 case).
+- **Ghost case.** Square at depth 0.99 moving 1 px/frame while reporting no motion: beyond one pixel the revealed background
+  is exact in every config; the revealed pixel beside the square keeps 0.62 (base) / 0.66 (soft) / 0.71 (soft + w 0.97) of
+  the 0.75 contrast, bound w x contrast.
+- **Step 3**: resolved alpha equals the CPU oracle (max error 0.0083 at w 0.97, bound 0.02); alpha ripple ratio equals
+  the colour's (0.053 / 0.053 static, 0.157 / 0.157 at 0.4 px/frame); off: output alpha is the current alpha bit for bit;
+  the pass refuses the option for an 8-bit surface input. +0 surfaces.
+- **Lifetime / state**: age pair created in `allocate` with the histories (same `CreateTexture` path, released by
+  `release_history`: Reset, device loss, size change, option change); fixture: age = frame count, saturates at 64, 1 after
+  a camera cut, after the Reset protocol, after a failed resolve draw, and after toggling the option. RT1,
+  `COLORWRITEENABLE1`, sampler 7 and c24 restored under hostile state (Snapshot equality, including the failed draw).
+  VRAM: 8 bytes per pixel (7.9 MB at 1280x768, 66 MB at 3840x2160), only with `--taa-adaptive-weight`.
+- **Launcher / DLL**: `--taa-thin-clip S`, `--taa-adaptive-weight WMAX[,LO,HI]`, `--taa-alpha-history`; both refuse the
+  adaptive weight without the thin clip or below the history weight; values on the `motion_output_taa` line;
+  `--taa-debug` adds `taa_age` on capture frames (the thin mask is the 3x3 sentinel/geometry mix of the existing depth dump).
+- Flight A as planned in section 7 would now mostly measure step 2; expect no visible effect from `--taa-thin-clip` alone.
+
+### 10.1 Replay of the game's dumps through the CPU oracle (2026-09-19, oracle-only, no shader change)
+
+numpy port of `resolve.hlsl` (dilation, motion / far-plane camera path from the logged `camera_state` rotations, disocclusion
+proof, Catmull-Rom history, luminance weighting with the logged `taa_k`, clip, FP16 rounding) run free over frames 1..31 of a
+32-frame `--taa-debug` capture, seeded with the dumped resolve of frame 0; inputs `hdr_1`, `motion_1`, `depth_1` (.r),
+jitter from `motion_output_frame`. Metric: display-relative luma `255 k L / (1 + k L)` in codes; flip px = pixels whose depth
+validity toggles within the capture; 31-frame DFT; age seeded at 64 (the captures start on a long-lived history). All **[M]**
+unless tagged. Script: `tools/analysis/taa_resolve_replay.py <dump dir> x0 y0 x1 y1 options` (`FR=<first>-<last>` selects a capture,
+`ONLY=<config>` limits the options); fixed to 1280x768 dumps and fails loudly on any other dump size.
+
+- **The oracle reproduces the installed resolve**: free-running 31 frames, max error 0.41 / 0.39 / 0.36 codes, mean 0.04 /
+  0.05 / 0.03 (run148 plant drifting, run142 plant static, run142 station); its band rms equals the dumped resolve's to 0.02.
+- **Which mechanism fires on the real struts** (baseline, share of flip px-frames; run148 / run142 plant / run142 station):
+  disocclusion-rejected 0 / 0 / 0.0001; thin mask true 0.83 / 0.99 / 0.63; total miss (sentinel centre, no geometry in the
+  3x3) 0.10 / 0.003 / 0.23; clamp moves the history by more than one code 0.024 / 0.030 / 0.023 (mean 5 / 3 / 3 codes), among
+  total-miss pixels 0.03 / 0.37 / 0.02. Age never restarts (all flip px reach the maximum age).
+- **The fixture's depths were not game-like.** Plant depths are 0.984-0.99996, so a far-plane pixel (expected depth 1,
+  tolerance 0.02) accepts every previous depth: the rejection that dominated the fixture's 0.8-px lines (line depth 0.5)
+  never happens at the plant and 1e-4 of the time at the station (depths from 0.938). The fixture's sub-pixel results of
+  section 10 (soft clip blind, adaptive weight x 2.9 worse) describe near geometry crossing empty background, not the
+  distant struts. The drifting-lattice fixture should move its lines to depth about 0.99 (keep one near-depth case for the
+  rejection path).
+- **Options against the baseline replay** (per-px p2-4 / p4-8 / p8-32, block the same, contrast, stable-px sharpness = mean
+  squared luma gradient on pixels whose 3x3 is always geometry):
+
+| capture | config | per-px | block | contrast | sharpness |
+|---|---|---|---|---|---|
+| run148 plant, 0.29 px/frame | raw input | 22.4 / 16.0 / 23.4 | 2.74 / 2.36 / 6.89 | | |
+| | base | 3.57 / 5.37 / 17.62 | 1.42 / 1.81 / 6.76 | 1 | 1 |
+| | no clip at all (bound) | 3.48 / 5.21 / 17.69 | 1.41 / 1.79 / 6.73 | 0.995 | 1.06 |
+| | thin 0.75 (also + section-10 remedy) | 3.54 / 5.32 / 17.69 | 1.42 / 1.81 / 6.76 | 1.003 | 1.000 |
+| | thin + w 0.97 narrow | 3.33 / 5.08 / 17.02 | 1.41 / 1.79 / 6.74 | 0.980 | 0.926 |
+| | thin + w 0.97 wide | 3.05 / 4.51 / 16.43 | 1.39 / 1.77 / 6.70 | 0.959 | 0.916 |
+| | current filter 1.0 | 3.00 / 4.46 / 15.42 | 1.40 / 1.78 / 6.65 | 0.903 | 0.534 |
+| run142 plant, static | raw input | 29.6 / 17.4 / 3.9 | 2.46 / 1.46 / 0.32 | | |
+| | base | 1.93 / 2.53 / 0.47 | 0.19 / 0.26 / 0.06 | 1 | 1 |
+| | thin 0.75 | 1.87 / 2.43 / 0.61 | 0.17 / 0.23 / 0.09 | 1.018 | 1.000 |
+| | thin + w 0.97 (either gate) | 0.59 / 0.79 / 0.48 | 0.06 / 0.08 / 0.06 | 0.998 | 0.952 |
+| | w 0.97 without thin | 0.64 / 0.88 / 0.43 | 0.07 / 0.10 / 0.05 | 0.987 | 0.952 |
+| | current filter 1.0 | 1.06 / 1.43 / 2.58 | 0.14 / 0.20 / 0.18 | 0.777 | 0.431 |
+| run142 station, 0.23 px/frame | base | 2.47 / 3.29 / 12.42 | 1.01 / 1.28 / 4.94 | 1 | 1 |
+| | thin 0.75 | 2.45 / 3.29 / 12.50 | 1.01 / 1.28 / 4.94 | 1.004 | 1.000 |
+| | thin + w 0.97 wide | 2.18 / 2.95 / 11.82 | 1.00 / 1.27 / 4.91 | 0.979 | 0.966 |
+| | current filter 1.0 | 2.16 / 2.90 / 11.31 | 1.00 / 1.26 / 4.87 | 0.930 | 0.598 |
+
+- **Conclusions.** (1) The slow band of the drifting captures is not a resolve artefact: the resolved 8-px block band (6.76)
+  equals the raw input's (6.89), and removing the clip entirely changes it by 0.4 %; it is the scene moving under fixed
+  pixels **[I]**. No option reduces it (best -7 % per px, -1 % block) and none should be expected to. (2) The jitter band of the
+  static plant is the `(1 - w)` ripple and only the adaptive weight acts on it: x 0.31 per px and block (closed form 0.29),
+  contrast unchanged, at a 5 % loss of the stable-pixel gradient energy; it needs no thin clip on real data (0.64 against
+  0.59 without it), so the "refuse without --taa-thin-clip" rule protects against a dimming the real struts do not show.
+  Under 0.2-0.3 px/frame drift its gain shrinks to 12-15 % on the fast bands for an 8 % sharpness loss (wide gate). (3) The
+  thin clip and the section-10 remedy do nothing measurable on any capture (the clamp binds on 2-3 % of strut px-frames);
+  step 1 is inert rather than harmful. (4) The current filter buys less than the adaptive weight and halves the stable-pixel
+  gradient energy. Candidate for a flight: `--taa-thin-clip 0.75 --taa-adaptive-weight 0.97` (narrow gate), judged on the
+  near-static shimmer only.
+
+### 10.2 Review fixes (2026-09-19)
+
+Environment values longer than the DLL's 32-character buffer are invalid (option off, `taa_flicker_setting invalid=1`), and
+the launcher emits `%.5g` components. The snapshot program is optional (`snapshot_available()`; a refusal only refuses runs
+with a mask policy, `motion_output_taa_snapshot unavailable=1`); the refusal itself is not fixture-simulated. With the
+adaptive weight off the gate constants upload as zeros. No shader change: slots stay 433 / 444 / 46 / 468 / 480 / 494 / 506.
+The review's speed finding was checked and not applied: the measured speed already excludes the dilation offset (assertion
+and replay number above). Lattice mode is now 210 numerical / 13 state checks.

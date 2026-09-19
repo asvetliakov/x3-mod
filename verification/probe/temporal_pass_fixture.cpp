@@ -6,6 +6,7 @@
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/camera_reprojection.h"
 #include "../../src/renderer/hdr_writeback_program.h"
+#include "../../src/renderer/temporal_resolve_program.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -694,6 +695,7 @@ struct EdgeScene {
     IDirect3DDevice9* d;
     Com<IDirect3DTexture9> color,depth32,motion,wave;Com<IDirect3DSurface9> colorSurface,depthSurface,motionSurface;
     Com<IDirect3DPixelShader9> flat,motionPS,textured;
+    bool alphaFollows=false; // colour draws write alpha = value instead of 1 (alpha-history cases)
     EdgeScene(IDirect3DDevice9* device,Compiler compiler):d(device){
         check("edge color",d->CreateTexture(S,S,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&color.p,nullptr));check("edge color surface",color->GetSurfaceLevel(0,&colorSurface.p));
         check("edge depth",d->CreateTexture(S,S,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&depth32.p,nullptr));check("edge depth surface",depth32->GetSurfaceLevel(0,&depthSurface.p));
@@ -725,9 +727,9 @@ struct EdgeScene {
     void constant(float a,float b,float c,float e,UINT slot=0){const float v[4]={a,b,c,e};check("edge constant",d->SetPixelShaderConstantF(slot,v,1));}
     void render(const std::vector<EdgeObject>& objects,const EdgeBackground& bg,double jx,double jy){
         target(colorSurface.p);check("edge Begin",d->BeginScene());
-        check("edge flat bind",d->SetPixelShader(flat.p));constant(bg.value,bg.value,bg.value,1);quad(0,0,S,S,0,0);
+        check("edge flat bind",d->SetPixelShader(flat.p));constant(bg.value,bg.value,bg.value,alphaFollows?bg.value:1);quad(0,0,S,S,0,0);
         for(auto& o:objects){if(o.scroll){check("edge wave bind",d->SetTexture(0,wave.p));check("edge textured bind",d->SetPixelShader(textured.p));quad(o.l,o.t,o.r,o.b,jx,jy,o.u0,o.u0+(o.r-o.l)/S);check("edge wave unbind",d->SetTexture(0,nullptr));check("edge flat rebind",d->SetPixelShader(flat.p));}
-            else{constant(o.value,o.value,o.value,1);quad(o.l,o.t,o.r,o.b,jx,jy);}}
+            else{constant(o.value,o.value,o.value,alphaFollows?o.value:1);quad(o.l,o.t,o.r,o.b,jx,jy);}}
         check("edge End",d->EndScene());
         target(motionSurface.p);check("edge motion Begin",d->BeginScene());check("edge motion bind",d->SetPixelShader(motionPS.p));
         constant(float(jx),float(jy),0,0);constant(bg.depth,1.f/S,bg.alpha,0,1);quad(0,0,S,S,0,0);
@@ -1585,6 +1587,7 @@ void loop_timings(IDirect3DDevice9* d,const DWORD* baseline,const DWORD* candida
     }
 }
 #include "sun_share_temporal_inc.h"
+#include "temporal_flicker_inc.h"
 
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3TemporalPassFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 temporal production module",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
     // Optional sixth argument: "stationary-only" runs just the stationary
@@ -1602,22 +1605,30 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
         if(supplementalOnly||loopQualify||lattice){
             D3DCAPS9 caps{};check("supplemental shader budget caps",d->GetDeviceCaps(&caps));
             auto disassemble=symbol<decltype(&D3DXDisassembleShader)>(d3dx.h,"D3DXDisassembleShader");
-            auto budget=[&](ID3DXBuffer* code,const char* label){Com<ID3DXBuffer> assembly;
-                check("supplemental resolve disassembly",disassemble(static_cast<DWORD*>(code->GetBufferPointer()),FALSE,nullptr,&assembly.p));
+            auto budgetWords=[&](const DWORD* words,unsigned long count,const char* label){Com<ID3DXBuffer> assembly;
+                check("supplemental resolve disassembly",disassemble(words,FALSE,nullptr,&assembly.p));
                 std::istringstream lines(static_cast<const char*>(assembly->GetBufferPointer()));std::string line;unsigned slots=0;
                 while(std::getline(lines,line))if(line.find("instruction slots used")!=std::string::npos){const auto start=line.find_first_of("0123456789");if(start!=std::string::npos)slots=unsigned(std::stoul(line.substr(start)));}
-                std::printf("RESOLVE_BUDGET variant=%s dwords=%lu instruction_slots=%u device_limit=%lu headroom=%d within_guaranteed_512=%u\n",label,code->GetBufferSize()/sizeof(DWORD),slots,caps.MaxPixelShader30InstructionSlots,int(caps.MaxPixelShader30InstructionSlots)-int(slots),unsigned(slots<=512));
-                require(slots>0&&static_cast<DWORD*>(code->GetBufferPointer())[0]==0xffff0300,"resolve instruction budget parsed for ps_3_0");return slots;};
+                std::printf("RESOLVE_BUDGET variant=%s dwords=%lu instruction_slots=%u device_limit=%lu headroom=%d within_guaranteed_512=%u\n",label,count,slots,caps.MaxPixelShader30InstructionSlots,int(caps.MaxPixelShader30InstructionSlots)-int(slots),unsigned(slots<=512));
+                require(slots>0&&words[0]==0xffff0300,"resolve instruction budget parsed for ps_3_0");return slots;};
+            auto budget=[&](ID3DXBuffer* code,const char* label){return budgetWords(static_cast<DWORD*>(code->GetBufferPointer()),code->GetBufferSize()/sizeof(DWORD),label);};
             compile(compiler,file(argv[6]),"ps_3_0",&baseline.p);
             const unsigned oldSlots=budget(baseline.p,lattice?"current_filter":"baseline"),newSlots=budget(rc.p,loopQualify?"loop":lattice?"plain":"supplemental");
             if(loopQualify)require(newSlots<=512&&newSlots<=caps.MaxPixelShader30InstructionSlots,"rolled resolve fits guaranteed and advertised instruction budget");
             std::printf("RESOLVE_BUDGET_DELTA instruction_slots=%d dwords=%ld\n",int(newSlots)-int(oldSlots),long(rc->GetBufferSize()/sizeof(DWORD))-long(baseline->GetBufferSize()/sizeof(DWORD)));
+            // Every embedded resolve program (the ones the DLL creates) stays within the 512 slots every ps_3_0 device guarantees.
+            if(lattice){namespace r=x3m::renderer;
+                #define X3M_BUDGET(program,label) require(budgetWords(reinterpret_cast<const DWORD*>(r::program()),sizeof(r::program())/sizeof(DWORD),label)<=512,label " within the guaranteed 512 slots")
+                X3M_BUDGET(temporal_resolve_program,"embedded_plain");X3M_BUDGET(temporal_resolve_filter_program,"embedded_current_filter");X3M_BUDGET(temporal_resolve_snapshot_program,"embedded_snapshot");
+                X3M_BUDGET(temporal_resolve_thin_program,"embedded_thin");X3M_BUDGET(temporal_resolve_thin_filter_program,"embedded_thin_filter");X3M_BUDGET(temporal_resolve_age_program,"embedded_age");X3M_BUDGET(temporal_resolve_age_filter_program,"embedded_age_filter");
+                #undef X3M_BUDGET
+            }
             // The retained baseline also exceeds the advertised limit on X3.
             // Report this unexplained portability concern; actual shader creation
             // and execution below qualify only this backend, not cap compliance.
         }
         auto* sharpener=static_cast<DWORD*>(sc->GetBufferPointer());
-        if(lattice){lattice_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),static_cast<DWORD*>(baseline->GetBufferPointer()));std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n",numeric_checks,state_checks);result=0;}
+        if(lattice){lattice_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),static_cast<DWORD*>(baseline->GetBufferPointer()));const unsigned latticeNumeric=numeric_checks,latticeState=state_checks;std::printf("LATTICE_BASE numerical=%u state_restorations=%u\n",latticeNumeric,latticeState);flicker_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),static_cast<DWORD*>(baseline->GetBufferPointer()));std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n",numeric_checks,state_checks);result=0;}
         else if(sunLaneOnly){sun_lane_cases(d.p,pp,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));result=0;}
         else if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
         else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}

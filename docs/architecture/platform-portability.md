@@ -394,3 +394,12 @@ slots; ps_3_0 guarantees 512 (`MaxPixelShader30InstructionSlots` may advertise m
 test: a device that refuses it keeps the plain resolve and logs `motion_output_taa_current_filter unavailable=1`.
 The X3 bottle accepts it. The refusal path is fixture-simulated only; no device enforcing the cap has run it.
 Before this option can become a default, trim the variant under 512 slots (9 of its 14 added slots).
+
+**Closed 2026-09-19** (`taa-flicker-suppression.md`, step 0): the mask-snapshot modes moved into their own program
+(`src/temporal/resolve_snapshot.hlsl`, 46 slots); the plain resolve is 433 slots and the filtered variant 444. Every
+embedded resolve program is within 512 (thin 468, thin + filter 480, age 494, age + filter 506; the fixture's
+`RESOLVE_BUDGET variant=embedded_*` lines assert it). The refusal path stays as the capability test. The age variants
+write `COLOR1` (R32F beside A16B16G16R16F): `TemporalPass` requires `NumSimultaneousRTs >= 2` and
+`D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS` and otherwise runs without the adaptive weight
+(`motion_output_taa_adaptive_weight unavailable=1`); the fallback is source-reviewed only, no device without the cap has
+run it. Native Windows: source-compatible, unverified.

@@ -32,7 +32,7 @@ float4 rejection : register(c6); // absolute device-depth tolerance, relative to
 // depth is the -1 sentinel (no routed opaque draw wrote it) is current-only;
 // 2 such a pixel is reprojected through the camera path with depth = far (1),
 // for a route that supplies a valid clip_to_previous for the background.
-float4 options : register(c7); // motion enabled, reactive enabled, snapshot (1 canonical, 2 expanded), depth-sentinel policy
+float4 options : register(c7); // motion enabled, reactive enabled, snapshot mode (resolve_snapshot.hlsl only; 0 here), depth-sentinel policy
 // c22.x is k of the reversible luminance weighting (c8..c21 are the AgX
 // block of the HDR write-back, left clear). Every colour that enters the
 // temporal statistics -- the current pixel, its 3x3 neighbourhood and every
@@ -67,7 +67,27 @@ float4 options : register(c7); // motion enabled, reactive enabled, snapshot (1 
 // the unfiltered samples; the filtered colour is a convex combination of them,
 // so it lies inside the min/max box and the inverse weighting stays exact.
 // docs/verification/motion-output.md, "Run 139", mechanism 1a.
-float4 luminance : register(c22); // k, current-filter A, unused, unused
+float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THIN_CLIP variants), unused
+// Flicker suppression (docs/architecture/taa-flicker-suppression.md). The
+// plain program and resolve_filter.hlsl compile none of it: their bytes are
+// those of step 0. X3M_THIN_CLIP (resolve_thin*.hlsl): where the current 3x3
+// depth mixes the sentinel with geometry, the history is pulled only part of
+// the way to the clip box, old = lerp(clamp(old), old, S), S = c24.x faded
+// out between 2 and 4 px/frame of screen speed; with c22.z > 0.5 the output
+// alpha is the history alpha blended with the same weight and clamped to the
+// current 3x3 alpha range (HDR route: bloom's authored-glow weight).
+// X3M_AGE_WEIGHT (resolve_age*.hlsl, implies the thin clip): COLOR1 is the
+// per-pixel accumulated-frame count n (R32F, s7 the previous one); every
+// current-only return writes 1, the blend min(n + 1, 64), and the history
+// weight is min(n / (n + 1), wmax), wmax = c24.y falling to c5.z between
+// c24.z and c24.z + 1 / c24.w px/frame.
+#ifdef X3M_AGE_WEIGHT
+#define X3M_THIN_CLIP 1
+sampler2D previousAge : register(s7);
+#endif
+#ifdef X3M_THIN_CLIP
+float4 flicker : register(c24); // thin-clip S, age wmax, speed LO, 1 / (HI - LO)
+#endif
 static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
 static const float unweighFloor = 1.0 / 65504.0;
 float lumaFloored(float3 c) { return max(dot(c, lumaWeights), 0); }
@@ -103,14 +123,29 @@ float snapFraction(inout float base, float f) {
 // One Catmull-Rom history tap. Nonfinite taps contribute no energy and the
 // remaining weights renormalize; a nonzero-weight tap with reactive previous
 // coverage (mask policy) rejects the whole lookup.
-void historyTap(float2 uv, float weight, inout float3 sum, inout float total, inout bool reactive) {
+#ifdef X3M_THIN_CLIP
+#define HISTORY_SUM float4
+#else
+#define HISTORY_SUM float3
+#endif
+void historyTap(float2 uv, float weight, inout HISTORY_SUM sum, inout float total, inout bool reactive) {
     if (weight != 0) {
         if (options.y > 0.5 && !maskSafe(fetch(previousReactive, uv).r)) reactive = true;
+#ifdef X3M_THIN_CLIP
+        float4 color = fetch(previousColor, uv);
+        if (finiteColor(color.rgb)) {
+            // History alpha is this program's own output; a nonfinite one is
+            // refused by the range test at the blend.
+            sum += float4(weigh(color.rgb), color.a) * weight;
+            total += weight;
+        }
+#else
         float3 color = fetch(previousColor, uv).rgb;
         if (finiteColor(color)) {
             sum += weigh(color) * weight;
             total += weight;
         }
+#endif
     }
 }
 // Keep the bounded neighborhood loops rolled to fit the ps_3_0 static
@@ -120,22 +155,15 @@ void historyTap(float2 uv, float weight, inout float3 sum, inout float total, in
 float loopWeight(float4 weights, int index) {
     return index == 0 ? weights.x : (index == 1 ? weights.y : (index == 2 ? weights.z : weights.w));
 }
+#ifdef X3M_AGE_WEIGHT
+struct ResolveOutput { float4 color : COLOR0; float4 age : COLOR1; };
+ResolveOutput emit(float4 color, float age) { ResolveOutput o; o.color = color; o.age = float4(age, 0, 0, 1); return o; }
+ResolveOutput main(float2 uv : TEXCOORD0) {
+#else
+#define emit(color, age) (color)
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
-    // Explicit GPU snapshot mode, used by TemporalPass only after validating s5.
-    // Canonicalize coverage into owned R32F history; never infer it from alpha.
-    if (options.z > 1.5) {
-        // Raw supplemental FP16 coverage also affects neighboring color clip
-        // statistics. Store its 3x3 union once in current owned R32F history.
-        // This branch never samples a previous (already expanded) mask.
-        bool safe = true;
-        [loop] for (int y = -1; y <= 1; ++y) {
-            [loop] for (int x = -1; x <= 1; ++x)
-                safe = maskSafe(fetch(currentReactive, uv + float2(x, y) * sizeJitter.xy).r) && safe;
-        }
-        return float4(safe ? 0 : 1, 0, 0, 1);
-    }
-    if (options.z > 0.5)
-        return float4(maskSafe(fetch(currentReactive, uv).r) ? 0 : 1, 0, 0, 1);
+#endif
+    // The mask-snapshot modes (options.z) live in resolve_snapshot.hlsl.
     float4 current = fetch(currentColor, uv);
     float3 raw = current.rgb;
     float3 color = cleanColor(raw);
@@ -158,14 +186,14 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // validDepth below, never become a far-plane pixel under policy 2.)
     bool farPlane = false;
     if (options.w > 0.5 && depth <= -0.5) {
-        if (options.w < 1.5) return float4(color, alpha);
+        if (options.w < 1.5) return emit(float4(color, alpha), 1);
         depth = 1;
         farPlane = true;
     }
     if (history.w < 0.5 || history.z <= 0 || !finiteColor(raw) || !validDepth(depth))
-        return float4(color, alpha);
+        return emit(float4(color, alpha), 1);
     if (options.y > 0.5 && !maskSafe(fetch(currentReactive, uv).r))
-        return float4(color, alpha);
+        return emit(float4(color, alpha), 1);
 
     // Closest-depth dilation: the correspondence (camera reprojection or the
     // producer's motion) is taken from the closest valid pixel of the 3x3
@@ -180,11 +208,19 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // "silhouette", corner pixels).
     float2 dilate = 0;
     float nearest = depth;
+#ifdef X3M_THIN_CLIP
+    // thin: the 3x3 (centre included) holds both a valid depth and the sentinel.
+    bool sawSentinel = farPlane, sawValid = !farPlane;
+#endif
     [loop] for (int ky = -1; ky <= 1; ++ky) {
         [loop] for (int kx = -1; kx <= 1; ++kx) {
             if (kx != 0 || ky != 0) {
                 float neighbor = fetch(currentDepth, uv + float2(kx, ky) * sizeJitter.xy).r;
                 if (validDepth(neighbor) && neighbor < nearest) { nearest = neighbor; dilate = float2(kx, ky); }
+#ifdef X3M_THIN_CLIP
+                if (validDepth(neighbor)) sawValid = true;
+                if (neighbor <= -0.5 && neighbor >= -1e30) sawSentinel = true;
+#endif
             }
         }
     }
@@ -232,7 +268,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // The dilated pixel's velocity, applied to this pixel.
     previousUV -= dilate * sizeJitter.xy;
     if (!valid || !validDepth(expectedDepth) || any(previousUV < 0) || any(previousUV > 1))
-        return float4(color, alpha);
+        return emit(float4(color, alpha), 1);
 
     float2 position = previousUV / sizeJitter.xy - 0.5;
     float2 base = floor(position);
@@ -271,7 +307,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             }
         }
     }
-    if (proven < considered - 0.001) return float4(color, alpha);
+    if (proven < considered - 0.001) return emit(float4(color, alpha), 1);
 
     // History color: Catmull-Rom over the 4x4 texel neighborhood (16 point
     // taps; the samplers are point-filtered by contract, so the 9-tap form that
@@ -279,12 +315,19 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // keep detail that repeated bilinear resampling would blur away at
     // fractional velocities; the neighborhood clip bounds the overshoot. A
     // lookup on the texel grid (static content) reads that texel only.
-    float3 accumulated = 0;
+    HISTORY_SUM accumulated = 0;
     float total = 0;
     bool reactive = false;
+#ifdef X3M_THIN_CLIP
+    // Slot budget: the variants drop the single-tap branch. On the texel grid
+    // the weights are exactly (0, 1, 0, 0) and zero-weight taps are skipped,
+    // so the loop reads that texel only and yields the same value.
+    {
+#else
     [branch] if (all(f == 0)) {
         historyTap(tap, 1, accumulated, total, reactive);
     } else {
+#endif
         float2 f2 = f * f, f3 = f2 * f;
         float2 w0 = -0.5 * f + f2 - 0.5 * f3;
         float2 w1 = 1 - 2.5 * f2 + 1.5 * f3;
@@ -296,8 +339,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
                 historyTap(tap + float2(i - 1, j - 1) * sizeJitter.xy, loopWeight(wx, i) * loopWeight(wy, j), accumulated, total, reactive);
         }
     }
-    if (reactive || total < 0.5) return float4(color, alpha);
-    float3 old = accumulated / total;
+    if (reactive || total < 0.5) return emit(float4(color, alpha), 1);
+    float3 old = accumulated.rgb / total;
     // From here on every colour is in the weighted domain (identity at k = 0);
     // the early returns above hand the unweighted current colour through.
     float3 weighted = weigh(color);
@@ -310,6 +353,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Invalid neighboring values cannot poison the statistics.
     float3 low = weighted, high = weighted, mean = 0, square = 0;
     float count = 0;
+#ifdef X3M_THIN_CLIP
+    float lowAlpha = alpha, highAlpha = alpha;
+#endif
 #ifdef X3M_CURRENT_FILTER
     float2 jitterPixels = sizeJitter.zw / sizeJitter.xy;
     float3 filtered = 0;
@@ -317,7 +363,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #endif
     [loop] for (int ny = -1; ny <= 1; ++ny) {
         [loop] for (int nx = -1; nx <= 1; ++nx) {
+#ifdef X3M_THIN_CLIP
+            float4 neighborTexel = fetch(currentColor, uv + float2(nx, ny) * sizeJitter.xy);
+            float3 neighbor = neighborTexel.rgb;
+            lowAlpha = min(lowAlpha, neighborTexel.a); highAlpha = max(highAlpha, neighborTexel.a);
+#else
             float3 neighbor = fetch(currentColor, uv + float2(nx, ny) * sizeJitter.xy).rgb;
+#endif
             if (finiteColor(neighbor)) {
                 neighbor = weigh(neighbor);
                 low = min(low, neighbor); high = max(high, neighbor);
@@ -334,10 +386,33 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float3 sigma = sqrt(max(square / count - mean * mean, 0));
     low = max(low, mean - clipGamma * sigma);
     high = min(high, mean + clipGamma * sigma);
+#ifdef X3M_THIN_CLIP
+    // Screen speed in px/frame: the history lookup against this pixel (both
+    // carry the current jitter). S = 0 or thin = 0 is the clamp exactly.
+    float speed = length((previousUV - uv) / sizeJitter.xy);
+    float soft = sawValid && sawSentinel ? flicker.x * (1 - saturate((speed - 2) * 0.5)) : 0;
+    old = lerp(clamp(old, low, high), old, soft);
+#else
     old = clamp(old, low, high);
+#endif
 #ifdef X3M_CURRENT_FILTER
     // The centre sample is finite here, so filterTotal >= exp(-A * 0.5) > 0.
     weighted = filtered / filterTotal;
 #endif
-    return float4(unweigh(lerp(weighted, old, history.z)), alpha);
+    float keep = history.z;
+#ifdef X3M_AGE_WEIGHT
+    // Nearest reprojected texel of the previous age target; anything outside
+    // [1, 64] (never written by this program) restarts the count.
+    float age = fetch(previousAge, tap + float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0) * sizeJitter.xy).r;
+    age = age >= 1 && age <= 64 ? age : 1;
+    keep = min(age / (age + 1), lerp(flicker.y, history.z, saturate((speed - flicker.z) * flicker.w)));
+#endif
+#ifdef X3M_THIN_CLIP
+    // Alpha history (c22.z is 0 or 1): same weight, clamped to the current 3x3
+    // alpha range. Weight 0 is the current alpha exactly; a result outside the
+    // range (>= and <= only: a NaN fails) keeps the current alpha.
+    float blendedAlpha = lerp(alpha, clamp(accumulated.a / total, lowAlpha, highAlpha), keep * luminance.z);
+    if (blendedAlpha >= lowAlpha && blendedAlpha <= highAlpha) alpha = blendedAlpha;
+#endif
+    return emit(float4(unweigh(lerp(weighted, old, keep)), alpha), min(age + 1, 64));
 }

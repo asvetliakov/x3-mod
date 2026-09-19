@@ -98,6 +98,9 @@ float taa_mip_bias = 0.f;
 // bit-identical output. Off entirely without TAA.
 float taa_sharpen = 0.f;
 float taa_current_filter = 0.f;  // X3M_TAA_CURRENT_FILTER (0..4; 0 off)
+float taa_thin_clip = 0.f;       // X3M_TAA_THIN_CLIP (0..1; 0 off)
+float taa_adaptive_weight = 0.f, taa_adaptive_lo = .1f, taa_adaptive_hi = .5f; // X3M_TAA_ADAPTIVE_WEIGHT=WMAX[,LO,HI] (0 off)
+bool taa_alpha_history = false;  // X3M_TAA_ALPHA_HISTORY=1
 float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
 // path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
@@ -2174,6 +2177,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_taa_resolve(taa_current_filter,taa_history_weight);
+    hooked.motion_output.configure_taa_flicker(taa_thin_clip,taa_adaptive_weight,taa_adaptive_lo,taa_adaptive_hi,taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
@@ -2604,6 +2608,21 @@ void initialize_log(HMODULE module) {
     // value keeps the default.
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_CURRENT_FILTER",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=4.f)taa_current_filter=v;}
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
+    // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
+    // off when unset or invalid: X3M_TAA_THIN_CLIP=<S> (0..1),
+    // X3M_TAA_ADAPTIVE_WEIGHT=<WMAX>[,<LO>,<HI>] (WMAX 0.5..0.99, 0 <= LO < HI
+    // <= 64 px/frame; the route refuses it without the thin clip or below the
+    // history weight) and X3M_TAA_ALPHA_HISTORY=1 (HDR route only).
+    // GetEnvironmentVariableW returns the required size (>= 32) without writing
+    // when the value does not fit, leaving the previous variable's text in the
+    // buffer: such a value is invalid (option off, one log line), never parsed.
+    auto flicker_setting=[&](const wchar_t* name,const char* label){const DWORD length=GetEnvironmentVariableW(name,setting,32);if(length>=32){log("taa_flicker_setting name=%s invalid=1 reason=too_long length=%lu",label,length);return false;}return length>0;};
+    if(taa_requested&&flicker_setting(L"X3M_TAA_THIN_CLIP","X3M_TAA_THIN_CLIP")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_thin_clip=v;}
+    if(taa_requested&&flicker_setting(L"X3M_TAA_ADAPTIVE_WEIGHT","X3M_TAA_ADAPTIVE_WEIGHT")){wchar_t* end=nullptr;const float wmax=wcstof(setting,&end);float lo=.1f,hi=.5f;bool okay=end!=setting&&wmax>=.5f&&wmax<=.99f;
+        if(okay&&*end==L','){wchar_t* next=nullptr;lo=wcstof(end+1,&next);okay=next!=end+1&&*next==L',';if(okay){end=nullptr;hi=wcstof(next+1,&end);okay=end!=next+1&&*end==L'\0'&&lo>=0.f&&hi>lo&&hi<=64.f;}}
+        else okay=okay&&*end==L'\0';
+        if(okay){taa_adaptive_weight=wmax;taa_adaptive_lo=lo;taa_adaptive_hi=hi;}}
+    taa_alpha_history=taa_requested&&flicker_setting(L"X3M_TAA_ALPHA_HISTORY","X3M_TAA_ALPHA_HISTORY")&&setting[0]==L'1'&&setting[1]==L'\0';
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';

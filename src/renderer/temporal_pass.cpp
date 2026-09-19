@@ -1,5 +1,6 @@
 #include "temporal_pass.h"
 #include "quad_vertex_program.h"
+#include "temporal_resolve_program.h"
 #include "../temporal/sharpen.h"
 #include <algorithm>
 #include <cstring>
@@ -173,6 +174,8 @@ void TemporalPass::invalidate() noexcept {history_.invalidate();diagnostics_.his
 void TemporalPass::release_history() noexcept {
     invalidate();for(auto& p:color_surfaces_)drop(p);for(auto& p:depth_surfaces_)drop(p);
     for(auto& p:reactive_surfaces_)drop(p);
+    for(auto& p:age_surfaces_)drop(p);
+    for(auto& p:ages_)drop(p);
     drop(scratch_surface_);drop(staging_surface_);
     for(auto& p:colors_)drop(p);
     for(auto& p:depths_)drop(p);
@@ -181,23 +184,27 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(resolve_filtered_);drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(resolve_filtered_);drop(thin_);drop(thin_filtered_);drop(age_);drop(age_filtered_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
 void TemporalPass::before_reset() noexcept {release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
 void TemporalPass::after_reset(HRESULT result) noexcept {invalidate();if(SUCCEEDED(result))diagnostics_.reset_pending=false;}
 HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen,const DWORD* copy,const DWORD* resolve_filtered) noexcept {
-    shutdown();diagnostics_={};resolve_filtered_result_=S_FALSE;if(!d||!resolve)return E_INVALIDARG;
+    shutdown();diagnostics_={};resolve_filtered_result_=S_FALSE;snapshot_result_=S_FALSE;if(!d||!resolve)return E_INVALIDARG;
     device_=d;vtable_=native_vtable;quad_fvf_=quad_fvf_requested();
     D3DCAPS9 caps{};HRESULT hr=call<CapsFn>(GetDeviceCaps)(d,&caps);
     if(SUCCEEDED(hr)&&(caps.PixelShaderVersion<D3DPS_VERSION(3,0)||caps.VertexShaderVersion<D3DVS_VERSION(3,0)||!caps.NumSimultaneousRTs||caps.NumSimultaneousRTs>4||!caps.MaxStreams))hr=D3DERR_NOTAVAILABLE;
     if(FAILED(hr)){device_=nullptr;vtable_=nullptr;return hr;}
     render_targets_=caps.NumSimultaneousRTs;streams_=caps.MaxStreams;
+    mrt_age_=caps.NumSimultaneousRTs>=2&&(caps.PrimitiveMiscCaps&D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS);
     // The quad's vertex program and declaration survive Reset like the pixel programs.
     hr=call<CreateVsFn>(CreateVertexShader)(d,reinterpret_cast<const DWORD*>(quad_vertex_program()),&quad_vs_);
     if(SUCCEEDED(hr))hr=call<CreateDeclarationFn>(CreateVertexDeclaration)(d,quad_declaration,&quad_declaration_);
     if(SUCCEEDED(hr)&&decoder)hr=call<CreatePsFn>(CreatePixelShader)(d,decoder,&decoder_);
     if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,resolve,&resolve_);
+    // The mask-snapshot modes are their own embedded program (resolve_snapshot.hlsl).
+    // Optional: a device that refuses it keeps the resolve; only the mask policies that draw snapshots are refused at run.
+    if(SUCCEEDED(hr)){snapshot_result_=call<CreatePsFn>(CreatePixelShader)(d,reinterpret_cast<const DWORD*>(temporal_resolve_snapshot_program()),&snapshot_);if(FAILED(snapshot_result_))drop(snapshot_);}
     // Optional variant: the filtered program is a few instruction slots above
     // the 512 every ps_3_0 device guarantees, so a device may refuse it
     // (D3DCAPS9::MaxPixelShader30InstructionSlots). Creation is the capability
@@ -208,8 +215,23 @@ HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const 
     if(FAILED(hr))shutdown();
     return hr;
 }
-HRESULT TemporalPass::allocate(UINT w,UINT h,bool reactive) noexcept {
-    if(width_==w&&height_==h&&bool(reactive_[0])==reactive)return S_OK;
+HRESULT TemporalPass::configure_flicker() noexcept {
+    if(!device_||!resolve_)return E_FAIL;
+    if(thin_)return S_OK;
+    auto make=[&](const std::uint32_t* words,IDirect3DPixelShader9** out){return call<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words),out);};
+    HRESULT hr=make(temporal_resolve_thin_program(),&thin_);
+    if(SUCCEEDED(hr)&&resolve_filtered_)hr=make(temporal_resolve_thin_filter_program(),&thin_filtered_);
+    if(FAILED(hr)){drop(thin_);drop(thin_filtered_);return hr;}
+    // The age variants are optional on top: a refusal leaves the thin clip usable.
+    if(mrt_age_){
+        HRESULT age=make(temporal_resolve_age_program(),&age_);
+        if(SUCCEEDED(age)&&resolve_filtered_)age=make(temporal_resolve_age_filter_program(),&age_filtered_);
+        if(FAILED(age)){drop(age_);drop(age_filtered_);}
+    }
+    return S_OK;
+}
+HRESULT TemporalPass::allocate(UINT w,UINT h,bool reactive,bool age) noexcept {
+    if(width_==w&&height_==h&&bool(reactive_[0])==reactive&&bool(ages_[0])==age)return S_OK;
     release_history();HRESULT hr=S_OK;
     for(UINT i=0;i<2&&SUCCEEDED(hr);++i){
         hr=call<CreateTextureFn>(CreateTexture)(device_,w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&colors_[i],nullptr);
@@ -218,6 +240,8 @@ HRESULT TemporalPass::allocate(UINT w,UINT h,bool reactive) noexcept {
         if(SUCCEEDED(hr))hr=depths_[i]->GetSurfaceLevel(0,&depth_surfaces_[i]);
         if(SUCCEEDED(hr)&&reactive)hr=call<CreateTextureFn>(CreateTexture)(device_,w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&reactive_[i],nullptr);
         if(SUCCEEDED(hr)&&reactive)hr=reactive_[i]->GetSurfaceLevel(0,&reactive_surfaces_[i]);
+        if(SUCCEEDED(hr)&&age)hr=call<CreateTextureFn>(CreateTexture)(device_,w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&ages_[i],nullptr);
+        if(SUCCEEDED(hr)&&age)hr=ages_[i]->GetSurfaceLevel(0,&age_surfaces_[i]);
     }
     if(FAILED(hr)){release_history();return hr;}width_=w;height_=h;return S_OK;
 }
@@ -257,7 +281,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     const bool mask=in.reactive_policy==ReactivePolicy::RequiredMask||supplemental;
     const bool sentinel=in.reactive_policy==ReactivePolicy::DerivedFromDepthSentinel||supplemental;
     const bool draw_copy=in.color_surface&&copy_by_draw_;
-    if(!out||!device_||!resolve_||!quad_vs_||!quad_declaration_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||(draw_copy&&!copy_)||
+    const bool aged=in.adaptive_weight>0,flicker=in.thin_clip>0||aged||in.alpha_history;
+    if(!out||!device_||!resolve_||(mask&&!snapshot_)||!quad_vs_||!quad_declaration_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||(draw_copy&&!copy_)||
         (in.motion_policy!=MotionPolicy::KnownCameraOnly&&in.motion_policy!=MotionPolicy::PerPixel)||
         (in.reactive_policy!=ReactivePolicy::Unavailable&&in.reactive_policy!=ReactivePolicy::KnownNonReactive&&
          in.reactive_policy!=ReactivePolicy::RequiredMask&&!sentinel)||
@@ -265,8 +290,11 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         bool(in.color)==bool(in.color_surface)||bool(in.depth_snapshot)==bool(in.current_depth)||
         (in.depth_snapshot&&!decoder_)||(sentinel&&!in.current_depth)||
         !x3::temporal::valid_sharpen(in.sharpen)||(in.sharpen>0&&(!in.color_surface||!sharpen_))||
-        !x3::temporal::valid_current_filter(in.current_filter)||(in.current_filter>0&&!resolve_filtered_))return fail(E_INVALIDARG);
+        !x3::temporal::valid_current_filter(in.current_filter)||(in.current_filter>0&&!resolve_filtered_)||
+        !x3::temporal::valid_thin_clip(in.thin_clip)||!x3::temporal::valid_adaptive_weight(in.adaptive_weight,in.adaptive_lo,in.adaptive_hi,in.weight)||
+        (flicker&&!flicker_available())||(aged&&(!(in.thin_clip>0)||!age_available()))||(in.alpha_history&&!in.color))return fail(E_INVALIDARG);
     for(UINT i=0;i<2;++i){
+        if(ages_[i]&&(in.color==ages_[i]||in.depth_snapshot==ages_[i]||in.current_depth==ages_[i]||in.motion==ages_[i]||in.reactive==ages_[i]))return fail(E_INVALIDARG);
         for(auto* owned:{colors_[i],depths_[i],reactive_[i],scratch_,staging_})
             if(owned&&(in.color==owned||in.depth_snapshot==owned||in.current_depth==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
         if(in.color_surface&&(in.color_surface==color_surfaces_[i]||in.color_surface==scratch_surface_||in.color_surface==staging_surface_))return fail(E_INVALIDARG);
@@ -279,7 +307,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(FAILED(hr))return fail(hr);
     const bool depth_draw=depth_format==D3DFMT_G32R32F||depth_format==D3DFMT_A32B32G32R32F; // the lane's RT2: the point-sampled .r copy; R32F StretchRects, the D24X8 snapshot decodes
     if(depth_draw&&!copy_)return fail(E_INVALIDARG);
-    hr=allocate(in.width,in.height,mask);if(FAILED(hr))return fail(hr);
+    hr=allocate(in.width,in.height,mask,aged);if(FAILED(hr))return fail(hr);
     hr=ensure_block();if(FAILED(hr))return fail(hr);
     history_.begin(in.width,in.height,in.epoch);
     if(in.camera_cut||in.cut||!in.history_allowed||in.reactive_policy==ReactivePolicy::Unavailable||
@@ -288,6 +316,10 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(!x3::temporal::prepare(constants,history_,in.clip_to_previous,in.current_jitter[0],in.current_jitter[1],
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
         mask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k,in.current_filter))return fail(E_INVALIDARG);
+    constants.luminance[2]=in.alpha_history?1.f:0.f; // read by the flicker variants only
+    float flicker_constants[4]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);
+    const bool filtered=in.current_filter>0;
+    IDirect3DPixelShader9* const program=aged?(filtered?age_filtered_:age_):flicker?(filtered?thin_filtered_:thin_):(filtered?resolve_filtered_:resolve_);
     const bool used=history_.valid&&in.weight>0;
     auto stamp=[&]()->std::uint64_t{if(!timing_)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return std::uint64_t(t.QuadPart);};
     std::uint64_t mark=stamp();
@@ -348,24 +380,37 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(SUCCEEDED(hr)&&supplemental){
         constants.options[2]=2;
         if(step(call<SetRtFn>(SetRenderTarget)(d,0,reactive_surfaces_[next]))&&
-           step(call<SetPsFn>(SetPixelShader)(d,resolve_))&&
+           step(call<SetPsFn>(SetPixelShader)(d,snapshot_))&&
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,4,constants.size_jitter,1))&&
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1))&&
            step(call<SetTextureFn>(SetTexture)(d,5,in.reactive)))hr=quad(in.width,in.height);
         constants.options[2]=0;
     }
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
-        step(call<SetPsFn>(SetPixelShader)(d,in.current_filter>0?resolve_filtered_:resolve_))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
+        step(call<SetPsFn>(SetPixelShader)(d,program))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
         step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kLuminanceRegister,constants.luminance,1))&&
         step(call<SetTextureFn>(SetTexture)(d,0,in.color?in.color:scratch_))&&step(call<SetTextureFn>(SetTexture)(d,1,depths_[next]))&&
         step(call<SetTextureFn>(SetTexture)(d,2,history_.valid?colors_[current_]:nullptr))&&
         step(call<SetTextureFn>(SetTexture)(d,3,history_.valid?depths_[current_]:nullptr))&&
         step(call<SetTextureFn>(SetTexture)(d,4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
         step(call<SetTextureFn>(SetTexture)(d,5,supplemental?reactive_[next]:in.reactive))&&
-        step(call<SetTextureFn>(SetTexture)(d,6,history_.valid&&mask?reactive_[current_]:nullptr)))hr=quad(in.width,in.height);
+        step(call<SetTextureFn>(SetTexture)(d,6,history_.valid&&mask?reactive_[current_]:nullptr))&&
+        // Flicker variants only: c24, and for the age weight the previous age at
+        // s7 (point, clamp, single level; the block restores the sampler) and
+        // the next age as RT1, which leaves the device again right after the
+        // draw so no later quad of this run can write it.
+        (!flicker||step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kFlickerRegister,flicker_constants,1)))&&
+        (!aged||(step(call<SetRsFn>(SetRenderState)(d,D3DRS_COLORWRITEENABLE1,15))&&step(call<SetSamplerFn>(SetSamplerState)(d,7,D3DSAMP_MINFILTER,D3DTEXF_POINT))&&step(call<SetSamplerFn>(SetSamplerState)(d,7,D3DSAMP_MAGFILTER,D3DTEXF_POINT))&&
+                 step(call<SetSamplerFn>(SetSamplerState)(d,7,D3DSAMP_MIPFILTER,D3DTEXF_NONE))&&step(call<SetSamplerFn>(SetSamplerState)(d,7,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP))&&
+                 step(call<SetSamplerFn>(SetSamplerState)(d,7,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP))&&step(call<SetSamplerFn>(SetSamplerState)(d,7,D3DSAMP_SRGBTEXTURE,FALSE))&&
+                 step(call<SetSamplerFn>(SetSamplerState)(d,7,D3DSAMP_MAXMIPLEVEL,0))&&
+                 step(call<SetTextureFn>(SetTexture)(d,7,history_.valid?ages_[current_]:nullptr))&&
+                 step(call<SetRtFn>(SetRenderTarget)(d,1,age_surfaces_[next])))))hr=quad(in.width,in.height);
+    if(aged&&!lost(hr)){const HRESULT unbind=call<SetRtFn>(SetRenderTarget)(d,1,nullptr);if(SUCCEEDED(hr))hr=unbind;}
     if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask){
         constants.options[2]=1; // mask snapshot; current s5 stays borrowed only for this run
         if(step(call<SetRtFn>(SetRenderTarget)(d,0,reactive_surfaces_[next]))&&
+           step(call<SetPsFn>(SetPixelShader)(d,snapshot_))&&
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1)))hr=quad(in.width,in.height);
     }
     // Post-resolve sharpen (sharpen.h): with the history set complete, RCAS of
@@ -416,6 +461,6 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     current_=next;reactive_policy_=in.reactive_policy;
     if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();
     diagnostics_.history_valid=history_.valid;++diagnostics_.completed_frames;++generation_;
-    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result,copy_result};return S_OK;
+    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result,copy_result,aged?ages_[current_]:nullptr};return S_OK;
 }
 } // namespace x3m::renderer

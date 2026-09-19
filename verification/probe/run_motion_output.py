@@ -654,9 +654,10 @@ CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(
           case('seam-taa-copy-draw', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_STRETCH_FAULT='1')),
           case('seam-msaa', 'msaa', jitter=True, taa=True)]
 # Device references the pass holds after its lazy initialization: the resolve
-# program, the identity copy program, the quad vertex program and its
-# declaration; the sharpen program joins with the switch on.
-TAA_BASE_REFERENCES = 4
+# program, its mask-snapshot program (split out of the resolve, taa-flicker-
+# suppression.md step 0), the identity copy program, the quad vertex program
+# and its declaration; the sharpen program joins with the switch on.
+TAA_BASE_REFERENCES = 5
 CASES += [case(f'bench-{size}-hdr-tonemap-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr=True, hdr_env=dict(AGX_AUTO, X3M_MOTION_FRAME_LOG='4', X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
 SHARPEN_MAX_CODE_ERROR = 1   # GPU rcp/mad against the double-precision reference, plus the 8-bit rounding
 HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault')
