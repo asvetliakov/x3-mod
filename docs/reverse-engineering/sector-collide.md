@@ -773,6 +773,21 @@ patched, site 5 refused) rolled back byte-exact; restore; closed window. Self-co
 +220 ns per accepted pair, +1.5 ns per node-pair visit, i.e. about 0.04 ms + 0.15 ms per frame at 200 pairs and
 10^5 visits. Ledger: [sampling-profiler.md](../verification/sampling-profiler.md), "Collide narrow census".
 
+### 11.8 Reviews (2026-09-19)
+
+Opus review and Fable second review: nothing blocking. Confirmed from the image: the x87 stack is empty at
+`0x0045d665` on every path, no function on the narrow-phase call path installs an SEH frame, stack and flags at
+`0x0045d66a` are the callee's in both return conventions, the handlers' clock brackets only the engine call
+(`annotate()` runs at Present, outside it). **Reading `narrow_us`:** it includes the census's own stub cost inside
+the bracket: about 1.5 ns per node-pair visit (sites 6 and 7, about 0.15 ms per frame at 1e5 visits) and one
+register/XMM save-restore per accepted pair (about 220 ns); subtract them before judging a fix, and do not compare
+frame time with the option on against a run with it off. Accepted low points: the `busy` byte is a non-atomic
+global (one thread assumed; `cross_thread_frames`, `nested`, `dropped` expose a violation); an unwind past the
+site-5 stub leaves `busy` set for the process (census degrades to pass-through, `nested` grows); stub 7 ignores
+`push_front`'s continuation (no second claimer of `0x004e2530` exists); the verifier's rel8 scan for site 7 starts
+at the function entry; sites 5 and 6 take a plain 5-byte write inside the install window (expect
+`write_n5=plain write_n6=plain` in the flight log).
+
 ## Reproduce
 
 ```sh
