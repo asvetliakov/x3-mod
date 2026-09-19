@@ -788,6 +788,219 @@ site-5 stub leaves `busy` set for the process (census degrades to pass-through, 
 at the function entry; sites 5 and 6 take a plain 5-byte write inside the install window (expect
 `write_n5=plain write_n6=plain` in the flight log).
 
+## 12. The BVH descent and the fix options
+
+2026-09-19, same method as §11: nothing launched, no Ghidra project; every listing below was taken with
+`objdump -d --x86-asm-syntax=intel` over the bottle EXE in place (non-relocatable, so file address = VA for `.text`
+VA `0x00401000` / raw `0x400` / `0x130800` B), the PE section table parsed from the file, and the run140/run141
+figures taken with `grep`/`awk` over the session logs (53/55 MB, never read whole). Marks: **[m]** measured in a
+flight, **[s]** static reading of the image, **[i]** inference.
+
+### 12.1 The two objects: `a` is the station, `b` is the ship (corrects the run-44 reading)
+
+The type-table loader at `0x0043626e` clears `[0x00606fb8 + 4*class]` / `[0x00607038 + 4*class]` for
+`class = 0..0x1f` and dispatches through the 32-entry jump table at **`0x0043944c`**; each case pushes the type
+file's name. Decoding that table gives the engine's class numbering directly **[s]**:
+
+| class | table | class | table | class | table |
+| --- | --- | --- | --- | --- | --- |
+| 0 | TBullets | 8 | TLaser | 18 | TGates |
+| 1 | — (default) | 9 | TShields | 19 | — (default) |
+| 2 | TBackgrounds | 10 | TMissiles | 20 | TSpecial |
+| 3 | TSuns | 11–16 | TWareE/N/B/F/M/T | 21–24, 26, 27 | — (default) |
+| 4 | TPlanets | 17 | TAsteroids | 25 | TCockpits |
+| **5** | **TDocks** | | | 28 | TDebris |
+| 6 | TFactories | | | 29/30/31 | TDocksWrecks / TFactoriesWrecks / TShipsWrecks |
+| **7** | **TShips** | | | | |
+
+The mapping is corroborated by every class-specific path already documented here: class 0 = TBullets is the swept
+projectile pass of §4; class 4 = TPlanets is the `"NotifyPlanetCollision"` branch of §3; class 3 (TSuns) is in
+L2's skip set with the three empty classes 19, 21, 27; class 20 = TSpecial is the `subtype 0x5c` special case; and
+the §3 gate that tests `abs(d) ≤ r_sum·3 + 250000` and then calls `0x0044d4c0` (`"CanWarp"`/`"CanLand"`) and
+`0x0044e450` (proximity) is the **class-7 = ship** path, which is what warps and lands.
+
+So the expensive pair is **`a` = a dock/station (TDocks index 26), `b` = ships (TShips indices 211–223)** — the
+opposite of the §11.4 guess and of the run-44 A reading. The F8 rows confirm it numerically **[m]**:
+`radius_a=9205962` (≈18 km at the §6 scale of ~505 units/m) against `radius_b=43200` (≈85 m) for the dominant
+partner and `7753` for the next one; `pos_a=-2500000,0,250000`, three round numbers, i.e. a fixture that never
+moves. The class-7 subtypes 211–223 are therefore **ship types, not station modules**: ~20 ships parked around one
+station. The station is a single sector object whose *parts* produce the 32 mesh-pair tests per query (§11.3's
+`0x0048a890` part-tree walk), not 20 objects.
+
+`b = 0x11b21bb8` is the player's ship **[i]**: it is the only partner whose visit count collapses (232,978 → 3,326,
+70×) when the player flies away while the accepted set stays the same 18–20 partners, and it is bit-static
+(`unchanged=1 same_pos=1 same_xform=1`) exactly while the player holds still **[m]**. Which dock type index 26 is
+(shipyard, equipment dock, trading station…) needs `addon\types\TDocks`, which was not opened here.
+
+### 12.2 The collider is RAPID (UNC), lightly modified
+
+Everything below matches Gottschalk/Lin/Manocha's RAPID 2.01 line for line **[s]**: `obb_disjoint` with 15
+separating axes and the `reps` margin (`0x00565600` = `1e-6f`, verified as the float at that address),
+`collide_recursive` descending the box with the larger first extent, one triangle per leaf, `tri_contact`, the
+global counters, and the flag `RAPID_FIRST_CONTACT = 2` — which is exactly the `2` that `0x0048a9a5` passes.
+
+| Structure | Address / field | Contents |
+| --- | --- | --- |
+| BV node, `0x48` B (`0x004e0f00` allocates `2N`) | `+0x00..+0x20` | 3×3 rotation of this box in its parent's frame, row-major |
+| | `+0x24..+0x2c` | box centre (3 floats) |
+| | `+0x30..+0x38` | half-extents (3 floats); `+0x30` is the first/principal axis |
+| | `+0x3c`, `+0x40` | children (both 0 = leaf) |
+| | `+0x44` | triangle record (`0x34` B, `N` allocated): `+0x04..+0x24` = three vertices |
+| model | `[node+0x5c]` | RAPID model; `[model+0x14] == 3` = built; `[model+0x00]` = root box |
+
+Per-query globals, all reset by `0x004e2780` at `0x004e2947`–`0x004e2951` **[s]**:
+
+| Global | Role | Value on the narrow-phase path |
+| --- | --- | --- |
+| `0x00608534` | flag word, stored by `0x004e29f0` from ECX | `2`; bit 2 (`&4`) = "cap contacts", bit 3 (`&8`) = distance mode — both clear here |
+| `0x00608538` | contact cap | `1`, **not consulted** because bit 2 is clear |
+| `0x00596934` | first-contact flag, set at `0x004e27e7` when mode == 2 | `1` |
+| `0x00608544` | box-test (node-pair visit) counter, `add …,1` at `0x004e257d` | census site 7 counts the same events |
+| `0x00608548` | **triangle-test counter**, `add …,1` at `0x004e22a5` inside the leaf | never read by the census — see §12.6 |
+| `0x0060854c` | contact counter, incremented at `0x004e24e9`; `0x0047f1b0` returns `!= 0` | 0 for this pair |
+| `0x0059692c`…`0x0059695c`, `0x00596938` | top-level R, T and scale used by the leaf test | set at `0x004e28ae`–`0x004e2925` |
+
+### 12.3 `0x004e2530` exactly
+
+`int __cdecl descend(BV* a, BV* b, float* R, float* T, float s)`, 5 args (`add esp,0x14` at all five call sites),
+locals `sub esp,0x40`, pushes EBX/EBP/ESI/EDI, three `ret` exits **[s]**. Five inbound calls only (§11.5), no
+abs32 reference to the entry anywhere in the file. `R`/`T` are the relative transform of `b`'s frame in `a`'s
+frame at this level; `s` is a per-query relative model scale, composed at `0x004e2914`/`0x004e2925` from the two
+per-object scale arguments.
+
+```
+004e2530  eax=[0x60854c]; if ([0x596934] && eax>0) return 0      ; first contact already found
+004e2553  if ([0x608534]&4 && eax >= [0x608538]) return 0        ; inactive on this path
+004e2564  fld [b+0x30]; fld s; fmul …                            ; b's three half-extents x s -> locals
+004e257d  add [0x608544],1                                       ; the visit counter
+004e25a3  call 0x004e3280(esi=R, edi=&s*b.d, [esp]=T, [esp+4]=&a.d)
+004e25ad  if (eax != 0) return 0                                 ; separating axis found -> prune
+004e25b3  if (a and b are both leaves) return 0x004e2190(esi=a, eax=b)   ; one triangle x one triangle
+004e25da  if (b is a leaf) split a;  else if (a is a leaf) split b
+004e25f3  else fld [b+0x30]; fcomp [a+0x30]  ->  split whichever box has the larger +0x30
+004e2604  split b: child [b+0x40] then [b+0x3c]; per child 0x004e1ff0 (R') + 0x004e20d0 (T')
+004e26af  split a: child [a+0x40] then [a+0x3c]; per child 0x004dfd80 (Rᵀ) + 0x004dfe60 (T')
+          after the first child: test eax,eax / jne -> return the hit immediately
+```
+
+Answers to the brief's questions **[s]**: the bounding volume is an **OBB** (rotation + centre + half-extents),
+not a sphere and not an AABB; the pair test is the 15-axis SAT; the descent splits **one** node — the larger — so
+a visit spawns **two** child pairs, never four; the child order is `+0x40` before `+0x3c`; there is an early-out
+on the first hit (mode 2 also makes every still-pending visit return 0 at its head); a leaf holds exactly **one**
+triangle, and a triangle test happens **only when both** nodes are leaves.
+
+Static instruction counts on the executed paths (function bodies counted to their padding; `0x0040e710` is the
+six-instruction `fabs` *function*, called 24 times from the SAT) **[s]**:
+
+| Work | Instructions | Note |
+| --- | --- | --- |
+| `0x004e3280` separating at axis 1 | 79 + 10 fabs calls ≈ **149** | the nine `Bf = abs(R)+reps` are computed **before** the first axis test |
+| `0x004e3280` full 15 axes (overlap) | 481 + 24 fabs calls ≈ **649** | 556 instructions in the function, 350 of them x87 |
+| head + tail of `0x004e2530` | ≈ 30 | |
+| two child transforms per descending visit | 2 × (83 + 37) = **240** | `0x004e1ff0` 83, `0x004e20d0` 37, `0x004dfd80` 83, `0x004dfe60` 29 |
+| leaf triangle test `0x004e2190` → `0x004e2ba0` | 504 + 30 calls | more expensive than a box test |
+
+Because a descending visit spawns exactly two children and every other visit spawns none, with no contact in the
+whole query `V = 1 + 2·D` holds exactly, so **half the visits take the full 15-axis path plus both child
+transforms** (~920 instructions) and half terminate (~150–650) **[s]**.
+
+### 12.4 Why 230,000 visits, and what the count scales with
+
+The visit count is not a property of the trees but of their overlap: `V = 1 + 2·D` where `D` is the number of
+visited node pairs whose (transformed) OBBs overlap **[s]**. Loose volumes are *not* the mechanism — these are
+oriented boxes, and the engine already descends only the larger one, which is the standard way of clipping a small
+object against a big tree. What produces `D ≈ 1.2e5` is that the ship's boxes are **inside** the station's hull
+structure: at the plateau the pair is 3.27 km apart by Chebyshev distance with an 85 m ship, and 15 % more distance
+(`d_max` 1,651,365 → 1,893,828) drops the pair from 232,978 to 3,326 visits, a 70× fall, with the **same 32
+part-pair queries** in both cases **[m]**. The cost per visit is flat across both regimes — 114.9 ns at the
+plateau and 118.5 ns far away (26,766 µs / 232,978 and 394 µs / 3,326) **[m]** — so the lever on the plateau is
+the **constant factor per visit**, not the branching.
+
+Per part-pair that is 232,978 / 32 = 7,280 visits, i.e. ≈3,600 overlapping node pairs per part pair **[m+s]**.
+
+**Open tension.** 114 ns/visit against ~550 statically counted instructions implies ≈4.9 G x86 instructions/s
+under FEX, 6–16× above the 300–800 M insn/s bracket §5 assumed. One of the two is wrong; §11.3's "0.2–1.3 µs per
+node-pair visit" is certainly too pessimistic (measurement beats it by 2–10×). This matters for sizing any fix, so
+the first step below measures the replacement against a byte replica instead of predicting it.
+
+### 12.5 Fix candidates
+
+The decisive exactness property, from the code: **the SAT only prunes**. A non-zero result of `0x004e2530`, the
+contact counter and the contact point are produced *only* by `0x004e2190` → `0x004e2ba0`, the triangle test.
+A box test that is *more permissive* than the engine's therefore explores a superset of subtrees in the same
+order, finds exactly the same contacts (a subtree the engine's correct test separated cannot contain one) and
+reports the same first contact; it can only cost visits. That makes a conservative replacement **behaviourally
+exact**, with one residual: if the engine's own SAT ever errs toward separation, a permissive replacement could
+find a real contact the engine misses. The engine's own `reps = 1e-6` on box extents of order 1e-2 model units is
+a ~1e-4 relative bias toward overlap, four orders of magnitude above any double-vs-x87 difference, so a relative
+slack of ~2⁻⁴⁵ is inside the engine's existing margin **[s+i]**.
+
+| | Candidate | Exactness | Expected reduction | Size / risk |
+| --- | --- | --- | --- | --- |
+| **(c)** | SSE2 reimplementation of `0x004e3280`, entered through its single call site | exact by the pruning argument; lazy `Bf`, conservative compare | SAT is 83 % of a terminating visit and 71 % of a descending one; 3× fewer instructions and 2–4× faster per instruction (SSE2 is native under FEX, x87 is not) ⇒ **2.5–4× per visit [i]**, to be measured | ~150 lines + fixture; low risk, one 5-byte rel32 |
+| **(c+)** | extend to the whole `0x004e2530` (head, both child transforms, recursion), leaf test still the engine's `0x004e2190` | same argument | adds the 240-instruction transform pair and the head ⇒ **5–10× per visit [i]** | ~250 lines, owns the recursion and the counters; medium risk; collides with census site 7 |
+| **(b)** | cheap SSE2 sphere/AABB pre-cull before the SAT | exact (a sphere containing the OBB) | `8 + (1−p)·114` ns; even at p = 0.5 only 1.75× | subsumed by (c): put it as the first lines of the replacement, not as a second patch |
+| **(e)** | no-contact memo (§11.6 fix 1) | needs the full key; §11.6's risk stands | measured 93–99.9 ‰ of visits at the plateau, `memo_unsafe=0` and `memo_visits_differ=0` in all 58 windows **[m]** — but 0 in every window where the player moves, and `memo_hit=0` in the F8 taken while flying **[m]** | the fix for "parked near a station", not for docking or manoeuvring; combine *after* (c) |
+| **(a)** | change the descent policy | — | **nothing to change**: the engine already descends only the larger box (`fcomp` at `0x004e25f3`) and never splits both | — |
+| **(d)** | clip the big tree first / one-sided descent | — | **already what happens**: descend-larger walks the station tree down to ship-sized boxes before touching the ship tree; a separate pre-clip would re-do the same work | — |
+
+Hook sites, bytes re-read from the image this session, all three windows checked image-wide for inbound branches
+(byte scan of every `e8`/`e9` rel32, `0f 8x` jcc32 and `70–7f`/`eb` rel8 in `.text`, plus every abs32 dword in the
+whole file): **no branch and no pointer lands inside `+1..+4` of any of them, and no abs32 reference to any of the
+three function starts exists anywhere in the file** — so none is reached other than by the calls below **[s]**.
+
+| Site | Bytes | Shape | Suitability |
+| --- | --- | --- | --- |
+| `0x004e25a3` (**recommended**) | `e8 d8 0c 00 00` | `engine_patch::claim_call`, rel32 only | **sole** call of `0x004e3280` in the image. In: ESI = R (9 floats), EDI = &(s·b.d) on the caller's frame, `[esp]` = T, `[esp+4]` = &a.d; caller pops 8; out: EAX = 0 or 1..15. Must preserve EBX, EBP, ESI, EDI (EBP and EBX are read again at `0x004e25da`/`0x004e26c2`) and EDX (the original never writes it); EFLAGS are dead (`test eax,eax` follows). The **x87 stack is empty at the site** — the head's `fld/fstp` sequence is balanced at `0x004e259f` — and an SSE2 replacement must leave it empty. No SEH frame on this path (§11.8). Leaf call: recursion depth unchanged |
+| `0x004e3280` | `83 ec 24 d9 06` | `claim` of two whole instructions (`sub esp,0x24`; `fld [esi]`) | equivalent, if the entry is preferred to the call site |
+| `0x004e2530` | `a1 4c 85 60 00` | census site 7 | needed for (c+); **mutually exclusive with `--collide-narrow-census`** |
+| `0x004e2190` | `83 ec 34 53 57` | `claim` of three whole instructions | counter site for leaf triangle tests (§12.6); sole caller `0x004e25cd` |
+
+Numerics for (c) **[s+i]**: under `FEX_X87REDUCEDPRECISION=1` the engine's x87 evaluates in double, so an SSE2
+`double` implementation that keeps the same association order *and* reproduces the two float32 roundings the
+engine performs (each `Bf` entry is stored back through `fstp dword`, and the scaled `b` extents are stored as
+float32 by `0x004e2530`) is bit-identical in its boolean result there. It is **not** bit-identical on native
+Windows x87 (80-bit registers, and §6 notes the software-vertex-processing device path can leave precision
+control at 24 bits), nor is `fcompp`'s unordered case automatic. Do not aim for bit-equality: implement the
+comparison as "separated only if `|T·axis| > (ra + rb)·(1 + 2⁻⁴⁵)`", treat any NaN as overlap, and rely on the
+pruning argument above. The threshold that could differ is exactly the near-tangent box pair, and there the
+engine's own `reps` already decides in favour of descending.
+
+### 12.6 First step and the counters that confirm it
+
+1. **Build (c) and measure it in a host fixture before installing anything.** The fixture embeds a byte replica of
+   `0x004e3280` (1,582 B, `0x004e3280`–`0x004e38ad`; only the `call 0x0040e710` rel32 and the two abs32 loads of
+   `0x00565600` need relocating, the same technique `collide_narrow_census_fixture.cpp` already uses for
+   `0x0048ac80`), runs both over ~10⁶ node pairs drawn from real ranges plus near-tangent cases, and asserts
+   (i) whenever the replica returns 0 the SSE2 version returns 0, and (ii) the wall-clock ratio under
+   `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py …`. That ratio is the whole business case for
+   (c)/(c+) and it needs no flight.
+2. **One flight, two counters,** both plain increments on the existing census pattern, to decide whether (c+) is
+   worth its extra size and whether the leaf tests matter:
+   - **leaf triangle tests per accepted pair** — `inc` at `0x004e2190` (`83 ec 34 53 57`, then re-execute the
+     three displaced instructions and `jmp 0x004e2195`; the `inc`'s flags are then overwritten by the engine's own
+     `sub esp,0x34`, and the next instruction `mov edi,eax` reads none). The engine's own counter `0x00608548`
+     holds the same number but is reset per mesh-pair query at `0x004e294c`, so it cannot be read once per frame.
+   - **the visit mix** — in the site-7 stub, before `mov eax,[0x0060854c]`, classify the visit by
+     `[esp+0xc]`/`[esp+0x10]` (the two node arguments at that point, the stub runs before `sub esp,0x40`) into
+     four counters: both-leaf, a-leaf, b-leaf, both-internal. ~12 extra instructions per visit ≈ 0.5 ms/frame at
+     2.3e5 visits; EFLAGS are already established dead there (§11.8), EAX/ECX must be saved and restored.
+   Together with the static counts of §12.3 these give the split of the 25 ms between SAT, transforms and triangle
+   tests directly, which is what sizes (c) against (c+).
+   A **descent-depth histogram is not recommended**: it needs a return-intercepting wrapper on a function entered
+   ~2.3e5 times per frame at depth, and the leaf/internal mix answers the same question more cheaply.
+3. Only then (e), as the complement for the standing-still case.
+
+### 12.7 Not established here
+
+The name of TDocks index 26 and of TShips 221 (needs `addon\types\*`, not opened); the triangle counts and tree
+depths of the two models; the number of triangle tests per query (counter `0x00608548` exists but nothing reads
+it); whether `[node+0x30]` is provably the *largest* half-extent (RAPID orders the box axes by the covariance
+eigenvalues; the build path `0x004dfef0`/`0x004e0e70`/`0x004e1220` was not re-read for a sort) — the descent's
+"larger" decision uses only that one component; the real FEX instruction throughput behind the §12.4 tension; and
+the identification of `b = 0x11b21bb8` as the player's ship, which is inference from the visit collapse and the
+bit-static rows, not a field named "player" in any log.
+
 ## Reproduce
 
 ```sh
