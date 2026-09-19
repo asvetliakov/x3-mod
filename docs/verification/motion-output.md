@@ -1657,3 +1657,13 @@ the model is still unvalidated against a resolved frame.
   1280x768: about 40 MB per frame (51 MB sun lane), raw. `--capture-frames`
   was capped at 8 in the launcher and the DLL; both now accept 0..64
   (`--motion-capture` keeps 2..8), so `--capture-frames 32` is 1.3-1.7 GB.
+
+### 2026-09-19 — TAA current filter / history weight: review
+
+Opus review: nothing blocking. Off path byte-identical (plain program hash `2bfba715…`, no shader created and no
+per-frame work at A = 0); lattice ratios reproduced (A = 1.0 0.5945, W = 0.95 0.4811, both 0.2952); `seam-taa-on`
+164 checks unchanged. Fixed: three manifests (`current-depth`, `sun-shadow-apply`, `sun-shadow-cascade-apply`)
+regenerated for the changed generator hash (headers unchanged); portability gap recorded. Accepted low points:
+`filterTotal` can underflow only for a jitter beyond about 6 px (the route's Halton is within 0.5);
+`kHistoryWeight*` constants in `resolve.h` are not the ones `capture.cpp`/`motion_output.h` use; no fixture Resets
+a pass holding the filtered program; the shared 32-wchar env buffer pattern.
