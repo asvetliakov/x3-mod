@@ -386,3 +386,11 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   trampolines on the cull/LOD pass, gated on the same EXE hash as the other
   patches; qualified by the site verifier and the CPU fixture under CrossOver
   only. Native Windows: source-compatible, unverified.
+
+## 2026-09-19: `--taa-current-filter` exceeds the guaranteed ps_3_0 slot count
+
+The filtered TAA resolve variant (`src/temporal/resolve_filter.hlsl`, default off) compiles to 521 instruction
+slots; ps_3_0 guarantees 512 (`MaxPixelShader30InstructionSlots` may advertise more). Creation is the capability
+test: a device that refuses it keeps the plain resolve and logs `motion_output_taa_current_filter unavailable=1`.
+The X3 bottle accepts it. The refusal path is fixture-simulated only; no device enforcing the cap has run it.
+Before this option can become a default, trim the variant under 512 slots (9 of its 14 added slots).

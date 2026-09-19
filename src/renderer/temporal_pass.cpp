@@ -181,13 +181,13 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(resolve_filtered_);drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
 void TemporalPass::before_reset() noexcept {release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
 void TemporalPass::after_reset(HRESULT result) noexcept {invalidate();if(SUCCEEDED(result))diagnostics_.reset_pending=false;}
-HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen,const DWORD* copy) noexcept {
-    shutdown();diagnostics_={};if(!d||!resolve)return E_INVALIDARG;
+HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen,const DWORD* copy,const DWORD* resolve_filtered) noexcept {
+    shutdown();diagnostics_={};resolve_filtered_result_=S_FALSE;if(!d||!resolve)return E_INVALIDARG;
     device_=d;vtable_=native_vtable;quad_fvf_=quad_fvf_requested();
     D3DCAPS9 caps{};HRESULT hr=call<CapsFn>(GetDeviceCaps)(d,&caps);
     if(SUCCEEDED(hr)&&(caps.PixelShaderVersion<D3DPS_VERSION(3,0)||caps.VertexShaderVersion<D3DVS_VERSION(3,0)||!caps.NumSimultaneousRTs||caps.NumSimultaneousRTs>4||!caps.MaxStreams))hr=D3DERR_NOTAVAILABLE;
@@ -198,6 +198,11 @@ HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const 
     if(SUCCEEDED(hr))hr=call<CreateDeclarationFn>(CreateVertexDeclaration)(d,quad_declaration,&quad_declaration_);
     if(SUCCEEDED(hr)&&decoder)hr=call<CreatePsFn>(CreatePixelShader)(d,decoder,&decoder_);
     if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,resolve,&resolve_);
+    // Optional variant: the filtered program is a few instruction slots above
+    // the 512 every ps_3_0 device guarantees, so a device may refuse it
+    // (D3DCAPS9::MaxPixelShader30InstructionSlots). Creation is the capability
+    // test; a refusal leaves the pass usable without the filter.
+    if(SUCCEEDED(hr)&&resolve_filtered){resolve_filtered_result_=call<CreatePsFn>(CreatePixelShader)(d,resolve_filtered,&resolve_filtered_);if(FAILED(resolve_filtered_result_))drop(resolve_filtered_);}
     if(SUCCEEDED(hr)&&sharpen)hr=call<CreatePsFn>(CreatePixelShader)(d,sharpen,&sharpen_);
     if(SUCCEEDED(hr)&&copy)hr=call<CreatePsFn>(CreatePixelShader)(d,copy,&copy_);
     if(FAILED(hr))shutdown();
@@ -259,7 +264,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         (!mask&&in.reactive)||
         bool(in.color)==bool(in.color_surface)||bool(in.depth_snapshot)==bool(in.current_depth)||
         (in.depth_snapshot&&!decoder_)||(sentinel&&!in.current_depth)||
-        !x3::temporal::valid_sharpen(in.sharpen)||(in.sharpen>0&&(!in.color_surface||!sharpen_)))return fail(E_INVALIDARG);
+        !x3::temporal::valid_sharpen(in.sharpen)||(in.sharpen>0&&(!in.color_surface||!sharpen_))||
+        !x3::temporal::valid_current_filter(in.current_filter)||(in.current_filter>0&&!resolve_filtered_))return fail(E_INVALIDARG);
     for(UINT i=0;i<2;++i){
         for(auto* owned:{colors_[i],depths_[i],reactive_[i],scratch_,staging_})
             if(owned&&(in.color==owned||in.depth_snapshot==owned||in.current_depth==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
@@ -281,7 +287,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     x3::temporal::ResolveConstants constants{};std::copy(in.rejection,in.rejection+4,constants.rejection);
     if(!x3::temporal::prepare(constants,history_,in.clip_to_previous,in.current_jitter[0],in.current_jitter[1],
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
-        mask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k))return fail(E_INVALIDARG);
+        mask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k,in.current_filter))return fail(E_INVALIDARG);
     const bool used=history_.valid&&in.weight>0;
     auto stamp=[&]()->std::uint64_t{if(!timing_)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return std::uint64_t(t.QuadPart);};
     std::uint64_t mark=stamp();
@@ -349,7 +355,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         constants.options[2]=0;
     }
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
-        step(call<SetPsFn>(SetPixelShader)(d,resolve_))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
+        step(call<SetPsFn>(SetPixelShader)(d,in.current_filter>0?resolve_filtered_:resolve_))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
         step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kLuminanceRegister,constants.luminance,1))&&
         step(call<SetTextureFn>(SetTexture)(d,0,in.color?in.color:scratch_))&&step(call<SetTextureFn>(SetTexture)(d,1,depths_[next]))&&
         step(call<SetTextureFn>(SetTexture)(d,2,history_.valid?colors_[current_]:nullptr))&&

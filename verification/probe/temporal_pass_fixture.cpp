@@ -883,6 +883,106 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
     metric("scrolling wave: Catmull-Rom keeps more amplitude than the previous bilinear filter",std::min(shader/input-bilinearModel/input,1.),1,.9);
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }
+// ---- run 139: 1-px jittered lattice, filtered current sample and history weight ----
+// docs/verification/motion-output.md, "Run 139": a static lattice of 1-px
+// bright lines (pitch 2 px, fractional position) over a routed far background
+// is rasterized with the session's 8-sample Halton jitter, so every lattice
+// pixel toggles between line and background with the phase. Flicker metric as
+// in the ledger: half the temporal second difference, mean over the lattice
+// pixels, last period. `filtered` is the resolve_filter.hlsl program; a pass
+// initialised without it is the recorded baseline.
+struct LatticeConfig { const char* name; bool filteredProgram; float filter,weight,k; };
+constexpr unsigned latticePhases=8;
+template<class Objects> EdgeRun lattice_sequence(EdgeScene& s,const DWORD* resolver,const DWORD* filtered,Objects objects,unsigned frames,const LatticeConfig& c){
+    constexpr UINT S=EdgeScene::S;TemporalPass pass;check("lattice initialize",pass.initialize(s.d,nullptr,resolver,nullptr,nullptr,nullptr,c.filteredProgram?filtered:nullptr));EdgeRun run;const EdgeBackground bg{.25f,.9f,1};
+    for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
+        s.render(objects(n),bg,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));
+        FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=s.motion.p;in.width=S;in.height=S;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);
+        in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=c.weight;in.current_filter=c.filter;in.luminance_k=c.k;in.motion_policy=MotionPolicy::PerPixel;
+        in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
+        Output out;check("lattice Begin resolve",s.d->BeginScene());check(c.name,pass.run(in,&out));check("lattice End resolve",s.d->EndScene());
+        require(out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0),"lattice history follows the sequence");
+        run.output.push_back(s.read(out.color));}
+    return run;}
+// CPU model of the static resolve at k = 0: the blend's current colour is the
+// exp(-A d^2) average of the 3x3 (d from the pixel centre to each jittered
+// sample position, neighbour offset minus the jitter), the history is the same
+// texel clipped to the unfiltered 3x3 statistics, FP16 rounding per frame.
+std::vector<std::vector<float>> lattice_model(const EdgeRun& run,double A,double w){constexpr UINT S=EdgeScene::S;std::vector<std::vector<float>> out(run.current.size());
+    for(unsigned n=0;n<run.current.size();++n){out[n]=run.current[n];if(!n)continue;const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
+        for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){const double cur=px(run.current[n],x,y);double lo=cur,hi=cur,m1=0,m2=0,sum=0,total=0;
+            for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const double q=px(run.current[n],x+dx,y+dy);lo=std::min(lo,q);hi=std::max(hi,q);m1+=q/9;m2+=q*q/9;const double g=std::exp(-A*((dx-jx)*(dx-jx)+(dy-jy)*(dy-jy)));sum+=q*g;total+=g;}
+            const double sigma=std::sqrt(std::max(m2-m1*m1,0.));lo=std::max(lo,m1-1.25*sigma);hi=std::min(hi,m1+1.25*sigma);
+            const double blendCurrent=A>0?sum/total:cur,old=std::min(std::max(double(px(out[n-1],x,y)),lo),hi);const float v=halfFloat(toHalf(float(blendCurrent+w*(old-blendCurrent))));
+            for(UINT ch=0;ch<3;++ch)out[n][(y*S+x)*4+ch]=v;}}
+    return out;}
+void lattice_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,const DWORD* filtered){
+    std::puts("LATTICE_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;constexpr unsigned N=128,P=latticePhases;
+    struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
+    // Lines [4.31+4i, 5.31+4i) x [3, 15), i = 0..3 (isolated 1-px struts: the ratio of the filter depends on the pitch, CPU model 0.14 / 0.35 / 0.60 at pitch 2 / 3 / 4 for A = 1; pitch 4 is the closest to the run-139 content); a flat bright block [21, 29) x [3, 15); flat background below y = 20.
+    auto lattice=[](unsigned){std::vector<EdgeObject> o;for(unsigned i=0;i<4;++i)o.push_back({4.31+4*i,3,5.31+4*i,15,1,.5f});o.push_back({21,3,29,15,1,.5f});return o;};
+    {double margin=1;for(unsigned i=1;i<=P;++i){const double jx=halton(i,2)-.5,jy=halton(i,3)-.5;for(double e:{4.31,5.31,21.}){const double v=e+jx;margin=std::min(margin,std::fabs(v-std::floor(v)-.5));}{const double v=3+jy;margin=std::min(margin,std::fabs(v-std::floor(v)-.5));}}
+        std::printf("LATTICE_MARGIN %.4f\n",margin);require(margin>=.029,"lattice geometry keeps jittered edges off the sample centers");}
+    // A is validated like every constant, and refused without the filtered program.
+    {TemporalPass plain;check("lattice plain initialize",plain.initialize(d,nullptr,resolver));s.render(lattice(0),EdgeBackground{.25f,.9f,1},0,0);
+        FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=s.motion.p;in.width=S;in.height=S;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);in.motion_policy=MotionPolicy::PerPixel;in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=false;
+        Output out;in.current_filter=1;require(plain.run(in,&out)==E_INVALIDARG,"current filter without the filtered program is refused");
+        TemporalPass both;check("lattice both initialize",both.initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,filtered));
+        for(float bad:{-1.f,4.5f,NAN,INFINITY}){in.current_filter=bad;require(both.run(in,&out)==E_INVALIDARG,"current filter outside [0, 4] is refused");}
+        in.current_filter=4;require(both.current_filter_available()&&SUCCEEDED(both.run(in,&out)),"current filter 4 runs");
+        // A filtered program the device refuses (here a vs_3_0 token stream) leaves the pass usable without the filter.
+        const DWORD refusedProgram[]={0xfffe0300,0x0000ffff};TemporalPass refused;check("lattice refused initialize",refused.initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,refusedProgram));
+        require(!refused.current_filter_available()&&FAILED(refused.current_filter_result()),"refused filtered program is reported, initialize succeeds");
+        in.current_filter=1;require(refused.run(in,&out)==E_INVALIDARG,"current filter on a pass whose device refused the program is refused");
+        in.current_filter=0;require(SUCCEEDED(refused.run(in,&out)),"the pass without the filter still runs");state_checks+=9;}
+    const LatticeConfig configs[]={{"baseline",false,0,.9f,0},{"off",true,0,.9f,0},{"filter-1.0",true,1,.9f,0},{"weight-0.95",true,0,.95f,0},{"both-1.0",true,1,.95f,0},{"filter-2.29",true,2.29f,.9f,0},{"both-2.29",true,2.29f,.95f,0},
+                                   {"k-baseline",false,0,.9f,2.4276f},{"k-filter-1.0",true,1,.9f,2.4276f},{"k-weight-0.95",true,0,.95f,2.4276f}};
+    std::vector<EdgeRun> runs;std::vector<double> ripple;
+    auto flicker=[&](const std::vector<std::vector<float>>& o,double& peak){double sum=0;unsigned count=0;peak=0;for(unsigned n=N-P-1;n<N-1;++n)for(UINT y=5;y<13;++y)for(UINT x=4;x<19;++x){const double v=std::fabs(px(o[n+1],x,y)-2*px(o[n],x,y)+px(o[n-1],x,y))/2;sum+=v;peak=std::max(peak,v);++count;}return sum/count;};
+    double rawFlicker=0;
+    for(auto& c:configs){runs.push_back(lattice_sequence(s,resolver,filtered,lattice,N,c));double peak=0,rawPeak=0;const double r=flicker(runs.back().output,peak),raw=flicker(runs.back().current,rawPeak);ripple.push_back(r);rawFlicker=raw;
+        const unsigned base=c.k>0?7:0;std::printf("LATTICE config=%s filter=%.2f weight=%.2f k=%.4f raw_flicker=%.6f flicker=%.6f peak=%.6f codes_mean=%.3f ratio=%.4f\n",c.name,c.filter,c.weight,c.k,raw,r,peak,255*r,r/ripple[base]);}
+    // Off path: the pass holding both programs at A = 0 equals the pass without the filtered program, every frame, bit for bit.
+    {bool identical=true;for(unsigned n=0;n<N;++n)identical=identical&&runs[0].output[n]==runs[1].output[n];++numeric_checks;require(identical,"lattice off path is bit-identical to the baseline pass over every frame");}
+    // Shader against the CPU definition of the filter (interior pixels; float rounding of the weights compounds through the history).
+    for(unsigned i:{0u,2u,3u,4u,5u}){const auto model=lattice_model(runs[i],configs[i].filter,configs[i].weight);double oracle=0;for(unsigned n=0;n<N;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x)oracle=std::max(oracle,double(std::fabs(px(runs[i].output[n],x,y)-px(model[n],x,y))));
+        std::printf("LATTICE_ORACLE config=%s error=%.6f\n",configs[i].name,oracle);metric((std::string("lattice ")+configs[i].name+": shader matches the CPU model of the filtered resolve").c_str(),oracle,0,.0003/(1-configs[i].weight));} // FP16 rounding (half an ulp, 0.00024 below 1) accumulates with gain 1 / (1 - w)
+    // Modelled ratios of the run-139 table (cap 1): 0.84/1.61, 1.00/1.61, 0.76/1.61 (the latter at A = 2.29).
+    metric("lattice: the resolve removes at least 80% of the raw input flicker",std::min(ripple[0]/rawFlicker,1.),0,.2);
+    metric("lattice filter 1.0: 8-phase ripple over the baseline (modelled 0.52)",ripple[2]/ripple[0],.52,.15);
+    metric("lattice weight 0.95: 8-phase ripple over the baseline (modelled 0.62)",ripple[3]/ripple[0],.62,.15);
+    metric("lattice filter 2.29 + weight 0.95: 8-phase ripple over the baseline (modelled 0.47)",ripple[6]/ripple[0],.47,.15);
+    metric("lattice filter 1.0 + weight 0.95: below either option alone",std::min(ripple[4]/std::min(ripple[2],ripple[3]),1.),0,.999);
+    metric("lattice k 2.4276 filter 1.0: ripple below the weighted baseline",std::min(ripple[8]/ripple[7],1.),0,.9);
+    metric("lattice k 2.4276 weight 0.95: ripple below the weighted baseline",std::min(ripple[9]/ripple[7],1.),0,.9);
+    // Static flat regions: the block interior (2 px inside) and the background below the objects, every option against the baseline, last period.
+    for(unsigned i=2;i<7;++i){double flat=0;for(unsigned n=N-P;n<N;++n)for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const bool block=x>=23&&x<27&&y>=5&&y<13,background=y>=20&&y<30&&x>=2&&x<30;if(block||background)flat=std::max(flat,double(std::fabs(px(runs[i].output[n],x,y)-px(runs[0].output[n],x,y))));}
+        std::printf("LATTICE_FLAT config=%s max_difference=%.6f\n",configs[i].name,flat);metric((std::string("lattice ")+configs[i].name+": static flat regions unchanged").c_str(),flat,0,1./255);}
+    // Moving edge: the silhouette square, static 32 frames then +1 px/frame for
+    // 12. A pixel whose 3x3 holds no square pixel stays the background exactly;
+    // in the rows of the square's span, at columns wholly outside its jittered
+    // extent (both sides), the filter may add at most its own footprint
+    // of the current frame, (1 - w) * contrast * F, F the largest share of one
+    // 3-sample side column of the kernel over the phases. A higher weight keeps
+    // (w - 0.9) * contrast more of the clamp-bounded one-pixel trail.
+    const double sl=10.28,st=10.37;auto square=[&](unsigned n){const double l=sl+(n>=32?n-31:0);return std::vector<EdgeObject>{{l,st,l+6,st+6,1,.5f,n>=32?1.:0.,0}};};
+    const LatticeConfig moving[]={{"moving-baseline",false,0,.9f,0},{"moving-filter-1.0",true,1,.9f,0},{"moving-weight-0.95",true,0,.95f,0},{"moving-both-1.0",true,1,.95f,0}};
+    std::vector<EdgeRun> moves;for(auto& c:moving)moves.push_back(lattice_sequence(s,resolver,filtered,square,44,c));
+    for(unsigned i=0;i<4;++i){const double A=moving[i].filter,w=moving[i].weight;double share=0;
+        if(A>0)for(unsigned phase=1;phase<=P;++phase){const double jx=halton(phase,2)-.5,jy=halton(phase,3)-.5;for(int axis=0;axis<2;++axis)for(int side:{-1,1}){double column=0,total=0;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const double g=std::exp(-A*((dx-jx)*(dx-jx)+(dy-jy)*(dy-jy)));total+=g;if((axis?dy:dx)==side)column+=g;}share=std::max(share,column/total);}}
+        double ghost=0,added=0,interiorMin=1;
+        for(unsigned n=33;n<44;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){bool adjacent=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)adjacent|=px(moves[i].depth[n],x+dx,y+dy)==.5f;
+            const double lx=sl+(n-31);if(!adjacent)ghost=std::max(ghost,std::fabs(px(moves[i].output[n],x,y)-.25));
+            // Rows inside the square's span, columns wholly outside its jittered extent (leading and trailing side).
+            if(y+.5>=st+1.5&&y+.5<=st+6-1.5&&(x+1<=lx-.5||x>=lx+6+.5))added=std::max(added,double(px(moves[i].output[n],x,y)-px(moves[0].output[n],x,y)));
+            if(x+.5>=lx+1.5&&x+.5<=lx+6-1.5&&y+.5>=st+1.5&&y+.5<=st+6-1.5)interiorMin=std::min(interiorMin,double(px(moves[i].output[n],x,y)));}
+        const double bound=(1-w)*.75*share+(w>.9?(w-.9)*.75:0)+1./255;
+        std::printf("LATTICE_MOVING config=%s ghost_far=%.6f added_outside_square=%.6f bound=%.6f kernel_side_share=%.4f moving_interior_min=%.4f\n",moving[i].name,ghost,added,bound,share,interiorMin);
+        metric((std::string("lattice ")+moving[i].name+": revealed background beyond one pixel carries no square colour").c_str(),ghost,0,1./255);
+        if(i){metric((std::string("lattice ")+moving[i].name+": colour added outside the square over the baseline within the stated bound").c_str(),added,0,bound);
+            metric((std::string("lattice ")+moving[i].name+": moving square interior stays bright").c_str(),interiorMin,1,.1);}}
+    if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
+}
 // ---- camera reprojection of the far background (sentinel policy 2) ----------
 // A background at infinity rendered from a camera state (the fixture's own sky
 // shader: the world direction of each unjittered sample, raster pixel p at
@@ -1496,9 +1596,10 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
     const bool measure=argc==6&&std::strcmp(argv[5],"sharpen-measure")==0;
     const bool supplementalOnly=argc==7&&std::strcmp(argv[5],"supplemental-only")==0;
     const bool loopQualify=argc==7&&std::strcmp(argv[5],"loop-qualify")==0;
-    try{if((argc!=5&&!sunLaneOnly&&!stationaryOnly&&!measure&&!supplementalOnly&&!loopQualify)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>|loop-qualify <baseline-resolve>]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
+    const bool lattice=argc==7&&std::strcmp(argv[5],"lattice")==0; // argv[6]: src/temporal/resolve_filter.hlsl
+    try{if((argc!=5&&!sunLaneOnly&&!stationaryOnly&&!measure&&!supplementalOnly&&!loopQualify&&!lattice)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>|loop-qualify <baseline-resolve>|lattice <filtered-resolve>]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
         Com<ID3DXBuffer> baseline;
-        if(supplementalOnly||loopQualify){
+        if(supplementalOnly||loopQualify||lattice){
             D3DCAPS9 caps{};check("supplemental shader budget caps",d->GetDeviceCaps(&caps));
             auto disassemble=symbol<decltype(&D3DXDisassembleShader)>(d3dx.h,"D3DXDisassembleShader");
             auto budget=[&](ID3DXBuffer* code,const char* label){Com<ID3DXBuffer> assembly;
@@ -1508,7 +1609,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
                 std::printf("RESOLVE_BUDGET variant=%s dwords=%lu instruction_slots=%u device_limit=%lu headroom=%d within_guaranteed_512=%u\n",label,code->GetBufferSize()/sizeof(DWORD),slots,caps.MaxPixelShader30InstructionSlots,int(caps.MaxPixelShader30InstructionSlots)-int(slots),unsigned(slots<=512));
                 require(slots>0&&static_cast<DWORD*>(code->GetBufferPointer())[0]==0xffff0300,"resolve instruction budget parsed for ps_3_0");return slots;};
             compile(compiler,file(argv[6]),"ps_3_0",&baseline.p);
-            const unsigned oldSlots=budget(baseline.p,"baseline"),newSlots=budget(rc.p,loopQualify?"loop":"supplemental");
+            const unsigned oldSlots=budget(baseline.p,lattice?"current_filter":"baseline"),newSlots=budget(rc.p,loopQualify?"loop":lattice?"plain":"supplemental");
             if(loopQualify)require(newSlots<=512&&newSlots<=caps.MaxPixelShader30InstructionSlots,"rolled resolve fits guaranteed and advertised instruction budget");
             std::printf("RESOLVE_BUDGET_DELTA instruction_slots=%d dwords=%ld\n",int(newSlots)-int(oldSlots),long(rc->GetBufferSize()/sizeof(DWORD))-long(baseline->GetBufferSize()/sizeof(DWORD)));
             // The retained baseline also exceeds the advertised limit on X3.
@@ -1516,7 +1617,8 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
             // and execution below qualify only this backend, not cap compliance.
         }
         auto* sharpener=static_cast<DWORD*>(sc->GetBufferPointer());
-        if(sunLaneOnly){sun_lane_cases(d.p,pp,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));result=0;}
+        if(lattice){lattice_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),static_cast<DWORD*>(baseline->GetBufferPointer()));std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n",numeric_checks,state_checks);result=0;}
+        else if(sunLaneOnly){sun_lane_cases(d.p,pp,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));result=0;}
         else if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
         else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}
         else if(supplementalOnly){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());reactive_cases(d.p,compiler,decoder,resolver);supplemental_cases(d.p,pp,compiler,decoder,resolver);std::printf("RESULT PASS numerical=%u state_restorations=%u supplemental_only=1\n",numeric_checks,state_checks);result=0;}
@@ -1525,5 +1627,5 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
             std::printf("LOOP_FULL_SUITE numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);
             supplemental_cases(d.p,pp,compiler,decoder,resolver);loop_twins(d.p,compiler,decoder,unrolled,resolver);loop_timings(d.p,unrolled,resolver);
             std::printf("RESULT PASS numerical=%u state_restorations=%u loop_qualify=1\n",numeric_checks,state_checks);result=0;}
-        if(!sunLaneOnly&&!stationaryOnly&&!measure&&!supplementalOnly&&!loopQualify){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
+        if(!sunLaneOnly&&!stationaryOnly&&!measure&&!supplementalOnly&&!loopQualify&&!lattice){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}

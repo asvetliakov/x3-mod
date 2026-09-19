@@ -8,7 +8,7 @@ sys.path.insert(0,str(root/'tools/analysis'))
 import analyze_iteration09_run2 as it09  # noqa: E402  the run-2 sharpness metrics (gradient energy, edge spread / MTF50)
 results=bottle.results_dir(root)
 exe=root/'verification/probe/build/temporal_pass_fixture.exe'
-paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
+paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_filter.hlsl','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
 d3dx=bottle.game_dir() / 'd3dx9_37.dll'
@@ -113,6 +113,28 @@ try:
     ratios=[report['sharpen_measure']['on'][k]['gradient_energy_ratio'] for k in ('0.25','0.5','1.0')]
     assert ratios==sorted(ratios) and ratios[0]>1.0 and report['sharpen_measure']['on']['1.0']['rise_ratio']<1.0,report['sharpen_measure']
     assert hashes()==report['sources_before_build'],'Source changed during the measurement'
+    # Run 139 (docs/verification/motion-output.md): the 1-px jittered lattice
+    # under the filtered current sample (resolve_filter.hlsl, c22.y) and the
+    # history weight. The fixture asserts: off path bit-identical to a pass
+    # without the filtered program; shader = CPU definition of the filter;
+    # 8-phase ripple ratios within 0.15 of the modelled 0.52 / 0.62 / 0.47;
+    # flat regions within 1/255; the moving edge's bounds. Both programs'
+    # instruction slots are recorded (the filtered one exceeds the 512 every
+    # ps_3_0 device guarantees; the pass treats a refused creation as
+    # 'filter unavailable').
+    lattice_path=results/'temporal-lattice.txt'
+    with lattice_path.open('w') as out,(results/'temporal-pass-wine.log').open('a') as err:
+        lattice=subprocess.run(command+['lattice','Z:'+str(root/'src/temporal/resolve_filter.hlsl')],stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=180)
+    lattice_text=lattice_path.read_text()
+    fields=lambda prefix:[dict(re.findall(r'(\w+)=(\S+)',line)) for line in lattice_text.splitlines() if line.startswith(prefix)]
+    number=lambda rows,key='config':{row.pop(key):{k:float(v) for k,v in row.items()} for row in rows}
+    report['lattice']={'report':lattice_path.name,'report_sha256':sha(lattice_path),'exit_code':lattice.returncode,
+                       'budget':number(fields('RESOLVE_BUDGET '),'variant'),'ripple':number(fields('LATTICE config=')),'oracle':number(fields('LATTICE_ORACLE ')),
+                       'flat':number(fields('LATTICE_FLAT ')),'moving':number(fields('LATTICE_MOVING '))}
+    assert lattice.returncode==0 and 'RESULT PASS numerical=28 state_restorations=9 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    ripple=report['lattice']['ripple']
+    assert len(ripple)==10 and ripple['off']==ripple['baseline'] and report['lattice']['budget']['plain']['instruction_slots']<=512,report['lattice']
+    assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'
     report['passed']=True
 finally:
     (results/'temporal-pass-summary.json').write_text(json.dumps(report,indent=2)+'\n')

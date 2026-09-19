@@ -56,7 +56,18 @@ float4 options : register(c7); // motion enabled, reactive enabled, snapshot (1 
 // inverse denominator is floored at 1/65504 rather than proven positive:
 // the output is then finite but large (a one-pixel flash that the next
 // frame's weighting bounds again), never Inf or NaN.
-float4 luminance : register(c22); // k, unused, unused, unused
+// c22.y is A of the filtered current sample, read only by the variant compiled
+// with X3M_CURRENT_FILTER (resolve_filter.hlsl; TemporalPass binds it when
+// A > 0 and this program, whose bytecode the define leaves untouched,
+// otherwise). The colour that enters the blend is then the normalised
+// exp(-A d^2) average of the finite weighted 3x3 samples the clip already
+// fetches, d in pixels from this pixel's centre to each neighbour's jittered
+// sample position (neighbour offset minus the current jitter: the sample at p
+// shows content at p - jitter). The clip box and the variance stay those of
+// the unfiltered samples; the filtered colour is a convex combination of them,
+// so it lies inside the min/max box and the inverse weighting stays exact.
+// docs/verification/motion-output.md, "Run 139", mechanism 1a.
+float4 luminance : register(c22); // k, current-filter A, unused, unused
 static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
 static const float unweighFloor = 1.0 / 65504.0;
 float lumaFloored(float3 c) { return max(dot(c, lumaWeights), 0); }
@@ -299,6 +310,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Invalid neighboring values cannot poison the statistics.
     float3 low = weighted, high = weighted, mean = 0, square = 0;
     float count = 0;
+#ifdef X3M_CURRENT_FILTER
+    float2 jitterPixels = sizeJitter.zw / sizeJitter.xy;
+    float3 filtered = 0;
+    float filterTotal = 0;
+#endif
     [loop] for (int ny = -1; ny <= 1; ++ny) {
         [loop] for (int nx = -1; nx <= 1; ++nx) {
             float3 neighbor = fetch(currentColor, uv + float2(nx, ny) * sizeJitter.xy).rgb;
@@ -306,6 +322,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
                 neighbor = weigh(neighbor);
                 low = min(low, neighbor); high = max(high, neighbor);
                 mean += neighbor; square += neighbor * neighbor; count += 1;
+#ifdef X3M_CURRENT_FILTER
+                float2 sampleOffset = float2(nx, ny) - jitterPixels;
+                float gaussian = exp(-luminance.y * dot(sampleOffset, sampleOffset));
+                filtered += neighbor * gaussian; filterTotal += gaussian;
+#endif
             }
         }
     }
@@ -314,5 +335,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     low = max(low, mean - clipGamma * sigma);
     high = min(high, mean + clipGamma * sigma);
     old = clamp(old, low, high);
+#ifdef X3M_CURRENT_FILTER
+    // The centre sample is finite here, so filterTotal >= exp(-A * 0.5) > 0.
+    weighted = filtered / filterTotal;
+#endif
     return float4(unweigh(lerp(weighted, old, history.z)), alpha);
 }
