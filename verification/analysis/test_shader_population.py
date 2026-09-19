@@ -75,12 +75,12 @@ class ShaderPopulationTests(unittest.TestCase):
         self.assertEqual(int(summary[1]), len(names))
         self.assertEqual(int(summary[3]), sum(int(count) for _, _, count in self.tables))
         self.assertEqual(len(self.entries), int(summary[3]))
-        # The twenty linear-emission pairs, the nine bullet pairs and the two
+        # The twenty linear-emission pairs, the nine bullet pairs and the four
         # depth-only aliases are the named sets of mod-compatibility.md.
         counts = {name: int(count) for _, name, count in self.tables}
         self.assertEqual(counts['linear_emission_pairs'], 20 * 2)
         self.assertEqual(counts['linear_emission_sm1_pairs'], 9 * 2)
-        self.assertEqual(counts['depth_prepass_vertex'], 2)
+        self.assertEqual(counts['depth_prepass_vertex'], 4)  # z_only and the base z_only_0000/0001 copies
         self.assertEqual(counts['linear_material_pairs'] % 2, 0)
         self.assertEqual(counts['linear_material_pairs'] // 2, 154)
 

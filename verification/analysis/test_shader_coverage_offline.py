@@ -133,7 +133,8 @@ class RegistryParserTests(unittest.TestCase):
 
     def test_prepass_rows_parse(self):
         rows = prepass_vertices(ROOT / 'src/renderer/depth_prepass_profiles.h')
-        self.assertEqual(rows, ['803ebfd17f79e413', 'c78b4c68a87fce74'])
+        self.assertEqual(rows, ['4b63594a775cbde0', '803ebfd17f79e413',
+                                'c78b4c68a87fce74', 'd2e63b1e5b0e24df'])  # z_only + z_only_0000/0001
 
     def test_missing_rows_fail_closed(self):
         empty = Path(__file__)  # this file holds no profile rows
