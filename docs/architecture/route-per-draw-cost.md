@@ -1,6 +1,6 @@
 # Route per-draw cost: the three large pieces and the envelope
 
-Design note, 2026-09-18; nothing here is implemented. **(M)** measured, **(I)**
+Design note, 2026-09-18; levers 1 (stage A) and 2a are implemented, unflown; the rest is not. **(M)** measured, **(I)**
 inferred from measured numbers or read code, **(A)** assumed. Code and numbers
 are from the bench worktree `worktree-agent-aae4564ee5361c29e` (base
 `3e43ce58`): [engine-frame-time.md](engine-frame-time.md) §2.2, the ledger
@@ -18,6 +18,25 @@ first, then one flight with a `mask != 15` counter and `lazy_flushes` on the
 frame line; it does not become default before that flight. 2b stays closed
 until `retention_scene_end` ordering is traced. Stage B stays closed.
 
+**Lever 1 stage A and lever 2a: implemented, unflown (2026-09-19).**
+`MotionOutput::bind_direct` fills `direct_slots_` for the seven slots at attach
+(one `motion_direct device= enabled= admission=` line when a wrapper exists);
+every value call of the route goes through `direct_call<Fn>(slot, ...)`, whose
+cold `direct_failed` hands any failing HRESULT to
+`ownership::observe_native_result` (condition 2) and, in the seam DLL, ends the
+process on a loss code. `drop_direct` runs first in `release_resources`.
+Condition (4) read in code: `evaluate_draw` refuses a draw while
+`shadow_.recording` (gate `Feature`), and the composition, additive,
+source-gain and hull-gain preparations of an unrouted draw each refuse on the
+same flag, so `before_draw` issues no value write while a block records; the
+reads are never recorded. A direct call reaches the same native method the
+forwarder calls, so recording semantics cannot differ either way. 2a:
+`ownership::get_buffer_lock_view_light`, called only from
+`note_candidate_draw` and `note_refused_sighting` (both under `after_draw` of
+the four light draw hooks); `check_no_x87.py` requires the symbol as a root and
+fails on any FNSAVE/FRSTOR beneath it. Numbers: ledger entry "2026-09-19 —
+lever 1 stage A and 2a" in [motion-output.md](../verification/motion-output.md).
+
 ## Budget
 
 Run129 c2: 9.7 µs proxy-only per routed draw (M) × 830 = **8.05 ms** of a
@@ -29,9 +48,9 @@ Run-to-run noise ±0.15 (M). One µs per routed draw is 0.83 ms per frame.
 
 | Lever | µs/draw | × draws | ms/frame | Status |
 | --- | --- | --- | --- | --- |
-| 1. Direct native path for the route's value-only calls | 1.6-1.8 (I) of 2.23 (M) | 830 | 1.3-1.5 | open first |
+| 1. Direct native path for the route's value-only calls | 1.6-1.8 (I) of 2.23 (M) | 830 | 1.3-1.5 | implemented, unflown |
 | 3. Hook-free lazy RT (bindings held, masks never held) | ≤ 2.0 (M bench, one run) | 830 | ≤ 1.66, minus flushes | open second |
-| 2a. Light lock view (no FNSAVE pair) for the audited draw path | 0.5 (I) | ~705 leased | 0.35 | rides with 1 |
+| 2a. Light lock view (no FNSAVE pair) for the audited draw path | 0.5 (I) | ~705 leased | 0.35 | implemented, unflown |
 | 2b. Lease borrows the retention store's references | 0.5-0.7 (I) | ~705 leased | 0.35-0.5 | open last, conditional |
 | Sum | | | **3.4-4.0 of 8.05** | |
 

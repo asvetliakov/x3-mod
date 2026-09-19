@@ -377,6 +377,7 @@ unsigned MotionOutput::device_references() const noexcept {
 void MotionOutput::release_resources() noexcept {
     if (releasing_) return;
     releasing_ = true;
+    drop_direct(); // teardown's own value calls cross the wrapper; nothing names the borrowed device after this
     // Invalidate borrowed pair pointers before any reentrant owned Release.
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
@@ -487,37 +488,37 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
     if (!lazy_mode_) {
         hr = render_state(D3DRS_COLORWRITEENABLE1, &route.saved_write1);
         if (SUCCEEDED(hr)) { route.rt_set = true; hr = bind_target(1, target_surface_); }
-        if (SUCCEEDED(hr)) { route.write_set = true; hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15); }
+        if (SUCCEEDED(hr)) { route.write_set = true; hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 15); }
         if (SUCCEEDED(hr) && route.depth) {
             // A fade-band draw keeps RT2 bound for its oC2 write but masks it
             // off: the depth fragment's alpha is z/w, which the draw's
             // SRCALPHA/INVSRCALPHA blend would fold into the stored depth.
             hr = render_state(D3DRS_COLORWRITEENABLE2, &route.saved_write2);
             if (SUCCEEDED(hr)) { route.rt2_set = true; hr = bind_target(2, depth_surface_); }
-            if (SUCCEEDED(hr)) { route.write2_set = true; hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, route.fade_arm ? 0 : 15); }
+            if (SUCCEEDED(hr)) { route.write2_set = true; hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.fade_arm ? 0 : 15); }
         }
         return hr;
     }
     if (!lazy_rt1_) {
         hr = render_state(D3DRS_COLORWRITEENABLE1, &lazy_write1_);
         if (SUCCEEDED(hr)) { lazy_rt1_ = true; hr = bind_target(1, target_surface_); }
-        if (SUCCEEDED(hr)) hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15);
+        if (SUCCEEDED(hr)) hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 15);
     }
     if (SUCCEEDED(hr) && route.depth && !lazy_rt2_) {
         hr = render_state(D3DRS_COLORWRITEENABLE2, &lazy_write2_);
         if (SUCCEEDED(hr)) { lazy_rt2_ = true; hr = bind_target(2, depth_surface_); }
-        if (SUCCEEDED(hr)) hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 15);
+        if (SUCCEEDED(hr)) hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, 15);
     } else if (SUCCEEDED(hr) && !route.depth && lazy_rt2_) {
         // A motion-only row after a depth row: its variant writes no oC2, so
         // RT2 goes back exactly as the per-draw mode would leave it.
-        hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, lazy_write2_);
+        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, lazy_write2_);
         if (SUCCEEDED(hr)) { hr = bind_target(2, nullptr); lazy_rt2_ = FAILED(hr); }
     }
     if (SUCCEEDED(hr) && route.depth && route.fade_arm && lazy_rt2_) {
         // Fade-band draw under the kept binding: mask RT2 for this draw only;
         // the undo puts the lazy mask (15) back.
         route.saved_write2 = 15; route.write2_set = true;
-        hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 0);
+        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, 0);
     }
     return hr;
 }
@@ -571,8 +572,8 @@ template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
         if constexpr (!quiet) record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
         return hr;
     };
-    if (lazy_rt2_) { step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, lazy_write2_)); step(unbind(2)); }
-    if (lazy_rt1_) { step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, lazy_write1_)); step(unbind(1)); }
+    if (lazy_rt2_) { step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, lazy_write2_)); step(unbind(2)); }
+    if (lazy_rt1_) { step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, lazy_write1_)); step(unbind(1)); }
     lazy_rt1_ = lazy_rt2_ = false;
     const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.lazy_flushes; counters_.lazy_flush_ticks += ticks;
@@ -784,7 +785,7 @@ void MotionOutput::restore_mip_bias_stage(unsigned stage, HRESULT* first) noexce
     // value is ever written: after a failed application write there is none.
     if (sampler_restore_failed_mask_ & bit) return;
     if (!s.saved_known) { sampler_restore_failed_mask_ |= bit; return; }
-    const HRESULT hr = native<SetSamplerStateFn>(SetSamplerState)(device_, stage, D3DSAMP_MIPMAPLODBIAS, s.saved_bias);
+    const HRESULT hr = direct_call<SetSamplerStateFn>(SetSamplerState, stage, D3DSAMP_MIPMAPLODBIAS, s.saved_bias);
     ++counters_.mip_bias_restores; ++mip_bias_total_restores_;
     if (SUCCEEDED(hr)) { s.biased = false; sampler_biased_mask_ &= ~bit; return; }
     sampler_restore_failed_mask_ |= bit; if (SUCCEEDED(*first)) *first = hr;
@@ -816,7 +817,7 @@ void MotionOutput::apply_mip_bias() noexcept {
         if (eligible && !s.mipfilter_known) {
             DWORD value = 0;
             ++counters_.mip_bias_reads; ++mip_bias_total_reads_;
-            if (SUCCEEDED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_MIPFILTER, &value))) { s.mipfilter = value; s.mipfilter_known = true; }
+            if (SUCCEEDED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_MIPFILTER, &value))) { s.mipfilter = value; s.mipfilter_known = true; }
             else eligible = false;
         }
         if (eligible) eligible = s.mipfilter != D3DTEXF_NONE;
@@ -825,10 +826,10 @@ void MotionOutput::apply_mip_bias() noexcept {
         if (!s.saved_known) {
             DWORD value = 0;
             ++counters_.mip_bias_reads; ++mip_bias_total_reads_;
-            if (FAILED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_MIPMAPLODBIAS, &value))) { if (SUCCEEDED(first)) first = E_FAIL; continue; }
+            if (FAILED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_MIPMAPLODBIAS, &value))) { if (SUCCEEDED(first)) first = E_FAIL; continue; }
             s.saved_bias = value; s.saved_known = true;
         }
-        const HRESULT hr = native<SetSamplerStateFn>(SetSamplerState)(device_, stage, D3DSAMP_MIPMAPLODBIAS, mip_bias_bits_);
+        const HRESULT hr = direct_call<SetSamplerStateFn>(SetSamplerState, stage, D3DSAMP_MIPMAPLODBIAS, mip_bias_bits_);
         ++counters_.mip_bias_sets; ++mip_bias_total_sets_;
         if (FAILED(hr)) { if (SUCCEEDED(first)) first = hr; continue; }
         s.biased = true; sampler_biased_mask_ |= 1u << stage; counters_.mip_bias_stages |= 1u << stage; any = true;
@@ -858,7 +859,7 @@ void MotionOutput::resync_samplers() noexcept {
         s = SamplerShadow{};
         // The packed screen readiness gate reads stage 0 only (the diffuse sampler).
         if (state_hooks_ && ((linear_material_requested_ && stage < 6) || ((screen_emission_requested_ || screen_additive_requested_) && stage == 0)))
-            s.srgb_known = SUCCEEDED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
+            s.srgb_known = SUCCEEDED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
         if (!mip_bias_bits_ && !composition_requested()) continue;
         IDirect3DBaseTexture9* texture = nullptr;
         const HRESULT get = native<GetTextureFn>(GetTexture)(device_, stage, &texture);
@@ -1024,7 +1025,7 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
     UINT frequency = 0;
     if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ || !hdr_enabled_
         || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F
-        || FAILED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency))
+        || FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency))
         || (route.stream0_frequency = frequency, route.stream0_frequency_known = true, false) // the read travels with the route as in the opaque chain
         || (frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1
         || window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !loop_bounded
@@ -1220,7 +1221,7 @@ void MotionOutput::sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) no
 }
 HRESULT MotionOutput::get_render_state_native(D3DRENDERSTATETYPE state, DWORD* value) noexcept {
     ++counters_.rs_gets;
-    return native<GetRenderStateFn>(GetRenderState)(device_, state, value);
+    return direct_call<GetRenderStateFn>(GetRenderState, state, value);
 }
 HRESULT MotionOutput::render_state(D3DRENDERSTATETYPE state, DWORD* value) noexcept {
     ++counters_.rs_queries;
@@ -1287,7 +1288,7 @@ bool MotionOutput::sampler_srgb_known(unsigned stage) noexcept {
     if (s.srgb_known) { ++counters_.rs_hits; return true; }
     ++counters_.rs_gets;
     DWORD value = 0;
-    if (FAILED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &value))) return false;
+    if (FAILED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_SRGBTEXTURE, &value))) return false;
     s.srgb = value; s.srgb_known = true;
     return true;
 }
@@ -1354,7 +1355,7 @@ HRESULT MotionOutput::apply_wrap_states(MotionRoute& route, const renderer::Moti
     for (unsigned i = 0; i < route.wrap_count; ++i) {
         if (desired[i] == route.saved_wrap[i]) continue;
         route.wrap_attempted |= std::uint8_t(1u << i);
-        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, shadow_states[8u + route.wrap_index[i]], desired[i]);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, shadow_states[8u + route.wrap_index[i]], desired[i]);
         if (FAILED(hr)) return hr;
     }
     return S_OK;
@@ -1363,7 +1364,7 @@ HRESULT MotionOutput::restore_wrap_states(MotionRoute& route) noexcept {
     HRESULT first = S_OK;
     for (unsigned i = route.wrap_count; i-- > 0;) {
         if (!(route.wrap_attempted & (1u << i))) continue;
-        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, shadow_states[8u + route.wrap_index[i]], route.saved_wrap[i]);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, shadow_states[8u + route.wrap_index[i]], route.saved_wrap[i]);
         if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     }
     route.wrap_attempted = route.wrap_count = 0;
@@ -2272,9 +2273,45 @@ bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
     return true;
 }
 
+// Lever 1 stage A (docs/architecture/route-per-draw-cost.md): decided once per
+// device. Portable COM only: the borrowed device's documented vtable. The
+// admission monitor is immutable once published, so its ledgers keep counting
+// the route's calls through the wrapper whenever it exists.
+void MotionOutput::bind_direct() noexcept {
+    drop_direct();
+    IDirect3DDevice9* const borrowed = device_ ? ownership::borrowed_native_device(device_) : nullptr;
+    if (!borrowed || borrowed == device_) return; // no wrapper: the aliases are the present path
+    const bool monitored = ownership::process_admission_monitor() != nullptr;
+    void** const table = monitored ? nullptr : *reinterpret_cast<void***>(borrowed);
+    bool complete = table != nullptr;
+    if (table) {
+        static constexpr unsigned slots[] = { SetRenderState, GetRenderState, GetSamplerState, SetSamplerState,
+            SetVertexShaderConstantF, GetStreamSourceFreq, SetPixelShaderConstantF };
+        for (void*& entry : direct_slots_) entry = nullptr;
+        for (const unsigned slot : slots) { direct_slots_[slot] = table[slot]; complete = complete && table[slot]; }
+    }
+    static_assert(SetPixelShaderConstantF < direct_slot_count, "direct_slots_ must cover every direct_call slot");
+    if (complete) { direct_ = direct_slots_; direct_device_ = borrowed; }
+    log("motion_direct device=%llu enabled=%u admission=%u slots=7", id_, unsigned(complete), unsigned(monitored));
+}
+__attribute__((noinline, cold)) HRESULT MotionOutput::direct_failed(HRESULT hr) const noexcept {
+    if (direct_device_ == device_) return hr; // aliased: the call already crossed whatever wraps device_
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // Seam assertion: the seven value-only calls document D3D_OK and
+    // D3DERR_INVALIDCALL only; a loss code from one ends the fixture.
+    if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET) {
+        log("motion_direct_loss_code device=%llu hr=%08lx", id_, static_cast<unsigned long>(hr));
+        std::fflush(nullptr); // the log is fully buffered: keep the witness line
+        TerminateProcess(GetCurrentProcess(), 0xD1EC7u);
+    }
+#endif
+    return ownership::observe_native_result(device_, hr);
+}
+
 void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::uint64_t device_id,
                           const D3DCAPS9& caps, bool requested, telemetry::State* stats) noexcept {
     device_ = device; native_ = native_table; id_ = device_id; caps_ = caps; requested_ = requested;
+    bind_direct();
     stats_ = stats; lazy_rt1_ = lazy_rt2_ = false;
     enabled_ = false; depth_enabled_ = false;
     sun_writer_count_ = sun_writer_overflow_ = 0; // signature cache is per device
@@ -2734,7 +2771,7 @@ HRESULT MotionOutput::restore_state(const SavedState& saved) noexcept {
     step(native<SetPsFn>(SetPixelShader)(device_, saved.ps));
     step(native<SetStreamFn>(SetStreamSource)(device_, 0, saved.stream, saved.offset, saved.stride));
     for (unsigned i = 0; i < touched_count; ++i)
-        step(native<SetRenderStateFn>(SetRenderState)(device_, touched_states[i], saved.states[i]));
+        step(direct_call<SetRenderStateFn>(SetRenderState, touched_states[i], saved.states[i]));
     return first;
 }
 
@@ -2769,7 +2806,7 @@ HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, 
     step(bind_quad_program());
     step(native<SetPsFn>(SetPixelShader)(device_, shader));
     for (unsigned i = 0; i < touched_count; ++i)
-        step(native<SetRenderStateFn>(SetRenderState)(device_, touched_states[i], touched_values[i]));
+        step(direct_call<SetRenderStateFn>(SetRenderState, touched_states[i], touched_values[i]));
     if (SUCCEEDED(op)) {
         // The -0.5 pixel shift of quad_vertices covers every texel centre.
         renderer::QuadVertex quad[4];
@@ -3504,12 +3541,12 @@ void MotionOutput::resync_shadow() noexcept {
         // Admission reads only cached state. Refresh the consumed common state
         // even with the ordinary motion state-shadow experiment disabled.
         for (unsigned i = 0; i < 6; ++i)
-            shadow_.states_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, shadow_states[i], &shadow_.states[i]));
+            shadow_.states_known[i] = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, shadow_states[i], &shadow_.states[i]));
         for (unsigned i = 0; i < composition_blend_count; ++i)
-            shadow_.composition_blend_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, composition_blend_states[i], &shadow_.composition_blend[i]));
+            shadow_.composition_blend_known[i] = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, composition_blend_states[i], &shadow_.composition_blend[i]));
     }
     if ((composition_requested() || screen_emission_bound_) && state_hooks_)
-        shadow_.fill_mode_known = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_FILLMODE, &shadow_.fill_mode));
+        shadow_.fill_mode_known = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, D3DRS_FILLMODE, &shadow_.fill_mode));
     resync_samplers();
 }
 
@@ -3751,9 +3788,9 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
 HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     HRESULT first = restore_wrap_states(route);
     auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
-    if (route.write2_set) step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, route.saved_write2));
+    if (route.write2_set) step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.saved_write2));
     if (route.rt2_set) step(bind_target(2, nullptr));
-    if (route.write_set) step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, route.saved_write1));
+    if (route.write_set) step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, route.saved_write1));
     if (route.rt_set) step(bind_target(1, nullptr));
     if (route.ps_set) step(native<SetPsFn>(SetPixelShader)(device_, shadow_.ps));
     if (route.vs_set) step(native<SetVsFn>(SetVertexShader)(device_, shadow_.vs));
@@ -3761,9 +3798,9 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     // has seen the application write them; otherwise the application never
     // depends on their contents and the values are left as set.
     if (route.vs_constants_set && shadow_.vs_reserved_written)
-        step(native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, 252, shadow_.vs_reserved, 4));
+        step(direct_call<SetConstantsFFn>(SetVertexShaderConstantF, 252, shadow_.vs_reserved, 4));
     if (route.ps_constants_set && shadow_.ps_reserved_written)
-        step(native<SetConstantsFFn>(SetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, 2));
+        step(direct_call<SetConstantsFFn>(SetPixelShaderConstantF, 216, shadow_.ps_reserved, 2));
     route.write_set = route.rt_set = route.ps_set = route.vs_set = false;
     route.write2_set = route.rt2_set = false;
     route.vs_constants_set = route.ps_constants_set = false;
@@ -3811,7 +3848,7 @@ void MotionOutput::apply_jitter(MotionRoute& route) noexcept {
     std::memcpy(rows, shadow_.rows[window], sizeof rows);
     fade_region::jitter_rows(rows, jitter_[0], jitter_[1], main_.width, main_.height); // shared with the region projection
     const std::uint64_t begin = draw_stamp();
-    const HRESULT hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, matrix_register, rows, 4);
+    const HRESULT hr = direct_call<SetConstantsFFn>(SetVertexShaderConstantF, matrix_register, rows, 4);
     const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
@@ -3825,7 +3862,7 @@ void MotionOutput::restore_jitter(MotionRoute& route) noexcept {
     const std::size_t window = window_of(route.jitter_register);
     const std::uint64_t begin = draw_stamp();
     const HRESULT hr = window < motion_matrix_windows_max
-        ? native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, route.jitter_register, shadow_.rows[window], 4) : E_FAIL;
+        ? direct_call<SetConstantsFFn>(SetVertexShaderConstantF, route.jitter_register, shadow_.rows[window], 4) : E_FAIL;
     const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
@@ -4251,7 +4288,7 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_SEPARATEALPHABLEND)) { refuse(9); return; }
         if (screen_additive_alpha_constant_ && !(caps_.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR)) { refuse(9); return; }
     }
-    HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_ONE);
+    HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);
     if (FAILED(hr)) { ++screen_additive_failures_; return; } // nothing applied: the draw stays native
     route.screen_additive = true;
     if (gained) {
@@ -4261,7 +4298,7 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             // Roll the first step back; a failed rollback leaves the device
             // state unknown exactly as a failed route undo does.
             ++screen_additive_failures_;
-            const HRESULT back = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+            const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
             route.screen_additive = false;
             if (FAILED(back)) {
                 if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = back; }
@@ -4278,7 +4315,7 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             ++screen_additive_failures_;
             const HRESULT alpha_back = restore_screen_additive_alpha();
             HRESULT back = route.screen_additive_ps ? native<SetPsFn>(SetPixelShader)(device_, shadow_.ps) : S_OK;
-            const HRESULT destination = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+            const HRESULT destination = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
             if (SUCCEEDED(back)) back = destination;
             if (FAILED(alpha_back) && SUCCEEDED(back)) back = alpha_back;
             route.screen_additive = route.screen_additive_ps = false;
@@ -4317,7 +4354,7 @@ HRESULT MotionOutput::apply_screen_additive_alpha() noexcept {
         screen_additive_alpha_factor_, states, values);
     screen_additive_alpha_applied_ = 0;
     for (unsigned i = 0; i < count; ++i) {
-        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, states[i], values[i]);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, states[i], values[i]);
         if (FAILED(hr)) return hr; // the caller unwinds exactly what was applied
         ++screen_additive_alpha_applied_;
     }
@@ -4333,7 +4370,7 @@ HRESULT MotionOutput::restore_screen_additive_alpha() noexcept {
     HRESULT first = S_OK;
     for (unsigned i = screen_additive_alpha_applied_; i; --i) {
         const unsigned index = composition_blend_index(states[i - 1]);
-        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, states[i - 1], shadow_.composition_blend[index]);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, states[i - 1], shadow_.composition_blend[index]);
         if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     }
     screen_additive_alpha_applied_ = 0;
@@ -4343,7 +4380,7 @@ void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {
     HRESULT first = S_OK;
     if (route.screen_additive_alpha) { const HRESULT hr = restore_screen_additive_alpha(); if (FAILED(hr)) first = hr; route.screen_additive_alpha = false; }
     if (route.screen_additive_ps) { const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps); if (FAILED(hr)) first = hr; }
-    const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR); // the admitted value
+    const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR); // the admitted value
     if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     route.screen_additive = route.screen_additive_ps = false;
     if (FAILED(first)) {
@@ -4673,7 +4710,7 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         // finish_source_gain puts back. A failed setter applies nothing the
         // proxy can name, so the draw stays native and is counted as a
         // screen refusal; the shadow keeps the application's value.
-        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_ONE);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);
         if (FAILED(hr)) {
             ++source_gain_counts_.refused_screen;
             if (source_gain_logged_[1] < failure_log_limit) {
@@ -4695,7 +4732,7 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         ++source_gain_counts_.bind_failures;
         HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
         if (route.source_gain_screen) {
-            const HRESULT back = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, shadow_.composition_blend[1]);
+            const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);
             route.source_gain_screen = false;
             if (SUCCEEDED(restored) && FAILED(back)) restored = back;
             if (FAILED(back)) invalidate_render_states();
@@ -4733,7 +4770,7 @@ void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
     HRESULT first = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
     if (route.source_gain_screen) {
         route.source_gain_screen = false;
-        const HRESULT back = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, shadow_.composition_blend[1]);
+        const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);
         if (FAILED(back)) { invalidate_render_states(); if (SUCCEEDED(first)) first = back; }
     }
     if (FAILED(first)) {
@@ -4998,7 +5035,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     };
     // The frequency read travels with the route: the depth lease (fill_depth_geometry) reuses it instead of a second getter.
     const auto read_frequency = [&]() noexcept {
-        const bool ok = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)); read_failed |= !ok;
+        const bool ok = SUCCEEDED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)); read_failed |= !ok;
         if (ok) { route.stream0_frequency = frequency; route.stream0_frequency_known = true; }
         return ok;
     };
@@ -5144,12 +5181,12 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     HRESULT hr = bind_variant_pair(route, material);
     if (SUCCEEDED(hr)) {
         route.vs_constants_set = true;
-        hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_,
+        hr = direct_call<SetConstantsFFn>(SetVertexShaderConstantF,
             renderer::MaterialMotionAbi::previous_vertex_constant, matched ? previous.data() : zeros, 4);
     }
     if (SUCCEEDED(hr)) {
         route.ps_constants_set = true;
-        hr = native<SetConstantsFFn>(SetPixelShaderConstantF)(device_,
+        hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF,
             renderer::MaterialMotionAbi::pixel_coordinates_constant, pixel, 2);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
         if (SUCCEEDED(hr)) { std::memcpy(fixture_last_pixel_abi_, pixel, sizeof pixel); fixture_abi_known_ = true; }
@@ -5355,7 +5392,7 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     // more than the prefix; one documented Get per admitted draw, refused
     // when it fails.
     UINT frequency = 0;
-    if (region.bound && (FAILED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) || frequency != 1)) {
+    if (region.bound && (FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)) || frequency != 1)) {
         region.bound = false; region.reason = Reason::BoundUnknown; ++counts.prefix_instanced;
     }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -6903,7 +6940,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     };
     ownership::BufferLockView vb{}, ib{};
     const auto view = [](std::uintptr_t identity, ownership::BufferLockView& out) noexcept {
-        return identity && SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(identity), &out)) && out.known;
+        return identity && SUCCEEDED(ownership::get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(identity), &out)) && out.known;
     };
     if (zwrite && shadow_ok && managed && !route.alpha_tested) {
         // Bookend view at the draw: registry snapshot keyed by the wrapper

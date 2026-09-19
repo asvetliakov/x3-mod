@@ -231,7 +231,7 @@ class LauncherGateTests(unittest.TestCase):
         # shadow); the ONE/ONE path never touches DESTBLEND.
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         admission = motion[motion.index('void MotionOutput::prepare_source_gain'):motion.index('void MotionOutput::finish_source_gain')]
-        substitute = admission.index('native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_ONE);')
+        substitute = admission.index('direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);')
         bind = admission.index('native<SetPsFn>(SetPixelShader)(device_, shadow_.source_gain_eligible_variant);')
         self.assertLess(admission.index('const bool screen = verdict == renderer::SourceGainBlend::Screen;'), substitute)
         self.assertLess(substitute, bind)
@@ -243,12 +243,12 @@ class LauncherGateTests(unittest.TestCase):
         self.assertNotIn('route.source_gain = true;', refusal)
         # A failed bind after the substitution unwinds it through the shadow.
         rollback = admission[bind:admission.index('route.source_gain = true;')]
-        self.assertIn('native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, shadow_.composition_blend[1]);', rollback)
+        self.assertIn('direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);', rollback)
         self.assertIn('route.source_gain_screen = false;', rollback)
         self.assertIn('if (screen) ++source_gain_counts_.admitted_screen;', admission)
         finish = extract_function(motion, 'void MotionOutput::finish_source_gain(')
         self.assertLess(finish.index('native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);'),
-                        finish.index('native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, shadow_.composition_blend[1]);'))
+                        finish.index('direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);'))
         self.assertIn('if (route.source_gain_screen) {', finish)
         self.assertIn('invalidate_render_states();', finish)
         self.assertIn('what=source_gain', finish)

@@ -88,6 +88,7 @@ public:
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
  }shadow_;
  explicit MotionOutput(Device&d):device_(&d){}
+ template<class F,class...A> HRESULT direct_call(unsigned n,A...a){return native<F>(n)(device_,a...);} // the route's value-only entry
  template<class F> F native(unsigned n){switch(n){case GetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_state));case SetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_state));
  case SetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_ps));case SetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_vs));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}}
  HRESULT bind_target(unsigned,void*){return S_OK;}
