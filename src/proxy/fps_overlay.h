@@ -41,6 +41,8 @@ public:
     // frame so a Ctrl+Shift+F12 press rewrites the text the same frame: true
     // when it differs from the last written state.
     bool shadows(int state) noexcept { if (state == shadows_) return false; shadows_ = state; return true; }
+    // The same for the volumetric fog's part of the second line (MotionOutput::volumetric_fog_overlay_state; -1 none).
+    bool fog(int state) noexcept { if (state == fog_) return false; fog_ = state; return true; }
     // The draw's outcome each shown frame. A failure keeps the mode on (the
     // next frame retries); true only at the start of a failure episode, so
     // the caller logs once until a draw succeeds again.
@@ -49,7 +51,7 @@ public:
     // Device Reset and configure: the window and the text go, the visibility stays.
     void reset() noexcept {
         for (Bucket& bucket : buckets_) bucket = Bucket{};
-        head_ = 0; last_ = bucket_start_ = 0; primed_ = false; line_[0] = '\0'; shadows_ = -2; draw_failed_ = false;
+        head_ = 0; last_ = bucket_start_ = 0; primed_ = false; line_[0] = '\0'; shadows_ = -2; fog_ = -2; draw_failed_ = false;
     }
     // "FPS 61.3  16.3 MS  DRAWS 638": the ms figure is the Present-to-Present
     // interval, not GPU time. Uppercase only (the notice glyph set); values
@@ -68,6 +70,7 @@ private:
     Bucket buckets_[bucket_count]{};
     unsigned head_ = 0;
     int shadows_ = -2; // last written second-line state; -2 = nothing written since reset
+    int fog_ = -2;     // last written fog state of the second line; -2 = nothing written since reset
     std::uint64_t frequency_ = 1, last_ = 0, bucket_start_ = 0;
     bool requested_ = false, visible_ = false, primed_ = false, draw_failed_ = false;
     char line_[line_capacity]{};

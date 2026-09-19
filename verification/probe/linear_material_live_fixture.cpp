@@ -336,6 +336,8 @@ HRESULT get_stage(D d,DWORD stage,unsigned type,DWORD*out){CHECK(stage==0&&type=
 HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 // Defined by the extracted production source included below.
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept;
+// Volumetric fog doubles (src/renderer/fog_pass_math.h): the card latch set_pixel_shader feeds and the pass Reset forwards to.
+namespace renderer {constexpr std::uint64_t fog_card_pixel_hash=0xf7e0b6647a3bfa62ull;struct FogSectorLatch{std::uint64_t cards=0;void card(std::uint64_t){++cards;}};}
 class MotionOutput {
 public:
  struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*original_fill_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*hull_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr,*sun_original_variant=nullptr,*sun_original_lightmap_variant=nullptr,*hull_lightmap_variant=nullptr;bool hull_program=false;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;std::int8_t sun_register=-1;std::uint8_t major=0;bool depth_out=false;};
@@ -459,6 +461,7 @@ public:
  void detach_shadow_retention()noexcept{++retention_detaches_;}
  void flush_shadow_retention(shadow_retention::Flush reason)noexcept{retention_reset_flushes_+=reason==shadow_retention::Flush::Reset;}
  std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
+ std::unique_ptr<Pass>fog_;renderer::FogSectorLatch fog_latch_{};bool fog_requested_=false,fog_attach_failed_=false;unsigned fog_failures_=0;std::uint64_t fog_frame_=~std::uint64_t(0);
  void release_candidate_extents()noexcept{++candidate_extent_releases_;}
  bool candidates_requested_=false,sun_apply_applied_=false,sun_apply_attempted_=false,sun_apply_attach_failed_=false,depth_cascade_frame_ok_=false;
  std::uint32_t candidate_ps_written_=0;

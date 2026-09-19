@@ -130,6 +130,22 @@ int main(){
     overlay.reset_focus();o.shift=false;o.exposure=false;o.fps_overlay=true;CHECK(!overlay.sample(o).fps_overlay); // first sample after a focus reset only latches
     CHECK(!overlay.sample(o).fps_overlay); // and the key is now held
     o.fps_overlay=false;overlay.sample(o);o.fps_overlay=true;CHECK(overlay.sample(o).fps_overlay);
+    // Volumetric fog chords (Ctrl+Alt+F9 on/off, Ctrl+Alt+F10 strength): the overlay's Alt rule on their
+    // own raw latches. The physical F9/F10 also raise exposure/bloom's raw keys; only the modifiers decide.
+    x3m::ComparisonControls fog;
+    x3m::ComparisonKeys g{};g.foreground=true;fog.sample(g);
+    g.control=g.alt=true;fog.sample(g);
+    g.fog_toggle=g.exposure=true;{const auto a=fog.sample(g);CHECK(a.fog_toggle&&!a.fog_step&&!a.exposure&&!a.bloom&&!a.fps_overlay);}
+    for(unsigned i=0;i<1000;++i)CHECK(!fog.sample(g).fog_toggle); // held is not a second press
+    g.fog_toggle=g.exposure=false;fog.sample(g);g.fog_step=g.bloom=true;{const auto a=fog.sample(g);CHECK(a.fog_step&&!a.fog_toggle&&!a.bloom);}
+    g.fog_step=g.bloom=false;fog.sample(g);g.alt=false;g.shift=true;fog.sample(g);
+    g.fog_toggle=g.exposure=true;{const auto a=fog.sample(g);CHECK(a.exposure&&!a.fog_toggle);} // Ctrl+Shift+F9 stays exposure
+    g.shift=false;g.alt=true;CHECK(!fog.sample(g).fog_toggle); // swapping Shift for Alt on a held F9 is not a press
+    g.fog_toggle=g.exposure=false;fog.sample(g);g.shift=true;g.fog_toggle=true;CHECK(!fog.sample(g).fog_toggle); // Ctrl+Alt+Shift+F9: Shift excludes it
+    g.shift=false;g.fog_toggle=false;fog.sample(g);g.control=false;g.fog_toggle=true;CHECK(!fog.sample(g).fog_toggle); // Alt+F9 without Ctrl
+    g.control=true;g.fog_toggle=false;fog.sample(g);g.foreground=false;g.fog_toggle=true;CHECK(!fog.sample(g).fog_toggle);
+    g.foreground=true;CHECK(!fog.sample(g).fog_toggle); // held through alt-tab
+    g.fog_toggle=false;fog.sample(g);g.fog_toggle=true;CHECK(fog.sample(g).fog_toggle);
     // A launch with only --fps-overlay: the caller leaves every other key
     // false (their polls are gated on their own options), so the overlay chord
     // is the only action the sampler can ever produce, edge after edge.

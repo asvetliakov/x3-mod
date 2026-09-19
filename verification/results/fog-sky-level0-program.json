@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "source": "src/fog/fog_sky_level0_ps.hlsl",
+  "source_sha256": "53b545de2617cfbe0abf0001c868e3b098ccfb4a7a4d1a53a164557cc435ab01",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": null,
+  "word_count": 209,
+  "bytecode_sha256": "81cee0cfab72784e30f1ba88734323b27c47cc475d47afa1440bc7cea37407fb",
+  "header_sha256": "9a55f341a3884b37779df4d766e36919228f9939db4f0bd2dbd2b5f150c43b57",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
+    "tools/shaders/generate_rigid_motion_pixel.py": "fcbddddecd6b36bcd3a45cb1275e136dc47e4803e4bb4ced547f99a65621e636"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

@@ -195,6 +195,20 @@ fixture (the Ctrl+Alt+F7 edge, Shift exclusion, Alt and Ctrl requirements,
 focus latch) and the notice fixture (the row-72 instance, the clip cache).
 In-game and native Windows behavior are unverified.
 
+## Volumetric fog
+
+With `--volumetric-fog` (`docs/architecture/volumetric-fog.md`, "Stage 1
+implementation") two more chords use the overlay's Alt rule (Ctrl and Alt
+down, Shift up; raw F9/F10 latches of their own, so Ctrl+Shift+F9/F10 stay
+exposure and bloom and a held key never becomes a press by changing
+modifiers): **Ctrl+Alt+F9** toggles the pass (`volumetric_fog_toggle`),
+**Ctrl+Alt+F10** steps the strength through 0.005/0.01/0.02/0.03/0.05
+(`volumetric_fog_strength`). No notice and no report; with `--fps-overlay` the
+second line carries `FOG 0.020`, `FOG 0.020 IDLE` (the sector rule holds the
+medium at zero) or `FOG OFF` beside the `SHADOWS` state, rewritten the frame
+it changes. The Alt key is polled with either option. Without the option no
+key is polled. In-game behavior is unverified.
+
 ## Exposure handoff and capability preparation
 
 `HdrConfig` retains its old component default for standalone callers and

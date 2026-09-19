@@ -366,6 +366,10 @@ def main():
     parser.add_argument('--ao-strength', type=float, default=None, help='Ambient occlusion strength s of the factor 1 - s (1 - ao), 0..1, default 0.5 (X3M_AO_STRENGTH; requires --ambient-occlusion)')
     parser.add_argument('--ao-debug', action='store_true', help='Ambient occlusion debug view: the factor is written as grayscale instead of multiplied, and the per-frame timing line is on (X3M_AO_DEBUG=1; requires --ambient-occlusion)')
     parser.add_argument('--ao-timing', action='store_true', help='One ambient_occlusion_frame log line per frame with GPU timestamp and CPU wall time of the chain (X3M_AO_TIMING=1; requires --ambient-occlusion; default off)')
+    parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='Volumetric sun fog at the scene end (X3M_VOLUMETRIC_FOG=1; default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades): a camera-local sun-lit medium in the sector hue with shafts marched against the sun cascade maps, active automatically in sectors that draw nebulafog cards (background NumDustInstances > 0). STRENGTH is the optical depth tau_max of the whole medium, 0..0.1, default 0.02 (X3M_VOLUMETRIC_FOG_STRENGTH; 0 = off). Ctrl+Alt+F9 toggles the pass and Ctrl+Alt+F10 steps the strength through 0.005/0.01/0.02/0.03/0.05 during play (one volumetric_fog_toggle / volumetric_fog_strength log line per press; the --fps-overlay second line shows the value). docs/architecture/volumetric-fog.md, "Stage 1 implementation"')
+    parser.add_argument('--volumetric-fog-anisotropy', type=float, default=None, metavar='G', help='Henyey-Greenstein anisotropy g of the fog phase function, 0..0.9, default 0.3 (X3M_VOLUMETRIC_FOG_ANISOTROPY; requires --volumetric-fog)')
+    parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug: force the fog sector rule on in every sector (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
+    parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
     parser.add_argument('--screen-emission', action='store_true', help='Packed screen emission of the bullet draws inside the region bracket (X3M_SCREEN_EMISSION=1, which also sets X3M_SCREEN_EMISSION_BOUND=1; requires --taa --motion-output --ownership --hdr --hdr-tonemap and gamma2.2 decode, with or without --linear-materials; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state with a locked-prefix bound compose through policy 8 in place; unbounded, unknown-state, capability-refused or otherwise refused draws stay native (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--screen-emission-additive', type=float, default=None, metavar='G', help='Additive bullets (X3M_SCREEN_EMISSION_ADDITIVE=G, finite 1..8; requires --motion-output --hdr; mutually exclusive with --screen-emission; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state draw in place with DESTBLEND ONE and their colour multiplied by G (G=1 binds the original shader), so the FP16 scene accumulates G*q + D above 1.0 for exposure and bloom; no bracket, bound, copies or temporal work; the blend law changes and native parity is not kept (docs/architecture/screen-emission-region.md, "Additive option"). Ctrl+Shift+F5 switches these draws between G and native during play (no shader is recreated; one screen_emission_additive_toggle line per press). With --telemetry, one screen_emission_additive_frame line per Present reports the admitted and refused draws of that frame and the hex mask of the nine pairs admitted')
@@ -772,6 +776,14 @@ def main():
         parser.error('--ao-radius must be within [0.1, 100].')
     if args.ao_strength is not None and not (math.isfinite(args.ao_strength) and 0.0 <= args.ao_strength <= 1.0):
         parser.error('--ao-strength must be within [0, 1].')
+    if args.volumetric_fog is not None and not (args.motion_output and args.taa and args.hdr and args.shadow_replay_depth and args.shadow_cascades is not None):
+        parser.error('--volumetric-fog requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades.')
+    if args.volumetric_fog is None and (args.volumetric_fog_anisotropy is not None or args.volumetric_fog_everywhere or args.volumetric_fog_timing):
+        parser.error('--volumetric-fog-anisotropy, --volumetric-fog-everywhere and --volumetric-fog-timing require --volumetric-fog.')
+    if args.volumetric_fog is not None and not (math.isfinite(args.volumetric_fog) and 0.0 <= args.volumetric_fog <= 0.1):
+        parser.error('--volumetric-fog must be within [0, 0.1].')
+    if args.volumetric_fog_anisotropy is not None and not (math.isfinite(args.volumetric_fog_anisotropy) and 0.0 <= args.volumetric_fog_anisotropy <= 0.9):
+        parser.error('--volumetric-fog-anisotropy must be within [0, 0.9].')
     if args.fade_witness is not None and not 1 <= args.fade_witness <= 100000:
         parser.error('--fade-witness must be within [1,100000].')
     # The packed screen bracket composes on the FP16 scene the AgX/gamma2.2 HDR
@@ -1078,6 +1090,12 @@ def main():
         env['X3M_AO_STRENGTH'] = repr(args.ao_strength if args.ao_strength is not None else 0.5)
         env['X3M_AO_DEBUG'] = '1' if args.ao_debug else '0'
         env['X3M_AO_TIMING'] = '1' if args.ao_timing else '0'
+        # Volumetric fog: every switch explicit so an inherited value cannot enable it.
+        env['X3M_VOLUMETRIC_FOG'] = '1' if args.volumetric_fog is not None else '0'
+        env['X3M_VOLUMETRIC_FOG_STRENGTH'] = repr(args.volumetric_fog if args.volumetric_fog is not None else 0.02)
+        env['X3M_VOLUMETRIC_FOG_ANISOTROPY'] = repr(args.volumetric_fog_anisotropy if args.volumetric_fog_anisotropy is not None else 0.3)
+        env['X3M_VOLUMETRIC_FOG_EVERYWHERE'] = '1' if args.volumetric_fog_everywhere else '0'
+        env['X3M_VOLUMETRIC_FOG_TIMING'] = '1' if args.volumetric_fog_timing else '0'
         env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)
         env['X3M_EMISSION_SOURCE_GAIN'] = repr(args.emission_source_gain if args.emission_source_gain is not None else 1.0)
         # The guide lights follow the effects gain and its key (Ctrl+Shift+F6):

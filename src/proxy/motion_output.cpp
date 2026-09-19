@@ -1787,6 +1787,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // resolve follows on the same target) when the hook did not run it.
     if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();} // F12 off: the quad is skipped whole
     if (bloom && ao_requested_ && !counters_.ao.attempted) { counters_.ao.source = "copy"; run_ambient_occlusion(); }
+    if (bloom && fog_requested_) run_volumetric_fog(); // once per frame (fog_frame_), as at the hook
     if (hdr_state_ != HdrState::Off) {
         if (bloom) { resolve_hdr(SceneEndSource::StretchRect); end_redirect(HdrEnd::BloomCopy); }
         else if (hdr_is_main(destination)) end_redirect(HdrEnd::ContentWrite);
@@ -1871,6 +1872,9 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     // in-place bracket finished, the resolve not yet run): the resolve below
     // consumes the darkened target.
     if (ao_requested_) { counters_.ao.source = "hook"; run_ambient_occlusion(); }
+    // Volumetric sun fog: on top of the shadowed, occluded scene (the game's fog
+    // cards are its last draws), before the resolve accumulates the jittered march.
+    if (fog_requested_) run_volumetric_fog();
     // The FP16 scene ends here. Stage 3 order (section 4 of the HDR design):
     // the resolve on the FP16 target while it is RT0, then the write-back of
     // the resolved image (meter, tonemap) and the rebind of the main target
@@ -2979,6 +2983,8 @@ void MotionOutput::before_reset() noexcept {
     depth_replayed_ = 0; depth_cascade_frame_ok_ = false; sun_apply_applied_ = sun_apply_attempted_ = false;
     candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed and stays
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
+    if (fog_) taa_call([&] { fog_->before_reset(); });
+    fog_failures_ = 0; fog_attach_failed_ = false; // a transient failure or attach refusal is retried after Reset
     sun_apply_attach_failed_ = false; // a transient attach failure is retried after Reset
     ao_attach_failed_ = false; ao_target_format_ = D3DFMT_UNKNOWN; // a transient attach failure is retried after Reset
     // The re-attach hysteresis counts format alternation within one device
@@ -3000,6 +3006,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     if (ao_) ao_->after_reset(result);
     if (depth_replay_) depth_replay_->after_reset(result);
     if (sun_apply_) sun_apply_->after_reset(result);
+    if (fog_) { fog_->after_reset(result); fog_frame_ = ~std::uint64_t(0); }
     sun_apply_frame_ = ~std::uint64_t(0); depth_replayed_frame_ = ~std::uint64_t(0); // a successful Reset continues the frame counter: the replay and the quad may run again
     scene_open_ = false; // Reset ends any application scene; BeginScene follows.
     if (!enabled_) return;
@@ -3462,6 +3469,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     const auto it = pixel_.find(shader);
     if (it == pixel_.end()) return;
     shadow_.ps_hash = it->second.hash;
+    if (fog_requested_ && shadow_.ps_hash == renderer::fog_card_pixel_hash) fog_latch_.card(frame_); // the sector's nebulafog cards: the fog rule's latch
     shadow_.ps_sun_register = it->second.sun_register; shadow_.ps_major = it->second.major; shadow_.ps_depth_out = it->second.depth_out;
     shadow_.ps_registered = it->second.registered;
     shadow_.ps_fade_variant = static_cast<IDirect3DPixelShader9*>(it->second.distance_fade_variant);
@@ -7804,4 +7812,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_shadow_replay_inc.h"
 #include "motion_output_shadow_adaptive_inc.h"
 #include "motion_output_shadow_retention_inc.h"
+#include "motion_output_fog_inc.h"
 } // namespace x3m
