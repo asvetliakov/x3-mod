@@ -16,6 +16,7 @@ route_draw_us). Configurations:
   perdraw-shadow         the same with X3M_STATE_SHADOW=1 (setter hooks on, state answered from the shadow)
   lazy                   X3M_MOTION_RT_MODE=lazy (keeps RT1/RT2 across the run, never the write masks: no setter hooks)
   lazy-ownership         the same through the ownership wrapper
+  lazy-depth / lazy-cascades  the perdraw-depth / perdraw-cascades configurations (wrapper, lease per draw) in lazy RT mode
   perdraw-masked / lazy-masked  X3M_FIXTURE_BENCH_MASK=1: the application holds COLORWRITEENABLE1/2 = 7 over the
                          run, so every lazy routed draw takes the mask write/restore fallback
   perdraw-cascades       the production route with the depth replay, candidates, five cascades and
@@ -92,6 +93,8 @@ CONFIGS = [
     ('off-ownership', dict(X3M_MOTION_OUTPUT='0', X3M_OWNERSHIP='1')),
     ('perdraw-ownership', dict(X3M_OWNERSHIP='1')),
     ('perdraw-depth', DEPTH),
+    ('lazy-depth', dict(DEPTH, X3M_MOTION_RT_MODE='lazy')),
+    ('lazy-cascades', dict(CASCADES, X3M_MOTION_RT_MODE='lazy')),
     ('perdraw-cascades-noretention', dict(CASCADES, X3M_SHADOW_CASTER_RETENTION='0')),
     ('perdraw-cascades-timing', dict(CASCADES, X3M_SHADOW_RETENTION_TIMING='1')),
 ]

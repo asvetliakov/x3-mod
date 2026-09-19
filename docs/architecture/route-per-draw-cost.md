@@ -41,7 +41,9 @@ lever 1 stage A and 2a" in [motion-output.md](../verification/motion-output.md).
 mask; `state_hooks installed=0 reason=none`, no `get_render_state` hook. Bench after: perdraw 8.69, lazy 6.90,
 perdraw-ownership 9.64, lazy-ownership 7.49 µs (saving 1.79 / 2.15 µs per routed draw, 1.91 / 2.26 in the first run; hooked
 lazy before: 6.69). With the application's masks at 7 on every routed draw (the mask != 15 fallback): lazy 7.12 against
-per-draw 8.80, saving 1.68 µs. The `set_depth` hook now restores first (it was missing from the 20 sites of section 3). The
+per-draw 8.80, saving 1.68 µs. Depth-routed draws (wrapper and lease per draw, what real frames mostly route; `route-bench-lever3-depth.json`):
+perdraw-depth 10.67 against lazy-depth 8.15, saving **2.53 µs** (cascades 11.24 against 8.73, 2.50), so ≈ 2.1 ms at 830
+draws before flushes. The `set_depth` hook now restores first (it was missing from the 20 sites of section 3). The
 flight reads `lazy_flushes` and `lazy_mask_writes` on the frame line. Numbers and fixtures: ledger entry "2026-09-19 —
 lever 3" in [motion-output.md](../verification/motion-output.md).
 

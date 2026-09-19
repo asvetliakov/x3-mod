@@ -229,8 +229,8 @@ WRAP_CASES = [case(f'seam-burst-{rt}-wrap', 'seam', lazy=rt == 'lazy', burst=Tru
 # StretchRect (frames 2, 5, 8), an application depth-surface change (same size,
 # smaller, original) and a Reset inside the scene under a held
 # binding (frame 4); per-draw twin, production hybrid unhook (`auto`), the
-# explicit shadow and the ownership wrapper. Selected-only like the wrap pair;
-# a selected run holding all of them compares them across the modes.
+# explicit shadow and the ownership wrapper. Part of the default suite (six
+# short burst runs); compare_mask_twins runs in the full and the selected path.
 MASK_ENV = {'X3M_FIXTURE_BURST_MASK': '1'}
 MASK_CASES = [case('seam-burst-perdraw-mask', 'seam', burst=True, shadow='auto', hdr_env=MASK_ENV),
               case('seam-burst-lazy-mask', 'seam', lazy=True, burst=True, shadow='auto', hdr_env=MASK_ENV),
@@ -241,7 +241,7 @@ MASK_CASES = [case('seam-burst-perdraw-mask', 'seam', burst=True, shadow='auto',
 # Each lazy run is compared with the per-draw run of the same DLL (the wrapper run with the plain seam twin).
 MASK_TWINS = {'seam-burst-lazy-mask': 'seam-burst-perdraw-mask', 'seam-burst-lazy-mask-shadow': 'seam-burst-perdraw-mask',
               'seam-ownership-burst-lazy-mask': 'seam-burst-perdraw-mask', 'production-burst-lazy-mask': 'production-burst-perdraw-mask'}
-WRAP_CASES += MASK_CASES
+CASES += MASK_CASES
 MASK_RESET_FRAME = 4
 # Camera reprojection of sentinel pixels (seam): the switch in its three
 # positions with the fixture's rotating camera, the strict mode without a
@@ -4432,6 +4432,27 @@ def validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory):
             'coverage_pixels': int(terminal['coverage_pixels'])}
 
 
+def compare_mask_twins(result, save):
+    """Lever 3 equivalence: every lazy mask run present must equal the per-draw
+    twin of the same DLL; a lazy run without its twin is an error, never a
+    silent skip."""
+    selected_lazy = [n for n in MASK_TWINS if n in result['cases']]
+    if not selected_lazy:
+        if any(entry['name'] in result['cases'] for entry in MASK_CASES):
+            print('mask burst: equivalence comparison SKIPPED (no lazy mask case selected)')
+        return
+    for lazy_name in selected_lazy:
+        twin = MASK_TWINS[lazy_name]
+        assert twin in result['cases'], f'{lazy_name}: select the per-draw twin {twin} in the same run'
+        per, lz = result['cases'][twin], result['cases'][lazy_name]
+        for key in ('color_hashes', 'state_hashes', 'motion_hashes', 'readback_sha256'):
+            assert per[key] == lz[key], f'{lazy_name}: {key} differs from {twin}'
+    result['mask_equivalence'] = {'twins': {n: MASK_TWINS[n] for n in selected_lazy}, 'identical': True,
+                                  'set_rt_per_frame': {n: result['cases'][n]['set_rt_per_frame'] for n in selected_lazy + sorted({MASK_TWINS[n] for n in selected_lazy})}}
+    save()
+    print(f'mask burst: {len(selected_lazy)} lazy run(s) equal their per-draw twin')
+
+
 def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=False, mask=False):
     """Burst script (see the module docstring): per-frame counters of the DLL,
     the fixture's own restoration and oracle verdicts, and the signatures the
@@ -5237,23 +5258,7 @@ def main(argv=None):
             result['status'] = 'PARTIAL'
             save()
             report_path.write_text(''.join(report))
-            # Lever 3 equivalence: a selected lazy mask run must equal the per-draw
-            # twin of the same DLL; selecting it without the twin is an error,
-            # never a silent skip.
-            selected_lazy = [n for n in MASK_TWINS if n in result['cases']]
-            if selected_lazy:
-                for lazy_name in selected_lazy:
-                    twin = MASK_TWINS[lazy_name]
-                    assert twin in result['cases'], f'{lazy_name}: select the per-draw twin {twin} in the same run'
-                    per, lz = result['cases'][twin], result['cases'][lazy_name]
-                    for key in ('color_hashes', 'state_hashes', 'motion_hashes', 'readback_sha256'):
-                        assert per[key] == lz[key], f'{lazy_name}: {key} differs from {twin}'
-                result['mask_equivalence'] = {'twins': {n: MASK_TWINS[n] for n in selected_lazy}, 'identical': True,
-                                              'set_rt_per_frame': {n: result['cases'][n]['set_rt_per_frame'] for n in selected_lazy + sorted({MASK_TWINS[n] for n in selected_lazy})}}
-                save()
-                print(f'mask burst: {len(selected_lazy)} lazy run(s) equal their per-draw twin')
-            elif any(entry['name'] in result['cases'] for entry in MASK_CASES):
-                print('mask burst: equivalence comparison SKIPPED (no lazy mask case selected)')
+            compare_mask_twins(result, save)
             print('partial run: no cross-case comparisons, not a pass')
             return
         # Resolve cost: the boundary with the switch on minus off, per size.
@@ -5368,6 +5373,7 @@ def main(argv=None):
                                          'set_rt_per_frame': {'perdraw': per['set_rt_per_frame'], 'lazy': lz['set_rt_per_frame']},
                                          'lazy_flushes_per_frame': lz['lazy_flushes_per_frame']}
         result['lazy_equivalence'] = equivalence
+        compare_mask_twins(result, save)
         # TAA: the production DLL resolves current-only (sentinel routes), so
         # its presented image is bit-identical to the jittered run without the
         # resolve, plain and through the wrapper; the seam's frames without

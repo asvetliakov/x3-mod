@@ -1946,3 +1946,14 @@ lazy mask case without its per-draw twin fails the run; each lazy run is paired 
 (`production-burst-perdraw-mask` added), the wrapper run with the plain seam twin. Reran on the rebuilt DLL: the six mask
 cases, `seam-burst-perdraw`, `seam-burst-lazy`, `production-burst-lazy`, `seam-lazy-on`, `seam-ownership-lazy-on`,
 `seam-taa-lazy-on`, `seam-taa-cutout-blended`, `seam-taa-fade-route-overlay`: exit 0.
+
+### 2026-09-19 — lever 3: depth-routed bench, mask cases in the default suite
+
+`run_route_bench.py --label lever3-depth` (`route-bench-lever3-depth.json`, one run, median µs per DrawPrimitive, 400
+routed draws; `lazy-depth` / `lazy-cascades` are the `perdraw-depth` / `perdraw-cascades` configurations, wrapper and
+lease per draw, in lazy RT mode): off 1.54, perdraw 8.70, lazy 6.99, perdraw-depth 10.67, **lazy-depth 8.15**,
+perdraw-cascades 11.24, **lazy-cascades 8.73**; `set_rt` 1600 against 4 with one flush per frame. Saving per
+depth-routed draw **2.53 µs** (cascades 2.50), against 1.71 plain in the same run: the wrapper makes each of the four
+removed SetRenderTarget calls dearer, as `lazy-ownership` showed. The six mask burst cases are now in the default `CASES`
+list (184 cases; six short burst runs) and `compare_mask_twins` runs in the full and the selected path; the full suite
+itself was not run.
