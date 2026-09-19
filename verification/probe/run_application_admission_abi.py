@@ -71,6 +71,39 @@ def no_game():
         raise RuntimeError('game running or inventory failed; postpone CPU fixture')
 
 
+def load_historical(directory):
+    summary_path = directory / 'application-admission-abi-initial-summary.json'
+    log_path = directory / 'application-admission-abi-initial.txt'
+    present = (summary_path.is_file(), log_path.is_file())
+    if present == (False, False):
+        return {'available': False, 'reason': 'no initial ABI record for this bottle'}
+    if present != (True, True):
+        raise RuntimeError('incomplete historical ABI record')
+    historical = json.loads(summary_path.read_text())
+    digest = re.compile(r'[0-9a-f]{64}')
+    source_keys = ('source_hashes_before_build', 'source_hashes_after_build', 'source_hashes_after_run')
+    source_maps = [historical.get(key) for key in source_keys]
+    valid_source_map = lambda value: (isinstance(value, dict) and bool(value) and
+                                      all(isinstance(path, str) and bool(path) and
+                                          isinstance(value_hash, str) and digest.fullmatch(value_hash)
+                                          for path, value_hash in value.items()))
+    if (historical.get('passed') is not True or
+            not isinstance(historical.get('report_sha256'), str) or
+            not digest.fullmatch(historical['report_sha256']) or
+            not isinstance(historical.get('executable_sha256'), str) or
+            not digest.fullmatch(historical['executable_sha256']) or
+            not all(valid_source_map(value) for value in source_maps)):
+        raise RuntimeError('invalid historical ABI summary schema')
+    if sha(log_path) != historical['report_sha256']:
+        raise RuntimeError('historical report provenance mismatch')
+    if not (source_maps[0] == source_maps[1] == source_maps[2]):
+        raise RuntimeError('historical build/run source mismatch')
+    return {'available': True, 'summary_sha256': sha(summary_path), 'report_sha256': sha(log_path),
+            'executable_sha256': historical['executable_sha256'],
+            'scope': 'retained prototype report and its original source maps, not reproducible by current source',
+            'timing': parse(log_path.read_text())}
+
+
 def main():
     report = {'passed': False, 'bottle': bottle.describe(), 'scope': 'standalone adapter ordinary-return CPU preservation and diagnostic timing; no D3D, gameplay, native-Windows or enclosing-hook ABI claim'}
     summary = OUT / 'application-admission-abi-summary.json'
@@ -123,21 +156,14 @@ def main():
         report['executable_sha256_after_run'] = sha(exe)
         if sources() != before or sha(exe) != report['executable_sha256_before_run'] or sha(WINE) != report['runtime_sha256_before']:
             raise RuntimeError('source/executable/runtime changed')
-        historical_path = OUT / 'application-admission-abi-initial-summary.json'
-        historical = json.loads(historical_path.read_text())
-        historical_log = OUT / 'application-admission-abi-initial.txt'
-        if not historical['passed'] or sha(historical_log) != historical['report_sha256']:
-            raise RuntimeError('historical report provenance mismatch')
-        if not (historical['source_hashes_before_build'] == historical['source_hashes_after_build'] == historical['source_hashes_after_run']):
-            raise RuntimeError('historical build/run source mismatch')
-        old = parse(historical_log.read_text())
-        report['historical_initial'] = {'summary_sha256': sha(historical_path), 'report_sha256': sha(historical_log),
-                                      'executable_sha256': historical['executable_sha256'],
-                                      'scope': 'retained prototype report and its original source maps, not reproducible by current source',
-                                      'timing': old}
-        report['comparison'] = {mode: {'initial_ns': old[mode]['median_ns_per_entry'],
-                                      'current_ns': report['timing'][mode]['median_ns_per_entry']}
-                                for mode in old}
+        report['historical_initial'] = load_historical(OUT)
+        if report['historical_initial']['available']:
+            old = report['historical_initial']['timing']
+            report['comparison'] = {mode: {'initial_ns': old[mode]['median_ns_per_entry'],
+                                          'current_ns': report['timing'][mode]['median_ns_per_entry']}
+                                    for mode in old}
+        else:
+            report['comparison'] = None
         report['checks'] = 130
         report['samples'] = 21
         report['passed'] = True

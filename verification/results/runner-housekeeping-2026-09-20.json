@@ -1,0 +1,78 @@
+{
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "installed": false,
+  "abi": {
+    "passed": true,
+    "checks": 130,
+    "samples": 21,
+    "exit_code": 0,
+    "comparison": null,
+    "adapter_no_eh_references": true,
+    "wrong_exception_policy_rejected": true
+  },
+  "integration": {
+    "result": "PASS",
+    "cases": {
+      "ownership-integration-off-smoke": 0,
+      "ownership-integration-off-capture": 0,
+      "ownership-integration-off-lifetime": 0,
+      "ownership-integration-off-contracts": 0,
+      "ownership-integration-off-auto": 0,
+      "ownership-integration-on-smoke": 0,
+      "ownership-integration-on-capture": 0,
+      "ownership-integration-on-lifetime": 0,
+      "ownership-integration-on-contracts": 0,
+      "ownership-integration-on-auto": 0,
+      "ownership-integration-depth_only-smoke": 0,
+      "ownership-integration-copy_depth-auto": 0,
+      "ownership-integration-scene_depth-auto": 0,
+      "ownership-integration-scene_only-smoke": 0,
+      "ownership-integration-object_requested-smoke": 0,
+      "ownership-integration-finite_on-smoke": 0,
+      "ownership-integration-finite_on-capture": 0,
+      "ownership-integration-finite_without_ownership-capture": 0,
+      "ownership-integration-motion_requested-auto": 0,
+      "ownership-integration-motion_without_prereqs-capture": 0,
+      "ownership-integration-admission_on-smoke": 0,
+      "ownership-integration-admission_on-capture": 0,
+      "ownership-integration-admission_on-lifetime": 0,
+      "ownership-integration-admission_on-contracts": 0,
+      "ownership-integration-admission_on-auto": 0,
+      "ownership-integration-admission_native-smoke": 0
+    },
+    "source_tree_unchanged_during_run": true,
+    "binaries_unchanged_during_run": true
+  },
+  "fallback": {
+    "result": "PASS",
+    "fault": "wrap_factory E_OUTOFMEMORY without consuming native ref",
+    "geometry": {
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 8,
+      "known_index_draws": 0,
+      "portable_uploads": null,
+      "native_contract_rejection_reported": false
+    },
+    "motion_mode": {
+      "motion_configured": true,
+      "motion_enabled": false,
+      "motion_disabled_reason": "write_exclusion_unavailable",
+      "motion_replay_records": 0
+    },
+    "verification_dll_sha256": "0b16a4b1a23bfd16431351a0bd4781fd8abee9ad4421f8bdec31fdd73245b225"
+  },
+  "raw_records": {
+    "application-admission-abi-summary.json": "906e4ae4f5a0496020b1593eec16491c0a5c19aaaf30cd18fb2c95216ebac3ea",
+    "ownership-integration-build.json": "cf4123e023c838665d8854fb43d0779153ea976f58ee36d87b2cb29a33325f54",
+    "ownership-integration-fallback.json": "6738ee01b232f0fc602788fb700da1d549c5270e96c7d15bdb8c46a26687c294"
+  }
+}

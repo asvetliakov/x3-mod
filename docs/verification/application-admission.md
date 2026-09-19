@@ -98,3 +98,24 @@ Fixture process elapsed times are not per-draw timings or game FPS.
 Complete wrapper/capture/D3DX/window entry coverage, native callback vetoes,
 mapping validation, full restoration and deferred retirement remain required
 before live replay can use this core. None is inferred from these tests.
+
+
+## Runner housekeeping — 2026-09-20
+
+The fallback fixture links the current production object list, compositor bridge
+and runtime, with six fail-closed ownership stubs. The ABI runner permits a
+completely absent bottle-specific historical baseline; partial or malformed
+provenance still fails. Independent review found and fixed acceptance of null
+hashes/source maps and non-boolean pass values; 15 focused host tests passed.
+
+Owner-run acceptance used bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,
+WINEMSYNC=1, serially through `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3 verification/probe/<runner>`:
+`run_application_admission_abi.py` passed 130 checks / 21 samples;
+`run_ownership_integration.py` passed all 26 cases; then
+`run_ownership_integration_fallback.py` passed with motion correctly refused
+as `write_exclusion_unavailable` and zero replay records. No game or install.
+The [compact record](../../verification/results/runner-housekeeping-2026-09-20.json)
+retains outcomes and raw-record hashes. New verbose outputs are retained locally
+under `verification/results/retained-run49-housekeeping/`; prior tracked
+transcripts were preserved. Native Windows runtime remains unverified.
