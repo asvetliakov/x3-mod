@@ -2064,3 +2064,27 @@ Design and the law: `docs/architecture/taa-distant-line-fade.md` section 11. Tra
   share variants are among the 600 byte-compared dynamic programs).
 - **Not done**: no flight; no offline estimate on the run168 dumps; native Windows is source-compatible (documented D3D9
   constant upload only), not executed.
+
+### TAA thin-region stabiliser, implemented unflown (2026-09-19)
+
+`docs/architecture/taa-lattice-crawl.md`, sections 12-13. The crawl is the 8-phase shuffle of the plant's near-edge-on arm
+(run175 arm 16.9 codes rms, p2p p99 151): the 3x3 variance clip discards an accepted history because the fringes are wider
+than the box. `--taa-thin-region W[,RELAX[,LO,HI]]` (default off): on the 7x7 around depth-fragmented pixels, clip off and
+history weight min(n/(n+1), W), closed by the fastest pixel within 6 px (gate 0.03-0.25 px/frame). Replay: arm 16.9 / 151 / 827
+-> 3.3 / 23 / 6 (W 0.97), 2.7 / 19 / 6 (0.985); panels 4.5 -> 1.5; run153 station 5.3 -> 4.0; ghost on masked background with
+the neighbourhood gate: run148 (0.49 px/frame) p99 0.7 codes, run161 (0.84) region closed (57 codes with a per-pixel gate).
+`resolve_far` 495 slots, mask program 270; all other bytecode unchanged. `run_temporal_pass.py` exit 0, lattice mode 420
+numerical / 19 state (shard ripple x 0.086, plain silhouette 0 of 29 952 px-frames differing, past the gate bit-identical);
+pass +0.79 ms at 1280x768; generator and bloom `--check` PASS.
+
+### TAA thin-region review fixes (2026-09-19)
+
+`docs/architecture/taa-lattice-crawl.md`, section 13.1. Region grown by 5 px (run175 arm 3.20 / 24 / 6 -> 2.34 / 22 / 0 at W 0.97,
+trails unchanged, frame share +0.01-0.03, no measurable pass-time cost); exact per-pixel weight targets when the far stabiliser
+and the thin region are both on (`c5.x`, `resolve_far` 496 slots, mask 305); the far stabiliser alone bit-identical to the flown
+program (fixture reference of commit dee6608c); line filter alone back to two mask draws (+0.22 ms); `--taa-thin-clip` beside
+the far stabiliser / thin region refused on purpose (deliberate removal: inert on real data); options validated separately in
+the route; one shared speed gate made explicit in the launcher. `run_temporal_pass.py` exit 0, lattice mode 459 numerical / 19
+state. Seam cases, record `verification/results/bottle-X3/motion-output-partial.json`: 164 / 140 / 59 checks. Generator
+`--check` PASS; only `temporal_line_mask` and `temporal_resolve_far` bytecode moved.
+

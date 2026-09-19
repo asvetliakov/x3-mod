@@ -316,7 +316,8 @@ def main():
     parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; default 0.75 with --taa; 0 disables, leaving the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
     parser.add_argument('--taa-current-filter', type=float, default=None, metavar='A', help='Filtered current sample of the TAA resolve, 0..4 (X3M_TAA_CURRENT_FILTER; requires --taa): the current colour that enters the history blend becomes the exp(-A d^2) average of the 3x3 current samples (d in pixels from the pixel centre to each jittered sample position) instead of the point sample; the neighbourhood clip is unchanged. Default 0 = off, the unchanged resolve program; 1.0 is the modelled optimum, 2.29 the sharper setting (docs/verification/motion-output.md, "Run 139")')
     parser.add_argument('--taa-line-filter', default=None, metavar='A[,W]', help='Line-masked filtered current sample of the TAA resolve (X3M_TAA_LINE_FILTER; requires --taa; not with --taa-current-filter > 0; default absent = off; suggested 1.0, 2.0 is milder): the exp(-A d^2) average of --taa-current-filter, A within 0..4, applied only where the 3x3 depth holds a line-like pixel: geometry with background or farther geometry on both sides along one of four directions, W = 1 (default) or 2 px wide; silhouettes and surfaces keep the point sample. Against roping of sub-pixel lattices and distant struts (docs/architecture/taa-lattice-crawl.md section 9).')
-    parser.add_argument('--taa-far-stabiliser', default=None, metavar='W[,A[,F0,F1[,LO,HI]]]', help='Far-gated stabiliser of the TAA resolve against shimmer of distant sub-pixel detail (X3M_TAA_FAR_STABILISER; requires --taa; not with --taa-adaptive-weight or --taa-current-filter > 0; default absent = off; suggested 0.985 for the weight alone, 0.985,1 with the filter): on pixels whose footprint exceeds F0 world units per pixel, fully at F1 (default 80,130), W is the history weight (0 off, else history weight..0.99; falls back to the history weight across the LO..HI speed gate) and A the exp(-A d^2) current-sample filter (0 off, else up to 4; must equal --taa-line-filter A when both are given). The weight is full while the far content moves at most LO px/frame on screen and back at the history weight from HI (default 0.03,0.25: a long history softens sliding detail). The two components are separate: W,0 is weight only, 0,A filter only (docs/architecture/taa-distant-line-fade.md section 9).')
+    parser.add_argument('--taa-far-stabiliser', default=None, metavar='W[,A[,F0,F1[,LO,HI]]]', help='Far-gated stabiliser of the TAA resolve against shimmer of distant sub-pixel detail (X3M_TAA_FAR_STABILISER; requires --taa; not with --taa-adaptive-weight, --taa-thin-clip or --taa-current-filter > 0; default absent = off; suggested 0.985 for the weight alone, 0.985,1 with the filter): on pixels whose footprint exceeds F0 world units per pixel, fully at F1 (default 80,130), W is the history weight (0 off, else history weight..0.99; falls back to the history weight across the LO..HI speed gate) and A the exp(-A d^2) current-sample filter (0 off, else up to 4; must equal --taa-line-filter A when both are given). The weight is full while the far content moves at most LO px/frame on screen and back at the history weight from HI (default 0.03,0.25: a long history softens sliding detail; the one gate is shared with --taa-thin-region, see there). --taa-thin-clip is refused beside this option on purpose: the far program carries no 3x3 soft clip (it was inert on every real capture). The two components are separate: W,0 is weight only, 0,A filter only (docs/architecture/taa-distant-line-fade.md section 9).')
+    parser.add_argument('--taa-thin-region', default=None, metavar='W[,RELAX[,LO,HI]]', help='Thin-region stabiliser of the TAA resolve against the jitter-cycle shimmer of lattices, struts and foreshortened panels (X3M_TAA_THIN_REGION; requires --taa; not with --taa-adaptive-weight, --taa-thin-clip or --taa-current-filter > 0; default absent = off; suggested 0.97): where the depth is fragmented (some 7-tap line through a pixel changes between geometry and its background at least twice) and nothing nearby moves faster than the speed gate, the history weight rises to min(n/(n+1), W) (W 0 off, else history weight..0.99) and the history is pulled only (1 - RELAX) of the way to the variance clip (default 1: clip off there). LO,HI px/frame is the speed gate: full effect at or below LO, none from HI. There is ONE gate for this option and --taa-far-stabiliser: given on either, it applies to both (default 0.03,0.25); given on both, the two pairs must be equal. The region is the 11x11 around fragmented pixels and closes when anything within 8 px moves faster than the gate. Plain silhouettes and everything outside the region are unchanged (docs/architecture/taa-lattice-crawl.md section 13).')
     parser.add_argument('--taa-history-weight', type=float, default=None, metavar='W', help='History weight of the TAA resolve, 0.5..0.98 (X3M_TAA_HISTORY_WEIGHT; requires --taa): the fraction of the accepted history kept per frame. Default absent = 0.9; 0.95 halves the per-frame ripple and doubles the convergence time and the life of clamp-bounded ghost trails')
     parser.add_argument('--taa-thin-clip', type=float, default=None, metavar='S', help='Thin-feature soft clip of the TAA resolve, 0..1 (X3M_TAA_THIN_CLIP; requires --taa; default absent = off; suggested 0.75): where the 3x3 depth mixes the empty-depth sentinel and geometry the history is pulled only (1 - S) of the way to the clip box, fading out between 2 and 4 px/frame (docs/architecture/taa-flicker-suppression.md)')
     parser.add_argument('--taa-adaptive-weight', default=None, metavar='WMAX[,LO,HI]', help='Per-pixel age/speed history weight, w = min(n/(n+1), wmax(speed)) (X3M_TAA_ADAPTIVE_WEIGHT; requires --taa and --taa-thin-clip; default absent = off; suggested 0.97): WMAX within [history weight, 0.99] for slow content, falling to the history weight between LO and HI px/frame (default 0.1,0.5; the wide gate is 0.8,1.5). Costs two R32F targets (8 bytes per pixel)')
@@ -548,6 +549,7 @@ def main():
             far = []
         if len(far) not in (1, 2, 4, 6):
             parser.error('--taa-far-stabiliser takes W[,A[,F0,F1[,LO,HI]]].')
+        args.taa_far_gate_given = len(far) == 6
         far += [0.0, 80.0, 130.0, 0.03, 0.25][len(far) - 1:]
         base_weight = args.taa_history_weight if args.taa_history_weight is not None else 0.9
         if not (far[0] == 0.0 or base_weight <= far[0] <= 0.99) or not 0.0 <= far[1] <= 4.0 or not 0.0 < far[2] < far[3] <= 1e6 or not 0.0 <= far[4] < far[5] <= 64.0:
@@ -555,11 +557,37 @@ def main():
         if far[0] > 0 or far[1] > 0:
             if args.taa_adaptive_weight is not None:
                 parser.error('--taa-far-stabiliser and --taa-adaptive-weight exclude each other (one history-weight gate).')
+            if args.taa_thin_clip:
+                parser.error('--taa-far-stabiliser and --taa-thin-clip exclude each other (the far program has no 3x3 soft clip; see --taa-thin-region).')
             if args.taa_current_filter:
                 parser.error('--taa-far-stabiliser and --taa-current-filter exclude each other (the global filter already covers every pixel).')
             if far[1] > 0 and args.taa_line_filter is not None and float(args.taa_line_filter.partition(',')[0]) not in (0.0, far[1]):
                 parser.error('--taa-far-stabiliser A must equal --taa-line-filter A when both are given (one Gaussian per frame).')
         args.taa_far_stabiliser = ','.join('%.6g' % value for value in far)
+    if args.taa_thin_region is not None:
+        if not args.taa:
+            parser.error('--taa-thin-region requires --taa.')
+        try:
+            thin = [float(field) for field in args.taa_thin_region.split(',')]
+        except ValueError:
+            thin = []
+        if len(thin) not in (1, 2, 4):
+            parser.error('--taa-thin-region takes W[,RELAX[,LO,HI]].')
+        gate_given = len(thin) == 4
+        thin += [1.0, 0.03, 0.25][len(thin) - 1:]
+        base_weight = args.taa_history_weight if args.taa_history_weight is not None else 0.9
+        if not (thin[0] == 0.0 or base_weight <= thin[0] <= 0.99) or not 0.0 <= thin[1] <= 1.0 or not 0.0 <= thin[2] < thin[3] <= 64.0:
+            parser.error('--taa-thin-region: W is 0 or within [history weight, 0.99], RELAX within [0, 1], 0 <= LO < HI <= 64.')
+        if thin[0] > 0:
+            if args.taa_adaptive_weight is not None or args.taa_thin_clip:
+                parser.error('--taa-thin-region excludes --taa-adaptive-weight and --taa-thin-clip (one history-weight gate; the program has no 3x3 soft clip).')
+            if args.taa_current_filter:
+                parser.error('--taa-thin-region and --taa-current-filter exclude each other.')
+            if gate_given and getattr(args, 'taa_far_gate_given', False) and [float(v) for v in args.taa_far_stabiliser.split(',')[4:]] != thin[2:]:
+                parser.error('--taa-thin-region LO,HI must equal the --taa-far-stabiliser speed gate when both are given (one gate).')
+        args.taa_thin_region = ','.join('%.6g' % value for value in (thin if gate_given else thin[:2]))
+        if gate_given and args.taa_far_stabiliser is not None:
+            args.taa_far_stabiliser = ','.join(args.taa_far_stabiliser.split(',')[:4] + ['%.6g' % thin[2], '%.6g' % thin[3]])
     if args.taa_history_weight is not None and not args.taa:
         parser.error('--taa-history-weight requires --taa.')
     if args.taa_history_weight is not None and not 0.5 <= args.taa_history_weight <= 0.98:
@@ -980,7 +1008,7 @@ def main():
             env.pop('X3M_TAA_SHARPEN', None)
         # The two resolve A/B options are forwarded only when given: a stale
         # shell value can neither enable the filter nor change the weight.
-        for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_LINE_FILTER', args.taa_line_filter), ('X3M_TAA_FAR_STABILISER', args.taa_far_stabiliser),
+        for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_LINE_FILTER', args.taa_line_filter), ('X3M_TAA_FAR_STABILISER', args.taa_far_stabiliser), ('X3M_TAA_THIN_REGION', args.taa_thin_region),
                             ('X3M_TAA_THIN_CLIP', args.taa_thin_clip), ('X3M_TAA_ADAPTIVE_WEIGHT', args.taa_adaptive_weight),
                             ('X3M_TAA_ALPHA_HISTORY', '1' if args.taa_alpha_history else None)):
             if value is not None:

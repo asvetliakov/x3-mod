@@ -30,15 +30,19 @@ struct MaskCreationFault {
     ~MaskCreationFault(){*reinterpret_cast<void***>(device)=previous;}
 };
 struct FarRun : FlickerRun { std::vector<std::vector<float>> mask; bool masksFailed=false; };
-FarRun far_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool validGate=true,bool failMasks=false){
-    TemporalPass pass;check("far initialize",pass.initialize(s.d,nullptr,resolver));const bool farOn=c.farW>0||c.farA>0;
+// The resolve_far program of the flown run46 / run47 candidates (commit dee6608c), for one identity comparison.
+constexpr std::uint32_t farReferenceWords[]={
+#include "temporal_resolve_far_reference_inc.h"
+};
+FarRun far_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool validGate=true,bool failMasks=false,bool reference=false){
+    TemporalPass pass;check("far initialize",pass.initialize(s.d,nullptr,resolver));const bool farOn=c.farW>0||c.farA>0||c.thinW>0;
     if(c.thin>0&&!farOn){check("far configure flicker",pass.configure_flicker());}
     if(c.A>0){check("far configure line",pass.configure_line_filter());}
-    if(farOn){check("far configure",pass.configure_far());check("far configure is idempotent",pass.configure_far());require(pass.far_available(),"far-stabiliser program created on this device");}
+    if(farOn){check("far configure",pass.configure_far(reference?reinterpret_cast<const DWORD*>(farReferenceWords):nullptr));check("far configure is idempotent",pass.configure_far());require(pass.far_available(),"far-stabiliser program created on this device");}
     const FlickerConfig f{c.name,c.thin,0,.1f,.5f,false,false,.9f};FarRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         s.render(far_objects(n),EdgeBackground{.035f,farBandDepth[0],1},jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));
-        auto in=flicker_inputs(s,f,jx,jy,false);in.line_filter=c.A;in.line_width=c.width;in.far_weight=c.farW;in.far_filter=c.farA;in.far_d0=farD0;in.far_inv=validGate?farInv:0;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
+        auto in=flicker_inputs(s,f,jx,jy,false);in.line_filter=c.A;in.line_width=c.width;in.far_weight=c.farW;in.far_filter=c.farA;in.far_d0=farD0;in.far_inv=validGate?farInv:0;in.far_speed_lo=farLo;in.far_speed_hi=farHi;in.thin_region_weight=c.thinW;in.thin_region_relax=c.relax;
         Output out;check("far Begin resolve",s.d->BeginScene());
         if(failMasks&&n==0){MaskCreationFault fault(s.d);check(c.name,pass.run(in,&out));require(MaskCreationFault::refused>0,"mask creation fault reached");}else check(c.name,pass.run(in,&out));
         check("far End resolve",s.d->EndScene());
@@ -68,7 +72,7 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         ++numeric_checks;require(refused,"invalid projection or footprints: no gate (d0 = inv = 0)");}
     farD0=.9995f;farInv=1.f/(.9999f-.9995f);
     const LineConfig base{"far-base",false,0,0,0},weight{"far-weight-0.985",false,0,0,0,1,.985f,0},filter{"far-filter-A1",false,0,0,0,1,0,1},both{"far-weight+filter",false,0,0,0,1,.985f,1},
-        lined{"far-weight+filter+line-A1",true,1,0,0,1,.985f,1},soft{"far-weight+soft-0.75",false,0,.75f,0,1,.985f,0};
+        lined{"far-weight+filter+line-A1",true,1,0,0,1,.985f,1},withThin{"far-weight-0.985+thin-region-0.97",false,0,0,0,1,.985f,0,.97f,1};
     // ---- validation and refusals, hostile state, failed draw, Reset ----
     {s.render(far_objects(0),EdgeBackground{.035f,farBandDepth[0],1},0,0);Output out;const FlickerConfig none{"far-validation",0,0,.1f,.5f,false,false,.9f};
         TemporalPass bare;check("far bare initialize",bare.initialize(d,nullptr,resolver));auto in=flicker_inputs(s,none,0,0,false);in.caller_scene_open=false;in.far_weight=.985f;in.far_d0=farD0;in.far_inv=farInv;
@@ -97,7 +101,7 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     // Speed ramp of the far weight (default gate 0.03 .. 0.25 px/frame): 0 and 0.04 (t = 0 / 0.045), 0.14 (t = 0.5), 0.30 (past HI: the base weight).
     double rampRatio[4]{};unsigned rampIndex=0;
     for(double drift:{0.,.04,.14,.3}){farDrift=drift;const auto baseRun=far_sequence(s,resolver,base,farFrames);const double baseRipple[3]={far_ripple(baseRun,0),far_ripple(baseRun,1),far_ripple(baseRun,2)};
-        for(const LineConfig* c:{&base,&weight,&filter,&both,&lined,&soft}){const auto run=c==&base?baseRun:far_sequence(s,resolver,*c,farFrames);const auto model=line_model(run,*c);double oracle=0,ageOracle=0;unsigned nearDiffers=0,nearPixels=0;
+        for(const LineConfig* c:{&base,&weight,&filter,&both,&lined,&withThin}){const auto run=c==&base?baseRun:far_sequence(s,resolver,*c,farFrames);const auto model=line_model(run,*c);double oracle=0,ageOracle=0;unsigned nearDiffers=0,nearPixels=0;
             for(unsigned n=0;n<farFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
                 if(!run.age.empty())ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));
                 if(x<9&&c->A<=0){++nearPixels;nearDiffers+=std::memcmp(&run.output[n][(y*S+x)*4],&baseRun.output[n][(y*S+x)*4],4*sizeof(float))!=0;}}
@@ -133,6 +137,9 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         farLo=savedLo;farHi=savedHi;std::printf("FAR_SPEED_GATE_CUSTOM lo=0.100 hi=0.600 ratio_v0.14=%.4f ratio_v0.30=%.4f default_v0.14=%.4f oracle_error=%.6f\n",ratio[0],ratio[1],rampRatio[2],error);
         metric("far custom speed gate: shader matches the oracle evaluated with that gate",error,0,.0006/(1-.985));
         ++numeric_checks;require(ratio[0]<rampRatio[2]-.2&&ratio[1]>ratio[0]&&ratio[1]<.9,"a non-default speed gate is followed (a hard-coded default would give the default ramp)");}
+    // The far stabiliser alone equals the program the user flew (run160 / run161): same images bit for bit, static and inside the ramp.
+    for(double drift:{0.,.04}){farDrift=drift;for(const LineConfig* c:{&weight,&both}){const auto now=far_sequence(s,resolver,*c,96),flown=far_sequence(s,resolver,*c,96,true,false,true);
+        ++numeric_checks;require(same_rgb(now.output,flown.output),"far stabiliser alone: bit-identical to the flown resolve_far program");}}
     farDrift=0;
     // ---- gate off (invalid projection this frame) and mask-target creation failure: the plain resolve bit for bit, history kept ----
     {const auto baseRun=far_sequence(s,resolver,base,32),gateOff=far_sequence(s,resolver,both,32,false),failed=far_sequence(s,resolver,both,32,true,true);
