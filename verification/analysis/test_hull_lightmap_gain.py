@@ -252,16 +252,23 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
             baseline = json.loads(output)['env']
-            self.assertNotIn('X3M_LIGHT_MAP_FAR_FADE', baseline)  # default off: no variable at all
+            self.assertEqual(baseline['X3M_LIGHT_MAP_FAR_FADE'], '80,220,1')
             with mock.patch.dict(os.environ, {'X3M_LIGHT_MAP_FAR_FADE': '1,2'}):
                 code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
                 self.assertEqual(json.loads(output)['env'], baseline)  # an inherited value is dropped
+            for args in (PREREQUISITES + ['--no-light-map-far-fade'], PREREQUISITES + ['--hull-lightmap-gain', '1'], PREREQUISITES + ['--linear-materials', '--hdr-tonemap'], ['--motion-output']):
+                with mock.patch.dict(os.environ, {'X3M_LIGHT_MAP_FAR_FADE': '1,2'}):
+                    code, output, error = launch(directory, *args)
+                self.assertEqual(code, 0, error)
+                self.assertNotIn('X3M_LIGHT_MAP_FAR_FADE', json.loads(output)['env'])
+            code, _, error = launch(directory, *PREREQUISITES, '--no-light-map-far-fade', '--light-map-far-fade', '80,220')
+            self.assertEqual(code, 2)
             for value, expected in (('60,120', '60,120,1'), ('60,120,0', '60,120,0'), ('60,120,4', '60,120,4'), ('0.5,1e6,2.5', '0.5,1e+06,2.5')):
                 code, output, error = launch(directory, *PREREQUISITES, '--light-map-far-fade', value); self.assertEqual(code, 0, error)
                 env = json.loads(output)['env']
                 self.assertEqual(env.pop('X3M_LIGHT_MAP_FAR_FADE'), expected)
-                self.assertEqual(env, baseline)
-            for value in ('60', '60,120,1,2', '120,60', '0,60', '60,60', '60,120,4.5', '60,120,-1', 'a,b', '60,nan', '60,2e6'):
+                self.assertEqual(env, {k: v for k, v in baseline.items() if k != 'X3M_LIGHT_MAP_FAR_FADE'})
+            for value in ('', '60', '60,120,1,2', '120,60', '0,60', '60,60', '60,120,4.5', '60,120,-1', 'a,b', '60,nan', '60,2e6'):
                 code, _, error = launch(directory, *PREREQUISITES, '--light-map-far-fade', value)
                 self.assertEqual(code, 2, value); self.assertIn('--light-map-far-fade', error)
             for extra in (['--hull-lightmap-gain', '1'], ['--linear-materials']):

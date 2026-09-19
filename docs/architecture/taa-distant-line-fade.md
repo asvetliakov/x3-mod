@@ -399,3 +399,21 @@ this flight. `40,110,0.5` is an optional future same-view comparison if the rema
 window flicker is worth dimmer windows (half the game's light-map radiance at the
 floor). It is not a measured improvement or a recommended default. The setting
 cannot eliminate crawling geometric edges. No launcher default changed here.
+
+
+## 13. User-selected default: 80,220,1 (2026-09-20)
+
+The user subsequently flew `80,220`, judged it good, and explicitly requested it
+as the default. This supersedes §12's recommendation; no run directory or isolated
+image comparison was supplied for that additional test. The launcher now selects
+`80,220,1` with HDR, original hulls and light-map gain above 1. At 1280×768/p00 0.8
+its transition spans 8.192–22.528 km of view depth, retaining boosted windows farther
+away than 40,110. `--no-light-map-far-fade` disables it; an explicit numeric value
+overrides it. Ineligible modes and the off switch clear inherited fade settings.
+The DLL's parsing/shaders are unchanged; this takes effect on the next launch.
+
+Independent review accepted the launcher and affected tests after correcting an
+empty-string/off-switch alias. Focused `verification.analysis.test_hull_lightmap_gain`
+reports 3 tests, 1 skipped (local shader corpus absent); malformed empty values
+are refused, while default/off/explicit/ineligible/inherited cases pass. No Wine
+run or new DLL is required for this launcher-only change.
