@@ -75,7 +75,7 @@ def audit_module(obj):
 def build():
     engine = engine_fragment()
     objects = []
-    for source, stem in [('verification/probe/collide_memo_fixture.cpp', 'fixture'), ('src/proxy/collide_memo.cpp', 'module'), ('src/proxy/collide_sat_sse2.cpp', 'sat_module'),
+    for source, stem in [('verification/probe/collide_memo_fixture.cpp', 'fixture'), ('src/proxy/collide_memo.cpp', 'module'), ('src/proxy/collide_query_phases.cpp', 'query_phases'), ('src/proxy/collide_sat_sse2.cpp', 'sat_module'),
                          ('src/proxy/engine_patch.cpp', 'patch')]:
         out = BUILD / (stem + '.o')
         subprocess.run(['i686-w64-mingw32-g++', *FLAGS, '-I', str(BUILD), '-c', str(ROOT / source), '-o', str(out)], check=True, cwd=ROOT)

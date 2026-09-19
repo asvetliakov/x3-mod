@@ -1,4 +1,5 @@
 #include "collide_memo.h"
+#include "collide_query_phases.h"
 #include "engine_patch.h"
 #include "object_trace.h"
 #include "capture.h"
@@ -85,8 +86,8 @@ int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, cons
     const LONG thread = static_cast<LONG>(GetCurrentThreadId());   // no LastError, no x87
     LONG owner = owner_thread_;
     if (owner == 0) owner = InterlockedCompareExchange(&owner_thread_, thread, 0) == 0 ? thread : owner_thread_;
-    if (owner != thread) { InterlockedIncrement(&foreign_thread_); return 2; }
-    if (busy_) { ++counters_.reentered; return 2; }
+    if (owner != thread) { InterlockedIncrement(&foreign_thread_); x3m::collide_query_phases::foreign(); return 2; }
+    if (busy_) { ++counters_.reentered; x3m::collide_query_phases::invalidate(); return 2; }
     busy_ = true;
     const std::uint32_t frame = frame_;
     if (frame != seen_frame_) { seen_frame_ = frame; queries_since_tick_ = 0; }
@@ -94,10 +95,10 @@ int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, cons
     pending_verify_ = nullptr;
     pending_miss_ = -1;
     pending_eligible_ = build_key(pending_key_, flags, cap, *args);
-    if (!pending_eligible_) { ++counters_.ineligible; return 0; }
+    if (!pending_eligible_) { ++counters_.ineligible; x3m::collide_query_phases::begin(x3m::collide_query_phases::core::Ineligible); return 0; }
     Entry* const entry = table_.find(pending_key_, frame);
-    if (entry == nullptr) { ++counters_.misses; pending_miss_ = table_.classify(pending_key_); ++counters_.miss_count[pending_miss_]; return 0; }
-    if (verify_) { pending_verify_ = entry; return 0; }   // the engine runs too; store() compares
+    if (entry == nullptr) { ++counters_.misses; pending_miss_ = table_.classify(pending_key_); ++counters_.miss_count[pending_miss_]; x3m::collide_query_phases::begin(); return 0; }
+    if (verify_) { pending_verify_ = entry; x3m::collide_query_phases::begin(x3m::collide_query_phases::core::Verify); return 0; }   // the engine runs too; store() compares
     entry->frame = frame;
     // Exactly what the query would have written (collide_memo_core.h); the contact record and *minimum stay as they are.
     engine<std::uint32_t>(flags_va) = flags;
@@ -115,7 +116,9 @@ int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, cons
     busy_ = false;
     return 1;
 }
+void __cdecl x3m_collide_memo_abandon() { busy_ = false; pending_eligible_ = false; pending_verify_ = nullptr; }
 void __cdecl x3m_collide_memo_store() {   // owner thread only: reached on lookup() == 0 alone
+    x3m::collide_query_phases::end(); // before outputs, classification/store and verification
     busy_ = false;
     if (!pending_eligible_) return;
     pending_eligible_ = false;
@@ -191,9 +194,12 @@ bool install_at(const Addresses& a, bool verify_mode) {
     x3m_collide_memo_target = static_cast<std::uint32_t>(a.target);
     busy_ = false; owner_thread_ = 0; clear_requested_ = 0; seen_frame_ = frame_; queries_since_tick_ = 0;
     site_ = engine_patch::CallSite{};
-    if (!engine_patch::claim_call(site_, a.site, a.target, reinterpret_cast<void*>(&x3m_collide_memo_thunk))) {
+    const bool phases = x3m::collide_query_phases::initialize(true, verify_mode);
+    void* const thunk = phases ? reinterpret_cast<void*>(&x3m_collide_query_memo_thunk) : reinterpret_cast<void*>(&x3m_collide_memo_thunk);
+    if (!engine_patch::claim_call(site_, a.site, a.target, thunk)) {
+        const bool phases_back = x3m::collide_query_phases::shutdown();
         if (site_.patched_in && !engine_patch::restore_call(site_)) { patched_ = true; return done("rollback_failed", false); }   // registered: shutdown() tries again
-        return done(site_.status, false);
+        return done(phases_back ? site_.status : "rollback_failed", false);
     }
     patched_ = true;
     return done("ok", true);
@@ -213,24 +219,26 @@ bool initialize() {
     else applied = install_at(Addresses{memo_site_va, memo_target_va}, verify_mode);
     log("collide_memo requested=%u patched=%u verify=%u reason=%s site=0x%08lx target=0x%08lx write=%s handler=0x%08lx entries=%u",
         requested ? 1u : 0u, patched_ ? 1u : 0u, patched_ && verify_ ? 1u : 0u, state_, static_cast<unsigned long>(memo_site_va), static_cast<unsigned long>(memo_target_va),
-        site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none", static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_collide_memo_thunk)), ways * sets);
+        site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none", static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(x3m::collide_query_phases::enabled ? &x3m_collide_query_memo_thunk : &x3m_collide_memo_thunk)), ways * sets);
     SetLastError(error);
     return applied;
 }
 bool shutdown() {
-    if (!patched_) return true;
+    const bool phases_back = x3m::collide_query_phases::shutdown();
+    if (!patched_) return phases_back;
     const DWORD error = GetLastError();
     const bool back = engine_patch::restore_call(site_);
-    patched_ = false;
-    state_ = back ? "restored" : "restore_failed";
+    patched_ = site_.patched_in; // retain a failed restoration for a later detach retry
+    state_ = back && phases_back ? "restored" : "restore_failed";
     SetLastError(error);
-    return back;
+    return back && phases_back;
 }
 const char* state() { return state_; }
 core::Counters counters() { core::Counters c = counters_; c.foreign_thread = static_cast<std::uint32_t>(foreign_thread_); return c; }
-void device_reset() { if (patched_) InterlockedExchange(&clear_requested_, 1); }
+void device_reset() { if (patched_) { InterlockedExchange(&clear_requested_, 1); x3m::collide_query_phases::device_reset(); } }
 void present(unsigned long long device, unsigned long long frame, bool) {
     if (!patched_) return;
+    x3m::collide_query_phases::present(device, frame);
     const std::uint32_t now = frame_ + 1;
     frame_ = now;
     // A query cannot be in flight on the thread that is presenting: busy here is what an unwind past the thunk left.

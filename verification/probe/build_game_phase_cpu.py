@@ -19,6 +19,7 @@ def build(objects_only=False):
         ('src/proxy/pass_phases.cpp','pass'),
         ('src/proxy/residual_phases.cpp','residual'),
         ('src/proxy/submit_phases.cpp','submit'),
+        ('src/proxy/light_phases.cpp','light'),
         ('src/proxy/loop_phases.cpp','loop'),
         ('src/proxy/media_cue.cpp','media'),
         ('src/proxy/lean_stub.cpp','lean'),

@@ -23,6 +23,10 @@
 // 100,000 queries without a Present, and when a Present on the owner thread finds a query still marked in flight
 // (`stuck_busy`: an unwind went past the thunk), so an entry never outlives one rendered frame or a loading stretch.
 //
+// X3M_COLLIDE_QUERY_PHASES=1 additionally selects a fully preserved diagnostic thunk and the
+// sole root-descent call. Engine-query timing starts after key/classification and stops before
+// output reads; cache hits read no clock. See collide_query_phases.h and sector-collide §14.10.
+// The following cost/state contract describes the default path without that diagnostic.
 // Path cost (per mesh-pair query, about 1e2 per frame): one key build and a 4-way set compare, no lock, no
 // allocation, no log, no API call; the table is 1,024 static entries. The thunk and both C handlers hold no x87/MMX
 // instruction and no floating-point arithmetic at all (the key is compared as words), MXCSR is not read or written,
@@ -48,6 +52,7 @@ void x3m_collide_memo_thunk();   // the redirected call's target
 struct x3m_collide_memo_args { const float* R1; const float* T1; std::uint32_t s1; const std::uint32_t* model_a; const float* R2; const float* T2; std::uint32_t s2;
                                const std::uint32_t* model_b; std::uint32_t tolerance; const std::uint32_t* minimum; };
 int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, const x3m_collide_memo_args* args);   // 1: answered; 0: run, then store(); 2: run, not ours
+void __cdecl x3m_collide_memo_abandon(); // diagnostic CPU-mode rejection: discard pending memo without outputs
 void __cdecl x3m_collide_memo_store();                                                                            // after the engine ran
 extern std::uint32_t x3m_collide_memo_target, x3m_collide_memo_return;
 }

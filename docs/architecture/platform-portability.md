@@ -425,3 +425,25 @@ backend-private layout or export is required. Cross-compilation and X3-bottle
 mask/readiness/Reset fixtures pass. Native Windows execution, the full live hook
 chain and replacement flight quality remain unverified; see the
 [volumetric-fog ledger](../verification/volumetric-fog.md).
+
+## 2026-09-20: R7 whole-call light timer
+
+`--light-phases` uses portable x86 instruction replay and documented Win32
+QPC/thread/LastError APIs. Its read-only x87/MXCSR rounding-mode check skips
+measurement before any FP mode write when the modes differ; the same fallback
+applies on native Windows. No backend-private API, thread layout or DLL identity
+is required. Cross-compilation and synthetic X3-bottle CPU/arithmetic fixtures
+pass. Native Windows runtime behavior and actual engine-flight timing remain
+unverified; see the [R7 timing ledger](../verification/sampling-profiler.md#r7-whole-call-light-phases-2026-09-20).
+
+## 2026-09-20: collision query timing
+
+`--collide-query-phases` uses documented QPC, thread and code-patch APIs plus
+reviewed x86 game seams. No backend-private export or layout is required. Its
+integer-only rounding guard bypasses timing before any FP-control write when
+x87 and MXCSR rounding differ; the engine still executes unchanged. This also
+avoids FEX's shared-rounding hazard without detecting a particular backend.
+SSE2/four-byte-stack cross-compilation establishes source compatibility only;
+native Windows hook, CPU-state and timing execution remains unverified. See
+[the query-phase ledger](../verification/collide-query-phases.md) for scoped
+host and CrossOver evidence, failure witnesses and diagnostic overhead.

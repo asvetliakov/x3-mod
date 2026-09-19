@@ -209,6 +209,14 @@ static bool query(const Object& a, const Object& b, const Mode& mode, const char
     if (!hit && (with_memo.ecx != reference.ecx || with_memo.edx != reference.edx)) { ++tally.register_differences; same = false; }   // on a run the engine's own ECX/EDX reach the caller
     ++tally.queries; tally.hits += hit; tally.contacts += contact;
     if (!same) { ++tally.differences; if (hit) ++tally.stale; if (tally.differences <= 5) std::printf("DETAIL %s query=%lu hit=%u contact=%u result=%u/%u\n", label, tally.queries, hit, contact, with_memo.eax, reference.eax); }
+#ifdef X3M_COLLIDE_QUERY_FIXTURE
+    if(!same && tally.differences<=5)std::printf("COMPONENT eax=%08x/%08x ecx=%08x/%08x edx=%08x/%08x saved=%u fpu_cw_sw=%u fpu_tags=%u mxcsr=%08x/%08x root=%u globals=%u minimum=%u error=%08lx/%08lx\n",
+        with_memo.eax,reference.eax,with_memo.ecx,reference.ecx,with_memo.edx,reference.edx,
+        unsigned(with_memo.ebx==reference.ebx&&with_memo.ebp==reference.ebp&&with_memo.esi==reference.esi&&with_memo.edi==reference.edi),
+        unsigned(!std::memcmp(with_memo.env,reference.env,4)),unsigned(!std::memcmp(with_memo.env+8,reference.env+8,2)),with_memo.mxcsr,reference.mxcsr,
+        unsigned(!std::memcmp(root1,reinterpret_cast<void*>(core::root_block_va),56)),unsigned(!std::memcmp(state1,reinterpret_cast<void*>(0x0060851c),52)),
+        unsigned(!std::memcmp(&minimum1,&minimum_slot,4)),error1,GetLastError());
+#endif
     if (hit && contact) ++tally.hit_on_contact;
     return hit;
 }

@@ -10,7 +10,8 @@ from each light hook over every function it can reach through direct calls
 boundary does not cover either, and x3m::call_preserved thunks, which run
 their callee under a full FNSAVE/FRSTOR envelope: cpu_state.h) and fails on
 any x87 opcode other than the state-transport instructions the project itself
-uses (fnsave, the fninit after it in CpuState::capture, frstor) and the SSE
+uses (fnsave, the fninit after it in CpuState::capture, frstor, and the
+read-only fnstcw used by diagnostic rounding guards) and the SSE
 control transfers (stmxcsr/ldmxcsr). Any
 indirect call, through a volatile function pointer or otherwise, is invisible
 to this walk, not only call_preserved's thunk; the runtime FNSAVE/FRSTOR
@@ -66,7 +67,7 @@ LIGHT_NAMESPACE = '__ZN3x3m13loading_trace5light'   # x3m::loading_trace::light:
 EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry', '_x3m_pool_fopen', '_x3m_pool_fclose',
                 '_x3m_point_light_root_admits', '_x3m_pass_phase_enter', '_x3m_loop_phase_enter', '_x3m_residual_phase_enter',
                 # the submit-phase handler (src/proxy/submit_phases.cpp, X3M_SUBMIT_PHASES=1) behind the context variant of the lean stub
-                '_x3m_submit_phase_enter',
+                '_x3m_light_phase_enter', '_x3m_submit_phase_enter',
                 '_x3m_media_cue_enter', '_x3m_media_cue_return',
                 # the cull-census handlers (src/proxy/cull_census.cpp, X3M_CULL_CENSUS=1) run inside the cull/LOD pass, no boundary
                 '_x3m_cull_census_measure', '_x3m_cull_census_exit',
@@ -78,13 +79,16 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_collide_sat_thunk', '_x3m_collide_sat_sse2',
                 # the no-contact memo (src/proxy/collide_memo.cpp, X3M_COLLIDE_MEMO=1): thunk and both handlers run inside the engine's x87 mesh-pair
                 # query with no boundary at all; they compare and copy words and hold no floating-point arithmetic
-                '_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store']
+                '_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store',
+                # Opt-in query clocks under assembly FNSAVE/FRSTOR, MXCSR and XMM transport.
+                '_x3m_collide_query_memo_thunk', '_x3m_collide_query_descent_thunk',
+                '_x3m_collide_query_lookup', '_x3m_collide_query_store', '_x3m_collide_query_enter', '_x3m_collide_query_leave']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own
 # reachable set must hold no state transport either (the shell is really gone).
 OWNERSHIP_LIGHT = '__ZN3x3m9ownership26get_buffer_lock_view_lightE'
-ALLOWED = {'fnsave', 'fninit', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}  # fninit only follows fnsave in CpuState::capture
+ALLOWED = {'fnstcw', 'fnsave', 'fninit', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}  # fninit only follows fnsave in CpuState::capture
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')
 DIRECT_CALL = re.compile(r'^(?:call|jmp)\s+[0-9a-f]+ <([^>]+)>')

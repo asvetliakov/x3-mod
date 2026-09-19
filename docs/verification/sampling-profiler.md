@@ -2345,3 +2345,90 @@ computed from these two fields together â€” only the `hits/queries` ratio (22.5â
 follow-up diagnostic to isolate `view_submit`'s cost (draw-call count, state-change count, or a `view_submit`
 sub-phase split) would decide whether the next optimisation lever belongs on collide-memo hit rate or on
 view_submit.
+
+## R7 whole-call light phases (2026-09-20)
+
+`--light-phases` / `X3M_LIGHT_PHASES=1` is default-off and requires telemetry
+and frame phases. It adds two stamps at the
+[qualified R7 boundaries](../reverse-engineering/view-submit-hot-path.md#r7-whole-call-timing-boundary-qualification-2026-09-20):
+entry `0x0047d5e0` (six bytes) and common exit `0x0047d9ab` (five bytes),
+replaying the native epilogue through its original `ret 4`. It retains only a
+numerical stack-frame token; it never retains or reads a light/node pointer.
+Caller buckets distinguish cockpit return `0x00421740`, traversal return
+`0x0047dff6`, and unsupported unknown callers.
+
+The timer uses the Present/frame owner, bounded nesting and pairing checks,
+with frame/discard invalidation of abandoned records. Its precheck reads the
+x87 control word and MXCSR before any mode load. Different rounding modes
+bypass clocks and FP transport, invalidate the owner frame, and count
+`mode_refused`; early and foreign hits also return before FP transport.
+This avoids the established FEX shared-rounding hazard while using the same
+portable instructions and documented Win32 APIs on Windows.
+
+One `light_phases` row covers 300 sampled frame boundaries. Raw tick sums,
+entry/completion counts, caller time/count p50/p95 and estimated self cost
+include only valid frames; `valid_frames` and `invalid_frames` make the
+population explicit. Any pairing/clock/nesting/reentry/mode failure drops
+all timing from that frame, including its earlier complete calls. An all-invalid
+window has no timing evidence. `tools/analysis/summarize_light_phases.py`
+refuses complete coverage for invalid frames, unknown callers, failures or
+unpaired counts. No net-time subtraction is performed.
+
+Qualification:
+
+- `verify_light_phase_sites.py`: PASS, 1,250 decoded instructions, 148 other
+  claims, exact two spans, both caller encodings, four exit branches, native
+  stack argument/`ret 4`, and no interior encodings or absolute references.
+- `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_light_phases`:
+  six tests PASS; value-only host fixture 29 assertions PASS. Runner tests reject
+  source/EXE/handler mutation despite successful fixture output, and duplicate
+  terminal summaries. The earlier
+  combined light/submit run passed 17 tests before the added reducer test.
+- `build_light_phase_cpu.py` and `build_game_phase_cpu.py`: x86 cross-compilation
+  and linking PASS. Corrected timer object audit: no x87 arithmetic or state
+  mutation; one read-only `FNSTCW`. The linked production audit remains an
+  integration check for the install owner.
+- Owner command:
+  `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 /tmp/x3-r7-light-phases/verification/probe/run_light_phase_cpu.py`.
+  Final fresh-build run: exit 0, **2,093 checks, zero failures**, command elapsed
+  5.8 s. This includes the calibrated-cost bound assertion.
+  Bottle **X3**, WineArch **arm64**, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`.
+  Lock-wait timing was not recorded in the fixture record.
+- CPU comparisons cover all four incoming stack residues; native entry and
+  distinct output GPR/EFLAGS/DF/XMM/MXCSR/x87/LastError; both caller buckets,
+  four gates and populated fall-through; early/foreign/disabled forwarding;
+  nesting, controlled exit bypass, discard recovery, byte refusal, partial
+  rollback and closed install window. Separate actual x87 `1/3` witnesses
+  cover 16 control-word/MXCSR rounding pairs, both setter orders, all four
+  stack residues and early/owner/foreign/disabled paths. No image save/restore
+  occurs between the final mode setter and either arithmetic witness.
+- Benchmark: 20,000 loops, seven trials, minimum hooked versus unhooked elapsed
+  divided by two stamps: **107.1 ns/dispatch**. Production reports a rounded
+  **107 ns** self-cost estimate. This is an X3 fixture measurement, excludes
+  window reduction/logging, and is neither full diagnostic overhead nor game
+  FPS. The calibration-only rebuild leaves the handler's normalized instruction bytes
+  and relocation annotations identical (comparison digest
+  `c30aa5c0b7d581e21b970e76fb875d60e5dba79bcca9ccb55b0be428f29433c7`).
+
+The first corrected `--no-build` record lacked contemporaneous EXE
+identity; it is behavior evidence, not a source-to-executed-artifact binding.
+The runner now captures a scoped local include-closure source digest before
+build and after execution, EXE/handler hashes before/after execution, and
+explicit fresh/retained build mode. Any mutation refuses PASS. Final qualified provenance is stable before/after execution: 21 scoped source
+inputs digest `46421158c09170b3bf1566e887005a54912f0ac0b08c67cc8e6be4c6cef6deee`,
+EXE `4f751237b4ec6357bb91eec05abe665372aea51809646bcc4dfd1336beebc002`,
+and handler object `e124901baaa4c4d5612d2900b7c4ed2de02bb0a82354403eda2624a38cefd145`.
+The qualified repeat measured 99.6 ns/dispatch; the 107 ns estimate is retained
+from the first corrected 107.1 ns run and passes the fixture's factor-of-two
+calibration bound. The earlier corrected run had 2,092 checks before this
+calibrated-cost assertion was enabled.
+
+Local evidence: `/tmp/x3-run49-light-phase-qualified.log`,
+`/tmp/x3-run49-light-phase-fixed.log`, the worktree's
+`verification/results/bottle-X3/light_phase_cpu.json` and
+`build/verification/light-phases/stdout.txt`. The original 680-check run is
+retained at `/tmp/x3-r7-light-original-runtime.txt`; it did not test divergent
+rounding arithmetic and is superseded by the corrected run. The corrected
+fixture emits its benchmark variant before RX protection and preserves output
+flags through `LEA` caller cleanup. Runtime native Windows behavior and actual
+R7 flight costs remain unverified; no game was launched for qualification.

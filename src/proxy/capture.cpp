@@ -16,6 +16,7 @@
 #include "pass_phases.h"
 #include "residual_phases.h"
 #include "submit_phases.h"
+#include "light_phases.h"
 #include "loop_phases.h"
 #include "media_cue.h"
 #include "media_cue_sites.h"
@@ -3068,6 +3069,7 @@ void initialize_log(HMODULE module) {
     frame_phases::initialize(); // X3M_FRAME_PHASES=1 only: ten render-routine stamps through the game-phase stub, same window
     pass_phases::initialize(); // X3M_PASS_PHASES=1 only: four effect-pass stamps through the lean stub, needs the frame group, same window
     residual_phases::initialize(); // X3M_RESIDUAL_PHASES=1 only: two residual stamps through the lean stub, needs the frame and pass groups, same window
+    light_phases::initialize(); // opt-in R7 whole-call timer
     submit_phases::initialize(); // X3M_SUBMIT_PHASES=1 only: twenty-two view_submit candidate stamps through the context lean stub, needs the frame group, same window
     loop_phases::initialize(); // X3M_LOOP_PHASES=1 only: six per-sector update stamps through the lean stub, needs the frame group, same window
     media_cue::initialize(); // X3M_MEDIA_CUE_TRACE=1 / X3M_MEDIA_CUE_CACHE=1 only: one gate on the media-record allocator, same window
