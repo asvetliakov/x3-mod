@@ -116,7 +116,7 @@ class CollideSites(unittest.TestCase):
     def test_installed_executable(self):
         report = probe.verify()
         self.assertEqual(report['result'], 'PASS', report)
-        self.assertEqual(len(report['checks']), 29)
+        self.assertEqual(len(report['checks']), 51)   # 29 box-cull checks + 22 of the narrow census (test_collide_narrow_census.py)
         self.assertGreaterEqual(report['other_claims_checked'], 100)
 
     @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed executable not present')
