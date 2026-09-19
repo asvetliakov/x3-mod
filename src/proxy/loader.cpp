@@ -6,7 +6,6 @@
 #include "collide_box_cull.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
-#include "collide_descent_sse2.h"
 #include "cull_small_parts.h"
 #include "point_light_admission.h"
 #include "telemetry.h"
@@ -364,7 +363,6 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr) x3m::collide_box_cull::shutdown(); // same rule: the two collide sites back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_narrow_census::shutdown(); // same rule: the four narrow-census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_sat_sse2::shutdown(); // same rule: the SAT call back only on FreeLibrary
-        if (reserved == nullptr) x3m::collide_descent_sse2::shutdown(); // same rule: the descent call back only on FreeLibrary
         if (reserved == nullptr) x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::cull_small_parts::shutdown(); // same rule: the small-parts site back only on FreeLibrary
     }

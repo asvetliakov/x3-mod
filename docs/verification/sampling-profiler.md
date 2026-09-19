@@ -1940,7 +1940,8 @@ separate x87/SSE rounding the bracketed path is exact, and the exactness argumen
 `--collide-descent-sse2` (`X3M_COLLIDE_DESCENT_SSE2=1`, default off); contract, design and tables in
 [sector-collide.md](../reverse-engineering/sector-collide.md) §13. Bottle X3, WineArch arm64,
 `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Nothing launched, nothing installed, no DLL built. **Outcome: identical
-behaviour, no speed-up under FEX (31.0 against 31.4 ns per visit); the ≤ 15 ns target is not met.**
+behaviour, no speed-up under FEX (31.0 against 31.4 ns per visit); the ≤ 15 ns target is not met.** Not merged: the
+code, option, verifier, fixture and test below were dropped and exist only in commit `c08d750d`.
 
 | Check | Command | Result |
 | --- | --- | --- |

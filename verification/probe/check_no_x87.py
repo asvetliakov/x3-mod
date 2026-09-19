@@ -73,10 +73,7 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post',
                 # the SSE2 separating-axis replacement (src/proxy/collide_sat_sse2.cpp, X3M_COLLIDE_SAT_SSE2=1): the thunk the engine's
                 # x87 BVH descent calls ~2.3e5 times per frame and its body, no boundary at all (stmxcsr/ldmxcsr only)
-                '_x3m_collide_sat_thunk', '_x3m_collide_sat_sse2',
-                # the SSE2 OBB-tree descent (src/proxy/collide_descent_sse2.cpp, X3M_COLLIDE_DESCENT_SSE2=1): entered from the engine's x87
-                # narrow phase with no boundary; its leaf wrapper calls back into the engine's own x87 triangle test
-                '_x3m_collide_descent_thunk', '_x3m_collide_descent_sse2', '_x3m_collide_descent_leaf']
+                '_x3m_collide_sat_thunk', '_x3m_collide_sat_sse2']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own

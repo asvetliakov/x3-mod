@@ -1154,8 +1154,11 @@ Method as in §12: `i686-w64-mingw32-objdump -d -M intel` over the bottle EXE in
 `0x004e2190`–`0x004e252d`, `0x004e1ff0`–`0x004e2186`, `0x004dfd80`–`0x004dfeaa` and `0x004e2780`–`0x004e2968`, plus a
 rel32/abs32 byte scan of the image. Nothing launched. Marks as in §12. **Headline [m]: the replacement is behaviourally
 identical to the engine on 126,150 tree pairs and brings nothing under FEX — 31.0 ns per visit against 31.4 ns for the
-engine's own descent with the SSE2 SAT (§13.5). It stays default off; §13.6 says why the ≤ 15 ns target is not
-reachable this way.**
+engine's own descent with the SSE2 SAT (§13.5); §13.6 says why the ≤ 15 ns target is not reachable this way.**
+
+**Status: not merged, code dropped.** The module, its launcher option, verifier, fixture, host test and x87-audit roots
+named below exist only in commit `c08d750d` (branch `worktree-agent-a9f423b89cda56df8`); the contract in §13.1 and the
+measurements stay valid and are what §11.6's memo builds on.
 
 ### 13.1 Contract **[s]**
 
