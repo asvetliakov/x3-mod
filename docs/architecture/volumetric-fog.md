@@ -614,3 +614,47 @@ and the original present images already contain the old fog. No final
 replacement composite, GPU implementation or acceptance is claimed. Local
 helper and validated report: `/tmp/x3-fog-patchy-replay/tools/analysis/fog_patchy_replay.py`
 and `/tmp/x3-fog-patchy-replay/verification/results/fog-patchy-replay/report.json`.
+
+
+### Fixed-field column/gain feasibility follow-up
+
+The first rejection exposed two unsuitable diagnostic gates: optical-depth
+p90–p10 implicitly demanded roughly 10% strong coverage despite the separate
+5% dense-ray target, and a finite quadrature's zero samples did not prove an
+exactly empty continuous ray. Neither failure establishes that spatial clouds
+are invalid. Exact vacuum remains a zero-field/zero-length unit check; numerical
+integration uses tolerances. These corrections do not retroactively accept the
+original recipe's weak appearance.
+
+Measured field mean density is 0.01975994 of peak, versus 0.10137177 occupied
+texels. The compact soft profile explains much of the weak column density.
+A closed follow-up retained the same field/seed and four cameras, considered
+only 12,000/24,000 render-unit horizons, and solved a shared gain in [1,8]
+from integrated columns. Artistic diagnostic constraints were ≥25% clear sky
+(opacity ≤0.002), sky p99 opacity ≤0.10, and ≥5% dense sky (opacity ≥0.015)
+in the two green-family views. Blue views may be mostly clear. Connected clear
+and dense regions were checked separately; no per-frame seed/strength tuning.
+
+The 12,000-unit shared feasible interval is **[3.337040784,4.220746008]**;
+the smallest floating-point-safe gain, **3.337040784**, passes. Green frames
+21901/26447 have dense fractions 5.00%/10.98%, largest dense components
+4.48%/5.83%, and clear fractions 87.19%/80.83%. Across all views clear coverage
+is at least 58.91%, with p99 opacity at most 7.99%. The sole selected lowest
+gain at 24,000 fails the 2% dense-component gate (1.98% in frame21901); it was
+not tuned further. This is a bounded recipe comparison, not a proof that all
+longer-horizon configurations fail.
+
+Selected eight-frame/window 24-step versus 64-step checks have worst p99/max
+transmittance error 0.000384/0.000743 and zero false opacity above 0.002 on
+reference-empty samples. Host execution took 12.47 seconds, not GPU time.
+JSON/compilation checks pass; original rejected artifacts remain unchanged.
+Local helper: `/tmp/x3-fog-patchy-replay/tools/analysis/fog_patchy_feasibility.py`;
+report and fixed 0–0.10 opacity sheets: the neighboring
+`verification/results/fog-patchy-feasibility/` directory.
+
+**Parent decision:** retain numerical feasibility only. The inspected sheets
+have coherent gaps but visibly smooth ellipsoid lobes; they are not accepted
+as the requested cloud appearance. Next examine the native cloud texture's
+internal intensity/colour variation before another appearance experiment.
+No final replacement composite, fog-TAA motion proof, GPU qualification,
+automatic sector-strength policy or production patch follows from these masks.

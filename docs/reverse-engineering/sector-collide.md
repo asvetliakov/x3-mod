@@ -845,8 +845,8 @@ global counters, and the flag `RAPID_FIRST_CONTACT = 2` — which is exactly the
 | | `+0x24..+0x2c` | box centre (3 floats) |
 | | `+0x30..+0x38` | half-extents (3 floats); `+0x30` is the first/principal axis |
 | | `+0x3c`, `+0x40` | children (both 0 = leaf) |
-| | `+0x44` | triangle record (`0x34` B, `N` allocated): `+0x04..+0x24` = three vertices |
-| model | `[node+0x5c]` | RAPID model; `[model+0x14] == 3` = built; `[model+0x00]` = root box |
+| | `+0x44` | persistent triangle record (`0x28` B): `+0` ID, `+0x04..+0x24` = three vertices; see the layout correction below |
+| model | `[body/resource+0x5c]` | RAPID model; `[model+0x14] == 3` = built; `[model+0x00]` = root box |
 
 Per-query globals, all reset by `0x004e2780` at `0x004e2947`–`0x004e2951` **[s]**:
 
@@ -1764,3 +1764,73 @@ Reproduction and compact local witnesses:
 `verification/results/run49a-collision/{reproduce.py,result.json,result.md}`.
 The script was rerun and JSON/count invariants validated. No Wine/game execution
 was used for triage.
+
+
+## Real-tree replay preparation: persistent layout correction (2026-09-20)
+
+Targeted builder disassembly corrects §12.2's former `0x34` triangle stride.
+Persistent triangles are **0x28 bytes**: growth allocates capacity×40 at
+`0x004e0d45..59` and copies ten words per record at `0x004e0d80..98`.
+Leaf construction loads the persistent base (`0x004e1b03`), forms index×40
+(`0x004e1b15..23`), and stores that address at leaf+0x44 (`0x004e1f34`).
+The N×0x34 allocation is temporary builder statistics, published in
+`0x00608d88` and freed at `0x004e1182..91`; it does not survive in a built model.
+
+The six-word model header is: +0 BV base/root; +4 allocated BV count (2N);
++8 persistent triangle base; +0xc active triangle count N; +0x10 triangle
+capacity; +0x14 state (3 when built). BV records remain 0x48 bytes.
+A future replay must preserve original array order and offsets, validate child
+and leaf references, and distinguish active triangles from allocated capacity.
+The proposed full-model copy size is therefore 24+184N bytes, not a size derived
+from the former triangle interpretation.
+
+**Current-code impact:** production SAT takes R/T/extents; memo stamps the six
+opaque header words and root bytes, interpreting only root/state; the timer
+reads counters. None of those paths uses the incorrect triangle stride or
+interprets header words 1–4. Existing synthetic fixtures use explicit pointers
+into padded triangle records, which remain usable for their existing query
+checks but do not validate live extraction or real-tree locality.
+
+Independent deep review compared 609 builder, 1,218 recursive-builder and 44
+constructor instruction rows to the installed EXE with zero mismatches. The
+memo-site verifier independently passes 33/33 checks. No production change,
+Wine run, build or install follows from this documentation correction.
+
+A real-query snapshot could reuse the existing memo diagnostic envelope:
+retain inputs before dispatch, select an expensive completed query, and copy
+models synchronously before returning to the caller. This is **not qualified
+for implementation**: body/resource +0x5c attach/detach, mutation/reclamation
+exclusion and bounded-copy failure/CPU-state preservation still need proof.
+Owner-thread query observation alone is not an allocation lifetime lock.
+ReadProcessMemory or matching headers cannot establish coherence amid mutation.
+The local contract is `/tmp/x3-collision-snapshot-contract.md`; raw builder
+listings are `/tmp/x3-collision-model-{build,recursive,ctor}.asm`. Proposed
+8 MiB/model and 32 MiB/session limits are unmeasured diagnostic limits, not
+established coverage. No traversal optimization is selected by this work.
+
+
+### Snapshot lifetime follow-up: shared body retirement remains the barrier
+
+The caller resolves body IDs through registry map +0x14; those shared resources
+are separate from transform nodes in map +0x0c. `0x0047f1b0` takes collision
+models from its stack body arguments' +0x5c, while ECX/EAX supply instance
+transforms. Body destruction `0x004802b0` calls model destructor `0x004e38b0`
+at `0x00480711`, frees model arrays at `0x004e38e8/38f8`, then frees the model
+and body at `0x00480717/745`. Direct-reference inventory finds eight body
+destructor callsites and one model destructor callsite; this is not proof
+against computed references.
+
+Full purge `0x00486920` and tick-based eviction `0x00486990` both retire bodies.
+Lookup clears a +0x64 timestamp, but this is not a reference acquisition or
+snapshot pin. The known query closure calls no builder/destructor/engine
+callback, supporting synchronous exclusion on the same thread. It does not
+establish retirement-thread identity or a lock spanning the proposed copy.
+Collision `foreign_thread=0` observes queries, not resource retirement.
+
+**Stop condition:** no live snapshot implementation until retirement/mutation
+exclusion is established. The precise missing evidence is scheduling/thread
+ownership of these body cleanup paths, or a valid exclusion mechanism. A
+callback-free synchronous copy alone cannot provide cross-thread ownership.
+Independent deep review matched 210 targeted instruction rows against the EXE
+with zero mismatches and reproduced the direct-reference counts. No production
+fix, lifetime hook or user capture is requested on this incomplete contract.
