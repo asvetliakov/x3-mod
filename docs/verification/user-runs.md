@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-20 (run 48 complete; run 49 queued). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-20 (run 48 complete; run 49 A/B reported). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -115,8 +115,8 @@ Repeat the same stationary/moving sequence with this phase-diagnostics-off count
 especially in heavy-fog sectors, and requests spatial cloud patches with varying
 intensity and clear gaps, preserving the character of the original cards.
 Four F8 bursts exist; the user does not recall their sector/on-off order and
-thinks they were probably fog-on at different strengths. Treat those labels as
-unknown as sector names. Recorded settings establish all four bursts as fog-on
+thinks they were probably fog-on at different strengths. Sector names remain
+unknown. Recorded settings establish all four bursts as fog-on
 at 0.01/0.005/0.05/0.05. The [fog ledger](volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20)
 records reader validation in the observed sectors and first-burst suppression;
 the card-report diagnostic exhausted its cap before the later bursts.
@@ -133,3 +133,33 @@ reviewer will read `sector_background` status around the gate, load, or menu.
 ```sh
 ./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --volumetric-fog 0.02 --volumetric-fog-cards replace --sector-background --taa-debug --capture-start 999999 --frame-end-stride 10 --capture-frames 32
 ```
+
+
+## 50. Argon Prime first-view stutters — existing media trace
+
+Ready on the currently installed build; no new DLL is needed. Run49 A/B are
+reported. This session is solely for the remaining stutter attribution, not fog
+or lattice acceptance. The command passed launcher `--dry-run` on 2026-09-20;
+no game was launched by the agent.
+
+Start the same **new game in Argon Prime** used in run183/run184. Pan across
+fresh views until the first-view stutter occurs, revisit those views, and stay
+in-sector for about 90 seconds to include the existing 30-second media retry.
+Report the preserved `/tmp/x3-bottleX3-runNN` and whether freezes occurred only
+on first views or also while holding/revisiting a view. No F8 is needed.
+
+This adds existing media caller/duration tracing to loop/game phases and keeps
+the current retry policy at 30 seconds. It omits the light/collision-query timers;
+tracing itself can perturb timings, so this is attribution, not an FPS benchmark.
+Do not change the retry interval or media decoder during this session.
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --loop-phases --game-phases --game-phase-threshold-ms 20 --residual-phases --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2 --media-cue-trace --media-cue-cache on --media-cue-retry-s 30
+```
+
+Analysis: join `media_cue_enter.qpc` to `media_cue.qpc` and entry `attempt`
+to outcome `attempts_frame`, compare
+constructor duration with the loop/game stall interval, and inspect suppression,
+foreign/early/drop counters before interpreting an absent outcome. An unmatched
+entry alone does not prove a hang. Keep GStreamer-free stalls open. See the
+[run49 timing analysis](../architecture/engine-frame-time.md#argon-prime-stalls-also-occur-with-phase-diagnostics-off).

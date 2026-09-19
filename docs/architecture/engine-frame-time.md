@@ -942,7 +942,7 @@ off. Thus the new phase diagnostics are not required for the stall to occur.
 The next decisive existing option is `--media-cue-trace` with loop/game phases
 in Argon Prime. It can identify ID, caller and constructor duration before any
 new hook or cache policy is proposed. Keep retry at 30 seconds for this first
-trace; proceed after the pending run49B fog comparison. Refusal outcomes can
+trace; run49B has now been reported. Refusal outcomes can
 consume the trace's 32/s outcome limit independently of proceeded-entry logging,
 so an entry without an outcome does not itself prove a hang. Check suppressed,
 foreign and dropped counters before treating absence as evidence.
