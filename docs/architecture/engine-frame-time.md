@@ -528,3 +528,96 @@ levers by size (sections 2.5 draw-queue sort, 2.6/2.7 state/batching, closed
 per section 4) but are already covered by the existing note; nothing here
 changes those conclusions, it only re-confirms their relative size against a
 fresh collide-heavy sample.
+
+## Run 46 D — view_submit split (2026-09-19)
+
+`/tmp/x3-bottleX3-run162`, busy station view, `--collide-sat-sse2
+--collide-memo --loop-phases --pass-phases --frame-timing
+--frame-timing-state-stamps 8`, one F8. First run in this note with
+`frame_phases`/`loop_phases`/`pass_phases`/`frame_timing` all present
+together (17 windows each). Steady busy plateau: windows `frame=3300..4800`
+all `dt_p50_us` 26.4-27.2 ms; window `frame=4200` used below (draws_p50=510,
+matching run147's draw count exactly).
+
+`frame_phases frame=4200`: `dt_p50_us=27237`. `frame_timing frame=4200`:
+`dt_p50_us=27249` (12 us apart, 0.04 %) — the two independent stamps agree
+tightly; no sign the diagnostics inflate `dt` relative to each other. But
+run147 (no `--loop-phases`/`--pass-phases`/`--frame-timing`, same 510
+draws/frame) measured `dt_p50_us=20320`, 6.9 ms lower. Estimated stamped-state
+self-cost at `state_calls_p50=34983`, N=8 sampling, ~230 ns/stamped call
+(`sampling-profiler.md`): (34983/8) x 0.23 us ~= 1.0 ms. `pass_phases`/
+`loop_phases` self-cost is 183/0 us — negligible. That leaves ~5.9 ms of the
+6.9 ms gap to run147 unexplained by instrumentation alone; the two sessions
+are different flights of the same view (camera angle, NPC/AI state), so this
+is evidence of a real dt difference, not proof of its cause — open below.
+
+**Hierarchical split** (`frame_phases`/`loop_phases`/`pass_phases`, ms):
+
+| Phase | ms | % of dt |
+|---|---|---|
+| `pre_render` | 3.495 | 12.8 % |
+| — `loop_phases` collide+simulate+post+passb (`sum_p50_us`) | 0.817 | 3.0 % |
+| — residual (script VM, cockpit, audio, proxy post-Present) | 2.678 | 9.8 % |
+| `prologue+scene_update+begin_scene` | 0.437 | 1.6 % |
+| `views` | 22.899 | 84.1 % |
+| — `view_setup` | 1.652 | 6.1 % |
+| — `view_submit` | 18.316 | 67.3 % |
+| —— `pass_phases` sum (`apply+draw+end`) | 14.833 | 54.5 % |
+| —— view_submit residual (engine traversal/sort/entry, not in pass loop) | 3.483 | 12.8 % |
+| — views residual (particles, TAA/shadow/sun composite, env-map) | 2.931 | 10.8 % |
+| `scene_end`+`present` | 0.382 | 1.4 % |
+
+`pass_phases frame=4200`: `passes_p50=503 apply_p50_us=9371 draw_p50_us=5298
+end_p50_us=62`. `apply` (D3DX `Begin`/`BeginPass`/`CommitChanges`, mostly
+state submission) tracks `frame_timing`'s `state_p50_us=9028` almost exactly
+— the two diagnostics are measuring the same state-setting cost from two
+sites, cross-confirming it. `pass_phases draw_p50_us=5298` similarly tracks
+`frame_timing draw_p50_us=5153` — both are the draw-call-and-below cost.
+
+**`frame_timing` proxy/native/state split** (ms, `frame=4200`):
+`draw_p50_us=5153 draw_native_p50_us=1274 scene_p50_us=3111
+state_p50_us=9028 present_p50_us=6`, `state_calls_p50=34983` (68.6/draw),
+`draws_p50=510`. `gap_pre_p50_us=3781 gap_draw_p50_us=5755
+gap_post_p50_us=481` (sum 10.02 ms); `dt - (draw+scene+state+present) =
+27.249 - 17.298 = 9.951` ms — the gap-field sum and the subtraction agree to
+0.07 ms, both estimating the game/engine CPU time outside every hooked call
+(traversal, sort, matrix work — no hook-lock wait is in this remainder per
+`sampling-profiler.md`, since stamps are taken lock-held).
+
+**Requested ms/frame table** (dt=27.24-27.25 ms, two independent partitions
+of the same frame, not additive across rows from different partitions):
+
+| Bucket | ms | % of dt | Fix kind |
+|---|---|---|---|
+| Engine-between-calls (traversal/sort/matrix, x87 candidate) | 9.95-10.02 | ~36.6 % | engine patch |
+| Native state calls (SetSamplerState/SetRenderState/.../CommitChanges) | 9.03 | 33.1 % | proxy (state fast path) |
+| Proxy per-draw hook overhead (`draw_p50 - draw_native_p50`) | 3.88 | 14.2 % | proxy |
+| Proxy post passes (EndScene hook, AgX/bloom compositor, Present pre/post) | 3.11 | 11.4 % | proxy |
+| Native/wined3d draw call itself (`draw_native_p50`) | 1.27 | 4.7 % | driver, largely unavoidable |
+| Present/wait (native `Present`) | 0.006 | 0.02 % | none needed — confirms CPU-bound |
+| Unattributed (within noise of the two partitions' 0.07-0.6 ms disagreement) | ~0 | ~0 % | n/a |
+
+Per-draw: 510 draws/frame, 10.11 us/draw total proxy `draw` hook (2.50 us
+native + 7.61 us proxy overhead), 68.6 state calls/draw. No cull-census or
+route-admission lines are present in this log (only `frame_phases`/
+`loop_phases`/`pass_phases`/`frame_timing`/`media_cue_window`), so routed
+share cannot be read from this session; §2's ~7-10 us/draw ownership/lease
+figures are prior-run context, not re-measured here.
+
+**Top 5 by ms:** (1) engine-between-calls, 9.95-10.02 ms, engine patch —
+largest single bucket, not further sited in this run; (2) state calls /
+D3DX apply, 9.03 ms, proxy fix — `redundant_top` shows heavy redundant
+`D3DRS` churn (e.g. `7:152430` over the 300-frame window), consistent with
+`state-call-fast-path.md`'s existing lever; (3) proxy per-draw hook, 3.88 ms,
+proxy fix (route-per-draw-cost.md §§1-3 levers); (4) proxy post passes
+(scene-end/compositor/Present), 3.11 ms, proxy fix; (5) native draw call,
+1.27 ms, driver — only reducible by fewer/batched draws (§2.7, closed).
+
+**Open:** the 6.9 ms dt gap vs run147 at equal draw count is only ~1 ms
+explained by state-stamp self-cost; the remainder needs a matched pair of
+launches at the same stand, one with and one without
+`--frame-timing-state-stamps`, to separate instrumentation cost from a real
+scene/AI difference between the two flights. Engine-between-calls (9.95-10.02
+ms, the largest bucket) has no per-site split in this run; closing it needs
+disassembly-level sampling (section 1's profiler leaves) at this same window,
+not another `frame_timing` pass.

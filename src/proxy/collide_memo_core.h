@@ -49,29 +49,52 @@ constexpr std::uintptr_t visits_va = 0x00608544, triangles_va = 0x00608548, cont
 constexpr unsigned root_block_words = 14, header_words = 6, box_words = 18, model_built = 3, model_state_word = 5;
 
 constexpr unsigned key_words = 26 + 5 + 2 + 2 * header_words + 2 * box_words;   // 81
+// Word 30 is the float behind the running-minimum pointer. The engine reads it in one place, the leaf 0x004e2190
+// (`fcom [ecx]` at 0x004e2478, after a triangle pair intersected), and every entry into the leaf increments
+// [0x00608548] first (0x004e22a5, straight-line from the entry). A stored run with `triangles == 0` therefore never
+// entered the leaf and cannot have depended on that float: such an entry also answers a query that differs from it
+// in word 30 alone. The pointer's null-ness (word 29) stays in the key, and the hash leaves word 30 out.
+constexpr unsigned minimum_value_word = 30, model_words_begin = 31;
 struct Key { std::uint32_t words[key_words]; };
 struct Outputs { std::uint32_t visits, triangles, tolerance_integer, root_block[root_block_words]; };
 struct Entry { Key key; Outputs outputs; std::uint32_t frame; bool valid; };
 constexpr unsigned ways = 4, sets = 256;
-struct Counters { std::uint32_t hits, misses, stored, contacts, ineligible, evictions, skipped_visits, skipped_triangles, verified, verify_mismatches, foreign_thread, reentered, clears, stuck_busy; };
+// Why a query missed, judged against the last entry stored for the same two models with the same transform of a (or,
+// failing that, of b): the first group of key words that differs. `expired`: the same key, no longer live.
+enum MissClass : unsigned { miss_none_found, miss_xform_a, miss_xform_b, miss_scale, miss_mode, miss_models, miss_min_value, miss_expired, miss_classes };
+struct Counters { std::uint32_t hits, misses, stored, contacts, ineligible, evictions, skipped_visits, skipped_triangles, verified, verify_mismatches, foreign_thread, reentered, clears, stuck_busy;
+                  std::uint32_t min_relaxed_hits, miss_count[miss_classes], miss_visits[miss_classes]; };
 // The expiry clock is Present. Should the simulation ever run this many queries without one (a loading loop, a paused
 // renderer), the table is dropped rather than trusted: about 1e2 queries make a frame, so this is ~1e3 frames' worth.
 constexpr std::uint32_t queries_without_tick_limit = 100000;
 
 inline std::uint32_t hash(const Key& key) {
     std::uint32_t h = 0x811c9dc5u;
-    for (unsigned i = 0; i < 33; ++i) h = (h ^ key.words[i]) * 0x01000193u;   // transforms, mode and the model pointers; the stamps only confirm
+    for (unsigned i = 0; i < 33; ++i) if (i != minimum_value_word) h = (h ^ key.words[i]) * 0x01000193u;   // transforms, mode and the model pointers; the stamps only confirm
     return h ^ (h >> 15);
 }
 // An entry is live when it was stored or hit in `frame` or the frame before (unsigned, so a wrapped counter still works).
 inline bool live(const Entry& e, std::uint32_t frame) { return e.valid && frame - e.frame <= 1u; }
+
+inline std::uint32_t hash_words(const Key& key, unsigned begin, unsigned end) {
+    std::uint32_t h = (0x811c9dc5u ^ key.words[model_words_begin]) * 0x01000193u;
+    h = (h ^ key.words[model_words_begin + 1]) * 0x01000193u;
+    for (unsigned i = begin; i < end; ++i) h = (h ^ key.words[i]) * 0x01000193u;
+    return h ^ (h >> 15);
+}
+inline bool same_words(const Key& x, const Key& y, unsigned begin, unsigned end) { return !std::memcmp(x.words + begin, y.words + begin, 4 * (end - begin)); }
+// Equal in everything, or in everything but the running minimum when the stored run never reached a leaf.
+inline bool answers(const Entry& e, const Key& key) {
+    if (!same_words(e.key, key, 0, minimum_value_word) || !same_words(e.key, key, model_words_begin, key_words)) return false;
+    return e.key.words[minimum_value_word] == key.words[minimum_value_word] || e.outputs.triangles == 0;
+}
 
 class Table {
 public:
     Entry* find(const Key& key, std::uint32_t frame) {
         Entry* set = entries_ + (hash(key) % sets) * ways;
         for (unsigned w = 0; w < ways; ++w)
-            if (live(set[w], frame) && !std::memcmp(&set[w].key, &key, sizeof key)) return &set[w];
+            if (live(set[w], frame) && answers(set[w], key)) return &set[w];
         return nullptr;
     }
     // Stores a no-contact result; the way taken is a dead one, else the one touched longest ago. True when a live entry was evicted.
@@ -86,10 +109,29 @@ public:
             evicted = true;
         }
         victim->key = key; victim->outputs = outputs; victim->frame = frame; victim->valid = true;
+        const std::uint16_t index = static_cast<std::uint16_t>(victim - entries_ + 1);
+        by_a_[hash_words(key, 0, 12) % (ways * sets)] = index;
+        by_b_[hash_words(key, 13, 25) % (ways * sets)] = index;
         return evicted;
     }
-    void clear() { for (Entry& e : entries_) e.valid = false; }
+    // Diagnostic only (a miss has already been decided): which group of words keeps the nearest stored query from answering.
+    MissClass classify(const Key& key) const {
+        const Entry* e = candidate(by_a_[hash_words(key, 0, 12) % (ways * sets)], key, 0, 12);
+        if (e == nullptr) return candidate(by_b_[hash_words(key, 13, 25) % (ways * sets)], key, 13, 25) != nullptr ? miss_xform_a : miss_none_found;
+        if (!same_words(e->key, key, model_words_begin + 2, key_words)) return miss_models;
+        if (!same_words(e->key, key, 26, 30)) return miss_mode;
+        if (e->key.words[12] != key.words[12] || e->key.words[25] != key.words[25]) return miss_scale;
+        if (!same_words(e->key, key, 13, 25)) return miss_xform_b;
+        return e->key.words[minimum_value_word] != key.words[minimum_value_word] ? miss_min_value : miss_expired;
+    }
+    void clear() { for (Entry& e : entries_) e.valid = false; std::memset(by_a_, 0, sizeof by_a_); std::memset(by_b_, 0, sizeof by_b_); }
 private:
+    const Entry* candidate(std::uint16_t index, const Key& key, unsigned begin, unsigned end) const {
+        if (index == 0) return nullptr;
+        const Entry& e = entries_[index - 1];
+        return e.valid && same_words(e.key, key, model_words_begin, model_words_begin + 2) && same_words(e.key, key, begin, end) ? &e : nullptr;
+    }
     Entry entries_[ways * sets];
+    std::uint16_t by_a_[ways * sets], by_b_[ways * sets];   // last entry stored per (models, transform of a) and per (models, transform of b)
 };
 }
