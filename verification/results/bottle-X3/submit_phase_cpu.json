@@ -1,0 +1,28 @@
+{
+  "result": "PASS",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "exit": 0,
+  "elapsed_s": 5.4,
+  "summary": {
+    "sites": "22",
+    "intervals": "9",
+    "arena_used": "9708",
+    "arena_capacity": "32768",
+    "checks": "393",
+    "failures": "0"
+  },
+  "failures": [],
+  "benchmark_lines": [
+    "SUBMIT PHASE BENCH loops=20000 trials=7 stamps_per_loop=21 baseline_ns_per_loop=7.9 hooked_ns_per_loop=2133.4 dispatch_ns=101.2 implied_busy_frame_us=1093 documented_dispatch_ns=102 arena_used=9460 arena_capacity=32768"
+  ],
+  "handler_sha256": "e55128b0b297ba8c58f0004f23874048845fe7f95161b0a35e73d31b665e2d58",
+  "stdout": "build/verification/submit-phases/stdout.txt"
+}

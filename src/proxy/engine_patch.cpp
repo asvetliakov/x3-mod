@@ -7,8 +7,9 @@ namespace {
 // Fixed process-lifetime capacity: the combined 33-site phase and existing
 // chase/lead/aim diagnostic set needs 8,580 bytes, including native tails;
 // with every optional group on the modelled use is stated in
-// verification/analysis/test_game_phase_sites.py (16,380 of 24,576 with the
-// media-cue gate and the two residual stamps; a page was added for the gate
+// verification/analysis/test_game_phase_sites.py (19,752 of 24,576 with the
+// media-cue gate, the two residual stamps and the twenty-two submit stamps,
+// the first group to use the residual page's headroom; a page was added for the gate
 // when its 324 bytes left less headroom than the largest single reservation,
 // and another for the residual group so a further six-site lean group and a
 // second gate still fit). The CPU fixture installs and rolls back every group
