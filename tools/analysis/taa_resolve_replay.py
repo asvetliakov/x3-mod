@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """CPU replay of src/temporal/resolve.hlsl over a --taa-debug capture (numpy, crop of the frame).
-usage: replay.py <dump dir> <x0> <y0> <x1> <y1> [validate|options]"""
+usage: replay.py <dump dir> <x0> <y0> <x1> <y1> [validate|options|lattice]
+lattice: docs/architecture/taa-lattice-crawl.md; the lattice mask, the masked current filter (resolve_lattice*.hlsl),
+AgX + RCAS as agx.hlsl / rcas.hlsl apply them (HDR tonemapped write-back without bloom) and the sharpen exclusion."""
 import re, sys, json, subprocess
 import numpy as np
 D = sys.argv[1].rstrip('/') + '/'; X0, Y0, X1, Y1 = map(int, sys.argv[2:6]); MODE = sys.argv[6] if len(sys.argv) > 6 else 'validate'
@@ -25,6 +27,7 @@ def load(kind, f, ext, dt, ch):
     if data.size != H * W * ch:  # the script assumes 1280x768 dumps (run142 / run148)
         raise SystemExit('%s_1_%d.%s: %d values, expected %dx%dx%d; this replay is fixed to 1280x768 captures' % (kind, f, ext, data.size, W, H, ch))
     return data.reshape(H, W, ch)
+LINE_MARGIN = .1
 M = 8  # margin around the crop for taps
 cy0, cy1, cx0, cx1 = Y0 - M, Y1 + M, X0 - M, X1 + M
 ys, xs = np.mgrid[Y0:Y1, X0:X1]
@@ -46,6 +49,27 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
             nb = dep[ys + ky, xs + kx]; v = valid(nb); sawV |= v; sawS |= nb <= -.5
             take = v & (nb < nearest); nearest = np.where(take, nb, nearest); dil[take] = (kx, ky)
     thin = sawV & sawS
+    glass = np.zeros_like(far)  # lattice mask: 3x3 holds (sentinel depth and motion alpha 1) and a valid depth
+    for ky in (-1, 0, 1):
+        for kx in (-1, 0, 1): glass |= (dep[ys + ky, xs + kx] <= -.5) & (mot[ys + ky, xs + kx, 3] == 1)
+    lattice = glass & sawV
+    # general line mask (depth only): geometry whose opposite neighbours along one of four directions are both background
+    # (sentinel, or farther: (1 - q)(1 + LINE_MARGIN) < 1 - d), at distance 1 (line1) or 1 or 2 (line2: <= 2 px wide);
+    # dual: a background pixel between two geometry pixels nearer than it (the gaps of a dense lattice)
+    def bgof(q, d_): return (q <= -.5) | (valid(q) & ((1 - q) * (1 + LINE_MARGIN) < 1 - d_))
+    yg, xg = np.mgrid[Y0 - 1:Y1 + 1, X0 - 1:X1 + 1]; dg_ = dep[yg, xg]; fg = dg_ <= -.5; dgv = np.where(fg, 1., dg_)  # one px wider for the 3x3 dilation
+    line1 = np.zeros_like(fg); line2 = np.zeros_like(fg); dual = np.zeros_like(fg)
+    hv = np.zeros_like(fg)
+    for ax, ay in ((1, 0), (0, 1)): hv |= valid(dg_) & bgof(dep[yg - ay, xg - ax], dg_) & bgof(dep[yg + ay, xg + ax], dg_)
+    for ax, ay in ((1, 0), (0, 1), (1, 1), (1, -1)):
+        n = {s_: dep[yg + s_ * ay, xg + s_ * ax] for s_ in (-2, -1, 1, 2)}
+        line1 |= valid(dg_) & bgof(n[-1], dg_) & bgof(n[1], dg_)
+        line2 |= valid(dg_) & (bgof(n[-1], dg_) | bgof(n[-2], dg_)) & (bgof(n[1], dg_) | bgof(n[2], dg_))
+        dual |= valid(n[-1]) & valid(n[1]) & bgof(dgv, n[-1]) & bgof(dgv, n[1])
+    def grow(m): return sum(m[1 + ky:m.shape[0] - 1 + ky, 1 + kx:m.shape[1] - 1 + kx] for ky in (-1, 0, 1) for kx in (-1, 0, 1)) > 0
+    linehvx = grow(hv)
+    line1x, line2x, line1dx = grow(line1), grow(line2), grow(line1 | dual); line1, line2, dual = line1[1:-1, 1:-1], line2[1:-1, 1:-1], dual[1:-1, 1:-1]
+    masks = dict(thin=thin, lattice=lattice, line1=line1, line2=line2, line1d=line1 | dual, line2d=line2 | dual, linehvx=linehvx, line1x=line1x, line2x=line2x, line1dx=line1dx, union=lattice | line1x)
     dx, dy = xs + dil[..., 0], ys + dil[..., 1]
     # camera path (far plane, rotation only)
     p00, p11, p20, p21 = P
@@ -117,10 +141,11 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
         t = np.clip((speed - opt['lo']) / (opt['hi'] - opt['lo']), 0, 1)
         keep = np.minimum(a / (a + 1), opt['wmax'] + t * (w - opt['wmax'])); newage = np.where(accept, np.minimum(a + 1, 64), 1)
     blendc = filt / ft[..., None] if A else wc
+    if A and opt.get('fmask'): blendc = np.where(masks[opt['fmask']][..., None], blendc, wc)
     out = unweigh(blendc + keep[..., None] * (old - blendc), k)
     out = np.where(accept[..., None], out, c)
     res = np.concatenate([out, alpha[..., None]], -1).astype(np.float16)
-    return res, newage, dict(far=far, thin=thin, disocc=disocc, accept=accept, moved=moved, validc=~far, speed=speed, remedy_px=remedy_px, oob=~ok)
+    return res, newage, dict(far=far, thin=thin, disocc=disocc, accept=accept, moved=moved, validc=~far, speed=speed, remedy_px=remedy_px, oob=~ok, lattice=lattice, masks=masks)
 
 def run(opt, conv, nframes=None, seed_each=False):
     outs = []; diags = []; age = np.full(ys.shape, 64.)  # steady state: the capture starts on a long-lived history
@@ -200,3 +225,96 @@ if MODE == 'options':
         if opt.get('wmax'):
             a = age[flip]; line += ' | age on flip px: 1:%.2f 2-3:%.2f 4-7:%.2f 8-15:%.2f 16-31:%.2f 32+:%.2f' % tuple(((a >= lo_) & (a < hi_)).mean() for lo_, hi_ in ((1, 2), (2, 4), (4, 8), (8, 16), (16, 32), (32, 99)))
         print(line, flush=True)
+
+# --- lattice crawl (docs/architecture/taa-lattice-crawl.md) -----------------------------------------------------------
+def agx(rgb, ev):
+    """agx.hlsl agxTonemap, decode gamma2.2, look none, clamp off: engine-space FP16 -> display-encoded [0, 1]."""
+    import agx_reference as ar
+    v = np.maximum(np.nan_to_num(rgb.astype(np.float64)), 1e-10) ** 2.2 * 2. ** ev
+    v = np.clip(np.log2(np.maximum(v @ np.array(ar.M_IN).T, ar.LOG_FLOOR)), ar.MIN_EV, ar.MAX_EV)
+    v = (v - ar.MIN_EV) / (ar.MAX_EV - ar.MIN_EV); c = ar.CONTRAST_COEFFICIENTS
+    v = sum(ck * v ** (6 - i) for i, ck in enumerate(c))
+    return np.clip(v @ np.array(ar.M_OUT).T, 0, 1)
+
+def rcas(t, gain, skip=None):
+    """rcas.hlsl over a display image padded by one pixel; skip = mask of pixels the sharpen leaves at the centre tap."""
+    t = np.clip(t, 0, 1); b, d, e, f, h = t[:-2, 1:-1], t[1:-1, :-2], t[1:-1, 1:-1], t[1:-1, 2:], t[2:, 1:-1]
+    lum = lambda c: .5 * c[..., 0] + c[..., 1] + .5 * c[..., 2]
+    L = np.stack([lum(x) for x in (b, d, e, f, h)]); nz = np.clip(np.abs(.25 * (L[0] + L[1] + L[3] + L[4]) - L[2]) / np.maximum(L.max(0) - L.min(0), 1 / 256.), 0, 1)
+    mn = np.minimum(np.minimum(b, d), np.minimum(f, h)); mx = np.maximum(np.maximum(b, d), np.maximum(f, h))
+    lobe = np.maximum(-mn / np.maximum(4 * mx, 1 / 4096.), (1 - mx) / np.minimum(4 * mn - 4, -1 / 4096.)).max(-1)
+    lobe = (np.maximum(-.1875, np.minimum(lobe, 0)) * gain * (1 - .5 * nz))[..., None]
+    pix = np.clip(((b + d + f + h) * lobe + e) / (4 * lobe + 1), np.minimum(mn, e), np.maximum(mx, e))
+    return pix if skip is None else np.where(skip[..., None], e, pix)
+
+if MODE == 'lattice':
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    GAIN = 2. ** -float(os.environ.get('SHARPEN', '0.75'))  # X3M_TAA_SHARPEN stops of run142 / run148
+    ev = {int(re.search(r'frame=(\d+)', l).group(1)): float(re.search(r'ev_adapted=([-\d.]+)', l).group(1)) for l in
+          subprocess.run(['grep', '-E', r'^hdr_frame device=1 frame=(%s) ' % '|'.join(map(str, frames)), D + log], capture_output=True, text=True).stdout.splitlines()}
+    fr = frames[1:]; R, T, Mg = 8, 16, 10; dcode = lambda rgb: 255 * (rgb @ LUMA)
+    def box(a, r):
+        c = np.cumsum(np.cumsum(np.pad(a.astype(np.float64), ((r + 1, r), (r + 1, r))), 0), 1); n = 2 * r + 1
+        return (c[n:, n:] - c[:-n, n:] - c[n:, :-n] + c[:-n, :-n]) / (n * n)
+    def fshift(a, dx, dy):
+        fy = np.fft.fftfreq(a.shape[0])[:, None]; fx = np.fft.fftfreq(a.shape[1])[None, :]
+        return np.real(np.fft.ifft2(np.fft.fft2(a) * np.exp(2j * np.pi * (fx * dx + fy * dy))))
+    regs, vel = [], []
+    for f in fr:
+        dep = load('depth', f, 'rgba32f', np.float32, 4)[..., 0]; mot = load('motion', f, 'rgba32f', np.float32, 4); v = valid(dep); cell = (mot[..., 3] == 1) & ~v
+        regs.append(((box(cell, 5) > .55) & (box(v, 2) < .65))[Y0:Y1, X0:X1]); mm = mot[Y0:Y1, X0:X1]; jx, jy = meta[f]['j']
+        vel.append(np.stack([xs - (mm[..., 0] * W + jx - .5), ys - (mm[..., 1] * H + jy - .5), mm[..., 3] == 1], -1))
+        if f == fr[R]: cellR = ((mot[..., 3] == 1) & (dep <= -.5))[Y0:Y1, X0:X1]
+    tiles = [(tx, ty) for ty in range(Mg + 2, (Y1 - Y0) - T - Mg - 16, T) for tx in range(Mg + 2, (X1 - X0) - T - Mg - 16, T) if cellR[ty:ty + T, tx:tx + T].mean() > .55]
+    def tile_stack(S, tx, ty, dv=(0, 0)):  # motion-compensated (lattice-frame) tile over frames R.., velocity from RT1 plus a refinement
+        o = []; cx = cy = 0.
+        for i in range(R, len(fr)):
+            if i > R: vv = vel[i][ty:ty + T, tx:tx + T]; ok = vv[..., 2] == 1; cx += np.median(vv[..., 0][ok]) + dv[0]; cy += np.median(vv[..., 1][ok]) + dv[1]
+            o.append(fshift(S[i][ty - Mg:ty + T + Mg + 16, tx - Mg:tx + T + Mg + 16], cx, cy)[Mg:Mg + T, Mg:Mg + T])
+        return np.array(o)
+    def bands(S):
+        N = S.shape[0]; dev = S - S.mean(0); p = 2 * np.abs(np.fft.rfft(dev, axis=0)) ** 2 / N ** 2; per = np.array([N / k if k else np.inf for k in range(p.shape[0])])
+        return [np.sqrt((dev ** 2).mean())] + [np.sqrt(p[(per >= lo_) & (per < hi_)].sum(0).mean()) for lo_, hi_ in ((2, 4), (4, 8), (8, 99))]
+    def peaks(Lm, reg):  # per-column line crossings: sub-pixel centroid, peak excess
+        c, u1, u2, d1, d2 = Lm[2:-2], Lm[1:-3], Lm[:-4], Lm[3:-1], Lm[4:]; bg = np.minimum(u2, d2); pk = (c >= u1) & (c > d1) & (c > 1.3 * bg) & reg[2:-2]
+        e = (u1 - bg).clip(0) + (c - bg) + (d1 - bg).clip(0); return (((d1 - bg).clip(0) - (u1 - bg).clip(0)) / np.maximum(e, 1e-9))[pk], (c - bg)[pk]
+    dvs = None; ref = {}
+    print('tiles %d frames %d sharpen gain %.4f ev %.3f..%.3f' % (len(tiles), len(fr) - R, GAIN, min(ev.values()), max(ev.values())))
+    # MASKS=lattice,line2d ... selects the masks compared (default the note's); flip px / big-object edge as in 'options'
+    V = np.stack([valid(load('depth', f, 'rgba32f', np.float32, 4)[Y0:Y1, X0:X1, 0]) for f in fr]); flip = V.any(0) & ~V.all(0)
+    def fbands(S): N = S.shape[0]; p_ = 2 * np.abs(np.fft.rfft(S - S.mean(0), axis=0)) ** 2 / N ** 2; per = np.array([N / k if k else np.inf for k in range(p_.shape[0])]); return [float(np.sqrt(p_[(per >= a) & (per <= b)].sum(0).mean())) for a, b in ((2, 4), (4.01, 8), (8.01, 32))]
+    Vw = np.stack([valid(load('depth', f, 'rgba32f', np.float32, 4)[Y0 - 1:Y1 + 1, X0 - 1:X1 + 1, 0]) for f in fr]).all(0); stable = np.ones_like(flip)  # 3x3 always geometry
+    for ky in (0, 1, 2):
+        for kx in (0, 1, 2): stable &= Vw[ky:ky + flip.shape[0], kx:kx + flip.shape[1]]
+    stable = stable[:, 1:] & stable[:, :-1]
+    mnames = os.environ.get('MASKS', 'lattice').split(',')
+    for name, opt in [('installed', {})] + [('%s A=%g' % (m_, A_), dict(filter=A_, fmask=m_)) for m_ in mnames for A_ in (2., 1.)]:
+        outs, diags, _ = run(opt, 1); stages = {'resolve': [], 'agx': [], 'agx+rcas': [], 'agx+rcas excl': []}
+        for o, dg, f in zip(outs, diags, fr):
+            pad = load('taa', f, 'rgba16f', np.float16, 4)[Y0 - 1:Y1 + 1, X0 - 1:X1 + 1, :3].astype(np.float32); pad[1:-1, 1:-1] = o[..., :3]; t = agx(pad, ev[f])
+            stages['resolve'].append(codes(o, meta[f]['k'])); stages['agx'].append(dcode(t[1:-1, 1:-1])); stages['agx+rcas'].append(dcode(rcas(t, GAIN))); stages['agx+rcas excl'].append(dcode(rcas(t, GAIN, dg['lattice'])))
+            if name == 'installed' and f == fr[-1]:
+                pr = np.fromfile(D + 'present_1_%d.bgra8' % f, dtype=np.uint8).reshape(H, W, 4)[Y0:Y1, X0:X1, 2::-1] / 255.
+                print('presented dump vs AgX+RCAS(replayed resolve), frame %d: mean abs %.2f codes (bloom and 8-bit rounding not modelled)' % (f, np.abs(dcode(pr) - stages['agx+rcas'][-1]).mean()))
+        mk = [dg['masks'][opt.get('fmask', 'lattice')] for dg in diags]; off = [~(box(m_, 2) > 0) & ~dg['far'] for m_, dg in zip(mk, diags)]
+        # big-object edge: thin px within 1 px of geometry surviving a 5x5 erosion, no small geometry within 3 px
+        edge = []
+        for v_, dg in zip(V, diags): big = box(box(v_, 2) > .999, 3) > 0; edge.append(dg['thin'] & (box(big, 1) > 0) & ~(box(v_ & ~big, 3) > 0))
+        if name == 'installed':
+            L_ = np.array([dg['lattice'] for dg in diags])
+            for m_ in dg['masks']:
+                G_ = np.array([dg['masks'][m_] for dg in diags]); print('MASK %-8s coverage %.4f | of lattice covered %.3f | of mask inside lattice %.3f | of flip px %.3f | of big-object edge px %.4f (edge px %.4f of crop)' % (
+                    m_, G_.mean(), (G_ & L_).sum() / max(L_.sum(), 1), (G_ & L_).sum() / max(G_.sum(), 1), G_[:, flip].mean() if flip.any() else 0, G_[np.array(edge)].mean() if np.array(edge).any() else 0, np.mean(edge)))
+        for st, S in stages.items():
+            S = np.nan_to_num(np.array(S))
+            ge = np.mean([(np.diff(S[i], axis=1) ** 2)[edge[i][:, 1:] | edge[i][:, :-1]].mean() for i in range(R, len(fr)) if edge[i].any()] or [0]); fb = fbands(S[:, flip]) if flip.any() else [0, 0, 0]
+            sg = float((np.diff(S[R:], axis=2) ** 2)[:, stable].mean()) if stable.any() else 0.
+            extra = ' | stable-geometry gradient x%.4f' % (sg / ref.setdefault(st + 's', sg or 1)) + ' | edge gradient x%.4f | flip px %d bands %.2f %.2f %.2f' % (ge / ref.setdefault(st + 'e', ge or 1), flip.sum(), *fb)
+            if not tiles:
+                g = np.mean([(np.diff(S[i], axis=1) ** 2)[off[i][:, 1:] & off[i][:, :-1]].mean() for i in range(R, len(fr))]); ref.setdefault(st, (1, g)); print('%-20s %-14s off-mask gradient energy x%.4f%s' % (name, st, g / ref[st][1], extra), flush=True); continue
+            if dvs is None: dvs = [min(((bands(tile_stack(S, tx, ty, (a, b)))[0], a, b) for a in np.arange(-.06, .061, .02) for b in np.arange(-.06, .061, .02)))[1:] for tx, ty in tiles]
+            B = np.sqrt((np.array([bands(tile_stack(S, tx, ty, dv)) for (tx, ty), dv in zip(tiles, dvs)]) ** 2).mean(0))
+            C, P = map(np.concatenate, zip(*[peaks(np.clip(S[i] / 255, 0, 1) ** 2.2, regs[i]) for i in range(R, len(fr))])); pc, ps = np.median(P[np.abs(C) < .1]), np.median(P[np.abs(C) >= .4])
+            g = np.mean([(np.diff(S[i], axis=1) ** 2)[off[i][:, 1:] & off[i][:, :-1]].mean() for i in range(R, len(fr))]); ref.setdefault(st, (B[0], g))
+            print('%-20s %-14s crawl %.2f (x%.2f) fast %.2f mid %.2f slow %.2f | line peak centred %.4f straddling %.4f ratio %.2f | off-mask gradient energy x%.4f | mask share %.3f' % (
+                name, st, B[0], B[0] / ref[st][0], B[1], B[2], B[3], pc, ps, ps / pc, g / ref[st][1], np.mean(mk)) + extra, flush=True)

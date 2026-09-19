@@ -1,5 +1,5 @@
 // Generated from our original src/temporal/taa_sharpen_ps.hlsl. Do not edit.
-// Reproduce: python3 tools/shaders/generate_rigid_motion_pixel.py --check
+// Reproduce: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --shader taa_sharpen --check
     0xffff0300u, 0x0030fffeu, 0x42415443u, 0x0000001cu, 0x0000008bu, 0xffff0300u,
     0x00000002u, 0x0000001cu, 0x20008100u, 0x00000084u, 0x00000044u, 0x00000003u,
     0x00020001u, 0x00000050u, 0x00000000u, 0x00000060u, 0x00170002u, 0x005e0001u,

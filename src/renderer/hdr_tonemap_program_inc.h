@@ -1,5 +1,5 @@
 // Generated from our original src/temporal/agx.hlsl. Do not edit.
-// Reproduce: python3 tools/shaders/generate_rigid_motion_pixel.py --check
+// Reproduce: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --shader hdr_tonemap --check
     0xffff0300u, 0x008cfffeu, 0x42415443u, 0x0000001cu, 0x000001fbu, 0xffff0300u,
     0x0000000fu, 0x0000001cu, 0x20008100u, 0x000001f4u, 0x00000148u, 0x00110002u,
     0x00460001u, 0x00000154u, 0x00000000u, 0x00000164u, 0x00120002u, 0x004a0001u,

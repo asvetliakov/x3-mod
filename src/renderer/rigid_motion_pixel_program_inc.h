@@ -1,5 +1,5 @@
 // Generated from our original src/temporal/rigid_motion_ps.hlsl. Do not edit.
-// Reproduce: python3 tools/shaders/generate_rigid_motion_pixel.py --check
+// Reproduce: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --shader rigid_motion --check
     0xffff0300u, 0x0029fffeu, 0x42415443u, 0x0000001cu, 0x0000006cu, 0xffff0300u,
     0x00000002u, 0x0000001cu, 0x20008100u, 0x00000065u, 0x00000044u, 0x00000002u,
     0x00020001u, 0x00000050u, 0x00000000u, 0x00000060u, 0x00010002u, 0x00060001u,

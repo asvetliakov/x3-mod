@@ -1478,6 +1478,17 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_current_filter device=%llu unavailable=1 create=%08lx requested=%.3f", id_, taa_->current_filter_result(), double(taa_current_filter_));
         taa_current_filter_ = 0.f;
     }
+    // Line-masked filter: its variants exist only when asked for; refused next
+    // to the global filter, on a device that refuses the programs, and with the
+    // adaptive weight when the aged line variant is missing (run() refuses).
+    if (SUCCEEDED(hr) && taa_line_filter_ > 0.f) {
+        HRESULT line = E_FAIL;
+        if (!(taa_current_filter_ > 0.f)) taa_call([&] { line = taa_->configure_line_filter(); });
+        if (FAILED(line) || !taa_->line_filter_available()) {
+            log("motion_output_taa_line_filter device=%llu unavailable=1 reason=%s create=%08lx requested=%.3f", id_, taa_current_filter_ > 0.f ? "current_filter" : "program", line, double(taa_line_filter_));
+            taa_line_filter_ = 0.f;
+        }
+    }
     if (SUCCEEDED(hr) && !taa_->snapshot_available())
         log("motion_output_taa_snapshot device=%llu unavailable=1 create=%08lx", id_, taa_->snapshot_result());
     // Flicker suppression: the variant programs exist only when an option asks
@@ -1500,9 +1511,13 @@ bool MotionOutput::ensure_taa() noexcept {
             taa_adaptive_weight_ = 0.f;
         }
     }
+    if (SUCCEEDED(hr) && taa_line_filter_ > 0.f && taa_adaptive_weight_ > 0.f && !taa_->age_line_available()) {
+        log("motion_output_taa_line_filter device=%llu unavailable=1 reason=age_program requested=%.3f", id_, double(taa_line_filter_));
+        taa_line_filter_ = 0.f;
+    }
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
-        double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f ? 8u : 0u);
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u line_filter=%.3f line_width=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+        double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f ? 8u : 0u, double(taa_line_filter_), taa_line_width_);
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1539,7 +1554,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.sharpen = hdr_scene || taa_sharpen_failures_ >= sharpen_failure_limit ? 0.f : taa_sharpen_;
             // X3M_TAA_CURRENT_FILTER / X3M_TAA_HISTORY_WEIGHT (both routes;
             // unset: 0 and 0.9, the pass's defaults, bit for bit).
-            in.current_filter = taa_current_filter_; in.weight = taa_history_weight_;
+            in.current_filter = taa_current_filter_; in.line_filter = taa_line_filter_; in.line_width = taa_line_width_; in.weight = taa_history_weight_;
             // Flicker suppression (all 0 / false unless requested); the alpha
             // history only where the resolved alpha feeds bloom (FP16 input).
             in.thin_clip = taa_thin_clip_; in.adaptive_weight = taa_adaptive_weight_; in.adaptive_lo = taa_adaptive_lo_; in.adaptive_hi = taa_adaptive_hi_;

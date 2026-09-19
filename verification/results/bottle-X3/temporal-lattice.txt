@@ -26,6 +26,18 @@ CHECK embedded_age within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age_filter dwords=1998 instruction_slots=506 device_limit=512 headroom=6 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_filter within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_line_mask dwords=497 instruction_slots=125 device_limit=512 headroom=387 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_line_mask within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_line dwords=1760 instruction_slots=446 device_limit=512 headroom=66 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_line within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_thin_line dwords=1901 instruction_slots=483 device_limit=512 headroom=29 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_line within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_age_line dwords=2016 instruction_slots=509 device_limit=512 headroom=3 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_age_line within the guaranteed 512 slots PASS
 LATTICE_CASES
 LATTICE_MARGIN 0.0600
 CHECK lattice geometry keeps jittered edges off the sample centers PASS
@@ -2021,4 +2033,102 @@ SAMPLE flicker alpha-history+soft-0.75+w-0.97: alpha ripple ratio as the colour'
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
 CHECK alpha history off: the output alpha is the current alpha bit for bit PASS
-RESULT PASS numerical=210 state_restorations=13 lattice=1
+FLICKER_BASE numerical=210 state_restorations=13
+LINE_CASES
+CHECK line filter without configure_line_filter is refused PASS
+CHECK the unconfigured pass runs the plain resolve PASS
+CHECK line filter outside [0, 4] is refused PASS
+CHECK line filter outside [0, 4] is refused PASS
+CHECK line filter outside [0, 4] is refused PASS
+CHECK line filter outside [0, 4] is refused PASS
+CHECK line filter beside the global current filter is refused PASS
+CHECK line filter 4 runs PASS
+CHECK line width other than 1 or 2 is refused PASS
+CHECK line width other than 1 or 2 is refused PASS
+CHECK line width 2 runs PASS
+CHECK line filter with the thin clip but without configure_flicker is refused PASS
+CHECK line-filtered run restores the caller's state PASS
+CHECK failed line-filtered resolve draw publishes nothing PASS
+CHECK after a failed run the line-filtered resolve restarts without history PASS
+CHECK Reset protocol keeps the line-filter programs and restarts the history PASS
+CHECK line history and age output follow the sequence PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+CHECK line filter configured but A = 0 is bit-identical to the unconfigured pass PASS
+LINE_FILTER background=sentinel config=line-base A=0.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.1591 bead_ratio=1.0000 line_peak=0.2548 line_peak_ratio=1.0000
+SAMPLE line line-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+LINE_FILTER background=sentinel config=line-A2 A=2.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0999 bead_ratio=0.6278 line_peak=0.2193 line_peak_ratio=0.8607
+SAMPLE line line-A2: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
+CHECK line mask covers the lattice region PASS
+CHECK line filter lowers the roping at a bounded line-peak cost PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+LINE_FILTER background=sentinel config=line-A1 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0722 bead_ratio=0.4539 line_peak=0.1944 line_peak_ratio=0.7627
+SAMPLE line line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
+CHECK line mask covers the lattice region PASS
+CHECK line filter lowers the roping at a bounded line-peak cost PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+LINE_FILTER background=sentinel config=line-A1-width-2 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=1344 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0722 bead_ratio=0.4539 line_peak=0.1944 line_peak_ratio=0.7627
+SAMPLE line line-A1-width-2: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
+CHECK line mask covers the lattice region PASS
+CHECK line filter lowers the roping at a bounded line-peak cost PASS
+CHECK line: flicker programs available PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+LINE_FILTER background=sentinel config=line-A1+soft-0.75 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0727 bead_ratio=0.4568 line_peak=0.1942 line_peak_ratio=0.7621
+SAMPLE line line-A1+soft-0.75: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK line mask covers the lattice region PASS
+CHECK line: flicker programs available PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+LINE_FILTER background=sentinel config=line-A1+soft-0.75+w-0.97 A=1.00 oracle_error=0.008301 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0662 bead_ratio=0.4159 line_peak=0.1673 line_peak_ratio=0.6565
+SAMPLE line line-A1+soft-0.75+w-0.97: shader matches the 2-D CPU oracle within the FP16 bound actual=0.008300781 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE line line-A1+soft-0.75+w-0.97: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK line mask covers the lattice region PASS
+CHECK line history and age output follow the sequence PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+CHECK line filter configured but A = 0 is bit-identical to the unconfigured pass PASS
+LINE_FILTER background=far_geometry config=line-base A=0.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.1591 bead_ratio=1.0000 line_peak=0.2548 line_peak_ratio=1.0000
+SAMPLE line line-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+LINE_FILTER background=far_geometry config=line-A2 A=2.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0999 bead_ratio=0.6278 line_peak=0.2193 line_peak_ratio=0.8607
+SAMPLE line line-A2: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
+CHECK line mask covers the lattice region PASS
+CHECK line filter lowers the roping at a bounded line-peak cost PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+LINE_FILTER background=far_geometry config=line-A1 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0722 bead_ratio=0.4539 line_peak=0.1944 line_peak_ratio=0.7627
+SAMPLE line line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
+CHECK line mask covers the lattice region PASS
+CHECK line filter lowers the roping at a bounded line-peak cost PASS
+CHECK line-filter programs created on this device PASS
+CHECK line history and age output follow the sequence PASS
+LINE_FILTER background=far_geometry config=line-A1-width-2 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=1344 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0722 bead_ratio=0.4539 line_peak=0.1944 line_peak_ratio=0.7627
+SAMPLE line line-A1-width-2: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
+CHECK line mask never holds on the square's silhouette PASS
+CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
+CHECK line mask covers the lattice region PASS
+CHECK line filter lowers the roping at a bounded line-peak cost PASS
+LINE_TIMING width=1280 height=768 content=all_geometry pairs=6 plain_ms=1.1595 line_filter_ms=1.5556 delta_ms=0.3961 scope=cpu_wall_with_event_query_drain
+RESULT PASS numerical=255 state_restorations=15 lattice=1

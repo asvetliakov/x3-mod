@@ -1,14 +1,14 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "edb4466f3c1e9d13b18ba7134185156ba5f8365f6187f4e84076c4e33632879e",
-    "src/renderer/temporal_pass.cpp": "ad517a454f1f3908420f7396d25178863dcec5230f10b58a1f2eaec2553e8f4e",
-    "src/temporal/resolve.h": "0d18c56411cada9c770267ee831270401333dcdccc601f31ef84d1febf21af61",
-    "src/temporal/resolve.hlsl": "fcdcfa19a57b7346e443aff16bb624d57c43f2befddfcb7986092841356d5273",
+    "src/renderer/temporal_pass.h": "2fe9419ad6f3869a145571ff7a6c7ce05e06427545d87239787d80b6c1ceee63",
+    "src/renderer/temporal_pass.cpp": "5c2ea6746ca62a4b97555abaaa0d6cb5318adc46abc0c32eb41ab4c0395bb43e",
+    "src/temporal/resolve.h": "78732b2962614ef737da298ab0c9d16113d74d8c151ac9ffbe0c45c986214ca7",
+    "src/temporal/resolve.hlsl": "fa23c028bc9cfc77cb2c01f26ba67d42797d4d010aae859130e51c286225de00",
     "src/temporal/resolve_filter.hlsl": "65aedd02762660c77ff6af3530c429edb580ea3ccb52416cd303974ce86d51f6",
     "src/temporal/resolve_snapshot.hlsl": "b7b62bb66523b6e092143fc111a623413cd8d1e9bf7c7ab0afbc83a3f40f126d",
     "src/renderer/temporal_resolve_snapshot_program_inc.h": "decb661f2c75cdfb7960bff7018c364c0f398fbe399a5e5df6a62fb5d7916d69",
-    "src/renderer/temporal_resolve_program.h": "bb85063e4795a99319b2849b48e2939db15a7711953622f5d69e79fbc6a2ad09",
+    "src/renderer/temporal_resolve_program.h": "aea74109cefa50b77b5993780a506c315818fe12a4f18f4a37ee5ff5bdb6c83b",
     "src/temporal/resolve_thin.hlsl": "fcd645eff0211c5762dc973cc067c542c443291406a79b9ac2c77f43d9506fe4",
     "src/renderer/temporal_resolve_thin_program_inc.h": "28789f5141c5e128d93de18d4a03779db0e32e9fcae21ed22a2c6d9f85e3f400",
     "src/temporal/resolve_thin_filter.hlsl": "44b03ce6268fee366779f7e0310fb63d94ccdea98dd66b1a2aa99290020cd70c",
@@ -18,13 +18,22 @@
     "src/temporal/resolve_age_filter.hlsl": "5a13f4045d9128eb7c00a22b4a0c2c088a663d99936b54d71f3e68b4601abcdb",
     "src/renderer/temporal_resolve_age_filter_program_inc.h": "1e047b942856e3ec3230279c6e2047ab3c472d696e5c5f5b72f3e1b161f86c35",
     "verification/probe/temporal_flicker_inc.h": "4c52ec625f011cb22a4251aaccb80bd599d0a26850f8b3335ed14911de6a3b86",
+    "verification/probe/temporal_line_inc.h": "05dc7c636e0f527a1722c17dc93ca52924189f2596a594049a9eb9b2c01d140a",
+    "src/temporal/line_mask_ps.hlsl": "978487b4cfbef55527b5c43d26318ad8517da1740f6c375a208d94b06a575272",
+    "src/renderer/temporal_line_mask_program_inc.h": "60edb8fbe600bcacf8757dd6de4dfc37408cc365e8926695d59491797ae651ab",
+    "src/temporal/resolve_line.hlsl": "18807f732512dc66460deda4367c560e733160bb4e75263875fdd0c00bb52f31",
+    "src/renderer/temporal_resolve_line_program_inc.h": "543713f79f560dd3136a055415640cc3cae61a0e7700036d88974574a7b0476a",
+    "src/temporal/resolve_thin_line.hlsl": "ccb52ae55590b7c196966667583f227a3552722080c17c893f2d352f33ba2c9f",
+    "src/renderer/temporal_resolve_thin_line_program_inc.h": "a154149e3bfcf6108199f590fa955dfa20c4de86e205afd7bd7f3aa9a6ed4cad",
+    "src/temporal/resolve_age_line.hlsl": "c47b64620cc28aca7a21488fdc6430e762b20f406504613af3b0bf889874b9e3",
+    "src/renderer/temporal_resolve_age_line_program_inc.h": "9e69b9f3948a29250c2530fcddd6e83812cb969833f38352285d6b77b6f942c5",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "35c4eb2f1f9f165ef3db19a6cd2abf07c31e01790b2cdddf80c3d74ece97b9fb",
+    "verification/probe/temporal_pass_fixture.cpp": "a9d6e8c24a882cd0e2f1ae08ece4ca31285e06864bd261ed4c84e2d46749a1a0",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "9b829fda008e688f5d11c12e63ec29faf278cd13fa480221b35569f9ea4e0928"
+    "verification/probe/run_temporal_pass.py": "44aa889bf55e767854a05fb01cb4b0d37310cf4f93b33d80910d9f080f4b2adb"
   },
   "game_launched": false,
   "bottle": {
@@ -37,7 +46,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "d6796fbecb4d0831e11dff47ccb27f79b12d0978f055a00f45d3a82bc209f9b7",
+  "executable_sha256": "5a67a57c58a3efaee77d550543c2bdd46f9a17cfd870b5e0f9af373b7b0a3796",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -46,12 +55,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-abfdd9ffa87514720/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-abfdd9ffa87514720/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-abfdd9ffa87514720/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-abfdd9ffa87514720/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-abfdd9ffa87514720/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
@@ -271,7 +280,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "d1a00a21813be3fc7141ea136f9c863a885bb366b64ecd53c9f43b2a11862f44",
+    "report_sha256": "77fc48a4ee8f5b953340197ce663264597931a0b2f3fd73c5ac97b758b0a7dd3",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -335,6 +344,34 @@
         "instruction_slots": 506.0,
         "device_limit": 512.0,
         "headroom": 6.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_line_mask": {
+        "dwords": 497.0,
+        "instruction_slots": 125.0,
+        "device_limit": 512.0,
+        "headroom": 387.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_line": {
+        "dwords": 1760.0,
+        "instruction_slots": 446.0,
+        "device_limit": 512.0,
+        "headroom": 66.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_thin_line": {
+        "dwords": 1901.0,
+        "instruction_slots": 483.0,
+        "device_limit": 512.0,
+        "headroom": 29.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_age_line": {
+        "dwords": 2016.0,
+        "instruction_slots": 509.0,
+        "device_limit": 512.0,
+        "headroom": 3.0,
         "within_guaranteed_512": 1.0
       }
     },
@@ -1845,6 +1882,182 @@
         "alpha_oracle_error": "0.002441",
         "alpha_ripple_ratio": "0.1409",
         "colour_ripple_ratio": "0.1423"
+      }
+    ]
+  },
+  "line_filter": {
+    "cases": [
+      {
+        "background": "sentinel",
+        "config": "line-base",
+        "A": "0.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "2688",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.1591",
+        "bead_ratio": "1.0000",
+        "line_peak": "0.2548",
+        "line_peak_ratio": "1.0000"
+      },
+      {
+        "background": "sentinel",
+        "config": "line-A2",
+        "A": "2.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "2688",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.0999",
+        "bead_ratio": "0.6278",
+        "line_peak": "0.2193",
+        "line_peak_ratio": "0.8607"
+      },
+      {
+        "background": "sentinel",
+        "config": "line-A1",
+        "A": "1.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "2688",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.0722",
+        "bead_ratio": "0.4539",
+        "line_peak": "0.1944",
+        "line_peak_ratio": "0.7627"
+      },
+      {
+        "background": "sentinel",
+        "config": "line-A1-width-2",
+        "A": "1.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "1344",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.0722",
+        "bead_ratio": "0.4539",
+        "line_peak": "0.1944",
+        "line_peak_ratio": "0.7627"
+      },
+      {
+        "background": "sentinel",
+        "config": "line-A1+soft-0.75",
+        "A": "1.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "2688",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.0727",
+        "bead_ratio": "0.4568",
+        "line_peak": "0.1942",
+        "line_peak_ratio": "0.7621"
+      },
+      {
+        "background": "sentinel",
+        "config": "line-A1+soft-0.75+w-0.97",
+        "A": "1.00",
+        "oracle_error": "0.008301",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "2688",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.0662",
+        "bead_ratio": "0.4159",
+        "line_peak": "0.1673",
+        "line_peak_ratio": "0.6565"
+      },
+      {
+        "background": "far_geometry",
+        "config": "line-base",
+        "A": "0.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "2688",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.1591",
+        "bead_ratio": "1.0000",
+        "line_peak": "0.2548",
+        "line_peak_ratio": "1.0000"
+      },
+      {
+        "background": "far_geometry",
+        "config": "line-A2",
+        "A": "2.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "2688",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.0999",
+        "bead_ratio": "0.6278",
+        "line_peak": "0.2193",
+        "line_peak_ratio": "0.8607"
+      },
+      {
+        "background": "far_geometry",
+        "config": "line-A1",
+        "A": "1.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "2688",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.0722",
+        "bead_ratio": "0.4539",
+        "line_peak": "0.1944",
+        "line_peak_ratio": "0.7627"
+      },
+      {
+        "background": "far_geometry",
+        "config": "line-A1-width-2",
+        "A": "1.00",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_share_line_region": "0.6511",
+        "silhouette_px": "1344",
+        "silhouette_masked": "0",
+        "silhouette_differs": "0",
+        "silhouette_gradient_ratio": "1.000000",
+        "bead_amplitude": "0.0722",
+        "bead_ratio": "0.4539",
+        "line_peak": "0.1944",
+        "line_peak_ratio": "0.7627"
+      }
+    ],
+    "timing": [
+      {
+        "width": "1280",
+        "height": "768",
+        "content": "all_geometry",
+        "pairs": "6",
+        "plain_ms": "1.1595",
+        "line_filter_ms": "1.5556",
+        "delta_ms": "0.3961",
+        "scope": "cpu_wall_with_event_query_drain"
       }
     ]
   }
