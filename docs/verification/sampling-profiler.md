@@ -1999,7 +1999,8 @@ After runs 155 (verify: 808,408 confirmed, 0 mismatches) and 156 (62 % of node p
 
 After runs 163/164 (hypothesis 1 refuted; the cost is a moving `b`); [sector-collide.md](../reverse-engineering/sector-collide.md)
 §14.7. Bottle X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Nothing launched, nothing installed, no
-DLL built. **Outcome: sound in the fixture, no benefit where the cost is; default off.**
+DLL built. **Outcome: sound in the fixture, no benefit where the cost is.** Not flown, not merged: the code was dropped
+and exists only in commit `8a374dc5`; the results below are that commit's.
 
 | Check | Command | Result |
 | --- | --- | --- |

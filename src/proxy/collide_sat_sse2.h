@@ -30,13 +30,10 @@ bool shutdown();    // restores the call (dynamic-unload detach only); true when
 // site, so the fixture passes a layout-preserving copy) and redirects it.
 bool install_at(const Addresses& addresses);
 const char* state();
-bool installed();   // the engine's SAT call currently goes through the thunk
 }
 extern "C" {
 // The redirected call's target: the engine's register/stack convention in, EAX out.
 void x3m_collide_sat_thunk();
 int __cdecl x3m_collide_sat_sse2(const float* R, const float* b_extents, const float* T, const float* a_extents);
 extern const std::uint32_t x3m_collide_sat_mxcsr;
-extern double x3m_collide_sat_min_gap;        // smallest t - (ra + rb) of the pruning tests since it was last reset; -1 once a NaN was seen
-extern std::uint32_t x3m_collide_sat_prunes;   // pruning tests so far
 }

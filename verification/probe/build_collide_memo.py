@@ -59,15 +59,16 @@ def audit_module(obj):
     if x87:
         raise RuntimeError('x87/MMX in the production module: ' + ' '.join(x87[:6]))
     report = {'module_x87_mmx_instructions': 0}
-    # The thunk is the documented sequence. (Floating-point arithmetic exists in one place, the conservative-advancement bound: SSE2
-    # doubles, no x87; the x87 check above covers the whole module.)
-    block = re.search(r'<_x3m_collide_memo_thunk>:\n(.*?)(?:\n\n|\Z)', listing, re.S)
-    names = [m.group(1) for m in re.finditer(r'^\s*[0-9a-f]+:\s+([a-z][a-z0-9]*)', block.group(1) if block else '', re.M)]
-    if names[:len(THUNK)] != THUNK:
-        raise RuntimeError(f'thunk: unexpected instruction sequence {names}')
-    report['x3m_collide_memo_thunk_instructions'] = len(THUNK)
-    calls = sorted(set(re.findall(r'call\s+\S+\s+<([^>+]+)', listing)))
-    report['module_calls'] = [c for c in calls if 'x3m' not in c and 'ZN' not in c]
+    # The three routines the engine reaches: no floating-point instruction of any kind (the key is compared as words).
+    for symbol in ('_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store'):
+        block = re.search(rf'<{symbol}>:\n(.*?)(?:\n\n|\Z)', listing, re.S)
+        names = [m.group(1) for m in re.finditer(r'^\s*[0-9a-f]+:\s+([a-z][a-z0-9]*)', block.group(1) if block else '', re.M)]
+        floating = [n for n in names if FLOAT_RE.match(n)]
+        if not names or floating:
+            raise RuntimeError(f'{symbol}: floating-point instructions {floating[:6]}')
+        if symbol == '_x3m_collide_memo_thunk' and names[:len(THUNK)] != THUNK:
+            raise RuntimeError(f'thunk: unexpected instruction sequence {names}')
+        report[symbol.strip('_') + '_instructions'] = len(names) if symbol != '_x3m_collide_memo_thunk' else len(THUNK)
     return report
 
 

@@ -1,21 +1,21 @@
 {
  "fixture": "build/verification/collide-memo/collide_memo_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 6.7,
- "checks": 76,
+ "elapsed_s": 7.3,
+ "checks": 59,
  "failures": 0,
  "summary": {
-  "queries": 69147,
-  "hits": 46511,
-  "contacts": 3786,
+  "queries": 58410,
+  "hits": 37476,
+  "contacts": 3779,
   "differences": 0,
   "stale_hits": 0,
   "hits_on_contact": 0,
   "register_differences": 0,
-  "stored": 34267,
+  "stored": 33023,
   "evictions": 21342,
   "ineligible": 4,
-  "skipped_visits": 332178639,
+  "skipped_visits": 332178632,
   "verified": 130,
   "verify_mismatches": 1
  },
@@ -107,24 +107,16 @@
    "differences": 0,
    "stale": 0,
    "hit_on_contact": 0
-  },
-  "advance": {
-   "queries": 10217,
-   "hits": 9035,
-   "contacts": 6,
-   "differences": 0,
-   "stale": 0,
-   "hit_on_contact": 0
   }
  },
  "bench": {
   "visits": 27085,
-  "run_ns": 1260200,
-  "hit_ns": 99.2,
-  "tiny_run_ns": 95.6,
-  "tiny_miss_store_ns": 280.7,
-  "tiny_hit_ns": 99.3,
-  "miss_store_overhead_ns": 185.1
+  "run_ns": 1228000,
+  "hit_ns": 98.7,
+  "tiny_run_ns": 96.8,
+  "tiny_miss_store_ns": 273.5,
+  "tiny_hit_ns": 98.4,
+  "miss_store_overhead_ns": 176.7
  },
  "approach": {
   "contact_frames": 2,
@@ -141,113 +133,31 @@
  },
  "misses": {
   "min_relaxed_hits": 18622,
-  "none_found": 2995,
-  "xform_a": 1284,
-  "xform_b": 26113,
-  "scale": 428,
+  "none_found": 2982,
+  "xform_a": 1172,
+  "xform_b": 25046,
+  "scale": 369,
   "mode": 3,
   "models": 2,
   "min_value": 7218,
   "expired": 11,
   "min_value_visits": 7844036,
-  "xform_b_visits": 1388231
- },
- "advance": {
-  "total_answers": 25035,
-  "skipped_visits": 26803,
-  "refused": 1012,
-  "rearm": 1076,
-  "verified": 452,
-  "mismatches": 0
- },
- "advance_cost": {
-  "advance_hit_ns": 142.3
- },
- "advance_deep": {
-  "visits": 1037,
-  "frames": 40,
-  "answered": 0,
-  "longest_streak": 0
- },
- "advance_runs": {
-  "slow": {
-   "frames": 2621,
-   "answered": 2344,
-   "far_frames": 1300,
-   "far_answered": 1297,
-   "contact_found": 1
-  },
-  "walk": {
-   "frames": 829,
-   "answered": 740,
-   "far_frames": 434,
-   "far_answered": 432,
-   "contact_found": 1
-  },
-  "fast": {
-   "frames": 434,
-   "answered": 320,
-   "far_frames": 109,
-   "far_answered": 105,
-   "contact_found": 0
-  },
-  "dash": {
-   "frames": 87,
-   "answered": 42,
-   "far_frames": 22,
-   "far_answered": 10,
-   "contact_found": 0
-  },
-  "scaled": {
-   "frames": 1613,
-   "answered": 1471,
-   "far_frames": 867,
-   "far_answered": 861,
-   "contact_found": 1
-  },
-  "distance": {
-   "frames": 865,
-   "answered": 762,
-   "far_frames": 434,
-   "far_answered": 421,
-   "contact_found": 1
-  },
-  "a_moves": {
-   "frames": 863,
-   "answered": 750,
-   "far_frames": 434,
-   "far_answered": 428,
-   "contact_found": 1
-  },
-  "no_turn": {
-   "frames": 1245,
-   "answered": 1144,
-   "far_frames": 650,
-   "far_answered": 645,
-   "contact_found": 1
-  },
-  "needle": {
-   "frames": 1500,
-   "answered": 1462,
-   "far_frames": 0,
-   "far_answered": 0,
-   "contact_found": 0
-  }
+  "xform_b_visits": 985884
  },
  "verify": {
   "verified": 130,
   "injected_mismatches": 1
  },
- "window_line": "collide_memo device=1 frame=4800 frames=300 verify=0 queries=145772 hits=129378 misses=16392 stored=16336 contacts=55 ineligible=2 evictions=14891 skipped_visits=325327256 skipped_triangles=63093382 verified=0 verify_mismatches=0 foreign_thread=50 reentered=2 clears=3 stuck_busy=1 min_relaxed_hits=681 miss_none_found=77 miss_none_found_visits=157317 miss_xform_a=41 miss_xform_a_visits=5553 miss_xform_b=16039 miss_xform_b_visits=27073 miss_scale=20 miss_scale_visits=6797 miss_mode=0 miss_mode_visits=0 miss_models=0 miss_models_visits=0 miss_min_value=215 miss_min_value_visits=162855 miss_expired=0 miss_expired_visits=0 advance_hits=0 advance_skipped_visits=0 advance_refused_gap=0 advance_rearm=0 advance_verified=0 advance_mismatches=0 advance_gap_median_log2=-99 advance_displacement_median_log2=-99",
+ "window_line": "collide_memo device=1 frame=4800 frames=300 verify=0 queries=145772 hits=129378 misses=16392 stored=16336 contacts=55 ineligible=2 evictions=14891 skipped_visits=325327256 skipped_triangles=63093382 verified=0 verify_mismatches=0 foreign_thread=50 reentered=2 clears=3 stuck_busy=1 min_relaxed_hits=681 miss_none_found=77 miss_none_found_visits=157317 miss_xform_a=41 miss_xform_a_visits=5553 miss_xform_b=16039 miss_xform_b_visits=27073 miss_scale=20 miss_scale_visits=6797 miss_mode=0 miss_mode_visits=0 miss_models=0 miss_models_visits=0 miss_min_value=215 miss_min_value_visits=162855 miss_expired=0 miss_expired_visits=0",
  "install_lines": [
-  "collide_memo requested=0 patched=0 verify=0 advance=0 reason=disabled site=0x0047f329 target=0x004e29f0 write=none handler=0x00343100 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 advance=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00343100 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 advance=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00343100 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 advance=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00343100 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 advance=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00343100 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 advance=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00343100 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 advance=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00343100 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 advance=0 reason=bytes_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00343100 entries=1024"
+  "collide_memo requested=0 patched=0 verify=0 reason=disabled site=0x0047f329 target=0x004e29f0 write=none handler=0x00342fc0 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342fc0 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342fc0 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342fc0 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342fc0 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342fc0 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342fc0 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=bytes_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342fc0 entries=1024"
  ],
  "failure_lines": [],
  "bottle": {
@@ -268,7 +178,8 @@
   "audit": {
    "module_x87_mmx_instructions": 0,
    "x3m_collide_memo_thunk_instructions": 28,
-   "module_calls": []
+   "x3m_collide_memo_lookup_instructions": 301,
+   "x3m_collide_memo_store_instructions": 196
   }
  },
  "note": "run_ns is one un-memoed query of the cost pair, hit_ns one answered query, harness included; diagnostic timings, not game FPS"

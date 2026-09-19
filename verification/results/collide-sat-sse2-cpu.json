@@ -1,7 +1,7 @@
 {
  "fixture": "build/verification/collide-sat-sse2/collide_sat_sse2_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 8.7,
+ "elapsed_s": 2.6,
  "checks": 41,
  "failures": 0,
  "categories": {
@@ -84,28 +84,28 @@
   "REPLAY pruned=2469 descend=531 other=0"
  ],
  "bench_raw_ns": {
-  "null_ns": 3.26,
+  "null_ns": 3.13,
   "early_axis_mean": 1.09,
-  "early_replica_ns": 58.6,
-  "early_sse2_ns": 9.27,
-  "early_bracketed_ns": 11.0,
-  "full_replica_ns": 126.47,
-  "full_sse2_ns": 23.11,
-  "full_bracketed_ns": 26.74
+  "early_replica_ns": 57.03,
+  "early_sse2_ns": 9.06,
+  "early_bracketed_ns": 10.65,
+  "full_replica_ns": 124.61,
+  "full_sse2_ns": 22.95,
+  "full_bracketed_ns": 25.82
  },
  "bench": {
-  "early_ratio": 9.21,
-  "full_ratio": 6.21,
+  "early_ratio": 9.09,
+  "full_ratio": 6.13,
   "early_ns": [
-   55.3,
-   6.0
+   53.9,
+   5.9
   ],
   "full_ns": [
-   123.2,
-   19.9
+   121.5,
+   19.8
   ],
-  "mxcsr_bracket_ns": 1.73,
-  "thunk_early_out_ns": 6.01
+  "mxcsr_bracket_ns": 1.59,
+  "thunk_early_out_ns": 5.93
  },
  "failure_lines": [],
  "bottle": {

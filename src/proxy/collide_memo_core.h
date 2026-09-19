@@ -1,11 +1,6 @@
 #pragma once
-#include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <initializer_list>
-#if defined(__SSE2__)
-#include <emmintrin.h>
-#endif
 
 // Portable core of the temporal no-contact memo of the engine's mesh-pair collision query
 // (docs/reverse-engineering/sector-collide.md section 14). No Windows dependency: the host tests compile it.
@@ -62,18 +57,13 @@ constexpr unsigned key_words = 26 + 5 + 2 + 2 * header_words + 2 * box_words;   
 constexpr unsigned minimum_value_word = 30, model_words_begin = 31;
 struct Key { std::uint32_t words[key_words]; };
 struct Outputs { std::uint32_t visits, triangles, tolerance_integer, root_block[root_block_words]; };
-// gap: for a run that reached no leaf and whose every pruning test was seen (collide_sat_sse2), the smallest separation
-// t - (ra + rb) among them, in a's model units: a lower bound of the distance between the two meshes at the stored
-// pose, because every triangle pair lies under some pruned box pair and the boxes are the exact min/max of their
-// triangles (builder 0x004e1454.., 0x004e1fbb..: d = 0.5 * (max - min), no shrink). 0: not available.
-struct Entry { Key key; Outputs outputs; double gap; std::uint32_t frame; bool valid; };
+struct Entry { Key key; Outputs outputs; std::uint32_t frame; bool valid; };
 constexpr unsigned ways = 4, sets = 256;
 // Why a query missed, judged against the last entry stored for the same two models with the same transform of a (or,
 // failing that, of b): the first group of key words that differs. `expired`: the same key, no longer live.
 enum MissClass : unsigned { miss_none_found, miss_xform_a, miss_xform_b, miss_scale, miss_mode, miss_models, miss_min_value, miss_expired, miss_classes };
 struct Counters { std::uint32_t hits, misses, stored, contacts, ineligible, evictions, skipped_visits, skipped_triangles, verified, verify_mismatches, foreign_thread, reentered, clears, stuck_busy;
-                  std::uint32_t min_relaxed_hits, miss_count[miss_classes], miss_visits[miss_classes];
-                  std::uint32_t advance_hits, advance_skipped_visits, advance_refused, advance_rearm, advance_verified, advance_mismatches; };
+                  std::uint32_t min_relaxed_hits, miss_count[miss_classes], miss_visits[miss_classes]; };
 // The expiry clock is Present. Should the simulation ever run this many queries without one (a loading loop, a paused
 // renderer), the table is dropped rather than trusted: about 1e2 queries make a frame, so this is ~1e3 frames' worth.
 constexpr std::uint32_t queries_without_tick_limit = 100000;
@@ -99,63 +89,6 @@ inline bool answers(const Entry& e, const Key& key) {
     return e.key.words[minimum_value_word] == key.words[minimum_value_word] || e.outputs.triangles == 0;
 }
 
-// ---- conservative advancement ----
-// b's points reach a's model frame through x = M y + T with M = R1^T R2 (s2 / s1), T = R1^T (T2 - T1) / s1 (what
-// 0x004e2780 composes, in float32; here in double from the same 26 floats). Between two poses a point y of b moves by
-// (M' - M) y + (T' - T), so by no more than D = |M' - M|_F * rho_b + |T' - T|, rho_b bounding |y| over b's root box.
-// If D + margin < gap / 2 the meshes are still apart by more than gap / 2 - margin > 0, no triangle pair intersects, and
-// in every mode a contact needs 0x004e2ba0 to report an intersection first: the engine would find no contact.
-// margin = 1e-5 * (|T| + |T'| + rho_a + (s2 / s1) rho_b): the engine places boxes and triangles through float32
-// products composed over at most a few dozen levels, a relative error near 1e-6 of those magnitudes; 1e-5 and the factor
-// 2 on the gap (which also covers box axes that are unit only to ~1e-6) leave an order of magnitude each. Refused:
-// anything non-finite, a scale that is not positive, a transform that is not a rotation to 1e-3.
-// Square root without the C library (its errno path may run x87 code inside the engine's own x87 computation).
-#if defined(__SSE2__)
-inline double root(double v) { return _mm_cvtsd_f64(_mm_sqrt_sd(_mm_setzero_pd(), _mm_set_sd(v))); }
-#else
-inline double root(double v) { return std::sqrt(v); }
-#endif
-struct Pose { double M[9], T[3], scale; };
-inline float key_float(const Key& k, unsigned word) { float v; std::memcpy(&v, &k.words[word], 4); return v; }
-inline bool pose_of(const Key& k, Pose& p) {
-    double R1[9], R2[9], d[3];
-    for (unsigned i = 0; i < 9; ++i) { R1[i] = key_float(k, i); R2[i] = key_float(k, 13 + i); }
-    const double s1 = key_float(k, 12), s2 = key_float(k, 25);
-    if (!(s1 > 0.0 && s1 < 1e30) || !(s2 > 0.0 && s2 < 1e30)) return false;   // positive and finite (the node's scale is an integer in the engine)
-    for (unsigned i = 0; i < 3; ++i) d[i] = double(key_float(k, 22 + i)) - double(key_float(k, 9 + i));
-    for (const double* R : {R1, R2})
-        for (unsigned i = 0; i < 3; ++i) for (unsigned j = i; j < 3; ++j) {
-            const double dot = R[3 * i] * R[3 * j] + R[3 * i + 1] * R[3 * j + 1] + R[3 * i + 2] * R[3 * j + 2];
-            const double off = dot - (i == j ? 1.0 : 0.0);
-            if (!(off < 1e-3 && off > -1e-3)) return false;   // also for NaN; no fabs: GCC reaches for x87 there
-        }
-    p.scale = s2 / s1;
-    for (unsigned i = 0; i < 3; ++i) {
-        p.T[i] = (R1[i] * d[0] + R1[3 + i] * d[1] + R1[6 + i] * d[2]) / s1;
-        for (unsigned j = 0; j < 3; ++j) p.M[3 * i + j] = (R1[i] * R2[j] + R1[3 + i] * R2[3 + j] + R1[6 + i] * R2[6 + j]) * p.scale;
-    }
-    return true;
-}
-inline double box_radius(const Key& k, unsigned box) {   // |c| + |d| of a root box, a little generously
-    double c = 0.0, d = 0.0;
-    for (unsigned i = 0; i < 3; ++i) { const double ci = key_float(k, box + 9 + i), di = key_float(k, box + 12 + i); c += ci * ci; d += di * di; }
-    return 1.001 * (root(c) + root(d));
-}
-constexpr unsigned box_a_word = model_words_begin + 2 + 2 * header_words, box_b_word = box_a_word + box_words;
-// True when the stored no-contact answer certainly still holds at `now`. displacement and margin are reported either way (NaN-free only on true).
-inline bool advance_holds(const Key& stored, double gap, const Key& now, double& displacement, double& margin) {
-    Pose p, q;
-    displacement = margin = 0.0;
-    if (!(gap > 0.0) || !pose_of(stored, p) || !pose_of(now, q)) return false;
-    const double rho_a = box_radius(now, box_a_word), rho_b = box_radius(now, box_b_word);
-    double dm = 0.0, dt = 0.0, tp = 0.0, tq = 0.0;
-    for (unsigned i = 0; i < 9; ++i) dm += (q.M[i] - p.M[i]) * (q.M[i] - p.M[i]);
-    for (unsigned i = 0; i < 3; ++i) { dt += (q.T[i] - p.T[i]) * (q.T[i] - p.T[i]); tp += p.T[i] * p.T[i]; tq += q.T[i] * q.T[i]; }
-    displacement = root(dm) * rho_b + root(dt);
-    margin = 1e-5 * (root(tp) + root(tq) + rho_a + q.scale * rho_b);
-    return displacement + margin < 0.5 * gap;   // false for NaN and infinities
-}
-
 class Table {
 public:
     Entry* find(const Key& key, std::uint32_t frame) {
@@ -165,7 +98,7 @@ public:
         return nullptr;
     }
     // Stores a no-contact result; the way taken is a dead one, else the one touched longest ago. True when a live entry was evicted.
-    bool store(const Key& key, const Outputs& outputs, std::uint32_t frame, double gap = 0.0) {
+    bool store(const Key& key, const Outputs& outputs, std::uint32_t frame) {
         Entry* set = entries_ + (hash(key) % sets) * ways;
         Entry* victim = nullptr;
         for (unsigned w = 0; w < ways && victim == nullptr; ++w) if (!live(set[w], frame)) victim = &set[w];
@@ -175,7 +108,7 @@ public:
             for (unsigned w = 1; w < ways; ++w) if (frame - set[w].frame > frame - victim->frame) victim = &set[w];
             evicted = true;
         }
-        victim->key = key; victim->outputs = outputs; victim->gap = gap; victim->frame = frame; victim->valid = true;
+        victim->key = key; victim->outputs = outputs; victim->frame = frame; victim->valid = true;
         const std::uint16_t index = static_cast<std::uint16_t>(victim - entries_ + 1);
         by_a_[hash_words(key, 0, 12) % (ways * sets)] = index;
         by_b_[hash_words(key, 13, 25) % (ways * sets)] = index;
@@ -190,21 +123,6 @@ public:
         if (e->key.words[12] != key.words[12] || e->key.words[25] != key.words[25]) return miss_scale;
         if (!same_words(e->key, key, 13, 25)) return miss_xform_b;
         return e->key.words[minimum_value_word] != key.words[minimum_value_word] ? miss_min_value : miss_expired;
-    }
-    // The entry a moved query may be measured against: the last one stored for the same models with the same transform of a
-    // (then b moved) or of b (then a moved), live, no leaf reached, a gap on record, and equal in scales, tolerance, flags,
-    // cap, pointer null-ness, headers and root boxes. The running minimum is free: it is read in a leaf only, and no
-    // triangle pair can intersect while the meshes are apart, whatever the engine reaches.
-    Entry* advance_candidate(const Key& key, std::uint32_t frame) {
-        for (int side = 0; side < 2; ++side) {
-            const unsigned begin = side == 0 ? 0 : 13, end = side == 0 ? 12 : 25;
-            const std::uint16_t index = (side == 0 ? by_a_ : by_b_)[hash_words(key, begin, end) % (ways * sets)];
-            if (index == 0) continue;
-            Entry& e = entries_[index - 1];
-            if (live(e, frame) && e.gap > 0.0 && e.outputs.triangles == 0 && same_words(e.key, key, begin, end) && e.key.words[12] == key.words[12] && e.key.words[25] == key.words[25]
-                && same_words(e.key, key, 26, minimum_value_word) && same_words(e.key, key, model_words_begin, key_words)) return &e;
-        }
-        return nullptr;
     }
     void clear() { for (Entry& e : entries_) e.valid = false; std::memset(by_a_, 0, sizeof by_a_); std::memset(by_b_, 0, sizeof by_b_); }
 private:

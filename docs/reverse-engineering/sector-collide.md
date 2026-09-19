@@ -1438,6 +1438,11 @@ costs +177 ns on a tiny query (was +123 ns; the classification), ≈ 0.02 ms per
 
 ### 14.7 `--collide-memo-advance`: conservative advancement for the moving case (2026-09-20)
 
+**Status: not flown, not merged, code dropped.** The option, its SAT gap reporting (the two globals written per prune), launcher
+switch, fixture scenarios and host tests exist only in commit `8a374dc5` (branch `worktree-agent-a9f423b89cda56df8`).
+The three facts settled from the bytes below stay as checks of `verify_collide_memo_site.py` (33 checks), since they
+hold for the memo as shipped: a contact needs a triangle intersection, the box fit is half the span, the replayed globals are private.
+
 Flights 163/164 **[m]**: verify 0 mismatches; standing still 65 fps, slightly moving 45 fps; while moving
 `miss_xform_b` ≈ 30,000 queries per 300 frames carrying 25–48 M node pairs, `miss_min_value = 0` and
 `min_relaxed_hits = 0` in every window — hypothesis 1 of §14.6 was wrong (the rule is harmless). What is left is a
@@ -1450,7 +1455,7 @@ answers saved 26,803 node pairs). Deep among the boxes (1,037 node pairs, no lea
 pruning gaps is below two units plus the margin. With 5·10⁴ prunes in the flight case it will be smaller still.
 Default off, and not worth a flight as it stands; §14.8 names what would be.
 
-**Settled from the bytes [s]** (each is a check of `verify_collide_memo_site.py`, now 32):
+**Settled from the bytes [s]** (each is a check of `verify_collide_memo_site.py`):
 - *What a contact is.* In every mode the leaf calls the triangle test `0x004e2ba0` and leaves at once when it returns 0
   (`0x004e2343 test eax,eax; je 0x004e2526`); flags, tolerance (`0x0060853c`) and the running minimum are read only
   after that, as filters that can only remove contacts. The triangle test `0x004e2a50..0x004e327f` names no global. So

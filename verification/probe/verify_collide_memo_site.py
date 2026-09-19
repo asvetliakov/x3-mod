@@ -48,13 +48,11 @@ CONSTANTS = {0x565600, 0x565604, 0x565608}
 ROOT_BLOCK = (0x596928, 0x596960)
 STATE_BLOCK = (0x60851c, 0x608550)
 INIT_PAIR = {0x608d98, 0x608d9c}
-INSTALL_RE = re.compile(r'\bcollide_memo requested=(?P<requested>[01]) patched=(?P<patched>[01]) verify=(?P<verify>[01]) advance=(?P<advance>[01]) reason=(?P<reason>\S+) site=0x(?P<site>[0-9a-f]{8}) '
+INSTALL_RE = re.compile(r'\bcollide_memo requested=(?P<requested>[01]) patched=(?P<patched>[01]) verify=(?P<verify>[01]) reason=(?P<reason>\S+) site=0x(?P<site>[0-9a-f]{8}) '
                         r'target=0x(?P<target>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) handler=0x(?P<handler>[0-9a-f]{8}) entries=(?P<entries>\d+)')
 WINDOW_KEYS = ('device', 'frame', 'frames', 'verify', 'queries', 'hits', 'misses', 'stored', 'contacts', 'ineligible', 'evictions', 'skipped_visits', 'skipped_triangles',
                'verified', 'verify_mismatches', 'foreign_thread', 'reentered', 'clears', 'stuck_busy', 'min_relaxed_hits', 'miss_none_found', 'miss_none_found_visits', 'miss_xform_a', 'miss_xform_a_visits', 'miss_xform_b', 'miss_xform_b_visits', 'miss_scale', 'miss_scale_visits', 'miss_mode', 'miss_mode_visits', 'miss_models', 'miss_models_visits', 'miss_min_value', 'miss_min_value_visits', 'miss_expired', 'miss_expired_visits')
-ADVANCE_KEYS = ('advance_hits', 'advance_skipped_visits', 'advance_refused_gap', 'advance_rearm', 'advance_verified', 'advance_mismatches')
-WINDOW_RE = re.compile(r'\bcollide_memo ' + ' '.join(rf'{k}=(?P<{k}>\d+)' for k in WINDOW_KEYS + ADVANCE_KEYS)
-                       + r' advance_gap_median_log2=(?P<advance_gap_median_log2>-?\d+) advance_displacement_median_log2=(?P<advance_displacement_median_log2>-?\d+)\s*$')
+WINDOW_RE = re.compile(r'\bcollide_memo ' + ' '.join(rf'{k}=(?P<{k}>\d+)' for k in WINDOW_KEYS) + r'\s*$')
 EXPECTED_CONSTANTS = {
     'memo_site_va': SITE, 'memo_target_va': TARGET, 'memo_return_va': RETURN, 'caller_va': CALLER[0], 'query_va': QUERY[0], 'descent_va': DESCENT[0], 'leaf_va': LEAF[0],
     'triangle_va': TRIANGLE[0], 'call_length': 5, 'memo_pre_length': len(PRE_WINDOW), 'memo_post_length': len(POST_WINDOW), 'caller_length': SITE - CALLER[0],
@@ -74,7 +72,7 @@ def parse_install_line(line):
     if not match:
         return None
     row = match.groupdict()
-    return {k: (v == '1' if k in ('requested', 'patched', 'verify', 'advance') else int(v, 16) if k in ('site', 'target', 'handler') else int(v) if k == 'entries' else v) for k, v in row.items()}
+    return {k: (v == '1' if k in ('requested', 'patched', 'verify') else int(v, 16) if k in ('site', 'target', 'handler') else int(v) if k == 'entries' else v) for k, v in row.items()}
 
 
 def parse_window_line(line):
@@ -172,7 +170,7 @@ def _outside_references(image, lo, hi):
 
 # Outside the collider the image touches, of everything a no-contact query writes: the contact counter (0x0047f1b0's result, and
 # four one-time initialisers that store 0 into it and into the node-pair counter). Nothing else: not the root block, not the
-# mode words, not the triangle counter. So the stored pose's values an advance answer leaves there cannot be observed.
+# mode words, not the triangle counter: whatever a memo answer leaves in those cannot be observed.
 REPLAYED_OUTSIDE = {0x608544: [0x4e0c01, 0x4e0c8c, 0x4e0cf6, 0x4e38bb], 0x60854c: [0x47f335, 0x4e0c07, 0x4e0c96, 0x4e0cfc, 0x4e38c5]}
 
 
@@ -245,6 +243,10 @@ def inspect(data, decoded, core_text, claims):
         # In every mode a contact needs the triangle test to report an intersection first (`test eax,eax; je` to the exit right after the
         # call), and that test names no global: no tolerance can make a contact out of two meshes that do not touch.
         'contact_needs_an_intersection': _intersection_gate(collider) and _globals_named([i for i in collider if TRIANGLE[0] <= i.va < TRIANGLE[1]]) == set(),
+        # The tree builder's box fit: half-extent = (max - min) * [0x00565508] with that constant exactly 0.5 (second fit 0x004e1fbb: fld max; fsub min;
+        # fmul st,st(1); fstp [edi+0x30]; the scale loaded at 0x004e1f37). The tight min/max box, no shrink: a node's box holds its triangles.
+        'box_fit_is_half_the_span': image.read(0x565508, 4) == bytes.fromhex('0000003f') and image.read(0x4e1f37, 6) == bytes.fromhex('d90508555600')
+                                    and image.read(0x4e1fbb, 13) == bytes.fromhex('d944240cd8642418d8c9d95f30'),
         'ftol_reads_the_sse2_flag_only': _globals_named(decoded[FTOL]) == {SSE2_FLAG_VA} and not any(i.mnemonic == 'call' for i in decoded[FTOL]),
         # The tenth word is an argument: `push edi` right after the two null tests, before the nine others.
         'tenth_word_is_pushed_edi': by_caller.get(0x47f1d7) is not None and by_caller[0x47f1d7].raw == b'\x57',
