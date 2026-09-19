@@ -27,7 +27,7 @@ APPLY_SKIP_REASONS = frozenset(('none', 'lane', 'replay', 'owner', 'depth', 'rec
                                 'sun', 'basis', 'rows', 'cascades', 'absent'))  # the cascade branch's own
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
          'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission',
-         'shadow_apply_cascades', 'original_lane_lightmap')
+         'shadow_apply_cascades', 'original_lane_lightmap', 'unregistered', 'unregistered_fault')
 # shadow_apply / shadow_apply_cascades run on the lane's A32B32G32R32F RT2 (116; the params lines say
 # depth_encoding=linear), the only encoding since 2026-09-18 (docs/architecture/shadow-receiver-depth.md);
 # the former G32R32F (115, device) cases and their -linear siblings are gone with the option.
@@ -228,7 +228,7 @@ def validate(text, trace, work, case):
     lane_off = case == 'xt_state_lane_off'
     for i, row in enumerate(rows):
         lane = not early and not lane_off and not (late and i == 3) and not (case == 'late_shader' and i >= 4)
-        available = lane and not (i == 2 and (late or case in ('untracked', 'cutout_pair', 'shadow_apply') or failed_coverage)) and case != 'original_share_refused'
+        available = lane and not (i == 2 and (late or case in ('untracked', 'cutout_pair', 'shadow_apply', 'unregistered_fault') or failed_coverage)) and case != 'original_share_refused'
         assert int(row['lane']) == lane and int(row['available']) == available
         assert int(row['history']) == (i not in ((0, 2, 3, 4) if failed_coverage else (0, 4)))
         assert int(row['drawn']) == (0 if lane_off else 3600)
@@ -314,6 +314,15 @@ def validate(text, trace, work, case):
         # refusal probe (the cutout pair with z write off) is the third. No
         # other case draws one.
         assert 'non_depth_writers' in row, ('build without the non-writer counter', row)
+        # Invalid-share stamp (run 174): only the unregistered cases draw an
+        # unroutable depth writer outside the registry (SM2 twice, SM3 once). All
+        # three frame-2 draws are stamped (the losing one stamps no pixel) and the frame
+        # stays available; with the stamp refused all three veto as before.
+        assert 'stamped' in row, ('build without the invalid-share stamp', row)
+        assert int(row['stamped']) == (3 if case == 'unregistered' and i == 2 else 0), (case, row)
+        assert int(row['stamp_refused']) == (3 if case == 'unregistered_fault' and i == 2 else 0), (case, row)
+        if case == 'unregistered' and i == 2:
+            assert int(row['untracked_writers']) == 0 and int(row['receiver_draws']) > 0 and row['failed'] == '0', row
         assert int(row['non_depth_writers']) == int((case in ('effects', 'cutout_pair_bias') or failed_coverage) and i == 2), (case, row)
         if case == 'xt_state' and int(rows[i]['lane']):
             assert int(row['receiver_draws']) >= 1 and int(row['untracked_writers']) == 0, (case, row)
@@ -340,7 +349,10 @@ def validate(text, trace, work, case):
         # actual depth writer the lane did not track.
         assert refused == {2} and int(refusals[2]['pair']) == int(refusals[2]['untracked']) > 0
         assert any(w['reason'] == 'pair' and w['gate'] == '3' and w['registered'] == '1' and w['z'] == '1' and w['zwrite'] == '1' and w['z_known'] == '1' and int(w['frame']) == 2 for w in writers), writers
-    elif case in ('xt_state', 'effects', 'cutout_pair_bias'):
+    elif case == 'unregistered_fault':
+        assert refused == {2} and int(refusals[2]['unregistered']) == int(refusals[2]['untracked']) == 3, refusals
+        assert any(w['reason'] == 'unregistered' and w['gate'] == '3' and w['z'] == '1' and w['zwrite'] == '1' and w['z_known'] == '1' and int(w['frame']) == 2 for w in writers), writers
+    elif case in ('xt_state', 'effects', 'cutout_pair_bias', 'unregistered'):
         # cutout_pair_bias (run 28 session B): the cutout pair in its exact
         # state under a nonzero mip bias is tracked by the tested-opaque arm,
         # so no frame has an untracked writer or a signature line.
@@ -372,6 +384,13 @@ def validate(text, trace, work, case):
     assert len(opaque) == (1 if case == 'cutout_pair_bias' else 0), opaque
     assert all((r['frame'], r['routed'], r['lane'], r['refused'], r['no_zwrite'], r['state'], r['untracked'])
                == ('2', '1', '1', '1', '1', '0', '0') for r in opaque), opaque
+    stamps = [fields(line) for line in text.splitlines() if line.startswith('SUN_UNREGISTERED ')]
+    assert len(stamps) == (1 if case.startswith('unregistered') else 0), stamps
+    for r in stamps:
+        fault = case == 'unregistered_fault'
+        assert r['frame'] == '2' and int(r['sign_pixels']) > 300 and int(r['fault']) == fault, r
+        assert int(r['stamped_pixels']) == (0 if fault else int(r['sign_pixels'])), r
+    assert ('what=sun_stamp' not in trace) and ('sun_shadow_lane_stamp_shader' not in trace)
     effects = [fields(line) for line in text.splitlines() if line.startswith('SUN_EFFECTS ')]
     assert len(effects) == (1 if case == 'effects' else 0), effects
     assert all((r['frame'], r['depth_write'], r['blend']) == ('2', '0', '1') for r in effects), effects

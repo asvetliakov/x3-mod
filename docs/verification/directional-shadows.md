@@ -3265,3 +3265,77 @@ updated), the device records deleted; `run_sun_share_live.py` drops `shadow_appl
   wide sampled-copy target; its depth reads compare `.rg` of each 16-byte texel. R32F lane-off case kept.
 - Not changed: `linear_material_fixture.cpp`'s gained-variant lane target stays `G32R32F`;
   `sun-share-live-receiver-depth.json` (the gated A/B record) is history.
+
+## Run 174 (Argon Prime): shadows off on 96 % of frames; invalid-share stamp (2026-09-19, worktree `agent-a505bb9b339475fd9`)
+
+Diagnosis from `/tmp/x3-bottleX3-run174/session-20260919-203646-212.log` (local, 800 MB, queried only):
+
+- `sun_shadow_apply_frame`: 18,585 x `applied=0 skip_reason=lane`, 726 x `applied=1 skip_reason=none`. No
+  other skip reason occurs. `sun_shadow_lane_frame`: `available=0` on exactly the 18,585 frames with
+  `untracked_writers>0` (`failed=1 owner=1`), `available=1` on the other 726.
+- `sun_shadow_lane_refusals`: every row is `unregistered=N`, all other buckets 0, `signatures=1 overflow=0`;
+  N = 1/2/3/4/5 on 14,055/3,307/871/337/15 frames (24,705 draws). The single `sun_shadow_lane_writer` line is
+  VS `ac2319bc3953efc6` / PS `03a16e5c63daa6e8`, `reason=unregistered gate=3 registered=1 z=1 zwrite=1
+  declaration=96b83ce555c1cf64 stride=40`. The earlier attribution is confirmed; the veto is
+  `SunShareFrame::draw` (an actual depth writer after the first receiver that the lane did not track).
+- The pair is the `adeffects` / `adeffects2s` family (`effect-shader-users.md`: advertising signs, 172 of 173
+  materials opaque), vs_2_0/ps_2_0 (VS 512 bytes), `hostable_with_ps_2_0_fragment` in the SM2 census. It is
+  `unregistered` because the profile table and the rewriter are SM3-only (`motion_output_profiles_inc.h`:
+  "every transformable SM3 pair"; `material_motion.cpp` checks `0xffff0300`); the VS has no row. Hosting it
+  would need a new SM2 rewriter class (vs_2_0 varying change, 64-slot ps_2_0 budget); an emissive sign
+  receives no sun, so a share producer for it has no value. It is legitimately unroutable today.
+- The census's two other opaque unregistered pairs of run 174 are not lane vetoes: `c78b4c68a87fce74`/null
+  (512 captured rows) and `803ebfd17f79e413`/`652a7c5d1e9909a0` (192) are the engine's `z_only` depth
+  prepass programs (`asteroid-fog-temporal.md`, `effect-shader-users.md`) and draw with `COLORWRITEENABLE 0`
+  (`mask=0` on all their `motion_route` rows), so `sun_color_writer` is false and they are never counted.
+  The refusal total 24,705 is fully accounted for by the one adeffects signature. The adeffects pair also
+  draws 64 of its 192 captured rows with `zwrite=0` (non-depth writers, never a veto).
+
+Fix: the veto becomes per draw for a program outside the registry. A scene draw refused at gate 3 as
+`unregistered` after the first receiver, which is an actual depth writer (`sun_z_state == 7`), is re-issued
+once from `after_draw` (`MotionOutput::sun_stamp_draw`) with the application's own VS, streams, constants
+and raster state, and only: a constant PS of the bound programs' shader-model family (ps_2_0 or ps_3_0,
+created on first use), RT2 bound with `COLORWRITEENABLE2 = GREEN`, RT0/RT1 masked off, z write off,
+`ZFUNC EQUAL`, alpha test / blend / fog / sRGB write off. EQUAL against the depth the same program just
+wrote selects exactly the pixels the draw won, so RT2`.g` becomes -1 there: the explicit invalid share of
+a plain depth writer (architecture note, "SunShareFrame"), which the apply pass excludes. The sign renders
+unshadowed and writes no motion; the rest of the frame keeps its shadows. RT2`.r` keeps the earlier depth
+there, as for every unrouted draw before. The draw then counts as `depth_updated` (neither receiver nor
+untracked). Fail closed: stencil-enabled, user-memory, unknown-version or SM3-with-null-stage draws, a
+failed create/set/draw, and `X3M_FIXTURE_SUN_LANE_FAULT=stamp` keep the old veto (`stamp_refused`); every
+attempted write is restored in reverse and a failed restoration quarantines like `undo()`. `pair`, gate-4
+and xt-repair refusals keep the frame veto unchanged (reviewed fixture expectations `untracked`,
+`shadow_apply`, `cutout_pair`). `sun_shadow_lane_frame` gains `stamped=%u stamp_refused=%u`. Cost: one
+flag test per unrouted colour writer; about 25 device calls per stamped draw (1-5 per frame in run 174).
+Known limitation: a stamp inside an application occlusion query adds its passing samples to that query.
+
+Evidence (bottle X3, fixture and seam rebuilt in the worktree, `run_sun_share_live.py`):
+
+- Final binaries: seam DLL sha256 `7f70e8e8249e3f8d...`, fixture `647eee5752529340...`. All 24 cases pass
+  (`passed=true`, 38.8 s of case time; result JSON kept local). The 22 earlier cases are unchanged and
+  report `stamped=0 stamp_refused=0` on every frame, including `untracked`, `shadow_apply` and
+  `cutout_pair`, whose frame-2 veto (`pair`, `pair`, `state`) still holds.
+- `unregistered` (new): on frame 2, after the receiver, an authored vs_2_0/ps_2_0 pair outside the
+  registry draws triangle B nearer than the receiver and the full-screen triangle behind it, then an
+  authored vs_3_0/ps_3_0 pair draws B moved right, all as depth writers under alpha test on and RT0 mask 7.
+  Frame 2: `available=1 receiver_draws=1 untracked_writers=0 stamped=3 stamp_refused=0`, no refusal or
+  writer line. `SUN_UNREGISTERED sign_pixels=406 stamped_pixels=406`: every pixel showing either sign
+  colour has `.g = -1` with `.r/.b/.a` byte-identical, and every other pixel (including all pixels of the
+  losing draw) keeps all lane bytes. The per-draw device snapshot compare passes for all three draws
+  (no `RESTORE_DIFF`, no `what=sun_stamp`); the Reset before frame 4 and frames 4-5 pass with the two
+  lazily created stamp programs alive; TAA history as in `positive` (4 histories).
+- `unregistered_fault` (new, `X3M_FIXTURE_SUN_LANE_FAULT=stamp` armed around the three draws): frame 2
+  `available=0 untracked_writers=3 stamped=0 stamp_refused=3`, bucket `unregistered=3`, writer
+  `reason=unregistered gate=3 z=1 zwrite=1`; `stamped_pixels=0` and the lane bytes stay stale: the old veto.
+- One earlier run on the same binaries did not pass: `cutout_pair_bias` hit the runner's 180 s timeout
+  during device attach (session log ends at `linear_cutout_device`, before `sun_shadow_lane_device` and
+  before any draw). It started immediately after another session's Wine shader generator released the
+  lock, sharing its wineserver; the identical binaries then passed 24/24 with that case at 1.8 s. Not
+  reproduced and not explained; recorded as an attach-time stall outside the draw-time stamp.
+- Host: `test_sun_sh*.py` 36 OK (the synthetic witness gained the two cases and seven rejections),
+  `test_linear_material_live.py` 17 OK and `test_motion_wrap_states.py` 4 OK (snippet mocks mirror the new
+  members), `test_motion_hdr_scene` OK after the stamp moved into `src/proxy/sun_share_lane_inc.h`.
+  `test_motion_output_runner` has 2 failures that depend only on `run_motion_output.py` and the test file,
+  both untouched here (fade-route-overlay-lightmap cases, legacy HDR exposure map).
+- Not verified: native Windows (source uses documented D3D9 only; cross-compiles), and the stamp in a
+  flight session. No shader generator table changed, so no `--check` run was needed.

@@ -250,7 +250,7 @@ class SunShareLane(unittest.TestCase):
             for i in range(6):
                 lane=not early and not lane_off and not (late and i==3) and not (case=='late_shader' and i>=4)
                 refused_share=case=='original_share_refused'
-                available=lane and not (i==2 and (late or case in ('untracked','cutout_pair','shadow_apply') or failed_coverage)) and not refused_share
+                available=lane and not (i==2 and (late or case in ('untracked','cutout_pair','shadow_apply','unregistered_fault') or failed_coverage)) and not refused_share
                 non_writers=int((case in ('effects','cutout_pair_bias') or failed_coverage) and i==2)
                 original=case in ('original_lane','shadow_apply')
                 expected_history=int(i not in ((0,2,3,4) if failed_coverage else (0,4)))
@@ -262,8 +262,9 @@ class SunShareLane(unittest.TestCase):
                 if composition:
                     masks.append(f'SUN_M frame={i} draws={draws} valid={int(not bad)} required={required} excluded={excluded} eligible={0 if bad else 3600-excluded} linear={1 if bad and case=="composition_failed" else 0 if bad else draws} exchanged={2 if bad and case=="composition_failed" else 0 if bad else draws} incomplete={int(bad and case=="composition_failed")} stopped={int(bad)} interleaved={int(i==3)}')
                 rows.append(f'SUN_LIVE frame={i} step={i} lane={int(lane)} available={int(available)} drawn={0 if lane_off else 3600} positive={3600 if lane and i!=1 else 0} zero={3600 if lane and i==1 else 0} fault={int(late and i==2)} history={int(i not in ((0,2,3,4) if failed_coverage else (0,4)))}')
-                publications.append(f'sun_shadow_lane_frame frame={i} available={int(available)} owner={int(not bad)} exclusion_required={required} exclusion_valid={int(not bad)} failed={int((late and i==2) or refused_share)} receiver_draws={int(lane)} untracked_writers={int(case in ("untracked","cutout_pair","shadow_apply") and i==2)} non_depth_writers={non_writers}'
-                                    f' shadows={int(case=="shadow_apply")} cutout_opaque_routed={int(case=="original_lane" and i==2)} cutout_opaque_lane={int(case=="original_lane" and i==2)} cutout_opaque_refused=0 original_variants={2 if case=="original_lane" else int(original and not refused_share)} original_refused={int(refused_share)} original_refused_draws={int(refused_share)}')
+                publications.append(f'sun_shadow_lane_frame frame={i} available={int(available)} owner={int(not bad)} exclusion_required={required} exclusion_valid={int(not bad)} failed={int((late and i==2) or refused_share)} receiver_draws={int(lane)} untracked_writers={3 if case=="unregistered_fault" and i==2 else int(case in ("untracked","cutout_pair","shadow_apply") and i==2)} non_depth_writers={non_writers}'
+                                    f' shadows={int(case=="shadow_apply")} cutout_opaque_routed={int(case=="original_lane" and i==2)} cutout_opaque_lane={int(case=="original_lane" and i==2)} cutout_opaque_refused=0 original_variants={2 if case=="original_lane" else int(original and not refused_share)} original_refused={int(refused_share)} original_refused_draws={int(refused_share)}'
+                                    f' stamped={3 if case=="unregistered" and i==2 else 0} stamp_refused={3 if case=="unregistered_fault" and i==2 else 0}')
                 if refused_share:
                     publications.append(f'original_fill_frame frame={i} fill=0.05 admitted=1')
                     rows.append(f'SUN_SHARE_REFUSED frame={i} refused_programs=1 refused_draws=1 fill_draws=1 failed=0')
@@ -293,6 +294,12 @@ class SunShareLane(unittest.TestCase):
                 publications.append('sun_shadow_apply_device attached=1 reason=ok result=00000000 slots=220')
             if case in ('xt_state','xt_state_lane_off'): rows.extend(f'SUN_XT_STATE frame={i} test=1 ref=1 func=7 mask=7 lane={int(not lane_off)} routed={int(not lane_off)} gate4={int(lane_off)}' for i in range(6))
             if case=='effects': rows.append('SUN_EFFECTS frame=2 depth_write=0 blend=1')
+            if case.startswith('unregistered'):
+                fault=case=='unregistered_fault'
+                rows.append(f'SUN_UNREGISTERED frame=2 sign_pixels=406 stamped_pixels={0 if fault else 406} fault={int(fault)}')
+                if fault:
+                    publications.append('sun_shadow_lane_refusals frame=2 untracked=3 unknown=0 feature=0 scene=0 unregistered=3 pair=0 no_zwrite=0 blended=0 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=2 overflow=0')
+                    publications.append('sun_shadow_lane_writer frame=2 index=1 vs=0000000000000002 ps=0000000000000003 reason=unregistered gate=3 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24 test=-1 mask=-1 srgb=-1 cutout_pair=0 arm=1')
             if case=='cutout_pair_bias':
                 rows.append('SUN_CUTOUT_BIAS frame=2 ps=63f96eba9eea7880 test=1 ref=1 mask=7 bias=-0.5 routed=1 gate4=0 untracked=0 stage_bias=00000000')
                 rows.append('SUN_CUTOUT_OPAQUE frame=2 routed=1 lane=1 refused=1 no_zwrite=1 state=0 untracked=0')
@@ -310,10 +317,23 @@ class SunShareLane(unittest.TestCase):
             return text,'\n'.join(qualifications+[depth]*(1 if case=='late_shader' else 2)+publications+readbacks+frames)
         with tempfile.TemporaryDirectory() as folder:
             work=Path(folder);(work/'x3-modern-captures').mkdir()
-            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair','cutout_pair_bias','original_lane','shadow_apply','original_share_refused'):
+            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair','cutout_pair_bias','original_lane','shadow_apply','original_share_refused','unregistered','unregistered_fault'):
                 text,trace=witness(work,case)
                 report=validate(text,trace,work,case)
                 json.dumps(report,allow_nan=False)
+                if case=='unregistered':
+                    # The stamp witness is exact: an unstamped draw, a pixel the stamp missed,
+                    # a vetoed frame or a stamp restoration failure fails.
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('stamped=3','stamped=2'),work,case)
+                    with self.assertRaises(AssertionError): validate(text.replace('stamped_pixels=406','stamped_pixels=405'),trace,work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('frame=2 available=1','frame=2 available=0'),work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace+'\nmotion_output_restore_failed frame=2 index=3 result=80004005 what=sun_stamp',work,case)
+                if case=='unregistered_fault':
+                    # The refused stamp keeps the veto: an available frame or a stamped pixel fails.
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('frame=2 available=0','frame=2 available=1'),work,case)
+                    with self.assertRaises(AssertionError): validate(text.replace('stamped_pixels=0','stamped_pixels=1'),trace,work,case)
+                if case=='positive':
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('stamped=0','stamped=1',1),work,case)
                 if case=='original_lane':
                     # The cutout admission witness is required and exact; a converted
                     # material line anywhere in the trace fails the original case.
