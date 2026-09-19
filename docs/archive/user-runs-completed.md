@@ -1687,3 +1687,45 @@ FPS overlay reading (ms and draws) at the ~900-draw view (now ≈ 480 draws with
 then approach a station from 10 km to 1 km once more watching for pop-in.
 
 Report frame-rate feel per session and the time into the session of each F8.
+
+## 45. SSE2 collision box test A/B, adaptive TAA history weight — completed as run150/151/152 (A), run153/154 (B)
+
+Installed: run45 candidate (hash in [status](../status.md)). New since run 44: `--collide-sat-sse2` (the engine's
+x87 box-overlap test of its mesh collider replaced by an SSE2 one; fixture 6–9× per call; never prunes a pair the
+engine keeps), a triangle-test counter in `--collide-narrow-census`, and three default-off TAA options:
+`--taa-thin-clip`, `--taa-adaptive-weight`, `--taa-alpha-history`. Every command is complete; run from the
+repository root.
+
+**Session A** (collision A/B; corvette save, the 24 fps area; three launches, ≈ 2 minutes each):
+1. Census only (reference):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --loop-phases --collide-narrow-census --frame-end-stride 1 --capture-start 999999 --capture-frames 2
+```
+2. Census + SSE2 box test:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --loop-phases --collide-narrow-census --frame-end-stride 1 --capture-start 999999 --capture-frames 2 --collide-sat-sse2
+```
+3. SSE2 box test alone (the FPS that counts; the census costs time):
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --collide-sat-sse2 --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+```
+In each: fly to the same spot, wait for the FPS plateau, hold 30 s, **F8 once**, note the FPS overlay reading.
+In launch 3 afterwards fly normally for 2–3 minutes near the station: ram an asteroid or a station part on
+purpose (it must still stop or damage you), dock once, and report anything odd about collisions.
+
+**Session B** (adaptive TAA weight; corvette save at the solar plant, lattice at the angle that crawls; two
+launches, each F8 writes about 1.5 GB):
+1. Baseline:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --capture-frames 32 --frame-end-stride 1
+```
+2. Adaptive history weight + accumulated alpha for the glow:
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --capture-frames 32 --frame-end-stride 1 --taa-thin-clip 0.75 --taa-adaptive-weight 0.97 --taa-alpha-history
+```
+In each: first hold the ship as still as you can (throttle zero, no rotation) for 10 s and judge the lattice,
+**F8**; then let it drift/rotate slowly as in earlier runs and judge again, **F8**; then load the fighter save,
+distant station view, hold still 10 s, **F8**. Report for each of the three situations: crawl/shimmer gone,
+less or same; any ghost trails behind moving ships; blinking lights looking sluggish; overall sharpness.
+
+Report frame-rate feel per session and the time into the session of each F8.
