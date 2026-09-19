@@ -1675,6 +1675,7 @@ private:
     bool hull_lightmap_enabled_ = true; // Ctrl+Shift+F4, default on; gates the light-map variant selection only
     bool lightmap_far_fade_ = false;            // X3M_LIGHT_MAP_FAR_FADE accepted: dynamic gain variants, c217.w per draw
     float lightmap_fade_p0_ = 0.f, lightmap_fade_inv_ = 0.f, lightmap_fade_floor_ = 1.f;
+    float lightmap_fade_m00_ = 0.f;             // the far fade's own P[0] latch (0 = none); camera_scene_ stays the TAA/candidate consumers' alone
     float lightmap_fade_gain_ = 0.f;            // this draw's uploaded gain (0 when the pair has no gain variant)
     float lightmap_fade_min_ = 0.f;             // frame line: least gain drawn
     std::uint32_t lightmap_fade_draws_ = 0;     // frame line: gain draws below the configured gain

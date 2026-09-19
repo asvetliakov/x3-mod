@@ -2212,7 +2212,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_hull_emission_gain(hull_emission_gain);
     hooked.motion_output.configure_original_fill(original_fill);
     hooked.motion_output.configure_hull_lightmap_gain(hull_lightmap_gain);
-    if(lightmap_far_fade_requested)hooked.motion_output.configure_lightmap_far_fade(lightmap_far_fade[0],lightmap_far_fade[1],lightmap_far_fade[2]);
+    if(lightmap_far_fade_requested){
+        const bool accepted=hooked.motion_output.configure_lightmap_far_fade(lightmap_far_fade[0],lightmap_far_fade[1],lightmap_far_fade[2]);
+        log("light_map_far_fade_configured accepted=%u",unsigned(accepted));
+    }
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
@@ -2863,10 +2866,11 @@ void initialize_log(HMODULE module) {
              ++count;if(!*end)break;
              if(*end!=L','||count==3){valid=false;break;}
              at=end+1;}
-         valid=valid&&count>=2&&parsed[0]>0.f&&parsed[1]>parsed[0]&&parsed[2]>=0.f&&parsed[2]<=hull_lightmap_gain;
+         valid=valid&&count>=2&&parsed[0]>0.f&&parsed[1]>parsed[0]&&parsed[1]<=1e6f&&parsed[2]>=0.f&&parsed[2]<=hull_lightmap_gain;
          const bool gained=hull_lightmap_gain!=1.f;
          lightmap_far_fade_requested=valid&&gained;
-         if(lightmap_far_fade_requested){lightmap_far_fade[0]=parsed[0];lightmap_far_fade[1]=parsed[1];lightmap_far_fade[2]=parsed[2];}
+         if(lightmap_far_fade_requested){lightmap_far_fade[0]=parsed[0];lightmap_far_fade[1]=parsed[1];lightmap_far_fade[2]=parsed[2];
+             camera_state::request_consumer();} // the footprint's P[0]: armed only for an accepted value
          log("light_map_far_fade_mode requested=1 enabled=%u valid=%u p0=%g p1=%g floor=%g gain=%g%s",unsigned(lightmap_far_fade_requested),unsigned(valid),
              double(parsed[0]),double(parsed[1]),double(parsed[2]),double(hull_lightmap_gain),valid&&!gained?" refused=no_gain":"");}}
     // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8; unset, 0 or invalid = off):

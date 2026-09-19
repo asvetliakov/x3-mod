@@ -816,8 +816,35 @@ LIGHTMAP_FADE_CASES = {'seam-lightmap-far-fade-off': None, 'seam-lightmap-far-fa
 CASES += [case(name, 'lightmapfade', 'ownership' if 'ownership' in name else 'plain', camera=True, hdr=True,
                hdr_env=dict(LIGHTMAP_FADE_ENV, **({} if floor is None else {'X3M_LIGHT_MAP_FAR_FADE': '%g,%g,%g' % (*LIGHTMAP_FADE_P, floor)})))
           for name, floor in LIGHTMAP_FADE_CASES.items()]
+# The overlay script (the hull cutout pair and its fade-band/overlay arm, original shading, TAA) under the
+# light-map gain, without and with the far fade at a near footprint: the arm never binds a gained variant and
+# the routed hull parent gets the full gain, so every FADE_ROUTE line of the twins is identical.
+LIGHTMAP_FADE_OVERLAY_CASES = {'seam-taa-fade-route-overlay-lightmap': {}, 'seam-taa-fade-route-overlay-lightmap-far-fade': {'X3M_LIGHT_MAP_FAR_FADE': '1.25,3.75,1'}}
+CASES += [case(name, 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT='overlay', X3M_HULL_LIGHTMAP_GAIN=repr(LIGHTMAP_FADE_GAIN), **FADE_ROUTE_ORIGINAL_ENV, **extra))
+          for name, extra in LIGHTMAP_FADE_OVERLAY_CASES.items()]
 LIGHTMAP_FADE_STEPS = (('near', 1, True), ('far', 128, True), ('mid', 64, True), ('near_off', 1, False), ('far_off', 128, False),
                        ('mid_on', 64, True), ('mid_reset', 64, True), ('near_reset', 1, True))
+
+
+def write_lightmap_fade_record(result):
+    """The tracked compact record of a selected light-map far fade run (docs/verification/motion-output.md);
+    capture logs stay local beside it (motion-output-<case>-capture.log) and in each case's build directory."""
+    names = [n for n in list(LIGHTMAP_FADE_CASES) + list(LIGHTMAP_FADE_OVERLAY_CASES) + ['seam-hdr-on'] if n in result['cases']]
+    if not any(n in result['cases'] for n in LIGHTMAP_FADE_CASES):
+        return
+    cases = {}
+    for n in names:
+        c = result['cases'][n]
+        row = dict(exit=c.get('exit'), checks=c.get('checks'), dll_sha256=c.get('dll_sha256'), exe_sha256=c.get('exe_sha256'),
+                   trace_sha256=c.get('trace_sha256'), directory=c.get('directory'), capture_log=f'motion-output-{n}-capture.log (untracked)')
+        if 'steps' in c:
+            row.update(floor=c['floor'], near_matches_off=c.get('near_matches_off'), steps=c['steps'])
+        for key in ('lightmap', 'matches_constant_gain_twin'):
+            if key in c: row[key] = c[key]
+        cases[n] = row
+    (RESULTS / 'lightmap-far-fade-seam.json').write_text(json.dumps(dict(
+        bottle=result['bottle'], binaries=result.get('binaries'), selected=sorted(result['selected_cases']), cases=cases), indent=1) + '\n')
 
 
 def validate_lightmap_fade(name, floor, text, trace):
@@ -854,6 +881,7 @@ def validate_lightmap_fade(name, floor, text, trace):
     else:
         assert (hashes['far'] == hashes['near_off']) == (floor == 1.0), (name, 'G = 1 is the base image bit for bit', hashes)
         assert len({hashes['near'], hashes['mid'], hashes['far']}) == 3, (name, hashes)
+        assert 'light_map_far_fade_configured accepted=1' in trace, name
         mode = [fields(l) for l in trace.splitlines() if l.startswith('light_map_far_fade_mode ')]
         assert len(mode) == 1 and mode[0]['enabled'] == '1' and float(mode[0]['floor']) == floor, (name, mode)
         frames = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_far_fade_frame ')]
@@ -5259,6 +5287,21 @@ def main(argv=None):
                 continue
             if mode == 'faderoute':
                 case = validate_fade_route(name, hdr_env['X3M_FIXTURE_FADE_SCRIPT'], lazy, text, trace, directory)
+                if name in LIGHTMAP_FADE_OVERLAY_CASES:
+                    case['script_lines'] = [l for l in text.splitlines() if l.startswith(('FADE_ROUTE ', 'FADE_ROUTE_SAMPLE ', 'COLOR '))]
+                    gained = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_frame ')]
+                    faded = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_far_fade_frame ')]
+                    assert gained and all(int(g['admitted']) >= 1 for g in gained), (name, 'the routed hull parent binds the gained variant')
+                    case['lightmap'] = dict(gained_frames=len(gained), far_fade_frames=len(faded))
+                    if 'X3M_LIGHT_MAP_FAR_FADE' in hdr_env:
+                        assert 'light_map_far_fade_configured accepted=1' in trace and len(faded) == len(gained), (name, len(faded), len(gained))
+                        assert all(f['faded'] == '0' and f['camera'] == '1' for f in faded), (name, 'near footprint: the full gain')
+                        twin = result['cases'].get('seam-taa-fade-route-overlay-lightmap')
+                        if twin:
+                            assert twin['script_lines'] == case['script_lines'] and case['script_lines'], (name, 'option on at a near footprint differs from the constant gain')
+                            case['matches_constant_gain_twin'] = True
+                    else:
+                        assert not faded, name
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
@@ -5341,6 +5384,7 @@ def main(argv=None):
             save()
             report_path.write_text(''.join(report))
             compare_mask_twins(result, save)
+            write_lightmap_fade_record(result)
             print('partial run: no cross-case comparisons, not a pass')
             return
         # Resolve cost: the boundary with the switch on minus off, per size.

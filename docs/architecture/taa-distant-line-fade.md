@@ -337,8 +337,9 @@ its neighbourhood.
 footprint is section 4's measure, `2 z / (p00 * width)` world units per pixel, with `z` the object origin's view depth (the
 clip `w` of the draw's own WVP rows, `rows[15]`), `p00` from the latched scene camera and `width` the route's target width.
 `G` defaults to 1 (the game's own brightness) and may be anything in `[0, gain]`. No camera, or an origin at or behind the
-camera plane (a large object around the viewer), keeps the configured gain. The option is its own camera-latch consumer
-(`camera_state::initialize`, `MotionOutput::read_camera`), so it does not depend on `--taa`.
+camera plane (a large object around the viewer), keeps the configured gain. The option arms the camera latch itself once
+the DLL parser accepts the value (`camera_state::request_consumer`) and, without TAA or the candidates, keeps a private
+`P[0]`: `camera_scene_` and the fade-band arm's admission are unchanged. It does not depend on `--taa`.
 
 **Mechanism.** The gain was a shader-local `def c223` in the gained variants, which no upload can override. With the
 option on, both gained variants (plain and sun-share; `linear_material.cpp`, `lightmap_dynamic`) are built without the DEF

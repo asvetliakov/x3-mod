@@ -280,6 +280,25 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertIn('matched ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};', draw)
         self.assertEqual(draw.count('SetPixelShaderConstantF'), 1)
         self.assertIn('lightmap_far_fade_ && (shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap)', draw)
+        # Every program that reads c217.w gets it: the two gained selections of the one bind site are covered by the
+        # upload's gate (plain: hull_lightmap_pair; share, the lane's cutout pairs included: ps_sun_original_lightmap),
+        # and the fade-band / overlay arm never binds a gained variant.
+        bind = extract_function(motion, 'HRESULT MotionOutput::bind_variant_pair(')
+        self.assertEqual(bind.count('ps = shadow_.ps_hull_lightmap_variant;'), 1)
+        self.assertIn('if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_', bind)
+        self.assertIn('&& !route.fade_arm && shadow_.ps_hull_lightmap_variant) {', bind)
+        self.assertIn('} else if(sun_lane_active_&&route.depth&&!route.fade_arm){', bind)
+        self.assertEqual(bind.count('gained_original?shadow_.ps_sun_original_lightmap:'), 1)
+        self.assertEqual(motion.count('bind_variant_pair(route, material)'), 1)
+        # The latch is armed only for a value the DLL parser accepted, and never feeds camera_scene_ on its own.
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('camera_state::request_consumer();} // the footprint', capture)
+        self.assertIn('parsed[1]<=1e6f', capture)
+        self.assertNotIn('X3M_LIGHT_MAP_FAR_FADE', (ROOT / 'src/proxy/camera_state.cpp').read_text())
+        read = extract_function(motion, 'void MotionOutput::read_camera(bool scene) noexcept')
+        self.assertLess(read.index('if (!(taa_enabled_ || candidates_requested_)) {'), read.index('camera_scene_ = sample.state;'))
+        configure = extract_function(motion, 'bool MotionOutput::configure_lightmap_far_fade(')
+        self.assertIn('if (device_) return lightmap_far_fade_;', configure)
 
     def test_default_off_requires_hdr_excludes_linear_materials_and_composes_with_the_fill(self):
         with tempfile.TemporaryDirectory() as directory:

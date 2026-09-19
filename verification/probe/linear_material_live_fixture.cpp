@@ -223,7 +223,7 @@ struct Pass {IDirect3DSurface9 initial,*current=&initial;unsigned exchange_calls
  HRESULT exchange_target(IDirect3DSurface9*&candidate){const auto i=exchange_calls++;const HRESULT hr=i<exchange_results.size()?exchange_results[i]:S_OK;if(SUCCEEDED(hr))std::swap(candidate,current);return hr;}
  bool active=true;unsigned references(){return 0;} bool tonemap_active()const{return active;}void shutdown(){}void after_reset(HRESULT){}void before_reset(){}void bind(void*,void*){}void detach(){}};
 struct History{renderer::BoundaryState boundary=renderer::BoundaryState::Scene;renderer::BoundaryState state()const noexcept{return boundary;}void invalidate(){}};
-namespace camera_state {void reset(){}}
+namespace camera_state {void reset(){} bool request_consumer(){return true;}}
 // Step C admission double: synthetic screen identities (vs 90/91, ps 95/96)
 // stand in for the nine SM1 pairs; the real table is a header constant checked
 // by its own test, never re-encoded here.

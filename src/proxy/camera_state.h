@@ -22,6 +22,9 @@ struct Sample {
 // X3M_MOTION_OUTPUT=1 and X3M_TAA=1 only; the executable identity is checked
 // once (shared cache with object_trace). Idempotent.
 bool initialize();
+// A consumer whose option the DLL's own parser accepted after the loader's
+// initialize() (the light-map far fade): arms the same read-only latch.
+bool request_consumer();
 bool available();
 const char* status();
 // One read of both buffers: the two pointer slots are validated at initialize

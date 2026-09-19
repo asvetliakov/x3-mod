@@ -2217,8 +2217,9 @@ int MotionOutput::emission_source_gain_toggle() noexcept {
 // bind_variant_pair keeps the fill/motion variant (light map). enabled= is the
 // state of the family the key drove; both states are logged either way.
 bool MotionOutput::configure_lightmap_far_fade(float p0, float p1, float floor) noexcept {
+    if (device_) return lightmap_far_fade_; // Creation-time shader variant: immutable after attach.
     lightmap_far_fade_ = hull_lightmap_gain_requested_ && std::isfinite(p0) && std::isfinite(p1) && std::isfinite(floor)
-        && p0 > 0.f && p1 > p0 && floor >= 0.f && floor <= hull_lightmap_gain_;
+        && p0 > 0.f && p1 > p0 && p1 <= 1e6f && floor >= 0.f && floor <= hull_lightmap_gain_;
     lightmap_fade_p0_ = lightmap_far_fade_ ? p0 : 0.f;
     lightmap_fade_inv_ = lightmap_far_fade_ ? 1.f / (p1 - p0) : 0.f;
     lightmap_fade_floor_ = lightmap_far_fade_ ? floor : 1.f;
@@ -3690,7 +3691,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
     sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
     displacements_.clear();
-    camera_scene_ = camera_background_ = renderer::CameraState{};
+    camera_scene_ = camera_background_ = renderer::CameraState{}; lightmap_fade_m00_ = 0.f;
     camera_projection_address_ = camera_view_address_ = 0;
     if (!enabled_) return;
     selector_ = renderer::SceneBoundarySelector{signatures()};
@@ -5230,7 +5231,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // variants' MUL operand; every other program ignores the lane). Zero, as
     // before, with the option off or for a pair without a gain variant.
     lightmap_fade_gain_ = lightmap_far_fade_ && (shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap)
-        ? fade_route::lightmap_far_gain(rows[15], camera_scene_.valid, camera_scene_.m00, float(target_width_),
+        ? fade_route::lightmap_far_gain(rows[15], lightmap_fade_m00_ > 0.f, lightmap_fade_m00_, float(target_width_),
                                         hull_lightmap_gain_, lightmap_fade_floor_, lightmap_fade_p0_, lightmap_fade_inv_)
         : 0.f;
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
@@ -6211,12 +6212,19 @@ void MotionOutput::read_camera(bool scene) noexcept {
     // The resolve's consumer, or the caster-candidate counter (its slice-0 test
     // and the depth replay's cascade-0 projection need the scene latch, W1),
     // or the light-map far fade (the footprint's P[0]).
-    if (!(taa_enabled_ || candidates_requested_ || lightmap_far_fade_) || !camera_state::available()) return;
+    if (!camera_state::available()) return;
+    if (!(taa_enabled_ || candidates_requested_)) {
+        // The far fade alone: its private P[0], so camera_scene_ (the fade-band
+        // arm's origin rule, the resolve, the candidates) is exactly as without the option.
+        if (lightmap_far_fade_ && scene) { camera_state::Sample sample{}; lightmap_fade_m00_ = camera_state::read(&sample) ? sample.state.m00 : 0.f; }
+        return;
+    }
     camera_state::Sample sample{};
     const bool valid = camera_state::read(&sample);
     ++counters_.camera_reads;
     if (scene) {
         camera_scene_ = sample.state;
+        lightmap_fade_m00_ = valid ? sample.state.m00 : 0.f;
         counters_.camera_scene_valid = valid;
         counters_.camera_read_failure = sample.read_failure; counters_.camera_failure = unsigned(sample.failure);
         camera_projection_address_ = sample.projection; camera_view_address_ = sample.view;
@@ -6545,7 +6553,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         if (lightmap_far_fade_)
             log("hull_lightmap_far_fade_frame device=%llu frame=%llu admitted=%u faded=%u min_gain=%g floor=%g camera=%u",
                 id_, frame_, hull_lightmap_draws_, lightmap_fade_draws_, double(lightmap_fade_draws_ ? lightmap_fade_min_ : hull_lightmap_gain_),
-                double(lightmap_fade_floor_), unsigned(camera_scene_.valid));
+                double(lightmap_fade_floor_), unsigned(lightmap_fade_m00_ > 0.f));
         hull_lightmap_draws_ = 0; lightmap_fade_draws_ = 0;
     }
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {

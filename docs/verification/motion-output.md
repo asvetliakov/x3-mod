@@ -2027,7 +2027,7 @@ cannot distinguish.
 
 ### Light-map far fade, `--light-map-far-fade P0,P1[,G]` (2026-09-19): implemented, unflown, default off
 
-Design and the law: `docs/architecture/taa-distant-line-fade.md` section 11. Seam DLL `ebb7018c5ed6...`, bottle X3
+Design and the law: `docs/architecture/taa-distant-line-fade.md` section 11. Tracked compact record of the rerun after review (case, exit, checks, uploaded gains, FP16 hashes, DLL/EXE/trace sha): `verification/results/bottle-X3/lightmap-far-fade-seam.json`, seam DLL `9b9f052f5e3d...`; capture logs local and untracked beside it (`motion-output-<case>-capture.log`) and in each case's `directory`. Bottle X3
 (arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), worktree build, nothing installed.
 
 - **Seam cases** (`run_motion_output.py`, mode `lightmapfade`, `motion_output_lightmap_fade_inc.h`): hull pair
@@ -2052,5 +2052,15 @@ Design and the law: `docs/architecture/taa-distant-line-fade.md` section 11. Sea
   above 8.4e-5 gain per world unit, NaN / behind-camera / no camera keep the gain.
 - **Performance pass**: the gain rides the existing c216-c217 upload (still one `SetPixelShaderConstantF` in
   `evaluate_draw`, asserted), no `Get*`, no allocation; one division per draw of a pair that has a gain variant.
+- **Review fixes (rerun, same numbers)**: the latch is armed by `camera_state::request_consumer()` only after the DLL parser
+  accepted the value, and without TAA/candidates the option reads a private `P[0]` (`lightmap_fade_m00_`), so
+  `camera_scene_` and with it the fade-band arm's origin rule are exactly as without the option; `P1 <= 1e6` in the DLL
+  too; creation-time `device_` guard; `light_map_far_fade_configured accepted=` logs the configure result; launcher help
+  corrected. Coverage with the option on for the hull cutout pair and its fade-band/overlay arm:
+  `seam-taa-fade-route-overlay-lightmap` (gain 4) and `...-lightmap-far-fade` (gain 4, fade on, near footprint), 5101
+  checks each, 12 gained frames, 12 far-fade frame lines with faded = 0, every `FADE_ROUTE` line identical between the
+  twins; plus host assertions that the single bind site's two gained selections are covered by the upload gate and that
+  the arm never binds a gained variant. A FAR cutout draw on the sun lane is covered structurally only (the gained
+  share variants are among the 600 byte-compared dynamic programs).
 - **Not done**: no flight; no offline estimate on the run168 dumps; native Windows is source-compatible (documented D3D9
   constant upload only), not executed.

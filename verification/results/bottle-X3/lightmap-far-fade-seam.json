@@ -1,0 +1,308 @@
+{
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "verification/probe/build/motion_output_fixture.exe": "372b5a480e6cd6ed5e6ca6a6f41867100b707a30201405e55162bab47a8b7e9c",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "9b9f052f5e3dd767ad6c3dadfac2a64915302be1bd88aafb7bb7b70383bb7fbf",
+  "build/d3d9.dll": "947e7867c7c2d3549f3145a3100f6c8c6a1f541c4d323883acdcffd4f0eb0364"
+ },
+ "selected": [
+  "seam-hdr-on",
+  "seam-lightmap-far-fade-floor2",
+  "seam-lightmap-far-fade-off",
+  "seam-lightmap-far-fade-on",
+  "seam-ownership-lightmap-far-fade-on",
+  "seam-taa-fade-route-overlay",
+  "seam-taa-fade-route-overlay-lightmap",
+  "seam-taa-fade-route-overlay-lightmap-far-fade"
+ ],
+ "cases": {
+  "seam-lightmap-far-fade-off": {
+   "exit": 0,
+   "checks": 56,
+   "dll_sha256": "9b9f052f5e3dd767ad6c3dadfac2a64915302be1bd88aafb7bb7b70383bb7fbf",
+   "exe_sha256": "372b5a480e6cd6ed5e6ca6a6f41867100b707a30201405e55162bab47a8b7e9c",
+   "trace_sha256": "655e7821fac5786fb156466412586959c618a474670c1eb3609608276e91942c",
+   "directory": "verification/probe/build/motion-output-seam-lightmap-far-fade-off-20260919-205918-479730",
+   "capture_log": "motion-output-seam-lightmap-far-fade-off-capture.log (untracked)",
+   "floor": null,
+   "near_matches_off": null,
+   "steps": {
+    "near": {
+     "gain": 4.0,
+     "abi_gain": 0.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    },
+    "far": {
+     "gain": 4.0,
+     "abi_gain": 0.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    },
+    "mid": {
+     "gain": 4.0,
+     "abi_gain": 0.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    },
+    "near_off": {
+     "gain": 1.0,
+     "abi_gain": 0.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "far_off": {
+     "gain": 1.0,
+     "abi_gain": 0.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "mid_on": {
+     "gain": 4.0,
+     "abi_gain": 0.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    },
+    "mid_reset": {
+     "gain": 4.0,
+     "abi_gain": 0.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    },
+    "near_reset": {
+     "gain": 4.0,
+     "abi_gain": 0.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    }
+   }
+  },
+  "seam-lightmap-far-fade-on": {
+   "exit": 0,
+   "checks": 56,
+   "dll_sha256": "9b9f052f5e3dd767ad6c3dadfac2a64915302be1bd88aafb7bb7b70383bb7fbf",
+   "exe_sha256": "372b5a480e6cd6ed5e6ca6a6f41867100b707a30201405e55162bab47a8b7e9c",
+   "trace_sha256": "2517dbefc8e58c52d2b28b36f114aae5c5e9e4a61778dcf1759133e156075fbd",
+   "directory": "verification/probe/build/motion-output-seam-lightmap-far-fade-on-20260919-205919-980531",
+   "capture_log": "motion-output-seam-lightmap-far-fade-on-capture.log (untracked)",
+   "floor": 1.0,
+   "near_matches_off": true,
+   "steps": {
+    "near": {
+     "gain": 4.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    },
+    "far": {
+     "gain": 1.0,
+     "abi_gain": 1.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "mid": {
+     "gain": 2.50000004,
+     "abi_gain": 2.5,
+     "max_codes": 1,
+     "hdr_hash": "cd9c65dcd06ebfe3"
+    },
+    "near_off": {
+     "gain": 1.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "far_off": {
+     "gain": 1.0,
+     "abi_gain": 1.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "mid_on": {
+     "gain": 2.50000004,
+     "abi_gain": 2.5,
+     "max_codes": 1,
+     "hdr_hash": "cd9c65dcd06ebfe3"
+    },
+    "mid_reset": {
+     "gain": 2.50000004,
+     "abi_gain": 2.5,
+     "max_codes": 1,
+     "hdr_hash": "cd9c65dcd06ebfe3"
+    },
+    "near_reset": {
+     "gain": 4.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    }
+   }
+  },
+  "seam-lightmap-far-fade-floor2": {
+   "exit": 0,
+   "checks": 56,
+   "dll_sha256": "9b9f052f5e3dd767ad6c3dadfac2a64915302be1bd88aafb7bb7b70383bb7fbf",
+   "exe_sha256": "372b5a480e6cd6ed5e6ca6a6f41867100b707a30201405e55162bab47a8b7e9c",
+   "trace_sha256": "2fc9c899c0b67cc195d34f6a28f17510f3915bf56ded0f94a0dc34e0916c1b46",
+   "directory": "verification/probe/build/motion-output-seam-lightmap-far-fade-floor2-20260919-205921-675707",
+   "capture_log": "motion-output-seam-lightmap-far-fade-floor2-capture.log (untracked)",
+   "floor": 2.0,
+   "near_matches_off": true,
+   "steps": {
+    "near": {
+     "gain": 4.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    },
+    "far": {
+     "gain": 2.0,
+     "abi_gain": 2.0,
+     "max_codes": 0,
+     "hdr_hash": "07948bbada58386e"
+    },
+    "mid": {
+     "gain": 3.00000003,
+     "abi_gain": 3.0,
+     "max_codes": 1,
+     "hdr_hash": "ec51d9b73d0b6e67"
+    },
+    "near_off": {
+     "gain": 1.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "far_off": {
+     "gain": 1.0,
+     "abi_gain": 2.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "mid_on": {
+     "gain": 3.00000003,
+     "abi_gain": 3.0,
+     "max_codes": 1,
+     "hdr_hash": "ec51d9b73d0b6e67"
+    },
+    "mid_reset": {
+     "gain": 3.00000003,
+     "abi_gain": 3.0,
+     "max_codes": 1,
+     "hdr_hash": "ec51d9b73d0b6e67"
+    },
+    "near_reset": {
+     "gain": 4.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    }
+   }
+  },
+  "seam-ownership-lightmap-far-fade-on": {
+   "exit": 0,
+   "checks": 56,
+   "dll_sha256": "9b9f052f5e3dd767ad6c3dadfac2a64915302be1bd88aafb7bb7b70383bb7fbf",
+   "exe_sha256": "372b5a480e6cd6ed5e6ca6a6f41867100b707a30201405e55162bab47a8b7e9c",
+   "trace_sha256": "b727f246d544a4187f9b9bfd21a20530cacf7abc342cb9c67901588f76f90cf1",
+   "directory": "verification/probe/build/motion-output-seam-ownership-lightmap-far-fade-on-20260919-205923-378694",
+   "capture_log": "motion-output-seam-ownership-lightmap-far-fade-on-capture.log (untracked)",
+   "floor": 1.0,
+   "near_matches_off": true,
+   "steps": {
+    "near": {
+     "gain": 4.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    },
+    "far": {
+     "gain": 1.0,
+     "abi_gain": 1.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "mid": {
+     "gain": 2.50000004,
+     "abi_gain": 2.5,
+     "max_codes": 1,
+     "hdr_hash": "cd9c65dcd06ebfe3"
+    },
+    "near_off": {
+     "gain": 1.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "far_off": {
+     "gain": 1.0,
+     "abi_gain": 1.0,
+     "max_codes": 0,
+     "hdr_hash": "353dc8004fc16124"
+    },
+    "mid_on": {
+     "gain": 2.50000004,
+     "abi_gain": 2.5,
+     "max_codes": 1,
+     "hdr_hash": "cd9c65dcd06ebfe3"
+    },
+    "mid_reset": {
+     "gain": 2.50000004,
+     "abi_gain": 2.5,
+     "max_codes": 1,
+     "hdr_hash": "cd9c65dcd06ebfe3"
+    },
+    "near_reset": {
+     "gain": 4.0,
+     "abi_gain": 4.0,
+     "max_codes": 0,
+     "hdr_hash": "d88acdd6611c3a72"
+    }
+   }
+  },
+  "seam-taa-fade-route-overlay-lightmap": {
+   "exit": 0,
+   "checks": 5101,
+   "dll_sha256": "9b9f052f5e3dd767ad6c3dadfac2a64915302be1bd88aafb7bb7b70383bb7fbf",
+   "exe_sha256": "372b5a480e6cd6ed5e6ca6a6f41867100b707a30201405e55162bab47a8b7e9c",
+   "trace_sha256": "56309b75231e83ee90df922ec127c1342038ad81ebeaa4992d7277d079d47963",
+   "directory": "verification/probe/build/motion-output-seam-taa-fade-route-overlay-lightmap-20260919-205924-963157",
+   "capture_log": "motion-output-seam-taa-fade-route-overlay-lightmap-capture.log (untracked)",
+   "lightmap": {
+    "gained_frames": 12,
+    "far_fade_frames": 0
+   }
+  },
+  "seam-taa-fade-route-overlay-lightmap-far-fade": {
+   "exit": 0,
+   "checks": 5101,
+   "dll_sha256": "9b9f052f5e3dd767ad6c3dadfac2a64915302be1bd88aafb7bb7b70383bb7fbf",
+   "exe_sha256": "372b5a480e6cd6ed5e6ca6a6f41867100b707a30201405e55162bab47a8b7e9c",
+   "trace_sha256": "0230759d37b522ad80df4333cf50116511bbe5357eb539a133ab6296a2e24b0a",
+   "directory": "verification/probe/build/motion-output-seam-taa-fade-route-overlay-lightmap-far-fade-20260919-205927-313603",
+   "capture_log": "motion-output-seam-taa-fade-route-overlay-lightmap-far-fade-capture.log (untracked)",
+   "lightmap": {
+    "gained_frames": 12,
+    "far_fade_frames": 12
+   },
+   "matches_constant_gain_twin": true
+  },
+  "seam-hdr-on": {
+   "exit": 0,
+   "checks": 103,
+   "dll_sha256": "9b9f052f5e3dd767ad6c3dadfac2a64915302be1bd88aafb7bb7b70383bb7fbf",
+   "exe_sha256": "372b5a480e6cd6ed5e6ca6a6f41867100b707a30201405e55162bab47a8b7e9c",
+   "trace_sha256": "3179a0d6bf1b4026f6815ab4feec75a4901859d830d2e2d5810f0544703a6d61",
+   "directory": "verification/probe/build/motion-output-seam-hdr-on-20260919-205911-855079",
+   "capture_log": "motion-output-seam-hdr-on-capture.log (untracked)"
+  }
+ }
+}
