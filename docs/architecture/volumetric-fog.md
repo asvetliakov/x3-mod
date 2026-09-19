@@ -273,9 +273,9 @@ ranges, strength ladder, sun radiance, capability gate, sector latch), `src/fog/
    `.b <= 0`, fall back to `m32 / (d - m22)`. 224 of 512 ps_3_0 slots (the largest of the four programs).
 2. *Copy*: `StretchRect` of the FP16 scene target to an FP16 scratch (no existing scratch is leased: the
    AO and HDR passes own none of that format and size at this point).
-3. *Sky hue*, every 8th frame and until seeded: scratch + RT2 -> 8x8 FP16 (12x12 point taps per texel =
+3. *Sky hue*, every 32nd frame (weight 0.5 live; the ledger has the cost) and until seeded: scratch + RT2 -> 8x8 FP16 (12x12 point taps per texel =
    9,216 samples of the frame, sentinel pixels only, linear clamped at 4) -> a 1x1 FP16 history under
-   `SRCALPHA/INVSRCALPHA`, weight 0.25 (the first update after creation or Reset writes unblended: a new
+   `SRCALPHA/INVSRCALPHA` (the first update after creation or Reset writes unblended: a new
    target's contents are undefined; under 2 % sky coverage the weight is 0 and the history is kept). This is
    the note's `Sky_local` reduced to its mean: the mock took the albedo from the mean of all sky pixels too.
    Nothing is read back; `hue = clamp(sky / luma, 0, 4)`, white while the history is black.
@@ -306,7 +306,10 @@ is `tau_max` itself, without `w(D)`). The `nebulafog` program is instantiated on
 option on) and stamps `FogSectorLatch`. The latch holds the sector foggy for 600 frames after the last
 bind (1-4 of the 8-16 instances are on screen, each fading over ~40 frames) and ramps the medium's weight
 over 90 frames both ways, so a card-free view, a gate jump or the first card does not pop.
-`--volumetric-fog-everywhere` forces the target to 1. Limits: the rule lags a sector change by the ramp, and
+A camera cut at the scene end (`counters_.cut`, the route's detector: displacement median or missing-key fraction over
+its bound, as a gate jump, a load or a view switch produce) ends the hold at once unless a card was bound in that
+same frame, so a clear sector sheds the medium in the 90-frame ramp instead of ~11 s; that the detector fires on
+every gate jump is inferred, not flown. `--volumetric-fog-everywhere` forces the target to 1. Limits: the rule lags a sector change by the ramp, and
 a fog sector viewed for over 600 frames with no card bound loses the medium (not observed in run174: every
 frame bound at least one).
 
@@ -325,8 +328,12 @@ reads `FOG 0.020`, `FOG 0.020 IDLE` (sector rule at zero) or `FOG OFF`.
 **Off and failure paths.** Option off: `fog_requested_` guards the three call sites and the bind compare;
 no object is created and no key polled. Any unmet precondition (`toggled_off`, `sector`, `taa`, `owner`,
 `depth`, `recording`, `queries`, `camera`, `cascades`, `target`, `sun`, `reset_pending`) skips before any
-device call. A target allocation failure or an attach refusal disables the pass for the session with one
-`volumetric_fog_disabled ... session=1` line; three consecutive failed transactions do the same. A failed
+device call. Failure policy (`fog_failure_action`): a lost device (any stage, target creation included) is neither
+counted nor disabling, the frame after Reset retries; a target allocation that fails otherwise disables the pass
+for the session with one `volumetric_fog_disabled ... session=1` line, as do three consecutive other failures
+(cleared by a success or a Reset); a refused or failed attach, the adapter query included, skips with
+`reason=attach` until the next Reset, like the AO and sun-apply passes. The proxy arms the option only with the
+launcher's prerequisites present in the environment (`volumetric_fog_mode` logs each once). A failed
 step before the composite leaves the scene untouched; a lost device stops restoration. `before_reset`
 releases the four targets and the block (the sky history re-seeds), `after_reset` re-arms.
 

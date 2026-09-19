@@ -2012,7 +2012,7 @@ private:
     // pass for the session with one line (fog_disabled_).
     std::unique_ptr<renderer::FogPass> fog_;
     renderer::FogSectorLatch fog_latch_{};
-    bool fog_requested_ = false, fog_enabled_ = true, fog_everywhere_ = false, fog_timing_ = false, fog_disabled_ = false, fog_sun_fallback_logged_ = false;
+    bool fog_requested_ = false, fog_enabled_ = true, fog_everywhere_ = false, fog_timing_ = false, fog_disabled_ = false, fog_attach_failed_ = false, fog_sun_fallback_logged_ = false;
     float fog_strength_ = renderer::fog_strength_default, fog_anisotropy_ = renderer::fog_anisotropy_default;
     unsigned fog_failures_ = 0, fog_logs_ = 0;
     std::uint64_t fog_frame_ = ~std::uint64_t(0), fog_applied_frames_ = 0;

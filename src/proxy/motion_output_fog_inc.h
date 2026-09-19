@@ -27,6 +27,8 @@ void MotionOutput::disable_volumetric_fog(const char* why, HRESULT result) noexc
 void MotionOutput::run_volumetric_fog() noexcept {
     if (fog_frame_ == frame_) return; // the hook and the bloom-copy sites both qualify
     fog_frame_ = frame_;
+    // A camera cut (gate jump, load, view switch) ends the sector hold at once; cards bound this frame keep it.
+    if (cut_finished_ && counters_.cut) fog_latch_.cut(frame_);
     const float weight = fog_latch_.update(frame_, fog_everywhere_);
     const char* skip = nullptr;
     HRESULT hr = S_FALSE;
@@ -37,6 +39,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
     bool sun_tracked = false;
     if (!fog_enabled_) skip = "toggled_off";
     else if (fog_disabled_) skip = "disabled";
+    else if (fog_attach_failed_) skip = "attach"; // until the next Reset, like the AO and sun-apply passes
     else if (!(weight > 0.f)) skip = "sector";
     else if (!(fog_strength_ * weight > 0.f)) skip = "strength";
     else if (!taa_enabled_ || taa_failed_ || counters_.taa.attempted || main_msaa_ || !jitter_active_) skip = "taa"; // the jittered march needs this frame's resolve
@@ -66,7 +69,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
         q.m22 = ao_default_m22; q.m32 = ao_default_m32;
         q.tau_max = fog_strength_ * weight; q.anisotropy = fog_anisotropy_; q.margin = renderer::shadow_cascade_select_margin;
         q.decode_exponent = hdr_config_.decode == x3::temporal::AgxDecode::none ? 1.f : 2.2f;
-        q.jitter_index = counters_.jitter_index; q.update_sky = frame_ % 8u == 0u;
+        q.jitter_index = counters_.jitter_index; q.update_sky = frame_ % 32u == 0u; q.sky_blend = .5f; // the hue is slow: two tiny quads (~0.2-0.4 ms fenced, two render-pass switches) on 1 frame in 32, ~1 s time constant
         unsigned slots[renderer::shadow_cascade_max]{};
         const unsigned count = renderer::shadow_cascade_apply_slots(depth_cascades_, slots), first = count > 1 ? 1u : 0u;
         const bool replayed = depth_replayed_frame_ == frame_ && depth_cascade_frame_ok_;
@@ -112,12 +115,18 @@ void MotionOutput::run_volumetric_fog() noexcept {
     if (!skip) {
         if (!fog_) { try { fog_ = std::make_unique<renderer::FogPass>(); } catch (...) { disable_volumetric_fog("allocation", E_OUTOFMEMORY); skip = "disabled"; } }
         if (!skip && !fog_->caps().enabled) {
+            // A refused or failed attach (the adapter query included) is retried after the next Reset, not held for the session.
             D3DDISPLAYMODE display{};
             hr = native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display);
-            if (SUCCEEDED(hr)) taa_call([&] { hr = fog_->attach(device_, native_, caps_, display.Format); });
-            log("volumetric_fog_device device=%llu attached=%u reason=%s result=%08lx slots=%u strength=%.4f anisotropy=%.2f everywhere=%u", id_, unsigned(SUCCEEDED(hr) && fog_->caps().enabled),
-                SUCCEEDED(hr) ? "ok" : fog_->caps().reason, hr, fog_->caps().largest_program_slots, double(fog_strength_), double(fog_anisotropy_), unsigned(fog_everywhere_));
-            if (FAILED(hr) || !fog_->caps().enabled) { disable_volumetric_fog("attach", hr); skip = "disabled"; }
+            const bool queried = SUCCEEDED(hr);
+            if (queried) taa_call([&] { hr = fog_->attach(device_, native_, caps_, display.Format); });
+            const bool attached = SUCCEEDED(hr) && fog_->caps().enabled;
+            if (fog_logs_ < 64) {
+                ++fog_logs_;
+                log("volumetric_fog_device device=%llu frame=%llu attached=%u reason=%s result=%08lx slots=%u strength=%.4f anisotropy=%.2f everywhere=%u retry=reset", id_, frame_, unsigned(attached),
+                    attached ? "ok" : queried ? fog_->caps().reason : "adapter_query", hr, fog_->caps().largest_program_slots, double(fog_strength_), double(fog_anisotropy_), unsigned(fog_everywhere_));
+            }
+            if (!attached) { fog_attach_failed_ = true; skip = "attach"; }
         }
         if (!skip && fog_->reset_pending()) skip = "reset_pending";
     }
@@ -130,9 +139,12 @@ void MotionOutput::run_volumetric_fog() noexcept {
         if (FAILED(out.restore)) invalidate_render_states();
         if (FAILED(hr)) {
             skip = "failed";
-            // A target allocation failure, or three consecutive failed frames: off for the session, one line.
-            if (out.failed == renderer::FogStage::Targets) disable_volumetric_fog("targets", hr);
-            else if (++fog_failures_ >= 3) disable_volumetric_fog("failures", hr);
+            const bool device_lost = hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET || out.operation == D3DERR_DEVICELOST || out.operation == D3DERR_DEVICENOTRESET;
+            switch (renderer::fog_failure_action(device_lost, out.failed == renderer::FogStage::Targets, fog_failures_)) {
+            case renderer::FogFailureAction::Retry: skip = "device_lost"; break; // not counted: the frame after Reset retries
+            case renderer::FogFailureAction::Count: ++fog_failures_; break;
+            case renderer::FogFailureAction::DisableSession: disable_volumetric_fog(out.failed == renderer::FogStage::Targets ? "targets" : "failures", hr); break;
+            }
         } else { fog_failures_ = 0; ++fog_applied_frames_; }
     }
     release(depth); release(rt0);

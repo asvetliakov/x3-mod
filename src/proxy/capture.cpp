@@ -2994,10 +2994,14 @@ void initialize_log(HMODULE module) {
      volumetric_fog_strength=renderer::fog_strength_default;volumetric_fog_anisotropy=renderer::fog_anisotropy_default;
      if(fog_env(L"X3M_VOLUMETRIC_FOG_STRENGTH")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=renderer::fog_strength_min&&v<=renderer::fog_strength_max)volumetric_fog_strength=v;}
      if(fog_env(L"X3M_VOLUMETRIC_FOG_ANISOTROPY")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=renderer::fog_anisotropy_min&&v<=renderer::fog_anisotropy_max)volumetric_fog_anisotropy=v;}
-     volumetric_fog_requested=asked && motion_output_requested && taa_requested && volumetric_fog_strength>0.f;
+     // The launcher's prerequisites (tools/manage.py), so a hand-set environment cannot arm a pass that would
+     // skip every frame: the FP16 scene path, the depth replay and a cascade list (validated per device later).
+     const bool fog_replay=fog_env(L"X3M_SHADOW_REPLAY_DEPTH")==1 && setting[0]==L'1';
+     wchar_t fog_cascades[4]{};const bool fog_cascade_list=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADES",fog_cascades,4)>0;
+     volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;
      volumetric_fog_everywhere=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_EVERYWHERE")==1 && setting[0]==L'1';
      volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
-     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u strength=%g anisotropy=%g everywhere=%u timing=%u rule=nebulafog_ps keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,double(volumetric_fog_strength),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing);}
+     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g anisotropy=%g everywhere=%u timing=%u rule=nebulafog_ps keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing);}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     if(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted

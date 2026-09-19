@@ -2968,6 +2968,7 @@ void MotionOutput::before_reset() noexcept {
     candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed and stays
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
     if (fog_) taa_call([&] { fog_->before_reset(); });
+    fog_failures_ = 0; fog_attach_failed_ = false; // a transient failure or attach refusal is retried after Reset
     sun_apply_attach_failed_ = false; // a transient attach failure is retried after Reset
     ao_attach_failed_ = false; ao_target_format_ = D3DFMT_UNKNOWN; // a transient attach failure is retried after Reset
     // The re-attach hysteresis counts format alternation within one device

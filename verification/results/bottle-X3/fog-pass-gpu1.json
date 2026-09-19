@@ -13,7 +13,7 @@
  "sources": {
   "src/renderer/fog_pass.h": "e3241239cf943ab78f655d09496725ffcbe3a916c74458a58ec675ee73dcd0e3",
   "src/renderer/fog_pass.cpp": "51a4573b5360854aade88a74aa6be62b2b6e980b0ac19cf213ba4170d6aebb64",
-  "src/renderer/fog_pass_math.h": "0cd9ef9a5722ce355ed510fe23ec8143ffdf37e311ea044786841eb6698cafc6",
+  "src/renderer/fog_pass_math.h": "9a2751dab618c65725546297cadf6918ec9d7cf85c07767f6db8ebafed1d0062",
   "src/renderer/fog_march_program_inc.h": "967ccd1cdbc125d1bfe1e5115301d899332f2c87468ce85d60ddef508c9b50d4",
   "src/renderer/fog_composite_program_inc.h": "6558274b3d8a9fdc2c333f81a638ce482afaaefb72484d1dc4aa011e3f927309",
   "src/renderer/fog_sky_level0_program_inc.h": "9a55f341a3884b37779df4d766e36919228f9939db4f0bd2dbd2b5f150c43b57",
@@ -22,7 +22,7 @@
   "src/fog/fog_composite_ps.hlsl": "a0f096e489460085105af23486d6d70e820fd9d09110547f8d60b31618c14454",
   "src/fog/fog_sky_level0_ps.hlsl": "53b545de2617cfbe0abf0001c868e3b098ccfb4a7a4d1a53a164557cc435ab01",
   "src/fog/fog_sky_reduce_ps.hlsl": "b0f74f78845bd8d64de6ee3d1959edb4666f87ba9021ac6bea0cb1c94ee5f38d",
-  "verification/probe/fog_pass_fixture.cpp": "672c6e3c27d3426e04d3e6fcc918a9547d35516267074e5b367afd5134af8e52",
+  "verification/probe/fog_pass_fixture.cpp": "6b3a3c1150647f43004567fc5809b980b43db8bf0b402dd60e13f9ee15120ba2",
   "verification/probe/fog_reference.h": "51b32d2c98cf44bd0361672b67117921d6893a4f288cb3a059256b4c6e74e00f",
   "verification/probe/build_fog_pass.sh": "d92595df1d025acd34bfc9e950ba5f752322520a6faa3f9eb8e5efcc9e173506",
   "verification/probe/run_fog_pass.py": "8fc6e46d4cd80d86ffb54ac3834f4bad7cb1c0f6cd9fae69068c6bdb885eae04"
@@ -45,7 +45,7 @@
    "within_fraction": 0.998
   }
  },
- "executable_sha256": "517d6a259b2fb2a619572b63cc23513f80f549ba770a5226b0c3aba4800a7d38",
+ "executable_sha256": "ebb893a90a5862f9973cb404851f037ec46997cd62b1f3834c0bc4ffeac54909",
  "command": [
   "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
   "--bottle",
@@ -58,7 +58,7 @@
   "/Users/asvetl/x3-mod/.claude/worktrees/agent-af5d35bd6ba73edbe/verification/probe/build/fog-pass/fog_pass_fixture.exe"
  ],
  "exit_code": 0,
- "report_sha256": "c31d7357fd8541bfa1f8f89050a59d5fc4cd933e9c26881f3d65b50f14917b4f",
+ "report_sha256": "bef7b3c489a496fe297b0bdbf75d3f56276301992c3fbfb89f5b65b6092c8554",
  "report": {
   "checks": [
    [
@@ -83,6 +83,10 @@
    ],
    [
     "fault_shader_create",
+    true
+   ],
+   [
+    "attach_retry_after_failure",
     true
    ],
    [
@@ -255,6 +259,18 @@
    ],
    [
     "r32f_depth_fallback",
+    true
+   ],
+   [
+    "targets_device_lost",
+    true
+   ],
+   [
+    "targets_device_lost_untouched",
+    true
+   ],
+   [
+    "targets_retry_runs",
     true
    ],
    [
@@ -539,11 +555,11 @@
     "width": 1280,
     "height": 768,
     "sky": 1,
-    "fenced_on_ms": 1.4187,
-    "fenced_off_ms": 0.0146,
-    "submit_ms": 0.2026,
-    "chain_ms": 1.4041,
-    "gpu_ms": 1.2015,
+    "fenced_on_ms": 1.086,
+    "fenced_off_ms": 0.0163,
+    "submit_ms": 0.2074,
+    "chain_ms": 1.0697,
+    "gpu_ms": 0.8623,
     "gpu_timestamp_ms": -1.0,
     "timestamp_samples": 0,
     "device_calls": 172,
@@ -559,11 +575,11 @@
     "width": 1280,
     "height": 768,
     "sky": 0,
-    "fenced_on_ms": 0.9893,
-    "fenced_off_ms": 0.014,
-    "submit_ms": 0.1448,
-    "chain_ms": 0.9753,
-    "gpu_ms": 0.8305,
+    "fenced_on_ms": 0.8908,
+    "fenced_off_ms": 0.0165,
+    "submit_ms": 0.1384,
+    "chain_ms": 0.8743,
+    "gpu_ms": 0.7359,
     "gpu_timestamp_ms": -1.0,
     "timestamp_samples": 0,
     "device_calls": 149,
@@ -579,11 +595,11 @@
     "width": 1920,
     "height": 1080,
     "sky": 1,
-    "fenced_on_ms": 2.0036,
-    "fenced_off_ms": 0.0134,
-    "submit_ms": 0.1964,
-    "chain_ms": 1.9902,
-    "gpu_ms": 1.7938,
+    "fenced_on_ms": 0.9801,
+    "fenced_off_ms": 0.0142,
+    "submit_ms": 0.1995,
+    "chain_ms": 0.9659,
+    "gpu_ms": 0.7664,
     "gpu_timestamp_ms": -1.0,
     "timestamp_samples": 0,
     "device_calls": 172,
@@ -592,18 +608,18 @@
      "acceptance_ms": 0.7,
      "cap_ms": 1.0,
      "within_acceptance": false,
-     "within_cap": false
+     "within_cap": true
     }
    },
    {
     "width": 1920,
     "height": 1080,
     "sky": 0,
-    "fenced_on_ms": 1.3081,
-    "fenced_off_ms": 0.0143,
-    "submit_ms": 0.1527,
-    "chain_ms": 1.2938,
-    "gpu_ms": 1.1411,
+    "fenced_on_ms": 0.8852,
+    "fenced_off_ms": 0.0145,
+    "submit_ms": 0.145,
+    "chain_ms": 0.8707,
+    "gpu_ms": 0.7257,
     "gpu_timestamp_ms": -1.0,
     "timestamp_samples": 0,
     "device_calls": 149,
@@ -612,18 +628,18 @@
      "acceptance_ms": 0.7,
      "cap_ms": 1.0,
      "within_acceptance": false,
-     "within_cap": false
+     "within_cap": true
     }
    },
    {
     "width": 1280,
     "height": 768,
     "sky": 1,
-    "fenced_on_ms": 1.1762,
-    "fenced_off_ms": 0.0144,
-    "submit_ms": 0.2144,
-    "chain_ms": 1.1618,
-    "gpu_ms": 0.9474,
+    "fenced_on_ms": 1.0764,
+    "fenced_off_ms": 0.0145,
+    "submit_ms": 0.1964,
+    "chain_ms": 1.0619,
+    "gpu_ms": 0.8655,
     "gpu_timestamp_ms": -1.0,
     "timestamp_samples": 0,
     "device_calls": 172,
@@ -639,11 +655,11 @@
     "width": 1280,
     "height": 768,
     "sky": 0,
-    "fenced_on_ms": 0.7671,
-    "fenced_off_ms": 0.0133,
-    "submit_ms": 0.1356,
-    "chain_ms": 0.7538,
-    "gpu_ms": 0.6182,
+    "fenced_on_ms": 0.8967,
+    "fenced_off_ms": 0.0141,
+    "submit_ms": 0.1409,
+    "chain_ms": 0.8826,
+    "gpu_ms": 0.7417,
     "gpu_timestamp_ms": -1.0,
     "timestamp_samples": 0,
     "device_calls": 149,
@@ -660,31 +676,31 @@
    {
     "width": 1280,
     "height": 768,
-    "march_ms": 0.5674,
-    "sky_level_ms": 0.318,
-    "sky_reduce_ms": 0.3116,
-    "composite_ms": 0.5485,
-    "sum_ms": 1.7455,
+    "march_ms": 0.5591,
+    "sky_level_ms": 0.3551,
+    "sky_reduce_ms": 0.3028,
+    "composite_ms": 0.5469,
+    "sum_ms": 1.7639,
     "samples": 6
    },
    {
     "width": 1920,
     "height": 1080,
-    "march_ms": 0.6844,
-    "sky_level_ms": 0.3132,
-    "sky_reduce_ms": 0.312,
-    "composite_ms": 0.6534,
-    "sum_ms": 1.963,
+    "march_ms": 0.5691,
+    "sky_level_ms": 0.3182,
+    "sky_reduce_ms": 0.1887,
+    "composite_ms": 0.5421,
+    "sum_ms": 1.6181,
     "samples": 6
    },
    {
     "width": 1280,
     "height": 768,
-    "march_ms": 0.5608,
-    "sky_level_ms": 0.3249,
-    "sky_reduce_ms": 0.3068,
-    "composite_ms": 0.5385,
-    "sum_ms": 1.731,
+    "march_ms": 0.5699,
+    "sky_level_ms": 0.3341,
+    "sky_reduce_ms": 0.3078,
+    "composite_ms": 0.5488,
+    "sum_ms": 1.7606,
     "samples": 6
    }
   ],
@@ -705,11 +721,11 @@
    "allocations": 2
   },
   "result": {
-   "checks": 85,
+   "checks": 89,
    "failures": 0,
    "verdict": "PASS"
   },
-  "check_count": 85,
+  "check_count": 89,
   "check_failures": 0,
   "failed_checks": []
  }

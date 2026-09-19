@@ -11,7 +11,7 @@ namespace x3m::renderer {
 constexpr float fog_strength_default = .02f, fog_strength_min = 0.f, fog_strength_max = .1f; // tau_max
 constexpr float fog_anisotropy_default = .3f, fog_anisotropy_min = 0.f, fog_anisotropy_max = .9f; // Henyey-Greenstein g
 constexpr float fog_radius_default = 10000.f; // view units; 99.98 % of the density lies inside cascade 3 (84k units)
-// Ctrl+Shift+F3 steps through these; a launcher value between two steps moves to the next one above it.
+// Ctrl+Alt+F10 steps through these; a launcher value between two steps moves to the next one above it.
 constexpr float fog_strength_steps[] = {.005f, .01f, .02f, .03f, .05f};
 inline float fog_strength_next(float current) noexcept {
     for (float step : fog_strength_steps) if (step > current + 1e-6f) return step;
@@ -72,9 +72,26 @@ inline const char* fog_capability(const FogCapabilityInputs& in) noexcept {
 // a card-free view nor a gate jump pops. No private layout, no executable gate.
 constexpr std::uint64_t fog_card_pixel_hash = 0xf7e0b6647a3bfa62ull;
 constexpr std::uint64_t fog_card_hold = 600, fog_card_ramp = 90;
+// What the caller does with a failed transaction. A lost device is never the
+// pass's fault: nothing is counted and nothing is disabled, the frame after
+// Reset retries (targets return lazily). A target allocation that failed for
+// any other reason disables the pass for the session; any other failure counts
+// toward fog_failure_limit consecutive ones, cleared by a success or a Reset.
+enum class FogFailureAction : unsigned { Retry, Count, DisableSession };
+constexpr unsigned fog_failure_limit = 3;
+inline FogFailureAction fog_failure_action(bool device_lost, bool targets_stage, unsigned consecutive_before) noexcept {
+    if (device_lost) return FogFailureAction::Retry;
+    if (targets_stage || consecutive_before + 1 >= fog_failure_limit) return FogFailureAction::DisableSession;
+    return FogFailureAction::Count;
+}
 class FogSectorLatch {
 public:
     void card(std::uint64_t frame) noexcept { seen_ = true; last_card_ = frame; }
+    // A camera cut at this frame's scene end (the route's cut detector: a gate
+    // jump, a load, a view switch): the hold ends at once unless a card was
+    // bound in this very frame (the cards are the scene's last draws, so a cut
+    // inside a fog sector keeps the latch); the weight still ramps down.
+    void cut(std::uint64_t frame) noexcept { if (last_card_ != frame) seen_ = false; }
     // Once per frame at the scene end. `everywhere` forces the target to 1.
     float update(std::uint64_t frame, bool everywhere) noexcept {
         const bool on = everywhere || (seen_ && frame >= last_card_ && frame - last_card_ <= fog_card_hold);

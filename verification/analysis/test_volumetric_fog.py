@@ -56,6 +56,14 @@ int main() {
     std::printf("latch_out=%.3f recent=%d\n", w, latch.cards_recent(12 + fog_card_hold + 200));
     FogSectorLatch forced; for (std::uint64_t f = 0; f < 200; ++f) w = forced.update(f, true);
     std::printf("latch_forced=%.3f\n", w);
+    // Failure policy: a lost device never counts or disables; a failed allocation disables; the third other failure disables.
+    std::printf("policy=%u%u%u%u%u\n", unsigned(fog_failure_action(true, true, 2)), unsigned(fog_failure_action(true, false, 2)), unsigned(fog_failure_action(false, true, 0)), unsigned(fog_failure_action(false, false, 1)), unsigned(fog_failure_action(false, false, 2)));
+    // Cut: ends the hold unless a card was bound in the cut frame itself; the weight ramps, never jumps.
+    FogSectorLatch gate; gate.card(100); for (std::uint64_t f = 100; f < 300; ++f) gate.update(f, false);
+    gate.cut(300); const float after_cut = gate.update(300, false); for (std::uint64_t f = 301; f < 400; ++f) w = gate.update(f, false);
+    FogSectorLatch view; view.card(100); for (std::uint64_t f = 100; f < 300; ++f) view.update(f, false);
+    view.card(300); view.cut(300); for (std::uint64_t f = 300; f < 400; ++f) view.update(f, false);
+    std::printf("latch_cut=%.3f,%.3f,%d view=%.3f\n", after_cut, w, gate.cards_recent(400), view.weight());
     FogSectorLatch jump; jump.card(5); jump.update(5, false); std::printf("latch_jump=%.3f\n", jump.update(5000, false)); // a long gap moves at most one ramp, toward off here
 #define SLOTS(name, file) { const std::uint32_t words[] = {
 #define SLOTS_END(name) }; std::printf("slots_" name "=%u words=%zu\n", ambient_occlusion_program_slots(words, sizeof words / sizeof words[0]), sizeof words / sizeof words[0]); }
@@ -134,6 +142,8 @@ class FogMathTests(unittest.TestCase):
         self.assertEqual(v['latch_out'], '0.000 recent=0')
         self.assertEqual(v['latch_forced'], '1.000')
         self.assertEqual(v['latch_jump'], '0.000')
+        self.assertEqual(v['latch_cut'], '0.989,0.000,0 view=1.000')
+        self.assertEqual(v['policy'], '00212')
 
     def test_program_slots_and_provenance(self):
         for name in PROGRAMS:
@@ -261,7 +271,10 @@ class FogWiringTests(unittest.TestCase):
         self.assertEqual(len(sites), 3)
         self.assertTrue(all('fog_requested_' in line for line in sites), sites)
         # Allocation failure: disabled for the session with one line; the sun from the tracked light, a logged fallback otherwise.
-        self.assertIn('if (out.failed == renderer::FogStage::Targets) disable_volumetric_fog("targets", hr);', fragment)
+        self.assertIn('renderer::fog_failure_action(device_lost, out.failed == renderer::FogStage::Targets, fog_failures_)', fragment)
+        self.assertIn('if (!attached) { fog_attach_failed_ = true; skip = "attach"; }', fragment)
+        self.assertIn('fog_failures_ = 0; fog_attach_failed_ = false;', motion[motion.index('void MotionOutput::before_reset()'):motion.index('void MotionOutput::after_reset(')])
+        self.assertIn('if (cut_finished_ && counters_.cut) fog_latch_.cut(frame_);', fragment)
         self.assertIn('volumetric_fog_disabled device=%llu frame=%llu reason=%s result=%08lx session=1', fragment)
         self.assertIn('renderer::fog_sun_radiance(point_sun_sample_.colour, q.sun_radiance)', fragment)
         self.assertIn('std::memcpy(out->colour,best.rgb,12);', (ROOT / 'src/proxy/sun_light_poll.cpp').read_text())
@@ -271,7 +284,7 @@ class FogWiringTests(unittest.TestCase):
         controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
         self.assertIn('result.fog_toggle = keys.control && keys.alt && !keys.shift && keys.fog_toggle && !fog_toggle_down_;', controls)
         self.assertIn('result.fog_step = keys.control && keys.alt && !keys.shift && keys.fog_step && !fog_step_down_;', controls)
-        self.assertIn('volumetric_fog_requested=asked && motion_output_requested && taa_requested && volumetric_fog_strength>0.f;', capture)
+        self.assertIn('volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;', capture)
         self.assertIn('src/renderer/fog_pass.cpp', (ROOT / 'CMakeLists.txt').read_text())
 
 

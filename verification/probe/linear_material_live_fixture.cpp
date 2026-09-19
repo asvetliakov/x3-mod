@@ -461,7 +461,7 @@ public:
  void detach_shadow_retention()noexcept{++retention_detaches_;}
  void flush_shadow_retention(shadow_retention::Flush reason)noexcept{retention_reset_flushes_+=reason==shadow_retention::Flush::Reset;}
  std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
- std::unique_ptr<Pass>fog_;renderer::FogSectorLatch fog_latch_{};bool fog_requested_=false;std::uint64_t fog_frame_=~std::uint64_t(0);
+ std::unique_ptr<Pass>fog_;renderer::FogSectorLatch fog_latch_{};bool fog_requested_=false,fog_attach_failed_=false;unsigned fog_failures_=0;std::uint64_t fog_frame_=~std::uint64_t(0);
  void release_candidate_extents()noexcept{++candidate_extent_releases_;}
  bool candidates_requested_=false,sun_apply_applied_=false,sun_apply_attempted_=false,sun_apply_attach_failed_=false,depth_cascade_frame_ok_=false;
  std::uint32_t candidate_ps_written_=0;

@@ -102,10 +102,10 @@ using CreateTextureFn = HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, UINT, UINT, DW
 using CreatePsFn = HRESULT(WINAPI*)(IDirect3DDevice9*, const DWORD*, IDirect3DPixelShader9**);
 using DrawUpFn = HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRIMITIVETYPE, UINT, const void*, UINT);
 using StretchFn = HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
-struct Faults { unsigned texture_fail_at = 0, texture_calls = 0, shader_fail_at = 0, shader_calls = 0, draw_fail_at = 0, draw_calls = 0, stretch_fail_at = 0, stretch_calls = 0; HRESULT draw_error = E_FAIL; } faults;
+struct Faults { HRESULT texture_error = E_OUTOFMEMORY; unsigned texture_fail_at = 0, texture_calls = 0, shader_fail_at = 0, shader_calls = 0, draw_fail_at = 0, draw_calls = 0, stretch_fail_at = 0, stretch_calls = 0; HRESULT draw_error = E_FAIL; } faults;
 void* hooked[119]; void* original[119];
 HRESULT WINAPI hook_create_texture(IDirect3DDevice9* d, UINT w, UINT h, UINT l, DWORD u, D3DFORMAT f, D3DPOOL p, IDirect3DTexture9** t, HANDLE* s) {
-    if (++faults.texture_calls == faults.texture_fail_at) return E_OUTOFMEMORY;
+    if (++faults.texture_calls == faults.texture_fail_at) return faults.texture_error;
     return reinterpret_cast<CreateTextureFn>(original[23])(d, w, h, l, u, f, p, t, s);
 }
 HRESULT WINAPI hook_create_ps(IDirect3DDevice9* d, const DWORD* words, IDirect3DPixelShader9** out) {
@@ -393,7 +393,10 @@ int main() {
           require("twin_stretch_rect", FAILED(twin.attach(d, hooked, c, mode.Format)) && std::string(twin.caps().reason) == "stretch_rect" && twin.references() == 0);
           faults = {}; faults.shader_fail_at = 3;
           require("fault_shader_create", FAILED(twin.attach(d, hooked, caps, mode.Format)) && std::string(twin.caps().reason) == "programs" && twin.references() == 0 && !twin.caps().enabled);
-          faults = {}; }
+          faults = {};
+          // A transient attach failure is not sticky: the same object attaches on the retry (the caller retries after Reset).
+          require("attach_retry_after_failure", SUCCEEDED(twin.attach(d, hooked, caps, mode.Format)) && twin.caps().enabled && twin.references() == 6);
+          twin.detach(); }
         FogPass pass;
         check("attach", pass.attach(d, hooked, caps, mode.Format));
         std::printf("ATTACH enabled=%d largest_program_slots=%u references=%u\n", pass.caps().enabled, pass.caps().largest_program_slots, pass.references());
@@ -538,6 +541,19 @@ int main() {
           std::printf("REFERENCE scene=r32f kind=against_view_depth_lane pixels=%u mean_abs=%.6f max=%.4f within_one_step=%u\n", c.pixels, c.mean_abs, c.max, c.within);
           require("r32f_depth_fallback", c.mean_abs <= .002 && double(c.within) / c.pixels >= .998);
           narrow.unbind(d, backbuffer.p); }
+        { // A lost device during target creation: D3DERR_DEVICELOST at the Targets stage, nothing retained, the state and
+          // the scene untouched; the same pass allocates and runs on the retry (the caller neither counts nor disables).
+          FogPass fresh; check("fresh attach", fresh.attach(d, hooked, caps, mode.Format));
+          f->fill_target(d, scene, kSkyEngine);
+          const auto before = f->read<std::uint16_t>(d, f->target_surface.p, f->read_target.p, W, H, 4);
+          f->hostile(d); Snapshot pre(d);
+          FogResult out; faults = {}; faults.texture_fail_at = 2; faults.texture_error = D3DERR_DEVICELOST;
+          const HRESULT hr = fresh.execute(frame_inputs(*f, p, cascades), &out); faults = {};
+          Snapshot post(d);
+          require("targets_device_lost", hr == D3DERR_DEVICELOST && out.failed == FogStage::Targets && !out.applied && fresh.references() == 6 && fresh.allocations() == 0);
+          require("targets_device_lost_untouched", pre == post && before == f->read<std::uint16_t>(d, f->target_surface.p, f->read_target.p, W, H, 4));
+          require("targets_retry_runs", SUCCEEDED(fresh.execute(frame_inputs(*f, p, cascades), &out)) && out.applied && fresh.allocations() == 1 && lit_values(*f, d, out.lit) == clean_lit);
+          fresh.detach(); }
         // ---- fault ladder ----
         { f->fill_target(d, scene, kSkyEngine);
           const auto before = f->read<std::uint16_t>(d, f->target_surface.p, f->read_target.p, W, H, 4);
