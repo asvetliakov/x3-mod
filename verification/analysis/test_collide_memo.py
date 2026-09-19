@@ -28,6 +28,7 @@ import run_collide_memo as runner  # noqa: E402
 HARNESS = r'''
 #include "collide_memo_core.h"
 #include <cstdio>
+#include <limits>
 #include <map>
 #include <vector>
 using namespace x3m::collide_memo::core;
@@ -85,12 +86,48 @@ int main() {
     if (table.classify(base) != miss_expired) ++failures;
     Key other = base; other.words[2] = 1; other.words[20] = 1;
     if (table.classify(other) != miss_none_found || table.classify(with(model_words_begin, 5)) != miss_none_found) ++failures;
+    // Conservative advancement: the bound, its refusals, and which entry may serve as a reference.
+    const auto put = [](Key& k, unsigned word, float v) { std::memcpy(&k.words[word], &v, 4); };
+    Key pose{};
+    for (unsigned i = 0; i < 9; ++i) { put(pose, i, i % 4 == 0 ? 1.0f : 0.0f); put(pose, 13 + i, i % 4 == 0 ? 1.0f : 0.0f); }
+    put(pose, 12, 2.0f); put(pose, 25, 3.0f); put(pose, 22, 1000.0f);                 // a at the origin, scale 2; b at x = 1000, scale 3
+    for (unsigned i = 0; i < 3; ++i) { put(pose, box_a_word + 12 + i, 10.0f); put(pose, box_b_word + 12 + i, 4.0f); }
+    pose.words[model_words_begin] = 111; pose.words[model_words_begin + 1] = 222;
+    double D = 0, margin = 0;
+    Key moved = pose; put(moved, 22, 1006.0f);                                           // 6 world units = 3 of a's model units
+    if (!advance_holds(pose, 10.0, moved, D, margin) || D < 2.999 || D > 3.001 || margin <= 0 || margin > 0.02) ++failures;
+    if (advance_holds(pose, 6.0, moved, D, margin) || advance_holds(pose, 0.0, moved, D, margin) || advance_holds(pose, -1.0, moved, D, margin)) ++failures;   // D >= gap / 2, no gap
+    Key turned = pose; put(turned, 13, 0.0f); put(turned, 14, -1.0f); put(turned, 16, 1.0f); put(turned, 17, 0.0f);   // b turned a quarter about z
+    if (advance_holds(pose, 10.0, turned, D, margin) || D < 20.0 || D > 22.0 || !advance_holds(pose, 1000.0, turned, D, margin)) ++failures;   // |dM|_F = 1.5 * 2, rho_b ~ 6.94: D ~ 20.8
+    const float bad[] = {0.0f, -1.0f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()};
+    for (const float v : bad) for (const unsigned word : {12u, 25u, 0u}) {   // scale <= 0 or not finite; a matrix that preserves no lengths (-1 on the diagonal is a reflection and does)
+        if (word == 0 && v == -1.0f) continue;
+        Key k = moved; put(k, word, v); if (advance_holds(pose, 1e9, k, D, margin)) ++failures;
+    }
+    for (const float v : {bad[2], bad[3]}) for (const unsigned word : {17u, 9u, 23u}) { Key k = moved; put(k, word, v); if (advance_holds(pose, 1e9, k, D, margin)) ++failures; }
+    Key far_away = moved; put(far_away, 22, 2.0e9f);
+    if (advance_holds(far_away, 1000.0, far_away, D, margin)) ++failures;                 // at 2^31 the margin alone exceeds any ordinary gap
+    table.clear();
+    Outputs no_leaf{}, leaf{}; leaf.triangles = 2;
+    table.store(pose, no_leaf, 10, 10.0);
+    if (table.advance_candidate(moved, 10) == nullptr || table.advance_candidate(moved, 11) == nullptr || table.advance_candidate(moved, 12) != nullptr) ++failures;   // live only
+    Key other_mode = moved; other_mode.words[27] = 0xc;
+    Key other_scale = moved; put(other_scale, 25, 4.0f);
+    Key both_moved = moved; put(both_moved, 9, 1.0f);
+    Key other_minimum = moved; other_minimum.words[minimum_value_word] = 77;
+    if (table.advance_candidate(other_mode, 10) || table.advance_candidate(other_scale, 10) || table.advance_candidate(both_moved, 10) || !table.advance_candidate(other_minimum, 10)) ++failures;
+    Key a_moved = pose; put(a_moved, 9, 5.0f);
+    if (table.advance_candidate(a_moved, 10) == nullptr) ++failures;                   // the symmetric case, through the index on b's transform
+    table.clear(); table.store(pose, leaf, 10, 10.0);
+    if (table.advance_candidate(moved, 10) != nullptr) ++failures;                     // a run that reached a leaf is no reference
+    table.clear(); table.store(pose, no_leaf, 10, 0.0);
+    if (table.advance_candidate(moved, 10) != nullptr) ++failures;                     // nor one without a gap on record
     std::printf("failures=%u hits=%u stale=%u evictions=%u expired=%u\n", failures, hits, stale, evictions, expired);
     return failures ? 1 : 0;
 }
 '''
 
-SAMPLE = '''collide_memo requested=1 patched=1 verify=0 reason=ok site=0x0047f329 target=0x004e29f0 write=plain handler=0x00342a10 entries=1024
+SAMPLE = '''collide_memo requested=1 patched=1 verify=0 advance=1 reason=ok site=0x0047f329 target=0x004e29f0 write=plain handler=0x00342a10 entries=1024
 SCENARIO static queries=528 hits=427 contacts=40 differences=0 stale=0 hit_on_contact=0
 SCENARIO one_step queries=59 hits=32 contacts=0 differences=0 stale=0 hit_on_contact=0
 SCENARIO approach queries=422 hits=60 contacts=2 differences=0 stale=0 hit_on_contact=0
@@ -104,12 +141,17 @@ SCENARIO overflow queries=9000 hits=1538 contacts=0 differences=0 stale=0 hit_on
 SCENARIO random queries=48000 hits=42207 contacts=3470 differences=0 stale=0 hit_on_contact=0
 SCENARIO guards queries=8 hits=3 contacts=0 differences=0 stale=0 hit_on_contact=0
 COLLIDE MEMO BENCH visits=27085 run_ns=1228000 hit_ns=98.7 tiny_run_ns=96.8 tiny_miss_store_ns=273.5 tiny_hit_ns=98.4 miss_store_overhead_ns=176.7
-WINDOW collide_memo device=1 frame=4800 frames=300 verify=0 queries=3600 hits=3100 misses=200 stored=190 contacts=300 ineligible=0 evictions=0 skipped_visits=123456 skipped_triangles=12 verified=0 verify_mismatches=0 foreign_thread=0 reentered=0 clears=1 stuck_busy=0 min_relaxed_hits=900 miss_none_found=1 miss_none_found_visits=2 miss_xform_a=3 miss_xform_a_visits=4 miss_xform_b=5 miss_xform_b_visits=6 miss_scale=0 miss_scale_visits=0 miss_mode=0 miss_mode_visits=0 miss_models=0 miss_models_visits=0 miss_min_value=7 miss_min_value_visits=80000 miss_expired=9 miss_expired_visits=10
+WINDOW collide_memo device=1 frame=4800 frames=300 verify=0 queries=3600 hits=3100 misses=200 stored=190 contacts=300 ineligible=0 evictions=0 skipped_visits=123456 skipped_triangles=12 verified=0 verify_mismatches=0 foreign_thread=0 reentered=0 clears=1 stuck_busy=0 min_relaxed_hits=900 miss_none_found=1 miss_none_found_visits=2 miss_xform_a=3 miss_xform_a_visits=4 miss_xform_b=5 miss_xform_b_visits=6 miss_scale=0 miss_scale_visits=0 miss_mode=0 miss_mode_visits=0 miss_models=0 miss_models_visits=0 miss_min_value=7 miss_min_value_visits=80000 miss_expired=9 miss_expired_visits=10 advance_hits=40 advance_skipped_visits=4000 advance_refused_gap=5 advance_rearm=6 advance_verified=0 advance_mismatches=0 advance_gap_median_log2=7 advance_displacement_median_log2=-3
 VERIFY verified=140 injected_mismatches=1
 SCENARIO verify queries=170 hits=0 contacts=0 differences=0 stale=0 hit_on_contact=0
 SUMMARY queries=58242 hits=44293 contacts=3512 differences=0 stale_hits=0 hits_on_contact=0 register_differences=0 stored=10295 evictions=6452 ineligible=2 skipped_visits=197180493 verified=140 verify_mismatches=1
 MISSES min_relaxed_hits=18622 none_found=2982 xform_a=1172 xform_b=25046 scale=369 mode=3 models=2 min_value=7218 expired=11 min_value_visits=7844036 xform_b_visits=985884
-COLLIDE MEMO CPU checks=59 failures=0
+SCENARIO advance queries=11000 hits=9000 contacts=6 differences=0 stale=0 hit_on_contact=0
+ADVANCE_RUN name=slow frames=2621 answered=2344 far_frames=1300 far_answered=1297 contact_found=1
+ADVANCE_DEEP visits=1037 frames=40 answered=0 longest_streak=0
+ADVANCE_COST advance_hit_ns=135.4
+ADVANCE total_answers=25035 skipped_visits=26803 refused=1012 rearm=1076 verified=452 mismatches=0
+COLLIDE MEMO CPU checks=76 failures=0
 '''
 
 
@@ -144,10 +186,12 @@ class MemoSite(unittest.TestCase):
         self.assertEqual(probe.source_constants(probe.CORE.read_text()), probe.EXPECTED_CONSTANTS)
         row = probe.parse_install_line(SAMPLE.splitlines()[0])
         self.assertEqual((row['requested'], row['patched'], row['verify'], row['reason'], row['site'], row['target'], row['entries']), (True, True, False, 'ok', 0x47f329, 0x4e29f0, 1024))
+        self.assertTrue(row['advance'])
         self.assertIsNone(probe.parse_install_line('collide_memo requested=1 patched=0 reason=body_mismatch'))
         window = probe.parse_window_line(next(l for l in SAMPLE.splitlines() if l.startswith('WINDOW '))[7:])
         self.assertEqual((window['hits'], window['skipped_visits'], window['verify_mismatches'], window['frames'], window['clears'], window['stuck_busy']), (3100, 123456, 0, 300, 1, 0))
         self.assertEqual((window['min_relaxed_hits'], window['miss_min_value'], window['miss_min_value_visits'], window['miss_xform_b_visits']), (900, 7, 80000, 6))
+        self.assertEqual((window['advance_hits'], window['advance_refused_gap'], window['advance_gap_median_log2'], window['advance_displacement_median_log2']), (40, 5, 7, -3))
         self.assertIsNone(probe.parse_window_line('collide_memo device=1 frame=300'))
         module = (ROOT / 'src/proxy/collide_memo.cpp').read_text()
         for key in probe.WINDOW_KEYS:
@@ -201,8 +245,9 @@ class MemoWiring(unittest.TestCase):
         self.assertLess(present.index('GetLastError()'), present.index('log("collide_memo device'))
         self.assertLess(present.index('log("collide_memo device'), present.index('SetLastError(error)'))
         self.assertEqual(capture.count('collide_memo::device_reset();'), 1)
-        for forbidden in ('float ', 'double ', '_mm_', 'xmmintrin'):
-            self.assertNotIn(forbidden, module, forbidden)   # words only: no floating-point code on the engine's path
+        self.assertIn('(_mm_getcsr() & 0xffc0u) != 0x1f80u', module)   # the one floating-point routine runs under the default MXCSR only, and never writes it
+        self.assertNotIn('_mm_setcsr', module)
+        self.assertNotIn('std::sqrt', module)
         audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
         self.assertIn("'_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store'", audit)
         self.assertNotIn('0xd9,', (ROOT / 'verification/probe/collide_memo_fixture.cpp').read_text())   # no engine bytes in the tracked fixture
@@ -212,14 +257,15 @@ class MemoWiring(unittest.TestCase):
         self.assertTrue(runner.accepted(record))
         self.assertEqual((record['summary']['hits'], record['bench']['hit_ns'], record['bench']['miss_store_overhead_ns'], record['approach']['parked_hits']), (44293, 98.7, 176.7, 59))
         self.assertEqual((record['minimum']['no_leaf_hits'], record['misses']['min_relaxed_hits']), (39, 18622))
+        self.assertEqual((record['advance']['total_answers'], record['advance_deep']['answered'], record['advance_runs']['slow']['far_answered']), (25035, 0, 1297))
         for change in (('stale_hits=0', 'stale_hits=1'), ('differences=0 stale_hits', 'differences=3 stale_hits'), ('hits_on_contact=0 register', 'hits_on_contact=1 register'),
-                       ('checks=59 failures=0', 'checks=59 failures=1'), ('checks=59 failures=0', 'checks=58 failures=0'), (' miss_store_overhead_ns=176.7', ''), ('SCENARIO running_minimum', 'SCENARIO other'), ('SCENARIO expiry', 'SCENARIO other'), ('SUMMARY queries=58242 hits=44293', 'SUMMARY queries=58242 hits=0')):
+                       ('checks=76 failures=0', 'checks=76 failures=1'), ('checks=76 failures=0', 'checks=75 failures=0'), ('verified=452 mismatches=0', 'verified=452 mismatches=1'), ('ADVANCE_COST ', 'OTHER '), (' miss_store_overhead_ns=176.7', ''), ('SCENARIO running_minimum', 'SCENARIO other'), ('SCENARIO expiry', 'SCENARIO other'), ('SUMMARY queries=58242 hits=44293', 'SUMMARY queries=58242 hits=0')):
             self.assertFalse(runner.accepted({**runner.parse(SAMPLE.replace(*change)), 'exit_status': 0}), change)
         self.assertFalse(runner.accepted({**runner.parse(SAMPLE), 'exit_status': 1}))
         self.assertFalse(runner.accepted({**runner.parse(''), 'exit_status': 0}))
 
 
-COLLIDE = ('X3M_COLLIDE_SAT_SSE2', 'X3M_COLLIDE_MEMO', 'X3M_COLLIDE_MEMO_VERIFY')
+COLLIDE = ('X3M_COLLIDE_SAT_SSE2', 'X3M_COLLIDE_MEMO', 'X3M_COLLIDE_MEMO_VERIFY', 'X3M_COLLIDE_MEMO_ADVANCE')
 
 
 class MemoLaunchOption(unittest.TestCase):
@@ -237,6 +283,12 @@ class MemoLaunchOption(unittest.TestCase):
             self.assertEqual(self.collide_env(directory, '--no-collide-memo'), {'X3M_COLLIDE_SAT_SSE2': '1'})
             self.assertEqual(self.collide_env(directory, '--no-collide-sat-sse2', '--no-collide-memo', inherited=both), {})
             self.assertEqual(self.collide_env(directory, '--collide-memo-verify'), {**both, 'X3M_COLLIDE_MEMO_VERIFY': '1'})
+            self.assertEqual(self.collide_env(directory, '--collide-memo-advance'), {**both, 'X3M_COLLIDE_MEMO_ADVANCE': '1'})
+            self.assertEqual(self.collide_env(directory, inherited={'X3M_COLLIDE_MEMO_ADVANCE': '1'}), both)
+            for refused in (('--collide-memo-advance', '--no-collide-sat-sse2'), ('--collide-memo-advance', '--no-collide-memo')):
+                code, _, error = self.launch(directory, *refused, vanilla=False)
+                self.assertNotEqual(code, 0)
+                self.assertIn('--collide-memo-advance requires', error)
             self.assertEqual(self.collide_env(directory, vanilla=True, inherited=both), {})
             self.assertEqual(self.collide_env(directory, '--collide-memo', vanilla=True), {'X3M_COLLIDE_MEMO': '1'})
             code, _, error = self.launch(directory, '--no-collide-memo', '--collide-memo-verify', vanilla=False)

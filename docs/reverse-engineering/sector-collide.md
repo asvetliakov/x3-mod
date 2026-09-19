@@ -1436,6 +1436,90 @@ now draws a fresh minimum for half of its distance-mode queries: 18,622 relaxed 
 un-memoed engine. Every miss is classified (`xform_b` 25,046, `min_value` 7,218, `none_found` 2,982, …). A miss now
 costs +177 ns on a tiny query (was +123 ns; the classification), ≈ 0.02 ms per frame at 130 misses.
 
+### 14.7 `--collide-memo-advance`: conservative advancement for the moving case (2026-09-20)
+
+Flights 163/164 **[m]**: verify 0 mismatches; standing still 65 fps, slightly moving 45 fps; while moving
+`miss_xform_b` ≈ 30,000 queries per 300 frames carrying 25–48 M node pairs, `miss_min_value = 0` and
+`min_relaxed_hits = 0` in every window — hypothesis 1 of §14.6 was wrong (the rule is harmless). What is left is a
+really moving `b` against the station's tree: ~10⁵ node pairs per frame, no triangle test, no contact.
+
+**Headline [m]: the accelerator is sound in the fixture (0 differences, 0 contacts answered, verify 452 / 0) and useless
+for that case.** It answers when the objects are well apart, where the engine's query costs one node pair anyway (25,035
+answers saved 26,803 node pairs). Deep among the boxes (1,037 node pairs, no leaf, no contact) a creep of **one unit** —
+0.25 % of the large model's half-extent — per frame was answered 0 times in 40 frames: the smallest of several hundred
+pruning gaps is below two units plus the margin. With 5·10⁴ prunes in the flight case it will be smaller still.
+Default off, and not worth a flight as it stands; §14.8 names what would be.
+
+**Settled from the bytes [s]** (each is a check of `verify_collide_memo_site.py`, now 32):
+- *What a contact is.* In every mode the leaf calls the triangle test `0x004e2ba0` and leaves at once when it returns 0
+  (`0x004e2343 test eax,eax; je 0x004e2526`); flags, tolerance (`0x0060853c`) and the running minimum are read only
+  after that, as filters that can only remove contacts. The triangle test `0x004e2a50..0x004e327f` names no global. So
+  "no contact" follows from "no triangle pair intersects", i.e. mesh distance > 0, in flags 2 and flags `0xc` alike;
+  the tolerance plays no part (`contact_needs_an_intersection`).
+- *Boxes enclose their triangles.* Both box fits (`0x004e1454..0x004e1472`, `0x004e1fbb..0x004e1fdf`) store
+  `d = (max − min) · [0x00565508]` and the centre from `(min + max) · [0x00565508]`, the constant being exactly 0.5: the
+  tight min/max box, no shrink (float rounding only). That the min/max run over all of a node's triangles is RAPID's
+  `fit_to_tris`/`split_recurse`; the loop itself was not re-read **[i]**.
+- *What an answer may leave behind.* Outside the collider the image references, of everything a no-contact query
+  writes, only the contact counter (`0x0047f335`, plus four one-time initialisers of it and of the node-pair counter).
+  The root block, the mode words and both other counters are private to the collider, which rewrites all of them
+  before reading any (`replayed_globals_private`). An advance answer therefore replays the *stored* pose's node-pair
+  count and root block: unobservable.
+- *The relative pose.* `0x004e2780` composes `R = Raᵀ·Rb`, `T = Raᵀ·(Tb − Ta)·(1/s1)`, `s = s2/s1` in float32 with the
+  root boxes folded in; the bound uses `M = R1ᵀR2·(s2/s1)`, `T = R1ᵀ(T2 − T1)/s1` in double from the same 26 floats.
+  Which of the two scales is inverted was read from the listing's argument offsets, not confirmed numerically **[i]**;
+  the fixture's run at scales 2 and 3 ended in a contact at the engine's frame with 0 differences.
+
+**The argument.** A run that reached no leaf (`triangles == 0`) and found no contact visited `1 + 2·descents` node
+pairs and pruned exactly `(pairs + 1)/2` of them; every triangle pair lies under one pruned box pair. The SSE2 SAT
+(`obb_disjoint_gap`, same decisions: SAT fixture 2,560,000 pairs, 0 violations, +0.1 ns) reports `t − (ra + rb)` of each
+pruning axis; the axes are unit vectors or cross products no longer than 1, and `Bf = |R| + 1e-6` only lowers the value,
+so the minimum `g` over the run is a lower bound of the distance between the meshes, in `a`'s model units. The memo
+accepts `g` only when it saw exactly `(pairs + 1)/2` prunes. For a later query equal in models, stamps, scales,
+tolerance, flags, cap and pointer null-ness, with one object's transform changed, any point `y` of `b` moves relative
+to `a` by `(M' − M)y + (T' − T)`, so by at most `D = ‖M' − M‖_F·ρ_b + |T' − T|`, `ρ_b = 1.001(|c| + |d|)` of `b`'s root
+box. Answered when `D + margin < g/2`, `margin = 1e-5·(|T| + |T'| + ρ_a + s·ρ_b)`: float32 composition over a few dozen
+levels errs near 1e-6 of those magnitudes, and the factor 2 also covers box axes that are unit to ~1e-6. Always
+measured against the stored pose, never incrementally; re-stored when the test fails. Refused: non-finite values,
+scales not in (0, 1e30), a matrix that preserves no lengths (1e-3), MXCSR not at its default. `b` static and `a`
+moving is the same formula through the index on `b`'s transform.
+
+**Module.** `X3M_COLLIDE_MEMO_ADVANCE=1`, armed only while the SAT module is installed; the launcher refuses the option
+without the memo or the SAT. Row: `advance_hits advance_skipped_visits advance_refused_gap advance_rearm
+advance_verified advance_mismatches advance_gap_median_log2 advance_displacement_median_log2` (medians as power-of-two
+buckets: a double through varargs would be copied with x87). Verify mode runs the engine on every advance answer; a
+contact logs `collide_memo_unsound` with models, gap and displacement in thousandths. The bound is the module's only
+floating-point code: SSE2 doubles, square roots by `sqrtsd`, no library call, no x87 (build audit).
+
+**Fixture [m]**, 76 checks, 69,147 queries, 0 differences. Approaches of a ship to a solid model until the engine
+reports a contact, a small random turn every frame:
+
+| Run | Frames | Answered by advancement | Far half answered | Contact found at the engine's frame |
+| --- | --- | --- | --- | --- |
+| 1 unit / frame | 2,621 | 2,344 | 1,297 / 1,300 | yes |
+| 3 | 829 | 740 | 432 / 434 | yes |
+| 12 | 434 | 320 | 105 / 109 | the engine never sees one (steps through) |
+| 60 | 87 | 42 | 10 / 22 | same |
+| scales 2 and 3 | 1,613 | 1,471 | 861 / 867 | yes |
+| flags `0xc`, tolerance 25 | 865 | 762 | 421 / 434 | yes |
+| `a` moves | 863 | 750 | 428 / 434 | yes |
+| no turn | 1,245 | 1,144 | 645 / 650 | yes |
+| needle (half-length 300) turning 0.0015 rad / frame | 1,500 | 1,462 | — | none |
+
+Hostile poses (scale 0 and −1, a zero or tripled matrix, positions at 2³¹) are never answered. Verify mode: 452
+answers, all confirmed. Cost: an advance answer 142 ns against 89 ns for the one-node-pair query it replaces (harness
+included), so where it fires it saves nothing either; a miss now costs +185 ns.
+
+### 14.8 What would help the moving case (not done)
+
+The bound fails because one number stands for 10⁴–10⁵ box pairs. The standard remedy is a **front**: keep the pruned
+box pairs of the last run (the frontier of the descent) and re-test only those, descending from a pair only when it
+stops being separated — generalized front tracking. It removes the descents (half the node pairs and both child
+transforms each) but still runs one SAT per frontier pair, so the ceiling is roughly 2–3×, at the price of a frontier of
+~5·10⁴ pairs per query to store and of re-deriving each pair's transform from the root; and it changes no answer only
+if the frontier is re-validated completely each time. A per-subtree gap (advance whole subtrees of `a` that are far
+from `b`, re-run the near ones) is the cheaper variant of the same idea. Neither is a small change.
+
 ## Reproduce
 
 ```sh

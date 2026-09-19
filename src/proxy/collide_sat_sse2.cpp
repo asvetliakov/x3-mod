@@ -30,8 +30,16 @@ bool pin_self() {
 
 extern "C" {
 const std::uint32_t x3m_collide_sat_mxcsr = 0x1f80;   // round to nearest, all exceptions masked, no DAZ/FZ
+// For the collision memo's conservative advancement (collide_memo.cpp): the smallest gap of any pruning test since the
+// memo last reset it, and how many pruning tests there were (so the memo can tell that it saw every one of a query).
+// A NaN gap sticks as -1. One comparison and at most two stores per pruning call; nothing reads them otherwise.
+double x3m_collide_sat_min_gap = 0.0;
+std::uint32_t x3m_collide_sat_prunes = 0;
 int __cdecl x3m_collide_sat_sse2(const float* R, const float* b_extents, const float* T, const float* a_extents) {
-    return obb_disjoint(R, b_extents, T, a_extents);
+    return obb_disjoint_gap(R, b_extents, T, a_extents, [](double g) {
+        ++x3m_collide_sat_prunes;
+        if (!(g >= x3m_collide_sat_min_gap)) x3m_collide_sat_min_gap = g == g ? g : -1.0;
+    });
 }
 }
 // In: ESI = R, EDI = b extents, [ESP+4] = T, [ESP+8] = a extents (the caller pops 8). Out: EAX.
@@ -127,4 +135,5 @@ bool shutdown() {
     return back;
 }
 const char* state() { return state_; }
+bool installed() { return patched_; }
 }

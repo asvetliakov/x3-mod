@@ -55,7 +55,11 @@ inline double bf(float r) { return static_cast<double>(static_cast<float>(static
 
 // Same operands in the same association order as 0x004e3280 (all products of
 // two float32 values are exact in double). Bf rows are computed when first used.
-[[gnu::always_inline]] inline int obb_disjoint(const float* R, const float* bx, const float* Tx, const float* ax) {
+template <class Gap> [[gnu::always_inline]] inline int obb_disjoint_gap(const float* R, const float* bx, const float* Tx, const float* ax, Gap&& gap) {
+    // Same compare as `separates`; on a separation the gap t - (ra + rb) along that axis goes to `gap`. The A and B axes are unit
+    // vectors and a cross axis is no longer than 1, so the gap never overstates the distance between the two boxes; Bf = |R| + reps
+    // only makes it smaller.
+    const auto separates = [&](double t, double radius_sum) { if (t <= radius_sum * slack) return false; gap(t - radius_sum); return true; };
     const double a0 = ax[0], a1 = ax[1], a2 = ax[2], b0 = bx[0], b1 = bx[1], b2 = bx[2], T0 = Tx[0], T1 = Tx[1], T2 = Tx[2];
     const double t0 = abs_f(Tx[0]), t1 = abs_f(Tx[1]), t2 = abs_f(Tx[2]);
     const double f0 = bf(R[0]), f1 = bf(R[1]), f2 = bf(R[2]);
@@ -80,5 +84,8 @@ inline double bf(float r) { return static_cast<double>(static_cast<float>(static
     if (separates(through_float(T1 * R1 - R4 * T0), ((b2 * f6 + a0 * f4) + a1 * f1) + b0 * f8)) return 14;         // A2 x B1
     if (separates(through_float(T1 * R2 - R5 * T0), ((b1 * f6 + a0 * f5) + a1 * f2) + b0 * f7)) return 15;         // A2 x B2
     return 0;
+}
+[[gnu::always_inline]] inline int obb_disjoint(const float* R, const float* bx, const float* Tx, const float* ax) {
+    return obb_disjoint_gap(R, bx, Tx, ax, [](double) {});
 }
 }

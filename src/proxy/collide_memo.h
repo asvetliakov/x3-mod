@@ -16,6 +16,14 @@
 // window of theirs. The census keeps counting accepted pairs and mesh pairs (its sites are above this one); its
 // node-pair and triangle counters see only the queries that ran, and `skipped_visits` here is the difference.
 //
+// X3M_COLLIDE_MEMO_ADVANCE=1 (with the first, and only while the SSE2 SAT is installed) adds conservative advancement
+// for the moving case: a run that reached no leaf leaves, through the SAT, the smallest gap of its pruning tests, a
+// lower bound of the distance between the meshes; a later query that differs in one object's transform alone is answered
+// "no contact" while a rigorous bound of how far any point of b can have moved relative to a stays under half that gap
+// (collide_memo_core.h, advance_holds; section 14.7). This is the one place with floating-point arithmetic: SSE2 doubles,
+// MXCSR read and required to be the default, never written. In verify mode every such answer runs the engine as well
+// and a contact is logged as `collide_memo_unsound`.
+//
 // Threads and clock. The memo's state (table, pending key, saved return address) belongs to ONE thread: the first
 // that comes through the thunk, in the game its main loop, which is also the Present thread. lookup() tests that before
 // it reads anything; a query from any other thread, and a re-entered one, goes straight to the engine
@@ -34,7 +42,7 @@ struct Addresses { std::uintptr_t site, target; };
 bool initialize();  // backend-load path only; logs one collide_memo line when the variable is set
 bool shutdown();    // restores the call (dynamic-unload detach only); true when nothing is installed
 // Verifies the windows before and after the call (offsets relative to the site) and redirects it.
-bool install_at(const Addresses& addresses, bool verify_mode);
+bool install_at(const Addresses& addresses, bool verify_mode, bool advance_mode = false);
 const char* state();
 // Frame boundary: advances the memo's frame (entries expire after one frame without a store or a hit) and writes one
 // `collide_memo` line per 300 frames. No-op when nothing is installed.

@@ -156,10 +156,11 @@ static unsigned grow(Model& m, const double* M, const double* p, const float* d,
     m.boxes[index] = n;
     return index;
 }
+static bool thin_model = false;   // a needle: a large bounding radius for a small volume
 static Model* make_model(unsigned leaves, float extent) {
     Model* m = new Model{};
     m->boxes.reserve(2 * leaves); m->triangles.reserve(leaves);
-    const float d[3] = {extent, extent * float(uniform(0.5, 1.0)), extent * float(uniform(0.3, 1.0))};
+    const float d[3] = {extent, extent * float(thin_model ? 0.01 : uniform(0.5, 1.0)), extent * float(thin_model ? 0.01 : uniform(0.3, 1.0))};
     const double identity[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1}, origin[3] = {0, 0, 0};
     grow(*m, identity, origin, d, leaves, true);
     m->header[0] = addr(&m->boxes[0]); m->header[1] = addr(&m->triangles[0]); m->header[2] = leaves; m->header[3] = leaves; m->header[4] = unsigned(m->boxes.size()); m->header[5] = 3;
@@ -181,21 +182,28 @@ static const unsigned key_node_words[13] = {0x70, 0xb0, 0xb4, 0xb8, 0xc0, 0xc4, 
 
 // ---- one query through both engines ----
 struct Mode { std::uint32_t flags, cap; float tolerance; bool minimum; float minimum_value; };
-struct Tally { unsigned long queries = 0, hits = 0, contacts = 0, differences = 0, stale = 0, hit_on_contact = 0, register_differences = 0; };
+struct Tally { unsigned long queries = 0, hits = 0, contacts = 0, differences = 0, stale = 0, hit_on_contact = 0, register_differences = 0, advance = 0, advance_on_contact = 0; };
 static Tally tally;
 static float minimum_slot;
-static bool last_contact = false;
+static bool last_contact = false, last_advanced = false;
+// The state block 0x0060851c..0x0060854f. After an advance answer the node-pair and triangle counters (+0x28, +0x2c) and the root
+// block hold the stored pose's values; nothing outside the collider reads them (verifier, `replayed_globals_private`). Everything
+// else, the contact record and the contact counter above all, must still be the engine's.
+static bool same_state(const unsigned char* x, const unsigned char* y, bool advanced) {
+    return advanced ? !std::memcmp(x, y, 0x28) && !std::memcmp(x + 0x30, y + 0x30, 4) : !std::memcmp(x, y, 52);
+}
 static bool query(const Object& a, const Object& b, const Mode& mode, const char* label) {
     unsigned char root0[56], state0[52], root1[56], state1[52];
     std::memcpy(root0, reinterpret_cast<void*>(core::root_block_va), 56); std::memcpy(state0, reinterpret_cast<void*>(0x0060851c), 52);
     std::uint32_t tolerance_bits; std::memcpy(&tolerance_bits, &mode.tolerance, 4);
-    const std::uint32_t hits_before = memo::counters().hits;
+    const std::uint32_t hits_before = memo::counters().hits, advance_before = memo::counters().advance_hits;
     State with_memo{}, reference{};
     minimum_slot = mode.minimum_value; SetLastError(0x5150);
     fx_call(core::caller_va, a.node, b.node, a.body, b.body, mode.flags, mode.cap, tolerance_bits, mode.minimum ? addr(&minimum_slot) : 0, &with_memo);
     const DWORD error1 = GetLastError(); const float minimum1 = minimum_slot;
     std::memcpy(root1, reinterpret_cast<void*>(core::root_block_va), 56); std::memcpy(state1, reinterpret_cast<void*>(0x0060851c), 52);
-    const bool hit = memo::counters().hits != hits_before;
+    const bool advanced = memo::counters().advance_hits != advance_before;   // answered by conservative advancement: no contact, by the bound
+    const bool hit = memo::counters().hits != hits_before || advanced;
     // The same global state again for the un-memoed engine.
     std::memcpy(reinterpret_cast<void*>(core::root_block_va), root0, 56); std::memcpy(reinterpret_cast<void*>(0x0060851c), state0, 52);
     minimum_slot = mode.minimum_value; SetLastError(0x5150);
@@ -204,10 +212,11 @@ static bool query(const Object& a, const Object& b, const Mode& mode, const char
     last_contact = contact;
     bool same = with_memo.eax == reference.eax && with_memo.ebx == reference.ebx && with_memo.ebp == reference.ebp && with_memo.esi == reference.esi && with_memo.edi == reference.edi
         && !std::memcmp(with_memo.env, reference.env, 4) && !std::memcmp(with_memo.env + 8, reference.env + 8, 2) && with_memo.mxcsr == reference.mxcsr
-        && !std::memcmp(root1, reinterpret_cast<void*>(core::root_block_va), 56) && !std::memcmp(state1, reinterpret_cast<void*>(0x0060851c), 52)
+        && (advanced || !std::memcmp(root1, reinterpret_cast<void*>(core::root_block_va), 56)) && same_state(state1, reinterpret_cast<const unsigned char*>(0x0060851c), advanced)
         && !std::memcmp(&minimum1, &minimum_slot, 4) && error1 == GetLastError() && error1 == 0x5150;
     if (!hit && (with_memo.ecx != reference.ecx || with_memo.edx != reference.edx)) { ++tally.register_differences; same = false; }   // on a run the engine's own ECX/EDX reach the caller
-    ++tally.queries; tally.hits += hit; tally.contacts += contact;
+    ++tally.queries; tally.hits += hit; tally.contacts += contact; tally.advance += advanced; last_advanced = advanced;
+    if (advanced && contact) ++tally.advance_on_contact;
     if (!same) { ++tally.differences; if (hit) ++tally.stale; if (tally.differences <= 5) std::printf("DETAIL %s query=%lu hit=%u contact=%u result=%u/%u\n", label, tally.queries, hit, contact, with_memo.eax, reference.eax); }
     if (hit && contact) ++tally.hit_on_contact;
     return hit;
@@ -609,6 +618,145 @@ int main() {
         section("verify", before);
     }
     check(memo::shutdown() && site_pristine(), "second shutdown restores the call exactly");
+    // ---- conservative advancement: the memo with X3M_COLLIDE_MEMO_ADVANCE=1 next to the SSE2 SAT ----
+    SetEnvironmentVariableW(L"X3M_COLLIDE_MEMO_VERIFY", nullptr);
+    SetEnvironmentVariableW(L"X3M_COLLIDE_MEMO_ADVANCE", L"1");
+    check(memo::initialize() && !std::strcmp(memo::state(), "ok"), "initialize with conservative advancement");
+    thin_model = true; Model* needle = make_model(64, 300.0f); thin_model = false;
+    // Full-size triangles, so that a ship flying through the large model is certain to touch it.
+    Model* solid = make_model(2048, 400.0f); Model* solid_ship = make_model(256, 30.0f);
+    {
+        const Tally before = tally;
+        // A ship closes in on the large model along x at several speeds, turning a little every frame, until the engine reports a contact. Every
+        // frame goes through both engines: an advance answer on a contact frame, or one frame late in finding it, is a difference.
+        struct Run { const char* name; std::int32_t speed; std::int32_t scale_a, scale_b; Mode mode; double turn; bool move_a; };
+        const Run runs[] = {{"slow", 1, 1, 1, first_contact, 0.0005, false}, {"walk", 3, 1, 1, first_contact, 0.002, false}, {"fast", 12, 1, 1, first_contact, 0.01, false},
+                            {"dash", 60, 1, 1, first_contact, 0.05, false}, {"scaled", 3, 2, 3, first_contact, 0.002, false}, {"distance", 3, 1, 1, distance_tolerant, 0.002, false},
+                            {"a_moves", 3, 1, 1, first_contact, 0.002, true}, {"no_turn", 2, 1, 1, first_contact, 0.0, false}};
+        for (const Run& run : runs) {
+            Object a{}, b{};
+            double base[9], wobble[9];
+            rotation(base, 1.0); set_rotation(a, base); set_rotation(b, base); rotation(base, 1.0);
+            unsigned frames = 0, far_frames = 0, far_answered = 0, answered = 0, contact_at = 0;
+            const std::int32_t start = 2600 * run.scale_a;
+            for (std::int32_t x = start; x > -start && contact_at == 0; x -= run.speed, ++frames, next_frame()) {
+                rotation(wobble, run.turn);   // a small random rotation about the base attitude
+                double turned[9];
+                for (unsigned i = 0; i < 3; ++i) for (unsigned j = 0; j < 3; ++j) turned[3 * i + j] = wobble[3 * i] * base[j] + wobble[3 * i + 1] * base[3 + j] + wobble[3 * i + 2] * base[6 + j];
+                if (run.turn > 0.0) std::memcpy(base, turned, sizeof base);
+                set_rotation(run.move_a ? a : b, base);
+                if (run.move_a) { place(a, solid, -x, 0, 0, run.scale_a); place(b, solid_ship, 0, 40, -30, run.scale_b); }
+                else { place(a, solid, 0, 0, 0, run.scale_a); place(b, solid_ship, x, 40, -30, run.scale_b); }
+                query(a, b, run.mode, "advance");
+                answered += last_advanced;
+                if (x > start / 2) { ++far_frames; far_answered += last_advanced; }
+                if (last_contact) contact_at = frames + 1;
+            }
+            std::printf("ADVANCE_RUN name=%s frames=%u answered=%u far_frames=%u far_answered=%u contact_found=%u\n", run.name, frames, answered, far_frames, far_answered, contact_at != 0);
+            // At 12 and 60 units a frame the tumbling ship can step through the large model between two samples without the engine ever seeing a
+            // contact (the engine tests poses, not sweeps); the memo then has nothing to find either, and every frame still equals the engine's.
+            check((contact_at != 0 || run.speed >= 12) && far_answered * 3 > far_frames, run.name);
+        }
+        // A needle turning about z next to the large model: a large bounding radius, so a small turn is a large possible displacement.
+        {
+            Object a{}, b{};
+            double base[9];
+            rotation(base, 0.0); set_rotation(a, base); place(a, solid, 0, 0, 0, 1); place(b, needle, 650, 0, 0, 1);
+            unsigned frames = 0, answered = 0, contacts = 0;
+            for (; frames < 1500 && contacts == 0; ++frames, next_frame()) {
+                const double angle = frames * 0.0015, c = std::cos(angle), s = std::sin(angle);
+                const double turn[9] = {c, -s, 0, s, c, 0, 0, 0, 1};
+                set_rotation(b, turn);
+                query(a, b, first_contact, "advance");
+                answered += last_advanced; contacts += last_contact;
+            }
+            std::printf("ADVANCE_RUN name=needle frames=%u answered=%u far_frames=0 far_answered=0 contact_found=%u\n", frames, answered, contacts);
+            check(answered > 0 && answered < frames, "needle: some frames answered, not all (the radius makes the bound bite)");
+        }
+        // Poses the bound must refuse: a scale of zero or below, a matrix that is no rotation, positions at the edge of the integer range.
+        {
+            Object a{}, b{};
+            double base[9];
+            rotation(base, 1.0); set_rotation(a, base); set_rotation(b, base);
+            place(a, models[0], 0, 0, 0, 1);
+            const std::uint32_t advance0 = memo::counters().advance_hits;
+            for (unsigned frame = 0; frame < 120; ++frame, next_frame()) {
+                place(b, models[1], 400000 + std::int32_t(frame), 0, 0, 1);
+                switch (frame % 4) {
+                    case 0: b.node[0x70 / 4] = frame % 8 ? 0u : 0xffffffffu; break;                                        // scale 0 and -1
+                    case 1: b.node[0xc0 / 4] = std::uint32_t(3 * 65536); break;                                             // not a rotation
+                    case 2: b.node[0xb0 / 4] = 0x7fffff00u + frame; break;                                                  // 2^31: the margin swallows any gap
+                    default: for (unsigned w = 0xc0; w <= 0xe8; w += 4) b.node[w / 4] = 0; break;                           // a zero matrix
+                }
+                query(a, b, first_contact, "advance");
+                set_rotation(b, base);
+            }
+            check(memo::counters().advance_hits == advance0, "hostile poses are never answered by advancement");
+        }
+        // The case the option is for: the ship deep among the large model's boxes, ~1e4 node pairs, no leaf, no contact. How far can it creep
+        // (one unit per frame, in a's model units; the large model's half-extent is 400) before the smallest pruning gap is used up?
+        {
+            Object a{}, b{};
+            double base[9];
+            rotation(base, 1.0); set_rotation(a, base); rotation(base, 1.0); set_rotation(b, base);
+            place(a, big, 0, 0, 0, 1);
+            State s{};
+            std::int32_t best[3] = {0, 0, 0}; std::uint32_t most = 0;
+            for (unsigned attempt = 0; attempt < 200; ++attempt) {
+                const std::int32_t at[3] = {std::int32_t(uniform(-250, 250)), std::int32_t(uniform(-150, 150)), std::int32_t(uniform(-100, 100))};
+                place(b, ship, at[0], at[1], at[2], 1);
+                fx_call(reference_va, a.node, b.node, a.body, b.body, 2, 1, 0, 0, &s);
+                if (s.eax == 0 && engine<std::uint32_t>(0x00608548) == 0 && engine<std::uint32_t>(core::visits_va) > most) { most = engine<std::uint32_t>(core::visits_va); std::memcpy(best, at, sizeof at); }
+            }
+            unsigned answered = 0, longest = 0, streak = 0;
+            for (std::int32_t step = 0; step < 40; ++step, next_frame()) {
+                place(b, ship, best[0] + step, best[1], best[2], 1);
+                query(a, b, first_contact, "advance");
+                if (last_advanced) { ++answered; if (++streak > longest) longest = streak; } else streak = 0;
+            }
+            std::printf("ADVANCE_DEEP visits=%u frames=40 answered=%u longest_streak=%u\n", most, answered, longest);
+        }
+        // The cost of the bound: a far pair that moves one unit per query, answered by advancement every time.
+        {
+            Object a{}, b{};
+            double base[9];
+            rotation(base, 1.0); set_rotation(a, base); set_rotation(b, base);
+            place(a, models[0], 0, 0, 0, 1);
+            State s{};
+            double best = 1e30;
+            const std::uint32_t advance0 = memo::counters().advance_hits;
+            for (unsigned r = 0; r < 8; ++r, next_frame()) {
+                place(b, models[1], 500000, 0, 0, 1);
+                fx_call(core::caller_va, a.node, b.node, a.body, b.body, 2, 1, 0, 0, &s);
+                const double started = seconds();
+                for (unsigned k = 1; k <= 2000; ++k) { b.node[0xb4 / 4] = k; fx_call(core::caller_va, a.node, b.node, a.body, b.body, 2, 1, 0, 0, &s); }
+                const double each = (seconds() - started) * 1e9 / 2000.0; if (each < best) best = each;
+            }
+            check(memo::counters().advance_hits - advance0 >= 15000, "cost run: answered by advancement");
+            std::printf("ADVANCE_COST advance_hit_ns=%.1f\n", best);
+        }
+        check(tally.advance_on_contact == 0 && tally.differences == 0, "advancement never answers where the engine finds a contact; every other output identical");
+        section("advance", before);
+    }
+    const core::Counters advanced = memo::counters();
+    check(memo::shutdown() && site_pristine(), "third shutdown restores the call exactly");
+    // Verify mode with advancement: every advance answer runs the engine and must meet no contact.
+    SetEnvironmentVariableW(L"X3M_COLLIDE_MEMO_VERIFY", L"1");
+    check(memo::initialize() && !std::strcmp(memo::state(), "ok"), "initialize: advancement in verify mode");
+    {
+        Object a{}, b{};
+        double base[9];
+        rotation(base, 1.0); set_rotation(a, base); set_rotation(b, base);
+        place(a, solid, 0, 0, 0, 1);
+        bool contact = false;
+        for (std::int32_t x = 2600; x > -2600 && !contact; x -= 5, next_frame()) { place(b, solid_ship, x, 40, -30, 1); query(a, b, first_contact, "advance_verify"); contact = last_contact; }
+        const core::Counters c = memo::counters();
+        check(contact && c.advance_verified - advanced.advance_verified > 50 && c.advance_mismatches == 0 && c.advance_hits == advanced.advance_hits && tally.differences == 0,
+              "verify mode: advance answers all confirmed by the engine, none skipped");
+        std::printf("ADVANCE total_answers=%u skipped_visits=%u refused=%u rearm=%u verified=%u mismatches=%u\n", advanced.advance_hits, advanced.advance_skipped_visits, advanced.advance_refused,
+                    advanced.advance_rearm, c.advance_verified - advanced.advance_verified, c.advance_mismatches);
+    }
+    check(memo::shutdown() && site_pristine(), "fourth shutdown restores the call exactly");
     engine_patch::close_install_window("fixture");
     check(!memo::initialize() && !std::strcmp(memo::state(), "late_claim") && site_pristine(), "closed window: late_claim");
 
