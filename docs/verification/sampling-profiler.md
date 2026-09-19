@@ -2010,6 +2010,16 @@ and exists only in commit `8a374dc5`; the results below are that commit's.
 | Host tests | `PYTHONPATH=verification/probe python3 -m unittest` over `test_collide_memo`, `test_collide_sat_sse2`, `test_collide_box_cull`, `test_collide_narrow_census`, `test_cull_small_parts`, `test_env_experiment_launch`, `test_d3dx_override_launch` | 67 tests, OK |
 | Launcher | `python3 tools/manage.py launch --dry-run --collide-memo-advance` | `X3M_COLLIDE_SAT_SSE2=1`, `X3M_COLLIDE_MEMO=1`, `X3M_COLLIDE_MEMO_ADVANCE=1`; refused with `--no-collide-sat-sse2` or `--no-collide-memo` |
 
+## Collide front tracking: feasibility measurement (2026-09-20, no game, no production code)
+
+[sector-collide.md](../reverse-engineering/sector-collide.md) §14.9. Bottle X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`. `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_front_feasibility.py`:
+exit 0, 0 unsound frames; `verification/results/collide-front-feasibility.json`. Front tracking with the cached
+separating axis: 1.13–1.16× at 1 unit per frame, 1.12× at 5, 0.95× at 20; without the cached axis 0.84–1.04×; axis-first
+hit rate 98 % / 90 % / 87 %. Full query 29–33 ns per node pair with the boxes in preorder, 34–36 ns scattered over
+151 MB: the flight's 66 ns is not box cache misses. Projected flight saving ≈ 0.9 ms of ≈ 7 ms: **not worth building.**
+The `--collide-memo-advance` revert left `verify_collide_memo_site.py` at 33 checks (PASS) and production equal to main.
+
 ## Run 44 A (run140/run141): `--collide-narrow-census` triage of two preserved sessions
 
 Two sessions, `--loop-phases --collide-narrow-census`, bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,

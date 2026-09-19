@@ -1525,6 +1525,47 @@ transforms each) but still runs one SAT per frontier pair, so the ceiling is rou
 if the frontier is re-validated completely each time. A per-subtree gap (advance whole subtrees of `a` that are far
 from `b`, re-run the near ones) is the cheaper variant of the same idea. Neither is a small change.
 
+### 14.9 Front tracking: feasibility measurement (2026-09-20) — not worth building
+
+Fixture-side only (`verification/probe/collide_front_feasibility.cpp`, no production code, no engine bytes): the descent
+is the C++ replica of §13 (bit-identical to `0x004e2530`, engine parity per node pair) with the SSE2 SAT. A leaf-free,
+contact-free query leaves its visit tree in preorder; the next frame walks that tree: a **descended** pair gets its two
+child transforms composed and no SAT, a **pruned** pair one SAT (its last separating axis first, optionally), a pruned
+pair that now overlaps is descended as the engine would and spliced in, and a leaf pair anywhere abandons the front for
+the full query. *Soundness:* the front covers the pair space by construction (pairs are only replaced by their
+children), and every pair's transform is composed along the engine's own path, so when every front pair is disjoint the
+engine, which prunes at that pair or above, reaches no leaf: 0 violations in every frame measured (each frame also ran
+the full descent). Re-merging parents whose children are all disjoint was not tried.
+
+**Measured [m]** (FEX; tree `a` 131,072 leaves / 262,143 boxes, `b` 512 leaves; the deepest leaf-free placement of 300;
+`b` creeps and turns 0.002 rad per frame; medians):
+
+| Layout of `a`'s boxes | Speed (units / frame) | Node pairs | Full query | Front, cached axis | Front, whole SAT | Axis-first hit rate | Front SATs |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| contiguous (19 MB, preorder) | 1 | 6,579 | 193 µs (29.3 ns / pair) | 171 µs, **1.13×** | 213 µs, 1.01× | 97.7 % | 3,493 |
+| scattered over 151 MB | 1 | 14,445 | 493 µs (34.1 ns / pair) | 426 µs, **1.16×** | 460 µs, 1.04× | 97.9 % | 7,418 |
+| scattered | 5 | 14,435 | 527 µs | 471 µs, 1.12× | 518 µs, 0.97× | 90.4 % | 7,725 |
+| scattered | 20 | 12,477 | 457 µs | 482 µs, **0.95×** | 541 µs, 0.84× | 86.7 % | 7,946 |
+
+No front was ever abandoned before the scene itself reached a leaf, but the synthetic scenes stay leaf-free for only
+2–21 frames and reach 6–14 k node pairs, not the flight's 10⁵; the costs are per node pair, so the ratios carry over,
+the absolute sizes do not.
+
+**Why so little [s+m].** Front tracking removes exactly the SATs on descended pairs (half the pairs, 20 ns each), a
+ceiling of ≈ 1.47× on a 31 ns pair. It cannot remove the two child transforms per descended pair (8–9 ns each, §13.5):
+a pair's `R`/`T` is composed down the engine's path in rounded float32 steps, so exactness needs the whole chain again
+every frame. The front's own traffic (12-byte records, ~1.2 MB per frame at 10⁵ pairs) and the splice eat most of the
+rest. Without the cached axis there is no gain at all; the cached axis hits 98 % at 1 unit per frame and 87 % at 20.
+
+**Projection for the flight case [i]:** ≈ 7 ms per frame × (1 − 1/1.15) ≈ **0.9 ms** at a creep, perhaps 2 ms with a
+tuned iterative walk (1.4×), nothing or a loss at 20 units per frame. **Recommendation: do not build it.**
+
+**The 66 ns (flight) against 31 ns (fixture) per node pair is not the boxes' cache behaviour [m]:** scattering 262,143
+boxes at random over 151 MB costs 34–36 ns per pair against 29–33 ns in preorder. What doubles the flight's figure is
+outside the descent loop — candidates: the ~187 queries' own set-up (`0x0048a890` part walk, `0x0047f1b0`, memo miss
+path), the census brackets when on, and JIT or TLB effects of the full game process — and was not reproduced here.
+A sampling profile of the collide phase in flight would settle where the other half goes.
+
 ## Reproduce
 
 ```sh
