@@ -74,9 +74,10 @@ Completed run commands and instructions are preserved in
 not rerun requests.
 
 
-## 49. Consolidated attribution and fog-card replacement — candidate pending qualification
+## 49. Consolidated attribution and fog-card replacement — ready for flight
 
-This candidate is not installed. Use original hull shading, the user-selected
+Qualification is complete; see [status](../status.md) for installed-build details.
+Use original hull shading, the user-selected
 `--light-map-far-fade 80,220`, and explicit experimental `--taa-thin-region 0.97`
 and `--taa-far-stabiliser 0.985`; neither TAA option is accepted as a moving-camera fix.
 Do not add `--frame-timing`, state stamps, `--profile`, or `--submit-phases`.

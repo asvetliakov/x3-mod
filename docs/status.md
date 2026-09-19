@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (run 48 reported; fog census and diagnostic qualification complete; next candidate in preparation). This is the
+Updated 2026-09-20 (run49 installed; run48 analysis complete; awaiting run49 user flight). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -12,37 +12,37 @@ Read history only for a relevant unresolved question. The
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`9bbe69387fdf87505f26ce6625f6c8e1c239367bc5634930c5e307240d38d7ef`
-(19,270,118 bytes), built once from clean committed main `b698c32c`
-(2026-09-20; marker without `-dirty`), installed through `manage.py install`.
-The [build record](../verification/results/run48-candidate-build.json) binds the
-clean build, the no-x87 audit (88 roots, 559 reachable), 17 exports, ten site
-verifiers (submit 17, collide memo 33), all 31 authored shaders + 9 bloom programs
-(every program ≤ 512 ps_3_0 slots; tightest 509), the full 190-case motion-output
-suite (0 behavioural regressions), sun-share live 25, submit-phase CPU 393, fog pass
-89, temporal pass 459/19, collide memo 59, the state-hook benchmark (+627.9 ns draw
-pair), the four §48 dry-runs and the full host suite (2,322; its two failures were
-stale test expectations for the prepass table, corrected in the following commit
-without touching a production input). The
-[install record](../verification/results/run48-candidate-install.json) binds the
-installed bytes, unchanged EXE/bottle hashes and the rollback: run47
-`95d6306b…` in `/tmp/x3-candidate-jpEyJK/rollback`. No game launched.
+Bottle **X3**, **CrossOver Preview.app**. Run49 DLL SHA-256:
+`8a711cabc87f59beb2368c4cdfec1b125c4b8ce927d4b946cd9e03978e2105a7`
+(19,529,616 bytes), built once from clean committed source `976dbdee`, installed
+through `python3 tools/manage.py install --bottle X3 --dll-source <retained DLL>`.
+The [build record](../verification/results/run49-candidate-build.json) records
+**2,351 host tests passing** (659.194 s), linked audit 95 roots / 579 reachable /
+zero violations, 17 exports, and seven selected rendering cases (578 checks).
+Those seven cases passed individually; this is not a new full motion-output-suite
+pass. New timer qualification is bound in the
+[diagnostic record](../verification/results/run49-diagnostics-qualification.json):
+2,093 light checks and 142 collision checks / 675 paired queries, all passing.
+The [install record](../verification/results/run49-candidate-install.json) verifies
+installed bytes and unchanged EXE/bottle hashes. Rollback DLL and manifest retain
+run48 `9bbe6938…` in
+`/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run49-candidate-9hos95ss/rollback`.
+No game launched; all three §49 commands passed `--dry-run`.
 
-Launcher defaults for modded launches: original hull shading; `--cull-small-parts 2`
-scope `all`; `--collide-sat-sse2` and `--collide-memo` on (`--no-…` switches).
-New in this build, default off: `--taa-thin-region` (lattice arm
-crawl), `--volumetric-fog`
-(Ctrl+Alt+F9 / Ctrl+Alt+F10), `--submit-phases` (diagnostic); always on: the sun-lane
-stamp (run180: available and applied in all 128 captured frames; advertisement-sign artifacts not specifically inspected). `--taa-far-stabiliser 0.985` was accepted by the user in
-run 47 C and remains a default candidate. After an additional flight the user
-selected **light-map fade 80,220,1 as the launcher default** (2026-09-20);
-`--no-light-map-far-fade` disables it. Thin region 0.97 fixes stationary crawl;
-moving quality remains open. The DLL is unchanged.
+Launcher defaults retain original hull shading, `--cull-small-parts 2` scope
+`all`, `--collide-sat-sse2`, `--collide-memo`, and the user-selected light-map
+fade **80,220** (the optional third value defaults to 1, so the stored setting
+is `80,220,1`; `--no-light-map-far-fade` disables it).
+New opt-in features: `--volumetric-fog-cards replace`, read-only
+`--sector-background`, `--light-phases`, and `--collide-query-phases`.
+Fog still uses manual strength and card presence; automatic family strengths
+are not active. Far stabiliser 0.985 and thin region 0.97 remain explicit options:
+stationary improvement is accepted, moving-lattice quality remains open.
+Native Windows runtime remains unverified.
 
 ## Current state (2026-09-20)
 
-Run 47 is read; **run 48 A/B/C are reported** ([user-runs.md](verification/user-runs.md) §48):
+Run 47 is read; **run 48 A/B/C are reported** ([completed run48](archive/run48-completed-2026-09-20.md)):
 A lattice arm + distant station (baseline vs the intended defaults), B Argon Prime
 shadows and fog, C `--submit-phases` at the busy station. The
 [handoff](handoff-2026-09-20.md) holds the state of every track, the decisions owed
@@ -64,12 +64,13 @@ the sector-chain flight and is not active. Count-only strength scaling is held.
 Light-selection and collision-query timers are integrated, reviewed and committed
 (`9fa4da5a`): 2,093 light-timer checks with zero failures; 142 collision-timer
 checks and 675 queries with zero differences. The next flight combines them with
-the existing loop/game/residual phases. The root owns candidate preparation:
-the full host suite is running (`/tmp/x3-run49-host-suite-final-X3.log`); the next
-candidate has not yet been built or installed.
+the existing loop/game/residual phases. Qualification and installation are complete. [Run49](verification/user-runs.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight) is awaiting
+the user: a matched performance pair, then fog replacement/sector validation.
 
 Ownership fixture runners and the 563-check inventory are repaired with fresh
-passes; all 31 generated shader checks now pass. Eight obsolete agent worktrees
+passes; all 31 generated shader checks now pass. Fresh collision memo (59 checks)
+and cull (113 checks, including default `all`) fixtures also pass. The two
+bottle-scoped host-test result-path defects were corrected before the full rerun. Eight obsolete agent worktrees
 were removed after preserving unique evidence; the live locked Claude worktree
 was retained. Every
 worktree branch of the previous 2026-09-19/20 session is merged. Earlier session sections of this

@@ -88,5 +88,58 @@
     "backend_observations_equal": true,
     "shared_hresult_outcomes_equal": true,
     "raw_sha256": "cbe37a0285e9da37bbec0ebc030fb60c45767552bc781d2537728eb99e372a71"
+  },
+  "run49_refresh": {
+    "source_commit": "976dbdee8a320f5690ee035b4beefe804ef17485",
+    "result_paths": "Temporary output overrides avoid overwriting historical tracked reports; original runner logic unchanged",
+    "collide_memo": {
+      "checks": 59,
+      "failures": 0,
+      "exit_status": 0,
+      "elapsed_s": 8.6,
+      "summary": {
+        "queries": 58410,
+        "hits": 37476,
+        "contacts": 3779,
+        "differences": 0,
+        "stale_hits": 0,
+        "hits_on_contact": 0,
+        "register_differences": 0,
+        "stored": 33023,
+        "evictions": 21308,
+        "ineligible": 4,
+        "skipped_visits": 332178632,
+        "verified": 130,
+        "verify_mismatches": 1
+      },
+      "verify": {
+        "verified": 130,
+        "injected_mismatches": 1
+      },
+      "raw_record": "/tmp/x3-run49-collide-memo-cpu.json",
+      "raw_sha256": "57478772902ce90a0504009d55dc954984018a9caea88e3d753e040237f7640f",
+      "exe_sha256_after_run": "bd50cd0c58d005b05e1ea0a969d0a5e098ee37f2a4ea90f7872c6a8a1e8a5f4c",
+      "note": "One verify mismatch is deliberately injected by the fixture and expected; answer/register/stale/contact differences are zero."
+    },
+    "cull_small_parts": {
+      "checks": 113,
+      "failures": 0,
+      "exit_status": 0,
+      "elapsed_s": 5.4,
+      "replay_lines": [
+        "REPLAY rows=1214 native_mismatches=0 kept=164 draws_joined=878",
+        "REPLAY px=2 threshold=3 flipped=97 draws=403 other_changes=0 culled_count=1147",
+        "REPLAY px=4 threshold=6 flipped=128 draws=458 other_changes=0",
+        "REPLAY px=8 threshold=11 flipped=139 draws=479 other_changes=0",
+        "CENSUS rows=1214 fidelity=1214 kept=67 culled_size=624 culled_min=426 culled_small=97 other=0",
+        "REPLAY scope=bodies px=2 threshold=3 flipped=89 draws=395 other_changes=0 culled_count=806 parented_below=341",
+        "REPLAY scope=bodies px=4 threshold=6 flipped=120 draws=450 other_changes=0 culled_count=837 parented_below=341",
+        "REPLAY scope=bodies px=8 threshold=11 flipped=131 draws=471 other_changes=0 culled_count=848 parented_below=341"
+      ],
+      "raw_record": "/tmp/x3-run49-cull-small-parts-cpu.json",
+      "raw_sha256": "396028e7bbd9683769a4f5df130c1ebc939906af84749c074ffc587ce356df7e",
+      "exe_sha256_after_run": "b8b072995795b43da1d13f8be2a7c4d458be3604fe61f3bc6b424a6c63b89488"
+    },
+    "host_test_routing": "f69c9ab2: two tests follow bottle.results_dir; 14 focused tests pass, followed by full2351 PASS. No runner production change."
   }
 }
