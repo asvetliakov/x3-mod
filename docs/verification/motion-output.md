@@ -1970,3 +1970,15 @@ depth-routed draw **2.53 µs** (cascades 2.50), against 1.71 plain in the same r
 removed SetRenderTarget calls dearer, as `lazy-ownership` showed. The six mask burst cases are now in the default `CASES`
 list (184 cases; six short burst runs) and `compare_mask_twins` runs in the full and the selected path; the full suite
 itself was not run.
+
+### TAA far stabiliser, speed gate narrowed after run160 / run161 (2026-09-19)
+
+`docs/architecture/taa-distant-line-fade.md`, section 10. Flight: shimmer almost gone, far detail blurry under camera motion.
+Replay (`taa_resolve_replay.py ... far`, `GATES=`): the loss is the ~65-fold Catmull-Rom resampling at W 0.985 during SLOW
+motion (run160, 0.085 px/frame: gradient energy x 0.775 under the flown 0.5-2 px/frame gate; 3 % at 0.8 px/frame; clip removal
++1.5 points; sharper Keys cubic brings the shimmer back, x 1.00). Gate now `LO,HI` = 0.03,0.25 px/frame by default and
+settable as fields 5-6 of `--taa-far-stabiliser`: run160 shimmer x 0.55 -> x 0.70, gradient x 0.775 -> x 0.843; static unchanged
+x 0.19. Constants only, no program changed (`resolve_far` 508 slots). `run_temporal_pass.py` exit 0, lattice mode 375
+numerical / 17 state: ripple ratio 0.154 / 0.192 / 0.577 / 1.000 at 0 / 0.04 / 0.14 / 0.30 px/frame, past HI bit-identical
+to the plain resolve; `test_taa_image_defaults` OK; dry-run forwards `0.985,0,80,130,0.03,0.25`.
+

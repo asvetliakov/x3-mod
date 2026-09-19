@@ -38,7 +38,7 @@ FarRun far_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsig
     const FlickerConfig f{c.name,c.thin,0,.1f,.5f,false,false,.9f};FarRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         s.render(far_objects(n),EdgeBackground{.035f,farBandDepth[0],1},jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));
-        auto in=flicker_inputs(s,f,jx,jy,false);in.line_filter=c.A;in.line_width=c.width;in.far_weight=c.farW;in.far_filter=c.farA;in.far_d0=farD0;in.far_inv=validGate?farInv:0;
+        auto in=flicker_inputs(s,f,jx,jy,false);in.line_filter=c.A;in.line_width=c.width;in.far_weight=c.farW;in.far_filter=c.farA;in.far_d0=farD0;in.far_inv=validGate?farInv:0;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
         Output out;check("far Begin resolve",s.d->BeginScene());
         if(failMasks&&n==0){MaskCreationFault fault(s.d);check(c.name,pass.run(in,&out));require(MaskCreationFault::refused>0,"mask creation fault reached");}else check(c.name,pass.run(in,&out));
         check("far End resolve",s.d->EndScene());
@@ -77,6 +77,7 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         TemporalPass pass;check("far validation initialize",pass.initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,resolver));check("far validation configure",pass.configure_far());check("far validation flicker",pass.configure_flicker());check("far validation line",pass.configure_line_filter());
         for(float bad:{-.1f,.5f,.995f,NAN}){in.far_weight=bad;require(pass.run(in,&out)==E_INVALIDARG,"far weight outside {0} U [weight, 0.99] is refused");}in.far_weight=.985f;
         for(float bad:{-1.f,4.5f,NAN}){in.far_filter=bad;require(pass.run(in,&out)==E_INVALIDARG,"far filter outside [0, 4] is refused");}in.far_filter=0;
+        for(auto gate:{std::pair<float,float>{-.1f,.25f},{.25f,.25f},{.3f,.25f},{.03f,65.f},{NAN,.25f}}){in.far_speed_lo=gate.first;in.far_speed_hi=gate.second;require(pass.run(in,&out)==E_INVALIDARG,"far speed gate needs 0 <= LO < HI <= 64");}in.far_speed_lo=x3::temporal::kFarSpeedLo;in.far_speed_hi=x3::temporal::kFarSpeedHi;
         for(float bad:{-1.f,NAN,INFINITY}){in.far_inv=bad;require(pass.run(in,&out)==E_INVALIDARG,"far gate slope must be finite and >= 0");}in.far_inv=farInv;
         in.weight=0;require(pass.run(in,&out)==E_INVALIDARG,"far weight over a history weight of 0 is refused");in.weight=.9f;
         in.motion_policy=MotionPolicy::KnownCameraOnly;in.motion=nullptr;require(pass.run(in,&out)==E_INVALIDARG,"far stabiliser without per-pixel motion is refused");in.motion_policy=MotionPolicy::PerPixel;in.motion=s.motion.p;
@@ -93,7 +94,9 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         pass.before_reset();pass.after_reset(S_OK);check("far after Reset",pass.run(in,&out));require(out.color&&!out.used_history&&pass.far_available()&&!pass.line_masks_failed(),"Reset protocol keeps the far program and recreates the masks");
         check("far unbind s8",d->SetTexture(8,nullptr));state_checks+=1;s.target(s.colorSurface.p);}
     // ---- static and drifting facets ----
-    for(double drift:{0.,.04}){farDrift=drift;const auto baseRun=far_sequence(s,resolver,base,farFrames);const double baseRipple[3]={far_ripple(baseRun,0),far_ripple(baseRun,1),far_ripple(baseRun,2)};
+    // Speed ramp of the far weight (default gate 0.03 .. 0.25 px/frame): 0 and 0.04 (t = 0 / 0.045), 0.14 (t = 0.5), 0.30 (past HI: the base weight).
+    double rampRatio[4]{};unsigned rampIndex=0;
+    for(double drift:{0.,.04,.14,.3}){farDrift=drift;const auto baseRun=far_sequence(s,resolver,base,farFrames);const double baseRipple[3]={far_ripple(baseRun,0),far_ripple(baseRun,1),far_ripple(baseRun,2)};
         for(const LineConfig* c:{&base,&weight,&filter,&both,&lined,&soft}){const auto run=c==&base?baseRun:far_sequence(s,resolver,*c,farFrames);const auto model=line_model(run,*c);double oracle=0,ageOracle=0;unsigned nearDiffers=0,nearPixels=0;
             for(unsigned n=0;n<farFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
                 if(!run.age.empty())ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));
@@ -110,13 +113,26 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
             if(c->farW>0||c->farA>0){metric((std::string("far ")+c->name+": age target matches the CPU oracle").c_str(),ageOracle,0,0);
                 metric((std::string("far ")+c->name+": published mask equals the quantised gate").c_str(),maskError,0,.5/255);
                 metric((std::string("far ")+c->name+": far-band ripple ratio as the oracle's").c_str(),ripple[2]/baseRipple[2],oracleFar/baseRipple[2],.03);}
+            if(c==&weight){rampRatio[rampIndex]=ripple[2]/baseRipple[2];
+                if(drift>=.25){++numeric_checks;require(same_rgb(run.output,baseRun.output),"far weight at a speed past HI is the plain resolve bit for bit, every pixel");}}
             if(c->A<=0){++numeric_checks;require(nearPixels>0&&nearDiffers==0,"near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels");}
             if(drift==0&&c->farW>0&&c->thin<=0){++numeric_checks;require(ripple[2]<=.25*baseRipple[2]&&ripple[1]<ripple[0]&&ripple[1]>ripple[2],"static far ripple <= 0.25 x base; the mid band lies between");}
             // (The filter alone does not lower this scene's ripple: a 0.3-px facet toggles whole rows and the mean over rows conserves it. Its
             // effect is reported and held to the oracle; the real-dump replay is its evidence.)
             // Over a whole jitter cycle: on a phase whose samples miss every facet the 3x3 box collapses and every config is the background exactly.
             if(c==&filter){double changed=0;for(unsigned n=farFrames-latticePhases;n<farFrames;++n)for(UINT y=4;y<28;++y)for(UINT x=23;x<30;++x)changed=std::max(changed,double(std::fabs(px(run.output[n],x,y)-px(baseRun.output[n],x,y))));
-                std::printf("FAR_FILTER_EFFECT drift=%.2f far_band_max_difference=%.6f\n",drift,changed);++numeric_checks;require(changed>.005,"far filter alone acts on the far band");}}}
+                std::printf("FAR_FILTER_EFFECT drift=%.2f far_band_max_difference=%.6f\n",drift,changed);++numeric_checks;require(changed>.005,"far filter alone acts on the far band");}}
+    ++rampIndex;}
+    std::printf("FAR_SPEED_RAMP lo=%.3f hi=%.3f ratio_v0=%.4f ratio_v0.04=%.4f ratio_v0.14=%.4f ratio_v0.30=%.4f\n",farLo,farHi,rampRatio[0],rampRatio[1],rampRatio[2],rampRatio[3]);
+    ++numeric_checks;require(rampRatio[0]<=rampRatio[1]+.01&&rampRatio[1]<rampRatio[2]&&rampRatio[2]<rampRatio[3]&&rampRatio[3]==1,"far weight falls continuously with the screen speed: ripple ratio monotone from W_FAR to the base weight");
+    // A non-default gate (0.1 .. 0.6) is followed: at 0.14 px/frame t = 0.08 (default gate: 0.5), at 0.30 t = 0.4 (default: the base weight).
+    {const float savedLo=farLo,savedHi=farHi;farLo=.1f;farHi=.6f;double ratio[2]{},error=0;unsigned k=0;
+        for(double drift:{.14,.3}){farDrift=drift;const auto baseRun=far_sequence(s,resolver,base,farFrames),run=far_sequence(s,resolver,weight,farFrames);const auto model=line_model(run,weight);
+            for(unsigned n=0;n<farFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x)error=std::max(error,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
+            ratio[k++]=far_ripple(run,2)/far_ripple(baseRun,2);}
+        farLo=savedLo;farHi=savedHi;std::printf("FAR_SPEED_GATE_CUSTOM lo=0.100 hi=0.600 ratio_v0.14=%.4f ratio_v0.30=%.4f default_v0.14=%.4f oracle_error=%.6f\n",ratio[0],ratio[1],rampRatio[2],error);
+        metric("far custom speed gate: shader matches the oracle evaluated with that gate",error,0,.0006/(1-.985));
+        ++numeric_checks;require(ratio[0]<rampRatio[2]-.2&&ratio[1]>ratio[0]&&ratio[1]<.9,"a non-default speed gate is followed (a hard-coded default would give the default ramp)");}
     farDrift=0;
     // ---- gate off (invalid projection this frame) and mask-target creation failure: the plain resolve bit for bit, history kept ----
     {const auto baseRun=far_sequence(s,resolver,base,32),gateOff=far_sequence(s,resolver,both,32,false),failed=far_sequence(s,resolver,both,32,true,true);

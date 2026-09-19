@@ -191,6 +191,9 @@ note supersedes section 5 and plan steps 5-6 of [taa-lattice-crawl.md](taa-latti
 
 ## 9. Implemented, unflown (2026-09-19): `--taa-far-stabiliser W[,A[,F0,F1]]`
 
+(The fixed 0.5-2 px/frame speed gate of this section and of section 4 is superseded by section 10: `LO,HI` = 0.03,0.25 by
+default and settable. The replay rows below were measured with the 0.5-2 gate.)
+
 **Plan step 1, replay [M].** `tools/analysis/taa_resolve_replay.py <dump> <box> far` (`FAR=F0,F1`, `ONLY=<configs>`): the
 shader-form gate `farw = saturate((d - d0) * inv)` from the footprint inversion (8-bit quantised as the mask stores it is
 not modelled; p22 / p32 are the section-4 constants), the far weight with its 0.5-2 px/frame speed gate, the far filter,
@@ -223,7 +226,7 @@ as the lattice note's section 8 found for the sharpen exclusion). It would need 
 for the orchestrator to confirm. (4) At 0.45 px/frame (run148) neither component acts: the speed gate and low `farw`.
 
 **Shader / pass.** `resolve_far.hlsl` (`X3M_FAR_STABILIZE`, **508 slots**): the age variant whose LO / HI gate arithmetic
-is replaced by `keep += g * (1 - saturate((speed - 0.5) / 1.5)) * (min(n / (n + 1), W) - keep)` and whose current sample
+is replaced by `keep += g * (1 - saturate((speed - LO) / (HI - LO))) * (min(n / (n + 1), W) - keep)` and whose current sample
 is `weighted += r * (filtered - weighted)`; `r` and `g` come from the mask at `s8`, so the gate costs the resolve no
 depth arithmetic. `line_mask_ps.hlsl` (153 slots) now writes `r` = filter weight (dilated line mask and / or `farw`), `g` =
 `farw` for the weight, each multiplied by its component switch (`c5`: d0, inv, filter on, weight on); far alone is one
@@ -268,4 +271,55 @@ three sharpen sites and a mask hand-over to two modules. The stabiliser is the f
 filter, separately switchable. Also decided in review: a mask-target allocation failure is sticky within the session
 and re-armed once per Reset; the age pair allocated before such a fallback is left in place (releasing it would cut the
 history); the far stabiliser requires per-pixel motion and a history weight above 0.
+
+## 10. Flight verdict "works, but blurry when the camera moves" (run160 / run161), 2026-09-19 [M unless tagged]
+
+Captures: run160 `0.985` (weight only), run161 `0.985,1`; 32 frames each; far pixels (footprint > 80) move 0.01-0.15
+px/frame in run160 (median 0.09) and 0.03-1.4 in run161 (median 0.8); neither holds a fast turn. Tool:
+`taa_resolve_replay.py <dump> <box> far` with `GATES=LO:HI,...`, `WS=`, `NOCLIP=1`, `KEYS=a,...` (weight-only rows per speed
+gate / weight / clip removed / Keys cubic parameter of the history fetch on far pixels). Boxes: run160 `1100 140 1270 380`,
+run161 `1100 236 1270 420`. Presented stage, W = 0.985, gate 80,130; "shimmer" = motion-compensated hot-px std, "gradient"
+= per-frame gradient energy on interior px, both against the base resolve of the same capture:
+
+| capture, far-px speed | config | shimmer | gradient |
+|---|---|---|---|
+| run153 station, 0 | gate 0.5-2 = gate 0.03-0.25 | x 0.19 | x 0.957 |
+| run142 station, 0.04 px/frame | gate 0.5-2 (flown) | x 0.53 | x 0.793 |
+| | **gate 0.03-0.25** | x 0.60 | x 0.809 |
+| | gate 0.02-0.15 | x 0.68 | x 0.834 |
+| run160, 0.085 px/frame | gate 0.5-2 (flown) | x 0.55 | x 0.775 |
+| | gate 0.05-0.5 | x 0.59 | x 0.796 |
+| | **gate 0.03-0.25** | x 0.70 | x 0.843 |
+| | gate 0.02-0.15 | x 0.85 | x 0.911 |
+| | W 0.97 / 0.95, gate 0.5-2 | x 0.62 / x 0.75 | x 0.814 / x 0.873 |
+| | clip removed (W 0.985 / 0.97 / 0.95) | x 0.54 / 0.61 / 0.74 | x 0.790 / 0.826 / 0.885 |
+| | Keys cubic a = -0.75 / -1.0 on far px | x 1.00 / x 1.24 | x 0.860 / x 0.895 |
+| run161, 0.8 px/frame | gate 0.5-2 (flown) | (metric blind at this speed) | x 0.971 |
+| | gate 0.25-1 / 0.15-0.5 and narrower | | x 0.994 / x 1.000 |
+
+**Mechanism.** (a) dominates, in its slow form: the history fetch is already Catmull-Rom (16 taps), but at W = 0.985 a far
+pixel is the product of about 65 consecutive resamples, and at 0.04-0.15 px/frame (a hand-held camera, a slow pan, a
+drifting ship) every one of them is fractional. A quarter of the far gradient energy goes at 0.085 px/frame, where the
+flown 0.5-2 gate still gives the full weight; static it is x 0.957 (that part is the removed flicker itself). (b) the wide
+gate is what exposes it: at 0.8 px/frame the flown gate costs only 3 %, below 0.5 px/frame it never relaxes. (c) the clip
+is not it: removing it changes the gradient by 1.5 points. A sharper history kernel is not a remedy: the feedback
+amplifies what the jitter injects and the shimmer returns in full (a = -0.75: x 1.00) for half of the sharpness.
+Shimmer removal and resampling blur are the same N_eff = 1 / (1 - W) at a given speed; the only free choice is where on
+the speed axis the weight lets go.
+
+**Implemented.** The far weight's speed gate is now narrow and adjustable: `--taa-far-stabiliser W[,A[,F0,F1[,LO,HI]]]`,
+default `LO,HI = 0.03,0.25` px/frame (was the fixed 0.5-2): full W only while the far content is practically still, the
+base weight from 0.25 px/frame. Replay promise against the flown build: still unchanged (x 0.19); 0.04 px/frame x 0.53 -> x 0.60;
+0.085 px/frame shimmer x 0.55 -> x 0.70 for gradient x 0.775 -> x 0.843; from 0.25 px/frame the far pixels are the plain resolve
+bit for bit. Constants only (`c24.zw`): **no shader changed, `resolve_far` stays at 508 slots**, so the Catmull-Rom / filter
+restructuring was not needed; the far filter A stays accepted (the user flies weight-only). `FrameInputs::far_speed_lo/hi`
+validated `0 <= LO < HI <= 64`. Fixture (lattice mode 375 numerical / 17 state): refusals of five invalid gates; facets
+drifting 0 / 0.04 / 0.14 / 0.30 px/frame, shader = oracle at each, far-band ripple ratio 0.154 / 0.192 / 0.577 / 1.000
+(monotone, continuous), and at 0.30 px/frame every pixel of the weight-only run bit-identical to the plain resolve; near
+pixels bit-identical at every speed.
+
+**Not done / unknown.** No capture of a real camera turn exists, so the speed at which the user sees the blur is inferred
+from the replay's slow captures; if `0.03,0.25` still reads soft, `0.02,0.15` is the next step (x 0.85 shimmer at 0.085
+px/frame), if shimmer returns while drifting, `0.05,0.5`. A lossless-enough resample (6-tap Lanczos on gated pixels, 36
+taps) would move the whole curve but needs its own pass; not designed.
 

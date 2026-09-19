@@ -124,10 +124,10 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         # --taa-far-stabiliser W[,A[,F0,F1]] (docs/architecture/taa-distant-line-fade.md section 9): components separate.
         with tempfile.TemporaryDirectory() as directory:
             self.assertNotIn('X3M_TAA_FAR_STABILISER', self.env(directory, *TAA, inherited={'X3M_TAA_FAR_STABILISER': '0.985'}))
-            for given, forwarded in (('0.985', '0.985,0,80,130'), ('0.985,1', '0.985,1,80,130'), ('0,1', '0,1,80,130'), ('0.97,0.5,100,160', '0.97,0.5,100,160')):
+            for given, forwarded in (('0.985', '0.985,0,80,130,0.03,0.25'), ('0.985,1', '0.985,1,80,130,0.03,0.25'), ('0,1', '0,1,80,130,0.03,0.25'), ('0.97,0.5,100,160', '0.97,0.5,100,160,0.03,0.25'), ('0.985,0,80,130,0.5,2', '0.985,0,80,130,0.5,2')):
                 self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', given)['X3M_TAA_FAR_STABILISER'], forwarded)
-            self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', '0.985,1', '--taa-line-filter', '1')['X3M_TAA_FAR_STABILISER'], '0.985,1,80,130')
-            for value in ('0.8', '0.995', 'nan', '0.985,5', '0.985,1,80', '0.985,1,130,80', '0.985,1,0,80', 'x', '0.985,1,80,130,1'):
+            self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', '0.985,1', '--taa-line-filter', '1')['X3M_TAA_FAR_STABILISER'], '0.985,1,80,130,0.03,0.25')
+            for value in ('0.8', '0.995', 'nan', '0.985,5', '0.985,1,80', '0.985,1,130,80', '0.985,1,0,80', 'x', '0.985,1,80,130,1', '0.985,0,80,130,0.5,0.5', '0.985,0,80,130,-1,2', '0.985,0,80,130,0.1,65'):
                 code, _, error = self.launch(directory, *TAA, '--taa-far-stabiliser', value)
                 self.assertEqual(code, 2, value)
                 self.assertIn('--taa-far-stabiliser', error)

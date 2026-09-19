@@ -1514,8 +1514,8 @@ bool MotionOutput::ensure_taa() noexcept {
         taa_line_filter_ = 0.f;
     }
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u line_filter=%.3f line_width=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
-        double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f || taa_far_weight_ > 0.f || taa_far_filter_ > 0.f ? 8u : 0u, double(taa_line_filter_), taa_line_width_, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_));
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u line_filter=%.3f line_width=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+        double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f || taa_far_weight_ > 0.f || taa_far_filter_ > 0.f ? 8u : 0u, double(taa_line_filter_), taa_line_width_, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_));
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1559,7 +1559,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.alpha_history = taa_alpha_history_ && hdr_scene != nullptr;
             // Far stabiliser: the gate follows this frame's latched projection and the target width; without a valid
             // latch far_gate leaves d0 = inv = 0 and the mask is off for the frame (the program stays bound: no history cut).
-            in.far_weight = taa_far_weight_; in.far_filter = taa_far_filter_;
+            in.far_weight = taa_far_weight_; in.far_filter = taa_far_filter_; in.far_speed_lo = taa_far_lo_; in.far_speed_hi = taa_far_hi_;
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
                 x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width, taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
             in.current_depth = depth; in.motion = motion;

@@ -100,7 +100,7 @@ float taa_mip_bias = 0.f;
 float taa_sharpen = 0.f;
 float taa_current_filter = 0.f;  // X3M_TAA_CURRENT_FILTER (0..4; 0 off)
 float taa_line_filter = 0.f;     // X3M_TAA_LINE_FILTER=A[,W] (A 0..4; 0 off; ignored with X3M_TAA_CURRENT_FILTER > 0)
-float taa_far[4] = {0.f, 0.f, 80.f, 130.f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1]]: far weight (0 off), far filter A (0 off), gate footprints
+float taa_far[6] = {0.f, 0.f, 80.f, 130.f, .03f, .25f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]]: far weight (0 off), far filter A (0 off), gate footprints, speed gate px/frame
 unsigned taa_line_width = 1;     // W: line mask width 1 (default) or 2 px
 float taa_thin_clip = 0.f;       // X3M_TAA_THIN_CLIP (0..1; 0 off)
 float taa_adaptive_weight = 0.f, taa_adaptive_lo = .1f, taa_adaptive_hi = .5f; // X3M_TAA_ADAPTIVE_WEIGHT=WMAX[,LO,HI] (0 off)
@@ -2175,7 +2175,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_taa_resolve(taa_current_filter,taa_history_weight);
     hooked.motion_output.configure_taa_line_filter(taa_line_filter,taa_line_width);
-    hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3]);
+    hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
     hooked.motion_output.configure_taa_flicker(taa_thin_clip,taa_adaptive_weight,taa_adaptive_lo,taa_adaptive_hi,taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
@@ -2609,15 +2609,15 @@ void initialize_log(HMODULE module) {
     // X3M_TAA_LINE_FILTER=<A>[,<W>] (A 0..4; 0 or unset: off; W 1 or 2, default 1): the same filter on line-like pixels only
     // (docs/architecture/taa-lattice-crawl.md section 9); refused by the route when the global filter is on.
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_LINE_FILTER",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&v>=0.f&&v<=4.f){if(*end==L'\0')taa_line_filter=v;else if(*end==L','&&(end[1]==L'1'||end[1]==L'2')&&end[2]==L'\0'){taa_line_filter=v;taa_line_width=unsigned(end[1]-L'0');}}}
-    // X3M_TAA_FAR_STABILISER=<W>[,<A>[,<F0>,<F1>]] (docs/architecture/taa-distant-line-fade.md section 9; unset: off):
+    // X3M_TAA_FAR_STABILISER=<W>[,<A>[,<F0>,<F1>[,<LO>,<HI>]]] (0 <= LO < HI <= 64 px/frame, the weight's speed gate) (docs/architecture/taa-distant-line-fade.md section 9; unset: off):
     // W 0 or 0.5..0.99 (checked against the history weight at attach), A 0..4, 0 < F0 < F1 <= 1e6 units per pixel.
-    // The whole string must parse (1, 2 or 4 fields); anything else keeps the option off.
-    {const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_FAR_STABILISER",setting,32):0;
-        if(length>0&&length<32){float v[4]={0.f,0.f,80.f,130.f};unsigned count=0;wchar_t* cursor=setting;bool ok=true;
-            while(ok&&count<4){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==4)ok=false;}
-            ok=ok&&(count==1||count==2||count==4)&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=4.f&&v[2]>0.f&&v[3]>v[2]&&v[3]<=1e6f;
-            if(ok)for(unsigned i=0;i<4;++i)taa_far[i]=v[i];else log("taa_far_setting invalid=1");}
-        else if(length>=32)log("taa_far_setting invalid=1 reason=too_long length=%lu",length);}
+    // The whole string must parse (1, 2, 4 or 6 fields); anything else keeps the option off.
+    {wchar_t far_setting[64];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_FAR_STABILISER",far_setting,64):0;
+        if(length>0&&length<64){float v[6]={0.f,0.f,80.f,130.f,.03f,.25f};unsigned count=0;wchar_t* cursor=far_setting;bool ok=true;
+            while(ok&&count<6){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==6)ok=false;}
+            ok=ok&&(count==1||count==2||count==4||count==6)&&v[4]>=0.f&&v[5]>v[4]&&v[5]<=64.f&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=4.f&&v[2]>0.f&&v[3]>v[2]&&v[3]<=1e6f;
+            if(ok)for(unsigned i=0;i<6;++i)taa_far[i]=v[i];else log("taa_far_setting invalid=1");}
+        else if(length>=64)log("taa_far_setting invalid=1 reason=too_long length=%lu",length);}
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
     // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
     // off when unset or invalid: X3M_TAA_THIN_CLIP=<S> (0..1),

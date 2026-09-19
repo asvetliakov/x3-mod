@@ -18,7 +18,7 @@ std::vector<EdgeObject> line_objects(unsigned n){std::vector<EdgeObject> o;const
     o.push_back({21,12,29,20,1,squareDepth,0,0});return o;}
 struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigned width=1; float farW=0,farA=0; };
 // Far stabiliser gate of the far cases (temporal_far_inc.h) and the scene hooks the shared oracle uses.
-float farD0=0,farInv=0;
+float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
 double (*line_velocity)(double)=line_velocity_default;
 float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float w=std::min(std::max((depth-farD0)*farInv,0.f),1.f);return float(std::lround(w*255.f))/255.f;} // as the A8R8G8B8 mask stores it
@@ -68,7 +68,7 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             const double clamped=std::min(std::max(old,lo),hi),soft=sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;old=clamped+soft*(old-clamped);
             double keep=w;const bool farOn=c.farW>0||c.farA>0;const double farw=farOn?far_gate_weight(centre):0;
             if(farOn){double a=m.age[n-1][UINT(by+(fy>=.5?1:0))*S+x];if(!(a>=1&&a<=64))a=1;
-                if(c.farW>0){keep=w+farw*(1-std::min(std::max((speed-.5)/1.5,0.),1.))*(std::min(a/(a+1),double(c.farW))-w);}
+                if(c.farW>0){keep=w+farw*(1-std::min(std::max((speed-double(farLo))/(double(farHi)-double(farLo)),0.),1.))*(std::min(a/(a+1),double(c.farW))-w);}
                 m.age[n][i]=float(std::min(a+1,64.));}
             if(c.wmax>0){double a=m.age[n-1][UINT(by+(fy>=.5?1:0))*S+x];if(!(a>=1&&a<=64))a=1;const double t=std::min(std::max((speed-.1)/.4,0.),1.);keep=std::min(a/(a+1),c.wmax+t*(w-c.wmax));m.age[n][i]=float(std::min(a+1,64.));}
             const double filterWeight=std::max(c.A>0&&line_mask(run.depth[n],x,y,c.width)?1.:0.,c.farA>0?farw:0.);

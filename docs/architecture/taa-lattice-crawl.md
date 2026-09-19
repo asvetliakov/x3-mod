@@ -292,3 +292,74 @@ event-query drain, Wine).
 
 **Flight.** `--taa-line-filter 1` (then `2` if soft, `1,2` if thicker lattices still crawl) at the plant, 13-19 deg,
 slow drift; promise from the replay: presented crawl x 0.58 (A = 1) / x 0.68 (A = 2) on run148.
+
+## 10. Flight verdict "no difference" (run157 / 158 / 159), diagnosis (2026-09-19) [M unless tagged]
+
+Captures: run157 baseline, run158 `--taa-line-filter 1,2`, run159 `2,2`; 32 frames each, plant lattice, boxes
+`714 236 854 366` / `693 232 833 362` / `696 353 836 483`. Tools: `taa_resolve_replay.py <dump> <box> remedy` (new mode) and
+`lattice` with `INSTALLED="dict(filter=1., fmask='line2x')"`; scratch `crawl/` (`diag.py`, `engaged.py`, `st3d.py`, `beads.py`,
+`creep.py`, `sim.py`).
+
+**1. The filter engaged.** `motion_output_taa ... line_filter=1.000 line_width=2` (run158), `2.000 / 2` (run159); no
+`motion_output_taa_line_filter` refusal and no `motion_output_taa_masks` fallback line. From the dumps: the replay WITH
+`line2x` reproduces run158's dumped resolve to 0.041 codes (0.061 on the mask) and run159's to 0.059; the plain replay misses
+them by 2.2 / 1.8 codes (4.3 / 2.8 on the mask); run157 the other way round (0.043 plain, 2.1 filtered). The mask (recomputed
+from the dumped depth) covers the lattice: `line2x` 0.49-0.61 of the box, 71-74 % of all valid-depth px, the glass mask
+0.40-0.50; vertical valid-depth runs are 1 px in 59-64 % of cases (same as run148); footprint 82-145 units/px. Zoomed, run158
+is visibly softer than run157. Width, angle and the both-sides test are not the problem.
+
+**2. The numbers dropped as predicted; the metric was the wrong one.** The ship hardly moved in these flights: routed median
+0.022 / 0.016 / 0.067 px/frame (run148: 0.35). Within 32 frames: non-surface-locked spectral energy of the presented window
+20.5 -> 12.2 (x 0.60, run157 -> run158), static bead contrast (centred vs straddling line peak in 8-frame cycle means) 0.182 ->
+0.120 / 0.142; replay on run157 itself: bead amplitude x 0.32 (A = 1), x 0.67 (A = 2), temporal rms on the mask x 0.62 / x 0.72.
+But at 0.02 px/frame the beads creep one period in 50+ frames: a 32-frame capture sees them as static, and every metric of
+sections 3-9 measures the 8-frame ripple and the 8-32 frame band. The zoomed difference of the first and last cycle mean is
+saturated over the whole lattice in both flights: what moves on screen is the lattice image changing shape as it slides by
+a fraction of a pixel.
+
+**3. Metric that tracks it: creep residual.** Cycle means A (frames 7-14) and B (last 8); per 28-px lattice tile the best
+sub-pixel translation of A onto B (Fourier shift, 10-px pad); rms residual over the lattice contrast (std). 0 for a rigidly
+translating image (run153 static plant: 0.000).
+
+| image | run157 base | run158 A = 1 | run159 A = 2 |
+|---|---|---|---|
+| presented dump, shift 0.3-0.4 px (run159: 1.6 px) | 0.40 | 0.26 | 0.29 |
+| dumped resolve | 0.38 | | 0.26 |
+| raw 8-sample cycle mean (`hdr_1`) | 0.58 | | 0.47 |
+
+A third of the lattice contrast is non-rigid after a 0.3-px slide; the raw 8-phase supersample is worse than the resolve.
+
+**4. Remedies replayed on run157 (presented, against that metric).**
+
+| candidate (on `line2x`) | creep residual, codes | of contrast | lattice contrast | bead amplitude | line peak |
+|---|---|---|---|---|---|
+| installed | 12.38 | 0.323 | 1 | 1 | 1 |
+| A = 1 (flown) | x 0.64 | 0.264 | x 0.78 | x 0.32 | x 0.62 |
+| A = 2 (flown) | x 0.70 | 0.262 | x 0.87 | x 0.67 | x 0.84 |
+| 5x5 Gaussian A = 0.5 / 0.25 | x 0.69 / x 0.75 | 0.331 / 0.395 | x 0.67 / x 0.61 | x 0.06 / x 0.04 | x 0.41 / x 0.32 |
+| along-line Gaussian, sigma 2.5 px (structure tensor of depth validity) | x 0.78 | 0.290 | x 0.87 | x 0.59 | x 0.80 |
+| mask history weight 0.97 (31-frame transient from w 0.9) | x 0.74 | 0.244 | x 0.98 | x 0.91 | x 1.01 |
+| A = 1 + weight 0.97 (transient) | x 0.66 | 0.248 | x 0.86 | x 0.66 | x 0.84 |
+| dim 0.5 toward the 3x3 minimum / + A = 1 | x 0.82 / x 0.77 | 0.438 / 0.490 | x 0.61 / x 0.51 | x 0.47 / x 0.25 | x 0.51 / x 0.34 |
+| A = 1, clip removed (bound, not shippable) | x 0.57 | 0.254 | x 0.73 | x 0.20 | x 0.55 |
+
+Nothing beats the flown A = 1 by more than the no-clip bound's 7 points, and the user cannot see A = 1. Blurring harder
+removes the beads entirely (x 0.04) without moving the creep: **the beads are not the visible term.** Dimming lowers the
+residual only with the contrast (worse relative). A synthetic lattice with ideal reprojection and no clip (`sim.py`: 0.7-px
+lines, pitch 3.8, 15 deg, same drift) gives 0.465 -> 0.117 with A = 1 (x 0.25), x 0.13 with w 0.97 on top, x 0.60 for w 0.97
+alone, and 16 / 32 jitter phases add little (x 0.94 at w 0.9; x 0.52 at 32 phases, w 0.97): so the real resolve keeps a
+floor of about 0.22-0.26 of the contrast that the model does not have. **Not explained [unknown]:** candidates are
+perspective / rotation inside a 28-px tile (rigid-translation assumption), parallax of the struts behind the glass, shading
+of the lit lines changing with the slide, and the clip + Catmull-Rom interplay under a 0.02 px/frame lookup; 32 frames at
+this speed cannot separate them, and the weighted rows are transients.
+
+**5. Recommendation.** (a) Stop adding resolve-side spatial filters for the lattice: the flown one is at the measured bound
+and invisible; keep `--taa-line-filter` as an option, not a default. (b) Before another remedy, one capture settles the
+floor: the same view, ship drifting at the speed the user finds worst, **64 frames** (`--capture-frames 64`), baseline and
+`--taa-line-filter 1,2 --taa-history-weight 0.97`; the creep residual over a 1-2 px slide with a converged history says
+whether history weight on the mask (the far stabiliser's W with a line gate, replay x 0.74 without blur) is worth building.
+(c) If the floor stays near 0.25, the lattice is below what this resolution can show (0.7-px lines at 2-4 px pitch) and the
+remedy is source-side: fade the line draw by projected pitch (needs the draw-index capture of section 6, step 6) or a
+supersampled scene target; the user should be asked what loss is acceptable on the lattice (dimmer lines, as accepted for
+far stations, or a flat panel tint at distance).
+
