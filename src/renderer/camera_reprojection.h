@@ -29,6 +29,7 @@ struct CameraState {
     float m00 = 0, m11 = 0, m20 = 0, m21 = 0; // projection P[0], P[5], P[8], P[9]
     float r[9]{};                              // view rotation V[0..2], V[4..6], V[8..10]
     float t[3]{};                              // view translation V[12..14]
+    float m22 = 0, m32 = 0;                    // projection P[10], P[14]: depth = m22 + m32 / view z (far stabiliser gate only)
 };
 enum class CameraFailure : std::uint32_t {
     None = 0, NullPointer = 1, NonFinite = 2, ProjectionScale = 3, ProjectionW = 4, Orthonormal = 5, ViewAffine = 6
@@ -56,6 +57,7 @@ inline bool camera_state_from_matrices(const float* projection, const float* vie
     // Affine view: the identity template supplies elements 3, 7, 11 = 0 and 15 = 1.
     if (view[3] != 0.f || view[7] != 0.f || view[11] != 0.f || view[15] != 1.f) return fail(CameraFailure::ViewAffine);
     out.m00 = projection[0]; out.m11 = projection[5]; out.m20 = projection[8]; out.m21 = projection[9];
+    out.m22 = projection[10]; out.m32 = projection[14];
     for (unsigned i = 0; i < 3; ++i) for (unsigned j = 0; j < 3; ++j) out.r[i * 3 + j] = view[i * 4 + j];
     for (unsigned i = 0; i < 3; ++i) out.t[i] = view[12 + i];
     out.valid = true;

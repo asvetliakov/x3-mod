@@ -84,6 +84,19 @@ struct FrameInputs {
     // (replay: more of thick or distant lattices, about 4 % softer silhouettes
     // against 1 %). Anything else refuses a line-filtered run.
     unsigned line_width = 1;
+    // Far stabiliser (docs/architecture/taa-distant-line-fade.md section 9),
+    // two separately switchable components gated by farw = saturate((depth -
+    // far_d0) * far_inv) of the pixel's own depth (0 on the sentinel; the
+    // caller derives the pair with x3::temporal::far_gate and passes far_inv =
+    // 0, mask off, on a frame without a valid projection). far_weight: 0 off,
+    // else within [weight, 0.99]: history weight lerp(weight, min(n / (n + 1),
+    // far_weight), farw * (1 - saturate((speed - 0.5) / 1.5))), on the age
+    // target. far_filter: 0 off, else A in (0, 4]: current sample lerp(point,
+    // exp(-A d^2) average, farw). Either needs configure_far(); refused beside
+    // adaptive_weight (one gate) and current_filter, and beside a line_filter
+    // of a different A (one Gaussian per frame). farw = 0 pixels are the thin /
+    // plain blend bit for bit.
+    float far_weight = 0.f, far_filter = 0.f, far_d0 = 0.f, far_inv = 0.f;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
     // (the default) draws nothing and the run is bit-identical to a run
@@ -160,6 +173,9 @@ struct Output {
     // The age target written by this run (adaptive_weight > 0), else null;
     // same borrowing rules. For capture dumps only.
     IDirect3DTexture9* age = nullptr;
+    // Line filter / far stabiliser runs: the owned A8R8G8B8 mask the resolve read at s8 (r filter weight, g far
+    // history-weight gate); diagnostic, same borrowing rules. Keep last: run() fills the struct positionally.
+    IDirect3DTexture9* stabiliser_mask = nullptr;
 };
 struct Diagnostics {
     HRESULT operation = S_OK, restoration = S_OK;
@@ -224,6 +240,16 @@ public:
     HRESULT configure_line_filter() noexcept;
     bool line_filter_available() const noexcept { return line_mask_ != nullptr && line_ != nullptr && thin_line_ != nullptr; }
     bool age_line_available() const noexcept { return age_line_ != nullptr; }
+    // Creates the far-stabiliser program (and the mask program); needs the age
+    // caps. A failure leaves the pass usable without the option.
+    HRESULT configure_far() noexcept;
+    bool far_available() const noexcept { return mrt_age_ && line_mask_ != nullptr && far_ != nullptr; }
+    // The mask targets could not be created (not a lost device): the line
+    // filter and the far stabiliser are off for the rest of the session, runs
+    // that ask for them proceed without (history kept), and this holds the
+    // HRESULT for the caller's one log line.
+    bool line_masks_failed() const noexcept { return line_masks_failed_; }
+    HRESULT line_masks_result() const noexcept { return line_masks_result_; }
     bool flicker_available() const noexcept { return thin_ != nullptr && (!resolve_filtered_ || thin_filtered_ != nullptr); }
     bool age_available() const noexcept { return flicker_available() && mrt_age_ && age_ != nullptr && (!resolve_filtered_ || age_filtered_ != nullptr); }
     // The mask-snapshot program (resolve_snapshot.hlsl) is created by initialize
@@ -276,6 +302,9 @@ private:
     IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *resolve_filtered_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
     HRESULT resolve_filtered_result_ = S_FALSE, snapshot_result_ = S_FALSE;
     IDirect3DPixelShader9 *thin_ = nullptr, *thin_filtered_ = nullptr, *age_ = nullptr, *age_filtered_ = nullptr;
+    bool line_masks_failed_ = false;
+    HRESULT line_masks_result_ = S_OK;
+    IDirect3DPixelShader9* far_ = nullptr;
     IDirect3DPixelShader9 *line_mask_ = nullptr, *line_ = nullptr, *thin_line_ = nullptr, *age_line_ = nullptr;
     // Line mask targets (A8R8G8B8, default pool, released with the histories): [0] line-like, [1] its 3x3 maximum.
     IDirect3DTexture9* line_masks_[2]{};

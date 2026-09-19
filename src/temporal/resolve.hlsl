@@ -73,6 +73,20 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // sample with A = c22.w, applied only where s8 (the line mask TemporalPass draws
 // with line_mask_ps.hlsl just before this program: a line-like pixel in the
 // current 3x3 depth) is set. Off the mask the blend is the unfiltered program's.
+// X3M_FAR_STABILIZE (resolve_far.hlsl; docs/architecture/taa-distant-line-fade.md
+// section 9): the age variant with the mask at s8, whose channels TemporalPass
+// fills per frame: r = filter weight (the dilated line mask and / or farw, the
+// far gate saturate((d - d0) * inv) of the centre depth, 0 on the sentinel), g =
+// farw for the history weight (0 when that component is off). The current
+// sample is lerp(point, filtered, r) and the history weight
+// lerp(w, min(n / (n + 1), c24.y), g * (1 - saturate((speed - c24.z) * c24.w)));
+// c24.yzw = W_FAR, 0.5, 1 / 1.5 here (one gate: the adaptive weight's own LO /
+// HI gate is not compiled and the two options exclude each other). r = g = 0
+// is the thin / plain blend exactly: x + 0 * (y - x) with finite y.
+#ifdef X3M_FAR_STABILIZE
+#define X3M_AGE_WEIGHT 1
+#define X3M_LINE_FILTER 1
+#endif
 #ifdef X3M_LINE_FILTER
 #define X3M_CURRENT_FILTER 1
 #define X3M_FILTER_A luminance.w
@@ -409,7 +423,10 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #endif
 #ifdef X3M_CURRENT_FILTER
     // The centre sample is finite here, so filterTotal >= exp(-A * 0.5) > 0.
-#ifdef X3M_LINE_FILTER
+#ifdef X3M_FAR_STABILIZE
+    float2 stabilise = fetch(lineMask, uv).rg;
+    weighted += stabilise.r * (filtered / filterTotal - weighted);
+#elif defined(X3M_LINE_FILTER)
     if (fetch(lineMask, uv).r > 0.5) weighted = filtered / filterTotal;
 #else
     weighted = filtered / filterTotal;
@@ -421,7 +438,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // [1, 64] (never written by this program) restarts the count.
     float age = fetch(previousAge, tap + float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0) * sizeJitter.xy).r;
     age = age >= 1 && age <= 64 ? age : 1;
+#ifdef X3M_FAR_STABILIZE
+    keep += stabilise.g * (1 - saturate((speed - flicker.z) * flicker.w)) * (min(age / (age + 1), flicker.y) - keep);
+#else
     keep = min(age / (age + 1), lerp(flicker.y, history.z, saturate((speed - flicker.z) * flicker.w)));
+#endif
 #endif
 #ifdef X3M_THIN_CLIP
     // Alpha history (c22.z is 0 or 1): same weight, clamped to the current 3x3

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CPU replay of src/temporal/resolve.hlsl over a --taa-debug capture (numpy, crop of the frame).
-usage: replay.py <dump dir> <x0> <y0> <x1> <y1> [validate|options|lattice]
+usage: replay.py <dump dir> <x0> <y0> <x1> <y1> [validate|options|lattice|far]
 lattice: docs/architecture/taa-lattice-crawl.md; the lattice mask, the masked current filter (resolve_lattice*.hlsl),
 AgX + RCAS as agx.hlsl / rcas.hlsl apply them (HDR tonemapped write-back without bloom) and the sharpen exclusion."""
 import re, sys, json, subprocess
@@ -28,6 +28,7 @@ def load(kind, f, ext, dt, ch):
         raise SystemExit('%s_1_%d.%s: %d values, expected %dx%dx%d; this replay is fixed to 1280x768 captures' % (kind, f, ext, data.size, W, H, ch))
     return data.reshape(H, W, ch)
 LINE_MARGIN = .1
+FAR_P22, FAR_P32 = 1.000003, -6.000018  # the game's projection rows (taa-distant-line-fade.md section 4); camera_state logs p00 only
 M = 8  # margin around the crop for taps
 cy0, cy1, cx0, cx1 = Y0 - M, Y1 + M, X0 - M, X1 + M
 ys, xs = np.mgrid[Y0:Y1, X0:X1]
@@ -140,12 +141,24 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
         a = age[ay, ax]; a = np.where((a >= 1) & (a <= 64), a, 1)
         t = np.clip((speed - opt['lo']) / (opt['hi'] - opt['lo']), 0, 1)
         keep = np.minimum(a / (a + 1), opt['wmax'] + t * (w - opt['wmax'])); newage = np.where(accept, np.minimum(a + 1, 64), 1)
+    farw = np.zeros((h, wd))
+    if opt.get('far'):  # docs/architecture/taa-distant-line-fade.md: farw = saturate((d - d0) * inv), 0 on the sentinel; F1 <= F0: 1 everywhere
+        F0, F1, WF, AF = opt['far']; dof = lambda F: FAR_P22 + FAR_P32 / (F * P[0] * W / 2)
+        farw = np.where(far, 0., np.clip((dc - dof(F0)) / (dof(F1) - dof(F0)), 0, 1)) if F1 > F0 else np.ones((h, wd))
+        if WF:
+            ay = np.clip(by + (fy >= .5) - Y0, 0, h - 1); ax = np.clip(bx + (fx >= .5) - X0, 0, wd - 1); a = age[ay, ax]; a = np.where((a >= 1) & (a <= 64), a, 1)
+            keep = w + farw * (1 - np.clip((speed - .5) / 1.5, 0, 1)) * (np.minimum(a / (a + 1), WF) - w); newage = np.where(accept, np.minimum(a + 1, 64), 1)
+        if AF:
+            g9 = np.zeros_like(wc); gt = 0.
+            for ny_ in (-1, 0, 1):
+                for nx_ in (-1, 0, 1): g = np.exp(-AF * ((nx_ - jx) ** 2 + (ny_ - jy) ** 2)); g9 += weigh(cur[ys + ny_, xs + nx_, :3].astype(np.float64), k) * g; gt += g
+            wc = wc + farw[..., None] * (g9 / gt - wc)
     blendc = filt / ft[..., None] if A else wc
     if A and opt.get('fmask'): blendc = np.where(masks[opt['fmask']][..., None], blendc, wc)
     out = unweigh(blendc + keep[..., None] * (old - blendc), k)
     out = np.where(accept[..., None], out, c)
     res = np.concatenate([out, alpha[..., None]], -1).astype(np.float16)
-    return res, newage, dict(far=far, thin=thin, disocc=disocc, accept=accept, moved=moved, validc=~far, speed=speed, remedy_px=remedy_px, oob=~ok, lattice=lattice, masks=masks)
+    return res, newage, dict(far=far, thin=thin, disocc=disocc, accept=accept, moved=moved, validc=~far, speed=speed, remedy_px=remedy_px, oob=~ok, lattice=lattice, masks=masks, farw=farw)
 
 def run(opt, conv, nframes=None, seed_each=False):
     outs = []; diags = []; age = np.full(ys.shape, 64.)  # steady state: the capture starts on a long-lived history
@@ -243,9 +256,9 @@ def rcas(t, gain, skip=None):
     L = np.stack([lum(x) for x in (b, d, e, f, h)]); nz = np.clip(np.abs(.25 * (L[0] + L[1] + L[3] + L[4]) - L[2]) / np.maximum(L.max(0) - L.min(0), 1 / 256.), 0, 1)
     mn = np.minimum(np.minimum(b, d), np.minimum(f, h)); mx = np.maximum(np.maximum(b, d), np.maximum(f, h))
     lobe = np.maximum(-mn / np.maximum(4 * mx, 1 / 4096.), (1 - mx) / np.minimum(4 * mn - 4, -1 / 4096.)).max(-1)
-    lobe = (np.maximum(-.1875, np.minimum(lobe, 0)) * gain * (1 - .5 * nz))[..., None]
+    lobe = (np.maximum(-.1875, np.minimum(lobe, 0)) * gain * (1 - .5 * nz) * (1 if skip is None else 1 - skip.astype(np.float64)))[..., None]  # skip: mask or weight in [0, 1] taken off the lobe
     pix = np.clip(((b + d + f + h) * lobe + e) / (4 * lobe + 1), np.minimum(mn, e), np.maximum(mx, e))
-    return pix if skip is None else np.where(skip[..., None], e, pix)
+    return pix
 
 if MODE == 'lattice':
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -318,3 +331,47 @@ if MODE == 'lattice':
             g = np.mean([(np.diff(S[i], axis=1) ** 2)[off[i][:, 1:] & off[i][:, :-1]].mean() for i in range(R, len(fr))]); ref.setdefault(st, (B[0], g))
             print('%-20s %-14s crawl %.2f (x%.2f) fast %.2f mid %.2f slow %.2f | line peak centred %.4f straddling %.4f ratio %.2f | off-mask gradient energy x%.4f | mask share %.3f' % (
                 name, st, B[0], B[0] / ref[st][0], B[1], B[2], B[3], pc, ps, ps / pc, g / ref[st][1], np.mean(mk)) + extra, flush=True)
+
+# --- far-gated stabiliser (docs/architecture/taa-distant-line-fade.md) ----------------------------------------------
+# FAR=F0,F1 (units/px; default 90,150; F1 <= F0: whole crop). Components separately: weight W_FAR 0.985, filter A = 1, sharpen off.
+if MODE == 'far':
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    GAIN = 2. ** -float(os.environ.get('SHARPEN', '0.75')); F0, F1 = map(float, os.environ.get('FAR', '90,150').split(','))
+    ev = {int(re.search(r'frame=(\d+)', l).group(1)): float(re.search(r'ev_adapted=([-\d.]+)', l).group(1)) for l in
+          subprocess.run(['grep', '-E', r'^hdr_frame device=1 frame=(%s) ' % '|'.join(map(str, frames)), D + log], capture_output=True, text=True).stdout.splitlines()}
+    fr = frames[1:]; SK = 12; dcode = lambda rgb: 255 * (rgb @ LUMA)
+    V = np.stack([valid(load('depth', f, 'rgba32f', np.float32, 4)[Y0 - 1:Y1 + 1, X0 - 1:X1 + 1, 0]) for f in fr]).all(0); inter = np.ones(ys.shape, bool)
+    for ky in (0, 1, 2):
+        for kx in (0, 1, 2): inter &= V[ky:ky + ys.shape[0], kx:kx + ys.shape[1]]
+    inter[:6] = inter[-6:] = False; inter[:, :6] = inter[:, -6:] = False
+    mots = [load('motion', f, 'rgba32f', np.float32, 4)[Y0:Y1, X0:X1] for f in fr[SK:]]
+    vx = float(np.median([np.median((xs - (m_[..., 0] * W + meta[f]['j'][0] - .5))[m_[..., 3] == 1]) for m_, f in zip(mots, fr[SK:]) if (m_[..., 3] == 1).any()] or [0]))
+    vy = float(np.median([np.median((ys - (m_[..., 1] * H + meta[f]['j'][1] - .5))[m_[..., 3] == 1]) for m_, f in zip(mots, fr[SK:]) if (m_[..., 3] == 1).any()] or [0]))
+    def shift(im, sx, sy):
+        fy = np.fft.fftfreq(im.shape[0])[:, None]; fx = np.fft.fftfreq(im.shape[1])[None, :]; return np.fft.ifft2(np.fft.fft2(im) * np.exp(-2j * np.pi * (fx * sx + fy * sy))).real
+    mc = np.hypot(vx, vy) > .01  # drifting capture: one global translation (the routed median), as the note's metmc.py
+    print('interior px %d of %d; routed median velocity %.3f %.3f px/frame%s; gate F0 %g F1 %g units/px; sharpen gain %.4f' % (inter.sum(), inter.size, vx, vy, ' (motion-compensated)' if mc else '', F0, F1, GAIN))
+    ref = {}; hot = {}
+    for name, opt, soff in (('base', {}, False), ('weight 0.985', dict(far=(F0, F1, .985, 0)), False), ('filter A=1', dict(far=(F0, F1, 0, 1.)), False), ('weight+filter', dict(far=(F0, F1, .985, 1.)), False),
+                            ('sharpen off', dict(far=(F0, F1, 0, 0)), True), ('weight+sharpen off', dict(far=(F0, F1, .985, 0)), True), ('all three', dict(far=(F0, F1, .985, 1.)), True)):
+        if os.environ.get('ONLY') and name != 'base' and name not in os.environ['ONLY'].split('|'): continue
+        outs, diags, _ = run(opt, 1); st = {'resolve': [], 'presented': []}
+        for o, dg, f in zip(outs, diags, fr):
+            pad = load('taa', f, 'rgba16f', np.float16, 4)[Y0 - 1:Y1 + 1, X0 - 1:X1 + 1, :3].astype(np.float32); pad[1:-1, 1:-1] = o[..., :3]
+            st['resolve'].append(codes(o, meta[f]['k'])); st['presented'].append(dcode(rcas(agx(pad, ev[f]), GAIN, dg['farw'] if soff else None)))
+        fw = np.mean([dg['farw'] for dg in diags[SK:]], 0)
+        if 'far' in opt and not ref.get('binned'): ref['binned'] = 1; print('farw on interior px: 0: %.3f, (0, 0.5]: %.3f, (0.5, 1): %.3f, 1: %.3f' % ((fw[inter] == 0).mean(), ((fw[inter] > 0) & (fw[inter] <= .5)).mean(), ((fw[inter] > .5) & (fw[inter] < 1)).mean(), (fw[inter] == 1).mean()))
+        for stage, S in st.items():
+            if soff and stage == 'resolve': continue
+            S = np.nan_to_num(np.array(S))[SK:]
+            if mc: S = np.stack([shift(im, -vx * i, -vy * i) for i, im in enumerate(S)])  # content moves +v per frame: sample frame i at x + v i
+            sd = S.std(0); g2 = (np.diff(S, axis=2) ** 2).mean(0); pair = inter[:, 1:] & inter[:, :-1]
+            if 'far' in opt: ref['fwp'] = np.minimum(fw[:, 1:], fw[:, :-1])
+            if stage not in hot: hot[stage] = inter & (sd >= np.percentile(sd[inter], 95))
+            r = dict(hot=sd[hot[stage]].mean(), inter=np.sqrt((sd[inter] ** 2).mean()), n2=int((sd[inter] > 2).sum()), hm=S.mean(0)[hot[stage]].mean(), sd=sd, g2=g2)
+            b_ = ref.setdefault(stage, r); line = ''
+            if 'fwp' in ref:
+                fwp = ref['fwp']
+                for b, m_ in (('all', pair), ('farw 0', pair & (fwp == 0)), ('(0,.5]', pair & (fwp > 0) & (fwp <= .5)), ('>.5', pair & (fwp > .5))): line += ' %s x%.3f' % (b, g2[m_].mean() / b_['g2'][m_].mean()) if m_.any() else ''
+            print('%-19s %-9s hot std %.2f (x%.2f) | interior rms %.3f (x%.2f) | px>2 codes %d | hot mean x%.2f | per-frame gradient energy%s' % (
+                name, stage, r['hot'], r['hot'] / b_['hot'], r['inter'], r['inter'] / b_['inter'], r['n2'], r['hm'] / b_['hm'], line), flush=True)

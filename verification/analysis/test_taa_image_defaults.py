@@ -120,6 +120,25 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn('--taa-line-filter requires --taa', error)
 
+    def test_far_stabiliser_is_absent_unless_given(self):
+        # --taa-far-stabiliser W[,A[,F0,F1]] (docs/architecture/taa-distant-line-fade.md section 9): components separate.
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertNotIn('X3M_TAA_FAR_STABILISER', self.env(directory, *TAA, inherited={'X3M_TAA_FAR_STABILISER': '0.985'}))
+            for given, forwarded in (('0.985', '0.985,0,80,130'), ('0.985,1', '0.985,1,80,130'), ('0,1', '0,1,80,130'), ('0.97,0.5,100,160', '0.97,0.5,100,160')):
+                self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', given)['X3M_TAA_FAR_STABILISER'], forwarded)
+            self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', '0.985,1', '--taa-line-filter', '1')['X3M_TAA_FAR_STABILISER'], '0.985,1,80,130')
+            for value in ('0.8', '0.995', 'nan', '0.985,5', '0.985,1,80', '0.985,1,130,80', '0.985,1,0,80', 'x', '0.985,1,80,130,1'):
+                code, _, error = self.launch(directory, *TAA, '--taa-far-stabiliser', value)
+                self.assertEqual(code, 2, value)
+                self.assertIn('--taa-far-stabiliser', error)
+            for extra in (('--taa-thin-clip', '0.75', '--taa-adaptive-weight', '0.97'), ('--taa-current-filter', '1'), ('--taa-line-filter', '2')):
+                code, _, error = self.launch(directory, *TAA, '--taa-far-stabiliser', '0.985,1', *extra)
+                self.assertEqual(code, 2, extra)
+                self.assertIn('--taa-far-stabiliser', error)
+            code, _, error = self.launch(directory, '--motion-output', '--taa-far-stabiliser', '0.985')
+            self.assertEqual(code, 2)
+            self.assertIn('--taa-far-stabiliser requires --taa', error)
+
     def test_taa_debug_accepts_32_capture_frames(self):
         # Run 139: the resolved-frame spectrum needs more than one jitter period.
         with tempfile.TemporaryDirectory() as directory:
