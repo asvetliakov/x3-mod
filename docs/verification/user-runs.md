@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-20 (run 48 A reported; B/C pending). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-20 (run 48 complete; run 49 queued). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -65,65 +65,46 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 44 | Collide narrow-phase census (A), TAA shimmer A/B (B), new defaults (C); mip-bias A/B | 0 | A run140/run141: one station-vs-ship pair makes 99 % of 2.3e5 RAPID OBB node-pair visits per frame at ~114 ns (= the 25 ms), no contact; SSE2 SAT replacement built (fixture 6–9×); B run142–146: filter 1.0 blurs, W 0.95 alone not enough; shimmer depends on the lattice angle; textures are aniso 16 with full mips (not texture aliasing), flicker is coverage toggling; run148/149: mip bias is not the driver; replay of the real dumps: only the adaptive history weight helps (near-static ×0.31), the drift/crawl case is untouched — fresh design pass in flight; C run147: 478 draws, 19.8 ms (~50 fps) at the busy view, no pop-in. |
 | 45 | SSE2 collision box test A/B (A), adaptive TAA history weight (B) | 0 | A run150/151/152: the SSE2 box test takes the collide phase from ~27 to 12.7 ms (116 → 66 ns per node-pair visit, 24 → ~38 fps), 0 triangle tests, collisions still work (ship destroyed by ramming); the census shows 83 % of visits belong to pairs unchanged since the previous frame with no contact (memo_unsafe 0) → `--collide-memo`; a whole-descent SSE2 rewrite measured no gain in the fixture and was dropped. B run153/154: adaptive weight does not fix the lattice crawl and helps the distant station only when the ship is stopped: rejected, stays default-off. | [sampling-profiler.md](sampling-profiler.md) "Run 45 A", [taa-distant-line-fade.md](../architecture/taa-distant-line-fade.md) |
 | 46 | Collision memo (A), lattice line filter (B), far stabiliser (C), frame attribution (D) | 0 | A run155/156: memo verify 808,408 checked, 0 mismatches; memo on ≈ 43 fps (24 before run 45), 62 % of node visits skipped, 70 % of queries still miss → running-minimum relaxation + miss-reason counters, both collision options become defaults. B run157–159: filter engaged, beads ×0.32, but the user sees no change: the visible crawl is the sub-pixel lattice image changing shape as it slides (creep residual 0.40 → 0.26 at best); resolve-side spatial filters are exhausted. C run160/161: both nearly remove the distant shimmer but blur the object under slow camera motion (resampling blur of the 65-frame history under a speed gate that only relaxed at 0.5 px/frame) → gate 0.03–0.25; weight-only picked. D run162: busy view = engine between API calls ≈ 10 ms, state/D3DX apply 9 ms (stamp-inflated), proxy per-draw 3.9, post passes 3.1, native draws 1.3. | [sampling-profiler.md](sampling-profiler.md) "Run 46 A", [taa-lattice-crawl.md](../architecture/taa-lattice-crawl.md) §10, [taa-distant-line-fade.md](../architecture/taa-distant-line-fade.md) §10, [engine-frame-time.md](../architecture/engine-frame-time.md) "Run 46 D" |
-| 47 | Relaxed collision memo (A), lazy RT + profiler (B), far stabiliser gate (C), lattice 64-frame pair (D); recording + run175; Argon Prime fog captures run174 | 0 | A run163/164: verify 0 mismatches; 65 fps standing, 45 moving; every miss is `xform_b` (the moving player ship), the running-minimum relaxation never fires; the moving case is at the engine's per-visit floor (advancement and front tracking measured, not built). B run165–167: lazy RT removes 1,557 SetRenderTarget calls per frame but native draw time rises by the same amount: no gain, stays an option; the sampling profiler is blind under FEX → `--submit-phases`. C run168–171: `--taa-far-stabiliser 0.985` with the default gate accepted (narrower gate worse); the rest of the shimmer there is light-map windows → `--light-map-far-fade`. D run172/173 were static; the user's screen recording + run175 showed the crawl is the edge-on arm (geometry/sky toggling over the 8 jitter phases, clip discards history) → `--taa-thin-region`. run174 (Argon Prime): sun shadows off in 96 % of frames because of the SM2 `adeffects` signs → sun-lane stamp; fog mock-ups accepted → volumetric fog stage 1. | [sector-collide.md](../reverse-engineering/sector-collide.md) §14.6–14.9, [motion-output.md](motion-output.md) "Run 47 B", [taa-distant-line-fade.md](../architecture/taa-distant-line-fade.md) §10–11, [taa-lattice-crawl.md](../architecture/taa-lattice-crawl.md) §11–13, [directional-shadows.md](directional-shadows.md) "Run 174", [volumetric-fog.md](../architecture/volumetric-fog.md) |
+| 47 | Relaxed collision memo (A), lazy RT + profiler (B), far stabiliser gate (C), lattice 64-frame pair (D); recording + run175; Argon Prime fog captures run174 | 0 | A run163/164: verify 0 mismatches; 65 fps standing, 45 moving; transform-b misses dominated, but the fixture rate is not a live per-visit floor; advancement/front tracking remain not built ([moving-case audit](../reverse-engineering/sector-collide.md#1410-moving-case-audit-the-remaining-cost-is-not-yet-attributed-2026-09-20)). B run165–167: lazy RT removes 1,557 SetRenderTarget calls per frame, but the higher native draw time is unexplained rather than a proved driver offset; no FPS gain, stays optional ([Run 47 B ledger](motion-output.md#run-47-b-2026-09-19--session-b-per-draw-vs-lazy-rt-mode-at-the-busy-station-view)). C far stabiliser 0.985 accepted; remaining distant shimmer is light-map windows. D run172/173 were static; run175 identified edge-on ARM coverage toggling → `--taa-thin-region`. run174’s advertisement-sign veto motivated the sun-lane stamp. |
+| 48 | Lattice/distant-window checks (A), fog/shadow flight (B), submit timing (C) | 0 | Completed: run176–178, run180 and run181. Stationary thin-region improvement confirmed; moving crawl remains open. At 0.02 the user estimated about 2 FPS fog cost; no controlled timing measured it. Replacement and sector-reader flight validation remain pending. Submit timings close only the measured candidates for this view. [Archive](../archive/run48-completed-2026-09-20.md). |
 
 Completed run commands and instructions are preserved in
-[the completed-run archive](../archive/user-runs-completed.md); they are provenance,
+[the completed-run archive](../archive/user-runs-completed.md) and the
+[run 48 archive](../archive/run48-completed-2026-09-20.md); they are provenance,
 not rerun requests.
 
 
-## 48. Lattice arm fix, distant windows, Argon Prime shadows and fog, submit stamps — A reported; B/C pending
+## 49. Consolidated attribution and fog-card replacement — candidate pending qualification
 
-Installed: run48 candidate (hash in [status](../status.md)). New since run 47, all default off unless said:
-`--taa-thin-region W` (the lattice ARM crawl: on fragmented thin structure against sky the TAA stops discarding
-its history and averages whole jitter cycles; gated off as screen motion rises), `--light-map-far-fade P0,P1`
-(the hull light-map gain falls from 4 to the game's own brightness as an object gets small on screen: the
-shimmering windows of distant stations), the sun-shadow fix for sectors with advertisement signs (always on),
-`--volumetric-fog S` (sun-lit fog with shadow shafts, only in sectors where the game draws its own fog clouds;
-**Ctrl+Alt+F9** toggles it, **Ctrl+Alt+F10** steps the strength 0.005 / 0.01 / 0.02 / 0.03 / 0.05, shown on the
-FPS overlay) and the `--submit-phases` diagnostic. Every command is complete; run from the repository root.
+This candidate is not installed. Use original hull shading, the user-selected
+`--light-map-far-fade 80,220`, and explicit experimental `--taa-thin-region 0.97`
+and `--taa-far-stabiliser 0.985`; neither TAA option is accepted as a moving-camera fix.
+Do not add `--frame-timing`, state stamps, `--profile`, or `--submit-phases`.
 
-**Session A reported (2026-09-20):** baseline run176 (plant, then distant-station save);
-run177 with the three options (two plant F8 bursts: stationary, then camera moving);
-run178 distant-station save only. The user confirms the arm crawl is fixed while the
-ship and camera are stationary, but remains during camera rotation. The distant
-station is acceptable with minor residual flicker, especially in camera motion;
-retain far stabiliser 0.985 and light-map fade 40,110,1 as the recommended defaults
-for the next checkpoint. Moving-arm crawl remains open; launcher defaults are unchanged.
-Sessions B and C remain queued; the commands below retain the settings actually flown.
+**A. Busy-station attribution and first-view stalls.** At the busy-station save,
+hold the view 60 seconds stationary, then repeat moving/turning. On a fresh camera
+sweep record each visible freeze and whether revisiting the view is smooth. Then load
+the known collision-corvette save and repeat moving/turning to measure the moving
+collision case; do not assume the busy-station fighter view reproduces it. No F8.
 
-**Session A** (lattice arm + distant station; corvette save at the solar plant where the arm crawls, then the
-fighter save with the distant station; two launches, one F8 each at the plant ≈ 1.5 GB):
-1. Baseline:
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --frame-end-stride 1 --capture-frames 32
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --loop-phases --game-phases --game-phase-threshold-ms 20 --residual-phases --light-phases --collide-memo --collide-query-phases --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2
 ```
-2. Thin region + far stabiliser + light-map far fade (the intended new defaults):
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-debug --capture-start 999999 --frame-end-stride 1 --capture-frames 32 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 40,110
-```
-In each: stand still at the view where the arm crawls, judge, **F8**; then drift slowly and turn the camera
-slowly: is the crawl gone, do you see trails or smearing on the lattice or on ships passing in front of or behind
-it? In launch 2 also load the distant-station view: are the windows calm now, is the station too dim, any blur
-when turning? Report which of the three options (if any) you would not keep.
 
-**Session B** (Argon Prime: shadows and fog; one launch, ≈ 5 minutes, F8 twice):
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 40,110 --volumetric-fog 0.02 --taa-debug --capture-start 999999 --frame-end-stride 1 --capture-frames 32
-```
-In Argon Prime: (1) are sun shadows visible on stations and your ship now (they were off before), and do the
-advertisement signs look clean (no dark speckle on them)? (2) Fog: step the strength with Ctrl+Alt+F10 and toggle
-with Ctrl+Alt+F9: which strength looks right, do you see light shafts behind stations with the sun behind them,
-any flicker/noise/banding in the fog, any glow or laser looking wrong; note the FPS overlay with the fog on and
-off at the same view. **F8** once with fog at your preferred strength, sun behind a station; **F8** once more
-after toggling fog off at the same view. (3) Fly through a gate into a sector without fog: does the fog fade out
-within a couple of seconds? If the hotkeys collide with a game function, say which.
+Repeat the same stationary/moving sequence with this phase-diagnostics-off counter:
 
-**Session C** (engine draw-submission timing, no judging; fighter save at the busy station ≈ 480-draw view):
 ```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 40,110 --submit-phases --capture-start 999999 --capture-frames 2 --frame-end-stride 1
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2
 ```
-Hold the busy view 60 s, **F8** once, note the FPS overlay.
 
-Report frame-rate feel per session and the time into the session of each F8. If you have time afterwards: one fog
-capture in a dense fog sector (Atreus' Clouds or Great Reef) with the Session B command.
+**B. Fog cards and read-only sector validation.** In Argon Prime and The Hole or
+Atreus' Clouds, use Ctrl+Alt+F10 to anchor comparisons at **0.01** and **0.05**
+respectively; these are artistic anchors, not density defaults. At each fixed view,
+use Ctrl+Alt+F9 off for a vanilla-card comparison, then restore fog. Check shafts,
+replacement, signs and ship shadows; F8 each requested fixed view. Cross into a clear
+sector and report the sector names/transitions plus whether fog/cards linger. The
+reviewer will read `sector_background` status around the gate, load, or menu.
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --volumetric-fog 0.02 --volumetric-fog-cards replace --sector-background --taa-debug --capture-start 999999 --frame-end-stride 10 --capture-frames 32
+```
