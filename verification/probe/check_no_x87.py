@@ -67,7 +67,10 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_point_light_root_admits', '_x3m_pass_phase_enter', '_x3m_loop_phase_enter', '_x3m_residual_phase_enter',
                 '_x3m_media_cue_enter', '_x3m_media_cue_return',
                 # the cull-census handlers (src/proxy/cull_census.cpp, X3M_CULL_CENSUS=1) run inside the cull/LOD pass, no boundary
-                '_x3m_cull_census_measure', '_x3m_cull_census_exit']
+                '_x3m_cull_census_measure', '_x3m_cull_census_exit',
+                # the narrow-census bracket handlers (src/proxy/collide_narrow_census.cpp, X3M_COLLIDE_NARROW_CENSUS=1) run around the
+                # engine's x87 narrow phase under LightCallBoundary only
+                '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own
