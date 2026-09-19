@@ -202,6 +202,11 @@ public:
     HRESULT configure_flicker() noexcept;
     bool flicker_available() const noexcept { return thin_ != nullptr && (!resolve_filtered_ || thin_filtered_ != nullptr); }
     bool age_available() const noexcept { return flicker_available() && mrt_age_ && age_ != nullptr && (!resolve_filtered_ || age_filtered_ != nullptr); }
+    // The mask-snapshot program (resolve_snapshot.hlsl) is created by initialize
+    // and optional: a refusal leaves every run without a mask policy working;
+    // RequiredMask / SupplementalMaskWithDepthSentinel runs are then refused.
+    bool snapshot_available() const noexcept { return snapshot_ != nullptr; }
+    HRESULT snapshot_result() const noexcept { return snapshot_result_; }
     bool current_filter_available() const noexcept { return resolve_filtered_ != nullptr; }
     HRESULT current_filter_result() const noexcept { return resolve_filtered_result_; }
     // How an 8-bit color_surface input reaches the FP16 scratch and how the
@@ -245,7 +250,7 @@ private:
     // released before Reset and re-created lazily afterwards.
     IDirect3DStateBlock9* block_ = nullptr;
     IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *resolve_filtered_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
-    HRESULT resolve_filtered_result_ = S_FALSE;
+    HRESULT resolve_filtered_result_ = S_FALSE, snapshot_result_ = S_FALSE;
     IDirect3DPixelShader9 *thin_ = nullptr, *thin_filtered_ = nullptr, *age_ = nullptr, *age_filtered_ = nullptr;
     bool mrt_age_ = false; // caps: >= 2 simultaneous RTs with independent bit depths
     IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (adaptive weight only)

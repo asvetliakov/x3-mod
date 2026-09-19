@@ -2613,12 +2613,16 @@ void initialize_log(HMODULE module) {
     // X3M_TAA_ADAPTIVE_WEIGHT=<WMAX>[,<LO>,<HI>] (WMAX 0.5..0.99, 0 <= LO < HI
     // <= 64 px/frame; the route refuses it without the thin clip or below the
     // history weight) and X3M_TAA_ALPHA_HISTORY=1 (HDR route only).
-    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_THIN_CLIP",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_thin_clip=v;}
-    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_ADAPTIVE_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float wmax=wcstof(setting,&end);float lo=.1f,hi=.5f;bool okay=end!=setting&&wmax>=.5f&&wmax<=.99f;
+    // GetEnvironmentVariableW returns the required size (>= 32) without writing
+    // when the value does not fit, leaving the previous variable's text in the
+    // buffer: such a value is invalid (option off, one log line), never parsed.
+    auto flicker_setting=[&](const wchar_t* name,const char* label){const DWORD length=GetEnvironmentVariableW(name,setting,32);if(length>=32){log("taa_flicker_setting name=%s invalid=1 reason=too_long length=%lu",label,length);return false;}return length>0;};
+    if(taa_requested&&flicker_setting(L"X3M_TAA_THIN_CLIP","X3M_TAA_THIN_CLIP")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_thin_clip=v;}
+    if(taa_requested&&flicker_setting(L"X3M_TAA_ADAPTIVE_WEIGHT","X3M_TAA_ADAPTIVE_WEIGHT")){wchar_t* end=nullptr;const float wmax=wcstof(setting,&end);float lo=.1f,hi=.5f;bool okay=end!=setting&&wmax>=.5f&&wmax<=.99f;
         if(okay&&*end==L','){wchar_t* next=nullptr;lo=wcstof(end+1,&next);okay=next!=end+1&&*next==L',';if(okay){end=nullptr;hi=wcstof(next+1,&end);okay=end!=next+1&&*end==L'\0'&&lo>=0.f&&hi>lo&&hi<=64.f;}}
         else okay=okay&&*end==L'\0';
         if(okay){taa_adaptive_weight=wmax;taa_adaptive_lo=lo;taa_adaptive_hi=hi;}}
-    taa_alpha_history=taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_ALPHA_HISTORY",setting,32)==1&&setting[0]==L'1';
+    taa_alpha_history=taa_requested&&flicker_setting(L"X3M_TAA_ALPHA_HISTORY","X3M_TAA_ALPHA_HISTORY")&&setting[0]==L'1'&&setting[1]==L'\0';
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';

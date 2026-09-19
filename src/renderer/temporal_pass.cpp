@@ -190,7 +190,7 @@ void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(deco
 void TemporalPass::before_reset() noexcept {release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
 void TemporalPass::after_reset(HRESULT result) noexcept {invalidate();if(SUCCEEDED(result))diagnostics_.reset_pending=false;}
 HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen,const DWORD* copy,const DWORD* resolve_filtered) noexcept {
-    shutdown();diagnostics_={};resolve_filtered_result_=S_FALSE;if(!d||!resolve)return E_INVALIDARG;
+    shutdown();diagnostics_={};resolve_filtered_result_=S_FALSE;snapshot_result_=S_FALSE;if(!d||!resolve)return E_INVALIDARG;
     device_=d;vtable_=native_vtable;quad_fvf_=quad_fvf_requested();
     D3DCAPS9 caps{};HRESULT hr=call<CapsFn>(GetDeviceCaps)(d,&caps);
     if(SUCCEEDED(hr)&&(caps.PixelShaderVersion<D3DPS_VERSION(3,0)||caps.VertexShaderVersion<D3DVS_VERSION(3,0)||!caps.NumSimultaneousRTs||caps.NumSimultaneousRTs>4||!caps.MaxStreams))hr=D3DERR_NOTAVAILABLE;
@@ -203,7 +203,8 @@ HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const 
     if(SUCCEEDED(hr)&&decoder)hr=call<CreatePsFn>(CreatePixelShader)(d,decoder,&decoder_);
     if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,resolve,&resolve_);
     // The mask-snapshot modes are their own embedded program (resolve_snapshot.hlsl).
-    if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,reinterpret_cast<const DWORD*>(temporal_resolve_snapshot_program()),&snapshot_);
+    // Optional: a device that refuses it keeps the resolve; only the mask policies that draw snapshots are refused at run.
+    if(SUCCEEDED(hr)){snapshot_result_=call<CreatePsFn>(CreatePixelShader)(d,reinterpret_cast<const DWORD*>(temporal_resolve_snapshot_program()),&snapshot_);if(FAILED(snapshot_result_))drop(snapshot_);}
     // Optional variant: the filtered program is a few instruction slots above
     // the 512 every ps_3_0 device guarantees, so a device may refuse it
     // (D3DCAPS9::MaxPixelShader30InstructionSlots). Creation is the capability
@@ -281,7 +282,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     const bool sentinel=in.reactive_policy==ReactivePolicy::DerivedFromDepthSentinel||supplemental;
     const bool draw_copy=in.color_surface&&copy_by_draw_;
     const bool aged=in.adaptive_weight>0,flicker=in.thin_clip>0||aged||in.alpha_history;
-    if(!out||!device_||!resolve_||!snapshot_||!quad_vs_||!quad_declaration_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||(draw_copy&&!copy_)||
+    if(!out||!device_||!resolve_||(mask&&!snapshot_)||!quad_vs_||!quad_declaration_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||(draw_copy&&!copy_)||
         (in.motion_policy!=MotionPolicy::KnownCameraOnly&&in.motion_policy!=MotionPolicy::PerPixel)||
         (in.reactive_policy!=ReactivePolicy::Unavailable&&in.reactive_policy!=ReactivePolicy::KnownNonReactive&&
          in.reactive_policy!=ReactivePolicy::RequiredMask&&!sentinel)||

@@ -2,7 +2,11 @@
 // docs/architecture/taa-flicker-suppression.md, steps 1-3. Included after the
 // lattice cases: uses EdgeScene, EdgeRun, halton, metric, Snapshot, Fault.
 //
-// Drifting lattice: vertical lines 0.8 px wide, value 1 at depth 0.5, pitch 4
+// Depths are game-like (replay of run148/run142, section 10.1 of the note: the
+// struts sit at device depth 0.984-0.99996, so a far-plane pixel's 0.02 depth
+// tolerance accepts them and the disocclusion test does not reject): lines at
+// driftDepth = 0.99; one near-depth case (0.5) keeps the rejection path covered.
+// Drifting lattice: vertical lines 0.8 px wide, value 1 at depth driftDepth, pitch 4
 // or 2.37 px, drifting +v px/frame along x over the depth-sentinel background
 // (value 0.25, depth -1, motion alpha -1, policy 2 with the identity camera),
 // rasterized with the 8-sample Halton jitter, 256 frames, last 128 analysed
@@ -13,11 +17,12 @@ struct FlickerConfig { const char* name; float thin,wmax,lo,hi; bool filtered,al
 struct FlickerRun : EdgeRun { std::vector<std::vector<float>> age; };
 struct DriftSpec { double v,pitch,width; };
 constexpr double driftStart=.31;
+float driftDepth=.99f; // set to .5f for the near-depth (rejection path) rows only
 constexpr UINT driftLo=8,driftHi=24;
 constexpr unsigned driftFrames=256,driftAnalysed=128;
 std::vector<EdgeObject> drift_objects(const DriftSpec& spec,unsigned n){
     std::vector<EdgeObject> o;const double phase=std::fmod(driftStart+spec.v*n,spec.pitch);
-    for(double l=phase-spec.pitch;l<32;l+=spec.pitch)if(l>=1&&l+spec.width<=31)o.push_back({l,2,l+spec.width,30,1,.5f,spec.v,0});
+    for(double l=phase-spec.pitch;l<32;l+=spec.pitch)if(l>=1&&l+spec.width<=31)o.push_back({l,2,l+spec.width,30,1,driftDepth,spec.v,0});
     return o;}
 const EdgeBackground sentinelBackground{.25f,-1.f,-1},routedBackground{.25f,.9f,1};
 FrameInputs flicker_inputs(EdgeScene& s,const FlickerConfig& c,double jx,double jy,bool sentinelCamera){
@@ -57,7 +62,7 @@ FlickerModel flicker_model(const FlickerRun& run,const FlickerConfig& c,double v
             for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const float d=px(run.depth[n],x+dx,y+dy);if(valid(d)){sawValid=true;if(d<nearest)nearest=d;}if(sentinel(d))sawSentinel=true;
                 const double q=px(run.current[n],x+dx,y+dy),a=px(run.current[n],x+dx,y+dy,3);lo=std::min(lo,q);hi=std::max(hi,q);m1+=q/9;m2+=q*q/9;loA=std::min(loA,a);hiA=std::max(hiA,a);}
             const double sigma=std::sqrt(std::max(m2-m1*m1,0.));lo=std::max(lo,m1-1.25*sigma);hi=std::min(hi,m1+1.25*sigma);
-            const double shift=nearest==double(.5f)?v:0,speed=std::fabs(shift);
+            const double shift=nearest==double(driftDepth)?v:0,speed=std::fabs(shift);
             double position=x-shift,base=std::floor(position),f=position-base;if(f>1-1e-4){base+=1;f=0;}else if(f<1e-4)f=0;
             const double tolerance=std::max(.0001,.02*nearest);bool proven=true;
             for(int tx=0;tx<2;++tx){const double weight=tx?f:1-f;if(weight>.01){const float p=px(run.depth[n-1],UINT(std::min(std::max(base+tx,0.),double(S-1))),y);if(!((valid(p)&&p>=nearest-tolerance)||sentinel(p)))proven=false;}}
@@ -160,6 +165,22 @@ void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,c
         metric((std::string("flicker ")+config.name+": shader matches the CPU oracle within the FP16 bound").c_str(),b.oracle,0,.0006/(1-w));
         if(config.wmax>0)metric((std::string("flicker ")+config.name+": age target matches the CPU oracle").c_str(),b.ageOracle,0,0);
         if(q==1&&p==0&&v==0)staticRuns[c]=std::move(run);}
+    // Near-depth rows (line depth 0.5): a far-plane pixel whose previous depth was the line is rejected by the disocclusion
+    // test (current-only, age 1). Oracle only; the band numbers are reported, not gated.
+    driftDepth=.5f;
+    for(double v:{0.,.4})for(unsigned c=0;c<4;++c){const DriftSpec spec{v,4,.8};const FlickerConfig& config=*table[c];
+        auto run=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},driftFrames,config,sentinelBackground);auto b=flicker_bands(run,spec);const auto model=flicker_model(run,config,spec.v);double oracle=0,ageOracle=0;unsigned restarts=0;
+        for(unsigned n=0;n<driftFrames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=2;x+2<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));if(!run.age.empty()){ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));if(n>8&&x>=driftLo&&x<driftHi&&y>=driftLo&&y<driftHi&&px(run.age[n],x,y)==1.f)++restarts;}}
+        std::printf("FLICKER_NEAR_DEPTH depth=0.50 width=%.2f pitch=%.2f v=%.2f config=%s pixel_p2_4=%.3f pixel_p4_8=%.3f pixel_p8_32=%.3f block_p2_4=%.3f block_p4_8=%.3f block_p8_32=%.3f contrast=%.4f oracle_error=%.6f age_oracle_error=%.6f age_restarts=%u\n",spec.width,spec.pitch,spec.v,config.name,b.pixel[0],b.pixel[1],b.pixel[2],b.block[0],b.block[1],b.block[2],b.contrast,oracle,ageOracle,restarts);
+        metric((std::string("flicker near depth ")+config.name+": shader matches the CPU oracle").c_str(),oracle,0,.0006/(1-(config.wmax>0?config.wmax:config.weight)));
+        if(config.wmax>0){metric((std::string("flicker near depth ")+config.name+": age target matches the CPU oracle").c_str(),ageOracle,0,0);++numeric_checks;require(restarts>0,"near depth: the disocclusion test restarts ages (rejection path exercised)");}}
+    driftDepth=.99f;
+    // Screen speed is the content's velocity, not the dilation offset: on the static lattice every thin pixel takes its
+    // correspondence from a neighbour (dilate != 0), and the default gate (LO 0.1, HI 0.5) must equal a gate no dilation
+    // offset (<= 1.41 px) could pass, bit for bit.
+    {const FlickerConfig beyond{"soft-0.75+w-0.97-gate-10-20",.75f,.97f,10,20,false,false,.9f};const DriftSpec spec{0,4,.8};
+        const auto a=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},64,narrow,sentinelBackground),b=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},64,beyond,sentinelBackground);
+        ++numeric_checks;require(same_rgb(a.output,b.output),"static dilated pixels have zero screen speed: default gate bit-identical to a 10-20 px/frame gate");}
     // ---- step 1 gates. The note's 1-D prediction (block period 2-4 <= 0.65 x baseline, static contrast 0.55 -> 0.91) is reported
     // against the measurement and NOT asserted: the real shader shows no such gain (see the ledger entry). Asserted: no band
     // of the soft clip exceeds the baseline by more than 10 % and the contrast does not fall by more than 5 %.
@@ -180,16 +201,20 @@ void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,c
         for(bool filter:{false,true}){const FlickerConfig plain{"identity-plain",0,0,.1f,.5f,filter,false,.9f},variant{"identity-variant-s0",0,0,.1f,.5f,filter,true,.9f};
             for(const auto* bg:{&sentinelBackground,&routedBackground}){const auto a=flicker_sequence(s,resolver,filtered,objects,64,plain,*bg),b=flicker_sequence(s,resolver,filtered,objects,64,variant,*bg);++numeric_checks;require(same_rgb(a.output,b.output),filter?"filtered variant at S = 0 is bit-identical to the filtered program":"variant at S = 0 is bit-identical to the plain program");}}
         const auto a=flicker_sequence(s,resolver,filtered,objects,64,base,routedBackground),b=flicker_sequence(s,resolver,filtered,objects,64,soft,routedBackground);++numeric_checks;require(same_rgb(a.output,b.output),"soft clip with no thin pixel is bit-identical to the baseline");}
-    // Moving square over the sentinel background (static 32 frames, then +1 px/frame): a pixel whose 3x3 holds no square
-    // depth is the background exactly; the trailing adjacent pixel keeps at most S * w of the contrast.
-    {const double sl=10.28,st=10.37;auto square=[&](unsigned n){const double l=sl+(n>=32?n-31:0);return std::vector<EdgeObject>{{l,st,l+6,st+6,1,.5f,n>=32?1.:0.,0}};};
+    // Square over the sentinel background, static 32 frames, then +1 px/frame with zero reported motion: a pixel whose 3x3
+    // holds no square depth is the background exactly (clamp); the revealed pixel beside the square keeps at most w of the contrast.
+    {const double sl=10.28,st=10.37;auto square=[&](unsigned n){const double l=sl+(n>=32?n-31:0);return std::vector<EdgeObject>{{l,st,l+6,st+6,1,driftDepth,0,0}};}; // moves 1 px/frame but reports NO motion (a draw without history): the revealed pixel reads its own stale history
+        double baseTrailing=0;
         for(const FlickerConfig* c:{&base,&soft,&narrow}){const auto run=flicker_sequence(s,resolver,filtered,square,44,*c,sentinelBackground);double distant=0,trailing=0;
-            for(unsigned n=33;n<44;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){bool adjacent=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)adjacent|=px(run.depth[n],x+dx,y+dy)==.5f;
-                const double lx=sl+(n-31),value=std::fabs(px(run.output[n],x,y)-.25);if(!adjacent)distant=std::max(distant,value);else if(x+1<=lx-.5)trailing=std::max(trailing,value);}
-            const double bound=.75*c->thin*(c->wmax>0?c->wmax:c->weight)+1./255;
+            for(unsigned n=33;n<44;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){bool adjacent=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)adjacent|=px(run.depth[n],x+dx,y+dy)==driftDepth;
+                const double lx=sl+(n-31),value=std::fabs(px(run.output[n],x,y)-.25);if(!adjacent)distant=std::max(distant,value);else if(px(run.depth[n],x,y)<=-.5f&&x+.5<lx)trailing=std::max(trailing,value);}
+            // The trailing adjacent pixel's box holds the square, so even the baseline keeps w of the contrast there; the soft
+            // clip may add nothing beyond that bound. Non-vacuous: the baseline trail must be visible in this scene.
+            const double bound=.75*(c->wmax>0?c->wmax:c->weight)+1./255;if(c==&base)baseTrailing=trailing;
             std::printf("FLICKER_GHOST config=%s ghost_far=%.6f ghost_trailing_adjacent=%.6f bound=%.6f\n",c->name,distant,trailing,bound);
             metric((std::string("flicker ghost ")+c->name+": beyond one pixel the revealed background carries no square colour").c_str(),distant,0,1./255);
-            if(c->thin>0)metric((std::string("flicker ghost ")+c->name+": trailing adjacent pixel within S * w of the contrast").c_str(),trailing,0,bound);}}
+            metric((std::string("flicker ghost ")+c->name+": trailing adjacent pixel within w of the contrast").c_str(),trailing,0,bound);}
+        ++numeric_checks;require(baseTrailing>.05,"ghost scene is non-vacuous: the baseline trailing pixel carries square colour");}
     // ---- step 2 gates, on the static lattice the mask and the disocclusion test keep (lines 1.25 px wide, pitch 4) ----
     {auto ripple=[&](const FlickerRun& r){double sum=0;unsigned count=0;for(unsigned n=driftFrames-latticePhases-1;n<driftFrames-1;++n)for(UINT y=driftLo;y<driftHi;++y)for(UINT x=driftLo;x<driftHi;++x){sum+=std::fabs(px(r.output[n+1],x,y)-2*px(r.output[n],x,y)+px(r.output[n-1],x,y))/2;++count;}return sum/count;};
         auto periodMean=[&](const FlickerRun& r,UINT x,UINT y){double sum=0;for(unsigned n=driftFrames-latticePhases;n<driftFrames;++n)sum+=px(r.output[n],x,y);return sum/latticePhases;};

@@ -1794,7 +1794,7 @@ Design and implementation numbers: `docs/architecture/taa-flicker-suppression.md
 - `run_motion_output.py seam-taa-on seam-taa-hdr-tonemap-on`: 164 / 140 checks, as before (`TAA_BASE_REFERENCES` 4 -> 5 for
   the snapshot program). `run_object_lifetime.py`: exit 0, timing-only deltas. Generator `--check`: the seven resolve
   programs, `current_depth`, `sun_shadow_apply`, `sun_shadow_cascade_apply` and the nine bloom programs PASS (manifests
-  re-pinned to the generator; bytecode of the unrelated ones unchanged). Host suite: 2259 tests OK.
+  re-pinned to the generator; bytecode of the unrelated ones unchanged). Host suite: 2269 tests OK after the merge of main (2259 before it).
 
 ### Replay of run148 / run142 through the resolve oracle (2026-09-19)
 
@@ -1805,3 +1805,12 @@ true on 63-99 % of flip px-frames and the clamp moves history by more than a cod
 p8-32 6.76 against the raw input's 6.89, no-clip bound 6.73: the slow band is scene motion, no option moves it. Static plant:
 thin + w 0.97 takes per-px p2-4 / p4-8 1.93 / 2.53 -> 0.59 / 0.79 (x 0.31), contrast x 1.00, stable-px gradient energy x 0.95;
 thin clip alone x 0.97; current filter 1.0 x 0.55 with gradient energy x 0.43. No shader change; fixture depths to be rescaled.
+
+### TAA flicker review fixes (2026-09-19)
+
+`docs/architecture/taa-flicker-suppression.md`, sections 10 (re-baselined) and 10.2. Fixture lines at depth 0.99 plus eight
+near-depth rows; lattice mode 210 numerical / 13 state, `temporal-pass.txt` still byte-identical; `seam-taa-on` 164,
+`seam-taa-hdr-tonemap-on` 140; resolve programs `--check` PASS (no shader change). Static-plant replay, thin + w 0.97 default
+gate: x 0.31 unchanged, 0.0000 of thin flip px exceed the gate's LO (speed already excludes the dilation offset).
+Supersedes the adaptive-weight lattice numbers and the "sub-pixel lines flicker more" finding of the steps 0-3 entry above:
+those were measured with line depth 0.5 and now hold for the near-depth rows only.

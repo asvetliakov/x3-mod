@@ -526,7 +526,8 @@ def main():
             parser.error('--taa-adaptive-weight needs 0 <= LO < HI <= 64 px/frame.')
         if not (args.taa_thin_clip is not None and args.taa_thin_clip > 0.0):
             parser.error('--taa-adaptive-weight requires --taa-thin-clip > 0 (alone it dims thin lattices).')
-        args.taa_adaptive_weight = ','.join(repr(value) for value in adaptive)
+        # Short fixed format: the DLL reads the value through a 32-character buffer (three components <= 23 characters).
+        args.taa_adaptive_weight = ','.join('%.5g' % value for value in adaptive)
     if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
         parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
@@ -910,7 +911,7 @@ def main():
                             ('X3M_TAA_THIN_CLIP', args.taa_thin_clip), ('X3M_TAA_ADAPTIVE_WEIGHT', args.taa_adaptive_weight),
                             ('X3M_TAA_ALPHA_HISTORY', '1' if args.taa_alpha_history else None)):
             if value is not None:
-                env[name] = value if isinstance(value, str) else repr(value)
+                env[name] = value if isinstance(value, str) else ('%.5g' % value if name == 'X3M_TAA_THIN_CLIP' else repr(value))
             else:
                 env.pop(name, None)
         env['X3M_TAA_SENTINEL'] = args.taa_sentinel

@@ -21,7 +21,10 @@ for l in lines:
         meta[f].update(P=(float(kv['p00']), float(kv['p11']), float(kv['p20']), float(kv['p21'])), R=np.array([[float(kv['r%d%d' % (i, j)]) for j in range(3)] for i in range(3)]))
 
 def load(kind, f, ext, dt, ch):
-    return np.fromfile(D + '%s_1_%d.%s' % (kind, f, ext), dtype=dt).reshape(H, W, ch)
+    data = np.fromfile(D + '%s_1_%d.%s' % (kind, f, ext), dtype=dt)
+    if data.size != H * W * ch:  # the script assumes 1280x768 dumps (run142 / run148)
+        raise SystemExit('%s_1_%d.%s: %d values, expected %dx%dx%d; this replay is fixed to 1280x768 captures' % (kind, f, ext, data.size, W, H, ch))
+    return data.reshape(H, W, ch)
 M = 8  # margin around the crop for taps
 cy0, cy1, cx0, cx1 = Y0 - M, Y1 + M, X0 - M, X1 + M
 ys, xs = np.mgrid[Y0:Y1, X0:X1]
@@ -158,6 +161,7 @@ if MODE == 'options':
     configs = [('base', {}), ('no clip (bound)', dict(thin=1., allthin=True)), ('thin0.75', dict(thin=.75)), ('thin+w0.97 narrow', dict(thin=.75, wmax=.97, lo=.1, hi=.5)), ('thin+w0.97 wide', dict(thin=.75, wmax=.97, lo=.8, hi=1.5)),
                ('filter1.0', dict(filter=1.)), ('remedy+thin0.75', dict(thin=.75, remedy=True)), ('remedy+thin+w0.97 wide', dict(thin=.75, remedy=True, wmax=.97, lo=.8, hi=1.5)),
                ('w0.97 wide no thin', dict(wmax=.97, lo=.8, hi=1.5))]
+    if os.environ.get('ONLY'): configs = [c for c in configs if c[0] == 'base' or c[0] in os.environ['ONLY'].split('|')]  # ONLY='thin+w0.97 narrow'
     def bands(series):  # (N, n) -> rms per band, codes
         N = series.shape[0]; X = np.fft.rfft(series - series.mean(0), axis=0); p = 2 * np.abs(X) ** 2 / N ** 2
         per = np.array([N / k if k else np.inf for k in range(X.shape[0])]); out = []
@@ -186,8 +190,10 @@ if MODE == 'options':
                 F = flip; tot['n'] += F.sum(); tot['far'] += (dg['far'] & F).sum(); miss = dg['far'] & ~dg['thin'] & F; tot['miss'] += miss.sum(); tot['thin'] += (dg['thin'] & F).sum()
                 tot['disocc'] += (dg['disocc'] & F).sum(); tot['oob'] += (dg['oob'] & F).sum(); mv = dg['accept'] & (dg['moved'] * 255 > 1)
                 tot['moved'] += (mv & F).sum(); tot['movedsum'] += (dg['moved'] * 255)[mv & F].sum(); tot['miss_moved'] += (mv & miss).sum(); tot['miss_movedsum'] += (dg['moved'] * 255)[mv & miss].sum()
+                dil = dg['thin'] & F; tot.setdefault('gate', []).append(float((dg['speed'][dil] > .1).mean()))  # thin px whose screen speed passes the default LO
                 tot['remedy'] += (dg['remedy_px'] & F).sum(); tot['speed'].append(float(np.median(dg['speed'][F & ~dg['far']])))
             n = tot['n']
+            print('SPEED_GATE share of thin flip px with screen speed > 0.1 px/frame (default LO): %.4f; > 0.5 (HI): see median speed' % float(np.mean(tot['gate'])))
             print('CLASSIFY flip px-frames %d: far(sentinel centre) %.3f; total-miss (far, no geometry in 3x3) %.3f; thin mask %.3f; disocclusion-rejected %.5f; other reject %.5f; clamp moved >1 code %.3f (mean move %.1f codes); among total-miss: clamp moved %.3f (mean %.1f codes); previous-depth-valid total-miss %.3f; median strut speed %.2f px/frame' % (
                 n, tot['far'] / n, tot['miss'] / n, tot['thin'] / n, tot['disocc'] / n, tot['oob'] / n, tot['moved'] / n, tot['movedsum'] / max(tot['moved'], 1), tot['miss_moved'] / max(tot['miss'], 1), tot['miss_movedsum'] / max(tot['miss_moved'], 1), tot['remedy'] / n, float(np.median(tot['speed']))))
         line = 'OPTION %-24s px p2-4/4-8/8-32 %5.2f %5.2f %5.2f | block %5.2f %5.2f %5.2f | contrast x%.3f | stable-px sharpness x%.4f' % (name, *pb, *bb, contrast / base['contrast'], sharp / base['sharp'])

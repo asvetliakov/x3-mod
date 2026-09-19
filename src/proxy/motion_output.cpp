@@ -1478,6 +1478,8 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_current_filter device=%llu unavailable=1 create=%08lx requested=%.3f", id_, taa_->current_filter_result(), double(taa_current_filter_));
         taa_current_filter_ = 0.f;
     }
+    if (SUCCEEDED(hr) && !taa_->snapshot_available())
+        log("motion_output_taa_snapshot device=%llu unavailable=1 create=%08lx", id_, taa_->snapshot_result());
     // Flicker suppression: the variant programs exist only when an option asks
     // for them. The adaptive weight is refused without the thin clip (alone it
     // dims thin lattices) or below the history weight; a device that refuses

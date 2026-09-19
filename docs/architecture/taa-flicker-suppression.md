@@ -256,29 +256,36 @@ Source: `src/temporal/resolve.hlsl` (defines `X3M_THIN_CLIP`, `X3M_AGE_WEIGHT`),
 - **Off path**: plain and filtered bytecode hashes are those of step 0 (`32063822...`, `fa1fc671...`); with no option set
   the pass never creates the variants, and `temporal-pass.txt` (508 / 278 / 386) is byte-identical to the pre-change file.
   The pass holds one more device reference (the snapshot program): `TAA_BASE_REFERENCES` 4 -> 5.
-- **Step 1 does not do what section 3 predicted.** Soft 0.75 against the baseline, 16 drifting-lattice cases (lines 0.8
-  and 1.25 px wide, pitch 4 and 2.37, 0 / 0.25 / 0.4 / 0.6 px/frame): block period 2-4 ratio 0.89-1.02 (predicted <=
-  0.65), no band above 1.03 x the baseline, contrast ratio 0.99-1.04 (predicted 0.55 -> 0.91 static). The shader
-  equals the CPU oracle (max error 0.0034), so this is the design, not a defect. Mechanism, from the oracle: (a) a line
-  narrower than one pixel is missed by every sample of the 3x3 on some jitter phases (**[I]** for the 0.8-px line at
-  4.31: jitter x in (0.19, 0.39]);
-  on those phases the depth neighbourhood is all sentinel, so `thin` is false exactly when the collapse happens, and
-  before the clip is even reached the far-plane pixel's history is rejected by the disocclusion test (previous depth =
-  the line, in front of the expected far plane) and the pixel returns current-only; (b) a line of one pixel or more always
-  has both sides in the 3x3, the box contains the history and the clamp does not bind. The 1-D model had neither the
-  mask nor the disocclusion test. A remedy would have to act on that rejection (for example: far-plane pixel, all-sentinel
-  3x3, previous depth valid -> accept with the soft clip instead of returning current-only), at the price of a decaying
-  ghost behind every silhouette that moves off the background; not implemented, needs a design decision.
-- **Step 2**: on lines the mask and the disocclusion test keep (1.25 px, static) the ripple ratio is 0.284 (closed form
-  0.29), brightness within 0.0023, flat background identical, error 8 frames after a cut 0.0021 against the baseline's
-  0.0138 after 20; drifting 1.25-px lattices with the wide gate at 0.25-0.4 px/frame: per-px bands x 0.3-0.8, contrast x
-  0.5-0.9; at 0.6 px/frame the slow band rises (x 1.5-1.7). On 0.8-px
-  lines it is **worse** than the baseline: static per-px period 2-4 9.6 -> 27.8 codes (pitch 4), 10.4 -> 25.2 (pitch
-  2.37), because every disocclusion rejection restarts the age at 1 and the next frames blend at 1/2, 2/3, ... (contrast
-  rises 0.21 -> 0.72 for the same reason). Whether the game's flickering struts are above or below one pixel decides the
-  sign of this option; `taa_age_<f>.r32f` in a `--taa-debug` capture shows it directly (**[I]**: age pinned near 1 on the struts).
-  At speed >= HI the run is bit-identical to the thin-clip run when the age ramp cannot bind (weight 0.5 case); with
-  weight 0.9 the first 9 frames after any current-only return differ by construction.
+- **Fixture depths (re-baselined after the replay of section 10.1).** The drifting-lattice lines now sit at device depth
+  0.99 over the sentinel background, as the real struts do (0.984-0.99996): a far-plane pixel accepts their previous depth
+  and the disocclusion test does not reject. Eight near-depth rows (line depth 0.5, `FLICKER_NEAR_DEPTH`) keep the
+  rejection path under the oracle (ages restart there: 3968 / 1920 age-1 samples in the analysed window). The real-data
+  replay stays the authority; the fixture proves shader = oracle and the invariants.
+- **Step 1, measured against section 3.** Soft 0.75 against the baseline, 16 cases (lines 0.8 and 1.25 px, pitch 4 and 2.37,
+  0 / 0.25 / 0.4 / 0.6 px/frame): block period 2-4 ratio 0.89-1.02 (predicted <= 0.65), no band above 1.03 x the baseline,
+  contrast ratio 0.99-1.04 (predicted static 0.55 -> 0.91); identical at both depths, because on a total-miss phase the
+  all-background clip box and the rejection both return the background. Shader = oracle (max error 0.0034). Mechanism: (a)
+  a line narrower than a pixel is missed by every sample of the 3x3 on some jitter phases (**[I]** 0.8 px at 4.31: jitter x
+  in (0.19, 0.39]); the depth neighbourhood is then all sentinel, `thin` is false exactly when the box collapses, and the
+  clamp erases the line; (b) a line of one pixel or more always has both sides in the 3x3 and the clamp does not bind. The
+  1-D model applied the soft clip without the mask. A mask that remembers the previous depth would reach case (a) in the
+  fixture, but the replay shows total-miss phases on 0.3-23 % of real strut px-frames with the clamp binding on 2-3 %:
+  inert on the game either way.
+- **Step 2.** Lines of 1.25 px, static: ripple ratio 0.284 (closed form 0.29), brightness within 0.0023, flat background
+  identical, error 8 frames after a cut 0.0021 against the baseline's 0.0138 after 20. Lines of 0.8 px at game-like depth,
+  static pitch 4: per-px period 2-4 9.65 -> 3.10 (x 0.32) but contrast 0.21 -> 0.066: the section-3 prediction "a high
+  weight dims a thin lattice" holds in the fixture (the erased history refills at 3 % per frame) and the blind mask does not
+  rescue it; on the real static plant the contrast is x 1.00 (section 10.1), total-miss phases being 0.3 % there. Drifting
+  0.8-px pitch 2.37 at 0.4 px/frame, wide gate: per-px 8.6 / 14.1 / 14.4 -> 3.4 / 5.6 / 6.7, block 3.2 / 3.0 / 4.2 -> 1.3 /
+  1.3 / 1.9, contrast 0.40 -> 0.17. Near depth (0.5) the option is worse than the baseline (9.6 -> 27.8 codes), every
+  rejection restarting the age: relevant to near geometry over empty background only. Screen speed is the content's
+  velocity (`previousUV` after the dilation offset is removed is this pixel's own previous position): the fixture asserts
+  the default gate bit-identical to a 10-20 px/frame gate on the static lattice, where every thin pixel is dilated, and on
+  the real static plant 0.0000 of the thin flip px exceed LO = 0.1. At speed >= HI the run is bit-identical to the thin-clip
+  run when the age ramp cannot bind (weight 0.5 case).
+- **Ghost case.** Square at depth 0.99 moving 1 px/frame while reporting no motion: beyond one pixel the revealed background
+  is exact in every config; the revealed pixel beside the square keeps 0.62 (base) / 0.66 (soft) / 0.71 (soft + w 0.97) of
+  the 0.75 contrast, bound w x contrast.
 - **Step 3**: resolved alpha equals the CPU oracle (max error 0.0083 at w 0.97, bound 0.02); alpha ripple ratio equals
   the colour's (0.053 / 0.053 static, 0.157 / 0.157 at 0.4 px/frame); off: output alpha is the current alpha bit for bit;
   the pass refuses the option for an 8-bit surface input. +0 surfaces.
@@ -299,7 +306,8 @@ proof, Catmull-Rom history, luminance weighting with the logged `taa_k`, clip, F
 32-frame `--taa-debug` capture, seeded with the dumped resolve of frame 0; inputs `hdr_1`, `motion_1`, `depth_1` (.r),
 jitter from `motion_output_frame`. Metric: display-relative luma `255 k L / (1 + k L)` in codes; flip px = pixels whose depth
 validity toggles within the capture; 31-frame DFT; age seeded at 64 (the captures start on a long-lived history). All **[M]**
-unless tagged. Scratch script: session scratchpad `flk/replay/replay_all.py` (untracked).
+unless tagged. Script: `tools/analysis/taa_resolve_replay.py <dump dir> x0 y0 x1 y1 options` (`FR=<first>-<last>` selects a capture,
+`ONLY=<config>` limits the options); fixed to 1280x768 dumps and fails loudly on any other dump size.
 
 - **The oracle reproduces the installed resolve**: free-running 31 frames, max error 0.41 / 0.39 / 0.36 codes, mean 0.04 /
   0.05 / 0.03 (run148 plant drifting, run142 plant static, run142 station); its band rms equals the dumped resolve's to 0.02.
@@ -347,3 +355,12 @@ unless tagged. Scratch script: session scratchpad `flk/replay/replay_all.py` (un
   step 1 is inert rather than harmful. (4) The current filter buys less than the adaptive weight and halves the stable-pixel
   gradient energy. Candidate for a flight: `--taa-thin-clip 0.75 --taa-adaptive-weight 0.97` (narrow gate), judged on the
   near-static shimmer only.
+
+### 10.2 Review fixes (2026-09-19)
+
+Environment values longer than the DLL's 32-character buffer are invalid (option off, `taa_flicker_setting invalid=1`), and
+the launcher emits `%.5g` components. The snapshot program is optional (`snapshot_available()`; a refusal only refuses runs
+with a mask policy, `motion_output_taa_snapshot unavailable=1`); the refusal itself is not fixture-simulated. With the
+adaptive weight off the gate constants upload as zeros. No shader change: slots stay 433 / 444 / 46 / 468 / 480 / 494 / 506.
+The review's speed finding was checked and not applied: the measured speed already excludes the dilation offset (assertion
+and replay number above). Lattice mode is now 210 numerical / 13 state checks.

@@ -134,10 +134,10 @@ try:
     # Flicker suppression (docs/architecture/taa-flicker-suppression.md, steps 0-3): the embedded programs' budgets, the
     # drifting-lattice table (per-pixel / 8x8-block band rms in codes, contrast, shader-vs-CPU-oracle error) and the step gates.
     report['flicker']={'caps':fields('FLICKER_CAPS '),'drift':fields('FLICKER_DRIFT '),'step1':fields('FLICKER_STEP1 '),'speed_gate':fields('FLICKER_SPEED_GATE '),
-                       'ghost':fields('FLICKER_GHOST '),'step2':fields('FLICKER_STEP2 ')+fields('FLICKER_STEP2_FAST '),'alpha':fields('FLICKER_ALPHA ')}
-    # 28 / 9 are the run-139 lattice cases (LATTICE_BASE); the flicker cases add 163 numerical and 4 state checks.
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=28 state_restorations=9' in lattice_text and 'RESULT PASS numerical=191 state_restorations=13 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
-    assert len(report['flicker']['drift'])==64 and all(float(v['instruction_slots'])<=512 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
+                       'near_depth':fields('FLICKER_NEAR_DEPTH '),'ghost':fields('FLICKER_GHOST '),'step2':fields('FLICKER_STEP2 ')+fields('FLICKER_STEP2_FAST '),'alpha':fields('FLICKER_ALPHA ')}
+    # 28 / 9 are the run-139 lattice cases (LATTICE_BASE); the flicker cases add 182 numerical and 4 state checks.
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=28 state_restorations=9' in lattice_text and 'RESULT PASS numerical=210 state_restorations=13 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=512 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
     ripple=report['lattice']['ripple']
     assert len(ripple)==10 and ripple['off']==ripple['baseline'] and report['lattice']['budget']['plain']['instruction_slots']<=512,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'

@@ -1591,13 +1591,13 @@ FLICKER_DRIFT width=0.80 pitch=4.00 v=0.00 config=soft-0.75 pixel_p2_4=9.648 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.000488281 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=4.00 v=0.00 config=soft-0.75+w-0.97-narrow pixel_p2_4=27.819 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=13.910 block_p4_8=0.000 block_p8_32=0.000 contrast=0.7243 oracle_error=0.000000 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.000000000 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=0.80 pitch=4.00 v=0.00 config=soft-0.75+w-0.97-narrow pixel_p2_4=3.098 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=1.549 block_p4_8=0.000 block_p8_32=0.000 contrast=0.0664 oracle_error=0.000732 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.000732422 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=4.00 v=0.00 config=soft-0.75+w-0.97-wide pixel_p2_4=27.819 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=13.910 block_p4_8=0.000 block_p8_32=0.000 contrast=0.7243 oracle_error=0.000000 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.000000000 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=0.80 pitch=4.00 v=0.00 config=soft-0.75+w-0.97-wide pixel_p2_4=3.098 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=1.549 block_p4_8=0.000 block_p8_32=0.000 contrast=0.0664 oracle_error=0.000732 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.000732422 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
 FLICKER_DRIFT width=0.80 pitch=4.00 v=0.25 config=base pixel_p2_4=7.312 pixel_p4_8=4.878 pixel_p8_32=8.074 block_p2_4=5.166 block_p4_8=0.000 block_p8_32=0.000 contrast=0.2026 oracle_error=0.000488 age_oracle_error=0.000000
@@ -1608,12 +1608,12 @@ FLICKER_DRIFT width=0.80 pitch=4.00 v=0.25 config=soft-0.75 pixel_p2_4=7.284 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.000488281 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=4.00 v=0.25 config=soft-0.75+w-0.97-narrow pixel_p2_4=18.217 pixel_p4_8=20.990 pixel_p8_32=27.164 block_p2_4=13.602 block_p4_8=0.000 block_p8_32=0.000 contrast=0.6854 oracle_error=0.000488 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=4.00 v=0.25 config=soft-0.75+w-0.97-narrow pixel_p2_4=4.220 pixel_p4_8=2.879 pixel_p8_32=4.666 block_p2_4=3.012 block_p4_8=0.000 block_p8_32=0.000 contrast=0.1171 oracle_error=0.000488 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.000488281 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=4.00 v=0.25 config=soft-0.75+w-0.97-wide pixel_p2_4=18.217 pixel_p4_8=20.990 pixel_p8_32=27.164 block_p2_4=13.602 block_p4_8=0.000 block_p8_32=0.000 contrast=0.6854 oracle_error=0.000488 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=4.00 v=0.25 config=soft-0.75+w-0.97-wide pixel_p2_4=2.295 pixel_p4_8=1.568 pixel_p8_32=2.535 block_p2_4=1.648 block_p4_8=0.000 block_p8_32=0.000 contrast=0.0635 oracle_error=0.000488 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.000488281 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
@@ -1625,12 +1625,12 @@ FLICKER_DRIFT width=0.80 pitch=4.00 v=0.40 config=soft-0.75 pixel_p2_4=5.765 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.001464844 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=4.00 v=0.40 config=soft-0.75+w-0.97-narrow pixel_p2_4=8.637 pixel_p4_8=9.724 pixel_p8_32=18.743 block_p2_4=4.453 block_p4_8=3.645 block_p8_32=8.243 contrast=0.3432 oracle_error=0.001953 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=0.80 pitch=4.00 v=0.40 config=soft-0.75+w-0.97-narrow pixel_p2_4=4.966 pixel_p4_8=7.627 pixel_p8_32=15.355 block_p2_4=3.000 block_p4_8=2.767 block_p8_32=8.156 contrast=0.2604 oracle_error=0.001465 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.001464844 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=4.00 v=0.40 config=soft-0.75+w-0.97-wide pixel_p2_4=7.925 pixel_p4_8=8.270 pixel_p8_32=14.907 block_p2_4=3.941 block_p4_8=2.984 block_p8_32=6.691 contrast=0.2607 oracle_error=0.001465 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=4.00 v=0.40 config=soft-0.75+w-0.97-wide pixel_p2_4=2.109 pixel_p4_8=3.289 pixel_p8_32=6.619 block_p2_4=1.332 block_p4_8=1.272 block_p8_32=3.658 contrast=0.1078 oracle_error=0.001465 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.001464844 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
@@ -1642,12 +1642,12 @@ FLICKER_DRIFT width=0.80 pitch=4.00 v=0.60 config=soft-0.75 pixel_p2_4=7.102 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.000976562 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=4.00 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=10.431 pixel_p4_8=20.553 pixel_p8_32=14.304 block_p2_4=5.602 block_p4_8=5.462 block_p8_32=10.674 contrast=0.4034 oracle_error=0.000977 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=4.00 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=7.107 pixel_p4_8=14.472 pixel_p8_32=10.284 block_p2_4=3.547 block_p4_8=4.621 block_p8_32=7.999 contrast=0.2805 oracle_error=0.000977 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.000976562 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=4.00 v=0.60 config=soft-0.75+w-0.97-wide pixel_p2_4=9.850 pixel_p4_8=18.231 pixel_p8_32=13.354 block_p2_4=5.249 block_p4_8=5.229 block_p8_32=9.849 contrast=0.3483 oracle_error=0.001221 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=4.00 v=0.60 config=soft-0.75+w-0.97-wide pixel_p2_4=3.437 pixel_p4_8=6.789 pixel_p8_32=5.331 block_p2_4=1.760 block_p4_8=2.425 block_p8_32=3.978 contrast=0.1341 oracle_error=0.001221 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.001220703 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
@@ -1659,12 +1659,12 @@ FLICKER_DRIFT width=0.80 pitch=2.37 v=0.00 config=soft-0.75 pixel_p2_4=9.975 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=2.37 v=0.00 config=soft-0.75+w-0.97-narrow pixel_p2_4=25.209 pixel_p4_8=16.354 pixel_p8_32=0.000 block_p2_4=4.499 block_p4_8=3.825 block_p8_32=0.000 contrast=0.9315 oracle_error=0.001953 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=2.37 v=0.00 config=soft-0.75+w-0.97-narrow pixel_p2_4=3.468 pixel_p4_8=3.268 pixel_p8_32=0.000 block_p2_4=1.010 block_p4_8=0.797 block_p8_32=0.000 contrast=0.1162 oracle_error=0.001953 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=2.37 v=0.00 config=soft-0.75+w-0.97-wide pixel_p2_4=25.209 pixel_p4_8=16.354 pixel_p8_32=0.000 block_p2_4=4.499 block_p4_8=3.825 block_p8_32=0.000 contrast=0.9315 oracle_error=0.001953 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=2.37 v=0.00 config=soft-0.75+w-0.97-wide pixel_p2_4=3.468 pixel_p4_8=3.268 pixel_p8_32=0.000 block_p2_4=1.010 block_p4_8=0.797 block_p8_32=0.000 contrast=0.1162 oracle_error=0.001953 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
@@ -1676,13 +1676,13 @@ FLICKER_DRIFT width=0.80 pitch=2.37 v=0.25 config=soft-0.75 pixel_p2_4=8.363 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=2.37 v=0.25 config=soft-0.75+w-0.97-narrow pixel_p2_4=15.034 pixel_p4_8=11.097 pixel_p8_32=24.413 block_p2_4=4.610 block_p4_8=2.610 block_p8_32=3.948 contrast=0.5608 oracle_error=0.003418 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.003417969 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=0.80 pitch=2.37 v=0.25 config=soft-0.75+w-0.97-narrow pixel_p2_4=5.364 pixel_p4_8=4.870 pixel_p8_32=15.324 block_p2_4=1.659 block_p4_8=1.793 block_p8_32=3.937 contrast=0.3480 oracle_error=0.003906 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.003906250 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=2.37 v=0.25 config=soft-0.75+w-0.97-wide pixel_p2_4=14.819 pixel_p4_8=11.079 pixel_p8_32=24.221 block_p2_4=4.656 block_p4_8=2.624 block_p8_32=3.678 contrast=0.5555 oracle_error=0.002930 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=0.80 pitch=2.37 v=0.25 config=soft-0.75+w-0.97-wide pixel_p2_4=3.390 pixel_p4_8=3.080 pixel_p8_32=11.732 block_p2_4=1.084 block_p4_8=1.178 block_p8_32=2.740 contrast=0.2626 oracle_error=0.003418 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.003417969 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
 FLICKER_DRIFT width=0.80 pitch=2.37 v=0.40 config=base pixel_p2_4=8.625 pixel_p4_8=14.115 pixel_p8_32=14.417 block_p2_4=3.162 block_p4_8=2.981 block_p8_32=4.190 contrast=0.3965 oracle_error=0.001953 age_oracle_error=0.000000
@@ -1693,13 +1693,13 @@ FLICKER_DRIFT width=0.80 pitch=2.37 v=0.40 config=soft-0.75 pixel_p2_4=8.288 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=2.37 v=0.40 config=soft-0.75+w-0.97-narrow pixel_p2_4=13.307 pixel_p4_8=16.144 pixel_p8_32=19.032 block_p2_4=4.188 block_p4_8=3.662 block_p8_32=5.490 contrast=0.5112 oracle_error=0.001953 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=2.37 v=0.40 config=soft-0.75+w-0.97-narrow pixel_p2_4=7.231 pixel_p4_8=12.275 pixel_p8_32=12.832 block_p2_4=2.702 block_p4_8=2.632 block_p8_32=3.683 contrast=0.3460 oracle_error=0.001953 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=2.37 v=0.40 config=soft-0.75+w-0.97-wide pixel_p2_4=12.846 pixel_p4_8=14.028 pixel_p8_32=19.350 block_p2_4=4.125 block_p4_8=3.427 block_p8_32=5.922 contrast=0.4904 oracle_error=0.002441 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=0.80 pitch=2.37 v=0.40 config=soft-0.75+w-0.97-wide pixel_p2_4=3.371 pixel_p4_8=5.630 pixel_p8_32=6.664 block_p2_4=1.330 block_p4_8=1.269 block_p8_32=1.941 contrast=0.1676 oracle_error=0.001953 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
 FLICKER_DRIFT width=0.80 pitch=2.37 v=0.60 config=base pixel_p2_4=11.138 pixel_p4_8=11.099 pixel_p8_32=6.956 block_p2_4=2.747 block_p4_8=3.839 block_p8_32=3.281 contrast=0.3775 oracle_error=0.001953 age_oracle_error=0.000000
@@ -1710,13 +1710,13 @@ FLICKER_DRIFT width=0.80 pitch=2.37 v=0.60 config=soft-0.75 pixel_p2_4=11.210 pi
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=14.650 pixel_p4_8=12.518 pixel_p8_32=7.253 block_p2_4=3.342 block_p4_8=4.827 block_p8_32=3.164 contrast=0.4402 oracle_error=0.001953 age_oracle_error=0.000000
+FLICKER_DRIFT width=0.80 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=11.239 pixel_p4_8=11.255 pixel_p8_32=7.038 block_p2_4=2.814 block_p4_8=3.781 block_p8_32=3.322 contrast=0.3761 oracle_error=0.001953 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=0.80 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-wide pixel_p2_4=12.467 pixel_p4_8=11.003 pixel_p8_32=7.667 block_p2_4=2.764 block_p4_8=4.537 block_p8_32=3.786 contrast=0.3848 oracle_error=0.001953 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=0.80 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-wide pixel_p2_4=6.785 pixel_p4_8=7.499 pixel_p8_32=5.092 block_p2_4=1.754 block_p4_8=2.590 block_p8_32=2.355 contrast=0.2493 oracle_error=0.002441 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
 FLICKER_DRIFT width=1.25 pitch=4.00 v=0.00 config=base pixel_p2_4=3.774 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=1.404 block_p4_8=0.000 block_p8_32=0.000 contrast=1.0267 oracle_error=0.002441 age_oracle_error=0.000000
@@ -1744,13 +1744,13 @@ FLICKER_DRIFT width=1.25 pitch=4.00 v=0.25 config=soft-0.75 pixel_p2_4=2.880 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=4.00 v=0.25 config=soft-0.75+w-0.97-narrow pixel_p2_4=2.675 pixel_p4_8=1.625 pixel_p8_32=41.883 block_p2_4=1.899 block_p4_8=0.011 block_p8_32=0.188 contrast=0.6132 oracle_error=0.004395 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.004394531 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=1.25 pitch=4.00 v=0.25 config=soft-0.75+w-0.97-narrow pixel_p2_4=2.675 pixel_p4_8=1.625 pixel_p8_32=41.883 block_p2_4=1.899 block_p4_8=0.011 block_p8_32=0.188 contrast=0.6132 oracle_error=0.004883 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.004882812 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=4.00 v=0.25 config=soft-0.75+w-0.97-wide pixel_p2_4=2.314 pixel_p4_8=1.255 pixel_p8_32=30.491 block_p2_4=1.512 block_p4_8=0.020 block_p8_32=0.268 contrast=0.4468 oracle_error=0.006348 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.006347656 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=1.25 pitch=4.00 v=0.25 config=soft-0.75+w-0.97-wide pixel_p2_4=2.314 pixel_p4_8=1.255 pixel_p8_32=30.491 block_p2_4=1.512 block_p4_8=0.020 block_p8_32=0.268 contrast=0.4468 oracle_error=0.005859 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.005859375 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
 FLICKER_DRIFT width=1.25 pitch=4.00 v=0.40 config=base pixel_p2_4=4.215 pixel_p4_8=6.857 pixel_p8_32=38.360 block_p2_4=1.625 block_p4_8=1.702 block_p8_32=3.636 contrast=0.5737 oracle_error=0.002441 age_oracle_error=0.000000
@@ -1778,12 +1778,12 @@ FLICKER_DRIFT width=1.25 pitch=4.00 v=0.60 config=soft-0.75 pixel_p2_4=6.196 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=4.00 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=7.600 pixel_p4_8=41.165 pixel_p8_32=8.883 block_p2_4=1.589 block_p4_8=1.555 block_p8_32=7.104 contrast=0.6180 oracle_error=0.002441 age_oracle_error=0.000000
+FLICKER_DRIFT width=1.25 pitch=4.00 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=6.263 pixel_p4_8=38.251 pixel_p8_32=7.036 block_p2_4=1.566 block_p4_8=1.235 block_p8_32=5.141 contrast=0.5722 oracle_error=0.002441 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=4.00 v=0.60 config=soft-0.75+w-0.97-wide pixel_p2_4=6.522 pixel_p4_8=38.881 pixel_p8_32=10.137 block_p2_4=1.422 block_p4_8=1.582 block_p8_32=8.268 contrast=0.5819 oracle_error=0.003906 age_oracle_error=0.000000
+FLICKER_DRIFT width=1.25 pitch=4.00 v=0.60 config=soft-0.75+w-0.97-wide pixel_p2_4=4.144 pixel_p4_8=29.909 pixel_p8_32=7.290 block_p2_4=1.275 block_p4_8=1.109 block_p8_32=3.526 contrast=0.4540 oracle_error=0.003906 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.003906250 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
@@ -1812,13 +1812,13 @@ FLICKER_DRIFT width=1.25 pitch=2.37 v=0.25 config=soft-0.75 pixel_p2_4=3.944 pix
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.003417969 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=2.37 v=0.25 config=soft-0.75+w-0.97-narrow pixel_p2_4=2.217 pixel_p4_8=2.226 pixel_p8_32=10.645 block_p2_4=0.382 block_p4_8=0.410 block_p8_32=1.619 contrast=0.2154 oracle_error=0.006836 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.006835938 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=1.25 pitch=2.37 v=0.25 config=soft-0.75+w-0.97-narrow pixel_p2_4=2.217 pixel_p4_8=2.226 pixel_p8_32=10.645 block_p2_4=0.382 block_p4_8=0.410 block_p8_32=1.619 contrast=0.2154 oracle_error=0.006348 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.006347656 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=2.37 v=0.25 config=soft-0.75+w-0.97-wide pixel_p2_4=1.195 pixel_p4_8=1.232 pixel_p8_32=6.537 block_p2_4=0.247 block_p4_8=0.282 block_p8_32=1.103 contrast=0.2080 oracle_error=0.011230 age_oracle_error=0.000000
-SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.011230469 expected=0.000000000 tolerance=0.020000019 PASS
+FLICKER_DRIFT width=1.25 pitch=2.37 v=0.25 config=soft-0.75+w-0.97-wide pixel_p2_4=1.195 pixel_p4_8=1.232 pixel_p8_32=6.537 block_p2_4=0.247 block_p4_8=0.282 block_p8_32=1.103 contrast=0.2080 oracle_error=0.010742 age_oracle_error=0.000000
+SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.010742188 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker history and age output follow the sequence PASS
 FLICKER_DRIFT width=1.25 pitch=2.37 v=0.40 config=base pixel_p2_4=4.979 pixel_p4_8=10.931 pixel_p8_32=4.341 block_p2_4=0.747 block_p4_8=1.263 block_p8_32=1.410 contrast=0.2175 oracle_error=0.003418 age_oracle_error=0.000000
@@ -1846,14 +1846,57 @@ FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75 pixel_p2_4=10.918 pi
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.003417969 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=10.859 pixel_p4_8=4.633 pixel_p8_32=3.218 block_p2_4=1.347 block_p4_8=0.958 block_p8_32=1.676 contrast=0.2112 oracle_error=0.003418 age_oracle_error=0.000000
+FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=10.830 pixel_p4_8=4.603 pixel_p8_32=3.216 block_p2_4=1.335 block_p4_8=0.951 block_p8_32=1.744 contrast=0.2111 oracle_error=0.003418 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.003417969 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-wide pixel_p2_4=6.534 pixel_p4_8=3.236 pixel_p8_32=4.902 block_p2_4=0.889 block_p4_8=0.621 block_p8_32=3.044 contrast=0.1649 oracle_error=0.006836 age_oracle_error=0.000000
+FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-wide pixel_p2_4=6.461 pixel_p4_8=3.135 pixel_p8_32=4.932 block_p2_4=0.882 block_p4_8=0.602 block_p8_32=3.107 contrast=0.1637 oracle_error=0.006836 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-wide: shader matches the CPU oracle within the FP16 bound actual=0.006835938 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK flicker history and age output follow the sequence PASS
+FLICKER_NEAR_DEPTH depth=0.50 width=0.80 pitch=4.00 v=0.00 config=base pixel_p2_4=9.648 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=4.824 block_p4_8=0.000 block_p8_32=0.000 contrast=0.2117 oracle_error=0.000488 age_oracle_error=0.000000 age_restarts=0
+SAMPLE flicker near depth base: shader matches the CPU oracle actual=0.000488281 expected=0.000000000 tolerance=0.005999999 PASS
+CHECK flicker programs available PASS
+CHECK flicker history and age output follow the sequence PASS
+FLICKER_NEAR_DEPTH depth=0.50 width=0.80 pitch=4.00 v=0.00 config=soft-0.75 pixel_p2_4=9.648 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=4.824 block_p4_8=0.000 block_p8_32=0.000 contrast=0.2117 oracle_error=0.000488 age_oracle_error=0.000000 age_restarts=0
+SAMPLE flicker near depth soft-0.75: shader matches the CPU oracle actual=0.000488281 expected=0.000000000 tolerance=0.005999999 PASS
+CHECK flicker programs available PASS
+CHECK flicker history and age output follow the sequence PASS
+FLICKER_NEAR_DEPTH depth=0.50 width=0.80 pitch=4.00 v=0.00 config=soft-0.75+w-0.97-narrow pixel_p2_4=27.819 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=13.910 block_p4_8=0.000 block_p8_32=0.000 contrast=0.7243 oracle_error=0.000000 age_oracle_error=0.000000 age_restarts=3968
+SAMPLE flicker near depth soft-0.75+w-0.97-narrow: shader matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE flicker near depth soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK near depth: the disocclusion test restarts ages (rejection path exercised) PASS
+CHECK flicker programs available PASS
+CHECK flicker history and age output follow the sequence PASS
+FLICKER_NEAR_DEPTH depth=0.50 width=0.80 pitch=4.00 v=0.00 config=soft-0.75+w-0.97-wide pixel_p2_4=27.819 pixel_p4_8=0.000 pixel_p8_32=0.000 block_p2_4=13.910 block_p4_8=0.000 block_p8_32=0.000 contrast=0.7243 oracle_error=0.000000 age_oracle_error=0.000000 age_restarts=3968
+SAMPLE flicker near depth soft-0.75+w-0.97-wide: shader matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE flicker near depth soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK near depth: the disocclusion test restarts ages (rejection path exercised) PASS
+CHECK flicker history and age output follow the sequence PASS
+FLICKER_NEAR_DEPTH depth=0.50 width=0.80 pitch=4.00 v=0.40 config=base pixel_p2_4=5.764 pixel_p4_8=8.801 pixel_p8_32=17.644 block_p2_4=3.412 block_p4_8=3.135 block_p8_32=9.277 contrast=0.3029 oracle_error=0.001465 age_oracle_error=0.000000 age_restarts=0
+SAMPLE flicker near depth base: shader matches the CPU oracle actual=0.001464844 expected=0.000000000 tolerance=0.005999999 PASS
+CHECK flicker programs available PASS
+CHECK flicker history and age output follow the sequence PASS
+FLICKER_NEAR_DEPTH depth=0.50 width=0.80 pitch=4.00 v=0.40 config=soft-0.75 pixel_p2_4=5.765 pixel_p4_8=8.790 pixel_p8_32=17.635 block_p2_4=3.418 block_p4_8=3.120 block_p8_32=9.242 contrast=0.3030 oracle_error=0.001465 age_oracle_error=0.000000 age_restarts=0
+SAMPLE flicker near depth soft-0.75: shader matches the CPU oracle actual=0.001464844 expected=0.000000000 tolerance=0.005999999 PASS
+CHECK flicker programs available PASS
+CHECK flicker history and age output follow the sequence PASS
+FLICKER_NEAR_DEPTH depth=0.50 width=0.80 pitch=4.00 v=0.40 config=soft-0.75+w-0.97-narrow pixel_p2_4=8.637 pixel_p4_8=9.724 pixel_p8_32=18.743 block_p2_4=4.453 block_p4_8=3.645 block_p8_32=8.243 contrast=0.3432 oracle_error=0.001953 age_oracle_error=0.000000 age_restarts=1920
+SAMPLE flicker near depth soft-0.75+w-0.97-narrow: shader matches the CPU oracle actual=0.001953125 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE flicker near depth soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK near depth: the disocclusion test restarts ages (rejection path exercised) PASS
+CHECK flicker programs available PASS
+CHECK flicker history and age output follow the sequence PASS
+FLICKER_NEAR_DEPTH depth=0.50 width=0.80 pitch=4.00 v=0.40 config=soft-0.75+w-0.97-wide pixel_p2_4=7.925 pixel_p4_8=8.270 pixel_p8_32=14.907 block_p2_4=3.941 block_p4_8=2.984 block_p8_32=6.691 contrast=0.2607 oracle_error=0.001465 age_oracle_error=0.000000 age_restarts=1920
+SAMPLE flicker near depth soft-0.75+w-0.97-wide: shader matches the CPU oracle actual=0.001464844 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE flicker near depth soft-0.75+w-0.97-wide: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK near depth: the disocclusion test restarts ages (rejection path exercised) PASS
+CHECK flicker programs available PASS
+CHECK flicker history and age output follow the sequence PASS
+CHECK flicker programs available PASS
+CHECK flicker history and age output follow the sequence PASS
+CHECK static dilated pixels have zero screen speed: default gate bit-identical to a 10-20 px/frame gate PASS
 FLICKER_STEP1 width=0.80 pitch=4.00 v=0.00 block_p2_4_ratio=1.0000 predicted_at_most=0.65 prediction_met=0 worst_band_ratio=1.0000 contrast_ratio=1.0000
 SAMPLE flicker soft clip: no band above 1.10 x baseline actual=1.000000000 expected=1.000000000 tolerance=0.100000000 PASS
 SAMPLE flicker soft clip: contrast at least 0.95 x baseline actual=1.000000000 expected=1.000000000 tolerance=0.050000000 PASS
@@ -1931,18 +1974,20 @@ CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
 CHECK soft clip with no thin pixel is bit-identical to the baseline PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_GHOST config=base ghost_far=0.000000 ghost_trailing_adjacent=0.000000 bound=0.003922
+FLICKER_GHOST config=base ghost_far=0.000000 ghost_trailing_adjacent=0.622559 bound=0.678922
 SAMPLE flicker ghost base: beyond one pixel the revealed background carries no square colour actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE flicker ghost base: trailing adjacent pixel within w of the contrast actual=0.622558594 expected=0.000000000 tolerance=0.678921551 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_GHOST config=soft-0.75 ghost_far=0.000000 ghost_trailing_adjacent=0.000000 bound=0.510172
+FLICKER_GHOST config=soft-0.75 ghost_far=0.000000 ghost_trailing_adjacent=0.661621 bound=0.678922
 SAMPLE flicker ghost soft-0.75: beyond one pixel the revealed background carries no square colour actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
-SAMPLE flicker ghost soft-0.75: trailing adjacent pixel within S * w of the contrast actual=0.000000000 expected=0.000000000 tolerance=0.510171555 PASS
+SAMPLE flicker ghost soft-0.75: trailing adjacent pixel within w of the contrast actual=0.661621094 expected=0.000000000 tolerance=0.678921551 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_GHOST config=soft-0.75+w-0.97-narrow ghost_far=0.000000 ghost_trailing_adjacent=0.000000 bound=0.549547
+FLICKER_GHOST config=soft-0.75+w-0.97-narrow ghost_far=0.000000 ghost_trailing_adjacent=0.713379 bound=0.731422
 SAMPLE flicker ghost soft-0.75+w-0.97-narrow: beyond one pixel the revealed background carries no square colour actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
-SAMPLE flicker ghost soft-0.75+w-0.97-narrow: trailing adjacent pixel within S * w of the contrast actual=0.000000000 expected=0.000000000 tolerance=0.549546585 PASS
+SAMPLE flicker ghost soft-0.75+w-0.97-narrow: trailing adjacent pixel within w of the contrast actual=0.713378906 expected=0.000000000 tolerance=0.731421590 PASS
+CHECK ghost scene is non-vacuous: the baseline trailing pixel carries square colour PASS
 FLICKER_STEP2 static_ripple_ratio=0.2837 predicted=0.29 brightness_difference=0.002319 flat_difference=0.000000 cut_error_frame8_adaptive=0.002083 cut_error_frame20_baseline=0.013795
 SAMPLE flicker adaptive weight 0.97: static ripple over the thin-clip baseline (closed form 0.29) actual=0.283673469 expected=0.290000000 tolerance=0.050000000 PASS
 SAMPLE flicker adaptive weight 0.97: static lattice brightness within 1/255 of the thin-clip baseline actual=0.002319336 expected=0.000000000 tolerance=0.003921569 PASS
@@ -1976,4 +2021,4 @@ SAMPLE flicker alpha-history+soft-0.75+w-0.97: alpha ripple ratio as the colour'
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
 CHECK alpha history off: the output alpha is the current alpha bit for bit PASS
-RESULT PASS numerical=191 state_restorations=13 lattice=1
+RESULT PASS numerical=210 state_restorations=13 lattice=1

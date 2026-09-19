@@ -42,7 +42,8 @@ inline bool valid_adaptive_weight(float wmax, float lo, float hi, float weight) 
     return wmax>=weight && wmax<=kAdaptiveWeightMax && std::isfinite(lo) && std::isfinite(hi) && lo>=0 && hi>lo && hi<=64;
 }
 inline void prepare_flicker(float out[4], float thin_clip, float wmax, float lo, float hi) noexcept {
-    out[0]=thin_clip; out[1]=wmax; out[2]=lo; out[3]=wmax>0?1.f/(hi-lo):0.f;
+    // With the adaptive weight off the gate fields are not validated: upload zeros, never the caller's values.
+    out[0]=thin_clip; out[1]=wmax; out[2]=wmax>0?lo:0.f; out[3]=wmax>0?1.f/(hi-lo):0.f;
 }
 constexpr float kLuminanceMaxK = 65504.f;       // FP16 max; the weighted domain stays finite
 constexpr float kCurrentFilterMax = 4.f;        // A of exp(-A d^2); the centre weight stays >= exp(-2)
