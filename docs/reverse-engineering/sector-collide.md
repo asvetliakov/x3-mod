@@ -1016,7 +1016,7 @@ bit-static rows, not a field named "player" in any log.
 
 ### 12.8 Implemented: `--collide-sat-sse2` and the triangle-test counter (2026-09-19)
 
-**Status (2026-09-20): launcher default on every modded launch** (`tools/manage.py`, `collide_default`);
+**Status (2026-09-19): launcher default on every modded launch** (`tools/manage.py`, `collide_default`);
 `--no-collide-sat-sse2` turns it off, `--vanilla` forwards nothing unless the option is given. The DLL's own default
 stays off (no variable = nothing patched). What follows describes the option as first shipped, default off.
 
@@ -1303,7 +1303,7 @@ thing to measure next. On native Windows x87 is not emulated, so no gain is expe
 
 ## 14. `--collide-memo`: the temporal no-contact memo (fix 1 of §11.6), 2026-09-19
 
-**Status (2026-09-20): launcher default on every modded launch**, with `--no-collide-memo` as the off switch
+**Status (2026-09-19): launcher default on every modded launch**, with `--no-collide-memo` as the off switch
 (refused together with `--collide-memo-verify`); `--vanilla` forwards nothing unless the option is given; the DLL's
 own default stays off. Flights and the running-minimum rule they led to are in §14.6.
 
@@ -1402,7 +1402,7 @@ while the player holds still; nothing while the hot pair moves.
 `verified` large. Then `--collide-memo --collide-sat-sse2 --collide-narrow-census --loop-phases`: compare the `collide`
 phase and `skipped_visits` against run 45 A.
 
-### 14.6 Flights 155/156 and the running-minimum rule (2026-09-20)
+### 14.6 Flights 155/156 and the running-minimum rule (2026-09-19)
 
 Run 155, verify mode **[m]**: 2,009,448 queries, 808,408 would-be hits all confirmed, `verify_mismatches=0`;
 `foreign_thread`, `reentered`, `stuck_busy`, `clears` all 0. Run 156, memo on, the 24 fps spot (now ≈ 43 fps) **[m]**:
