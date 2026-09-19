@@ -1667,3 +1667,94 @@ regenerated for the changed generator hash (headers unchanged); portability gap 
 `filterTotal` can underflow only for a jitter beyond about 6 px (the route's Halton is within 0.5);
 `kHistoryWeight*` constants in `resolve.h` are not the ones `capture.cpp`/`motion_output.h` use; no fixture Resets
 a pass holding the filtered program; the shared 32-wchar env buffer pattern.
+
+## Run 44 B (run142–146): angle-dependent shimmer
+
+Inputs: `/tmp/x3-bottleX3-run142` (baseline, `--taa-debug`, two 32-frame F8s: plant 6140-6171, distant station
+10840-10871), run143 (filter 1.0, 4958-4989 / 10406-10437), run146 (filter 1.0 + weight 0.95 + sharpen 0, three
+8-frame F8s: 4241 plant angled, 6289 plant second view, 10011 station; no resolved dumps). Dumps 1280x768; display
+proxy and flicker metric as in the run139 section (Reinhard(k·luma)^(1/2.2) codes, half second difference). All
+sessions ran `X3M_TAA_MIP_BIAS=-0.5` (launcher default, `tools/manage.py` `TAA_MIP_BIAS_DEFAULT`), `mip_bias=-0.5`
+in `motion_output_mode`. "Far object" = geometry px with depth > 0.999 (the player ship in the chase view is
+excluded; it is half of all geometry px).
+
+**A. Offline model vs resolved dumps (`taa_1_<f>.rgba16f`, pre-sharpen).** Geometry px, mean / p90 / p99 / >8 codes:
+
+| capture | raw HDR | resolved measured | model | presented (tonemap + RCAS 0.75) |
+|---|---|---|---|---|
+| run142 plant | 18.1 / 48.6 / 91.5 / 51% | 1.02 / 2.68 / 4.76 / 0.1% | 1.61 / 4.5 / 10.5 / 2.2% | 1.82 / 5.16 / 9.20 / 2.0% |
+| run142 station | 11.9 / 31.5 / 67.2 / 40% | 0.88 / 2.14 / 4.70 / 0.1% | 1.88 / 4.8 / 12.7 / 3.7% | 1.24 / 2.79 / 6.23 / 0.3% |
+| run143 plant (filter 1.0) | 16.4 | 0.49 / 1.01 / 3.31 | 0.84 | 0.74 / 1.84 / 4.19 |
+| run143 station | 11.8 | 0.42 / 0.98 / 2.59 | 0.95 | 0.48 / 1.10 / 2.43 |
+
+The model's absolute level was pessimistic by 1.6-2.1x (it ran 7 unconverged resolves); its relative prediction
+holds (filter 1.0: measured -52% on the plant, predicted -48%). The installed resolve matches its contract: on
+run142 plant coverage-toggling px the raw band rms is 27.0 (period 2-4) / 21.1 (period 4-8) codes and the resolved
+1.49 / 2.42, against the w=0.9 exponential-average gains 0.053-0.074 / 0.136 (predicted about 1.7 / 2.9). The
+residual is dominated by the **period-8 component** (the jitter cycle; 5-8 Hz at the user's frame rate), and RCAS
+0.75 raises the presented mean by 40-80%. The plant scene of run142 is static (resolved period 8-32 rms 0.31
+codes), so no slow lattice crawl is involved there; the station capture has real motion (slow band 11 codes) and
+cannot be separated by this metric.
+
+**B. Where the flicker energy is.** Classes per px over the capture: *flip* = depth toggles between geometry and the
+sentinel; *stable interior* = depth valid in every frame and in all 8 neighbours; *edge* = the rest (all-valid px
+next to a toggling px, or with a depth jump; the jump test is unreliable at depth -> 1 and is merged here).
+Share of far-object px / share of raw flicker energy / mean raw flicker:
+
+| capture | flip | edge | stable interior |
+|---|---|---|---|
+| run146 #1 plant angled (88 142 px) | 58% / 64% / 27.3 | 42% / 36% / 20 | 0.1% / 0.1% |
+| run146 #2 plant second view (149 648 px) | 44% / 65% / 32.9 | 34% / 27% / 18-30 | 22% / 7.9% / 11.6 |
+| run146 #3 station (25 163 px) | 26% / 40% / 22.4 | 48% / 55% / 15-20 | 26% / 5.6% / 6.7 |
+| run142 plant (63 130 px) | 52% / 63% / 32.3 | 29% / 29% | 19% / 8.1% / 12.8 |
+| run142 station (27 056 px) | 45% / 50% / 15.3 | 54% / 50% | 1.6% / 0.2% |
+
+In run142 the resolved fast-band energy splits the same way (plant: flip 63%, edge 30%, stable interior 7%;
+station: 63% / 37% / 0.5%). Flip px are covered in 0.48-0.52 of the frames. **Colour aliasing inside
+constant-coverage surfaces carries at most 8% of the flicker**; the texture-colour (light-map minification)
+hypothesis is refuted for both the lattice and the station. The lattice is a field of ~1 px lines that write depth,
+2-3 px apart, over a panel body drawn without depth write (blended, `ps=64bac8`, 76 032 prims): the depth mask
+shows every line dashed by the pixel grid. The dumps cannot tell whether a given line is a thin triangle strip or an
+alpha-test cutout (both toggle depth and colour together); no per-draw id is dumped. The raw input does not
+differ between the two plant views (#2 flickers more per flip px than #1), so the user's angle dependence arises
+after the resolve, consistent with line spacing: where the lines are 2-3 px apart each resolves to a steady grey
+line, where perspective compresses them toward 1 px pitch the 3x3 min/max box and the period-8 ripple act on every
+px. There is no resolved dump for run146 to measure this.
+
+**C. Draws, samplers, textures** (capture rows `texture`/`texture_desc`/`sampler`/`state`, frames 4241 and 10011;
+the rows are logged before the route applies its bias, so `bias` is the game's).
+- Every material stage of every routed draw: MINFILTER 3 (anisotropic), MAGFILTER 2, MIPFILTER 2 (linear),
+  MAXANISOTROPY 16, game MIPMAPLODBIAS 0, MAXMIPLEVEL 0, DXT1/DXT5 with **full mip chains** (256 -> 9 levels ...
+  2048 -> 12). Single-level textures on stages 0-3 are only 32x32 placeholders, HUD/post A8R8G8B8 targets and the
+  unrouted 2048x1024 DXT1 background (`vs=7b6393 ps=6109cf`, blend, no z-write). Cube stage 4: linear, no mip filter.
+- Ours: -0.5 on the mip-mapped stages of routed draws (eligibility `levels > 1 && MIPFILTER != NONE`), so on all of
+  the above, alpha-tested included.
+- Plant (16 instances, `vs=4944d81d...`): opaque `ps=ca6bfa` 256 draws / 703 168 prims (one group alone 96 draws /
+  650 496 prims, 1024x1024 DXT1+DXT5), alpha-tested `ps=5e0a10` 64 draws / 91 328 prims (512x128 DXT5 x3 + DXT1;
+  1024x1024 DXT5), `ps=64bac8` 16 alpha-tested draws / 64 prims and the blended panel body. Alpha test:
+  ALPHAFUNC 7 (GREATEREQUAL), ALPHAREF 1, z-write on, routed (`atest=1`).
+- Frame totals: 4241: routed opaque 280 draws / 868 225 prims, routed alpha-tested 92 / 137 544; 10011 (station):
+  391 / 705 195 and 65 / 20 868.
+
+**D. Ranking.**
+1. *Sub-pixel coverage toggling x exponential-average ripple at the 8-frame jitter period* (>= 63% of raw and
+   resolved energy on the plant, 40-63% on the station, plus most of the edge class). Measured, and the resolve
+   behaves as specified.
+2. *RCAS* +40-80% on the presented residual (run142 1.02 -> 1.82, 0.88 -> 1.24; the presented figure is in AgX
+   8-bit codes, the resolved one in the Reinhard proxy, so the ratio is indicative only).
+3. *Texture colour aliasing inside surfaces*: <= 8%. Forced anisotropy and mip-chain generation have nothing to fix:
+   the game already runs anisotropic 16 with linear mip filtering over full chains.
+4. *Our -0.5 bias*: unmeasurable from these dumps (no bias-0 capture exists). It can only matter through (3) and
+   through the alpha-tested share of (1) (11.5% of plant prims, 14% of the plant frame's routed prims, 3% of the station frame's; ALPHAREF 1 means a finer level
+   thins the cutout lines). An upper bound needs the A/B below. The general default stays.
+Nothing is implemented: the mechanism that a small sampler-side option would address is not shown to carry any
+measurable share, and the existing `--taa-mip-bias 0` already gives the decisive A/B without a new build.
+
+**One-flight diagnostic** (installed build, no new candidate): plant at the shimmering angle, `--taa-debug`,
+`X3M_CAPTURE_FRAMES=32`, same pose twice: (a) defaults, (b) `--taa-mip-bias 0`. Read: resolved fast-band rms on
+flip px (run142: 2.84) and the flip-px count. If (b) drops either by more than about 20%, the lattice is an
+alpha-test cutout and a selective bias is justified: bias 0 on draws with ALPHATESTENABLE, which the route already
+reads per draw for `atest=`, so the cost is one compare in `apply_mip_bias` and no new state query; default-off
+option, the `mipbias` fixture script gains an alpha-tested twin. If (b) changes nothing, the lines are geometry and
+the remaining levers are resolve-side: the period-8 ripple (filter 1.0 measured -52%; weight 0.95) and sharpen
+strength on high-contrast thin features.
