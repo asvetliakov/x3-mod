@@ -103,6 +103,23 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertEqual(code, 2, option)
                 self.assertIn(f'{option} requires --taa', error)
 
+    def test_line_filter_is_absent_unless_given(self):
+        # --taa-line-filter A[,W] (docs/architecture/taa-lattice-crawl.md section 9).
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertNotIn('X3M_TAA_LINE_FILTER', self.env(directory, *TAA, inherited={'X3M_TAA_LINE_FILTER': '1'}))
+            self.assertEqual(self.env(directory, *TAA, '--taa-line-filter', '1.0')['X3M_TAA_LINE_FILTER'], '1')
+            self.assertEqual(self.env(directory, *TAA, '--taa-line-filter', '2,2')['X3M_TAA_LINE_FILTER'], '2,2')
+            for value in ('4.5', 'nan', '-1', '1,3', '1,', 'x'):
+                code, _, error = self.launch(directory, *TAA, '--taa-line-filter', value)
+                self.assertEqual(code, 2, value)
+                self.assertIn('--taa-line-filter takes A[,W]', error)
+            code, _, error = self.launch(directory, *TAA, '--taa-line-filter', '1', '--taa-current-filter', '1')
+            self.assertEqual(code, 2)
+            self.assertIn('exclude each other', error)
+            code, _, error = self.launch(directory, '--motion-output', '--taa-line-filter', '1')
+            self.assertEqual(code, 2)
+            self.assertIn('--taa-line-filter requires --taa', error)
+
     def test_taa_debug_accepts_32_capture_frames(self):
         # Run 139: the resolved-frame spectrum needs more than one jitter period.
         with tempfile.TemporaryDirectory() as directory:

@@ -408,3 +408,123 @@ current per-draw cost after the shadow work (2.2); the projected-size
 distribution of busy draws (offline census); the draw-count sensitivity to one
 LOD step (View Distance A/B); the sort's share of `prepare` (one stamp pair).
 None needs disassembly first; 2.1's patch and 2.5's comparator do, afterwards.
+
+## Attribution at the ~50 fps baseline (2026-09-19)
+
+Triage from existing flight logs (no new launch). Sources: run147
+(`/tmp/x3-bottleX3-run147`, busy station, new cull default, `--frame-phases`
+only, no `--loop-phases`/`--frame-timing`/`--pass-phases`), run150/run151
+(`/tmp/x3-bottleX3-run150`, `.../run151`, collide area, `--frame-phases
+--loop-phases`, `--collide-box-cull` narrow-phase census active), run153
+(`/tmp/x3-bottleX3-run153`, plant, baseline, same options as run147). All
+numbers are `frame_phases`/`loop_phases`/`collide_narrow` window p50 lines
+(nearest-rank percentiles over 300-frame windows), read with `grep`/Python
+only; no full-file read.
+
+**Run147, busy station, window `frame=3600` (510 draws median, 49.2 fps).**
+`frame_phases frame=3600`: `dt_p50_us=20320`.
+
+| Phase | ms | % of dt |
+|---|---|---|
+| `pre_render` (script/AI/collide/sim/proxy post-Present, unsplit here) | 3.28 | 16.1 % |
+| `prologue`+`scene_update`+`begin_scene` | 0.41 | 2.0 % |
+| `views` total | 16.21 | 79.8 % |
+| — `view_setup` (light select, state/camera/viewport/clear) | 1.70 | 8.4 % |
+| — `view_submit` (traversal/sort/D3DX submission `0x004c0150`) | 11.15 | 54.9 % |
+| — residual (particles, scene-end composite: TAA/shadow replay/sun apply, env-map, fixups) | 5.36 | 26.4 % |
+| `scene_end` (game `EndScene` + gated tails) | 0.30 | 1.5 % |
+| `present` (native Present) | 0.006 | 0.03 % |
+
+`present_p50_us=6` (run150/151 busy windows: 6-8 us) confirms this frame is
+CPU-bound, not vsync/GPU-bound: `dt` is almost entirely engine+proxy CPU work.
+No `--frame-timing`/`--pass-phases` in this run, so `view_submit` cannot be
+split into engine per-object cost vs D3DX apply vs proxy per-draw hook vs
+native `DrawIndexedPrimitive`; the run124/run113 per-draw anatomy in section 1
+(23.7/23.4 us/draw) is the only prior measurement of that split and is reused
+here as context, not re-measured.
+
+**Run150, collide area, peak window `frame=5400` (422 draws median, 24.2 fps).**
+`frame_phases frame=5400`: `dt_p50_us=41297`. `loop_phases frame=5400`:
+`input_p50_us=29780 collide_p50_us=26508 simulate_p50_us=39 post_p50_us=8
+passb_p50_us=95`.
+
+| Phase | ms | % of dt |
+|---|---|---|
+| `pre_render` total | 29.78 | 72.1 % |
+| — `collide` (sector collide `0x0045d250`, all-pairs + narrow-phase BVH) | 26.51 | 64.2 % |
+| — `simulate`+`post`+`passb` | 0.14 | 0.3 % |
+| — residual (script VM, cockpit `0x0041cde0`, audio/media, proxy post-Present; no site) | 3.13 | 7.6 % |
+| `views` total | 11.17 | 27.1 % |
+| — `view_setup` | 0.60 | 1.4 % |
+| — `view_submit` | 8.80 | 21.3 % |
+| — residual | 1.77 | 4.3 % |
+| `scene_end`+`present`+other core stamps | ~0.10 | 0.2 % |
+
+`collide_narrow frame=5399` in the same run: `node_pairs_p50=225045
+mesh_pairs_p50=174 accepted_p50=17 narrow_us_p50=26336`. 225,045 BVH node-pair
+visits and 174 mesh pairs per frame produce only 17 accepted contacts, at a
+narrow-phase cost (26.3 ms) matching the `loop_phases` `collide` bucket
+(26.5 ms) almost exactly. Contrast the same run's low-collide window
+`frame=2700`: `dt_p50_us=8051`, `collide_p50_us=298` (3.7 % of dt) — collide
+is episodic, not a constant per-frame tax, consistent with section 2.1's
+run129/§10 finding. Run151 shows the same collide/no-collide swing (e.g.
+`frame=5400` `collide_p50_us=8867` of `dt_p50_us=22247`, `frame=2700`
+`collide_p50_us=503` of `dt_p50_us=8102`).
+
+**Run153, plant, baseline window `frame=9000` (65-85 fps range across the
+run).** `frame_phases frame=9000`: `dt_p50_us=11714 pre_render_p50_us=2967
+views_p50_us=7951 view_setup_p50_us=910 view_submit_p50_us=4924`. No
+`--loop-phases` in this run, so `pre_render`'s 2.97 ms is not split further
+here; it is in the same 2.9-5.5 ms range as run147/run150's non-collide
+windows, consistent with collide/script/AI cost being small away from a
+collide-heavy area.
+
+**What is attributed vs not.** `frame_phases` accounts for 100 % of `dt` by
+construction (nine phases summed by the diagnostic itself). Inside that:
+`pre_render` is split into collide/simulate/post/passb only where
+`--loop-phases` ran (run150/151); a 3.1 ms residual remains unattributed
+there (script VM, cockpit update, audio/media, proxy post-Present all share
+`pre_render` with no per-site stamp). `views` is split into `view_setup`/
+`view_submit` everywhere, but the 21-26 % "views minus setup minus submit"
+residual (particles, TAA, shadow replay, sun apply, env-map, fixups) has no
+site of its own in any of these four logs; `view_submit` itself is not split
+into engine traversal/sort vs D3DX `BeginPass` vs draw submission (engine
+vs proxy vs native `DrawIndexedPrimitive`) because none of these runs carry
+`--frame-timing` or `--pass-phases` (`grep -c "^frame_timing qpc"` and
+`"^pass_phases qpc"` are 0 in all four logs). The sampling profiler
+(`X3M_PROFILE=1`) is not present in any of these logs either
+(`grep -c "^profile_report scope"` = 0), and per `sampling-profiler.md`'s
+frame-timing section, it would attribute nothing useful under FEX anyway
+(every leaf lands on the `ntdll` syscall thunk); the buckets above are the
+only proxy/game split this evidence supports.
+
+**What one more launch would need to close the gap:** the same collide-area
+stand and the same busy-station stand, each flown once with `--telemetry
+--frame-phases --loop-phases --pass-phases --frame-timing
+--frame-timing-state-stamps 8` (stamps at a stride cheap enough per
+`sampling-profiler.md`'s cost table) together, so `view_submit` splits into
+`apply`/`draw`/`end` and the `frame_timing` `draw_native`/`state_us`
+buckets in the same windows as `loop_phases`' `collide`/residual split — one
+launch, both scenes, no new instrumentation needed (all four options already
+exist and are documented above).
+
+**Top 5 engine-side CPU costs ranked by measured/estimated ms** (x87-heavy
+candidates for FEX flagged):
+
+| Rank | Cost | ms (p50) | Where measured | Address(es) |
+|---|---|---|---|---|
+| 1 | Sector narrow-phase collide (BVH traversal, FSQRT-heavy all-pairs and narrow phase) | 26.5 (peak collide window); 0.3-2.6 (non-collide windows) | run150 `loop_phases frame=5400` `collide_p50_us`; `collide_narrow frame=5399` (225,045 node pairs, 174 mesh pairs, 17 accepted) | broad `0x0045d250`; narrow sites `0x0045d665`, `0x0048a9a5`, `0x004e2530`, `0x004e2190` ([sector-collide.md](../reverse-engineering/sector-collide.md)) |
+| 2 | View submission: per-object traversal/sort + D3DX material pass loop | 11.15 (run147 busy); 8.6-8.8 (run150/151 busy) | `frame_phases` `view_submit_p50_us` | traversal `0x0047e920`, sort `0x0047e620`, submission `0x0047e6e0`, D3DX pass loop `0x004c0150` |
+| 3 | `views` residual: particles, scene-end composite (TAA, shadow replay, sun apply), env-map, fixups | 5.36 (run147 busy); 1.6-3.1 (run150/151 busy) | `frame_phases` `views_p50_us - view_setup_p50_us - view_submit_p50_us` | not individually sited here; needs `--residual-phases` (section 1, run113) to split proxy TAA/shadow from engine env-map/particles |
+| 4 | `pre_render` residual outside collide (script VM, cockpit update, audio/media, proxy post-Present) | 3.13 (run150 peak-collide window); 2.9-4.7 (non-collide windows, unsplit — no `--loop-phases`) | `loop_phases` `input_p50_us - collide - simulate - post - passb` (run150/151 only) | script VM address not in this evidence; cockpit update `0x0041cde0` (named in section 1, not separately stamped) |
+| 5 | Per-view setup (light selection, state/camera/viewport/clear) | 1.70 (run147 busy); 0.6-1.7 (run150/151 busy) | `frame_phases` `view_setup_p50_us` | light selection `0x004892a0`; setup span `0x0047224c`-`0x00472270` |
+
+Rank 1 is the clear outlier and matches section 2.1's `--collide-box-cull`
+lever already implemented (unflown for this A/B): these logs did not run with
+the option toggled off in the same session to report a direct saving, so the
+box-cull's actual ms reduction is not in this evidence (the fixture-only
+75.6→67.0 ns/pair estimate in section 2.1 stands). Ranks 2-3 are the next
+levers by size (sections 2.5 draw-queue sort, 2.6/2.7 state/batching, closed
+per section 4) but are already covered by the existing note; nothing here
+changes those conclusions, it only re-confirms their relative size against a
+fresh collide-heavy sample.

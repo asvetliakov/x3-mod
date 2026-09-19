@@ -218,3 +218,77 @@ shimmering pixels first.
 - GPU cost of the two variants; alpha-channel use of the resolve output (mask hand-over to the sharpen).
 - Motion compensation used a per-tile translation; rotation residue inflates every row of the crawl tables
   equally **[I]**, so ratios are safer than absolute values.
+
+## 8. Plan step 1 measured with the real operators (2026-09-19) [M]
+
+`tools/analysis/taa_resolve_replay.py <dump> <box> lattice` now carries the lattice mask, the masked current filter,
+`agx.hlsl` (gamma 2.2 decode, look none, the frame's logged `ev_adapted`) and `rcas.hlsl` (gain `2^-0.75`, the runs'
+`X3M_TAA_SHARPEN`), with the sharpen exclusion as "mask pixel = tonemapped centre tap". Bloom is not modelled; the
+replayed AgX + RCAS differs from the dumped `present_1_*` by 0.45 (run148) / 0.42 (run142) codes mean abs on the crop.
+Boxes: run148 `740 360 880 490`; run142 `800 410 940 540`, `FR=6140-6171`. The resolve column reproduces section 4
+exactly (4.07 / 2.74 / 2.34, peaks 0.0613 / 0.0476 / 0.0370, off-mask gradient x 0.9998 / 0.9997). Display columns are
+`255 * luma(display RGB)`, a different unit from the resolve's `255 kL/(1+kL)`; compare within a column.
+
+| run | resolve filter | resolve | AgX only | AgX + RCAS | AgX + RCAS, mask excluded |
+|---|---|---|---|---|---|
+| 148 drift | installed | 4.07 | 6.57 | 7.46 | 6.69 |
+| 148 drift | lattice A = 2 | 2.74 | 4.41 | 5.08 | 4.60 |
+| 148 drift | lattice A = 1 | 2.34 | 3.74 | 4.31 | 3.96 |
+| 142 static | installed | 1.81 | 2.85 | 3.09 | 2.89 |
+| 142 static | lattice A = 2 | 1.08 | 1.70 | 1.90 | 1.82 |
+| 142 static | lattice A = 1 | 1.20 | 1.90 | 2.19 | 2.04 |
+
+**The grey proxy is contradicted.** The real sharpen multiplies the crawl by 1.14 (run148) / 1.08 (run142), not 1.6;
+the rest of the resolve-to-presented rise (4.07 -> 6.57) is the AgX tone curve's slope at this level, i.e. a unit change
+that no sharpen mask removes. Excluding the mask from the sharpen is worth -10 % (7.46 -> 6.69), not -37 %; the masked
+current filter keeps its full effect through the real operators (x 0.68 at A = 2, x 0.58 at A = 1; both steps x 0.62 /
+x 0.53 of the installed presented crawl). RCAS also raises the straddling peak more than the centred one (roping ratio
+0.85 -> 0.93 at A = 1), so it is not purely harmful on the mask. Section 4's "with sharpen" column and candidate 1's
+ranking are superseded by this table. **Decision (orchestrator): the sharpen exclusion is rejected**: about 10 % for two
+more sharpen variants and a mask hand-over through the bloom staging path (`bloom_agx_ps.hlsl` -> FP16 staging ->
+`taa_sharpen_ps.hlsl` when `X3M_HDR_BLOOM=1`). Only the masked current filter goes ahead (section 9).
+
+## 9. Implemented, unflown (2026-09-19): `--taa-line-filter A[,W]`, general line mask
+
+**Mask choice [M].** The section-4 lattice mask needs routed blended glass behind the lines, so it never fires on trusses,
+antennas or the distant station (coverage 0.0000 there). Compared in replay (`MASKS=<names> ... lattice`; masks are 3x3
+dilations `x` of a per-pixel test; `line1`: valid depth whose two opposite neighbours at distance 1 along h, v or a
+diagonal are both background = sentinel or farther, `(1 - q) * 1.1 < 1 - d`; `line2`: distance 1 or 2; `hv`: no
+diagonals; `d`: plus the dual gap test). Presented crawl = AgX + RCAS column, A = 2 / A = 1:
+
+| capture | installed | lattice | line1x | line2x | linehvx | line1dx |
+|---|---|---|---|---|---|---|
+| run148 plant, drift | 7.46 | 5.08 / 4.31 | 5.09 / 4.32 | 4.77 / 3.83 | 5.41 / 4.79 | 4.84 / 3.95 |
+| run142 plant, static | 3.09 | 1.90 / 2.19 | 1.79 / 2.17 | | | |
+| run153 plant 4948-4979, static, lines 2-3 px (box 1040 440 1180 570) | 1.71 | 0.94 / 1.17 | 1.54 / 1.55 | 0.90 / 1.15 | | |
+| run142 station flip-px bands, A = 1 (box 100 280 920 700) | 3.44 / 4.18 / 16.10 | unchanged (mask empty) | 3.26 / 4.00 / 15.14 | 3.13 / 3.85 / 14.47 | 3.31 / 4.05 / 15.44 | 3.19 / 3.93 / 14.90 |
+| station big-object edge gradient, A = 1 | 1 | 1 | 0.986 | 0.956 | 0.993 | 0.948 |
+| station stable-geometry gradient, A = 1 | 1 | 1 | 0.996 | 0.983 | 0.998 | 0.995 |
+
+line1x covers 93 / 94 % of the lattice mask on run148 / run142 with the same line peak (0.0476 / 0.0370 resolve) and
+is within 1 % of it on the 0.7-px lattice; on the closer run153 view (lines 2-3 px, crawl already below the static floor)
+it covers 26 % and only line2x matches. `thin` on the station: bands -14 % but edge gradient x 0.65. Dropping the
+diagonals costs 6-11 % on the plant. Convex corners of big objects are line-like along the diagonal across them (the
+1-5 % edge-gradient loss above). **Chosen: line1x by default, line2x selectable (`W = 2`)**; depth target only, so the
+route rule "blended zwrite=0 routed draw writes motion alpha 1 and no depth" is not relied on and is not pinned.
+run153's second capture (5345-5376) gave crawl 20 codes on my box (misregistered tiles, not comparable); run146 has no
+`taa_1` dumps and run154 was captured with options the lattice mode does not replay; both skipped.
+
+**Shader.** Inline the mask cost 73 slots (plain line variant 517, over 512), so it is its own program
+`line_mask_ps.hlsl` (125 slots), drawn twice by `TemporalPass` into two owned A8R8G8B8 targets (line-like, then 3x3
+maximum; 8 bytes/px, created on the first line-filtered run, released with the histories) and read by the resolve at
+`s8` (one fetch). Variants `resolve_line` / `resolve_thin_line` / `resolve_age_line`: **446 / 483 / 509 slots**; A in
+`c22.w`, width in the mask program's `c7.w`. The existing programs' bytecode hashes are unchanged (433 / 444 / 46 / 468 /
+480 / 494 / 506). Refused beside `--taa-current-filter > 0`. Native Windows: `tex2Dlod`, A8R8G8B8 render targets, sampler
+8, constants; nothing backend-specific.
+
+**Fixture** (`temporal_line_inc.h`, lattice mode 255 numerical / 15 state): three 0.7-px lines 16 deg off axis at depth
+0.99 drifting 0.3 px/frame, a static 8x8 square at 0.98, over the sentinel and over farther routed geometry (0.999).
+Shader = 2-D CPU oracle within 0.0024 (0.0083 aged; bounds 0.006 / 0.02); mask on 65 % of the line region, 0 of 2688
+square-silhouette px-frames masked and 0 differ from the unfiltered resolve (gradient ratio 1.000000); configured with
+A = 0 bit-identical to the unconfigured pass; bead amplitude x 0.63 (A = 2) / x 0.45 (A = 1), line peak x 0.86 / x 0.76;
+refusals, hostile state, failed draw, Reset. Pass time 1280x768, all geometry: 1.16 -> 1.56 ms (+0.40 ms CPU wall with
+event-query drain, Wine).
+
+**Flight.** `--taa-line-filter 1` (then `2` if soft, `1,2` if thicker lattices still crawl) at the plant, 13-19 deg,
+slow drift; promise from the replay: presented crawl x 0.58 (A = 1) / x 0.68 (A = 2) on run148.

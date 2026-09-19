@@ -1,5 +1,5 @@
 // Generated from our original src/temporal/hdr_writeback_ps.hlsl. Do not edit.
-// Reproduce: python3 tools/shaders/generate_rigid_motion_pixel.py --check
+// Reproduce: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --shader hdr_writeback --check
     0xffff0300u, 0x0021fffeu, 0x42415443u, 0x0000001cu, 0x0000004fu, 0xffff0300u,
     0x00000001u, 0x0000001cu, 0x20008100u, 0x00000048u, 0x00000030u, 0x00000003u,
     0x00020001u, 0x00000038u, 0x00000000u, 0x6e656373u, 0xabab0065u, 0x000c0004u,

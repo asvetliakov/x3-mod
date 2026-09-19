@@ -1865,3 +1865,17 @@ near-depth rows; lattice mode 210 numerical / 13 state, `temporal-pass.txt` stil
 gate: x 0.31 unchanged, 0.0000 of thin flip px exceed the gate's LO (speed already excludes the dilation offset).
 Supersedes the adaptive-weight lattice numbers and the "sub-pixel lines flicker more" finding of the steps 0-3 entry above:
 those were measured with line depth 0.5 and now hold for the near-depth rows only.
+
+### TAA line filter, implemented unflown (2026-09-19)
+
+`docs/architecture/taa-lattice-crawl.md`, sections 8-9. Real AgX + RCAS in the replay (`taa_resolve_replay.py ... lattice`,
+0.45 / 0.42 codes from the dumped present): the sharpen multiplies the plant crawl by 1.14 / 1.08 (run148 / run142), not the
+proxy's 1.6; sharpen exclusion rejected. `--taa-line-filter A[,W]` (`X3M_TAA_LINE_FILTER`, default off): current-sample
+Gaussian on a depth-only line mask (own program, two draws, `s8`); run148 presented crawl 7.46 -> 5.09 (A = 2) / 4.32
+(A = 1), equal to the note's glass-specific mask; run142 station flip-px bands -5 / -4 / -6 %, big-object edge gradient
+x 0.986. Slots: line mask 125, `resolve_line` 446, `resolve_thin_line` 483, `resolve_age_line` 509; existing programs'
+bytecode unchanged. `run_temporal_pass.py` exit 0 (lattice mode 255 numerical / 15 state; oracle error 0.0024, silhouette
+0 masked / 0 differing of 2688, bead amplitude x 0.63 / x 0.45, pass +0.40 ms at 1280x768); `run_motion_output.py
+seam-taa-on seam-taa-hdr-tonemap-on production-taa-hdr-tonemap-on`: 164 / 140 / 59 checks, exit 0; generator `--check` PASS
+for all programs, every manifest and the nine bloom manifests re-pinned to the generator (eight `*_inc.h` headers changed in
+their stale `Reproduce:` comment line only).

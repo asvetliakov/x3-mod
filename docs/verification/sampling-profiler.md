@@ -2079,3 +2079,58 @@ None found in either session: no error/warn/fail/mismatch/anomaly-named log line
 `rollback_failed`/`restore_failed`/`bytes_mismatch`/`arena_full`/`late_claim`/`chain_failed`, and every
 `collide_narrow` window's `nested/dropped/deferred/cross_thread_frames/ring_overflow` fields are 0 (58/58 windows
 across both sessions).
+
+## Run 45 A: `--collide-sat-sse2` vs census-only, and SSE2-alone at collision (2026-09-19)
+
+Sessions (bottle X3, matched by capture-directory mtime and `loading-intervals-<pid>` to the launcher-stderr copy
+under `/tmp/x3-bottleX3-run<N>`): run150 → `session-20260919-083856-212.log` (`--collide-narrow-census` only),
+run151 → `session-20260919-084145-472.log` (`--collide-narrow-census --collide-sat-sse2`), run152 →
+`session-20260919-084757-1592.log` (`--collide-sat-sse2` alone, `X3M_LOOP_PHASES=0`, no census — collision/ship
+destruction happened during this run), run141 → `session-20260919-050730-216.log` (prior census-only baseline).
+
+**Install lines** (line 39/40 of each log, `reason=ok` in every case, no refusal):
+- run150/run141/run151: `collide_narrow_census requested=1 patched=1 reason=ok n5_site=0x0045d665 n6_site=0x0048a9a5
+  n7_site=0x004e2530 write_n7=atomic … n8_site=0x004e2190 write_n8=atomic` (n8 = triangle-test counter).
+- run151/run152: `collide_sat_sse2 requested=1 patched=1 reason=ok site=0x004e25a3 target=0x004e3280 write=atomic
+  handler=0x78f69680`.
+
+**Steady-state window (plateau, ~225k node-pair visits/frame, the held station-vs-ship spot)**, medians from the
+matching `collide_narrow`/`loop_phases`/`frame_phases` 300-frame windows:
+
+| run | window (frame=) | frame dt_p50 (fps) | collide_p50 | node_pairs/frame | narrow_us/frame | ns/visit | tri_tests | nested/dropped/cross_thread |
+|---|---|---|---|---|---|---|---|---|
+| run150 (census only) | 5099/5399 | 39.9–41.3 ms (24.2–25.1 fps) | 26.3–26.5 ms | 224.5–225.1 k | 26.2–26.3 ms | 116.5–117.2 | 0 | 0/0/0 |
+| run141 (prior census-only baseline) | 6299–7199 | 41.0–41.3 ms (24.2–24.4 fps) | 27.2–27.3 ms | 234.8–235.1 k | 27.09–27.15 ms | 115.2–115.5 | 0 | 0/0/0 |
+| run151 (census + SSE2) | 10199 (highest logged; still rising, see below) | 26.1 ms (38.3 fps) | 12.7 ms | 184.2 k | 12.15 ms | 66.0 | 0 | 0/0/0 |
+
+**(a) collide-phase drop, 151 vs 150-style baseline (run150/run141 agree within 1 ns/visit):** `collide_p50` falls
+from ~26.4–27.3 ms to ~12.7 ms (**≈14–15 ms less, ≈52–53%**), and frame `dt_p50` falls from ~40.6–41.3 ms to
+~26.1 ms (**≈14.7 ms less, ≈36%**), consistent with collide being ~65–66% of frame budget in the census-only path
+here. The scenario-independent number is ns/visit: **116–117 ns/visit (census-only) → 66.0 ns/visit (+SSE2), a
+≈43% per-visit cut**, matching within the two SSE2-run windows checked (frame=6299: 66.0 ns/visit; frame=10199:
+66.0 ns/visit — stable). **152 vs 141-style estimate: cannot be settled from this evidence.** run152 has
+`X3M_LOOP_PHASES=0` and no census, so it has no `collide_p50`/`node_pairs` breakdown at all; its own peak load
+(frame window 10500–10800, `dt_p50` 27.1–27.4 ms) never reached run141's plateau node-pair count — the live flight
+in run152 did not repeat the same encounter intensity, so its frame dt cannot be attributed to the collide phase
+without the missing counters.
+
+**(b) remaining narrow-phase composition:** `tri_tests_p50/max/sum` are **0 in every `collide_narrow` window in all
+three sessions** (run150, run151, run141) and in every per-pair `collide_narrow_pair` row (F8 dumps) sampled —
+site n8 (`0x004e2190`, the leaf triangle-test counter) never fires at this encounter. All measured narrow time is
+in the `0x004e2530` node-pair descent plus, when SSE2 is on, the SAT itself at `0x004e25a3`; no separate SAT
+call/separation counters exist in this build (only the timing and node_pairs/tri_tests counters described in
+§11.7/§12.8 of `docs/reverse-engineering/sector-collide.md`), so the SAT-only share cannot be isolated further from
+this log; the ~43% per-visit cut is the SSE2 path's net effect versus the x87 descent+SAT baseline.
+
+**(c) run152 collision/death:** no `contact=1`, `destroy`, `death`, `explod`, `collision`, or `refused_state`-style
+anomaly line appears in `frame_phases`/`camera_state`/`hull_emission_frame` around the capture frames
+(10461/10462, 10655/10656, both inside the frame=10500/10800 windows). `incomplete=0`, `dropped=0` in every
+`frame_phases` window through the run; `camera_state reads=0 valid=0` is present from frame=2 onward (baseline
+behavior, not an anomaly). The log carries no per-pair or per-frame collision-event marker at all (no
+`--collide-narrow-census`), so **the evidence cannot show what happened at the moment of the fatal contact** in
+run152 beyond "frame timing stayed smooth."
+
+**Open issue / needed diagnostic:** to settle 152-vs-141 and to see run152's collision moment, one launch should
+run `--collide-sat-sse2 --collide-narrow-census --loop-phases` (as run151 did) with capture continued long enough
+to reach both the same ~225–235k visits/frame plateau *and* the collision, so `collide_p50`/`node_pairs`/`tri_tests`
+and a `contact=1` row are recorded from the same flight.

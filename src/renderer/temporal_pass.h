@@ -70,6 +70,20 @@ struct FrameInputs {
     // Requires a pass initialised with the filtered program; anything else,
     // or a value outside [0, 4], refuses the run.
     float current_filter = 0.f;
+    // A of the line-masked filtered current sample (c22.w; resolve_line.hlsl,
+    // resolve_thin_line.hlsl, resolve_age_line.hlsl; docs/architecture/
+    // taa-lattice-crawl.md section 9): 0 (the default) selects the programs a
+    // run without the field binds; in (0, 4] the same exp(-A d^2) average
+    // enters the blend only where the current 3x3 depth holds a line-like
+    // pixel (geometry with background on both sides along one of four
+    // directions). Requires configure_line_filter() and current_filter == 0
+    // (the global filter already covers every pixel); anything else refuses.
+    float line_filter = 0.f;
+    // Width of the line mask in pixels, 1 (default) or 2: with 2 a side of the
+    // pixel also counts as background when the neighbour at distance 2 is
+    // (replay: more of thick or distant lattices, about 4 % softer silhouettes
+    // against 1 %). Anything else refuses a line-filtered run.
+    unsigned line_width = 1;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
     // (the default) draws nothing and the run is bit-identical to a run
@@ -200,6 +214,16 @@ public:
     // render targets and D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS (R32F beside
     // A16B16G16R16F), read from the device caps at initialize.
     HRESULT configure_flicker() noexcept;
+    // Creates the embedded line-filter variants (plain, thin clip and, with the
+    // age caps, age weight). Call once after initialize when line_filter will
+    // be used; the default path never creates them. A failure leaves the pass
+    // usable without the option. A line-filtered run draws the line mask
+    // (line_mask_ps.hlsl, two quads into two owned A8R8G8B8 targets of the
+    // frame size, 8 bytes per pixel, created on the first such run) and binds
+    // it at s8 for the resolve.
+    HRESULT configure_line_filter() noexcept;
+    bool line_filter_available() const noexcept { return line_mask_ != nullptr && line_ != nullptr && thin_line_ != nullptr; }
+    bool age_line_available() const noexcept { return age_line_ != nullptr; }
     bool flicker_available() const noexcept { return thin_ != nullptr && (!resolve_filtered_ || thin_filtered_ != nullptr); }
     bool age_available() const noexcept { return flicker_available() && mrt_age_ && age_ != nullptr && (!resolve_filtered_ || age_filtered_ != nullptr); }
     // The mask-snapshot program (resolve_snapshot.hlsl) is created by initialize
@@ -252,6 +276,11 @@ private:
     IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *resolve_filtered_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
     HRESULT resolve_filtered_result_ = S_FALSE, snapshot_result_ = S_FALSE;
     IDirect3DPixelShader9 *thin_ = nullptr, *thin_filtered_ = nullptr, *age_ = nullptr, *age_filtered_ = nullptr;
+    IDirect3DPixelShader9 *line_mask_ = nullptr, *line_ = nullptr, *thin_line_ = nullptr, *age_line_ = nullptr;
+    // Line mask targets (A8R8G8B8, default pool, released with the histories): [0] line-like, [1] its 3x3 maximum.
+    IDirect3DTexture9* line_masks_[2]{};
+    IDirect3DSurface9* line_mask_surfaces_[2]{};
+    HRESULT ensure_line_masks() noexcept;
     bool mrt_age_ = false; // caps: >= 2 simultaneous RTs with independent bit depths
     IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (adaptive weight only)
     IDirect3DSurface9* age_surfaces_[2]{};

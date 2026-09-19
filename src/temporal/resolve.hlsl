@@ -67,7 +67,19 @@ float4 options : register(c7); // motion enabled, reactive enabled, snapshot mod
 // the unfiltered samples; the filtered colour is a convex combination of them,
 // so it lies inside the min/max box and the inverse weighting stays exact.
 // docs/verification/motion-output.md, "Run 139", mechanism 1a.
-float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THIN_CLIP variants), unused
+float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THIN_CLIP variants), line-filter A (X3M_LINE_FILTER variants)
+// X3M_LINE_FILTER (resolve_line.hlsl, resolve_thin_line.hlsl, resolve_age_line.hlsl;
+// docs/architecture/taa-lattice-crawl.md section 9): the same filtered current
+// sample with A = c22.w, applied only where s8 (the line mask TemporalPass draws
+// with line_mask_ps.hlsl just before this program: a line-like pixel in the
+// current 3x3 depth) is set. Off the mask the blend is the unfiltered program's.
+#ifdef X3M_LINE_FILTER
+#define X3M_CURRENT_FILTER 1
+#define X3M_FILTER_A luminance.w
+sampler2D lineMask : register(s8);
+#else
+#define X3M_FILTER_A luminance.y
+#endif
 // Flicker suppression (docs/architecture/taa-flicker-suppression.md). The
 // plain program and resolve_filter.hlsl compile none of it: their bytes are
 // those of step 0. X3M_THIN_CLIP (resolve_thin*.hlsl): where the current 3x3
@@ -376,7 +388,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
                 mean += neighbor; square += neighbor * neighbor; count += 1;
 #ifdef X3M_CURRENT_FILTER
                 float2 sampleOffset = float2(nx, ny) - jitterPixels;
-                float gaussian = exp(-luminance.y * dot(sampleOffset, sampleOffset));
+                float gaussian = exp(-X3M_FILTER_A * dot(sampleOffset, sampleOffset));
                 filtered += neighbor * gaussian; filterTotal += gaussian;
 #endif
             }
@@ -397,7 +409,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #endif
 #ifdef X3M_CURRENT_FILTER
     // The centre sample is finite here, so filterTotal >= exp(-A * 0.5) > 0.
+#ifdef X3M_LINE_FILTER
+    if (fetch(lineMask, uv).r > 0.5) weighted = filtered / filterTotal;
+#else
     weighted = filtered / filterTotal;
+#endif
 #endif
     float keep = history.z;
 #ifdef X3M_AGE_WEIGHT

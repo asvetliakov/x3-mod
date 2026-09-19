@@ -302,6 +302,7 @@ def main():
     parser.add_argument('--taa-mip-bias', type=float, default=None, help='D3DSAMP_MIPMAPLODBIAS applied to the mip-mapped sampler stages of routed material draws while the TAA jitter is on, restored before every other draw (X3M_TAA_MIP_BIAS; requires --taa; 0 = off; the value for the 4-sample jitter; default -0.5 with --taa; 0 disables)')
     parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; default 0.75 with --taa; 0 disables, leaving the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
     parser.add_argument('--taa-current-filter', type=float, default=None, metavar='A', help='Filtered current sample of the TAA resolve, 0..4 (X3M_TAA_CURRENT_FILTER; requires --taa): the current colour that enters the history blend becomes the exp(-A d^2) average of the 3x3 current samples (d in pixels from the pixel centre to each jittered sample position) instead of the point sample; the neighbourhood clip is unchanged. Default 0 = off, the unchanged resolve program; 1.0 is the modelled optimum, 2.29 the sharper setting (docs/verification/motion-output.md, "Run 139")')
+    parser.add_argument('--taa-line-filter', default=None, metavar='A[,W]', help='Line-masked filtered current sample of the TAA resolve (X3M_TAA_LINE_FILTER; requires --taa; not with --taa-current-filter > 0; default absent = off; suggested 1.0, 2.0 is milder): the exp(-A d^2) average of --taa-current-filter, A within 0..4, applied only where the 3x3 depth holds a line-like pixel: geometry with background or farther geometry on both sides along one of four directions, W = 1 (default) or 2 px wide; silhouettes and surfaces keep the point sample. Against roping of sub-pixel lattices and distant struts (docs/architecture/taa-lattice-crawl.md section 9).')
     parser.add_argument('--taa-history-weight', type=float, default=None, metavar='W', help='History weight of the TAA resolve, 0.5..0.98 (X3M_TAA_HISTORY_WEIGHT; requires --taa): the fraction of the accepted history kept per frame. Default absent = 0.9; 0.95 halves the per-frame ripple and doubles the convergence time and the life of clamp-bounded ghost trails')
     parser.add_argument('--taa-thin-clip', type=float, default=None, metavar='S', help='Thin-feature soft clip of the TAA resolve, 0..1 (X3M_TAA_THIN_CLIP; requires --taa; default absent = off; suggested 0.75): where the 3x3 depth mixes the empty-depth sentinel and geometry the history is pulled only (1 - S) of the way to the clip box, fading out between 2 and 4 px/frame (docs/architecture/taa-flicker-suppression.md)')
     parser.add_argument('--taa-adaptive-weight', default=None, metavar='WMAX[,LO,HI]', help='Per-pixel age/speed history weight, w = min(n/(n+1), wmax(speed)) (X3M_TAA_ADAPTIVE_WEIGHT; requires --taa and --taa-thin-clip; default absent = off; suggested 0.97): WMAX within [history weight, 0.99] for slow content, falling to the history weight between LO and HI px/frame (default 0.1,0.5; the wide gate is 0.8,1.5). Costs two R32F targets (8 bytes per pixel)')
@@ -506,6 +507,19 @@ def main():
         parser.error('--taa-current-filter requires --taa.')
     if args.taa_current_filter is not None and not 0.0 <= args.taa_current_filter <= 4.0:
         parser.error('--taa-current-filter must be within [0, 4].')
+    if args.taa_line_filter is not None and not args.taa:
+        parser.error('--taa-line-filter requires --taa.')
+    if args.taa_line_filter is not None:
+        amount, comma, width = args.taa_line_filter.partition(',')
+        try:
+            amount = float(amount)
+        except ValueError:
+            amount = float('nan')
+        if not 0.0 <= amount <= 4.0 or width not in (('1', '2') if comma else ('',)):
+            parser.error('--taa-line-filter takes A[,W]: A within [0, 4], W 1 or 2.')
+        if amount > 0 and args.taa_current_filter:
+            parser.error('--taa-line-filter and --taa-current-filter exclude each other (the global filter already covers every pixel).')
+        args.taa_line_filter = '%.5g' % amount + (',' + width if width else '')
     if args.taa_history_weight is not None and not args.taa:
         parser.error('--taa-history-weight requires --taa.')
     if args.taa_history_weight is not None and not 0.5 <= args.taa_history_weight <= 0.98:
@@ -909,7 +923,7 @@ def main():
             env.pop('X3M_TAA_SHARPEN', None)
         # The two resolve A/B options are forwarded only when given: a stale
         # shell value can neither enable the filter nor change the weight.
-        for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight),
+        for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_LINE_FILTER', args.taa_line_filter),
                             ('X3M_TAA_THIN_CLIP', args.taa_thin_clip), ('X3M_TAA_ADAPTIVE_WEIGHT', args.taa_adaptive_weight),
                             ('X3M_TAA_ALPHA_HISTORY', '1' if args.taa_alpha_history else None)):
             if value is not None:

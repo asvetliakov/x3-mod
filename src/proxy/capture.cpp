@@ -99,6 +99,8 @@ float taa_mip_bias = 0.f;
 // bit-identical output. Off entirely without TAA.
 float taa_sharpen = 0.f;
 float taa_current_filter = 0.f;  // X3M_TAA_CURRENT_FILTER (0..4; 0 off)
+float taa_line_filter = 0.f;     // X3M_TAA_LINE_FILTER=A[,W] (A 0..4; 0 off; ignored with X3M_TAA_CURRENT_FILTER > 0)
+unsigned taa_line_width = 1;     // W: line mask width 1 (default) or 2 px
 float taa_thin_clip = 0.f;       // X3M_TAA_THIN_CLIP (0..1; 0 off)
 float taa_adaptive_weight = 0.f, taa_adaptive_lo = .1f, taa_adaptive_hi = .5f; // X3M_TAA_ADAPTIVE_WEIGHT=WMAX[,LO,HI] (0 off)
 bool taa_alpha_history = false;  // X3M_TAA_ALPHA_HISTORY=1
@@ -2179,6 +2181,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_taa_resolve(taa_current_filter,taa_history_weight);
+    hooked.motion_output.configure_taa_line_filter(taa_line_filter,taa_line_width);
     hooked.motion_output.configure_taa_flicker(taa_thin_clip,taa_adaptive_weight,taa_adaptive_lo,taa_adaptive_hi,taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
@@ -2609,6 +2612,9 @@ void initialize_log(HMODULE module) {
     // motion-output.md, "Run 139"). The whole string must parse; an invalid
     // value keeps the default.
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_CURRENT_FILTER",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=4.f)taa_current_filter=v;}
+    // X3M_TAA_LINE_FILTER=<A>[,<W>] (A 0..4; 0 or unset: off; W 1 or 2, default 1): the same filter on line-like pixels only
+    // (docs/architecture/taa-lattice-crawl.md section 9); refused by the route when the global filter is on.
+    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_LINE_FILTER",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&v>=0.f&&v<=4.f){if(*end==L'\0')taa_line_filter=v;else if(*end==L','&&(end[1]==L'1'||end[1]==L'2')&&end[2]==L'\0'){taa_line_filter=v;taa_line_width=unsigned(end[1]-L'0');}}}
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
     // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
     // off when unset or invalid: X3M_TAA_THIN_CLIP=<S> (0..1),

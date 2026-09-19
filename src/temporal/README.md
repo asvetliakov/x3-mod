@@ -241,7 +241,9 @@ which `TemporalPass` creates itself and binds for those draws; `resolve.hlsl`
 no longer reads `c7.z`. The flicker-suppression variants (`resolve_thin*.hlsl`,
 `resolve_age*.hlsl`; `docs/architecture/taa-flicker-suppression.md`) add `c24`
 (thin-clip S, age wmax, LO, 1 / (HI - LO)), `c22.z` (alpha history), `s7` (previous
-R32F age) and `COLOR1` (next age); the plain programs read none of them. Ordinary resolve uses zero;
+R32F age) and `COLOR1` (next age); the plain programs read none of them. The line-filter variants
+(`resolve_*line.hlsl`; `docs/architecture/taa-lattice-crawl.md` section 9) add `c22.w` (A) and `s8`, the
+A8R8G8B8 line mask `TemporalPass` draws first with `line_mask_ps.hlsl` (`s1` input, `c4.xy`, `c7.z` pass, `c7.w` width). Ordinary resolve uses zero;
 `prepare` initializes the mode and reserved component to zero. Runtime code must
 not use snapshot mode as a color resolve. `TemporalPass` uses this third GPU draw
 only under `ReactivePolicy::RequiredMask` and owns the resulting ping-pong masks.
