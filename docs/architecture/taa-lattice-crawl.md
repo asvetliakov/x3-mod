@@ -433,3 +433,66 @@ by projected pitch; needs the draw-index capture of section 6) or render the sce
 creep for a fade to half contrast is x 0.5 in codes by construction, with the filter x 0.25-0.3 of today's. (c) Keep
 `--taa-line-filter` optional; its measured gain stands (creep x 0.46-0.64 moving, static ripple x 0.10 with w 0.97).
 
+
+## 12. Screen recording against the run175 dump at the same standstill (2026-09-19) [M unless tagged]
+
+Inputs: `screenshots/lattice.mov` (ReplayKit, h264 yuv420p tv-range, 1280x768, 361 frames in 6.44 s on a 120 Hz timebase, frame
+gaps 16.7 ms x 281, 25 ms x 56, 8.3 ms x 17, 33 ms x 6; 11.5 Mbit/s) and `/tmp/x3-bottleX3-run175` (64 frames 7485-7548, **baseline**:
+`taa_current_filter=0`, `taa_history_weight=0.900`, sharpen 0.75, 8-sample Halton jitter; this build has no line-filter option in
+`proxy_options`). Camera translation identical at 7485 and 7548. Scratch: `mov/` (`met.py`, `mot.py`, `lk.py`, `zf.py`, `thick.py`,
+`fringe.py`, `rem*.py`). Output for the user: `build/lattice-compare/` (movie left, dump right, 4x nearest; GIFs and 8-phase strips).
+
+**Scale.** The recording is the window content at 1:1: phase correlation of the movie mean against the dump mean peaks at (0, 0),
+movie = 0.907 x dump + 2.9 codes (tv-range/codec), no resampling.
+
+**The recording shows what we present.** Luma, pixels with 3x3 contrast > 25 codes:
+
+| region (x0 y0 x1 y1) | source | temporal rms | p2p p50 / p90 / p99 / max | px > 20 / > 40 codes |
+|---|---|---|---|---|
+| edge-on orange arm 760 60 900 200 | dump | 15.5 | 15 / 48 / 151 / 158 | 2618 / 948 of 6952 |
+| | movie | 14.7 | 23 / 57 / 153 / 165 | 3815 / 1161 |
+| face-on panels 740 300 1000 440 | dump | 3.3 | 4 / 17 / 29 / 105 | 1414 / 60 of 25828 |
+| | movie | 3.5 | 14 / 23 / 41 / 227 (HUD box) | 4231 / 260 |
+
+Dump variance is 8-periodic to 1.000 (residual 0.01 codes). Movie spectrum on a 120 Hz hold grid: arm 0.64 of the energy in 6-9 Hz
+(peak 7.5 Hz = 60 fps / 8) with harmonics at 14.9 and 22.5 Hz; nothing at other frequencies except < 1.2 Hz codec/HUD drift on the
+panel crops. No beat with the display or recorder. The movie's larger p2p on the panels is codec noise over 361 samples.
+
+**What crawls is not the section-11 lattice box but the near-edge-on arm** (and the other foreshortened arms, p2p map). Sections 10-11
+measured face-on panels (2.6 codes rms) and missed it: there the ripple is small; on the arm hundreds of pixels swing by 100-160 codes
+every cycle. 3819 arm pixels toggle between valid depth (orange panel, raw rgb 0.61 0.41 0.32) and sentinel depth (dark 0.04) across
+the 8 jitter phases, covered in 1..7 of 8 phases; the dark regions are 1 px thick in the median but up to 4 (p90) / 7 px, and the
+raw pattern anti-correlates between successive phases (r = -0.58). **[I]** moire of the foreshortened line lattice against the pixel
+grid (pitch near 1 px), whose fringes jump several pixels for a sub-pixel jitter step; the shard-shaped fringes are the "triangles".
+History is accepted on all these pixels (accept 1.00, disocc 0.00); the variance clip discards it, because a fringe is wider than
+the 3x3 box, so the box holds only the current state. Only 0.22 of the > 80-code pixels are in `line2x`, 0.45 in `thin`.
+
+**Motion.** No translation is measurable in either source: global Lucas-Kanade step 0.03-0.07 px/frame tracking the jitter delta at
+about 10 % (= 1 - w), net movie dy +0.0025 px/frame on the arm; integer-shift correlation of successive presented frames peaks at
+(0, 0) or is incoherent. The pattern is a cyclic 7.5 Hz shuffle of shards along a diagonal arm. "Upward" is perceptual and not
+measured. **[unknown]** (the y jitter of Halton base 3 is a sawtooth, five +0.333 steps and three -0.556 resets per cycle, a
+candidate cause).
+
+**Replay on run175** (`rem*.py` exec the definitions of `taa_resolve_replay.py`; replayed present vs dumped 0.20 / 0.41 codes; last
+24 of 56 frames, so w >= 0.97 rows still contain some convergence transient; "LK" = rms global step px/frame):
+
+| config | arm rms / p99 / px > 40 / LK | panels rms / p99 / px > 40 / LK |
+|---|---|---|
+| installed | 14.8 / 151 / 1159 / 0.069 | 3.25 / 29 / 54 / 0.048 |
+| jitter order randomised per cycle | 14.4 / 151 / 1651 / 0.075 | 4.43 / 45 / 662 / 0.048 (worse) |
+| no RCAS on `line2x` | 14.8 / 151 / 1101 / 0.070 | 3.12 / 28 / 40 / 0.050 |
+| w 0.97 on `line2x` | 14.0 / 151 / 824 / 0.057 | 1.57 / 19 / 7 / 0.023 |
+| w 0.985 on `line2x` | 13.9 / 151 / 805 / 0.054 | 1.38 / 19 / 7 / 0.018 |
+| A = 1 + w 0.97 on `line2x` (run173 options) | 13.9 / 151 / 809 / 0.056 | 1.65 / 19 / 7 / 0.016 |
+| clip off on `thin` (3x3) + w 0.97 on it | 11.1 / 150 / 324 / 0.050 | 1.42 / 16 / 5 / 0.019 |
+| no clip anywhere, w 0.9 (bound) | 5.9 / 41 / 192 / 0.039 | 3.02 / 26 / 17 / 0.046 |
+| `thin` from a 5x5 depth-validity box: clip off + w 0.9 | 5.6 / 55 / 388 / 0.017 | not run |
+| same, 5x5, w 0.97 | 2.9 / 28 / 25 / 0.009 | not run |
+| same, 7x7, w 0.97 | 2.3 / 22 / 6 / 0.007 | not run |
+| same, 9x9, w 0.97 | 2.0 / 21 / 1 / 0.006 | not run |
+
+A 16-sample sequence cannot be replayed from an 8-phase dump. Reordering does not help (it spreads the same energy off the 8-frame
+period and raises p2p). The flown `--taa-line-filter 1,2 --taa-history-weight 0.97` leaves the arm untouched, which explains "looks the same". What removes it at
+standstill is a wider mixed-depth mask (valid and sentinel depth within 5x5 to 7x7) with the clip off and w 0.97 on it, speed-gated
+like the far stabiliser. Not evaluated: the panels crop and other scenes for ghosting/collateral of the wider mask, behaviour under
+motion, and whether the unjittered game shows a static moire on the arm (expected, not checked).

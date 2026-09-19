@@ -21,7 +21,8 @@ any attribute on the sector element:
    distance is at or beyond the sector bounds and nothing fades inside it.
 2. **In-sector fog cards**: `NumDustInstances` large textured quads spawned around the
    camera and drawn with `nebulafog.fx` — pixel shader `f7e0b6647a3bfa62`, the program
-   never seen in the 115 captured sessions. **35 of 239 sectors** have
+   never seen in the first 115 captured sessions and first captured in run174 (Argon
+   Prime, section 10). **35 of 239 sectors** have
    `NumDustInstances > 0`; the remaining 204 have exactly zero and can never draw it.
 
 Neither mechanism is a map-placed object. The universe map contains **no** fog or nebula
@@ -223,9 +224,10 @@ objects fade without any fog geometry.
 | 50,000,000 / 55,000,000 | 1 (run48) | 66 sectors: `standardblack` 47, `greeneye` 8, `burninghorizon` 5, `purpleoutlands` 4, `greenspot` 2. |
 | 500,000,000 / 500,000,000 | 21 | 25 sectors: the 21 Sol/Terran sectors on `solarsystem` plus `standardblack`/`oos_v*` cases. The far value also gets floored to 500,000,000 by the configuration integer at `*0x00606f34 + 0x768 >= 3`, so these runs are consistent either way. |
 
+| 18,000,000 / 18,500,000 | run174 | `bluewell`: Argon Prime, Herron's Nebula, Cloudbase North West. The user flew Argon Prime; the row matches the table in section 5 and the fog cards are in every captured frame (section 10). |
+
 So the user's "green nebula sector" is a painted `greenoutlands`/`greenvoid` background
-with no in-sector fog at all, and the project has **never** captured a frame containing
-the fog cards.
+with no in-sector fog at all. The first frames containing the fog cards are run174.
 
 ## 8. Recommended test capture
 
@@ -249,16 +251,33 @@ pair it with any zero-card sector, for example **Kingdom End** (0,0), for an A/B
 
 - Names for colour A / colour B and the `+0x144` scalar (`StardustColor`, `AmbientColor`,
   `HueModifier` in some order); the shipped values make the distinction inert.
-- Whether the dust scene is additionally gated at runtime — it is built for a separate
-  camera (`INS_InitDustScene`, `INS_CockpitGetDustCamera`, `SA_SetSpaceDustScene`), and
-  whether the existing capture hooks see that camera's draws has not been checked. The
-  zero-instance explanation for the missing `nebulafog` draws is therefore sufficient but
-  not proven exclusive.
-- The fog cards' actual visual weight: a 199,998-unit quad at one of 16 fixed camera-relative
-  offsets, screen-blended, is measured here only from the body file and the placer, not
-  from a frame.
+- Resolved by run174 (section 10): the capture hooks do see the dust camera's draws, and
+  the cards' visual weight is measured. Still open: a capture in a 16-card sector
+  (`foggreenoutlands`, `fogred`, `fogparanid`), where the card texture and weight may differ.
 - Columns 0-6 and 30-36 of TBackgrounds (constant in the shipped file) and the `p` and `m`
   attributes of the sector element.
+
+## 10. Measured: Argon Prime, run174 (2026-09-19)
+
+Four 32-frame `--taa-debug` captures (frames 23674-, 25317-, 26413-, 28628-) under
+`/tmp/x3-bottleX3-run174`, 1280x768, 128 frames, 34,720 draws. The survey needed no
+correction: Argon Prime is already in section 5 (`bluewell`, 8 instances) and the sector
+camera's `object_fade` row reads `near36c` 18,000,000 / `far370` 18,500,000, scale 0.01,
+`flags270 = 0x0085492d`, `config768 = 3`, in all 128 frames.
+
+| Question | Measured |
+| --- | --- |
+| Present | 422 `nebulafog` draws (VS `7b6393fe2d3e1d85`, PS `f7e0b6647a3bfa62`, 2 primitives, 4 vertices, 24-byte stride: FLOAT16_4 position, texcoord, normal; **no vertex colour**). Per frame 1-4 of the 8 instances: 4 in captures 1, 2 (3 in its last 5 frames) and 4, 1-3 in capture 3. |
+| Camera | All on a separate dust camera (`flags270 = 0x00009201`, N = F = 0), not the sector camera. Cards are camera-facing billboards (world basis row 2 = the view forward axis) with a random roll, world scale 1800 (two instances 7200), centred 340-2,500 units in front of the camera; the lattice position is `0x40000`/`0x80000` native multiples as section 4 derived. At that range one card covers most of the screen. |
+| State | `ZENABLE 0`, `ZWRITEENABLE 0`, `ALPHABLENDENABLE 1`, `SRCBLEND ONE`, `DESTBLEND INVSRCCOLOR`, `BLENDOP ADD`, `ALPHATESTENABLE 0`, `CULLMODE NONE`, colour write 7, `FOGENABLE 0`; identical in all 422. The material text says `g_ZEnable 1` / `g_CullMode 2`; the dust pass overrides both. **The cards are never depth tested.** `D3DRS_FOGENABLE` is 0 on all 34,720 draws of the session. |
+| Texture / alpha | One 512x512 DXT1 texture (10 levels) for all six dust models `0x501a-0x501f`. PS c0.x = node `alpha13c` / 255 scales RGB; it ranged 1-255 and ramps by about 6 per frame (251 -> 64 over 32 frames in capture 2), so instances fade in and out over roughly 40 frames; there is no pop. |
+| Order | Last scene draws: opaque hulls, glow quads (`d5e1c753...`/`8360f422...`, additive), `36f98d15...`, stardust (`5e484a06...`/`0a523f33...`), **fog cards**, then the game's scene end (`set_depth`, 3 `color_fill`, `stretch_rect`), bloom quads, HUD. So the proxy's scene-end hook (TAA resolve, bloom, AgX) sees them as ordinary scene colour. |
+| Motion route | `gate=3 routed=0 unmatched=unregistered`; bound surfaces are rt0 and depth only. They write neither the motion nor the depth target; pixels behind them keep their own depth, sentinel and motion. |
+| Weight | Screen blend in engine space lifts the black floor identically on the own ship (49-300 units), the station at 10,000-18,000 units and the sky: p2-p10 engine-space floor (0.0055, 0.017, 0.026) in capture 4 (card alphas 1.00, 0.96, 0.47, 0.23), (0, 0.004, 0.006) in capture 3 (alpha 0.33). The fade-out in capture 2 (one card 0.98 -> 0.25) changed the star-free low-passed sky by mean (0.0004, 0.0023, 0.0042), p95 (0.009, 0.016, 0.024), against a painted sky of mean (0.012, 0.033, 0.052). The cards are a faint blue cloud-textured veil, 7-39 % of the sky median; most of what reads as "fog" in Argon Prime is the painted `bluewell` background. |
+
+Side finding, not fog: the sun-shadow lane refused 18,585 of 19,311 frames of this session
+(`untracked_writers >= 1`, `unregistered = 1`): an opaque depth-writing pair
+VS `ac2319bc3953efc6` / PS `03a16e5c63daa6e8` (924-1000 primitives per draw, 1-3 draws per frame) is not registered, so sun shadows were off in all four captures.
 
 ## Reproduce
 
