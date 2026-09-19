@@ -1,0 +1,146 @@
+{
+ "fixture": "build/verification/collide-memo/collide_memo_fixture.exe",
+ "exit_status": 0,
+ "elapsed_s": 6.1,
+ "checks": 47,
+ "failures": 0,
+ "summary": {
+  "queries": 58242,
+  "hits": 44293,
+  "contacts": 3512,
+  "differences": 0,
+  "stale_hits": 0,
+  "hits_on_contact": 0,
+  "register_differences": 0,
+  "stored": 10295,
+  "evictions": 6452,
+  "ineligible": 2,
+  "skipped_visits": 197180493,
+  "verified": 140,
+  "verify_mismatches": 1
+ },
+ "scenarios": {
+  "static": {
+   "queries": 528,
+   "hits": 427,
+   "contacts": 40,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
+  "one_step": {
+   "queries": 59,
+   "hits": 32,
+   "contacts": 0,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
+  "approach": {
+   "queries": 422,
+   "hits": 60,
+   "contacts": 2,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
+  "modes": {
+   "queries": 50,
+   "hits": 25,
+   "contacts": 0,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
+  "addresses": {
+   "queries": 9,
+   "hits": 2,
+   "contacts": 0,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
+  "expiry": {
+   "queries": 4,
+   "hits": 2,
+   "contacts": 0,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
+  "overflow": {
+   "queries": 9000,
+   "hits": 1538,
+   "contacts": 0,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
+  "random": {
+   "queries": 48000,
+   "hits": 42207,
+   "contacts": 3470,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
+  "verify": {
+   "queries": 170,
+   "hits": 0,
+   "contacts": 0,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  }
+ },
+ "bench": {
+  "visits": 15567,
+  "run_ns": 727800,
+  "hit_ns": 91.8
+ },
+ "approach": {
+  "contact_frames": 2,
+  "parked_frames": 60,
+  "parked_hits": 59,
+  "first_contact_step": 199
+ },
+ "verify": {
+  "verified": 140,
+  "injected_mismatches": 1
+ },
+ "window_line": "collide_memo device=1 frame=4800 frames=300 verify=0 queries=12313 hits=12304 misses=9 stored=9 contacts=0 ineligible=0 evictions=0 skipped_visits=186840218 skipped_triangles=43157212 verified=0 verify_mismatches=0",
+ "install_lines": [
+  "collide_memo requested=0 patched=0 verify=0 reason=disabled site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=bytes_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024"
+ ],
+ "failure_lines": [],
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "build": {
+  "engine": {
+   "ranges": 7,
+   "bytes": 7292,
+   "sha256": "6d2f2f207ede50d6e90fc20c454672e17d14e6aef106ff000745b3c73ce856b0"
+  },
+  "audit": {
+   "module_x87_mmx_instructions": 0,
+   "x3m_collide_memo_thunk_instructions": 30,
+   "x3m_collide_memo_lookup_instructions": 206,
+   "x3m_collide_memo_store_instructions": 150
+  }
+ },
+ "note": "run_ns is one un-memoed query of the cost pair, hit_ns one answered query, harness included; diagnostic timings, not game FPS"
+}

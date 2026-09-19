@@ -1965,6 +1965,25 @@ queries: engine 114.8 ns/visit, engine + SSE2 SAT 31.4, replacement **31.0** (1.
 one child transform 8.0–9.2 ns. Not run here: `check_no_x87.py` (needs a built DLL; the three new roots are in its
 list), any flight.
 
+## Collide memo: fixture and site qualification (2026-09-19, no game)
+
+`--collide-memo` / `--collide-memo-verify` (`X3M_COLLIDE_MEMO=1`, `X3M_COLLIDE_MEMO_VERIFY=1`, default off); contract,
+key and tables in [sector-collide.md](../reverse-engineering/sector-collide.md) §14. Bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Nothing launched, nothing installed, no DLL built.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Site verifier | `python3 verification/probe/verify_collide_memo_site.py` | PASS, 27 checks, 127 other claims; `verify_collide_sites.py` still PASS, 72 checks |
+| Build audit | `python3 verification/probe/build_collide_memo.py` | 7,292 engine bytes in 7 ranges, hash-pinned, untracked; 0 x87/MMX instructions in the module; no floating-point arithmetic in thunk / lookup / store; exact 30-instruction thunk |
+| Memo fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_memo.py` | exit 0, 47 checks, 0 failures, 6.1 s; `verification/results/collide-memo-cpu.json` |
+| Host tests | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_collide_memo verification.analysis.test_collide_sat_sse2 verification.analysis.test_collide_box_cull verification.analysis.test_collide_narrow_census` | 37 tests, OK |
+
+Fixture: 58,242 queries through the engine's own `0x0047f1b0` in place and through an un-memoed copy, from the same
+global state: 44,293 hits, 3,512 contacts, **0 differences, 0 stale hits, 0 contacts answered from the memo**, 0
+register differences; verify mode 140 confirmed, 1 injected mismatch reported. Cost pair (15,567 node pairs, no
+contact): 728 µs run, 92 ns answered. Not run here: `check_no_x87.py` (needs a built DLL; three roots added), any
+flight — §14.5 names the two runs.
+
 ## Run 44 A (run140/run141): `--collide-narrow-census` triage of two preserved sessions
 
 Two sessions, `--loop-phases --collide-narrow-census`, bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,

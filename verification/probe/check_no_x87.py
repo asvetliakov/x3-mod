@@ -73,7 +73,10 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post',
                 # the SSE2 separating-axis replacement (src/proxy/collide_sat_sse2.cpp, X3M_COLLIDE_SAT_SSE2=1): the thunk the engine's
                 # x87 BVH descent calls ~2.3e5 times per frame and its body, no boundary at all (stmxcsr/ldmxcsr only)
-                '_x3m_collide_sat_thunk', '_x3m_collide_sat_sse2']
+                '_x3m_collide_sat_thunk', '_x3m_collide_sat_sse2',
+                # the no-contact memo (src/proxy/collide_memo.cpp, X3M_COLLIDE_MEMO=1): thunk and both handlers run inside the engine's x87 mesh-pair
+                # query with no boundary at all; they compare and copy words and hold no floating-point arithmetic
+                '_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own

@@ -1297,6 +1297,91 @@ figure of 66 ns per visit is twice the fixture's 31 ns for the same configuratio
 (candidates: the per-mesh-pair query set-up, cache behaviour of the real station tree, census brackets) and is the
 thing to measure next. On native Windows x87 is not emulated, so no gain is expected there either **[i]**.
 
+## 14. `--collide-memo`: the temporal no-contact memo (fix 1 of §11.6), 2026-09-19
+
+Flight evidence (run150, census): `memo_would_hit_permille=49` of pairs but `memo_visits_permille=828` of visits,
+`memo_unsafe_sum=0`, `memo_visits_differ_sum=0`. Method as in §13; nothing launched. Marks as in §12.
+
+### 14.1 Where the memo sits, and why not at the object pair
+
+The census's `unchanged` is an object-pair predicate over the *root* node. The object-pair routine `0x0048a890` reads
+far more than that: it walks both part trees, per part the saved position, a cached radius, `[node+0x12c]`,
+`[node+0x140]` through a hash lookup, and every part's own transform. A key at that level would have to hold both part
+trees. One level down the query is closed: **`0x0047f1b0`** (two callers, `0x0048a9a5` with flags 2 / cap 1 / EDI = 0
+and `0x0048a69e` with flags `0xc` / cap 8 / EDI = a local float) reads of each node exactly 13 words — `+0x70` (scale;
+**not** in the census's hash), `+0xb0/b4/b8`, and the nine matrix words `+0xc0..0xe8` — turns them into 26 floats and
+calls **`0x004e29f0`**, its only call and that function's only caller **[s]**. The memo is on that call,
+**`0x0047f329`**: the key is then the collider's literal input, part animation is covered because every part pair is
+its own query, and the census's sites (5, 6 above it; 7, 8 below) are untouched.
+
+At the site: ECX = flags, EAX = cap, nine stack words `&R1, &T1, s1, model a, &R2, &T2, s2, model b, tolerance`, and
+a **tenth** the callee reads at `[esp+0x2c]`: the caller's saved EDI, which `0x004e29f0` stores in `[0x00608540]` — the
+running-minimum pointer the leaf compares against and writes through in distance mode. `0x004e29f0` stores flags, cap,
+`ftol(tolerance)` (`0x0052b5d0`) and that pointer, and calls `0x004e2780(…, mode = flags & ~0xc)`.
+
+### 14.2 Inputs and outputs, enumerated **[s]**
+
+The collider range `0x004e2190..0x004e38ad` names these globals and no others (verifier, `collider_globals_enumerated`):
+the constants `0x00565600/04/08`; the root block `0x00596928..0x0059695f`; the state block `0x0060851c..0x0060854f`;
+the one-time pair `0x00608d98/9c`. It calls out only to `fabs`, `ftol` and six helpers that name no global.
+
+| | |
+| --- | --- |
+| **Key** (81 words, compared bit for bit) | 26 transform floats; tolerance; flags; cap; EDI null-ness and the float behind it; both model pointers; both 24-byte model headers (`[+0]` root box, `[+0x14] == 3`); both `0x48`-byte root boxes (content stamp) |
+| **Lifetime** | an entry is live only if stored or hit in this frame or the previous one (frame = `Present`); no node or object pointer is in the key, so object reuse cannot alias; a model address reused for other content changes header or root box |
+| **Written by a no-contact query, replayed on a hit** | `0x00608534` flags, `…38` cap, `…3c` tolerance integer, `…40` EDI, `…44` node pairs, `…48` triangle tests, `…4c` = 0, and all 14 words of the root block (T, first-contact flag, scale, R) — each a function of the key, stored with the entry |
+| **Written on a contact only, left alone** | contact record `0x0060851c..0x00608533`; the float behind EDI (`fst [ecx]` at `0x004e248d` is on the counted-contact path) |
+| **Return** | the caller does `xor eax,eax; add esp,0x28; cmp [0x0060854c],eax; setne al`: nothing else of the query is read; on a hit EAX = 0, ECX/EDX/EFLAGS dead, x87 empty as the engine leaves it |
+| **Not memoed** | a contact (never stored); a model not in state 3 (the engine returns early; passed through, `ineligible`); a re-entered thunk |
+
+Assumed, not in the key **[i]**: model data below the root box is immutable once built (verify mode catches a
+violation, §14.4); the x87 control word is constant (D3D9 sets it once).
+
+### 14.3 Module
+
+`collide_memo_core.h` (key, 4-way × 256-set static table, expiry, eviction of the entry touched longest ago;
+host-tested against a dictionary model) and `collide_memo.{h,cpp}`. `claim_call` on `0x0047f329`; `initialize()` hashes
+six bodies (caller, `0x004e29f0`, query, descent and leaf with the census/SAT holes zeroed, triangle test) and refuses
+with `body_mismatch`. The 30-instruction thunk: `lookup(flags, cap, &args)`; hit → `add esp,8; xor eax,eax; ret`; miss
+→ take the engine's return address off, `call 0x004e29f0` on the engine's exact stack (it reads the tenth word), then
+`store()` with EAX/ECX/EDX kept, `jmp` back. A `busy` byte sends a re-entered call straight to the engine. The
+handlers compare and copy words: no x87/MMX, no floating-point arithmetic, MXCSR never read, LastError never touched
+(build audit; three roots added to `check_no_x87.py`). `--collide-memo-verify` (implies the memo) skips nothing: a
+would-be hit runs the engine and `store()` compares contact, counters, tolerance integer and root block
+(`verified` / `verify_mismatches`, a mismatch drops the entry). Output: one `collide_memo` line per 300 frames —
+`queries hits misses stored contacts ineligible evictions skipped_visits skipped_triangles verified verify_mismatches`.
+The census keeps counting pairs and mesh pairs; its node-pair and triangle counts cover only the queries that ran.
+
+### 14.4 Fixture **[m]**
+
+`collide_memo_fixture.cpp`, 47 checks: the engine's bytes in place at their own addresses (image at `0x00340000`, a
+zero-filled section over `0x00400000..0x0066ffff`; **no byte changed**, real leaf and triangle tests), a second copy of
+`0x0047f1b0` whose call goes straight to `0x004e29f0` as the un-memoed engine. Every query runs through both from the
+same global state; result, EBX/EBP/ESI/EDI, x87 control and tag words, MXCSR, both global blocks, the running minimum
+and LastError must agree (ECX/EDX too unless it was a hit). **58,242 queries, 44,293 hits, 3,512 contacts: 0
+differences, 0 stale hits, 0 contacts answered from the memo.**
+
+| Scenario | Queries / hits / contacts | What it shows |
+| --- | --- | --- |
+| static | 528 / 427 / 40 | nothing hits in frame 1, every no-contact pair hits afterwards, contacts recomputed |
+| one step | 59 / 32 / 0 | ±1 in any of the 26 node words misses once; words the query never reads do not matter |
+| approach | 422 / 60 / 2 | close in to a contact, park two steps back (59 of 60 parked frames answered), contact again, leave turning |
+| modes | 50 / 25 / 0 | flags 2 / cap 1, `0xc` / 8, running minima, tolerance: separate entries; a changed minimum misses |
+| addresses | 9 / 2 / 0 | same inputs at other node/body addresses hit; reversed pair, other model, reused model address, root box one float step, model state ≠ 3 miss |
+| expiry / overflow | 4 / 2, 9,000 / 1,538 | one untouched frame expires; 3,000 live keys per frame evict and never answer wrongly |
+| random | 48,000 / 42,207 / 3,470 | twelve objects that stay, creep, jump, turn, rescale, change model |
+| verify mode | 170 / 0 / 0 | nothing skipped, 140 confirmed; boxes below the root changed behind the key's back → mismatch reported |
+
+Cost, one contact-free pair of 15,567 node pairs: 728 µs run, **92 ns** answered (harness included; diagnostic).
+Expected in flight **[i]**: `memo_visits_permille=828` ⇒ the collide phase's narrow part falls by about that share
+while the player holds still; nothing while the hot pair moves.
+
+### 14.5 One flight
+
+`--collide-memo-verify --collide-narrow-census --loop-phases` at the station: `verify_mismatches` must be 0 and
+`verified` large. Then `--collide-memo --collide-sat-sse2 --collide-narrow-census --loop-phases`: compare the `collide`
+phase and `skipped_visits` against run 45 A.
+
 ## Reproduce
 
 ```sh
