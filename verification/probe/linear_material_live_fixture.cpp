@@ -271,7 +271,7 @@ struct MotionRoute {
  bool sun_color_writer=false,sun_receiver=false;std::uint8_t sun_z_state=0,sun_refusal=0;std::uint16_t sun_draw_state=0;bool native_mip_bias=false;
  bool original_fill=false; // the fill variant the bind path selected for this route
 };
-struct Counters{bool hook_scene_end=false,bloom_copy_seen=false;unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
+struct Counters{bool hook_scene_end=false,bloom_copy_seen=false;unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0,lazy_mask_writes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
 struct D3DDISPLAYMODE{D3DFORMAT Format=D3DFMT_UNKNOWN;};
 struct Device {
  unsigned display_mode_reads=0;HRESULT display_mode_result=S_OK;D3DFORMAT display_mode_format=1;
@@ -386,7 +386,7 @@ public:
  struct{unsigned eligible_fade=0,prepared_fade=0,linear_fade=0;std::uint64_t pool_traffic_bytes=0;unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;unsigned in_place=0,in_place_linear=0,in_place_incomplete=0,recovery_failures=0;std::uint64_t region_pixels=0;unsigned packed_eligible=0,packed_unbounded_refused=0,packed_caps_refused=0,packed_admitted=0,packed_linear=0,packed_incomplete=0;std::uint64_t packed_region_pixels=0;HRESULT recovery=S_FALSE;}composition_counts_;
  unsigned composition_adapter_format_=1,composition_depth_format_=2;bool composition_attach_attempted_=true,composition_effective_=false,composition_identity_known_=true;void*native_=nullptr;struct{struct{unsigned format=2;}depth;}pending_;
  bool taa_enabled_=true,hdr_dirty_=false,bound_scene=true;IUnknown*hdr_resolved_=nullptr;unsigned active_queries_=0,taa_invalidations=0;std::uint32_t taa_invalidate_pending_=0;
- unsigned mip_bias_logged_game_writes_=0;DWORD lazy_write1_=15,lazy_write2_=15;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
+ unsigned mip_bias_logged_game_writes_=0;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
  struct FadeBounds{bool storage=false,fail_reserve=false;unsigned clears=0,reserves=0;
   bool reserve(){++reserves;if(fail_reserve)return false;storage=true;return true;}
   void clear(){++clears;storage=false;}bool reserved()const{return storage;}}fade_bounds_;
@@ -1198,10 +1198,11 @@ void attempted_state_cases(){
   MotionRoute r;CHECK(m.prepare_constants(r)==E_FAIL&&r.vs_constants_set);CHECK(r.ps_constants_set==(failure==2));m.rollback_route(r);
   CHECK(r.submit&&!m.motion_state_lost_&&d.vs_constants==vs&&d.ps_constants==ps&&d.state_ordinal==2*failure);
  }
- // Once a lazy depth target is already held, mutation-failure while dropping
- // it keeps its pending flag until the complete normal flush restores it.
+ // Once a lazy depth target is already held (the depth draw's own mask writes
+ // undone, the bindings kept), a mutation-failure of the next row's mask write
+ // (1) or of dropping RT2 (2) keeps the pending flags until the flush restores.
  for(unsigned failure:{1u,2u}){Device d;MotionOutput m;m.device_=&d;m.lazy_mode_=true;m.target_surface_=new IDirect3DSurface9;m.depth_surface_=new IDirect3DSurface9;
-  MotionRoute depth;depth.depth=true;CHECK(m.bind_targets(depth)==S_OK);d.mutation_faults=true;d.state_failures={failure};MotionRoute ordinary;
+  MotionRoute depth;depth.depth=true;CHECK(m.bind_targets(depth)==S_OK);CHECK(m.undo(depth)==S_OK&&d.targets[1]&&d.targets[2]&&d.write_masks[1]==5&&d.write_masks[2]==6);d.mutation_faults=true;d.state_failures={failure};MotionRoute ordinary;
   CHECK(m.bind_targets(ordinary)==E_FAIL);m.rollback_route(ordinary);CHECK(ordinary.submit&&!d.targets[1]&&!d.targets[2]&&d.write_masks[1]==5&&d.write_masks[2]==6);m.release_resources();
  }
  // Unavailable/nonrouted pairs must not native-submit if the preceding lazy

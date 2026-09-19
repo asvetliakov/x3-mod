@@ -40,14 +40,16 @@ class LinearMaterialLiveTests(unittest.TestCase):
     def test_render_state_hook_follows_the_hooked_configuration(self):
         # Hybrid unhook (state-call-fast-path.md, step 5): slot 57 is installed
         # exactly in the hooked configuration, which composition no longer
-        # forces; the reasons are the explicit shadow, lazy RT mode, frame
-        # timing and a failed Get* capability check (fail closed).
+        # forces; the reasons are the explicit shadow, frame timing and a
+        # failed Get* capability check (fail closed). Lazy RT mode is not one:
+        # it never holds a write mask (route-per-draw-cost.md, lever 3).
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         install = next(line.strip() for line in capture.splitlines()
                        if 'hooked.set(57,set_render_state)' in line)
         self.assertEqual(install.replace(' ', ''), 'if(hooked.motion_output.state_hooks())hooked.set(57,set_render_state);')
         gate = capture[capture.index('const char* state_hooks_reason='):capture.index('hooked.motion_output.configure_state_hooks(state_hooks);')]
-        for reason in ('"explicit"', 'lazy_rt_mode()', 'frame_timing::active', '"get_failed"', '(58)(d,D3DRS_ZENABLE', '(68)(d,0,D3DSAMP_SRGBTEXTURE'):
+        self.assertNotIn('lazy_rt', gate)
+        for reason in ('"explicit"', 'frame_timing::active', '"get_failed"', '(58)(d,D3DRS_ZENABLE', '(68)(d,0,D3DSAMP_SRGBTEXTURE'):
             self.assertIn(reason, gate)
         sampler = next(line.strip() for line in capture.splitlines() if 'hooked.set(69,set_sampler_state)' in line)
         self.assertTrue(sampler.startswith('if(hooked.motion_output.state_hooks()&&('), sampler)

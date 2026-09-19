@@ -1879,3 +1879,51 @@ bytecode unchanged. `run_temporal_pass.py` exit 0 (lattice mode 255 numerical / 
 seam-taa-on seam-taa-hdr-tonemap-on production-taa-hdr-tonemap-on`: 164 / 140 / 59 checks, exit 0; generator `--check` PASS
 for all programs, every manifest and the nine bloom manifests re-pinned to the generator (eight `*_inc.h` headers changed in
 their stale `Reproduce:` comment line only).
+
+## 2026-09-19 — lever 3, hook-free lazy RT (route-per-draw-cost.md): implemented, unflown, default off
+
+`X3M_MOTION_RT_MODE=lazy` (`--motion-rt-mode lazy`; `perdraw` stays the default and the kill switch) now holds RT1/RT2
+across consecutive routed draws and **never a write mask**: each routed draw reads `COLORWRITEENABLE1/2` (the reads per-draw
+mode already makes), writes a mask only when it differs from what the draw needs (15, or 0 on RT2 for a fade-band draw)
+and the undo puts the application's value back; the flush is two unbinds. `lazy_rt` is no `state_hooks` reason any more,
+slots 57/69 stay unhooked, the `get_render_state` hook (58) and `before_set_render_state` are removed; `get_rt` /
+`get_rt_data` stay. New frame-line count `lazy_mask_writes` (masks other than 15 met by a lazy routed draw: the flight's
+fallback-rate counter). This supersedes the hook statements of "Lazy RT binding equivalence" above: lazy now runs
+`rs_mode=get` under `auto` and `X3M_STATE_SHADOW=0`, `shadow` only under the explicit switch.
+
+Bench (`run_route_bench.py`, 400 routed draws, median us per DrawPrimitive, one run each, noise +-0.15;
+`route-bench-lever3-{before,after}.json`; before = HEAD `9b871c28` built from a source archive of that commit):
+
+| config | before | after |
+| --- | --- | --- |
+| off | 1.40 | 1.46 |
+| perdraw | 8.78 | 8.80 |
+| lazy | 6.69 (`installed=1 reason=lazy_rt`, shadow) | 6.89 (`installed=0 reason=none`, `rs_mode=get`, 4,016 gets) |
+| perdraw-ownership | 9.61 | 9.66 |
+| lazy-ownership | 7.19 | 7.40 |
+| perdraw-depth | 10.43 | 10.67 |
+
+After: plain route 7.34 us over `off`, ownership wrapper +0.86 (perdraw) / +0.51 (lazy), lease +1.01, RT binding share
+**1.91 us** plain and **2.26 us** through the wrapper (26 % of the plain route). The mask reads cost 0.2 us against the
+hooked lazy mode, inside two noise bands, and buy the removal of the two setter hooks (3.1 ms per frame in
+route-per-draw-cost.md section 3). The premise (>= 0.5 us) holds.
+
+Fixtures (X3, retained binaries of this tree, all exit 0): 25 lazy cases and 9 per-draw controls. New selected-only
+`X3M_FIXTURE_BURST_MASK=1` burst (`seam-burst-perdraw-mask`, `seam-burst-lazy-mask`, `-mask-shadow`,
+`seam-ownership-burst-lazy-mask`, `production-burst-lazy-mask`; 104 / 59 checks): both masks written (7 / 5) under a held
+binding, a routed draw under them, both read back with no getter hook; a hold that starts masked; mid-scene StretchRect
+(frames 2, 5, 8), application SetRenderTarget / depth Clear (other frames) and a Reset inside the scene under a held binding
+(frame 4, the frame restarts; the DLL's frame counters restart with it). Every lazy mask run equals the per-draw twin in
+colour, STATE signature, RT1/RT2 hashes and readback files; `set_rt` 24 per-draw against 12 lazy (24 on capture frames),
+`lazy_flushes` 3, `lazy_mask_writes` 4 per frame (1 in the plain burst), `state_hooks installed=0 reason=none` except the
+explicit-shadow case. Existing cases on the changed DLL against HEAD's DLL in the same session (`production-on`,
+`seam-on`, `seam-ownership-on`, `seam-taa-on`, `seam-ownership-taa-on`, the three per-draw bursts, the per-draw wrap
+burst): 0 field differences. Lazy cases against the tracked summary: 0 differences outside `render_state` (lazy moved to
+`rs_mode=get` by design) and the burst `state_hashes`; that hash and the `render_state` counts differ from the tracked
+summary on HEAD's own DLL too (stale record, not this change), and lazy equals per-draw in-session for the plain and
+the wrap burst. Regular-script lazy twins, cutout (2), fade-route (8), mipbias (2) lazy cases pass unchanged validators.
+Host: `test_motion_wrap_states`, `test_linear_material_live` (the held-depth mock case now undoes the depth row first:
+78 attempted-state checks), `test_motion_hdr_scene`, `test_linear_cutout_contract`, `test_motion_output_runner`,
+`test_frame_timing` (new launcher test) OK; `check_no_x87.py` 0 violations. Not run: `run_state_hook_benchmark.py` under
+lazy (it pins `perdraw`). Native Windows: documented calls only, unverified.
+

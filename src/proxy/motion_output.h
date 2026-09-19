@@ -367,7 +367,9 @@ struct MotionFrameCounters {
     // time. set_rt counts every route-issued SetRenderTarget of the per-draw
     // apply/undo path and the lazy flush (the fill's and the resolve's own
     // SetRenderTarget calls are inside fill_ticks and the taa phases instead).
-    std::uint32_t set_rt = 0, jitter_writes = 0, lazy_flushes = 0, readbacks = 0;
+    // lazy_mask_writes: routed draws of lazy mode that met a write mask other
+    // than 15 and took the per-draw mask write/restore for it.
+    std::uint32_t set_rt = 0, jitter_writes = 0, lazy_flushes = 0, lazy_mask_writes = 0, readbacks = 0;
     std::uint64_t gate_ticks = 0, route_draw_ticks = 0, set_rt_ticks = 0, jitter_ticks = 0, fill_ticks = 0;
     std::uint64_t lazy_flush_ticks = 0, readback_ticks = 0;
     std::uint64_t taa_run_ticks = 0, taa_capture_ticks = 0, taa_copy_color_ticks = 0, taa_copy_depth_ticks = 0;
@@ -601,8 +603,11 @@ public:
     // across consecutive routed draws and restore_bindings() puts them back
     // before any application call that could observe or depend on them
     // (capture.cpp calls it from those hooks; before_draw calls it for every
-    // draw that does not route). Effective at attach; equivalence is proven
-    // by the motion-output fixture's burst cases.
+    // draw that does not route). The write masks are never held: a routed
+    // draw whose mask differs from 15 writes and restores it as per-draw mode
+    // does (lazy_mask_writes), so lazy needs no SetRenderState/GetRenderState
+    // hook (docs/architecture/route-per-draw-cost.md, lever 3). Effective at
+    // attach; equivalence is proven by the motion-output fixture's burst cases.
     void configure_rt_mode(bool lazy) noexcept { lazy_mode_ = lazy; }
     bool lazy_rt_mode() const noexcept { return lazy_mode_; }
     void restore_bindings() noexcept;
@@ -630,15 +635,6 @@ public:
     void configure_state_hooks(bool installed) noexcept { state_hooks_ = installed; }
     bool state_hooks() const noexcept { return state_hooks_; }
     const char* render_state_mode() const noexcept { return !state_hooks_ ? "get" : state_shadow_ ? "shadow" : "native"; }
-    // BEFORE the application's SetRenderState (light hook: no logging, no
-    // telemetry record): in lazy mode an application write to a write mask the
-    // route holds first puts the application's bindings back, so the write
-    // lands where the application expects it (closes the lazy-mode hole).
-    // Nothing to put back unless the route currently holds a write mask, which
-    // only lazy mode does. The hook tests this inline and calls the function
-    // below only then; that function still re-checks every condition itself.
-    bool lazy_write_mask_held() const noexcept { return enabled_ && (lazy_rt1_ || lazy_rt2_); }
-    void before_set_render_state(D3DRENDERSTATETYPE state) noexcept;
     // After a successful application SetRenderState; ignored while recording.
     void set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexcept;
     void render_state_failed(D3DRENDERSTATETYPE state) noexcept;
@@ -1503,8 +1499,9 @@ private:
     // the per-draw path and the lazy flush; each counts into counters_.set_rt.
     HRESULT bind_target(DWORD index, IDirect3DSurface9* surface) noexcept;
     HRESULT bind_targets(MotionRoute& route) noexcept;
-    // The lazy-mode flush behind restore_bindings. `quiet` (the light
-    // SetRenderState hook) records no telemetry metric and logs nothing: its
+    // The lazy-mode flush behind restore_bindings. `quiet` (no production
+    // caller since the write masks stopped being held; kept for a light-hook
+    // restore point) records no telemetry metric and logs nothing: its
     // metrics and failure line are deferred to the next heavy call.
     template<bool quiet> HRESULT flush_bindings() noexcept;
     void record_deferred() noexcept;
@@ -1904,10 +1901,8 @@ private:
     // Telemetry sink (capture.cpp's per-device State) and frame-line cadence.
     telemetry::State* stats_ = nullptr;
     unsigned frame_log_interval_ = 60;
-    // Lazy binding state: RT1 (and RT2) bound by the route with the
-    // application's COLORWRITEENABLE1/2 values saved at bind time.
+    // Lazy binding state: RT1 (and RT2) held by the route across routed draws.
     bool lazy_mode_ = false, lazy_rt1_ = false, lazy_rt2_ = false;
-    DWORD lazy_write1_ = 15, lazy_write2_ = 15;
     bool state_shadow_ = true, state_hooks_ = true, scene_hook_installed_ = false;
     // Sampler shadow of the mip LOD bias (X3M_TAA_MIP_BIAS), stages 0-15:
     // the application's texture binding (pointer identity only, never

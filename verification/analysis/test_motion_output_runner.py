@@ -186,7 +186,8 @@ class MotionOutputRunnerTests(unittest.TestCase):
         line = lambda label, values: label + ' ' + ' '.join(f'{k}={v}' for k, v in values.items())
         report = [line('MODE', mode)]
         trace = ['motion_output_mode rt_mode=perdraw frame_log=1 state_shadow=1',
-                 'motion_output_device enabled=1 rt_mode=perdraw depth=1 state_shadow=1 scene_hook=0']
+                 'motion_output_device enabled=1 rt_mode=perdraw depth=1 state_shadow=1 scene_hook=0',
+                 'state_hooks device=1 installed=1 reason=explicit state_shadow=1 rs_mode=shadow']
         if wrap:
             report.append('WRAP mode=hostile motion_texcoord=4 depth_texcoord=5 native_texcoord=0')
         captures = self.root / 'x3-modern-captures'

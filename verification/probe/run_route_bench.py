@@ -14,7 +14,8 @@ route_draw_us). Configurations:
   perdraw                the production route (per-draw RT binds, hybrid unhook, no per-draw stamps)
   perdraw-telemetry-draw the same with X3M_TELEMETRY_DRAW=1 (run129's launch: ~18 QPC stamps per routed draw)
   perdraw-shadow         the same with X3M_STATE_SHADOW=1 (setter hooks on, state answered from the shadow)
-  lazy                   X3M_MOTION_RT_MODE=lazy (keeps RT1/RT2 across the run; installs the setter hooks)
+  lazy                   X3M_MOTION_RT_MODE=lazy (keeps RT1/RT2 across the run, never the write masks: no setter hooks)
+  lazy-ownership         the same through the ownership wrapper
   perdraw-cascades       the production route with the depth replay, candidates, five cascades and
                          caster retention on (the ownership wrapper for the retention journal)
 
@@ -77,6 +78,7 @@ CONFIGS = [
     ('perdraw-telemetry-draw', dict(X3M_TELEMETRY_DRAW='1')),
     ('perdraw-shadow', dict(X3M_STATE_SHADOW='1')),
     ('lazy', dict(X3M_MOTION_RT_MODE='lazy')),
+    ('lazy-ownership', dict(X3M_MOTION_RT_MODE='lazy', X3M_OWNERSHIP='1')),
     ('perdraw-cascades', CASCADES),
     # Attribution: the jitter's two constant writes, RT2 (two binds, two masks, one read),
     # the ownership wrapper alone, the single-map depth replay (lease per draw), the
@@ -90,7 +92,7 @@ CONFIGS = [
     ('perdraw-cascades-timing', dict(CASCADES, X3M_SHADOW_RETENTION_TIMING='1')),
 ]
 RETENTION_FIELDS = ('records', 'nodes_live', 'us', 'journal_us', 'walk_us', 'draw_us', 'draw_calls', 'gate_us')
-FRAME_FIELDS = ('draws', 'routed', 'matched', 'set_rt', 'lazy_flushes', 'jitter_writes', 'rs_mode', 'rs_queries', 'rs_hits', 'rs_gets',
+FRAME_FIELDS = ('draws', 'routed', 'matched', 'set_rt', 'lazy_flushes', 'lazy_mask_writes', 'jitter_writes', 'rs_mode', 'rs_queries', 'rs_hits', 'rs_gets',
                 'state_shadow', 'gate_us', 'route_draw_us', 'set_rt_us', 'lazy_flush_us', 'jitter_us', 'gate1', 'gate2', 'gate3', 'gate4', 'gate5', 'gate6')
 
 

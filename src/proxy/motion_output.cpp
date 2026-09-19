@@ -478,9 +478,9 @@ HRESULT MotionOutput::bind_target(DWORD index, IDirect3DSurface9* surface) noexc
 }
 // Binds RT1 (and RT2 for a depth row) with full write masks for a routed
 // draw. Per-draw mode saves the application's masks into the route for undo;
-// lazy mode saves them once at bind time, keeps the bindings across
-// consecutive routed draws, only toggles RT2 when the row's depth output
-// differs from the current binding, and releases them in restore_bindings.
+// lazy mode keeps the bindings (never the masks) across consecutive routed
+// draws, only toggles RT2 when the row's depth output differs from the
+// current binding, and releases them in restore_bindings.
 HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
     HRESULT hr = S_OK;
     // A valid saved mask precedes each attempted write. Failed setters may
@@ -499,31 +499,40 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
         }
         return hr;
     }
-    if (!lazy_rt1_) {
-        hr = render_state(D3DRS_COLORWRITEENABLE1, &lazy_write1_);
-        if (SUCCEEDED(hr)) { lazy_rt1_ = true; hr = bind_target(1, target_surface_); }
-        if (SUCCEEDED(hr)) hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 15);
+    // Lazy (hook-free, route-per-draw-cost.md lever 3): the bindings are held
+    // across consecutive routed draws, the write masks never are. Each routed
+    // draw reads the application's masks (the same reads as per-draw mode) and
+    // writes one only when it differs from what the draw needs; that write is
+    // this draw's own and the undo puts the application's value back. Between
+    // draws the device therefore holds the application's masks, so its writes
+    // and reads of them need no hook.
+    DWORD write1 = 15, write2 = 15;
+    hr = render_state(D3DRS_COLORWRITEENABLE1, &write1);
+    if (SUCCEEDED(hr) && !lazy_rt1_) { lazy_rt1_ = true; hr = bind_target(1, target_surface_); }
+    if (SUCCEEDED(hr) && write1 != 15) {
+        ++counters_.lazy_mask_writes;
+        route.saved_write1 = write1; route.write_set = true;
+        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 15);
     }
-    if (SUCCEEDED(hr) && route.depth && !lazy_rt2_) {
-        hr = render_state(D3DRS_COLORWRITEENABLE2, &lazy_write2_);
-        if (SUCCEEDED(hr)) { lazy_rt2_ = true; hr = bind_target(2, depth_surface_); }
-        if (SUCCEEDED(hr)) hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, 15);
-    } else if (SUCCEEDED(hr) && !route.depth && lazy_rt2_) {
+    if (SUCCEEDED(hr) && route.depth) {
+        hr = render_state(D3DRS_COLORWRITEENABLE2, &write2);
+        if (SUCCEEDED(hr) && !lazy_rt2_) { lazy_rt2_ = true; hr = bind_target(2, depth_surface_); }
+        // A fade-band draw keeps RT2 bound but masks it off (see above).
+        const DWORD wanted = route.fade_arm ? 0 : 15;
+        if (SUCCEEDED(hr) && write2 != wanted) {
+            if (!route.fade_arm) ++counters_.lazy_mask_writes;
+            route.saved_write2 = write2; route.write2_set = true;
+            hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, wanted);
+        }
+    } else if (SUCCEEDED(hr) && lazy_rt2_) {
         // A motion-only row after a depth row: its variant writes no oC2, so
         // RT2 goes back exactly as the per-draw mode would leave it.
-        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, lazy_write2_);
-        if (SUCCEEDED(hr)) { hr = bind_target(2, nullptr); lazy_rt2_ = FAILED(hr); }
-    }
-    if (SUCCEEDED(hr) && route.depth && route.fade_arm && lazy_rt2_) {
-        // Fade-band draw under the kept binding: mask RT2 for this draw only;
-        // the undo puts the lazy mask (15) back.
-        route.saved_write2 = 15; route.write2_set = true;
-        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, 0);
+        hr = bind_target(2, nullptr); lazy_rt2_ = FAILED(hr);
     }
     return hr;
 }
-// Lazy mode: put the application's RT1/RT2 bindings and write masks back
-// (reverse order of the bind). No-op in per-draw mode or when nothing is
+// Lazy mode: put the application's RT1/RT2 bindings back (reverse order of
+// the bind; the write masks are never held). No-op in per-draw mode or when nothing is
 // bound, so every hook may call it unconditionally before a native call.
 void MotionOutput::restore_bindings() noexcept {
     restore_bindings_checked(); // The checked path owns sticky quarantine.
@@ -572,8 +581,8 @@ template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
         if constexpr (!quiet) record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
         return hr;
     };
-    if (lazy_rt2_) { step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, lazy_write2_)); step(unbind(2)); }
-    if (lazy_rt1_) { step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, lazy_write1_)); step(unbind(1)); }
+    if (lazy_rt2_) step(unbind(2));
+    if (lazy_rt1_) step(unbind(1));
     lazy_rt1_ = lazy_rt2_ = false;
     const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.lazy_flushes; counters_.lazy_flush_ticks += ticks;
@@ -1118,14 +1127,6 @@ void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
 
 // ---- render-state shadow ---------------------------------------------------
 
-// Light path (no logging, no telemetry record): an application write to a
-// write mask the route holds in lazy mode first restores the application's
-// bindings, so the write lands on them and the next routed draw saves the new
-// value. Other states need nothing before the call.
-void MotionOutput::before_set_render_state(D3DRENDERSTATETYPE state) noexcept {
-    if (!enabled_) return;
-    if ((state == D3DRS_COLORWRITEENABLE1 && lazy_rt1_) || (state == D3DRS_COLORWRITEENABLE2 && lazy_rt2_)) flush_bindings<true>();
-}
 void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexcept {
     // A recorded call does not reach the device (EndStateBlock resynchronizes).
     if (!enabled_ || shadow_.recording) return;
@@ -6595,7 +6596,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u taa_filter=%.3f taa_weight=%.3f scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
-            " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
+            " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu lazy_mask_writes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
             " state_shadow=%u rs_mode=%s rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu rs_invalidations=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
             " mip_bias=%g mip_bias_sets=%lu mip_bias_restores=%lu mip_bias_draws=%lu mip_bias_stages=%04lx mip_bias_reads=%lu mip_bias_game_writes=%lu mip_bias_game_writes_total=%lu mip_bias_failures=%lu mip_bias_biased_now=%04lx",
             id_, frame_, counters_.latched, static_cast<unsigned long>(main_msaa_ ? main_msaa_samples_ : 0u), counters_.filled, counters_.fill_result, counters_.fill_restore,
@@ -6615,7 +6616,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(counters_.taa.camera_policy), static_cast<unsigned long>(counters_.taa.camera_reason),
             counters_.taa.camera_cut, counters_.taa.camera_rotation_deg,
             lazy_mode_ ? "lazy" : "perdraw", telemetry_ ? "cpu_qpc" : "off",
-            static_cast<unsigned long>(c.set_rt), static_cast<unsigned long>(c.lazy_flushes), static_cast<unsigned long>(c.jitter_writes),
+            static_cast<unsigned long>(c.set_rt), static_cast<unsigned long>(c.lazy_flushes), static_cast<unsigned long>(c.lazy_mask_writes), static_cast<unsigned long>(c.jitter_writes),
             static_cast<unsigned long>(c.readbacks), us(c.gate_ticks), us(c.route_draw_ticks), us(c.set_rt_ticks), us(c.lazy_flush_ticks),
             us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks), us(c.taa_copy_color_ticks),
             us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks), us(c.taa_copy_back_ticks), us(c.readback_ticks),
