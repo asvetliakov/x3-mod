@@ -9,6 +9,7 @@
 #include "collide_box_cull.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
+#include "collide_memo.h"
 #include "cull_small_parts.h"
 #include "frame_timing.h"
 #include "frame_phases.h"
@@ -1290,6 +1291,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     cull_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_CENSUS=1 only: the cull_census_frame row and the entry rows of a captured frame, then the ring is cleared
     collide_box_cull::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_BOX_CULL=1 only: reads and zeroes the four pair counters; one collide_census line per 300 frames, one collide_census_frame line per capture frame
     collide_narrow_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_NARROW_CENSUS=1 only: swaps the accepted-pair ring; one collide_narrow line per 300 frames, collide_narrow_pair rows on a capture frame
+    collide_memo::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame (entries expire after one frame untouched); one collide_memo line per 300 frames
     cull_small_parts::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold and culled count on a captured frame
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(ctx.fps_overlay.visible()){
@@ -1423,6 +1425,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     lod_scale::refresh(); // the multiplier may be rewritten if the device bring-up path re-runs
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::begin_frame(false); // a Reset disarms the census stubs and drops the partial frame
+    collide_memo::device_reset(); // X3M_COLLIDE_MEMO=1 only: a Reset (device loss, mode change, the pause around it) drops the whole memo
     cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next frame's projection read; new back-buffer width
     ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
     finite_upload_metrics(d,ctx,"reset_after");
@@ -2974,6 +2977,7 @@ void initialize_log(HMODULE module) {
     collide_box_cull::initialize(); // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector collision pair tests (0x0045d58e, 0x0045cc7c), same window
     collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window, disjoint from the box-cull claims
     collide_sat_sse2::initialize(); // X3M_COLLIDE_SAT_SSE2=1 only; the sole call of the OBB separating-axis test 0x004e3280 (at 0x004e25a3) redirected to an SSE2 reimplementation, same window, disjoint from every other claim
+    collide_memo::initialize(); // X3M_COLLIDE_MEMO=1 only; the sole call of 0x004e29f0 (at 0x0047f329, inside the mesh-pair query) redirected to the no-contact memo's thunk, same window, after the census and the SAT so the bytes it hashes are settled
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2), same window, disjoint from the census claims
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
