@@ -368,6 +368,66 @@ splits into `prepare` and `setup` in the same window as the profiler samples.
 - The classes behind `[[E+0x28]+0x14]` slots 4 and 5 in the pass loop, and
   `0x00488170`'s role; unchanged from the earlier notes.
 
+## 8. Run 47 B — session B3 profiler results (2026-09-19)
+
+`/tmp/x3-bottleX3-run167`, `--motion-rt-mode lazy --profile --profile-interval-us 500` (no
+`--frame-timing`), busy station view, ~60 s held, user-observed 45-48 fps. `frame_end` confirms
+9254 frames / 197,770 ms = 21.37 ms/frame = 46.8 fps, matching the user's report.
+
+**Profiler health.** `profile_report` deltas: 39 reports, 1,497,596 samples over 195.19 s = 7,672
+samples/s; `ticks=` sum / elapsed = 487 ticks/s against the nominal 2,000 (`interval_us=500`), i.e. the
+sampler is running at about a quarter of its requested rate as the discovered-thread count grows (9 to 19
+threads; `tick_us_mean` 252-882 us, `tick_us_max` up to 65,130 us). `dropped=0` in every report (no leaf-table
+overflow). `suspend_failures` sums to 8,041 across `profile_thread` deltas, concentrated on a few worker
+threads (e.g. tid 452 saw 362 failures in one delta among threads with otherwise clean rows); `context_failures`
+is 0 throughout.
+
+**Leaf table is blind under FEX again, exactly as run84 found.** Summed over every `profile_thread` delta
+(1,497,596 samples total): `leaf_x3ap=0`, `leaf_wine=0`, `leaf_d3dx=0`, `leaf_proxy=0`, `leaf_zlib=0`,
+`leaf_xml=0`, `leaf_ntdll=1,218,757` (81.4%), `leaf_other=278,839` (18.6%, unresolved/no pinned module) — this
+holds for every thread including tid 216 (`init_tid`, `start_module=0` = X3AP.exe, the process's first D3D
+thread). `profile_leaf` lines corroborate this directly: aggregated by module, every leaf line is either
+`module=1 name=ntdll.dll` (3,367,565 summed counts across delta reports) or `module=65535 name=-` (792,597,
+unresolved). **Zero leaf samples landed in X3AP.exe, d3dx9_37.dll, or the d3d9 proxy** — the module-split and
+per-leaf-RVA request from the brief cannot be answered from `profile_leaf`/`profile_thread` in this run; EIP at
+every FEX-emulated tick sits in an ntdll syscall thunk or an address the sampler cannot resolve to any pinned
+module, not in application code.
+
+**Frame table (stack-scan return addresses inside X3AP.exe) is partly informative.** `profile_frame` totals
+4,157,658 samples; 3,901,493 (93.84%) are `rva=0x0` (no main-module frame found on the walked/scanned stack —
+also mostly blind). Of the 256,165 non-zero-RVA samples (6.16% of all `profile_frame` samples, ~1.7% of total
+1.5M profiler samples), the top 25 RVAs (`base=0x400000`):
+
+| addr | share of non-zero frame samples | named region (view-submit-hot-path.md) |
+| --- | --- | --- |
+| 0x4722ad | 15.86% | inside/adjacent to R5's sort call site `0x004722af` |
+| 0x4721b6 | 12.46% | same function as above, a few bytes earlier |
+| 0x4c403e | 11.49% | inside the pass loop `0x004c3ff0`-`0x004c4070` (`BeginPass`->`DrawIndexedPrimitive`->`EndPass`) |
+| 0x4c4000 | 5.93% | pass loop, same range |
+| 0x4c4068 | 1.06% | pass loop, same range |
+| 0x4c522d | 1.25% | inside `0x004c0150` (material submission), no named sub-range |
+| 0x4c0483 | 1.15% | inside `0x004c0150`, before the labeled material-init block (`0x004c0c6d`) |
+| 0x51c84e, 0x51133e, 0x51aab3, 0x50e21e, 0x517bdc, 0x4bcc30, 0x4b9214, 0x4e25a8, 0x4e1a18, ... | ~2% each or less | **none of R1-R8's named ranges; not documented anywhere in this note** |
+
+`0x4722ad`/`0x4721b6` together are 28.3% of resolved frame samples (~1.72% of all profiler samples) and are
+the single strongest signal in this run: they sit at the R5 draw-queue-sort call site, consistent with R5
+being a real caller-frame while something underneath it (D3DX/CRT/syscall) runs. The pass-loop cluster
+(`0x4c4000`-`0x4c4068`, 18.5% of resolved samples) is the ordinary per-draw `BeginPass`/`DrawIndexedPrimitive`
+path, not one of the R1-R8 candidates. None of the top-25 addresses fall inside R8's `0x4bdee0`-`0x4be3e3`,
+R3/R1/R2's `0x4c1eab`-`0x4c3ff0`, or R4/R7's `0x47d9c0`/`0x47e620` proper (only the *caller into* the sort at
+0x4722ad, not the sort body). The `0x50xxxx`/`0x51xxxx` addresses are real X3AP.exe text (module text extends
+to `0x531000`) but outside every range this note names — an unidentified hot caller-frame family worth a
+disassembly pass of its own.
+
+**R1-R8 disposition.** None of R1, R2, R3, R4, R6, R7, R8 is confirmed or refuted by this run: the leaf table
+that would show their code directly is 100% blind (0 x3ap leaf samples), and none of their named ranges appear
+among the frame table's resolved addresses. R5 (draw-queue sort) has directional, not conclusive, frame-table
+support (a caller-frame share, not a leaf/time measurement) — consistent with, but not proof of, its being
+costly. The `--profile` leaf/RVA method itself is closed out for this FEX build the same way run84 closed it:
+the brief's requested "top 25 leaf RVAs in X3AP.exe with sample shares" cannot be produced because there are no
+such leaf samples. The note's own fallback column (stamp pairs and counters at each candidate's site, section
+6) remains the only path to a real measurement; this run supplies none of those stamps.
+
 ## Reproduce
 
 ```sh

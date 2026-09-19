@@ -2114,6 +2114,31 @@ After runs 155 (verify: 808,408 confirmed, 0 mismatches) and 156 (62 % of node p
 | Host tests | `PYTHONPATH=verification/probe python3 -m unittest` over `test_collide_memo`, `test_collide_sat_sse2`, `test_collide_box_cull`, `test_collide_narrow_census`, `test_cull_small_parts`, `test_lod_scale_launch`, `test_env_experiment_launch`, `test_d3dx_override_launch`, `test_voice_decoder_launch`, `test_launcher_stderr_tee` | 8 + 74 tests, OK |
 | Launcher defaults | `python3 tools/manage.py launch --dry-run` / `… --no-collide-sat-sse2 --no-collide-memo` / `… --vanilla` | `X3M_COLLIDE_SAT_SSE2=1` and `X3M_COLLIDE_MEMO=1` / neither / neither; `--no-collide-memo --collide-memo-verify` refused |
 
+## Collide memo: conservative advancement `--collide-memo-advance` (2026-09-20, no game)
+
+After runs 163/164 (hypothesis 1 refuted; the cost is a moving `b`); [sector-collide.md](../reverse-engineering/sector-collide.md)
+§14.7. Bottle X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Nothing launched, nothing installed, no
+DLL built. **Outcome: sound in the fixture, no benefit where the cost is.** Not flown, not merged: the code was dropped
+and exists only in commit `8a374dc5`; the results below are that commit's.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Site verifiers | `python3 verification/probe/verify_collide_memo_site.py`; `python3 verification/probe/verify_collide_sites.py` | PASS, 32 checks (new: a contact needs a triangle intersection in every mode; the replayed globals are private to the collider); PASS, 72 checks |
+| SAT fixture (the core now reports the pruning gap) | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_sat_sse2.py` | exit 0, 41 checks, 0 failures, 2,560,000 pairs, 0 violations; 6.0 / 19.9 ns (was 5.9 / 19.8); module x87-free, thunk exact |
+| Memo fixture | same wrapper, `run_collide_memo.py` | exit 0, 76 checks, 0 failures, 6.7 s: 69,147 queries, 0 differences, 0 stale hits; advancement 25,035 answers, 26,803 node pairs saved, 1,012 refused, 0 on a contact; verify 452 / 0; deep no-leaf case (1,037 node pairs) creeping 1 unit per frame: **0 of 40 answered**; advance answer 142 ns, miss + store +185 ns |
+| Host tests | `PYTHONPATH=verification/probe python3 -m unittest` over `test_collide_memo`, `test_collide_sat_sse2`, `test_collide_box_cull`, `test_collide_narrow_census`, `test_cull_small_parts`, `test_env_experiment_launch`, `test_d3dx_override_launch` | 67 tests, OK |
+| Launcher | `python3 tools/manage.py launch --dry-run --collide-memo-advance` | `X3M_COLLIDE_SAT_SSE2=1`, `X3M_COLLIDE_MEMO=1`, `X3M_COLLIDE_MEMO_ADVANCE=1`; refused with `--no-collide-sat-sse2` or `--no-collide-memo` |
+
+## Collide front tracking: feasibility measurement (2026-09-20, no game, no production code)
+
+[sector-collide.md](../reverse-engineering/sector-collide.md) §14.9. Bottle X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`. `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_front_feasibility.py`:
+exit 0, 0 unsound frames; `verification/results/collide-front-feasibility.json`. Front tracking with the cached
+separating axis: 1.13–1.16× at 1 unit per frame, 1.12× at 5, 0.95× at 20; without the cached axis 0.84–1.04×; axis-first
+hit rate 98 % / 90 % / 87 %. Full query 29–33 ns per node pair with the boxes in preorder, 34–36 ns scattered over
+151 MB: the flight's 66 ns is not box cache misses. Projected flight saving ≈ 0.9 ms of ≈ 7 ms: **not worth building.**
+The `--collide-memo-advance` revert left `verify_collide_memo_site.py` at 33 checks (PASS) and production equal to main.
+
 ## Run 44 A (run140/run141): `--collide-narrow-census` triage of two preserved sessions
 
 Two sessions, `--loop-phases --collide-narrow-census`, bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,
