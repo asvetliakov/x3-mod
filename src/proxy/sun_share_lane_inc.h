@@ -199,3 +199,109 @@ bool MotionOutput::sun_lane_self_test(D3DFORMAT depth_format,char* reason,std::s
     std::snprintf(reason,reason_size,"stage=%s result=%08lx restore=%08lx checks=%u",stage,hr,restore,checks);
     return ok;
 }
+
+// Invalid-share stamp candidate: a scene draw refused at gate 3 as
+// `unregistered` (a program outside the profile registry, e.g. an SM2 program
+// the SM3 rewriter cannot host) after the first receiver. after_draw stamps it
+// only if it is an actual depth writer. A registered row without a reviewed
+// pair (`pair`) and the xt repair refusal keep the frame veto.
+void MotionOutput::arm_sun_stamp(const MotionDrawCall& call, MotionRoute& route) noexcept {
+    if (route.scene && route.gate == MotionGate::Pair && route.unmatched == UnmatchedReason::Unregistered &&
+        !call.user_memory && sun_frame_.receivers) {
+        sun_stamp_call_ = call; route.sun_stamp = true;
+    }
+}
+// Invalid-share stamp of one unroutable depth writer (called from after_draw,
+// after the application's own draw succeeded, with the application's bindings on
+// the device: an unrouted draw had its lazy RT1/RT2 flushed in before_draw).
+// The draw is issued once more with the application's VS, streams, constants
+// and every raster state, and only these changes: a constant PS of the
+// original's shader-model family, RT2 bound with COLORWRITEENABLE2 = GREEN,
+// RT0/RT1 masked off, no depth write, ZFUNC EQUAL, alpha test, blending, fog and
+// sRGB write off. EQUAL against the depth the same program just wrote selects
+// exactly the pixels the draw owns (alpha-test/texkill holes and occluded
+// fragments hold another depth), so RT2.g becomes -1 there: the explicit
+// invalid share of a plain depth writer (directional-shadows.md), and the
+// apply pass excludes those pixels. RT2.r keeps the earlier depth, as it does
+// for every unrouted draw with the lane off. Stencil-enabled draws are refused
+// (a second issue would run the stencil operations twice). Documented D3D9
+// only; the independent write masks are a lane prerequisite (qualify_sun_lane).
+// Everything is read before the first write; every attempted write is put back
+// in reverse order, and a failed restoration quarantines like undo().
+bool MotionOutput::sun_stamp_draw(const MotionRoute&) noexcept {
+    using DrawFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, UINT, UINT);
+    using DrawIndexedFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, INT, UINT, UINT, UINT, UINT);
+    // The stamp PS takes the shader-model family of the bound programs (D3D9
+    // pairs SM3 with SM3 only). A null VS (fixed-function vertex processing) or
+    // a null PS pairs with ps_2_0; a bound program whose version the registry
+    // never saw, or a null stage beside an SM3 program, is refused.
+    if ((shadow_.vs && !shadow_.vs_major) || (shadow_.ps && !shadow_.ps_major)) return false;
+    const bool sm3 = shadow_.vs_major >= 3 || shadow_.ps_major >= 3;
+    if (sm3 && (!shadow_.vs || !shadow_.ps)) return false;
+    if (shadow_.ps && shadow_.ps_depth_out) return false; // the original replaces the rasterized depth: EQUAL would not select its pixels
+    const unsigned slot = sm3 ? 1u : 0u;
+    if (!depth_surface_ || motion_state_lost_ || sun_stamp_ps_failed_[slot]) return false;
+    if (!sun_stamp_ps_[slot]) {
+        // def c0, -1, -1, -1, -1 ; mov oC0, c0 ; mov oC1, c0 ; mov oC2, c0 (every
+        // output up to the lane's index is written; RT0/RT1 are masked off).
+        const DWORD program[] = {slot ? 0xffff0300u : 0xffff0200u,
+            0x05000051u, 0xa00f0000u, 0xbf800000u, 0xbf800000u, 0xbf800000u, 0xbf800000u,
+            0x02000001u, 0x800f0800u, 0xa0e40000u, 0x02000001u, 0x800f0801u, 0xa0e40000u,
+            0x02000001u, 0x800f0802u, 0xa0e40000u, 0x0000ffffu};
+        const HRESULT created = native<CreatePsFn>(CreatePixelShader)(device_, program, &sun_stamp_ps_[slot]);
+        if (FAILED(created) || !sun_stamp_ps_[slot]) {
+            release(sun_stamp_ps_[slot]); sun_stamp_ps_failed_[slot] = true;
+            log("sun_shadow_lane_stamp_shader device=%llu frame=%llu model=%u create=%08lx", id_, frame_, slot ? 3u : 2u, created);
+            return false;
+        }
+    }
+    struct Item { D3DRENDERSTATETYPE key; DWORD value; };
+    static constexpr Item items[] = {
+        {D3DRS_ZWRITEENABLE, FALSE}, {D3DRS_ZFUNC, D3DCMP_EQUAL}, {D3DRS_ALPHATESTENABLE, FALSE},
+        {D3DRS_ALPHABLENDENABLE, FALSE}, {D3DRS_SRGBWRITEENABLE, FALSE}, {D3DRS_FOGENABLE, FALSE},
+        {D3DRS_COLORWRITEENABLE, 0}, {D3DRS_COLORWRITEENABLE1, 0}, {D3DRS_COLORWRITEENABLE2, D3DCOLORWRITEENABLE_GREEN},
+        {D3DRS_COLORWRITEENABLE3, 0}}; // RT3 is never the route's; an application binding there stays untouched
+    constexpr unsigned item_count = unsigned(sizeof items / sizeof items[0]);
+    DWORD saved[item_count]{}, stencil = TRUE;
+    if (FAILED(render_state(D3DRS_STENCILENABLE, &stencil)) || stencil) return false;
+    for (unsigned i = 0; i < item_count; ++i) if (FAILED(render_state(items[i].key, &saved[i]))) return false;
+    HRESULT hr = S_OK;
+    unsigned written = 0; // bit i: items[i] was attempted (a failed setter may still have mutated)
+    bool target = false, shader = false;
+    bool mid_fault = false; // fixture only: the fourth attempted state write reports failure after it was issued
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
+     if(!std::strcmp(fault,"stamp"))hr=E_FAIL;
+     mid_fault=!std::strcmp(fault,"stamp_mid");}
+#endif
+    for (unsigned i = 0; i < item_count && SUCCEEDED(hr); ++i) {
+        if (saved[i] == items[i].value) continue;
+        written |= 1u << i;
+        hr = direct_call<SetRenderStateFn>(SetRenderState, items[i].key, items[i].value);
+        if (mid_fault && SUCCEEDED(hr) && i >= 3) hr = E_FAIL;
+    }
+    if (SUCCEEDED(hr)) { target = true; hr = bind_target(2, depth_surface_); }
+    if (SUCCEEDED(hr)) { shader = true; hr = native<SetPsFn>(SetPixelShader)(device_, sun_stamp_ps_[slot]); }
+    if (SUCCEEDED(hr)) {
+        const auto& c = sun_stamp_call_;
+        hr = c.indexed
+            ? native<DrawIndexedFn>(82)(device_, c.topology, c.base_vertex, c.min_vertex, c.vertex_count, c.first, c.primitives)
+            : native<DrawFn>(81)(device_, c.topology, c.first, c.primitives);
+    }
+    HRESULT restore = S_OK;
+    auto step = [&](HRESULT value) { if (SUCCEEDED(restore) && FAILED(value)) restore = value; };
+    if (shader) step(native<SetPsFn>(SetPixelShader)(device_, shadow_.ps));
+    if (target) step(bind_target(2, nullptr));
+    for (unsigned i = item_count; i-- > 0;)
+        if (written & (1u << i)) step(direct_call<SetRenderStateFn>(SetRenderState, items[i].key, saved[i]));
+    if (FAILED(restore)) {
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restore; }
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
+        ++counters_.restore_failures; invalidate_render_states();
+        if (logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=sun_stamp", id_, frame_, counters_.draws, restore);
+        }
+    }
+    return SUCCEEDED(hr) && SUCCEEDED(restore);
+}

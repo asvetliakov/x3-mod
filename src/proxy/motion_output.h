@@ -124,6 +124,7 @@ struct MotionRoute {
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     bool sun_receiver = false, sun_color_writer = false;
+    bool sun_stamp = false; // gate-3 refused scene draw the lane may stamp invalid after the native draw (sun_stamp_call_ holds its arguments)
     // Sun-lane refusal diagnostics (sun_share_frame.h): the gate reason
     // recorded while the lane is on, and the z/z-write states the selector
     // read (bit0 z, bit1 z write, bit2 both known). Never consulted by
@@ -858,6 +859,11 @@ public:
     // filter A (0 off), gate footprints F0 < F1 in world units per pixel, speed
     // gate of the weight LO < HI in px/frame.
     void configure_taa_far(float weight, float filter, float f0, float f1, float lo, float hi) noexcept { taa_far_weight_ = weight; taa_far_filter_ = filter; taa_far_f0_ = f0; taa_far_f1_ = f1; taa_far_lo_ = lo; taa_far_hi_ = hi; }
+    // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]] (docs/architecture/taa-lattice-crawl.md
+    // section 13), off by default: history weight W on fragmented-depth regions
+    // (0 off), clip relaxation RELAX (1 = clip off there), speed gate LO < HI
+    // px/frame. Runs on the far-stabiliser program and shares its speed gate.
+    void configure_taa_thin_region(float weight, float relax, float lo, float hi, bool gate_given) noexcept { taa_thin_weight_ = weight; taa_thin_relax_ = relax; if (gate_given) { taa_far_lo_ = lo; taa_far_hi_ = hi; } }
     void configure_taa_flicker(float thin_clip, float adaptive_weight, float adaptive_lo, float adaptive_hi, bool alpha_history) noexcept {
         taa_thin_clip_ = thin_clip; taa_adaptive_weight_ = adaptive_weight; taa_adaptive_lo_ = adaptive_lo; taa_adaptive_hi_ = adaptive_hi; taa_alpha_history_ = alpha_history;
     }
@@ -1092,7 +1098,9 @@ private:
                          // constant table (caster counter on; -1: none or beyond
                          // the shadowed c0..c31): the sun is at c4, c5 or c0
                          // depending on the program.
-                         std::int8_t sun_register = -1; };
+                         std::int8_t sun_register = -1;
+                         std::uint8_t major = 0; // version token major (0 until registered)
+                         bool depth_out = false; }; // PS: renderer::pixel_program_writes_depth, one walk at registration
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
@@ -1109,6 +1117,8 @@ private:
         bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion variant, frame failed
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
+        bool ps_depth_out = false; // the bound PS writes oDepth / texdepth (ShaderEntry::depth_out)
+        std::uint8_t vs_major = 0, ps_major = 0; // the bound programs' shader-model major versions (0: unbound or unknown)
         std::int8_t ps_sun_register = -1; // the bound PS's LightDir_Dir0 register (ShaderEntry::sun_register)
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
         IDirect3DPixelShader9* ps_source_gain_variant = nullptr;
@@ -1263,6 +1273,18 @@ private:
     void note_sun_untracked_writer(const MotionRoute& route, renderer::SunUntrackedReason reason) noexcept;
     bool sun_coverage_current_=false, sun_composition_completed_=false;
     IDirect3DPixelShader9* sun_sentinel_ps_=nullptr;
+    // Invalid-share stamp (directional-shadows.md "Unroutable depth writer"): a gate-3
+    // refused depth writer after a receiver is re-issued once with the application's own
+    // VS/geometry, ZFUNC EQUAL, no depth write, RT0/RT1 masked and RT2 masked to .g,
+    // writing share -1 over exactly the pixels it won. [0] ps_2_0 (SM1/SM2 originals),
+    // [1] ps_3_0. A stamp that cannot run or fails keeps the frame veto.
+    IDirect3DPixelShader9* sun_stamp_ps_[2]{};
+    bool sun_stamp_ps_failed_[2]{}; // created on first use; a failed create is not retried on this device
+    MotionDrawCall sun_stamp_call_{};
+    unsigned sun_stamp_prims_=0; // primitives re-issued by this frame's successful stamps (flight sanity figure)
+    unsigned sun_stamps_=0, sun_stamp_refused_=0; // per frame; refused: a candidate whose stamp did not run or failed (vetoes as before)
+    void arm_sun_stamp(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    bool sun_stamp_draw(const MotionRoute& route) noexcept;
     // Caster-candidate counter storage: fixed, cleared at begin_frame and after
     // publication; the witness count is per device (attach clears it).
     bool candidates_requested_=false;
@@ -1992,6 +2014,7 @@ private:
     float taa_line_filter_ = 0.f;             // X3M_TAA_LINE_FILTER (0: off)
     unsigned taa_line_width_ = 1;             // X3M_TAA_LINE_FILTER=A,W: mask width 1 or 2 px
     float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 80.f, taa_far_f1_ = 130.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER
+    float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
     float taa_thin_clip_ = 0.f;               // X3M_TAA_THIN_CLIP (0: off)
     float taa_adaptive_weight_ = 0.f, taa_adaptive_lo_ = .1f, taa_adaptive_hi_ = .5f; // X3M_TAA_ADAPTIVE_WEIGHT (0: off)

@@ -31,10 +31,16 @@ struct DepthPrepassProfile {
 };
 
 // z_only aliases (docs/reverse-engineering/shader-fingerprints.md): 356 and
-// 380 bytes, the second adds a TEXCOORD0 pass-through.
+// 380 bytes, the second adds a TEXCOORD0 pass-through. z_only.fb holds
+// c78b4c68/803ebfd1; z_only_0000.fb / z_only_0001.fb (base 01.cat) hold
+// 4b63594a/d2e63b1e, the same two programs from an older compiler: they differ
+// only in the version string of the CTAB comment (dwords 52-53), not in code
+// (docs/verification/shader-coverage-offline.md).
 inline constexpr DepthPrepassProfile depth_prepass_profiles[] = {
+    {0x4b63594a775cbde0ull, 89, 0xfffe0101u, 0},
     {0x803ebfd17f79e413ull, 95, 0xfffe0101u, 0},
     {0xc78b4c68a87fce74ull, 89, 0xfffe0101u, 0},
+    {0xd2e63b1e5b0e24dfull, 95, 0xfffe0101u, 0},
 };
 
 // Registration-time lookup (never on the draw path): identity is the hash

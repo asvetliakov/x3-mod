@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CPU replay of src/temporal/resolve.hlsl over a --taa-debug capture (numpy, crop of the frame).
-usage: replay.py <dump dir> <x0> <y0> <x1> <y1> [validate|options|lattice|far|remedy]
+usage: replay.py <dump dir> <x0> <y0> <x1> <y1> [validate|options|lattice|far|remedy|thin]
 lattice: docs/architecture/taa-lattice-crawl.md; the lattice mask, the masked current filter (resolve_lattice*.hlsl),
 AgX + RCAS as agx.hlsl / rcas.hlsl apply them (HDR tonemapped write-back without bloom) and the sharpen exclusion."""
 import re, sys, json, subprocess
@@ -138,6 +138,7 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
             lo = np.minimum(lo, nb); hi = np.maximum(hi, nb); mean += nb / 9; sq += nb * nb / 9
             if A: g = np.exp(-A * ((nx_ - jx) ** 2 + (ny_ - jy) ** 2)); filt += nb * g; ft += g
     sig = np.sqrt(np.maximum(sq - mean * mean, 0)); cg = opt.get('clipgamma', 1.25); lo = np.maximum(lo, mean - cg * sig); hi = np.minimum(hi, mean + cg * sig)
+    old_unclipped = old
     clamped = np.where(masks['line2x'][..., None], old, np.clip(old, lo, hi)) if opt.get('noclipmask') else np.clip(old, lo, hi)  # H2: clip off on the mask only
     moved = np.abs(clamped - old).max(-1)  # clamp distance, weighted domain
     S = opt.get('thin', 0.); mask = thin | (remedy_px if opt.get('remedy') else False)
@@ -145,7 +146,22 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
     soft = np.where(mask, S * (1 - np.clip((speed - 2) * .5, 0, 1)), 0.)
     old = clamped + soft[..., None] * (old - clamped)
     keep = np.full((h, wd), w)
-    newage = np.ones((h, wd))
+    tr = opt.get('thinregion')  # section 13: dict(W, lo, hi, gamma=None (clip off) | G (mean +- G sigma, box dropped), R=3, grow=3)
+    trg = np.zeros((h, wd))
+    if tr:
+        R_, G_ = tr.get('R', 3), tr.get('grow', 5); E_ = R_ + G_ + 1; yy, xx = np.mgrid[Y0 - G_:Y1 + G_, X0 - G_:X1 + G_]
+        tz = lambda a_, b_: (valid(a_) & bgof(b_, a_)) | (valid(b_) & bgof(a_, b_)); frag = np.zeros(yy.shape, bool)
+        for ax, ay in ((1, 0), (0, 1), (1, 1), (1, -1)):
+            frag |= sum(tz(dep[np.clip(yy + k_ * ay, 0, H - 1), np.clip(xx + k_ * ax, 0, W - 1)], dep[np.clip(yy + (k_ + 1) * ay, 0, H - 1), np.clip(xx + (k_ + 1) * ax, 0, W - 1)]).astype(int) for k_ in range(-R_, R_)) >= 2
+        tm = sum(frag[G_ + oy:G_ + oy + h, G_ + ox:G_ + ox + wd] for oy in range(-G_, G_ + 1) for ox in range(-G_, G_ + 1)) > 0 if G_ else frag
+        tcl = np.clip((speed - tr['lo']) / (tr['hi'] - tr['lo']), 0, 1)
+        if tr.get('nbhd', True):  # the gate closes with the FASTEST pixel of the 7x7: a background pixel a moving edge has just uncovered has the background's speed
+            C_ = R_ + G_; tp = np.pad(tcl, C_, mode='edge'); tcl = np.max([tp[C_ + oy:C_ + oy + h, C_ + ox:C_ + ox + wd] for oy in range(-C_, C_ + 1) for ox in range(-C_, C_ + 1)], 0)  # the reach of the region itself
+        trg = tm * (1 - tcl)
+        relaxed = old_unclipped if tr.get('gamma') is None else np.clip(old_unclipped, mean - tr['gamma'] * sig, mean + tr['gamma'] * sig)
+        ay = np.clip(by + (fy >= .5) - Y0, 0, h - 1); ax = np.clip(bx + (fx >= .5) - X0, 0, wd - 1); a = age[ay, ax]; a = np.where((a >= 1) & (a <= 64), a, 1)
+        old = old + trg[..., None] * (relaxed - old); keep = keep + trg * (np.minimum(a / (a + 1), tr['W']) - keep); newage = np.where(accept, np.minimum(a + 1, 64), 1)  # cumulative mean until W binds
+    if not tr: newage = np.ones((h, wd))
     if opt.get('wmax'):
         a = age[np.clip(by + (fy >= .5), 0, H - 1) - Y0 + 0, 0] if False else None
         ay = np.clip(by + (fy >= .5) - Y0, 0, h - 1); ax = np.clip(bx + (fx >= .5) - X0, 0, wd - 1)
@@ -191,10 +207,10 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
     out = unweigh(blendc + keep[..., None] * (old - blendc), k)
     out = np.where(accept[..., None], out, c)
     res = np.concatenate([out, alpha[..., None]], -1).astype(np.float16)
-    return res, newage, dict(far=far, thin=thin, disocc=disocc, accept=accept, moved=moved, validc=~far, speed=speed, remedy_px=remedy_px, oob=~ok, lattice=lattice, masks=masks, farw=farw)
+    return res, newage, dict(far=far, thin=thin, disocc=disocc, accept=accept, moved=moved, validc=~far, speed=speed, remedy_px=remedy_px, oob=~ok, lattice=lattice, masks=masks, farw=farw, trg=trg)
 
 def run(opt, conv, nframes=None, seed_each=False):
-    outs = []; diags = []; age = np.full(ys.shape, 64.)  # steady state: the capture starts on a long-lived history
+    outs = []; diags = []; age = np.full(ys.shape, float(os.environ.get('AGE0', '64')))  # steady state: the capture starts on a long-lived history
     hist = load('taa', frames[0], 'rgba16f', np.float16, 4).astype(np.float32)
     pdep = load('depth', frames[0], 'rgba32f', np.float32, 4)[..., 0].copy()
     for f in frames[1:nframes]:
@@ -470,3 +486,33 @@ if MODE == 'remedy':
         print('%-26s CREEP residual %.2f codes (x%.2f) = %.3f of the lattice contrast %.1f (x%.2f); %d tiles, shift (%.2f, %.2f) px' % (name, cr, cr / ref['cr'], cr / cc, cc, cc / ref['cc'], ct, cs[0], cs[1]), end=' || ')
         print('%-26s crossings %d | bead contrast %.3f (x%.2f), amplitude %.4f (x%.2f) | before the sharpen %.3f | line peak x%.2f | temporal rms on the mask x%.2f | across-line gradient energy on the mask x%.2f | off-mask gradient x%.4f' % (
             name, n, bc, bc / ref['bc'], pc - ps, (pc - ps) / ref['amp'], bc0, pc / ref['pc'], rip / ref['rip'], gl / ref['gl'], g / ref['g']), flush=True)
+
+# --- thin-region stabiliser (taa-lattice-crawl.md section 13) ----------------------------------------------------------
+# Static captures: presented temporal rms / p99 peak-to-peak / px > 40 codes on the crop. Moving captures (GHOST=1): what the option
+# adds on background (sentinel-depth) pixels inside the mask against the installed resolve = trailing colour behind moving edges.
+if MODE == 'thin':
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    GAIN = 2. ** -float(os.environ.get('SHARPEN', '0.75')); fr = frames[1:]; dcode = lambda rgb: 255 * (rgb @ LUMA); SKIP = int(os.environ.get('SKIP', '24'))
+    ev = {int(re.search(r'frame=(\d+)', l).group(1)): float(re.search(r'ev_adapted=([-\d.]+)', l).group(1)) for l in
+          subprocess.run(['grep', '-E', r'^hdr_frame device=1 frame=(%s) ' % '|'.join(map(str, frames)), D + log], capture_output=True, text=True).stdout.splitlines()}
+    gates = [tuple(map(float, g_.split(':'))) for g_ in os.environ.get('GATES', '0.03:0.25').split(',')]
+    configs = [('installed', {})]
+    for lo_, hi_ in gates:
+        for gm in [None] + [float(x) for x in os.environ.get('GAMMAS', '').split(',') if x]:
+            for W_ in map(float, os.environ.get('WS', '0.97').split(',')):
+                configs.append(('W %g %s gate %g-%g' % (W_, 'clip off' if gm is None else 'gamma %g' % gm, lo_, hi_), dict(thinregion=dict(W=W_, lo=lo_, hi=hi_, gamma=gm, R=int(os.environ.get('R', '3')), grow=int(os.environ.get('GROW', '5'))))))
+    ref = None
+    for name, opt in configs:
+        outs, diags, _ = run(opt, 1); pres = []
+        for o, f in zip(outs, fr):
+            pad = load('taa', f, 'rgba16f', np.float16, 4)[Y0 - 1:Y1 + 1, X0 - 1:X1 + 1, :3].astype(np.float32); pad[1:-1, 1:-1] = o[..., :3]; pres.append(dcode(rcas(agx(pad, ev[f]), GAIN)))
+        pres = np.nan_to_num(np.array(pres))[SKIP:]; dg = diags[SKIP:]; mask = np.array([d_['trg'] > 0 for d_ in dg]); far_ = np.array([d_['far'] for d_ in dg]); spd = np.median([np.median(d_['speed'][~d_['far']]) for d_ in dg if (~d_['far']).any()])
+        if ref is None: ref = pres; contrast = np.abs(np.diff(pres, axis=2)).max(0); tex = np.pad(contrast, ((0, 0), (0, 1))) > 25
+        rms = float(np.sqrt(((pres - pres.mean(0)) ** 2)[:, tex].mean())); p2p = (pres.max(0) - pres.min(0))[tex]
+        line = '%-32s speed %.3f | mask share %.3f | textured px: temporal rms %.2f, p2p p99 %.0f, px>40 %d' % (name, spd, mask.mean(), rms, np.percentile(p2p, 99), (p2p > 40).sum())
+        if os.environ.get('GHOST') and opt:
+            sky = far_ & mask; dlt = (pres - ref); geo = ~far_ & mask
+            line += ' | GHOST on masked background px (%d): mean added %.2f codes, p99 |added| %.1f, px-frames > 8 codes %.4f | masked geometry px: mean |change| %.2f | gradient energy on mask x%.3f' % (
+                sky.sum(), dlt[sky].mean() if sky.any() else 0, np.percentile(np.abs(dlt[sky]), 99) if sky.any() else 0, (np.abs(dlt[sky]) > 8).mean() if sky.any() else 0, np.abs(dlt[geo]).mean() if geo.any() else 0,
+                (np.diff(pres, axis=2) ** 2)[mask[:, :, 1:]].mean() / max((np.diff(ref, axis=2) ** 2)[mask[:, :, 1:]].mean(), 1e-9))
+        print(line, flush=True)

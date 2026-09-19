@@ -80,8 +80,8 @@ CHECK refuse_while_reset_pending PASS
 CHECK after_reset_accepts PASS
 CHECK reset_bit_identical PASS
 RESET PASS references=15 allocations=2
-TIMING width=1280 height=768 sky=1 fenced_on_ms=1.0860 fenced_off_ms=0.0163 submit_ms=0.2074 chain_ms=1.0697 gpu_ms=0.8623 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
-TIMING width=1280 height=768 sky=0 fenced_on_ms=0.8908 fenced_off_ms=0.0165 submit_ms=0.1384 chain_ms=0.8743 gpu_ms=0.7359 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
+TIMING width=1280 height=768 sky=1 fenced_on_ms=1.1182 fenced_off_ms=0.0177 submit_ms=0.2101 chain_ms=1.1005 gpu_ms=0.8904 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
+TIMING width=1280 height=768 sky=0 fenced_on_ms=0.9184 fenced_off_ms=0.0140 submit_ms=0.1469 chain_ms=0.9044 gpu_ms=0.7575 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
@@ -90,9 +90,9 @@ CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
-TIMING_QUADS width=1280 height=768 march_ms=0.5591 sky_level_ms=0.3551 sky_reduce_ms=0.3028 composite_ms=0.5469 sum_ms=1.7639 samples=6
-TIMING width=1920 height=1080 sky=1 fenced_on_ms=0.9801 fenced_off_ms=0.0142 submit_ms=0.1995 chain_ms=0.9659 gpu_ms=0.7664 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
-TIMING width=1920 height=1080 sky=0 fenced_on_ms=0.8852 fenced_off_ms=0.0145 submit_ms=0.1450 chain_ms=0.8707 gpu_ms=0.7257 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
+TIMING_QUADS width=1280 height=768 march_ms=0.5837 sky_level_ms=0.3261 sky_reduce_ms=0.3176 composite_ms=0.5657 sum_ms=1.7931 samples=6
+TIMING width=1920 height=1080 sky=1 fenced_on_ms=1.8078 fenced_off_ms=0.0153 submit_ms=0.2219 chain_ms=1.7925 gpu_ms=1.5706 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
+TIMING width=1920 height=1080 sky=0 fenced_on_ms=1.6112 fenced_off_ms=0.0137 submit_ms=0.1590 chain_ms=1.5975 gpu_ms=1.4385 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
@@ -101,9 +101,9 @@ CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
-TIMING_QUADS width=1920 height=1080 march_ms=0.5691 sky_level_ms=0.3182 sky_reduce_ms=0.1887 composite_ms=0.5421 sum_ms=1.6181 samples=6
-TIMING width=1280 height=768 sky=1 fenced_on_ms=1.0764 fenced_off_ms=0.0145 submit_ms=0.1964 chain_ms=1.0619 gpu_ms=0.8655 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
-TIMING width=1280 height=768 sky=0 fenced_on_ms=0.8967 fenced_off_ms=0.0141 submit_ms=0.1409 chain_ms=0.8826 gpu_ms=0.7417 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
+TIMING_QUADS width=1920 height=1080 march_ms=0.7061 sky_level_ms=0.3174 sky_reduce_ms=0.3129 composite_ms=0.7722 sum_ms=2.1086 samples=6
+TIMING width=1280 height=768 sky=1 fenced_on_ms=1.0931 fenced_off_ms=0.0142 submit_ms=0.2083 chain_ms=1.0789 gpu_ms=0.8706 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=172 samples=15
+TIMING width=1280 height=768 sky=0 fenced_on_ms=0.9962 fenced_off_ms=0.0153 submit_ms=0.1463 chain_ms=0.9809 gpu_ms=0.8346 gpu_timestamp_ms=-1.0000 timestamp_samples=0 device_calls=149 samples=15
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
@@ -112,6 +112,6 @@ CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
-TIMING_QUADS width=1280 height=768 march_ms=0.5699 sky_level_ms=0.3341 sky_reduce_ms=0.3078 composite_ms=0.5488 sum_ms=1.7606 samples=6
+TIMING_QUADS width=1280 height=768 march_ms=0.5765 sky_level_ms=0.3336 sky_reduce_ms=0.3090 composite_ms=0.5459 sum_ms=1.7650 samples=6
 CHECK detach_released PASS
 RESULT PASS checks=89 failures=0

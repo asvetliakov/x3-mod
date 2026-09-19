@@ -98,7 +98,21 @@ struct FrameInputs {
     // of a different A (one Gaussian per frame). farw = 0 pixels are the thin /
     // plain blend bit for bit.
     float far_weight = 0.f, far_filter = 0.f, far_d0 = 0.f, far_inv = 0.f;
-    // Speed gate of far_weight, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
+    // Thin-region stabiliser (docs/architecture/taa-lattice-crawl.md section 13):
+    // where the depth is FRAGMENTED (some 7-tap line through the pixel changes
+    // between geometry and its background at least twice; the 11x11 around such
+    // pixels, grown by 5), and nothing within 8 px moves faster than the speed gate below,
+    // the history is pulled only (1 - thin_region_relax) of the way to the
+    // variance clip (1: clip off) and the history weight rises to
+    // min(n / (n + 1), thin_region_weight): the cumulative mean of the jitter
+    // cycle until the cap binds. 0 off, else within [weight, 0.99]. Runs on the
+    // far-stabiliser program (configure_far(), PerPixel motion, the age target),
+    // shares its speed gate, and like it excludes adaptive_weight and
+    // current_filter; with either of the two, thin_clip must be 0 (the program
+    // has no 3x3 sentinel soft clip). Pixels outside the region are the far /
+    // plain blend bit for bit.
+    float thin_region_weight = 0.f, thin_region_relax = 1.f;
+    // Speed gate of far_weight and of the thin region, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
     float far_speed_lo = x3::temporal::kFarSpeedLo, far_speed_hi = x3::temporal::kFarSpeedHi;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
@@ -245,7 +259,8 @@ public:
     bool age_line_available() const noexcept { return age_line_ != nullptr; }
     // Creates the far-stabiliser program (and the mask program); needs the age
     // caps. A failure leaves the pass usable without the option.
-    HRESULT configure_far() noexcept;
+    // reference_program: fixtures only (an earlier build of resolve_far.hlsl for an identity comparison); production passes none.
+    HRESULT configure_far(const DWORD* reference_program = nullptr) noexcept;
     bool far_available() const noexcept { return mrt_age_ && line_mask_ != nullptr && far_ != nullptr; }
     // The mask targets could not be created (not a lost device): the line
     // filter and the far stabiliser are off for the rest of the session, runs

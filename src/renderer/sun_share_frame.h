@@ -32,6 +32,36 @@ constexpr const char* sun_untracked_reason_name(unsigned reason) noexcept {
     default: return "unknown";
     }
 }
+// Whether a D3D9 pixel program can replace the rasterized depth: an oDepth
+// operand (register type 9) in SM2+, texdepth / texm3x2depth in ps_1_x. Such a
+// draw's stored depth is not reproduced by a constant-colour re-issue, so the
+// invalid-share stamp refuses it. One walk at program registration; comments
+// and def payloads are skipped; a malformed walk answers true (fail closed).
+inline bool pixel_program_writes_depth(const std::uint32_t* code, std::size_t words) noexcept {
+    if (!code || !words || (code[0] >> 16) != 0xffffu) return true;
+    const unsigned major = (code[0] >> 8) & 0xffu;
+    std::size_t at = 1;
+    while (at < words) {
+        const std::uint32_t token = code[at]; const unsigned op = token & 0xffffu;
+        if (op == 0xffffu) return false;
+        if (op == 0xfffeu) { at += 1 + ((token >> 16) & 0x7fffu); continue; }
+        if (major >= 2) {
+            const unsigned length = (token >> 24) & 15u;
+            if (at + length >= words) return true;
+            if (op != 0x51u && op != 0x30u && op != 0x2fu && op != 0x1fu) // def, defi, defb, dcl carry no register writes
+                for (unsigned i = 1; i <= length; ++i) {
+                    const std::uint32_t operand = code[at + i];
+                    if ((operand & 0x80000000u) && (((operand >> 28) & 7u) | ((operand >> 8) & 0x18u)) == 9u) return true;
+                }
+            at += 1 + length;
+        } else {
+            if (op == 0x51u) { at += 6; continue; } // def c#, four floats
+            if (op == 0x57u || op == 0x54u) return true; // texdepth, texm3x2depth
+            ++at;
+        }
+    }
+    return true; // no END token
+}
 // Draw/frame bookkeeping only; no API calls, allocation, locks or arithmetic.
 // Pixel eligibility additionally requires depth in [0,1], share in [0,1] and
 // zero same-frame composition coverage. Counts are draws, never pixel counts.
