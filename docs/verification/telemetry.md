@@ -82,7 +82,7 @@ Per-call metrics (`telemetry_metric name=...`, one `count` per call):
 | `route_set_rt` | one route-issued `SetRenderTarget` of the per-draw apply/undo path or of a lazy flush | the fill's and the resolve's own target binds (inside `route_fill` and the `taa_*` phases) |
 | `route_jitter` | one jitter constant write: the jittered clip rows before a scene draw, or their bit-exact restoration after it | the jitter arithmetic (SSE, a few ns) |
 | `route_fill` | the per-frame sentinel fill: state save, fullscreen quad, state restore | – |
-| `route_lazy_flush` | one restoration of RT1/RT2 and `COLORWRITEENABLE1/2` in `X3M_MOTION_RT_MODE=lazy` | – |
+| `route_lazy_flush` | one restoration of RT1/RT2 in `X3M_MOTION_RT_MODE=lazy` (the write masks are never held) | – |
 | `route_readback` | one capture-frame readback to disk (RT1, RT2, the pre-resolve color, the resolved FP16 image); `bytes` is what was written | – |
 | `taa_run` | `TemporalPass::run` inclusive; nests the five phases below | the copy-back and the readbacks |
 | `taa_state_capture` | the cached `D3DSBT_ALL` block's `Capture` plus the target/depth/viewport/scissor getters | – |
@@ -107,7 +107,10 @@ capture frames and must be kept out of ordinary-frame estimates.
 
 Per-frame totals are appended to `motion_output_frame` (fields after
 `taa_references`; earlier fields are unchanged): `rt_mode=perdraw|lazy`,
-`timing=cpu_qpc|off`, the counts `set_rt`, `lazy_flushes`, `jitter_writes`,
+`timing=cpu_qpc|off`, the counts `set_rt`, `lazy_flushes`, `lazy_mask_writes`
+(lazy routed draws, one count per draw, that met an application
+`COLORWRITEENABLE1`, or `COLORWRITEENABLE2` on a depth row, other than 15; the
+route's own RT2 = 0 write of a fade-band draw is not counted), `jitter_writes`,
 `readbacks`, and the microsecond totals `gate_us`, `route_draw_us`,
 `set_rt_us`, `lazy_flush_us`, `jitter_us`, `fill_us`, `taa_run_us`,
 `taa_capture_us`, `taa_copy_color_us`, `taa_copy_depth_us`, `taa_draw_us`,

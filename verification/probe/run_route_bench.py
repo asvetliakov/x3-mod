@@ -14,7 +14,11 @@ route_draw_us). Configurations:
   perdraw                the production route (per-draw RT binds, hybrid unhook, no per-draw stamps)
   perdraw-telemetry-draw the same with X3M_TELEMETRY_DRAW=1 (run129's launch: ~18 QPC stamps per routed draw)
   perdraw-shadow         the same with X3M_STATE_SHADOW=1 (setter hooks on, state answered from the shadow)
-  lazy                   X3M_MOTION_RT_MODE=lazy (keeps RT1/RT2 across the run; installs the setter hooks)
+  lazy                   X3M_MOTION_RT_MODE=lazy (keeps RT1/RT2 across the run, never the write masks: no setter hooks)
+  lazy-ownership         the same through the ownership wrapper
+  lazy-depth / lazy-cascades  the perdraw-depth / perdraw-cascades configurations (wrapper, lease per draw) in lazy RT mode
+  perdraw-masked / lazy-masked  X3M_FIXTURE_BENCH_MASK=1: the application holds COLORWRITEENABLE1/2 = 7 over the
+                         run, so every lazy routed draw takes the mask write/restore fallback
   perdraw-cascades       the production route with the depth replay, candidates, five cascades and
                          caster retention on (the ownership wrapper for the retention journal)
 
@@ -62,7 +66,7 @@ BASE_ENV = dict(
     X3M_RESOURCE_READ='native', X3M_DAT_HANDLES='0', X3M_GZ_BUFFER='0', X3M_GZ_BUFFER_KB='256',
     X3M_LINEAR_MATERIALS='0', X3M_LINEAR_EMISSIONS='0', X3M_SCREEN_EMISSION='0',
     X3M_SHADOW_REPLAY_EXTENT='250', X3M_SHADOW_REPLAY_DEPTH_HALF='512', X3M_SHADOW_REPLAY_CAP='512',
-    X3M_SHADOW_CASCADES='0', X3M_FIXTURE_SUNAPPLY_CASCADES='0',
+    X3M_SHADOW_CASCADES='0', X3M_FIXTURE_SUNAPPLY_CASCADES='0', X3M_FIXTURE_BENCH_MASK='0',
     X3M_SHADOW_RETENTION_CENSUS='0', X3M_SHADOW_CASTER_RETENTION='0', X3M_SHADOW_RETENTION_TIMING='0')
 UNSET = ('X3M_STATE_SHADOW', 'X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET',
          'X3M_FIXTURE_SHADOW_CASCADES', 'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS',
@@ -77,6 +81,9 @@ CONFIGS = [
     ('perdraw-telemetry-draw', dict(X3M_TELEMETRY_DRAW='1')),
     ('perdraw-shadow', dict(X3M_STATE_SHADOW='1')),
     ('lazy', dict(X3M_MOTION_RT_MODE='lazy')),
+    ('lazy-ownership', dict(X3M_MOTION_RT_MODE='lazy', X3M_OWNERSHIP='1')),
+    ('perdraw-masked', dict(X3M_FIXTURE_BENCH_MASK='1')),
+    ('lazy-masked', dict(X3M_MOTION_RT_MODE='lazy', X3M_FIXTURE_BENCH_MASK='1')),
     ('perdraw-cascades', CASCADES),
     # Attribution: the jitter's two constant writes, RT2 (two binds, two masks, one read),
     # the ownership wrapper alone, the single-map depth replay (lease per draw), the
@@ -86,11 +93,13 @@ CONFIGS = [
     ('off-ownership', dict(X3M_MOTION_OUTPUT='0', X3M_OWNERSHIP='1')),
     ('perdraw-ownership', dict(X3M_OWNERSHIP='1')),
     ('perdraw-depth', DEPTH),
+    ('lazy-depth', dict(DEPTH, X3M_MOTION_RT_MODE='lazy')),
+    ('lazy-cascades', dict(CASCADES, X3M_MOTION_RT_MODE='lazy')),
     ('perdraw-cascades-noretention', dict(CASCADES, X3M_SHADOW_CASTER_RETENTION='0')),
     ('perdraw-cascades-timing', dict(CASCADES, X3M_SHADOW_RETENTION_TIMING='1')),
 ]
 RETENTION_FIELDS = ('records', 'nodes_live', 'us', 'journal_us', 'walk_us', 'draw_us', 'draw_calls', 'gate_us')
-FRAME_FIELDS = ('draws', 'routed', 'matched', 'set_rt', 'lazy_flushes', 'jitter_writes', 'rs_mode', 'rs_queries', 'rs_hits', 'rs_gets',
+FRAME_FIELDS = ('draws', 'routed', 'matched', 'set_rt', 'lazy_flushes', 'lazy_mask_writes', 'jitter_writes', 'rs_mode', 'rs_queries', 'rs_hits', 'rs_gets',
                 'state_shadow', 'gate_us', 'route_draw_us', 'set_rt_us', 'lazy_flush_us', 'jitter_us', 'gate1', 'gate2', 'gate3', 'gate4', 'gate5', 'gate6')
 
 

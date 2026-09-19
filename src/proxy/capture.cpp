@@ -171,8 +171,8 @@ unsigned motion_frame_log = 60;
 // X3M_STATE_SHADOW selects the render-state configuration (hybrid unhook,
 // docs/architecture/state-call-fast-path.md step 5). Unset (auto, -1): the
 // SetRenderState and SetSamplerState hooks are not installed and the route
-// reads its draw-time state with GetRenderState/GetSamplerState, unless lazy
-// RT mode, X3M_FRAME_TIMING=1 (the diagnostic build still counts state calls)
+// reads its draw-time state with GetRenderState/GetSamplerState, unless
+// X3M_FRAME_TIMING=1 (the diagnostic build still counts state calls)
 // or a failed Get* capability check keeps the hooks on, in which case the
 // shadow is on. 1: hooks on, shadow on (every per-draw query a shadow hit).
 // 0: hooks off as auto; with a hook reason present, hooks on with the shadow
@@ -1637,7 +1637,11 @@ HRESULT WINAPI set_rt(IDirect3DDevice9* d,DWORD index,IDirect3DSurface9* rt) {
 HRESULT WINAPI set_depth(IDirect3DDevice9* d,IDirect3DSurface9* depth) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);timer.begin();
+    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    // D3D9 validates the depth surface against every bound target, so a held
+    // RT1/RT2 (lazy RT mode) goes back first: the call sees the application's bindings.
+    ctx.motion_output.restore_bindings();
+    timer.begin();
     cpu.before_original();
     const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*)>(39)(d,depth);cpu.after_original();timer.end();
     ctx.scene_depth.after_set_depth(d,result);
@@ -1986,15 +1990,13 @@ X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_con
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
 #undef X3M_SHADOW_HOOK
 // Render-state shadow (X3M_STATE_SHADOW, default on). Light boundary like the
-// other hot setters: before the native call only the lazy-mode flush of a
-// held write mask (no logging, no telemetry record: motion_output.cpp,
-// flush_bindings<true>), after it the shadow store; check_no_x87.py walks
-// this hook too.
+// other hot setters: nothing before the native call (lazy RT mode never holds
+// a write mask: route-per-draw-cost.md lever 3), after it the shadow store;
+// check_no_x87.py walks this hook too.
 HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWORD value){
     LightCallBoundary cpu;
     LightAdmissionScope admission;
     PlainHookGuard lock;auto& ctx=hooked_device(d);
-    if(ctx.motion_output.lazy_write_mask_held())ctx.motion_output.before_set_render_state(state); // lazy mode only
     cpu.before_original();
     HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD)noexcept>(57)(d,state,value);cpu.after_original();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -2038,17 +2040,6 @@ HRESULT WINAPI set_sampler_state(IDirect3DDevice9* d,DWORD stage,D3DSAMPLERSTATE
 #endif
     if(SUCCEEDED(hr))ctx.motion_output.set_sampler_state(stage,type,value);
     else ctx.motion_output.sampler_state_failed(stage,type);
-    return hr;
-}
-// Lazy mode only: an application read of a write mask the route holds must
-// see the application's own value (the other half of the lazy-mode hole).
-HRESULT WINAPI get_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWORD* value){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
-    ctx.motion_output.restore_bindings();
-    cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*)>(58)(d,state,value);cpu.after_original();
     return hr;
 }
 HRESULT WINAPI begin_stateblock(IDirect3DDevice9* d){
@@ -2195,7 +2186,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // strips PUREDEVICE, so a non-pure device answers Get*; a device that
     // does not fails closed to the hooked configuration). Both reads go
     // through the saved native entries (58, 68), never through a hook.
-    const char* state_hooks_reason=motion_state_shadow==1?"explicit":hooked.motion_output.lazy_rt_mode()?"lazy_rt":frame_timing::active?"frame_timing":nullptr;
+    const char* state_hooks_reason=motion_state_shadow==1?"explicit":frame_timing::active?"frame_timing":nullptr;
     if(!state_hooks_reason){
         DWORD value=0;
         const bool get_ok=SUCCEEDED(hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*)>(58)(d,D3DRS_ZENABLE,&value))
@@ -2398,9 +2389,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         // Scene and query tracking for the resolve's caller contract.
         hooked.set(41,begin_scene);hooked.set(42,end_scene);hooked.set(118,create_query);
         // Render-state shadow: the application's render-state writes, only in
-        // the hooked configuration (state_hooks above: explicit shadow, lazy
-        // mode's held write masks, frame timing's state-call counts, or a
-        // failed Get* check). Otherwise the route reads at the draw.
+        // the hooked configuration (state_hooks above: explicit shadow, frame
+        // timing's state-call counts, or a failed Get* check). Otherwise the route reads at the draw.
         if(hooked.motion_output.state_hooks())hooked.set(57,set_render_state);
         // Texture levels are needed only for mip bias; the composition reader
         // identity stays on SetTexture in both configurations.
@@ -2409,8 +2399,9 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         // write, sRGB decode shadow of the material and screen gates) in the
         // hooked configuration only; frame timing counts them like the rest.
         if(hooked.motion_output.state_hooks()&&(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested()||hooked.motion_output.screen_emission_requested()||hooked.motion_output.screen_emission_additive_requested()||frame_timing::active))hooked.set(69,set_sampler_state);
-        // Lazy binding: the application's target and write-mask getters restore first.
-        if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
+        // Lazy binding: the application's target getters restore first (its
+        // write masks are never held, so GetRenderState stays unhooked).
+        if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);}
         // HDR redirect: the application's GetRenderTarget(0) and its reads of
         // the main target's contents go through the logical-binding shim.
         if(hooked.motion_output.hdr_enabled()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);}

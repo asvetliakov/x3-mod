@@ -93,8 +93,9 @@ SetRenderState hook instead of GetRenderState. With X3M_STATE_SHADOW=0 (or
 unset, the production default) and no other hook reason the hybrid unhook
 applies (docs/architecture/state-call-fast-path.md, step 5): the
 SetRenderState/SetSamplerState hooks are not installed and the route reads at
-the draw, once per state per draw (`rs_mode=get`); in lazy RT mode the hooks
-stay and X3M_STATE_SHADOW=0 turns only the cache off (`rs_mode=native`). The
+the draw, once per state per draw (`rs_mode=get`); lazy RT mode holds the
+bindings but never a write mask (route-per-draw-cost.md, lever 3), so it keeps
+the same unhooked configuration (`state_hooks installed=0 reason=none`). The
 regular script on both DLLs, the seam with TAA and in lazy mode, and the burst
 script in both binding modes repeat with the shadow off and must equal their
 shadow-on twins in colour, readback files, per-draw route decisions, checks
@@ -223,6 +224,25 @@ CASES += [case(f'{dll}-burst-{rt}', dll, lazy=rt == 'lazy', burst=True) for dll 
 # Selected-only additions: preserve the existing default suite inventory.
 WRAP_CASES = [case(f'seam-burst-{rt}-wrap', 'seam', lazy=rt == 'lazy', burst=True,
                    hdr_env={'X3M_FIXTURE_WRAP': '1'}) for rt in ('perdraw', 'lazy')]
+# Hook-free lazy RT (route-per-draw-cost.md lever 3): the burst with both write
+# masks written under a held binding, a hold that starts masked, a mid-scene
+# StretchRect (frames 2, 5, 8), an application depth-surface change (same size,
+# smaller, original) and a Reset inside the scene under a held
+# binding (frame 4); per-draw twin, production hybrid unhook (`auto`), the
+# explicit shadow and the ownership wrapper. Part of the default suite (six
+# short burst runs); compare_mask_twins runs in the full and the selected path.
+MASK_ENV = {'X3M_FIXTURE_BURST_MASK': '1'}
+MASK_CASES = [case('seam-burst-perdraw-mask', 'seam', burst=True, shadow='auto', hdr_env=MASK_ENV),
+              case('seam-burst-lazy-mask', 'seam', lazy=True, burst=True, shadow='auto', hdr_env=MASK_ENV),
+              case('seam-burst-lazy-mask-shadow', 'seam', lazy=True, burst=True, shadow=True, hdr_env=MASK_ENV),
+              case('seam-ownership-burst-lazy-mask', 'seam', 'ownership', lazy=True, burst=True, shadow='auto', hdr_env=MASK_ENV),
+              case('production-burst-perdraw-mask', 'production', burst=True, shadow='auto', hdr_env=MASK_ENV),
+              case('production-burst-lazy-mask', 'production', lazy=True, burst=True, shadow='auto', hdr_env=MASK_ENV)]
+# Each lazy run is compared with the per-draw run of the same DLL (the wrapper run with the plain seam twin).
+MASK_TWINS = {'seam-burst-lazy-mask': 'seam-burst-perdraw-mask', 'seam-burst-lazy-mask-shadow': 'seam-burst-perdraw-mask',
+              'seam-ownership-burst-lazy-mask': 'seam-burst-perdraw-mask', 'production-burst-lazy-mask': 'production-burst-perdraw-mask'}
+CASES += MASK_CASES
+MASK_RESET_FRAME = 4
 # Camera reprojection of sentinel pixels (seam): the switch in its three
 # positions with the fixture's rotating camera, the strict mode without a
 # camera, and the environment-map exclusion script.
@@ -826,9 +846,9 @@ RS_FILL_GETS = 14
 
 
 # The shadow switch per case: True (X3M_STATE_SHADOW=1, hooks and shadow on),
-# False (=0: hooks off, `rs_mode=get`; in lazy RT mode hooks on without the
-# cache, `rs_mode=native`) or 'auto' (unset, the production configuration:
-# hooks off, `rs_mode=get`; lazy keeps the hooks with the shadow on).
+# False (=0: hooks off, `rs_mode=get`) or 'auto' (unset, the production
+# configuration: hooks off, `rs_mode=get`). Lazy RT mode no longer keeps the
+# hooks (lever 3); the `lazy` argument stays for the callers.
 def shadow_request(shadow):
     """The motion_output_mode line's state_shadow (the request as parsed)."""
     return 'auto' if shadow == 'auto' else str(int(shadow))
@@ -836,12 +856,12 @@ def shadow_request(shadow):
 
 def shadow_effective(shadow, lazy):
     """The device and per-frame lines' state_shadow (the cross-draw shadow is on)."""
-    return '1' if shadow is True or (shadow == 'auto' and lazy) else '0'
+    return '1' if shadow is True else '0'
 
 
 def shadow_mode(shadow, lazy):
     """The per-frame line's rs_mode."""
-    return 'shadow' if shadow is True or (shadow == 'auto' and lazy) else 'native' if lazy else 'get'
+    return 'shadow' if shadow is True else 'get'
 RS_SHADOW_STATES = 32  # eight gate/mask states, WRAP0..15, eight cutout states; invalidated by resync
 SEAM_RESYNCS = {7: 2, 8: 1}
 # Hook script: seven frames (glow on, outside-Scene signal, glow off) and the
@@ -4412,7 +4432,28 @@ def validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory):
             'coverage_pixels': int(terminal['coverage_pixels'])}
 
 
-def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=False):
+def compare_mask_twins(result, save):
+    """Lever 3 equivalence: every lazy mask run present must equal the per-draw
+    twin of the same DLL; a lazy run without its twin is an error, never a
+    silent skip."""
+    selected_lazy = [n for n in MASK_TWINS if n in result['cases']]
+    if not selected_lazy:
+        if any(entry['name'] in result['cases'] for entry in MASK_CASES):
+            print('mask burst: equivalence comparison SKIPPED (no lazy mask case selected)')
+        return
+    for lazy_name in selected_lazy:
+        twin = MASK_TWINS[lazy_name]
+        assert twin in result['cases'], f'{lazy_name}: select the per-draw twin {twin} in the same run'
+        per, lz = result['cases'][twin], result['cases'][lazy_name]
+        for key in ('color_hashes', 'state_hashes', 'motion_hashes', 'readback_sha256'):
+            assert per[key] == lz[key], f'{lazy_name}: {key} differs from {twin}'
+    result['mask_equivalence'] = {'twins': {n: MASK_TWINS[n] for n in selected_lazy}, 'identical': True,
+                                  'set_rt_per_frame': {n: result['cases'][n]['set_rt_per_frame'] for n in selected_lazy + sorted({MASK_TWINS[n] for n in selected_lazy})}}
+    save()
+    print(f'mask burst: {len(selected_lazy)} lazy run(s) equal their per-draw twin')
+
+
+def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=False, mask=False):
     """Burst script (see the module docstring): per-frame counters of the DLL,
     the fixture's own restoration and oracle verdicts, and the signatures the
     cross-mode comparison in main() uses."""
@@ -4430,15 +4471,23 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
     # and, seam, the motion/depth oracle.
-    assert int(terminal['frames']) == BURST_FRAMES and int(terminal['restorations']) == 2 * BURST_FRAMES, (name, terminal)
+    assert int(terminal['frames']) == BURST_FRAMES and int(terminal['restorations']) == 2 * BURST_FRAMES + mask, (name, terminal)  # mask: the frame restarted after the Reset fills twice
     wrap_modes = [l for l in lines if l.startswith('WRAP ')]
     wrap_checks = [l for l in lines if l.startswith('CHECK ') and 'WRAP' in l]
     assert wrap_modes == (['WRAP mode=hostile motion_texcoord=4 depth_texcoord=5 native_texcoord=0'] if wrap else []), (name, wrap_modes)
     assert wrap_checks == (['CHECK application reads exact WRAP4 after routed draw PASS'] * BURST_FRAMES if wrap else []), (name, wrap_checks)
-    assert int(terminal['checks']) == (86 if seam else 41) + (BURST_FRAMES if wrap else 0), (name, terminal)  # one presented-image check per frame
+    mask_checks = [l for l in lines if l.startswith('CHECK MASK ')]
+    assert mask_checks == (['CHECK MASK the application reads back both write masks after a routed draw under a held binding PASS',
+                            'CHECK MASK the application reads back COLORWRITEENABLE2 after a hold that started masked PASS',
+                            'CHECK MASK the application changes its depth surface (same size, smaller, original) under a held binding PASS'] * BURST_FRAMES if mask else []), (name, mask_checks)
+    assert lines.count('MASK reset inside the scene under a held binding') == int(mask) and lines.count('RESET PASS') == int(mask), name
+    assert int(terminal['checks']) == (86 if seam else 41) + (BURST_FRAMES if wrap else 0) + (3 * BURST_FRAMES if mask else 0), (name, terminal)  # one presented-image check per frame
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
-    assert len(restores) == 2 * BURST_FRAMES and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
-    assert [r['label'] for r in restores] == ['fill', 'burst'] * BURST_FRAMES, (name, [r['label'] for r in restores])
+    assert len(restores) == 2 * BURST_FRAMES + mask and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
+    labels = ['fill', 'burst'] * BURST_FRAMES
+    if mask:
+        labels.insert(2 * MASK_RESET_FRAME, 'fill')
+    assert [r['label'] for r in restores] == labels, (name, [r['label'] for r in restores])
     colors = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}
     states = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('STATE ')}
     motion_hashes = {int(fields(l)['frame']): (fields(l)['motion'], fields(l)['depth']) for l in lines if l.startswith('MOTION_HASH ')}
@@ -4453,7 +4502,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     else:
         assert not motion_hashes and not motion
     expects = [fields(l) for l in lines if l.startswith('EXPECT ')]
-    assert len(expects) == 8 * BURST_FRAMES and all(e['matched'] == '0' and e['jittered'] == '0' for e in expects), (name, len(expects))
+    assert len(expects) == (9 * BURST_FRAMES + 2 if mask else 8 * BURST_FRAMES) and all(e['matched'] == '0' and e['jittered'] == '0' for e in expects), (name, len(expects))
     tl = trace.splitlines()
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
     assert len(modes) == 1 and modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '1' and modes[0]['state_shadow'] == shadow_request(shadow), (name, modes)
@@ -4461,14 +4510,22 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['rt_mode'] == rt_mode and devices[0]['depth'] == '1', (name, devices)
     assert devices[0]['state_shadow'] == shadow_effective(shadow, lazy) and devices[0]['scene_hook'] == '0', (name, devices)
     assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed', 'motion_output_taa_failed')) for l in tl), name
+    # Lever 3: lazy RT mode is no reason to install the setter hooks.
+    hooks = [fields(l) for l in tl if l.startswith('state_hooks ')]
+    assert len(hooks) == 1 and (hooks[0]['installed'], hooks[0]['reason']) == (('1', 'explicit') if shadow is True else ('0', 'none')), (name, hooks)
     frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
     assert sorted(frames) == list(range(BURST_FRAMES)), (name, sorted(frames))  # X3M_MOTION_FRAME_LOG=1
+    # The mask script routes one more draw per frame. The DLL's frame counters
+    # restart at Reset, so the frame restarted after the mid-scene Reset counts
+    # like every other; the fixture's RESET PASS and that frame's oracles are
+    # the evidence that the Reset hook released the held bindings.
+    expect = dict(BURST_EXPECT, draws=10, routed=6, gate5=6, depth_routed=6) if mask else BURST_EXPECT
     set_rt, flushes, costs, render_state = {}, {}, {}, {}
     for frame, summary in frames.items():
         render_state[frame] = check_render_state(name, frame, summary, shadow, 0)
         assert (summary['scene_hook'], summary['hook_signals'], summary['scene_end_source'], summary['scene_end_check']) == ('0', '0', 'none', '0'), (name, frame, summary)
         got = {k: int(summary[k]) for k in BURST_EXPECT}
-        assert got == BURST_EXPECT, (name, frame, got)
+        assert got == expect, (name, frame, got)
         # The application SetRenderTarget (even frames) or depth Clear (odd)
         # inside the scene rejects the selector; the draw after it stops at gate 2.
         assert summary['selector_state'] == '9' and summary['latched'] == summary['filled'] == '1', (name, frame, summary)
@@ -4477,6 +4534,15 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
         captured = frame in BURST_CAPTURE
         expected_set_rt = BURST_SET_RT['perdraw'] if captured else BURST_SET_RT[rt_mode]
         expected_flushes = (5 if captured else BURST_FLUSHES['lazy']) if lazy else 0
+        if mask:
+            # One more routed draw, inside the second run: no new bind/flush
+            # pair in lazy mode.
+            expected_set_rt = 24 if captured or not lazy else BURST_SET_RT['lazy']
+            expected_flushes = (6 if captured else BURST_FLUSHES['lazy']) if lazy else 0
+        # Lazy routed draws that met an application write mask other than 15
+        # (one count per draw): the draw after the blend draw (a hold that
+        # starts masked) and, mask script, the draw under the held binding.
+        assert int(summary['lazy_mask_writes']) == ((2 if mask else 1) if lazy else 0), (name, frame, summary)
         assert int(summary['set_rt']) == expected_set_rt and int(summary['lazy_flushes']) == expected_flushes, (name, frame, summary)
         assert int(summary['readbacks']) == (2 if captured else 0) and (float(summary['readback_us']) > 0) == captured, (name, frame, summary)
         set_rt[frame] = int(summary['set_rt']); flushes[frame] = int(summary['lazy_flushes'])
@@ -4486,7 +4552,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
     routes = [fields(l) for l in tl if l.startswith('motion_route ')]
     # Capture frames log the seven scene draws that reach gate 2 (the draw
     # after the rejection is not a scene draw); five route sentinel-only.
-    assert len(routes) == 7 * len(BURST_CAPTURE) and sum(r['routed'] == '1' for r in routes) == 5 * len(BURST_CAPTURE), (name, len(routes))
+    assert len(routes) == (7 + mask) * len(BURST_CAPTURE) and sum(r['routed'] == '1' for r in routes) == (5 + mask) * len(BURST_CAPTURE), (name, len(routes))
     assert all(r['matched'] == '0' and r['result'] == '00000000' and r['depth'] == r['routed'] for r in routes), name
     readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_readback ')}
     depth_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_depth_readback ')}
@@ -4496,7 +4562,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
         assert readbacks[frame]['result'] == depth_readbacks[frame]['result'] == '00000000', (name, frame)
         files[frame] = {kind: sha(directory / 'x3-modern-captures' / r[frame]['file']) for kind, r in (('motion', readbacks), ('depth', depth_readbacks))}
     assert sum(l.startswith('motion_output_release ') for l in tl) == 1, name
-    return {'mode': mode, 'burst': True, 'lazy': lazy, 'wrap': wrap, 'wrap_readback_checks': len(wrap_checks), 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+    return {'mode': mode, 'burst': True, 'lazy': lazy, 'wrap': wrap, 'mask': mask, 'mask_checks': len(mask_checks), 'wrap_readback_checks': len(wrap_checks), 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
             'frames': BURST_FRAMES, 'color_hashes': colors, 'state_hashes': states, 'motion_hashes': motion_hashes,
             'readback_sha256': files, 'set_rt_per_frame': set_rt, 'lazy_flushes_per_frame': flushes, 'costs_us_per_frame': costs,
             'coverage_pixels': int(terminal['coverage_pixels']), 'depth_written_pixels': int(terminal['depth_written']), 'render_state': render_state,
@@ -5146,7 +5212,7 @@ def main(argv=None):
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} sets={case["sets_per_frame"]} evidence={case["evidence"]}', flush=True)
                 continue
             if burst:
-                case = validate_burst(name, mode, lazy, text, trace, directory, shadow, wrap=hdr_env.get('X3M_FIXTURE_WRAP') == '1')
+                case = validate_burst(name, mode, lazy, text, trace, directory, shadow, wrap=hdr_env.get('X3M_FIXTURE_WRAP') == '1', mask=hdr_env.get('X3M_FIXTURE_BURST_MASK') == '1')
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
@@ -5192,6 +5258,7 @@ def main(argv=None):
             result['status'] = 'PARTIAL'
             save()
             report_path.write_text(''.join(report))
+            compare_mask_twins(result, save)
             print('partial run: no cross-case comparisons, not a pass')
             return
         # Resolve cost: the boundary with the switch on minus off, per size.
@@ -5306,6 +5373,7 @@ def main(argv=None):
                                          'set_rt_per_frame': {'perdraw': per['set_rt_per_frame'], 'lazy': lz['set_rt_per_frame']},
                                          'lazy_flushes_per_frame': lz['lazy_flushes_per_frame']}
         result['lazy_equivalence'] = equivalence
+        compare_mask_twins(result, save)
         # TAA: the production DLL resolves current-only (sentinel routes), so
         # its presented image is bit-identical to the jittered run without the
         # resolve, plain and through the wrapper; the seam's frames without

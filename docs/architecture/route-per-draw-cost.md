@@ -37,6 +37,16 @@ the four light draw hooks); `check_no_x87.py` requires the symbol as a root and
 fails on any FNSAVE/FRSTOR beneath it. Numbers: ledger entry "2026-09-19 —
 lever 1 stage A and 2a" in [motion-output.md](../verification/motion-output.md).
 
+**Lever 3: implemented, unflown, default off (2026-09-19).** `--motion-rt-mode lazy` holds RT1/RT2 and never a write
+mask; `state_hooks installed=0 reason=none`, no `get_render_state` hook. Bench after: perdraw 8.69, lazy 6.90,
+perdraw-ownership 9.64, lazy-ownership 7.49 µs (saving 1.79 / 2.15 µs per routed draw, 1.91 / 2.26 in the first run; hooked
+lazy before: 6.69). With the application's masks at 7 on every routed draw (the mask != 15 fallback): lazy 7.12 against
+per-draw 8.80, saving 1.68 µs. Depth-routed draws (wrapper and lease per draw, what real frames mostly route; `route-bench-lever3-depth.json`):
+perdraw-depth 10.67 against lazy-depth 8.15, saving **2.53 µs** (cascades 11.24 against 8.73, 2.50), so ≈ 2.1 ms at 830
+draws before flushes. The `set_depth` hook now restores first (it was missing from the 20 sites of section 3). The
+flight reads `lazy_flushes` and `lazy_mask_writes` on the frame line. Numbers and fixtures: ledger entry "2026-09-19 —
+lever 3" in [motion-output.md](../verification/motion-output.md).
+
 ## Budget
 
 Run129 c2: 9.7 µs proxy-only per routed draw (M) × 830 = **8.05 ms** of a
@@ -49,7 +59,7 @@ Run-to-run noise ±0.15 (M). One µs per routed draw is 0.83 ms per frame.
 | Lever | µs/draw | × draws | ms/frame | Status |
 | --- | --- | --- | --- | --- |
 | 1. Direct native path for the route's value-only calls | 1.6-1.8 (I) of 2.23 (M) | 830 | 1.3-1.5 | implemented, unflown |
-| 3. Hook-free lazy RT (bindings held, masks never held) | ≤ 2.0 (M bench, one run) | 830 | ≤ 1.66, minus flushes | open second |
+| 3. Hook-free lazy RT (bindings held, masks never held) | 1.79-1.91 plain / 2.15-2.26 wrapped, 1.68 with masks != 15 (M bench, two runs) | 830 | 1.4-1.9, minus flushes | implemented, unflown, default off |
 | 2a. Light lock view (no FNSAVE pair) for the audited draw path | 0.5 (I) | ~705 leased | 0.35 | implemented, unflown |
 | 2b. Lease borrows the retention store's references | 0.5-0.7 (I) | ~705 leased | 0.35-0.5 | open last, conditional |
 | Sum | | | **3.4-4.0 of 8.05** | |

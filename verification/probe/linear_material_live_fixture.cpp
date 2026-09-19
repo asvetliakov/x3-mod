@@ -271,7 +271,7 @@ struct MotionRoute {
  bool sun_color_writer=false,sun_receiver=false;std::uint8_t sun_z_state=0,sun_refusal=0;std::uint16_t sun_draw_state=0;bool native_mip_bias=false;
  bool original_fill=false; // the fill variant the bind path selected for this route
 };
-struct Counters{bool hook_scene_end=false,bloom_copy_seen=false;unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
+struct Counters{bool hook_scene_end=false,bloom_copy_seen=false;unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0,lazy_mask_writes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
 struct D3DDISPLAYMODE{D3DFORMAT Format=D3DFMT_UNKNOWN;};
 struct Device {
  unsigned display_mode_reads=0;HRESULT display_mode_result=S_OK;D3DFORMAT display_mode_format=1;
@@ -386,7 +386,7 @@ public:
  struct{unsigned eligible_fade=0,prepared_fade=0,linear_fade=0;std::uint64_t pool_traffic_bytes=0;unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;unsigned in_place=0,in_place_linear=0,in_place_incomplete=0,recovery_failures=0;std::uint64_t region_pixels=0;unsigned packed_eligible=0,packed_unbounded_refused=0,packed_caps_refused=0,packed_admitted=0,packed_linear=0,packed_incomplete=0;std::uint64_t packed_region_pixels=0;HRESULT recovery=S_FALSE;}composition_counts_;
  unsigned composition_adapter_format_=1,composition_depth_format_=2;bool composition_attach_attempted_=true,composition_effective_=false,composition_identity_known_=true;void*native_=nullptr;struct{struct{unsigned format=2;}depth;}pending_;
  bool taa_enabled_=true,hdr_dirty_=false,bound_scene=true;IUnknown*hdr_resolved_=nullptr;unsigned active_queries_=0,taa_invalidations=0;std::uint32_t taa_invalidate_pending_=0;
- unsigned mip_bias_logged_game_writes_=0;DWORD lazy_write1_=15,lazy_write2_=15;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
+ unsigned mip_bias_logged_game_writes_=0;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
  struct FadeBounds{bool storage=false,fail_reserve=false;unsigned clears=0,reserves=0;
   bool reserve(){++reserves;if(fail_reserve)return false;storage=true;return true;}
   void clear(){++clears;storage=false;}bool reserved()const{return storage;}}fade_bounds_;
@@ -493,7 +493,7 @@ public:
  void begin_stateblock()noexcept;void end_stateblock()noexcept;void stateblock_applied()noexcept;
  void restore_bindings()noexcept;
  HRESULT restore_bindings_checked()noexcept;HRESULT restore_mip_bias()noexcept;void restore_mip_bias_stage(unsigned,HRESULT*)noexcept;
- void record_deferred()noexcept;template<bool>HRESULT flush_bindings()noexcept;
+ HRESULT flush_bindings()noexcept;
  void set_texture(DWORD,IDirect3DBaseTexture9*,DWORD,bool,int=2)noexcept;int composition_texture_reader(DWORD,IDirect3DBaseTexture9*)noexcept;
  void prepare_composition(const MotionDrawCall&,MotionRoute&)noexcept;void finish_composition(HRESULT,renderer::LinearCompositionPolicy=renderer::LinearCompositionPolicy::AdditiveEmission)noexcept;bool publish_composition()noexcept;void begin_composition_frame()noexcept;void composition_export()noexcept;void release_composition_identity()noexcept;void before_texture_write(IDirect3DBaseTexture9*)noexcept;
  unsigned content_writes=0;IDirect3DSurface9*write_target=nullptr;void before_render_target_write(IDirect3DSurface9*surface){++content_writes;write_target=surface;hdr_state_=HdrState::Off;}
@@ -1011,15 +1011,14 @@ void emission_route_cases(){
   if(outcome==6){CHECK(p.recoveries==1&&m.hdr_->exchange_calls==0&&m.composition_state_lost_);}
   if(m.composition_state_lost_){auto next=m.before_draw({});CHECK(!next.submit&&!next.evaluated&&p.prepares==1&&p.finishes==1);}
  }
- // First restoration error survives deferred/mip/lazy cleanup; all owned lazy
+ // First restoration error survives mip/lazy cleanup; all owned lazy
  // changes are attempted, but the original draw is suppressed after uncertainty.
- for(unsigned fault=0;fault<3;++fault){MotionOutput m;ready(m);m.lazy_rt1_=true;
-  if(fault==0){m.deferred_flush_result_=-41;m.deferred_flushes_=1;}
+ for(unsigned fault=1;fault<3;++fault){MotionOutput m;ready(m);m.lazy_rt1_=true;
   if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};}
   if(fault==2)device.target_result=-43;
   auto route=m.before_draw({});CHECK(!route.submit&&!route.composition&&m.composition_state_lost_&&m.composition_->prepares==0);
   CHECK(!m.lazy_rt1_&&m.sampler_biased_mask_==(fault==1?1u:0u)&&m.sampler_restore_failed_mask_==(fault==1?1u:0u));
-  CHECK(route.submission_error==(fault==0?-41:fault==1?E_FAIL:-43));device.failed_calls.clear();
+  CHECK(route.submission_error==(fault==1?E_FAIL:-43));device.failed_calls.clear();
  }
  // Empty frames still clear M once at the frame boundary. Failed allocation or
  // clear never reaches preparation and invalidates history.
@@ -1064,22 +1063,21 @@ void emission_route_cases(){
  for(bool published:{false,true}){MotionOutput m;ready(m);m.composition_effective_=true;m.composition_enhanced_=true;m.composition_readers_known_=false;m.composition_published_=published;
   auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&m.composition_frame_stopped_&&m.composition_->prepares==0);CHECK(m.composition_quarantined_==published&&m.taa_invalidations>=1);
  }
- {MotionOutput m;ready(m);m.deferred_flush_result_=-71;m.deferred_flushes_=1;m.lazy_rt1_=true;device.target_result=-72;m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_bindings_checked()==-71);CHECK(!m.lazy_rt1_&&m.sampler_biased_mask_==1&&m.sampler_restore_failed_mask_==1);device.failed_calls.clear();}
+ {MotionOutput m;ready(m);m.lazy_rt1_=true;device.target_result=-72;m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_bindings_checked()==E_FAIL);CHECK(!m.lazy_rt1_&&m.sampler_biased_mask_==1&&m.sampler_restore_failed_mask_==1);device.failed_calls.clear();}
  // Capture can call the void restoration wrapper before before_draw. Even
- // after another wrapper consumes the deferred result, motion state loss
+ // after another wrapper consumes the result, motion state loss
  // remains sticky until Reset, independently of optional emission.
- for(bool effective:{false,true})for(unsigned fault=0;fault<3;++fault){MotionOutput m;ready(m);m.composition_effective_=effective;m.linear_emission_requested_=effective;
-  if(fault==0){m.deferred_flush_result_=-81;m.deferred_flushes_=1;}
+ for(bool effective:{false,true})for(unsigned fault=1;fault<3;++fault){MotionOutput m;ready(m);m.composition_effective_=effective;m.linear_emission_requested_=effective;
   if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};}
   if(fault==2){m.lazy_rt1_=true;device.target_result=-82;}
   m.restore_bindings();CHECK(m.composition_state_lost_==effective&&m.composition_frame_stopped_==effective);CHECK(m.motion_state_lost_&&m.taa_invalidations==1);
   device.failed_calls.clear();device.target_result=S_OK;m.restore_bindings();CHECK(m.restore_bindings_checked()==S_OK);
   auto route=m.before_draw({});CHECK(!route.submit&&!route.composition);CHECK(m.composition_state_lost_==effective&&m.composition_->prepares==0);
  }
- // A quiet light-hook flush marks uncertainty immediately, using the actual
- // production template; consuming its diagnostic error cannot erase that flag.
- {MotionOutput m;ready(m);m.lazy_rt1_=true;device.target_result=-83;CHECK(m.flush_bindings<true>()==-83);CHECK(m.composition_state_lost_&&m.composition_frame_stopped_&&m.deferred_flushes_==1);
-  device.target_result=S_OK;m.restore_bindings();CHECK(m.deferred_flushes_==0&&m.deferred_flush_result_==S_OK);auto route=m.before_draw({});CHECK(!route.submit&&!route.evaluated&&m.composition_->prepares==0);
+ // A failed flush marks uncertainty immediately, using the actual production
+ // function; consuming its error cannot erase that flag.
+ {MotionOutput m;ready(m);m.lazy_rt1_=true;device.target_result=-83;CHECK(m.flush_bindings()==-83);CHECK(m.composition_state_lost_&&m.composition_frame_stopped_);
+  device.target_result=S_OK;m.restore_bindings();auto route=m.before_draw({});CHECK(!route.submit&&!route.evaluated&&m.composition_->prepares==0);
  }
  {MotionOutput m;ready(m);m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_mip_bias()==E_FAIL);CHECK(m.sampler_restore_failed_mask_==1&&m.restore_mip_bias()==S_OK&&m.counters_.mip_bias_restores==1);device.failed_calls.clear();m.restore_bindings();CHECK(m.composition_state_lost_&&!m.before_draw({}).submit);}
  // The writer boundary double records the exact requested main-surface
@@ -1198,10 +1196,11 @@ void attempted_state_cases(){
   MotionRoute r;CHECK(m.prepare_constants(r)==E_FAIL&&r.vs_constants_set);CHECK(r.ps_constants_set==(failure==2));m.rollback_route(r);
   CHECK(r.submit&&!m.motion_state_lost_&&d.vs_constants==vs&&d.ps_constants==ps&&d.state_ordinal==2*failure);
  }
- // Once a lazy depth target is already held, mutation-failure while dropping
- // it keeps its pending flag until the complete normal flush restores it.
+ // Once a lazy depth target is already held (the depth draw's own mask writes
+ // undone, the bindings kept), a mutation-failure of the next row's mask write
+ // (1) or of dropping RT2 (2) keeps the pending flags until the flush restores.
  for(unsigned failure:{1u,2u}){Device d;MotionOutput m;m.device_=&d;m.lazy_mode_=true;m.target_surface_=new IDirect3DSurface9;m.depth_surface_=new IDirect3DSurface9;
-  MotionRoute depth;depth.depth=true;CHECK(m.bind_targets(depth)==S_OK);d.mutation_faults=true;d.state_failures={failure};MotionRoute ordinary;
+  MotionRoute depth;depth.depth=true;CHECK(m.bind_targets(depth)==S_OK);CHECK(m.undo(depth)==S_OK&&d.targets[1]&&d.targets[2]&&d.write_masks[1]==5&&d.write_masks[2]==6);d.mutation_faults=true;d.state_failures={failure};MotionRoute ordinary;
   CHECK(m.bind_targets(ordinary)==E_FAIL);m.rollback_route(ordinary);CHECK(ordinary.submit&&!d.targets[1]&&!d.targets[2]&&d.write_masks[1]==5&&d.write_masks[2]==6);m.release_resources();
  }
  // Unavailable/nonrouted pairs must not native-submit if the preceding lazy
@@ -1214,7 +1213,7 @@ void attempted_state_cases(){
  // a quiet flush may precede an otherwise routed draw. Both quarantine at
  // the failure itself, before evaluation or any shader/native submission.
  for(bool quiet:{false,true})for(bool emission:{false,true}){Device d;MotionOutput m;m.device_=&d;m.composition_effective_=emission;m.lazy_rt1_=true;m.route_on_evaluation=quiet;
-  d.target_result=-92;if(quiet)CHECK(m.flush_bindings<true>()==-92);else m.restore_bindings();
+  d.target_result=-92;if(quiet)CHECK(m.flush_bindings()==-92);else m.restore_bindings();
   CHECK(m.motion_state_lost_&&m.motion_state_error_==-92&&m.taa_invalidations>0);CHECK(m.composition_state_lost_==emission);
   const auto shader_calls=d.calls.size();auto r=m.before_draw({});CHECK(!r.submit&&!r.evaluated&&!r.routed&&m.evaluations==0&&d.calls.size()==shader_calls&&r.submission_error==-92);
   // Later cleanup cannot erase or replace the first restoration error.
@@ -1223,10 +1222,10 @@ void attempted_state_cases(){
   m.recovery_reads_fail=true;m.after_reset(S_OK);CHECK(m.motion_state_lost_&&!m.before_draw({}).submit);
   m.recovery_reads_fail=false;m.after_reset(S_OK);CHECK(!m.motion_state_lost_);auto recovered=m.before_draw({});CHECK(recovered.submit&&recovered.evaluated&&recovered.routed==quiet&&m.evaluations==1);
  }
- // No lazy objects are needed: a consumed deferred/mip failure also sticks.
- for(bool deferred:{false,true}){Device d;MotionOutput m;m.device_=&d;
-  if(deferred){m.deferred_flush_result_=-94;m.deferred_flushes_=1;}else{m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;d.failed_calls={1};}
-  m.restore_bindings();CHECK(m.motion_state_lost_&&m.motion_state_error_==(deferred?-94:E_FAIL));CHECK(!m.before_draw({}).submit);
+ // No lazy objects are needed: a consumed mip failure also sticks.
+ {Device d;MotionOutput m;m.device_=&d;
+  m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;d.failed_calls={1};
+  m.restore_bindings();CHECK(m.motion_state_lost_&&m.motion_state_error_==E_FAIL);CHECK(!m.before_draw({}).submit);
  }
  std::printf("motion_attempted_state checks=%u\n",checks-begin);
 }
@@ -1307,15 +1306,15 @@ int main(){
  for(unsigned failure:{1u,2u}){device.ordinal=0;device.calls.clear();device.failed_calls={failure};route={};CHECK(m.bind_variant_pair(route,true)==S_OK);CHECK(!route.linear_material&&route.jittered&&route.vs_set&&route.ps_set);CHECK(device.bound_vs==m.shadow_.vs_variant&&device.bound_ps==m.shadow_.ps_variant);CHECK(device.calls.size()==(failure==1?4:6));CHECK(m.undo(route)==S_OK);}
  // Failed partial restoration refuses retry, invalidates state and counts it.
  device.ordinal=0;device.calls.clear();device.failed_calls={2,3};route={};CHECK(m.bind_variant_pair(route,true)==E_FAIL);CHECK(device.calls.size()==4&&!route.linear_material&&m.states_invalidated&&m.counters_.restore_failures==1);CHECK(m.motion_state_lost_&&!m.before_draw({}).submit);
- // A later deferred/lazy failure cannot replace the material undo's error.
- m.deferred_flush_result_=-71;m.deferred_flushes_=1;m.rollback_route(route);
+ // A later lazy flush failure cannot replace the material undo's error.
+ m.lazy_rt1_=true;device.target_result=-71;m.rollback_route(route);device.target_result=S_OK;
  CHECK(!route.submit&&route.submission_error==E_FAIL&&m.motion_state_error_==E_FAIL&&device.calls.size()==4);
  // Conversely, when bindings cleanup fails first, a later shader undo must
  // preserve that earlier HRESULT rather than preferring the later undo error.
- {MotionOutput later;later.device_=&device;later.shadow_.vs=&original_vs;later.deferred_flush_result_=-72;later.deferred_flushes_=1;
+ {MotionOutput later;later.device_=&device;later.shadow_.vs=&original_vs;later.lazy_rt1_=true;device.target_result=-72;
   MotionRoute failed;failed.vs_set=true;device.ordinal=0;device.calls.clear();device.failed_calls={1};later.rollback_route(failed);
   CHECK(later.motion_state_lost_&&later.motion_state_error_==-72&&!failed.submit&&failed.submission_error==-72);
-  CHECK(device.calls.size()==1&&later.counters_.restore_failures==1);CHECK(later.undo(failed)==S_OK&&later.motion_state_error_==-72);
+  device.target_result=S_OK;CHECK(device.calls.size()==1&&later.counters_.restore_failures==2);CHECK(later.undo(failed)==S_OK&&later.motion_state_error_==-72);
  }
 
  // The single ordinary retry can itself fail; no recursive material attempt.

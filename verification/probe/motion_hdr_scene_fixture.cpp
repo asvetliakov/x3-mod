@@ -123,7 +123,6 @@ renderer::Surface describe_surface(IDirect3DSurface9* surface) noexcept {
 const char* hdr_source_name(unsigned) { return "fixture"; }
 MotionOutput::MotionOutput() noexcept = default;
 MotionOutput::~MotionOutput() = default;
-void MotionOutput::record_deferred() noexcept { active->calls.push_back(4); }
 void MotionOutput::restore_bindings() noexcept { active->calls.push_back(5); }
 void MotionOutput::finish_cut_detector() noexcept { active->calls.push_back(6); cut_finished_ = true; }
 void MotionOutput::invalidate_taa(TaaInvalidateSite) noexcept { active->calls.push_back(7); }

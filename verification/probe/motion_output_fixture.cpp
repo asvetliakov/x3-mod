@@ -389,7 +389,7 @@ struct Fixture {
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
     bool routebench = false; unsigned routebench_draws = 400; // "routebench [draws]": per-routed-draw CPU cost (run_route_bench.py)
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
-    bool hook = false, wrap = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
+    bool hook = false, wrap = false, burst_mask = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     // aohook script (ambient occlusion at the scene-end hook): the DLL's switches
     // as the fixture reads them (X3M_AMBIENT_OCCLUSION, X3M_FIXTURE_AO_FAULT=attach,
     // X3M_AO_DEBUG, X3M_AO_STRENGTH) decide the pixel law of the crease frames.
@@ -489,7 +489,7 @@ struct Fixture {
     void acquire_swapchain_surfaces() {
         api(d->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back.p), "GetBackBuffer");
         api(d->GetDepthStencilSurface(&depth.p), "GetDepthStencilSurface");
-        if (taa || cutout) { // the cutout script publishes through the bloom copy without TAA too
+        if (taa || cutout || burst_mask) { // the cutout script publishes through the bloom copy without TAA too; the mask burst copies mid-scene
             api(d->CreateTexture(W, H, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &bloom.p, nullptr), "CreateTexture bloom");
             api(bloom->GetSurfaceLevel(0, &bloom_surface.p), "bloom level");
         }
@@ -1144,6 +1144,12 @@ struct Fixture {
         const double pair_us = double(pair_ticks) * us / double(draws);
         for (unsigned i = 0; i < frames; ++i) {
             frame_begin();
+            // X3M_FIXTURE_BENCH_MASK=1: the application holds both write masks at
+            // 7 over the whole run (lazy RT mode's mask != 15 fallback on every draw).
+            char masked[4]{};
+            if (GetEnvironmentVariableA("X3M_FIXTURE_BENCH_MASK", masked, sizeof masked) == 1 && masked[0] == '1') {
+                api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 7), "bench COLORWRITEENABLE1"); api(d->SetRenderState(D3DRS_COLORWRITEENABLE2, 7), "bench COLORWRITEENABLE2");
+            }
             long long inside = 0;
             LARGE_INTEGER r0, r1; QueryPerformanceCounter(&r0);
             for (unsigned k = 0; k < draws; ++k) {
@@ -1185,6 +1191,16 @@ struct Fixture {
     void run_burst(unsigned frames) {
         for (unsigned i = 0; i < frames; ++i) {
             frame_begin();
+            if (burst_mask && i == 4) {
+                // Reset inside the scene while the route holds RT1/RT2 (two
+                // routed draws, no restore point before it): the Reset hook
+                // releases the bindings and the targets, and the frame starts
+                // over on the new resources.
+                burst_draw(a, .75f, 0, 0); burst_draw(b, 0, 0, 0);
+                reset();
+                std::puts("MASK reset inside the scene under a held binding");
+                frame_begin();
+            }
             // The pre-burst snapshot carries the bindings the last draw of the
             // burst leaves behind (object A, reviewed PS, its rows), so the
             // final comparison isolates what the route did.
@@ -1193,6 +1209,19 @@ struct Fixture {
             burst_draw(a, .75f, 0, 0); burst_draw(b, 0, 0, 0);
             burst_draw(a, .75f, 0, 0, Alter::FlatPixel, false);
             burst_draw(a, .8f, .125f, 0); burst_draw(b, -.05f, 0, .1f);
+            if (burst_mask) {
+                // Hook-free lazy mode (route-per-draw-cost.md lever 3): the
+                // application writes both write masks while the route holds
+                // RT1/RT2, a routed draw runs under them (it takes the per-draw
+                // mask write and puts the values back) and the application
+                // reads its own values with no getter hook and no flush.
+                api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 7), "application COLORWRITEENABLE1 write under a held binding");
+                api(d->SetRenderState(D3DRS_COLORWRITEENABLE2, 5), "application COLORWRITEENABLE2 write under a held binding");
+                burst_draw(a, .8f, .125f, 0);
+                DWORD m1 = 0, m2 = 0; api(d->GetRenderState(D3DRS_COLORWRITEENABLE1, &m1), "COLORWRITEENABLE1 read under a held binding");
+                api(d->GetRenderState(D3DRS_COLORWRITEENABLE2, &m2), "COLORWRITEENABLE2 read under a held binding");
+                require(m1 == 7 && m2 == 5, "MASK the application reads back both write masks after a routed draw under a held binding");
+            }
             // The lazy-mode hole: an application write of COLORWRITEENABLE1
             // while the route holds RT1 (the SetRenderState hook flushes first),
             // a routed draw under the application's mask, then the application
@@ -1205,12 +1234,38 @@ struct Fixture {
             DWORD mask = 0; api(d->GetRenderState(D3DRS_COLORWRITEENABLE1, &mask), "application COLORWRITEENABLE1 read between routed draws");
             require(mask == 7, "the application reads back its own COLORWRITEENABLE1 between routed draws");
             api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 15), "application COLORWRITEENABLE1 restore");
+            if (burst_mask) {
+                // The hold of the draw above started with both masks away from 15.
+                DWORD m2 = 0; api(d->GetRenderState(D3DRS_COLORWRITEENABLE2, &m2), "COLORWRITEENABLE2 read after a hold that started masked");
+                require(m2 == 5, "MASK the application reads back COLORWRITEENABLE2 after a hold that started masked");
+                api(d->SetRenderState(D3DRS_COLORWRITEENABLE2, 15), "application COLORWRITEENABLE2 restore");
+            }
             if (wrap) {
                 DWORD value = 0; api(d->GetRenderState(D3DRS_WRAP4, &value), "application WRAP4 read");
                 require(value == 6, "application reads exact WRAP4 after routed draw");
                 api(d->SetRenderState(D3DRS_WRAP4, 15), "application WRAP4 restore");
             }
-            if (i % 2 == 0) {
+            if (burst_mask) {
+                // The application changes its depth surface while RT1/RT2 are
+                // held (the draw above routed and nothing restored since): D3D9
+                // relates the depth surface to every bound target, so the
+                // SetDepthStencilSurface hook must put the application's
+                // bindings back first. A same-size surface, one smaller than the
+                // route's targets (legal under the application's own bindings
+                // as long as nothing draws), then the original. The surfaces
+                // live inside this step: nothing of the pool outlives the Reset frame.
+                D3DSURFACE_DESC desc{}; api(depth->GetDesc(&desc), "depth GetDesc");
+                Com<IDirect3DSurface9> same, small;
+                api(d->CreateDepthStencilSurface(W, H, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, FALSE, &same.p, nullptr), "CreateDepthStencilSurface same size");
+                api(d->CreateDepthStencilSurface(W / 2, H / 2, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, FALSE, &small.p, nullptr), "CreateDepthStencilSurface smaller");
+                const HRESULT s1 = d->SetDepthStencilSurface(same.p), s2 = d->SetDepthStencilSurface(small.p), s3 = d->SetDepthStencilSurface(depth.p);
+                require(SUCCEEDED(s1) && SUCCEEDED(s2) && SUCCEEDED(s3), "MASK the application changes its depth surface (same size, smaller, original) under a held binding");
+            }
+            if (burst_mask && i % 3 == 2) {
+                // A mid-scene copy off the main target while RT1/RT2 are held
+                // (the StretchRect hook is the restore point; the selector rejects).
+                api(d->StretchRect(back.p, nullptr, bloom_surface.p, nullptr, D3DTEXF_NONE), "StretchRect (application, inside the scene)");
+            } else if (i % 2 == 0) {
                 // Same target rebound: the viewport and scissor rectangle reset with it.
                 api(d->SetRenderTarget(0, back.p), "SetRenderTarget 0 (application)");
                 const D3DVIEWPORT9 vp{0, 0, W, H, 0, 1}; api(d->SetViewport(&vp), "SetViewport (application)");
@@ -3190,6 +3245,7 @@ int main(int argc, char** argv) {
         if (GetEnvironmentVariableA("X3M_TAA_SENTINEL", setting, sizeof setting) > 0) f.sentinel = !std::strcmp(setting, "1") ? 1 : !std::strcmp(setting, "2") ? 2 : 0;
         f.state_shadow = !(GetEnvironmentVariableA("X3M_STATE_SHADOW", setting, sizeof setting) == 1 && setting[0] == '0');
         f.wrap = GetEnvironmentVariableA("X3M_FIXTURE_WRAP", setting, sizeof setting) == 1 && setting[0] == '1';
+        f.burst_mask = f.burst && GetEnvironmentVariableA("X3M_FIXTURE_BURST_MASK", setting, sizeof setting) == 1 && setting[0] == '1';
         if (f.wrap) std::printf("WRAP mode=hostile motion_texcoord=4 depth_texcoord=5 native_texcoord=0\n");
         f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
         f.ao_env = f.taa && GetEnvironmentVariableA("X3M_AMBIENT_OCCLUSION", setting, sizeof setting) == 1 && setting[0] == '1';

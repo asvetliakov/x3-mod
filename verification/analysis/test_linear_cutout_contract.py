@@ -829,10 +829,18 @@ class LinearCutoutContractTests(unittest.TestCase):
             self.assertRegex(run.stdout, r'^linear_cutout_contract scenarios=\d+ checks=\d+ failures=0\n$')
             print(run.stdout.strip())
 
+    def test_depth_surface_change_restores_held_bindings_first(self):
+        # Lazy RT mode holds RT1/RT2 across routed draws; D3D9 relates the depth
+        # surface to every bound target, so the hook restores before the native call.
+        body = extract_function((ROOT / 'src/proxy/capture.cpp').read_text(), 'HRESULT WINAPI set_depth(')
+        self.assertLess(body.index('ctx.motion_output.restore_bindings();'), body.index('cpu.before_original();'))
+
     def test_failure_notifications_keep_native_boundary_and_history_union(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         for name, pre, success, failed in (
-                ('set_render_state', 'before_set_render_state(state)',
+                # Lazy RT mode never holds a write mask (route-per-draw-cost.md
+                # lever 3), so SetRenderState has no pre-call.
+                ('set_render_state', None,
                  'set_render_state(state,value)', 'render_state_failed(state)'),
                 ('set_sampler_state', 'before_set_sampler_state(stage,type)',
                  'set_sampler_state(stage,type,value)', 'sampler_state_failed(stage,type)')):
@@ -841,8 +849,11 @@ class LinearCutoutContractTests(unittest.TestCase):
             # The pre-call (which may itself issue a native restore) must run
             # before the CPU boundary hands the FPU state to the application's
             # original setter, never between the boundary and the native call.
-            self.assertIn('ctx.motion_output.' + pre + ';', body)
-            self.assertLess(body.index('ctx.motion_output.' + pre + ';'), body.index('cpu.before_original();'))
+            if pre:
+                self.assertIn('ctx.motion_output.' + pre + ';', body)
+                self.assertLess(body.index('ctx.motion_output.' + pre + ';'), body.index('cpu.before_original();'))
+            else:
+                self.assertNotIn('ctx.motion_output.', body[:body.index('cpu.before_original();')])
             self.assertLess(body.index('cpu.before_original();'), body.index('HRESULT hr='))
             self.assertLess(body.index('cpu.after_original();'), body.index('if(SUCCEEDED(hr))'))
             self.assertIn('if(SUCCEEDED(hr))ctx.motion_output.' + success + ';', body)

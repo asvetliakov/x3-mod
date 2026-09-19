@@ -1892,3 +1892,81 @@ implemented. `--taa-far-stabiliser W[,A[,F0,F1]]` (`X3M_TAA_FAR_STABILISER`, def
 mask-allocation-failure runs bit-identical to the plain resolve with the history kept. Line-filter review findings: the nine
 exp taps measure -0.07 ms (noise, left); mask allocation failure now disables the options for the session with one log line.
 
+
+## 2026-09-19 — lever 3, hook-free lazy RT (route-per-draw-cost.md): implemented, unflown, default off
+
+`X3M_MOTION_RT_MODE=lazy` (`--motion-rt-mode lazy`; `perdraw` stays the default and the kill switch) now holds RT1/RT2
+across consecutive routed draws and **never a write mask**: each routed draw reads `COLORWRITEENABLE1/2` (the reads per-draw
+mode already makes), writes a mask only when it differs from what the draw needs (15, or 0 on RT2 for a fade-band draw)
+and the undo puts the application's value back; the flush is two unbinds. `lazy_rt` is no `state_hooks` reason any more,
+slots 57/69 stay unhooked, the `get_render_state` hook (58) and `before_set_render_state` are removed; `get_rt` /
+`get_rt_data` stay. New frame-line count `lazy_mask_writes` (masks other than 15 met by a lazy routed draw: the flight's
+fallback-rate counter). This supersedes the hook statements of "Lazy RT binding equivalence" above: lazy now runs
+`rs_mode=get` under `auto` and `X3M_STATE_SHADOW=0`, `shadow` only under the explicit switch.
+
+Bench (`run_route_bench.py`, 400 routed draws, median us per DrawPrimitive, one run each, noise +-0.15;
+`route-bench-lever3-{before,after}.json`; before = HEAD `9b871c28` built from a source archive of that commit):
+
+| config | before | after |
+| --- | --- | --- |
+| off | 1.40 | 1.47 |
+| perdraw | 8.78 | 8.69 |
+| lazy | 6.69 (`installed=1 reason=lazy_rt`, shadow) | 6.90 (`installed=0 reason=none`, `rs_mode=get`, 4,016 gets) |
+| perdraw-ownership | 9.61 | 9.64 |
+| lazy-ownership | 7.19 | 7.49 |
+| perdraw-depth | 10.43 | 10.52 |
+| perdraw-masked (application masks 7 / 7) | - | 8.80 |
+| lazy-masked (`lazy_mask_writes` 400 of 400) | - | 7.12 |
+
+After (the review-fix rerun; the first run read 1.91 / 2.26): plain route 7.22 us over `off`, ownership wrapper +0.95
+(perdraw) / +0.59 (lazy), lease +0.89, RT binding share **1.79 us** plain and **2.15 us** through the wrapper (25 % of
+the plain route). Mask != 15 fallback on every routed draw (`X3M_FIXTURE_BENCH_MASK=1`, both masks 7): lazy 7.12, that
+is +0.22 us over unmasked lazy and still **1.68 us** under per-draw with the same masks. The mask reads cost 0.2 us against the
+hooked lazy mode, inside two noise bands, and buy the removal of the two setter hooks (3.1 ms per frame in
+route-per-draw-cost.md section 3). The premise (>= 0.5 us) holds.
+
+Fixtures (X3, retained binaries of this tree, all exit 0): 25 lazy cases and 9 per-draw controls. New selected-only
+`X3M_FIXTURE_BURST_MASK=1` burst (`seam-burst-perdraw-mask`, `seam-burst-lazy-mask`, `-mask-shadow`,
+`seam-ownership-burst-lazy-mask`, `production-burst-lazy-mask`; 104 / 59 checks): both masks written (7 / 5) under a held
+binding, a routed draw under them, both read back with no getter hook; a hold that starts masked; mid-scene StretchRect
+(frames 2, 5, 8), application SetRenderTarget / depth Clear (other frames) and a Reset inside the scene under a held binding
+(frame 4, the frame restarts; the DLL's frame counters restart with it). Every lazy mask run equals the per-draw twin in
+colour, STATE signature, RT1/RT2 hashes and readback files; `set_rt` 24 per-draw against 12 lazy (24 on capture frames),
+`lazy_flushes` 3, `lazy_mask_writes` 2 per frame after the review fix below (1 in the plain burst), `state_hooks installed=0 reason=none` except the
+explicit-shadow case. Existing cases on the changed DLL against HEAD's DLL in the same session (`production-on`,
+`seam-on`, `seam-ownership-on`, `seam-taa-on`, `seam-ownership-taa-on`, the three per-draw bursts, the per-draw wrap
+burst): 0 field differences. Lazy cases against the tracked summary: 0 differences outside `render_state` (lazy moved to
+`rs_mode=get` by design) and the burst `state_hashes`; that hash and the `render_state` counts differ from the tracked
+summary on HEAD's own DLL too (stale record, not this change), and lazy equals per-draw in-session for the plain and
+the wrap burst. Regular-script lazy twins, cutout (2), fade-route (8), mipbias (2) lazy cases pass unchanged validators.
+Host: `test_motion_wrap_states`, `test_linear_material_live` (the held-depth mock case now undoes the depth row first:
+78 attempted-state checks), `test_motion_hdr_scene`, `test_linear_cutout_contract`, `test_motion_output_runner`,
+`test_frame_timing` (new launcher test) OK; `check_no_x87.py` 0 violations. Not run: `run_state_hook_benchmark.py` under
+lazy (it pins `perdraw`). Native Windows: documented calls only, unverified.
+
+### 2026-09-19 — lever 3: review fixes
+
+(1) The `set_depth` hook (slot 39) had no restore point although route-per-draw-cost.md section 3 lists it; it now calls
+`restore_bindings()` before the native call (host check in `test_linear_cutout_contract`). The mask burst gained a step:
+with RT1/RT2 held the application sets a same-size depth surface, one of half the size, then the original; all three
+succeed and every lazy run equals its per-draw twin (113 / 68 checks). (2) The caller-less quiet flush is removed
+(`flush_bindings` is a plain function; `record_deferred` and the `deferred_*` fields are gone); the mock scenarios that
+injected a deferred failure now inject the lazy-flush or mip failure they stood in for (`linear_material_live` 20,481
+checks). (3) `lazy_mask_writes` counts draws (one per routed draw that met an application mask other than 15 on a target
+it writes; the route's own fade-band RT2 = 0 write is excluded): 2 per mask-burst frame, 1 per plain-burst frame, 400 of
+400 in `lazy-masked`. (4) Masked bench above. (5) `route-bench-lever3-{before,after}.json` are tracked. (6) A selected
+lazy mask case without its per-draw twin fails the run; each lazy run is paired with the per-draw run of the same DLL
+(`production-burst-perdraw-mask` added), the wrapper run with the plain seam twin. Reran on the rebuilt DLL: the six mask
+cases, `seam-burst-perdraw`, `seam-burst-lazy`, `production-burst-lazy`, `seam-lazy-on`, `seam-ownership-lazy-on`,
+`seam-taa-lazy-on`, `seam-taa-cutout-blended`, `seam-taa-fade-route-overlay`: exit 0.
+
+### 2026-09-19 — lever 3: depth-routed bench, mask cases in the default suite
+
+`run_route_bench.py --label lever3-depth` (`route-bench-lever3-depth.json`, one run, median µs per DrawPrimitive, 400
+routed draws; `lazy-depth` / `lazy-cascades` are the `perdraw-depth` / `perdraw-cascades` configurations, wrapper and
+lease per draw, in lazy RT mode): off 1.54, perdraw 8.70, lazy 6.99, perdraw-depth 10.67, **lazy-depth 8.15**,
+perdraw-cascades 11.24, **lazy-cascades 8.73**; `set_rt` 1600 against 4 with one flush per frame. Saving per
+depth-routed draw **2.53 µs** (cascades 2.50), against 1.71 plain in the same run: the wrapper makes each of the four
+removed SetRenderTarget calls dearer, as `lazy-ownership` showed. The six mask burst cases are now in the default `CASES`
+list (184 cases; six short burst runs) and `compare_mask_twins` runs in the full and the selected path; the full suite
+itself was not run.
