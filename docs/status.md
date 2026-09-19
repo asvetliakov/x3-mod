@@ -13,29 +13,32 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`563a40f539f3d3610697b0ea4dc6a249a5871db54eb15db4b19244a45c745922`
-(18,758,397 bytes), built once on Opus from clean committed main `96892be7`
+`fc3dd232d622a8ada8243f90ee5e18d0bbb05d0976c79938c3f43c49094b5c4a`
+(18,903,793 bytes), built once on Opus from clean committed main `8ba92765`
 (2026-09-19; marker without `-dirty`), installed through `manage.py install`.
-The [build record](../verification/results/run45-candidate-build.json) binds the
-clean build, the no-x87 audit (84 roots, 552 reachable), 17 exports, eight site
-verifiers (collide 72), ten shader program checks (seven resolve programs, all
-≤ 512 ps_3_0 slots), 68 motion-output cases (0 behavioural regressions), the
-collide SAT SSE2 fixture (2,560,000 cases, 0 violations, 9.0× / 6.1×), collide
-narrow census 42, temporal pass with the lattice case, the state-hook benchmark,
-the full host suite (2269 OK) and the five §45 dry-runs. The
-[install record](../verification/results/run45-candidate-install.json) binds the
-installed bytes, unchanged EXE/bottle hashes and the rollback: run44
-`3caa48a0…` in `/tmp/x3-candidate-YcICrW/rollback`. No game launched.
+The [build record](../verification/results/run46-candidate-build.json) binds the
+clean build, the no-x87 audit (87 roots, 555 reachable), 17 exports, nine site
+verifiers (collide memo 29), fifteen shader checks (fourteen resolve/mask programs
+≤ 512 ps_3_0 slots; tightest 509), the full 178-case motion-output suite (0
+behavioural regressions), collide memo 55/0, SAT SSE2, temporal pass with the line
+and far cases, the state-hook benchmark (+626.8 ns draw pair vs +643.8), the full
+host suite (2,278; its one failure was a missing host mock stub, fixed in the
+following commit without touching a production input) and the eight §46 dry-runs.
+The [install record](../verification/results/run46-candidate-install.json) binds the
+installed bytes, unchanged EXE/bottle hashes and the rollback: run45
+`563a40f5…` in `/tmp/x3-candidate-Uvr1Rh/rollback`. No game launched.
 
-This build adds, on top of run44's (all default off): `--collide-sat-sse2` (SSE2
-replacement of the engine's RAPID OBB box test `0x004e3280`,
-[sector-collide.md](reverse-engineering/sector-collide.md) §12), the census
-leaf-triangle counter, and TAA flicker steps 0–3 (`--taa-thin-clip`,
-`--taa-adaptive-weight`, `--taa-alpha-history`;
-[taa-flicker-suppression.md](architecture/taa-flicker-suppression.md)).
-Run 44 is read (run table in [user-runs.md](verification/user-runs.md)); run 45
-(§45) is queued. In flight: the lattice-crawl masked current-sample filter
-([taa-lattice-crawl.md](architecture/taa-lattice-crawl.md)), for the run46 candidate.
+This build adds, on top of run45's (all default off): `--collide-memo` /
+`--collide-memo-verify` ([sector-collide.md](reverse-engineering/sector-collide.md) §14),
+`--taa-line-filter` ([taa-lattice-crawl.md](architecture/taa-lattice-crawl.md)) and
+`--taa-far-stabiliser` ([taa-distant-line-fade.md](architecture/taa-distant-line-fade.md)).
+Run 45 is read; run 46 (§46 of [user-runs.md](verification/user-runs.md)) is queued.
+Merged after this build, for run 47: per-draw lever 3 (`--motion-rt-mode lazy` without
+setter hooks, 1.7–2.5 µs per routed draw in the bench;
+[route-per-draw-cost.md](architecture/route-per-draw-cost.md)). Evaluated and closed:
+whole-descent SSE2 collision rewrite (no gain), SSR (NO-GO on real frames,
+[screen-space-reflections.md](architecture/screen-space-reflections.md)), flare occlusion
+(MINOR, [lens-flare-visibility.md](reverse-engineering/lens-flare-visibility.md)).
 
 ## Session 2026-09-19: four changes merged, run43 candidate installed
 
