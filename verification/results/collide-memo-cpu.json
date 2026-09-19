@@ -1,21 +1,21 @@
 {
  "fixture": "build/verification/collide-memo/collide_memo_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 6.1,
- "checks": 47,
+ "elapsed_s": 2.1,
+ "checks": 55,
  "failures": 0,
  "summary": {
-  "queries": 58242,
-  "hits": 44293,
+  "queries": 58250,
+  "hits": 44296,
   "contacts": 3512,
   "differences": 0,
   "stale_hits": 0,
   "hits_on_contact": 0,
   "register_differences": 0,
-  "stored": 10295,
-  "evictions": 6452,
-  "ineligible": 2,
-  "skipped_visits": 197180493,
+  "stored": 26300,
+  "evictions": 21298,
+  "ineligible": 4,
+  "skipped_visits": 270208504,
   "verified": 140,
   "verify_mismatches": 1
  },
@@ -84,6 +84,14 @@
    "stale": 0,
    "hit_on_contact": 0
   },
+  "guards": {
+   "queries": 8,
+   "hits": 3,
+   "contacts": 0,
+   "differences": 0,
+   "stale": 0,
+   "hit_on_contact": 0
+  },
   "verify": {
    "queries": 170,
    "hits": 0,
@@ -94,9 +102,13 @@
   }
  },
  "bench": {
-  "visits": 15567,
-  "run_ns": 727800,
-  "hit_ns": 91.8
+  "visits": 21643,
+  "run_ns": 981900,
+  "hit_ns": 98.7,
+  "tiny_run_ns": 96.4,
+  "tiny_miss_store_ns": 219.6,
+  "tiny_hit_ns": 98.4,
+  "miss_store_overhead_ns": 123.3
  },
  "approach": {
   "contact_frames": 2,
@@ -108,16 +120,16 @@
   "verified": 140,
   "injected_mismatches": 1
  },
- "window_line": "collide_memo device=1 frame=4800 frames=300 verify=0 queries=12313 hits=12304 misses=9 stored=9 contacts=0 ineligible=0 evictions=0 skipped_visits=186840218 skipped_triangles=43157212 verified=0 verify_mismatches=0",
+ "window_line": "collide_memo device=1 frame=4800 frames=300 verify=0 queries=144332 hits=128315 misses=16015 stored=16014 contacts=0 ineligible=2 evictions=14846 skipped_visits=259868229 skipped_triangles=53573212 verified=0 verify_mismatches=0 foreign_thread=50 reentered=2 clears=3 stuck_busy=1",
  "install_lines": [
-  "collide_memo requested=0 patched=0 verify=0 reason=disabled site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024",
-  "collide_memo requested=1 patched=0 verify=0 reason=bytes_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342c80 entries=1024"
+  "collide_memo requested=0 patched=0 verify=0 reason=disabled site=0x0047f329 target=0x004e29f0 write=none handler=0x00342f40 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342f40 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342f40 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342f40 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342f40 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342f40 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=body_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342f40 entries=1024",
+  "collide_memo requested=1 patched=0 verify=0 reason=bytes_mismatch site=0x0047f329 target=0x004e29f0 write=none handler=0x00342f40 entries=1024"
  ],
  "failure_lines": [],
  "bottle": {
@@ -137,8 +149,8 @@
   },
   "audit": {
    "module_x87_mmx_instructions": 0,
-   "x3m_collide_memo_thunk_instructions": 30,
-   "x3m_collide_memo_lookup_instructions": 206,
+   "x3m_collide_memo_thunk_instructions": 28,
+   "x3m_collide_memo_lookup_instructions": 261,
    "x3m_collide_memo_store_instructions": 150
   }
  },

@@ -1424,6 +1424,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     lod_scale::refresh(); // the multiplier may be rewritten if the device bring-up path re-runs
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::begin_frame(false); // a Reset disarms the census stubs and drops the partial frame
+    collide_memo::device_reset(); // X3M_COLLIDE_MEMO=1 only: a Reset (device loss, mode change, the pause around it) drops the whole memo
     cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next frame's projection read; new back-buffer width
     ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
     finite_upload_metrics(d,ctx,"reset_after");

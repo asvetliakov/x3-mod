@@ -15,7 +15,13 @@ const char* state_ = "disabled";
 engine_patch::CallSite site_{};
 Table table_;
 Counters counters_{}, logged_{};
-volatile std::uint32_t frame_ = 0;
+volatile std::uint32_t frame_ = 0;            // written by present() only
+volatile LONG owner_thread_ = 0;              // the first thread through the thunk; every other thread goes straight to the engine
+volatile LONG clear_requested_ = 0;           // device Reset / stuck query: consumed by the owner at its next query
+volatile LONG foreign_thread_ = 0;            // counted by the foreign threads themselves
+// Owner thread only from here on.
+volatile bool busy_ = false;                           // between lookup() returning 0 and store()
+std::uint32_t seen_frame_ = 0, queries_since_tick_ = 0;
 // Between lookup and store of the one query in flight (the thunk's busy flag keeps it to one).
 Key pending_key_;
 bool pending_eligible_ = false;
@@ -42,7 +48,9 @@ bool body_matches(std::uintptr_t va, unsigned length, std::uint64_t expected, bo
 bool bodies_match() {
     return body_matches(caller_va, caller_length, caller_fnv1a, false, false) && body_matches(memo_target_va, target_length, target_fnv1a, false, false)
         && body_matches(query_va, query_length, query_fnv1a, false, false) && body_matches(descent_va, descent_length, descent_fnv1a, true, true)
-        && body_matches(leaf_va, leaf_length, leaf_fnv1a, true, false) && body_matches(triangle_va, triangle_length, triangle_fnv1a, false, false);
+        && body_matches(leaf_va, leaf_length, leaf_fnv1a, true, false) && body_matches(triangle_va, triangle_length, triangle_fnv1a, false, false)
+        && body_matches(sat_va, sat_length, sat_fnv1a, false, false) && body_matches(matrix_helpers_va, matrix_helpers_length, matrix_helpers_fnv1a, false, false)
+        && body_matches(vector_helpers_va, vector_helpers_length, vector_helpers_fnv1a, false, false) && body_matches(ftol_va, ftol_length, ftol_fnv1a, false, false);
 }
 // Pins this DLL for the process lifetime (documented: GET_MODULE_HANDLE_EX_FLAG_PIN): the engine calls into it.
 bool pin_self() {
@@ -51,6 +59,7 @@ bool pin_self() {
 }
 // False when a model is not in the built state: such a query returns early inside the engine and is left to it.
 bool build_key(Key& key, std::uint32_t flags, std::uint32_t cap, const x3m_collide_memo_args& a) {
+    if (a.model_a == nullptr || a.model_b == nullptr) return false;   // the caller tests both before the site; never dereferenced on trust
     if (a.model_a[model_state_word] != model_built || a.model_b[model_state_word] != model_built || a.model_a[0] == 0 || a.model_b[0] == 0) return false;
     std::uint32_t* w = key.words;
     std::memcpy(w, a.R1, 36); std::memcpy(w + 9, a.T1, 12); w[12] = a.s1;
@@ -66,17 +75,28 @@ bool build_key(Key& key, std::uint32_t flags, std::uint32_t cap, const x3m_colli
 }
 
 extern "C" {
-volatile unsigned char x3m_collide_memo_busy = 0;
 std::uint32_t x3m_collide_memo_target = 0, x3m_collide_memo_return = 0;
 
 int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, const x3m_collide_memo_args* args) {
+    // Single-thread gate, before anything of the memo's state is read: the table, the pending key and the saved return
+    // address belong to the first thread that came through. Any other thread, and a re-entered call (busy: also what
+    // an unwind past the thunk leaves behind), is the engine's alone.
+    const LONG thread = static_cast<LONG>(GetCurrentThreadId());   // no LastError, no x87
+    LONG owner = owner_thread_;
+    if (owner == 0) owner = InterlockedCompareExchange(&owner_thread_, thread, 0) == 0 ? thread : owner_thread_;
+    if (owner != thread) { InterlockedIncrement(&foreign_thread_); return 2; }
+    if (busy_) { ++counters_.reentered; return 2; }
+    busy_ = true;
+    const std::uint32_t frame = frame_;
+    if (frame != seen_frame_) { seen_frame_ = frame; queries_since_tick_ = 0; }
+    if (InterlockedExchange(&clear_requested_, 0) != 0 || ++queries_since_tick_ > queries_without_tick_limit) { table_.clear(); queries_since_tick_ = 0; ++counters_.clears; }
     pending_verify_ = nullptr;
     pending_eligible_ = build_key(pending_key_, flags, cap, *args);
     if (!pending_eligible_) { ++counters_.ineligible; return 0; }
-    Entry* const entry = table_.find(pending_key_, frame_);
+    Entry* const entry = table_.find(pending_key_, frame);
     if (entry == nullptr) { ++counters_.misses; return 0; }
     if (verify_) { pending_verify_ = entry; return 0; }   // the engine runs too; store() compares
-    entry->frame = frame_;
+    entry->frame = frame;
     // Exactly what the query would have written (collide_memo_core.h); the contact record and *minimum stay as they are.
     engine<std::uint32_t>(flags_va) = flags;
     engine<std::uint32_t>(cap_va) = cap;
@@ -89,9 +109,11 @@ int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, cons
     ++counters_.hits;
     counters_.skipped_visits += entry->outputs.visits;
     counters_.skipped_triangles += entry->outputs.triangles;
+    busy_ = false;
     return 1;
 }
-void __cdecl x3m_collide_memo_store() {
+void __cdecl x3m_collide_memo_store() {   // owner thread only: reached on lookup() == 0 alone
+    busy_ = false;
     if (!pending_eligible_) return;
     pending_eligible_ = false;
     Outputs now;
@@ -110,18 +132,16 @@ void __cdecl x3m_collide_memo_store() {
 }
 }
 // In: ECX = flags, EAX = cap, [ESP] = the engine's return address, [ESP+4..] = x3m_collide_memo_args.
-// Run path: the engine's return address is taken off and 0x004e29f0 is called with the engine's exact stack (it reads
-// its tenth argument above the nine pushed ones), then store() runs with EAX/ECX/EDX kept and control returns to the
-// engine's address. A re-entered thunk (busy) goes straight to the engine; an unwind past it leaves busy set, which
-// fails safe to that. Hit path: EAX = 0 and a plain return; the caller pops the arguments in both cases.
+// lookup() = 1: answered, EAX = 0 and a plain return. 2: not this thread's or re-entered, straight to the engine with
+// nothing of the memo touched. 0: the engine's return address is taken off and 0x004e29f0 is called with the engine's
+// exact stack (it reads its tenth argument above the nine), then store() runs with EAX/ECX/EDX kept and control
+// returns to the engine's address. The caller pops the arguments in every case.
 asm(R"(
     .intel_syntax noprefix
     .text
     .p2align 4
     .globl _x3m_collide_memo_thunk
 _x3m_collide_memo_thunk:
-    cmp byte ptr [_x3m_collide_memo_busy], 0
-    jne 2f
     push ecx
     push eax
     lea edx, [esp+12]
@@ -130,11 +150,12 @@ _x3m_collide_memo_thunk:
     push ecx
     call _x3m_collide_memo_lookup
     add esp, 12
-    test eax, eax
-    jne 1f
+    cmp eax, 1
+    je 1f
+    cmp eax, 2
     pop eax
     pop ecx
-    mov byte ptr [_x3m_collide_memo_busy], 1
+    je 2f
     pop dword ptr [_x3m_collide_memo_return]
     call dword ptr [_x3m_collide_memo_target]
     push eax
@@ -144,7 +165,6 @@ _x3m_collide_memo_thunk:
     pop edx
     pop ecx
     pop eax
-    mov byte ptr [_x3m_collide_memo_busy], 0
     jmp dword ptr [_x3m_collide_memo_return]
 1:  add esp, 8
     xor eax, eax
@@ -165,7 +185,7 @@ bool install_at(const Addresses& a, bool verify_mode) {
     table_.clear();
     verify_ = verify_mode;
     x3m_collide_memo_target = static_cast<std::uint32_t>(a.target);
-    x3m_collide_memo_busy = 0;
+    busy_ = false; owner_thread_ = 0; clear_requested_ = 0; seen_frame_ = frame_; queries_since_tick_ = 0;
     site_ = engine_patch::CallSite{};
     if (!engine_patch::claim_call(site_, a.site, a.target, reinterpret_cast<void*>(&x3m_collide_memo_thunk))) {
         if (site_.patched_in && !engine_patch::restore_call(site_)) { patched_ = true; return done("rollback_failed", false); }   // registered: shutdown() tries again
@@ -203,20 +223,26 @@ bool shutdown() {
     return back;
 }
 const char* state() { return state_; }
-core::Counters counters() { return counters_; }
+core::Counters counters() { core::Counters c = counters_; c.foreign_thread = static_cast<std::uint32_t>(foreign_thread_); return c; }
+void device_reset() { if (patched_) InterlockedExchange(&clear_requested_, 1); }
 void present(unsigned long long device, unsigned long long frame, bool) {
     if (!patched_) return;
     const std::uint32_t now = frame_ + 1;
     frame_ = now;
+    // A query cannot be in flight on the thread that is presenting: busy here is what an unwind past the thunk left.
+    if (busy_ && static_cast<LONG>(GetCurrentThreadId()) == owner_thread_) { busy_ = false; ++counters_.stuck_busy; InterlockedExchange(&clear_requested_, 1); }
     if (now % 300u != 0) return;
-    const Counters c = counters_;   // written by the engine's thread only; a torn read costs one window's accuracy, never a decision
+    const DWORD error = GetLastError();
+    const Counters c = counters();   // written by the owner thread; a torn read costs one window's accuracy, never a decision
     const auto d = [](std::uint32_t a, std::uint32_t b) { return static_cast<unsigned long>(a - b); };
     const std::uint32_t queries = (c.hits - logged_.hits) + (c.misses - logged_.misses) + (c.ineligible - logged_.ineligible) + (c.verified - logged_.verified) + (c.verify_mismatches - logged_.verify_mismatches);
     log("collide_memo device=%llu frame=%llu frames=300 verify=%u queries=%lu hits=%lu misses=%lu stored=%lu contacts=%lu ineligible=%lu evictions=%lu skipped_visits=%lu "
-        "skipped_triangles=%lu verified=%lu verify_mismatches=%lu",
+        "skipped_triangles=%lu verified=%lu verify_mismatches=%lu foreign_thread=%lu reentered=%lu clears=%lu stuck_busy=%lu",
         device, frame, verify_ ? 1u : 0u, static_cast<unsigned long>(queries), d(c.hits, logged_.hits), d(c.misses, logged_.misses), d(c.stored, logged_.stored), d(c.contacts, logged_.contacts),
         d(c.ineligible, logged_.ineligible), d(c.evictions, logged_.evictions), d(c.skipped_visits, logged_.skipped_visits), d(c.skipped_triangles, logged_.skipped_triangles),
-        d(c.verified, logged_.verified), d(c.verify_mismatches, logged_.verify_mismatches));
+        d(c.verified, logged_.verified), d(c.verify_mismatches, logged_.verify_mismatches), d(c.foreign_thread, logged_.foreign_thread), d(c.reentered, logged_.reentered),
+        d(c.clears, logged_.clears), d(c.stuck_busy, logged_.stuck_busy));
+    SetLastError(error);
     logged_ = c;
 }
 }

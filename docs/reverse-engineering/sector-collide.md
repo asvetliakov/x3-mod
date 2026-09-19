@@ -1315,8 +1315,11 @@ calls **`0x004e29f0`**, its only call and that function's only caller **[s]**. T
 its own query, and the census's sites (5, 6 above it; 7, 8 below) are untouched.
 
 At the site: ECX = flags, EAX = cap, nine stack words `&R1, &T1, s1, model a, &R2, &T2, s2, model b, tolerance`, and
-a **tenth** the callee reads at `[esp+0x2c]`: the caller's saved EDI, which `0x004e29f0` stores in `[0x00608540]` — the
-running-minimum pointer the leaf compares against and writes through in distance mode. `0x004e29f0` stores flags, cap,
+a **tenth** the callee reads at `[esp+0x2c]`. It is a pushed argument, not a saved register: EDI is a register
+argument of `0x0047f1b0` and `push edi` at `0x0047f1d7` passes it on (the function's exit `pop esi` then takes that
+slot). `0x004e29f0` stores it in `[0x00608540]` — the running-minimum pointer the leaf compares against and writes
+through in distance mode. `ftol` `0x0052b5d0` reads one global, the process-constant SSE2 flag `[0x006619ec]`
+(`cvttsd2si` when set, otherwise an x87 path under the control word), and writes none. `0x004e29f0` stores flags, cap,
 `ftol(tolerance)` (`0x0052b5d0`) and that pointer, and calls `0x004e2780(…, mode = flags & ~0xc)`.
 
 ### 14.2 Inputs and outputs, enumerated **[s]**
@@ -1328,7 +1331,8 @@ the one-time pair `0x00608d98/9c`. It calls out only to `fabs`, `ftol` and six h
 | | |
 | --- | --- |
 | **Key** (81 words, compared bit for bit) | 26 transform floats; tolerance; flags; cap; EDI null-ness and the float behind it; both model pointers; both 24-byte model headers (`[+0]` root box, `[+0x14] == 3`); both `0x48`-byte root boxes (content stamp) |
-| **Lifetime** | an entry is live only if stored or hit in this frame or the previous one (frame = `Present`); no node or object pointer is in the key, so object reuse cannot alias; a model address reused for other content changes header or root box |
+| **Lifetime** | an entry is live only if stored or hit in this frame or the previous one (frame = `Present`); the whole table is also dropped after a device `Reset`, after 100,000 queries without a `Present` (≈ 10³ frames' worth: a simulation running without rendering), and when a `Present` on the owner thread finds a query still marked in flight (`stuck_busy`: an unwind went past the thunk). Invariant: no entry outlives one rendered frame, a Reset or a render-less stretch. No node or object pointer is in the key, so object reuse cannot alias; a model address reused for other content changes header or root box |
+| **Threads** | the memo's state belongs to **one** thread, the first through the thunk (the game's main loop, which is also the Present thread). `lookup()` compares `GetCurrentThreadId()` before it reads anything and sets `busy` before the lookup proper; a query from any other thread, and a re-entered one, goes straight to the engine and is counted (`foreign_thread`, `reentered`) |
 | **Written by a no-contact query, replayed on a hit** | `0x00608534` flags, `…38` cap, `…3c` tolerance integer, `…40` EDI, `…44` node pairs, `…48` triangle tests, `…4c` = 0, and all 14 words of the root block (T, first-contact flag, scale, R) — each a function of the key, stored with the entry |
 | **Written on a contact only, left alone** | contact record `0x0060851c..0x00608533`; the float behind EDI (`fst [ecx]` at `0x004e248d` is on the counted-contact path) |
 | **Return** | the caller does `xor eax,eax; add esp,0x28; cmp [0x0060854c],eax; setne al`: nothing else of the query is read; on a hit EAX = 0, ECX/EDX/EFLAGS dead, x87 empty as the engine leaves it |
@@ -1341,24 +1345,28 @@ violation, §14.4); the x87 control word is constant (D3D9 sets it once).
 
 `collide_memo_core.h` (key, 4-way × 256-set static table, expiry, eviction of the entry touched longest ago;
 host-tested against a dictionary model) and `collide_memo.{h,cpp}`. `claim_call` on `0x0047f329`; `initialize()` hashes
-six bodies (caller, `0x004e29f0`, query, descent and leaf with the census/SAT holes zeroed, triangle test) and refuses
-with `body_mismatch`. The 30-instruction thunk: `lookup(flags, cap, &args)`; hit → `add esp,8; xor eax,eax; ret`; miss
+ten bodies (caller, `0x004e29f0`, query, descent and leaf with the census/SAT holes zeroed, triangle test, the SAT
+`0x004e3280`, the matrix helpers `0x004e1ff0`–`0x004e2186`, the vector helpers `0x004dfd80`–`0x004dfee2`, `ftol`) and
+refuses with `body_mismatch`; the SAT module's patch is a call-site rel32 inside the descent, already a hole, so the
+two coexist in either order. The 28-instruction thunk: `lookup(flags, cap, &args)`; hit → `add esp,8; xor eax,eax; ret`; miss
 → take the engine's return address off, `call 0x004e29f0` on the engine's exact stack (it reads the tenth word), then
-`store()` with EAX/ECX/EDX kept, `jmp` back. A `busy` byte sends a re-entered call straight to the engine. The
+`store()` with EAX/ECX/EDX kept, `jmp` back; `lookup()` = 2 (another thread, or re-entered) jumps to the engine with
+nothing of the memo touched. The
 handlers compare and copy words: no x87/MMX, no floating-point arithmetic, MXCSR never read, LastError never touched
 (build audit; three roots added to `check_no_x87.py`). `--collide-memo-verify` (implies the memo) skips nothing: a
 would-be hit runs the engine and `store()` compares contact, counters, tolerance integer and root block
 (`verified` / `verify_mismatches`, a mismatch drops the entry). Output: one `collide_memo` line per 300 frames —
-`queries hits misses stored contacts ineligible evictions skipped_visits skipped_triangles verified verify_mismatches`.
+`queries hits misses stored contacts ineligible evictions skipped_visits skipped_triangles verified verify_mismatches
+foreign_thread reentered clears stuck_busy` (LastError kept around the log call).
 The census keeps counting pairs and mesh pairs; its node-pair and triangle counts cover only the queries that ran.
 
 ### 14.4 Fixture **[m]**
 
-`collide_memo_fixture.cpp`, 47 checks: the engine's bytes in place at their own addresses (image at `0x00340000`, a
+`collide_memo_fixture.cpp`, 55 checks: the engine's bytes in place at their own addresses (image at `0x00340000`, a
 zero-filled section over `0x00400000..0x0066ffff`; **no byte changed**, real leaf and triangle tests), a second copy of
 `0x0047f1b0` whose call goes straight to `0x004e29f0` as the un-memoed engine. Every query runs through both from the
 same global state; result, EBX/EBP/ESI/EDI, x87 control and tag words, MXCSR, both global blocks, the running minimum
-and LastError must agree (ECX/EDX too unless it was a hit). **58,242 queries, 44,293 hits, 3,512 contacts: 0
+and LastError must agree (ECX/EDX too unless it was a hit). **58,250 queries, 44,296 hits, 3,512 contacts: 0
 differences, 0 stale hits, 0 contacts answered from the memo.**
 
 | Scenario | Queries / hits / contacts | What it shows |
@@ -1370,9 +1378,13 @@ differences, 0 stale hits, 0 contacts answered from the memo.**
 | addresses | 9 / 2 / 0 | same inputs at other node/body addresses hit; reversed pair, other model, reused model address, root box one float step, model state ≠ 3 miss |
 | expiry / overflow | 4 / 2, 9,000 / 1,538 | one untouched frame expires; 3,000 live keys per frame evict and never answer wrongly |
 | random | 48,000 / 42,207 / 3,470 | twelve objects that stay, creep, jump, turn, rescale, change model |
+| guards | 8 / 3 / 0 | null model pointers never dereferenced; 50 queries from another thread all run in the engine; re-entered lookup; a query left in flight re-armed by the next Present with the table dropped; device Reset; 100,001 queries without a Present drop the table once |
 | verify mode | 170 / 0 / 0 | nothing skipped, 140 confirmed; boxes below the root changed behind the key's back → mismatch reported |
 
-Cost, one contact-free pair of 15,567 node pairs: 728 µs run, **92 ns** answered (harness included; diagnostic).
+Cost (harness included; diagnostic): one contact-free pair of 21,643 node pairs 982 µs run, **99 ns** answered. A tiny
+query (root boxes apart, one node pair): 96 ns in the bare engine, 220 ns as a miss with a new key and a store, 98 ns
+answered — **a miss costs 123 ns** (key build with both root boxes, hash, 4-way compare, store), about 0.01 ms per frame
+at 10² queries, below the ~150 ns at which a two-stage key would be worth its complexity.
 Expected in flight **[i]**: `memo_visits_permille=828` ⇒ the collide phase's narrow part falls by about that share
 while the player holds still; nothing while the hot pair moves.
 

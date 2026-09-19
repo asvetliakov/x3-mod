@@ -1943,12 +1943,8 @@ separate x87/SSE rounding the bracketed path is exact, and the exactness argumen
 behaviour, no speed-up under FEX (31.0 against 31.4 ns per visit); the ≤ 15 ns target is not met.** Not merged: the
 code, option, verifier, fixture and test below were dropped and exist only in commit `c08d750d`.
 
-| Check | Command | Result |
-| --- | --- | --- |
-| Site verifier | `python3 verification/probe/verify_collide_descent_site.py` | PASS, 26 checks, 127 other claims; `verify_collide_sites.py` still PASS, 72 checks (it now sees 140 / 131 / 126 other claims) |
-| Build audit | `python3 verification/probe/build_collide_descent_sse2.py` | 4,325 engine bytes in 5 ranges, hash-pinned, untracked; 0 x87/MMX instructions in the module object; exact 12-instruction thunk and 13-instruction leaf wrapper |
-| Descent fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_descent_sse2.py` | exit 0, 49 checks, 0 failures, 16.1 s; `verification/results/collide-descent-sse2-cpu.json` |
-| Host tests | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_collide_descent_sse2 verification.analysis.test_collide_sat_sse2 verification.analysis.test_collide_box_cull verification.analysis.test_collide_narrow_census` | 7 + 20 + 10 tests, OK |
+Verifier (26 checks), build audit, fixture (49 checks, 0 failures) and host tests (7) all passed at that commit; the
+commands and the result record went with the code.
 
 Fixture, 126,150 tree pairs through the engine's own query `0x004e2780` run in place (25,495,277 visits, 6,892,149 leaf
 calls, 350,959 contacts), reference = engine descent + SSE2 SAT:
@@ -1973,15 +1969,17 @@ key and tables in [sector-collide.md](../reverse-engineering/sector-collide.md) 
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Site verifier | `python3 verification/probe/verify_collide_memo_site.py` | PASS, 27 checks, 127 other claims; `verify_collide_sites.py` still PASS, 72 checks |
-| Build audit | `python3 verification/probe/build_collide_memo.py` | 7,292 engine bytes in 7 ranges, hash-pinned, untracked; 0 x87/MMX instructions in the module; no floating-point arithmetic in thunk / lookup / store; exact 30-instruction thunk |
-| Memo fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_memo.py` | exit 0, 47 checks, 0 failures, 6.1 s; `verification/results/collide-memo-cpu.json` |
+| Site verifier | `python3 verification/probe/verify_collide_memo_site.py` | PASS, 29 checks, 127 other claims; `verify_collide_sites.py` still PASS, 72 checks |
+| Build audit | `python3 verification/probe/build_collide_memo.py` | 7,292 engine bytes in 7 ranges, hash-pinned, untracked; 0 x87/MMX instructions in the module; no floating-point arithmetic in thunk / lookup / store; exact 28-instruction thunk |
+| Memo fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_memo.py` | 55 checks (pinned by the runner), 0 failures, 2.1 s; `verification/results/collide-memo-cpu.json` |
 | Host tests | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_collide_memo verification.analysis.test_collide_sat_sse2 verification.analysis.test_collide_box_cull verification.analysis.test_collide_narrow_census` | 37 tests, OK |
 
-Fixture: 58,242 queries through the engine's own `0x0047f1b0` in place and through an un-memoed copy, from the same
-global state: 44,293 hits, 3,512 contacts, **0 differences, 0 stale hits, 0 contacts answered from the memo**, 0
-register differences; verify mode 140 confirmed, 1 injected mismatch reported. Cost pair (15,567 node pairs, no
-contact): 728 µs run, 92 ns answered. Not run here: `check_no_x87.py` (needs a built DLL; three roots added), any
+Fixture: 58,250 queries through the engine's own `0x0047f1b0` in place and through an un-memoed copy, from the same
+global state: 44,296 hits, 3,512 contacts, **0 differences, 0 stale hits, 0 contacts answered from the memo**, 0
+register differences; verify mode 140 confirmed, 1 injected mismatch reported; guards: 50 foreign-thread queries all in
+the engine, re-entry, stuck-busy re-arm, Reset and the 100,000-query limit each drop or bypass as designed. Cost pair
+(21,643 node pairs, no contact): 982 µs run, 99 ns answered; tiny query 96 ns bare, 220 ns miss + store (**+123 ns**),
+98 ns answered. Not run here: `check_no_x87.py` (needs a built DLL; three roots added), any
 flight — §14.5 names the two runs.
 
 ## Run 44 A (run140/run141): `--collide-narrow-census` triage of two preserved sessions

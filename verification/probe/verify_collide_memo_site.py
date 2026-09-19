@@ -37,7 +37,9 @@ HELPER_ENTRIES = [0x4dfd80, 0x4dfe60, 0x4dfeb0, 0x4e1ff0, 0x4e20d0, 0x4e2130]
 PRE_WINDOW = bytes.fromhex('8b842494000000518d4c2434d91c24518b8c24980000008d54246852')
 POST_WINDOW = bytes.fromhex('33c083c42839054c8560005e0f95c083c464c3')
 HASHES = {'caller': 0xfdd929ef070d4324, 'target': 0x9d655aae0a820ae8, 'query': 0x5a4d7c6efe584a18, 'descent': 0xcef4870863cdd1de, 'leaf': 0xa9766de75c6ecfca,
-          'triangle': 0x90c2eb0126ac4f2a}
+          'triangle': 0x90c2eb0126ac4f2a, 'sat': 0xad8a2cb66c0bf30c, 'matrix_helpers': 0xd21cd0c0e39e9854, 'vector_helpers': 0xc5107d96ea42adcd, 'ftol': 0xc648662b5a549dd9}
+FTOL = (0x52b5d0, 0x52b67b)
+SSE2_FLAG_VA = 0x6619ec
 CALLER_SITES = [0x48a69e, 0x48a9a5]
 NODE_WORDS = [0x70, 0xb0, 0xb4, 0xb8, 0xc0, 0xc4, 0xc8, 0xd0, 0xd4, 0xd8, 0xe0, 0xe4, 0xe8]
 TARGET_STORES = [0x608534, 0x608538, 0x60853c, 0x608540]
@@ -49,7 +51,7 @@ INIT_PAIR = {0x608d98, 0x608d9c}
 INSTALL_RE = re.compile(r'\bcollide_memo requested=(?P<requested>[01]) patched=(?P<patched>[01]) verify=(?P<verify>[01]) reason=(?P<reason>\S+) site=0x(?P<site>[0-9a-f]{8}) '
                         r'target=0x(?P<target>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) handler=0x(?P<handler>[0-9a-f]{8}) entries=(?P<entries>\d+)')
 WINDOW_KEYS = ('device', 'frame', 'frames', 'verify', 'queries', 'hits', 'misses', 'stored', 'contacts', 'ineligible', 'evictions', 'skipped_visits', 'skipped_triangles',
-               'verified', 'verify_mismatches')
+               'verified', 'verify_mismatches', 'foreign_thread', 'reentered', 'clears', 'stuck_busy')
 WINDOW_RE = re.compile(r'\bcollide_memo ' + ' '.join(rf'{k}=(?P<{k}>\d+)' for k in WINDOW_KEYS) + r'\s*$')
 EXPECTED_CONSTANTS = {
     'memo_site_va': SITE, 'memo_target_va': TARGET, 'memo_return_va': RETURN, 'caller_va': CALLER[0], 'query_va': QUERY[0], 'descent_va': DESCENT[0], 'leaf_va': LEAF[0],
@@ -57,7 +59,10 @@ EXPECTED_CONSTANTS = {
     'target_length': TARGET_FN[1] - TARGET_FN[0], 'query_length': QUERY[1] - QUERY[0], 'descent_length': DESCENT[1] - DESCENT[0], 'leaf_length': LEAF[1] - LEAF[0],
     'triangle_length': TRIANGLE[1] - TRIANGLE[0], 'memo_pre_window': PRE_WINDOW, 'memo_post_window': POST_WINDOW, 'entry_hole': 5, 'sat_rel32_offset': 0x74, 'sat_rel32_length': 4,
     'caller_fnv1a': HASHES['caller'], 'target_fnv1a': HASHES['target'], 'query_fnv1a': HASHES['query'], 'descent_fnv1a': HASHES['descent'], 'leaf_fnv1a': HASHES['leaf'],
-    'triangle_fnv1a': HASHES['triangle'], 'flags_va': 0x608534, 'cap_va': 0x608538, 'tolerance_va': 0x60853c, 'minimum_va': 0x608540, 'visits_va': 0x608544,
+    'triangle_fnv1a': HASHES['triangle'], 'sat_va': sites.SAT_CALLEE[0], 'matrix_helpers_va': HELPERS[0][0], 'vector_helpers_va': HELPERS[1][0], 'ftol_va': FTOL_VA,
+    'sat_length': sites.SAT_CALLEE[1] - sites.SAT_CALLEE[0], 'matrix_helpers_length': HELPERS[0][1] - HELPERS[0][0], 'vector_helpers_length': HELPERS[1][1] - HELPERS[1][0],
+    'ftol_length': FTOL[1] - FTOL[0], 'sat_fnv1a': HASHES['sat'], 'matrix_helpers_fnv1a': HASHES['matrix_helpers'], 'vector_helpers_fnv1a': HASHES['vector_helpers'],
+    'ftol_fnv1a': HASHES['ftol'], 'queries_without_tick_limit': 100000, 'flags_va': 0x608534, 'cap_va': 0x608538, 'tolerance_va': 0x60853c, 'minimum_va': 0x608540, 'visits_va': 0x608544,
     'triangles_va': 0x608548, 'contacts_va': 0x60854c, 'root_block_va': ROOT_BLOCK[0], 'root_block_words': (ROOT_BLOCK[1] - ROOT_BLOCK[0]) // 4, 'header_words': 6, 'box_words': 18,
     'model_built': 3, 'model_state_word': 5, 'ways': 4, 'sets': 256}
 
@@ -93,7 +98,7 @@ def body_hashes(image):
             body[at:at + length] = bytes(length)
         return sites.fnv1a(bytes(body))
     return {'caller': masked((CALLER[0], SITE)), 'target': masked(TARGET_FN), 'query': masked(QUERY), 'descent': masked(DESCENT, ((0, 5), (0x74, 4))), 'leaf': masked(LEAF, ((0, 5),)),
-            'triangle': masked(TRIANGLE)}
+            'triangle': masked(TRIANGLE), 'sat': masked(sites.SAT_CALLEE), 'matrix_helpers': masked(HELPERS[0]), 'vector_helpers': masked(HELPERS[1]), 'ftol': masked(FTOL)}
 
 
 def own_windows():
@@ -130,7 +135,7 @@ def decode(exe):
     if not tool:
         raise RuntimeError(f'{common.OBJDUMP} not found')
     decoded = {}
-    for bounds in (CALLER, TARGET_FN, COLLIDER, *HELPERS):
+    for bounds in (CALLER, TARGET_FN, COLLIDER, FTOL, *HELPERS):
         run = subprocess.run([tool, '-d', '-Mintel', '--insn-width=16', f'--start-address={bounds[0]:#x}', f'--stop-address={bounds[1]:#x}', str(exe)],
                              check=True, capture_output=True, text=True, timeout=60)
         decoded[bounds] = [i for i in common.parse_objdump(run.stdout, *bounds)]
@@ -194,6 +199,10 @@ def inspect(data, decoded, core_text, claims):
         'collider_globals_enumerated': outside == [],
         'collider_calls_out': calls_out == sorted([sites.FABS_HELPER_VA, FTOL_VA, *HELPER_ENTRIES]),
         'helpers_pure': _globals_named(helpers) == set() and not any(i.mnemonic == 'call' for i in helpers),
+        # ftol reads one global, the process-constant SSE2 flag (cvttsd2si when set, else an x87 path under the control word), writes none and calls nothing.
+        'ftol_reads_the_sse2_flag_only': _globals_named(decoded[FTOL]) == {SSE2_FLAG_VA} and not any(i.mnemonic == 'call' for i in decoded[FTOL]),
+        # The tenth word is an argument: `push edi` right after the two null tests, before the nine others.
+        'tenth_word_is_pushed_edi': by_caller.get(0x47f1d7) is not None and by_caller[0x47f1d7].raw == b'\x57',
         'x87_empty_at_site': x87_depth([i for i in caller if 0x47f1d1 <= i.va < SITE]) == 0,
         'no_xmm_in_caller': not any(sites._mentions_simd(i) for i in caller + target_fn),
         'claims_disjoint': overlaps(claims) == [] and len(claims) >= 40 and any(address == sites.N6_SITE for _, address, _ in claims) and any(address == sites.SAT_SITE for _, address, _ in claims),

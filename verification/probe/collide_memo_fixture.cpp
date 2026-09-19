@@ -215,6 +215,12 @@ static bool query(const Object& a, const Object& b, const Mode& mode, const char
 static unsigned long long frame_serial = 0;
 static void next_frame() { memo::present(1, ++frame_serial, false); }
 
+struct Job { const Object* a; const Object* b; State state; };
+static DWORD WINAPI foreign_thread_main(void* p) {
+    Job& j = *static_cast<Job*>(p);
+    for (unsigned k = 0; k < 50; ++k) fx_call(core::caller_va, j.a->node, j.b->node, j.a->body, j.b->body, 2, 1, 0, 0, &j.state);
+    return 0;
+}
 int main() {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     if (!map_engine()) { std::printf("COLLIDE MEMO CPU checks=1 failures=1\n"); return 1; }
@@ -416,6 +422,58 @@ int main() {
         check(tally.hits - before.hits > 5000 && tally.contacts - before.contacts > 500, "random: hits and contacts both occur in volume");
         section("random", before);
     }
+    // 9. Guards: null models, another thread, a re-entered query, an unwind that leaves a query marked in flight, a device Reset, a long run without a Present.
+    {
+        const Tally before = tally;
+        Object a{}, b{};
+        rotation(m, 1.0); set_rotation(a, m); set_rotation(b, m);
+        place(a, models[0], 0, 0, 0, 1); place(b, models[1], 200000, 0, 0, 1);
+        const float identity[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1}, zero[3] = {0, 0, 0};
+        x3m_collide_memo_args raw{identity, zero, 0x3f800000u, nullptr, identity, zero, 0x3f800000u, models[1]->header, 0, nullptr};
+        core::Counters c0 = memo::counters();
+        const int null_a = x3m_collide_memo_lookup(2, 1, &raw); x3m_collide_memo_store();
+        raw.model_a = models[0]->header; raw.model_b = nullptr;
+        const int null_b = x3m_collide_memo_lookup(2, 1, &raw); x3m_collide_memo_store();
+        check(null_a == 0 && null_b == 0 && memo::counters().ineligible - c0.ineligible == 2 && memo::counters().stored == c0.stored, "a null model pointer is never dereferenced: the engine's path, nothing stored");
+        Object bodiless = a; bodiless.body[0x5c / 4] = 0;
+        query(bodiless, b, first_contact, "guards"); query(a, bodiless, first_contact, "guards");   // the caller returns before the site
+        // Another thread: straight to the engine, the memo's state untouched.
+        query(a, b, first_contact, "guards"); next_frame();
+        c0 = memo::counters();
+        Job job{&a, &b, {}};
+        HANDLE thread = CreateThread(nullptr, 0, foreign_thread_main, &job, 0, nullptr);
+        WaitForSingleObject(thread, INFINITE); CloseHandle(thread);
+        core::Counters c1 = memo::counters();
+        check(c1.foreign_thread - c0.foreign_thread == 50 && c1.hits == c0.hits && c1.misses == c0.misses && c1.stored == c0.stored && job.state.eax == 0, "another thread: 50 queries run in the engine, none through the memo");
+        check(query(a, b, first_contact, "guards"), "the owner thread still hits afterwards");
+        // Re-entered: a second lookup while one query is in flight.
+        raw.model_a = models[0]->header; raw.model_b = models[1]->header;
+        const int first = x3m_collide_memo_lookup(2, 1, &raw), second = x3m_collide_memo_lookup(2, 1, &raw);
+        x3m_collide_memo_store();
+        check(first == 0 && second == 2 && memo::counters().reentered - c1.reentered == 1, "re-entered lookup: the engine's path, counted");
+        // An unwind past the thunk: lookup without its store. The next Present on this thread notices, drops the table and re-arms.
+        raw.s1 = 0x40000000u;
+        c1 = memo::counters();
+        const int stuck = x3m_collide_memo_lookup(2, 1, &raw);
+        const int while_stuck = x3m_collide_memo_lookup(2, 1, &raw);
+        next_frame();
+        const bool after_unwind = query(a, b, first_contact, "guards");
+        core::Counters c2 = memo::counters();
+        check(stuck == 0 && while_stuck == 2 && c2.stuck_busy - c1.stuck_busy == 1 && c2.clears - c1.clears == 1 && !after_unwind && query(a, b, first_contact, "guards"),
+              "a query left in flight: passes through until the next Present, which re-arms and drops the table");
+        // Device Reset.
+        next_frame(); memo::device_reset();
+        const bool after_reset = query(a, b, first_contact, "guards");
+        check(!after_reset && memo::counters().clears - c2.clears == 1 && query(a, b, first_contact, "guards"), "device Reset drops the table");
+        // More queries than the limit without a Present.
+        c2 = memo::counters();
+        State s{};
+        for (unsigned k = 0; k <= core::queries_without_tick_limit; ++k) fx_call(core::caller_va, a.node, b.node, a.body, b.body, 2, 1, 0, 0, &s);
+        const core::Counters c3 = memo::counters();
+        check(c3.clears - c2.clears == 1 && c3.hits - c2.hits == core::queries_without_tick_limit && c3.misses - c2.misses == 1, "100,000 queries without a Present: the table is dropped once");
+        next_frame();
+        section("guards", before);
+    }
     check(tally.differences == 0 && tally.stale == 0 && tally.hit_on_contact == 0 && tally.register_differences == 0, "every query of every frame: identical to the un-memoed engine, no stale hit, no contact answered from the memo");
 
     // ---- cost: the hot pair of a parked ship, run and answered ----
@@ -443,7 +501,29 @@ int main() {
             const double e = (seconds() - t) * 1e9 / 1000.0; if (e < hit_ns) hit_ns = e;
         }
         check(contact == 0 && memo::counters().hits - hits0 == 12000, "cost pair: no contact, every repeat answered");
-        std::printf("COLLIDE MEMO BENCH visits=%u run_ns=%.0f hit_ns=%.1f\n", visits, run_ns, hit_ns);
+        // The price of a miss: a tiny query (root boxes apart: one node pair) with a new key every time, against the same query in the bare engine and answered.
+        Object far_a{}, far_b{};
+        rotation(m, 1.0); set_rotation(far_a, m); set_rotation(far_b, m);
+        place(far_a, models[0], 0, 0, 0, 1);
+        std::int32_t serial = 300000;
+        const auto tiny = [&](std::uint32_t fn, bool new_key) {
+            double best = 1e30;
+            for (unsigned r = 0; r < 8; ++r) {
+                place(far_b, models[1], serial, 0, 0, 1);
+                if (!new_key) fx_call(fn, far_a.node, far_b.node, far_a.body, far_b.body, 2, 1, 0, 0, &s);
+                const double t = seconds();
+                for (unsigned k = 0; k < 2000; ++k) { if (new_key) far_b.node[0xb0 / 4] = std::uint32_t(++serial); fx_call(fn, far_a.node, far_b.node, far_a.body, far_b.body, 2, 1, 0, 0, &s); }
+                const double e = (seconds() - t) * 1e9 / 2000.0; if (e < best) best = e;
+                next_frame();
+            }
+            return best;
+        };
+        const core::Counters t0 = memo::counters();
+        const double tiny_run = tiny(reference_va, true), tiny_miss = tiny(core::caller_va, true);
+        const core::Counters t1 = memo::counters();
+        const double tiny_hit = tiny(core::caller_va, false);
+        check(t1.misses - t0.misses == 16000 && t1.stored - t0.stored == 16000 && memo::counters().hits - t1.hits >= 16000 && engine<std::uint32_t>(core::visits_va) == 1, "tiny queries: every one a miss and a store, then every one a hit");
+        std::printf("COLLIDE MEMO BENCH visits=%u run_ns=%.0f hit_ns=%.1f tiny_run_ns=%.1f tiny_miss_store_ns=%.1f tiny_hit_ns=%.1f miss_store_overhead_ns=%.1f\n", visits, run_ns, hit_ns, tiny_run, tiny_miss, tiny_hit, tiny_miss - tiny_run);
     }
     const core::Counters normal = memo::counters();
     next_frame();
@@ -488,6 +568,7 @@ int main() {
     std::printf("SUMMARY queries=%lu hits=%lu contacts=%lu differences=%lu stale_hits=%lu hits_on_contact=%lu register_differences=%lu stored=%u evictions=%u ineligible=%u skipped_visits=%u verified=%u verify_mismatches=%u\n",
                 tally.queries, tally.hits, tally.contacts, tally.differences, tally.stale, tally.hit_on_contact, tally.register_differences, c.stored, c.evictions, c.ineligible, c.skipped_visits,
                 c.verified, c.verify_mismatches);
+    std::printf("GUARDS foreign_thread=%u reentered=%u clears=%u stuck_busy=%u\n", c.foreign_thread, c.reentered, c.clears, c.stuck_busy);
     std::printf("COLLIDE MEMO CPU checks=%u failures=%u\n", checks, failures);
     return failures ? 1 : 0;
 }

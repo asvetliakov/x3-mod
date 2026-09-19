@@ -80,12 +80,13 @@ SCENARIO addresses queries=9 hits=2 contacts=0 differences=0 stale=0 hit_on_cont
 SCENARIO expiry queries=4 hits=2 contacts=0 differences=0 stale=0 hit_on_contact=0
 SCENARIO overflow queries=9000 hits=1538 contacts=0 differences=0 stale=0 hit_on_contact=0
 SCENARIO random queries=48000 hits=42207 contacts=3470 differences=0 stale=0 hit_on_contact=0
-COLLIDE MEMO BENCH visits=15567 run_ns=714200 hit_ns=99.0
-WINDOW collide_memo device=1 frame=4800 frames=300 verify=0 queries=3600 hits=3100 misses=200 stored=190 contacts=300 ineligible=0 evictions=0 skipped_visits=123456 skipped_triangles=12 verified=0 verify_mismatches=0
+SCENARIO guards queries=8 hits=3 contacts=0 differences=0 stale=0 hit_on_contact=0
+COLLIDE MEMO BENCH visits=21643 run_ns=981900 hit_ns=98.7 tiny_run_ns=96.4 tiny_miss_store_ns=219.6 tiny_hit_ns=98.4 miss_store_overhead_ns=123.3
+WINDOW collide_memo device=1 frame=4800 frames=300 verify=0 queries=3600 hits=3100 misses=200 stored=190 contacts=300 ineligible=0 evictions=0 skipped_visits=123456 skipped_triangles=12 verified=0 verify_mismatches=0 foreign_thread=0 reentered=0 clears=1 stuck_busy=0
 VERIFY verified=140 injected_mismatches=1
 SCENARIO verify queries=170 hits=0 contacts=0 differences=0 stale=0 hit_on_contact=0
 SUMMARY queries=58242 hits=44293 contacts=3512 differences=0 stale_hits=0 hits_on_contact=0 register_differences=0 stored=10295 evictions=6452 ineligible=2 skipped_visits=197180493 verified=140 verify_mismatches=1
-COLLIDE MEMO CPU checks=47 failures=0
+COLLIDE MEMO CPU checks=55 failures=0
 '''
 
 
@@ -122,7 +123,7 @@ class MemoSite(unittest.TestCase):
         self.assertEqual((row['requested'], row['patched'], row['verify'], row['reason'], row['site'], row['target'], row['entries']), (True, True, False, 'ok', 0x47f329, 0x4e29f0, 1024))
         self.assertIsNone(probe.parse_install_line('collide_memo requested=1 patched=0 reason=body_mismatch'))
         window = probe.parse_window_line(next(l for l in SAMPLE.splitlines() if l.startswith('WINDOW '))[7:])
-        self.assertEqual((window['hits'], window['skipped_visits'], window['verify_mismatches'], window['frames']), (3100, 123456, 0, 300))
+        self.assertEqual((window['hits'], window['skipped_visits'], window['verify_mismatches'], window['frames'], window['clears'], window['stuck_busy']), (3100, 123456, 0, 300, 1, 0))
         self.assertIsNone(probe.parse_window_line('collide_memo device=1 frame=300'))
         module = (ROOT / 'src/proxy/collide_memo.cpp').read_text()
         for key in probe.WINDOW_KEYS:
@@ -135,7 +136,9 @@ class MemoSite(unittest.TestCase):
         self.assertGreaterEqual(len(report['checks']), 25)
         data = Path(probe.sites.DEFAULT_EXE).read_bytes()
         for va, raw, failing in ((0x47f329, b'\xe9', 'site_whole_call'), (0x47f32a, b'\xc3', 'site_whole_call'), (0x47f32e, b'\x31', 'windows'), (0x47f1d3, b'\xd8', 'body_hashes'),
-                                 (0x47f2fa, b'\x74', 'node_b_words'), (0x4e2a0e, b'\x30', 'target_reads_tenth_word'), (0x4e2300, b'\x90', 'body_hashes'), (0x4e2b00, b'\x90', 'body_hashes')):
+                                 (0x47f2fa, b'\x74', 'node_b_words'), (0x4e2a0e, b'\x30', 'target_reads_tenth_word'), (0x4e2300, b'\x90', 'body_hashes'), (0x4e2b00, b'\x90', 'body_hashes'),
+                                 (0x4e3300, b'\x90', 'body_hashes'), (0x4e2000, b'\x90', 'body_hashes'), (0x4dfe70, b'\x90', 'body_hashes'), (0x52b5e0, b'\x90', 'body_hashes'),
+                                 (0x47f1d7, b'\x56', 'tenth_word_is_pushed_edi')):
             image = bytearray(data)
             offset = va - 0x401000 + 0x400
             image[offset:offset + len(raw)] = raw
@@ -166,6 +169,14 @@ class MemoWiring(unittest.TestCase):
         self.assertIn('L"X3M_COLLIDE_MEMO"', module)
         self.assertIn('L"X3M_COLLIDE_MEMO_VERIFY"', module)
         self.assertIn('if (contact) { ++counters_.contacts; return; }', module)   # a contact is never stored
+        lookup = module[module.index('int __cdecl x3m_collide_memo_lookup'):module.index('void __cdecl x3m_collide_memo_store')]
+        self.assertLess(lookup.index('if (owner != thread)'), lookup.index('busy_ = true;'))          # the thread gate comes before any memo state
+        self.assertLess(lookup.index('busy_ = true;'), lookup.index('build_key('))                  # busy is set before the lookup proper
+        self.assertLess(module.index('a.model_a == nullptr || a.model_b == nullptr'), module.index('a.model_a[model_state_word]'))
+        present = module[module.index('void present('):]
+        self.assertLess(present.index('GetLastError()'), present.index('log("collide_memo device'))
+        self.assertLess(present.index('log("collide_memo device'), present.index('SetLastError(error)'))
+        self.assertEqual(capture.count('collide_memo::device_reset();'), 1)
         for forbidden in ('float ', 'double ', '_mm_', 'xmmintrin'):
             self.assertNotIn(forbidden, module, forbidden)   # words only: no floating-point code on the engine's path
         audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
@@ -175,9 +186,9 @@ class MemoWiring(unittest.TestCase):
     def test_runner_accepts_only_a_clean_record(self):
         record = {**runner.parse(SAMPLE), 'exit_status': 0}
         self.assertTrue(runner.accepted(record))
-        self.assertEqual((record['summary']['hits'], record['bench']['hit_ns'], record['approach']['parked_hits']), (44293, 99.0, 59))
+        self.assertEqual((record['summary']['hits'], record['bench']['hit_ns'], record['bench']['miss_store_overhead_ns'], record['approach']['parked_hits']), (44293, 98.7, 123.3, 59))
         for change in (('stale_hits=0', 'stale_hits=1'), ('differences=0 stale_hits', 'differences=3 stale_hits'), ('hits_on_contact=0 register', 'hits_on_contact=1 register'),
-                       ('checks=47 failures=0', 'checks=47 failures=1'), ('SCENARIO expiry', 'SCENARIO other'), ('SUMMARY queries=58242 hits=44293', 'SUMMARY queries=58242 hits=0')):
+                       ('checks=55 failures=0', 'checks=55 failures=1'), ('checks=55 failures=0', 'checks=54 failures=0'), (' miss_store_overhead_ns=123.3', ''), ('SCENARIO expiry', 'SCENARIO other'), ('SUMMARY queries=58242 hits=44293', 'SUMMARY queries=58242 hits=0')):
             self.assertFalse(runner.accepted({**runner.parse(SAMPLE.replace(*change)), 'exit_status': 0}), change)
         self.assertFalse(runner.accepted({**runner.parse(SAMPLE), 'exit_status': 1}))
         self.assertFalse(runner.accepted({**runner.parse(''), 'exit_status': 0}))

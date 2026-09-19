@@ -16,10 +16,17 @@
 // window of theirs. The census keeps counting accepted pairs and mesh pairs (its sites are above this one); its
 // node-pair and triangle counters see only the queries that ran, and `skipped_visits` here is the difference.
 //
+// Threads and clock. The memo's state (table, pending key, saved return address) belongs to ONE thread: the first
+// that comes through the thunk, in the game its main loop, which is also the Present thread. lookup() tests that before
+// it reads anything; a query from any other thread, and a re-entered one, goes straight to the engine
+// (`foreign_thread`, `reentered`). Expiry counts Present calls; the table is also dropped after a device Reset, after
+// 100,000 queries without a Present, and when a Present on the owner thread finds a query still marked in flight
+// (`stuck_busy`: an unwind went past the thunk), so an entry never outlives one rendered frame or a loading stretch.
+//
 // Path cost (per mesh-pair query, about 1e2 per frame): one key build and a 4-way set compare, no lock, no
 // allocation, no log, no API call; the table is 1,024 static entries. The thunk and both C handlers hold no x87/MMX
 // instruction and no floating-point arithmetic at all (the key is compared as words), MXCSR is not read or written,
-// the x87 stack is empty at the site and stays so, LastError is never touched. On the run path the engine's
+// the x87 stack is empty at the site and stays so, LastError is never touched (GetCurrentThreadId does not set it). On the run path the engine's
 // EAX/ECX/EDX and callee-saved registers reach the caller as the engine left them; on a hit EAX = 0, ECX/EDX and
 // EFLAGS are dead at the return (`xor eax,eax` follows), EBX/EBP/ESI/EDI are untouched.
 namespace x3m::collide_memo {
@@ -33,14 +40,14 @@ const char* state();
 // `collide_memo` line per 300 frames. No-op when nothing is installed.
 void present(unsigned long long device, unsigned long long frame, bool captured);
 core::Counters counters();   // monotonic totals (fixture and tests)
+void device_reset();         // after IDirect3DDevice9::Reset: the owner thread drops the whole table at its next query
 }
 extern "C" {
 void x3m_collide_memo_thunk();   // the redirected call's target
-// The words at the site: [ESP+4..] of the engine's call, the caller's saved EDI included.
+// The words at the site: [ESP+4..] of the engine's call, the tenth (pushed first, `push edi`) included.
 struct x3m_collide_memo_args { const float* R1; const float* T1; std::uint32_t s1; const std::uint32_t* model_a; const float* R2; const float* T2; std::uint32_t s2;
                                const std::uint32_t* model_b; std::uint32_t tolerance; const std::uint32_t* minimum; };
-int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, const x3m_collide_memo_args* args);   // 1: answered from the memo
+int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, const x3m_collide_memo_args* args);   // 1: answered; 0: run, then store(); 2: run, not ours
 void __cdecl x3m_collide_memo_store();                                                                            // after the engine ran
-extern volatile unsigned char x3m_collide_memo_busy;
 extern std::uint32_t x3m_collide_memo_target, x3m_collide_memo_return;
 }

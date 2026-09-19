@@ -20,7 +20,9 @@ OUT = ROOT / 'verification/results/collide-memo-cpu.json'
 SUMMARY_KEYS = ('queries', 'hits', 'contacts', 'differences', 'stale_hits', 'hits_on_contact', 'register_differences', 'stored', 'evictions', 'ineligible', 'skipped_visits', 'verified',
                 'verify_mismatches')
 MUST_BE_ZERO = ('differences', 'stale_hits', 'hits_on_contact', 'register_differences')
-SCENARIOS = ('static', 'one_step', 'approach', 'modes', 'addresses', 'expiry', 'overflow', 'random', 'verify')
+EXPECTED_CHECKS = 55   # the fixture's check() count: a run that skips a section is not a pass
+COST_KEYS = ('visits', 'run_ns', 'hit_ns', 'tiny_run_ns', 'tiny_miss_store_ns', 'tiny_hit_ns', 'miss_store_overhead_ns')
+SCENARIOS = ('static', 'one_step', 'approach', 'modes', 'addresses', 'expiry', 'overflow', 'random', 'guards', 'verify')
 
 
 def _fields(line):
@@ -41,8 +43,8 @@ def parse(stdout):
 
 def accepted(record):
     summary = record.get('summary')
-    return bool(record.get('exit_status') == 0 and record.get('failures') == 0 and summary and all(summary[k] == 0 for k in MUST_BE_ZERO) and summary['hits'] > 0
-                and summary['contacts'] > 0 and set(record.get('scenarios', {})) == set(SCENARIOS) and record.get('bench'))
+    return bool(record.get('exit_status') == 0 and record.get('failures') == 0 and record.get('checks') == EXPECTED_CHECKS and summary and all(summary[k] == 0 for k in MUST_BE_ZERO) and summary['hits'] > 0
+                and summary['contacts'] > 0 and set(record.get('scenarios', {})) == set(SCENARIOS) and record.get('bench') and all(k in record['bench'] for k in COST_KEYS))
 
 
 def main():

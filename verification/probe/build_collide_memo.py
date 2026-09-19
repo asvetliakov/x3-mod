@@ -27,8 +27,8 @@ LINK = ('-s', '-Wl,--image-base,0x00340000', '-Wl,--disable-dynamicbase', '-Wl,-
 # (va, length): fabs helper; the caller; vector helpers; 0x004e1ff0..0x004e38ad (helpers, leaf, descent, query, 0x004e29f0, triangle test, SAT); ftol; constants.
 RANGES = ((sites.FABS_HELPER_VA, len(sites.FABS_HELPER)), (site.CALLER[0], site.CALLER[1] - site.CALLER[0]), (0x4dfd80, 0x4dfee3 - 0x4dfd80), (0x4e1ff0, 0x4e38ae - 0x4e1ff0),
           (site.FTOL_VA, 0x52b67b - site.FTOL_VA), (0x5654e0, 4), (0x565600, 12))
-THUNK = ['cmp', 'jne', 'push', 'push', 'lea', 'push', 'push', 'push', 'call', 'add', 'test', 'jne', 'pop', 'pop', 'mov', 'pop', 'call', 'push', 'push', 'push', 'call', 'pop', 'pop',
-         'pop', 'mov', 'jmp', 'add', 'xor', 'ret', 'jmp']
+THUNK = ['push', 'push', 'lea', 'push', 'push', 'push', 'call', 'add', 'cmp', 'je', 'cmp', 'pop', 'pop', 'je', 'pop', 'call', 'push', 'push', 'push', 'call', 'pop', 'pop', 'pop',
+         'jmp', 'add', 'xor', 'ret', 'jmp']
 # Arithmetic, conversion, compare and control: plain XMM moves (struct copies) are not floating-point operations and read no MXCSR.
 FLOAT_RE = re.compile(r'^(f[a-z0-9]+|emms|(add|sub|mul|div|sqrt|max|min|cmp|and|andn|or|xor|shuf|unpck[lh])[sp][sd]|cvt\w+|u?comis[sd]|stmxcsr|ldmxcsr)$')
 
