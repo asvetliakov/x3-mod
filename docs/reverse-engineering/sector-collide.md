@@ -1148,6 +1148,152 @@ widened from 2⁻⁴⁵ to 2⁻²⁰ so that a 24-bit-precision x87 (native Wind
 replacement prunes; §12.5's "~1e-4 relative bias" corrected; the observed world magnitudes added to the fixture; the
 census's shutdown now runs both entry-site restores unconditionally; the second query path added to §12.2.
 
+## 13. `0x004e2530`, the whole contract, and `--collide-descent-sse2` (2026-09-19)
+
+Method as in §12: `i686-w64-mingw32-objdump -d -M intel` over the bottle EXE in place for `0x004e2530`–`0x004e2776`,
+`0x004e2190`–`0x004e252d`, `0x004e1ff0`–`0x004e2186`, `0x004dfd80`–`0x004dfeaa` and `0x004e2780`–`0x004e2968`, plus a
+rel32/abs32 byte scan of the image. Nothing launched. Marks as in §12. **Headline [m]: the replacement is behaviourally
+identical to the engine on 126,150 tree pairs and brings nothing under FEX — 31.0 ns per visit against 31.4 ns for the
+engine's own descent with the SSE2 SAT (§13.5). It stays default off; §13.6 says why the ≤ 15 ns target is not
+reachable this way.**
+
+### 13.1 Contract **[s]**
+
+`int __cdecl 0x004e2530(BV* a, BV* b, float* R, float* T, float s)`: five stack arguments, caller pops `0x14`, locals
+`sub esp,0x40`, EBX/EBP/ESI/EDI pushed and popped, **four** plain `ret` exits (§12.3 said three), EAX/ECX/EDX and the
+x87 stack (empty in, empty out) are what it may change. Reached by its own four recursive calls (`0x004e264c`,
+`0x004e269f`, `0x004e2705`, `0x004e2767`) and by **one** external call, `0x004e2956` in the query `0x004e2780`; no abs32
+reference to the entry exists in the file. Per entry, in this order:
+
+1. `contacts = [0x0060854c]`. If `[0x00596934] != 0 && contacts > 0` (signed) return 0. If `[0x00608534] & 4` and
+   `contacts >= [0x00608538]` return 0. Both are re-read at **every** entry; they are the only early termination there
+   is (item 6).
+2. `++[0x00608544]` (the visit counter; entries that returned in 1 are not counted).
+3. `bs[i] = float32(b.d[i] * s)`, then `SAT(ESI = R, EDI = bs, T, &a.d)`; non-zero returns 0.
+4. `a` is a leaf iff `[a+0x3c] == 0 && [a+0x40] == 0`, likewise `b`. Both leaves: `return 0x004e2190(ESI = a, EAX = b)`.
+5. Split `a` when `b` is a leaf, or when neither is and `b.d[0] < a.d[0]` — the compare is on the **unscaled** `b.d[0]`
+   (`fld [b+0x30]; fcomp [a+0x30]; test ah,5; jnp`), and an unordered or equal compare splits `b`. The child at `+0x40`
+   is entered first, then `+0x3c`.
+   - split `b`, child `c`: `R' = R × c.R` (`0x004e1ff0`), `T' = (R · c.centre) · s + T` (`0x004e20d0`), recurse `(a, c, R', T', s)`.
+   - split `a`, child `c`: `R' = c.Rᵀ × R` (`0x004dfd80`), `v = float32(T − c.centre)`, `T' = c.Rᵀ · v` (`0x004dfe60`, no
+     scale), recurse `(c, b, R', T', s)`.
+   Each `R'`/`T'` entry is three products summed in a fixed, per-entry association order and stored through
+   `fstp dword`; the orders are transcribed in `collide_descent_sse2_core.h` (`mul_rr`, `mul_rc_scaled`, `mul_trr`,
+   `mul_trv`). The second child's transform is composed from the parent's unchanged `R`/`T` after the first returns.
+6. A non-zero result of the first child is returned at once, the second child's result is returned as is. **But
+   `0x004e2190` returns 0 on both of its exits** (`xor eax,eax` before each `ret`), so the descent always returns 0 and
+   those branches are dead: a contact stops the descent only through item 1.
+
+`0x004e2190` reads ESI and EAX of its caller's registers and nothing else (first use of EBX is its own `push`, of ECX
+and EDX a `lea`, EBP is never named), saves EBX/EDI, and is where every output is written: `++[0x00608548]` per
+triangle test, `++[0x0060854c]` per contact, the contact triangles' centroids to `0x0060851c..0x00608530` (overwritten
+per contact, so **order decides which contact survives**), and on the `flags & 0xc` path the running minimum through
+`[0x00608540]`. The caps named in the brief live here and in item 1: `0x0048a9a5` passes flags 2 / cap 1 (cap unused,
+first-contact flag set), `0x0048a69e` flags `0xc` / cap 8. The visit counter `0x00608544` has eight references in the
+image, one `add` and seven `mov [m],x` resets; nothing reads it.
+
+The query `0x004e2780(ECX = model b, EDX = model a; R1, T1, s1, R2, T2, s2, mode)` composes the root `R`/`T`, stores
+`[0x00596934] = (mode == 2)`, zeroes the three counters at `0x004e2947` and calls the descent with the x87 stack empty
+(`fstp [esp]` is the last x87 instruction before the pushes).
+
+### 13.2 Hook
+
+`engine_patch::claim_call` on **`0x004e2956`** (`e8 d5 fb ff ff`), rel32 only, windows `33 c0 d9 1c 24 51 52 53 57 a3 44
+85 60 00 a3 48 85 60 00 a3 4c 85 60 00` before and `83 c4 14 5f 5e 5d 5b 81 c4 98 00 00 00 c3` after. The entry
+`0x004e2530` is the census's site 7, which is why the call site was chosen: the two claims are disjoint and either can
+be installed or restored first. With the hook in, the engine's body is never entered, so the SAT module's claim at
+`0x004e25a3` goes quiet and the census's entry stub no longer fires; the replacement adds its entry count to
+`x3m_collide_narrow_counters[1]` itself (same number, fixture-checked), and site 8 still counts inside the engine's
+leaf. `initialize()` additionally hashes the three bodies it depends on — the descent (with the census's five entry
+bytes and the SAT rel32 zeroed, because those modules initialise first), the leaf (entry bytes zeroed) and the four
+helpers — and refuses with `body_mismatch`; other refusals `executable_mismatch`, `bytes_mismatch`, `target_mismatch`,
+`late_claim`, all leaving vanilla in place. Verifier: `verify_collide_descent_site.py`, 26 checks (whole call, exact
+inbound set, nothing into `+1..+4`, the three hashes, the exact list of 14 calls inside the descent, plain-cdecl shape,
+leaf register inputs and zero return, helpers x87-balanced and stack empty at the site, flags dead at the return, no
+XMM on the path, visit counter never read, disjoint from 127 other claims, source constants).
+
+### 13.3 Replacement
+
+`collide_descent_sse2_core.h` (portable, templated on the arithmetic type and an `Env`) and
+`collide_descent_sse2.{h,cpp}`. Iterative: the pair in hand plus a stack of pending `+0x3c` children (56 B each, 64 per
+frame); when a frame is full the first child's subtree runs in a nested frame and the loop continues with the second,
+so depth is unbounded and stack use per level is below the engine's `0x6c` B (fixture: 45 KB against 75 KB on the
+deepest pairs). Both children's transforms are composed when the parent descends — they are pure functions of the
+parent's `R`/`T`, so composing the second one early changes nothing observable. Head checks are re-read at every entry
+exactly as in item 1, the visit counter is added to `0x00608544` before every leaf call and at the end (so the leaf
+sees the engine's value; nothing reads it anyway), the SAT is `collide_sat_sse2::core::obb_disjoint` unchanged (NaN
+separates, 2⁻²⁰ margin), the leaf is called through a 13-instruction wrapper (`ESI = a`, `EAX = b`,
+`call 0x004e2190`, EBX/EBP/ESI/EDI kept), a non-zero leaf result is returned through every level as the engine would.
+The thunk keeps ECX/EDX (the original leaves them alone when the root pair is pruned) and re-pushes the five arguments
+for a cdecl C body. MXCSR as in §12.8: read once per query, untouched when its control bits are the default, otherwise
+`0x1f80` for the body, the caller's value around every leaf call and at the end. No x87/MMX instruction in the module
+(build audit; `check_no_x87.py` roots added), LastError never touched, no lock, no allocation, no log on the path.
+
+**Arithmetic.** `double`, same operands and association order, the engine's float32 stores reproduced (each `R'`/`T'`
+entry, `bs`, and `v`). A product of two float32 values is exact in double, so with the x87 computing in double (FEX
+reduced precision) every composed transform is **bit-identical**, not merely close — measured, §13.4. On native
+Windows the x87 runs at 24- or 64-bit precision control, so the last bit of a transform can differ there; the fixture's
+float instantiation quantifies what that does.
+
+### 13.4 Fixture **[m]**
+
+`collide_descent_sse2_fixture.cpp`, 49 checks. The reference is the engine's **own bytes run in place**: the fixture
+image is linked at `0x00400000` with a zero-filled section over `0x004d0000..0x0060ffff` and copies in (untracked,
+hash-pinned, extracted by `build_collide_descent_sse2.py`) the query, descent, leaf, helpers, SAT and `reps`; only the
+SAT's 24 `fabs` calls are re-pointed. So production code runs unmodified with its real addresses, through the real
+call site and `initialize()`. The leaf's entry is a five-byte jump to a recorder that decides contacts by hash, the
+SAT call is pointed at a recorder of `(a, b, R, T, bs)`, the entry at a counter. 126,150 tree pairs (25,495,277
+visits, 6,892,149 leaf calls, 350,959 contacts) through `0x004e2780` per pass:
+
+| Category | Pairs | Notes |
+| --- | --- | --- |
+| realistic / overlap without contact | 40,000 / 6,000 | balanced and ragged trees, 8–1,024 leaves, flags 2 |
+| first contact / cap 8 + distance / cap 1 / all contacts | 15,000 / 15,000 / 10,000 / 10,000 | flags 2, `0xc`, 4, 0 |
+| deep unbalanced | 150 | concentric chains, 120–400 levels each: nested frames |
+| hostile | 25,000 | NaN, ±inf, ±FLT_MAX, denormals, ±1e30, ±0 in a node field or a query input |
+| leaf returns non-zero | 5,000 | not an engine behaviour; the propagation rule |
+
+| Comparison against engine + SSE2 SAT | Differences |
+| --- | --- |
+| core, recorded: visit sequence **with composed `R`/`T`/`bs` bits**, leaf calls (arguments, visit and contact counter at the call), result, contacts, last contact, visit counter, entry count | **0 / 0 / 0 / 0 / 0** |
+| production thunk via `initialize()`: leaf calls, outputs, census entry count | **0 / 0 / 0** |
+| engine with its own x87 SAT (what `--collide-sat-sse2`'s margin changes, §12.8) | 15 pairs visit more, 7 of them reach extra leaf pairs (5 + 5 of those in the 150 concentric chains) |
+| core in `float` (proxy for 24-bit x87 precision control) | 6 pairs visit differently, 2 with different leaf calls |
+
+Also checked: every refusal leaves the site bytes untouched; `initialize()` succeeds with the SAT module installed and
+an entry claim in place; ECX/EDX/EBX/EBP/ESI/EDI, x87 control word and empty tag word, MXCSR and LastError across a
+direct call under MXCSR `0x1f80`, `0x5f80`, `0x9fc0` (the leaf saw the caller's MXCSR each time, results identical);
+`shutdown()` restores the five bytes; `late_claim` after the window closes.
+
+### 13.5 Cost **[m]**
+
+One deeply overlapping pair, 212,707 visits per query (106,353 descend, 91,448 pruned by the SAT, 14,906 leaf pairs),
+fastest of 24 queries, FEX; diagnostic timings, not game FPS.
+
+| Configuration | ns / visit |
+| --- | --- |
+| engine as shipped | 114.8 |
+| engine + `--collide-sat-sse2` (run 45's state) | 31.4 |
+| `--collide-descent-sse2` | **31.0** |
+
+Pieces in isolation: full 15-axis SAT 20.4 ns, one child's `R'`+`T'` 8.0–9.2 ns, a pending-entry copy 0.24 ns.
+
+### 13.6 Why there is no gain, and what was tried
+
+§12.8's premise was that the remaining time is x87 code, slow under FEX. It is not: with `FEX_X87REDUCEDPRECISION=1`
+the x87 helpers run as host double arithmetic and cost what the same sums cost in scalar SSE2: the replacement's two
+`compose` calls come to ≈ 17 ns per descending visit **[m]**, and since the per-visit totals are equal within noise
+the engine's two helper pairs cost about the same **[i]**. What is left is dominated by the SAT itself, ≈ 13 ns
+averaged over the mix above **[i]** (20.4 ns for the half that overlaps, the early exits for the rest), which run 45
+already replaced. Tried in this session and
+removed because the fixture measured no benefit (verdicts stayed identical in both): a packed-double SAT evaluating two
+axes per operation (19.5 ns against 20.8 ns scalar in isolation, no change per visit), and composing only row 0 of
+`R'` and `T'[0]` until SAT axis 1 had been tried (10 % of entries settled that way, no change per visit). The same
+query with trees that fit L1 gives the same ns per visit, so the fixture number is compute, not memory. The flight
+figure of 66 ns per visit is twice the fixture's 31 ns for the same configuration; that gap is outside this function
+(candidates: the per-mesh-pair query set-up, cache behaviour of the real station tree, census brackets) and is the
+thing to measure next. On native Windows x87 is not emulated, so no gain is expected there either **[i]**.
+
 ## Reproduce
 
 ```sh

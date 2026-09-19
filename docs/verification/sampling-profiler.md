@@ -1935,6 +1935,35 @@ record fields `ROUNDING` in the result. None of this matters with both modes at 
 Not verified: anything in the game, and native Windows (source uses documented instructions only; on hardware with
 separate x87/SSE rounding the bracketed path is exact, and the exactness argument there is geometric, §12.8).
 
+## Collide descent SSE2: fixture and site qualification (2026-09-19, no game)
+
+`--collide-descent-sse2` (`X3M_COLLIDE_DESCENT_SSE2=1`, default off); contract, design and tables in
+[sector-collide.md](../reverse-engineering/sector-collide.md) §13. Bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Nothing launched, nothing installed, no DLL built. **Outcome: identical
+behaviour, no speed-up under FEX (31.0 against 31.4 ns per visit); the ≤ 15 ns target is not met.**
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Site verifier | `python3 verification/probe/verify_collide_descent_site.py` | PASS, 26 checks, 127 other claims; `verify_collide_sites.py` still PASS, 72 checks (it now sees 140 / 131 / 126 other claims) |
+| Build audit | `python3 verification/probe/build_collide_descent_sse2.py` | 4,325 engine bytes in 5 ranges, hash-pinned, untracked; 0 x87/MMX instructions in the module object; exact 12-instruction thunk and 13-instruction leaf wrapper |
+| Descent fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_descent_sse2.py` | exit 0, 49 checks, 0 failures, 16.1 s; `verification/results/collide-descent-sse2-cpu.json` |
+| Host tests | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_collide_descent_sse2 verification.analysis.test_collide_sat_sse2 verification.analysis.test_collide_box_cull verification.analysis.test_collide_narrow_census` | 7 + 20 + 10 tests, OK |
+
+Fixture, 126,150 tree pairs through the engine's own query `0x004e2780` run in place (25,495,277 visits, 6,892,149 leaf
+calls, 350,959 contacts), reference = engine descent + SSE2 SAT:
+
+| Compared | Differences |
+| --- | --- |
+| core, recorded: visit sequence with composed transform bits / node sequence / leaf calls / outputs / entry count | 0 / 0 / 0 / 0 / 0 |
+| production thunk via `initialize()`: leaf calls / outputs / census entry count | 0 / 0 / 0 |
+| engine with its x87 SAT (the SAT margin of §12.8, not this change): pairs with more visits / with extra leaf pairs | 15 / 7 |
+| core in `float` (24-bit precision-control proxy): pairs visiting differently / different leaf calls | 6 / 2 |
+
+Cost, one pair of 212,707 visits per query (106,353 descend, 91,448 SAT-pruned, 14,906 leaf pairs), fastest of 24
+queries: engine 114.8 ns/visit, engine + SSE2 SAT 31.4, replacement **31.0** (1.01×). In isolation: full SAT 20.4 ns,
+one child transform 8.0–9.2 ns. Not run here: `check_no_x87.py` (needs a built DLL; the three new roots are in its
+list), any flight.
+
 ## Run 44 A (run140/run141): `--collide-narrow-census` triage of two preserved sessions
 
 Two sessions, `--loop-phases --collide-narrow-census`, bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,

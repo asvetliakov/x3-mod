@@ -1,0 +1,500 @@
+{
+ "fixture": "build/verification/collide-descent-sse2/collide_descent_sse2_fixture.exe",
+ "exit_status": 0,
+ "elapsed_s": 16.1,
+ "checks": 49,
+ "failures": 0,
+ "summary": {
+  "pairs": 126150,
+  "visits": 25495277,
+  "leaf_calls": 6892149,
+  "contacts": 350959,
+  "core_transform_differs": 0,
+  "core_nodes_differs": 0,
+  "core_leafs_differs": 0,
+  "core_outputs_differ": 0,
+  "core_entries_differ": 0,
+  "thunk_leafs_differs": 0,
+  "thunk_outputs_differ": 0,
+  "thunk_entries_differ": 0,
+  "vanilla_sat_nodes_differs": 15,
+  "vanilla_sat_leafs_differs": 7,
+  "float_nodes_differs": 6,
+  "float_leafs_differs": 2,
+  "float_outputs_differ": 6
+ },
+ "bench": {
+  "visits_per_query": 212707,
+  "leaf_calls_per_query": 14906,
+  "engine_vanilla_ns": 114.82,
+  "engine_sse2_sat_ns": 31.43,
+  "descent_sse2_ns": 30.98
+ },
+ "bench_ratios": {
+  "vs_vanilla": 3.71,
+  "vs_sse2_sat": 1.01
+ },
+ "compare": {
+  "core_vs_engine": {
+   "realistic": {
+    "pairs": 40000,
+    "visits": 2436584,
+    "leaf_calls": 24320,
+    "contacts": 452,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "overlap_no_contact": {
+    "pairs": 6000,
+    "visits": 1116494,
+    "leaf_calls": 18130,
+    "contacts": 0,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "first_contact": {
+    "pairs": 15000,
+    "visits": 1128890,
+    "leaf_calls": 5795,
+    "contacts": 563,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "cap8_distance": {
+    "pairs": 15000,
+    "visits": 1259414,
+    "leaf_calls": 11098,
+    "contacts": 3383,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "cap1": {
+    "pairs": 10000,
+    "visits": 712679,
+    "leaf_calls": 1845,
+    "contacts": 523,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "all_contacts": {
+    "pairs": 10000,
+    "visits": 921634,
+    "leaf_calls": 15468,
+    "contacts": 4676,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "deep_unbalanced": {
+    "pairs": 150,
+    "visits": 16187758,
+    "leaf_calls": 6804695,
+    "contacts": 340650,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "hostile": {
+    "pairs": 25000,
+    "visits": 1240022,
+    "leaf_calls": 7399,
+    "contacts": 362,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "leaf_nonzero": {
+    "pairs": 5000,
+    "visits": 491802,
+    "leaf_calls": 3399,
+    "contacts": 350,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   }
+  },
+  "thunk_vs_engine": {
+   "realistic": {
+    "pairs": 40000,
+    "visits": 2436584,
+    "leaf_calls": 24320,
+    "contacts": 452,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "overlap_no_contact": {
+    "pairs": 6000,
+    "visits": 1116494,
+    "leaf_calls": 18130,
+    "contacts": 0,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "first_contact": {
+    "pairs": 15000,
+    "visits": 1128890,
+    "leaf_calls": 5795,
+    "contacts": 563,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "cap8_distance": {
+    "pairs": 15000,
+    "visits": 1259414,
+    "leaf_calls": 11098,
+    "contacts": 3383,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "cap1": {
+    "pairs": 10000,
+    "visits": 712679,
+    "leaf_calls": 1845,
+    "contacts": 523,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "all_contacts": {
+    "pairs": 10000,
+    "visits": 921634,
+    "leaf_calls": 15468,
+    "contacts": 4676,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "deep_unbalanced": {
+    "pairs": 150,
+    "visits": 16187758,
+    "leaf_calls": 6804695,
+    "contacts": 340650,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "hostile": {
+    "pairs": 25000,
+    "visits": 1240022,
+    "leaf_calls": 7399,
+    "contacts": 362,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "leaf_nonzero": {
+    "pairs": 5000,
+    "visits": 491802,
+    "leaf_calls": 3399,
+    "contacts": 350,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   }
+  },
+  "vanilla_sat_vs_sse2_sat": {
+   "realistic": {
+    "pairs": 40000,
+    "visits": 2436584,
+    "leaf_calls": 24320,
+    "contacts": 452,
+    "transform_sequence_differs": 1,
+    "node_sequence_differs": 1,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 1,
+    "entries_differ": 1
+   },
+   "overlap_no_contact": {
+    "pairs": 6000,
+    "visits": 1116494,
+    "leaf_calls": 18130,
+    "contacts": 0,
+    "transform_sequence_differs": 2,
+    "node_sequence_differs": 2,
+    "leaf_sequence_differs": 1,
+    "outputs_differ": 2,
+    "entries_differ": 1
+   },
+   "first_contact": {
+    "pairs": 15000,
+    "visits": 1128890,
+    "leaf_calls": 5795,
+    "contacts": 563,
+    "transform_sequence_differs": 1,
+    "node_sequence_differs": 1,
+    "leaf_sequence_differs": 1,
+    "outputs_differ": 1,
+    "entries_differ": 1
+   },
+   "cap8_distance": {
+    "pairs": 15000,
+    "visits": 1259414,
+    "leaf_calls": 11098,
+    "contacts": 3383,
+    "transform_sequence_differs": 4,
+    "node_sequence_differs": 4,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 4,
+    "entries_differ": 4
+   },
+   "cap1": {
+    "pairs": 10000,
+    "visits": 712679,
+    "leaf_calls": 1845,
+    "contacts": 523,
+    "transform_sequence_differs": 2,
+    "node_sequence_differs": 2,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 2,
+    "entries_differ": 2
+   },
+   "all_contacts": {
+    "pairs": 10000,
+    "visits": 921634,
+    "leaf_calls": 15468,
+    "contacts": 4676,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "deep_unbalanced": {
+    "pairs": 150,
+    "visits": 16187758,
+    "leaf_calls": 6804695,
+    "contacts": 340650,
+    "transform_sequence_differs": 5,
+    "node_sequence_differs": 5,
+    "leaf_sequence_differs": 5,
+    "outputs_differ": 5,
+    "entries_differ": 0
+   },
+   "hostile": {
+    "pairs": 25000,
+    "visits": 1240022,
+    "leaf_calls": 7399,
+    "contacts": 362,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "leaf_nonzero": {
+    "pairs": 5000,
+    "visits": 491802,
+    "leaf_calls": 3399,
+    "contacts": 350,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   }
+  },
+  "float_vs_double": {
+   "realistic": {
+    "pairs": 40000,
+    "visits": 2436584,
+    "leaf_calls": 24320,
+    "contacts": 452,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "overlap_no_contact": {
+    "pairs": 6000,
+    "visits": 1116494,
+    "leaf_calls": 18130,
+    "contacts": 0,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "first_contact": {
+    "pairs": 15000,
+    "visits": 1128890,
+    "leaf_calls": 5795,
+    "contacts": 563,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "cap8_distance": {
+    "pairs": 15000,
+    "visits": 1259414,
+    "leaf_calls": 11098,
+    "contacts": 3383,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 1,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 1,
+    "entries_differ": 1
+   },
+   "cap1": {
+    "pairs": 10000,
+    "visits": 712679,
+    "leaf_calls": 1845,
+    "contacts": 523,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 1,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 1,
+    "entries_differ": 1
+   },
+   "all_contacts": {
+    "pairs": 10000,
+    "visits": 921634,
+    "leaf_calls": 15468,
+    "contacts": 4676,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   },
+   "deep_unbalanced": {
+    "pairs": 150,
+    "visits": 16187758,
+    "leaf_calls": 6804695,
+    "contacts": 340650,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 2,
+    "leaf_sequence_differs": 2,
+    "outputs_differ": 2,
+    "entries_differ": 1
+   },
+   "hostile": {
+    "pairs": 25000,
+    "visits": 1240022,
+    "leaf_calls": 7399,
+    "contacts": 362,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 2,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 2,
+    "entries_differ": 2
+   },
+   "leaf_nonzero": {
+    "pairs": 5000,
+    "visits": 491802,
+    "leaf_calls": 3399,
+    "contacts": 350,
+    "transform_sequence_differs": 0,
+    "node_sequence_differs": 0,
+    "leaf_sequence_differs": 0,
+    "outputs_differ": 0,
+    "entries_differ": 0
+   }
+  }
+ },
+ "passes": [
+  "PASS engine_sse2_sat pairs=126150 seconds=1.7 stack_span_bytes=74672",
+  "PASS engine_vanilla_sat pairs=126150 seconds=4.2 stack_span_bytes=74672",
+  "PASS production_thunk pairs=126150 seconds=1.0 stack_span_bytes=0",
+  "PASS core_double_recorded pairs=126150 seconds=1.4 stack_span_bytes=45232",
+  "PASS core_float_recorded pairs=126150 seconds=1.3 stack_span_bytes=44528"
+ ],
+ "visit_mix": {
+  "visits": 212707,
+  "descended": 106353,
+  "leaf": 14906,
+  "pruned_by_sat": 91448
+ },
+ "micro_ns": {
+  "sat_scalar_full": 20.38,
+  "compose_split_a": 8.02,
+  "compose_split_b": 9.17,
+  "pair_copy": 0.24,
+  "empty": 0.23
+ },
+ "install_lines": [
+  "collide_descent_sse2 requested=0 patched=0 reason=disabled site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=body_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=body_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=body_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=body_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=body_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=body_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=body_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=bytes_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=bytes_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=bytes_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940",
+  "collide_descent_sse2 requested=1 patched=0 reason=bytes_mismatch site=0x004e2956 target=0x004e2530 write=none handler=0x00406940"
+ ],
+ "failure_lines": [],
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "build": {
+  "engine": {
+   "ranges": 5,
+   "bytes": 4325,
+   "sha256": "2d739364ed7f806513c2ad21862422d770c30e690376f85973658d9065dd1ceb"
+  },
+  "audit": {
+   "module_x87_mmx_instructions": 0,
+   "x3m_collide_descent_thunk_instructions": 12,
+   "x3m_collide_descent_leaf_instructions": 13
+  }
+ },
+ "note": "ns are per node-pair visit of one overlapping, contact-free tree pair through the real query 0x004e2780; diagnostic timings, not game FPS"
+}
