@@ -10,6 +10,7 @@ namespace {
 // Slot addresses (each holds a pointer to a 64-byte matrix buffer).
 uintptr_t projection_slot=0,view_slot=0;
 bool active=false;
+bool extra_consumer=false; // request_consumer(): an option the DLL's parser accepted
 const char* state="disabled";
 struct Cache { uintptr_t pointer=0; bool valid=false; };
 Cache caches[2];
@@ -45,7 +46,10 @@ bool initialize() {
     const bool motion=GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT",setting,4)==1&&setting[0]==L'1';
     const bool consumer=(GetEnvironmentVariableW(L"X3M_TAA",setting,4)==1&&setting[0]==L'1')||
         (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1')||
-        (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1');
+        (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1')||
+        // The light-map far fade (P[0] for its per-draw footprint): armed by
+        // capture.cpp only after its parser accepted the value (request_consumer).
+        extra_consumer;
     // The small-parts cull (X3M_CULL_SMALL_PARTS_PX, cull_small_parts.cpp)
     // reads P[0] once per frame for its pixel threshold: same read-only latch.
     wchar_t px[16]{};
@@ -66,6 +70,7 @@ bool initialize() {
 }
 bool available(){return active;}
 const char* status(){return state;}
+bool request_consumer(){extra_consumer=true;return initialize();}
 void reset(){caches[0]=Cache{};caches[1]=Cache{};}
 bool read(Sample* out) {
     if(!out)return false;

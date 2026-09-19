@@ -131,6 +131,8 @@ float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E comp
 float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
 float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only; independent of the effects gain, own key Ctrl+Shift+F4)
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
+bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: the hull light-map gain fades to G (default 1) as the draw's footprint grows from P0 to P1 units/px; needs the gain
+float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
 float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; Ctrl+Shift+F4 switches it alone)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
@@ -2210,6 +2212,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_hull_emission_gain(hull_emission_gain);
     hooked.motion_output.configure_original_fill(original_fill);
     hooked.motion_output.configure_hull_lightmap_gain(hull_lightmap_gain);
+    if(lightmap_far_fade_requested){
+        const bool accepted=hooked.motion_output.configure_lightmap_far_fade(lightmap_far_fade[0],lightmap_far_fade[1],lightmap_far_fade[2]);
+        log("light_map_far_fade_configured accepted=%u",unsigned(accepted));
+    }
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
@@ -2843,6 +2849,30 @@ void initialize_log(HMODULE module) {
      const bool excluded=linear_material_requested;
      if(!hdr_requested||excluded)hull_lightmap_gain=1.f;
      if(!gain_valid||value!=1.f)log("hull_lightmap_gain_mode requested=1 enabled=%u hdr=%u linear_materials=%u gain=%g gain_valid=%u%s",hull_lightmap_gain!=1.f,hdr_requested,unsigned(excluded),double(hull_lightmap_gain),unsigned(gain_valid),excluded?" refused=linear_materials":!hdr_requested?" refused=hdr":"");}
+    // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G] (taa-distant-line-fade.md section 11):
+    // the gain above fades to G (default 1, the game's own brightness; 0..gain)
+    // as the draw's pixel footprint grows from P0 to P1 world units per pixel
+    // (finite, 0 < P0 < P1). Unset or empty = off; malformed, out of range or
+    // no gain to fade keeps it off and logs.
+    {lightmap_far_fade_requested=false;lightmap_far_fade[0]=lightmap_far_fade[1]=0.f;lightmap_far_fade[2]=1.f;
+     wchar_t fade_setting[96]{};
+     const DWORD fade_length=GetEnvironmentVariableW(L"X3M_LIGHT_MAP_FAR_FADE",fade_setting,96);
+     if(fade_length){
+         float parsed[3]={0.f,0.f,1.f};unsigned count=0;bool valid=fade_length<96;
+         const wchar_t* at=fade_setting;
+         while(valid&&count<3){
+             wchar_t* end=nullptr;parsed[count]=wcstof(at,&end);
+             if(end==at||!std::isfinite(parsed[count])){valid=false;break;}
+             ++count;if(!*end)break;
+             if(*end!=L','||count==3){valid=false;break;}
+             at=end+1;}
+         valid=valid&&count>=2&&parsed[0]>0.f&&parsed[1]>parsed[0]&&parsed[1]<=1e6f&&parsed[2]>=0.f&&parsed[2]<=hull_lightmap_gain;
+         const bool gained=hull_lightmap_gain!=1.f;
+         lightmap_far_fade_requested=valid&&gained;
+         if(lightmap_far_fade_requested){lightmap_far_fade[0]=parsed[0];lightmap_far_fade[1]=parsed[1];lightmap_far_fade[2]=parsed[2];
+             camera_state::request_consumer();} // the footprint's P[0]: armed only for an accepted value
+         log("light_map_far_fade_mode requested=1 enabled=%u valid=%u p0=%g p1=%g floor=%g gain=%g%s",unsigned(lightmap_far_fade_requested),unsigned(valid),
+             double(parsed[0]),double(parsed[1]),double(parsed[2]),double(hull_lightmap_gain),valid&&!gained?" refused=no_gain":"");}}
     // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8; unset, 0 or invalid = off):
     // the additive option of the same nine screen pairs, drawn in place with
     // DESTBLEND ONE and a colour gain G into the FP16 target. Needs the

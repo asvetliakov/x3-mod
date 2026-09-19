@@ -106,6 +106,12 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
         admitted = {name for name, row in self.rows.items() if row['status'] == 0}
         self.assertEqual(admitted, set(self.covered()))
 
+    def test_far_fade_dynamic_variant_drops_the_def_and_reads_c217_w(self):
+        # --light-map-far-fade: the driver rebuilds every dynamic variant from
+        # the constant-gain one (DEF removed, c223.x -> c217.w) and compares it
+        # byte for byte: 100 programs x (2 fills x 2 depth modes + 2 share).
+        self.assertEqual(self.driver['dynamic_checks'], 100 * 6)
+
     def test_untouched_programs_keep_the_fill_variant_byte_for_byte(self):
         for name in sorted(UNTOUCHED):
             for f in range(len(FILLS)):
@@ -236,11 +242,64 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
         self.assertNotIn(GAIN_CONSTANT, (212, 213, 214, 215, 221, 222))
         source = (ROOT / 'src/renderer/linear_material.cpp').read_text()
         self.assertIn('constexpr unsigned lightmap_gain_constant = 223;', source)
-        self.assertIn('emit(out,mul,{dst(temp,reg),src(temp,reg),lane(constant,lightmap_gain_constant,0)});', source)
+        self.assertIn('emit(out,mul,{dst(temp,reg),src(temp,reg),lightmap_gain_operand(dynamic)});', source)
+        self.assertIn('return dynamic ? lane(constant,lightmap_dynamic_constant,3) : lane(constant,lightmap_gain_constant,0);', source)
         self.assertIn('constexpr unsigned hull_gain_constant = 223', (ROOT / 'src/renderer/linear_emission.cpp').read_text())
 
 
 class LauncherAndProxyGateTests(unittest.TestCase):
+    def test_light_map_far_fade_launcher_and_law(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
+            baseline = json.loads(output)['env']
+            self.assertNotIn('X3M_LIGHT_MAP_FAR_FADE', baseline)  # default off: no variable at all
+            with mock.patch.dict(os.environ, {'X3M_LIGHT_MAP_FAR_FADE': '1,2'}):
+                code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
+                self.assertEqual(json.loads(output)['env'], baseline)  # an inherited value is dropped
+            for value, expected in (('60,120', '60,120,1'), ('60,120,0', '60,120,0'), ('60,120,4', '60,120,4'), ('0.5,1e6,2.5', '0.5,1e+06,2.5')):
+                code, output, error = launch(directory, *PREREQUISITES, '--light-map-far-fade', value); self.assertEqual(code, 0, error)
+                env = json.loads(output)['env']
+                self.assertEqual(env.pop('X3M_LIGHT_MAP_FAR_FADE'), expected)
+                self.assertEqual(env, baseline)
+            for value in ('60', '60,120,1,2', '120,60', '0,60', '60,60', '60,120,4.5', '60,120,-1', 'a,b', '60,nan', '60,2e6'):
+                code, _, error = launch(directory, *PREREQUISITES, '--light-map-far-fade', value)
+                self.assertEqual(code, 2, value); self.assertIn('--light-map-far-fade', error)
+            for extra in (['--hull-lightmap-gain', '1'], ['--linear-materials']):
+                code, _, error = launch(directory, *PREREQUISITES, *extra, '--light-map-far-fade', '60,120')
+                self.assertEqual(code, 2, extra)
+            code, _, error = launch(directory, '--motion-output', '--light-map-far-fade', '60,120'); self.assertEqual(code, 2)
+            code, _, error = launch(directory, *PREREQUISITES, '--hull-lightmap-gain', '2', '--light-map-far-fade', '60,120,3'); self.assertEqual(code, 2)
+        core = (ROOT / 'src/proxy/fade_route_core.h').read_text()
+        law = extract_function(core, 'inline float lightmap_far_gain(')
+        for text in ('if (!camera_valid || !(m00 > 0.f) || !(width > 0.f) || !(w > 0.f)) return gain;', 'if (!(t > 0.f)) return gain;',
+                     'if (t >= 1.f) return floor;', 'return gain + (floor - gain) * t;'):
+            self.assertIn(text, law)
+        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        draw = extract_function(motion, 'void MotionOutput::evaluate_draw(')
+        # The gain rides the motion ABI's own two-vector upload: no additional constant write, no Get*.
+        self.assertIn('matched ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};', draw)
+        self.assertEqual(draw.count('SetPixelShaderConstantF'), 1)
+        self.assertIn('lightmap_far_fade_ && (shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap)', draw)
+        # Every program that reads c217.w gets it: the two gained selections of the one bind site are covered by the
+        # upload's gate (plain: hull_lightmap_pair; share, the lane's cutout pairs included: ps_sun_original_lightmap),
+        # and the fade-band / overlay arm never binds a gained variant.
+        bind = extract_function(motion, 'HRESULT MotionOutput::bind_variant_pair(')
+        self.assertEqual(bind.count('ps = shadow_.ps_hull_lightmap_variant;'), 1)
+        self.assertIn('if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_', bind)
+        self.assertIn('&& !route.fade_arm && shadow_.ps_hull_lightmap_variant) {', bind)
+        self.assertIn('} else if(sun_lane_active_&&route.depth&&!route.fade_arm){', bind)
+        self.assertEqual(bind.count('gained_original?shadow_.ps_sun_original_lightmap:'), 1)
+        self.assertEqual(motion.count('bind_variant_pair(route, material)'), 1)
+        # The latch is armed only for a value the DLL parser accepted, and never feeds camera_scene_ on its own.
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('camera_state::request_consumer();} // the footprint', capture)
+        self.assertIn('parsed[1]<=1e6f', capture)
+        self.assertNotIn('X3M_LIGHT_MAP_FAR_FADE', (ROOT / 'src/proxy/camera_state.cpp').read_text())
+        read = extract_function(motion, 'void MotionOutput::read_camera(bool scene) noexcept')
+        self.assertLess(read.index('if (!(taa_enabled_ || candidates_requested_)) {'), read.index('camera_scene_ = sample.state;'))
+        configure = extract_function(motion, 'bool MotionOutput::configure_lightmap_far_fade(')
+        self.assertIn('if (device_) return lightmap_far_fade_;', configure)
+
     def test_default_off_requires_hdr_excludes_linear_materials_and_composes_with_the_fill(self):
         with tempfile.TemporaryDirectory() as directory:
             # Launcher default (user selection after run 41 C): 4 in HDR mode,
@@ -318,7 +377,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertIn('hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u', motion)
         # The sun-share lane: a gained share variant beside every share variant, selected under the same flag.
         self.assertIn('renderer::linear_material_original_sun_share_pixel_variant(', motion)
-        self.assertIn('hull_lightmap_gain_, &gain_applied);', motion)
+        self.assertIn('hull_lightmap_gain_, &gain_applied, lightmap_far_fade_);', motion)
         self.assertIn('sun_shadow_original_lightmap_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g gain=%g share_applied=%u gain_applied=%u', motion)
         self.assertIn('const bool gained_original=original&&hull_lightmap_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;', bind)
         self.assertIn('gained_original?shadow_.ps_sun_original_lightmap:original?shadow_.ps_sun_original:', bind)

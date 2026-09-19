@@ -80,6 +80,23 @@ inline bool origin_distance_front(const float rows[16], bool camera_valid, float
                                   float& out) noexcept {
     return rows[15] > 0.f && origin_distance(rows, camera_valid, m00, m11, m20, m21, out);
 }
+// Light-map far fade (--light-map-far-fade P0,P1[,G]; taa-distant-line-fade.md
+// section 11): the effective hull light-map gain of one draw. The footprint is
+// the far stabiliser's measure, world units per pixel `2 z / (p00 * width)`,
+// evaluated at the object origin's view depth z = rows[15] (clip w). The gain
+// is `gain` up to P0, `floor` from P1, linear in the footprint between them
+// (inv = 1 / (P1 - P0)); both ends are returned exactly, so a near draw is bit
+// identical to the constant gain. No camera, a nonpositive scale or an origin
+// at or behind the camera plane (a large object around the viewer: near)
+// keeps the configured gain. One division, no branches on the device.
+inline float lightmap_far_gain(float w, bool camera_valid, float m00, float width, float gain, float floor,
+                               float p0, float inv) noexcept {
+    if (!camera_valid || !(m00 > 0.f) || !(width > 0.f) || !(w > 0.f)) return gain;
+    const float t = (2.f * w / (m00 * width) - p0) * inv;
+    if (!(t > 0.f)) return gain;
+    if (t >= 1.f) return floor;
+    return gain + (floor - gain) * t;
+}
 // The vertex program's alpha (asteroid-fog-temporal.md, "Exact shader alpha"):
 // COLOR0.a = g_AlphaValue.x * saturate(g_FogClip.x - g_FogClip.y * distance)
 // with fog, g_AlphaValue.x without. Evaluated at the origin distance, so a

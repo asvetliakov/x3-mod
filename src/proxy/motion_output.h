@@ -734,6 +734,15 @@ public:
     // (hull_lightmap_enabled_); the guide lights follow Ctrl+Shift+F6.
     void configure_hull_lightmap_gain(float gain) noexcept;
     bool hull_lightmap_gain_requested() const noexcept { return hull_lightmap_gain_requested_; }
+    // Light-map far fade (X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]; call after
+    // configure_hull_lightmap_gain): the gain variants read the per-draw gain
+    // from c217.w (no DEF) and every routed draw of a gain pair uploads
+    // fade_route::lightmap_far_gain there with the motion ABI's own two
+    // vectors (no additional constant write). Finite 0 < P0 < P1, G in
+    // [0, gain]; anything else, or no gain, leaves the option off and the
+    // programs and uploads byte for byte the constant-gain ones.
+    bool configure_lightmap_far_fade(float p0, float p1, float floor) noexcept;
+    bool lightmap_far_fade() const noexcept { return lightmap_far_fade_; }
     void configure_linear_distance_fade(bool requested) noexcept;
     // Step C of docs/architecture/screen-emission-region.md: the packed screen
     // bracket (policy 8) for the nine SM1 screen pairs of
@@ -1664,6 +1673,12 @@ private:
     bool hull_lightmap_gain_requested_ = false; // X3M_HULL_LIGHTMAP_GAIN=G (finite 1..8, 1 = off), exclusive with linear materials
     float hull_lightmap_gain_ = 1.f;
     bool hull_lightmap_enabled_ = true; // Ctrl+Shift+F4, default on; gates the light-map variant selection only
+    bool lightmap_far_fade_ = false;            // X3M_LIGHT_MAP_FAR_FADE accepted: dynamic gain variants, c217.w per draw
+    float lightmap_fade_p0_ = 0.f, lightmap_fade_inv_ = 0.f, lightmap_fade_floor_ = 1.f;
+    float lightmap_fade_m00_ = 0.f;             // the far fade's own P[0] latch (0 = none); camera_scene_ stays the TAA/candidate consumers' alone
+    float lightmap_fade_gain_ = 0.f;            // this draw's uploaded gain (0 when the pair has no gain variant)
+    float lightmap_fade_min_ = 0.f;             // frame line: least gain drawn
+    std::uint32_t lightmap_fade_draws_ = 0;     // frame line: gain draws below the configured gain
     std::uint32_t hull_lightmap_draws_ = 0; // routed draws that bound a light-map gain variant (plain or share) this frame (frame line only)
     std::uint32_t sun_original_lightmap_variants_ = 0; // gained share variants created (fixture counter)
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
