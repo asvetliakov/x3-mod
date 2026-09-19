@@ -1574,3 +1574,15 @@ with a 1-px lattice case.
 - Host: snippet mocks gained `direct_call`/`drop_direct`
   (`motion_wrap_state_fixture.cpp`, `linear_material_live_fixture.cpp`,
   `test_linear_cutout_contract.py`), source-gain pins follow the new call text.
+
+### 2026-09-19 — lever 1 stage A + 2a: reviews
+
+Opus review and Fable second review: nothing blocking. The seven forwarders are admission scope + native call +
+`observe_result` only and none short-circuits while the device is lost, so the direct path bypasses nothing; the
+proxy's hooks swap the wrapper's vptr to a private table, so `direct_` always holds d3d9's own entries in every hook
+configuration and needs no refresh; the borrowed device is fixed at wrapper construction; the light lock view's two
+callers are reached only from `after_draw` under `LightCallBoundary`. Fixed after review: stale LastError comment,
+log flush before the seam's loss-code `TerminateProcess`, `static_assert` on `direct_slot_count`. Accepted result:
+wrapper overhead 2.15 -> 0.77-0.92 us per routed draw (target 0.6 needs stage B, which stays closed), lease
+1.98 -> 0.73-0.90. Follow-up: a seam-ownership case with a Reset and a simulated DEVICENOTRESET through
+`observe_native_result`; the fallback stub needs two more exports when that runner is restored.

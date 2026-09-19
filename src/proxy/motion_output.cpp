@@ -2290,6 +2290,7 @@ void MotionOutput::bind_direct() noexcept {
         for (void*& entry : direct_slots_) entry = nullptr;
         for (const unsigned slot : slots) { direct_slots_[slot] = table[slot]; complete = complete && table[slot]; }
     }
+    static_assert(SetPixelShaderConstantF < direct_slot_count, "direct_slots_ must cover every direct_call slot");
     if (complete) { direct_ = direct_slots_; direct_device_ = borrowed; }
     log("motion_direct device=%llu enabled=%u admission=%u slots=7", id_, unsigned(complete), unsigned(monitored));
 }
@@ -2300,6 +2301,7 @@ __attribute__((noinline, cold)) HRESULT MotionOutput::direct_failed(HRESULT hr) 
     // D3DERR_INVALIDCALL only; a loss code from one ends the fixture.
     if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET) {
         log("motion_direct_loss_code device=%llu hr=%08lx", id_, static_cast<unsigned long>(hr));
+        std::fflush(nullptr); // the log is fully buffered: keep the witness line
         TerminateProcess(GetCurrentProcess(), 0xD1EC7u);
     }
 #endif

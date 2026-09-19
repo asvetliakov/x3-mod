@@ -73,7 +73,8 @@ void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index)
 // taken and nothing is issued. A range the live store already holds reuses
 // its declaration identity (rows and cull mode only); otherwise the geometry
 // is queried once and the declaration's reference released here.
-// LastError is kept by the callees.
+// LastError: the light lock view saves nothing; the draw hook's LightCallBoundary
+// restores it (and MXCSR) on every exit.
 void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownership::BufferLockView& vb, const shadow_replay::ExtentEntry* extent) noexcept {
     ownership::BufferLockView ib{};
     if (route.key.indexed && !(shadow_.indices_identity && SUCCEEDED(ownership::get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(shadow_.indices_identity), &ib)) && ib.known)) return;
