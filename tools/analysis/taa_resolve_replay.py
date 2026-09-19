@@ -124,6 +124,12 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
             acc[..., :3] += weigh(t[..., :3], k) * wt[..., None]; acc[..., 3] += t[..., 3] * wt; tot += wt
     accept &= tot >= .5
     old = acc[..., :3] / np.where(tot == 0, 1, tot)[..., None]
+    if opt.get('lanczos'):  # H3 (section 11): 6x6 Lanczos-3 history fetch on the line2x mask instead of Catmull-Rom
+        lz = lambda t: np.sinc(t) * np.sinc(t / 3.) * (np.abs(t) < 3); la = np.zeros_like(old); lt = np.zeros((h, wd))
+        for jj in range(-2, 4):
+            for ii in range(-2, 4):
+                wt = lz(ii - fx) * lz(jj - fy); la += weigh(hist[np.clip(by + jj, 0, H - 1), np.clip(bx + ii, 0, W - 1), :3].astype(np.float64), k) * wt[..., None]; lt += wt
+        old = np.where(masks['line2x'][..., None], la / lt[..., None], old)
     wc = weigh(c, k); lo = wc.copy(); hi = wc.copy(); mean = np.zeros_like(wc); sq = np.zeros_like(wc); filt = np.zeros_like(wc); ft = np.zeros((h, wd))
     A = opt.get('filter', 0.)
     for ny_ in (-1, 0, 1):
@@ -131,8 +137,8 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
             nb = weigh(cur[ys + ny_, xs + nx_, :3].astype(np.float64), k)
             lo = np.minimum(lo, nb); hi = np.maximum(hi, nb); mean += nb / 9; sq += nb * nb / 9
             if A: g = np.exp(-A * ((nx_ - jx) ** 2 + (ny_ - jy) ** 2)); filt += nb * g; ft += g
-    sig = np.sqrt(np.maximum(sq - mean * mean, 0)); lo = np.maximum(lo, mean - 1.25 * sig); hi = np.minimum(hi, mean + 1.25 * sig)
-    clamped = np.clip(old, lo, hi)
+    sig = np.sqrt(np.maximum(sq - mean * mean, 0)); cg = opt.get('clipgamma', 1.25); lo = np.maximum(lo, mean - cg * sig); hi = np.minimum(hi, mean + cg * sig)
+    clamped = np.where(masks['line2x'][..., None], old, np.clip(old, lo, hi)) if opt.get('noclipmask') else np.clip(old, lo, hi)  # H2: clip off on the mask only
     moved = np.abs(clamped - old).max(-1)  # clamp distance, weighted domain
     S = opt.get('thin', 0.); mask = thin | (remedy_px if opt.get('remedy') else False)
     if opt.get('allthin'): mask = np.ones_like(thin)
@@ -439,7 +445,7 @@ if MODE == 'remedy':
                 mm = lat[ty:ty + T, tx:tx + T]
                 if mm.mean() < .6: continue
                 a_ = A_[ty - 10:ty + T + 10, tx - 10:tx + T + 10]  # 10-px pad: the wrap-around of the Fourier shift stays outside the tile
-                r_, dx_, dy_ = min((((fshift(a_, dx, dy)[10:-10, 10:-10] - B_[ty:ty + T, tx:tx + T])[mm] ** 2).mean(), dx, dy) for dx in np.arange(-1.2, 1.21, .1) for dy in np.arange(-.6, .61, .1))
+                r_, dx_, dy_ = min((((fshift(a_, dx, dy)[10:-10, 10:-10] - B_[ty:ty + T, tx:tx + T])[mm] ** 2).mean(), dx, dy) for dx in np.arange(-2., 2.01, .1) for dy in np.arange(-.8, .81, .1))
                 r_, dx_, dy_ = min((((fshift(a_, dx, dy)[10:-10, 10:-10] - B_[ty:ty + T, tx:tx + T])[mm] ** 2).mean(), dx, dy) for dx in np.arange(dx_ - .1, dx_ + .11, .025) for dy in np.arange(dy_ - .1, dy_ + .11, .025))
                 res.append(r_); sh.append((dx_, dy_))
         return float(np.sqrt(np.mean(res))), float(B_[lat].std()), len(res), np.median(np.array(sh), 0)
@@ -447,7 +453,9 @@ if MODE == 'remedy':
                ('5x5 Gaussian A=0.5', dict(wide=.5)), ('5x5 Gaussian A=0.25', dict(wide=.25)), ('along-line s=1.5', dict(along=(1.5, 0))), ('along-line s=2.5', dict(along=(2.5, 0))),
                ('along s=1.5 + across A=1', dict(along=(1.5, 1.))), ('mask weight 0.97', dict(wmask=.97)), ('dim 0.5', dict(dim=.5)), ('dim 0.5 + line2x A=1', dict(dim=.5, filter=1., fmask='line2x'))]
     configs += [('line2x A=1 + mask weight 0.97', dict(filter=1., fmask='line2x', wmask=.97)), ('line2x A=1, no clip', dict(filter=1., fmask='line2x', thin=1., allthin=True)),
-                ('line2x A=1 + weight 0.97, no clip', dict(filter=1., fmask='line2x', wmask=.97, thin=1., allthin=True)), ('no clip', dict(thin=1., allthin=True))]
+                ('line2x A=1 + weight 0.97, no clip', dict(filter=1., fmask='line2x', wmask=.97, thin=1., allthin=True)), ('no clip', dict(thin=1., allthin=True)),
+                ('H2 clip off on the mask', dict(noclipmask=True)), ('H2 clip off on the mask + A=1', dict(noclipmask=True, filter=1., fmask='line2x')), ('H2 min/max box only (gamma 9)', dict(clipgamma=9.)),
+                ('H3 Lanczos-3 history on the mask', dict(lanczos=True)), ('H3 Lanczos + clip off on the mask', dict(lanczos=True, noclipmask=True)), ('H3+H2 + A=1', dict(lanczos=True, noclipmask=True, filter=1., fmask='line2x'))]
     if os.environ.get('ONLY'): configs = [c for c in configs if c[0] == 'installed' or c[0] in os.environ['ONLY'].split('|')]
     ref = None
     for name, opt in configs:
