@@ -1774,3 +1774,34 @@ either way; resolved fast-band rms moves >20% but increases, not decreases, so i
 alpha-test cutout flicker" and cannot be attributed to the bias alone given the pose difference above — the A/B is
 confounded and inconclusive; a same-pose repeat (identical camera transform logged, only bias varied) is needed to
 settle it.
+
+## TAA flicker suppression steps 0-3 (2026-09-19, implemented, unflown)
+
+Design and implementation numbers: `docs/architecture/taa-flicker-suppression.md`, section 10. Bottle X3, worktree build.
+
+- `run_temporal_pass.py`: PASS; main suite 508 numerical / 278 state / 386 samples, `temporal-pass.txt` byte-identical to
+  the pre-change file; lattice mode 191 numerical / 13 state (run-139 cases 28 / 9 unchanged, flicker cases +163 / +4).
+  Slots: plain 433, filter 444, snapshot 46, thin 468, thin + filter 480, age 494, age + filter 506, all <= 512.
+- Drifting lattice (0.8-px lines, base -> soft 0.75 -> soft + w 0.97 wide gate; per-px p2-4 / p4-8 / p8-32, block
+  p2-4 / p4-8 / p8-32, contrast): pitch 2.37, 0.4 px/frame: 8.6 / 14.1 / 14.4, 3.2 / 3.0 / 4.2, 0.40 -> 8.3 / 14.2 / 14.2,
+  3.0 / 3.0 / 4.0, 0.39 -> 12.8 / 14.0 / 19.4, 4.1 / 3.4 / 5.9, 0.49. Predicted for soft (1-D model): block p2-4 -50..-63 %;
+  measured -4 %. 1.25-px lines, pitch 4, 0.4 px/frame: 4.2 / 6.9 / 38.4, 1.6 / 1.7 / 3.6, 0.57 -> within 6 % -> 2.0 / 3.4 / 20.0,
+  0.8 / 0.8 / 1.6, 0.30. Static 1.25-px ripple ratio w 0.97: 0.284 (predicted 0.29). Full table: `FLICKER_DRIFT` lines of
+  `verification/results/bottle-X3/temporal-lattice.txt` (64 rows), oracle error <= 0.0113 (bound 0.02 at w 0.97).
+- Finding: the thin-feature soft clip has no measurable effect (mask blind on the collapse phases of sub-pixel lines,
+  where the disocclusion test rejects the history first; clamp not binding on lines >= 1 px), and the adaptive weight makes
+  sub-pixel lines flicker more (age restarts on every rejection). Details and a possible remedy in section 10.
+- `run_motion_output.py seam-taa-on seam-taa-hdr-tonemap-on`: 164 / 140 checks, as before (`TAA_BASE_REFERENCES` 4 -> 5 for
+  the snapshot program). `run_object_lifetime.py`: exit 0, timing-only deltas. Generator `--check`: the seven resolve
+  programs, `current_depth`, `sun_shadow_apply`, `sun_shadow_cascade_apply` and the nine bloom programs PASS (manifests
+  re-pinned to the generator; bytecode of the unrelated ones unchanged). Host suite: 2259 tests OK.
+
+### Replay of run148 / run142 through the resolve oracle (2026-09-19)
+
+`docs/architecture/taa-flicker-suppression.md`, section 10.1. The numpy oracle reproduces the installed resolve free-running
+over 31 frames within 0.41 codes (mean 0.03-0.05) on all three captures. On the real struts the disocclusion test never
+rejects (depths 0.984-1.0 against the 0.02 tolerance; the fixture's line depth 0.5 was unrepresentative), the thin mask is
+true on 63-99 % of flip px-frames and the clamp moves history by more than a code on 2-3 %. Drifting plant: resolved block
+p8-32 6.76 against the raw input's 6.89, no-clip bound 6.73: the slow band is scene motion, no option moves it. Static plant:
+thin + w 0.97 takes per-px p2-4 / p4-8 1.93 / 2.53 -> 0.59 / 0.79 (x 0.31), contrast x 1.00, stable-px gradient energy x 0.95;
+thin clip alone x 0.97; current filter 1.0 x 0.55 with gradient energy x 0.43. No shader change; fixture depths to be rescaled.

@@ -235,7 +235,13 @@ effects whose visible coverage is zero. It is rejection, not reconstruction of
 particle motion or transparent layers.
 
 `c7.z=1` is an explicit mask-snapshot dispatch: it reads only s5, canonicalizes
-safe/reactive to 0/1 and writes a distinct R32F target. Ordinary resolve uses zero;
+safe/reactive to 0/1 and writes a distinct R32F target. Since 2026-09-19 the
+snapshot modes are their own program (`resolve_snapshot.hlsl`, same registers),
+which `TemporalPass` creates itself and binds for those draws; `resolve.hlsl`
+no longer reads `c7.z`. The flicker-suppression variants (`resolve_thin*.hlsl`,
+`resolve_age*.hlsl`; `docs/architecture/taa-flicker-suppression.md`) add `c24`
+(thin-clip S, age wmax, LO, 1 / (HI - LO)), `c22.z` (alpha history), `s7` (previous
+R32F age) and `COLOR1` (next age); the plain programs read none of them. Ordinary resolve uses zero;
 `prepare` initializes the mode and reserved component to zero. Runtime code must
 not use snapshot mode as a color resolve. `TemporalPass` uses this third GPU draw
 only under `ReactivePolicy::RequiredMask` and owns the resulting ping-pong masks.

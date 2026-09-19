@@ -27,6 +27,23 @@ struct ResolveConstants {
 static_assert(sizeof(ResolveConstants) == 9 * 4 * sizeof(float));
 constexpr unsigned kResolveRegisterCount = 8;   // c0..c7, uploaded as one block
 constexpr unsigned kLuminanceRegister = 22;     // ResolveConstants::luminance
+// c24 of the flicker-suppression variants (resolve_thin*.hlsl, resolve_age*.hlsl;
+// c23 is the sharpen's): thin-clip S, age wmax, speed LO, 1 / (HI - LO). The
+// alpha-history flag is c22.z. The plain programs read neither.
+constexpr unsigned kFlickerRegister = 24;
+constexpr float kAdaptiveWeightMax = .99f;      // upper bound of WMAX
+constexpr float kAdaptiveLoDefault = .1f, kAdaptiveHiDefault = .5f; // px/frame
+constexpr float kAgeLimit = 64.f;               // the age target saturates here
+inline bool valid_thin_clip(float s) noexcept { return std::isfinite(s) && s>=0 && s<=1; }
+// wmax 0 is off; otherwise weight <= wmax <= 0.99 and 0 <= lo < hi, finite.
+inline bool valid_adaptive_weight(float wmax, float lo, float hi, float weight) noexcept {
+    if(!std::isfinite(wmax) || wmax<0) return false;
+    if(wmax==0) return true;
+    return wmax>=weight && wmax<=kAdaptiveWeightMax && std::isfinite(lo) && std::isfinite(hi) && lo>=0 && hi>lo && hi<=64;
+}
+inline void prepare_flicker(float out[4], float thin_clip, float wmax, float lo, float hi) noexcept {
+    out[0]=thin_clip; out[1]=wmax; out[2]=lo; out[3]=wmax>0?1.f/(hi-lo):0.f;
+}
 constexpr float kLuminanceMaxK = 65504.f;       // FP16 max; the weighted domain stays finite
 constexpr float kCurrentFilterMax = 4.f;        // A of exp(-A d^2); the centre weight stays >= exp(-2)
 constexpr float kHistoryWeightDefault = .9f;    // c5.z of the live route

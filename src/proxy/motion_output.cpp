@@ -1478,8 +1478,29 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_current_filter device=%llu unavailable=1 create=%08lx requested=%.3f", id_, taa_->current_filter_result(), double(taa_current_filter_));
         taa_current_filter_ = 0.f;
     }
+    // Flicker suppression: the variant programs exist only when an option asks
+    // for them. The adaptive weight is refused without the thin clip (alone it
+    // dims thin lattices) or below the history weight; a device that refuses
+    // the variants, or lacks two render targets of independent bit depths for
+    // the R32F age target, runs without the option (one log line each).
+    if (SUCCEEDED(hr) && taa_adaptive_weight_ > 0.f && (!(taa_thin_clip_ > 0.f) || !x3::temporal::valid_adaptive_weight(taa_adaptive_weight_, taa_adaptive_lo_, taa_adaptive_hi_, taa_history_weight_))) {
+        log("motion_output_taa_adaptive_weight device=%llu refused=1 reason=%s requested=%.3f thin_clip=%.3f history_weight=%.3f", id_, taa_thin_clip_ > 0.f ? "range" : "requires_thin_clip", double(taa_adaptive_weight_), double(taa_thin_clip_), double(taa_history_weight_));
+        taa_adaptive_weight_ = 0.f;
+    }
+    if (SUCCEEDED(hr) && (taa_thin_clip_ > 0.f || taa_adaptive_weight_ > 0.f || taa_alpha_history_)) {
+        HRESULT flicker = E_FAIL;
+        taa_call([&] { flicker = taa_->configure_flicker(); });
+        if (FAILED(flicker) || !taa_->flicker_available()) {
+            log("motion_output_taa_flicker device=%llu unavailable=1 create=%08lx", id_, flicker);
+            taa_thin_clip_ = taa_adaptive_weight_ = 0.f; taa_alpha_history_ = false;
+        } else if (taa_adaptive_weight_ > 0.f && !taa_->age_available()) {
+            log("motion_output_taa_adaptive_weight device=%llu unavailable=1 reason=mrt_independent_bit_depths_or_program requested=%.3f", id_, double(taa_adaptive_weight_));
+            taa_adaptive_weight_ = 0.f;
+        }
+    }
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch");
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+        double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f ? 8u : 0u);
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1517,6 +1538,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // X3M_TAA_CURRENT_FILTER / X3M_TAA_HISTORY_WEIGHT (both routes;
             // unset: 0 and 0.9, the pass's defaults, bit for bit).
             in.current_filter = taa_current_filter_; in.weight = taa_history_weight_;
+            // Flicker suppression (all 0 / false unless requested); the alpha
+            // history only where the resolved alpha feeds bloom (FP16 input).
+            in.thin_clip = taa_thin_clip_; in.adaptive_weight = taa_adaptive_weight_; in.adaptive_lo = taa_adaptive_lo_; in.adaptive_hi = taa_adaptive_hi_;
+            in.alpha_history = taa_alpha_history_ && hdr_scene != nullptr;
             in.current_depth = depth; in.motion = motion;
             in.width = main_.width; in.height = main_.height;
             in.epoch = generation_; // Dimension changes are compared by the pass itself.
@@ -1599,6 +1624,15 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
 #endif
                     )
                     readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f", "motion_output_taa_readback", "rgba16f_row_major", target_width_, target_height_);
+                // Capture frames only: the age target of the adaptive weight (the
+                // thin mask is the 3x3 sentinel/geometry mix of the depth dump).
+                if (capture_ && taa_debug_ && out.age) {
+                    IDirect3DSurface9* age = nullptr;
+                    if (SUCCEEDED(out.age->GetSurfaceLevel(0, &age)) && age) {
+                        readback_surface(age, D3DFMT_R32F, 4, L"taa_age", L"r32f", "motion_output_taa_age_readback", "r32f_row_major", target_width_, target_height_);
+                        age->Release();
+                    }
+                }
                 if (hdr_scene) {
                     // Stage 3: no copy. The write-back that ends the redirect
                     // samples the resolved FP16 image (tonemap and meter), and

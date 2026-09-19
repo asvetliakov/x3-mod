@@ -81,6 +81,25 @@ struct FrameInputs {
     // and a pass initialised with the sharpen program; anything else refuses
     // the run. Finite, 0 <= sharpen <= 1.
     float sharpen = 0.f;
+    // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
+    // off by default; with all three off the pass binds the plain programs and
+    // the run is bit-identical to a run without the fields. Any of them needs
+    // configure_flicker() to have succeeded, else the run is refused.
+    // thin_clip S in [0, 1]: where the current 3x3 depth mixes the sentinel
+    // and geometry the history is pulled only (1 - S) of the way to the clip
+    // box, fading out between 2 and 4 px/frame.
+    float thin_clip = 0.f;
+    // adaptive_weight WMAX (0 off; weight <= WMAX <= 0.99): the history weight
+    // becomes min(n / (n + 1), wmax(speed)) with n the per-pixel age kept in
+    // an owned R32F pair written as COLOR1; wmax falls from WMAX to `weight`
+    // between adaptive_lo and adaptive_hi px/frame. Refused without thin_clip
+    // > 0 (alone it dims thin lattices) and without age_available().
+    float adaptive_weight = 0.f, adaptive_lo = x3::temporal::kAdaptiveLoDefault, adaptive_hi = x3::temporal::kAdaptiveHiDefault;
+    // The output alpha is the history alpha blended with the pixel's history
+    // weight and clamped to the current 3x3 alpha range, instead of the
+    // current alpha. FP16 `color` input only (the HDR route: bloom reads the
+    // resolved alpha as its authored-glow weight); refused with color_surface.
+    bool alpha_history = false;
     MotionPolicy motion_policy = MotionPolicy::Unavailable;
     // Unknown coverage produces current-only output and cannot establish usable
     // history. RequiredMask demands complete conservative visible RGB coverage,
@@ -124,6 +143,9 @@ struct Output {
     // S_OK when it drew (display_written), otherwise the failure that left the
     // display to the caller's copy-back; a lost device fails the run instead.
     HRESULT copy_result = S_FALSE;
+    // The age target written by this run (adaptive_weight > 0), else null;
+    // same borrowing rules. For capture dumps only.
+    IDirect3DTexture9* age = nullptr;
 };
 struct Diagnostics {
     HRESULT operation = S_OK, restoration = S_OK;
@@ -170,6 +192,16 @@ public:
     // that refuses the program at creation does not fail initialize: the
     // filter is unavailable and current_filter_result() holds the HRESULT
     // (S_FALSE when no program was supplied).
+    // Creates the embedded flicker-suppression variants (temporal_resolve_program.h);
+    // they survive Reset like the other programs. Call once after initialize
+    // when any of thin_clip / adaptive_weight / alpha_history will be used; the
+    // default path never creates them. A failure leaves the pass usable
+    // without the options. age_available() additionally needs two simultaneous
+    // render targets and D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS (R32F beside
+    // A16B16G16R16F), read from the device caps at initialize.
+    HRESULT configure_flicker() noexcept;
+    bool flicker_available() const noexcept { return thin_ != nullptr && (!resolve_filtered_ || thin_filtered_ != nullptr); }
+    bool age_available() const noexcept { return flicker_available() && mrt_age_ && age_ != nullptr && (!resolve_filtered_ || age_filtered_ != nullptr); }
     bool current_filter_available() const noexcept { return resolve_filtered_ != nullptr; }
     HRESULT current_filter_result() const noexcept { return resolve_filtered_result_; }
     // How an 8-bit color_surface input reaches the FP16 scratch and how the
@@ -199,7 +231,7 @@ private:
     template<class Fn> Fn call(unsigned slot) const noexcept {
         return reinterpret_cast<Fn>((vtable_ ? vtable_ : *reinterpret_cast<void* const* const*>(device_))[slot]);
     }
-    HRESULT allocate(UINT width, UINT height, bool reactive) noexcept;
+    HRESULT allocate(UINT width, UINT height, bool reactive, bool age) noexcept;
     HRESULT ensure_scratch() noexcept;
     HRESULT ensure_staging(D3DFORMAT format) noexcept;
     HRESULT ensure_block() noexcept;
@@ -212,8 +244,12 @@ private:
     // after every run instead of being created per frame. Default-pool-like:
     // released before Reset and re-created lazily afterwards.
     IDirect3DStateBlock9* block_ = nullptr;
-    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *resolve_filtered_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
+    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *resolve_filtered_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
     HRESULT resolve_filtered_result_ = S_FALSE;
+    IDirect3DPixelShader9 *thin_ = nullptr, *thin_filtered_ = nullptr, *age_ = nullptr, *age_filtered_ = nullptr;
+    bool mrt_age_ = false; // caps: >= 2 simultaneous RTs with independent bit depths
+    IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (adaptive weight only)
+    IDirect3DSurface9* age_surfaces_[2]{};
     IDirect3DVertexShader9* quad_vs_ = nullptr;          // vs_3_0 pass-through of every quad (survives Reset)
     IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
     IDirect3DTexture9* colors_[2]{};
