@@ -8,6 +8,7 @@ gates are checked from the sources. Equality with the engine is the Wine fixture
 (verification/probe/run_collide_memo.py), not this module's.
 """
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -57,7 +58,7 @@ int main() {
         } else {
             if (known != model.end() && frame - known->second.frame > 1u) ++expired;
             Outputs outputs{};
-            outputs.visits = rnd(); outputs.triangles = rnd(); outputs.tolerance_integer = id;
+            outputs.visits = rnd(); outputs.triangles = rnd() | 1u; outputs.tolerance_integer = id;   // a leaf was reached: the exact key only
             for (unsigned& w : outputs.root_block) w = rnd();
             if (table.store(key, outputs, frame)) ++evictions;
             model[name] = Seen{outputs, frame};
@@ -65,6 +66,25 @@ int main() {
         }
     }
     static_assert(key_words == 81 && sizeof(Key) == 324 && ways * sets == 1024, "table shape");
+    // The running-minimum rule and the miss classes, one by one.
+    table.clear();
+    Key base{};
+    for (unsigned i = 0; i < key_words; ++i) base.words[i] = 1000 + i;
+    Outputs none{}, some{};
+    some.triangles = 3;
+    const auto with = [&](unsigned word, unsigned value) { Key k = base; k.words[word] = value; return k; };
+    table.store(base, none, 10);
+    if (table.find(with(minimum_value_word, 7), 10) == nullptr) ++failures;                 // no leaf reached: any minimum is answered
+    if (table.find(with(29, 0), 10) != nullptr || table.find(with(26, 5), 10) != nullptr) ++failures;   // null-ness and tolerance still count
+    if (table.find(with(minimum_value_word, 7), 12) != nullptr) ++failures;                 // and expiry still applies
+    table.clear();
+    table.store(base, some, 10);
+    if (table.find(with(minimum_value_word, 7), 10) != nullptr || table.find(base, 10) == nullptr) ++failures;   // a leaf was reached: the exact minimum only
+    const unsigned expected[8][2] = {{minimum_value_word, miss_min_value}, {13, miss_xform_b}, {24, miss_xform_b}, {12, miss_scale}, {25, miss_scale}, {27, miss_mode}, {40, miss_models}, {3, miss_xform_a}};
+    for (const auto& e : expected) if (table.classify(with(e[0], 99)) != e[1]) ++failures;
+    if (table.classify(base) != miss_expired) ++failures;
+    Key other = base; other.words[2] = 1; other.words[20] = 1;
+    if (table.classify(other) != miss_none_found || table.classify(with(model_words_begin, 5)) != miss_none_found) ++failures;
     std::printf("failures=%u hits=%u stale=%u evictions=%u expired=%u\n", failures, hits, stale, evictions, expired);
     return failures ? 1 : 0;
 }
@@ -76,17 +96,20 @@ SCENARIO one_step queries=59 hits=32 contacts=0 differences=0 stale=0 hit_on_con
 SCENARIO approach queries=422 hits=60 contacts=2 differences=0 stale=0 hit_on_contact=0
 APPROACH contact_frames=2 parked_frames=60 parked_hits=59 first_contact_step=199
 SCENARIO modes queries=50 hits=25 contacts=0 differences=0 stale=0 hit_on_contact=0
+SCENARIO running_minimum queries=180 hits=79 contacts=49 differences=0 stale=0 hit_on_contact=0
+MINIMUM no_leaf_hits=39 leaf_hits_on_repeat=40 contact_filtered_frames=11 contact_frames=49 tolerance=25
 SCENARIO addresses queries=9 hits=2 contacts=0 differences=0 stale=0 hit_on_contact=0
 SCENARIO expiry queries=4 hits=2 contacts=0 differences=0 stale=0 hit_on_contact=0
 SCENARIO overflow queries=9000 hits=1538 contacts=0 differences=0 stale=0 hit_on_contact=0
 SCENARIO random queries=48000 hits=42207 contacts=3470 differences=0 stale=0 hit_on_contact=0
 SCENARIO guards queries=8 hits=3 contacts=0 differences=0 stale=0 hit_on_contact=0
-COLLIDE MEMO BENCH visits=21643 run_ns=981900 hit_ns=98.7 tiny_run_ns=96.4 tiny_miss_store_ns=219.6 tiny_hit_ns=98.4 miss_store_overhead_ns=123.3
-WINDOW collide_memo device=1 frame=4800 frames=300 verify=0 queries=3600 hits=3100 misses=200 stored=190 contacts=300 ineligible=0 evictions=0 skipped_visits=123456 skipped_triangles=12 verified=0 verify_mismatches=0 foreign_thread=0 reentered=0 clears=1 stuck_busy=0
+COLLIDE MEMO BENCH visits=27085 run_ns=1228000 hit_ns=98.7 tiny_run_ns=96.8 tiny_miss_store_ns=273.5 tiny_hit_ns=98.4 miss_store_overhead_ns=176.7
+WINDOW collide_memo device=1 frame=4800 frames=300 verify=0 queries=3600 hits=3100 misses=200 stored=190 contacts=300 ineligible=0 evictions=0 skipped_visits=123456 skipped_triangles=12 verified=0 verify_mismatches=0 foreign_thread=0 reentered=0 clears=1 stuck_busy=0 min_relaxed_hits=900 miss_none_found=1 miss_none_found_visits=2 miss_xform_a=3 miss_xform_a_visits=4 miss_xform_b=5 miss_xform_b_visits=6 miss_scale=0 miss_scale_visits=0 miss_mode=0 miss_mode_visits=0 miss_models=0 miss_models_visits=0 miss_min_value=7 miss_min_value_visits=80000 miss_expired=9 miss_expired_visits=10
 VERIFY verified=140 injected_mismatches=1
 SCENARIO verify queries=170 hits=0 contacts=0 differences=0 stale=0 hit_on_contact=0
 SUMMARY queries=58242 hits=44293 contacts=3512 differences=0 stale_hits=0 hits_on_contact=0 register_differences=0 stored=10295 evictions=6452 ineligible=2 skipped_visits=197180493 verified=140 verify_mismatches=1
-COLLIDE MEMO CPU checks=55 failures=0
+MISSES min_relaxed_hits=18622 none_found=2982 xform_a=1172 xform_b=25046 scale=369 mode=3 models=2 min_value=7218 expired=11 min_value_visits=7844036 xform_b_visits=985884
+COLLIDE MEMO CPU checks=59 failures=0
 '''
 
 
@@ -124,6 +147,7 @@ class MemoSite(unittest.TestCase):
         self.assertIsNone(probe.parse_install_line('collide_memo requested=1 patched=0 reason=body_mismatch'))
         window = probe.parse_window_line(next(l for l in SAMPLE.splitlines() if l.startswith('WINDOW '))[7:])
         self.assertEqual((window['hits'], window['skipped_visits'], window['verify_mismatches'], window['frames'], window['clears'], window['stuck_busy']), (3100, 123456, 0, 300, 1, 0))
+        self.assertEqual((window['min_relaxed_hits'], window['miss_min_value'], window['miss_min_value_visits'], window['miss_xform_b_visits']), (900, 7, 80000, 6))
         self.assertIsNone(probe.parse_window_line('collide_memo device=1 frame=300'))
         module = (ROOT / 'src/proxy/collide_memo.cpp').read_text()
         for key in probe.WINDOW_KEYS:
@@ -186,23 +210,50 @@ class MemoWiring(unittest.TestCase):
     def test_runner_accepts_only_a_clean_record(self):
         record = {**runner.parse(SAMPLE), 'exit_status': 0}
         self.assertTrue(runner.accepted(record))
-        self.assertEqual((record['summary']['hits'], record['bench']['hit_ns'], record['bench']['miss_store_overhead_ns'], record['approach']['parked_hits']), (44293, 98.7, 123.3, 59))
+        self.assertEqual((record['summary']['hits'], record['bench']['hit_ns'], record['bench']['miss_store_overhead_ns'], record['approach']['parked_hits']), (44293, 98.7, 176.7, 59))
+        self.assertEqual((record['minimum']['no_leaf_hits'], record['misses']['min_relaxed_hits']), (39, 18622))
         for change in (('stale_hits=0', 'stale_hits=1'), ('differences=0 stale_hits', 'differences=3 stale_hits'), ('hits_on_contact=0 register', 'hits_on_contact=1 register'),
-                       ('checks=55 failures=0', 'checks=55 failures=1'), ('checks=55 failures=0', 'checks=54 failures=0'), (' miss_store_overhead_ns=123.3', ''), ('SCENARIO expiry', 'SCENARIO other'), ('SUMMARY queries=58242 hits=44293', 'SUMMARY queries=58242 hits=0')):
+                       ('checks=59 failures=0', 'checks=59 failures=1'), ('checks=59 failures=0', 'checks=58 failures=0'), (' miss_store_overhead_ns=176.7', ''), ('SCENARIO running_minimum', 'SCENARIO other'), ('SCENARIO expiry', 'SCENARIO other'), ('SUMMARY queries=58242 hits=44293', 'SUMMARY queries=58242 hits=0')):
             self.assertFalse(runner.accepted({**runner.parse(SAMPLE.replace(*change)), 'exit_status': 0}), change)
         self.assertFalse(runner.accepted({**runner.parse(SAMPLE), 'exit_status': 1}))
         self.assertFalse(runner.accepted({**runner.parse(''), 'exit_status': 0}))
 
 
+COLLIDE = ('X3M_COLLIDE_SAT_SSE2', 'X3M_COLLIDE_MEMO', 'X3M_COLLIDE_MEMO_VERIFY')
+
+
 class MemoLaunchOption(unittest.TestCase):
-    def launch(self, directory, *args, inherited=None):
+    def collide_env(self, directory, *args, vanilla=False, inherited=None):
+        code, output, error = self.launch(directory, *args, vanilla=vanilla, inherited=inherited)
+        self.assertEqual(code, 0, error)
+        return {k: v for k, v in json.loads(output)['env'].items() if k in COLLIDE}
+
+    def test_modded_launch_defaults_and_their_off_switches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            both = {'X3M_COLLIDE_SAT_SSE2': '1', 'X3M_COLLIDE_MEMO': '1'}
+            self.assertEqual(self.collide_env(directory), both)
+            self.assertEqual(self.collide_env(directory, '--collide-sat-sse2', '--collide-memo'), both)
+            self.assertEqual(self.collide_env(directory, '--no-collide-sat-sse2'), {'X3M_COLLIDE_MEMO': '1'})
+            self.assertEqual(self.collide_env(directory, '--no-collide-memo'), {'X3M_COLLIDE_SAT_SSE2': '1'})
+            self.assertEqual(self.collide_env(directory, '--no-collide-sat-sse2', '--no-collide-memo', inherited=both), {})
+            self.assertEqual(self.collide_env(directory, '--collide-memo-verify'), {**both, 'X3M_COLLIDE_MEMO_VERIFY': '1'})
+            self.assertEqual(self.collide_env(directory, vanilla=True, inherited=both), {})
+            self.assertEqual(self.collide_env(directory, '--collide-memo', vanilla=True), {'X3M_COLLIDE_MEMO': '1'})
+            code, _, error = self.launch(directory, '--no-collide-memo', '--collide-memo-verify', vanilla=False)
+            self.assertNotEqual(code, 0)
+            self.assertIn('cannot be combined', error)
+
+    def launch(self, directory, *args, inherited=None, vanilla=True):
         module = load_manage()
         game = Path(directory) / 'game'
         game.mkdir(exist_ok=True)
         (game / 'X3AP.exe').touch()
+        if not vanilla:   # a modded launch wants an installed proxy that matches its manifest
+            (game / 'd3d9.dll').write_bytes(b'proxy')
+            (game / 'x3-modern-install.json').write_text(json.dumps({'sha256': hashlib.sha256(b'proxy').hexdigest()}))
         wine = Path(directory) / 'wine'
         wine.touch()
-        argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', str(game), *args]
+        argv = ['manage.py', 'launch', '--dry-run', *(['--vanilla'] if vanilla else []), '--game-dir', str(game), *args]
         output, error = io.StringIO(), io.StringIO()
         with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), \
                 mock.patch.dict(module.os.environ, inherited or {}), \

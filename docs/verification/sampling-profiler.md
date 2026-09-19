@@ -1982,6 +1982,19 @@ the engine, re-entry, stuck-busy re-arm, Reset and the 100,000-query limit each 
 98 ns answered. Not run here: `check_no_x87.py` (needs a built DLL; three roots added), any
 flight — §14.5 names the two runs.
 
+## Collide memo: running-minimum rule, miss classes, launcher defaults (2026-09-20, no game)
+
+After runs 155 (verify: 808,408 confirmed, 0 mismatches) and 156 (62 % of node pairs skipped, 30 % of queries hit);
+[sector-collide.md](../reverse-engineering/sector-collide.md) §14.6. Bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Nothing launched, nothing installed, no DLL built.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Site verifier | `python3 verification/probe/verify_collide_memo_site.py` | PASS, 30 checks (new: the running minimum is read in the leaf only, after its counter) |
+| Memo fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_collide_memo.py` | exit 0, 59 checks, 0 failures, 7.3 s: 58,410 queries, 37,476 hits (18,622 through the running-minimum rule), 3,779 contacts, 0 differences, 0 stale hits, 0 contacts answered; miss + store +177 ns on a tiny query |
+| Host tests | `PYTHONPATH=verification/probe python3 -m unittest` over `test_collide_memo`, `test_collide_sat_sse2`, `test_collide_box_cull`, `test_collide_narrow_census`, `test_cull_small_parts`, `test_lod_scale_launch`, `test_env_experiment_launch`, `test_d3dx_override_launch`, `test_voice_decoder_launch`, `test_launcher_stderr_tee` | 8 + 74 tests, OK |
+| Launcher defaults | `python3 tools/manage.py launch --dry-run` / `… --no-collide-sat-sse2 --no-collide-memo` / `… --vanilla` | `X3M_COLLIDE_SAT_SSE2=1` and `X3M_COLLIDE_MEMO=1` / neither / neither; `--no-collide-memo --collide-memo-verify` refused |
+
 ## Run 44 A (run140/run141): `--collide-narrow-census` triage of two preserved sessions
 
 Two sessions, `--loop-phases --collide-narrow-census`, bottle X3, WineArch arm64, FEX_X87REDUCEDPRECISION=1,

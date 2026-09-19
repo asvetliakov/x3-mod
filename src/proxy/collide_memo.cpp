@@ -26,6 +26,7 @@ std::uint32_t seen_frame_ = 0, queries_since_tick_ = 0;
 Key pending_key_;
 bool pending_eligible_ = false;
 Entry* pending_verify_ = nullptr;
+int pending_miss_ = -1;   // the class of the miss in flight, for the visits it goes on to cost
 
 template <class T> T& engine(std::uintptr_t va) { return *reinterpret_cast<T*>(va); }
 inline std::uint64_t fnv1a(const unsigned char* p, unsigned n) {
@@ -91,10 +92,11 @@ int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, cons
     if (frame != seen_frame_) { seen_frame_ = frame; queries_since_tick_ = 0; }
     if (InterlockedExchange(&clear_requested_, 0) != 0 || ++queries_since_tick_ > queries_without_tick_limit) { table_.clear(); queries_since_tick_ = 0; ++counters_.clears; }
     pending_verify_ = nullptr;
+    pending_miss_ = -1;
     pending_eligible_ = build_key(pending_key_, flags, cap, *args);
     if (!pending_eligible_) { ++counters_.ineligible; return 0; }
     Entry* const entry = table_.find(pending_key_, frame);
-    if (entry == nullptr) { ++counters_.misses; return 0; }
+    if (entry == nullptr) { ++counters_.misses; pending_miss_ = table_.classify(pending_key_); ++counters_.miss_count[pending_miss_]; return 0; }
     if (verify_) { pending_verify_ = entry; return 0; }   // the engine runs too; store() compares
     entry->frame = frame;
     // Exactly what the query would have written (collide_memo_core.h); the contact record and *minimum stay as they are.
@@ -107,6 +109,7 @@ int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, cons
     engine<std::uint32_t>(contacts_va) = 0;
     std::memcpy(&engine<std::uint32_t>(root_block_va), entry->outputs.root_block, 4 * root_block_words);
     ++counters_.hits;
+    if (entry->key.words[minimum_value_word] != pending_key_.words[minimum_value_word]) ++counters_.min_relaxed_hits;   // answered although the running minimum moved: no leaf was reached
     counters_.skipped_visits += entry->outputs.visits;
     counters_.skipped_triangles += entry->outputs.triangles;
     busy_ = false;
@@ -120,6 +123,7 @@ void __cdecl x3m_collide_memo_store() {   // owner thread only: reached on looku
     now.visits = engine<std::uint32_t>(visits_va); now.triangles = engine<std::uint32_t>(triangles_va); now.tolerance_integer = engine<std::uint32_t>(tolerance_va);
     std::memcpy(now.root_block, &engine<std::uint32_t>(root_block_va), 4 * root_block_words);
     const bool contact = engine<std::uint32_t>(contacts_va) != 0;
+    if (pending_miss_ >= 0) counters_.miss_visits[pending_miss_] += now.visits;
     if (Entry* const expected = pending_verify_) {
         pending_verify_ = nullptr;
         if (!contact && !std::memcmp(&now, &expected->outputs, sizeof now)) { ++counters_.verified; expected->frame = frame_; }
@@ -237,11 +241,13 @@ void present(unsigned long long device, unsigned long long frame, bool) {
     const auto d = [](std::uint32_t a, std::uint32_t b) { return static_cast<unsigned long>(a - b); };
     const std::uint32_t queries = (c.hits - logged_.hits) + (c.misses - logged_.misses) + (c.ineligible - logged_.ineligible) + (c.verified - logged_.verified) + (c.verify_mismatches - logged_.verify_mismatches);
     log("collide_memo device=%llu frame=%llu frames=300 verify=%u queries=%lu hits=%lu misses=%lu stored=%lu contacts=%lu ineligible=%lu evictions=%lu skipped_visits=%lu "
-        "skipped_triangles=%lu verified=%lu verify_mismatches=%lu foreign_thread=%lu reentered=%lu clears=%lu stuck_busy=%lu",
+        "skipped_triangles=%lu verified=%lu verify_mismatches=%lu foreign_thread=%lu reentered=%lu clears=%lu stuck_busy=%lu min_relaxed_hits=%lu "
+        "miss_none_found=%lu miss_none_found_visits=%lu miss_xform_a=%lu miss_xform_a_visits=%lu miss_xform_b=%lu miss_xform_b_visits=%lu miss_scale=%lu miss_scale_visits=%lu miss_mode=%lu miss_mode_visits=%lu miss_models=%lu miss_models_visits=%lu miss_min_value=%lu miss_min_value_visits=%lu miss_expired=%lu miss_expired_visits=%lu",
         device, frame, verify_ ? 1u : 0u, static_cast<unsigned long>(queries), d(c.hits, logged_.hits), d(c.misses, logged_.misses), d(c.stored, logged_.stored), d(c.contacts, logged_.contacts),
         d(c.ineligible, logged_.ineligible), d(c.evictions, logged_.evictions), d(c.skipped_visits, logged_.skipped_visits), d(c.skipped_triangles, logged_.skipped_triangles),
         d(c.verified, logged_.verified), d(c.verify_mismatches, logged_.verify_mismatches), d(c.foreign_thread, logged_.foreign_thread), d(c.reentered, logged_.reentered),
-        d(c.clears, logged_.clears), d(c.stuck_busy, logged_.stuck_busy));
+        d(c.clears, logged_.clears), d(c.stuck_busy, logged_.stuck_busy), d(c.min_relaxed_hits, logged_.min_relaxed_hits),
+        d(c.miss_count[0], logged_.miss_count[0]), d(c.miss_visits[0], logged_.miss_visits[0]), d(c.miss_count[1], logged_.miss_count[1]), d(c.miss_visits[1], logged_.miss_visits[1]), d(c.miss_count[2], logged_.miss_count[2]), d(c.miss_visits[2], logged_.miss_visits[2]), d(c.miss_count[3], logged_.miss_count[3]), d(c.miss_visits[3], logged_.miss_visits[3]), d(c.miss_count[4], logged_.miss_count[4]), d(c.miss_visits[4], logged_.miss_visits[4]), d(c.miss_count[5], logged_.miss_count[5]), d(c.miss_visits[5], logged_.miss_visits[5]), d(c.miss_count[6], logged_.miss_count[6]), d(c.miss_visits[6], logged_.miss_visits[6]), d(c.miss_count[7], logged_.miss_count[7]), d(c.miss_visits[7], logged_.miss_visits[7]));
     SetLastError(error);
     logged_ = c;
 }

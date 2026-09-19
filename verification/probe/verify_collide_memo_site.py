@@ -51,7 +51,7 @@ INIT_PAIR = {0x608d98, 0x608d9c}
 INSTALL_RE = re.compile(r'\bcollide_memo requested=(?P<requested>[01]) patched=(?P<patched>[01]) verify=(?P<verify>[01]) reason=(?P<reason>\S+) site=0x(?P<site>[0-9a-f]{8}) '
                         r'target=0x(?P<target>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) handler=0x(?P<handler>[0-9a-f]{8}) entries=(?P<entries>\d+)')
 WINDOW_KEYS = ('device', 'frame', 'frames', 'verify', 'queries', 'hits', 'misses', 'stored', 'contacts', 'ineligible', 'evictions', 'skipped_visits', 'skipped_triangles',
-               'verified', 'verify_mismatches', 'foreign_thread', 'reentered', 'clears', 'stuck_busy')
+               'verified', 'verify_mismatches', 'foreign_thread', 'reentered', 'clears', 'stuck_busy', 'min_relaxed_hits', 'miss_none_found', 'miss_none_found_visits', 'miss_xform_a', 'miss_xform_a_visits', 'miss_xform_b', 'miss_xform_b_visits', 'miss_scale', 'miss_scale_visits', 'miss_mode', 'miss_mode_visits', 'miss_models', 'miss_models_visits', 'miss_min_value', 'miss_min_value_visits', 'miss_expired', 'miss_expired_visits')
 WINDOW_RE = re.compile(r'\bcollide_memo ' + ' '.join(rf'{k}=(?P<{k}>\d+)' for k in WINDOW_KEYS) + r'\s*$')
 EXPECTED_CONSTANTS = {
     'memo_site_va': SITE, 'memo_target_va': TARGET, 'memo_return_va': RETURN, 'caller_va': CALLER[0], 'query_va': QUERY[0], 'descent_va': DESCENT[0], 'leaf_va': LEAF[0],
@@ -62,7 +62,7 @@ EXPECTED_CONSTANTS = {
     'triangle_fnv1a': HASHES['triangle'], 'sat_va': sites.SAT_CALLEE[0], 'matrix_helpers_va': HELPERS[0][0], 'vector_helpers_va': HELPERS[1][0], 'ftol_va': FTOL_VA,
     'sat_length': sites.SAT_CALLEE[1] - sites.SAT_CALLEE[0], 'matrix_helpers_length': HELPERS[0][1] - HELPERS[0][0], 'vector_helpers_length': HELPERS[1][1] - HELPERS[1][0],
     'ftol_length': FTOL[1] - FTOL[0], 'sat_fnv1a': HASHES['sat'], 'matrix_helpers_fnv1a': HASHES['matrix_helpers'], 'vector_helpers_fnv1a': HASHES['vector_helpers'],
-    'ftol_fnv1a': HASHES['ftol'], 'queries_without_tick_limit': 100000, 'flags_va': 0x608534, 'cap_va': 0x608538, 'tolerance_va': 0x60853c, 'minimum_va': 0x608540, 'visits_va': 0x608544,
+    'ftol_fnv1a': HASHES['ftol'], 'queries_without_tick_limit': 100000, 'minimum_value_word': 30, 'model_words_begin': 31, 'flags_va': 0x608534, 'cap_va': 0x608538, 'tolerance_va': 0x60853c, 'minimum_va': 0x608540, 'visits_va': 0x608544,
     'triangles_va': 0x608548, 'contacts_va': 0x60854c, 'root_block_va': ROOT_BLOCK[0], 'root_block_words': (ROOT_BLOCK[1] - ROOT_BLOCK[0]) // 4, 'header_words': 6, 'box_words': 18,
     'model_built': 3, 'model_state_word': 5, 'ways': 4, 'sets': 256}
 
@@ -158,6 +158,17 @@ def _globals_named(instructions):
     return {int(m.group(1), 16) for i in instructions for m in re.finditer(r'ds:0x([0-9a-f]+)', i.operands.lower())}
 
 
+def _minimum_reads(collider):
+    """Instructions that load the running-minimum pointer [0x00608540] (its stores are in 0x004e29f0)."""
+    return [i.va for i in collider if '0x608540' in i.operands.lower() and not re.match(r'(?:dword ptr )?ds:0x608540,', i.operands.lower())]
+
+
+def _leaf_counts_at_entry(collider):
+    """From the leaf's entry to `add [0x00608548],1` there is no branch, call or return: every entry is counted before anything else can happen."""
+    head = [i for i in collider if LEAF[0] <= i.va <= 0x4e22a5]
+    return bool(head) and head[-1].raw == bytes.fromhex('83054885600001') and not any(i.mnemonic.startswith(('j', 'call', 'ret', 'loop')) for i in head)
+
+
 def inspect(data, decoded, core_text, claims):
     image = common.Image(data)
     caller, target_fn, collider = decoded[CALLER], decoded[TARGET_FN], decoded[COLLIDER]
@@ -200,6 +211,9 @@ def inspect(data, decoded, core_text, claims):
         'collider_calls_out': calls_out == sorted([sites.FABS_HELPER_VA, FTOL_VA, *HELPER_ENTRIES]),
         'helpers_pure': _globals_named(helpers) == set() and not any(i.mnemonic == 'call' for i in helpers),
         # ftol reads one global, the process-constant SSE2 flag (cvttsd2si when set, else an x87 path under the control word), writes none and calls nothing.
+        # The running minimum is read in one place in the whole collider, inside the leaf and after its triangle-test counter: a run
+        # that counted no triangle test never read it (the memo's relaxation of key word 30).
+        'minimum_read_in_the_leaf_only': _minimum_reads(collider) == [0x4e246e] and _leaf_counts_at_entry(collider),
         'ftol_reads_the_sse2_flag_only': _globals_named(decoded[FTOL]) == {SSE2_FLAG_VA} and not any(i.mnemonic == 'call' for i in decoded[FTOL]),
         # The tenth word is an argument: `push edi` right after the two null tests, before the nine others.
         'tenth_word_is_pushed_edi': by_caller.get(0x47f1d7) is not None and by_caller[0x47f1d7].raw == b'\x57',
