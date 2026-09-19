@@ -366,6 +366,7 @@ def main():
     parser.add_argument('--ao-strength', type=float, default=None, help='Ambient occlusion strength s of the factor 1 - s (1 - ao), 0..1, default 0.5 (X3M_AO_STRENGTH; requires --ambient-occlusion)')
     parser.add_argument('--ao-debug', action='store_true', help='Ambient occlusion debug view: the factor is written as grayscale instead of multiplied, and the per-frame timing line is on (X3M_AO_DEBUG=1; requires --ambient-occlusion)')
     parser.add_argument('--ao-timing', action='store_true', help='One ambient_occlusion_frame log line per frame with GPU timestamp and CPU wall time of the chain (X3M_AO_TIMING=1; requires --ambient-occlusion; default off)')
+    parser.add_argument('--sector-background', action='store_true', help='Read-only active-sector background diagnostic (X3M_SECTOR_BACKGROUND=1; default off; exact executable only): one bounded sample per frame, logged once per second and on sector/row/status changes, including menus/loading when frames are submitted. Does not affect fog rendering; no other option required. docs/reverse-engineering/sector-fog.md section 11')
     parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='Volumetric sun fog at the scene end (X3M_VOLUMETRIC_FOG=1; default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades): a camera-local sun-lit medium in the sector hue with shafts marched against the sun cascade maps, active automatically in sectors that draw nebulafog cards (background NumDustInstances > 0). STRENGTH is the optical depth tau_max of the whole medium, 0..0.1, default 0.02 (X3M_VOLUMETRIC_FOG_STRENGTH; 0 = off). Ctrl+Alt+F9 toggles the pass and Ctrl+Alt+F10 steps the strength through 0.005/0.01/0.02/0.03/0.05 during play (one volumetric_fog_toggle / volumetric_fog_strength log line per press; the --fps-overlay second line shows the value). docs/architecture/volumetric-fog.md, "Stage 1 implementation"')
     parser.add_argument('--volumetric-fog-anisotropy', type=float, default=None, metavar='G', help='Henyey-Greenstein anisotropy g of the fog phase function, 0..0.9, default 0.3 (X3M_VOLUMETRIC_FOG_ANISOTROPY; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug: force the fog sector rule on in every sector (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
@@ -1091,6 +1092,7 @@ def main():
         env['X3M_AO_DEBUG'] = '1' if args.ao_debug else '0'
         env['X3M_AO_TIMING'] = '1' if args.ao_timing else '0'
         # Volumetric fog: every switch explicit so an inherited value cannot enable it.
+        env['X3M_SECTOR_BACKGROUND'] = '1' if args.sector_background else '0'
         env['X3M_VOLUMETRIC_FOG'] = '1' if args.volumetric_fog is not None else '0'
         env['X3M_VOLUMETRIC_FOG_STRENGTH'] = repr(args.volumetric_fog if args.volumetric_fog is not None else 0.02)
         env['X3M_VOLUMETRIC_FOG_ANISOTROPY'] = repr(args.volumetric_fog_anisotropy if args.volumetric_fog_anisotropy is not None else 0.3)

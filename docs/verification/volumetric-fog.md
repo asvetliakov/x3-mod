@@ -85,3 +85,29 @@ generator's hash, so its 27 other manifests and the 9 bloom manifests were regen
 **Not verified**: anything in the game (the pass has never run on a real frame: sector latch timing, `E_sun` from the
 real colour words, g, shimmer under TAA, glow dimming, cost in a flight); native Windows execution; the stage 2
 temporal fixture does not exist yet.
+
+
+## Sector-record diagnostic implementation (2026-09-20)
+
+`--sector-background` / `X3M_SECTOR_BACKGROUND` is opt-in and observational only:
+first successful BeginScene once/frame, Present fallback when no BeginScene
+occurs; copied sample, no row pointer retained, executable identity gate and
+LastError preservation. Once-per-second and change rows carry the §11.5 fields,
+raw camera consistency, separately computed far floor and parent-sector cross-check.
+Invalid/missing records never drive rendering; the existing card-presence rule remains.
+
+Source: `src/proxy/sector_background.h`, capture/launcher wiring. Normal synthetic
+ready sample is 212 bytes, 21 bounded reads including exactly one 288-byte row;
+registry walk capped at 32 links. Option off performs no sample, clock or gate work.
+Deep independent review accepted the source and evidence. Focused host command:
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sector_background verification.analysis.test_object_capture verification.analysis.test_volumetric_fog`
+passed 17 tests (5.126 s); reader 64 checks and extracted production wrapper 15.
+Reviewer separately reran the four diagnostic tests (2.240 s). Isolated capture.cpp
+MinGW i386 compilation with SSE2 and the required four-byte incoming-stack flags
+passed. No Wine execution or game launch was used for this checkpoint.
+
+Limitations: same-thread layout/lifetime proof is static; the existing engine-memory
+validation/copy race remains. Native Windows execution and the live named-sector,
+menu/load and gate-jump comparisons are unverified. No sample is possible without
+D3D frame traffic. The raw-camera/far-floor correction and instruction addresses
+are recorded in [sector-fog §11.4](../reverse-engineering/sector-fog.md#114-safe-read-recipe).

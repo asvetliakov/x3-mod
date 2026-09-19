@@ -29,6 +29,7 @@
 #include "scene_capture.h"
 #include "object_trace.h"
 #include "object_capture.h"
+#include "sector_background.h"
 #include "scene_hook.h"
 #include "compositor_bridge.h"
 #include "compositor_owner.h"
@@ -165,6 +166,7 @@ float ambient_occlusion_radius = 2.f, ambient_occlusion_strength = .5f;
 // X3M_VOLUMETRIC_FOG_EVERYWHERE=1 (the sector rule forced on),
 // X3M_VOLUMETRIC_FOG_TIMING=1 (one volumetric_fog_frame line per frame).
 // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength (Shift up).
+bool sector_background_requested = false; // read-only, independent of the fog pass
 bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volumetric_fog_timing = false;
 float volumetric_fog_strength = x3m::renderer::fog_strength_default, volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
 float emission_gain = 1.f;
@@ -284,6 +286,7 @@ struct Device : Hooks {
     std::uint64_t bloom_prepared = 0, bloom_committed = 0;
     unsigned remaining = 0;
     bool capture = false;
+    sector_background::Diagnostic sector_background_evidence;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     bool key_down = false;
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
@@ -608,6 +611,24 @@ void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, uint64_t frame, 
         phase,device, frame,result,view.status,view.requested,view.available,view.source_bound,view.copy_valid,
         view.generation,view.source_epoch,view.copy_epoch,desc.Width,desc.Height,desc.Format,desc.Type,
         desc.Usage,desc.Pool,desc.MultiSampleType,desc.MultiSampleQuality);
+}
+// First successful BeginScene, with a Present fallback for frames without one.
+// Existing CPU boundary and HookGuard cover this reader; it adds no GPU work.
+void sector_background_context(Device& ctx) {
+    if(!sector_background_requested || !ctx.sector_background_evidence.begin(ctx.frame))return;
+    const DWORD saved_error=GetLastError();
+    struct RestoreError { DWORD value; ~RestoreError(){SetLastError(value);} } restore_error{saved_error};
+    sector_background::Sample value;
+    if(object_trace::executable_verified()) {
+        // Even without the motion route, revalidate pages after a load/realloc.
+        engine_memory::next_frame();
+        auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
+        value=sector_background::sample(read);
+    } else value.status=sector_background::Status::ForeignExecutable;
+    if(!ctx.sector_background_evidence.emit(value,GetTickCount64()))return;
+    log("sector_background device=%llu frame=%llu status=%s registry=%08x active_handle=%u cockpit=%08x sector=%08x class48=%d index=%d count=%d table=%08x R=%08x row_valid=%u name_ptr=%08x name_valid=%u name=\"%s\" dust=%d near=%d far=%d stardust=%d rate0=%d rate1=%d rate2=%d rate3=%d rate4=%d rate5=%d rate6=%d rate7=%d neb=%08x stars=%08x camera=%08x camera_valid=%u cam_near=%d cam_far=%d flags270=%08x camera_check=%s config_valid=%u config768=%d far_floor=%d effective_far=%d ref_object=%08x ref_sector=%08x anchor_check=%s",
+        ctx.id,ctx.frame,sector_background::name(value.status),value.registry,value.handle,value.cockpit,value.sector,int(value.class48),value.index,value.count,value.table,value.record,unsigned(value.row_valid),value.name_pointer,unsigned(value.name_valid),value.family,
+        value.dust,value.fog_near,value.fog_far,value.stardust,value.rates[0],value.rates[1],value.rates[2],value.rates[3],value.rates[4],value.rates[5],value.rates[6],value.rates[7],value.neb,value.stars,value.camera,unsigned(value.camera_valid),value.cam_near,value.cam_far,value.flags270,sector_background::name(value.camera_check),unsigned(value.config_valid),value.config,value.far_floor,value.effective_far,value.ref_object,value.ref_sector,sector_background::name(value.anchor_check));
 }
 void object_context(Device& ctx) {
     // Capture-only checked reads and logging must not leak a Windows error.
@@ -1258,6 +1279,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     auto owner=devices.at(d);
     auto& ctx=*owner;
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,const RECT*,const RECT*,HWND,const RGNDATA*)>(17);
+    if(sector_background_requested)sector_background_context(ctx); // menus/loading without BeginScene
     ctx.motion_output.before_present();
     if(ctx.comparison_report_pending){comparison_log(ctx,"frame","none",true);ctx.comparison_report_pending=false;}
     if(ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()
@@ -1412,6 +1434,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     HookGuard lock(frame_timing::Bucket::State,extended?"reset_ex":"reset");
     auto& ctx=*devices.at(d);
     game_phases::invalidate_device(); // includes a refused reentrant attempt
+    ctx.sector_background_evidence.invalidate(); // also on refused Reset; no retained engine memory
     ctx.object_evidence.invalidate(); // diagnostic association also ends on refused Reset
     // A Reset reentered from injected GPU work cannot destroy that work's
     // stack-local saved state. Ordinary Reset during original is supported.
@@ -1708,6 +1731,7 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
     HookGuard lock;auto& ctx=*devices.at(d);
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
+    if(SUCCEEDED(hr)&&sector_background_requested)sector_background_context(ctx);
     ctx.motion_output.after_begin_scene(hr);
     lod_scale::refresh(); // X3M_LOD_SCALE only: catches the bring-up write before the first frame's LOD pass
     if(SUCCEEDED(hr)) {
@@ -2409,6 +2433,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // telemetry::summary repeats the line with phase=summary).
     engine_memory::configure();
     engine_memory_line("create",hooked.id,hooked.frame);
+    if(sector_background_requested)hooked.set(41,begin_scene); // standalone diagnostic needs no motion route
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
         // shadows. Installed only after the capability gate passed, so a device
@@ -2998,6 +3023,7 @@ void initialize_log(HMODULE module) {
      ambient_occlusion_debug=ambient_occlusion_requested && ao_env(L"X3M_AO_DEBUG")==1 && setting[0]==L'1';
      ambient_occlusion_timing=ambient_occlusion_requested && (ambient_occlusion_debug || (ao_env(L"X3M_AO_TIMING")==1 && setting[0]==L'1'));
      if(asked)log("ambient_occlusion_mode requested=1 enabled=%u motion_output=%u taa=%u radius_m=%g strength=%g debug=%u timing=%u",ambient_occlusion_requested,motion_output_requested,taa_requested,double(ambient_occlusion_radius),double(ambient_occlusion_strength),ambient_occlusion_debug,ambient_occlusion_timing);}
+    sector_background_requested=GetEnvironmentVariableW(L"X3M_SECTOR_BACKGROUND",setting,32)==1 && setting[0]==L'1';
     // X3M_VOLUMETRIC_FOG=1: the sun-lit medium at the scene end (needs the route and
     // the resolve, which accumulates the jittered march). Whole strings must
     // parse; out of range keeps the default. Strength 0 is a detached pass.

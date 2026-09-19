@@ -410,10 +410,18 @@ structural invariants the engine itself relies on):
 8. name `= *(char**)(R+0x00)`: non-zero, then read 32 bytes and require a NUL within
    them with every preceding byte in `0x20..0x7e`; otherwise report the pointer only.
 9. Free consistency check: when `camera+0x270 & 0x10000` on `cockpit+0x58`,
-   `FogNear/FogFar` must equal the camera's `+0x36c/+0x370` (subject to the
-   `*0x00606f34 + 0x768 >= 3` far floor of 500,000,000 already handled by
-   `object_capture::fade`). A mismatch means the wrong cockpit was picked — report,
-   do not use.
+   `FogNear/FogFar` must exactly equal the camera's raw `+0x36c/+0x370`.
+   The view-distance far floor is applied by consumers, not written into these
+   camera fields; do not accept a raw mismatch merely because it equals that floor.
+   A mismatch means the sample is inconsistent — report, do not use.
+
+   **2026-09-20 targeted disassembly correction:** `0x0042156e` / `0x00421574`
+   copy the raw pair into the camera. `0x004c2c34..0x004c2c63` apply the far floor
+   only to consumer registers: configuration `*0x00606f34 + 0x768 >= 3` gives
+   `max(F, 500,000,000)`, configuration 2 gives `max(F, 100,000,000)`.
+   Log effective far separately from raw camera far. This corrects the former
+   predicate's ambiguous floor exception; run174's raw 18,500,000 is consistent
+   with configuration 3.
 
 **Hook-site suitability.** None is needed: this is a read-only walk, no trampoline, no
 instruction patch, so there is no instruction-boundary, register- or flag-liveness
