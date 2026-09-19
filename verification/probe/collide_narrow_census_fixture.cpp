@@ -8,7 +8,8 @@
 // for 0x0048a890. The stand-in does x87 work, then runs site 6's bytes
 // 0x0048a993..0x0048a9b5 K times (its call targets a stand-in for 0x0047f1b0),
 // which calls site 7's copy of the first 35 bytes of 0x004e2530 M times (the
-// two abs32 operands point at fixture words: the only differing bytes).
+// two abs32 operands point at fixture words: the only differing bytes) and
+// site 8's copy of the first 13 bytes of 0x004e2190 T times per mesh pair.
 // Checks: patched and unpatched runs agree on the exit, every register,
 // EFLAGS, the x87 environment and stack, the engine locals, the callee's
 // register and stack arguments, the contact scratch and LastError; counters
@@ -37,7 +38,7 @@ namespace census = x3m::collide_narrow_census;
 namespace core = x3m::collide_narrow_census::core;
 
 extern "C" {
-extern unsigned char synthetic_n5[], synthetic_callee5[], synthetic_n6[], synthetic_n7[];
+extern unsigned char synthetic_n5[], synthetic_callee5[], synthetic_n6[], synthetic_n7[], synthetic_n8[];
 struct Frame {
     std::uint32_t a, b;            // 0, 4: EBX / ESI, the pair
     std::uint32_t site_esp;        // 8
@@ -58,6 +59,8 @@ std::uint32_t fx_exit_code = 0, fx_frame = 0, fx_saved_esp = 0;
 std::uint32_t fx_result = 0, fx_mesh_count = 0, fx_node_count = 0, fx_mesh_result = 0, fx_hits = 0, fx_mode = 0;
 std::uint32_t fx_loop = 0, fx_seen[6], fx6_seen[8], fx6_hits = 0, fx6_misses = 0, fx7_sum = 0, fx7_calls = 0;
 double fx_x87_out = 0;
+std::uint32_t fx_tri_count = 0, fx8_calls = 0, fx8_flags = 0, fx8_seen[2], fx8_node[0x48 / 4];
+float fx8_float = 0, fx8_triangle[13];
 void fx_n5_run(Frame* frame);
 std::uint32_t fx_call_stub(std::uint32_t stub, std::uint32_t phys_a, std::uint32_t phys_b, std::uint32_t r_a, std::uint32_t r_b);
 }
@@ -121,6 +124,21 @@ _synthetic_n7:
     pop ebx
     add esp, 0x40
     ret
+    .p2align 4
+    .globl _synthetic_n8
+_synthetic_n8:
+    .byte 0x83,0xec,0x34, 0x53, 0x57, 0x8b,0xf8, 0x8b,0x46,0x44, 0xd9,0x40,0x04
+    pushfd
+    pop dword ptr [_fx8_flags]
+    fstp dword ptr [_fx8_float]
+    mov dword ptr [_fx8_seen], edi
+    mov dword ptr [_fx8_seen+4], esi
+    inc dword ptr [_fx8_calls]
+    pop edi
+    pop ebx
+    add esp, 0x34
+    xor eax, eax
+    ret
 
     .p2align 4
 _fx_narrow_body:
@@ -183,7 +201,17 @@ _fx_mesh_callee:
     inc dword ptr [_fx7_calls]
     dec ebx
     jmp 3b
-4:  mov eax, dword ptr [_fx_mesh_result]
+4:  mov ebx, dword ptr [_fx_tri_count]
+5:  test ebx, ebx
+    je 6f
+    push esi
+    mov esi, offset _fx8_node
+    mov eax, 0x7a1a7a1a
+    call _synthetic_n8
+    pop esi
+    dec ebx
+    jmp 5b
+6:  mov eax, dword ptr [_fx_mesh_result]
     pop ebx
     ret
 
@@ -289,9 +317,9 @@ static void build_objects() {
         put(objects[i].bytes, core::physics_offset, addr(&physics[i])); put(objects[i].bytes, core::radius_offset, 1000 * (i + 1));
     }
 }
-struct Scenario { unsigned a, b; std::int32_t result; std::uint32_t mesh, nodes, mesh_result, hits, mode, control_word; };
+struct Scenario { unsigned a, b; std::int32_t result; std::uint32_t mesh, nodes, mesh_result, hits, mode, control_word, tris; };
 struct Result {
-    std::uint32_t code, regs[8], flags, env[7], esp_ok, ebp_ok, seen[6], seen6[8], hits6, misses6, sum7, calls7, scratch_nonzero, last_error; double st0, st1, x87_out; std::uint32_t locals[108];
+    std::uint32_t code, regs[8], flags, env[7], esp_ok, ebp_ok, seen[6], seen6[8], hits6, misses6, sum7, calls7, scratch_nonzero, last_error, calls8, flags8, seen8[2]; float float8; double st0, st1, x87_out; std::uint32_t locals[108];
 };
 static Frame frame_storage;
 static Result run(const Scenario& s, unsigned serial) {
@@ -299,7 +327,8 @@ static Result run(const Scenario& s, unsigned serial) {
     f.a = addr(&objects[s.a]); f.b = addr(&objects[s.b]); f.control_word = s.control_word; f.r_a = 0x00a00000u + serial; f.r_b = 0x00b00000u + serial;
     for (unsigned i = 0; i < 108; ++i) f.locals_in[i] = 0x10000000u + i;
     for (unsigned k = 0x180; k <= 0x190; k += 4) { put(physics[s.a].bytes, k, 0xfeedf00d); put(physics[s.b].bytes, k, 0xfeedf00d); }
-    fx_result = std::uint32_t(s.result); fx_mesh_count = s.mesh; fx_node_count = s.nodes; fx_mesh_result = s.mesh_result; fx_hits = s.hits; fx_mode = s.mode;
+    fx_result = std::uint32_t(s.result); fx_mesh_count = s.mesh; fx_node_count = s.nodes; fx_mesh_result = s.mesh_result; fx_hits = s.hits; fx_mode = s.mode; fx_tri_count = s.tris;
+    fx8_calls = fx8_flags = 0; fx8_seen[0] = fx8_seen[1] = 0; fx8_float = 0; fx8_triangle[1] = 2.5f; fx8_node[0x44 / 4] = addr(fx8_triangle);
     std::memset(fx_seen, 0, sizeof fx_seen); std::memset(fx6_seen, 0, sizeof fx6_seen); fx6_hits = fx6_misses = fx7_sum = fx7_calls = 0; fx_x87_out = 0;
     SetLastError(0x5150 + serial);
     fx_n5_run(&f);
@@ -310,6 +339,7 @@ static Result run(const Scenario& s, unsigned serial) {
     r.code = f.exit_code; std::memcpy(r.regs, f.out, sizeof r.regs); r.flags = f.out[8] & ~0x10u; std::memcpy(r.env, f.x87env, sizeof r.env);
     r.regs[3] = 0; r.esp_ok = f.exit_esp == f.site_esp; r.ebp_ok = f.entry_ebp == f.out[2]; r.regs[2] = 0;   // ESP/EBP depend on the C caller's depth: compared as relations
     std::memcpy(r.seen, fx_seen, sizeof r.seen); std::memcpy(r.seen6, fx6_seen, sizeof r.seen6); r.hits6 = fx6_hits; r.misses6 = fx6_misses; r.sum7 = fx7_sum; r.calls7 = fx7_calls;
+    r.calls8 = fx8_calls; r.flags8 = fx8_flags & ~0x10u; r.seen8[0] = fx8_seen[0]; r.seen8[1] = fx8_seen[1]; r.float8 = fx8_float;
     for (unsigned k = 0x180; k <= 0x190; k += 4) r.scratch_nonzero += core::load32(physics[s.a].bytes + k) != 0 || core::load32(physics[s.b].bytes + k) != 0;
     r.st0 = f.st[0]; r.st1 = f.st[1]; r.x87_out = fx_x87_out; std::memcpy(r.locals, f.locals_out, sizeof r.locals);
     return r;
@@ -324,19 +354,20 @@ static bool same(const Result& n, const Result& p, char* why) {
     else if (std::memcmp(&n.st0, &p.st0, 8) || std::memcmp(&n.st1, &p.st1, 8) || std::memcmp(&n.x87_out, &p.x87_out, 8)) std::sprintf(why, "x87 values");
     else if (std::memcmp(n.seen, p.seen, sizeof n.seen) || std::memcmp(n.seen6, p.seen6, sizeof n.seen6)) std::sprintf(why, "callee arguments");
     else if (n.hits6 != p.hits6 || n.misses6 != p.misses6 || n.sum7 != p.sum7 || n.calls7 != p.calls7) std::sprintf(why, "stand-in observations");
+    else if (n.calls8 != p.calls8 || n.flags8 != p.flags8 || n.seen8[0] != p.seen8[0] || n.seen8[1] != p.seen8[1] || n.float8 != p.float8) std::sprintf(why, "leaf-test stand-in calls=%lu/%lu flags=%lx/%lx", (unsigned long)n.calls8, (unsigned long)p.calls8, (unsigned long)n.flags8, (unsigned long)p.flags8);
     else if (n.scratch_nonzero || p.scratch_nonzero) std::sprintf(why, "contact scratch not zeroed");
     else if (n.last_error != p.last_error) std::sprintf(why, "LastError %lx/%lx", (unsigned long)n.last_error, (unsigned long)p.last_error);
     else if (std::memcmp(n.locals, p.locals, sizeof n.locals)) std::sprintf(why, "engine locals");
     return !why[0];
 }
-static unsigned char original_n5[0x80], original_n6[0xc0], original_n7[48], original_callee[core::n5_callee_length];
+static unsigned char original_n5[0x80], original_n6[0xc0], original_n7[48], original_n8[32], original_callee[core::n5_callee_length];
 static bool sites_original() {
     return !std::memcmp(synthetic_n5, original_n5, sizeof original_n5) && !std::memcmp(synthetic_n6, original_n6, sizeof original_n6)
-        && !std::memcmp(synthetic_n7, original_n7, sizeof original_n7) && !std::memcmp(synthetic_callee5, original_callee, sizeof original_callee);
+        && !std::memcmp(synthetic_n7, original_n7, sizeof original_n7) && !std::memcmp(synthetic_n8, original_n8, sizeof original_n8) && !std::memcmp(synthetic_callee5, original_callee, sizeof original_callee);
 }
 static census::Addresses addresses() {
     return census::Addresses{addr(synthetic_n5) + core::n5_pre_length, addr(synthetic_callee5), addr(synthetic_n6) + core::n6_pre_length,
-                             addr(synthetic_n6) + core::n6_pre_length + 5 + std::uintptr_t(std::int32_t(core::load32(original_n6 + core::n6_pre_length + 1))), addr(synthetic_n7), addr(&fx_hits), addr(&fx_mode)};
+                             addr(synthetic_n6) + core::n6_pre_length + 5 + std::uintptr_t(std::int32_t(core::load32(original_n6 + core::n6_pre_length + 1))), addr(synthetic_n7), addr(&fx_hits), addr(&fx_mode), addr(synthetic_n8)};
 }
 static bool key_matches(const core::ObjectKey& k, unsigned index) {
     const core::ObjectKey e = core::read_key(addr(&objects[index]), objects[index].bytes, addr(&physics[index]), physics[index].bytes);
@@ -361,14 +392,14 @@ int main() {
     const std::uintptr_t page = reinterpret_cast<std::uintptr_t>(synthetic_n5) & ~std::uintptr_t(0xfff);
     check(VirtualProtect(reinterpret_cast<void*>(page), 0x2000, PAGE_EXECUTE_READWRITE, &old) != FALSE, "synthetic code writable");
     std::memcpy(original_n5, synthetic_n5, sizeof original_n5); std::memcpy(original_n6, synthetic_n6, sizeof original_n6);
-    std::memcpy(original_n7, synthetic_n7, sizeof original_n7); std::memcpy(original_callee, synthetic_callee5, sizeof original_callee);
+    std::memcpy(original_n7, synthetic_n7, sizeof original_n7); std::memcpy(original_n8, synthetic_n8, sizeof original_n8); std::memcpy(original_callee, synthetic_callee5, sizeof original_callee);
     // The copies are the engine's bytes at the engine's offsets; only rel32 / abs32 operands differ.
     unsigned char n7[core::n7_window_length]; core::n7_expected(addr(&fx_hits), addr(&fx_mode), n7);
     bool exact = !std::memcmp(synthetic_n5, core::n5_pre_window, core::n5_pre_length) && synthetic_n5[core::n5_pre_length] == 0xe8
         && !std::memcmp(synthetic_n5 + core::n5_pre_length + 5, core::n5_post_window, core::n5_post_length)
         && !std::memcmp(synthetic_n6, core::n6_pre_window, core::n6_pre_length) && synthetic_n6[core::n6_pre_length] == 0xe8
         && !std::memcmp(synthetic_n6 + core::n6_pre_length + 5, core::n6_post_window, core::n6_post_length) && !std::memcmp(synthetic_n7, n7, sizeof n7)
-        && !std::memcmp(synthetic_callee5, core::n5_callee, core::n5_callee_rel32)
+        && !std::memcmp(synthetic_n8, core::n8_window, core::n8_window_length) && !std::memcmp(synthetic_callee5, core::n5_callee, core::n5_callee_rel32)
         && !std::memcmp(synthetic_callee5 + core::n5_callee_rel32 + 4, core::n5_callee + core::n5_callee_rel32 + 4, core::n5_callee_length - core::n5_callee_rel32 - 4);
     check(exact, "synthetic regions carry the engine windows and the 0x0048ac80 body byte-exact (rel32/abs32 operands aside)");
     if (!exact) { std::printf("COLLIDE NARROW CENSUS CPU checks=%u failures=%u\n", checks, failures); return 1; }
@@ -379,8 +410,9 @@ int main() {
     const std::int32_t results[] = {0, 1, -1, 7, 0, 0};
     const std::uint32_t words[] = {0x037f, 0x027f, 0x007f, 0x0f7f};   // 64-bit, 53-bit, 24-bit precision; round toward zero
     for (unsigned i = 0; i < 1500; ++i) {
-        Scenario s{rnd() % object_count, rnd() % object_count, results[i % 6], rnd() % 4, rnd() % 6, rnd() & 1, (i % 5 == 0) ? 0u : rnd() % 3, (i % 7 == 0) ? 1u : 0u, words[i % 4]};
+        Scenario s{rnd() % object_count, rnd() % object_count, results[i % 6], rnd() % 4, rnd() % 6, rnd() & 1, (i % 5 == 0) ? 0u : rnd() % 3, (i % 7 == 0) ? 1u : 0u, words[i % 4], 0};
         if (s.a == s.b) s.b = (s.a + 1) % object_count;
+        s.tris = i % 3;
         scenarios.push_back(s);
     }
     std::vector<Result> native; native.reserve(scenarios.size());
@@ -391,7 +423,7 @@ int main() {
     for (unsigned i = 0; i < scenarios.size(); ++i) {
         const Scenario& s = scenarios[i]; const Result& r = native[i];
         const std::uint32_t per = s.mode && std::int32_t(s.hits) > 0 ? 0u : s.hits + 0x1000u;
-        model = model && r.code == (s.result > 0 ? 2u : 1u) && r.calls7 == s.mesh * s.nodes && r.sum7 == per * s.mesh * s.nodes && r.hits6 + r.misses6 == s.mesh
+        model = model && r.code == (s.result > 0 ? 2u : 1u) && r.calls7 == s.mesh * s.nodes && r.calls8 == s.mesh * s.tris && (r.calls8 == 0 || (r.seen8[0] == 0x7a1a7a1au && r.seen8[1] == addr(fx8_node) && r.float8 == 2.5f)) && r.sum7 == per * s.mesh * s.nodes && r.hits6 + r.misses6 == s.mesh
             && r.seen[0] == addr(&physics[s.a]) && r.seen[1] == addr(&physics[s.b]) && r.seen[2] == 0x00a00000u + i && r.seen[3] == 0x00b00000u + i
             && r.seen[4] == r.seen[0] + 0x190 && r.seen[5] == r.seen[1] + 0x190 && r.regs[7] == std::uint32_t(s.result) && r.regs[6] == r.seen[0] && r.regs[5] == 0x2222c0deu
             && (s.mesh == 0 || (r.seen6[0] == r.seen[0] && r.seen6[1] == r.seen[1] && r.seen6[2] == 0 && r.seen6[3] == 0x0b0d1e5au && r.seen6[4] == 0x0b0d1e5bu && r.seen6[5] == 2 && r.seen6[6] == 1 && r.seen6[7] == 0));
@@ -417,6 +449,9 @@ int main() {
     synthetic_n7[20] ^= 0x01;                            // je +0x0e -> another target
     check(!census::install_at(addresses()) && !std::strcmp(census::state(), "bytes_mismatch"), "changed 0x004e2530 head refused");
     synthetic_n7[20] ^= 0x01;
+    synthetic_n8[2] ^= 0x04;                             // sub esp,0x34 -> sub esp,0x30
+    check(!census::install_at(addresses()) && !std::strcmp(census::state(), "bytes_mismatch"), "changed 0x004e2190 head refused");
+    synthetic_n8[2] ^= 0x04;
     bad = addresses(); bad.n7_hits += 4;
     check(!census::install_at(bad) && !std::strcmp(census::state(), "bytes_mismatch") && sites_original(), "site 7 reading another global refused");
 
@@ -424,8 +459,8 @@ int main() {
     char why[256];
     bad = addresses(); bad.n5_target += 1;
     const std::uint32_t before_counters[2] = {x3m_collide_narrow_counters[0], x3m_collide_narrow_counters[1]};
-    check(!census::install_at(bad) && !std::strcmp(census::state(), "target_mismatch"), "site 5 with another callee refused by the call-site claim (after sites 7 and 6 were patched)");
-    check(sites_original() && !census::stub_address(5) && !census::stub_address(7), "partial install rolled back byte-exact");
+    check(!census::install_at(bad) && !std::strcmp(census::state(), "target_mismatch"), "site 5 with another callee refused by the call-site claim (after sites 8, 7 and 6 were patched)");
+    check(sites_original() && !census::stub_address(5) && !census::stub_address(7) && !census::stub_address(8), "partial install rolled back byte-exact");
     { const Result r = run(scenarios[3], 3); check(same(native[3], r, why) && x3m_collide_narrow_counters[0] == before_counters[0] && x3m_collide_narrow_counters[1] == before_counters[1], "after the rollback the sites run natively and count nothing"); }
     bad = addresses(); bad.n6_target += 1;
     check(!census::install_at(bad) && !std::strcmp(census::state(), "target_mismatch") && sites_original(), "site 6 with another callee refused, site 7 rolled back");
@@ -434,8 +469,8 @@ int main() {
     SetLastError(0x1234);
     check(census::install_at(addresses()), "install on the synthetic regions");
     check(GetLastError() == 0x1234, "install preserves LastError");
-    check(!std::strcmp(census::state(), "ok") && census::stub_address(5) && census::stub_address(6) && census::stub_address(7), "state ok, three stubs live");
-    check(synthetic_n5[core::n5_pre_length] == 0xe8 && std::memcmp(synthetic_n5, original_n5, sizeof original_n5) && synthetic_n6[core::n6_pre_length] == 0xe8 && synthetic_n7[0] == 0xe9
+    check(!std::strcmp(census::state(), "ok") && census::stub_address(5) && census::stub_address(6) && census::stub_address(7) && census::stub_address(8), "state ok, four stubs live");
+    check(synthetic_n5[core::n5_pre_length] == 0xe8 && std::memcmp(synthetic_n5, original_n5, sizeof original_n5) && synthetic_n6[core::n6_pre_length] == 0xe8 && synthetic_n7[0] == 0xe9 && synthetic_n8[0] == 0xe9 && !std::memcmp(synthetic_n8 + 5, original_n8 + 5, sizeof original_n8 - 5)
           && !std::memcmp(synthetic_n7 + 5, original_n7 + 5, sizeof original_n7 - 5) && !std::memcmp(synthetic_callee5, original_callee, sizeof original_callee), "sites 5/6 keep their call opcode, site 7 carries the jump, nothing else changed");
     check(!census::install_at(addresses()) && !std::strcmp(census::state(), "already_installed"), "second install refused");
 
@@ -444,31 +479,31 @@ int main() {
     unsigned mismatches = 0, counter_mismatch = 0, entry_mismatch = 0;
     for (unsigned i = 0; i < scenarios.size(); ++i) {
         const Scenario& s = scenarios[i];
-        const std::uint32_t c0 = x3m_collide_narrow_counters[0], c1 = x3m_collide_narrow_counters[1];
+        const std::uint32_t c0 = x3m_collide_narrow_counters[0], c1 = x3m_collide_narrow_counters[1], c4 = x3m_collide_narrow_counters[4];
         const Result r = run(s, i);
         if (!same(native[i], r, why) && ++mismatches <= 8) std::printf("DETAIL scenario %u: %s\n", i, why);
-        if (x3m_collide_narrow_counters[0] - c0 != s.mesh || x3m_collide_narrow_counters[1] - c1 != s.mesh * s.nodes || x3m_collide_narrow_busy) ++counter_mismatch;
+        if (x3m_collide_narrow_counters[0] - c0 != s.mesh || x3m_collide_narrow_counters[1] - c1 != s.mesh * s.nodes || x3m_collide_narrow_counters[4] - c4 != s.mesh * s.tris || x3m_collide_narrow_busy) ++counter_mismatch;
         SetLastError(0x4321);
         census::present(1, 2 + i, false);
         if (GetLastError() != 0x4321) ++counter_mismatch;
         const census::FrameView v = census::last_frame();
         if (v.count != 1 || v.accepted != 1 || v.overflow || v.mesh_pairs != s.mesh || v.node_pairs != s.mesh * s.nodes || !v.entries || !key_matches(v.entries[0].a, s.a) || !key_matches(v.entries[0].b, s.b)
-            || v.entries[0].result != s.result || v.entries[0].visits != s.mesh * s.nodes || v.entries[0].mesh_pairs != s.mesh) { if (++entry_mismatch <= 4) std::printf("DETAIL entry %u count=%u accepted=%lu\n", i, v.count, (unsigned long)v.accepted); }
+            || v.entries[0].result != s.result || v.entries[0].visits != s.mesh * s.nodes || v.entries[0].mesh_pairs != s.mesh || v.entries[0].tri_tests != s.mesh * s.tris || v.tri_tests != s.mesh * s.tris) { if (++entry_mismatch <= 4) std::printf("DETAIL entry %u count=%u accepted=%lu\n", i, v.count, (unsigned long)v.accepted); }
     }
     check(mismatches == 0, "patched: identical exit, registers, EFLAGS, x87 environment and stack, callee arguments, contact scratch, locals and LastError on every pair");
-    check(counter_mismatch == 0, "counters: mesh-pair tests and node-pair visits exact per pair, busy flag released, present preserves LastError");
+    check(counter_mismatch == 0, "counters: mesh-pair tests, node-pair visits and leaf triangle tests exact per pair, busy flag released, present preserves LastError");
     check(entry_mismatch == 0, "ring entry: objects, class/subtype/flags/radius, positions, model, hashes, result and attributed visits exact");
     check(x3m_collide_narrow_counters[2] == 0 && x3m_collide_narrow_counters[3] == 0 && census::dropped_total() == 0, "no nested, foreign or dropped pair on the plain path");
 
     // ---- ring overflow ----
-    Scenario quiet{1, 2, 0, 1, 2, 0, 0, 0, 0x027f};
+    Scenario quiet{1, 2, 0, 1, 2, 0, 0, 0, 0x027f, 1};
     for (unsigned i = 0; i < 300; ++i) run(quiet, i);
     census::present(1, 5000, false);
-    { const census::FrameView v = census::last_frame(); check(v.count == core::ring_capacity && v.accepted == 300 && v.overflow == 44 && v.mesh_pairs == 300 && v.node_pairs == 600, "ring overflow: 256 recorded, 44 counted as overflow, totals complete"); }
+    { const census::FrameView v = census::last_frame(); check(v.count == core::ring_capacity && v.accepted == 300 && v.overflow == 44 && v.mesh_pairs == 300 && v.node_pairs == 600 && v.tri_tests == 300, "ring overflow: 256 recorded, 44 counted as overflow, totals complete"); }
 
     // ---- memo annotation across frames ----
     auto frame_of = [&](unsigned long long frame, const std::int32_t* result, const std::uint32_t* nodes, bool captured) {
-        for (unsigned i = 0; i < 10; ++i) { Scenario s{i, i + 1, result[i], 1, nodes[i], 0, 0, 0, 0x027f}; run(s, i); }
+        for (unsigned i = 0; i < 10; ++i) { Scenario s{i, i + 1, result[i], 1, nodes[i], 0, 0, 0, 0x027f, 0}; run(s, i); }
         census::present(1, frame, captured); return census::last_frame();
     };
     std::int32_t res[10] = {0, 0, 0, 0, 0, 1, 0, 0, 0, -1}; std::uint32_t nodes[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -485,10 +520,10 @@ int main() {
     check(v.memo.with_previous == 10 && v.memo.unchanged == 4 && v.memo.changed_position == 2 && v.memo.changed_xform == 2 && v.memo.changed_saved == 2 && v.memo.memo_hits == 3
           && v.memo.memo_unsafe == 1 && v.memo.visits_differ == 1 && (v.entries[0].flags & core::memo_unsafe) && (v.entries[9].flags & core::visits_differ) && !(v.entries[1].flags & core::same_position)
           && (v.entries[1].flags & core::same_xform) && !(v.entries[4].flags & core::same_xform) && !(v.entries[7].flags & core::same_saved), "changed position / transform / saved position / result / visit count each classified");
-    check(pair_lines.size() == 10 && pair_lines[0].find(" rank=0 of=10 ") != std::string::npos && pair_lines[0].find(" visits=99 ") != std::string::npos && pair_lines[0].find(" visits_differ=1") != std::string::npos
+    check(pair_lines.size() == 10 && pair_lines[0].find(" rank=0 of=10 ") != std::string::npos && pair_lines[0].find(" visits=99 ") != std::string::npos && pair_lines[0].find(" tri_tests=0 ") != std::string::npos && pair_lines[0].find(" visits_differ=1") != std::string::npos
           && pair_lines[9].find(" visits=1 ") != std::string::npos && pair_lines[9].find(" memo_unsafe=1 ") != std::string::npos && pair_lines[9].find(" contact=1 ") != std::string::npos, "capture frame: one row per entry, ordered by visits");
     if (!pair_lines.empty()) std::printf("ROW %s\n", pair_lines[0].c_str());
-    { Scenario s{12, 13, 0, 0, 0, 0, 0, 0, 0x027f}; run(s, 0); census::present(1, 6003, false); v = census::last_frame(); check(v.count == 1 && v.memo.with_previous == 0 && v.entries[0].flags == 0, "a pair absent from the previous frame has no memo verdict"); }
+    { Scenario s{12, 13, 0, 0, 0, 0, 0, 0, 0x027f, 0}; run(s, 0); census::present(1, 6003, false); v = census::last_frame(); check(v.count == 1 && v.memo.with_previous == 0 && v.entries[0].flags == 0, "a pair absent from the previous frame has no memo verdict"); }
 
     // ---- nested and foreign pass-through ----
     x3m_collide_narrow_busy = 1;
@@ -512,6 +547,8 @@ int main() {
         const Scenario& last = scenarios.back(); const Scenario& nest = scenarios[11];
         const unsigned long long want_mesh = last.mesh + 300 + 30 + nest.mesh + 438, want_nodes = last.mesh * last.nodes + 600 + 55 + 55 + 144 + nest.mesh * nest.nodes + 876;
         check(n == 11 && frame == 7291 && frames == 300 && p50 == 2 && mx == 300 && sum == 770 && msum == want_mesh && nsum == want_nodes && m50 <= mmax && n50 <= nmax, "window line: frame, frames, p50, max and sums of the three counters");
+        char tri_sum[64]; std::snprintf(tri_sum, sizeof tri_sum, " tri_tests_sum=%llu ", (unsigned long long)(last.mesh * last.tris + 300 + nest.mesh * nest.tris + 438));
+        check(window_lines[0].find(tri_sum) != std::string::npos && window_lines[0].find(" tri_tests_max=300 ") != std::string::npos, "window line: the leaf triangle tests of the same frames");
         check(window_lines[0].find(" recorded_sum=726 ") != std::string::npos && window_lines[0].find(" ring_overflow=44 ") != std::string::npos && window_lines[0].find(" nested=1 foreign=1 cross_thread_frames=0") != std::string::npos
               && window_lines[0].find(" dropped=0 deferred=0 ") != std::string::npos, "window line: sums, the overflow, the nested and foreign passes, no cross-thread frame");
         std::printf("WINDOW %s\n", window_lines[0].c_str());
@@ -530,9 +567,9 @@ int main() {
     std::printf("cross-thread frames=%llu accepted=%llu dropped=%lu\n", presenter_frames, presenter_accepted + v.accepted, (unsigned long)(census::dropped_total() - dropped_before));
 
     // ---- bench (harness-inclusive) and restore ----
-    Scenario bare{1, 2, 0, 0, 0, 0, 0, 0, 0x027f}, deep{1, 2, 0, 1, 20000, 0, 0, 0, 0x027f};
+    Scenario bare{1, 2, 0, 0, 0, 0, 0, 0, 0x027f, 0}, deep{1, 2, 0, 1, 20000, 0, 0, 0, 0x027f, 0};
     const double patched_pair = bench_ns(bare, 20000, 1), patched_visit = bench_ns(deep, 40, 20000);
-    check(census::shutdown() && sites_original() && !census::stub_address(5), "shutdown restores the three sites exactly");
+    check(census::shutdown() && sites_original() && !census::stub_address(5), "shutdown restores the four sites exactly");
     const double native_pair = bench_ns(bare, 20000, 1), native_visit = bench_ns(deep, 40, 20000);
     mismatches = 0;
     for (unsigned i = 0; i < scenarios.size(); i += 3) { const Result r = run(scenarios[i], i); if (!same(native[i], r, why)) ++mismatches; }

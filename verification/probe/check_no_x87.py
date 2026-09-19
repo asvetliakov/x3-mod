@@ -70,7 +70,10 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_cull_census_measure', '_x3m_cull_census_exit',
                 # the narrow-census bracket handlers (src/proxy/collide_narrow_census.cpp, X3M_COLLIDE_NARROW_CENSUS=1) run around the
                 # engine's x87 narrow phase under LightCallBoundary only
-                '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post']
+                '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post',
+                # the SSE2 separating-axis replacement (src/proxy/collide_sat_sse2.cpp, X3M_COLLIDE_SAT_SSE2=1): the thunk the engine's
+                # x87 BVH descent calls ~2.3e5 times per frame and its body, no boundary at all (stmxcsr/ldmxcsr only)
+                '_x3m_collide_sat_thunk', '_x3m_collide_sat_sse2']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own

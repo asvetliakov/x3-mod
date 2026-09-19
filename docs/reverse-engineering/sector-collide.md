@@ -1001,6 +1001,120 @@ eigenvalues; the build path `0x004dfef0`/`0x004e0e70`/`0x004e1220` was not re-re
 the identification of `b = 0x11b21bb8` as the player's ship, which is inference from the visit collapse and the
 bit-static rows, not a field named "player" in any log.
 
+### 12.8 Implemented: `--collide-sat-sse2` and the triangle-test counter (2026-09-19)
+
+`X3M_COLLIDE_SAT_SSE2=1` (launcher `--collide-sat-sse2`, default off, independent of `--collide-box-cull` and
+`--collide-narrow-census`; any combination may be on), `src/proxy/collide_sat_sse2.{h,cpp}` and
+`collide_sat_sse2_core.h`. Candidate (c) of §12.5: `engine_patch::claim_call` on `0x004e25a3`, only the rel32 changes.
+
+**What `0x004e3280` is, from the bytes [s].** `sub esp,0x24; push ebx; push ebp; push ecx` (the `push ecx` is a stack
+reservation for the `fabs` argument, ECX is never written), EBX = `[esp+8]` = `&a.d`, EBP = `[esp+4]` = `T`. All nine
+`Bf[k] = (float32)(|R[k]| + reps)` first (**nine** `fadd dword [0x00565600]`, not two; 24 calls of the float `fabs`
+helper `0x0040e710`), then the 15 axes in RAPID's order A0, B0, A1, A2, B1, B2, A0xB0 … A2xB2. Every projected
+distance goes through a **float32 stack slot** before `fabs` (the helper takes a float), and each compare is
+`fcompp; fnstsw; test ah,1`: the axis separates iff `ra + rb < |T·L|`, and **unordered counts as separated** (C0 is
+set), so the engine prunes on NaN. Result: EAX = 0 (descend) or the number 1..15 of the first separating axis; 16
+plain `ret`s. It also overwrites its own second argument slot with the running flag, which the caller pops unread.
+Registers: EBX/EBP saved, ECX/EDX/ESI/EDI never written.
+
+**Replacement.** `core::obb_disjoint`: the same operands in the same association order in `double` (a product of two
+float32 values is exact in double), the two float32 roundings reproduced (`Bf`, and the projected distance before
+`fabs`), `Bf` rows computed when first needed (axis 1 needs row 0 only), and the compare
+`t > (ra + rb)·(1 + 2⁻⁴⁵) && t <= FLT_MAX && (ra + rb)·(1 + 2⁻⁴⁵) >= 0`. So an axis whose computation involves a NaN or
+an infinity never separates, and neither does a negative radius sum; an axis that involves only finite values decides
+as the engine does (a box with one infinite extent is still pruned along an axis that does not use that extent, by
+both). `|x|` is a sign-bit mask in the integer domain: GCC emits x87 `fld; fabs; fstp` for `std::fabs` of a loaded
+value even under `-mfpmath=sse`, which the build audit caught.
+
+**Thunk** (pure asm, 29 instructions, two paths): `push ecx; push edx; push eax; stmxcsr [esp]`, then if the MXCSR
+control bits are the default (`& 0xffc0 == 0x1f80`) push `a`, `T`, EDI, ESI, call the cdecl body, drop, `pop edx; pop
+ecx; ret`. Otherwise the same between `ldmxcsr [0x1f80]` and `ldmxcsr [saved]`. ECX/EDX are kept although the caller
+does not need them (it reloads ECX at `0x004e2607`), EBX/EBP/ESI/EDI are callee-saved in the body, EFLAGS are dead at
+the return (`add esp,8; test eax,eax`), the x87 stack is empty at the site (`sat_x87_empty_at_site`) and no x87/MMX
+instruction exists in the module (build audit, `check_no_x87.py` roots `_x3m_collide_sat_thunk`,
+`_x3m_collide_sat_sse2`). LastError is never touched (no API call). No lock, no counter, no `LightCallBoundary`.
+**XMM0–7 are clobbered**: `0x004e2530`, `0x004e2190`…`0x004e252f` and `0x004e3280` contain no XMM/MMX operand at all
+(`sat_no_xmm_in_descent`; 842 lines of the whole image mention `xmm`, none on this path), and XMM registers are
+caller-saved in the Win32 ABI, so nothing can be live across the call.
+
+**Why the default path holds no `ldmxcsr` [m].** FEX keeps *one* host rounding mode for x87 and SSE. The fixture
+measured both directions: with MXCSR = round-up restored by an `ldmxcsr`, the x87 `1/3` computed after the call rounds
+up although the x87 control word says nearest (4,000 of 16,000 bracketed calls, all those whose two modes differ);
+and with the x87 control word written last and set to chop, the SSE body chops whatever MXCSR says (16 of 10,000
+near-tangent verdicts move). An always-bracketing thunk would therefore re-impose MXCSR's rounding on the engine's
+later x87 arithmetic 2.3e5 times a frame. With both modes at nearest — the game's state, D3D9 sets the x87 word and
+nothing sets MXCSR — neither effect exists. On the default path only the sticky MXCSR exception flags can accumulate;
+nothing in an x87-only process reads them, and FEX does not track them at all (`ldmxcsr 0x3fbf; stmxcsr` reads
+`0x3f80`). On hardware with separate rounding state the bracketed path is exact.
+
+**Exactness.** Against the engine as it runs here: FEX's reduced-precision x87 computes in double, so the verdict is
+bit-identical except inside the 2⁻⁴⁵ band, where the replacement keeps the pair. Against geometry, which is what holds
+on native Windows (80-bit or 24-bit x87, neither equal to double): the replacement prunes only when
+`|T·L| > ra + rb` with `Bf = |R| + 1e-6`, i.e. with RAPID's own bias toward overlap of ~1e-6 × extent against double
+rounding of ~1e-16, so every pair it prunes is a pair of disjoint boxes, and disjoint boxes contain no intersecting
+triangles. The engine's own test can differ from it near tangency by ~2⁻²⁴ under a 24-bit x87, in either direction;
+the visit count can then differ by a few node pairs, the contacts cannot.
+
+**Fixture** `verification/probe/collide_sat_sse2_fixture.cpp` (40 checks). The 1,582 engine bytes are **not tracked**:
+`build_collide_sat_sse2.py` reads them from the installed EXE, pins them by SHA-256, relocates the 24 rel32 and 9
+abs32 operands at decoded instruction boundaries and writes `build/verification/collide-sat-sse2/sat_replica_inc.h`;
+the fixture un-relocates its copy and checks the FNV-1a the production install checks. 1,860,000 node pairs:
+
+| Category | Pairs | both keep | both prune | SSE2 keeps, replica prunes | replica keeps, SSE2 prunes | axis differs |
+| --- | --- | --- | --- | --- | --- | --- |
+| realistic (station 1e-3…50, ship 1e-4…2, random rotation, 0–2.5 diagonals apart) | 1,200,000 | 162,567 | 1,037,433 | 0 | **0** | 0 |
+| near-tangent (bisection on the replica to its own keep/prune boundary, ±4 float steps of T) | 360,000 | 160,006 | 199,994 | 0 | **0** | 0 |
+| degenerate (identity, signed permutations, single-axis rotations incl. exact 90°, non-rotations, zero extents, T = 0, faces touching exactly) | 150,000 | 61,266 | 88,734 | 0 | **0** | 0 |
+| hostile (×1e30, ×1e19, denormal, negative extents, NaN/±inf/FLT_MAX in each of the 18 slots) | 150,000 | 4,966 | 138,709 | 6,325 | **0** | 23,183 (never earlier) |
+
+Keep rate outside non-finite inputs: **0 of 1,710,000**; overall 0.34 %, all of it NaN/inf/negative-extent pairs the
+engine prunes on an unordered compare. The same near-tangent sample under x87 control words `0x037f` and `0x007f`:
+0 violations (FEX ignores precision control). State across the call, 20,000 direct calls under five MXCSR values
+(default, round-down + sticky, round-up, chop + DAZ, precision exception unmasked) and two x87 control words: all six
+preserved registers, the whole 28-byte `fnstenv` image, both live x87 registers, MXCSR; 3,000 scenarios through a
+layout-preserving copy of `0x004e2530`…`0x004e25ae` (head, visit counter, argument set-up, the call, the engine's own
+return-0 tail at its offset) unpatched and patched: same exit, EAX, ECX/EDX, EFLAGS (AF aside, §11.7), x87
+control/tag/TOP, MXCSR, the 0x50-byte engine frame, visit counter, LastError. C0–C3, the sticky x87 exception bits and
+the x87 last-instruction pointers differ by construction (the engine's `fcompp` leaves them, the replacement leaves
+what was there) and are dead: the next x87 compare at `0x004e25f6` is followed by its own `fnstsw`. Coexistence: the
+census's site-7 claim is installed on the same synthetic function first, both run, every visit is counted, either can
+be restored first, bytes exact. Refusals: unset / `0` / no engine image (`callee_mismatch`), null site, changed
+argument set-up, changed return window, another callee (`target_mismatch`), not a call, second install, closed window.
+
+**Cost [m]** (FEX, direct calls, harness 3.1 ns subtracted; diagnostic timing, not game FPS):
+
+| Mix | replica | SSE2 | ratio |
+| --- | --- | --- | --- |
+| early separation (mean axis 1.09) | 56.2 ns | **5.4 ns** | **10.4×** |
+| full overlap (all 15 axes) | 122.5 ns | **20.7 ns** | **5.9×** |
+
+The 5.4 ns is thunk plus axis 1, so the thunk itself is below that; the MXCSR bracket the default path avoids costs
+2.2 ns. Sizing [i]: §12.4's `V = 1 + 2·D` makes about half the visits full-overlap, so the SAT averages ≈ 89 ns of the
+measured 114 ns per visit (78 %, inside §12.5's 71–83 %) and ≈ 13 ns after; a visit would cost ≈ 38 ns, **≈ 3× per
+visit, 25 ms → ≈ 8 ms** at the plateau. That is a projection from a fixture; the flight below measures it. It also
+answers §12.4's open tension: FEX runs this x87 code at ≈ 5 instructions/ns, §5's bracket was too pessimistic.
+
+**Triangle-test counter (§12.6 step 2, first item).** `--collide-narrow-census` gains site 8: `engine_patch::claim` of
+`83 ec 34 53 57` at `0x004e2190` (three whole instructions, sole caller `0x004e25cd`, nothing enters `+1..+4`), stub
+`inc dword [tri]; sub esp,0x34; push ebx; push edi; jmp 0x004e2195` (16 B; the re-executed `sub` rewrites every flag
+the `inc` touched). Claimed first (8, 7, 6, 5), rolled back with the rest. Output: `tri_tests_p50/_max/_sum` after the
+`narrow_us` series on the `collide_narrow` line and `tri_tests=` per pair on F8 rows; the install line ends in
+`n8_site= write_n8= stub_n8=`. The visit-mix classifier of §12.6 (four counters in the site-7 stub) is **not**
+implemented.
+
+**One flight:** `--collide-sat-sse2 --collide-narrow-census --loop-phases` at the station, then the same without
+`--collide-sat-sse2`. Compare `narrow_us_p50` per `node_pairs_p50` (subtract the census's 1.5 ns/visit, §11.8);
+`node_pairs` must be equal to within the keep band (0 in the fixture) for a parked ship, and `tri_tests` says how much
+of what remains is the leaf test. Expect `collide_sat_sse2 requested=1 patched=1 reason=ok … write=plain`.
+
+Verifier: `verify_collide_sites.py`, 72 checks (29 box cull, 26 census, 17 SAT): whole call, **sole reference to
+`0x004e3280` image-wide** (rel32 byte scan of `.text` and abs32 scan of the file), nothing into `+1..+4`, both
+windows, the body's SHA-256 and FNV, 24 calls all to the `fabs` helper, 16 plain `ret`s, nine `reps` loads and
+`[0x00565600] == 1e-6f`, no write to ECX/EDX/ESI/EDI in the body, the argument instructions, x87 depth 0 at the site,
+flags written at the return, no XMM/MMX operand on the path, disjoint from 139 other claims including the census's four
+sites and compared windows (and the census and box cull see `0x004e25a3` as foreign). Ledger:
+[sampling-profiler.md](../verification/sampling-profiler.md), "Collide SAT SSE2".
+
 ## Reproduce
 
 ```sh

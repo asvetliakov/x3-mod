@@ -8,6 +8,7 @@
 #include "cull_census.h"
 #include "collide_box_cull.h"
 #include "collide_narrow_census.h"
+#include "collide_sat_sse2.h"
 #include "cull_small_parts.h"
 #include "frame_timing.h"
 #include "frame_phases.h"
@@ -2936,6 +2937,7 @@ void initialize_log(HMODULE module) {
     point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same window
     collide_box_cull::initialize(); // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector collision pair tests (0x0045d58e, 0x0045cc7c), same window
     collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window, disjoint from the box-cull claims
+    collide_sat_sse2::initialize(); // X3M_COLLIDE_SAT_SSE2=1 only; the sole call of the OBB separating-axis test 0x004e3280 (at 0x004e25a3) redirected to an SSE2 reimplementation, same window, disjoint from every other claim
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2), same window, disjoint from the census claims
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone

@@ -29,7 +29,19 @@ five inbound calls of 0x004e2530, the liveness the stubs rely on (EFLAGS dead
 at both callee entries, at the return of site 5 and after site 7; EBX/ESI
 still the pair at site 5; the callee of site 5 returns with a plain `ret`
 and takes ECX/EAX as the pre-window loads them), and disjointness from every
-other claim including the box cull's windows and cull_small_parts.
+other claim including the box cull's windows and cull_small_parts. Site 8
+(section 12.6) displaces the three entry instructions of the leaf triangle
+test 0x004e2190 (sole caller 0x004e25cd) under the same rules.
+
+The SSE2 separating-axis replacement (src/proxy/collide_sat_sse2.cpp, section
+12.8) redirects the `call 0x004e3280` at 0x004e25a3. Checked here: one whole
+instruction, the sole reference to 0x004e3280 in the image, nothing entering
++1..+4, the windows, the pinned hash of the 1,582-byte body, that the body
+writes none of ECX/EDX/ESI/EDI, calls only the `fabs` helper and returns with
+plain `ret`s, that the x87 stack is empty at the site, EFLAGS dead at the
+return, no XMM/MMX register anywhere in the descent, its leaf test or the body,
+and disjointness from every other claim, the census windows included (both
+options may be on). `sat_disjoint` is the Python twin of core::obb_disjoint.
 """
 import argparse
 import hashlib
@@ -271,12 +283,14 @@ N5_CALLEE_BYTES = bytes.fromhex('5133d256899190010000899090010000578db1900100008
 N6_CALLEE_BYTES = bytes.fromhex('8b5424048b525c83ec6485d2568b7424708b765c7507')
 N5_CALLEE_REL32 = 0x5c
 N7_INBOUND = [0x4e264c, 0x4e269f, 0x4e2705, 0x4e2767, 0x4e2956]
-NARROW_SPANS = {'n5': N5_SITE, 'n6': N6_SITE, 'n7': N7_SITE}
-NARROW_STUB_CAPACITY, N5_STUB, N6_STUB, N7_STUB = 320, 289, 11, 16
-NARROW_OWN_NAMES = ('collide_narrow_census_n7',)
+N8_SITE, N8_NEXT, N8_CALLER, N8_FUNCTION = 0x4e2190, 0x4e2195, 0x4e25cd, (0x4e2190, 0x4e2530)
+N8_WINDOW = bytes.fromhex('83ec3453578bf88b4644d94004')
+NARROW_SPANS = {'n5': N5_SITE, 'n6': N6_SITE, 'n7': N7_SITE, 'n8': N8_SITE}
+NARROW_STUB_CAPACITY, N5_STUB, N6_STUB, N7_STUB, N8_STUB = 320, 289, 11, 16, 16
+NARROW_OWN_NAMES = ('collide_narrow_census_n7', 'collide_narrow_census_n8')
 _SAVE = '9c 60 fc 81ec80000000 ' + ' '.join(f'0f11{0x44 | (i << 3):02x}24{i * 16:02x}' for i in range(8))
 _RESTORE = ' '.join(f'0f10{0x44 | (i << 3):02x}24{i * 16:02x}' for i in range(8)) + ' 81c480000000 61 9d'
-NARROW_SERIES = ('accepted', 'mesh_pairs', 'node_pairs', 'narrow_us')
+NARROW_SERIES = ('accepted', 'mesh_pairs', 'node_pairs', 'narrow_us', 'tri_tests')
 NARROW_SUMS = ('recorded_sum', 'with_previous_sum', 'unchanged_sum', 'memo_would_hit_sum', 'memo_would_hit_permille', 'memo_visits_sum', 'memo_visits_permille',
                'memo_unsafe_sum', 'memo_visits_differ_sum', 'changed_pos_sum', 'changed_xform_sum', 'changed_saved_sum', 'ring_overflow', 'dropped', 'deferred',
                'nested', 'foreign', 'cross_thread_frames')
@@ -288,14 +302,14 @@ _PAIR_FIELDS = (('device', r'\d+'), ('frame', r'\d+'), ('rank', r'\d+'), ('of', 
                 ('subtype_a', r'\d+'), ('subtype_b', r'\d+'), ('model_a', r'-?\d+'), ('model_b', r'-?\d+'), ('radius_a', r'-?\d+'), ('radius_b', r'-?\d+'),
                 ('flags40_a', r'0x[0-9a-f]{8}'), ('flags44_a', r'0x[0-9a-f]{8}'), ('flags40_b', r'0x[0-9a-f]{8}'), ('flags44_b', r'0x[0-9a-f]{8}'),
                 ('node_flags_a', r'0x[0-9a-f]{8}'), ('node_flags_b', r'0x[0-9a-f]{8}'), ('pos_a', r'-?\d+,-?\d+,-?\d+'), ('pos_b', r'-?\d+,-?\d+,-?\d+'),
-                ('d_max', r'\d+'), ('r_sum', r'-?\d+'), ('visits', r'\d+'), ('mesh_pairs', r'\d+'), ('us', r'\d+'), ('result', r'-?\d+'), ('contact', r'[01]'),
+                ('d_max', r'\d+'), ('r_sum', r'-?\d+'), ('visits', r'\d+'), ('mesh_pairs', r'\d+'), ('tri_tests', r'\d+'), ('us', r'\d+'), ('result', r'-?\d+'), ('contact', r'[01]'),
                 ('previous', r'[01]'), ('same_pos', r'[01]'), ('same_xform', r'[01]'), ('same_saved', r'[01]'), ('unchanged', r'[01]'), ('memo_hit', r'[01]'),
                 ('memo_unsafe', r'[01]'), ('visits_differ', r'[01]'))
 NARROW_PAIR_RE = re.compile(r'\bcollide_narrow_pair ' + ' '.join(rf'{k}=(?P<{k}>{v})' for k, v in _PAIR_FIELDS) + r'\s*$')
 NARROW_INSTALL_RE = re.compile(r'\bcollide_narrow_census requested=(?P<requested>[01]) patched=(?P<patched>[01]) reason=(?P<reason>\S+) n5_site=0x(?P<n5_site>[0-9a-f]{8}) '
                                r'n6_site=0x(?P<n6_site>[0-9a-f]{8}) n7_site=0x(?P<n7_site>[0-9a-f]{8}) write_n5=(?P<write_n5>none|atomic|plain) write_n6=(?P<write_n6>none|atomic|plain) '
                                r'write_n7=(?P<write_n7>none|atomic|plain) stub_n5=0x(?P<stub_n5>[0-9a-f]{8}) stub_n6=0x(?P<stub_n6>[0-9a-f]{8}) stub_n7=0x(?P<stub_n7>[0-9a-f]{8}) '
-                               r'ring=(?P<ring>\d+) qpc_frequency=(?P<qpc_frequency>\d+)')
+                               r'ring=(?P<ring>\d+) qpc_frequency=(?P<qpc_frequency>\d+) n8_site=0x(?P<n8_site>[0-9a-f]{8}) write_n8=(?P<write_n8>none|atomic|plain) stub_n8=0x(?P<stub_n8>[0-9a-f]{8})')
 
 
 class _Flat:
@@ -348,6 +362,13 @@ def encode_n7_stub(at, counter, hits, next_va):
     return bytes(w.out)
 
 
+def encode_n8_stub(at, counter, next_va):
+    _check32(at, counter, next_va)
+    w = _Flat(at)
+    w.raw('ff05'); w.dword(counter); w.raw('83ec34 53 57'); w.rel32('e9', next_va)
+    return bytes(w.out)
+
+
 def parse_narrow_install_line(line):
     match = NARROW_INSTALL_RE.search(line)
     if not match:
@@ -385,7 +406,8 @@ def parse_narrow_pair_line(line):
 
 NARROW_EXPECTED_CONSTANTS = {
     'n5_site_va': N5_SITE, 'n5_target_va': N5_TARGET, 'n5_return_va': N5_RETURN, 'n6_site_va': N6_SITE, 'n6_target_va': N6_TARGET, 'n7_site_va': N7_SITE,
-    'n7_next_va': N7_NEXT, 'n7_hits_va': N7_HITS, 'n7_mode_va': N7_MODE, 'n5_function_va': P1_FUNCTION[0], 'n5_function_end_va': P1_FUNCTION[1],
+    'n7_next_va': N7_NEXT, 'n7_hits_va': N7_HITS, 'n7_mode_va': N7_MODE, 'n8_site_va': N8_SITE, 'n8_next_va': N8_NEXT, 'n8_caller_va': N8_CALLER,
+    'n8_window_length': len(N8_WINDOW), 'n8_window': N8_WINDOW, 'n8_stub_length': N8_STUB, 'n5_function_va': P1_FUNCTION[0], 'n5_function_end_va': P1_FUNCTION[1],
     'n6_function_va': N6_FUNCTION[0], 'n6_function_end_va': N6_FUNCTION[1], 'n7_function_va': N7_FUNCTION[0], 'n7_function_end_va': N7_FUNCTION[1],
     'call_length': 5, 'n5_pre_length': len(N5_PRE_WINDOW), 'n5_post_length': len(N5_POST_WINDOW), 'n6_pre_length': len(N6_PRE_WINDOW),
     'n6_post_length': len(N6_POST_WINDOW), 'n7_window_length': len(N7_WINDOW), 'n7_hits_operand': 1, 'n7_mode_operand': 10,
@@ -410,7 +432,7 @@ def narrow_source_constants(text):
 
 def narrow_own_windows():
     return [(N5_SITE - len(N5_PRE_WINDOW), N5_SITE + 5 + len(N5_POST_WINDOW)), (N6_SITE - len(N6_PRE_WINDOW), N6_SITE + 5 + len(N6_POST_WINDOW)),
-            (N7_SITE, N7_SITE + len(N7_WINDOW)), (N5_CALLEE[0], N5_CALLEE[1]), (N6_CALLEE_HEAD[0], N6_CALLEE_HEAD[1])]
+            (N7_SITE, N7_SITE + len(N7_WINDOW)), (N5_CALLEE[0], N5_CALLEE[1]), (N6_CALLEE_HEAD[0], N6_CALLEE_HEAD[1]), (N8_SITE, N8_SITE + len(N8_WINDOW))]
 
 
 def narrow_other_claims(root=ROOT):
@@ -485,7 +507,7 @@ def decode_narrow(exe):
     if not tool:
         raise RuntimeError(f'{common.OBJDUMP} not found')
     decoded = {}
-    for bounds in (N5_CALLEE, N6_FUNCTION, N6_CALLEE_HEAD, N7_FUNCTION):
+    for bounds in (N5_CALLEE, N6_FUNCTION, N6_CALLEE_HEAD, N7_FUNCTION, N8_FUNCTION, SAT_CALLEE):
         run = subprocess.run([tool, '-d', '-Mintel', '--insn-width=16', f'--start-address={bounds[0]:#x}', f'--stop-address={bounds[1]:#x}', str(exe)],
                              check=True, capture_output=True, text=True, timeout=60)
         decoded[bounds] = common.parse_objdump(run.stdout, *bounds)
@@ -497,6 +519,8 @@ def inspect_narrow(image, p1, decoded, core_text, claims):
     by1 = {i.va: i for i in p1}
     callee5, f6, head6, f7 = decoded[N5_CALLEE], decoded[N6_FUNCTION], decoded[N6_CALLEE_HEAD], decoded[N7_FUNCTION]
     by6, by7 = {i.va: i for i in f6}, {i.va: i for i in f7}
+    f8 = decoded[N8_FUNCTION]
+    by8 = {i.va: i for i in f8}
     target = lambda i: common._is_direct_control(i) if i is not None else None
     callee_image = image.read(N5_CALLEE[0], len(N5_CALLEE_BYTES)) or b''
     rel = N5_CALLEE_REL32
@@ -509,11 +533,17 @@ def inspect_narrow(image, p1, decoded, core_text, claims):
         'n7_window': image.read(N7_SITE, len(N7_WINDOW)) == N7_WINDOW and struct.unpack('<II', N7_WINDOW[1:5] + N7_WINDOW[10:14]) == (N7_HITS, N7_MODE),
         'n5_site_whole_call': N5_SITE in by1 and by1[N5_SITE].mnemonic == 'call' and len(by1[N5_SITE].raw) == 5 and target(by1[N5_SITE]) == N5_TARGET and N5_RETURN in by1,
         'n6_site_whole_call': N6_SITE in by6 and by6[N6_SITE].mnemonic == 'call' and len(by6[N6_SITE].raw) == 5 and target(by6[N6_SITE]) == N6_TARGET and N6_SITE + 5 in by6,
+        'n8_window': image.read(N8_SITE, len(N8_WINDOW)) == N8_WINDOW,
+        'n8_site_three_whole_instructions': [(by8[va].mnemonic, by8[va].raw) for va in (N8_SITE, N8_SITE + 3, N8_SITE + 4) if va in by8]
+                                            == [('sub', N8_WINDOW[:3]), ('push', N8_WINDOW[3:4]), ('push', N8_WINDOW[4:5])] and N8_NEXT in by8,
+        'n8_sole_caller': rel32_references(image, N8_SITE, N8_SITE + 1) == [(N8_CALLER, 0xe8)] and abs32_references(image, N8_SITE, N8_SITE + 1) == [],
+        # The stub's `inc` runs before the re-executed `sub esp,0x34`, which rewrites every flag the inc touched.
+        'n8_flags_written_by_displaced_sub': N8_SITE in by8 and _writes_flags(by8[N8_SITE]) and _flags_dead(f8),
         'n7_site_whole_mov': N7_SITE in by7 and by7[N7_SITE].mnemonic == 'mov' and by7[N7_SITE].raw == N7_WINDOW[:5] and N7_NEXT in by7,
         # Image-wide: nothing may enter a displaced span past its first byte.
         'no_rel32_into_spans': all(rel32_references(image, va + 1, va + 5) == [] for va in NARROW_SPANS.values()),
         'no_abs32_into_spans': all(abs32_references(image, va + 1, va + 5) == [] for va in NARROW_SPANS.values()),
-        'no_short_jump_into_spans': short_into(p1, N5_SITE) == [] and short_into(f6, N6_SITE) == [] and short_into(f7, N7_SITE) == [],
+        'no_short_jump_into_spans': short_into(p1, N5_SITE) == [] and short_into(f6, N6_SITE) == [] and short_into(f7, N7_SITE) == [] and short_into(f8, N8_SITE) == [],
         'n7_inbound_calls': sorted(rel32_references(image, N7_SITE, N7_SITE + 1)) == [(va, 0xe8) for va in N7_INBOUND] and abs32_references(image, N7_SITE, N7_SITE + 1) == [],
         # Callee bodies: the register convention the pre-window loads, one plain `ret` (the caller pops its two stack words).
         'n5_callee_bytes': callee_image[:rel] == N5_CALLEE_BYTES[:rel] and callee_image[rel + 4:] == N5_CALLEE_BYTES[rel + 4:]
@@ -533,7 +563,170 @@ def inspect_narrow(image, p1, decoded, core_text, claims):
         'narrow_claims_disjoint': narrow_overlaps(claims) == [] and len(claims) >= 40 and all(any(address == wanted for _, address, _ in claims) for wanted in (0x47d2a2, P1_SITE, P2_SITE)),
         'narrow_source_constants': narrow_source_constants(core_text) == NARROW_EXPECTED_CONSTANTS,
         'narrow_encoders': [len(encode_n5_stub(0x10000000, N5_RETURN, N5_TARGET, 0x20001000, 0x20002000, 0x20000000, 0x20000008, 0x2000000c)),
-                            len(encode_n6_stub(0x10000200, 0x20000010, N6_TARGET)), len(encode_n7_stub(0x10000300, 0x20000014, N7_HITS, N7_NEXT))] == [N5_STUB, N6_STUB, N7_STUB],
+                            len(encode_n6_stub(0x10000200, 0x20000010, N6_TARGET)), len(encode_n7_stub(0x10000300, 0x20000014, N7_HITS, N7_NEXT)),
+                            len(encode_n8_stub(0x10000400, 0x20000018, N8_NEXT))] == [N5_STUB, N6_STUB, N7_STUB, N8_STUB],
+    }
+
+
+# ---- SSE2 separating-axis replacement: the call at 0x004e25a3 (section 12.8) ----
+SAT_CORE = ROOT / 'src/proxy/collide_sat_sse2_core.h'
+SAT_SITE, SAT_TARGET, SAT_RETURN, SAT_HEAD = 0x4e25a3, 0x4e3280, 0x4e25a8, 0x4e2564
+SAT_CALLEE = (0x4e3280, 0x4e38ae)
+SAT_PRE_WINDOW = bytes.fromhex('d9c983c030d95c242050d9453453d8c98d7c2428d95c242cd84d38d95c2430')
+SAT_POST_WINDOW = bytes.fromhex('83c40885c0759a')
+SAT_CALLEE_SHA256 = '5167e784d126610a63b7562889e7402670cfaae6aa63900bcc2ad0b486ca56e6'
+SAT_CALLEE_FNV1A = 0xad8a2cb66c0bf30c
+FABS_HELPER_VA, FABS_HELPER, REPS_VA = 0x40e710, bytes.fromhex('558bec83e4f8d94508d9e18be55dc3'), 0x565600
+SAT_INSTALL_RE = re.compile(r'\bcollide_sat_sse2 requested=(?P<requested>[01]) patched=(?P<patched>[01]) reason=(?P<reason>\S+) site=0x(?P<site>[0-9a-f]{8}) '
+                            r'target=0x(?P<target>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) handler=0x(?P<handler>[0-9a-f]{8})')
+SAT_EXPECTED_CONSTANTS = {
+    'sat_site_va': SAT_SITE, 'sat_target_va': SAT_TARGET, 'sat_return_va': SAT_RETURN, 'sat_target_end_va': SAT_CALLEE[1], 'sat_function_va': N7_FUNCTION[0],
+    'sat_function_end_va': N7_FUNCTION[1], 'call_length': 5, 'sat_pre_length': len(SAT_PRE_WINDOW), 'sat_post_length': len(SAT_POST_WINDOW),
+    'sat_callee_length': SAT_CALLEE[1] - SAT_CALLEE[0], 'sat_pre_window': SAT_PRE_WINDOW, 'sat_post_window': SAT_POST_WINDOW, 'sat_callee_fnv1a': SAT_CALLEE_FNV1A}
+
+
+def fnv1a(data):
+    h = 0xcbf29ce484222325
+    for c in data:
+        h = ((h ^ c) * 0x100000001b3) & 0xffffffffffffffff
+    return h
+
+
+def parse_sat_install_line(line):
+    match = SAT_INSTALL_RE.search(line)
+    if not match:
+        return None
+    row = match.groupdict()
+    return {k: (v == '1' if k in ('requested', 'patched') else int(v, 16) if k in ('site', 'target', 'handler') else v) for k, v in row.items()}
+
+
+def sat_source_constants(text):
+    def value(name):
+        match = re.search(rf'\b{name}\s*=\s*(0x[0-9a-fA-F]+|\d+)(?:ull)?\s*[;,]', text)
+        return int(match.group(1), 0) if match else None
+
+    def array(name):
+        match = re.search(rf'\b{name}\[\w+\]\s*=\s*\{{([^}}]*)\}}', text)
+        return bytes(int(b, 0) for b in re.findall(r'0x[0-9a-fA-F]{2}', match.group(1))) if match else b''
+    return {n: array(n) if isinstance(expected, bytes) else value(n) for n, expected in SAT_EXPECTED_CONSTANTS.items()}
+
+
+def _f32(value):
+    """Round a Python double to float32 and back (round to nearest even, overflow to infinity, NaN kept)."""
+    try:
+        return struct.unpack('<f', struct.pack('<f', value))[0]
+    except OverflowError:
+        return float('inf') if value > 0 else float('-inf')
+
+
+SAT_SLACK, SAT_FINITE_MAX, SAT_REPS = 1.0 + 2.0 ** -45, 3.4028234663852886e38, _f32(1e-6)
+_SAT_AXES = (  # per axis: the |T.L| terms (sign, T index, R index or None) and the radius terms (extent 'a'/'b', index, Bf index or None), in the engine's order
+    (((1, 0, None),), (('b', 2, 2), ('b', 1, 1), ('b', 0, 0), ('a', 0, None))),
+    (((1, 1, 3), (1, 2, 6), (1, 0, 0)), (('a', 2, 6), ('a', 1, 3), ('a', 0, 0), ('b', 0, None))),
+    (((1, 1, None),), (('b', 2, 5), ('b', 1, 4), ('b', 0, 3), ('a', 1, None))),
+    (((1, 2, None),), (('b', 2, 8), ('b', 1, 7), ('b', 0, 6), ('a', 2, None))),
+    (((1, 2, 7), (1, 1, 4), (1, 0, 1)), (('a', 2, 7), ('a', 1, 4), ('a', 0, 1), ('b', 1, None))),
+    (((1, 0, 2), (1, 1, 5), (1, 2, 8)), (('a', 2, 8), ('a', 1, 5), ('a', 0, 2), ('b', 2, None))),
+    (((1, 2, 3), (-1, 1, 6)), (('b', 1, 2), ('b', 2, 1), ('a', 1, 6), ('a', 2, 3))),
+    (((1, 2, 4), (-1, 1, 7)), (('b', 2, 0), ('a', 1, 7), ('a', 2, 4), ('b', 0, 2))),
+    (((1, 2, 5), (-1, 1, 8)), (('b', 1, 0), ('a', 1, 8), ('a', 2, 5), ('b', 0, 1))),
+    (((1, 0, 6), (-1, 2, 0)), (('b', 1, 5), ('b', 2, 4), ('a', 0, 6), ('a', 2, 0))),
+    (((1, 0, 7), (-1, 2, 1)), (('b', 2, 3), ('a', 0, 7), ('a', 2, 1), ('b', 0, 5))),
+    (((1, 0, 8), (-1, 2, 2)), (('b', 1, 3), ('a', 0, 8), ('a', 2, 2), ('b', 0, 4))),
+    (((1, 1, 0), (-1, 0, 3)), (('b', 1, 8), ('b', 2, 7), ('a', 0, 3), ('a', 1, 0))),
+    (((1, 1, 1), (-1, 0, 4)), (('b', 2, 6), ('a', 0, 4), ('a', 1, 1), ('b', 0, 8))),
+    (((1, 1, 2), (-1, 0, 5)), (('b', 1, 6), ('a', 0, 5), ('a', 1, 2), ('b', 0, 7))))
+
+
+def sat_disjoint(R, b, T, a):
+    """Twin of core::obb_disjoint: 0 = no separating axis, else 1..15. Inputs are float32-representable Python floats."""
+    bf = [_f32(abs(r) + SAT_REPS) for r in R]
+    extent = {'a': a, 'b': b}
+    for number, (t_terms, r_terms) in enumerate(_SAT_AXES, 1):
+        t = 0.0
+        for k, (sign, ti, ri) in enumerate(t_terms):
+            term = T[ti] * (R[ri] if ri is not None else 1.0)
+            t = term if k == 0 else t + sign * term
+        t = abs(_f32(t)) if len(t_terms) > 1 else abs(t)
+        radius = 0.0
+        for k, (which, index, fi) in enumerate(r_terms):
+            term = extent[which][index] * (bf[fi] if fi is not None else 1.0)
+            radius = term if k == 0 else radius + term
+        limit = radius * SAT_SLACK
+        if t > limit and t <= SAT_FINITE_MAX and limit >= 0.0:
+            return number
+    return 0
+
+
+def sat_own_windows():
+    return [(SAT_SITE - len(SAT_PRE_WINDOW), SAT_RETURN + len(SAT_POST_WINDOW)), SAT_CALLEE, (FABS_HELPER_VA, FABS_HELPER_VA + len(FABS_HELPER))]
+
+
+def sat_other_claims(root=ROOT):
+    """Every claim that is not this module's: the rest of src/proxy (the census's four sites included), the chase verifiers,
+    the box cull's windows and the census's compared windows."""
+    box = [(name, address, length) for name, address, length in narrow_other_claims(root) if name.startswith('collide_box_cull_p')]
+    census = [(f'collide_narrow_census_window_{k}', lo, hi - lo) for k, (lo, hi) in enumerate(narrow_own_windows())]
+    return sorted(set(other_claims(root, skip_prefix='collide_sat_sse2', own_names=()) + box + census))
+
+
+def sat_overlaps(claims):
+    return [(name, hex(address)) for name, address, length in claims for lo, hi in sat_own_windows() if address < hi and lo < address + length]
+
+
+def _x87_depth(instructions):
+    """x87 stack depth after a straight-line sequence that starts empty, or None when an instruction is not modelled."""
+    depth = 0
+    for i in instructions:
+        if not i.mnemonic.startswith('f'):
+            continue
+        if i.mnemonic == 'fld':
+            depth += 1
+        elif i.mnemonic == 'fstp':
+            depth -= 1
+        elif i.mnemonic not in ('fmul', 'fxch'):
+            return None
+        if depth < 0:
+            return None
+    return depth
+
+
+def _mentions_simd(i):
+    return re.search(r'\b(xmm|mm)[0-7]\b', i.operands.lower()) is not None or i.mnemonic == 'emms'
+
+
+def inspect_sat(image, decoded, core_text, claims):
+    f7, f8, callee = decoded[N7_FUNCTION], decoded[N8_FUNCTION], decoded[SAT_CALLEE]
+    by7 = {i.va: i for i in f7}
+    target = lambda i: common._is_direct_control(i) if i is not None else None
+    body = image.read(SAT_CALLEE[0], SAT_CALLEE[1] - SAT_CALLEE[0]) or b''
+    head = [i for i in f7 if SAT_HEAD <= i.va < SAT_SITE]
+    calls = [i for i in callee if i.mnemonic == 'call']
+    rets = [i for i in callee if i.mnemonic.startswith('ret')]
+    raw_at = lambda va: by7[va].raw if va in by7 else b''
+    reps = image.read(REPS_VA, 4) or b''
+    return {
+        'sat_windows': image.read(SAT_SITE - len(SAT_PRE_WINDOW), len(SAT_PRE_WINDOW)) == SAT_PRE_WINDOW and image.read(SAT_RETURN, len(SAT_POST_WINDOW)) == SAT_POST_WINDOW,
+        'sat_site_whole_call': SAT_SITE in by7 and by7[SAT_SITE].mnemonic == 'call' and len(by7[SAT_SITE].raw) == 5 and target(by7[SAT_SITE]) == SAT_TARGET and SAT_RETURN in by7,
+        'sat_sole_caller': rel32_references(image, SAT_TARGET, SAT_TARGET + 1) == [(SAT_SITE, 0xe8)] and abs32_references(image, SAT_TARGET, SAT_TARGET + 1) == [],
+        'sat_no_rel32_into_span': rel32_references(image, SAT_SITE + 1, SAT_SITE + 5) == [],
+        'sat_no_abs32_into_span': abs32_references(image, SAT_SITE + 1, SAT_SITE + 5) == [],
+        'sat_no_short_jump_into_span': [t for i in f7 for t in [common._is_direct_control(i)] if t is not None and SAT_SITE < t < SAT_SITE + 5] == [],
+        'sat_callee_hash': len(body) == SAT_CALLEE[1] - SAT_CALLEE[0] and hashlib.sha256(body).hexdigest() == SAT_CALLEE_SHA256 and fnv1a(body) == SAT_CALLEE_FNV1A,
+        # The body: 24 calls, all to the float `fabs` helper; plain rets; nine loads of reps; ECX/EDX/ESI/EDI never written.
+        'sat_callee_calls_fabs_only': len(calls) == 24 and all(target(i) == FABS_HELPER_VA for i in calls) and image.read(FABS_HELPER_VA, len(FABS_HELPER)) == FABS_HELPER,
+        'sat_callee_plain_rets': len(rets) == 16 and all(i.raw == b'\xc3' for i in rets) and callee[-1].mnemonic == 'ret',
+        'sat_callee_reps': body.count(b'\xd8\x05' + struct.pack('<I', REPS_VA)) == 9 and len(reps) == 4 and struct.unpack('<f', reps)[0] == SAT_REPS,
+        'sat_callee_keeps_ecx_edx_esi_edi': not any(_writes_register(i, ('ecx', 'edx', 'esi', 'edi', 'cx', 'dx', 'si', 'di', 'cl', 'dl', 'ch', 'dh')) or i.mnemonic == 'pop' and
+                                                    i.operands.strip().lower() not in ('ebp', 'ebx') for i in callee),
+        # The caller: arguments as the thunk reads them, x87 stack empty at the site, EFLAGS rewritten at the return.
+        'sat_arguments': raw_at(0x4e2573) == bytes.fromhex('8b5c2460') and raw_at(0x4e2577) == bytes.fromhex('8b74245c') and raw_at(0x4e258d) == b'\x50' and raw_at(0x4e2591) == b'\x53'
+                         and raw_at(0x4e2594) == bytes.fromhex('8d7c2428') and not any(_writes_register(i, ('esi', 'ebx')) for i in f7 if 0x4e257b <= i.va < SAT_SITE),
+        'sat_x87_empty_at_site': not any(_x87(i) for i in f7 if i.va < SAT_HEAD) and _x87_depth(head) == 0,
+        'sat_flags_dead_at_return': SAT_RETURN in by7 and _writes_flags(by7[SAT_RETURN]),
+        'sat_no_xmm_in_descent': not any(_mentions_simd(i) for i in f7 + f8 + callee),
+        'sat_claims_disjoint': sat_overlaps(claims) == [] and len(claims) >= 40 and all(any(address == wanted for _, address, _ in claims) for wanted in (N7_SITE, N8_SITE, N5_SITE, P1_SITE)),
+        'sat_source_constants': sat_source_constants(core_text) == SAT_EXPECTED_CONSTANTS,
     }
 
 
@@ -576,7 +769,7 @@ def _site_checks(prefix, instructions, site, next_va, window, sources):
     }
 
 
-def inspect(data, decoded, core_text, claims, narrow=None):
+def inspect(data, decoded, core_text, claims, narrow=None, sat=None):
     image = common.Image(data)
     p1, p2 = decoded[P1_FUNCTION], decoded[P2_FUNCTION]
     by1, by2 = {i.va: i for i in p1}, {i.va: i for i in p2}
@@ -617,8 +810,11 @@ def inspect(data, decoded, core_text, claims, narrow=None):
     }
     if narrow is not None:
         checks.update(inspect_narrow(image, p1, narrow['decoded'], narrow['core_text'], narrow['claims']))
+    if narrow is not None and sat is not None:
+        checks.update(inspect_sat(image, narrow['decoded'], sat['core_text'], sat['claims']))
     return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'p1_site': hex(P1_SITE), 'p2_site': hex(P2_SITE),
-            'narrow_sites': [hex(N5_SITE), hex(N6_SITE), hex(N7_SITE)] if narrow is not None else [], 'narrow_other_claims_checked': len(narrow['claims']) if narrow is not None else 0,
+            'narrow_sites': [hex(N5_SITE), hex(N6_SITE), hex(N7_SITE), hex(N8_SITE)] if narrow is not None else [],
+            'sat_site': hex(SAT_SITE) if sat is not None else None, 'sat_other_claims_checked': len(sat['claims']) if sat is not None else 0, 'narrow_other_claims_checked': len(narrow['claims']) if narrow is not None else 0,
             'other_claims_checked': len(claims), 'overlaps': overlaps(claims), 'jump_table_0x45e108': [hex(v) for v in table(0x45e108, 2)],
             'instructions': {'p1': len(p1), 'p2': len(p2)}, 'exe_sha256': hashlib.sha256(data).hexdigest()}
 
@@ -627,10 +823,14 @@ def narrow_inputs(exe, core=NARROW_CORE):
     return {'decoded': decode_narrow(exe), 'core_text': Path(core).read_text(), 'claims': narrow_other_claims()}
 
 
-def verify(exe=DEFAULT_EXE, core=CORE, narrow_core=NARROW_CORE):
+def sat_inputs(core=None):
+    return {'core_text': Path(core or SAT_CORE).read_text(), 'claims': sat_other_claims()}
+
+
+def verify(exe=DEFAULT_EXE, core=CORE, narrow_core=NARROW_CORE, sat_core=None):
     data = Path(exe).read_bytes()
     try:
-        return inspect(data, decode(exe), Path(core).read_text(), other_claims(), narrow_inputs(exe, narrow_core))
+        return inspect(data, decode(exe), Path(core).read_text(), other_claims(), narrow_inputs(exe, narrow_core), sat_inputs(sat_core))
     except (ValueError, OSError, KeyError, subprocess.SubprocessError, RuntimeError) as error:
         return {'result': 'FAIL', 'checks': {'decode': False}, 'error': repr(error)}
 

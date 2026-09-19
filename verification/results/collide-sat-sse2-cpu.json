@@ -1,0 +1,91 @@
+{
+ "fixture": "build/verification/collide-sat-sse2/collide_sat_sse2_fixture.exe",
+ "exit_status": 0,
+ "elapsed_s": 7.1,
+ "checks": 40,
+ "failures": 0,
+ "categories": {
+  "realistic": {
+   "cases": 1200000,
+   "both_keep": 162567,
+   "both_prune": 1037433,
+   "sse_keeps": 0,
+   "violations": 0,
+   "axis_mismatch": 0,
+   "axis_earlier": 0
+  },
+  "near_tangent": {
+   "cases": 360000,
+   "both_keep": 160006,
+   "both_prune": 199994,
+   "sse_keeps": 0,
+   "violations": 0,
+   "axis_mismatch": 0,
+   "axis_earlier": 0
+  },
+  "degenerate": {
+   "cases": 150000,
+   "both_keep": 61266,
+   "both_prune": 88734,
+   "sse_keeps": 0,
+   "violations": 0,
+   "axis_mismatch": 0,
+   "axis_earlier": 0
+  },
+  "hostile": {
+   "cases": 150000,
+   "both_keep": 4966,
+   "both_prune": 138709,
+   "sse_keeps": 6325,
+   "violations": 0,
+   "axis_mismatch": 23183,
+   "axis_earlier": 0
+  }
+ },
+ "cases": 1860000,
+ "violations": 0,
+ "sse_keeps": 6325,
+ "sse_keep_rate": 0.003400537634408602,
+ "precision": "PRECISION sample=20000 cw037f_violations=0 cw037f_sse_keeps=0 cw007f_violations=0 cw007f_sse_keeps=0",
+ "notes": [
+  "KEEP total=1860000 sse_keeps_realistic=0 sse_keeps_near_tangent=0 sse_keeps_degenerate=0 sse_keeps_hostile=6325 axis_mismatch_near_tangent=0 axis_mismatch_hostile=23183",
+  "MXCSR roundtrip in=3fbf out=3f80 sticky_flags_tracked=0",
+  "ROUNDING bracketed_path_x87_rounding_follows_mxcsr=4000 of 16000 (emulator artefact: 0 on hardware with separate x87 and SSE rounding) near_tangent_verdicts_moved_by_x87_chop=16 of 10000",
+  "REPLAY pruned=2467 descend=533 other=0"
+ ],
+ "bench_raw_ns": {
+  "null_ns": 3.09,
+  "early_axis_mean": 1.09,
+  "early_replica_ns": 59.26,
+  "early_sse2_ns": 8.51,
+  "early_bracketed_ns": 10.72,
+  "full_replica_ns": 125.62,
+  "full_sse2_ns": 23.8,
+  "full_bracketed_ns": 27.14
+ },
+ "bench": {
+  "early_ratio": 10.36,
+  "full_ratio": 5.92,
+  "early_ns": [
+   56.2,
+   5.4
+  ],
+  "full_ns": [
+   122.5,
+   20.7
+  ],
+  "mxcsr_bracket_ns": 2.21,
+  "thunk_early_out_ns": 5.42
+ },
+ "failure_lines": [],
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "note": "ns are per direct call through a two-push harness; bench ratios subtract the null-callee harness cost; diagnostic timings, not game FPS"
+}
