@@ -2145,3 +2145,59 @@ run152 beyond "frame timing stayed smooth."
 run `--collide-sat-sse2 --collide-narrow-census --loop-phases` (as run151 did) with capture continued long enough
 to reach both the same ~225–235k visits/frame plateau *and* the collision, so `collide_p50`/`node_pairs`/`tri_tests`
 and a `contact=1` row are recorded from the same flight.
+
+## Run 46 A (run155/run156): collide no-contact memo at the collide-heavy spot
+
+Sessions (bottle X3): run155 → `session-20260919-162807-212.log`, `--loop-phases --collide-sat-sse2
+--collide-memo-verify` (verify implies memo on). run156 → `session-20260919-163141-212.log`, `--collide-sat-sse2
+--collide-memo` (no `--loop-phases`; `frame_phases` only).
+
+**Install lines (both runs, `reason=ok`, no refusal):**
+`collide_sat_sse2 requested=1 patched=1 reason=ok site=0x004e25a3 target=0x004e3280 write=atomic`;
+`collide_memo requested=1 patched=1 verify=<1|0> reason=ok site=0x0047f329 target=0x004e29f0 write=atomic
+entries=1024`.
+
+**run155 (verify mode) — whole-session `collide_memo` counters, 32 rows of 300 frames each:**
+Summed over all 32 rows: `queries=2,009,448 hits=0 misses=1,201,040 stored=1,199,604 verified=808,408
+verify_mismatches=0 skipped_visits=0 evictions=14,147 foreign_thread=0 reentered=0 stuck_busy=0 clears=0` in
+every row. **`verify_mismatches` is 0 everywhere — no mismatch found.** `hits=0` and `skipped_visits=0` in every
+row: verify mode never uses the memo to skip a computation, it recomputes every query and only counts `verified`
+matches (consistent with "verify mode still runs the engine"); it cannot show steady-state skip effectiveness.
+
+`loop_phases collide_p50_us` rises through the run and plateaus at frame=6300–8700: 12354, 12406, 12570, 12238,
+13548, 13523, 13850, 13623, 13615 µs (**≈12.2–13.9 ms, median ≈12.7 ms**) — matches the run151 SSE2-alone baseline
+(12.7 ms) in `Run 45 A` above; verify mode adds no measurable extra collide cost at this sample rate.
+
+**run156 (no verify, real skipping) — plateau window frame=5700–9600 (`frame_phases`, dt_p50 22.1–23.7 ms, i.e.
+42–45 fps, ex. one truncated row at frame=8700):**
+
+| frame | dt_p50 (fps) | pre_render_p50 | view_setup_p50 | view_submit_p50 | views_total-setup-submit ("residual") | scene_end_p50 | present_p50 |
+|---|---|---|---|---|---|---|---|
+| 6300 | 23.10 ms (43.3) | 11.91 ms | 0.66 ms | 8.48 ms | 1.67 ms | 0.078 ms | 0.005 ms |
+| 7500 | 22.76 ms (43.9) | 11.64 ms | 0.64 ms | 8.48 ms | 1.67 ms | 0.080 ms | 0.005 ms |
+| 8400 | 23.15 ms (43.2) | 12.04 ms | 0.66 ms | 8.49 ms | 1.68 ms | 0.082 ms | 0.005 ms |
+| 9600 | 22.77 ms (43.9) | 11.69 ms | 0.67 ms | 8.46 ms | 1.65 ms | 0.080 ms | 0.005 ms |
+
+`collide_memo` counters at the same frames (300-frame window sums): frame=6299 `queries=56656 hits=16811
+hit_ratio=0.297 misses=39845`; frame=8399 `queries=52238 hits=13140 hit_ratio=0.252 misses=39098`; frame=9599
+`queries=46542 hits=10483 hit_ratio=0.225 misses=36059`. `skipped_visits` is a much finer-grained counter (tens of
+millions per window, e.g. 42.3M at frame=6299) — not comparable 1:1 with `queries`; it is not usable here to state
+a per-frame collide-visit count.
+
+**Answer to the key question:** at the ~43 fps plateau (≈23 ms/frame), `pre_render` (≈11.6–12.6 ms) and
+`view_submit` (≈8.5 ms) are comparably large; `pre_render` is still the larger of the two but not by a wide
+margin. Subtracting the ~3 ms non-collide `pre_render` baseline (from elsewhere in this doc) leaves **≈8.6–9.6 ms
+of collide cost remaining** — down from run155's ~12.7 ms verify-mode collide_p50, i.e. the memo's real skip path
+recovers roughly 3–4 ms here. The memo's hit ratio at this spot is only **22.5–30%: 70–75% of queries are misses**
+(full SAT recompute), so most collide pairs at this location change every frame and are not memo-skippable; that
+miss rate — not memo overhead — is why the remaining collide cost stays a large fraction of the frame.
+`view_submit` (≈8.5 ms, stable across the plateau) is the other cost of comparable size and did not move between
+these two runs (memo only touches `pre_render`); it is not distinguished further here (no per-view-phase
+sub-breakdown in this log).
+
+**Open issue:** `skipped_visits` and `queries` are on different counting granularities in this build (confirmed:
+tens of millions vs tens of thousands per 300-frame window), so the memo's true per-visit skip rate cannot be
+computed from these two fields together — only the `hits/queries` ratio (22.5–30%) is a safe hit-rate proxy. A
+follow-up diagnostic to isolate `view_submit`'s cost (draw-call count, state-change count, or a `view_submit`
+sub-phase split) would decide whether the next optimisation lever belongs on collide-memo hit rate or on
+view_submit.
