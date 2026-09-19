@@ -41,10 +41,10 @@ CAT index is XOR `(0xdb + i) & 0xff`; DAT payload is XOR `0x33`; `.pck` members 
 under a single-byte XOR. Later catalogue numbers win, and `addon/` wins over the base.
 
 Sector name id is `1020000 + 100*(y+1) + (x+1)`, confirmed against `1020101 = Kingdom End`
-at grid `(0,0)` and `1020212 = Saturn` at `(11,1)`. 224 of 239 grid cells resolve; the
-rest display as "Unknown Sector" in game, which several named-in-the-file pirate sectors
-also do (the file keeps the developer name in parentheses, which the engine strips as a
-comment).
+at grid `(0,0)` and `1020212 = Saturn` at `(11,1)`. The original lookup resolved 224 of 239 grid cells; the complete AP localization
+overlay census now resolves all 239 (see [sector-fog-census.md](sector-fog-census.md)).
+Several pirate sectors display as "Unknown Sector"; parenthesized developer names
+are comments, stripped for display.
 
 ### The sector element carries no fog attribute
 
@@ -122,8 +122,10 @@ colour A is `(0,0,0)` in all 83 records and colour B is `(120,120,120)` in 82 of
    with a random roll.
 
 The dust bodies are `objects/environments/nebulae/<family>/nebula_<family>_dust_part01..06.pbd`.
-Each is a **single quad 199,998 x 198,978 units** (automatic body size 55,000) carrying
-one material (text quoted from `foggreeneye` dust part 01; `bluedistance` part 01 is
+The original inspected bodies are **single quads 199,998 x 198,978 units** carrying
+one material; automatic body size varies by family (§12 and the
+[complete census](sector-fog-census.md) supersede the original fixed 55,000-size assumption).
+Example material (text quoted from `foggreeneye` dust part 01; `bluedistance` part 01 is
 identical apart from the texture path):
 
 ```
@@ -465,6 +467,153 @@ Validation from one flight:
   rebuild window was not timed.
 - Whether any shipped or addon script actually calls `SA_SetBgTypeData` at runtime; the
   code path exists, its use was not surveyed.
+
+## 12. Card size, tiling and opacity: count is not a density scalar (2026-09-20)
+
+Targeted static analysis of the same EXE hash, plus read-only extraction of the six
+`bluewell` and six `foggreenoutlands` dust bodies. The old temporary Ghidra project
+had lost its program metadata; this pass imported the EXE into the local project
+`/tmp/x3-fog-sizing-ghidra/FogSizing`, then used `-readOnly -noanalysis` for the
+targeted follow-ups. Raw outputs and assets remain under `/tmp/x3-fog-sizing*`.
+No game, Wine, production build, hook or install was used.
+
+### 12.1 The size field exists in the body asset and render node
+
+Section 4's **55,000** automatic body size applies to its inspected examples; it
+does **not** apply to all fog families. The twelve bodies inspected here have:
+
+| Family | Dust parts | Automatic body size | Vertex-coordinate extent | Initial node size / rendered matrix scale at `s=0.01` |
+| --- | --- | ---: | --- | --- |
+| `bluewell` (Argon Prime) | 01–06 | 45,000 each | 199,998 × 198,978, planar Z=0 | 180,000 / 1,800 |
+| `foggreenoutlands` (The Hole, Atreus' Clouds) | 01–06 | 55,000 each | identical | 220,000 / 2,200 |
+
+The extents above are source vertex coordinates, **not world-space card widths**.
+The normalized mesh and node scale together determine the submitted width.
+Bluewell uses its dedicated `bluewell/dust/nebula_bluewell_dust_diff.tga` texture;
+foggreenoutlands uses `nebula_foggreenoutlands_background_diff.tga`. Both have
+material `g_AlphaValue=1`; the texture content is a separate appearance input.
+
+The runtime size chain is:
+
+- Body assignment `0x00487e93..0x00487e9b` reads the first LOD record's `+0x14`
+  through `model+0x0c` and writes node `+0x70`. This is a **LOD-record** field,
+  not mesh-part `+0x14` (which is a pivot coordinate).
+- Dust creation `0x0041f455..0x0041f45f` passes **four times** node `+0x70` to
+  `0x004880e0`; refresh of an existing eligible card does the same at
+  `0x0041f268..0x0041f272`. There is no `NumDustInstances` factor in either size
+  expression.
+- `0x00488121..0x00488148` stores that size at `+0x70`, resets the three axis
+  scales `+0x80/+0x84/+0x88` to `0x10000`, copies size to `+0xa0`, and dirties
+  `+0xa4`. The already-established matrix path at `0x004bdee0` applies node
+  scale and camera scale; see [render-node bounds](render-node-bounds.md).
+
+**Runtime sizes need not stay at their initial values.** Body assignment returns
+early at `0x00487e39..0x00487e46` when its requested nonzero body id already equals
+node `+0x140`. It then leaves `+0x70` unchanged, whereas the dust refresh still
+multiplies that current value by four. A refresh that passes the loader/cache
+guards and selects the same body can therefore produce another ×4 scale; selecting
+a different body resets the base size before the ×4. This is a static reachable
+mechanism consistent with run174's **1,800 and 7,200** scales, not a measured
+history of those particular nodes. It does not establish an authored distribution
+of several different quad sizes. Log node identity, model and size over a refresh
+to settle the causal history. No production correction is proposed here.
+
+### 12.2 Eight versus sixteen means two interleaved periodic lattices
+
+Creation at `0x0041f33a..0x0041f38a` selects placement table `0x0057adf0` with
+`instance_index % 16`, stride 16 bytes, and multiplies its first three signed
+integers by eight. Let `h = 0x40000 = 262,144` native units:
+
+- Slots 0–7 are the eight corners with each coordinate in `{0,h}` (in the
+  table's fixed order).
+- Slots 8–15 are those same corners translated by `(h/2,h/2,h/2)`.
+- Counts above sixteen repeat those initial positions modulo sixteen; the body
+  choice and roll can still differ.
+
+The dust camera position is the sector camera position modulo `0x80000` in each
+axis (`0x0041efc0` tail). During scene preparation, camera flag `+0x270 & 0x8000`
+selects `0x0047bc20`'s wrapping branch. At `0x0047bd14..0x0047bd3b`, each card's
+position is wrapped to its nearest periodic image around the camera:
+
+`d_i = ((p_i - c_i - h) & (2*h - 1)) - h`, then `world_i = c_i + d_i`.
+
+Thus the wrapping cube has side **524,288 native units**, or **5,242.88** at
+render scale 0.01, and half-width 2,621.44. D=16 adds a second offset lattice to
+D=8; it does not reduce the cell size, halve the card size, or consult sector size
+or `FogNear/FogFar`. `DustBodyRate[8]` selects the body/texture through the
+16.16 weight calculation in §4, so it can indirectly select a different asset
+size. Its absolute sum is normalized, not an opacity multiplier.
+
+### 12.3 Opacity is a spatial envelope, with a separate close-range fade
+
+For fog cards (node `+0x12c & 0x04000000 == 0`), the alpha calculation is
+`0x0047c150..0x0047c363`. Let `d` be the wrapped native displacement above,
+`f` the dust camera's forward basis row (`+0x60/+0x64/+0x68`, converted from
+16.16), `z = dot(d,f)`, and `r = length(d)`. Ignoring the documented code's
+intermediate integer rounding, its meaning is:
+
+```
+envelope = clamp(z / h, 0, 1) * product_i(1 - abs(d_i) / h)
+a0 = clamp(round(4080 * envelope), 1, 255)
+alpha13c ≈ round(a0 * min(1, r / 209715.2))
+```
+
+The dot product helper `0x0040e800` is three rounded 16.16 multiplies summed;
+`0x00412440` is square root. The initial clamp occurs at
+`0x0047c2a5..0x0047c2c6`; close-range attenuation **follows** it, so final alpha
+may be zero. The close fade compares `r/0x100000` with **0.2** (double constant
+`0x005655f0`) and multiplies by **5** (`0x00565740`); the 16.16 conversion factor
+at `0x005654e0` is `1/65536`. Its radius is therefore about **2,097.152** at
+render scale 0.01. These are fixed engine constants, not sector fog distances.
+
+At `0x0047c36d..0x0047c382`, alpha ≤4 sets node `+0x130 & 0x40000`; higher alpha
+clears it. The next cockpit dust update tests this flag at `0x0041f16f` to choose
+another body/roll, preserving the old alpha through the refresh. This is spatial
+fade as the camera moves, not a fixed forty-frame animation; §10's roughly
+six-alpha-units/frame is the measured trajectory in that capture.
+
+Neither `NumDustInstances`, body size, `DustBodyRate`, nor `FogNear/FogFar` enters
+this alpha expression. The shader's measured `c0.x = alpha13c/255` subsequently
+scales sampled **RGB**, and the screen blend in §10 determines the visible veil.
+The dust node's billboard flag `+0x12c & 0x10000000` is handled in
+`0x0047d9c0` (test at `0x0047dd25`); the random roll is assigned by the dust setup.
+
+### 12.4 Consequence for a replacement and useful flight observations
+
+There is no recovered physical density scalar in the background record. The
+record controls population and body probabilities; body assets provide size,
+geometry and texture; fixed engine placement/fade rules and camera position
+produce the individual screen contributions. FogNear/Far remain the independent
+object-distance fade described earlier.
+
+As a deliberately limited **initial geometry score**, equal normalized quad
+geometry gives green/blue `N*S²` ratio `16*55000² / (8*45000²) = 2.987654…`.
+This is neither an optical-depth ratio nor justification for a replacement
+density of 0.05 versus 0.01. It omits texture brightness, the spatial envelope,
+projection/overlap, clipping and the contingent runtime size changes above.
+With the measured screen blend, actual per-channel transmission for a known
+pixel is `product_j(1 - sourceRGB_j)`; recovering a scalar artistic density from
+that additionally needs a stated mapping, not a count conversion.
+
+For a compact representative capture, retain §11.5's background row and correlate
+the visible fog draws with node identity, model `+0x140`, base size `+0x70`, axis
+scales `+0x80..+0x88`, alpha `+0x13c`, flags `+0x12c/+0x130`, texture identity,
+world matrix, camera position/forward and viewport. Existing world matrices and
+PS c0 already expose rendered scale and alpha; size/identity history across a
+low-alpha refresh would specifically test the ×4 mechanism. Visible draw count
+is not the allocated population. A per-family asset census can establish initial
+size/texture distributions, but cannot prove the runtime or perceptual ratio.
+
+**ABI/safety boundary.** These are observations, not hook approval. At the
+inspected call sites `0x0041efc0` takes sector in ECX and dust/sector cameras on
+the stack; `0x00487e30` takes node in EAX and body id on the stack (`RET 4`);
+`0x004880e0` takes node in ECX and size on the stack (`RET 4`). The last routine
+recurses into children. Scene preparation can run for multiple cameras, and body
+assignment can invoke loader/allocation paths, so these routines must not be
+assumed reentrant or called under a proxy lock. No trampoline boundaries,
+register/flags liveness or lifetime contract has been qualified for injection.
+Route any proposed hook or mutation here to `disassemble_deep`; the existing
+read-only capture approach avoids needing such a hook.
 
 ## Reproduce
 

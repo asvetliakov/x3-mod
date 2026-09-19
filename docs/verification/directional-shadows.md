@@ -3371,3 +3371,15 @@ Review fixes (Fable review, no blocker; same worktree). Supersedes the binaries 
   `seam-taa-fade-route-overlay-lightmap*` twins and four `seam-*lightmap-far-fade*` cases without updating
   the test's expected lists and counts; lists updated, 12 OK. Host: `test_sun_sh*.py` 37 OK,
   `test_motion_*.py` 135 OK, `test_linear_material_live.py` 17 OK.
+
+
+## Run 48 B: Argon Prime sun-lane stamp flight (2026-09-20)
+
+Run180, bottle X3 / CrossOver Preview / arm64 Wine/FEX,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`: all 128 captured frames across four
+bursts have lane available=1 and sun-shadow apply applied=1/skip_reason=none.
+The user did not specifically inspect advertisement signs and noticed no issue;
+this proves captured-frame availability, not a complete sign-artifact verdict.
+The two extra bursts are The Hole and Atreus' Clouds by user chronology. Fog
+on/off captures and timing limitations are in the [fog ledger](volumetric-fog.md#run-48-b--run180-2026-09-20).
+Local reproducible analysis: `verification/results/run48b-triage/reproduce.py`.

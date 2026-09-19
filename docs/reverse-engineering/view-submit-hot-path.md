@@ -444,3 +444,208 @@ i686-w64-mingw32-objdump -d -M intel '<bottle>/drive_c/X3/X3AP.exe' > /tmp/x3-te
 Instruction-class counts, call histograms, the inbound-edge sweep and the abs32
 scan were done with short local Python over that listing and over the PE section
 table; the listing and the scripts are game-derived and stay untracked.
+
+
+## Run 48 C: measured candidate disposition (2026-09-20)
+
+Run181, steady frames 3000–5400: all 22 sites active, no clock/failure/unmatched
+errors and no steady dropped stamps. Median 5,390 stamps/frame, self cost 0.549 ms
+at 102 ns/dispatch. These are diagnostic CPU timings in bottle X3/arm64 Wine+FEX
+(`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), not native Windows timings.
+
+| candidate | measured span per frame | decision for this view |
+| --- | --- | --- |
+| R3 technique / End | 65 / 64 microseconds, 503–504 calls | close: too small |
+| R5 queue sort | 5 microseconds across 30 calls; summed nodes 11–12 | close: too small |
+| R4 cache walk | median 0; no sampled miss/iteration | no pressure; do not build cache |
+| R1 view inverse | 71 microseconds (world inverse 79) | no patch justified |
+| R8 world matrix | 19 microseconds | no patch justified |
+| R2 / R6 | only bounded by unsplit prep net 0.988 ms | no specific patch justified |
+| R7 light-list/qsort | not stamped | remains unmeasured, not closed |
+
+Material submission net 11.620 ms is large, but does not establish a safe call-elision
+patch. Preserve existing closed decisions. No engine patch is selected from this
+flight. The user's 40 FPS report and pre-render delta are evaluated in
+[engine frame time](../architecture/engine-frame-time.md#run-48-bc-first-view-freezes-and-the-40-fps-busy-view-2026-09-20).
+Local reproduction: `verification/results/run48c-triage/reproduce.py`.
+
+## R7 whole-call timing boundary qualification (2026-09-20)
+
+**Disposition:** two entry/exit stamps are statically qualified for a future
+consolidated diagnostic. No timing hook was implemented or executed here. R7
+remains unmeasured; Run 48 C's other candidate decisions remain view-specific.
+This section supersedes section 6's erroneous `0x0047d9f6` caller return and its
+suggestion to start with a separate `qsort` counter.
+
+### ABI and the two callers
+
+The exact X3 EXE SHA-256 remains
+`fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`.
+`0x0047d5e0` is a callee-cleaned, one-stack-argument routine: at native entry
+ESP=`E`, `[E]` is the return address and `[E+4]` the node. It saves EBP, aligns
+ESP down to 16, reserves `0x34` bytes and saves EBX/ESI/EDI. The node is loaded
+from `[EBP+8]` at `0x0047d5fb`. No incoming EAX/ECX/EDX value is an argument:
+the first helper `0x0047d560` initializes all three before using them, and
+R7 supplies ECX=node and a pushed zero to `0x00488170`. Ghidra's inferred
+`params=0/conv=unknown` is insufficient here; the instruction evidence proves
+the stack contract. Every normal path reaches `0x0047d9ab`, restores
+EDI/ESI/EBX, restores ESP from EBP, pops EBP, and executes `ret 4` at
+`0x0047d9b1`. The caller resumes with ESP=`E+8`.
+
+| Native call / exact rel32 bytes | Return | Classification and argument |
+| --- | --- | --- |
+| `0x0042173b`: `e8 a0 be 05 00` | `0x00421740` | cockpit display-node update `0x004216e0`; pushes `[[cockpit+0x10]+0x70]`, then consumes the selected slot table. Its caller is `0x0042101a` in cockpit update `0x004205e0`; this is pre-render cockpit work, not necessarily cockpit-view draw submission. |
+| `0x0047dff1`: `e8 ea f5 ff ff` | **`0x0047dff6`** | recursive scene traversal `0x0047d9c0`; pushes EBX=node. Next calls `0x004bdea0` to publish selected light slot indices, then builds the world matrix. This can cover multiple views/layers; return-address classification alone does not identify the main view. |
+
+Ghidra references and an all-offset `.text` E8/E9 sweep agree on exactly these
+two direct callers, with no tail jump to the entry. No absolute dword encoding
+of any byte in either proposed span occurs anywhere in the file. This supports
+the known direct-call coverage; it cannot exclude a computed runtime address.
+Neither caller consumes R7's EAX/ECX/EDX or arithmetic flags: the cockpit path
+overwrites EAX/EDX then ECX before use; `0x004bdea0` initializes EDX/EAX and
+assigns ECX before use on the traversal path. There is no established semantic
+return value. Preserve native output registers/flags nevertheless, rather than
+turning this observation into an ABI assumption for unknown callers.
+
+The whole body includes slot reset `0x0047d560`, both early gates, candidate
+scoring, selection and optional `qsort`. The second gate helper `0x00488170`
+recurses only into itself (`0x004881a4`), returns cached nonnegative
+`node+0xa4`, or derives that cache from base `node+0xa0` and child positions
+`+0x30/+0x34/+0x38`, with a `node+0x70` scale branch. This is an
+extent/radius-like quantity by arithmetic, **not an established light count**.
+Its semantic units remain unresolved. The candidate storage is an array of
+node pointers, not a linked chain; layout and eight 12-byte selected records
+are established in [camera-and-lights.md](camera-and-lights.md#directional-lights-source-space-and-count).
+`qsort` at `0x0047d9a3` receives the populated count in EDX, stride 12 and
+fixed comparator `0x0047d5b0`; it is skipped for zero populated records.
+
+### Two plain-copy spans and CPU preservation
+
+| Stamp | Exact displaced bytes / boundaries | Resume / direct incoming edges |
+| --- | --- | --- |
+| entry `0x0047d5e0` | `55 8b ec 83 e4 f0`: `push ebp`; `mov ebp,esp`; `and esp,-16` (6 bytes) | `0x0047d5e6`; the two calls above |
+| exit `0x0047d9ab` | `5f 5e 5b 8b e5`: `pop edi`; `pop esi`; `pop ebx`; `mov esp,ebp` (5 bytes) | `0x0047d9b0` (`pop ebp; ret 4`); branches from `0x0047d605`, `0x0047d617`, `0x0047d97c`, `0x0047d998`, plus fall-through after qsort stack cleanup |
+
+Both spans contain whole instructions, no relative transfer and no x87. The
+all-offset scan of near/short call/jump/conditional/loop encodings found no
+interior targets. They are disjoint from the current SiteSpec and fixed-claim
+inventory. Use length 6/5, `ret_pop=0`, `rel32_offset=0`: the exit trampoline
+must replay the five bytes and jump to the original remaining epilogue; it
+must not append its own `ret 4`. Replay at the exact native site ESP is vital
+for both the alignment and the three pops. Do not move the exit stamp to a
+later byte merely to avoid these stack operations.
+
+Reuse the context-stub contract in `lean_stub.h`: pushfd/pushad, preserve all
+XMM0–7, clear DF for C++, restore the entire saved context before replay.
+EBX/ESI/EDI/EBP and the original stack are live; at exit the saved native
+nonvolatile registers are still on the native stack. Entry arithmetic flags
+are killed by `and esp,-16`, but the exit span does not set flags. Preserve
+all flags including DF at both sites. At entry, native ESP is
+`saved[SavedEsp]+4` (pushad saved ESP after pushfd), so the return address is
+at that address. A numerical frame token `saved[SavedEsp]` at entry equals
+`saved[SavedEbp]` at exit; `[EBP+4]` is then the same return address.
+Do not retain or later dereference the node or any selected-light pointer.
+
+Wrap each stamp handler's own work in `LightCallBoundary` before any Win32
+call: preserve site-local LastError and MXCSR, then restore those values before
+the native tail. Entry preserves the native input state; exit preserves the
+native output state, which need not equal entry. R7 executes x87 and may change
+its status; do not restore the entry x87 image over that output. The lean
+envelope is valid only after the built handler/callee graph passes the existing
+no-x87 audit. No logging, formatting, floating return values or allocation in
+the handler. Four-byte incoming stack alignment remains required. These
+contracts retain documented Win32 QPC/GetLastError/SetLastError APIs on native
+Windows; no native execution qualification is supplied by this analysis.
+
+### Lifetime, nesting, exceptions and the minimal measurement
+
+R7 itself does not recurse. Its four calls are reset `0x0047d560`, the recursive
+extent helper, `_ftol2` `0x0052b5d0` and CRT qsort. Reset and `_ftol2` have no
+calls; the extent helper has only its self-call. Normal qsort calls only its
+swap/shortsort helpers and the fixed, call-free integer comparator (shortsort's
+indirect call is `0x005104b2`). The normal chain has no engine callback that can
+re-enter R7. The surrounding traversal's self-calls `0x0047e5e5`/`0x0047e600`
+occur after R7 has returned, so traversal recursion is not overlapping R7.
+CRT invalid-argument branches reach `0x00515cd3`/`0x0050ea39`; with the native
+non-null table, positive stride 12 and fixed comparator those branches are
+excluded. Corruption, asynchronous exception handlers and external hooks are
+outside that normal-path proof.
+
+The known caller chains belong to the main-loop cockpit and render phases;
+this is static thread ownership evidence, not an observed thread census. Admit
+only the existing frame/Present owner TID, count and reject foreign/early hits,
+and classify return addresses into cockpit/traversal/unknown. Never let a
+foreign hit mutate owner timing state. An unknown caller must be surfaced as
+an unsupported-coverage counter rather than silently assigned to traversal.
+
+Measure entry to common epilogue, including reset and both gates and excluding
+only the few final restore/return instructions. Use one QPC read at each stamp,
+an entry count and a matched-completion count, plus accumulated ticks split
+by the two callers; retain raw elapsed and separately reported measured probe
+cost. No per-light traversal, qsort stamps or live node validation is needed.
+Use constant-size owner state with the native frame token to match ends. A
+bounded nesting mechanism must reject/poison unexpected overlapping entries
+without overwriting the outer clock or double-counting nested elapsed time;
+count nesting/overflow/mismatch failures. A single unchecked global open clock
+does not meet that requirement even though normal nested calls are excluded.
+
+No SEH frame is installed by R7. Memory access, integer division and x87/CRT
+paths can still fault; a nonlocal unwind can bypass the exit. The instrumentation
+must not catch, swallow or replace native exceptions, and must not splice the
+native return address. Invalidate unclosed records at frame/discard boundaries,
+report unmatched intervals and avoid carrying their duration into the next
+frame. Handler code itself must not throw. Pair token mismatch, clock failure,
+clock reversal, unknown caller, nesting and foreign-thread counters qualify
+coverage; a nonzero failure count prevents treating that window as complete.
+Use the shared preflight/install transaction for both spans and rollback on
+either failure; disabled/inert stubs must still replay the original bytes.
+
+Two stamps per call cost approximately `2 × calls × dispatch_ns`; the current
+102 ns submit-stamp figure is only a planning estimate for these changed
+handlers. Re-measure the actual added handler before interpreting small R7
+times. Keep cockpit and traversal timings separate in the 300-frame report so
+cockpit work is not charged to view submission. No R7 speedup or bottleneck
+conclusion follows from the static body or the profiler's lack of samples.
+
+### Evidence and implementation acceptance still required
+
+Local evidence is `/tmp/x3-r7-abi/`: `qualify.py`, validated
+`qualification.json`, bounded listings, and Ghidra outputs. Reproduction:
+`python3 /tmp/x3-r7-abi/qualify.py` uses project PE mapping, gap-free objdump
+parsing and the current claim inventory from `verify_chase_aim_sites.py` and
+`verify_submit_phase_sites.py`. It decoded 280 R7 instructions, 106 cockpit
+helper instructions and 864 traversal instructions; both spans matched;
+two direct callers, zero interior branch encodings, zero absolute references,
+zero claim overlaps. Ghidra ran `X3CameraState.java` and `X3CallTree.java` with
+`-readOnly -noanalysis` on `/tmp/x3-fog-sizing-ghidra FogSizing`, program
+`X3AP.exe`. The older `/tmp/x3-ghidra-research X3Render` project no longer
+contained the requested program in this session. No raw output is tracked.
+
+An implementation should extend the existing named checks, not claim this
+documentation run as CPU-fixture acceptance:
+
+- `verification/probe/verify_submit_phase_sites.py` and
+  `verification/analysis/test_submit_phases.py`: pin these two spans, caller
+  addresses, four exit branches, stack-token layout, complete regions and
+  claim/absolute-reference refusal. Include the final native `ret 4` contract.
+- `verification/probe/submit_phases_host.cpp`: caller buckets, matched count,
+  unknown/foreign/early admission, nesting poison/overflow, stale entry,
+  token mismatch, failed/backward clocks and discarded-frame recovery.
+- `verification/probe/submit_phase_cpu_fixture.cpp`: extend synthetic bodies
+  with the real aligned prologue and pop/mov/ret4 epilogue, both caller classes,
+  each early exit and a populated fall-through path. Compare native versus
+  hooked GPR/EFLAGS/DF, ESP, XMM0–7, MXCSR, live x87 stack/control/status and
+  LastError, including deliberately distinct entry/output state; verify
+  all four incoming ESP residues modulo 16, partial-install rollback and
+  disabled forwarding. Exercise aborted/unmatched and nested accounting in
+  controlled synthetic paths without invoking game code.
+- Run the affected host module with
+  `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_submit_phases`;
+  the install owner then builds/audits through `build_game_phase_cpu.py` and
+  `check_no_x87.py`, and runs `run_submit_phase_cpu.py` only under
+  `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py ...`.
+  A future user flight supplies actual caller rates and elapsed cost;
+  native Windows execution remains a separate unverified target.
+
+Only static qualification and documentation review were performed here: no
+production edit, build, Wine command, install or game launch.

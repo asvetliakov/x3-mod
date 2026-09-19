@@ -1,0 +1,124 @@
+{
+  "date": "2026-09-20",
+  "source_commit": "9fa4da5a",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "native_windows_runtime": "unverified",
+  "collision": {
+    "exit_status": 0,
+    "elapsed_s": 5.723,
+    "checks": 142,
+    "failures": 0,
+    "queries": 675,
+    "differences": 0,
+    "bench": {
+      "off_ns": 320.1,
+      "on_ns": 1744.8,
+      "overhead_ns": 1424.8,
+      "iterations": 70000.0
+    },
+    "exe_sha256_before": "1cb44bd11f6beb7eb712435a6c6b2bc99d07850cdadcafd485119321e30bd335",
+    "exe_sha256_after": "1cb44bd11f6beb7eb712435a6c6b2bc99d07850cdadcafd485119321e30bd335",
+    "source_sha256_before_run": {
+      "build/verification/collide-memo/engine_ranges_inc.h": "fb7564471bcc5dee5e2a8667eadc148ce2396557f986be49458d31ab29a0ae99",
+      "src/proxy/capture.h": "6160992d0c312ee5373652e2053fba40774fb9a6bf858551cd2bf7ac0806465c",
+      "src/proxy/collide_memo.cpp": "9cb71188b788f71303505733d20d7d5047961934a18d66a48ef3acbdc8bee3d4",
+      "src/proxy/collide_memo.h": "2bb19ed49199a1e3820ccc0d11e47ce3fea74527ad02698dd4a79d97db53f4eb",
+      "src/proxy/collide_memo_core.h": "f0d6228b799cb2ec35e9f1b1fd9c4e91ad4803fb49fc0fef70afed364eb7f172",
+      "src/proxy/collide_query_phases.cpp": "7ee071f57c0a340164c799d936e76c3bfa344c6722992d73c5cbf16f96f053a1",
+      "src/proxy/collide_query_phases.h": "7932d1706e52c2efa3e9e9962d4a3f4ac92491e148e317fcb923578557a13605",
+      "src/proxy/collide_query_phases_core.h": "5309ddcef56422899e24156fe6109b58a5cfdeebd5f03904f3fb9fba23c0b681",
+      "src/proxy/collide_sat_sse2.cpp": "2029417b0ff84d5a3ce40689f73d9032f152a09e887d802c6d7420b57b6397bd",
+      "src/proxy/collide_sat_sse2.h": "0accafedbaa987da45b6690d6e9eea3518373592b134770198a5c552e7d58cf6",
+      "src/proxy/collide_sat_sse2_core.h": "8f2d23b79c1225be3cad41fa4ab18f9d8603f9df4acbe19fc3e82c45c1f9f410",
+      "src/proxy/compositor_bridge.h": "fd49b6ff51344bc5a770639cab52d0208c1bffecc0e1bf9e41b4f1b9e46d73cd",
+      "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a",
+      "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
+      "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66",
+      "src/proxy/object_trace.h": "91fdf715014c684ed521e9a56730fced743d9e2712b6463dde78e9d37088244f",
+      "verification/probe/build_collide_memo.py": "83d027c99446e6dffaa1bf3ce508e3f8f6e65a9b15ce0f9662babf0918589abc",
+      "verification/probe/build_collide_query_phases.py": "3dbc251d699e9e44cc00824867620846cbdadf7ccc1fb9faf266e47f12992068",
+      "verification/probe/collide_memo_fixture.cpp": "d3638bb7f211b5e59d7daab986fcb55dc7b07d5f5b2fd36f363c225530a53a74",
+      "verification/probe/collide_query_phases_fixture.cpp": "ce0817091ca721660d9e07eb31b20e1c5ecc294c4896792253e5108a66ea3b04",
+      "verification/probe/run_chase_aim_trace.py": "01428aeafaec6b7767502d6b17e8d2a8c8daadd08a9d7673323b4d073f5b4d3f",
+      "verification/probe/run_collide_query_phases.py": "f6e53bc7940f7e05b33d1e2664511362d587e756ec1107642ff4201e342a16d0"
+    },
+    "source_sha256_after_run": {
+      "build/verification/collide-memo/engine_ranges_inc.h": "fb7564471bcc5dee5e2a8667eadc148ce2396557f986be49458d31ab29a0ae99",
+      "src/proxy/capture.h": "6160992d0c312ee5373652e2053fba40774fb9a6bf858551cd2bf7ac0806465c",
+      "src/proxy/collide_memo.cpp": "9cb71188b788f71303505733d20d7d5047961934a18d66a48ef3acbdc8bee3d4",
+      "src/proxy/collide_memo.h": "2bb19ed49199a1e3820ccc0d11e47ce3fea74527ad02698dd4a79d97db53f4eb",
+      "src/proxy/collide_memo_core.h": "f0d6228b799cb2ec35e9f1b1fd9c4e91ad4803fb49fc0fef70afed364eb7f172",
+      "src/proxy/collide_query_phases.cpp": "7ee071f57c0a340164c799d936e76c3bfa344c6722992d73c5cbf16f96f053a1",
+      "src/proxy/collide_query_phases.h": "7932d1706e52c2efa3e9e9962d4a3f4ac92491e148e317fcb923578557a13605",
+      "src/proxy/collide_query_phases_core.h": "5309ddcef56422899e24156fe6109b58a5cfdeebd5f03904f3fb9fba23c0b681",
+      "src/proxy/collide_sat_sse2.cpp": "2029417b0ff84d5a3ce40689f73d9032f152a09e887d802c6d7420b57b6397bd",
+      "src/proxy/collide_sat_sse2.h": "0accafedbaa987da45b6690d6e9eea3518373592b134770198a5c552e7d58cf6",
+      "src/proxy/collide_sat_sse2_core.h": "8f2d23b79c1225be3cad41fa4ab18f9d8603f9df4acbe19fc3e82c45c1f9f410",
+      "src/proxy/compositor_bridge.h": "fd49b6ff51344bc5a770639cab52d0208c1bffecc0e1bf9e41b4f1b9e46d73cd",
+      "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a",
+      "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
+      "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66",
+      "src/proxy/object_trace.h": "91fdf715014c684ed521e9a56730fced743d9e2712b6463dde78e9d37088244f",
+      "verification/probe/build_collide_memo.py": "83d027c99446e6dffaa1bf3ce508e3f8f6e65a9b15ce0f9662babf0918589abc",
+      "verification/probe/build_collide_query_phases.py": "3dbc251d699e9e44cc00824867620846cbdadf7ccc1fb9faf266e47f12992068",
+      "verification/probe/collide_memo_fixture.cpp": "d3638bb7f211b5e59d7daab986fcb55dc7b07d5f5b2fd36f363c225530a53a74",
+      "verification/probe/collide_query_phases_fixture.cpp": "ce0817091ca721660d9e07eb31b20e1c5ecc294c4896792253e5108a66ea3b04",
+      "verification/probe/run_chase_aim_trace.py": "01428aeafaec6b7767502d6b17e8d2a8c8daadd08a9d7673323b4d073f5b4d3f",
+      "verification/probe/run_collide_query_phases.py": "f6e53bc7940f7e05b33d1e2664511362d587e756ec1107642ff4201e342a16d0"
+    },
+    "stdout_sha256": "267bcc6e5d575febe313d8c5bf6706895b3716bb66e47f0d06bbf95bab1efeb9"
+  },
+  "light": {
+    "result": "PASS",
+    "exit": 0,
+    "elapsed_s": 5.8,
+    "summary": {
+      "sites": "2",
+      "checks": "2093",
+      "failures": "0"
+    },
+    "benchmark_lines": [
+      "LIGHT PHASE BENCH loops=20000 trials=7 dispatch_ns=99.6 documented_dispatch_ns=107"
+    ],
+    "handler_sha256": "e124901baaa4c4d5612d2900b7c4ed2de02bb0a82354403eda2624a38cefd145",
+    "provenance": {
+      "build_mode": "fresh",
+      "source_inputs": 21,
+      "source_sha256_before": "46421158c09170b3bf1566e887005a54912f0ac0b08c67cc8e6be4c6cef6deee",
+      "source_sha256_after": "46421158c09170b3bf1566e887005a54912f0ac0b08c67cc8e6be4c6cef6deee",
+      "exe_sha256_before": "4f751237b4ec6357bb91eec05abe665372aea51809646bcc4dfd1336beebc002",
+      "exe_sha256_after": "4f751237b4ec6357bb91eec05abe665372aea51809646bcc4dfd1336beebc002",
+      "handler_sha256_before": "e124901baaa4c4d5612d2900b7c4ed2de02bb0a82354403eda2624a38cefd145",
+      "handler_sha256_after": "e124901baaa4c4d5612d2900b7c4ed2de02bb0a82354403eda2624a38cefd145",
+      "stable": true
+    }
+  },
+  "raw_local_records": [
+    {
+      "path": "/Users/asvetl/x3-mod/verification/results/bottle-X3/collide-query-phases.json",
+      "sha256": "9fc3a2ae3eb9d67df69f7d0ca145d920d8057569e6693fcb72e9bee00190c651"
+    },
+    {
+      "path": "/private/tmp/x3-r7-light-phases/verification/results/bottle-X3/light_phase_cpu.json",
+      "sha256": "a883c11b8c6f70a1f21758bf050befa60a202f8a9726629cdd1d6df3d4682969"
+    }
+  ],
+  "review": {
+    "collision": "review_collide_query_phases: accepted source and final artifact-bound evidence; combined152claims no overlap",
+    "light": "review_light_phases: accepted source and final artifact-bound evidence"
+  },
+  "limitations": [
+    "CPU fixtures are not flight attribution or FPS",
+    "Collision overhead measured +1424.8ns per executed query; light dispatch repeat99.6ns, documented107ns retained",
+    "R7 separate parser omits collision root constant; combined collision scanner explicitly includes both R7 claims"
+  ]
+}

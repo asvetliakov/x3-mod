@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (run48 candidate installed; run 48 A/B/C reported; B/C analysis in progress). This is the
+Updated 2026-09-20 (run 48 reported; fog census and diagnostic qualification complete; next candidate in preparation). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -34,7 +34,7 @@ scope `all`; `--collide-sat-sse2` and `--collide-memo` on (`--no-…` switches).
 New in this build, default off: `--taa-thin-region` (lattice arm
 crawl), `--volumetric-fog`
 (Ctrl+Alt+F9 / Ctrl+Alt+F10), `--submit-phases` (diagnostic); always on: the sun-lane
-stamp (Argon Prime shadows; flight verdict pending). `--taa-far-stabiliser 0.985` was accepted by the user in
+stamp (run180: available and applied in all 128 captured frames; advertisement-sign artifacts not specifically inspected). `--taa-far-stabiliser 0.985` was accepted by the user in
 run 47 C and remains a default candidate. After an additional flight the user
 selected **light-map fade 80,220,1 as the launcher default** (2026-09-20);
 `--no-light-map-far-fade` disables it. Thin region 0.97 fixes stationary crawl;
@@ -48,10 +48,29 @@ shadows and fog, C `--submit-phases` at the busy station. The
 [handoff](handoff-2026-09-20.md) holds the state of every track, the decisions owed
 after run 48, the user's preferences and the housekeeping list; the
 [goals table](goals.md) is current. Run 48 A evidence is recorded in the [motion-output ledger](verification/motion-output.md):
-stationary improvement confirmed; moving-arm crawl remains open. Run180 fog/shadows and first-view stalls, plus run181
-submission timings (user reports 40 FPS), are being analysed. Card replacement
-and the read-only sector diagnostic are in isolated implementation; no candidate
-is qualifying. Every
+stationary improvement confirmed; moving-arm crawl remains open. The moving-lattice
+replay is complete and found no safe fix to promote. Run180 fog/shadows and run181
+submission findings are recorded in their owning notes. Remaining engine/proxy
+costs, moving collision and first-view stalls await the consolidated diagnostic
+flight; run181 did not close those investigations.
+
+Card replacement with card-only state validation is reviewed and committed
+(`cd004f35`), preserving the normal setter path. The read-only sector diagnostic
+and the reviewed [239-sector fog census](reverse-engineering/sector-fog-census.md)
+(`a104f376`) are complete. The planned family anchors, bluewell 0.01 and
+foggreenoutlands 0.05, remain manual comparisons; automatic sector policy awaits
+the sector-chain flight and is not active. Count-only strength scaling is held.
+
+Light-selection and collision-query timers are integrated, reviewed and committed
+(`9fa4da5a`): 2,093 light-timer checks with zero failures; 142 collision-timer
+checks and 675 queries with zero differences. The next flight combines them with
+the existing loop/game/residual phases. The root owns candidate preparation:
+the full host suite is running (`/tmp/x3-run49-host-suite-final-X3.log`); the next
+candidate has not yet been built or installed.
+
+Ownership fixture runners and the 563-check inventory are repaired with fresh
+passes; all 31 generated shader checks now pass. Eight obsolete agent worktrees
+were removed after preserving unique evidence; the live locked Claude worktree
+was retained. Every
 worktree branch of the previous 2026-09-19/20 session is merged. Earlier session sections of this
 file moved to [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md).
-

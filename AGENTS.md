@@ -193,8 +193,8 @@ when model latency is the bottleneck, never a default for waiting on fixtures.
 
 - Delegate independent substantial work to the roles above when it reduces
   elapsed time or keeps bulk evidence out of the main context. Do short dependent
-  operations locally. At most three concurrent children; children do not spawn
-  agents. Keep one writer per file set and one Wine/install owner.
+  operations locally. Up to eight concurrent children when independent work warrants it (user-authorized
+  2026-09-20); children do not spawn agents. Keep one writer per file set and one Wine/install owner.
 - Brief each agent with the goal, relevant current facts, exact files, constraints,
   acceptance command and observable result. Start bounded work and independent
   reviews with fresh context, not a full-history fork. Supply model and effort

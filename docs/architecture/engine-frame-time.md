@@ -431,7 +431,7 @@ only; no full-file read.
 | `views` total | 16.21 | 79.8 % |
 | — `view_setup` (light select, state/camera/viewport/clear) | 1.70 | 8.4 % |
 | — `view_submit` (traversal/sort/D3DX submission `0x004c0150`) | 11.15 | 54.9 % |
-| — residual (particles, scene-end composite: TAA/shadow replay/sun apply, env-map, fixups) | 5.36 | 26.4 % |
+| — residual (particles, scene-end composite: TAA/shadow replay/sun apply, env-map, fixups; difference of phase medians) | 3.362 | 16.5 % |
 | `scene_end` (game `EndScene` + gated tails) | 0.30 | 1.5 % |
 | `present` (native Present) | 0.006 | 0.03 % |
 
@@ -485,7 +485,7 @@ construction (nine phases summed by the diagnostic itself). Inside that:
 `--loop-phases` ran (run150/151); a 3.1 ms residual remains unattributed
 there (script VM, cockpit update, audio/media, proxy post-Present all share
 `pre_render` with no per-site stamp). `views` is split into `view_setup`/
-`view_submit` everywhere, but the 21-26 % "views minus setup minus submit"
+`view_submit` everywhere, but the "views minus setup minus submit"
 residual (particles, TAA, shadow replay, sun apply, env-map, fixups) has no
 site of its own in any of these four logs; `view_submit` itself is not split
 into engine traversal/sort vs D3DX `BeginPass` vs draw submission (engine
@@ -515,7 +515,7 @@ candidates for FEX flagged):
 |---|---|---|---|---|
 | 1 | Sector narrow-phase collide (BVH traversal, FSQRT-heavy all-pairs and narrow phase) | 26.5 (peak collide window); 0.3-2.6 (non-collide windows) | run150 `loop_phases frame=5400` `collide_p50_us`; `collide_narrow frame=5399` (225,045 node pairs, 174 mesh pairs, 17 accepted) | broad `0x0045d250`; narrow sites `0x0045d665`, `0x0048a9a5`, `0x004e2530`, `0x004e2190` ([sector-collide.md](../reverse-engineering/sector-collide.md)) |
 | 2 | View submission: per-object traversal/sort + D3DX material pass loop | 11.15 (run147 busy); 8.6-8.8 (run150/151 busy) | `frame_phases` `view_submit_p50_us` | traversal `0x0047e920`, sort `0x0047e620`, submission `0x0047e6e0`, D3DX pass loop `0x004c0150` |
-| 3 | `views` residual: particles, scene-end composite (TAA, shadow replay, sun apply), env-map, fixups | 5.36 (run147 busy); 1.6-3.1 (run150/151 busy) | `frame_phases` `views_p50_us - view_setup_p50_us - view_submit_p50_us` | not individually sited here; needs `--residual-phases` (section 1, run113) to split proxy TAA/shadow from engine env-map/particles |
+| 3 | `views` residual: particles, scene-end composite (TAA, shadow replay, sun apply), env-map, fixups | 3.362 (run147 busy); 1.6-3.1 (run150/151 busy) | `frame_phases` `views_p50_us - view_setup_p50_us - view_submit_p50_us` (difference of medians) | not individually sited here; `--residual-phases` separates particles from other; existing proxy pass timings give partial further attribution (follow-up audit below) |
 | 4 | `pre_render` residual outside collide (script VM, cockpit update, audio/media, proxy post-Present) | 3.13 (run150 peak-collide window); 2.9-4.7 (non-collide windows, unsplit — no `--loop-phases`) | `loop_phases` `input_p50_us - collide - simulate - post - passb` (run150/151 only) | script VM address not in this evidence; cockpit update `0x0041cde0` (named in section 1, not separately stamped) |
 | 5 | Per-view setup (light selection, state/camera/viewport/clear) | 1.70 (run147 busy); 0.6-1.7 (run150/151 busy) | `frame_phases` `view_setup_p50_us` | light selection `0x004892a0`; setup span `0x0047224c`-`0x00472270` |
 
@@ -621,3 +621,244 @@ scene/AI difference between the two flights. Engine-between-calls (9.95-10.02
 ms, the largest bucket) has no per-site split in this run; closing it needs
 disassembly-level sampling (section 1's profiler leaves) at this same window,
 not another `frame_timing` pass.
+
+
+## Run 48 B/C: first-view freezes and the 40 FPS busy view (2026-09-20)
+
+User report: run180 sometimes pauses about 0.2 s during the first camera sweep;
+repeating the view is smooth. This predates fog. Five aligned, non-capture flight
+witnesses are pre-render dominated (frame-end duration / phase pre-render ms):
+32101 483/472.906; 45129 465/457.369; 50594 207/202.394;
+61502 192/184.949; 63609 248/243.225. Their views take only 4.563–9.791 ms,
+camera_cut=0, captures are at least 10.095 s away and the recorded initial load
+is hundreds of seconds earlier. No exact gate event is established.
+
+The largest single measured log flush in run180 is 30.6 microseconds. Shader dump
+max is 7.441 ms; native pixel-shader creation 1.198 ms, texture creation 0.873 ms,
+vertex/index-buffer creation 0.603/1.045 ms. None individually explains these
+185–473 ms pre-render spans. This does not exclude all logging/instrumentation:
+formatting and buffer-fill writes are not separately timed, and `pre_render`
+includes the proxy's after-Present work as well as engine update phases. No
+first-use asset or compilation cause is established.
+
+Run181 steady windows 3000–5400 (nine 300-frame rows) confirm the reported 40 FPS:
+median of window frame-time medians 24.297 ms, about 41.2 FPS (23.406–25.136 ms).
+
+| phase, ms | earlier run147 busy view | run181 |
+| --- | ---: | ---: |
+| full frame | 20.320 | 24.297 |
+| pre_render | 3.280 | 5.721 |
+| views | 16.210 | 17.989 |
+| view setup (inside views) | 1.700 | 1.639 |
+| view submit (inside views) | 11.150 | 12.737 |
+| scene end | 0.300 | 0.364 |
+
+This is cross-flight evidence, not a controlled regression measurement. Frame3600
+motion counts are almost identical: 510/485 routed/matched in run147, 511/485 in
+run181. Run181 uses submission stamps, thin region 0.97, far stabiliser 0.985,
+light-map fade 40,110,1, per-draw RT mode; fog and frame-timing state stamps are off.
+Submit diagnostic self cost is 0.549 ms/frame; it explains part of the 3.977 ms
+increase, not all. No separate live timing isolates the thin-region pass. The
+phase medians are not additive, and equal draws do not explain pre-render growth.
+
+**Next measurement:** existing `--loop-phases --game-phases
+--game-phase-threshold-ms 20`, retaining telemetry/frame phases, frame-end stride
+10, no F8 during the stutter observation. This splits collision/simulation/post/
+passb and reports long game intervals; a residual still needs script/cockpit/
+audio/media/proxy-after-Present attribution. Use this in the consolidated next
+fog/sector flight before adding any new tracing. Do not reopen state filtering,
+instancing or pass replay. The submission-specific disposition is in
+[view-submit hot path](../reverse-engineering/view-submit-hot-path.md).
+
+Local reproducible witnesses: `verification/results/run48b-triage/stutter_reproduce.py`
+and `verification/results/run48c-triage/reproduce.py`. Bottle X3, arm64 Wine/FEX,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`; native Windows not measured.
+
+## Performance follow-up audit — 2026-09-20 (diagnostic plan ratified)
+
+**Diagnostic plan ratified by the orchestrator.** Close the measured small submission
+candidates for the run181 view, not the whole performance investigation. First
+attribute pre-render growth and first-view stalls; use the existing post-pass
+timings; then obtain a submission split with the production setter configuration.
+No production change, build, Wine execution or game launch accompanies this audit.
+
+The evidence needs three corrections to the older interpretation above:
+
+- Raw run147 `frame_phases frame=3600` is `dt=20320`, `pre_render=3276`,
+  `views=16211`, `view_setup=1704`, `view_submit=11145` microseconds.
+  Thus **views minus setup minus submit is 3.362 ms (16.5% of dt), not
+  5.36 ms (26.4%)**. This is a difference of window medians, not the median
+  of a measured residual. That flight has 29 frame-phase windows and zero
+  loop/pass/residual/frame-timing windows. Its 3.276 ms pre-render and
+  11.145 ms submit were not individually attributed in that capture.
+- Run162's 9.95–10.02 ms “engine-between-calls” is a whole-frame complement,
+  including unhooked library code and pre-render, not 10 ms of optimizable
+  draw preparation. Its 3.483 ms submission complement is the relevant older
+  prepare/setup estimate; [view-submit hot path](../reverse-engineering/view-submit-hot-path.md)
+  §1 already corrects this. The 0.3–0.65 ms arithmetic figure in that note
+  is a model extrapolated from another routine, not a measured universal ceiling.
+- Raw mode rows show run147/run181 `state_hooks installed=0 reason=none`,
+  but run162 `installed=1 reason=frame_timing`. `capture.cpp`'s
+  `hook_device` installs setter hooks when `frame_timing::active`; the
+  [state-call fast path](state-call-fast-path.md#hybrid-unhook-step-5-implemented)
+  explains their additional cost. Subtracting only the estimated 1 ms QPC
+  stamp cost cannot isolate scene variance in run162's 6.9 ms gap. Turning
+  only state stamps off also leaves the diagnostic setter hooks installed.
+  Neither native Present's few microseconds nor CPU QPC pass timings alone
+  exclude asynchronous GPU/driver work or waits charged elsewhere.
+
+**What remains closed, and why.** Run181's nine steady windows have R3
+SetTechnique/End 65/64 us, R5 sort 5 us over 30 calls, R4 zero walk calls at
+the median, R1 view inverse 71 us and R8 world matrix 19 us. No replacement
+is justified for these sites in this view. R2/R6 share the unsplit 0.988 ms
+setup block; neither has an individual measurement. R7 at `0x0047d5e0`
+is absent from `submit_phase_sites.h` and remains unmeasured. Its gated
+light-list walk and `_qsort` are distinct from the measured R5 queue sort.
+Keep state filtering, pass replay, instancing, draw reordering and blanket
+x87 conversion closed on the existing cost/correctness evidence. Reopen
+only a named assumption contradicted by a measured current cost.
+
+**Proxy lever disposition.** The [route-cost design](route-per-draw-cost.md)
+and [motion-output ledger](../verification/motion-output.md) contain the
+implementation and fixture evidence, but some introductory “unflown” labels
+are historical. Raw run147 already has `motion_direct enabled=1 admission=0
+slots=7`: lever 1 stage A and 2a are in the 50 FPS baseline, not future gains.
+The fixture reduced wrapper overhead 2.15 to 0.77/0.92 us per routed draw
+(the original <=0.6 target was missed), and lease overhead 1.98 to 0.90/0.73 us.
+The remaining eight interface-input unwraps explain stage A's limit; stage B
+still requires an identity/lifetime design, not more value-only bypasses.
+
+Lever 2b remains conditional. Source now confirms the previously untraced
+ordering: `MotionOutput::retention_scene_end` drains retirements, can flush
+on a sun change and calls `release_retention_pending` before replay
+(`motion_output.cpp` scene-end call; `motion_output_shadow_retention_inc.h`).
+`run_shadow_replay_cascades` releases depth leases after the transaction
+(`motion_output_shadow_replay_inc.h`). Borrowing store references without
+pinning them through lease retirement is unsafe. The earlier 0.5–0.7 us per
+matched lease estimate scales to only about 0.20–0.27 ms at run181's median
+391 leased draws, plus unmeasured scene-end release cost; matching eligibility
+and pin overhead reduce that estimate further. Buffer revision reads remain
+mandatory. `release_depth_leases()` lies outside the recorded replay `us` span.
+
+Lever 3 is implemented and fixture-equivalent, but has no proven flight FPS
+gain. Run165/166 reduced proxy draw overhead by about 0.899 ms while native
+draw time rose about 0.425 ms and draw counts differed. Both enabled diagnostic
+setter hooks. The ledger explicitly leaves the cause unresolved; the handoff's
+“wined3d defers the cost” is a plausible explanation, not a demonstrated one.
+Run167 is lazy without frame timing but with the blind sampling profiler, not
+a clean paired control. Keep lazy optional. The fixture's 2.53 us per depth
+draw suggests about 1.2 ms at 485 routed draws before displacement, flushes
+and noise; actual net benefit could be zero or negative.
+
+**Existing captures answer part of the residual now.** Streaming the two
+`session-*.log` files for frames 3301–3600 gives the following CPU QPC medians;
+these are cross-flight observations, not a causal A/B or additive partition.
+
+| Recorded scope | run147, us | run181, us | Rows per run |
+| --- | ---: | ---: | ---: |
+| Shadow replay transaction | 756.05 | 851.0 | 300 |
+| Retention scene-end processing | 104.25 | 168.9 | 300 |
+| TAA run | 282.0 | 444.0 | 5 |
+| HDR writeback | 94.0 | 518.0 | 5 |
+| HDR meter, **inside writeback** | 51.1 | 451.8 | 5 |
+
+Selectors are `shadow_replay_depth us`, `shadow_retention_frame us`,
+`motion_output_frame taa_run_us` and `hdr_frame writeback_us/meter_us`, with
+integer `frame` in `[3301,3600]`. Logs are
+`/tmp/x3-bottleX3-run147/session-20260919-054326-212.log` and
+`/tmp/x3-bottleX3-run181/session-20260920-003127-212.log`; parse line-by-line
+with Python `re.findall` and `statistics.median`. TAA/HDR rows are sparse and
+can be cadence-biased. `MotionOutput::hdr_writeback` and `HdrPass::copy_draw`
+prove meter time is nested; TAA subfields are likewise not extra costs.
+These observations justify investigating the HDR-meter/writeback increase
+and the combined TAA work, but cannot assign the thin-region feature a cost
+or account for the full 3.977 ms frame-time difference. Existing run180 slow
+witnesses locate stalls in pre-render but do not identify its callee; F8
+images cannot reconstruct missing execution timings.
+
+For the five individual frames 3360, 3420, 3480, 3540 and 3600, compute
+`writeback_us - meter_us` **within each row before reducing**: its median is
+43.9 us in run147 and 50.9 us in run181. Thus almost all of this sparse
+writeback increase lies inside `HdrPass::meter_chain`'s bracket, not the outer
+tone-map/state-restore work. The cadence limitation and cross-flight caveat
+still apply; this does not establish whether the meter does more work or waits
+for prior GPU work.
+
+Ranked next investigations, with budget distinguished from possible saving:
+
+| Priority | Investigation and deciding evidence | Scope/cost and limit |
+| --- | --- | --- |
+| 1 | Use the already queued `--loop-phases --game-phases --game-phase-threshold-ms 20` with frame phases. Compare steady pre-render as well as non-capture stalls; read owner/segment rows before choosing a patch. | 5.721 ms steady pre-render is a budget, not a saving; 185–473 ms stalls deserve separate tail analysis. Existing stamps, no new per-draw work. |
+| 2 | Align existing replay/retention/TAA/HDR fields and full telemetry-window metrics, checking capture proximity and sparse cadence. If an increase persists, isolate that pass at a fixed view with feature-equivalent output. | Existing rows cost no new runtime work. HDR writeback's observed +0.424 ms and TAA's +0.162 ms are leads, not causal savings or GPU timings. |
+| 3 | Consolidate `--residual-phases` into the next diagnostic flight; it implies pass/frame phases without `--frame-timing` (`tools/manage.py`). Inspect apply/draw/end, prepare/setup and particles/other with `state_hooks reason=none`. | At ~503 passes, four pass dispatches plus ~504 material and nine particle stamps cost about 0.23 ms at the existing 91 ns model; verify reported self cost. Material net 11.620 ms is a mixed budget, not recoverable engine time. |
+| 4 | Include a minimal opt-in R7 whole-call count and elapsed time by caller in the consolidated candidate, after hook/ABI qualification. Do not initially stamp the light loop or qsort separately. | No present saving estimate. Fixed accumulators, no per-call allocation/logging/lock; roughly 0.204 us per timed call from two 102 ns dispatches is only a preliminary model (0.102 ms at 500 calls). Count-only cannot size the candidate and would risk another flight. |
+| 5 | Measure lease-retirement cost and live-record match rate before designing 2b pins. Then prove sun flush, eviction, mutation, shadow-off, skipped scene-end, Reset/loss and teardown cannot free a borrowed resource. | About 0.20–0.27 ms estimated at current leased count plus unknown releases; pin and lookup cost may consume it. No naive borrowed-pointer patch. |
+| 6 | If a <=1 ms opportunity merits the user time, compare perdraw/lazy in matched production-mode flights without frame timing or the profiler; preserve feature set and camera/draw counts. | Existing option, no implementation required. Fixture ceiling roughly 1.2 ms; use end-to-end frame distributions, not just bind count or proxy-draw savings. |
+
+The main-loop RE already names script VM `0x0049f770 -> 0x004a26a0`,
+cockpit `0x0041cde0 -> 0x004205e0`, audio `0x0049a130` and media `0x00498370`
+in [frame-loop phases](../reverse-engineering/frame-loop-phases.md). Their
+existing game-phase segments should choose the next disassembly target.
+`capture.cpp` closes `frame_phases::present_end()` before
+`MotionOutput::after_present()` and reporting, so an unexplained pre-render
+residual must still consider proxy formatting, drains and resource retirement;
+a small measured log flush alone does not exclude those. Do not run the blind
+FEX leaf sampler again or disassemble an arbitrary hot-looking routine first.
+
+The existing diagnostic flags to add to the parent's complete feature-preserving
+launch command are exactly:
+
+```text
+--telemetry --frame-phases --loop-phases --game-phases --game-phase-threshold-ms 20 --residual-phases --frame-end-stride 10
+```
+
+They need no new implementation. Preserve the current rendering options and
+`--motion-rt-mode perdraw`; remove `--frame-timing`, state stamps, `--profile`
+and the already-flown 22-site `--submit-phases` group from this attribution
+flight. No F8 during the first-view-stall observation. The new R7 option name
+and the separately owned collision query/descent option are for the parent to
+ratify and add to this same candidate/run; there is no callable R7 flag yet.
+
+Bounded offline `i686-w64-mingw32-objdump -d -M intel` on the bottle EXE
+confirmed two direct calls to R7: `0x0042173b` and `0x0047dff1`, returning
+to `0x00421740` and `0x0047dff6`. The older hot-path note's `0x0047d9f6`
+caller-frame address is not this call. R7 has the `node+0xa0` and
+`0x00488170` gates, a conditional `_qsort` at `0x0047d9a3`, and a shared
+`pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret 4` epilogue at
+`0x0047d9ab`. The subsequent targeted RE qualified the entry/common-exit spans and inbound
+edges in [view-submit hot path](../reverse-engineering/view-submit-hot-path.md#r7-whole-call-timing-boundary-qualification-2026-09-20). Runtime instrumentation
+qualification is still in progress. Distinguish both callers
+in the timing so non-submission work is not charged to `view_submit` by
+assumption. Full-call timing is enough to decide whether deeper R7 work is
+worthwhile; keep nested qsort detail deferred unless the qualification reveals
+a reason it is needed in the first build.
+
+**Acceptance and portability.** Parent ratification selects the diagnostic
+scope, not an optimization claim. Accept attribution only with valid sites,
+zero clock/unmatched/overflow errors, known capture exclusions and reported
+diagnostic self cost; compare equivalent setter modes and do not sum marginal
+percentiles as a frame partition. Any later production proposal must show a
+repeatable end-to-end gain, unchanged rendering/simulation contracts, relevant
+state/Reset/lifetime fixtures, CPU/LastError preservation and a hot-path cost
+account. Existing tools use documented QPC/COM APIs and validated game EXE
+sites; no Wine-private dependency is needed. Native Windows functionality and
+timing remain unverified, and FEX costs must not be projected as native gains;
+the gap stays in [platform portability](platform-portability.md). Open questions
+are the pre-render owner, R7 frequency, current production apply/draw split,
+post-pass cadence/waits, safe lease pins and lazy's net production benefit.
+
+
+### Run180 stall aggregation follow-up
+
+The five witness frames produce ordinary frame-tagged log volume: 14 lines /
+4.63–4.76 KB for four, 17 lines / 5.16 KB at frame45129, versus nearby
+13–14 lines / 4.51–4.75 KB. No frame-tagged resource creation or shader dump
+accounts for them. Frame45129's overlapping loader interval reports only
+FindFirstFileA 230.4 us, FindClose 1.4 us and log-flush at most 1 us.
+Frame61502 overlaps a one-second cumulative loader summary with 35 texture
+creations / 133.705 ms inclusive and 148 mesh creations / 33.750 ms. These
+are not per-call timestamps; file work nests inside them and the summary
+cannot be assigned to the 184.949 ms pre-render stall or summed as independent
+cost. The other four witness windows have no comparable creation summary.
+Instrumentation and loader work therefore remain possible owners; the next
+loop/game-phase flight must establish attribution before a patch is selected.

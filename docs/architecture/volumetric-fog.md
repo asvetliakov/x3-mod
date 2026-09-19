@@ -42,8 +42,8 @@ A sector-wide homogeneous medium (the brief's starting point) loses; the mock sh
 
 **2026-09-20 scaling revision:** the user's 0.01 for Argon Prime and 0.05 for
 Atreus' Clouds are visual targets, not a universal 8/16-instance mapping. A
-read-only census of the installed sector/background/cloud-body definitions is
-in progress to compare instance counts, weighted body sizes and fog distances.
+read-only census of all 239 installed sector/background/cloud-body definitions is
+complete and reviewed; the final policy is recorded at the end of this note.
 The count-only draft is held. Existing stage-1 rendering still uses the selected
 constant strength and card-presence rule; the committed engine-record reader is
 diagnostic only until its live pointer chain is validated. FogNear/FogFar describe
@@ -510,3 +510,33 @@ launch. No native-Windows verification may be inferred from CrossOver results.
 separate triage owns that evidence); measured card-validation and mask cost; whether one-frame
 TAA reseeding on mode changes is visually acceptable; native query/state parity;
 stage-2 temporal fixture and record-reader flight qualification remain open.
+
+
+## Sector strength decision after the file census (2026-09-20)
+
+The [complete census](../reverse-engineering/sector-fog-census.md) supports
+explicit artistic profiles, not an instance-count density formula. The planned
+automatic policy is **bluewell 0.01** (Argon Prime) and **foggreenoutlands 0.05**
+(Atreus' Clouds and The Hole). Extending each anchor to other sectors sharing
+its background recipe is an inference. The other nine positive-card families
+retain the explicitly uncalibrated selected global strength S: fogbluedistance,
+fogcyancorner, fogdeepred, foggreeneye, fogparanid, fogred, uranus, uranus3 and
+whitenexus. Equal body size alone does not transfer a calibrated strength.
+D50 Veil of Delusion and the Uranus asset exceptions receive no count boost.
+
+Keep R=10,000 view units and the existing independent geometry distance fade.
+FogNear/FogFar, sector size, instance count and body area multiply neither
+strength nor radius. The engine's fixed wrapping lattice and close-card fade
+are not an absorption length; same-body size refresh is not a density signal.
+The 2.99 geometric count-times-area ratio does not derive the user's chosen
+fivefold strength difference.
+
+**Not activated:** the next candidate first validates the engine-record chain
+in §11.5. The existing card-presence rule and manual numeric strength/hotkeys
+remain operative. Compare the 0.01/0.05 anchors manually with replacement-only
+rendering; earlier preferences may have included vanilla cards. Once validated,
+D=0 may turn the automatic medium off, while unreadable/changed recipes fall
+back to the card-presence rule at S, never to a fabricated clear-sector verdict.
+F9 off and S=0 remain overriding disables. Automatic/manual precedence and
+transition smoothing must be specified before connecting these profiles to
+rendering. No extra profile reader, GPU pass or preview logging is added here.

@@ -649,3 +649,96 @@ additional flight is required before the already queued run 48 B/C.
 
 Local preview and reconstruction results: `verification/results/run48a-lattice-triage/`.
 Flight/environment provenance is in the [motion-output ledger](../verification/motion-output.md).
+
+## 15. Moving-truss replay: quality gains and safety limits (2026-09-20)
+
+**Decision:** neither approach below is a safe production fix or part of the
+candidate. Existing dumps support useful investigation without another flight;
+the remaining work is a renderer design and its failure tests, not a request to
+wait for more captures. All numbers below are host replay measurements **[M]**.
+No renderer edits, Wine, game launch or installation accompanied this work.
+
+**Tracking and reference.** Run177 rotation frames 6392–6423, with frame 6392
+seeding history and the last 16 resolved frames scored. Replay rectangle
+`790 20 1140 335`; material points start in `905 55 1095 165`. Camera-only
+registration drifts from the truss by median 1.644 px over the burst. Fitting and
+composing the recorded routed motion instead gives per-frame median/p99 fit
+errors 0.00105/0.00242 px. Scores use identical material support and AgX + RCAS,
+without bloom. Ordinary replay versus dumped resolve, through those same display
+operators, has mean absolute error 0.168 codes. Registration itself introduces
+sampling error; the RMS is a comparison metric, not perceptual acceptance.
+
+**Approach 1: retain history during coherent camera motion.** Subtract camera
+motion from routed motion, retain the fastest-neighbor gate, and use W=0.97 with
+Keys history parameter −0.65 only in the coherent fragmented region. A new
+0.25–1 px/frame activation ramp preserves the existing stationary/slow path.
+Tracked RMS falls **6.713 → 4.776 codes (28.9%)**, with gradient energy **1.023×**.
+Without the sharper kernel, increased history loses detail; finite 8/16-frame
+raw-history windows also failed to improve quality. This does not reverse the
+prior slow-motion kernel rejection: the new branch is inactive there.
+
+The gain is unsafe without an additional bound. In frame 6401, a synthetic 6×6
+bright stale-history patch at previous coordinate approximately `(950,115)`,
+with real current color/depth/motion, adds **236 codes** at background `(947,123)`;
+the ordinary clipped resolve adds **47**. The existing 2% device-depth tolerance
+rejects no pixel-frame in this replay. A tighter view-depth-relative proof on
+its 2×2 depth footprint reduces the finite-foreground case to 75 codes, but
+sentinel history still fails, and the proof does not cover the 4×4 color footprint.
+Requiring all 4×4 history depths valid and compatible removes that sentinel fault
+but reduces the quality gain to **2.4%**; same-depth contamination remains
+indistinguishable. On unmodified frames, the new branch's eroded-background
+absolute delta has p99/max **0.155/35.98 codes** against ordinary replay.
+
+History classification would need to describe the **accumulated color**, including
+unknown/depthless overlays and taint inherited through every contributing tap.
+Current motion or raw depth alone cannot certify it. Existing reactive masks
+represent composition coverage, not that history classification. A sampled
+constant-motion kernel check also rejects Keys −0.75 at W=0.97 (feedback 1.027);
+−0.65 reaches 0.993, so this 32-frame burst cannot establish long-term ringing.
+
+**Approach 2: explicitly bound the enhancement against an independent ordinary
+history.** Maintain separate ordinary and enhanced recurrences; project enhanced
+HDR feedback toward the ordinary result, then clamp each final displayed RGB
+channel after AgX + RCAS to ordinary ±C. Evaluating an “ordinary” result on the
+enhanced history would invalidate the multi-frame bound.
+
+| final RGB allowance C | tracked RMS codes | reduction | gradient energy / ordinary |
+| --- | ---: | ---: | ---: |
+| ordinary | 6.713 | — | 1.000 |
+| ±2 codes | 6.325 | 5.8% | 0.985 |
+| ±4 codes | 6.025 | 10.2% | 0.979 |
+| ±8 codes | 5.522 | 17.7% | 0.977 |
+
+Each allowance stays within its exact quantized RGB bound in the real-frame
+stale-patch tests, including corruption injected only into enhanced history.
+Each also equals its ordinary replay reference exactly on run177 stationary
+5674–5705 (**10,253,250 RGB values per allowance**) and run159 slow 4789–4820
+(**4,171,050 per allowance**). The run159 comparison uses identical replay options
+for both chains; it does not reconstruct that flight's historical line-filter setup.
+
+A separate **512-frame synthetic stress test**, not an extension of the flight,
+uses a periodic moving lattice, an independently moving depthless bright overlay
+at frames 64–95, and enhanced-only stale history injected at frame 128. All
+quantized bounds hold. Last-cycle differences are 0.115/0.123/0.191 codes for
+C=2/4/8, versus ordinary 0.116; the unbounded sharp-history experiment still
+differs by 34.50. This establishes bounded additional error against ordinary
+TAA, not clean history or absence of ordinary TAA's own ghosts.
+
+**Costs and limits.** RCAS expands the earlier HDR/AgX guard to 5.16/9.54/16.30
+codes on the real burst, so a final post-sharpen clamp is essential. The feedback
+projection currently uses up to 16 AgX segment checks per pixel: an offline
+oracle, not a practical shader patch. Production needs an independent ordinary
+history/display chain (another FP16 history pair alone is **15 MiB at 1280×768**),
+a cheaper feedback guard with remeasured quality, and a bound after the complete
+actual display pipeline. Bloom is untested; metering/exposure feedback must not
+let enhanced output contaminate the ordinary reference indirectly. Shader budget,
+GPU cost, state/Reset/failure recovery and native Windows execution remain open.
+The measured 6–18% improvement is not evidence that the user's crawl is fixed.
+
+Local, untracked evidence and reproduction commands:
+[coherent-motion investigation](/tmp/x3-motion-lattice-replay/verification/results/motion-lattice-replay/REPORT.md)
+and [bounded-display investigation](/tmp/x3-motion-lattice-replay/verification/results/lattice-bounded-rotation/REPORT.md).
+Their JSON records contain tracked metrics, background quantiles, stale-history
+witnesses and exact comparisons; the synthetic record is in the neighboring
+`lattice-bounded-loop/` directory. Replay helpers passed syntax and numerical
+checks during the investigation; this documentation checkpoint adds no code tests.

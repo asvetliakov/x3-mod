@@ -1566,6 +1566,121 @@ outside the descent loop — candidates: the ~187 queries' own set-up (`0x0048a8
 path), the census brackets when on, and JIT or TLB effects of the full game process — and was not reproduced here.
 A sampling profile of the collide phase in flight would settle where the other half goes.
 
+### 14.10 Moving-case audit: the remaining cost is not yet attributed (2026-09-20)
+
+**Correction to the handoff's “at the fixture's per-visit floor” conclusion:** the
+fixture establishes a cost for its synthetic workload, not a floor for the live
+game. Likewise, §14.9's scattered-tree experiment does not establish that the
+flight/fixture difference is *outside* the descent. It rules out that particular
+synthetic layout change as a sufficient explanation. Real tree shape, SAT exit
+mix, process/JIT effects and query setup remain unseparated. The earlier measured
+results and the decision against shipping those experiments are unchanged.
+
+**Fresh evidence [m], read-only:** streamed the preserved
+`/tmp/x3-bottleX3-run163/session-20260919-194339-216.log` and
+`/tmp/x3-bottleX3-run164/session-20260919-194813-216.log`; no game, Wine or build.
+Environment remains bottle X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1` (the run provenance). Both install the SSE2 SAT successfully;
+neither log contains a narrow-census install or window. Run163 has 42 complete
+memo windows: 2,106,400 queries, 713,610 verified answers, zero verify mismatches.
+Run164 has 33: 1,740,545 queries, 658,789 real hits. In **every** window of both,
+`miss_min_value`, `miss_expired`, `clears`, `stuck_busy` are zero. Transform-b
+misses account for 99.73% of the executed miss visits in each complete session
+(310,467,665 / 311,299,738 and 404,978,205 / 406,070,954). This classification is
+the side-index diagnostic of §14.6, not proof that every other key word stayed
+unchanged; eviction and `none_found` are not the expensive majority.
+
+Three consecutive moving windows in run164 (memo row at the preceding frame;
+all 300 frames, all queries eligible):
+
+| End frame | Executed miss visits / frame (mean) | Transform-b visits / window | `collide_p50_us` |
+| --- | --- | --- | --- |
+| 6000 | 105,824.4 | 31,745,805 | 7,325 |
+| 6300 | 108,247.6 | 32,472,759 | 7,278 |
+| 6600 | 112,692.8 | 33,805,749 | 7,654 |
+
+Dividing these medians by these means gives an **indicative**, not paired,
+67–69 ns/visit. It independently reproduces the earlier flight/fixture gap
+without the census, so census instrumentation cannot explain this case.
+The first window has one contact; the other two have none. These memo rows
+do not count triangles on misses, so they alone cannot newly prove that all
+moving misses are leaf-free. The historical census evidence remains §12–14.7.
+At the fixture's 31.4 ns/visit these visit counts cost about 3.3–3.5 ms; the
+remaining roughly 3.9–4.1 ms of whole-collide time is **unattributed**, not a
+promised saving. Removing the entire measured collide phase is a gross upper
+bound (~7.3–7.7 ms), not a feasible optimization claim.
+
+**Existing instrumentation cannot resolve it [s].** The census QPC bracket in
+`collide_narrow_census.cpp` surrounds the accepted object-pair call at
+`0x0045d665` → `0x0048ac80`, including part walking, pose conversion, memo and
+descent. `collide_memo.cpp` has no query timer: lookup returns to its thunk,
+the thunk calls `0x004e29f0`, then store copies outputs. The engine query and
+root descent therefore have no separate timing. The generic sampling profiler
+is blind to engine code under FEX (owning ledger,
+[sampling-profiler.md](../verification/sampling-profiler.md), “Submit phases”);
+the last sentence of §14.9 is not an actionable attribution method there.
+
+**Next diagnostic, not a production accelerator [i]:** an opt-in
+`--collide-query-phases`, requiring the memo, with two nested intervals:
+
+- In the existing memo handlers, start immediately before dispatching a miss
+  or verify query; stop at store entry before copying outputs. This measures
+  the engine-query interval, including thunk dispatch and `0x004e29f0` setup.
+  Hits run no engine-query timer. Keep miss and verify counts separate.
+- Bracket only `0x004e2956` → `0x004e2530`, the sole external descent call.
+  Do not time recursive calls or install a per-node hook. Record the engine's
+  final visits, triangle tests and contacts at the query boundary.
+- Sum both intervals on the **same frames**; compute per-frame
+  `query_non_descent = engine_query - descent` before accumulating p50/p95 and
+  sums over 300 frames. Publish query/descent-call counts, valid and invalid
+  frame counts, query mode, clock failures, reentry/foreign/unwind discards and
+  measured instrumentation self-time/calibration. Never subtract independent
+  p50s. A whole-collide residual also needs the same sampled-frame mask as
+  `loop_phases`, or a same-frame join; unmatched windows do not supply it.
+- Disabled means no clock calls, no additional site claim and no per-node
+  work; an enabled check in existing handlers still has a small fixed cost.
+  Query-time work is bounded, with no allocation, lock wait or log. Measure
+  the added bracket cost in the existing byte-replica fixture, including
+  nested clock overhead inside the outer interval, rather than assuming it
+  cancels. Discard incomplete intervals on owner-thread Present/Reset and
+  bypass foreign or reentered calls without suppressing engine work.
+
+**Hook feasibility, refreshed against the installed image [s]:** the existing
+`verify_collide_memo_site.verify()` passes 33/33 checks. Using that verifier's
+decoder and image-wide reference scans, `0x004e2956` is one complete five-byte
+call to `0x004e2530`; no rel32 branch or abs32 pointer lands in its interior.
+The descent's inbound calls remain exactly `0x004e264c`, `0x004e269f`,
+`0x004e2705`, `0x004e2767`, `0x004e2956`. None of the 149 other current claims
+overlaps the new five-byte site. The original `__cdecl` boundary passes five
+stack words and the caller pops `0x14`; its remainder only restores registers,
+releases locals and returns, so returned flags are dead. Query/descent contain
+no FS-based SEH setup, and the query names no XMM register. The empty x87 stack
+and four-byte incoming stack alignment contract are as §13.1–13.2.
+
+A diagnostic thunk must preserve the original argument layout, EAX result,
+EBX/EBP/ESI/EDI and the original ECX/EDX behavior, plus LastError and CPU floating
+state across the injected clock calls. Preserve XMM state at helper boundaries
+conservatively. Reuse the owner-thread/busy discipline; do not use an unguarded
+global return slot. No local SEH frame does **not** prove a query cannot fault:
+an unwind past the return leaves an incomplete sample that must be discarded,
+not paired with the next query. Site refusal, rollback, disabled behavior,
+register/state parity, nested bypass, Reset and simulated abandoned intervals
+need focused fixture checks before installation. Native Windows remains an
+unverified runtime target; use documented APIs only.
+
+**Real-workload replay availability:** run151/163/164 each contain 48 shader
+bytecode binaries plus a loading-interval binary, not model/BVH snapshots;
+run151 also has render readbacks. The existing collision modules never dump
+node arrays or the literal memo arguments. GPU captures cannot reconstruct
+the engine's exact hierarchy and rounded transform path. A later tree replay
+would require a bounded, owner-thread copy while the query's model is alive,
+owned pointer-remapped nodes/triangles and exact input poses, all local and
+untracked. Node-allocation bounds, copy-failure handling and snapshot lifetime
+are not established here; defer that dump until the two intervals identify
+whether real descent replay is needed. Increasing memo lifetime, weakening
+pose keys, changing collision order, capping or striding tests is not supported
+by these findings.
+
 ## Reproduce
 
 ```sh

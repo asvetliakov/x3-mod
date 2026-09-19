@@ -2386,8 +2386,8 @@ Qualification:
   combined light/submit run passed 17 tests before the added reducer test.
 - `build_light_phase_cpu.py` and `build_game_phase_cpu.py`: x86 cross-compilation
   and linking PASS. Corrected timer object audit: no x87 arithmetic or state
-  mutation; one read-only `FNSTCW`. The linked production audit remains an
-  integration check for the install owner.
+  mutation; one read-only `FNSTCW`. The integrated linked audit passed with
+  579 reachable functions and zero violations; the frozen candidate is audited separately.
 - Owner command:
   `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 /tmp/x3-r7-light-phases/verification/probe/run_light_phase_cpu.py`.
   Final fresh-build run: exit 0, **2,093 checks, zero failures**, command elapsed
