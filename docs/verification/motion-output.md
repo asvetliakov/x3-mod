@@ -1982,3 +1982,45 @@ x 0.19. Constants only, no program changed (`resolve_far` 508 slots). `run_tempo
 numerical / 17 state: ripple ratio 0.154 / 0.192 / 0.577 / 1.000 at 0 / 0.04 / 0.14 / 0.30 px/frame, past HI bit-identical
 to the plain resolve; `test_taa_image_defaults` OK; dry-run forwards `0.985,0,80,130,0.03,0.25`.
 
+
+### Run 47 B (2026-09-19) — session B, per-draw vs lazy RT mode at the busy station view
+
+User runs (busy station, fighter save, ~60 s held each; `/tmp/x3-bottleX3-run{165,166,167}`): run165
+`--motion-rt-mode perdraw --frame-timing` (user ~40 fps), run166 `--motion-rt-mode lazy --frame-timing`
+(user ~38 fps). Reference run147 (no diagnostics): ~50 fps, 20.3 ms, 478-510 draws.
+
+Mode lines confirmed by `grep`: both runs log `rt_mode=perdraw`/`rt_mode=lazy` correctly in
+`motion_output_mode`/`motion_output_device`/`motion_output_frame`, and `--frame-timing` installs the
+state-shadow hooks in both (`state_hooks installed=1 reason=frame_timing state_shadow=1 rs_mode=shadow`,
+165: 101, 166: 98 occurrences of `rs_mode=shadow`). Contrast: run167 (`--profile`, no `--frame-timing`) logs
+`state_hooks installed=0 reason=none rs_mode=get` throughout (156/156 lines) — state hooks are gated on
+`--frame-timing`, not on RT mode.
+
+Draw counts over the session follow the same shape in both runs (dip to ~185-282 draws/frame in the
+`frame=600..2700` windows, back to ~478-512 in the tail), so it is the same scripted view, but the tail
+window's draw count is not identical: 165 settles at 479 draws/frame for windows 2700-6000, 166 climbs to
+511-512 for windows 3600-5700 (vs 477-478 at 3000-3300). Restricting to `frame_timing` windows with
+`draws_p50>=400` (165: 13/20 windows, 166: 11/19) and averaging: `dt_p50_us` 165=23998 vs 166=24705
+(+707 us/frame, i.e. 41.7 vs 40.5 fps in this window — consistent in direction with the user's 40/38 fps),
+`draws_p50` 165=476 vs 166=502 (+26, +5.4%), `draw_p50_us` (frame total, all draw hooks) 165=4490 vs
+166=4016 (-474), `draw_native_p50_us` (frame total, native draw call only) 165=1166 vs 166=1591 (+425),
+`scene_p50_us` 165=2806 vs 166=2962 (+156). Proxy-side per-draw overhead (`draw_p50_us - draw_native_p50_us`)
+fell from 3324 to 2425 us/frame (-899 us), in the direction and rough magnitude of the bench's predicted
+route/set_rt saving. `motion_output_frame` lazy counters in the same steady windows: `set_rt` 1560.6/frame
+(165, perdraw) vs 3.3/frame (166, lazy); `lazy_flushes` 0.0 vs 0.82/frame; `lazy_mask_writes` 0 in both;
+`restore_failures`/`apply_failures` 0 in both runs, whole session (`grep -c` for nonzero `_failures=`: 0 in
+both logs); no `what=lazy_flush` lines (not a log line this build emits) and no nonzero `_errors=` counters.
+
+**No FPS gain despite the set_rt drop**, because the predicted saving is real but smaller than an increase
+elsewhere that this telemetry does not explain: at matched draw counts (165 frame=2700, draws=479,
+draw_native_p50_us=1153 -> 2.41 us/draw; 166 frame=3000, draws=478, draw_native_p50_us=1520 -> 3.18 us/draw)
+the *native* per-draw D3D9 call cost is ~32% higher in lazy mode, and this persists across the whole tail
+(166 windows at draws=511-512 hold ~3.2 us/draw native cost). Since `route_set_rt` sits inside
+`route_draw`/`route_lazy_flush`, not inside the native draw span, this rise in `draw_native_us` is not
+route bookkeeping by the field definitions in `docs/verification/telemetry.md`; it is unexplained by the
+counters gathered here. The two runs are also not perfectly comparable: the tail-window draw count differs
+by ~5-7% between them (511-512 vs 479), which is at most a partial explanation (native cost per draw rose
+more than draw count did). **Open**: this run does not settle why lazy's native draw cost rose; a same-session
+A/B (toggle RT mode mid-run, same camera script, matched draw count) with `--frame-timing` on both halves
+would isolate whether it is scene variance or a real lazy-mode cost, which the telemetry summarized here
+cannot distinguish.
