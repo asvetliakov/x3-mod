@@ -62,6 +62,14 @@ struct FrameInputs {
     // image, so the weighted domain is the display-relative luminance. Finite,
     // 0 <= k <= 65504; run refuses anything else.
     float luminance_k = 0.f;
+    // A of the filtered current sample (resolve.h, c22.y; resolve_filter.hlsl):
+    // 0 (the default) binds the plain resolve program and the run is
+    // bit-identical to a run without the field; in (0, 4] the pass binds the
+    // filtered variant, whose blend takes the exp(-A d^2) average of the 3x3
+    // current samples instead of the point sample (the clip box is unchanged).
+    // Requires a pass initialised with the filtered program; anything else,
+    // or a value outside [0, 4], refuses the run.
+    float current_filter = 0.f;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
     // (the default) draws nothing and the run is bit-identical to a run
@@ -155,7 +163,15 @@ public:
     // binds the embedded vs_3_0 pass-through (quad_vertex_program.h) and its
     // declaration, both created here and surviving Reset.
     HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* decoder, const DWORD* resolve,
-                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr, const DWORD* copy = nullptr) noexcept;
+                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr, const DWORD* copy = nullptr,
+                       const DWORD* resolve_filtered = nullptr) noexcept;
+    // `resolve_filtered` (ps_3_0 bytecode of src/temporal/resolve_filter.hlsl)
+    // may be null; FrameInputs::current_filter > 0 is then refused. A device
+    // that refuses the program at creation does not fail initialize: the
+    // filter is unavailable and current_filter_result() holds the HRESULT
+    // (S_FALSE when no program was supplied).
+    bool current_filter_available() const noexcept { return resolve_filtered_ != nullptr; }
+    HRESULT current_filter_result() const noexcept { return resolve_filtered_result_; }
     // How an 8-bit color_surface input reaches the FP16 scratch and how the
     // resolved history reaches it again: false (default) by format-converting
     // StretchRect both ways (the caller copies back); true by a same-format
@@ -196,7 +212,8 @@ private:
     // after every run instead of being created per frame. Default-pool-like:
     // released before Reset and re-created lazily afterwards.
     IDirect3DStateBlock9* block_ = nullptr;
-    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
+    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *resolve_filtered_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
+    HRESULT resolve_filtered_result_ = S_FALSE;
     IDirect3DVertexShader9* quad_vs_ = nullptr;          // vs_3_0 pass-through of every quad (survives Reset)
     IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
     IDirect3DTexture9* colors_[2]{};

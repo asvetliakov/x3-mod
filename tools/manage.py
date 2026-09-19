@@ -233,7 +233,8 @@ def main():
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
                         help='DLL to install (defaults to build/d3d9.dll; other actions do not use it)')
     parser.add_argument('--capture-start', type=int, default=120)
-    parser.add_argument('--capture-frames', type=int, choices=range(0, 9), default=1)
+    parser.add_argument('--capture-frames', type=int, choices=range(0, 65), metavar='0..64', default=1,
+                        help='Consecutive capture frames (X3M_CAPTURE_FRAMES). Above 8 is meant for the raw --taa-debug dumps (32 frames separate the 8-frame jitter ripple from slower crawl): about 40 MB per frame at 1280x768 on the HDR route (hdr + taa rgba16f 7.9 MB each, motion rgba32f 15.7 MB, depth 3.9 MB or 15.7 MB on the sun lane, present bgra8 3.9 MB), so 1.3-1.7 GB for 32 frames')
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
     parser.add_argument('--d3dx', choices=['native', 'builtin'], default='native', help="Which d3dx9_37.dll serves the game child, for the busy-frame experiment in "
@@ -300,6 +301,8 @@ def main():
     parser.add_argument('--taa-k', type=float, default=None, help='Fixed k of the resolve luminance weighting on the FP16 scene, 0 = unweighted (X3M_TAA_K; requires --taa and --hdr; default: derived from the write-back exposure)')
     parser.add_argument('--taa-mip-bias', type=float, default=None, help='D3DSAMP_MIPMAPLODBIAS applied to the mip-mapped sampler stages of routed material draws while the TAA jitter is on, restored before every other draw (X3M_TAA_MIP_BIAS; requires --taa; 0 = off; the value for the 4-sample jitter; default -0.5 with --taa; 0 disables)')
     parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; default 0.75 with --taa; 0 disables, leaving the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
+    parser.add_argument('--taa-current-filter', type=float, default=None, metavar='A', help='Filtered current sample of the TAA resolve, 0..4 (X3M_TAA_CURRENT_FILTER; requires --taa): the current colour that enters the history blend becomes the exp(-A d^2) average of the 3x3 current samples (d in pixels from the pixel centre to each jittered sample position) instead of the point sample; the neighbourhood clip is unchanged. Default 0 = off, the unchanged resolve program; 1.0 is the modelled optimum, 2.29 the sharper setting (docs/verification/motion-output.md, "Run 139")')
+    parser.add_argument('--taa-history-weight', type=float, default=None, metavar='W', help='History weight of the TAA resolve, 0.5..0.98 (X3M_TAA_HISTORY_WEIGHT; requires --taa): the fraction of the accepted history kept per frame. Default absent = 0.9; 0.95 halves the per-frame ripple and doubles the convergence time and the life of clamp-bounded ghost trails')
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
@@ -491,6 +494,15 @@ def main():
         parser.error('--taa-sharpen requires --taa.')
     if args.taa_sharpen is not None and not 0.0 <= args.taa_sharpen <= 1.0:
         parser.error('--taa-sharpen must be within [0, 1].')
+    # `not lo <= v <= hi` also rejects NaN.
+    if args.taa_current_filter is not None and not args.taa:
+        parser.error('--taa-current-filter requires --taa.')
+    if args.taa_current_filter is not None and not 0.0 <= args.taa_current_filter <= 4.0:
+        parser.error('--taa-current-filter must be within [0, 4].')
+    if args.taa_history_weight is not None and not args.taa:
+        parser.error('--taa-history-weight requires --taa.')
+    if args.taa_history_weight is not None and not 0.5 <= args.taa_history_weight <= 0.98:
+        parser.error('--taa-history-weight must be within [0.5, 0.98].')
     if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
         parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
@@ -779,7 +791,7 @@ def main():
         parser.error('--gz-buffer-kb must be between 1 and 65536.')
     if args.taa:
         args.motion_jitter = True
-    if args.motion_capture and args.capture_frames < 2:
+    if args.motion_capture and not 2 <= args.capture_frames <= 8:
         parser.error('--motion-capture requires --capture-frames between 2 and 8 for adjacent-frame correspondence.')
     game = args.game_dir.resolve()
     dll = game / 'd3d9.dll'
@@ -868,6 +880,13 @@ def main():
         else:
             env.pop('X3M_TAA_MIP_BIAS', None)
             env.pop('X3M_TAA_SHARPEN', None)
+        # The two resolve A/B options are forwarded only when given: a stale
+        # shell value can neither enable the filter nor change the weight.
+        for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight)):
+            if value is not None:
+                env[name] = repr(value)
+            else:
+                env.pop(name, None)
         env['X3M_TAA_SENTINEL'] = args.taa_sentinel
         env['X3M_CAMERA_CUT_DEG'] = repr(args.camera_cut_deg)
         env['X3M_CAMERA_LOG'] = str(args.camera_log)

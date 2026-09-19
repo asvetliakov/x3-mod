@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
-Fourteen authored programs are embedded (the four of the ambient occlusion
+Fifteen authored programs are embedded (the four of the ambient occlusion
 chain, src/temporal/ao_*_ps.hlsl -> src/renderer/ambient_occlusion_*_program_inc.h,
 are listed in SHADERS only): the motion fragment
 (src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h),
 the current-depth fragment
 (src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h),
 the temporal resolve the live route runs (temporal step 3;
-src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h),
+src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h; its
+filtered-current-sample variant src/temporal/resolve_filter.hlsl ->
+src/renderer/temporal_resolve_filter_program_inc.h),
 the HDR scene path's stage-1 identity write-back (src/temporal/hdr_writeback_ps.hlsl
 -> src/renderer/hdr_writeback_program_inc.h) and its stage-2 AgX tonemap
 (src/temporal/agx.hlsl -> src/renderer/hdr_tonemap_program_inc.h) and exposure
@@ -54,6 +56,11 @@ SHADERS = {
     'temporal_resolve': dict(source=ROOT / 'src/temporal/resolve.hlsl',
                              header=ROOT / 'src/renderer/temporal_resolve_program_inc.h',
                              provenance=ROOT / 'verification/results/temporal-resolve-program.json'),
+    # The same resolve with the filtered current sample (X3M_TAA_CURRENT_FILTER):
+    # a #define plus an include of resolve.hlsl, bound only when A > 0.
+    'temporal_resolve_filter': dict(source=ROOT / 'src/temporal/resolve_filter.hlsl',
+                                    header=ROOT / 'src/renderer/temporal_resolve_filter_program_inc.h',
+                                    provenance=ROOT / 'verification/results/temporal-resolve-filter-program.json'),
     'hdr_writeback': dict(source=ROOT / 'src/temporal/hdr_writeback_ps.hlsl',
                           header=ROOT / 'src/renderer/hdr_writeback_program_inc.h',
                           provenance=ROOT / 'verification/results/hdr-writeback-program.json'),

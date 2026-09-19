@@ -1524,3 +1524,74 @@ spectrum separates 8-frame ripple from slow lattice crawl. A second capture
 with `--taa-sharpen 0` bounds mechanism 3. If (i) agrees with the model,
 implement 1a behind a default-off option, verified by the temporal-pass fixture
 with a 1-px lattice case.
+
+**5. Implementation of 1a and 1b (default off, for one A/B flight).** Not flown;
+the model is still unvalidated against a resolved frame.
+- `--taa-current-filter A` (`X3M_TAA_CURRENT_FILTER`, 0..4, absent/0 = off) and
+  `--taa-history-weight W` (`X3M_TAA_HISTORY_WEIGHT`, 0.5..0.98, absent = 0.9);
+  both require `--taa`, are forwarded only when given (a stale shell value is
+  dropped) and are logged on `motion_output_mode` (`taa_current_filter`,
+  `taa_history_weight`), `motion_output_taa` (`current_filter`,
+  `history_weight`) and every `motion_output_frame` (`taa_filter`,
+  `taa_weight`).
+- Filter definition (the model's): the blend's current colour is
+  sum(g c) / sum(g) over the finite 3x3 samples in the luminance-weighted
+  domain, g = exp(-A d^2), d in pixels from the pixel centre to the neighbour's
+  jittered sample position, (n - jitter) with the jitter in raster pixels (the
+  sample at p shows content at p - jitter). Clip box, variance and luminance
+  weighting unchanged; no extra fetches. A rides in c22.y, W in the existing
+  c5.z; no per-frame allocation, no extra constant upload.
+- Off path: a `#ifdef` in `resolve.hlsl` plus the wrapper
+  `src/temporal/resolve_filter.hlsl`, so the plain program is byte-identical
+  (bytecode sha256 `2bfba715...9b09c8`, 1891 words, as before; the embedded
+  header is unchanged) and is the one bound whenever A = 0. The filtered
+  variant (`temporal_resolve_filter_program_inc.h`, 1939 words, sha256
+  `0f283235...60abb9`) is created only when A > 0.
+- Instruction budget (D3DXDisassembleShader): plain 507 slots, filtered **521**
+  (26 texture + 495 arithmetic; +14, 7 of them in the rolled 3x3 loop), against
+  the 512 this backend advertises and every ps_3_0 device guarantees. This
+  backend creates and runs it regardless. A native driver whose
+  `MaxPixelShader30InstructionSlots` is 512 would refuse it: `TemporalPass`
+  treats a failed creation of the optional program as "filter unavailable"
+  (`current_filter_available()`, `current_filter_result()`), and the route logs
+  `motion_output_taa_current_filter unavailable=1` and runs the plain resolve.
+  Fitting 512 needs 9 of the 14 slots back; CPU-side separable weights would
+  save an estimated 5 (not tried), so this is open.
+- Fixture (`run_temporal_pass.py`, mode `lattice`,
+  `verification/results/bottle-X3/temporal-lattice.txt`, summary key `lattice`):
+  static 1-px lines at pitch 4 px (x = 4.31 + 4i), 8-sample Halton jitter, 128
+  frames, flicker = mean half second difference over the last period, 32x32
+  FP16. 28 numerical / 9 state checks; the existing run is unchanged at 508 /
+  278 / 386 samples.
+
+| config | flicker (codes of 255) | ratio | run-139 model |
+|---|---|---|---|
+| baseline = off (bit-identical over all 128 frames) | 2.75 | 1 | 1.61 |
+| A = 1.0 | 1.64 | 0.594 | 0.52 |
+| W = 0.95 | 1.32 | 0.481 | 0.62 |
+| A = 1.0, W = 0.95 | 0.81 | 0.295 | - |
+| A = 2.29 | 1.84 | 0.670 | 0.65 |
+| A = 2.29, W = 0.95 | 0.89 | 0.324 | 0.47 |
+| k = 2.4276: A = 1.0 / W = 0.95 | 0.99 / 1.26 of 2.62 | 0.380 / 0.481 | - |
+
+  Asserted within 0.15 of the modelled ratio (A = 1.0, W = 0.95, A = 2.29 with
+  W = 0.95). The filter's ratio depends on the line pitch (CPU model: 0.14 /
+  0.35 / 0.60 at pitch 2 / 3 / 4), so the flight, not this scene, validates the
+  0.52; W's 0.48 is the pure (1 - w) law, the model's 0.62 includes the clamp
+  share that W does not scale. Shader against the CPU definition of the filter:
+  max error 0.0024 (W 0.9) and 0.0049 (W 0.95), bound 0.0003 / (1 - w) (FP16
+  rounding). Flat regions against the baseline: 0.0005 max (bound 1/255).
+  Moving 6x6 square at 1 px/frame: pixels with no square pixel in their 3x3
+  stay the background within 0.0001; in the square's rows, at columns wholly
+  outside its jittered extent, the colour added over the baseline is 0.009
+  (A = 1.0), 0 (W = 0.95), 0.004 (both) against the stated bound
+  (1 - w) 0.75 F + (w - 0.9) 0.75 + 1/255 = 0.036 / 0.041 / 0.058, F = 0.43 the
+  largest side-column share of the kernel. The filter also softens every edge
+  by its own footprint (a background pixel beside a bright edge takes up to
+  0.43 of the contrast in one frame, about 0.2 on the phase average).
+- `--taa-debug` dumps per capture frame: `hdr_1_<f>.rgba16f` and
+  `taa_1_<f>.rgba16f` (resolved history) 7.9 MB each, `present_1_<f>.bgra8`
+  3.9 MB, `motion` 15.7 MB, `depth` 3.9 MB (15.7 MB on the sun lane) at
+  1280x768: about 40 MB per frame (51 MB sun lane), raw. `--capture-frames`
+  was capped at 8 in the launcher and the DLL; both now accept 0..64
+  (`--motion-capture` keeps 2..8), so `--capture-frames 32` is 1.3-1.7 GB.

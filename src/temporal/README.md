@@ -187,7 +187,20 @@ Per output pixel `p` (unjittered grid), in this order:
    pixel with one bright neighbor by about 0.013 of coverage; 1.0 dims thin
    lines visibly, larger values readmit clamp-bounded ghosting.
 
-Weight `c5.z` (route default 0.9): 0.85–0.95 is the sensible range; the
+Filtered current sample (`resolve_filter.hlsl` = `resolve.hlsl` compiled with
+`X3M_CURRENT_FILTER`; `c22.y` = A in (0, 4], `X3M_TAA_CURRENT_FILTER`): the
+`current` of that blend is the normalised exp(-A·d²) average of the finite
+weighted 3×3 samples the clip already fetched, d in pixels from the pixel
+centre to each neighbour's jittered sample position (neighbour offset minus
+the current jitter). The clip statistics stay those of the unfiltered samples.
+`TemporalPass` binds this variant only when A > 0 (the plain program's
+bytecode is unchanged); it needs 521 instruction slots against the plain 507
+and the 512 every ps_3_0 device guarantees, so a device may refuse it at
+creation, which the pass reports as "filter unavailable" and the route answers
+by running the plain resolve
+([ledger](../../docs/verification/motion-output.md), "Run 139").
+
+Weight `c5.z` (route default 0.9, `X3M_TAA_HISTORY_WEIGHT` 0.5–0.98): 0.85–0.95 is the sensible range; the
 per-phase ripple of a toggling edge sample is (1-w)·contrast, convergence
 takes about 2/(1-w) frames, and a larger weight holds clamp-bounded ghosts
 longer. Cost per pixel: 10 current color, 9 current depth, 1 motion, 4 history

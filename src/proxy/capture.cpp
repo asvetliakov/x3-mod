@@ -95,6 +95,8 @@ float taa_mip_bias = 0.f;
 // temporal-integration.md, "Post-resolve sharpen"); an explicit 0 is off, with
 // bit-identical output. Off entirely without TAA.
 float taa_sharpen = 0.f;
+float taa_current_filter = 0.f;  // X3M_TAA_CURRENT_FILTER (0..4; 0 off)
+float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
 // path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
 // defaulting to the stage-1 identity behaviour: X3M_HDR_TONEMAP=agx|identity,
@@ -2168,6 +2170,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_k(taa_k_override);
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
+    hooked.motion_output.configure_taa_resolve(taa_current_filter,taa_history_weight);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
@@ -2539,7 +2542,9 @@ void initialize_log(HMODULE module) {
     wchar_t setting[32]{};
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
-    if(capture_count>8) capture_count=8;
+    // 64: a plain frame counter (ctx.remaining); above 8 serves the raw TAA
+    // debug dumps (about 40 MB per 1280x768 frame), see tools/manage.py.
+    if(capture_count>64) capture_count=64;
     // X3M_FRAME_END_STRIDE (1..100000, default 300): frames between frame_end
     // lines. Out of range or malformed keeps the default; the line is written
     // only when the stride is not the default, so a default run is unchanged.
@@ -2589,6 +2594,13 @@ void initialize_log(HMODULE module) {
     // Unset or invalid with the resolve on: 0.75; off entirely without TAA.
     taa_sharpen=taa_requested?0.75f:0.f;
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_SHARPEN",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_sharpen=v;}
+    // X3M_TAA_CURRENT_FILTER=<A> (0 <= A <= 4; 0 or unset: off) and
+    // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's
+    // filtered current sample and history weight (docs/verification/
+    // motion-output.md, "Run 139"). The whole string must parse; an invalid
+    // value keeps the default.
+    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_CURRENT_FILTER",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=4.f)taa_current_filter=v;}
+    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
@@ -2901,9 +2913,9 @@ void initialize_log(HMODULE module) {
     }
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_current_filter=%.3f taa_history_weight=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen);
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_current_filter),double(taa_history_weight));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present

@@ -831,6 +831,10 @@ public:
     // route the write-back's sharpened program draws it (configure_hdr's
     // HdrConfig::sharpen carries the same value to the pass).
     void configure_taa_sharpen(float sharpness) noexcept { taa_sharpen_ = sharpness; }
+    // X3M_TAA_CURRENT_FILTER (A of the resolve's filtered current sample, 0
+    // off) and X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.9); both validated by
+    // the caller and read at the pass's initialisation / every resolve.
+    void configure_taa_resolve(float current_filter, float history_weight) noexcept { taa_current_filter_ = current_filter; taa_history_weight_ = history_weight; }
     // Ambient occlusion (X3M_AMBIENT_OCCLUSION=1; requires the route and the
     // resolve): the half-resolution GTAO chain multiplies the owning scene
     // target at the scene-end hook, before the resolve. `radius_metres` is the
@@ -1917,6 +1921,8 @@ private:
     float hdr_taa_k_ = 0.f;
     float taa_k_override_ = -1.f;             // X3M_TAA_K (negative: derived)
     float taa_sharpen_ = 0.f;                 // X3M_TAA_SHARPEN (0: off)
+    float taa_current_filter_ = 0.f;          // X3M_TAA_CURRENT_FILTER (0: off, the plain resolve program)
+    float taa_history_weight_ = .9f;          // X3M_TAA_HISTORY_WEIGHT
     // 8-bit route: failed sharpened draws (the pass kept the resolve, the
     // copy-back presented it); at the limit the sharpen is no longer requested.
     unsigned taa_sharpen_failures_ = 0;

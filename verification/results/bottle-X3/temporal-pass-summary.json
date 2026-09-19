@@ -1,17 +1,18 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "faf72ae8afb0d9f516f30c86bdb57777416379fc498122df6709f3daf420e948",
-    "src/renderer/temporal_pass.cpp": "894df435c96374d83313953704eaaafbd911f242b750ec855141cc214f406f23",
-    "src/temporal/resolve.h": "68f4b7a9e727c617cf76b75e1a669d90d8254e991f9d833cb12353f6432cec02",
-    "src/temporal/resolve.hlsl": "d3b7a1ea3b0082a39d6c410a3bc47587d1537c7f62f827959a51bcf88e341594",
+    "src/renderer/temporal_pass.h": "d15430708baf8fb5d914be6ba61afcf5e831b81f2a061af470d61cf4ad2f2902",
+    "src/renderer/temporal_pass.cpp": "ecbb697491a68c4d8a196680538702182859ffc1d78ccbaed7a3a5352fb4d52e",
+    "src/temporal/resolve.h": "7efba9840d54087084994c3545233ee9d9eaad77073ea5f749dae5f612931f64",
+    "src/temporal/resolve.hlsl": "4f56d378881a7ed7627830119a7ca8167c9cf4b41b9110762695b633feef1150",
+    "src/temporal/resolve_filter.hlsl": "65aedd02762660c77ff6af3530c429edb580ea3ccb52416cd303974ce86d51f6",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "479ff61c76299f421fab6658c726f6d9a11135ab1511b85cd6712d3ef8c094be",
+    "verification/probe/temporal_pass_fixture.cpp": "bfead4eed7bd7ddeb7029e68e3338ca8ab5c879ece74dedfdb3ae5f59bba4452",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "40deeb92678a6845936a24bb861921216666133f52b419884b102bcbe5f0866b"
+    "verification/probe/run_temporal_pass.py": "e88780805aae9e578eba02b64e9836770118e4f855481ed6da5810a35bba2970"
   },
   "game_launched": false,
   "bottle": {
@@ -24,7 +25,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "e8c5e49db3573dfa6d8f90d6569121462a849683511459097b0c189143307380",
+  "executable_sha256": "9e2e047a81b02540b21b81da316d06905275ce05748974992bde77a153641ac0",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -33,12 +34,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-ab4a1b9c35a6ddcb6/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-ab4a1b9c35a6ddcb6/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ec2f585ad680ead/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-ab4a1b9c35a6ddcb6/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-ab4a1b9c35a6ddcb6/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-ab4a1b9c35a6ddcb6/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
@@ -253,6 +254,193 @@
         "gradient_energy_ratio": 1.1466480119866698,
         "mtf50_ratio": 1.1371912562013426,
         "rise_ratio": 0.8204988822172239
+      }
+    }
+  },
+  "lattice": {
+    "report": "temporal-lattice.txt",
+    "report_sha256": "3774feb7f029f1d233c6425afdbf369ec4d701a276141520e283c8b4adb76620",
+    "exit_code": 0,
+    "budget": {
+      "current_filter": {
+        "dwords": 1939.0,
+        "instruction_slots": 521.0,
+        "device_limit": 512.0,
+        "headroom": -9.0,
+        "within_guaranteed_512": 0.0
+      },
+      "plain": {
+        "dwords": 1891.0,
+        "instruction_slots": 507.0,
+        "device_limit": 512.0,
+        "headroom": 5.0,
+        "within_guaranteed_512": 1.0
+      }
+    },
+    "ripple": {
+      "baseline": {
+        "filter": 0.0,
+        "weight": 0.9,
+        "k": 0.0,
+        "raw_flicker": 0.2,
+        "flicker": 0.010791,
+        "peak": 0.040527,
+        "codes_mean": 2.752,
+        "ratio": 1.0
+      },
+      "off": {
+        "filter": 0.0,
+        "weight": 0.9,
+        "k": 0.0,
+        "raw_flicker": 0.2,
+        "flicker": 0.010791,
+        "peak": 0.040527,
+        "codes_mean": 2.752,
+        "ratio": 1.0
+      },
+      "filter-1.0": {
+        "filter": 1.0,
+        "weight": 0.9,
+        "k": 0.0,
+        "raw_flicker": 0.2,
+        "flicker": 0.006415,
+        "peak": 0.022461,
+        "codes_mean": 1.636,
+        "ratio": 0.5945
+      },
+      "weight-0.95": {
+        "filter": 0.0,
+        "weight": 0.95,
+        "k": 0.0,
+        "raw_flicker": 0.2,
+        "flicker": 0.005192,
+        "peak": 0.019531,
+        "codes_mean": 1.324,
+        "ratio": 0.4811
+      },
+      "both-1.0": {
+        "filter": 1.0,
+        "weight": 0.95,
+        "k": 0.0,
+        "raw_flicker": 0.2,
+        "flicker": 0.003186,
+        "peak": 0.011841,
+        "codes_mean": 0.812,
+        "ratio": 0.2952
+      },
+      "filter-2.29": {
+        "filter": 2.29,
+        "weight": 0.9,
+        "k": 0.0,
+        "raw_flicker": 0.2,
+        "flicker": 0.007227,
+        "peak": 0.019531,
+        "codes_mean": 1.843,
+        "ratio": 0.6697
+      },
+      "both-2.29": {
+        "filter": 2.29,
+        "weight": 0.95,
+        "k": 0.0,
+        "raw_flicker": 0.2,
+        "flicker": 0.003495,
+        "peak": 0.009766,
+        "codes_mean": 0.891,
+        "ratio": 0.3239
+      },
+      "k-baseline": {
+        "filter": 0.0,
+        "weight": 0.9,
+        "k": 2.4276,
+        "raw_flicker": 0.2,
+        "flicker": 0.010254,
+        "peak": 0.051514,
+        "codes_mean": 2.615,
+        "ratio": 1.0
+      },
+      "k-filter-1.0": {
+        "filter": 1.0,
+        "weight": 0.9,
+        "k": 2.4276,
+        "raw_flicker": 0.2,
+        "flicker": 0.003892,
+        "peak": 0.010742,
+        "codes_mean": 0.992,
+        "ratio": 0.3796
+      },
+      "k-weight-0.95": {
+        "filter": 0.0,
+        "weight": 0.95,
+        "k": 2.4276,
+        "raw_flicker": 0.2,
+        "flicker": 0.004932,
+        "peak": 0.024902,
+        "codes_mean": 1.258,
+        "ratio": 0.481
+      }
+    },
+    "oracle": {
+      "baseline": {
+        "error": 0.002441
+      },
+      "filter-1.0": {
+        "error": 0.002441
+      },
+      "weight-0.95": {
+        "error": 0.004883
+      },
+      "both-1.0": {
+        "error": 0.004883
+      },
+      "filter-2.29": {
+        "error": 0.002441
+      }
+    },
+    "flat": {
+      "filter-1.0": {
+        "max_difference": 0.000488
+      },
+      "weight-0.95": {
+        "max_difference": 0.0
+      },
+      "both-1.0": {
+        "max_difference": 0.000488
+      },
+      "filter-2.29": {
+        "max_difference": 0.000488
+      },
+      "both-2.29": {
+        "max_difference": 0.0
+      }
+    },
+    "moving": {
+      "moving-baseline": {
+        "ghost_far": 0.0,
+        "added_outside_square": 0.0,
+        "bound": 0.003922,
+        "kernel_side_share": 0.0,
+        "moving_interior_min": 1.0
+      },
+      "moving-filter-1.0": {
+        "ghost_far": 0.000122,
+        "added_outside_square": 0.009033,
+        "bound": 0.036432,
+        "kernel_side_share": 0.4335,
+        "moving_interior_min": 0.9995
+      },
+      "moving-weight-0.95": {
+        "ghost_far": 0.0,
+        "added_outside_square": 0.0,
+        "bound": 0.041422,
+        "kernel_side_share": 0.0,
+        "moving_interior_min": 1.0
+      },
+      "moving-both-1.0": {
+        "ghost_far": 0.000122,
+        "added_outside_square": 0.004395,
+        "bound": 0.057677,
+        "kernel_side_share": 0.4335,
+        "moving_interior_min": 0.9995
       }
     }
   }

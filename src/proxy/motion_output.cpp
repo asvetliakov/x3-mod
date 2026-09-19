@@ -1469,10 +1469,16 @@ bool MotionOutput::ensure_taa() noexcept {
     // whichever mode the device decided (taa_copy in motion_output_device).
     taa_call([&] { hr = taa_->initialize(device_, nullptr, reinterpret_cast<const DWORD*>(renderer::temporal_resolve_program()), native_,
                                          taa_sharpen_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::taa_sharpen_program()) : nullptr,
-                                         reinterpret_cast<const DWORD*>(renderer::hdr_writeback_program())); });
+                                         reinterpret_cast<const DWORD*>(renderer::hdr_writeback_program()),
+                                         taa_current_filter_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::temporal_resolve_filter_program()) : nullptr); });
     if (SUCCEEDED(hr)) taa_->configure_copy(taa_copy_draw_);
+    // A device that refuses the filtered program keeps the plain resolve.
+    if (SUCCEEDED(hr) && taa_current_filter_ > 0.f && !taa_->current_filter_available()) {
+        log("motion_output_taa_current_filter device=%llu unavailable=1 create=%08lx requested=%.3f", id_, taa_->current_filter_result(), double(taa_current_filter_));
+        taa_current_filter_ = 0.f;
+    }
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f copy=%s", id_, hr, taa_references_, double(taa_sharpen_), taa_copy_draw_ ? "draw" : "stretch");
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch");
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1507,6 +1513,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // its history into the main target in place of the copy-back
             // below (the HDR route sharpens in the write-back instead).
             in.sharpen = hdr_scene || taa_sharpen_failures_ >= sharpen_failure_limit ? 0.f : taa_sharpen_;
+            // X3M_TAA_CURRENT_FILTER / X3M_TAA_HISTORY_WEIGHT (both routes;
+            // unset: 0 and 0.9, the pass's defaults, bit for bit).
+            in.current_filter = taa_current_filter_; in.weight = taa_history_weight_;
             in.current_depth = depth; in.motion = motion;
             in.width = main_.width; in.height = main_.height;
             in.epoch = generation_; // Dimension changes are compared by the pass itself.
@@ -6496,7 +6505,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 fade_route_threshold_, unsigned(cutout_caps_), static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused));
         }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
-        log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
+        log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u taa_filter=%.3f taa_weight=%.3f scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
             " state_shadow=%u rs_mode=%s rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu rs_invalidations=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
@@ -6513,7 +6522,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
             static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
             counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
-            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
+            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened, double(taa_current_filter_), double(taa_history_weight_), scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
             counters_.camera_scene_valid, counters_.camera_background_valid, static_cast<unsigned long>(counters_.camera_reads),
             static_cast<unsigned long>(counters_.taa.camera_policy), static_cast<unsigned long>(counters_.taa.camera_reason),
             counters_.taa.camera_cut, counters_.taa.camera_rotation_deg,
