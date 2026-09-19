@@ -47,11 +47,15 @@ int main() {
     check(n7 == n7_stub_length, "n7 length");
     for (unsigned i = 0; i < n7; ++i) std::printf("%02x", a[i]);
     std::printf("\n");
+    const unsigned n8 = encode_n8_stub(0x10000400, 0x20000018, 0x004e2195, a);
+    check(n8 == n8_stub_length && !std::memcmp(a + 6, n8_window, 5), "n8 length; the stub re-executes the three displaced instructions");
+    for (unsigned i = 0; i < n8; ++i) std::printf("%02x", a[i]);
+    std::printf("\n");
     unsigned char w[n7_window_length]; n7_expected(n7_hits_va, n7_mode_va, w);
     check(!std::memcmp(w, n7_window, n7_window_length), "n7 window with the engine operands is the pinned window");
     n7_expected(0x11223344, 0x55667788, w);
     check(w[0] == 0xa1 && w[1] == 0x44 && w[4] == 0x11 && w[10] == 0x88 && w[13] == 0x55 && w[14] == 0x00 && w[5] == 0x83, "n7 window operands");
-    check(n5_site_va + call_length == n5_return_va && n7_site_va + call_length == n7_next_va && n5_callee[n5_callee_rel32 - 1] == 0xe8, "address relations");
+    check(n5_site_va + call_length == n5_return_va && n7_site_va + call_length == n7_next_va && n8_site_va + call_length == n8_next_va && n5_callee[n5_callee_rel32 - 1] == 0xe8, "address relations");
 
     // Key, hashes and the comparison.
     static unsigned char object[0x100], physics[0x200];
@@ -97,11 +101,12 @@ int main() {
 
 WINDOW_LINE = ('collide_narrow frame=5399 frames=300 accepted_p50=7 accepted_max=9 accepted_sum=2100 mesh_pairs_p50=40 mesh_pairs_max=55 mesh_pairs_sum=12000 '
                'node_pairs_p50=61000 node_pairs_max=70000 node_pairs_sum=18300000 narrow_us_p50=21000 narrow_us_max=24000 narrow_us_sum=6300000 '
+               'tri_tests_p50=1200 tri_tests_max=1900 tri_tests_sum=380000 '
                'recorded_sum=2100 with_previous_sum=2093 unchanged_sum=1800 memo_would_hit_sum=1794 memo_would_hit_permille=854 memo_visits_sum=18000000 memo_visits_permille=983 '
                'memo_unsafe_sum=0 memo_visits_differ_sum=0 changed_pos_sum=293 changed_xform_sum=120 changed_saved_sum=293 ring_overflow=0 dropped=0 deferred=0 nested=0 foreign=0 cross_thread_frames=0')
 PAIR_LINE = ('collide_narrow_pair device=1 frame=5400 rank=0 of=7 a=0x0a1b2c30 b=0x0a1b4d10 class_a=5 class_b=7 subtype_a=12 subtype_b=301 model_a=4411 model_b=-1 '
              'radius_a=250000 radius_b=1200 flags40_a=0x00000001 flags44_a=0x00000003 flags40_b=0x01000000 flags44_b=0x00000001 node_flags_a=0x01000000 node_flags_b=0x01000000 '
-             'pos_a=-1000,20,30 pos_b=500,-2147483648,30 d_max=2147483628 r_sum=251200 visits=60123 mesh_pairs=38 us=20950 result=0 contact=0 '
+             'pos_a=-1000,20,30 pos_b=500,-2147483648,30 d_max=2147483628 r_sum=251200 visits=60123 mesh_pairs=38 tri_tests=412 us=20950 result=0 contact=0 '
              'previous=1 same_pos=1 same_xform=1 same_saved=1 unchanged=1 memo_hit=1 memo_unsafe=0 visits_differ=0')
 
 
@@ -112,7 +117,7 @@ def load_manage():
     return module
 
 
-def patched_checks(data, changes, claims=None):
+def patched_checks(data, changes, claims=None, sat=None):
     """The narrow checks on a copy of the installed image with bytes changed at the given VAs."""
     image = bytearray(data)
     for va, raw in changes:
@@ -124,7 +129,7 @@ def patched_checks(data, changes, claims=None):
         narrow = probe.narrow_inputs(f.name)
         if claims is not None:
             narrow['claims'] = claims
-        return probe.inspect(bytes(image), probe.decode(f.name), probe.CORE.read_text(), probe.other_claims(), narrow)
+        return probe.inspect(bytes(image), probe.decode(f.name), probe.CORE.read_text(), probe.other_claims(), narrow, sat)
 
 
 class NarrowSites(unittest.TestCase):
@@ -132,9 +137,9 @@ class NarrowSites(unittest.TestCase):
     def test_installed_executable(self):
         report = probe.verify()
         self.assertEqual(report['result'], 'PASS', report)
-        self.assertEqual(report['narrow_sites'], ['0x45d665', '0x48a9a5', '0x4e2530'])
+        self.assertEqual(report['narrow_sites'], ['0x45d665', '0x48a9a5', '0x4e2530', '0x4e2190'])
         self.assertGreaterEqual(report['narrow_other_claims_checked'], 100)
-        self.assertEqual(len([k for k in report['checks'] if k.startswith(('n5_', 'n6_', 'n7_', 'no_', 'narrow_'))]), 22)
+        self.assertEqual(len([k for k in report['checks'] if k.startswith(('n5_', 'n6_', 'n7_', 'n8_', 'no_', 'narrow_'))]), 26)
 
     @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed executable not present')
     def test_changed_bytes_branches_and_pointers_refused(self):
@@ -152,8 +157,12 @@ class NarrowSites(unittest.TestCase):
             'n6_callee_bytes': [(probe.N6_TARGET + 9, b'\x60')],
             'n7_window': [(probe.N7_SITE + 20, b'\x0f')],
             'n7_site_whole_mov': [(probe.N7_SITE, b'\x8b\x05')],
-            'n7_inbound_calls': [(0x4e2300, rel(0x4e2300, probe.N7_SITE))],                  # a jump to the entry from elsewhere
-            'no_rel32_into_spans': [(0x4e2300, rel(0x4e2300, probe.N7_SITE + 2))],
+            'n8_window': [(probe.N8_SITE + 8, b'\x48')],                                     # mov eax,[esi+0x48]
+            'n8_site_three_whole_instructions': [(probe.N8_SITE, b'\x81\xec\x34\x00\x00')],  # a longer first instruction
+            'n8_sole_caller': [(0x4e2188, rel(0x4e2188, probe.N8_SITE))],
+            'n8_flags_written_by_displaced_sub': [(probe.N8_SITE, b'\x8d\x64\x24')],       # lea esp,[esp+..]: no flag write
+            'n7_inbound_calls': [(0x4e2188, rel(0x4e2188, probe.N7_SITE))],                  # a jump to the entry from elsewhere
+            'no_rel32_into_spans': [(0x4e2188, rel(0x4e2188, probe.N7_SITE + 2))],
             'no_abs32_into_spans': [(0x45e0dc, struct.pack('<I', probe.N5_SITE + 3))],       # a jump-table slot into the span
             'no_short_jump_into_spans': [(0x48a9a1, b'\xeb\x05')],                           # jmp short 0x48a9a8
         }
@@ -182,19 +191,20 @@ class NarrowSites(unittest.TestCase):
 
     def test_line_parsers(self):
         row = probe.parse_narrow_install_line('00:01 collide_narrow_census requested=1 patched=1 reason=ok n5_site=0x0045d665 n6_site=0x0048a9a5 n7_site=0x004e2530 '
-                                              'write_n5=atomic write_n6=plain write_n7=atomic stub_n5=0x0a100000 stub_n6=0x0a100130 stub_n7=0x0a100140 ring=256 qpc_frequency=10000000')
-        self.assertEqual((row['patched'], row['reason'], row['n7_site'], row['write_n6'], row['stub_n5'], row['ring'], row['qpc_frequency']), (True, 'ok', 0x4e2530, 'plain', 0x0a100000, 256, 10000000))
+                                              'write_n5=atomic write_n6=plain write_n7=atomic stub_n5=0x0a100000 stub_n6=0x0a100130 stub_n7=0x0a100140 ring=256 qpc_frequency=10000000 n8_site=0x004e2190 write_n8=plain stub_n8=0x0a100150')
+        self.assertEqual((row['patched'], row['reason'], row['n7_site'], row['write_n6'], row['stub_n5'], row['ring'], row['qpc_frequency'], row['n8_site'], row['stub_n8']),
+                         (True, 'ok', 0x4e2530, 'plain', 0x0a100000, 256, 10000000, 0x4e2190, 0x0a100150))
         self.assertIsNone(probe.parse_narrow_install_line('collide_narrow_census requested=1 patched=0 reason=bytes_mismatch'))
         window = probe.parse_narrow_window_line(WINDOW_LINE)
-        self.assertEqual((window['frame'], window['accepted_p50'], window['node_pairs_sum'], window['memo_would_hit_permille'], window['bounded']), (5399, 7, 18300000, 854, True))
+        self.assertEqual((window['frame'], window['accepted_p50'], window['node_pairs_sum'], window['tri_tests_max'], window['memo_would_hit_permille'], window['bounded']), (5399, 7, 18300000, 1900, 854, True))
         self.assertFalse(probe.parse_narrow_window_line(WINDOW_LINE.replace('ring_overflow=0', 'ring_overflow=3'))['bounded'])
         self.assertFalse(probe.parse_narrow_window_line(WINDOW_LINE.replace('memo_would_hit_sum=1794', 'memo_would_hit_sum=1801'))['bounded'])
         self.assertIsNone(probe.parse_narrow_window_line(WINDOW_LINE.replace(' deferred=0', '')))
         self.assertIsNone(probe.parse_narrow_window_line(PAIR_LINE))
         self.assertIsNone(probe.parse_window_line(WINDOW_LINE))
         pair = probe.parse_narrow_pair_line(PAIR_LINE)
-        self.assertEqual((pair['a'], pair['class_b'], pair['model_b'], pair['pos_b'], pair['d_max'], pair['visits'], pair['memo_hit'], pair['bounded']),
-                         (0x0a1b2c30, 7, -1, (500, -2147483648, 30), 2147483628, 60123, 1, True))
+        self.assertEqual((pair['a'], pair['class_b'], pair['model_b'], pair['pos_b'], pair['d_max'], pair['visits'], pair['tri_tests'], pair['memo_hit'], pair['bounded']),
+                         (0x0a1b2c30, 7, -1, (500, -2147483648, 30), 2147483628, 60123, 412, 1, True))
         self.assertFalse(probe.parse_narrow_pair_line(PAIR_LINE.replace('d_max=2147483628', 'd_max=1500'))['bounded'])
         self.assertFalse(probe.parse_narrow_pair_line(PAIR_LINE.replace('result=0 contact=0', 'result=1 contact=1'))['bounded'])
         self.assertIsNone(probe.parse_narrow_pair_line(WINDOW_LINE))
@@ -216,6 +226,7 @@ class NarrowSites(unittest.TestCase):
             self.assertEqual(bytes.fromhex(lines[0]), probe.encode_n5_stub(0x10000000, probe.N5_RETURN, probe.N5_TARGET, 0x20001000, 0x20002000, 0x20000000, 0x20000008, 0x2000000c))
             self.assertEqual(bytes.fromhex(lines[1]), probe.encode_n6_stub(0x10000200, 0x20000010, probe.N6_TARGET))
             self.assertEqual(bytes.fromhex(lines[2]), probe.encode_n7_stub(0x10000300, 0x20000014, probe.N7_HITS, probe.N7_NEXT))
+            self.assertEqual(bytes.fromhex(lines[3]), probe.encode_n8_stub(0x10000400, 0x20000018, probe.N8_NEXT))
 
     def test_encoders(self):
         at = 0x10000000
@@ -246,7 +257,7 @@ class NarrowSites(unittest.TestCase):
         module = (ROOT / 'src/proxy/collide_narrow_census.cpp').read_text()
         self.assertIn('L"X3M_COLLIDE_NARROW_CENSUS"', module)
         self.assertIn('length == 1 && setting[0] == L\'1\'', module)
-        for needle in ('install_window_open()', 'executable_verified()', 'callee_mismatch', 'pin_self()', 'engine_patch::restore_call(n6_site_)', 'engine_patch::restore(n7_site_)',
+        for needle in ('install_window_open()', 'executable_verified()', 'callee_mismatch', 'pin_self()', 'engine_patch::restore_call(n6_site_)', 'engine_patch::restore(n7_site_)', 'engine_patch::restore(n8_site_)', 'collide_narrow_census_n8',
                        'x3m::LightCallBoundary cpu;', 'force_align_arg_pointer'):
             self.assertIn(needle, module)
         self.assertNotIn('X3M_COLLIDE_BOX_CULL', module)   # independent of the box cull
