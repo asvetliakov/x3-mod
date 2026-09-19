@@ -85,9 +85,9 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // is the thin / plain blend exactly: x + 0 * (y - x) with finite y.
 // Thin-region gate (taa-lattice-crawl.md section 13), same mask: b = strength of
 // the fragmented-depth region around this pixel, already closed by the fastest
-// pixel of its 7x7; a = b scaled to the weight target. The history is pulled only
-// (1 - b * c24.x) of the way to the clip box (c24.x = 1: clip off there) and the
-// history weight is lerp(w, min(n / (n + 1), c24.y), max(g * slow, a)). The 3x3
+// pixel within its reach. The history is pulled only (1 - b * c24.x) of the way to
+// the clip box (c24.x = 1: clip off there) and the history weight is the larger of
+// lerp(w, min(n / (n + 1), c24.y), g * slow) and lerp(w, min(n / (n + 1), c5.x), b). The 3x3
 // sentinel soft clip of the thin variants is not compiled here (its S shares
 // c24.x); b = a = 0 is the clamp and the far blend exactly.
 #ifdef X3M_FAR_STABILIZE
@@ -451,7 +451,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float age = fetch(previousAge, tap + float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0) * sizeJitter.xy).r;
     age = age >= 1 && age <= 64 ? age : 1;
 #ifdef X3M_FAR_STABILIZE
-    keep += max(stabilise.g * (1 - saturate((speed - flicker.z) * flicker.w)), stabilise.a) * (min(age / (age + 1), flicker.y) - keep);
+    // Two gated targets, each exact: the far weight c24.y through g and this pixel's own speed gate, the thin-region weight c5.x
+    // (the resolve never read c5.xy) through b. b = 0 is the far blend exactly, young pixels below the base weight included.
+    float ramp = age / (age + 1);
+    float farKeep = keep + stabilise.g * (1 - saturate((speed - flicker.z) * flicker.w)) * (min(ramp, flicker.y) - keep);
+    keep = stabilise.b > 0 ? max(farKeep, keep + stabilise.b * (min(ramp, history.x) - keep)) : farKeep;
 #else
     keep = min(age / (age + 1), lerp(flicker.y, history.z, saturate((speed - flicker.z) * flicker.w)));
 #endif

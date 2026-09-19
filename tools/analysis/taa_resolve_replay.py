@@ -149,7 +149,7 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
     tr = opt.get('thinregion')  # section 13: dict(W, lo, hi, gamma=None (clip off) | G (mean +- G sigma, box dropped), R=3, grow=3)
     trg = np.zeros((h, wd))
     if tr:
-        R_, G_ = tr.get('R', 3), tr.get('grow', 3); E_ = R_ + G_ + 1; yy, xx = np.mgrid[Y0 - G_:Y1 + G_, X0 - G_:X1 + G_]
+        R_, G_ = tr.get('R', 3), tr.get('grow', 5); E_ = R_ + G_ + 1; yy, xx = np.mgrid[Y0 - G_:Y1 + G_, X0 - G_:X1 + G_]
         tz = lambda a_, b_: (valid(a_) & bgof(b_, a_)) | (valid(b_) & bgof(a_, b_)); frag = np.zeros(yy.shape, bool)
         for ax, ay in ((1, 0), (0, 1), (1, 1), (1, -1)):
             frag |= sum(tz(dep[np.clip(yy + k_ * ay, 0, H - 1), np.clip(xx + k_ * ax, 0, W - 1)], dep[np.clip(yy + (k_ + 1) * ay, 0, H - 1), np.clip(xx + (k_ + 1) * ax, 0, W - 1)]).astype(int) for k_ in range(-R_, R_)) >= 2
@@ -500,7 +500,7 @@ if MODE == 'thin':
     for lo_, hi_ in gates:
         for gm in [None] + [float(x) for x in os.environ.get('GAMMAS', '').split(',') if x]:
             for W_ in map(float, os.environ.get('WS', '0.97').split(',')):
-                configs.append(('W %g %s gate %g-%g' % (W_, 'clip off' if gm is None else 'gamma %g' % gm, lo_, hi_), dict(thinregion=dict(W=W_, lo=lo_, hi=hi_, gamma=gm, R=int(os.environ.get('R', '3')), grow=int(os.environ.get('GROW', '3'))))))
+                configs.append(('W %g %s gate %g-%g' % (W_, 'clip off' if gm is None else 'gamma %g' % gm, lo_, hi_), dict(thinregion=dict(W=W_, lo=lo_, hi=hi_, gamma=gm, R=int(os.environ.get('R', '3')), grow=int(os.environ.get('GROW', '5'))))))
     ref = None
     for name, opt in configs:
         outs, diags, _ = run(opt, 1); pres = []

@@ -1501,13 +1501,24 @@ bool MotionOutput::ensure_taa() noexcept {
     // adaptive weight (one gate) and the global current filter, beside a line
     // filter of another A, below the history weight, and on a device without
     // the age caps or that refuses the program (one log line, option off).
+    // Each option is judged on its own: an out-of-range thin-region weight takes only the thin region out (and the other way round);
+    // what both need (no adaptive weight / current filter / 3x3 thin clip, the program, the age caps) takes both. One log line each.
+    if (SUCCEEDED(hr) && taa_thin_weight_ > 0.f && !x3::temporal::valid_far_weight(taa_thin_weight_, taa_history_weight_)) {
+        log("motion_output_taa_thin_region device=%llu unavailable=1 reason=weight_range weight=%.4f history_weight=%.3f far_weight=%.4f far_filter=%.3f", id_, double(taa_thin_weight_), double(taa_history_weight_), double(taa_far_weight_), double(taa_far_filter_));
+        taa_thin_weight_ = 0.f;
+    }
+    if (SUCCEEDED(hr) && (taa_far_weight_ > 0.f || taa_far_filter_ > 0.f)) {
+        const char* reason = taa_line_filter_ > 0.f && taa_far_filter_ > 0.f && taa_line_filter_ != taa_far_filter_ ? "line_filter_a" : !x3::temporal::valid_far_weight(taa_far_weight_, taa_history_weight_) ? "weight_range" : nullptr;
+        if (reason) {
+            log("motion_output_taa_far device=%llu unavailable=1 reason=%s create=%08lx weight=%.4f filter=%.3f thin_region=%.4f", id_, reason, 0ul, double(taa_far_weight_), double(taa_far_filter_), double(taa_thin_weight_));
+            taa_far_weight_ = taa_far_filter_ = 0.f;
+        }
+    }
     if (SUCCEEDED(hr) && (taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
         const char* reason = nullptr; HRESULT far_result = S_OK;
         if (taa_adaptive_weight_ > 0.f) reason = "adaptive_weight";
         else if (taa_current_filter_ > 0.f) reason = "current_filter";
-        else if (taa_line_filter_ > 0.f && taa_far_filter_ > 0.f && taa_line_filter_ != taa_far_filter_) reason = "line_filter_a";
-        else if (taa_thin_clip_ > 0.f) reason = "thin_clip";
-        else if (!x3::temporal::valid_far_weight(taa_far_weight_, taa_history_weight_) || !x3::temporal::valid_far_weight(taa_thin_weight_, taa_history_weight_)) reason = "weight_range";
+        else if (taa_thin_clip_ > 0.f) reason = "thin_clip"; // deliberate: the far program compiles no 3x3 sentinel soft clip (inert on every real capture)
         else { taa_call([&] { far_result = taa_->configure_far(); }); if (FAILED(far_result) || !taa_->far_available()) reason = "program_or_age_caps"; }
         if (reason) {
             log("motion_output_taa_far device=%llu unavailable=1 reason=%s create=%08lx weight=%.4f filter=%.3f thin_region=%.4f", id_, reason, far_result, double(taa_far_weight_), double(taa_far_filter_), double(taa_thin_weight_));

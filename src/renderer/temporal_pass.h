@@ -100,8 +100,8 @@ struct FrameInputs {
     float far_weight = 0.f, far_filter = 0.f, far_d0 = 0.f, far_inv = 0.f;
     // Thin-region stabiliser (docs/architecture/taa-lattice-crawl.md section 13):
     // where the depth is FRAGMENTED (some 7-tap line through the pixel changes
-    // between geometry and its background at least twice; the 7x7 around such
-    // pixels), and nothing in that 7x7 moves faster than the speed gate below,
+    // between geometry and its background at least twice; the 11x11 around such
+    // pixels, grown by 5), and nothing within 8 px moves faster than the speed gate below,
     // the history is pulled only (1 - thin_region_relax) of the way to the
     // variance clip (1: clip off) and the history weight rises to
     // min(n / (n + 1), thin_region_weight): the cumulative mean of the jitter
@@ -259,7 +259,8 @@ public:
     bool age_line_available() const noexcept { return age_line_ != nullptr; }
     // Creates the far-stabiliser program (and the mask program); needs the age
     // caps. A failure leaves the pass usable without the option.
-    HRESULT configure_far() noexcept;
+    // reference_program: fixtures only (an earlier build of resolve_far.hlsl for an identity comparison); production passes none.
+    HRESULT configure_far(const DWORD* reference_program = nullptr) noexcept;
     bool far_available() const noexcept { return mrt_age_ && line_mask_ != nullptr && far_ != nullptr; }
     // The mask targets could not be created (not a lost device): the line
     // filter and the far stabiliser are off for the rest of the session, runs

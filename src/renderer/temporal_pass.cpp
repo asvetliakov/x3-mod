@@ -232,13 +232,13 @@ HRESULT TemporalPass::configure_flicker() noexcept {
     }
     return S_OK;
 }
-HRESULT TemporalPass::configure_far() noexcept {
+HRESULT TemporalPass::configure_far(const DWORD* reference_program) noexcept {
     if(!device_||!resolve_||!mrt_age_)return E_FAIL;
     if(far_)return S_OK;
     auto make=[&](const std::uint32_t* words,IDirect3DPixelShader9** out){return call<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words),out);};
     const bool own_mask=!line_mask_;
     HRESULT hr=line_mask_?S_OK:make(temporal_line_mask_program(),&line_mask_);
-    if(SUCCEEDED(hr))hr=make(temporal_resolve_far_program(),&far_);
+    if(SUCCEEDED(hr))hr=reference_program?call<CreatePsFn>(CreatePixelShader)(device_,reference_program,&far_):make(temporal_resolve_far_program(),&far_);
     if(FAILED(hr)){drop(far_);if(own_mask)drop(line_mask_);}
     return hr;
 }
@@ -367,13 +367,13 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     constants.luminance[3]=lined?in.line_filter:far_on?in.far_filter:0.f; // A of the masked filter: line-filter / far variants only
     float flicker_constants[4]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);
     // Far variant: c24.yzw = W_FAR (the base weight when that component is off; its gate channel is 0 then), speed gate far_speed_lo .. far_speed_hi px/frame.
-    // c24.y is the larger of the two weight targets; each gate channel of the mask is scaled to its own target.
-    const float weight_target=std::max(std::max(in.far_weight,in.thin_region_weight),in.weight),weight_span=weight_target-in.weight;
-    auto weight_scale=[&](float w){return w>0&&weight_span>0?(w-in.weight)/weight_span:0.f;};
-    if(far_on){flicker_constants[0]=thin_region?in.thin_region_relax:0.f;flicker_constants[1]=weight_target;flicker_constants[2]=in.far_speed_lo;flicker_constants[3]=1.f/(in.far_speed_hi-in.far_speed_lo);}
-    const float far_constants[4]={in.far_d0,far_on?in.far_inv:0.f,far_on&&in.far_filter>0?1.f:0.f,far_on?(in.far_weight>0&&!(weight_span>0)?1.f:weight_scale(in.far_weight)):0.f};
+    // Far program: c24.x = clip relaxation of the thin region, c24.y = W_FAR (the base weight when off), c24.zw the shared speed gate;
+    // c5.x (unread by every resolve until now) = the thin-region weight (the base weight when off).
     const bool thin_on=far_on&&thin_region;
-    const float thin_constants[4]={thin_on?weight_scale(in.thin_region_weight):0.f,thin_on?1.f:0.f,in.far_speed_lo,far_on?1.f/(in.far_speed_hi-in.far_speed_lo):0.f};
+    if(far_on){flicker_constants[0]=thin_on?in.thin_region_relax:0.f;flicker_constants[1]=in.far_weight>0?in.far_weight:in.weight;flicker_constants[2]=in.far_speed_lo;flicker_constants[3]=1.f/(in.far_speed_hi-in.far_speed_lo);
+        constants.history[0]=thin_on?in.thin_region_weight:in.weight;}
+    const float far_constants[4]={in.far_d0,far_on?in.far_inv:0.f,far_on&&in.far_filter>0?1.f:0.f,far_on&&in.far_weight>0?1.f:0.f};
+    const float thin_constants[4]={0.f,thin_on?1.f:0.f,in.far_speed_lo,far_on?1.f/(in.far_speed_hi-in.far_speed_lo):0.f};
     const bool filtered=in.current_filter>0;
     UINT final_mask=1; // which owned mask target the resolve reads
     const bool thin_bound=flicker&&thin_; // after a mask fallback of a far run the thin variants may not exist: plain then
@@ -451,12 +451,12 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(SUCCEEDED(hr)&&(lined||far_on)){
         const float resolve_policy=constants.options[3];
         // Line filter / thin region: the per-pixel tests, then the dilations; far stabiliser alone: one draw (mode 2) into the second target.
-        const bool two_pass=lined||thin_on;
-        // two_pass: tests -> [0], maxima along x -> [1], along y and composition -> [0]; far alone: mode 2 -> [1].
-        const UINT draws=two_pass?3:1;final_mask=two_pass?0:1;
+        // Thin region: tests -> [0], maxima along x -> [1], along y and composition -> [0]. Line filter without it: tests -> [0],
+        // 3x3 maximum and composition -> [1] (two draws, as before the thin region existed). Far stabiliser alone: mode 2 -> [1].
+        const UINT draws=thin_on?3:lined?2:1;final_mask=thin_on?0:1;
         for(UINT pass=0;pass<draws&&SUCCEEDED(hr);++pass){
-            const UINT target=two_pass?(pass==1?1:0):1;IDirect3DTexture9* const source=pass==0?depths_[next]:line_masks_[pass==1?0:1];
-            constants.options[2]=two_pass?(pass==0?0.f:pass==1?1.f:3.f):2.f;constants.options[3]=lined?float(in.line_width):0.f;
+            const UINT target=draws==1?1:(pass==1?1:0);IDirect3DTexture9* const source=pass==0?depths_[next]:line_masks_[pass==1?0:1];
+            constants.options[2]=draws==1?2.f:pass==0?0.f:thin_on?(pass==1?1.f:3.f):4.f;constants.options[3]=lined?float(in.line_width):0.f;
             if(step(call<SetTextureFn>(SetTexture)(d,1,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,line_mask_surfaces_[target]))&&
                step(call<SetPsFn>(SetPixelShader)(d,line_mask_))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],4))&&

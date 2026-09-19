@@ -564,7 +564,7 @@ only the mask program and `resolve_far` changed, both bound with these options a
 construction (seam cases unchanged: 164 / 140 / 59 checks). Proposed default set once flown: plain + mask program +
 `resolve_far` (far stabiliser + thin region; line filter optional through the same mask); `resolve_age_line` and the other
 line variants stay for the line filter without them. Pass time 1280x768, all geometry (CPU wall, event-query drained):
-plain 0.61 ms, far stabiliser +0.19, line filter +0.40 (three draws now, was +0.18), thin region +0.79.
+plain 0.61 ms, far stabiliser +0.19, line filter +0.40 (three draws in that build; it was +0.26 with two, restored by the review fixes below), thin region +0.79.
 Launcher `--taa-thin-region W[,RELAX[,LO,HI]]` (`X3M_TAA_THIN_REGION`; RELAX default 1 = clip off; LO,HI shared with
 `--taa-far-stabiliser`, a differing pair is refused); log fields `thin_region=`, `thin_relax=` on `motion_output_taa`.
 
@@ -580,4 +580,36 @@ c0..c7 / c22 / c24 / s4 / s8 / COLORWRITEENABLE1, failed second mask draw, Reset
 **Flight.** `--taa-thin-region 0.97` at the run175 standstill, then the same view drifting and turning; judged on the arm's
 shuffle, trails behind the plant's edges when motion starts, and ships crossing behind lattices. If a residual twinkle
 remains at rest: W 0.985, then the wider region (open issue).
+
+### 13.1 Review fixes and the wider region (2026-09-19)
+
+- **Region grown by 5 (11x11), closure within 8 px: default.** Replay, W 0.97: run175 arm 3.20 / 24 / 6 -> **2.34 / 22 / 0**
+  (rms / p2p p99 / px > 40). Trails on masked background do not worsen (grow 3 -> 5, p99 codes / share > 8 codes): run148 0.7 / 0.000 ->
+  0.7 / 0.000; run159 21.0 / 0.118 -> 20.5 / 0.110; run160 7.2 / 0.007 -> 6.2 / 0.005; run161 region closed in both. Frame share
+  0.118 -> 0.135 (run175), 0.210 -> 0.236 (run153 plant), 0.042 -> 0.063 and 0.032 -> 0.046 (station scenes), 0.078 -> 0.089 (run148).
+  Pass time of the thin region +0.67-0.69 ms against +0.79 measured with grow 3 (17 instead of 13 taps per separable draw; the
+  difference is below the run-to-run spread of this timing, so no cost is measurable; mask program 305 slots).
+- **Exact weights with both options on.** `resolve_far` now carries both targets: `c24.y` = W_far through `g` and the pixel's own
+  speed gate, `c5.x` (never read by a resolve before) = W_thin through `b`; the history weight is the far blend, or the larger of
+  the two where `b > 0`. No shared maximum, no scaled gate channel (mask `a` is 0). 496 slots. Fixture, far scene with
+  `far 0.985 + thin 0.97`: oracle 0.0003, near pixels 0 of 39 936 differing, far-band ratio 0.154 / 0.192 / 0.577 / 1.000 as the
+  far stabiliser alone; shard scene with both: ripple x 0.095 of the installed resolve, 1.10 x the thin region alone (pixels whose
+  depth toggles with the phase alternate between the two targets), square bit-identical.
+- **The far stabiliser alone is the program the user flew.** Fixture-only reference `temporal_resolve_far_reference_inc.h` (the
+  `resolve_far` bytecode of commit dee6608c, run46 / run47 candidates) through `configure_far(reference)`: weight-only and
+  weight + filter, static and at 0.04 px/frame, 96 frames each: bit-identical images.
+- **Line filter alone is two mask draws again** (mode 4: 3x3 maximum + composition); the separable three-draw path runs only with
+  the thin region. Line filter +0.22-0.23 ms (was +0.26 before the thin region, +0.40 in the first thin-region build).
+- **`--taa-thin-clip` beside the far stabiliser or the thin region is refused, deliberately**: the far program compiles no 3x3
+  sentinel soft clip (it measured no effect on any real capture, flicker note section 10.1); stated in both help texts.
+- The route judges the two options separately: an out-of-range thin-region weight disables only the thin region
+  (`motion_output_taa_thin_region ... reason=weight_range`), a bad far weight / filter only the far stabiliser; shared
+  prerequisites (adaptive weight, current filter, thin clip, program, age caps) still take both, one log line.
+- **One speed gate**: given on either option it applies to both (the launcher rewrites the far stabiliser's fields 5-6 when only
+  the thin region names a gate); given on both, the pairs must be equal or the launch is refused; host test covers the three cases.
+- **Frame border**: every tap clamps, so a line leaving the frame sees no further class change and a border pixel is exactly as
+  fragmented as its inside neighbours make it (equivalent to "out of frame = the edge pixel's class"); documented in the shader.
+- Seam cases rerun with the record kept: `verification/results/bottle-X3/motion-output-partial.json` (PARTIAL by design):
+  `seam-taa-on` 164, `seam-taa-hdr-tonemap-on` 140, `production-taa-hdr-tonemap-on` 59 checks.
+- `run_temporal_pass.py` exit 0: lattice mode 459 numerical / 19 state.
 

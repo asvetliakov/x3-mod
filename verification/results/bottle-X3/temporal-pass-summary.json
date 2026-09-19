@@ -1,10 +1,10 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "5201399fc5e116f5f62d89ac81220c09300bc85c589a4e232d52d467916a8314",
-    "src/renderer/temporal_pass.cpp": "fc54c1662d49754e56d11c020c5548dd9f8cc1b3ff9ff6043f01fc245a2267dd",
+    "src/renderer/temporal_pass.h": "9805727422fae0b87dad0d509fd83cbbe92ec8cd4bb3b07a4a0a99e4ccbe08c5",
+    "src/renderer/temporal_pass.cpp": "323b4d279f8841fb876309ec3c2e63169cc83c8c3e7d3fce67a8d44361bf1eda",
     "src/temporal/resolve.h": "758911becb4c1c7ea29cc0616511022e0bc7dd555b9837f899b5126cfcb3b660",
-    "src/temporal/resolve.hlsl": "75417bdfcd7eb94c608f8808bab81559f78fceb9a176f691f1e6914ca93fc7b3",
+    "src/temporal/resolve.hlsl": "5e7eeb49a85683cae495e99ee3de385cd3e7af9a06616872c3a997297b101df4",
     "src/temporal/resolve_filter.hlsl": "65aedd02762660c77ff6af3530c429edb580ea3ccb52416cd303974ce86d51f6",
     "src/temporal/resolve_snapshot.hlsl": "b7b62bb66523b6e092143fc111a623413cd8d1e9bf7c7ab0afbc83a3f40f126d",
     "src/renderer/temporal_resolve_snapshot_program_inc.h": "decb661f2c75cdfb7960bff7018c364c0f398fbe399a5e5df6a62fb5d7916d69",
@@ -18,13 +18,14 @@
     "src/temporal/resolve_age_filter.hlsl": "5a13f4045d9128eb7c00a22b4a0c2c088a663d99936b54d71f3e68b4601abcdb",
     "src/renderer/temporal_resolve_age_filter_program_inc.h": "1e047b942856e3ec3230279c6e2047ab3c472d696e5c5f5b72f3e1b161f86c35",
     "verification/probe/temporal_flicker_inc.h": "4c52ec625f011cb22a4251aaccb80bd599d0a26850f8b3335ed14911de6a3b86",
-    "verification/probe/temporal_line_inc.h": "51639d8545e00c1424d2b97d68d9bfb268c4d5158279d404ad0af80b0f15ea08",
-    "verification/probe/temporal_far_inc.h": "420e6e5c0fdf66d81344da5265af186340d4ef580fe1888ecfd269c54673dd85",
-    "verification/probe/temporal_thin_region_inc.h": "8347f768f4bcc9aa1d603722f03a5b2a9b66a30bd84e5ef931f20ab1fd8c0165",
+    "verification/probe/temporal_line_inc.h": "96c6df44410e3d3133925310ca3dcc4c4812b8f95425117bd4fa65d2efedf998",
+    "verification/probe/temporal_far_inc.h": "315ce3471778ea438262ea6725c1eb62ecf652cda81ef95758532c3b99b9e3da",
+    "verification/probe/temporal_thin_region_inc.h": "0201d5f68ef32dec387fbf205e22a1333ce1b000856412ad6dcec26420b91b1e",
+    "verification/probe/temporal_resolve_far_reference_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
-    "src/renderer/temporal_resolve_far_program_inc.h": "14748d157103b5d4fa4f56d6a36100eab1b5786dbe09ead54d2562549fd8eaff",
-    "src/temporal/line_mask_ps.hlsl": "8b5f0a8abee4604401807f4e2b78b857dd85d7ca91f3b8657be7e2bc91dac9aa",
-    "src/renderer/temporal_line_mask_program_inc.h": "be6f94dec7a795e7ad98f20510b4330e6b9b1988d8faae69dae3e8d0f4574504",
+    "src/renderer/temporal_resolve_far_program_inc.h": "fbaf0e28ccab2493cf91fb0817ffaae6d4c4c694ecc1523da4d5692e3cae2a26",
+    "src/temporal/line_mask_ps.hlsl": "1c42d4e10d08b618dc733bc36484d259fecbe1349f3eb0abc080d5d864fea652",
+    "src/renderer/temporal_line_mask_program_inc.h": "7a9a37a7f4abd963394bfbdf4792e4f6d4db702b5a0abc83fb1a41bb27cecf54",
     "src/temporal/resolve_line.hlsl": "18807f732512dc66460deda4367c560e733160bb4e75263875fdd0c00bb52f31",
     "src/renderer/temporal_resolve_line_program_inc.h": "543713f79f560dd3136a055415640cc3cae61a0e7700036d88974574a7b0476a",
     "src/temporal/resolve_thin_line.hlsl": "ccb52ae55590b7c196966667583f227a3552722080c17c893f2d352f33ba2c9f",
@@ -37,7 +38,7 @@
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
     "verification/probe/temporal_pass_fixture.cpp": "72b11c5ddcc6fd58e5bf29f60f8cd60324d5fc8c3bf58c1aef7e19fa19e7eac6",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "9dea2ba1388bbe9b1cc4da137c911b9eccf892909a7130eab0e456d664b9474c"
+    "verification/probe/run_temporal_pass.py": "55fd0f2a6719c2a73c53bf3a43f9aefc66ff75db2176f1c54962fc68052ddfff"
   },
   "game_launched": false,
   "bottle": {
@@ -50,7 +51,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "ca07a01b9612ff43616d924523de72d3b7fb4b2794591b4dd2c45bff312d8ba6",
+  "executable_sha256": "0a5b51f95dd12af3fb0db43fd9dbcd524a8dea58051c31bca51659891cb70fbd",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -284,7 +285,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "f7f4e24909b7cbe89db8a8cd65cb02a2b39bb9b80a336d6788229a2e628fd2c8",
+    "report_sha256": "949aa240abb30b1b1dfe1575f6b2dfd31645f5d074f91bce0b7f8b00251e9438",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -351,17 +352,17 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask": {
-        "dwords": 1112.0,
-        "instruction_slots": 270.0,
+        "dwords": 1196.0,
+        "instruction_slots": 305.0,
         "device_limit": 512.0,
-        "headroom": 242.0,
+        "headroom": 207.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_far": {
-        "dwords": 1957.0,
-        "instruction_slots": 495.0,
+        "dwords": 1965.0,
+        "instruction_slots": 496.0,
         "device_limit": 512.0,
-        "headroom": 17.0,
+        "headroom": 16.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_line": {
@@ -2065,15 +2066,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.6055",
-        "current_filter_ms": "0.6350",
-        "line_filter_ms": "1.0095",
-        "far_stabiliser_ms": "0.7990",
-        "thin_region_ms": "1.3926",
-        "taps_delta_ms": "0.0295",
-        "line_delta_ms": "0.4040",
-        "far_delta_ms": "0.1935",
-        "thin_region_delta_ms": "0.7872",
+        "plain_ms": "0.7204",
+        "current_filter_ms": "0.6421",
+        "line_filter_ms": "0.9268",
+        "far_stabiliser_ms": "0.9014",
+        "thin_region_ms": "1.4705",
+        "taps_delta_ms": "-0.0783",
+        "line_delta_ms": "0.2064",
+        "far_delta_ms": "0.1810",
+        "thin_region_delta_ms": "0.7501",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -2187,6 +2188,22 @@
         "mask_error": "0.000000"
       },
       {
+        "drift": "0.00",
+        "config": "far-weight-0.985+thin-region-0.97",
+        "oracle_error": "0.000244",
+        "age_oracle_error": "0.000000",
+        "near_px": "39936",
+        "near_differs": "0",
+        "ripple_near": "0.011602",
+        "ripple_mid": "0.004222",
+        "ripple_far": "0.001786",
+        "ratio_near": "1.0000",
+        "ratio_mid": "0.3639",
+        "ratio_far": "0.1540",
+        "oracle_ratio_far": "0.1540",
+        "mask_error": "0.000000"
+      },
+      {
         "drift": "0.04",
         "config": "far-base",
         "oracle_error": "0.000122",
@@ -2264,6 +2281,22 @@
         "ratio_mid": "0.6999",
         "ratio_far": "0.1921",
         "oracle_ratio_far": "0.1925",
+        "mask_error": "0.000000"
+      },
+      {
+        "drift": "0.04",
+        "config": "far-weight-0.985+thin-region-0.97",
+        "oracle_error": "0.000122",
+        "age_oracle_error": "0.000000",
+        "near_px": "39936",
+        "near_differs": "0",
+        "ripple_near": "0.014322",
+        "ripple_mid": "0.005632",
+        "ripple_far": "0.002755",
+        "ratio_near": "1.0000",
+        "ratio_mid": "0.3932",
+        "ratio_far": "0.1924",
+        "oracle_ratio_far": "0.1924",
         "mask_error": "0.000000"
       },
       {
@@ -2347,6 +2380,22 @@
         "mask_error": "0.000000"
       },
       {
+        "drift": "0.14",
+        "config": "far-weight-0.985+thin-region-0.97",
+        "oracle_error": "0.000305",
+        "age_oracle_error": "0.000000",
+        "near_px": "39936",
+        "near_differs": "0",
+        "ripple_near": "0.014866",
+        "ripple_mid": "0.010153",
+        "ripple_far": "0.008583",
+        "ratio_near": "1.0000",
+        "ratio_mid": "0.6830",
+        "ratio_far": "0.5773",
+        "oracle_ratio_far": "0.5778",
+        "mask_error": "0.000000"
+      },
+      {
         "drift": "0.30",
         "config": "far-base",
         "oracle_error": "0.000122",
@@ -2425,6 +2474,22 @@
         "ratio_far": "1.0005",
         "oracle_ratio_far": "1.0010",
         "mask_error": "0.000000"
+      },
+      {
+        "drift": "0.30",
+        "config": "far-weight-0.985+thin-region-0.97",
+        "oracle_error": "0.000122",
+        "age_oracle_error": "0.000000",
+        "near_px": "39936",
+        "near_differs": "0",
+        "ripple_near": "0.012146",
+        "ripple_mid": "0.012146",
+        "ripple_far": "0.012146",
+        "ratio_near": "1.0000",
+        "ratio_mid": "1.0000",
+        "ratio_far": "1.0000",
+        "oracle_ratio_far": "1.0011",
+        "mask_error": "0.000000"
       }
     ],
     "filter_effect": [
@@ -2466,21 +2531,21 @@
         "oracle_error": "0.008301",
         "age_oracle_error": "0.000000",
         "mask_error": "0.000000",
-        "shard_rms_codes": "1.403",
-        "shard_p2p_codes": "6.2",
-        "rms_ratio": "0.0858",
+        "shard_rms_codes": "1.416",
+        "shard_p2p_codes": "6.6",
+        "rms_ratio": "0.0866",
         "square_px": "29952",
         "square_differs": "0"
       },
       {
         "drift": "0.00",
         "config": "thin-region-0.985",
-        "oracle_error": "0.012207",
+        "oracle_error": "0.015625",
         "age_oracle_error": "0.000000",
         "mask_error": "0.000000",
-        "shard_rms_codes": "0.717",
-        "shard_p2p_codes": "3.1",
-        "rms_ratio": "0.0439",
+        "shard_rms_codes": "0.733",
+        "shard_p2p_codes": "4.1",
+        "rms_ratio": "0.0449",
         "square_px": "29952",
         "square_differs": "0"
       },
@@ -2499,12 +2564,24 @@
       {
         "drift": "0.00",
         "config": "thin-region-0.97-relax-0",
-        "oracle_error": "0.001465",
+        "oracle_error": "0.001953",
         "age_oracle_error": "0.000000",
         "mask_error": "0.000000",
         "shard_rms_codes": "6.490",
         "shard_p2p_codes": "36.5",
         "rms_ratio": "0.3972",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.00",
+        "config": "thin-region-0.97+far-weight-0.985",
+        "oracle_error": "0.012695",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "1.554",
+        "shard_p2p_codes": "10.3",
+        "rms_ratio": "0.0951",
         "square_px": "29952",
         "square_differs": "0"
       },
@@ -2535,10 +2612,10 @@
       {
         "drift": "0.12",
         "config": "thin-region-0.985",
-        "oracle_error": "0.005371",
+        "oracle_error": "0.004883",
         "age_oracle_error": "0.000000",
         "mask_error": "0.000000",
-        "shard_rms_codes": "13.135",
+        "shard_rms_codes": "13.136",
         "shard_p2p_codes": "81.8",
         "rms_ratio": "0.5455",
         "square_px": "29952",
@@ -2547,7 +2624,7 @@
       {
         "drift": "0.12",
         "config": "thin-region-0.97-relax-0.5",
-        "oracle_error": "0.004883",
+        "oracle_error": "0.004395",
         "age_oracle_error": "0.000000",
         "mask_error": "0.000000",
         "shard_rms_codes": "15.980",
@@ -2565,6 +2642,18 @@
         "shard_rms_codes": "17.814",
         "shard_p2p_codes": "113.2",
         "rms_ratio": "0.7398",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
+        "drift": "0.12",
+        "config": "thin-region-0.97+far-weight-0.985",
+        "oracle_error": "0.004883",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "13.200",
+        "shard_p2p_codes": "78.1",
+        "rms_ratio": "0.5482",
         "square_px": "29952",
         "square_differs": "0"
       },
@@ -2627,13 +2716,25 @@
         "rms_ratio": "1.0000",
         "square_px": "29952",
         "square_differs": "0"
+      },
+      {
+        "drift": "0.30",
+        "config": "thin-region-0.97+far-weight-0.985",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "20.933",
+        "shard_p2p_codes": "95.3",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
       }
     ],
     "motion_start": [
       {
-        "first_frame_difference": "0.338379",
+        "first_frame_difference": "0.339844",
         "after_24_frames": "0.000244",
-        "background_trail": "0.247559",
+        "background_trail": "0.248535",
         "base_background_trail": "0.218994"
       }
     ]

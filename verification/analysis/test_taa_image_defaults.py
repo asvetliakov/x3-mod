@@ -146,6 +146,13 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             for given, forwarded in (('0.97', '0.97,1'), ('0.985,0.5', '0.985,0.5'), ('0.97,1,0.05,0.5', '0.97,1,0.05,0.5')):
                 self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', given)['X3M_TAA_THIN_REGION'], forwarded)
             self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985')['X3M_TAA_THIN_REGION'], '0.97,1')
+            # One shared speed gate: given on either option it reaches both; given on both it must agree.
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97,1,0.05,0.5', '--taa-far-stabiliser', '0.985')
+            self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_FAR_STABILISER']), ('0.97,1,0.05,0.5', '0.985,0,80,130,0.05,0.5'))
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985,0,80,130,0.05,0.5')
+            self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_FAR_STABILISER']), ('0.97,1', '0.985,0,80,130,0.05,0.5'))
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97,1,0.05,0.5', '--taa-far-stabiliser', '0.985,0,80,130,0.05,0.5')
+            self.assertEqual(env['X3M_TAA_THIN_REGION'], '0.97,1,0.05,0.5')
             for value in ('0.8', '0.995', 'nan', '0.97,2', '0.97,1,0.5', '0.97,1,0.5,0.5', 'x', '0.97,1,0.03,0.25,1'):
                 code, _, error = self.launch(directory, *TAA, '--taa-thin-region', value)
                 self.assertEqual(code, 2, value)

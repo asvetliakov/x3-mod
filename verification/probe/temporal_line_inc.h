@@ -21,7 +21,7 @@ struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigne
 float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
 float quantise8(double v){return float(std::lround(std::min(std::max(v,0.),1.)*255.))/255.f;} // as the A8R8G8B8 mask stores it
-// Thin-region gate exactly as line_mask_ps.hlsl computes it (clamped addressing): b = (7x7 maximum of FRAGMENTED) * (1 - 13x13 maximum
+// Thin-region gate exactly as line_mask_ps.hlsl computes it (clamped addressing): b = (11x11 maximum of FRAGMENTED) * (1 - 17x17 maximum
 // of the 8-bit speed closure); FRAGMENTED = some 7-tap line through the pixel changes depth class at least twice; the closure uses the
 // pixel's own motion: line_velocity of its depth where routed geometry, 0 on the sentinel background of these scenes.
 float depth_clamped(const std::vector<float>& depth,int x,int y){constexpr int S=int(EdgeScene::S);return px(depth,UINT(std::min(std::max(x,0),S-1)),UINT(std::min(std::max(y,0),S-1)));}
@@ -31,7 +31,7 @@ bool fragmented(const std::vector<float>& depth,int x,int y){const int dirs[4][2
 double line_velocity_default(double nearest);
 double (*line_velocity)(double)=line_velocity_default;
 float thin_region_strength(const std::vector<float>& depth,int x,int y){bool any=false;float closure=0;
-    for(int dy=-6;dy<=6;++dy)for(int dx=-6;dx<=6;++dx){if(std::abs(dx)<=3&&std::abs(dy)<=3)any=any||fragmented(depth,x+dx,y+dy);const float d=depth_clamped(depth,x+dx,y+dy);const double speed=d>=0&&d<=1?line_velocity(d):0;
+    for(int dy=-8;dy<=8;++dy)for(int dx=-8;dx<=8;++dx){if(std::abs(dx)<=5&&std::abs(dy)<=5)any=any||fragmented(depth,x+dx,y+dy);const float d=depth_clamped(depth,x+dx,y+dy);const double speed=d>=0&&d<=1?line_velocity(d):0;
         closure=std::max(closure,quantise8((speed-double(farLo))/(double(farHi)-double(farLo))));}
     return any?1-closure:0;}
 float far_gate_weight_raw(float depth){if(!(depth>=0&&depth<=1))return 0;return std::min(std::max((depth-farD0)*farInv,0.f),1.f);}
@@ -83,11 +83,9 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             const double clamped=std::min(std::max(old,lo),hi),soft=farOn?quantise8(strength)*c.relax:sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;old=clamped+soft*(old-clamped);
             double keep=w;const double farw=farOn?far_gate_weight(centre):0;
             if(farOn){double a=m.age[n-1][UINT(by+(fy>=.5?1:0))*S+x];if(!(a>=1&&a<=64))a=1;
-                const float target=std::max(std::max(c.farW,c.thinW),float(w)),span=target-float(w);auto scale=[&](float v){return v>0&&span>0?(v-float(w))/span:0.f;};
-                const float scaleFar=span>0?scale(c.farW):1.f,raw=far_gate_weight_raw(centre); // two mask draws (line filter / thin region) quantise farw twice
-                const double gateFar=c.farW>0?double(c.thinW>0||c.A>0?quantise8(double(quantise8(raw))*scaleFar):quantise8(double(raw)*scaleFar))*(1-std::min(std::max((speed-double(farLo))/(double(farHi)-double(farLo)),0.),1.)):0;
-                const double gateThin=c.thinW>0?quantise8(strength*scale(c.thinW)):0;
-                keep=w+std::max(gateFar,gateThin)*(std::min(a/(a+1),double(target))-w);
+                const double ramp=a/(a+1),slow=1-std::min(std::max((speed-double(farLo))/(double(farHi)-double(farLo)),0.),1.);
+                const double farKeep=w+(c.farW>0?double(far_gate_weight(centre))*slow*(std::min(ramp,double(c.farW))-w):0.),gate=c.thinW>0?quantise8(strength):0;
+                keep=gate>0?std::max(farKeep,w+gate*(std::min(ramp,double(c.thinW))-w)):farKeep;
                 m.age[n][i]=float(std::min(a+1,64.));}
             if(c.wmax>0){double a=m.age[n-1][UINT(by+(fy>=.5?1:0))*S+x];if(!(a>=1&&a<=64))a=1;const double t=std::min(std::max((speed-.1)/.4,0.),1.);keep=std::min(a/(a+1),c.wmax+t*(w-c.wmax));m.age[n][i]=float(std::min(a+1,64.));}
             const double filterWeight=std::max(c.A>0&&line_mask(run.depth[n],x,y,c.width)?1.:0.,c.farA>0?farw:0.);

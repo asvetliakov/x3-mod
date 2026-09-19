@@ -2,15 +2,15 @@
 // Included after temporal_far_inc.h: uses LineConfig / line_model (the 2-D oracle with the thin-region gate), FarRun,
 // MaskCreationFault, EdgeScene, Snapshot, Fault.
 //
-// Scene "arm": horizontal shards 0.8 px tall, pitch 2.37 px, value 1 at depth 0.99, x in [2, 13), over the depth
+// Scene "arm": horizontal shards 0.8 px tall, pitch 2.37 px, value 1 at depth 0.99, x in [2, 11), over the depth
 // sentinel (value 0.25, motion alpha -1, policy 2 with the identity camera): under the 8-phase jitter their coverage
 // toggles against the sentinel, a fringe wider than the 3x3 clip box, so the clip snaps the history to the current
 // phase. A plain 8x8 square (depth 0.98) at x in [21, 29) is the ordinary silhouette: no 7-tap line through any of its
-// pixels changes depth class twice, the dilated region ends at x = 19, and it must stay bit-identical.
+// pixels changes depth class twice, the grown region ends at x = 19, and it must stay bit-identical.
 constexpr unsigned thinFrames=128,thinAnalysed=32;
 double thinDrift=0;unsigned thinMoveFrom=~0u;
 std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;const double moved=n>thinMoveFrom?thinDrift*(n-thinMoveFrom):thinMoveFrom==~0u?thinDrift*n:0,phase=std::fmod(2.31+moved,2.37);
-    for(double top=phase;top<30;top+=2.37)if(top>=2)o.push_back({2,top,13,top+.8,1,lineDepth,0,n>thinMoveFrom||thinMoveFrom==~0u?thinDrift:0});
+    for(double top=phase;top<30;top+=2.37)if(top>=2)o.push_back({2,top,11,top+.8,1,lineDepth,0,n>thinMoveFrom||thinMoveFrom==~0u?thinDrift:0});
     o.push_back({21,12,29,20,1,squareDepth,0,0});return o;}
 double thin_velocity(double nearest){return nearest==double(lineDepth)?thinDrift:0;}
 FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool failMasks=false){
@@ -28,14 +28,15 @@ FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsi
     run.masksFailed=pass.line_masks_failed();require(sequence,"thin-region history follows the sequence");return run;}
 // Temporal ripple of the shard region / peak-to-peak over the last jitter cycles.
 void thin_ripple(const FarRun& r,double& rms,double& p2p){double sum=0;unsigned count=0;p2p=0;const unsigned N=unsigned(r.output.size());
-    for(UINT y=5;y<27;++y)for(UINT x=4;x<11;++x){double lo=1e9,hi=-1e9,mean=0;for(unsigned n=N-thinAnalysed;n<N;++n){const double v=px(r.output[n],x,y);lo=std::min(lo,v);hi=std::max(hi,v);mean+=v/thinAnalysed;}
+    for(UINT y=5;y<27;++y)for(UINT x=4;x<9;++x){double lo=1e9,hi=-1e9,mean=0;for(unsigned n=N-thinAnalysed;n<N;++n){const double v=px(r.output[n],x,y);lo=std::min(lo,v);hi=std::max(hi,v);mean+=v/thinAnalysed;}
         for(unsigned n=N-thinAnalysed;n<N;++n){const double e=px(r.output[n],x,y)-mean;sum+=e*e;++count;}p2p=std::max(p2p,hi-lo);}
     rms=std::sqrt(sum/count);}
 void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     std::puts("THIN_REGION_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
-    struct Hooks{Hooks(){line_velocity=thin_velocity;farD0=farInv=0;}~Hooks(){line_velocity=line_velocity_default;thinDrift=0;thinMoveFrom=~0u;}} hooks;
-    const LineConfig base{"thin-base",false,0,0,0},on97{"thin-region-0.97",false,0,0,0,1,0,0,.97f,1},on985{"thin-region-0.985",false,0,0,0,1,0,0,.985f,1},half{"thin-region-0.97-relax-0.5",false,0,0,0,1,0,0,.97f,.5f},weightOnly{"thin-region-0.97-relax-0",false,0,0,0,1,0,0,.97f,0};
+    struct Hooks{Hooks(){line_velocity=thin_velocity;farD0=.98f;farInv=200;} // far gate for the combined config: farw 1 on the shards (0.99), 0 on the square (0.98)
+        ~Hooks(){line_velocity=line_velocity_default;thinDrift=0;thinMoveFrom=~0u;farD0=farInv=0;}} hooks;
+    const LineConfig base{"thin-base",false,0,0,0},on97{"thin-region-0.97",false,0,0,0,1,0,0,.97f,1},on985{"thin-region-0.985",false,0,0,0,1,0,0,.985f,1},half{"thin-region-0.97-relax-0.5",false,0,0,0,1,0,0,.97f,.5f},weightOnly{"thin-region-0.97-relax-0",false,0,0,0,1,0,0,.97f,0},withFar{"thin-region-0.97+far-weight-0.985",false,0,0,0,1,.985f,0,.97f,1};
     // ---- refusals, hostile state, failed draw, Reset ----
     {s.render(thin_objects(0),sentinelBackground,0,0);Output out;const FlickerConfig none{"thin-validation",0,0,.1f,.5f,false,false,.9f};
         TemporalPass bare;check("thin bare initialize",bare.initialize(d,nullptr,resolver));auto in=flicker_inputs(s,none,0,0,true);in.caller_scene_open=false;in.thin_region_weight=.97f;
@@ -57,7 +58,7 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     // ---- static shards, and drifting inside the gate (0.12 px/frame, t = 0.41) and past HI (0.30) ----
     double staticRms[2]{};
     for(double drift:{0.,.12,.3}){thinDrift=drift;thinMoveFrom=~0u;const auto baseRun=thin_sequence(s,resolver,base,thinFrames);double baseRms=0,baseP2p=0;thin_ripple(baseRun,baseRms,baseP2p);
-        for(const LineConfig* c:{&base,&on97,&on985,&half,&weightOnly}){const auto run=c==&base?baseRun:thin_sequence(s,resolver,*c,thinFrames);const auto model=line_model(run,*c);double oracle=0,ageOracle=0,rms=0,p2p=0,maskError=0;unsigned squareDiffers=0,squarePixels=0;thin_ripple(run,rms,p2p);
+        for(const LineConfig* c:{&base,&on97,&on985,&half,&weightOnly,&withFar}){const auto run=c==&base?baseRun:thin_sequence(s,resolver,*c,thinFrames);const auto model=line_model(run,*c);double oracle=0,ageOracle=0,rms=0,p2p=0,maskError=0;unsigned squareDiffers=0,squarePixels=0;thin_ripple(run,rms,p2p);
             for(unsigned n=0;n<thinFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
                 if(!run.age.empty())ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));
                 if(x>=20){++squarePixels;squareDiffers+=std::memcmp(&run.output[n][(y*S+x)*4],&baseRun.output[n][(y*S+x)*4],4*sizeof(float))!=0;}}
@@ -69,6 +70,8 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
             ++numeric_checks;require(squarePixels>0&&squareDiffers==0,"plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels");
             if(drift==0&&c==&on97){staticRms[0]=baseRms;staticRms[1]=rms;++numeric_checks;require(rms<=.35*baseRms&&p2p<=.5*baseP2p,"static shards: ripple <= 0.35 x and peak-to-peak <= 0.5 x the installed resolve");}
             if(drift==0&&c==&weightOnly){++numeric_checks;require(rms>staticRms[1],"the weight without the clip relaxation leaves more ripple (the clip is the cause)");}
+            // (Measured 1.10 x the thin region alone: pixels whose depth toggles with the phase alternate between the two weight targets.)
+            if(drift==0&&c==&withFar){++numeric_checks;require(rms<=.15*baseRms&&rms<=staticRms[1]*1.25,"far stabiliser + thin region (the expected default pair): shard ripple <= 0.15 x the installed resolve and within 1.25 x the thin region alone");}
             if(drift>=.25&&c->thinW>0){++numeric_checks;require(same_rgb(run.output,baseRun.output),"past the speed gate the thin-region run is the plain resolve bit for bit, every pixel");}}}
     // ---- motion starts after 64 static frames (0.4 px/frame): the gate closes at once; the stabilised history is released by the clip ----
     {thinDrift=.4;thinMoveFrom=64;const auto baseRun=thin_sequence(s,resolver,base,thinFrames),run=thin_sequence(s,resolver,on97,thinFrames);double first=0,late=0,trail=0,baseTrail=0;

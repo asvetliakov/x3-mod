@@ -2075,5 +2075,16 @@ history weight min(n/(n+1), W), closed by the fastest pixel within 6 px (gate 0.
 the neighbourhood gate: run148 (0.49 px/frame) p99 0.7 codes, run161 (0.84) region closed (57 codes with a per-pixel gate).
 `resolve_far` 495 slots, mask program 270; all other bytecode unchanged. `run_temporal_pass.py` exit 0, lattice mode 420
 numerical / 19 state (shard ripple x 0.086, plain silhouette 0 of 29 952 px-frames differing, past the gate bit-identical);
-pass +0.79 ms at 1280x768; `run_motion_output.py` seam cases 164 / 140 / 59; generator and bloom `--check` PASS.
+pass +0.79 ms at 1280x768; generator and bloom `--check` PASS.
+
+### TAA thin-region review fixes (2026-09-19)
+
+`docs/architecture/taa-lattice-crawl.md`, section 13.1. Region grown by 5 px (run175 arm 3.20 / 24 / 6 -> 2.34 / 22 / 0 at W 0.97,
+trails unchanged, frame share +0.01-0.03, no measurable pass-time cost); exact per-pixel weight targets when the far stabiliser
+and the thin region are both on (`c5.x`, `resolve_far` 496 slots, mask 305); the far stabiliser alone bit-identical to the flown
+program (fixture reference of commit dee6608c); line filter alone back to two mask draws (+0.22 ms); `--taa-thin-clip` beside
+the far stabiliser / thin region refused on purpose (deliberate removal: inert on real data); options validated separately in
+the route; one shared speed gate made explicit in the launcher. `run_temporal_pass.py` exit 0, lattice mode 459 numerical / 19
+state. Seam cases, record `verification/results/bottle-X3/motion-output-partial.json`: 164 / 140 / 59 checks. Generator
+`--check` PASS; only `temporal_line_mask` and `temporal_resolve_far` bytecode moved.
 

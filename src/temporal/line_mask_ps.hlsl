@@ -21,14 +21,19 @@
 //             this pixel's own reprojection, px/frame: the routed motion where
 //             its alpha is 1 (c7.x), else the camera path c0..c3 at the pixel's
 //             depth (far plane on the sentinel), as resolve.hlsl computes it.
-//   c7.z = 1  s1 = the first target, maxima along x into the second; c7.z = 3
-//             s1 = the second, maxima along y back into the FIRST, composed:
-//             r = max(3x3 maximum of r, farw * c5.z); g = farw * c5.w; b = (7x7
-//             maximum of b) * (1 - 13x13 maximum of a): the thin-region
-//             strength, closed by the FASTEST pixel within 6 px, the reach of
-//             the region itself (a background pixel a moving edge has just
-//             uncovered carries the background's speed, its neighbours the
-//             edge's); a = b * c6.x, scaled to the weight target of c24.y.
+//   c7.z = 1  thin region on: s1 = the first target, maxima along x into the
+//             second; c7.z = 3: s1 = the second, maxima along y back into the
+//             FIRST, composed: r = max(3x3 maximum of r, farw * c5.z); g = farw *
+//             c5.w; b = (11x11 maximum of b) * (1 - 17x17 maximum of a): the
+//             thin-region strength, closed by the FASTEST pixel within 8 px,
+//             the reach of the region itself (a background pixel a moving edge
+//             has just uncovered carries the background's speed, its neighbours
+//             the edge's); a = 0.
+//   c7.z = 4  line filter without the thin region: s1 = the first target, one
+//             draw into the second: r = max(3x3 maximum of r, farw * c5.z), g =
+//             farw * c5.w, b = a = 0.
+// Taps outside the frame repeat the edge texel (clamp): a line leaving the frame
+// sees no further class change, a border pixel is as fragmented as its inside.
 //   c7.z = 2  s1 = the current depth, far stabiliser alone: r = farw * c5.z, g =
 //             farw * c5.w, b = a = 0, one draw into the second target.
 // farw = saturate((d - c5.x) * c5.y) on a valid depth, else 0; c5.zw are the far
@@ -41,7 +46,7 @@ float4 reprojection2 : register(c2);
 float4 reprojection3 : register(c3);
 float4 sizeJitter : register(c4);
 float4 farGate : register(c5);
-float4 thinGate : register(c6); // weight scale, on, speed LO, 1 / (HI - LO)
+float4 thinGate : register(c6); // unused, on, speed LO, 1 / (HI - LO)
 float4 options : register(c7);
 static const float lineMargin = 1.1;
 float4 fetch(float2 uv) { return tex2Dlod(source, float4(uv, 0, 0)); }
@@ -71,22 +76,28 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
     float4 result = 0;
     if (options.z > 1.5 && options.z < 2.5) {
         result.rg = farWeight(fetch(uv).r) * farGate.zw;
+    } else if (options.z > 3.5) {
+        [loop] for (int ny = -1; ny <= 1; ++ny) {
+            [loop] for (int nx = -1; nx <= 1; ++nx) result.r = max(result.r, fetch(uv + float2(nx, ny) * sizeJitter.xy).r);
+        }
+        float2 far = fetch(uv).gg * farGate.zw;
+        result.r = max(result.r, far.x); result.g = far.y;
     } else if (options.z > 0.5) {
         // Separable maxima: c7.z = 1 along x into the second target, c7.z = 3 along y back into the first, which also composes.
         bool compose = options.z > 2.5;
         float2 axis = compose ? float2(0, sizeJitter.y) : float2(sizeJitter.x, 0);
         float4 centre = fetch(uv);
         result = centre;
-        [loop] for (int k = -6; k <= 6; ++k) {
+        [loop] for (int k = -8; k <= 8; ++k) {
             float4 tap = fetch(uv + k * axis);
             result.a = max(result.a, tap.a);
-            if (abs(k) <= 3) result.b = max(result.b, tap.b);
+            if (abs(k) <= 5) result.b = max(result.b, tap.b);
             if (abs(k) <= 1) result.r = max(result.r, tap.r);
         }
         if (compose) {
             float2 far = centre.gg * farGate.zw;
             result.r = max(result.r, far.x); result.g = far.y;
-            result.b *= (1 - result.a) * thinGate.y; result.a = result.b * thinGate.x;
+            result.b *= (1 - result.a) * thinGate.y; result.a = 0;
         }
     } else {
         float depth = fetch(uv).r;
