@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CPU replay of src/temporal/resolve.hlsl over a --taa-debug capture (numpy, crop of the frame).
-usage: replay.py <dump dir> <x0> <y0> <x1> <y1> [validate|options|lattice|far]
+usage: replay.py <dump dir> <x0> <y0> <x1> <y1> [validate|options|lattice|far|remedy]
 lattice: docs/architecture/taa-lattice-crawl.md; the lattice mask, the masked current filter (resolve_lattice*.hlsl),
 AgX + RCAS as agx.hlsl / rcas.hlsl apply them (HDR tonemapped write-back without bloom) and the sharpen exclusion."""
 import re, sys, json, subprocess
@@ -155,6 +155,28 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
             wc = wc + farw[..., None] * (g9 / gt - wc)
     blendc = filt / ft[..., None] if A else wc
     if A and opt.get('fmask'): blendc = np.where(masks[opt['fmask']][..., None], blendc, wc)
+    # Remedy candidates of taa-lattice-crawl.md section 10, all on masks[opt['rmask']] (default line2x):
+    rm = masks[opt.get('rmask', 'line2x')]
+    def wtap(oy, ox):  # weighted current colour at a fractional offset, bilinear over the full frame
+        yy = ys + oy; xx = xs + ox; y0_ = np.floor(yy).astype(int); x0_ = np.floor(xx).astype(int); fy_ = (yy - y0_)[..., None]; fx_ = (xx - x0_)[..., None]
+        t = lambda a_, b_: weigh(cur[np.clip(a_, 0, H - 1), np.clip(b_, 0, W - 1), :3].astype(np.float64), k)
+        return (t(y0_, x0_) * (1 - fx_) + t(y0_, x0_ + 1) * fx_) * (1 - fy_) + (t(y0_ + 1, x0_) * (1 - fx_) + t(y0_ + 1, x0_ + 1) * fx_) * fy_
+    if opt.get('wide'):  # 5x5 isotropic Gaussian exp(-A d^2) about the jittered sample position
+        acc_ = np.zeros_like(wc); tot_ = 0.
+        for oy in range(-2, 3):
+            for ox in range(-2, 3): g = np.exp(-opt['wide'] * ((ox - jx) ** 2 + (oy - jy) ** 2)); acc_ += wtap(oy, ox) * g; tot_ += g
+        blendc = np.where(rm[..., None], acc_ / tot_, blendc)
+    if opt.get('along'):  # 1-D Gaussian ALONG the local line direction (structure tensor of the 5x5 depth-validity image), sigma px, +-3 taps
+        sigma, across = opt['along']; ind = valid(dep).astype(np.float64); gy_, gx_ = np.gradient(ind); J = lambda a_: sum(a_[ys + oy, xs + ox] for oy in range(-2, 3) for ox in range(-2, 3))
+        jxx, jyy, jxy = J(gx_ * gx_), J(gy_ * gy_), J(gx_ * gy_); th = .5 * np.arctan2(2 * jxy, jxx - jyy) + np.pi / 2; dxl, dyl = np.cos(th), np.sin(th)  # line direction = across-gradient + 90 deg
+        coh = np.hypot(jxx - jyy, 2 * jxy) / np.maximum(jxx + jyy, 1e-9); acc_ = np.zeros_like(wc); tot_ = 0.
+        for t_ in range(-3, 4):
+            for u_ in ((-1, 0, 1) if across else (0,)):
+                g = np.exp(-.5 * (t_ / sigma) ** 2) * (np.exp(-across * u_ * u_) if across else 1.); acc_ += wtap(t_ * dyl + u_ * dxl - jy * 0, t_ * dxl - u_ * dyl) * g; tot_ += g
+        blendc = np.where((rm & (coh > opt.get('coh', .3)))[..., None], acc_ / tot_, blendc)
+    if opt.get('dim'):  # coverage-to-alpha style: the current sample of line pixels pulled toward the 3x3 minimum (the background) by dim
+        blendc = np.where(rm[..., None], blendc + opt['dim'] * (lo - blendc), blendc)
+    if opt.get('wmask'): keep = np.where(rm, opt['wmask'], keep)
     out = unweigh(blendc + keep[..., None] * (old - blendc), k)
     out = np.where(accept[..., None], out, c)
     res = np.concatenate([out, alpha[..., None]], -1).astype(np.float16)
@@ -301,7 +323,8 @@ if MODE == 'lattice':
         for kx in (0, 1, 2): stable &= Vw[ky:ky + flip.shape[0], kx:kx + flip.shape[1]]
     stable = stable[:, 1:] & stable[:, :-1]
     mnames = os.environ.get('MASKS', 'lattice').split(',')
-    for name, opt in [('installed', {})] + [('%s A=%g' % (m_, A_), dict(filter=A_, fmask=m_)) for m_ in mnames for A_ in (2., 1.)]:
+    # INSTALLED="dict(filter=1., fmask='line2x')": the options the capture was flown with (the 'installed' row then replays the dump itself)
+    for name, opt in [('installed', eval(os.environ.get('INSTALLED', '{}')))] + [('%s A=%g' % (m_, A_), dict(filter=A_, fmask=m_)) for m_ in mnames for A_ in (2., 1.)]:
         outs, diags, _ = run(opt, 1); stages = {'resolve': [], 'agx': [], 'agx+rcas': [], 'agx+rcas excl': []}
         for o, dg, f in zip(outs, diags, fr):
             pad = load('taa', f, 'rgba16f', np.float16, 4)[Y0 - 1:Y1 + 1, X0 - 1:X1 + 1, :3].astype(np.float32); pad[1:-1, 1:-1] = o[..., :3]; t = agx(pad, ev[f])
@@ -375,3 +398,60 @@ if MODE == 'far':
                 for b, m_ in (('all', pair), ('farw 0', pair & (fwp == 0)), ('(0,.5]', pair & (fwp > 0) & (fwp <= .5)), ('>.5', pair & (fwp > .5))): line += ' %s x%.3f' % (b, g2[m_].mean() / b_['g2'][m_].mean()) if m_.any() else ''
             print('%-19s %-9s hot std %.2f (x%.2f) | interior rms %.3f (x%.2f) | px>2 codes %d | hot mean x%.2f | per-frame gradient energy%s' % (
                 name, stage, r['hot'], r['hot'] / b_['hot'], r['inter'], r['inter'] / b_['inter'], r['n2'], r['hm'] / b_['hm'], line), flush=True)
+
+# --- lattice crawl remedies against the VISIBLE metric (taa-lattice-crawl.md section 10) -------------------------------
+# Static roping: in each 8-frame jitter-cycle mean of the presented image (AgX + RCAS), line crossings by sub-pixel phase; the
+# bead contrast (centred - straddling) / (centred + straddling) is what creeps along the lines when the ship drifts slowly.
+if MODE == 'remedy':
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    GAIN = 2. ** -float(os.environ.get('SHARPEN', '0.75')); fr = frames[1:]; dcode = lambda rgb: 255 * (rgb @ LUMA)
+    ev = {int(re.search(r'frame=(\d+)', l).group(1)): float(re.search(r'ev_adapted=([-\d.]+)', l).group(1)) for l in
+          subprocess.run(['grep', '-E', r'^hdr_frame device=1 frame=(%s) ' % '|'.join(map(str, frames)), D + log], capture_output=True, text=True).stdout.splitlines()}
+    def box(a, r):
+        c = np.cumsum(np.cumsum(np.pad(a.astype(np.float64), ((r + 1, r), (r + 1, r))), 0), 1); n = 2 * r + 1
+        return (c[n:, n:] - c[:-n, n:] - c[n:, :-n] + c[:-n, :-n]) / (n * n)
+    regs = []
+    for f in fr:
+        dep = load('depth', f, 'rgba32f', np.float32, 4)[..., 0]; mot = load('motion', f, 'rgba32f', np.float32, 4); v = valid(dep); regs.append(((box((mot[..., 3] == 1) & ~v, 5) > .45) & (box(v, 2) < .65))[Y0:Y1, X0:X1])
+    def peaks(Lm, reg):
+        c, u1, u2, d1, d2 = Lm[2:-2], Lm[1:-3], Lm[:-4], Lm[3:-1], Lm[4:]; bg = np.minimum(u2, d2); pk = (c >= u1) & (c > d1) & (c > 1.3 * bg) & reg[2:-2]
+        e = (u1 - bg).clip(0) + (c - bg) + (d1 - bg).clip(0); return (((d1 - bg).clip(0) - (u1 - bg).clip(0)) / np.maximum(e, 1e-9))[pk], (c - bg)[pk]
+    def beads(S):  # cycles start after the 7-frame transient of a changed filter
+        C, P = [], []
+        for c0 in range(7, len(S) - 7, 8):
+            c_, p_ = peaks(np.clip(np.mean(S[c0:c0 + 8], 0) / 255, 0, 1) ** 2.2, regs[c0 + 4]); C.append(c_); P.append(p_)
+        C, P = np.abs(np.concatenate(C)), np.concatenate(P); pc, ps = np.median(P[C < .1]), np.median(P[C >= .4]); return pc, ps, (pc - ps) / (pc + ps), len(P)
+    def fshift(a, dx, dy):
+        fy = np.fft.fftfreq(a.shape[0])[:, None]; fx = np.fft.fftfreq(a.shape[1])[None, :]; return np.real(np.fft.ifft2(np.fft.fft2(a) * np.exp(-2j * np.pi * (fx * dx + fy * dy))))
+    def creep(S, lat):
+        """The VISIBLE crawl: how far the lattice image is from a rigid translation of itself. Jitter-cycle means A (frames 7..14) and
+        B (the last 8); per 28-px lattice tile the best sub-pixel translation of A onto B (Fourier shift); rms residual / lattice contrast."""
+        A_, B_ = S[7:15].mean(0), S[-8:].mean(0); T = 28; res = []; sh = []
+        for ty in range(10, A_.shape[0] - T - 9, T // 2):
+            for tx in range(10, A_.shape[1] - T - 9, T // 2):
+                mm = lat[ty:ty + T, tx:tx + T]
+                if mm.mean() < .6: continue
+                a_ = A_[ty - 10:ty + T + 10, tx - 10:tx + T + 10]  # 10-px pad: the wrap-around of the Fourier shift stays outside the tile
+                r_, dx_, dy_ = min((((fshift(a_, dx, dy)[10:-10, 10:-10] - B_[ty:ty + T, tx:tx + T])[mm] ** 2).mean(), dx, dy) for dx in np.arange(-1.2, 1.21, .1) for dy in np.arange(-.6, .61, .1))
+                r_, dx_, dy_ = min((((fshift(a_, dx, dy)[10:-10, 10:-10] - B_[ty:ty + T, tx:tx + T])[mm] ** 2).mean(), dx, dy) for dx in np.arange(dx_ - .1, dx_ + .11, .025) for dy in np.arange(dy_ - .1, dy_ + .11, .025))
+                res.append(r_); sh.append((dx_, dy_))
+        return float(np.sqrt(np.mean(res))), float(B_[lat].std()), len(res), np.median(np.array(sh), 0)
+    configs = [('installed', {}), ('line2x A=1 (flown)', dict(filter=1., fmask='line2x')), ('line2x A=2 (flown)', dict(filter=2., fmask='line2x')), ('line2x A=0.5', dict(filter=.5, fmask='line2x')),
+               ('5x5 Gaussian A=0.5', dict(wide=.5)), ('5x5 Gaussian A=0.25', dict(wide=.25)), ('along-line s=1.5', dict(along=(1.5, 0))), ('along-line s=2.5', dict(along=(2.5, 0))),
+               ('along s=1.5 + across A=1', dict(along=(1.5, 1.))), ('mask weight 0.97', dict(wmask=.97)), ('dim 0.5', dict(dim=.5)), ('dim 0.5 + line2x A=1', dict(dim=.5, filter=1., fmask='line2x'))]
+    configs += [('line2x A=1 + mask weight 0.97', dict(filter=1., fmask='line2x', wmask=.97)), ('line2x A=1, no clip', dict(filter=1., fmask='line2x', thin=1., allthin=True)),
+                ('line2x A=1 + weight 0.97, no clip', dict(filter=1., fmask='line2x', wmask=.97, thin=1., allthin=True)), ('no clip', dict(thin=1., allthin=True))]
+    if os.environ.get('ONLY'): configs = [c for c in configs if c[0] == 'installed' or c[0] in os.environ['ONLY'].split('|')]
+    ref = None
+    for name, opt in configs:
+        outs, diags, _ = run(opt, 1); pres = []; nosh = []
+        for o, f in zip(outs, fr):
+            pad = load('taa', f, 'rgba16f', np.float16, 4)[Y0 - 1:Y1 + 1, X0 - 1:X1 + 1, :3].astype(np.float32); pad[1:-1, 1:-1] = o[..., :3]; t = agx(pad, ev[f]); pres.append(dcode(rcas(t, GAIN))); nosh.append(dcode(t[1:-1, 1:-1]))
+        pres = np.nan_to_num(np.array(pres)); pc, ps, bc, n = beads(pres); pc0, ps0, bc0, _ = beads(np.nan_to_num(np.array(nosh)))
+        lat = np.array([dg['masks']['line2x'] for dg in diags]); rip = float(np.sqrt(((pres[8:] - pres[8:].mean(0)) ** 2)[lat[8:]].mean()))
+        gsel = ~(box(lat.any(0), 2) > 0); g = float((np.diff(pres[8:], axis=2) ** 2)[:, gsel[:, 1:] & gsel[:, :-1]].mean()); gl = float((np.diff(pres[8:], axis=1) ** 2)[:, lat.all(0)[1:] | lat.all(0)[:-1]].mean())
+        latc = box(np.array([dg['masks']['lattice'] for dg in diags]).mean(0), 5) > .5; cr, cc, ct, cs = creep(pres, latc)
+        ref = ref or dict(bc=bc, pc=pc, amp=pc - ps, rip=rip, g=g, gl=gl, cr=cr, cc=cc)
+        print('%-26s CREEP residual %.2f codes (x%.2f) = %.3f of the lattice contrast %.1f (x%.2f); %d tiles, shift (%.2f, %.2f) px' % (name, cr, cr / ref['cr'], cr / cc, cc, cc / ref['cc'], ct, cs[0], cs[1]), end=' || ')
+        print('%-26s crossings %d | bead contrast %.3f (x%.2f), amplitude %.4f (x%.2f) | before the sharpen %.3f | line peak x%.2f | temporal rms on the mask x%.2f | across-line gradient energy on the mask x%.2f | off-mask gradient x%.4f' % (
+            name, n, bc, bc / ref['bc'], pc - ps, (pc - ps) / ref['amp'], bc0, pc / ref['pc'], rip / ref['rip'], gl / ref['gl'], g / ref['g']), flush=True)
