@@ -238,6 +238,7 @@ bool MotionOutput::sun_stamp_draw(const MotionRoute&) noexcept {
     if ((shadow_.vs && !shadow_.vs_major) || (shadow_.ps && !shadow_.ps_major)) return false;
     const bool sm3 = shadow_.vs_major >= 3 || shadow_.ps_major >= 3;
     if (sm3 && (!shadow_.vs || !shadow_.ps)) return false;
+    if (shadow_.ps && shadow_.ps_depth_out) return false; // the original replaces the rasterized depth: EQUAL would not select its pixels
     const unsigned slot = sm3 ? 1u : 0u;
     if (!depth_surface_ || motion_state_lost_ || sun_stamp_ps_failed_[slot]) return false;
     if (!sun_stamp_ps_[slot]) {
@@ -258,7 +259,8 @@ bool MotionOutput::sun_stamp_draw(const MotionRoute&) noexcept {
     static constexpr Item items[] = {
         {D3DRS_ZWRITEENABLE, FALSE}, {D3DRS_ZFUNC, D3DCMP_EQUAL}, {D3DRS_ALPHATESTENABLE, FALSE},
         {D3DRS_ALPHABLENDENABLE, FALSE}, {D3DRS_SRGBWRITEENABLE, FALSE}, {D3DRS_FOGENABLE, FALSE},
-        {D3DRS_COLORWRITEENABLE, 0}, {D3DRS_COLORWRITEENABLE1, 0}, {D3DRS_COLORWRITEENABLE2, D3DCOLORWRITEENABLE_GREEN}};
+        {D3DRS_COLORWRITEENABLE, 0}, {D3DRS_COLORWRITEENABLE1, 0}, {D3DRS_COLORWRITEENABLE2, D3DCOLORWRITEENABLE_GREEN},
+        {D3DRS_COLORWRITEENABLE3, 0}}; // RT3 is never the route's; an application binding there stays untouched
     constexpr unsigned item_count = unsigned(sizeof items / sizeof items[0]);
     DWORD saved[item_count]{}, stencil = TRUE;
     if (FAILED(render_state(D3DRS_STENCILENABLE, &stencil)) || stencil) return false;
@@ -266,14 +268,17 @@ bool MotionOutput::sun_stamp_draw(const MotionRoute&) noexcept {
     HRESULT hr = S_OK;
     unsigned written = 0; // bit i: items[i] was attempted (a failed setter may still have mutated)
     bool target = false, shader = false;
+    bool mid_fault = false; // fixture only: the fourth attempted state write reports failure after it was issued
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
-     if(!std::strcmp(fault,"stamp"))hr=E_FAIL;}
+     if(!std::strcmp(fault,"stamp"))hr=E_FAIL;
+     mid_fault=!std::strcmp(fault,"stamp_mid");}
 #endif
     for (unsigned i = 0; i < item_count && SUCCEEDED(hr); ++i) {
         if (saved[i] == items[i].value) continue;
         written |= 1u << i;
         hr = direct_call<SetRenderStateFn>(SetRenderState, items[i].key, items[i].value);
+        if (mid_fault && SUCCEEDED(hr) && i >= 3) hr = E_FAIL;
     }
     if (SUCCEEDED(hr)) { target = true; hr = bind_target(2, depth_surface_); }
     if (SUCCEEDED(hr)) { shader = true; hr = native<SetPsFn>(SetPixelShader)(device_, sun_stamp_ps_[slot]); }

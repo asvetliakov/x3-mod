@@ -19,7 +19,7 @@ class SunShareLane(unittest.TestCase):
                             str(ROOT/'verification/probe/sun_share_host.cpp'),
                             str(ROOT/'src/renderer/material_motion.cpp'), '-o', str(exe)], check=True)
             result = subprocess.run([str(exe)], text=True, capture_output=True, check=True)
-            self.assertIn('PASS checks=35 ', result.stdout)
+            self.assertIn('PASS checks=41 ', result.stdout)
             print(result.stdout.strip())
 
     def test_depth_stride(self):
@@ -238,6 +238,19 @@ class SunShareLane(unittest.TestCase):
         self.assertNotEqual(old, expected, 'drop-all-cutout must fail actual pixel oracle')
         self.assertNotEqual(source, expected, 'broken RGB alpha mask must fail pixel oracle')
 
+    def test_stamp_runs_after_the_gain_finishers_and_before_the_jitter_restore(self):
+        # The stamp restores the PS to the application's (shadow_.ps): it must run
+        # once finish_source_gain / finish_hull_gain have put that program back, and
+        # while the draw's jittered clip rows are still on the device.
+        proxy=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        body=proxy[proxy.index('void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {'):]
+        order=[body.index(x) for x in ('if (route.source_gain) finish_source_gain(route);','if (route.hull_gain) finish_hull_gain(route);','stamped=sun_stamp_draw(route);','restore_jitter(route);')]
+        self.assertEqual(order,sorted(order)); self.assertEqual(body.count('sun_stamp_draw(route)'),1)
+        lane=(ROOT/'src/proxy/sun_share_lane_inc.h').read_text()
+        self.assertIn('if (shadow_.ps && shadow_.ps_depth_out) return false;',lane)
+        self.assertIn('{D3DRS_COLORWRITEENABLE3, 0}',lane)
+        self.assertIn('entry.depth_out = renderer::pixel_program_writes_depth(',proxy)
+
     def test_live_evidence_rejects_missing_draws_faults_and_taa(self):
         from run_sun_share_live import validate
         import json
@@ -250,7 +263,7 @@ class SunShareLane(unittest.TestCase):
             for i in range(6):
                 lane=not early and not lane_off and not (late and i==3) and not (case=='late_shader' and i>=4)
                 refused_share=case=='original_share_refused'
-                available=lane and not (i==2 and (late or case in ('untracked','cutout_pair','shadow_apply','unregistered_fault') or failed_coverage)) and not refused_share
+                available=lane and not (i==2 and (late or case in ('untracked','cutout_pair','shadow_apply','unregistered_fault','unregistered_mid') or failed_coverage)) and not refused_share
                 non_writers=int((case in ('effects','cutout_pair_bias') or failed_coverage) and i==2)
                 original=case in ('original_lane','shadow_apply')
                 expected_history=int(i not in ((0,2,3,4) if failed_coverage else (0,4)))
@@ -262,9 +275,9 @@ class SunShareLane(unittest.TestCase):
                 if composition:
                     masks.append(f'SUN_M frame={i} draws={draws} valid={int(not bad)} required={required} excluded={excluded} eligible={0 if bad else 3600-excluded} linear={1 if bad and case=="composition_failed" else 0 if bad else draws} exchanged={2 if bad and case=="composition_failed" else 0 if bad else draws} incomplete={int(bad and case=="composition_failed")} stopped={int(bad)} interleaved={int(i==3)}')
                 rows.append(f'SUN_LIVE frame={i} step={i} lane={int(lane)} available={int(available)} drawn={0 if lane_off else 3600} positive={3600 if lane and i!=1 else 0} zero={3600 if lane and i==1 else 0} fault={int(late and i==2)} history={int(i not in ((0,2,3,4) if failed_coverage else (0,4)))}')
-                publications.append(f'sun_shadow_lane_frame frame={i} available={int(available)} owner={int(not bad)} exclusion_required={required} exclusion_valid={int(not bad)} failed={int((late and i==2) or refused_share)} receiver_draws={int(lane)} untracked_writers={3 if case=="unregistered_fault" and i==2 else int(case in ("untracked","cutout_pair","shadow_apply") and i==2)} non_depth_writers={non_writers}'
+                publications.append(f'sun_shadow_lane_frame frame={i} available={int(available)} owner={int(not bad)} exclusion_required={required} exclusion_valid={int(not bad)} failed={int((late and i==2) or refused_share)} receiver_draws={int(lane)} untracked_writers={3 if case in ("unregistered_fault","unregistered_mid") and i==2 else int(case in ("untracked","cutout_pair","shadow_apply") and i==2)} non_depth_writers={non_writers}'
                                     f' shadows={int(case=="shadow_apply")} cutout_opaque_routed={int(case=="original_lane" and i==2)} cutout_opaque_lane={int(case=="original_lane" and i==2)} cutout_opaque_refused=0 original_variants={2 if case=="original_lane" else int(original and not refused_share)} original_refused={int(refused_share)} original_refused_draws={int(refused_share)}'
-                                    f' stamped={3 if case=="unregistered" and i==2 else 0} stamp_refused={3 if case=="unregistered_fault" and i==2 else 0}')
+                                    f' stamped={3 if case=="unregistered" and i==2 else 0} stamp_refused={3 if case in ("unregistered_fault","unregistered_mid") and i==2 else 0} stamped_prims={3 if case=="unregistered" and i==2 else 0}')
                 if refused_share:
                     publications.append(f'original_fill_frame frame={i} fill=0.05 admitted=1')
                     rows.append(f'SUN_SHARE_REFUSED frame={i} refused_programs=1 refused_draws=1 fill_draws=1 failed=0')
@@ -295,7 +308,7 @@ class SunShareLane(unittest.TestCase):
             if case in ('xt_state','xt_state_lane_off'): rows.extend(f'SUN_XT_STATE frame={i} test=1 ref=1 func=7 mask=7 lane={int(not lane_off)} routed={int(not lane_off)} gate4={int(lane_off)}' for i in range(6))
             if case=='effects': rows.append('SUN_EFFECTS frame=2 depth_write=0 blend=1')
             if case.startswith('unregistered'):
-                fault=case=='unregistered_fault'
+                fault=case!='unregistered'
                 rows.append(f'SUN_UNREGISTERED frame=2 sign_pixels=406 stamped_pixels={0 if fault else 406} fault={int(fault)}')
                 if fault:
                     publications.append('sun_shadow_lane_refusals frame=2 untracked=3 unknown=0 feature=0 scene=0 unregistered=3 pair=0 no_zwrite=0 blended=0 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=2 overflow=0')
@@ -317,7 +330,7 @@ class SunShareLane(unittest.TestCase):
             return text,'\n'.join(qualifications+[depth]*(1 if case=='late_shader' else 2)+publications+readbacks+frames)
         with tempfile.TemporaryDirectory() as folder:
             work=Path(folder);(work/'x3-modern-captures').mkdir()
-            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair','cutout_pair_bias','original_lane','shadow_apply','original_share_refused','unregistered','unregistered_fault'):
+            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair','cutout_pair_bias','original_lane','shadow_apply','original_share_refused','unregistered','unregistered_fault','unregistered_mid'):
                 text,trace=witness(work,case)
                 report=validate(text,trace,work,case)
                 json.dumps(report,allow_nan=False)
@@ -325,10 +338,11 @@ class SunShareLane(unittest.TestCase):
                     # The stamp witness is exact: an unstamped draw, a pixel the stamp missed,
                     # a vetoed frame or a stamp restoration failure fails.
                     with self.assertRaises(AssertionError): validate(text,trace.replace('stamped=3','stamped=2'),work,case)
+                    with self.assertRaises(AssertionError): validate(text,trace.replace('stamped_prims=3','stamped_prims=2'),work,case)
                     with self.assertRaises(AssertionError): validate(text.replace('stamped_pixels=406','stamped_pixels=405'),trace,work,case)
                     with self.assertRaises(AssertionError): validate(text,trace.replace('frame=2 available=1','frame=2 available=0'),work,case)
                     with self.assertRaises(AssertionError): validate(text,trace+'\nmotion_output_restore_failed frame=2 index=3 result=80004005 what=sun_stamp',work,case)
-                if case=='unregistered_fault':
+                if case in ('unregistered_fault','unregistered_mid'):
                     # The refused stamp keeps the veto: an available frame or a stamped pixel fails.
                     with self.assertRaises(AssertionError): validate(text,trace.replace('frame=2 available=0','frame=2 available=1'),work,case)
                     with self.assertRaises(AssertionError): validate(text.replace('stamped_pixels=0','stamped_pixels=1'),trace,work,case)

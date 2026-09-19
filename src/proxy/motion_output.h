@@ -1074,7 +1074,8 @@ private:
                          // the shadowed c0..c31): the sun is at c4, c5 or c0
                          // depending on the program.
                          std::int8_t sun_register = -1;
-                         std::uint8_t major = 0; }; // version token major (0 until registered)
+                         std::uint8_t major = 0; // version token major (0 until registered)
+                         bool depth_out = false; }; // PS: renderer::pixel_program_writes_depth, one walk at registration
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
@@ -1091,6 +1092,7 @@ private:
         bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion variant, frame failed
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
+        bool ps_depth_out = false; // the bound PS writes oDepth / texdepth (ShaderEntry::depth_out)
         std::uint8_t vs_major = 0, ps_major = 0; // the bound programs' shader-model major versions (0: unbound or unknown)
         std::int8_t ps_sun_register = -1; // the bound PS's LightDir_Dir0 register (ShaderEntry::sun_register)
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
@@ -1254,6 +1256,7 @@ private:
     IDirect3DPixelShader9* sun_stamp_ps_[2]{};
     bool sun_stamp_ps_failed_[2]{}; // created on first use; a failed create is not retried on this device
     MotionDrawCall sun_stamp_call_{};
+    unsigned sun_stamp_prims_=0; // primitives re-issued by this frame's successful stamps (flight sanity figure)
     unsigned sun_stamps_=0, sun_stamp_refused_=0; // per frame; refused: a candidate whose stamp did not run or failed (vetoes as before)
     void arm_sun_stamp(const MotionDrawCall& call, MotionRoute& route) noexcept;
     bool sun_stamp_draw(const MotionRoute& route) noexcept;

@@ -3284,10 +3284,13 @@ Diagnosis from `/tmp/x3-bottleX3-run174/session-20260919-203646-212.log` (local,
   "every transformable SM3 pair"; `material_motion.cpp` checks `0xffff0300`); the VS has no row. Hosting it
   would need a new SM2 rewriter class (vs_2_0 varying change, 64-slot ps_2_0 budget); an emissive sign
   receives no sun, so a share producer for it has no value. It is legitimately unroutable today.
-- The census's two other opaque unregistered pairs of run 174 are not lane vetoes: `c78b4c68a87fce74`/null
+- The census's two other opaque unregistered pairs of run 174 (`z_only.fb` `Z_Only_Fast` / `Z_Only_Alpha`,
+  both already rows of `depth_prepass_profiles.h`: jittered, never routable) are not lane vetoes: `c78b4c68a87fce74`/null
   (512 captured rows) and `803ebfd17f79e413`/`652a7c5d1e9909a0` (192) are the engine's `z_only` depth
   prepass programs (`asteroid-fog-temporal.md`, `effect-shader-users.md`) and draw with `COLORWRITEENABLE 0`
   (`mask=0` on all their `motion_route` rows), so `sun_color_writer` is false and they are never counted.
+  A depth prepass does not break the lane's completeness either: it writes device depth only, and the
+  routed colour pass of the same surface re-tests LESSEQUAL against it and writes RT2 itself.
   The refusal total 24,705 is fully accounted for by the one adeffects signature. The adeffects pair also
   draws 64 of its 192 captured rows with `zwrite=0` (non-depth writers, never a veto).
 
@@ -3339,3 +3342,32 @@ Evidence (bottle X3, fixture and seam rebuilt in the worktree, `run_sun_share_li
   both untouched here (fade-route-overlay-lightmap cases, legacy HDR exposure map).
 - Not verified: native Windows (source uses documented D3D9 only; cross-compiles), and the stamp in a
   flight session. No shader generator table changed, so no `--check` run was needed.
+
+Review fixes (Fable review, no blocker; same worktree). Supersedes the binaries and counts above:
+
+- Order: the stamp now runs after `finish_source_gain` / `finish_hull_gain` (its PS restore assumes the
+  application's program is on the device) and still before `restore_jitter`; asserted by
+  `test_stamp_runs_after_the_gain_finishers_and_before_the_jitter_restore`.
+- oDepth: `renderer::pixel_program_writes_depth` (`sun_share_frame.h`) walks a PS once at registration (SM2+
+  operand type 9; ps_1_x `texdepth`/`texm3x2depth`; comments and `def` payloads skipped; malformed = true);
+  such a draw keeps the veto. `sun_share_host.cpp` +6 checks (41).
+- `COLORWRITEENABLE3 = 0` during the stamp, restored. `sun_shadow_lane_frame` gains `stamped_prims`.
+- `unregistered_mid` (new case, `X3M_FIXTURE_SUN_LANE_FAULT=stamp_mid`): the fourth issued state write
+  reports failure; per-draw snapshot compare clean (no `RESTORE_DIFF`, no `what=sun_stamp`), frame 2
+  `available=0 untracked_writers=3 stamp_refused=3`, `stamped_pixels=0`.
+- Tracked record `verification/results/bottle-X3/sun-share-live.json`: 25 cases, `passed=true`, 47.5 s,
+  seam `428e99336cca2b5e...`, fixture `1053f9adba7ca42c...`; `unregistered` frame 2 `available=1 stamped=3
+  stamped_prims=3`, 406/406 pixels. The attach-time stall did not recur.
+- EQUAL-depth flight check (no runtime query added): in a capture window, every frame with adeffects
+  `motion_route` rows at `zwrite=1` must show `stamped` equal to their count, `stamp_refused=0`,
+  `available=1`; in `depth_1_N.rgba32f` the sign pixels (`color_1_N`) must read `.g = -1`. A sign that stays
+  shadow-darkened with `stamped>0` would mean the EQUAL re-issue missed (depth not reproduced).
+- Prepass table: `4b63594a775cbde0` (89 dwords) and `d2e63b1e5b0e24df` (95), the `z_only_0000.fb` /
+  `z_only_0001.fb` copies, added to `depth_prepass_profiles.h`. Evidence flow: rows already in
+  `rigid_position_profiles_inc.h` with the same class, fingerprints added to `shader-fingerprints.md`,
+  `test_depth_prepass_profiles.py` 4 OK. Byte compare with the existing pair: only dwords 52-53 differ
+  (compiler version string in the CTAB comment, 9.10.455 vs 9.15.779).
+- `test_motion_output_runner` (2 failures, also on main): the `--light-map-far-fade` merge added the two
+  `seam-taa-fade-route-overlay-lightmap*` twins and four `seam-*lightmap-far-fade*` cases without updating
+  the test's expected lists and counts; lists updated, 12 OK. Host: `test_sun_sh*.py` 37 OK,
+  `test_motion_*.py` 135 OK, `test_linear_material_live.py` 17 OK.

@@ -66,7 +66,9 @@ void run_sun_lane(const char* bootstrap_vertex) {
     // host it; the lane stamps share -1 over exactly the pixels it won and the
     // frame stays available. unregistered_fault: the stamp refused before its
     // first write (X3M_FIXTURE_SUN_LANE_FAULT=stamp): the draws veto as before.
-    const bool stamp_fault=!std::strcmp(mode,"unregistered_fault"),unregistered=!std::strcmp(mode,"unregistered")||stamp_fault;
+    // unregistered_mid: the fault after the fourth issued state write (stamp_mid): everything restored, the draws veto.
+    const bool stamp_mid=!std::strcmp(mode,"unregistered_mid");
+    const bool stamp_fault=!std::strcmp(mode,"unregistered_fault")||stamp_mid,unregistered=!std::strcmp(mode,"unregistered")||stamp_fault;
     Com<IDirect3DVertexShader9> sm2_vs,sm3_vs;Com<IDirect3DPixelShader9> sm2_ps,sm3_ps;
     if(unregistered){
         // vs_2_0: def c200,0,0,0,1; dcl_position v0; r0.xyz=v0; r0.w=c200.w; oPos=rows(c24..c27)*r0
@@ -247,7 +249,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
         if(unregistered&&step==2){
             api(d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"unregistered alpha test on");api(d->SetRenderState(D3DRS_ALPHAREF,1),"unregistered alpha reference 1");
             api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"unregistered alpha GREATEREQUAL");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"unregistered RT0 mask 7");
-            if(stamp_fault)api(SetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT","stamp")?S_OK:E_FAIL,"arm stamp fault");
+            if(stamp_fault)api(SetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",stamp_mid?"stamp_mid":"stamp")?S_OK:E_FAIL,"arm stamp fault");
             draw(b,0,0,-.25f,false,false,false,Alter::None,true,24,sm2_vs.p,sm2_ps.p); // depth .25: wins over the receiver
             draw(a,0,0,.25f,false,false,false,Alter::None,true,24,sm2_vs.p,sm2_ps.p);  // depth .75: loses everywhere
             draw(b,1.f,0,-.25f,false,false,false,Alter::None,true,24,sm3_vs.p,sm3_ps.p); // SM3, B moved right by 1 NDC: wins
@@ -269,7 +271,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
                 } else require_quiet(!std::memcmp(was,now,sizeof(float)*lane_stride),"pixels the unroutable draw lost (or a refused stamp) keep their lane bytes");
             }
             require(sign_pixels>300&&stamped_pixels==(stamp_fault?0u:sign_pixels),"stamp coverage equals the unroutable draw's visible coverage");
-            std::printf("SUN_UNREGISTERED frame=%llu sign_pixels=%u stamped_pixels=%u fault=%u\n",frame,sign_pixels,stamped_pixels,unsigned(stamp_fault));
+            std::printf("SUN_UNREGISTERED frame=%llu sign_pixels=%u stamped_pixels=%u fault=%u mid=%u\n",frame,sign_pixels,stamped_pixels,unsigned(stamp_fault),unsigned(stamp_mid));
         }
         if(cutout_pair&&step==2){
             // Mask 7 with alpha test off on a cutout pair: neither the opaque

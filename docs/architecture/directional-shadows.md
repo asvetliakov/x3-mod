@@ -689,7 +689,7 @@ chosen by the bound programs' shader-model family: the pixels the draw won get
 the explicit invalid share -1 and are excluded by the apply pass; every other
 pixel keeps its lane bytes. Only that draw loses shadows. A stamp that cannot
 run (stencil enabled, user-memory geometry, unknown program version, SM3 beside
-a null stage) or fails keeps the veto; `pair`, gate-4 and xt-repair refusals
+a null stage, an original PS that writes oDepth) or fails keeps the veto; `pair`, gate-4 and xt-repair refusals
 keep it too. Ledger: `docs/verification/directional-shadows.md`, "Run 174".
 
 TAA recognizes G32R32F input and reuses its existing authored identity-copy PS
