@@ -91,7 +91,7 @@ solar-plant lattice. The user says those stutters do not occur in the busy-stati
 save. Analysis is recorded in the [frame-time note](../architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20):
 phase-off busy plateau is about 51 FPS; Argon stalls persist without phase
 diagnostics and overlap media-backend failures. R7 is too small to optimize;
-moving query time is descent-dominated. **Session B remains pending**. No new lattice
+moving query time is descent-dominated. **Session B is reported below**. No new lattice
 image-quality verdict is implied by this timing flight.
 
 **A. Busy-station attribution and first-view stalls.** At the busy-station save,
@@ -109,6 +109,18 @@ Repeat the same stationary/moving sequence with this phase-diagnostics-off count
 ```sh
 ./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2
 ```
+
+**Session B reported (2026-09-20):** `/tmp/x3-bottleX3-run185`
+(1,472 referenced files). The user rejects the uniform sector-wide fog wash,
+especially in heavy-fog sectors, and requests spatial cloud patches with varying
+intensity and clear gaps, preserving the character of the original cards.
+Four F8 bursts exist; the user does not recall their sector/on-off order and
+thinks they were probably fog-on at different strengths. Treat those labels as
+unknown as sector names. Recorded settings establish all four bursts as fog-on
+at 0.01/0.005/0.05/0.05. The [fog ledger](volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20)
+records reader validation in the observed sectors and first-burst suppression;
+the card-report diagnostic exhausted its cap before the later bursts.
+No repeat of Session B is requested.
 
 **B. Fog cards and read-only sector validation.** In Argon Prime and The Hole or
 Atreus' Clouds, use Ctrl+Alt+F10 to anchor comparisons at **0.01** and **0.05**

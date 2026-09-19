@@ -742,3 +742,40 @@ Their JSON records contain tracked metrics, background quantiles, stale-history
 witnesses and exact comparisons; the synthetic record is in the neighboring
 `lattice-bounded-loop/` directory. Replay helpers passed syntax and numerical
 checks during the investigation; this documentation checkpoint adds no code tests.
+
+## 16. Cheaper post-display history replay rejected (2026-09-20)
+
+The next bounded experiment is complete, not waiting for another flight. It
+keeps the ordinary HDR resolve independent and accumulates only display luma
+in R16F, reprojected with recorded motion. A moving-only gate leaves the
+stationary/slow path unchanged; final RGB stays within ordinary display ±C.
+This removes the earlier iterative HDR-to-display projection, but is still an
+offline AgX/RCAS model without bloom, not the complete game presentation.
+
+Using §15's run177 rotation and material tracking, W=0.90 gives:
+
+| History kernel / RGB allowance | Tracked RMS codes | Reduction | Gradient energy / ordinary |
+| --- | ---: | ---: | ---: |
+| Ordinary | 6.7132 | — | 1.0000 |
+| Keys −0.65 / ±8 | 5.7587 | 14.2% | 0.9445 |
+| Keys −0.65 / ±4 | 6.1556 | 8.3% | 0.9715 |
+| Catmull–Rom / ±8 | 5.7000 | 15.1% | 0.8934 |
+
+**Decision:** reject this recipe for production. The primary misses both the
+predeclared ≥20% RMS improvement and ≥0.95 gradient ratio. Stronger smoothing
+is not an established solution. RGB bounds hold in the evaluated replay;
+stationary run177 and slow run159 are exactly unchanged across 10,253,250 and
+4,171,050 RGB values per variant. These are comparisons to the same offline
+ordinary reference, not proof of zero error against all historical game settings.
+
+The proposal would require an R16F history pair plus display scratch, about
+7.5 MiB at 1280×768 and two additional fullscreen draws. Neither GPU cost nor
+state/Reset/native behavior was tested. Gamut clipping can change chroma; a
+scalar history does not guarantee chroma preservation. No production edits,
+new candidate or game launch accompanied the experiment. The moving-lattice
+issue remains open, with this alternative excluded rather than queued to ship.
+
+Local helper and results: `/tmp/x3-lattice-display-replay/tools/analysis/taa_lattice_display_replay.py`
+and `/tmp/x3-lattice-display-replay/verification/results/lattice-display-replay/`
+(`rotation`, `static`, `slow159` JSON records). No expanded synthetic stress
+run was needed after failure of the bounded quality screen.

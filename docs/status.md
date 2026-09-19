@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (run49 installed; run48 analysis complete; run49 A reported; B pending). This is the
+Updated 2026-09-20 (run49 installed; run48 analysis complete; run49 A/B reported; fog redesign in progress). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -54,7 +54,7 @@ submission findings are recorded in their owning notes. Run49 A (run183 diagnost
 Argon Prime and corvette saves, in that order. Triage finds about 51 FPS in the
 phase-off busy plateau; R7 light selection is too small to optimize. Argon
 stalls persist with phase diagnostics off and correlate with media-backend
-errors; exact caller/duration tracing is next after B. Moving collision is
+errors; exact caller/duration tracing remains a separate follow-up. Moving collision is
 about 98% of printed instrumented query time inside descent in the expensive interval, so query setup is not
 the missing lever. Details are in the [frame-time note](architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20) and
 [collision note](reverse-engineering/sector-collide.md#run49-a-moving-query-cost-is-inside-descent-2026-09-20).
@@ -70,8 +70,13 @@ the sector-chain flight and is not active. Count-only strength scaling is held.
 Light-selection and collision-query timers are integrated, reviewed and committed
 (`9fa4da5a`): 2,093 light-timer checks with zero failures; 142 collision-timer
 checks and 675 queries with zero differences. Run49 A combined them with
-the existing loop/game/residual phases. Qualification and installation are complete. [Run49](verification/user-runs.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight) has its performance pair reported; fog replacement/sector validation (B) remains
-with the user.
+the existing loop/game/residual phases. Qualification and installation are complete. [Run49](verification/user-runs.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight) has its performance pair reported; B is reported as run185. The user rejects the uniform fog wash and requests
+patchy clouds with clear gaps. Sector-reader/card-replacement technical triage
+is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20); an offline spatial-density redesign is in progress. No repeat flight is
+requested. A cheaper moving-lattice display-history replay also failed its quality
+thresholds; the [lattice note §16](architecture/taa-lattice-crawl.md#16-cheaper-post-display-history-replay-rejected-2026-09-20)
+records the result. Source mesh/material ownership is the next evidence question,
+not an additional flight or an accepted fix.
 
 Ownership fixture runners and the 563-check inventory are repaired with fresh
 passes; all 31 generated shader checks now pass. Fresh collision memo (59 checks)

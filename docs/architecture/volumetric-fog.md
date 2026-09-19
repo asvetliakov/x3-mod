@@ -540,3 +540,77 @@ back to the card-presence rule at S, never to a fabricated clear-sector verdict.
 F9 off and S=0 remain overriding disables. Automatic/manual precedence and
 transition smoothing must be specified before connecting these profiles to
 rendering. No extra profile reader, GPU pass or preview logging is added here.
+
+
+## Run49B: spatial cloud redesign required (2026-09-20)
+
+**User verdict:** the uniform wash is not acceptable. The replacement must have
+localized clouds, varying intensity and clear gaps, rather than bleaching an
+entire heavy-fog view. The previous 0.01/0.05 family anchors are not accepted
+replacement defaults; scaling a homogeneous field cannot meet this request.
+
+The current density is camera-relative `sigma0*exp(-distance/R)`. Geometry
+shortens its integration distance, and sun direction/shadows vary its light,
+but sky rays all receive the same maximum optical depth. Composite hue comes
+from a smoothed 1x1 mean sky color. Thus it is not literally a constant output
+color, but it lacks spatial cloud occupancy and texture variation. Adding noise
+to the lit-fraction channel alone cannot fix this: extinction/transmittance
+must vary too.
+
+The original engine cards are also not a physical sector fog-volume map.
+[Sector-fog §12](../reverse-engineering/sector-fog.md#12-card-size-tiling-and-opacity-count-is-not-a-density-scalar-2026-09-20)
+recovers camera-nearest periodic placement, individual textures, roll, size and
+spatial alpha. They create patches and gaps which the uniform replacement
+removed. Their appearance is useful reference; count, FogNear/FogFar and body
+size alone do not define a density field.
+
+**Next bounded experiment, ratified for offline evaluation only:** a fixed
+world-anchored compact-cloud field with exactly zero density outside its clouds.
+Integrate both transmission and in-scattering along the actual view ray,
+clipped to opaque depth, rather than retaining a universal sky veil. Test
+clear-ray occupancy, variation, low-step error and stability under camera
+motion before any production shader/target/hook change. Sector families can
+select artistic cloud recipes later; no runtime count-based strength rule is
+being activated.
+
+Run185's four F8 bursts all have fog enabled, at 0.01, 0.005, 0.05 and 0.05.
+Their HDR/TAA dumps are already fogged: `run_volumetric_fog` precedes
+`resolve_hdr` and `hdr_writeback`'s HDR readback. They are valid camera/depth/
+shadow substrates and visual references, but cannot be presented as clean
+fog-free backgrounds for an exact replacement composite. Initial offline
+outputs therefore show cloud-only density/transmission beside the real frame;
+no inverse-removal or fictitious final-game image is permitted. Existing older
+fog-off captures may support a separately labeled composite, with their own
+vanilla-card contamination and exposure limits.
+
+Native Windows compatibility, ps_3_0 instruction/texture limits, GPU cost,
+state/Reset recovery and moving-cloud temporal quality remain production
+acceptance gates. The existing manual fog controls remain available, but this
+visual result is not accepted as the final replacement.
+
+### First bounded spatial-field replay: recipe rejected
+
+The fixed-seed CPU prototype uses a periodic 64³ field, compact clouds and
+zero density outside their support; occupied texels are 10.14%. On run185
+frames 1974/9204/21901/26447, clear-sky-ray fractions are
+68.83%/94.78%/91.55%/85.00%, while dense-ray fractions are
+6.87%/0.23%/1.86%/2.39%. All pass the ≥25% clear requirement, but three
+fail ≥5% dense coverage. Optical-depth p90–p10 spreads
+0.01231/0.00027/0.00134/0.00534 all miss the >0.015 requirement.
+The recipe is **rejected**, with no per-frame seed/strength tuning. The
+24,000-unit horizon countercheck was not run; the 12,000-unit horizon remains
+an unaccepted choice.
+
+Camera/world anchoring, negative wrapping and periodic-coordinate checks pass.
+The 24-step versus 128-step reference transmittance error has worst p99/max
+0.00012/0.00021; four eight-frame pre-TAA comparisons also pass their numerical
+error gate. Exact `(S,T)=(0,1)` on reference-empty rays fails, although no false
+opacity exceeds 0.002. These sampling comparisons do not establish perfect
+continuous-field integration or in-game temporal quality.
+
+The density maps visibly contain gaps, but do not establish an attractive
+replacement: three views lack enough cloud coverage, lighting is unshadowed,
+and the original present images already contain the old fog. No final
+replacement composite, GPU implementation or acceptance is claimed. Local
+helper and validated report: `/tmp/x3-fog-patchy-replay/tools/analysis/fog_patchy_replay.py`
+and `/tmp/x3-fog-patchy-replay/verification/results/fog-patchy-replay/report.json`.

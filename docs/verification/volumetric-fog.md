@@ -219,3 +219,57 @@ and 57 ns per sampler write from the removed hooks; a roughly 3 ms whole-frame
 projection is not a measured saving for this revision. Getter latency and actual
 flight cost remain unmeasured. The previously qualified native mask/FogPass
 transaction is unchanged; complete live routing and native Windows remain open.
+
+
+## Run49B: run185 visual rejection and reader validation (2026-09-20)
+
+The user rejects the uniform wash, especially in heavy sectors: replace it with
+spatial cloud patches, intensity variation and clear gaps. This is a visual
+redesign requirement, separate from whether the source-card suppression and
+read-only engine-record reader operate correctly. No automatic 0.01/0.05
+family-strength policy is accepted by this flight.
+
+Four 32-frame bursts, all fog **on** (g=0.3), are present:
+
+| Frames | Strength | Background record | Dust instances | Raw near/far |
+| --- | ---: | --- | ---: | --- |
+| 1974–2005 | 0.01 | bluewell, index 2 | 8 | 18,000,000 / 18,500,000 |
+| 9204–9235 | 0.005 | bluewell, index 2 | 8 | 18,000,000 / 18,500,000 |
+| 21901–21932 | 0.05 | foggreenoutlands, index 14 | 16 | 3,000,000 / 3,500,000 |
+| 26447–26478 | 0.05 | foggreenoutlands, index 14 | 16 | 3,000,000 / 3,500,000 |
+
+The user does not recall the capture-sector order. Background family/index is
+not a unique universe-sector name; do not label these Argon Prime, The Hole or
+Atreus' Clouds without additional evidence. First and second bursts have distinct
+sector pointers; the two green bursts share one. Every in-window sector row is
+`ready`, row/camera valid, raw camera fade matches the record, and parent-sector
+anchor matches. Across the session the reader reports 496 ready rows and 18
+no-cockpit rows; no other status is reported. This supports the chain in the
+observed sectors, not universal dynamic-policy or clear-sector transition
+acceptance.
+
+Startup requested strength 0.02 and `cards=replace`, timing off; 22 toggle and
+22 strength-change events establish the captured settings above. No F8 burst
+intersects an off interval, so there is no same-view captured off comparison.
+Source-card counts per burst are 124/110/223/212 (ranges 3–5, 2–6, 5–10, 4–11
+per frame). These are visible draws, not the record's allocated population.
+Known shader pair, two-triangle shape and expected blend/zero depth-write states are
+present; these rows do not link native `alpha13c` or provide stride.
+
+First-burst replacement reports show up to five cards observed/suppressed,
+zero refusal/fault, ready=1, warmup=0, applied=1. The 64-row card-report cap is
+exhausted before later bursts, so those bursts do **not** prove suppression
+health. No explicit replacement-fault event occurs anywhere. Absence of capped
+per-frame reports does not mean fog was disabled. No GPU cost or native Windows
+acceptance is inferred from F8 CPU timings.
+
+Raw present-image inspection shows two blue-family views and two broadly green
+views, consistent with the user's complaint; displayed color alone cannot
+separate painted sky, vanilla cards and the replacement medium. The architecture
+note records the offline spatial-density redesign. HDR and TAA captures already
+contain fog, so preview artifacts must not pretend to reconstruct a clean source.
+
+Local reproduction: `verification/results/run49b-fog/reproduce.py`, `result.json`
+and `result.md`; original session `/tmp/x3-bottleX3-run185`. The streaming pass
+read 20,837,778 lines / 1,262,076,084 bytes and validated its JSON. Representative
+present sheet: `/tmp/x3-run185-present-sheet.png`. No game or Wine execution.
