@@ -61,8 +61,10 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   in progress; no production recipe or larger distance has been installed.
 - **Station flash:** run200 reports brief brightness changes during camera motion
   on an asteroid-attached mine/refinery, possibly the solar plant too, even with
-  fog off. Both F8 bursts are being compared. No gain bypass or correction is
-  established yet; do not change the accepted 80,220 default speculatively.
+  fog off. Both F8 bursts have been compared without a demonstrated gain bypass. The
+  normal-speed recording exposes brief fine-detail flashes. A global TAA
+  missing-history cut is the leading hypothesis; the existing-build Run57 A/B
+  records its exact per-frame state. No production correction is selected.
 - **Lattice:** Run54 B returned run201 with three capture bursts. Guarded state
   packets and their fixture comparison are under analysis; no repeat flight is
   requested. The bounded offline audit did not establish a renderer fix.

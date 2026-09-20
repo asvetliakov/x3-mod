@@ -2184,3 +2184,26 @@ identified is the preferred next witness. Preserve the accepted 80,220 default.
 [Local diagnosis and reproduction command](/tmp/x3-run56-lightmap-fault/diagnosis.md);
 [compact session witness](../../verification/results/run56-triage/report.md).
 No production patch or additional Wine run was made for this audit.
+
+### Normal-speed recording and targeted counter flight
+
+`lightmap1.mov` records flashes at 2.000, 4.600, 6.908333, 16.308333 and
+16.425 seconds. Target-aligned native video crops show bursts of fine white
+points/lines while adjacent asteroid brightness is comparatively steady. This
+is presented-video evidence, not an isolated light-map shader measurement.
+The user states this is a different sector from run200; do not label it The Hole.
+
+A 166-sample camera-motion fit strongly associates run202 with video start
+208.770 seconds into the log (0.610-degree RMS); video creation metadata agrees.
+The user has not confirmed that association. Exact game-frame alignment remains
+uncertain by roughly 1–2 frames. All five events align with net additions equal to 25.6–33.6% of the current
+routed draw count; these are not measured missing-key fractions.
+
+The leading hypothesis is the global TAA missing-key safeguard, whose threshold
+is 0.25. Per-pixel invalid correspondence already rejects newly observed
+surfaces, but the global guard historically also protects sector/destruction
+transitions with stale epochs. Do not disable it as a production default on this
+evidence. Run57 compares process-local bounds 0.25 and 1 while logging every
+frame, without F8 readback, preserving median-motion and camera protections.
+Logging cost is unmeasured; this is a visual/reason-code comparison, not an FPS
+benchmark. [Local report/reproducers](/tmp/x3-lightmap-video/diagnosis.md).
