@@ -195,6 +195,70 @@ def candidate(levels: list[np.ndarray], origin: np.ndarray, direction: np.ndarra
             "lod_target": lod_target}
 
 
+def near24(level0: np.ndarray, origin: np.ndarray, direction: np.ndarray, limit: np.ndarray,
+           sigma: float, sun_direction: np.ndarray) -> dict[str, np.ndarray]:
+    near_limit = np.minimum(np.maximum(limit, 0), NEAR).astype(F)
+    ds = near_limit / 24
+    index = np.arange(24, dtype=F)[:, None]
+    distance = ds[None, :] * (index + F(.5))
+    rgba = sample_level(level0, origin + direction[None, :, :] * distance[..., None])
+    S, T, tau = integrate_samples(rgba, np.broadcast_to(ds, distance.shape), distance,
+                                  sigma, direction, False, sun_direction)
+    return {"S": S, "T": T, "tau": tau}
+
+
+def reference_shell(level0: np.ndarray, origin: np.ndarray, direction: np.ndarray,
+                    limit: np.ndarray, sigma: float, spacing: float, start: float,
+                    end: float, sun_direction: np.ndarray) -> dict[str, np.ndarray]:
+    count = int(math.ceil((end - start) / spacing))
+    index = np.arange(count)[:, None]; lo = start + index * spacing
+    shell_limit = np.minimum(limit[None, :], end)
+    ds = np.clip(shell_limit - lo, 0, spacing).astype(F); distance = lo + ds * .5
+    rgba = sample_level(level0, origin + direction[None, :, :] * distance[..., None])
+    rgba[ds <= 0] = 0
+    S, T, tau = integrate_samples(rgba, ds, distance, sigma, direction, True, sun_direction)
+    bank = np.floor((lo[:, 0] - start) / PERIOD).astype(np.int32)
+    bank_tau = [np.sum((sigma * rgba[..., 3] *
+                        (1 - smoothstep(WINDOW_START, FAR, distance)) * ds)[bank == value],
+                       axis=0, dtype=np.float64).astype(F)
+                for value in np.unique(bank)]
+    return {"S": S, "T": T, "tau": tau, "bank_tau": bank_tau}
+
+
+def accurate_reference(level0: np.ndarray, origin: np.ndarray, direction: np.ndarray,
+                       limit: np.ndarray, sigma: float, spacing: float,
+                       sun_direction: np.ndarray, chunk: int = 64) -> dict[str, np.ndarray]:
+    rows = []
+    for first in range(0, len(limit), chunk):
+        sl = slice(first, min(first + chunk, len(limit)))
+        near = near24(level0, origin, direction[sl], limit[sl], sigma, sun_direction)
+        shell1 = reference_shell(level0, origin, direction[sl], limit[sl], sigma, spacing,
+                                 NEAR, WINDOW_START, sun_direction)
+        shell2 = reference_shell(level0, origin, direction[sl], limit[sl], sigma, spacing,
+                                 WINDOW_START, FAR, sun_direction)
+        S1_added = near["T"][:, None] * shell1["S"]
+        T1 = near["T"] * shell1["T"]
+        S2_added = T1[:, None] * shell2["S"]
+        rows.append({"near_S": near["S"], "near_T": near["T"], "near_tau": near["tau"],
+                     "shell1_S": shell1["S"], "shell1_T": shell1["T"], "shell1_tau": shell1["tau"],
+                     "shell1_added_S": S1_added, "near_shell1_S": near["S"] + S1_added,
+                     "near_shell1_T": T1, "shell2_S": shell2["S"], "shell2_T": shell2["T"],
+                     "shell2_tau": shell2["tau"], "shell2_added_S": S2_added,
+                     "S": near["S"] + S1_added + S2_added, "T": T1 * shell2["T"],
+                     "tau": near["tau"] + shell1["tau"] + shell2["tau"],
+                     "far_S": shell1["S"] + shell1["T"][:, None] * shell2["S"],
+                     "far_T": shell1["T"] * shell2["T"],
+                     "far_tau": shell1["tau"] + shell2["tau"],
+                     "shell1_bank_tau": shell1["bank_tau"], "shell2_bank_tau": shell2["bank_tau"]})
+    keys = [key for key in rows[0] if not key.endswith("_bank_tau")]
+    result = {key: np.concatenate([row[key] for row in rows], axis=0) for key in keys}
+    for shell in ("shell1", "shell2"):
+        count = len(rows[0][f"{shell}_bank_tau"])
+        result[f"{shell}_bank_tau"] = [np.concatenate([row[f"{shell}_bank_tau"][i] for row in rows])
+                                        for i in range(count)]
+    return result
+
+
 def camera(row: dict[str, str]) -> tuple[np.ndarray, np.ndarray]:
     rotation = np.array([[float(row[f"r{i}{j}"]) for j in range(3)] for i in range(3)], np.float64)
     translation = np.fromstring(row["t"], sep=",", dtype=np.float64)
@@ -323,6 +387,81 @@ def write_sheet(path: Path, result: dict, shape: tuple[int, int], scale: int = 8
     image = np.concatenate(panels, axis=1)
     image = (np.power(image, 1 / 2.2) * 255 + .5).astype(np.uint8)
     Image.fromarray(image).resize((image.shape[1] * scale, image.shape[0] * scale), Image.Resampling.NEAREST).save(path)
+
+
+def _rgb_panel(values: np.ndarray, shape: tuple[int, int], maximum: float, signed: bool = False) -> np.ndarray:
+    image = values.reshape(shape + (3,))
+    image = .5 + image / (2 * maximum) if signed else image / maximum
+    return (np.clip(image, 0, 1) ** (1 / 2.2) * 255 + .5).astype(np.uint8)
+
+
+def _scalar_panel(values: np.ndarray, shape: tuple[int, int], maximum: float,
+                  signed: bool = False) -> np.ndarray:
+    image = values.reshape(shape)
+    image = .5 + image / (2 * maximum) if signed else image / maximum
+    image = (np.clip(image, 0, 1) * 255 + .5).astype(np.uint8)
+    return np.repeat(image[..., None], 3, axis=-1)
+
+
+def write_reference_images(output: Path, stem: str, reference_result: dict,
+                           rejected: dict, shape: tuple[int, int], scale: int = 6,
+                           mask=None) -> list[str]:
+    from PIL import Image, ImageDraw
+    near_opacity = 1 - reference_result["near_T"]
+    shell1_opacity = 1 - reference_result["shell1_T"]
+    shell2_opacity = 1 - reference_result["shell2_T"]
+    near_shell1_opacity = 1 - reference_result["near_shell1_T"]
+    opacity = 1 - reference_result["T"]
+    columns = [
+        ("near 0-2.4km", [
+            _rgb_panel(reference_result["near_S"], shape, .03),
+            _scalar_panel(near_opacity, shape, .4),
+            _scalar_panel(reference_result["near_tau"], shape, .5),
+            _scalar_panel(reference_result["near_T"], shape, 1.)]),
+        ("2.4-30km", [
+            _rgb_panel(reference_result["shell1_added_S"], shape, .03),
+            _scalar_panel(shell1_opacity, shape, .4),
+            _rgb_panel(reference_result["near_shell1_S"], shape, .03),
+            _scalar_panel(near_shell1_opacity, shape, .4)]),
+        ("30-40km", [
+            _rgb_panel(reference_result["shell2_added_S"], shape, .03),
+            _scalar_panel(shell2_opacity, shape, .4),
+            _rgb_panel(reference_result["S"], shape, .03),
+            _scalar_panel(opacity, shape, .4)]),
+        ("reference-candidate24", [
+            _rgb_panel(reference_result["S"] - rejected["S"], shape, .15, True),
+            _scalar_panel(reference_result["T"] - rejected["T"], shape, .3, True),
+            _rgb_panel(np.abs(reference_result["S"] - rejected["S"]), shape, .15),
+            _scalar_panel(np.abs(reference_result["T"] - rejected["T"]), shape, .3)])]
+    if mask is not None:
+        excluded = ~np.asarray(mask, bool).reshape(shape)
+        for _, panels in columns:
+            for panel in panels:
+                panel[excluded] = (32, 0, 32)
+    row_labels = ("added/near S", "shell opacity/T delta", "result S/abs S", "result opacity/abs T")
+    h, w = shape; label_h, left = 18, 118
+    sheet = Image.new("RGB", (left + len(columns) * w * scale, label_h + 4 * h * scale), "black")
+    draw = ImageDraw.Draw(sheet)
+    for column, (label, panels) in enumerate(columns):
+        draw.text((left + column * w * scale + 2, 3), label, fill="white")
+        for row, panel in enumerate(panels):
+            cell = Image.fromarray(panel).resize((w * scale, h * scale), Image.Resampling.NEAREST)
+            sheet.paste(cell, (left + column * w * scale, label_h + row * h * scale))
+    for row, label in enumerate(row_labels):
+        draw.text((2, label_h + row * h * scale + 3), label, fill="white")
+    sheet_path = output / f"{stem}-reference-shells.png"; sheet.save(sheet_path)
+    transmission_panel = _scalar_panel(reference_result["T"], shape, 1.)
+    if mask is not None: transmission_panel[excluded] = (32, 0, 32)
+    transmission = Image.fromarray(transmission_panel).resize(
+        (w * scale, h * scale), Image.Resampling.NEAREST)
+    transmission_path = output / f"{stem}-complete-transmission.png"; transmission.save(transmission_path)
+    tau = np.concatenate([_scalar_panel(reference_result[key], shape, .5)
+                          for key in ("near_tau", "shell1_tau", "shell2_tau", "tau")], axis=1)
+    if mask is not None:
+        excluded4 = np.tile(excluded, (1, 4)); tau[excluded4] = (32, 0, 32)
+    tau_path = output / f"{stem}-optical-depths.png"
+    Image.fromarray(tau).resize((w * 4 * scale, h * scale), Image.Resampling.NEAREST).save(tau_path)
+    return [path.name for path in (sheet_path, transmission_path, tau_path)]
 
 
 def laws(levels: list[np.ndarray]) -> dict:
@@ -552,13 +691,216 @@ def run(capture: Path, asset_data: Path, output: Path) -> dict:
     return result
 
 
+def _correlation(a: np.ndarray, b: np.ndarray, mask: np.ndarray):
+    x = np.asarray(a, np.float64)[mask]; y = np.asarray(b, np.float64)[mask]
+    if len(x) < 2 or np.std(x) == 0 or np.std(y) == 0:
+        return None
+    return float(np.corrcoef(x, y)[0, 1])
+
+
+def run_reference_experiment(capture: Path, asset_data: Path, output: Path) -> dict:
+    started = time.monotonic(); output.mkdir(parents=True, exist_ok=True)
+    manifest_path = asset_data / "manifest.json"; manifest = json.loads(manifest_path.read_text())
+    log_paths = sorted(capture.glob("session-*.log"))
+    if len(log_paths) != 1:
+        raise ValueError("expected one capture session log")
+    metadata, metadata_sha = load_metadata(log_paths[0])
+    profiles = {row["name"]: row for row in manifest["profiles"]}
+    depth_paths = [capture / f"depth_1_{frame}.rgba32f"
+                   for lo, hi, _ in BURSTS for frame in range(lo, hi + 1)]
+    depth_digests = {path.name: digest(path) for path in depth_paths}
+    depth_aggregate = hashlib.sha256(b"".join(bytes.fromhex(depth_digests[path.name])
+                                                for path in depth_paths)).hexdigest()
+    endpoint_names = {f"depth_1_{frame}.rgba32f" for lo, hi, _ in BURSTS for frame in (lo, hi)}
+    sources = {"manifest_sha256": digest(manifest_path),
+               "selected_capture_metadata_sha256": metadata_sha,
+               "reviewed_replay_report_sha256": "80fc97843d58e28c1ce26e05fa7efd2cdd2752d54b0bf27fa5947be82a224bf0",
+               "analysis_sha256": digest(Path(__file__)),
+               "capture_log": str(log_paths[0]), "capture_log_bytes": log_paths[0].stat().st_size,
+               "depth_files": {"count": len(depth_paths), "aggregate_sha256": depth_aggregate,
+                               "endpoint_sha256": {name: depth_digests[name] for name in sorted(endpoint_names)}},
+               "packets": {}}
+    views = []; temporal_rows = []; synthetic = {}; all_converged = True
+    all_near_exact = True; all_geometry_near_exact = True
+    for lo, hi, family in BURSTS:
+        packet = asset_data / f"{family}.fogbin"; volume = decode_packet(packet, manifest)
+        levels = mip_pyramid(volume); sigma = float(profiles[family]["base_sigma"]) * 1.5
+        sources["packets"][family] = {"sha256": digest(packet),
+                                       "decoded_sha256": profiles[family]["decoded_sha256"]}
+        for frame in (lo, hi):
+            depth_path = capture / f"depth_1_{frame}.rgba32f"
+            origin, direction, limit, geometry = ray_set(metadata[frame], depth_path, 64, 36)
+            sun = captured_sun(metadata[frame])
+            ref128 = accurate_reference(volume, origin, direction, limit, sigma, 128., sun)
+            ref64 = accurate_reference(volume, origin, direction, limit, sigma, 64., sun)
+            rejected = candidate(levels, origin, direction, limit, sigma, 24, sun)
+            far_errors = {"T": metric(np.abs(ref128["far_T"] - ref64["far_T"])),
+                          "S_normalized_unit_radiance": [
+                              metric(np.abs(ref128["far_S"][:, channel] - ref64["far_S"][:, channel]))
+                              for channel in range(3)]}
+            converged = far_errors["T"]["p99"] <= .00025 and far_errors["T"]["max"] <= .00075
+            all_converged &= converged
+            near_exact = (np.array_equal(ref128["near_S"], ref64["near_S"]) and
+                          np.array_equal(ref128["near_T"], ref64["near_T"]))
+            short = limit <= NEAR
+            geometry_near_exact = (np.array_equal(ref64["S"][short], ref64["near_S"][short]) and
+                                   np.array_equal(ref64["T"][short], ref64["near_T"][short]))
+            all_near_exact &= near_exact; all_geometry_near_exact &= geometry_near_exact
+            refinement = None
+            if not converged:
+                error = np.abs(ref128["far_T"] - ref64["far_T"])
+                witness = np.argsort(error)[-min(16, len(error)):]
+                ref32 = accurate_reference(volume, origin, direction[witness], limit[witness], sigma, 32., sun)
+                refinement = {"rays": len(witness), "indices": witness.tolist(),
+                              "T_64_vs_32": metric(np.abs(ref64["far_T"][witness] - ref32["far_T"]))}
+            opacity = 1 - ref64["T"]; shell2_opacity = 1 - ref64["shell2_T"]
+            sky = ~geometry; shell_dense = (shell2_opacity > .002) & sky
+            block_correlations = []
+            for shell, banks, start, end in (("2.4-30km", ref64["shell1_bank_tau"], NEAR, WINDOW_START),
+                                             ("30-40km", ref64["shell2_bank_tau"], WINDOW_START, FAR)):
+                bounds = [[start + index * PERIOD, min(end, start + (index + 1) * PERIOD)]
+                          for index in range(len(banks))]
+                for index in range(len(banks) - 1):
+                    block_correlations.append({"shell": shell, "blocks": [index, index + 1],
+                                               "bounds": [bounds[index], bounds[index + 1]],
+                                               "includes_partial_block": bool(any(high - low < PERIOD
+                                                                                   for low, high in (bounds[index], bounds[index + 1]))),
+                                               "sky_tau_correlation": _correlation(banks[index], banks[index + 1], sky)})
+            stem = f"{family}-{frame}"
+            image_files = []
+            image_files += write_reference_images(output, stem + "-reference64", ref64, rejected, (36, 64))
+            image_files += write_reference_images(output, stem + "-reference128", ref128, rejected, (36, 64))
+            image_files += write_reference_images(output, stem + "-reference64-sky", ref64, rejected, (36, 64), mask=sky)
+            image_files += write_reference_images(output, stem + "-reference128-sky", ref128, rejected, (36, 64), mask=sky)
+            views.append({"family": family, "frame": frame, "rays": len(limit),
+                          "sky_rays": int(sky.sum()), "geometry_rays": int(geometry.sum()),
+                          "far_128_vs_64": far_errors, "far_converged": converged,
+                          "refinement32_on_failure": refinement,
+                          "near24_identical_between_arms": near_exact,
+                          "limits_at_most_12000_exact_near_output": geometry_near_exact,
+                          "complete_opacity": {"all": {"clear_below_0.002": fraction(opacity < .002),
+                                                         "dense_above_0.015": fraction(opacity > .015)},
+                                               "sky": {"clear_below_0.002": fraction(opacity[sky] < .002),
+                                                       "dense_above_0.015": fraction(opacity[sky] > .015)}},
+                          "shell_30_40km": {"sky_count": int(sky.sum()),
+                                             "opacity": {"p0": float(np.min(shell2_opacity[sky])),
+                                                         "p50": float(np.percentile(shell2_opacity[sky], 50)),
+                                                         "p99": float(np.percentile(shell2_opacity[sky], 99)),
+                                                         "max": float(np.max(shell2_opacity[sky])),
+                                                         "std": float(np.std(shell2_opacity[sky]))},
+                                             "above_0.002": fraction(shell2_opacity[sky] > .002),
+                                             "connected_regions_above_0.002": components(shell_dense.reshape(36, 64)),
+                                             "spatially_varying_nonzero": bool(np.std(shell2_opacity[sky]) > 1e-5 and
+                                                                               np.any(shell2_opacity[sky] > .002))},
+                          "shell_local_period_width_block_correlations": block_correlations,
+                          "candidate24_difference": error_metrics(rejected, ref64),
+                          "images": image_files})
+        previous = None; changes = []
+        for frame in range(lo, hi + 1):
+            depth_path = capture / f"depth_1_{frame}.rgba32f"
+            origin, direction, limit, _ = ray_set(metadata[frame], depth_path, 6, 4)
+            current = accurate_reference(volume, origin, direction, limit, sigma, 64., captured_sun(metadata[frame]))
+            if previous is not None:
+                changes.append(np.abs(current["T"] - previous["T"]))
+            previous = current
+        temporal_rows.append({"family": family, "frames": 32, "frame_pairs": 31,
+                              "rays_per_frame": 24,
+                              "moving_reference_abs_delta_T": metric(np.concatenate(changes))})
+        dirs = np.array([[1., .2, -.1], [-.3, .9, .1]], F); dirs /= np.linalg.norm(dirs, axis=1)[:, None]
+        lim = np.full(2, FAR, F); base = np.array([PERIOD - .25, 100., 200.]); sun = captured_sun(metadata[hi])
+        p0 = accurate_reference(volume, base, dirs, lim, sigma, 64., sun)
+        pp = accurate_reference(volume, base + [PERIOD, 0, 0], dirs, lim, sigma, 64., sun)
+        left = accurate_reference(volume, base - [.5, 0, 0], dirs, lim, sigma, 64., sun)
+        right = accurate_reference(volume, base + [.5, 0, 0], dirs, lim, sigma, 64., sun)
+        axis = np.array([[1., 0., 0.]], F); marker = base + np.array([205000., 0., 0.])
+        window_rows = []
+        for translation in np.linspace(0., 60000., 9):
+            camera_origin = base + np.array([translation, 0., 0.])
+            marker_distance = float(np.linalg.norm(marker - camera_origin))
+            value = accurate_reference(volume, camera_origin, axis, np.array([FAR], F), sigma, 64., sun)
+            window_rows.append({"camera_translation": float(translation),
+                                "fixed_marker_distance": marker_distance,
+                                "fixed_marker_window": float(1 - smoothstep(WINDOW_START, FAR,
+                                                                              np.array([marker_distance]))[0]),
+                                "T": float(value["T"][0]), "S": value["S"][0].tolist()})
+        synthetic[family] = {"period_translation_max": float(max(np.max(np.abs(p0["T"] - pp["T"])),
+                                                                     np.max(np.abs(p0["S"] - pp["S"])))),
+                             "wrap_boundary_one_unit_max_delta": float(max(np.max(np.abs(left["T"] - right["T"])),
+                                                                             np.max(np.abs(left["S"] - right["S"])))),
+                             "window_translation": {"label": "synthetic camera interpolation across fixed marker 40/30-km taper radii; not observed gameplay",
+                                                    "samples": window_rows,
+                                                    "max_adjacent_T_delta": float(max(abs(a["T"] - b["T"])
+                                                                                      for a, b in zip(window_rows, window_rows[1:])))}}
+        del levels, volume
+    image_paths = sorted(output.glob("*.png"))
+    laws_result = laws(mip_pyramid(decode_packet(asset_data / "bluewell.fogbin", manifest)))
+    laws_passed = (laws_result["vacuum_zero_length_exact"] and laws_result["invalid_depth_identity_exact"] and
+                   laws_result["source_alpha_identity_exact"] and laws_result["finite"] and
+                   laws_result["wrapping_continuity_max"] == 0)
+    status = ("passed-reference-experiment" if all_converged and all_near_exact and
+              all_geometry_near_exact and laws_passed else "inconclusive-reference")
+    result = {"schema": 1, "result": status, "sources": sources,
+              "contract": {"image_grid": [64, 36], "near": "original 24 midpoint samples through 12000",
+                           "far": "original unfiltered level0 field at fixed 128/64 render-unit spacing",
+                           "shells": [[12000, 150000], [150000, 200000]],
+                           "window": "1-smoothstep(150000,200000,s)",
+                           "strength": .03, "density_scale": 1.5,
+                           "lighting": "captured production-selected point-sun dir1, normalized unit radiance",
+                           "S_limitation": "actual radiance unavailable; no production-scaled S parity"},
+              "gates": {"all_far_128_vs_64_T_converged": all_converged,
+                        "near24_identical_between_arms": all_near_exact,
+                        "limits_at_most_12000_exact_near_output": all_geometry_near_exact,
+                        "laws_passed": laws_passed, "laws": laws_result},
+              "views": views, "temporal": temporal_rows, "synthetic": synthetic,
+              "operation_counts": {"reference128_far_steps": int(math.ceil((WINDOW_START - NEAR) / 128) +
+                                                                   math.ceil((FAR - WINDOW_START) / 128)),
+                                   "reference64_far_steps": int(math.ceil((WINDOW_START - NEAR) / 64) +
+                                                                  math.ceil((FAR - WINDOW_START) / 64)),
+                                   "reference32_only_on_failed_witnesses": True,
+                                   "GPU_or_production_cost_claim": False},
+              "images": {path.name: digest(path) for path in image_paths},
+              "limitations": ["Dense CPU reference is not a proposed GPU algorithm or FPS measurement.",
+                              "The four deterministic endpoint images are appearance witnesses, not population estimates or user acceptance.",
+                              "The 25% clear-ray value is descriptive only and does not pass or fail appearance.",
+                              "No TAA or observed-pop acceptance follows from fog-only images.",
+                              "Production shader limits, timing, Reset behavior, native Windows execution and user flight remain open."],
+              "host_seconds": time.monotonic() - started}
+    report_path = output / "report.json"
+    report_path.write_text(json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n")
+    worst = max(view["far_128_vs_64"]["T"]["max"] for view in views)
+    worst_p99 = max(view["far_128_vs_64"]["T"]["p99"] for view in views)
+    shell_fractions = [view["shell_30_40km"]["above_0.002"]["fraction"] for view in views]
+    shell_regions = [view["shell_30_40km"]["connected_regions_above_0.002"] for view in views]
+    sky_clear = [view["complete_opacity"]["sky"]["clear_below_0.002"]["fraction"] for view in views]
+    block_correlation = max(abs(row["sky_tau_correlation"] or 0.)
+                            for view in views for row in view["shell_local_period_width_block_correlations"])
+    lines = ["# Converged long-range fog reference images", "", f"Result: **{status}**.", "",
+             f"Dense 128-vs-64 far-only T convergence worst-view p99/max: {worst_p99:.9g}/{worst:.9g} (gates .00025/.00075).",
+             f"Four endpoint images use 2304 deterministic rays each; sky counts are {min(v['sky_rays'] for v in views)}..{max(v['sky_rays'] for v in views)}.",
+             f"The 30-40 km shell exceeds .002 opacity on {min(shell_fractions):.4f}..{max(shell_fractions):.4f} of sampled sky rays in {min(shell_regions)}..{max(shell_regions)} connected screen regions. It is spatially varying and nonzero in all four views; this does not imply sparse or localized support. Within-shell adjacent period-width distance-block sky optical-depth correlations have maximum absolute value {block_correlation:.4f}; report.json records bounds and partial blocks.",
+             f"Complete-column sky clear fractions below .002 are {min(sky_clear):.4f}..{max(sky_clear):.4f}; this descriptive screen is not a visual verdict.", "",
+             "Sheets show near24, the unfiltered 2.4-30 km shell, the tapered 30-40 km shell, complete reference, and reference-minus-rejected-candidate. Separate transmission and optical-depth images use fixed scales.",
+             "S uses captured production-selected point-sun dir1 with normalized unit radiance; production-scaled S parity remains open.",
+             "These cloud-only deterministic images are not user visual acceptance and do not select a production integrator or spatial recipe.", "",
+             f"Host runtime: {result['host_seconds']:.2f}s. No game, Wine, build, production edit or install was performed.", ""]
+    (output / "report.md").write_text("\n".join(lines))
+    (output / "summary.json").write_text(json.dumps({"result": status, "report_sha256": digest(report_path),
+                                                       "manifest_sha256": sources["manifest_sha256"],
+                                                       "selected_capture_metadata_sha256": metadata_sha,
+                                                       "images": len(image_paths)}, indent=2, sort_keys=True) + "\n")
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--capture", type=Path, required=True)
     parser.add_argument("--asset-data", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--reference-images", action="store_true",
+                        help="run the ratified dense unfiltered reference-image experiment")
     args = parser.parse_args()
-    result = run(args.capture, args.asset_data, args.output)
+    result = (run_reference_experiment(args.capture, args.asset_data, args.output)
+              if args.reference_images else run(args.capture, args.asset_data, args.output))
     print(json.dumps({"result": result["result"], "output": str(args.output), "seconds": result["host_seconds"]}, sort_keys=True))
     return 0
 

@@ -59,6 +59,22 @@ class FogDistanceReplay(unittest.TestCase):
         self.assertAlmostEqual(a["lod_target"], b["lod_target"], places=12)
         self.assertAlmostEqual(a["lod_target"], np.log2(((replay.FAR - replay.NEAR) / 24) / 256), places=6)
 
+    def test_accurate_reference_composes_ordered_shell_transport(self):
+        volume = np.empty((8, 8, 8, 4), np.float32)
+        volume[..., :3] = [.1, .25, .4]; volume[..., 3] = .5
+        direction = np.array([[1., 0., 0.], [0., 1., 0.]], np.float32)
+        limit = np.array([replay.FAR, 9000.], np.float32); sun = np.array([0., 0., 1.])
+        result = replay.accurate_reference(volume, np.zeros(3), direction, limit, 4e-6, 128., sun)
+        np.testing.assert_allclose(result["T"],
+                                   result["near_T"] * result["shell1_T"] * result["shell2_T"], rtol=0, atol=2e-7)
+        np.testing.assert_allclose(result["tau"],
+                                   result["near_tau"] + result["shell1_tau"] + result["shell2_tau"], rtol=0, atol=2e-7)
+        np.testing.assert_allclose(result["S"], result["near_S"] + result["shell1_added_S"] +
+                                   result["shell2_added_S"], rtol=0, atol=2e-7)
+        self.assertEqual(float(result["shell1_tau"][1]), 0.)
+        self.assertEqual(float(result["shell2_tau"][1]), 0.)
+        self.assertAlmostEqual(float(result["near_T"][1]), float(np.exp(-4e-6 * .5 * 9000)), places=6)
+
     def test_visibility_window_endpoints_and_derivatives(self):
         x = np.array([30000., replay.WINDOW_START, replay.FAR, 210000.])
         w = 1 - replay.smoothstep(replay.WINDOW_START, replay.FAR, x)
@@ -114,6 +130,12 @@ class FogDistanceReplay(unittest.TestCase):
         passing["T"] = {"p99": .001, "max": .003}
         passing["S_normalized_lighting"][1] = {"p99": .00051, "max": .001}
         self.assertFalse(replay.numerical_pass(passing))
+
+    def test_split_shell_operation_counts_include_both_partial_rows(self):
+        self.assertEqual(int(np.ceil((replay.WINDOW_START - replay.NEAR) / 128) +
+                             np.ceil((replay.FAR - replay.WINDOW_START) / 128)), 1470)
+        self.assertEqual(int(np.ceil((replay.WINDOW_START - replay.NEAR) / 64) +
+                             np.ceil((replay.FAR - replay.WINDOW_START) / 64)), 2939)
 
 
 if __name__ == "__main__":

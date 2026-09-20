@@ -990,3 +990,20 @@ with the near segment unchanged and separate 2.4–30 km and 30–40 km shell
 contributions. Preserve density, scale and occupancy. Inspect converged images
 before choosing a different spatial distribution or GPU integration algorithm.
 GPU cost, native Windows execution and flight appearance remain unverified.
+
+### Accurate distant-shell reference
+
+The subsequent [reference-only experiment](../../verification/results/fog-distance-reference-2026-09-21/report.md)
+passes numerical convergence: 2,304 deterministic rays per endpoint view, four
+views, worst 128/64-unit far-transmittance p99/max differences 0.0001333/0.0002205.
+The near24 contribution remains exact. The 30–40 km shell varies spatially but
+exceeds 0.002 opacity on 66.38–94.25% of sampled sky rays; variation alone does
+not establish isolated patches or user approval. Complete-column sky clear
+fraction below 0.002 is 0–0.78%, a descriptive screen only.
+
+Independent review passes 11 focused host tests and verifies all 48 local image
+hashes. It corrected report laws/status, split-shell operation counts and
+shell-local correlation labels. Scattering still uses normalized unit radiance.
+The images are cloud-only reference comparisons, not a recomposited flight or
+a proposed real-time implementation. No new medium, density, world scale or
+production integrator is selected; production cost and appearance remain open.

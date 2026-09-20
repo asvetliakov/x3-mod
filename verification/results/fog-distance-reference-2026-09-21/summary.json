@@ -1,0 +1,7 @@
+{
+  "images": 48,
+  "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+  "report_sha256": "2760342437d368d7a9d4844d6c14732f9785f5aa8c8df675f5d16a02f00033c3",
+  "result": "passed-reference-experiment",
+  "selected_capture_metadata_sha256": "99319f340925630006e4ebc11109013d0d72e781b0603041c71e4553a050556d"
+}

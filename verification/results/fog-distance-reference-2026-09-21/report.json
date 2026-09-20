@@ -1,0 +1,1230 @@
+{
+  "contract": {
+    "S_limitation": "actual radiance unavailable; no production-scaled S parity",
+    "density_scale": 1.5,
+    "far": "original unfiltered level0 field at fixed 128/64 render-unit spacing",
+    "image_grid": [
+      64,
+      36
+    ],
+    "lighting": "captured production-selected point-sun dir1, normalized unit radiance",
+    "near": "original 24 midpoint samples through 12000",
+    "shells": [
+      [
+        12000,
+        150000
+      ],
+      [
+        150000,
+        200000
+      ]
+    ],
+    "strength": 0.03,
+    "window": "1-smoothstep(150000,200000,s)"
+  },
+  "gates": {
+    "all_far_128_vs_64_T_converged": true,
+    "laws": {
+      "finite": true,
+      "invalid_depth_identity_exact": true,
+      "source_alpha_identity_exact": true,
+      "vacuum_zero_length_exact": true,
+      "wrapping_continuity_max": 0.0
+    },
+    "laws_passed": true,
+    "limits_at_most_12000_exact_near_output": true,
+    "near24_identical_between_arms": true
+  },
+  "host_seconds": 13.375465792,
+  "images": {
+    "bluewell-16450-reference128-complete-transmission.png": "e7ce494635813b38ad5b593256b0eea053b6099fbcaf5d4794482d5c32beb906",
+    "bluewell-16450-reference128-optical-depths.png": "b4ac8e0bf9576b745fd5786a13af76fa39d65842811115c9646749af28086939",
+    "bluewell-16450-reference128-reference-shells.png": "1ad0db7f3c978a925a4a70ba07b54f1b71660a5415d4e15fb894888343714f4c",
+    "bluewell-16450-reference128-sky-complete-transmission.png": "c815d4b0338b0f2f59763e294795f9b8eb6bf3de2ddf854fe403aeb0a2cf6107",
+    "bluewell-16450-reference128-sky-optical-depths.png": "dd6773fe21d151fed7646ce438c9f828ef8a1529d42bf7a9bf9420183ec744c0",
+    "bluewell-16450-reference128-sky-reference-shells.png": "38ffe95d335ea62dc7ec476ecee241b3f1e991c5cc1773e4c9426a0510ca2ceb",
+    "bluewell-16450-reference64-complete-transmission.png": "27c526b502035699a33f534541ca4d52ffa451e76ea6f8869304c6a8b7e97331",
+    "bluewell-16450-reference64-optical-depths.png": "5c553e133558cb871932aab669ddc31b97eba508162bd3e38c64be8488e3cb41",
+    "bluewell-16450-reference64-reference-shells.png": "30fe369fde9b8e3cada9d912ffcea37bb26bc414067224742ca7d58804ef4489",
+    "bluewell-16450-reference64-sky-complete-transmission.png": "c2fec9b8a0968a813ba4c22e4e005b9950cb26b59229fe38e8feccbc092170e6",
+    "bluewell-16450-reference64-sky-optical-depths.png": "84a5204270cc736115a682c6ccedbdcfd0ef812fd9fd1c7cc42508ff41ea924b",
+    "bluewell-16450-reference64-sky-reference-shells.png": "c109f032ca01df326a79ce6a7f8b1cc97300cc350f22ada6576dc3b726088daa",
+    "bluewell-16481-reference128-complete-transmission.png": "09e32402b66aba9b923fd304eec8a734c689d453c89d6a59e17d274f995aba6a",
+    "bluewell-16481-reference128-optical-depths.png": "91aabed886116eecc3051632ffdebad815b90ff025d88deecfae39fb525e1803",
+    "bluewell-16481-reference128-reference-shells.png": "5460c42c5c49f26e6599b8a950e8e4225657633a30056e24df8d97aaafa0f10a",
+    "bluewell-16481-reference128-sky-complete-transmission.png": "6debb6cf993e054d1c0c82284ad845605a6d1d14e3308970b8cede259cbc9e45",
+    "bluewell-16481-reference128-sky-optical-depths.png": "1ed1f149f12ff2c6ebcc19916366f7169fa377fa94f424e16e40c73888ab7dcf",
+    "bluewell-16481-reference128-sky-reference-shells.png": "b57cd150526f329016e9d809c9b226a07072eb108f5fbaf18297e0712df37647",
+    "bluewell-16481-reference64-complete-transmission.png": "1eac8ffd138143f70804963d2e62cd0083bcdc7a50a5726e054c6ff433ebd95d",
+    "bluewell-16481-reference64-optical-depths.png": "a266caf80330549153853e55b61ed56b65b63c2a34e5cbe53a6406345caab039",
+    "bluewell-16481-reference64-reference-shells.png": "8f1365a94b8ebf4d1181315f156e81adfa02d518194e800a028601bd84d88e0e",
+    "bluewell-16481-reference64-sky-complete-transmission.png": "dd77194b6d70121eae02aa033d235ffbab750202dbc14e6a14a488919af8a573",
+    "bluewell-16481-reference64-sky-optical-depths.png": "5367b089d8033fed0b4012539ae061c0badd67684579684deb214085d9ea9286",
+    "bluewell-16481-reference64-sky-reference-shells.png": "b61b9848cd6de86e099a4e035f3c66dad814e764e966792c1814acf2cb53e7c1",
+    "foggreenoutlands-43051-reference128-complete-transmission.png": "3bb433289d5096918836a7900b970dbf5e675963108901543a905430c112de7c",
+    "foggreenoutlands-43051-reference128-optical-depths.png": "114b776b58045e665ea993ae794c25e5b0d06d64d0aa3cf0fa2d2a49ff0ddea3",
+    "foggreenoutlands-43051-reference128-reference-shells.png": "a9625ed5674b29169a5b730768cab66de5ce1eed3f0e7a0ef3445be0a2c4f8ed",
+    "foggreenoutlands-43051-reference128-sky-complete-transmission.png": "e3a898cec179639ddf1ec225c506635ab9756a3790771f79be07bd7ca54871d4",
+    "foggreenoutlands-43051-reference128-sky-optical-depths.png": "099a994dabd4f2a74dc967f6de1474353cac731b4a7e6e61d69f01bcc08a8989",
+    "foggreenoutlands-43051-reference128-sky-reference-shells.png": "2193362f57b4c1d3876d1f08fd6545685a55c205a6f16ee40df80e917b2f5584",
+    "foggreenoutlands-43051-reference64-complete-transmission.png": "0a10706a9fd474dd1877fd848e69e52bbefddee82efa96b013cf1ce26352a656",
+    "foggreenoutlands-43051-reference64-optical-depths.png": "771eedfc5698f28c29500c10d5d68c6718ad7b7a17b28c9389023b3f770d52f6",
+    "foggreenoutlands-43051-reference64-reference-shells.png": "ad69fa8a6b5a216258b394063319b13828b8ef22445a1adac90f8e18229c82d6",
+    "foggreenoutlands-43051-reference64-sky-complete-transmission.png": "0398a2eb2e5082cae970066ee64dd85ce7e5e5c5a89ffcec5a49524cf7cc2321",
+    "foggreenoutlands-43051-reference64-sky-optical-depths.png": "aa34efe26d16dae9196df64e3e37b2569739db6cecb744e401d44ad5f6292167",
+    "foggreenoutlands-43051-reference64-sky-reference-shells.png": "a35b95f2eaae0cfd00ade9f800417dea95db2ac55dc70d02314ba222dfcae8f0",
+    "foggreenoutlands-43082-reference128-complete-transmission.png": "aa0b3267402b07d5bf670dba38aa264274ac93da967b2adfdd9ab3cd167254e7",
+    "foggreenoutlands-43082-reference128-optical-depths.png": "a107839f72bf2ada4169d1111e0330c797c50180e7ae71422f36773bc0601de7",
+    "foggreenoutlands-43082-reference128-reference-shells.png": "8c519ae0532ab9e7014b8b12728371a7fef3c7f0765e9e48d29b5d0ec90c923b",
+    "foggreenoutlands-43082-reference128-sky-complete-transmission.png": "7d5cf787325b26afa4649029a8642063ad51aa2e14e15aa16f785d873172d8e1",
+    "foggreenoutlands-43082-reference128-sky-optical-depths.png": "1ba280cd823baa6ba0c19241a13847523fd4bec7c6235c5dbd8dcc3e2fe02c3c",
+    "foggreenoutlands-43082-reference128-sky-reference-shells.png": "b3b695ffc1260c65c1e4261d274a37fef63a914024da99977f96288a3feaa795",
+    "foggreenoutlands-43082-reference64-complete-transmission.png": "ce80044475ec95aeb9e8391bed349a434c1c5467f55cb288078a4c1067b871af",
+    "foggreenoutlands-43082-reference64-optical-depths.png": "27392bc9ff8e37f6888fbae548255f0c0de6712b3910a36ed8e5567c6b423c9a",
+    "foggreenoutlands-43082-reference64-reference-shells.png": "885586ebaaf6582acd627b4ca75535712e1c44afff32a48e3872cadc9e73cfbd",
+    "foggreenoutlands-43082-reference64-sky-complete-transmission.png": "d4b95caa77c70a3a957778115b940b374b862c518db86bee89c24affd30f4e54",
+    "foggreenoutlands-43082-reference64-sky-optical-depths.png": "fbeea998b4c54e62440dde3a2f733f1ec912b2f5e46f017d4ddac01f52e547b1",
+    "foggreenoutlands-43082-reference64-sky-reference-shells.png": "14daa0ac3dc12a215c91eac4bff7fabf78cffc5b27c2fb49cc6ca41dfb68009c"
+  },
+  "limitations": [
+    "Dense CPU reference is not a proposed GPU algorithm or FPS measurement.",
+    "The four deterministic endpoint images are appearance witnesses, not population estimates or user acceptance.",
+    "The 25% clear-ray value is descriptive only and does not pass or fail appearance.",
+    "No TAA or observed-pop acceptance follows from fog-only images.",
+    "Production shader limits, timing, Reset behavior, native Windows execution and user flight remain open."
+  ],
+  "operation_counts": {
+    "GPU_or_production_cost_claim": false,
+    "reference128_far_steps": 1470,
+    "reference32_only_on_failed_witnesses": true,
+    "reference64_far_steps": 2939
+  },
+  "result": "passed-reference-experiment",
+  "schema": 1,
+  "sources": {
+    "analysis_sha256": "85642f1b092b4635234c0712476595dc69aaa62f6de275a95a104bd11abebc20",
+    "capture_log": "/tmp/x3-bottleX3-run200/session-20260921-014107-212.log",
+    "capture_log_bytes": 481995947,
+    "depth_files": {
+      "aggregate_sha256": "bb087cddf5297a9282b7d0ae0f82d76ace146d6acc1ac0f529e604651a73f934",
+      "count": 64,
+      "endpoint_sha256": {
+        "depth_1_16450.rgba32f": "010c07a6bb779b4a47401667d3212a0a0b2474981790ee3884183a18b12ae0eb",
+        "depth_1_16481.rgba32f": "1150cf6839d40984136f65dcd72b853a80dc02f346ce97ed3ab64182a8d9db1e",
+        "depth_1_43051.rgba32f": "dc7416d3bfa9147b095c48fe4114e1578e4915d0c9634ab8a089f362a98f2cba",
+        "depth_1_43082.rgba32f": "a262319174b3208ba953d91dda3d64c2b0511edad886c75f82efcf07eb90a6ac"
+      }
+    },
+    "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+    "packets": {
+      "bluewell": {
+        "decoded_sha256": "4529497a5e1feda3276b334d6aaef3ba741460e4e4b539aaaf7df74cbfa7261d",
+        "sha256": "fea1a4bf3842b417007af27c6cc25092c3ac8e815660b02bc3ac410953f1f372"
+      },
+      "foggreenoutlands": {
+        "decoded_sha256": "d0342a05fe0e0421c980bb46bec72a765617f9bd043d84d134928a65d3dc0b0c",
+        "sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8"
+      }
+    },
+    "reviewed_replay_report_sha256": "80fc97843d58e28c1ce26e05fa7efd2cdd2752d54b0bf27fa5947be82a224bf0",
+    "selected_capture_metadata_sha256": "99319f340925630006e4ebc11109013d0d72e781b0603041c71e4553a050556d"
+  },
+  "synthetic": {
+    "bluewell": {
+      "period_translation_max": 0.0,
+      "window_translation": {
+        "label": "synthetic camera interpolation across fixed marker 40/30-km taper radii; not observed gameplay",
+        "max_adjacent_T_delta": 0.011729836463928223,
+        "samples": [
+          {
+            "S": [
+              0.0008729941910132766,
+              0.0036352332681417465,
+              0.014683885499835014
+            ],
+            "T": 0.904317319393158,
+            "camera_translation": 0.0,
+            "fixed_marker_distance": 205000.0,
+            "fixed_marker_window": 0.0
+          },
+          {
+            "S": [
+              0.0009076283313333988,
+              0.0037805428728461266,
+              0.01527218148112297
+            ],
+            "T": 0.9004839658737183,
+            "camera_translation": 7500.0,
+            "fixed_marker_distance": 197500.0,
+            "fixed_marker_window": 0.007249999999999979
+          },
+          {
+            "S": [
+              0.0007904944359324872,
+              0.0033266113605350256,
+              0.013472060672938824
+            ],
+            "T": 0.9122138023376465,
+            "camera_translation": 15000.0,
+            "fixed_marker_distance": 190000.0,
+            "fixed_marker_window": 0.10399999999999987
+          },
+          {
+            "S": [
+              0.0008290023542940617,
+              0.0034904496278613806,
+              0.014135339297354221
+            ],
+            "T": 0.9078917503356934,
+            "camera_translation": 22500.0,
+            "fixed_marker_distance": 182500.0,
+            "fixed_marker_window": 0.28174999999999994
+          },
+          {
+            "S": [
+              0.000861318432725966,
+              0.0035850522108376026,
+              0.0144812548533082
+            ],
+            "T": 0.9056376814842224,
+            "camera_translation": 30000.0,
+            "fixed_marker_distance": 175000.0,
+            "fixed_marker_window": 0.5
+          },
+          {
+            "S": [
+              0.0008950467454269528,
+              0.003726956434547901,
+              0.015056570060551167
+            ],
+            "T": 0.9018888473510742,
+            "camera_translation": 37500.0,
+            "fixed_marker_distance": 167500.0,
+            "fixed_marker_window": 0.71825
+          },
+          {
+            "S": [
+              0.0008949097828008235,
+              0.003765657776966691,
+              0.015152404084801674
+            ],
+            "T": 0.9012644290924072,
+            "camera_translation": 45000.0,
+            "fixed_marker_distance": 160000.0,
+            "fixed_marker_window": 0.896
+          },
+          {
+            "S": [
+              0.0008151262300089002,
+              0.003433298785239458,
+              0.013906006701290607
+            ],
+            "T": 0.9093860983848572,
+            "camera_translation": 52500.0,
+            "fixed_marker_distance": 152500.0,
+            "fixed_marker_window": 0.99275
+          },
+          {
+            "S": [
+              0.0008509870967827737,
+              0.003566596657037735,
+              0.014432630501687527
+            ],
+            "T": 0.9059545993804932,
+            "camera_translation": 60000.0,
+            "fixed_marker_distance": 145000.0,
+            "fixed_marker_window": 1.0
+          }
+        ]
+      },
+      "wrap_boundary_one_unit_max_delta": 4.4405460357666016e-05
+    },
+    "foggreenoutlands": {
+      "period_translation_max": 0.0,
+      "window_translation": {
+        "label": "synthetic camera interpolation across fixed marker 40/30-km taper radii; not observed gameplay",
+        "max_adjacent_T_delta": 0.029657304286956787,
+        "samples": [
+          {
+            "S": [
+              0.00950515829026699,
+              0.07448657602071762,
+              0.004344352521002293
+            ],
+            "T": 0.645891547203064,
+            "camera_translation": 0.0,
+            "fixed_marker_distance": 205000.0,
+            "fixed_marker_window": 0.0
+          },
+          {
+            "S": [
+              0.009824581444263458,
+              0.07699118554592133,
+              0.004487643018364906
+            ],
+            "T": 0.6339845657348633,
+            "camera_translation": 7500.0,
+            "fixed_marker_distance": 197500.0,
+            "fixed_marker_window": 0.007249999999999979
+          },
+          {
+            "S": [
+              0.008997626602649689,
+              0.07075279206037521,
+              0.003992611542344093
+            ],
+            "T": 0.6636418700218201,
+            "camera_translation": 15000.0,
+            "fixed_marker_distance": 190000.0,
+            "fixed_marker_window": 0.10399999999999987
+          },
+          {
+            "S": [
+              0.009358035400509834,
+              0.07356875389814377,
+              0.004155850037932396
+            ],
+            "T": 0.6502547860145569,
+            "camera_translation": 22500.0,
+            "fixed_marker_distance": 182500.0,
+            "fixed_marker_window": 0.28174999999999994
+          },
+          {
+            "S": [
+              0.00938590057194233,
+              0.07354272902011871,
+              0.004292596131563187
+            ],
+            "T": 0.6503785848617554,
+            "camera_translation": 30000.0,
+            "fixed_marker_distance": 175000.0,
+            "fixed_marker_window": 0.5
+          },
+          {
+            "S": [
+              0.009703202173113823,
+              0.0760347992181778,
+              0.004433676600456238
+            ],
+            "T": 0.6385312080383301,
+            "camera_translation": 37500.0,
+            "fixed_marker_distance": 167500.0,
+            "fixed_marker_window": 0.71825
+          },
+          {
+            "S": [
+              0.009779028594493866,
+              0.07621467858552933,
+              0.004490903578698635
+            ],
+            "T": 0.6376761198043823,
+            "camera_translation": 45000.0,
+            "fixed_marker_distance": 160000.0,
+            "fixed_marker_window": 0.896
+          },
+          {
+            "S": [
+              0.009226166643202305,
+              0.07254858314990997,
+              0.004095961339771748
+            ],
+            "T": 0.6551046967506409,
+            "camera_translation": 52500.0,
+            "fixed_marker_distance": 152500.0,
+            "fixed_marker_window": 0.99275
+          },
+          {
+            "S": [
+              0.009443089365959167,
+              0.07420755922794342,
+              0.004248255863785744
+            ],
+            "T": 0.6472179293632507,
+            "camera_translation": 60000.0,
+            "fixed_marker_distance": 145000.0,
+            "fixed_marker_window": 1.0
+          }
+        ]
+      },
+      "wrap_boundary_one_unit_max_delta": 9.113550186157227e-05
+    }
+  },
+  "temporal": [
+    {
+      "family": "bluewell",
+      "frame_pairs": 31,
+      "frames": 32,
+      "moving_reference_abs_delta_T": {
+        "count": 744,
+        "max": 0.16930216550827026,
+        "p99": 0.13542587101459505
+      },
+      "rays_per_frame": 24
+    },
+    {
+      "family": "foggreenoutlands",
+      "frame_pairs": 31,
+      "frames": 32,
+      "moving_reference_abs_delta_T": {
+        "count": 744,
+        "max": 0.02215743064880371,
+        "p99": 0.02051156878471375
+      },
+      "rays_per_frame": 24
+    }
+  ],
+  "views": [
+    {
+      "candidate24_difference": {
+        "S_normalized_lighting": [
+          {
+            "count": 2304,
+            "max": 0.0022185849957168102,
+            "p99": 0.0012252758606337009
+          },
+          {
+            "count": 2304,
+            "max": 0.011406688019633293,
+            "p99": 0.006129643982276318
+          },
+          {
+            "count": 2304,
+            "max": 0.04123402759432793,
+            "p99": 0.022319906465709107
+          }
+        ],
+        "T": {
+          "count": 2304,
+          "max": 0.1198660135269165,
+          "p99": 0.08978011727333032
+        }
+      },
+      "complete_opacity": {
+        "all": {
+          "clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.0681423611111111,
+            "hits": 157
+          },
+          "dense_above_0.015": {
+            "count": 2304,
+            "fraction": 0.87890625,
+            "hits": 2025
+          }
+        },
+        "sky": {
+          "clear_below_0.002": {
+            "count": 1990,
+            "fraction": 0.006030150753768844,
+            "hits": 12
+          },
+          "dense_above_0.015": {
+            "count": 1990,
+            "fraction": 0.9492462311557789,
+            "hits": 1889
+          }
+        }
+      },
+      "family": "bluewell",
+      "far_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 2304,
+            "max": 1.8887221813201904e-06,
+            "p99": 1.1820998042821808e-06
+          },
+          {
+            "count": 2304,
+            "max": 9.533949196338654e-06,
+            "p99": 4.835715517401691e-06
+          },
+          {
+            "count": 2304,
+            "max": 2.987682819366455e-05,
+            "p99": 1.709654927253719e-05
+          }
+        ],
+        "T": {
+          "count": 2304,
+          "max": 9.733438491821289e-05,
+          "p99": 6.520032882690425e-05
+        }
+      },
+      "far_converged": true,
+      "frame": 16450,
+      "geometry_rays": 314,
+      "images": [
+        "bluewell-16450-reference64-reference-shells.png",
+        "bluewell-16450-reference64-complete-transmission.png",
+        "bluewell-16450-reference64-optical-depths.png",
+        "bluewell-16450-reference128-reference-shells.png",
+        "bluewell-16450-reference128-complete-transmission.png",
+        "bluewell-16450-reference128-optical-depths.png",
+        "bluewell-16450-reference64-sky-reference-shells.png",
+        "bluewell-16450-reference64-sky-complete-transmission.png",
+        "bluewell-16450-reference64-sky-optical-depths.png",
+        "bluewell-16450-reference128-sky-reference-shells.png",
+        "bluewell-16450-reference128-sky-complete-transmission.png",
+        "bluewell-16450-reference128-sky-optical-depths.png"
+      ],
+      "limits_at_most_12000_exact_near_output": true,
+      "near24_identical_between_arms": true,
+      "rays": 2304,
+      "refinement32_on_failure": null,
+      "shell_30_40km": {
+        "above_0.002": {
+          "count": 1990,
+          "fraction": 0.6638190954773869,
+          "hits": 1321
+        },
+        "connected_regions_above_0.002": 37,
+        "opacity": {
+          "max": 0.09280776977539062,
+          "p0": 0.0,
+          "p50": 0.0056393444538116455,
+          "p99": 0.05734508857131004,
+          "std": 0.013625574298202991
+        },
+        "sky_count": 1990,
+        "spatially_varying_nonzero": true
+      },
+      "shell_local_period_width_block_correlations": [
+        {
+          "blocks": [
+            0,
+            1
+          ],
+          "bounds": [
+            [
+              12000.0,
+              44768.0
+            ],
+            [
+              44768.0,
+              77536.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.012339797688591144
+        },
+        {
+          "blocks": [
+            1,
+            2
+          ],
+          "bounds": [
+            [
+              44768.0,
+              77536.0
+            ],
+            [
+              77536.0,
+              110304.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.025423843270702042
+        },
+        {
+          "blocks": [
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              77536.0,
+              110304.0
+            ],
+            [
+              110304.0,
+              143072.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.041326976872577276
+        },
+        {
+          "blocks": [
+            3,
+            4
+          ],
+          "bounds": [
+            [
+              110304.0,
+              143072.0
+            ],
+            [
+              143072.0,
+              150000.0
+            ]
+          ],
+          "includes_partial_block": true,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.03813258499646614
+        },
+        {
+          "blocks": [
+            0,
+            1
+          ],
+          "bounds": [
+            [
+              150000.0,
+              182768.0
+            ],
+            [
+              182768.0,
+              200000.0
+            ]
+          ],
+          "includes_partial_block": true,
+          "shell": "30-40km",
+          "sky_tau_correlation": 0.036974356176263795
+        }
+      ],
+      "sky_rays": 1990
+    },
+    {
+      "candidate24_difference": {
+        "S_normalized_lighting": [
+          {
+            "count": 2304,
+            "max": 0.002562918234616518,
+            "p99": 0.0012346761953085533
+          },
+          {
+            "count": 2304,
+            "max": 0.01406791340559721,
+            "p99": 0.006098755360580965
+          },
+          {
+            "count": 2304,
+            "max": 0.05409496650099754,
+            "p99": 0.021691961139440396
+          }
+        ],
+        "T": {
+          "count": 2304,
+          "max": 0.13605397939682007,
+          "p99": 0.08642012178897857
+        }
+      },
+      "complete_opacity": {
+        "all": {
+          "clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.07118055555555555,
+            "hits": 164
+          },
+          "dense_above_0.015": {
+            "count": 2304,
+            "fraction": 0.8815104166666666,
+            "hits": 2031
+          }
+        },
+        "sky": {
+          "clear_below_0.002": {
+            "count": 2044,
+            "fraction": 0.007827788649706457,
+            "hits": 16
+          },
+          "dense_above_0.015": {
+            "count": 2044,
+            "fraction": 0.9530332681017613,
+            "hits": 1948
+          }
+        }
+      },
+      "family": "bluewell",
+      "far_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 2304,
+            "max": 1.7352867871522903e-06,
+            "p99": 1.0332852252759036e-06
+          },
+          {
+            "count": 2304,
+            "max": 7.398426532745361e-06,
+            "p99": 4.6441424638032885e-06
+          },
+          {
+            "count": 2304,
+            "max": 2.45608389377594e-05,
+            "p99": 1.5331059694290146e-05
+          }
+        ],
+        "T": {
+          "count": 2304,
+          "max": 9.78708267211914e-05,
+          "p99": 6.179571151733389e-05
+        }
+      },
+      "far_converged": true,
+      "frame": 16481,
+      "geometry_rays": 260,
+      "images": [
+        "bluewell-16481-reference64-reference-shells.png",
+        "bluewell-16481-reference64-complete-transmission.png",
+        "bluewell-16481-reference64-optical-depths.png",
+        "bluewell-16481-reference128-reference-shells.png",
+        "bluewell-16481-reference128-complete-transmission.png",
+        "bluewell-16481-reference128-optical-depths.png",
+        "bluewell-16481-reference64-sky-reference-shells.png",
+        "bluewell-16481-reference64-sky-complete-transmission.png",
+        "bluewell-16481-reference64-sky-optical-depths.png",
+        "bluewell-16481-reference128-sky-reference-shells.png",
+        "bluewell-16481-reference128-sky-complete-transmission.png",
+        "bluewell-16481-reference128-sky-optical-depths.png"
+      ],
+      "limits_at_most_12000_exact_near_output": true,
+      "near24_identical_between_arms": true,
+      "rays": 2304,
+      "refinement32_on_failure": null,
+      "shell_30_40km": {
+        "above_0.002": {
+          "count": 2044,
+          "fraction": 0.6741682974559687,
+          "hits": 1378
+        },
+        "connected_regions_above_0.002": 44,
+        "opacity": {
+          "max": 0.08878374099731445,
+          "p0": 0.0,
+          "p50": 0.005953282117843628,
+          "p99": 0.058238204568624496,
+          "std": 0.013458292931318283
+        },
+        "sky_count": 2044,
+        "spatially_varying_nonzero": true
+      },
+      "shell_local_period_width_block_correlations": [
+        {
+          "blocks": [
+            0,
+            1
+          ],
+          "bounds": [
+            [
+              12000.0,
+              44768.0
+            ],
+            [
+              44768.0,
+              77536.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.01788900903933397
+        },
+        {
+          "blocks": [
+            1,
+            2
+          ],
+          "bounds": [
+            [
+              44768.0,
+              77536.0
+            ],
+            [
+              77536.0,
+              110304.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.04764915392763947
+        },
+        {
+          "blocks": [
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              77536.0,
+              110304.0
+            ],
+            [
+              110304.0,
+              143072.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.023155651680545696
+        },
+        {
+          "blocks": [
+            3,
+            4
+          ],
+          "bounds": [
+            [
+              110304.0,
+              143072.0
+            ],
+            [
+              143072.0,
+              150000.0
+            ]
+          ],
+          "includes_partial_block": true,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.07943022543582783
+        },
+        {
+          "blocks": [
+            0,
+            1
+          ],
+          "bounds": [
+            [
+              150000.0,
+              182768.0
+            ],
+            [
+              182768.0,
+              200000.0
+            ]
+          ],
+          "includes_partial_block": true,
+          "shell": "30-40km",
+          "sky_tau_correlation": 0.029332336956761188
+        }
+      ],
+      "sky_rays": 2044
+    },
+    {
+      "candidate24_difference": {
+        "S_normalized_lighting": [
+          {
+            "count": 2304,
+            "max": 0.035223424434661865,
+            "p99": 0.02334914933890104
+          },
+          {
+            "count": 2304,
+            "max": 0.135193333029747,
+            "p99": 0.10069165155291504
+          },
+          {
+            "count": 2304,
+            "max": 0.028256695717573166,
+            "p99": 0.017184451911598408
+          }
+        ],
+        "T": {
+          "count": 2304,
+          "max": 0.30846258997917175,
+          "p99": 0.196134950518608
+        }
+      },
+      "complete_opacity": {
+        "all": {
+          "clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.1267361111111111,
+            "hits": 292
+          },
+          "dense_above_0.015": {
+            "count": 2304,
+            "fraction": 0.8532986111111112,
+            "hits": 1966
+          }
+        },
+        "sky": {
+          "clear_below_0.002": {
+            "count": 1948,
+            "fraction": 0.0,
+            "hits": 0
+          },
+          "dense_above_0.015": {
+            "count": 1948,
+            "fraction": 1.0,
+            "hits": 1948
+          }
+        }
+      },
+      "family": "foggreenoutlands",
+      "far_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 2304,
+            "max": 5.6240707635879517e-05,
+            "p99": 1.5820302069187156e-05
+          },
+          {
+            "count": 2304,
+            "max": 0.00013309717178344727,
+            "p99": 5.820289254188517e-05
+          },
+          {
+            "count": 2304,
+            "max": 4.4479966163635254e-05,
+            "p99": 1.2364592403173437e-05
+          }
+        ],
+        "T": {
+          "count": 2304,
+          "max": 0.00022047758102416992,
+          "p99": 0.00012995839118957493
+        }
+      },
+      "far_converged": true,
+      "frame": 43051,
+      "geometry_rays": 356,
+      "images": [
+        "foggreenoutlands-43051-reference64-reference-shells.png",
+        "foggreenoutlands-43051-reference64-complete-transmission.png",
+        "foggreenoutlands-43051-reference64-optical-depths.png",
+        "foggreenoutlands-43051-reference128-reference-shells.png",
+        "foggreenoutlands-43051-reference128-complete-transmission.png",
+        "foggreenoutlands-43051-reference128-optical-depths.png",
+        "foggreenoutlands-43051-reference64-sky-reference-shells.png",
+        "foggreenoutlands-43051-reference64-sky-complete-transmission.png",
+        "foggreenoutlands-43051-reference64-sky-optical-depths.png",
+        "foggreenoutlands-43051-reference128-sky-reference-shells.png",
+        "foggreenoutlands-43051-reference128-sky-complete-transmission.png",
+        "foggreenoutlands-43051-reference128-sky-optical-depths.png"
+      ],
+      "limits_at_most_12000_exact_near_output": true,
+      "near24_identical_between_arms": true,
+      "rays": 2304,
+      "refinement32_on_failure": null,
+      "shell_30_40km": {
+        "above_0.002": {
+          "count": 1948,
+          "fraction": 0.9425051334702259,
+          "hits": 1836
+        },
+        "connected_regions_above_0.002": 19,
+        "opacity": {
+          "max": 0.2533208131790161,
+          "p0": 0.0,
+          "p50": 0.04145008325576782,
+          "p99": 0.19458335638046265,
+          "std": 0.044814202934503555
+        },
+        "sky_count": 1948,
+        "spatially_varying_nonzero": true
+      },
+      "shell_local_period_width_block_correlations": [
+        {
+          "blocks": [
+            0,
+            1
+          ],
+          "bounds": [
+            [
+              12000.0,
+              44768.0
+            ],
+            [
+              44768.0,
+              77536.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.018481242990298807
+        },
+        {
+          "blocks": [
+            1,
+            2
+          ],
+          "bounds": [
+            [
+              44768.0,
+              77536.0
+            ],
+            [
+              77536.0,
+              110304.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.022066753613469794
+        },
+        {
+          "blocks": [
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              77536.0,
+              110304.0
+            ],
+            [
+              110304.0,
+              143072.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.07726896637056918
+        },
+        {
+          "blocks": [
+            3,
+            4
+          ],
+          "bounds": [
+            [
+              110304.0,
+              143072.0
+            ],
+            [
+              143072.0,
+              150000.0
+            ]
+          ],
+          "includes_partial_block": true,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.07066959420831713
+        },
+        {
+          "blocks": [
+            0,
+            1
+          ],
+          "bounds": [
+            [
+              150000.0,
+              182768.0
+            ],
+            [
+              182768.0,
+              200000.0
+            ]
+          ],
+          "includes_partial_block": true,
+          "shell": "30-40km",
+          "sky_tau_correlation": 0.019961633629911317
+        }
+      ],
+      "sky_rays": 1948
+    },
+    {
+      "candidate24_difference": {
+        "S_normalized_lighting": [
+          {
+            "count": 2304,
+            "max": 0.034812331199645996,
+            "p99": 0.02402316387742754
+          },
+          {
+            "count": 2304,
+            "max": 0.14093798398971558,
+            "p99": 0.09908396020531626
+          },
+          {
+            "count": 2304,
+            "max": 0.02834591083228588,
+            "p99": 0.017301100213080612
+          }
+        ],
+        "T": {
+          "count": 2304,
+          "max": 0.31651243567466736,
+          "p99": 0.1945084691047668
+        }
+      },
+      "complete_opacity": {
+        "all": {
+          "clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.1284722222222222,
+            "hits": 296
+          },
+          "dense_above_0.015": {
+            "count": 2304,
+            "fraction": 0.8550347222222222,
+            "hits": 1970
+          }
+        },
+        "sky": {
+          "clear_below_0.002": {
+            "count": 1951,
+            "fraction": 0.0,
+            "hits": 0
+          },
+          "dense_above_0.015": {
+            "count": 1951,
+            "fraction": 1.0,
+            "hits": 1951
+          }
+        }
+      },
+      "family": "foggreenoutlands",
+      "far_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 2304,
+            "max": 3.4108757972717285e-05,
+            "p99": 1.701861619949332e-05
+          },
+          {
+            "count": 2304,
+            "max": 0.00011691451072692871,
+            "p99": 5.742549896240232e-05
+          },
+          {
+            "count": 2304,
+            "max": 2.65464186668396e-05,
+            "p99": 1.2984238564968095e-05
+          }
+        ],
+        "T": {
+          "count": 2304,
+          "max": 0.00020241737365722656,
+          "p99": 0.00013332664966583246
+        }
+      },
+      "far_converged": true,
+      "frame": 43082,
+      "geometry_rays": 353,
+      "images": [
+        "foggreenoutlands-43082-reference64-reference-shells.png",
+        "foggreenoutlands-43082-reference64-complete-transmission.png",
+        "foggreenoutlands-43082-reference64-optical-depths.png",
+        "foggreenoutlands-43082-reference128-reference-shells.png",
+        "foggreenoutlands-43082-reference128-complete-transmission.png",
+        "foggreenoutlands-43082-reference128-optical-depths.png",
+        "foggreenoutlands-43082-reference64-sky-reference-shells.png",
+        "foggreenoutlands-43082-reference64-sky-complete-transmission.png",
+        "foggreenoutlands-43082-reference64-sky-optical-depths.png",
+        "foggreenoutlands-43082-reference128-sky-reference-shells.png",
+        "foggreenoutlands-43082-reference128-sky-complete-transmission.png",
+        "foggreenoutlands-43082-reference128-sky-optical-depths.png"
+      ],
+      "limits_at_most_12000_exact_near_output": true,
+      "near24_identical_between_arms": true,
+      "rays": 2304,
+      "refinement32_on_failure": null,
+      "shell_30_40km": {
+        "above_0.002": {
+          "count": 1951,
+          "fraction": 0.9364428498206048,
+          "hits": 1827
+        },
+        "connected_regions_above_0.002": 19,
+        "opacity": {
+          "max": 0.2483997344970703,
+          "p0": 0.0,
+          "p50": 0.04107874631881714,
+          "p99": 0.1937101185321808,
+          "std": 0.044853027909994125
+        },
+        "sky_count": 1951,
+        "spatially_varying_nonzero": true
+      },
+      "shell_local_period_width_block_correlations": [
+        {
+          "blocks": [
+            0,
+            1
+          ],
+          "bounds": [
+            [
+              12000.0,
+              44768.0
+            ],
+            [
+              44768.0,
+              77536.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.016740001105641205
+        },
+        {
+          "blocks": [
+            1,
+            2
+          ],
+          "bounds": [
+            [
+              44768.0,
+              77536.0
+            ],
+            [
+              77536.0,
+              110304.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.018485581039239172
+        },
+        {
+          "blocks": [
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              77536.0,
+              110304.0
+            ],
+            [
+              110304.0,
+              143072.0
+            ]
+          ],
+          "includes_partial_block": false,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.07621009552637724
+        },
+        {
+          "blocks": [
+            3,
+            4
+          ],
+          "bounds": [
+            [
+              110304.0,
+              143072.0
+            ],
+            [
+              143072.0,
+              150000.0
+            ]
+          ],
+          "includes_partial_block": true,
+          "shell": "2.4-30km",
+          "sky_tau_correlation": 0.066969769400864
+        },
+        {
+          "blocks": [
+            0,
+            1
+          ],
+          "bounds": [
+            [
+              150000.0,
+              182768.0
+            ],
+            [
+              182768.0,
+              200000.0
+            ]
+          ],
+          "includes_partial_block": true,
+          "shell": "30-40km",
+          "sky_tau_correlation": 0.015377566841653777
+        }
+      ],
+      "sky_rays": 1951
+    }
+  ]
+}
