@@ -1,0 +1,33 @@
+{
+  "candidate": {
+    "bytes": 58746286,
+    "path": "/tmp/x3-run54-candidate/build/d3d9.dll",
+    "pe_image_base": "0x6fb40000",
+    "pe_sizeofimage": "0x3d19000",
+    "sha256": "124d98898a66413d2400f99c851e8e2574c6a8238b8d584d06db2a6d48d4d6da",
+    "symbols": {"collide_memo": "0x6fc0a500", "collide_sat": "0x6fc09400", "voice_dmo_fallback": "0x6fbeb120"}
+  },
+  "run197_manual_color_frames": {"count": 32, "first": 2633, "last": 2664},
+  "runs": {
+    "195": {
+      "candidate_anchors": [{"derived_base": "0x76880000", "name": "collide_memo", "preferred": "0x6fc0a500", "runtime": "0x7694a500"}, {"derived_base": "0x76880000", "name": "collide_sat", "preferred": "0x6fc09400", "runtime": "0x76949400"}, {"derived_base": "0x76880000", "name": "voice_dmo_fallback", "preferred": "0x6fbeb120", "runtime": "0x7692b120"}],
+      "candidate_loaded_base": "0x76880000", "candidate_loaded_end": "0x7a599000",
+      "fault": {"pc": "0x6eb2413a", "read": "ffffffff", "thread": "0x0344"},
+      "gstreamer_critical": 32, "media_cue_records": 48, "media_owned_snapshot_records": 0, "qpc_fields": 2107,
+      "session": "session-20260920-235537-216.log", "session_bytes": 32152180, "session_sha256": "6f1cd33dce1312a499524427c627f7186484ea04f63c8a87a681fdb9e9f13f9a", "stderr_sha256": "1853a2801d0a627b056a1210927e2a465bdb599d0fe45db06cd5784523899210"
+    },
+    "196": {
+      "candidate_anchors": [{"derived_base": "0x76880000", "name": "collide_memo", "preferred": "0x6fc0a500", "runtime": "0x7694a500"}, {"derived_base": "0x76880000", "name": "collide_sat", "preferred": "0x6fc09400", "runtime": "0x76949400"}, {"derived_base": "0x76880000", "name": "voice_dmo_fallback", "preferred": "0x6fbeb120", "runtime": "0x7692b120"}],
+      "candidate_loaded_base": "0x76880000", "candidate_loaded_end": "0x7a599000",
+      "gstreamer_critical": 16, "media_cue_records": 32, "media_owned_snapshot_records": 0, "qpc_fields": 1256,
+      "session": "session-20260920-235826-212.log", "session_bytes": 13069708, "session_sha256": "55dc7e41ec1453e6f6db851f51f9fc38c2c5bdfc9c0f477701f987a4c8a4e7ce", "stderr_sha256": "13e8f4c3cb019d68daec8fd862823bd9cc0f590b8f5692ac87a526b503748a6a"
+    },
+    "197": {
+      "candidate_anchors": [{"derived_base": "0x76880000", "name": "collide_memo", "preferred": "0x6fc0a500", "runtime": "0x7694a500"}, {"derived_base": "0x76880000", "name": "collide_sat", "preferred": "0x6fc09400", "runtime": "0x76949400"}, {"derived_base": "0x76880000", "name": "voice_dmo_fallback", "preferred": "0x6fbeb120", "runtime": "0x7692b120"}],
+      "candidate_loaded_base": "0x76880000", "candidate_loaded_end": "0x7a599000",
+      "fault": {"pc": "0x6eb2a0fa", "read": "00000004", "thread": "0x02e0"},
+      "gstreamer_critical": 16, "media_cue_records": 30, "media_owned_snapshot_records": 1, "qpc_fields": 8587,
+      "session": "session-20260921-000016-212.log", "session_bytes": 142102728, "session_sha256": "9ab54489bd921ef062b27b011fe2e3006c3670dd53c409e88067b97eaa0f12bd", "stderr_sha256": "9614833b0d47ce3bb667ec1d9ed6e7ba0bb31d51e123eee30d093acf20a7b1ac"
+    }
+  }
+}

@@ -1,0 +1,292 @@
+{
+  "schema": 1,
+  "kind": "run54_media_coexistence_bounded_diagnostic",
+  "date": "2026-09-21",
+  "outcome": "Three bounded negative cases; run195/run197 crash ownership remains unknown.",
+  "base_commit": "693a0670c8428dccac95da5f1dc384710d22df88",
+  "build": {
+    "path": "/tmp/x3-run54-coexist-build-v4/build.json",
+    "bytes": 10907,
+    "sha256": "e1b21dc1c38bd2f204adedb84d319a8b10879dcba15ad83153c343856b8809cf"
+  },
+  "exe": {
+    "path": "/private/tmp/x3-run54-coexist-build-v4/run54_media_coexistence.exe",
+    "sha256": "5a95f72cdbadb29c0e10a059008ba79aa5a810dc4c92c05fc584cd94b03da02a"
+  },
+  "scope": "Verification only; no media production change, native rebuild after execution, game launch or install.",
+  "cases": [
+    {
+      "case": "original",
+      "native_exit_code": 0,
+      "runner_initial_classification": "bounded_negative",
+      "offline_classification": "bounded_negative",
+      "wall_seconds": 20.603784,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "result_binding": {
+        "path": "/tmp/x3-run54-coexist-original/result-reanalyzed.json",
+        "bytes": 10964,
+        "sha256": "459f329b2aa862604a0688c7bd1321f6465cd5bc5a87473bef4b2ec61f603d2e"
+      },
+      "initial_result_binding": {
+        "path": "/tmp/x3-run54-coexist-original/result.json",
+        "bytes": 10028,
+        "sha256": "66e53139ede61215e88e5458db64841b237af30975fc646d7f1953e2dac8cdd4"
+      },
+      "lock": {
+        "lock_wait_seconds": 3.750000000000281e-06,
+        "child_elapsed_seconds": 21.315592042000002,
+        "exit_code": 0
+      },
+      "result": {
+        "reason": "bounded_negative",
+        "construction_cycles": 1,
+        "complete": 1,
+        "original_rc": 0,
+        "overlap_ticks": 0,
+        "original_cycles": 1927,
+        "original_consumed": 636,
+        "copies0": 0,
+        "copies1": 0,
+        "distinct0": 0,
+        "distinct1": 0,
+        "reuse_copies": 0,
+        "canceled": 0,
+        "quiescent": 0,
+        "reused": 0,
+        "elapsed_ms": 15918
+      },
+      "original_created": 3,
+      "actual_copy_count": 0,
+      "original_audio_during_copy_window": null,
+      "gstreamer_critical_count": 0,
+      "captured_fault_marker_count": 0,
+      "module_observations": 0,
+      "module_paths_without_image_suffix": 0,
+      "cleanup_verified": true,
+      "survivors": [],
+      "log_bytes": {
+        "stdout.txt": 170832,
+        "stderr.txt": 179353
+      },
+      "frames": [],
+      "unique_copy_hashes_by_instance": {
+        "0": 0,
+        "1": 0
+      }
+    },
+    {
+      "case": "idle",
+      "native_exit_code": 0,
+      "runner_initial_classification": "bounded_negative",
+      "offline_classification": "bounded_negative",
+      "wall_seconds": 19.182698458,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "result_binding": {
+        "path": "/tmp/x3-run54-coexist-idle/result-reanalyzed.json",
+        "bytes": 11827,
+        "sha256": "def303cbc1ec36ac730ae20547de4bd1b0fffb17e38c84954418d0378057a91d"
+      },
+      "initial_result_binding": {
+        "path": "/tmp/x3-run54-coexist-idle/result.json",
+        "bytes": 10903,
+        "sha256": "47bafea0a60fbaf4980047600ca73dbb1d255b9c0eb65905e34bbc5989cc28da"
+      },
+      "lock": {
+        "lock_wait_seconds": 3.333000000001196e-06,
+        "child_elapsed_seconds": 19.939910625,
+        "exit_code": 0
+      },
+      "result": {
+        "reason": "bounded_negative",
+        "construction_cycles": 1,
+        "complete": 1,
+        "original_rc": 0,
+        "overlap_ticks": 1961,
+        "original_cycles": 1961,
+        "original_consumed": 650,
+        "copies0": 0,
+        "copies1": 0,
+        "distinct0": 0,
+        "distinct1": 0,
+        "reuse_copies": 0,
+        "canceled": 0,
+        "quiescent": 0,
+        "reused": 0,
+        "elapsed_ms": 14863
+      },
+      "original_created": 3,
+      "actual_copy_count": 0,
+      "original_audio_during_copy_window": null,
+      "gstreamer_critical_count": 0,
+      "captured_fault_marker_count": 0,
+      "module_observations": 0,
+      "module_paths_without_image_suffix": 0,
+      "cleanup_verified": true,
+      "survivors": [],
+      "log_bytes": {
+        "stdout.txt": 175598,
+        "stderr.txt": 313117
+      },
+      "frames": [],
+      "unique_copy_hashes_by_instance": {
+        "0": 0,
+        "1": 0
+      }
+    },
+    {
+      "case": "active",
+      "native_exit_code": 0,
+      "runner_initial_classification": "evidence_rejected",
+      "offline_classification": "bounded_negative",
+      "wall_seconds": 19.142367167,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "result_binding": {
+        "path": "/tmp/x3-run54-coexist-active/result-reanalyzed.json",
+        "bytes": 31938,
+        "sha256": "57f853b16dcb2c24a140b94040da2f160646ecf89d341e728ffe77749f6c7e7f"
+      },
+      "initial_result_binding": {
+        "path": "/tmp/x3-run54-coexist-active/result.json",
+        "bytes": 8643,
+        "sha256": "55fedcb1e5e1ff2550cd2cb973e502eca912bf19ddbbbfdc755590cd7b2c195e"
+      },
+      "lock": {
+        "lock_wait_seconds": 3.500000000000031e-06,
+        "child_elapsed_seconds": 19.846507584,
+        "exit_code": 3
+      },
+      "result": {
+        "reason": "bounded_negative",
+        "construction_cycles": 1,
+        "complete": 1,
+        "original_rc": 0,
+        "overlap_ticks": 1945,
+        "original_cycles": 1945,
+        "original_consumed": 641,
+        "copies0": 9,
+        "copies1": 6,
+        "distinct0": 9,
+        "distinct1": 6,
+        "reuse_copies": 6,
+        "canceled": 1,
+        "quiescent": 1,
+        "reused": 1,
+        "elapsed_ms": 14928
+      },
+      "original_created": 3,
+      "actual_copy_count": 15,
+      "original_audio_during_copy_window": {
+        "first_copy_ms": 3571,
+        "last_copy_ms": 3833,
+        "original_consumed_buffers": 12,
+        "original_consumed_bytes": 2116800
+      },
+      "gstreamer_critical_count": 0,
+      "captured_fault_marker_count": 0,
+      "module_observations": 33,
+      "module_paths_without_image_suffix": 33,
+      "cleanup_verified": true,
+      "survivors": [],
+      "log_bytes": {
+        "stdout.txt": 184381,
+        "stderr.txt": 648166
+      },
+      "frames": [
+        {
+          "path": "/private/tmp/x3-run54-coexist-active/owned-0-generation-1.bgra",
+          "bytes": 1048576,
+          "sha256": "ccf10a52c063a702310ef31ba9dd572954f62edb4737d395e89c3e5a782288d8"
+        },
+        {
+          "path": "/private/tmp/x3-run54-coexist-active/owned-0-generation-2.bgra",
+          "bytes": 1048576,
+          "sha256": "ccf10a52c063a702310ef31ba9dd572954f62edb4737d395e89c3e5a782288d8"
+        },
+        {
+          "path": "/private/tmp/x3-run54-coexist-active/owned-1-generation-1.bgra",
+          "bytes": 1048576,
+          "sha256": "a87eba11c977c03dea63d830c0375e15014098b26cb117b76a226dc697304807"
+        }
+      ],
+      "unique_copy_hashes_by_instance": {
+        "0": 6,
+        "1": 6
+      }
+    }
+  ],
+  "diagnostic_environment": {
+    "WineArch": "arm64",
+    "X3M_FIXTURE_BOTTLE": "X3",
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1",
+    "debugmsg": "+timestamp,+tid,+seh,+loaddll",
+    "WINEDLLOVERRIDES": "d3d9=b",
+    "voice_decoder": "/tmp/x3-wma-plugin-v4"
+  },
+  "analysis": {
+    "parser": {
+      "path": "/tmp/x3-run54-media-coexistence/verification/probe/run54_media_coexistence_run.py",
+      "bytes": 13379,
+      "sha256": "8732968d47a62370c7057a4d86e0c4b7a38e3eb54e238ee11917ddc128374d1a"
+    },
+    "tests": {
+      "path": "/tmp/x3-run54-media-coexistence/verification/probe/run54_media_coexistence_test.py",
+      "bytes": 6773,
+      "sha256": "0462f2a3e20e195b9dbfe365de5392432028d1da83f71caa1c7ff2029ecfd85b"
+    },
+    "command": "PYTHONPATH=verification/probe python3 -m unittest run54_media_coexistence_test",
+    "tests_passed": 16,
+    "log": "/tmp/x3-run54-coexist-offline-tests.log",
+    "reanalysis_script": "/tmp/x3-run54-coexist-offline.py",
+    "correction": "Parse final CO_MODULE path as text with spaces; retain every raw path fragment and source line. Malformed prefix/other rows still reject.",
+    "initial_active_rejection_preserved": true,
+    "native_execution_repeated": false,
+    "initial_active_parser_failure": "Parsing stopped at the first of 33 CO_MODULE rows containing spaces in the final path field."
+  },
+  "limitations": [
+    "Finite six-picture verification budget per owned command; one original construction cycle per process.",
+    "SYSTEMMEM copies/readbacks; no game draw, Reset, real-time playback or native Windows execution proof.",
+    "33 native CO_MODULE path observations end before the Unicode directory component. Fragments retained; raw Wine loaddll logs and bound provider cohort remain separate evidence.",
+    "No captured crash or GStreamer critical does not exonerate original or owned media. Live-game interleavings and external run54 fault module remain unresolved."
+  ],
+  "diagnosis_reports": [
+    "/tmp/x3-run54-crash-triage/report.md",
+    "/tmp/x3-run54-fault-trace/report.md"
+  ],
+  "independent_review": {
+    "outcome": "cleared_source_parser_and_runtime_evidence",
+    "record_input_artifact_bindings_checked": 82,
+    "frozen_build_inputs_checked": 13,
+    "affected_tests_passed": 16,
+    "retained_frame_fnv_matches": 3,
+    "offline_recomputation_matches": 3
+  },
+  "native_counter_semantics": {
+    "distinct0": "Consecutive hash changes including the first copied frame; not unique hash cardinality.",
+    "distinct1": "Consecutive hash changes including the first copied frame; not unique hash cardinality."
+  }
+}

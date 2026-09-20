@@ -1,0 +1,235 @@
+{
+  "schema": 1,
+  "status": "qualified_bounded_CrossOver_fault_module_register_stack_diagnostic",
+  "decision": "Use existing Wine channels and automatic WineDbg; no external catcher or production change.",
+  "cases": [
+    {
+      "name": "v3_read4",
+      "checks": {
+        "x3_arm64": true,
+        "emulation_env": true,
+        "explicit_debugmsg": true,
+        "av_exit": true,
+        "fixture_context": true,
+        "debugger_context": true,
+        "before_debugger_seh_context": true,
+        "read_kind": true,
+        "thread": true,
+        "raw_stack": true,
+        "caller_chain": true,
+        "module_range": true,
+        "filter_does_not_swallow": true
+      },
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "--debugmsg",
+          "+timestamp,+tid,+seh,+loaddll",
+          "/tmp/x3-run54-fault-trace/fault_trace_fixture.exe"
+        ],
+        "returncode": 5,
+        "elapsed_seconds": 5.938371,
+        "WineArch": "arm64",
+        "bottle": "X3",
+        "environment": {
+          "WINEDEBUG": "+timestamp,+tid,+seh,+loaddll",
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        }
+      },
+      "lock": {
+        "lock_wait_seconds": 5.9589999999998255e-06,
+        "child_elapsed_seconds": 5.974712792,
+        "exit_code": 0
+      },
+      "fault": {
+        "tid_hex": "00e0",
+        "pc": "004014b5",
+        "read": "00000004",
+        "esp": "009eff2c",
+        "ebp": "009eff30",
+        "module_base": "400000",
+        "module_end": "424000",
+        "known_callers": [
+          "004014c0",
+          "0040150d"
+        ]
+      },
+      "stderr_lines": 263,
+      "files": {
+        "fault_trace_fixture.c": {
+          "path": "/tmp/x3-run54-fault-trace/v3/fault_trace_fixture.c",
+          "bytes": 1434,
+          "sha256": "79e80274873690b9dc951a56117b943232f58017bb7f944da3ddc3bd047a9d1e"
+        },
+        "fault_trace_fixture.exe": {
+          "path": "/tmp/x3-run54-fault-trace/v3/fault_trace_fixture.exe",
+          "bytes": 137838,
+          "sha256": "9946181a44caac5a970ae6849c685349ce1df1b53a72d7c97e127628828e928c"
+        },
+        "stdout.log": {
+          "path": "/tmp/x3-run54-fault-trace/v3/stdout.log",
+          "bytes": 3227,
+          "sha256": "1a796aca2c4bd6f0938475e7b2a64b5a4fc04f14660d45a0f5e01ca593bd7995"
+        },
+        "stderr.log": {
+          "path": "/tmp/x3-run54-fault-trace/v3/stderr.log",
+          "bytes": 30393,
+          "sha256": "8d14b3ae2d78698bdd1314c1063594311e608388a8d742bae20f3d4102c1c331"
+        },
+        "execution.json": {
+          "path": "/tmp/x3-run54-fault-trace/v3/execution.json",
+          "bytes": 486,
+          "sha256": "d812595d6082622ac8d8e8e345a22482d8ae05dd7ae860a835913414ded4ffc2"
+        },
+        "lock.json": {
+          "path": "/tmp/x3-run54-fault-trace/v3/lock.json",
+          "bytes": 108,
+          "sha256": "03decb57f28bead0050b0978dc8e2c703a4655fe993a01429dbd20c2efacc45d"
+        }
+      }
+    },
+    {
+      "name": "v4_relocated_read_ffffffff",
+      "checks": {
+        "x3_arm64": true,
+        "emulation_env": true,
+        "explicit_debugmsg": true,
+        "av_exit": true,
+        "fixture_context": true,
+        "debugger_context": true,
+        "before_debugger_seh_context": true,
+        "read_kind": true,
+        "thread": true,
+        "raw_stack": true,
+        "caller_chain": true,
+        "module_range": true,
+        "filter_does_not_swallow": true
+      },
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "--debugmsg",
+          "+timestamp,+tid,+seh,+loaddll",
+          "/tmp/x3-run54-fault-trace/fault_trace_fixture.exe",
+          "/tmp/x3-run54-fault-trace/fault_trace_external.dll"
+        ],
+        "returncode": 5,
+        "elapsed_seconds": 5.569822042,
+        "WineArch": "arm64",
+        "bottle": "X3",
+        "environment": {
+          "WINEDEBUG": "+timestamp,+tid,+seh,+loaddll",
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        }
+      },
+      "lock": {
+        "lock_wait_seconds": 3.9999999999970615e-06,
+        "child_elapsed_seconds": 5.612445332999999,
+        "exit_code": 0
+      },
+      "fault": {
+        "tid_hex": "00e0",
+        "pc": "7bb013d6",
+        "read": "ffffffff",
+        "esp": "009eff1c",
+        "ebp": "009eff1c",
+        "module_base": "7bb00000",
+        "module_end": "7bb1e000",
+        "known_callers": [
+          "004014ca",
+          "004014dc",
+          "00401529"
+        ]
+      },
+      "stderr_lines": 264,
+      "files": {
+        "fault_trace_fixture.c": {
+          "path": "/tmp/x3-run54-fault-trace/fault_trace_fixture.c",
+          "bytes": 2168,
+          "sha256": "ab39fe8660736cecf3eedc006b1287445add460a8868aa4fa0b0d7d8193e3fb8"
+        },
+        "fault_trace_fixture.exe": {
+          "path": "/tmp/x3-run54-fault-trace/fault_trace_fixture.exe",
+          "bytes": 138985,
+          "sha256": "b5cfe5f75302ddcb10bf47f0d25147ff1ba7adadce79e1958bc6d5f66ead3652"
+        },
+        "stdout.log": {
+          "path": "/tmp/x3-run54-fault-trace/stdout.log",
+          "bytes": 3442,
+          "sha256": "5a54461a1a7ec661cdd9ec2286b92687f85128b4e1d10c9a39f4d68d6b9f4d7b"
+        },
+        "stderr.log": {
+          "path": "/tmp/x3-run54-fault-trace/stderr.log",
+          "bytes": 30523,
+          "sha256": "fcb752892061af31b3dc25864ed1e48e1fb5190307a908d0ecd02d77db71fee8"
+        },
+        "execution.json": {
+          "path": "/tmp/x3-run54-fault-trace/execution.json",
+          "bytes": 547,
+          "sha256": "b2a91a78ad2547fdf9a5d5ac5cdf55ec9f44abfebabfd1638097c3bfafc256ae"
+        },
+        "lock.json": {
+          "path": "/tmp/x3-run54-fault-trace/lock.json",
+          "bytes": 114,
+          "sha256": "9577b468e81592b8ad5f05d8f20319def032997bfa87e602a11f7cdc22eb99a9"
+        }
+      }
+    }
+  ],
+  "passed_field_checks": 26,
+  "external_dll": {
+    "binary": {
+      "path": "/tmp/x3-run54-fault-trace/fault_trace_external.dll",
+      "bytes": 94582,
+      "sha256": "67175c26c3179fa4a12db6c8a1be3458ef0ae65d61307a451c294d06d032e382"
+    },
+    "source": {
+      "path": "/tmp/x3-run54-fault-trace/fault_trace_external.c",
+      "bytes": 171,
+      "sha256": "275de4c6d1c3fdb89225a56b658f92e35e40d8265a4a95be0de07f443f99b274"
+    },
+    "preferred_base": "63000000",
+    "size_of_image": "1e000",
+    "actual_base": "7bb00000",
+    "fault_rva": "13d6",
+    "instruction": "mov (%eax),%eax",
+    "caller_returns_match_disassembly": true
+  },
+  "limitations": [
+    "No game launch; actual game autodebugger output not guaranteed.",
+    "Passive tracing supplies context/module loads before debugger; optimized/corrupt game stacks unqualified.",
+    "No native Windows runtime or media crash causality claim.",
+    "Runtimes/log volume are not overhead estimates; v1 changed filter is not a performance baseline.",
+    "Handled-first-chance probe is not prerequisite for this passive-channel qualification.",
+    "No build command/compiler version retained here; exact retained source/binaries hashed."
+  ],
+  "wrapper": {
+    "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "lines": [
+      126,
+      231,
+      708
+    ],
+    "user_launcher_env": "CX_DEBUGMSG",
+    "probe_option": "--debugmsg",
+    "plain_WINEDEBUG_overwritten": true
+  },
+  "launcher": {
+    "path": "/tmp/x3-media-production-integration/tools/manage.py",
+    "function": "launch_teed",
+    "line": 158,
+    "streams": [
+      "stdout",
+      "stderr"
+    ],
+    "output_name": "launcher-stderr.log"
+  }
+}
