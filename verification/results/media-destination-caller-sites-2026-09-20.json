@@ -1,0 +1,191 @@
+{
+  "date": "2026-09-20",
+  "status": "independently_reviewed_static_packet_not_enabled_copy",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "destination": {
+    "ranges": 19,
+    "instructions": 2189,
+    "bytes": 6863,
+    "patch_candidates": 22,
+    "selected_sites": 19,
+    "semantic_spans": 23,
+    "internal_branch_boundaries": 289,
+    "real_relative_references": 112,
+    "operand_false_candidates": 4,
+    "interior_references": 0,
+    "literal_references": 0,
+    "supporting_instructions": 273,
+    "supporting_bytes": 1626,
+    "table_global_references": 222,
+    "explicit_table_global_writers": 10,
+    "selection": [
+      {
+        "name": "table_initial_loader",
+        "start": "0x4f44a0",
+        "end": "0x4f44a7",
+        "length": 7
+      },
+      {
+        "name": "table_allocate",
+        "start": "0x4f48f0",
+        "end": "0x4f48f7",
+        "length": 7
+      },
+      {
+        "name": "table_destroy",
+        "start": "0x4f4990",
+        "end": "0x4f499a",
+        "length": 10
+      },
+      {
+        "name": "slot_name_replace",
+        "start": "0x4f4bb0",
+        "end": "0x4f4bb9",
+        "length": 9
+      },
+      {
+        "name": "table_grow",
+        "start": "0x4f4cb0",
+        "end": "0x4f4cb6",
+        "length": 6
+      },
+      {
+        "name": "slot_materialize",
+        "start": "0x4f4160",
+        "end": "0x4f4165",
+        "length": 5
+      },
+      {
+        "name": "wrapper_release",
+        "start": "0x4f38d0",
+        "end": "0x4f38d6",
+        "length": 6
+      },
+      {
+        "name": "wrapper_cleanup",
+        "start": "0x4dcc70",
+        "end": "0x4dcc75",
+        "length": 5
+      },
+      {
+        "name": "wrapper_surface_replace",
+        "start": "0x4dced0",
+        "end": "0x4dced6",
+        "length": 6
+      },
+      {
+        "name": "whole_reset",
+        "start": "0x4da960",
+        "end": "0x4da966",
+        "length": 6
+      },
+      {
+        "name": "reset_root_surface_publications",
+        "start": "0x4daa39",
+        "end": "0x4daa48",
+        "length": 15
+      },
+      {
+        "name": "record_bind_matched",
+        "start": "0x498570",
+        "end": "0x49857b",
+        "length": 11
+      },
+      {
+        "name": "record_unbind_matched",
+        "start": "0x4985c1",
+        "end": "0x4985ce",
+        "length": 13
+      },
+      {
+        "name": "record_inline_bind",
+        "start": "0x4f6639",
+        "end": "0x4f6644",
+        "length": 11
+      },
+      {
+        "name": "restore_matched_search",
+        "start": "0x498bd0",
+        "end": "0x498bd5",
+        "length": 5
+      },
+      {
+        "name": "forced_clear",
+        "start": "0x4f4b30",
+        "end": "0x4f4b38",
+        "length": 8
+      },
+      {
+        "name": "recovery_clear",
+        "start": "0x4f5200",
+        "end": "0x4f5208",
+        "length": 8
+      },
+      {
+        "name": "slot_publish_new",
+        "start": "0x4f4320",
+        "end": "0x4f4327",
+        "length": 7
+      },
+      {
+        "name": "slot_publish_loaded",
+        "start": "0x4f4471",
+        "end": "0x4f447a",
+        "length": 9
+      }
+    ]
+  },
+  "caller_supplement": {
+    "ranges": 6,
+    "instructions": 551,
+    "bytes": 1504,
+    "spans": 11,
+    "anchors": 26,
+    "internal_branch_boundaries": 100,
+    "real_incoming_references": 0,
+    "operand_false_candidates": 1,
+    "limits": "Finite original caller ranges only. No arbitrary indirect-entry/alias proof, helper-internal lifetime closure, implemented CPU/exception/rollback or runtime qualification."
+  },
+  "precision": {
+    "dynamic_registration_abi": "4f4cb0 returns selected ID in AX; it is not an input. Entry loads EAX from FS:[0].",
+    "surface_replacement": "Capture incoming surface at original[ESP+4] before4dced0 prologue; EAX1 normal return proves4dd1c5 assignment. No external call store-to-return; no additional publication hook is selected.",
+    "native_reset_result": "Canonical ownership source observer selected; native callsite4daa01 candidate remains unselected.",
+    "default_binding": "Initial ID2 slot0x3d does not activate watch:498254 replaces temporary flags4 with effective shell flags8.",
+    "loop_pressure": "Parent temporary-pressure continuation4984b5 requires unchanged live traversal; stale uses4984be. Policy acceptance remains separate from static branch proof."
+  },
+  "limits": "No emitted-hook, CPU/rollback/runtime, helper-internal lifetime, arbitrary-alias or foreign-thread proof. Per-slot publication provenance does not authorize blind late raw-pointer seeding.",
+  "local_evidence": [
+    {
+      "path": "/tmp/x3-media-destination-sites.md",
+      "sha256": "cbc1f1f65aaecf3cd472fd7bc4b9380030bca71028b44029839c28e8096e995e"
+    },
+    {
+      "path": "/tmp/verify_x3_media_destination_sites.py",
+      "sha256": "30c6d516d0fd5f1e8c15d7fbf02b00774c7df9caa078273a721956505fb03637"
+    },
+    {
+      "path": "/tmp/x3-media-destination-sites-check.json",
+      "sha256": "76bab3277f34ca67542d7ba9c2177ae47fbc9a757998a5b89742e611bebb71ea"
+    },
+    {
+      "path": "/tmp/x3-media-destination-sites-raw.txt",
+      "sha256": "bf8218050d6d7dc9c2a2067166b5a8537736b34f2e8b88782ed4a15a78065d3f"
+    },
+    {
+      "path": "/tmp/x3-media-caller-gaps.md",
+      "sha256": "87be5317ae769f511533ddec7cce18e871be94900cb23e7ae6e6ec78faeef5b5"
+    },
+    {
+      "path": "/tmp/x3-media-caller-gaps-verify.py",
+      "sha256": "c08b411d7bd0fa4db16ddec2bde8665f2a0678063208ee7978255d06e970edb9"
+    },
+    {
+      "path": "/tmp/x3-media-caller-gaps-check.json",
+      "sha256": "1d511c535d92faac39a10ff80c24f5cc5069d8ac29bda1668856a68375260b5e"
+    },
+    {
+      "path": "/tmp/x3-media-caller-gaps-raw.txt",
+      "sha256": "fc4ae5e499887cb1e981051231357e91384a36cbf9356257196816554a2a7a97"
+    }
+  ]
+}

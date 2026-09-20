@@ -1135,3 +1135,105 @@ these selected facts, not enabled admission. Full CPU/flags/LastError/x87/SSE/MX
 four-byte stack, emitted relocation, checked rollback, callback policy and
 destination coverage remain implementation obligations. Publish admission last;
 live owned shells prohibit removing their dispatch. No production/runtime change.
+
+## Destination publication and caller-return observer packet (2026-09-20)
+
+Independent review cleared the bounded destination and caller-return evidence for
+implementation. The selected design keeps per-observed-slot **value provenance**
+and at most eight active media watches. Pump uses stored canonical surface keys,
+serials and generations; it must not seed an unseen old slot by following a nonnull
+raw wrapper. Shared fallback wrappers, table relocation, final retirement and
+MOVI restoration make an address-only watch cache insufficient. This is static
+observer preparation, not emitted-hook, runtime or enabled-copy qualification.
+
+The destination packet validates **19 ranges,2,189 instructions,6,863 bytes,
+289 internal branch boundaries,22 patch candidates,112 real encoded relative
+references,4 operand false candidates and0 selected-interior/literal entries**.
+Its separate rejected original restore block gives23 semantic spans in total;
+273 supporting instructions add1,626 bytes of reference evidence. The222 encoded
+table-global references identify ten explicit writers. Parent selects **19 sites**:
+twelve lifecycle entries, two slot publications, matched bind/unbind, inline bind,
+semantic MOVI match and combined Reset surface publication. Alternative bind/unbind
+entries and optional native-Reset callsite remain unselected; actual Reset HRESULT
+comes from the canonical ownership observer. The [compact packet result](../../verification/results/media-destination-caller-sites-2026-09-20.json)
+binds the local notes, scripts, results and raw witnesses without tracking raw bytes.
+
+Initial loader0x4f44a0 writes signed WORD bounds0x6069b4/b0 at0x4f4534/453b;
+allocator0x4f48f0 publishes zeroed table0x4f4978 or NULL0x4f4943. Its AL convention
+is0 for nonnull,1 for null. Dynamic registration0x4f4cb0 has two caller-popped
+arguments and **returns** the selected ID in AX; entry instead loads EAX from
+FS:[0]. It recursively registers at0x4f4d71, increments dynamic count0x4f4e70,
+can resize through0x4f4ea6→0x4b8920 and republish0x4f4eb8, or roll count back
+at0x4f4f20. Capacity is base+1000*(trunc(dynamic/1000)+1), stride16; validate
+nonnegative signed counts, capacity and incarnation. The media signed WORD slot
+selects at most32767 and must remain below base+dynamic; allocated slack is not
+valid slot content. Table destruction0x4f4990 must invalidate before free0x4f4a26,
+well before NULL stores. Recovery0x4f5200 is a different conditional release path.
+
+Slot publications require exact continuations. At0x4f4320..4327 (7 bytes), replay
+the original ADD ESP,12 and store with EAX=wrapper,ECX=table,EDX=slot byte offset;
+observe before0x4f4327, which has other real incoming branches. At0x4f4471..447a
+(9 bytes), observe the store with EAX=wrapper,ECX=table,EBX=offset **before**
+relocated CALL0x4ee360; its rel32 field is at span byte5. Producer0x4f3510 may
+return shared fallback wrappers and increments wrapper+0x60 at0x4f38b6.
+Name/slot reset0x4f4bb0 clears slot+8 without wrapper release, so it needs its
+own invalidation. Forced clear0x4f4b30 ignores slot usage count when the renderer
+factory exists; normal recovery0x4f5200 retains its separate filter.
+
+Capture wrapper address/generation at release0x4f38d0 entry and invalidate before
+external work. For a captured nonnull wrapper, positive EAX on normal return means
+surviving count; EAX0 means final destruction. Null input returns−1. Both nonnull
+paths clear only the caller's pointer. Final retirement invalidates every recorded
+slot alias, including unwatched slots, until a fresh generation/publication;
+mutation depth returning to zero cannot revive destroyed storage. Surface replace
+0x4dced0 uses entry plus normal-return observation: capture incoming surface at
+original[ESP+4], then EAX1 proves assignment0x4dd1c5. Snapshot the captured key
+without a post-return raw wrapper read. No external call occurs from that store
+to RET, so an extra0x4dd1c5 hook is unnecessary. Cleanup0x4dcc70 keeps surface
+provenance unavailable until fresh publication; outer retirement wins over nested
+completion. Short-domain exclusion and value-generation checks remain mandatory.
+
+Use matched bind0x498570..57b (11 bytes) and unbind0x4985c1..5ce (13 bytes),
+where EAX is the actual record; their Boolean returns lose that identity. Inline
+bind0x4f6639..6644 (11 bytes) captures record EAX/slot EDX before later play.
+Constructor's default ID2 slot0x3d does not itself activate a watch:0x498254
+replaces temporary record flags4 with effective shell flags8. MOVI writes flags/
+slot at0x498bdf/e3; that block straddles a patch qword, and moving to0x498be3
+would consume live entry0x498be6. The selected0x498bd0..bd5 CMP/JE semantic
+stub preserves nonmatch and, on match, performs the original OR/store plus value
+publication before0x498be6. All selected first-five-byte patches fit a qword;
+that spatial fact is not concurrent-installation or relocation qualification.
+
+Whole Reset entry0x4da960..966 (6 bytes) must begin exclusion before displaced
+CALL0x4c6190. Normal returns0x4daafe/0x4dab02 follow native success/failure;
+helper end and native HRESULT are separate observations. Combined publication
+0x4daa39..4daa48 (15 bytes) captures both original wrapper/surface value pairs
+around their stores, covering direct Reset writes that bypass0x4dced0. Do not
+reread wrappers or revive old canonical generations at Reset end. The existing
+presentation gate remains its current owner's site; no persistent DEFAULT lease
+may cross Reset. Preserve original stack, GPRs/flags, LastError, x87/SSE/MXCSR,
+normal-return pairing, CPU-only observer behavior and checked installation rollback.
+
+The caller supplement separately validates **6 ranges,551 instructions,1,504 bytes,
+11 spans,26 anchors,100 branch boundaries**, with0 real encoded incoming entries
+and1 operand false candidate. Speech prewrite0x498f41..f49 rejects an incoming
+request via0x498f08 at B=entryESP−20 without destroying the old record. Accepted
+skip-to0x498f7f must reproduce metadata, reset shell end to−1 before a positive
+end override, and preserve inherited loop intent. Its old-callback guard0x498fb8
+normalizes B−4 to B; stale return uses0x498fd2. Explicit callback guard0x498db8
+..dc4 (12 bytes) normalizes B and uses0x498dd8 when record/operation is stale,
+before original callback clear/reinstallation. Existing eligibility and distinct
+request identity remain; equal callback keys do not collapse requests.
+
+Stop-all's three external spans0x4982ea/0x49830b/0x49834b normalize to body
+ESP=entryESP−16; stale traversal takes0x498362. All six manager calls now have
+identified caller-return boundaries: pump, position, loop seek, two callbacks and
+record retirement. Added position0x4983eb, callback0x498460/0x4984a0 and retire
+0x4984b0 guards normalize to B=entryESP−20 before stale exit0x4984be. Loop
+seek's result is discarded: permanent live error has0x498473; stale traversal
+uses0x4984be. Parent's temporary-pressure policy uses0x4984b5 only with unchanged
+validated traversal, preserving cached-next and allowing later records to progress;
+it is a new policy requiring its runtime acceptance, not original EXE behavior.
+These guards protect callers after return and do not establish helper-internal
+lifetime, arbitrary-alias, foreign-thread or callback-context safety. No new
+production code, execution or build was performed for this checkpoint.
