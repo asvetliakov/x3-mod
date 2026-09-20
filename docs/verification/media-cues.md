@@ -1088,3 +1088,30 @@ binds all three runtime results and independent review. A bounded seek-repair
 design is next; no fixed timestamp offset or relaxed content gate is accepted.
 No production decoder change, game playback qualification or native Windows
 execution is established.
+
+
+### Derived-source exact seeking checkpoint (2026-09-20)
+
+The explicit lossless Matroska counter supplies completed presentation timestamps
+without changing compressed packet payloads. This is a separate input path; the
+original elementary-stream nonzero-seek failure remains rejected. Reviewed
+verification source is retained on `diag/media-derived-v9` (`99c50a5d`); 109
+focused tests and both provider/default cross-builds pass.
+
+The derived sequential run delivers 260 frames in 28.217489 seconds. All twelve
+retained head/target images and their index/time labels exactly match the original
+sequential oracle. Repeated 0/10/0/10-second seeking then passes all four epochs:
+24 exact images in 11.380830 seconds, with five Commit and eleven Decommit
+observations, three settled retirements, retained sample/surface identity and
+clean shutdown. Independent review verifies all 36 captures and protected inputs.
+The [compact derived-source record](../../verification/results/media-lav-derived-2026-09-20.json)
+binds both results, source, executable, commands and bottle provenance.
+
+This qualifies only the tested derived-source content and transport. Reported
+source duration differs (1939.56 versus 1940.274073 seconds); whole-timeline and
+EOF equivalence are unproved. The diagnostic ten-second transitions took
+332.778/375.784 ms to the first completed sample, so correct content is not yet a
+stutter-performance solution. Millisecond boundaries and pending cancellation
+are next, followed by the engine's seek-only loop behavior and record/target
+lifetime. No production decoder change, game playback acceptance or native
+Windows execution follows from this checkpoint.
