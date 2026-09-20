@@ -60,11 +60,16 @@ uninstalled at `/tmp/x3-fog-families-shafts-dll-v1/build/d3d9.dll` (SHA-256
 `ca02a6c4abd8693a18376853240600e4ca0d485d017bf6d7c3026724ffffbd1d`);
 linked audit and two selected actual-DLL HDR/TAA smoke cases pass. The queued
 fog command passes dry-run. Flight appearance remains unaccepted.
-Media checkpoint `2f3aef56` qualifies two EOF-triggered fresh graph sessions on a
-retained worker DirectDraw service, with twelve exact reference frames. The next
-fixture integrates the owned clock, two concurrent workers and actual rendered
-textures; production media repair remains unfinished. Cold DirectDraw creation
-still coincides with a roughly 110 ms render gap, so startup placement matters.
+Media checkpoint `ae0743a0` now qualifies two concurrent workers with the owned
+clock and actual rendered textures: 35 exact captures and 4,241 clock transactions.
+Cold creation and first-use rendering still stall the fixture; this is not a
+no-stutter claim. Shared production transport extraction is active. Reviewed
+surface leases (`f13acc59`, 100 runtime checks) and bounded session/adapter state
+(`4aaae520`, 202 host checks) are committed on isolated branches, with admission
+disabled. The presentation-gate fixture compiled but its first runtime failed
+22 MXCSR checks, including ungated baselines; the witness is being diagnosed.
+Production engine hooks, transport integration and enabled media repair remain
+unfinished. The owning media and ownership ledgers retain the scoped evidence.
 Collision optimization is **paused by user request**. The reviewed engine/lattice
 audit adds no tracing before interpreting the existing queued lattice packet;
 [the owning decision](architecture/taa-lattice-crawl.md#25-next-flight-state-decision-and-reopening-gate-2026-09-20)
