@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "candidate": {
+    "source_commit": "54b48c36f6d7d6aa846992fe5412fbaee5f26219",
+    "source_dirty": false,
+    "dll": "/tmp/x3-run55-candidate/build/d3d9.dll",
+    "sha256": "4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012",
+    "bytes": 58746286,
+    "build_invocations": 1,
+    "configuration": "RelWithDebInfo",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "python": "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "lav_include": "/tmp/x3-lav-0.81/package/include",
+    "configure_log": {
+      "path": "/tmp/x3-run55-configure.log",
+      "sha256": "bdd7937d8966f04c6aba0e352778ba5407c41d767b2ba6a2e6c0b2ffeb9fec56"
+    },
+    "build_log": {
+      "path": "/tmp/x3-run55-build.log",
+      "sha256": "98620f62fed040b6015256fc3e6fb1585c9636541c04f26b986b5cb73a3401e0"
+    }
+  },
+  "scope": "First-person fog camera precision correction. Media production unchanged; crash diagnosis pending. No moving-lattice correction.",
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+    "checkout": "/tmp/x3-media-production-integration",
+    "source_commit": "54b48c36f6d7d6aa846992fe5412fbaee5f26219",
+    "tests": 2639,
+    "skipped": 2,
+    "status": "PASS",
+    "unittest_seconds": 768.38,
+    "wall_seconds": 770.95,
+    "path": "/tmp/x3-run55-host.log",
+    "sha256": "06ad45282535a68a8a4bad5aee0489f4f96ef07847188e7bd17823344a322750"
+  },
+  "linked_audit": {
+    "result": "PASS",
+    "roots": 95,
+    "reachable_functions": 543,
+    "violations": 0,
+    "path": "/tmp/x3-run55-candidate/linked-audit.json",
+    "sha256": "5738349ee9ad368a909088a4960efe6084ce685bca6eb592e31cb9076a32bbb8"
+  },
+  "fog_route": {
+    "result": "PASS",
+    "checks": 515,
+    "captured_rotations": 33,
+    "first_person_rotations": 32,
+    "malformed_refusals_and_recoveries": 4,
+    "inverse_only_boundary_cases": 1,
+    "fixture_result": {
+      "path": "/tmp/x3-run54-firstperson-fog/route-result.json",
+      "sha256": "f4e052d85d43b813f11ca2f37cf3c5d461f768edb191849c2094a9e30c83bc92"
+    },
+    "fixture_build": {
+      "path": "/tmp/x3-run54-firstperson-fog/route-build-v3/build.json",
+      "sha256": "bd4cf3cc689567f68792c9351baf2a3ac73c699ef2c317bf8c80a011eb093b84"
+    },
+    "lock": {
+      "lock_wait_seconds": 3.875000000000406e-06,
+      "child_elapsed_seconds": 4.784124041999999,
+      "exit_code": 0
+    },
+    "production_math": {
+      "path": "/tmp/x3-media-production-integration/src/renderer/fog_volume_math.h",
+      "sha256": "c132ed237d724f7e6dc47470e6c289c6526526bd4a8cfcb5722e8e68a16579b8"
+    },
+    "scope": "Real parameter helper/FogPass and captured rotations; synthetic translation/sun/owner; no shaft-map publication, game reader or native Windows claim."
+  },
+  "reused_evidence": {
+    "run54_candidate": "verification/results/run54-candidate-qualification.json",
+    "scope": "Unchanged media/lattice/fog-shader and infrastructure evidence retained. Run54 actual-DLL smoke is not reported as executed on Run55."
+  },
+  "crash_diagnostic": "verification/results/run54-crash-trace-qualification.json",
+  "media_coexistence": "verification/results/media-run54-coexistence-2026-09-21.json",
+  "dry_run": {
+    "result": "PASS",
+    "path": "/tmp/x3-run55-candidate/dry-run.json",
+    "sha256": "eae6c0be966304d0aaeaee2ae5a5b2adae980978561e77abee1ad836ffa5b98d",
+    "invocation": {
+      "path": "/tmp/x3-run55-candidate/dry-run-invocation.json",
+      "sha256": "d39102bf2832f8c3c4ca288282bf7192b48ab05d57310578077d130870ee4a98"
+    },
+    "lock": {
+      "lock_wait_seconds": 3.8339999999977e-06,
+      "child_elapsed_seconds": 0.6062095829999999,
+      "exit_code": 0
+    },
+    "prior_harness_validation_error": {
+      "path": "/tmp/x3-run55-candidate/dry-run-validation-v1.txt",
+      "bytes": 228,
+      "sha256": "046540d8fcd10d9df4cb6413997a857c76f5fb21e93fcddb0850faaf30644895"
+    },
+    "game_launched": false,
+    "fog_strength": 0.03,
+    "diagnostic_environment": {
+      "CX_DEBUGMSG": "+timestamp,+tid,+seh,+loaddll"
+    }
+  },
+  "bottle": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1"
+  },
+  "native_windows": "unverified",
+  "game_acceptance": "pending Run55; Run54 crash remains unattributed",
+  "install_record": "verification/results/run55-candidate-install.json"
+}

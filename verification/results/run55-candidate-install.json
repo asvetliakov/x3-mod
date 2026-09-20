@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "bottle": "X3",
+  "installed_at_utc": "2026-09-20T20:52:19.011109+00:00",
+  "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run55-candidate/build/d3d9.dll --media-package /tmp/x3-media-local-stage-v1/package.json",
+  "checkout": "/private/tmp/x3-media-production-integration",
+  "candidate": {
+    "source_commit": "54b48c36f6d7d6aa846992fe5412fbaee5f26219",
+    "dll_sha256": "4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012",
+    "dll_bytes": 58746286,
+    "linked_audit": {
+      "roots": 95,
+      "reachable_functions": 543,
+      "violations": {}
+    }
+  },
+  "installed_manifest": {
+    "manifest_source": "dll",
+    "media": {
+      "package_id": "lav081-strict-cadf5fbf4cf41bae",
+      "package_record_relative": "x3-modern-media/providers/lav081-strict-cadf5fbf4cf41bae/package.json",
+      "package_record_sha256": "c284db2263d3e697880f35210adc4eb0f94b377466366f2f8acca7339c213e08",
+      "sources": [
+        {
+          "effective_flags": 8,
+          "id": 2,
+          "source_record_relative": "x3-modern-media/sources/401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76/source.json",
+          "source_record_sha256": "600cbb5c82c40497ff049e6ca8038cba3b890310b8e9e222ab4910e5e307bb55"
+        }
+      ]
+    },
+    "previous": {
+      "directory": "x3-modern-media/rollback/4e5c47e4d53c45b78d00d86960ce2c96",
+      "dll_sha256": "124d98898a66413d2400f99c851e8e2574c6a8238b8d584d06db2a6d48d4d6da",
+      "manifest_sha256": "7fec69b3428ddec9746298e203d4b27c7fc8a1565359cf664d4f3d328ed17fac"
+    },
+    "project": "x3-modern-renderer",
+    "schema": 2,
+    "sha256": "4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012",
+    "source": "/private/tmp/x3-run55-candidate/build/d3d9.dll",
+    "source_commit": "54b48c36f6d7d6aa846992fe5412fbaee5f26219"
+  },
+  "installed_dll_sha256": "4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012",
+  "installed_manifest_sha256": "d1b3524e5225110f53fd202c71b236ae91fe1a9ce297ed16ace80bf1e616bd63",
+  "protected": {
+    "exe": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "unchanged": true
+    },
+    "configuration": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+      "unchanged": true
+    },
+    "original_media": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/mov/00002.dat",
+      "sha256": "401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76",
+      "unchanged": true
+    }
+  },
+  "rollback": {
+    "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-media/rollback/4e5c47e4d53c45b78d00d86960ce2c96",
+    "directory": "x3-modern-media/rollback/4e5c47e4d53c45b78d00d86960ce2c96",
+    "dll_sha256": "124d98898a66413d2400f99c851e8e2574c6a8238b8d584d06db2a6d48d4d6da",
+    "manifest_sha256": "7fec69b3428ddec9746298e203d4b27c7fc8a1565359cf664d4f3d328ed17fac",
+    "verified_exact_previous_pair": true
+  },
+  "media_selection_full_validation": "PASS",
+  "journal": "absent",
+  "preinstall_record": "/tmp/x3-run55-candidate/preinstall.json",
+  "game_launched": false
+}

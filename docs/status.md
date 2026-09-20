@@ -1,87 +1,76 @@
 # Project status
 
-Updated 2026-09-21: Run54 qualification is held after repeated Session A crashes. The agent never launches the
-game. See the [run queue](verification/user-runs.md), [goals](goals.md) and
-[original objective](user-objective.md). The prior narrative is preserved in
-[the Run53 status archive](archive/status-through-run53-2026-09-20.md).
+Updated 2026-09-21: Run55 is ready for the first-person fog check and crash
+diagnosis. The agent never launches the game. See the [run queue](verification/user-runs.md),
+[goals](goals.md) and [original objective](user-objective.md).
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run54 DLL SHA-256:
-`124d98898a66413d2400f99c851e8e2574c6a8238b8d584d06db2a6d48d4d6da`
+Bottle **X3**, **CrossOver Preview.app**. Run55 DLL SHA-256:
+`4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012`
 (58,746,286 bytes), built once from clean reviewed source
-`693a0670c8428dccac95da5f1dc384710d22df88` on
-`feat/media-production-integration`. Retained DLL:
-`/tmp/x3-run54-candidate/build/d3d9.dll`.
+`54b48c36f6d7d6aa846992fe5412fbaee5f26219` on
+`feat/media-production-integration`, checkout `/tmp/x3-media-production-integration`.
+Retained DLL: `/tmp/x3-run55-candidate/build/d3d9.dll`.
+Production changes remain off main while the candidate qualifies.
 
-This combines owned ID2 media playback, fourteen source-backed spatial fog
-profiles with directional shafts, the camera-cut/native-card flicker correction,
-and the protected lattice state observer. Moving-lattice visual improvement is
-not claimed. Production changes remain off main while the candidate qualifies.
-Use the exact integration-launcher paths in Run54: they include the reviewed
-media-package preflight and launch/install coordination.
+The change since Run54 is the fog camera precision check: it now accepts the
+near-rigid matrices admitted by the camera reader while retaining the true inverse,
+determinant, finite-value and downstream rejection guards. Owned ID2 media,
+fourteen spatial fog profiles/shafts and the protected lattice observer are
+unchanged. **No media crash fix or moving-lattice visual fix is claimed.**
 
-The [qualification record](../verification/results/run54-candidate-qualification.json)
-binds the full host pass (**2,638 tests, two skips**, 756.110 s), linked audit
-(**95 roots, 543 reachable functions, zero violations**), two selected actual-DLL
-HDR/ownership and HDR/TAA smoke cases (**43/83 checks**) and a successful affected
-launch dry-run. The smoke runner is a partial selection, not a full rendering-suite
-pass. No game was launched; native Windows runtime remains unverified.
+The [qualification record](../verification/results/run55-candidate-qualification.json)
+binds the full host pass (**2,639 tests, two skips**, 768.380 s), linked audit
+(**95 roots, 543 reachable functions, zero violations**) and the scoped D3D fog
+route (**515 checks**, 33 captured rotations and four malformed-camera
+refusals/recoveries). The route uses real parameters/FogPass with synthetic
+translation/sun/owner; it is not game appearance or native Windows acceptance.
+Unchanged feature evidence is reused; Run54's actual-DLL smoke is not presented
+as a Run55 execution. The affected launch dry-run passed; no game was launched.
 
-Installation used the reviewed `tools/manage.py install --bottle X3 --dll-source
-/tmp/x3-run54-candidate/build/d3d9.dll --media-package
-/tmp/x3-media-local-stage-v1/package.json` from the integration checkout.
-The [install record](../verification/results/run54-candidate-install.json) verifies
-installed bytes, the full media selection and unchanged X3AP.exe, cxbottle.conf
-and original `mov/00002.dat`. The exact Run53 DLL/manifest rollback pair is under
-`drive_c/X3/x3-modern-media/rollback/3b6d43c534de4e69ad077650d67203a2`.
-The app-local provider/source cache is managed separately from original game files.
-
-Existing launcher defaults retain lazy motion RT binding, original hull shading,
-small-parts culling at 2 px/all, SSE2 collision plus memoization, and light-map
-far fade **80,220,1**. Fog remains opt-in/off by default; Run54 explicitly uses
-**0.03 = 1.50×** density, the user's Run53 preference. Unsupported or unavailable
-fog families retain native cards. Far stabiliser 0.985 and thin region 0.97 remain
-explicit options; stationary improvement is accepted, moving crawl is open.
+Installation used the integration checkout's `tools/manage.py install --bottle X3
+--dll-source /tmp/x3-run55-candidate/build/d3d9.dll --media-package
+/tmp/x3-media-local-stage-v1/package.json`. The
+[install record](../verification/results/run55-candidate-install.json) verifies
+installed bytes, full media selection, and unchanged X3AP.exe, cxbottle.conf and
+original `mov/00002.dat`. The exact Run54 DLL/manifest rollback pair is under
+`drive_c/X3/x3-modern-media/rollback/4e5c47e4d53c45b78d00d86960ce2c96`.
+Use the integration launcher in the run queue for media preflight/coordination.
 
 ## Current work and pending acceptance
 
-- **Media:** source integration and scoped runtime qualification are complete.
-  The connected fixture has 20 exact RGB readbacks covering both sequence-zero
-  first pictures, concurrent playback, retirement/reuse and natural completion.
-  These authored engine continuations and native copies do not prove game
-  playback or elimination of stutters. Run54 A returned run195/run196/run197 with repeated crashes; cause is under
-  investigation. Playback and stutter acceptance remain open. Detailed evidence
-  remains in the integration branch's media ledger and the qualification record.
-- **Fog:** fourteen profiles and shafts are qualified in fixtures. Run194's
-  repeated camera-cut warmups explain the native-card flicker; the correction
-  preserves replacement across cuts while retaining sector/Reset/failure recovery.
-  Run54 A reports fog flickering/disappearing in first person while chase view
-  renders it. Camera eligibility and authority are under investigation; visual
-  acceptance and shafts remain open.
-  [Run53 findings](../verification/results/run53b-triage/main.md).
-- **Lattice:** the observer guard passes **830 native checks** across both RT
-  modes, real resource-release callbacks, Reset, failure and target retirement.
-  It fixes diagnostic interference, not the visible crawl. Run54 B is held
-  pending crash diagnosis before repeating the three bounded state captures. [Owning note §27](architecture/taa-lattice-crawl.md#27-bound-observer-reference-callbacks-and-device-lifetime-2026-09-20).
-  The requested external-engine design research is complete; a bounded offline
-  stage-attribution audit on existing captures is complete: TAA reduces measured
-  variation, but geometry ownership remains unqualified. No new renderer patch
-  is selected. [Bounded negative result](architecture/taa-lattice-crawl.md#29-existing-capture-stage-attribution-bounded-negative-2026-09-21).
-- **Collision:** paused by user request. Snapshot lifetime remains unproved;
-  no moving-collision patch or capture is queued.
-- **Engine/proxy timing:** Run52 accepted lazy RT binding. Corrected attribution
-  does not justify another engine patch or repeat busy-view timing flight.
+- **Run54 crashes:** runs195/196/197 failed in flight. Three logged anchors
+  establish both addressed faults outside the proxy, but the external module
+  and cause remain unknown. [Reproducible triage](../verification/results/run54a-triage/result.md).
+  Run197 proves an owned copy occurred before its F8 snapshot, not at crash time.
+- **Media:** three bounded original-voice/owned-worker cases did not reproduce
+  the crash or GStreamer criticals. Active playback includes 15 exact copies,
+  overlapping original audio progress and guarded retirement/reuse; this does
+  not exonerate either path. [Record](../verification/results/media-run54-coexistence-2026-09-21.json).
+  Run55 adds `CX_DEBUGMSG=+timestamp,+tid,+seh,+loaddll`. Existing Wine/WineDbg
+  produced correct module/register/stack evidence in two deliberate background
+  read faults, including a relocated DLL; game output is not guaranteed.
+  [Diagnostic qualification](../verification/results/run54-crash-trace-qualification.json).
+- **Fog:** the user confirms Run197 F8 was first-person. All 32 captured matrices
+  failed the old fog-only tolerance despite passing the camera reader; corrected
+  helper and D3D-route checks pass. Run55 checks the visible result. Density
+  remains 0.03 (the user's 1.50× preference); fog remains opt-in/off by default.
+  Fourteen-family visuals, shafts and clear-sector travel retain their flight
+  acceptance gaps. Camera-cut native-card replacement protection remains enabled.
+- **Lattice:** diagnostic reference protection is qualified, but Run54 B is held
+  until the crash investigation permits it. The offline stage audit is a bounded
+  negative: TAA reduces measured variation, while geometry ownership remains
+  unqualified. [Owning note §29](architecture/taa-lattice-crawl.md#29-existing-capture-stage-attribution-bounded-negative-2026-09-21).
+  No new renderer correction was selected.
+- **Collision:** paused by user request; no moving-collision test is queued.
+- **Engine/proxy timing:** lazy RT remains accepted. Corrected attribution
+  does not justify another engine patch or busy-view timing flight.
   [Decision](architecture/engine-frame-time.md#run52-corrected-attribution-and-remaining-optimization-scope-2026-09-20).
 
-Run53 A/B are received and archived as run193/run194. Their feature acceptance
-remains separate from completing the capture analysis. Run51's optional old retry
-counter is superseded by the replacement-media flight, not reported as flown.
-Six host fixture/setup/source assertions failed the first combined discovery run;
-all received independent review and bounded repairs, and the clean full rerun
-passed. No production change was needed for those host repairs.
-
-Run54 crash reports: run195 reads `FFFFFFFF` at `6EB2413A`; run197 reads
-`00000004` at `6EB2A0FA`; run196 also crashed without a supplied address.
-Module attribution and cause are not established yet. No replacement DLL has
-been installed; the retained rollback remains available.
+Other defaults remain lazy motion RT binding, original hull shading, 2 px/all
+small-parts culling, SSE2 collision plus memoization and light-map fade **80,220,1**.
+Far stabiliser 0.985/thin region 0.97 remain explicit; stationary lattice
+improvement is accepted and moving crawl is open. Native Windows runtime remains
+unverified. Main records the handoff/evidence; the combined production source
+has not been merged to main.
