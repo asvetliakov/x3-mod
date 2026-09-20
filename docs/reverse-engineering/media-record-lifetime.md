@@ -351,3 +351,77 @@ Independent review reproduced the verifier and checked 68 direct branch targets
 and all seven cleanup-switch entries against decoded instruction boundaries.
 The narrower identified-handler conclusion is cleared; the remaining lifetime
 and runtime limitations above still apply.
+
+## Transport reentry: published playback lacks post-COM cancellation checks (2026-09-20)
+
+Targeted disassembly establishes a narrow construction property: allocator
+`0x498140` calls the media constructor at `0x4981d3`, stores its returned media
+pointer into record+0x24 at `0x4981dd`, then publishes the record through list
+stores at `0x498265/268`. During construction, the known stop-all manager walk
+cannot select that new record through the list. This is not a general lifetime
+proof: manager-root shutdown, other aliases, destination recovery and foreign
+thread ownership remain unresolved.
+
+Published operations have a different contract. The inactive `WM_ACTIVATE`
+arm clears global active at `0x4d36b7` and calls stop-all at `0x4d36bd`.
+`WM_ACTIVATEAPP` instead calls input helper `0x4d4950` in the inspected WndProc
+body; it does not directly call stop-all. Stop-all selects playing records,
+Pauses at `0x4982f0`, then clears the playing bit at `0x498328` and delivers/clears
+completion ownership. For ID2 flags8 it preserves media pump state +0xb0,
+sample +0x14 and source surface +0x10. The playing flag remains set during Pause.
+
+If a synchronous COM call dispatches deactivation, three distinct continuations
+are possible from the examined instructions:
+
+- Pump `Update` at `0x4d162b` can return pending and write +0xb0=2 at `0x4d16b1`
+  without rechecking active/playing. Completion at `0x4d154b` can similarly
+  write state4 and continue copying. This is a stale-state possibility, not a
+  demonstrated use-after-free.
+- Explicit replay seeks at `0x498d54`, then invokes sample/Run at `0x498d71` and
+  sets playing/callback state after return, without an active/cancellation check.
+  First play is skipped by stop-all while its playing bit is clear, but still
+  lacks the post-call active check.
+- Automatic loop seek at `0x49840a` ignores the seek result, reapplies its bound
+  and continues. It does not share explicit replay's Run/reinstall behavior; a
+  universal restore-Run policy would therefore change one of these contracts.
+
+These are conditional instruction-order witnesses. Actual message dispatch
+during the proposed COM calls is unobserved. They do not reopen the already
+reviewed callback-to-VM question: the four known completion handlers only
+update state or enqueue work. Holding COM references or preserving CPU state
+does not by itself preserve the outer operation's cancellation semantics.
+
+The engine Update call supplies flags1 and NULL event/APC/context. It does not
+register an engine completion callback through those arguments; completion is
+polled. This does not exclude backend message dispatch or worker activity.
+No allocator Decommit was found in this scoped transport closure. Stop/seek
+also do not provide an explicit pending-sample retirement or pump-state reset
+contract. Adding Decommit/Stop therefore still requires pending reconciliation.
+
+The seek routine already contains two arms: default `IMediaPosition` double
+seconds at `0x4d04f4`, and flags0x20 `IMultiMediaStream::Seek` with start_ms×10000
+at `0x4d055c`. The latter does not justify changing ID2's flags or silently
+substituting a new interface. Both hold raw engine pointers over COM boundaries.
+
+**Remaining boundary:** construction is isolated only from the specific list
+walk before publication. Published transport still needs a concrete owner
+lifetime, nested-state/cancellation and pending-sample contract. A guard against
+nested entry into a new helper would not stop the existing WndProc's mutations.
+No production hook or safe added COM interval is qualified by this pass.
+
+Reproduction: `python3 /tmp/verify_x3_media_transport_reentry.py`; eight gap-free
+ranges, 850 instructions, 2,455 bytes, 32 anchors and five direct-caller sets.
+Local detail: `/tmp/x3-media-transport-reentry.md`; generated check record:
+`/tmp/x3-media-transport-reentry-check-v2.json`; raw instructions stay untracked.
+No game, Wine or native runtime execution was performed for this investigation.
+
+Evidence erratum: review found the earlier pump range ended at `0x4d180d`,
+splitting the ADD at `0x4d180c` into a pseudo-decode. The complete function ends
+after RET at `0x4d180f` (exclusive `0x4d1810`). Both corrected verifiers now reject
+dot-prefixed pseudo-decodes and `(bad)` instructions. The new transport witness
+above uses that complete range. The earlier lifetime evidence is retained as
+historical; its corrected reproduction is
+`/tmp/verify_x3_media_record_lifetime_v2.py` with
+`/tmp/x3-media-record-lifetime-check-v2.json`: 1,234 instructions, 3,511 bytes
+and 40 anchors. This corrects extraction/counts, not the semantic lifetime
+findings or the unresolved runtime boundaries.
