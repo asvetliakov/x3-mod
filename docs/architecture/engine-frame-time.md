@@ -957,3 +957,48 @@ Local reproducible evidence: `verification/results/run49a-busy/` and
 `verification/results/run49a-stutters/`, each with `reproduce.py`, validated
 `result.json` and `result.md`; the original logs remain in `/tmp/x3-bottleX3-run183`
 and `run184`. No Wine or game execution was used for this analysis.
+
+
+## Remaining submission and proxy attribution (2026-09-20)
+
+Independent source/evidence review found that residual `material()` subtracts
+the last pass-end clock, which survives view boundaries. During normal
+operation it resets at frame discard; a failed pass-end QPC also clears it.
+Consequently run49's prepare 6.488 ms can include between-view composite/setup
+work. Healthy counters do not prove submission-local coverage, and differences
+of marginal medians are not same-frame residual budgets. The previous
+sampling-profiler description of prepare as engine-only is corrected.
+
+Three bounded opportunities remain, with no current-flight saving established:
+
+- Existing lazy-RT mode needs a matched production-mode comparison. The fixture
+  2.53 µs/depth-draw estimate extrapolates to about 1.15 ms at 454 routed draws
+  before displaced work/flushes; it is not a measured flight upper bound.
+- HDR meter plus readback records a same-row median 600.0 µs across 36 busy
+  samples (meter 399.45 µs, readback 184.25 µs). Readback is already deferred and
+  includes transfer, extraction, statistics and adaptation. Transfer alone
+  cannot be blamed from this timer.
+- Median 364 leased draws across 2,101 rows gives only an estimated 0.182–0.255 ms
+  acquisition opportunity from prior fixtures, plus unmeasured retirement.
+  Lease retirement occurs after the timed cascade replay. Borrowed unpinned
+  references remain unsafe; no lease optimization is ratified.
+
+**Ratified diagnostic scope:** reuse existing view-boundary clocks to separate
+within-submission preparation from cross-view gaps; account explicitly for
+passes outside submission and compute residuals on each frame before window
+reduction. Split HDR readback exhaustively into transfer/lock, extraction/
+unlock and statistics/adaptation. Add one timed lease-retirement span/count.
+Use existing opt-in diagnostics, fixed counters, no extra per-draw QPC and no
+new engine hook site. A two-view host case with a long intervening composite
+must prove that composite time cannot inflate submission-local preparation.
+This is attribution work, not a promised FPS improvement.
+
+R7, state filtering, sorting, instancing and pass replay remain closed on their
+existing evidence. Moving collision and media are separate investigations.
+Source-compatible Windows behavior does not establish native execution.
+The independent audit and streamed witness are local:
+`/tmp/x3-submission-remaining-audit.md`,
+`/tmp/x3-submission-remaining-witness.py`; 36 HDR and 2,101 lease/retention rows
+reproduced, with unique frames/device 1 and 3,840 metering tiles checked.
+Implementation is isolated on `experiment/submission-attribution-2026-09-20`;
+no installed candidate change follows from this audit.

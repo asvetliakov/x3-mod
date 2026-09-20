@@ -909,11 +909,12 @@ residual_phases qpc= frame=N frames=300 materials_p50= particle_views_p50= passe
 Reading it, against the run95 busy window (`view_submit − sum` 4,520 us at
 981 passes): `setup_p50_us` is what option A of
 `docs/architecture/effect-pass-replay.md` can take over with parameter
-ownership (the setters and `Begin`); `prepare_p50_us` is the engine's own
-cost and is reducible only by engine patches (the O(n²) sort, the SEH frame
-per node). `prepare + setup` should be close to `view_submit − sum −
-(traversal, sort and everything outside the sub-mesh loop)`, so the gap to
-4,520 us is the per-view work outside `0x004c0150`. `particles_p50_us`
+ownership (the setters and `Begin`). **Correction, 2026-09-20:**
+`prepare_p50_us` is not an engine-only submission budget. It pairs a material
+with the last pass end across view boundaries, so it can include intervening
+composite/setup work. Its sum with setup cannot close the submission residual
+without view-local classification and same-frame accounting. See the
+[attribution audit](../architecture/engine-frame-time.md#remaining-submission-and-proxy-attribution-2026-09-20). `particles_p50_us`
 against `other_p50_us` says whether the ~2 ms outside submission is the
 particles pass or the composite/env-map path. `prepare_skipped` is about one
 per frame plus one per material whose geometry guard skipped the pass loop
