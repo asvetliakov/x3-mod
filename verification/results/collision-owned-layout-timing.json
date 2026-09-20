@@ -1,0 +1,170 @@
+{
+  "checkpoint": "controlled453 physical-layout timing",
+  "decision": "no_qualified_locality_improvement",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "elapsed_s": 62.918,
+  "summary": {
+    "samples": 108,
+    "differences": 0,
+    "abi_errors": 0,
+    "mutations": 0,
+    "complete": 1,
+    "frequency": 10000000
+  },
+  "full_result": "/tmp/x3-collision-owned-replay/verification/results/bottle-X3/collision-owned-timing.json",
+  "full_result_sha256": "3223eea831a29ce05134d5b8322d23e6fcf368ba8425176bcac5a44b64f7a5aa",
+  "binary_sha256": "005e2f90e81ead15f61a34fd5ed51595a008496299ff1947fd0ea7e70baf0251",
+  "groups": [
+    {
+      "placement": 0,
+      "order": "chronological",
+      "bucket": "all",
+      "samples": 9,
+      "median_improvement_percent": 0.18217907209275852,
+      "mad_percent": 0.15336968755511604,
+      "p25_improvement_percent": 0.02880938453764248,
+      "ref_ns_per_query": 121757.26744186046,
+      "layout_ns_per_query": 121498.99870801033
+    },
+    {
+      "placement": 0,
+      "order": "chronological",
+      "bucket": "expensive_no_contact",
+      "samples": 9,
+      "median_improvement_percent": -0.10925559110270822,
+      "mad_percent": 0.14424392113991935,
+      "p25_improvement_percent": -0.25349951224262757,
+      "ref_ns_per_query": 1069749.6402877697,
+      "layout_ns_per_query": 1069878.0575539568
+    },
+    {
+      "placement": 0,
+      "order": "chronological",
+      "bucket": "contact",
+      "samples": 9,
+      "median_improvement_percent": 0.12665004512290023,
+      "mad_percent": 0.23787207016480183,
+      "p25_improvement_percent": -0.07247956905367392,
+      "ref_ns_per_query": 33497.02564102564,
+      "layout_ns_per_query": 33436.820512820515
+    },
+    {
+      "placement": 0,
+      "order": "shuffled",
+      "bucket": "all",
+      "samples": 9,
+      "median_improvement_percent": 0.00903346847854758,
+      "mad_percent": 0.06465631846788167,
+      "p25_improvement_percent": -0.008896762129717573,
+      "ref_ns_per_query": 123343.37855297158,
+      "layout_ns_per_query": 123275.67829457365
+    },
+    {
+      "placement": 0,
+      "order": "shuffled",
+      "bucket": "expensive_no_contact",
+      "samples": 9,
+      "median_improvement_percent": 0.11955159988954467,
+      "mad_percent": 0.18059891605568534,
+      "p25_improvement_percent": -0.061047316166140675,
+      "ref_ns_per_query": 1081060.7913669064,
+      "layout_ns_per_query": 1080229.1366906476
+    },
+    {
+      "placement": 0,
+      "order": "shuffled",
+      "bucket": "contact",
+      "samples": 9,
+      "median_improvement_percent": -0.276297129443992,
+      "mad_percent": 0.35809382773461795,
+      "p25_improvement_percent": -0.4774575912430912,
+      "ref_ns_per_query": 33633.230769230766,
+      "layout_ns_per_query": 33686.769230769234
+    },
+    {
+      "placement": 2048,
+      "order": "chronological",
+      "bucket": "all",
+      "samples": 9,
+      "median_improvement_percent": -0.21691723168941746,
+      "mad_percent": 0.4344507695985822,
+      "p25_improvement_percent": -0.45687992450726966,
+      "ref_ns_per_query": 123180.42635658915,
+      "layout_ns_per_query": 123186.49870801033
+    },
+    {
+      "placement": 2048,
+      "order": "chronological",
+      "bucket": "expensive_no_contact",
+      "samples": 9,
+      "median_improvement_percent": 0.019301139298744108,
+      "mad_percent": 0.14686199237149422,
+      "p25_improvement_percent": -0.20256314015754118,
+      "ref_ns_per_query": 1082800.3597122303,
+      "layout_ns_per_query": 1083950.7194244603
+    },
+    {
+      "placement": 2048,
+      "order": "chronological",
+      "bucket": "contact",
+      "samples": 9,
+      "median_improvement_percent": -0.08049565811298898,
+      "mad_percent": 0.25109421533662246,
+      "p25_improvement_percent": -0.30616393880362747,
+      "ref_ns_per_query": 33657.4358974359,
+      "layout_ns_per_query": 33664.820512820515
+    },
+    {
+      "placement": 2048,
+      "order": "shuffled",
+      "bucket": "all",
+      "samples": 9,
+      "median_improvement_percent": 0.019398084993893505,
+      "mad_percent": 0.14792263412148898,
+      "p25_improvement_percent": -0.057614573663911095,
+      "ref_ns_per_query": 123871.60852713179,
+      "layout_ns_per_query": 123720.4457364341
+    },
+    {
+      "placement": 2048,
+      "order": "shuffled",
+      "bucket": "expensive_no_contact",
+      "samples": 9,
+      "median_improvement_percent": 0.24736265085398834,
+      "mad_percent": 0.30411015864555413,
+      "p25_improvement_percent": -0.05674750779156579,
+      "ref_ns_per_query": 1089757.1942446043,
+      "layout_ns_per_query": 1086128.417266187
+    },
+    {
+      "placement": 2048,
+      "order": "shuffled",
+      "bucket": "contact",
+      "samples": 9,
+      "median_improvement_percent": 0.02855001605938101,
+      "mad_percent": 0.18097050682964744,
+      "p25_improvement_percent": -0.15242049077026643,
+      "ref_ns_per_query": 34487.38461538462,
+      "layout_ns_per_query": 34477.53846153846
+    }
+  ],
+  "threshold": "each placement/order aggregate median >=5%, positive lower quartile, median >2*MAD; each contact/expensive-no-contact lower quartile >=-5%; every batch >=5ms",
+  "scope": "inclusive original query + identical global/FP reset + raw output capture; no subtraction; no live/FPS/cache-pressure claim",
+  "sufficient_duration": true,
+  "bucket_regression_gate": true,
+  "host_tests": 15,
+  "independent_review": "source, descriptor/source binding fixes, runtime hashes and recomputed statistics passed",
+  "limits": [
+    "Original x87 query/SAT reference; installed live SSE2 SAT is a different baseline",
+    "Controlled M6 LOD3 subset, not live run183 models/poses",
+    "No measured game FPS effect, general locality limit or native Windows qualification"
+  ]
+}

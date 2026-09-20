@@ -1996,3 +1996,31 @@ the isolated checkout's prior memo record is also preserved locally under
 inputs, not a production change or a new collision speedup. Historical runs
 retain their stated extraction limitation; their results are not retroactively
 relabelled. Native Windows runtime remains unverified.
+
+## Owned physical-layout timing: no qualified gain (2026-09-20)
+
+The reviewed fixture measured 108 paired samples across two memory placements,
+chronological/fixed-shuffle order, and aggregate/contact/expensive-no-contact
+buckets. All 216 timed batches exceeded the 5 ms duration gate (minimum 32.34 ms).
+There were **zero output, ABI or model-mutation failures** across 156,564 measured
+invocations per layout. The owner run took 62.918 seconds under X3/arm64 with
+both required environment values 1. Fifteen focused host tests and independent
+source/runtime/statistics review passed. Review also closed descriptor-table and
+source-binding gaps before execution; the first unqualified build is retained.
+
+Aggregate median paired improvements were **+0.182%, +0.009%, -0.217%, +0.019%**.
+These are below the predeclared 5% gate and disagree in direction. Contact and
+expensive-no-contact regression gates passed. **Close this controlled453 physical
+layout experiment for lack of qualified benefit; no repeat benchmark is needed.**
+The [compact timing record](../../verification/results/collision-owned-layout-timing.json)
+links the immutable full record and its hash; frozen correctness evidence and
+raw timing artifacts remain in the isolated collision checkout.
+
+Times include the original query, identical global/FP resets and raw output
+capture, with validation outside the clock interval. The fixture retains the
+original x87 SAT; the installed live SSE2 SAT, live assets/poses and observed
+65.62 ns/visit are different baselines. This negative result does not prove a
+universal locality limit or establish a game FPS change. Existing whole-descent,
+front-tracking and advancement decisions remain closed. The next bounded evidence
+question is retirement/mutation scheduling for a safe representative replay;
+no live-tree copy or new user flight is authorized by this timing result.
