@@ -59,7 +59,8 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   abrupt appearance. Current support is 12,000 render units (2.4 km). Native
   object fading is separate. Filtered-far integration failed the offline comparison; the accurate reference
   converges, but the tested macro mask removes all nearby fog in the four views.
-  No production recipe or larger distance has been selected.
+  No production recipe or larger distance has been selected. A fixed coarse
+  depth-prefix reconstruction experiment is now being implemented offline.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
   now apply this to the unchanged installed DLL; native fallback defaults match

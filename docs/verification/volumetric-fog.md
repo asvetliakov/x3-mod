@@ -1024,3 +1024,27 @@ sky clear fractions change from 0–0.78% to 29.67–97.36%; these descriptive
 numbers are not user visual acceptance. Only this fixed recipe/views are closed.
 Independent review passes 14 focused host tests and all 16 image hashes.
 No production, game, Wine or installation change was made.
+
+### Next bounded experiment: coarse far transport reconstruction
+
+Selected for offline feasibility only: a 64×36 angular grid with 32 cumulative
+far-transport planes, `s(k)=12000+5875*k`, preserving the unchanged near24 term
+and original family density/colour. Reconstruct at independent 128×72 captured
+pixel/depth rays using optical-depth interpolation along each ray and bilinear
+S/T interpolation between rays. Dense 64/128-unit unfiltered integration remains
+the reference; it is not a proposed runtime marcher.
+
+Freeze the four run200 endpoints and all grid/bin choices before measuring.
+Reference convergence gates are T p99/max 0.00025/0.00075; reconstruction gates
+are T 0.001/0.003 and normalized S per channel 0.0005/0.002. Report sky,
+geometry, depth-boundary and synthetic thin-depth witnesses separately. A failing
+endpoint closes this fixed candidate without resolution/bin/threshold tuning.
+Only if endpoints pass, check fixed moving-camera holdouts. No performance or
+appearance acceptance follows from a numerical pass; long-range accumulated
+haze remains a separate unsolved requirement.
+
+Native card placements are not a recovered sparse world-space cloud layout:
+[sector-fog §12](../reverse-engineering/sector-fog.md) records a camera-nearest
+periodic lattice, view-dependent opacity and refresh-dependent body/scale.
+Extruding those cards would invent volume thickness and support. This experiment
+therefore introduces neither such an extrusion nor a retuned macro mask.
