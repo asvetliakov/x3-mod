@@ -51,6 +51,21 @@ struct Transition {
     Epoch epoch = 0;
 };
 class Runtime;
+// Engine-thread offer of one existing command cell, not a second queue. Copies
+// may be retained for comparison, but only the first valid acknowledgement can
+// remove the cell. Runtime must outlive every offer (including across placement
+// construction); offers do not extend its lifetime.
+class CommandOffer {
+public:
+    explicit operator bool() const noexcept { return owner_ != nullptr; }
+    const Command& command() const noexcept { return command_; }
+private:
+    friend class Runtime;
+    const Runtime* owner_ = nullptr;
+    std::uint32_t cell_ = 0;
+    std::uint64_t serial_ = 0;
+    Command command_{};
+};
 // A reservation is engine-thread local. Runtime must outlive it. No callback,
 // engine address, frame bytes or backend ownership can enter this token.
 class PreparedPlay {
@@ -95,6 +110,21 @@ public:
     bool snapshot(SessionHandle, Snapshot&) const noexcept;
     bool publication(std::uint32_t slot, Publication&) const noexcept;
     bool accepts_publication(SessionHandle, OperationId, Epoch) const noexcept;
+    // Production transport uses this per-session seam, never pop-then-submit.
+    // A false try_submit leaves the offer queued. Check offer_current immediately
+    // before submitting a retained offer; submit and acknowledge must be adjacent
+    // engine-thread operations with no reentry. A successful submit followed by
+    // failed ack means invalidation, NOT permission to retry the accepted command.
+    // The worker independently validates the full tuple against cancellation.
+    //
+    // peek prunes superseded commands, then offers the oldest current cell for h.
+    // Consequently play/seek/run each ensure a graph for request.source if absent;
+    // construct is optional eager preparation. A fresh-identity run also seeks to
+    // request.start_ms instead of assuming a superseded command was consumed.
+    bool peek_command(SessionHandle, CommandOffer&) noexcept;
+    bool offer_current(const CommandOffer&) const noexcept;
+    bool acknowledge_command(CommandOffer&) noexcept;
+    // Destructive diagnostic drain retained for the existing state fixture only.
     bool pop_command(Command&) noexcept;
     std::uint32_t occupied_commands() const noexcept;
     std::uint32_t session_capacity() const noexcept { return session_limit_; }

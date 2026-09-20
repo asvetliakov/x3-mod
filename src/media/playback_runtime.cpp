@@ -183,6 +183,51 @@ bool Runtime::accepts_publication(SessionHandle h, OperationId op, Epoch epoch) 
     return s && s->state.operation_active && s->state.publication.playing &&
         s->state.publication.operation == op && s->state.publication.epoch == epoch;
 }
+bool Runtime::peek_command(SessionHandle h, CommandOffer& out) noexcept {
+    out = {};
+    const auto* s = find(h);
+    if (!s) return false;
+    const auto& p = s->state.publication;
+    std::uint32_t best = command_limit_;
+    for (std::uint32_t i = 0; i < command_limit_; ++i) {
+        auto& c = commands_[i];
+        if (c.state != CellState::ready || !(c.command.session == h)) continue;
+        // Only obsolete work is discarded. Callback termination ownership stays
+        // in the engine adapter, independent of command-cell coalescing.
+        if (c.command.operation != p.operation || c.command.epoch != p.epoch) {
+            c = {}; continue;
+        }
+        if (best == command_limit_ || c.serial < commands_[best].serial) best = i;
+    }
+    if (best == command_limit_) return false;
+    out.owner_ = this; out.cell_ = best; out.serial_ = commands_[best].serial;
+    out.command_ = commands_[best].command;
+    return true;
+}
+bool Runtime::offer_current(const CommandOffer& offer) const noexcept {
+    if (offer.owner_ != this || offer.cell_ >= command_limit_) return false;
+    const auto& c = commands_[offer.cell_];
+    if (c.state != CellState::ready || c.serial != offer.serial_ ||
+        !(c.command.session == offer.command_.session)) return false;
+    const auto* s = find(offer.command_.session);
+    if (!s || c.command.operation != s->state.publication.operation ||
+        c.command.epoch != s->state.publication.epoch) return false;
+    // Acknowledge only the oldest still-current cell of this session, even if a
+    // copied token survives other transfers. Other sessions cannot head-block it.
+    for (std::uint32_t i = 0; i < command_limit_; ++i) {
+        const auto& earlier = commands_[i];
+        if (earlier.state == CellState::ready && earlier.command.session == c.command.session &&
+            earlier.command.operation == c.command.operation && earlier.command.epoch == c.command.epoch &&
+            earlier.serial < c.serial) return false;
+    }
+    return true;
+}
+bool Runtime::acknowledge_command(CommandOffer& offer) noexcept {
+    if (!offer_current(offer)) { offer = {}; return false; }
+    commands_[offer.cell_] = {};
+    offer = {};
+    return true;
+}
 bool Runtime::pop_command(Command& out) noexcept {
     std::uint32_t best = command_limit_;
     for (std::uint32_t i = 0; i < command_limit_; ++i) {

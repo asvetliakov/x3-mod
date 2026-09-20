@@ -233,10 +233,129 @@ static void reentry_and_reuse() {
     CHECK(a.find_owned(0x1000, 2).ownership == p::Ownership::unknown); // Never a legacy-COM proof.
     CHECK(!a.consume_event(recycled.session, newplay.operation, newplay.epoch, m::Event::failed).accepted);
 }
+// Models only transport acceptance/backpressure; it does not mirror state or
+// retain another frame queue. The actual Runtime owns every command under test.
+struct SubmitSpy {
+    bool busy = false;
+    unsigned accepted = 0, refused = 0;
+    m::Command last{};
+    bool try_submit(const m::Command& c) noexcept {
+        if (busy) { ++refused; return false; }
+        ++accepted; last = c; return true;
+    }
+};
+static bool transfer(m::Runtime& r, m::SessionHandle h, SubmitSpy& worker) {
+    m::CommandOffer offer;
+    if (!r.peek_command(h, offer)) return false;
+    CHECK(r.offer_current(offer));
+    if (!worker.try_submit(offer.command())) return false;
+    CHECK(r.acknowledge_command(offer));
+    return true;
+}
+static void per_session_transfer() {
+    m::Runtime r(3, 2);
+    auto a = r.try_admit(2), b = r.try_admit(3);
+    CHECK(a && b && r.occupied_commands() == 2);
+    CHECK(!r.try_admit(4));
+    SubmitSpy worker_a, worker_b; worker_a.busy = true;
+    m::CommandOffer retained_a, retained_b;
+    CHECK(r.peek_command(a, retained_a) && r.peek_command(b, retained_b));
+    CHECK(!transfer(r, a, worker_a) && r.occupied_commands() == 2);
+    CHECK(worker_a.refused == 1 && worker_a.accepted == 0 && r.offer_current(retained_a));
+    CHECK(transfer(r, b, worker_b) && worker_b.accepted == 1 && worker_b.last.session == b);
+    CHECK(!r.offer_current(retained_b) && !r.acknowledge_command(retained_b));
+    CHECK(!transfer(r, b, worker_b) && worker_b.accepted == 1);
+    CHECK(r.occupied_commands() == 1 && r.offer_current(retained_a));
+    auto c = r.try_admit(4); CHECK(c && r.occupied_commands() == 2);
+    CHECK(!r.acknowledge_command(retained_b)); // B's freed cell now belongs to C.
+    worker_a.busy = false;
+    CHECK(transfer(r, a, worker_a) && worker_a.accepted == 1);
+    CHECK(!r.acknowledge_command(retained_a));
+    CHECK(!transfer(r, a, worker_a) && worker_a.accepted == 1);
+    CHECK(transfer(r, c, worker_b) && worker_b.accepted == 2 && worker_b.last.session == c);
+    CHECK(r.occupied_commands() == 0);
+
+    // Multiple same-epoch commands preserve source order. A copied, consumed
+    // token cannot acknowledge the next command, even when that cell is reused.
+    auto prepared = r.prepare_play(a, request().playback);
+    auto play = r.commit_play(std::move(prepared)); CHECK(play.accepted);
+    CHECK(r.run(a).accepted && r.occupied_commands() == 2);
+    m::CommandOffer play_offer;
+    CHECK(r.peek_command(a, play_offer) && play_offer.command().kind == m::CommandKind::play);
+    auto copied_offer = play_offer;
+    CHECK(transfer(r, a, worker_a) && worker_a.last.kind == m::CommandKind::play);
+    CHECK(!r.acknowledge_command(copied_offer));
+    CHECK(r.peek_command(a, play_offer) && play_offer.command().kind == m::CommandKind::run);
+    CHECK(transfer(r, a, worker_a) && worker_a.last.kind == m::CommandKind::run);
+    CHECK(!r.acknowledge_command(play_offer));
+
+    // Supersession before acceptance makes the old offer ineligible. Peek removes
+    // only its obsolete command, never the replacement or an independent session.
+    prepared = r.prepare_play(a, request().playback); play = r.commit_play(std::move(prepared));
+    CHECK(r.peek_command(a, play_offer));
+    auto next = r.prepare_play(a, request().playback); auto newer = r.commit_play(std::move(next));
+    CHECK(newer.accepted && newer.operation != play.operation && r.occupied_commands() == 2);
+    CHECK(!r.offer_current(play_offer) && !r.acknowledge_command(play_offer));
+    CHECK(r.occupied_commands() == 2);
+    CHECK(r.peek_command(a, play_offer) && play_offer.command().operation == newer.operation);
+    CHECK(r.occupied_commands() == 1);
+    CHECK(transfer(r, a, worker_a) && worker_a.last.operation == newer.operation);
+
+    // Pending reservations are invisible to the transport, and a busy normal
+    // queue never prevents stop/cancellation or stale acknowledgement refusal.
+    prepared = r.prepare_play(a, request().playback); CHECK(bool(prepared));
+    m::CommandOffer empty;
+    CHECK(!r.peek_command(a, empty) && !empty && r.occupied_commands() == 1);
+    auto prepare_b = r.prepare_play(b, request(3).playback);
+    auto play_b = r.commit_play(std::move(prepare_b)); CHECK(play_b.accepted);
+    CHECK(!r.prepare_play(c, request(4).playback));
+    CHECK(transfer(r, b, worker_b) && worker_b.last.operation == play_b.operation);
+    play = r.commit_play(std::move(prepared)); CHECK(play.accepted);
+    CHECK(r.peek_command(a, play_offer));
+    CHECK(r.stop(a).accepted && !r.offer_current(play_offer));
+    m::Publication cancelled;
+    CHECK(r.publication(a.slot, cancelled) && !cancelled.playing && cancelled.epoch != play.epoch);
+    prepared = r.prepare_play(a, request().playback); newer = r.commit_play(std::move(prepared));
+    CHECK(newer.accepted && !r.acknowledge_command(play_offer) && r.occupied_commands() == 1);
+    CHECK(transfer(r, a, worker_a) && worker_a.last.operation == newer.operation);
+
+    // Construct is optional eager work. Latest seek and fresh-identity Run must
+    // be self-contained in the actual worker when older epochs were skipped.
+    m::Runtime superseded(1, 4); auto h = superseded.try_admit(2);
+    CHECK(superseded.peek_command(h, play_offer) && play_offer.command().kind == m::CommandKind::construct);
+    auto pending = superseded.prepare_play(h, request().playback);
+    auto accepted = superseded.commit_play(std::move(pending)); CHECK(accepted.accepted);
+    auto sought = superseded.seek(h, 7777, m::SeekIntent::preserve); CHECK(sought.accepted);
+    CHECK(superseded.run(h).accepted && superseded.occupied_commands() == 4);
+    CHECK(!superseded.acknowledge_command(play_offer));
+    CHECK(superseded.peek_command(h, play_offer) && play_offer.command().kind == m::CommandKind::seek);
+    CHECK(play_offer.command().request.start_ms == 7777 && play_offer.command().epoch == sought.epoch);
+    CHECK(superseded.occupied_commands() == 2);
+    CHECK(transfer(superseded, h, worker_a) && worker_a.last.kind == m::CommandKind::seek);
+    CHECK(transfer(superseded, h, worker_a) && worker_a.last.kind == m::CommandKind::run);
+
+    // Allocation generation, monotonic cell serial and Runtime identity prevent
+    // ABA, including identical initial handles and serials in a second service.
+    CHECK(superseded.run(h).accepted && superseded.peek_command(h, play_offer));
+    auto stale_copy = play_offer;
+    CHECK(superseded.retire(h).accepted);
+    auto recycled = superseded.try_admit(2); CHECK(recycled && recycled.generation != h.generation);
+    CHECK(!superseded.acknowledge_command(play_offer));
+    CHECK(!superseded.peek_command(h, empty));
+    CHECK(superseded.peek_command(recycled, play_offer));
+    CHECK(!superseded.acknowledge_command(stale_copy) && superseded.offer_current(play_offer));
+    m::Runtime foreign(1, 4); auto foreign_h = foreign.try_admit(2);
+    m::CommandOffer foreign_offer; CHECK(foreign.peek_command(foreign_h, foreign_offer));
+    auto foreign_copy = foreign_offer;
+    CHECK(!superseded.offer_current(foreign_offer) && !superseded.acknowledge_command(foreign_copy));
+    CHECK(foreign.offer_current(foreign_offer) && foreign.occupied_commands() == 1);
+    CHECK(superseded.acknowledge_command(play_offer));
+    CHECK(!superseded.acknowledge_command(play_offer));
+}
 int main() {
     const auto before = allocations;
     layout_and_decode(); capacity_and_reservation(); same_key_and_failure();
-    independent_sessions_and_seek(); rates(); reentry_and_reuse();
+    independent_sessions_and_seek(); rates(); reentry_and_reuse(); per_session_transfer();
     p::Adapter a; auto h = admit(a, 0x1000); drain(a);
     auto prep = a.prepare_play(h, request()); auto current = a.commit_play(std::move(prep));
     constexpr unsigned iterations = 200000;
@@ -249,8 +368,28 @@ int main() {
     }
     auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start).count();
     CHECK(accepted == iterations * 2);
+    // Worst configured scan size with every command still current. Busy offers
+    // remain in place, so both scans execute against all 32 occupied cells.
+    m::Runtime full(m::Runtime::max_sessions, m::Runtime::max_commands);
+    m::SessionHandle handles[m::Runtime::max_sessions];
+    for (unsigned i = 0; i < m::Runtime::max_sessions; ++i) handles[i] = full.try_admit(i + 2);
+    m::Command discarded; while (full.pop_command(discarded)) {}
+    for (unsigned i = 0; i < m::Runtime::max_sessions; ++i) {
+        auto pending = full.prepare_play(handles[i], request(i + 2).playback);
+        CHECK(full.commit_play(std::move(pending)).accepted);
+        for (unsigned j = 0; j < 3; ++j) CHECK(full.run(handles[i]).accepted);
+    }
+    CHECK(full.occupied_commands() == m::Runtime::max_commands);
+    unsigned offered = 0; m::CommandOffer offer;
+    start = std::chrono::steady_clock::now();
+    for (unsigned i = 0; i < iterations; ++i) {
+        offered += full.peek_command(handles[0], offer);
+        offered += full.offer_current(offer);
+    }
+    const auto offer_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start).count();
+    CHECK(offered == iterations * 2 && full.occupied_commands() == m::Runtime::max_commands);
     CHECK(allocations == before);
-    std::printf("media_owned_adapter checks=%u failures=%u allocations=%llu iterations=%u pair_ns=%.2f runtime_bytes=%zu adapter_bytes=%zu\n",
-                checks, failures, allocations - before, iterations, double(elapsed) / iterations, sizeof(m::Runtime), sizeof(p::Adapter));
+    std::printf("media_owned_adapter checks=%u failures=%u allocations=%llu iterations=%u pair_ns=%.2f runtime_bytes=%zu adapter_bytes=%zu offer_pair_ns=%.2f\n",
+                checks, failures, allocations - before, iterations, double(elapsed) / iterations, sizeof(m::Runtime), sizeof(p::Adapter), double(offer_elapsed) / iterations);
     return failures ? 1 : 0;
 }

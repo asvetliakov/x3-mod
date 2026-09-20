@@ -89,5 +89,79 @@
     "dll_built": false,
     "installed": false,
     "note": "Host and cross-compilation checks only; no bottle or emulation environment used"
+  },
+  "command_transfer": {
+    "date": "2026-09-20",
+    "source_base_commit": "4aaae520",
+    "source_binding": "Reviewed offer/ack delta committed together with this appended record",
+    "scope": "Engine-thread per-session CPU command transfer; no transport worker or cross-thread runtime qualification",
+    "independent_review": "review_media_owned_state: CLEAR; independently repeated 2 tests / 321 checks, i686 object/no-x87 checks and diff check",
+    "api": [
+      "Runtime::peek_command",
+      "Runtime::offer_current",
+      "Runtime::acknowledge_command"
+    ],
+    "host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+      "exit_code": 0,
+      "tests": 2,
+      "fixture_checks": 321,
+      "fixture_failures": 0,
+      "fixture_allocations": 0
+    },
+    "cross_compile": {
+      "production_translation_units": 2,
+      "i686_objects_passed": true,
+      "x87_instructions": 0,
+      "native_windows_execution": false
+    },
+    "sanitizers": {
+      "build_command": "clang++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Werror src/media/playback_runtime.cpp src/proxy/media_playback.cpp verification/probe/media_owned_adapter_state_fixture.cpp -o /tmp/x3-media-owned-transfer-sanitize",
+      "run_command": "/tmp/x3-media-owned-transfer-sanitize > /tmp/x3-media-owned-transfer-sanitize.log 2>&1",
+      "result_path": "/tmp/x3-media-owned-transfer-sanitize.log",
+      "exit_code": 0,
+      "fixture_checks": 321,
+      "fixture_failures": 0,
+      "fixture_allocations": 0
+    },
+    "coverage": [
+      "Busy worker A retains its command while B progresses",
+      "One successful acknowledgement per command",
+      "Current per-session FIFO ordering",
+      "Cancellation and supersession between offers",
+      "Stale acknowledgement refusal across cell reuse, session generation reuse and foreign Runtime identity",
+      "Pending reservations remain invisible; full command capacity does not block cancellation"
+    ],
+    "bounded_cost": {
+      "scan_limit": 32,
+      "diagnostic_iterations": 200000,
+      "peek_plus_validation_ns": 54.64,
+      "host_runtime_bytes": 2912,
+      "host_adapter_bytes": 3632,
+      "limit": "Single optimized host diagnostic with 32 occupied current command cells; not engine/game or worker timing"
+    },
+    "integration_obligations": [
+      "A false try_submit means not accepted and must leave the offer unacknowledged.",
+      "Validate a retained offer immediately before submission; accepted submit and acknowledge must be adjacent non-reentrant engine-thread operations.",
+      "A successful submit followed by failed acknowledgement means invalidation, never permission to retry the already accepted command.",
+      "The worker independently validates full session allocation generation, operation and epoch against the separate cancellation publication.",
+      "play, seek and run must ensure the source graph exists if absent. A fresh-identity run must seek to request.start_ms; superseded earlier commands may have been removed.",
+      "Offer tokens do not extend Runtime lifetime and must not survive its destruction or replacement."
+    ],
+    "unchanged_limits": [
+      "Production admission remains disabled",
+      "No new command structure, byte/frame queue or canonical clock algorithm",
+      "Actual transport, engine hooks, CPU/LastError envelopes, GPU/Reset lifetime and native Windows runtime remain unqualified"
+    ],
+    "execution": {
+      "game_launched": false,
+      "wine_executed": false,
+      "bottle_name": null,
+      "wine_arch": null,
+      "FEX_X87REDUCEDPRECISION": null,
+      "WINEMSYNC": null,
+      "dll_built": false,
+      "installed": false
+    }
   }
 }

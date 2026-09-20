@@ -1154,3 +1154,38 @@ Instruction spans, CPU/LastError preservation, rollback, all consumer hooks, wor
 and frame transport, destination/Reset lifetime, enabled playback and native Windows
 runtime remain acceptance dependencies. This disabled checkpoint is a foundation
 for the enabled repair, not completion of that repair.
+
+
+### Per-session command offer/acknowledge checkpoint (2026-09-20)
+
+The reviewed CPU state delta adds per-session `peek_command`, `offer_current`
+and `acknowledge_command`. A busy worker leaves its command queued while another
+session can progress. Peeking removes superseded operation/epoch work and offers
+the oldest current command for that session; acknowledgement checks runtime owner,
+cell serial, allocation generation, current operation/epoch and ordering before
+removing exactly that cell. No extra command/frame queue or command-layout change
+was introduced; cancellation remains independent of normal queue capacity.
+
+Independent source/evidence review (`review_media_owned_state`) is clear. The
+focused suite passes **2 tests / 321 checks**, zero failures and zero allocations;
+the reviewer independently repeated those results and the two i686 object/no-x87
+checks. ASan+UBSan also passes 321 checks; its retained output is
+`/tmp/x3-media-owned-transfer-sanitize.log`. A 200,000-iteration host diagnostic
+with all 32 command cells occupied measured 54.64 ns per peek/validation pair;
+host runtime/adapter storage remains 2912/3632 bytes. The appended `command_transfer`
+entry in the [qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
+retains exact commands and limits. These are CPU host/cross-compilation results,
+not worker, engine, game-performance or native Windows runtime qualification.
+
+Transport callers must leave a false `try_submit` unacknowledged, validate retained
+offers immediately before submitting, and keep successful submission/acknowledgement
+adjacent and non-reentrant on the engine thread. **An accepted submission followed
+by failed acknowledgement must never be retried**; it indicates invalidation. The
+worker separately rejects stale full identities using cancellation publication.
+All play/seek/Run commands must ensure the source graph exists when absent; a
+fresh-identity Run seeks to its requested start instead of assuming superseded
+work was consumed. Offer tokens cannot outlive their runtime.
+
+Production admission remains disabled. Actual transport integration, engine hooks
+and CPU/LastError envelopes, destination/Reset lifetime and native Windows runtime
+remain open. No Wine/game execution, DLL build or installation occurred.
