@@ -569,3 +569,79 @@ shutdown note/check/raw rows use
 `/tmp/x3-media-close-return-contract*`; raw rows remain local and untracked.
 No game, Wine or native runtime execution, production change, safe owner
 lifetime, or actual COM delivery of SC_CLOSE is established by this checkpoint.
+
+
+## Window notification and input activation boundaries (2026-09-20)
+
+Two additional WndProc paths now have bounded, independently reviewed engine
+closures. Their direct work does not call the VM, media manager/destructors,
+destination retirement/recovery or D3D Reset under the valid-object/registration
+premises below. This narrows those paths; it is **not whole-WndProc safety** or
+proof that external APIs cannot reenter it.
+
+For `MM_MCINOTIFY` (0x3b9), `0x4d3729/31` requires lParam to match0x608b50 or
+0x608b54; `0x4d3739` requires wParam1. With nonnull object/callback,
+`0x4d374d` calls `[*0x606f40+0x10]` without arguments. Constructor0x4de060
+allocates0x14 bytes and zeroes+0x10 at0x4de0c0; initializer0x499bc0 installs
+**0x49c120 at0x499cdb**. The global is published at0x4de0c5 and again0x4033eb;
+teardown frees its object at0x4de426 and clears the global at0x4de43f. This is
+a separate object from the0x40-byte media record and completion registry.
+
+Adapter0x49c120 uses separate owner`*0x6085dc`, index+0x10c and context+0x110.
+For nonzero index/context, it conditionally calls `(context,1)` through
+`*0x6085e4+0x34+index*0x18` at0x49c15e, then clears owner+0x114/+0x10c/+0x110
+at0x49c169/173/17d. **Dispatch precedes clear.** Its plain RET requires no
+arguments; the inner completion is caller-cleaned. This exact adapter rejoins
+the already reviewed four completion targets, whose normal closure updates
+state, wakes tasks and performs typed cleanup without synchronous VM/media/COM
+or destination work. It is not a no-op. Index comparison is signed<32, so a
+nonnegative valid index remains a premise. Known registration and live valid
+owners/contexts are required; no arbitrary-alias writer or shutdown pin is proved.
+The only encoded .text references to0x608b50/54 are the two comparisons: runtime
+initialization through aliases/indexed bases is unresolved, so no notification-
+unreachability claim follows.
+
+Input helper **0x4d4950** takes one caller-cleaned DWORD and preserves
+ESI/EDI/EBP; no meaningful uniform EAX result is established. WM_ACTIVATE calls
+it at0x4d36a5 with `(LOWORD(wParam)==0)`; WM_ACTIVATEAPP calls at0x4d36fe with
+`(wParam==0)`. **Neither branch inside0x4d4950 writes active0x608adc; the
+surrounding WM_ACTIVATE handler writes that global.** The inactive WM_ACTIVATE
+arm's media stop-all at0x4d36bd remains outside the input closure.
+
+With a live input owner, the helper clears512 bytes at+0x210..+0x40f and several
+input fields. Nonzero argument Unacquires up to three DirectInput devices.
+Zero argument Acquires devices, can drain input data, rebuild force-feedback
+effects through0x4d5290→0x4d4f20, or recreate a controller through0x4d5540.
+Interface identity is supported by DirectInput8Create/IID_IDirectInput8A and
+CreateDevice output provenance, checked against installed public headers.
+EnumEffects callback0x4d4ef0 (RET8; registrations0x4d4fc5/0x4d51c4) copies a
+16-byte GUID into context; EnumObjects callback0x4d5470 (RET8; registration
+0x4d55fe) compares GUIDs and updates input flags. These concrete callbacks do
+not call the VM or media paths. Device/effect Releases and recreation are real
+synchronous COM work. Recreated controller publication precedes recursive
+0x4d4950(0) at0x4d56b6; provider return/reentry is not guaranteed by this ordering.
+
+Controller recreation can call **0x4d45b0's public WMI COM query** at0x4d55b6:
+CoInitialize, CoCreateInstance for WbemLocator, ConnectServer,
+CreateInstanceEnum, enumerator Next, object Get, proxy setup and Releases.
+It examines `Win32_PNPEntity.DeviceID` for controller product IDs. Each Next at
+0x4d46dd/0x4d4814 receives timeout0x2710 (**10,000 ms**) and count0x14;
+multiple batches are possible. This is a per-call argument, **not a total time
+bound or a no-message-pumping guarantee**. CRT search/parse helpers0x511b9c/
+0x511c68 remain unexpanded. No callback, exception, API dispatch or media deletion
+through those unexpanded boundaries has been observed or proved. Public COM
+reentry remains an envelope obligation, not proof of actual nested dispatch.
+
+Reused independent verification: notification verifier
+`python3 /tmp/verify_x3_media_window_notify_closure.py` passes seven ranges,
+232 instructions / 835 bytes / 17 anchors / 22 branch-boundary checks. Input
+analysis passes thirteen ranges, 1,321 instructions / 4,169 bytes / 140 internal
+branch-boundary checks; that count has **no separate fixed-anchor count**.
+Both compare original EXE bytes and reject pseudo-decodes. Input caller/GUID
+snippets were checked separately and are not included in those thirteen ranges.
+The [compact record](../../verification/results/media-window-boundaries-2026-09-20.json)
+records separate counts, local evidence paths/hashes and scope. Local detail is
+`/tmp/x3-media-window-notify-closure.md` and
+`/tmp/x3-media-input-activation-closure.md`; raw evidence stays untracked.
+No production interception, owner lifetime/thread model, Reset safety, natural
+message delivery or native runtime behavior is qualified by this checkpoint.

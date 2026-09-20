@@ -1,0 +1,75 @@
+{
+  "status": "pass",
+  "date": "2026-09-20",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "scope": "Independently reviewed bounded original-EXE closures; no production edit or runtime execution.",
+  "window_notification": {
+    "ranges": 7,
+    "instructions": 232,
+    "bytes": 835,
+    "anchors": 17,
+    "internal_branch_boundaries": 22,
+    "registered_callback": "0x499cdb installs 0x49c120 into [*0x606f40+0x10]",
+    "callback_abi": "No stack arguments, plain RET; inner completion cdecl(context,1)",
+    "completion_dispatch": "0x49c15e -> existing integer completion registry",
+    "clears_after_dispatch": [
+      "owner+0x114",
+      "owner+0x10c",
+      "owner+0x110"
+    ],
+    "reproduce": "python3 /tmp/verify_x3_media_window_notify_closure.py",
+    "limits": [
+      "Known valid registration, nonnegative in-range index and live owner/registry/context required.",
+      "Arbitrary-alias writes and device-ID initialization not closed; no notification-unreachability claim."
+    ]
+  },
+  "input_activation": {
+    "ranges": 13,
+    "instructions": 1321,
+    "bytes": 4169,
+    "internal_branch_boundaries": 140,
+    "fixed_anchor_count": null,
+    "entry": "0x4d4950; one caller-cleaned DWORD; plain RET",
+    "active_state": "Neither branch inside helper writes 0x608adc; surrounding WM_ACTIVATE does.",
+    "enumeration_callbacks": [
+      "0x4d4ef0 RET8 GUID copy",
+      "0x4d5470 RET8 GUID comparison/input flags"
+    ],
+    "public_wmi_boundary": "0x4d5540 -> 0x4d45b0; public COM WMI query",
+    "next_calls": [
+      "0x4d46dd",
+      "0x4d4814"
+    ],
+    "next_timeout_argument_ms": 10000,
+    "next_requested_count": 20,
+    "unexpanded_crt_helpers": [
+      "0x511b9c",
+      "0x511c68"
+    ],
+    "reproduce": "Thirteen half-open ranges and decode/byte/branch procedure in /tmp/x3-media-input-activation-closure.md",
+    "limits": [
+      "Per-call timeout argument, not total time bound or no-pump guarantee.",
+      "Caller/GUID snippets checked separately from thirteen-range count.",
+      "No whole-CRT/provider/COM exceptional closure or observed nested dispatch."
+    ]
+  },
+  "shared_conclusion": "Inspected direct game closures do not enter VM, media retirement, destination recovery or D3D Reset under stated valid-state premises; no whole-WndProc safety, owner lifetime or hook qualification.",
+  "local_evidence": [
+    {
+      "path": "/tmp/x3-media-window-notify-closure.md",
+      "sha256": "a678a02fc826dcd8802b6eaa6c459961792d15efc9faa6d5ddd23e98ca762590"
+    },
+    {
+      "path": "/tmp/verify_x3_media_window_notify_closure.py",
+      "sha256": "0a4e8ee09e94f9a3f8a6fa9c5fd3344d49cae7d1ad0760649a8c15e073e40241"
+    },
+    {
+      "path": "/tmp/x3-media-window-notify-closure-check.json",
+      "sha256": "5616088873bc7aac13e640d212d94f88274324dfa02d782a45a3607fa0165a7a"
+    },
+    {
+      "path": "/tmp/x3-media-input-activation-closure.md",
+      "sha256": "31bd97f86a61881ffcee87896db397b645ec1bf0dd62f576cfccb16c42d6c501"
+    }
+  ]
+}
