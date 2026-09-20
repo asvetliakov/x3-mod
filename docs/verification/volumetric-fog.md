@@ -1048,3 +1048,22 @@ Native card placements are not a recovered sparse world-space cloud layout:
 periodic lattice, view-dependent opacity and refresh-dependent body/scale.
 Extruding those cards would invent volume thickness and support. This experiment
 therefore introduces neither such an extrusion nor a retuned macro mask.
+
+### Coarse far-transport result: rejected
+
+The [fixed prefix experiment](../../verification/results/fog-prefix-reconstruction-2026-09-21/report.md)
+completed four views × 9,216 independent holdout rays in 103.13 s. Reference
+and prefix-quadrature convergence pass (worst T maxima 0.000212073 and
+0.000158787), but reconstruction fails in every endpoint and boundary group.
+Complete all-ray T p99 is 0.059696–0.127455 against 0.001; maximum is
+0.116005–0.206792 against 0.003. Normalized scattering also fails. Temporal
+replay correctly stops here; no grid/bin/threshold tuning follows.
+
+Eight focused operator tests and eight image bindings pass independent combined
+source/evidence review. Post-execution fixes add depth-file provenance and honest
+witness labels; the preserved executed source and raw numerical report remain
+separately hash-bound from final report generation. No numerical arrays or
+images were changed by finalization. Cloud-only images also show that the
+accurate unchanged long-range field accumulates broad attenuation. Numerical
+accuracy alone would not establish the requested clear gaps or visual acceptance.
+No production code, Wine execution, game, build or installation changed.

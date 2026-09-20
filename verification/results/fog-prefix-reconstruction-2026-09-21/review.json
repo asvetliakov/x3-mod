@@ -1,0 +1,8 @@
+{
+  "result": "pass_no_blocking_findings",
+  "reviewer": "review_fog_range_replay",
+  "focused_tests_passed": 8,
+  "image_hashes_verified": 8,
+  "report_sha256": "6c19c3dcf814abb53825c3249c63d2613c7ba3ccf0a47203e34e7711394b4887",
+  "scope": "Combined source and evidence; rejects fixed candidate, no production acceptance"
+}

@@ -1,0 +1,2241 @@
+{
+  "contract": {
+    "angular": "bilinear S and T directly at actual integer knot coordinates; clamp edges",
+    "coarse_knots": [
+      64,
+      36
+    ],
+    "depth": "tau-linear T and exponential segment-fraction S",
+    "far": "original unfiltered field, 64-unit quadrature; 128 control",
+    "geometry": "prefix independent; exact holdout depth controls L",
+    "holdouts": [
+      128,
+      72
+    ],
+    "lighting": "captured point-sun dir1, normalized unit radiance",
+    "near": "unchanged 24 midpoint samples",
+    "prefix_planes": 32,
+    "prefix_width": 5875.0
+  },
+  "estimated_reads_and_storage": {
+    "CPU_runtime_is_not_GPU_time": true,
+    "existing_half_resolution_near24_field_reads": 11796480,
+    "five_two_read_prefix_scans": 737280,
+    "portable_full_screen_eight_point_gather": 7864320,
+    "prefix_generation_field_reads_per_frame": 13565952,
+    "prefix_target_unpadded_FP32_bytes": 2359296
+  },
+  "finalization_seconds": 0.0,
+  "gates": {
+    "all_endpoint_groups_passed": false,
+    "laws": {
+      "finite": true,
+      "invalid_depth_far_identity_exact": true,
+      "prefix_plane_exact": true,
+      "source_alpha_preserved_exact": true,
+      "vacuum_identity_exact": true
+    },
+    "laws_passed": true,
+    "prefix_quadrature_converged": true,
+    "reference_converged": true,
+    "temporal_passed_if_executed": null
+  },
+  "host_seconds": 103.127207458,
+  "images": {
+    "bluewell-16450-depth-boundary-mask.png": "63ec097a2c621729c196b0e7ec78f7ffde32ee8aa8d97834bc89788e7ac37b5f",
+    "bluewell-16450-prefix-reference-error.png": "149f64c82e171944665f6b2c6c69f1a9c3323ab2061f98b64e6184f075321c9c",
+    "bluewell-16481-depth-boundary-mask.png": "5d7e4066dc7af0d9d8d76c6e3fae0d6851701660a9c49079098ecd7360761ac8",
+    "bluewell-16481-prefix-reference-error.png": "b0b5471e180a72496b029b044ba0c53c8cf6168080df0fa504a1a9204c1aced0",
+    "foggreenoutlands-43051-depth-boundary-mask.png": "aa927cae322842caa2f4f60db8fb80cd5ec8cf23be00a9d21cd56fab87084afd",
+    "foggreenoutlands-43051-prefix-reference-error.png": "2626c2cdf3f4f956c72121053d0adef507ae1ebe23e4abd86b132917215e37db",
+    "foggreenoutlands-43082-depth-boundary-mask.png": "100bf2901fce4d94322a208a5ebcea36d5dee94fff078c5421db56dd99539ff2",
+    "foggreenoutlands-43082-prefix-reference-error.png": "5194c016559baa10cfe2d6b00403b0f090a265aea950864430e15056c80ab01c"
+  },
+  "limitations": [
+    "Numerical and cost feasibility only; passing does not approve 40km haze or a production implementation.",
+    "Original capture cards cannot provide static long-range cloud-bank truth.",
+    "Normalized unit-radiance S excludes production radiance and shadow-map lighting.",
+    "CPU runtime and estimated texture reads are not FPS or measured GPU time.",
+    "No native Windows, actual-D3D, TAA, flight appearance, state, Reset, or failure-recovery behavior is verified."
+  ],
+  "provenance_note": "Numerical arrays and images are cached from numeric-report.json and numeric-source.py; finalization changed only bindings and labels.",
+  "result": "failed-prefix-feasibility",
+  "schema": 1,
+  "sources": {
+    "capture_log": "/tmp/x3-bottleX3-run200/session-20260921-014107-212.log",
+    "capture_log_bytes": 481995947,
+    "depth_files": {
+      "aggregate_sha256": "bb087cddf5297a9282b7d0ae0f82d76ace146d6acc1ac0f529e604651a73f934",
+      "count": 64,
+      "endpoint_sha256": {
+        "depth_1_16450.rgba32f": "010c07a6bb779b4a47401667d3212a0a0b2474981790ee3884183a18b12ae0eb",
+        "depth_1_16481.rgba32f": "1150cf6839d40984136f65dcd72b853a80dc02f346ce97ed3ab64182a8d9db1e",
+        "depth_1_43051.rgba32f": "dc7416d3bfa9147b095c48fe4114e1578e4915d0c9634ab8a089f362a98f2cba",
+        "depth_1_43082.rgba32f": "a262319174b3208ba953d91dda3d64c2b0511edad886c75f82efcf07eb90a6ac"
+      }
+    },
+    "distance_replay_sha256": "4e5ac23b07f37d3f567378569e00d2b4687c2d6635fe745b90009ed2a1918b29",
+    "final_report_analysis_sha256": "f19046910cdcafaa030b9d733ae0c5bc7e9b9736b290852796d78180bcf246b2",
+    "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+    "numeric_execution_analysis_sha256": "cea852ac5700ead83ac0ba9edced74ceb944d3b0b0de0ebe590411835231df4b",
+    "numeric_report_sha256": "be739e58646c1ba0843abe08a5144c7b3fd36880ea611c68af98bcbf564ddbc5",
+    "packets": {
+      "bluewell": {
+        "decoded_sha256": "4529497a5e1feda3276b334d6aaef3ba741460e4e4b539aaaf7df74cbfa7261d",
+        "sha256": "fea1a4bf3842b417007af27c6cc25092c3ac8e815660b02bc3ac410953f1f372"
+      },
+      "foggreenoutlands": {
+        "decoded_sha256": "d0342a05fe0e0421c980bb46bec72a765617f9bd043d84d134928a65d3dc0b0c",
+        "sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8"
+      }
+    },
+    "plan_sha256": "7ea01ef0b1d6cf126a4d112fc980426d835f8b1d11379ceffc8351508386d3ed",
+    "selected_capture_metadata_sha256": "99319f340925630006e4ebc11109013d0d72e781b0603041c71e4553a050556d"
+  },
+  "temporal": {
+    "executed": false,
+    "reason": "endpoint-or-law-failure stop rule"
+  },
+  "views": [
+    {
+      "boundary_definition": "four-neighbor holdout-grid sky/geometry transition or valid geometry raw-linear-depth jump >5% of smaller depth",
+      "complete_error": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 0.0019422483164817095,
+              "p99": 0.0008646184724057095
+            },
+            {
+              "count": 9216,
+              "max": 0.008843322284519672,
+              "p99": 0.004113008873537183
+            },
+            {
+              "count": 9216,
+              "max": 0.03288892284035683,
+              "p99": 0.015112143475562369
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.12425994873046875,
+            "p99": 0.05975026488304149
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1022,
+              "max": 0.0014042084803804755,
+              "p99": 0.0008550348709104566
+            },
+            {
+              "count": 1022,
+              "max": 0.006573079153895378,
+              "p99": 0.004368262970820064
+            },
+            {
+              "count": 1022,
+              "max": 0.02297757938504219,
+              "p99": 0.01520139865577219
+            }
+          ],
+          "T": {
+            "count": 1022,
+            "max": 0.11766135692596436,
+            "p99": 0.05117777705192566
+          },
+          "count": 1022
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1222,
+              "max": 0.001260592369362712,
+              "p99": 0.0006395804759813461
+            },
+            {
+              "count": 1222,
+              "max": 0.005485467612743378,
+              "p99": 0.00296410567127168
+            },
+            {
+              "count": 1222,
+              "max": 0.017639128491282463,
+              "p99": 0.010090259946882715
+            }
+          ],
+          "T": {
+            "count": 1222,
+            "max": 0.06606560945510864,
+            "p99": 0.030503648519515925
+          },
+          "count": 1222
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7994,
+              "max": 0.0019422483164817095,
+              "p99": 0.0008840267849154766
+            },
+            {
+              "count": 7994,
+              "max": 0.008843322284519672,
+              "p99": 0.004196261307224629
+            },
+            {
+              "count": 7994,
+              "max": 0.03288892284035683,
+              "p99": 0.015377012249082327
+            }
+          ],
+          "T": {
+            "count": 7994,
+            "max": 0.12425994873046875,
+            "p99": 0.061038204431533793
+          },
+          "count": 7994
+        }
+      },
+      "family": "bluewell",
+      "frame": 16450,
+      "groups": {
+        "all": 9216,
+        "boundary": 1022,
+        "geometry": 1222,
+        "sky": 7994
+      },
+      "images": [
+        "bluewell-16450-prefix-reference-error.png",
+        "bluewell-16450-depth-boundary-mask.png"
+      ],
+      "max_complete_T_diagnostic_witness": {
+        "absolute_T": 0.12425994873046875,
+        "boundary": false,
+        "candidate_S": [
+          0.0017516756197437644,
+          0.008490961976349354,
+          0.0294516459107399
+        ],
+        "candidate_T": 0.8701891303062439,
+        "geometry": false,
+        "holdout_index": 2771,
+        "limit": 200000.0,
+        "pixel": [
+          835,
+          229
+        ],
+        "reference_S": [
+          0.0034256065264344215,
+          0.016920235008001328,
+          0.05752531811594963
+        ],
+        "reference_T": 0.7459291815757751
+      },
+      "max_complete_T_diagnostic_witness_scope": "one maximum complete-T diagnostic only; explicit failed metrics above are authoritative for S, convergence, and group gates",
+      "passed": false,
+      "prefix_128_vs_64": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 1.483946107327938e-06,
+              "p99": 6.998190656304378e-07
+            },
+            {
+              "count": 9216,
+              "max": 8.938834071159363e-06,
+              "p99": 2.7077272534370436e-06
+            },
+            {
+              "count": 9216,
+              "max": 2.8546899557113647e-05,
+              "p99": 9.926874190568935e-06
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 6.693601608276367e-05,
+            "p99": 3.759264945983891e-05
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1022,
+              "max": 1.3194512575864792e-06,
+              "p99": 7.473281584680078e-07
+            },
+            {
+              "count": 1022,
+              "max": 4.034955054521561e-06,
+              "p99": 2.807169221341609e-06
+            },
+            {
+              "count": 1022,
+              "max": 1.4215707778930664e-05,
+              "p99": 9.883791208267211e-06
+            }
+          ],
+          "T": {
+            "count": 1022,
+            "max": 3.6597251892089844e-05,
+            "p99": 3.0059814453124983e-05
+          },
+          "count": 1022
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1222,
+              "max": 1.3194512575864792e-06,
+              "p99": 7.04418634995818e-07
+            },
+            {
+              "count": 1222,
+              "max": 4.034955054521561e-06,
+              "p99": 2.4726870469748975e-06
+            },
+            {
+              "count": 1222,
+              "max": 1.4215707778930664e-05,
+              "p99": 9.215846657752986e-06
+            }
+          ],
+          "T": {
+            "count": 1222,
+            "max": 3.629922866821289e-05,
+            "p99": 2.349376678466796e-05
+          },
+          "count": 1222
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7994,
+              "max": 1.483946107327938e-06,
+              "p99": 6.911146920174357e-07
+            },
+            {
+              "count": 7994,
+              "max": 8.938834071159363e-06,
+              "p99": 2.777595072984694e-06
+            },
+            {
+              "count": 7994,
+              "max": 2.8546899557113647e-05,
+              "p99": 1.0051149874925597e-05
+            }
+          ],
+          "T": {
+            "count": 7994,
+            "max": 6.693601608276367e-05,
+            "p99": 3.844916820526121e-05
+          },
+          "count": 7994
+        }
+      },
+      "rays": 9216,
+      "reconstructed_far_error": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 0.001943604787811637,
+              "p99": 0.0008647347916848961
+            },
+            {
+              "count": 9216,
+              "max": 0.008849497884511948,
+              "p99": 0.004119870299473408
+            },
+            {
+              "count": 9216,
+              "max": 0.03288900479674339,
+              "p99": 0.015162672521546496
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.12478703260421753,
+            "p99": 0.05975026488304149
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1022,
+              "max": 0.0014042084803804755,
+              "p99": 0.0008550348709104566
+            },
+            {
+              "count": 1022,
+              "max": 0.006573079153895378,
+              "p99": 0.004368262970820064
+            },
+            {
+              "count": 1022,
+              "max": 0.022979531437158585,
+              "p99": 0.01520139865577219
+            }
+          ],
+          "T": {
+            "count": 1022,
+            "max": 0.11766135692596436,
+            "p99": 0.05117777705192566
+          },
+          "count": 1022
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1222,
+              "max": 0.001288015628233552,
+              "p99": 0.0006398111721500743
+            },
+            {
+              "count": 1222,
+              "max": 0.0056047989055514336,
+              "p99": 0.002965210943948476
+            },
+            {
+              "count": 1222,
+              "max": 0.01763913780450821,
+              "p99": 0.010090259946882715
+            }
+          ],
+          "T": {
+            "count": 1222,
+            "max": 0.06750279664993286,
+            "p99": 0.03109078466892233
+          },
+          "count": 1222
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7994,
+              "max": 0.001943604787811637,
+              "p99": 0.0008856983855366701
+            },
+            {
+              "count": 7994,
+              "max": 0.008849497884511948,
+              "p99": 0.004196876203641293
+            },
+            {
+              "count": 7994,
+              "max": 0.03288900479674339,
+              "p99": 0.015380178522318592
+            }
+          ],
+          "T": {
+            "count": 7994,
+            "max": 0.12478703260421753,
+            "p99": 0.061210892796516404
+          },
+          "count": 7994
+        }
+      },
+      "reference_128_vs_64_far": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 3.0158553272485733e-06,
+              "p99": 1.1339143384248046e-06
+            },
+            {
+              "count": 9216,
+              "max": 1.3022683560848236e-05,
+              "p99": 4.813983105123044e-06
+            },
+            {
+              "count": 9216,
+              "max": 5.2541494369506836e-05,
+              "p99": 1.644757576286794e-05
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.00012028217315673828,
+            "p99": 6.0439109802246094e-05
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1022,
+              "max": 2.421322278678417e-06,
+              "p99": 1.3494491577148434e-06
+            },
+            {
+              "count": 1022,
+              "max": 8.781440556049347e-06,
+              "p99": 5.4348167032003396e-06
+            },
+            {
+              "count": 1022,
+              "max": 3.160350024700165e-05,
+              "p99": 1.9064713269472097e-05
+            }
+          ],
+          "T": {
+            "count": 1022,
+            "max": 7.88569450378418e-05,
+            "p99": 5.279481410980219e-05
+          },
+          "count": 1022
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1222,
+              "max": 2.421322278678417e-06,
+              "p99": 1.2197141768410801e-06
+            },
+            {
+              "count": 1222,
+              "max": 1.3022683560848236e-05,
+              "p99": 4.755221307277674e-06
+            },
+            {
+              "count": 1222,
+              "max": 5.2541494369506836e-05,
+              "p99": 1.8290551379322997e-05
+            }
+          ],
+          "T": {
+            "count": 1222,
+            "max": 0.00012028217315673828,
+            "p99": 4.666149616241452e-05
+          },
+          "count": 1222
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7994,
+              "max": 3.0158553272485733e-06,
+              "p99": 1.1249922681599848e-06
+            },
+            {
+              "count": 7994,
+              "max": 1.1157244443893433e-05,
+              "p99": 4.830122925341126e-06
+            },
+            {
+              "count": 7994,
+              "max": 3.622472286224365e-05,
+              "p99": 1.6244370490312544e-05
+            }
+          ],
+          "T": {
+            "count": 7994,
+            "max": 0.00011032819747924805,
+            "p99": 6.10768795013426e-05
+          },
+          "count": 7994
+        }
+      },
+      "synthetic_depth_checks": {
+        "patterns": {
+          "fixed_screen_depth_step": {
+            "far_error": {
+              "S_normalized_unit_radiance": [
+                {
+                  "count": 9216,
+                  "max": 0.0016810307279229164,
+                  "p99": 0.0006637036509346221
+                },
+                {
+                  "count": 9216,
+                  "max": 0.008465027436614037,
+                  "p99": 0.003110054263379429
+                },
+                {
+                  "count": 9216,
+                  "max": 0.028192749246954918,
+                  "p99": 0.011000176938250674
+                }
+              ],
+              "T": {
+                "count": 9216,
+                "max": 0.12478703260421753,
+                "p99": 0.05360763669013982
+              },
+              "count": 9216
+            },
+            "near_or_short_far_identity": true
+          },
+          "one_holdout_column_near_object_against_sky": {
+            "far_error": {
+              "S_normalized_unit_radiance": [
+                {
+                  "count": 9216,
+                  "max": 0.002260284498333931,
+                  "p99": 0.0008891880832379691
+                },
+                {
+                  "count": 9216,
+                  "max": 0.011158023029565811,
+                  "p99": 0.004243927635252477
+                },
+                {
+                  "count": 9216,
+                  "max": 0.03793174773454666,
+                  "p99": 0.015800254233181477
+                }
+              ],
+              "T": {
+                "count": 9216,
+                "max": 0.12478703260421753,
+                "p99": 0.061238408088684096
+              },
+              "count": 9216
+            },
+            "near_or_short_far_identity": true
+          }
+        },
+        "radial_cases": 131,
+        "radial_far_error": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 131,
+              "max": 0.00017861528613138944,
+              "p99": 0.00013538452330976713
+            },
+            {
+              "count": 131,
+              "max": 0.000989031046628952,
+              "p99": 0.0007879869663156566
+            },
+            {
+              "count": 131,
+              "max": 0.003778184065595269,
+              "p99": 0.0017872508615255332
+            }
+          ],
+          "T": {
+            "count": 131,
+            "max": 0.01243680715560913,
+            "p99": 0.005854105949401848
+          },
+          "count": 131
+        }
+      }
+    },
+    {
+      "boundary_definition": "four-neighbor holdout-grid sky/geometry transition or valid geometry raw-linear-depth jump >5% of smaller depth",
+      "complete_error": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 0.001432738732546568,
+              "p99": 0.0008728721761144704
+            },
+            {
+              "count": 9216,
+              "max": 0.008016219362616539,
+              "p99": 0.004141320381313565
+            },
+            {
+              "count": 9216,
+              "max": 0.029948800802230835,
+              "p99": 0.014763946644961841
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.11600464582443237,
+            "p99": 0.059696137905120926
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 873,
+              "max": 0.0013105840189382434,
+              "p99": 0.0007956449966877698
+            },
+            {
+              "count": 873,
+              "max": 0.0059996903873980045,
+              "p99": 0.0038187628611922233
+            },
+            {
+              "count": 873,
+              "max": 0.018564043566584587,
+              "p99": 0.013735499829053872
+            }
+          ],
+          "T": {
+            "count": 873,
+            "max": 0.10029435157775879,
+            "p99": 0.05018195867538451
+          },
+          "count": 873
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1038,
+              "max": 0.0010505464160814881,
+              "p99": 0.0005903110356302915
+            },
+            {
+              "count": 1038,
+              "max": 0.005469299852848053,
+              "p99": 0.0026516464934684125
+            },
+            {
+              "count": 1038,
+              "max": 0.01807001233100891,
+              "p99": 0.00847348544746637
+            }
+          ],
+          "T": {
+            "count": 1038,
+            "max": 0.07554394006729126,
+            "p99": 0.031921188235282824
+          },
+          "count": 1038
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 8178,
+              "max": 0.001432738732546568,
+              "p99": 0.0008881121478043496
+            },
+            {
+              "count": 8178,
+              "max": 0.008016219362616539,
+              "p99": 0.004170246133580801
+            },
+            {
+              "count": 8178,
+              "max": 0.029948800802230835,
+              "p99": 0.014985787719488136
+            }
+          ],
+          "T": {
+            "count": 8178,
+            "max": 0.11600464582443237,
+            "p99": 0.06090688705444323
+          },
+          "count": 8178
+        }
+      },
+      "family": "bluewell",
+      "frame": 16481,
+      "groups": {
+        "all": 9216,
+        "boundary": 873,
+        "geometry": 1038,
+        "sky": 8178
+      },
+      "images": [
+        "bluewell-16481-prefix-reference-error.png",
+        "bluewell-16481-depth-boundary-mask.png"
+      ],
+      "max_complete_T_diagnostic_witness": {
+        "absolute_T": 0.11600464582443237,
+        "boundary": false,
+        "candidate_S": [
+          0.0007133891922421753,
+          0.0034225257113575935,
+          0.012686396948993206
+        ],
+        "candidate_T": 0.9208770394325256,
+        "geometry": false,
+        "holdout_index": 6218,
+        "limit": 200000.0,
+        "pixel": [
+          745,
+          517
+        ],
+        "reference_S": [
+          0.002023753011599183,
+          0.009600506164133549,
+          0.031281713396310806
+        ],
+        "reference_T": 0.8048723936080933
+      },
+      "max_complete_T_diagnostic_witness_scope": "one maximum complete-T diagnostic only; explicit failed metrics above are authoritative for S, convergence, and group gates",
+      "passed": false,
+      "prefix_128_vs_64": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 1.2207310646772385e-06,
+              "p99": 6.464775651693349e-07
+            },
+            {
+              "count": 9216,
+              "max": 6.823800504207611e-06,
+              "p99": 2.578808926045896e-06
+            },
+            {
+              "count": 9216,
+              "max": 2.3195520043373108e-05,
+              "p99": 9.30353999137879e-06
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 5.9723854064941406e-05,
+            "p99": 3.55839729309082e-05
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 873,
+              "max": 7.002381607890129e-07,
+              "p99": 5.685212090611457e-07
+            },
+            {
+              "count": 873,
+              "max": 5.068257451057434e-06,
+              "p99": 2.8364732861518833e-06
+            },
+            {
+              "count": 873,
+              "max": 1.4038756489753723e-05,
+              "p99": 1.0036379098892201e-05
+            }
+          ],
+          "T": {
+            "count": 873,
+            "max": 4.9054622650146484e-05,
+            "p99": 2.9115676879882786e-05
+          },
+          "count": 873
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1038,
+              "max": 8.078641258180141e-07,
+              "p99": 5.795381730422367e-07
+            },
+            {
+              "count": 1038,
+              "max": 3.880821168422699e-06,
+              "p99": 2.4462817236781097e-06
+            },
+            {
+              "count": 1038,
+              "max": 1.3420358300209045e-05,
+              "p99": 9.364187717437728e-06
+            }
+          ],
+          "T": {
+            "count": 1038,
+            "max": 3.11732292175293e-05,
+            "p99": 2.2709369659423828e-05
+          },
+          "count": 1038
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 8178,
+              "max": 1.2207310646772385e-06,
+              "p99": 6.61660451442001e-07
+            },
+            {
+              "count": 8178,
+              "max": 6.823800504207611e-06,
+              "p99": 2.600033767521379e-06
+            },
+            {
+              "count": 8178,
+              "max": 2.3195520043373108e-05,
+              "p99": 9.294301271438592e-06
+            }
+          ],
+          "T": {
+            "count": 8178,
+            "max": 5.9723854064941406e-05,
+            "p99": 3.635883331298828e-05
+          },
+          "count": 8178
+        }
+      },
+      "rays": 9216,
+      "reconstructed_far_error": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 0.0014327545650303364,
+              "p99": 0.0008787178259808602
+            },
+            {
+              "count": 9216,
+              "max": 0.008016308769583702,
+              "p99": 0.004154621274210514
+            },
+            {
+              "count": 9216,
+              "max": 0.029949132353067398,
+              "p99": 0.01476395772770048
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.11600464582443237,
+            "p99": 0.05975560545921327
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 873,
+              "max": 0.0013105840189382434,
+              "p99": 0.000795890251174569
+            },
+            {
+              "count": 873,
+              "max": 0.0059996903873980045,
+              "p99": 0.0038206440582871405
+            },
+            {
+              "count": 873,
+              "max": 0.018564090132713318,
+              "p99": 0.013761599510908122
+            }
+          ],
+          "T": {
+            "count": 873,
+            "max": 0.10029435157775879,
+            "p99": 0.050275771617889396
+          },
+          "count": 873
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1038,
+              "max": 0.0010505464160814881,
+              "p99": 0.0005928145116195062
+            },
+            {
+              "count": 1038,
+              "max": 0.005469299852848053,
+              "p99": 0.002662906984332926
+            },
+            {
+              "count": 1038,
+              "max": 0.018070712685585022,
+              "p99": 0.008500279998406765
+            }
+          ],
+          "T": {
+            "count": 1038,
+            "max": 0.07554692029953003,
+            "p99": 0.032055491805076504
+          },
+          "count": 1038
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 8178,
+              "max": 0.0014327545650303364,
+              "p99": 0.000889316247194072
+            },
+            {
+              "count": 8178,
+              "max": 0.008016308769583702,
+              "p99": 0.004202916291542344
+            },
+            {
+              "count": 8178,
+              "max": 0.029949132353067398,
+              "p99": 0.015075510814785956
+            }
+          ],
+          "T": {
+            "count": 8178,
+            "max": 0.11600464582443237,
+            "p99": 0.06114479064941406
+          },
+          "count": 8178
+        }
+      },
+      "reference_128_vs_64_far": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 2.562650479376316e-06,
+              "p99": 1.0798714356496936e-06
+            },
+            {
+              "count": 9216,
+              "max": 1.021847128868103e-05,
+              "p99": 4.755216650664809e-06
+            },
+            {
+              "count": 9216,
+              "max": 3.571063280105591e-05,
+              "p99": 1.7054658383131054e-05
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.00011736154556274414,
+            "p99": 6.122887134552013e-05
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 873,
+              "max": 2.562650479376316e-06,
+              "p99": 1.2986315414309472e-06
+            },
+            {
+              "count": 873,
+              "max": 1.021847128868103e-05,
+              "p99": 5.402602255344389e-06
+            },
+            {
+              "count": 873,
+              "max": 3.4106895327568054e-05,
+              "p99": 1.8909871578216546e-05
+            }
+          ],
+          "T": {
+            "count": 873,
+            "max": 8.26120376586914e-05,
+            "p99": 5.723476409912108e-05
+          },
+          "count": 873
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1038,
+              "max": 2.562650479376316e-06,
+              "p99": 1.264770980924367e-06
+            },
+            {
+              "count": 1038,
+              "max": 1.021847128868103e-05,
+              "p99": 5.137654952704902e-06
+            },
+            {
+              "count": 1038,
+              "max": 3.4106895327568054e-05,
+              "p99": 1.819098833948372e-05
+            }
+          ],
+          "T": {
+            "count": 1038,
+            "max": 8.26120376586914e-05,
+            "p99": 4.506587982177723e-05
+          },
+          "count": 1038
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 8178,
+              "max": 2.467771992087364e-06,
+              "p99": 1.0708498302847141e-06
+            },
+            {
+              "count": 8178,
+              "max": 9.953975677490234e-06,
+              "p99": 4.7088367864489545e-06
+            },
+            {
+              "count": 8178,
+              "max": 3.571063280105591e-05,
+              "p99": 1.670390367507934e-05
+            }
+          ],
+          "T": {
+            "count": 8178,
+            "max": 0.00011736154556274414,
+            "p99": 6.211698055267321e-05
+          },
+          "count": 8178
+        }
+      },
+      "synthetic_depth_checks": {
+        "patterns": {
+          "fixed_screen_depth_step": {
+            "far_error": {
+              "S_normalized_unit_radiance": [
+                {
+                  "count": 9216,
+                  "max": 0.0013103638775646687,
+                  "p99": 0.0006517128203995528
+                },
+                {
+                  "count": 9216,
+                  "max": 0.006177980452775955,
+                  "p99": 0.003124068409670145
+                },
+                {
+                  "count": 9216,
+                  "max": 0.021147577092051506,
+                  "p99": 0.011002005124464639
+                }
+              ],
+              "T": {
+                "count": 9216,
+                "max": 0.11600464582443237,
+                "p99": 0.055375161767005944
+              },
+              "count": 9216
+            },
+            "near_or_short_far_identity": true
+          },
+          "one_holdout_column_near_object_against_sky": {
+            "far_error": {
+              "S_normalized_unit_radiance": [
+                {
+                  "count": 9216,
+                  "max": 0.0014327545650303364,
+                  "p99": 0.0008949337963713339
+                },
+                {
+                  "count": 9216,
+                  "max": 0.008016308769583702,
+                  "p99": 0.00416789702139795
+                },
+                {
+                  "count": 9216,
+                  "max": 0.029949132353067398,
+                  "p99": 0.015091560874134309
+                }
+              ],
+              "T": {
+                "count": 9216,
+                "max": 0.11600464582443237,
+                "p99": 0.061149668693542485
+              },
+              "count": 9216
+            },
+            "near_or_short_far_identity": true
+          }
+        },
+        "radial_cases": 131,
+        "radial_far_error": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 131,
+              "max": 0.0002350477734580636,
+              "p99": 0.0002350477734580636
+            },
+            {
+              "count": 131,
+              "max": 0.0009948497172445059,
+              "p99": 0.0009948497172445059
+            },
+            {
+              "count": 131,
+              "max": 0.003428348572924733,
+              "p99": 0.0032263388857245437
+            }
+          ],
+          "T": {
+            "count": 131,
+            "max": 0.011792600154876709,
+            "p99": 0.011129719018936154
+          },
+          "count": 131
+        }
+      }
+    },
+    {
+      "boundary_definition": "four-neighbor holdout-grid sky/geometry transition or valid geometry raw-linear-depth jump >5% of smaller depth",
+      "complete_error": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 0.02769572287797928,
+              "p99": 0.014561090059578433
+            },
+            {
+              "count": 9216,
+              "max": 0.11081026494503021,
+              "p99": 0.05738185271620751
+            },
+            {
+              "count": 9216,
+              "max": 0.020962310954928398,
+              "p99": 0.01139728054404259
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.206792414188385,
+            "p99": 0.1271622791886331
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1590,
+              "max": 0.027434391900897026,
+              "p99": 0.01755221603438258
+            },
+            {
+              "count": 1590,
+              "max": 0.09099076688289642,
+              "p99": 0.0640944068133829
+            },
+            {
+              "count": 1590,
+              "max": 0.01996086910367012,
+              "p99": 0.013628054587170476
+            }
+          ],
+          "T": {
+            "count": 1590,
+            "max": 0.17793339490890503,
+            "p99": 0.12691162407398215
+          },
+          "count": 1590
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1352,
+              "max": 0.0005861533572897315,
+              "p99": 2.220084657892586e-05
+            },
+            {
+              "count": 1352,
+              "max": 0.002878874074667692,
+              "p99": 0.00016443666070699707
+            },
+            {
+              "count": 1352,
+              "max": 0.0003863105666823685,
+              "p99": 1.3232327182777256e-05
+            }
+          ],
+          "T": {
+            "count": 1352,
+            "max": 0.007321357727050781,
+            "p99": 0.0004868334531784062
+          },
+          "count": 1352
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7864,
+              "max": 0.02769572287797928,
+              "p99": 0.015060072448104617
+            },
+            {
+              "count": 7864,
+              "max": 0.11081026494503021,
+              "p99": 0.05983069792389868
+            },
+            {
+              "count": 7864,
+              "max": 0.020962310954928398,
+              "p99": 0.011998967472463845
+            }
+          ],
+          "T": {
+            "count": 7864,
+            "max": 0.206792414188385,
+            "p99": 0.13040811598300933
+          },
+          "count": 7864
+        }
+      },
+      "family": "foggreenoutlands",
+      "frame": 43051,
+      "groups": {
+        "all": 9216,
+        "boundary": 1590,
+        "geometry": 1352,
+        "sky": 7864
+      },
+      "images": [
+        "foggreenoutlands-43051-prefix-reference-error.png",
+        "foggreenoutlands-43051-depth-boundary-mask.png"
+      ],
+      "max_complete_T_diagnostic_witness": {
+        "absolute_T": 0.206792414188385,
+        "boundary": false,
+        "candidate_S": [
+          0.037312399595975876,
+          0.1564539670944214,
+          0.024466780945658684
+        ],
+        "candidate_T": 0.7079460024833679,
+        "geometry": false,
+        "holdout_index": 4777,
+        "limit": 200000.0,
+        "pixel": [
+          415,
+          400
+        ],
+        "reference_S": [
+          0.009616677649319172,
+          0.045643702149391174,
+          0.005839363671839237
+        ],
+        "reference_T": 0.9147384166717529
+      },
+      "max_complete_T_diagnostic_witness_scope": "one maximum complete-T diagnostic only; explicit failed metrics above are authoritative for S, convergence, and group gates",
+      "passed": false,
+      "prefix_128_vs_64": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 2.2798776626586914e-05,
+              "p99": 1.0282266885042194e-05
+            },
+            {
+              "count": 9216,
+              "max": 8.949637413024902e-05,
+              "p99": 3.817006945610048e-05
+            },
+            {
+              "count": 9216,
+              "max": 1.8309801816940308e-05,
+              "p99": 7.844530045986196e-06
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.00014841556549072266,
+            "p99": 8.282363414764411e-05
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1590,
+              "max": 2.2798776626586914e-05,
+              "p99": 1.3637058436870538e-05
+            },
+            {
+              "count": 1590,
+              "max": 6.276369094848633e-05,
+              "p99": 4.576265811920162e-05
+            },
+            {
+              "count": 1590,
+              "max": 1.800432801246643e-05,
+              "p99": 1.035289838910102e-05
+            }
+          ],
+          "T": {
+            "count": 1590,
+            "max": 9.5367431640625e-05,
+            "p99": 7.567107677459714e-05
+          },
+          "count": 1590
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1352,
+              "max": 3.6350684240460396e-07,
+              "p99": 7.900389391579667e-09
+            },
+            {
+              "count": 1352,
+              "max": 8.712522685527802e-07,
+              "p99": 3.568544343579563e-08
+            },
+            {
+              "count": 1352,
+              "max": 2.9199873097240925e-07,
+              "p99": 6.181171556818312e-09
+            }
+          ],
+          "T": {
+            "count": 1352,
+            "max": 2.384185791015625e-06,
+            "p99": 8.881092071533257e-08
+          },
+          "count": 1352
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7864,
+              "max": 2.2798776626586914e-05,
+              "p99": 1.1012386530637725e-05
+            },
+            {
+              "count": 7864,
+              "max": 8.949637413024902e-05,
+              "p99": 4.032030701637267e-05
+            },
+            {
+              "count": 7864,
+              "max": 1.8309801816940308e-05,
+              "p99": 8.416809141635894e-06
+            }
+          ],
+          "T": {
+            "count": 7864,
+            "max": 0.00014841556549072266,
+            "p99": 8.593440055847167e-05
+          },
+          "count": 7864
+        }
+      },
+      "rays": 9216,
+      "reconstructed_far_error": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 0.028619615361094475,
+              "p99": 0.014994695689529184
+            },
+            {
+              "count": 9216,
+              "max": 0.11126229166984558,
+              "p99": 0.059134183451533505
+            },
+            {
+              "count": 9216,
+              "max": 0.022612370550632477,
+              "p99": 0.011617676448077003
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.20763593912124634,
+            "p99": 0.13077324032783513
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1590,
+              "max": 0.02757885679602623,
+              "p99": 0.017636869568377726
+            },
+            {
+              "count": 1590,
+              "max": 0.091469906270504,
+              "p99": 0.06444763362407666
+            },
+            {
+              "count": 1590,
+              "max": 0.020065978169441223,
+              "p99": 0.013703539809212077
+            }
+          ],
+          "T": {
+            "count": 1590,
+            "max": 0.17887037992477417,
+            "p99": 0.1286926555633545
+          },
+          "count": 1590
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1352,
+              "max": 0.0005952731007710099,
+              "p99": 2.3537085544376184e-05
+            },
+            {
+              "count": 1352,
+              "max": 0.0029236646369099617,
+              "p99": 0.00017621566876187004
+            },
+            {
+              "count": 1352,
+              "max": 0.00039360279333777726,
+              "p99": 1.3863997155567658e-05
+            }
+          ],
+          "T": {
+            "count": 1352,
+            "max": 0.007435262203216553,
+            "p99": 0.0005216902494430546
+          },
+          "count": 1352
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7864,
+              "max": 0.028619615361094475,
+              "p99": 0.015403846576809882
+            },
+            {
+              "count": 7864,
+              "max": 0.11126229166984558,
+              "p99": 0.06101946815848349
+            },
+            {
+              "count": 7864,
+              "max": 0.022612370550632477,
+              "p99": 0.012169418474659315
+            }
+          ],
+          "T": {
+            "count": 7864,
+            "max": 0.20763593912124634,
+            "p99": 0.13486780345439908
+          },
+          "count": 7864
+        }
+      },
+      "reference_128_vs_64_far": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 2.956390380859375e-05,
+              "p99": 1.6108900308609025e-05
+            },
+            {
+              "count": 9216,
+              "max": 0.00010670721530914307,
+              "p99": 5.779527127742778e-05
+            },
+            {
+              "count": 9216,
+              "max": 2.705492079257965e-05,
+              "p99": 1.232563517987731e-05
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.00020992755889892578,
+            "p99": 0.0001256525516510011
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1590,
+              "max": 2.956390380859375e-05,
+              "p99": 2.018854022026058e-05
+            },
+            {
+              "count": 1590,
+              "max": 0.00010670721530914307,
+              "p99": 6.024569272994983e-05
+            },
+            {
+              "count": 1590,
+              "max": 2.705492079257965e-05,
+              "p99": 1.5525165945291465e-05
+            }
+          ],
+          "T": {
+            "count": 1590,
+            "max": 0.00019657611846923828,
+            "p99": 0.00010808765888214093
+          },
+          "count": 1590
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1352,
+              "max": 0.0,
+              "p99": 0.0
+            },
+            {
+              "count": 1352,
+              "max": 0.0,
+              "p99": 0.0
+            },
+            {
+              "count": 1352,
+              "max": 0.0,
+              "p99": 0.0
+            }
+          ],
+          "T": {
+            "count": 1352,
+            "max": 0.0,
+            "p99": 0.0
+          },
+          "count": 1352
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7864,
+              "max": 2.956390380859375e-05,
+              "p99": 1.678034663200378e-05
+            },
+            {
+              "count": 7864,
+              "max": 0.00010670721530914307,
+              "p99": 6.1031281948089596e-05
+            },
+            {
+              "count": 7864,
+              "max": 2.705492079257965e-05,
+              "p99": 1.2614727020263671e-05
+            }
+          ],
+          "T": {
+            "count": 7864,
+            "max": 0.00020992755889892578,
+            "p99": 0.00013021171092987056
+          },
+          "count": 7864
+        }
+      },
+      "synthetic_depth_checks": {
+        "patterns": {
+          "fixed_screen_depth_step": {
+            "far_error": {
+              "S_normalized_unit_radiance": [
+                {
+                  "count": 9216,
+                  "max": 0.019342631101608276,
+                  "p99": 0.008450645906850697
+                },
+                {
+                  "count": 9216,
+                  "max": 0.06771937012672424,
+                  "p99": 0.034783620759844855
+                },
+                {
+                  "count": 9216,
+                  "max": 0.01495867595076561,
+                  "p99": 0.006577652506530288
+                }
+              ],
+              "T": {
+                "count": 9216,
+                "max": 0.21275237202644348,
+                "p99": 0.12120295166969301
+              },
+              "count": 9216
+            },
+            "near_or_short_far_identity": true
+          },
+          "one_holdout_column_near_object_against_sky": {
+            "far_error": {
+              "S_normalized_unit_radiance": [
+                {
+                  "count": 9216,
+                  "max": 0.028619615361094475,
+                  "p99": 0.01585425324738028
+                },
+                {
+                  "count": 9216,
+                  "max": 0.11126229166984558,
+                  "p99": 0.06219186112284662
+                },
+                {
+                  "count": 9216,
+                  "max": 0.022612370550632477,
+                  "p99": 0.01249974295496942
+                }
+              ],
+              "T": {
+                "count": 9216,
+                "max": 0.21275237202644348,
+                "p99": 0.13614451885223394
+              },
+              "count": 9216
+            },
+            "near_or_short_far_identity": true
+          }
+        },
+        "radial_cases": 131,
+        "radial_far_error": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 131,
+              "max": 0.0074221305549144745,
+              "p99": 0.007421433553099632
+            },
+            {
+              "count": 131,
+              "max": 0.05408966541290283,
+              "p99": 0.05394269376993179
+            },
+            {
+              "count": 131,
+              "max": 0.004324818029999733,
+              "p99": 0.0027978547848761075
+            }
+          ],
+          "T": {
+            "count": 131,
+            "max": 0.08428823947906494,
+            "p99": 0.08402333855628967
+          },
+          "count": 131
+        }
+      }
+    },
+    {
+      "boundary_definition": "four-neighbor holdout-grid sky/geometry transition or valid geometry raw-linear-depth jump >5% of smaller depth",
+      "complete_error": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 0.027054263278841972,
+              "p99": 0.01461188551038504
+            },
+            {
+              "count": 9216,
+              "max": 0.10860317945480347,
+              "p99": 0.057077297568321236
+            },
+            {
+              "count": 9216,
+              "max": 0.02227374166250229,
+              "p99": 0.011357880383729937
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.20266103744506836,
+            "p99": 0.12745541036129
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1603,
+              "max": 0.025556812062859535,
+              "p99": 0.0166466848179698
+            },
+            {
+              "count": 1603,
+              "max": 0.10860317945480347,
+              "p99": 0.06480578899383545
+            },
+            {
+              "count": 1603,
+              "max": 0.02227374166250229,
+              "p99": 0.013901821114122874
+            }
+          ],
+          "T": {
+            "count": 1603,
+            "max": 0.20266103744506836,
+            "p99": 0.13057722806930547
+          },
+          "count": 1603
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1383,
+              "max": 0.0004736885894089937,
+              "p99": 2.2586048580706376e-05
+            },
+            {
+              "count": 1383,
+              "max": 0.0021874718368053436,
+              "p99": 0.00016096945852041246
+            },
+            {
+              "count": 1383,
+              "max": 0.00033809104934334755,
+              "p99": 1.1588756460696622e-05
+            }
+          ],
+          "T": {
+            "count": 1383,
+            "max": 0.005659639835357666,
+            "p99": 0.00047617912292480474
+          },
+          "count": 1383
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7833,
+              "max": 0.027054263278841972,
+              "p99": 0.01499907456338406
+            },
+            {
+              "count": 7833,
+              "max": 0.10860317945480347,
+              "p99": 0.058574498891830445
+            },
+            {
+              "count": 7833,
+              "max": 0.02227374166250229,
+              "p99": 0.011769566088914878
+            }
+          ],
+          "T": {
+            "count": 7833,
+            "max": 0.20266103744506836,
+            "p99": 0.13207707643508915
+          },
+          "count": 7833
+        }
+      },
+      "family": "foggreenoutlands",
+      "frame": 43082,
+      "groups": {
+        "all": 9216,
+        "boundary": 1603,
+        "geometry": 1383,
+        "sky": 7833
+      },
+      "images": [
+        "foggreenoutlands-43082-prefix-reference-error.png",
+        "foggreenoutlands-43082-depth-boundary-mask.png"
+      ],
+      "max_complete_T_diagnostic_witness": {
+        "absolute_T": 0.20266103744506836,
+        "boundary": true,
+        "candidate_S": [
+          0.035140641033649445,
+          0.1536012887954712,
+          0.02252127043902874
+        ],
+        "candidate_T": 0.7133453488349915,
+        "geometry": false,
+        "holdout_index": 4777,
+        "limit": 200000.0,
+        "pixel": [
+          415,
+          400
+        ],
+        "reference_S": [
+          0.00958382897078991,
+          0.044998105615377426,
+          0.005822477862238884
+        ],
+        "reference_T": 0.9160063862800598
+      },
+      "max_complete_T_diagnostic_witness_scope": "one maximum complete-T diagnostic only; explicit failed metrics above are authoritative for S, convergence, and group gates",
+      "passed": false,
+      "prefix_128_vs_64": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 2.3461878299713135e-05,
+              "p99": 1.0456331074237825e-05
+            },
+            {
+              "count": 9216,
+              "max": 8.04513692855835e-05,
+              "p99": 3.8092583417892516e-05
+            },
+            {
+              "count": 9216,
+              "max": 1.7989426851272583e-05,
+              "p99": 7.9053919762373e-06
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.00015878677368164062,
+            "p99": 7.888972759246833e-05
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1603,
+              "max": 2.3461878299713135e-05,
+              "p99": 1.4483630657196049e-05
+            },
+            {
+              "count": 1603,
+              "max": 8.04513692855835e-05,
+              "p99": 4.787683486938478e-05
+            },
+            {
+              "count": 1603,
+              "max": 1.7989426851272583e-05,
+              "p99": 1.1148042976856234e-05
+            }
+          ],
+          "T": {
+            "count": 1603,
+            "max": 0.00015878677368164062,
+            "p99": 8.213162422180176e-05
+          },
+          "count": 1603
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1383,
+              "max": 1.7449201550334692e-07,
+              "p99": 8.711176633369188e-09
+            },
+            {
+              "count": 1383,
+              "max": 4.6048080548644066e-07,
+              "p99": 3.590947017073682e-08
+            },
+            {
+              "count": 1383,
+              "max": 1.318767317570746e-07,
+              "p99": 6.352693162625674e-09
+            }
+          ],
+          "T": {
+            "count": 1383,
+            "max": 1.2516975402832031e-06,
+            "p99": 1.1920928955078125e-07
+          },
+          "count": 1383
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7833,
+              "max": 2.3461878299713135e-05,
+              "p99": 1.0710358619689945e-05
+            },
+            {
+              "count": 7833,
+              "max": 8.04513692855835e-05,
+              "p99": 3.9063692092895514e-05
+            },
+            {
+              "count": 7833,
+              "max": 1.7989426851272583e-05,
+              "p99": 8.097663521766665e-06
+            }
+          ],
+          "T": {
+            "count": 7833,
+            "max": 0.00015878677368164062,
+            "p99": 8.156776428222675e-05
+          },
+          "count": 7833
+        }
+      },
+      "rays": 9216,
+      "reconstructed_far_error": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 0.02851715125143528,
+              "p99": 0.014891976304352295
+            },
+            {
+              "count": 9216,
+              "max": 0.10908237099647522,
+              "p99": 0.057880732044577596
+            },
+            {
+              "count": 9216,
+              "max": 0.022330645471811295,
+              "p99": 0.011549878912046563
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.20355522632598877,
+            "p99": 0.13243513852357874
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1603,
+              "max": 0.02566957287490368,
+              "p99": 0.01688669301569462
+            },
+            {
+              "count": 1603,
+              "max": 0.10908237099647522,
+              "p99": 0.06537129729986191
+            },
+            {
+              "count": 1603,
+              "max": 0.022315429523587227,
+              "p99": 0.01391248486936093
+            }
+          ],
+          "T": {
+            "count": 1603,
+            "max": 0.20355522632598877,
+            "p99": 0.13093228220939637
+          },
+          "count": 1603
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1383,
+              "max": 0.00048233309644274414,
+              "p99": 2.4182205816032616e-05
+            },
+            {
+              "count": 1383,
+              "max": 0.00223161350004375,
+              "p99": 0.00017248722608201208
+            },
+            {
+              "count": 1383,
+              "max": 0.00034426103229634464,
+              "p99": 1.2406761943566542e-05
+            }
+          ],
+          "T": {
+            "count": 1383,
+            "max": 0.0057738423347473145,
+            "p99": 0.000510404109954834
+          },
+          "count": 1383
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7833,
+              "max": 0.02851715125143528,
+              "p99": 0.01529025517404082
+            },
+            {
+              "count": 7833,
+              "max": 0.10908237099647522,
+              "p99": 0.05932010233402261
+            },
+            {
+              "count": 7833,
+              "max": 0.022330645471811295,
+              "p99": 0.011911895722150805
+            }
+          ],
+          "T": {
+            "count": 7833,
+            "max": 0.20355522632598877,
+            "p99": 0.13722086906433106
+          },
+          "count": 7833
+        }
+      },
+      "reference_128_vs_64_far": {
+        "all": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 9216,
+              "max": 3.993511199951172e-05,
+              "p99": 1.5236809849739083e-05
+            },
+            {
+              "count": 9216,
+              "max": 0.00011579692363739014,
+              "p99": 5.690455436706547e-05
+            },
+            {
+              "count": 9216,
+              "max": 3.30805778503418e-05,
+              "p99": 1.1964514851570132e-05
+            }
+          ],
+          "T": {
+            "count": 9216,
+            "max": 0.00021207332611083984,
+            "p99": 0.0001260459423065186
+          },
+          "count": 9216
+        },
+        "boundary": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1603,
+              "max": 3.837794065475464e-05,
+              "p99": 1.750230789184571e-05
+            },
+            {
+              "count": 1603,
+              "max": 0.00010795891284942627,
+              "p99": 6.807327270507813e-05
+            },
+            {
+              "count": 1603,
+              "max": 3.27620655298233e-05,
+              "p99": 1.3319626450538637e-05
+            }
+          ],
+          "T": {
+            "count": 1603,
+            "max": 0.00017398595809936523,
+            "p99": 0.00011514902114868165
+          },
+          "count": 1603
+        },
+        "geometry": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 1383,
+              "max": 0.0,
+              "p99": 0.0
+            },
+            {
+              "count": 1383,
+              "max": 0.0,
+              "p99": 0.0
+            },
+            {
+              "count": 1383,
+              "max": 0.0,
+              "p99": 0.0
+            }
+          ],
+          "T": {
+            "count": 1383,
+            "max": 0.0,
+            "p99": 0.0
+          },
+          "count": 1383
+        },
+        "sky": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 7833,
+              "max": 3.993511199951172e-05,
+              "p99": 1.624733209609987e-05
+            },
+            {
+              "count": 7833,
+              "max": 0.00011579692363739014,
+              "p99": 5.8147907257080156e-05
+            },
+            {
+              "count": 7833,
+              "max": 3.30805778503418e-05,
+              "p99": 1.2413263320922865e-05
+            }
+          ],
+          "T": {
+            "count": 7833,
+            "max": 0.00021207332611083984,
+            "p99": 0.0001295614242553711
+          },
+          "count": 7833
+        }
+      },
+      "synthetic_depth_checks": {
+        "patterns": {
+          "fixed_screen_depth_step": {
+            "far_error": {
+              "S_normalized_unit_radiance": [
+                {
+                  "count": 9216,
+                  "max": 0.018478160724043846,
+                  "p99": 0.008595038671046502
+                },
+                {
+                  "count": 9216,
+                  "max": 0.07182034105062485,
+                  "p99": 0.03432582039386037
+                },
+                {
+                  "count": 9216,
+                  "max": 0.01443457044661045,
+                  "p99": 0.006588309607468555
+                }
+              ],
+              "T": {
+                "count": 9216,
+                "max": 0.22546225786209106,
+                "p99": 0.11898510754108453
+              },
+              "count": 9216
+            },
+            "near_or_short_far_identity": true
+          },
+          "one_holdout_column_near_object_against_sky": {
+            "far_error": {
+              "S_normalized_unit_radiance": [
+                {
+                  "count": 9216,
+                  "max": 0.02851715125143528,
+                  "p99": 0.015705701150000115
+                },
+                {
+                  "count": 9216,
+                  "max": 0.10908237099647522,
+                  "p99": 0.06220954619348051
+                },
+                {
+                  "count": 9216,
+                  "max": 0.022330645471811295,
+                  "p99": 0.012349673453718426
+                }
+              ],
+              "T": {
+                "count": 9216,
+                "max": 0.22546225786209106,
+                "p99": 0.13783979117870332
+              },
+              "count": 9216
+            },
+            "near_or_short_far_identity": true
+          }
+        },
+        "radial_cases": 131,
+        "radial_far_error": {
+          "S_normalized_unit_radiance": [
+            {
+              "count": 131,
+              "max": 0.006835680454969406,
+              "p99": 0.006834979727864265
+            },
+            {
+              "count": 131,
+              "max": 0.05284076929092407,
+              "p99": 0.05268581956624985
+            },
+            {
+              "count": 131,
+              "max": 0.004883488640189171,
+              "p99": 0.0030247463379055256
+            }
+          ],
+          "T": {
+            "count": 131,
+            "max": 0.08235907554626465,
+            "p99": 0.0820839524269104
+          },
+          "count": 131
+        }
+      }
+    }
+  ]
+}
