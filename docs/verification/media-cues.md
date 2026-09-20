@@ -1020,3 +1020,30 @@ unchanged Stop, using public interfaces and retained/released COM references.
 It is separately labeled and cannot qualify normal construction or playback.
 Pre-seek decommit/recommit, flush/epoch correctness, loops, game lifetime/Reset,
 performance and native Windows execution remain open.
+
+### Selected allocator Decommit unblocks terminal cleanup (2026-09-20)
+
+A separately labeled constructor diagnostic retains the selected sink input and
+allocator through public COM interfaces, then calls Decommit before the unchanged
+graph Stop and stream Stop. The original media fixture now returns all 347 calls
+and cleans up in **6.931640 seconds**: Decommit 3.158 ms, graph Stop 9.392 ms,
+stream Stop 2.386 ms. Both retained references are released. The trace observes
+33 renewed GetBuffer entries on the same streaming thread after Decommit, followed
+by Stop/flush completion. This establishes a sufficient terminal intervention in
+this fixture, not exact internal lock ownership or GetBuffer return values.
+
+The original result was rejected by a parser defect: pinned LAV's runtime-only
+software and thread-count setters apply their values, then return S_FALSE when
+SaveSettings skips registry persistence. Only these two setters now accept
+S_OK/S_FALSE. All other gates remain unchanged; 91 host tests and independent
+source/runtime review pass. Host-only reanalysis accepts the terminal diagnostic
+using the unchanged executable and raw logs; the original rejected result and all
+three hanging ordinary-constructor controls remain preserved. The
+[compact terminal record](../../verification/results/media-lav-terminal-decommit-2026-09-20.json)
+binds the source, executable, parser, commands and original/reanalysis hashes.
+
+Ordinary constructor acceptance, playback and content flags remain false.
+This does not establish a safe seek/decommit/recommit protocol, initial-zero seek,
+loop handling, game integration or native Windows behavior. The next step is a
+bounded transport design using the selected allocator and sample lifecycle.
+No production decoder or installed DLL changed.
