@@ -1,0 +1,248 @@
+{
+  "date": "2026-09-20",
+  "feature": "canonical media Services coordinator",
+  "state": "implemented and connected-state qualified; root installation/admission/actual connected runtime pending",
+  "source": {
+    "checkout": "/tmp/x3-media-services-integration",
+    "original_base": "60eae6c1",
+    "integrated_consumer_base": "71c1d154b7ef9baf400e8fe20eba53ec7a29d5e0",
+    "frozen_files": [
+      {
+        "path": "src/proxy/media_services.h",
+        "sha256": "a8b80c8901c6b736b4af2b2e4bc4e3a7fb59f550db530f866b6701a4df07984e"
+      },
+      {
+        "path": "src/proxy/media_services.cpp",
+        "sha256": "88b43e4cce824ae89e16767be9a2f1d0f4db93c7abbc37b91c355106e0827071"
+      },
+      {
+        "path": "verification/probe/media_services_fixture.cpp",
+        "sha256": "eebfd02ca399986fa90bdad3060da325911922c086a56ad88f472e835309defd"
+      },
+      {
+        "path": "verification/analysis/test_media_services.py",
+        "sha256": "4941a4280488dd87b9020eb39e8bb490afb275128c7667ec4f80c6fb144ef732"
+      }
+    ],
+    "freeze": "Captured after the final unchanged-source host, sanitizer and x86 object runs; independently matched by reviewer. Four files remain unchanged during documentation."
+  },
+  "overlay": {
+    "authorization": "Root explicitly permitted focused tests against named sibling canonical checkouts while their independent changes completed review. No dependency source copied or edited.",
+    "implementation": "verification/analysis/test_media_services.py::overlay",
+    "precedence": [
+      "services checkout committed/in-progress files",
+      "/tmp/x3-media-destination-integration missing files",
+      "/tmp/x3-media-worker-sample missing files",
+      "reviewed /tmp/x3-media-clock-bound/src/media/owned_clock/clock.h override when integrated setter absent"
+    ],
+    "paths_sha256_documentation_time": [
+      {
+        "path": "/tmp/x3-media-worker-sample/src/media/lav_worker.h",
+        "sha256": "11ba31ee99621d37a07a0a1f27d39e0160c91dc99c2484477fe0a6587e3c920b"
+      },
+      {
+        "path": "/tmp/x3-media-clock-bound/src/media/owned_clock/clock.h",
+        "sha256": "62e3368cd9777980a89e1805f6d5aeb7d142026500332d8e529c452b18a5e1d8"
+      },
+      {
+        "path": "/tmp/x3-media-worker-sample/src/media/owned_clock/exact_time.h",
+        "sha256": "53aeb725c5b4c5eb93c23ae7bc8dabb97b323364b1c2bcfdb136bb10397414de"
+      },
+      {
+        "path": "/tmp/x3-media-destination-integration/src/proxy/media_destination.h",
+        "sha256": "b559e96164f35b846a2785eec85250cc85a0a432858449ae6bfac36f5c3fa131"
+      },
+      {
+        "path": "/tmp/x3-media-destination-integration/src/proxy/media_destination.cpp",
+        "sha256": "2f476c46e98f5699da94287ccdc62d442f34dc11872521d2aa59330540b1d00c"
+      },
+      {
+        "path": "/tmp/x3-media-destination-integration/src/proxy/media_destination_state.h",
+        "sha256": "2532a2d885359a74df85d588c0e72845740fe546204b890946b4e1081270d985"
+      },
+      {
+        "path": "/tmp/x3-media-destination-integration/src/proxy/media_destination_sites.h",
+        "sha256": "ed7aebe6557e587eb2a183bb457df5ae5c658329eeb39a02d55e8c33e42b86af"
+      },
+      {
+        "path": "/tmp/x3-media-destination-integration/src/proxy/media_destination_stubs_inc.h",
+        "sha256": "0765db257c402cc25e52fe37d9680e3042db37f41190569e5505bd587d21458f"
+      }
+    ],
+    "hash_limit": "Sibling dependency hashes were first captured during documentation, not at compilation. They identify the current interface/source provenance only; they do not establish exact historical mutable-overlay compiler input binding. Root integrated acceptance must retain that binding."
+  },
+  "commands": {
+    "cwd": "/tmp/x3-media-services-integration",
+    "host_entry": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_services",
+    "host_compile_argv": [
+      "/usr/bin/c++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pthread",
+      "-I",
+      "<overlay>/src/proxy",
+      "-I",
+      "<overlay>/src/media",
+      "-I",
+      "<overlay>/verification/probe",
+      "<overlay>/src/proxy/media_services.cpp",
+      "<overlay>/src/proxy/media_playback.cpp",
+      "<overlay>/src/media/playback_runtime.cpp",
+      "<overlay>/src/proxy/media_startup.cpp",
+      "<overlay>/src/proxy/media_presentation_gate.cpp",
+      "<overlay>/src/proxy/media_destination.cpp",
+      "<overlay>/verification/probe/media_services_fixture.cpp",
+      "-o",
+      "<overlay>/fixture"
+    ],
+    "sanitizer_compile_argv": [
+      "/usr/bin/c++",
+      "-std=c++17",
+      "-O1",
+      "-g",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pthread",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "-I",
+      "<overlay>/src/proxy",
+      "-I",
+      "<overlay>/src/media",
+      "-I",
+      "<overlay>/verification/probe",
+      "<overlay>/src/proxy/media_services.cpp",
+      "<overlay>/src/proxy/media_playback.cpp",
+      "<overlay>/src/media/playback_runtime.cpp",
+      "<overlay>/src/proxy/media_startup.cpp",
+      "<overlay>/src/proxy/media_presentation_gate.cpp",
+      "<overlay>/src/proxy/media_destination.cpp",
+      "<overlay>/verification/probe/media_services_fixture.cpp",
+      "-o",
+      "<overlay>/fixture"
+    ],
+    "x86_compile_argv": [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-DWIN32_LEAN_AND_MEAN",
+      "-DNOMINMAX",
+      "-I",
+      "<overlay>/src/proxy",
+      "-I",
+      "<overlay>/src/media",
+      "-I",
+      "<overlay>/verification/probe",
+      "-c",
+      "<overlay>/src/proxy/media_services.cpp",
+      "-o",
+      "<overlay>/media_services.o"
+    ],
+    "execute_host_and_sanitizer_argv": [
+      "<overlay>/fixture"
+    ],
+    "placeholder": "<overlay> is the actual random TemporaryDirectory Path supplied to overlay(); the expanded random basename was not retained. Host prefix x3-services-; final sanitizer/object prefix x3-services-final-. Argv above preserves the exact recorded compiler inputs/flags with that directory normalized.",
+    "final_sanitizer_x86_driver": "PYTHONPATH=verification/probe python3 - <<'PY'\nfrom pathlib import Path\nimport tempfile,subprocess,shutil\nfrom verification.analysis.test_media_services import overlay\nwith tempfile.TemporaryDirectory(prefix='x3-services-final-') as directory:\n root=overlay(Path(directory))\n sources=['src/proxy/media_services.cpp','src/proxy/media_playback.cpp','src/media/playback_runtime.cpp','src/proxy/media_startup.cpp','src/proxy/media_presentation_gate.cpp','src/proxy/media_destination.cpp','verification/probe/media_services_fixture.cpp']\n includes=['-I',str(root/'src/proxy'),'-I',str(root/'src/media'),'-I',str(root/'verification/probe')]\n subprocess.run([shutil.which('c++'),'-std=c++17','-O1','-g','-Wall','-Wextra','-Werror','-pthread','-fsanitize=address,undefined','-fno-omit-frame-pointer',*includes,*[str(root/p) for p in sources],'-o',str(root/'fixture')],check=True)\n result=subprocess.run([str(root/'fixture')],check=True,text=True,capture_output=True)\n Path('/tmp/x3-media-services-sanitize.log').write_text(result.stdout+result.stderr);print(result.stdout.strip())\n subprocess.run(['i686-w64-mingw32-g++','-std=c++17','-O2','-Wall','-Wextra','-Werror','-msse2','-mfpmath=sse','-mstackrealign','-mincoming-stack-boundary=2','-DWIN32_LEAN_AND_MEAN','-DNOMINMAX',*includes,'-c',str(root/'src/proxy/media_services.cpp'),'-o',str(root/'media_services.o')],check=True)\n print('Win32 x86 object compile PASS; no runtime execution')\nPY"
+  },
+  "host": {
+    "tests": 1,
+    "checks": 1783,
+    "failures": 0,
+    "exit_code": 0,
+    "test_elapsed_seconds": 2.642,
+    "evidence": "Author-observed unittest/function-tool output; no separate host transcript retained.",
+    "allocations": 0,
+    "allocation_scope": "1000 connected empty owner-maintenance plus pump passes; tracks operator new, not all decoder/runtime allocation behavior."
+  },
+  "sanitizer": {
+    "checks": 1783,
+    "failures": 0,
+    "allocations": 0,
+    "exit_code": 0,
+    "instrumentation": [
+      "address",
+      "undefined"
+    ],
+    "log": "/tmp/x3-media-services-sanitize.log",
+    "log_sha256": "199d4cef29478a652b8a63ca2fc1beb0b1e59f0eb43b37a249f037940d25f056",
+    "log_scope": "118-byte fixture stdout only. Instrumented compilation and zero subprocess exit are author-observed from the exact function-tool driver above; log does not independently prove instrumentation.",
+    "combined_sanitizer_and_x86_tool_wall_seconds": 4.306750167
+  },
+  "x86": {
+    "target": "i686-w64-mingw32 Windows object only",
+    "exit_code": 0,
+    "evidence": "Author-observed successful subprocess and tool output; no link, CPU runtime or native-worker execution.",
+    "object": "<overlay>/media_services.o",
+    "retained": false,
+    "sha256": null,
+    "artifact_limit": "TemporaryDirectory deleted the object and sanitizer binary after the successful commands. Their hashes were not captured; no retained artifact binding is claimed."
+  },
+  "toolchains": {
+    "host": "Apple clang version 21.0.0 (clang-2100.1.1.101), arm64-apple-darwin25.6.0, /usr/bin/c++",
+    "x86": "i686-w64-mingw32-g++ (GCC) 16.2.0, /opt/homebrew/bin/i686-w64-mingw32-g++"
+  },
+  "coverage": {
+    "actual": [
+      "integrated canonical Adapter offer/ack and logical transitions",
+      "reviewed canonical Clock including set_end",
+      "canonical physical FrameStorage and move-only FrameLease",
+      "Destination try_copy core and actual gate state/transaction with fixture platform",
+      "Services preparation handoff, logical synchronization, event consumption, position and presentation acknowledgement"
+    ],
+    "synthetic": [
+      "worker start/state/command/event/cancellation acknowledgement transport",
+      "engine records, observed destination publications and identity source",
+      "CopyBackend descriptor/lock/unlock/release and all reentry",
+      "startup platform and package snapshot; no actual package I/O or provider"
+    ],
+    "cases": [
+      "two distinct admitted records both source2",
+      "initial two-service readiness delayed beyond first-device notification",
+      "one-slot offer rejection and independent other-slot progress",
+      "accepted submit/failed ack defensive no-retry under explicit transport-contract fault",
+      "terminal-before-READY EOF ingestion with three physical slots",
+      "missing-destination retry and copy-error availability",
+      "same-epoch bound extension retaining generation and leases",
+      "20 copy-stage nested rate/seek/retire/stop cases and same-slot nested pump refusal",
+      "ordinary stop drains revoked READY slots without a later play/pump",
+      "quiescent assignment reuse and unsafe slot quarantine",
+      "preplay/stopped positions; rate decoding/regressing QPC failure",
+      "manager-only loop rearm and stale prior terminal refusal",
+      "partial preparation failure, eligibility flags8 and one-shot handoff"
+    ]
+  },
+  "limitations": [
+    "No Wine/game/native Windows/runtime decoder or actual DirectDraw/D3D execution in this checkpoint.",
+    "No proof of actual provider graph retirement/reuse, worker quiescence, RGB output, engine-ready-before-flight or cold contention from synthetic transport.",
+    "Root owns combined observer installation, housekeeping site/domain, Consumer admission and actual connected acceptance.",
+    "No full production DLL build/link or installed artifact; native methods were object-compiled only.",
+    "CPU/LastError preservation and supported ordinary-return cleanup rely on existing injected envelope/Destination owners; no new SEH guarantee.",
+    "Worker and Clock dependency changes must be reviewed/integrated before final source/build qualification.",
+    "Rate thunk is an immediate non-reentrant transaction, not a retained capability across reassignment or subsequent thunk requests."
+  ],
+  "review": {
+    "agent": "review_media_services",
+    "source": "clear; no blocker",
+    "frozen_hashes": "independently matched all four",
+    "retained_log": "independently read 1783/0/0 sanitizer fixture stdout",
+    "execution_provenance": "author supplied exact commands and temporary-artifact limitations; final review report pending"
+  },
+  "actions": {
+    "wine": false,
+    "game": false,
+    "install": false,
+    "shared_dll_build": false,
+    "commit_by_writer": false
+  }
+}

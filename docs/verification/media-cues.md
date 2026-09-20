@@ -1508,3 +1508,70 @@ child time plus 0.000038625 s aggregate lock wait. The
 binds source, X3/arm64/FEX settings and preserved earlier evidence. Actual
 observer installation/module lifetime, general concurrent patch safety, Windows
 runtime and exceptional unwind remain separate integration/acceptance work.
+
+
+### Canonical Services coordinator (2026-09-20)
+
+The [Services coordinator](../architecture/media-services.md) connects the actual
+Adapter command offers, canonical Clock and physical FrameLeases to Destination
+copy/reentry and a pair of canonical LavWorker handles. Bootstrap retains immutable
+PackageConfig in the preparation bundle and both WorkerConfigs, then transfers
+main-side ownership exactly once. Services observes actual worker states before
+marking DD-service readiness; it performs no observer installation, Consumer
+enablement or engine-thread wait. Root owns those remaining integration steps.
+
+The focused command
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_services`
+passes **1 test / 1,783 checks / zero failures**. The same connected fixture passes
+**1,783 checks** under author-executed **ASan+UBSan**, and measures **zero allocations
+across 1,000 empty owner/pump passes**. Strict Win32 x86 object compilation succeeds
+with `-msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2` and
+`-Wall -Wextra -Werror`. This is object compilation, not a production DLL link or
+Windows runtime. Independent source review found no blocker and matched the four
+frozen source/test hashes plus retained fixture output. The
+[compact record](../../verification/results/media-services-2026-09-20.json) records
+exact compiler argv/driver, toolchains, checks, provenance and limitations.
+
+The fixture uses actual Adapter, reviewed canonical Clock/`set_end`, canonical
+three-slot FrameStorage/FrameLease and Destination copy core. Worker transport,
+engine identities/publications, package snapshot and CopyBackend are synthetic.
+It covers two distinct records selecting source 2, per-worker backpressure and
+adjacent acknowledgement, final READY frames arriving before EOF handling,
+missing-destination retries within three physical leases, same-epoch bound changes,
+ordinary stop draining revoked READY frames without another play, and assignment
+reuse only after explicit quiescent acknowledgement. Twenty copy-stage reentry
+cases cover nested rate/seek/retire/stop, with no stale presentation acknowledgement
+or whole-Clock writeback. The manager alone initiates loop seek; stale prior EOF
+and prepared events cannot restart it twice. Unsafe worker quarantine preserves
+the independent second record's progress. Source flags8 eligibility, partial
+preparation failure, preplay/stopped positions and exact rate failures are included.
+
+The worker retirement dependency is the canonical
+`poll_assignment_quiescent(const Publication&)`: it must acknowledge the exact
+latest cancellation plus desired-publication serial, no graph/local pending or
+mailbox command, drained ordinary/terminal facts and all physical slots FREE.
+Services additionally requires zero active copy/pump and local leases before
+reassignment. The host fixture injects this fact; it does not prove actual worker
+quiescence, graph reuse or provider cleanup. No timeout, DD replacement worker or
+fabricated readiness substitutes for the acknowledgement.
+
+Execution provenance has explicit limits. The host result was observed in unittest
+and function-tool output; no separate host transcript was retained. The retained
+`/tmp/x3-media-services-sanitize.log` contains fixture stdout only. The exact
+instrumented compiler command and zero subprocess exit were author-observed;
+that small log alone does not prove instrumentation. TemporaryDirectory removed
+the sanitizer binary and x86 object after execution, and their hashes were not
+captured. The four frozen source/test hashes are matched, but hashes of separately
+owned overlay dependencies were first captured during documentation and are
+labelled accordingly. They do not establish an exact historical mutable-overlay
+compiler-input manifest. No accounting rerun was added.
+
+Tests used the root-authorized symlink overlay from
+`/tmp/x3-media-destination-integration`, `/tmp/x3-media-worker-sample` and the
+reviewed setter in `/tmp/x3-media-clock-bound`. Root must integrate their reviewed
+checkpoints and bind the subsequent actual connected acceptance to retained build
+inputs/artifacts. This checkpoint does not establish source graph/first-picture
+readiness, RGB output, native Windows behavior, actual engine/Reset interaction,
+readiness before flight or removal of cold provider contention. No Wine, game,
+shared-DLL build, install or writer commit occurred. Existing injected CPU/LastError
+and ordinary-return cleanup obligations remain with their qualified owners.
