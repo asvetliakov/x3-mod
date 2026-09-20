@@ -1492,3 +1492,19 @@ pre-seam engine accesses are unchanged. The fixture does not execute real game
 callbacks, actual worker/destination copy or engine Reset, and is not native
 Windows runtime proof. Production services/startup/combined readiness remain open;
 no admission, game launch, DLL build or install was performed for this checkpoint.
+### Qualified synchronous observer installation seam (2026-09-20)
+
+The startup adapter now supports a separate CPU-only installer after successful
+ordinary-context qualification and before background preparation. The gate stays
+open/active through installation; reentry, device creation or installer failure
+prevents launch. Provenance begins before initial table loading while playback
+admission stays off. The installer owns independent module/context retention and
+rollback/debt even if no bootstrap launches.
+
+Independent review is clear. Two host tests pass 90 controller + 37 delegate
+checks; eleven actual fixture modes pass 819 checks, all exit zero, in 3.650135 s
+child time plus 0.000038625 s aggregate lock wait. The
+[startup record](../../verification/results/media-startup-2026-09-20.json)
+binds source, X3/arm64/FEX settings and preserved earlier evidence. Actual
+observer installation/module lifetime, general concurrent patch safety, Windows
+runtime and exceptional unwind remain separate integration/acceptance work.

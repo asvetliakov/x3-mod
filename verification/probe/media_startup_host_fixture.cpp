@@ -23,7 +23,18 @@ struct Mock final:startup::Platform {
     std::uint64_t now() noexcept override {return ++ticks;}
     bool launch(startup::Controller& value) noexcept override {++launches;controller=&value;return launch_ok;}
 };
-struct Callback {unsigned calls=0;bool success=true,ready_inside=false;startup::Controller* controller=nullptr;};
+struct Callback {unsigned calls=0;bool success=true,ready_inside=false;startup::Controller* controller=nullptr;
+    Mock* platform=nullptr;unsigned installs=0,install_mode=0;};
+static bool install(void* context) noexcept {
+    auto& c=*static_cast<Callback*>(context);++c.installs;
+    check(c.platform->identities==1&&!c.platform->launches&&!c.calls,
+          "inert installation follows qualification and precedes launch");
+    check(c.controller->snapshot().entry_active&&!c.controller->snapshot().request_claimed,
+          "installation retains active unclaimed ordinary context");
+    if(c.install_mode==2){startup::Entry e;c.controller->enter(e,0x1000);c.controller->leave(e,1);}
+    if(c.install_mode==3)c.controller->device_creation_attempt();
+    return c.install_mode!=1;
+}
 static bool callback(void* context,const startup::BootstrapContext& info) noexcept {
     auto& c=*static_cast<Callback*>(context);++c.calls;
     check(info.pinned_proxy==reinterpret_cast<void*>(0x2000)&&info.requested_qpc>0,"bootstrap receives retained module and request timestamp");
@@ -32,6 +43,18 @@ static bool callback(void* context,const startup::BootstrapContext& info) noexce
 }
 static void call(startup::Controller& c,std::uintptr_t result=1){startup::Entry e;c.enter(e,0x1000);c.leave(e,result);}
 int main(){
+    for(unsigned mode=0;mode<4;++mode){Mock p;startup::Controller c(p);Callback cb;
+     cb.controller=&c;cb.platform=&p;cb.install_mode=mode;
+     check(c.configure(callback,&cb,install),"installer registration");call(c);call(c);
+     check(cb.installs==1&&p.launches==unsigned(mode==0),"installer runs once and refusal never launches");
+     if(mode==1)check(c.snapshot().status==startup::Status::install_failed,"installation failure recorded");
+     if(mode==2)check(c.snapshot().status==startup::Status::reentered,"installation reentry cancels launch");
+     if(mode==3)check(c.snapshot().status==startup::Status::closed,"device during installation cancels launch");}
+    for(unsigned mode=0;mode<3;++mode){Mock p;startup::Controller c(p);p.controller=&c;Callback cb;
+     cb.controller=&c;cb.platform=&p;
+     if(mode==0)p.identity=false;if(mode==1)p.reenter_identity=true;if(mode==2)p.close_identity=true;
+     c.configure(callback,&cb,install);call(c);
+     check(!cb.installs&&!p.launches,"failed or invalidated qualification never invokes installer");}
     {Mock p;startup::Controller c(p);Callback cb;cb.controller=&c;
      check(c.configure(callback,&cb)&&!c.configure(callback,&cb),"single explicit configuration");
      startup::Entry e;c.enter(e,0x1000);check(e.matched&&e.owns_entry&&p.launches==0,"entry capture never starts service");

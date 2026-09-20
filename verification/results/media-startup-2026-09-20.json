@@ -21,7 +21,8 @@
       "verification/analysis/test_capture_device_creation.py"
     ],
     "combined_sha256": "e19230fa5556cc4abd244e7fb4024c3f7f7424f5323584674f6c9e0e793e1275",
-    "hash_encoding": "For listed files in order, UTF-8 relative path + NUL + exact file bytes + NUL; documentation excluded. CMake integration supplied by root."
+    "hash_encoding": "For listed files in order, UTF-8 relative path + NUL + exact file bytes + NUL; documentation excluded. CMake integration supplied by root.",
+    "checkpoint_commit": "1b6ea3b2"
   },
   "toolchains": {
     "host": "Apple clang 21.0.0 (clang-2100.1.1.101), arm64-apple-darwin25.6.0",
@@ -64,7 +65,8 @@
     ],
     "binary": "/tmp/x3-media-startup-boundary/build/verification/media-startup/media_startup_fixture.exe",
     "sha256": "96b7ed9f577ad9557579dcb2c4b499bf976c4217ae9ecdec985aa8848e863969",
-    "image_audit": "PASS fixed x86 image; owned zero/nonexecutable .x3map 0x401000..0x620000; real text 0x630000; sections nonoverlapping; exact production addresses unchanged"
+    "image_audit": "PASS fixed x86 image; owned zero/nonexecutable .x3map 0x401000..0x620000; real text 0x630000; sections nonoverlapping; exact production addresses unchanged",
+    "retained_accepted_executable": "/tmp/x3-media-startup-v2/media_startup_fixture.exe"
   },
   "runtime": {
     "owner": "root; serialized per-mode subprocesses stopped on any failure",
@@ -321,5 +323,52 @@
     "agent": "review_media_gate",
     "source_and_mapping_correction": "clear",
     "combined_runtime_evidence": "CLEAR: review_media_gate independently parsed nine logs/locks and verified frozen executable; 655 checks, zero failures"
+  },
+  "synchronous_installation": {
+    "source_base": "1b6ea3b2",
+    "source_binding": {
+      "src/proxy/media_startup.h": "8cb5ed8a2f67771f7a22438c79ce454710b930290bc741b80ebfe2017ba87ef6",
+      "src/proxy/media_startup.cpp": "c96dc7c031ccab2e63083d14bf46d2dce78d58457d5b45533bfeb584a4f262e8",
+      "src/proxy/media_startup_abi.h": "efa0bde76cf137a9a0e30059c706edcf939ea573ee46fd362c79a51aaaf82e5c",
+      "verification/probe/media_startup_cpu_fixture.cpp": "3b1507fc6e6b1ac782c6b560964f170bdeebc6d664b2b80da6190a30613d0791",
+      "verification/probe/build_media_startup.py": "17b81897a2b68e3b5c57d060538d0776b17d98dc5ed1888af2bd799baedeff55"
+    },
+    "exe_sha256": "766881c21a82601e924df5e4e7804d3c263b5a8190d8c1e348eb8c68cc404617",
+    "build_record": "/tmp/x3-media-startup-v3/build.json",
+    "host_command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_startup -v",
+    "host_tests": 2,
+    "controller_checks": 90,
+    "delegate_checks": 37,
+    "host_seconds": 1.415,
+    "host_log": "tool transcript only",
+    "runtime_directory": "/tmp/x3-media-startup-v3",
+    "runtime_modes": [
+      "success",
+      "unknown",
+      "failed",
+      "reentrant",
+      "device_inside",
+      "late",
+      "identity",
+      "anchor",
+      "callbackfail",
+      "installfail",
+      "installdevice"
+    ],
+    "runtime_checks": 819,
+    "runtime_failures": 0,
+    "all_exit_codes": 0,
+    "runtime_command_template": "X3M_FIXTURE_BOTTLE=X3 FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-media-startup-v3/<mode>-lock.json '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update /tmp/x3-media-startup-boundary/build/verification/media-startup/media_startup_fixture.exe <mode>",
+    "WineArch": "arm64",
+    "child_seconds": 3.650134667,
+    "lock_seconds": 3.8625e-05,
+    "review": "review_media_gate: CLEAR source and combined evidence",
+    "ordering_evidence": "/tmp/x3-media-startup-install-order-check.json",
+    "contract": "Optional CPU-only installer runs after qualification and OPEN recheck before claim/launch; keeps active OPEN while callback runs. Reentry/device invalidation prevents launch. Installer independently pins module/context before hooks, owns rollback/debt; admission remains off.",
+    "limits": [
+      "Authored installer callback; actual observer transaction/module retention not exercised",
+      "Ordinary startup CFG ordering is not general concurrent patch safety",
+      "Existing native Windows/unwind/nonzero unrepresented MXCSR gaps remain"
+    ]
   }
 }

@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parents[2]
 BUILD=ROOT/'build/verification/media-startup'
 FLAGS=('-std=c++17','-O2','-Wall','-Wextra','-Werror','-fno-exceptions','-msse2','-mfpmath=sse',
        '-mstackrealign','-mincoming-stack-boundary=2','-DWIN32_LEAN_AND_MEAN','-DNOMINMAX')
-MODES=('success','unknown','failed','reentrant','device_inside','late','identity','anchor','callbackfail')
+MODES=('success','unknown','failed','reentrant','device_inside','late','identity','anchor','callbackfail','installfail','installdevice')
 def audit_image(path):
     data=Path(path).read_bytes()
     pe=struct.unpack_from('<I',data,0x3c)[0];opt=pe+24

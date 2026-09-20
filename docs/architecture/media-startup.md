@@ -118,3 +118,35 @@ five short anchors plus existing executable identity. One module reference and
 one thread are created at most once. There is no per-frame allocation, package
 I/O, engine wait or added playback queue. This source-level cost review and
 fixture runtimes do not measure game performance or cold provider contention.
+
+
+## Synchronous observer installation before preparation (2026-09-20)
+
+`configure(bootstrap, context, install_hooks)` can now register a separate optional
+CPU-only installation callback. After the original factory succeeds, `leave`
+checks actual entry/identity anchors and rechecks the open gate, then invokes this
+callback inside the existing preserving envelope. The request remains unclaimed
+and the entry active until installation returns. Reentry or device creation can
+close the gate and defeat the final claim; installation failure permanently
+records `install_failed`. No worker launch occurs on these refusals.
+
+The installer publishes the complete provenance observer group with owned-media
+admission off. It independently retains its module and process-lifetime context
+before publishing any hook: later invalidation or failed thread creation may mean
+no bootstrap reference ever exists. It owns rollback and retained patch debt;
+gate closure alone does not undo installed code. No package I/O, engine/COM call
+or worker wait belongs here. Later readiness changes admission, never patches
+provenance after the initial tables have already been populated.
+
+The retained normal startup CFG places `0x403497 -> 0x48af70 -> 0x4f44a0`
+(initial table loading) after the matched factory/device setup. This supports
+the ordinary owner-thread installation window, not concurrent patch-target safety.
+The local ordering witness is `/tmp/x3-media-startup-install-order-check.json`.
+
+Independent review clears the seam and its scoped tests: 90 controller and 37
+delegate host checks; eleven actual x86 fixture modes pass 819 checks. The added
+installer callback deliberately modifies CPU/LastError state; the original output
+still matches. Failure and device-during-install modes create no request or
+bootstrap. These are callback-order/preservation tests, not execution of the
+real observer installer or its module/rollback lifetime. The appended compact
+record retains commands, hashes and the earlier accepted binary.

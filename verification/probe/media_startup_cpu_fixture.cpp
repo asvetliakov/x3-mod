@@ -105,6 +105,18 @@ static bool bootstrap(void*,const startup::BootstrapContext& context) noexcept {
     callback_module_ok=context.pinned_proxy==GetModuleHandleW(nullptr)&&context.requested_qpc!=0;
     return std::strcmp(mode,"callbackfail")!=0;
 }
+static unsigned installs=0;
+static bool install_thread_ok=false;
+static bool install_hooks(void*) noexcept {
+    ++installs;
+    install_thread_ok=GetCurrentThreadId()==main_thread&&startup::snapshot().entry_active&&
+        !startup::snapshot().request_claimed&&!callbacks.load();
+    if(!std::strcmp(mode,"installdevice"))x3m_media_startup_device_attempt();
+    // Deliberate callback effects must not escape the existing leave envelope.
+    SetLastError(0xdeadbeef);
+    asm volatile("fninit\n fld1\n xorps %%xmm0,%%xmm0":::"xmm0","memory");
+    return std::strcmp(mode,"installfail")!=0;
+}
 // Established fixture pattern: PE loader reserves authored game addresses
 // before CRT/heap mappings. Real fixture sections are isolated at >=0x630000.
 // No fixed VirtualAlloc request and no overwrite of another mapping is used.
@@ -193,9 +205,10 @@ int main(int argc,char** argv){
     fixture_mxcsr=0x3fa5;
     check(primary(),"authored ordinary caller and exact anchor opcodes mapped");if(failures)return 1;
     reads();
-    check(startup::configure(bootstrap,nullptr),"production one-shot callback registered");
+    check(startup::configure(bootstrap,nullptr,install_hooks),"production one-shot callbacks registered");
     const bool unknown=!std::strcmp(mode,"unknown");
     const bool want_callback=!std::strcmp(mode,"success")||!std::strcmp(mode,"callbackfail");
+    const bool want_install=want_callback||!std::strcmp(mode,"installfail")||!std::strcmp(mode,"installdevice");
     Snapshot baseline[4]{},inputs[4]{};std::uint32_t callers[4]{},direct[4]{};bool residues[4]{};
     for(unsigned i=0;i<4;++i){
         callers[i]=caller(unknown?address(reinterpret_cast<void*>(&Direct3DCreate9)):0x402edc,i*4,unknown);
@@ -222,6 +235,9 @@ int main(int argc,char** argv){
         if(state==startup::Status::prepared||state==startup::Status::callback_failed)break;
         Sleep(1);}}
     auto snapshot=startup::snapshot();
+    check(installs==unsigned(want_install),"only qualified context invokes inert installer once");
+    if(want_install)check(install_thread_ok,"installer runs synchronously before request publication");
+    if(!std::strcmp(mode,"installfail"))check(snapshot.status==startup::Status::install_failed,"installer failure is permanent");
     check(callbacks.load()==unsigned(want_callback),"only one successful ordinary context schedules bootstrap");
     if(want_callback){
         check(callback_thread_ok&&callback_module_ok,"bootstrap runs on different thread with retained module");
@@ -235,8 +251,8 @@ int main(int argc,char** argv){
     invoke(address(reinterpret_cast<void*>(&x3m_media_startup_device_attempt)),notified,false);equal(untouched,notified,"CreateDevice notification preserves GPRs/flags");
     check(startup::snapshot().closed&&startup::snapshot().first_device_attempt_qpc,"first-device timestamp and private closure published");
     snapshot=startup::snapshot();
-    std::printf("MEDIA STARTUP X86 mode=%s checks=%u failures=%u callbacks=%u status=%u requested=%llu bootstrap_begin=%llu bootstrap_end=%llu ready=%llu device=%llu mxcsr_requested=%08lx mxcsr_applied=%08lx hostile_sticky_status=%s\n",
-        mode,checks,failures,callbacks.load(),unsigned(snapshot.status),snapshot.requested_qpc,snapshot.bootstrap_begin_qpc,snapshot.bootstrap_end_qpc,snapshot.ready_qpc,snapshot.first_device_attempt_qpc,
+    std::printf("MEDIA STARTUP X86 mode=%s checks=%u failures=%u callbacks=%u installs=%u status=%u requested=%llu bootstrap_begin=%llu bootstrap_end=%llu ready=%llu device=%llu mxcsr_requested=%08lx mxcsr_applied=%08lx hostile_sticky_status=%s\n",
+        mode,checks,failures,callbacks.load(),installs,unsigned(snapshot.status),snapshot.requested_qpc,snapshot.bootstrap_begin_qpc,snapshot.bootstrap_end_qpc,snapshot.ready_qpc,snapshot.first_device_attempt_qpc,
         static_cast<unsigned long>(fixture_mxcsr),static_cast<unsigned long>(fixture_mxcsr_applied),fixture_mxcsr_applied==fixture_mxcsr?"represented":"UNVERIFIED_UNREPRESENTED");
     return failures?1:0;
 }

@@ -1,9 +1,9 @@
 #include "media_startup.h"
 namespace x3m::media_startup {
-bool Controller::configure(Bootstrap callback,void* context) noexcept {
+bool Controller::configure(Bootstrap callback,void* context,InstallHooks install) noexcept {
     if(!callback||gate_.load()!=open)return false;
     std::uint32_t empty=0;if(!configuration_.compare_exchange_strong(empty,1))return false;
-    callback_=callback;context_=context;configuration_.store(2);return true;
+    callback_=callback;install_=install;context_=context;configuration_.store(2);return true;
 }
 void Controller::block(Status reason) noexcept {
     std::uint32_t expected=open;
@@ -27,6 +27,11 @@ void Controller::leave(Entry& entry,std::uintptr_t result) noexcept {
         if(!result){block(Status::failed_factory);return;}
         if(configuration_.load()!=2){block(Status::unconfigured);return;}
         if(!platform_.qualified()){block(Status::identity_refused);return;}
+        // Identity validation may have reentered or observed device creation.
+        // Keep the request unclaimed throughout installation so either event
+        // defeats the final CAS. The installer owns its transaction cleanup.
+        if(gate_.load()!=open)return;
+        if(install_&&!install_(context_)){block(Status::install_failed);return;}
         std::uint32_t expected=open;
         if(!gate_.compare_exchange_strong(expected,claimed))return;
         requested_.store(platform_.now());status_.store(Status::scheduled);
@@ -132,7 +137,7 @@ WindowsPlatform platform;
 Controller controller(platform);
 }
 Controller& process() noexcept {return controller;}
-bool configure(Bootstrap callback,void* context) noexcept {return controller.configure(callback,context);}
+bool configure(Bootstrap callback,void* context,InstallHooks install) noexcept {return controller.configure(callback,context,install);}
 bool service_ready() noexcept {return controller.service_ready();}
 Snapshot snapshot() noexcept {return controller.snapshot();}
 }
