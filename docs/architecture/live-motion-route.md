@@ -207,9 +207,11 @@ TAA run is user-managed.
 sentinel (mode 0); the selector, fill, substitution and restoration still run.
 `X3M_MOTION_JITTER=1` (default off) enables the per-draw jitter with a
 centred Halton(2,3) sequence of `X3M_MOTION_JITTER_SAMPLES` entries (default
-8, clamped to 2..64); `X3M_MOTION_CUT_MEDIAN_PX` (default 48, stated at
-1280 px width) and `X3M_MOTION_CUT_MISSING` (default 0.25) are the cut
-detector bounds. `X3M_TAA=1` (default off; requires `X3M_MOTION_OUTPUT=1`
+8, clamped to 2..64); `X3M_MOTION_CUT_MEDIAN_PX` (default `1e30`, stated
+at 1280 px width) and `X3M_MOTION_CUT_MISSING` (default `1`) disable the two
+global heuristic cuts following Run57 acceptance. Explicit `48/.25` overrides
+retain the former detector bounds for diagnostics; camera and recovery cuts
+remain separate. `X3M_TAA=1` (default off; requires `X3M_MOTION_OUTPUT=1`
 and implies `X3M_MOTION_JITTER=1`) runs the temporal resolve at the bloom
 copy; `X3M_TAA_DEBUG=<n>` (n > 0) writes the resolved FP16 image and the
 pre-resolve color in capture frames. With `X3M_HDR=1` the resolve consumes
