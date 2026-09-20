@@ -42,6 +42,42 @@ class SnapshotX3RunTests(unittest.TestCase):
         row.update(fields)
         return 'hdr_readback ' + ' '.join(f'{key}={value}' for key, value in row.items()) + '\n'
 
+    def test_lattice_state_packet_copied_only_from_successful_bound_writer(self):
+        name = 'lattice-state-123-1-2-0.json'
+        payload = b'{"status":"unavailable"}\n'
+        (self.capture / name).write_bytes(payload)
+        row = f'lattice_state pid=123 device=1 frame=2 generation=0 file={name} bytes={len(payload)} file_ok=1 status=unavailable\n'
+        self.log.write_text(row)
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual((count, issues), (1, []))
+        self.assertEqual((destination/name).read_bytes(), payload)
+        for replacement in [row.replace('file_ok=1', 'file_ok=0'),
+                            row.replace('device=1', 'device=9'),
+                            row.replace(name, '../'+name),
+                            row.replace(f'bytes={len(payload)}', 'bytes=1048577')]:
+            wanted, issues = snapshot.references([replacement])
+            self.assertEqual(wanted, {})
+            self.assertTrue(issues)
+        wanted, issues = snapshot.references([row, row.replace('file_ok=1', 'file_ok=0')])
+        self.assertEqual(wanted, {})
+        self.assertTrue(issues)
+
+    def test_lattice_state_stale_or_size_mismatch_is_not_preserved(self):
+        name = 'lattice-state-123-1-2-0.json'
+        asset = self.capture/name
+        asset.write_bytes(b'{}')
+        self.log.write_text(f'lattice_state pid=123 device=1 frame=2 generation=0 file={name} bytes=3 file_ok=1\n')
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual(count, 0)
+        self.assertTrue(issues)
+        self.assertFalse((destination/name).exists())
+        self.log.write_text(self.log.read_text().replace('bytes=3', 'bytes=2'))
+        os.utime(asset, ns=(1, 1))
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual(count, 0)
+        self.assertTrue(issues)
+        self.assertFalse((destination/name).exists())
+
     def test_log_first_and_only_referenced_assets_saved_without_overwrite(self):
         record = self.write_readback()
         shader = b'original synthetic shader'; shader_id = f'{fnv(shader):016x}'

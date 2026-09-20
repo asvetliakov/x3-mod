@@ -447,3 +447,17 @@ SSE2/four-byte-stack cross-compilation establishes source compatibility only;
 native Windows hook, CPU-state and timing execution remains unverified. See
 [the query-phase ledger](../verification/collide-query-phases.md) for scoped
 host and CrossOver evidence, failure witnesses and diagnostic overhead.
+
+## 2026-09-20: lattice post-route state observation
+
+The opt-in [lattice state observer](taa-lattice-crawl.md#23-opt-in-post-route-state-observation-2026-09-20)
+uses documented D3D9 getters and COM reference balancing, plus the existing
+verified game object-scope hook. It calls the saved public GetRenderTarget entry
+point to observe effective targets without the proxy's logical-binding shim.
+No private backend API, resource payload read or in-scene RT copy is added.
+Unavailable getters/scopes and ambiguous matches refuse a complete packet.
+Host tests and Windows x86 cross-compilation are source evidence. The X3-bottle
+actual-helper fixture passed 250 checks against synthetic public COM endpoints
+(no rendering or device creation), including CPU state and reference lifetimes.
+Native Windows runtime, linked no-x87 audit and live-game observation remain
+unverified.

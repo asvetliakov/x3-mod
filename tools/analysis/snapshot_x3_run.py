@@ -121,7 +121,7 @@ def references(log):
     wanted, issues = {}, []
     for line in log:
         tag = line.split(' ', 1)[0]
-        if tag not in READBACKS and tag not in ('shader', 'mesh_adjacency_dump', 'loading_intervals_file'):
+        if tag not in READBACKS and tag not in ('shader', 'mesh_adjacency_dump', 'loading_intervals_file', 'lattice_state'):
             continue
         row = dict(FIELDS.findall(line))
         try:
@@ -142,6 +142,21 @@ def references(log):
                     issues.append(f'{name}: writer did not report a successful readback')
                     continue
                 wanted[name] = {'size': int(row['bytes']), 'timed': True}
+            elif tag == 'lattice_state':
+                name = row['file']
+                shape = re.fullmatch(r'lattice-state-(\d+)-(\d+)-(\d+)-(\d+)\.json', name)
+                if (shape is None or len(name) > 112 or
+                        [int(shape[i]) for i in range(1, 5)] !=
+                        [int(row[key]) for key in ('pid', 'device', 'frame', 'generation')]):
+                    raise ValueError('unsafe or mismatched lattice state basename')
+                size = int(row['bytes'])
+                if row['file_ok'] != '1' or not 0 < size <= 1024 * 1024:
+                    wanted.pop(name, None)
+                    issues.append(f'{name}: state packet export incomplete or invalid size')
+                    continue
+                # Both complete and explicitly refused observations are useful;
+                # preserving the file does not qualify it for replay.
+                wanted[name] = {'size': size, 'timed': True}
             elif tag == 'loading_intervals_file':
                 name = row['file']
                 if not re.fullmatch(r'loading-intervals-\d+-\d+\.bin', name):

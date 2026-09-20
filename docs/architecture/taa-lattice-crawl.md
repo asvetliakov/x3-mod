@@ -1014,3 +1014,116 @@ run177 files contain shaders
 and rendered outputs, not actual VB/IB/texture payloads or all effective post-route
 states. A bounded actual-draw evidence design is being prepared; no additional
 flight, production capture path, RGB correction or TAA acceptance follows yet.
+
+## 23. Opt-in post-route state observation (2026-09-20)
+
+The next bounded diagnostic captures **state only**, after `before_draw` and
+before the unchanged original indexed draw. It adds no resource Lock/LockRect,
+VB/IB/texture payload, writer ledger, render target, draw or readback. Its packet
+always states `draw_input_coherence=unqualified` and
+`payload_copy_valid=not_attempted`; equality with fixture state cannot establish
+payload identity, fragment ownership, absence of later writers, RGB parity or a
+crawl correction. The existing F8 image path is unchanged.
+
+Enable with `--lattice-state run177_panel_position_v1 --object-trace` (equivalent
+explicit DLL option `X3M_LATTICE_STATE=run177_panel_position_v1`, with the object
+observer actually active). The launcher requires the scope option and clears
+inherited lattice settings when the flag is absent. The DLL checks active scope
+observation when arming, and refuses unavailable/failed scope reads. A rising F8
+edge arms one frame per device, independent of the ordinary F8 multi-frame count;
+automatic capture-start frames do not arm it. No new flight is requested by this
+implementation.
+
+The pinned selector uses original VS `4944d81dfe531b37` and PS
+`5e0a10fe752b6140`, model `0x54b3`, LOD0, node-position raw words
+`00bc6871,002dd083,ff415956`, and the six-element declaration (five FLOAT16_4
+entries at offsets 0/8/16/24/32 plus END), stream0 stride40/offset0/frequency1.
+Its two TRIANGLELIST argument signatures are `(base,min,count,start,primitives)`
+`(0,0,9680,0,3784)` and `(0,0,1267,0,940)`. The position is identical in retained
+frames 6392/6401/6423 and distinguishes all 16 panel instances in frame 6401.
+Neither old draw indices nor a stale node pointer/resource ID selects a draw.
+Observed session/node/handle equality only checks that the two same-frame matches
+belong to one scope. A different save/object, changed shader/layout, unavailable
+scope or duplicate/partial match does not fall back to another object. Publication
+waits for the end of the entire frame; ambiguity invalidates the whole request.
+
+`lattice_state_capture.{h,cpp}` keeps fixed CPU storage: two records, 256 fields
+and 40000 DWORDs per record; effective shader programs are limited to 64 KiB each
+(256 KiB total). At most 64 argument-signature candidates receive object-scope
+selection reads; only two matches receive full effective-state queries. At most
+16 stream slots, six clip planes, four MRTs plus depth, and 32 levels for each of
+s0/s3 are described. There is no byte access to those resources. The x86 packet
+allocation is 395928 bytes, including a separate 64 KiB selector scratch area
+(compile-time ceiling 448 KiB), created only at an armed
+F8 edge, and JSON is limited to 1 MiB. Per-query HRESULTs distinguish unavailable
+values from zeros and unbound optional targets. Exact float bits, including
+signed zero/NaN payloads, use eight-digit hexadecimal words.
+
+The record includes original/effective shader linkage, raw effective shader
+words, declaration, draw arguments, current object evidence, route flags/result,
+full supported F/I/B constant banks, viewport/scissor/clip planes, raster and
+MRT write/depth/bias/stencil/alpha/blend/multisample/wrap states, stream/index
+binding descriptors, effective target/depth descriptions, and all 13 defined
+sampler states plus texture type/LOD/level descriptors for s0/s3. Resource IDs
+are read only if existing capture private data supplies them; this path never
+assigns an ID and does not authenticate content. Pointer words are momentary
+binding observations, not stable allocation or object identities.
+
+Effective RT getters use the device's saved original slot 38. Calling the hooked
+application getter here would restore lazy MRT bindings and return the logical
+HDR target, changing the state being observed. All new draw-time getter work runs
+inside `call_preserved`; the existing incoming/outgoing draw boundary and original
+slot 82 call remain intact. Getter references are released within each observation.
+Reset cancels the request; a shared CPU packet pin and a reentry guard prevent a
+nested Present from publishing/freeing an active record. No COM object is retained
+in the packet. The default-disabled draw path has one request-pointer branch;
+compile-time null specialization eliminates the observation calls/envelopes.
+
+Present writes `lattice-state-<pid>-<device>-<frame>-<generation>.json` through a
+staging file, then logs its exact name, byte count and success. No file I/O or
+formatting is added to the draw observer. `snapshot_x3_run.py` now preserves this
+referenced file under the normal `/tmp/x3-bottleX3-runNN` workflow, including
+explicitly refused observations, with basename/identity/size/session-window checks.
+`verification/probe/lattice_state_packet.py --require-complete <file>` validates
+selection, field coverage, bounds and successful submission before accepting a
+complete **state observation**; it never promotes payload/coherence claims.
+Query QPC ticks are reported separately from file output. Public API call duration
+is not bounded by a cancellable timeout. Object tracing remains a session-long
+prerequisite with its own hook/read cost; this is not wholly F8-only overhead.
+
+The ratified [capture boundary](/tmp/x3-lattice-capture-boundary.md) and
+[copy-serialization audit](/tmp/x3-lattice-copy-serialization.md) keep payload
+integration stopped. In particular, LOD+0x3c is published before the builder;
+final CloneMesh allocation linkage and callback/Reset access exclusion remain
+unproved. Observed serials and readable-managed creation cannot replace the
+missing copy-access authority. The state path requires neither the finite-upload
+option nor new ownership/admission machinery.
+
+Focused host checks cover selector uniqueness/refusals and capacity arithmetic,
+packet completeness/raw-bit round trips, the extracted production draw hook's
+ordering/unchanged dispatch and CPU/LastError model, explicit launcher prerequisites,
+and normal collector success/stale/size/path refusal. The standalone
+`lattice_state_fixture.cpp` also links the actual helper/read-only ID query and
+extracted production draw hook against fixture-owned public COM endpoints. Its
+12 cases exercise accepted/nonmatching/duplicate selectors, failed getters,
+suppressed and failed draws, Reset, getter reentry, balanced resource/container
+references, and the last shared packet pin dropping after nested publication
+inside native dispatch. Actual `cpu_state.h` x87/MXCSR/LastError envelopes are
+checked; captured selector shader inputs remain external local files. This is a
+mock-interface fixture, with no device creation or rendering. The owner-run X3
+fixture passed 250 checks in 4.091 s, with 12 packets (2 complete, 10 refused),
+zero calls through the logical RT getter and zero forbidden resource operations.
+The [runtime record](../../verification/results/lattice-state-observation-runtime.json)
+binds the executable, inputs and results. Independent deep review cleared the
+frozen source and runtime evidence; this does not establish live-driver behavior.
+Cross-compilation covers the
+helper, capture integration and read-only ID query with the project x86 SSE2 and
+four-byte incoming-stack flags. Full linked no-x87 audit and full host discovery
+remain integration gates; native Windows runtime and
+live-game behavior are unverified. The first full discovery exposed a synthetic
+Reset fixture missing the new diagnostic member; its reviewed compatibility fix
+retains all prior checks and adds 12 cancellation assertions (42 scenarios,
+218 checks). The affected host test passes; full discovery remains pending.
+
+Affected command:
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lattice_state_capture verification.analysis.test_snapshot_x3_run`.

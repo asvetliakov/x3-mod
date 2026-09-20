@@ -20,6 +20,14 @@ void capture_buffer_content(IDirect3DResource9* resource, uint64_t id, const cha
         static_cast<unsigned long long>(view.revision),view.pending_locks,view.last_lock_flags);
 }
 }
+HRESULT query_resource_id(IDirect3DResource9* resource,uint64_t* id) noexcept {
+    if(!id)return E_POINTER;
+    *id=0;if(!resource)return S_FALSE;
+    DWORD bytes=sizeof(*id);const HRESULT hr=resource->GetPrivateData(resource_guid,id,&bytes);
+    if(hr==D3DERR_NOTFOUND){*id=0;return S_FALSE;}
+    if(FAILED(hr)||bytes!=sizeof(*id)||!*id){*id=0;return FAILED(hr)?hr:E_FAIL;}
+    return S_OK;
+}
 uint64_t resource_id(IDirect3DResource9* resource) {
     if (!resource) return 0;
     uint64_t id = 0;

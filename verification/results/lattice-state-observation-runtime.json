@@ -1,0 +1,63 @@
+{
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--debugmsg",
+    "-all",
+    "/tmp/x3-lattice-state-fixture-build-v3/lattice_state_fixture.exe",
+    "Z:\\private\\tmp\\x3-bottleX3-run177\\vs_4944d81dfe531b37.bin",
+    "Z:\\private\\tmp\\x3-bottleX3-run177\\ps_5e0a10fe752b6140.bin",
+    "Z:\\private\\tmp\\x3-lattice-state-runtime-v3\\packets"
+  ],
+  "command_seconds": 4.0907255,
+  "exit_code": 0,
+  "exe_sha256": "63a87525c3680f1e995125daf797ed6c31662382f06e71afa6484a3f07e1b589",
+  "build_record_sha256": "c8285635729b1408277934a1d64e3af52c63236288cd9f241dc4519044722143",
+  "inputs": {
+    "/tmp/x3-bottleX3-run177/vs_4944d81dfe531b37.bin": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+    "/tmp/x3-bottleX3-run177/ps_5e0a10fe752b6140.bin": "ffd612d6d0dcc9195322cfa71f11b6a76751c49e5b87fe660bfc7360bc0f1a19"
+  },
+  "fixture_stdout_sha256": "b24d0cca30d6a48a7f5fb94b706c1f95cddcf0bdaef44bdc98b2778d197a7dde",
+  "native_windows": "unverified",
+  "kind": "actual helper with synthetic public-COM endpoints; no rendering",
+  "packets": {
+    "result": "PASS",
+    "packets": 12,
+    "complete": 2,
+    "refused": 10,
+    "draw_input_coherence": "unqualified",
+    "payload_copy_valid": "not_attempted"
+  },
+  "passed": true,
+  "checks": 250,
+  "failures": 0,
+  "logical_rt_calls": 0,
+  "forbidden_calls": 0,
+  "source_freeze": "/tmp/x3-lattice-state-freeze-v2.json",
+  "independent_review": "review_lattice_gpu: source and runtime cleared",
+  "limitations": [
+    "synthetic public COM endpoints; no device creation or rendering",
+    "live game observation and native Windows unverified",
+    "draw input coherence unqualified; payload copy not attempted"
+  ],
+  "reset_host_fixture": {
+    "scenarios": 42,
+    "checks": 218,
+    "failures": 0,
+    "focused_tests": 11,
+    "elapsed_s": 2.488,
+    "review": "review_lattice_gpu cleared synthetic Device compatibility and added Reset cancellation assertions",
+    "scope": "extracted production Reset/ResetEx with real diagnostic refusal policy and synthetic storage"
+  }
+}

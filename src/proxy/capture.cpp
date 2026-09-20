@@ -1,5 +1,6 @@
 #include "capture.h"
 #include "capture_state.h"
+#include "lattice_state_capture.h"
 #include "proxy_identity.h"
 #include "telemetry.h"
 #include "game_phases.h"
@@ -83,6 +84,7 @@ unsigned capture_count = 1;
 // other 300-frame reports of that path keep it whatever this is.
 constexpr unsigned frame_end_stride_default = 300, frame_end_stride_max = 100000;
 unsigned frame_end_stride = frame_end_stride_default;
+bool lattice_state_requested = false; // X3M_LATTICE_STATE=run177_panel_position_v1, F8 only
 bool scene_depth_capture_requested = false;
 bool finite_positions_requested = false;
 bool motion_capture_requested = false;
@@ -290,6 +292,7 @@ struct Device : Hooks {
     bool capture = false;
     sector_background::Diagnostic sector_background_evidence;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
+    std::shared_ptr<lattice_state::Capture> lattice_state; // allocated only by an explicitly requested F8 edge
     bool key_down = false;
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
@@ -1409,6 +1412,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
                 static_cast<DWORD>(state.vetoes),unsigned(state.first_veto),state.replay_active);
         }
     }
+    if(ctx.lattice_state && ctx.lattice_state->publish(capture_directory()))ctx.lattice_state.reset();
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame; ctx.draws=0; ctx.composition_scene_owner=false;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -1417,6 +1421,12 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     ctx.events=0; ctx.stats.frame=ctx.frame;
     const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
     if ((down&&!ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
+    if(lattice_state_requested && down&&!ctx.key_down && !ctx.lattice_state){
+        try {ctx.lattice_state=std::make_shared<lattice_state::Capture>();}
+        catch(const std::bad_alloc&) {ctx.lattice_state.reset();}
+        if(ctx.lattice_state)ctx.lattice_state->arm(ctx.id,ctx.frame,ctx.reset_generation,object_trace::active());
+        else log("lattice_state status=allocation_failure selector=run177_panel_position_v1");
+    }
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
@@ -1439,6 +1449,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     game_phases::invalidate_device(); // includes a refused reentrant attempt
     ctx.sector_background_evidence.invalidate(); // also on refused Reset; no retained engine memory
     ctx.object_evidence.invalidate(); // diagnostic association also ends on refused Reset
+    if(ctx.lattice_state)ctx.lattice_state->invalidate();
     // A Reset reentered from injected GPU work cannot destroy that work's
     // stack-local saved state. Ordinary Reset during original is supported.
     if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
@@ -1568,7 +1579,17 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
         CompositionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
         ~CompositionDrawScope(){if(enabled)--depth;}
     } composition_scope(ctx.composition_draw_depth,ctx.motion_output.composition_requested());
+    // Compile-time null specialization keeps the disabled draw path at one
+    // branch, with no getter, allocation or new CPU envelope.
+    const auto dispatch=[&](auto* observer) {
+        constexpr bool observed=!std::is_same_v<std::remove_pointer_t<decltype(observer)>,std::nullptr_t>;
+        int slot=-1;
+        if constexpr(observed)if(observer->can_select({UINT(t),c,m,n,s,b}))
+            call_preserved([&]{slot=observer->original(d,{UINT(t),c,m,n,s,b},ctx.draws);});
     auto route=ctx.motion_output.before_draw({true,false,t,c,s,b,m,n,composition_permission});
+    if constexpr(observed)if(slot>=0)call_preserved([&]{
+        observer->effective(slot,d,ctx.caps,ctx.get<lattice_state::GetTarget>(38),route);
+    });
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}
 #endif
@@ -1578,11 +1599,15 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,INT,UINT,UINT,UINT,UINT)>(82)(d,t,b,m,n,s,c):route.submission_error;cpu.after_original();
     frame_timing::draw_native_end();
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
+    if constexpr(observed)observer->result(slot,result,route.submit);
     ctx.motion_output.after_draw(route,result);
     ctx.scene_depth.after_draw(result);
     record_draw_input(ctx,input,result);
     if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
     return result;
+    };
+    if(ctx.lattice_state){const auto observer=ctx.lattice_state;return dispatch(observer.get());}
+    return dispatch(static_cast<std::nullptr_t*>(nullptr));
 }
 HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void* data,UINT stride) {
     LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
@@ -2609,6 +2634,9 @@ void initialize_log(HMODULE module) {
     // and one environment scan, never on the render path.
     proxy_identity::log_identity(module);
     wchar_t setting[32]{};
+    const DWORD lattice_setting=GetEnvironmentVariableW(L"X3M_LATTICE_STATE",setting,32);
+    lattice_state_requested=lattice_setting<32 && lattice_setting>0 && wcscmp(setting,L"run177_panel_position_v1")==0;
+    if(lattice_setting)log("lattice_state_mode requested=%u selector=run177_panel_position_v1 trigger=f8 draws=2 object_trace_required=1 payload_copy_valid=not_attempted draw_input_coherence=unqualified",lattice_state_requested);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
     // 64: a plain frame counter (ctx.remaining); above 8 serves the raw TAA
