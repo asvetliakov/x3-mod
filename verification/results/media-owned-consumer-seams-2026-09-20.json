@@ -1,0 +1,66 @@
+{
+  "status": "pass",
+  "date": "2026-09-20",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "ranges": 10,
+  "instructions": 228,
+  "bytes": 644,
+  "anchors": 37,
+  "internal_branch_boundaries": 25,
+  "actual_relative_references": 26,
+  "rejected_operand_coincidences": 3,
+  "direct_e8_callers": {
+    "0x498650": [
+      "0x4998d6"
+    ],
+    "0x4982b0": [
+      "0x403878",
+      "0x40455c",
+      "0x404ced",
+      "0x407064",
+      "0x497bb6",
+      "0x4d36bd"
+    ]
+  },
+  "absolute_entry_or_interior_literals": 0,
+  "command": "python3 /tmp/verify_x3_media_owned_consumer_seams.py",
+  "seams": [
+    {
+      "site": "0x498670",
+      "length": 10,
+      "unowned_continuation": "0x49867a",
+      "owned_continuation": "0x498697",
+      "abi": "EAX=record ECX=next EDX=ID ESP=S; signed input[S+4]; local success EAX0/failure negative maps through original Boolean tail, caller cleans4"
+    },
+    {
+      "site": "0x4982db",
+      "length": 6,
+      "unowned_continuation": "0x4982e1",
+      "owned_continuation": "0x498322",
+      "abi": "ESI=current EBP=cached-next EBX0 ESP=T=S-16; cancel locally, preserve records/stack; original clears playing, conditionally status1 callback, then clears keys and follows next"
+    }
+  ],
+  "rate_domain": "All positive signed inputs1..INT_MAX; exact float bits0x3727c5ac. Nonpositive rejects without mutation. Ownership/transaction failures are separate, not positive-rate caps.",
+  "preservation": "Both owned and unowned injected work preserves x87 stack/control/status, MXCSR/XMM, nonvolatile registers, four-byte stack contract and LastError. Unowned restores all incoming GPR/flags before original replay.",
+  "ownership": "Explicit live record/shell identity and generation; flags8 or ID2 alone insufficient. Owned unsupported/stale state must never fall through to original COM.",
+  "limits": "Candidate spans only; no hook installation/CPU/unwind/runtime qualification or complete media integration. Mixed lists still hold current/cached-next through unowned COM/callbacks. Thread/alias/exception/lifetime and cancellation-capacity obligations remain.",
+  "runtime": "No game/Wine/build/install/production edits",
+  "local_evidence": [
+    {
+      "path": "/tmp/x3-media-owned-consumer-seams.md",
+      "sha256": "756aceb8754f358d054ede9c1a2315684fbc6fa9d1ed6c59ff7ab849f1a8a654"
+    },
+    {
+      "path": "/tmp/verify_x3_media_owned_consumer_seams.py",
+      "sha256": "6e04154a4bb5672748d7961d1b6a43532e69c1435ce6339400ddb9aa36c13b74"
+    },
+    {
+      "path": "/tmp/x3-media-owned-consumer-seams-check.json",
+      "sha256": "0b91cfbdfc4780cdefbcd4f28f3aad77dfaeb44afc07f9274aec539c858709ab"
+    },
+    {
+      "path": "/tmp/x3-media-owned-consumer-seams-raw.txt",
+      "sha256": "3fb28d4b281681554c45fdd67874470a5cfb058a858eed6f2fbb0fe9fb2d5acc"
+    }
+  ]
+}

@@ -775,3 +775,89 @@ ordering. The [compact record](../../verification/results/media-worker-startup-b
 binds the corrected local note, verifier and result hashes. Full details are
 `/tmp/x3-media-worker-startup-boundary.md`; raw disassembly remains local and
 untracked. No production changes, game/Wine execution or build was performed.
+
+## Owned rate and stop-all dispatch candidates (2026-09-20)
+
+Two per-record spans can route a proven owned ID2 shell **before original COM
+access**, while retaining original lookup/traversal and completion handling.
+These are reviewed instruction/ABI candidates, not qualified production hooks
+or a complete engine ownership contract. Identity and lifetime generation are
+required; ID2 or flags8 alone cannot distinguish owned from unowned objects.
+
+| Candidate | Incoming state and continuations |
+| --- | --- |
+| Rate0x498670, length10, end0x49867a | EAX=matched record, ECX=next link, EDX=requested ID, ESP=S=function-entry stack; signed input at[S+4]. Displaces MOV EAX,[record+24] (3 bytes) and TEST BYTE[media+8c],20 (7). Proven unowned replays both and resumes0x49867a with TEST flags intact. Owned local result can resume0x498697 with EAX=0 for success or negative for failure; existing tail returns Boolean EAX with plain RET. Passing Boolean0/1 to that tail would incorrectly report both as success. |
+| Stop-all0x4982db, length6, end0x4982e1 | ESI=current playing record, EBP=cached next, EBX=0; ESP=T=S−16 after saved EBX/EBP/ESI/EDI. Displaces MOV EDI,[ESI+24] (3) and CMP [EDI+4],EBX (3). Proven unowned replays both and resumes0x4982e1 with CMP flags intact. Proven owned commits local cancellation/stopped intent, then resumes0x498322 at original T with live current/next records and preserved registers. |
+
+Both displaced spans have no relative operands or scanned interior entry.
+The rate span is entered by JZ0x498663; stop-all falls through from0x4982d9.
+A five-byte rel32 detour requires whole-instruction spans10/6 respectively.
+Entry detours at0x498650/0x4982b0 each have a five-byte first instruction but
+lack the matched-record identity; replacing whole functions would duplicate
+lookup or mixed-list traversal/callback behavior. The two-byte COM CALLs
+0x498695/0x4982f0 are too late: rate already dereferenced media+0x70, while
+null Pause fields skip the stop call entirely. No actual patch was installed.
+
+Rate's sole encoded E8 caller0x4998d6 pushes the integer from script argument
++6 with ID in EDX; it pushes the returned Boolean at0x4998db and clears both
+arguments at0x4998e3. This is a synchronous script result. Original rate rejects
+media flags0x20, then FILDs the integer, multiplies float bits0x3727c5ac, and
+calls position-interface put_Rate(+0x38) at0x498695. It has no callback or
+post-COM record read. Owned rate follows the architecture's **full positive
+signed domain1..INT_MAX**, with a real synchronous local clock transaction;
+nonpositive input fails without mutation. Stale/unavailable ownership or failed
+transaction are separate failures, not a new positive-rate cap or worker HRESULT.
+
+Stop-all caches next at0x4982d6, then conditionally Pauses through media+0x74
+at0x4982f0; flags8 skips its secondary audio transport. Owned dispatch must
+invalidate its presentation/decode epoch without waiting for worker retirement
+or relying on queue capacity to prevent stale presentation. Resume0x498322:
+original clears playing at0x498328, conditionally calls completion0x49834e
+with caller-cleaned `(context,status1)`, **then** clears callback index/context
+at0x498353/356 and dereferences cached next at0x498359. The injected operation
+must not notify, pump, unlink or destroy either record. Only playing records
+are visited; admitted/preparing play must expose playing intent as designed.
+Callback eligibility retains the original signed index<32 test without a lower
+bound check; valid metadata remains a premise, and equal callback keys do not
+identify one logical request.
+
+Six stop-all direct callers are0x403878,0x40455c,0x404ced,0x407064,0x497bb6
+and0x4d36bd. The last is WM_ACTIVATE inactive handling, after active-state clear.
+These contexts do not establish all-thread ownership. Reviewed known completion
+handlers update state/wakeup queues rather than synchronously executing VM/media
+retirement, but **mixed-list stop-all still calls unowned COM and keeps current
+and next record pointers across COM/callbacks**. Owned generations do not pin
+those engine records. Provider reentry, handled-script/shutdown, destination
+recovery, unknown aliases and exceptional/thread behavior remain separate
+lifetime barriers. These two seams do not close the full integration envelope.
+
+Only proven unowned takes original COM replay. Owned-but-stale/unsupported or
+unavailable classification must not silently become unowned. A valid owned
+rate rejection can use the failure tail; stop needs a safe local cancel before
+continuing. Unknown live record/foreign-thread cases have no newly proved
+fallback here. Failed hook qualification must prevent new owned admission;
+unhooking requires no live owned shells or in-flight dispatch. Classification
+and local updates must be bounded without callbacks, COM, message pumping,
+recovery allocation or worker waits, and must not pass engine pointers to worker.
+
+On **both owned bypass and unowned replay**, injected work preserves caller
+x87 stack/control/status and MXCSR/XMM state, nonvolatile registers, four-byte
+incoming-stack assumptions and LastError. Unowned replay restores all incoming
+GPR/flags before displaced instructions; owned tails preserve their described
+stack/register contract. No unqualified exception may escape into engine code.
+Exact live bytes, patch ownership, quiescent writes/rollback, trampoline/module
+lifetime, CPU/LastError tests, local transaction/cancel correctness and performance
+remain implementation obligations, not results of this disassembly checkpoint.
+
+Independent byte/ABI review and local rerun of
+`python3 /tmp/verify_x3_media_owned_consumer_seams.py` pass **10 ranges,
+228 instructions / 644 bytes / 37 anchors / 25 internal branch boundaries**.
+Encoded E8/E9/EB/Jcc/LOOP scans into both full functions find26 actual references
+(7 external E8 calls,19 internal branches), zero external interior entries and
+zero whole-file absolute entry/interior DWORD literals. Three raw operand-byte
+coincidences are rejected by containing-instruction boundaries. Computed entries,
+other modules and arbitrary aliases are not closed by this census.
+The [compact record](../../verification/results/media-owned-consumer-seams-2026-09-20.json)
+binds corrected local note/verifier/result hashes and counts. Details and raw
+rows remain under `/tmp/x3-media-owned-consumer-seams*`; no raw bytes are tracked.
+No game/Wine execution, build, source edit or installation was performed.
