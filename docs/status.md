@@ -74,15 +74,20 @@ on `feat/media-production-integration`; three affected host tests pass.
 Production worker extraction cross-compiles and is being connected to its actual
 clock/texture fixture. App-local package deployment is reviewed and committed
 (`c63f8cbd`, 45 affected host tests); the configuration reader is also committed
-(`e2fabd5e`) after 150 actual Win32 file-adapter checks passed. Real decoder opens
-with retained configuration pins remain an integration check. The canonical loop
+(`e2fabd5e`) after 150 actual Win32 file-adapter checks passed. The extracted worker now passes actual end-of-video playback twice with retained
+configuration pins (12 exact frames/readbacks and fresh graph completion for both
+sessions). Its concurrent playback run passes functional checks but lacks one
+pause-before-seek scheduling witness; that fixture coverage is being repaired. The canonical loop
 API now distinguishes temporary queue pressure from permanent refusal
 (`156c8b63`, 444 host checks).
 The startup boundary now includes synchronous observer installation before background
 preparation (`23092198`): eleven actual x86 fixture modes pass 819 checks. The engine
 consumer checkpoint (`9ac49b48`) passes 5,055 x86 checks across 24 sites and 11 return
 guards. Both use authored engine context; actual integration/readiness stays open.
-Destination observers and connected playback services remain under qualification.
+The Services coordinator is reviewed and committed (`bebc9edd`, 1,783 host checks);
+actual combined playback remains to qualify. Destination observers pass 2,321 x86
+and 142 D3D checks; review is finishing a host-side device-publication tombstone
+correction before integration.
 Enabled media repair remains unfinished. The owning
 media and ownership ledgers retain the scoped evidence.
 Collision optimization is **paused by user request**. The reviewed engine/lattice
