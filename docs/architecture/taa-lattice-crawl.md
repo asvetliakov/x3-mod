@@ -824,3 +824,34 @@ under optimized Python. Affected syntax checks pass. Exact D3DX half rounding,
 residual pixels, alpha effects and the eventual partial-coverage/depth contract
 remain open. No production edits, Wine, game, build or install accompanied this
 ownership investigation.
+
+
+## 18. Visible-area oracle is numerically unreliable (2026-09-20)
+
+The bounded moving-geometry coverage experiment cannot support a quality
+verdict. Source ownership and projection remain supported by §17, but the
+GEOS/Shapely visible-polygon operations produced incorrect area while reporting
+valid geometry. A small crop-wide mean error hid isolated large errors.
+
+On frame6409 pixel(791,157), the first global visible-union calculation returned
+0.436406 coverage versus independent 512× sampling 0.690758. Local clipping
+and union recovered approximately 0.690775 there. That correction exposed a
+second failure at (817,147): reported coverage1.0 versus approximately0.106
+from independent dense sampling. Independent review traced the second failure
+to a global polygon difference for triangle7626: the cutter covers the local
+area, but the difference retains it. A geometry-validity flag is therefore
+insufficient. Sequential subtraction agrees on that witness but is not a
+validated replacement for all frames.
+
+**Decision:** stop the bounded GEOS-based experiment; retain both failure
+witnesses and invalidate affected integration gates. Do not infer that true
+area coverage would improve or fail the moving-lattice quality thresholds.
+No temporal-quality result or production implementation is accepted. A future
+coverage experiment needs a numerically reliable construction with independent
+local high-resolution checks, including maximum-error gates, before comparing
+temporal behavior. No new user flight is needed to resolve this offline issue.
+
+Local implementation/results: `/tmp/x3-lattice-coverage-oracle/`; compact
+`verification/results/lattice-coverage-oracle/FINAL.json` and
+`failure-witnesses.json` preserve the outcome and failure witnesses. The failed
+experiment changes no production renderer, candidate or installed files.

@@ -819,3 +819,35 @@ For visual identification only, native FFmpeg exported a ten-second PNG and
 a twelve-second H.264 preview under `verification/local/media-id2-preview/`.
 The user suggests animated billboard icons, consistent with the atlas image
 and texture destination path; the consuming object remains unidentified.
+
+
+### Seek-isolation counter: frame delivery succeeds
+
+One reviewed diagnostic changes only the initial zero-seek: it resumes the
+constructor's current position, explicitly logs the skipped call and rejects
+nonzero start values. The default fixture retains the original seek sequence.
+Twenty-two focused host tests pass. Reviewed variant source SHA-256
+`6a8f610262dbdb71f7a45c9ed26c6cb9b14563a38f56d0d30430b0047b877fd7`
+builds EXE `6cac12ce3a788077af54db446e76af3e0e7830d0154098a8818dd8a22e025bea`.
+
+The same serialized X3 runner with fixture-only v5, `--stage copy
+--skip-zero-seek --diagnostics`, exits0 in **6.491 s**. Six samples have
+progressing timestamps and six distinct nonempty copied-frame hashes, each
+covering 1,048,576 destination bytes. Update/CompletionStatus and source/target
+lock/copy/unlock chains pass the parser; cleanup completes without errors.
+The first sample spans 0–400,000 stream ticks and the last 3,200,000–3,600,000.
+`diagnostic_variant_accepted` and `variant_frame_delivery_proven` are true;
+baseline `accepted` and `playback_proven` deliberately remain false. Evidence:
+`/tmp/x3-media-fixture-v5-skip-zero-copy`. Independent runtime review reproduced
+the results and verified paired sample/copy chains, cleanup and protected hashes.
+
+This proves decoded frame delivery through the fixture’s DirectDraw-to-D3D9
+copy path in this diagnostic. It narrows the blocker to the initial seek in
+this sequence; it does not establish a safe seek replacement, nonzero cue
+starts, looping, comm playback, game texture lifetime or native Windows
+behavior. Do not enable v5 in the game on this evidence alone. Protected game
+EXE/configuration/proxy hashes remain unchanged after the counter.
+
+The reviewed fixture and compact four-run record are checkpointed as
+`e8071b1e` on isolated branch `experiment/media-playback-seek-2026-09-20`.
+They have not been merged into the qualifying candidate.

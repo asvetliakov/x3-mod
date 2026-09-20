@@ -57,7 +57,9 @@ stalls persist with phase diagnostics off and correlate with media-backend
 errors. [Run50](verification/media-cues.md#run50-periodic-retries-directly-explain-argon-freezes-2026-09-20) now directly attributes two periodic stalls to failed ID2 media
 construction; three later retries follow the same pattern. First-view media
 failures are a separate caller path. The temporary [run51 counter](verification/user-runs.md#51-media-retry-counter--same-view-longer-diagnostic-interval) is ready; retry defaults and decoder remain unchanged. A [standalone media fixture](verification/media-cues.md#standalone-id2-playback-boundary-2026-09-20) reproduces v4 open failure; fixture-only v5 opens but blocks at
-zero-seek. A seek-isolation diagnostic is in progress. No game decoder change. Moving collision is
+zero-seek. Skipping that call delivers six distinct frames to a diagnostic D3D
+texture with clean shutdown; correct seeking and game integration remain open.
+No game decoder change. Moving collision is
 about 98% of printed instrumented query time inside descent in the expensive interval, so query setup is not
 the missing lever. Details are in the [frame-time note](architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20) and
 [collision note](reverse-engineering/sector-collide.md#run49-a-moving-query-cost-is-inside-descent-2026-09-20).
@@ -80,8 +82,8 @@ is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-vis
 requested. A cheaper moving-lattice display-history replay also failed its quality
 thresholds; the [lattice note §16](architecture/taa-lattice-crawl.md#16-cheaper-post-display-history-replay-rejected-2026-09-20)
 records the result. [Mesh ownership is now identified](architecture/taa-lattice-crawl.md#17-moving-truss-mesh-ownership-recovered-2026-09-20), with signed-position conversion
-proved and about 99.7% projected support agreement. A bounded exact-coverage
-oracle is running; ownership alone does not establish crawl causation or a fix.
+proved and about 99.7% projected support agreement. The bounded [coverage oracle](architecture/taa-lattice-crawl.md#18-visible-area-oracle-is-numerically-unreliable-2026-09-20) failed its numerical checks; no temporal-quality verdict or
+fix follows from it. Ownership remains established.
 
 Ownership fixture runners and the 563-check inventory are repaired with fresh
 passes; all 31 generated shader checks now pass. Fresh collision memo (59 checks)
