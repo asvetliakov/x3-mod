@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "state": "reviewed fixture and frozen executable; runtime pending user Run53 Wine hold",
+  "build_record": "/tmp/x3-media-connected-v2/media_connected.build.json",
+  "build_record_sha256": "a5b603d87bc12d09accbbeb92a68bc04f5c5fb40574c53c114c3b55159582ad3",
+  "exe": "/private/tmp/x3-media-connected-v2/media_connected.exe",
+  "exe_sha256": "09fb74e1d63fed1df1aa29da8c2feb06605c8d9f7bf625079f03d8e6f96eb7b9",
+  "compiled_input_count": 58,
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_connected",
+    "tests": 14,
+    "seconds": 0.524,
+    "exit": 0
+  },
+  "review": "Independent deep source/checker review; frozen v2 PE and all 58 compiled inputs checked after root API import",
+  "prior_failure": {
+    "exe": "/tmp/x3-media-connected-v1/media_connected.exe",
+    "log": "/tmp/x3-media-connected-v1-build.log",
+    "result": "link completed; audit rejected missing .x3map removed by section GC",
+    "fix": "explicit linker root --undefined,_connected_map; GC retained for unused Root startup composition; v2 PE audit passes"
+  },
+  "limits": [
+    "No runtime execution for this fixture yet.",
+    "Authored engine memory and continuations; real production Consumer/Services/Clock/Workers/Destination intended.",
+    "Native D3D SYSTEMMEM texture copies, not GPU billboard rendering or live game acceptance.",
+    "Native Windows execution unverified."
+  ]
+}
