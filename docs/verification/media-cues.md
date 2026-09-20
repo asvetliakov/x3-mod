@@ -1792,3 +1792,27 @@ four-byte incoming stack contract. No ABI, hook, Reset or lock protocol changed;
 one validation comparison was removed. The parent-owned connected native retry
 remains separate evidence. Commands, the failing witness and hashes are appended
 to the [existing destination record](../../verification/results/media-destination-2026-09-20.json).
+
+
+## Connected owned playback: actual worker/destination checkpoint (2026-09-20)
+
+The reviewed connected fixture now passes with the actual production workers,
+clock, Consumer, Services and native D3D destination. Twenty exact RGB readbacks
+cover both sequence-zero first pictures, all nine finite B pictures, all six
+physical-EOF tail pictures and four final-picture hold checks. B continues after
+A retires; draining refuses immediate reuse, then permits the same address with
+a new session. Two natural completion callbacks and one retirement callback
+follow their exact clock/epoch contracts. Final assignments, draining and leases
+are zero.
+
+The first run exposed a real sequence-zero rejection in Destination and two
+fixture sentinel/terminal assumptions. The original failed result is retained;
+the production guard and fixture observations were corrected without relaxing
+first-picture or timing gates. Independent replay of v3 matches its qualification.
+All 116 protected inputs remain unchanged; native exit is zero in 9.507 s.
+The maximum measured owner-loop interval is 20.0814 ms, including diagnostics and
+excluding earlier graphics/setup; this is not a no-stall or game-FPS result.
+Engine memory/continuations are authored, and copies target SYSTEMMEM surfaces.
+Actual game startup, billboard rendering, Reset and native Windows remain open.
+The [compact record](../../verification/results/media-connected-build-2026-09-20.json)
+binds builds, both runtime outcomes, source fixes and the scoped checks.

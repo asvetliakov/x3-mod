@@ -1,15 +1,11 @@
 {
   "schema": 1,
-  "state": "reviewed fixture and frozen executable; runtime pending user Run53 Wine hold",
-  "build_record": "/tmp/x3-media-connected-v2/media_connected.build.json",
-  "build_record_sha256": "a5b603d87bc12d09accbbeb92a68bc04f5c5fb40574c53c114c3b55159582ad3",
-  "exe": "/private/tmp/x3-media-connected-v2/media_connected.exe",
-  "exe_sha256": "09fb74e1d63fed1df1aa29da8c2feb06605c8d9f7bf625079f03d8e6f96eb7b9",
+  "state": "reviewed source and connected v3 real-worker/native-D3D fixture passed; live-game qualification pending",
   "compiled_input_count": 58,
   "host": {
     "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_connected",
-    "tests": 14,
-    "seconds": 0.524,
+    "tests": 16,
+    "seconds": 0.64,
     "exit": 0
   },
   "review": "Independent deep source/checker review; frozen v2 PE and all 58 compiled inputs checked after root API import",
@@ -20,9 +16,57 @@
     "fix": "explicit linker root --undefined,_connected_map; GC retained for unused Root startup composition; v2 PE audit passes"
   },
   "limits": [
-    "No runtime execution for this fixture yet.",
-    "Authored engine memory and continuations; real production Consumer/Services/Clock/Workers/Destination intended.",
-    "Native D3D SYSTEMMEM texture copies, not GPU billboard rendering or live game acceptance.",
-    "Native Windows execution unverified."
-  ]
+    "Authored engine memory/continuations; real production Consumer/Services/Clock/Workers/Destination.",
+    "D3D SYSTEMMEM texture copies, not rendered game billboards.",
+    "20.0814ms max owner-loop interval includes diagnostics but excludes prior graphics/setup; no no-stall or game FPS claim.",
+    "Full Root game startup, live-game callbacks/Reset, native Windows execution and worker joining are not qualified by this fixture."
+  ],
+  "prior_build_record": "/tmp/x3-media-connected-v2/media_connected.build.json",
+  "prior_build_record_sha256": "a5b603d87bc12d09accbbeb92a68bc04f5c5fb40574c53c114c3b55159582ad3",
+  "prior_exe": "/private/tmp/x3-media-connected-v2/media_connected.exe",
+  "prior_exe_sha256": "09fb74e1d63fed1df1aa29da8c2feb06605c8d9f7bf625079f03d8e6f96eb7b9",
+  "build_record": "/tmp/x3-media-connected-v3/media_connected.build.json",
+  "build_record_sha256": "2d733598b913b8831cc4f3b2136dd71b0eae72242b233c6a49e99729b7cc6fd0",
+  "exe": "/private/tmp/x3-media-connected-v3/media_connected.exe",
+  "exe_sha256": "85d22b16a5621578a20639cddcbec05afec5c7e5088d80e8628cf5f7619d69c2",
+  "prior_runtime": {
+    "result": "/tmp/x3-media-connected-v2-run1/result.json",
+    "native_exit": 2,
+    "failure": "pump_identity_stable at pass1905",
+    "protected_unchanged": 116,
+    "corrections": [
+      "Destination accepts canonical worker frame sequence zero.",
+      "Fixture uses nonzero successful-copy binding plus explicit first-write state.",
+      "Fixture requires exact terminal epoch increment and preserves completed callback tuple."
+    ],
+    "original_result_retained": true
+  },
+  "runtime": {
+    "result": "/tmp/x3-media-connected-v3-run1/result.json",
+    "result_sha256": "7bbfe908b79c4325a0d2ebc6fa1fbf1dbfeabbd4fbe4433579dde18aaf92a031",
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1",
+    "exit": 0,
+    "wall_seconds": 9.506762166,
+    "lock": {
+      "lock_wait_seconds": 4.208000000002071e-06,
+      "child_elapsed_seconds": 19.855188625,
+      "exit_code": 0
+    },
+    "native_checks": 35597,
+    "exact_RGB_captures": 20,
+    "selected_pictures": 16,
+    "terminal_hold_readbacks": 4,
+    "natural_callbacks": 2,
+    "retirement_callbacks": 1,
+    "both_first_sequences_zero": true,
+    "B_continues_after_A_retirement": true,
+    "record_reuse": true,
+    "protected_count": 116,
+    "all_protected_unchanged": true,
+    "max_owner_pass_seconds": 0.0200814,
+    "review": "Independent checker regeneration exactly matched recorded qualification; compiled inputs and checker/log hashes checked."
+  }
 }
