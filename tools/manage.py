@@ -412,7 +412,7 @@ def main():
     parser.add_argument('--hdr-key-pull', type=float, default=0.25, help='Fraction of the key rule applied when the lit median is brighter than the key, so a bright full frame is pulled down gently instead of to mid-grey (X3M_HDR_KEY_PULL; requires --hdr-tonemap; default 0.25; 1 = the full key rule both ways)')
     parser.add_argument('--hdr-clamp', type=float, default=0.0, help='Clamp of the decoded scene value before the tonemap, the blunt firefly guard (X3M_HDR_CLAMP; requires --hdr-tonemap; default 0 = off)')
     parser.add_argument('--state-shadow', choices=['auto', 'on', 'off'], default='auto', help='Render-state configuration of the route (X3M_STATE_SHADOW): auto (default) leaves the variable unset, so the DLL runs the hybrid unhook, with SetRenderState/SetSamplerState unhooked in production and the state read at the draw, and installs the hooks only under --frame-timing or a failed Get* check; on always installs the hooks and answers the per-draw state queries from the shadow (the run-31 behaviour); off issues a legacy GetRenderState per query (A/B; requires --motion-output)')
-    parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings, never the write masks, across consecutive routed draws and installs no SetRenderState/GetRenderState hook (route-per-draw-cost.md lever 3; unflown, read lazy_flushes and lazy_mask_writes on the motion_output_frame line; requires --motion-output)')
+    parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default=None, help='RT1/RT2 binding policy of the route: lazy (default with --motion-output) keeps the bindings across consecutive routed draws while restoring the write masks and installs no SetRenderState/GetRenderState hook; perdraw rebinds RT1/RT2 around every routed draw and remains available for A/B or rollback. The motion_output_frame line reports lazy_flushes and lazy_mask_writes (requires --motion-output)')
     parser.add_argument('--camera', choices=['vanilla', 'chase'], default='vanilla', help='External back view camera (X3M_CAMERA): vanilla (default) patches nothing; chase installs the byte-verified cockpit-update trampoline (0x00420e06, exact executable only, fails closed to vanilla) and replaces the external back view with the critically damped chase camera; internal/front/side views stay vanilla, so the game\'s view keys remain the switch (docs/architecture/chase-camera.md)')
     # Chase tunables are X3M_CHASE_* (review 31 O7): X3M_CAMERA_CUT_DEG / X3M_CAMERA_LOG above belong to the TAA camera read.
     parser.add_argument('--chase-rot-tau', type=float, default=None, help='Chase camera orientation spring time constant in seconds (X3M_CHASE_ROT_TAU; default 0.28; requires --camera chase)')
@@ -629,8 +629,12 @@ def main():
         parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
         parser.error('--camera-cut-deg must be in (0, 180] and --camera-log in [1, 1000000].')
-    if args.motion_rt_mode != 'perdraw' and not args.motion_output:
+    if args.motion_rt_mode == 'lazy' and not args.motion_output:
         parser.error('--motion-rt-mode requires --motion-output.')
+    if args.motion_rt_mode is None:
+        # Keep the feature-off launch environment unchanged; lazy is the
+        # production default only when the motion route is active.
+        args.motion_rt_mode = 'lazy' if args.motion_output else 'perdraw'
     if args.scene_hook == 'on' and not args.motion_output:
         parser.error('--scene-hook requires --motion-output.')
     if args.hdr and not args.motion_output:

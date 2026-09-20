@@ -215,21 +215,33 @@ class FrameTimingLaunchOption(unittest.TestCase):
                 self.assertEqual(code, 2, value)
                 self.assertIn('--frame-end-stride must be within [1, 100000]', error)
 
-    def test_motion_rt_mode_defaults_to_perdraw_and_lazy_requires_the_route(self):
+    def test_motion_rt_mode_defaults_to_lazy_on_the_route_and_preserves_feature_off(self):
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
-            # perdraw is the kill switch of the hook-free lazy binding (lever 3)
-            # and stays the default until the mode is flown; lazy never touches
-            # the state-hook switch (it installs no setter hook).
-            code, output, error = helper.launch(directory, '--motion-output', inherited={'X3M_MOTION_RT_MODE': 'lazy'})
-            self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_MOTION_RT_MODE'], 'perdraw')
-            code, output, error = helper.launch(directory, '--motion-output', '--motion-rt-mode', 'lazy')
+            # The active route defaults to the flown lazy binding and overrides
+            # a stale inherited kill switch. Lazy never touches the state-hook
+            # switch (it installs no setter hook).
+            code, output, error = helper.launch(directory, '--motion-output', inherited={'X3M_MOTION_RT_MODE': 'perdraw'})
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_MOTION_RT_MODE'], 'lazy')
             self.assertNotIn('X3M_STATE_SHADOW', env)
+            # perdraw remains the explicit rollback/A-B mode.
+            code, output, error = helper.launch(directory, '--motion-output', '--motion-rt-mode', 'perdraw')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_MOTION_RT_MODE'], 'perdraw')
+            # With the route disabled, preserve the prior feature-off value and
+            # permit its explicit spelling.
+            code, output, error = helper.launch(directory, inherited={'X3M_MOTION_RT_MODE': 'lazy'})
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_MOTION_RT_MODE'], 'perdraw')
+            code, output, error = helper.launch(directory)
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_MOTION_RT_MODE'], 'perdraw')
+            code, output, error = helper.launch(directory, '--motion-rt-mode', 'perdraw')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(json.loads(output)['env']['X3M_MOTION_RT_MODE'], 'perdraw')
             code, _, error = helper.launch(directory, '--motion-rt-mode', 'lazy')
             self.assertEqual(code, 2)
             self.assertIn('--motion-rt-mode requires --motion-output', error)
