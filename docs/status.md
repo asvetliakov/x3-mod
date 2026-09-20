@@ -72,8 +72,12 @@ in ungated baselines. Exact represented state passes; nonzero status coverage
 remains unverified. The reviewed prerequisites are being combined with fog/shafts
 on `feat/media-production-integration`; three affected host tests pass.
 Production worker extraction cross-compiles and is being connected to its actual
-clock/texture fixture. App-local package staging and temporary-tree rollback tests
-pass; installer review and Windows configuration-reader runtime checks are active.
+clock/texture fixture. App-local package deployment is reviewed and committed
+(`c63f8cbd`, 45 affected host tests); the configuration reader is also committed
+(`e2fabd5e`) after 150 actual Win32 file-adapter checks passed. Real decoder opens
+with retained configuration pins remain an integration check. The canonical loop
+API now distinguishes temporary queue pressure from permanent refusal
+(`156c8b63`, 444 host checks).
 The actual consumer hooks, startup boundary and destination observers are under
 implementation/qualification. Enabled media repair remains unfinished. The owning
 media and ownership ledgers retain the scoped evidence.
