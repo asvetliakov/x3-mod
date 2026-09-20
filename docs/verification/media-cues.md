@@ -1115,3 +1115,42 @@ stutter-performance solution. Millisecond boundaries and pending cancellation
 are next, followed by the engine's seek-only loop behavior and record/target
 lifetime. No production decoder change, game playback acceptance or native
 Windows execution follows from this checkpoint.
+
+
+### Disabled owned-media CPU state checkpoint (2026-09-20)
+
+The first production state foundation now implements bounded session/operation/
+epoch identities, failure-atomic play reservations, two independent sessions,
+queue-independent local cancellation, stale-event rejection and callback
+transitions. The engine adapter supplies the fixed x86 shell/record layouts and
+value-only association, lookup and traversal invalidation. Owned admission remains
+**false**; this checkpoint installs no hooks and constructs no workers. Independent
+source/evidence review (`review_media_owned_state`) is clear for that scope.
+
+The production-driven host fixture passes **202 checks**, with zero failures and
+zero allocations; the focused Python suite passes both tests. Both production
+translation units cross-compile for i686 Windows with the required SSE2 and
+four-byte incoming-stack options, with no x87 instructions in their object
+disassembly. ASan+UBSan also passes all 202 checks. Host storage is 2912 bytes for
+the runtime and 3632 bytes for the adapter. One 200,000-iteration host diagnostic
+measured 8.13 ns per publication-validation/ready-event pair; this is neither
+engine-hook timing nor game performance. The [compact qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
+retains commands, toolchains, review, results and limitations. No Wine or game
+execution, DLL build or install was performed.
+
+The transport contract is explicit: **play is self-contained ensure-construction
+for its source followed by prepare/play**. `construct` is optional eager work and
+can be discarded by stop before consumption; subsequent play must construct when
+needed. Binding replacement preserves source preparation, with destination identity
+validated separately at upload. A lookup miss remains unknown and cannot authorize
+legacy COM replay. The next bridge needs non-lossy per-session transfer and a
+coherent cancellation channel; the current publication API is only an engine-thread
+value snapshot. No second worker queue or clock algorithm was introduced.
+
+Rate checks use a clock spy to verify the exact scale, nonpositive-input rejection
+and synchronous transaction result. They do not qualify actual clock progression
+or canonical clock integration. Callback transitions do not dispatch to the VM.
+Instruction spans, CPU/LastError preservation, rollback, all consumer hooks, worker
+and frame transport, destination/Reset lifetime, enabled playback and native Windows
+runtime remain acceptance dependencies. This disabled checkpoint is a foundation
+for the enabled repair, not completion of that repair.

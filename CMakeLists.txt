@@ -71,6 +71,7 @@ set_source_files_properties("${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
   PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
 add_library(d3d9 SHARED
   "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
+  src/media/playback_runtime.cpp src/proxy/media_playback.cpp
   src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp
   src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp src/proxy/lattice_state_capture.cpp src/proxy/comparison_notice.cpp
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp

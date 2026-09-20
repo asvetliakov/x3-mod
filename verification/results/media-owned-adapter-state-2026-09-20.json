@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "date": "2026-09-20",
+  "scope": "Disabled owned-media CPU state checkpoint; no engine hooks or playback qualification",
+  "source_base_commit": "4c5ca4e765b9c5e71adbdde52d9906a56828e636",
+  "source_binding": "Reviewed sources committed together with this record; no DLL candidate was built",
+  "retained_branch": "feat/media-owned-adapter",
+  "independent_review": "review_media_owned_state: CLEAR for disabled CPU checkpoint; independently repeated 2 tests / 202 checks",
+  "qualification": {
+    "cpu_state_checkpoint_accepted": true,
+    "production_admission_enabled": false,
+    "engine_hooks_qualified": false,
+    "clock_runtime_qualified_by_this_record": false,
+    "worker_transport_qualified_by_this_record": false,
+    "gpu_reset_qualified": false,
+    "game_playback_qualified": false,
+    "native_windows_runtime_qualified": false
+  },
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+    "exit_code": 0,
+    "tests": 2,
+    "fixture_checks": 202,
+    "fixture_failures": 0,
+    "fixture_allocations": 0,
+    "compiler": "Apple clang 21.0.0, arm64-apple-darwin25.6.0"
+  },
+  "cross_compile": {
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "production_translation_units": 2,
+    "flags": [
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-fno-exceptions"
+    ],
+    "x87_instructions": 0,
+    "limit": "Object compilation and disassembly only; no native Windows execution or DLL build"
+  },
+  "sanitizers": {
+    "build_command": "clang++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Werror src/media/playback_runtime.cpp src/proxy/media_playback.cpp verification/probe/media_owned_adapter_state_fixture.cpp -o /tmp/x3-media-owned-state-sanitize",
+    "run_command": "/tmp/x3-media-owned-state-sanitize",
+    "exit_code": 0,
+    "fixture_checks": 202,
+    "fixture_failures": 0,
+    "fixture_allocations": 0,
+    "output_retention": "Tool transcript only; no persisted raw result log"
+  },
+  "bounded_cost": {
+    "max_sessions": 8,
+    "max_command_cells": 32,
+    "default_sessions": 2,
+    "default_command_cells": 8,
+    "host_runtime_bytes": 2912,
+    "host_adapter_bytes": 3632,
+    "diagnostic_iterations": 200000,
+    "diagnostic_pair_ns": 8.13,
+    "diagnostic_pair": "accepts_publication plus ready-event consumption",
+    "limit": "Single host run; not game FPS or engine hook/upload timing"
+  },
+  "contracts": [
+    "play is self-contained ensure-constructed(source) plus prepare/play. construct is optional eager preparation; stop may discard it before consumption. A later play must construct if needed.",
+    "Commands and publication values contain source/session/operation/epoch metadata, never engine callback keys or engine pointers.",
+    "Normal command reservation and cancellation publication are separate. Current publication is an engine-thread value snapshot, not a qualified cross-thread mailbox.",
+    "Binding replacement preserves source-operation preparation. Destination identity must be validated separately; replacement invalidates current traversal tickets.",
+    "Registry miss is unknown, not proof that an engine object is unowned or eligible for legacy COM replay.",
+    "Rate tests verify exact scaling, input rejection and transaction result using a clock spy. They do not execute or requalify the canonical clock algorithm."
+  ],
+  "open_dependencies": [
+    "Non-lossy bounded per-session command transfer and coherent worker cancellation publication",
+    "Canonical clock integration, immutable frame leases and worker construction/teardown",
+    "Whole-instruction hooks, CPU/LastError preservation, rollback and atomic consumer coverage",
+    "Engine callback seams, allocation/free matching, destination acquisition, Reset and resource lifetime",
+    "Enabled engine playback and user-run/native Windows runtime qualification"
+  ],
+  "execution": {
+    "game_launched": false,
+    "wine_executed": false,
+    "bottle_name": null,
+    "wine_arch": null,
+    "FEX_X87REDUCEDPRECISION": null,
+    "WINEMSYNC": null,
+    "dll_built": false,
+    "installed": false,
+    "note": "Host and cross-compilation checks only; no bottle or emulation environment used"
+  }
+}
