@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (run52 attribution candidate installed; fog, lattice, media and collision experiments continue). This is the
+Updated 2026-09-20 (Run52 accepted; fog, lattice, media and collision experiments continue). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -69,7 +69,7 @@ construction; three later retries follow the same pattern. First-view media
 failures are a separate caller path. The optional [run51 counter](verification/user-runs.md#51-media-retry-counter--same-view-longer-diagnostic-interval) is ready; retry defaults and decoder remain unchanged. A [standalone media fixture](verification/media-cues.md#standalone-id2-playback-boundary-2026-09-20) reproduces v4 open failure; fixture-only v5 opens but blocks at
 zero-seek. Skipping that call delivers six distinct frames to a diagnostic D3D
 texture with clean shutdown; correct seeking and game integration remain open.
-No game decoder change. An [owned collision builder](reverse-engineering/sector-collide.md#owned-real-asset-builder-checkpoint-controlled453-2026-09-20) now passes 217 checks on a controlled 453-triangle real-asset subset; original-query replay and a physical tree-layout experiment are being implemented. Live snapshot lifetime remains unproved. Moving collision is
+No game decoder change. A [native same-stack control](verification/media-cues.md#native-same-v5-pipeline-proves-preroll-reaches-the-wine-destination-2026-09-20) proves the Wine graph presents a 9.4-second preroll frame after a ten-second seek; an explicit portable-provider fixture is being implemented. The [owned collision query oracle](reverse-engineering/sector-collide.md#owned-original-query-parity-checkpoint-2026-09-20) passes 3,118 frozen queries with zero result/ABI mismatches after correcting a truncated fixture constant. Paired tree-layout timing is next. Historical memo/query-phase fixtures share that extraction limitation; their repair is underway. Installed collision code and the separate builder qualification are unaffected. Live snapshot lifetime remains unproved. Moving collision is
 about 98% of printed instrumented query time inside descent in the expensive interval, so query setup is not
 the missing lever. Details are in the [frame-time note](architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20) and
 [collision note](reverse-engineering/sector-collide.md#run49-a-moving-query-cost-is-inside-descent-2026-09-20).
@@ -88,12 +88,12 @@ Light-selection and collision-query timers are integrated, reviewed and committe
 checks and 675 queries with zero differences. Run49 A combined them with
 the existing loop/game/residual phases. Qualification and installation are complete. [Run49](verification/user-runs.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight) has its performance pair reported; B is reported as run185. The user rejects the uniform fog wash and requests
 patchy clouds with clear gaps. Sector-reader/card-replacement technical triage
-is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20); the offline family-density recipe passes its fixed view and temporal checks, and a separate D3D9 GPU prototype is being implemented. No repeat fog flight is
+is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20); the offline family-density recipe passes its fixed view and temporal checks, and the [first D3D9 march checkpoint](verification/volumetric-fog.md#spatial-fog-first-gpu-march-checkpoint-2026-09-20) passes. Composite identity checks and subsequent recovery/performance qualification remain in progress. No repeat fog flight is
 requested. A cheaper moving-lattice display-history replay also failed its quality
 thresholds; the [lattice note §16](architecture/taa-lattice-crawl.md#16-cheaper-post-display-history-replay-rejected-2026-09-20)
 records the result. [Mesh ownership is now identified](architecture/taa-lattice-crawl.md#17-moving-truss-mesh-ownership-recovered-2026-09-20), with signed-position conversion
 proved and about 99.7% projected support agreement. The corrected [source-coverage oracle](architecture/taa-lattice-crawl.md#19-corrected-source-coverage-oracle-passes-2026-09-20) passes its 32-frame checks and reduces tracked coverage variation by about 75%.
-Actual RGB/TAA benefit and a portable GPU implementation remain unqualified.
+The subsequent RGB prediction failed its quality gates; an actual-shader owner/alpha/depth fixture is now being implemented. Actual RGB/TAA benefit and a production GPU implementation remain unqualified.
 
 Ownership fixture runners and the 563-check inventory are repaired with fresh
 passes; all 31 generated shader checks now pass. Fresh collision memo (59 checks)
