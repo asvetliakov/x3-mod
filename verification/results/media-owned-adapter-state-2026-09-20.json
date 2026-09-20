@@ -237,5 +237,20 @@
       "dll_built": false,
       "installed": false
     }
+  },
+  "loop_failure_classification": {
+    "source_base_commit": "c780211c",
+    "independent_review": "review_media_owned_state: CLEAR; independently repeated 2 tests / 444 checks, i686 SSE2/no-x87 and diff check",
+    "contract": "Optional backpressure output is reset on every call and true only for valid active identities with usable epoch/serial but occupied/reserved command capacity. Invalid identities and permanent counter exhaustion reject before capacity classification. Failure preserves state.",
+    "host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+      "tests": 2,
+      "checks": 444,
+      "failures": 0,
+      "allocations": 0
+    },
+    "sanitizer_log": "/tmp/x3-media-loop-backpressure-sanitize.log",
+    "fixture_limit": "Only fixture TU uses -fno-access-control for counter exhaustion; production TUs compile separately with normal access checks.",
+    "remaining": "Consumer retry/termination routing and injected ABI/native runtime remain separate."
   }
 }

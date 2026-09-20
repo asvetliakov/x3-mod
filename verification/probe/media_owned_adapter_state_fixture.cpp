@@ -445,10 +445,97 @@ static void atomic_loop_bounds() {
     CHECK(!adapter.take_notification(stopped, notification));
     CHECK(!adapter.loop_seek(ah, 1, 2).accepted);
 }
+static void loop_backpressure_classification() {
+    bool pressure = true;
+    m::Runtime r(1, 1);
+    CHECK(!r.loop_seek({}, 1, 2, &pressure).accepted && !pressure);
+    auto h = r.try_admit(2); pressure = true;
+    CHECK(!r.loop_seek(h, 1, 2, &pressure).accepted && !pressure); // Inactive, even though queue is full.
+    m::Command command; CHECK(r.pop_command(command));
+    auto pending = r.prepare_play(h, request().playback); auto active = r.commit_play(std::move(pending));
+    CHECK(active.accepted);
+    m::Snapshot before, after; CHECK(r.snapshot(h, before));
+    pressure = false;
+    CHECK(!r.loop_seek(h, 1, 2, &pressure).accepted && pressure);
+    CHECK(r.snapshot(h, after) && same_snapshot(before, after));
+    CHECK(r.pop_command(command));
+    pressure = true;
+    CHECK(r.loop_seek(h, 1, 2, &pressure).accepted && !pressure);
+    CHECK(r.pop_command(command));
+    pending = r.prepare_play(h, request().playback); CHECK(bool(pending));
+    CHECK(r.snapshot(h, before)); pressure = false;
+    CHECK(!r.loop_seek(h, 1, 2, &pressure).accepted && pressure); // Reserved cell, not just ready work.
+    CHECK(r.snapshot(h, after) && same_snapshot(before, after));
+    CHECK(r.commit_play(std::move(pending)).accepted);
+    pressure = true;
+    CHECK(!r.loop_seek({h.slot, h.generation + 1}, 1, 2, &pressure).accepted && !pressure);
+    CHECK(r.stop(h).accepted); pressure = true;
+    CHECK(!r.loop_seek(h, 1, 2, &pressure).accepted && !pressure);
+    CHECK(r.retire(h).accepted); pressure = true;
+    CHECK(!r.loop_seek(h, 1, 2, &pressure).accepted && !pressure);
+
+    // Fixture-only -fno-access-control enables this unreachable counter setup.
+    // The production TUs compile normally, with unchanged class definitions and
+    // no testing APIs. Compare all runtime bytes to catch even hidden counter or
+    // reservation mutation on a permanent rejection, not only visible bounds.
+    m::Runtime exhausted(1, 1); auto eh = exhausted.try_admit(2); CHECK(exhausted.pop_command(command));
+    pending = exhausted.prepare_play(eh, request().playback); active = exhausted.commit_play(std::move(pending));
+    CHECK(active.accepted);
+    const auto current_epoch = active.epoch;
+    const auto current_serial = exhausted.next_serial_;
+    auto permanent = [&]() {
+        unsigned char unchanged[sizeof exhausted]; std::memcpy(unchanged, &exhausted, sizeof exhausted);
+        pressure = true;
+        auto result = exhausted.loop_seek(eh, 456, 789, &pressure);
+        CHECK(!result.accepted && !result.terminal && !pressure);
+        CHECK(std::memcmp(unchanged, &exhausted, sizeof exhausted) == 0);
+    };
+    exhausted.sessions_[eh.slot].state.publication.epoch = UINT64_MAX;
+    permanent(); // Full capacity plus exhausted epoch is permanent, never pressure.
+    CHECK(exhausted.pop_command(command)); permanent(); // Also with free capacity.
+    exhausted.sessions_[eh.slot].state.publication.epoch = current_epoch;
+    exhausted.next_serial_ = UINT64_MAX; permanent(); // Free cell cannot revive serial exhaustion.
+    exhausted.next_serial_ = current_serial;
+    CHECK(exhausted.run(eh).accepted);
+    exhausted.next_serial_ = UINT64_MAX; permanent(); // Exhaustion dominates a full cell too.
+    // The last available serial may still be used, but only after capacity frees.
+    exhausted.next_serial_ = UINT64_MAX - 1;
+    pressure = false;
+    CHECK(!exhausted.loop_seek(eh, 456, 789, &pressure).accepted && pressure);
+    CHECK(exhausted.next_serial_ == UINT64_MAX - 1);
+    CHECK(exhausted.pop_command(command)); pressure = true;
+    auto last_serial = exhausted.loop_seek(eh, 456, 789, &pressure);
+    CHECK(last_serial.accepted && !pressure && exhausted.next_serial_ == UINT64_MAX);
+    permanent();
+    CHECK(exhausted.pop_command(command));
+    exhausted.next_serial_ = current_serial;
+    exhausted.sessions_[eh.slot].state.publication.epoch = UINT64_MAX - 1;
+    pressure = true;
+    const auto last_epoch = exhausted.loop_seek(eh, 456, 789, &pressure);
+    CHECK(last_epoch.accepted && last_epoch.epoch == UINT64_MAX && !pressure);
+    permanent();
+
+    // Adapter early exits also reset output, and forwarding preserves the exact
+    // temporary/permanent distinction without dispatching callbacks or retiring.
+    p::Adapter adapter(1, 1); auto ah = admit(adapter, 0x1000); drain(adapter);
+    auto ap = adapter.prepare_play(ah, request()); auto at = adapter.commit_play(std::move(ap));
+    pressure = false; auto blocked = adapter.loop_seek(ah, 1, 2, &pressure);
+    p::Notification notification;
+    CHECK(!blocked.accepted && pressure && !adapter.take_notification(blocked, notification));
+    CHECK(adapter.pop_command(command)); pressure = true;
+    CHECK(adapter.loop_seek(ah, 1, 2, &pressure).accepted && !pressure);
+    adapter.runtime_.next_serial_ = UINT64_MAX; pressure = true;
+    CHECK(!adapter.loop_seek(ah, 1, 2, &pressure).accepted && !pressure);
+    CHECK(adapter.snapshot(ah, after) && after.operation_active && after.publication.operation == at.operation);
+    pressure = true;
+    CHECK(!adapter.loop_seek({ah.slot, ah.generation + 1}, 1, 2, &pressure).accepted && !pressure);
+    adapter.retire(ah); pressure = true;
+    CHECK(!adapter.loop_seek(ah, 1, 2, &pressure).accepted && !pressure);
+}
 int main() {
     const auto before = allocations;
     layout_and_decode(); capacity_and_reservation(); same_key_and_failure();
-    independent_sessions_and_seek(); rates(); reentry_and_reuse(); per_session_transfer(); atomic_loop_bounds();
+    independent_sessions_and_seek(); rates(); reentry_and_reuse(); per_session_transfer(); atomic_loop_bounds(); loop_backpressure_classification();
     p::Adapter a; auto h = admit(a, 0x1000); drain(a);
     auto prep = a.prepare_play(h, request()); auto current = a.commit_play(std::move(prep));
     constexpr unsigned iterations = 200000;

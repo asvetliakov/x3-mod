@@ -17,8 +17,16 @@ class OwnedAdapter(unittest.TestCase):
         self.assertIsNotNone(compiler)
         with tempfile.TemporaryDirectory(prefix='x3-owned-state-') as directory:
             exe = Path(directory) / 'state'
+            fixture_obj = Path(directory) / 'fixture.o'
+            # Only the fixture can inject otherwise unreachable exhaustion values.
+            # Class definitions stay identical; production sources are compiled
+            # separately below with normal access control and no testing API.
+            fixture_build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
+                                            '-fno-access-control', '-c', str(FIXTURE), '-o', str(fixture_obj)],
+                                           capture_output=True, text=True)
+            self.assertEqual(fixture_build.returncode, 0, fixture_build.stdout + fixture_build.stderr)
             build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
-                                    *map(str, SOURCES), str(FIXTURE), '-o', str(exe)], capture_output=True, text=True)
+                                    *map(str, SOURCES), str(fixture_obj), '-o', str(exe)], capture_output=True, text=True)
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(exe)], capture_output=True, text=True, timeout=30)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)

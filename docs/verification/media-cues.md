@@ -1306,3 +1306,19 @@ The complete stdout/stderr and unittest summary are retained in
 `/tmp/x3-media-package-tests.log`.
 45 tests passed in 2.745 seconds; four-tool `py_compile` and `git diff --check`
 also pass. The compact local result records the command, exit status and log digest.
+### Distinguish loop pressure from permanent refusal (2026-09-20)
+
+The optional `loop_seek(..., bool* backpressure)` output is cleared on every
+call. Only a valid active identity with usable epoch/serial and occupied or
+reserved command capacity reports transient pressure. Invalid identities and
+exhausted counters remain permanent refusals even when the queue is full. Failed
+requests preserve state; the consumer must choose retry versus termination from
+this classification.
+
+Independent review (`review_media_owned_state`) is clear: two focused tests,
+444 checks, zero failures/allocations, i686 SSE2/no-x87 and ASan+UBSan pass. Only
+the fixture bypasses access control to inject exhausted counters; production
+translation units compile separately with normal access checks. The existing
+[qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
+retains this delta. Consumer routing, injected ABI and native runtime behavior
+remain separate; no Wine, game, DLL build or install occurred.

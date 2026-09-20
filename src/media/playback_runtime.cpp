@@ -107,15 +107,20 @@ Transition Runtime::seek(SessionHandle h, std::int32_t start, SeekIntent intent)
     // Preserve the generic seek's original end-clear/caller-write sequencing.
     return seek_impl(h, start, -1, intent);
 }
-Transition Runtime::loop_seek(SessionHandle h, std::int32_t start, std::int32_t end) noexcept {
-    return seek_impl(h, start, end > 0 ? end : -1, SeekIntent::loop_restart);
+Transition Runtime::loop_seek(SessionHandle h, std::int32_t start, std::int32_t end, bool* backpressure) noexcept {
+    if (backpressure) *backpressure = false;
+    return seek_impl(h, start, end > 0 ? end : -1, SeekIntent::loop_restart, backpressure);
 }
-Transition Runtime::seek_impl(SessionHandle h, std::int32_t start, std::int32_t end, SeekIntent intent) noexcept {
+Transition Runtime::seek_impl(SessionHandle h, std::int32_t start, std::int32_t end, SeekIntent intent,
+                              bool* backpressure) noexcept {
     auto* s = find(h);
-    if (!s || s->state.publication.epoch == UINT64_MAX ||
+    if (!s || s->state.publication.epoch == UINT64_MAX || next_serial_ == UINT64_MAX ||
         (intent == SeekIntent::loop_restart && !s->state.operation_active)) return {};
     const auto cell = reserve_cell();
-    if (cell == command_limit_) return {};
+    if (cell == command_limit_) {
+        if (backpressure) *backpressure = true;
+        return {};
+    }
     release_reservation(*s);
     auto& state = s->state;
     ++state.publication.epoch;

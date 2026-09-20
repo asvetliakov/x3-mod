@@ -105,7 +105,10 @@ public:
     // Manager loop: reserve first, then publish one epoch with complete bounds.
     // Requires the still-active operation (including endpoint awaiting retry).
     // Pressure is a nonterminal rejection; caller may retry on its next pass.
-    Transition loop_seek(SessionHandle, std::int32_t start_ms, std::int32_t end_ms) noexcept;
+    // Output is reset on every call; only occupied/reserved command capacity sets
+    // it true. Invalid/inactive identity and exhausted counters are permanent.
+    Transition loop_seek(SessionHandle, std::int32_t start_ms, std::int32_t end_ms,
+                         bool* backpressure = nullptr) noexcept;
     Transition run(SessionHandle) noexcept;
     bool set_end(SessionHandle, Epoch, std::int32_t end_ms) noexcept;
     Transition stop(SessionHandle) noexcept;
@@ -152,7 +155,8 @@ private:
     void discard_commands(SessionHandle) noexcept;
     void enqueue(std::uint32_t, Session&, CommandKind) noexcept;
     Transition terminate(Session&, bool retire) noexcept;
-    Transition seek_impl(SessionHandle, std::int32_t start_ms, std::int32_t end_ms, SeekIntent) noexcept;
+    Transition seek_impl(SessionHandle, std::int32_t start_ms, std::int32_t end_ms, SeekIntent,
+                         bool* backpressure = nullptr) noexcept;
     Session sessions_[max_sessions]{};
     Cell commands_[max_commands]{};
     std::uint32_t session_limit_, command_limit_;

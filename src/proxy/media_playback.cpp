@@ -150,9 +150,10 @@ Transition Adapter::seek(SessionHandle h, std::int32_t start, media::SeekIntent 
     if (!find(h)) return {};
     return transition(runtime_.seek(h, start, intent), {});
 }
-Transition Adapter::loop_seek(SessionHandle h, std::int32_t start, std::int32_t end) noexcept {
+Transition Adapter::loop_seek(SessionHandle h, std::int32_t start, std::int32_t end, bool* backpressure) noexcept {
+    if (backpressure) *backpressure = false;
     if (!find(h)) return {};
-    return transition(runtime_.loop_seek(h, start, end), {});
+    return transition(runtime_.loop_seek(h, start, end, backpressure), {});
 }
 Transition Adapter::run(SessionHandle h) noexcept {
     if (!find(h)) return {};

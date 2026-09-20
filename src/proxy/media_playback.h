@@ -126,7 +126,8 @@ public:
     PreparedPlay prepare_play(SessionHandle, Request) noexcept;
     Transition commit_play(PreparedPlay&&) noexcept;
     Transition seek(SessionHandle, std::int32_t, media::SeekIntent) noexcept;
-    Transition loop_seek(SessionHandle, std::int32_t start_ms, std::int32_t end_ms) noexcept;
+    Transition loop_seek(SessionHandle, std::int32_t start_ms, std::int32_t end_ms,
+                         bool* backpressure = nullptr) noexcept;
     Transition run(SessionHandle) noexcept;
     bool set_end(SessionHandle, media::Epoch, std::int32_t) noexcept;
     Transition stop(SessionHandle) noexcept;
