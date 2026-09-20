@@ -1,0 +1,413 @@
+{
+  "schema": 1,
+  "scope": "standalone original-ES LAV transport diagnostic, not unchanged game playback",
+  "exe_sha256": "aaadea9c585e252ba0a1d4937722278459aa664d5a41939de7c627df0d00442f",
+  "source_checkout": "/tmp/x3-media-playback-fixture",
+  "source_handoff": "/tmp/x3-lav-v8-ordered-handoff.md",
+  "independent_review": "review_media_paths: source and three runtime outcomes verified",
+  "runs": {
+    "reference": {
+      "result_path": "/tmp/x3-lav-transport-v8-reference/result.json",
+      "result_sha256": "ff1cc4e450008ba3396fe36f668b269368d4091931509219d48ed37b9057119a",
+      "qualification": {
+        "accepted": false,
+        "content_proven": false,
+        "reference_ready": false,
+        "terminal_decommit_diagnostic_accepted": false,
+        "transport_diagnostic_accepted": true,
+        "transport_reference_ready": true,
+        "live_newsegment_observed": true,
+        "timestamp_domain": "actual_source_segment_and_exact_same_provider_content",
+        "original_game_playback_proven": false,
+        "native_windows_qualified": false,
+        "module_closure_verified": true,
+        "transport_mode": "reference",
+        "transport_settings": {
+          "schema": 1,
+          "dither_mode": "ordered",
+          "dither_enum": 0,
+          "scope": "transport_runtime_before_connect"
+        },
+        "transport_capture_sha256": [
+          "ccf10a52c063a702310ef31ba9dd572954f62edb4737d395e89c3e5a782288d8",
+          "af86db6581c57f0035cec8cd176b116ffa8302e8d2093ee5f328ccf01a8e240a",
+          "2ee4bfc2890c6469053220959a075f81203db2137e2168b05181a5a8a87522af",
+          "f9b66eae01fb9dcecba7d6bdea6b1dc45f37604f339ab9d924fc1e501de90fae",
+          "e80d812481ba724f53ddbee600510bf4b2ab0e8408f2a8d118cb21af525a422f",
+          "b29a009e32bb327d41334d651cd1f140ef6eb3b660528687cbab39f5e300b86f",
+          "a87eba11c977c03dea63d830c0375e15014098b26cb117b76a226dc697304807",
+          "032bfbdec09177b25d2ab4649f4d1e2253f5654d17f8bd5fa10af996519f008c",
+          "d548628409eafa6e41d0b8e234fa290aad578f2d4ac481d24619d3d95a7e99c0",
+          "f350dc034e7c6cac7847d1d6fd342f161f8d14f62ba9f7ba3652bba20cb8507a",
+          "8eeb9fa5295161f3f09ebabca35cdaed5e0b60e76680b696681549a0b684c153",
+          "019b773536cb7e862e9a4f409ecfd4e12b9a68187da510b90cd60609266fa265"
+        ],
+        "outcome": "transport_sequential_reference_only"
+      },
+      "trace": {
+        "verified": true,
+        "adapter": "CrossOver_public_call_trace",
+        "segments": [
+          {
+            "start_100ns": 0,
+            "stop_100ns": 19402740730,
+            "receives": 260,
+            "commit_line": 208,
+            "segment_line": 238,
+            "decommit_lines": [
+              7697,
+              7899,
+              7941
+            ]
+          }
+        ],
+        "commits": 1,
+        "decommits": 3,
+        "timestamp_normalization": false,
+        "native_windows_observed": false,
+        "selected_allocator": "003f34ec",
+        "stream": "003f34e0"
+      },
+      "protected_files_unchanged": true,
+      "wall_seconds": 26.740611834,
+      "exit_code": 0,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--debugmsg",
+        "-all,+timestamp,+pid,+tid,+amstream,+quartz",
+        "--dll",
+        "d3d9=b;winegstreamer=",
+        "/private/tmp/x3-lav-fixture-build-v8/media_playback_fixture.exe",
+        "--media",
+        "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\mov\\00002.dat",
+        "--stage",
+        "copy",
+        "--config",
+        "0",
+        "--start-ms",
+        "10000",
+        "--frames",
+        "260",
+        "--call-ms",
+        "10000",
+        "--total-ms",
+        "60000",
+        "--progress-ms",
+        "10000",
+        "--lav-manifest",
+        "Z:\\private\\tmp\\x3-lav-fixture-0.81\\provider.manifest",
+        "--lav-reference",
+        "--lav-transport",
+        "reference",
+        "--diagnostics"
+      ]
+    },
+    "seek0": {
+      "result_path": "/tmp/x3-lav-transport-v8-seek0/result.json",
+      "result_sha256": "206482de3154aa6e884cb13760d15fdd2de11aca29c0352c096a87a43181f7af",
+      "qualification": {
+        "accepted": false,
+        "content_proven": true,
+        "reference_ready": false,
+        "terminal_decommit_diagnostic_accepted": false,
+        "transport_diagnostic_accepted": true,
+        "transport_reference_ready": false,
+        "live_newsegment_observed": true,
+        "timestamp_domain": "actual_source_segment_and_exact_same_provider_content",
+        "original_game_playback_proven": false,
+        "native_windows_qualified": false,
+        "module_closure_verified": true,
+        "transport_mode": "seek0",
+        "transport_settings": {
+          "schema": 1,
+          "dither_mode": "ordered",
+          "dither_enum": 0,
+          "scope": "transport_runtime_before_connect"
+        },
+        "transport_capture_sha256": [
+          "ccf10a52c063a702310ef31ba9dd572954f62edb4737d395e89c3e5a782288d8",
+          "af86db6581c57f0035cec8cd176b116ffa8302e8d2093ee5f328ccf01a8e240a",
+          "2ee4bfc2890c6469053220959a075f81203db2137e2168b05181a5a8a87522af",
+          "f9b66eae01fb9dcecba7d6bdea6b1dc45f37604f339ab9d924fc1e501de90fae",
+          "e80d812481ba724f53ddbee600510bf4b2ab0e8408f2a8d118cb21af525a422f",
+          "b29a009e32bb327d41334d651cd1f140ef6eb3b660528687cbab39f5e300b86f"
+        ],
+        "epoch_exact_content_matches": [
+          true
+        ],
+        "pending_transition_observed": false,
+        "outcome": "transport_original_ES_epoch_content_only"
+      },
+      "trace": {
+        "verified": true,
+        "adapter": "CrossOver_public_call_trace",
+        "segments": [
+          {
+            "start_100ns": 0,
+            "stop_100ns": 19402740730,
+            "receives": 0,
+            "commit_line": 208,
+            "segment_line": 238,
+            "decommit_lines": [
+              317,
+              386
+            ]
+          },
+          {
+            "start_100ns": 0,
+            "stop_100ns": 19402740730,
+            "receives": 6,
+            "commit_line": 437,
+            "segment_line": 460,
+            "decommit_lines": [
+              694,
+              974,
+              1016
+            ]
+          }
+        ],
+        "commits": 2,
+        "decommits": 5,
+        "timestamp_normalization": false,
+        "native_windows_observed": false,
+        "selected_allocator": "003f3494",
+        "stream": "003f3488"
+      },
+      "protected_files_unchanged": true,
+      "wall_seconds": 7.044262959,
+      "exit_code": 0,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--debugmsg",
+        "-all,+timestamp,+pid,+tid,+amstream,+quartz",
+        "--dll",
+        "d3d9=b;winegstreamer=",
+        "/private/tmp/x3-lav-fixture-build-v8/media_playback_fixture.exe",
+        "--media",
+        "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\mov\\00002.dat",
+        "--stage",
+        "copy",
+        "--config",
+        "0",
+        "--start-ms",
+        "0",
+        "--frames",
+        "6",
+        "--call-ms",
+        "10000",
+        "--total-ms",
+        "60000",
+        "--progress-ms",
+        "10000",
+        "--lav-manifest",
+        "Z:\\private\\tmp\\x3-lav-fixture-0.81\\provider.manifest",
+        "--lav-transport",
+        "seek0",
+        "--diagnostics"
+      ]
+    },
+    "epochs": {
+      "result_path": "/tmp/x3-lav-transport-v8-epochs/result.json",
+      "result_sha256": "2990adb748f3f9ba98104f7e5104d13992a0c48e00bc860c8c147f61168d758d",
+      "qualification": {
+        "accepted": false,
+        "content_proven": false,
+        "reference_ready": false,
+        "terminal_decommit_diagnostic_accepted": false,
+        "transport_diagnostic_accepted": false,
+        "transport_reference_ready": false,
+        "live_newsegment_observed": true,
+        "timestamp_domain": "actual_source_segment_and_exact_same_provider_content",
+        "original_game_playback_proven": false,
+        "native_windows_qualified": false,
+        "module_closure_verified": true,
+        "transport_mode": "epochs",
+        "transport_settings": {
+          "schema": 1,
+          "dither_mode": "ordered",
+          "dither_enum": 0,
+          "scope": "transport_runtime_before_connect"
+        },
+        "transport_capture_sha256": [
+          "ccf10a52c063a702310ef31ba9dd572954f62edb4737d395e89c3e5a782288d8",
+          "af86db6581c57f0035cec8cd176b116ffa8302e8d2093ee5f328ccf01a8e240a",
+          "2ee4bfc2890c6469053220959a075f81203db2137e2168b05181a5a8a87522af",
+          "f9b66eae01fb9dcecba7d6bdea6b1dc45f37604f339ab9d924fc1e501de90fae",
+          "e80d812481ba724f53ddbee600510bf4b2ab0e8408f2a8d118cb21af525a422f",
+          "b29a009e32bb327d41334d651cd1f140ef6eb3b660528687cbab39f5e300b86f",
+          "f350dc034e7c6cac7847d1d6fd342f161f8d14f62ba9f7ba3652bba20cb8507a",
+          "8eeb9fa5295161f3f09ebabca35cdaed5e0b60e76680b696681549a0b684c153",
+          "019b773536cb7e862e9a4f409ecfd4e12b9a68187da510b90cd60609266fa265",
+          "e9eeade4d861852e153837689f9734c0974dc453fd6c84d12eb8d41e21eb7e58",
+          "5f975da6cdd12cf276314ca9ebb7111039987e97210e65711d01b404682512c9",
+          "a1cb0a7ffa643b2c894fbeec16b32233910a5e27c838fa4f69f5d0ff6761d33c",
+          "ccf10a52c063a702310ef31ba9dd572954f62edb4737d395e89c3e5a782288d8",
+          "af86db6581c57f0035cec8cd176b116ffa8302e8d2093ee5f328ccf01a8e240a",
+          "2ee4bfc2890c6469053220959a075f81203db2137e2168b05181a5a8a87522af",
+          "f9b66eae01fb9dcecba7d6bdea6b1dc45f37604f339ab9d924fc1e501de90fae",
+          "e80d812481ba724f53ddbee600510bf4b2ab0e8408f2a8d118cb21af525a422f",
+          "b29a009e32bb327d41334d651cd1f140ef6eb3b660528687cbab39f5e300b86f",
+          "f350dc034e7c6cac7847d1d6fd342f161f8d14f62ba9f7ba3652bba20cb8507a",
+          "8eeb9fa5295161f3f09ebabca35cdaed5e0b60e76680b696681549a0b684c153",
+          "019b773536cb7e862e9a4f409ecfd4e12b9a68187da510b90cd60609266fa265",
+          "e9eeade4d861852e153837689f9734c0974dc453fd6c84d12eb8d41e21eb7e58",
+          "5f975da6cdd12cf276314ca9ebb7111039987e97210e65711d01b404682512c9",
+          "a1cb0a7ffa643b2c894fbeec16b32233910a5e27c838fa4f69f5d0ff6761d33c"
+        ],
+        "epoch_exact_content_matches": [
+          true,
+          false,
+          true,
+          false
+        ],
+        "outcome": "provider_unqualified",
+        "error": "transport epoch copied pixels differ from exact requested original-ES reference"
+      },
+      "trace": {
+        "verified": true,
+        "adapter": "CrossOver_public_call_trace",
+        "segments": [
+          {
+            "start_100ns": 0,
+            "stop_100ns": 19402740730,
+            "receives": 0,
+            "commit_line": 208,
+            "segment_line": 238,
+            "decommit_lines": [
+              317,
+              465
+            ]
+          },
+          {
+            "start_100ns": 0,
+            "stop_100ns": 19402740730,
+            "receives": 6,
+            "commit_line": 516,
+            "segment_line": 539,
+            "decommit_lines": [
+              774,
+              1237
+            ]
+          },
+          {
+            "start_100ns": 100000000,
+            "stop_100ns": 19402740730,
+            "receives": 6,
+            "commit_line": 1284,
+            "segment_line": 1307,
+            "decommit_lines": [
+              1546,
+              2033
+            ]
+          },
+          {
+            "start_100ns": 0,
+            "stop_100ns": 19402740730,
+            "receives": 6,
+            "commit_line": 2080,
+            "segment_line": 2103,
+            "decommit_lines": [
+              2339,
+              2538
+            ]
+          },
+          {
+            "start_100ns": 100000000,
+            "stop_100ns": 19402740730,
+            "receives": 6,
+            "commit_line": 2585,
+            "segment_line": 2608,
+            "decommit_lines": [
+              2847,
+              3163,
+              3205
+            ]
+          }
+        ],
+        "commits": 5,
+        "decommits": 11,
+        "timestamp_normalization": false,
+        "native_windows_observed": false,
+        "selected_allocator": "003f3494",
+        "stream": "003f3488"
+      },
+      "protected_files_unchanged": true,
+      "wall_seconds": 10.242076709000001,
+      "exit_code": 0,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--debugmsg",
+        "-all,+timestamp,+pid,+tid,+amstream,+quartz",
+        "--dll",
+        "d3d9=b;winegstreamer=",
+        "/private/tmp/x3-lav-fixture-build-v8/media_playback_fixture.exe",
+        "--media",
+        "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\mov\\00002.dat",
+        "--stage",
+        "copy",
+        "--config",
+        "0",
+        "--start-ms",
+        "0",
+        "--frames",
+        "6",
+        "--call-ms",
+        "10000",
+        "--total-ms",
+        "60000",
+        "--progress-ms",
+        "10000",
+        "--lav-manifest",
+        "Z:\\private\\tmp\\x3-lav-fixture-0.81\\provider.manifest",
+        "--lav-transport",
+        "epochs",
+        "--diagnostics"
+      ]
+    }
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "observation": {
+    "seek0_exact_frames": 6,
+    "repeated_epoch_matches": [
+      true,
+      false,
+      true,
+      false
+    ],
+    "nonzero_reference_content_offset_ms": 120,
+    "nonzero_first_three_raw_matches": "reference252\u2013254",
+    "remaining_three": "FNV matches reference255\u2013257; reference raw pixels not retained",
+    "pending_transition": "not run after first failed gate",
+    "v7_random_dither_results": "retained and rejected; not retrospectively promoted",
+    "limits": [
+      "No production decoder change",
+      "Nonzero seek content gate still fails",
+      "Native Windows execution unverified",
+      "Internal timestamp/demux cause not proved by this runtime record"
+    ]
+  },
+  "source_commit": "ccfadef9",
+  "retained_branch": "diag/media-transport-v8",
+  "host_tests": {
+    "count": 106,
+    "result": "PASS",
+    "independent_elapsed_s": 3.123
+  }
+}

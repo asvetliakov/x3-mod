@@ -1047,3 +1047,44 @@ This does not establish a safe seek/decommit/recommit protocol, initial-zero see
 loop handling, game integration or native Windows behavior. The next step is a
 bounded transport design using the selected allocator and sample lifecycle.
 No production decoder or installed DLL changed.
+
+
+### Deterministic transport: zero passes, nonzero content fails (2026-09-20)
+
+The reviewed standalone transport diagnostic now pauses, decommits the selected
+allocator, stops, retires any old request, seeks while stopped and restarts with
+the provider's own Commit. It keeps the sample and surface across repeated
+0/10/0/10-second epochs. This is an explicitly changed diagnostic transport,
+not unchanged game playback. Source is retained at `diag/media-transport-v8`
+(`ccfadef9`); 106 focused tests and both LAV/default cross-builds pass.
+
+The first v7 exact-content comparison failed despite matching timestamps: every
+changed colour byte differed by only one and alpha was identical. Pinned LAV
+source defaults to random dithering seeded from time. V8 selects Ordered through
+the public runtime settings API before connection and verifies the actual enum;
+its reference binding rejects old or missing setting evidence. The exact byte
+oracle is unchanged and the rejected v7 runs are preserved.
+
+A fresh original-ES sequential reference delivers 260 frames in 26.741 s. Fresh
+zero-seek then matches all six retained reference images and timestamps exactly
+in 7.044 s. Repeated 0/10/0/10 transport completes cleanly in 10.242 s, but its
+content verdict is **pass/fail/pass/fail**. Both ten-second epochs reproduce the
+same six images. Their first three are byte-exact reference images at
+10.12/10.16/10.20 seconds; the next three match only retained reference FNV hashes,
+since those reference raw images were not saved. The first returned sample reports
+zero, so timestamp success alone cannot establish requested content. Pending-
+transition testing stopped at this failed gate. Five Commit and eleven Decommit
+observations, retained sample/surface identity and cleanup pass; protected inputs
+remain unchanged.
+
+Native packet inspection identifies the selected key packet at byte 2733234:
+decode timestamp 10.000, no PTS, decoded presentation 10.120. Native seek at ten
+seconds independently selects that packet. Together with the pinned provider's
+missing-PTS handling this supports a decode-order/presentation-order seek-index
+explanation; the exact bundled decoder branch was not directly traced. The
+[local diagnosis](/tmp/x3-lav-v8-epochs-diagnosis.md) retains source references,
+commands and witnesses. The [compact transport record](../../verification/results/media-lav-transport-2026-09-20.json)
+binds all three runtime results and independent review. A bounded seek-repair
+design is next; no fixed timestamp offset or relaxed content gate is accepted.
+No production decoder change, game playback qualification or native Windows
+execution is established.
