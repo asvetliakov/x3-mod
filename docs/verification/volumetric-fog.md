@@ -471,3 +471,31 @@ binds source, inputs, executable, shaders and full measurements. The command's
 game FPS, native Windows performance or production integration; the separately
 qualified 32-frame sequence retains its existing limits. The next work is the
 production scene/sector/resource boundary, including loading cost.
+
+
+### Production field assets and decoder checkpoint (2026-09-20)
+
+The production build now regenerates both qualified procedural fields without
+raw game assets, capture files or verification imports. NumPy 2.0.2 is checked
+at CMake configuration using the explicitly selected Python interpreter; missing
+or mismatched dependencies fail with instructions, without installing packages
+or changing the interpreter. The README documents the build prerequisite.
+
+Both decoded hashes exactly match the accepted bluewell/green fields. The sparse
+zero/literal resources total 6,769,480 bytes including headers, embedded as RCDATA;
+generated files remain untracked. The portable decoder checks independent expected
+metadata, every run/bound, finite nonnegative half values, exact length and checksum,
+and leaves empty output on failure. The final six focused tests cover deterministic
+rebake, two successful decodes, eleven corruptions per profile, allocation failure,
+atomic output, i686/windres compilation and configure success/failure. The preceding
+selected fog/sector/camera suite passed 33 tests. Independent source/evidence review
+cleared both the asset implementation and build usability follow-up.
+
+The root integrated CMake build compiles the decoder and resource and links the
+DLL successfully; its generated manifest exactly matches the reviewed twin builds.
+The [compact asset record](../../verification/results/fog-field-assets.json) binds
+source, generated hashes and the uninstalled integration DLL. Host-only decode
+times were 22.52/18.12 ms; these exclude Win32 resource lookup, GPU upload, Wine
+and first-use paging, so they are not a game loading bound. Actual resource
+execution, renderer integration, loading/Reset cost and flight appearance remain
+pending. This checkpoint does not activate spatial fog.

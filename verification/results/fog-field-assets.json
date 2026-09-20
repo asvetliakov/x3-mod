@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "scope": "self-contained procedural field assets and decoder, no renderer activation",
+  "bake_manifest_sha256": "8b1967b88c0ec1d96fd08372e22f31601a45e5418b2751cda50bca94d9a9e0cc",
+  "profiles": [
+    {
+      "base_sigma": 2.5e-06,
+      "decoded_bytes": 17846400,
+      "decoded_fnv1a": "ffe40c913d06714f",
+      "decoded_sha256": "4529497a5e1feda3276b334d6aaef3ba741460e4e4b539aaaf7df74cbfa7261d",
+      "enum": "Bluewell",
+      "name": "bluewell",
+      "nonzero_texels": 258371,
+      "packet_bytes": 2281004,
+      "profile_id": 1,
+      "resource_bytes": 2281060,
+      "resource_id": 21101,
+      "resource_sha256": "fea1a4bf3842b417007af27c6cc25092c3ac8e815660b02bc3ac410953f1f372",
+      "runs": 53509
+    },
+    {
+      "base_sigma": 6.25e-06,
+      "decoded_bytes": 17846400,
+      "decoded_fnv1a": "e446bf23796869c6",
+      "decoded_sha256": "d0342a05fe0e0421c980bb46bec72a765617f9bd043d84d134928a65d3dc0b0c",
+      "enum": "Foggreenoutlands",
+      "name": "foggreenoutlands",
+      "nonzero_texels": 517967,
+      "packet_bytes": 4488364,
+      "profile_id": 2,
+      "resource_bytes": 4488420,
+      "resource_id": 21102,
+      "resource_sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8",
+      "runs": 86157
+    }
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "536a67b2c9f48cfe49c95df0e0f85f2a98db25aff1defeb2513bb0c00b893639",
+    "README.md": "9cc004bb13df795de0a3fd227370672f6e408a541e4ab076c12fa1d23ae019e3",
+    "cmake/FogField.cmake": "dc78a96d5d86b1fc98f855fae7cb64b10798b4ed18e189cc6364c2714762c32c",
+    "cmake/fog_field_assets.rc.in": "46c330d9c2de4de6785b160560ffab3a6b2087d663500c1c2bbaf2f202c88615",
+    "src/renderer/fog_field_assets.cpp": "3adde95f4893178b2e52e9c78f0ce00b6c579135a8f21ad39782de4d1132900c",
+    "src/renderer/fog_field_assets.h": "a45314d522c0c1c3229efddb4ad721c10ef32e1388aba751ef735cefd984aafe",
+    "tools/build/bake_fog_fields.py": "45e0f65e9105d488fb83b4d6331da99c5bb507f7eb395cc8fd1d179bfd6e79aa",
+    "tools/fog_field_recipe.py": "9e3feb215b1a9ccd9db7001dad3b3f1252883acd43036739c5df2edaac1dfcd8",
+    "verification/analysis/test_fog_field_assets.py": "7979f92330a232a2910234d40058ab993bf562b9ca2f1e807fc932e0ee05af63",
+    "verification/probe/fog_field_assets_fixture.cpp": "a9187ae56ecdc797090c23cbeaf6ac0b6f798c0a9be33322083397472e05c979"
+  },
+  "host_checks": {
+    "selected_suite": 33,
+    "selected_elapsed_s": 17.013,
+    "final_focused": 6,
+    "final_elapsed_s": 16.244,
+    "failures": 0,
+    "evidence": "/tmp/x3-fog-field-assets-host-tests.txt",
+    "final_focus_scope": "adds selected-interpreter configure positive/negative coverage"
+  },
+  "decoder_fixture": {
+    "successes": 2,
+    "corruptions_per_profile": 11,
+    "allocation_failure": true,
+    "atomic_failure_output": true,
+    "decode_ms_host_only": [
+      22.519791,
+      18.116625
+    ],
+    "evidence": "/tmp/x3-fog-field-assets-decoder-host.txt"
+  },
+  "integration_build": {
+    "result": "PASS",
+    "base_commit": "5b24fa1d73dd488bd007e2de127337c75c358a5f",
+    "dirty": true,
+    "production_scope": "listed source files; not an install candidate",
+    "dll": "/tmp/x3-fog-assets-integration-build/d3d9.dll",
+    "sha256": "c5de1462a86c521820952995d7d52d6edb8aa45cb970d4db07b5662049800e2c",
+    "bytes": 26867982,
+    "configure_log": "/tmp/x3-fog-assets-integration-configure.log",
+    "build_log": "/tmp/x3-fog-assets-integration-build.log",
+    "python": "3.9.6",
+    "numpy": "2.0.2",
+    "rc_compile": true
+  },
+  "independent_review": "review_fog_gpu: assets/decoder/build usability cleared; two root CMake call sites follow reviewed integration contract",
+  "limits": [
+    "Host decoding and cross-compilation, no Wine resource execution yet",
+    "First-use Win32 decode/upload and production performance pending",
+    "No game appearance or native Windows qualification",
+    "One active runtime atlas planned; resources package both families"
+  ]
+}

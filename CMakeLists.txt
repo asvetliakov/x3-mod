@@ -11,6 +11,7 @@ if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR NOT X3M_GNU_PE_NO_SAFESEH)
   message(FATAL_ERROR "The compositor bridge requires the qualified GNU/no-SafeSEH link policy")
 endif()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+include(cmake/FogField.cmake)
 if(DEFINED ENV{X3M_SEH_CLANG} AND NOT DEFINED X3M_SEH_CLANG)
   set(X3M_SEH_CLANG "$ENV{X3M_SEH_CLANG}" CACHE FILEPATH "Clang with i686-pc-windows-msvc support")
 endif()
@@ -85,6 +86,7 @@ add_library(d3d9 SHARED
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp src/renderer/shader_population.cpp
   src/renderer/material_motion.cpp src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
+x3m_add_fog_field_assets(d3d9)
 target_compile_features(d3d9 PRIVATE cxx_std_17)
 target_include_directories(d3d9 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 add_dependencies(d3d9 x3m_source_commit)

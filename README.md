@@ -9,10 +9,17 @@ tested state and remaining work, including native Windows qualification.
 
 ## Build
 
-Requires CMake and the i686 MinGW-w64 compiler. On this machine they are installed.
+Requires CMake, the i686 MinGW-w64 compiler, and Python 3 with NumPy 2.0.2.
+Prepare an interpreter with that exact NumPy version, verify it with
+`/absolute/path/to/python3 -c 'import numpy; print(numpy.__version__)'`, and pass
+its absolute path to CMake. Configuration stops with an actionable error when
+the selected interpreter cannot import NumPy 2.0.2; it never installs packages
+or silently selects a different Python.
 
 ```sh
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DPython3_EXECUTABLE=/absolute/path/to/python3
 cmake --build build -j4
 ```
 
