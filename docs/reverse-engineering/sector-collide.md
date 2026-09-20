@@ -2049,3 +2049,35 @@ contract. No production hook, new flight, game FPS benefit or native Windows
 qualification follows. The bounded local [scheduling report](/tmp/x3-collision-retirement-schedule.md)
 and `/tmp/x3-collision-schedule-verify.py` retain address-linked evidence and
 reproduction; raw disassembly stays local.
+
+
+### Within-call mode specialization: offline experiment admitted (2026-09-20)
+
+A fresh descent-head audit identifies repeated query-mode tests at
+`0x004e2538/2543` and `0x004e2553/255a`. Ordinary examined closure sets these
+selectors before descent; the contact count remains live and the signed cap comparison must remain. A fixture-only specialized head can remove three instructions per
+accepted visit while retaining the original arithmetic, recursion, leaf calls,
+visit counter and child order at their original addresses. This is distinct
+from the closed whole-descent arithmetic and physical-layout experiments.
+
+The host reproduction checks 2,429 instruction rows against the EXE and passes
+13 root-boundary checks. The already-qualified frozen workload contains
+339,249 flags-2 visits and 2,519,581 flags-0xc visits. The latter selects
+query mode 0 after the wrapper masks flags with ~0xc. These are opportunity counts,
+not measured savings; the original oracle's x87 SAT is not the installed SSE2
+baseline. The admitted experiment must compare both heads with the same shipped
+SSE2 SAT, exact 44-word outputs/ABI, controlled owned trees and unsupported-mode
+fallback before any timing.
+
+Parent decision: implement only this owned-fixture ceiling experiment. Change
+its 25-byte entry head between timed batches, never a live engine tree or code
+site. Keep dispatch cost excluded explicitly so a positive result is only an
+optimistic bound; close if paired per-mode gains are below 5%, inconsistent, or
+any equivalence check fails. Any production dispatch would need separate
+concurrency/reentrancy, diagnostics-overlap and full-cost proof. This does not
+resolve or bypass the live snapshot retirement barrier.
+
+Reproduction: `python3 /tmp/x3-collision-fresh-mechanism-check.py` passes;
+[/tmp/x3-collision-fresh-mechanism.md](/tmp/x3-collision-fresh-mechanism.md) retains
+instruction boundaries, exact supported modes and the test contract. No new
+Wine execution, performance result or production patch is established here.
