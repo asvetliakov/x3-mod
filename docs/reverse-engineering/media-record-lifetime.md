@@ -192,3 +192,162 @@ machine instructions. No runtime/native Windows lifetime qualification exists.
 Independent review reproduced the verifier and checked four supplementary
 ranges (550 instructions / 1,639 bytes) with zero original-EXE mismatches.
 It confirmed the scoped lifetime boundary; native/runtime behavior remains open.
+
+
+## Media completion callback registry and ordinary-return closure
+
+2026-09-20. Derived static RE, original EXE SHA-256
+`fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`.
+Follow-up to the retirement boundary above, with registry context in
+[game-callback-registration.md](game-callback-registration.md). No Wine/game
+execution, build or installation was performed.
+
+### Outcome
+
+For the **four non-NULL completion targets installed by the identified registry
+writers**, completion synchronously updates result state and, for script tasks,
+moves a waiting task to a ready list. It does not immediately run the VM or call
+media delete/clear. The ordinary game-level call closure is closed at the known
+CRT free endpoint; no unresolved game function-pointer call occurs in it.
+This narrows the prior WndProc-deactivation → completion-callback → possible
+media-delete concern: no such deletion edge exists in these handlers.
+
+This is not blanket authorization for added COM calls. The separately proved
+conditional SC_CLOSE/shutdown→media-free chain, COM reentrant stream-state
+changes, memory-recovery destination retirement and unknown owner-thread
+contract remain. No actual registry snapshot, 32 fixed runtime index assignments,
+or general alias-proof of every possible registry write is claimed.
+
+### Registry construction and writers
+
+`*0x006085e4` points to the 0x1610-byte script/dispatch owner, not a separately
+allocated callback array. Factory `0x004ab010` mallocs and zeroes it, then invokes
+constructor `0x0049c9a0`. Constructor zeros 32 slot records in
+`0x0049ced4..0x0049cef3` (stride0x18), sets next index +0x2c to1, installs the
+script slot at index1 and advances +0x2c to2. Slot layout is:
+
+| Offset from owner + index*0x18 | Established use |
+| --- | --- |
+| +0x30 | subsystem command/dispatch function |
+| +0x34 | integer/status completion callback read by media manager |
+| +0x38, +0x3c | other result callback forms, outside this integer completion path |
+| +0x40 | name pointer |
+| +0x44 | initialized zero auxiliary field |
+
+Ordinary registrations read owner+0x2c, fill one slot, then increment that count;
+there is no index bound check in generic registration `0x004ab0a0`. Its ABI is
+ECX=owner, EDX=command dispatcher; stack arguments are name, integer completion,
+other completion, other completion, followed by `ret 0x10`; EAX returns the
+previous index. The completion pointer is read from incoming `[ESP+8]` at
+`0x004ab0af`, stored at `0x004ab0b6`. It has exactly one raw E8 caller
+`0x0040359b` and zero literal entry-address file occurrences. That caller pushes
+`0x00404430` as the integer completion at `0x0040358c` and saves returned index
+in `(*0x0057fc60)+0x418` at `0x004035a6`.
+
+Whole-.text disassembly search found exactly ten indexed writes matching
+`mov DWORD PTR [base + index*8 + 0x34],...`; each is a registry write after
+index*3 scaling and owner lookup/known constructor owner. They are:
+
+| Writer | Completion value | Index assignment |
+| --- | --- | --- |
+| 0x0049cf2e | 0x004a4910 | constructor index1 |
+| 0x0041c90b | 0x0042d2e0 | next allocated index; saved at *0x0057fc64 |
+| 0x004344d4 | 0x004604d0 | next allocated index; saved in subsystem+0x60 |
+| 0x004ab0b6 | 0x00404430 from sole caller | next allocated index |
+| 0x0041749d | NULL (EDX zeroed at0x41749b) | next allocated index |
+| 0x0046a2f2 | NULL (EDI zeroed at0x469e84, preserved to write) | next allocated index |
+| 0x00496f34 | NULL (ESI zeroed at0x496ec8) | next allocated index |
+| 0x00499b7b | NULL (ESI zeroed at0x499b38) | media-command registration |
+| 0x00499c96 | NULL (EDI zeroed at0x499bd1) | next allocated index |
+| 0x004b11c9 | NULL (EDX zeroed at0x4b11c7) | next allocated index |
+
+The media command dispatcher `0x004997c0` is stored at slot+0x30, whereas that
+slot's completion +0x34 is NULL. It must not be mistaken for a completion target.
+The allocator's all-zero slot0 plus constructor slot1 do not establish fixed
+values for every later slot: registration order/optional subsystem creation
+controls the remaining indices. The ten-write census is a reproducible encoding
+search, not arbitrary-pointer-alias analysis. It excludes none of the possibility
+of external patches, corrupted indices or writes with unrelated addressing forms.
+
+### Four completion handler bodies and ABI
+
+All four handlers take caller-cleaned dwords `(context, status)`, end in plain
+RET, and preserve the nonvolatile registers they use. Status is the second
+argument; the existing media sites pass1 for completion/interruption and0 on
+selected failure paths. No handler has its own SEH frame. EAX/ECX/EDX/flags are
+scratch; nested helper calls use their original private conventions.
+
+- **0x00404430..0x004044bb:** context0 selects `(*0x0057fc60)+0x498` result and
+  sets WORD+0x490=1. Nonzero context hashes into owner+0x4bc, sets located
+  object's WORD+0x14 bit1, writes result at +0x1c. After optional old-value
+  cleanup it stores type1 and the status dword. No VM/scheduler call.
+- **0x0042d2e0..0x0042d312:** sets WORD `(*0x00608504)+0x2c=1`; optional cleanup,
+  then type1/status at +0x34/+0x35. It does not use the first argument. No
+  VM/scheduler call.
+- **0x004604d0..0x00460551:** context0 updates `(*0x0060850c)+0x24` flag and
+  +0x2c result; nonzero context hashes in owner+0x14, sets located object's
+  WORD+0x84=1, writes +0x8c result. Optional cleanup then type1/status only.
+- **0x004a4910..0x004a4970:** context is a script task key, looked up in the
+  hash table at `*(*0x006085e4)`. If found, sets task WORD+0x20=1, replaces task
+  typed value +0x28 with type1/status, then calls `0x004a4740` at0x4a4968.
+  Missing task is a no-op; this is not a VM execution call.
+
+`0x004a4740..0x004a47e5` acts only when task WORD+0x3a==2. It destroys/clears
+old argument values, advances the stack index by the signed WORD argument count,
+moves the completion value into the task's five-byte value stack, changes task
+state+0x3a to1 at0x4a47b5, unlinks it, and links it into owner+0x12d8 at
+0x4a47c9..0x4a47e0. The only outgoing calls are old-value cleanup0x4a8240.
+**Task wakeup means list mutation, not immediate execution.** The separate
+script-engine step `0x0049f770` reads the same owner+0x12d8 list at0x49f777 and
+invokes interpreter0x4a26a0 at0x49f799. There is no edge to either function from
+the completion closure.
+
+### Cleanup closure, indirect control and lifetime interpretation
+
+Shared `0x004a8240` handles typed-value destruction. The only indirect game
+control transfer is its bounded seven-entry switch at0x4a8259: types8..14 map to
+`0x4a8260,0x4a82f1,0x4a833a,0x4a8368,0x4a83bb,0x4a83ab,0x4a83ab`.
+It decrements typed-object references and frees arrays/hash/string/value data;
+container cleanup can recurse into the same function. Type9 invokes container
+cleanup0x4a83e0, which recursively destroys key/value pairs. There are no
+registered destructors, COM Releases, script execution, media calls, allocation
+or memory-recovery callback in this reviewed game-level closure.
+
+The closed set is the four handlers plus
+`0x4a4740,0x4a8240,0x4a83e0,0x4efd30,0x49c970,0x4b8ab0,0x4ee360` (11 functions).
+Its only external direct target is the already identified CRT `free` at0x50e1b0.
+Generic deallocator0x4b8ab0 also contains IAT calls at0x4b8ad3/0x4b8ae3, but
+both reviewed callers reach it with flags0x01000000 (0x49c988 and0x4a84c4),
+so its flags bit0 (mask1) test at0x4b8ac2 selects ordinary free, not those branches.
+No unresolved indirect game callback remains on the normal path.
+
+Consequently media manager finished/error/retirement and WndProc stop-all
+completion dispatch, **when selecting one of these valid installed targets with
+well-formed context**, cannot itself synchronously execute
+0x4984d0/0x4986b0/0x497190/0x4980d0 or resume the VM. The previous report's
+unknown completion-target edge can be replaced by this narrower fact. Calling
+stop-all still mutates media flags, graph state and callback ownership while the
+outer seek/pump could hold live pointers. Callback-before-clear ordering is
+unchanged. Typed cleanup may recurse/free memory and assumes its own valid
+containers; no corruption, SEH callback or whole-CRT/OS exception closure proof
+is implied. CRT free was treated as the existing allocator endpoint, not as an
+unknown plugin callback, and no new hook is proposed.
+
+### Reproduce
+
+`python3 /tmp/verify_x3_media_completion_callbacks.py` from the repository:
+PASS, 14 gap-free ranges (11 closure functions and three registration/scheduler
+ranges), 628 instructions / 1,884 bytes, 32 fixed byte anchors. It validates the
+four targets, closure edges, internal direct branches, switch entries, generic
+registration's one E8 caller and absent literal pointer, and repeats the ten
+indexed-writer census against the original EXE. It emits and round-trips
+`/tmp/x3-media-completion-callbacks-check.json`; private instruction rows are at
+`/tmp/x3-media-completion-callbacks-raw.txt`. Broader context used existing local
+`/tmp/x3-media-full-disassembly.txt`; the switch-adjacent function was decoded
+fresh from0x4a83e0 because whole-section linear decoding drifted through preceding
+table bytes. No raw copyrighted instructions are added to the repository.
+
+Independent review reproduced the verifier and checked 68 direct branch targets
+and all seven cleanup-switch entries against decoded instruction boundaries.
+The narrower identified-handler conclusion is cleared; the remaining lifetime
+and runtime limitations above still apply.
