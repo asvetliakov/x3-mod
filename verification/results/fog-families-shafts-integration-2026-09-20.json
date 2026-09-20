@@ -51,7 +51,17 @@
   "limitations": [
     "Combined family fixture is 64x48 synthetic sky and unshadowed fallback",
     "No family-by-shadow matrix required for unchanged generic shadow arithmetic",
-    "Full host suite in progress; shaft transaction cost remains pending",
+    "Full host suite passed; shaft transaction cost remains pending",
     "Native Windows and flight appearance unverified; no candidate installation"
-  ]
+  ],
+  "host_suite": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+    "tests": 2431,
+    "skipped": 2,
+    "seconds": 753.309,
+    "exit_code": 0,
+    "source": "bcf1021a plus documentation-only 4f993af3",
+    "log": "/tmp/x3-fog-families-shafts-host-v1.log",
+    "log_sha256": "a8d44f28373f5c08b4baf6e2da29baec4fa624f63edeaaf8b720137e10da0933"
+  }
 }

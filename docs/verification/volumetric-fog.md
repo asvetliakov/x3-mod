@@ -729,3 +729,7 @@ fallback on a synthetic sky view, not a new shadow/geometry matrix.
 The [compact record](../../verification/results/fog-families-shafts-integration-2026-09-20.json)
 binds execution and evidence. Full host qualification and shaft transaction cost
 remain pending; native Windows and flight appearance are unverified. No install.
+
+The combined-source full host discovery passed **2,431 tests** (two skipped)
+in **753.309 s**, exit 0; the compact record binds the full command and local log.
+Shaft transaction timing remains pending and is run after host load ends.
