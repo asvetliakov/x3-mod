@@ -1,3 +1,7 @@
+> Current decision (2026-09-20): hook-free lazy RT is the launcher default after
+> [Run52's eligible counter](../verification/motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20).
+> Earlier “unflown/default off” estimates below describe the pre-flight investigation.
+
 # Route per-draw cost: the three large pieces and the envelope
 
 Design note, 2026-09-18; levers 1 (stage A) and 2a are implemented, unflown; the rest is not. **(M)** measured, **(I)**

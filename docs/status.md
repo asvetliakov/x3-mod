@@ -15,8 +15,8 @@ Read history only for a relevant unresolved question. The
 Bottle **X3**, **CrossOver Preview.app**. Run52 diagnostic candidate DLL SHA-256:
 `4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685`
 (19,559,896 bytes), built once from clean committed source `976307f2`; retained
-at `/tmp/x3-run52-candidate/d3d9.dll`. Production changes remain on the isolated
-submission-attribution branch while this candidate qualifies; main is not merged.
+at `/tmp/x3-run52-candidate/d3d9.dll`. Run52 flight qualification is complete; the reviewed submission-attribution
+source is merged to main. The installed DLL bytes are unchanged.
 The [qualification record](../verification/results/submission-attribution-qualification-2026-09-20.json)
 binds 2,353 host tests (2 skipped), linked audit 95 roots / 579 reachable / zero
 violations, 8,881 CPU fixture checks, and two selected rendering cases (126 checks).
@@ -28,10 +28,12 @@ The [install record](../verification/results/run52-candidate-install.json) verif
 installed bytes and unchanged EXE/bottle configuration. Rollback retains run49's
 DLL and manifest in `/tmp/x3-run52-candidate/rollback`. Installation used
 `python3 tools/manage.py install --bottle X3 --dll-source <retained DLL>`.
-No game launched; the corrected [run52 attribution command](verification/user-runs.md#52-busy-station-attribution-and-retained-target-comparison)
+The agent did not launch the game; the corrected [run52 attribution command](archive/run52-completed-2026-09-20.md)
 passed `--dry-run`. This build adds diagnostics, not the experimental fog, media,
 lattice or collision changes.
 
+Launcher defaults now use **lazy render-target binding** with motion output
+after [Run52 acceptance](verification/motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20); explicit `--motion-rt-mode perdraw` remains available.
 Launcher defaults retain original hull shading, `--cull-small-parts 2` scope
 `all`, `--collide-sat-sse2`, `--collide-memo`, and the user-selected light-map
 fade **80,220** (the optional third value defaults to 1, so the stored setting
@@ -44,6 +46,11 @@ stationary improvement is accepted, moving-lattice quality remains open.
 Native Windows runtime remains unverified.
 
 ## Current state (2026-09-20)
+
+Run52 A/B/C (run187–189) is analyzed and independently reviewed. Matching
+478-draw separate-session B/C intervals had medians of 19.70 / 18.90 ms, consistent with the user
+report and no visible issues. Lazy is accepted; the corrected attribution
+does not justify another engine patch. No repeat timing flight is queued.
 
 Run 47 is read; **run 48 A/B/C are reported** ([completed run48](archive/run48-completed-2026-09-20.md)):
 A lattice arm + distant station (baseline vs the intended defaults), B Argon Prime

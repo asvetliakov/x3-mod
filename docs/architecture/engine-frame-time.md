@@ -1024,3 +1024,39 @@ HDR/lease records remain sparsely sampled; they do not partition each 300-frame
 window on identical coverage. Completed full host/build qualification is bound in the
 [compact record](../../verification/results/submission-attribution-qualification-2026-09-20.json).
 No new hook sites, rendering policy or native Windows runtime claim are added.
+
+
+## Run52: corrected attribution and remaining optimization scope (2026-09-20)
+
+Run187 supplies nine aligned 300-frame windows, ending at frames 3000–5400.
+The direct per-frame-before-reduction submission complement has window-median
+field 2.825 ms, with scoped pass time 8.389 ms and outside-pass time 0. Zero
+scope errors, crossing passes or complement underflows are reported; 90 passes
+fall wholly outside submission across these windows. Submission's window-median
+field is 11.229 ms. Do not derive a new residual by subtracting these marginal
+medians.
+
+Corrected submission-local preparation/setup fields are 1.947 / 0.867 ms; the
+separately measured between-preparation complement is 4.518 ms. Thus the old
+approximately 6.5 ms preparation figure was not all engine work inside submission.
+The new complement does not expose a new independently identified multi-ms
+patch target. Existing decisions against sorting, state filtering, instancing,
+R7 and pass replay remain; no new engine hook is justified by this flight.
+
+Forty sparse nonzero HDR rows give transfer/lock 154.9 µs, extraction/unlock
+8.45 µs and statistics/adaptation 85.15 µs median. Writeback is 448.2 µs median,
+with its meter nested. Forty-one lease rows give retirement 63.4 µs median
+for 342 records / 1026 references. These CPU spans have different coverage from
+phase windows; they are neither GPU times nor additive frame partitions. All
+reported clock/error counters in the selected phase, readback and lease rows
+are clean. The measured sizes do not justify weakening lease ownership or
+changing exposure/readback quality merely to chase the old contaminated total.
+
+The actionable proxy change is the existing lazy-binding mode, now accepted
+from the matched production-mode B/C counter; its [decision and exact counts](../verification/motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20)
+live in the motion-output ledger. Moving collision and media remain separate
+active investigations. No new broad timing flight is requested.
+
+Evidence: [run52-triage](../../verification/results/run52-triage/result.md),
+with streamed reproduction, explicit camera bracketing, full B/C option comparison,
+aligned diagnostic windows and installed-source dependency checks.

@@ -1,0 +1,1028 @@
+{
+  "A_diagnostics": {
+    "corrected_complement_window_medians_us": {
+      "between_prepare_p50_us": 4518,
+      "outside_setup_p50_us": 0
+    },
+    "frame_phases_window_medians_us": {
+      "dt_p50_us": 20219,
+      "pre_render_p50_us": 3219,
+      "view_setup_p50_us": 1718,
+      "view_submit_p50_us": 11229,
+      "views_p50_us": 16179
+    },
+    "hdr_clock_error_total": 0,
+    "hdr_nonzero_writeback_samples": 40,
+    "hdr_window_medians_us": {
+      "readback_extract_unlock_us": 8.45,
+      "readback_statistics_adapt_us": 85.15,
+      "readback_transfer_lock_us": 154.9,
+      "writeback_us": 448.2
+    },
+    "lease_clock_error_total": 0,
+    "lease_samples": 41,
+    "lease_window_medians": {
+      "calls": 2,
+      "records": 342,
+      "refs": 1026,
+      "us": 63.4
+    },
+    "pass_attribution_health_totals": {
+      "complement_underflow": 0,
+      "crossing_passes": 0,
+      "outside_passes": 90,
+      "scope_errors": 0
+    },
+    "pass_attribution_window_medians": {
+      "complement_p50_us": 2825,
+      "crossing_passes_p50": 0,
+      "outside_p50_us": 0,
+      "outside_passes_p50": 0,
+      "scoped_p50_us": 8389
+    },
+    "pass_window_medians_us": {
+      "apply_p50_us": 3530,
+      "draw_p50_us": 4798,
+      "end_p50_us": 55,
+      "self_p50_us": 192,
+      "sum_p50_us": 8388,
+      "view_submit_p50_us": 11229
+    },
+    "phase_error_totals": {
+      "attribution": {
+        "outside_materials": 90,
+        "scope_errors": 0
+      },
+      "frame": {
+        "clock_errors": 0,
+        "dropped": 0,
+        "early": 0,
+        "foreign": 0,
+        "order_errors": 0,
+        "unmatched": 0
+      },
+      "pass": {
+        "clock_errors": 0,
+        "clock_failures": 0,
+        "dropped": 0,
+        "early": 0,
+        "foreign": 0,
+        "orphans": 0,
+        "unmatched": 0
+      },
+      "residual": {
+        "clock_errors": 0,
+        "clock_failures": 0,
+        "dropped": 0,
+        "early": 0,
+        "foreign": 0,
+        "other_underflow": 0,
+        "unmatched": 0
+      }
+    },
+    "residual_window_medians_us": {
+      "other_p50_us": 3109,
+      "particles_p50_us": 16,
+      "prepare_p50_us": 1947,
+      "self_p50_us": 51,
+      "setup_p50_us": 867
+    },
+    "window_count": 9,
+    "window_end_frames": [
+      3000,
+      3300,
+      3600,
+      3900,
+      4200,
+      4500,
+      4800,
+      5100,
+      5400
+    ],
+    "window_frames_each": 300
+  },
+  "B_C_478_route_binding_counters": {
+    "B": {
+      "apply_failures_total": 0,
+      "lazy_flushes_median": 0,
+      "restore_failures_total": 0,
+      "rows": 11,
+      "set_rt_median": 1812
+    },
+    "C": {
+      "apply_failures_total": 0,
+      "lazy_flushes_median": 1,
+      "restore_failures_total": 0,
+      "rows": 39,
+      "set_rt_median": 4
+    }
+  },
+  "B_C_478_route_health": {
+    "B": {
+      "depth_routed_values": [
+        453
+      ],
+      "matched_values": [
+        453
+      ],
+      "routed_values": [
+        453
+      ]
+    },
+    "C": {
+      "depth_routed_values": [
+        453
+      ],
+      "matched_values": [
+        453
+      ],
+      "routed_values": [
+        453
+      ]
+    }
+  },
+  "B_C_overlapping_draw_strata": {
+    "444": {
+      "B": {
+        "frame_time_ms": {
+          "max": 19.3,
+          "median": 19.05,
+          "min": 18.8,
+          "over_30ms_samples": 0,
+          "p95": 19.3
+        },
+        "reciprocal_fps_from_median": 52.493438320209975,
+        "samples": 2,
+        "spans": [
+          [
+            3830,
+            3830
+          ],
+          [
+            3880,
+            3880
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 18.7,
+          "median": 18.549999999999997,
+          "min": 18.4,
+          "over_30ms_samples": 0,
+          "p95": 18.7
+        },
+        "reciprocal_fps_from_median": 53.90835579514825,
+        "samples": 2,
+        "spans": [
+          [
+            7090,
+            7100
+          ]
+        ]
+      }
+    },
+    "469": {
+      "B": {
+        "frame_time_ms": {
+          "max": 19.4,
+          "median": 19.3,
+          "min": 18.9,
+          "over_30ms_samples": 0,
+          "p95": 19.4
+        },
+        "reciprocal_fps_from_median": 51.81347150259067,
+        "samples": 3,
+        "spans": [
+          [
+            3840,
+            3860
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 21.2,
+          "median": 20.1,
+          "min": 20.0,
+          "over_30ms_samples": 0,
+          "p95": 21.2
+        },
+        "reciprocal_fps_from_median": 49.75124378109452,
+        "samples": 3,
+        "spans": [
+          [
+            6830,
+            6850
+          ]
+        ]
+      }
+    },
+    "478": {
+      "B": {
+        "frame_time_ms": {
+          "max": 21.0,
+          "median": 19.7,
+          "min": 19.3,
+          "over_30ms_samples": 0,
+          "p95": 20.9
+        },
+        "reciprocal_fps_from_median": 50.76142131979696,
+        "samples": 63,
+        "spans": [
+          [
+            3240,
+            3240
+          ],
+          [
+            3280,
+            3310
+          ],
+          [
+            3340,
+            3360
+          ],
+          [
+            3530,
+            3580
+          ],
+          [
+            3600,
+            3700
+          ],
+          [
+            3740,
+            3750
+          ],
+          [
+            3800,
+            3800
+          ],
+          [
+            3820,
+            3820
+          ],
+          [
+            3910,
+            3980
+          ],
+          [
+            4000,
+            4010
+          ],
+          [
+            4040,
+            4180
+          ],
+          [
+            4200,
+            4280
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 21.7,
+          "median": 18.9,
+          "min": 18.5,
+          "over_30ms_samples": 0,
+          "p95": 19.7
+        },
+        "reciprocal_fps_from_median": 52.91005291005291,
+        "samples": 239,
+        "spans": [
+          [
+            3610,
+            5970
+          ],
+          [
+            5990,
+            5990
+          ],
+          [
+            6330,
+            6330
+          ]
+        ]
+      }
+    },
+    "479": {
+      "B": {
+        "frame_time_ms": {
+          "max": 23.5,
+          "median": 19.6,
+          "min": 19.1,
+          "over_30ms_samples": 0,
+          "p95": 20.9
+        },
+        "reciprocal_fps_from_median": 51.0204081632653,
+        "samples": 158,
+        "spans": [
+          [
+            3380,
+            3400
+          ],
+          [
+            4290,
+            5830
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 20.4,
+          "median": 19.9,
+          "min": 19.7,
+          "over_30ms_samples": 0,
+          "p95": 20.4
+        },
+        "reciprocal_fps_from_median": 50.25125628140704,
+        "samples": 7,
+        "spans": [
+          [
+            5980,
+            5980
+          ],
+          [
+            6090,
+            6110
+          ],
+          [
+            6340,
+            6360
+          ]
+        ]
+      }
+    },
+    "480": {
+      "B": {
+        "frame_time_ms": {
+          "max": 20.4,
+          "median": 19.8,
+          "min": 19.7,
+          "over_30ms_samples": 0,
+          "p95": 20.4
+        },
+        "reciprocal_fps_from_median": 50.505050505050505,
+        "samples": 5,
+        "spans": [
+          [
+            5840,
+            5880
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 21.3,
+          "median": 20.4,
+          "min": 20.2,
+          "over_30ms_samples": 0,
+          "p95": 21.3
+        },
+        "reciprocal_fps_from_median": 49.01960784313726,
+        "samples": 5,
+        "spans": [
+          [
+            6000,
+            6040
+          ]
+        ]
+      }
+    },
+    "481": {
+      "B": {
+        "frame_time_ms": {
+          "max": 20.5,
+          "median": 20.05,
+          "min": 19.7,
+          "over_30ms_samples": 0,
+          "p95": 20.5
+        },
+        "reciprocal_fps_from_median": 49.87531172069825,
+        "samples": 6,
+        "spans": [
+          [
+            3450,
+            3500
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 20.9,
+          "median": 20.15,
+          "min": 19.4,
+          "over_30ms_samples": 0,
+          "p95": 20.9
+        },
+        "reciprocal_fps_from_median": 49.62779156327544,
+        "samples": 2,
+        "spans": [
+          [
+            3580,
+            3580
+          ],
+          [
+            6120,
+            6120
+          ]
+        ]
+      }
+    },
+    "485": {
+      "B": {
+        "frame_time_ms": {
+          "max": 20.8,
+          "median": 20.75,
+          "min": 20.7,
+          "over_30ms_samples": 0,
+          "p95": 20.8
+        },
+        "reciprocal_fps_from_median": 48.19277108433735,
+        "samples": 2,
+        "spans": [
+          [
+            3000,
+            3000
+          ],
+          [
+            3510,
+            3510
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 19.4,
+          "median": 19.4,
+          "min": 19.4,
+          "over_30ms_samples": 0,
+          "p95": 19.4
+        },
+        "reciprocal_fps_from_median": 51.54639175257732,
+        "samples": 1,
+        "spans": [
+          [
+            8440,
+            8440
+          ]
+        ]
+      }
+    },
+    "486": {
+      "B": {
+        "frame_time_ms": {
+          "max": 19.5,
+          "median": 19.5,
+          "min": 19.5,
+          "over_30ms_samples": 0,
+          "p95": 19.5
+        },
+        "reciprocal_fps_from_median": 51.282051282051285,
+        "samples": 1,
+        "spans": [
+          [
+            3760,
+            3760
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 19.9,
+          "median": 19.549999999999997,
+          "min": 19.2,
+          "over_30ms_samples": 0,
+          "p95": 19.9
+        },
+        "reciprocal_fps_from_median": 51.15089514066497,
+        "samples": 2,
+        "spans": [
+          [
+            3300,
+            3300
+          ],
+          [
+            6470,
+            6470
+          ]
+        ]
+      }
+    },
+    "510": {
+      "B": {
+        "frame_time_ms": {
+          "max": 21.1,
+          "median": 20.8,
+          "min": 20.6,
+          "over_30ms_samples": 0,
+          "p95": 21.1
+        },
+        "reciprocal_fps_from_median": 48.07692307692307,
+        "samples": 13,
+        "spans": [
+          [
+            3040,
+            3110
+          ],
+          [
+            3140,
+            3140
+          ],
+          [
+            3170,
+            3200
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 22.9,
+          "median": 20.1,
+          "min": 19.7,
+          "over_30ms_samples": 0,
+          "p95": 22.9
+        },
+        "reciprocal_fps_from_median": 49.75124378109452,
+        "samples": 15,
+        "spans": [
+          [
+            3320,
+            3320
+          ],
+          [
+            3340,
+            3380
+          ],
+          [
+            3410,
+            3410
+          ],
+          [
+            3430,
+            3430
+          ],
+          [
+            3450,
+            3470
+          ],
+          [
+            3490,
+            3500
+          ],
+          [
+            3560,
+            3560
+          ],
+          [
+            6620,
+            6620
+          ]
+        ]
+      }
+    },
+    "514": {
+      "B": {
+        "frame_time_ms": {
+          "max": 21.6,
+          "median": 20.7,
+          "min": 20.5,
+          "over_30ms_samples": 0,
+          "p95": 21.6
+        },
+        "reciprocal_fps_from_median": 48.309178743961354,
+        "samples": 8,
+        "spans": [
+          [
+            3030,
+            3030
+          ],
+          [
+            3120,
+            3130
+          ],
+          [
+            3150,
+            3160
+          ],
+          [
+            3210,
+            3230
+          ]
+        ]
+      },
+      "C": {
+        "frame_time_ms": {
+          "max": 21.9,
+          "median": 20.0,
+          "min": 19.8,
+          "over_30ms_samples": 0,
+          "p95": 21.9
+        },
+        "reciprocal_fps_from_median": 50.0,
+        "samples": 7,
+        "spans": [
+          [
+            3330,
+            3330
+          ],
+          [
+            3390,
+            3390
+          ],
+          [
+            3420,
+            3420
+          ],
+          [
+            3440,
+            3440
+          ],
+          [
+            3480,
+            3480
+          ],
+          [
+            3540,
+            3550
+          ]
+        ]
+      }
+    }
+  },
+  "B_C_proxy_options_equal_except_rt_mode": true,
+  "B_C_route_telemetry_at_camera_reason_0": {
+    "B": {
+      "469": {
+        "depth_routed_values": [
+          440
+        ],
+        "matched_values": [
+          440
+        ],
+        "routed_values": [
+          440
+        ],
+        "rows": 1
+      },
+      "478": {
+        "depth_routed_values": [
+          453
+        ],
+        "matched_values": [
+          453
+        ],
+        "routed_values": [
+          453
+        ],
+        "rows": 11
+      },
+      "479": {
+        "depth_routed_values": [
+          453
+        ],
+        "matched_values": [
+          453
+        ],
+        "routed_values": [
+          453
+        ],
+        "rows": 26
+      },
+      "480": {
+        "depth_routed_values": [
+          453
+        ],
+        "matched_values": [
+          453
+        ],
+        "routed_values": [
+          453
+        ],
+        "rows": 1
+      },
+      "481": {
+        "depth_routed_values": [
+          456
+        ],
+        "matched_values": [
+          456
+        ],
+        "routed_values": [
+          456
+        ],
+        "rows": 1
+      },
+      "485": {
+        "depth_routed_values": [
+          456
+        ],
+        "matched_values": [
+          456
+        ],
+        "routed_values": [
+          456
+        ],
+        "rows": 1
+      },
+      "510": {
+        "depth_routed_values": [
+          485
+        ],
+        "matched_values": [
+          485
+        ],
+        "routed_values": [
+          485
+        ],
+        "rows": 2
+      },
+      "514": {
+        "depth_routed_values": [
+          485
+        ],
+        "matched_values": [
+          485
+        ],
+        "routed_values": [
+          485
+        ],
+        "rows": 1
+      }
+    },
+    "C": {
+      "469": {
+        "depth_routed_values": [
+          446
+        ],
+        "matched_values": [
+          446
+        ],
+        "routed_values": [
+          446
+        ],
+        "rows": 1
+      },
+      "478": {
+        "depth_routed_values": [
+          453
+        ],
+        "matched_values": [
+          453
+        ],
+        "routed_values": [
+          453
+        ],
+        "rows": 39
+      },
+      "479": {
+        "depth_routed_values": [
+          454
+        ],
+        "matched_values": [
+          454
+        ],
+        "routed_values": [
+          454
+        ],
+        "rows": 1
+      },
+      "480": {
+        "depth_routed_values": [
+          455
+        ],
+        "matched_values": [
+          453
+        ],
+        "routed_values": [
+          455
+        ],
+        "rows": 1
+      },
+      "481": {
+        "depth_routed_values": [
+          456
+        ],
+        "matched_values": [
+          440
+        ],
+        "routed_values": [
+          456
+        ],
+        "rows": 1
+      },
+      "486": {
+        "depth_routed_values": [
+          453
+        ],
+        "matched_values": [
+          453
+        ],
+        "routed_values": [
+          453
+        ],
+        "rows": 1
+      },
+      "510": {
+        "depth_routed_values": [
+          485
+        ],
+        "matched_values": [
+          485
+        ],
+        "routed_values": [
+          485
+        ],
+        "rows": 1
+      },
+      "514": {
+        "depth_routed_values": [
+          485
+        ],
+        "matched_values": [
+          485
+        ],
+        "routed_values": [
+          485
+        ],
+        "rows": 3
+      }
+    }
+  },
+  "identity": {
+    "consistent": true,
+    "dll_sha256": "4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685",
+    "source_commit": "976307f24d08e76c511ca4eaffcd018e5f0ff376"
+  },
+  "limitations": [
+    "frame_end dt_ms covers ten frames; its reciprocal median is not the median instantaneous FPS.",
+    "The maximal shared 478-draw interval is short; broader exact-draw strata are noncontemporaneous across B/C.",
+    "A carries phase diagnostics; B/C intentionally do not. Their FPS values are not a diagnostic-overhead subtraction.",
+    "Phase and HDR values are marginal window medians/sparse rows. They must not be subtracted or summed into a same-frame partition."
+  ],
+  "selection": {
+    "common_draw_interval": [
+      3610,
+      3700
+    ],
+    "draws": 478,
+    "p95": "nearest rank: sorted[ceil(0.95*n)-1]",
+    "reason": "maximal post-transition (frame >=3000) sampled interval shared by A/B/C with exactly 478 frame_end draws"
+  },
+  "sessions": {
+    "A": {
+      "frame_end_common_interval": {
+        "draws": 478,
+        "dt_median_ms_per_frame": 20.1,
+        "dt_values_ms_per_frame": [
+          21.0,
+          20.1,
+          19.8,
+          20.2,
+          20.1,
+          20.2,
+          20.0,
+          20.0,
+          20.1,
+          20.1
+        ],
+        "fps_from_median_frame_time": 49.75124378109452,
+        "frames": [
+          3610,
+          3700
+        ],
+        "sample_span_frames": 100,
+        "samples": 10
+      },
+      "log": "/tmp/x3-bottleX3-run187/session-20260920-051931-212.log",
+      "rt_mode": {
+        "all_expected": true,
+        "expected": "perdraw",
+        "rows": 95,
+        "seen": [
+          "perdraw"
+        ]
+      },
+      "run": 187,
+      "state_hooks": {
+        "rows": 1,
+        "unhooked_none": true,
+        "values": [
+          {
+            "installed": "0",
+            "reason": "none",
+            "rs_mode": "get",
+            "state_shadow": "0"
+          }
+        ]
+      },
+      "timestamp_local": "2026-09-20T05:19:31",
+      "user_observation": "48-50 fps"
+    },
+    "B": {
+      "frame_end_common_interval": {
+        "draws": 478,
+        "dt_median_ms_per_frame": 19.75,
+        "dt_values_ms_per_frame": [
+          19.7,
+          19.8,
+          19.4,
+          19.7,
+          20.5,
+          20.4,
+          21.0,
+          20.1,
+          19.5,
+          19.6
+        ],
+        "fps_from_median_frame_time": 50.63291139240506,
+        "frames": [
+          3610,
+          3700
+        ],
+        "sample_span_frames": 100,
+        "samples": 10
+      },
+      "log": "/tmp/x3-bottleX3-run188/session-20260920-052214-216.log",
+      "rt_mode": {
+        "all_expected": true,
+        "expected": "perdraw",
+        "rows": 104,
+        "seen": [
+          "perdraw"
+        ]
+      },
+      "run": 188,
+      "state_hooks": {
+        "rows": 1,
+        "unhooked_none": true,
+        "values": [
+          {
+            "installed": "0",
+            "reason": "none",
+            "rs_mode": "get",
+            "state_shadow": "0"
+          }
+        ]
+      },
+      "timestamp_local": "2026-09-20T05:22:14",
+      "user_observation": "49-51 fps"
+    },
+    "C": {
+      "frame_end_common_interval": {
+        "draws": 478,
+        "dt_median_ms_per_frame": 19.0,
+        "dt_values_ms_per_frame": [
+          19.1,
+          19.0,
+          18.6,
+          18.9,
+          19.0,
+          19.2,
+          18.8,
+          19.2,
+          18.9,
+          19.3
+        ],
+        "fps_from_median_frame_time": 52.63157894736842,
+        "frames": [
+          3610,
+          3700
+        ],
+        "sample_span_frames": 100,
+        "samples": 10
+      },
+      "log": "/tmp/x3-bottleX3-run189/session-20260920-052443-212.log",
+      "rt_mode": {
+        "all_expected": true,
+        "expected": "lazy",
+        "rows": 148,
+        "seen": [
+          "lazy"
+        ]
+      },
+      "run": 189,
+      "state_hooks": {
+        "rows": 1,
+        "unhooked_none": true,
+        "values": [
+          {
+            "installed": "0",
+            "reason": "none",
+            "rs_mode": "get",
+            "state_shadow": "0"
+          }
+        ]
+      },
+      "timestamp_local": "2026-09-20T05:24:43",
+      "user_observation": "52-53 fps; no visual issues reported"
+    }
+  },
+  "source_health": {
+    "checkout": "/tmp/x3-submission-attribution",
+    "head": "446ec38f22e2d33ecb89e67615ddf0dc7dcd1bef",
+    "installed_commit_is_ancestor_of_head": true,
+    "relevant_owning_paths_unchanged_from_installed_commit": true
+  }
+}

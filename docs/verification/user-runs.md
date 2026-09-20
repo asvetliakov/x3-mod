@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-20 (run 49 A/B and run 50 reported; run 51 media counter ready). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-20 (run52 complete and lazy accepted; run51 media counter remains optional). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -67,6 +67,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 46 | Collision memo (A), lattice line filter (B), far stabiliser (C), frame attribution (D) | 0 | A run155/156: memo verify 808,408 checked, 0 mismatches; memo on ≈ 43 fps (24 before run 45), 62 % of node visits skipped, 70 % of queries still miss → running-minimum relaxation + miss-reason counters, both collision options become defaults. B run157–159: filter engaged, beads ×0.32, but the user sees no change: the visible crawl is the sub-pixel lattice image changing shape as it slides (creep residual 0.40 → 0.26 at best); resolve-side spatial filters are exhausted. C run160/161: both nearly remove the distant shimmer but blur the object under slow camera motion (resampling blur of the 65-frame history under a speed gate that only relaxed at 0.5 px/frame) → gate 0.03–0.25; weight-only picked. D run162: busy view = engine between API calls ≈ 10 ms, state/D3DX apply 9 ms (stamp-inflated), proxy per-draw 3.9, post passes 3.1, native draws 1.3. | [sampling-profiler.md](sampling-profiler.md) "Run 46 A", [taa-lattice-crawl.md](../architecture/taa-lattice-crawl.md) §10, [taa-distant-line-fade.md](../architecture/taa-distant-line-fade.md) §10, [engine-frame-time.md](../architecture/engine-frame-time.md) "Run 46 D" |
 | 47 | Relaxed collision memo (A), lazy RT + profiler (B), far stabiliser gate (C), lattice 64-frame pair (D); recording + run175; Argon Prime fog captures run174 | 0 | A run163/164: verify 0 mismatches; 65 fps standing, 45 moving; transform-b misses dominated, but the fixture rate is not a live per-visit floor; advancement/front tracking remain not built ([moving-case audit](../reverse-engineering/sector-collide.md#1410-moving-case-audit-the-remaining-cost-is-not-yet-attributed-2026-09-20)). B run165–167: lazy RT removes 1,557 SetRenderTarget calls per frame, but the higher native draw time is unexplained rather than a proved driver offset; no FPS gain, stays optional ([Run 47 B ledger](motion-output.md#run-47-b-2026-09-19--session-b-per-draw-vs-lazy-rt-mode-at-the-busy-station-view)). C far stabiliser 0.985 accepted; remaining distant shimmer is light-map windows. D run172/173 were static; run175 identified edge-on ARM coverage toggling → `--taa-thin-region`. run174’s advertisement-sign veto motivated the sun-lane stamp. |
 | 48 | Lattice/distant-window checks (A), fog/shadow flight (B), submit timing (C) | 0 | Completed: run176–178, run180 and run181. Stationary thin-region improvement confirmed; moving crawl remains open. At 0.02 the user estimated about 2 FPS fog cost; no controlled timing measured it. Replacement and sector-reader flight validation remain pending. Submit timings close only the measured candidates for this view. [Archive](../archive/run48-completed-2026-09-20.md). |
+| 52 | Busy-station attribution and lazy-RT counter | 0 | Completed: A run187, B run188, C run189. Matched 478-draw separate-session B/C medians were 19.70 / 18.90 ms; lazy accepted as launcher default, no new engine patch justified. [Instructions archive](../archive/run52-completed-2026-09-20.md), [results](motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20). |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md) and the
@@ -195,44 +196,3 @@ selector failure attempt during the short observation. A success, eviction,
 clock error or incomplete tracing can invalidate that simple expectation.
 Keep any remaining non-selector/render stalls separate. This counter does not
 authorize a permanent hour-long retry policy.
-
-
-## 52. Busy-station attribution and retained-target comparison
-
-Ready: the qualified candidate is recorded as installed in [status](../status.md). This test uses only the busy-station save,
-with the same stationary camera/view for all three sessions. Let each settle,
-then hold the view for about 30 seconds and note the FPS. No F8 or other saves
-are needed. Preserve each session normally.
-
-A measures the remaining engine submission interval with corrected cross-view
-accounting, and separates HDR transfer, extraction and statistics cost plus
-shadow lease retirement. The diagnostic adds overhead, so its FPS is not the
-performance baseline.
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --frame-phases --residual-phases --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2
-```
-
-B removes the per-draw phase instrumentation. This is the matched FPS baseline;
-ordinary telemetry is retained.
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2
-```
-
-C changes only the existing render-target binding policy to `lazy`. Compare FPS
-against B and watch for missing geometry, flicker or corrupted effects. This is
-a counter for an existing opt-in proxy optimization, not a new default.
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode lazy --capture-start 999999 --capture-frames 2
-```
-
-Report the three preserved directories and FPS. The analysis must compare
-matched steady intervals, retain diagnostic self-cost and sparse-log limits,
-and check visual correctness before considering a default change. For B/C,
-require matched draw counts and `state_hooks installed=0 reason=none`; otherwise
-the lazy comparison is not eligible. This build
-does not contain the spatial-fog prototype, moving-lattice correction, media
-decoder repair or moving-collision optimization. Run51's media counter remains
-independent and is not a prerequisite for this work.

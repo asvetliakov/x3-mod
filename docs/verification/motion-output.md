@@ -1893,9 +1893,9 @@ mask-allocation-failure runs bit-identical to the plain resolve with the history
 exp taps measure -0.07 ms (noise, left); mask allocation failure now disables the options for the session with one log line.
 
 
-## 2026-09-19 — lever 3, hook-free lazy RT (route-per-draw-cost.md): implemented, unflown, default off
+## 2026-09-19 — lever 3, hook-free lazy RT (route-per-draw-cost.md)
 
-`X3M_MOTION_RT_MODE=lazy` (`--motion-rt-mode lazy`; `perdraw` stays the default and the kill switch) now holds RT1/RT2
+`X3M_MOTION_RT_MODE=lazy` (`--motion-rt-mode lazy`; initially opt-in, promoted after Run52 below; `perdraw` remains the rollback mode) holds RT1/RT2
 across consecutive routed draws and **never a write mask**: each routed draw reads `COLORWRITEENABLE1/2` (the reads per-draw
 mode already makes), writes a mask only when it differs from what the draw needs (15, or 0 on RT2 for a fade-band draw)
 and the undo puts the application's value back; the flush is two unbinds. `lazy_rt` is no `state_hooks` reason any more,
@@ -2125,3 +2125,37 @@ Reproduce the local gate witness:
 (loads `tools/analysis/taa_resolve_replay.py` with the shipped gate and an ungated
 region). Local results JSON and wrapper syntax validate. Independent review ran
 the host reproducer in 14.7 s and reproduced both burst result dictionaries exactly.
+
+
+### Run52: lazy render-target binding accepted as launcher default (2026-09-20)
+
+A/run187 measures corrected attribution; B/run188 and C/run189 compare
+`perdraw` and `lazy` without the intrusive frame-timing setter hooks. The user
+reports 48–50 / 49–51 / 52–53 FPS and no visible issues in C. All three runs
+match the intended source/DLL identity. B/C proxy options differ only in RT mode;
+both report `state_hooks installed=0 reason=none`.
+
+At 478 draws, valid camera-status records bracket 63 B and 239 C ten-frame
+samples. Median frame time is **19.70 / 18.90 ms** (about **50.8 / 52.9 FPS**),
+with nearest-rank p95 20.9 / 19.7 ms. The 510- and 514-draw strata also favor
+lazy by about 0.7 ms. These are separate-session strata, not temporal paired
+measurements or proof of an exact causal saving. Transition samples are excluded
+by bracketing, not simply by carrying the previous camera status forward.
+
+The 11/39 periodic 478-draw route rows have the same 453 matched/routed/depth
+draws. Render-target setter counts fall **1812 → 4**, with **0 → 1** lazy flush
+and zero lazy mask writes. Apply/restore failures are zero. This is the intended
+mechanism; no object, draw or image-quality reduction is involved.
+
+**Decision:** together with the earlier byte-identical color/depth/motion/state
+fixtures and this eligible flight's visual acceptance, make lazy the launcher
+default when motion output is enabled. Explicit `--motion-rt-mode perdraw`
+remains the fallback; feature-off launch behavior stays unchanged. No DLL
+replacement is required. The earlier Run47 instrumented counter remains valid
+history, but does not override this production-mode comparison. No hitch
+elimination or native Windows runtime qualification is claimed.
+
+Independent source/evidence review passed after correcting selection, percentile,
+configuration and window-alignment checks. Five focused launcher tests pass.
+Reproduction and compact results: [run52-triage](../../verification/results/run52-triage/result.md).
+Submission/HDR/lease decisions are recorded in the [frame-time note](../architecture/engine-frame-time.md#run52-corrected-attribution-and-remaining-optimization-scope-2026-09-20).
