@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-20 (run52 complete and lazy accepted; run51 media counter remains optional). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-20 (runs49/50/52 complete; lazy accepted; run51 media counter remains optional). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -67,110 +67,14 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 46 | Collision memo (A), lattice line filter (B), far stabiliser (C), frame attribution (D) | 0 | A run155/156: memo verify 808,408 checked, 0 mismatches; memo on ≈ 43 fps (24 before run 45), 62 % of node visits skipped, 70 % of queries still miss → running-minimum relaxation + miss-reason counters, both collision options become defaults. B run157–159: filter engaged, beads ×0.32, but the user sees no change: the visible crawl is the sub-pixel lattice image changing shape as it slides (creep residual 0.40 → 0.26 at best); resolve-side spatial filters are exhausted. C run160/161: both nearly remove the distant shimmer but blur the object under slow camera motion (resampling blur of the 65-frame history under a speed gate that only relaxed at 0.5 px/frame) → gate 0.03–0.25; weight-only picked. D run162: busy view = engine between API calls ≈ 10 ms, state/D3DX apply 9 ms (stamp-inflated), proxy per-draw 3.9, post passes 3.1, native draws 1.3. | [sampling-profiler.md](sampling-profiler.md) "Run 46 A", [taa-lattice-crawl.md](../architecture/taa-lattice-crawl.md) §10, [taa-distant-line-fade.md](../architecture/taa-distant-line-fade.md) §10, [engine-frame-time.md](../architecture/engine-frame-time.md) "Run 46 D" |
 | 47 | Relaxed collision memo (A), lazy RT + profiler (B), far stabiliser gate (C), lattice 64-frame pair (D); recording + run175; Argon Prime fog captures run174 | 0 | A run163/164: verify 0 mismatches; 65 fps standing, 45 moving; transform-b misses dominated, but the fixture rate is not a live per-visit floor; advancement/front tracking remain not built ([moving-case audit](../reverse-engineering/sector-collide.md#1410-moving-case-audit-the-remaining-cost-is-not-yet-attributed-2026-09-20)). B run165–167: lazy RT removes 1,557 SetRenderTarget calls per frame, but the higher native draw time is unexplained rather than a proved driver offset; no FPS gain, stays optional ([Run 47 B ledger](motion-output.md#run-47-b-2026-09-19--session-b-per-draw-vs-lazy-rt-mode-at-the-busy-station-view)). C far stabiliser 0.985 accepted; remaining distant shimmer is light-map windows. D run172/173 were static; run175 identified edge-on ARM coverage toggling → `--taa-thin-region`. run174’s advertisement-sign veto motivated the sun-lane stamp. |
 | 48 | Lattice/distant-window checks (A), fog/shadow flight (B), submit timing (C) | 0 | Completed: run176–178, run180 and run181. Stationary thin-region improvement confirmed; moving crawl remains open. At 0.02 the user estimated about 2 FPS fog cost; no controlled timing measured it. Replacement and sector-reader flight validation remain pending. Submit timings close only the measured candidates for this view. [Archive](../archive/run48-completed-2026-09-20.md). |
+| 49 | Consolidated attribution and fog-card replacement | 0 | Completed: A run183/184, B run185. Phase-off busy plateau about 51 FPS; R7 too small for a patch, moving collision remains descent-dominated. Sector reader validated in observed families; uniform fog appearance rejected. [Instructions archive](../archive/run49-50-completed-2026-09-20.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight). |
+| 50 | Argon Prime media-retry attribution | 0 | Completed: run186. Two failed media-ID-2 constructions account for almost all of their 359/408 ms frames; later retries follow the 30-second cadence. Other first-view stalls remain separately scoped. [Instructions archive](../archive/run49-50-completed-2026-09-20.md#50-argon-prime-first-view-stutters--existing-media-trace), [findings](media-cues.md#run50-periodic-retries-directly-explain-argon-freezes-2026-09-20). |
 | 52 | Busy-station attribution and lazy-RT counter | 0 | Completed: A run187, B run188, C run189. Matched 478-draw separate-session B/C medians were 19.70 / 18.90 ms; lazy accepted as launcher default, no new engine patch justified. [Instructions archive](../archive/run52-completed-2026-09-20.md), [results](motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20). |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md) and the
 [run 48 archive](../archive/run48-completed-2026-09-20.md); they are provenance,
 not rerun requests.
-
-
-## 49. Consolidated attribution and fog-card replacement — ready for flight
-
-Qualification is complete; see [status](../status.md) for installed-build details.
-Use original hull shading, the user-selected
-`--light-map-far-fade 80,220`, and explicit experimental `--taa-thin-region 0.97`
-and `--taa-far-stabiliser 0.985`; neither TAA option is accepted as a moving-camera fix.
-Do not add `--frame-timing`, state stamps, `--profile`, or `--submit-phases`.
-
-**Session A reported (2026-09-20):** diagnostic command =
-`/tmp/x3-bottleX3-run183`; phase-diagnostics-off counter =
-`/tmp/x3-bottleX3-run184` (64 referenced files each). Both sessions used three
-scenes, in order: (1) busy-station save, (2) new game in Argon Prime, where the
-user observes camera-turn stutters, (3) corvette save for collision and the
-solar-plant lattice. The user says those stutters do not occur in the busy-station
-save. Analysis is recorded in the [frame-time note](../architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20):
-phase-off busy plateau is about 51 FPS; Argon stalls persist without phase
-diagnostics and overlap media-backend failures. R7 is too small to optimize;
-moving query time is descent-dominated. **Session B is reported below**. No new lattice
-image-quality verdict is implied by this timing flight.
-
-**A. Busy-station attribution and first-view stalls.** At the busy-station save,
-hold the view 60 seconds stationary, then repeat moving/turning. On a fresh camera
-sweep record each visible freeze and whether revisiting the view is smooth. Then load
-the known collision-corvette save and repeat moving/turning to measure the moving
-collision case; do not assume the busy-station fighter view reproduces it. No F8.
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --loop-phases --game-phases --game-phase-threshold-ms 20 --residual-phases --light-phases --collide-memo --collide-query-phases --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2
-```
-
-Repeat the same stationary/moving sequence with this phase-diagnostics-off counter:
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2
-```
-
-**Session B reported (2026-09-20):** `/tmp/x3-bottleX3-run185`
-(1,472 referenced files). The user rejects the uniform sector-wide fog wash,
-especially in heavy-fog sectors, and requests spatial cloud patches with varying
-intensity and clear gaps, preserving the character of the original cards.
-Four F8 bursts exist; the user does not recall their sector/on-off order and
-thinks they were probably fog-on at different strengths. Sector names remain
-unknown. Recorded settings establish all four bursts as fog-on
-at 0.01/0.005/0.05/0.05. The [fog ledger](volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20)
-records reader validation in the observed sectors and first-burst suppression;
-the card-report diagnostic exhausted its cap before the later bursts.
-No repeat of Session B is requested.
-
-**B. Fog cards and read-only sector validation.** In Argon Prime and The Hole or
-Atreus' Clouds, use Ctrl+Alt+F10 to anchor comparisons at **0.01** and **0.05**
-respectively; these are artistic anchors, not density defaults. At each fixed view,
-use Ctrl+Alt+F9 off for a vanilla-card comparison, then restore fog. Check shafts,
-replacement, signs and ship shadows; F8 each requested fixed view. Cross into a clear
-sector and report the sector names/transitions plus whether fog/cards linger. The
-reviewer will read `sector_background` status around the gate, load, or menu.
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --volumetric-fog 0.02 --volumetric-fog-cards replace --sector-background --taa-debug --capture-start 999999 --frame-end-stride 10 --capture-frames 32
-```
-
-
-## 50. Argon Prime first-view stutters — existing media trace
-
-**Reported:** `/tmp/x3-bottleX3-run186` (60 referenced files). The user
-reports stutters approximately every 30 seconds. Two fully joined failed ID2
-selector calls account for almost all of their 359/408 ms frames; three later
-entries follow the same cadence/slow-frame pattern with suppressed outcomes.
-Other first-view media calls also stall; one slow frame remains unattributed.
-See the [media ledger](media-cues.md#run50-periodic-retries-directly-explain-argon-freezes-2026-09-20).
-
-Used the currently installed build; no new DLL was needed. Run49 A/B are
-reported. This session is solely for the remaining stutter attribution, not fog
-or lattice acceptance. The command passed launcher `--dry-run` on 2026-09-20;
-no game was launched by the agent.
-
-Start the same **new game in Argon Prime** used in run183/run184. Pan across
-fresh views until the first-view stutter occurs, revisit those views, and stay
-in-sector for about 90 seconds to include the existing 30-second media retry.
-Report the preserved `/tmp/x3-bottleX3-runNN` and whether freezes occurred only
-on first views or also while holding/revisiting a view. No F8 is needed.
-
-This adds existing media caller/duration tracing to loop/game phases and keeps
-the current retry policy at 30 seconds. It omits the light/collision-query timers;
-tracing itself can perturb timings, so this is attribution, not an FPS benchmark.
-Do not change the retry interval or media decoder during this session.
-
-```sh
-./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --frame-phases --loop-phases --game-phases --game-phase-threshold-ms 20 --residual-phases --collide-memo --frame-end-stride 10 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode perdraw --capture-start 999999 --capture-frames 2 --media-cue-trace --media-cue-cache on --media-cue-retry-s 30
-```
-
-Analysis: join `media_cue_enter.qpc` to `media_cue.qpc` and entry `attempt`
-to outcome `attempts_frame`, compare
-constructor duration with the loop/game stall interval, and inspect suppression,
-foreign/early/drop counters before interpreting an absent outcome. An unmatched
-entry alone does not prove a hang. Keep GStreamer-free stalls open. See the
-[run49 timing analysis](../architecture/engine-frame-time.md#argon-prime-stalls-also-occur-with-phase-diagnostics-off).
 
 
 ## 51. Media retry counter — same view, longer diagnostic interval
