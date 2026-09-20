@@ -273,3 +273,13 @@ Local reproduction: `verification/results/run49b-fog/reproduce.py`, `result.json
 and `result.md`; original session `/tmp/x3-bottleX3-run185`. The streaming pass
 read 20,837,778 lines / 1,262,076,084 bytes and validated its JSON. Representative
 present sheet: `/tmp/x3-run185-present-sheet.png`. No game or Wine execution.
+
+
+## User confirmation: clear sectors (2026-09-20)
+
+The user confirms that volumetric fog cleared in sectors without fog in a
+previous flight. **Clear-sector removal is visually accepted.** The exact
+run/transition and fade duration were not identified in this confirmation;
+retain the earlier limits on trace-based timing and sector-reader coverage,
+but do not request another flight solely to establish visible clearing. This
+does not accept the uniform fog appearance or close the spatial redesign.
