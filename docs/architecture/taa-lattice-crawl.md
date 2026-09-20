@@ -1517,3 +1517,41 @@ The reviewed fixture and raw outputs remain local at the paths bound in the
 compact result. Its legacy fixture dependency is not part of main. This is a
 measurement checkpoint, not production code, live ownership qualification,
 native Windows runtime evidence or a demonstrated crawl correction.
+
+## 31. Close arithmetic exploration; investigate final upload observation
+
+The two retained GPU/capture W fingerprints differ by 61.3945 and 71.3789,
+far above the conditional model residual 0.1875. The old 0.02 qualifier remains
+failed, but is not a prerequisite for distinguishing these finite hypotheses.
+W alone supplies no bound on screen-edge displacement. The existing GPU data
+cover only one 12×10 tile; repeating its fourteen comparisons cannot produce
+ownership for the other motion frames.
+
+A [bounded source-conversion pilot](../../verification/results/run201-lattice/rounding-pilot.json)
+compares nearest/truncated half positions against the same frozen source.
+It changes no owners among 120 tile pixels (14 positive), while disturbing ten
+established controls. Face47's maximum projected vertex change is 0.00812 px;
+face42/43 positions are unchanged. This is a conditional host screen, not proof
+of D3DX conversion behavior. It does not justify another rounding Wine fixture.
+The parent reproduced its assertions from the retained local script.
+
+Selected next evidence path: investigate an opt-in mirror of final CloneMesh
+VB/IB uploads, before game publication, rather than reading WRITEONLY buffers
+at draw time. Target `0x004bcc2e` and handoff `0x004bc9c0`. Implementation is
+blocked until targeted disassembly proves allocation linkage, producer-owned
+readable mapped access, wrapper visibility, failure/unwind ordering and exact
+ABI. Same-thread callbacks or matching revision bookends are not ownership
+proof. Native bypass or absent exclusive access closes this proposed seam.
+
+If qualified, a bounded startup-armed observer could retain bytes before original
+Unlock, publish only after success, and attach them to F8 by actual allocation,
+revision and generation. Later mutation invalidates the record. This would test
+indices/order, splits, positions and UVs, without a per-draw copy or new Lock.
+It would not by itself prove texture parity, a simultaneous draw-input
+transaction, historical Run177 ownership or a visible crawl correction.
+
+Public GPU attribute export is a possible alternative: WRITEONLY does not forbid
+GPU reads. A diagnostic VS/ordinal stream can export decoded positions/UVs, but
+not raw-byte identity or directly recover IB order; indexed ordinal attributes
+are fetched through that same IB. It still requires an injected-draw ownership,
+state/query and Reset contract. No live implementation or flight is selected yet.

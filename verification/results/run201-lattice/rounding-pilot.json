@@ -1,0 +1,212 @@
+{
+  "status": "negative hypothesis screen",
+  "owner_changes": 0,
+  "tile_pixels": 120,
+  "positive_pixels": 14,
+  "vertices": [
+    {
+      "group": 4,
+      "face": 2952,
+      "changed_components": 2,
+      "max_vertex_screen_shift": 0.1008911175784568,
+      "max_vertex_W_shift": 6.28515625
+    },
+    {
+      "group": 4,
+      "face": 3025,
+      "changed_components": 1,
+      "max_vertex_screen_shift": 0.008517315493099406,
+      "max_vertex_W_shift": 1.85546875
+    },
+    {
+      "group": 4,
+      "face": 3050,
+      "changed_components": 1,
+      "max_vertex_screen_shift": 0.09593045859214695,
+      "max_vertex_W_shift": 6.28125
+    },
+    {
+      "group": 4,
+      "face": 3055,
+      "changed_components": 3,
+      "max_vertex_screen_shift": 0.1008911175784568,
+      "max_vertex_W_shift": 6.28515625
+    },
+    {
+      "group": 18,
+      "face": 42,
+      "changed_components": 0,
+      "max_vertex_screen_shift": 0.0,
+      "max_vertex_W_shift": 0.0
+    },
+    {
+      "group": 18,
+      "face": 43,
+      "changed_components": 0,
+      "max_vertex_screen_shift": 0.0,
+      "max_vertex_W_shift": 0.0
+    },
+    {
+      "group": 18,
+      "face": 47,
+      "changed_components": 1,
+      "max_vertex_screen_shift": 0.008119026027071362,
+      "max_vertex_W_shift": 1.85546875
+    }
+  ],
+  "positive_changes": [
+    {
+      "point": [
+        804,
+        170
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -0.24609375,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        805,
+        170
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -1.25390625,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        802,
+        171
+      ],
+      "before": 180043,
+      "after": 180043,
+      "W_delta": 0.0,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        803,
+        171
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -0.84375,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        801,
+        172
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -0.42578125,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        802,
+        172
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -1.44140625,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        799,
+        173
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -0.00390625,
+      "exact_capture_control": false
+    },
+    {
+      "point": [
+        800,
+        173
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -1.03125,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        798,
+        174
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -0.609375,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        796,
+        175
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -0.1875,
+      "exact_capture_control": false
+    },
+    {
+      "point": [
+        797,
+        175
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -1.21875,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        794,
+        176
+      ],
+      "before": 180043,
+      "after": 180043,
+      "W_delta": 0.0,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        795,
+        176
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -0.796875,
+      "exact_capture_control": true
+    },
+    {
+      "point": [
+        794,
+        177
+      ],
+      "before": 180048,
+      "after": 180048,
+      "W_delta": -1.41015625,
+      "exact_capture_control": true
+    }
+  ],
+  "bindings": {
+    "/tmp/x3-lattice-after-point-rounding-pilot.py": "0b9f83c50e6a3957c9f68e724da6f11b3da86ae1237f1aa38e1852cb1bfeff3e",
+    "/tmp/x3-lattice-subset-qualifier/qualify.py": "b22e7d68eaa1d17d1e2e7d8bf8fabf47552ea8b938e9ea1f794f72b7186385c8",
+    "/tmp/x3-lattice-ownership/panel-lod0-geometry.npz": "ccd3257b1698fb9d666e04ac0440116b399abb003d096089040543f6c2dcf08d",
+    "/tmp/x3-lattice-gpu-inputs-v5/inputs.bin": "688142edc79c5cbf67a96139448bdc12c9510a13c49cedf79681ce324441b9b0",
+    "/tmp/x3-lattice-gpu-inputs-v5/manifest.json": "5594ba6e3a108ec276b5f7bfc722947bf17235b9707a8b25135208d344980ed7",
+    "/tmp/x3-lattice-point-run-v1/analysis.json": "d9708de5e3e8ad3d8cef1650bd56f86fcfe1d425b0b554d4e5ca1fdf5dc22a83"
+  },
+  "limits": [
+    "Conditional fused-DP4 projection and ideal raster; not measured truncate GPU output.",
+    "Changes only documented nearest-versus-truncate source-position hypothesis, no parameter fit.",
+    "No live payload or ownership qualification."
+  ]
+}

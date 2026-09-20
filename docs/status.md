@@ -69,8 +69,11 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
 - **Lattice:** Run54 B returned run201 with three capture bursts. Guarded state
   and fixture comparison pass within their sampled scope. The frozen-subset CPU
   qualifier remains UNKNOWN; the calibrated standalone GPU point probe passes its measurement checks but
-  measured vertex Z/W still does not qualify the CPU interpolation model. No repeat flight or renderer correction is selected.
-  [Owning note §29](architecture/taa-lattice-crawl.md#29-existing-capture-stage-attribution-bounded-negative-2026-09-21).
+  measured vertex Z/W still does not qualify the CPU interpolation model. Further
+  arithmetic exploration is closed. Targeted disassembly is checking a safe
+  producer-owned final-mesh upload mirror for actual geometry evidence. No repeat
+  flight or renderer correction is selected.
+  [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.
 - **Engine/proxy timing:** lazy RT remains accepted. Corrected attribution
   does not justify another engine patch or busy-view timing flight.
