@@ -82,8 +82,8 @@ is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-vis
 requested. A cheaper moving-lattice display-history replay also failed its quality
 thresholds; the [lattice note §16](architecture/taa-lattice-crawl.md#16-cheaper-post-display-history-replay-rejected-2026-09-20)
 records the result. [Mesh ownership is now identified](architecture/taa-lattice-crawl.md#17-moving-truss-mesh-ownership-recovered-2026-09-20), with signed-position conversion
-proved and about 99.7% projected support agreement. The bounded [coverage oracle](architecture/taa-lattice-crawl.md#18-visible-area-oracle-is-numerically-unreliable-2026-09-20) failed its numerical checks; no temporal-quality verdict or
-fix follows from it. Ownership remains established.
+proved and about 99.7% projected support agreement. The corrected [source-coverage oracle](architecture/taa-lattice-crawl.md#19-corrected-source-coverage-oracle-passes-2026-09-20) passes its 32-frame checks and reduces tracked coverage variation by about 75%.
+Actual RGB/TAA benefit and a portable GPU implementation remain unqualified.
 
 Ownership fixture runners and the 563-check inventory are repaired with fresh
 passes; all 31 generated shader checks now pass. Fresh collision memo (59 checks)

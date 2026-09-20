@@ -852,6 +852,48 @@ local high-resolution checks, including maximum-error gates, before comparing
 temporal behavior. No new user flight is needed to resolve this offline issue.
 
 Local implementation/results: `/tmp/x3-lattice-coverage-oracle/`; compact
-`verification/results/lattice-coverage-oracle/FINAL.json` and
-`failure-witnesses.json` preserve the outcome and failure witnesses. The failed
+`verification/results/lattice-coverage-oracle/rejected-geos/FINAL.json` and
+`rejected-geos/failure-witnesses.json` preserve the outcome and failure witnesses. The failed
 experiment changes no production renderer, candidate or installed files.
+
+
+## 19. Corrected source-coverage oracle passes (2026-09-20)
+
+The replacement uses pixel-local convex clipping in float64, assigning each
+target triangle only the region where it is the nearest primitive. Every
+nearer original triangle is subtracted; deterministic equal-depth draw order
+handles shared/duplicate surfaces. The resulting ownership regions are
+disjoint, so their areas can be summed without the failed GEOS global union.
+This is numerically checked analytic coverage, not symbolic exact arithmetic.
+The rejected §18 artifacts remain preserved.
+
+Independent review validated eleven synthetic cases, 120 deterministic random
+cases and dense references for the earlier failure pixels. All 32 motion frames
+6392–6423 pass integration and global outlier refinement; maximum discrepancy
+is 0.003668 against dense integration witnesses. Values exceeding one only by
+floating roundoff are retained; values beyond the explicit 1e-12 tolerance
+fail rather than being clamped. The corrected run used 1,299.64 CPU seconds.
+
+On the unchanged fixed material/lattice supports (2,154 / 1,406 support points),
+material-tracked coverage RMS over frames 6408–6423 changes:
+
+- Material: 0.19424159 → 0.04890944, a **74.82% reduction**.
+- Lattice: 0.22745865 → 0.05620690, a **75.29% reduction**.
+
+Mean-coverage errors versus the independent reference are about 6e-6/1.4e-5
+relative; maximum profile-integral error is 1.974% and RMS-width error 0.904%.
+Both retained 20% temporal-reduction gates and 5% reference/profile gates pass.
+Image contrast decreases 6.13%/13.04%, a perceptual tradeoff, not a hidden pass.
+The reviewer rebuilt both supports and all jitter-aware samples independently
+and reproduced the metrics.
+
+**Decision:** this supports a source-coverage/RGB experiment. It does not
+establish displayed crawl dominance, solve the earlier 6.713-code RGB metric,
+or qualify TAA, ghosts, alpha execution, unrelated occluders or GPU cost.
+Actual observed radiance and occlusion must constrain the next RGB replay;
+coverage alone cannot invent the material or hidden background colours.
+No renderer implementation or additional user flight follows automatically.
+
+Local evidence: `/tmp/x3-lattice-coverage-oracle/verification/results/lattice-coverage-oracle/convex/REPORT.md`, `FINAL.json`, `quality.json`,
+phase images and line profiles. No production edits or Wine/game execution
+accompanied the corrected oracle.
