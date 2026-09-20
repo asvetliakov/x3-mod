@@ -504,3 +504,68 @@ contains derived findings and provenance. Full local note, verifier, JSON and
 raw rows use `/tmp/x3-media-cancellation-continuation*` (verifier prefix
 `/tmp/verify_x3_media_cancellation_continuation.py`). No runtime cancellation,
 backend dispatch, production hook or safe owner lifetime is established.
+
+
+## SC_CLOSE has distinct shutdown and synchronous script paths (2026-09-20)
+
+WndProc `0x4d3782` calls `0x401d60`. Its **fallback shutdown cannot normally
+return to the suspended caller**: `0x401dc5→0x401dd0` can destroy media through
+`0x401eab→0x497190` and `0x401fcd→0x4980d0`, then converges at
+`0x40265e→0x50f1d3→0x50f0f1→0x50ef8d→0x50ef9b`, whose PE import is
+`KERNEL32.dll!ExitProcess` (IAT0x5321d8). Shutdown has no RET or indirect jump;
+all its direct jump targets remain inside its body. The recursive-shutdown guard
+at `0x401e17` calls the same exit wrapper. SC_CLOSE supplies error code0, which
+skips the special0x24 formatting path at `0x402002`.
+
+The wrapper's apparent RET is not a returning shutdown contract: `0x50f1d3`
+passes `(status,0,0)` to `0x50f0f1`; only a nonzero third argument selects its
+returning epilogue at `0x50f1cd`. Zero reaches ExitProcess. CRT exit-list calls
+at `0x50f16f` and fixed-table calls at `0x50efbf`, plus optional resolved
+`mscoree!CorExitProcess` at `0x50ef8a`, occur first. Their ordinary returns still
+lead to process exit. Exceptional/nonlocal behavior is unexamined, **not an
+identified transfer or a new blanket blocker**. Shutdown's C++ FuncInfo0x5708ac
+has five unwind states and zero try blocks; no local returning catch arm is
+established. The normal-return conclusion conditions on ordinary intervening
+returns and does not assert that every possible execution terminates.
+
+The **handled-script arm is different**. The name at0x554f3c is `NotifyLeave`.
+Existence lookup `0x49f730` receives EAX=DWORD[owner+0x4dc], ECX=`*0x6085e4`,
+EDI=name, where owner=`*0x57fc60`. Call `0x401d9a→0x49f570` passes six
+caller-cleaned dwords: `(DWORD[owner+0x418],0,DWORD[owner+0x4dc],name,1,0)`;
+`0x401d9f` removes0x18 bytes. Its successful preparation path calls
+`0x49f61d→0x49f430`, which links the task, then **directly calls interpreter
+0x4a26a0 at0x49f4ac**, with ECX=script owner and one stack task argument.
+This is synchronous execution before the close handler checks its result,
+not merely completion-handler queue/list mutation.
+
+Returning without shutdown requires lookup success, invocation AL!=0,
+owner WORD+0x490==1, and a true conversion of typed owner+0x498 through
+`0x4a8970`. The final JNZ `0x401dc1→0x401dca` selects POP EDI / RET at
+`0x401dcb`, then WndProc resumes at `0x4d3787`. Failed predicates take fallback.
+The close handler does not itself reset +0x490 before invoking the script, so
+this predicate alone does not prove a fresh completion during this invocation.
+
+Interpreter entry fetches the selected task's bytecode and dispatches through
+remap0x4a4688/table0x4a4490 at **0x4a2707**. This is the unresolved selected-
+script-body boundary; earlier allocation/error-helper closure is also unexamined.
+Prior evidence exposes media dispatcher0x4997c0 and deletion
+`0x499865→0x4986f0→0x4986b0→0x4984d0`, but **the selected NotifyLeave body has
+not been shown to reach that deletion path**. Synchronous VM entry therefore
+prevents a lifetime-preserving conclusion for the handled arm, while neither
+actual media deletion nor a returning UAF has been observed. Fallback's eventual
+process exit and the four completion handlers' non-VM closure cannot be applied
+to this separate arm. This is not a whole-WndProc closure or a qualified close-
+deferral policy; WM_ACTIVATE stop-all and destination recovery remain separate.
+
+Independent review reproduced both local witnesses: shutdown
+`python3 /tmp/verify_x3_media_close_return_contract.py` passes eight ranges,
+782 instructions / 2,709 bytes, 20 anchors and 94 branch-boundary checks;
+handled-arm witness embedded in `/tmp/x3-media-close-script-arm.md` passes
+eight ranges, 390 instructions / 1,077 bytes and nine anchors. Both reject
+pseudo-decodes and compare original EXE bytes. The
+[compact result](../../verification/results/media-close-paths-2026-09-20.json)
+records the distinct conclusions and local evidence paths/hashes. Detailed
+shutdown note/check/raw rows use
+`/tmp/x3-media-close-return-contract*`; raw rows remain local and untracked.
+No game, Wine or native runtime execution, production change, safe owner
+lifetime, or actual COM delivery of SC_CLOSE is established by this checkpoint.
