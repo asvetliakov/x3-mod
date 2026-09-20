@@ -1,0 +1,62 @@
+{
+  "candidate": {
+    "commit": "85da89a8955a72b20d92f2309e4b9a4cb4dd325e",
+    "branch": "fix/id2-video-omission",
+    "checkout": "/private/tmp/x3-run56-integration",
+    "dll": "/tmp/x3-run56-candidate/build/d3d9.dll",
+    "sha256": "a51d1e75fa80d7d07bab7ab66004291f7248bc5693e6585171e564a90fa96e56",
+    "bytes": 54386310,
+    "configuration": "RelWithDebInfo",
+    "toolchain": "cmake/mingw-i686.cmake",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "source_clean": true,
+    "LAV_SDK_required": false
+  },
+  "command": [
+    "python3",
+    "tools/manage.py",
+    "install",
+    "--bottle",
+    "X3",
+    "--dll-source",
+    "/tmp/x3-run56-candidate/build/d3d9.dll"
+  ],
+  "cwd": "/tmp/x3-run56-integration",
+  "exit": 0,
+  "installed": {
+    "manifest_source": "dll",
+    "previous": {
+      "directory": "x3-modern-media/rollback/fb0fda8949bf4d6c8cb91f6a055361f8",
+      "dll_sha256": "4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012",
+      "manifest_sha256": "d1b3524e5225110f53fd202c71b236ae91fe1a9ce297ed16ace80bf1e616bd63"
+    },
+    "project": "x3-modern-renderer",
+    "schema": 2,
+    "sha256": "a51d1e75fa80d7d07bab7ab66004291f7248bc5693e6585171e564a90fa96e56",
+    "source": "/private/tmp/x3-run56-candidate/build/d3d9.dll",
+    "source_commit": "85da89a8955a72b20d92f2309e4b9a4cb4dd325e"
+  },
+  "rollback_directory": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-media/rollback/fb0fda8949bf4d6c8cb91f6a055361f8",
+  "rollback_dll_sha256": "4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012",
+  "rollback_manifest_sha256": "d1b3524e5225110f53fd202c71b236ae91fe1a9ce297ed16ace80bf1e616bd63",
+  "rollback_media_selection_valid": true,
+  "active_media_selection": false,
+  "protected": {
+    "exe": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "unchanged": true
+    },
+    "bottle_config": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+      "unchanged": true
+    },
+    "original_video": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/mov/00002.dat",
+      "sha256": "401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76",
+      "unchanged": true
+    }
+  },
+  "transaction_pending": false
+}

@@ -1,0 +1,226 @@
+{
+  "schema": 1,
+  "candidate": {
+    "commit": "85da89a8955a72b20d92f2309e4b9a4cb4dd325e",
+    "branch": "fix/id2-video-omission",
+    "checkout": "/private/tmp/x3-run56-integration",
+    "dll": "/tmp/x3-run56-candidate/build/d3d9.dll",
+    "sha256": "a51d1e75fa80d7d07bab7ab66004291f7248bc5693e6585171e564a90fa96e56",
+    "bytes": 54386310,
+    "configuration": "RelWithDebInfo",
+    "toolchain": "cmake/mingw-i686.cmake",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "source_clean": true,
+    "LAV_SDK_required": false
+  },
+  "scope": "Retire owned ID2 video playback and refuse its silent video construction; fog and lattice renderer changes retained; no crash-free flight claimed.",
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+    "cwd": "/tmp/x3-run56-integration",
+    "full_discovery": {
+      "tests": 2627,
+      "seconds": 735.394,
+      "exit": 1,
+      "failures": 1,
+      "errors": 0,
+      "skips": 2,
+      "log": {
+        "path": "/tmp/x3-run56-host.log",
+        "sha256": "4a7f458d9762befde6c0c50e07a46aa0bfd357044b054c24e1bf024413af3047",
+        "bytes": 28212
+      }
+    },
+    "closure": {
+      "test": "verification.analysis.test_capture_device_creation",
+      "tests": 1,
+      "checks": 202,
+      "scenarios": 19,
+      "failures": 0,
+      "seconds": 1.071,
+      "exit": 0,
+      "log": {
+        "path": "/tmp/x3-run56-create-device-integration.log",
+        "sha256": "8a41d0d1854bb9f9169f7d39eea1f9b89127287f646ccd21aa3dd37238c562da",
+        "bytes": 98
+      },
+      "change": "Fixture expectations for removed startup/publication callbacks; no production change",
+      "independent_review": "review_run56_removal cleared focused closure; no unrelated rerun warranted"
+    },
+    "acceptance": "full discovery completed; sole stale fixture failure closed by reviewed focused rerun; initial full run was not all-pass"
+  },
+  "reviews": [
+    "review_run56_skip: source plus focused x86 gate evidence clear",
+    "review_run56_removal: removal, focused closure, final build and selected smoke clear"
+  ],
+  "linked_audit": {
+    "result": "PASS",
+    "roots": 95,
+    "reachable_functions": 542,
+    "violations": 0,
+    "record": {
+      "path": "/tmp/x3-run56-candidate/linked-audit.json",
+      "bytes": 7794,
+      "sha256": "8cdeddd003f19533be804377becfb6e9383ad253f1dfe5d610f03ace0fb11263"
+    }
+  },
+  "selected_render_smoke": {
+    "status": "PARTIAL",
+    "scope": "Two selected actual-DLL cases only; no full renderer-suite/cross-case pass",
+    "cases": {
+      "production-ownership-hdr-on": {
+        "exit": 0,
+        "checks": 43,
+        "restorations": 39,
+        "frames": 12,
+        "directory": "verification/probe/build/motion-output-production-ownership-hdr-on-20260921-013418-274255"
+      },
+      "production-taa-hdr-on": {
+        "exit": 0,
+        "checks": 83,
+        "restorations": 51,
+        "frames": 12,
+        "directory": "verification/probe/build/motion-output-production-taa-hdr-on-20260921-013424-255613"
+      }
+    },
+    "report": {
+      "path": "/tmp/x3-run56-candidate/render-smoke.json",
+      "bytes": 110828,
+      "sha256": "a745f7aa9bf70e51b964061336413f7a692d3c75f043d30f6c894ea7636b30ca"
+    },
+    "lock": {
+      "lock_wait_seconds": 4.041999999999241e-06,
+      "child_elapsed_seconds": 8.484992375,
+      "exit_code": 0
+    }
+  },
+  "id2_gate": {
+    "path": "/tmp/x3-run56-media-skip-checks/result.json",
+    "bytes": 2713,
+    "sha256": "6e3fe7e303498485c43553d2bcd975635759dd09f803c4f7f0da05a2ff7166f6"
+  },
+  "build": {
+    "configure": {
+      "path": "/tmp/x3-run56-configure.log",
+      "bytes": 585,
+      "sha256": "39f3973d6f135702c163810f677386bbe55de4e6015814ee8410c7f71f9fbd0e"
+    },
+    "log": {
+      "path": "/tmp/x3-run56-build.log",
+      "bytes": 7302,
+      "sha256": "9cc5705e7c0485032d430c488caadabcc171889092afedf34871f11c3248f87b"
+    },
+    "LAV_SDK": false
+  },
+  "dry_run": {
+    "invocation": {
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "/tmp/x3-run56-integration/tools/manage.py",
+        "launch",
+        "--bottle",
+        "X3",
+        "--dry-run",
+        "--direct",
+        "--camera",
+        "chase",
+        "--chase-view-restore",
+        "--ownership",
+        "--object-trace",
+        "--object-lifetime",
+        "--motion-output",
+        "--taa",
+        "--telemetry",
+        "--media-cue-trace",
+        "--camera-log",
+        "1",
+        "--hdr",
+        "--hdr-tonemap",
+        "--hdr-exposure",
+        "auto",
+        "--hdr-bloom",
+        "--bloom-source-clamp",
+        "1.0",
+        "--crypt-cache",
+        "--gz-buffer",
+        "--resource-read",
+        "fast",
+        "--dat-handles",
+        "--mesh-adjacency",
+        "fast",
+        "--voice-decoder",
+        "/tmp/x3-wma-plugin-v4",
+        "--screen-emission-additive",
+        "2",
+        "--screen-emission-additive-alpha",
+        "0",
+        "--emission-source-gain",
+        "2",
+        "--loading-intervals",
+        "--sun-shadow-lane",
+        "--shadow-replay-depth",
+        "--shadow-replay-candidates",
+        "--sun-shadow-apply",
+        "--shadow-sun-poll",
+        "on",
+        "--fps-overlay",
+        "--shadow-cascades",
+        "250,1500,7500,37500,150000",
+        "--shadow-cascade-drop-order",
+        "importance",
+        "--shadow-cascade-records",
+        "1024,1024,2048,4096,4096",
+        "--shadow-cascade-sizes",
+        "2048,2048,2048,2048,2048",
+        "--shadow-retention-census",
+        "--shadow-caster-retention",
+        "--shadow-cascade-adaptive-c0",
+        "1.5",
+        "--taa-far-stabiliser",
+        "0.985",
+        "--taa-thin-region",
+        "0.97",
+        "--light-map-far-fade",
+        "80,220",
+        "--motion-rt-mode",
+        "lazy",
+        "--volumetric-fog",
+        "0.03",
+        "--volumetric-fog-cards",
+        "replace",
+        "--sector-background",
+        "--taa-debug",
+        "--capture-start",
+        "999999",
+        "--frame-end-stride",
+        "10",
+        "--capture-frames",
+        "32"
+      ],
+      "diagnostic_environment": {
+        "CX_DEBUGMSG": "+timestamp,+tid,+seh,+loaddll"
+      },
+      "exit_code": 0,
+      "game_launched": false
+    },
+    "result": {
+      "path": "/tmp/x3-run56-candidate/dry-run.json",
+      "bytes": 5474,
+      "sha256": "eae6c0be966304d0aaeaee2ae5a5b2adae980978561e77abee1ad836ffa5b98d"
+    },
+    "lock": {
+      "lock_wait_seconds": 3.583000000001446e-06,
+      "child_elapsed_seconds": 0.133666125,
+      "exit_code": 0
+    },
+    "game_launched": false
+  },
+  "bottle": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1"
+  },
+  "native_windows": "unverified",
+  "game_acceptance": "pending Run56",
+  "install_record": "verification/results/run56-candidate-install.json"
+}

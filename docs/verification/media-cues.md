@@ -1137,3 +1137,41 @@ and the 30-second construction stall are not. No dummy playback success or empty
 owned shell is planned. The replacement runtime/build prerequisites are being
 removed; prior research and fixture evidence remain historical. No reduced build
 or crash-free flight is claimed by this decision.
+
+## ID2 video omission and owned playback retirement (2026-09-21)
+
+The user accepts missing ID2 animated textures and explicitly requests removal
+of replacement playback after Run55 crashes inside LAVVideo. The allocator gate
+now refuses `id==2 && (incoming_flags==0 || incoming_flags==8)` before owner,
+diagnostic, cache or pending-return handling. This uses the existing NULL-result
+arm and native failure notifications; it creates no shell, graph or decoder.
+Every caller is covered by that value predicate. Other IDs and explicit nonvideo
+overrides pass through. The gate installs independently of tracing/cache toggles
+on the normal pre-table factory path. No hot teardown of live media is attempted.
+
+The owned runtime, startup/consumer/destination hooks, worker maintenance, LAV
+SDK prerequisite and media-package launch dependency are removed (31 production
+files). Speech fallback and unrelated ownership/Reset behavior remain. The
+lattice observer's Present reentry refusal remains ahead of application admission
+through its direct capture-lock guard. Old implementation-dependent host tests
+are explicitly historical under `verification/historical/owned_media`; reproduce
+them at `54b48c36`. They are not active passes for the reduced runtime.
+
+Focused host checks pass: cue policy 8 tests / 8,659 host assertions; removal
+120 tests plus the actual Present-prefix test, and the retained factory fixture
+37 checks. CMake configures without the LAV SDK; loader/capture pass strict x86
+syntax checks. The [x86 omission fixture record](../../verification/results/media-id2-omission-2026-09-21.json)
+passes 3,904 checks, including 96,000 foreign-thread target calls, all caller
+origins, early/reentrant cases, non-target passthrough and byte restoration.
+The first run had one fixture log-contamination failure; draining positive-control
+rows isolates the old no-output assertion. Production code did not change for
+that correction. Final child elapsed time is 3.007 s; synthetic skip median is
+9.1 ns/call over seven 20,000-call trials, not a game FPS measurement.
+The unhooked baseline is an authored fixture body, not native Windows execution.
+OS protection/cache-flush failures were not injected; unchanged rollback code
+was reviewed. Real game crash-free acceptance is still pending.
+
+Managed install retires the active media selection without deleting its rollback
+payloads. Package tests cover the exact previous DLL/manifest, retained providers
+and all three interrupted transaction phases. Launch no longer requires old LAV
+payloads. The agent never launched the game.

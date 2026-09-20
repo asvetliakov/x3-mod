@@ -1,0 +1,70 @@
+{
+  "bottle": "X3",
+  "WineArch": "arm64",
+  "environment": {
+    "X3M_FIXTURE_BOTTLE": "X3",
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1"
+  },
+  "command": [
+    "python3",
+    "verification/probe/wine_lock.py",
+    "--timings-json",
+    "/tmp/x3-run56-media-skip-checks/wine-lock.json",
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "/tmp/x3-run56-media-skip/build/verification/game-phases/game_phase_cpu_fixture.exe",
+    "--media-only"
+  ],
+  "cwd": "/tmp/x3-run56-media-skip",
+  "checks": 3904,
+  "failures": 0,
+  "foreign_calls": 96000,
+  "limitations": [
+    "authored allocator body, not native Windows execution",
+    "no injected VirtualProtect/FlushInstructionCache failures",
+    "first execution failed from preceding fixture diagnostic log contamination; fixed fixture isolation only"
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/x3-run56-media-skip/build/verification/game-phases/game_phase_cpu_fixture.exe",
+      "bytes": 623320,
+      "sha256": "d3be5df3ee0b94e3b80dc3f2adf8bbc4f37151c2435358404956835ea56db91f"
+    },
+    {
+      "path": "/tmp/x3-run56-media-skip-checks/build.json",
+      "bytes": 1526,
+      "sha256": "74939c614595092e1756a88c87d8e67a2f3992344d5c6a690128a510b11f7ce1"
+    },
+    {
+      "path": "/tmp/x3-run56-media-skip-checks/runtime.log",
+      "bytes": 628,
+      "sha256": "d23e3bd70a0e00acf4ca3a159818d9ca99d746f4af9c5dc16b8bc53f904e32f1"
+    },
+    {
+      "path": "/tmp/x3-run56-media-skip-checks/wine-lock.json",
+      "bytes": 107,
+      "sha256": "a3b65e09c067b9ca7c12238eec090ad5ca09675b7cb3d40b5d63097f5ba1b5da"
+    },
+    {
+      "path": "/tmp/x3-run56-media-skip-checks/runtime-v1.log",
+      "bytes": 676,
+      "sha256": "6b2348e8e82298a234a7a4abfb7b01ca616ef70c9855cc5cbba22f4715b9377e"
+    },
+    {
+      "path": "/tmp/x3-run56-media-skip-checks/wine-lock-v1.json",
+      "bytes": 107,
+      "sha256": "009a8755ac0e6c161b78e7ad660994edf46c3cca692b6ef7756eef7fa887a67a"
+    }
+  ],
+  "changed_inputs": {
+    "src/proxy/media_cue.cpp": "876ef40983c8a871ed19454e89aed0435031c583bf7cf05f4d0205239ec86ce0",
+    "src/proxy/media_cue.h": "6b44de96c947f119f315b15e57cf0418559e4328885263b96fc5dfce18ee1a19",
+    "src/proxy/media_cue_core.h": "244d18d77ab4ae0f1e158e75f539f447b13408cff5f49ec24da5cdff9d60f475",
+    "src/proxy/media_cue_sites.h": "b70217197decca7f0d708449014741361bf5783b4b638dc8f9640ef580f75bee",
+    "verification/probe/game_phase_cpu_fixture.cpp": "6c60617ffc2d4953dcd0cb4d973ad2e0675651be46fbc10600c3735a1f4b57a5",
+    "verification/probe/media_cue_skip_fixture_inc.h": "0969fd36a410d344a12752a0ceb9dcfcb4f923e7aa0eaec8f8dd11375dcf50dc"
+  }
+}
