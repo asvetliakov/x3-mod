@@ -1,0 +1,70 @@
+{
+  "date": "2026-09-20",
+  "status": "static_evidence_pass_integration_unqualified",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "ranges": 19,
+  "instructions": 939,
+  "bytes": 2884,
+  "anchors": 56,
+  "internal_branch_boundaries": 136,
+  "direct_e8_callers": {
+    "0x4f5180": [
+      "0x4b9f58",
+      "0x4bb586"
+    ],
+    "0x4f51c0": [
+      "0x4b9f3a"
+    ],
+    "0x4f4b30": [
+      "0x48b054"
+    ],
+    "0x4f4990": [
+      "0x47112a"
+    ],
+    "0x4dcc70": [
+      "0x4f390a"
+    ],
+    "0x4984d0": [
+      "0x4971e8",
+      "0x4980e7",
+      "0x4984b0",
+      "0x4986d7",
+      "0x498dde",
+      "0x498fd8"
+    ]
+  },
+  "manager_abort": {
+    "site": "0x4983d9",
+    "continuation": "0x4984be",
+    "stack": "For manager entry S, pre-call B=S-20. At wrapper entry P=B-4: [P]=4983de. Remove own call return before jumping4984be with ESP=B."
+  },
+  "stop_all_abort": {
+    "continuation": "0x498362",
+    "stack": "For stop-all entry S, occupied-loop T=S-16; clean abort498362 requires ESP=T, not earlier partial-prologue states."
+  },
+  "findings": [
+    "Slot usage hold does not preserve binding through forced clear or table teardown.",
+    "Short-lived live surface AddRef is distinct from engine/request/binding identity.",
+    "Safe acquisition and copy-versus-Reset exclusion remain unqualified.",
+    "Known completion callbacks retain reviewed ordinary state/wakeup-only closure."
+  ],
+  "local_evidence": [
+    {
+      "path": "/tmp/x3-media-owned-copy-retirement.md",
+      "sha256": "c47bc334a42f068f8faa1f762a4797d2b6091a210b9f47390685b87658effdf8"
+    },
+    {
+      "path": "/tmp/verify_x3_media_owned_copy_retirement.py",
+      "sha256": "367e08ebdb5abf736fd193321e1f276c4b360e89c46149e99abef110c3c6dda0"
+    },
+    {
+      "path": "/tmp/x3-media-owned-copy-retirement-check.json",
+      "sha256": "2d72210be87a4bd2d75c5b0fe8a035a0e49509d4c697d4e2814badf540f3c095"
+    },
+    {
+      "path": "/tmp/x3-media-owned-copy-retirement-raw.txt",
+      "sha256": "82886efb6064e5cc9f82d37e6d79607ba0cefb4714425caf12941dd178fb25a0"
+    }
+  ],
+  "limits": "No production hook, target execution, actual reentrant UAF, complete xref/alias/thread closure or Reset-safe copy interval established."
+}

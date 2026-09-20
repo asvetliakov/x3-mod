@@ -939,3 +939,83 @@ binds local note/verifier/result hashes. Detail/raw evidence remains local under
 `/tmp/x3-media-instance-identity*`; no raw bytes are tracked. No global alias,
 thread/reentry uniqueness, actual concurrent-source census or hook qualification
 is claimed. No game/Wine/build/install/production changes were made.
+
+## Owned copy: destination holds and retirement continuations (2026-09-20)
+
+The texture-slot usage count is a recovery policy, not a general destination
+lifetime pin. Helpers0x4f5180/0x4f51c0 take AX=signed slot, no stack arguments,
+and increment/decrement slot+0xc at0x4f51a5/0x4f51e5. Recovery
+0x406d8c→0x4f5200 first unbinds textures through0x4b9f70 (SetTexture(NULL), then
+count decrement0x4b9fbe) and calls0x4b9660; only subsequently does it evict
+nonnull slots whose+0xc is zero and whose flags lack0x20000000. The indirect
+renderer-state call at0x4b966d and exceptional helper behavior remain unclosed.
+
+Forced clear0x4f4b30 (raw E8 caller0x48b054), when the renderer factory exists,
+releases/clears every nonnull slot+8 binding through0x4f4b71 regardless of+0xc,
+then zeros+0xc at0x4f4b86.
+Wrapper destruction remains conditional on its separate+0x60 count.
+Table teardown0x4f4990 (raw E8 caller0x47112a) frees the array at0x4f4a26 and
+clears0x6069ac at0x4f4a42/54 without a slot-hold test. Balancing an old hold
+after clear/recreation could debit a new incarnation. In0x4f38d0, positive
+wrapper+0x60 skips destruction, but **both nonnull paths clear the binding**
+at0x4f3943. Nonpositive count invokes0x4dcc70→surface Release0x4dccf7 and
+texture Release0x4dcd13, then wrapper free0x4f3926. Storage retention does not
+preserve binding identity.
+
+The prospective CPU-frame copy must resolve the current valid table/slot anew,
+not trust record+0x28: the original invalid-index branch leaves that cached field
+unchanged. Under a separately established live-storage/exclusion contract, take
+a short-lived reference to the actual surface, then retain no engine wrapper or
+record across external calls. [AddRef](https://learn.microsoft.com/en-us/windows/win32/api/unknwn/nf-unknwn-iunknown-addref)
+retains the interface, not engine storage or request identity; it cannot repair
+acquisition from an already freed pointer. Original copy0x4d0c40 is unsuitable
+for direct reuse: it invokes memory recovery after source Lock0x4d0ca6 or
+failed destination LockRect0x4d0d4b, retrying cached pointers. An owned immutable
+CPU upload should not invoke those recovery retries or wait for decoding.
+
+After each external boundary, including Unlock/Release, validate independently
+live operation/binding/device generations before acknowledging a frame or
+accessing engine storage. Successful locks require matching unlocks. This alone
+does **not** resolve nested Reset: a retained default-pool surface can change
+Reset success before post-call validation. Existing Reset is0x4daa0b. The
+[public Reset contract](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-reset)
+requires relevant references released beforehand and forbids D3D calls during
+its window-message dispatch. Safe acquisition and copy-versus-Reset exclusion
+or a compatible separately qualified deferral remain concrete integration
+premises; a recursive mutex is not same-thread exclusion.
+
+A precise local continuation is available. Manager0x498370 enters at ESP=S;
+after local and saved-register pushes ESP=B=S−20, EDI=current and EBP=cached
+next. Its5-byte pump CALL0x4983d9 enters a replacement with ESP=P=B−4 and
+[P]=0x4983de. If an independently retained traversal token was invalidated,
+remove that call return and reach **0x4984be with ESP=B**: POP EDI/ESI/EBP/EBX/
+ECX; RET, without engine dereferences. Any ordinary pump result eventually
+reads current or saved-next (0x4984b5), so synthetic success is insufficient.
+The token must cover retirement of any cached list member, including unowned
+records; this exit does not qualify every outer caller after world teardown.
+
+Retirement observers must invalidate before linked destructor0x4984d0 dispatches
+callback0x498501/COM0x49851b and frees0x498530; before root shutdown0x4980d0
+frees0x498114; and before subsystem clear0x497190 cleans callback ownership at
+0x4971aa→0x49ea80. The original destructor has not itself unlinked/freed the
+record when invoking callback/COM; that ordering supplies no guarantee against
+nested retirement. Deferring shell destruction does not pin its engine record.
+
+The four previously reviewed completion bodies still only update result/wakeup
+state on ordinary return. Keep eligible original dispatch on the engine thread,
+with no worker-queued raw callback context. If adapter reentry permits a new
+operation during dispatch, post-dispatch clearing must target the same live
+operation; equal callback keys alone do not identify one request. Manager key
+clears follow callbacks at0x498466/0x4984a8. In occupied stop-all, ESP=T=S−16,
+ESI=current, EBP=cached next; **0x498362 with ESP=T** is its pointer-free epilogue.
+It is not valid for partial-prologue stack states. Routing owned stop locally
+still leaves unowned COM in mixed lists and its saved-next obligations.
+
+Independent review cleared the local factual report and reproduced the witness:
+**19 ranges, 939 instructions, 2,884 bytes, 56 anchors, 136 internal branch
+boundaries; six E8 sets /12 sites**. The [compact result](../../verification/results/media-owned-copy-retirement-2026-09-20.json)
+binds local note/verifier/result/raw hashes. Injection ABI/LastError/FP-state,
+exception handling and complete entry/xref closure are not qualified by these
+candidate continuations. Foreign-thread mutation, actual copy exclusion and
+surface pool/caps remain unproved; no observed returning UAF or production
+safety claim is made. No Wine/game/build/production changes occurred.
