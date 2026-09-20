@@ -1919,3 +1919,52 @@ identity, collision-selected LOD equivalence, or performance benefit are
 qualified**. Windows-compatible source and MinGW cross-compilation are covered;
 native Windows runtime behavior and cross-platform tree identity are unverified.
 No game launch, production change or installation was required.
+
+## Owned original-query parity checkpoint (2026-09-20)
+
+The controlled453 builder output now feeds a standalone original-query oracle.
+Two independently owned model images preserve the same triangles, logical tree
+and traversal order; the candidate only places BV records in depth-first order
+(child +0x40 before +0x3c). Inverse remapping recovers all 906 baseline slots
+byte-for-byte. This is a memory-layout experiment, not a live snapshot or a
+change to collision answers.
+
+After an independent deep source/evidence review, the corrected owner runs
+passed **1,480 pilot queries and 3,118 frozen queries**, with **zero result
+mismatches and zero ABI errors**, in 6.996 s and 6.369 s respectively. These are
+fixture durations, not performance measurements. The 3,096 primary queries plus
+22 boundary cases cover root pruning, contact-free descent, leaf tests, first
+and capped contacts, all contacts, distance filtering and unbuilt-model refusal.
+The paired distance thresholds produce 0 versus 8 contacts. A cumulative sequence
+produces 8/8/5/0 contacts and propagates the exact signed minimum through
+1e9, 0.2669677734, -0.4890136719 and -0.9994506836. The minimum is not restricted
+to nonnegative values. Seventeen focused host tests passed.
+
+Compact evidence is in `verification/results/bottle-X3/collision-owned-query-`
+`{pilot,frozen}.json` in the isolated `/tmp/x3-collision-owned-replay` checkout;
+raw inputs, executable, logs and failure witnesses remain under its
+`build/verification/collision-owned-query/`. The frozen query SHA-256 is
+`964471637293973a48d1f4ad0eecdd254b1358ed3910a2ba518b1de9c4b101df`;
+fixture EXE SHA-256 is
+`47497dc910e769940fbe6a4553f5d1120194aef39042ffc4f7cd60d4263649a9`.
+Runs used bottle X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1` and
+`WINEMSYNC=1`, serialized through `wine_lock.py`.
+
+**Extraction correction and historical limitation.** The old shared memo
+extractor copied only 12 bytes at 0x00565600, truncating the double at
+0x00565608 read by leaf instruction 0x004e2367. Zero-filled fixture memory hid
+the missing upper half. The corrected query extractor copies 16 bytes and
+audits the widths of 73 reachable absolute memory operands over 2,223 decoded
+instructions. Its 7,296-byte extracted blob has SHA-256
+`dde1e76bae547b14f2ea73bc37cfaea02795604f4b7586abec45f15ddca04f4b`.
+The earlier parity runs with the truncated constant do not qualify original-leaf
+numerical fidelity. The same limitation applies to the historical shared memo
+and query-phase fixture extraction until repaired and rerun; their prior evidence
+is retained. Production uses the intact game constant, so this finding establishes
+no installed collision defect and does not invalidate the live measurements.
+The separately qualified owned builder uses its own constants and is unaffected.
+
+Timing is deliberately absent from this checkpoint. Next is paired timing of
+the identical frozen query multiset, with alternating order and a second memory
+placement; no game FPS improvement, live-pair identity, safe live-tree replacement
+or native Windows runtime is established.
