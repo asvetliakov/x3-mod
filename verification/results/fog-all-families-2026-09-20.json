@@ -1,5 +1,5 @@
 {
-  "status": "implementation, host checks and independent review passed; parent integration pending",
+  "status": "14-family host and actual-GPU checks independently reviewed; parent integration pending",
   "worktree": "/private/tmp/x3-fog-all-families",
   "base": "3374afdc8a7322edd2cd08498ff033c07617ed12",
   "patch": "/tmp/x3-fog-all-families.patch",
@@ -59,27 +59,148 @@
     "i686_decoder_and_resources_cross_compiled": true,
     "git_diff_check": true
   },
-  "limits": [
+  "schema": 1,
+  "date": "2026-09-20",
+  "feature": "spatial-fog-family-expansion",
+  "review": {
+    "reviewer": "review_fog_families",
+    "scope": "source, host evidence and documentation",
+    "outcome": "no blocking findings",
+    "date": "2026-09-20"
+  },
+  "gpu_checkpoint": {
+    "status": "passed and independently reviewed",
+    "date": "2026-09-20",
+    "scope": "actual production FogPass with 14 embedded profiles, synthetic fixed 64x48 sky view, unshadowed shader",
+    "execution": {
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "/tmp/x3-fog-all-families-gpu-v1/fog_spatial_fixture.exe",
+        "Z:\\private\\tmp\\x3-fog-family-gpu-inputs-final\\cases.txt",
+        "Z:\\private\\tmp\\x3-fog-family-gpu-inputs-final",
+        "--families"
+      ],
+      "returncode": 0,
+      "seconds": 10.532549417,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "executable_sha256": "9cdbf99c6236c1084ec2ded85955bfb693b9cf63883b47d790f51ff392758f16",
+      "inputs_sha256": "65cf8dc6cd973e77c82a6dadb1b5eec428d41d734c026ed96f3c45a8647fdedc",
+      "build_sha256": "8951ee0c9b1978274cd88e4903b22d510a0dc580cbdb2c8f8d2c63def367e20c"
+    },
+    "checks": 145,
+    "executions": 18,
+    "profile_order": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      1,
+      2,
+      14,
+      14
+    ],
+    "exact_revisits": true,
+    "real_reset": 1,
+    "nonempty_ST_pixels": [
+      736,
+      768
+    ],
+    "changed_RGB_pixels": [
+      2954,
+      3072
+    ],
+    "worst_errors": {
+      "T": {
+        "p99": 0.00048828125,
+        "max": 0.00048828125
+      },
+      "S": {
+        "p99": 3.0517578125e-05,
+        "max": 3.0517578125e-05
+      },
+      "composite_relative_RGB": {
+        "p99": 0.0009708738070912659,
+        "max": 0.0012903226306661963
+      }
+    },
+    "evidence": {
+      "report": {
+        "path": "/tmp/x3-fog-family-gpu-inputs-final/report.json",
+        "sha256": "8e0e005cb36d190c3a7e0cc915477ce60acf43bf852ea5f8724d33a44037d8bc"
+      },
+      "execution": {
+        "path": "/tmp/x3-fog-family-gpu-inputs-final/execution.json",
+        "sha256": "247b54084a98764fec4a2a4f41d01df68802d70927ec68a68b03bbcbb724bf93"
+      },
+      "build": {
+        "path": "/tmp/x3-fog-all-families-gpu-v1/build.json",
+        "sha256": "8951ee0c9b1978274cd88e4903b22d510a0dc580cbdb2c8f8d2c63def367e20c"
+      },
+      "inputs": {
+        "path": "/tmp/x3-fog-family-gpu-inputs-final/inputs.json",
+        "sha256": "65cf8dc6cd973e77c82a6dadb1b5eec428d41d734c026ed96f3c45a8647fdedc"
+      },
+      "fixture_log": {
+        "path": "/tmp/x3-fog-family-gpu-inputs-final/fixture.txt",
+        "sha256": "f06084feb34df99fbf92b27f485c850f5cf0e362e1c26706abc4972b9b3b5b55"
+      },
+      "checker_host_tests": {
+        "path": "/tmp/x3-fog-family-gpu-host-tests.log",
+        "sha256": "b471e56d24822f31552687c453eeff38457b02271e62df888f46c5ce091610e7"
+      }
+    },
+    "lock_timings": {
+      "lock_wait_seconds": 3.958000000005291e-06,
+      "child_elapsed_seconds": 10.925613499999999,
+      "exit_code": 0,
+      "path": "/tmp/x3-fog-all-families-gpu-v1-lock.json",
+      "sha256": "01a8b68204a55b884457232a8aa7a01c43f429a9e4473a40a66a617d3a59a071"
+    },
+    "limitations": [
+      "No all-family geometry, boundary or full-pixel repair cases; all-sky synthetic view only",
+      "Separate unshadowed build; combined shaft integration still pending",
+      "No game visual acceptance or native Windows execution",
+      "10.532549417 seconds is entire fixture process time, not GPU cost or a loading benchmark"
+    ],
+    "review": {
+      "reviewer": "review_fog_families",
+      "scope": "runtime source/input bindings and independent raw readback analysis",
+      "outcome": "clear,145 checks/18 cases reproduced"
+    }
+  },
+  "host_checkpoint_limitations_at_time": [
     "No Wine/game/DLLbuild/install/commit",
     "No native Windows runtime evidence",
     "New family visual appearance not accepted",
     "Parent owns combined shaft integration and flight",
     "No actual GPU coverage of all 14 profiles; bridge/timing tests are host evidence-parser checks"
   ],
-  "schema": 1,
-  "date": "2026-09-20",
-  "feature": "spatial-fog-family-expansion",
-  "execution_environment": {
+  "host_execution_environment": {
     "kind": "host-only and i686 cross-compilation",
     "bottle": null,
     "wine_arch": null,
     "FEX_X87REDUCEDPRECISION": null,
     "WINEMSYNC": null
-  },
-  "review": {
-    "reviewer": "review_fog_families",
-    "scope": "source, host evidence and documentation",
-    "outcome": "no blocking findings",
-    "date": "2026-09-20"
   }
 }

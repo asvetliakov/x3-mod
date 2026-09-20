@@ -286,6 +286,7 @@ void qualify_state(IDirect3D9* api,IDirect3DDevice9* d,D3DFORMAT format,const D3
 
 }
 } // namespace
+#include "fog_family_gpu_cases_inc.h"
 int main(int argc,char** argv){
     // case-list (id, host-mapped input directory, numeric profile), output-dir, [--state]
     if(argc!=3&&argc!=4)return 2;
@@ -300,7 +301,11 @@ int main(int argc,char** argv){
         D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window.handle;pp.BackBufferWidth=1280;pp.BackBufferHeight=768;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         Com<IDirect3DDevice9> device;check(api->CreateDevice(0,D3DDEVTYPE_HAL,window.handle,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device.p),"CreateDevice");
         auto d=device.p;D3DDISPLAYMODE mode{};check(api->GetAdapterDisplayMode(0,&mode),"display");D3DCAPS9 caps{};check(d->GetDeviceCaps(&caps),"caps");
-        if(argc==4){if(std::strcmp(argv[3],"--state"))return 2;qualify_state(api.p,d,mode.Format,caps,pp,argv[1]);}
+        if(argc==4){
+            if(!std::strcmp(argv[3],"--state"))qualify_state(api.p,d,mode.Format,caps,pp,argv[1]);
+            else if(!std::strcmp(argv[3],"--families"))qualify_families(api.p,d,mode.Format,caps,pp,argv[1],argv[2]);
+            else return 2;
+        }
         else {
             FogPass pass;check(pass.attach(d,*reinterpret_cast<void***>(d),caps,mode.Format),"attach");
             std::printf("CAPS slots=%u texture=%08lx filters=%08lx maxw=%lu maxh=%lu streams=%lu\n",pass.caps().largest_program_slots,(unsigned long)caps.TextureCaps,(unsigned long)caps.TextureFilterCaps,(unsigned long)caps.MaxTextureWidth,(unsigned long)caps.MaxTextureHeight,(unsigned long)caps.MaxStreams);

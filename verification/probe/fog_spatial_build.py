@@ -36,7 +36,7 @@ def main():
     sources=[ROOT/'verification/probe/fog_spatial_fixture.cpp',ROOT/'src/renderer/fog_pass.cpp',asset/'src/renderer/fog_field_assets.cpp']
     command=['i686-w64-mingw32-g++',*flags,'-I'+str(asset/'src/renderer'),'-I'+str(data),*map(str,sources),str(out/'fog-fields.o'),'-o',str(out/'fog_spatial_fixture.exe'),'-luser32']
     subprocess.run(command,check=True)
-    inputs=[*sources,ROOT/'verification/probe/fog_spatial_state_inc.h',ROOT/'src/renderer/fog_pass.h',ROOT/'src/renderer/fog_volume_math.h',asset/'src/renderer/fog_field_assets.h',*asset_inputs(data)]
+    inputs=[*sources,ROOT/'verification/probe/fog_family_gpu_cases_inc.h',ROOT/'verification/probe/fog_spatial_state_inc.h',ROOT/'src/renderer/fog_pass.h',ROOT/'src/renderer/fog_volume_math.h',asset/'src/renderer/fog_field_assets.h',*asset_inputs(data)]
     for name in ('march','composite'):inputs.extend([ROOT/f'src/fog/fog_{name}_ps.hlsl',ROOT/f'src/renderer/fog_{name}_program_inc.h'])
     inputs.append(ROOT/'src/fog/fog_field_inc.h')
     record=dict(executable_sha256=digest(out/'fog_spatial_fixture.exe'),inputs={str(p):digest(p) for p in inputs},command=command,shaders=shaders)

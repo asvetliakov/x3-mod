@@ -677,3 +677,40 @@ open. Independent source, evidence and documentation review cleared this
 checkpoint. No Wine, game,
 DLL build or installation occurred; [status](../status.md) remains the sole
 installed-build description.
+
+
+### Asset-backed families actual GPU checkpoint (2026-09-20)
+
+The root-owned detached actual FogPass run passes **145 checks and 18 renders**
+with all 14 embedded family resources. The [compact family record](../../verification/results/fog-all-families-2026-09-20.json)
+binds report, executable/build, immutable inputs, checker and execution evidence.
+Environment: bottle **X3**, CrossOver Preview, WineArch **arm64**,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. The child exits 0 in **10.533 s**;
+this is whole-fixture elapsed time, not GPU cost or a loading benchmark.
+
+A single fixed 64×48 synthetic sky view at world origin zero exercises each
+profile at its authored sigma and unity multiplier, without per-family camera
+search. Actual readbacks contain **736–768 nonempty ST pixels** and
+**2,954–3,072 changed RGB pixels** per render; all retain exact source alpha and
+finite values. Against the CPU float32 24-step trilinear half-atlas reference,
+worst transmission p99/max error is **0.00048828125 / 0.00048828125**; scattering
+p99/max is **0.000030517578125 / 0.000030517578125**; relative composite RGB
+p99/max is **0.00097087381 / 0.00129032263**. Every case passes the existing
+numerical gates, so an empty-field identity result cannot satisfy this witness.
+
+The sequence selects IDs 1–14, revisits 1 / 2 / 14, and renders retained profile
+14 after a real successful Reset. Both revisits and Reset produce byte-exact
+ST and composite readbacks. Switches publish increasing generations with one
+upload each; stale frames and invalid IDs refuse before device writes. Warm
+reuse performs no upload, and observed ownership stays at one 17,846,400-byte
+CPU atlas and the pass's ten references. Reset drops DEFAULT ownership to four
+references, retains that CPU buffer and reuploads it once; detach releases all.
+The fixture also checks hostile-state and CPU/LastError preservation on ordinary
+prepare/execute paths. Existing broader failure/Reset evidence remains separate.
+
+This checkpoint uses the **unshadowed** shader in a separate executable. It does
+not test shafts combined with all families, nor all-family geometry boundaries,
+full-pixel repair, game appearance, native Windows execution or loading latency.
+No game or installed build changed. Independent runtime review cleared all
+145 checks and reproduced the 18-case report from raw readbacks; the original
+host checkpoint above remains historical evidence.
