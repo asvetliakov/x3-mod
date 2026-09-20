@@ -52,9 +52,10 @@ Native Windows runtime remains unverified.
 
 Current away-session work is isolated from the qualifying candidate. Spatial fog
 now has fourteen source-backed profiles and current-frame directional shafts on
-`feat/fog-families-shafts-integration` (`bcf1021a`); separate GPU checks passed,
-the combined family run has completed and is under review, and shaft transaction
-cost measurement is in progress. Flight appearance remains unaccepted.
+`feat/fog-families-shafts-integration` (`7e698ec6`); the combined GPU run passes
+145 checks and full host discovery passes 2,431 tests (two skipped). Reviewed
+paired shaft measurements add about 0.11–0.12 ms on captured workloads and pass
+the existing transaction-cost limits. Flight appearance remains unaccepted.
 Media checkpoint `2f3aef56` qualifies two EOF-triggered fresh graph sessions on a
 retained worker DirectDraw service, with twelve exact reference frames. The next
 fixture integrates the owned clock, two concurrent workers and actual rendered
