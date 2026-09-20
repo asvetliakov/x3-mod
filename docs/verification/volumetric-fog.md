@@ -633,3 +633,47 @@ four-ray cloud/shadow overlap finding above still limits appearance claims.
 Native Windows execution, naturally occurring device loss, temporal flight
 appearance and acceptance remain open. No game launch or candidate installation
 is part of this checkpoint.
+
+### Asset-backed family expansion host checkpoint (2026-09-20)
+
+The isolated branch implementation covers **14 asset-backed positive-card
+families**: all 11 mapped families across 35 shipped sectors, plus unused
+fogblue, fogkhaak and khaakhive. Additional unused fogred, foggreenoutlands and
+foggreeneye records use the same named profiles. The [stock census](../reverse-engineering/sector-fog-census.md)
+retains the asset boundary: xtmgreenring has no dust bodies, and earth's diffuse
+reference is unresolved. These two families, unknown names and invalid samples
+retain native fallback; D=0 stays clear in ordinary mode. Explicit debug forcing
+keeps its pre-existing override semantics.
+
+Original bluewell/green decoded atlases and packets compare byte-identical to
+the prior qualified assets. Twelve additions use occupancy 0.12 / sigma 2.5e-6
+as a provisional artistic baseline, independent of card count, body size and
+FogNear/FogFar. Their four-stop colour arrays derive from winning native DXT1
+textures: linear-sRGB conversion, nonzero Rec.709-luminance sorting, means in
+25–40 / 40–55 / 55–70 / 70–85 percentile bands, then per-stop peak normalization.
+Texture member names and decoded hashes are retained in the recipe; local
+palette evidence is `/tmp/x3-fog-family-palettes.json` and its companion `.md`.
+This preserves colour references, not the native spatial arrangement or density.
+
+The [compact result](../../verification/results/fog-all-families-2026-09-20.json)
+records **28 affected host tests passing in 54.555 s**: two byte-identical bakes,
+14 successful decoder/full-checksum cases, 154 corruption cases and allocation
+failure handling, every family selection and card warmup/suppression path,
+clear/invalid/unknown fallback, census inventory coverage, and i686 decoder plus
+14-resource compilation. The bridge/timing Python checks validate their evidence
+parsers; they are not new GPU bridge or timing runs. The retained final bake takes
+19.581 s and packages **34,142,200 bytes**, with all decoded hashes pinned.
+Generated RC entries use `.rc` because windres treats `.h` includes as headers
+and would otherwise report no resources. C/C++ fragments retain `_inc.h` names.
+
+No shader, FogPass transaction or hook changes belong to this expansion. Selection
+adds a bounded, allocation-free scan of at most 14 names at the first BeginScene;
+there is no added per-draw work. One active 17,846,400-byte CPU atlas and one
+DEFAULT GPU atlas remain, with the existing generation/warmup, failure and Reset
+rules. Source inspection reuses those unchanged invariants; it does not establish
+actual GPU execution for all 14 fields. Native Windows execution, new-family
+appearance, first-use/switch loading and combined candidate integration remain
+open. Independent source, evidence and documentation review cleared this
+checkpoint. No Wine, game,
+DLL build or installation occurred; [status](../status.md) remains the sole
+installed-build description.

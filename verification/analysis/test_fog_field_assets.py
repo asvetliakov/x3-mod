@@ -34,14 +34,28 @@ class FogFieldAssetsTests(unittest.TestCase):
         self.assertEqual(self.manifest['prng'], 'numpy.random.default_rng/PCG64')
         self.assertEqual(rows['bluewell']['decoded_sha256'], '4529497a5e1feda3276b334d6aaef3ba741460e4e4b539aaaf7df74cbfa7261d')
         self.assertEqual(rows['foggreenoutlands']['decoded_sha256'], 'd0342a05fe0e0421c980bb46bec72a765617f9bd043d84d134928a65d3dc0b0c')
+        # Frozen Run53 packets: both original visuals and packet identities stay exact.
+        self.assertEqual(rows['bluewell']['resource_sha256'], 'fea1a4bf3842b417007af27c6cc25092c3ac8e815660b02bc3ac410953f1f372')
+        self.assertEqual(rows['foggreenoutlands']['resource_sha256'], '014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8')
         self.assertEqual((rows['bluewell']['nonzero_texels'], rows['bluewell']['runs'], rows['bluewell']['packet_bytes']),
                          (258371, 53509, 2281004))
         self.assertEqual((rows['foggreenoutlands']['nonzero_texels'], rows['foggreenoutlands']['runs'], rows['foggreenoutlands']['packet_bytes']),
                          (517967, 86157, 4488364))
 
+    def test_provisional_profiles_have_bounded_authored_prior_and_unique_resources(self):
+        rows=self.manifest['profiles']
+        self.assertEqual(len({row['profile_id'] for row in rows}),14)
+        self.assertEqual(len({row['resource_id'] for row in rows}),14)
+        for row in rows:
+            self.assertEqual(row['decoded_bytes'],17_846_400)
+            if row['name'] not in ('bluewell','foggreenoutlands'):
+                self.assertEqual(row['density_status'],'provisional_artistic')
+                self.assertEqual(row['occupancy'],.12)
+                self.assertEqual(row['base_sigma'],2.5e-6)
+
     def test_rerun_is_byte_deterministic(self):
-        for name in ('bluewell.fogbin','foggreenoutlands.fogbin','fog_field_assets_metadata_inc.h',
-                     'fog_field_assets_resource_inc.h','manifest.json'):
+        self.assertEqual({p.name for p in self.a.iterdir()},{p.name for p in self.b.iterdir()})
+        for name in (p.name for p in self.a.iterdir()):
             self.assertEqual(hashlib.sha256((self.a/name).read_bytes()).digest(),
                              hashlib.sha256((self.b/name).read_bytes()).digest(), name)
 
@@ -54,10 +68,9 @@ class FogFieldAssetsTests(unittest.TestCase):
                    str(ROOT/'src/renderer/fog_field_assets.cpp'),
                    str(ROOT/'verification/probe/fog_field_assets_fixture.cpp'), '-o', str(executable)]
         subprocess.run(command, cwd=ROOT, text=True, capture_output=True, check=True)
-        run = subprocess.run([str(executable), str(self.a/'bluewell.fogbin'),
-                              str(self.a/'foggreenoutlands.fogbin')],
+        run = subprocess.run([str(executable), *(str(self.a/(row['name']+'.fogbin')) for row in self.manifest['profiles'])],
                              cwd=ROOT, text=True, capture_output=True, check=True)
-        self.assertIn('PASS fog_field_assets decoder=2 corruptions_per_profile=11 allocation=1 atomic=1 independent_fullscan=2', run.stdout)
+        self.assertIn('PASS fog_field_assets decoder=14 corruptions_per_profile=11 allocation=1 atomic=1 independent_fullscan=14', run.stdout)
         self.assertIn('decoded_fnv1a=ffe40c913d06714f', run.stdout)
         self.assertIn('decoded_fnv1a=e446bf23796869c6', run.stdout)
 
@@ -73,18 +86,24 @@ class FogFieldAssetsTests(unittest.TestCase):
                         '-I', str(self.a), '-c', str(ROOT/'src/renderer/fog_field_assets.cpp'), '-o', str(obj)],
                        cwd=ROOT, text=True, capture_output=True, check=True)
         template = (ROOT/'cmake/fog_field_assets.rc.in').read_text()
-        configured = template.replace('@X3M_FOG_BLUEWELL_BIN@', str(self.a/'bluewell.fogbin'))
-        configured = configured.replace('@X3M_FOG_FOGGREENOUTLANDS_BIN@', str(self.a/'foggreenoutlands.fogbin'))
-        rc = self.root/'fog_field_assets.rc'; rc.write_text(configured)
+        rc = self.root/'fog_field_assets.rc'; rc.write_text(template)
         resource_obj = self.root/'fog-field-assets-resource.o'
         subprocess.run([windres, '-I', str(self.a), '-i', str(rc), '-o', str(resource_obj)],
                        cwd=ROOT, text=True, capture_output=True, check=True)
-        self.assertGreater(resource_obj.stat().st_size, 6_769_480)
+        self.assertGreater(resource_obj.stat().st_size, sum(row['resource_bytes'] for row in self.manifest['profiles']))
 
     def test_resource_template_and_integration_module_are_explicit(self):
         template = (ROOT/'cmake/fog_field_assets.rc.in').read_text()
         module = (ROOT/'cmake/FogField.cmake').read_text()
-        self.assertIn('RCDATA', template)
+        self.assertIn('fog_field_assets_entries.rc', template)
+        rc_rows=(self.a/'fog_field_assets_entries.rc').read_text()
+        self.assertEqual(rc_rows.count(' RCDATA '),14)
+        self.assertEqual(len(self.manifest['profiles']),14)
+        inventory=subprocess.check_output([sys.executable,str(BAKER),'--list-profiles'],text=True).strip().split(';')
+        self.assertEqual(inventory,[row['name'] for row in self.manifest['profiles']])
+        for row in self.manifest['profiles']:
+            self.assertIn(f'"{row["name"]}.fogbin"',rc_rows)
+            self.assertEqual(hashlib.sha256((self.a/(row['name']+'.fogbin')).read_bytes()).hexdigest(),row['resource_sha256'])
         self.assertIn('enable_language(RC)', module)
         self.assertIn('NumPy 2.0.2', module)
         self.assertIn('-DPython3_EXECUTABLE=/absolute/path/to/python3', module)

@@ -709,9 +709,18 @@ cloud map. The [verification ledger](../verification/volumetric-fog.md) separate
 prototype, asset, production and eventual flight evidence.
 
 **Recipe and control.** Period 32768, 128³ samples, 12000-unit horizon and 24 fixed
-midpoint steps. The two qualified profiles use occupancy 0.12 / sigma 2.5e-6 for
-bluewell and occupancy 0.24 / sigma 6.25e-6 for foggreenoutlands. Noise, cavities
-and voxel colour are baked deterministically by `tools/build/bake_fog_fields.py`.
+midpoint steps. The original profiles retain occupancy 0.12 / sigma 2.5e-6 for
+bluewell and occupancy 0.24 / sigma 6.25e-6 for foggreenoutlands, with both decoded
+atlases and packets byte-identical. The branch implementation extends coverage
+to 14 asset-backed families: all 11 mapped positive-card families plus unused
+fogblue, fogkhaak and khaakhive. Its twelve additions use a common provisional
+artistic occupancy 0.12 / sigma 2.5e-6, not a measured native-density conversion
+or accepted appearance. Four-stop palettes derive from native texture colour;
+the procedural field does not reproduce native card positions or texture shapes.
+Noise, cavities and voxel colour are baked deterministically by
+`tools/build/bake_fog_fields.py`. The [family expansion checkpoint](../verification/volumetric-fog.md#asset-backed-family-expansion-host-checkpoint-2026-09-20)
+records host-only evidence; candidate integration and actual-GPU coverage remain
+pending, with the installed build described only in [status](../status.md).
 The selected numeric strength S remains 0..0.1, with 0.02 meaning unity:
 `sigma_effective = family_sigma * (S / 0.02)`. It changes density, not occupancy
 or horizon. Thus the old 0.01/0.05 homogeneous anchors are superseded. F9 disables;
@@ -721,18 +730,23 @@ no density multiplier; the engine's separate distance fade remains intact.
 
 **Authority and fallback.** One copied engine record from the first successful
 BeginScene governs the current frame independently of diagnostic logging.
-Ready, valid positive-dust bluewell/green records select those profiles; D=0 is
-clear. Unknown positive families, unreadable/mismatched records and absent
-current-frame authority preserve native cards and run no replacement field.
-The other nine families remain uncalibrated. Present's diagnostic fallback never
+In the expanded branch, ready, valid positive-dust records select one of the
+14 profiles; D=0 is clear. Unused fogred, foggreenoutlands and foggreeneye records
+share their family profile. Missing-asset families xtmgreenring (no dust bodies)
+and earth (unresolved diffuse), unknown positive families, unreadable/mismatched
+records and absent current-frame authority preserve native cards and run no
+replacement field. Coverage is bounded by the stock asset inventory, not a
+promise for arbitrary mod families. Present's diagnostic fallback never
 authorizes next-frame suppression. `--volumetric-fog-everywhere` remains explicit
 debug forcing of bluewell when a valid view lacks a known family; normal mode
 never invents a profile. A sector identity change disarms replacement and requires a new matching
 warmup even when the same family atlas can be reused.
 
-**Storage and preparation.** Two sparse RCDATA resources contain the exact
-qualified fields (6,769,480 bytes including headers). There is one active 17.02
-MiB decoded CPU atlas and one DEFAULT GPU atlas, plus half-resolution FP16 ST
+**Storage and preparation.** The expanded branch packages 14 sparse RCDATA
+resources totaling 34,142,200 bytes including headers. The original two packets
+remain byte-identical; generated metadata and RC entries cover the full profile
+inventory. There is still one active 17,846,400-byte (17.02 MiB) decoded CPU atlas
+and one same-sized DEFAULT GPU atlas, plus half-resolution FP16 ST
 and full-resolution FP16 scratch. Total GPU storage is about 26.40 MiB at
 1280×768 or 36.80 MiB at 1920×1080, excluding driver copies/alignment. Preparation
 may additionally use a transient SYSTEMMEM upload. Decode/validate/upload occurs

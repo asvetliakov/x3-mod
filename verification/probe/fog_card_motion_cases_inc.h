@@ -118,5 +118,13 @@ int main() {
  { MotionOutput m;m.warm();m.fog_sector_.field_generation=0;m.draw();assert(m.fog_cards_.refused&&!m.fog_cards_.suppressed); }
  { MotionOutput m;m.warm();const auto invalidations=m.invalidations;m.volumetric_fog_step();m.volumetric_fog_step();
    assert(m.invalidations==invalidations+1); }
+ // Every mapped family requires its own authority warmup before suppression.
+ for(const auto& family:renderer::fog_field::family_profiles) {
+   MotionOutput m;m.warm();++m.frame_;m.volumetric_fog_begin_frame();m.sample(family.family,0x4000);m.prepare_volumetric_fog_targets(1280,768);
+   assert(m.fog_sector_.profile==unsigned(family.profile)&&m.fog_cards_.warmup&&!m.fog_cards_.armed);
+   m.draw();assert(!m.fog_cards_.suppressed);m.complete(true,"ok");
+   ++m.frame_;m.volumetric_fog_begin_frame();m.sample(family.family,0x4000);m.draw();
+   assert(m.fog_cards_.suppressed==1&&m.fog_cards_.armed);m.complete(true,"ok");
+ }
  std::puts("actual MotionOutput card methods PASS");
 }
