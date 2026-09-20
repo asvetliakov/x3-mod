@@ -1,0 +1,47 @@
+{
+  "status": "UNKNOWN",
+  "qualified": false,
+  "scope": "Frozen reconstructed seven-triangle fixture only; not authenticated live geometry",
+  "thresholds": {
+    "W": 0.02,
+    "device_depth": 2e-07
+  },
+  "observations": 48,
+  "unique_cases": 4,
+  "pixels_per_tile": 120,
+  "variants": 7,
+  "per_variant": {
+    "positive_pixels": 456,
+    "negative_pixels": 5304,
+    "support_owner_mismatches": 0,
+    "depth_pass": 456,
+    "fixed_W_pass": 0,
+    "fixed_controls": 12
+  },
+  "max_depth_error": 1.7881393432617188e-07,
+  "max_W_error_range": [
+    0.1875,
+    0.19140625
+  ],
+  "local_artifacts": {
+    "qualify.py": {
+      "path": "/tmp/x3-lattice-subset-qualifier/qualify.py",
+      "sha256": "b22e7d68eaa1d17d1e2e7d8bf8fabf47552ea8b938e9ea1f794f72b7186385c8"
+    },
+    "check.py": {
+      "path": "/tmp/x3-lattice-subset-qualifier/check.py",
+      "sha256": "647b690701a4b8153d38e3c01afa3c89707fe0d0b74a24be3ed19a5076522d80"
+    },
+    "report.json": {
+      "path": "/tmp/x3-lattice-subset-qualifier/report.json",
+      "sha256": "258e8430988586576d9985757f10813feb6eb7c27901c5d00ceab296c66f017f"
+    },
+    "REPORT.md": {
+      "path": "/tmp/x3-lattice-subset-qualifier/REPORT.md",
+      "sha256": "70bb9dd7746c636220d908895c7ded0527ce8020493bb75125510f82b24edb80"
+    }
+  },
+  "review": "Independent host rerun; no blocker; thresholds and historical exceptions unchanged",
+  "no_wine_or_game_execution": true,
+  "next": "Separate calibrated unchanged-VS point probe; production correction not selected"
+}

@@ -1472,3 +1472,24 @@ the selected records. The camera telemetry shows a stationary-orientation burst
 and two bursts containing rotation; raw view-translation coordinates do not
 by themselves establish ship displacement. RT1 RG stores previous UV, not
 velocity, so raw RG magnitudes are not a movement measure.
+
+### Frozen-subset qualifier result and next discriminator
+
+The [independently reviewed qualifier](../../verification/results/run201-lattice/subset-qualifier.json)
+returns UNKNOWN. Seven named arithmetic variants reproduce owner/support across
+48 retained tiles, including 5,304 negative and 456 positive pixel instances per
+variant. All positive depth comparisons pass the unchanged 2e-7 tolerance, but
+every variant fails all twelve fixed W controls at 0.02. Maximum W residual is
+0.1875–0.19140625. No offset, snapping grid or tolerance was fitted.
+
+These are reconstructed frozen fixture bytes, not authenticated live buffers.
+The two historical exceptions remain unchanged. The result does not distinguish
+actual backend VS arithmetic from raster setup/varying interpolation, and cannot
+reopen the rejected full-scene ownership or shaded-RGB models.
+
+The selected next discriminator is a separate standalone GPU point probe: retain
+the original VS bytecode, calibrate varying/MOV/readback transport using known
+constant matrices, observe the frozen vertices, and bracket measurements with
+the unchanged triangle cases including Reset recovery. Driver specialization
+across primitive types remains a limitation. No game flight, live payload copy
+or source-coverage correction is authorized by this measurement alone.

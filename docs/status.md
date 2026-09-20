@@ -66,8 +66,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   missing-history cut is the leading hypothesis; the existing-build Run57 A/B
   records its exact per-frame state. No production correction is selected.
 - **Lattice:** Run54 B returned run201 with three capture bursts. Guarded state
-  packets and their fixture comparison are under analysis; no repeat flight is
-  requested. The bounded offline audit did not establish a renderer fix.
+  and fixture comparison pass within their sampled scope. The frozen-subset CPU
+  qualifier remains UNKNOWN; a calibrated standalone GPU point probe is in
+  preparation. No repeat flight or renderer correction is selected.
   [Owning note §29](architecture/taa-lattice-crawl.md#29-existing-capture-stage-attribution-bounded-negative-2026-09-21).
 - **Collision:** paused by user request; no moving-collision test is queued.
 - **Engine/proxy timing:** lazy RT remains accepted. Corrected attribution
