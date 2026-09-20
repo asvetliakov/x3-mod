@@ -984,3 +984,39 @@ a separate diagnostic timeline. A required playback provider must retain a
 portable documented API boundary and native Windows implementation; no game
 texture lifetime, repeat/loop, original playback or native Windows integration
 is qualified here.
+
+### Explicit app-local decoder trial: constructor teardown rejected (2026-09-20)
+
+A fixture-only LAV 0.81 x86 source/software decoder now connects explicitly to
+the existing amstream RGB32 sink through supported COM activation-context APIs.
+The pinned local provider loads correctly; two ConnectDirect calls negotiate
+512x512 RGB32, and constructor Run/Pause complete. No registry/merit changes,
+autoplug fallback, game installation or production decoder change was made.
+**The ordinary constructor remains rejected:** final IMediaControl::Stop times
+out under the existing ten-second call watchdog, which terminates/reaps the child.
+No reference, seek or playback qualification follows.
+
+After source review, 81 focused tests pass. The corrected owner trace takes
+17.242253 seconds and independently verifies provider module closure and unchanged
+protected inputs. Its 35,876-byte trace observes selection of amstream's allocator,
+a request for four 1 MiB buffers, Commit, the initial zero-start NewSegment, and a
+streaming thread entering GetBuffer 1.212 seconds before graph Stop. Stop reaches the sink's
+stopped-state entry; no allocator Decommit or Receive is logged. The constructor
+has not created a sample or queued Update. This supports an allocator-starvation
+explanation, but entry-only tracing does not directly establish the waiting stack,
+LAV receive-lock ownership or exact installed CrossOver source identity.
+
+The [compact constructor record](../../verification/results/media-lav-constructor-2026-09-20.json)
+binds the frozen EXE/provider, wrapper options and raw result/trace hashes.
+Earlier attempts supplied WINEDEBUG/WINEDLLOVERRIDES only through the environment;
+inspection showed CrossOver's wrapper replaced/deleted those values. The corrected
+LAV adapter uses explicit supported `--debugmsg` and `--dll` arguments. Prior
+records prove environment intent, not enforcement; their actual graph/module/
+content witnesses retain their separate evidential value. The first empty trace
+was not evidence that the backend lacked tracing.
+
+The next bounded diagnostic is terminal-only selected-allocator Decommit before
+unchanged Stop, using public interfaces and retained/released COM references.
+It is separately labeled and cannot qualify normal construction or playback.
+Pre-seek decommit/recommit, flush/epoch correctness, loops, game lifetime/Reset,
+performance and native Windows execution remain open.

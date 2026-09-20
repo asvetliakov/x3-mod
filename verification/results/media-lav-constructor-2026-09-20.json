@@ -1,0 +1,289 @@
+{
+  "checkpoint": "explicit-provider constructor rejected at Stop",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "backend": "lav-0.81-x86",
+  "media_kind": "original_dat",
+  "build": {
+    "schema": 1,
+    "command": [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-municode",
+      "-static",
+      "-static-libgcc",
+      "-static-libstdc++",
+      "-DX3_FIXTURE_LAV=1",
+      "-isystem",
+      "/private/tmp/x3-lav-fixture-0.81/include",
+      "/private/tmp/x3-media-playback-fixture/verification/probe/media_playback_fixture.cpp",
+      "-o",
+      "/private/tmp/x3-lav-fixture-build-v4/media_playback_fixture.exe",
+      "-lamstrmid",
+      "-lstrmiids",
+      "-luuid",
+      "-ld3d9",
+      "-lole32",
+      "-loleaut32",
+      "-lversion"
+    ],
+    "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "source_sha256": "7720463b26f241abdcde96194cfcd93db02138bc9d79ffdd6ebc52cd127d1143",
+    "exe_sha256": "d53ce6d8237123dd7d5178257f342f7e2fb86404980be69e71e97c650c94e94b",
+    "exe": "/private/tmp/x3-lav-fixture-build-v4/media_playback_fixture.exe",
+    "lav_helper_sha256": "6eb58196af7d80f56a353d87e076d7d5d7c5639731da6f66991ab695962b779f",
+    "lav_provider": {
+      "schema": 1,
+      "provider": "LAVFilters",
+      "version": "0.81",
+      "architecture": "x86",
+      "release_url": "https://github.com/Nevcairiel/LAVFilters/releases/download/0.81/LAVFilters-0.81-x86.zip",
+      "archive_sha256": "b74388c23ce5acac8d0242609fbc3c5cdd90da400e6dbc22eb334f3623bfde3a",
+      "source_commit": "c97e4049aff5d2ed86a2aa517b6a75357daf83b0",
+      "files": {
+        "LAVSplitter.ax": "8fcd0823e407ada5d5d75ec37f16aa0a4e9980a56fad3bb0b1dac8c856a3358f",
+        "LAVVideo.ax": "84ac9e2f4da06d52518557cb8c3e04315c0364f01f822bde761e284d0b8d2cdd",
+        "avcodec-lav-62.dll": "fc8ecc6c8f0b411e74a93a4183e1ec0b1f269fd17a84780ab9350f08b6ca9fb1",
+        "avformat-lav-62.dll": "441220c1ed4ed790dbc5f7a9b9b68dfff1d0f9a3499f24d69d2c16bce83cccc9",
+        "avutil-lav-60.dll": "20354cc20b71eb328ee68f27053bd2079dd900f9dc4b078b2d32b9d67c30d1e9",
+        "avfilter-lav-11.dll": "edeb71ad745bc8c798528dd9140c0ddda6e1f6bbcd79a604652466a805eb3d78",
+        "swscale-lav-9.dll": "c7e43cf3729efe5848e526cae3d6021f63b6fbe03edc6a18af601d2604c28224",
+        "swresample-lav-6.dll": "d324ff9a1d7068a367cab1861d24dd31aedb1f844c73018070e9a64cf834055f",
+        "libbluray.dll": "b520c3e262cbffc725e912e442ed76637c79b5cc8bd593ffbcb05547bcea5838",
+        "LAVFilters.Dependencies.manifest": "a1f0031cfd528235d48d78425eef03913ecaadf2ea9e33f27c6416e75510731e",
+        "COPYING": "189b1af95d661151e054cea10c91b3d754e4de4d3fecfb074c1fb29476f7167b",
+        "README.md": "e1aa1e99041f3009200307565085fdd1d77848d615d16c57eeb3c47622f8c664",
+        "include/LAVVideoSettings.h": "a05a5369f5fd7478c76a9c814a8927e7240833338e89cd60ce58219e206af72e",
+        "include/LAVSplitterSettings.h": "0a3bfa85874e18c33bc27fcb2cef3edebfc0072cc7116d732a224f54cbf2f804",
+        "provider.manifest": "2578a85f197c3386dab46a3bf7da8eaa14d79fb2cacbcec24cfbabdeefe34ff1"
+      },
+      "binaries": {
+        "LAVSplitter.ax": {
+          "sha256": "8fcd0823e407ada5d5d75ec37f16aa0a4e9980a56fad3bb0b1dac8c856a3358f",
+          "bytes": 576184,
+          "machine": "I386",
+          "imports": [
+            "ole32.dll",
+            "USER32.dll",
+            "OLEAUT32.dll",
+            "COMCTL32.dll",
+            "SHLWAPI.dll",
+            "avformat-lav-62.dll",
+            "avutil-lav-60.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "SHELL32.dll",
+            "VERSION.dll",
+            "avcodec-lav-62.dll",
+            "libbluray.dll"
+          ]
+        },
+        "LAVVideo.ax": {
+          "sha256": "84ac9e2f4da06d52518557cb8c3e04315c0364f01f822bde761e284d0b8d2cdd",
+          "bytes": 1100472,
+          "machine": "I386",
+          "imports": [
+            "ole32.dll",
+            "USER32.dll",
+            "OLEAUT32.dll",
+            "SHLWAPI.dll",
+            "COMCTL32.dll",
+            "d3d9.dll",
+            "avutil-lav-60.dll",
+            "avcodec-lav-62.dll",
+            "swscale-lav-9.dll",
+            "avfilter-lav-11.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "SHELL32.dll"
+          ]
+        },
+        "avcodec-lav-62.dll": {
+          "sha256": "fc8ecc6c8f0b411e74a93a4183e1ec0b1f269fd17a84780ab9350f08b6ca9fb1",
+          "bytes": 14424328,
+          "machine": "I386",
+          "imports": [
+            "KERNEL32.dll",
+            "msvcrt.dll",
+            "ole32.dll",
+            "avutil-lav-60.dll",
+            "swresample-lav-6.dll"
+          ]
+        },
+        "avformat-lav-62.dll": {
+          "sha256": "441220c1ed4ed790dbc5f7a9b9b68dfff1d0f9a3499f24d69d2c16bce83cccc9",
+          "bytes": 5656840,
+          "machine": "I386",
+          "imports": [
+            "ADVAPI32.dll",
+            "CRYPT32.dll",
+            "KERNEL32.dll",
+            "msvcrt.dll",
+            "ncrypt.dll",
+            "WS2_32.dll",
+            "avcodec-lav-62.dll",
+            "avutil-lav-60.dll"
+          ]
+        },
+        "avutil-lav-60.dll": {
+          "sha256": "20354cc20b71eb328ee68f27053bd2079dd900f9dc4b078b2d32b9d67c30d1e9",
+          "bytes": 978184,
+          "machine": "I386",
+          "imports": [
+            "bcrypt.dll",
+            "KERNEL32.dll",
+            "msvcrt.dll",
+            "USER32.dll"
+          ]
+        },
+        "avfilter-lav-11.dll": {
+          "sha256": "edeb71ad745bc8c798528dd9140c0ddda6e1f6bbcd79a604652466a805eb3d78",
+          "bytes": 253704,
+          "machine": "I386",
+          "imports": [
+            "KERNEL32.dll",
+            "msvcrt.dll",
+            "avutil-lav-60.dll",
+            "swscale-lav-9.dll"
+          ]
+        },
+        "swscale-lav-9.dll": {
+          "sha256": "c7e43cf3729efe5848e526cae3d6021f63b6fbe03edc6a18af601d2604c28224",
+          "bytes": 859400,
+          "machine": "I386",
+          "imports": [
+            "KERNEL32.dll",
+            "msvcrt.dll",
+            "avutil-lav-60.dll"
+          ]
+        },
+        "swresample-lav-6.dll": {
+          "sha256": "d324ff9a1d7068a367cab1861d24dd31aedb1f844c73018070e9a64cf834055f",
+          "bytes": 133896,
+          "machine": "I386",
+          "imports": [
+            "KERNEL32.dll",
+            "msvcrt.dll",
+            "avutil-lav-60.dll"
+          ]
+        },
+        "libbluray.dll": {
+          "sha256": "b520c3e262cbffc725e912e442ed76637c79b5cc8bd593ffbcb05547bcea5838",
+          "bytes": 360120,
+          "machine": "I386",
+          "imports": [
+            "KERNEL32.dll",
+            "SHELL32.dll"
+          ]
+        }
+      },
+      "classes": {
+        "source": "{B98D13E7-55DB-4385-A33D-09FD1BA26338}",
+        "video": "{EE30215D-164F-4A92-A4EB-9D4C13390F9F}"
+      },
+      "threading_model": "Both",
+      "runtime_only_settings": true,
+      "distribution_qualified": false,
+      "source_evidence": [
+        "demuxer/LAVSplitter/LAVSplitter.h",
+        "decoder/LAVVideo/LAVVideo.h",
+        "common/baseclasses/dllsetup.cpp"
+      ],
+      "excluded": [
+        "LAVAudio.ax",
+        "IntelQuickSyncDecoder.dll",
+        "registration scripts"
+      ],
+      "limitation": "Static PE imports only; runtime loaded-module closure must be checked."
+    }
+  },
+  "launcher_controls": {
+    "adapter": "CrossOver_wrapper_supported_options",
+    "argv_prefix": [
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "--debugmsg",
+      "-all,+timestamp,+pid,+tid,+amstream,+quartz",
+      "--dll",
+      "d3d9=b;winegstreamer=",
+      "/private/tmp/x3-lav-fixture-build-v4/media_playback_fixture.exe"
+    ],
+    "wrapper_sha256": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
+    "explicit_debugmsg": true,
+    "explicit_dll_override": true,
+    "effective_child_environment_observed": false,
+    "environment_record_meaning": "host_launch_intent; wrapper argv explicitly carries desired child controls",
+    "prior_run_limitation": "Earlier environment-only WINEDEBUG/WINEDLLOVERRIDES intent was not enforced by the wrapper; observed graph/module facts remain evidence."
+  },
+  "exit_code": 2,
+  "wall_seconds": 17.242252875,
+  "qualification": {
+    "accepted": false,
+    "content_proven": false,
+    "reference_ready": false,
+    "live_newsegment_observed": false,
+    "timestamp_domain": "segment_relative_source_contract_and_content",
+    "original_game_playback_proven": false,
+    "native_windows_qualified": false,
+    "module_closure_verified": true,
+    "outcome": "provider_unqualified",
+    "error": "provider graph, module closure, transport or outer controls unqualified"
+  },
+  "protected_inputs_unchanged": {
+    "media": true,
+    "game_exe": true,
+    "bottle_config": true,
+    "lav_provider_record": true,
+    "lav_file_LAVSplitter.ax": true,
+    "lav_file_LAVVideo.ax": true,
+    "lav_file_avcodec-lav-62.dll": true,
+    "lav_file_avformat-lav-62.dll": true,
+    "lav_file_avutil-lav-60.dll": true,
+    "lav_file_avfilter-lav-11.dll": true,
+    "lav_file_swscale-lav-9.dll": true,
+    "lav_file_swresample-lav-6.dll": true,
+    "lav_file_libbluray.dll": true,
+    "lav_file_LAVFilters.Dependencies.manifest": true,
+    "lav_file_COPYING": true,
+    "lav_file_README.md": true,
+    "lav_file_include/LAVVideoSettings.h": true,
+    "lav_file_include/LAVSplitterSettings.h": true,
+    "lav_file_provider.manifest": true
+  },
+  "full_result": "/tmp/x3-lav-constructor-v4-trace-cli/result.json",
+  "full_result_sha256": "32455676e535de6d1bdb10c9472c92c511c4eb6a76fda01e197eacae430b7625",
+  "trace_sha256": "ca9ac371c42da9c6eab0b461a670ba41cbf535308ffe883084bfe7924f2634ea",
+  "trace_bytes": 35876,
+  "host_tests": 81,
+  "observations": [
+    "App-local source and decoder activate through supported COM context APIs; pinned provider module closure observed",
+    "Two ConnectDirect calls establish RGB32 source/decoder/amstream graph; Run and Pause complete",
+    "Trace observes amstream allocator selection, a request for four 1048576-byte buffers, Commit and initial NewSegment at zero",
+    "Streaming thread enters selected allocator GetBuffer 1.212 seconds before graph Stop",
+    "Stop reaches sink/stream stopped-state entry; named call watchdog terminates and reaps child",
+    "No allocator Decommit or sink Receive is logged; no sample/Update exists in this constructor stage"
+  ],
+  "inference": "Allocator starvation/circular wait is supported, but entry-only trace does not prove a wait stack, LAV lock ownership or exact installed backend source identity",
+  "limits": [
+    "No ordinary constructor acceptance, playback, seek, loop, engine integration or native Windows qualification",
+    "Earlier environment-only Wine debug/override intent was not enforced by CrossOver wrapper; actual graph/module/content observations remain separate evidence",
+    "Proposed terminal allocator Decommit is a separate diagnostic, not a repair claim"
+  ]
+}
