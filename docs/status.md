@@ -20,8 +20,9 @@ family renderer and adds the opt-in post-route lattice state diagnostic. It
 contains no new media, collision or FOV optimization. Run53 A is reported as
 `/tmp/x3-bottleX3-run193`; its three lattice state packets validate after a reviewed
 host-checker correction for disabled extra clip-plane capacity. Session B is
-`/tmp/x3-bottleX3-run194`: the user prefers density 1.50 and reports native-card
-flicker during camera movement in The Hole. Both analyses remain open;
+`/tmp/x3-bottleX3-run194`: the user prefers density 1.50 (strength 0.03) and reports
+native-card flicker during camera movement in The Hole. The cut-triggered warmup
+cause is identified and its reviewed fix is isolated on the integration branch;
 do not merge further production changes to main during qualification.
 
 The [candidate record](../verification/results/run53-candidate-qualification.json)
@@ -89,11 +90,14 @@ integration tests and 133 media-support tests pass. Root startup/common-record-d
 wiring is reviewed and committed on the integration branch (`01d875b1`): 3,037
 root host checks, 4,523 consumer checks, 1,783 Services checks and 63 actual
 dispatcher checks pass. Four registration modes now pass 53 checks under the X3
-lock. The joined playback fixture (`cdc9194f`) is reviewed and its frozen v2 build
-passes the PE audit after correcting linker map retention. Its first actual run
-stops at `pump_identity_stable` near the physical EOF case; diagnosis is active,
-with all protected inputs unchanged. No new DLL is installed; native Windows and
-game acceptance remain open.
+lock. Connected playback now passes on frozen v3 (`15ed277f` evidence checkpoint):
+20 exact RGB readbacks, both sequence-zero first pictures, concurrent playback,
+retirement/reuse and two natural completion callbacks. A real zero-sequence
+rejection and fixture terminal/acknowledgment assumptions were corrected; the
+failed v2 result remains preserved. All 116 protected inputs remain unchanged.
+This qualifies authored engine continuations and native SYSTEMMEM copies, not
+game playback or a no-stutter result. No new DLL is installed; native Windows
+and game acceptance remain open.
 Enabled media repair remains unfinished. The owning
 media and ownership ledgers retain the scoped evidence.
 Collision optimization is **paused by user request**. The reviewed engine/lattice
@@ -101,9 +105,18 @@ audit added no tracing before interpreting the queued lattice packet;
 [the owning decision](architecture/taa-lattice-crawl.md#25-next-flight-state-decision-and-reopening-gate-2026-09-20)
 keeps moving crawl open. Run193 now provides that packet: shader/alpha/sampler
 comparisons agree with the conditional fixture, but RT1/RT2 are reported unbound.
-A real-device observer/reference-release probe is being prepared to determine
-whether observation itself alters the lazy bindings. No renderer fix or additional
-user capture is selected yet; details are in the lattice note §26.
+A real-device probe now confirms that diagnostic resource releases can invoke
+device Release (11 callbacks with dropped-but-bound resources, zero with held
+references). A reviewed design for a scoped observation guard and native device
+pin is being implemented, with an actual production draw-path fixture planned.
+No crawl correction or additional user capture is selected yet; details are in
+the lattice note §26 and `/tmp/x3-run193-observer-guard-plan.md`.
+
+The fog correction (`40a6bc10`) keeps successful replacement armed across camera
+cuts while retaining sector/Reset/failure warmup and independent TAA resets.
+Eight focused host tests and x86 compilation pass; an actual-method 32-frame
+regression changes 11 unwanted warmups to zero. This source fix and media repair
+await the combined candidate's full host suite, build and affected qualification.
 
 Run52 A/B/C (run187–189) is analyzed and independently reviewed. Matching
 478-draw separate-session B/C intervals had medians of 19.70 / 18.90 ms, consistent with the user

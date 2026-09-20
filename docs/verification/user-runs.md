@@ -125,6 +125,11 @@ that defect's investigation. No repeat flight is requested from this report.
 Triage finds five complete 32-frame bursts: 4833–4864 (bluewell, off),
 6550–6581 (bluewell, 1.0×), 11077–11108 and 14822–14853 (bluewell, 1.5×),
 and 31481–31512 (foggreenoutlands, 1.5×).
+The [reproducible fog triage](../../verification/results/run53b-triage/main.md)
+identifies camera cuts repeatedly disarming replacement and reopening the native
+card warmup path. The final burst has two such windows, 31496–31506 and
+31510–31512. A reviewed source correction on the integration branch removes
+cut-only disarming; flight confirmation awaits the next qualified candidate.
 
 A. Solar-plant lattice diagnostic: same pinned solar-plant save/view as run177. F8 at rest, then F8 during camera rotation, then F8 while translating the ship. Keep the arm in view during each 32-frame burst. This build measures post-route state; it does not claim a crawl fix.
 

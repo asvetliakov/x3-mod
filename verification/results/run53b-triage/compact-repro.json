@@ -1,0 +1,279 @@
+{
+  "schema": 1,
+  "run": "Run53B",
+  "source_log": "/tmp/x3-bottleX3-run194/session-20260920-215930-212.log",
+  "clock_anchor_utc": "2026-09-20T17:59:30.379Z",
+  "qpc_frequency": 10000000,
+  "candidate": {
+    "source_commit": "fc52a432b8dc7dd9faa2c81f420b371fea17543f",
+    "dll_sha256": "36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468"
+  },
+  "launch": {
+    "fog_enabled": true,
+    "cards": "replace",
+    "initial_strength": 0.02,
+    "initial_density_scale": 1.0,
+    "hotkeys": {
+      "toggle": "Ctrl+Alt+F9",
+      "strength_ladder": "Ctrl+Alt+F10"
+    }
+  },
+  "capture_bursts": [
+    {
+      "frames": [
+        4833,
+        4864
+      ],
+      "count": 32,
+      "utc": [
+        "2026-09-20T18:00:52.826Z",
+        "2026-09-20T18:01:09.215Z"
+      ],
+      "sector": "bluewell",
+      "profile": 1,
+      "strength": 0.02,
+      "density_scale": 1.0,
+      "replacement": "off"
+    },
+    {
+      "frames": [
+        6550,
+        6581
+      ],
+      "count": 32,
+      "utc": [
+        "2026-09-20T18:01:32.922Z",
+        "2026-09-20T18:01:48.712Z"
+      ],
+      "sector": "bluewell",
+      "profile": 1,
+      "strength": 0.02,
+      "density_scale": 1.0,
+      "replacement": "active"
+    },
+    {
+      "frames": [
+        11077,
+        11108
+      ],
+      "count": 32,
+      "utc": [
+        "2026-09-20T18:02:34.375Z",
+        "2026-09-20T18:02:42.376Z"
+      ],
+      "sector": "bluewell",
+      "profile": 1,
+      "strength": 0.03,
+      "density_scale": 1.5,
+      "replacement": "active"
+    },
+    {
+      "frames": [
+        14822,
+        14853
+      ],
+      "count": 32,
+      "utc": [
+        "2026-09-20T18:03:26.491Z",
+        "2026-09-20T18:04:00.325Z"
+      ],
+      "sector": "bluewell",
+      "profile": 1,
+      "strength": 0.03,
+      "density_scale": 1.5,
+      "replacement": "active"
+    },
+    {
+      "frames": [
+        31481,
+        31512
+      ],
+      "count": 32,
+      "utc": [
+        "2026-09-20T18:07:05.803Z",
+        "2026-09-20T18:07:14.273Z"
+      ],
+      "sector": "foggreenoutlands",
+      "profile": 2,
+      "strength": 0.03,
+      "density_scale": 1.5,
+      "replacement": "active"
+    }
+  ],
+  "final_burst": {
+    "sector_record": {
+      "frame": 31396,
+      "sector": "66328b20",
+      "index": 14,
+      "name": "foggreenoutlands",
+      "dust": 16,
+      "near": 3000000,
+      "far": 3500000
+    },
+    "profile_activation": {
+      "frame": 28439,
+      "profile": 2,
+      "reason": "foggreenoutlands",
+      "field_generation": 2,
+      "density_scale": 1.5
+    },
+    "last_toggle": {
+      "frame": 28858,
+      "enabled": true,
+      "strength": 0.03,
+      "density_scale": 1.5
+    },
+    "strength_restore": {
+      "frame": 29161,
+      "strength": 0.03,
+      "density_scale": 1.5
+    },
+    "card_reports": [
+      {
+        "frame": 31395,
+        "observed": 6,
+        "suppressed": 6,
+        "refused": 0,
+        "ready": true,
+        "warmup": false,
+        "applied": true,
+        "fault": false,
+        "mode": 2
+      },
+      {
+        "frame": 31483,
+        "observed": 5,
+        "suppressed": 5,
+        "refused": 0,
+        "ready": true,
+        "warmup": false,
+        "applied": true,
+        "fault": false,
+        "mode": 2
+      },
+      {
+        "frame": 31557,
+        "observed": 7,
+        "suppressed": 7,
+        "refused": 0,
+        "ready": true,
+        "warmup": false,
+        "applied": true,
+        "fault": false,
+        "mode": 2
+      }
+    ],
+    "source_card_draws": {
+      "ps": "f7e0b6647a3bfa62",
+      "vs": "7b6393fe2d3e1d85",
+      "declaration": "0cdf6a8c884ad955",
+      "draws": 214,
+      "frames": 32,
+      "per_frame_min": 4,
+      "per_frame_max": 9,
+      "topology": "D3DPT_TRIANGLELIST",
+      "primitives_per_draw": 2
+    },
+    "cut_frames": [
+      31495,
+      31496,
+      31497,
+      31498,
+      31499,
+      31500,
+      31501,
+      31502,
+      31503,
+      31504,
+      31505,
+      31509,
+      31510,
+      31511,
+      31512
+    ],
+    "card_draw_windows": [
+      {
+        "frames": [
+          31495,
+          31495
+        ],
+        "expected_policy": "armed-suppression",
+        "source_card_draws": 6
+      },
+      {
+        "frames": [
+          31496,
+          31506
+        ],
+        "expected_policy": "warmup-native-cards",
+        "source_card_draws": 86
+      },
+      {
+        "frames": [
+          31507,
+          31509
+        ],
+        "expected_policy": "armed-suppression",
+        "source_card_draws": 18
+      },
+      {
+        "frames": [
+          31510,
+          31512
+        ],
+        "expected_policy": "warmup-native-cards",
+        "source_card_draws": 12
+      }
+    ],
+    "present_pixel_witness": {
+      "format": "1280x768 BGRA8; whole-frame RGB values",
+      "f31495_to_f31496": {
+        "mean_luma": [
+          47.915,
+          75.262
+        ],
+        "mean_absolute_rgb_delta": 22.291,
+        "pixels_delta_at_least_24": 339047,
+        "pale_neutral_pixels": [
+          6383,
+          7904
+        ]
+      },
+      "f31506_to_f31507": {
+        "mean_luma": [
+          67.73,
+          32.31
+        ],
+        "mean_absolute_rgb_delta": 29.484,
+        "pixels_delta_at_least_24": 548539,
+        "pale_neutral_pixels": [
+          10163,
+          10382
+        ]
+      }
+    },
+    "non_cut_frames_after_sequence": [
+      31506,
+      31507,
+      31508
+    ]
+  },
+  "observations": [
+    "No volumetric_fog_toggle, volumetric_fog_strength, volumetric_fog_sector, refusal, fault, or failed frame occurs inside frames 31481-31512.",
+    "The final capture contains the expected fog-card source shader on every one of its 32 frames.",
+    "The bounded card reports before, during, and after the final capture all show applied=1, ready=1, refused=0, fault=0, mode=2 and suppressed equal to observed.",
+    "The start and end of the inferred warm-up window coincide with whole-frame present discontinuities: 339047 pixels change by at least 24 RGB codes at frame 31496, and 548539 do so at frame 31507."
+  ],
+  "inference": {
+    "mechanism": "The cut detector is true on frames 31495-31505. Source clears fog_cards_.armed after a cut; the next frame begins a warm-up. Warm-up permits the replacement volume but does not suppress native cards, so consecutive cuts can repeatedly expose native cards while the volume remains applied.",
+    "confidence": "source-path and event-correlated; the present/color captures still need pixel comparison to quantify the visible flicker"
+  },
+  "owning_source_locations": [
+    "src/proxy/motion_output_fog_inc.h:163-168",
+    "src/proxy/motion_output_fog_inc.h:324-327",
+    "src/proxy/fog_card_policy.h:11-24",
+    "src/proxy/motion_output_fog_inc.h:170-216",
+    "src/proxy/capture.cpp:1210-1224"
+  ],
+  "source_log_sha256": "ba04d54784719a3956a320213bee559dd02b9952bc28f093345a7675d8066496"
+}
