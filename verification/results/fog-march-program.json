@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/fog/fog_march_ps.hlsl",
-  "source_sha256": "c2c898e74d0c1d5338aa9e84e7c9b6603a0a56e5de66c7e941a6a392e6760e64",
+  "source_sha256": "9b43cad65e76f4fcb37e556f72a4bf53838fd1ff460c9151a2cdbf1cced1940f",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -9,10 +9,12 @@
   "flags": 32768,
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
-  "includes": null,
-  "word_count": 788,
-  "bytecode_sha256": "79e84dd03e6ef4df72c812ff877f9ecd2b1bde7cf106470c59f67a653511457f",
-  "header_sha256": "967ccd1cdbc125d1bfe1e5115301d899332f2c87468ce85d60ddef508c9b50d4",
+  "includes": {
+    "src/fog/fog_field_inc.h": "99aa5547f782c3461f2edbd6c946f639835d302801493e48b3e9df30fdb6acc6"
+  },
+  "word_count": 591,
+  "bytecode_sha256": "c4ef605baf1bc315a9d0c9f0483f1a231c5a0d36d098d2e51d5f402d3243670d",
+  "header_sha256": "f9f0d2e18664db2c0b226a506dff6b24eec66db6324ad473d7ef3500245b0654",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
     "tools/shaders/generate_rigid_motion_pixel.py": "fcbddddecd6b36bcd3a45cb1275e136dc47e4803e4bb4ced547f99a65621e636"

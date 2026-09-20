@@ -34,21 +34,22 @@ class SectorBackgroundTests(unittest.TestCase):
         self.assertRegex(self.compile_run('sector_background_host.cpp'), r'checks=\d+ failures=0 sample_bytes=\d+ reads_ready=\d+')
 
     def test_actual_wrapper_error_cadence_gate_and_zero_work_off(self):
-        self.assertIn('checks=15 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True))
+        self.assertIn('checks=19 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True))
 
     def test_scene_boundary_standalone_and_reset_wiring(self):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('if(sector_background_requested)hooked.set(41,begin_scene);', source)
         begin = extract_function(source, 'HRESULT WINAPI begin_scene(')
-        self.assertIn('if(SUCCEEDED(hr)&&sector_background_requested)sector_background_context(ctx);', begin)
+        self.assertIn('if(SUCCEEDED(hr)&&(sector_background_requested || volumetric_fog_requested))sector_background_context(ctx,true);', begin)
         self.assertIn('CpuCallBoundary cpu;', begin)
         present = extract_function(source, 'HRESULT WINAPI present(')
-        self.assertIn('if(sector_background_requested)sector_background_context(ctx);', present)
+        self.assertIn('if(sector_background_requested || volumetric_fog_requested)sector_background_context(ctx);', present)
         reset = extract_function(source, 'HRESULT reset_common(')
         self.assertLess(reset.index('ctx.sector_background_evidence.invalidate();'), reset.index('if(ctx.bloom_busy'))
         # No draw hook or render path consumes the diagnostic.
-        self.assertEqual(source.count('sector_background_context(ctx);'), 2)
-        self.assertNotIn('sector_background', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
+        self.assertEqual(source.count('sector_background_context(ctx);'), 1)
+        self.assertEqual(source.count('sector_background_context(ctx,true);'), 1)
+        self.assertNotIn('sector_background::sample(', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
 
     def test_launcher_opt_in_without_rendering_dependencies(self):
         launcher = test_volumetric_fog.FogLauncherTests()

@@ -1,8 +1,9 @@
 #!/bin/sh
-# Detached volumetric fog fixture plus the production pass (embedded programs
-# from src/renderer/fog_*_program_inc.h; no compiler DLL at run time).
-# X3M_FOG_PASS_FIXTURE exposes the sky-history accessors used for readback only.
-set -eu
-cd "$(dirname "$0")"
-mkdir -p build/fog-pass
-i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -static -DX3M_FOG_PASS_FIXTURE fog_pass_fixture.cpp ../../src/renderer/fog_pass.cpp -o build/fog-pass/fog_pass_fixture.exe -luser32
+# The analytic fixture source and accepted evidence remain historical.
+# It cannot link against or qualify the replacement spatial FogPass.
+cat >&2 <<'NOTICE'
+The analytic fog fixture is historical and superseded. No build was started.
+Use verification/probe/fog_spatial_build.py with --asset-root, --asset-data and
+--output; then fog_spatial_run.py. See verification/probe/fog_spatial_fixture.md.
+NOTICE
+exit 2

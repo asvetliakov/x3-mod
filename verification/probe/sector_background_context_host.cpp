@@ -17,8 +17,12 @@ bool read(std::uintptr_t p,void* out,std::size_t n){++error;return memory(p,out,
 }
 std::vector<std::string> logs;
 void log(const char* fmt,...){++error;char line[4096];va_list args;va_start(args,fmt);std::vsnprintf(line,sizeof line,fmt,args);va_end(args);logs.emplace_back(line);}
-bool sector_background_requested=false;
-struct Device {std::uint64_t id=1,frame=0;sector_background::Diagnostic sector_background_evidence;};
+bool sector_background_requested=false,volumetric_fog_requested=false;
+struct Device {std::uint64_t id=1,frame=0;sector_background::Diagnostic sector_background_evidence;
+    struct Motion { unsigned samples=0;std::uint64_t frame=0;sector_background::Sample value;
+      void volumetric_fog_sector_sample(std::uint64_t f,const sector_background::Sample& s){++error;++samples;frame=f;value=s;}
+    } motion_output;
+};
 #include "sector_background_context_under_test_inc.h"
 int main(){
     Device d;memory=setup();error=123;sector_background_context(d);
@@ -47,5 +51,14 @@ int main(){
     check(error==123&&logs.back().find("status=read_failure")!=std::string::npos);
     sector_background_requested=false;const auto after=memory.requested.size();const auto apis=api_calls;
     ++d.frame;sector_background_context(d);check(error==123&&memory.requested.size()==after&&api_calls==apis);
+    // Fog uses every first successful BeginScene value, even without diagnostic
+    // logging or when its cadence suppresses a line. Present is observation only.
+    memory=setup();volumetric_fog_requested=true;++d.frame;const auto old_logs=logs.size();
+    sector_background_context(d,true);check(d.motion_output.samples==1&&d.motion_output.frame==d.frame&&error==123&&logs.size()==old_logs);
+    sector_background_context(d,true);check(d.motion_output.samples==1&&error==123);
+    ++d.frame;sector_background_context(d);check(d.motion_output.samples==1&&error==123);
+    ++d.frame;sector_background_requested=true;sector_background_context(d,true);
+    const auto logged=logs.size();++d.frame;sector_background_context(d,true);
+    check(d.motion_output.samples==3&&d.motion_output.frame==d.frame&&error==123&&logs.size()==logged);
     std::printf("sector_background_context_host checks=%u failures=0\n",checks);
 }

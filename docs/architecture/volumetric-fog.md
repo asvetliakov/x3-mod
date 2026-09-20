@@ -1,6 +1,11 @@
 # Volumetric sun fog and sector haze
 
-Design note, 2026-09-19, ratified. Stage 1 is implemented default off (section "Stage 1 implementation"); run 48 B
+Current direction: the [spatial production contract](#spatial-production-contract-2026-09-20)
+supersedes the homogeneous algorithm and count-based scaling proposals below.
+Source integration is in progress; production runtime and flight appearance are
+not yet qualified. The earlier design and rejected experiments remain as history.
+
+Original design note, 2026-09-19. Stage 1 was implemented default off; run 48 B
 was flown and the user prefers strength 0.02. Card replacement is now ratified
 (section "Card replacement design"); it supersedes the original stacking choice. Stage 0 (offline mock-up on real dumps) is done,
 and was redone the same day on the first real fog-sector frames (run174, Argon Prime: section 2b, which
@@ -8,7 +13,7 @@ and was redone the same day on the first real fog-sector frames (run174, Argon P
 go/no-go input for the user. Tool: `tools/analysis/fog_offline_mock.py`.
 (M) = measured in this session, (D) = documented elsewhere in the repository, (I) = inference.
 
-## Decision
+## Historical stage-1 decision
 
 **Two analytic terms driven by one engine value, with a single half-resolution march that returns only a
 scalar "lit fraction"; composited once at the scene-end hook before TAA.**
@@ -512,7 +517,7 @@ TAA reseeding on mode changes is visually acceptable; native query/state parity;
 stage-2 temporal fixture and record-reader flight qualification remain open.
 
 
-## Sector strength decision after the file census (2026-09-20)
+## Earlier sector strength decision after the census — superseded (2026-09-20)
 
 The [complete census](../reverse-engineering/sector-fog-census.md) supports
 explicit artistic profiles, not an instance-count density formula. The planned
@@ -691,3 +696,113 @@ helper `tools/analysis/fog_patchy_appearance.py` in that isolated checkout.
 Host run 12.05 seconds; JSON, finite-value, syntax and independent factual/
 visual checks pass. No game/Wine/build/install was used. Lighting, TAA motion,
 shader budget, runtime cost, Reset and native execution remain unqualified.
+
+
+## Spatial production contract (2026-09-20)
+
+The parent ratified replacement of the rejected analytic medium with a fixed
+world-space density field. The existing scene-end owner, camera/depth producers,
+card mask bracket and TAA order remain the integration points. There is no old
+uniform underlayer and no automatic uniform fallback. This is an artistic field
+selected by validated engine family, not a recovered native three-dimensional
+cloud map. The [verification ledger](../verification/volumetric-fog.md) separates
+prototype, asset, production and eventual flight evidence.
+
+**Recipe and control.** Period 32768, 128³ samples, 12000-unit horizon and 24 fixed
+midpoint steps. The two qualified profiles use occupancy 0.12 / sigma 2.5e-6 for
+bluewell and occupancy 0.24 / sigma 6.25e-6 for foggreenoutlands. Noise, cavities
+and voxel colour are baked deterministically by `tools/build/bake_fog_fields.py`.
+The selected numeric strength S remains 0..0.1, with 0.02 meaning unity:
+`sigma_effective = family_sigma * (S / 0.02)`. It changes density, not occupancy
+or horizon. Thus the old 0.01/0.05 homogeneous anchors are superseded. F9 disables;
+F10 keeps the existing strength ladder. Non-unity settings are tuning options,
+not separately accepted appearance. FogNear/FogFar, body size and card count add
+no density multiplier; the engine's separate distance fade remains intact.
+
+**Authority and fallback.** One copied engine record from the first successful
+BeginScene governs the current frame independently of diagnostic logging.
+Ready, valid positive-dust bluewell/green records select those profiles; D=0 is
+clear. Unknown positive families, unreadable/mismatched records and absent
+current-frame authority preserve native cards and run no replacement field.
+The other nine families remain uncalibrated. Present's diagnostic fallback never
+authorizes next-frame suppression. `--volumetric-fog-everywhere` remains explicit
+debug forcing of bluewell when a valid view lacks a known family; normal mode
+never invents a profile. A sector identity change disarms replacement and requires a new matching
+warmup even when the same family atlas can be reused.
+
+**Storage and preparation.** Two sparse RCDATA resources contain the exact
+qualified fields (6,769,480 bytes including headers). There is one active 17.02
+MiB decoded CPU atlas and one DEFAULT GPU atlas, plus half-resolution FP16 ST
+and full-resolution FP16 scratch. Total GPU storage is about 26.40 MiB at
+1280×768 or 36.80 MiB at 1920×1080, excluding driver copies/alignment. Preparation
+may additionally use a transient SYSTEMMEM upload. Decode/validate/upload occurs
+at the HDR owner latch before suppression, never in draw or execute. A changed
+family cannot use the previous family's readiness. Reset releases DEFAULT
+resources and lazily reuploads retained CPU data; option off allocates none.
+First-use, switch and Reset preparation times are separate performance gates.
+
+**Coordinates and light.** Camera position and rays use a checked inverse of the
+existing camera rotation, world phase modulo 32768 and the existing projection/
+jitter correction exactly once. Only the current qualified RGBA32F depth lane's
+linear .b is admitted, including producer failure/publication checks. Invalid
+geometry depth gives identity; sky uses the horizon. The spatial pass integrates
+both scattering S and transmission T, preserves exact empty-pixel identity and
+source alpha, and uses class-compatible upsampling with full-pixel edge repair.
+Tracked sun radiance, anisotropy and HDR decode controls remain supported; the
+qualified baseline is E=pi, g=0.3, gamma=2.2. This first spatial pass is unshadowed;
+it does not claim volumetric shafts.
+
+**Scene and failure contract.** Production uses the supplied native public D3D9
+entries. For an open caller scene, state is captured, native EndScene permits
+StretchRect, and native BeginScene reopens before fog draws and restoration.
+A failed reopen permits one ordinary-error recovery attempt, no draws, and no
+retry on loss. Unknown scene or failed restoration poisons the route and prevents
+subsequent injected resolve/writeback. Closed scenes keep the corresponding
+copy/Begin/draw/End sequence. Every stream's buffer, offset, stride and frequency
+is explicitly restored alongside other state. Scene pixels are not rollback
+protected after a composite write starts.
+
+**Cards and history.** Replacement requires current profile/generation,
+prepared targets, camera/depth/owner/idle admission and a successful matching
+warmup. The existing single stacked warmup frame remains explicit; keep mode is
+an intentional diagnostic comparison. After suppression, refusal/failure latches
+medium and replacement off until Reset; this can lose both layers for one frame
+and cannot restore already suppressed cards. Native draw count/HRESULT remains
+unchanged. Sector/profile, strength/mode, cut and Reset transitions invalidate
+TAA once; there is no separate fog history. Finite fog translation against sky
+rotation-only history remains a production-sequence and flight quality gate.
+
+Production source reviews and cross-compilation do not substitute for the actual
+pass and route fixtures, linked CPU audit, loading/timing measurements or native
+Windows execution. The new scene transaction, supported control extremes,
+invalid-depth behavior, state/recovery and source cleanliness must be tested
+before a candidate. The detached prototype's roughly 1.1 ms timing is not a
+measurement of this production integration.
+
+
+### Space-game comparison and deferred experiments (2026-09-20)
+
+Primary-source research supports separating distant nebula artwork from local
+fly-through volumes. Star Citizen's [3.12 postmortem](https://robertsspaceindustries.com/en/comm-link/transmission/17991-Alpha-312-Postmortem)
+reports its first gas-cloud release in the Persistent Universe and remaining noise/performance
+work. EVE's [rendering update](https://www.eveonline.com/news/view/building-the-future-of-eve)
+describes cubemap nebula backgrounds, so those images are not evidence for a
+local volume renderer. No Man's Sky's [Worlds update](https://www.nomanssky.com/worlds-part-I-update/)
+describes planetary volumetric clouds, without publishing its sampling or
+reprojection implementation. These sources do not establish transferable cost
+or an exact space-cloud TAA algorithm for X3.
+
+Parent decision: finish the current production qualification and first spatial
+flight unchanged. If translated clouds trail, investigate selective fog-aware
+history confidence against the captured baseline; do not globally weaken scene
+TAA. If spatial shape succeeds but colour is flat, evaluate one palette rebake
+with density alpha preserved byte-for-byte. Both are conditional experiments,
+not approved production changes or claims about another game's implementation.
+The current 24 steps span up to 500 units per step against 256-unit voxels;
+this identifies an undersampling risk, not an observed failure. Any added
+ray jitter or reduced sampling waits on temporal evidence.
+
+Detailed primary-source comparisons and implementation limits are retained in
+[/tmp/x3-space-fog-research.md](/tmp/x3-space-fog-research.md). In particular,
+Brown's accessible GDC2015 slides list gas clouds as future work; the session
+abstract alone must not be cited as an implemented cloud algorithm.

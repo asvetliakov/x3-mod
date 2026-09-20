@@ -83,7 +83,7 @@ class FogCardPolicyTests(unittest.TestCase):
 
     def test_actual_motion_output_methods(self):
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
-        names = ('fog_card_transition', 'fault_fog_cards', 'prepare_volumetric_fog_targets', 'complete_volumetric_fog', 'volumetric_fog_begin_frame',
+        names = ('fog_transition_invalidate', 'volumetric_fog_sector_sample', 'fog_card_transition', 'fault_fog_cards', 'prepare_volumetric_fog_targets', 'reconcile_volumetric_fog', 'complete_volumetric_fog', 'volumetric_fog_begin_frame',
                  'prepare_fog_card', 'finish_fog_card', 'volumetric_fog_toggle', 'volumetric_fog_step')
         methods = []
         cpp = (ROOT / 'src/proxy/motion_output.cpp').read_text()

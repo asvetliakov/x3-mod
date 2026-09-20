@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Bind reviewed resident workloads; do not regenerate/copy frozen captures."""
+import argparse
+import json
+from pathlib import Path
+import numpy as np
+from fog_spatial_build import digest,ROOT
+from fog_spatial_run import FRAMES,windows
+FILES=('constants.f32','depth.rgba32f','scene.rgba16f')
+
+def repair_count(depth):
+    geom=(depth[...,0]>=0)&(depth[...,0]<=1)
+    if not np.isfinite(depth).all() or np.any(geom&(depth[...,2]<=0)):raise ValueError('finite positive captured depth required')
+    h,w=geom.shape;y,x=np.mgrid[:h,:w];present=np.zeros((h,w),bool)
+    for dy in (0,1):
+        for dx in (0,1):
+            qx=np.minimum(x//2+dx,(w+1)//2-1);qy=np.minimum(y//2+dy,(h+1)//2-1)
+            present|=(geom==geom[2*qy,2*qx])&((x%2!=0) if dx else True)&((y%2!=0) if dy else True)
+    return int((~present).sum())
+
+def case_text(manifest):
+    lines=[]
+    for c in manifest['cases']:
+        lines.extend([c['name'],c['family'],windows(c['directory']),'1' if c['family']=='bluewell' else '2'])
+        lines.extend(windows(c['expected'][kind]) if c['expected'][kind] else '-' for kind in ('composite','st'))
+    return '\n'.join(lines)+'\n'
+
+def prepare(workload,accepted,output):
+    workload,accepted,output=workload.resolve(),accepted.resolve(),output.resolve()
+    if output.exists():raise ValueError('new preparation directory required')
+    original=json.loads(workload.read_text());report=json.loads(accepted.read_text())
+    if original['checkpoint']!='performance-only' or len(original['cases'])!=8:raise ValueError('qualified timing workload')
+    if not report['passed'] or not report['numerical']['passed'] or len(report['numerical']['cases'])!=32:raise ValueError('accepted production four-view report')
+    hashes=report['numerical']['readback_hashes'];inputs={str(workload):digest(workload),str(accepted):digest(accepted)}
+    build_path=accepted.parent.parent/'build.json';build=json.loads(build_path.read_text())
+    if digest(build_path)!=report['build_sha256']:raise ValueError('accepted build binding')
+    inputs[str(build_path)]=digest(build_path)
+    for rel in ('src/renderer/fog_pass.cpp','src/renderer/fog_pass.h','src/renderer/fog_volume_math.h','src/fog/fog_field_inc.h','src/fog/fog_march_ps.hlsl','src/fog/fog_composite_ps.hlsl','src/renderer/fog_march_program_inc.h','src/renderer/fog_composite_program_inc.h'):
+        matching=[h for path,h in build['inputs'].items() if Path(path).as_posix().endswith('/'+rel)]
+        if len(matching)!=1 or digest(ROOT/rel)!=matching[0]:raise ValueError('qualified production input changed: '+rel)
+        inputs[str(ROOT/rel)]=matching[0]
+    profiles=[dict(name=f'{w}x{h}',width=w,height=h,warm=16,samples=64) for w,h in ((1280,768),(1920,1080))]
+    if [(p['width'],p['height']) for p in original['profiles']]!=[(1280,768),(1920,1080)]:raise ValueError('workload profiles')
+    cases=[]
+    for profile in profiles:
+        for frame,family in FRAMES.items():
+            source=[c for c in original['cases'] if str(c['frame'])==frame and c['profile']==profile['name']]
+            if len(source)!=1:raise ValueError('balanced workload case')
+            source=source[0];directory=Path(source['directory']);w,h=profile['width'],profile['height']
+            if source['family']!=family or (source['width'],source['height'])!=(w,h):raise ValueError('case family/dimensions')
+            for name in FILES:
+                path=directory/name
+                if digest(path)!=source['files'][name]:raise ValueError('frozen workload input changed')
+                inputs[str(path.resolve())]=digest(path)
+            c=np.fromfile(directory/'constants.f32','<f4').reshape(8,4);d=np.fromfile(directory/'depth.rgba32f','<f4').reshape(h,w,4);scene=np.fromfile(directory/'scene.rgba16f','<f2').reshape(h,w,4)
+            sigma=np.float32(2.5e-6 if family=='bluewell' else 6.25e-6)
+            if not np.isfinite(c).all() or not np.isfinite(scene).all() or c[2,3]!=sigma or c[7,0]!=0 or not np.array_equal(c[1],[w,h,(w+1)//2,(h+1)//2]):raise ValueError('unchanged24-step workload constants')
+            repairs=repair_count(d)
+            if repairs!=source['repair_pixels']:raise ValueError('repair count changed')
+            expected={kind:None for kind in ('composite','st')}
+            if w==1280:
+                for kind in expected:
+                    path=accepted.parent/f'{frame}-v1.{kind}.rgba16f'
+                    if digest(path)!=hashes[path.name]:raise ValueError('accepted borrowed-open readback changed')
+                    expected[kind]=str(path.resolve());inputs[str(path.resolve())]=digest(path)
+            cases.append(dict(name=source['name'],frame=frame,family=family,profile=profile['name'],width=w,height=h,directory=str(directory.resolve()),expected=expected,repair_pixels=repairs,repair_fraction=repairs/(w*h),label=source['label']))
+    result=dict(checkpoint='actual-production-whole-transaction-performance',profiles=profiles,cases=cases,inputs=inputs,accepted_report=str(accepted),accepted_report_sha256=digest(accepted),workload_manifest=str(workload),workload_manifest_sha256=digest(workload),borrowed_scene_open=True,quality_acceptance=False,native_windows='unverified')
+    output.mkdir(parents=True);(output/'cases.txt').write_text(case_text(result));result['cases_sha256']=digest(output/'cases.txt')
+    (output/'manifest.json').write_text(json.dumps(result,indent=2)+'\n');return result
+
+def verify_prepared(data):
+    manifest=json.loads((data/'manifest.json').read_text())
+    if manifest['checkpoint']!='actual-production-whole-transaction-performance' or manifest.get('borrowed_scene_open') is not True:raise ValueError('production timing contract')
+    if digest(data/'cases.txt')!=manifest['cases_sha256'] or (data/'cases.txt').read_text()!=case_text(manifest):raise ValueError('changed timing case routing')
+    for path,h in manifest['inputs'].items():
+        if digest(path)!=h:raise ValueError('changed timing dependency: '+path)
+    return manifest
+
+if __name__=='__main__':
+    ap=argparse.ArgumentParser();ap.add_argument('--workload-manifest',type=Path,required=True);ap.add_argument('--accepted-report',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);a=ap.parse_args()
+    result=prepare(a.workload_manifest,a.accepted_report,a.output);print(json.dumps(dict(cases=len(result['cases']),manifest=str(a.output/'manifest.json'),sha256=digest(a.output/'manifest.json'))))

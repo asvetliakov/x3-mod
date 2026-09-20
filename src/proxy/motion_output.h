@@ -35,6 +35,7 @@
 #include "../renderer/ambient_occlusion_pass.h"
 #include "../renderer/fog_pass.h"
 #include "fog_card_policy.h"
+#include "fog_sector_policy.h"
 #include "fog_card_mask.h"
 #include "fog_card_match.h"
 #include "../renderer/hdr_pass.h"
@@ -886,9 +887,9 @@ public:
         ao_requested_ = requested; ao_radius_metres_ = radius_metres; ao_strength_ = strength; ao_debug_ = debug; ao_timing_ = timing || debug;
     }
     // Volumetric sun fog (X3M_VOLUMETRIC_FOG=1; docs/architecture/volumetric-fog.md,
-    // "Stage 1 implementation"): the FogPass at the scene end, after the sun
-    // apply and AO, before the resolve. `strength` is tau_max, `anisotropy` the
-    // Henyey-Greenstein g; `everywhere` forces the sector rule on; `timing`
+    // spatial family implementation): after sun apply and AO, before resolve.
+    // `strength` is density tuning S/.02; `anisotropy` is Henyey-Greenstein g;
+    // `everywhere` explicitly forces debug bluewell for unknown families; `timing`
     // logs one volumetric_fog_frame line per frame. Off: one branch per scene end
     // and one hash compare per pixel-shader bind are skipped entirely.
     void configure_volumetric_fog(bool requested, float strength, float anisotropy, bool everywhere, bool timing, bool replace_cards = false) noexcept {
@@ -897,12 +898,13 @@ public:
     // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength through
     // renderer::fog_strength_steps (comparison-hotkeys.md). One
     // volumetric_fog_toggle / volumetric_fog_strength line per press. -1: option off.
+    void volumetric_fog_sector_sample(std::uint64_t frame, const sector_background::Sample&) noexcept;
     void volumetric_fog_begin_frame() noexcept; // after comparison hotkeys
     int volumetric_fog_toggle() noexcept;
     int volumetric_fog_step() noexcept;
-    // FPS overlay second line: -1 option off, else (enabled, strength in 1/1000, medium weight > 0).
+    // FPS overlay second line: -1 option off, else (enabled, strength in 1/1000, current active family).
     int volumetric_fog_overlay_state() const noexcept {
-        return !fog_requested_ ? -1 : int(fog_enabled_) | int(fog_latch_.weight() > 0.f) << 1 | int(fog_strength_ * 1000.f + .5f) << 2;
+        return !fog_requested_ ? -1 : int(fog_enabled_) | int(fog_sector_.current(frame_) && !fog_cards_.fault) << 1 | int(fog_strength_ * 1000.f + .5f) << 2;
     }
     float volumetric_fog_strength() const noexcept { return fog_strength_; }
     // Ctrl+Shift+F11 (comparison-hotkeys.md): flips the per-frame enable of
@@ -2040,11 +2042,12 @@ private:
     // of timestamp queries (TIMESTAMPDISJOINT / TIMESTAMPFREQ / two TIMESTAMP)
     // polled without blocking one frame later. Every device object is created
     // and released under taa_call (the same reference accounting as the resolve).
-    // Volumetric sun fog (fog_pass.h). The latch is the automatic sector rule
-    // (nebulafog card binds); a target-allocation or attach failure disables the
-    // pass for the session with one line (fog_disabled_).
+    // Spatial family fog. Copied current-frame engine values select a profile;
+    // the native-card source latch is observational. Reset clears readiness and
+    // replacement fault; no engine pointers survive as dereferenceable state.
     std::unique_ptr<renderer::FogPass> fog_;
-    renderer::FogSectorLatch fog_latch_{};
+    renderer::FogSectorLatch fog_latch_{}; // observational only
+    FogSectorFrame fog_sector_{};
     bool fog_requested_ = false, fog_enabled_ = true, fog_everywhere_ = false, fog_timing_ = false, fog_disabled_ = false, fog_attach_failed_ = false, fog_sun_fallback_logged_ = false;
     float fog_strength_ = renderer::fog_strength_default, fog_anisotropy_ = renderer::fog_anisotropy_default;
     unsigned fog_failures_ = 0, fog_logs_ = 0;
@@ -2053,15 +2056,18 @@ private:
     bool fog_cards_replace_ = false, fog_card_ready_checked_ = false, fog_card_ready_ = false;
     FogCardPolicy fog_cards_{};
     unsigned fog_card_mode_ = 0, fog_card_logs_ = 0;
-    std::uint64_t fog_card_last_report_ = ~std::uint64_t(0);
+    std::uint64_t fog_card_logged_frame_ = 0, fog_transition_frame_ = ~std::uint64_t(0), fog_card_last_report_ = ~std::uint64_t(0), fog_card_observed_total_ = 0, fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0;
     const char* fog_card_fault_reason_ = "none";
+    void fog_transition_invalidate() noexcept;
     void fog_card_transition(unsigned mode) noexcept;
     void fault_fog_cards(const char* reason) noexcept;
     void prepare_fog_card(const MotionDrawCall&, MotionRoute&) noexcept;
     void finish_fog_card(MotionRoute&, HRESULT) noexcept;
     const char* fog_frame_prerequisite() const noexcept;
     const char* fog_frame_parameters(renderer::FogFrame&, float weight, bool& sun_tracked) noexcept;
+    bool attach_volumetric_fog() noexcept;
     void prepare_volumetric_fog_targets(UINT width, UINT height) noexcept;
+    void reconcile_volumetric_fog(const renderer::FogFrame&, const renderer::FogResult&, HRESULT) noexcept;
     void complete_volumetric_fog(const char* skip, HRESULT result, const renderer::FogResult& out) noexcept;
     void run_volumetric_fog() noexcept;
     void disable_volumetric_fog(const char* why, HRESULT result) noexcept;

@@ -499,3 +499,54 @@ times were 22.52/18.12 ms; these exclude Win32 resource lookup, GPU upload, Wine
 and first-use paging, so they are not a game loading bound. Actual resource
 execution, renderer integration, loading/Reset cost and flight appearance remain
 pending. This checkpoint does not activate spatial fog.
+
+
+### Spatial production renderer qualification (2026-09-20)
+
+The actual production FogPass now runs against embedded field resources and
+public D3D9 in the detached X3 fixture. Independent review clears 113 state and
+recovery checks, four-view numerical testing (72 checks, 32 variants, 64
+readbacks), and the captured 32-frame sequence (576 checks, 256 variants, 512
+readbacks). The sequence uses reduced 120x72 views, not a full-resolution flight.
+The state witness covers borrowed/open and closed scenes, CPU preservation,
+explicit stream restoration, failure injection and a real Reset blocker/retry.
+Injected device-loss results do not establish naturally occurring device loss.
+
+Both profiles pass the fixed complete-transaction timing gates, with 16 warmup
+and 64 balanced measurements per resolution. At 1280x768 the CPU median is
+0.1323 ms and EVENT-completed median/p95 are 1.0840/1.1731 ms. At 1920x1080 they
+are 0.1332 ms and 1.9808/2.0934 ms; the median has only 0.0192 ms margin to its
+2 ms gate. All 28 correctness checks and baseline/final pixels pass. These are
+whole-transaction wall times including completion polling, not GPU timestamps
+or game FPS. The 1920x1080 workload uses nearest-resized captured inputs,
+not native 1080p captures. The [compact production record](../../verification/results/fog-spatial-production-2026-09-20.json)
+binds each executable, report, command and bottle environment.
+
+The streaming checksum decoder, independently cleared by `review_fog_decode`,
+preserves exact atlas output while
+removing its second full-buffer scan. Host median decode time falls from
+18.917/18.166 ms to 3.321/4.345 ms across 20 fresh-process samples per profile.
+The optimized actual-pass rerun passes all 113 state checks. Its single first
+resource-decode/upload observation is 18.3519 ms versus the earlier 53.2362 ms;
+these separate-run observations are not a statistical loading benchmark.
+
+The [production fog-through-TAA replay](../../verification/results/fog-temporal-replay/report.md)
+was independently cleared by `review_fog_temporal` and uses the existing
+resolve and captured translation/motion/depth/jitter. All
+210,672 reduced crop samples remain finite. Incremental fog change has mean
+0.1184 and p99 1.2041 display-relative luma codes. This is a derived numerical
+witness, not a quality pass: the captured scene already contains fog, and reduced
+sampling cannot establish trailing banks, thin foreground or disocclusion quality.
+A translated in-game post-fog TAA/current comparison remains necessary.
+
+The separate production-fragment/card bridge passes 152 checks in 8.612 s,
+independently cleared by `review_lattice_gpu`. It exercises real native card
+calls and FogPass against synthetic owner/sector/camera/shader-identity inputs.
+Five refusal cases preserve final pixels with no fog transaction; actual scene
+reopen failure reaches proxy poisoning, survives F9 and recovers through Reset
+rewarm. This does not exercise engine hooks, selector/full dispatch or GPU TAA
+history; real native Reset is covered by the separate 113-check state witness.
+The full host suite passes 2,414 tests in 694.921 s; the bridge checker adds
+three focused passes after its module was integrated following discovery. A clean
+committed candidate build remains required before installation.
+Native Windows runtime and user visual acceptance remain open.

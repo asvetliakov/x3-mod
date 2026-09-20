@@ -26,6 +26,14 @@ std::uint32_t get32(const std::vector<std::uint8_t>& p, std::size_t at) {
     return std::uint32_t(p[at]) | std::uint32_t(p[at+1])<<8 |
            std::uint32_t(p[at+2])<<16 | std::uint32_t(p[at+3])<<24;
 }
+std::uint64_t full_checksum(const std::vector<std::uint16_t>& words) {
+    std::uint64_t hash=14695981039346656037ull;
+    for(const auto word:words){
+        hash=(hash^std::uint8_t(word))*1099511628211ull;
+        hash=(hash^std::uint8_t(word>>8))*1099511628211ull;
+    }
+    return hash;
+}
 void require(bool value, const char* message) { if (!value) throw std::runtime_error(message); }
 using namespace x3m::renderer::fog_field;
 void expect(Status status, const std::vector<std::uint8_t>& packet, const ProfileInfo& info,
@@ -69,8 +77,11 @@ int main(int argc,char** argv) try {
         const auto ok=decode_packet(packet.data(),packet.size(),*info,output);
         const auto decode_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-decode_begin).count();
         require(ok&&ok.decoded_bytes==info->decoded_bytes&&output.size()*2==info->decoded_bytes,"decode exact");
-        std::printf("LOAD profile=%u packet_bytes=%zu decoded_bytes=%u read_ms=%.6f decode_ms=%.6f host_only=1\n",
-                    which+1,packet.size(),info->decoded_bytes,read_ms,decode_ms);
+        const auto independent_hash=full_checksum(output);
+        require(independent_hash==info->decoded_fnv1a,"independent full scan");
+        std::printf("LOAD profile=%u packet_bytes=%zu decoded_bytes=%u decoded_fnv1a=%016llx read_ms=%.6f decode_ms=%.6f host_only=1\n",
+                    which+1,packet.size(),info->decoded_bytes,
+                    static_cast<unsigned long long>(independent_hash),read_ms,decode_ms);
         auto bad=packet;bad.pop_back();expect(Status::Truncated,bad,*info,"truncation");
         bad=packet;put32(bad,8,2);expect(Status::WrongVersion,bad,*info,"version");
         bad=packet;put32(bad,24,1559);expect(Status::MetadataMismatch,bad,*info,"dimensions");
@@ -91,5 +102,5 @@ int main(int argc,char** argv) try {
     std::vector<std::uint16_t> output(1,1);
     require(decode_from_resource(reinterpret_cast<void*>(1),Profile::Bluewell,output).status==Status::ResourceLoadFailed&&output.empty(),"host resource boundary");
     require(profile_info(Profile::None)==nullptr,"none profile");
-    std::puts("PASS fog_field_assets decoder=2 corruptions_per_profile=11 allocation=1 atomic=1");return 0;
+    std::puts("PASS fog_field_assets decoder=2 corruptions_per_profile=11 allocation=1 atomic=1 independent_fullscan=2");return 0;
 } catch(const std::exception& e) { std::fprintf(stderr,"FAIL %s\n",e.what());return 1; }

@@ -116,7 +116,7 @@ def accept(report, cards_only=False):
     assert len(report['timing_quads']) == 3 and report['reset'], (report['timing_quads'], report['reset'])
 
 
-def main():
+def _historical_main_disabled():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cards-only', action='store_true', help='Only card-mask D3D writes/state and fog readiness/Reset; no benchmark')
     args = parser.parse_args()
@@ -156,6 +156,13 @@ def main():
             summary['timing_quads'] = report['timing_quads']
         print(json.dumps(summary, indent=1))
     return 0 if record['passed'] else 1
+
+
+def main():
+    print('The analytic fog fixture is historical and superseded. No build or Wine run was started. '
+          'Use verification/probe/fog_spatial_build.py and fog_spatial_run.py; '
+          'see verification/probe/fog_spatial_fixture.md.', file=sys.stderr)
+    return 2
 
 
 if __name__ == '__main__':

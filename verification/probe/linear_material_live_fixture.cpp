@@ -15,6 +15,7 @@
 #include "../../src/proxy/fog_card_mask.h"
 #include "../../src/proxy/fog_card_match.h"
 #include "../../src/proxy/fog_card_policy.h"
+#include "../../src/proxy/fog_sector_policy.h"
 using x3m::fog_card_pair;
 using D3DFORMAT=unsigned;constexpr unsigned D3DFMT_UNKNOWN=0;
 using DWORD=std::uint32_t; using UINT=unsigned; using HRESULT=int;
@@ -471,6 +472,7 @@ public:
  std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
  // Other features stay inert; card routing itself is qualified by test_fog_cards.
  bool fog_cards_replace_=false,fog_card_ready_checked_=false,fog_card_ready_=false;
+ x3m::FogSectorFrame fog_sector_{};
  x3m::FogCardPolicy fog_cards_{};const char*fog_card_fault_reason_="none";
  void prepare_fog_card(const MotionDrawCall&,MotionRoute&)noexcept{CHECK(false);}
  std::unique_ptr<Pass>fog_;renderer::FogSectorLatch fog_latch_{};bool fog_requested_=false,fog_attach_failed_=false;unsigned fog_failures_=0;std::uint64_t fog_frame_=~std::uint64_t(0);
@@ -556,7 +558,7 @@ DWORD GetEnvironmentVariableW(const wchar_t*name,wchar_t*out,DWORD size){
 // shader_constant_register.h): stand-ins, the counter is off in this fixture.
 namespace shadow_replay {constexpr unsigned sun_register_limit=32;constexpr const char*depth_sun_constant_name="LightDir_Dir0";}
 namespace renderer {inline int shader_float_constant_register(const std::uint32_t*,std::size_t,const char*)noexcept{return -1;}inline bool pixel_program_writes_depth(const std::uint32_t*,std::size_t)noexcept{return false;}} // the stamp's verdict is outside this snippet
-namespace x3m {namespace renderer=::renderer;namespace fade_route=::fade_route;namespace shadow_replay=::shadow_replay;}
+namespace x3m {namespace renderer {using namespace ::renderer;}namespace fade_route=::fade_route;namespace shadow_replay=::shadow_replay;}
 unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emission_timing_requested=false;
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
 float emission_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN, parsed by the same extracted setting reader
@@ -1292,10 +1294,19 @@ void fog_card_shadow_reset_cases(){
  d.bound_vs=&vs;d.bound_ps=&ps;m.stateblock_applied();
  CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source);
  for(unsigned i:{29u,30u,31u})CHECK(m.shadow_.states_known[i]);
+ // Reset discards copied current-frame authority before the native result
+ // is known. Neither failed nor successful Reset may revive that sample.
+ x3m::sector_background::Sample sector;sector.status=x3m::sector_background::Status::Ready;
+ sector.row_valid=sector.name_valid=true;sector.dust=8;sector.sector=0x1000;std::strcpy(sector.family,"bluewell");
+ m.fog_sector_=x3m::fog_sector_frame(sector,m.frame_,m.generation_,.02f,true,false);
+ m.fog_sector_.field_generation=9;CHECK(m.fog_sector_.current(m.frame_));
  m.fog_cards_.fault=true;m.fog_cards_.armed=true;m.fog_card_ready_checked_=m.fog_card_ready_=true;m.fog_card_fault_reason_="injected";
  m.before_reset();
  CHECK(!m.fog_cards_.fault&&!m.fog_cards_.armed&&!m.fog_card_ready_checked_&&!m.fog_card_ready_&&std::strcmp(m.fog_card_fault_reason_,"none")==0);
+ CHECK(!m.fog_sector_.current(m.frame_)&&!m.fog_sector_.profile&&!m.fog_sector_.field_generation);
+ m.after_reset(E_FAIL);CHECK(!m.fog_sector_.current(m.frame_));
  m.after_reset(S_OK);CHECK(m.shadow_.fog_card_pair&&m.shadow_.fog_card_source);
+ CHECK(!m.fog_sector_.current(m.frame_));
  // Production auto mode: stateblocks refresh identity and discard state;
  // current-draw readers (exercised by the card seam) fill it only on demand.
  m.state_hooks_=false;m.stateblock_applied();

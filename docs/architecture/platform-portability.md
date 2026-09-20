@@ -462,3 +462,23 @@ actual-helper fixture passed 250 checks against synthetic public COM endpoints
 The clean integration DLL passes the linked no-x87 audit (95 roots / 539
 reachable functions / zero violations). Native Windows runtime and live-game
 observation remain unverified.
+
+## 2026-09-20: spatial fog production integration
+
+The spatial field uses the same documented D3D9 pass on Windows and CrossOver:
+FP16 atlas filtering/targets, RGBA32F current linear-depth input, public native
+vtable entries, state blocks plus explicit stream restoration, and legal
+out-of-scene RT copying. The borrowed-open-scene transaction reconciles scene
+state and poisons downstream injected writes after unrecovered scene-state loss
+or failed state restoration. The validated engine-record reader selects only
+the two qualified families; unknown
+or unavailable authority retains native cards rather than inventing a volume.
+No backend-private API/layout is a prerequisite.
+
+Fields are regenerated with pinned NumPy at build time and embedded as RCDATA;
+runtime loading uses documented Windows resource APIs. Asset host decoding,
+resource cross-compilation and the integrated DLL build pass. The linked CPU
+audit passes 95 roots / 540 reachable functions / zero violations. Actual
+production GPU, resource-loading, recovery and timing qualification remains
+pending, as do game TAA/appearance and native Windows execution. The detached
+prototype's CrossOver results are not native Windows or production runtime proof.

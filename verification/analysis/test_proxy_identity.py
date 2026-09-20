@@ -316,7 +316,8 @@ class CMakeCommitFragment(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             configure = subprocess.run(
                 ['cmake', '-S', str(ROOT), '-B', directory,
-                 f'-DCMAKE_TOOLCHAIN_FILE={ROOT / "cmake/mingw-i686.cmake"}', '-DCMAKE_BUILD_TYPE=RelWithDebInfo'],
+                 f'-DCMAKE_TOOLCHAIN_FILE={ROOT / "cmake/mingw-i686.cmake"}', '-DCMAKE_BUILD_TYPE=RelWithDebInfo',
+                 f'-DPython3_EXECUTABLE={sys.executable}'],
                 capture_output=True, text=True)
             self.assertEqual(configure.returncode, 0, configure.stderr[-2000:])
             header = Path(directory) / 'generated/x3m_source_commit_inc.h'

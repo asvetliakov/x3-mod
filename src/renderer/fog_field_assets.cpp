@@ -47,11 +47,12 @@ std::int32_t status_hresult(Status status) noexcept {
 Result fail(Status status, std::vector<std::uint16_t>& output, std::int32_t hr = 0) noexcept {
     output.clear(); return {status, hr ? hr : status_hresult(status), 0};
 }
-std::uint64_t checksum(const std::vector<std::uint16_t>& words) noexcept {
-    std::uint64_t hash = fnv_offset;
-    for (const auto word : words) {
-        hash = ((hash ^ std::uint8_t(word)) * fnv_prime);
-        hash = ((hash ^ std::uint8_t(word >> 8)) * fnv_prime);
+std::uint64_t append_zeros(std::uint64_t hash, std::size_t count) noexcept {
+    auto factor = fnv_prime;
+    while (count) {
+        if (count & 1u) hash *= factor;
+        factor *= factor;
+        count >>= 1;
     }
     return hash;
 }
@@ -95,6 +96,7 @@ Result decode_packet(const std::uint8_t* packet, std::size_t size,
         return fail(Status::AllocationFailed, output);
     }
     std::size_t cursor = header_size, texel_index = 0;
+    std::uint64_t hash = fnv_offset;
     const std::size_t total_texels = expected.decoded_bytes / expected.texel_bytes;
     for (std::uint32_t run = 0; run < run_count; ++run) {
         if (size - cursor < 4) return fail(Status::Truncated, output);
@@ -105,18 +107,22 @@ Result decode_packet(const std::uint8_t* packet, std::size_t size,
         if (literal) {
             if (count > (size - cursor) / expected.texel_bytes) return fail(Status::Truncated, output);
             for (std::size_t i = 0; i < count * 4; ++i) {
-                const auto word = std::uint16_t(packet[cursor + 2*i]) |
-                                  (std::uint16_t(packet[cursor + 2*i + 1]) << 8);
+                const auto low = packet[cursor + 2*i], high = packet[cursor + 2*i + 1];
+                const auto word = std::uint16_t(low) | (std::uint16_t(high) << 8);
                 if (!valid_half(word)) return fail(Status::InvalidHalf, output);
                 output[texel_index*4 + i] = word;
+                hash = (hash ^ low) * fnv_prime;
+                hash = (hash ^ high) * fnv_prime;
             }
             cursor += count * expected.texel_bytes;
+        } else {
+            hash = append_zeros(hash, count * expected.texel_bytes);
         }
         texel_index += count;
     }
     if (texel_index != total_texels) return fail(Status::Truncated, output);
     if (cursor != size) return fail(Status::TrailingBytes, output);
-    if (checksum(output) != expected.decoded_fnv1a) return fail(Status::ChecksumMismatch, output);
+    if (hash != expected.decoded_fnv1a) return fail(Status::ChecksumMismatch, output);
     return {Status::Ok, 0, expected.decoded_bytes};
 }
 

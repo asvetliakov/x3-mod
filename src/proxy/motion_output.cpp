@@ -1787,6 +1787,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();} // F12 off: the quad is skipped whole
     if (bloom && ao_requested_ && !counters_.ao.attempted) { counters_.ao.source = "copy"; run_ambient_occlusion(); }
     if (bloom && fog_requested_) run_volumetric_fog(); // once per frame (fog_frame_), as at the hook
+    if (motion_state_lost_ || composition_state_lost_) return;
     if (hdr_state_ != HdrState::Off) {
         if (bloom) { resolve_hdr(SceneEndSource::StretchRect); end_redirect(HdrEnd::BloomCopy); }
         else if (hdr_is_main(destination)) end_redirect(HdrEnd::ContentWrite);
@@ -1874,6 +1875,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     // Volumetric sun fog: on top of the shadowed, occluded scene (the game's fog
     // cards are its last draws), before the resolve accumulates the jittered march.
     if (fog_requested_) run_volumetric_fog();
+    if (motion_state_lost_ || composition_state_lost_) return;
     // The FP16 scene ends here. Stage 3 order (section 4 of the HDR design):
     // the resolve on the FP16 target while it is RT0, then the write-back of
     // the resolved image (meter, tonemap) and the rebind of the main target
@@ -2983,7 +2985,7 @@ void MotionOutput::before_reset() noexcept {
     candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed and stays
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
     if (fog_) taa_call([&] { fog_->before_reset(); });
-    fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none";
+    fog_sector_ = {}; fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none";
     fog_failures_ = 0; fog_attach_failed_ = false; // a transient failure or attach refusal is retried after Reset
     sun_apply_attach_failed_ = false; // a transient attach failure is retried after Reset
     ao_attach_failed_ = false; ao_target_format_ = D3DFMT_UNKNOWN; // a transient attach failure is retried after Reset
@@ -5994,7 +5996,7 @@ void MotionOutput::begin_redirect() noexcept {
     hdr_target_ = describe_surface(hdr_->target());
     hdr_state_ = HdrState::Active; hdr_dirty_ = true; hdr_latch_pending_ = true;
     h.redirected = true;
-    if (fog_cards_replace_) prepare_volumetric_fog_targets(pending_.rt.width, pending_.rt.height);
+    if (fog_requested_) prepare_volumetric_fog_targets(pending_.rt.width, pending_.rt.height);
     probe_cutout_caps(); // a transient verdict retries at this boundary, never a draw
     // Stage 2: consume the previous frame's meter and adapt the EV this
     // frame's tonemap consumes (a no-op with the identity write-back).

@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "scope": "Actual production spatial FogPass detached CrossOver fixtures; not game visual acceptance",
+  "runs": {
+    "state_original": {
+      "report_path": "/tmp/x3-fog-renderer-production/build/fog-production-r2/state-bound/report.json",
+      "report_sha256": "726c22d8cd4ee325706dd73cdcedcb7a6172c65d54ae6a3ac56032123c98af2b",
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "build/fog-production-r2/fog_spatial_fixture.exe",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r2\\state-bound\\cases.txt",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r2\\state-bound",
+          "--state"
+        ],
+        "returncode": 0,
+        "seconds": 8.925105499999999,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "executable_sha256": "702170951f1f34fcc9a9c60455e6ca73f8d3775a8bc3513c578b13506dfbc98d",
+        "inputs_sha256": "7bae653c13254e9c51e9921ddc6964f90ae04f8c24ae7f452443a9b7a652e786",
+        "cases_sha256": "ee2afbc118a3acb27e82277ecb4f3fac46c5da31cac30b490f1f502866663985",
+        "build_sha256": "6086689602baa08b6bcac1c09e623741cafca98c23d59ba6fdf2bb021ef5a0c0"
+      },
+      "scope": "actual production pass: open/closed scene, hostile state, field/cache, real Reset blocker/retry and injected HRESULT loss; native loss not observed",
+      "checks": 113
+    },
+    "numeric": {
+      "report_path": "/tmp/x3-fog-renderer-production/build/fog-production-r2/numeric-bound/report.json",
+      "report_sha256": "dc54b1469e2ff29380318f45586ad62536f6e0488fef4294cabd80c431b2e9d5",
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "build/fog-production-r2/fog_spatial_fixture.exe",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r2\\numeric-bound\\cases.txt",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r2\\numeric-bound"
+        ],
+        "returncode": 0,
+        "seconds": 8.758071916,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "executable_sha256": "702170951f1f34fcc9a9c60455e6ca73f8d3775a8bc3513c578b13506dfbc98d",
+        "inputs_sha256": "7bae653c13254e9c51e9921ddc6964f90ae04f8c24ae7f452443a9b7a652e786",
+        "cases_sha256": "ee2afbc118a3acb27e82277ecb4f3fac46c5da31cac30b490f1f502866663985",
+        "build_sha256": "6086689602baa08b6bcac1c09e623741cafca98c23d59ba6fdf2bb021ef5a0c0"
+      },
+      "scope": null,
+      "checks": 72
+    },
+    "sequence": {
+      "report_path": "/tmp/x3-fog-renderer-production/build/fog-production-r2/sequence-bound/report.json",
+      "report_sha256": "d919e3ee7c9070b55489822c463402320fff7dcdc402a41848fea6e3efffb147",
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "build/fog-production-r2/fog_spatial_fixture.exe",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r2\\sequence-bound\\cases.txt",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r2\\sequence-bound"
+        ],
+        "returncode": 0,
+        "seconds": 8.76020925,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "executable_sha256": "702170951f1f34fcc9a9c60455e6ca73f8d3775a8bc3513c578b13506dfbc98d",
+        "inputs_sha256": "3e6bf1ab7513881d149f8fe95d17478fe7d353344c86be5f02979633d961919a",
+        "cases_sha256": "e63d821cdf102eda275104eeb708a26eb7bcb81d7571cf26532fa0d2595e0358",
+        "build_sha256": "6086689602baa08b6bcac1c09e623741cafca98c23d59ba6fdf2bb021ef5a0c0"
+      },
+      "scope": null,
+      "checks": 576
+    },
+    "state_optimized_decoder": {
+      "report_path": "/tmp/x3-fog-renderer-production/build/fog-production-r3/state-bound/report.json",
+      "report_sha256": "260bfa913b6da82493852b79589e84efec26e75db35b4d12d07a64c152611d87",
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "build/fog-production-r3/fog_spatial_fixture.exe",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r3\\state-bound\\cases.txt",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r3\\state-bound",
+          "--state"
+        ],
+        "returncode": 0,
+        "seconds": 11.728108916,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "executable_sha256": "9dc826a9b820bfba454385d747d0b427f5c11a9fc5cc812427eb0e2408b32426",
+        "inputs_sha256": "20389f4676509bc237c41719a6e3d55cc20e46de7cc6f12d1a3dfe6aaecd7664",
+        "cases_sha256": "ee2afbc118a3acb27e82277ecb4f3fac46c5da31cac30b490f1f502866663985",
+        "build_sha256": "5e938d1613a3b06eb46b9748297ae659f918118bd87219506d99d76355b670c0"
+      },
+      "scope": "actual production pass: open/closed scene, hostile state, field/cache, real Reset blocker/retry and injected HRESULT loss; native loss not observed",
+      "checks": 113
+    },
+    "timing": {
+      "report_path": "/tmp/x3-fog-renderer-production/build/fog-production-timing-r1/readback/report.json",
+      "report_sha256": "061745c5e966f2c2880cdda4d482f04d034475a4bc0e91bc33a00956e6b35689",
+      "execution": {
+        "executable_sha256": "f2fa6d230f6abc1a502d54ea2df638413e705f9ec7e34b3984785c78d982f6f2",
+        "build_sha256": "447c2127f5aea943ddbc1673815c151b9f4fd449b2a6a2bcd4722f48262a68e2",
+        "manifest_sha256": "6d6aab7859cda4a362b92c8c33fe29be1d5a8a303774da13d60e9c725c87288e",
+        "cases_sha256": "9c704c4965436784c06b43dd0c7e8d833007542da16830e306daf764dc1ca200",
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "/private/tmp/x3-fog-renderer-production/build/fog-production-timing-r1/fog_spatial_timing.exe",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-timing-source\\data\\cases.txt",
+          "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-timing-r1\\readback"
+        ],
+        "returncode": 0,
+        "seconds": 5.279767959,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "runner_sources": {
+          "/private/tmp/x3-fog-renderer-production/verification/probe/fog_spatial_timing_run.py": "bf35882dc6e9ddb2b98947d7005640a9f5e9b048cb0d25092ce1513e3f4459e3",
+          "/private/tmp/x3-fog-renderer-production/verification/probe/fog_spatial_timing_prepare.py": "9bcd89f3fe4069c5244441572b0f3812bb62b4d0ad392a35702b9cc25c91b665",
+          "/private/tmp/x3-fog-renderer-production/verification/probe/fog_spatial_timing_build.py": "4c5e375d5c76b2f4be7ddad487f4a9dfc579b92a4f0234996fa281b59cc5ef0f"
+        }
+      },
+      "scope": "EVENT-completed whole-transaction wall time, including polling; CPU submit is wall time. No game FPS or GPU timestamp claim.",
+      "profiles": [
+        {
+          "profile": "1280x768",
+          "passed": true,
+          "gates": {
+            "cpu_submit_median_ms": 0.25,
+            "event_fenced_median_ms": 1.25,
+            "event_fenced_p95_ms": null
+          },
+          "count": 64,
+          "cpu_submit_ms": {
+            "median": 0.1323,
+            "p95": 0.16741,
+            "min": 0.115,
+            "max": 0.2418
+          },
+          "event_fenced_ms": {
+            "median": 1.084,
+            "p95": 1.1730849999999997,
+            "min": 1.0652,
+            "max": 1.2083
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 0.9532,
+            "p95": 0.97378,
+            "min": 0.941,
+            "max": 1.074
+          }
+        },
+        {
+          "profile": "1920x1080",
+          "passed": true,
+          "gates": {
+            "cpu_submit_median_ms": 0.25,
+            "event_fenced_median_ms": 2.0,
+            "event_fenced_p95_ms": 2.5
+          },
+          "count": 64,
+          "cpu_submit_ms": {
+            "median": 0.1332,
+            "p95": 0.23618999999999996,
+            "min": 0.1186,
+            "max": 0.4595
+          },
+          "event_fenced_ms": {
+            "median": 1.9808,
+            "p95": 2.093375,
+            "min": 1.8791,
+            "max": 2.4148
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 1.8494,
+            "p95": 1.96346,
+            "min": 1.7321,
+            "max": 2.108
+          }
+        }
+      ]
+    },
+    "proxy_bridge": {
+      "summary_path": "/tmp/x3-fog-route-bridge-r4/runtime/summary.json",
+      "summary_sha256": "d45c9e116392d730caa372ebb906a104071ffe89927c4bba85ba7133f301ce6a",
+      "execution_path": "/tmp/x3-fog-route-bridge-r4/runtime/execution.json",
+      "execution_sha256": "c4e48badf4f67d82eecd36de2fe61b5feaba039a6c9007a137599e738a03b68e",
+      "checks": 152,
+      "executable_sha256": "dbf108aad8867c13826ced8a13bf07bcc47281709c28426ab32b6a4abc731962",
+      "seconds": 8.611747915999999,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=b",
+        "/private/tmp/x3-fog-route-bridge-r4/fog_route_bridge.exe",
+        "Z:\\private\\tmp\\x3-fog-renderer-production\\build\\fog-production-r3\\state-bound\\cases.txt"
+      ],
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "protected_files_unchanged": true,
+      "scope_limits": [
+        "Synthetic owner/camera/sun/sector values and cached shader identity; game reader and shader recognition are not exercised.",
+        "Whole production fog fragment, real native card calls and FogPass; actual scene-hook/selector dispatch is covered separately.",
+        "TAA invalidation request endpoint only; no claim of GPU temporal-history clearing or motion quality.",
+        "Pass/policy Reset rewarm here; native device Reset is covered by the separate production state fixture.",
+        "CrossOver results do not establish native Windows runtime parity."
+      ],
+      "independent_review": "review_lattice_gpu: source and runtime cleared"
+    }
+  },
+  "independent_review": "review_fog_gpu: state, numerical, sequence, optimized decoder state rerun and production timing cleared",
+  "limits": [
+    "No game flight or visual acceptance",
+    "Native Windows execution unverified",
+    "State loss injections do not demonstrate genuine device loss",
+    "EVENT-completed wall time is not GPU timestamp or FPS",
+    "Reduced captured sequence does not establish in-game TAA quality"
+  ],
+  "host_suite": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+    "tests": 2414,
+    "seconds": 694.921,
+    "exit_code": 0,
+    "result": "PASS",
+    "log": "/tmp/x3-spatial-fog-full-host-2.log",
+    "log_sha256": "d9db6dc275b6a1b7d6896627aecd7d165d91f852030dc849c43a79ce4adb1b44",
+    "additional_after_discovery": "3 fog_route_bridge focused tests passed; new bridge test module integrated after discovery began"
+  }
+}

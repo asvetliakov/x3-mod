@@ -57,7 +57,9 @@ class FogFieldAssetsTests(unittest.TestCase):
         run = subprocess.run([str(executable), str(self.a/'bluewell.fogbin'),
                               str(self.a/'foggreenoutlands.fogbin')],
                              cwd=ROOT, text=True, capture_output=True, check=True)
-        self.assertIn('PASS fog_field_assets decoder=2 corruptions_per_profile=11 allocation=1 atomic=1', run.stdout)
+        self.assertIn('PASS fog_field_assets decoder=2 corruptions_per_profile=11 allocation=1 atomic=1 independent_fullscan=2', run.stdout)
+        self.assertIn('decoded_fnv1a=ffe40c913d06714f', run.stdout)
+        self.assertIn('decoded_fnv1a=e446bf23796869c6', run.stdout)
 
     def test_i686_decoder_and_resources_cross_compile_when_available(self):
         compiler = shutil.which('i686-w64-mingw32-g++')

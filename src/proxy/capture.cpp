@@ -619,8 +619,8 @@ void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, uint64_t frame, 
 }
 // First successful BeginScene, with a Present fallback for frames without one.
 // Existing CPU boundary and HookGuard cover this reader; it adds no GPU work.
-void sector_background_context(Device& ctx) {
-    if(!sector_background_requested || !ctx.sector_background_evidence.begin(ctx.frame))return;
+void sector_background_context(Device& ctx, bool scene_authority = false) {
+    if(!(sector_background_requested || volumetric_fog_requested) || !ctx.sector_background_evidence.begin(ctx.frame))return;
     const DWORD saved_error=GetLastError();
     struct RestoreError { DWORD value; ~RestoreError(){SetLastError(value);} } restore_error{saved_error};
     sector_background::Sample value;
@@ -630,7 +630,8 @@ void sector_background_context(Device& ctx) {
         auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
         value=sector_background::sample(read);
     } else value.status=sector_background::Status::ForeignExecutable;
-    if(!ctx.sector_background_evidence.emit(value,GetTickCount64()))return;
+    if(scene_authority && volumetric_fog_requested)ctx.motion_output.volumetric_fog_sector_sample(ctx.frame,value);
+    if(!sector_background_requested || !ctx.sector_background_evidence.emit(value,GetTickCount64()))return;
     log("sector_background device=%llu frame=%llu status=%s registry=%08x active_handle=%u cockpit=%08x sector=%08x class48=%d index=%d count=%d table=%08x R=%08x row_valid=%u name_ptr=%08x name_valid=%u name=\"%s\" dust=%d near=%d far=%d stardust=%d rate0=%d rate1=%d rate2=%d rate3=%d rate4=%d rate5=%d rate6=%d rate7=%d neb=%08x stars=%08x camera=%08x camera_valid=%u cam_near=%d cam_far=%d flags270=%08x camera_check=%s config_valid=%u config768=%d far_floor=%d effective_far=%d ref_object=%08x ref_sector=%08x anchor_check=%s",
         ctx.id,ctx.frame,sector_background::name(value.status),value.registry,value.handle,value.cockpit,value.sector,int(value.class48),value.index,value.count,value.table,value.record,unsigned(value.row_valid),value.name_pointer,unsigned(value.name_valid),value.family,
         value.dust,value.fog_near,value.fog_far,value.stardust,value.rates[0],value.rates[1],value.rates[2],value.rates[3],value.rates[4],value.rates[5],value.rates[6],value.rates[7],value.neb,value.stars,value.camera,unsigned(value.camera_valid),value.cam_near,value.cam_far,value.flags270,sector_background::name(value.camera_check),unsigned(value.config_valid),value.config,value.far_floor,value.effective_far,value.ref_object,value.ref_sector,sector_background::name(value.anchor_check));
@@ -1285,7 +1286,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     auto owner=devices.at(d);
     auto& ctx=*owner;
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,const RECT*,const RECT*,HWND,const RGNDATA*)>(17);
-    if(sector_background_requested)sector_background_context(ctx); // menus/loading without BeginScene
+    if(sector_background_requested || volumetric_fog_requested)sector_background_context(ctx); // menus/loading without BeginScene
     ctx.motion_output.before_present();
     if(ctx.comparison_report_pending){comparison_log(ctx,"frame","none",true);ctx.comparison_report_pending=false;}
     if(ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()
@@ -1357,7 +1358,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
             char second[40];
             if(fog<0)std::snprintf(second,sizeof second,"%s",at_rest);
             else if(!(fog&1))std::snprintf(second,sizeof second,"%s%sFOG OFF",at_rest,*at_rest?"  ":"");
-            else std::snprintf(second,sizeof second,"%s%sFOG %.3f%s",at_rest,*at_rest?"  ":"",double(ctx.motion_output.volumetric_fog_strength()),(fog&2)?"":" IDLE");
+            else std::snprintf(second,sizeof second,"%s%sFOG %.2fx%s",at_rest,*at_rest?"  ":"",double(ctx.motion_output.volumetric_fog_strength() / .02f),(fog&2)?"":" IDLE");
             ctx.fps_notice.text(ctx.fps_overlay.line(),second);
         }
     }
@@ -1759,7 +1760,7 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
     HookGuard lock;auto& ctx=*devices.at(d);
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
-    if(SUCCEEDED(hr)&&sector_background_requested)sector_background_context(ctx);
+    if(SUCCEEDED(hr)&&(sector_background_requested || volumetric_fog_requested))sector_background_context(ctx,true);
     ctx.motion_output.after_begin_scene(hr);
     lod_scale::refresh(); // X3M_LOD_SCALE only: catches the bring-up write before the first frame's LOD pass
     if(SUCCEEDED(hr)) {
@@ -3071,7 +3072,7 @@ void initialize_log(HMODULE module) {
      volumetric_fog_everywhere=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_EVERYWHERE")==1 && setting[0]==L'1';
      volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
-     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g anisotropy=%g everywhere=%u timing=%u cards=%s rule=nebulafog_ps keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
+     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g everywhere=%u timing=%u cards=%s rule=current_engine_family keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_strength / .02f),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     if(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted
