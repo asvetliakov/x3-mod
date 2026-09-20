@@ -406,3 +406,33 @@ The corrected run records every fault predicate and injection count.
 The 32-frame inputs and full-transaction performance remain open, including the
 added stream-preservation cost. No production fog change, clean replacement
 preview, game visual acceptance or native Windows execution is claimed.
+
+### Spatial fog 32-frame GPU sequence checkpoint (2026-09-20)
+
+The frozen recovery executable passes the first eight frames from each of four
+run185 capture windows at 120x72, plus two synthetic periodic seam controls.
+Including the atlas witness, **35 cases / 282 fixture checks** pass; all 34
+march/composite comparisons pass independent recomputation. Maximum T error is
+0.00048828125, maximum scattering-channel error 0.0000076294, and worst composite
+relative RGB p99/max is 0.00306892 / 0.00387898. Alpha is bit-identical. All
+109,760 actual-half-input-empty pixels and 111 CPU-float32-empty repair pixels
+remain unchanged; the 32 captured frames use 322 repair pixels. Both GPU seam
+controls are nonempty and varying.
+
+Input review corrected three defects before execution: depth point sampling was
+misaligned with the reduced D3D integer-centre rays; the initial seam controls
+traversed only empty fog; convergence had been marked passed without measurement.
+The corrected point-resampling error is at most two-thirds of a source pixel.
+Both controls now cross nonzero varying density, and all 34 measured 24-versus-128
+step comparisons pass (worst p99/max T 0.000614152 / 0.001929462). Inconsistent or
+nonfinite projection metadata is refused. The superseded inputs remain local.
+Twenty host tests pass, and a deterministic twin reproduces all 238 case assets.
+
+The [compact sequence record](../../verification/results/fog-volume-gpu-sequence.json)
+binds the independent preparer and frozen runtime sources, inputs, shaders and
+results. The X3 command took 6.435954 seconds; this is not rendering performance.
+These are reduced spatial/arithmetic checks on already-fogged run185 images,
+not exact native-resolution ray identity, a clean replacement preview, history/
+TAA acceptance or native Windows qualification. Full-float GPU repair ST remains
+unread; its CPU-empty identity control is separate. Full-transaction timing is
+the next detached fixture check.

@@ -1,0 +1,79 @@
+{
+  "checkpoint": "Spatial fog reduced 32-frame GPU sequence and two seam controls",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "runtime_source_commit": "b533380c",
+  "executable_sha256": "7ffb6aedfba05c28f0bb85b8eff2b28e020a7b3d3096920573d71ee7b0e5e74f",
+  "full_result": "/tmp/x3-fog-sequence-runtime/build/fog-volume-gpu-sequence/readback/report.json",
+  "full_result_sha256": "0a7ab89dd06ff3f802a10ba251346b6558ce2998830a092ed7f6035a84e8c159",
+  "inputs": "/tmp/x3-fog-sequence-inputs/build/fog-volume-sequence/data-i",
+  "manifest_sha256": "b09d222cd3a75bad68510ba3c6c2b7dfb0819519777d2b09119b4cf76d9fda72",
+  "preparer_sources": {
+    "verification/analysis/prepare_fog_volume_sequence.py": "b4906b0464000a93eb5ad4b30986a75a102d13918a5df12912a04ba026f15b39",
+    "verification/analysis/test_fog_volume_sequence.py": "9c04b928d0d7f01413447502c871b8b5deebab61ce0430eda99795095d5b6afb"
+  },
+  "runtime_sources": {
+    "verification/probe/fog_volume_gpu_state_run.py": "eb970ed6e424bbef2dd3e74c9bf2e4a94d3e211b9efebacf32aed15e3302fff3",
+    "verification/probe/fog_volume_gpu_fixture.cpp": "2711a84effe413d8a8a2afa1e8eaea1e4851c13a662dcd3a52323d7af56b1420",
+    "verification/probe/fog_volume_gpu_build.sh": "97e533bd8c4d51abe7b564ae439d85101f61c5bf4f0e6b3d0b8aaa8e009f18eb",
+    "verification/probe/fog_volume_gpu_run.py": "2a0ab58a2480945d72e7cff4bb74ef77c90657881d91024d46fb27f4e1942800",
+    "verification/probe/fog_volume_gpu_state_inc.h": "58c6a37be6be89c0725259ecf6ac0d28811f2a14bf5852b7f6d1cce9d274516f",
+    "verification/probe/fog_volume_gpu_pass.h": "c53a58ae2f3488904f278d9513719100d9cda73643a0bd4de36e4c5708507018",
+    "verification/probe/fog_volume_gpu_pass.cpp": "24da210b94142dc6c558e49ff742517859a15d970047fa09a89817dec0c9ceac",
+    "verification/probe/shaders/fog_volume_composite_ps.hlsl": "8d27bedbd8c6a1b1035d055b093f329b329a664eacf4aa9641b5cd698fceaaa1",
+    "verification/probe/shaders/fog_volume_field_inc.h": "31230f4089e6cb3fd83ea3a8474290e4e6c353d0dc5421c75a83e62e18e7d0b1",
+    "verification/probe/shaders/fog_volume_march_ps.hlsl": "7baddbbd0eaf84ffc520e5730f166c55ab912c552c4a502abdd770a9b2ba15a5",
+    "verification/analysis/prepare_fog_volume_gpu.py": "0af0128ac8ba0282a1ede40e31f0cbded3ee066757f5759bb11f6901501ac766"
+  },
+  "shader_binaries": {
+    "march": "a214fc49e020e3044c3534f2f74d20c4ddf71e2b16654d7399937b7817bbc85f",
+    "composite": "7d2d321de821ffc0a051df79e1d4f03ad440ab8893f21e730fba160638c85506"
+  },
+  "fixture": {
+    "cases": 35,
+    "checks": 282
+  },
+  "captured_frames": 32,
+  "seam_controls": 2,
+  "resolution": [
+    120,
+    72
+  ],
+  "point_resampling_max_source_pixel_displacement": 0.6666666666666666,
+  "host_tests": 20,
+  "deterministic_twin": "/tmp/x3-fog-sequence-inputs/build/fog-volume-sequence/data-j",
+  "deterministic_case_assets": 238,
+  "command_seconds": 6.435954124999999,
+  "total_seconds": 6.970698499999999,
+  "passed": true,
+  "metrics": {
+    "T_max": 0.00048828125,
+    "S_max": 7.62939453125e-06,
+    "composite_relative_rgb_p99_worst": 0.0030689171981066465,
+    "composite_relative_rgb_max": 0.003878975985571742,
+    "actual_half_empty_pixels": 109760,
+    "actual_half_empty_changed": 0,
+    "cpu_float32_empty_repair_pixels": 111,
+    "cpu_float32_empty_repair_changed": 0,
+    "fallback_pixels": 322,
+    "alpha_bit_identical": true
+  },
+  "review": "Independent source/input/runtime review passed; parity/composite recomputed",
+  "prior_inputs_preserved": [
+    "build/fog-volume-sequence/data-c",
+    "build/fog-volume-sequence/data-d"
+  ],
+  "limits": [
+    "Point-resampled reduced spatial/arithmetic checks; not exact native-resolution scene-ray identity",
+    "Run185 colour already contains fog; no clean replacement appearance",
+    "No history/TAA, game integration, native Windows or performance qualification",
+    "GPU full-float repair ST is not directly read back; CPU-empty repair identity checked separately"
+  ]
+}
