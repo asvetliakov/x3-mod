@@ -1,0 +1,61 @@
+{
+  "candidate": {
+    "path": "/tmp/x3-run52-candidate/d3d9.dll",
+    "sha256": "4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685",
+    "source_commit": "976307f24d08e76c511ca4eaffcd018e5f0ff376"
+  },
+  "rollback": "/tmp/x3-run52-candidate/rollback",
+  "before": {
+    "exe": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "size": 2153984
+    },
+    "config": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+      "size": 14280
+    },
+    "dll": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+      "sha256": "8a711cabc87f59beb2368c4cdfec1b125c4b8ce927d4b946cd9e03978e2105a7",
+      "size": 19529616
+    }
+  },
+  "install_status": "verified",
+  "after": {
+    "exe": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "size": 2153984
+    },
+    "config": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+      "size": 14280
+    },
+    "dll": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+      "sha256": "4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685",
+      "size": 19559896
+    }
+  },
+  "installed_manifest": {
+    "project": "x3-modern-renderer",
+    "sha256": "4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685",
+    "source": "/private/tmp/x3-run52-candidate/d3d9.dll",
+    "source_commit": "976307f24d08e76c511ca4eaffcd018e5f0ff376",
+    "manifest_source": "dll"
+  },
+  "recorded_utc": "2026-09-20T01:13:14.423318+00:00",
+  "command": [
+    "python3",
+    "tools/manage.py",
+    "install",
+    "--bottle",
+    "X3",
+    "--dll-source",
+    "/tmp/x3-run52-candidate/d3d9.dll"
+  ],
+  "game_launched": false
+}

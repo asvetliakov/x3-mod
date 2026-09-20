@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (run49 installed; run48 analysis complete; run49 A/B reported; fog redesign in progress). This is the
+Updated 2026-09-20 (run52 attribution candidate installed; fog, lattice, media and collision experiments continue). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -12,22 +12,25 @@ Read history only for a relevant unresolved question. The
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run49 DLL SHA-256:
-`8a711cabc87f59beb2368c4cdfec1b125c4b8ce927d4b946cd9e03978e2105a7`
-(19,529,616 bytes), built once from clean committed source `976dbdee`, installed
-through `python3 tools/manage.py install --bottle X3 --dll-source <retained DLL>`.
-The [build record](../verification/results/run49-candidate-build.json) records
-**2,351 host tests passing** (659.194 s), linked audit 95 roots / 579 reachable /
-zero violations, 17 exports, and seven selected rendering cases (578 checks).
-Those seven cases passed individually; this is not a new full motion-output-suite
-pass. New timer qualification is bound in the
-[diagnostic record](../verification/results/run49-diagnostics-qualification.json):
-2,093 light checks and 142 collision checks / 675 paired queries, all passing.
-The [install record](../verification/results/run49-candidate-install.json) verifies
-installed bytes and unchanged EXE/bottle hashes. Rollback DLL and manifest retain
-run48 `9bbe6938…` in
-`/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run49-candidate-9hos95ss/rollback`.
-No game launched; all three §49 commands passed `--dry-run`.
+Bottle **X3**, **CrossOver Preview.app**. Run52 diagnostic candidate DLL SHA-256:
+`4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685`
+(19,559,896 bytes), built once from clean committed source `976307f2`; retained
+at `/tmp/x3-run52-candidate/d3d9.dll`. Production changes remain on the isolated
+submission-attribution branch while this candidate qualifies; main is not merged.
+The [qualification record](../verification/results/submission-attribution-qualification-2026-09-20.json)
+binds 2,353 host tests (2 skipped), linked audit 95 roots / 579 reachable / zero
+violations, 8,881 CPU fixture checks, and two selected rendering cases (126 checks).
+A separate automatic-exposure diagnostic passed 59 process checks and 248 scoped
+validation checks, including Reset and ten exhaustive readback timing rows. Its
+generic harness rejection for deliberate every-frame logging is preserved;
+lease runtime coverage is 24 empty scans, not nonempty releases.
+The [install record](../verification/results/run52-candidate-install.json) verifies
+installed bytes and unchanged EXE/bottle configuration. Rollback retains run49's
+DLL and manifest in `/tmp/x3-run52-candidate/rollback`. Installation used
+`python3 tools/manage.py install --bottle X3 --dll-source <retained DLL>`.
+No game launched; the corrected [run52 attribution command](verification/user-runs.md#52-busy-station-attribution-and-retained-target-comparison)
+passed `--dry-run`. This build adds diagnostics, not the experimental fog, media,
+lattice or collision changes.
 
 Launcher defaults retain original hull shading, `--cull-small-parts 2` scope
 `all`, `--collide-sat-sse2`, `--collide-memo`, and the user-selected light-map
@@ -56,10 +59,10 @@ phase-off busy plateau; R7 light selection is too small to optimize. Argon
 stalls persist with phase diagnostics off and correlate with media-backend
 errors. [Run50](verification/media-cues.md#run50-periodic-retries-directly-explain-argon-freezes-2026-09-20) now directly attributes two periodic stalls to failed ID2 media
 construction; three later retries follow the same pattern. First-view media
-failures are a separate caller path. The temporary [run51 counter](verification/user-runs.md#51-media-retry-counter--same-view-longer-diagnostic-interval) is ready; retry defaults and decoder remain unchanged. A [standalone media fixture](verification/media-cues.md#standalone-id2-playback-boundary-2026-09-20) reproduces v4 open failure; fixture-only v5 opens but blocks at
+failures are a separate caller path. The optional [run51 counter](verification/user-runs.md#51-media-retry-counter--same-view-longer-diagnostic-interval) is ready; retry defaults and decoder remain unchanged. A [standalone media fixture](verification/media-cues.md#standalone-id2-playback-boundary-2026-09-20) reproduces v4 open failure; fixture-only v5 opens but blocks at
 zero-seek. Skipping that call delivers six distinct frames to a diagnostic D3D
 texture with clean shutdown; correct seeking and game integration remain open.
-No game decoder change. Moving collision is
+No game decoder change. An [owned collision builder](reverse-engineering/sector-collide.md#owned-real-asset-builder-checkpoint-controlled453-2026-09-20) now passes 217 checks on a controlled 453-triangle real-asset subset; original-query replay and a physical tree-layout experiment are being implemented. Live snapshot lifetime remains unproved. Moving collision is
 about 98% of printed instrumented query time inside descent in the expensive interval, so query setup is not
 the missing lever. Details are in the [frame-time note](architecture/engine-frame-time.md#run49-a-three-scene-diagnosticcounter-flight-2026-09-20) and
 [collision note](reverse-engineering/sector-collide.md#run49-a-moving-query-cost-is-inside-descent-2026-09-20).
@@ -78,7 +81,7 @@ Light-selection and collision-query timers are integrated, reviewed and committe
 checks and 675 queries with zero differences. Run49 A combined them with
 the existing loop/game/residual phases. Qualification and installation are complete. [Run49](verification/user-runs.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight) has its performance pair reported; B is reported as run185. The user rejects the uniform fog wash and requests
 patchy clouds with clear gaps. Sector-reader/card-replacement technical triage
-is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20); an offline spatial-density redesign is in progress. No repeat flight is
+is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20); the offline family-density recipe passes its fixed view and temporal checks, and a separate D3D9 GPU prototype is being implemented. No repeat fog flight is
 requested. A cheaper moving-lattice display-history replay also failed its quality
 thresholds; the [lattice note §16](architecture/taa-lattice-crawl.md#16-cheaper-post-display-history-replay-rejected-2026-09-20)
 records the result. [Mesh ownership is now identified](architecture/taa-lattice-crawl.md#17-moving-truss-mesh-ownership-recovered-2026-09-20), with signed-position conversion

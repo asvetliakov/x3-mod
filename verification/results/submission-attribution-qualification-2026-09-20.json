@@ -1,0 +1,497 @@
+{
+  "schema": 1,
+  "scope": "submission attribution diagnostics; no rendering algorithm change",
+  "base_commit": "2d782ac70b299594e910342b9cd9638ce106a034",
+  "host_affected": {
+    "initial_count": 64,
+    "final_constant_count": 20,
+    "new_probe_checks": 34,
+    "failures": 0
+  },
+  "cpu_fixture": {
+    "result": "PASS",
+    "bottle": {
+      "name": "X3",
+      "wine_arch": "arm64",
+      "environment": {
+        "FEX_X87REDUCEDPRECISION": "1",
+        "WINEMSYNC": "1"
+      },
+      "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+    },
+    "exit": 0,
+    "elapsed_s": 7.0,
+    "summary": {
+      "stubs": "47",
+      "frame_sites": "10",
+      "pass_sites": "4",
+      "loop_sites": "6",
+      "residual_sites": "2",
+      "media_sites": "1",
+      "replay_cases": "13",
+      "actual_target_handler_cases": "5",
+      "frame_cases": "4",
+      "pass_cases": "5",
+      "loop_cases": "7",
+      "residual_cases": "6",
+      "media_cases": "11",
+      "arena_used": "27688",
+      "arena_capacity": "32768",
+      "checks": "8881",
+      "failures": "0"
+    },
+    "failures": [],
+    "benchmark_lines": [
+      "GAME PHASE BENCH trials=3 batches=128 loops_per_batch=4 marker_calls_per_loop=18 owned_bridges_per_loop=1 cpu_queries_per_enabled_loop=17 baseline_loop_us=21.061198 disabled_loop_us=26.990039 enabled_loop_us=161.472461 disabled_added_loop_us=5.928841 enabled_added_loop_us=140.411263 enabled_added_per_marker_equivalent_us=7.800626 scope=actual_emit_callback_core_owned_bridge_GetThreadTimes harness=paired_same_snapshot normal_tape=yes pump_metadata=valid engine_read_epoch=per_loop warmup_loops_per_batch=1 runtime_report_includes_warmup=yes game_fps=unmeasured",
+      "GAME PHASE TARGET BENCH variant=nonnull_mode3 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=8 cpu_queries_per_request=0 native_request_us=1.216081 disabled_request_us=3.760091 enabled_request_us=6.601367 disabled_added_request_us=2.544010 enabled_added_request_us=5.385286 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
+      "GAME PHASE TARGET BENCH variant=null_mode3 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=2 cpu_queries_per_request=0 native_request_us=1.186654 disabled_request_us=1.835221 enabled_request_us=2.883529 disabled_added_request_us=0.648568 enabled_added_request_us=1.696875 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
+      "GAME PHASE TARGET BENCH variant=rejected_null_mode2 trials=3 batches=32 requests_per_batch=16 marker_calls_per_request=2 cpu_queries_per_request=0 native_request_us=1.184440 disabled_request_us=1.843424 enabled_request_us=2.306510 disabled_added_request_us=0.658984 enabled_added_request_us=1.122070 scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured",
+      "PASS PHASE BENCH loops=20000 trials=7 baseline_ns_per_loop=2.0 hooked_ns_per_loop=407.5 dispatch_ns=101.4 implied_busy_frame_us=408 budget_us=1500 within_budget=1 documented_dispatch_ns=91",
+      "LOOP PHASE BENCH loops=20000 trials=7 dispatches_per_loop=16 baseline_ns_per_loop=38.4 hooked_ns_per_loop=2213.7 dispatch_ns=136.0 implied_frame_us_1_sector=0.82 implied_frame_us_200_sectors=163 documented_dispatch_ns=91 arena_used=17524 arena_capacity=32768",
+      "RESIDUAL PHASE BENCH loops=20000 trials=7 baseline_ns_per_loop=395.6 hooked_ns_per_loop=613.3 dispatch_ns=108.9 implied_busy_frame_us=110 documented_dispatch_ns=91 arena_used=22968 arena_capacity=32768",
+      "MEDIA CUE BENCH loops=20000 trials=7 baseline_ns_per_call=7.3 pass_ns_per_call=239.2 refuse_ns_per_call=118.2 pass_dispatch_ns=231.9 refuse_dispatch_ns=110.9 documented_pass_ns=280 documented_refuse_ns=116 trace_pass_ns_per_call=259.0 trace_pass_dispatch_ns=251.7 enter_line_ns=2232.7 stub_bytes=300 arena_used=25408 arena_capacity=32768"
+    ],
+    "fixture_sha256": "275c3f184fa35b186a570af600cd24defdeee3be0b3a540e408e163a5ad153bb",
+    "stdout": "build/verification/game-phases/stdout.txt",
+    "fixture_hash_binding": "Independently hashed retained executable; no-build runner wrote null. Benchmark preceded the reviewed estimate-only constant updates to 102/109 ns."
+  },
+  "measured_dispatch_ns": {
+    "pass": 101.4,
+    "residual_two_site_average": 108.9,
+    "loop_unchanged_group": 136.0
+  },
+  "estimate_constants_ns": {
+    "pass": 102,
+    "residual": 109,
+    "loop_historical_retained": 91
+  },
+  "limits": [
+    "Not exact flight overhead",
+    "HDR and lease rows retain sparse logging cadence",
+    "Native Windows execution unverified"
+  ],
+  "full_host_suite": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p test_*.py",
+    "started_utc": "2026-09-20T00:41:35.024178+00:00",
+    "elapsed_s": 677.84068225,
+    "exit_code": 0,
+    "log": "/tmp/x3-submission-full-host.txt",
+    "tests": 2353,
+    "skipped": 2,
+    "unittest_elapsed_s": 675.392,
+    "result": "OK"
+  },
+  "candidate_build": {
+    "source_commit": "976307f24d08e76c511ca4eaffcd018e5f0ff376",
+    "source_dirty_diff": "none",
+    "dll": "/private/tmp/x3-submission-attribution/build/d3d9.dll",
+    "sha256": "4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685",
+    "bytes": 19559896,
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "configuration": "RelWithDebInfo",
+    "toolchain": "cmake/mingw-i686.cmake",
+    "build_invocations": 1,
+    "linked_no_x87": {
+      "result": "PASS",
+      "roots": 95,
+      "reachable": 579,
+      "violations": 0
+    }
+  },
+  "rendering_smoke": {
+    "scope": "two selected production cases, not full suite",
+    "status": "PARTIAL",
+    "cases": {
+      "production-ownership-hdr-on": {
+        "exit": 0,
+        "checks": 43
+      },
+      "production-taa-hdr-on": {
+        "exit": 0,
+        "checks": 83
+      }
+    },
+    "binary_hashes": {
+      "/Users/asvetl/x3-mod/verification/probe/build/motion_output_fixture.exe": "6ac9b3de7ca1843f1f29fe30982b3418887294b66ef8a8e4470312f6b78577e9",
+      "/Users/asvetl/x3-mod/verification/probe/build/motion-output-seam/d3d9.dll": "7602b4fd3cf2c622c5fa860520f10ab3eb6bf8fbb1ed97a0ec36dbf303ef4578",
+      "/private/tmp/x3-submission-attribution/build/d3d9.dll": "4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685"
+    }
+  },
+  "automatic_meter_and_empty_retirement": {
+    "result": "PASS_SCOPED_TIMER_VALIDATION",
+    "standard_case_pass": false,
+    "checks": 248,
+    "bottle": {
+      "name": "X3",
+      "wine_arch": "arm64",
+      "environment": {
+        "FEX_X87REDUCEDPRECISION": "1",
+        "WINEMSYNC": "1"
+      },
+      "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+    },
+    "case": "production-ownership-taa-hdr-attribution-auto",
+    "directory": "/tmp/x3-submission-attribution/verification/probe/build/motion-output-production-ownership-taa-hdr-attribution-auto-20260920-050531-786733",
+    "provenance": {
+      "dll_sha256": "4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685",
+      "fixture_sha256": "6ac9b3de7ca1843f1f29fe30982b3418887294b66ef8a8e4470312f6b78577e9",
+      "capture_sha256": "891d90976b4e4df277e2692d209aa17fa4aa8a40199e8f0089292fc3d2d4cd41",
+      "stdout_sha256": "47c67b7f504f0b7c03a2ff92cc381930a5ed53740b361706bfd89f847e1277c9"
+    },
+    "generic_harness": {
+      "status": "FAIL",
+      "passed": false,
+      "error": "AssertionError(('production-ownership-taa-hdr-attribution-auto', [{'requested': '1', 'scope': 'live_same_draw_diagnostic', 'history_requires': 'object_trace,object_lifetime', 'temporal_consumer': '1', 'taa': '1', 'taa_debug': '1', 'jitter': '1', 'jitter_samples': '8', 'cut_median_px': '48.000', 'cut_missing': '0.250', 'rt_mode': 'perdraw', 'frame_log': '1', 'sentinel': 'auto', 'camera_cut_deg': '20.00', 'camera_log': '300', 'state_shadow': 'auto', 'scene_hook': '0', 'hdr': '1', 'taa_k': '-1.00000', 'mip_bias': '0', 'taa_sharpen': '0.000', 'taa_current_filter': '0.000', 'taa_history_weight': '0.900'}]))",
+      "preserved": true,
+      "additional_incompatible_assumptions": [
+        "generic motion/HDR frame inventory expects 0..8; intentional frame_log=1 logs 0..11"
+      ]
+    },
+    "process": {
+      "exit": 0,
+      "exit_evidence": "/tmp/x3-submission-attribution/verification/probe/build/motion-output-production-ownership-taa-hdr-attribution-auto-20260920-050531-786733/harness-result.txt",
+      "checks": 59,
+      "state_restorations": 51,
+      "frames": 12,
+      "reset_passes": 1,
+      "final_device_and_factory_references": 0
+    },
+    "configuration": {
+      "motion": {
+        "requested": "1",
+        "scope": "live_same_draw_diagnostic",
+        "history_requires": "object_trace,object_lifetime",
+        "temporal_consumer": "1",
+        "taa": "1",
+        "taa_debug": "1",
+        "jitter": "1",
+        "jitter_samples": "8",
+        "cut_median_px": "48.000",
+        "cut_missing": "0.250",
+        "rt_mode": "perdraw",
+        "frame_log": "1",
+        "sentinel": "auto",
+        "camera_cut_deg": "20.00",
+        "camera_log": "300",
+        "state_shadow": "auto",
+        "scene_hook": "0",
+        "hdr": "1",
+        "taa_k": "-1.00000",
+        "mip_bias": "0",
+        "taa_sharpen": "0.000",
+        "taa_current_filter": "0.000",
+        "taa_history_weight": "0.900"
+      },
+      "hdr": {
+        "device": "1",
+        "enabled": "1",
+        "requested": "agx",
+        "tonemap": "1",
+        "tonemap_reason": "ok",
+        "meter": "1",
+        "meter_reason": "ok",
+        "look": "none",
+        "decode": "gamma2.2",
+        "clamp": "0",
+        "exposure": "auto",
+        "ev_manual": "0.0000",
+        "ev_offset": "0.0000",
+        "key": "0.1800",
+        "ev_min": "-3.00",
+        "ev_max": "1.30",
+        "tau_up": "0.400",
+        "tau_down": "1.200",
+        "meter_floor": "0.0001",
+        "meter_clip": "64",
+        "meter_bg": "0.00195312",
+        "meter_min_lit": "0.01",
+        "white_target": "0.9",
+        "key_pull": "0.25",
+        "ev_deadband": "0.25",
+        "edge_weight": "0.35",
+        "tile_max": "128",
+        "fixed_dt_ms": "16.000",
+        "tonemap_shader": "00000000",
+        "meter_shader": "00000000",
+        "chain_format": "G32R32F",
+        "chain_target": "00000000",
+        "chain_sampling": "00000000"
+      },
+      "candidates": {
+        "requested": "1",
+        "enabled": "1",
+        "motion_output": "1",
+        "ownership": "1"
+      },
+      "depth": {
+        "requested": "1",
+        "enabled": "1",
+        "size": "64",
+        "extent": "250",
+        "depth_half": "512",
+        "cap": "512",
+        "motion_output": "1",
+        "ownership": "1"
+      }
+    },
+    "hdr": {
+      "rows": 12,
+      "successful_readbacks": 10,
+      "no_pending_frames": [
+        0,
+        9
+      ],
+      "clock_errors": 0,
+      "max_bucket_sum_delta_us": 0.0,
+      "bucket_names": [
+        "readback_transfer_lock_us",
+        "readback_extract_unlock_us",
+        "readback_statistics_adapt_us"
+      ],
+      "rows_compact": [
+        {
+          "frame": 0,
+          "stepped": false,
+          "total_us": 0.0,
+          "buckets_us": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "frame": 1,
+          "stepped": true,
+          "total_us": 418.4,
+          "buckets_us": [
+            48.8,
+            2.6,
+            367.0
+          ]
+        },
+        {
+          "frame": 2,
+          "stepped": true,
+          "total_us": 48.9,
+          "buckets_us": [
+            34.1,
+            5.3,
+            9.5
+          ]
+        },
+        {
+          "frame": 3,
+          "stepped": true,
+          "total_us": 41.3,
+          "buckets_us": [
+            31.9,
+            1.8,
+            7.6
+          ]
+        },
+        {
+          "frame": 4,
+          "stepped": true,
+          "total_us": 85.2,
+          "buckets_us": [
+            63.5,
+            14.0,
+            7.7
+          ]
+        },
+        {
+          "frame": 5,
+          "stepped": true,
+          "total_us": 44.9,
+          "buckets_us": [
+            28.8,
+            10.5,
+            5.6
+          ]
+        },
+        {
+          "frame": 6,
+          "stepped": true,
+          "total_us": 99.6,
+          "buckets_us": [
+            50.7,
+            30.1,
+            18.8
+          ]
+        },
+        {
+          "frame": 7,
+          "stepped": true,
+          "total_us": 44.7,
+          "buckets_us": [
+            33.9,
+            3.5,
+            7.3
+          ]
+        },
+        {
+          "frame": 8,
+          "stepped": true,
+          "total_us": 81.7,
+          "buckets_us": [
+            59.8,
+            14.9,
+            7.0
+          ]
+        },
+        {
+          "frame": 9,
+          "stepped": false,
+          "total_us": 0.0,
+          "buckets_us": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "frame": 10,
+          "stepped": true,
+          "total_us": 76.0,
+          "buckets_us": [
+            54.6,
+            10.6,
+            10.8
+          ]
+        },
+        {
+          "frame": 11,
+          "stepped": true,
+          "total_us": 70.0,
+          "buckets_us": [
+            51.3,
+            10.1,
+            8.6
+          ]
+        }
+      ],
+      "existing_hdr_validator": "PASS; actual frames0..11, capture1..8"
+    },
+    "lease": {
+      "rows": 12,
+      "calls": 24,
+      "records": 0,
+      "references": 0,
+      "clock_errors": 0,
+      "median_us_per_frame": 4.35,
+      "min_us": 3.6,
+      "max_us": 13.5
+    },
+    "deeper_checks": {
+      "D3D_state_Present_TAA_Hdr": "PASS all12 frames",
+      "HDR_Reset_recreation": "PASS frames0/9",
+      "ownership": {
+        "wrapped": true,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        },
+        "source_epochs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0
+        }
+      }
+    },
+    "limitations": [
+      "Generic runner remains FAIL; this is not standard case acceptance.",
+      "Only empty lease scans are exercised; nonempty releases remain unqualified by this run.",
+      "Successful/no-pending readback only; no injected HRESULT or clock failures in this run.",
+      "64x64 synthetic CrossOver run; no gameplay/performance or native Windows claim."
+    ]
+  },
+  "dry_run": {
+    "exit": 0,
+    "log": "/tmp/x3-run52-dry-run.log",
+    "argv": [
+      "./x3run",
+      "--direct",
+      "--camera",
+      "chase",
+      "--chase-view-restore",
+      "--ownership",
+      "--object-trace",
+      "--object-lifetime",
+      "--motion-output",
+      "--taa",
+      "--telemetry",
+      "--camera-log",
+      "1",
+      "--hdr",
+      "--hdr-tonemap",
+      "--hdr-exposure",
+      "auto",
+      "--hdr-bloom",
+      "--bloom-source-clamp",
+      "1.0",
+      "--crypt-cache",
+      "--gz-buffer",
+      "--resource-read",
+      "fast",
+      "--dat-handles",
+      "--mesh-adjacency",
+      "fast",
+      "--voice-decoder",
+      "/tmp/x3-wma-plugin-v4",
+      "--screen-emission-additive",
+      "2",
+      "--screen-emission-additive-alpha",
+      "0",
+      "--emission-source-gain",
+      "2",
+      "--frame-phases",
+      "--residual-phases",
+      "--collide-memo",
+      "--frame-end-stride",
+      "10",
+      "--sun-shadow-lane",
+      "--shadow-replay-depth",
+      "--shadow-replay-candidates",
+      "--sun-shadow-apply",
+      "--shadow-sun-poll",
+      "on",
+      "--fps-overlay",
+      "--shadow-cascades",
+      "250,1500,7500,37500,150000",
+      "--shadow-cascade-drop-order",
+      "importance",
+      "--shadow-cascade-records",
+      "1024,1024,2048,4096,4096",
+      "--shadow-cascade-sizes",
+      "2048,2048,2048,2048,2048",
+      "--shadow-retention-census",
+      "--shadow-caster-retention",
+      "--shadow-cascade-adaptive-c0",
+      "1.5",
+      "--taa-far-stabiliser",
+      "0.985",
+      "--taa-thin-region",
+      "0.97",
+      "--light-map-far-fade",
+      "80,220",
+      "--motion-rt-mode",
+      "perdraw",
+      "--capture-start",
+      "999999",
+      "--capture-frames",
+      "2",
+      "--dry-run"
+    ]
+  }
+}
