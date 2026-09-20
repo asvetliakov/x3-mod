@@ -2024,3 +2024,28 @@ universal locality limit or establish a game FPS change. Existing whole-descent,
 front-tracking and advancement decisions remain closed. The next bounded evidence
 question is retirement/mutation scheduling for a safe representative replay;
 no live-tree copy or new user flight is authorized by this timing result.
+
+## Retirement scheduling follow-up: precise stop barrier (2026-09-20)
+
+A bounded scheduling pass and independent deep evidence review verified **1,620
+instruction rows with zero byte mismatches**, 21 reference inventories and 127
+direct calls. It covers all eight known destructor sites, four purge callers
+and 21/6/4 calls to the three lazy builders. Normal tick eviction is synchronous
+on the session stack, but that does not establish exclusion for every retirement
+or mutation path.
+
+The concrete unresolved recovery path is an unknown caller thread entering
+`0x004b8b60`, indirect call `0x004b8b7c` through the published callback, then
+`0x00406d80 → 0x0046d2a0 → 0x004802b0` and model/array destruction. Its ordinary
+non-atomic reentrancy guard is not a demonstrated lifetime lock. Computed VM
+dispatch and remaining loader/builder entry provenance are also unclosed.
+No actual worker race was demonstrated; pointer/register availability does not
+pin allocation lifetime or extend it through a copy.
+
+**Stop live snapshot implementation and further collision tuning at this
+ownership boundary.** A synchronous post-query copy is still unqualified, and
+another generic flight or unrepresentative benchmark would not resolve this
+contract. No production hook, new flight, game FPS benefit or native Windows
+qualification follows. The bounded local [scheduling report](/tmp/x3-collision-retirement-schedule.md)
+and `/tmp/x3-collision-schedule-verify.py` retain address-linked evidence and
+reproduction; raw disassembly stays local.
