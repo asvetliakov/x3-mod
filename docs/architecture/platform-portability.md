@@ -479,6 +479,7 @@ Fields are regenerated with pinned NumPy at build time and embedded as RCDATA;
 runtime loading uses documented Windows resource APIs. Asset host decoding,
 resource cross-compilation and the integrated DLL build pass. The linked CPU
 audit passes 95 roots / 540 reachable functions / zero violations. Actual
-production GPU, resource-loading, recovery and timing qualification remains
-pending, as do game TAA/appearance and native Windows execution. The detached
-prototype's CrossOver results are not native Windows or production runtime proof.
+production CrossOver GPU/resource/recovery and timing fixtures now pass, as
+does the synthetic-owner route/card bridge (see the [fog ledger](../verification/volumetric-fog.md#spatial-production-renderer-qualification-2026-09-20)).
+Game TAA/appearance and native Windows execution remain unverified. These
+CrossOver fixtures are not native Windows runtime proof.

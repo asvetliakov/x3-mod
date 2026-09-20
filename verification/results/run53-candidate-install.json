@@ -1,0 +1,78 @@
+{
+  "candidate": {
+    "source_commit": "fc52a432b8dc7dd9faa2c81f420b371fea17543f",
+    "source_dirty": false,
+    "dll": "/tmp/x3-run53-candidate/d3d9.dll",
+    "sha256": "36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468",
+    "bytes": 26948773,
+    "build_invocations": 1,
+    "configuration": "RelWithDebInfo",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "python": "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "build_log": "/tmp/x3-run53-candidate/build.log"
+  },
+  "rollback": "/tmp/x3-run53-candidate/rollback",
+  "before": {
+    "exe": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "bytes": 2153984
+    },
+    "config": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+      "bytes": 14280
+    },
+    "dll": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+      "sha256": "4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685",
+      "bytes": 19559896
+    },
+    "manifest": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-install.json",
+      "sha256": "ac95788754ed69a42dd16a1753490691768671f945ebe77213945c38c0f55a81",
+      "bytes": 265
+    }
+  },
+  "after": {
+    "exe": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "bytes": 2153984
+    },
+    "config": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+      "bytes": 14280
+    },
+    "dll": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+      "sha256": "36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468",
+      "bytes": 26948773
+    },
+    "manifest": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-install.json",
+      "sha256": "cfa6de21587734159757a6dcedb0359f148be5de61224c1fdf2e0e0f544e69cb",
+      "bytes": 265
+    }
+  },
+  "installed_manifest": {
+    "project": "x3-modern-renderer",
+    "sha256": "36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468",
+    "source": "/private/tmp/x3-run53-candidate/d3d9.dll",
+    "source_commit": "fc52a432b8dc7dd9faa2c81f420b371fea17543f",
+    "manifest_source": "dll"
+  },
+  "install_status": "verified",
+  "recorded_utc": "2026-09-20T04:57:40.196384+00:00",
+  "command": [
+    "python3",
+    "tools/manage.py",
+    "install",
+    "--bottle",
+    "X3",
+    "--dll-source",
+    "/tmp/x3-run53-candidate/d3d9.dll"
+  ],
+  "game_launched": false
+}

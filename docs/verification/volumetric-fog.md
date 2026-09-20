@@ -547,6 +547,7 @@ reopen failure reaches proxy poisoning, survives F9 and recovers through Reset
 rewarm. This does not exercise engine hooks, selector/full dispatch or GPU TAA
 history; real native Reset is covered by the separate 113-check state witness.
 The full host suite passes 2,414 tests in 694.921 s; the bridge checker adds
-three focused passes after its module was integrated following discovery. A clean
-committed candidate build remains required before installation.
+three focused passes after its module was integrated following discovery. The
+clean committed candidate build, linked CPU audit and two actual-DLL HDR/TAA
+smoke cases also pass; [status](../status.md) records the current flight candidate.
 Native Windows runtime and user visual acceptance remain open.

@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "candidate": {
+    "source_commit": "fc52a432b8dc7dd9faa2c81f420b371fea17543f",
+    "source_dirty": false,
+    "dll": "/tmp/x3-run53-candidate/d3d9.dll",
+    "sha256": "36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468",
+    "bytes": 26948773,
+    "build_invocations": 1,
+    "configuration": "RelWithDebInfo",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "python": "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "build_log": "/tmp/x3-run53-candidate/build.log"
+  },
+  "scope": "Spatial family fog replacement plus opt-in lattice state diagnostic; no new media, collision or FOV patch",
+  "production_verification": "verification/results/fog-spatial-production-2026-09-20.json",
+  "lattice_verification": "verification/results/lattice-state-observation-runtime.json",
+  "linked_audit": {
+    "path": "/tmp/x3-run53-candidate/linked-audit.json",
+    "sha256": "e75722025c9ba1087fb75d9aa4ec8932b126abedba6a06b46ffc484cfb06a368",
+    "result": "PASS",
+    "roots": 95,
+    "reachable": 540,
+    "violations": 0
+  },
+  "smoke": {
+    "scope": "two selected cases, not full rendering suite",
+    "status": "PARTIAL",
+    "report_path": "/tmp/x3-run53-candidate/render-smoke.json",
+    "report_sha256": "43a7c9d0188392b5bf47d109ccdfb15d22ad040a53e7253697929b0625520c51",
+    "cases": {
+      "production-ownership-hdr-on": {
+        "checks": 43,
+        "restorations": 39,
+        "exit": 0,
+        "directory": "verification/probe/build/motion-output-production-ownership-hdr-on-20260920-085529-663866",
+        "trace_sha256": "23708ad5b6d0bbcc9bd0bd7f39f9ecdbbb17b772e61d42cae921dcf4f0d8288f",
+        "dll_sha256": "36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468",
+        "exe_sha256": "6ac9b3de7ca1843f1f29fe30982b3418887294b66ef8a8e4470312f6b78577e9"
+      },
+      "production-taa-hdr-on": {
+        "checks": 83,
+        "restorations": 51,
+        "exit": 0,
+        "directory": "verification/probe/build/motion-output-production-taa-hdr-on-20260920-085534-573448",
+        "trace_sha256": "29d07508c53209b4e91875141888a585ca776724e4c772d57eb713adc8c217bb",
+        "dll_sha256": "36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468",
+        "exe_sha256": "6ac9b3de7ca1843f1f29fe30982b3418887294b66ef8a8e4470312f6b78577e9"
+      }
+    }
+  },
+  "dry_run": {
+    "path": "/tmp/x3-run53-candidate/dry-run.txt",
+    "sha256": "82fdaccc39547da0a5ca250730d6f726fd63af5301ff5b87a3bc3e3b7e1dc3fd",
+    "exit_code": 0,
+    "game_launched": false
+  },
+  "native_windows": "unverified",
+  "flight": "queued Run53",
+  "install_record": "verification/results/run53-candidate-install.json"
+}

@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (Run52 accepted; fog, lattice and media work continues; collision layout experiment closed). This is the
+Updated 2026-09-20 (Run53 installed and queued; spatial fog/lattice diagnostic; media and offline engine work continue). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -12,25 +12,27 @@ Read history only for a relevant unresolved question. The
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run52 diagnostic candidate DLL SHA-256:
-`4bee98b40420ff8a7ddc433435a1ee6727d72c586f26f169b23d492f628df685`
-(19,559,896 bytes), built once from clean committed source `976307f2`; retained
-at `/tmp/x3-run52-candidate/d3d9.dll`. Run52 flight qualification is complete; the reviewed submission-attribution
-source is merged to main. The installed DLL bytes are unchanged.
-The [qualification record](../verification/results/submission-attribution-qualification-2026-09-20.json)
-binds 2,353 host tests (2 skipped), linked audit 95 roots / 579 reachable / zero
-violations, 8,881 CPU fixture checks, and two selected rendering cases (126 checks).
-A separate automatic-exposure diagnostic passed 59 process checks and 248 scoped
-validation checks, including Reset and ten exhaustive readback timing rows. Its
-generic harness rejection for deliberate every-frame logging is preserved;
-lease runtime coverage is 24 empty scans, not nonempty releases.
-The [install record](../verification/results/run52-candidate-install.json) verifies
-installed bytes and unchanged EXE/bottle configuration. Rollback retains run49's
-DLL and manifest in `/tmp/x3-run52-candidate/rollback`. Installation used
-`python3 tools/manage.py install --bottle X3 --dll-source <retained DLL>`.
-The agent did not launch the game; the corrected [run52 attribution command](archive/run52-completed-2026-09-20.md)
-passed `--dry-run`. This build adds diagnostics, not the experimental fog, media,
-lattice or collision changes.
+Bottle **X3**, **CrossOver Preview.app**. Run53 candidate DLL SHA-256:
+`36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468`
+(26,948,773 bytes), built once from clean committed source `fc52a432` and retained
+at `/tmp/x3-run53-candidate/d3d9.dll`. It replaces uniform fog with the spatial
+family renderer and adds the opt-in post-route lattice state diagnostic. It
+contains no new media, collision or FOV optimization. Run53 flight is queued;
+do not merge further production changes to main during qualification.
+
+The [candidate record](../verification/results/run53-candidate-qualification.json)
+binds 2,414 full host tests plus three bridge checks, linked audit 95 roots /
+540 reachable / zero violations, actual spatial renderer/route/timing evidence,
+and two selected actual-DLL HDR/TAA smoke cases (43/83 checks). A combined affected
+launch `--dry-run` passes; no game was launched. These do not establish visual
+acceptance or native Windows execution.
+
+The [install record](../verification/results/run53-candidate-install.json)
+verifies installed bytes and unchanged EXE/bottle configuration. One rollback
+DLL and manifest preserve Run52 under `/tmp/x3-run53-candidate/rollback`.
+Installation used `python3 tools/manage.py install --bottle X3 --dll-source
+/tmp/x3-run53-candidate/d3d9.dll`. The prior accepted Run52 evidence remains in
+its [qualification record](../verification/results/submission-attribution-qualification-2026-09-20.json).
 
 Launcher defaults now use **lazy render-target binding** with motion output
 after [Run52 acceptance](verification/motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20); explicit `--motion-rt-mode perdraw` remains available.
@@ -40,8 +42,9 @@ fade **80,220** (the optional third value defaults to 1, so the stored setting
 is `80,220,1`; `--no-light-map-far-fade` disables it).
 New opt-in features: `--volumetric-fog-cards replace`, read-only
 `--sector-background`, `--light-phases`, and `--collide-query-phases`.
-Fog still uses manual strength and card presence; automatic family strengths
-are not active. Far stabiliser 0.985 and thin region 0.97 remain explicit options:
+Fog now uses the validated engine family to select bluewell/green spatial
+profiles; manual strength 0.02 is a density multiplier of one. Other families
+retain native cards. Replacement remains explicit and fog is off by default. Far stabiliser 0.985 and thin region 0.97 remain explicit options:
 stationary improvement is accepted, moving-lattice quality remains open.
 Native Windows runtime remains unverified.
 
@@ -80,22 +83,21 @@ Run181 did not close the engine/proxy or moving-collision investigations.
 Card replacement with card-only state validation is reviewed and committed
 (`cd004f35`), preserving the normal setter path. The read-only sector diagnostic
 and the reviewed [239-sector fog census](reverse-engineering/sector-fog-census.md)
-(`a104f376`) are complete. The planned family anchors, bluewell 0.01 and
-foggreenoutlands 0.05, remain manual comparisons. Run185 validates the reader
-in its observed sectors; automatic sector policy remains held during the spatial
-fog redesign. Count-only strength scaling is held.
+(`a104f376`) are complete. Run185 validates the reader
+in its observed sectors. The spatial redesign supersedes the old homogeneous
+0.01/0.05 family anchors with authored density/occupancy profiles and a manual
+multiplier; card count alone does not set density.
 
 Light-selection and collision-query timers are integrated, reviewed and committed
 (`9fa4da5a`): 2,093 light-timer checks with zero failures; 142 collision-timer
 checks and 675 queries with zero differences. Run49 A combined them with
 the existing loop/game/residual phases. Qualification and installation are complete. [Run49](archive/run49-50-completed-2026-09-20.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight) has its performance pair reported; B is reported as run185. The user rejects the uniform fog wash and requests
 patchy clouds with clear gaps. Sector-reader/card-replacement technical triage
-is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20); the offline family-density recipe passes its fixed view and temporal checks, and the [first D3D9 march checkpoint](verification/volumetric-fog.md#spatial-fog-first-gpu-march-checkpoint-2026-09-20) passes. The [composite checkpoint](verification/volumetric-fog.md#spatial-fog-composite-checkpoint-2026-09-20) passes nine cases and preserves all 1,649,517 tested empty-input pixels. The [recovery checkpoint](verification/volumetric-fog.md#spatial-fog-state-and-recovery-checkpoint-2026-09-20) passes 101 checks, and the [32-frame sequence](verification/volumetric-fog.md#spatial-fog-32-frame-gpu-sequence-checkpoint-2026-09-20) passes 282 fixture checks including varying seam controls. [Complete-transaction timing](verification/volumetric-fog.md#spatial-fog-complete-transaction-timing-checkpoint-2026-09-20) passes the fixed gates (1.1002 ms median at 1280, 1.22575 ms at 1920 in the detached fixture). Production integration now passes actual-pass state/recovery, captured numerical/sequence, and synthetic-owner route/card fixtures; complete production transaction timing is 1.0840 ms at 1280x768 and 1.9808 ms on a resized 1920x1080 workload. The integrated full host suite passes 2,414 tests (694.921 s), with three additional bridge checks; a clean candidate build and game visual acceptance remain pending. No repeat fog flight is
-requested. A cheaper moving-lattice display-history replay also failed its quality
+is recorded in the [fog ledger](verification/volumetric-fog.md#run49b-run185-visual-rejection-and-reader-validation-2026-09-20); the offline family-density recipe passes its fixed view and temporal checks, and the [first D3D9 march checkpoint](verification/volumetric-fog.md#spatial-fog-first-gpu-march-checkpoint-2026-09-20) passes. The [composite checkpoint](verification/volumetric-fog.md#spatial-fog-composite-checkpoint-2026-09-20) passes nine cases and preserves all 1,649,517 tested empty-input pixels. The [recovery checkpoint](verification/volumetric-fog.md#spatial-fog-state-and-recovery-checkpoint-2026-09-20) passes 101 checks, and the [32-frame sequence](verification/volumetric-fog.md#spatial-fog-32-frame-gpu-sequence-checkpoint-2026-09-20) passes 282 fixture checks including varying seam controls. [Complete-transaction timing](verification/volumetric-fog.md#spatial-fog-complete-transaction-timing-checkpoint-2026-09-20) passes the fixed gates (1.1002 ms median at 1280, 1.22575 ms at 1920 in the detached fixture). Production integration now passes actual-pass state/recovery, captured numerical/sequence, and synthetic-owner route/card fixtures; complete production transaction timing is 1.0840 ms at 1280x768 and 1.9808 ms on a resized 1920x1080 workload. The integrated full host suite passes 2,414 tests (694.921 s), with three additional bridge checks; the clean candidate is installed for Run53, with game visual acceptance pending. The combined Run53 flight now queues the first spatial fog check. A cheaper moving-lattice display-history replay also failed its quality
 thresholds; the [lattice note §16](architecture/taa-lattice-crawl.md#16-cheaper-post-display-history-replay-rejected-2026-09-20)
 records the result. [Mesh ownership is now identified](architecture/taa-lattice-crawl.md#17-moving-truss-mesh-ownership-recovered-2026-09-20), with signed-position conversion
 proved and about 99.7% projected support agreement. The corrected [source-coverage oracle](architecture/taa-lattice-crawl.md#19-corrected-source-coverage-oracle-passes-2026-09-20) passes its 32-frame checks and reduces tracked coverage variation by about 75%.
-The subsequent RGB prediction failed its quality gates. The [GPU depth/clip-W witness](architecture/taa-lattice-crawl.md#22-existing-clip-w-capture-separates-the-face-hypotheses-2026-09-20) distinguishes the two face hypotheses but does not explain the capture/replay discrepancy. The bounded [post-route state diagnostic](architecture/taa-lattice-crawl.md#23-opt-in-post-route-state-observation-2026-09-20) has passed independent source/runtime review and 250 actual-helper checks; the clean DLL build and linked audit pass. Full discovery found one synthetic Reset fixture compatibility failure, now repaired and independently reviewed; a full candidate rerun remains. Live geometry copies remain held until their access interval is safe. Actual RGB/TAA benefit and a production crawl fix remain unqualified.
+The subsequent RGB prediction failed its quality gates. The [GPU depth/clip-W witness](architecture/taa-lattice-crawl.md#22-existing-clip-w-capture-separates-the-face-hypotheses-2026-09-20) distinguishes the two face hypotheses but does not explain the capture/replay discrepancy. The bounded [post-route state diagnostic](architecture/taa-lattice-crawl.md#23-opt-in-post-route-state-observation-2026-09-20) has passed independent source/runtime review and 250 actual-helper checks; the clean DLL build and linked audit pass. Full discovery found one synthetic Reset fixture compatibility failure, now repaired and independently reviewed; the full candidate host rerun has passed. Live geometry copies remain held until their access interval is safe. Actual RGB/TAA benefit and a production crawl fix remain unqualified.
 
 Ownership fixture runners and the 563-check inventory are repaired with fresh
 passes; all 31 generated shader checks now pass. Fresh collision memo (59 checks)
