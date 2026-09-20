@@ -26,19 +26,19 @@ class ConnectedEvidence(unittest.TestCase):
             'CXR_PLAY':[dict(name='1',lifetime='1',operation='1',epoch='1',start='0',end='-1',qpc='900'),
                         dict(name='2',lifetime='1',operation='2',epoch='1',start='10000',end='10359',qpc='1900'),
                         dict(name='1',lifetime='2',operation='3',epoch='1',start='1939320',end='-1',qpc='3500')],
-            'CXR_EVENT':[dict(name='overlap_cancel',record='2',qpc='2100',a='1'),dict(name='reused',qpc='3000'),dict(name='draining_refusal',qpc='2200'),dict(name='rate',record='2',a='10000'),dict(name='vacant',qpc='2900',a='1',b='0')],
+            'CXR_EVENT':[dict(name='overlap_cancel',record='2',qpc='2100',a='0'),dict(name='reused',qpc='3000'),dict(name='draining_refusal',qpc='2200'),dict(name='rate',record='2',a='10000'),dict(name='vacant',qpc='2900',a='1',b='0')],
             'CXR_CALLBACK':[dict(name='1',lifetime='1',operation='1',epoch='1',status='1',count='1',reason='retired',qpc='2100'),
                             dict(name='2',lifetime='1',operation='2',epoch='1',status='1',count='1',reason='endpoint',qpc='5800'),
                             dict(name='1',lifetime='2',operation='3',epoch='1',status='1',count='1',reason='endpoint',qpc='4300')],
         }
-        cases = [('1','1','1','1','selected',1000,0),('2','1','1','2','selected',2101,1),
-                 ('2','1','2','2','selected',2502,2),('1','2','1','3','selected',4001,3),
-                 ('1','2','2','3','selected',4201,4),('2','1','2','2','terminal',6000,2),
-                 ('1','2','2','3','terminal',6000,4),('2','1','2','2','hold',6400,2),
+        cases = [('1','1','0','1','selected',1000,0),('2','1','0','2','selected',2101,1),
+                 ('2','1','1','2','selected',2502,2),('1','2','1','3','selected',4001,3),
+                 ('1','2','2','3','selected',4201,4),('2','1','1','2','terminal',6000,2),
+                 ('1','2','2','3','terminal',6000,4),('2','1','1','2','hold',6400,2),
                  ('1','2','2','3','hold',6400,4)]
         captures=[]
         for i,(name,lifetime,sequence,operation,reason,qpc,pixels) in enumerate(cases):
-            captures.append(dict(index=str(i),name=name,lifetime=lifetime,sequence=sequence,operation=operation,epoch='1',reason=reason,qpc=str(qpc),pitch='2048',lock_hr='0',unlock_hr='0',schedule=str([1000,2100,2501,4000,4200,5701,4240,5701,4240][i]),position=str([0,10000,10040,1939320,1939520,10360,1939560,10360,1939560][i])))
+            captures.append(dict(binding='10',index=str(i),name=name,lifetime=lifetime,sequence=sequence,operation=operation,epoch='1',reason=reason,qpc=str(qpc),pitch='2048',lock_hr='0',unlock_hr='0',schedule=str([1000,2100,2501,4000,4200,5701,4240,5701,4240][i]),position=str([0,10000,10040,1939320,1939520,10360,1939560,10360,1939560][i])))
             (self.directory/f'capture-{i:02d}.bgra').write_bytes(self.pixels[pixels])
         self.rows['CXR_CAPTURE']=captures
         self.rows['CXR_STARTUP']=[dict(requested='100',begin='110',end='120',ready='130')]
@@ -53,6 +53,12 @@ class ConnectedEvidence(unittest.TestCase):
                                schedule=str(schedule),before=str(schedule),after=str(schedule),position=str(position),
                                c0=str(schedule),c1=str(schedule),c2=str(schedule),c3=str(schedule if terminal else 0),
                                reads='4' if terminal else '3',rate=str(10000*2748779 if name=='2' else 1<<38),generation='2' if terminal else '1',revision='2' if terminal else '1'))
+        for row in clocks:
+            terminal=row['reason']=='terminal'
+            record=next(x for x in self.rows['CXR_RECORD'] if (x['name'],x['lifetime'])==(row['name'],row['lifetime']))
+            capture=next(x for x in captures if (x['name'],x['lifetime'],x['reason'],x['schedule'])==(row['name'],row['lifetime'],row['reason'],row['schedule']))
+            row.update(sequence=capture['sequence'],binding=capture['binding'],post_epoch='2' if terminal else '1',active='0' if terminal else '1',playing='0' if terminal else '1',
+                       live='1',intent='0' if terminal else '2',session_slot=record['session_slot'],session_generation=record['session_generation'])
         self.rows['CXR_CLOCK']=clocks
     def valid(self,rows=None):
         return e.validate(self.rows if rows is None else rows,self.directory,self.oracles)
@@ -109,6 +115,24 @@ class ConnectedEvidence(unittest.TestCase):
             if row['name']=='2':row['position']=str(int(row['position'])+1)
         for row in rows['CXR_CONTINUITY']:row['position']=str(int(row['position'])+1)
         with self.assertRaisesRegex(ValueError,'anchor at requested start'):self.valid(rows)
+
+    def test_zero_sequence_requires_actual_bound_copy_acknowledgement(self):
+        self.assertEqual(self.rows['CXR_CAPTURE'][1]['sequence'],'0')
+        self.assertEqual(self.valid()['natural_callbacks'],2)
+        for group,index,key,value in [('CXR_CAPTURE',1,'binding','0'),('CXR_CLOCK',1,'binding','0'),
+                                       ('CXR_CLOCK',1,'sequence','1'),('CXR_CAPTURE',1,'sequence','1')]:
+            with self.subTest(group=group,key=key):
+                rows=copy.deepcopy(self.rows);rows[group][index][key]=value
+                with self.assertRaises(ValueError):self.valid(rows)
+
+    def test_rejects_inexact_completion_and_pending_state(self):
+        mutations=[(5,'post_epoch','1'),(5,'post_epoch','3'),(5,'active','1'),(5,'playing','1'),
+                   (5,'live','0'),(5,'intent','2'),(5,'session_generation','99'),
+                   (2,'post_epoch','2'),(2,'active','0'),(2,'playing','0'),(2,'intent','0')]
+        for index,key,value in mutations:
+            with self.subTest(index=index,key=key,value=value):
+                rows=copy.deepcopy(self.rows);rows['CXR_CLOCK'][index][key]=value
+                with self.assertRaisesRegex(ValueError,'exact terminal state transition'):self.valid(rows)
 
     def test_rejects_unpaired_unknown_and_duplicate_clocks(self):
         for change in ('missing','unknown','duplicate'):

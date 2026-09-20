@@ -205,12 +205,12 @@ def validate(rows, directory, oracles):
         start,end = oracles[group][rgb]
         require(integer(row,'pitch') >= 2048 and row['lock_hr'] == row['unlock_hr'] == '0', 'actual readback pitch/HRESULT missing')
         sequence = integer(row,'sequence')
-        require(sequence > 0, 'zero presentation acknowledgement')
+        require(integer(row,'binding') > 0, 'missing physical written binding acknowledgement')
         if row['reason'] == 'selected':
             if selected[group]:
                 require(sequence > selected[group][-1]['sequence'] and start >= selected[group][-1]['start'],
                         'presentation sequence/source time reversed')
-            selected[group].append(dict(sequence=sequence,start=start,end=end,qpc=integer(row,'qpc'),rgb=rgb,schedule=integer(row,'schedule'),position=integer(row,'position')))
+            selected[group].append(dict(sequence=sequence,start=start,end=end,qpc=integer(row,'qpc'),rgb=rgb,schedule=integer(row,'schedule'),position=integer(row,'position'),binding=integer(row,'binding')))
         elif row['reason'] in ('terminal','hold'):
             require(selected[group] and rgb == selected[group][-1]['rgb'] and sequence == selected[group][-1]['sequence'],
                     'terminal/hold differs from final actual write')
@@ -218,6 +218,8 @@ def validate(rows, directory, oracles):
             retained[group,row['reason']] = integer(row,'qpc')
         else: raise ValueError('unknown readback reason')
         content.append(dict(index=integer(row,'index'),group=group,sequence=sequence,start=start,end=end,rgb_sha256=rgb))
+    require(selected['A1'] and selected['B1'] and selected['A1'][0]['sequence'] == selected['B1'][0]['sequence'] == 0,
+            'fresh workers did not acknowledge sequence-zero first writes')
     require(len(selected['A1']) == 1 and len(selected['B1']) >= 2 and len(selected['A2']) >= 2, 'real presentations missing')
     require(selected['A2'][0]['start'] == 19393200000 and selected['A2'][-1]['end'] == 19395600000,
             'physical suffix first/last actual picture missing')
@@ -327,12 +329,18 @@ def validate_time(rows, selected, plays, callbacks, header):
         rate = 10000*2748779 if group == 'B1' else unit
         scale = Fraction(1000*rate,frequency*unit)
         anchor = AnchorInterval(played)
+        record = next(x for x in rows['CXR_RECORD'] if (x['name'],x['lifetime']) == key)
         terminal = []; previous = played
         for row in own:
             require((row['operation'],row['epoch']) == (play['operation'],play['epoch']) and integer(row,'rate') == rate,
                     'clock tuple/rate changed')
             before, after, schedule = integer(row,'before'), integer(row,'after'), integer(row,'schedule')
             reads = integer(row,'reads'); is_terminal = row['reason'] == 'terminal'
+            require(integer(row,'post_epoch') == integer(play,'epoch')+int(is_terminal) and
+                    row['active'] == row['playing'] == ('0' if is_terminal else '1') and row['live'] == '1' and
+                    row['intent'] in (('0',) if is_terminal else ('1','2')) and
+                    (row['session_slot'],row['session_generation']) == (record['session_slot'],record['session_generation']),
+                    'pump did not preserve identity/exact terminal state transition')
             require(not terminal and before >= previous, 'clock observations reordered or after terminal')
             previous = after
             require(all(integer(row,k) == integer(first,k)+int(is_terminal) for k in ('generation','revision')),
@@ -347,7 +355,8 @@ def validate_time(rows, selected, plays, callbacks, header):
             lower = max(lower,Fraction(start))
             if row['reason'] == 'selected':
                 sample = next(x for x in selected[group] if x['schedule'] == schedule)
-                require(sample['position'] == position and sample['qpc'] >= after,
+                require(sample['position'] == position and sample['qpc'] >= after and
+                        sample['sequence'] == integer(row,'sequence') and sample['binding'] == integer(row,'binding') > 0,
                         'selected readback position/time differs from completed pump')
                 lower = max(lower,Fraction(sample['start'],10000))
                 upper = min(upper,Fraction(sample['end'],10000))

@@ -35,7 +35,10 @@ requested start. Every selected readback must have exactly one scheduling observ
 source interval intersects the same unknown-anchor interval as every public
 position observation. Finite end requires public milliseconds >10359, with the
 corresponding outward conversion bound; physical EOF requires the exact final
-source end1939560ms. Both constraints precede callback.
+source end1939560ms. Both constraints precede callback. The completed callback retains the old operation
+and epoch; actual post-pump Runtime state must preserve session/operation/live,
+increment epoch exactly once, clear playing/active, and become stopped. Every
+nonterminal pump must preserve its epoch and active playing intent.
 B position/operation/epoch/rate/generation/revision must remain identical across A
 cancellation and the rejected immediate reassignment, and match B play/first
 selected pump. All subsequent nonterminal generation/revision observations remain
@@ -85,12 +88,30 @@ Focused non-Wine verification:
 PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_connected
 ```
 
-Fourteen tests qualify acceptance and rejection for missing/wrong pixels, stale
+Sixteen tests qualify acceptance and rejection for missing/wrong pixels, stale
 identities, overlap failure, repeated/missing/early callbacks, final-frame loss and
 post-terminal hold changes. The source additionally passes strict i686 SSE2/stack4
-object compilation. Actual runtime acceptance is pending the root's frozen build
-and queue. The fixture now uses actual `media_root::Ingress` for Consumer memory and
-retirement, binds the mandatory ingress after native owner binding, and requires
-exclusive Reset registration. Root must import those reviewed source APIs before
-freezing the build. Function/data-section GC discards unused Root startup/cue
+object compilation. Actual runtime acceptance is pending. The immutable v2 run reached A2's final
+picture and then exposed an overstrict fixture epoch assertion: production
+nonloop completion consumes the old tuple and advances its publication epoch.
+The corrected assertion and checker now require that exact transition. The same
+run also exposed a separate first-frame sequence-zero integration mismatch;
+the immutable failure record is `/tmp/x3-media-connected-v2-run1/result.json`
+(exit2, pass1905, all116 protected inputs unchanged). Worker frame numbering begins
+at0, while Destination rejected `!view.sequence`. B advanced to10001 before its
+first written sequence1/RGB interval10040..10080ms. This is a real integration
+mismatch, not evidence permitting relaxation of the first-picture requirement.
+The destination owner must qualify the zero-sequence correction before a fresh
+build. The fixture now recognizes physical writes through Services' nonzero
+successful binding acknowledgment, which is assigned only with `CopyKind::written`;
+raw sequence0 remains valid. Selected capture/clock records bind that acknowledgment
+to sequence, session and operation. Fresh A/B first writes must have sequence0;
+B's target-aligned first-picture and A2's required first/last-frame checks remain.
+An explicit first-B-observed flag also prevents sequence0 suppressing the later
+B-progress witness. No extra clock, worker observer, copy counter or production
+Services API was added.
+
+The fixture uses actual `media_root::Ingress` for Consumer memory and retirement,
+binds mandatory ingress after native owner binding, and requires exclusive Reset
+registration. These root APIs are now integrated. Function/data-section GC discards unused Root startup/cue
 composition from this standalone executable; no alternate ingress is implemented.

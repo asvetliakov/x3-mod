@@ -71,10 +71,10 @@ struct Gate {
  need(FlushInstructionCache(GetCurrentProcess(),body,4096),"gate_flush");need(admission.qualify_owner(GetCurrentThreadId()),"gate_owner");
  need(g::stage(platform,transaction,site,admission)&&g::install(platform,transaction,admission)&&admission.enable(GetCurrentThreadId()),"gate_installed");}
 };
-struct ClockObservation {bool pending=false;const char* reason="";unsigned position=0,reads=0;std::uint64_t schedule=0,before=0,after=0,rate=0,generation=0,revision=0,counter[4]{};};
+struct ClockObservation {bool pending=false;const char* reason="";unsigned position=0,reads=0;std::uint64_t schedule=0,before=0,after=0,rate=0,generation=0,revision=0,sequence=0,binding=0,counter[4]{};m::Snapshot post{};};
 struct Record {
  p::Record32 bytes{};m::SessionHandle session{};p::EngineKey key{};
- unsigned name=0,lifetime=0,calls=0,slot=0;bool allocated=false,playing=false;std::uint64_t operation=0,epoch=0,last_sequence=0,writes=0,terminal_qpc=0,last_schedule=0;unsigned start_ms=0,last_position=0;bool advancing_logged=false;ClockObservation observation{};
+ unsigned name=0,lifetime=0,calls=0,slot=0;bool allocated=false,playing=false;std::uint64_t operation=0,epoch=0,last_sequence=0,last_binding=0,writes=0,terminal_qpc=0,last_schedule=0;unsigned start_ms=0,last_position=0;bool advancing_logged=false;ClockObservation observation{};
 };
 struct World;
 static e::OwnerDomain owner_domain(){e::OwnerDomain value{};need(e::query_native_owner(value),"native_owner_domain");return value;}
@@ -122,7 +122,7 @@ struct World {
  frame.ecx=r.slot;r.bytes.flags|=4;r.bytes.slot=frame.ecx;
  observer.dispatch(site+d::site_count,frame,GetCurrentThreadId());
  need(r.bytes.slot==r.slot&&(r.bytes.flags&4),"record_bound_fields");}
- bool construct(Record& r){r.bytes={};r.bytes.flags=4;r.bytes.slot=0x3d;r.calls=0;r.playing=false;r.last_sequence=r.writes=0;r.terminal_qpc=0;r.advancing_logged=false;r.last_schedule=0;
+ bool construct(Record& r){r.bytes={};r.bytes.flags=4;r.bytes.slot=0x3d;r.calls=0;r.playing=false;r.last_sequence=r.last_binding=r.writes=0;r.terminal_qpc=0;r.advancing_logged=false;r.last_schedule=0;
  Input in;in.frame.esi=addr(&r.bytes);in.args[1]=2;in.args[2]=8;consumer.dispatch(e::SiteId::construct,in.frame);
  need(in.frame.target==routes.return_plain,"construct_owned_return");if(!in.frame.eax)return false;
  r.bytes.shell=in.frame.eax;r.bytes.source=2;r.bytes.flags=8;r.allocated=true;++r.lifetime;
@@ -147,19 +147,25 @@ struct World {
  r.bytes.flags&=~2u;r.bytes.callback_context=0;r.bytes.callback_index=0;r.playing=false;r.terminal_qpc=tick();}
  static void native_callback(Record& r,unsigned status,const char* reason){++r.calls;std::printf("CXR_CALLBACK name=%u lifetime=%u operation=%llu epoch=%llu status=%u count=%u reason=%s qpc=%llu\n",r.name,r.lifetime,(unsigned long long)r.operation,(unsigned long long)r.epoch,status,r.calls,reason,(unsigned long long)tick());}
  void flush_clock(Record& r){auto& o=r.observation;if(!o.pending)return;o.pending=false;
- std::printf("CXR_CLOCK name=%u lifetime=%u reason=%s operation=%llu epoch=%llu position=%u schedule=%llu before=%llu after=%llu rate=%llu generation=%llu revision=%llu reads=%u c0=%llu c1=%llu c2=%llu c3=%llu\n",r.name,r.lifetime,o.reason,(unsigned long long)r.operation,(unsigned long long)r.epoch,o.position,(unsigned long long)o.schedule,(unsigned long long)o.before,(unsigned long long)o.after,(unsigned long long)o.rate,(unsigned long long)o.generation,(unsigned long long)o.revision,o.reads,(unsigned long long)o.counter[0],(unsigned long long)o.counter[1],(unsigned long long)o.counter[2],(unsigned long long)o.counter[3]);}
+ std::printf("CXR_CLOCK name=%u lifetime=%u reason=%s operation=%llu epoch=%llu position=%u schedule=%llu before=%llu after=%llu rate=%llu generation=%llu revision=%llu reads=%u c0=%llu c1=%llu c2=%llu c3=%llu post_epoch=%llu active=%u playing=%u live=%u intent=%u session_slot=%u session_generation=%llu sequence=%llu binding=%llu\n",r.name,r.lifetime,o.reason,(unsigned long long)r.operation,(unsigned long long)r.epoch,o.position,(unsigned long long)o.schedule,(unsigned long long)o.before,(unsigned long long)o.after,(unsigned long long)o.rate,(unsigned long long)o.generation,(unsigned long long)o.revision,o.reads,(unsigned long long)o.counter[0],(unsigned long long)o.counter[1],(unsigned long long)o.counter[2],(unsigned long long)o.counter[3],(unsigned long long)o.post.publication.epoch,unsigned(o.post.operation_active),unsigned(o.post.publication.playing),unsigned(o.post.publication.live),unsigned(o.post.intent),o.post.publication.session.slot,(unsigned long long)o.post.publication.session.generation,(unsigned long long)o.sequence,(unsigned long long)o.binding);}
  bool pump(Record& r,bool defer_clock=false){if(!r.allocated||!r.playing)return false;Input in;const auto pump_begin=tick();counter_trace.count=0;counter_trace.active=true;in.frame.ecx=addr(&r.bytes);in.frame.eax=r.bytes.shell;boundary_begin.store(GetTickCount());consumer.dispatch(e::SiteId::pump,in.frame);counter_trace.active=false;const auto pump_end=tick();boundary_begin.store(0);need(counter_trace.count==(in.frame.eax==1?3u:4u),"actual_pump_counter_read_contract");// Build/runner audit the exact Consumer.publish -> Services.publish ->
  // schedule(now) -> optional terminal publish call shape. Runtime count/order
  // and public post-pump position are checked independently; End freezes the
  // scheduler position across the terminal fourth publish/Clock.stop.
  r.last_schedule=counter_trace.values[2];
  need(in.frame.target==routes.return_plain,"pump_live_return");need(in.frame.eax==1||in.frame.eax==2,"pump_no_runtime_failure");const auto diag=services.diagnostics();const unsigned worker=r.name==2?1:0;
- const auto sequence=diag.presented[worker];const bool wrote=sequence&&sequence!=r.last_sequence;if(wrote){r.last_sequence=sequence;++r.writes;}
- m::Snapshot snapshot;need(adapter.snapshot(r.session,snapshot),"pump_snapshot");need(snapshot.publication.operation==r.operation&&snapshot.publication.epoch==r.epoch,"pump_identity_stable");
+ const auto sequence=diag.presented[worker];const bool wrote=diag.binding[worker]&&(!r.writes||sequence!=r.last_sequence);if(wrote){r.last_sequence=sequence;r.last_binding=diag.binding[worker];++r.writes;}
+ m::Snapshot snapshot;need(adapter.snapshot(r.session,snapshot),"pump_snapshot");need(snapshot.publication.session==r.session&&snapshot.publication.live&&snapshot.publication.operation==r.operation,"pump_identity_stable");
+ // Completion consumes the old operation tuple, then Runtime::terminate advances
+ // its epoch once. Callback attribution remains the completed (r.operation,r.epoch).
+ const bool terminal=in.frame.eax==2;
+ need(r.epoch!=UINT64_MAX&&snapshot.publication.epoch==r.epoch+unsigned(terminal)&&
+      snapshot.operation_active==!terminal&&snapshot.publication.playing==!terminal&&
+      (terminal?snapshot.intent==m::Intent::stopped:(snapshot.intent==m::Intent::preparing||snapshot.intent==m::Intent::playing)),"pump_exact_state_transition");
  unsigned position=0;need(services.position(r.session,position),"actual_position_observed");r.last_position=position;
  const bool observed_write=wrote&&(r.name==2||r.lifetime==2||r.writes==1);
  const bool first_advance=!r.advancing_logged&&position>r.start_ms;if(first_advance)r.advancing_logged=true;
- if(observed_write||in.frame.eax==2||first_advance){auto& o=r.observation;need(!o.pending,"bounded_clock_observation");o.pending=true;o.reason=in.frame.eax==2?"terminal":observed_write?"selected":"advance";o.position=position;o.schedule=r.last_schedule;o.before=pump_begin;o.after=pump_end;o.rate=diag.rate_numerator[worker];o.generation=diag.clock_generation[worker];o.revision=diag.revision[worker];o.reads=counter_trace.count;for(unsigned i=0;i<4;++i)o.counter[i]=i<counter_trace.count?counter_trace.values[i]:0;}
+ if(observed_write||in.frame.eax==2||first_advance){auto& o=r.observation;need(!o.pending,"bounded_clock_observation");o.pending=true;o.post=snapshot;o.sequence=sequence;o.binding=diag.binding[worker];o.reason=in.frame.eax==2?"terminal":observed_write?"selected":"advance";o.position=position;o.schedule=r.last_schedule;o.before=pump_begin;o.after=pump_end;o.rate=diag.rate_numerator[worker];o.generation=diag.clock_generation[worker];o.revision=diag.revision[worker];o.reads=counter_trace.count;for(unsigned i=0;i<4;++i)o.counter[i]=i<counter_trace.count?counter_trace.values[i]:0;}
  // B's observation is emitted by the caller only AFTER the first-write cancel.
  if(!defer_clock||in.frame.eax==2)flush_clock(r);
  if(in.frame.eax==2){need(r.bytes.callback_index==1,"engine_callback_present");complete(r);}return wrote;}
@@ -174,23 +180,23 @@ struct World {
  void capture(Record& r,const char* why){need(capture_count<32,"bounded_readbacks");D3DLOCKED_RECT map{};boundary_begin.store(GetTickCount());const auto hr=graphics.surfaces[r.slot]->LockRect(&map,nullptr,D3DLOCK_READONLY);need(hr==S_OK&&map.pBits&&map.Pitch>=2048,"readback_lock");
  static std::array<unsigned char,512*512*4> pixels;for(unsigned y=0;y<512;++y)std::memcpy(pixels.data()+y*2048,static_cast<unsigned char*>(map.pBits)+y*map.Pitch,2048);const auto unlock=graphics.surfaces[r.slot]->UnlockRect();need(unlock==S_OK,"readback_unlock");boundary_begin.store(0);
  wchar_t name[48];std::swprintf(name,48,L"capture-%02u.bgra",capture_count);const auto path=output+L"/"+name;HANDLE file=CreateFileW(path.c_str(),GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);need(file!=INVALID_HANDLE_VALUE,"capture_create_new");DWORD wrote=0;need(WriteFile(file,pixels.data(),DWORD(pixels.size()),&wrote,nullptr)&&wrote==pixels.size(),"capture_write");need(CloseHandle(file),"capture_close");
- std::printf("CXR_CAPTURE index=%u name=%u lifetime=%u sequence=%llu operation=%llu epoch=%llu reason=%s qpc=%llu pass=%u pitch=%d lock_hr=%ld unlock_hr=%ld position=%u schedule=%llu\n",capture_count++,r.name,r.lifetime,(unsigned long long)r.last_sequence,(unsigned long long)r.operation,(unsigned long long)r.epoch,why,(unsigned long long)tick(),pass,int(map.Pitch),long(hr),long(unlock),r.last_position,(unsigned long long)r.last_schedule);}
+ std::printf("CXR_CAPTURE index=%u name=%u lifetime=%u sequence=%llu operation=%llu epoch=%llu reason=%s qpc=%llu pass=%u pitch=%d lock_hr=%ld unlock_hr=%ld position=%u schedule=%llu binding=%llu\n",capture_count++,r.name,r.lifetime,(unsigned long long)r.last_sequence,(unsigned long long)r.operation,(unsigned long long)r.epoch,why,(unsigned long long)tick(),pass,int(map.Pitch),long(hr),long(unlock),r.last_position,(unsigned long long)r.last_schedule,(unsigned long long)r.last_binding);}
 };
 int wmain(int argc,wchar_t** argv){std::setvbuf(stdout,nullptr,_IONBF,0);if(argc!=3||std::wcscmp(argv[1],L"--output")){std::fprintf(stderr,"--output DIRECTORY required\n");return 2;}output=argv[2];need(GetFileAttributesW(output.c_str())!=INVALID_FILE_ATTRIBUTES,"output_directory");LARGE_INTEGER f{};need(QueryPerformanceFrequency(&f)&&f.QuadPart>0,"real_qpc");frequency=std::uint64_t(f.QuadPart);auto* world=new World;
  HANDLE watch=CreateThread(nullptr,0,watchdog,nullptr,0,nullptr);need(watch,"watchdog");world->setup();const auto begin=tick();std::printf("CXR_HEADER kind=media_connected_v1 frequency=%llu main_thread=%lu source=2 workers=2 slots_per_worker=3 copy=native clock=production engine=authored_handler_frames\n",(unsigned long long)frequency,GetCurrentThreadId());
- unsigned phase=0,hold_passes=0;std::uint64_t first_b=0,b_operation=0,b_epoch=0,old_key=0,old_session=0,hold_begin=0;bool b_progress=false,a2_started=false;auto previous=tick();
+ unsigned phase=0,hold_passes=0;std::uint64_t first_b=0,b_operation=0,b_epoch=0,old_key=0,old_session=0,hold_begin=0;bool first_b_seen=false,b_progress=false,a2_started=false;auto previous=tick();
  while(phase<5&&tick()-begin<frequency*80){++pass;const auto now=tick();if(now-previous>largest_pass)largest_pass=now-previous;previous=now;world->maintenance();
  if(phase==0&&world->services.ready()){need(world->startup.snapshot().status==st::Status::ready,"startup_actual_ready");need(world->consumer.enable(world->readiness),"consumer_ready_enable");need(world->construct(world->a)&&world->construct(world->b),"two_owned_records");need(world->services.diagnostics().assigned==2,"two_assignments");world->rate(world->b,10000);world->play(world->a,0,-1);const auto ready=world->startup.snapshot();std::printf("CXR_STARTUP requested=%llu begin=%llu end=%llu ready=%llu\n",(unsigned long long)ready.requested_qpc,(unsigned long long)ready.bootstrap_begin_qpc,(unsigned long long)ready.bootstrap_end_qpc,(unsigned long long)ready.ready_qpc);event("ready");phase=1;}
  if(phase>=1&&phase<=3){const bool aw=world->pump(world->a);
  if(aw&&(world->a.lifetime==2||world->a.writes==1))world->capture(world->a,"selected");
  if(phase==1&&world->a.writes){world->play(world->b,10000,10359);phase=2;}
  const bool bw=world->pump(world->b,true);
- if(phase==2&&bw&&!first_b){first_b=world->b.last_sequence;b_operation=world->b.operation;b_epoch=world->b.epoch;need(world->b.playing,"overlap_still_active");old_key=world->a.key.generation;old_session=world->a.session.generation;
+ if(phase==2&&bw&&!first_b_seen){first_b_seen=true;first_b=world->b.last_sequence;b_operation=world->b.operation;b_epoch=world->b.epoch;need(world->b.playing,"overlap_still_active");old_key=world->a.key.generation;old_session=world->a.session.generation;
  // No diagnostic readback or file I/O between B's first real write and A cancel.
  world->continuity("before_cancel");world->retire(world->a);world->continuity("after_cancel");need(world->services.diagnostics().draining==1,"exact_cancellation_draining");event("overlap_cancel",2,first_b,b_operation);
  need(!world->construct(world->a),"reuse_while_draining_refused");world->continuity("after_refusal");world->flush_continuity();event("draining_refusal",1);phase=3;}
  world->flush_clock(world->b);
- if(bw){if(first_b&&world->b.last_sequence>first_b){b_progress=true;need(world->b.operation==b_operation&&world->b.epoch==b_epoch,"B_progress_after_A_cancel");}world->capture(world->b,"selected");}
+ if(bw){if(first_b_seen&&world->b.last_sequence>first_b){b_progress=true;need(world->b.operation==b_operation&&world->b.epoch==b_epoch,"B_progress_after_A_cancel");}world->capture(world->b,"selected");}
  if(phase==3&&!a2_started&&world->services.diagnostics().draining==0){const auto vacant=world->services.diagnostics();need(vacant.assigned==1,"A_assignment_vacant");event("vacant",1,vacant.assigned,vacant.draining);need(world->construct(world->a),"quiescent_reuse_admitted");need(world->a.key.generation!=old_key&&world->a.session.generation!=old_session,"reuse_new_identity");world->play(world->a,1939320,-1);a2_started=true;event("reused",1,world->a.key.generation,world->a.session.generation);}
  if(phase==3&&a2_started&&!world->a.playing&&!world->b.playing){need(b_progress,"B_presented_after_cancel");need(world->a.calls==1&&world->b.calls==1,"natural_callback_once");need(world->a.writes>=2&&world->b.writes>=2,"both_terminal_presentations");world->capture(world->a,"terminal");world->capture(world->b,"terminal");hold_begin=tick();phase=4;}}
  if(phase==4){++hold_passes;need(world->a.calls==1&&world->b.calls==1,"no_duplicate_callback");if(hold_passes>=20&&tick()-hold_begin>=frequency/4){world->capture(world->a,"hold");world->capture(world->b,"hold");world->retire(world->a);world->retire(world->b);world->services.close_admission_and_cancel_on_owner();phase=5;}}
