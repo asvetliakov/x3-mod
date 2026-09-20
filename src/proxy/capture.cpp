@@ -213,7 +213,11 @@ x3m::renderer::SentinelMode taa_sentinel_mode = x3m::renderer::SentinelMode::Aut
 float camera_cut_degrees = 20.f;
 unsigned camera_log_frames = 300;
 unsigned motion_jitter_samples = 8;
-float motion_cut_median_px = 48.f, motion_cut_missing = .25f;
+// The finite huge displacement bound is a practical off switch. A missing
+// bound of 1 is exactly off because finish_cut_detector uses strict > and the
+// missing fraction cannot exceed 1. Environment overrides retain the 48/.25
+// diagnostic detector when explicitly requested.
+float motion_cut_median_px = 1e30f, motion_cut_missing = 1.f;
 // Component fixtures serialize every write and replay. The live capture mutex
 // does not cover worker-thread VB/IB Lock/Unlock or mapped writes. No production
 // exclusion token is available yet: do not turn a requested diagnostic into an

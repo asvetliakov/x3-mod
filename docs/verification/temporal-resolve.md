@@ -464,3 +464,37 @@ texture-center UV, so it adds only prior raster jitter.
 [Deliberately failing regression output](../../verification/results/temporal-viewport-regression.txt)
 and [source/executable hashes](../../verification/results/temporal-viewport-regression.json)
 preserve this negative proof. Final passing results use the corrected source.
+
+## Run57 global heuristic cuts disabled by default (2026-09-21)
+
+Run203/204 normal-speed recordings linked all five inspected station-flash peaks
+to discarded global history: four median-motion cuts and one missing-key cut.
+Missing-key-only disablement left median cuts and visible flashes. No gain
+apply/restore failure was found at those peaks; raw light-map stability is not
+therefore proven universally.
+
+Run205 disables both heuristics. The user reports the flash fixed and no smear,
+old scenery or ghost trails during save loading and sector travel, and explicitly
+accepts both disabled by default. Streaming analysis finds 26,371 contiguous
+frames, zero heuristic cuts despite 142 frames exceeding the old bounds, and
+24,629 successful resolves out of 24,629 attempts. Apply/restore failures: zero.
+Nine resolved frames omit history: initial scene, four chase snaps and four
+large camera rotations. Save loading is logged; sector travel is user-observed,
+not proof that all transition epochs fired. Native Windows runtime remains
+unverified.
+
+Launcher defaults are now median `1e30`, missing fraction `1`, preserving
+explicit inherited diagnostic overrides. Native fallback initializers match for
+future builds; no predicate, shader, hook, camera or recovery policy changed.
+This adds no per-draw work. The installed DLL is unchanged and already supports
+these environment values. Focused launcher/default checks cover unset values,
+overrides and retained camera/sentinel defaults; no new candidate qualification
+or Wine fixture is needed for this default-only change.
+
+[Compact counts](../../verification/results/run57-heuristic-cuts/summary.json),
+[analysis](../../verification/results/run57-heuristic-cuts/summary.md) and
+[streaming reproducer](../../verification/results/run57-heuristic-cuts/summarize.py).
+
+Independent review: no findings; **14 focused host tests passed**. The affected
+launch dry-run with both cut variables unset confirms `1e30/1`, camera `20`,
+and TAA enabled. No game was launched. [Review record](../../verification/results/run57-heuristic-cuts/review.json).

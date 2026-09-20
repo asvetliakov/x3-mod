@@ -1041,6 +1041,12 @@ def main():
         env['X3M_MOTION_CAPTURE'] = '1' if args.motion_capture else '0'
         env['X3M_MOTION_OUTPUT'] = '1' if args.motion_output else '0'
         env['X3M_MOTION_JITTER'] = '1' if args.motion_jitter else '0'
+        # User-accepted production defaults: a finite huge median bound is a
+        # practical off switch, and 1 exactly disables the missing-key cut
+        # because the detector compares a fraction with this bound using >.
+        # Keep inherited values as the explicit diagnostic opt-in (48/.25).
+        env.setdefault('X3M_MOTION_CUT_MEDIAN_PX', '1e30')
+        env.setdefault('X3M_MOTION_CUT_MISSING', '1')
         env['X3M_TAA'] = '1' if args.taa else '0'
         env['X3M_TAA_DEBUG'] = '1' if args.taa_debug else '0'
         if args.taa_k is not None:

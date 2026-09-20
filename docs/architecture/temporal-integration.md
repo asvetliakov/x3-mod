@@ -121,22 +121,23 @@ the next run (step 2 below). The route folds its resource generation into the
 history epoch. Ordering is the same as for the motion target: release before
 the wrapper's Reset, recreate lazily.
 
-History is invalidated on camera-serial change, load or registry epoch change,
-dimension change, failed Present and selector rejection. Those signals already
-exist in the route, but the [iteration-6 run](../verification/iteration-06.md)
-showed they are insufficient: the load and registry epochs did not advance
-across several sector changes and a ship destruction, and the camera serial
-changed only once in the session. A cut detector based on the route's own
-data is therefore required: at the end of the scene phase, compute the median
-screen displacement of the matched draws' projected origins (current versus
-previous rows, the same quantity the cross-check tool computes) and the
-fraction of routed draws whose key was absent in the previous frame. A median
-above a configurable bound (a few tens of pixels at 1280×768, scaled with the
-viewport) or a missing-key fraction above a bound marks the frame as a cut,
-and the resolve runs current-only for it. The bounds are tuned from the
-iteration-6 distributions (median displacement 0.001–8.4 px in ordinary flight,
-worst missing-key fraction 42 of 10,517 routes). A view-inverse shadow of
-`c34–36` remains a possible refinement but is not required for this.
+Global color history is invalidated by resource generation/dimension changes,
+failed presentation or resolve/recovery paths, camera rotation cuts and chase
+snaps. Load/registry epochs and camera lifetime identities distinguish per-draw
+history keys; they are not direct whole-color-history epoch inputs. A new draw
+without a match rejects history locally. Sector transitions are not yet covered
+by a dedicated, fully validated global transition event.
+
+The original median-displacement and missing-key heuristics were added after
+early transition evidence exposed gaps. Run57 showed they also discarded valid
+history during ordinary camera motion, producing station flashes. Following
+Run205 user acceptance, both default off: `X3M_MOTION_CUT_MEDIAN_PX=1e30`
+(practically unreachable finite bound) and `X3M_MOTION_CUT_MISSING=1`
+(strict `>` against a fraction bounded by one). Explicit `48/.25` environment
+overrides retain the diagnostic comparison. The launcher applies these defaults
+with the existing DLL; native initializers match for future builds. Camera cuts,
+chase snaps, device/recovery handling and per-pixel rejection remain unchanged.
+See the [Run57 ledger](../verification/temporal-resolve.md#run57-global-heuristic-cuts-disabled-by-default-2026-09-21).
 
 ## Cost and memory
 

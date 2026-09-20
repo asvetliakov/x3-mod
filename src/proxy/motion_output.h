@@ -1940,7 +1940,9 @@ private:
     // Cut detector: displacement magnitudes of this frame's matched draws,
     // reserved once at attach (never grows per draw); bounds see configure.
     std::vector<float> displacements_;
-    float cut_median_bound_ = 48.f, cut_missing_bound_ = .25f;
+    // Finite huge is the practical-off median bound. One is exactly off for
+    // the missing fraction because the cut predicate uses strict >.
+    float cut_median_bound_ = 1e30f, cut_missing_bound_ = 1.f;
     bool cut_finished_ = false; // Verdict computed for this frame (end of scene phase or before Present).
     // Camera state: the scene view of this frame (read at the depth-only
     // Clear), the background view (diagnostics only), the scene view of the

@@ -2,8 +2,8 @@
 
 Updated 2026-09-21: Run56 (run200) is accepted for media stability: the user
 reports no crash and no media-related stutter. The accepted production baseline
-is merged to main. New fog-range and station-lighting issues are being investigated
-separately. The agent never launches the game. See the [run queue](verification/user-runs.md).
+is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
+work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md).
 
 ## Installed build
 
@@ -57,18 +57,18 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   acceptance gaps. Camera-cut native-card replacement protection remains enabled.
 - **New fog-range request:** the user wants 30–40 km patch visibility without
   abrupt appearance. Current support is 12,000 render units (2.4 km). Native
-  object fading is separate. A preserved-near/filtered-far offline comparison is
-  in progress; no production recipe or larger distance has been installed.
-- **Station flash:** run200 reports brief brightness changes during camera motion
-  on an asteroid-attached mine/refinery, possibly the solar plant too, even with
-  fog off. Both F8 bursts have been compared without a demonstrated gain bypass. The
-  normal-speed recording exposes brief fine-detail flashes. A global TAA
-  missing-history cut is the leading hypothesis; the existing-build Run57 A/B
-  records its exact per-frame state. No production correction is selected.
+  object fading is separate. Filtered-far integration failed the offline comparison; the accurate reference
+  converges, but the tested macro mask removes all nearby fog in the four views.
+  No production recipe or larger distance has been selected.
+- **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
+  the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
+  now apply this to the unchanged installed DLL; native fallback defaults match
+  for the next build. Camera cuts, chase snaps and recovery remain enabled.
+  [Evidence](verification/temporal-resolve.md#run57-global-heuristic-cuts-disabled-by-default-2026-09-21).
 - **Lattice:** Run54 B returned run201 with three capture bursts. Guarded state
   and fixture comparison pass within their sampled scope. The frozen-subset CPU
-  qualifier remains UNKNOWN; a calibrated standalone GPU point probe is in
-  preparation. No repeat flight or renderer correction is selected.
+  qualifier remains UNKNOWN; the calibrated standalone GPU point probe passes its measurement checks but
+  measured vertex Z/W still does not qualify the CPU interpolation model. No repeat flight or renderer correction is selected.
   [Owning note §29](architecture/taa-lattice-crawl.md#29-existing-capture-stage-attribution-bounded-negative-2026-09-21).
 - **Collision:** paused by user request; no moving-collision test is queued.
 - **Engine/proxy timing:** lazy RT remains accepted. Corrected attribution

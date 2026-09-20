@@ -1,0 +1,547 @@
+[
+  {
+    "tag": "A",
+    "run": 203,
+    "peak": {
+      "original_frame": 693,
+      "t": 12.391667,
+      "file": "Anative_0049.png",
+      "score": 74,
+      "bar": [
+        112,
+        234,
+        258
+      ],
+      "crop": [
+        146,
+        199,
+        306,
+        339
+      ],
+      "white": 156
+    },
+    "offset": 224.0210000000192,
+    "best": {
+      "error_deg": 0.1653298569760573,
+      "frame": 17503,
+      "mapped_video_time": 12.403999999980812,
+      "motion": {
+        "frame": "17503",
+        "draws": "145",
+        "routed": "72",
+        "matched": "72",
+        "cut": "1",
+        "cut_median_px": "58.4597",
+        "cut_missing": "0.0000",
+        "cut_samples": "72",
+        "taa_history": "0",
+        "taa_attempted": "1",
+        "taa_resolved": "1",
+        "camera_cut": "0",
+        "camera_rotation_deg": "2.3187",
+        "camera_valid": "1",
+        "gate5": "0",
+        "gate6": "0",
+        "apply_failures": "0",
+        "restore_failures": "0",
+        "taa_skip": "0",
+        "taa_result": "00000000",
+        "readback_us": "0.0"
+      }
+    },
+    "alternates": [
+      {
+        "error_deg": 1.6886805218799095,
+        "frame": 17504,
+        "mapped_video_time": 12.417999999980793,
+        "motion": {
+          "frame": "17504",
+          "draws": "141",
+          "routed": "72",
+          "matched": "72",
+          "cut": "0",
+          "cut_median_px": "40.0504",
+          "cut_missing": "0.0000",
+          "cut_samples": "72",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "1.7520",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "0",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      },
+      {
+        "error_deg": 2.35529601291682,
+        "frame": 17502,
+        "mapped_video_time": 12.391999999980811,
+        "motion": {
+          "frame": "17502",
+          "draws": "145",
+          "routed": "72",
+          "matched": "72",
+          "cut": "0",
+          "cut_median_px": "43.9891",
+          "cut_missing": "0.0000",
+          "cut_samples": "72",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "1.5939",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "0",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      }
+    ]
+  },
+  {
+    "tag": "A",
+    "run": 203,
+    "peak": {
+      "original_frame": 819,
+      "t": 14.641667,
+      "file": "Anative_0074.png",
+      "score": 87,
+      "bar": [
+        40,
+        244,
+        162
+      ],
+      "crop": [
+        50,
+        209,
+        210,
+        349
+      ],
+      "white": 133
+    },
+    "offset": 224.0210000000192,
+    "best": {
+      "error_deg": 0.1785126934030527,
+      "frame": 17669,
+      "mapped_video_time": 14.648999999980788,
+      "motion": {
+        "frame": "17669",
+        "draws": "111",
+        "routed": "72",
+        "matched": "72",
+        "cut": "1",
+        "cut_median_px": "56.6742",
+        "cut_missing": "0.0000",
+        "cut_samples": "72",
+        "taa_history": "0",
+        "taa_attempted": "1",
+        "taa_resolved": "1",
+        "camera_cut": "0",
+        "camera_rotation_deg": "1.7012",
+        "camera_valid": "1",
+        "gate5": "0",
+        "gate6": "0",
+        "apply_failures": "0",
+        "restore_failures": "0",
+        "taa_skip": "0",
+        "taa_result": "00000000",
+        "readback_us": "0.0"
+      }
+    },
+    "alternates": [
+      {
+        "error_deg": 1.2418632507792617,
+        "frame": 17670,
+        "mapped_video_time": 14.658999999980807,
+        "motion": {
+          "frame": "17670",
+          "draws": "145",
+          "routed": "72",
+          "matched": "72",
+          "cut": "0",
+          "cut_median_px": "38.6584",
+          "cut_missing": "0.0000",
+          "cut_samples": "72",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "1.2936",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "0",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      },
+      {
+        "error_deg": 1.7753731901106828,
+        "frame": 17668,
+        "mapped_video_time": 14.639999999980802,
+        "motion": {
+          "frame": "17668",
+          "draws": "111",
+          "routed": "72",
+          "matched": "72",
+          "cut": "0",
+          "cut_median_px": "38.4549",
+          "cut_missing": "0.0000",
+          "cut_samples": "72",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "1.0575",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "0",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      }
+    ]
+  },
+  {
+    "tag": "A",
+    "run": 203,
+    "peak": {
+      "original_frame": 953,
+      "t": 17.025,
+      "file": "Anative_0163.png",
+      "score": 78,
+      "bar": [
+        628,
+        308,
+        774
+      ],
+      "crop": [
+        662,
+        273,
+        822,
+        413
+      ],
+      "white": 86
+    },
+    "offset": 224.0210000000192,
+    "best": {
+      "error_deg": 0.12046982330888739,
+      "frame": 17838,
+      "mapped_video_time": 17.036999999980793,
+      "motion": {
+        "frame": "17838",
+        "draws": "395",
+        "routed": "160",
+        "matched": "112",
+        "cut": "1",
+        "cut_median_px": "26.9889",
+        "cut_missing": "0.3000",
+        "cut_samples": "112",
+        "taa_history": "0",
+        "taa_attempted": "1",
+        "taa_resolved": "1",
+        "camera_cut": "0",
+        "camera_rotation_deg": "2.6023",
+        "camera_valid": "1",
+        "gate5": "0",
+        "gate6": "48",
+        "apply_failures": "0",
+        "restore_failures": "0",
+        "taa_skip": "0",
+        "taa_result": "00000000",
+        "readback_us": "0.0"
+      }
+    },
+    "alternates": [
+      {
+        "error_deg": 2.5236783297014753,
+        "frame": 17839,
+        "mapped_video_time": 17.052999999980813,
+        "motion": {
+          "frame": "17839",
+          "draws": "401",
+          "routed": "163",
+          "matched": "144",
+          "cut": "0",
+          "cut_median_px": "25.9079",
+          "cut_missing": "0.1166",
+          "cut_samples": "144",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "2.4648",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "19",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      },
+      {
+        "error_deg": 2.5523100809649777,
+        "frame": 17837,
+        "mapped_video_time": 17.018999999980792,
+        "motion": {
+          "frame": "17837",
+          "draws": "375",
+          "routed": "142",
+          "matched": "135",
+          "cut": "0",
+          "cut_median_px": "28.1777",
+          "cut_missing": "0.0493",
+          "cut_samples": "135",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "2.4610",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "7",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      }
+    ]
+  },
+  {
+    "tag": "B",
+    "run": 204,
+    "peak": {
+      "original_frame": 1087,
+      "t": 19.45,
+      "file": "Bnative_0054.png",
+      "score": 98,
+      "bar": [
+        64,
+        327,
+        212
+      ],
+      "crop": [
+        100,
+        292,
+        260,
+        432
+      ],
+      "white": 157
+    },
+    "offset": 239.26200000001558,
+    "best": {
+      "error_deg": 0.2206418077616336,
+      "frame": 17812,
+      "mapped_video_time": 19.459999999984404,
+      "motion": {
+        "frame": "17812",
+        "draws": "140",
+        "routed": "72",
+        "matched": "72",
+        "cut": "1",
+        "cut_median_px": "49.3434",
+        "cut_missing": "0.0000",
+        "cut_samples": "72",
+        "taa_history": "0",
+        "taa_attempted": "1",
+        "taa_resolved": "1",
+        "camera_cut": "0",
+        "camera_rotation_deg": "1.8353",
+        "camera_valid": "1",
+        "gate5": "0",
+        "gate6": "0",
+        "apply_failures": "0",
+        "restore_failures": "0",
+        "taa_skip": "0",
+        "taa_result": "00000000",
+        "readback_us": "0.0"
+      }
+    },
+    "alternates": [
+      {
+        "error_deg": 1.3306482839783533,
+        "frame": 17813,
+        "mapped_video_time": 19.473999999984414,
+        "motion": {
+          "frame": "17813",
+          "draws": "140",
+          "routed": "72",
+          "matched": "72",
+          "cut": "0",
+          "cut_median_px": "34.8174",
+          "cut_missing": "0.0000",
+          "cut_samples": "72",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "1.4094",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "0",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      },
+      {
+        "error_deg": 1.88281436507774,
+        "frame": 17811,
+        "mapped_video_time": 19.448999999984437,
+        "motion": {
+          "frame": "17811",
+          "draws": "140",
+          "routed": "72",
+          "matched": "72",
+          "cut": "0",
+          "cut_median_px": "37.9868",
+          "cut_missing": "0.0000",
+          "cut_samples": "72",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "1.3015",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "0",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      }
+    ]
+  },
+  {
+    "tag": "B",
+    "run": 204,
+    "peak": {
+      "original_frame": 1341,
+      "t": 23.966667,
+      "file": "Bnative_0100.png",
+      "score": 67,
+      "bar": [
+        40,
+        327,
+        167
+      ],
+      "crop": [
+        55,
+        292,
+        215,
+        432
+      ],
+      "white": 160
+    },
+    "offset": 239.26200000001558,
+    "best": {
+      "error_deg": 0.14659917662235772,
+      "frame": 18070,
+      "mapped_video_time": 23.974999999984448,
+      "motion": {
+        "frame": "18070",
+        "draws": "140",
+        "routed": "72",
+        "matched": "72",
+        "cut": "1",
+        "cut_median_px": "53.7962",
+        "cut_missing": "0.0000",
+        "cut_samples": "72",
+        "taa_history": "0",
+        "taa_attempted": "1",
+        "taa_resolved": "1",
+        "camera_cut": "0",
+        "camera_rotation_deg": "1.6821",
+        "camera_valid": "1",
+        "gate5": "0",
+        "gate6": "0",
+        "apply_failures": "0",
+        "restore_failures": "0",
+        "taa_skip": "0",
+        "taa_result": "00000000",
+        "readback_us": "0.0"
+      }
+    },
+    "alternates": [
+      {
+        "error_deg": 1.343522380080132,
+        "frame": 18071,
+        "mapped_video_time": 23.99099999998441,
+        "motion": {
+          "frame": "18071",
+          "draws": "140",
+          "routed": "72",
+          "matched": "72",
+          "cut": "0",
+          "cut_median_px": "40.4125",
+          "cut_missing": "0.0000",
+          "cut_samples": "72",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "1.3770",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "0",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      },
+      {
+        "error_deg": 1.6904682270718958,
+        "frame": 18069,
+        "mapped_video_time": 23.963999999984424,
+        "motion": {
+          "frame": "18069",
+          "draws": "139",
+          "routed": "72",
+          "matched": "72",
+          "cut": "0",
+          "cut_median_px": "40.4850",
+          "cut_missing": "0.0000",
+          "cut_samples": "72",
+          "taa_history": "1",
+          "taa_attempted": "1",
+          "taa_resolved": "1",
+          "camera_cut": "0",
+          "camera_rotation_deg": "1.1793",
+          "camera_valid": "1",
+          "gate5": "0",
+          "gate6": "0",
+          "apply_failures": "0",
+          "restore_failures": "0",
+          "taa_skip": "0",
+          "taa_result": "00000000",
+          "readback_us": "0.0"
+        }
+      }
+    ]
+  }
+]
