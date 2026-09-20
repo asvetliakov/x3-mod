@@ -1770,3 +1770,25 @@ per-frame log. Host empty-maintenance/exclusion timings are indicative fixture
 costs, not game FPS. Exact commands, hashes, timing and pending runtime scope are
 in the [compact root record](../../verification/results/media-root-wiring-2026-09-20.json).
 No installed build or user-run acceptance is claimed by this checkpoint.
+
+
+### Canonical first-frame sequence zero (2026-09-20)
+
+The connected real-worker fixture exposed a contract mismatch: the worker starts
+at sequence0 and publishes it before incrementing, but Destination rejected zero
+as an empty-frame marker. The correction removes that single rejection while
+retaining lease ownership, session/operation/epoch, graph, slot and buffer checks.
+Neither the worker sequence contract nor Services counters/API changes.
+
+A new canonical-lease witness fails before the correction (five destination and
+five Services assertions), then the two affected host fixtures pass **773 and
+1,815 checks**, respectively, with zero failures and zero Services update
+allocations (4.135 s including builds). It proves physical sequence0 pixel writes,
+nonzero binding acknowledgment with presented sequence0, exactly one canonical
+`selected_uploaded` release, storage cleanup and no duplicate copy. Empty leases,
+wrong session/operation/epoch and graph0 still refuse before destination acquire.
+The destination Windows/x86 object compiles with warnings as errors, SSE2 and the
+four-byte incoming stack contract. No ABI, hook, Reset or lock protocol changed;
+one validation comparison was removed. The parent-owned connected native retry
+remains separate evidence. Commands, the failing witness and hashes are appended
+to the [existing destination record](../../verification/results/media-destination-2026-09-20.json).

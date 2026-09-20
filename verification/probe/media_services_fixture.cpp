@@ -132,6 +132,31 @@ void readiness_and_offers(){
     f.workers->event(0,m::worker_failed,{{a.slot,a.generation+1},1,1});f.services.maintenance_on_owner(f.readiness);
     check(f.pump(a)==e::PumpResult::pending,"stale terminal ACK cannot fail current operation");
 }
+struct ZeroSequenceAcknowledgment:m::WorkerObserver {
+    unsigned uploaded=0;std::int64_t sequence=-1;
+    void observe(const m::Observation& event) noexcept override {
+        if(event.kind==m::ObservationKind::lease&&!std::strcmp(event.label,"selected_uploaded")){++uploaded;sequence=event.c;}
+    }
+    void metadata(const m::Metadata&) noexcept override {}
+};
+void zero_sequence_acknowledgment(){
+    Fixture f;f.initialize();const auto session=f.admit();f.play(session);auto& worker=f.workers->workers[0];
+    auto acknowledgment=std::make_shared<ZeroSequenceAcknowledgment>();worker.storage->observer=acknowledgment;
+    const auto identity=m::identity(worker.desired);
+    check(worker.storage->reserve(0,identity,1,0),"real first-frame zero sequence reserves canonical FREE slot");
+    auto& slot=worker.storage->slots[0];slot.view.start=0;slot.view.end=100000;slot.view.width=2;slot.view.height=2;slot.view.pitch=8;
+    std::memset(slot.pixels.data(),0x5a,16);worker.storage->publish(0);
+    f.workers->event(0,m::worker_prepared,identity);
+    check(f.services.diagnostics().binding[0]==0,"no successful-write binding acknowledgment before first pump");
+    check(f.pump(session)==e::PumpResult::pending,"first zero-sequence frame is scheduled normally");
+    const auto result=f.services.diagnostics();
+    check(result.presented[0]==0&&result.binding[0]!=0,"zero frame acknowledgment uses successful binding, not nonzero sequence sentinel");
+    unsigned char expected[16];std::memset(expected,0x5a,sizeof expected);
+    check(!std::memcmp(f.backend.pixels,expected,sizeof expected),"Services physically writes first zero-sequence pixels");
+    check(acknowledgment->uploaded==1&&acknowledgment->sequence==0,"canonical FrameLease release acknowledges selected_uploaded sequence zero exactly once");
+    check(worker.storage->all_free()&&result.leases==0&&!f.backend.held&&!f.backend.mapped&&!f.gate.depth(),"acknowledged zero-sequence lease and destination fully released");
+    const auto calls=f.backend.calls;check(f.pump(session)==e::PumpResult::pending&&f.backend.calls==calls&&acknowledgment->uploaded==1,"no duplicate copy or acknowledgment without another frame");
+}
 void frames_and_end(){
     Fixture f;f.initialize();auto h=f.admit();f.play(h);auto& w=f.workers->workers[0];
     check(f.services.diagnostics().clock_generation[0]!=w.desired.epoch,"runtime epoch deliberately differs from mapped canonical generation");
@@ -256,5 +281,5 @@ void no_allocations(){
     for(unsigned i=0;i<1000;++i){f.services.maintenance_on_owner(f.readiness);f.pump(h);}
     count_allocations=false;check(allocations==0,"1000 connected empty service passes allocate no memory");
 }
-int main(){readiness_and_offers();frames_and_end();retry_and_bounds();reentry();retirement_and_reuse();loop_preplay_and_rate();cancel_without_graph_and_bad_ack();preparation_failures();no_allocations();
+int main(){readiness_and_offers();zero_sequence_acknowledgment();frames_and_end();retry_and_bounds();reentry();retirement_and_reuse();loop_preplay_and_rate();cancel_without_graph_and_bad_ack();preparation_failures();no_allocations();
     std::printf("MEDIA SERVICES checks=%u failures=%u allocations=%u scope=synthetic_transport_actual_adapter_clock_leases_destination\n",checks,failures,allocations);return failures?1:0;}

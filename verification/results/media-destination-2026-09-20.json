@@ -105,5 +105,51 @@
     "Unknown or changed wrapper provenance lifetime during active cleanup/release/replacement permanently vetoes copying; no automatic guessed recovery.",
     "No game launched, proxy DLL built/installed, worker clock/frame queue duplicated or production admission enabled."
   ],
-  "local_build_record": "/tmp/x3-destination-native-build/build-record.json"
+  "local_build_record": "/tmp/x3-destination-native-build/build-record.json",
+  "zero_sequence_followup": {
+    "source_base": "d52a5df4245cf1b01eb37133b9f24d4a6e67df0f",
+    "cause": "Canonical Engine.sequence and Impl.read_sequence start at zero. Worker reserves/publishes zero before incrementing; FrameLease validity is storage ownership. Destination incorrectly rejected zero as if empty.",
+    "worker_contract": [
+      "src/media/lav_worker.cpp:70",
+      "src/media/lav_worker.cpp:335",
+      "src/media/lav_worker.cpp:363",
+      "src/media/lav_worker.cpp:596",
+      "src/media/lav_worker.h:141"
+    ],
+    "production_change": "Remove only !view.sequence in Destination::try_copy. Session/operation/epoch, owning FrameLease, graph, slot, pixels, dimensions and pitch/bounds checks remain.",
+    "inputs": {
+      "src/proxy/media_destination.cpp": "4f10a903d0416bf808c7260a58e3de2be29ff5f51b73b9c6ffb9ea0a46de3ecb",
+      "verification/probe/media_destination_host.cpp": "ac3ca647cc0e33d81cb2844448aa57ab29b8346dbd7f87cc866e7e9665925d17",
+      "verification/probe/media_services_fixture.cpp": "31916db92f6db5119aea5bae8e567646a5949e4e20b5989e887cad3d4b2792ee"
+    },
+    "host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_destination verification.analysis.test_media_services",
+      "before": {
+        "log": "/tmp/x3-media-zero-sequence-host-before.log",
+        "destination_checks": 764,
+        "destination_failures": 5,
+        "services_checks": 1808,
+        "services_failures": 5,
+        "unittest_failures": 2,
+        "seconds": 5.585
+      },
+      "after": {
+        "log": "/tmp/x3-media-zero-sequence-host-after.log",
+        "destination_checks": 773,
+        "services_checks": 1815,
+        "failures": 0,
+        "services_update_allocations": 0,
+        "seconds": 4.135
+      },
+      "witness": "Canonical sequence0 lease physically copies all rows. Actual Services writes pixels, publishes nonzero binding with presented=0, emits selected_uploaded(sequence0) exactly once, releases storage and avoids duplicate pumping. Empty lease, mismatched session/operation/epoch and graph0 still refuse before acquire."
+    },
+    "x86_object": {
+      "command": "i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -Isrc/media -c src/proxy/media_destination.cpp -o /tmp/x3-media-zero-sequence-destination.o",
+      "exit": 0,
+      "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+      "sha256": "62575a8f2d32f2ae646df74eb0b56f02e0ac176ebcd82cd302272e50e64e27d9"
+    },
+    "performance": "One comparison removed; no new allocation, lock, copy, validation or per-draw work.",
+    "limits": "New sequence0 behavior is host-tested and Windows/x86 cross-compiled. Parent owns connected worker/native fixture retry; prior ABI/Reset results remain unchanged evidence, not proof of this new zero-sequence behavior. No Wine/game/DLL build/install/commit in this task."
+  }
 }

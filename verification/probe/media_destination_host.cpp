@@ -32,7 +32,7 @@ struct Fixture {
 struct Frame {
     std::shared_ptr<m::lav_detail::FrameStorage> storage=std::make_shared<m::lav_detail::FrameStorage>(nullptr);
     m::FrameLease lease;
-    Frame(){auto& s=storage->slots[0];storage->reserve(0,{owner.session,3,4},1,9);s.view.width=4;s.view.height=3;s.view.pitch=16;s.view.end=1;
+    explicit Frame(std::uint64_t sequence=9,unsigned graph=1){auto& s=storage->slots[0];storage->reserve(0,{owner.session,3,4},graph,sequence);s.view.width=4;s.view.height=3;s.view.pitch=16;s.view.end=1;
         for(unsigned i=0;i<48;++i)s.pixels[i]=static_cast<unsigned char>(i*17);storage->publish(0);lease=storage->acquire(storage,0);}
 };
 struct Live {d::Current value{true,p::Continuation::live};static d::Current read(void* c,const d::CopyRequest&) noexcept{return static_cast<Live*>(c)->value;}};
@@ -70,6 +70,20 @@ void state_tests(){
     auto same=out;s.invalidate_table();check(!s.current(same),"table invalid immediately");check(s.table(0x20000,4,0,false)&&!s.snapshot(owner,out),"same table address recreated unknown");
     d::State depth;d::State::Token tokens[64];for(auto& t:tokens)t=depth.begin();check(!depth.begin().serial&&depth.disabled,"mutation overflow fail closed");
     d::State duplicate;auto t=duplicate.begin();check(duplicate.end(t)&&!duplicate.end(t)&&duplicate.disabled,"duplicate completion fail closed");
+}
+void zero_sequence(){
+    {Fixture f;Frame frame(0);Live live;Backend backend(f);
+     const auto copied=f.destination.try_copy(request(),frame.lease,{&live,Live::read},backend);
+     check(copied.kind==d::CopyKind::written&&copied.frame_sequence==0&&copied.binding_epoch!=0,"first canonical sequence zero is a written frame, not an empty lease");
+     for(unsigned row=0;row<3;++row)check(!std::memcmp(backend.bytes.data()+row*24,frame.storage->slots[0].pixels.data()+row*16,16),"sequence zero physically copies each intended row");
+     check(backend.locks==1&&backend.unlocks==1&&backend.releases==1&&!f.gate.depth(),"sequence zero balances copy cleanup");}
+    {Fixture f;m::FrameLease empty;Live live;Backend backend(f);
+     check(f.destination.try_copy(request(),empty,{&live,Live::read},backend).reason==d::Reason::frame&&backend.acquire_count==0,"empty lease still refuses before destination acquire");}
+    for(unsigned mismatch=0;mismatch<3;++mismatch){Fixture f;Frame frame(0);Live live;Backend backend(f);auto copy=request();
+     if(mismatch==0)++copy.owner.session.generation;if(mismatch==1)++copy.operation;if(mismatch==2)++copy.epoch;
+     check(f.destination.try_copy(copy,frame.lease,{&live,Live::read},backend).reason==d::Reason::frame&&backend.acquire_count==0,"zero sequence never bypasses session operation or epoch identity");}
+    {Fixture f;Frame frame(0,0);Live live;Backend backend(f);
+     check(f.destination.try_copy(request(),frame.lease,{&live,Live::read},backend).reason==d::Reason::frame&&backend.acquire_count==0,"zero sequence does not make a zero graph valid");}
 }
 void copies(){
     {Fixture f;Frame frame;Live live;Backend b(f);auto r=f.destination.try_copy(request(),frame.lease,{&live,Live::read},b);check(r.kind==d::CopyKind::written&&r.frame_sequence==9,"actual immutable lease writes");
@@ -199,4 +213,4 @@ void patches(){
       check(!d::restore(p,group,true,true)&&!std::memcmp(foreign,p.bytes.data()+at,8)&&group.patches[0].may_redirect,"foreign qword retained untouched with redirect ownership");}
     for(unsigned i=0;i<d::site_count;++i){PatchPlatform p;d::Group group;p.bytes[d::sites[i].address]^=1;check(!d::stage(p,group,0x600100)&&p.compares==0,"preexisting patch refuses before publication");}
 }
-int main(){const auto start=std::chrono::steady_clock::now();state_tests();copies();observers();additional_observers();patches();const auto elapsed=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-start).count();std::printf("media_destination_host checks=%u failures=%u churn=100000 reentry=25 throw=4 sites=19 elapsed_ms=%lld\n",checks,failures,static_cast<long long>(elapsed));return failures?1:0;}
+int main(){const auto start=std::chrono::steady_clock::now();state_tests();zero_sequence();copies();observers();additional_observers();patches();const auto elapsed=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-start).count();std::printf("media_destination_host checks=%u failures=%u churn=100000 reentry=25 throw=4 sites=19 elapsed_ms=%lld\n",checks,failures,static_cast<long long>(elapsed));return failures?1:0;}

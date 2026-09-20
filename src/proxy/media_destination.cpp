@@ -50,7 +50,7 @@ CopyResult Destination::try_copy(const CopyRequest& request,const media::FrameLe
     if(!live.operation_live||live.continuation!=media_playback::Continuation::live)return out;
     if(!frame){out.reason=Reason::frame;return out;}const auto& view=frame.view();out.frame_sequence=view.sequence;
     if(!(view.identity.session==request.owner.session)||view.identity.operation!=request.operation||view.identity.epoch!=request.epoch||
-       !view.bgra||view.slot>=media::lav_detail::slot_count||!view.sequence||!view.graph||!view.width||!view.height||view.width>512||view.height>512||
+       !view.bgra||view.slot>=media::lav_detail::slot_count||!view.graph||!view.width||!view.height||view.width>512||view.height>512||
        view.pitch<view.width*4||std::uint64_t(view.height-1)*view.pitch+view.width*4>media::lav_detail::frame_bytes){out.reason=Reason::frame;return out;}
     Cleanup cleanup{backend};media_presentation_gate::CopyScope scope(gate_,thread_,Cleanup::close,&cleanup);
     if(!scope){out.reason=Reason::admission;return out;}

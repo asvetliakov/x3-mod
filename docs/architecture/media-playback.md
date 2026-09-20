@@ -252,8 +252,12 @@ physical lifetime is ambiguous and copying is permanently disabled. An escaped
 inner observer similarly leaves acquisition vetoed while a surviving outer call
 retains its original return address; no storage is resurrected by stack pruning.
 
-Copying takes the caller's independently held canonical frame lease. The accepted
-copy scope spans canonical surface acquisition, descriptor checks, one LockRect,
+Copying takes the caller's independently held canonical frame lease. Frame
+sequence zero is the canonical worker's valid first publication; owning storage,
+session/operation/epoch and graph establish validity. Successful Services
+acknowledgment records the binding epoch and releases `selected_uploaded`, even
+when its presented sequence remains zero. The accepted copy scope spans canonical
+surface acquisition, descriptor checks, one LockRect,
 bounded row writes, exactly one Unlock after a successful Lock, and final Release.
 It holds no domain lock over COM. Binding, operation and pointer-free traversal
 values are checked after external calls and again after final Release; only a
