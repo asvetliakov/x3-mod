@@ -50,6 +50,21 @@ Native Windows runtime remains unverified.
 
 ## Current state (2026-09-20)
 
+Current away-session work is isolated from the qualifying candidate. Spatial fog
+now has fourteen source-backed profiles and current-frame directional shafts on
+`feat/fog-families-shafts-integration` (`bcf1021a`); separate GPU checks passed,
+the combined family run has completed and is under review, and shaft transaction
+cost measurement is in progress. Flight appearance remains unaccepted.
+Media checkpoint `2f3aef56` qualifies two EOF-triggered fresh graph sessions on a
+retained worker DirectDraw service, with twelve exact reference frames. The next
+fixture integrates the owned clock, two concurrent workers and actual rendered
+textures; production media repair remains unfinished. Cold DirectDraw creation
+still coincides with a roughly 110 ms render gap, so startup placement matters.
+Collision optimization is **paused by user request**. The reviewed engine/lattice
+audit adds no tracing before interpreting the existing queued lattice packet;
+[the owning decision](architecture/taa-lattice-crawl.md#25-next-flight-state-decision-and-reopening-gate-2026-09-20)
+keeps moving crawl open. No additional user capture is requested now.
+
 Run52 A/B/C (run187–189) is analyzed and independently reviewed. Matching
 478-draw separate-session B/C intervals had medians of 19.70 / 18.90 ms, consistent with the user
 report and no visible issues. Lazy is accepted; the corrected attribution
