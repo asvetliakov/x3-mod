@@ -1166,3 +1166,92 @@ input-hash-bound result is `/tmp/x3-lattice-fresh-discrepancy.json`. Inputs are
 [/tmp/x3-lattice-fresh-discrepancy.md](/tmp/x3-lattice-fresh-discrepancy.md).
 No new Wine execution or production change was needed; native Windows remains
 unverified.
+
+
+## 25. Next-flight state decision and reopening gate (2026-09-20)
+
+**Parent ratified:** §23's post-route state packet is sufficient for the next
+bounded observation. Add no fields, payload copy, hook sites or flight sessions
+before interpreting it. Keep the already queued at-rest, camera-rotation and
+ship-translation F8 cases in [Run53](../verification/user-runs.md#53-spatial-fog-and-moving-lattice-state--ready-for-flight).
+One F8 edge arms one state frame, independent of the 32-frame image burst.
+Preserve §24's two discrepant pixels and twelve exact controls; the alpha-survival
+and sun-share observations do not prove fragment ownership or justify a motion fix.
+
+`capture.cpp::draw_indexed` calls `Capture::effective` after `before_draw` and
+before saved slot82 submission; saved slot38 queries effective RT bindings.
+The existing packet covers the effective shaders/constants, geometry descriptors,
+raster/depth/stencil, viewport/clip and s0/s3 sampler/LOD assumptions that remain
+missing from the conditional fixture. Validate each returned file with
+`python3 verification/probe/lattice_state_packet.py --require-complete <file>`
+and match its device/frame/generation and logged filename to the preserved
+session. Both unique selected draws must submit successfully. Preserve an
+unavailable, partial, ambiguous, Reset or nonmatching packet as a refusal;
+do not substitute another object or treat it as state agreement.
+
+If effective state differs, report exact differing words and their shader/state
+use, then reproduce that difference in the conditional witness before proposing
+a renderer change. If state agrees, runtime VB/IB/texture content, coherent input
+lifetime, fractional coverage and subsequent writers remain open. Equality does
+not establish payload identity, live face ownership or RGB/TAA parity. A payload
+or writer diagnostic requires separate access/lifetime/coverage evidence and
+parent ratification; the missing final CloneMesh linkage and copy-access authority
+are not supplied by these state observations. Camera-rotation crawl remains open;
+the accepted stationary improvement is unchanged.
+
+No added hot-path cost follows from this decision. Existing cost remains the
+request-pointer branch when unarmed, at most 64 candidates/two full observations
+when armed, a 395928-byte packet and 1 MiB JSON cap; getters have no cancellable
+wall-time bound. Query ticks exclude file output, and object tracing costs persist
+outside F8, so this session does not measure production FPS. Existing documented
+D3D9/Win32 queries and CPU/LastError boundaries remain; mock-interface qualification
+and cross-compilation do not establish live native Windows execution. No new
+fixture or flight is required for this documentation-only decision.
+
+## 26. Run53 A received: state-packet validation (2026-09-20)
+
+Run193 contains three 32-frame bursts (4558–4589, 5257–5288 and
+8691–8722), with a state packet at each first frame. Each packet selected both
+intended draws uniquely and records successful submission. The user has supplied
+the capture path, without a new visual verdict; moving-crawl acceptance is unchanged.
+
+The initial host checker rejected all three packets because the driver reports
+`MaxUserClipPlanes=8`, while the producer deliberately records at most six plane
+equations. All six selected draw records have `D3DRS_CLIPPLANEENABLE=0` and
+successful equations for planes 0–5. The reviewed host-only correction preserves
+the raw capability, requires every equation within `min(capacity,6)`, and rejects
+any enabled plane outside that captured range. Capacity is bounded by the 32-bit
+enable mask. This qualifies the observed effective clipping state without claiming
+that uncaptured equations are known. No DLL change or repeat flight is needed for
+this parser correction.
+
+All three packets now pass `lattice_state_packet.py --require-complete`.
+The affected host module passes 11 tests (4.963 s); the added capacity-32/33
+boundary check passes in the focused method (0.016 s). Independent review cleared
+source and actual packets. Effective-state comparison against the conditional
+replay remains the next step; payload identity, writer ownership and RGB/TAA
+benefit remain unqualified under §25.
+
+The [receipt witness](../../verification/results/run53a-triage/state-witness.json)
+reproduces all three packets. Camera log `t` is view-matrix translation, so its
+change during rotation is not proof of ship translation; the later two bursts
+remain motion-mode unclassified from those scalar differences alone.
+
+The subsequent [source/input comparison](/tmp/x3-run193-state-interpret.md)
+finds all six effective vertex programs byte-identical to the conditional fixture
+and 108 explicit sampler words equal. The effective pixel shader preserves the
+fixture's diffuse-alpha equation. View/jitter/history constants and RGB light-map
+gain differences do not establish an alpha rejection change. The actionable
+distinction is that all six packets report RT1/RT2 unbound through saved native
+slot 38, while the effective pixel shader exports motion/depth to those targets.
+`submission_error=8876086c` is an unused route default when submission is enabled,
+and `rt_set=rt2_set=0` is normal in lazy mode; neither establishes a failed draw.
+
+Parent-ratified next step: a standalone real-device probe of getter/resource-release
+callbacks and MRT state before/after the observer. `release_device` can restore
+lazy bindings during reference accounting; whether diagnostic references actually
+trigger that path remains unproved. Count actual callbacks first, including bound
+resources with and without an external application reference, before changing
+production code. An injected mock callback alone cannot establish backend causation.
+This is an offline diagnostic investigation, not a request for another flight or
+authorization for live geometry copies. No moving-crawl fix is selected yet.

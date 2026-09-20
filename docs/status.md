@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20 (Run53 installed and queued; spatial fog/lattice diagnostic; media and offline engine work continue). This is the
+Updated 2026-09-20 (Run53 A/B reported; spatial fog/lattice analysis and media integration continue). This is the
 short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](archive/status-sessions-through-2026-09-19.md),
@@ -17,7 +17,11 @@ Bottle **X3**, **CrossOver Preview.app**. Run53 candidate DLL SHA-256:
 (26,948,773 bytes), built once from clean committed source `fc52a432` and retained
 at `/tmp/x3-run53-candidate/d3d9.dll`. It replaces uniform fog with the spatial
 family renderer and adds the opt-in post-route lattice state diagnostic. It
-contains no new media, collision or FOV optimization. Run53 flight is queued;
+contains no new media, collision or FOV optimization. Run53 A is reported as
+`/tmp/x3-bottleX3-run193`; its three lattice state packets validate after a reviewed
+host-checker correction for disabled extra clip-plane capacity. Session B is
+`/tmp/x3-bottleX3-run194`: the user prefers density 1.50 and reports native-card
+flicker during camera movement in The Hole. Both analyses remain open;
 do not merge further production changes to main during qualification.
 
 The [candidate record](../verification/results/run53-candidate-qualification.json)
@@ -49,6 +53,57 @@ stationary improvement is accepted, moving-lattice quality remains open.
 Native Windows runtime remains unverified.
 
 ## Current state (2026-09-20)
+
+Current away-session work is isolated from the qualifying candidate. Spatial fog
+now has fourteen source-backed profiles and current-frame directional shafts on
+`feat/fog-families-shafts-integration` (`7e698ec6`); the combined GPU run passes
+145 checks and full host discovery passes 2,431 tests (two skipped). Reviewed
+paired shaft measurements add about 0.11–0.12 ms on captured workloads and pass
+the existing transaction-cost limits. A clean full DLL from `a13ae8a7` is retained
+uninstalled at `/tmp/x3-fog-families-shafts-dll-v1/build/d3d9.dll` (SHA-256
+`ca02a6c4abd8693a18376853240600e4ca0d485d017bf6d7c3026724ffffbd1d`);
+linked audit and two selected actual-DLL HDR/TAA smoke cases pass. The queued
+fog command passes dry-run. Flight appearance remains unaccepted.
+Media checkpoint `ae0743a0` now qualifies two concurrent workers with the owned
+clock and actual rendered textures: 35 exact captures and 4,241 clock transactions.
+Cold creation and first-use rendering still stall the fixture; this is not a
+no-stutter claim. Shared production transport extraction is active. Reviewed
+surface leases (`f13acc59`, 100 runtime checks) and bounded session/adapter state
+(`4aaae520`, 202 host checks) are committed on isolated branches, with admission
+disabled. The corrected presentation-gate fixture passes 576 runtime checks; the initial
+22 failures were requested MXCSR status bits that FEX did not materialize, also
+in ungated baselines. Exact represented state passes; nonzero status coverage
+remains unverified. The reviewed prerequisites are being combined with fog/shafts
+on `feat/media-production-integration`; three affected host tests pass.
+The production worker extraction is reviewed and committed (`1384893a`): actual
+concurrent playback passes 4,586 clock transactions, 35 exact captures and complete
+pause/seek/failure coverage. A separate actual EOF run passes 12 exact captures
+and two fresh completion pairs. Both retain the real app-local package pins;
+the cold heartbeat gap still reached 226.4 ms, so no no-stutter claim is made.
+Package deployment (`c63f8cbd`, 45 host tests) and its reader (`e2fabd5e`, 150 actual
+Win32 checks) are committed. The startup seam (`23092198`, 819 x86 checks), engine
+consumer (`9ac49b48`, 5,055 x86 checks), destination (`be65e6ff`, 2,321 ABI and
+142 D3D checks, final CPU fixes covered by 736 host checks) and Services coordinator
+(`bebc9edd`, 1,783 host checks) are combined on the integration branch. Four affected
+integration tests and 133 media-support tests pass. Root startup/common-record-domain
+wiring is reviewed and committed on the integration branch (`01d875b1`): 3,037
+root host checks, 4,523 consumer checks, 1,783 Services checks and 63 actual
+dispatcher checks pass. Four registration modes now pass 53 checks under the X3
+lock. The joined playback fixture (`cdc9194f`) is reviewed and its frozen v2 build
+passes the PE audit after correcting linker map retention. Its first actual run
+stops at `pump_identity_stable` near the physical EOF case; diagnosis is active,
+with all protected inputs unchanged. No new DLL is installed; native Windows and
+game acceptance remain open.
+Enabled media repair remains unfinished. The owning
+media and ownership ledgers retain the scoped evidence.
+Collision optimization is **paused by user request**. The reviewed engine/lattice
+audit added no tracing before interpreting the queued lattice packet;
+[the owning decision](architecture/taa-lattice-crawl.md#25-next-flight-state-decision-and-reopening-gate-2026-09-20)
+keeps moving crawl open. Run193 now provides that packet: shader/alpha/sampler
+comparisons agree with the conditional fixture, but RT1/RT2 are reported unbound.
+A real-device observer/reference-release probe is being prepared to determine
+whether observation itself alters the lazy bindings. No renderer fix or additional
+user capture is selected yet; details are in the lattice note §26.
 
 Run52 A/B/C (run187–189) is analyzed and independently reviewed. Matching
 478-draw separate-session B/C intervals had medians of 19.70 / 18.90 ms, consistent with the user
