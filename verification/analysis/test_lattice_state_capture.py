@@ -77,6 +77,34 @@ class LatticeStateCaptureTests(unittest.TestCase):
                 if change == 'failed': q['words']=[]
             with self.subTest(change=change), self.assertRaises(ValueError): validate(p, True)
 
+    def test_advertised_clip_capacity_requires_all_enabled_planes_captured(self):
+        p = packet()
+        for record in p['records']:
+            fields = record['fields']
+            next(f for f in fields if f['kind'] == 'caps')['words'][1] = '00000008'
+            for index in range(1, 6):
+                fields.append(dict(kind='clip', index=index, hr='00000000', words=['00000000'] * 4))
+        validate(p, True)
+        q = copy.deepcopy(p)
+        capacity = next(f for f in q['records'][0]['fields'] if f['kind'] == 'caps')
+        capacity['words'][1] = '00000020'
+        validate(q, True)
+        capacity['words'][1] = '00000021'
+        with self.assertRaisesRegex(ValueError, 'unsupported caps'):
+            validate(q, True)
+        for enabled in [1, 1 << 5]:
+            q = copy.deepcopy(p)
+            next(f for f in q['records'][0]['fields'] if f['kind'] == 'render' and f['index'] == 152)['words'] = [f'{enabled:08x}']
+            validate(q, True)
+        for enabled in [1 << 6, 1 << 7, 1 << 31]:
+            q = copy.deepcopy(p)
+            next(f for f in q['records'][0]['fields'] if f['kind'] == 'render' and f['index'] == 152)['words'] = [f'{enabled:08x}']
+            with self.subTest(enabled=enabled), self.assertRaisesRegex(ValueError, 'outside captured range'):
+                validate(q, True)
+        p['records'][0]['fields'] = [f for f in p['records'][0]['fields'] if not (f['kind'] == 'clip' and f['index'] == 5)]
+        with self.assertRaisesRegex(ValueError, 'missing clip/5'):
+            validate(p, True)
+
     def test_partial_and_ambiguous_never_load_as_complete(self):
         for status in ['no_match', 'partial', 'ambiguous', 'reset', 'unavailable', 'capacity', 'submission_failed']:
             p=packet();p['status']=status

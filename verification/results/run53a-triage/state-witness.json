@@ -1,0 +1,251 @@
+{
+  "input": {
+    "packets": [
+      {
+        "bytes": 131634,
+        "name": "lattice-state-212-1-4558-0.json",
+        "sha256": "cd83576c6e18fa404588e84e387a72b9bea6a934abb1064d76f4f633e3f9105f"
+      },
+      {
+        "bytes": 131634,
+        "name": "lattice-state-212-1-5257-0.json",
+        "sha256": "1d136fe09a8b5e2be2bae561ea91411c88821ed25c66c492a8467590276959cf"
+      },
+      {
+        "bytes": 131634,
+        "name": "lattice-state-212-1-8691-0.json",
+        "sha256": "7b9c2534f7d06f54ae87c9ab9256725bf2171184a725ef367b4d595290f7505e"
+      }
+    ],
+    "session": "/tmp/x3-bottleX3-run193",
+    "session_log_sha256": "fe9f6048374642e173b5c2bd1810306ecf3ca7ffbf0510fa8e845bf14c392193"
+  },
+  "limits": [
+    "Complete packet validates selected state observation only.",
+    "No payload identity, coherent input lifetime, fragment ownership, later-writer, RGB, or TAA conclusion."
+  ],
+  "motion_bursts": [
+    {
+      "camera_rows": 32,
+      "cut_median_px_max": 0.0003,
+      "cut_missing_max": 0.0,
+      "frames": [
+        4558,
+        4589
+      ],
+      "motion_classification": "stationary_view",
+      "motion_rows": 32,
+      "rotation_deg_max": 0.0,
+      "routed_minmax": [
+        372,
+        372
+      ],
+      "view_translation_delta": [
+        -0.01,
+        0.2,
+        0.0
+      ]
+    },
+    {
+      "camera_rows": 32,
+      "cut_median_px_max": 10.9686,
+      "cut_missing_max": 0.008,
+      "frames": [
+        5257,
+        5288
+      ],
+      "motion_classification": "unclassified_nonzero_rotation",
+      "motion_rows": 32,
+      "rotation_deg_max": 1.1926,
+      "routed_minmax": [
+        372,
+        374
+      ],
+      "view_translation_delta": [
+        -11623.803,
+        15293.31,
+        5370.0
+      ]
+    },
+    {
+      "camera_rows": 32,
+      "cut_median_px_max": 47.7657,
+      "cut_missing_max": 0.058,
+      "frames": [
+        8691,
+        8722
+      ],
+      "motion_classification": "unclassified_nonzero_rotation",
+      "motion_rows": 32,
+      "rotation_deg_max": 4.4294,
+      "routed_minmax": [
+        350,
+        379
+      ],
+      "view_translation_delta": [
+        -1124.35,
+        -11043.92,
+        -10225.8
+      ]
+    }
+  ],
+  "packets": [
+    {
+      "candidates": 32,
+      "coherence": "unqualified",
+      "device": 1,
+      "draws": [
+        58,
+        72
+      ],
+      "frame": 4558,
+      "generation": 0,
+      "matches": [
+        1,
+        1
+      ],
+      "payload": "not_attempted",
+      "query_us": 536.1
+    },
+    {
+      "candidates": 32,
+      "coherence": "unqualified",
+      "device": 1,
+      "draws": [
+        58,
+        72
+      ],
+      "frame": 5257,
+      "generation": 0,
+      "matches": [
+        1,
+        1
+      ],
+      "payload": "not_attempted",
+      "query_us": 166.7
+    },
+    {
+      "candidates": 32,
+      "coherence": "unqualified",
+      "device": 1,
+      "draws": [
+        69,
+        83
+      ],
+      "frame": 8691,
+      "generation": 0,
+      "matches": [
+        1,
+        1
+      ],
+      "payload": "not_attempted",
+      "query_us": 149.5
+    }
+  ],
+  "receipt": {
+    "bursts": [
+      [
+        4558,
+        4589
+      ],
+      [
+        5257,
+        5288
+      ],
+      [
+        8691,
+        8722
+      ]
+    ],
+    "file_count": 1110,
+    "packet_frames": [
+      4558,
+      5257,
+      8691
+    ],
+    "validated_complete_packets": 3
+  },
+  "schema": 1,
+  "state_comparison": {
+    "all_six_same_shader_declaration_route_caps_viewport_scissor_clip": true,
+    "cross_burst": [
+      {
+        "changed_words": 58,
+        "fields": [
+          "object/6",
+          "constants_f/0",
+          "constants_f/1",
+          "container/0"
+        ],
+        "frames": [
+          4558,
+          5257
+        ],
+        "slot": 0
+      },
+      {
+        "changed_words": 94,
+        "fields": [
+          "object/6",
+          "constants_f/0",
+          "constants_f/1",
+          "container/0"
+        ],
+        "frames": [
+          4558,
+          8691
+        ],
+        "slot": 0
+      },
+      {
+        "changed_words": 58,
+        "fields": [
+          "object/6",
+          "constants_f/0",
+          "constants_f/1",
+          "container/0"
+        ],
+        "frames": [
+          4558,
+          5257
+        ],
+        "slot": 1
+      },
+      {
+        "changed_words": 94,
+        "fields": [
+          "object/6",
+          "constants_f/0",
+          "constants_f/1",
+          "container/0"
+        ],
+        "frames": [
+          4558,
+          8691
+        ],
+        "slot": 1
+      }
+    ],
+    "fixture_comparison": "output schema lacks effective D3D state; source/input-manifest comparison delegated",
+    "within_frame_slots": [
+      {
+        "changed_fields": 30,
+        "changed_words": 55,
+        "frame": 4558,
+        "unchanged_pipeline_identity": true
+      },
+      {
+        "changed_fields": 29,
+        "changed_words": 54,
+        "frame": 5257,
+        "unchanged_pipeline_identity": true
+      },
+      {
+        "changed_fields": 29,
+        "changed_words": 54,
+        "frame": 8691,
+        "unchanged_pipeline_identity": true
+      }
+    ]
+  }
+}

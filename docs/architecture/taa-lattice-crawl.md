@@ -1207,3 +1207,51 @@ outside F8, so this session does not measure production FPS. Existing documented
 D3D9/Win32 queries and CPU/LastError boundaries remain; mock-interface qualification
 and cross-compilation do not establish live native Windows execution. No new
 fixture or flight is required for this documentation-only decision.
+
+## 26. Run53 A received: state-packet validation (2026-09-20)
+
+Run193 contains three 32-frame bursts (4558–4589, 5257–5288 and
+8691–8722), with a state packet at each first frame. Each packet selected both
+intended draws uniquely and records successful submission. The user has supplied
+the capture path, without a new visual verdict; moving-crawl acceptance is unchanged.
+
+The initial host checker rejected all three packets because the driver reports
+`MaxUserClipPlanes=8`, while the producer deliberately records at most six plane
+equations. All six selected draw records have `D3DRS_CLIPPLANEENABLE=0` and
+successful equations for planes 0–5. The reviewed host-only correction preserves
+the raw capability, requires every equation within `min(capacity,6)`, and rejects
+any enabled plane outside that captured range. Capacity is bounded by the 32-bit
+enable mask. This qualifies the observed effective clipping state without claiming
+that uncaptured equations are known. No DLL change or repeat flight is needed for
+this parser correction.
+
+All three packets now pass `lattice_state_packet.py --require-complete`.
+The affected host module passes 11 tests (4.963 s); the added capacity-32/33
+boundary check passes in the focused method (0.016 s). Independent review cleared
+source and actual packets. Effective-state comparison against the conditional
+replay remains the next step; payload identity, writer ownership and RGB/TAA
+benefit remain unqualified under §25.
+
+The [receipt witness](../../verification/results/run53a-triage/state-witness.json)
+reproduces all three packets. Camera log `t` is view-matrix translation, so its
+change during rotation is not proof of ship translation; the later two bursts
+remain motion-mode unclassified from those scalar differences alone.
+
+The subsequent [source/input comparison](/tmp/x3-run193-state-interpret.md)
+finds all six effective vertex programs byte-identical to the conditional fixture
+and 108 explicit sampler words equal. The effective pixel shader preserves the
+fixture's diffuse-alpha equation. View/jitter/history constants and RGB light-map
+gain differences do not establish an alpha rejection change. The actionable
+distinction is that all six packets report RT1/RT2 unbound through saved native
+slot 38, while the effective pixel shader exports motion/depth to those targets.
+`submission_error=8876086c` is an unused route default when submission is enabled,
+and `rt_set=rt2_set=0` is normal in lazy mode; neither establishes a failed draw.
+
+Parent-ratified next step: a standalone real-device probe of getter/resource-release
+callbacks and MRT state before/after the observer. `release_device` can restore
+lazy bindings during reference accounting; whether diagnostic references actually
+trigger that path remains unproved. Count actual callbacks first, including bound
+resources with and without an external application reference, before changing
+production code. An injected mock callback alone cannot establish backend causation.
+This is an offline diagnostic investigation, not a request for another flight or
+authorization for live geometry copies. No moving-crawl fix is selected yet.

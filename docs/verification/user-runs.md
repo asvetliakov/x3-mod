@@ -102,11 +102,29 @@ Keep any remaining non-selector/render stalls separate. This counter does not
 authorize a permanent hour-long retry policy.
 
 
-## 53. Spatial fog and moving-lattice state — ready for flight
+<a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
+
+## 53. Spatial fog and moving-lattice state — A and B reported, analysis open
 
 Candidate qualification, installation and rollback are recorded in [status](../status.md).
 Close the game between A and B; report the preserved session paths.
 No media/collision/FOV experiment is included.
+
+Session A reported as `/tmp/x3-bottleX3-run193` (1,109 referenced files).
+All three 32-frame bursts and three selected state packets are present; a reviewed
+host-checker correction admits the disabled extra clip-plane capacity. State
+interpretation continues; no crawl-fix acceptance is implied.
+
+Session B reported as `/tmp/x3-bottleX3-run194` (1,822 referenced files).
+The user prefers density **1.50** over **1.0**, confirmed in logs as numeric
+strength **0.03** versus **0.02**. The first three captures were in
+Argon Prime, the first with fog off; a possible intervening capture is uncertain.
+The last capture is in The Hole while moving the camera and shows native cards
+appearing/disappearing, producing flicker. Replacement remains unaccepted pending
+that defect's investigation. No repeat flight is requested from this report.
+Triage finds five complete 32-frame bursts: 4833–4864 (bluewell, off),
+6550–6581 (bluewell, 1.0×), 11077–11108 and 14822–14853 (bluewell, 1.5×),
+and 31481–31512 (foggreenoutlands, 1.5×).
 
 A. Solar-plant lattice diagnostic: same pinned solar-plant save/view as run177. F8 at rest, then F8 during camera rotation, then F8 while translating the ship. Keep the arm in view during each 32-frame burst. This build measures post-route state; it does not claim a crawl fix.
 

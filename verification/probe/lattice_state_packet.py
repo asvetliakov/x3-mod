@@ -88,7 +88,7 @@ def validate(packet, require_complete=False):
             return result
 
         caps = words('caps', count=6)
-        need(1 <= caps[0] <= 16 and caps[1] <= 6 and 1 <= caps[2] <= 256 and 1 <= caps[5] <= 4, 'unsupported caps')
+        need(1 <= caps[0] <= 16 and caps[1] <= 32 and 1 <= caps[2] <= 256 and 1 <= caps[5] <= 4, 'unsupported caps')
         for stage in range(2):
             lo, hi = words('source_shader', stage, 2)
             need(lo | hi << 32 == SOURCE[stage], 'source shader mismatch')
@@ -114,7 +114,13 @@ def validate(packet, require_complete=False):
             words('render', state, 1)
         words('viewport', count=6)
         words('scissor', count=4)
-        for i in range(caps[1]):
+        # The producer preserves raw caps but records at most six plane equations.
+        # Larger advertised capacity is harmless only when no uncaptured plane
+        # is enabled; never promote missing active state to a complete observation.
+        captured_planes = min(caps[1], 6)
+        need(words('render', 152, 1)[0] & ~((1 << captured_planes) - 1) == 0,
+             'enabled clip plane outside captured range')
+        for i in range(captured_planes):
             words('clip', i, 4)
         for i in range(caps[0]):
             binding = words('stream', i, 5)
