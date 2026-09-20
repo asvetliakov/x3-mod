@@ -1,0 +1,79 @@
+{
+  "date": "2026-09-20",
+  "status": "reviewed_static_candidate_not_implemented",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "ranges": 6,
+  "instructions": 553,
+  "bytes": 1728,
+  "anchors": 28,
+  "internal_branch_boundaries": 81,
+  "direct_e8_callers": {
+    "0x4da960": [
+      "0x4dac7d"
+    ],
+    "0x4dac30": [
+      "0x4e3e97"
+    ],
+    "0x4e3e70": [
+      "0x401d23",
+      "0x40357a",
+      "0x403f7a",
+      "0x403f87",
+      "0x403f99",
+      "0x4973dc",
+      "0x4977df",
+      "0x4f9770"
+    ],
+    "0x4dced0": [
+      "0x4db15b",
+      "0x4db243",
+      "0x4dc8e4",
+      "0x4dcc17",
+      "0x4dd622",
+      "0x4dd7b8",
+      "0x4decee"
+    ]
+  },
+  "entry_e9": {
+    "0x4da960": [],
+    "0x4dac30": [],
+    "0x4e3e70": [
+      "0x4f97af"
+    ],
+    "0x4dced0": []
+  },
+  "candidate": "Engine presentation-helper entry4dac30 can take existing lost return4dac6b while copy depth is active, before native Present/TestCooperativeLevel and reset preparation. No public HRESULT is fabricated; EAX is ignored by sole scanned direct caller.",
+  "scope": "No implemented gate or lease API. Entry E8/E9/literal scope, not arbitrary indirect/interior aliases; no measured thread ownership, exception or latency closure.",
+  "source_provenance": [
+    {
+      "path": "/tmp/x3-media-reentry-note/src/ownership/d3d9_ownership.cpp",
+      "sha256": "4ebd5a0190c91a188323caf32fc6b8f17e36853f1f544c25cd6f015491be490b"
+    },
+    {
+      "path": "/tmp/x3-media-reentry-note/src/ownership/d3d9_ownership.h",
+      "sha256": "6b51a8a063f364305b3d945cd03974e7249ff2ec2f9bf255f72f5609533af4b9"
+    },
+    {
+      "path": "/tmp/x3-media-reentry-note/src/ownership/d3d9_forwarders_inc.h",
+      "sha256": "650090ca87a1a33c4f0227a4078320f2191bc6843d248c879b6897828fcd7729"
+    }
+  ],
+  "local_evidence": [
+    {
+      "path": "/tmp/x3-media-copy-reset-gate.md",
+      "sha256": "af0d77b438165f0ba33503cf9a670fad0ed8fe0dfe97e07062a36448d461704b"
+    },
+    {
+      "path": "/tmp/verify_x3_media_copy_reset_gate.py",
+      "sha256": "47b7c1537db221100da8682bc90a4d05c574ee92e6a28489fd659a96b6c2e786"
+    },
+    {
+      "path": "/tmp/x3-media-copy-reset-gate-check.json",
+      "sha256": "dcf8c077e11452dfd56a6df666c7e690963f1cee03c17eed97b89151ea5aa8b6"
+    },
+    {
+      "path": "/tmp/x3-media-copy-reset-gate-raw.txt",
+      "sha256": "f76265e837b08224bf469b9599b6f8a2bff04a79cd79e2174a4ca00297f581c2"
+    }
+  ]
+}

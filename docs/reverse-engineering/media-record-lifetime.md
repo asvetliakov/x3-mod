@@ -1019,3 +1019,66 @@ exception handling and complete entry/xref closure are not qualified by these
 candidate continuations. Foreign-thread mutation, actual copy exclusion and
 surface pool/caps remain unproved; no observed returning UAF or production
 safety claim is made. No Wine/game/build/production changes occurred.
+
+## Candidate copy interval: defer the private presentation helper (2026-09-20)
+
+A concrete next qualification route can prevent the known engine Reset while an
+owned surface lease is live. Helper0x4dac30 calls Present at0x4dac48; only
+DEVICELOST reaches TestCooperativeLevel0x4dac62. DEVICELOST there takes the
+existing0x4dac6b store0x608ae0=0 and RET0x4dac75. DEVICENOTRESET calls
+0x4dac7d→0x4da960, whose engine preparation precedes native Reset0x4daa0b.
+There is one scanned E8 caller for each helper:0x4e3e97→0x4dac30 and
+0x4dac7d→0x4da960; no scanned E9/literal entries. Caller0x4e3e97 overwrites
+EAX before use. The available flag set after Reset is not a reliable success
+observation. Broader rendering helper0x4e3e70 has eight E8 callers and one E9
+tail entry0x4f97af; it is not a flight-only function.
+
+Preferred **candidate**, not implemented safety: intercept the5-byte entry
+MOV EAX,[0x608b3c] at0x4dac30. With no owned copy active, reproduce it and
+continue0x4dac35. With qualified same-thread copy depth nonzero, keep original
+entry ESP=R and take0x4dac6b, whose RET consumes[R]. This defers Present/Test
+and Reset preparation before any native call in this helper. It does not
+fabricate a public Reset HRESULT. The later CALL0x4dac7d is a weaker candidate;
+a replacement CALL must discard its added return0x4dac82 before taking0x4dac6b.
+Both paths require the CPU/flags/LastError/x87/SSE/MXCSR envelope and four-byte
+incoming stack ABI. Patch/interior-entry/rollback qualification remains separate.
+
+In the opposite direction, refuse new copy admission throughout the whole
+engine reset helper, native Reset and observed failure state. Keep copy depth
+active through successful-lock cleanup and final temporary Release, then clear
+it. A later ordinary engine presentation rechecks actual device state with no
+added DEFAULT-pool lease outstanding. This supplies a narrow candidate compatible
+with the [Reset reference and window-dispatch constraints](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-reset);
+it does not suppress all work in0x4e3e70 or establish every outer caller's safety.
+
+Current canonical ownership source can support a **new CPU-only surface lookup
+and retain API**: application_nodes contains positive-reference wrappers under
+registry_mutex; add_ref increments locally, and release removes a zero-reference
+wrapper under that lock before backend Release outside it. Validate key,
+kind/device/generation/allocation serial and retain atomically before any raw
+vtable dereference. Surface serials/API are not already implemented by existing
+buffer sidecars. Unknown/native keys, overflow and unavailable admission must
+be rejected. This relies on mod-owned registry state, not private backend layout.
+
+Raw engine resolution still needs a live-storage interval. One option is a short
+acquisition domain shared with observed mutation entries; invalidation must make
+the affected table/binding durably **ineligible** before unlocking, throughout
+external retirement/replacement, until validated publication. Entry-only locking
+would still race the remaining free. Another option is an observed binding map
+of canonical keys/serials without persistent COM references, with complete
+supported binding-generation coverage. Exact observed replacement boundaries
+are0x4dd1a8 before old surface Release0x4dd1b9 and incoming publication0x4dd1c5
+in0x4dced0 (ESI=wrapper, cdecl surface at entry[ESP+4], seven E8 callers).
+Cleanup0x4dcc70 invalidates before its external work. These identified sites do
+not prove all aliases or make an address-only map safe against reuse/stale cache.
+
+The bounded engine witness must correlate owned record/binding/surface serials,
+Pool/Usage/Format, owner TIDs, copy depth, mutation entries and actual Reset
+results/recovery. Finite observation detects violations within instrumentation;
+it does not replace static observer/alias coverage. No arbitrary no-pump,
+unknown-Reset-route, exception-cleanup or enabled-copy safety claim is made.
+Independent review cleared this concrete implementation/qualification candidate:
+**6 ranges,553 instructions,1,728 bytes,28 anchors,81 branch boundaries; four E8
+sets/17 sites plus the E9 tail**. The [compact result](../../verification/results/media-copy-reset-gate-2026-09-20.json)
+binds local note, verifier, source provenance and result/raw hashes. No
+production change, runtime execution, build or commit was performed here.
