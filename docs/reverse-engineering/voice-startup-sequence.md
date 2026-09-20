@@ -26,7 +26,7 @@ Wine behaviour is quoted from the retained public copies
 `amstream_audiostream.c` / `amstream_filter.c`; it is **not** a trace of the
 installed CrossOver `amstream`.
 
-## 1. The game is single-threaded and owns no wait primitive
+## 1. Static imports and the observed synchronous call paths
 
 The import name table of `X3AP.exe` contains **no** `CreateThread`, no
 `_beginthread`/`_beginthreadex`, and **no `WaitForSingleObject` or
@@ -36,18 +36,16 @@ The only `Sleep` references are `00515b92`, `00515bda`, `00515c25`, `00515c75`,
 all inside the statically linked CRT lock helpers (`00515b75`…`00515c48`), not
 in game code.
 
-Consequences, all load-bearing for this question:
-
-* every COM call on a media object — `CoCreateInstance`, `Initialize`,
-  `OpenFile`, `CreateSample`, `SetState`, `Run`, `Pause`,
-  `put_CurrentPosition`, `Update`, `CompletionStatus`, `GetSampleTimes`, and
-  every DirectSound call — happens on the single WinMain thread;
-* the game can never block on a handle. Any "wait" it performs is a poll inside
-  one of its own loops, and any true blocking is inside a Wine DLL called from
-  that thread;
-* `AMMSF_NOGRAPHTHREAD` (below) requires message pumping on the creating
-  thread; the game satisfies this only because the same thread runs its message
-  pump.
+Scope correction (2026-09-20): absence of these static import names does not
+prove that the whole process is single-threaded or can never wait on a handle.
+DLL-created workers, dynamically resolved calls and callback/reentry paths are
+not excluded by that scan. The local call chains below establish synchronous
+manager/pump ordering on their calling thread; they do not establish every
+media/DirectSound caller's thread identity or an exclusive resource-access
+interval. `AMMSF_NOGRAPHTHREAD` requires message pumping on the creating thread;
+the adjacent game message-pump calls explain the intended arrangement, without
+proving whole-process thread ownership. Do not use this import observation as
+a buffer-copy or object-lifetime synchronization contract.
 
 ## 2. The five-call pump and where it runs
 
@@ -69,7 +67,8 @@ inside it (`00403b04`), and once in `00497200` (`0049729b`) right after the
 loaders that pump only the media manager while the loading screen is up:
 `00486809` in `004863c0` (guarded by `DAT_00606f34+0x108 & 0x800`) and
 `00492dbe` in `00492970`. Those six sites are the complete xref set of
-`00498370`; all are on the single thread of section 1.
+`00498370`; their convergence on one thread is not established by the import
+scan in section 1.
 
 `004d34b0` also decides the pump mode from `DAT_00608adc` (set to 1 at
 `004cc022`/`004cc04c` etc. around `DialogBoxParamA`, i.e. "no modal dialog /
@@ -77,9 +76,9 @@ app active") and the config bit `*DAT_00606f3c & 0x4000`:
 
 * active: `004d351f` `PeekMessageA`; if a message is waiting it enters the drain
   loop `004d3532`…`004d3562` (`GetMessageA` → `TranslateMessage` →
-  `DispatchMessageA` → `PeekMessageA`, `JNZ` back to `004d3532`). **This loop is
-  unbounded and never blocks**: it exits only when `PeekMessageA` reports an
-  empty queue;
+  `DispatchMessageA` → `PeekMessageA`, `JNZ` back to `004d3532`). This loop has
+  no fixed iteration bound and checks for queued messages before retrieval;
+  it does not establish nonblocking callback execution;
 * inactive: `004d34f7` blocking `GetMessageA` (a real kernel wait).
 
 ## 3. Which subsystem creates a stream during load, and from what
