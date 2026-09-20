@@ -1,0 +1,10 @@
+{
+  "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+  "packets": {
+    "bluewell": "fea1a4bf3842b417007af27c6cc25092c3ac8e815660b02bc3ac410953f1f372",
+    "foggreenoutlands": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8"
+  },
+  "report_sha256": "80fc97843d58e28c1ce26e05fa7efd2cdd2752d54b0bf27fa5947be82a224bf0",
+  "result": "rejected-integrator",
+  "selected_capture_metadata_sha256": "99319f340925630006e4ebc11109013d0d72e781b0603041c71e4553a050556d"
+}

@@ -1,0 +1,1671 @@
+{
+  "appearance": [
+    {
+      "connected_clear_regions": 1,
+      "connected_dense_regions": 1,
+      "family": "bluewell",
+      "far_opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.11294633150100708,
+        "25": 0.05417676270008087,
+        "50": 0.06777167320251465,
+        "75": 0.0767931193113327,
+        "90": 0.08430344611406326,
+        "99": 0.10137147456407547
+      },
+      "far_optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.11984981596469879,
+        "25": 0.055699583142995834,
+        "50": 0.07017748802900314,
+        "75": 0.07990191876888275,
+        "90": 0.08807021379470825,
+        "99": 0.10688551515340805
+      },
+      "frame": 16450,
+      "near_opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.04050654172897339,
+        "25": 0.0,
+        "50": 0.0,
+        "75": 7.548928260803223e-05,
+        "90": 0.008004718460142612,
+        "99": 0.0292410496622324
+      },
+      "near_optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.04134976491332054,
+        "25": 0.0,
+        "50": 0.0,
+        "75": 7.549516158178449e-05,
+        "90": 0.008036928251385689,
+        "99": 0.029677066951990128
+      },
+      "opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.13638824224472046,
+        "25": 0.05438287556171417,
+        "50": 0.06879228353500366,
+        "75": 0.07861846685409546,
+        "90": 0.08732151985168457,
+        "99": 0.11954700201749802
+      },
+      "optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.14663194119930267,
+        "25": 0.05591753125190735,
+        "50": 0.07127292454242706,
+        "75": 0.0818810760974884,
+        "90": 0.09137165546417236,
+        "99": 0.12731866538524628
+      },
+      "populations": {
+        "all": {
+          "count": 2304,
+          "fraction_opacity_above_0.015": {
+            "count": 2304,
+            "fraction": 0.9388020833333334,
+            "hits": 2163
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 2304,
+            "fraction": 0.061197916666666664,
+            "hits": 141
+          }
+        },
+        "geometry": {
+          "count": 314,
+          "fraction_opacity_above_0.015": {
+            "count": 314,
+            "fraction": 0.5509554140127388,
+            "hits": 173
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 314,
+            "fraction": 0.44904458598726116,
+            "hits": 141
+          }
+        },
+        "sky": {
+          "count": 1990,
+          "fraction_opacity_above_0.015": {
+            "count": 1990,
+            "fraction": 1.0,
+            "hits": 1990
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 1990,
+            "fraction": 0.0,
+            "hits": 0
+          }
+        }
+      },
+      "rays": 2304
+    },
+    {
+      "connected_clear_regions": 1,
+      "connected_dense_regions": 1,
+      "family": "bluewell",
+      "far_opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.13230615854263306,
+        "25": 0.05525118112564087,
+        "50": 0.06913205981254578,
+        "75": 0.07861366868019104,
+        "90": 0.08791733533143997,
+        "99": 0.11767444014549255
+      },
+      "far_optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.14191634953022003,
+        "25": 0.05683620274066925,
+        "50": 0.07163787633180618,
+        "75": 0.08187587559223175,
+        "90": 0.09202466905117035,
+        "99": 0.12519419193267822
+      },
+      "frame": 16481,
+      "near_opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.03096020221710205,
+        "25": 0.0,
+        "50": 0.0,
+        "75": 0.00019438564777374268,
+        "90": 0.006995223928242922,
+        "99": 0.02528459019958973
+      },
+      "near_optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.0314495749771595,
+        "25": 0.0,
+        "50": 0.0,
+        "75": 0.00019440935284364969,
+        "90": 0.0070198215544223785,
+        "99": 0.025609739124774933
+      },
+      "opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.14334368705749512,
+        "25": 0.055642902851104736,
+        "50": 0.07052117586135864,
+        "75": 0.08011464774608612,
+        "90": 0.09084443747997284,
+        "99": 0.13085365295410156
+      },
+      "optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.15471848845481873,
+        "25": 0.057250890880823135,
+        "50": 0.07313121855258942,
+        "75": 0.0835062563419342,
+        "90": 0.09523905813694,
+        "99": 0.1402437835931778
+      },
+      "populations": {
+        "all": {
+          "count": 2304,
+          "fraction_opacity_above_0.015": {
+            "count": 2304,
+            "fraction": 0.9366319444444444,
+            "hits": 2158
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 2304,
+            "fraction": 0.06336805555555555,
+            "hits": 146
+          }
+        },
+        "geometry": {
+          "count": 260,
+          "fraction_opacity_above_0.015": {
+            "count": 260,
+            "fraction": 0.43846153846153846,
+            "hits": 114
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 260,
+            "fraction": 0.5615384615384615,
+            "hits": 146
+          }
+        },
+        "sky": {
+          "count": 2044,
+          "fraction_opacity_above_0.015": {
+            "count": 2044,
+            "fraction": 1.0,
+            "hits": 2044
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 2044,
+            "fraction": 0.0,
+            "hits": 0
+          }
+        }
+      },
+      "rays": 2304
+    },
+    {
+      "connected_clear_regions": 18,
+      "connected_dense_regions": 16,
+      "family": "foggreenoutlands",
+      "far_opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.4437885880470276,
+        "25": 0.2571885585784912,
+        "50": 0.2932405471801758,
+        "75": 0.32193523645401,
+        "90": 0.34892329573631287,
+        "99": 0.40836867690086365
+      },
+      "far_optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.5866068601608276,
+        "25": 0.29731303453445435,
+        "50": 0.34706491231918335,
+        "75": 0.38851243257522583,
+        "90": 0.4291277825832367,
+        "99": 0.5248715877532959
+      },
+      "frame": 43051,
+      "near_opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.16257667541503906,
+        "25": 0.002247944474220276,
+        "50": 0.018193602561950684,
+        "75": 0.04856230318546295,
+        "90": 0.07811480015516281,
+        "99": 0.14397746324539185
+      },
+      "near_optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.1774255484342575,
+        "25": 0.002250474411994219,
+        "50": 0.018361125141382217,
+        "75": 0.049781087785959244,
+        "90": 0.08133459836244583,
+        "99": 0.15545855462551117
+      },
+      "opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.4643023610115051,
+        "25": 0.27381500601768494,
+        "50": 0.314340204000473,
+        "75": 0.3529070019721985,
+        "90": 0.38414090871810913,
+        "99": 0.4255247712135315
+      },
+      "optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.62418532371521,
+        "25": 0.3199504613876343,
+        "50": 0.37737366557121277,
+        "75": 0.43526530265808105,
+        "90": 0.4847371280193329,
+        "99": 0.5542984008789062
+      },
+      "populations": {
+        "all": {
+          "count": 2304,
+          "fraction_opacity_above_0.015": {
+            "count": 2304,
+            "fraction": 0.8532986111111112,
+            "hits": 1966
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 2304,
+            "fraction": 0.1267361111111111,
+            "hits": 292
+          }
+        },
+        "geometry": {
+          "count": 356,
+          "fraction_opacity_above_0.015": {
+            "count": 356,
+            "fraction": 0.05056179775280899,
+            "hits": 18
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 356,
+            "fraction": 0.8202247191011236,
+            "hits": 292
+          }
+        },
+        "sky": {
+          "count": 1948,
+          "fraction_opacity_above_0.015": {
+            "count": 1948,
+            "fraction": 1.0,
+            "hits": 1948
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 1948,
+            "fraction": 0.0,
+            "hits": 0
+          }
+        }
+      },
+      "rays": 2304
+    },
+    {
+      "connected_clear_regions": 14,
+      "connected_dense_regions": 11,
+      "family": "foggreenoutlands",
+      "far_opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.4428461194038391,
+        "25": 0.2574164867401123,
+        "50": 0.2932870388031006,
+        "75": 0.3217208683490753,
+        "90": 0.34892696142196655,
+        "99": 0.40879619121551514
+      },
+      "far_optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.5849137902259827,
+        "25": 0.29761993885040283,
+        "50": 0.3471306562423706,
+        "75": 0.3881963789463043,
+        "90": 0.42913350462913513,
+        "99": 0.5255944728851318
+      },
+      "frame": 43082,
+      "near_opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.16250693798065186,
+        "25": 0.0021981000900268555,
+        "50": 0.018122971057891846,
+        "75": 0.04837694764137268,
+        "90": 0.07786313444375992,
+        "99": 0.1441737860441208
+      },
+      "near_optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.1773422807455063,
+        "25": 0.0022005008067935705,
+        "50": 0.018289223313331604,
+        "75": 0.04958627372980118,
+        "90": 0.08106163889169693,
+        "99": 0.15568794310092926
+      },
+      "opacity_percentiles": {
+        "0": 0.0,
+        "100": 0.46346718072891235,
+        "25": 0.27338525652885437,
+        "50": 0.31426435708999634,
+        "75": 0.3532809019088745,
+        "90": 0.38382619619369507,
+        "99": 0.42565569281578064
+      },
+      "optical_depth_percentiles": {
+        "0": 0.0,
+        "100": 0.6226274967193604,
+        "25": 0.3193589150905609,
+        "50": 0.3772630989551544,
+        "75": 0.4358433187007904,
+        "90": 0.484226256608963,
+        "99": 0.5545263290405273
+      },
+      "populations": {
+        "all": {
+          "count": 2304,
+          "fraction_opacity_above_0.015": {
+            "count": 2304,
+            "fraction": 0.8550347222222222,
+            "hits": 1970
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 2304,
+            "fraction": 0.1284722222222222,
+            "hits": 296
+          }
+        },
+        "geometry": {
+          "count": 353,
+          "fraction_opacity_above_0.015": {
+            "count": 353,
+            "fraction": 0.053824362606232294,
+            "hits": 19
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 353,
+            "fraction": 0.8385269121813032,
+            "hits": 296
+          }
+        },
+        "sky": {
+          "count": 1951,
+          "fraction_opacity_above_0.015": {
+            "count": 1951,
+            "fraction": 1.0,
+            "hits": 1951
+          },
+          "fraction_opacity_below_0.002": {
+            "count": 1951,
+            "fraction": 0.0,
+            "hits": 0
+          }
+        }
+      },
+      "rays": 2304
+    }
+  ],
+  "candidate_scores": [
+    {
+      "T_passed": false,
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 0.001418661093339324,
+            "p99": 0.001284796558320522
+          },
+          {
+            "count": 96,
+            "max": 0.005733785685151815,
+            "p99": 0.0054769267328083505
+          },
+          {
+            "count": 96,
+            "max": 0.021367762237787247,
+            "p99": 0.019028190150856966
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.09057193994522095,
+          "p99": 0.07294526994228358
+        }
+      },
+      "false_support_over_0.002": 0,
+      "family": "bluewell",
+      "far_steps": 24,
+      "frame": 16450,
+      "minimal_failure_witness": {
+        "abs_delta_T": 0.09057193994522095,
+        "candidate_S_normalized_lighting": [
+          0.001031939871609211,
+          0.00586124649271369,
+          0.022263824939727783
+        ],
+        "candidate_T": 0.9056298732757568,
+        "physical_limit": 200000.0,
+        "ray_index": 20,
+        "reference64_S_normalized_lighting": [
+          0.002225575502961874,
+          0.011324654333293438,
+          0.04363158717751503
+        ],
+        "reference64_T": 0.8150579333305359
+      },
+      "passed": false,
+      "rays": 96,
+      "reference_empty_rays": 6,
+      "spatial_neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.12318748235702515,
+        "p99": 0.09808423399925228
+      }
+    },
+    {
+      "T_passed": false,
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 0.0012189236003905535,
+            "p99": 0.0010149170120712363
+          },
+          {
+            "count": 96,
+            "max": 0.004807533696293831,
+            "p99": 0.004546392522752284
+          },
+          {
+            "count": 96,
+            "max": 0.0176661666482687,
+            "p99": 0.016327868122607465
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.06302732229232788,
+          "p99": 0.05214144885540005
+        }
+      },
+      "false_support_over_0.002": 0,
+      "family": "bluewell",
+      "far_steps": 48,
+      "frame": 16450,
+      "minimal_failure_witness": {
+        "abs_delta_T": 0.06302732229232788,
+        "candidate_S_normalized_lighting": [
+          0.0013737352564930916,
+          0.007538959849625826,
+          0.02876215986907482
+        ],
+        "candidate_T": 0.8780852556228638,
+        "physical_limit": 200000.0,
+        "ray_index": 20,
+        "reference64_S_normalized_lighting": [
+          0.002225575502961874,
+          0.011324654333293438,
+          0.04363158717751503
+        ],
+        "reference64_T": 0.8150579333305359
+      },
+      "passed": false,
+      "rays": 96,
+      "reference_empty_rays": 6,
+      "spatial_neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.08141344785690308,
+        "p99": 0.06911154150962821
+      }
+    },
+    {
+      "T_passed": false,
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 0.0018699117936193943,
+            "p99": 0.0010638435953296698
+          },
+          {
+            "count": 96,
+            "max": 0.008648296818137169,
+            "p99": 0.005149359349161376
+          },
+          {
+            "count": 96,
+            "max": 0.025614101439714432,
+            "p99": 0.019505031593143922
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.12315607070922852,
+          "p99": 0.08240229189395892
+        }
+      },
+      "false_support_over_0.002": 0,
+      "family": "bluewell",
+      "far_steps": 24,
+      "frame": 16481,
+      "minimal_failure_witness": {
+        "abs_delta_T": 0.12315607070922852,
+        "candidate_S_normalized_lighting": [
+          0.001154760830104351,
+          0.005837436765432358,
+          0.021057210862636566
+        ],
+        "candidate_T": 0.8987541198730469,
+        "physical_limit": 200000.0,
+        "ray_index": 42,
+        "reference64_S_normalized_lighting": [
+          0.0030246726237237453,
+          0.014485733583569527,
+          0.046671312302351
+        ],
+        "reference64_T": 0.7755980491638184
+      },
+      "passed": false,
+      "rays": 96,
+      "reference_empty_rays": 7,
+      "spatial_neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.17307549715042114,
+        "p99": 0.12347452998161311
+      }
+    },
+    {
+      "T_passed": false,
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 0.0012675808975473046,
+            "p99": 0.0009364771656692018
+          },
+          {
+            "count": 96,
+            "max": 0.005993297323584557,
+            "p99": 0.004099612403661007
+          },
+          {
+            "count": 96,
+            "max": 0.017069829627871513,
+            "p99": 0.012986120348796237
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.08207404613494873,
+          "p99": 0.06457523405551906
+        }
+      },
+      "false_support_over_0.002": 0,
+      "family": "bluewell",
+      "far_steps": 48,
+      "frame": 16481,
+      "minimal_failure_witness": {
+        "abs_delta_T": 0.08207404613494873,
+        "candidate_S_normalized_lighting": [
+          0.0017570917261764407,
+          0.00849243625998497,
+          0.029601482674479485
+        ],
+        "candidate_T": 0.8576720952987671,
+        "physical_limit": 200000.0,
+        "ray_index": 42,
+        "reference64_S_normalized_lighting": [
+          0.0030246726237237453,
+          0.014485733583569527,
+          0.046671312302351
+        ],
+        "reference64_T": 0.7755980491638184
+      },
+      "passed": false,
+      "rays": 96,
+      "reference_empty_rays": 7,
+      "spatial_neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.1233031153678894,
+        "p99": 0.08565528154373157
+      }
+    },
+    {
+      "T_passed": false,
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 0.024230170994997025,
+            "p99": 0.02017704863101243
+          },
+          {
+            "count": 96,
+            "max": 0.1080005094408989,
+            "p99": 0.08699045293033117
+          },
+          {
+            "count": 96,
+            "max": 0.015980591997504234,
+            "p99": 0.015399071667343377
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.29236575961112976,
+          "p99": 0.22530345767736415
+        }
+      },
+      "false_support_over_0.002": 0,
+      "family": "foggreenoutlands",
+      "far_steps": 24,
+      "frame": 43051,
+      "minimal_failure_witness": {
+        "abs_delta_T": 0.29236575961112976,
+        "candidate_S_normalized_lighting": [
+          0.021840360015630722,
+          0.10410287231206894,
+          0.013723593205213547
+        ],
+        "candidate_T": 0.5979383587837219,
+        "physical_limit": 200000.0,
+        "ray_index": 8,
+        "reference64_S_normalized_lighting": [
+          0.034650497138500214,
+          0.1798029989004135,
+          0.01958392933011055
+        ],
+        "reference64_T": 0.30557259917259216
+      },
+      "passed": false,
+      "rays": 96,
+      "reference_empty_rays": 9,
+      "spatial_neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.43908289074897766,
+        "p99": 0.3749863350391382
+      }
+    },
+    {
+      "T_passed": false,
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 0.020104900002479553,
+            "p99": 0.019021993502974507
+          },
+          {
+            "count": 96,
+            "max": 0.08918308466672897,
+            "p99": 0.05782633237540712
+          },
+          {
+            "count": 96,
+            "max": 0.01559755951166153,
+            "p99": 0.012277877237647762
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.1938001811504364,
+          "p99": 0.15276308208703981
+        }
+      },
+      "false_support_over_0.002": 0,
+      "family": "foggreenoutlands",
+      "far_steps": 48,
+      "frame": 43051,
+      "minimal_failure_witness": {
+        "abs_delta_T": 0.1938001811504364,
+        "candidate_S_normalized_lighting": [
+          0.025768322870135307,
+          0.12962374091148376,
+          0.015308964997529984
+        ],
+        "candidate_T": 0.49937278032302856,
+        "physical_limit": 200000.0,
+        "ray_index": 8,
+        "reference64_S_normalized_lighting": [
+          0.034650497138500214,
+          0.1798029989004135,
+          0.01958392933011055
+        ],
+        "reference64_T": 0.30557259917259216
+      },
+      "passed": false,
+      "rays": 96,
+      "reference_empty_rays": 9,
+      "spatial_neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.29740944504737854,
+        "p99": 0.2723986893892286
+      }
+    },
+    {
+      "T_passed": false,
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 0.02113518863916397,
+            "p99": 0.01990056056529283
+          },
+          {
+            "count": 96,
+            "max": 0.09854048490524292,
+            "p99": 0.08661123588681217
+          },
+          {
+            "count": 96,
+            "max": 0.015301607549190521,
+            "p99": 0.01384790493175387
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.2929932177066803,
+          "p99": 0.24164251983165724
+        }
+      },
+      "false_support_over_0.002": 0,
+      "family": "foggreenoutlands",
+      "far_steps": 24,
+      "frame": 43082,
+      "minimal_failure_witness": {
+        "abs_delta_T": 0.2929932177066803,
+        "candidate_S_normalized_lighting": [
+          0.021791771054267883,
+          0.10404130071401596,
+          0.013678018003702164
+        ],
+        "candidate_T": 0.5985904335975647,
+        "physical_limit": 200000.0,
+        "ray_index": 8,
+        "reference64_S_normalized_lighting": [
+          0.034704871475696564,
+          0.17998217046260834,
+          0.019626444205641747
+        ],
+        "reference64_T": 0.3055972158908844
+      },
+      "passed": false,
+      "rays": 96,
+      "reference_empty_rays": 9,
+      "spatial_neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.4449711740016937,
+        "p99": 0.3920813512802121
+      }
+    },
+    {
+      "T_passed": false,
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 0.02004459872841835,
+            "p99": 0.015890352241694914
+          },
+          {
+            "count": 96,
+            "max": 0.0786297470331192,
+            "p99": 0.06360082104802127
+          },
+          {
+            "count": 96,
+            "max": 0.01554577611386776,
+            "p99": 0.01058717099949716
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.19515976309776306,
+          "p99": 0.14138007611036285
+        }
+      },
+      "false_support_over_0.002": 0,
+      "family": "foggreenoutlands",
+      "far_steps": 48,
+      "frame": 43082,
+      "minimal_failure_witness": {
+        "abs_delta_T": 0.19515976309776306,
+        "candidate_S_normalized_lighting": [
+          0.02562844008207321,
+          0.12939873337745667,
+          0.015164205804467201
+        ],
+        "candidate_T": 0.5007569789886475,
+        "physical_limit": 200000.0,
+        "ray_index": 8,
+        "reference64_S_normalized_lighting": [
+          0.034704871475696564,
+          0.17998217046260834,
+          0.019626444205641747
+        ],
+        "reference64_T": 0.3055972158908844
+      },
+      "passed": false,
+      "rays": 96,
+      "reference_empty_rays": 9,
+      "spatial_neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.2959662973880768,
+        "p99": 0.2905093491077423
+      }
+    }
+  ],
+  "converged_reference_gap_screen": [
+    {
+      "all": {
+        "count": 96,
+        "fraction_opacity_above_0.015": {
+          "count": 96,
+          "fraction": 0.8958333333333334,
+          "hits": 86
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 96,
+          "fraction": 0.07291666666666667,
+          "hits": 7
+        }
+      },
+      "family": "bluewell",
+      "frame": 16450,
+      "geometry": {
+        "count": 11,
+        "fraction_opacity_above_0.015": {
+          "count": 11,
+          "fraction": 0.45454545454545453,
+          "hits": 5
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 11,
+          "fraction": 0.5454545454545454,
+          "hits": 6
+        }
+      },
+      "rays": 96,
+      "sky": {
+        "count": 85,
+        "fraction_opacity_above_0.015": {
+          "count": 85,
+          "fraction": 0.9529411764705882,
+          "hits": 81
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 85,
+          "fraction": 0.011764705882352941,
+          "hits": 1
+        }
+      }
+    },
+    {
+      "all": {
+        "count": 96,
+        "fraction_opacity_above_0.015": {
+          "count": 96,
+          "fraction": 0.8958333333333334,
+          "hits": 86
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 96,
+          "fraction": 0.07291666666666667,
+          "hits": 7
+        }
+      },
+      "family": "bluewell",
+      "frame": 16481,
+      "geometry": {
+        "count": 11,
+        "fraction_opacity_above_0.015": {
+          "count": 11,
+          "fraction": 0.2727272727272727,
+          "hits": 3
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 11,
+          "fraction": 0.6363636363636364,
+          "hits": 7
+        }
+      },
+      "rays": 96,
+      "sky": {
+        "count": 85,
+        "fraction_opacity_above_0.015": {
+          "count": 85,
+          "fraction": 0.9764705882352941,
+          "hits": 83
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 85,
+          "fraction": 0.0,
+          "hits": 0
+        }
+      }
+    },
+    {
+      "all": {
+        "count": 96,
+        "fraction_opacity_above_0.015": {
+          "count": 96,
+          "fraction": 0.8125,
+          "hits": 78
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 96,
+          "fraction": 0.16666666666666666,
+          "hits": 16
+        }
+      },
+      "family": "foggreenoutlands",
+      "frame": 43051,
+      "geometry": {
+        "count": 19,
+        "fraction_opacity_above_0.015": {
+          "count": 19,
+          "fraction": 0.05263157894736842,
+          "hits": 1
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 19,
+          "fraction": 0.8421052631578947,
+          "hits": 16
+        }
+      },
+      "rays": 96,
+      "sky": {
+        "count": 77,
+        "fraction_opacity_above_0.015": {
+          "count": 77,
+          "fraction": 1.0,
+          "hits": 77
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 77,
+          "fraction": 0.0,
+          "hits": 0
+        }
+      }
+    },
+    {
+      "all": {
+        "count": 96,
+        "fraction_opacity_above_0.015": {
+          "count": 96,
+          "fraction": 0.84375,
+          "hits": 81
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 96,
+          "fraction": 0.14583333333333334,
+          "hits": 14
+        }
+      },
+      "family": "foggreenoutlands",
+      "frame": 43082,
+      "geometry": {
+        "count": 16,
+        "fraction_opacity_above_0.015": {
+          "count": 16,
+          "fraction": 0.0625,
+          "hits": 1
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 16,
+          "fraction": 0.875,
+          "hits": 14
+        }
+      },
+      "rays": 96,
+      "sky": {
+        "count": 80,
+        "fraction_opacity_above_0.015": {
+          "count": 80,
+          "fraction": 1.0,
+          "hits": 80
+        },
+        "fraction_opacity_below_0.002": {
+          "count": 80,
+          "fraction": 0.0,
+          "hits": 0
+        }
+      }
+    }
+  ],
+  "decision_scope": {
+    "candidate_integrator_T_numerical_failure": true,
+    "candidate_normalized_lighting_S_and_T_numerical_failure": true,
+    "clear_fraction_0.25_is_user_visual_acceptance": false,
+    "does_not_reject_other_range_designs": true,
+    "endpoint_views": 4,
+    "same_field_recipe_sky_diagnostic_screen_flag": true
+  },
+  "gates": {
+    "candidate_24_T_numerical": false,
+    "candidate_24_normalized_S_and_T_numerical": false,
+    "converged_reference_sky_screen_flag": true,
+    "exact_near_for_limits_at_most_12000": true,
+    "false_support": true,
+    "laws": true,
+    "reference_converged": true,
+    "sky_diagnostic_clear_fraction_at_least_0.25": false
+  },
+  "host_seconds": 4.632291167,
+  "laws": {
+    "finite": true,
+    "invalid_depth_identity_exact": true,
+    "source_alpha_identity_exact": true,
+    "vacuum_zero_length_exact": true,
+    "wrapping_continuity_max": 0.0
+  },
+  "lighting_contract": {
+    "S": "captured production-selected point-sun dir1 with unit radiance; numerical scale diagnostic only",
+    "S_establishes_production_scaled_parity": false,
+    "S_used_for_normalized_numerical_gate": true,
+    "T_opacity_independent_of_lighting": true,
+    "capture_has_verified_production_selected_sun_vector": true,
+    "capture_has_verified_sun_radiance": false
+  },
+  "limitations": [
+    "Offline CPU replay time and operation counts are not GPU timing or game FPS.",
+    "Cloud-only sheets use captured production-selected point-sun dir1 and normalized unit-radiance S at fixed 0..0.03 and opacity at 0..0.4; captured HDR/TAA is not recomposited.",
+    "Synthetic translations test continuity and periodicity; they are not recovered gameplay or observed pops.",
+    "The .25 clear-ray threshold is an established diagnostic rejection screen, not user visual rejection or sufficient acceptance.",
+    "Appearance and convergence cover four endpoint views from two captured profiles; they do not establish that every long-range design is impossible.",
+    "A passing offline replay would still require shader limits, portable packing, CPU/GPU parity, Reset recovery, timing, native Windows and user flight acceptance."
+  ],
+  "operation_counts": {
+    "baseline": {
+      "field_texture_instructions": 48,
+      "midpoint_steps": 24
+    },
+    "candidate_24_far": {
+      "far_atlas_reads": 96,
+      "field_texture_instructions": 144,
+      "midpoint_steps": 48,
+      "multiple_of_baseline": 3,
+      "near_atlas_reads": 48
+    },
+    "candidate_48_far": {
+      "far_atlas_reads": 192,
+      "field_texture_instructions": 240,
+      "midpoint_steps": 72,
+      "multiple_of_baseline": 5,
+      "near_atlas_reads": 48
+    },
+    "full_pixel_edge_repair": "same extended march per repaired pixel; separate from half-resolution pass"
+  },
+  "ray_sets": {
+    "appearance": "64x36 deterministic screen strata on first/last frames",
+    "reference_scoring": "12x8 deterministic screen strata on first/last frames",
+    "temporal": "6x4 matched deterministic screen strata on all 64 frames"
+  },
+  "reference_convergence": [
+    {
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 1.56438909471035e-06,
+            "p99": 1.167548180092125e-06
+          },
+          {
+            "count": 96,
+            "max": 4.398636519908905e-06,
+            "p99": 4.182755947113036e-06
+          },
+          {
+            "count": 96,
+            "max": 1.488998532295227e-05,
+            "p99": 1.4688260853290558e-05
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 4.83393669128418e-05,
+          "p99": 4.760324954986572e-05
+        }
+      },
+      "family": "bluewell",
+      "frame": 16450,
+      "passed": true,
+      "rays": 96
+    },
+    {
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 1.5577534213662148e-06,
+            "p99": 1.5246856492012738e-06
+          },
+          {
+            "count": 96,
+            "max": 6.992369890213013e-06,
+            "p99": 5.375919863581653e-06
+          },
+          {
+            "count": 96,
+            "max": 2.1969899535179138e-05,
+            "p99": 2.0952429622411725e-05
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 5.930662155151367e-05,
+          "p99": 5.1322579383850075e-05
+        }
+      },
+      "family": "bluewell",
+      "frame": 16481,
+      "passed": true,
+      "rays": 96
+    },
+    {
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 9.175390005111694e-06,
+            "p99": 8.863955736160277e-06
+          },
+          {
+            "count": 96,
+            "max": 5.4702162742614746e-05,
+            "p99": 4.0772557258605914e-05
+          },
+          {
+            "count": 96,
+            "max": 7.5018033385276794e-06,
+            "p99": 6.78957439959049e-06
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.00010019540786743164,
+          "p99": 9.798705577850341e-05
+        }
+      },
+      "family": "foggreenoutlands",
+      "frame": 43051,
+      "passed": true,
+      "rays": 96
+    },
+    {
+      "errors": {
+        "S_normalized_lighting": [
+          {
+            "count": 96,
+            "max": 1.2064352631568909e-05,
+            "p99": 9.303912520408622e-06
+          },
+          {
+            "count": 96,
+            "max": 4.772841930389404e-05,
+            "p99": 3.964528441429136e-05
+          },
+          {
+            "count": 96,
+            "max": 9.819865226745605e-06,
+            "p99": 7.0187263190746224e-06
+          }
+        ],
+        "T": {
+          "count": 96,
+          "max": 0.0001277327537536621,
+          "p99": 0.00010236501693725578
+        }
+      },
+      "family": "foggreenoutlands",
+      "frame": 43082,
+      "passed": true,
+      "rays": 96
+    }
+  ],
+  "result": "rejected-integrator",
+  "schema": 1,
+  "sources": {
+    "asset_directory": "/tmp/x3-run56-candidate/build/generated/fog_field",
+    "capture_log": "/tmp/x3-bottleX3-run200/session-20260921-014107-212.log",
+    "capture_log_bytes": 481995947,
+    "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+    "packets": {
+      "bluewell": {
+        "decoded_sha256": "4529497a5e1feda3276b334d6aaef3ba741460e4e4b539aaaf7df74cbfa7261d",
+        "mip_means": [
+          [
+            0.006189818028360605,
+            0.032334133982658386,
+            0.11999839544296265,
+            0.11999839544296265
+          ],
+          [
+            0.0061902208253741264,
+            0.032335199415683746,
+            0.11999212950468063,
+            0.11999212950468063
+          ],
+          [
+            0.006190256215631962,
+            0.03233541175723076,
+            0.11999283730983734,
+            0.11999283730983734
+          ],
+          [
+            0.006190252024680376,
+            0.03233548253774643,
+            0.1199931651353836,
+            0.1199931651353836
+          ],
+          [
+            0.006190263666212559,
+            0.032335516065359116,
+            0.1199931874871254,
+            0.1199931874871254
+          ],
+          [
+            0.006190260406583548,
+            0.03233550488948822,
+            0.1199931651353836,
+            0.1199931651353836
+          ],
+          [
+            0.006190260872244835,
+            0.03233550861477852,
+            0.1199931800365448,
+            0.1199931800365448
+          ],
+          [
+            0.006190260872244835,
+            0.03233550861477852,
+            0.1199931800365448,
+            0.1199931800365448
+          ]
+        ],
+        "resource_bytes": 2281060,
+        "sha256": "fea1a4bf3842b417007af27c6cc25092c3ac8e815660b02bc3ac410953f1f372",
+        "synthetic_boundary_crossing_max_delta": 4.76837158203125e-07,
+        "synthetic_periodic_translation_max": 0.0,
+        "synthetic_window_translation": {
+          "label": "synthetic camera interpolation across fixed marker 40/30-km taper radii; not observed gameplay",
+          "max_adjacent_S_delta": 0.005117236636579037,
+          "max_adjacent_T_delta": 0.03334474563598633,
+          "samples": [
+            {
+              "S": [
+                0.0006338421953842044,
+                0.003184912260621786,
+                0.011897942051291466
+              ],
+              "T": 0.9224710464477539,
+              "camera_translation": 0.0,
+              "fixed_marker_distance": 205000.0,
+              "fixed_marker_window": 0.0
+            },
+            {
+              "S": [
+                0.0007749410578981042,
+                0.003754601115360856,
+                0.014147331938147545
+              ],
+              "T": 0.9078136086463928,
+              "camera_translation": 7500.0,
+              "fixed_marker_distance": 197500.0,
+              "fixed_marker_window": 0.007249999999999979
+            },
+            {
+              "S": [
+                0.0006147910607978702,
+                0.0031284738797694445,
+                0.01160837896168232
+              ],
+              "T": 0.9243578314781189,
+              "camera_translation": 15000.0,
+              "fixed_marker_distance": 190000.0,
+              "fixed_marker_window": 0.10399999999999987
+            },
+            {
+              "S": [
+                0.0006093256524764001,
+                0.0031328685581684113,
+                0.011702326126396656
+              ],
+              "T": 0.9237456321716309,
+              "camera_translation": 22500.0,
+              "fixed_marker_distance": 182500.0,
+              "fixed_marker_window": 0.28174999999999994
+            },
+            {
+              "S": [
+                0.0009009295608848333,
+                0.0045014661736786366,
+                0.016819562762975693
+              ],
+              "T": 0.8904008865356445,
+              "camera_translation": 30000.0,
+              "fixed_marker_distance": 175000.0,
+              "fixed_marker_window": 0.5
+            },
+            {
+              "S": [
+                0.0007846016669645905,
+                0.0037994273006916046,
+                0.014305610209703445
+              ],
+              "T": 0.9067822098731995,
+              "camera_translation": 37500.0,
+              "fixed_marker_distance": 167500.0,
+              "fixed_marker_window": 0.71825
+            },
+            {
+              "S": [
+                0.0007621023105457425,
+                0.0037908058147877455,
+                0.014216294512152672
+              ],
+              "T": 0.9073642492294312,
+              "camera_translation": 45000.0,
+              "fixed_marker_distance": 160000.0,
+              "fixed_marker_window": 0.896
+            },
+            {
+              "S": [
+                0.0006110749091021717,
+                0.003144489135593176,
+                0.011751380749046803
+              ],
+              "T": 0.9234260320663452,
+              "camera_translation": 52500.0,
+              "fixed_marker_distance": 152500.0,
+              "fixed_marker_window": 0.99275
+            },
+            {
+              "S": [
+                0.0006293700425885618,
+                0.0032215644605457783,
+                0.011986818164587021
+              ],
+              "T": 0.9218918085098267,
+              "camera_translation": 60000.0,
+              "fixed_marker_distance": 145000.0,
+              "fixed_marker_window": 1.0
+            }
+          ]
+        }
+      },
+      "foggreenoutlands": {
+        "decoded_sha256": "d0342a05fe0e0421c980bb46bec72a765617f9bd043d84d134928a65d3dc0b0c",
+        "mip_means": [
+          [
+            0.04816368222236633,
+            0.2399856597185135,
+            0.028962893411517143,
+            0.2399856597185135
+          ],
+          [
+            0.04817354306578636,
+            0.23999865353107452,
+            0.028968585655093193,
+            0.23999865353107452
+          ],
+          [
+            0.048174865543842316,
+            0.24000032246112823,
+            0.02896934002637863,
+            0.24000032246112823
+          ],
+          [
+            0.048174843192100525,
+            0.24000167846679688,
+            0.028969356790184975,
+            0.24000167846679688
+          ],
+          [
+            0.04817486181855202,
+            0.24000157415866852,
+            0.028969377279281616,
+            0.24000157415866852
+          ],
+          [
+            0.04817487671971321,
+            0.2400016337633133,
+            0.028969381004571915,
+            0.2400016337633133
+          ],
+          [
+            0.04817488044500351,
+            0.2400016486644745,
+            0.028969382867217064,
+            0.2400016486644745
+          ],
+          [
+            0.04817488044500351,
+            0.2400016486644745,
+            0.028969382867217064,
+            0.2400016486644745
+          ]
+        ],
+        "resource_bytes": 4488420,
+        "sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8",
+        "synthetic_boundary_crossing_max_delta": 3.337860107421875e-06,
+        "synthetic_periodic_translation_max": 0.0,
+        "synthetic_window_translation": {
+          "label": "synthetic camera interpolation across fixed marker 40/30-km taper radii; not observed gameplay",
+          "max_adjacent_S_delta": 0.01579693704843521,
+          "max_adjacent_T_delta": 0.07509857416152954,
+          "samples": [
+            {
+              "S": [
+                0.013572175055742264,
+                0.0697496235370636,
+                0.008070296607911587
+              ],
+              "T": 0.6684108972549438,
+              "camera_translation": 0.0,
+              "fixed_marker_distance": 205000.0,
+              "fixed_marker_window": 0.0
+            },
+            {
+              "S": [
+                0.014387109316885471,
+                0.07731365412473679,
+                0.008484486490488052
+              ],
+              "T": 0.632451593875885,
+              "camera_translation": 7500.0,
+              "fixed_marker_distance": 197500.0,
+              "fixed_marker_window": 0.007249999999999979
+            },
+            {
+              "S": [
+                0.013844847679138184,
+                0.06888015568256378,
+                0.00834854319691658
+              ],
+              "T": 0.6725444197654724,
+              "camera_translation": 15000.0,
+              "fixed_marker_distance": 190000.0,
+              "fixed_marker_window": 0.10399999999999987
+            },
+            {
+              "S": [
+                0.013589216396212578,
+                0.06994015723466873,
+                0.007975231856107712
+              ],
+              "T": 0.6675052046775818,
+              "camera_translation": 22500.0,
+              "fixed_marker_distance": 182500.0,
+              "fixed_marker_window": 0.28174999999999994
+            },
+            {
+              "S": [
+                0.016358451917767525,
+                0.08573709428310394,
+                0.009703787043690681
+              ],
+              "T": 0.5924066305160522,
+              "camera_translation": 30000.0,
+              "fixed_marker_distance": 175000.0,
+              "fixed_marker_window": 0.5
+            },
+            {
+              "S": [
+                0.0145212197676301,
+                0.07791847735643387,
+                0.008575903251767159
+              ],
+              "T": 0.6295762658119202,
+              "camera_translation": 37500.0,
+              "fixed_marker_distance": 167500.0,
+              "fixed_marker_window": 0.71825
+            },
+            {
+              "S": [
+                0.014996370300650597,
+                0.08046618849039078,
+                0.008771811611950397
+              ],
+              "T": 0.617464542388916,
+              "camera_translation": 45000.0,
+              "fixed_marker_distance": 160000.0,
+              "fixed_marker_window": 0.896
+            },
+            {
+              "S": [
+                0.013626503758132458,
+                0.07006581872701645,
+                0.00799983274191618
+              ],
+              "T": 0.6669077277183533,
+              "camera_translation": 52500.0,
+              "fixed_marker_distance": 152500.0,
+              "fixed_marker_window": 0.99275
+            },
+            {
+              "S": [
+                0.01394051592797041,
+                0.0713307186961174,
+                0.008259746246039867
+              ],
+              "T": 0.6608944535255432,
+              "camera_translation": 60000.0,
+              "fixed_marker_distance": 145000.0,
+              "fixed_marker_window": 1.0
+            }
+          ]
+        }
+      }
+    },
+    "selected_capture_metadata_sha256": "99319f340925630006e4ebc11109013d0d72e781b0603041c71e4553a050556d"
+  },
+  "spatial_alias": [
+    {
+      "family": "bluewell",
+      "far_steps": 24,
+      "frame": 16450,
+      "neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.12318748235702515,
+        "p99": 0.09808423399925228
+      }
+    },
+    {
+      "family": "bluewell",
+      "far_steps": 48,
+      "frame": 16450,
+      "neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.08141344785690308,
+        "p99": 0.06911154150962821
+      }
+    },
+    {
+      "family": "bluewell",
+      "far_steps": 24,
+      "frame": 16481,
+      "neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.17307549715042114,
+        "p99": 0.12347452998161311
+      }
+    },
+    {
+      "family": "bluewell",
+      "far_steps": 48,
+      "frame": 16481,
+      "neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.1233031153678894,
+        "p99": 0.08565528154373157
+      }
+    },
+    {
+      "family": "foggreenoutlands",
+      "far_steps": 24,
+      "frame": 43051,
+      "neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.43908289074897766,
+        "p99": 0.3749863350391382
+      }
+    },
+    {
+      "family": "foggreenoutlands",
+      "far_steps": 48,
+      "frame": 43051,
+      "neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.29740944504737854,
+        "p99": 0.2723986893892286
+      }
+    },
+    {
+      "family": "foggreenoutlands",
+      "far_steps": 24,
+      "frame": 43082,
+      "neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.4449711740016937,
+        "p99": 0.3920813512802121
+      }
+    },
+    {
+      "family": "foggreenoutlands",
+      "far_steps": 48,
+      "frame": 43082,
+      "neighbor_T_gradient_residual": {
+        "count": 172,
+        "max": 0.2959662973880768,
+        "p99": 0.2905093491077423
+      }
+    }
+  ],
+  "temporal": [
+    {
+      "T_delta_residual": {
+        "count": 744,
+        "max": 0.14241886138916016,
+        "p99": 0.12733485400676742
+      },
+      "family": "bluewell",
+      "frame_pairs": 31,
+      "rays_per_frame": 24
+    },
+    {
+      "T_delta_residual": {
+        "count": 744,
+        "max": 0.022801876068115234,
+        "p99": 0.020480442047119147
+      },
+      "family": "foggreenoutlands",
+      "frame_pairs": 31,
+      "rays_per_frame": 24
+    }
+  ]
+}

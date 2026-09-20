@@ -964,3 +964,29 @@ The flight crashed again, so overall candidate qualification remained open.
 Frame 2197 samples replacement ready/applied with 3/3 cards suppressed and no
 refusal/fault. Fog-frame telemetry is sparse and has no row inside F8; the user
 report establishes appearance, not a per-frame FogPass or shafts acceptance.
+
+## Run56 request: 30–40 km offline range experiment (2026-09-21)
+
+The reviewed [replay report](../../verification/results/fog-distance-replay-2026-09-21/report.md)
+rejects the tested 24/48-bin far extension, not the user's requested visibility
+range. It preserves the current 24-step near segment and compares filtered far
+sampling with an unfiltered 128/64-unit reference on four endpoint views from
+run200, using two fog families. Reference convergence passes (worst absolute
+transmittance difference 0.000128); candidate24/48 errors reach 0.293/0.195.
+The errors are consistent with isotropic filtering erasing direction-dependent
+columns, but this checkpoint does not isolate filtering from quadrature error.
+Volume-mean preservation does not guarantee each viewing ray's opacity.
+
+Canonical focused tests pass 9/9. Independent source/evidence review corrected
+pixel-centre/jitter reconstruction, point-sun cascade selection, unsupported
+confidence intervals on deterministic samples, and mixed sky/geometry counts.
+Scattering comparisons use captured point-sun direction and unit radiance; they
+do not establish production-scaled radiance parity. The sky clear-fraction screen
+is descriptive and does not establish user rejection of the spatial recipe.
+No production code, candidate, Wine execution or flight changed.
+
+Next authorized offline experiment: accurate reference-only endpoint images,
+with the near segment unchanged and separate 2.4–30 km and 30–40 km shell
+contributions. Preserve density, scale and occupancy. Inspect converged images
+before choosing a different spatial distribution or GPU integration algorithm.
+GPU cost, native Windows execution and flight appearance remain unverified.
