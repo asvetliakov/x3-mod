@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "date": "2026-09-20",
+  "scope": "Native same-v5 GStreamer Matroska seek diagnostic; no Wine or game process",
+  "execution": {
+    "platform": "macOS",
+    "architecture": "arm64",
+    "bottle": null,
+    "WineArch": null,
+    "FEX_X87REDUCEDPRECISION": "not used: native process",
+    "WINEMSYNC": "not used: native process"
+  },
+  "source": {
+    "fixture": "verification/probe/native_media_seek_fixture.py",
+    "sha256": "7883158d19cc3da396bf689d9aa9fe48964fcbdebef3cf27870aa96aa3782386",
+    "test": "verification/analysis/test_native_media_seek_fixture.py",
+    "test_sha256": "d086ce02443e72179b6f0fba015e811b82901ecb74a20c06e29b9a84b4f18c6a"
+  },
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "/private/tmp/x3-media-playback-fixture/verification/probe/native_media_seek_fixture.py",
+    "--media",
+    "/tmp/x3-media-remux-mkv/00002.mkv",
+    "--runtime",
+    "/tmp/x3-wma-plugin-v5/runtime",
+    "--reference",
+    "/tmp/x3-media-remux-mkv/derived-10.bgra",
+    "--wine-dump",
+    "/tmp/x3-media-fixture-v5-mkv-seek10/first-frame.bgra",
+    "--output",
+    "/tmp/x3-native-media-seek-v5-10s-final"
+  ],
+  "raw_result": "/tmp/x3-native-media-seek-v5-10s-final/result.json",
+  "protected_inputs": {
+    "media": {
+      "path": "/private/tmp/x3-media-remux-mkv/00002.mkv",
+      "sha256": "7b7f3adaabe32f9f4fcbe943cffa50a6b77b6082a9cdcf17f135d2a36677f8e7"
+    },
+    "reference": {
+      "path": "/private/tmp/x3-media-remux-mkv/derived-10.bgra",
+      "sha256": "75f82a78155d40f8051fab20410e026872ab48b1a05259042fbadebf26b0deed"
+    },
+    "wine_dump": {
+      "path": "/private/tmp/x3-media-fixture-v5-mkv-seek10/first-frame.bgra",
+      "sha256": "904571754fa004a5afa4f9b00516b0728f573ee643d723e0b9ac01d4c5b75b12"
+    }
+  },
+  "protected_hashes_unchanged": {
+    "media": true,
+    "reference": true,
+    "wine_dump": true
+  },
+  "pipeline": "filesrc name=input ! matroskademux name=demux ! mpegvideoparse name=parser ! avdec_mpeg2video name=decoder ! videoconvert name=converter ! video/x-raw,format=BGRA,width=512,height=512 ! appsink name=output sync=false max-buffers=2 drop=false wait-on-eos=false",
+  "environment": {
+    "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v5/runtime/plugins",
+    "GST_PLUGIN_SYSTEM_PATH_1_0": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/gstreamer-1.0",
+    "GST_REGISTRY_1_0": "/tmp/x3-native-media-seek-v5-10s-final/registry.bin",
+    "GST_REGISTRY_FORK": "no",
+    "GST_DEBUG": "GST_PLUGIN_LOADING:4,GST_ELEMENT_FACTORY:4",
+    "DYLD_LIBRARY_PATH": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64"
+  },
+  "versions": {
+    "gstreamer": "GStreamer 1.28.4",
+    "libavcodec": "61.19.101"
+  },
+  "selected_plugins": {
+    "demux": {
+      "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/gstreamer-1.0/libgstmatroska.dylib",
+      "version": "1.28.4",
+      "sha256": "58b51f04179330b5648b99aed6a50af9ba4fddfcca9a42e4180bbd6a5df6f0a8"
+    },
+    "parser": {
+      "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/gstreamer-1.0/libgstvideoparsersbad.dylib",
+      "version": "1.28.4",
+      "sha256": "b4cfd547e5ab84e420b3cdc5eefa83b02b3184966409b35218d8d7123523e1bd"
+    },
+    "decoder": {
+      "path": "/tmp/x3-wma-plugin-v5/runtime/plugins/libgstlibav.dylib",
+      "version": "1.28.4",
+      "sha256": "ba95962b6ef1c6740c860eb4916cc0c038027e3a5354a750547f95dadc4f0d48"
+    },
+    "converter": {
+      "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/gstreamer-1.0/libgstvideoconvertscale.dylib",
+      "version": "1.28.4",
+      "sha256": "8454d5530e86dfa5faf37d1ab0decfcccf14adfaabeeaa4edd2f00e2c00ac9eb"
+    },
+    "output": {
+      "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/libgstapp-1.0.0.dylib",
+      "version": "registered public GstAppSink type",
+      "sha256": "60fb4ddf034364bcb89a8cf683fb2c96df333a9824cb5221ffe90f90427b94e2"
+    }
+  },
+  "loaded_codec_images": [
+    {
+      "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/libgstreamer-1.0.0.dylib",
+      "sha256": "f53b9030712792d7ec0bf21d2814c475854f18cfb9ea90c266ff35080e4e9e4a"
+    },
+    {
+      "path": "/private/tmp/x3-wma-plugin-v5/runtime/lib/libx3wma-avcodec.61.dylib",
+      "sha256": "1964362142e4dc94da1e552bec22cdfb75f25187a6b24fd92bde52cc3c16e39b"
+    },
+    {
+      "path": "/private/tmp/x3-wma-plugin-v5/runtime/lib/libx3wma-avutil.59.dylib",
+      "sha256": "6aa4f9aa5897f4516005468a3c06e8127ec1ea90ced320883836b21171c37bb4"
+    }
+  ],
+  "outcome": {
+    "qualified_native_seek": true,
+    "child_exit_code": 0,
+    "timed_out": false,
+    "child_wall_seconds": 0.465221166,
+    "linear_sample_count": 250,
+    "seek_sample_count": 6,
+    "cleanup_state_results": {
+      "linear": 1,
+      "seek": 1
+    },
+    "first_target_sha256": "b6120226714dc8a5eb1848aec57441038be41a5b473224b53db3d610f58d4c43",
+    "linear_target_source_pts_ns": 10000000000,
+    "seek_source_pts_ns": [
+      10000000000,
+      10040000000,
+      10080000000,
+      10120000000,
+      10160000000,
+      10200000000
+    ],
+    "seek_running_times_ns": [
+      0,
+      40000000,
+      80000000,
+      120000000,
+      160000000,
+      200000000
+    ],
+    "segment_running_zero_source_position_ns": 10000000000,
+    "seek_vs_same_stack_linear": {
+      "exact_bytes": true,
+      "rgb_mae": 0.0,
+      "rgb_max_error": 0,
+      "changed_rgb_channels": 0
+    },
+    "wine_dump_exact_native_matches": [
+      {
+        "source_pts_ns": 9400000000,
+        "sha256": "904571754fa004a5afa4f9b00516b0728f573ee643d723e0b9ac01d4c5b75b12"
+      }
+    ],
+    "seek_vs_native_ffmpeg_reference": {
+      "exact_bytes": false,
+      "rgb_mae": 0.43041737874348956,
+      "rgb_max_error": 5,
+      "changed_rgb_channels": 151083
+    },
+    "seek_vs_wine_dump": {
+      "exact_bytes": false,
+      "rgb_mae": 3.7395006815592446,
+      "rgb_max_error": 232,
+      "changed_rgb_channels": 125812
+    }
+  },
+  "validation": {
+    "focused_test_command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_native_media_seek_fixture -v",
+    "focused_tests_passed": 5,
+    "python_compile": true,
+    "diff_check": true,
+    "independent_source_and_evidence_review": "passed; review_media_paths"
+  },
+  "limitations": [
+    "Original MPEG elementary stream and game playback are not qualified.",
+    "The generated-timestamp Matroska diagnostic makes no original-timeline equivalence claim.",
+    "Wine graph segment/preroll integration and the initial seek deadlock remain unfixed.",
+    "Native Windows integration, repeat/loop behavior and game texture lifetime remain unverified.",
+    "No numerical pixel-error tolerance is used as automatic content proof."
+  ]
+}

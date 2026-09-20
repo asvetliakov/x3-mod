@@ -937,3 +937,50 @@ fixture EXE is `fe8c2be662ac77506f7a30be1094c5e40ac8ac2ff45da3f72c9ae5ac63cb93ee
 Original media, EXE, bottle configuration, derived media and its record hashes
 were unchanged. No game launch, production decoder change or native Windows
 qualification follows from this experiment.
+
+
+### Native same-v5 pipeline proves preroll reaches the Wine destination (2026-09-20)
+
+The independently reviewed native host fixture uses the actual v5 libgstlibav
+decoder and CrossOver 1.28.4 Matroska demuxer, MPEG parser and video converter.
+One pipeline decodes sequentially to ten seconds; a fresh pipeline pauses,
+issues a ten-second TIME/FLUSH seek and collects six frames. This runs directly
+on macOS arm64: no Wine process, bottle, game, installation or production change.
+The missing appsink plugin is handled by registering the documented public
+GstAppSink type from CrossOver's own libgstapp. Its registry and library search
+path are private to the diagnostic child.
+
+The seek's first image is **byte-identical** to the sequential ten-second
+reference: SHA256
+`b6120226714dc8a5eb1848aec57441038be41a5b473224b53db3d610f58d4c43`.
+Six source timestamps are 10.00, 10.04, 10.08, 10.12, 10.16 and 10.20 seconds;
+the corresponding running times are 0.00 through 0.20 seconds. Both pipelines
+complete cleanup. The native diagnostic qualifies in 0.4652 seconds, with
+media, reference and Wine-dump hashes unchanged. These timings are diagnostic
+measurements, not game performance.
+
+The retained Wine first-frame dump is also **byte-identical** to the native
+sequential sample at **9.4 seconds**, SHA256
+`904571754fa004a5afa4f9b00516b0728f573ee643d723e0b9ac01d4c5b75b12`.
+This upgrades the prior nearest-frame comparison to exact same-stack content
+identity: the Wine graph presented preroll. The same decoder/converter clips
+preroll correctly when the segment stays inside a single GStreamer pipeline.
+Native same-stack ten-second pixels still differ from the separate FFmpeg 9
+reference by RGB MAE 0.4304 / maximum channel error 5; that cross-stack residual
+is distinct from the displayed-preroll failure. No tolerance replaces exact
+content proof.
+
+The [compact qualification record](../../verification/results/media-native-seek-2026-09-20.json)
+binds source, command, selected module paths/hashes, versions, timestamps and
+results. Raw images and plugin logs remain local under
+`/tmp/x3-native-media-seek-v5-10s-final/`. Five focused host tests and independent
+source/evidence review pass. The native fixture is
+`verification/probe/native_media_seek_fixture.py`.
+
+This establishes the decoder's seek/clip capability for the indexed derived
+container; it does not repair the original elementary-stream seek, Wine graph
+segment/preroll bridge or initial seek deadlock. Generated timestamps remain
+a separate diagnostic timeline. A required playback provider must retain a
+portable documented API boundary and native Windows implementation; no game
+texture lifetime, repeat/loop, original playback or native Windows integration
+is qualified here.
