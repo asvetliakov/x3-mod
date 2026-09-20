@@ -373,3 +373,36 @@ and 6.467-second host reanalysis are fixture durations, not rendering performanc
 Full state/Reset/fault checks, 32-frame coverage and transaction timing remain
 pending. No production fog change, clean replacement preview, game visual
 acceptance or native Windows execution is established by this checkpoint.
+
+### Spatial fog state and recovery checkpoint (2026-09-20)
+
+The standalone fixture passes **101 state/recovery checks** and its slab-scene
+march/composite parity checks. Hostile render state, auxiliary target/depth bytes,
+16 warmed output/reference checks, query/recording/MSAA/foreign-resource refusals,
+partial allocation and injected operation/restore failures pass. A held DEFAULT
+resource causes a real Reset failure; releasing it permits retry, re-upload and
+byte-identical output. Lost-device HRESULT paths are injected; an actual device
+loss was not observed. Twenty host tests and independent source/runtime review
+cover this checkpoint. The X3 command took 6.521143 seconds, not a performance
+measurement. The [compact recovery record](../../verification/results/fog-volume-gpu-state-recovery.json)
+binds sources, executable, shaders, results and three retained failed attempts.
+
+The first full transaction lost all 16 stream offsets despite its state-block
+restore. Explicit public stream buffer/offset/stride/frequency capture and restore
+now preserve them, with fixed stack storage and balanced temporary references on
+partial capture and loss. This adds 64 getter/setter calls and up to 16 Releases
+at 16 streams; the observed transaction has 254 instrumented device calls (excluding COM
+releases and resource-validation calls). Isolated
+fresh and recaptured ALL-state-block probes both restored all offsets, so this
+is not evidence that state blocks universally omit stream offsets.
+
+A subsequent fixture failure revealed that repeated SYSTEMMEM-to-DEFAULT uploads
+were not re-marking the source dirty. AddDirtyRect before each refill fixes that
+fixture defect; exact source bytes before each fault and baseline output on every
+warm iteration now pass. The earlier compound failure did not identify which
+predicate failed, so that retained report alone cannot prove its sole cause.
+The corrected run records every fault predicate and injection count.
+
+The 32-frame inputs and full-transaction performance remain open, including the
+added stream-preservation cost. No production fog change, clean replacement
+preview, game visual acceptance or native Windows execution is claimed.
