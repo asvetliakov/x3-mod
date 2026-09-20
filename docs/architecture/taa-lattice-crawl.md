@@ -1493,3 +1493,27 @@ constant matrices, observe the frozen vertices, and bracket measurements with
 the unchanged triangle cases including Reset recovery. Driver specialization
 across primitive types remains a limitation. No game flight, live payload copy
 or source-coverage correction is authorized by this measurement alone.
+
+### Calibrated point probe completed; oracle still unqualified
+
+The [independently reviewed point measurement](../../verification/results/run201-lattice/vertex-point-probe.json)
+passes: 63 point records over 21 unique vertices, six exact calibrations, 48
+baseline triangle tiles plus four post-Reset brackets. The standalone X3 fixture
+exited successfully in 5.636 s under the shared Wine lock; no game was launched.
+Four host checks pass. Independent review compares all 52 tiles, 6,240 pixels
+and 49,920 FP32 lanes against the retained baseline, bit for bit.
+
+The fused-DP4 model exactly matches all 126 exported vertex values. However,
+substituting measured vertex Z/W still passes none of the twelve fixed W
+controls (maximum absolute residual 0.1875 versus unchanged tolerance 0.02).
+Owner/support agree and maximum depth error 1.78814e-7 remains below 2e-7.
+Current clip X/Y are unobserved and remain modeled; point versus triangle
+or pixel-shader linkage specialization is still possible. This narrows the
+unresolved boundary to current XY, raster setup/interpolation or specialization;
+it does not prove interpolation alone is responsible. No new arithmetic variants
+or fitted thresholds are justified by this checkpoint.
+
+The reviewed fixture and raw outputs remain local at the paths bound in the
+compact result. Its legacy fixture dependency is not part of main. This is a
+measurement checkpoint, not production code, live ownership qualification,
+native Windows runtime evidence or a demonstrated crawl correction.

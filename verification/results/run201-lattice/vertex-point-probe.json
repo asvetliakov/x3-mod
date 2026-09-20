@@ -1,0 +1,60 @@
+{
+  "status": "measurement_pass_oracle_still_unqualified",
+  "qualified": false,
+  "scope": "Frozen seven-triangle reconstruction; not authenticated live geometry or crawl fix",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "elapsed_seconds": 5.635629874999999,
+  "returncode": 0,
+  "game_launched": false,
+  "counts": {
+    "points": 63,
+    "unique_vertices": 21,
+    "calibrations": 6,
+    "tiles": 48,
+    "brackets": 4,
+    "reset": 1
+  },
+  "exe_sha256": "e3f3516799d2628763bf467da31269497072ddd246164dfed39d27a49552c53b",
+  "input_manifest_sha256": "5594ba6e3a108ec276b5f7bfc722947bf17235b9707a8b25135208d344980ed7",
+  "analysis_sha256": "d9708de5e3e8ad3d8cef1650bd56f86fcfe1d425b0b554d4e5ca1fdf5dc22a83",
+  "observations_sha256": "a99101fdb3e5b43025c9426d88edbf61e00a9de9a62d9dd1e3ffe395fa1b3290",
+  "findings": {
+    "fused_dp4_exact_exported_values": 126,
+    "unique_vertices": 21,
+    "conditional_measured_ZW_controls_pass": 0,
+    "controls": 12,
+    "W_tolerance": 0.02,
+    "maximum_W_residual": 0.1875,
+    "maximum_depth_error": 1.7881393432617188e-07,
+    "depth_tolerance": 2e-07,
+    "owner_support_mismatches": 0
+  },
+  "review": {
+    "agent": "review_lattice_point_probe",
+    "result": "no blocking findings",
+    "host_tests": 4,
+    "independently_compared_tiles": 52,
+    "pixels": 6240,
+    "FP32_lanes": 49920
+  },
+  "local_artifacts": {
+    "source_checkout": "/tmp/x3-lattice-vertex-points",
+    "run": "/tmp/x3-lattice-point-run-v1",
+    "inputs": "/tmp/x3-lattice-gpu-inputs-v5",
+    "baseline": "/tmp/x3-lattice-gpu-run-v5"
+  },
+  "limits": [
+    "Current clip XY unobserved; ZW substitution keeps modeled current XY",
+    "Point/triangle topology and PS linkage may specialize backend code",
+    "Does not prove interpolation alone causes mismatch",
+    "Native Windows runtime and visual crawl acceptance unverified"
+  ]
+}
