@@ -55,7 +55,11 @@ now has fourteen source-backed profiles and current-frame directional shafts on
 `feat/fog-families-shafts-integration` (`7e698ec6`); the combined GPU run passes
 145 checks and full host discovery passes 2,431 tests (two skipped). Reviewed
 paired shaft measurements add about 0.11–0.12 ms on captured workloads and pass
-the existing transaction-cost limits. Flight appearance remains unaccepted.
+the existing transaction-cost limits. A clean full DLL from `a13ae8a7` is retained
+uninstalled at `/tmp/x3-fog-families-shafts-dll-v1/build/d3d9.dll` (SHA-256
+`ca02a6c4abd8693a18376853240600e4ca0d485d017bf6d7c3026724ffffbd1d`);
+linked audit and two selected actual-DLL HDR/TAA smoke cases pass. The queued
+fog command passes dry-run. Flight appearance remains unaccepted.
 Media checkpoint `2f3aef56` qualifies two EOF-triggered fresh graph sessions on a
 retained worker DirectDraw service, with twelve exact reference frames. The next
 fixture integrates the owned clock, two concurrent workers and actual rendered
