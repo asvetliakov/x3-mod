@@ -1,7 +1,7 @@
 # Asynchronous ID2 video playback direction
 
-2026-09-20. Architecture direction, not a production implementation or installed
-feature. The current candidate is described only in [status](../status.md).
+2026-09-20. Architecture and isolated implementation contract; production
+admission and the installed feature remain separate. The current candidate is described only in [status](../status.md).
 The [consumer/lifetime reconstruction](../reverse-engineering/media-record-lifetime.md)
 and [media verification ledger](../verification/media-cues.md) distinguish engine
 facts from fixture observations. Native Windows runtime remains unverified.
@@ -222,3 +222,52 @@ the root composes actual worker/clock/destination services, binding and Reset
 observers, startup/module lifetime, cue ownership and complete checked readiness.
 Actual destination integration, game callbacks, source eligibility beyond ID2,
 startup timing and user-launched playback/Reset acceptance remain open.
+## Destination provenance and synchronous copying
+
+The isolated destination component in `src/proxy/media_destination*` connects
+nineteen qualified engine observations to the canonical `FrameLease`, canonical
+surface lease and existing presentation gate. Complete startup installation,
+worker/clock services and consumer admission remain the root integration owner's
+responsibility. Standalone qualification does not enable production playback.
+
+The destination stores values for every media-selectable published slot and at
+most eight active record/session watches. A shared wrapper has one indexed
+lifetime and linked slot aliases. Final retirement removes its address index and
+keeps its tombstone until old aliases disappear; device publication and table
+growth cannot turn that tombstone back into a live index entry. Every successful
+CreateDevice publication invalidates live provenance even when its address key
+is reused. Reset observations are separate and do not manufacture device-creation
+events. The payload is 24-byte slots, 64-byte wrappers and two 8-byte index entries
+per slot: at most 3,407,872 bytes, or 6.5 MiB during cold growth. Allocation occurs
+only at table creation/growth; no per-copy or per-draw allocation is introduced.
+
+One short domain protects the qualified producer's original store and wrapper
+surface-key read. Lifetime ingress takes the same domain before original free or
+mutation. A 64-entry nonwrapping token stack keeps nested publication unavailable
+until the correct outer normal return. Ownership-registry snapshots occur after
+unlocking and publish only against the exact unchanged token. Late binding reads
+only this provenance, including completion of a recorded pending publication or
+recovery transaction. It never dereferences an old wrapper to seed a missing map.
+If an outer cleanup observes an unknown/new provenance lifetime at its key, the
+physical lifetime is ambiguous and copying is permanently disabled. An escaped
+inner observer similarly leaves acquisition vetoed while a surviving outer call
+retains its original return address; no storage is resurrected by stack pruning.
+
+Copying takes the caller's independently held canonical frame lease. The accepted
+copy scope spans canonical surface acquisition, descriptor checks, one LockRect,
+bounded row writes, exactly one Unlock after a successful Lock, and final Release.
+It holds no domain lock over COM. Binding, operation and pointer-free traversal
+values are checked after external calls and again after final Release; only a
+current successful write is acknowledged. A failed Unlock preserves its HRESULT
+and invalidates only its captured publication, leaving a reentrant replacement
+untouched. Internal exceptions at completed-stage checkpoints clean up before
+copy depth is cleared. The descriptor is currently queried once per selected
+copy; there is no persistent destination COM reference or second frame queue.
+
+The whole engine Reset token begins before precleanup. The ownership boundary
+reports native begin/end outside its registry mutex under an audited CPU/LastError
+shell and carries the actual HRESULT. The emitted presentation gate defers Reset
+while copy depth is live. Recovery requires successful native Reset followed by
+normal whole-helper completion and exact canonical serial revalidation; failed
+Reset keeps copying unavailable. The focused results and native-platform limit
+are recorded in the [media ledger](../verification/media-cues.md#destination-provenance-copy-and-reset-checkpoint-2026-09-20).

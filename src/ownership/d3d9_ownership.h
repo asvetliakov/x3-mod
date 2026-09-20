@@ -49,6 +49,13 @@ private:
 HRESULT acquire_surface_lease(IDirect3DDevice9* device, IDirect3DSurface9* candidate,
     const SurfaceLeaseIdentity& expected, SurfaceLease& out) noexcept;
 
+// Serialized startup registration; callbacks are CPU-only, noexcept and run
+// outside the registry mutex under an ordinary-return CPU/LastError shell.
+enum class ResetPhase { begin, end };
+struct ResetEvent {IDirect3DDevice9* application=nullptr;std::uint64_t device_serial=0,generation=0;ResetPhase phase=ResetPhase::begin;HRESULT result=S_FALSE;};
+using ResetObserver=void(*)(const ResetEvent&) noexcept;
+void set_reset_observer(ResetObserver) noexcept;
+
 struct Options {
     // Prepare a private snapshot of automatic, single-sample D24X8 through RESZ.
     // Copied into devices before their first application clear/draw. Default inert.

@@ -46,6 +46,7 @@ std::unordered_map<IUnknown*, Node*> application_nodes;
 std::unordered_map<IUnknown*, Node*> native_nodes;
 // Assigned only on new device/surface adoption under registry_mutex.
 std::uint64_t last_surface_lease_serial = 0;
+std::atomic<ResetObserver> reset_observer{nullptr};
 
 // Step B locked-prefix records, keyed by the vertex buffer node (erased with
 // it), guarded by registry_mutex. One process-wide fixed table: the option is
@@ -1361,6 +1362,19 @@ HRESULT create_device(Factory* node, UINT adapter, D3DDEVTYPE type, HWND window,
     return FAILED(wrapped) ? wrapped : hr;
 }
 
+// No SJLJ registration may precede this state capture. The observer contract
+// forbids backend calls and unwinding; no registry mutex covers its dispatch.
+#pragma GCC push_options
+#pragma GCC optimize("no-exceptions")
+__attribute__((noinline)) void notify_reset(Device* node,ResetPhase phase,HRESULT result) noexcept {
+    const auto observer=reset_observer.load(std::memory_order_relaxed);
+    if(!observer)return;
+    CounterAbiState saved;
+    const ResetEvent event{static_cast<IDirect3DDevice9*>(node->application),node->lease_serial,node->lease_generation,phase,result};
+    observer(event);saved.restore();
+}
+#pragma GCC pop_options
+
 HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
     const D3DPRESENT_PARAMETERS requested = pp ? *pp : D3DPRESENT_PARAMETERS{};
     return execution_call(node, [&] {
@@ -1374,6 +1388,7 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
             }
             if(node->options.locked_prefix_bounds)prefix_table.clear();
         }
+        notify_reset(node,ResetPhase::begin,S_FALSE);
         retire_geometry(node);
         retire_finite(node);
         retire_copy_depth(node, S_FALSE);
@@ -1390,6 +1405,7 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
             if(node->finite_owner&&!node->finite_owner->permanent){node->finite_owner->healthy=true;node->finite_owner->stats.active=true;node->finite_owner->stats.status=S_OK;}
             initialize_copy_depth(node, requested);
         } else node->copy_depth.view.status = hr;
+        notify_reset(node,ResetPhase::end,hr);
         return hr;
     });
 }
@@ -1634,6 +1650,8 @@ HRESULT copy_depth(Device* node) {
 
 #include "d3d9_forwarders_inc.h"
 } // namespace
+
+void set_reset_observer(ResetObserver observer) noexcept {reset_observer.store(observer,std::memory_order_relaxed);}
 
 void set_surface_lock_observer(SurfaceLockObserver observer) noexcept {
     surface_lock_observer.store(observer, std::memory_order_relaxed);

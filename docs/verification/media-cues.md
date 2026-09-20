@@ -1575,3 +1575,64 @@ readiness, RGB output, native Windows behavior, actual engine/Reset interaction,
 readiness before flight or removal of cold provider contention. No Wine, game,
 shared-DLL build, install or writer commit occurred. Existing injected CPU/LastError
 and ordinary-return cleanup obligations remain with their qualified owners.
+
+### Destination provenance, copy and Reset checkpoint (2026-09-20)
+
+The isolated `media_destination` implementation connects the nineteen reviewed
+store/lifetime/binding observations, bounded shared-wrapper provenance, canonical
+frame/surface leases, actual row copying and whole-engine/native Reset tracking.
+The [architecture contract](../architecture/media-playback.md#destination-provenance-and-synchronous-copying)
+describes its ownership and failure behavior. Root startup/consumer/worker-service
+integration and production admission remain separate; no game or installed proxy
+was changed by this checkpoint.
+
+`X3M_MEDIA_WORKER_HEADER=/tmp/x3-media-worker-sample/src/media/lav_worker.h PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_destination`
+passed **736 checks**, zero failures, in **2.322 s** including compilation
+(**9 ms** fixture execution). Actual production code covers 100,000 wrapper
+lifetimes, shared aliases and address reuse, signed bounds/growth, four internal
+throw stages, 25 external-stage reentry cases, pending/late binding after Reset,
+abandoned inner returns and all nineteen patch-publication failures. Focused
+flush/protection/readback failures also retain rollback debt and preserve a
+foreign qword until exact restoration can succeed. No per-draw benchmark or game
+FPS result is claimed.
+
+The parent-owned X3 run of fixture SHA256
+`b15cee5a0b121ce6d6282832f06db091bc07682f248cd1838552ca62822da9d4`
+passed **142 native D3D checks and 2,321 ABI checks**, zero failures:
+real canonical SYSTEMMEM BGRA readback, native AddRef/cleanup observations,
+emitted presentation deferral, two actual native Resets, and 304 executions of
+all nineteen stubs across stack alignments/branches using both the hostile
+fixture helper and the actual production dispatcher. The process used
+**X3 / WineArch arm64 / CrossOver Preview**, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1` and process-local `WINEDLLOVERRIDES=d3d9=b`. Its locked child ran
+**3.82446925 s** with **0.000003291 s** lock wait. Native Windows execution remains
+unverified; the shared implementation uses documented Windows/D3D APIs and
+cross-compiles for x86 with SSE2 and the four-byte incoming-stack contract.
+
+The first fixture (`59def368…`) passed its 142 native checks but could not reserve
+its synthetic fixed-address ABI map. Its EXE/log/lock record remain local under
+`/tmp/x3-destination-native-build/failed-59def/`. The corrected fixture uses its own
+zero-filled, initially non-executable PE `.x3map` at `0x401000..0x620000`, real text
+at `0x630000`, no ASLR, and runtime module/MEM_IMAGE/extent checks before any
+synthetic write. It never overwrites an occupied foreign mapping.
+
+After that successful run, independent review closed two CPU bookkeeping cases:
+equal-key CreateDevice publication must invalidate old values, and that invalidation
+must preserve retired-wrapper tombstones. The focused host witnesses and affected
+x86 compilation pass. The final separately named fixture SHA256 is
+`3223a65d9927dd1b8ce0f17b1c8e46b0b92b8cb78db45531c897a895904fd531`;
+**this final CPU delta was not run under Wine**. The unchanged GPU/Reset/ABI
+results above are reused after independent review. Both final CPU entry shells
+contain inline x87/MXCSR preservation with no SJLJ registration or out-of-line
+state helper outside the save/restore envelope.
+
+The tested b15 binary was replaced on its original path at **17:11:48.501211 UTC**,
+after its run ended at **17:10:45.648613 UTC**; no replacement overlapped execution.
+A byte-identical reconstruction from the exact pre-delta inputs and original PE
+timestamp/checksum now preserves the full original SHA256 under
+`/tmp/x3-destination-native-build/tested-b15/`, alongside its runtime witnesses.
+The final artifact uses a separate filename. The
+[compact record](../../verification/results/media-destination-2026-09-20.json)
+binds commands, checks, hashes, local witnesses, accepted evidence reuse and the
+conservative permanent-veto/native-runtime limitations. Independent source and
+evidence review is clear; no commit, install, proxy build or game launch occurred.
