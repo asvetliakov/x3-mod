@@ -897,3 +897,57 @@ No renderer implementation or additional user flight follows automatically.
 Local evidence: `/tmp/x3-lattice-coverage-oracle/verification/results/lattice-coverage-oracle/convex/REPORT.md`, `FINAL.json`, `quality.json`,
 phase images and line profiles. No production edits or Wine/game execution
 accompanied the corrected oracle.
+
+
+## 20. Current-HDR admission and prediction: bounded negative result (2026-09-20)
+
+The run177 6392–6423 host test establishes **zero provable production admission**
+on the fixed 2,154 material/1,406 lattice points and rejects the declared 5×5
+two-color predictor on observed held-out RGB. No corrected-color TAA replay,
+production change, build, Wine run or install followed. The accepted analytic
+coverage oracle is unchanged; its 74.82%/75.29% geometry-RMS reductions do not
+supply an actual-RGB or TAA result.
+
+The new host helper retains node/material/original-face center IDs and uses
+actual same-frame HDR, exact-face planar charts, fixed 1/(1+r²) weights, at least
+three finite samples per class, and a global 20% spatial holdout excluded from
+all training neighborhoods. Both nonempty observed foreground/background classes
+must independently pass luma MAE<=1/p99<=4 display codes through existing
+AgX+RCAS at captured exposure. Depth-compatible modeled opposite-face pairs fail:
+foreground 309 observations 18.67/106.96; background 132 observations 14.62/92.13.
+The separately labeled UNKNOWN sentinel-background proxy also fails:
+foreground 5,824 observations 23.13/130.16; background 6,960 observations 9.20/53.71.
+Last 16 fixed-support diagnostics fail as well. These are prediction residuals,
+not temporal RMS, isolated radiance ownership, a numerical quality upper bound,
+or a shaded subpixel RGB reference.
+
+Independent review reproduced frame 6401 pixel (799,173): raw HDR
+[.0747681,.0664673,.0651245] versus a prediction
+[3.215877757,2.755744485,2.819967831] from three training samples on the same
+node 491873968 / group 18 / face 47, yielding 237.07718733 displayed luma codes error.
+This is observed within-face radiance variation; its texture/alpha/depthless
+composite/tie cause is unresolved. Reviewer required separate class gates; they
+were fixed and all 32 results regenerated. Source/evidence and final report review
+passed, including independent class-metric recomputation and synthetic checks.
+
+Concrete missing evidence remains: (1) runtime-binding-matched texture contents
+and complete shader/vertex-alpha evaluation over relevant UV/LOD footprints for
+alpha-tested groups 4/6/18; (2) reconstructed geometry or conservative color/hazard
+bounds/order for the 41–46 other scene draws per frame; (3) group 21 source-over
+glass/depthless composite attribution, since it writes no depth; (4) established
+background ownership and hidden-layer validity. A depth sentinel proves none of
+these. Existing archives may supply textures once matched to captured resource
+bindings; capture currently records texture identity/format/mips and buffer
+revision/status, not texture/VB/IB content payload. These are precise input gaps,
+not a request for another flight.
+
+Latest complete 32-frame helper run 33.838554 host CPU seconds; recorded helper
+compute 71.347974 s including pilot and superseded pre-class-gate pass, plus 3.25631 s
+for a separate state audit, one worker. No GPU cost or game-FPS claim. Local
+report and compact metrics:
+[REPORT.md](/tmp/x3-lattice-coverage-oracle/verification/results/lattice-coverage-oracle/rgb-admission/REPORT.md),
+[summary.json](/tmp/x3-lattice-coverage-oracle/verification/results/lattice-coverage-oracle/rgb-admission/summary.json).
+Helper: `/tmp/x3-lattice-coverage-oracle/tools/analysis/lattice_rgb_admission.py`.
+Reproduce with `python3 tools/analysis/lattice_rgb_admission.py`; generated data
+remain under the existing ignored `verification/results/lattice-coverage-oracle/`
+directory.
