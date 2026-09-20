@@ -1,0 +1,11 @@
+{
+  "scope": "Run201 effective-state comparison and conditional seven-triangle pilot; no payload access or renderer correction",
+  "files": {
+    "state-interpret.py": "93965d2ec6dc7d8dfe5e91ccf024db11affad8e058aa521c4765ac060d6fa1b3",
+    "state-interpret.json": "4df4d148ef667a994aa2dd1d2dd87652dd8d236c88f03dee99f6052e5903cf1f",
+    "clipw-pilot.py": "4cc4d4f66fd53690fcddfba7fcb07c012ac03efcfa868524166930e0ee73bddb",
+    "clipw-pilot.json": "86a1d0ff5a1d0d1fa049fab0f65ffd2b7e152c4093bfd0936a258574ae223880"
+  },
+  "review": "Independent reviewer reran both host scripts and checked both slots across all three frames; no blocking factual findings",
+  "wine_or_game_launched": false
+}

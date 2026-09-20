@@ -1430,3 +1430,37 @@ background ownership prevent selecting a safe source-coverage or history-lock
 implementation from this audit. Run54 B guarded state capture remains the intended next lattice evidence.
 Run56 subsequently passed media stability by user report, releasing the crash
 hold on this capture. It cannot retroactively authenticate Run177.
+
+## 30. Run201 guarded state and bounded arithmetic qualifier (2026-09-21)
+
+Run54 B returned three bursts starting at 9796, 10442 and 12010. The six
+selected effective-state observations have RT1/RT2 bound (12/12), and all six
+native submissions return S_OK. The prior missing-auxiliary-target symptom is
+absent in these observations. The [checkpoint](../../verification/results/run201-lattice/checkpoint.json)
+binds the host comparison and pilot; independent review reran both.
+
+All six 586-DWORD VS programs match the retained fixture, as do 108 explicitly
+set sampler values. Explicit raster state has no unexpected differences; the
+fixture's RT0 mask15 versus live7 is intentional. The live PS retains the
+conditional alpha slice, not full-RGB equivalence. Transform banks differ as
+expected; the only PS-bank difference across the live packets is c217.w, the
+distance-dependent RGB gain. Metadata does not authenticate texture or geometry
+bytes. WRITEONLY requested usage does not establish readable native backing.
+
+The packets still do not qualify a simultaneous input transaction or payload
+access. Live observations do not independently sample attachments at native
+submission, prove later-writer absence, or authenticate old Run177 ownership.
+No production source or capture scope changes follow from this comparison.
+
+A new pilot isolates arithmetic from full-model primitive selection using the
+exact frozen seven-triangle payload and retained GPU primitive labels. Both
+post-divide and fixture pre-DP4 jitter paths fail all twelve existing controls
+at the unchanged absolute-W tolerance 0.02. Same-primitive comparison reduces
+two earlier large errors to approximately 0.18/0.19; ten residuals remain
+0.05–0.067. Supplying the GPU owner is a diagnostic condition, not an ownership
+algorithm. Both historical GPU/capture exceptions remain separate unknowns.
+
+The selected next action is a host-only shader/raster/interpolation qualifier
+against the retained complete GPU tile, preserving negative pixels, the twelve
+controls, both historical exceptions and all tolerances. Do not fit an offset or
+loosen thresholds. No repeat flight or live resource copying is requested.

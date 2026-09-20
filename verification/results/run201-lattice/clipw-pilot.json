@@ -1,0 +1,442 @@
+{
+  "proposal": "pending parent ratification",
+  "inputs": {
+    "manifest": "5594ba6e3a108ec276b5f7bfc722947bf17235b9707a8b25135208d344980ed7",
+    "witness": "8814109f06e6ccd7ba89e359d24e689c5c2bc4f5911fb9f0fdb31702641ce9ab",
+    "script": "4cc4d4f66fd53690fcddfba7fcb07c012ac03efcfa868524166930e0ee73bddb"
+  },
+  "rows": [
+    {
+      "point": [
+        804,
+        170
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59412.37890625,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59412.441759051915,
+          "residual": 0.06285280191514175,
+          "barycentric": [
+            0.10675614127994726,
+            0.2632495054167616,
+            0.6299943533032911
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59412.44129152084,
+          "residual": 0.062385270837694407,
+          "barycentric": [
+            0.10676244057640738,
+            0.26324945141394884,
+            0.6299881080096438
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        805,
+        170
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59360.30078125,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59360.36767106198,
+          "residual": 0.06688981197657995,
+          "barycentric": [
+            0.5485275395376895,
+            0.2575435830928275,
+            0.19392887736948305
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59360.36773668518,
+          "residual": 0.06695543517707847,
+          "barycentric": [
+            0.5485285850434528,
+            0.25754358835606694,
+            0.19392782660048022
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        802,
+        171
+      ],
+      "GPU_owner": 180043,
+      "GPU_W": 59604.265625,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59604.08437299793,
+          "residual": -0.18125200206850423,
+          "barycentric": [
+            0.2779842031689991,
+            0.05152522086678349,
+            0.6704905759642175
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59604.086156762605,
+          "residual": -0.17946823739475803,
+          "barycentric": [
+            0.27798425598807575,
+            0.05153829460420877,
+            0.6704774494077155
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        803,
+        171
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59500.37109375,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59500.430285584756,
+          "residual": 0.059191834756347816,
+          "barycentric": [
+            0.36643175573538916,
+            0.271656255981574,
+            0.3619119882830368
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59500.43013976484,
+          "residual": 0.05904601483780425,
+          "barycentric": [
+            0.36643488392192675,
+            0.271656237777528,
+            0.36190887830054524
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        801,
+        172
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59641.09765625,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59641.15542746088,
+          "residual": 0.05777121087885462,
+          "barycentric": [
+            0.18433597193309137,
+            0.28576892887032046,
+            0.5298950991965882
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59641.1550681944,
+          "residual": 0.05741194439906394,
+          "barycentric": [
+            0.18434118280040057,
+            0.2857688871989891,
+            0.5298899300006104
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        802,
+        172
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59588.6171875,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59588.679816825745,
+          "residual": 0.06262932574463775,
+          "barycentric": [
+            0.6261073701908336,
+            0.28006300654638633,
+            0.09382962326278008
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59588.67999462908,
+          "residual": 0.06280712907755515,
+          "barycentric": [
+            0.6261073272674437,
+            0.2800630241411072,
+            0.09382964859144913
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        799,
+        173
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59782.48828125,
+      "exact_capture_control": false,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59782.54780868759,
+          "residual": 0.05952743758825818,
+          "barycentric": [
+            0.00224018813079363,
+            0.2998816017590669,
+            0.6978782101101395
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59782.54723394973,
+          "residual": 0.0589526997282519,
+          "barycentric": [
+            0.0022474816788744523,
+            0.29988153662045014,
+            0.6978709817006754
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        800,
+        173
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59729.765625,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59729.823203315755,
+          "residual": 0.057578315754653886,
+          "barycentric": [
+            0.44401158638853566,
+            0.29417567943513284,
+            0.26181273417633144
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59729.82316857333,
+          "residual": 0.05754357333353255,
+          "barycentric": [
+            0.44401362614591755,
+            0.29417567356256824,
+            0.2618107002915142
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        798,
+        174
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59871.578125,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59871.636809523734,
+          "residual": 0.05868452373397304,
+          "barycentric": [
+            0.26191580258623787,
+            0.3082883523238793,
+            0.42979584508988283
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59871.6365602126,
+          "residual": 0.05843521260248963,
+          "barycentric": [
+            0.26191992502439143,
+            0.3082883229840293,
+            0.42979175199157926
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        796,
+        175
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 60014.0703125,
+      "exact_capture_control": false,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 60014.12542062082,
+          "residual": 0.055108120817749295,
+          "barycentric": [
+            0.07982001878393774,
+            0.32240102521262576,
+            0.5977789560034366
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 60014.124954696345,
+          "residual": 0.054642196344502736,
+          "barycentric": [
+            0.07982622390286531,
+            0.32240097240549037,
+            0.5977728036916443
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        797,
+        175
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 59960.9375,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 59960.99173062074,
+          "residual": 0.05423062074260088,
+          "barycentric": [
+            0.5215914170416822,
+            0.3166951028886916,
+            0.16171348006962613
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 59960.99180868309,
+          "residual": 0.05430868308758363,
+          "barycentric": [
+            0.5215923683699109,
+            0.31669510934760847,
+            0.16171252228248073
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        794,
+        176
+      ],
+      "GPU_owner": 180043,
+      "GPU_W": 60205.83203125,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 60205.64124267775,
+          "residual": -0.19078857224667445,
+          "barycentric": [
+            0.33713404454014695,
+            0.014759232567801726,
+            0.6481067228920513
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 60205.64300846521,
+          "residual": -0.18902278479072265,
+          "barycentric": [
+            0.33713409488349055,
+            0.014772013035141536,
+            0.6480938920813679
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        795,
+        176
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 60103.8515625,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 60103.90647856804,
+          "residual": 0.054916068038437515,
+          "barycentric": [
+            0.33949563323938436,
+            0.33080777577743814,
+            0.3296965909831775
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 60103.906340932655,
+          "residual": 0.054778432655439246,
+          "barycentric": [
+            0.3394986672483847,
+            0.33080775876906954,
+            0.3296935739825458
+          ]
+        }
+      }
+    },
+    {
+      "point": [
+        794,
+        177
+      ],
+      "GPU_owner": 180048,
+      "GPU_W": 60193.90625,
+      "exact_capture_control": true,
+      "modes": {
+        "oracle_postdivide_jitter": {
+          "W": 60193.956563684485,
+          "residual": 0.050313684485445265,
+          "barycentric": [
+            0.5991712476948288,
+            0.33921452634225047,
+            0.06161422596292079
+          ]
+        },
+        "fixture_postjitter_constants": {
+          "W": 60193.95675630918,
+          "residual": 0.05050630917685339,
+          "barycentric": [
+            0.5991711105939016,
+            0.3392145451326487,
+            0.061614344273449646
+          ]
+        }
+      }
+    }
+  ],
+  "summary": {
+    "oracle_postdivide_jitter": {
+      "controls_within_0_02": 0,
+      "controls": 12,
+      "max_control_abs_residual": 0.19078857224667445,
+      "control_range": [
+        -0.19078857224667445,
+        0.06688981197657995
+      ]
+    },
+    "fixture_postjitter_constants": {
+      "controls_within_0_02": 0,
+      "controls": 12,
+      "max_control_abs_residual": 0.18902278479072265,
+      "control_range": [
+        -0.18902278479072265,
+        0.06695543517707847
+      ]
+    }
+  },
+  "cpu_seconds": 0.0025429999999999967,
+  "limits": [
+    "GPU owner is supplied only to isolate arithmetic; this is not a CPU ownership qualifier.",
+    "np.sum DP4 and ideal interpolation remain conditional; no hardware subpixel/centroid/precision claim.",
+    "Known historical GPU/capture discrepancies remain unknown."
+  ]
+}

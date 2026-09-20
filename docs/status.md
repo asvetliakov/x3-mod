@@ -63,9 +63,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   on an asteroid-attached mine/refinery, possibly the solar plant too, even with
   fog off. Both F8 bursts are being compared. No gain bypass or correction is
   established yet; do not change the accepted 80,220 default speculatively.
-- **Lattice:** protected observation is qualified, and media stability no longer
-  holds its capture. The existing state-observation command is ready for the next
-  convenient flight. The bounded offline audit did not establish a renderer fix.
+- **Lattice:** Run54 B returned run201 with three capture bursts. Guarded state
+  packets and their fixture comparison are under analysis; no repeat flight is
+  requested. The bounded offline audit did not establish a renderer fix.
   [Owning note §29](architecture/taa-lattice-crawl.md#29-existing-capture-stage-attribution-bounded-negative-2026-09-21).
 - **Collision:** paused by user request; no moving-collision test is queued.
 - **Engine/proxy timing:** lazy RT remains accepted. Corrected attribution
