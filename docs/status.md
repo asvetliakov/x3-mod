@@ -71,23 +71,19 @@ disabled. The corrected presentation-gate fixture passes 576 runtime checks; the
 in ungated baselines. Exact represented state passes; nonzero status coverage
 remains unverified. The reviewed prerequisites are being combined with fog/shafts
 on `feat/media-production-integration`; three affected host tests pass.
-Production worker extraction cross-compiles and is being connected to its actual
-clock/texture fixture. App-local package deployment is reviewed and committed
-(`c63f8cbd`, 45 affected host tests); the configuration reader is also committed
-(`e2fabd5e`) after 150 actual Win32 file-adapter checks passed. The extracted worker now passes actual end-of-video playback twice with retained
-configuration pins (12 exact frames/readbacks and fresh graph completion for both
-sessions). Its concurrent playback run passes functional checks but lacks one
-pause-before-seek scheduling witness; that fixture coverage is being repaired. The canonical loop
-API now distinguishes temporary queue pressure from permanent refusal
-(`156c8b63`, 444 host checks).
-The startup boundary now includes synchronous observer installation before background
-preparation (`23092198`): eleven actual x86 fixture modes pass 819 checks. The engine
-consumer checkpoint (`9ac49b48`) passes 5,055 x86 checks across 24 sites and 11 return
-guards. Both use authored engine context; actual integration/readiness stays open.
-The Services coordinator is reviewed and committed (`bebc9edd`, 1,783 host checks);
-actual combined playback remains to qualify. Destination observers pass 2,321 x86
-and 142 D3D checks; review is finishing a host-side device-publication tombstone
-correction before integration.
+The production worker extraction is reviewed and committed (`1384893a`): actual
+concurrent playback passes 4,586 clock transactions, 35 exact captures and complete
+pause/seek/failure coverage. A separate actual EOF run passes 12 exact captures
+and two fresh completion pairs. Both retain the real app-local package pins;
+the cold heartbeat gap still reached 226.4 ms, so no no-stutter claim is made.
+Package deployment (`c63f8cbd`, 45 host tests) and its reader (`e2fabd5e`, 150 actual
+Win32 checks) are committed. The startup seam (`23092198`, 819 x86 checks), engine
+consumer (`9ac49b48`, 5,055 x86 checks), destination (`be65e6ff`, 2,321 ABI and
+142 D3D checks, final CPU fixes covered by 736 host checks) and Services coordinator
+(`bebc9edd`, 1,783 host checks) are combined on the integration branch. Four affected
+integration tests and 133 media-support tests pass. Root startup/common-record-domain
+wiring and an actual joined playback fixture are being implemented in isolated
+checkouts. No new DLL is installed; native Windows and game acceptance remain open.
 Enabled media repair remains unfinished. The owning
 media and ownership ledgers retain the scoped evidence.
 Collision optimization is **paused by user request**. The reviewed engine/lattice
