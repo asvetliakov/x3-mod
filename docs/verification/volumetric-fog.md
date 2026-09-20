@@ -804,3 +804,10 @@ Combined timing-tool integration preserves the fourteen-resource inventory and
 adds the included family fixture header to the build-input hashes, as requested
 by review. The 19 affected timing host tests pass in 0.136 s. Production shaders
 and renderer are unchanged; the existing paired measurements remain applicable.
+
+The combined production DLL is retained uninstalled after one clean
+RelWithDebInfo build: 54,352,248 bytes. Linked audit passes 95 roots / 540
+reachable functions / zero violations; selected actual-DLL HDR ownership and
+TAA smoke cases pass 43/83 checks. The smoke report remains explicitly PARTIAL
+for its selected scope. The [DLL record](../../verification/results/fog-families-shafts-dll-2026-09-20.json)
+binds source, artifact and evidence. No game launch or install was performed.
