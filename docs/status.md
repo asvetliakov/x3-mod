@@ -71,8 +71,12 @@ disabled. The corrected presentation-gate fixture passes 576 runtime checks; the
 in ungated baselines. Exact represented state passes; nonzero status coverage
 remains unverified. The reviewed prerequisites are being combined with fog/shafts
 on `feat/media-production-integration`; three affected host tests pass.
-Production engine hooks, transport integration and enabled media repair remain
-unfinished. The owning media and ownership ledgers retain the scoped evidence.
+Production worker extraction cross-compiles and is being connected to its actual
+clock/texture fixture. App-local package staging and temporary-tree rollback tests
+pass; installer review and Windows configuration-reader runtime checks are active.
+The actual consumer hooks, startup boundary and destination observers are under
+implementation/qualification. Enabled media repair remains unfinished. The owning
+media and ownership ledgers retain the scoped evidence.
 Collision optimization is **paused by user request**. The reviewed engine/lattice
 audit adds no tracing before interpreting the existing queued lattice packet;
 [the owning decision](architecture/taa-lattice-crawl.md#25-next-flight-state-decision-and-reopening-gate-2026-09-20)
