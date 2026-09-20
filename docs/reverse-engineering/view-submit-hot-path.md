@@ -649,3 +649,96 @@ documentation run as CPU-fixture acceptance:
 
 Only static qualification and documentation review were performed here: no
 production edit, build, Wine command, install or game launch.
+
+### R2 inner tangent contract — offline study, 2026-09-20
+
+This qualifies a narrower arithmetic boundary; it does **not** qualify a production
+cache or establish a performance gain. It supersedes §5.3's unqualified “exact to
+cache” statement for R2 and §4's shorthand FOV arithmetic/gate description.
+The covered setup statistic of 0.867 ms remains an aggregate envelope, not an R2
+measurement. No game, Wine, production edit, or numerical x86 fixture was run.
+
+Read-only evidence used the same X3 EXE hash recorded above. Local verifier
+`/tmp/x3-r2-fov/qualify.py` imports the project's PE mapping, gap-free parser and
+claim discovery: **4,695 instructions** in `0x004c0150..0x004c40fc`, **1,246,768
+`.text` offsets** scanned, image/claim anchors valid. The semantic interval
+`[0x004c3c4c,0x004c3c60)` is **20 bytes, five whole instructions** (FILD, two
+FMULs, FPTAN, FSTP ST(0)), with no incoming direct edge, raw direct-branch encoding,
+absolute dword reference or existing claim overlap. There is no indirect jump
+in the containing routine. A minimum detour span is `4c3c4c..4c3c56` (10 bytes,
+two instructions); the successful replacement resumes at `4c3c60`. FPTAN plus
+its pop is only four bytes and cannot independently hold a five-byte JMP.
+These checks do not rule out arbitrary computed entries from external code.
+A broader scan near the camera read found one false branch encoding at
+`4c3c2e`, inside a call displacement; it does not target the selected interval.
+
+The actual raw operand is signed dword `[camera+0x298]`, loaded at `4c3c35`.
+CDQ/SUB/SAR at `4c3c3f/40/46` compute division by two **truncated toward zero**;
+`4c3c48` stores it to `[E+0x44]`. At the selected entry both EAX and that slot
+already hold `h=trunc(raw/2)`: key on this value, without another camera read or
+retained camera address. Original arithmetic then uses binary32 constants
+`0x37800000` at `5654e0` and `0x40c90fdb` at `5654f8`, in that order. Raw
+16384/16385 both produce h=8192. Local arithmetic check
+`/tmp/x3-r2-fov/arithmetic.py` found zero division mismatches for **131,078**
+inputs and records the all-int32 algebraic proof. The maximum exact angle before
+PC rounding is 102943.7109375, excluding ordinary FPTAN range overflow on a
+valid stack; PC/RC still matter. Script store `494f34` has no local clamp.
+All three R2 guards matter: positive earlier value (`4c3b37/43`), nonzero material
++0x14c (`4c3b49/4f`), and nonzero +0x150 (`4c3b55/5c`).
+
+**Live state and continuation.** ESP equals frame base E, with no pending
+arguments; `[E+0x44]` contains h and x87 ST(0) contains object-dependent ratio R.
+If T denotes any caller-held tail, the required transform is
+`[R,T...] -> [tangent,R,T...]`. Preserve T, control word, GPRs/EFLAGS, XMM/MXCSR,
+LastError, ordinary memory and frame/SEH state. The skipped instructions write
+none of those CPU registers or ordinary locals. No call occurs inside this
+interval. The earlier sqrt helper `412440..41244e` pushes its return and the
+SSE/legacy conversion branches at `52b5d0..52b67a` consume it on normal return;
+neither clears x87 status. The outer arithmetic has a four-push peak above T;
+with SF clear its successful stack history provides room for the tangent's
+smaller peak. T's whole-function depth/content is **not proven** and cannot be
+assumed empty. Normal contiguous tails of length 0..4 must be tested.
+
+FDIVP at `4c3c60` uses the cached operand immediately. FCOM/FNSTSW/TEST/JP at
+`4c3c68/6a/6c/6f` and the two pop paths select the binary32 clamp
+`0x3f666666` (0.8999999761581421) only when the ordered quotient exceeds it;
+otherwise they retain the quotient, including unordered results. The final
+binary32 store is `4c3c87`, SetFloat dispatch `4c3c8c`. Thus float output does
+not justify rounding the tangent to double earlier.
+
+**Numerical restriction.** A plain value/double cache is not an exact contract:
+m64 can round native FPTAN's extended result, and a cache load omits exception
+flags or traps newly produced by the original. A fixed **10-byte payload**, h
+and full-CW key can avoid a general registry, but needs a bounded gate. One
+candidate for verification is h=1..32767, specified all-masked CW encodings,
+PE already set, other exception flags/SF/ES clear, and an entry admitted only
+from an original computation yielding a normal finite tangent with no exception
+other than PE. Miss capture can use FSTP m80 / FLD m80 without rounding or net
+stack change. Shared FDIVP/FCOM/clamp/store then remain unchanged. This is a
+conditional proof sketch, **not executed qualification**. Undefined x87 condition
+bits and dead physical stack bytes are distinct from observable flags/live
+values; FCOM overwrites its comparison bits before they are consumed. Intel's
+[SDM](https://cdrdv2-public.intel.com/835781/325462-sdm-vol-1-2abcd-3abcd-4.pdf),
+Vol. 1 §8.1.5 and Vol. 2A FLD/FPTAN/FST-FSTP, supplies the instruction contract.
+
+Unmasked/pending exceptions and stack faults must not become cache hits.
+Relocated faulting instructions and extra memory operations can change saved
+x87 instruction/data provenance: strict asynchronous exception/debugger snapshots
+inside a detour are not proven identical. The existing call graph establishes
+main-loop submission with no known material-routine reentry, but a ten-byte
+slot is not atomic; any implementation needs owner/reentry rejection and
+completed-result publication. The inner interval itself invokes no callback.
+Value matching avoids camera lifetime, same-frame writer and pointer-reuse
+invalidation problems. FEX reduced precision and native x87 need separate
+reference-versus-wrapper execution; neither source compatibility nor a FEX
+result establishes native numerical acceptance.
+
+Full local report and bounded oracle specification:
+`/tmp/x3-r2-fov-contract.md`; derived machine-check results:
+`/tmp/x3-r2-fov/qualification.json` and `arithmetic.json`. Proposed oracle covers
+all 65,536 values in one raw turn plus negatives/extrema, 12 PC/RC combinations,
+rejected exception environments, five tail depths/eight TOP rotations,
+80-bit operands, final float/clamp witnesses, miss/hit/alternating keys and full
+CPU preservation. No implementation decision or performance claim follows
+until those checks and the complete wrapper cost are evaluated. Raw disassembly
+and downloaded/extracted manual content remain local and untracked.
