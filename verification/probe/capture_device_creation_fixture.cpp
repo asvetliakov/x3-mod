@@ -206,6 +206,11 @@ namespace capture_host {
 std::vector<char> events;
 void x3m_media_startup_device_attempt() noexcept {events.push_back('S');}
 std::recursive_mutex mutex;
+unsigned capture_lock_depth;
+struct CaptureExclusion {
+    unsigned depth{};
+    bool clear() const { return depth == 0; }
+} media_capture_exclusion;
 
 struct LightCallBoundary { LightCallBoundary() {} ~LightCallBoundary() {} }; // mirrors capture.cpp: inert, non-trivial so the scoped variable is not "unused"
 namespace cull_small_parts { inline void set_backbuffer_width(unsigned) {} } // X3M_CULL_SMALL_PARTS_PX pixel scale at CreateDevice (src/proxy/cull_small_parts.h); inert on the host
@@ -226,8 +231,18 @@ struct ApplicationAdmissionAbi {
 }  // namespace ownership
 
 struct HookGuard {
-    std::lock_guard<std::recursive_mutex> lock{mutex};
-    HookGuard() { events.push_back('L'); }
+    std::unique_lock<std::recursive_mutex> lock{mutex};
+    HookGuard() {
+        ++capture_lock_depth;
+        ++media_capture_exclusion.depth;
+        events.push_back('L');
+    }
+    ~HookGuard() {
+        --media_capture_exclusion.depth;
+        --capture_lock_depth;
+        lock.unlock();
+        events.push_back('U');
+    }
 };
 
 namespace telemetry {
@@ -262,6 +277,19 @@ struct HookRecord {
     DWORD native_flags{};
 };
 HookRecord hook_record;
+
+namespace media_root {
+int publications;
+unsigned expected_outer_depth;
+void on_device_created(IDirect3DDevice9* device, bool capture_clear) {
+    ++publications;
+    CHECK(device == hook_record.device);
+    CHECK(capture_lock_depth == expected_outer_depth);
+    CHECK(capture_clear == (expected_outer_depth == 0));
+    CHECK(events.size() >= 2 && events.back() == 'U' && events[events.size()-2] == 'H');
+    events.push_back('M');
+}
+}  // namespace media_root
 
 void hook_device(IDirect3DDevice9* device, HWND device_window, HWND focus_window) {
     events.push_back('H');
@@ -328,6 +356,8 @@ void reset(IDirect3D9& d, NativeDevice& device,
            HRESULT(WINAPI* callback)(IDirect3D9*, UINT, D3DDEVTYPE, HWND, DWORD,
                                      D3DPRESENT_PARAMETERS*, IDirect3DDevice9**)) {
     events.clear();
+    media_root::publications = 0;
+    media_root::expected_outer_depth = 0;
     hook_record = {};
     direct_script = {};
     direct_script.device = &device;
@@ -402,6 +432,7 @@ void capture_result_case(IDirect3D9& factory, NativeDevice& device, HRESULT resu
     CHECK(capture_host::direct_script.pp == (provide_pp ? &pp : nullptr));
     CHECK(capture_host::direct_script.out == out_arg);
     CHECK(capture_host::hook_record.calls == expected_hooks);
+    CHECK(capture_host::media_root::publications == expected_hooks);
     if (behavior == capture_host::Output::Untouched && provide_out)
         CHECK(out == reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x4444}));
     if (behavior == capture_host::Output::Null && provide_out) CHECK(out == nullptr);
@@ -494,7 +525,23 @@ int main() {
     CHECK(capture_host::hook_record.calls == 1);
     CHECK(capture_host::hook_record.device_window == reinterpret_cast<HWND>(uintptr_t{0x9999}));
     CHECK(capture_host::hook_record.focus_window == kFocus);
-    CHECK(capture_host::events.back() == 'H');
+    CHECK(capture_host::events.back() == 'M');
+
+    // A caller's existing capture scope must remain visible to publication;
+    // only CreateDevice's own scope has ended when its callback runs.
+    test::scenario();
+    capture_host::reset(capture_factory, direct_device, capture_host::direct_native);
+    capture_host::media_root::expected_outer_depth = 1;
+    {
+        capture_host::HookGuard outer;
+        IDirect3DDevice9* nested_out = nullptr;
+        CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus,
+                                          0, &mutated, &nested_out) == S_OK);
+        CHECK(capture_host::media_root::publications == 1);
+        CHECK(!capture_host::media_capture_exclusion.clear());
+    }
+    CHECK(capture_host::media_capture_exclusion.clear());
+    CHECK(capture_host::capture_lock_depth == 0);
 
     ownership_host::NativeFactory native_factory{};
     ownership_host::Factory ownership_factory{&native_factory, {true}};
