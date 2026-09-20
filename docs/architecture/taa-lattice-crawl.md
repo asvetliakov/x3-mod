@@ -925,8 +925,11 @@ Independent review reproduced frame 6401 pixel (799,173): raw HDR
 [.0747681,.0664673,.0651245] versus a prediction
 [3.215877757,2.755744485,2.819967831] from three training samples on the same
 node 491873968 / group 18 / face 47, yielding 237.07718733 displayed luma codes error.
-This is observed within-face radiance variation; its texture/alpha/depthless
-composite/tie cause is unresolved. Reviewer required separate class gates; they
+This is variation within one model-assigned chart, not proof of a shared
+hardware fragment owner. Subsequent reconstruction also places face 42 at the
+dark center within the same depth tolerance; the modeled face-47 edge is only
+0.00270 pixels away. Texture/alpha, raster ownership and compositing remain
+unresolved. Reviewer required separate class gates; they
 were fixed and all 32 results regenerated. Source/evidence and final report review
 passed, including independent class-metric recomputation and synthetic checks.
 
