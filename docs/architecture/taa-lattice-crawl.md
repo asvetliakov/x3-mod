@@ -1130,3 +1130,39 @@ failure; the repaired affected test passes. A full rerun remains a candidate gat
 
 Affected command:
 `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lattice_state_capture verification.analysis.test_snapshot_x3_run`.
+
+
+## 24. Expanded retained-tile correspondence (2026-09-20)
+
+A fresh host check compares all fourteen covered pixels in the retained 12x10
+GPU tile against run177 frame6401. Twelve match combined depth and clip-W
+bit-for-bit; two match face42 rendered alone. In addition to (799,173), the
+new witness at (796,175) has captured W60085.44921875 versus combined/face47
+W60014.0703125, a -71.37890625 difference and -4 float32 depth ULP. All eight
+neighboring integer-coordinate shifts produce zero W matches out of fourteen.
+This argues against a whole-pixel readback offset; it does not exclude fractional
+coverage, runtime geometry or subsequent writers.
+
+All 48 retained tiles agree on depth/W/conditional face correspondence across
+arms, repeats and Reset. The candidate alpha-tested face47 survives both disputed
+pixels (alpha0.7573529482/0.7664215565, threshold1/255), so simply adding that
+already-tested alpha slice does not explain the discrepancy. Captured sun-share
+is zero at the four face42-corresponding pixels and about0.948–0.995 at the ten
+face47 controls. This is correlation, not a causal mask or proof of fragment
+ownership.
+
+Parent decision: retain the two discrepant pixels plus twelve exact controls
+for interpreting §23's planned state packet. No additional capture field, new
+flight, alpha threshold change or live payload copy is justified. The existing
+packet covers the missing effective shaders/constants, raster/depth/stencil and
+sampler addressing/LOD state. It cannot establish sampled runtime alpha, actual
+VB/IB/texture bytes, coherent draw inputs or later writers. Equal state would
+leave those alternatives open; RGB/TAA acceptance remains unchanged.
+
+Reproduction: `python3 /tmp/x3-lattice-fresh-discrepancy.py` passes; its finite,
+input-hash-bound result is `/tmp/x3-lattice-fresh-discrepancy.json`. Inputs are
+`/tmp/x3-lattice-gpu-run-v5/observations.jsonl`, the v5 input manifest and
+`/tmp/x3-bottleX3-run177/depth_1_6401.rgba32f`. The detailed state/alpha mapping is
+[/tmp/x3-lattice-fresh-discrepancy.md](/tmp/x3-lattice-fresh-discrepancy.md).
+No new Wine execution or production change was needed; native Windows remains
+unverified.
