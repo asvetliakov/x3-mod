@@ -987,11 +987,12 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
         : (latch_ticks_ && frequency && now_ticks > latch_ticks_) ? float(double(now_ticks - latch_ticks_) / double(frequency)) : config_.params.dt_max;
     latch_ticks_ = now_ticks;
     if (meter_active() && chain_pending_[chain_slot_] && chain_ring_[chain_slot_] && chain_readback_[chain_slot_]) {
-        const std::uint64_t begin = stamp(timing);
+        r.readback_timing.begin(timing, stamp(timing));
         D3DLOCKED_RECT lock{};
         const unsigned tiles = tile_width_ * tile_height_;
         r.readback = tiles && tiles <= tile_capacity_ ? call<GetRtDataFn>(GetRenderTargetData)(device_, chain_ring_[chain_slot_], chain_readback_[chain_slot_]) : E_FAIL;
         if (SUCCEEDED(r.readback)) r.readback = chain_readback_[chain_slot_]->LockRect(&lock, nullptr, D3DLOCK_READONLY);
+        r.readback_timing.end(ReadbackTiming::TransferLock, stamp(timing));
         if (SUCCEEDED(r.readback)) {
             // Texel .r = the tile's mean, .g = its maximum (the chain format's stride).
             for (UINT y = 0; y < tile_height_; ++y) {
@@ -1001,6 +1002,7 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
                     tile_mean_[std::size_t(y) * tile_width_ + x] = texel[0]; tile_max_[std::size_t(y) * tile_width_ + x] = texel[1];
                 }
             }
+
             // Publish the statistic only after the complete readback operation
             // succeeds. A failed unlock must not advance adaptation using the
             // copied candidate, even though the earlier copy/lock succeeded.
@@ -1010,6 +1012,7 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
             if (SUCCEEDED(r.readback) && fault(HdrFault::ReadbackUnlock)) r.readback = E_FAIL;
         }
         chain_pending_[chain_slot_] = false;
+        r.readback_timing.end(ReadbackTiming::ExtractUnlock, stamp(timing));
         if (SUCCEEDED(r.readback)) {
             // Non-finite tiles read as the floor inside; the statistic is finite.
             const MeterStatistics m = meter_statistics(tile_mean_.get(), tile_max_.get(), tile_weight_.get(), tiles, tile_scratch_.get(), config_.params);
@@ -1018,7 +1021,8 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
                 r.stepped = true; r.avg_log_l = m.avg_log_l; r.dt = exposure_.dt();
             }
         }
-        r.ticks_readback = stamp(timing) - begin;
+        r.readback_timing.end(ReadbackTiming::StatisticsAdapt, stamp(timing));
+        r.ticks_readback = r.readback_timing.total();
     }
     chain_slot_ ^= 1u;
     prepare_constants();

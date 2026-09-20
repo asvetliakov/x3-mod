@@ -275,6 +275,7 @@ struct MotionHdrCounters {
     // timings (meter chain inside the draw, readback lock at the latch).
     bool tonemap = false, fallback = false, stepped = false;
     HRESULT tonemap_draw = S_FALSE, meter = S_FALSE, readback = S_FALSE;
+    renderer::ReadbackTiming readback_timing{};
     std::uint64_t meter_ticks = 0, readback_ticks = 0;
     // Post-resolve sharpen: the last write-back's RCAS verdict and whether a
     // sharpened draw fell back to the unsharpened program this frame.
@@ -381,6 +382,8 @@ struct MotionFrameCounters {
     // route policy, not the application's mask.
     std::uint32_t set_rt = 0, jitter_writes = 0, lazy_flushes = 0, lazy_mask_writes = 0, readbacks = 0;
     std::uint64_t gate_ticks = 0, route_draw_ticks = 0, set_rt_ticks = 0, jitter_ticks = 0, fill_ticks = 0;
+    std::uint64_t lease_retire_ticks = 0;
+    std::uint32_t lease_retire_calls = 0, lease_retire_records = 0, lease_retire_refs = 0, lease_retire_clock_errors = 0;
     std::uint64_t lazy_flush_ticks = 0, readback_ticks = 0;
     std::uint64_t taa_run_ticks = 0, taa_capture_ticks = 0, taa_copy_color_ticks = 0, taa_copy_depth_ticks = 0;
     std::uint64_t taa_draw_ticks = 0, taa_apply_ticks = 0, taa_copy_back_ticks = 0;

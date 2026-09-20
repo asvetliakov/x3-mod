@@ -19,6 +19,7 @@ std::uint64_t frequency=0;
 std::uint64_t dropped=0; // frames closed without a frame-phase sample (owner thread only)
 detail::Gate gate;
 detail::Accumulator accumulator;
+const frame_phases::detail::Tracker* frame_link=nullptr;
 detail::Window window;
 detail::Sample last_sample;
 engine_patch::Site patches[sites::Count];
@@ -39,6 +40,9 @@ void emit_window() {
         emitted,s.frame,s.frames,s.passes_p50,s.interval_p50[0],s.interval_p95[0],s.interval_p50[1],s.interval_p95[1],s.interval_p50[2],s.interval_p95[2],
         s.sum_p50,s.view_submit_p50,s.self_p50,detail::dispatch_cost_ns,accumulator.orphans,accumulator.clock_errors,accumulator.clock_failures,accumulator.unmatched,dropped,
         gate.early.exchange(0,std::memory_order_relaxed),gate.foreign.exchange(0,std::memory_order_relaxed));
+    log("pass_attribution frame=%llu frames=%u scoped_p50_us=%llu scoped_p95_us=%llu outside_p50_us=%llu outside_p95_us=%llu complement_p50_us=%llu complement_p95_us=%llu outside_passes_p50=%llu crossing_passes_p50=%llu outside_passes=%llu crossing_passes=%llu scope_errors=%llu complement_underflow=%llu",
+        s.frame,s.frames,s.attribution_p50[0],s.attribution_p95[0],s.attribution_p50[1],s.attribution_p95[1],s.attribution_p50[2],s.attribution_p95[2],s.attribution_p50[3],s.attribution_p50[4],s.outside_passes_total,s.crossing_passes_total,accumulator.scope_errors,accumulator.complement_underflow);
+    accumulator.scope_errors=accumulator.complement_underflow=0;
     accumulator.orphans=accumulator.clock_errors=accumulator.clock_failures=accumulator.unmatched=0;dropped=0;
 }
 }
@@ -54,7 +58,8 @@ x3m_pass_phase_enter(unsigned index) {
     x3m::LightCallBoundary cpu; // MXCSR + LastError: QueryPerformanceCounter may set the last error
     if(!gate.owned(GetCurrentThreadId()))return;
     LARGE_INTEGER v{};
-    accumulator.stamp(index,QueryPerformanceCounter(&v)&&v.QuadPart>0?std::uint64_t(v.QuadPart):0);
+    const auto now=QueryPerformanceCounter(&v)&&v.QuadPart>0?std::uint64_t(v.QuadPart):0;
+    accumulator.stamp(index,now,frame_link->submission_ticks_at(now),frame_link->live?frame_link->submit_begin:0);
 }
 
 namespace x3m::pass_phases {
@@ -73,6 +78,7 @@ bool initialize() {
     const char* status="telemetry_off";
     if(telemetry::enabled()){
         frequency=telemetry::frequency();
+        frame_link=frame_phases::shared_tracker();
         if(!frequency)status="clock_unavailable";
         else if(!frame_phases::active.load(std::memory_order_acquire))status="frame_phases_off"; // the frame boundary and view_submit come from the frame group
         else if(!object_trace::executable_verified())status="executable_unverified";
@@ -99,6 +105,7 @@ void frame_impl(std::uint64_t frame,bool sampled,std::uint64_t view_submit_us) n
 #ifdef X3M_GAME_PHASE_FIXTURE
 bool fixture_install(const engine_patch::SiteSpec* specs,const char** status) {
     const char* text="unset";
+    frame_link=frame_phases::shared_tracker();
     LARGE_INTEGER f{};frequency=QueryPerformanceFrequency(&f)&&f.QuadPart>0?std::uint64_t(f.QuadPart):0;
     const bool okay=frequency&&install_group(specs,text);
     if(!frequency)text="clock_unavailable";

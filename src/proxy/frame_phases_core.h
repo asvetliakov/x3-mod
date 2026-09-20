@@ -56,6 +56,11 @@ struct Tracker {
         for (auto& t : phase_ticks) t = 0;
         setup_ticks = submit_ticks = 0; views = 0;
     }
+    // Cumulative intersection with submission intervals, sampled using a sibling's
+    // existing QPC. Owner-thread only; no additional clock or boundary callback.
+    std::uint64_t submission_ticks_at(std::uint64_t now) const noexcept {
+        return submit_ticks + (live && submit_begin && now >= submit_begin ? now - submit_begin : 0);
+    }
     void drop() noexcept { if (live) ++dropped; live = false; }
     bool advance(unsigned to, std::uint64_t qpc) noexcept {
         if (qpc < last_qpc) { ++clock_errors; drop(); return false; }

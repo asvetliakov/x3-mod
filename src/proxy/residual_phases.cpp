@@ -46,6 +46,9 @@ void emit_window() {
         accumulator.prepare_skipped,accumulator.setup_skipped,accumulator.view_skipped,accumulator.other_underflow,
         accumulator.clock_errors,accumulator.clock_failures,accumulator.unmatched,dropped,
         gate.early.exchange(0,std::memory_order_relaxed),gate.foreign.exchange(0,std::memory_order_relaxed));
+    log("residual_attribution frame=%llu frames=%u between_prepare_p50_us=%llu between_prepare_p95_us=%llu outside_setup_p50_us=%llu outside_setup_p95_us=%llu outside_materials=%llu scope_errors=%llu",
+        s.frame,s.frames,s.interval_p50[4],s.interval_p95[4],s.interval_p50[5],s.interval_p95[5],accumulator.outside_materials,accumulator.scope_errors);
+    accumulator.outside_materials=accumulator.scope_errors=0;
     accumulator.prepare_skipped=accumulator.setup_skipped=accumulator.view_skipped=accumulator.other_underflow=0;
     accumulator.clock_errors=accumulator.clock_failures=accumulator.unmatched=0;dropped=0;
 }
@@ -63,7 +66,7 @@ x3m_residual_phase_enter(unsigned index) {
     if(!gate.owned(GetCurrentThreadId()))return;
     LARGE_INTEGER v{};
     const std::uint64_t now=QueryPerformanceCounter(&v)&&v.QuadPart>0?std::uint64_t(v.QuadPart):0;
-    if(index==sites::MaterialSetup)accumulator.material(now,pass_link->end_clock,pass_link->begin_clock,pass_link->begin_armed);
+    if(index==sites::MaterialSetup)accumulator.material(now,pass_link->end_clock,pass_link->begin_clock,pass_link->begin_armed,frame_link->submission_ticks_at(now),pass_link->end_submission,pass_link->begin_submission,frame_link->live&&frame_link->submit_begin);
     else if(index==sites::ViewParticles)accumulator.view(now,frame_link->submit_end);
     else ++accumulator.unmatched;
 }
@@ -103,7 +106,7 @@ void frame_impl(std::uint64_t frame,bool sampled,std::uint64_t views_us,std::uin
     ErrorGuard error;
     if(!gate.admit(GetCurrentThreadId()))return;
     if(!sampled){accumulator.discard(pass_link->begin_armed);++dropped;return;}
-    accumulator.take(frame,frequency,views_us,view_setup_us,view_submit_us,views,pass_link->passes,pass_link->begin_clock,pass_link->begin_armed,last_sample);
+    accumulator.take(frame,frequency,views_us,view_setup_us,view_submit_us,views,pass_link->passes,pass_link->begin_clock,pass_link->begin_armed,last_sample,pass_link->begin_submission);
     window.add(last_sample);
     if(window.full())emit_window();
 }

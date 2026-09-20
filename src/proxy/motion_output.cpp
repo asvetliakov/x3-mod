@@ -6003,7 +6003,7 @@ void MotionOutput::begin_redirect() noexcept {
         if (!frequency) { LARGE_INTEGER f{}; QueryPerformanceFrequency(&f); frequency = std::uint64_t(f.QuadPart); }
         LARGE_INTEGER now{}; QueryPerformanceCounter(&now);
         const renderer::HdrFrameBegin b = hdr_->begin_frame(std::uint64_t(now.QuadPart), frequency, telemetry_);
-        h.stepped = b.stepped; h.readback = b.readback; h.readback_ticks = b.ticks_readback;
+        h.stepped = b.stepped; h.readback = b.readback; h.readback_ticks = b.ticks_readback; h.readback_timing = b.readback_timing;
         if (b.readback != S_FALSE) record(unsigned(telemetry::Metric::HdrMeterReadback), b.ticks_readback, FAILED(b.readback));
     }
     // Stage 3: k of the resolve's luminance weighting for this frame = the
@@ -6143,7 +6143,7 @@ void MotionOutput::log_hdr_frame() noexcept {
     const bool tonemap = hdr_ && hdr_->tonemap_active();
     const auto& e = hdr_ ? hdr_->exposure() : renderer::ExposureState{};
     const auto& c = hdr_ ? hdr_->config() : renderer::HdrConfig{};
-    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g lit_fraction=%.4f luma_lit=%.6g luma_p99=%.6g ev_key=%.5f ev_limit=%.5f ev_fresh=%.5f tiles=%u lit=%u dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
+    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g lit_fraction=%.4f luma_lit=%.6g luma_p99=%.6g ev_key=%.5f ev_limit=%.5f ev_fresh=%.5f tiles=%u lit=%u dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f readback_transfer_lock_us=%.1f readback_extract_unlock_us=%.1f readback_statistics_adapt_us=%.1f readback_clock_errors=%u k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
         id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks), static_cast<unsigned long>(h.flushes),
         hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw, h.unwind_restore, h.unwind_stretch, h.unwind_bind,
         h.blocked, h.recheck_ran ? (h.recheck_passed ? "pass" : "fail") : "none", static_cast<unsigned long>(h.suspended),
@@ -6156,7 +6156,7 @@ void MotionOutput::log_hdr_frame() noexcept {
         double(std::exp2(e.avg_log_l())), double(e.meter().lit_fraction), double(std::exp2(e.meter().lit_median_log)), double(std::exp2(e.meter().p99_max_log)),
         double(e.ev_key()), double(e.ev_limit()), double(e.ev_fresh()), e.meter().tiles, e.meter().lit,
         double(e.dt()) * 1000., h.stepped, e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback,
-        us(h.meter_ticks), us(h.readback_ticks), double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull,
+        us(h.meter_ticks), us(h.readback_ticks), us(h.readback_timing.ticks[0]), us(h.readback_timing.ticks[1]), us(h.readback_timing.ticks[2]), h.readback_timing.clock_errors, double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull,
         caps.sharpen_reason, h.sharpened, h.sharpen_fallback);
 }
 
@@ -6721,6 +6721,10 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(c.mip_bias_failures), static_cast<unsigned long>(sampler_biased_mask_));
     }
     if (taa_enabled_ && (capture_ || frame_ % camera_log_interval_ == 0)) log_camera_state();
+    if (telemetry_ && frame_ % frame_log_interval_ == 0)
+        log("shadow_lease_retirement device=%llu frame=%llu calls=%u records=%u refs=%u us=%.1f clock_errors=%u",
+            id_,frame_,counters_.lease_retire_calls,counters_.lease_retire_records,counters_.lease_retire_refs,
+            telemetry::microseconds(counters_.lease_retire_ticks),counters_.lease_retire_clock_errors);
     if (hdr_enabled_ && (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0))) log_hdr_frame();
     flush_taa_invalidate_log();
 }
