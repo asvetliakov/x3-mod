@@ -1464,3 +1464,11 @@ The selected next action is a host-only shader/raster/interpolation qualifier
 against the retained complete GPU tile, preserving negative pixels, the twelve
 controls, both historical exceptions and all tolerances. Do not fit an offset or
 loosen thresholds. No repeat flight or live resource copying is requested.
+
+The [session triage](../../verification/results/run201-lattice/compact-report.md)
+binds the session-header DLL/source identity and three strict-valid packets.
+Owner/binding identities and observed lifetime bookends remain stable across
+the selected records. The camera telemetry shows a stationary-orientation burst
+and two bursts containing rotation; raw view-translation coordinates do not
+by themselves establish ship displacement. RT1 RG stores previous UV, not
+velocity, so raw RG magnitudes are not a movement measure.
