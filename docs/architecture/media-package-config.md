@@ -1,5 +1,12 @@
 # Media package configuration reader
 
+**Retired from production (2026-09-21).** The user accepts missing ID2 animated
+textures after the Run55 LAVVideo crash. The owned playback implementation and
+its runtime/build prerequisites have been removed. The description below is
+historical; `--media-package` is no longer a launcher/install option. New managed
+installs retire the active selection while retaining the previous installation
+and provider files for rollback. See the [media ledger](../verification/media-cues.md#id2-video-omission-and-owned-playback-retirement-2026-09-21).
+
 2026-09-20. The preparation-time reader supplies an immutable provider manifest
 and source mapping for owned media workers. Its host/parser and synthetic Win32
 file-adapter qualification are recorded in the

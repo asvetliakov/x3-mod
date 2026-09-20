@@ -1,5 +1,12 @@
 # Asynchronous ID2 video playback direction
 
+**Retired from production (2026-09-21).** The user accepts missing ID2 animated
+textures after the Run55 LAVVideo crash. The owned playback implementation and
+its runtime/build prerequisites have been removed. The description below is
+historical; `--media-package` is no longer a launcher/install option. New managed
+installs retire the active selection while retaining the previous installation
+and provider files for rollback. See the [media ledger](../verification/media-cues.md#id2-video-omission-and-owned-playback-retirement-2026-09-21).
+
 2026-09-20. Architecture and isolated implementation contract; production
 admission and the installed feature remain separate. The current candidate is described only in [status](../status.md).
 The [consumer/lifetime reconstruction](../reverse-engineering/media-record-lifetime.md)

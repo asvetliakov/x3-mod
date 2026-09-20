@@ -15,22 +15,6 @@ static_assert(sizeof(x3m::media_cue::EnterFrame)==0xa4,"gate stub frame layout")
 static_assert(sizeof(x3m::media_cue::ReturnFrame)==0x98,"return trampoline frame layout");
 namespace x3m::media_cue {
 std::atomic<bool> active{false};
-static std::atomic<OwnedEligibility> owned_eligibility{nullptr};
-static std::atomic<DWORD> composition_owner{0};
-bool set_owned_eligibility(OwnedEligibility predicate) noexcept {
-    if(!predicate||composition_owner.load(std::memory_order_acquire)!=GetCurrentThreadId())return false;
-    OwnedEligibility empty=nullptr;
-    return owned_eligibility.compare_exchange_strong(empty,predicate,std::memory_order_acq_rel,std::memory_order_acquire)||empty==predicate;
-}
-bool clear_owned_eligibility(OwnedEligibility expected) noexcept {
-    if(!expected)return false;
-    if(!owned_eligibility.load(std::memory_order_acquire))return true;
-    if(composition_owner.load(std::memory_order_acquire)!=GetCurrentThreadId())return false;
-    return owned_eligibility.compare_exchange_strong(expected,nullptr,std::memory_order_acq_rel);
-}
-bool owned_eligibility_is(OwnedEligibility predicate) noexcept {
-    return predicate&&owned_eligibility.load(std::memory_order_acquire)==predicate;
-}
 namespace {
 std::atomic<bool> installed{false};
 bool initialized=false,trace_on=false,cache_on=false;
@@ -52,7 +36,6 @@ std::uint32_t attempts_frame=0;            // owner thread only, reset at the fr
 std::uint64_t attempts_total=0,refused_total=0;
 std::atomic<std::uint64_t> current_frame{0};
 void* return_trampoline=nullptr;
-void* own_stub=nullptr;void** own_next=nullptr;
 bool lost_reported=false;
 engine_patch::Site patches[sites::Count];
 struct ErrorGuard { DWORD value=GetLastError();~ErrorGuard(){SetLastError(value);} };
@@ -229,10 +212,12 @@ void emit_window() {
 // execute no x87 opcode, never allocate and never take the log mutex; the one
 // line it writes on a proceeded call with the trace on goes through
 // write_enter_line's unbuffered handle write under the full envelope. A call
-// before the owner is admitted or from another thread passes unobserved.
+// outside the unconditional ID2 video skip passes unobserved before owner
+// admission or from another thread. The skip touches no mutable state or API.
 extern "C" __attribute__((force_align_arg_pointer)) unsigned __cdecl
 x3m_media_cue_enter(x3m::media_cue::EnterFrame* f) {
     using namespace x3m::media_cue;
+    if(detail::refuse_id2_video(f->id,f->eax))return 0;
     if(!active.load(std::memory_order_relaxed))return 1;
     x3m::LightCallBoundary cpu; // MXCSR + LastError: QueryPerformanceCounter may set the last error
     if(!gate.owned(GetCurrentThreadId()))return 1;
@@ -243,9 +228,7 @@ x3m_media_cue_enter(x3m::media_cue::EnterFrame* f) {
     detail::Entry e;
     e.qpc=now;e.frame=current_frame.load(std::memory_order_relaxed);e.id=f->id;e.kind=f->slot_10;e.flags=f->eax;
     e.attempt=attempts_frame;e.caller=caller;e.scoped=scoped;
-    const auto owned=owned_eligibility.load(std::memory_order_acquire);
-    const bool bypass=f->id==2&&owned&&owned(2,f->eax?f->eax:8);
-    if(cache_on&&scoped&&!bypass&&cache.refuses(f->id,now,retry_ticks)){
+    if(cache_on&&scoped&&cache.refuses(f->id,now,retry_ticks)){
         ++refused_total;e.outcome=detail::refused;ring.push(e);
         return 0;
     }
@@ -286,63 +269,38 @@ x3m_media_cue_return(x3m::media_cue::ReturnFrame* f) {
 namespace x3m::media_cue {
 namespace {
 void* emit(unsigned,void*** next_out) {
-    own_stub=emit_gate(reinterpret_cast<const void*>(&x3m_media_cue_enter),reinterpret_cast<const void*>(&x3m_media_cue_return),next_out,&return_trampoline);
-    own_next=own_stub?*next_out:nullptr;return own_stub;
+    return emit_gate(reinterpret_cast<const void*>(&x3m_media_cue_enter),reinterpret_cast<const void*>(&x3m_media_cue_return),next_out,&return_trampoline);
 }
-}
-Composition composition() noexcept {
-    const DWORD thread=GetCurrentThreadId(),owner=composition_owner.load(std::memory_order_acquire);
-    if(!thread||(owner&&owner!=thread)||!initialized||!object_trace::executable_verified()||
-       !engine_patch::install_window_open()||owned_eligibility.load(std::memory_order_acquire))return Composition::unavailable;
-    Composition result=Composition::unavailable;
-    const auto& patch=patches[0];const auto& spec=sites::kSites[0];
-    if(installed.load(std::memory_order_acquire)&&active.load(std::memory_order_acquire)){
-        unsigned char head[4]{},next[4]{};void* head_value=nullptr;void* next_value=nullptr;
-        if(patch.claimed&&patch.patched_in&&patch.atomic_write&&patch.spec.address==spec.address&&
-           own_stub&&own_next&&return_trampoline&&patch.entry&&patch.tail&&
-           engine_patch::verify_bytes(spec.address,patch.patched,5)&&
-           engine_patch::read_code(reinterpret_cast<std::uintptr_t>(patch.entry),head,4)&&
-           engine_patch::read_code(reinterpret_cast<std::uintptr_t>(own_next),next,4)){
-            std::memcpy(&head_value,head,4);std::memcpy(&next_value,next,4);
-            if(head_value==own_stub&&next_value==patch.tail)result=Composition::installed_qualified;
-        }
-    }else if(!patch.patched_in&&!installed.load(std::memory_order_acquire)&&
-        engine_patch::verify_bytes(spec.address,spec.expected,spec.length))result=Composition::disabled_pristine;
-    if(result!=Composition::unavailable){DWORD empty=0;
-        if(!composition_owner.compare_exchange_strong(empty,thread,std::memory_order_acq_rel,std::memory_order_acquire)&&empty!=thread)
-            return Composition::unavailable;
-    }
-    return result;
 }
 ownership::SurfaceLockObserver video_lock_observer() noexcept {
     return trace_on&&active.load(std::memory_order_acquire)?&video_lock_observe:nullptr;
 }
 bool initialize() {
     ErrorGuard error;
-    if(initialized)return active.load(std::memory_order_acquire);
+    if(initialized)return installed.load(std::memory_order_acquire);
     initialized=true;wchar_t value[16]{};
     const bool trace_wanted=GetEnvironmentVariableW(L"X3M_MEDIA_CUE_TRACE",value,4)==1&&value[0]==L'1';
     const bool cache_wanted=GetEnvironmentVariableW(L"X3M_MEDIA_CUE_CACHE",value,4)==1&&value[0]==L'1';
     unsigned retry_s=default_retry_s;
     if(GetEnvironmentVariableW(L"X3M_MEDIA_CUE_RETRY_S",value,16)>0){const unsigned long n=wcstoul(value,nullptr,10);if(n>=1&&n<=max_retry_s)retry_s=unsigned(n);}
-    if(!trace_wanted&&!cache_wanted)return false;
     trace_on=trace_wanted&&telemetry::enabled();
     cache_on=cache_wanted;
-    const char* status=trace_wanted&&!trace_on&&!cache_on?"telemetry_off":"unset";
+    const char* status="unset";
     if(trace_on||cache_on){
         LARGE_INTEGER f{};frequency=QueryPerformanceFrequency(&f)&&f.QuadPart>0?std::uint64_t(f.QuadPart):0;
         retry_ticks=frequency*retry_s;
-        if(!frequency)status="clock_unavailable";
-        else if(!object_trace::executable_verified())status="executable_unverified";
-        else install_group(sites::kSites,status);
+        // Diagnostics may fail closed without reopening ID2's decoder path.
+        if(!frequency){trace_on=false;cache_on=false;}
     }
-    active.store(installed.load(std::memory_order_acquire),std::memory_order_release);
-    log("media_cue_mode trace_requested=%u cache_requested=%u trace=%u cache=%u enabled=%u status=%s retry_s=%u cache_entries=%u pending_depth=%u ring=%u lines_per_second=%u window=%u owner=present_thread sector_change=interval_only qpc_frequency=%llu return_trampoline=%08lx",
-        unsigned(trace_wanted),unsigned(cache_wanted),unsigned(trace_on&&active.load()),unsigned(cache_on&&active.load()),unsigned(active.load()),status,retry_s,
+    if(!object_trace::executable_verified())status="executable_unverified";
+    else install_group(sites::kSites,status);
+    active.store(installed.load(std::memory_order_acquire)&&(trace_on||cache_on),std::memory_order_release);
+    log("media_cue_mode trace_requested=%u cache_requested=%u trace=%u cache=%u enabled=%u id2_video_skip=%u status=%s retry_s=%u cache_entries=%u pending_depth=%u ring=%u lines_per_second=%u window=%u owner=present_thread sector_change=interval_only qpc_frequency=%llu return_trampoline=%08lx",
+        unsigned(trace_wanted),unsigned(cache_wanted),unsigned(trace_on&&active.load()),unsigned(cache_on&&active.load()),unsigned(active.load()),unsigned(installed.load()),status,retry_s,
         detail::cache_entries,detail::pending_depth,detail::ring_entries,detail::lines_per_second,detail::window_frames,frequency,reinterpret_cast<unsigned long>(return_trampoline));
     for(unsigned i=0;i<sites::Count;++i)log("media_cue_site index=%u address=%08lx length=%u rel32=%u patched=%u status=%s",i,
         static_cast<unsigned long>(sites::kSites[i].address),sites::kSites[i].length,sites::kSites[i].rel32_offset,unsigned(patches[i].patched_in),patches[i].status);
-    return active.load(std::memory_order_acquire);
+    return installed.load(std::memory_order_acquire);
 }
 namespace detail {
 void frame_impl(std::uint64_t frame) noexcept {
@@ -365,7 +323,7 @@ bool fixture_install(const engine_patch::SiteSpec* specs,const detail::Addresses
     addresses=fixture_addresses;trace_on=trace;cache_on=cache_enabled;retry_ticks=ticks;
     const bool okay=frequency&&install_group(specs,text);
     if(!frequency)text="clock_unavailable";
-    active.store(installed.load(std::memory_order_acquire));
+    active.store(installed.load(std::memory_order_acquire)&&(trace_on||cache_on));
     reset_state();
     if(status)*status=text;
     return okay;

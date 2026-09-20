@@ -39,7 +39,7 @@ int main(){
         calls=hooks=wraps=vetoes=before=after=scopes=logs=0;hooked=nullptr;seen_sdk=0;
         backend_present=scenario!=0;backend_success=scenario!=1;ownership_enabled=scenario>=3;wrap_success=scenario!=4;
         depth_copy_enabled=finite_positions_enabled=lock_bookends_enabled=locked_prefix_enabled=scenario==5;
-        const auto result=x3m_direct3d_create9_body(0x20);
+        const auto result=Direct3DCreate9(0x20);
         check(scopes==0&&before==1&&after==1);check(calls==unsigned(backend_present));
         check(!calls||seen_sdk==0x20);
         if(scenario<2){check(!result&&!hooks&&!wraps&&!vetoes);}
@@ -48,5 +48,5 @@ int main(){
             check(vetoes==unsigned(!ownership_enabled||!wrap_success));}
         if(scenario==5){const auto& o=x3m::ownership::options;check(o.capture_auto_depth&&o.track_buffer_writes&&o.track_buffer_lock_attempts&&o.capture_finite_positions&&o.locked_prefix_bounds&&!o.track_execution_state);}
     }
-    std::printf("MEDIA STARTUP LOADER checks=%u failures=%u\n",checks,failures);return failures?1:0;
+    std::printf("LOADER FACTORY checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

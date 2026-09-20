@@ -5,7 +5,8 @@
 #include "media_cue_core.h"
 #include "../ownership/surface_lock_observation.h"
 
-// Default-off gate on the media-record allocator 0x00498140
+// Default-on ID2 video skip on the media-record allocator 0x00498140
+// (ID2 with incoming EAX0 or8); optional diagnostics/negative cache
 // (X3M_MEDIA_CUE_TRACE=1, launcher --media-cue-trace, requires --telemetry;
 // X3M_MEDIA_CUE_CACHE=1, launcher --media-cue-cache on; X3M_MEDIA_CUE_RETRY_S).
 // One byte-verified entry site (media_cue_sites.h) carries a two-arm gate stub
@@ -26,8 +27,10 @@
 // verification/probe/check_no_x87.py walks x3m_media_cue_enter and
 // x3m_media_cue_return) and never log; the frame boundary (capture.cpp Present
 // path, the owner thread) drains the trace ring into `media_cue` lines (32 per
-// second) and one `media_cue_window` line per 300 frames. Off, nothing is
-// installed and the per-frame cost is one relaxed load.
+// second) and one `media_cue_window` line per 300 frames. With diagnostics
+// off, the skip remains installed; per-frame cost is one relaxed load and
+// non-skipped calls pass without return substitution. The ID2 decision is
+// immutable and precedes all APIs, owner admission and diagnostic state.
 // Video blit witness (media-cue-playback.md, 8): with the trace on, the
 // ownership layer's Surface::LockRect/UnlockRect shell reports each call with
 // its caller's return address; calls from the consumer 0x004d0c40..0x004d14e0
@@ -36,17 +39,9 @@
 // either call) and count into the window line. Needs --ownership: without the
 // wrapper no shell sees the game's surfaces.
 namespace x3m::media_cue {
-// Compose with the sole allocator-site owner. Predicate is bounded CPU-only,
-// x87-free, noexcept, and checks the complete owned admission state. It receives
-// normalized effective flags (ID2 input0 maps to8); null restores cache policy.
-using OwnedEligibility=bool(*)(std::uint32_t source,std::uint32_t flags) noexcept;
-enum class Composition {unavailable,disabled_pristine,installed_qualified};
-// Qualified startup owner only; verifies the existing chain or pristine bytes.
-Composition composition() noexcept;
-bool set_owned_eligibility(OwnedEligibility) noexcept;
-bool clear_owned_eligibility(OwnedEligibility expected) noexcept;
-bool owned_eligibility_is(OwnedEligibility) noexcept;
-bool initialize(); // after loop_phases::initialize, while the install window is open
+// Called during initialize_log/load_backend, before the game's initial media
+// tables. Shared install transaction validates the executable and site bytes.
+bool initialize(); // true when the unconditional skip is installed
 // The witness to publish through ownership::set_surface_lock_observer, or
 // nullptr when the trace is off (nothing is registered, the shell pays one
 // relaxed load). Valid after initialize().

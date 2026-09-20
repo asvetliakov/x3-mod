@@ -101,6 +101,50 @@ class PackageTests(unittest.TestCase):
         self.assertFalse((self.game / 'd3d9.dll').exists())
         self.assert_originals()
 
+    def test_retire_media_preserves_exact_rollback_and_originals(self):
+        first = self.install()
+        old_bytes = (self.game / mp.INSTALL).read_bytes()
+        payloads = mp.selection_files(self.game, first)
+        self.dll.write_bytes(b'proxy without playback')
+        new = mp.install(self.game, self.dll, {'source_commit': 'retired'}, retire_media=True)
+        self.assertNotIn('media', new)
+        previous, _ = mp.snapshot_paths(self.game, new['previous'])
+        self.assertEqual((previous / 'install.json').read_bytes(), old_bytes)
+        self.assertEqual((previous / 'd3d9.dll').read_bytes(), b'first proxy')
+        for path, row in payloads.items(): mp.verify(self.game / path, row)
+        mp.rollback(self.game)
+        restored = mp.current(self.game)
+        self.assertEqual(restored['media'], first['media'])
+        self.assertEqual(restored['sha256'], first['sha256'])
+        self.assert_originals()
+
+    def test_retire_media_interrupted_phases_recover_exact_pair(self):
+        for phase in ('prepared', 'dll', 'manifest'):
+            with self.subTest(phase=phase):
+                self.install()
+                before = (self.game / mp.INSTALL).read_bytes()
+                old_dll = (self.game / 'd3d9.dll').read_bytes()
+                self.dll.write_bytes(('retired ' + phase).encode())
+                def fault(at):
+                    if at == phase: raise RuntimeError('interrupted retirement')
+                with self.assertRaises(RuntimeError):
+                    mp.install(self.game, self.dll, {}, retire_media=True, fault=fault)
+                mp.recover(self.game)
+                self.assertEqual((self.game / mp.INSTALL).read_bytes(), before)
+                self.assertEqual((self.game / 'd3d9.dll').read_bytes(), old_dll)
+                mp.current(self.game)
+                self.assert_originals()
+                mp.uninstall(self.game)
+
+    def test_launch_no_longer_reads_legacy_media_payloads(self):
+        first = self.install()
+        (self.game / first['media']['package_record_relative']).unlink()
+        child = mock.Mock(return_value=0)
+        with mock.patch.object(mp, 'selection_files', side_effect=AssertionError('legacy package read')):
+            self.assertEqual(self.run_launcher(child, '--dry-run'), 0)
+            self.assertEqual(self.run_launcher(child), 0)
+        child.assert_called_once()
+
     def test_old_dll_only_manifest(self):
         (self.game / 'd3d9.dll').write_bytes(b'old')
         old = dict(project='x3-modern-renderer',sha256=mp.sha256(self.game / 'd3d9.dll'),source_commit='old')
@@ -288,13 +332,15 @@ class PackageTests(unittest.TestCase):
     def test_dry_run_validates_under_lock_without_child_or_process_check(self):
         self.install(package=False)
         guard = mp.assert_game_closed; guard.reset_mock()
-        original_validation = mp.selection_files
-        def validate(game, selected):
+        from tools import manage
+        original_digest = manage.digest
+        def digest(path):
             with self.assertRaisesRegex(mp.PackageError, 'installer or launcher'):
-                with mp.installer_lock(game): pass
-            return original_validation(game, selected)
+                with mp.installer_lock(self.game): pass
+            return original_digest(path)
         child = mock.Mock(side_effect=AssertionError('dry-run must not start child'))
-        with mock.patch.object(mp, 'selection_files', side_effect=validate):
+        # The first digest belongs to the launch lock; no status check runs here.
+        with mock.patch.object(manage, 'digest', side_effect=digest):
             self.assertEqual(self.run_launcher(child, '--dry-run'), 0)
         child.assert_not_called(); guard.assert_not_called()
 

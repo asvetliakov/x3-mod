@@ -1,5 +1,11 @@
 # Native Windows and CrossOver support
 
+**2026-09-21 media scope update:** owned video playback, its startup/consumer/
+destination hooks and LAV dependency are retired from production by user choice.
+Earlier media qualification sections below remain historical. The remaining
+ID2 allocator refusal uses the existing game hook on both targets; native Windows
+runtime verification remains open. Speech decoding is unaffected.
+
 User requirement, added 2026-09-11: the graphics enhancements must work on native
 Windows/Direct3D as well as CrossOver Preview. The user currently cannot run
 Windows tests. Compiling a Windows DLL or forwarding successfully on another

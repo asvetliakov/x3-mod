@@ -173,6 +173,50 @@ class LatticeStateCaptureTests(unittest.TestCase):
         p=packet();p['scope_active_at_arm']=False
         with self.assertRaises(ValueError):validate(p, True)
 
+    def test_present_reentry_refuses_before_admission_and_native_work(self):
+        source=(ROOT/'src/proxy/capture.cpp').read_text()
+        function=extract_function(source,'HRESULT WINAPI present(')
+        # Execute the actual prefix; the sentinel models admission/native work.
+        prefix=function.split('    ownership::ApplicationAdmissionAbi admission',1)[0]
+        prefix += '    ++forwarded; return 0; }\n'
+        harness=r'''#include <memory>
+#include <mutex>
+#include <map>
+#include <cstdint>
+#define WINAPI
+using HRESULT=int; using HWND=void*;
+struct IDirect3DDevice9 {}; struct RECT {}; struct RGNDATA {};
+constexpr int D3DERR_INVALIDCALL=-1;
+std::recursive_mutex mutex; unsigned locked=0,forwarded=0,cpu_scopes=0;
+struct CpuCallBoundary {CpuCallBoundary(){++cpu_scopes;} ~CpuCallBoundary(){--cpu_scopes;}};
+struct CaptureLock {std::lock_guard<std::recursive_mutex> lock{mutex};
+    CaptureLock(){++locked;} ~CaptureLock(){--locked;}};
+struct Observer {bool valid=true; void invalidate(){valid=false;}};
+struct Device {unsigned lattice_query_depth=0; std::shared_ptr<Observer> lattice_state;};
+std::map<IDirect3DDevice9*,std::shared_ptr<Device>> devices;
+#include "present_prefix_inc.h"
+int main(){
+    IDirect3DDevice9 d; auto owner=std::make_shared<Device>(); devices[&d]=owner;
+    if(present(&d,nullptr,nullptr,nullptr,nullptr)!=0 || forwarded!=1 || locked || cpu_scopes)return 1;
+    owner->lattice_query_depth=1; owner->lattice_state=std::make_shared<Observer>();
+    {CaptureLock outer;
+     if(present(&d,nullptr,nullptr,nullptr,nullptr)!=D3DERR_INVALIDCALL || forwarded!=1 ||
+        owner->lattice_state->valid || locked!=1 || cpu_scopes)return 2;}
+    owner->lattice_state.reset();
+    if(present(&d,nullptr,nullptr,nullptr,nullptr)!=D3DERR_INVALIDCALL || locked || cpu_scopes)return 3;
+    owner->lattice_query_depth=0;
+    if(present(&d,nullptr,nullptr,nullptr,nullptr)!=0 || forwarded!=2)return 4;
+    return 0;
+}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp); (tmp/'present_prefix_inc.h').write_text(prefix)
+            (tmp/'fixture.cpp').write_text(harness); exe=tmp/'fixture'
+            subprocess.run([shutil.which('clang++') or 'c++','-std=c++17','-O2','-Wall','-Wextra','-Werror',
+                            '-Wno-unused-parameter','-I',str(tmp),str(tmp/'fixture.cpp'),'-o',str(exe)],
+                           check=True,capture_output=True,text=True)
+            subprocess.run([str(exe)],check=True,capture_output=True,text=True)
+
     def test_real_hook_dispatch_and_boundary(self):
         source=(ROOT/'src/proxy/capture.cpp').read_text()
         function=extract_function(source,'HRESULT WINAPI draw_indexed(')

@@ -1,4 +1,3 @@
-#include "media_startup.h"
 #include "capture.h"
 #include "capture_state.h"
 #include "lattice_state_capture.h"
@@ -24,7 +23,6 @@
 #include "light_phases.h"
 #include "loop_phases.h"
 #include "media_cue.h"
-#include "media_root.h"
 #include "media_cue_sites.h"
 #include "point_light_admission.h"
 #include "loading_trace.h"
@@ -306,16 +304,8 @@ struct Device : Hooks {
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
 // Preserve the original serialization while exposing its CPU-side wait cost.
-media_root::CaptureExclusion media_capture_exclusion;
-struct MediaCaptureScope {
-    MediaCaptureScope() noexcept {media_capture_exclusion.enter();}
-    ~MediaCaptureScope() {media_capture_exclusion.leave();}
-};
-// All raw capture-lock paths (including compositor backend and factory QI)
-// share the same exclusion witness as the hot guards.
 struct CaptureLock {
     std::lock_guard<std::recursive_mutex> lock{mutex};
-    MediaCaptureScope media_scope;
 };
 struct HeldHookLock {
     std::unique_lock<std::recursive_mutex> lock;
@@ -329,7 +319,6 @@ struct HeldHookLock {
 // hooks and the scene-end path pass their own.
 struct HookGuard {
     HeldHookLock held;
-    MediaCaptureScope media_scope;
     frame_timing::Scope timing;
     explicit HookGuard(frame_timing::Bucket bucket=frame_timing::Bucket::State,
                        const char* entry=__builtin_FUNCTION()):timing(bucket,entry){}
@@ -338,7 +327,6 @@ struct HookGuard {
 // call), for the hot setter, binding and draw hooks of the motion route.
 struct PlainHookGuard {
     std::lock_guard<std::recursive_mutex> lock{mutex};
-    MediaCaptureScope media_scope;
     frame_timing::Scope timing;
     explicit PlainHookGuard(frame_timing::Bucket bucket=frame_timing::Bucket::State,
                             const char* entry=__builtin_FUNCTION()):timing(bucket,entry){}
@@ -1301,9 +1289,9 @@ void comparison_notice_text(Device& ctx) noexcept {
 }
 HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r) {
     CpuCallBoundary cpu;
-    // Observer getters can reenter documented device methods. Refuse before
-    // root maintenance or any renderer work; publishing a busy packet is too late.
-    if(!media_capture_exclusion.clear()) {
+    // Observer getters can reenter Present while the recursive capture lock
+    // is held. Refuse before admission, renderer work or the native Present.
+    {
         CaptureLock lock;
         const auto owner=devices.at(d);
         if(owner->lattice_query_depth) {
@@ -1311,7 +1299,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
             return D3DERR_INVALIDCALL;
         }
     }
-    if(media_capture_exclusion.clear())media_root::on_present_owner(d); // CPU-only maintenance, before any capture HookGuard
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     // Declare before the outer lock: final retirement can stop the profiler,
     // and must run after that lock is released. The holder keeps the CPU owner
@@ -1466,19 +1453,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
 #endif
     ctx.events=0; ctx.stats.frame=ctx.frame;
     const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
-    if(down&&!ctx.key_down){
-        const auto media=media_root::report_on_owner();const auto& startup=media.startup;const auto& service=media.services;
-        log("media_owned_snapshot report=%u startup=%u closed=%u claimed=%u entry_active=%u requested_qpc=%llu bootstrap_begin_qpc=%llu bootstrap_end_qpc=%llu ready_qpc=%llu first_device_qpc=%llu installed=%u debt=%u owner=%lu device=%08lx veto=%u consumer_admission=%u copy_admission=%u capacity_closed=%u",
-            unsigned(media.state),unsigned(startup.status),startup.closed,startup.request_claimed,startup.entry_active,
-            startup.requested_qpc,startup.bootstrap_begin_qpc,startup.bootstrap_end_qpc,startup.ready_qpc,startup.first_device_attempt_qpc,
-            media.installed,media.debt,static_cast<DWORD>(media.owner),static_cast<DWORD>(media.device),media.veto,media.consumer_admission,media.copy_admission,media.capacity_closed);
-        if(media.state==media_root::ReportState::available){
-            log("media_owned_services prepared=%u initialized=%u admission=%u assigned=%u draining=%u quarantine=%u leases=%u failed_mask=%u",
-                service.preparation_published,service.initialized,service.admission,service.assigned,service.draining,service.quarantined,service.leases,service.failed_mask);
-            for(unsigned slot=0;slot<2;++slot)log("media_owned_slot slot=%u presented=%llu binding=%llu clock_generation=%llu revision=%llu rate_numerator=%llu",
-                slot,service.presented[slot],service.binding[slot],service.clock_generation[slot],service.revision[slot],service.rate_numerator[slot]);
-        }
-    }
     if ((down&&!ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
     if(lattice_state_requested && down&&!ctx.key_down && !ctx.lattice_state){
         try {ctx.lattice_state=std::make_shared<lattice_state::Capture>();}
@@ -2642,8 +2616,6 @@ ULONG WINAPI release_factory(IDirect3D9* d) {
     return refs;
 }
 HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND window,DWORD flags,D3DPRESENT_PARAMETERS* p,IDirect3DDevice9** out) {
-    // First attempt closes the private media startup window before any work.
-    x3m_media_startup_device_attempt();
     // Which copy of the shipped-twice helper DLL this process loaded: the game
     // directory carries its own d3dx9_37.dll next to the system one. Logged at
     // the first device creation, when the game's imports are resolved. Ahead of
@@ -2656,8 +2628,7 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     }
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HRESULT hr=E_FAIL;IDirect3DDevice9* published=nullptr;
-    {
+    HRESULT hr=E_FAIL;
     HookGuard lock;
     // The startup motion route (including HDR/TAA/bloom) saves and resyncs
     // state through documented Get* calls. PUREDEVICE forbids those reads.
@@ -2676,9 +2647,7 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     presentation_parameters("create_after",0,window,p);
     if(SUCCEEDED(hr)&&p) cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // X3M_CULL_SMALL_PARTS_PX only: the pixel scale of the threshold
     log("create_device_result hr=%08lx",hr);
-    if(SUCCEEDED(hr)&&out&&*out){hook_device(*out,p&&p->hDeviceWindow?p->hDeviceWindow:window,window);published=*out;}
-    } // Canonical publication must occur outside the capture/registry locks.
-    if(published)media_root::on_device_created(published,media_capture_exclusion.clear());
+    if(SUCCEEDED(hr)&&out&&*out){hook_device(*out,p&&p->hDeviceWindow?p->hDeviceWindow:window,window);}
     return hr;
 }
 }
@@ -3230,7 +3199,7 @@ void initialize_log(HMODULE module) {
     light_phases::initialize(); // opt-in R7 whole-call timer
     submit_phases::initialize(); // X3M_SUBMIT_PHASES=1 only: twenty-two view_submit candidate stamps through the context lean stub, needs the frame group, same window
     loop_phases::initialize(); // X3M_LOOP_PHASES=1 only: six per-sector update stamps through the lean stub, needs the frame group, same window
-    media_cue::initialize(); // X3M_MEDIA_CUE_TRACE=1 / X3M_MEDIA_CUE_CACHE=1 only: one gate on the media-record allocator, same window
+    media_cue::initialize(); // default ID2 skip plus optional trace/cache: one verified allocator gate
     if(const auto observer=media_cue::video_lock_observer()){ // trace on: the surface shell's lock witness (needs --ownership to see the game's surfaces)
         ownership::set_surface_lock_observer(observer);
         log("media_video_witness registered=1 blit_range=%08lx-%08lx interval=%u",static_cast<unsigned long>(media_cue::sites::kVideoBlitBegin),static_cast<unsigned long>(media_cue::sites::kVideoBlitEnd),media_cue::detail::video_blit_line_interval);

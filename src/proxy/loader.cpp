@@ -22,9 +22,6 @@
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
-#include "media_startup.h"
-#include "media_root.h"
-#include "media_startup_abi.h"
 #include <string>
 
 namespace {
@@ -38,7 +35,6 @@ bool locked_prefix_enabled = false;
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module); // logs the proxy_identity/proxy_options header first
-    x3m::media_root::configure(); // callback registration only; matched startup return constructs the root
     const bool admission_requested=x3m::ownership::process_admission_monitor()!=nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",
         admission_requested,admission_requested);
@@ -198,12 +194,7 @@ X3M_FORWARDED_EXPORT(PSGPSampleTexture, "ret $20")
 X3M_FORWARDED_EXPORT(Direct3D9EnableMaximizedWindowedModeShim, "ret $4")
 #undef X3M_FORWARDED_EXPORT
 
-// Capture the real export-entry frame before this unchanged C++ body adjusts
-// ESP. Startup helper work is independently transparent to both its input and
-// its actual output; factory wrapping/admission/telemetry remain in this body.
-extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk);
-X3M_MEDIA_STARTUP_EXPORT("_Direct3DCreate9@4","_x3m_direct3d_create9_body@4")
-extern "C" IDirect3D9* WINAPI x3m_direct3d_create9_body(UINT sdk) {
+extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<IDirect3D9* (WINAPI*)(UINT)>(entry("Direct3DCreate9"));

@@ -71,12 +71,8 @@ set_source_files_properties("${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
   PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
 add_library(d3d9 SHARED
   "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
-  src/media/playback_runtime.cpp src/proxy/media_playback.cpp
-  src/media/lav_worker.cpp src/media/package_config.cpp
-  src/proxy/media_root.cpp src/proxy/media_services.cpp src/proxy/media_engine_adapter.cpp
-  src/proxy/media_destination.cpp src/proxy/media_presentation_gate.cpp src/proxy/media_presentation_gate_win32.cpp
   src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp
-  src/proxy/loader.cpp src/proxy/media_startup.cpp src/proxy/capture.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp src/proxy/lattice_state_capture.cpp src/proxy/comparison_notice.cpp
+  src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp src/proxy/lattice_state_capture.cpp src/proxy/comparison_notice.cpp
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/sun_light_poll.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp src/proxy/fade_region.cpp
@@ -92,21 +88,12 @@ add_library(d3d9 SHARED
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
 x3m_add_fog_field_assets(d3d9)
 target_compile_features(d3d9 PRIVATE cxx_std_17)
-# Headers from the pinned public LAV SDK used by the canonical worker. The
-# provider package/build owner supplies this path; no decoder path is guessed.
-set(X3M_LAV_INCLUDE_DIR "" CACHE PATH "Pinned LAV SDK include directory")
-if(NOT EXISTS "${X3M_LAV_INCLUDE_DIR}/LAVVideoSettings.h" OR
-   NOT EXISTS "${X3M_LAV_INCLUDE_DIR}/LAVSplitterSettings.h")
-  message(FATAL_ERROR "Set X3M_LAV_INCLUDE_DIR to the reviewed LAV SDK include directory")
-endif()
-target_include_directories(d3d9 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated" "${CMAKE_CURRENT_SOURCE_DIR}/src/media")
-target_include_directories(d3d9 SYSTEM PRIVATE "${X3M_LAV_INCLUDE_DIR}")
+target_include_directories(d3d9 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 add_dependencies(d3d9 x3m_source_commit)
 # Keep compiler EH bookends out of injected CPU-state boundaries: MinGW SJLJ
 # registration otherwise runs before capture and unregistration after restore.
 # These adapters do not throw; the remaining sources retain their EH policy.
 set_source_files_properties(src/ownership/application_admission_abi.cpp
-  src/proxy/media_startup.cpp src/proxy/media_root.cpp src/proxy/media_engine_adapter.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/scene_hook.cpp
   src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/voice_dmo_fallback.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
@@ -141,5 +128,5 @@ target_compile_options(d3d9 PRIVATE -Wall -Wextra -Wno-cast-function-type -msse2
 target_link_options(d3d9 PRIVATE -static -static-libgcc -static-libstdc++ -Wl,--kill-at -Wl,--enable-stdcall-fixup)
 # Only _except_handler3 comes from msvcrt.dll; never substitute broad msvcrt-os,
 # which can silently redirect the existing UCRT imports.
-target_link_libraries(d3d9 PRIVATE "${X3M_COMPOSITOR_RUNTIME}" dxguid advapi32 ole32 oleaut32 amstrmid strmiids uuid version winmm ddraw)
+target_link_libraries(d3d9 PRIVATE "${X3M_COMPOSITOR_RUNTIME}" dxguid advapi32)
 set_target_properties(d3d9 PROPERTIES PREFIX "" OUTPUT_NAME "d3d9")

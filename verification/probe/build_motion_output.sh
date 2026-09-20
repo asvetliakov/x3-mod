@@ -7,7 +7,7 @@
 set -eu
 cd "$(dirname "$0")"
 mkdir -p build/motion-output-seam
-FLAGS="-std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -I../../src/media"
+FLAGS="-std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2"
 # The fixture links the production TemporalPass as its reference resolve (TAA
 # environments) with the same embedded resolve bytecode the DLL carries, and
 # the production SunShadowApplyPass and ShadowReplayPass it drives directly in the "sunapply" mode.
@@ -46,7 +46,7 @@ SHARED=$(find "$OBJECTS" -name '*.obj' ! -name 'capture.cpp.obj' ! -name 'motion
 i686-w64-mingw32-g++ -shared -static -static-libgcc -static-libstdc++ -Wl,--kill-at -Wl,--enable-stdcall-fixup \
   -o build/motion-output-seam/d3d9.dll build/motion-output-seam/capture.o build/motion-output-seam/motion_output.o build/motion-output-seam/camera_state.o build/motion-output-seam/sun_light_poll.o build/motion-output-seam/scene_hook.o build/motion-output-seam/hdr_pass.o build/motion-output-seam/temporal_pass.o build/motion-output-seam/linear_emission_pass.o $SHARED \
   "$BRIDGE/compositor_bridge.o" "$BRIDGE/compositor_bridge_seh_gnu.obj" \
-  "$BRIDGE/libx3m_compositor_seh_runtime.a" ../../src/proxy/d3d9.def -ldxguid -ladvapi32 -lole32 -loleaut32 -lamstrmid -lstrmiids -luuid -lversion -lwinmm -lddraw
+  "$BRIDGE/libx3m_compositor_seh_runtime.a" ../../src/proxy/d3d9.def -ldxguid -ladvapi32
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_motion_output_fixture_configure
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_camera_state_fixture_install
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_scene_hook_fixture_install

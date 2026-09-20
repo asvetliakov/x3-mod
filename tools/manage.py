@@ -250,7 +250,6 @@ def main():
     parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle (default: X3, the arm64/FEX bottle; X3M_BOTTLE overrides; the old x86_64/Rosetta bottle is Steam)')
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
                         help='DLL to install (defaults to build/d3d9.dll; other actions do not use it)')
-    parser.add_argument('--media-package', type=Path, help='Accepted staged package.json for local media deployment')
     parser.add_argument('--capture-start', type=int, default=120)
     parser.add_argument('--capture-frames', type=int, choices=range(0, 65), metavar='0..64', default=1,
                         help='Consecutive capture frames (X3M_CAPTURE_FRAMES). Above 8 is meant for the raw --taa-debug dumps (32 frames separate the 8-frame jitter ripple from slower crawl): about 40 MB per frame at 1280x768 on the HDR route (hdr + taa rgba16f 7.9 MB each, motion rgba32f 15.7 MB, depth 3.9 MB or 15.7 MB on the sun lane, present bgra8 3.9 MB), so 1.3-1.7 GB for 32 frames')
@@ -991,7 +990,7 @@ def main():
                 commit, origin = source_commit(source)
                 media_package.install(game, source,
                     {'source': str(source), 'source_commit': commit, 'manifest_source': origin},
-                    args.media_package.resolve(strict=True) if args.media_package else None)
+                    retire_media=True)
                 print(f'Installed {dll}; bottle configuration unchanged.')
             elif args.action == 'uninstall':
                 retained = media_package.uninstall(game)
@@ -1345,7 +1344,8 @@ def main():
                     if 'media' in latest:
                         media_package.require(latest.get('project') == 'x3-modern-renderer',
                                               'unowned install manifest')
-                    media_package.selection_files(game, latest)
+                    # Playback is retired: legacy package payloads are needed
+                    # only for managed rollback/removal, never for launch.
                 if args.dry_run:
                     print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
                                       'overrides': overrides, 'd3dx': args.d3dx,

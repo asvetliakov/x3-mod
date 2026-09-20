@@ -621,7 +621,9 @@ def transaction(game, old, new, source, *, fault=lambda phase: None):
     return new
 
 
-def install(game, source, provenance, package=None, *, fault=lambda phase: None):
+def install(game, source, provenance, package=None, *, retire_media=False, fault=lambda phase: None):
+    # Normal renderer installs retire the active playback selection. Keep its
+    # immutable payload and exact old snapshot for the existing rollback path.
     with installer_lock(game):
         no_journal(game)
         old = current(game)
@@ -629,9 +631,10 @@ def install(game, source, provenance, package=None, *, fault=lambda phase: None)
             snapshot_paths(game, old['previous'])
         exe = identity(safe(game, 'X3AP.exe'))
         new = dict(provenance, schema=2, project='x3-modern-renderer', sha256=sha256(source))
+        require(not (package and retire_media), 'cannot deploy and retire media together')
         if package:
             new['media'] = publish_media(game, package)
-        elif old and 'media' in old:
+        elif old and 'media' in old and not retire_media:
             # Updating just the proxy preserves an existing managed media selection.
             new['media'] = old['media']
         result = transaction(game, old, new, source, fault=fault)
