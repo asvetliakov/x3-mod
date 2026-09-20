@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "scope": "Combined fourteen-family spatial fog and directional-shaft production sources",
+  "source_commit": "bcf1021a",
+  "report": {
+    "path": "/tmp/x3-fog-families-shafts-family-inputs-v1/report.json",
+    "sha256": "dafcddd41cbb280ccc6017751abfe7bc7faaf62cd72adf9ad810412a16bba033"
+  },
+  "execution": {
+    "command": [
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "/tmp/x3-fog-families-shafts-gpu-v1/fog_spatial_fixture.exe",
+      "Z:\\private\\tmp\\x3-fog-families-shafts-family-inputs-v1\\cases.txt",
+      "Z:\\private\\tmp\\x3-fog-families-shafts-family-inputs-v1",
+      "--families"
+    ],
+    "returncode": 0,
+    "seconds": 8.127905958,
+    "bottle": {
+      "name": "X3",
+      "wine_arch": "arm64",
+      "environment": {
+        "FEX_X87REDUCEDPRECISION": "1",
+        "WINEMSYNC": "1"
+      },
+      "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+    },
+    "executable_sha256": "c1e251eacbcc8d8ecf659557a8fc570301cd83f68aba501ffcaf9b4f7a311c74",
+    "inputs_sha256": "512bdb0d00502b3133fd36613f737ed54d36155076e45af8f74abe30093cbe67",
+    "build_sha256": "5b00d7d45c2a6491a97562cf611bd30646bf5250d44d91f89e27110c073781da"
+  },
+  "checks": 145,
+  "cases": 18,
+  "passed": true,
+  "exact_revisits": true,
+  "lock": {
+    "lock_wait_seconds": 3.0409999999952975e-06,
+    "child_elapsed_seconds": 8.386028415999998,
+    "exit_code": 0
+  },
+  "review": "Independent deep integration and runtime review clear; 31 build and 50 input bindings revalidated; raw outputs independently checked",
+  "reused_evidence": {
+    "shaft_source": "58d89fd0",
+    "state_checks": 132,
+    "numeric_cases": 40,
+    "reason": "Shaft source/program bytes unchanged, original two family assets unchanged"
+  },
+  "limitations": [
+    "Combined family fixture is 64x48 synthetic sky and unshadowed fallback",
+    "No family-by-shadow matrix required for unchanged generic shadow arithmetic",
+    "Full host suite in progress; shaft transaction cost remains pending",
+    "Native Windows and flight appearance unverified; no candidate installation"
+  ]
+}

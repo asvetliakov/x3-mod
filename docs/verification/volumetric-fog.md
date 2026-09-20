@@ -714,3 +714,18 @@ full-pixel repair, game appearance, native Windows execution or loading latency.
 No game or installed build changed. Independent runtime review cleared all
 145 checks and reproduced the 18-case report from raw readbacks; the original
 host checkpoint above remains historical evidence.
+
+
+### Fourteen-family and shaft integration GPU checkpoint (2026-09-20)
+
+The isolated combined source (`bcf1021a`) passes **145 checks / 18 executions**
+in X3 (arm64 Wine, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), **8.128 s**
+fixture elapsed. All fourteen profiles render through the combined shaders;
+family revisits and Reset restoration remain exact. Independent deep review
+revalidated 31 build inputs and 50 prepared inputs and checked raw readbacks.
+The unchanged shaft source and original asset bytes retain the prior 132 state
+checks and 40 numerical cases; this combined harness exercises unshadowed
+fallback on a synthetic sky view, not a new shadow/geometry matrix.
+The [compact record](../../verification/results/fog-families-shafts-integration-2026-09-20.json)
+binds execution and evidence. Full host qualification and shaft transaction cost
+remain pending; native Windows and flight appearance are unverified. No install.
