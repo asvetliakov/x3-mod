@@ -722,3 +722,9 @@ Independent deep review validated five relevant instruction ranges (717 rows /
 and check: `/tmp/x3-media-seek-contract.md`,
 `/tmp/x3-media-seek-contract-check.json`. No hook or game decoder change is
 qualified by these findings.
+
+
+The separate [media-record lifetime investigation](media-record-lifetime.md)
+traces callback/teardown-before-unlink retirement and conditional destination
+retirement. It establishes no safe interval for added synchronous COM calls;
+no runtime reentrant free or new hook qualification is claimed.
