@@ -1,0 +1,155 @@
+{
+  "status": "pass",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "exe_sha256": "68a842df4a359e53f3881edf1469b2d32b51f4b476292238d14fe4d49adcca29",
+  "manifest_sha256": "78926f23defea13186f081ff972f425dce36ba5cc8066f3d1a697df971fef4ce",
+  "build": {
+    "command": [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-ffp-contract=off",
+      "-static",
+      "-static-libgcc",
+      "-static-libstdc++",
+      "/private/tmp/x3-lattice-gpu-witness/verification/probe/lattice_gpu_fixture.cpp",
+      "-o",
+      "/tmp/x3-lattice-gpu-build-v3/lattice_gpu_fixture.exe",
+      "-ld3d9"
+    ],
+    "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "source": "/private/tmp/x3-lattice-gpu-witness/verification/probe/lattice_gpu_fixture.cpp",
+    "source_sha256": "053f3597d42d784d17ffc552245ff2cf5bd216c0a189b4c3d13d055c19ca4bdf",
+    "exe_sha256": "68a842df4a359e53f3881edf1469b2d32b51f4b476292238d14fe4d49adcca29"
+  },
+  "native_windows": "portable D3D9 source and cross-compilation only; not executed",
+  "meaning": "repeatable subset owner/alpha/depth observations, not runtime payload or RGB/TAA proof",
+  "observations": 48,
+  "repeats_before_reset": 3,
+  "repeats_after_reset": 1,
+  "tile": [
+    794,
+    169,
+    12,
+    10
+  ],
+  "alpha_rejection": {
+    "42": {
+      "lost_pixels": 0,
+      "lost_output_alpha_min": null,
+      "lost_output_alpha_max": null
+    },
+    "43": {
+      "lost_pixels": 0,
+      "lost_output_alpha_min": null,
+      "lost_output_alpha_max": null
+    },
+    "47": {
+      "lost_pixels": 0,
+      "lost_output_alpha_min": null,
+      "lost_output_alpha_max": null
+    }
+  },
+  "limits": [
+    "candidate source DDS identity and wrap are conditional, not runtime payload/address proof",
+    "seven source triangles only; tile is subset coverage, not full scene",
+    "zero depth/slope bias, solid fill and disabled scissor/clip planes are explicit uncaptured conditions",
+    "shader dependency slice preserves bytecode modifiers but is not original complete PS driver execution",
+    "NumPy round-to-nearest-even FP16 is source reconstruction, not captured vertex-buffer payload",
+    "uncaptured tangent/binormal zeroed; mathematically dead to observed outputs with captured light-loop0",
+    "no RGB, TAA, universal depth error bound or native-Windows execution claim"
+  ],
+  "elapsed_seconds": 4.888868417,
+  "checkpoint": "conditional-owner-alpha-depth",
+  "production_fix": false,
+  "full_report": "/tmp/x3-lattice-gpu-run-v4/summary.json",
+  "full_report_sha256": "75d52e599e3f1319a211a21dd670a6e513f132cc3b7bd4621270b5f814ca49a8",
+  "host_tests": 7,
+  "lock_timings": "/tmp/x3-lattice-gpu-lock-timings.json",
+  "witnesses": [
+    {
+      "arm": "candidate_wrap_alpha_test",
+      "face": -1,
+      "point": [
+        799,
+        173
+      ],
+      "owner": 180048,
+      "aux_depth": 0.999902606010437,
+      "depth_residual_fp32_ulps": -3.0,
+      "sampled_diffuse_alpha": 0.757352948,
+      "output_alpha": 0.757352948,
+      "uv": [
+        -7.33614206,
+        0.00214141863
+      ]
+    },
+    {
+      "arm": "candidate_wrap_alpha_test",
+      "face": -1,
+      "point": [
+        800,
+        173
+      ],
+      "owner": 180048,
+      "aux_depth": 0.9999024868011475,
+      "depth_residual_fp32_ulps": 0.0,
+      "sampled_diffuse_alpha": 0.317156851,
+      "output_alpha": 0.317156851,
+      "uv": [
+        -7.40762949,
+        0.0825782046
+      ]
+    },
+    {
+      "arm": "candidate_wrap_alpha_test",
+      "face": -1,
+      "point": [
+        798,
+        174
+      ],
+      "owner": 180048,
+      "aux_depth": 0.9999026656150818,
+      "depth_residual_fp32_ulps": 0.0,
+      "sampled_diffuse_alpha": 0.472549021,
+      "output_alpha": 0.472549021,
+      "uv": [
+        -7.22989416,
+        0.0495366342
+      ]
+    },
+    {
+      "arm": "candidate_wrap_alpha_test",
+      "face": -1,
+      "point": [
+        797,
+        175
+      ],
+      "owner": 180048,
+      "aux_depth": 0.9999028444290161,
+      "depth_residual_fp32_ulps": 0.0,
+      "sampled_diffuse_alpha": 0.302450985,
+      "output_alpha": 0.302450985,
+      "uv": [
+        -7.12332964,
+        0.097073324
+      ]
+    }
+  ],
+  "conclusion": "Under declared source-geometry and candidate-texture/state conditions face47 survives raster and alpha at the dark center, but depth differs by -3 float32 ULPs; face42 alone matches depth. No runtime ownership, RGB cause or TAA fix established."
+}

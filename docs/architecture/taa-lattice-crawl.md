@@ -954,3 +954,37 @@ Helper: `/tmp/x3-lattice-coverage-oracle/tools/analysis/lattice_rgb_admission.py
 Reproduce with `python3 tools/analysis/lattice_rgb_admission.py`; generated data
 remain under the existing ignored `verification/results/lattice-coverage-oracle/`
 directory.
+
+## 21. Conditional GPU owner/alpha/depth witness (2026-09-20)
+
+A standalone D3D9 fixture now measures a seven-triangle source subset with the
+captured vertex program/constants and its alpha dependency slice. It preserves
+centroid/partial-precision modifiers and the production motion/depth export.
+The installed run48 source `b698c32c` restores native mip bias for this exact
+alpha-tested pair, supporting the fixture's bias 0 despite the global -0.5 option.
+Source DDS contents/wrap and reconstructed FP16 vertex bytes remain conditional;
+zero depth/slope bias, solid fill and disabled scissor/clip planes are explicit
+uncaptured conditions. This is not complete original pixel-shader execution.
+
+The owner run passes **48 tile observations**, three repeats before Reset and
+one after, plus alpha-zero/one attachment controls. Independent source/evidence
+review and seven host tests pass. Bottle X3/arm64 with both required emulation
+environment values 1 took **4.888868 seconds**, lock wait 0.000004 seconds.
+The [compact record](../../verification/results/lattice-gpu-witness.json) binds
+inputs, source, executable, observations and limits; raw observations remain local.
+
+Combined subset coverage has 14 pixels: 12 assigned to face47 and two to face42.
+Face47 owns all four named centers, with auxiliary-depth residuals **[-3,0,0,0]
+float32 ULPs** against the game capture. Its candidate alpha values are
+[0.757353,0.317157,0.472549,0.302451], all above ref1/255; enabling alpha test
+changes none of the candidate tiles. Face42 rendered alone exactly matches the
+dark center's captured depth.
+
+Thus neither raster exclusion nor candidate alpha rejection removes face47 at
+the dark center under these fixture conditions. The fixture reproduces the three
+bright-center depth values but **does not reproduce the dark-center depth**.
+Face42's exact match is compatible evidence, not proof of runtime ownership.
+Missing runtime payload/state parity remains consequential; no RGB explanation,
+moving-crawl correction, TAA quality, performance or native Windows acceptance
+follows. Further work must resolve those inputs rather than tune this conditional
+fixture to the four observed colours.
