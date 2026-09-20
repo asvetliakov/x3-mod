@@ -44,6 +44,8 @@ struct CopyDepth {
 std::recursive_mutex registry_mutex;
 std::unordered_map<IUnknown*, Node*> application_nodes;
 std::unordered_map<IUnknown*, Node*> native_nodes;
+// Assigned only on new device/surface adoption under registry_mutex.
+std::uint64_t last_surface_lease_serial = 0;
 
 // Step B locked-prefix records, keyed by the vertex buffer node (erased with
 // it), guarded by registry_mutex. One process-wide fixed table: the option is
@@ -54,6 +56,7 @@ LockedPrefixStatistics prefix_stats;
 struct Node {
     Kind kind;
     ULONG refs = 1;
+    std::uint64_t lease_serial = 0, lease_generation = 1;
     IUnknown* backend;
     IUnknown* application = nullptr;
     IUnknown* identity = nullptr; // Borrowed, stable while backend is owned.
@@ -874,6 +877,8 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
             if (options && kind == Kind::Factory) static_cast<Factory*>(fresh)->options = *options;
             if (options && kind == Kind::Device) static_cast<Device*>(fresh)->options = *options;
             fresh->identity = identity;
+            if (kind == Kind::Device || kind == Kind::Surface)
+                fresh->lease_serial = detail::next_surface_serial(last_surface_lease_serial);
             if(kind==Kind::VertexBuffer||kind==Kind::IndexBuffer)
                 fresh->lock_sidecar=acquire_lock_sidecar(static_cast<Device*>(parent),static_cast<IDirect3DResource9*>(owned),identity);
             native_nodes.emplace(identity, fresh);
@@ -1362,6 +1367,7 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
         node->execution.before_reset();
         {
             std::lock_guard<std::recursive_mutex> lock(registry_mutex);node->resetting=true;
+            detail::advance_surface_generation(node->lease_generation);
             if(node->options.track_buffer_lock_attempts){
                 if(node->buffer_lock_generation!=UINT64_MAX)++node->buffer_lock_generation;
                 else fail_buffer_tracking(node,E_FAIL);
@@ -1644,6 +1650,65 @@ HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out, const Options& 
     if (has_ex(owned_native, IID_IDirect3D9Ex)) return E_NOINTERFACE;
     return adopt(nullptr, Kind::Factory, owned_native, IID_IDirect3D9, reinterpret_cast<void**>(out), &options);
 }
+
+namespace {
+SurfaceLeaseIdentity describe_surface_lease(Node* device_node, Node* surface) noexcept {
+    const auto* device = static_cast<Device*>(device_node);
+    if (device->retiring || device->resetting || device->lost) return {};
+    return {device->lease_serial, device->lease_generation, surface->lease_serial};
+}
+HRESULT surface_lookup_result(detail::SurfaceLookup result) noexcept {
+    switch (result) {
+    case detail::SurfaceLookup::Ready: return S_OK;
+    case detail::SurfaceLookup::Invalid: return E_INVALIDARG;
+    case detail::SurfaceLookup::Unavailable: return S_FALSE;
+    case detail::SurfaceLookup::Overflow: return E_FAIL;
+    }
+    return E_FAIL;
+}
+}
+// Exception-enabled registry bodies never unwind through the bounded no-EH
+// shells. Only plain nonthrowing stores follow a successful logical retain.
+__attribute__((noinline)) HRESULT snapshot_surface_identity_core(IDirect3DDevice9* device,
+        IDirect3DSurface9* candidate, SurfaceLeaseIdentity* out) noexcept {
+    if (!out) return E_POINTER;
+    try {
+        return surface_lookup_result(detail::lookup_surface(registry_mutex, application_nodes,
+            static_cast<IUnknown*>(device), static_cast<IUnknown*>(candidate), Kind::Device, Kind::Surface,
+            describe_surface_lease, nullptr, *out));
+    } catch (...) { *out = {}; return E_FAIL; }
+}
+__attribute__((noinline)) HRESULT acquire_surface_lease_core(IDirect3DDevice9* device,
+        IDirect3DSurface9* candidate, const SurfaceLeaseIdentity& expected, bool occupied) noexcept {
+    if (occupied) return E_INVALIDARG;
+    try {
+        SurfaceLeaseIdentity observed;
+        return surface_lookup_result(detail::lookup_surface(registry_mutex, application_nodes,
+            static_cast<IUnknown*>(device), static_cast<IUnknown*>(candidate), Kind::Device, Kind::Surface,
+            describe_surface_lease, &expected, observed));
+    } catch (...) { return E_FAIL; }
+}
+// Scoped no-EH entry shells prevent SJLJ registration before the save or after
+// restoration. Registry containers and their cleanup retain normal exceptions.
+// Ordinary-return guarantee only: no SEH/nonlocal-exit recovery is asserted.
+#pragma GCC push_options
+#pragma GCC optimize("no-exceptions")
+__attribute__((noinline)) HRESULT snapshot_surface_identity(IDirect3DDevice9* device,
+        IDirect3DSurface9* candidate, SurfaceLeaseIdentity* out) noexcept {
+    CounterAbiState incoming;
+    const HRESULT result = snapshot_surface_identity_core(device, candidate, out);
+    incoming.restore();
+    return result;
+}
+__attribute__((noinline)) HRESULT acquire_surface_lease(IDirect3DDevice9* device,
+        IDirect3DSurface9* candidate, const SurfaceLeaseIdentity& expected, SurfaceLease& out) noexcept {
+    CounterAbiState incoming;
+    const HRESULT result = acquire_surface_lease_core(device, candidate, expected, out.get() != nullptr);
+    if (result == S_OK) out.retained_.adopt_retained(candidate);
+    incoming.restore();
+    return result;
+}
+#pragma GCC pop_options
 
 HRESULT get_execution_view(IDirect3DDevice9* application, ExecutionView* out) noexcept {
     PreserveExecution preserve;
