@@ -1189,3 +1189,48 @@ work was consumed. Offer tokens cannot outlive their runtime.
 Production admission remains disabled. Actual transport integration, engine hooks
 and CPU/LastError envelopes, destination/Reset lifetime and native Windows runtime
 remain open. No Wine/game execution, DLL build or installation occurred.
+
+
+### Staged presentation deferral gate (2026-09-20)
+
+The default-off [presentation gate API](../architecture/media-presentation-gate.md)
+now has a production-reusable encoder, admission state and checked local patch
+transaction. There is no production caller or automatic game detour. Host checks
+pass **233 assertions**; root cross-compilation and the corrected synthetic x86
+fixture pass **576 checks, zero failures** on bottle **X3**, WineArch **arm64**,
+with `FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. The locked child took
+**3.962063 s**, lock wait **0.000003125 s**. Independent source/evidence review is
+clear within the stated scope. The [compact record](../../verification/results/media-presentation-gate-2026-09-20.json)
+binds commands, binaries, local witnesses, counts and limitations.
+
+The actual 27-byte emitted gate preserves seeded register/flags/LastError and FP
+state at all four stack residues; active copy cleanup still defers nested calls,
+an inaccessible renderer root is never read on that route, and forwarding
+resumes after depth drops. Checked installation/restoration run through real
+Win32 APIs on the synthetic site; failure/rollback/protection-debt cases use the
+production transaction with a mock Platform. A locked, written native
+DEFAULT-pool surface is unlocked and finally released before depth reaches zero.
+The subsequent synthetic continuation calls native Present/TestCooperativeLevel/
+Reset once each; Reset returns **S_OK**. That continuation **forces Reset**; it
+does not reproduce a game lost-device transition or validate canonical-wrapper
+acquisition. Fixture executable-identity/window predicates are stand-ins.
+
+The preserved v1 witness failed **22 of 510 checks**, including all eight ungated
+baseline calls, on comparison with the requested MXCSR seed. Its frozen EXE is
+`/tmp/x3-media-presentation-gate-v1-failed/media_presentation_gate_fixture.exe`,
+SHA256 `6b25d6dc6fcbbda3c310b1ec93bedd75b6b8e7b400cce4d91970b5d3cb06c816`.
+The v2 delta is fixture-only: immediate seed/entry/return snapshots, output
+sampling before x87 helpers, and caller MXCSR capture before its first x87 save.
+All **22** calls request `0x3fa5` but immediately observe `0x3f80`; applied,
+entry, return, output and post-x87 words all remain `0x3f80`. Full 32-bit
+represented-entry equality is retained without masking. Requested nonzero
+sticky bits are unseedable here, so their preservation remains **unverified**.
+The failed raw log and lock record are retained alongside the accepted v2 log.
+
+This checkpoint does not qualify binding/table mutation exclusion, actual engine
+thread ownership, every Reset entry, SEH/nonlocal cleanup, game loss/recovery or
+native Windows execution. No production media copy, game hook or admission was
+enabled, no game was launched, and no installed binary was changed. Parent
+rechecks confirm protected EXE and bottle configuration unchanged. The gate's
+instruction-cost review finds one counter read, four temporary stack bytes and
+no calls/allocations/locks; no game performance benefit is measured.

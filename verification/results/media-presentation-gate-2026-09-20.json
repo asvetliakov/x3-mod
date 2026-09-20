@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "date": "2026-09-20",
+  "scope": "Staged media presentation gate; relocated synthetic helper only; no production game detour or admission",
+  "source": {
+    "base_commit": "4c5ca4e765b9c5e71adbdde52d9906a56828e636",
+    "branch": "feat/media-presentation-gate",
+    "state": "uncommitted additions at qualification; parent owns reviewed checkpoint commit",
+    "production_files": [
+      "src/proxy/media_presentation_gate.h",
+      "src/proxy/media_presentation_gate.cpp",
+      "src/proxy/media_presentation_gate_win32.h",
+      "src/proxy/media_presentation_gate_win32.cpp"
+    ],
+    "production_combined_sha256": "9793d427a8c33302c042be85d5e710b5158f9ec615f79d42f1d0cabde3825706",
+    "fingerprint_encoding": "listed relative pathname UTF-8 + NUL + file bytes + NUL, in listed order",
+    "fixture": "verification/probe/media_presentation_gate_cpu_fixture.cpp",
+    "fixture_v2_sha256": "11688a76d8650485a69c6eec06ae0acdd95dca9f1abf5c02fe332bffa4d3ced4",
+    "v1_to_v2_delta": "fixture-only MXCSR sampling/calibration and explicit unsupported hostile-status coverage; no production source delta"
+  },
+  "host": {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "verification.analysis.test_media_presentation_gate"
+    ],
+    "environment": {
+      "PYTHONPATH": "verification/probe"
+    },
+    "tests": 1,
+    "assertions": 233,
+    "failures": 0
+  },
+  "build": {
+    "command": [
+      "python3",
+      "verification/probe/build_media_presentation_gate.py"
+    ],
+    "compiler": "i686-w64-mingw32-g++",
+    "flags": [
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fno-exceptions",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-DWIN32_LEAN_AND_MEAN",
+      "-DNOMINMAX"
+    ],
+    "binary": "/tmp/x3-media-presentation-gate/build/verification/media-presentation-gate/media_presentation_gate_fixture.exe",
+    "binary_sha256": "9b3ce67fb9b17c931cbbccbe73a75c263c4991c44d9e4e574006d8036387846c",
+    "result": "parent cross-compilation passed"
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "X3M_FIXTURE_BOTTLE": "X3",
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    }
+  },
+  "accepted_v2": {
+    "cwd": "/tmp/x3-media-presentation-gate",
+    "command": [
+      "python3",
+      "verification/probe/wine_lock.py",
+      "--timings-json",
+      "/tmp/x3-media-presentation-gate-v2-lock.json",
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "--dll",
+      "d3d9=b",
+      "/tmp/x3-media-presentation-gate/build/verification/media-presentation-gate/media_presentation_gate_fixture.exe"
+    ],
+    "stdout_stderr_redirect": "/tmp/x3-media-presentation-gate-v2-runtime.log",
+    "runtime_log_sha256": "9c949e01150ac0ddf2ea9f37f5ddc6824d2d6f15e0a59aea316c985182b49c2e",
+    "lock_record": "/tmp/x3-media-presentation-gate-v2-lock.json",
+    "lock_wait_seconds": 3.124999999999656e-06,
+    "child_elapsed_seconds": 3.9620630410000004,
+    "exit_code": 0,
+    "checks": 576,
+    "failures": 0,
+    "native_calls": {
+      "Present": 1,
+      "TestCooperativeLevel": 1,
+      "Reset": 1,
+      "Reset_HRESULT": "0x00000000"
+    },
+    "mxcsr": {
+      "calls": 22,
+      "requested": "0x00003fa5",
+      "applied_entry_return_snapshot_after_x87": "0x00003f80",
+      "comparison": "all 32 represented bits, exact equality; no mask",
+      "requested_nonzero_status_observed": 0,
+      "requested_nonzero_status_preservation_verified": false
+    }
+  },
+  "rejected_v1": {
+    "binary": "/tmp/x3-media-presentation-gate-v1-failed/media_presentation_gate_fixture.exe",
+    "binary_sha256": "6b25d6dc6fcbbda3c310b1ec93bedd75b6b8e7b400cce4d91970b5d3cb06c816",
+    "runtime_log": "/tmp/x3-media-presentation-gate-v1-runtime.log",
+    "runtime_log_sha256": "3a63a587a39d79830e37c90411394e448055ff22d5e914422cce9db54737afab",
+    "lock_record": "/tmp/x3-media-presentation-gate-v1-lock.json",
+    "lock_wait_seconds": 4.083000000001946e-06,
+    "child_elapsed_seconds": 6.590372041,
+    "exit_code": 1,
+    "checks": 510,
+    "failures": 22,
+    "failure": "Requested MXCSR seed equality failed in every invocation, including all eight ungated baselines; native-vs-gated comparisons passed",
+    "command_relation": "same cwd/environment/Wine argv as v2; --timings-json and stdout/stderr redirect use v1 paths; the then-current built executable is now retained at the frozen path"
+  },
+  "independent_review": "review_media_gate: final clear within documented source, fixture and evidence scope",
+  "coverage": [
+    "Actual emitted 27-byte gate at four incoming stack residues; GPRs, flags, LastError, XMM0-7, live x87 image, represented MXCSR",
+    "Inaccessible renderer root while deferred; nested helper during final cleanup; forwarding after depth drops",
+    "Real successful Win32 allocation/protection/atomic publication/cache flush/restoration on synthetic site",
+    "Production transaction API failure matrix through mock Platform; ownership, rollback/retry, cache/protection debts and foreign replacement refusal",
+    "Real native D3D9 DEFAULT-pool surface LockRect/write/UnlockRect/final Release with active copy depth; subsequent forced native Reset succeeds"
+  ],
+  "limitations": [
+    "Fixture executable-identity and install-window predicates are synthetic stand-ins",
+    "Mock Platform failures do not inject failures into actual Win32 APIs",
+    "Synthetic continuation forces Reset; no game lost-device/HRESULT branch or actual loss/recovery qualification",
+    "No canonical-wrapper destination acquisition or engine binding/table mutation exclusion qualification",
+    "No complete engine/native Reset observer coverage or actual engine-thread ownership qualification",
+    "No SEH, longjmp or other nonlocal cleanup guarantee",
+    "Requested nonzero MXCSR sticky status is unseedable in this FEX run; preservation of that hostile seed remains unverified",
+    "No native Windows runtime verification, game launch, production hook enable or copy admission",
+    "Instruction-cost review only; no game performance measurement"
+  ],
+  "protected_inputs": "Parent rechecked game EXE, bottle configuration and installed DLL unchanged; no candidate DLL built or installed",
+  "documents": {
+    "api": "docs/architecture/media-presentation-gate.md",
+    "ledger": "docs/verification/media-cues.md"
+  }
+}
