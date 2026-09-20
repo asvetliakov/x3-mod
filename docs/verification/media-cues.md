@@ -1364,3 +1364,66 @@ identity invalidation. Independent review is clear; two tests pass 479 checks,
 zero failures/allocations, with i686/no-x87 checks passing. Adjacent non-reentrant
 submit/ack remains mandatory. Actual worker transfer and injected caller ABI
 remain separately qualified; no Wine, DLL build or install occurred.
+### Ordinary-startup scheduling adapter (2026-09-20)
+
+The [startup adapter](../architecture/media-startup.md) now captures the actual
+24-byte `Direct3DCreate9` export-entry span and schedules at most one bootstrap
+thread after the qualified ordinary factory returns successfully. A private
+window closes at the first capture CreateDevice attempt. The production export
+still delegates to the unchanged factory body; callback registration is absent
+by default. No package, provider or playback service is enabled by this change.
+
+Focused host checks pass **6 tests, zero failures, one skip**: the production
+controller passes **61 checks**, extracted real loader delegate **37**, and real
+capture device body **224**. The skip is built shared-DLL export inspection; no
+shared DLL was built. Strict x86 cross-compilation passes. Root's corrected
+fixture passes **nine modes / 655 checks / zero failures** on bottle **X3**,
+WineArch **arm64**, with `FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. Summed
+serialized child time is **3.485698040 s**, lock wait **0.000029790 s**. The
+[compact record](../../verification/results/media-startup-2026-09-20.json) binds
+exact commands, per-mode timings/counts, source digest, toolchains and witnesses.
+
+The fixture executes the shared production export assembly and actual Win32
+safe-read/thread adapter at all four incoming stack residues. It compares full
+represented ordinary output CPU state and LastError with a direct simulated
+factory, and input state in non-reentrant modes. It exercises a real inaccessible
+cross-page ancestor read, callback execution on a different thread, one-shot
+scheduling, unknown/failed/reentrant/late/identity/anchor rejection, device closure
+inside the factory, callback failure and separate request/preparation/ready stamps.
+Engine callers and anchors, executable-identity predicate, backend factory and
+canonical service are simulated. Host launch failure models the platform contract;
+actual Win32 module-reference or CreateThread failure injection is not qualified.
+
+Both initial mapping failures remain recorded. The first success-mode invocation
+stopped before ABI checks, exit **1**, child **1.731911667 s**, lock wait
+**0.000003584 s**. Its EXE is retained at
+`/tmp/x3-media-startup-v1/media_startup_fixture.exe`, SHA256
+`b781b29e209b93cab33a3f4f0bc37df642b7ddf70577bc604eb5db75dfc5d11a`.
+The bounded diagnostic then reported error **487** for all five fixed allocations:
+`0x400000` was private memory, and the four later regions were already mapped.
+That diagnostic also stopped before ABI checks, exit **1**, child **1.994707583 s**,
+lock wait **0.000003292 s**; its retained `mapping_fixture.exe` SHA256 is
+`f9f97d68486389f596c3f94b4acc6d05da19dd1d9b2f6fba93a744a00e3fd013`.
+Neither invocation overwrote those occupied mappings.
+
+The correction changes only fixture mapping/build layout: the PE loader reserves
+`.x3map` at `0x401000..0x620000`, with real code at `0x630000`, and runtime checks
+committed image ownership before protection changes and authored writes. Build
+layout/zero-byte/nonoverlap checks pass, and all production addresses remain
+unchanged. The accepted frozen EXE SHA256 is
+`96b7ed9f577ad9557579dcb2c4b499bf976c4217ae9ecdec985aa8848e863969`.
+Raw v1/v2 logs and lock records remain under `/tmp/x3-media-startup-v1/` and
+`/tmp/x3-media-startup-v2/`. No production change was needed for the correction.
+
+MXCSR requests `0x3fa5` but immediately observes `0x3f80`; full 32-bit represented
+state comparisons remain exact, without masking. Requested nonzero sticky-status
+preservation remains unverified. Represented x87/SSE images do not close FEX's
+hidden effective-rounding gap when their rounding modes differ. The thread
+fixture pins its own EXE, so unloadable-DLL final-reference behavior remains open.
+Ordinary-return preservation does not promise foreign exception/SEH unwinding;
+lost entry context refuses later startup. Native Windows runtime, actual package
+preparation, canonical-worker lifetime/readiness before flight and cold provider
+contention remain acceptance dependencies. No game launch, DLL install or
+production callback enablement occurred. Source-level cost is bounded to factory
+and device creation, with no per-draw/frame work or engine wait; runtime durations
+are fixture diagnostics, not game performance measurements.

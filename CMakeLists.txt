@@ -73,7 +73,7 @@ add_library(d3d9 SHARED
   "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
   src/media/playback_runtime.cpp src/proxy/media_playback.cpp
   src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp
-  src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp src/proxy/lattice_state_capture.cpp src/proxy/comparison_notice.cpp
+  src/proxy/loader.cpp src/proxy/media_startup.cpp src/proxy/capture.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp src/proxy/lattice_state_capture.cpp src/proxy/comparison_notice.cpp
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/sun_light_poll.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp src/proxy/fade_region.cpp
@@ -95,6 +95,7 @@ add_dependencies(d3d9 x3m_source_commit)
 # registration otherwise runs before capture and unregistration after restore.
 # These adapters do not throw; the remaining sources retain their EH policy.
 set_source_files_properties(src/ownership/application_admission_abi.cpp
+  src/proxy/media_startup.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/scene_hook.cpp
   src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/voice_dmo_fallback.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

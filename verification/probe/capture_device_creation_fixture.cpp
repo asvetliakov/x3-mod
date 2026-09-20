@@ -204,6 +204,7 @@ void reset(NativeDevice& native) {
 namespace capture_host {
 
 std::vector<char> events;
+void x3m_media_startup_device_attempt() noexcept {events.push_back('S');}
 std::recursive_mutex mutex;
 
 struct LightCallBoundary { LightCallBoundary() {} ~LightCallBoundary() {} }; // mirrors capture.cpp: inert, non-trivial so the scoped variable is not "unused"
@@ -405,13 +406,14 @@ void capture_result_case(IDirect3D9& factory, NativeDevice& device, HRESULT resu
         CHECK(out == reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x4444}));
     if (behavior == capture_host::Output::Null && provide_out) CHECK(out == nullptr);
     if (behavior == capture_host::Output::Device && provide_out) CHECK(out == &device);
-    CHECK(capture_host::events.size() >= 6);
-    CHECK(capture_host::events[0] == 'C');
-    CHECK(capture_host::events[1] == 'I');
-    CHECK(capture_host::events[2] == 'L');
-    CHECK(capture_host::events[3] == 'B');
-    CHECK(capture_host::events[4] == 'N');
-    CHECK(capture_host::events[5] == 'A');
+    CHECK(capture_host::events.size() >= 7);
+    CHECK(capture_host::events[0] == 'S');
+    CHECK(capture_host::events[1] == 'C');
+    CHECK(capture_host::events[2] == 'I');
+    CHECK(capture_host::events[3] == 'L');
+    CHECK(capture_host::events[4] == 'B');
+    CHECK(capture_host::events[5] == 'N');
+    CHECK(capture_host::events[6] == 'A');
 }
 
 void ownership_success_case(ownership_host::Factory& factory, NativeDevice& native,

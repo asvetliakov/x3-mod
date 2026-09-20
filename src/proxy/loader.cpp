@@ -22,6 +22,8 @@
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
+#include "media_startup.h"
+#include "media_startup_abi.h"
 #include <string>
 
 namespace {
@@ -194,7 +196,12 @@ X3M_FORWARDED_EXPORT(PSGPSampleTexture, "ret $20")
 X3M_FORWARDED_EXPORT(Direct3D9EnableMaximizedWindowedModeShim, "ret $4")
 #undef X3M_FORWARDED_EXPORT
 
-extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
+// Capture the real export-entry frame before this unchanged C++ body adjusts
+// ESP. Startup helper work is independently transparent to both its input and
+// its actual output; factory wrapping/admission/telemetry remain in this body.
+extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk);
+X3M_MEDIA_STARTUP_EXPORT("_Direct3DCreate9@4","_x3m_direct3d_create9_body@4")
+extern "C" IDirect3D9* WINAPI x3m_direct3d_create9_body(UINT sdk) {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<IDirect3D9* (WINAPI*)(UINT)>(entry("Direct3DCreate9"));

@@ -64,7 +64,7 @@ class CaptureDeviceCreationTests(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertEqual(
                 run.stdout,
-                "capture_device_creation scenarios=18 checks=218 failures=0\n",
+                "capture_device_creation scenarios=18 checks=224 failures=0\n",
             )
             self.assertEqual(run.stderr, "")
 

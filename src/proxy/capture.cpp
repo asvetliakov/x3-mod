@@ -1,3 +1,4 @@
+#include "media_startup.h"
 #include "capture.h"
 #include "capture_state.h"
 #include "lattice_state_capture.h"
@@ -2519,6 +2520,8 @@ ULONG WINAPI release_factory(IDirect3D9* d) {
     return refs;
 }
 HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND window,DWORD flags,D3DPRESENT_PARAMETERS* p,IDirect3DDevice9** out) {
+    // First attempt closes the private media startup window before any work.
+    x3m_media_startup_device_attempt();
     // Which copy of the shipped-twice helper DLL this process loaded: the game
     // directory carries its own d3dx9_37.dll next to the system one. Logged at
     // the first device creation, when the game's imports are resolved. Ahead of
