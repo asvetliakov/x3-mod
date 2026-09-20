@@ -1322,3 +1322,33 @@ translation units compile separately with normal access checks. The existing
 [qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
 retains this delta. Consumer routing, injected ABI and native runtime behavior
 remain separate; no Wine, game, DLL build or install occurred.
+### Media package reader file-lifetime checkpoint (2026-09-20)
+
+The [preparation-time package reader](../architecture/media-package-config.md)
+now validates the installed selection and publishes retained UTF-16 provider/source
+configuration. Production-parser host coverage passes **285 checks** and an actual
+installer-record crosscheck passes **8**; their sanitizer runs are clean. The same
+production Windows adapter passes **150/150 synthetic runtime checks, zero
+unsupported cases**, on bottle **X3**, WineArch **arm64**, with
+`FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. The locked child took
+**2.105127125 s**, with **0.000003875 s** lock wait and exit 0. Independent
+source/evidence review (`review_media_package_config`) is **CLEAR** for v2.
+Commands, frozen inputs, executable hashes and raw witness paths are in the
+[compact result](../../verification/results/media-package-config-2026-09-20.json).
+
+The failed v1 is preserved: **41 checks passed, check 42 failed** when a provider
+directory rename succeeded despite retained attribute-only directory handles.
+The diagnostic's error 32 was stale after successful `MoveFileExW`; restoration
+was unchecked. Attribute-only access is exempt from the documented sharing
+restrictions. Adding `FILE_LIST_DIRECTORY` to root/traversed directory access,
+while retaining the existing no-delete sharing policy, makes both v2 provider
+directory rename attempts fail with error 32. The corrected diagnostic records
+actual results and checks restoration; the v1 failure is not reclassified.
+
+V2 verifies module-relative Unicode/space paths from unrelated CWD, LastError,
+record integrity and refusal cases, read sharing, file/directory symlink refusal,
+and write/rename denial through the final configuration owner followed by actual
+writes/renames after release. Its **6,983 bytes** of synthetic package data never
+load COM or decode media. Native Windows execution and real two-worker provider/
+source opens with retained configuration remain unverified. No game launch or
+installation was performed for this checkpoint.
