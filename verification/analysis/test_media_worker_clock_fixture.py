@@ -20,7 +20,7 @@ class ClockReplay(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp=tempfile.TemporaryDirectory();path=Path(cls.temp.name)
-        source=subprocess.check_output(['git','show','0abe0a44:verification/probe/media_owned_clock/host.cpp'],cwd=ROOT)
+        source=(ROOT/'verification/probe/media_owned_clock/host.cpp').read_bytes()
         (path/'host.cpp').write_bytes(source);cls.exe=path/'host'
         subprocess.run(['c++','-std=c++17','-O2','-Wall','-Wextra','-Werror','-I',str(ROOT/'src/media/owned_clock'),str(path/'host.cpp'),'-o',str(cls.exe)],check=True,capture_output=True)
     @classmethod

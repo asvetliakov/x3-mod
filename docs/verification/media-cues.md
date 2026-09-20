@@ -1722,3 +1722,12 @@ integration checkout's worker, destination and updated clock headers. The
 retains the command, source hashes and local log. The earlier worker runtime
 records keep their original clock hash; this host result does not establish
 enabled playback or native Windows behavior.
+
+### Worker verification support imported (2026-09-20)
+
+The integration branch imports the ten required probe/helper dependencies exactly
+from `1384893a`, plus the small clock host harness from `0abe0a44`. Its test reads
+the tracked harness rather than requiring that historical Git object in a fresh
+clone. The four affected media test modules pass 133 tests in 5.817 s
+(`/tmp/x3-media-imported-support-host-v1.log`). This changes verification support
+only; it adds no decoder, production policy or runtime acceptance claim.
