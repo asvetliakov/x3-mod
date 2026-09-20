@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "change": "same-epoch canonical clock bound setter",
+  "baseline_commit": "f5d4b59b",
+  "review": "review_media_owned_state: seven-line addition clear; prior baseline preserved",
+  "inputs": {
+    "src/media/owned_clock/clock.h": "62e3368cd9777980a89e1805f6d5aeb7d142026500332d8e529c452b18a5e1d8",
+    "verification/probe/media_clock_bound_fixture.cpp": "61e6e4a01a01c694e6c7b47eca03bdb09c2e62f4233b359547c3c2e2757656d2",
+    "verification/analysis/test_media_clock_bound.py": "c0ce4b84d8aa6423b6d0be679f3940d9b25857dd8afb057e80b5ae2b10eee117"
+  },
+  "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_clock_bound verification.analysis.test_media_services verification.analysis.test_media_destination",
+  "result": {
+    "tests": 4,
+    "seconds": 6.329,
+    "exit_code": 0,
+    "clock_checks": 158,
+    "services_checks": 1783,
+    "destination_checks": 736
+  },
+  "log": "/tmp/x3-media-integrated-host-v1.log",
+  "log_sha256": "cf85442906c6d60aa3f9d4b5b5826301658b5a4c0422e5d7a7d0af35f036a636",
+  "limits": [
+    "Host integration and clock x86 compilation only; no Wine or candidate execution.",
+    "Prior frozen worker runtime records retain the baseline clock hash."
+  ]
+}

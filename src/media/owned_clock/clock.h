@@ -71,6 +71,13 @@ public:
         rate_ = std::uint64_t(input) * 2748779;
         return true;
     }
+    bool set_end(std::int32_t end_ms, std::uint64_t now) {
+        // A same-epoch bound update advances time without touching queued frames
+        // or rearming a settled End. Positive-end comparison stays in update().
+        if (!intent_ || !advance(now)) return false;
+        end_ms_ = end_ms;
+        return true;
+    }
     Admission submit(Frame frame) {
         if (frame.generation != generation_) return Admission::stale;
         if (!intent_ || end_ != End::none) return Admission::inactive;

@@ -1711,3 +1711,14 @@ Reset/callback integration and native Windows runtime remain open. The documente
 process-lifetime module pin intentionally does not support unloadable plugins;
 unsafe retirement retains the STA, interfaces, storage and package owner. No game
 was launched, no installed binary changed, and no production admission was enabled.
+
+### Same-epoch bound setter integrated (2026-09-20)
+
+After worker baseline `1384893a`, the independently reviewed seven-line canonical
+Clock setter is integrated for Services. Four affected tests pass in 6.329 s:
+158 clock, 1,783 Services and 736 destination checks. Services now uses the actual
+integration checkout's worker, destination and updated clock headers. The
+[bound-setter record](../../verification/results/media-clock-bound-2026-09-20.json)
+retains the command, source hashes and local log. The earlier worker runtime
+records keep their original clock hash; this host result does not establish
+enabled playback or native Windows behavior.

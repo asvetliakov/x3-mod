@@ -118,3 +118,14 @@ claim and do not erase earlier 47 ms combined-copy or 195 ms readback observatio
 EOF's maximum gap was **71.9719 ms**. Native Windows and actual game loading,
 window/cursor behavior, rendering recovery and callback completion remain untested
 by these standalone fixtures.
+
+## Same-epoch clock bound update
+
+After the frozen worker qualification above, the canonical Clock gains
+`set_end(end_ms, now)` for Services' same-epoch bound changes. It advances the
+existing clock and changes only the bound: queued frames, generation, rate, pause
+and settled termination are preserved. Inactive intent and regressing QPC refuse
+without mutation. Nonpositive bounds disable future positive-end checks; the
+existing strict comparison remains in `update`. This is the independently reviewed
+seven-line addition, not a change to worker transport or its frozen runtime oracle.
+The prior clock/EOF runtime records retain their original clock hash.
