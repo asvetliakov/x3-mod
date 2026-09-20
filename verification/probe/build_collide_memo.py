@@ -26,11 +26,83 @@ OBJDUMP = 'i686-w64-mingw32-objdump'
 LINK = ('-s', '-Wl,--image-base,0x00340000', '-Wl,--disable-dynamicbase', '-Wl,--section-start=.engine=0x00400000')
 # (va, length): fabs helper; the caller; vector helpers; 0x004e1ff0..0x004e38ad (helpers, leaf, descent, query, 0x004e29f0, triangle test, SAT); ftol; constants.
 RANGES = ((sites.FABS_HELPER_VA, len(sites.FABS_HELPER)), (site.CALLER[0], site.CALLER[1] - site.CALLER[0]), (0x4dfd80, 0x4dfee3 - 0x4dfd80), (0x4e1ff0, 0x4e38ae - 0x4e1ff0),
-          (site.FTOL_VA, 0x52b67b - site.FTOL_VA), (0x5654e0, 4), (0x565600, 12))
+          (site.FTOL_VA, 0x52b67b - site.FTOL_VA), (0x5654e0, 4), (0x565600, 16))
+# The leaf at 0x4e2367 reads an eight-byte double at 0x565608. The historical
+# 12-byte final range silently supplied four zero bytes from the fixture arena.
+# These mutable blocks are initialized/updated by the fixture and engine, not
+# copied constants. A zero-filled arena is never evidence of constant coverage.
+MUTABLE_DATA = ((0x596928, 56), (0x60851c, 52), (0x608d98, 8), (0x6619ec, 4))
 THUNK = ['push', 'push', 'lea', 'push', 'push', 'push', 'call', 'add', 'cmp', 'je', 'cmp', 'pop', 'pop', 'je', 'pop', 'call', 'push', 'push', 'push', 'call', 'pop', 'pop', 'pop',
          'jmp', 'add', 'xor', 'ret', 'jmp']
 # Arithmetic, conversion, compare and control: plain XMM moves (struct copies) are not floating-point operations and read no MXCSR.
 FLOAT_RE = re.compile(r'^(f[a-z0-9]+|emms|(add|sub|mul|div|sqrt|max|min|cmp|and|andn|or|xor|shuf|unpck[lh])[sp][sd]|cvt\w+|u?comis[sd]|stmxcsr|ldmxcsr)$')
+
+
+def reachable_engine_instructions(exe, image, ranges):
+    """Decode the copied code and close every direct call/branch/fallthrough.
+
+    Start at the mesh-pair entry: this includes the query and its real leaf but
+    excludes the dormant constructor embedded between the copied query bodies.
+    """
+    rows = {}
+    for va, size in ranges[:5]:
+        run = subprocess.run([OBJDUMP, '-d', '-Mintel', '--insn-width=16',
+                              f'--start-address={va:#x}', f'--stop-address={va + size:#x}', str(exe)],
+                             check=True, capture_output=True, text=True, timeout=60)
+        for row in site.common.parse_objdump(run.stdout, va, va + size):
+            if row.end > va + size or row.raw != image.read(row.va, len(row.raw)):
+                raise RuntimeError(f'incomplete or mismatched engine instruction {row.va:#x}')
+            rows[row.va] = row
+    todo, seen = [site.CALLER[0]], set()
+    while todo:
+        va = todo.pop()
+        if va in seen:
+            continue
+        if va not in rows:
+            raise RuntimeError(f'engine control edge outside extraction {va:#x}')
+        seen.add(va)
+        row = rows[va]
+        if row.mnemonic.startswith('ret'):
+            continue
+        if row.mnemonic in ('int3', 'hlt', '(bad)'):
+            raise RuntimeError(f'invalid reachable engine instruction {va:#x}')
+        if row.mnemonic == 'call' or row.mnemonic.startswith('j'):
+            match = re.fullmatch(r'0x([0-9a-f]+)', row.operands)
+            if not match:
+                raise RuntimeError(f'indirect engine control transfer {va:#x}')
+            todo.append(int(match[1], 16))
+            if row.mnemonic == 'jmp':
+                continue
+        todo.append(row.end)
+    return [rows[va] for va in sorted(seen)]
+
+
+def audit_absolute_memory(rows, ranges):
+    """Require the whole operand in a copied span or an explicit mutable block."""
+    pattern = re.compile(r'(?:(BYTE|WORD|DWORD|QWORD|TBYTE|XMMWORD) PTR )?(?:ds:|\[)(0x[0-9a-f]+)')
+    widths = {'BYTE': 1, 'WORD': 2, 'DWORD': 4, 'QWORD': 8, 'TBYTE': 10, 'XMMWORD': 16}
+    spans, constants = [], set()
+    for row in rows:
+        for match in pattern.finditer(row.operands):
+            target = int(match[2], 16)
+            if match[1]:
+                width = widths[match[1]]
+            elif row.mnemonic == 'mov' and row.raw[0] in (0xa1, 0xa3):
+                width = 4  # Objdump omits PTR on the unprefixed EAX moffs32 forms.
+            else:
+                raise RuntimeError(f'unknown absolute memory width {row.va:#x}')
+            mutable = any(base <= target and target + width <= base + size for base, size in MUTABLE_DATA)
+            copied = any(base <= target and target + width <= base + size for base, size in ranges)
+            if not mutable and not copied:
+                raise RuntimeError(f'unmapped absolute memory span {row.va:#x}: {target:#x}+{width}')
+            spans.append((row.va, target, width))
+            if not mutable:
+                constants.add((target, width))
+    if (0x4e2367, 0x565608, 8) not in spans:
+        raise RuntimeError('leaf QWORD constant read missing')
+    return {'reachable_instructions': len(rows), 'absolute_memory_operands': len(spans),
+            'constant_spans': [{'va': va, 'width': width} for va, width in sorted(constants)],
+            'full_operand_widths_mapped': True}
 
 
 def engine_fragment(exe=sites.DEFAULT_EXE):
@@ -38,6 +110,7 @@ def engine_fragment(exe=sites.DEFAULT_EXE):
     image = site.common.Image(data)
     if hashlib.sha256(data).hexdigest() != site.common.EXPECTED_SHA256 or site.body_hashes(image) != site.HASHES:
         raise RuntimeError('engine bytes do not match the pinned hashes')
+    audit = audit_absolute_memory(reachable_engine_instructions(exe, image, RANGES), RANGES)
     blob, rows = b'', []
     for va, length in RANGES:
         rows.append(f'{{0x{va:08x}u, {len(blob)}u, {length}u}}')
@@ -49,7 +122,7 @@ def engine_fragment(exe=sites.DEFAULT_EXE):
             f'static const unsigned char fx_engine_bytes[{len(blob)}] = {{\n' + '\n'.join(lines) + '\n};\n')
     BUILD.mkdir(parents=True, exist_ok=True)
     (BUILD / 'engine_ranges_inc.h').write_text(text)
-    return {'ranges': len(rows), 'bytes': len(blob), 'sha256': hashlib.sha256(blob).hexdigest()}
+    return {'ranges': len(rows), 'bytes': len(blob), 'sha256': hashlib.sha256(blob).hexdigest(), 'data_audit': audit}
 
 
 def audit_module(obj):

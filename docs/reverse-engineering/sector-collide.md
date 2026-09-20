@@ -1968,3 +1968,31 @@ Timing is deliberately absent from this checkpoint. Next is paired timing of
 the identical frozen query multiset, with alternating order and a second memory
 placement; no game FPS improvement, live-pair identity, safe live-tree replacement
 or native Windows runtime is established.
+
+## Shared collision extraction repaired and requalified (2026-09-20)
+
+The shared memo/query-phase fixture extractor now retains the full double at
+0x00565608 and rejects incomplete reachable code or absolute-memory operands
+before replacing an existing generated fragment. The mesh-pair entry audit
+covers 2,334 reachable instructions and 75 absolute operands, including four
+complete constant spans. The resulting 7,296-byte blob is identical to the
+qualified owned-query extraction. Nineteen affected host tests pass,
+including rejection of the old 12-byte span while preserving a prior fragment.
+
+Corrected owner runs under bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`, serialized through `wine_lock.py`:
+
+- Memo: **59 checks, zero failures**, 58,410 queries, zero answer/register
+  differences, stale hits or hits on contact; 7.0 seconds. The one verification
+  mismatch is deliberately injected by its negative test.
+- Query phases: **142 checks, zero failures**, 675 queries and zero differences;
+  5.340 seconds. Executable/source hashes are unchanged across the run.
+
+The corrected [memo record](../../verification/results/collide-memo-cpu.json)
+and [query-phase record](../../verification/results/bottle-X3/collide-query-phases.json)
+retain scoped build/runtime evidence. Earlier records remain in Git history;
+the isolated checkout's prior memo record is also preserved locally under
+`/tmp/x3-collision-shared-extract-before/`. This qualifies the corrected fixture
+inputs, not a production change or a new collision speedup. Historical runs
+retain their stated extraction limitation; their results are not retroactively
+relabelled. Native Windows runtime remains unverified.
