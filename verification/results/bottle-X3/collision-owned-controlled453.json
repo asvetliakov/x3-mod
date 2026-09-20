@@ -1,0 +1,341 @@
+{
+ "exit_status": 0,
+ "elapsed_s": 6.751,
+ "cases": {
+  "allparsed": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 33,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 456,
+   "geometry_rejected": 1
+  },
+  "fresh0": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  },
+  "fresh1": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  },
+  "fail1": {
+   "status": 1,
+   "state": 2,
+   "allocations": 2,
+   "warnings": 0,
+   "recoveries": 1,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  },
+  "recover1": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  },
+  "fail2": {
+   "status": 1,
+   "state": 2,
+   "allocations": 3,
+   "warnings": 0,
+   "recoveries": 1,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  },
+  "recover2": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  },
+  "fail3": {
+   "status": 1,
+   "state": 2,
+   "allocations": 4,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  },
+  "recover3": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  },
+  "zero": {
+   "status": 5,
+   "state": 2,
+   "allocations": 0,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 0,
+   "geometry_rejected": 0
+  },
+  "degenerate": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 15,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 1,
+   "geometry_rejected": 1
+  },
+  "recover4": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064,
+   "triangles": 453,
+   "geometry_rejected": 0
+  }
+ },
+ "checks": 217,
+ "failures": 0,
+ "failure_lines": [],
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "build": {
+  "engine": {
+   "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+   "instructions": 3239,
+   "ranges": [
+    {
+     "start": 5111536,
+     "end": 5119984,
+     "sha256": "7b8339f318871f9cd4be0d63404c0b688217bffd979f940e7f532a855fb1c9a9"
+    },
+    {
+     "start": 5111168,
+     "end": 5111523,
+     "sha256": "d9418b4acd113018f6a534262dbcc6968ae859b86501fc576e859bfb1d887cca"
+    },
+    {
+     "start": 4253456,
+     "end": 4253471,
+     "sha256": "5fc0cc6e654d839fe76a70700d1c905deb2f5e96165ba080516ed849abe405d3"
+    },
+    {
+     "start": 4269120,
+     "end": 4269135,
+     "sha256": "b0b439212a27b040973f9e797f50c98c809ac4b9a2d8361c15294b169deb22bb"
+    }
+   ],
+   "indirect_calls": [
+    5116095
+   ],
+   "adapters": [
+    4950800,
+    4950880,
+    5300656,
+    5313220,
+    5315719,
+    5316136,
+    5344736
+   ]
+  },
+  "input_sha256": "fb4fc590cf2bb99a162cfb2449ab746b96cf28ee00f72b1030ef529526c90f25",
+  "policy": "controlled453: exclude only exact collinearity in original integer coordinates; retain source IDs/order; not engine collision filtering",
+  "allparsed_input_sha256": "29697d2a343eee5ec2070cf114bbd9514eab0f639f330f8b5f275248a725a085",
+  "allparsed_policy": "all parsed source triangles; M6 LOD3; y,x,z; signed16(BE32>>2)*2^-14; source face order",
+  "allparsed_status": "REJECTED_NONFINITE",
+  "excluded_source_ids": [
+   293,
+   302,
+   303
+  ],
+  "binary_sha256": "d09ee0dd2842c9ba17df97e59f0ffdc21d800a9ac57dd3145a742eddfebe0004",
+  "runtime": "not run",
+  "flags": [
+   "-std=c++17",
+   "-O2",
+   "-Wall",
+   "-Wextra",
+   "-Werror",
+   "-fno-exceptions",
+   "-msse2",
+   "-mfpmath=sse",
+   "-mstackrealign",
+   "-mincoming-stack-boundary=2",
+   "-DWIN32_LEAN_AND_MEAN",
+   "-DNOMINMAX"
+  ],
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0"
+ },
+ "trees": {
+  "fresh0": {
+   "nodes": 905,
+   "leaves": 453,
+   "max_depth": 14,
+   "max_bound_excess": 2.0527720257131066e-07,
+   "max_bound_allowance": 0.000213623046875,
+   "normalized_sha256": "e7b9c733554b1ca79fe21a9eccf90b242156b01e1d9ba2cb9e7b8f26d063ef6f"
+  },
+  "fresh1": {
+   "nodes": 905,
+   "leaves": 453,
+   "max_depth": 14,
+   "max_bound_excess": 2.0527720257131066e-07,
+   "max_bound_allowance": 0.000213623046875,
+   "normalized_sha256": "e7b9c733554b1ca79fe21a9eccf90b242156b01e1d9ba2cb9e7b8f26d063ef6f"
+  },
+  "recover1": {
+   "nodes": 905,
+   "leaves": 453,
+   "max_depth": 14,
+   "max_bound_excess": 2.0527720257131066e-07,
+   "max_bound_allowance": 0.000213623046875,
+   "normalized_sha256": "e7b9c733554b1ca79fe21a9eccf90b242156b01e1d9ba2cb9e7b8f26d063ef6f"
+  },
+  "recover2": {
+   "nodes": 905,
+   "leaves": 453,
+   "max_depth": 14,
+   "max_bound_excess": 2.0527720257131066e-07,
+   "max_bound_allowance": 0.000213623046875,
+   "normalized_sha256": "e7b9c733554b1ca79fe21a9eccf90b242156b01e1d9ba2cb9e7b8f26d063ef6f"
+  },
+  "recover3": {
+   "nodes": 905,
+   "leaves": 453,
+   "max_depth": 14,
+   "max_bound_excess": 2.0527720257131066e-07,
+   "max_bound_allowance": 0.000213623046875,
+   "normalized_sha256": "e7b9c733554b1ca79fe21a9eccf90b242156b01e1d9ba2cb9e7b8f26d063ef6f"
+  },
+  "recover4": {
+   "nodes": 905,
+   "leaves": 453,
+   "max_depth": 14,
+   "max_bound_excess": 2.0527720257131066e-07,
+   "max_bound_allowance": 0.000213623046875,
+   "normalized_sha256": "e7b9c733554b1ca79fe21a9eccf90b242156b01e1d9ba2cb9e7b8f26d063ef6f"
+  }
+ },
+ "excluded_source_ids": [
+  293,
+  302,
+  303
+ ],
+ "allparsed": {
+  "status": "REJECTED_NONFINITE",
+  "query_ready": false,
+  "nodes": 911,
+  "leaves": 456,
+  "nonfinite_source_ids": [
+   293,
+   302,
+   303
+  ],
+  "nonfinite_fields": 33,
+  "normalized_sha256": "6ab288a60234abbdf26fd8fa803635d07f7c68cdb0f6f5adc8a83480fa164fce"
+ },
+ "controlled453": {
+  "policy": "controlled453: exclude only exact collinearity in original integer coordinates; retain source IDs/order; not engine collision filtering",
+  "status": "QUALIFIED_FINITE_BUILDER",
+  "query_input_ready": true,
+  "query_replay": "not run"
+ },
+ "scope": "controlled source-derived geometry only; no engine-filter equivalence, live pair, query replay, timing or native runtime claim",
+ "accepted": true
+}

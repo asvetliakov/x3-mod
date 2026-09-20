@@ -1834,3 +1834,88 @@ callback-free synchronous copy alone cannot provide cross-thread ownership.
 Independent deep review matched 210 targeted instruction rows against the EXE
 with zero mismatches and reproduced the direct-reference counts. No production
 fix, lifetime hook or user capture is requested on this incomplete contract.
+
+## Owned real-asset builder checkpoint: controlled453 (2026-09-20)
+
+An offline, owned model avoids the unresolved live-body retirement contract
+above: parse immutable body data, supply owned 40-byte triangle records, and
+invoke original EndModel `0x004e0c80` with ESI pointing to a fixture-owned model.
+The standalone fixture reserves the existing original-address arena, extracts
+the builder/math and constants locally, and substitutes documented Windows
+allocation plus cdecl diagnostic adapters at external boundaries. It neither
+initializes the game nor acquires a live model pointer. Extraction audits
+**3,239 instruction rows**, exact bytes, explicit control targets and code-range
+fallthrough boundaries. Original x87 math remains confined to this reference;
+fixture C++ uses SSE2 and the four-byte incoming-stack compiler contract.
+
+The source is stock `objects/ships/usc/terran_m6.pbb`, **LOD3**, resolved from
+`02.cat` and decoded SHA-256
+`b14bb505e334b2e62fd22e1575913d35493e51efc769237f7480177630b5102c`.
+The parser supplies 1,032 points, six groups and 456 faces. Input preparation
+preserves source face/group order and IDs; each coordinate uses arithmetic
+BE32 `>>2`, signed 16-bit storage, then scale `2^-14`, in **(y,x,z)** order.
+This follows the collision preparer's `0x0047ed84..0x0047ee62` component/argument
+order, without render FLOAT16 conversion, vertex deduplication or scene merging.
+
+**All 456 parsed triangles remain `REJECTED_NONFINITE`.** Original-integer
+cross products are exactly zero for source IDs **293, 302, 303** (group 2,
+faces 15, 24, 25); these are already collinear before coordinate conversion.
+The original leaf builder computes the normal length through sqrt at
+`0x004e1c9d`, then takes its reciprocal at `0x004e1ca7` without a zero guard.
+The all-parsed model returns status0/state3 and has 911 reachable nodes and 456
+unique leaves, but those three leaves contain **11 NaNs each**. The finite-tree
+validator correctly refuses it. This is evidence about the declared all-parsed
+workload, not evidence that engine-selected game colliders include these faces.
+The earlier rejected run is retained in
+[the all-parsed result](../../verification/results/bottle-X3/collision-owned-builder.json).
+
+**Separately qualified policy: `controlled453`.** Exclude only exact zero
+cross products in the original signed-integer coordinates; there is no epsilon,
+float-area or post-conversion degeneracy filter. Only IDs 293/302/303 are removed.
+Every retained 40-byte record remains byte-identical, including its original
+(noncontiguous) source ID. This is an explicit controlled geometry experiment,
+not a reconstruction of the engine's material/group collision filters.
+
+The owner-run standalone fixture passed **217 checks, zero failures**, exit0,
+in **6.751 s** under bottle **X3**, WineArch **arm64**, with
+`FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. The reference control word was
+`0x027f` and MXCSR `0x1f80`. Six fresh/recovery builds each produced **905
+reachable nodes, 453 unique leaves, maximum depth 14**, finite frames/extents,
+owned pointers, no cycles/shared children, and complete source-ID coverage.
+Their pointer-normalized physical-order tree hashes are identical. Every source
+vertex passed every ancestor bound; maximum excess was **2.053e-7** against a
+maximum depth-scaled float-roundoff allowance of **2.136e-4**. Full hashes,
+compiler/EXE provenance, individual cases and the separately rejected all-parsed
+witness are in
+[the controlled453 result](../../verification/results/bottle-X3/collision-owned-controlled453.json).
+Elapsed fixture time is not a collision benchmark or game FPS.
+
+Qualification also covers persistent allocation failure at each of the three
+builder allocation stages (including its retry), zero-triangle refusal,
+degenerate diagnostics, original input preservation, EndModel register/stack
+and LastError behavior, FP control/stack top, guard bytes and freed-block poison,
+and fresh construction after cleanup. The allocation ledger tracks already
+freed blocks; teardown clears scratch and releases owned storage without calling
+an unqualified engine destructor. No stale scratch or live owned allocation
+remained after any case. Sixteen focused host tests passed, including exact
+integer selection, preservation of source IDs/bits, negative-witness validation
+and the extraction-boundary regression; independent source/evidence review cleared
+the checkpoint.
+
+The first fixture run exposed a **fixture extraction defect**: its `fabs` range
+ended at `0x0040e719`, after nine bytes, omitting `fabs` and the return sequence.
+Fallthrough through the empty arena caused the later privileged-instruction
+fault. The fix reuses the existing verified **15-byte** helper ending at
+`0x0040e71f` and rejects extracted ranges that fall through their boundary.
+This was not a game or FEX defect. Small failing witnesses remain local under
+`build/verification/collision-owned/failure-{truncated-fabs,nonfinite-33}/`.
+
+Implementation is confined to `verification/probe/collision_owned*`,
+`build_collision_owned.py`, `run_collision_owned.py` and
+`verification/analysis/test_collision_owned.py`. Raw body/code extraction and
+build products stay local. This checkpoint supplies finite owned input for a
+future query replay; **no queries, collision optimization, live-pair/run183
+identity, collision-selected LOD equivalence, or performance benefit are
+qualified**. Windows-compatible source and MinGW cross-compilation are covered;
+native Windows runtime behavior and cross-platform tree identity are unverified.
+No game launch, production change or installation was required.

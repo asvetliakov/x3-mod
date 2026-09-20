@@ -1,0 +1,231 @@
+{
+ "exit_status": 1,
+ "elapsed_s": 5.531,
+ "cases": {
+  "fresh0": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 33,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "fresh1": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 33,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "fail1": {
+   "status": 1,
+   "state": 2,
+   "allocations": 2,
+   "warnings": 0,
+   "recoveries": 1,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "recover1": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 33,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "fail2": {
+   "status": 1,
+   "state": 2,
+   "allocations": 3,
+   "warnings": 0,
+   "recoveries": 1,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "recover2": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 33,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "fail3": {
+   "status": 1,
+   "state": 2,
+   "allocations": 4,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "recover3": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 33,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "zero": {
+   "status": 5,
+   "state": 2,
+   "allocations": 0,
+   "warnings": 0,
+   "recoveries": 0,
+   "nonfinite": 0,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "degenerate": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 15,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  },
+  "recover4": {
+   "status": 0,
+   "state": 3,
+   "allocations": 3,
+   "warnings": 3,
+   "recoveries": 0,
+   "nonfinite": 33,
+   "live": 0,
+   "scratch": 0,
+   "adapter_errors": 0,
+   "cw": 639,
+   "mxcsr": 8064
+  }
+ },
+ "checks": 197,
+ "failures": 6,
+ "failure_lines": [
+  "FAIL finite tree",
+  "FAIL finite tree",
+  "FAIL finite tree",
+  "FAIL finite tree",
+  "FAIL finite tree",
+  "FAIL finite tree"
+ ],
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "build": {
+  "engine": {
+   "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+   "instructions": 3239,
+   "ranges": [
+    {
+     "start": 5111536,
+     "end": 5119984,
+     "sha256": "7b8339f318871f9cd4be0d63404c0b688217bffd979f940e7f532a855fb1c9a9"
+    },
+    {
+     "start": 5111168,
+     "end": 5111523,
+     "sha256": "d9418b4acd113018f6a534262dbcc6968ae859b86501fc576e859bfb1d887cca"
+    },
+    {
+     "start": 4253456,
+     "end": 4253471,
+     "sha256": "5fc0cc6e654d839fe76a70700d1c905deb2f5e96165ba080516ed849abe405d3"
+    },
+    {
+     "start": 4269120,
+     "end": 4269135,
+     "sha256": "b0b439212a27b040973f9e797f50c98c809ac4b9a2d8361c15294b169deb22bb"
+    }
+   ],
+   "indirect_calls": [
+    5116095
+   ],
+   "adapters": [
+    4950800,
+    4950880,
+    5300656,
+    5313220,
+    5315719,
+    5316136,
+    5344736
+   ]
+  },
+  "input_sha256": "29697d2a343eee5ec2070cf114bbd9514eab0f639f330f8b5f275248a725a085",
+  "policy": "all parsed source triangles; M6 LOD3; y,x,z; signed16(BE32>>2)*2^-14; source face order",
+  "binary_sha256": "763003e174b00a646dfc00987cbaf57dc55c98fa2b3c00f86fbb40943b44b5a6",
+  "runtime": "not run",
+  "flags": [
+   "-std=c++17",
+   "-O2",
+   "-Wall",
+   "-Wextra",
+   "-Werror",
+   "-fno-exceptions",
+   "-msse2",
+   "-mfpmath=sse",
+   "-mstackrealign",
+   "-mincoming-stack-boundary=2",
+   "-DWIN32_LEAN_AND_MEAN",
+   "-DNOMINMAX"
+  ],
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0"
+ },
+ "trees": {},
+ "scope": "controlled M6 LOD3 all parsed triangles; original builder only; no query replay, live identity, timing or native runtime claim",
+ "validation_error": "nonfinite box",
+ "accepted": false
+}
