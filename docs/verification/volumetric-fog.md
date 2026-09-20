@@ -859,3 +859,96 @@ checkpoints above remain relevant to those unchanged implementations. New actual
 GPU execution, native Windows behavior and user flight appearance remain open;
 this host checkpoint alone does not establish elimination of visible flicker.
 No Wine, full DLL build, install, commit or game launch belongs to this change.
+
+### Run197 first-person camera precision correction (2026-09-21)
+
+User-labeled first-person F8 frames **2633–2664** in
+`/tmp/x3-bottleX3-run197/session-20260921-000016-212.log` have valid cameras and
+**zero cuts in all 32 frames**, inside a continuous `card_refused` interval
+2562–2742. The frame2660 report has observed2, suppressed0, refused1, ready0,
+warmup0, applied0 and fault0. Engine bluewell sector authority remains unchanged.
+The fog world's `1e-4` Gram tolerance rejects all 32 captured rotations. Each
+rotation reconstructed on the documented `/65536` grid matches actual captured
+`object_matrix role=view` float bits exactly. Across the session, the unchanged
+actual C++ camera parser accepts all **3,080** valid camera samples; the old fog
+helper accepts **1,082** and refuses **1,998**. Every logged application/refusal
+agrees with this check: 92 `ok`, 94 `card_refused`, one initial `world_basis`.
+
+After aligning the helper with the upstream `1e-3` near-rigid tolerance, the
+actual C++ helper accepts **3,080/3,080**, including **32/32** F8 views. Maximum
+measured Gram error is `0.0001526300329715`; determinant range is
+`0.999796784330055..1.000023415016184`. The unchanged true inverse has maximum
+uploaded-float roundtrip error `5.94e-8`. Remaining noncapture camera samples
+are reconstructed from seven-digit camera logs on the fixed-point grid; only
+the 32 F8 rotations have the independent raw-bit cross-check.
+
+The existing `verification/probe/fog_spatial_math_fixture.cpp` now exercises
+exact first-person and worst captured rotations, translated camera origin,
+inverse roundtrip, both sides of the admission boundary, scale/shear/singular
+and independent determinant refusal, and nonfinite sun; earlier nonfinite
+rotation/translation and reflection checks remain. Command:
+`clang++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/fog_spatial_math_fixture.cpp -o /tmp/x3-run54-firstperson-fog/fog-spatial-math`;
+executing it passes. The same fixture against the original helper aborts at the
+captured-camera admission assertion (exit -6). Reproduction and compact triage:
+`/tmp/x3-run54-firstperson-fog/diagnose.py`, `summary.json`, `report.md`,
+`witness.log`, `fixed-witness.log`, and `prefix-math.log`.
+
+`PYTHONPATH=verification/probe python3 -m unittest -v verification.analysis.test_fog_cards verification.analysis.test_fog_sector_policy verification.analysis.test_fog_route_bridge verification.analysis.test_camera_reprojection`
+passes **17 tests in 6.193 s**. The actual MotionOutput card-method tests preserve
+cut, sector, failure and Reset-policy coverage; their parameter helper is
+mocked, so they do not independently exercise the new camera-to-route admission.
+`i686-w64-mingw32-g++ -std=gnu++17 -O2 -g -DWIN32_LEAN_AND_MEAN -DNOMINMAX -Wall -Wextra -Wno-cast-function-type -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -c src/proxy/motion_output.cpp -o /tmp/x3-run54-firstperson-fog/motion_output.o`
+passes. No shader/GPU state/resource or hook/ABI implementation changes; existing
+GPU state/Reset evidence remains applicable. A candidate integration gate can
+reuse the actual route bridge with a captured rotation to prove admitted
+replacement reaches the real pass. No new broad GPU qualification or benchmark
+is justified by this constant-only change. This checkpoint establishes host
+numerical behavior and Windows cross-compilation, not native Windows execution
+or corrected game appearance. No Wine, game launch, full DLL build, install or
+commit was performed by this task.
+
+The follow-up actual-D3D route bridge adds **33 captured rotations** (the 32 F8
+frames plus worst frame2703) through the unchanged production parameter helper,
+card admission and `FogPass`. After the existing warmup and single replacement
+transition, every frame must suppress its native card, apply one real fog
+transaction, preserve state and RT1/RT2 bytes, and request no additional history
+invalidation. Four refusal cases cover reflection, excessive shear, nonfinite
+rotation and the independent uploaded-inverse Gram boundary. Each must forward
+native color exactly, issue no fog pass, avoid a fault latch and recover on the
+next valid camera. The inverse-boundary case explicitly passes `fog_world_basis`
+and fails `fog_valid_params`: the two guards remain independent.
+
+Only rotations are captured inputs here: camera translation is synthetic and
+holds the fixture's world origin fixed; sun, sector and owner are authored.
+There is no shaft-map publication, selector-hook execution or new native Reset
+coverage. The synthetic replay owner was updated to provide the typed no-map
+interface required by the current production fragment. The checker requires all
+33 occurrences of each captured-frame witness and all four refusal/recovery
+witnesses; **four checker host tests pass**. Fixture x86 cross-compilation passes
+with the normal SSE2/incoming-stack flags. Frozen build:
+`/tmp/x3-run54-firstperson-fog/route-build-v3/build.json` and
+`fog_route_bridge.exe`. Build command:
+`python3 verification/probe/fog_route_bridge_build.py --production-root /tmp/x3-run54-fog-camera --spatial-root /tmp/x3-run54-fog-camera --asset-data /tmp/x3-run54-candidate/build/generated/fog_field --output /tmp/x3-run54-firstperson-fog/route-build-v3`.
+Root-owned locked execution now passes **515 checks**, exit **0**, in bottle
+**X3**, CrossOver Preview, WineArch **arm64**, with
+`FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. All **33** captured rotations
+suppress their native card and apply the real fog pass without further history
+invalidation; all **four** malformed-camera cases preserve exact native color,
+perform no fog writes and recover. The inverse-Gram boundary refusal occurs
+once as required. Existing bridge state/auxiliary-target, LastError,
+sector/generation, fault and policy-Reset assertions also pass. Lock wait is
+**0.000003875 s**; wrapper child elapsed is **4.784124042 s** (not a renderer
+performance measurement).
+
+Frozen fixture SHA-256:
+`d65f6c448ee0176cfeb894bfee9d63c2f9ddaed19bd527c74e062b2f0a8d4b57`.
+Evidence: `/tmp/x3-run54-firstperson-fog/route-runtime.log`, `route-lock.json`,
+`route-result.json` and `route-prepared.json`. The checker binds the executable
+and runtime log; the build binds its production and fixture inputs. The root
+used `verification/probe/wine_lock.py` with the X3 environment above, native
+`d3d9=b`, the frozen fixture, and
+`Z:\private\tmp\x3-fog-renderer-production\build\fog-production-r3\state-bound\cases.txt`.
+This establishes actual-D3D camera-to-route admission for those captured
+rotations under the stated synthetic-owner/no-map scope. Native Windows,
+actual game reader/selector dispatch, new native Reset coverage and corrected
+flight appearance remain unverified by this run.

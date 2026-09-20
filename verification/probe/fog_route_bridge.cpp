@@ -6,6 +6,7 @@
 #include "fog_route_owner_inc.h"
 namespace {
 constexpr DWORD card_program[]{0xffff0300u,0x02000001u,0x800f0800u,0xa0e40000u,0x0000ffffu};
+#include "fog_route_camera_basis_inc.h"
 struct Bridge {
     IDirect3DDevice9* d;fog_spatial_state::Hooks& hooks;fog_spatial_state::Scene& scene;
     x3m::MotionOutput motion;Com<IDirect3DPixelShader9> card;Com<IDirect3DVertexDeclaration9> declaration;
@@ -78,6 +79,44 @@ void qualify_bridge(IDirect3D9* api,IDirect3DDevice9* d,const D3DCAPS9& caps,con
     b.begin();check(b.draw(),"warm native card");const auto vanilla=b.source();require(vanilla!=inputs.scene&&m.fog_cards_.warmup&&m.fog_cards_.suppressed==0,"warmup_native_source");b.end();require(m.fog_cards_.armed&&m.fog_applied_frames_==1,"matching_warmup_arms");
     b.begin();m.history_valid=true;const auto inv=m.invalidations;check(b.draw(),"replacement native card");require(b.source()==inputs.scene&&m.fog_cards_.suppressed==1,"replacement_source_clean");require(m.invalidations==inv+1&&!m.history_valid,"replacement_transition_requests_history_clear");check(b.draw(),"second replacement card");require(m.invalidations==inv+1,"transition_once_per_frame");b.end();require(!m.fog_cards_.fault&&m.fog_applied_frames_==2,"replacement_pass_applied");
     require(b.submitted==3,"native_draw_count_exact");
+    // Initial warmup and mode-2 transition above are complete. Replay actual
+    // engine precision through the whole production parameter/admission path,
+    // then the real FogPass (including uploaded inverse-column validation).
+    const auto camera=m.camera_scene_;
+    const auto camera_invalidations=m.invalidations,camera_submitted=b.submitted;
+    const auto camera_applied=m.fog_applied_frames_;
+    for(const auto& fixed:captured_camera_basis){
+        for(unsigned i=0;i<9;++i)m.camera_scene_.r[i]=float(fixed[i])/65536.f;
+        for(unsigned j=0;j<3;++j){
+            double t=0;for(unsigned i=0;i<3;++i)t+=double(camera.t[i])*m.camera_scene_.r[3*i+j];
+            m.camera_scene_.t[j]=float(t);
+        }
+        b.begin();check(b.draw(),"captured camera card");
+        require(m.fog_card_ready_&&!m.fog_cards_.warmup&&m.fog_cards_.suppressed==1&&!m.fog_cards_.refused&&b.source()==inputs.scene,"captured_camera_suppression");
+        const auto applied_before=m.fog_applied_frames_;b.end();
+        require(m.fog_applied_frames_==applied_before+1&&!m.fog_cards_.fault&&hooks.calls[34]==1&&hooks.calls[83]==2,"captured_camera_actual_pass");
+        require(m.invalidations==camera_invalidations,"captured_camera_no_transition");
+    }
+    require(b.submitted==camera_submitted+33&&m.fog_applied_frames_==camera_applied+33,"captured_camera_sequence_33");
+    // Reflection, excessive shear, nonfinite input, and a row-Gram boundary
+    // accepted by fog_world_basis but refused by the uploaded inverse Gram.
+    for(unsigned scenario=0;scenario<4;++scenario){
+        m.camera_scene_=camera;
+        if(scenario==0)m.camera_scene_.r[0]=-1;
+        if(scenario==1)m.camera_scene_.r[1]=.002f;
+        if(scenario==2)m.camera_scene_.r[0]=std::numeric_limits<float>::quiet_NaN();
+        if(scenario==3)m.camera_scene_.r[0]=std::sqrt(1.f-.0009995f);
+        b.begin();x3m::renderer::FogFrame parameters{};parameters.width=scene.input.w;parameters.height=scene.input.h;bool tracked=false;
+        const char* reason=m.fog_frame_parameters(parameters,1.f,tracked);
+        require(reason!=nullptr,"malformed_camera_parameter_refusal");
+        if(scenario==3)require(parameters.params.world.valid&&std::strcmp(reason,"parameters")==0,"inverse_gram_boundary_refusal");
+        const auto applied_before=m.fog_applied_frames_;check(b.draw(),"malformed camera native card");
+        require(m.fog_cards_.refused&&!m.fog_cards_.suppressed&&b.source()==vanilla,"malformed_camera_native_exact");b.end();
+        require(m.fog_applied_frames_==applied_before&&!m.fog_cards_.fault&&hooks.calls[34]==0&&hooks.calls[83]==0&&readback_words(d,scene.s0.p)==vanilla,"malformed_camera_no_pass");
+        m.camera_scene_=camera;b.begin();check(b.draw(),"camera refusal recover");b.end();
+        require(m.fog_applied_frames_==applied_before+1&&m.fog_cards_.suppressed==1&&!m.fog_cards_.fault,"malformed_camera_recovery");
+    }
+    std::puts("CAMERA_BRIDGE captured=33 first_person=32 worst=1 malformed=4 inverse_boundary=1 PASS");
     b.begin("bluewell",0x3000);check(b.draw(),"new sector card");require(m.fog_cards_.warmup&&!m.fog_cards_.suppressed&&b.source()==vanilla,"same_family_sector_rewarm");b.end();
     const auto previous_generation=m.fog_sector_.field_generation;
     b.begin("foggreenoutlands",0x4000);check(b.draw(),"new family card");require(m.fog_cards_.warmup&&!m.fog_cards_.suppressed&&m.fog_sector_.profile==2&&m.fog_sector_.field_generation!=previous_generation,"new_family_generation_rewarm");b.end();

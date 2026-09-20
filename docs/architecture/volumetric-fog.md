@@ -885,3 +885,27 @@ numerical witnesses do not establish native Windows execution. Captured
 half-grid evidence finds very little overlap between these authored clouds and
 existing caster shadows; this physically valid implementation therefore does
 not promise visible shafts in arbitrary views. See the verification ledger.
+
+### Engine camera precision admission correction (2026-09-21)
+
+Run197's first-person fog disappearance is a camera precision refusal, not a
+camera-mode restriction or the earlier cut-triggered warmup. The engine view
+basis comes from fixed-point `/65536` values. Its small normalization drift can
+exceed the fog helper's original `1e-4` row Gram-error tolerance while remaining
+valid under `camera_state_from_matrices`' established `1e-3` near-rigid contract.
+The helper now uses that same `1e-3` tolerance. The observed maximum is
+`1.52630033e-4`; this measurement identifies the incompatible thresholds, but
+is not a new bound derived from a single quantization operation.
+
+The fog helper retains the true inverse, positive determinant range
+`[0.999,1.001]`, finite-value guards and invalid-output behavior. It does not
+normalize or reorthogonalize the view: doing so would alter agreement with the
+engine's current depth and camera translation. The upstream projection/view
+checks and current sector/resource authority remain required. At card
+admission a malformed camera still forwards native cards without suppressing
+color; a late failure after suppression retains the Reset-only fault latch.
+There is no change to hook instructions, CPU/LastError boundaries, D3D state or
+writes, resource lifetime, Reset/recovery or rollback behavior. The change is
+one comparison constant: operation count, per-draw work, allocations and locks
+are unchanged. Captured-camera and refusal evidence is in the
+[verification ledger](../verification/volumetric-fog.md#run197-first-person-camera-precision-correction-2026-09-21).
