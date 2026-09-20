@@ -63,7 +63,7 @@ bool stage(Platform&,Group&,std::uint32_t) noexcept;
 bool install(Platform&,Group&) noexcept;
 bool restore(Platform&,Group&,bool quiescent,bool no_live_copy) noexcept;
 #ifdef _WIN32
-void bind_dispatcher(Observer*) noexcept;
+bool bind_dispatcher(Observer*) noexcept;
 std::uint32_t dispatcher_address() noexcept;
 class NativeMemory final:public Memory {public:bool read(std::uint32_t,void*,unsigned) noexcept override;bool write(std::uint32_t,const void*,unsigned) noexcept override;};
 #endif

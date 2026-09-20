@@ -495,4 +495,8 @@ layout requirements. SSE2/four-byte-stack Windows x86 compilation and 5,055 actu
 emitted-code fixture checks under CrossOver/X3 pass. Fixture memory and callbacks
 are authored; actual native Windows execution, game integration and general
 SEH/C++ unwind across substituted return addresses remain unverified. Admission
-stays disabled until service/destination/startup integration is complete.
+requires the separate service/destination/startup integration described in the
+[root composition](media-playback.md#qualified-startup-root-and-common-record-ingress-2026-09-20).
+That integration uses the same documented APIs and exclusive CPU-only Reset
+notification; its Windows x86 compilation and authored CrossOver fixtures do not
+establish native Windows runtime or real game playback/Reset behavior.

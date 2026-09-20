@@ -8,6 +8,15 @@
 #include <initializer_list>
 #include <excpt.h>
 using namespace x3m::media_engine;
+struct IsolatedIngress final:RecordIngress {
+    void retiring(EngineKey) noexcept override {}
+    void retiring_address(std::uint32_t) noexcept override {}
+    void clearing() noexcept override {}
+    void foreign_refusal() noexcept override {}
+    bool healthy() const noexcept override {return true;}
+};
+static IsolatedIngress isolated_ingress;
+
 extern "C" {
 std::uint32_t saved_stack,entry_stack,entry_target;
 std::uint32_t input_gpr[8],output_gpr[8],input_flags=0x647,output_flags;
@@ -165,7 +174,7 @@ static void exception_scopes(unsigned char* code){
     case_id=8000;reset_world();
     x3m::media_playback::Adapter state;NativeMemory memory;IdleServices services;
     Consumer consumer(state,memory,services,routing);OwnerDomain domain{};CHECK(query_native_owner(domain));
-    CHECK(consumer.bind_owner(domain,&native_execution_point));semantic_consumer=&consumer;semantic_mode=true;
+    CHECK(consumer.bind_owner(domain,&native_execution_point));CHECK(consumer.bind_ingress(isolated_ingress));semantic_consumer=&consumer;semantic_mode=true;
     exception_stub=ptr(code+unsigned(SiteId::pause_call)*4096);
     outer_stub=ptr(code+unsigned(SiteId::callback_call)*4096);
     jump(0x510010,ptr(reinterpret_cast<void*>(&throwing_backend)));
@@ -210,7 +219,7 @@ static void native_domains(unsigned char* code,unsigned stack_base){
     CHECK(FlushInstructionCache(GetCurrentProcess(),reinterpret_cast<void*>(0x490000),0x90000)!=FALSE);
     x3m::media_playback::Adapter state;NativeMemory memory;ReadyServices service;
     Consumer consumer(state,memory,service,routing);OwnerDomain domain{};
-    CHECK(query_native_owner(domain)&&consumer.bind_owner(domain,&native_execution_point));
+    CHECK(query_native_owner(domain)&&consumer.bind_owner(domain,&native_execution_point));CHECK(consumer.bind_ingress(isolated_ingress));
     CHECK(consumer.enable({true,true,true,true,true,true,true,true}));
     ExtendedFrame construction;construction.frame.esi=0x610000;construction.frame.ebx=2;construction.frame.edi=8;
     construction.arguments[1]=2;construction.arguments[2]=8;
@@ -254,9 +263,49 @@ static bool owned_map(){
     }
     return true;
 }
-int main(){
+// Execute the actual production dispatcher, with an immediate Memory callback
+// dirtying FP/LastError inside its envelope. Context remains process-lifetime.
+struct DirtyMemory final:Memory {
+    NativeMemory native;unsigned reads=0;
+    bool read(unsigned address,void* output,unsigned bytes) noexcept override {
+        ++reads;SetLastError(0xdeadbeef);
+        asm volatile("fninit\n fld1\n fld1\n xorps %%xmm0,%%xmm0\n xorps %%xmm7,%%xmm7":::"xmm0","xmm7","memory");
+        unsigned mx=0x1f80;asm volatile("ldmxcsr %0"::"m"(mx):"memory");
+        return native.read(address,output,bytes);
+    }
+    bool write(unsigned a,const void* p,unsigned n) noexcept override{return native.write(a,p,n);}
+    unsigned allocate_shell() noexcept override{return 0;}
+    void release_unpublished_shell(unsigned) noexcept override{}
+};
+static void production_dispatcher(){
+    static auto* state=new x3m::media_playback::Adapter;
+    static auto* memory=new DirtyMemory;
+    static auto* service=new IdleServices;
+    static auto* routes=new Routes;
+    static auto* consumer=new Consumer(*state,*memory,*service,*routes);
+    CHECK(bind_dispatcher(consumer));CHECK(consumer->bind_ingress(isolated_ingress));
+    auto* code=static_cast<unsigned char*>(VirtualAlloc(nullptr,4096,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
+    CHECK(code!=nullptr);if(!code)return;
+    unsigned length=0;CHECK(encode_stub(code,4096,ptr(code),unsigned(SiteId::construct),dispatcher_address(),*routes,length));
+    DWORD old=0;CHECK(VirtualProtect(code,4096,PAGE_EXECUTE_READ,&old));CHECK(FlushInstructionCache(GetCurrentProcess(),code,length));
+    alignas(16) unsigned char local_stack[8192]{};
+    const unsigned base=(ptr(local_stack)+4096)&~15u;
+    for(unsigned alignment=0;alignment<4;++alignment){case_id=10000+alignment;reset_world();initialize_input(base+alignment*4);
+        input_gpr[1]=0x610000;put(entry_stack+4,3); // actual unowned constructor read, original call/return
+        jump(sites[0].continuation,ptr(reinterpret_cast<void*>(&capture_exit)));
+        entry_target=ptr(code);execute();
+        for(unsigned reg=0;reg<8;++reg)CHECK(output_gpr[reg]==(reg==3?entry_stack+4:input_gpr[reg]));
+        CHECK(output_flags==input_flags);
+    }
+    CHECK(memory->reads==8);
+    std::printf("production_dispatcher_cases=4 dirty_memory_cpu_last_error=1\n");
+}
+int main(int argc,char** argv){
     static_assert(sizeof(void*)==4,"x86 only");
     if(!owned_map()){std::printf("owned PE fixture map unavailable error=%lu\n",GetLastError());return 2;}
+    if(argc==2&&!std::strcmp(argv[1],"--production-dispatcher-only")){
+        production_dispatcher();std::printf("checks=%u failures=%u\n",checks,failures);return failures?1:0;
+    }
     auto* code=static_cast<unsigned char*>(VirtualAlloc(nullptr,4096*site_count,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
     auto* stack=static_cast<unsigned char*>(VirtualAlloc(nullptr,16384,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
     if(!code||!stack){std::printf("fixed fixture allocation failed error=%lu\n",GetLastError());return 2;}
@@ -341,6 +390,7 @@ int main(){
     exception_scopes(code);
     allocation_contract(code,stack_base);
     native_domains(code,stack_base);
+    production_dispatcher();
     std::printf("sites=%u return_envelopes=%u alignments=4 checks=%u failures=%u\n",site_count,return_count,checks,failures);
     return failures?1:0;
 }

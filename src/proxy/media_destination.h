@@ -60,7 +60,8 @@ private:
 #ifdef _WIN32
 class NativeIdentitySource final:public IdentitySource {public:bool snapshot(std::uint32_t,std::uint32_t,ownership::SurfaceLeaseIdentity&) noexcept override;};
 // Serialized startup binding. Both objects are process-lifetime and owner-qualified.
-void bind_reset_observer(Destination*) noexcept;
+bool bind_reset_observer(Destination*) noexcept;
+bool reset_observer_bound(const Destination*) noexcept;
 #endif
 }
 #include "media_destination_sites.h"

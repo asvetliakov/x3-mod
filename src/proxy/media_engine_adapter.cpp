@@ -67,7 +67,7 @@ bool Consumer::frame_on_owner(const Frame& frame) const noexcept {
         input<=stack_high_&&stack_high_-input>=64;
 }
 bool Consumer::binding_owner(std::uint32_t address,SessionHandle& session,EngineKey& record) noexcept {
-    if(!on_owner())return false;
+    if(!on_owner()||!ingress_||!ingress_->healthy())return false;
     const auto* entry=by_record(address);
     if(!entry||!entry->live)return false;
     session=entry->session;record=entry->record;return true;
@@ -78,7 +78,7 @@ void Consumer::unsupported(SiteId id,Frame& f) noexcept {
         const auto offset=index-unsigned(SiteId::pump_return);
         f.target=offset==10?0x498dd8u:offset==9?0x498fd2u:offset==1?routes_.manager_drop4:
             (offset==0||(offset>=5&&offset<=8))?0x4984beu:0x498362u;
-        if(claimed_.load(std::memory_order_acquire))close_admission();
+        if(claimed_.load(std::memory_order_acquire)){if(ingress_)ingress_->foreign_refusal();close_admission();}
         return;
     }
     f.target=routes_.unobserved[index];
@@ -96,6 +96,7 @@ void Consumer::unsupported(SiteId id,Frame& f) noexcept {
     const bool owned=id==SiteId::construct?(f.ebx==2&&f.edi==8):
         id==SiteId::destroy_shell?keys_.shell(f.eax):keys_.record(record);
     if(!list&&!owned)return; // Never-seen unowned identity: exact unobserved replay.
+    if(ingress_)ingress_->foreign_refusal();
     close_admission();
     switch(id){
     case SiteId::pump:case SiteId::retire_call:f.target=routes_.manager_drop4;return;
@@ -110,8 +111,12 @@ void Consumer::unsupported(SiteId id,Frame& f) noexcept {
     default:f.target=routes_.return_plain;f.eax=0;return;
     }
 }
+bool Consumer::bind_ingress(RecordIngress& ingress) noexcept {
+    if(!on_owner()||ingress_||claimed_.load(std::memory_order_acquire))return false;
+    ingress_=&ingress;return true;
+}
 bool Consumer::enable(Readiness r) noexcept {
-    if(!on_owner()||closed_.load(std::memory_order_acquire)||!r.complete()||!service_.ready()||!routes_.return_plain||!routes_.destroy_free||
+    if(!on_owner()||!ingress_||!ingress_->healthy()||closed_.load(std::memory_order_acquire)||!r.complete()||!service_.ready()||!routes_.return_plain||!routes_.destroy_free||
        !routes_.manager_drop4||!routes_.manager_drop8||!routes_.manager_next8||
        !routes_.manager_error8||!routes_.speech_drop4)return false;
     for(auto address:routes_.forward)if(!address)return false;
@@ -121,7 +126,7 @@ bool Consumer::enable(Readiness r) noexcept {
     enabled_.store(true,std::memory_order_release);return true;
 }
 bool Consumer::eligible(std::uint32_t source,std::uint32_t flags) const noexcept {
-    return enabled()&&source==2&&flags==8&&on_owner();
+    return enabled()&&source==2&&flags==8&&on_owner()&&ingress_&&ingress_->healthy();
 }
 unsigned Consumer::shells() const noexcept {if(!on_owner())return UINT32_MAX;unsigned n=0;for(const auto& e:entries_)n+=e.allocated;return n;}
 Consumer::Identity* Consumer::by_record(std::uint32_t key) noexcept {
@@ -140,15 +145,17 @@ bool Consumer::publish_id(Identity& e) noexcept {
 }
 void Consumer::retire(Identity& e) noexcept {
     if(!e.live)return;
+    if(ingress_)ingress_->retiring(e.record);
     e.live=false;
     state_.retire(e.session);service_.cancel(e.session);
 }
 void Consumer::clear() noexcept {
+    if(ingress_)ingress_->clearing();
     state_.clear();
     for(auto& e:entries_)if(e.allocated&&e.live){e.live=false;service_.cancel(e.session);}
 }
 bool Consumer::current(const PumpRequest& p) const noexcept {
-    if(!on_owner())return false;
+    if(!on_owner()||!ingress_||!ingress_->healthy())return false;
     if(state_.classify_continuation(p.traversal)!=media_playback::Continuation::live)return false;
     for(const auto& e:entries_)if(e.allocated&&e.live&&e.record==p.record&&e.session==p.session)
         return state_.accepts_publication(p.session,p.operation,p.epoch);
@@ -159,7 +166,7 @@ void Consumer::construct(Frame& f) noexcept {
     std::uint32_t source=0,flags=0;
     if(!read_word(f.input_esp()+4,source)||!read_word(f.input_esp()+8,flags)||source!=2||flags!=8)return;
     if(!claimed_.load(std::memory_order_acquire))return;
-    if(!enabled()){f.target=routes_.return_plain;f.eax=0;return;}
+    if(!enabled()||!ingress_||!ingress_->healthy()){f.target=routes_.return_plain;f.eax=0;return;}
     f.target=routes_.return_plain;f.eax=0; // Eligible attempt never falls back to graph construction.
     if(!service_.ready()||generation_==UINT64_MAX||by_record(f.esi))return;
     Identity* e=nullptr;for(auto& candidate:entries_)if(!candidate.allocated){e=&candidate;break;}
@@ -198,7 +205,7 @@ bool Consumer::guard_before(SiteId id,Frame& f) noexcept {
     // On the qualified single downward-growing stack, a same/higher new frame
     // proves those deeper scopes no longer exist. No exception is swallowed.
     while(return_depth_&&returns_[return_depth_-1].stack<=stack)--return_depth_;
-    if(return_depth_==32||!routes_.after[offset]){
+    if((ingress_&&!ingress_->healthy())||return_depth_==32||!routes_.after[offset]){
         // The two partial callback spans enter with status already pushed.
         // No callee ran: explicitly remove that DWORD before the stale exit.
         f.target=pending_argument?(speech?routes_.speech_drop4:routes_.manager_drop4):abort;return false;
@@ -232,6 +239,7 @@ void Consumer::guard_after(SiteId id,Frame& f) noexcept {
     const auto guard=returns_[return_depth_-1];
     if(guard.after!=id||guard.stack!=f.input_esp())return;
     --return_depth_;
+    if(!ingress_||!ingress_->healthy())return;
     if(state_.classify_continuation(guard.ticket)!=media_playback::Continuation::live)return;
     if(guard.check_operation){
         const auto* owned=by_record(guard.record.address);media::Snapshot snapshot{};
@@ -256,6 +264,7 @@ void Consumer::dispatch(SiteId id,Frame& f) noexcept {
         // Invalidate on EVERY record, including an unowned cached-next node,
         // before original callbacks/COM. No record memory is needed here.
         auto* e=by_record(f.esi);
+        if(ingress_){if(e)ingress_->retiring(e->record);else ingress_->retiring_address(f.esi);}
         if(e){state_.observe_record_retirement(e->record);if(e->live){e->live=false;service_.cancel(e->session);}}
         else state_.invalidate_traversal();
         return;
@@ -267,6 +276,7 @@ void Consumer::dispatch(SiteId id,Frame& f) noexcept {
         // registers. There is never owned legacy COM cleanup.
         f.target=routes_.destroy_free;return;
     }
+    if(ingress_&&!ingress_->healthy()){unsupported(id,f);return;}
     const auto record=(id==SiteId::pump)?f.ecx:
         ((id==SiteId::explicit_play||id==SiteId::speech_play||id==SiteId::stop_all)?f.esi:f.eax);
     auto* e=by_record(record);
@@ -488,14 +498,21 @@ bool install(Platform& p,Group& group) noexcept {
 }
 #ifdef _WIN32
 namespace {std::atomic<Consumer*> dispatcher{nullptr};}
-extern "C" __attribute__((force_align_arg_pointer)) void __cdecl
+#pragma GCC push_options
+#pragma GCC optimize("no-exceptions")
+extern "C" __attribute__((force_align_arg_pointer,noinline)) void __cdecl
 x3m_media_engine_dispatch(Frame* frame,unsigned site) noexcept {
     // Stub saves all GPRs/EFLAGS/XMM0..7. This envelope additionally preserves
     // LastError, full x87 state and MXCSR. Helpers compile SSE2, stack4 incoming.
-    PreserveCpuState cpu;
+    unsigned char fp[108];unsigned mxcsr;
+    asm volatile("fnsave %0\n\tfninit\n\tstmxcsr %1":"=m"(fp),"=m"(mxcsr)::"memory");
+    const DWORD error=GetLastError();
     if(auto* consumer=dispatcher.load(std::memory_order_acquire))
         consumer->dispatch(static_cast<SiteId>(site),*frame);
+    SetLastError(error);
+    asm volatile("frstor %0\n\tldmxcsr %1"::"m"(fp),"m"(mxcsr):"memory");
 }
+#pragma GCC pop_options
 ExecutionPoint native_execution_point() noexcept {
     std::uint32_t stack=0;asm volatile("mov %%esp,%0":"=r"(stack));
     return {GetCurrentThreadId(),stack};

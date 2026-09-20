@@ -8,6 +8,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 static_assert(sizeof(void*)==4,"Reviewed x86 game ABI only");
 static_assert(sizeof(x3m::media_cue::EnterFrame)==0xa4,"gate stub frame layout");
@@ -15,7 +16,21 @@ static_assert(sizeof(x3m::media_cue::ReturnFrame)==0x98,"return trampoline frame
 namespace x3m::media_cue {
 std::atomic<bool> active{false};
 static std::atomic<OwnedEligibility> owned_eligibility{nullptr};
-void set_owned_eligibility(OwnedEligibility predicate) noexcept {owned_eligibility.store(predicate,std::memory_order_release);}
+static std::atomic<DWORD> composition_owner{0};
+bool set_owned_eligibility(OwnedEligibility predicate) noexcept {
+    if(!predicate||composition_owner.load(std::memory_order_acquire)!=GetCurrentThreadId())return false;
+    OwnedEligibility empty=nullptr;
+    return owned_eligibility.compare_exchange_strong(empty,predicate,std::memory_order_acq_rel,std::memory_order_acquire)||empty==predicate;
+}
+bool clear_owned_eligibility(OwnedEligibility expected) noexcept {
+    if(!expected)return false;
+    if(!owned_eligibility.load(std::memory_order_acquire))return true;
+    if(composition_owner.load(std::memory_order_acquire)!=GetCurrentThreadId())return false;
+    return owned_eligibility.compare_exchange_strong(expected,nullptr,std::memory_order_acq_rel);
+}
+bool owned_eligibility_is(OwnedEligibility predicate) noexcept {
+    return predicate&&owned_eligibility.load(std::memory_order_acquire)==predicate;
+}
 namespace {
 std::atomic<bool> installed{false};
 bool initialized=false,trace_on=false,cache_on=false;
@@ -37,6 +52,7 @@ std::uint32_t attempts_frame=0;            // owner thread only, reset at the fr
 std::uint64_t attempts_total=0,refused_total=0;
 std::atomic<std::uint64_t> current_frame{0};
 void* return_trampoline=nullptr;
+void* own_stub=nullptr;void** own_next=nullptr;
 bool lost_reported=false;
 engine_patch::Site patches[sites::Count];
 struct ErrorGuard { DWORD value=GetLastError();~ErrorGuard(){SetLastError(value);} };
@@ -270,8 +286,33 @@ x3m_media_cue_return(x3m::media_cue::ReturnFrame* f) {
 namespace x3m::media_cue {
 namespace {
 void* emit(unsigned,void*** next_out) {
-    return emit_gate(reinterpret_cast<const void*>(&x3m_media_cue_enter),reinterpret_cast<const void*>(&x3m_media_cue_return),next_out,&return_trampoline);
+    own_stub=emit_gate(reinterpret_cast<const void*>(&x3m_media_cue_enter),reinterpret_cast<const void*>(&x3m_media_cue_return),next_out,&return_trampoline);
+    own_next=own_stub?*next_out:nullptr;return own_stub;
 }
+}
+Composition composition() noexcept {
+    const DWORD thread=GetCurrentThreadId(),owner=composition_owner.load(std::memory_order_acquire);
+    if(!thread||(owner&&owner!=thread)||!initialized||!object_trace::executable_verified()||
+       !engine_patch::install_window_open()||owned_eligibility.load(std::memory_order_acquire))return Composition::unavailable;
+    Composition result=Composition::unavailable;
+    const auto& patch=patches[0];const auto& spec=sites::kSites[0];
+    if(installed.load(std::memory_order_acquire)&&active.load(std::memory_order_acquire)){
+        unsigned char head[4]{},next[4]{};void* head_value=nullptr;void* next_value=nullptr;
+        if(patch.claimed&&patch.patched_in&&patch.atomic_write&&patch.spec.address==spec.address&&
+           own_stub&&own_next&&return_trampoline&&patch.entry&&patch.tail&&
+           engine_patch::verify_bytes(spec.address,patch.patched,5)&&
+           engine_patch::read_code(reinterpret_cast<std::uintptr_t>(patch.entry),head,4)&&
+           engine_patch::read_code(reinterpret_cast<std::uintptr_t>(own_next),next,4)){
+            std::memcpy(&head_value,head,4);std::memcpy(&next_value,next,4);
+            if(head_value==own_stub&&next_value==patch.tail)result=Composition::installed_qualified;
+        }
+    }else if(!patch.patched_in&&!installed.load(std::memory_order_acquire)&&
+        engine_patch::verify_bytes(spec.address,spec.expected,spec.length))result=Composition::disabled_pristine;
+    if(result!=Composition::unavailable){DWORD empty=0;
+        if(!composition_owner.compare_exchange_strong(empty,thread,std::memory_order_acq_rel,std::memory_order_acquire)&&empty!=thread)
+            return Composition::unavailable;
+    }
+    return result;
 }
 ownership::SurfaceLockObserver video_lock_observer() noexcept {
     return trace_on&&active.load(std::memory_order_acquire)?&video_lock_observe:nullptr;

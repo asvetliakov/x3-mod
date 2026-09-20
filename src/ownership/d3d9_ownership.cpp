@@ -1367,7 +1367,7 @@ HRESULT create_device(Factory* node, UINT adapter, D3DDEVTYPE type, HWND window,
 #pragma GCC push_options
 #pragma GCC optimize("no-exceptions")
 __attribute__((noinline)) void notify_reset(Device* node,ResetPhase phase,HRESULT result) noexcept {
-    const auto observer=reset_observer.load(std::memory_order_relaxed);
+    const auto observer=reset_observer.load(std::memory_order_acquire);
     if(!observer)return;
     CounterAbiState saved;
     const ResetEvent event{static_cast<IDirect3DDevice9*>(node->application),node->lease_serial,node->lease_generation,phase,result};
@@ -1651,7 +1651,14 @@ HRESULT copy_depth(Device* node) {
 #include "d3d9_forwarders_inc.h"
 } // namespace
 
-void set_reset_observer(ResetObserver observer) noexcept {reset_observer.store(observer,std::memory_order_relaxed);}
+bool claim_reset_observer(ResetObserver observer) noexcept {
+    if(!observer)return false;
+    ResetObserver empty=nullptr;
+    return reset_observer.compare_exchange_strong(empty,observer,std::memory_order_acq_rel,std::memory_order_acquire)||empty==observer;
+}
+bool reset_observer_is(ResetObserver observer) noexcept {
+    return observer&&reset_observer.load(std::memory_order_acquire)==observer;
+}
 
 void set_surface_lock_observer(SurfaceLockObserver observer) noexcept {
     surface_lock_observer.store(observer, std::memory_order_relaxed);

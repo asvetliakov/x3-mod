@@ -1731,3 +1731,40 @@ the tracked harness rather than requiring that historical Git object in a fresh
 clone. The four affected media test modules pass 133 tests in 5.817 s
 (`/tmp/x3-media-imported-support-host-v1.log`). This changes verification support
 only; it adds no decoder, production policy or runtime acceptance claim.
+
+
+### Root composition and common record ingress (2026-09-20)
+
+The reviewed root connects the qualified startup return, actual Consumer/Services/
+Destination owners, exclusive Reset/Observer registrations, canonical device
+publication and unlocked Present maintenance. All 44 spans stage before any
+publication; rollback attempts every group and retains unpaid debt. Cue ownership
+is verified rather than patched twice. The common record domain serializes heap
+copies and retirement/foreign-refusal watch invalidation without covering calls
+into Services, the registry or COM. Historical-key exhaustion closes only new
+admission; existing owned copies continue.
+
+The focused root host fixture passes **3,037 checks** in 4.168 s including compile:
+12 actual Consumer → Services → canonical FrameLease → injected CopyBackend cases
+cover retirement, real foreign-thread veto and rebinding at GetDesc, Lock, Unlock
+and final Release. They check stale acknowledgment/manager refusal, cleanup,
+rebind retry, an existing physical copy after classifier exhaustion and an
+unrelated record's copy after local descriptor failure. Group ordering/debt,
+delayed two-worker readiness, same-address device publication, domain race,
+failed Reset across repeated Present, nested capture exclusion, deferred
+cancellation and F8 owner/busy reports are also covered. Existing isolated
+Consumer tests pass 4,523 checks; Services passes 1,783 checks with zero measured
+update allocations after the scalar failure-mask report addition.
+
+The parent ran the newly affected **actual production dispatcher** under X3:
+**63 checks, four stack alignments, zero failures**, with bound Consumer/Ingress
+and a hostile immediate-memory callback. Disassembly contains no helper/SJLJ
+before FNSAVE or after restore on the return path. Four focused registration/cue
+modes have a separate frozen authored-image executable; their queue state is
+recorded explicitly, not inferred from compilation. Root/capture/loader/Services
+Windows x86 compilation passes with SSE2, stack4 and warnings as errors.
+F8-only scalar reporting has no domain/registry/COM/worker call and adds no
+per-frame log. Host empty-maintenance/exclusion timings are indicative fixture
+costs, not game FPS. Exact commands, hashes, timing and pending runtime scope are
+in the [compact root record](../../verification/results/media-root-wiring-2026-09-20.json).
+No installed build or user-run acceptance is claimed by this checkpoint.

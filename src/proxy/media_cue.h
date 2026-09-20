@@ -40,7 +40,12 @@ namespace x3m::media_cue {
 // x87-free, noexcept, and checks the complete owned admission state. It receives
 // normalized effective flags (ID2 input0 maps to8); null restores cache policy.
 using OwnedEligibility=bool(*)(std::uint32_t source,std::uint32_t flags) noexcept;
-void set_owned_eligibility(OwnedEligibility) noexcept;
+enum class Composition {unavailable,disabled_pristine,installed_qualified};
+// Qualified startup owner only; verifies the existing chain or pristine bytes.
+Composition composition() noexcept;
+bool set_owned_eligibility(OwnedEligibility) noexcept;
+bool clear_owned_eligibility(OwnedEligibility expected) noexcept;
+bool owned_eligibility_is(OwnedEligibility) noexcept;
 bool initialize(); // after loop_phases::initialize, while the install window is open
 // The witness to publish through ownership::set_surface_lock_observer, or
 // nullptr when the trace is off (nothing is registered, the shell pays one

@@ -54,7 +54,9 @@ HRESULT acquire_surface_lease(IDirect3DDevice9* device, IDirect3DSurface9* candi
 enum class ResetPhase { begin, end };
 struct ResetEvent {IDirect3DDevice9* application=nullptr;std::uint64_t device_serial=0,generation=0;ResetPhase phase=ResetPhase::begin;HRESULT result=S_FALSE;};
 using ResetObserver=void(*)(const ResetEvent&) noexcept;
-void set_reset_observer(ResetObserver) noexcept;
+// Exclusive process-lifetime registration. Null/replacement claims refuse.
+bool claim_reset_observer(ResetObserver) noexcept;
+bool reset_observer_is(ResetObserver) noexcept;
 
 struct Options {
     // Prepare a private snapshot of automatic, single-sample D24X8 through RESZ.

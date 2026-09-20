@@ -23,6 +23,7 @@
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
 #include "media_startup.h"
+#include "media_root.h"
 #include "media_startup_abi.h"
 #include <string>
 
@@ -37,6 +38,7 @@ bool locked_prefix_enabled = false;
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module); // logs the proxy_identity/proxy_options header first
+    x3m::media_root::configure(); // callback registration only; matched startup return constructs the root
     const bool admission_requested=x3m::ownership::process_admission_monitor()!=nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",
         admission_requested,admission_requested);

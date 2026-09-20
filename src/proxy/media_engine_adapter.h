@@ -93,6 +93,16 @@ private:
     static bool append(std::atomic<std::uint32_t>*,std::uint32_t) noexcept;
     std::atomic<std::uint32_t> records_[capacity]{},shells_[capacity]{};
 };
+// A shared record-memory domain, bound before admission. Callbacks invalidate
+// only value watches under its short lock; never call Adapter/Services/COM.
+struct RecordIngress {
+    virtual ~RecordIngress()=default;
+    virtual void retiring(EngineKey) noexcept=0;
+    virtual void retiring_address(std::uint32_t) noexcept=0;
+    virtual void clearing() noexcept=0;
+    virtual void foreign_refusal() noexcept=0;
+    virtual bool healthy() const noexcept=0;
+};
 class Consumer {
 public:
     Consumer(Adapter& state,Memory& memory,Services& service,const Routes& routes) noexcept
@@ -100,6 +110,7 @@ public:
     // Serialized startup binding; immutable after first successful bind. The
     // probe is a process-lifetime, CPU-only public-platform function.
     bool bind_owner(OwnerDomain,ExecutionProbe) noexcept;
+    bool bind_ingress(RecordIngress&) noexcept;
     bool enable(Readiness) noexcept;
     void disable() noexcept {enabled_.store(false,std::memory_order_release);}
     bool enabled() const noexcept {return enabled_.load(std::memory_order_acquire);}
@@ -147,6 +158,7 @@ private:
     std::uint32_t stack_low_=0,stack_high_=0;
     ExecutionProbe execution_=nullptr;
     OwnedKeys keys_;
+    RecordIngress* ingress_=nullptr;
 };
 // One 4 KiB process-lifetime code allocation per site; never reclaimed after
 // publication, even rollback. Main/owner must also keep dispatcher context live.

@@ -8,6 +8,15 @@
 #include <atomic>
 using namespace x3m;
 using namespace x3m::media_engine;
+struct IsolatedIngress final:RecordIngress {
+    void retiring(EngineKey) noexcept override {}
+    void retiring_address(std::uint32_t) noexcept override {}
+    void clearing() noexcept override {}
+    void foreign_refusal() noexcept override {}
+    bool healthy() const noexcept override {return true;}
+};
+static IsolatedIngress isolated_ingress;
+
 static unsigned checks=0,failures=0;
 static thread_local ExecutionPoint executing{1,0x9000};
 static ExecutionPoint execution() noexcept {return executing;}
@@ -47,7 +56,7 @@ Readiness ready(){return {true,true,true,true,true,true,true,true};}
 Frame frame(unsigned esp=0x9000){Frame f{};f.saved_esp=esp-8;return f;}
 struct Setup {
     Adapter state;Mem memory;Service service;Routes r=routes();Consumer consumer;
-    Setup(unsigned commands=8):state(2,commands),consumer(state,memory,service,r){service.consumer=&consumer;CHECK(consumer.bind_owner({1,0x100,0x10000},&execution));}
+    Setup(unsigned commands=8):state(2,commands),consumer(state,memory,service,r){service.consumer=&consumer;CHECK(consumer.bind_owner({1,0x100,0x10000},&execution));CHECK(consumer.bind_ingress(isolated_ingress));}
     media::SessionHandle construct(unsigned record=0x1000){
         auto f=frame();f.esi=record;memory.put(0x9004,2u);memory.put(0x9008,8u);
         memory.put(record+0x2c,4u);memory.put(record+0x30,0x3du);

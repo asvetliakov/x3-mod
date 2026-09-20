@@ -33,7 +33,7 @@ struct Counter {
 };
 struct Diagnostics {
     bool preparation_published=false,initialized=false,admission=false;
-    unsigned assigned=0,draining=0,quarantined=0,leases=0;
+    unsigned assigned=0,draining=0,quarantined=0,leases=0,failed_mask=0;
     std::uint64_t presented[2]{},binding[2]{},clock_generation[2]{},revision[2]{},rate_numerator[2]{};
 };
 class MediaServices final:public media_engine::Services {

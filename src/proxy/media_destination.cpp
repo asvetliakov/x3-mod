@@ -125,7 +125,15 @@ void reset_event(const ownership::ResetEvent& e) noexcept {if(auto* d=reset_dest
 }
 bool NativeIdentitySource::snapshot(std::uint32_t d,std::uint32_t s,ownership::SurfaceLeaseIdentity& id) noexcept {return ownership::snapshot_surface_identity(reinterpret_cast<IDirect3DDevice9*>(d),reinterpret_cast<IDirect3DSurface9*>(s),&id)==S_OK;}
 CopyResult Destination::try_copy(const CopyRequest& r,const media::FrameLease& f,CurrentCheck c) noexcept {if(!owner(GetCurrentThreadId()))return {};NativeBackend backend;return try_copy(r,f,c,backend);}
-void bind_reset_observer(Destination* d) noexcept {reset_destination.store(d);ownership::set_reset_observer(d?reset_event:nullptr);}
+bool bind_reset_observer(Destination* d) noexcept {
+    if(!d)return false;
+    Destination* empty=nullptr;
+    if(!reset_destination.compare_exchange_strong(empty,d,std::memory_order_acq_rel,std::memory_order_acquire)&&empty!=d)return false;
+    return ownership::claim_reset_observer(reset_event);
+}
+bool reset_observer_bound(const Destination* d) noexcept {
+    return d&&reset_destination.load(std::memory_order_acquire)==d&&ownership::reset_observer_is(reset_event);
+}
 #endif
 #include "media_destination_stubs_inc.h"
 #ifdef _WIN32
@@ -144,7 +152,11 @@ x3m_media_destination_dispatch(Frame* frame,unsigned event) noexcept {
     asm volatile("frstor %0\n\tldmxcsr %1"::"m"(fp),"m"(mxcsr):"memory");
 }
 #pragma GCC pop_options
-void bind_dispatcher(Observer* value) noexcept {dispatcher.store(value,std::memory_order_release);}
+bool bind_dispatcher(Observer* value) noexcept {
+    if(!value)return false;
+    Observer* empty=nullptr;
+    return dispatcher.compare_exchange_strong(empty,value,std::memory_order_acq_rel,std::memory_order_acquire)||empty==value;
+}
 std::uint32_t dispatcher_address() noexcept {static_assert(sizeof(void*)==4);return reinterpret_cast<std::uint32_t>(&x3m_media_destination_dispatch);}
 bool NativeMemory::read(std::uint32_t address,void* out,unsigned bytes) noexcept {if(!address||!out||address>UINT32_MAX-bytes)return false;std::memcpy(out,reinterpret_cast<void*>(address),bytes);return true;}
 bool NativeMemory::write(std::uint32_t address,const void* value,unsigned bytes) noexcept {if(!address||!value||address>UINT32_MAX-bytes)return false;std::memcpy(reinterpret_cast<void*>(address),value,bytes);return true;}

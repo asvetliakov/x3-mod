@@ -100,7 +100,7 @@ Primary references: [pinned LAV splitter implementation](https://raw.githubuserc
 [DirectShow playback rate](https://learn.microsoft.com/en-us/windows/win32/directshow/setting-the-playback-rate).
 Local derivation and source anchors are in `/tmp/x3-media-async-engine-policy.md`.
 
-## Current verification boundary
+## Initial worker verification boundary
 
 The worker fixture uses three CPU slots and 18 admitted frames across zero,
 ten-second and2.2-second positions. It must observe a naturally full queue,
@@ -110,11 +110,11 @@ run during worker operations, with gaps and API durations reported rather than
 a claim that private ownership guarantees freedom from stalls. A separate
 16-picture audited suffix checks natural EOF and delayed final-picture delivery.
 
-Neither fixture installs engine hooks. Remaining production work includes owned
-clock/scheduling, verified patch spans and ABI, safe callback continuations and
-record retirement, destination recovery/Reset, save/restore behavior, bounded
-worker/module lifetime, performance and native-platform qualification. No
-production merge is authorized while the existing candidate is qualifying.
+Neither standalone worker fixture installs engine hooks. The subsequent consumer,
+destination, Services and root checkpoints implement their integration separately.
+User-launched playback, real game callback/Reset behavior, startup timing and native
+Windows runtime remain acceptance gaps; the installed candidate is described only
+in [status](../status.md).
 
 
 ## Concrete engine consumer checkpoint (2026-09-20)
@@ -217,10 +217,9 @@ shell allocation. These are source bounds, not measured game latency or FPS.
 The [ledger](../verification/media-cues.md#concrete-engine-consumer-qualification-2026-09-20)
 records 4,490 host assertions and 5,055 executed x86 fixture checks. The x86 fixture
 uses authored engine memory/callbacks in its own checked PE image, not a loaded
-game. Native Windows runtime remains unverified. Admission remains disabled until
-the root composes actual worker/clock/destination services, binding and Reset
-observers, startup/module lifetime, cue ownership and complete checked readiness.
-Actual destination integration, game callbacks, source eligibility beyond ID2,
+game. Native Windows runtime remains unverified. The consumer checkpoint alone keeps admission disabled. The root composition below
+adds actual worker/clock/destination services, binding and Reset observers, startup
+lifetime and cue ownership. Real game callbacks, source eligibility beyond ID2,
 startup timing and user-launched playback/Reset acceptance remain open.
 ## Destination provenance and synchronous copying
 
@@ -271,3 +270,63 @@ while copy depth is live. Recovery requires successful native Reset followed by
 normal whole-helper completion and exact canonical serial revalidation; failed
 Reset keeps copying unavailable. The focused results and native-platform limit
 are recorded in the [media ledger](../verification/media-cues.md#destination-provenance-copy-and-reset-checkpoint-2026-09-20).
+
+
+## Qualified startup root and common record ingress (2026-09-20)
+
+`media_root` registers callbacks during backend initialization but constructs its
+process-lifetime context only in the matched ordinary factory return, inside the
+existing startup CPU envelope. That qualified thread/stack owns Consumer,
+Admission, Destination and all callback contexts. A documented process module pin
+precedes publication; neither DLL detach nor failure frees reachable contexts.
+The existing startup proof places this seam before the initial media-table loader.
+
+The root preflights/stages all 44 spans (presentation gate, 19 destination and 24
+consumer sites) before installing gate → destination → consumer. Routes are the
+actual group members referenced by the observers. The existing allocator cue owner
+is reused only after verifying its installed bytes and chain, or verifying the
+original pristine allocator span; a foreign/conflicting claim refuses composition.
+The eligibility predicate is published last. Failure first disables admission,
+then attempts consumer → destination → gate rollback, retaining all code and any
+unpaid restoration/emission debt. Reset and destination dispatch registrations are
+exclusive process-lifetime claims; identical-context retries are idempotent,
+whereas null/replacement claims cannot silently displace their owner.
+
+`RecordIngress` shares Destination's short mutex for immediate heap copies and
+value-watch cancellation before record/shell retirement or list clearing. Adapter
+invalidation and Services cancellation happen after unlock. Covered foreign owned
+or list/return-guard refusal permanently vetoes this domain without reading the
+owner's mutable identity map. Future heap access refuses; bounded owner-stack
+argument/return cleanup can still access the immutable qualified stack range.
+Capacity exhaustion is separate: it closes new constructors while preserving
+current sessions and their copy admission. No domain lock spans engine calls,
+registry lookup, worker methods, frame copying or COM.
+
+An ordinary successful CreateDevice publishes its application value only after
+capture's lock is released and canonical ownership membership is established.
+Repeated Present never republishes it; same-address device replacement invalidates
+old provenance. Every capture mutex scope, including compositor and factory QI,
+contributes to a cheap exclusion witness. Nested Present skips maintenance. A
+successful nested device creation atomically disables acquisition, with owner-side
+Services cancellation deferred until the next unlocked boundary.
+
+Regular owner Present performs bounded Services maintenance before capture's lock,
+including when no record exists. Static per-field installation evidence is cached
+once; live readiness combines owner, actual device, recovery and permanent-veto
+state. Admission additionally requires the canonical validated package and two
+actually prepared workers. Failed Reset cannot be bypassed by repeated Present.
+Worker construction, graph I/O, waits, transcoding and a second clock/scheduler are
+absent from this path. Root readiness/setup failures preserve owned cleanup routes.
+
+F8 edges alone emit `media_owned_snapshot`, `media_owned_services` and two
+`media_owned_slot` rows. The report copies fixed owner-safe scalar state; wrong
+owner or active maintenance/copy reports unavailable/busy, without domain,
+registry, COM or worker calls under capture's lock. It includes startup QPC/status,
+installation/debt/admission/device/veto, assignment/drain/quarantine/failure masks,
+leases and presented-frame/binding/clock/rate counters. It adds no periodic log.
+
+The [root verification record](../../verification/results/media-root-wiring-2026-09-20.json)
+separates authored host/native fixtures from real game and native Windows gaps.
+The hot path adds bounded maintenance and short immediate-memory locks; capture
+exclusion uses ordinary depth updates under the existing mutex and outermost
+release/acquire stores, without TLS, additional locking or per-call allocation.

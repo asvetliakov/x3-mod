@@ -289,6 +289,7 @@ Diagnostics MediaServices::diagnostics() const noexcept {
     Diagnostics out{};out.preparation_published=preparation_state_.load(std::memory_order_acquire)==2;
     out.initialized=initialized_;out.admission=ready();
     for(unsigned i=0;i<2;++i){const auto& s=slots_[i];out.assigned+=bool(s.session);out.draining+=s.draining;out.quarantined+=s.quarantine;
+        if(s.failed)out.failed_mask|=1u<<i;
         out.leases+=held(s);out.presented[i]=s.presented;out.binding[i]=s.binding;out.clock_generation[i]=s.clock.generation();out.revision[i]=s.revision;out.rate_numerator[i]=s.clock.rate_numerator();}
     return out;
 }

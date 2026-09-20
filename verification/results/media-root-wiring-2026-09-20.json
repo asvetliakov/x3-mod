@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "checkpoint": "qualified startup root/common record ingress",
+  "base_commit": "c457ccf719c3d4c01f8001bc6e19a912ee8e0aba",
+  "checkout": "/private/tmp/x3-media-root-wiring",
+  "state": "independently reviewed source checkpoint; registration runtime and combined playback qualification pending",
+  "inputs": {
+    "src/proxy/media_root.h": "47c28c7fdaf876f1734c68998fd745d3085d39645e4516edb0125df484a4f8ce",
+    "src/proxy/media_root.cpp": "5ab06f1bd90416e7b5fa78f1517b51538106ec38e00be8041dc278eb5088dc45",
+    "src/proxy/media_engine_adapter.h": "6d164c5119828916ea7f02d9d62e247f1f50712f1eca497ffbee95392b66189a",
+    "src/proxy/media_engine_adapter.cpp": "700cb149f00c4b6fe0acbf6c958c2a84579fc6122d9b9f541ff2a1bc61d01c3e",
+    "src/proxy/media_services.h": "a1ee263392a9bc0b2be7373fd9eb14bfadc4d8608f12c529a5df4a98e2164318",
+    "src/proxy/media_services.cpp": "a4e70cac76c5a742bf070def65bc4e9ec733bcaa205439c827ac2511215f21ae",
+    "src/proxy/media_cue.h": "bdd46c38e6a624085a9187040b1c948ea84e689d1d9826c1b4b3c171cbdbb403",
+    "src/proxy/media_cue.cpp": "dfa7a8c7cb02b6fa6a4c568048f848c78b652283e87cf73e197ffb503ae6aa7f",
+    "src/proxy/media_destination.h": "47fced0a5d64a42069ccb5f53f2b3cd8294d456dff1408f3ab6ea11666d97e44",
+    "src/proxy/media_destination_sites.h": "7920e9af0c9049fdf06d984b4f285d053957a0d84fcef184244ab74efad57865",
+    "src/proxy/media_destination.cpp": "08a848b04d0cc0a6f76fa9af6686674985211a220cb3545c8f2b1d78644cba40",
+    "src/ownership/d3d9_ownership.h": "e99c3f85e4670d6b2bb295a714329e35a018447be5f1cbdcf4e098c35dd5ad8e",
+    "src/ownership/d3d9_ownership.cpp": "759a5e2d24f620cf94e9313d19ef6034b530c0c3386b1dada33c91e3d3d0d534",
+    "src/proxy/capture.cpp": "0cbd3f7fa6a91adc5e81035e4b4250cf1c0e54923dd92711710746cd49e557ca",
+    "src/proxy/loader.cpp": "ce83a6ccb0fc930e388188ce8e48b9648f291f263cfe49fcfd13d2fb824b78d2",
+    "CMakeLists.txt": "ae2bd747be31feb415904dcc3fdac8a62e6bb5fb3248d39df55cd34f98f93ec3",
+    "verification/probe/media_root_wiring_fixture.cpp": "309d50c51c9610f4409b31425b159cfcd04e09abd4d3fb8e7804bcfda18c7174",
+    "verification/probe/media_root_registration_fixture.cpp": "ae11887b17a9be2dc03f7309743ff15dce0a66ac224ccb0bc63c039c9624c617"
+  },
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_root_wiring",
+    "checks": 3037,
+    "failures": 0,
+    "exit": 0,
+    "seconds_including_build": 4.168,
+    "summary": "/tmp/x3-root-wiring-build/root-host-summary.txt",
+    "copy_cases": {
+      "external_stages": [
+        "GetDesc",
+        "LockRect",
+        "UnlockRect",
+        "final Release"
+      ],
+      "mutations": [
+        "record retirement",
+        "foreign owned refusal",
+        "binding publication"
+      ],
+      "combinations": 12,
+      "capacity_existing_physical_copy": true,
+      "independent_record_copy_after_local_failure": true
+    },
+    "indicative_performance_ns": {
+      "empty_present": 34,
+      "capture_scope_baseline": 6,
+      "capture_scope_with_exclusion": 6,
+      "iterations": 100000,
+      "limit": "host authored fixture only, not game FPS"
+    }
+  },
+  "affected_regressions": [
+    {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_engine_adapter",
+      "checks": 4523,
+      "failures": 0,
+      "native_compile": true
+    },
+    {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_services",
+      "checks": 1783,
+      "failures": 0,
+      "allocations": 0,
+      "seconds": 3.575
+    }
+  ],
+  "x86_compilation": {
+    "record": "/tmp/x3-root-wiring-build/root-compile.json",
+    "sources": [
+      {
+        "source": "src/proxy/media_root.cpp",
+        "sha256": "5ab06f1bd90416e7b5fa78f1517b51538106ec38e00be8041dc278eb5088dc45",
+        "exit": 0,
+        "seconds": 0.73776575,
+        "warnings": 0
+      },
+      {
+        "source": "src/proxy/capture.cpp",
+        "sha256": "0cbd3f7fa6a91adc5e81035e4b4250cf1c0e54923dd92711710746cd49e557ca",
+        "exit": 0,
+        "seconds": 2.682996,
+        "warnings": 0
+      },
+      {
+        "source": "src/proxy/loader.cpp",
+        "sha256": "ce83a6ccb0fc930e388188ce8e48b9648f291f263cfe49fcfd13d2fb824b78d2",
+        "exit": 0,
+        "seconds": 0.5306917499999999,
+        "warnings": 0
+      },
+      {
+        "source": "src/proxy/media_services.cpp",
+        "sha256": "a4e70cac76c5a742bf070def65bc4e9ec733bcaa205439c827ac2511215f21ae",
+        "exit": 0,
+        "seconds": 0.7779733750000002,
+        "warnings": 0
+      }
+    ],
+    "flags": "SSE2; stack4; -Wall -Wextra -Werror -Wno-cast-function-type; media_root no exceptions; no shared DLL build"
+  },
+  "production_dispatcher": {
+    "exe": "/tmp/x3-root-wiring-build/media_engine_root_cpu-v2.exe",
+    "sha256": "6f878210414f99a15eafdc6956c6c292654b7ba180c5229d7a9e6f8dc757dd81",
+    "build": "/tmp/x3-root-wiring-build/engine-build-v2.json",
+    "mode": "--production-dispatcher-only",
+    "checks": 63,
+    "cases": 4,
+    "failures": 0,
+    "exit": 0,
+    "runtime_log": "/tmp/x3-root-wiring-build/engine-cpu-v2-runtime.log",
+    "lock_record": "/tmp/x3-root-wiring-build/engine-cpu-v2-lock.json",
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1",
+    "child_seconds": 4.733315834,
+    "lock_wait_seconds": 3.834e-06,
+    "abi": "actual dispatcher_address; bound Consumer/Ingress; eight hostile Memory callbacks; all four incoming stack alignments; GPR/EFLAGS/DF/XMM/x87/MXCSR/LastError",
+    "disassembly": "/tmp/x3-root-wiring-build/engine-dispatcher.asm",
+    "disassembly_note": "v1/v2 production source identical; v2 corrects only fixture read-count assertion 4 to8; no pre-save calls/SJLJ or calls after restoration on return path",
+    "prior_unrun_exe": "/tmp/x3-root-wiring-build/media_engine_root_cpu.exe"
+  },
+  "registration": {
+    "exe": "/tmp/x3-root-wiring-build/media_root_registration.exe",
+    "sha256": "84983968fc57980570980d0ca83bdb12d1caafa183aebfc7b8d365842372d9ce",
+    "build": "/tmp/x3-root-wiring-build/registration-build.json",
+    "modes": [
+      "cue-pristine",
+      "cue-installed",
+      "reset-owned",
+      "reset-conflict"
+    ],
+    "runtime": "PENDING: parent Wine queue held for user Run53; compilation/source review only",
+    "authored_image": "PE base400000 .x3map401000..620000 text630000 noASLR; own MEM_IMAGE validation before writing allocator span; identity verifier stubbed for authored memory"
+  },
+  "F8": "edge-only owner-safe scalar Root/Startup/Services report; wrong-owner/copy/maintenance busy refuses mutable service reads; no domain/registry/COM/Workers calls; failed_mask is only Services data change",
+  "limits": [
+    "No game launched or installed artifact changed by this task.",
+    "Native Windows runtime and user media/Reset/startup timing acceptance remain open.",
+    "Ordinary returning-call/qualified owner-stack contract; no arbitrary SEH unwind through rewritten returns.",
+    "All emitted context/pages/module pin retained for process lifetime including failed rollback; emission debt is reported, not hidden."
+  ],
+  "cmake_configuration": {
+    "exit": 0,
+    "directory": "/tmp/x3-root-wiring-cmake",
+    "command": "cmake -S . -B /tmp/x3-root-wiring-cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=Release -DX3M_LAV_INCLUDE_DIR=/tmp/x3-lav-0.81/package/include -DPython3_EXECUTABLE=/Library/Developer/CommandLineTools/usr/bin/python3",
+    "shared_dll_built": false,
+    "note": "Initial autodetected Python3.14 lacked existing pinned NumPy prerequisite; prepared parent interpreter configured successfully."
+  }
+}
