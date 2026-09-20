@@ -78,10 +78,12 @@ clock/texture fixture. App-local package deployment is reviewed and committed
 with retained configuration pins remain an integration check. The canonical loop
 API now distinguishes temporary queue pressure from permanent refusal
 (`156c8b63`, 444 host checks).
-The startup boundary is reviewed and committed (`1b6ea3b2`): nine actual x86
-fixture modes pass 655 checks. This covers authored startup context and ordinary
-returns, not game readiness. Consumer hooks and destination observers remain under
-implementation/qualification. Enabled media repair remains unfinished. The owning
+The startup boundary now includes synchronous observer installation before background
+preparation (`23092198`): eleven actual x86 fixture modes pass 819 checks. The engine
+consumer checkpoint (`9ac49b48`) passes 5,055 x86 checks across 24 sites and 11 return
+guards. Both use authored engine context; actual integration/readiness stays open.
+Destination observers and connected playback services remain under qualification.
+Enabled media repair remains unfinished. The owning
 media and ownership ledgers retain the scoped evidence.
 Collision optimization is **paused by user request**. The reviewed engine/lattice
 audit adds no tracing before interpreting the existing queued lattice packet;
