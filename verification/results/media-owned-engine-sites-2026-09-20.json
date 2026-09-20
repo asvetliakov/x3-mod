@@ -1,0 +1,150 @@
+{
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "instruction_count": 802,
+  "decoded_bytes": 2271,
+  "span_count": 14,
+  "internal_branch_boundaries_checked": 128,
+  "source_provenance": [
+    {
+      "path": "/tmp/x3-media-reentry-note/src/proxy/media_cue.cpp",
+      "sha256": "47dff25ed4afdce2f7443ae8ba4dab71fd5a5b9db9d2e85e270a7aa62b1b90af"
+    },
+    {
+      "path": "/tmp/x3-media-reentry-note/src/proxy/media_cue.h",
+      "sha256": "d533215d43c51732c92a5bd210087ad2f50b86c4d52f48fc0c41e9c06bd73a45"
+    },
+    {
+      "path": "/tmp/x3-media-reentry-note/src/proxy/media_cue_sites.h",
+      "sha256": "d4e5b3267088c47329ea99f15d7d471181de96dfe54740be5c57a12418d260e1"
+    },
+    {
+      "path": "/tmp/x3-media-reentry-note/src/proxy/stamp_install.h",
+      "sha256": "0358995939a3308317ee5e9847b14c353b836454f794b02a68cd8f9c22332167"
+    }
+  ],
+  "date": "2026-09-20",
+  "status": "reviewed_selected_static_spans_not_enabled_admission",
+  "range_count": 35,
+  "relative_reference_count": 25,
+  "false_relative_candidates": 3,
+  "address_like_dword_coincidences": 7,
+  "selected_spans": [
+    {
+      "name": "constructor_call",
+      "start": "0x4981d3",
+      "end": "0x4981d8",
+      "length": 5,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "manager_pump_call",
+      "start": "0x4983d9",
+      "end": "0x4983de",
+      "length": 5,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "loop_seek_call",
+      "start": "0x49840a",
+      "end": "0x49840f",
+      "length": 5,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "explicit_play_preseek",
+      "start": "0x498d51",
+      "end": "0x498d59",
+      "length": 8,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "seek_entry",
+      "start": "0x4d0430",
+      "end": "0x4d0436",
+      "length": 6,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "run_entry",
+      "start": "0x4d1870",
+      "end": "0x4d1877",
+      "length": 7,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "position_entry",
+      "start": "0x4d0600",
+      "end": "0x4d0606",
+      "length": 6,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "stop_entry",
+      "start": "0x4d1810",
+      "end": "0x4d1818",
+      "length": 8,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "media_destructor_entry",
+      "start": "0x4d1d40",
+      "end": "0x4d1d46",
+      "length": 6,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "record_retire_entry",
+      "start": "0x4984d0",
+      "end": "0x4984d5",
+      "length": 5,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "root_shutdown_entry",
+      "start": "0x4980d0",
+      "end": "0x4980d5",
+      "length": 5,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "subsystem_clear_entry",
+      "start": "0x497190",
+      "end": "0x497197",
+      "length": 7,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "rate_matched_record",
+      "start": "0x498670",
+      "end": "0x49867a",
+      "length": 10,
+      "five_byte_patch_fits_aligned_qword": true
+    },
+    {
+      "name": "stop_all_playing_record",
+      "start": "0x4982db",
+      "end": "0x4982e1",
+      "length": 6,
+      "five_byte_patch_fits_aligned_qword": true
+    }
+  ],
+  "limits": "Selected14 spans only, not whole function census or arbitrary indirect/alias coverage. No implemented stubs, group admission, CPU/exception/rollback/runtime qualification.",
+  "local_evidence": [
+    {
+      "path": "/tmp/x3-media-owned-engine-sites.md",
+      "sha256": "176173496034748999def84727cabffa05093b9935c0a37555356a268080d95d"
+    },
+    {
+      "path": "/tmp/verify_x3_media_owned_engine_sites.py",
+      "sha256": "84909d0e0d645773591a7f123ba224d724482bec70a1fcfae240ac865e267d21"
+    },
+    {
+      "path": "/tmp/x3-media-owned-engine-sites-check.json",
+      "sha256": "e8a2720176ab6bd4c8339c18ff586d7c2e89874cc1b70232a416ced7d27f62b2"
+    },
+    {
+      "path": "/tmp/x3-media-owned-engine-sites-raw.txt",
+      "sha256": "e44d7b7b9ef6f1fe28ec915943e851bdd11e5bc7cdf7fc981233624e49e0435a"
+    }
+  ]
+}

@@ -84,7 +84,8 @@ class FogCardPolicyTests(unittest.TestCase):
     def test_actual_motion_output_methods(self):
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
         names = ('fog_transition_invalidate', 'volumetric_fog_sector_sample', 'fog_card_transition', 'fault_fog_cards', 'prepare_volumetric_fog_targets', 'reconcile_volumetric_fog', 'complete_volumetric_fog', 'volumetric_fog_begin_frame',
-                 'prepare_fog_card', 'finish_fog_card', 'volumetric_fog_toggle', 'volumetric_fog_step')
+                 'prepare_fog_card', 'finish_fog_card', 'volumetric_fog_toggle', 'volumetric_fog_step',
+                 'run_volumetric_fog', 'disable_volumetric_fog')
         methods = []
         cpp = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         names += ('get_render_state_native', 'state_known', 'blend_known', 'state_field', 'begin_draw_reads')
@@ -97,6 +98,11 @@ class FogCardPolicyTests(unittest.TestCase):
                 depth += (fragment[end] == '{') - (fragment[end] == '}')
                 end += 1
             methods.append(fragment[start:end])
+        # Execute the exact fog policy reset from before_reset; GPU release and
+        # native Reset remain covered by the existing real-D3D fixtures.
+        reset_start = cpp.index('    fog_sector_ = {}; fog_cards_ = {};')
+        reset_end = cpp.index('\n', cpp.index('fog_failures_ = 0; fog_attach_failed_ = false;', reset_start))
+        methods.append('void MotionOutput::reset_fog_for_test() noexcept {\n' + cpp[reset_start:reset_end] + '\n}')
         driver = '#include "fog_card_motion_mock.h"\nnamespace x3m {\n' + '\n'.join(methods) + '\n}\n#include "fog_card_motion_cases_inc.h"\n'
         compiler = shutil.which('clang++') or shutil.which('g++')
         with tempfile.TemporaryDirectory() as tmp:
@@ -108,6 +114,8 @@ class FogCardPolicyTests(unittest.TestCase):
             result = subprocess.run([str(binary)], text=True, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('actual MotionOutput card methods PASS', result.stdout)
+            self.assertIn('cut_sequence frames=32 cuts=11 warmup=0 suppressed=192 applied=32 PASS', result.stdout)
+            self.assertIn('cut_recovery scenarios=8 PASS', result.stdout)
             for cards in (6, 8):
                 self.assertIn(f'card_native_calls cards={cards} rs_get={12*cards} freq_get={cards} mask_set={2*cards} total={15*cards}', result.stdout)
 

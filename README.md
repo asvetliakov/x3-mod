@@ -24,6 +24,9 @@ cmake --build build -j4
 ```
 
 The resulting `build/d3d9.dll` statically links the MinGW C++/thread runtime.
+Replacement media playback is retired; building and launching require no LAV
+SDK or provider package. Managed installation removes an active media selection
+while retaining the previous proxy, manifest and provider files for rollback.
 
 ## Install and run
 

@@ -1427,6 +1427,6 @@ eight-tap reconstruction verifies it, and published partition counts are unchang
 Close this bounded audit without a renderer patch or another RGB fit. Coverage
 remains a candidate, not a demonstrated displayed-image fix. Unknown overlap and
 background ownership prevent selecting a safe source-coverage or history-lock
-implementation from this audit. Run54 B guarded state capture remains the intended next lattice evidence, but
-is held after the user reported Run54 A crashes. It cannot retroactively
-authenticate Run177.
+implementation from this audit. Run54 B guarded state capture remains the intended next lattice evidence.
+Run56 subsequently passed media stability by user report, releasing the crash
+hold on this capture. It cannot retroactively authenticate Run177.

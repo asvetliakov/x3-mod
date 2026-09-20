@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "date": "2026-09-20",
+  "scope": "Preparation-time package reader: production parser and actual Win32 file adapter over tiny synthetic package files; no COM/decoder/game qualification",
+  "source": {
+    "base_commit": "a3ae4a1b4012c5770b0782dbc4b72411ac9534d9",
+    "state": "Reviewed sources committed together with this record; no enabled playback or DLL candidate built",
+    "frozen_inputs_sha256": {
+      "src/media/package_config.h": "9ceadd56e0aa8cb6a0ed8db4020999002bdf01e9f75879f9127b4c509326c600",
+      "src/media/package_config.cpp": "56dfcf8398ce0cae3b3a58a7b6c7b10fa61823f4565d9f27848efbb571006bb2",
+      "verification/probe/media_package_config_windows.cpp": "76f6ba9ee70e6ecde7928d39a89f12594529603e3d9ef23116503e4fa0ba71d4",
+      "verification/probe/prepare_media_package_config_fixture.py": "ae90da8f9e014fb2821e0e0a0bf7c25d08fbe2335560f89e564b86d6eb21d13c",
+      "verification/probe/build_media_package_config_fixture.sh": "e0870f30f225dd5827fa8dca38bf39e6b1670a1f4f0d04986f34f9be6a748b55"
+    }
+  },
+  "host": {
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+    "compile_command": [
+      "clang++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "verification/probe/media_package_config_test.cpp",
+      "-o",
+      "/tmp/x3-package-config-test-v2"
+    ],
+    "runs": [
+      {
+        "command": [
+          "/tmp/x3-package-config-test-v2"
+        ],
+        "checks": 285,
+        "failures": 0
+      },
+      {
+        "command": [
+          "/tmp/x3-package-config-test-v2",
+          "/tmp/x3-media-local-installed-records-v1"
+        ],
+        "checks": 8,
+        "failures": 0
+      }
+    ],
+    "sanitizers": {
+      "checks": [
+        285,
+        8
+      ],
+      "failures": 0,
+      "flags": [
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined"
+      ],
+      "evidence": "/tmp/x3-package-config-evidence.txt",
+      "reuse": "Unchanged portable parser/hash code; correction affects the Windows directory access mask."
+    },
+    "additional_checks": [
+      "sh -n build script",
+      "python3 -m py_compile preparation script",
+      "PureWindowsPath evaluation confirms source_record_relative forward slashes",
+      "git diff --check"
+    ]
+  },
+  "build": {
+    "command": [
+      "sh",
+      "verification/probe/build_media_package_config_fixture.sh",
+      "/tmp/x3-package-config-windows-v2"
+    ],
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "flags": [
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-municode",
+      "-static"
+    ],
+    "exe": "/tmp/x3-package-config-windows-v2/relocated/Game relocated \u03a9\u65e5 space/package_config_windows.exe",
+    "sha256": "8e7a3136eabf2ad784bb4827476dbe1ad266dd16f4922fb7909d3f281258309b",
+    "synthetic_data_bytes": 6983
+  },
+  "runtime": {
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "environment": {
+      "X3M_FIXTURE_BOTTLE": "X3",
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "command": [
+      "python3",
+      "verification/probe/wine_lock.py",
+      "--timings-json",
+      "/tmp/x3-package-config-windows-v2-lock.json",
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "/tmp/x3-package-config-windows-v2/relocated/Game relocated \u03a9\u65e5 space/package_config_windows.exe"
+    ],
+    "cwd": "/tmp/x3-media-package-config",
+    "stdout_stderr": "/tmp/x3-package-config-windows-v2-runtime.log",
+    "log_sha256": "6b40103df7dfa387bde9fcfe0b0624d89332a4e0fbb89cb46b55082a7b91f310",
+    "lock_record": "/tmp/x3-package-config-windows-v2-lock.json",
+    "lock_wait_seconds": 3.875000000000406e-06,
+    "child_elapsed_seconds": 2.105127125,
+    "exit_code": 0,
+    "checks": 150,
+    "failures": 0,
+    "unsupported": 0,
+    "observations": {
+      "file_rename_denials": 6,
+      "directory_rename_denials": 2,
+      "rename_error": 32,
+      "last_error_checks": 13,
+      "file_reparse_refused": true,
+      "directory_reparse_refused": true,
+      "read_sharing": true,
+      "write_rename_after_last_owner_release": true
+    }
+  },
+  "preserved_failure": {
+    "exe": "/tmp/x3-package-config-windows-v1/package_config_windows.exe",
+    "exe_sha256": "120c357b4dc46f357c59c6abd74c328fd4d0775690dd9d3cd293f6fb57c1ecde",
+    "log": "/tmp/x3-package-config-windows-v1-runtime.log",
+    "log_sha256": "5a39c0a7240989ea0fd4e329e12c3d5f6c0f1ca9eec13c6274dfc55774afd83b",
+    "checks": 42,
+    "passed": 41,
+    "failed_check": 42,
+    "witness": "Provider directory MoveFileExW returned TRUE while configuration remained held. Fixture logged stale LastError32 and did not check restoration.",
+    "cause": "FILE_READ_ATTRIBUTES-only directory access is outside sharing restrictions.",
+    "correction": "Add FILE_LIST_DIRECTORY to root and traversed directory opens; preserve file policy and no-delete directory sharing. Log actual rename BOOL/path and assert unexpected-success restoration.",
+    "public_contracts": [
+      "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew",
+      "https://learn.microsoft.com/en-us/windows/win32/fileio/file-access-rights-constants"
+    ]
+  },
+  "review": {
+    "agent": "review_media_package_config",
+    "result": "CLEAR",
+    "scope": "v2 source and synthetic runtime evidence; reported by parent"
+  },
+  "limitations": [
+    "Native Windows execution unverified",
+    "Actual two-worker COM/provider/source opens with retained configuration unverified",
+    "Synthetic dummy PE/media filenames never loaded or decoded",
+    "No arbitrary hostile ancestor-namespace or host-side sharing-bypass guarantee",
+    "No game performance or enabled engine playback qualification",
+    "No game launch or installation performed"
+  ]
+}

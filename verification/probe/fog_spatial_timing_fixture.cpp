@@ -5,7 +5,9 @@
 #undef main
 #include "fog_spatial_timing_inc.h"
 int main(int argc,char** argv){
-    if(argc!=3)return 2;
+    if(argc!=3&&argc!=4)return 2;
+    const bool paired=argc==4;
+    if(paired&&std::strcmp(argv[3],"--shadow-pairs"))return 2;
     std::setvbuf(stdout,nullptr,_IONBF,0);
     try{
         WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3FogSpatialTiming";RegisterClassA(&cls);
@@ -17,6 +19,6 @@ int main(int argc,char** argv){
         D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window.handle;pp.BackBufferWidth=1280;pp.BackBufferHeight=768;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         Com<IDirect3DDevice9> device;check(api->CreateDevice(0,D3DDEVTYPE_HAL,window.handle,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device.p),"CreateDevice");
         D3DDISPLAYMODE mode{};check(api->GetAdapterDisplayMode(0,&mode),"display");
-        return fog_spatial_timing::qualify(device.p,mode.Format,argv[1],argv[2]);
+        return paired?fog_spatial_timing::qualify_pairs(device.p,mode.Format,argv[1],argv[2]):fog_spatial_timing::qualify(device.p,mode.Format,argv[1],argv[2]);
     }catch(const std::exception& e){std::printf("RESULT FAIL error=%s\n",e.what());return 1;}
 }

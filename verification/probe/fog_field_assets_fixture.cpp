@@ -63,14 +63,13 @@ void operator delete(void* p,std::size_t) noexcept { std::free(p); }
 void operator delete[](void* p,std::size_t) noexcept { std::free(p); }
 
 int main(int argc,char** argv) try {
-    require(argc==3,"arguments");
+    require(argc==int(std::size(family_profiles))+1,"arguments");
     using namespace x3m::renderer::fog_field;
-    const Profile profiles[]={Profile::Bluewell,Profile::Foggreenoutlands};
-    for(unsigned which=0;which<2;++which){
+    for(unsigned which=0;which<std::size(family_profiles);++which){
         const auto read_begin=std::chrono::steady_clock::now();
         const auto packet=read(argv[1+which]);
         const auto read_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-read_begin).count();
-        const auto* info=profile_info(profiles[which]);
+        const auto* info=profile_info(family_profiles[which].profile);
         require(info&&info->base_sigma>0,"profile info");
         std::vector<std::uint16_t> output;
         const auto decode_begin=std::chrono::steady_clock::now();
@@ -102,5 +101,5 @@ int main(int argc,char** argv) try {
     std::vector<std::uint16_t> output(1,1);
     require(decode_from_resource(reinterpret_cast<void*>(1),Profile::Bluewell,output).status==Status::ResourceLoadFailed&&output.empty(),"host resource boundary");
     require(profile_info(Profile::None)==nullptr,"none profile");
-    std::puts("PASS fog_field_assets decoder=2 corruptions_per_profile=11 allocation=1 atomic=1 independent_fullscan=2");return 0;
+    std::printf("PASS fog_field_assets decoder=%zu corruptions_per_profile=11 allocation=1 atomic=1 independent_fullscan=%zu\n", std::size(family_profiles), std::size(family_profiles));return 0;
 } catch(const std::exception& e) { std::fprintf(stderr,"FAIL %s\n",e.what());return 1; }

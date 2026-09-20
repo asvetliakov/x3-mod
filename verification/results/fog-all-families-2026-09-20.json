@@ -1,0 +1,206 @@
+{
+  "status": "14-family host and actual-GPU checks independently reviewed; parent integration pending",
+  "worktree": "/private/tmp/x3-fog-all-families",
+  "base": "3374afdc8a7322edd2cd08498ff033c07617ed12",
+  "patch": "/tmp/x3-fog-all-families.patch",
+  "patch_sha256": "e10fb1ce760b16db220460830305b80033ea8754714a9cbcf065bec2673f3e67",
+  "source_hashes": {
+    "cmake/FogField.cmake": "34cf44c09a98e6d6d477a882cea475fc5b80ea26b84d606463082c9bb6a7ee3c",
+    "cmake/fog_field_assets.rc.in": "28c5f08ee26a4f47331e1a98cf3e261f57ed7682062c11572b7d674f420cadb5",
+    "src/proxy/fog_sector_policy.h": "17a3554aba329969247d730a66ada95bd1b2733ec08833479101b3e3462bdf16",
+    "src/renderer/fog_field_assets.h": "19768c0b1c105779f757a458b3a2bb9205f9660cf03a270c6ed1fc26510dbdfd",
+    "tools/build/bake_fog_fields.py": "972d1472ff55b380eb66308a5cbf6c69407bc82db6fa9174834fae4b1a2168d3",
+    "tools/fog_field_recipe.py": "28bc115e7a0c57777698318b7d7a583ab9a3ffde1d3fbc953556112127d8228b",
+    "verification/analysis/test_fog_field_assets.py": "615bad52684180824a478d6cd0386e242f3b18e7472369e3accfaffc6459bffa",
+    "verification/analysis/test_fog_sector_policy.py": "87082bf0803d6d5be1b195c0dfa3449f60cd7e964ef3a3fbfd92f3a5a113d880",
+    "verification/probe/fog_card_motion_cases_inc.h": "c2b0d30eb8e6998d1c65c524b6b2ad6f265eb47f98f099c93a02e9323661ea59",
+    "verification/probe/fog_field_assets_fixture.cpp": "1c07c5e495282c9dd8af4ec2f974a28eb9c1f0baaef8e9c721037bc9d1a6c393",
+    "verification/probe/fog_route_bridge_build.py": "05d30bb7b40dce3e9f265d165f2766ef884c845707843bab44b98bbe6484fb9a",
+    "verification/probe/fog_spatial_build.py": "408e9e13ef5fadd2c4ddd281eb4ac4a91d8b960cb00d5414067d0a1213bb598b",
+    "verification/probe/fog_spatial_timing_build.py": "f8afeb1c54e118b5a9240f2b8f1c4486eb3e4c4623b0ad94d8fa419a44344974"
+  },
+  "coverage": {
+    "profiles": 14,
+    "mapped_positive_families": 11,
+    "mapped_positive_sectors": 35,
+    "additional_unused_families": [
+      "fogblue",
+      "fogkhaak",
+      "khaakhive"
+    ],
+    "missing_asset_fallbacks": [
+      "xtmgreenring",
+      "earth"
+    ],
+    "new_profiles_density_status": "provisional_artistic",
+    "new_profiles_occupancy": 0.12,
+    "new_profiles_sigma": 2.5e-06
+  },
+  "assets": {
+    "directory": "/tmp/x3-fog-all-families-final-assets",
+    "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+    "resource_bytes": 34142200,
+    "active_cpu_atlas_bytes": 17846400,
+    "active_gpu_atlas_bytes": 17846400,
+    "bake_seconds": 19.581445792,
+    "original_two_packets_byte_equal_Run53": true
+  },
+  "checks": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_field_assets verification.analysis.test_fog_sector_policy verification.analysis.test_fog_cards verification.analysis.test_fog_route_bridge verification.analysis.test_fog_spatial_timing",
+    "tests": 28,
+    "seconds": 54.555,
+    "exit": 0,
+    "log": "/tmp/x3-fog-all-families-host-tests.log",
+    "log_sha256": "213208fec72dd355d3174bebd9b48933f41b14d1c862fdafdd90c53832cb9190",
+    "decoded_profiles": 14,
+    "corruptions_per_profile": 11,
+    "independent_fullscan_profiles": 14,
+    "two_bakes_byte_deterministic": true,
+    "i686_decoder_and_resources_cross_compiled": true,
+    "git_diff_check": true
+  },
+  "schema": 1,
+  "date": "2026-09-20",
+  "feature": "spatial-fog-family-expansion",
+  "review": {
+    "reviewer": "review_fog_families",
+    "scope": "source, host evidence and documentation",
+    "outcome": "no blocking findings",
+    "date": "2026-09-20"
+  },
+  "gpu_checkpoint": {
+    "status": "passed and independently reviewed",
+    "date": "2026-09-20",
+    "scope": "actual production FogPass with 14 embedded profiles, synthetic fixed 64x48 sky view, unshadowed shader",
+    "execution": {
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "/tmp/x3-fog-all-families-gpu-v1/fog_spatial_fixture.exe",
+        "Z:\\private\\tmp\\x3-fog-family-gpu-inputs-final\\cases.txt",
+        "Z:\\private\\tmp\\x3-fog-family-gpu-inputs-final",
+        "--families"
+      ],
+      "returncode": 0,
+      "seconds": 10.532549417,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "executable_sha256": "9cdbf99c6236c1084ec2ded85955bfb693b9cf63883b47d790f51ff392758f16",
+      "inputs_sha256": "65cf8dc6cd973e77c82a6dadb1b5eec428d41d734c026ed96f3c45a8647fdedc",
+      "build_sha256": "8951ee0c9b1978274cd88e4903b22d510a0dc580cbdb2c8f8d2c63def367e20c"
+    },
+    "checks": 145,
+    "executions": 18,
+    "profile_order": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      1,
+      2,
+      14,
+      14
+    ],
+    "exact_revisits": true,
+    "real_reset": 1,
+    "nonempty_ST_pixels": [
+      736,
+      768
+    ],
+    "changed_RGB_pixels": [
+      2954,
+      3072
+    ],
+    "worst_errors": {
+      "T": {
+        "p99": 0.00048828125,
+        "max": 0.00048828125
+      },
+      "S": {
+        "p99": 3.0517578125e-05,
+        "max": 3.0517578125e-05
+      },
+      "composite_relative_RGB": {
+        "p99": 0.0009708738070912659,
+        "max": 0.0012903226306661963
+      }
+    },
+    "evidence": {
+      "report": {
+        "path": "/tmp/x3-fog-family-gpu-inputs-final/report.json",
+        "sha256": "8e0e005cb36d190c3a7e0cc915477ce60acf43bf852ea5f8724d33a44037d8bc"
+      },
+      "execution": {
+        "path": "/tmp/x3-fog-family-gpu-inputs-final/execution.json",
+        "sha256": "247b54084a98764fec4a2a4f41d01df68802d70927ec68a68b03bbcbb724bf93"
+      },
+      "build": {
+        "path": "/tmp/x3-fog-all-families-gpu-v1/build.json",
+        "sha256": "8951ee0c9b1978274cd88e4903b22d510a0dc580cbdb2c8f8d2c63def367e20c"
+      },
+      "inputs": {
+        "path": "/tmp/x3-fog-family-gpu-inputs-final/inputs.json",
+        "sha256": "65cf8dc6cd973e77c82a6dadb1b5eec428d41d734c026ed96f3c45a8647fdedc"
+      },
+      "fixture_log": {
+        "path": "/tmp/x3-fog-family-gpu-inputs-final/fixture.txt",
+        "sha256": "f06084feb34df99fbf92b27f485c850f5cf0e362e1c26706abc4972b9b3b5b55"
+      },
+      "checker_host_tests": {
+        "path": "/tmp/x3-fog-family-gpu-host-tests.log",
+        "sha256": "b471e56d24822f31552687c453eeff38457b02271e62df888f46c5ce091610e7"
+      }
+    },
+    "lock_timings": {
+      "lock_wait_seconds": 3.958000000005291e-06,
+      "child_elapsed_seconds": 10.925613499999999,
+      "exit_code": 0,
+      "path": "/tmp/x3-fog-all-families-gpu-v1-lock.json",
+      "sha256": "01a8b68204a55b884457232a8aa7a01c43f429a9e4473a40a66a617d3a59a071"
+    },
+    "limitations": [
+      "No all-family geometry, boundary or full-pixel repair cases; all-sky synthetic view only",
+      "Separate unshadowed build; combined shaft integration still pending",
+      "No game visual acceptance or native Windows execution",
+      "10.532549417 seconds is entire fixture process time, not GPU cost or a loading benchmark"
+    ],
+    "review": {
+      "reviewer": "review_fog_families",
+      "scope": "runtime source/input bindings and independent raw readback analysis",
+      "outcome": "clear,145 checks/18 cases reproduced"
+    }
+  },
+  "host_checkpoint_limitations_at_time": [
+    "No Wine/game/DLLbuild/install/commit",
+    "No native Windows runtime evidence",
+    "New family visual appearance not accepted",
+    "Parent owns combined shaft integration and flight",
+    "No actual GPU coverage of all 14 profiles; bridge/timing tests are host evidence-parser checks"
+  ],
+  "host_execution_environment": {
+    "kind": "host-only and i686 cross-compilation",
+    "bottle": null,
+    "wine_arch": null,
+    "FEX_X87REDUCEDPRECISION": null,
+    "WINEMSYNC": null
+  }
+}

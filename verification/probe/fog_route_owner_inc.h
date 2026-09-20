@@ -4,6 +4,7 @@
 #include "fog_card_mask.h"
 #include "fog_card_match.h"
 #include "shadow_replay_projection.h"
+#include "sun_shadow_apply_pass.h"
 #include <cstdarg>
 namespace x3 { namespace temporal { enum class AgxDecode {none,gamma22}; } }
 namespace x3m {
@@ -35,7 +36,16 @@ struct MotionOutput {
     unsigned active_queries_=0,target_width_=64,target_height_=48;
     renderer::CameraState camera_scene_{};float jitter_[2]{};
     struct HdrConfig {x3::temporal::AgxDecode decode=x3::temporal::AgxDecode::gamma22;}hdr_config_;
-    renderer::ShadowCascadeSet depth_cascades_{};void* depth_replay_=this;
+    // No shaft-map publication in this bridge; the real parameter helper still
+    // executes its normal no-current-map path with typed owner inputs.
+    struct NoMaps {
+        struct Retained {renderer::ShadowReplayBasis basis{};std::uint64_t frame=0;};
+        const Retained* retained(unsigned)const{return nullptr;}
+        IDirect3DTexture9* map_texture(unsigned)const{return nullptr;}
+        unsigned size(unsigned)const{return 0;}
+    } no_maps_;
+    renderer::ShadowCascadeSet depth_cascades_{};NoMaps* depth_replay_=&no_maps_;
+    float sun_apply_bias_units_=0,sun_apply_clamp_texels_=0;
     struct PointSun {const double* grid_anchor(unsigned)const{return nullptr;}}point_sun_;
     sun_light_poll::Sample point_sun_sample_{};
     bool depth_cascades_on()const{return true;}const float* cascade_sun(unsigned)const {static const float sun[4]{0,0,1,0};return sun;}

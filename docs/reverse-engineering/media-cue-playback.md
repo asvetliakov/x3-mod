@@ -747,3 +747,8 @@ playback. Detailed derived analysis remains local at
 `/tmp/x3-run55-media-fault-design/report.md`; raw disassembly stays untracked.
 See the [Run55 triage](../../verification/results/run55-crash-triage/result.md)
 and [media ledger](../verification/media-cues.md#run55-crash-and-user-authorized-video-omission-2026-09-21).
+
+The separate [media-record lifetime investigation](media-record-lifetime.md)
+traces callback/teardown-before-unlink retirement and conditional destination
+retirement. It establishes no safe interval for added synchronous COM calls;
+no runtime reentrant free or new hook qualification is claimed.

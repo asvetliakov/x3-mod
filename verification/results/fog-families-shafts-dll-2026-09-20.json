@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "state": "reviewed and verified retained DLL; not installed",
+  "source_commit": "a13ae8a73dab68113e63b0c2fff415ffb0b18bf6",
+  "source_dirty": false,
+  "dll": "/tmp/x3-fog-families-shafts-dll-v1/build/d3d9.dll",
+  "dll_sha256": "ca02a6c4abd8693a18376853240600e4ca0d485d017bf6d7c3026724ffffbd1d",
+  "dll_bytes": 54352248,
+  "build_invocations": 1,
+  "configuration": "RelWithDebInfo",
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "build_log": "/tmp/x3-fog-families-shafts-dll-v1/build.log",
+  "full_host": {
+    "tests": 2431,
+    "skips": 2,
+    "seconds": 753.309,
+    "evidence": "fog-families-shafts-integration-2026-09-20.json"
+  },
+  "affected_timing_tests": {
+    "count": 19,
+    "seconds": 0.136
+  },
+  "linked_audit": {
+    "path": "/tmp/x3-fog-families-shafts-dll-v1/linked-audit.json",
+    "sha256": "6d6272671d1e6d70bdce127e2d3abae0a677206f41fa5f5c13869a7eddd033aa",
+    "result": "PASS",
+    "roots": 95,
+    "reachable": 540,
+    "violations": 0
+  },
+  "smoke": {
+    "path": "/tmp/x3-fog-families-shafts-dll-v1/render-smoke.json",
+    "sha256": "c85eb6a5ca3d1d5b111ddbb46ec3e98fdc857283a40c10698b3ecd2b5595b24e",
+    "status": "PARTIAL",
+    "scope": "Two retained actual-DLL cases; partial selected suite, not full motion-output qualification",
+    "cases": {
+      "production-ownership-hdr-on": {
+        "checks": 43,
+        "restorations": 39,
+        "exit": 0,
+        "directory": "verification/probe/build/motion-output-production-ownership-hdr-on-20260920-190058-977859",
+        "dll_sha256": "ca02a6c4abd8693a18376853240600e4ca0d485d017bf6d7c3026724ffffbd1d",
+        "exe_sha256": "6ac9b3de7ca1843f1f29fe30982b3418887294b66ef8a8e4470312f6b78577e9"
+      },
+      "production-taa-hdr-on": {
+        "checks": 83,
+        "restorations": 51,
+        "exit": 0,
+        "directory": "verification/probe/build/motion-output-production-taa-hdr-on-20260920-190103-850750",
+        "dll_sha256": "ca02a6c4abd8693a18376853240600e4ca0d485d017bf6d7c3026724ffffbd1d",
+        "exe_sha256": "6ac9b3de7ca1843f1f29fe30982b3418887294b66ef8a8e4470312f6b78577e9"
+      }
+    }
+  },
+  "scope": "Fourteen asset-backed fog profiles and current-frame spatial shafts; existing lattice diagnostic retained; no media or collision changes",
+  "limitations": [
+    "Not installed; current Run53 remains qualifying",
+    "Flight appearance and native Windows runtime unverified",
+    "Standalone combined GPU and paired timing evidence is recorded separately; smoke is integration only"
+  ],
+  "dry_run": {
+    "path": "/tmp/x3-fog-families-shafts-dll-v1/dry-run.txt",
+    "sha256": "e1e37b802f65079de3a7ee64dfc48540c98bcf74f9e6e4241aaf454dd330cec1",
+    "exit_code": 0,
+    "scope": "Existing queued fog+shadow command with --dry-run; host launcher validation only, not DLL loading",
+    "game_launched": false
+  }
+}

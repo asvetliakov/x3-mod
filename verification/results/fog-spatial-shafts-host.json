@@ -1,0 +1,467 @@
+{
+  "checkpoint": "spatial-directional-shafts-host-gpu-and-paired-timing",
+  "date": "2026-09-20",
+  "host_tests": {
+    "count": 33,
+    "seconds": 1.954,
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_shadows verification.analysis.test_fog_spatial_reference verification.analysis.test_volumetric_fog verification.analysis.test_fog_route_bridge"
+  },
+  "cross_compilation": "FogPass and actual fixture: i686-w64-mingw32-g++, -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2",
+  "compiled_programs": {
+    "march": {
+      "slots": 315,
+      "words": 1397
+    },
+    "composite": {
+      "slots": 506,
+      "words": 2162
+    }
+  },
+  "prepared_runtime_checks": 132,
+  "actual_dump_host": {
+    "report": "/tmp/x3-spatial-fog-shafts-offline-half.json",
+    "seconds": 15.799608375,
+    "passed": true,
+    "cases": [
+      {
+        "frame": 1974,
+        "family": "bluewell",
+        "samples": 245760,
+        "shadowed_samples": 0,
+        "shadowed_fraction": 0.0,
+        "scattering_reduction_max": 0.0,
+        "scattering_reduction_mean": 0.0,
+        "transmission_identical": true,
+        "unavailable_identical": true,
+        "empty_samples": 88707,
+        "passed": true
+      },
+      {
+        "frame": 9204,
+        "family": "bluewell",
+        "samples": 245760,
+        "shadowed_samples": 0,
+        "shadowed_fraction": 0.0,
+        "scattering_reduction_max": 0.0,
+        "scattering_reduction_mean": 0.0,
+        "transmission_identical": true,
+        "unavailable_identical": true,
+        "empty_samples": 152739,
+        "passed": true
+      },
+      {
+        "frame": 21901,
+        "family": "foggreenoutlands",
+        "samples": 245760,
+        "shadowed_samples": 0,
+        "shadowed_fraction": 0.0,
+        "scattering_reduction_max": 0.0,
+        "scattering_reduction_mean": 0.0,
+        "transmission_identical": true,
+        "unavailable_identical": true,
+        "empty_samples": 74335,
+        "passed": true
+      },
+      {
+        "frame": 26447,
+        "family": "foggreenoutlands",
+        "samples": 245760,
+        "shadowed_samples": 4,
+        "shadowed_fraction": 1.6276041666666666e-05,
+        "scattering_reduction_max": 0.0009555350989103317,
+        "scattering_reduction_mean": 3.7216552062346864e-09,
+        "transmission_identical": true,
+        "unavailable_identical": true,
+        "empty_samples": 94857,
+        "passed": true
+      }
+    ]
+  },
+  "limitations": [
+    "The actual_dump_host subsection is host arithmetic; actual_gpu separately records production GPU execution",
+    "2-pixel captured grid; no flight visual acceptance",
+    "Existing captures already contain fog",
+    "Tracked radiance unavailable in frozen inputs: qualified white radiance",
+    "Native Windows unverified",
+    "Run53 unchanged",
+    "GPU numerical/state fixtures use the two original profiles; all-family GPU coverage remains separate",
+    "Injected device-loss evidence does not establish naturally occurring device loss"
+  ],
+  "prepared_numeric_variants": 40,
+  "prepared_numeric_checks": 88,
+  "actual_gpu": {
+    "state": {
+      "report": "/tmp/x3-spatial-fog-shafts-gpu-v2/state/report.json",
+      "report_sha256": "73374fcc9b3661c17c23f234268cebc36c8c37217ef2c27bdb8a18a04a0aa67b",
+      "passed": true,
+      "checks": 132,
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "/tmp/x3-spatial-fog-shafts-gpu-v2/fog_spatial_fixture.exe",
+          "Z:\\private\\tmp\\x3-spatial-fog-shafts-gpu-v2\\state\\cases.txt",
+          "Z:\\private\\tmp\\x3-spatial-fog-shafts-gpu-v2\\state",
+          "--state"
+        ],
+        "returncode": 0,
+        "seconds": 8.893607167,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "executable_sha256": "56002b6d21af12684286b8042d020ccce9c31c819f47e509b0dfe960879c8a85",
+        "inputs_sha256": "7bae653c13254e9c51e9921ddc6964f90ae04f8c24ae7f452443a9b7a652e786",
+        "cases_sha256": "ee2afbc118a3acb27e82277ecb4f3fac46c5da31cac30b490f1f502866663985",
+        "build_sha256": "9dec31f090f7e265701159d7610de9ef4a91327fb48dbf241ad932ef36a67da7"
+      }
+    },
+    "numeric": {
+      "report": "/tmp/x3-spatial-fog-shafts-gpu-v2/numeric/report.json",
+      "report_sha256": "41cff29a6aa7110c98bc3c10edcb0b42e58aa43ed207911141c7a71cfc7c1d08",
+      "passed": true,
+      "checks": 88,
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "/tmp/x3-spatial-fog-shafts-gpu-v2/fog_spatial_fixture.exe",
+          "Z:\\private\\tmp\\x3-spatial-fog-shafts-gpu-v2\\numeric\\cases.txt",
+          "Z:\\private\\tmp\\x3-spatial-fog-shafts-gpu-v2\\numeric"
+        ],
+        "returncode": 0,
+        "seconds": 8.597018,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "executable_sha256": "56002b6d21af12684286b8042d020ccce9c31c819f47e509b0dfe960879c8a85",
+        "inputs_sha256": "7bae653c13254e9c51e9921ddc6964f90ae04f8c24ae7f452443a9b7a652e786",
+        "cases_sha256": "ee2afbc118a3acb27e82277ecb4f3fac46c5da31cac30b490f1f502866663985",
+        "build_sha256": "9dec31f090f7e265701159d7610de9ef4a91327fb48dbf241ad932ef36a67da7"
+      },
+      "variants": 40,
+      "readback_hashes": 80,
+      "repair_pixels_per_view": 737280,
+      "all_lit_repair_equals_unshadowed": true,
+      "dark_repair_differs": true
+    }
+  },
+  "independent_review": "Root confirms deep source/state/numeric review clear, 2026-09-20",
+  "paired_timing": {
+    "report": "/tmp/x3-spatial-fog-shafts-timing-v1-results/report.json",
+    "report_sha256": "b7ee826a161bc07819ed93bd7ce2b7111d91884466aba435005b09127ae7f662",
+    "passed": true,
+    "execution": {
+      "executable_sha256": "838444d24227d133391d0d9d2f7c37f300ee50a5ecc57caedb77dc3f2ae1980e",
+      "build_sha256": "acdbab087ccf70eca7f8053cc192f46e6fae135480b8a8b4fefec32162405e86",
+      "manifest_sha256": "c277fe36ef6eb1353249a3698142de35a8bcd91cf6f36f0fb528ee471d282c67",
+      "cases_sha256": "ad25919f0347b41aaf278f48492edf893ae6dc22040a7165f7f7c568ef01f4ef",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "/private/tmp/x3-spatial-fog-shafts-timing-v1/fog_spatial_timing.exe",
+        "Z:\\private\\tmp\\x3-spatial-fog-shafts-timing-inputs-v1\\cases.txt",
+        "Z:\\private\\tmp\\x3-spatial-fog-shafts-timing-v1-results",
+        "--shadow-pairs"
+      ],
+      "returncode": 0,
+      "seconds": 9.261556542000001,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "runner_sources": {
+        "/private/tmp/x3-spatial-fog-shafts/verification/probe/fog_spatial_timing_run.py": "2b6fb2a3ef47d95bbc9dee64833281a4d347b3f178b72fdb527a7cd87f87963c",
+        "/private/tmp/x3-spatial-fog-shafts/verification/probe/fog_spatial_timing_prepare.py": "6032160df7962efe4b9e2f551768a3db813c71a66ce729cb2ec95728464a5230",
+        "/private/tmp/x3-spatial-fog-shafts/verification/probe/fog_spatial_timing_build.py": "6ad347100d2be89450f9b4037c12d79494f10b172517f61d52400c28f21221a8"
+      }
+    },
+    "lock": {
+      "report": "/tmp/x3-spatial-fog-shafts-timing-v1-lock.json",
+      "lock_wait_seconds": 3.4169999999986156e-06,
+      "child_elapsed_seconds": 10.585329,
+      "exit_code": 0
+    },
+    "build_record": "/tmp/x3-spatial-fog-shafts-timing-v1/build.json",
+    "samples_including_warm": 400,
+    "warm_transactions": 80,
+    "measured_transactions": 320,
+    "common_transactions_including_warm": 320,
+    "repair_stress_transactions_including_warm": 80,
+    "checks": 63,
+    "readback_hashes": 80,
+    "baseline_final_readback_pairs": 40,
+    "accepted_readback_matches": 10,
+    "profiles": [
+      {
+        "profile": "1280x768",
+        "passed": true,
+        "gates": {
+          "cpu_submit_median_ms": 0.25,
+          "event_fenced_median_ms": 1.25,
+          "event_fenced_p95_ms": null
+        },
+        "common": {
+          "pairs": 64,
+          "off": {
+            "cpu_submit_ms": {
+              "median": 0.12995,
+              "p95": 0.16677999999999993
+            },
+            "event_fenced_ms": {
+              "median": 0.69995,
+              "p95": 0.75594
+            }
+          },
+          "on": {
+            "cpu_submit_ms": {
+              "median": 0.1296,
+              "p95": 0.15994999999999995
+            },
+            "event_fenced_ms": {
+              "median": 0.8187,
+              "p95": 0.86627
+            }
+          },
+          "paired_delta_ms": {
+            "cpu_submit": {
+              "median": -0.00075,
+              "p95": 0.01894,
+              "min": -0.2052,
+              "max": 0.0451
+            },
+            "event_fenced": {
+              "median": 0.1131,
+              "p95": 0.15555999999999998,
+              "min": -0.081,
+              "max": 0.177
+            }
+          }
+        },
+        "repair_stress": {
+          "pairs": 16,
+          "off": {
+            "cpu_submit_ms": {
+              "median": 0.1278,
+              "p95": 0.170925
+            },
+            "event_fenced_ms": {
+              "median": 1.46705,
+              "p95": 1.535625
+            }
+          },
+          "on": {
+            "cpu_submit_ms": {
+              "median": 0.12915,
+              "p95": 0.18787500000000001
+            },
+            "event_fenced_ms": {
+              "median": 1.6014,
+              "p95": 1.8257750000000001
+            }
+          },
+          "paired_delta_ms": {
+            "cpu_submit": {
+              "median": 0.0015,
+              "p95": 0.05775,
+              "min": -0.0452,
+              "max": 0.1326
+            },
+            "event_fenced": {
+              "median": 0.1464,
+              "p95": 0.419375,
+              "min": 0.0422,
+              "max": 0.4331
+            }
+          }
+        }
+      },
+      {
+        "profile": "1920x1080",
+        "passed": true,
+        "gates": {
+          "cpu_submit_median_ms": 0.25,
+          "event_fenced_median_ms": 2.0,
+          "event_fenced_p95_ms": 2.5
+        },
+        "common": {
+          "pairs": 64,
+          "off": {
+            "cpu_submit_ms": {
+              "median": 0.12595,
+              "p95": 0.22134999999999994
+            },
+            "event_fenced_ms": {
+              "median": 0.89795,
+              "p95": 1.223605
+            }
+          },
+          "on": {
+            "cpu_submit_ms": {
+              "median": 0.1281,
+              "p95": 0.2289249999999997
+            },
+            "event_fenced_ms": {
+              "median": 0.9746,
+              "p95": 1.3495849999999998
+            }
+          },
+          "paired_delta_ms": {
+            "cpu_submit": {
+              "median": 0.00195,
+              "p95": 0.037774999999999934,
+              "min": -0.2153,
+              "max": 0.1512
+            },
+            "event_fenced": {
+              "median": 0.1189,
+              "p95": 0.14847,
+              "min": -0.1034,
+              "max": 0.2212
+            }
+          }
+        },
+        "repair_stress": {
+          "pairs": 16,
+          "off": {
+            "cpu_submit_ms": {
+              "median": 0.12440000000000001,
+              "p95": 0.146075
+            },
+            "event_fenced_ms": {
+              "median": 1.6034,
+              "p95": 2.638125
+            }
+          },
+          "on": {
+            "cpu_submit_ms": {
+              "median": 0.1266,
+              "p95": 0.198875
+            },
+            "event_fenced_ms": {
+              "median": 1.7492,
+              "p95": 3.1711
+            }
+          },
+          "paired_delta_ms": {
+            "cpu_submit": {
+              "median": 0.00485,
+              "p95": 0.049,
+              "min": -0.0159,
+              "max": 0.0547
+            },
+            "event_fenced": {
+              "median": 0.15325,
+              "p95": 0.521525,
+              "min": -0.1328,
+              "max": 0.5387
+            }
+          }
+        }
+      }
+    ],
+    "counted_transaction_calls": 296,
+    "map_preparation": {
+      "submit_ticks": 1710600,
+      "completed_ticks": 1966735,
+      "sets": 4,
+      "bytes": 201326592,
+      "interpretation": "Fixture-only file read, validation, allocation and upload; not incremental production residency",
+      "submit_ms": 171.06,
+      "event_completed_ms": 196.6735
+    },
+    "profile_preparations": [
+      {
+        "width": 1280,
+        "height": 768,
+        "ticks": 1555606,
+        "atlas_bytes": 35692800,
+        "input_bytes": 159252608,
+        "target_bytes": 19660800,
+        "witness_bytes": 98304000,
+        "event_completed_ms": 155.5606
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "ticks": 2717332,
+        "atlas_bytes": 35692800,
+        "input_bytes": 335923328,
+        "target_bytes": 41472000,
+        "witness_bytes": 207360000,
+        "event_completed_ms": 271.7332
+      }
+    ],
+    "field_preparations": [
+      {
+        "width": "1280",
+        "family": "bluewell",
+        "field_ticks": "121213",
+        "target_ticks": "4826",
+        "cpu_atlas_bytes": "17846400",
+        "field_submit_ms": 12.1213,
+        "target_submit_ms": 0.4826
+      },
+      {
+        "width": "1280",
+        "family": "foggreenoutlands",
+        "field_ticks": "179008",
+        "target_ticks": "338",
+        "cpu_atlas_bytes": "17846400",
+        "field_submit_ms": 17.9008,
+        "target_submit_ms": 0.0338
+      },
+      {
+        "width": "1920",
+        "family": "bluewell",
+        "field_ticks": "129215",
+        "target_ticks": "138",
+        "cpu_atlas_bytes": "17846400",
+        "field_submit_ms": 12.9215,
+        "target_submit_ms": 0.0138
+      },
+      {
+        "width": "1920",
+        "family": "foggreenoutlands",
+        "field_ticks": "162690",
+        "target_ticks": "120",
+        "cpu_atlas_bytes": "17846400",
+        "field_submit_ms": 16.269,
+        "target_submit_ms": 0.012
+      }
+    ],
+    "interpretation": "EVENT-completed whole-transaction wall time, including polling; CPU submit is wall time. No game FPS or GPU timestamp claim.",
+    "readback_interpretation": "Captured-map B readbacks establish stability and invariants; no new captured-map GPU-versus-CPU pixel oracle",
+    "independent_review": "Root confirms runtime review clear, 2026-09-20",
+    "limitations": [
+      "Two original profiles only; all-family GPU correctness is separate",
+      "1920 workload is nearest-resized capture data, not native1920 capture",
+      "Repair stress is reported separately and excluded from common absolute gates",
+      "Cold preparation values are single-run fixture observations, not a loading-time distribution",
+      "No pure GPU timestamp or game-FPS claim",
+      "Native Windows and flight appearance remain unverified"
+    ]
+  }
+}

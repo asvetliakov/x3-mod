@@ -18,11 +18,14 @@ inline bool fog_world_basis(const double rotation[9], const double translation[3
     if (!rotation || !translation || !sun_view) return false;
     for (unsigned i=0;i<9;++i) if (!std::isfinite(rotation[i])) return false;
     for (unsigned i=0;i<3;++i) if (!std::isfinite(translation[i]) || !std::isfinite(sun_view[i])) return false;
-    // The engine camera is rigid; tolerate recorded roundoff but reject scaling,
-    // singular/malformed matrices. Still use the true inverse, not a transpose.
+    // Match camera_state_from_matrices' 1e-3 near-rigid Gram tolerance: the
+    // engine's fixed-point basis can retain small normalization drift (run197
+    // reaches 1.53e-4). Reject scaling/malformed matrices, but do not reject a
+    // valid camera merely for exceeding the old 1e-4 threshold. Keep the true
+    // inverse, not a transpose or a reorthogonalized view.
     for (unsigned i=0;i<3;++i) for (unsigned j=0;j<3;++j) {
         double dot=0; for(unsigned k=0;k<3;++k) dot+=rotation[3*i+k]*rotation[3*j+k];
-        if (std::abs(dot-(i==j?1.0:0.0))>1e-4) return false;
+        if (std::abs(dot-(i==j?1.0:0.0))>1e-3) return false;
     }
     const double* r=rotation;
     const double det=r[0]*(r[4]*r[8]-r[5]*r[7])-r[1]*(r[3]*r[8]-r[5]*r[6])+r[2]*(r[3]*r[7]-r[4]*r[6]);

@@ -5,7 +5,7 @@
 #include <cmath>
 namespace x3m {
 // Value-only frame authority: identity tokens are never dereferenced later.
-// Profile IDs match the embedded recipe IDs (0 unavailable, 1 blue, 2 green).
+// Profile IDs match the embedded packets; preserve the original identities.
 static_assert(unsigned(renderer::fog_field::Profile::Bluewell) == 1 && unsigned(renderer::fog_field::Profile::Foggreenoutlands) == 2, "embedded fog profile IDs");
 struct FogSectorFrame {
     std::uint64_t frame = ~std::uint64_t(0), generation = 0, field_generation = 0;
@@ -34,9 +34,16 @@ inline FogSectorFrame fog_sector_frame(const sector_background::Sample& s, std::
     else if (s.camera_check == sector_background::Check::Mismatch || s.anchor_check == sector_background::Check::Mismatch) out.reason = "sample_mismatch";
     else if (s.dust == 0) out.reason = "clear";
     else if (s.dust < 0) out.reason = "dust_invalid";
-    else if (!std::strcmp(s.family, "bluewell")) { out.profile = 1; out.reason = "bluewell"; }
-    else if (!std::strcmp(s.family, "foggreenoutlands")) { out.profile = 2; out.reason = "foggreenoutlands"; }
-    else out.reason = "family_unsupported";
+    else {
+        out.reason = "family_unsupported";
+        for (const auto& family : renderer::fog_field::family_profiles) {
+            if (!std::strcmp(s.family, family.family)) {
+                out.profile = static_cast<unsigned>(family.profile);
+                out.reason = family.family;
+                break;
+            }
+        }
+    }
     // Explicit debug forcing still needs a valid view at card/pass admission.
     if (!out.profile && everywhere) { out.profile = 1; out.forced = true; out.reason = "forced_profile_bluewell"; }
     out.enabled = enabled && out.density_scale > 0.f && out.profile != 0;

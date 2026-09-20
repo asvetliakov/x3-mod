@@ -1116,6 +1116,707 @@ are next, followed by the engine's seek-only loop behavior and record/target
 lifetime. No production decoder change, game playback acceptance or native
 Windows execution follows from this checkpoint.
 
+
+### Disabled owned-media CPU state checkpoint (2026-09-20)
+
+The first production state foundation now implements bounded session/operation/
+epoch identities, failure-atomic play reservations, two independent sessions,
+queue-independent local cancellation, stale-event rejection and callback
+transitions. The engine adapter supplies the fixed x86 shell/record layouts and
+value-only association, lookup and traversal invalidation. Owned admission remains
+**false**; this checkpoint installs no hooks and constructs no workers. Independent
+source/evidence review (`review_media_owned_state`) is clear for that scope.
+
+The production-driven host fixture passes **202 checks**, with zero failures and
+zero allocations; the focused Python suite passes both tests. Both production
+translation units cross-compile for i686 Windows with the required SSE2 and
+four-byte incoming-stack options, with no x87 instructions in their object
+disassembly. ASan+UBSan also passes all 202 checks. Host storage is 2912 bytes for
+the runtime and 3632 bytes for the adapter. One 200,000-iteration host diagnostic
+measured 8.13 ns per publication-validation/ready-event pair; this is neither
+engine-hook timing nor game performance. The [compact qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
+retains commands, toolchains, review, results and limitations. No Wine or game
+execution, DLL build or install was performed.
+
+The transport contract is explicit: **play is self-contained ensure-construction
+for its source followed by prepare/play**. `construct` is optional eager work and
+can be discarded by stop before consumption; subsequent play must construct when
+needed. Binding replacement preserves source preparation, with destination identity
+validated separately at upload. A lookup miss remains unknown and cannot authorize
+legacy COM replay. The next bridge needs non-lossy per-session transfer and a
+coherent cancellation channel; the current publication API is only an engine-thread
+value snapshot. No second worker queue or clock algorithm was introduced.
+
+Rate checks use a clock spy to verify the exact scale, nonpositive-input rejection
+and synchronous transaction result. They do not qualify actual clock progression
+or canonical clock integration. Callback transitions do not dispatch to the VM.
+Instruction spans, CPU/LastError preservation, rollback, all consumer hooks, worker
+and frame transport, destination/Reset lifetime, enabled playback and native Windows
+runtime remain acceptance dependencies. This disabled checkpoint is a foundation
+for the enabled repair, not completion of that repair.
+
+
+### Per-session command offer/acknowledge checkpoint (2026-09-20)
+
+The reviewed CPU state delta adds per-session `peek_command`, `offer_current`
+and `acknowledge_command`. A busy worker leaves its command queued while another
+session can progress. Peeking removes superseded operation/epoch work and offers
+the oldest current command for that session; acknowledgement checks runtime owner,
+cell serial, allocation generation, current operation/epoch and ordering before
+removing exactly that cell. No extra command/frame queue or command-layout change
+was introduced; cancellation remains independent of normal queue capacity.
+
+Independent source/evidence review (`review_media_owned_state`) is clear. The
+focused suite passes **2 tests / 321 checks**, zero failures and zero allocations;
+the reviewer independently repeated those results and the two i686 object/no-x87
+checks. ASan+UBSan also passes 321 checks; its retained output is
+`/tmp/x3-media-owned-transfer-sanitize.log`. A 200,000-iteration host diagnostic
+with all 32 command cells occupied measured 54.64 ns per peek/validation pair;
+host runtime/adapter storage remains 2912/3632 bytes. The appended `command_transfer`
+entry in the [qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
+retains exact commands and limits. These are CPU host/cross-compilation results,
+not worker, engine, game-performance or native Windows runtime qualification.
+
+Transport callers must leave a false `try_submit` unacknowledged, validate retained
+offers immediately before submitting, and keep successful submission/acknowledgement
+adjacent and non-reentrant on the engine thread. **An accepted submission followed
+by failed acknowledgement must never be retried**; it indicates invalidation. The
+worker separately rejects stale full identities using cancellation publication.
+All play/seek/Run commands must ensure the source graph exists when absent; a
+fresh-identity Run seeks to its requested start instead of assuming superseded
+work was consumed. Offer tokens cannot outlive their runtime.
+
+Production admission remains disabled. Actual transport integration, engine hooks
+and CPU/LastError envelopes, destination/Reset lifetime and native Windows runtime
+remain open. No Wine/game execution, DLL build or installation occurred.
+
+
+### Staged presentation deferral gate (2026-09-20)
+
+The default-off [presentation gate API](../architecture/media-presentation-gate.md)
+now has a production-reusable encoder, admission state and checked local patch
+transaction. There is no production caller or automatic game detour. Host checks
+pass **233 assertions**; root cross-compilation and the corrected synthetic x86
+fixture pass **576 checks, zero failures** on bottle **X3**, WineArch **arm64**,
+with `FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. The locked child took
+**3.962063 s**, lock wait **0.000003125 s**. Independent source/evidence review is
+clear within the stated scope. The [compact record](../../verification/results/media-presentation-gate-2026-09-20.json)
+binds commands, binaries, local witnesses, counts and limitations.
+
+The actual 27-byte emitted gate preserves seeded register/flags/LastError and FP
+state at all four stack residues; active copy cleanup still defers nested calls,
+an inaccessible renderer root is never read on that route, and forwarding
+resumes after depth drops. Checked installation/restoration run through real
+Win32 APIs on the synthetic site; failure/rollback/protection-debt cases use the
+production transaction with a mock Platform. A locked, written native
+DEFAULT-pool surface is unlocked and finally released before depth reaches zero.
+The subsequent synthetic continuation calls native Present/TestCooperativeLevel/
+Reset once each; Reset returns **S_OK**. That continuation **forces Reset**; it
+does not reproduce a game lost-device transition or validate canonical-wrapper
+acquisition. Fixture executable-identity/window predicates are stand-ins.
+
+The preserved v1 witness failed **22 of 510 checks**, including all eight ungated
+baseline calls, on comparison with the requested MXCSR seed. Its frozen EXE is
+`/tmp/x3-media-presentation-gate-v1-failed/media_presentation_gate_fixture.exe`,
+SHA256 `6b25d6dc6fcbbda3c310b1ec93bedd75b6b8e7b400cce4d91970b5d3cb06c816`.
+The v2 delta is fixture-only: immediate seed/entry/return snapshots, output
+sampling before x87 helpers, and caller MXCSR capture before its first x87 save.
+All **22** calls request `0x3fa5` but immediately observe `0x3f80`; applied,
+entry, return, output and post-x87 words all remain `0x3f80`. Full 32-bit
+represented-entry equality is retained without masking. Requested nonzero
+sticky bits are unseedable here, so their preservation remains **unverified**.
+The failed raw log and lock record are retained alongside the accepted v2 log.
+
+This checkpoint does not qualify binding/table mutation exclusion, actual engine
+thread ownership, every Reset entry, SEH/nonlocal cleanup, game loss/recovery or
+native Windows execution. No production media copy, game hook or admission was
+enabled, no game was launched, and no installed binary was changed. Parent
+rechecks confirm protected EXE and bottle configuration unchanged. The gate's
+instruction-cost review finds one counter read, four temporary stack bytes and
+no calls/allocations/locks; no game performance benefit is measured.
+
+
+### Atomic manager-loop source bounds (2026-09-20)
+
+The reviewed CPU delta adds `Runtime::loop_seek(handle, start_ms, end_ms)` and
+Adapter forwarding. It reserves capacity first, then installs the exact source
+start and normalized end (positive unchanged, otherwise -1) before enqueue. The
+snapshot and immutable command therefore carry identical bounds. Successful loop
+seek preserves operation/source/loop ownership, increments the epoch once and arms
+preparing/playing intent; previous offers become stale without being rewritten.
+
+Queue-pressure rejection leaves state, epoch, commands, preparation reservations
+and callback ownership unchanged. The caller retains the active loop-pending
+operation and can retry on the next pass after another session progresses. This
+layer issues no terminal callback, retirement or endpoint counter. Stopped, retired
+and never-played sessions are rejected. Generic seek still clears end to -1; the
+manager loop must use the new atomic API instead of generic seek followed by
+`set_end`, which only updates the snapshot.
+
+Independent review (`review_media_owned_state`) is clear. The focused suite passes
+**2 tests / 392 checks**, zero failures and zero allocations; the reviewer repeated
+those results and the i686 object/no-x87 checks. ASan+UBSan also passes 392 checks,
+with output at `/tmp/x3-media-loop-seek-sanitize.log`. Runtime/adapter storage remains
+2912/3632 host bytes. The appended `atomic_loop_seek` entry in the
+[qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
+retains exact commands, source base and pressure/bounds witnesses.
+
+This qualifies the CPU transaction and Adapter forwarding only. The manager-loop
+ABI/CPU/LastError/rollback envelope, actual transport and destination/Reset lifetime
+remain separate acceptance dependencies. Production admission stays disabled; no
+Wine/game execution, DLL build, install or native Windows runtime check occurred.
+
+
+### Local media package/import checkpoint (2026-09-20)
+
+The bounded [package and transaction implementation](../architecture/media-package.md)
+imports the accepted provider and derived asset into a fresh non-game directory.
+Host checks cover installation/relocation, shared cache reuse, DLL-only manifests,
+rollback/uninstall, copy corruption, path/case/symlink/collision refusal, wrong
+source/module/manifest identities, process enumeration failure and journal recovery
+at all three publication phases. EXE, original MOV, CAT/DAT and unrelated settings
+are asserted unchanged in temporary game trees. No Wine, real install, game
+launch, binary rebuild or remux was used for package qualification.
+
+The actual local stage `/tmp/x3-media-local-stage-v1/package.json` contains nine
+PE modules (110,019,880 bytes), two manifests and three notices, plus the
+534,031,204-byte derived clip. Its [compact qualification record](../../verification/results/media-package-2026-09-20.json)
+retains the local staging result: schema/path bases are checked and
+original EXE/media, derived asset and input record identities remain unchanged
+across read-only revalidation (1.246 seconds). Package digest:
+`7686206cde064dd0411f0ff2c0a3338f619eeee45fb9cf036566425889a7eed4`.
+The scope is local qualification; public redistribution, native Windows execution,
+relocated worker module observations and integrated launcher dry-run remain with
+subsequent owning checkpoints. The staging digest is delivery provenance only.
+
+The common installer/launcher lock spans final journal, ownership and selection
+checks through the complete child lifetime. Dry-run validates under that lock
+without a child or process-closed requirement. Legacy install/restore use only
+the shared portable process guard. Missing assemblyIdentity yields PackageError;
+changed control records abort uninstall rather than being treated as payload
+retention. Tests include two lifecycle lock contention points, last-moment journal
+rejection (normal/dry-run/vanilla), dry-run serialization, native tasklist legacy
+guard, changed-control refusal and foreign/missing project rejection despite
+valid proxy hashes and media selections. Legacy DLL-only launch compatibility
+is retained.
+
+Affected command:
+`PYTHONPATH=verification/probe python3 -u -m unittest verification.analysis.test_media_package verification.analysis.test_media_transcode.InstallRestore verification.analysis.test_env_experiment_launch verification.analysis.test_launcher_stderr_tee`.
+The complete stdout/stderr and unittest summary are retained in
+`/tmp/x3-media-package-tests.log`.
+45 tests passed in 2.745 seconds; four-tool `py_compile` and `git diff --check`
+also pass. The compact local result records the command, exit status and log digest.
+### Distinguish loop pressure from permanent refusal (2026-09-20)
+
+The optional `loop_seek(..., bool* backpressure)` output is cleared on every
+call. Only a valid active identity with usable epoch/serial and occupied or
+reserved command capacity reports transient pressure. Invalid identities and
+exhausted counters remain permanent refusals even when the queue is full. Failed
+requests preserve state; the consumer must choose retry versus termination from
+this classification.
+
+Independent review (`review_media_owned_state`) is clear: two focused tests,
+444 checks, zero failures/allocations, i686 SSE2/no-x87 and ASan+UBSan pass. Only
+the fixture bypasses access control to inject exhausted counters; production
+translation units compile separately with normal access checks. The existing
+[qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
+retains this delta. Consumer routing, injected ABI and native runtime behavior
+remain separate; no Wine, game, DLL build or install occurred.
+### Media package reader file-lifetime checkpoint (2026-09-20)
+
+The [preparation-time package reader](../architecture/media-package-config.md)
+now validates the installed selection and publishes retained UTF-16 provider/source
+configuration. Production-parser host coverage passes **285 checks** and an actual
+installer-record crosscheck passes **8**; their sanitizer runs are clean. The same
+production Windows adapter passes **150/150 synthetic runtime checks, zero
+unsupported cases**, on bottle **X3**, WineArch **arm64**, with
+`FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. The locked child took
+**2.105127125 s**, with **0.000003875 s** lock wait and exit 0. Independent
+source/evidence review (`review_media_package_config`) is **CLEAR** for v2.
+Commands, frozen inputs, executable hashes and raw witness paths are in the
+[compact result](../../verification/results/media-package-config-2026-09-20.json).
+
+The failed v1 is preserved: **41 checks passed, check 42 failed** when a provider
+directory rename succeeded despite retained attribute-only directory handles.
+The diagnostic's error 32 was stale after successful `MoveFileExW`; restoration
+was unchecked. Attribute-only access is exempt from the documented sharing
+restrictions. Adding `FILE_LIST_DIRECTORY` to root/traversed directory access,
+while retaining the existing no-delete sharing policy, makes both v2 provider
+directory rename attempts fail with error 32. The corrected diagnostic records
+actual results and checks restoration; the v1 failure is not reclassified.
+
+V2 verifies module-relative Unicode/space paths from unrelated CWD, LastError,
+record integrity and refusal cases, read sharing, file/directory symlink refusal,
+and write/rename denial through the final configuration owner followed by actual
+writes/renames after release. Its **6,983 bytes** of synthetic package data never
+load COM or decode media. Native Windows execution and real two-worker provider/
+source opens with retained configuration remain unverified. No game launch or
+installation was performed for this checkpoint.
+
+
+### Adapter access to command offers (2026-09-20)
+
+Adapter now forwards `peek_command`, `offer_current` and `acknowledge_command`
+to its existing Runtime. This closes the service integration seam without adding
+state or another queue. The same transfer cases execute through both interfaces:
+busy-worker retention, independent-session progress, single acknowledgment and
+identity invalidation. Independent review is clear; two tests pass 479 checks,
+zero failures/allocations, with i686/no-x87 checks passing. Adjacent non-reentrant
+submit/ack remains mandatory. Actual worker transfer and injected caller ABI
+remain separately qualified; no Wine, DLL build or install occurred.
+### Ordinary-startup scheduling adapter (2026-09-20)
+
+The [startup adapter](../architecture/media-startup.md) now captures the actual
+24-byte `Direct3DCreate9` export-entry span and schedules at most one bootstrap
+thread after the qualified ordinary factory returns successfully. A private
+window closes at the first capture CreateDevice attempt. The production export
+still delegates to the unchanged factory body; callback registration is absent
+by default. No package, provider or playback service is enabled by this change.
+
+Focused host checks pass **6 tests, zero failures, one skip**: the production
+controller passes **61 checks**, extracted real loader delegate **37**, and real
+capture device body **224**. The skip is built shared-DLL export inspection; no
+shared DLL was built. Strict x86 cross-compilation passes. Root's corrected
+fixture passes **nine modes / 655 checks / zero failures** on bottle **X3**,
+WineArch **arm64**, with `FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. Summed
+serialized child time is **3.485698040 s**, lock wait **0.000029790 s**. The
+[compact record](../../verification/results/media-startup-2026-09-20.json) binds
+exact commands, per-mode timings/counts, source digest, toolchains and witnesses.
+
+The fixture executes the shared production export assembly and actual Win32
+safe-read/thread adapter at all four incoming stack residues. It compares full
+represented ordinary output CPU state and LastError with a direct simulated
+factory, and input state in non-reentrant modes. It exercises a real inaccessible
+cross-page ancestor read, callback execution on a different thread, one-shot
+scheduling, unknown/failed/reentrant/late/identity/anchor rejection, device closure
+inside the factory, callback failure and separate request/preparation/ready stamps.
+Engine callers and anchors, executable-identity predicate, backend factory and
+canonical service are simulated. Host launch failure models the platform contract;
+actual Win32 module-reference or CreateThread failure injection is not qualified.
+
+Both initial mapping failures remain recorded. The first success-mode invocation
+stopped before ABI checks, exit **1**, child **1.731911667 s**, lock wait
+**0.000003584 s**. Its EXE is retained at
+`/tmp/x3-media-startup-v1/media_startup_fixture.exe`, SHA256
+`b781b29e209b93cab33a3f4f0bc37df642b7ddf70577bc604eb5db75dfc5d11a`.
+The bounded diagnostic then reported error **487** for all five fixed allocations:
+`0x400000` was private memory, and the four later regions were already mapped.
+That diagnostic also stopped before ABI checks, exit **1**, child **1.994707583 s**,
+lock wait **0.000003292 s**; its retained `mapping_fixture.exe` SHA256 is
+`f9f97d68486389f596c3f94b4acc6d05da19dd1d9b2f6fba93a744a00e3fd013`.
+Neither invocation overwrote those occupied mappings.
+
+The correction changes only fixture mapping/build layout: the PE loader reserves
+`.x3map` at `0x401000..0x620000`, with real code at `0x630000`, and runtime checks
+committed image ownership before protection changes and authored writes. Build
+layout/zero-byte/nonoverlap checks pass, and all production addresses remain
+unchanged. The accepted frozen EXE SHA256 is
+`96b7ed9f577ad9557579dcb2c4b499bf976c4217ae9ecdec985aa8848e863969`.
+Raw v1/v2 logs and lock records remain under `/tmp/x3-media-startup-v1/` and
+`/tmp/x3-media-startup-v2/`. No production change was needed for the correction.
+
+MXCSR requests `0x3fa5` but immediately observes `0x3f80`; full 32-bit represented
+state comparisons remain exact, without masking. Requested nonzero sticky-status
+preservation remains unverified. Represented x87/SSE images do not close FEX's
+hidden effective-rounding gap when their rounding modes differ. The thread
+fixture pins its own EXE, so unloadable-DLL final-reference behavior remains open.
+Ordinary-return preservation does not promise foreign exception/SEH unwinding;
+lost entry context refuses later startup. Native Windows runtime, actual package
+preparation, canonical-worker lifetime/readiness before flight and cold provider
+contention remain acceptance dependencies. No game launch, DLL install or
+production callback enablement occurred. Source-level cost is bounded to factory
+and device creation, with no per-draw/frame work or engine wait; runtime durations
+are fixture diagnostics, not game performance measurements.
+
+
+### Concrete engine consumer qualification (2026-09-20)
+
+The production `media_engine_adapter` consumer and encoder pass focused source,
+host and executed x86 qualification with admission disabled. Independent review
+(`review_media_engine_adapter`) is clear after fixes for abandoned return guards,
+speech failure epilogue order, permanent versus transient loop refusal, and
+owner-thread/stack enforcement. The owning [architecture](../architecture/media-playback.md#concrete-engine-consumer-checkpoint-2026-09-20)
+defines the service and public `binding_owner` contracts and remaining integration.
+
+Host command, from `/tmp/x3-media-engine-adapter`:
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_engine_adapter verification.analysis.test_media_cue
+```
+
+Result: **9 tests / 4,490 assertions / zero failures**, 4.690 s. It compiles actual
+production sources and exercises constructor/accounting failure, transactional
+speech/explicit play, callback replacement, record reuse, all-member retirement,
+loop A-pressure/B-progress, finite key exhaustion, concurrent foreign lookup,
+alternate-stack refusal and owner cleanup after closure. Failure injection covers
+**218 stage points and 194 install points**, including retained rollback/cache debt.
+The suite also cross-compiles affected sources for Windows x86 with SSE2 and the
+four-byte incoming-stack flags. The host result is retained in tool session 7677;
+no separate raw host log was saved.
+
+The root compiled and audited the native fixture using the full command retained
+in the [compact record](../../verification/results/media-engine-adapter-2026-09-20.json).
+The executable's own PE mapping reserves 0x401000..0x620000, starts real code at
+0x630000 and disables ASLR. Runtime checks require fixture-owned committed
+MEM_IMAGE before writing authored engine bytes; no occupied external mapping is
+overwritten. The root then ran exactly:
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-media-engine-adapter-x86-v1/lock.json '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update /tmp/x3-media-engine-adapter-x86-v1/media_engine_adapter_fixture.exe > /tmp/x3-media-engine-adapter-x86-v1/runtime.log 2>&1
+```
+
+Bottle **X3**, WineArch **arm64**, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`:
+**5,055 checks / zero failures / 24 sites / 11 return envelopes / four alignments**.
+Child time **3.633209333 s**, lock wait **0.000003083 s**, exit 0. The EXE SHA256 is
+`5ff5ce87a322328976e5a9e97660995fb81d431e24b4e9401f1d508b8f5e13e7`.
+`/tmp/x3-media-engine-adapter-x86-v1/{build.json,lock.json,runtime.log}` retains the
+build, ten source/header hashes, mapping audit and runtime evidence; review matched
+all ten inputs to the tested source. Static original-EXE comparison independently
+checked 24 selected spans, 165 bytes and 62 whole instructions.
+
+Actual emitted paths execute displaced instructions, all after envelopes, exact
+stack adjustments, both real POP epilogue orders, register/flags/XMM/x87/MXCSR/
+LastError preservation and matched allocation/free accounting against authored
+engine memory and callback spies. Actual foreign-thread and separate-stack calls
+are refused without mutable Adapter access; owner retirement remains usable.
+The exception fixture uses actual `RaiseException` plus **manual CONTEXT ESP/EIP
+restoration**, not RtlUnwind. Its 100 exceptional escapes and nested outer catch
+qualify lazy value-guard cleanup only; general SEH/C++ unwinding across substituted
+return addresses remains unverified.
+
+The 256-key tables retain tombstones forever. Exhaustion closes admission before
+allocation; historical address reuse may conservatively refuse foreign unowned
+objects. The admitted owner stack must outlive objects. This is not concurrent
+engine playback support. Original unowned helper-internal reentry behavior and
+pre-seam engine accesses are unchanged. The fixture does not execute real game
+callbacks, actual worker/destination copy or engine Reset, and is not native
+Windows runtime proof. Production services/startup/combined readiness remain open;
+no admission, game launch, DLL build or install was performed for this checkpoint.
+### Qualified synchronous observer installation seam (2026-09-20)
+
+The startup adapter now supports a separate CPU-only installer after successful
+ordinary-context qualification and before background preparation. The gate stays
+open/active through installation; reentry, device creation or installer failure
+prevents launch. Provenance begins before initial table loading while playback
+admission stays off. The installer owns independent module/context retention and
+rollback/debt even if no bootstrap launches.
+
+Independent review is clear. Two host tests pass 90 controller + 37 delegate
+checks; eleven actual fixture modes pass 819 checks, all exit zero, in 3.650135 s
+child time plus 0.000038625 s aggregate lock wait. The
+[startup record](../../verification/results/media-startup-2026-09-20.json)
+binds source, X3/arm64/FEX settings and preserved earlier evidence. Actual
+observer installation/module lifetime, general concurrent patch safety, Windows
+runtime and exceptional unwind remain separate integration/acceptance work.
+
+
+### Canonical Services coordinator (2026-09-20)
+
+The [Services coordinator](../architecture/media-services.md) connects the actual
+Adapter command offers, canonical Clock and physical FrameLeases to Destination
+copy/reentry and a pair of canonical LavWorker handles. Bootstrap retains immutable
+PackageConfig in the preparation bundle and both WorkerConfigs, then transfers
+main-side ownership exactly once. Services observes actual worker states before
+marking DD-service readiness; it performs no observer installation, Consumer
+enablement or engine-thread wait. Root owns those remaining integration steps.
+
+The focused command
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_services`
+passes **1 test / 1,783 checks / zero failures**. The same connected fixture passes
+**1,783 checks** under author-executed **ASan+UBSan**, and measures **zero allocations
+across 1,000 empty owner/pump passes**. Strict Win32 x86 object compilation succeeds
+with `-msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2` and
+`-Wall -Wextra -Werror`. This is object compilation, not a production DLL link or
+Windows runtime. Independent source review found no blocker and matched the four
+frozen source/test hashes plus retained fixture output. The
+[compact record](../../verification/results/media-services-2026-09-20.json) records
+exact compiler argv/driver, toolchains, checks, provenance and limitations.
+
+The fixture uses actual Adapter, reviewed canonical Clock/`set_end`, canonical
+three-slot FrameStorage/FrameLease and Destination copy core. Worker transport,
+engine identities/publications, package snapshot and CopyBackend are synthetic.
+It covers two distinct records selecting source 2, per-worker backpressure and
+adjacent acknowledgement, final READY frames arriving before EOF handling,
+missing-destination retries within three physical leases, same-epoch bound changes,
+ordinary stop draining revoked READY frames without another play, and assignment
+reuse only after explicit quiescent acknowledgement. Twenty copy-stage reentry
+cases cover nested rate/seek/retire/stop, with no stale presentation acknowledgement
+or whole-Clock writeback. The manager alone initiates loop seek; stale prior EOF
+and prepared events cannot restart it twice. Unsafe worker quarantine preserves
+the independent second record's progress. Source flags8 eligibility, partial
+preparation failure, preplay/stopped positions and exact rate failures are included.
+
+The worker retirement dependency is the canonical
+`poll_assignment_quiescent(const Publication&)`: it must acknowledge the exact
+latest cancellation plus desired-publication serial, no graph/local pending or
+mailbox command, drained ordinary/terminal facts and all physical slots FREE.
+Services additionally requires zero active copy/pump and local leases before
+reassignment. The host fixture injects this fact; it does not prove actual worker
+quiescence, graph reuse or provider cleanup. No timeout, DD replacement worker or
+fabricated readiness substitutes for the acknowledgement.
+
+Execution provenance has explicit limits. The host result was observed in unittest
+and function-tool output; no separate host transcript was retained. The retained
+`/tmp/x3-media-services-sanitize.log` contains fixture stdout only. The exact
+instrumented compiler command and zero subprocess exit were author-observed;
+that small log alone does not prove instrumentation. TemporaryDirectory removed
+the sanitizer binary and x86 object after execution, and their hashes were not
+captured. The four frozen source/test hashes are matched, but hashes of separately
+owned overlay dependencies were first captured during documentation and are
+labelled accordingly. They do not establish an exact historical mutable-overlay
+compiler-input manifest. No accounting rerun was added.
+
+Tests used the root-authorized symlink overlay from
+`/tmp/x3-media-destination-integration`, `/tmp/x3-media-worker-sample` and the
+reviewed setter in `/tmp/x3-media-clock-bound`. Root must integrate their reviewed
+checkpoints and bind the subsequent actual connected acceptance to retained build
+inputs/artifacts. This checkpoint does not establish source graph/first-picture
+readiness, RGB output, native Windows behavior, actual engine/Reset interaction,
+readiness before flight or removal of cold provider contention. No Wine, game,
+shared-DLL build, install or writer commit occurred. Existing injected CPU/LastError
+and ordinary-return cleanup obligations remain with their qualified owners.
+
+### Destination provenance, copy and Reset checkpoint (2026-09-20)
+
+The isolated `media_destination` implementation connects the nineteen reviewed
+store/lifetime/binding observations, bounded shared-wrapper provenance, canonical
+frame/surface leases, actual row copying and whole-engine/native Reset tracking.
+The [architecture contract](../architecture/media-playback.md#destination-provenance-and-synchronous-copying)
+describes its ownership and failure behavior. Root startup/consumer/worker-service
+integration and production admission remain separate; no game or installed proxy
+was changed by this checkpoint.
+
+`X3M_MEDIA_WORKER_HEADER=/tmp/x3-media-worker-sample/src/media/lav_worker.h PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_destination`
+passed **736 checks**, zero failures, in **2.322 s** including compilation
+(**9 ms** fixture execution). Actual production code covers 100,000 wrapper
+lifetimes, shared aliases and address reuse, signed bounds/growth, four internal
+throw stages, 25 external-stage reentry cases, pending/late binding after Reset,
+abandoned inner returns and all nineteen patch-publication failures. Focused
+flush/protection/readback failures also retain rollback debt and preserve a
+foreign qword until exact restoration can succeed. No per-draw benchmark or game
+FPS result is claimed.
+
+The parent-owned X3 run of fixture SHA256
+`b15cee5a0b121ce6d6282832f06db091bc07682f248cd1838552ca62822da9d4`
+passed **142 native D3D checks and 2,321 ABI checks**, zero failures:
+real canonical SYSTEMMEM BGRA readback, native AddRef/cleanup observations,
+emitted presentation deferral, two actual native Resets, and 304 executions of
+all nineteen stubs across stack alignments/branches using both the hostile
+fixture helper and the actual production dispatcher. The process used
+**X3 / WineArch arm64 / CrossOver Preview**, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1` and process-local `WINEDLLOVERRIDES=d3d9=b`. Its locked child ran
+**3.82446925 s** with **0.000003291 s** lock wait. Native Windows execution remains
+unverified; the shared implementation uses documented Windows/D3D APIs and
+cross-compiles for x86 with SSE2 and the four-byte incoming-stack contract.
+
+The first fixture (`59def368…`) passed its 142 native checks but could not reserve
+its synthetic fixed-address ABI map. Its EXE/log/lock record remain local under
+`/tmp/x3-destination-native-build/failed-59def/`. The corrected fixture uses its own
+zero-filled, initially non-executable PE `.x3map` at `0x401000..0x620000`, real text
+at `0x630000`, no ASLR, and runtime module/MEM_IMAGE/extent checks before any
+synthetic write. It never overwrites an occupied foreign mapping.
+
+After that successful run, independent review closed two CPU bookkeeping cases:
+equal-key CreateDevice publication must invalidate old values, and that invalidation
+must preserve retired-wrapper tombstones. The focused host witnesses and affected
+x86 compilation pass. The final separately named fixture SHA256 is
+`3223a65d9927dd1b8ce0f17b1c8e46b0b92b8cb78db45531c897a895904fd531`;
+**this final CPU delta was not run under Wine**. The unchanged GPU/Reset/ABI
+results above are reused after independent review. Both final CPU entry shells
+contain inline x87/MXCSR preservation with no SJLJ registration or out-of-line
+state helper outside the save/restore envelope.
+
+The tested b15 binary was replaced on its original path at **17:11:48.501211 UTC**,
+after its run ended at **17:10:45.648613 UTC**; no replacement overlapped execution.
+A byte-identical reconstruction from the exact pre-delta inputs and original PE
+timestamp/checksum now preserves the full original SHA256 under
+`/tmp/x3-destination-native-build/tested-b15/`, alongside its runtime witnesses.
+The final artifact uses a separate filename. The
+[compact record](../../verification/results/media-destination-2026-09-20.json)
+binds commands, checks, hashes, local witnesses, accepted evidence reuse and the
+conservative permanent-veto/native-runtime limitations. Independent source and
+evidence review is clear; no commit, install, proxy build or game launch occurred.
+### Canonical LAV worker extraction and real package integration (2026-09-20)
+
+The fixture now links the actual [production transport](../architecture/media-lav-worker.md)
+and canonical clock, rather than a copied worker implementation. The
+[compact extraction record](../../verification/results/media-lav-worker-transport-2026-09-20.json)
+binds all eight production inputs, the unchanged frozen helper/reference cohorts,
+both executables, commands, lock timings and raw results. Independent combined
+source/evidence review (`review_media_worker`) is **CLEAR** for clock v5 and EOF v4.
+Both use bottle **X3**, WineArch **arm64**, `FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`.
+
+Clock v5 passed **4,586** exact QPC transactions, **35** exact RGB/time captures
+(**A8/B27**) and **43** render-target readbacks with both distinct destinations
+actually sampled. It produced 38 READY frames, revoked three old A leases, held
+three paused A leases, observed a fresh B selection in A's **58.8106 ms** pre-seek
+pause, and continued with **18** fresh B selections after A's actual failed Load.
+Both services ended with three FREE slots. All **299** events were freed
+(297 video-size, two clock-change); **57 Empty + six More** batches stayed within
+the unchanged deadline, maximum anchor age **406 ms**. Zero late/superseded drops
+were observed; those paths retain host coverage rather than a runtime-exercise
+claim. Native exit was 0, execution **19.108701125 s**, with **91/91** protected
+inputs unchanged. The lock wrapper recorded **0.000003875 s** wait and
+**31.776444792 s** child time including host validation.
+
+The real module-relative reader opened the relocated Unicode/space package from
+unrelated CWD in **13.4122 ms**. Its typed owner transferred to both services and
+remained alive through graph/source retirement, then expired after actual worker
+and watchdog exits. Initial cancellation before any graph produced **four**
+coherent quiescent facts across the two services; **two** newer live publications
+rejected old facts. This qualifies the initial no-graph smoke, not a separate
+runtime exercise of post-graph assignment quiescence. Cohort enumeration verifies
+nine module identities/paths; the driver binds the nine PE files and two manifests
+to frozen runtime bytes, the three installed notices to selected package rows, and
+keeps SDK/reference provenance protected at its original paths.
+
+EOF v4 independently passed **12** exact suffix captures/readbacks across two
+fresh graphs on one retained DD service. Each reached actual sample EOS and one
+fresh `EC_COMPLETE`; both EOS WRITING reservations were abandoned after public
+retirement guards, with FREE3 before reuse/final exit. Its **14** events were freed
+and **20** drains reached Empty, maximum anchor age **386 ms**. Exit was 0,
+execution **7.436763333 s**, **92/92** protected inputs unchanged; lock wait was
+**0.0000065 s**, wrapper child **20.42982625 s**. The same production transport hashes
+are in v4 and v5, so the fixture-only pause gate needs no duplicate EOF run.
+Retained-graph EOF replay, sink-callback observation and simultaneous playback in
+EOF mode are not claimed.
+
+Preserved observations remain distinct. The first v4 host preflight rejected the
+installed package because the checker incorrectly expected root notices and SDK
+headers there; no Wine child ran. The actual v4 clock then exited 0 but its checker
+rejected documented extended drive-path spelling. Narrow normalization removes
+only the `\\?\` drive prefix while comparing the complete decoded path; namespace,
+parent-directory and Unicode mismatches still fail. Offline reanalysis preserved
+the original rejection and passed all functional checks, but correctly remained
+coverage-incomplete: its **12.5439 ms** pre-seek pause contained no fresh B selection.
+V5 changes fixture progression to keep normal pumping/rendering until a real B
+selection occurs, under one immutable 10 s bound; it changes no production code,
+source window, rate, oracle or coverage predicate.
+
+Cost remains explicit. V5's largest main completion gap was **226.4 ms**, including
+**110.57 ms Clear** and **113.3303 ms EndScene** in the cold interval; concurrent
+DD creation/cooperative calls overlap it, without establishing isolated causality.
+DD creation was **111.1465/219.9964 ms**. Later gaps after the first A selection
+heartbeat reached **15.2747 ms**; diagnostic readback Lock reached **13.4969 ms**.
+Individual texture Lock/row-copy/Unlock spans stayed below **0.22 ms**, which does
+not measure completed GPU work. EOF's maximum gap was **71.9719 ms** and readback
+Lock **15.8764 ms**. No no-stall guarantee, previous-cost erasure or game-FPS claim
+follows. The final affected host modules passed **131 tests in 1.784 s**; the earlier
+128-test production-primitive/package-teardown run and exact commands are retained
+in the record. Python compilation and diff checks passed.
+
+This checkpoint qualifies the reusable transport and real package opens in the
+standalone fixtures. Engine admission, startup placement before flight, destination/
+Reset/callback integration and native Windows runtime remain open. The documented
+process-lifetime module pin intentionally does not support unloadable plugins;
+unsafe retirement retains the STA, interfaces, storage and package owner. No game
+was launched, no installed binary changed, and no production admission was enabled.
+
+### Same-epoch bound setter integrated (2026-09-20)
+
+After worker baseline `1384893a`, the independently reviewed seven-line canonical
+Clock setter is integrated for Services. Four affected tests pass in 6.329 s:
+158 clock, 1,783 Services and 736 destination checks. Services now uses the actual
+integration checkout's worker, destination and updated clock headers. The
+[bound-setter record](../../verification/results/media-clock-bound-2026-09-20.json)
+retains the command, source hashes and local log. The earlier worker runtime
+records keep their original clock hash; this host result does not establish
+enabled playback or native Windows behavior.
+
+### Worker verification support imported (2026-09-20)
+
+The integration branch imports the ten required probe/helper dependencies exactly
+from `1384893a`, plus the small clock host harness from `0abe0a44`. Its test reads
+the tracked harness rather than requiring that historical Git object in a fresh
+clone. The four affected media test modules pass 133 tests in 5.817 s
+(`/tmp/x3-media-imported-support-host-v1.log`). This changes verification support
+only; it adds no decoder, production policy or runtime acceptance claim.
+
+
+### Root composition and common record ingress (2026-09-20)
+
+The reviewed root connects the qualified startup return, actual Consumer/Services/
+Destination owners, exclusive Reset/Observer registrations, canonical device
+publication and unlocked Present maintenance. All 44 spans stage before any
+publication; rollback attempts every group and retains unpaid debt. Cue ownership
+is verified rather than patched twice. The common record domain serializes heap
+copies and retirement/foreign-refusal watch invalidation without covering calls
+into Services, the registry or COM. Historical-key exhaustion closes only new
+admission; existing owned copies continue.
+
+The focused root host fixture passes **3,037 checks** in 4.168 s including compile:
+12 actual Consumer → Services → canonical FrameLease → injected CopyBackend cases
+cover retirement, real foreign-thread veto and rebinding at GetDesc, Lock, Unlock
+and final Release. They check stale acknowledgment/manager refusal, cleanup,
+rebind retry, an existing physical copy after classifier exhaustion and an
+unrelated record's copy after local descriptor failure. Group ordering/debt,
+delayed two-worker readiness, same-address device publication, domain race,
+failed Reset across repeated Present, nested capture exclusion, deferred
+cancellation and F8 owner/busy reports are also covered. Existing isolated
+Consumer tests pass 4,523 checks; Services passes 1,783 checks with zero measured
+update allocations after the scalar failure-mask report addition.
+
+The parent ran the newly affected **actual production dispatcher** under X3:
+**63 checks, four stack alignments, zero failures**, with bound Consumer/Ingress
+and a hostile immediate-memory callback. Disassembly contains no helper/SJLJ
+before FNSAVE or after restore on the return path. Four focused registration/cue
+modes pass on the frozen authored-image executable: cue pristine/installed each
+13 checks, Reset owned 13 and conflict 14 (53 total, zero failures). Independent
+review confirms all four locked X3 runs, 5.034 s combined child time and unchanged
+executable bytes. Authored image checks do not qualify live game identity. Root/capture/loader/Services
+Windows x86 compilation passes with SSE2, stack4 and warnings as errors.
+F8-only scalar reporting has no domain/registry/COM/worker call and adds no
+per-frame log. Host empty-maintenance/exclusion timings are indicative fixture
+costs, not game FPS. Exact commands, hashes, timing and pending runtime scope are
+in the [compact root record](../../verification/results/media-root-wiring-2026-09-20.json).
+No installed build or user-run acceptance is claimed by this checkpoint.
+
+
+### Canonical first-frame sequence zero (2026-09-20)
+
+The connected real-worker fixture exposed a contract mismatch: the worker starts
+at sequence0 and publishes it before incrementing, but Destination rejected zero
+as an empty-frame marker. The correction removes that single rejection while
+retaining lease ownership, session/operation/epoch, graph, slot and buffer checks.
+Neither the worker sequence contract nor Services counters/API changes.
+
+A new canonical-lease witness fails before the correction (five destination and
+five Services assertions), then the two affected host fixtures pass **773 and
+1,815 checks**, respectively, with zero failures and zero Services update
+allocations (4.135 s including builds). It proves physical sequence0 pixel writes,
+nonzero binding acknowledgment with presented sequence0, exactly one canonical
+`selected_uploaded` release, storage cleanup and no duplicate copy. Empty leases,
+wrong session/operation/epoch and graph0 still refuse before destination acquire.
+The destination Windows/x86 object compiles with warnings as errors, SSE2 and the
+four-byte incoming stack contract. No ABI, hook, Reset or lock protocol changed;
+one validation comparison was removed. The parent-owned connected native retry
+remains separate evidence. Commands, the failing witness and hashes are appended
+to the [existing destination record](../../verification/results/media-destination-2026-09-20.json).
+
+
+## Connected owned playback: actual worker/destination checkpoint (2026-09-20)
+
+The reviewed connected fixture now passes with the actual production workers,
+clock, Consumer, Services and native D3D destination. Twenty exact RGB readbacks
+cover both sequence-zero first pictures, all nine finite B pictures, all six
+physical-EOF tail pictures and four final-picture hold checks. B continues after
+A retires; draining refuses immediate reuse, then permits the same address with
+a new session. Two natural completion callbacks and one retirement callback
+follow their exact clock/epoch contracts. Final assignments, draining and leases
+are zero.
+
+The first run exposed a real sequence-zero rejection in Destination and two
+fixture sentinel/terminal assumptions. The original failed result is retained;
+the production guard and fixture observations were corrected without relaxing
+first-picture or timing gates. Independent replay of v3 matches its qualification.
+All 116 protected inputs remain unchanged; native exit is zero in 9.507 s.
+The maximum measured owner-loop interval is 20.0814 ms, including diagnostics and
+excluding earlier graphics/setup; this is not a no-stall or game-FPS result.
+Engine memory/continuations are authored, and copies target SYSTEMMEM surfaces.
+Actual game startup, billboard rendering, Reset and native Windows remain open.
+The [compact record](../../verification/results/media-connected-build-2026-09-20.json)
+binds builds, both runtime outcomes, source fixes and the scoped checks.
+
 ## Run55 crash and user-authorized video omission (2026-09-21)
 
 Run199 repeats the crash with qualified exception/module tracing. The first
@@ -1134,9 +1835,9 @@ allocator refusal before owned/native construction, using existing NULL failure
 semantics for every caller. Other IDs and explicit nonvideo overrides retain
 native handling. A cheap repeated request is acceptable; repeated graph creation
 and the 30-second construction stall are not. No dummy playback success or empty
-owned shell is planned. The replacement runtime/build prerequisites are being
-removed; prior research and fixture evidence remain historical. No reduced build
-or crash-free flight is claimed by this decision.
+owned shell is planned. The replacement runtime/build prerequisites were removed;
+prior research and fixture evidence remain historical. At this decision point,
+no reduced build or crash-free flight was claimed.
 
 ## ID2 video omission and owned playback retirement (2026-09-21)
 
@@ -1175,3 +1876,20 @@ Managed install retires the active media selection without deleting its rollback
 payloads. Package tests cover the exact previous DLL/manifest, retained providers
 and all three interrupted transaction phases. Launch no longer requires old LAV
 payloads. The agent never launched the game.
+
+## Run56 user acceptance (2026-09-21)
+
+The user accepts `/tmp/x3-bottleX3-run200` (766 referenced files): no crash and
+no media-related stutter. The session identifies source `85da89a8` and DLL
+`a51d1e75…96e56`, with the ID2 skip enabled and its allocator site active.
+Preserved logs contain no crash markers. Skip requests return before cue tracing,
+so missing ID2 cue rows do not count or disprove executed skips. Speech/music
+were not separately reported. This accepts the omission repair, not restoration
+of the missing animation. The old provider crash's invalid-pointer origin remains
+unproved and is no longer an active repair task.
+
+CrossOver debug tracing is removed from future run commands at the user's
+request. The completed diagnostic command remains in the Run56 archive.
+New fog-range and station-lighting reports are independent of media acceptance.
+
+[Run200 compact capture witness](../../verification/results/run56-triage/report.md) binds the runtime identity and retained log scan.

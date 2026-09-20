@@ -63,6 +63,39 @@ from an unknown COM pointer. The child's final parent reference is released via
 the parent's application vtable, so installed capture hooks observe that final
 device/factory release rather than retaining stale pointer contexts.
 
+## Short canonical surface leases
+
+`snapshot_surface_identity(device, surface, out)` observes a live canonical pair
+without retaining it. Record that identity only during a separately qualified
+engine binding publication/revalidation interval. `acquire_surface_lease(device,
+surface, expected, lease)` requires an empty lease and that exact nonzero device
+serial, device generation and surface serial. It does not refresh stale
+identities. Both pointers are registry keys until membership, kind, positive
+references and parent relation are established under the registry mutex.
+Unknown/native pointers, wrong devices, stale identities and refcount overflow
+refuse without backend calls. New device/surface wrappers receive non-reused
+serials; rewrapping a retained native allocation gives it a fresh wrapper serial.
+Every canonical Reset attempt advances the device generation, independently of
+tracking options; in-progress/failed Reset and observed loss refuse acquisition.
+
+`SurfaceLease` is move-only. `get()` borrows the canonical application surface
+while the lease owns one logical reference, keeping its existing native reference
+and logical parent device alive without backend AddRef. After any successful
+LockRect, finish UnlockRect and explicitly call `reset()` **before** dropping the
+separately qualified copy-depth/Reset gate. Final Release can reenter and destroy
+the surface, device and factory; the lease clears its own pointer before release.
+No registry mutex spans that cleanup.
+
+This protects COM lifetime only. It does not keep engine tables/slots/records
+alive, establish the current binding, serialize engine mutations or exclude
+Reset after acquisition. Admission remains disabled until those separate
+observers and the entire copy/Reset interval are qualified. Snapshot/acquire
+preserve complete x87 state, MXCSR and LastError on ordinary return through
+scoped no-EH entry shells; their registry bodies retain exception handling.
+Native Windows compatibility uses documented COM/D3D9 APIs; native Windows
+runtime behavior is not yet verified. See the
+[surface-lease qualification](../../docs/verification/ownership-admission.md#canonical-surface-lease-qualification-2026-09-20).
+
 ## Interface and forwarding scope
 
 Fifteen concrete interfaces implement all 297 methods declared for those normal

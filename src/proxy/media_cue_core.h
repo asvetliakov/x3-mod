@@ -12,6 +12,13 @@
 // Host-tested by verification/probe/media_cue_host.cpp.
 namespace x3m::media_cue::detail {
 using Gate = x3m::stamp::Gate;
+// Allocator 0x00498140 uses EAX when nonzero; its ID2 default is flags8.
+// Refuse this video's construction from every caller, including pre-owner,
+// foreign and reentrant entry. No mutable state, allocation, clock or retry.
+inline constexpr bool refuse_id2_video(std::uint32_t id, std::uint32_t incoming_flags) noexcept {
+    return id == 2 && (incoming_flags == 0 || incoming_flags == 8);
+}
+
 enum Caller : unsigned char { selector = 0, speech = 1, script = 2, savegame = 3, query = 4, other = 5, caller_count = 6 };
 inline constexpr const char* const caller_names[caller_count] = {"selector", "speech", "script", "savegame", "query", "other"};
 

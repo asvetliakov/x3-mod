@@ -118,10 +118,13 @@ HRESULT WINAPI native_draw(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,U
     ++native_calls;if(destruction_mode&&group==1)nested_present_on_native();
     seed(true);image(expected_output);return backend_result;
 }
+ULONG fixture_device_refs=1;
+ULONG WINAPI fixture_native_addref(IDirect3DDevice9*){return ++fixture_device_refs;}
+ULONG release_device(IDirect3DDevice9*){return --fixture_device_refs;}
 struct Device{int stats=0;D3DCAPS9 caps{};Motion motion_output;Depth scene_depth;bool capture=false;
     bool composition_scene_owner=false,reset_active=false,compositor=false;DWORD scene_thread=0;unsigned bloom_busy=0,composition_draw_depth=0;
-    std::uint64_t composition_scene_frame=0,frame=0,draws=0,id=1;std::shared_ptr<lattice_state::Capture> lattice_state;
-    template<class F>F get(unsigned slot){return reinterpret_cast<F>(slot==38?reinterpret_cast<void*>(saved_rt):reinterpret_cast<void*>(native_draw));}
+    unsigned lattice_query_depth=0;std::uint64_t composition_scene_frame=0,frame=0,draws=0,id=1;std::shared_ptr<lattice_state::Capture> lattice_state;
+    template<class F>F get(unsigned slot){return reinterpret_cast<F>(slot==1?reinterpret_cast<void*>(fixture_native_addref):slot==38?reinterpret_cast<void*>(saved_rt):reinterpret_cast<void*>(native_draw));}
 } ctx;
 void nested_present_on_native(){
     call_preserved([&]{
@@ -132,7 +135,7 @@ void nested_present_on_native(){
         // owner; its last Release occurs on the light draw path after result.
     });
 }
-struct Devices{Device* at(IDirect3DDevice9*){return &ctx;}} devices;
+struct Devices{std::shared_ptr<Device> value{&ctx,[](Device*){}};std::shared_ptr<Device> at(IDirect3DDevice9*){return value;}} devices;
 enum class DrawMethod{Indexed};struct InputArgs{DrawMethod method;D3DPRIMITIVETYPE t;UINT c,s;INT b;UINT m,n;};
 int read_draw_input(Device&,IDirect3DDevice9*,InputArgs){return 0;}
 void snapshot(IDirect3DDevice9*,const char*,D3DPRIMITIVETYPE,UINT,bool,INT,UINT){++ctx.draws;}

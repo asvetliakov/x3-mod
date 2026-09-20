@@ -1354,7 +1354,7 @@ __attribute__((force_align_arg_pointer)) void __cdecl media_body_record(std::uin
     }
 }
 }
-struct MediaBody { void* body=nullptr;unsigned length=0;void* helper=nullptr;void* selector=nullptr;void* other=nullptr;void* speech=nullptr;void* script=nullptr;media::detail::Addresses addresses{}; };
+struct MediaBody { void* body=nullptr;unsigned length=0;void* helper=nullptr;void* selector=nullptr;void* other=nullptr;void* speech=nullptr;void* script=nullptr;void* query=nullptr;void* savegame=nullptr;media::detail::Addresses addresses{}; };
 static MediaBody make_media_body(){
     MediaBody r;
     {
@@ -1372,7 +1372,7 @@ static MediaBody make_media_body(){
         r.length=unsigned(static_cast<unsigned char*>(e.here())-static_cast<unsigned char*>(r.body));
         if(!e.finish())r.body=nullptr;
     }
-    patch::Emitter e(128);
+    patch::Emitter e(192);
     r.helper=e.here();
     e.byte(0x51);e.byte(0xff);e.byte(0x35);e.dword(std::uint32_t(address(&media_fixture_id)));  // push ecx; push [id]
     e.byte(0xa1);e.dword(std::uint32_t(address(&media_fixture_flags)));call(e,r.body);          // mov eax,[flags]; call body
@@ -1394,6 +1394,14 @@ static MediaBody make_media_body(){
     e.byte(0xa1);e.dword(std::uint32_t(address(&media_fixture_flags)));call(e,r.body);
     r.addresses.script_return=std::uint32_t(address(e.here()));
     e.byte(0x83);e.byte(0xc4);e.byte(0x04);e.byte(0xc3);
+    const auto direct=[&](void*& caller,std::uint32_t& ret){
+        caller=e.here();
+        e.byte(0xff);e.byte(0x35);e.dword(std::uint32_t(address(&media_fixture_id)));
+        e.byte(0xa1);e.dword(std::uint32_t(address(&media_fixture_flags)));call(e,r.body);
+        ret=std::uint32_t(address(e.here()));
+        e.byte(0x83);e.byte(0xc4);e.byte(0x04);e.byte(0xc3);
+    };
+    direct(r.query,r.addresses.query_return);direct(r.savegame,r.addresses.savegame_return);
     r.addresses.selector_kind=media_marker::kSelectorKind;
     if(!e.finish())r.body=nullptr;
     return r;
@@ -1739,8 +1747,15 @@ static void media_benchmark(){
     check(documented_refuse>=refuse_dispatch*0.5&&documented_refuse<=refuse_dispatch*2.0,"documented trace-off REFUSE dispatch cost within 2x of the measured cost");
     check(enter_lines!=~std::uint64_t(0)&&trace_pass_ns>=pass_ns*0.5,"trace-on costs measured");
 }
-int main(){
+#include "media_cue_skip_fixture_inc.h"
+int main(int argc,char** argv){
     for(unsigned i=0;i<sizeof fixture_xmm_seed;++i)fixture_xmm_seed[i]=static_cast<unsigned char>(i*37+9);
+    if(argc==2&&!std::strcmp(argv[1],"--media-only")){
+        media_skip_checks();media_replay_checks();media_video_checks();media_benchmark();
+        patch::close_install_window("media_fixture");media_late_window_checks();
+        std::printf("MEDIA CUE CPU checks=%u failures=%u arena_used=%u arena_capacity=%u\n",checks,failures,patch::arena_used(),patch::arena_capacity());
+        return failures?1:0;
+    }
     patch::Emitter tail(8);void* continuation=tail.here();tail.byte(0xc3);if(!tail.finish())return 2;
     phases::fixture_enable(false);phases::fixture_set_callback(&hostile_callback);
     void* stubs[marker::Count]{};
@@ -1762,7 +1777,7 @@ int main(){
     pass_replay_checks();pass_benchmark();
     loop_replay_checks();loop_benchmark();
     residual_replay_checks();residual_benchmark();
-    media_replay_checks();media_video_checks();media_benchmark();
+    media_skip_checks();media_replay_checks();media_video_checks();media_benchmark();
     frame_replay_checks(); // closes the install window
     pass_late_window_checks();loop_late_window_checks();residual_late_window_checks();media_late_window_checks();
     std::printf("GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u residual_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 residual_cases=6 media_cases=11 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",unsigned(marker::Count),unsigned(frame_marker::Count),unsigned(pass_marker::Count),unsigned(loop_marker::Count),unsigned(residual_marker::Count),unsigned(media_marker::Count),patch::arena_used(),patch::arena_capacity(),checks,failures);

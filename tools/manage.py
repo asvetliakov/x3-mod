@@ -17,6 +17,11 @@ import subprocess
 import sys
 import threading
 
+try:
+    import media_package
+except ModuleNotFoundError:  # importlib-based host tests
+    from tools import media_package
+
 ROOT = Path(__file__).resolve().parents[1]
 BOTTLE = os.environ.get('X3M_BOTTLE', 'X3')
 GAME = Path.home() / f'Library/Application Support/CrossOver/Bottles/{BOTTLE}/drive_c/X3'
@@ -240,7 +245,7 @@ def source_commit(dll):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['install', 'uninstall', 'launch', 'status'])
+    parser.add_argument('action', choices=['install', 'uninstall', 'rollback', 'recover', 'launch', 'status'])
     parser.add_argument('--game-dir', type=Path, default=GAME)
     parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle (default: X3, the arm64/FEX bottle; X3M_BOTTLE overrides; the old x86_64/Rosetta bottle is Steam)')
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
@@ -955,44 +960,54 @@ def main():
     manifest = game / 'x3-modern-install.json'
     if not (game / 'X3AP.exe').is_file():
         parser.error(f'X3AP.exe not found in {game}')
-    owned = json.loads(manifest.read_text()) if manifest.exists() else None
+    try:
+        manifest = media_package.safe(game, 'x3-modern-install.json')
+        dll = media_package.safe(game, 'd3d9.dll')
+        owned = media_package.read_json(manifest) if manifest.exists() else None
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        parser.error(str(error))
     if args.action == 'status':
         # Session logs: next to the DLL, or the proxy's fallback when that
         # directory is not writable (the first log line says which was taken).
+        media_error = None
+        try:
+            media_package.no_journal(game)
+            media_package.current(game)
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            media_error = str(error)
         print(json.dumps({'game': str(game), 'dll_present': dll.exists(),
+                          'selection_error': media_error,
+                          'transaction_pending': media_package.safe(game, media_package.JOURNAL).exists(),
                           'owned': bool(owned and dll.exists() and digest(dll) == owned['sha256']),
                           'installation': owned,
                           'log_directories': {'game': str(game / 'x3-modern-captures'),
                                               'fallback': r'%LOCALAPPDATA%\x3-modern-renderer\captures (read-only game directory)'}}, indent=2))
         return
-    if args.action == 'install':
-        source = args.dll_source.resolve()
-        if not source.is_file():
-            parser.error('Build the DLL first (see README.md).')
-        if dll.exists() and (not owned or digest(dll) != owned['sha256']):
-            parser.error('Existing d3d9.dll is unowned or changed; refusing to overwrite it.')
-        commit, origin = source_commit(source)
-        temp = game / 'x3-modern-install.tmp'
-        shutil.copy2(source, temp)
-        os.replace(temp, dll)
-        manifest.write_text(json.dumps({'project': 'x3-modern-renderer', 'sha256': digest(dll),
-                                        'source': str(source), 'source_commit': commit,
-                                        'manifest_source': origin}, indent=2) + '\n')
-        print(f'Installed {dll}; bottle configuration unchanged.')
-    elif args.action == 'uninstall':
-        if not owned:
-            parser.error('No installation manifest; refusing to remove an unowned file.')
-        if dll.exists() and digest(dll) != owned['sha256']:
-            parser.error('Installed DLL changed; refusing to remove it.')
-        if dll.exists():
-            dll.unlink()
-        manifest.unlink()
-        print('Removed owned proxy and manifest; captures retained.')
+    if args.action in ('install', 'uninstall', 'rollback', 'recover'):
+        try:
+            if args.action == 'install':
+                source = args.dll_source.resolve(strict=True)
+                commit, origin = source_commit(source)
+                media_package.install(game, source,
+                    {'source': str(source), 'source_commit': commit, 'manifest_source': origin},
+                    retire_media=True)
+                print(f'Installed {dll}; bottle configuration unchanged.')
+            elif args.action == 'uninstall':
+                retained = media_package.uninstall(game)
+                print('Removed owned proxy and manifest; captures and originals retained.')
+                if retained:
+                    print('Retained changed/unowned media: ' + ', '.join(retained))
+            elif args.action == 'rollback':
+                media_package.rollback(game)
+                print('Restored previous owned proxy and selection.')
+            else:
+                media_package.recover(game)
+                print('Recovered verified pre-transaction proxy and selection.')
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            parser.error(str(error))
     elif args.action == 'launch':
         if not WINE.is_file():
             parser.error(f'CrossOver Preview Wine not found: {WINE}')
-        if not args.vanilla and (not owned or not dll.exists() or digest(dll) != owned['sha256']):
-            parser.error('Install the proxy before launch, or use --vanilla.')
         env = os.environ.copy()
         env['X3M_CAPTURE_START'] = str(max(1, args.capture_start))
         env['X3M_CAPTURE_FRAMES'] = str(args.capture_frames)
@@ -1314,18 +1329,37 @@ def main():
         if args.direct:
             command += ['-noabout', '-skipintro', '-runinbg']
         launcher_log = game / CAPTURE_SUBDIRECTORY / LAUNCHER_STDERR
-        if args.dry_run:
-            print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
-                              'overrides': overrides, 'd3dx': args.d3dx,
-                              'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')}, **voice_env,
-                                      **experiment_env}}, indent=2))
-            return
-        print(f'Launching X3AP through CrossOver Preview; terminal output is also teed to {launcher_log}.', flush=True)
-        # What was actually launched, first in the preserved log: the exact
-        # argv, the --dll string this child got and the resolved --d3dx choice.
-        header = (f'launcher command={json.dumps(command)} overrides={overrides} d3dx={args.d3dx}'
-                  f' fex_tso={args.fex_tso or "unset"} wined3d={args.wined3d or "unset"}')
-        raise SystemExit(launch_teed(command, env, game, launcher_log, header=header))
+        # Serialize the final selection check, child creation and complete child
+        # lifetime with install/rollback/uninstall/legacy media mutations. A
+        # process-enumeration-only guard has a gap before the child is visible.
+        try:
+            with media_package.installer_lock(game, check_closed=not args.dry_run):
+                media_package.no_journal(game)
+                if not args.vanilla:
+                    manifest = media_package.safe(game, 'x3-modern-install.json')
+                    dll = media_package.safe(game, 'd3d9.dll')
+                    latest = media_package.read_json(manifest) if manifest.exists() else None
+                    media_package.require(latest and dll.is_file() and digest(dll) == latest['sha256'],
+                                          'Install the proxy before launch, or use --vanilla.')
+                    if 'media' in latest:
+                        media_package.require(latest.get('project') == 'x3-modern-renderer',
+                                              'unowned install manifest')
+                    # Playback is retired: legacy package payloads are needed
+                    # only for managed rollback/removal, never for launch.
+                if args.dry_run:
+                    print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
+                                      'overrides': overrides, 'd3dx': args.d3dx,
+                                      'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')}, **voice_env,
+                                              **experiment_env}}, indent=2))
+                    return
+                print(f'Launching X3AP through CrossOver Preview; terminal output is also teed to {launcher_log}.', flush=True)
+                # What was actually launched, first in the preserved log: the exact
+                # argv, the --dll string this child got and the resolved --d3dx choice.
+                header = (f'launcher command={json.dumps(command)} overrides={overrides} d3dx={args.d3dx}'
+                          f' fex_tso={args.fex_tso or "unset"} wined3d={args.wined3d or "unset"}')
+                raise SystemExit(launch_teed(command, env, game, launcher_log, header=header))
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            parser.error(str(error))
 
 
 if __name__ == '__main__':

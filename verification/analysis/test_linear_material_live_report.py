@@ -215,14 +215,25 @@ class LiveMaterialReportTests(unittest.TestCase):
     def test_wrap_observer_and_depth_override_are_fixture_only(self):
         root=Path(__file__).resolve().parents[2]
         source=(root/'src/proxy/capture.cpp').read_text()
-        helper=source[source.index('#ifdef X3M_MOTION_OUTPUT_FIXTURE\nvoid fixture_observe_wrap'):source.index('HRESULT WINAPI draw_primitive(')]
+        # Includes may precede the helper inside the fixture guard. Permit only
+        # include directives there, so an intervening #endif/#else cannot make
+        # this observer production-visible while satisfying the test.
+        guarded_helper=re.search(r'#ifdef X3M_MOTION_OUTPUT_FIXTURE\n(?:#include "[^"\n]+"\n)*void fixture_observe_wrap',source)
+        self.assertIsNotNone(guarded_helper)
+        helper=source[guarded_helper.start():source.index('HRESULT WINAPI draw_primitive(')]
         self.assertIn('if (!ctx.fixture_observe_native_wrap) return;',helper)
         self.assertIn('ctx.get<GetState>(58)',helper)
         self.assertNotIn('device->GetRenderState',helper)
         self.assertNotIn('GetEnvironmentVariable',helper)
         self.assertTrue(helper.rstrip().endswith('#endif'))
         indexed=source[source.index('HRESULT WINAPI draw_indexed('):source.index('HRESULT WINAPI draw_up(')]
-        self.assertIn('#ifdef X3M_MOTION_OUTPUT_FIXTURE\n    if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}',indexed)
+        invocation='if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}'
+        self.assertIn(invocation+'\n#endif',indexed)
+        # Other fixture checkpoints may share this block. Its nearest opening
+        # conditional must still be the fixture guard, without an intervening
+        # #else/#endif that would expose the observer in production.
+        conditional=re.findall(r'^\s*#(?:if|ifdef|ifndef|elif|else|endif)\b[^\n]*',indexed[:indexed.index(invocation)],re.MULTILINE)
+        self.assertEqual(conditional[-1].strip(),'#ifdef X3M_MOTION_OUTPUT_FIXTURE')
         self.assertLess(indexed.index('fixture_observe_wrap(ctx,d)'),indexed.index('cpu.before_original()'))
         motion=(root/'src/proxy/motion_output.cpp').read_text()
         self.assertEqual(motion.count('X3M_FIXTURE_MOTION_DEPTH'),1)

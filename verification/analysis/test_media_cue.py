@@ -58,7 +58,7 @@ class SourceAndPolicy(unittest.TestCase):
         source = (ROOT / 'src/proxy/media_cue.cpp').read_text()
         header = (ROOT / 'src/proxy/media_cue.h').read_text()
         core = (ROOT / 'src/proxy/media_cue_core.h').read_text()
-        # Off = inert: the two environment gates, the frame boundary behind one
+        # Optional diagnostics: the two environment gates, the frame boundary behind one
         # relaxed load, both handlers x87-free under LightCallBoundary, no log.
         self.assertIn('L"X3M_MEDIA_CUE_TRACE"', source)
         self.assertIn('L"X3M_MEDIA_CUE_CACHE"', source)
@@ -131,7 +131,7 @@ class SourceAndPolicy(unittest.TestCase):
         # Shared install transaction, executable identity, frame boundary, telemetry gate for the trace.
         self.assertIn('return stamp::install_group(patches,specs,&emit,installed,status)&&return_trampoline;', source)
         self.assertIn('return stamp::uninstall_group(patches);', source)
-        self.assertIn('else if(!object_trace::executable_verified())status="executable_unverified";', source)
+        self.assertIn('if(!object_trace::executable_verified())status="executable_unverified";', source)
         self.assertIn('trace_on=trace_wanted&&telemetry::enabled();', source)
         self.assertIn('if(trace_on&&limit.admit(e.qpc,frequency))emit_entry(e);', source)
         self.assertIn('log("media_cue frame=%llu qpc=%llu id=%lu kind=%s caller=%s flags=0x%lx result=%s us=%llu attempts_frame=%lu cached=%u"', source)
@@ -164,6 +164,27 @@ class SourceAndPolicy(unittest.TestCase):
             self.assertIn(label, fixture)
         self.assertIn('HANDLE log_handle() noexcept {return media_log_handle;}', fixture)
         self.assertIn('media_cases=11', fixture)
+
+    def test_default_id2_skip_precedes_all_diagnostic_state(self):
+        source = (ROOT / 'src/proxy/media_cue.cpp').read_text()
+        enter = source.split('x3m_media_cue_enter(x3m::media_cue::EnterFrame* f) {', 1)[1].split('\n}', 1)[0]
+        skip = 'if(detail::refuse_id2_video(f->id,f->eax))return 0;'
+        self.assertIn(skip, enter)
+        before, after = enter.split(skip, 1)
+        self.assertEqual(before.strip(), 'using namespace x3m::media_cue;')
+        for operation in ('active.load', 'LightCallBoundary', 'gate.owned', 'qpc()', '++attempts_frame', 'pending.push'):
+            self.assertIn(operation, after)
+        initialize = source.split('bool initialize() {', 1)[1].split('\nnamespace detail', 1)[0]
+        self.assertNotIn('if(!trace_wanted&&!cache_wanted)return false;', initialize)
+        self.assertIn('else install_group(sites::kSites,status);', initialize)
+        self.assertIn('if(!frequency){trace_on=false;cache_on=false;}', initialize)
+        self.assertIn('active.store(installed.load(std::memory_order_acquire)&&(trace_on||cache_on)', initialize)
+        self.assertNotIn('owned_eligibility', source)
+        fixture = (ROOT / 'verification/probe/media_cue_skip_fixture_inc.h').read_text()
+        for label in ('ID2 skipped for all callers before owner admission',
+                      'ID2 skip touches no diagnostic state', 'ID2 foreign calls never enter allocator',
+                      'nested ID2 does not add a return observer', 'skip rollback restores complete native span'):
+            self.assertIn(label, fixture)
 
     def test_video_blit_witness(self):
         source = (ROOT / 'src/proxy/media_cue.cpp').read_text()

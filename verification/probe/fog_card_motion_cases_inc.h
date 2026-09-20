@@ -118,5 +118,70 @@ int main() {
  { MotionOutput m;m.warm();m.fog_sector_.field_generation=0;m.draw();assert(m.fog_cards_.refused&&!m.fog_cards_.suppressed); }
  { MotionOutput m;m.warm();const auto invalidations=m.invalidations;m.volumetric_fog_step();m.volumetric_fog_step();
    assert(m.invalidations==invalidations+1); }
+ // Every mapped family requires its own authority warmup before suppression.
+ for(const auto& family:renderer::fog_field::family_profiles) {
+   MotionOutput m;m.warm();++m.frame_;m.volumetric_fog_begin_frame();m.sample(family.family,0x4000);m.prepare_volumetric_fog_targets(1280,768);
+   assert(m.fog_sector_.profile==unsigned(family.profile)&&m.fog_cards_.warmup&&!m.fog_cards_.armed);
+   m.draw();assert(!m.fog_cards_.suppressed);m.complete(true,"ok");
+   ++m.frame_;m.volumetric_fog_begin_frame();m.sample(family.family,0x4000);m.draw();
+   assert(m.fog_cards_.suppressed==1&&m.fog_cards_.armed);m.complete(true,"ok");
+ }
+
+ // Run53B-shaped timeline through the actual scene-end method. Device/pass
+ // dependencies are host doubles; this witnesses routing, not rendered pixels.
+ { MotionOutput m;m.frame_=31480;m.sample("foggreenoutlands",0x66328b20);
+   m.prepare_volumetric_fog_targets(64,48);m.volumetric_fog_begin_frame();m.run_volumetric_fog();
+   assert(m.fog_cards_.armed);
+   unsigned warmups=0,suppressed=0,applied=0,cuts=0;
+   for(unsigned frame=31481;frame<=31512;++frame){
+     m.frame_=frame;m.volumetric_fog_begin_frame();m.sample("foggreenoutlands",0x66328b20);
+     m.cut_finished_=true;m.counters_.cut=frame>=31495&&frame<=31505;
+     cuts+=m.counters_.cut;warmups+=m.fog_cards_.warmup;
+     for(unsigned card=0;card<6;++card)assert(m.draw()==S_OK);
+     suppressed+=m.fog_cards_.suppressed;
+     const auto before=m.fog_storage.executes;m.run_volumetric_fog();
+     applied+=m.fog_storage.executes==before+1&&m.fog_cards_.finished&&!m.fog_cards_.fault;
+     // Both scene-end callers can qualify; the second must remain a no-op.
+     m.run_volumetric_fog();assert(m.fog_storage.executes==before+1);
+     assert(m.device_storage.target.refs==1&&m.depth_storage.texture.refs==1&&m.device_storage.mask==7);
+   }
+   std::fprintf(stderr,"cut_sequence frames=32 cuts=%u warmup=%u suppressed=%u applied=%u\n",cuts,warmups,suppressed,applied);
+   assert(cuts==11&&warmups==0&&suppressed==192&&applied==32&&m.fog_cards_.armed);
+   std::puts("cut_sequence frames=32 cuts=11 warmup=0 suppressed=192 applied=32 PASS");
+ }
+ // Genuine authority, Reset and toggle changes still need one successful
+ // stacked frame. Failures keep their native fallback / Reset-only fault.
+ for(unsigned scenario=0;scenario<8;++scenario){
+   MotionOutput m;m.warm();m.cut_finished_=true;m.counters_.cut=true;
+   if(scenario<5){
+     const char* family=scenario==1?"foggreenoutlands":"bluewell";
+     const unsigned sector=scenario==0?0x2000:0x1000;
+     if(scenario==2)++m.generation_;
+     if(scenario==3)m.reset_fog_for_test();
+     if(scenario==4){m.volumetric_fog_toggle();m.volumetric_fog_toggle();}
+     ++m.frame_;m.volumetric_fog_begin_frame();m.sample(family,sector);m.prepare_volumetric_fog_targets(64,48);
+     assert(m.fog_cards_.warmup&&!m.fog_cards_.armed);m.draw();assert(m.fog_cards_.suppressed==0);
+     m.run_volumetric_fog();assert(m.fog_storage.executes==1&&m.fog_cards_.armed);
+     ++m.frame_;m.volumetric_fog_begin_frame();m.sample(family,sector);m.draw();m.run_volumetric_fog();
+     assert(!m.fog_cards_.warmup&&m.fog_cards_.suppressed==1&&m.fog_storage.executes==2&&!m.fog_cards_.fault);
+   }else if(scenario==5){
+     m.reset_fog_for_test();m.next();m.prepare_volumetric_fog_targets(64,48);
+     m.fog_storage.execute_result=E_FAIL;m.draw();m.run_volumetric_fog();
+     assert(!m.fog_cards_.armed&&!m.fog_cards_.fault&&!m.fog_cards_.suppressed);
+     m.next();assert(m.fog_cards_.warmup);m.fog_storage.execute_result=S_OK;m.draw();m.run_volumetric_fog();
+     assert(m.fog_cards_.armed&&!m.fog_cards_.suppressed);m.next();m.draw();m.run_volumetric_fog();assert(m.fog_cards_.suppressed==1);
+   }else{
+     m.draw();assert(m.fog_cards_.suppressed==1);
+     if(scenario==6)m.fog_storage.execute_result=E_FAIL;
+     else m.prerequisites_ready=false; // late loss of owner/camera/depth qualification
+     m.run_volumetric_fog();assert(m.fog_cards_.fault&&!m.fog_cards_.armed);
+     const auto executes=m.fog_storage.executes;
+     m.next();m.draw();m.run_volumetric_fog();assert(!m.fog_cards_.suppressed&&m.fog_storage.executes==executes);
+     m.reset_fog_for_test();m.prerequisites_ready=true;m.fog_storage.execute_result=S_OK;m.next();
+     m.prepare_volumetric_fog_targets(64,48);assert(m.fog_cards_.warmup);
+     m.draw();m.run_volumetric_fog();assert(!m.fog_cards_.fault&&m.fog_cards_.armed&&!m.fog_cards_.suppressed);
+   }
+ }
+ std::puts("cut_recovery scenarios=8 PASS");
  std::puts("actual MotionOutput card methods PASS");
 }

@@ -8,6 +8,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 static_assert(sizeof(void*)==4,"Reviewed x86 game ABI only");
 static_assert(sizeof(x3m::media_cue::EnterFrame)==0xa4,"gate stub frame layout");
@@ -211,10 +212,12 @@ void emit_window() {
 // execute no x87 opcode, never allocate and never take the log mutex; the one
 // line it writes on a proceeded call with the trace on goes through
 // write_enter_line's unbuffered handle write under the full envelope. A call
-// before the owner is admitted or from another thread passes unobserved.
+// outside the unconditional ID2 video skip passes unobserved before owner
+// admission or from another thread. The skip touches no mutable state or API.
 extern "C" __attribute__((force_align_arg_pointer)) unsigned __cdecl
 x3m_media_cue_enter(x3m::media_cue::EnterFrame* f) {
     using namespace x3m::media_cue;
+    if(detail::refuse_id2_video(f->id,f->eax))return 0;
     if(!active.load(std::memory_order_relaxed))return 1;
     x3m::LightCallBoundary cpu; // MXCSR + LastError: QueryPerformanceCounter may set the last error
     if(!gate.owned(GetCurrentThreadId()))return 1;
@@ -274,30 +277,30 @@ ownership::SurfaceLockObserver video_lock_observer() noexcept {
 }
 bool initialize() {
     ErrorGuard error;
-    if(initialized)return active.load(std::memory_order_acquire);
+    if(initialized)return installed.load(std::memory_order_acquire);
     initialized=true;wchar_t value[16]{};
     const bool trace_wanted=GetEnvironmentVariableW(L"X3M_MEDIA_CUE_TRACE",value,4)==1&&value[0]==L'1';
     const bool cache_wanted=GetEnvironmentVariableW(L"X3M_MEDIA_CUE_CACHE",value,4)==1&&value[0]==L'1';
     unsigned retry_s=default_retry_s;
     if(GetEnvironmentVariableW(L"X3M_MEDIA_CUE_RETRY_S",value,16)>0){const unsigned long n=wcstoul(value,nullptr,10);if(n>=1&&n<=max_retry_s)retry_s=unsigned(n);}
-    if(!trace_wanted&&!cache_wanted)return false;
     trace_on=trace_wanted&&telemetry::enabled();
     cache_on=cache_wanted;
-    const char* status=trace_wanted&&!trace_on&&!cache_on?"telemetry_off":"unset";
+    const char* status="unset";
     if(trace_on||cache_on){
         LARGE_INTEGER f{};frequency=QueryPerformanceFrequency(&f)&&f.QuadPart>0?std::uint64_t(f.QuadPart):0;
         retry_ticks=frequency*retry_s;
-        if(!frequency)status="clock_unavailable";
-        else if(!object_trace::executable_verified())status="executable_unverified";
-        else install_group(sites::kSites,status);
+        // Diagnostics may fail closed without reopening ID2's decoder path.
+        if(!frequency){trace_on=false;cache_on=false;}
     }
-    active.store(installed.load(std::memory_order_acquire),std::memory_order_release);
-    log("media_cue_mode trace_requested=%u cache_requested=%u trace=%u cache=%u enabled=%u status=%s retry_s=%u cache_entries=%u pending_depth=%u ring=%u lines_per_second=%u window=%u owner=present_thread sector_change=interval_only qpc_frequency=%llu return_trampoline=%08lx",
-        unsigned(trace_wanted),unsigned(cache_wanted),unsigned(trace_on&&active.load()),unsigned(cache_on&&active.load()),unsigned(active.load()),status,retry_s,
+    if(!object_trace::executable_verified())status="executable_unverified";
+    else install_group(sites::kSites,status);
+    active.store(installed.load(std::memory_order_acquire)&&(trace_on||cache_on),std::memory_order_release);
+    log("media_cue_mode trace_requested=%u cache_requested=%u trace=%u cache=%u enabled=%u id2_video_skip=%u status=%s retry_s=%u cache_entries=%u pending_depth=%u ring=%u lines_per_second=%u window=%u owner=present_thread sector_change=interval_only qpc_frequency=%llu return_trampoline=%08lx",
+        unsigned(trace_wanted),unsigned(cache_wanted),unsigned(trace_on&&active.load()),unsigned(cache_on&&active.load()),unsigned(active.load()),unsigned(installed.load()),status,retry_s,
         detail::cache_entries,detail::pending_depth,detail::ring_entries,detail::lines_per_second,detail::window_frames,frequency,reinterpret_cast<unsigned long>(return_trampoline));
     for(unsigned i=0;i<sites::Count;++i)log("media_cue_site index=%u address=%08lx length=%u rel32=%u patched=%u status=%s",i,
         static_cast<unsigned long>(sites::kSites[i].address),sites::kSites[i].length,sites::kSites[i].rel32_offset,unsigned(patches[i].patched_in),patches[i].status);
-    return active.load(std::memory_order_acquire);
+    return installed.load(std::memory_order_acquire);
 }
 namespace detail {
 void frame_impl(std::uint64_t frame) noexcept {
@@ -320,7 +323,7 @@ bool fixture_install(const engine_patch::SiteSpec* specs,const detail::Addresses
     addresses=fixture_addresses;trace_on=trace;cache_on=cache_enabled;retry_ticks=ticks;
     const bool okay=frequency&&install_group(specs,text);
     if(!frequency)text="clock_unavailable";
-    active.store(installed.load(std::memory_order_acquire));
+    active.store(installed.load(std::memory_order_acquire)&&(trace_on||cache_on));
     reset_state();
     if(status)*status=text;
     return okay;

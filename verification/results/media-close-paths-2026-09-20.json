@@ -1,0 +1,57 @@
+{
+  "status": "pass",
+  "date": "2026-09-20",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "scope": "Static original-EXE paths; no Wine/game/native runtime execution or production hook.",
+  "fallback_shutdown": {
+    "ranges": 8,
+    "instructions": 782,
+    "bytes": 2709,
+    "anchors": 20,
+    "branch_boundaries": 94,
+    "shutdown_ret_count": 0,
+    "terminal_call": "0x50ef9b -> IAT0x5321d8 KERNEL32.dll!ExitProcess",
+    "wrapper_arguments": "status,0,0; third argument excludes normal returning mode",
+    "conclusion": "Identified fallback cannot normally return to suspended caller; callback exceptional/nonlocal behavior unexamined, not an identified transfer or blanket blocker.",
+    "reproduce": "python3 /tmp/verify_x3_media_close_return_contract.py"
+  },
+  "handled_script": {
+    "ranges": 8,
+    "instructions": 390,
+    "bytes": 1077,
+    "anchors": 9,
+    "name": "NotifyLeave",
+    "synchronous_chain": [
+      "0x401d9a -> 0x49f570",
+      "0x49f61d -> 0x49f430",
+      "0x49f4ac -> 0x4a26a0"
+    ],
+    "return_branch": "0x401dc1 -> 0x401dca/0x401dcb -> WndProc0x4d3787",
+    "unresolved_selected_script_dispatch": "0x4a2707",
+    "conclusion": "Synchronous interpreter entry proven; selected NotifyLeave body reaching media deletion unproven. Earlier allocation/error helper closures unexamined.",
+    "reproduce": "Execute embedded Python witness in /tmp/x3-media-close-script-arm.md"
+  },
+  "limits": [
+    "No observed media deletion or returning UAF in the handled arm.",
+    "No actual COM delivery of SC_CLOSE established.",
+    "No whole-WndProc closure, close-deferral policy, lifetime right or hook qualification."
+  ],
+  "local_evidence": [
+    {
+      "path": "/tmp/verify_x3_media_close_return_contract.py",
+      "sha256": "a5328274f47549b8f25cec8600815a58fd3f68a634dd79bf84207369966408de"
+    },
+    {
+      "path": "/tmp/x3-media-close-return-contract.md",
+      "sha256": "38c88f563fba4843996017a51806cac75881f7a71dbfb7acf9e8667fbf039040"
+    },
+    {
+      "path": "/tmp/x3-media-close-return-contract-check.json",
+      "sha256": "f7d5fe58f9abcd1aded4846ee529436cea23217e933bdcccae1e10ee6b88df7b"
+    },
+    {
+      "path": "/tmp/x3-media-close-script-arm.md",
+      "sha256": "bf5138386375df400a5d2465768ba1011b66d8b0e18e64ee0404bf4287deefad"
+    }
+  ]
+}

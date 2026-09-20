@@ -1,0 +1,268 @@
+{
+  "schema": 1,
+  "date": "2026-09-20",
+  "scope": "Disabled owned-media CPU state checkpoint; no engine hooks or playback qualification",
+  "source_base_commit": "4c5ca4e765b9c5e71adbdde52d9906a56828e636",
+  "source_binding": "Reviewed sources committed together with this record; no DLL candidate was built",
+  "retained_branch": "feat/media-owned-adapter",
+  "independent_review": "review_media_owned_state: CLEAR for disabled CPU checkpoint; independently repeated 2 tests / 202 checks",
+  "qualification": {
+    "cpu_state_checkpoint_accepted": true,
+    "production_admission_enabled": false,
+    "engine_hooks_qualified": false,
+    "clock_runtime_qualified_by_this_record": false,
+    "worker_transport_qualified_by_this_record": false,
+    "gpu_reset_qualified": false,
+    "game_playback_qualified": false,
+    "native_windows_runtime_qualified": false
+  },
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+    "exit_code": 0,
+    "tests": 2,
+    "fixture_checks": 202,
+    "fixture_failures": 0,
+    "fixture_allocations": 0,
+    "compiler": "Apple clang 21.0.0, arm64-apple-darwin25.6.0"
+  },
+  "cross_compile": {
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "production_translation_units": 2,
+    "flags": [
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-fno-exceptions"
+    ],
+    "x87_instructions": 0,
+    "limit": "Object compilation and disassembly only; no native Windows execution or DLL build"
+  },
+  "sanitizers": {
+    "build_command": "clang++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Werror src/media/playback_runtime.cpp src/proxy/media_playback.cpp verification/probe/media_owned_adapter_state_fixture.cpp -o /tmp/x3-media-owned-state-sanitize",
+    "run_command": "/tmp/x3-media-owned-state-sanitize",
+    "exit_code": 0,
+    "fixture_checks": 202,
+    "fixture_failures": 0,
+    "fixture_allocations": 0,
+    "output_retention": "Tool transcript only; no persisted raw result log"
+  },
+  "bounded_cost": {
+    "max_sessions": 8,
+    "max_command_cells": 32,
+    "default_sessions": 2,
+    "default_command_cells": 8,
+    "host_runtime_bytes": 2912,
+    "host_adapter_bytes": 3632,
+    "diagnostic_iterations": 200000,
+    "diagnostic_pair_ns": 8.13,
+    "diagnostic_pair": "accepts_publication plus ready-event consumption",
+    "limit": "Single host run; not game FPS or engine hook/upload timing"
+  },
+  "contracts": [
+    "play is self-contained ensure-constructed(source) plus prepare/play. construct is optional eager preparation; stop may discard it before consumption. A later play must construct if needed.",
+    "Commands and publication values contain source/session/operation/epoch metadata, never engine callback keys or engine pointers.",
+    "Normal command reservation and cancellation publication are separate. Current publication is an engine-thread value snapshot, not a qualified cross-thread mailbox.",
+    "Binding replacement preserves source-operation preparation. Destination identity must be validated separately; replacement invalidates current traversal tickets.",
+    "Registry miss is unknown, not proof that an engine object is unowned or eligible for legacy COM replay.",
+    "Rate tests verify exact scaling, input rejection and transaction result using a clock spy. They do not execute or requalify the canonical clock algorithm."
+  ],
+  "open_dependencies": [
+    "Non-lossy bounded per-session command transfer and coherent worker cancellation publication",
+    "Canonical clock integration, immutable frame leases and worker construction/teardown",
+    "Whole-instruction hooks, CPU/LastError preservation, rollback and atomic consumer coverage",
+    "Engine callback seams, allocation/free matching, destination acquisition, Reset and resource lifetime",
+    "Enabled engine playback and user-run/native Windows runtime qualification"
+  ],
+  "execution": {
+    "game_launched": false,
+    "wine_executed": false,
+    "bottle_name": null,
+    "wine_arch": null,
+    "FEX_X87REDUCEDPRECISION": null,
+    "WINEMSYNC": null,
+    "dll_built": false,
+    "installed": false,
+    "note": "Host and cross-compilation checks only; no bottle or emulation environment used"
+  },
+  "command_transfer": {
+    "date": "2026-09-20",
+    "source_base_commit": "4aaae520",
+    "source_binding": "Reviewed offer/ack delta committed together with this appended record",
+    "scope": "Engine-thread per-session CPU command transfer; no transport worker or cross-thread runtime qualification",
+    "independent_review": "review_media_owned_state: CLEAR; independently repeated 2 tests / 321 checks, i686 object/no-x87 checks and diff check",
+    "api": [
+      "Runtime::peek_command",
+      "Runtime::offer_current",
+      "Runtime::acknowledge_command"
+    ],
+    "host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+      "exit_code": 0,
+      "tests": 2,
+      "fixture_checks": 321,
+      "fixture_failures": 0,
+      "fixture_allocations": 0
+    },
+    "cross_compile": {
+      "production_translation_units": 2,
+      "i686_objects_passed": true,
+      "x87_instructions": 0,
+      "native_windows_execution": false
+    },
+    "sanitizers": {
+      "build_command": "clang++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Werror src/media/playback_runtime.cpp src/proxy/media_playback.cpp verification/probe/media_owned_adapter_state_fixture.cpp -o /tmp/x3-media-owned-transfer-sanitize",
+      "run_command": "/tmp/x3-media-owned-transfer-sanitize > /tmp/x3-media-owned-transfer-sanitize.log 2>&1",
+      "result_path": "/tmp/x3-media-owned-transfer-sanitize.log",
+      "exit_code": 0,
+      "fixture_checks": 321,
+      "fixture_failures": 0,
+      "fixture_allocations": 0
+    },
+    "coverage": [
+      "Busy worker A retains its command while B progresses",
+      "One successful acknowledgement per command",
+      "Current per-session FIFO ordering",
+      "Cancellation and supersession between offers",
+      "Stale acknowledgement refusal across cell reuse, session generation reuse and foreign Runtime identity",
+      "Pending reservations remain invisible; full command capacity does not block cancellation"
+    ],
+    "bounded_cost": {
+      "scan_limit": 32,
+      "diagnostic_iterations": 200000,
+      "peek_plus_validation_ns": 54.64,
+      "host_runtime_bytes": 2912,
+      "host_adapter_bytes": 3632,
+      "limit": "Single optimized host diagnostic with 32 occupied current command cells; not engine/game or worker timing"
+    },
+    "integration_obligations": [
+      "A false try_submit means not accepted and must leave the offer unacknowledged.",
+      "Validate a retained offer immediately before submission; accepted submit and acknowledge must be adjacent non-reentrant engine-thread operations.",
+      "A successful submit followed by failed acknowledgement means invalidation, never permission to retry the already accepted command.",
+      "The worker independently validates full session allocation generation, operation and epoch against the separate cancellation publication.",
+      "play, seek and run must ensure the source graph exists if absent. A fresh-identity run must seek to request.start_ms; superseded earlier commands may have been removed.",
+      "Offer tokens do not extend Runtime lifetime and must not survive its destruction or replacement."
+    ],
+    "unchanged_limits": [
+      "Production admission remains disabled",
+      "No new command structure, byte/frame queue or canonical clock algorithm",
+      "Actual transport, engine hooks, CPU/LastError envelopes, GPU/Reset lifetime and native Windows runtime remain unqualified"
+    ],
+    "execution": {
+      "game_launched": false,
+      "wine_executed": false,
+      "bottle_name": null,
+      "wine_arch": null,
+      "FEX_X87REDUCEDPRECISION": null,
+      "WINEMSYNC": null,
+      "dll_built": false,
+      "installed": false
+    }
+  },
+  "atomic_loop_seek": {
+    "date": "2026-09-20",
+    "source_base_commit": "8b22eb22",
+    "source_binding": "Reviewed Runtime/Adapter loop_seek delta committed together with this appended record",
+    "scope": "CPU state and immutable command-bound transaction; no manager-loop ABI or worker/runtime qualification",
+    "independent_review": "review_media_owned_state: CLEAR; independently repeated 2 tests / 392 checks, i686 object/no-x87 checks and diff check",
+    "api": [
+      "Runtime::loop_seek(SessionHandle,start_ms,end_ms)",
+      "Adapter::loop_seek(SessionHandle,start_ms,end_ms)"
+    ],
+    "contract": [
+      "Reserve command capacity before changing state or releasing a pending preparation reservation.",
+      "Install exact start_ms and normalized end_ms (positive unchanged, otherwise -1) into Snapshot before enqueue so the immutable Command has identical bounds.",
+      "Preserve operation/source/loop ownership, increment epoch exactly once and arm preparing/playing intent.",
+      "Require the still-active operation; no-operation, stopped and retired sessions cannot be resurrected.",
+      "Queue pressure leaves state, epoch, operation, queued offers, reservations and callback ownership unchanged. Caller retains active loop-pending state and may retry next pass.",
+      "No terminal callback, retirement or endpoint counter is emitted at this layer.",
+      "Previously exposed offers are not rewritten; successful new epoch makes old offers ineligible.",
+      "Generic seek keeps its existing end=-1 behavior. Manager loop must use loop_seek, not seek followed by snapshot-only set_end."
+    ],
+    "host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+      "exit_code": 0,
+      "tests": 2,
+      "fixture_checks": 392,
+      "fixture_failures": 0,
+      "fixture_allocations": 0
+    },
+    "cross_compile": {
+      "production_translation_units": 2,
+      "i686_objects_passed": true,
+      "x87_instructions": 0,
+      "native_windows_execution": false
+    },
+    "sanitizers": {
+      "build_command": "clang++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Werror src/media/playback_runtime.cpp src/proxy/media_playback.cpp verification/probe/media_owned_adapter_state_fixture.cpp -o /tmp/x3-media-loop-seek-sanitize",
+      "run_command": "/tmp/x3-media-loop-seek-sanitize > /tmp/x3-media-loop-seek-sanitize.log 2>&1",
+      "result_path": "/tmp/x3-media-loop-seek-sanitize.log",
+      "exit_code": 0,
+      "fixture_checks": 392,
+      "fixture_failures": 0,
+      "fixture_allocations": 0
+    },
+    "coverage": [
+      "Exact source start/end in snapshot and queued command",
+      "Full-queue unchanged-state failure and successful next-pass retry after other-session progress",
+      "Outstanding preparation reservation survives failed loop admission",
+      "Single new epoch preserves operation and revokes old offers without rewriting them",
+      "Positive/nonpositive end normalization; generic seek behavior retained",
+      "Preparing/playing accepted, stopped/retired/no-operation rejected",
+      "Adapter callback ownership survives pressure/retry and remains single-delivery at later stop"
+    ],
+    "bounded_cost": {
+      "allocation_count": 0,
+      "host_runtime_bytes": 2912,
+      "host_adapter_bytes": 3632,
+      "note": "Reuses bounded seek reservation path; no new queue, storage, clock or backend work"
+    },
+    "open_dependencies": [
+      "Engine manager-loop consumer must use the atomic API",
+      "Manager-loop instruction/CPU/LastError/rollback envelope remains separately qualified",
+      "Worker transport, destination/Reset lifetime, enabled game playback and native Windows runtime remain outside this checkpoint"
+    ],
+    "execution": {
+      "game_launched": false,
+      "wine_executed": false,
+      "bottle_name": null,
+      "wine_arch": null,
+      "FEX_X87REDUCEDPRECISION": null,
+      "WINEMSYNC": null,
+      "dll_built": false,
+      "installed": false
+    }
+  },
+  "loop_failure_classification": {
+    "source_base_commit": "c780211c",
+    "independent_review": "review_media_owned_state: CLEAR; independently repeated 2 tests / 444 checks, i686 SSE2/no-x87 and diff check",
+    "contract": "Optional backpressure output is reset on every call and true only for valid active identities with usable epoch/serial but occupied/reserved command capacity. Invalid identities and permanent counter exhaustion reject before capacity classification. Failure preserves state.",
+    "host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+      "tests": 2,
+      "checks": 444,
+      "failures": 0,
+      "allocations": 0
+    },
+    "sanitizer_log": "/tmp/x3-media-loop-backpressure-sanitize.log",
+    "fixture_limit": "Only fixture TU uses -fno-access-control for counter exhaustion; production TUs compile separately with normal access checks.",
+    "remaining": "Consumer retry/termination routing and injected ABI/native runtime remain separate."
+  },
+  "adapter_offer_forwarding": {
+    "base": "156c8b63",
+    "review": "review_media_owned_state: CLEAR; independently repeated focused tests",
+    "host_command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+    "tests": 2,
+    "checks": 479,
+    "failures": 0,
+    "allocations": 0,
+    "i686_no_x87": "passed",
+    "scope": "Direct Adapter forwarding for existing Runtime peek/current/ack, no new state or queue. Shared transfer tests cover backpressure, independent sessions and identity invalidation.",
+    "limit": "Adjacent non-reentrant submit/ack remains required; actual worker transfer and injected ABI separate."
+  }
+}

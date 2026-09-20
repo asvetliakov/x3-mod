@@ -1,0 +1,58 @@
+{
+  "asset_bytes": 534031204,
+  "bottle": "X3 (read-only host paths; no Wine)",
+  "command": "tools.prepare_media_package import + tools.media_package.validate_package read-only revalidation",
+  "host_tests": {
+    "command": "PYTHONPATH=verification/probe python3 -u -m unittest verification.analysis.test_media_package verification.analysis.test_media_transcode.InstallRestore verification.analysis.test_env_experiment_launch verification.analysis.test_launcher_stderr_tee",
+    "complete_stdout_stderr_and_unittest_summary": true,
+    "exit_status": 0,
+    "log": "/tmp/x3-media-package-tests.log",
+    "log_sha256": "8b3d008ea0608f76ef44a5446b66f3e6e2fc20f2b53b0371639803ef6556775b",
+    "passed": 45,
+    "review_fixes": true,
+    "wall_seconds": 2.745
+  },
+  "independent_review": "review_media_package: CLEAR after fixes; independently repeated 45 focused tests",
+  "input_identities": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": {
+      "bytes": 2153984,
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+    },
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/mov/00002.dat": {
+      "bytes": 533575370,
+      "sha256": "401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76"
+    },
+    "/tmp/x3-lav-strict-graph-v1/graph-provider.json": {
+      "bytes": 9082,
+      "sha256": "cadf5fbf4cf41bae21282c06d97af26418fc3b38b331f6b32f16cfdcc55be00d"
+    },
+    "/tmp/x3-media-remux-mkv/00002.mkv": {
+      "bytes": 534031204,
+      "sha256": "7b7f3adaabe32f9f4fcbe943cffa50a6b77b6082a9cdcf17f135d2a36677f8e7"
+    },
+    "/tmp/x3-media-remux-mkv/derived-record-v2.json": {
+      "bytes": 3235,
+      "sha256": "5420af9747904dde2c1e5300a898252dae9fcefa970f710606c55ed6e8033608"
+    }
+  },
+  "inputs_unchanged": true,
+  "layout": "staged",
+  "limitations": [
+    "Local package staging and temporary-tree installer checks only; no real install or game launch",
+    "Native Windows and relocated provider runtime remain unverified",
+    "Public redistribution remains unqualified; original media is retained locally",
+    "Full Python preflight reads at least 1287677655 bytes; measured validation 1.246138125 seconds; not renderer hot-path timing"
+  ],
+  "module_bytes": 110019880,
+  "module_count": 9,
+  "native_windows_verified": false,
+  "package_id": "lav081-strict-cadf5fbf4cf41bae",
+  "package_record_sha256": "7686206cde064dd0411f0ff2c0a3338f619eeee45fb9cf036566425889a7eed4",
+  "path_base": "package_root",
+  "prepare_command": "python3 tools/prepare_media_package.py --graph-provider-record /tmp/x3-lav-strict-graph-v1/graph-provider.json --derived-record /tmp/x3-media-remux-mkv/derived-record-v2.json --game-dir '/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3' --output /tmp/x3-media-local-stage-v1",
+  "provider_file_count": 14,
+  "schema": 1,
+  "source_binding": "Reviewed production inputs committed together with this record",
+  "stage": "/tmp/x3-media-local-stage-v1/package.json",
+  "validation_wall_seconds": 1.246138125
+}

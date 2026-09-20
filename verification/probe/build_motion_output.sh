@@ -18,13 +18,14 @@ i686-w64-mingw32-g++ $FLAGS -DX3M_QUAD_FVF_SWITCH -static -static-libgcc -static
 
 if [ "${1:-}" = "--fixture-only" ]; then exit 0; fi
 
-OBJECTS=../../build/CMakeFiles/d3d9.dir/src
+CANDIDATE_BUILD="${X3M_CANDIDATE_BUILD:-../../build}"
+OBJECTS="$CANDIDATE_BUILD/CMakeFiles/d3d9.dir/src"
 test -f "$OBJECTS/proxy/capture.cpp.obj" || { echo "build/ objects missing; run the CMake build first" >&2; exit 1; }
 # MotionOutput references the material and emission transformers. They are shared
 # unchanged from the candidate build, never rebuilt implicitly by this runner.
 test -f "$OBJECTS/renderer/linear_material.cpp.obj" || { echo "build/ linear material object missing; run the CMake build first" >&2; exit 1; }
 test -f "$OBJECTS/renderer/linear_emission_pass.cpp.obj" || { echo "build/ linear emission object missing; run the CMake build first" >&2; exit 1; }
-BRIDGE=../../build/compositor_bridge
+BRIDGE="$CANDIDATE_BUILD/compositor_bridge"
 # These external objects sit outside CMakeFiles/d3d9.dir/src. Reuse the exact
 # qualified production SEH package, including its narrow compiler-runtime import.
 for artifact in compositor_bridge.o compositor_bridge_seh_gnu.obj libx3m_compositor_seh_runtime.a; do

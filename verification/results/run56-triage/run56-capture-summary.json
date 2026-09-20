@@ -1,0 +1,404 @@
+{
+  "candidate": {
+    "bytes": 54386310,
+    "checkout": "/private/tmp/x3-run56-integration",
+    "commit": "85da89a8955a72b20d92f2309e4b9a4cb4dd325e",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "configuration": "RelWithDebInfo",
+    "sha256": "a51d1e75fa80d7d07bab7ab66004291f7248bc5693e6585171e564a90fa96e56",
+    "source_clean": true
+  },
+  "capture": {
+    "extension_counts": {
+      ".bgra8": 128,
+      ".bin": 61,
+      ".log": 2,
+      ".r32f": 320,
+      ".rgba16f": 128,
+      ".rgba32f": 128
+    },
+    "present_frame_ranges": [
+      [
+        16450,
+        16481
+      ],
+      [
+        43051,
+        43082
+      ]
+    ],
+    "present_frames": 64,
+    "session_capture_frame_ranges": [
+      [
+        16450,
+        16481
+      ],
+      [
+        43051,
+        43082
+      ]
+    ],
+    "session_capture_frames": 64,
+    "sets_equal": true
+  },
+  "configured_modes": {
+    "far_fade": {
+      "enabled": "1",
+      "floor": "1",
+      "gain": "4",
+      "p0": "80",
+      "p1": "220",
+      "requested": "1"
+    },
+    "fog": {
+      "anisotropy": "0.3",
+      "cards": "replace",
+      "density_scale": "1.5",
+      "enabled": "1",
+      "keys": "ctrl_alt_f9,ctrl_alt_f10",
+      "requested": "1",
+      "strength": "0.03"
+    },
+    "media_site": {
+      "address": "00498140",
+      "index": "0",
+      "length": "5",
+      "patched": "1",
+      "rel32": "0",
+      "status": "active"
+    },
+    "media_skip": {
+      "cache": "1",
+      "enabled": "1",
+      "id2_video_skip": "1",
+      "owner": "present_thread",
+      "status": "ok",
+      "trace": "1"
+    },
+    "media_video_witness": {
+      "blit_range": "004d0c40-004d14e0",
+      "interval": "60",
+      "registered": "1"
+    }
+  },
+  "limits": [
+    "No process exit status is present in either captured log; trailing Wine PROCESS_DETACH is termination evidence, not a normal-exit proof.",
+    "Media skip returns before cue telemetry, so per-call skip execution is unobservable here; zero ID2 cue records do not show that the branch was unexercised.",
+    "LAV substring count 0 is loader-log absence only; it does not establish the installed provider was absent or unused."
+  ],
+  "observation_only": true,
+  "observed": {
+    "crash_markers": {
+      "session": {},
+      "stderr": {}
+    },
+    "final_burst_first": {
+      "camera_state": {
+        "background_valid": "1",
+        "camera_cut": "0",
+        "policy": "2",
+        "reason": "0",
+        "rotation_deg": "0.0000",
+        "t": "216610.9,-29437.13,-2128.139",
+        "valid": "1"
+      },
+      "fade_route_frame": {
+        "fade_held": "0",
+        "fade_refused": "0",
+        "fade_route": "500",
+        "fade_routed": "2",
+        "overlay_refused": "1",
+        "overlay_routed": "0"
+      },
+      "frame_end": {
+        "capture": "1",
+        "draws": "100",
+        "dt_ms": "427",
+        "elapsed_ms": "535886",
+        "qpc": "16704406560621"
+      },
+      "hull_lightmap_far_fade_frame": {
+        "admitted": "60",
+        "camera": "1",
+        "faded": "0",
+        "floor": "1",
+        "min_gain": "4"
+      },
+      "motion_output_frame": {
+        "apply_failures": "0",
+        "camera_cut": "0",
+        "camera_valid": "1",
+        "draws": "100",
+        "matched": "62",
+        "restore_failures": "0",
+        "routed": "62",
+        "scene_end_source": "hook",
+        "taa_history": "1",
+        "taa_resolved": "1",
+        "taa_result": "00000000"
+      }
+    },
+    "final_burst_last": {
+      "camera_state": {
+        "background_valid": "1",
+        "camera_cut": "0",
+        "policy": "2",
+        "reason": "0",
+        "rotation_deg": "0.0000",
+        "t": "216620.9,-29430.46,-2124.088",
+        "valid": "1"
+      },
+      "fade_route_frame": {
+        "fade_held": "0",
+        "fade_refused": "0",
+        "fade_route": "500",
+        "fade_routed": "2",
+        "overlay_refused": "1",
+        "overlay_routed": "0"
+      },
+      "frame_end": {
+        "capture": "1",
+        "draws": "100",
+        "dt_ms": "358",
+        "elapsed_ms": "546818",
+        "qpc": "16704515882146"
+      },
+      "hull_lightmap_far_fade_frame": {
+        "admitted": "60",
+        "camera": "1",
+        "faded": "0",
+        "floor": "1",
+        "min_gain": "4"
+      },
+      "motion_output_frame": {
+        "apply_failures": "0",
+        "camera_cut": "0",
+        "camera_valid": "1",
+        "draws": "100",
+        "matched": "62",
+        "restore_failures": "0",
+        "routed": "62",
+        "scene_end_source": "hook",
+        "taa_history": "1",
+        "taa_resolved": "1",
+        "taa_result": "00000000"
+      }
+    },
+    "fog_tail_from_frame_38000": [
+      {
+        "enabled": "0",
+        "frame": "38634",
+        "kind": "volumetric_fog_toggle",
+        "line": 4687797
+      },
+      {
+        "applied": "0",
+        "frame": "38634",
+        "kind": "volumetric_fog_frame",
+        "line": 4687804,
+        "profile": "2",
+        "reason": "card_refused"
+      },
+      {
+        "applied": "0",
+        "fault": "0",
+        "frame": "38634",
+        "kind": "volumetric_fog_cards",
+        "line": 4687805,
+        "ready": "0",
+        "reason": "none",
+        "refused": "0",
+        "warmup": "0"
+      },
+      {
+        "enabled": "1",
+        "frame": "38740",
+        "kind": "volumetric_fog_toggle",
+        "line": 4689153
+      },
+      {
+        "applied": "1",
+        "frame": "38740",
+        "kind": "volumetric_fog_frame",
+        "line": 4689160,
+        "profile": "2",
+        "reason": "ok"
+      },
+      {
+        "applied": "1",
+        "fault": "0",
+        "frame": "38740",
+        "kind": "volumetric_fog_cards",
+        "line": 4689161,
+        "ready": "0",
+        "reason": "none",
+        "refused": "0",
+        "warmup": "1"
+      },
+      {
+        "applied": "1",
+        "frame": "42600",
+        "kind": "volumetric_fog_frame",
+        "line": 4737516,
+        "profile": "2",
+        "reason": "ok"
+      },
+      {
+        "applied": "1",
+        "fault": "0",
+        "frame": "42600",
+        "kind": "volumetric_fog_cards",
+        "line": 4737517,
+        "ready": "1",
+        "reason": "none",
+        "refused": "0",
+        "warmup": "0"
+      },
+      {
+        "applied": "1",
+        "frame": "43200",
+        "kind": "volumetric_fog_frame",
+        "line": 5911529,
+        "profile": "2",
+        "reason": "ok"
+      },
+      {
+        "applied": "1",
+        "fault": "0",
+        "frame": "43200",
+        "kind": "volumetric_fog_cards",
+        "line": 5911530,
+        "ready": "1",
+        "reason": "none",
+        "refused": "0",
+        "warmup": "0"
+      }
+    ],
+    "fog_toggles_near_bursts": [
+      {
+        "fields": {
+          "anisotropy": "0.30",
+          "density_scale": "1.500",
+          "disabled": "0",
+          "enabled": "0",
+          "frame": "15063",
+          "strength": "0.0300"
+        },
+        "kind": "volumetric_fog_toggle",
+        "line": 188356
+      },
+      {
+        "fields": {
+          "anisotropy": "0.30",
+          "density_scale": "1.500",
+          "disabled": "0",
+          "enabled": "1",
+          "frame": "15110",
+          "strength": "0.0300"
+        },
+        "kind": "volumetric_fog_toggle",
+        "line": 188951
+      },
+      {
+        "fields": {
+          "anisotropy": "0.30",
+          "density_scale": "1.500",
+          "disabled": "0",
+          "enabled": "0",
+          "frame": "15143",
+          "strength": "0.0300"
+        },
+        "kind": "volumetric_fog_toggle",
+        "line": 189382
+      },
+      {
+        "fields": {
+          "anisotropy": "0.30",
+          "density_scale": "1.500",
+          "disabled": "0",
+          "enabled": "1",
+          "frame": "15162",
+          "strength": "0.0300"
+        },
+        "kind": "volumetric_fog_toggle",
+        "line": 189617
+      },
+      {
+        "fields": {
+          "anisotropy": "0.30",
+          "density_scale": "1.500",
+          "disabled": "0",
+          "enabled": "0",
+          "frame": "38634",
+          "strength": "0.0300"
+        },
+        "kind": "volumetric_fog_toggle",
+        "line": 4687797
+      },
+      {
+        "fields": {
+          "anisotropy": "0.30",
+          "density_scale": "1.500",
+          "disabled": "0",
+          "enabled": "1",
+          "frame": "38740",
+          "strength": "0.0300"
+        },
+        "kind": "volumetric_fog_toggle",
+        "line": 4689153
+      }
+    ],
+    "lav_loader_token_rows_in_stderr": 0,
+    "lightmap_all_session": {
+      "admitted": 3592811,
+      "camera_not_1": 0,
+      "faded": 1658421,
+      "max_gain": 4.0,
+      "min_gain": 1.0,
+      "rows": 42325
+    },
+    "media_cue_id_kind_counts": {
+      "144:none": 3,
+      "1:none": 4,
+      "244:none": 3,
+      "25:none": 1,
+      "40:none": 1,
+      "8100:none": 1,
+      "8404:none": 2
+    },
+    "media_cue_rows": 160,
+    "motion_all_session": {
+      "apply_failures": 0,
+      "restore_failures": 0,
+      "rows": 793
+    }
+  },
+  "reported_by_user_not_independently_measured": [
+    "Run56 had no crash and no media stutter.",
+    "Fog was seen in the first one or two F8 captures; distant-station lightmap flashes occurred during camera motion, including when fog was off. User is uncertain which burst was first/latest."
+  ],
+  "runtime_proxy_identity": {
+    "bytes": "54386310",
+    "path": "C:\\X3\\d3d9.dll",
+    "sha256": "a51d1e75fa80d7d07bab7ab66004291f7248bc5693e6585171e564a90fa96e56",
+    "source_commit": "85da89a8955a72b20d92f2309e4b9a4cb4dd325e"
+  },
+  "schema": 1,
+  "sources": {
+    "/tmp/x3-bottleX3-run200/launcher-stderr.log": {
+      "bytes": 343633954,
+      "mtime_ns": 1789941039255905268,
+      "sha256": "c87d0fe95ae6186a226cf28f1a208c296d3d55e0675357bff4f9c65eb43477c3"
+    },
+    "/tmp/x3-bottleX3-run200/session-20260921-014107-212.log": {
+      "bytes": 481995947,
+      "mtime_ns": 1789941032365881519,
+      "sha256": "9c21a2f9a4c8066b9da4387cbe8a7e77e14b75a2655779dafe31feb8dd941eb8"
+    }
+  },
+  "time_bounds_from_stderr": {
+    "first": "2026-09-20T21:41:02.881Z",
+    "last": "2026-09-20T21:50:31.746Z",
+    "last_record_is_process_detach": true
+  }
+}

@@ -119,6 +119,59 @@ void qualify_state(IDirect3D9* api,IDirect3DDevice9* d,D3DFORMAT format,const D3
     const auto refs=caller_references(d,scene);
     for(unsigned i=0;i<16;++i){scene.refill();scene.hostile();frame=scene.frame(pass);hooks.clear();check(pass.execute(frame,&result),"warm execute");}
     require(pass.allocations()==alloc&&pass.references()==owned&&caller_references(d,scene)==refs&&hooks.calls[23]==0&&hooks.calls[31]==0&&hooks.calls[59]==0,"warm_allocation_upload_refs_stable");
+    // Actual R32F comparisons against the unchanged authored volume. Synthetic
+    // maps isolate lighting from density; every call also checks all saved state.
+    {
+        Com<IDirect3DTexture9> dark,lit;
+        std::vector<float> zeros(64*64,0.f),ones(64*64,1.f);
+        upload(d,64,64,D3DFMT_R32F,4,zeros.data(),&dark.p,false);
+        upload(d,64,64,D3DFMT_R32F,4,ones.data(),&lit.p,false);
+        const auto st_baseline=readback_words(d,pass.fixture_st());
+        auto shadow_frame=[&](unsigned slot,IDirect3DTexture9* map){
+            auto f=scene.frame(pass);f.frame=73;f.count=3;
+            auto& k=f.cascades[slot];k.map=map;k.frame=73;k.valid=true;k.bias=.00001f;
+            k.rows[0]=k.rows[5]=k.rows[10]=.00001f;k.rows[11]=.5f;
+            return f;
+        };
+        for(unsigned slot=0;slot<3;++slot) {
+            scene.refill();scene.hostile();frame=shadow_frame(slot,dark.p);hooks.clear();
+            check(cpu_method(("cpu_shadow_execute_"+std::to_string(slot)).c_str(),[&]{return pass.execute(frame,&result);}),"shadow execute");
+            auto st=readback_words(d,pass.fixture_st());bool same_t=true,zero_s=true,had_s=false,empty=true;
+            for(size_t i=0;i<st.size();i+=4){same_t&=st[i+3]==st_baseline[i+3];for(unsigned j=0;j<3;++j){zero_s&=st[i+j]==0;had_s|=st_baseline[i+j]!=0;}
+                if(st_baseline[i]==0&&st_baseline[i+1]==0&&st_baseline[i+2]==0&&st_baseline[i+3]==0x3c00)empty&=st[i]==0&&st[i+1]==0&&st[i+2]==0&&st[i+3]==0x3c00;}
+            require(result.cascades_bound==1&&same_t&&zero_s&&had_s&&empty&&before.same(d,scene)&&pass.references()==owned&&hooks.calls[23]==0&&hooks.calls[31]==0,("shafts_dark_map_slot_"+std::to_string(slot)).c_str());
+            scene.refill();scene.hostile();frame=shadow_frame(slot,lit.p);check(pass.execute(frame,&result),"lit shadow map");
+            require(readback_words(d,pass.fixture_st())==st_baseline&&readback_words(d,scene.s0.p)==baseline&&before.same(d,scene),("shafts_lit_map_identity_slot_"+std::to_string(slot)).c_str());
+        }
+        for(unsigned invalid=0;invalid<6;++invalid){
+            scene.refill();scene.hostile();frame=shadow_frame(0,dark.p);auto& k=frame.cascades[0];
+            switch(invalid){case 0:--k.frame;break;case 1:k.valid=false;break;case 2:k.map=nullptr;break;case 3:k.rows[0]=std::numeric_limits<float>::quiet_NaN();break;case 4:k.bias=-1;break;case 5:k.map=scene.spare.p;break;}
+            check(pass.execute(frame,&result),"absent shadow fallback");
+            require(result.cascades_bound==0&&readback_words(d,pass.fixture_st())==st_baseline&&readback_words(d,scene.s0.p)==baseline&&before.same(d,scene),("shafts_unavailable_identity_"+std::to_string(invalid)).c_str());
+        }
+        Com<IDirect3DTexture9> patterned;
+        std::vector<float> stripes(64*64);for(unsigned y=0;y<64;++y)for(unsigned x=0;x<64;++x)stripes[y*64+x]=float(x&1);
+        upload(d,64,64,D3DFMT_R32F,4,stripes.data(),&patterned.p,false);
+        auto half_value=[](unsigned h){const unsigned e=(h>>10)&31,m=h&1023;return std::ldexp(float(e?1024+m:m),e?int(e)-25:-24);};
+        for(unsigned mode=0;mode<3;++mode){
+            scene.refill();scene.hostile();frame=shadow_frame(0,mode?dark.p:patterned.p);
+            auto& nearer_map=frame.cascades[0];nearer_map.rows[0]=nearer_map.rows[5]=1e-12f;nearer_map.rows[3]=mode?.9f:1.f/64.f;
+            if(mode){frame.cascades[1]=shadow_frame(1,mode==1?lit.p:dark.p).cascades[1];}
+            check(pass.execute(frame,&result),"PCF and cascade blend");const auto actual=readback_words(d,pass.fixture_st());
+            bool matched=true,nonempty=false;
+            for(size_t i=0;i<actual.size();i+=4){matched&=actual[i+3]==st_baseline[i+3];for(unsigned j=0;j<3;++j){
+                const float source=half_value(st_baseline[i+j]),value=half_value(actual[i+j]);nonempty|=source>1e-5f;
+                // Includes the baseline half quantization before halving and the
+                // output quantization afterwards, plus float32 band roundoff.
+                matched&=std::abs(value-(mode==2?0.f:.5f*source))<=std::max(1.2e-7f,source*.0015f);
+            }}
+            const char* names[]={"shafts_fractional_pcf","shafts_blend_to_lit_coarser","shafts_blend_to_dark_coarser"};
+            require(matched&&nonempty&&result.cascades_bound==(mode?2u:1u)&&before.same(d,scene),names[mode]);
+        }
+        // Maps must not survive in the stateblock after returning to hostile
+        // bindings. Releasing these caller-owned references needs no pass Reset.
+        require(dark->AddRef()==2,"shafts_borrowed_no_retained_reference");dark->Release();
+    }
     // Positive caller facts are independently necessary, and refusal never writes.
     for(unsigned i=0;i<7;++i){scene.refill();scene.hostile();frame=scene.frame(pass);
         switch(i){case 0:frame.main_target=false;break;case 1:frame.linear_depth_current=false;break;case 2:frame.caller_scene_known=false;break;case 3:frame.caller_queries_idle=false;break;case 4:frame.caller_stateblock_recording=true;break;case 5:++frame.field_generation;break;case 6:frame.profile=fog_field::Profile::None;break;}
@@ -233,6 +286,7 @@ void qualify_state(IDirect3D9* api,IDirect3DDevice9* d,D3DFORMAT format,const D3
 
 }
 } // namespace
+#include "fog_family_gpu_cases_inc.h"
 int main(int argc,char** argv){
     // case-list (id, host-mapped input directory, numeric profile), output-dir, [--state]
     if(argc!=3&&argc!=4)return 2;
@@ -247,7 +301,11 @@ int main(int argc,char** argv){
         D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window.handle;pp.BackBufferWidth=1280;pp.BackBufferHeight=768;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         Com<IDirect3DDevice9> device;check(api->CreateDevice(0,D3DDEVTYPE_HAL,window.handle,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device.p),"CreateDevice");
         auto d=device.p;D3DDISPLAYMODE mode{};check(api->GetAdapterDisplayMode(0,&mode),"display");D3DCAPS9 caps{};check(d->GetDeviceCaps(&caps),"caps");
-        if(argc==4){if(std::strcmp(argv[3],"--state"))return 2;qualify_state(api.p,d,mode.Format,caps,pp,argv[1]);}
+        if(argc==4){
+            if(!std::strcmp(argv[3],"--state"))qualify_state(api.p,d,mode.Format,caps,pp,argv[1]);
+            else if(!std::strcmp(argv[3],"--families"))qualify_families(api.p,d,mode.Format,caps,pp,argv[1],argv[2]);
+            else return 2;
+        }
         else {
             FogPass pass;check(pass.attach(d,*reinterpret_cast<void***>(d),caps,mode.Format),"attach");
             std::printf("CAPS slots=%u texture=%08lx filters=%08lx maxw=%lu maxh=%lu streams=%lu\n",pass.caps().largest_program_slots,(unsigned long)caps.TextureCaps,(unsigned long)caps.TextureFilterCaps,(unsigned long)caps.MaxTextureWidth,(unsigned long)caps.MaxTextureHeight,(unsigned long)caps.MaxStreams);
@@ -258,11 +316,11 @@ int main(int argc,char** argv){
                 const UINT w=UINT(c[4]),h=UINT(c[5]);auto depth=read<float>(dir+"/depth.rgba32f");auto scene=read<std::uint16_t>(dir+"/scene.rgba16f");
                 if(!w||!h||depth.size()!=size_t(w)*h*4||scene.size()!=depth.size())throw std::runtime_error("input size");
                 check(pass.prepare_field(GetModuleHandleA(nullptr),profile),"field");check(pass.prepare_targets(w,h),"targets");
-                for(unsigned variant=0;variant<8;++variant){
+                for(unsigned variant=0;variant<10;++variant){
                     auto adjusted=depth;
                     if(variant==6)for(size_t i=0;i<adjusted.size();i+=4){adjusted[i]=.5f;adjusted[i+2]=(i/4)%4==0?0.f:((i/4)%4==1?-1.f:((i/4)%4==2?std::numeric_limits<float>::quiet_NaN():std::numeric_limits<float>::infinity()));}
-                    if(variant==7)for(UINT y=0;y<h;y+=2)for(UINT x=0;x<w;x+=2){const size_t i=(size_t(y)*w+x)*4;adjusted[i]=.5f;adjusted[i+2]=std::numeric_limits<float>::quiet_NaN();}
-                    Com<IDirect3DTexture9> dt,st;Com<IDirect3DSurface9> ss;
+                    if(variant>=7)for(UINT y=0;y<h;y+=2)for(UINT x=0;x<w;x+=2){const size_t i=(size_t(y)*w+x)*4;adjusted[i]=.5f;adjusted[i+2]=std::numeric_limits<float>::quiet_NaN();}
+                    Com<IDirect3DTexture9> dt,st,shadow_map;Com<IDirect3DSurface9> ss;
                     upload(d,w,h,D3DFMT_A32B32G32R32F,16,adjusted.data(),&dt.p,false);upload(d,w,h,D3DFMT_A16B16G16R16F,8,scene.data(),&st.p,true);check(st->GetSurfaceLevel(0,&ss.p),"scene surface");
                     auto f=make_frame(pass,dt.p,ss.p,c);f.params.density_scale=c[11]/info->base_sigma;
                     if(variant==1)f.caller_scene_open=true;
@@ -270,8 +328,14 @@ int main(int argc,char** argv){
                     if(variant==3)f.params.anisotropy=0;
                     if(variant==4)f.params.anisotropy=.9f;
                     if(variant==5){f.params.sun_radiance[0]=0;f.params.sun_radiance[1]*=2;f.params.sun_radiance[2]*=.5f;}
+                    if(variant>=8){
+                        std::vector<float> depths(64*64,variant==8?0.f:1.f);
+                        upload(d,64,64,D3DFMT_R32F,4,depths.data(),&shadow_map.p,false);
+                        f.frame=73;f.count=1;auto& k=f.cascades[0];k.map=shadow_map.p;k.frame=73;k.valid=true;k.bias=.00001f;
+                        k.rows[0]=k.rows[5]=k.rows[10]=.00001f;k.rows[11]=.5f;
+                    }
                     if(f.caller_scene_open)check(d->BeginScene(),"input caller begin");
-                    FogResult result;check(pass.execute(f,&result),"execute");require(result.applied&&result.scene_known&&result.scene_open==f.caller_scene_open&&result.caller_state_restored&&!result.route_poisoned,(id+"_transaction_"+std::to_string(variant)).c_str());
+                    FogResult result;check(pass.execute(f,&result),"execute");require(result.applied&&result.cascades_bound==(variant>=8?1u:0u)&&result.scene_known&&result.scene_open==f.caller_scene_open&&result.caller_state_restored&&!result.route_poisoned,(id+"_transaction_"+std::to_string(variant)).c_str());
                     if(f.caller_scene_open)check(d->EndScene(),"input caller end");
                     const auto prefix=std::string(argv[2])+"/"+id+"-v"+std::to_string(variant);
                     readback(d,pass.fixture_st(),prefix+".st.rgba16f");const auto pixels=readback_words(d,ss.p);write_words(pixels,prefix+".composite.rgba16f");

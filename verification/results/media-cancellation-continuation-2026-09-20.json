@@ -1,0 +1,74 @@
+{
+  "status": "pass",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "ranges": [
+    {
+      "start": "0x498c90",
+      "end": "0x498e28",
+      "instructions": 153,
+      "bytes": 408
+    },
+    {
+      "start": "0x498370",
+      "end": "0x4984c4",
+      "instructions": 117,
+      "bytes": 340
+    },
+    {
+      "start": "0x4d0600",
+      "end": "0x4d0678",
+      "instructions": 44,
+      "bytes": 120
+    },
+    {
+      "start": "0x499803",
+      "end": "0x49982f",
+      "instructions": 19,
+      "bytes": 44
+    },
+    {
+      "start": "0x499961",
+      "end": "0x499992",
+      "instructions": 23,
+      "bytes": 49
+    },
+    {
+      "start": "0x4f65f0",
+      "end": "0x4f6672",
+      "instructions": 54,
+      "bytes": 130
+    }
+  ],
+  "instruction_count": 410,
+  "decoded_bytes": 1091,
+  "anchor_count": 29,
+  "internal_branch_targets_checked": 53,
+  "callers": {
+    "0x498c90": [
+      "0x49981f",
+      "0x499982",
+      "0x4f6668"
+    ],
+    "0x4d0600": [
+      "0x4983ed"
+    ]
+  },
+  "derived_return_routes": {
+    "explicit_seek_or_sample_zero": "0x498dde destructor",
+    "explicit_seek_or_sample_nonzero": "nonzero seek proceeds to sample/run; nonzero sample/run commits success; no cancellation result",
+    "pump_AX_0": "0x4984b0 destructor",
+    "pump_AX_1": "0x4983ed position COM query then0x4984b5",
+    "pump_AX_2": "loop seek or completion",
+    "pump_AX_other": "0x4984b5 dereferences saved next"
+  },
+  "conditional_continuations": {
+    "request_rejection": "base frame ->0x498ce8 status0 callback using incoming args, no record accesses",
+    "bare_play_exit": "base frame ->0x498d17; incoming completion not delivered",
+    "manager_pass_exit": "base frame ->0x4984be; no current/next record access",
+    "loop_post_seek_exit": "at0x49840f discard4-byte start arg before base-frame exit"
+  },
+  "limits": "Structural continuations, not cancellation policy, hook qualification, current object lifetime, operation identity or shutdown safety.",
+  "reproduce_command": "python3 /tmp/verify_x3_media_cancellation_continuation.py",
+  "scope": "Static original-EXE control flow; no game, Wine, build or hook qualification.",
+  "request_identity_limit": "Equal callback index/context identifies a receiver, not necessarily one request. Old-status1 and incoming-status0 may belong to distinct requests; key equality cannot authorize deduplication or suppression. Cancellation policy and caller ownership remain unresolved; these branch witnesses do not establish a cancellation policy, and a host harness merely mirroring them would not validate one."
+}

@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "date": "2026-09-20",
+  "scope": "Canonical surface logical-lease primitive; no media/engine admission enablement",
+  "source_checkout": "/tmp/x3-media-surface-lease",
+  "source_base_commit": "4c5ca4e7",
+  "source_sha256": {
+    "src/ownership/d3d9_ownership.cpp": "9c343ae9bc8e1834c95b0f047b9afe37b7545f23770252f5dbdd03a2467cf5b0",
+    "src/ownership/d3d9_ownership.h": "dd3ed73a150e5b83a32e6d538142e7da80f2af86c3871ba33ed3f896230bbd54",
+    "src/ownership/surface_lease_core.h": "87019427592a7a7da1f107d32b867c00859439f79674de93705f99714e9efeb5",
+    "verification/probe/surface_lease_fixture.cpp": "9d9f6132628c3acb6129c4c5804efd00109e9cf495e619e433c4c97dfcb8162b",
+    "verification/probe/build_surface_lease.sh": "f96a6bf2fc462ccf1b03b91862bbb19c274b6fb09b6d7e7bbc0203aa97d77bbf"
+  },
+  "build": {
+    "command": "sh verification/probe/build_surface_lease.sh",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "flags": "-std=c++17 -O2 -Wall -Wextra -Werror -pthread -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2",
+    "exception_policy": "Ownership registry bodies remain exception-enabled; bounded public ABI shells use scoped GCC no-exceptions; fixture CPU-witness TU and existing admission ABI TU use -fno-exceptions",
+    "executable": "verification/probe/build/surface_lease/surface_lease_fixture.exe",
+    "executable_sha256": "0714a35c18857e1f8b3e01ae4303f408b879f0114050a86e5d4e9a6d7638d2e5",
+    "ownership_object": "verification/probe/build/surface_lease/ownership.o",
+    "ownership_object_sha256": "707075ea1ee201224f2594719f56f81d6b35c6d1ac05676bdf6c9d5a6f3e19dc",
+    "accepted_audit_object": "/tmp/x3-media-surface-lease-v2.o",
+    "audit_object_matches_fixture": true
+  },
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_surface_lease_host",
+    "tests": 1,
+    "failures": 0,
+    "last_elapsed_seconds": 1.652,
+    "standalone_sample": {
+      "races": 512,
+      "checks": 2090,
+      "failures": 0,
+      "acquired": 261,
+      "refused": 251,
+      "winner_counts": "scheduler-dependent; not acceptance criteria"
+    },
+    "coverage": "Shared production lookup/lease core with fake COM: final-release race, address/serial reuse, wrong device/kind, overflow/exhaustion, borrowed/parent lifetime and reentrant exactly-once cleanup"
+  },
+  "runtime": {
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "runtime": "CrossOver Preview arm64 Wine/FEX",
+    "environment": {
+      "X3M_FIXTURE_BOTTLE": "X3",
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "command": "X3M_FIXTURE_BOTTLE=X3 FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-media-surface-lease-v1-lock.json '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update --dll d3d9=b /tmp/x3-media-surface-lease/verification/probe/build/surface_lease/surface_lease_fixture.exe",
+    "report": "/tmp/x3-media-surface-lease-v1-runtime.log",
+    "report_sha256": "1628aa9d510a54ed7a080a372623e6516d4d5d90916fe26f96189c43872f8411",
+    "timings": "/tmp/x3-media-surface-lease-v1-lock.json",
+    "checks": 100,
+    "failures": 0,
+    "full_cpu_four_byte_stack_cases": 8,
+    "lock_wait_seconds": 4.000000000000531e-06,
+    "child_elapsed_seconds": 4.438835167,
+    "exit_code": 0,
+    "native_surface": "Real native D3DPOOL_SYSTEMMEM LockRect/write/UnlockRect/readback through actual ownership wrapper",
+    "lifetime": "Zero backend AddRef during acquisition; logical parent retention; exactly-once reentrant cleanup; foreign-thread registry lookup completes during backend cleanup",
+    "reset": "Actual Device::Reset wrapper, simulated backend success/failure/recovery and callback acquisition refusal; no lease spans Reset",
+    "game_launched": false
+  },
+  "independent_review": {
+    "agent": "review_media_surface_lease",
+    "result": "CLEAR: source, emitted v2 ABI shells, fixture CPU witness and runtime 100 checks/0 failures",
+    "corrected_finding": "v1 SJLJ registration/unregistration escaped PreserveExecution; v2 saves before first external call and restores after SetLastError in bounded no-EH shells; core catches prevent unwind through shells"
+  },
+  "performance": {
+    "measured_api_benchmark": false,
+    "static_cost": "Two registry finds, one mutex, no allocation/backend call per lookup; +16 bytes per Node; serial assignment only at device/surface adoption, generation update only at Reset",
+    "timing_scope": "Child elapsed and lock wait are fixture/queue timings, not API microbenchmark or game FPS"
+  },
+  "limitations": [
+    "No native Windows runtime qualification; source uses documented COM/D3D9 APIs and cross-compiles for x86 Windows",
+    "Simulated Reset does not qualify native GPU Reset/recovery",
+    "No engine binding/table/record lifetime or whole-copy/Reset exclusion qualification",
+    "No SEH/nonlocal-exit cleanup guarantee; ordinary-return CPU state transport only",
+    "Admission remains disabled; no production proxy DLL build/install or game run"
+  ],
+  "usage_contract": "Snapshot only during qualified binding publication/revalidation; acquire with exact stored identity and empty lease; borrowed get lasts only while retained; finish UnlockRect and explicit reset before dropping copy-depth/Reset gate"
+}

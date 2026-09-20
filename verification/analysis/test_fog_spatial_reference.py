@@ -16,6 +16,15 @@ class SpatialReference(unittest.TestCase):
         d=np.zeros((4,4,4),np.float32);d[...,0]=.5;d[...,2]=1000
         scene=np.full((4,4,4),.25,'<f2');half=np.zeros((2,2,4),'<f2');half[...,3]=1
         return c,d,scene,half
+    def test_shadow_repair_variants_preserve_odd_source_depth(self):
+        from fog_spatial_run import altered_depth,controls
+        _,d,_,_=self.inputs();d[1,1,0]=-1
+        for variant in (7,8,9):
+            changed=altered_depth(d,variant)
+            self.assertTrue(np.isnan(changed[::2,::2,2]).all())
+            np.testing.assert_array_equal(changed[1::2],d[1::2])
+        self.assertEqual(controls(8)[2],(0,0,0))
+        self.assertEqual(controls(9)[2],(1,1,1))
     def test_actual_nonempty_is_not_rounded_reference_empty(self):
         c,d,scene,half=self.inputs();half[...,3]=np.nextafter(np.float16(1),np.float16(0))
         out,repair,empty,actual=ref.composite(Helper,None,c,d,scene,half)

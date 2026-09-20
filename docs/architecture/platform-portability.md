@@ -1,5 +1,11 @@
 # Native Windows and CrossOver support
 
+**2026-09-21 media scope update:** owned video playback, its startup/consumer/
+destination hooks and LAV dependency are retired from production by user choice.
+Earlier media qualification sections below remain historical. The remaining
+ID2 allocator refusal uses the existing game hook on both targets; native Windows
+runtime verification remains open. Speech decoding is unaffected.
+
 User requirement, added 2026-09-11: the graphics enhancements must work on native
 Windows/Direct3D as well as CrossOver Preview. The user currently cannot run
 Windows tests. Compiling a Windows DLL or forwarding successfully on another
@@ -483,6 +489,23 @@ production CrossOver GPU/resource/recovery and timing fixtures now pass, as
 does the synthetic-owner route/card bridge (see the [fog ledger](../verification/volumetric-fog.md#spatial-production-renderer-qualification-2026-09-20)).
 Game TAA/appearance and native Windows execution remain unverified. These
 CrossOver fixtures are not native Windows runtime proof.
+
+
+## 2026-09-20: default-disabled media engine consumer
+
+The [consumer checkpoint](media-playback.md#concrete-engine-consumer-checkpoint-2026-09-20)
+uses documented Windows thread/stack, memory, protection and instruction-cache
+APIs; `GetCurrentThreadStackLimits` has a public `VirtualQuery` fallback. Engine
+addresses remain private game ABI with qualified instruction spans, not backend
+layout requirements. SSE2/four-byte-stack Windows x86 compilation and 5,055 actual
+emitted-code fixture checks under CrossOver/X3 pass. Fixture memory and callbacks
+are authored; actual native Windows execution, game integration and general
+SEH/C++ unwind across substituted return addresses remain unverified. Admission
+requires the separate service/destination/startup integration described in the
+[root composition](media-playback.md#qualified-startup-root-and-common-record-ingress-2026-09-20).
+That integration uses the same documented APIs and exclusive CPU-only Reset
+notification; its Windows x86 compilation and authored CrossOver fixtures do not
+establish native Windows runtime or real game playback/Reset behavior.
 
 ## 2026-09-20: lattice observer query reference guard
 

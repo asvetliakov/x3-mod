@@ -552,12 +552,413 @@ clean committed candidate build, linked CPU audit and two actual-DLL HDR/TAA
 smoke cases also pass; [status](../status.md) records the current flight candidate.
 Native Windows runtime and user visual acceptance remain open.
 
+### Spatial directional shaft implementation and host witness (2026-09-20)
+
+The next-flight shaft source now multiplies only spatial in-scattering by
+same-frame replay visibility. Current maps remain usable when surface-shadow
+application is refused. Individual unavailable maps fall back independently;
+previous-frame far maps are rejected. Constant world/texel bias and manual
+2×2 comparison filtering replace the analytic fog's surface-clamp fallback.
+The owning architecture records coverage, coordinate, lifetime and cost rules.
+
+The selected host command passes **33 tests** in **1.954 s**:
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_shadows verification.analysis.test_fog_spatial_reference verification.analysis.test_volumetric_fog verification.analysis.test_fog_route_bridge`.
+Seven new tests cover D3D9 texel convention, a thin occluder under two view
+transforms, continuous cascade XY boundaries/coarser fallback, unavailable maps,
+bias, unchanged transmission/empty identity, and native frame/row validation.
+The actual FogPass and extended fixture separately cross-compile with i686
+SSE2, four-byte incoming stack alignment and `-Wall -Wextra -Werror`.
+
+Root-owned shader generation passes; march/composite use **315/506 ps_3_0 slots**
+(1397/2162 words). The initial composite was 515 slots; removing a redundant
+already-guarded uniform branch brought it below the required 512-slot limit.
+The fixture now requires **132** named checks, adding actual dark/lit R32F
+comparisons in each slot, stale/invalid map fallback, S-only changes, unchanged
+T/empty pixels, CPU preservation, fractional PCF, blending into lit/dark coarser maps and no
+retained map references. The numeric fixture adds two full-pixel repair
+variants with dark/all-lit maps: **40 variants / 88 checks**, including a
+zero-incident-radiance CPU reference and exact all-lit/unshadowed comparison.
+Hostile state
+now includes samplers 4–6 and all 22 modified pixel constants. These new runtime
+checks are prepared, not yet execution evidence in this checkpoint.
+
+`fog_shadow_replay.py --step 2` against run185 frames 1974, 9204, 21901 and
+26447 and the frozen accepted atlases passes **983,040** actual half-grid rays
+in **15.800 s**. Transmission and unavailable-map output are bit-identical;
+**410,638** empty rays remain exact identity. Only **four rays**, all in frame
+26447, have cloud/shadow overlap; the largest scattering reduction is
+**0.0009555351**. The other three views have zero reduction. This limits any
+appearance claim: the geometric shadow must overlap occupied cloud, and the
+implementation does not add density or paint beams to manufacture that overlap.
+Raw detailed host evidence stays at `/tmp/x3-spatial-fog-shafts-offline-half.json`;
+the [compact host record](../../verification/results/fog-spatial-shafts-host.json)
+records these observations and scoped checks.
+
+Actual new-shader GPU behavior, full-pixel shadow repair, state/Reset recovery,
+whole-transaction timing, native Windows runtime and flight visual acceptance
+remain open. Existing unshadowed runtime evidence is not reused as proof of the
+new shadow sampling. The installed Run53 candidate is unchanged.
+
+
+### Spatial directional shafts actual GPU checkpoint (2026-09-20)
+
+Root-owned locked execution in bottle **X3**, CrossOver Preview, WineArch
+**arm64**, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`, passes the new production
+shader/renderer state fixture: **132 checks** in **8.894 s**. This includes
+actual per-slot dark/lit comparisons, fractional PCF, coarser-cascade blending,
+exact unchanged transmission, invalid/stale-map fallback, hostile sampler and
+constant restoration, CPU/LastError preservation, borrowed map references,
+injected loss and the existing real Reset blocker/retry. The executable hash is
+`56002b6d21af12684286b8042d020ccce9c31c819f47e509b0dfe960879c8a85`.
+
+The same frozen executable passes four-view numerical qualification in
+**8.597 s**: **40 variants**, **88 raw checks**, **80 readback hashes**, all
+finite with exact source alpha. Full-resolution repair covers **737,280 pixels
+per view** in the controlled invalid-half-depth variants. All-lit shadow repair
+(v9) exactly equals unshadowed repair (v7); fully occluded repair (v8) differs
+on those repaired pixels and passes the zero-incident-radiance CPU reference
+with unchanged extinction. These runs use the original bluewell/green assets;
+they do not qualify the separate all-family expansion.
+
+Independent deep source/state/numerical review clears this checkpoint. The
+[compact record](../../verification/results/fog-spatial-shafts-host.json) now
+binds both report hashes, commands, executable and bottle provenance. Detailed
+reports remain `/tmp/x3-spatial-fog-shafts-gpu-v2/state/report.json` and
+`/tmp/x3-spatial-fog-shafts-gpu-v2/numeric/report.json`. Root's protected-file
+checks confirm the EXE, bottle configuration and installed DLL are unchanged.
+
+Whole-transaction shaft cost is still unmeasured; a paired timing extension
+must use the same shaders/resources and toggle map validity. The captured
+four-ray cloud/shadow overlap finding above still limits appearance claims.
+Native Windows execution, naturally occurring device loss, temporal flight
+appearance and acceptance remain open. No game launch or candidate installation
+is part of this checkpoint.
+
+### Asset-backed family expansion host checkpoint (2026-09-20)
+
+The isolated branch implementation covers **14 asset-backed positive-card
+families**: all 11 mapped families across 35 shipped sectors, plus unused
+fogblue, fogkhaak and khaakhive. Additional unused fogred, foggreenoutlands and
+foggreeneye records use the same named profiles. The [stock census](../reverse-engineering/sector-fog-census.md)
+retains the asset boundary: xtmgreenring has no dust bodies, and earth's diffuse
+reference is unresolved. These two families, unknown names and invalid samples
+retain native fallback; D=0 stays clear in ordinary mode. Explicit debug forcing
+keeps its pre-existing override semantics.
+
+Original bluewell/green decoded atlases and packets compare byte-identical to
+the prior qualified assets. Twelve additions use occupancy 0.12 / sigma 2.5e-6
+as a provisional artistic baseline, independent of card count, body size and
+FogNear/FogFar. Their four-stop colour arrays derive from winning native DXT1
+textures: linear-sRGB conversion, nonzero Rec.709-luminance sorting, means in
+25–40 / 40–55 / 55–70 / 70–85 percentile bands, then per-stop peak normalization.
+Texture member names and decoded hashes are retained in the recipe; local
+palette evidence is `/tmp/x3-fog-family-palettes.json` and its companion `.md`.
+This preserves colour references, not the native spatial arrangement or density.
+
+The [compact result](../../verification/results/fog-all-families-2026-09-20.json)
+records **28 affected host tests passing in 54.555 s**: two byte-identical bakes,
+14 successful decoder/full-checksum cases, 154 corruption cases and allocation
+failure handling, every family selection and card warmup/suppression path,
+clear/invalid/unknown fallback, census inventory coverage, and i686 decoder plus
+14-resource compilation. The bridge/timing Python checks validate their evidence
+parsers; they are not new GPU bridge or timing runs. The retained final bake takes
+19.581 s and packages **34,142,200 bytes**, with all decoded hashes pinned.
+Generated RC entries use `.rc` because windres treats `.h` includes as headers
+and would otherwise report no resources. C/C++ fragments retain `_inc.h` names.
+
+No shader, FogPass transaction or hook changes belong to this expansion. Selection
+adds a bounded, allocation-free scan of at most 14 names at the first BeginScene;
+there is no added per-draw work. One active 17,846,400-byte CPU atlas and one
+DEFAULT GPU atlas remain, with the existing generation/warmup, failure and Reset
+rules. Source inspection reuses those unchanged invariants; it does not establish
+actual GPU execution for all 14 fields. Native Windows execution, new-family
+appearance, first-use/switch loading and combined candidate integration remain
+open. Independent source, evidence and documentation review cleared this
+checkpoint. No Wine, game,
+DLL build or installation occurred; [status](../status.md) remains the sole
+installed-build description.
+
+
+### Asset-backed families actual GPU checkpoint (2026-09-20)
+
+The root-owned detached actual FogPass run passes **145 checks and 18 renders**
+with all 14 embedded family resources. The [compact family record](../../verification/results/fog-all-families-2026-09-20.json)
+binds report, executable/build, immutable inputs, checker and execution evidence.
+Environment: bottle **X3**, CrossOver Preview, WineArch **arm64**,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. The child exits 0 in **10.533 s**;
+this is whole-fixture elapsed time, not GPU cost or a loading benchmark.
+
+A single fixed 64×48 synthetic sky view at world origin zero exercises each
+profile at its authored sigma and unity multiplier, without per-family camera
+search. Actual readbacks contain **736–768 nonempty ST pixels** and
+**2,954–3,072 changed RGB pixels** per render; all retain exact source alpha and
+finite values. Against the CPU float32 24-step trilinear half-atlas reference,
+worst transmission p99/max error is **0.00048828125 / 0.00048828125**; scattering
+p99/max is **0.000030517578125 / 0.000030517578125**; relative composite RGB
+p99/max is **0.00097087381 / 0.00129032263**. Every case passes the existing
+numerical gates, so an empty-field identity result cannot satisfy this witness.
+
+The sequence selects IDs 1–14, revisits 1 / 2 / 14, and renders retained profile
+14 after a real successful Reset. Both revisits and Reset produce byte-exact
+ST and composite readbacks. Switches publish increasing generations with one
+upload each; stale frames and invalid IDs refuse before device writes. Warm
+reuse performs no upload, and observed ownership stays at one 17,846,400-byte
+CPU atlas and the pass's ten references. Reset drops DEFAULT ownership to four
+references, retains that CPU buffer and reuploads it once; detach releases all.
+The fixture also checks hostile-state and CPU/LastError preservation on ordinary
+prepare/execute paths. Existing broader failure/Reset evidence remains separate.
+
+This checkpoint uses the **unshadowed** shader in a separate executable. It does
+not test shafts combined with all families, nor all-family geometry boundaries,
+full-pixel repair, game appearance, native Windows execution or loading latency.
+No game or installed build changed. Independent runtime review cleared all
+145 checks and reproduced the 18-case report from raw readbacks; the original
+host checkpoint above remains historical evidence.
+
+
+### Fourteen-family and shaft integration GPU checkpoint (2026-09-20)
+
+The isolated combined source (`bcf1021a`) passes **145 checks / 18 executions**
+in X3 (arm64 Wine, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), **8.128 s**
+fixture elapsed. All fourteen profiles render through the combined shaders;
+family revisits and Reset restoration remain exact. Independent deep review
+revalidated 31 build inputs and 50 prepared inputs and checked raw readbacks.
+The unchanged shaft source and original asset bytes retain the prior 132 state
+checks and 40 numerical cases; this combined harness exercises unshadowed
+fallback on a synthetic sky view, not a new shadow/geometry matrix.
+The [compact record](../../verification/results/fog-families-shafts-integration-2026-09-20.json)
+binds execution and evidence. Full host qualification and shaft transaction cost
+remain pending; native Windows and flight appearance are unverified. No install.
+
+The combined-source full host discovery passed **2,431 tests** (two skipped)
+in **753.309 s**, exit 0; the compact record binds the full command and local log.
+Shaft transaction timing remains pending and is run after host load ends.
+
+### Spatial directional shafts paired transaction timing (2026-09-20)
+
+Root-owned locked execution and independent runtime review pass the frozen
+paired timing fixture in bottle **X3**, CrossOver Preview, WineArch **arm64**,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Both arms use identical shaders,
+family fields, views and resident captured cascade maps; only the three map
+validity flags change. Consecutive A/B and B/A pairs balance order. No slow
+samples were discarded. There are **400 transactions**: 80 warm and 320 measured,
+with 320 total common-workload transactions and 80 separately labelled repair
+stress transactions. All **63 checks**, **40 baseline/final readback pairs**
+(80 hashes) and **10 accepted-output matches** pass. Per-arm output stability,
+finite output, exact alpha, A/B transmission/empty identity and warmed
+allocation/reference stability hold.
+
+| Common captured workload | 1280×768 | 1920×1080 |
+| --- | ---: | ---: |
+| Off completion median / p95 (ms) | 0.69995 / 0.75594 | 0.89795 / 1.22361 |
+| On completion median / p95 (ms) | 0.81870 / 0.86627 | 0.97460 / 1.34958 |
+| Paired on-minus-off completion median / p95 (ms) | 0.11310 / 0.15556 | 0.11890 / 0.14847 |
+| On CPU-submit median (ms) | 0.12960 | 0.12810 |
+
+Both common arms pass the unchanged absolute gates: CPU-submit median ≤0.25 ms,
+completion median ≤1.25/2.0 ms at 1280/1920, and 1920 completion p95 ≤2.5 ms.
+The paired delta is the median of within-pair differences, not the difference
+of arm medians. Both arms include the new fixed sampler-state overhead;
+absolute gates therefore remain necessary. Each arm/resolution has 64 measured
+common samples. Captured maps mostly return lit at occupied cloud samples,
+so this measures their ordinary projection/comparison cost; the earlier four-ray
+cloud/shadow overlap finding still limits visual claims.
+
+Repair stress forces full-pixel marching at **737,280 / 1,555,200 pixels** for
+1280/1920 and has 16 measured pairs per resolution. On completion median/p95 is
+**1.6014/1.8258 ms** at 1280 and **1.7492/3.1711 ms** at 1920. Paired incremental
+medians are **0.1464/0.15325 ms**. The **3.1711 ms** 1080p stress p95 exceeds the
+common workload's 2.5 ms threshold; this deliberately extreme separate workload
+is neither mixed into the common aggregate nor claimed to pass its gate.
+
+Queries remain idle during `execute`. QPC measures complete validation,
+state capture, scene suspension/copy/reopen, march, full-pixel repair, composite,
+restoration and transient reference cleanup; an END-only EVENT/GetData completion
+follows before the completion clock. Pristine-scene resets, prefences, caller
+Begin/EndScene, witness copies and readbacks remain outside the measured interval.
+These are **EVENT-completed wall times including polling**, not pure GPU timings
+or game FPS. The 1920 inputs are nearest-resized captured workloads. Values from
+older independent runs do not establish an optimization beyond this paired result.
+
+Cold preparation remains separate. Reading, validating, allocating and uploading
+12 fixture-only captured maps (201,326,592 bytes) takes **171.0600 ms submit /
+196.6735 ms completion**; production borrows already-created replay maps and does
+not incur that fixture setup. Two-family field decode/allocation/upload submit
+observations are **12.1213/17.9008 ms** at 1280 and **12.9215/16.2690 ms** at 1920;
+target submission is **0.4826/0.0338 ms** and **0.0138/0.0120 ms**, respectively.
+Full per-resolution residency setup completes in **155.5606/271.7332 ms**.
+These are individual fixture observations, not a loading-time distribution.
+
+The [compact record](../../verification/results/fog-spatial-shafts-host.json)
+binds the detailed report, commands, build/input hashes, bottle and lock timing.
+Executable SHA-256:
+`838444d24227d133391d0d9d2f7c37f300ee50a5ecc57caedb77dc3f2ae1980e`.
+Detailed output is `/tmp/x3-spatial-fog-shafts-timing-v1-results/report.json`;
+fixture execution is **9.26156 s**, lock wait **0.000003417 s**, wrapper child
+elapsed **10.58533 s**, exit zero. Nineteen affected host tests pass. Timing
+covers the original two profiles; separate all-family correctness does not
+establish all-family performance. Native Windows execution and flight appearance
+remain open. No installed-build change or game launch is part of this checkpoint.
+
+Combined timing-tool integration preserves the fourteen-resource inventory and
+adds the included family fixture header to the build-input hashes, as requested
+by review. The 19 affected timing host tests pass in 0.136 s. Production shaders
+and renderer are unchanged; the existing paired measurements remain applicable.
+
+The combined production DLL is retained uninstalled after one clean
+RelWithDebInfo build: 54,352,248 bytes. Linked audit passes 95 roots / 540
+reachable functions / zero violations; selected actual-DLL HDR ownership and
+TAA smoke cases pass 43/83 checks. The smoke report remains explicitly PARTIAL
+for its selected scope. The [DLL record](../../verification/results/fog-families-shafts-dll-2026-09-20.json)
+binds source, artifact and evidence. No game launch or install was performed.
+
+
+### Run53B camera-cut replacement warmup correction (2026-09-20)
+
+Run194's final F8 burst, frames **31481–31512** in The Hole, keeps the same
+foggreenoutlands authority (profile 2, sector `66328b20`, index 14, dust 16),
+with strength **0.03 / density multiplier 1.5**. The [compact triage witness](../../verification/results/run53b-triage/compact-repro.json)
+records cuts on **31495–31505**, without a fog toggle, sector change, fault or
+refusal in the burst. Source cleared replacement readiness after every cut,
+including successful spatial passes. That necessarily reentered stacked warmup
+on **31496–31506**. The cut itself does not invalidate current camera/depth or
+change the current-frame spatial field's resources; it remains a TAA history
+invalidation. The fix removes only this post-completion cut-driven disarm.
+
+The affected host test now compiles the **actual `run_volumetric_fog` method**,
+its existing card methods, and the exact fog policy reset statements extracted
+from `before_reset`. The 32-frame sequence uses six synthetic cards per frame
+and the captured 11-cut pattern. Before the fix it fails with **11 warmups,
+126/192 suppressed cards and 32 successful volume applications**. After the fix
+it passes with **zero warmups, 192/192 suppressed and 32 applications**; duplicate
+scene-end calls remain no-ops, masks restore and transient mock references
+return to baseline. These counts are host routing witnesses, not the capture's
+card counts or actual pixel writes.
+
+Eight recovery scenarios cover same-family sector change, profile change,
+device generation change, Reset policy, off/on toggle, failed warmup retry,
+post-suppression execute failure and late prerequisite loss. Genuine readiness
+changes still warm up once; late loss/failure still faults until Reset. Existing
+mutable-guard, mask rollback, scene-loss, field-generation and native-call-count
+checks remain included. The exact Reset policy extraction does not execute a
+native Reset or test DEFAULT-resource release.
+
+Command: `PYTHONPATH=verification/probe python3 -m unittest -v verification.analysis.test_fog_cards verification.analysis.test_fog_sector_policy verification.analysis.test_fog_route_bridge`.
+**8 tests pass**; retained local logs are
+`/tmp/x3-fog-cut-warmup-checks/fixed.log` and `prefix.log`. The latter reintroduces
+only the removed line into the in-memory test source and exits 1 with the
+pre-fix witness; production files are not changed by that check.
+`i686-w64-mingw32-g++ -std=gnu++17 -O2 -g -DWIN32_LEAN_AND_MEAN -DNOMINMAX -Wall -Wextra -Wno-cast-function-type -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -c src/proxy/motion_output.cpp -o /tmp/x3-fog-cut-warmup-motion_output.o`
+passes. This establishes x86 compilation, not native Windows execution.
+
+No shader, D3D transaction, resource lifetime, CPU/LastError preservation
+boundary, hook instruction or rollback path changes. Per-draw work is unchanged;
+scene end removes one conditional store, without new allocation, locking or
+validation. The existing spatial/shaft state, numerical, Reset and timing
+checkpoints above remain relevant to those unchanged implementations. New actual
+GPU execution, native Windows behavior and user flight appearance remain open;
+this host checkpoint alone does not establish elimination of visible flicker.
+No Wine, full DLL build, install, commit or game launch belongs to this change.
+
+### Run197 first-person camera precision correction (2026-09-21)
+
+User-labeled first-person F8 frames **2633–2664** in
+`/tmp/x3-bottleX3-run197/session-20260921-000016-212.log` have valid cameras and
+**zero cuts in all 32 frames**, inside a continuous `card_refused` interval
+2562–2742. The frame2660 report has observed2, suppressed0, refused1, ready0,
+warmup0, applied0 and fault0. Engine bluewell sector authority remains unchanged.
+The fog world's `1e-4` Gram tolerance rejects all 32 captured rotations. Each
+rotation reconstructed on the documented `/65536` grid matches actual captured
+`object_matrix role=view` float bits exactly. Across the session, the unchanged
+actual C++ camera parser accepts all **3,080** valid camera samples; the old fog
+helper accepts **1,082** and refuses **1,998**. Every logged application/refusal
+agrees with this check: 92 `ok`, 94 `card_refused`, one initial `world_basis`.
+
+After aligning the helper with the upstream `1e-3` near-rigid tolerance, the
+actual C++ helper accepts **3,080/3,080**, including **32/32** F8 views. Maximum
+measured Gram error is `0.0001526300329715`; determinant range is
+`0.999796784330055..1.000023415016184`. The unchanged true inverse has maximum
+uploaded-float roundtrip error `5.94e-8`. Remaining noncapture camera samples
+are reconstructed from seven-digit camera logs on the fixed-point grid; only
+the 32 F8 rotations have the independent raw-bit cross-check.
+
+The existing `verification/probe/fog_spatial_math_fixture.cpp` now exercises
+exact first-person and worst captured rotations, translated camera origin,
+inverse roundtrip, both sides of the admission boundary, scale/shear/singular
+and independent determinant refusal, and nonfinite sun; earlier nonfinite
+rotation/translation and reflection checks remain. Command:
+`clang++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/fog_spatial_math_fixture.cpp -o /tmp/x3-run54-firstperson-fog/fog-spatial-math`;
+executing it passes. The same fixture against the original helper aborts at the
+captured-camera admission assertion (exit -6). Reproduction and compact triage:
+`/tmp/x3-run54-firstperson-fog/diagnose.py`, `summary.json`, `report.md`,
+`witness.log`, `fixed-witness.log`, and `prefix-math.log`.
+
+`PYTHONPATH=verification/probe python3 -m unittest -v verification.analysis.test_fog_cards verification.analysis.test_fog_sector_policy verification.analysis.test_fog_route_bridge verification.analysis.test_camera_reprojection`
+passes **17 tests in 6.193 s**. The actual MotionOutput card-method tests preserve
+cut, sector, failure and Reset-policy coverage; their parameter helper is
+mocked, so they do not independently exercise the new camera-to-route admission.
+`i686-w64-mingw32-g++ -std=gnu++17 -O2 -g -DWIN32_LEAN_AND_MEAN -DNOMINMAX -Wall -Wextra -Wno-cast-function-type -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -c src/proxy/motion_output.cpp -o /tmp/x3-run54-firstperson-fog/motion_output.o`
+passes. No shader/GPU state/resource or hook/ABI implementation changes; existing
+GPU state/Reset evidence remains applicable. A candidate integration gate can
+reuse the actual route bridge with a captured rotation to prove admitted
+replacement reaches the real pass. No new broad GPU qualification or benchmark
+is justified by this constant-only change. This checkpoint establishes host
+numerical behavior and Windows cross-compilation, not native Windows execution
+or corrected game appearance. No Wine, game launch, full DLL build, install or
+commit was performed by this task.
+
+The follow-up actual-D3D route bridge adds **33 captured rotations** (the 32 F8
+frames plus worst frame2703) through the unchanged production parameter helper,
+card admission and `FogPass`. After the existing warmup and single replacement
+transition, every frame must suppress its native card, apply one real fog
+transaction, preserve state and RT1/RT2 bytes, and request no additional history
+invalidation. Four refusal cases cover reflection, excessive shear, nonfinite
+rotation and the independent uploaded-inverse Gram boundary. Each must forward
+native color exactly, issue no fog pass, avoid a fault latch and recover on the
+next valid camera. The inverse-boundary case explicitly passes `fog_world_basis`
+and fails `fog_valid_params`: the two guards remain independent.
+
+Only rotations are captured inputs here: camera translation is synthetic and
+holds the fixture's world origin fixed; sun, sector and owner are authored.
+There is no shaft-map publication, selector-hook execution or new native Reset
+coverage. The synthetic replay owner was updated to provide the typed no-map
+interface required by the current production fragment. The checker requires all
+33 occurrences of each captured-frame witness and all four refusal/recovery
+witnesses; **four checker host tests pass**. Fixture x86 cross-compilation passes
+with the normal SSE2/incoming-stack flags. Frozen build:
+`/tmp/x3-run54-firstperson-fog/route-build-v3/build.json` and
+`fog_route_bridge.exe`. Build command:
+`python3 verification/probe/fog_route_bridge_build.py --production-root /tmp/x3-run54-fog-camera --spatial-root /tmp/x3-run54-fog-camera --asset-data /tmp/x3-run54-candidate/build/generated/fog_field --output /tmp/x3-run54-firstperson-fog/route-build-v3`.
+Root-owned locked execution now passes **515 checks**, exit **0**, in bottle
+**X3**, CrossOver Preview, WineArch **arm64**, with
+`FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. All **33** captured rotations
+suppress their native card and apply the real fog pass without further history
+invalidation; all **four** malformed-camera cases preserve exact native color,
+perform no fog writes and recover. The inverse-Gram boundary refusal occurs
+once as required. Existing bridge state/auxiliary-target, LastError,
+sector/generation, fault and policy-Reset assertions also pass. Lock wait is
+**0.000003875 s**; wrapper child elapsed is **4.784124042 s** (not a renderer
+performance measurement).
+
+Frozen fixture SHA-256:
+`d65f6c448ee0176cfeb894bfee9d63c2f9ddaed19bd527c74e062b2f0a8d4b57`.
+Evidence: `/tmp/x3-run54-firstperson-fog/route-runtime.log`, `route-lock.json`,
+`route-result.json` and `route-prepared.json`. The checker binds the executable
+and runtime log; the build binds its production and fixture inputs. The root
+used `verification/probe/wine_lock.py` with the X3 environment above, native
+`d3d9=b`, the frozen fixture, and
+`Z:\private\tmp\x3-fog-renderer-production\build\fog-production-r3\state-bound\cases.txt`.
+This establishes actual-D3D camera-to-route admission for those captured
+rotations under the stated synthetic-owner/no-map scope. Native Windows,
+actual game reader/selector dispatch, new native Reset coverage and corrected
+flight appearance remain unverified by this run.
+
 ## Run55: first-person fog accepted (2026-09-21)
 
 The user reports `/tmp/x3-bottleX3-run199` (414 referenced files): fog is fixed
 in first-person view, and F8 was taken in that view. This accepts the visible
 first-person correction; it does not establish every family or shafts appearance.
-The flight crashed again, so overall candidate qualification remains open.
+The flight crashed again, so overall candidate qualification remained open.
 [Capture evidence](../../verification/results/run55-fog-triage/report.md): frames
 2188–2219 have 32 valid cameras and all 32 pass the actual corrected helper.
 Frame 2197 samples replacement ready/applied with 3/3 cards suppressed and no

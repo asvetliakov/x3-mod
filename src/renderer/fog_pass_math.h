@@ -42,6 +42,23 @@ inline void fog_sun_radiance_fallback(float out[3]) noexcept { const std::int32_
 inline double fog_phase(double g, double cosine) noexcept {
     return (1. - g * g) / (4. * 3.14159265358979 * std::pow(1. + g * g - 2. * g * cosine, 1.5));
 }
+// No geometry receiver plane exists inside the volume. The caller supplies the
+// cascade's constant world-texel bias, not the surface plane-fit clamp.
+inline bool fog_shadow_current(std::uint64_t frame, std::uint64_t map_frame) noexcept {
+    return map_frame != ~std::uint64_t(0) && map_frame == frame;
+}
+inline bool fog_shadow_rows(const float rows[12], float bias) noexcept {
+    if (!std::isfinite(bias) || bias < 0.f || bias > 1.f) return false;
+    for (unsigned r=0;r<3;++r) {
+        double norm=0;
+        for(unsigned c=0;c<4;++c) {
+            if (!std::isfinite(rows[4*r+c])) return false;
+            if(c<3) norm+=double(rows[4*r+c])*rows[4*r+c];
+        }
+        if (!(norm>0) || norm>1e12) return false;
+    }
+    return true;
+}
 struct FogCapabilityInputs {
     std::uint32_t pixel_shader_version = 0, vertex_shader_version = 0;
     std::uint32_t ps30_instruction_slots = 0, largest_program_slots = 0;

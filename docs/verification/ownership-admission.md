@@ -113,3 +113,50 @@ inventories, source hashes before and after build/run, executable and report
 hashes, observed Wine-launcher stability, all 297 per-method object audit hashes,
 and raw timing samples. The full object dump stays local under the ignored probe
 build directory. No DLL-version allowlist or private runtime layout is used.
+
+
+## Canonical surface lease qualification, 2026-09-20
+
+The bounded surface API in `src/ownership/d3d9_ownership.h` adds atomic
+CPU-only registry lookup/logical retention; it does not establish application
+admission or engine binding/Reset exclusion. The
+[usage contract](../../src/ownership/README.md#short-canonical-surface-leases)
+requires identity observation during qualified publication, acquisition with the
+stored identity, and explicit lease release after UnlockRect but before copy
+exclusion ends. Canonical wrapper serials and Reset-attempt generations reject
+stale identities without silently refreshing them.
+
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_surface_lease_host`
+passed the portable production-core fake-COM controls: **512 final-release versus
+acquisition races, 2,090 checks, zero failures** in the retained standalone host
+sample (261 acquisition wins, 251 release wins; scheduler-dependent counts).
+It covers serial/address reuse, wrong devices/kinds, overflow/exhaustion, borrowed
+lifetime, logical parent retention and exactly-once/reentrant cleanup.
+
+The parent built `verification/probe/build_surface_lease.sh` and ran its frozen
+standalone EXE under the Wine lock in **X3 / WineArch=arm64**, CrossOver Preview
+arm64 Wine/FEX, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. It passed **100 checks,
+zero failures**, including eight actual-API full x87/MXCSR/LastError cases with
+callee-saved register witnesses and entry ESP modulo 16 equal to 4. A real native
+SYSTEMMEM surface passed LockRect/write/UnlockRect/readback, logical parent
+retention, zero acquisition backend AddRef, and reentrant final cleanup; a
+foreign-thread registry query completed while backend cleanup was active.
+The actual Device::Reset wrapper passed in-Reset refusal and success/failure/
+recovery generation tests using **simulated backend Reset results**. No lease
+spanned Reset. This does not qualify native GPU Reset/recovery or engine gates.
+
+Independent source/emitted-code review found and fixed SJLJ registration outside
+the original preservation envelope. The accepted **v2 ownership object**, also
+used by the frozen fixture, has bounded no-EH public shells saving before the
+first external call and restoring after SetLastError, with exception-enabled
+registry bodies and catches. Fixture seed/capture/trampoline code was separately
+inspected for hidden EH calls. Review cleared source and the 100-check runtime.
+
+[Compact record](../../verification/results/media-surface-lease-2026-09-20.json)
+binds the frozen EXE, v2 object and local raw reports. Lock wait was **0.000004 s**;
+child elapsed time **4.438835167 s**. These are fixture/queue timings, not lease
+microbenchmark results or game FPS. Static cost is two registry finds and one
+mutex per lookup, no allocation/backend call during acquisition, 16 added bytes
+per Node, adoption-only serial assignment and Reset-only generation updates.
+Native Windows runtime, engine binding observers, whole-copy/Reset exclusion and
+nonlocal-exit cleanup remain unqualified; production media admission stays disabled.

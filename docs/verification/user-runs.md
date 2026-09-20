@@ -1,11 +1,10 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-21 (Run56 ready: omit ID2 animated video; first-person fog accepted; Run54 B held). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-21 (Run56 accepted for media stability; fog range and station flash under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
-Use the exact launcher paths in the commands below. Candidate flights use the integration
-checkout launcher while production source qualifies off main; no video package
+Use the exact launcher paths in the commands below. Use the main-checkout launcher for the accepted baseline; no video-package
 preflight is required. It handles the shared Wine lock and snapshots; no shell
 function setup is needed. Runs 1–3 and 5–20 are complete (queue numbers; reader/DAT/adjacency fast
 co-activation passed as snapshot run 19). Run 9 is saved as snapshot run 28.
@@ -72,9 +71,10 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 50 | Argon Prime media-retry attribution | 0 | Completed: run186. Two failed media-ID-2 constructions account for almost all of their 359/408 ms frames; later retries follow the 30-second cadence. Other first-view stalls remain separately scoped. [Instructions archive](../archive/run49-50-completed-2026-09-20.md#50-argon-prime-first-view-stutters--existing-media-trace), [findings](media-cues.md#run50-periodic-retries-directly-explain-argon-freezes-2026-09-20). |
 | 51 | Longer media retry counter | 0 | Not flown; superseded by Run54 replacement-media verification. [Archived instructions](../archive/run53-completed-2026-09-20.md#51-media-retry-counter--same-view-longer-diagnostic-interval). |
 | 52 | Busy-station attribution and lazy-RT counter | 0 | Completed: A run187, B run188, C run189. Matched 478-draw separate-session B/C medians were 19.70 / 18.90 ms; lazy accepted as launcher default, no new engine patch justified. [Instructions archive](../archive/run52-completed-2026-09-20.md), [results](motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20). |
-| 53 | Spatial fog and lattice state | 0 | Completed: A run193, B run194. Fog preference 1.50×; camera-cut native-card flicker and observer reference interference reproduced and corrected. Visual acceptance remains open: fog follow-up is Run55; lattice Session B is held. [Archive](../archive/run53-completed-2026-09-20.md), [lattice findings](../architecture/taa-lattice-crawl.md#27-bound-observer-reference-callbacks-and-device-lifetime-2026-09-20). |
-| 54 A | Media and expanded fog/shafts | 3 | Analysed: run195/run196/run197 crashed; Run197 first-person F8 exposes camera tolerance refusal. Session A superseded by Run55; B remains held. |
+| 53 | Spatial fog and lattice state | 0 | Completed: A run193, B run194. Fog preference 1.50×; camera-cut native-card flicker and observer reference interference reproduced and corrected. Visual acceptance remains open: fog follow-up is Run55; lattice Session B is pending after Run56 stability acceptance. [Archive](../archive/run53-completed-2026-09-20.md), [lattice findings](../architecture/taa-lattice-crawl.md#27-bound-observer-reference-callbacks-and-device-lifetime-2026-09-20). |
+| 54 A | Media and expanded fog/shafts | 3 | Analysed: run195/run196/run197 crashed; Run197 first-person F8 exposes camera tolerance refusal. Session A superseded by Run55; B is pending after Run56 stability acceptance. |
 | 55 | First-person fog correction and crash diagnosis | 1 | Run199: first-person fog fixed by user report; F8 taken in first person. Crash recurred inside LAVVideo; user accepts ID2 omission. Superseded by Run56. [Archived instructions](../archive/run55-completed-2026-09-21.md). |
+| 56 | ID2 video omission | 1 | Run200: user confirms no crash or media-related stutter; omission accepted. New fog-range and station-lighting observations remain separate. [Archived instructions](../archive/run56-completed-2026-09-21.md). |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md) and the
@@ -86,33 +86,32 @@ not rerun requests.
 <a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
 Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
 
-## 54. Corrected lattice state observation — Session B held
+## 54. Corrected lattice state observation — Session B pending
 
 Session A returned run195/run196/run197 with repeated crashes and first-person
 fog failure. Its [instructions are archived](../archive/run54a-completed-2026-09-21.md).
-Run56 below supersedes that diagnostic request. **Do not run Session B yet**;
-the reference command is retained until the crash investigation permits it.
+Run56 subsequently passed the media stability check. The lattice capture can
+resume on the accepted baseline; the reference command below is ready
+for the next convenient flight. No CrossOver debug tracing is requested.
 
 B. Corrected lattice state observation: same solar-plant arm view, F8 at rest, during camera rotation and during ship translation. This candidate protects the observation from changing MRT bindings; it does not claim a motion-crawl correction. Keep the arm visible.
 
 ```sh
-X3M_FIXTURE_BOTTLE=X3 /tmp/x3-media-production-integration/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode lazy --lattice-state run177_panel_position_v1 --taa-debug --capture-start 999999 --frame-end-stride 10 --capture-frames 32
+X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode lazy --lattice-state run177_panel_position_v1 --taa-debug --capture-start 999999 --frame-end-stride 10 --capture-frames 32
 ```
 
-## 56. ID2 video omission — ready
 
-Use the same save/view and sequence that crashed in Run55. Move the camera and
-remain for several minutes, covering the previous failure interval. The ID2
-billboard/animated texture is intentionally absent. Check that speech and music
-still work, first-person fog remains correct, and whether any periodic freeze or
-crash occurs. Report the preserved session path and those observations.
-No additional F8 is required unless you see a new rendering issue. Keep the
-lattice Session B held until this stability check.
+## 57. Fog range and station-lighting follow-up — preparation
 
-This candidate removes the replacement playback runtime and refuses ID2 silent
-video before graph construction. Existing diagnostic/module tracing is retained
-for this counter flight. Qualification and rollback are in [status](../status.md).
+Run200 contains F8 bursts 16450–16481 and 43051–43082. The user identifies the
+flashing object as an asteroid-attached ore mine/refinery, with a similar effect
+possibly on the solar plant, during left/right camera motion in The Hole. Which
+burst contains the event is uncertain. Both bursts are under analysis; the final
+burst is almost stationary. No distance-fade default change is selected yet.
 
-```sh
-CX_DEBUGMSG=+timestamp,+tid,+seh,+loaddll X3M_FIXTURE_BOTTLE=X3 /tmp/x3-run56-integration/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --media-cue-trace --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --light-map-far-fade 80,220 --motion-rt-mode lazy --volumetric-fog 0.03 --volumetric-fog-cards replace --sector-background --taa-debug --capture-start 999999 --frame-end-stride 10 --capture-frames 32
-```
+The fog range request is 30–40 km. Current volume support is 2.4 km, independent
+of native card fading. A bounded offline comparison is assessing a smooth far
+continuation while preserving nearby patches; no new candidate is ready. Future
+commands omit `CX_DEBUGMSG`/extra CrossOver tracing. A normal-speed screen
+recording is the preferred next witness for the brief lighting flash; F8 capture
+itself substantially slows frame delivery. Keep the accepted build for now.

@@ -2159,3 +2159,28 @@ Independent source/evidence review passed after correcting selection, percentile
 configuration and window-alignment checks. Five focused launcher tests pass.
 Reproduction and compact results: [run52-triage](../../verification/results/run52-triage/result.md).
 Submission/HDR/lease decisions are recorded in the [frame-time note](../architecture/engine-frame-time.md#run52-corrected-attribution-and-remaining-optimization-scope-2026-09-20).
+
+## Run56 station flash: two-burst audit (2026-09-21)
+
+The user identifies an asteroid-attached mine/refinery in The Hole, possibly
+also the solar plant, flashing during left/right camera motion, including with
+fog disabled. Either run200 F8 burst may have been intended. The earlier burst
+16450–16481 does contain substantial camera rotation; only the final burst
+43051–43082 is nearly stationary. Do not interpret the latter as contradicting
+the reported movement.
+
+A read-only audit reconstructs the light-map gain and matches admitted/faded/min
+telemetry for all 64 frames. Earlier: 3,449 eligible draws, 3,321 faded; the 128
+full-gain draws are player geometry. Final: 1,920 eligible draws, all correctly
+full gain; the identified mine footprint is 24.884, below the accepted fade
+start of 80. No gain bypass or apply/restore failure is demonstrated. The mine's
+raw-image mean variation is 2.344%, versus 0.189% after TAA; a sampling
+contribution is plausible, but no isolated light-map filtering comparison exists.
+
+Earlier capture frames take a median 796 ms, versus approximately 14.2 ms/frame
+before capture. Its 18/32 history resets cannot establish normal-play reset
+frequency or the flash cause. A normal-speed recording with the bright/dim event
+identified is the preferred next witness. Preserve the accepted 80,220 default.
+[Local diagnosis and reproduction command](/tmp/x3-run56-lightmap-fault/diagnosis.md);
+[compact session witness](../../verification/results/run56-triage/report.md).
+No production patch or additional Wine run was made for this audit.

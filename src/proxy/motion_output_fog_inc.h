@@ -55,6 +55,23 @@ const char* MotionOutput::fog_frame_parameters(renderer::FogFrame& in, float wei
         for (unsigned i = 0; i < 3; ++i) { translation[i] = camera_scene_.t[i]; sun[i] = q.sun_view[i]; }
         if (!renderer::fog_world_basis(rotation, translation, sun, q.world)) skip = "world_basis";
     }
+    // Sampling is independent of surface-shadow application/refusal. Retained
+    // replay publication plus an exact frame match authorizes each map; an
+    // alternate-frame far map is deliberately unavailable to this volume.
+    in.frame = frame_; in.count = 0;
+    for (unsigned s = 0; !skip && s < count && in.count < renderer::fog_cascade_max; ++s) {
+        const unsigned i = slots[s];
+        if (i == 0) continue; // own-ship-only map is not a general scene volume
+        auto& k = in.cascades[in.count++];
+        const auto* kept = depth_replay_->retained(i);
+        const auto& cascade = depth_cascades_.cascades[i];
+        renderer::SunShadowBias bias{};
+        if (!kept || !renderer::fog_shadow_current(frame_, kept->frame) || !depth_replay_->map_texture(i) ||
+            !renderer::shadow_replay_view_rows(camera_scene_, kept->basis, cascade, k.rows) ||
+            !renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_,
+                double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), bias)) continue;
+        k.map = depth_replay_->map_texture(i); k.bias = bias.constant; k.frame = kept->frame; k.valid = true;
+    }
     if (!skip && !renderer::fog_valid_params(q)) skip = "parameters";
     return skip;
 }
@@ -261,7 +278,8 @@ void MotionOutput::disable_volumetric_fog(const char* why, HRESULT result) noexc
 void MotionOutput::run_volumetric_fog() noexcept {
     if (fog_frame_ == frame_) return; // the hook and the bloom-copy sites both qualify
     fog_frame_ = frame_;
-    // A camera cut (gate jump, load, view switch) ends the sector hold at once; cards bound this frame keep it.
+    // A cut expires only the diagnostic source hold; current engine authority
+    // and successful spatial replacement readiness remain independent of it.
     if (cut_finished_ && counters_.cut) fog_latch_.cut(frame_);
     fog_latch_.update(frame_, fog_everywhere_); // source observation only
     const float weight = 1.f;
@@ -322,17 +340,17 @@ void MotionOutput::run_volumetric_fog() noexcept {
     }
     release(depth); release(rt0);
     complete_volumetric_fog(skip, hr, out);
-    // Cuts are finalized only at scene end. Finish this transaction, then
-    // require a fresh successful warm-up on the next frame. TAA owns cut reset.
-    if (cut_finished_ && counters_.cut) fog_cards_.armed = false;
+    // Camera cuts invalidate TAA history, not readiness of this current-frame
+    // spatial pass. Authority/resource changes and failures own rewarming;
+    // disarming on a cut would stack native cards and volume on the next frame.
     const char* reason = skip ? skip : "ok";
     // A change of state is one line (bounded); timing mode logs every frame.
     const bool changed = std::strcmp(reason, fog_last_reason_) != 0;
     if (fog_timing_ || changed || frame_ % 600u == 0u) {
         if (!fog_timing_) ++fog_logs_;
-        log("volumetric_fog_frame device=%llu frame=%llu applied=%u reason=%s strength=%.4f density_scale=%.3f cards=%u profile=%u field_generation=%llu sun=%s cpu_us=%.1f calls=%u result=%08lx restore=%08lx stage=%u",
+        log("volumetric_fog_frame device=%llu frame=%llu applied=%u reason=%s strength=%.4f density_scale=%.3f cards=%u profile=%u field_generation=%llu sun=%s shadow_maps=%u cpu_us=%.1f calls=%u result=%08lx restore=%08lx stage=%u",
             id_, frame_, unsigned(!skip && out.applied), reason, double(fog_strength_), double(fog_sector_.density_scale), unsigned(fog_latch_.cards_recent(frame_)), fog_sector_.profile, fog_sector_.field_generation,
-            skip ? "none" : sun_tracked ? "tracked" : "fallback", us, out.device_calls, out.operation, out.restore, unsigned(out.failed));
+            skip ? "none" : sun_tracked ? "tracked" : "fallback", out.cascades_bound, us, out.device_calls, out.operation, out.restore, unsigned(out.failed));
     }
     const std::uint64_t card_report = std::uint64_t(fog_cards_.observed) | std::uint64_t(fog_cards_.suppressed) << 24 |
         std::uint64_t(fog_cards_.refused) << 48 | std::uint64_t(fog_card_ready_) << 49 | std::uint64_t(fog_cards_.warmup) << 50 |

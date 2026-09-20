@@ -1,0 +1,374 @@
+{
+  "date": "2026-09-20",
+  "feature": "ordinary-startup scheduling adapter",
+  "state": "Reviewed startup scheduling checkpoint; unconfigured until canonical media integration",
+  "source": {
+    "base_commit": "a3ae4a1b4012c5770b0782dbc4b72411ac9534d9",
+    "checkout": "/tmp/x3-media-startup-boundary",
+    "files": [
+      "CMakeLists.txt",
+      "src/proxy/loader.cpp",
+      "src/proxy/capture.cpp",
+      "src/proxy/media_startup.h",
+      "src/proxy/media_startup.cpp",
+      "src/proxy/media_startup_abi.h",
+      "verification/probe/media_startup_cpu_fixture.cpp",
+      "verification/probe/build_media_startup.py",
+      "verification/probe/media_startup_host_fixture.cpp",
+      "verification/probe/media_startup_loader_fixture.cpp",
+      "verification/analysis/test_media_startup.py",
+      "verification/probe/capture_device_creation_fixture.cpp",
+      "verification/analysis/test_capture_device_creation.py"
+    ],
+    "combined_sha256": "e19230fa5556cc4abd244e7fb4024c3f7f7424f5323584674f6c9e0e793e1275",
+    "hash_encoding": "For listed files in order, UTF-8 relative path + NUL + exact file bytes + NUL; documentation excluded. CMake integration supplied by root.",
+    "checkpoint_commit": "1b6ea3b2"
+  },
+  "toolchains": {
+    "host": "Apple clang 21.0.0 (clang-2100.1.1.101), arm64-apple-darwin25.6.0",
+    "x86": "i686-w64-mingw32-g++ (GCC) 16.2.0"
+  },
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_startup verification.analysis.test_capture_device_creation verification.analysis.test_d3d9_exports",
+    "tests": 6,
+    "failures": 0,
+    "skipped": 1,
+    "skip": "built shared DLL export inspection unavailable; no shared DLL build performed",
+    "controller_checks": 61,
+    "real_loader_delegate_checks": 37,
+    "real_capture_device_body_checks": 224,
+    "factory_delegate_body": "unchanged after function opening brace relative to base; extracted-body mock qualification"
+  },
+  "build": {
+    "command": "python3 verification/probe/build_media_startup.py",
+    "exit_code": 0,
+    "flags": [
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fno-exceptions",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-DWIN32_LEAN_AND_MEAN",
+      "-DNOMINMAX",
+      "-static",
+      "-static-libgcc",
+      "-static-libstdc++",
+      "-Wl,--image-base,0x400000",
+      "-Wl,--disable-dynamicbase",
+      "-Wl,--section-start,.x3map=0x401000",
+      "-Wl,--section-start,.text=0x630000"
+    ],
+    "binary": "/tmp/x3-media-startup-boundary/build/verification/media-startup/media_startup_fixture.exe",
+    "sha256": "96b7ed9f577ad9557579dcb2c4b499bf976c4217ae9ecdec985aa8848e863969",
+    "image_audit": "PASS fixed x86 image; owned zero/nonexecutable .x3map 0x401000..0x620000; real text 0x630000; sections nonoverlapping; exact production addresses unchanged",
+    "retained_accepted_executable": "/tmp/x3-media-startup-v2/media_startup_fixture.exe"
+  },
+  "runtime": {
+    "owner": "root; serialized per-mode subprocesses stopped on any failure",
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "environment": {
+      "X3M_FIXTURE_BOTTLE": "X3",
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cwd": "/tmp/x3-media-startup-boundary",
+    "command_template": "X3M_FIXTURE_BOTTLE=X3 FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-media-startup-v2/<mode>-lock.json '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update /tmp/x3-media-startup-boundary/build/verification/media-startup/media_startup_fixture.exe <mode> > /tmp/x3-media-startup-v2/<mode>.log 2>&1",
+    "extra_arguments": "No --dll or --holder; fixture uses no D3D.",
+    "checks": 655,
+    "failures": 0,
+    "child_elapsed_seconds_sum": 3.48569804,
+    "lock_wait_seconds_sum": 2.979000000000523e-05,
+    "modes": [
+      {
+        "mode": "success",
+        "checks": 77,
+        "failures": 0,
+        "callbacks": 1,
+        "status": 10,
+        "log": "/tmp/x3-media-startup-v2/success.log",
+        "lock": "/tmp/x3-media-startup-v2/success-lock.json",
+        "lock_wait_seconds": 3.1250000000031253e-06,
+        "child_elapsed_seconds": 2.0270085410000003,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 16516342906611,
+          "bootstrap_begin": 16516342916498,
+          "bootstrap_end": 16516342916696,
+          "ready": 16516342928330,
+          "device": 16516342928783
+        }
+      },
+      {
+        "mode": "unknown",
+        "checks": 74,
+        "failures": 0,
+        "callbacks": 0,
+        "status": 1,
+        "log": "/tmp/x3-media-startup-v2/unknown.log",
+        "lock": "/tmp/x3-media-startup-v2/unknown-lock.json",
+        "lock_wait_seconds": 3.374999999999906e-06,
+        "child_elapsed_seconds": 0.180082917,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 0,
+          "bootstrap_begin": 0,
+          "bootstrap_end": 0,
+          "ready": 0,
+          "device": 16516345461697
+        }
+      },
+      {
+        "mode": "failed",
+        "checks": 74,
+        "failures": 0,
+        "callbacks": 0,
+        "status": 3,
+        "log": "/tmp/x3-media-startup-v2/failed.log",
+        "lock": "/tmp/x3-media-startup-v2/failed-lock.json",
+        "lock_wait_seconds": 2.708000000000571e-06,
+        "child_elapsed_seconds": 0.182276375,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 0,
+          "bootstrap_begin": 0,
+          "bootstrap_end": 0,
+          "ready": 0,
+          "device": 16516348019532
+        }
+      },
+      {
+        "mode": "reentrant",
+        "checks": 58,
+        "failures": 0,
+        "callbacks": 0,
+        "status": 2,
+        "log": "/tmp/x3-media-startup-v2/reentrant.log",
+        "lock": "/tmp/x3-media-startup-v2/reentrant-lock.json",
+        "lock_wait_seconds": 3.374999999999906e-06,
+        "child_elapsed_seconds": 0.183545583,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 0,
+          "bootstrap_begin": 0,
+          "bootstrap_end": 0,
+          "ready": 0,
+          "device": 16516350585515
+        }
+      },
+      {
+        "mode": "device_inside",
+        "checks": 74,
+        "failures": 0,
+        "callbacks": 0,
+        "status": 1,
+        "log": "/tmp/x3-media-startup-v2/device_inside.log",
+        "lock": "/tmp/x3-media-startup-v2/device_inside-lock.json",
+        "lock_wait_seconds": 3.374999999999906e-06,
+        "child_elapsed_seconds": 0.18013583300000002,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 0,
+          "bootstrap_begin": 0,
+          "bootstrap_end": 0,
+          "ready": 0,
+          "device": 16516353111246
+        }
+      },
+      {
+        "mode": "late",
+        "checks": 74,
+        "failures": 0,
+        "callbacks": 0,
+        "status": 1,
+        "log": "/tmp/x3-media-startup-v2/late.log",
+        "lock": "/tmp/x3-media-startup-v2/late-lock.json",
+        "lock_wait_seconds": 3.625000000000156e-06,
+        "child_elapsed_seconds": 0.183424166,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 0,
+          "bootstrap_begin": 0,
+          "bootstrap_end": 0,
+          "ready": 0,
+          "device": 16516355688207
+        }
+      },
+      {
+        "mode": "identity",
+        "checks": 74,
+        "failures": 0,
+        "callbacks": 0,
+        "status": 5,
+        "log": "/tmp/x3-media-startup-v2/identity.log",
+        "lock": "/tmp/x3-media-startup-v2/identity-lock.json",
+        "lock_wait_seconds": 3.290999999999017e-06,
+        "child_elapsed_seconds": 0.18231599999999998,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 0,
+          "bootstrap_begin": 0,
+          "bootstrap_end": 0,
+          "ready": 0,
+          "device": 16516358267567
+        }
+      },
+      {
+        "mode": "anchor",
+        "checks": 74,
+        "failures": 0,
+        "callbacks": 0,
+        "status": 5,
+        "log": "/tmp/x3-media-startup-v2/anchor.log",
+        "lock": "/tmp/x3-media-startup-v2/anchor-lock.json",
+        "lock_wait_seconds": 3.333000000001196e-06,
+        "child_elapsed_seconds": 0.190532792,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 0,
+          "bootstrap_begin": 0,
+          "bootstrap_end": 0,
+          "ready": 0,
+          "device": 16516360897611
+        }
+      },
+      {
+        "mode": "callbackfail",
+        "checks": 76,
+        "failures": 0,
+        "callbacks": 1,
+        "status": 11,
+        "log": "/tmp/x3-media-startup-v2/callbackfail.log",
+        "lock": "/tmp/x3-media-startup-v2/callbackfail-lock.json",
+        "lock_wait_seconds": 3.583000000001446e-06,
+        "child_elapsed_seconds": 0.176375833,
+        "exit_code": 0,
+        "qpc": {
+          "requested": 16516363386141,
+          "bootstrap_begin": 16516363393682,
+          "bootstrap_end": 16516363393899,
+          "ready": 0,
+          "device": 16516363406782
+        }
+      }
+    ]
+  },
+  "failed_witnesses": [
+    {
+      "kind": "initial_mapping_failure",
+      "exe": "/tmp/x3-media-startup-v1/media_startup_fixture.exe",
+      "exe_sha256": "b781b29e209b93cab33a3f4f0bc37df642b7ddf70577bc604eb5db75dfc5d11a",
+      "log": "/tmp/x3-media-startup-v1/success.log",
+      "lock": "/tmp/x3-media-startup-v1/success-lock.json",
+      "lock_wait_seconds": 3.583999999993981e-06,
+      "child_elapsed_seconds": 1.731911667,
+      "exit_code": 1
+    },
+    {
+      "kind": "bounded_mapping_diagnostic",
+      "exe": "/tmp/x3-media-startup-v1/mapping_fixture.exe",
+      "exe_sha256": "f9f97d68486389f596c3f94b4acc6d05da19dd1d9b2f6fba93a744a00e3fd013",
+      "log": "/tmp/x3-media-startup-v1/mapping.log",
+      "lock": "/tmp/x3-media-startup-v1/mapping-lock.json",
+      "lock_wait_seconds": 3.2919999999880822e-06,
+      "child_elapsed_seconds": 1.994707583,
+      "exit_code": 1
+    }
+  ],
+  "mapping_failure": {
+    "before_abi_checks": true,
+    "VirtualAlloc_error": 487,
+    "all_five_requests_failed": true,
+    "occupied": "0x400000 was MEM_PRIVATE allocation 0x3c0000, RW; 0x4d0000/0x4f0000/0x530000/0x600000 were MEM_MAPPED allocation 0x440000, RO. No occupied mapping overwritten.",
+    "correction": "Fixture-only: reserve .x3map in fixed PE before process allocations; verify own module/committed MEM_IMAGE/span bounds before VirtualProtect and authored writes. Production addresses and adapter unchanged."
+  },
+  "coverage": {
+    "actual": [
+      "shared production export/device-notification assembly",
+      "production Controller and WindowsPlatform",
+      "VirtualQuery/ReadProcessMemory cross-page refusal",
+      "GetModuleHandleExW before CreateThread; callback on different thread",
+      "all four incoming stack residues",
+      "full represented GPR/flags/x87/XMM/MXCSR ordinary output and LastError versus direct simulated delegate",
+      "input state comparison in eight non-reentrant modes",
+      "first-device closure inside factory and before factory; one-shot callback/failure"
+    ],
+    "simulated": [
+      "engine caller/anchor bytes and executable identity predicate",
+      "backend factory and canonical service",
+      "host launch/module/thread failure contract"
+    ],
+    "mxcsr": {
+      "requested": "0x3fa5",
+      "immediately_applied": "0x3f80",
+      "comparison": "full 32-bit represented baseline equality without masking",
+      "requested_sticky_status_preservation": "UNVERIFIED_UNREPRESENTED"
+    }
+  },
+  "limitations": [
+    "No native Windows runtime execution.",
+    "No SEH/nonlocal unwind transparency; abandoned context prevents future scheduling.",
+    "EXE self-pin does not qualify unloadable DLL final-reference behavior; canonical worker lifetime remains integration responsibility.",
+    "No actual game, package/provider, DirectDraw/COM/HWND startup, worker readiness before flight or cold-contention qualification.",
+    "FEX hidden effective-rounding behavior with differing x87/SSE rounding remains open; represented state is the qualified scope.",
+    "No built production DLL export inspection in this checkpoint; shared CMake integration source reviewed.",
+    "No new runtime patch/detour, installed artifact, package or production callback enabled."
+  ],
+  "review": {
+    "agent": "review_media_gate",
+    "source_and_mapping_correction": "clear",
+    "combined_runtime_evidence": "CLEAR: review_media_gate independently parsed nine logs/locks and verified frozen executable; 655 checks, zero failures"
+  },
+  "synchronous_installation": {
+    "source_base": "1b6ea3b2",
+    "source_binding": {
+      "src/proxy/media_startup.h": "8cb5ed8a2f67771f7a22438c79ce454710b930290bc741b80ebfe2017ba87ef6",
+      "src/proxy/media_startup.cpp": "c96dc7c031ccab2e63083d14bf46d2dce78d58457d5b45533bfeb584a4f262e8",
+      "src/proxy/media_startup_abi.h": "efa0bde76cf137a9a0e30059c706edcf939ea573ee46fd362c79a51aaaf82e5c",
+      "verification/probe/media_startup_cpu_fixture.cpp": "3b1507fc6e6b1ac782c6b560964f170bdeebc6d664b2b80da6190a30613d0791",
+      "verification/probe/build_media_startup.py": "17b81897a2b68e3b5c57d060538d0776b17d98dc5ed1888af2bd799baedeff55"
+    },
+    "exe_sha256": "766881c21a82601e924df5e4e7804d3c263b5a8190d8c1e348eb8c68cc404617",
+    "build_record": "/tmp/x3-media-startup-v3/build.json",
+    "host_command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_startup -v",
+    "host_tests": 2,
+    "controller_checks": 90,
+    "delegate_checks": 37,
+    "host_seconds": 1.415,
+    "host_log": "tool transcript only",
+    "runtime_directory": "/tmp/x3-media-startup-v3",
+    "runtime_modes": [
+      "success",
+      "unknown",
+      "failed",
+      "reentrant",
+      "device_inside",
+      "late",
+      "identity",
+      "anchor",
+      "callbackfail",
+      "installfail",
+      "installdevice"
+    ],
+    "runtime_checks": 819,
+    "runtime_failures": 0,
+    "all_exit_codes": 0,
+    "runtime_command_template": "X3M_FIXTURE_BOTTLE=X3 FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-media-startup-v3/<mode>-lock.json '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update /tmp/x3-media-startup-boundary/build/verification/media-startup/media_startup_fixture.exe <mode>",
+    "WineArch": "arm64",
+    "child_seconds": 3.650134667,
+    "lock_seconds": 3.8625e-05,
+    "review": "review_media_gate: CLEAR source and combined evidence",
+    "ordering_evidence": "/tmp/x3-media-startup-install-order-check.json",
+    "contract": "Optional CPU-only installer runs after qualification and OPEN recheck before claim/launch; keeps active OPEN while callback runs. Reentry/device invalidation prevents launch. Installer independently pins module/context before hooks, owns rollback/debt; admission remains off.",
+    "limits": [
+      "Authored installer callback; actual observer transaction/module retention not exercised",
+      "Ordinary startup CFG ordering is not general concurrent patch safety",
+      "Existing native Windows/unwind/nonzero unrepresented MXCSR gaps remain"
+    ]
+  }
+}

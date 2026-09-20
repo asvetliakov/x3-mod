@@ -5,7 +5,7 @@
 // One byte-verified gate on the media-record allocator
 // `media_record* __cdecl 0x00498140(int media_id /*[esp+4]*/)`, EAX = the
 // constructor flag word in, the linked 0x40-byte record or 0 out
-// (X3M_MEDIA_CUE_TRACE=1 / X3M_MEDIA_CUE_CACHE=1). The 5-byte entry span
+// (default ID2 video skip; optional trace/cache). The 5-byte entry span
 // `push ebx; mov ebx,[esp+8]` is two whole instructions with no incoming edge,
 // no data reference and no relative branch, so the claim tail is the original
 // bytes verbatim, replayed at the game's exact ESP after the gate's proceed

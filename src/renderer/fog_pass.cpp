@@ -240,7 +240,7 @@ HRESULT FogPass::normalize() noexcept{
     for(auto s:{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_CLIPPING,D3DRS_LIGHTING,D3DRS_INDEXEDVERTEXBLENDENABLE,D3DRS_POINTSPRITEENABLE,D3DRS_DITHERENABLE,D3DRS_ANTIALIASEDLINEENABLE})STEP(call<SetRsFn>(SetRenderState)(device_,s,FALSE));
     STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_VERTEXBLEND,D3DVBF_DISABLE));STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_FILLMODE,D3DFILL_SOLID));STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_CULLMODE,D3DCULL_NONE));STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_COLORWRITEENABLE,15));STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_MULTISAMPLEMASK,0xffffffff));
     for(UINT i=0;i<8;++i)STEP(call<SetRsFn>(SetRenderState)(device_,D3DRENDERSTATETYPE(D3DRS_WRAP0+i),0));
-    for(UINT i=0;i<4;++i){
+    for(UINT i=0;i<7;++i){
         STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_ADDRESSW,D3DTADDRESS_CLAMP));
         STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MINFILTER,i==1?D3DTEXF_LINEAR:D3DTEXF_POINT));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MAGFILTER,i==1?D3DTEXF_LINEAR:D3DTEXF_POINT));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
         STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MIPMAPLODBIAS,0));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MAXMIPLEVEL,0));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MAXANISOTROPY,1));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_SRGBTEXTURE,FALSE));
@@ -250,7 +250,7 @@ HRESULT FogPass::normalize() noexcept{
 }
 HRESULT FogPass::bind_target(IDirect3DSurface9* s,UINT w,UINT h,IDirect3DPixelShader9* ps) noexcept{
     HRESULT hr=S_OK;
-    for(UINT i=0;i<4&&SUCCEEDED(hr);++i){hr=call<SetTextureFn>(SetTexture)(device_,i,nullptr);}
+    for(UINT i=0;i<7&&SUCCEEDED(hr);++i){hr=call<SetTextureFn>(SetTexture)(device_,i,nullptr);}
     if(SUCCEEDED(hr)){hr=call<SetRtFn>(SetRenderTarget)(device_,0,s);}
     D3DVIEWPORT9 vp{0,0,w,h,0,1};
     if(SUCCEEDED(hr)){hr=call<SetViewportFn>(SetViewport)(device_,&vp);}
@@ -275,7 +275,10 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
        ss.MultiSampleType!=D3DMULTISAMPLE_NONE||!(ss.Usage&D3DUSAGE_RENDERTARGET))return refuse(E_INVALIDARG);
     hr=same_device(device_,f.depth_share);if(FAILED(hr))return refuse(hr);
     hr=same_device(device_,f.target);if(FAILED(hr))return refuse(hr);
-    float constants[9][4]{};
+    // All map references are borrowed for this serialized transaction. Validation
+    // failure disables only that map; device loss still aborts before any write.
+    IDirect3DTexture9* shadow_maps[fog_cascade_max]{};
+    float constants[22][4]{};
     const auto& p=f.params;
     constants[0][0]=p.m00;constants[0][1]=p.m11;constants[0][2]=p.m20;constants[0][3]=p.m21;
     constants[1][0]=static_cast<float>(width_);constants[1][1]=static_cast<float>(height_);constants[1][2]=static_cast<float>(half_width_);constants[1][3]=static_cast<float>(half_height_);
@@ -283,6 +286,22 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     constants[2][3]=base_sigma_*p.density_scale;constants[3][3]=fog_volume_horizon;
     for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)constants[4+i][j]=p.world.inverse_columns[3*i+j];
     fog_phase_constants(p.anisotropy,p.decode_exponent,p.sun_radiance,constants[7],constants[8]);
+    constants[9][1]=.95f;constants[9][2]=.85f;constants[9][3]=10.f;
+    for(unsigned i=0;i<std::min(f.count,fog_cascade_max);++i) {
+        const auto& k=f.cascades[i];
+        if(!k.valid||!k.map||!fog_shadow_current(f.frame,k.frame)||!fog_shadow_rows(k.rows,k.bias)||
+           k.map==f.depth_share||k.map==atlas_||k.map==lit_||k.map==scratch_)continue;
+        D3DSURFACE_DESC desc{};
+        hr=k.map->GetLevelDesc(0,&desc);if(lost(hr))return refuse(hr);if(FAILED(hr))continue;
+        if(desc.Format!=D3DFMT_R32F||desc.Width<64||desc.Width!=desc.Height||
+           desc.MultiSampleType!=D3DMULTISAMPLE_NONE)continue;
+        hr=same_device(device_,k.map);if(lost(hr))return refuse(hr);if(FAILED(hr))continue;
+        float (*block)[4]=constants+10+4*i;
+        for(unsigned j=0;j<12;++j)block[j/4][j%4]=k.rows[j];
+        block[3][0]=float(desc.Width);block[3][1]=1.f/float(desc.Width);block[3][2]=k.bias;block[3][3]=1.f;
+        shadow_maps[i]=k.map;++r.cascades_bound;
+    }
+    constants[9][0]=r.cascades_bound?1.f:0.f;
     SavedState saved(*this);r.failed=FogStage::Capture;hr=saved.capture();
     if(FAILED(hr)){r.operation=hr;if(lost(hr)){reset_pending_=true;r.scene_known=false;r.caller_state_restored=false;r.route_poisoned=true;}return finish(hr);}
     bool lost_seen=false,changed=false,opened_here=false,closed_borrowed=false;
@@ -318,14 +337,16 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         }
     }
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,march_));
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],9));
+    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],22));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,0,f.depth_share));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,1,atlas_));
+    for(unsigned i=0;i<fog_cascade_max&&may_draw&&SUCCEEDED(r.operation);++i)
+        record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,4+i,shadow_maps[i]));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,quad(half_width_,half_height_));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::Composite,bind_target(f.target,width_,height_,composite_));
     if(may_draw&&SUCCEEDED(r.operation)){
-        IDirect3DTexture9* textures[]={f.depth_share,atlas_,scratch_,lit_};
-        for(UINT i=0;i<4&&SUCCEEDED(r.operation);++i)record(FogStage::Composite,call<SetTextureFn>(SetTexture)(device_,i,textures[i]));
+        IDirect3DTexture9* textures[]={f.depth_share,atlas_,scratch_,lit_,shadow_maps[0],shadow_maps[1],shadow_maps[2]};
+        for(UINT i=0;i<7&&SUCCEEDED(r.operation);++i)record(FogStage::Composite,call<SetTextureFn>(SetTexture)(device_,i,textures[i]));
         if(SUCCEEDED(r.operation)){r.scene_write_started=true;r.applied=record(FogStage::Composite,quad(width_,height_));}
     }
     if(opened_here&&!lost_seen){

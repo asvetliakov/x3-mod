@@ -565,7 +565,7 @@ int main(){
         order = positions(
             reset_common,
             'game_phases::invalidate_device();',
-            'if(ctx.bloom_busy||ctx.motion_output.composition_operation_active())returnD3DERR_INVALIDCALL;',
+            'if(ctx.lattice_query_depth||ctx.bloom_busy||ctx.motion_output.composition_operation_active())returnD3DERR_INVALIDCALL;',
             '++ctx.reset_generation;',
             'constHRESULThr=extended',
         )

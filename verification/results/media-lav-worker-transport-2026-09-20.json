@@ -1,0 +1,473 @@
+{
+  "schema": 1,
+  "scope": "Canonical production LAV transport exercised by shared concurrent clock/render fixture and actual two-fresh-graph EOF suffix",
+  "source_base": "b1dc92a04d19e0d712bc817f4925399a7dded045",
+  "source_checkpoint": "root commit pending; production input hashes bound below",
+  "production_inputs": {
+    "src/media/lav_worker.cpp": "4e47a83f06f48e3f01e1f9c03814e50d50a7d1803296899c8067d20849e1b1cf",
+    "src/media/lav_worker.h": "11ba31ee99621d37a07a0a1f27d39e0160c91dc99c2484477fe0a6587e3c920b",
+    "src/media/lav_graph_inc.h": "8af6df47a49ab4dc0416902b8d9a485d043286988341ea4d2739b7d8fe37ae6f",
+    "src/media/playback_runtime.h": "f0fc6a1e478cad89766c3e4c0af6bfee543cea9e6a1e451d3007b6ab9d46221b",
+    "src/media/package_config.h": "9ceadd56e0aa8cb6a0ed8db4020999002bdf01e9f75879f9127b4c509326c600",
+    "src/media/package_config.cpp": "56dfcf8398ce0cae3b3a58a7b6c7b10fa61823f4565d9f27848efbb571006bb2",
+    "src/media/owned_clock/clock.h": "2af6ddfb16486fbc4fd9ab7eda225899aa476df38090deaa6608b2877c9c7cbd",
+    "src/media/owned_clock/exact_time.h": "53aeb725c5b4c5eb93c23ae7bc8dabb97b323364b1c2bcfdb136bb10397414de"
+  },
+  "frozen_helper_sha256": "d092f2a31da06c8b73f685ae7be24f1c37ff78baeaa7cc3f1ceb057c944987de",
+  "clock_headers": {
+    "clock.h": "2af6ddfb16486fbc4fd9ab7eda225899aa476df38090deaa6608b2877c9c7cbd",
+    "exact_time.h": "53aeb725c5b4c5eb93c23ae7bc8dabb97b323364b1c2bcfdb136bb10397414de"
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "clock": {
+    "result": {
+      "path": "/tmp/x3-media-shared-clock-v5-run1/result.json",
+      "sha256": "6092520314d08b1174e51ba049396d55c0b6d11c88bb451ca6144664a5e7a50d"
+    },
+    "raw": {
+      "stdout.log": {
+        "path": "/tmp/x3-media-shared-clock-v5-run1/stdout.log",
+        "sha256": "7e67fe31e3ba0c26c0bbcd58616f4f0e03e4332d92e8374eb207740b3b8169dc"
+      },
+      "stderr.log": {
+        "path": "/tmp/x3-media-shared-clock-v5-run1/stderr.log",
+        "sha256": "14a77e404b28a921524751159e13c56b7fc4a2555988119584d993e8e04f3705"
+      }
+    },
+    "lock": {
+      "record": {
+        "path": "/tmp/x3-media-shared-clock-v5-run1-lock.json",
+        "sha256": "502b84766bfa793e9d9dd3ec0839bf20dace922fd2aceb881dce47176b71107e"
+      },
+      "lock_wait_seconds": 3.8749999999969365e-06,
+      "child_elapsed_seconds": 31.776444792,
+      "exit_code": 0
+    },
+    "build": {
+      "record": {
+        "path": "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/media_worker_clock_fixture-v5.build.json",
+        "sha256": "06e34359dd093102ace13b00a8c2dacd77d9e1716381ad93943f4cf9a9f0fb96"
+      },
+      "exe": {
+        "path": "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/media_worker_clock_fixture-v5.exe",
+        "sha256": "f837f9ef8d22028516f75feede38b9e80e0b26a706d57aa23129179379762e1d"
+      },
+      "fixture_source_sha256": "6510f23d528af8034179648d5548bfb053fe9f93272b80a4bc582007b7db25c4",
+      "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0"
+    },
+    "command": [
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "--debugmsg",
+      "-all,+loaddll",
+      "--dll",
+      "d3d9=b;winegstreamer=",
+      "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/media_worker_clock_fixture-v5.exe",
+      "--missing-media",
+      "Z:\\private\\tmp\\x3-media-shared-clock-v5-run1\\missing-source.mkv",
+      "--package-config",
+      "1",
+      "--mode",
+      "clock",
+      "--media",
+      "Z:\\private\\tmp\\x3-media-package-playback-v1\\Game relocated \u03a9\u65e5 space\\x3-modern-media\\sources\\401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76\\00002.mkv",
+      "--lav-manifest",
+      "Z:\\private\\tmp\\x3-media-package-playback-v1\\Game relocated \u03a9\u65e5 space\\x3-modern-media\\providers\\lav081-strict-cadf5fbf4cf41bae\\provider.manifest"
+    ],
+    "exit_code": 0,
+    "fixture_wall_seconds": 19.108701125,
+    "bounds": {
+      "call_ms": 10000,
+      "progress_ms": 10000,
+      "child_ms": 60000,
+      "outer_seconds": 95,
+      "captures": 40,
+      "capture_bytes": 41943040,
+      "readbacks": 52,
+      "text_bytes": 67108864
+    },
+    "protected_count": 91,
+    "all_protected_unchanged": true,
+    "accepted": true,
+    "package": {
+      "actual_module_relative_reader": true,
+      "preparation_thread": "304",
+      "read_ms": 13.4122,
+      "same_owner_services": 2,
+      "identity_pins_retained_through_services": true,
+      "pins_released_after_retirement": true
+    },
+    "observed": {
+      "clock_transactions": 4586,
+      "ready_frames": 38,
+      "exact_rendered_captures": 35,
+      "render_target_readbacks": 43,
+      "simultaneous_distinct_sampled_destinations": true,
+      "held_peer_regions_verified": true,
+      "final_free_slots_by_instance": {
+        "0": 3,
+        "1": 3
+      },
+      "selected_by_instance": {
+        "0": 8,
+        "1": 27
+      },
+      "selected_by_instance_epoch": {
+        "0:1": 1,
+        "1:1": 9,
+        "0:2": 7,
+        "1:2": 9,
+        "1:3": 9
+      },
+      "A_revoked_leases": 3,
+      "A_paused_before_seek_ms": 58.8106,
+      "A_paused_updates": 43,
+      "B_fresh_while_A_paused": 1,
+      "B_fresh_after_A_failed_Load": 18,
+      "late_frames": 0,
+      "superseded_frames": 0,
+      "late_superseded_runtime_exercised": false
+    },
+    "events": {
+      "retrieved": 299,
+      "freed": 299,
+      "polls": 356,
+      "codes": {
+        "13": 2,
+        "10": 297
+      },
+      "batches": 63,
+      "outcomes": {
+        "Empty": 57,
+        "More": 6
+      },
+      "max_anchor_elapsed_ms": 406
+    },
+    "timings": {
+      "heartbeats": 3082,
+      "max_clear_ms": 110.57,
+      "max_completion_gap_ms": 226.4,
+      "cold_dd_create_ms": {
+        "0": 111.1465,
+        "1": 219.9964
+      },
+      "graphics_max_ms": {
+        "2:graphics:draw_submission": 18.3311,
+        "2:graphics:end_scene": 113.3303,
+        "2:graphics:readback_transfer": 0.1458,
+        "2:graphics:readback_lock": 13.4969,
+        "2:graphics:snapshot_compare": 0.545,
+        "2:graphics:readback_unlock": 0.2059,
+        "2:graphics:compose_present": 1.2025,
+        "0:graphics:texture_lock": 0.0944,
+        "0:graphics:texture_rows": 0.2187,
+        "0:graphics:texture_unlock": 0.0409,
+        "1:graphics:texture_lock": 0.0288,
+        "1:graphics:texture_rows": 0.2101,
+        "1:graphics:texture_unlock": 0.024
+      },
+      "gpu_execution_time_measured": false,
+      "universal_no_stall_claim": false,
+      "max_completion_gap_after_first_A_selection_heartbeat_ms": 15.2747,
+      "cold_max_gap_components_ms": {
+        "clear": 110.57,
+        "end_scene": 113.3303,
+        "interpretation": "temporally overlaps DDCreateEx and cooperative calls; causality not isolated"
+      }
+    },
+    "functional_status": "passed",
+    "coverage": {
+      "complete": true,
+      "missing": []
+    },
+    "initial_assignment_quiescence": {
+      "initial_no_graph_services": 2,
+      "canceled_facts": 4,
+      "old_facts_refused_after_live_publication": 2,
+      "physical_slots_free_per_service": 3,
+      "graph_retirement_quiescence_runtime_exercised": false
+    },
+    "failed_Load": {
+      "instance": 0,
+      "graph": 2,
+      "hresult": "80004005",
+      "preconnection_guard_qualified": true,
+      "source_error_retained": true
+    }
+  },
+  "eof": {
+    "result": {
+      "path": "/tmp/x3-media-shared-eof-v4-run1/result.json",
+      "sha256": "3eb3eda5043ca6510e6cf99a1ef43991bae4a0969554a52829146812cf1ab226"
+    },
+    "raw": {
+      "stdout.log": {
+        "path": "/tmp/x3-media-shared-eof-v4-run1/stdout.log",
+        "sha256": "8eb29981f6e450e8f3376f7b1c6e2cf45b5e35ce7640f4fda780596c46957943"
+      },
+      "stderr.log": {
+        "path": "/tmp/x3-media-shared-eof-v4-run1/stderr.log",
+        "sha256": "be1858450f1c715d5b86c511640f782efcb000f1b4d75327be53db2c3e5ad8fc"
+      }
+    },
+    "lock": {
+      "record": {
+        "path": "/tmp/x3-media-shared-eof-v4-run1-lock.json",
+        "sha256": "80949acc9c5711e3d38e5b0d80db36148b868e8243af15a15439a6f5a7def098"
+      },
+      "lock_wait_seconds": 6.499999999999562e-06,
+      "child_elapsed_seconds": 20.42982625,
+      "exit_code": 0
+    },
+    "build": {
+      "record": {
+        "path": "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/media_worker_clock_fixture-v4.build.json",
+        "sha256": "b0bfbf88a03566c5c1a75f2aeac4d470f985b8ca8fdd71754fb74718f1ae1678"
+      },
+      "exe": {
+        "path": "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/media_worker_clock_fixture-v4.exe",
+        "sha256": "fe0564cc9bc61f190bad15ccdf895473be460759ceeaceb7ab85c4398c4945e1"
+      },
+      "fixture_source_sha256": "77d254ab835e3e39da1886f978f587f64db3f652e182eaa624369dc081a4e9b9",
+      "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0"
+    },
+    "command": [
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "--debugmsg",
+      "-all,+loaddll",
+      "--dll",
+      "d3d9=b;winegstreamer=",
+      "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/media_worker_clock_fixture-v4.exe",
+      "--missing-media",
+      "Z:\\private\\tmp\\x3-media-shared-eof-v4-run1\\missing-source.mkv",
+      "--package-config",
+      "1",
+      "--mode",
+      "eof-tail",
+      "--media",
+      "Z:\\private\\tmp\\x3-media-package-playback-v1\\Game relocated \u03a9\u65e5 space\\x3-modern-media\\sources\\401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76\\00002.mkv",
+      "--lav-manifest",
+      "Z:\\private\\tmp\\x3-media-package-playback-v1\\Game relocated \u03a9\u65e5 space\\x3-modern-media\\providers\\lav081-strict-cadf5fbf4cf41bae\\provider.manifest"
+    ],
+    "exit_code": 0,
+    "fixture_wall_seconds": 7.436763333,
+    "bounds": {
+      "call_ms": 10000,
+      "progress_ms": 10000,
+      "child_ms": 60000,
+      "outer_seconds": 95,
+      "captures": 12,
+      "capture_bytes": 12582912,
+      "readbacks": 12,
+      "text_bytes": 67108864
+    },
+    "protected_count": 92,
+    "all_protected_unchanged": true,
+    "accepted": true,
+    "package": {
+      "actual_module_relative_reader": true,
+      "preparation_thread": "304",
+      "read_ms": 17.0237,
+      "same_owner_services": 1,
+      "identity_pins_retained_through_services": true,
+      "pins_released_after_retirement": true
+    },
+    "observed": {
+      "clock_transactions": 0,
+      "ready_frames": 12,
+      "exact_rendered_captures": 12,
+      "render_target_readbacks": 12,
+      "simultaneous_distinct_sampled_destinations": false,
+      "held_peer_regions_verified": true,
+      "final_free_slots_by_instance": {
+        "0": 3
+      },
+      "actual_sample_eos_sessions": 2,
+      "fresh_graph_complete_sessions": 2,
+      "retained_dd": true,
+      "eof_writing_leases_abandoned_after_guard": 2,
+      "selected_sink_callback_observed": false,
+      "retained_eof_replay_accepted": false
+    },
+    "events": {
+      "retrieved": 14,
+      "freed": 14,
+      "polls": 34,
+      "codes": {
+        "13": 2,
+        "10": 10,
+        "1": 2
+      },
+      "batches": 20,
+      "outcomes": {
+        "Empty": 20
+      },
+      "max_anchor_elapsed_ms": 386
+    },
+    "timings": {
+      "heartbeats": 1094,
+      "max_clear_ms": 70.7895,
+      "max_completion_gap_ms": 71.9719,
+      "cold_dd_create_ms": {
+        "0": 71.305
+      },
+      "graphics_max_ms": {
+        "2:graphics:draw_submission": 3.4757,
+        "2:graphics:end_scene": 0.0267,
+        "2:graphics:compose_present": 2.2834,
+        "0:graphics:texture_lock": 0.1783,
+        "0:graphics:texture_rows": 0.1951,
+        "0:graphics:texture_unlock": 0.0585,
+        "2:graphics:readback_transfer": 0.0317,
+        "2:graphics:readback_lock": 15.8764,
+        "2:graphics:snapshot_compare": 0.2994,
+        "2:graphics:readback_unlock": 0.0525
+      },
+      "gpu_execution_time_measured": false,
+      "universal_no_stall_claim": false
+    }
+  },
+  "reference_bindings": {
+    "original_reference": {
+      "path": "/private/tmp/x3-lav-graph-v1-original31/result.json",
+      "sha256": "1d62470678c08e05a3c558380df0920aa621b69332916c099374427973955c34"
+    },
+    "strict_reference": {
+      "path": "/private/tmp/x3-lav-graph-v1-strict31/result.json",
+      "sha256": "16cc24c5de9a1c986e3c35c6ca59ec445a82554c343a5dd16f16b856a2be8a69"
+    },
+    "lav_provider": {
+      "path": "/private/tmp/x3-lav-fixture-0.81/provider.json",
+      "sha256": "8e9bf9ab4d425ff49ed84717a5f9f581652ee0e78a75ff297ebfe09109ef5107"
+    },
+    "lav_graph_provider": {
+      "path": "/private/tmp/x3-lav-strict-graph-v1/graph-provider.json",
+      "sha256": "cadf5fbf4cf41bae21282c06d97af26418fc3b38b331f6b32f16cfdcc55be00d"
+    }
+  },
+  "eof_reference": {
+    "path": "/private/tmp/x3-lav-eof-reference-v2/run/result.json",
+    "sha256": "29caa8a5d2dcfa29c3096b88a4799c26692ad8924032d796d933c173f2289326"
+  },
+  "package_selection": {
+    "enabled": true,
+    "module_root": "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space",
+    "install": {
+      "path": "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/x3-modern-install.json",
+      "sha256": "1dac07c0c476967e58ebd4b378ac473d64d90db10174b67de6cc46ee3872d167"
+    },
+    "package": {
+      "path": "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/x3-modern-media/providers/lav081-strict-cadf5fbf4cf41bae/package.json",
+      "sha256": "c284db2263d3e697880f35210adc4eb0f94b377466366f2f8acca7339c213e08"
+    },
+    "source": {
+      "path": "/private/tmp/x3-media-package-playback-v1/Game relocated \u03a9\u65e5 space/x3-modern-media/sources/401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76/source.json",
+      "sha256": "600cbb5c82c40497ff049e6ca8038cba3b890310b8e9e222ab4910e5e307bb55"
+    },
+    "source_id": 2,
+    "effective_flags": 8
+  },
+  "checker_bindings": {
+    "run_media_worker_clock_fixture.py": {
+      "path": "/private/tmp/x3-media-worker-sample/verification/probe/run_media_worker_clock_fixture.py",
+      "sha256": "bf2f02b79e0ab34e8b176935e09fcbe5df6cab946023ae4715b9f13a7127bae2"
+    },
+    "media_worker_clock_evidence.py": {
+      "path": "/private/tmp/x3-media-worker-sample/verification/probe/media_worker_clock_evidence.py",
+      "sha256": "96b3d7cf2bd9c085fd16e8d59bd5cf97bea6f533490e4bbc91cc0ad1b1f889c5"
+    },
+    "media_worker_transport_tail_evidence.py": {
+      "path": "/private/tmp/x3-media-worker-sample/verification/probe/media_worker_transport_tail_evidence.py",
+      "sha256": "f75b199324cea2b60c98c39ad3f8e0c07508b6d10524fa5665d35789694d456f"
+    }
+  },
+  "preserved_observations": [
+    {
+      "kind": "host_preflight_rejection_before_Wine",
+      "record": {
+        "path": "/tmp/x3-media-shared-clock-v4-driver.log",
+        "sha256": "05ef763bce3d0566d7e2ad76dd202e2347b217b1fafe01efc5c25ff9b9b25183"
+      },
+      "cause": "Checker wrongly required SDK headers/root notices in installed runtime layout; fixed runtime11 + installed notice3 binding, kept original provenance protection"
+    },
+    {
+      "kind": "v4_original_path_checker_rejection",
+      "record": {
+        "path": "/tmp/x3-media-shared-clock-v4-run1/result.json",
+        "sha256": "ea5e3d7ba4b60fd2ded48bd1f9ce1da0d4a4f0d733896098777374959121683a"
+      },
+      "cause": "Documented extended drive prefix differed; native exit0 retained"
+    },
+    {
+      "kind": "v4_offline_functional_pass_coverage_incomplete",
+      "record": {
+        "path": "/tmp/x3-media-shared-clock-v4-run1/result-reanalysis-v1.json",
+        "sha256": "c91c04f9332b8892f2afc005a6e8055188de7e70a6f5d7b3ac3eacf037320eab"
+      },
+      "missing": [
+        "B_fresh_while_A_paused"
+      ],
+      "pause_before_seek_ms": 12.5439,
+      "execution_repeated": false
+    }
+  ],
+  "host_checks": [
+    {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lav_worker_transport verification.analysis.test_lav_worker_pin_discovery verification.analysis.test_media_worker_clock_fixture verification.analysis.test_media_shared_transport_evidence",
+      "count": 128,
+      "seconds": 3.114,
+      "exit_code": 0,
+      "scope": "production primitives and watchdog package lifetime before later checker/phase-only changes"
+    },
+    {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_worker_clock_fixture verification.analysis.test_media_shared_transport_evidence",
+      "count": 131,
+      "seconds": 1.784,
+      "exit_code": 0,
+      "scope": "all affected clock/checker/phase tests after final fixture change"
+    }
+  ],
+  "independent_review": {
+    "agent": "review_media_worker",
+    "source_and_evidence_clear": true,
+    "clock_v5_runtime_clear": true,
+    "eof_v4_runtime_clear": true
+  },
+  "assessment": {
+    "production_transport_extract_qualified": true,
+    "actual_two_source_two_destination_clock_fixture_qualified": true,
+    "module_relative_real_package_opens_and_owner_lifetime_qualified": true,
+    "initial_no_graph_assignment_quiescence_qualified": true,
+    "graph_retirement_quiescence_runtime_exercised": false,
+    "actual_EOF_fresh_graph_twice_qualified": true,
+    "native_windows_runtime_verified": false,
+    "engine_startup_placement_qualified": false,
+    "engine_record_identity_proven": false,
+    "destination_Reset_integration_qualified": false,
+    "production_engine_admission_accepted": false,
+    "unloadable_plugin_supported": false,
+    "universal_no_stall_claim": false,
+    "complete_media_repair": false
+  },
+  "limitations": [
+    "Exactly the source ID2/flags8 LAV MPEG1/RGB32 profile; distribution remains local qualification.",
+    "Public Windows source and x86 cross-compilation do not establish native Windows runtime behavior.",
+    "Process-lifetime module pin is intentional; unsafe retirement keeps the STA, interfaces, storage and package owner alive.",
+    "Cancellation admission closes immediately; construction may complete to a guardable allocator boundary and a blocked native call is not interrupted.",
+    "EOF mode uses one service/two fresh graphs; sink callback is unobserved and retained EOF replay is not claimed.",
+    "No new production integration, game launch, install, source hash prerequisite, or no-stall claim."
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "state": "reviewed standalone callback evidence; production restoration not yet tested",
+  "native_summary": "/tmp/x3-lattice-observer-release-run-v1/summary.json",
+  "original_checker_failure_retained": true,
+  "offline_reanalysis": "/tmp/x3-lattice-observer-release-run-v1/checked-v2.json",
+  "observations": "/tmp/x3-lattice-observer-release-run-v1/observations.jsonl",
+  "observations_sha256": "b2c0c123737a3b77f5b41821b713a003da69ca6207ca3c708059f9d0ad062f9f",
+  "exe_sha256": "1bf0144fbcc57cecba7a2625b728b97642c1b73252ac0600e4d51020fcc2c324",
+  "build": "/tmp/x3-lattice-observer-release-build-v1",
+  "bottle": "X3",
+  "WineArch": "arm64",
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "native_exit": 0,
+  "native_elapsed_seconds": 4.256409667,
+  "cases": 4,
+  "operations": 212,
+  "all_cpu_preserved": true,
+  "held_effective_callbacks": {
+    "add": 0,
+    "release": 0
+  },
+  "dropped_bound_effective_callbacks": {
+    "add": 11,
+    "release": 11
+  },
+  "before_after_reset_identical": true,
+  "sampling_callbacks_per_dropped_case": 290,
+  "explicit_aliases_per_case": 330,
+  "final_device_references": 0,
+  "checker_fix": "Missing private metadata returns S_FALSE; accept only for identity operations, preserve S_OK-only other operations. Reanalysed retained native run without rebuild or Wine repetition.",
+  "host_tests": 11,
+  "review": "Independent deep source and retained runtime/checker review complete.",
+  "limits": [
+    "Actual unmodified helper invoked directly without selector.",
+    "Device Release hook counts and forwards only; no production reference-accounting restoration.",
+    "No native DIP, auxiliary writes, game causality or native Windows qualification."
+  ]
+}

@@ -1,4 +1,6 @@
 """Frame authority and authored profile policy, independent of D3D/Wine."""
+import csv
+import importlib.util
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,7 +27,19 @@ int main() {
     // Row density metadata never scales the authored field.
     sample.dust=50;sample.fog_near=500;sample.fog_far=800;sample.stars=99;
     assert(select().density_scale==1.f&&select().same_key(green));
-    for(const char* family : {"fogbluedistance","fogcyancorner","fogdeepred","foggreeneye","fogparanid","fogred","uranus","uranus3","whitenexus",""}) {
+    for(const auto& family : renderer::fog_field::family_profiles) {
+        std::strcpy(sample.family,family.family);
+        auto selected=select();assert(selected.enabled&&selected.profile==unsigned(family.profile)&&!selected.forced);
+        assert(!std::strcmp(selected.reason,family.family));
+        assert(select(.02f,true,true).profile==selected.profile&&!select(.02f,true,true).forced);
+        sample.dust=0;assert(!select().enabled&&select().profile==0);sample.dust=-1;assert(!select().enabled);sample.dust=8;
+        sample.row_valid=false;assert(!select().enabled);sample.row_valid=true;
+        sample.name_valid=false;assert(!select().enabled);sample.name_valid=true;
+        sample.camera_check=sector_background::Check::Mismatch;assert(!select().enabled);sample.camera_check=sector_background::Check::Match;
+        sample.anchor_check=sector_background::Check::Mismatch;assert(!select().enabled);sample.anchor_check=sector_background::Check::Match;
+    }
+    // Missing-asset positive definitions and unknown names stay native.
+    for(const char* family : {"xtmgreenring","earth","unknown","Bluewell",""}) {
         std::strcpy(sample.family,family);assert(!select().enabled&&select().profile==0);
         assert(select(.02f,true,true).profile==1&&select(.02f,true,true).forced);
     }
@@ -54,4 +68,22 @@ class FogSectorPolicyTests(unittest.TestCase):
             source=Path(tmp)/'test.cpp';exe=Path(tmp)/'test'
             source.write_text('#include <initializer_list>\n'+DRIVER)
             subprocess.run([compiler,'-std=c++17','-O2','-Wall','-Wextra','-Werror','-I',str(ROOT/'src/proxy'),str(source),'-o',str(exe)],check=True)
+            subprocess.run([str(exe)],check=True)
+
+    def test_recipe_and_native_table_cover_every_mapped_positive_family(self):
+        spec=importlib.util.spec_from_file_location('fog_recipe',ROOT/'tools/fog_field_recipe.py')
+        recipe=importlib.util.module_from_spec(spec);spec.loader.exec_module(recipe)
+        with (ROOT/'docs/reverse-engineering/sector-fog-census.csv').open() as stream:
+            rows=list(csv.DictReader(stream))
+        families={row['family'] for row in rows if int(row['dust'])>0}
+        self.assertEqual(len(families),11)
+        self.assertEqual(sum(int(row['dust'])>0 for row in rows),35)
+        self.assertEqual(set(recipe.PROFILES),families | {"fogblue", "fogkhaak", "khaakhive"})
+        # Compile an independently census-derived inventory, checking both name
+        # and persistent ID against the public routing table used by the policy.
+        checks=''.join(f'assert(!std::strcmp(family_profiles[{i}].family,"{name}"));assert(unsigned(family_profiles[{i}].profile)=={p["id"]});' for i,(name,p) in enumerate(recipe.PROFILES.items()))
+        source='#include "fog_field_assets.h"\n#include <cassert>\n#include <cstring>\n#include <iterator>\nusing namespace x3m::renderer::fog_field;int main(){static_assert(std::size(family_profiles)==14);'+checks+'}'
+        with tempfile.TemporaryDirectory() as tmp:
+            cpp=Path(tmp)/'coverage.cpp';exe=Path(tmp)/'coverage';cpp.write_text(source)
+            subprocess.run([shutil.which('clang++') or shutil.which('g++'),'-std=c++17','-Wall','-Wextra','-Werror','-I',str(ROOT/'src/renderer'),str(cpp),'-o',str(exe)],check=True)
             subprocess.run([str(exe)],check=True)

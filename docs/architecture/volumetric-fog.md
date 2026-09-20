@@ -709,30 +709,46 @@ cloud map. The [verification ledger](../verification/volumetric-fog.md) separate
 prototype, asset, production and eventual flight evidence.
 
 **Recipe and control.** Period 32768, 128³ samples, 12000-unit horizon and 24 fixed
-midpoint steps. The two qualified profiles use occupancy 0.12 / sigma 2.5e-6 for
-bluewell and occupancy 0.24 / sigma 6.25e-6 for foggreenoutlands. Noise, cavities
-and voxel colour are baked deterministically by `tools/build/bake_fog_fields.py`.
+midpoint steps. The original profiles retain occupancy 0.12 / sigma 2.5e-6 for
+bluewell and occupancy 0.24 / sigma 6.25e-6 for foggreenoutlands, with both decoded
+atlases and packets byte-identical. The branch implementation extends coverage
+to 14 asset-backed families: all 11 mapped positive-card families plus unused
+fogblue, fogkhaak and khaakhive. Its twelve additions use a common provisional
+artistic occupancy 0.12 / sigma 2.5e-6, not a measured native-density conversion
+or accepted appearance. Four-stop palettes derive from native texture colour;
+the procedural field does not reproduce native card positions or texture shapes.
+Noise, cavities and voxel colour are baked deterministically by
+`tools/build/bake_fog_fields.py`. The [family expansion checkpoint](../verification/volumetric-fog.md#asset-backed-family-expansion-host-checkpoint-2026-09-20)
+records host-only evidence; candidate integration and actual-GPU coverage remain
+pending, with the installed build described only in [status](../status.md).
 The selected numeric strength S remains 0..0.1, with 0.02 meaning unity:
 `sigma_effective = family_sigma * (S / 0.02)`. It changes density, not occupancy
 or horizon. Thus the old 0.01/0.05 homogeneous anchors are superseded. F9 disables;
-F10 keeps the existing strength ladder. Non-unity settings are tuning options,
-not separately accepted appearance. FogNear/FogFar, body size and card count add
+F10 keeps the existing strength ladder. Run53B records the user preference for
+S=0.03 (density multiplier 1.5); this leaves the authored family sigma/occupancy
+and unity basis unchanged. Non-unity settings are tuning options, not separately
+accepted appearance. FogNear/FogFar, body size and card count add
 no density multiplier; the engine's separate distance fade remains intact.
 
 **Authority and fallback.** One copied engine record from the first successful
 BeginScene governs the current frame independently of diagnostic logging.
-Ready, valid positive-dust bluewell/green records select those profiles; D=0 is
-clear. Unknown positive families, unreadable/mismatched records and absent
-current-frame authority preserve native cards and run no replacement field.
-The other nine families remain uncalibrated. Present's diagnostic fallback never
+In the expanded branch, ready, valid positive-dust records select one of the
+14 profiles; D=0 is clear. Unused fogred, foggreenoutlands and foggreeneye records
+share their family profile. Missing-asset families xtmgreenring (no dust bodies)
+and earth (unresolved diffuse), unknown positive families, unreadable/mismatched
+records and absent current-frame authority preserve native cards and run no
+replacement field. Coverage is bounded by the stock asset inventory, not a
+promise for arbitrary mod families. Present's diagnostic fallback never
 authorizes next-frame suppression. `--volumetric-fog-everywhere` remains explicit
 debug forcing of bluewell when a valid view lacks a known family; normal mode
 never invents a profile. A sector identity change disarms replacement and requires a new matching
 warmup even when the same family atlas can be reused.
 
-**Storage and preparation.** Two sparse RCDATA resources contain the exact
-qualified fields (6,769,480 bytes including headers). There is one active 17.02
-MiB decoded CPU atlas and one DEFAULT GPU atlas, plus half-resolution FP16 ST
+**Storage and preparation.** The expanded branch packages 14 sparse RCDATA
+resources totaling 34,142,200 bytes including headers. The original two packets
+remain byte-identical; generated metadata and RC entries cover the full profile
+inventory. There is still one active 17,846,400-byte (17.02 MiB) decoded CPU atlas
+and one same-sized DEFAULT GPU atlas, plus half-resolution FP16 ST
 and full-resolution FP16 scratch. Total GPU storage is about 26.40 MiB at
 1280×768 or 36.80 MiB at 1920×1080, excluding driver copies/alignment. Preparation
 may additionally use a transient SYSTEMMEM upload. Decode/validate/upload occurs
@@ -764,8 +780,14 @@ protected after a composite write starts.
 
 **Cards and history.** Replacement requires current profile/generation,
 prepared targets, camera/depth/owner/idle admission and a successful matching
-warmup. The existing single stacked warmup frame remains explicit; keep mode is
-an intentional diagnostic comparison. After suppression, refusal/failure latches
+warmup. The existing single stacked warmup frame remains explicit for genuine
+replacement readiness changes; keep mode is an intentional diagnostic comparison.
+A camera/TAA history cut alone does not disarm successful replacement or require
+another warmup: the spatial field uses the current camera/depth and has no
+independent fog history. Repeated cuts must continue suppressing admitted native
+cards while applying the current-frame volume. Sector/profile/generation changes,
+toggles, Reset, missing authority and failures retain their existing readiness and
+fallback rules; owner/camera/depth admission is still checked each frame. After suppression, refusal/failure latches
 medium and replacement off until Reset; this can lose both layers for one frame
 and cannot restore already suppressed cards. Native draw count/HRESULT remains
 unchanged. Sector/profile, strength/mode, cut and Reset transitions invalidate
@@ -806,3 +828,84 @@ Detailed primary-source comparisons and implementation limits are retained in
 [/tmp/x3-space-fog-research.md](/tmp/x3-space-fog-research.md). In particular,
 Brown's accessible GDC2015 slides list gas clouds as future work; the session
 abstract alone must not be cited as an implemented cloud algorithm.
+
+### Spatial directional shafts (2026-09-20)
+
+The requested next-flight extension modulates the directional incident-light
+term at each occupied sample of the existing 24-step spatial march. It changes
+`S += T * opacity * phase * chroma * visibility`; density, integration distance,
+transmission and the empty-field identity law remain unchanged. There is no
+uniform underlayer, screen-space beam mask, secondary light or density increase.
+This section supersedes the unshadowed-only limitation of the initial spatial
+production contract; flight appearance remains unaccepted.
+
+The route supplies up to three active general-scene cascades in ladder order,
+excluding cascade zero's own-ship-only map. A map requires successful replay
+publication, an exact current-frame stamp, and rows composed from its retained
+basis and the current camera. Surface-shadow application is not an admission
+condition. In particular, the surface lane's permitted previous-frame far map
+is unavailable to fog. Failed replay and Reset invalidate retained publication;
+fog stores no map reference or lighting history between calls. Invalid/missing
+maps independently fall back to a containing coarser current map or full light.
+If every map is unavailable, the original unshadowed spatial field remains.
+
+Each admitted map is a same-device square R32F texture with at least 64 texels.
+The shader projects camera-relative **view** positions into these maps, keeping
+the modulo-world position exclusively for density lookup. The D3D9 replay
+convention places sample `(i,j)` at screen `(i,j)/N`; manual 2×2 bilinear PCF
+filters four depth comparisons around this location through point samplers.
+The depth comparison subtracts the existing computed **constant** bias:
+`(configured_world_bias + 2*extent/N) / depth_range`. A volume sample has no
+receiver surface plane, so neither slope correction nor the surface plane-fit
+clamp (used by the older uniform fog fallback) applies.
+
+Coverage requires normalized depth in `[0,1]` and maximum absolute XY at most
+0.95. From XY 0.85 to 0.95, its weight decreases continuously into the next
+containing available map, or full light. Coarser weights use the residual
+weight, preserving a bounded `[0,1]` visibility even with overlapping bands or
+holes in admission. Normal covered samples pay four map reads; overlap bands
+can pay eight or twelve. Empty density samples skip all map projection/reads.
+The same shared shader function runs in full-pixel edge repair, preventing a
+lighting mismatch at depth/class boundaries.
+
+Textures s4–s6 and constants c9–c21 are shared by march and composite. Existing
+ALL-state-block capture/restore covers these textures, samplers and constants;
+normalization explicitly initializes every touched sampler, both target binds
+unbind all seven used pixel slots, and restoration unbinds all sixteen before
+restoring caller state. Map validation precedes scene mutation, and loss during
+validation aborts. No new GPU resource, allocation, Reset lease or per-draw work
+is introduced. Map references remain borrowed for the serialized call; the
+existing CPU/LastError guard, scene recovery and write-start/no-rollback contract
+remain in force. Runtime qualification must exercise the additional samplers,
+constants, actual comparisons, recovery and full transaction timing.
+
+Native D3D9 compatibility uses only public texture/state APIs and ps_3_0. The
+compiled march/composite use 315/506 instruction slots. Host compilation and
+numerical witnesses do not establish native Windows execution. Captured
+half-grid evidence finds very little overlap between these authored clouds and
+existing caster shadows; this physically valid implementation therefore does
+not promise visible shafts in arbitrary views. See the verification ledger.
+
+### Engine camera precision admission correction (2026-09-21)
+
+Run197's first-person fog disappearance is a camera precision refusal, not a
+camera-mode restriction or the earlier cut-triggered warmup. The engine view
+basis comes from fixed-point `/65536` values. Its small normalization drift can
+exceed the fog helper's original `1e-4` row Gram-error tolerance while remaining
+valid under `camera_state_from_matrices`' established `1e-3` near-rigid contract.
+The helper now uses that same `1e-3` tolerance. The observed maximum is
+`1.52630033e-4`; this measurement identifies the incompatible thresholds, but
+is not a new bound derived from a single quantization operation.
+
+The fog helper retains the true inverse, positive determinant range
+`[0.999,1.001]`, finite-value guards and invalid-output behavior. It does not
+normalize or reorthogonalize the view: doing so would alter agreement with the
+engine's current depth and camera translation. The upstream projection/view
+checks and current sector/resource authority remain required. At card
+admission a malformed camera still forwards native cards without suppressing
+color; a late failure after suppression retains the Reset-only fault latch.
+There is no change to hook instructions, CPU/LastError boundaries, D3D state or
+writes, resource lifetime, Reset/recovery or rollback behavior. The change is
+one comparison constant: operation count, per-draw work, allocations and locks
+are unchanged. Captured-camera and refusal evidence is in the
+[verification ledger](../verification/volumetric-fog.md#run197-first-person-camera-precision-correction-2026-09-21).

@@ -205,7 +205,7 @@ namespace capture_host {
 
 std::vector<char> events;
 std::recursive_mutex mutex;
-
+unsigned capture_lock_depth;
 struct LightCallBoundary { LightCallBoundary() {} ~LightCallBoundary() {} }; // mirrors capture.cpp: inert, non-trivial so the scoped variable is not "unused"
 namespace cull_small_parts { inline void set_backbuffer_width(unsigned) {} } // X3M_CULL_SMALL_PARTS_PX pixel scale at CreateDevice (src/proxy/cull_small_parts.h); inert on the host
 namespace proxy_identity { inline void log_loaded_module(const wchar_t*) {} } // mirrors the loaded_module line (inert)
@@ -225,8 +225,16 @@ struct ApplicationAdmissionAbi {
 }  // namespace ownership
 
 struct HookGuard {
-    std::lock_guard<std::recursive_mutex> lock{mutex};
-    HookGuard() { events.push_back('L'); }
+    std::unique_lock<std::recursive_mutex> lock{mutex};
+    HookGuard() {
+        ++capture_lock_depth;
+        events.push_back('L');
+    }
+    ~HookGuard() {
+        --capture_lock_depth;
+        lock.unlock();
+        events.push_back('U');
+    }
 };
 
 namespace telemetry {
@@ -263,6 +271,7 @@ struct HookRecord {
 HookRecord hook_record;
 
 void hook_device(IDirect3DDevice9* device, HWND device_window, HWND focus_window) {
+    CHECK(capture_lock_depth > 0);
     events.push_back('H');
     ++hook_record.calls;
     hook_record.device = device;
@@ -405,13 +414,11 @@ void capture_result_case(IDirect3D9& factory, NativeDevice& device, HRESULT resu
         CHECK(out == reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x4444}));
     if (behavior == capture_host::Output::Null && provide_out) CHECK(out == nullptr);
     if (behavior == capture_host::Output::Device && provide_out) CHECK(out == &device);
-    CHECK(capture_host::events.size() >= 6);
-    CHECK(capture_host::events[0] == 'C');
-    CHECK(capture_host::events[1] == 'I');
-    CHECK(capture_host::events[2] == 'L');
-    CHECK(capture_host::events[3] == 'B');
-    CHECK(capture_host::events[4] == 'N');
-    CHECK(capture_host::events[5] == 'A');
+    std::vector<char> expected_events{'C', 'I', 'L', 'B', 'N', 'A'};
+    if (expected_hooks) expected_events.push_back('H');
+    expected_events.push_back('U');
+    CHECK(capture_host::events == expected_events);
+    CHECK(capture_host::capture_lock_depth == 0);
 }
 
 void ownership_success_case(ownership_host::Factory& factory, NativeDevice& native,
@@ -492,7 +499,23 @@ int main() {
     CHECK(capture_host::hook_record.calls == 1);
     CHECK(capture_host::hook_record.device_window == reinterpret_cast<HWND>(uintptr_t{0x9999}));
     CHECK(capture_host::hook_record.focus_window == kFocus);
-    CHECK(capture_host::events.back() == 'H');
+    CHECK(capture_host::events.back() == 'U');
+    CHECK(capture_host::events[capture_host::events.size()-2] == 'H');
+
+    // Nested CreateDevice releases only its own recursive capture-lock scope;
+    // the caller's existing scope remains held after device hooks are installed.
+    test::scenario();
+    capture_host::reset(capture_factory, direct_device, capture_host::direct_native);
+    {
+        capture_host::HookGuard outer;
+        IDirect3DDevice9* nested_out = nullptr;
+        CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus,
+                                          0, &mutated, &nested_out) == S_OK);
+        CHECK(capture_host::hook_record.calls == 1);
+        CHECK(nested_out == &direct_device);
+        CHECK(capture_host::capture_lock_depth == 1);
+    }
+    CHECK(capture_host::capture_lock_depth == 0);
 
     ownership_host::NativeFactory native_factory{};
     ownership_host::Factory ownership_factory{&native_factory, {true}};

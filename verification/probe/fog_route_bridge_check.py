@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Validate the completed bridge log; never launches or builds anything."""
 import argparse, hashlib, json, re
+from collections import Counter
 from pathlib import Path
 REQUIRED={
+ 'captured_camera_suppression','captured_camera_actual_pass','captured_camera_no_transition','captured_camera_sequence_33',
+ 'malformed_camera_parameter_refusal','inverse_gram_boundary_refusal','malformed_camera_native_exact','malformed_camera_no_pass','malformed_camera_recovery',
  'refusal_final_RT0_exact','execution_failure_suppressed_first','actual_pass_reopen_failure',
  'actual_result_reconciles_unknown_scene_poison','failed_pass_bindings_restored','failed_pass_source_clean',
  'failed_pass_RT1_RT2_bytes','poisoned_fallback_no_second_transaction','execution_poison_survives_F9',
@@ -16,8 +19,14 @@ REQUIRED={
  'one_fog_transaction_maximum','route_RT1_RT2_bytes','refusal_no_medium',
  *(f'native_exact_refusal_{i}' for i in range(5)),
 }
+CAMERA_COUNTS={
+ 'captured_camera_suppression':33,'captured_camera_actual_pass':33,'captured_camera_no_transition':33,
+ 'captured_camera_sequence_33':1,'malformed_camera_parameter_refusal':4,'inverse_gram_boundary_refusal':1,
+ 'malformed_camera_native_exact':4,'malformed_camera_no_pass':4,'malformed_camera_recovery':4,
+}
+CAMERA_SCOPE='CAMERA_BRIDGE captured=33 first_person=32 worst=1 malformed=4 inverse_boundary=1 PASS'
 LIMITS=[
- 'Synthetic owner/camera/sun/sector values and cached shader identity; game reader and shader recognition are not exercised.',
+ 'Synthetic owner/sun/sector and captured camera rotations; no shaft-map publication, game reader or shader recognition is exercised.',
  'Whole production fog fragment, real native card calls and FogPass; actual scene-hook/selector dispatch is covered separately.',
  'TAA invalidation request endpoint only; no claim of GPU temporal-history clearing or motion quality.',
  'Pass/policy Reset rewarm here; native device Reset is covered by the separate production state fixture.',
@@ -30,6 +39,9 @@ def validate(text):
     if len(result)!=1 or int(result[0])!=len(rows):raise ValueError('missing/ambiguous result or check count mismatch')
     missing=REQUIRED-set(rows)
     if missing:raise ValueError('missing witnesses: '+','.join(sorted(missing)))
+    counts=Counter(rows)
+    if any(counts[name]!=count for name,count in CAMERA_COUNTS.items()):raise ValueError('incomplete camera sequence')
+    if text.splitlines().count(CAMERA_SCOPE)!=1:raise ValueError('missing/ambiguous camera scope')
     scope='BRIDGE_SCOPE methods=production_fog_fragment native_d3d=1 synthetic_owner=1 cached_shader_identity=synthetic selector_hook=not_exercised taa_history=request_endpoint_only native_reset=reused_state_fixture'
     if scope not in text:raise ValueError('missing explicit fixture scope')
     return dict(result='PASS',checks=len(rows),witnesses=sorted(set(rows)),limits=LIMITS)

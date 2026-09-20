@@ -1,6 +1,9 @@
 #include "capture.h"
 #include "capture_state.h"
 #include "lattice_state_capture.h"
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+#include "../../verification/probe/lattice_observer_guard_abi.h"
+#endif
 #include "proxy_identity.h"
 #include "telemetry.h"
 #include "game_phases.h"
@@ -249,6 +252,9 @@ struct Hooks {
         table[slot] = reinterpret_cast<void*>(fn);
     }
 };
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+#include "../../verification/probe/lattice_observer_guard_state_inc.h"
+#endif
 struct CompositorInvocation;
 struct Device : Hooks {
     D3DCAPS9 caps{};
@@ -293,10 +299,14 @@ struct Device : Hooks {
     sector_background::Diagnostic sector_background_evidence;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     std::shared_ptr<lattice_state::Capture> lattice_state; // allocated only by an explicitly requested F8 edge
+    unsigned lattice_query_depth = 0; // capture mutex; only observer COM queries, never native draw
     bool key_down = false;
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
 // Preserve the original serialization while exposing its CPU-side wait cost.
+struct CaptureLock {
+    std::lock_guard<std::recursive_mutex> lock{mutex};
+};
 struct HeldHookLock {
     std::unique_lock<std::recursive_mutex> lock;
     HeldHookLock():lock(mutex,std::defer_lock){const auto start=telemetry::now();lock.lock();telemetry::record(telemetry::process(),telemetry::Metric::LockWait,telemetry::now()-start);}
@@ -817,11 +827,17 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         HookGuard lock;
         auto& ctx=*devices.at(d);
         auto fn=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(2);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if(fixture_observer_active(d)) {
+            if(fixture_observer.queries)++fixture_observer.result.query_releases;
+            if(fixture_observer.sampling)++fixture_observer.result.sample_releases;
+        }
+#endif
         // A registered invocation owns an explicit native pin. Delay final
         // retirement until its cleanup drops transient aliases and releases that
         // pin through this hook. Never count transient surface aliases as native
         // device references or manufacture a zero return for the application.
-        const bool accounting = !ctx.compositor && !ctx.bloom_busy
+        const bool accounting = !ctx.compositor && !ctx.bloom_busy && !ctx.lattice_query_depth
             && !ctx.motion_output.reference_accounting_busy() && !ctx.bloom.releasing();
         // Caster retention (shadow-caster-retention.md, "References"): a retained
         // resource the application already released pins one device reference the
@@ -840,6 +856,9 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         const unsigned held = accounting
             ? ctx.motion_output.device_references() + ctx.bloom.references() : 0;
         if (held) {
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            if(fixture_observer_active(d)&&fixture_observer.queries)++fixture_observer.result.query_restores;
+#endif
             ctx.motion_output.restore_bindings();
             const ULONG count=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
             const ULONG after=fn(d);
@@ -851,6 +870,9 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         }
         cpu.before_original();
         refs=fn(d);cpu.after_original();
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if(!refs&&fixture_observer_active(d))++fixture_observer.result.retired;
+#endif
         if(!refs){game_phases::invalidate_device();report_shader_population(true); // session end: flush the last count movement
         telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);forget_cached_device();devices.erase(d);}
         last_device_destroyed=!refs&&devices.empty();
@@ -945,7 +967,7 @@ void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
     // This constructor is nonthrowing; cleanup can always destroy the object,
     // including when admission declines before a context is acquired.
     auto& call=*new(storage) CompositorInvocation{};
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    CaptureLock lock;
     frame_timing::Scope timing(frame_timing::Bucket::Scene,"compositor_pre"); // X3M_FRAME_TIMING only
     if(++bloom_calls%300==0)
         log("bloom_admission calls=%llu caller=%llu owner=%llu device=%llu nested=%llu thread=%llu reset=%llu glow_off=%llu scene_handoff=%llu pass_unavailable=%llu boundary=%llu post_qualification=%llu",
@@ -1016,7 +1038,7 @@ void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
 }
 void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
     auto& call=*static_cast<CompositorInvocation*>(storage);
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    CaptureLock lock;
     frame_timing::Scope timing(frame_timing::Bucket::Scene,"compositor_post"); // X3M_FRAME_TIMING only
     if(!call.ready)return;
     if(!compositor_current(call)){bloom_refuse(BloomRefusal::Post,call.owner.get());return;}
@@ -1039,7 +1061,7 @@ void compositor_cleanup(const X3mCompositorFrame*,void* storage,void*,int abnorm
     auto& call=*static_cast<CompositorInvocation*>(storage);
     IDirect3DDevice9* pin=nullptr;
     {
-        std::lock_guard<std::recursive_mutex> lock(mutex);
+        CaptureLock lock;
         if(call.owner){
             Device& ctx=*call.owner;
             if(ctx.compositor==&call){
@@ -1059,7 +1081,7 @@ void compositor_cleanup(const X3mCompositorFrame*,void* storage,void*,int abnorm
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 void bloom_fixture_pre(const X3mCompositorFrame*,void* storage,void*) {
     auto& call=*new(storage) CompositorInvocation{};
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    CaptureLock lock;
     auto& f=bloom_lifetime_fixture; ++f.counts[0];
     const auto found=devices.find(f.device);
     if(found==devices.end() || found->second->compositor)return;
@@ -1100,7 +1122,7 @@ void bloom_fixture_pre(const X3mCompositorFrame*,void* storage,void*) {
 }
 void bloom_fixture_post(const X3mCompositorFrame*,void* storage,void*) {
     auto& call=*static_cast<CompositorInvocation*>(storage);
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    CaptureLock lock;
     auto& f=bloom_lifetime_fixture; ++f.counts[1];
     if(!call.owner || !call.ready || call.revoked)return;
     auto& ctx=*call.owner;
@@ -1267,6 +1289,16 @@ void comparison_notice_text(Device& ctx) noexcept {
 }
 HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r) {
     CpuCallBoundary cpu;
+    // Observer getters can reenter Present while the recursive capture lock
+    // is held. Refuse before admission, renderer work or the native Present.
+    {
+        CaptureLock lock;
+        const auto owner=devices.at(d);
+        if(owner->lattice_query_depth) {
+            if(owner->lattice_state)owner->lattice_state->invalidate();
+            return D3DERR_INVALIDCALL;
+        }
+    }
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     // Declare before the outer lock: final retirement can stop the profiler,
     // and must run after that lock is released. The holder keeps the CPU owner
@@ -1453,7 +1485,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     if(ctx.lattice_state)ctx.lattice_state->invalidate();
     // A Reset reentered from injected GPU work cannot destroy that work's
     // stack-local saved state. Ordinary Reset during original is supported.
-    if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
+    if(ctx.lattice_query_depth || ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
     ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.composition_scene_owner=false;
     ctx.comparison_notice.hide();ctx.comparison.reset_focus();ctx.comparison_report_pending=false;ctx.comparison_emitter_notice[0]='\0';
     ctx.fps_overlay.reset();ctx.fps_notice.text("",""); // the window restarts after Reset; visibility is kept
@@ -1507,6 +1539,7 @@ HRESULT WINAPI reset_ex(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYM
     return reset_common(d,p,mode,true);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
+#include "../../verification/probe/lattice_observer_guard_seam_inc.h"
 void fixture_observe_wrap(Device& ctx, IDirect3DDevice9* device) {
     if (!ctx.fixture_observe_native_wrap) return;
     auto& result = ctx.fixture_wrap;
@@ -1564,6 +1597,29 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
 HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,UINT n,UINT s,UINT c) {
     LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    // Before the lock and every Device-dependent destructor. The native pin
+    // prevents reentrant final retirement; CPU ownership survives hooked Release.
+    // Unarmed draws allocate nothing and acquire no native/shared reference.
+    struct ObserverPin {
+        IDirect3DDevice9* device=nullptr;
+        std::shared_ptr<Device> owner;
+        ~ObserverPin(){if(device)call_preserved([&]{
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            if(fixture_observer_active(device))++fixture_observer.result.pin_releases;
+#endif
+            release_device(device);owner.reset();
+        });}
+        void acquire(IDirect3DDevice9* d) {
+            if(device)return;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            if(fixture_observer_old(d))return;
+            if(fixture_observer_active(d))++fixture_observer.result.pin_acquires;
+#endif
+            owner=devices.at(d);
+            owner->get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
+            device=d;
+        }
+    } observer_pin;
     PlainHookGuard lock(frame_timing::Bucket::Draw);
     auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,false,t,c,s,b,m,n}).submission_error;
@@ -1580,18 +1636,56 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
         CompositionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
         ~CompositionDrawScope(){if(enabled)--depth;}
     } composition_scope(ctx.composition_draw_depth,ctx.motion_output.composition_requested());
-    // Compile-time null specialization keeps the disabled draw path at one
-    // branch, with no getter, allocation or new CPU envelope.
+    // Compile-time null specialization preserves the observation branch with no
+    // getter/allocation/envelope when disabled; the optional pin adds a null check.
     const auto dispatch=[&](auto* observer) {
         constexpr bool observed=!std::is_same_v<std::remove_pointer_t<decltype(observer)>,std::nullptr_t>;
         int slot=-1;
-        if constexpr(observed)if(observer->can_select({UINT(t),c,m,n,s,b}))
-            call_preserved([&]{slot=observer->original(d,{UINT(t),c,m,n,s,b},ctx.draws);});
+        struct QueryScope {
+            unsigned& depth;bool enabled=true;
+            explicit QueryScope(unsigned& value,IDirect3DDevice9* device):depth(value){
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+                if(fixture_observer_active(device)){fixture_observer.queries=true;enabled=!fixture_observer_old(device);}
+#else
+                (void)device;
+#endif
+                if(enabled)++depth;
+            }
+            ~QueryScope(){if(enabled)--depth;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+                fixture_observer.queries=false;
+#endif
+            }
+        };
+        const bool selected=observed && observer!=nullptr && [&]{
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            if(fixture_observer_active(d))return true;
+#endif
+            if constexpr(observed)return observer->can_select({UINT(t),c,m,n,s,b});
+            return false;
+        }();
+        if constexpr(observed)if(selected)
+            call_preserved([&]{
+                observer_pin.acquire(d);
+                QueryScope queries(ctx.lattice_query_depth,d);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+                if(fixture_observer_active(d)){slot=0;return;} // fixture-only selector bypass
+#endif
+                slot=observer->original(d,{UINT(t),c,m,n,s,b},ctx.draws);
+            });
     auto route=ctx.motion_output.before_draw({true,false,t,c,s,b,m,n,composition_permission});
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if(fixture_observer_active(d))call_preserved([&]{fixture_guard_sample(ctx,d,0);});
+#endif
     if constexpr(observed)if(slot>=0)call_preserved([&]{
+        QueryScope queries(ctx.lattice_query_depth,d);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if(fixture_observer_active(d))fixture_guard_query_action(ctx,d);
+#endif
         observer->effective(slot,d,ctx.caps,ctx.get<lattice_state::GetTarget>(38),route);
     });
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if(fixture_observer_active(d))call_preserved([&]{fixture_guard_sample(ctx,d,1);});
     if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}
 #endif
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
@@ -1602,6 +1696,9 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     if constexpr(observed)observer->result(slot,result,route.submit);
     ctx.motion_output.after_draw(route,result);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if(fixture_observer_active(d))call_preserved([&]{fixture_guard_finish_samples();});
+#endif
     ctx.scene_depth.after_draw(result);
     record_draw_input(ctx,input,result);
     if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
@@ -2531,6 +2628,7 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     }
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HRESULT hr=E_FAIL;
     HookGuard lock;
     // The startup motion route (including HDR/TAA/bloom) saves and resyncs
     // state through documented Get* calls. PUREDEVICE forbids those reads.
@@ -2544,18 +2642,18 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     if(p) log("create_device adapter=%u flags=%08lx width=%u height=%u format=%u windowed=%u msaa=%u interval=%u",adapter,flags,p->BackBufferWidth,p->BackBufferHeight,p->BackBufferFormat,p->Windowed,p->MultiSampleType,p->PresentationInterval);
     const auto begin=telemetry::now();
     cpu.before_original();
-    HRESULT hr=factories.at(d)->get<HRESULT (WINAPI*)(IDirect3D9*,UINT,D3DDEVTYPE,HWND,DWORD,D3DPRESENT_PARAMETERS*,IDirect3DDevice9**)>(16)(d,adapter,type,window,effective_flags,p,out);cpu.after_original();
+    hr=factories.at(d)->get<HRESULT (WINAPI*)(IDirect3D9*,UINT,D3DDEVTYPE,HWND,DWORD,D3DPRESENT_PARAMETERS*,IDirect3DDevice9**)>(16)(d,adapter,type,window,effective_flags,p,out);cpu.after_original();
     telemetry::record(telemetry::process(),telemetry::Metric::CreateDevice,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("create_after",0,window,p);
     if(SUCCEEDED(hr)&&p) cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // X3M_CULL_SMALL_PARTS_PX only: the pixel scale of the threshold
     log("create_device_result hr=%08lx",hr);
-    if(SUCCEEDED(hr)&&out&&*out) hook_device(*out,p&&p->hDeviceWindow?p->hDeviceWindow:window,window);
+    if(SUCCEEDED(hr)&&out&&*out){hook_device(*out,p&&p->hDeviceWindow?p->hDeviceWindow:window,window);}
     return hr;
 }
 }
 bool screen_emission_route_enabled() noexcept { return screen_emission_requested; } // the one gate the loader's scan enable shares
 void initialize_log(HMODULE module) {
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    CaptureLock lock;
     wchar_t path[32768]{}; GetModuleFileNameW(module,path,32768);
     directory=path; directory.resize(directory.find_last_of(L"\\/"));
     directory+=L"\\x3-modern-captures"; CreateDirectoryW(directory.c_str(),nullptr);
@@ -3101,7 +3199,7 @@ void initialize_log(HMODULE module) {
     light_phases::initialize(); // opt-in R7 whole-call timer
     submit_phases::initialize(); // X3M_SUBMIT_PHASES=1 only: twenty-two view_submit candidate stamps through the context lean stub, needs the frame group, same window
     loop_phases::initialize(); // X3M_LOOP_PHASES=1 only: six per-sector update stamps through the lean stub, needs the frame group, same window
-    media_cue::initialize(); // X3M_MEDIA_CUE_TRACE=1 / X3M_MEDIA_CUE_CACHE=1 only: one gate on the media-record allocator, same window
+    media_cue::initialize(); // default ID2 skip plus optional trace/cache: one verified allocator gate
     if(const auto observer=media_cue::video_lock_observer()){ // trace on: the surface shell's lock witness (needs --ownership to see the game's surfaces)
         ownership::set_surface_lock_observer(observer);
         log("media_video_witness registered=1 blit_range=%08lx-%08lx interval=%u",static_cast<unsigned long>(media_cue::sites::kVideoBlitBegin),static_cast<unsigned long>(media_cue::sites::kVideoBlitEnd),media_cue::detail::video_blit_line_interval);
@@ -3155,7 +3253,7 @@ const X3mCompositorBinding* compositor_binding() noexcept {
         && hdr_config.tonemap==renderer::HdrTonemap::Agx && scene_hook::wanted() ? &callbacks : nullptr;
 }
 void scene_end_signal() {
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    CaptureLock lock;
     frame_timing::Scope timing(frame_timing::Bucket::Scene,"scene_end_signal"); // X3M_FRAME_TIMING only
     for(auto& entry:devices) entry.second->motion_output.scene_end_hook();
 }
@@ -3165,7 +3263,7 @@ void scene_end_signal() {
 // a line is written; call_preserved keeps the formatter out of the audited
 // graph (cpu_state.h).
 void log(const char* format,...) {
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    CaptureLock lock;
     if(!logfile) return;
     va_list args; va_start(args,format);
     call_preserved([&]{vfprintf(logfile,format,args);fputc('\n',logfile);});
@@ -3173,7 +3271,7 @@ void log(const char* format,...) {
 }
 HANDLE log_handle() noexcept { return log_os_handle; }
 void hook_direct3d(IDirect3D9* d) {
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    CaptureLock lock;
     if(factories.count(d)) return;
     IDirect3D9Ex* ex=nullptr;
     const bool supports_ex=SUCCEEDED(d->QueryInterface(IID_IDirect3D9Ex,reinterpret_cast<void**>(&ex)))
@@ -3188,26 +3286,62 @@ void hook_direct3d(IDirect3D9* d) {
 }
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
+extern "C" __declspec(dllexport) HRESULT x3m_lattice_observer_fixture_arm(IDirect3DDevice9* d,unsigned mode,unsigned action) {
+    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;
+    auto it=x3m::devices.find(d);if(it==x3m::devices.end()||mode>2||action>5)return D3DERR_INVALIDCALL;
+    auto& f=x3m::fixture_observer;auto& ctx=*it->second;
+    if(f.active&&f.device!=d)return D3DERR_INVALIDCALL;
+    if(!f.active){
+        // Hooks::original is borrowed backend memory. Redirect only this
+        // fixture Device's saved dispatch through an owned, full-size copy.
+        // MotionOutput retains its original native dispatch unchanged.
+        f.saved_dispatch.assign(ctx.original,ctx.original+ctx.table.size());
+        f.device=d;f.native=ctx.get<x3m::FixtureDip>(82);f.borrowed_original=ctx.original;
+        f.saved_dispatch[82]=reinterpret_cast<void*>(x3m::fixture_guard_native);
+        ctx.original=f.saved_dispatch.data();
+        f.declaration_entry=ctx.table[88];ctx.table[88]=reinterpret_cast<void*>(x3m::fixture_guard_declaration);f.active=true;
+    }
+    f.result={};f.result.mode=mode;f.result.action=action;
+    if(mode){ctx.lattice_state=std::make_shared<x3m::lattice_state::Capture>();ctx.lattice_state->arm(ctx.id,ctx.frame,ctx.reset_generation,true);}
+    else ctx.lattice_state.reset();
+    return S_OK;
+}
+extern "C" __declspec(dllexport) HRESULT x3m_lattice_observer_fixture_read(IDirect3DDevice9* d,LatticeGuardResult* out) {
+    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;
+    auto& f=x3m::fixture_observer;if(!out||out->size!=sizeof(*out)||f.device!=d)return D3DERR_INVALIDCALL;
+    *out=f.result;return S_OK;
+}
+extern "C" __declspec(dllexport) HRESULT x3m_lattice_observer_fixture_disarm(IDirect3DDevice9* d) {
+    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;auto& f=x3m::fixture_observer;
+    if(f.device!=d)return D3DERR_INVALIDCALL;
+    auto it=x3m::devices.find(d);
+    if(it!=x3m::devices.end()){
+        it->second->original=f.borrowed_original;it->second->table[88]=f.declaration_entry;it->second->lattice_state.reset();
+    }
+    // Disarm is called after the measured draw returns, hence after its native
+    // pin and CPU owner drop. A retired Device cannot retain this storage.
+    f.active=false;f.device=nullptr;f.borrowed_original=nullptr;f.saved_dispatch.clear();return S_OK;
+}
 extern "C" __declspec(dllexport) void x3m_motion_output_fixture_configure(const x3m::MotionOutputFixtureConfig* config) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     if(!config||config->size!=sizeof(x3m::MotionOutputFixtureConfig)) return;
     x3m::fixture_config=*config; x3m::fixture_configured=true;
     for(auto& entry:x3m::devices) x3m::fixture_apply(*entry.second);
 }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_wrap_snapshot(IDirect3DDevice9* device,x3m::MotionOutputFixtureWrapSnapshot* out) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end() || !out)return D3DERR_INVALIDCALL;
     *out=it->second->fixture_wrap;
     return S_OK;
 }
 extern "C" __declspec(dllexport) void x3m_linear_emission_fixture_fault(IDirect3DDevice9* device,unsigned kind,unsigned count) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it!=x3m::devices.end())it->second->motion_output.fixture_emission_fault(kind,count);
 }
 extern "C" __declspec(dllexport) unsigned x3m_linear_emission_fixture_status(IDirect3DDevice9* device,unsigned key) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end())return 0;
     if(key==12)return it->second->fixture_emission_source_calls;
@@ -3215,7 +3349,7 @@ extern "C" __declspec(dllexport) unsigned x3m_linear_emission_fixture_status(IDi
     return it->second->motion_output.fixture_emission_status(key);
 }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_target(IDirect3DDevice9* device,unsigned target,float* out,unsigned floats,unsigned* width,unsigned* height) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_readback(target,out,floats,width,height);
@@ -3227,25 +3361,25 @@ extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback(IDir
 // The fixture executable's own camera pointer slots stand in for the engine
 // globals (camera_state::fixture_install); the identity gate is bypassed.
 extern "C" __declspec(dllexport) void x3m_camera_state_fixture_install(const float* const* projection_slot,const float* const* view_slot) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     x3m::camera_state::fixture_install(projection_slot,view_slot);
 }
 // The fixture executable's own render-context slot stands in for 0x00608518
 // (sun_light_poll::fixture_install); the identity gate is bypassed.
 extern "C" __declspec(dllexport) void x3m_sun_light_poll_fixture_install(const std::uint32_t* context_slot) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     x3m::sun_light_poll::fixture_install(context_slot);
 }
 // Engine scene-end hook seam: the fixture executable's own E8 callsite and
 // compositor stand in for 0x004721b1 / 0x004c4750; identity gate bypassed.
 extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_install(void* site,void* target) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const bool result=x3m::scene_hook::fixture_install(site,target,&x3m::scene_end_signal);
     for(auto& entry:x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
     return result;
 }
 extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_shutdown() {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const bool result=x3m::scene_hook::fixture_shutdown();
     for(auto& entry:x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
     return result;
@@ -3254,7 +3388,7 @@ extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_shutdown() {
 // hooks are real. The fixture uses its own original function and outer SEH catch.
 extern "C" __declspec(dllexport) int x3m_bloom_lifetime_fixture_bind(void (*original)(),
         IDirect3DDevice9* device,IDirect3DTexture9* scene,IDirect3DSurface9* main,IDirect3DSurface9* depth) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     auto& f=x3m::bloom_lifetime_fixture;
     if(!original || !device || f.bound || x3m_compositor_bridge_active())return 0;
     if(x3m::devices.find(device)==x3m::devices.end()){
@@ -3274,13 +3408,13 @@ extern "C" __declspec(dllexport) void* x3m_bloom_lifetime_fixture_entry() {
     return reinterpret_cast<void*>(&x3m_compositor_bridge_entry);
 }
 extern "C" __declspec(dllexport) int x3m_bloom_lifetime_fixture_unbind() {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     auto& f=x3m::bloom_lifetime_fixture;
     if(!f.bound || x3m_compositor_bridge_active() || !x3m_compositor_bridge_unbind())return 0;
     f.bound=false;return 1;
 }
 extern "C" __declspec(dllexport) unsigned x3m_bloom_lifetime_fixture_query(unsigned key) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     auto& f=x3m::bloom_lifetime_fixture;
     if(key==8)return x3m::devices.find(f.device)==x3m::devices.end();
     if(key==9)return f.owner.expired();
@@ -3290,7 +3424,7 @@ extern "C" __declspec(dllexport) unsigned x3m_bloom_lifetime_fixture_query(unsig
 extern "C" __declspec(dllexport) unsigned x3m_scene_hook_fixture_signals() { return unsigned(x3m::scene_hook::signals()); }
 extern "C" __declspec(dllexport) const char* x3m_scene_hook_fixture_status() { return x3m::scene_hook::status(); }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_last_pixel_abi(IDirect3DDevice9* device,float* out,unsigned floats) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_last_pixel_abi(out,floats);
@@ -3301,14 +3435,14 @@ extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_dept
 // Depth replay seam: the private sun-space map as floats plus the last
 // replayed frame's basis (16 floats; motion_output_shadow_replay_inc.h).
 extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height,float* params,unsigned param_floats) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_shadow_replay_readback(out,floats,width,height,params,param_floats);
 }
 // The same per cascade (shadow-cascades.md): 19 params, the retained basis.
 extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_cascade_readback(IDirect3DDevice9* device,unsigned cascade,float* out,unsigned floats,unsigned* width,unsigned* height,float* params,unsigned param_floats) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_shadow_replay_readback(out,floats,width,height,params,param_floats,cascade);
@@ -3318,7 +3452,7 @@ extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_cascade_readb
 // production key path delivers at the same frame boundary. Returns the new
 // state (1 on / 0 off), or -1 for an unknown device.
 extern "C" __declspec(dllexport) int x3m_sun_shadow_fixture_toggle(IDirect3DDevice9* device) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     return it==x3m::devices.end()?-1:it->second->motion_output.sun_shadow_toggle();
 }
@@ -3327,7 +3461,7 @@ extern "C" __declspec(dllexport) int x3m_sun_shadow_fixture_toggle(IDirect3DDevi
 // registry walk of the verified executable; the scope nodes of its draws are
 // compared against it. Pressed at a frame boundary, before the frame's draws.
 extern "C" __declspec(dllexport) int x3m_shadow_own_ship_fixture_install(IDirect3DDevice9* device,std::uintptr_t node,std::uint32_t handle,std::uintptr_t part,std::uint32_t part_handle) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end())return -1;
     it->second->motion_output.fixture_own_ship(node,handle,part,part_handle);
@@ -3336,12 +3470,12 @@ extern "C" __declspec(dllexport) int x3m_shadow_own_ship_fixture_install(IDirect
 // Caster retention seam (shadow-caster-retention.md): the store's levels and
 // counters, and the synthetic lifetime observer (births, retirements, journal).
 extern "C" __declspec(dllexport) unsigned x3m_shadow_retention_fixture_stats(IDirect3DDevice9* device,std::uint64_t* out,unsigned count) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     return it==x3m::devices.end()?0u:it->second->motion_output.fixture_shadow_retention_stats(out,count);
 }
 extern "C" __declspec(dllexport) void x3m_shadow_retention_fixture_lifetime(unsigned op,std::uint64_t a,std::uint64_t b) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     if(op==8){ for(auto& entry:x3m::devices) entry.second->motion_output.fixture_shadow_retention_device_lost(); return; } // 8: device loss on every hooked device
     x3m::shadow_retention_fixture_lifetime(op,a,b);
 }
@@ -3349,26 +3483,26 @@ extern "C" __declspec(dllexport) void x3m_shadow_retention_fixture_lifetime(unsi
 // device queues the fault for every hooked device and the next attach) and
 // the FP16 target as floats.
 extern "C" __declspec(dllexport) void x3m_hdr_fixture_fault(IDirect3DDevice9* device,unsigned kind,unsigned count) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     for(auto& entry:x3m::devices) if(!device||entry.first==device) entry.second->motion_output.fixture_hdr_fault(kind,count);
     if(!device){x3m::fixture_hdr_fault_kind=kind;x3m::fixture_hdr_fault_count=count;}
 }
 extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_hdr_readback(out,floats,width,height);
 }
 // Stage 2: the exposure state (ev, ev_adapted, ev_target, avg_log_l, dt, exposure, steps, k).
 extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_exposure(IDirect3DDevice9* device,float* out,unsigned floats) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_hdr_exposure(out,floats);
 }
 // The Ctrl+Shift+F11 action without the key: the same toggle the sampler calls.
 extern "C" __declspec(dllexport) int x3m_ambient_occlusion_fixture_toggle(IDirect3DDevice9* device) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return -2;
     return it->second->motion_output.ambient_occlusion_toggle();
@@ -3377,7 +3511,7 @@ extern "C" __declspec(dllexport) int x3m_ambient_occlusion_fixture_toggle(IDirec
 // calls, lightmap!=0 for Ctrl+Shift+F4 (the light-map gain), 0 for the guide
 // lights that Ctrl+Shift+F6 drives beside the effects gain.
 extern "C" __declspec(dllexport) int x3m_hull_emission_fixture_toggle(IDirect3DDevice9* device,int lightmap) {
-    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return -2;
     return it->second->motion_output.hull_emission_gain_toggle(lightmap!=0);

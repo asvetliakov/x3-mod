@@ -6,10 +6,57 @@
 #include "execution_state.h"
 #include "buffer_lock_observation.h"
 #include "surface_lock_observation.h"
+#include "surface_lease_core.h"
 
 // Opt-in normal-D3D9 ownership boundary. Application COM references are separate from renderer-owned
 // backend resources, so persistent history cannot keep its own owner alive.
 namespace x3m::ownership {
+
+// CPU-only observation of a live canonical device/surface pair. Both inputs
+// are registry keys only until membership is established. S_OK returns an
+// identity but NO reference: caller must independently qualify engine binding
+// publication/raw reads, thread admission and the whole copy/Reset interval.
+HRESULT snapshot_surface_identity(IDirect3DDevice9* device, IDirect3DSurface9* candidate,
+    SurfaceLeaseIdentity* out) noexcept;
+
+class SurfaceLease final {
+public:
+    SurfaceLease() noexcept = default;
+    SurfaceLease(SurfaceLease&&) noexcept = default;
+    SurfaceLease& operator=(SurfaceLease&&) noexcept = default;
+    SurfaceLease(const SurfaceLease&) = delete;
+    SurfaceLease& operator=(const SurfaceLease&) = delete;
+    // Borrowed canonical application interface, valid only while lease is held.
+    IDirect3DSurface9* get() const noexcept { return retained_.get(); }
+    // May perform final backend cleanup/reenter. Call after UnlockRect and
+    // BEFORE dropping the separately qualified owned-copy/Reset exclusion.
+    void reset() noexcept { retained_.reset(); }
+private:
+    detail::LogicalSurfaceLease<IDirect3DSurface9> retained_;
+    friend HRESULT acquire_surface_lease(IDirect3DDevice9*, IDirect3DSurface9*,
+        const SurfaceLeaseIdentity&, SurfaceLease&) noexcept;
+};
+// Empty output required (nonempty refuses unchanged). S_OK logically retains
+// exactly once under the registry mutex, without backend AddRef or vtable read.
+// Both lookup APIs preserve x87 payload/environment, MXCSR and LastError on
+// ordinary return, including refusals; volatile XMM follows the C++ ABI.
+// E_INVALIDARG: unknown/native/wrong-kind/wrong-device/stale/zero identity;
+// S_FALSE: unavailable device/identity exhaustion; E_FAIL: logical ref overflow
+// or registry failure (never unwinds through the preserving entry shell).
+// No Reset lock is held after return; this API alone NEVER makes Reset safe.
+// Lease keeps the canonical surface's existing native ref AND logical parent
+// device alive. It does not keep engine tables, slots or media records alive.
+HRESULT acquire_surface_lease(IDirect3DDevice9* device, IDirect3DSurface9* candidate,
+    const SurfaceLeaseIdentity& expected, SurfaceLease& out) noexcept;
+
+// Serialized startup registration; callbacks are CPU-only, noexcept and run
+// outside the registry mutex under an ordinary-return CPU/LastError shell.
+enum class ResetPhase { begin, end };
+struct ResetEvent {IDirect3DDevice9* application=nullptr;std::uint64_t device_serial=0,generation=0;ResetPhase phase=ResetPhase::begin;HRESULT result=S_FALSE;};
+using ResetObserver=void(*)(const ResetEvent&) noexcept;
+// Exclusive process-lifetime registration. Null/replacement claims refuse.
+bool claim_reset_observer(ResetObserver) noexcept;
+bool reset_observer_is(ResetObserver) noexcept;
 
 struct Options {
     // Prepare a private snapshot of automatic, single-sample D24X8 through RESZ.

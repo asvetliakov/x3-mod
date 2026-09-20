@@ -1,0 +1,111 @@
+{
+  "date": "2026-09-20",
+  "scope": "Default-disabled concrete consumer; authored engine memory/callback fixture, no game or install",
+  "source_base": "06c1bea7",
+  "review": {
+    "agent": "review_media_engine_adapter",
+    "result": "clear",
+    "matched_source_inputs": 10
+  },
+  "host": {
+    "cwd": "/tmp/x3-media-engine-adapter",
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_engine_adapter verification.analysis.test_media_cue",
+    "tests": 9,
+    "checks": 4490,
+    "failures": 0,
+    "elapsed_seconds": 4.69,
+    "stage_failure_points": 218,
+    "install_failure_points": 194,
+    "evidence": "tool session 7677; no separate raw host log"
+  },
+  "original_exe_span_check": {
+    "spans": 24,
+    "bytes": 165,
+    "whole_instructions": 62
+  },
+  "build": {
+    "command": [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fno-exceptions",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-DWIN32_LEAN_AND_MEAN",
+      "-DNOMINMAX",
+      "verification/probe/media_engine_adapter_x86_fixture.cpp",
+      "src/proxy/media_engine_adapter.cpp",
+      "src/proxy/media_playback.cpp",
+      "src/media/playback_runtime.cpp",
+      "-static",
+      "-static-libgcc",
+      "-static-libstdc++",
+      "-Wl,--image-base,0x400000",
+      "-Wl,--disable-dynamicbase",
+      "-Wl,--section-start,.x3map=0x401000",
+      "-Wl,--section-start,.text=0x630000",
+      "-o",
+      "/tmp/x3-media-engine-adapter-x86-v1/media_engine_adapter_fixture.exe"
+    ],
+    "image_audit": {
+      "fixed_image_base": "0x400000",
+      "owned_map": [
+        "0x401000",
+        "0x620000"
+      ],
+      "real_text": "0x630000",
+      "sections_nonoverlapping": true,
+      "synthetic_bytes_zero": true,
+      "synthetic_initially_nonexecutable": true,
+      "production_addresses_unchanged": true
+    },
+    "exe": "/tmp/x3-media-engine-adapter-x86-v1/media_engine_adapter_fixture.exe",
+    "sha256": "5ff5ce87a322328976e5a9e97660995fb81d431e24b4e9401f1d508b8f5e13e7",
+    "source_inputs": {
+      "verification/probe/media_engine_adapter_x86_fixture.cpp": "36b3a19a4989d68e6bf576fed4eb439895cb341f3ff8a4595cd92087b2871d79",
+      "src/proxy/media_engine_adapter.cpp": "dbf9c9ff4056cef208e0db5cb0b609d83cf8c9296b6dffa34d90a9b072482c29",
+      "src/proxy/media_playback.cpp": "ff5f30b5cfc2abb72082931677361939ac61d55246d4febc25d88bd02ce647e4",
+      "src/media/playback_runtime.cpp": "9476a586d498bd6436d1b26653e2630d8cfcf015a81c937c97b534910898a025",
+      "src/proxy/media_engine_adapter.h": "36fa7b4eabf71cc5b467993635a58864b450f7c7cce238fa205866c28afb91f4",
+      "src/proxy/media_engine_sites.h": "82d76255d5236c025baf89daa367bc421afbf1e250fd5ae3a8b7195cce21a5b9",
+      "src/proxy/media_engine_stubs_inc.h": "ba700e0102255f560abb4ac9399f857c062a9a63608bbf0a6f7590cb3fafca5b",
+      "src/proxy/media_playback.h": "9a9661b43db735809b3d36c05911ec65a7e2a6087185cb5e4bdd3329cba5da9b",
+      "src/media/playback_runtime.h": "f0fc6a1e478cad89766c3e4c0af6bfee543cea9e6a1e451d3007b6ab9d46221b",
+      "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a"
+    },
+    "scope": "compile only; no runtime yet",
+    "record": "/tmp/x3-media-engine-adapter-x86-v1/build.json"
+  },
+  "runtime": {
+    "cwd": "/tmp/x3-media-engine-adapter",
+    "command": "X3M_FIXTURE_BOTTLE=X3 FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-media-engine-adapter-x86-v1/lock.json '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update /tmp/x3-media-engine-adapter-x86-v1/media_engine_adapter_fixture.exe > /tmp/x3-media-engine-adapter-x86-v1/runtime.log 2>&1",
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "checks": 5055,
+    "failures": 0,
+    "sites": 24,
+    "return_envelopes": 11,
+    "alignments": 4,
+    "lock_wait_seconds": 3.083000000000946e-06,
+    "child_elapsed_seconds": 3.633209333,
+    "exit_code": 0,
+    "log": "/tmp/x3-media-engine-adapter-x86-v1/runtime.log",
+    "lock_record": "/tmp/x3-media-engine-adapter-x86-v1/lock.json"
+  },
+  "limitations": [
+    "Authored fixture engine memory, allocator/callback spies; no actual game or transport/destination integration.",
+    "Exception handler manually restores CONTEXT ESP/EIP after RaiseException; no general SEH/RtlUnwind or C++ unwind qualification.",
+    "256 append-only keys per kind; finite lifetime admission and conservative foreign address-reuse refusals.",
+    "Single owner TID/stack allocation must outlive owned objects; same-allocation custom stack switches unsupported.",
+    "Native Windows runtime unverified; no production admission or installed artifact."
+  ]
+}

@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <new>
+#include <initializer_list>
 
 static bool refuse_allocation = false;
 void* operator new(std::size_t n) { if (refuse_allocation) { std::fprintf(stderr, "allocated\n"); std::abort(); } if (void* p = std::malloc(n)) return p; throw std::bad_alloc(); }
@@ -36,6 +37,14 @@ static Entry entry(std::uint32_t id, Caller caller, Outcome outcome, std::uint32
 
 int main() {
     refuse_allocation = true;
+    // Exact ID2 video policy, independent of caller, time and mutable cache.
+    check(refuse_id2_video(2, 0) && refuse_id2_video(2, 8));
+    for (std::uint32_t flags = 0; flags < 512; ++flags) {
+        check(refuse_id2_video(2, flags) == (flags == 0 || flags == 8));
+        for (std::uint32_t id : {0u, 1u, 3u, 101u, 144u, 244u, 800u, 810u, 811u, 812u, 2004u, 8404u, 8509u, 10001u, 0xffffffffu})
+            check(!refuse_id2_video(id, flags));
+    }
+    check(!refuse_id2_video(2, 0xffffffffu));
     // Classification: the play helper is the selector only behind the selector's return address.
     check(classify(0x004f6615, 0x0045c60c, game) == selector);
     check(classify(0x004f6615, 0x00460429, game) == other);

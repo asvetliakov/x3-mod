@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "feature": "media_destination",
+  "date": "2026-09-20",
+  "source_base": "cf55c2f70d0f00c9cadabdec40e13847af4462da",
+  "status": "isolated component implemented; independent source/evidence review clear; root integration/admission remains separate",
+  "host": {
+    "command": "X3M_MEDIA_WORKER_HEADER=/tmp/x3-media-worker-sample/src/media/lav_worker.h PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_destination",
+    "exit_code": 0,
+    "unittest_seconds": 2.322,
+    "checks": 736,
+    "failures": 0,
+    "fixture_elapsed_ms": 9,
+    "wrapper_churn": 100000,
+    "external_reentry_cases": 25,
+    "internal_throw_checkpoints": 4,
+    "observer_sites": 19
+  },
+  "x86": {
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "flags": "-std=c++17 -O2 -Wall -Wextra -Werror -pthread -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2",
+    "exit_code": 0,
+    "build_recipe": "python3 verification/probe/media_destination_build.py --output /tmp/x3-destination-native-build --worker-header /tmp/x3-media-worker-sample/src/media/lav_worker.h",
+    "final_fixture": "/tmp/x3-destination-native-build/media_destination_native-tombstone.exe",
+    "sha256": "3223a65d9927dd1b8ce0f17b1c8e46b0b92b8cb78db45531c897a895904fd531",
+    "bytes": 6353075,
+    "final_fixture_runtime_executed": false,
+    "cpu_shells": [
+      {
+        "symbol": "00005d80 <x3m_media_destination_dispatch>:",
+        "lines": 51,
+        "sha256": "65028523a2013f4e9060535eb3ab37a144bafa4064a5f66ba1997350191af846",
+        "no_sjlj_or_state_helpers": true
+      },
+      {
+        "symbol": "00000210 <x3m::ownership::(anonymous namespace)::notify_reset(x3m::ownership::(anonymous namespace)::Device*, x3m::ownership::ResetPhase, long)>:",
+        "lines": 51,
+        "sha256": "c0ebb18402067742ffab10a114df73188a4fada792b1eb31cc7645d073202cae",
+        "no_sjlj_or_state_helpers": true
+      }
+    ],
+    "owned_image": {
+      "image_base": "0x400000",
+      "owned_map": [
+        "0x401000",
+        "0x620000"
+      ],
+      "authored_ranges": [
+        [
+          "0x490000",
+          "0x520000"
+        ],
+        [
+          "0x600000",
+          "0x620000"
+        ]
+      ],
+      "real_text": "0x630000",
+      "sections_nonoverlapping": true,
+      "synthetic_bytes_zero": true,
+      "synthetic_initially_nonexecutable": true
+    }
+  },
+  "runtime": {
+    "artifact_sha256": "b15cee5a0b121ce6d6282832f06db091bc07682f248cd1838552ca62822da9d4",
+    "preserved_binary": "/tmp/x3-destination-native-build/tested-b15/media_destination_native.exe",
+    "preservation": "Byte-identical reconstruction confirmed by full original SHA256 after post-run original path replacement. No mutation overlapped runtime: lock ended17:10:45.648613UTC, later relink17:11:48.501211UTC.",
+    "log": "/tmp/x3-destination-native-build/tested-b15/runtime-v2.log",
+    "lock": "/tmp/x3-destination-native-build/tested-b15/runtime-v2-lock.json",
+    "exit_code": 0,
+    "native_checks": 142,
+    "abi_checks": 2321,
+    "abi_executions": 304,
+    "failures": 0,
+    "native_resets": 2,
+    "presents": 2,
+    "child_seconds": 3.82446925,
+    "lock_wait_seconds": 3.290999999999017e-06,
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1",
+    "WINEDLLOVERRIDES": "d3d9=b",
+    "native_windows_runtime_verified": false
+  },
+  "failed_fixture": {
+    "artifact_sha256": "59def368cc47e7612ebaec2dd9745e8fe99870182c3c80c6dec23cc7ffbd3540",
+    "preserved_directory": "/tmp/x3-destination-native-build/failed-59def",
+    "exit_code": 1,
+    "native_checks": 142,
+    "native_failures": 0,
+    "native_resets": 2,
+    "abi_executions": 0,
+    "reason": "fixed VirtualAlloc map occupied before main; no production defect inferred"
+  },
+  "reuse": {
+    "changed_since_runtime": "CreateDevice publication invalidates even an equal address key; invalidation preserves retired wrapper tombstones. Both changes are CPU value bookkeeping in State::set_device.",
+    "new_witnesses": "Final-Release same-key device publication cannot acknowledge old allocation; retired shared aliases survive device publication/growth without reindexing old or erasing new same-address wrapper metadata.",
+    "unchanged": "Copy/D3D/Reset operations,19-site stubs, CPU envelopes, group rollback and native fixture behaviors.",
+    "canonical_frame_region_sha256": "fac62865fc6862a5f0afc5adc7d0fcd035d3f81175ea44696cc072554f2021e8",
+    "canonical_frame_region_unchanged": true
+  },
+  "limits": [
+    "Native Windows runtime unverified; documented Windows/D3D APIs and x86 cross-compilation only.",
+    "Unknown or changed wrapper provenance lifetime during active cleanup/release/replacement permanently vetoes copying; no automatic guessed recovery.",
+    "No game launched, proxy DLL built/installed, worker clock/frame queue duplicated or production admission enabled."
+  ],
+  "local_build_record": "/tmp/x3-destination-native-build/build-record.json",
+  "zero_sequence_followup": {
+    "source_base": "d52a5df4245cf1b01eb37133b9f24d4a6e67df0f",
+    "cause": "Canonical Engine.sequence and Impl.read_sequence start at zero. Worker reserves/publishes zero before incrementing; FrameLease validity is storage ownership. Destination incorrectly rejected zero as if empty.",
+    "worker_contract": [
+      "src/media/lav_worker.cpp:70",
+      "src/media/lav_worker.cpp:335",
+      "src/media/lav_worker.cpp:363",
+      "src/media/lav_worker.cpp:596",
+      "src/media/lav_worker.h:141"
+    ],
+    "production_change": "Remove only !view.sequence in Destination::try_copy. Session/operation/epoch, owning FrameLease, graph, slot, pixels, dimensions and pitch/bounds checks remain.",
+    "inputs": {
+      "src/proxy/media_destination.cpp": "4f10a903d0416bf808c7260a58e3de2be29ff5f51b73b9c6ffb9ea0a46de3ecb",
+      "verification/probe/media_destination_host.cpp": "ac3ca647cc0e33d81cb2844448aa57ab29b8346dbd7f87cc866e7e9665925d17",
+      "verification/probe/media_services_fixture.cpp": "31916db92f6db5119aea5bae8e567646a5949e4e20b5989e887cad3d4b2792ee"
+    },
+    "host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_destination verification.analysis.test_media_services",
+      "before": {
+        "log": "/tmp/x3-media-zero-sequence-host-before.log",
+        "destination_checks": 764,
+        "destination_failures": 5,
+        "services_checks": 1808,
+        "services_failures": 5,
+        "unittest_failures": 2,
+        "seconds": 5.585
+      },
+      "after": {
+        "log": "/tmp/x3-media-zero-sequence-host-after.log",
+        "destination_checks": 773,
+        "services_checks": 1815,
+        "failures": 0,
+        "services_update_allocations": 0,
+        "seconds": 4.135
+      },
+      "witness": "Canonical sequence0 lease physically copies all rows. Actual Services writes pixels, publishes nonzero binding with presented=0, emits selected_uploaded(sequence0) exactly once, releases storage and avoids duplicate pumping. Empty lease, mismatched session/operation/epoch and graph0 still refuse before acquire."
+    },
+    "x86_object": {
+      "command": "i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -Isrc/media -c src/proxy/media_destination.cpp -o /tmp/x3-media-zero-sequence-destination.o",
+      "exit": 0,
+      "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+      "sha256": "62575a8f2d32f2ae646df74eb0b56f02e0ac176ebcd82cd302272e50e64e27d9"
+    },
+    "performance": "One comparison removed; no new allocation, lock, copy, validation or per-draw work.",
+    "limits": "New sequence0 behavior is host-tested and Windows/x86 cross-compiled. Parent owns connected worker/native fixture retry; prior ABI/Reset results remain unchanged evidence, not proof of this new zero-sequence behavior. No Wine/game/DLL build/install/commit in this task."
+  }
+}

@@ -23,7 +23,7 @@ def rays(depth,c,x,y):
     limit=np.where(geom,np.minimum(z*length,c[3,3]),c[3,3]).astype(F)
     return world,limit,invalid
 
-def march(helper,volume,c,direction,limit,g=.3,radiance=(1,1,1)):
+def march(helper,volume,c,direction,limit,g=.3,radiance=(1,1,1),visibility=None):
     ds=limit/F(24);T=np.ones(limit.shape,F);S=np.zeros(limit.shape+(3,),F)
     cosine=direction[...,0]*c[3,0]+direction[...,1]*c[3,1]+direction[...,2]*c[3,2]
     g=F(g);a,b,n=(F(1.09),F(.6),F(.91)) if g==F(.3) else (F(1)+g*g,F(2)*g,F(1)-g*g)
@@ -31,7 +31,9 @@ def march(helper,volume,c,direction,limit,g=.3,radiance=(1,1,1)):
     for k in range(24):
         rgba=helper.sample(volume,c[2,:3]+direction*(ds*F(k+.5))[...,None]);rho=rgba[...,3]
         opacity=F(1)-np.exp(-c[2,3]*rho*ds);chroma=rgba[...,:3]/np.maximum(rho[...,None],F(1e-8))
-        S+=(T*opacity)[...,None]*phase*chroma;T*=F(1)-opacity
+        incident=(T*opacity)[...,None]*phase*chroma
+        if visibility is not None:incident*=visibility(direction*(ds*F(k+.5))[...,None])[...,None]
+        S+=incident;T*=F(1)-opacity
     return np.concatenate([S,T[...,None]],-1)
 
 def composite(helper,volume,c,depth,scene,half,g=.3,gamma=2.2,radiance=(1,1,1)):
