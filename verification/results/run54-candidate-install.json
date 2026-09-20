@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "bottle": "X3",
+  "source_commit": "693a0670c8428dccac95da5f1dc384710d22df88",
+  "dll_sha256": "124d98898a66413d2400f99c851e8e2574c6a8238b8d584d06db2a6d48d4d6da",
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "manifest_sha256": "7fec69b3428ddec9746298e203d4b27c7fc8a1565359cf664d4f3d328ed17fac",
+  "install_command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run54-candidate/build/d3d9.dll --media-package /tmp/x3-media-local-stage-v1/package.json",
+  "installer_checkout": "/tmp/x3-media-production-integration",
+  "rollback": {
+    "directory": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-media/rollback/3b6d43c534de4e69ad077650d67203a2",
+    "dll_sha256": "36a6886456f40b4be6c5c8dd8344f6d4cb2e1fc191e6b137ea5530df9a572468",
+    "manifest_sha256": "cfa6de21587734159757a6dcedb0359f148be5de61224c1fdf2e0e0f544e69cb"
+  },
+  "protected_unchanged": {
+    "exe": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+    },
+    "configuration": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+    },
+    "original_media": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/mov/00002.dat",
+      "sha256": "401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76"
+    }
+  },
+  "media": {
+    "package_id": "lav081-strict-cadf5fbf4cf41bae",
+    "package_record_relative": "x3-modern-media/providers/lav081-strict-cadf5fbf4cf41bae/package.json",
+    "package_record_sha256": "c284db2263d3e697880f35210adc4eb0f94b377466366f2f8acca7339c213e08",
+    "sources": [
+      {
+        "effective_flags": 8,
+        "id": 2,
+        "source_record_relative": "x3-modern-media/sources/401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76/source.json",
+        "source_record_sha256": "600cbb5c82c40497ff049e6ca8038cba3b890310b8e9e222ab4910e5e307bb55"
+      }
+    ]
+  },
+  "managed_selection_valid": true,
+  "transaction_pending": false,
+  "game_launched": false
+}

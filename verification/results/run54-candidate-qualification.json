@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "candidate": {
+    "source_commit": "693a0670c8428dccac95da5f1dc384710d22df88",
+    "source_dirty": false,
+    "dll": "/tmp/x3-run54-candidate/build/d3d9.dll",
+    "sha256": "124d98898a66413d2400f99c851e8e2574c6a8238b8d584d06db2a6d48d4d6da",
+    "bytes": 58746286,
+    "build_invocations": 1,
+    "configuration": "RelWithDebInfo",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "python": "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "lav_include": "/tmp/x3-lav-0.81/package/include"
+  },
+  "scope": "App-local owned ID2 media repair; fourteen spatial fog profiles with directional shafts and camera-cut replacement fix; protected lattice state observer. Moving-crawl visual fix not claimed.",
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+    "checkout": "/tmp/x3-media-production-integration",
+    "source_commit": "693a0670c8428dccac95da5f1dc384710d22df88",
+    "tests": 2638,
+    "skipped": 2,
+    "status": "PASS",
+    "unittest_seconds": 756.11,
+    "wall_seconds": 759.82,
+    "log": "/tmp/x3-combined-candidate-host-v2.log",
+    "sha256": "3b12c48fb9811dfd4b7b023859d9f6ffbd50706af40f4efe43e86a4a460c6d5f",
+    "prior_failed_log": "/tmp/x3-combined-candidate-host-v1.log",
+    "prior_failure_scope": "Six host fixture/setup/source-assertion failures; reviewed repairs, no production changes."
+  },
+  "linked_audit": {
+    "path": "/tmp/x3-run54-candidate/linked-audit.json",
+    "sha256": "29740112294b590bbac943d29539605ff0d0a4a50ef67ea3a2547a033e911c55",
+    "result": "PASS",
+    "roots": 95,
+    "reachable_functions": 543,
+    "violations": 0
+  },
+  "selected_render_smoke": {
+    "scope": "Two selected actual-DLL cases; partial runner does not claim full-suite or cross-case qualification.",
+    "report_path": "/tmp/x3-run54-candidate/render-smoke.json",
+    "sha256": "b9d6fb94d5fa45d313fbb6080bd9b2dce837224defce93600bfe69a6818ba8bf",
+    "cases": {
+      "production-ownership-hdr-on": {
+        "exit": 0,
+        "checks": 43,
+        "restorations": 39,
+        "directory": "verification/probe/build/motion-output-production-ownership-hdr-on-20260920-233854-696398",
+        "dll_sha256": "124d98898a66413d2400f99c851e8e2574c6a8238b8d584d06db2a6d48d4d6da",
+        "exe_sha256": "296aeb1cbd89dbb298ebdb3f62b9f888532ee6306c37fec7e49d40fc135467ec",
+        "trace_sha256": "b0b2a43531ea77020080e90ef7ac36ea7683fdcb6a9bb7b6a11cb2452db965ec"
+      },
+      "production-taa-hdr-on": {
+        "exit": 0,
+        "checks": 83,
+        "restorations": 51,
+        "directory": "verification/probe/build/motion-output-production-taa-hdr-on-20260920-233902-206272",
+        "dll_sha256": "124d98898a66413d2400f99c851e8e2574c6a8238b8d584d06db2a6d48d4d6da",
+        "exe_sha256": "296aeb1cbd89dbb298ebdb3f62b9f888532ee6306c37fec7e49d40fc135467ec",
+        "trace_sha256": "47ebfdf448e7b9a2fd434d7d15ca71941387bc799cc450a5939b0fbf51716397"
+      }
+    },
+    "lock": "/tmp/x3-run54-candidate/render-smoke-lock.json"
+  },
+  "feature_evidence": {
+    "media_connected": "/tmp/x3-media-production-integration/verification/results/media-connected-build-2026-09-20.json",
+    "lattice_guard": "verification/results/lattice-observer-guard-2026-09-20.json",
+    "fog_ledger": "/tmp/x3-media-production-integration/docs/verification/volumetric-fog.md"
+  },
+  "dry_run": {
+    "path": "/tmp/x3-run54-candidate/dry-run.json",
+    "sha256": "eae6c0be966304d0aaeaee2ae5a5b2adae980978561e77abee1ad836ffa5b98d",
+    "exit_code": 0,
+    "game_launched": false,
+    "fog_strength": 0.03,
+    "launcher_checkout": "/tmp/x3-media-production-integration"
+  },
+  "bottle": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1"
+  },
+  "native_windows": "unverified",
+  "game_visuals_and_media_stutter_acceptance": "pending Run54",
+  "install_record": "verification/results/run54-candidate-install.json"
+}

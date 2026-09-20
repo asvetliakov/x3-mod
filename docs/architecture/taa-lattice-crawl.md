@@ -1255,3 +1255,139 @@ resources with and without an external application reference, before changing
 production code. An injected mock callback alone cannot establish backend causation.
 This is an offline diagnostic investigation, not a request for another flight or
 authorization for live geometry copies. No moving-crawl fix is selected yet.
+
+## 27. Bound observer reference callbacks and device lifetime (2026-09-20)
+
+The real-device callback probe resolves the first part of §26's hypothesis.
+Its original X3 run exited successfully; the host checker initially misclassified
+36 missing private IDs because `query_resource_id` maps `D3DERR_NOTFOUND` to
+`S_FALSE`. The narrowly corrected checker accepts that success code only for
+identity queries. The original failed wrapper result is retained; offline
+`/tmp/x3-lattice-observer-release-run-v1/checked-v2.json` validates the unchanged
+executable and observations. With creation references retained, effective queries
+produce zero device Release callbacks. With creation references dropped while
+resources remain bound, the unmodified helper produces 11 AddRef/Release pairs,
+both before and after Reset. Its own MRT sampling contributes another 290 Release
+callbacks per dropped-reference case, explicitly separated from helper evidence.
+Count-only hooks preserve MRTs; that probe does not establish production flushing.
+
+The bounded production correction adds a capture-mutex-owned per-device observer
+query nesting count around `Capture::original` and `Capture::effective`. The
+existing full CPU envelope includes their complete getter/alias-release work.
+`release_device` skips retention/reference inference and binding restoration
+while this count is positive, but always forwards the real native Release and
+retains ordinary destruction handling. The count ends before `before_draw`,
+native submission and `after_draw`; the native draw is not enclosed in a new
+observation scope.
+
+Each candidate query acquires one saved-native-slot1 device reference and shared
+CPU `Device` ownership. An optional holder declared before the outer draw lock
+keeps both through submission, renderer cleanup, logging and `CallTimer`
+destruction. It drops the native pin through normal `release_device`, then its
+CPU owner, inside `call_preserved` after the outer lock. No subsequent statement
+accesses `Device`. The native pin prevents reentrant last-application-reference
+retirement during queries; CPU ownership alone would not. Normal final pin drop
+can flush lazy targets after the draw, which is accepted diagnostic overhead.
+
+Reentrant Present during an observer query invalidates the packet and returns
+`D3DERR_INVALIDCALL` before media-root maintenance, `before_present`, native
+Present or frame advance. Reset/ResetEx invalidates the packet and refuses at the
+injected-operation boundary before renderer teardown or native Reset. Both use
+the existing packet invalidation status `reset` as cancellation; refusal does not
+mean a native Reset occurred. Ordinary Present/Reset outside queries retain their
+existing behavior. The packet's independent CPU pin/reentry rules remain.
+
+Unarmed draws acquire no shared/native references and allocate nothing. The
+existing observer branch remains, plus the optional holder's null-pin destructor
+check. Ordinary Present gains one exclusion read; only an already-held capture
+scope enters the extra recursive lock check. An armed request can pin **65**
+candidate draws: candidate 65 is pinned before `original` rejects the request's
+64-read capacity. There remain at most 64 selector reads and two full state
+observations. Each pin can incur a post-draw lazy flush. This is diagnostic cost,
+not measured gameplay FPS; narrowing it requires a separately designed selector
+split rather than assumptions about engine/resource lifetime.
+
+The focused `latticeguard` mode in the real motion-output fixture links actual
+capture, MotionOutput and Capture::effective implementations. Only fixture
+selection/checkpoints and the explicitly labelled old-control guard bypass are
+substituted. It compares observer off/old/guarded, lazy/per-draw routing, held/dropped
+bound declaration references and ordinary Reset/recreation. MRT aliases remain
+externally held through native submission, with any sampling-induced device
+Release counted separately. Native arguments, result, CPU/LastError and MRT
+checkpoints are measured; motion/depth readbacks test actual writes and an ordinary
+subsequent draw tests recovery. Direct nested API calls are deliberate refusal
+injections, distinct from real declaration Release callbacks. Getter failure and
+unbound-index native failure test cleanup; two extra devices exercise last
+application Release during queries with renderer references absent/present.
+Another fixture device remains alive, so those cases qualify target retirement,
+not process-last-device profiler shutdown. Extracted hook tests assert final pin
+drop after the outer lock/timer and shared CPU ownership through native retirement.
+
+The fixture uses its own full-size saved-dispatch table copy; it never patches
+the backend's native vtable. Live-device disarm restores the borrowed pointer
+before freeing the copy. Retired-device disarm occurs after the draw/pin/CPU owner
+have returned. Early development failures are retained: v1 omitted the mode's
+seam admission; v2 attempted a write to the borrowed native table; v3/v4 exposed
+unequal predecessor history in the fixture. The recovery draw duplicates the
+rigid key and poisons the next frame's history; v4 shows all 16,384 motion words
+changing from valid history to sentinel while all 4,096 depth words agree.
+One unique predecessor frame before each arm equalizes that input. Full auxiliary
+comparison remains strict; no production history rule or numerical tolerance changed.
+In v5, topology zero did not produce the assumed native failure. The final case
+unbinds the index buffer and records the actual native `D3DERR_INVALIDCALL` while
+preserving caller/native argument and result equality. All failed runs remain
+local alongside the accepted v6 run; none were overwritten.
+
+The [compact acceptance record](../../verification/results/lattice-observer-guard-2026-09-20.json)
+binds the owner-run v6 results to the frozen fixture EXE/DLL and retained shader
+hashes. Both per-draw and lazy runs pass 415 checks, 37 restoration comparisons
+and 36 frames each: 24 matrix arms, 16 nested/failure cases and four final-release
+cases total. In each old/dropped arm the real declaration-release callback causes
+one production restoration; lazy RT1/RT2 disappear and center depth remains the
+`-1` sentinel. Guarded/dropped arms retain that real callback but perform zero
+query restorations, preserve MRTs at native submission and write depth `0.5`.
+Observer-off/guarded full motion/depth readbacks and ordinary subsequent-draw
+outputs agree. All matrix arms report zero sampling-induced device Releases.
+
+The private seam uses clean support objects from `2b81d12c`, with the reviewed
+guard capture delta based on `3e9b7076`; it is not an install candidate. The X3
+bottle reports arm64 Wine with `FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`.
+Runner time is 6.987 s; lock wait is 0.000003 s and child elapsed time 7.050 s.
+The unchanged seam DLL's linked audit passes 95 roots / 548 reachable functions /
+zero violations. Focused host checks pass 15 tests in 7.594 s, including the real
+extracted draw (61 checks), lifetime fixture (46 scenarios / 246 checks) and
+arm/disarm against a read-only native dispatch page. Independent deep review
+found no remaining source/runtime blocker. These are diagnostic timings.
+
+The fixture deliberately bypasses game selection. Direct nested API injections
+exercise early cancellation before `effective` sets its busy flag; the existing
+helper host tests separately cover busy packet storage. Windows-compatible
+source/cross-compilation and X3/arm64 Wine evidence do not establish
+[native Windows execution](platform-portability.md#2026-09-20-lattice-observer-query-reference-guard).
+Neither the
+callback mechanism nor this correction authenticates historical Run193 ownership
+or its first destructive callback, Run177 payload/fragment correspondence, or a
+moving-crawl/TAA improvement. No new flight is requested by this checkpoint.
+
+## 28. External thin-geometry techniques and bounded next audit (2026-09-20)
+
+The user requested an Astra/high design investigation of other engines. The
+[parent-ratified report](/tmp/x3-thin-geometry-external-design.md) compares primary
+AMD, Epic, Activision, Valve and NVIDIA sources against §§15–27 and inspected
+shader code. AMD FSR2 protects thin-feature history with expiration and
+visibility/shading invalidation; Epic TSR documents dense parallel subpixel lines
+as a difficult case. These mechanisms do not reopen the failed stronger-history
+recipes without new accumulated-history validity information. Source coverage
+remains the leading local candidate, with conditional history protection second;
+material filtering and authored content/LOD changes address separately established
+contributors. No displayed-RGB benefit follows from the 75% geometry metric.
+
+Parent selected one offline coverage-conditioned RGB/resolve attribution audit
+using existing run177 data and fixed supports, preserving unknown ownership and
+the two discrepant/twelve control pixels. It compares source HDR, ordinary resolve
+and display variation and reports clamp/rejection contributions without fitting
+another foreground/background predictor. The work is isolated under
+`/tmp/x3-lattice-stage-attribution`; no production change, live payload copy or
+extra flight is authorized by this experiment. Empty/unstable strata are a valid
+negative outcome. Run54's corrected state capture remains the selected flight
+step; neither it nor the offline audit promises a crawl fix.

@@ -483,3 +483,24 @@ production CrossOver GPU/resource/recovery and timing fixtures now pass, as
 does the synthetic-owner route/card bridge (see the [fog ledger](../verification/volumetric-fog.md#spatial-production-renderer-qualification-2026-09-20)).
 Game TAA/appearance and native Windows execution remain unverified. These
 CrossOver fixtures are not native Windows runtime proof.
+
+## 2026-09-20: lattice observer query reference guard
+
+The [observer guard](taa-lattice-crawl.md#27-bound-observer-reference-callbacks-and-device-lifetime-2026-09-20)
+uses public D3D9 COM AddRef/Release and getter entry points, shared production
+source, and existing CPU/LastError boundaries. It requires no private backend
+layout, export or hash. The native device pin remains valid through submission
+and cleanup; only the bounded observer query scopes suppress proxy reference
+accounting/restoration, while native Release always forwards. Callback frequency
+may differ by backend; both callback-free held-resource controls and actual
+dropped-resource callbacks are covered by the X3/FEX matrix.
+
+Windows x86 cross-compilation and the linked CPU audit pass. The private actual
+capture/MotionOutput/helper fixture passes 830 checks under X3 arm64 Wine with
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`, covering lazy/per-draw routing,
+Reset/recreation, actual writes, query refusal, native failure and target-device
+retirement. Native Windows runtime, process-last-device profiler shutdown and
+actual game selection remain unverified. This reproduces a concrete observer
+interference mechanism; it does not prove historical Run193 resource ownership
+or its first destructive callback. Scoped evidence and remaining limits are in
+the [compact record](../../verification/results/lattice-observer-guard-2026-09-20.json).
