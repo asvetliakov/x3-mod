@@ -724,8 +724,10 @@ pending, with the installed build described only in [status](../status.md).
 The selected numeric strength S remains 0..0.1, with 0.02 meaning unity:
 `sigma_effective = family_sigma * (S / 0.02)`. It changes density, not occupancy
 or horizon. Thus the old 0.01/0.05 homogeneous anchors are superseded. F9 disables;
-F10 keeps the existing strength ladder. Non-unity settings are tuning options,
-not separately accepted appearance. FogNear/FogFar, body size and card count add
+F10 keeps the existing strength ladder. Run53B records the user preference for
+S=0.03 (density multiplier 1.5); this leaves the authored family sigma/occupancy
+and unity basis unchanged. Non-unity settings are tuning options, not separately
+accepted appearance. FogNear/FogFar, body size and card count add
 no density multiplier; the engine's separate distance fade remains intact.
 
 **Authority and fallback.** One copied engine record from the first successful
@@ -778,8 +780,14 @@ protected after a composite write starts.
 
 **Cards and history.** Replacement requires current profile/generation,
 prepared targets, camera/depth/owner/idle admission and a successful matching
-warmup. The existing single stacked warmup frame remains explicit; keep mode is
-an intentional diagnostic comparison. After suppression, refusal/failure latches
+warmup. The existing single stacked warmup frame remains explicit for genuine
+replacement readiness changes; keep mode is an intentional diagnostic comparison.
+A camera/TAA history cut alone does not disarm successful replacement or require
+another warmup: the spatial field uses the current camera/depth and has no
+independent fog history. Repeated cuts must continue suppressing admitted native
+cards while applying the current-frame volume. Sector/profile/generation changes,
+toggles, Reset, missing authority and failures retain their existing readiness and
+fallback rules; owner/camera/depth admission is still checked each frame. After suppression, refusal/failure latches
 medium and replacement off until Reset; this can lose both layers for one frame
 and cannot restore already suppressed cards. Native draw count/HRESULT remains
 unchanged. Sector/profile, strength/mode, cut and Reset transitions invalidate

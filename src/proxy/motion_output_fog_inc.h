@@ -278,7 +278,8 @@ void MotionOutput::disable_volumetric_fog(const char* why, HRESULT result) noexc
 void MotionOutput::run_volumetric_fog() noexcept {
     if (fog_frame_ == frame_) return; // the hook and the bloom-copy sites both qualify
     fog_frame_ = frame_;
-    // A camera cut (gate jump, load, view switch) ends the sector hold at once; cards bound this frame keep it.
+    // A cut expires only the diagnostic source hold; current engine authority
+    // and successful spatial replacement readiness remain independent of it.
     if (cut_finished_ && counters_.cut) fog_latch_.cut(frame_);
     fog_latch_.update(frame_, fog_everywhere_); // source observation only
     const float weight = 1.f;
@@ -339,9 +340,9 @@ void MotionOutput::run_volumetric_fog() noexcept {
     }
     release(depth); release(rt0);
     complete_volumetric_fog(skip, hr, out);
-    // Cuts are finalized only at scene end. Finish this transaction, then
-    // require a fresh successful warm-up on the next frame. TAA owns cut reset.
-    if (cut_finished_ && counters_.cut) fog_cards_.armed = false;
+    // Camera cuts invalidate TAA history, not readiness of this current-frame
+    // spatial pass. Authority/resource changes and failures own rewarming;
+    // disarming on a cut would stack native cards and volume on the next frame.
     const char* reason = skip ? skip : "ok";
     // A change of state is one line (bounded); timing mode logs every frame.
     const bool changed = std::strcmp(reason, fog_last_reason_) != 0;

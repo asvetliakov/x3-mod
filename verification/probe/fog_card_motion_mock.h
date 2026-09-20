@@ -10,19 +10,20 @@
 #include <cstdio>
 #include <initializer_list>
 #include <cstring>
+#include <type_traits>
 struct LARGE_INTEGER { long long QuadPart=0; };
 inline void QueryPerformanceCounter(LARGE_INTEGER* v){v->QuadPart=1;}
 inline void QueryPerformanceFrequency(LARGE_INTEGER* v){v->QuadPart=1;}
 using HMODULE=void*;using LPCWSTR=const wchar_t*;
 constexpr unsigned GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS=1,GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT=2;
 inline bool GetModuleHandleExW(unsigned,LPCWSTR,HMODULE* m){*m=(void*)1;return true;}
-constexpr int E_FAIL=-1;
+constexpr int E_FAIL=-1,E_NOINTERFACE=-2,IID_IDirect3DTexture9=1;
 using UINT=unsigned;constexpr int S_OK=0,S_FALSE=1,D3DERR_DEVICELOST=-200,D3DERR_DEVICENOTRESET=-201;
 using DWORD=std::uint32_t; using HRESULT=std::int32_t;
 constexpr bool FAILED(HRESULT hr) { return hr<0; }
 constexpr bool SUCCEEDED(HRESULT hr) { return hr>=0; }
 constexpr unsigned D3DPT_TRIANGLELIST=4,D3DDECLTYPE_FLOAT16_4=16,D3DZB_FALSE=0,D3DCULL_NONE=1,D3DFILL_SOLID=3,
- D3DBLEND_ONE=2,D3DBLEND_INVSRCCOLOR=4,D3DBLENDOP_ADD=1,SetRenderState=57,GetRenderState=58,GetStreamSourceFreq=103;
+ D3DBLEND_ONE=2,D3DBLEND_INVSRCCOLOR=4,D3DBLENDOP_ADD=1,SetRenderState=57,GetRenderState=58,GetStreamSourceFreq=103,GetRenderTarget=38;
 constexpr unsigned D3DFMT_A32B32G32R32F=116;
 using D3DRENDERSTATETYPE=unsigned;
 constexpr unsigned motion_shadow_state_count=32,composition_blend_count=4;
@@ -30,7 +31,17 @@ constexpr unsigned shadow_states[32]={0,1,2,3,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 constexpr unsigned composition_blend_states[4]={8,9,10,11};
 enum { D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE, D3DRS_COLORWRITEENABLE,
  D3DRS_CULLMODE,D3DRS_STENCILENABLE,D3DRS_FILLMODE };
+// Host stand-ins track temporary references; they do not render pixels.
+struct IDirect3DTexture9 { unsigned refs=1;void Release(){assert(refs>1);--refs;} };
+struct IDirect3DSurface9 {
+ unsigned refs=1;IDirect3DTexture9 texture;
+ HRESULT GetContainer(int,void** out){++texture.refs;*out=&texture;return S_OK;}
+ void Release(){assert(refs>1);--refs;}
+};
+template<class T>void release(T*& value){if(value)value->Release();value=nullptr;}
 struct Device {
+ IDirect3DSurface9 target;
+ static HRESULT get_target(Device* d,DWORD slot,IDirect3DSurface9** out){assert(slot==0);++d->target.refs;*out=&d->target;return S_OK;}
  long states[8]={0,0,0,1,7,1,0,3},blends[4]={2,4,1,0};
  unsigned gets=0,freq_gets=0,frequency=1;int failed_state=-1;bool fail_frequency=false;
  static HRESULT get(Device* d,unsigned state,DWORD* value){++d->gets;if(int(state)==d->failed_state)return -99;*value=DWORD(state<8?d->states[state]:d->blends[state-8]);return 0;}
@@ -42,12 +53,25 @@ struct Device {
   d->mask=mask;d->states[4]=mask;return 0;
  }
 };
+using GetRenderTargetFn=HRESULT(*)(Device*,DWORD,IDirect3DSurface9**);
 using GetRenderStateFn=HRESULT(*)(Device*,unsigned,DWORD*);
 using GetStreamFreqFn=HRESULT(*)(Device*,UINT,UINT*);
 using SetRenderStateFn=HRESULT(*)(Device*,unsigned,DWORD);
 template<class F> void call_preserved(F&& fn) { fn(); }
 template<class... T> void log(const char*,T...) {}
-namespace x3m::renderer { struct FogFrame { unsigned width=0,height=0;bool caller_scene_open=true; }; struct FogResult {bool applied=false;HRESULT restore=0;bool caller_state_restored=true,route_poisoned=false,scene_known=true,scene_open=true;}; }
+namespace x3m::renderer {
+enum class FogStage {None,Targets};
+struct FogFrame {
+ unsigned width=0,height=0;bool caller_scene_open=true;
+ IDirect3DTexture9* depth_share=nullptr;IDirect3DSurface9* target=nullptr;
+ fog_field::Profile profile=fog_field::Profile::None;unsigned recipe_id=0;std::uint64_t field_generation=0;
+ bool main_target=false,linear_depth_current=false,caller_scene_known=false,caller_stateblock_recording=false,caller_queries_idle=true;
+};
+struct FogResult {
+ bool applied=false;HRESULT restore=0;bool caller_state_restored=true,route_poisoned=false,scene_known=true,scene_open=true;
+ HRESULT operation=0;FogStage failed=FogStage::None;unsigned cascades_bound=0,device_calls=0;
+};
+}
 namespace x3m {
 struct MotionDrawCall { bool indexed=true,user_memory=false;unsigned topology=4,primitives=2,vertex_count=4; };
 struct MotionRoute { FogCardMask fog_card_mask{}; HRESULT preparation_error=0,submission_error=0;bool submit=true; };
@@ -57,8 +81,14 @@ struct MockFog { struct Caps {bool enabled=true;}cap; const Caps& caps()const{re
  int prepare_field(void*,renderer::fog_field::Profile){return 0;}
  std::uint64_t field_generation()const{return 1;}
  int result=0;unsigned prepares=0;int prepare_targets(unsigned,unsigned){++prepares;if(result>=0)ready=true;return result;}
+ unsigned executes=0;HRESULT execute_result=S_OK;bool execute_applied=true;
+ HRESULT execute(const renderer::FogFrame& in,renderer::FogResult* out){
+  assert(in.target&&in.depth_share&&in.main_target&&in.linear_depth_current&&in.caller_scene_known);
+  ++executes;out->applied=execute_applied&&execute_result==S_OK;out->operation=execute_result;
+  out->scene_open=in.caller_scene_open;return execute_result;
+ }
  bool ready=true; bool resources_ready(unsigned w,unsigned h,renderer::fog_field::Profile p,unsigned,std::uint64_t generation)const{return ready&&w&&h&&p!=renderer::fog_field::Profile::None&&generation==1;} };
-struct MockHdr { void* target()const{return (void*)1;} };
+struct MockHdr { IDirect3DSurface9* surface=nullptr;IDirect3DSurface9* target()const{return surface;} };
 struct MotionOutput {
  Device device_storage{}; Device* device_=&device_storage;
  struct Shadow { bool recording=false,fog_card_pair=true; std::uint64_t stream0=1,indices=2,declaration=0x0cdf6a8c884ad955ull;
@@ -66,12 +96,16 @@ struct MotionOutput {
   bool declaration_stream0_only=true;
   DWORD states[32]{},composition_blend[4]{};bool states_known[32]{},composition_blend_known[4]{},fill_mode_known=false;
  } shadow_;
- struct Counters { unsigned rs_queries=0,rs_hits=0,rs_gets=0;bool filled=true; struct Taa {bool attempted=false;}taa;}counters_;
+ struct Counters { unsigned rs_queries=0,rs_hits=0,rs_gets=0;bool filled=true,cut=false; struct Taa {bool attempted=false;}taa;}counters_;
  renderer::FogSectorLatch fog_latch_{};
  FogCardPolicy fog_cards_{}; FogSectorFrame fog_sector_{};
  bool fog_everywhere_=false;std::uint64_t generation_=0,fog_transition_frame_=~std::uint64_t(0);
- struct SunFrame {bool failed=false;}sun_frame_;bool sun_lane_failed_=false;
- bool scene_open_=true;
+ struct SunFrame {bool failed=false,published=true;}sun_frame_;bool sun_lane_failed_=false;
+ bool scene_open_=true,cut_finished_=false,fog_timing_=false;
+ unsigned fog_failures_=0,fog_logs_=0,fog_card_logs_=0;
+ std::uint64_t fog_applied_frames_=0,fog_card_last_report_=0,fog_card_observed_total_=0,
+ fog_card_suppressed_total_=0,fog_card_refused_total_=0,fog_card_logged_frame_=0;
+ const char* fog_last_reason_="";
  bool fog_requested_=true,fog_enabled_=true,fog_disabled_=false,fog_attach_failed_=false,fog_cards_replace_=true;
  float fog_strength_=.02f,fog_anisotropy_=.3f;
  bool fog_card_ready_checked_=false,fog_card_ready_=false,state_hooks_=false,composition_busy_=false,
@@ -83,9 +117,9 @@ struct MotionOutput {
  HdrState hdr_state_=HdrState::Active;
  MockHdr hdr_storage{};MockHdr* hdr_=&hdr_storage;
  MockFog fog_storage{};MockFog* fog_=&fog_storage;
- void* depth_surface_=(void*)1;
+ IDirect3DSurface9 depth_storage{};IDirect3DSurface9* depth_surface_=&depth_storage;
  struct Sampler {bool srgb_known=false,mipfilter_known=false,biased=false,saved_known=false;}samplers_[1];
- MotionOutput(){for(unsigned i=0;i<32;++i){shadow_.states[i]=DWORD(device_storage.states[shadow_states[i]]);shadow_.states_known[i]=true;}
+ MotionOutput(){hdr_storage.surface=&device_storage.target;for(unsigned i=0;i<32;++i){shadow_.states[i]=DWORD(device_storage.states[shadow_states[i]]);shadow_.states_known[i]=true;}
   for(unsigned i=0;i<4;++i){shadow_.composition_blend[i]=DWORD(device_storage.blends[i]);shadow_.composition_blend_known[i]=true;}
   sample();fog_sector_.field_generation=1;}
  template<class F,class... A> HRESULT direct_call(unsigned slot,A...args){
@@ -97,7 +131,10 @@ struct MotionOutput {
  bool blend_known(unsigned)noexcept;
  long state_field(unsigned)noexcept;
  void begin_draw_reads()noexcept;
- template<class F> F native(unsigned slot) {assert(slot==SetRenderState);return &Device::set;}
+ template<class F> F native(unsigned slot) {
+  if constexpr(std::is_same_v<F,GetRenderTargetFn>){assert(slot==GetRenderTarget);return &Device::get_target;}
+  else {assert(slot==SetRenderState);return &Device::set;}
+ }
  void invalidate_taa(TaaInvalidateSite) {++invalidations;}
  void invalidate_render_states() {++state_invalidations;}
  unsigned depth_format_=D3DFMT_A32B32G32R32F;unsigned lane_depth_format()const{return depth_format_;}
@@ -115,6 +152,9 @@ struct MotionOutput {
  void reconcile_volumetric_fog(const renderer::FogFrame&,const renderer::FogResult&,HRESULT)noexcept;
  void complete_volumetric_fog(const char*,HRESULT,const renderer::FogResult&)noexcept;
  void complete(bool success,const char*why){renderer::FogResult out{success,0};complete_volumetric_fog(success?nullptr:why,success?0:-1,out);}
+ void run_volumetric_fog()noexcept;
+ void disable_volumetric_fog(const char*,HRESULT)noexcept;
+ void reset_fog_for_test()noexcept; // exact fog policy reset statements extracted by the host test
  void volumetric_fog_begin_frame()noexcept;
  void prepare_fog_card(const MotionDrawCall&,MotionRoute&)noexcept;
  void finish_fog_card(MotionRoute&,HRESULT)noexcept;

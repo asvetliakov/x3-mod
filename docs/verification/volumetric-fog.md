@@ -811,3 +811,51 @@ reachable functions / zero violations; selected actual-DLL HDR ownership and
 TAA smoke cases pass 43/83 checks. The smoke report remains explicitly PARTIAL
 for its selected scope. The [DLL record](../../verification/results/fog-families-shafts-dll-2026-09-20.json)
 binds source, artifact and evidence. No game launch or install was performed.
+
+
+### Run53B camera-cut replacement warmup correction (2026-09-20)
+
+Run194's final F8 burst, frames **31481–31512** in The Hole, keeps the same
+foggreenoutlands authority (profile 2, sector `66328b20`, index 14, dust 16),
+with strength **0.03 / density multiplier 1.5**. The [compact triage witness](../../verification/results/run53b-triage/compact-repro.json)
+records cuts on **31495–31505**, without a fog toggle, sector change, fault or
+refusal in the burst. Source cleared replacement readiness after every cut,
+including successful spatial passes. That necessarily reentered stacked warmup
+on **31496–31506**. The cut itself does not invalidate current camera/depth or
+change the current-frame spatial field's resources; it remains a TAA history
+invalidation. The fix removes only this post-completion cut-driven disarm.
+
+The affected host test now compiles the **actual `run_volumetric_fog` method**,
+its existing card methods, and the exact fog policy reset statements extracted
+from `before_reset`. The 32-frame sequence uses six synthetic cards per frame
+and the captured 11-cut pattern. Before the fix it fails with **11 warmups,
+126/192 suppressed cards and 32 successful volume applications**. After the fix
+it passes with **zero warmups, 192/192 suppressed and 32 applications**; duplicate
+scene-end calls remain no-ops, masks restore and transient mock references
+return to baseline. These counts are host routing witnesses, not the capture's
+card counts or actual pixel writes.
+
+Eight recovery scenarios cover same-family sector change, profile change,
+device generation change, Reset policy, off/on toggle, failed warmup retry,
+post-suppression execute failure and late prerequisite loss. Genuine readiness
+changes still warm up once; late loss/failure still faults until Reset. Existing
+mutable-guard, mask rollback, scene-loss, field-generation and native-call-count
+checks remain included. The exact Reset policy extraction does not execute a
+native Reset or test DEFAULT-resource release.
+
+Command: `PYTHONPATH=verification/probe python3 -m unittest -v verification.analysis.test_fog_cards verification.analysis.test_fog_sector_policy verification.analysis.test_fog_route_bridge`.
+**8 tests pass**; retained local logs are
+`/tmp/x3-fog-cut-warmup-checks/fixed.log` and `prefix.log`. The latter reintroduces
+only the removed line into the in-memory test source and exits 1 with the
+pre-fix witness; production files are not changed by that check.
+`i686-w64-mingw32-g++ -std=gnu++17 -O2 -g -DWIN32_LEAN_AND_MEAN -DNOMINMAX -Wall -Wextra -Wno-cast-function-type -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -c src/proxy/motion_output.cpp -o /tmp/x3-fog-cut-warmup-motion_output.o`
+passes. This establishes x86 compilation, not native Windows execution.
+
+No shader, D3D transaction, resource lifetime, CPU/LastError preservation
+boundary, hook instruction or rollback path changes. Per-draw work is unchanged;
+scene end removes one conditional store, without new allocation, locking or
+validation. The existing spatial/shaft state, numerical, Reset and timing
+checkpoints above remain relevant to those unchanged implementations. New actual
+GPU execution, native Windows behavior and user flight appearance remain open;
+this host checkpoint alone does not establish elimination of visible flicker.
+No Wine, full DLL build, install, commit or game launch belongs to this change.
