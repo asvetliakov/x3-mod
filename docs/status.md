@@ -66,8 +66,11 @@ Cold creation and first-use rendering still stall the fixture; this is not a
 no-stutter claim. Shared production transport extraction is active. Reviewed
 surface leases (`f13acc59`, 100 runtime checks) and bounded session/adapter state
 (`4aaae520`, 202 host checks) are committed on isolated branches, with admission
-disabled. The presentation-gate fixture compiled but its first runtime failed
-22 MXCSR checks, including ungated baselines; the witness is being diagnosed.
+disabled. The corrected presentation-gate fixture passes 576 runtime checks; the initial
+22 failures were requested MXCSR status bits that FEX did not materialize, also
+in ungated baselines. Exact represented state passes; nonzero status coverage
+remains unverified. The reviewed prerequisites are being combined with fog/shafts
+on `feat/media-production-integration`; three affected host tests pass.
 Production engine hooks, transport integration and enabled media repair remain
 unfinished. The owning media and ownership ledgers retain the scoped evidence.
 Collision optimization is **paused by user request**. The reviewed engine/lattice
