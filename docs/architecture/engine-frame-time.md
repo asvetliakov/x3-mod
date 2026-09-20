@@ -1060,3 +1060,64 @@ active investigations. No new broad timing flight is requested.
 Evidence: [run52-triage](../../verification/results/run52-triage/result.md),
 with streamed reproduction, explicit camera bracketing, full B/C option comparison,
 aligned diagnostic windows and installed-source dependency checks.
+
+
+## Next-flight engine audit: no additional tracing (2026-09-20)
+
+**Parent ratified:** add no engine hook sites, per-draw clocks or performance
+sessions before the already queued lattice state observation. Broader engine
+changes remain permitted, but Run52's corrected 2.825 ms submission-complement
+field and 1.947/0.867 ms preparation/setup fields identify scopes, not removable
+work. The 4.518 ms between-preparation complement is not engine-only. These
+window-median fields are not additive; sparse HDR/lease rows cannot complete
+that partition. Lazy RT's accepted 19.70 → 18.90 ms matched-draw result is already
+accounted for, not another available saving. Collision work is paused.
+
+The earlier measured closures remain: R3 technique/End 65/64 us, R5 sort 5 us,
+R4 no sampled pressure, R1 inverse 71 us, R8 matrix 19 us (Run181); R7 traversal
+83 calls/17 us plus cockpit 1 call/1 us (Run49, including instrumentation).
+State filtering, pass replay, instancing, reordering and blanket arithmetic
+conversion have no new mechanism or contrary cost evidence. Do not repeat the
+FEX-blind leaf sampler. The unchanged R2 tangent-cache candidate is also closed:
+isolated commit `09cd76b8` in `/tmp/x3-r2-fov-oracle` records zero qualified
+numerical pairs/entry validations and 48 natural controls with zero PE admissions.
+Requested SW32 was observed as SW0 by three independent state observations. This
+is unsupported input, not cache equivalence or an engine-wide no-PE proof; do
+not repeat that oracle or loosen its gate. Local evidence is
+`/tmp/x3-r2-fov-runtime-v2/{result,execution}.json`; native Windows remains untested.
+
+Concrete reopening evidence, ranked by useful remaining mechanism:
+
+1. **Repeated view setup/traversal:** establish redundant work with unchanged
+   inputs/side effects, or a new measured setup regression. The old nine-view /
+   empty-view idea was never a measurement of wasted work. Frame-loop RE shows
+   setup performs light/environment selection, viewport/clear and cull/LOD;
+   zero submitted draws cannot justify skipping it. If a mechanism is established,
+   reuse clocks at `0x0047224c/0x00472270/0x004722c8` for fixed-capacity per-view
+   ordinal durations and pass-count deltas, with overflow/outside-scope reporting.
+   `frame_phases.cpp::stamp` receives an index, not an engine view pointer. This
+   would add fixed stores per view, no new QPC/site or draw-path allocation;
+   total diagnostic cost still needs measurement. A two-view host case with a
+   long composite and an empty-but-clearing view must preserve scope. This trace
+   remains deferred until the prerequisite exists.
+2. **Further draw reduction:** identify a substantial currently submitted fully
+   invisible population in retained geometry/depth evidence, with preserved
+   child traversal, animation and shadow casters. The old 403 sub-2px census
+   precedes the accepted 2px default; it is not a remaining saving. Run132's
+   coarser-LOD comparison already closed that alternative. No new culling or
+   occlusion trace is justified by draw count alone.
+3. **Animation update reuse:** `0x004f66e0` occurs in traversal and deferred drain,
+   but [the existing RE](../reverse-engineering/shadow-caster-lifetime.md#0-0x004f66e0-is-an-animation-stepper-not-a-visibility-predicate)
+   proves record writes, transform updates and possible track/emitter calls;
+   its AL result drives caller refresh flags. First prove repeated unchanged
+   inputs, all intervening writers and an appreciable cost. Two call sites do
+   not establish redundant execution or permit once-per-frame memoization.
+
+No production patch is selected. Any eventual optimization needs unchanged
+rendering/side-effect contracts and a measured end-to-end gain after its own
+cost. Documented Windows/D3D APIs and validated game sites remain the portability
+boundary; FEX timings or source compatibility do not establish native Windows
+behavior. The [lattice decision](taa-lattice-crawl.md#25-next-flight-state-decision-and-reopening-gate-2026-09-20)
+retains the next discriminating observation. Detailed alternatives and source
+mapping remain local in `/tmp/x3-next-flight-engine-lattice-audit.md`; this audit
+made no production change and ran no build, Wine command or game.

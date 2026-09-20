@@ -1166,3 +1166,44 @@ input-hash-bound result is `/tmp/x3-lattice-fresh-discrepancy.json`. Inputs are
 [/tmp/x3-lattice-fresh-discrepancy.md](/tmp/x3-lattice-fresh-discrepancy.md).
 No new Wine execution or production change was needed; native Windows remains
 unverified.
+
+
+## 25. Next-flight state decision and reopening gate (2026-09-20)
+
+**Parent ratified:** §23's post-route state packet is sufficient for the next
+bounded observation. Add no fields, payload copy, hook sites or flight sessions
+before interpreting it. Keep the already queued at-rest, camera-rotation and
+ship-translation F8 cases in [Run53](../verification/user-runs.md#53-spatial-fog-and-moving-lattice-state--ready-for-flight).
+One F8 edge arms one state frame, independent of the 32-frame image burst.
+Preserve §24's two discrepant pixels and twelve exact controls; the alpha-survival
+and sun-share observations do not prove fragment ownership or justify a motion fix.
+
+`capture.cpp::draw_indexed` calls `Capture::effective` after `before_draw` and
+before saved slot82 submission; saved slot38 queries effective RT bindings.
+The existing packet covers the effective shaders/constants, geometry descriptors,
+raster/depth/stencil, viewport/clip and s0/s3 sampler/LOD assumptions that remain
+missing from the conditional fixture. Validate each returned file with
+`python3 verification/probe/lattice_state_packet.py --require-complete <file>`
+and match its device/frame/generation and logged filename to the preserved
+session. Both unique selected draws must submit successfully. Preserve an
+unavailable, partial, ambiguous, Reset or nonmatching packet as a refusal;
+do not substitute another object or treat it as state agreement.
+
+If effective state differs, report exact differing words and their shader/state
+use, then reproduce that difference in the conditional witness before proposing
+a renderer change. If state agrees, runtime VB/IB/texture content, coherent input
+lifetime, fractional coverage and subsequent writers remain open. Equality does
+not establish payload identity, live face ownership or RGB/TAA parity. A payload
+or writer diagnostic requires separate access/lifetime/coverage evidence and
+parent ratification; the missing final CloneMesh linkage and copy-access authority
+are not supplied by these state observations. Camera-rotation crawl remains open;
+the accepted stationary improvement is unchanged.
+
+No added hot-path cost follows from this decision. Existing cost remains the
+request-pointer branch when unarmed, at most 64 candidates/two full observations
+when armed, a 395928-byte packet and 1 MiB JSON cap; getters have no cancellable
+wall-time bound. Query ticks exclude file output, and object tracing costs persist
+outside F8, so this session does not measure production FPS. Existing documented
+D3D9/Win32 queries and CPU/LastError boundaries remain; mock-interface qualification
+and cross-compilation do not establish live native Windows execution. No new
+fixture or flight is required for this documentation-only decision.
