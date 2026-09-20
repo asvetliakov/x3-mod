@@ -1,7 +1,7 @@
 // Detached timing harness; no intercepted methods or active interval queries.
 #include <map>
 namespace { namespace fog_spatial_timing {
-struct Case {std::string name,family,directory,profile_id,expected_scene,expected_st;};
+struct Case {std::string name,family,directory,profile_id,expected_scene,expected_st,shadow_metadata;bool repair_stress=false;};
 LONGLONG ticks(){LARGE_INTEGER value{};if(!QueryPerformanceCounter(&value))throw std::runtime_error("QPC");return value.QuadPart;}
 HRESULT fence(IDirect3DQuery9* query){
     HRESULT hr=query->Issue(D3DISSUE_END);if(hr!=S_OK)return FAILED(hr)?hr:E_FAIL;
@@ -18,7 +18,12 @@ struct View {
         constants=c;w=UINT(c[4]);h=UINT(c[5]);
         const auto data=read<float>(item.directory+"/depth.rgba32f");original=read<std::uint16_t>(item.directory+"/scene.rgba16f");
         if(data.size()!=size_t(w)*h*4||original.size()!=data.size())throw std::runtime_error("timing input size");
-        for(size_t i=0;i<data.size();++i){if(!std::isfinite(data[i]))throw std::runtime_error("timing depth finite");if(i%4==0&&data[i]>=0&&data[i]<=1&&data[i+2]<=0)throw std::runtime_error("timing positive linear depth");}
+        for(size_t i=0;i<data.size();++i){
+            const size_t pixel=i/4;const bool repair_half=item.repair_stress&&(pixel%w)%2==0&&(pixel/w)%2==0;
+            if(repair_half){if(i%4==0&&data[i]!=.5f)throw std::runtime_error("repair half class");if(i%4==2){if(!std::isnan(data[i]))throw std::runtime_error("repair half depth");continue;}}
+            if(!std::isfinite(data[i]))throw std::runtime_error("timing depth finite");
+            if(i%4==0&&data[i]>=0&&data[i]<=1&&data[i+2]<=0)throw std::runtime_error("timing positive linear depth");
+        }
         for(auto v:original)if((v&0x7c00)==0x7c00)throw std::runtime_error("timing scene finite");
         upload(d,w,h,D3DFMT_A32B32G32R32F,16,data.data(),&depth.p,true);check(depth->GetSurfaceLevel(0,&ds.p),"timing depth surface");
         upload(d,w,h,D3DFMT_A16B16G16R16F,8,original.data(),&pristine.p,true);check(pristine->GetSurfaceLevel(0,&ps.p),"timing pristine surface");
@@ -132,4 +137,128 @@ int qualify(IDirect3DDevice9* d,D3DFORMAT format,const std::string& casefile,con
     }
     std::printf("RESULT checkpoint=timing profiles=2 warm_per_profile=16 samples_per_profile=64 PASS\n");return 0;
 }
+
+// Paired mode uses the same compiled pass and resident inputs in both arms.
+// Maps are borrowed by FogFrame; this fixture owns them across both resolutions.
+struct ShadowMaps {
+    std::uint64_t frame=0;Com<IDirect3DTexture9> maps[3];FogCascadeInput input[3];
+    unsigned long long bytes=0;
+    explicit ShadowMaps(IDirect3DDevice9* d,const std::string& file){
+        std::ifstream stream(file);if(!(stream>>frame))throw std::runtime_error("shadow frame");
+        for(unsigned i=0;i<3;++i){
+            unsigned size=0;float bias=0;auto& k=input[i];
+            if(!(stream>>size>>bias)||size<64)throw std::runtime_error("shadow map metadata");
+            for(auto& value:k.rows)if(!(stream>>value))throw std::runtime_error("shadow rows");
+            if(!fog_shadow_rows(k.rows,bias))throw std::runtime_error("shadow finite rows/bias");
+            std::string path;std::getline(stream>>std::ws,path);const auto depth=read<float>(path);
+            if(depth.size()!=size_t(size)*size)throw std::runtime_error("shadow map size");
+            for(float value:depth)if(!std::isfinite(value))throw std::runtime_error("shadow depth finite");
+            upload(d,size,size,D3DFMT_R32F,4,depth.data(),&maps[i].p,false);
+            k.map=maps[i].p;k.bias=bias;k.frame=frame;k.valid=true;bytes+=4ull*size*size;
+        }
+        std::string extra;if(stream>>extra)throw std::runtime_error("shadow trailing metadata");
+    }
+};
+struct PairedView {
+    View view;ShadowMaps& shadows;
+    std::vector<std::uint16_t> baseline[2],baseline_st[2];
+    Com<IDirect3DTexture9> final_scene[2],on_st;
+    Com<IDirect3DSurface9> final_surface[2],on_st_surface;
+    PairedView(IDirect3DDevice9* d,const Case& source,ShadowMaps& maps):view(d,source),shadows(maps){
+        for(unsigned arm=0;arm<2;++arm){
+            check(d->CreateTexture(view.w,view.h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&final_scene[arm].p,nullptr),"paired final scene");
+            check(final_scene[arm]->GetSurfaceLevel(0,&final_surface[arm].p),"paired final surface");
+        }
+        check(d->CreateTexture((view.w+1)/2,(view.h+1)/2,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&on_st.p,nullptr),"paired final ST");
+        check(on_st->GetSurfaceLevel(0,&on_st_surface.p),"paired final ST surface");
+    }
+    FogFrame frame(FogPass& pass,bool enabled)const{
+        auto f=view.frame(pass);f.frame=shadows.frame;f.count=3;
+        for(unsigned i=0;i<3;++i){f.cascades[i]=shadows.input[i];f.cascades[i].valid=enabled;}
+        return f;
+    }
+    IDirect3DSurface9* st_surface(unsigned arm)const{return arm?on_st_surface.p:view.final_st_surface.p;}
+};
+int qualify_pairs(IDirect3DDevice9* d,D3DFORMAT format,const std::string& casefile,const std::string& output){
+    LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0)throw std::runtime_error("QPC frequency");
+    std::printf("PAIR_CLOCK frequency=%lld timestamps=not_collected_no_active_query_contract\n",frequency.QuadPart);
+    std::ifstream list(casefile);std::vector<Case> cases;Case row;std::string repair;
+    while(std::getline(list,row.name)){
+        if(!std::getline(list,row.family)||!std::getline(list,row.directory)||!std::getline(list,row.profile_id)||!std::getline(list,row.expected_scene)||!std::getline(list,row.expected_st)||!std::getline(list,row.shadow_metadata)||!std::getline(list,repair)||(repair!="0"&&repair!="1"))throw std::runtime_error("paired case framing");
+        row.repair_stress=repair=="1";cases.push_back(row);
+    }
+    if(cases.size()!=10)throw std::runtime_error("paired cases");
+    Com<IDirect3DQuery9> query;check(d->CreateQuery(D3DQUERYTYPE_EVENT,&query.p),"paired EVENT capability");
+    std::map<std::string,std::unique_ptr<ShadowMaps>> shadows;
+    const LONGLONG map_start=ticks();unsigned long long map_bytes=0;
+    for(const auto& source:cases)if(!shadows.count(source.shadow_metadata)){
+        auto maps=std::make_unique<ShadowMaps>(d,source.shadow_metadata);map_bytes+=maps->bytes;shadows.emplace(source.shadow_metadata,std::move(maps));
+    }
+    const LONGLONG map_submitted=ticks();check(fence(query.p),"paired map upload completion");const LONGLONG map_completed=ticks();
+    std::printf("PAIR_MAP_PREP submit_ticks=%lld completed_ticks=%lld sets=%u bytes=%llu\n",map_submitted-map_start,map_completed-map_start,unsigned(shadows.size()),map_bytes);
+    auto refs=[](IUnknown* object){object->AddRef();return object->Release();};
+    auto map_refs=[&](){std::vector<ULONG> counts;for(auto& entry:shadows)for(auto& map:entry.second->maps)counts.push_back(refs(map.p));return counts;};
+    const auto owned_map_refs=map_refs();
+    for(unsigned profile=0;profile<2;++profile){
+        const UINT w=profile?1920:1280,h=profile?1080:768;const LONGLONG setup_start=ticks();
+        Caller caller(d,w,h);std::map<std::string,std::unique_ptr<FogPass>> passes;std::vector<std::unique_ptr<PairedView>> views;
+        for(unsigned i=0;i<5;++i){
+            auto paired=std::make_unique<PairedView>(d,cases[profile*5+i],*shadows.at(cases[profile*5+i].shadow_metadata));auto& view=paired->view;
+            if(view.w!=w||view.h!=h||view.source.repair_stress!=(i==4))throw std::runtime_error("paired view order");
+            if(!passes.count(view.source.family)){
+                auto pass=std::make_unique<FogPass>();D3DCAPS9 caps{};check(d->GetDeviceCaps(&caps),"paired attach caps");check(pass->attach(d,*reinterpret_cast<void***>(d),caps,format),"paired attach");
+                const auto family=static_cast<fog_field::Profile>(std::stoul(view.source.profile_id));const auto* info=fog_field::profile_info(family);
+                if(!info||view.constants[11]!=info->base_sigma)throw std::runtime_error("paired family sigma");
+                const LONGLONG start=ticks();check(pass->prepare_field(GetModuleHandleA(nullptr),family),"paired prepare field");const LONGLONG field=ticks();check(pass->prepare_targets(w,h),"paired targets");const LONGLONG targets=ticks();
+                std::printf("PAIR_FIELD width=%u family=%s field_ticks=%lld target_ticks=%lld cpu_atlas_bytes=%llu\n",w,view.source.family.c_str(),field-start,targets-field,static_cast<unsigned long long>(pass->fixture_cpu_bytes()));
+                passes.emplace(view.source.family,std::move(pass));
+            }
+            views.push_back(std::move(paired));
+        }
+        check(fence(query.p),"paired residency completion");const LONGLONG setup_end=ticks();
+        const unsigned long long half=8ull*((w+1)/2)*((h+1)/2);
+        std::printf("PAIR_PREP width=%u height=%u ticks=%lld atlas_bytes=%llu input_bytes=%llu target_bytes=%llu witness_bytes=%llu\n",w,h,setup_end-setup_start,17846400ull*passes.size(),5ull*w*h*32+2ull*w*h+128,passes.size()*(8ull*w*h+half),5ull*2*(8ull*w*h+half));
+        for(auto& paired:views){auto& view=paired->view;auto& pass=*passes.at(view.source.family);
+            for(unsigned arm=0;arm<2;++arm){
+                caller.reset_scene(view);check(fence(query.p),"paired baseline prefence");const fog_spatial_state::Snapshot before(d,caller.caps);FogResult r;
+                check(d->BeginScene(),"paired baseline caller begin");check(pass.execute(paired->frame(pass,arm!=0),&r),"paired baseline execute");check(fence(query.p),"paired baseline complete");check(d->EndScene(),"paired baseline caller end");
+                const auto name=view.source.name+"_"+std::to_string(arm);
+                require(r.applied&&r.caller_state_restored&&r.scene_known&&r.scene_open&&!r.route_poisoned&&r.cascades_bound==(arm?3u:0u)&&before==fog_spatial_state::Snapshot(d,caller.caps),(name+"_baseline_state").c_str());
+                auto& rgb=paired->baseline[arm];auto& st=paired->baseline_st[arm];rgb=readback_words(d,view.ss.p);st=readback_words(d,pass.fixture_st());verify_output(view,rgb,st);
+                if(!arm&&view.source.expected_scene!="-")require(rgb==read<std::uint16_t>(view.source.expected_scene)&&st==read<std::uint16_t>(view.source.expected_st),(name+"_accepted_bytes").c_str());
+                write_words(rgb,output+"/"+name+".baseline.composite.rgba16f");write_words(st,output+"/"+name+".baseline.st.rgba16f");
+            }
+            bool transmission=true,empty=true;for(size_t i=0;i<paired->baseline_st[0].size();i+=4){
+                const auto& a=paired->baseline_st[0];const auto& b=paired->baseline_st[1];transmission&=a[i+3]==b[i+3];
+                if(!a[i]&&!a[i+1]&&!a[i+2]&&a[i+3]==0x3c00)empty&=!b[i]&&!b[i+1]&&!b[i+2]&&b[i+3]==0x3c00;
+            }
+            require(transmission&&empty,(view.source.name+"_paired_T_empty").c_str());
+        }
+        std::map<std::string,std::pair<unsigned,unsigned>> owned;ULONG device_refs=0,buffer_refs=0,depth_refs=0;unsigned measured=0;
+        for(unsigned round=0;round<20;++round)for(unsigned vi=0;vi<5;++vi){
+            auto& paired=*views[vi];auto& view=paired.view;auto& pass=*passes.at(view.source.family);
+            if(round==4&&vi==0){for(auto& p:passes)owned.emplace(p.first,std::make_pair(p.second->allocations(),p.second->references()));device_refs=refs(d);buffer_refs=refs(caller.buffer.p);depth_refs=refs(caller.depth.p);}
+            for(unsigned order=0;order<2;++order){const unsigned arm=(round&1)^order;
+                caller.reset_scene(view);check(fence(query.p),"paired sample prefence");const FogFrame frame=paired.frame(pass,arm!=0);FogResult r;check(d->BeginScene(),"paired sample caller begin");
+                const LONGLONG start=ticks();const HRESULT hr=pass.execute(frame,&r);const LONGLONG submit=ticks();
+                const bool valid=SUCCEEDED(hr)&&r.applied&&r.caller_state_restored&&r.scene_known&&r.scene_open&&!r.route_poisoned&&r.cascades_bound==(arm?3u:0u);
+                const HRESULT completed=valid?fence(query.p):(FAILED(hr)?hr:E_FAIL);const LONGLONG finish=ticks();
+                const bool lost=completed==D3DERR_DEVICELOST||completed==D3DERR_DEVICENOTRESET;const HRESULT end=!lost&&r.scene_known&&r.scene_open?d->EndScene():D3DERR_INVALIDCALL;
+                std::printf("PAIR_SAMPLE width=%u height=%u phase=%s index=%u pair=%u order=%u arm=%u view=%s stress=%u start=%lld submitted=%lld completed=%lld hr=%08lx restore=%08lx fence=%08lx valid=%u maps=%u calls=%u\n",w,h,round<4?"warm":"measured",round<4?round:round-4,round*5+vi,order,arm,view.source.name.c_str(),unsigned(view.source.repair_stress),start,submit,finish,(unsigned long)hr,(unsigned long)r.restore,(unsigned long)completed,unsigned(valid),r.cascades_bound,r.device_calls);
+                check(hr,"paired sample execute");check(completed,"paired sample completion");check(end,"paired caller end");if(!valid||r.restore!=S_OK||submit<=start||finish<submit)throw std::runtime_error("paired sample contract");
+                if(round>=4)++measured;
+                if(round==19){check(d->StretchRect(view.ss.p,nullptr,paired.final_surface[arm].p,nullptr,D3DTEXF_NONE),"paired final scene copy");check(d->StretchRect(pass.fixture_st(),nullptr,paired.st_surface(arm),nullptr,D3DTEXF_NONE),"paired final ST copy");}
+            }
+        }
+        require(measured==160,(std::to_string(w)+"_paired_samples").c_str());check(fence(query.p),"paired witnesses complete");
+        for(auto& paired:views)for(unsigned arm=0;arm<2;++arm){const auto name=paired->view.source.name+"_"+std::to_string(arm);const auto rgb=readback_words(d,paired->final_surface[arm].p),st=readback_words(d,paired->st_surface(arm));
+            require(rgb==paired->baseline[arm]&&st==paired->baseline_st[arm],(name+"_final_bytes").c_str());write_words(rgb,output+"/"+name+".final.composite.rgba16f");write_words(st,output+"/"+name+".final.st.rgba16f");}
+        require(device_refs==refs(d)&&buffer_refs==refs(caller.buffer.p)&&depth_refs==refs(caller.depth.p)&&owned_map_refs==map_refs(),(std::to_string(w)+"_paired_refs").c_str());
+        for(auto& p:passes)require(owned.at(p.first)==std::make_pair(p.second->allocations(),p.second->references()),(std::to_string(w)+"_"+p.first+"_paired_owned").c_str());
+        for(auto& p:passes)p.second->detach();
+        caller.unbind();
+    }
+    std::printf("RESULT checkpoint=shadow_pairs profiles=2 common_transactions=320 repair_transactions=80 PASS\n");return 0;
+}
+
 }} // anonymous namespace / fog_spatial_timing

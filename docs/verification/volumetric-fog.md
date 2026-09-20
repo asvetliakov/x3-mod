@@ -733,3 +733,69 @@ remain pending; native Windows and flight appearance are unverified. No install.
 The combined-source full host discovery passed **2,431 tests** (two skipped)
 in **753.309 s**, exit 0; the compact record binds the full command and local log.
 Shaft transaction timing remains pending and is run after host load ends.
+
+### Spatial directional shafts paired transaction timing (2026-09-20)
+
+Root-owned locked execution and independent runtime review pass the frozen
+paired timing fixture in bottle **X3**, CrossOver Preview, WineArch **arm64**,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Both arms use identical shaders,
+family fields, views and resident captured cascade maps; only the three map
+validity flags change. Consecutive A/B and B/A pairs balance order. No slow
+samples were discarded. There are **400 transactions**: 80 warm and 320 measured,
+with 320 total common-workload transactions and 80 separately labelled repair
+stress transactions. All **63 checks**, **40 baseline/final readback pairs**
+(80 hashes) and **10 accepted-output matches** pass. Per-arm output stability,
+finite output, exact alpha, A/B transmission/empty identity and warmed
+allocation/reference stability hold.
+
+| Common captured workload | 1280×768 | 1920×1080 |
+| --- | ---: | ---: |
+| Off completion median / p95 (ms) | 0.69995 / 0.75594 | 0.89795 / 1.22361 |
+| On completion median / p95 (ms) | 0.81870 / 0.86627 | 0.97460 / 1.34958 |
+| Paired on-minus-off completion median / p95 (ms) | 0.11310 / 0.15556 | 0.11890 / 0.14847 |
+| On CPU-submit median (ms) | 0.12960 | 0.12810 |
+
+Both common arms pass the unchanged absolute gates: CPU-submit median ≤0.25 ms,
+completion median ≤1.25/2.0 ms at 1280/1920, and 1920 completion p95 ≤2.5 ms.
+The paired delta is the median of within-pair differences, not the difference
+of arm medians. Both arms include the new fixed sampler-state overhead;
+absolute gates therefore remain necessary. Each arm/resolution has 64 measured
+common samples. Captured maps mostly return lit at occupied cloud samples,
+so this measures their ordinary projection/comparison cost; the earlier four-ray
+cloud/shadow overlap finding still limits visual claims.
+
+Repair stress forces full-pixel marching at **737,280 / 1,555,200 pixels** for
+1280/1920 and has 16 measured pairs per resolution. On completion median/p95 is
+**1.6014/1.8258 ms** at 1280 and **1.7492/3.1711 ms** at 1920. Paired incremental
+medians are **0.1464/0.15325 ms**. The **3.1711 ms** 1080p stress p95 exceeds the
+common workload's 2.5 ms threshold; this deliberately extreme separate workload
+is neither mixed into the common aggregate nor claimed to pass its gate.
+
+Queries remain idle during `execute`. QPC measures complete validation,
+state capture, scene suspension/copy/reopen, march, full-pixel repair, composite,
+restoration and transient reference cleanup; an END-only EVENT/GetData completion
+follows before the completion clock. Pristine-scene resets, prefences, caller
+Begin/EndScene, witness copies and readbacks remain outside the measured interval.
+These are **EVENT-completed wall times including polling**, not pure GPU timings
+or game FPS. The 1920 inputs are nearest-resized captured workloads. Values from
+older independent runs do not establish an optimization beyond this paired result.
+
+Cold preparation remains separate. Reading, validating, allocating and uploading
+12 fixture-only captured maps (201,326,592 bytes) takes **171.0600 ms submit /
+196.6735 ms completion**; production borrows already-created replay maps and does
+not incur that fixture setup. Two-family field decode/allocation/upload submit
+observations are **12.1213/17.9008 ms** at 1280 and **12.9215/16.2690 ms** at 1920;
+target submission is **0.4826/0.0338 ms** and **0.0138/0.0120 ms**, respectively.
+Full per-resolution residency setup completes in **155.5606/271.7332 ms**.
+These are individual fixture observations, not a loading-time distribution.
+
+The [compact record](../../verification/results/fog-spatial-shafts-host.json)
+binds the detailed report, commands, build/input hashes, bottle and lock timing.
+Executable SHA-256:
+`838444d24227d133391d0d9d2f7c37f300ee50a5ecc57caedb77dc3f2ae1980e`.
+Detailed output is `/tmp/x3-spatial-fog-shafts-timing-v1-results/report.json`;
+fixture execution is **9.26156 s**, lock wait **0.000003417 s**, wrapper child
+elapsed **10.58533 s**, exit zero. Nineteen affected host tests pass. Timing
+covers the original two profiles; separate all-family correctness does not
+establish all-family performance. Native Windows execution and flight appearance
+remain open. No installed-build change or game launch is part of this checkpoint.

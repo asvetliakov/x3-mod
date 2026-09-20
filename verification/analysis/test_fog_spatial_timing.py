@@ -114,4 +114,74 @@ class FieldPreparationTests(unittest.TestCase):
         for changed in (text.replace(line+'\n',''),text.replace('field_ticks=70','field_ticks=0',1),text.replace('cpu_atlas_bytes=17846400','cpu_atlas_bytes=35692800',1)):
             with self.assertRaises(ValueError):runner.analyze(changed,manifest)
 
+
+class PairedTimingTests(unittest.TestCase):
+    def fixture(self,slow_stress=False):
+        profiles=[dict(name=f'{w}x{h}',width=w,height=h,warm_pairs_per_view=4,measured_pairs_per_view=16) for w,h in ((1280,768),(1920,1080))]
+        maps={frame:dict(metadata='/maps/'+frame,maps=[dict(frame=int(frame),source=i,size=64,bias=.001,rows=[[1,0,0,0],[0,1,0,0],[0,0,1,0]],path='/map') for i in (1,2,3)]) for frame in prep.FRAMES}
+        manifest=dict(paired_shadows=True,profiles=profiles,cases=[],shadow_maps=maps)
+        lines=['PAIR_CLOCK frequency=1000000 timestamps=not_collected_no_active_query_contract','PAIR_MAP_PREP submit_ticks=10 completed_ticks=20 sets=4 bytes=196608'];clock=1000
+        for profile in profiles:
+            w,h=profile['width'],profile['height'];half=8*((w+1)//2)*((h+1)//2)
+            lines.extend(f'PAIR_FIELD width={w} family={f} field_ticks=50 target_ticks=10 cpu_atlas_bytes=17846400' for f in ('bluewell','foggreenoutlands'))
+            lines.append(f'PAIR_PREP width={w} height={h} ticks=100 atlas_bytes=35692800 input_bytes={5*w*h*32+2*w*h+128} target_bytes={2*(8*w*h+half)} witness_bytes={10*(8*w*h+half)}')
+            cases=[]
+            for i,frame in enumerate([*prep.FRAMES,'26447']):
+                c=dict(name=f'{w}-{frame}'+('-repair' if i==4 else ''),frame=frame,family=prep.FRAMES[frame],profile=profile['name'],width=w,height=h,repair_stress=i==4,shadow_metadata=maps[frame]['metadata'])
+                manifest['cases'].append(c);cases.append(c)
+            for r in range(20):
+                for i,c in enumerate(cases):
+                    for order in range(2):
+                        arm=(r&1)^order;duration=(10000 if slow_stress and i==4 else (800 if w==1280 else 1400))+arm*100
+                        lines.append(f'PAIR_SAMPLE width={w} height={h} phase={"warm" if r<4 else "measured"} index={r if r<4 else r-4} pair={r*5+i} order={order} arm={arm} view={c["name"]} stress={int(i==4)} start={clock} submitted={clock+100+arm*10} completed={clock+duration} hr=00000000 restore=00000000 fence=00000000 valid=1 maps={3 if arm else 0} calls=296')
+                        clock+=duration+100
+        lines.extend('CHECK '+name+' PASS' for name in sorted(runner.paired_checks(manifest)))
+        lines.append('RESULT checkpoint=shadow_pairs profiles=2 common_transactions=320 repair_transactions=80 PASS')
+        return '\n'.join(lines),manifest
+    def test_balanced_same_view_pairs_and_signed_deltas(self):
+        text,manifest=self.fixture();result=runner.analyze_pairs(text,manifest)
+        self.assertTrue(result['passed']);self.assertEqual(len(result['samples']),400);self.assertEqual(len(result['checks']),63)
+        for p in result['profiles']:
+            self.assertEqual(p['common']['pairs'],64);self.assertEqual(p['repair_stress']['pairs'],16)
+            self.assertAlmostEqual(p['common']['paired_delta_ms']['event_fenced']['median'],.1)
+        self.assertAlmostEqual(runner.signed_distribution([-.2,-.1])['median'],-.15)
+    def test_slow_repair_stress_never_masks_or_fails_common_gate(self):
+        text,manifest=self.fixture(slow_stress=True);result=runner.analyze_pairs(text,manifest)
+        self.assertTrue(result['passed']);self.assertGreater(result['profiles'][0]['repair_stress']['on']['event_fenced_ms']['median'],10)
+        # Constant overhead shared by both arms must still fail absolute gates.
+        changed=[];shift=0
+        for line in text.splitlines():
+            if line.startswith('PAIR_SAMPLE '):
+                values=dict(v.split('=',1) for v in line.split()[1:])
+                for key in ('start','submitted','completed'):
+                    v=int(values[key])+shift+(1000 if key=='completed' else 0)
+                    line=line.replace(key+'='+values[key],key+'='+str(v))
+                shift+=1000
+            changed.append(line)
+        self.assertFalse(runner.analyze_pairs('\n'.join(changed),manifest)['passed'])
+    def test_missing_duplicate_wrong_arms_or_maps_rejected(self):
+        text,manifest=self.fixture();sample=next(l for l in text.splitlines() if l.startswith('PAIR_SAMPLE '))
+        for bad in (text.replace(sample+'\n',''),text.replace(sample,sample+'\n'+sample),text.replace('order=0 arm=0','order=0 arm=1',1),text.replace('maps=3','maps=0',1),text.replace('fence=00000000','fence=00000001',1),text.replace('calls=296','calls=0',1)):
+            with self.assertRaises(ValueError):runner.analyze_pairs(bad,manifest)
+    def test_rejects_stale_maps_wrong_workload_and_missing_preparation(self):
+        text,manifest=self.fixture();manifest['shadow_maps']['1974']['maps'][0]['frame']=1973
+        with self.assertRaisesRegex(ValueError,'current-map'):runner.analyze_pairs(text,manifest)
+        text,manifest=self.fixture();manifest['cases'][0]['shadow_metadata']='/stale'
+        with self.assertRaises(ValueError):runner.analyze_pairs(text,manifest)
+        text,manifest=self.fixture();line=next(l for l in text.splitlines() if l.startswith('PAIR_FIELD '))
+        with self.assertRaises(ValueError):runner.analyze_pairs(text.replace(line+'\n',''),manifest)
+    def test_repair_derivative_changes_only_declared_half_depth(self):
+        original=np.ones((4,4,4),np.float32);original[...,2]=100
+        derived=original.copy();derived[::2,::2,0]=.5;derived[::2,::2,2]=np.nan
+        self.assertEqual(prep.verify_repair_depth(derived,original),12)
+        derived[1,1,2]=101
+        with self.assertRaises(ValueError):prep.verify_repair_depth(derived,original)
+    def test_metadata_serialization_and_case_routing(self):
+        _,manifest=self.fixture();entry=manifest['shadow_maps']['1974'];text=prep.shadow_text('1974',entry['maps'])
+        self.assertEqual(len(text.splitlines()),7);self.assertEqual(text.splitlines()[0],'1974')
+        for c in manifest['cases']:c.update(directory='/input',expected=dict(composite=None,st=None))
+        self.assertEqual(len(prep.case_text(manifest).splitlines()),80)
+        entry['maps'][1]['source']=0
+        with self.assertRaisesRegex(ValueError,'current-map'):prep.validate_shadow_manifest(manifest)
+
 if __name__=='__main__':unittest.main()

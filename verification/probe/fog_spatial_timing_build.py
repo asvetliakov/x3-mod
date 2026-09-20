@@ -28,7 +28,7 @@ def build(asset,data,out):
     command=['i686-w64-mingw32-g++',*FLAGS,'-I'+str(asset/'src/renderer'),'-I'+str(data),*map(str,sources),str(out/'fog-fields.o'),'-o',str(out/'fog_spatial_timing.exe'),'-luser32']
     subprocess.run(windres,check=True);subprocess.run(command,check=True);unchanged(before)
     if any(digest(tool['path'])!=tool['sha256'] for tool in toolchain.values()):raise ValueError('compiler changed during build')
-    record=dict(kind='actual-production-timing',executable_sha256=digest(out/'fog_spatial_timing.exe'),inputs=before,command=command,resource_command=windres,resource_rc_sha256=digest(rc),resource_object_sha256=digest(out/'fog-fields.o'),toolchain=toolchain,shaders=shaders)
+    record=dict(kind='actual-production-timing',modes=['unshadowed','shadow-pairs'],executable_sha256=digest(out/'fog_spatial_timing.exe'),inputs=before,command=command,resource_command=windres,resource_rc_sha256=digest(rc),resource_object_sha256=digest(out/'fog-fields.o'),toolchain=toolchain,shaders=shaders)
     (out/'build.json').write_text(json.dumps(record,indent=2)+'\n');return record
 
 if __name__=='__main__':
