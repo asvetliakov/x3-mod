@@ -57,5 +57,12 @@
     "Not installed; current Run53 remains qualifying",
     "Flight appearance and native Windows runtime unverified",
     "Standalone combined GPU and paired timing evidence is recorded separately; smoke is integration only"
-  ]
+  ],
+  "dry_run": {
+    "path": "/tmp/x3-fog-families-shafts-dll-v1/dry-run.txt",
+    "sha256": "e1e37b802f65079de3a7ee64dfc48540c98bcf74f9e6e4241aaf454dd330cec1",
+    "exit_code": 0,
+    "scope": "Existing queued fog+shadow command with --dry-run; host launcher validation only, not DLL loading",
+    "game_launched": false
+  }
 }
