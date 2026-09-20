@@ -1,0 +1,102 @@
+{
+  "checkpoint": "composite-only",
+  "qualified": true,
+  "full_acceptance": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "native": "unverified",
+  "executable_sha256": "ccc18d7ea8087b378a6b32e7db00e87eedda65f30dd8f326dc0f398c86691bf9",
+  "shaders": {
+    "march": {
+      "source_sha256": "7baddbbd0eaf84ffc520e5730f166c55ab912c552c4a502abdd770a9b2ba15a5",
+      "helper_sha256": "31230f4089e6cb3fd83ea3a8474290e4e6c353d0dc5421c75a83e62e18e7d0b1",
+      "binary_sha256": "a214fc49e020e3044c3534f2f74d20c4ddf71e2b16654d7399937b7817bbc85f",
+      "bytes": 2932,
+      "seconds": 7.354415542
+    },
+    "composite": {
+      "source_sha256": "8d27bedbd8c6a1b1035d055b093f329b329a664eacf4aa9641b5cd698fceaaa1",
+      "helper_sha256": "31230f4089e6cb3fd83ea3a8474290e4e6c353d0dc5421c75a83e62e18e7d0b1",
+      "binary_sha256": "7d2d321de821ffc0a051df79e1d4f03ad440ab8893f21e730fba160638c85506",
+      "bytes": 4868,
+      "seconds": 8.364961084
+    },
+    "compiler_dll_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+    "compiler_exe_sha256": "573bd5f1abe49aa39e63c2c09619e7d451978fa1acb869c34c5f4a3af9d63ba0",
+    "bottle": {
+      "name": "X3",
+      "wine_arch": "arm64",
+      "environment": {
+        "FEX_X87REDUCEDPRECISION": "1",
+        "WINEMSYNC": "1"
+      },
+      "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+    }
+  },
+  "runtime_sources": {
+    "verification/probe/fog_volume_gpu_fixture.cpp": "7d673d7784acbc8e9b9298c26bab286106a29cde00a2dda07285bdca5842a6fc",
+    "verification/probe/fog_volume_gpu_build.sh": "97e533bd8c4d51abe7b564ae439d85101f61c5bf4f0e6b3d0b8aaa8e009f18eb",
+    "verification/probe/fog_volume_gpu_run.py": "1024b3ea89bbcc6c22ad5b235bcaa678aea822c89ad40362b6de8e9cd8e6ed9b",
+    "verification/probe/fog_volume_gpu_pass.h": "c53a58ae2f3488904f278d9513719100d9cda73643a0bd4de36e4c5708507018",
+    "verification/probe/fog_volume_gpu_pass.cpp": "544c9a8dcb0e7d2bb40033db7a8ff983103931659c0e845b157ceeaeeba836ee",
+    "verification/probe/shaders/fog_volume_composite_ps.hlsl": "8d27bedbd8c6a1b1035d055b093f329b329a664eacf4aa9641b5cd698fceaaa1",
+    "verification/probe/shaders/fog_volume_field_inc.h": "31230f4089e6cb3fd83ea3a8474290e4e6c353d0dc5421c75a83e62e18e7d0b1",
+    "verification/probe/shaders/fog_volume_march_ps.hlsl": "7baddbbd0eaf84ffc520e5730f166c55ab912c552c4a502abdd770a9b2ba15a5",
+    "verification/analysis/prepare_fog_volume_gpu.py": "5c7de2d42b841a96bdcc28e82bb2431b570f42ba05d9cc53e9a4be0e42b24120"
+  },
+  "checker_sources": {
+    "verification/probe/fog_volume_gpu_run.py": "2a0ab58a2480945d72e7cff4bb74ef77c90657881d91024d46fb27f4e1942800",
+    "verification/analysis/prepare_fog_volume_gpu.py": "0af0128ac8ba0282a1ede40e31f0cbded3ee066757f5759bb11f6901501ac766",
+    "verification/analysis/test_fog_volume_gpu.py": "29cf69a124b506620df0130266e03aa407265aae4e0a3ef50f591c94665b5ccc"
+  },
+  "fixture": {
+    "cases": 9,
+    "checks": 74
+  },
+  "command_seconds": 5.24462075,
+  "readback_report": "/tmp/x3-fog-volume-gpu/build/fog-volume-gpu-composite-r2/identity-reanalysis.json",
+  "readback_report_sha256": "ebc31f9fa02d35e8e30a5f5ba0d8c26a234e0e516aa334d8a9877f5d14205faf",
+  "failed_report_sha256": "52338a6a9832d2d23cb46685f4270f7dbba0ed3d7cb7e2c52f4a441499150ff4",
+  "manifest_sha256": "23ddc32c74128f2b88b48a6941c1310d65673adb765f22a108c22b0b9902d8f2",
+  "reanalysis_seconds": 6.467386416,
+  "no_wine_for_reanalysis": true,
+  "qualification": {
+    "cases": 9,
+    "synthetic_contracts": {
+      "zero_field": true,
+      "foreground_clips_slabs": true,
+      "middle_only_front_red": true,
+      "behind_both_slabs": true,
+      "thin_foreground_repair": true,
+      "thin_sky_repair": true,
+      "colour_order_same_T": true,
+      "front_colour_dominates": true
+    },
+    "actual_input_empty_pixels": 1649517,
+    "actual_input_empty_changed": 0,
+    "cpu_float32_empty_repair_pixels": 86,
+    "cpu_float32_empty_repair_changed": 0,
+    "cpu_fp16_rounded_empty_changed_by_frame": {
+      "1974": 5295,
+      "9204": 1843,
+      "21901": 2013,
+      "26447": 2896
+    },
+    "numerical_groups_unchanged": true,
+    "host_tests": 14
+  },
+  "limits": [
+    "Compositor identity uses actual GPU half-ST inputs; CPU FP16-rounded-empty counts remain diagnostics",
+    "GPU full-float repair ST is not directly read back",
+    "CPU float32 empty to GPU nonempty counts are zero diagnostics, not a separate gate",
+    "Full state/recovery, 32-frame coverage, transaction timing and native Windows remain unqualified",
+    "Run185 already contains fog; arithmetic validation is not a clean replacement preview"
+  ]
+}

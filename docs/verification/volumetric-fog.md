@@ -342,3 +342,34 @@ source/compiler/shader/input hashes. This is march-only qualification: composite
 synthetic clipping/ordering, full state/Reset/fault coverage, 32-frame checks and
 complete-transaction timing remain pending. No production fog change or native
 Windows execution is claimed.
+
+### Spatial fog composite checkpoint (2026-09-20)
+
+The standalone GPU composite now passes nine captured/synthetic cases and
+74 fixture checks, with unchanged numerical tolerances and all eight synthetic
+clipping, colour-order and thin-surface contracts passing. Four actual captures
+preserve all **1,649,517 pixels whose compatible GPU half-resolution inputs are
+exactly empty**, plus 86 separately reported CPU-float32-empty repair pixels.
+Fourteen focused host tests and independent deep source/evidence review pass.
+The [compact composite record](../../verification/results/fog-volume-gpu-composite.json)
+binds the executable, shaders, runtime source and revised checker separately.
+
+The first composite exposed two shader defects: interpolated UV rounding could
+select the previous half-resolution footprint and bypass full-pixel repair;
+weighted transmittance could drift below one on an empty field. Canonical integer
+pixel coordinates and weighted opacity fix those defects. The next run's remaining
+identity rejection came from classifying tiny nonzero fog as empty after CPU
+FP16 rounding. The identity assertion now uses the compositor's actual GPU
+half-resolution input footprint. The old CPU-rounded-empty changed counts
+(5,295 / 1,843 / 2,013 / 2,896) remain reported; numerical ST/composite gates and
+synthetic zero checks are unchanged. Adversarial tests reject a one-bit change
+on actual empty input and independent numerical failures. Reanalysis reused the
+immutable readbacks without another Wine run; both failed reports are retained.
+
+The observed CPU-float32-empty to GPU-nonempty counts are zero diagnostics, not
+an additional acceptance gate. GPU full-float repair ST is not directly read
+back, so those repairs retain the stated evidence limit. The 5.245-second runtime
+and 6.467-second host reanalysis are fixture durations, not rendering performance.
+Full state/Reset/fault checks, 32-frame coverage and transaction timing remain
+pending. No production fog change, clean replacement preview, game visual
+acceptance or native Windows execution is established by this checkpoint.
