@@ -314,9 +314,18 @@ class CMakeCommitFragment(unittest.TestCase):
                                      'src', 'cmake', 'tools', 'CMakeLists.txt'],
                                     cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip())
         with tempfile.TemporaryDirectory() as directory:
+            # This test configures only to inspect commit metadata; it never
+            # builds the media consumer. Supply named SDK placeholders for
+            # CMake's required path check, with a hard error on any accidental
+            # compilation. Production still requires the reviewed real SDK.
+            lav_headers = Path(directory) / 'configure-only-lav'
+            lav_headers.mkdir()
+            for name in ('LAVVideoSettings.h', 'LAVSplitterSettings.h'):
+                (lav_headers / name).write_text('#error Configuration-only SDK placeholder must not be compiled\n')
             configure = subprocess.run(
                 ['cmake', '-S', str(ROOT), '-B', directory,
                  f'-DCMAKE_TOOLCHAIN_FILE={ROOT / "cmake/mingw-i686.cmake"}', '-DCMAKE_BUILD_TYPE=RelWithDebInfo',
+                 f'-DX3M_LAV_INCLUDE_DIR={lav_headers}',
                  f'-DPython3_EXECUTABLE={sys.executable}'],
                 capture_output=True, text=True)
             self.assertEqual(configure.returncode, 0, configure.stderr[-2000:])

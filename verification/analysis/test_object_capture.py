@@ -47,7 +47,7 @@ class ObjectCaptureTests(unittest.TestCase):
         snapshot = source[source.index('void snapshot('):source.index('void snapshot(')+1800]
         self.assertLess(snapshot.index('if (!ctx.capture) return;'), snapshot.index('object_context(ctx);'))
         reset = source[source.index('HRESULT reset_common('):source.index('HRESULT reset_common(')+1200]
-        self.assertLess(reset.index('ctx.object_evidence.invalidate();'), reset.index('if(ctx.bloom_busy'))
+        self.assertLess(reset.index('ctx.object_evidence.invalidate();'), reset.index('if(ctx.lattice_query_depth || ctx.bloom_busy'))
         self.assertIn('D3DRS_FOGENABLE,D3DRS_ZENABLE', source)
         self.assertIn('if(matrices){out->parent=node[0x18/4];out->alpha13c=node[0x13c/4];}',
                       (ROOT / 'src/proxy/object_trace.cpp').read_text())
