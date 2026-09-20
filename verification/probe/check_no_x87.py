@@ -117,10 +117,15 @@ def parse(line):
 
 
 def hook_symbol(functions, hook):
-    # Anonymous-namespace stdcall functions: _ZN3x3m12_GLOBAL__N_1L<len><name>E...@<bytes>
-    # (the L marks internal linkage; older GCC omits it).
-    pattern = re.compile(r'_GLOBAL__N_1L?' + str(len(hook)) + re.escape(hook) + r'E')
-    matches = [n for n in functions if pattern.search(n)]
+    # Match the function's own qualified name, not an enclosing function name
+    # embedded in a local lambda/thunk/template mangling (__ZZ..., __ZN...I...).
+    # Loading import hooks live one namespace below the capture hooks. The L
+    # marks internal linkage; older GCC omits it. Keep all matching overloads
+    # and clones so the caller still rejects genuine root ambiguity.
+    namespace = '3x3m' + ('13loading_trace' if hook in GZ_HOOKS + CRYPT_HOOKS else '')
+    pattern = re.compile(r'^__ZN' + namespace + r'12_GLOBAL__N_1L?'
+                         + str(len(hook)) + re.escape(hook) + r'E')
+    matches = [n for n in functions if pattern.match(n)]
     return matches
 
 

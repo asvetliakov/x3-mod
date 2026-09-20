@@ -459,5 +459,6 @@ Unavailable getters/scopes and ambiguous matches refuse a complete packet.
 Host tests and Windows x86 cross-compilation are source evidence. The X3-bottle
 actual-helper fixture passed 250 checks against synthetic public COM endpoints
 (no rendering or device creation), including CPU state and reference lifetimes.
-Native Windows runtime, linked no-x87 audit and live-game observation remain
-unverified.
+The clean integration DLL passes the linked no-x87 audit (95 roots / 539
+reachable functions / zero violations). Native Windows runtime and live-game
+observation remain unverified.

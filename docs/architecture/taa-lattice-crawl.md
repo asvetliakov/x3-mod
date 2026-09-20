@@ -1118,12 +1118,15 @@ binds the executable, inputs and results. Independent deep review cleared the
 frozen source and runtime evidence; this does not establish live-driver behavior.
 Cross-compilation covers the
 helper, capture integration and read-only ID query with the project x86 SSE2 and
-four-byte incoming-stack flags. Full linked no-x87 audit and full host discovery
-remain integration gates; native Windows runtime and
-live-game behavior are unverified. The first full discovery exposed a synthetic
+four-byte incoming-stack flags. The clean integration DLL at `d9ddca88` builds;
+its linked no-x87 audit passes 95 roots / 539 reachable functions / zero violations.
+The audit initially mistook generated nested thunks for the draw-hook root; the
+reviewed symbol-selector correction preserves the call-graph walk and rejection
+of real ambiguity. Native Windows runtime and live-game behavior are unverified. The first full discovery exposed a synthetic
 Reset fixture missing the new diagnostic member; its reviewed compatibility fix
 retains all prior checks and adds 12 cancellation assertions (42 scenarios,
-218 checks). The affected host test passes; full discovery remains pending.
+218 checks). Full discovery completed 2,372 tests in 677.347 s with that sole
+failure; the repaired affected test passes. A full rerun remains a candidate gate.
 
 Affected command:
 `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lattice_state_capture verification.analysis.test_snapshot_x3_run`.

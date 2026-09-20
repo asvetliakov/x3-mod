@@ -59,5 +59,35 @@
     "elapsed_s": 2.488,
     "review": "review_lattice_gpu cleared synthetic Device compatibility and added Reset cancellation assertions",
     "scope": "extracted production Reset/ResetEx with real diagnostic refusal policy and synthetic storage"
+  },
+  "integration_build": {
+    "source_commit": "d9ddca882925d9fede499cb542d885ab66262795",
+    "source_dirty": false,
+    "dll": "/tmp/x3-lattice-integration-build/d3d9.dll",
+    "sha256": "669cf28f0e796e4917a975e00a7b6db486cac4f8be812c222390688fe9e5f779",
+    "bytes": 20037295,
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "kind": "clean integration build, not installed or flight candidate",
+    "build_log": "/tmp/x3-lattice-integration-build.log",
+    "linked_audit": {
+      "result": "PASS",
+      "roots": 95,
+      "reachable_functions": 539,
+      "violations": 0,
+      "evidence": "/tmp/x3-lattice-no-x87-fix/linked.stdout",
+      "checker_sha256": "281a28cea2aa18919ed32fbd176f9a6ddf49d663220b8718e2e9174a458af87b",
+      "independent_review": "review_lattice_gpu cleared symbol selection correction; walker unchanged"
+    }
+  },
+  "full_host_discovery": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+    "tests": 2372,
+    "elapsed_s": 677.347,
+    "exit_code": 1,
+    "failures": 1,
+    "failure": "synthetic capture_bloom_lifetime Device missing lattice_state",
+    "log": "/tmp/x3-lattice-integration-host.log",
+    "repair": "reviewed fixture compatibility committed d9ddca88; root affected test passes 1.017s",
+    "whole_suite_rerun": "pending before install candidate"
   }
 }
