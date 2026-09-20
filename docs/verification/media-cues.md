@@ -766,3 +766,56 @@ validated JSON and report); original `/tmp/x3-bottleX3-run186`. Reviewer rerun
 of the reproducer matched its JSON byte-for-byte. Run51 launcher dry-run also
 passes and differs in that one retry value only. No game/Wine run or installed
 file modification was performed by the agent.
+
+
+## Standalone ID2 playback boundary (2026-09-20)
+
+A separate x86 documented-API fixture reproduces the ID2 flags8 video-only
+route without launching X3. It uses the original `mov/00002.dat`, process-local
+builtin D3D9, a private GStreamer registry and runtime selection. It does not
+enable the experimental decoder in the game. Configuration and seek values
+are diagnostic assumptions (config0, start0), not recovered live game values;
+the eventual copy target is a managed 512² X8R8G8B8 surrogate.
+
+The frozen fixture source SHA-256 is
+`2bcc8ee1b5c96ea06e0adc31648600a1fdeadbe3b80d1142356949285762c7bf`;
+GCC16.2.0 builds EXE
+`43bf687e9884612c00b7abf164bd66b76a75c2aa6e9f2cfee969a1c425834c1b`
+with the required SSE2/four-byte incoming-stack options. Sixteen focused host
+tests pass. Source and watchdog/parser contracts received independent deep
+review before execution. Independent runtime review reproduced all three parsed
+results and verified unchanged protected-file hashes.
+
+All three executions used `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3
+verification/probe/run_media_playback_fixture.py ...`, serially, in CrossOver
+Preview bottle X3 (arm64 Wine/FEX; `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`). Results:
+
+- v4 constructor: `OpenFile` fails with HRESULT `80040217`; outer exit2,
+  11.117 seconds including startup and diagnostics.
+- Fixture-only v5 constructor: opens and completes SetState(RUN)/Pause, exit0, 5.980
+  seconds. This is constructor success, not successful playback.
+- Fixture-only v5 sample-run: constructor and second Pause succeed, then
+  `IMediaPosition::put_CurrentPosition(0)` does not return within the ten-second
+  call deadline. The watchdog terminates/reaps its own child (`call_seek`);
+  outer exit2, 14.322 seconds. Sample creation, frame progress and copy are
+  not reached.
+
+These results localize a blocking call in this fixture, not necessarily the
+previous comm flight's exact blocking call. Independent review confirms each requested v4/v5 `libgstlibav` plugin path
+loaded, with `avdec_mpeg2video` factory creation in both v5 runs. CrossOver
+builtin `libgstvideoparsersbad` loads in both versions. This verifies the
+plugin/factory witnesses, not every transitive dependency hash; the runner
+leaves its manual `backend_modules_verified` field false by design.
+Native Windows behavior, Reset and live destination lifetime remain unverified.
+Local evidence is `/tmp/x3-media-fixture-v4-constructor`,
+`/tmp/x3-media-fixture-v5-constructor` and
+`/tmp/x3-media-fixture-v5-sample-run`; the isolated fixture checkout is
+`/tmp/x3-media-playback-fixture`. EXE, bottle configuration and installed proxy
+hashes match their pre-test values.
+
+For visual identification only, native FFmpeg exported a ten-second PNG and
+a twelve-second H.264 preview under `verification/local/media-id2-preview/`.
+The user suggests animated billboard icons, consistent with the atlas image
+and texture destination path; the consuming object remains unidentified.
