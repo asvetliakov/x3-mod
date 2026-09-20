@@ -78,7 +78,9 @@ clock/texture fixture. App-local package deployment is reviewed and committed
 with retained configuration pins remain an integration check. The canonical loop
 API now distinguishes temporary queue pressure from permanent refusal
 (`156c8b63`, 444 host checks).
-The actual consumer hooks, startup boundary and destination observers are under
+The startup boundary is reviewed and committed (`1b6ea3b2`): nine actual x86
+fixture modes pass 655 checks. This covers authored startup context and ordinary
+returns, not game readiness. Consumer hooks and destination observers remain under
 implementation/qualification. Enabled media repair remains unfinished. The owning
 media and ownership ledgers retain the scoped evidence.
 Collision optimization is **paused by user request**. The reviewed engine/lattice
