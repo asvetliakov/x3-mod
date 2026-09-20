@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-21",
+  "scope": "Only clean source-only checkouts already ancestral to main; no forced removal, branch deletion or artifact pruning",
+  "removed": [
+    {
+      "path": "/private/tmp/x3-fog-families-shafts-integration",
+      "branch": "refs/heads/feat/fog-families-shafts-integration",
+      "head": "4c5ca4e765b9c5e71adbdde52d9906a56828e636",
+      "removed_kib": 217716,
+      "branch_retained": true,
+      "ignored_or_untracked_files": 0
+    },
+    {
+      "path": "/private/tmp/x3-media-zero-sequence",
+      "branch": "refs/heads/fix/media-zero-sequence",
+      "head": "9b1aef37aec963748ce50f669dff102d0b1f9212",
+      "removed_kib": 219700,
+      "branch_retained": true,
+      "ignored_or_untracked_files": 0
+    },
+    {
+      "path": "/private/tmp/x3-run56-accepted-merge",
+      "branch": "refs/heads/integrate/run56-accepted",
+      "head": "c404e979461af82278e9df724a3e80974c357b52",
+      "removed_kib": 219768,
+      "branch_retained": true,
+      "ignored_or_untracked_files": 0
+    }
+  ],
+  "removed_kib_total": 657184,
+  "protected": "Installed and rollback source/artifacts; dirty or ignored-file worktrees; active fixture and agent checkouts remain"
+}
