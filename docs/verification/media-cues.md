@@ -892,3 +892,48 @@ source stream sought correctly. This readback-only run also exits cleanly
 reviewed source `118174b3822227690665ed4b529115de67e1682bb4129c1e5679b22570683db4`.
 Thirty-six focused host tests pass. The native content comparison is retained
 in `/tmp/x3-media-native-seek-reference/result.json` with both local raw frames.
+
+
+### Indexed derived-media seek exposes displayed preroll (2026-09-20)
+
+A fixture-only stream-copy Matroska container preserves all 48,488 MPEG packets
+and 533,575,370 payload bytes; both payload hashes equal the original file hash
+`401e4192e150a848621d60666b2946e9bfa725a17c5a28e231b7cd55098e4c76`.
+Generated timestamps fill 16,276 missing packet PTS values. Checked decoded
+ordinals are pixel-identical under native FFmpeg. Its output-side ten-second
+seek selects adjacent ordinals for raw/container input despite equal reported
+decoded timestamps; this is not proof of a true timeline offset. Schema 2
+requires explicit generated-timestamp opt-in and keeps original playback and
+timeline acceptance false. Original game media remains untouched.
+
+The reviewed first-frame dump fixture and derived input completed six copied
+frames with clean cleanup in 6.6183 s (X3, arm64, FEX reduced precision and
+WINEMSYNC enabled). The ten-second request reaches Matroska's index: the first
+source packet is the 9.4-second keyframe, 44,319 bytes at native packet offset
+2,537,960. The decoder receives that packet but emits it at sample time zero.
+Graph position still reports ten seconds. The captured destination is uniquely
+closest to native decoded ordinal 234 / 9.4 seconds among twelve nearby frames:
+RGB MAE 0.4128, maximum channel error 5, versus MAE 3.8746 / max 230 against the
+requested ten-second frame. This identifies displayed preroll with small
+decoder/conversion differences; it is not exact cross-decoder byte equality.
+The parser correctly leaves all original and derived acceptance flags false.
+
+The backend trace's “Wrapped … PTS none” line occurs before timestamp assignment;
+it alone does not prove untimed decoder input. The packet, subsequent timestamp
+assignment and content witnesses establish the stronger result above. Private
+v5 libavcodec 61 and CrossOver's video converter differ from native FFmpeg 9,
+so the small residual is not yet assigned to decoder versus color conversion.
+A native same-v5 pipeline seek is the next bounded discriminator, retaining the
+segment through one pipeline. A proper repair must preserve signed preroll and
+segment timing through decoder reorder, discard decoded preroll before display,
+and flush old samples on seek/loop. No application call into private Wine
+interfaces or decoder hack is authorized by this result.
+
+Local evidence: `/tmp/x3-media-fixture-v5-mkv-seek10/result.json`,
+`/tmp/x3-media-remux-mkv/derived-record-v2.json`, and the
+[packet/content diagnosis](/tmp/x3-media-mkv-seek-diagnosis.md). The retained
+fixture EXE is `fe8c2be662ac77506f7a30be1094c5e40ac8ac2ff45da3f72c9ae5ac63cb93ee`;
+58 focused host tests and independent source/provenance review passed.
+Original media, EXE, bottle configuration, derived media and its record hashes
+were unchanged. No game launch, production decoder change or native Windows
+qualification follows from this experiment.
