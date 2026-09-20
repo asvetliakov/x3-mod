@@ -500,3 +500,24 @@ requires the separate service/destination/startup integration described in the
 That integration uses the same documented APIs and exclusive CPU-only Reset
 notification; its Windows x86 compilation and authored CrossOver fixtures do not
 establish native Windows runtime or real game playback/Reset behavior.
+
+## 2026-09-20: lattice observer query reference guard
+
+The [observer guard](taa-lattice-crawl.md#27-bound-observer-reference-callbacks-and-device-lifetime-2026-09-20)
+uses public D3D9 COM AddRef/Release and getter entry points, shared production
+source, and existing CPU/LastError boundaries. It requires no private backend
+layout, export or hash. The native device pin remains valid through submission
+and cleanup; only the bounded observer query scopes suppress proxy reference
+accounting/restoration, while native Release always forwards. Callback frequency
+may differ by backend; both callback-free held-resource controls and actual
+dropped-resource callbacks are covered by the X3/FEX matrix.
+
+Windows x86 cross-compilation and the linked CPU audit pass. The private actual
+capture/MotionOutput/helper fixture passes 830 checks under X3 arm64 Wine with
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`, covering lazy/per-draw routing,
+Reset/recreation, actual writes, query refusal, native failure and target-device
+retirement. Native Windows runtime, process-last-device profiler shutdown and
+actual game selection remain unverified. This reproduces a concrete observer
+interference mechanism; it does not prove historical Run193 resource ownership
+or its first destructive callback. Scoped evidence and remaining limits are in
+the [compact record](../../verification/results/lattice-observer-guard-2026-09-20.json).

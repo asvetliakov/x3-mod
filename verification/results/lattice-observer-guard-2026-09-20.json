@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "Private actual-production D3D9 observer guard fixture; not an install candidate or game qualification",
+  "source_base": "3e9b7076",
+  "support_objects_source": "2b81d12c",
+  "support_objects_build": "/tmp/x3-observer-guard-support-build",
+  "working_source": "/tmp/x3-lattice-observer-guard (uncommitted guard delta at execution)",
+  "capture_cpp_sha256": "afca7df6c17d0ed3be488f25d58982411a2d52ea2cae11d6fdf4e8fc8b29303f",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "exe_sha256": "296aeb1cbd89dbb298ebdb3f62b9f888532ee6306c37fec7e49d40fc135467ec",
+  "dll_sha256": "1c94c24ef0b1d8815ca2795eae46e6f34da014092d7af907db3204d6d6e75cf0",
+  "input_sha256": {
+    "vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
+  },
+  "build_command": "X3M_CANDIDATE_BUILD=/tmp/x3-observer-guard-support-build sh verification/probe/build_motion_output.sh",
+  "final_exe_only_build_command": "sh verification/probe/build_motion_output.sh --fixture-only",
+  "run_command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-lattice-observer-guard-lock-v6.json python3 verification/probe/lattice_observer_guard_run.py --exe verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll --output /tmp/x3-lattice-observer-guard-run-v6",
+  "native_summary": "/tmp/x3-lattice-observer-guard-run-v6/summary.json",
+  "runner_seconds": 6.987386625,
+  "lock": {
+    "lock_wait_seconds": 3.1669999999983656e-06,
+    "child_elapsed_seconds": 7.049565583,
+    "exit_code": 0
+  },
+  "cases": {
+    "perdraw": {
+      "exit_code": 0,
+      "seconds": 4.916694542,
+      "checks": 415,
+      "restorations": 37,
+      "frames": 36,
+      "matrix_cases": 12,
+      "nested_or_failure_cases": 8,
+      "final_release_cases": 2,
+      "stdout": "/tmp/x3-lattice-observer-guard-run-v6/perdraw/stdout.txt"
+    },
+    "lazy": {
+      "exit_code": 0,
+      "seconds": 2.0058564999999993,
+      "checks": 415,
+      "restorations": 37,
+      "frames": 36,
+      "matrix_cases": 12,
+      "nested_or_failure_cases": 8,
+      "final_release_cases": 2,
+      "stdout": "/tmp/x3-lattice-observer-guard-run-v6/lazy/stdout.txt"
+    }
+  },
+  "observations": {
+    "old_dropped_query_release_and_restore_per_arm": [
+      1,
+      1
+    ],
+    "guarded_dropped_query_release_and_restore_per_arm": [
+      1,
+      0
+    ],
+    "old_dropped_lazy_center_depth": -1,
+    "guarded_and_off_center_depth": 0.5,
+    "sampling_device_releases_all_matrix_arms": 0,
+    "native_calls_per_matrix_arm": 1,
+    "ordinary_subsequent_motion_and_depth_parity": true,
+    "native_failure_unbound_indices_hresult": "8876086c",
+    "target_retirement_exactly_once_all_four_cases": true
+  },
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_capture_bloom_lifetime verification.analysis.test_lattice_state_capture verification.analysis.test_lattice_observer_guard",
+    "status": "pass",
+    "tests": 15,
+    "seconds": 7.594,
+    "provenance": "Implementer tool execution output; stdout was not separately retained. This compact record preserves the observed result.",
+    "extracted_draw_checks": 61,
+    "extracted_lifetime_scenarios": 46,
+    "extracted_lifetime_checks": 246,
+    "readonly_native_dispatch_arm_disarm_test": "pass"
+  },
+  "linked_cpu_audit": {
+    "path": "/tmp/x3-lattice-observer-guard-linked-v3.json",
+    "result": "PASS",
+    "roots": 95,
+    "reachable_functions": 548,
+    "violations": 0,
+    "same_dll_as_v6": true
+  },
+  "failed_witnesses": {
+    "retained_local_roots": "/tmp/x3-lattice-observer-guard-run-v1 through -v5",
+    "v1": "Mode seam admission omitted; failed before matrix.",
+    "v2": "Fixture attempted native read-only vtable write. Replaced with fixture-owned saved-dispatch copy; no backend table writes.",
+    "v3_v4": "Unequal predecessor history after duplicate recovery draw; v4 changed 16384 motion words, depth 4096 words identical. Equalized one-draw predecessor before each arm; retained strict full readback parity.",
+    "v5": "Topology zero did not produce assumed INVALIDCALL. Replaced with unbound indices and recorded actual native HRESULT; no comparison relaxation."
+  },
+  "limits": [
+    "Selector bypass is fixture-only; original game selection not qualified.",
+    "Present/Reset/final application Release are deliberate query-scope injections, not observed backend causation. Early API refusal is tested before helper busy begins; existing helper host tests cover busy storage.",
+    "Another device remains alive in target retirement cases; process-last-device profiler shutdown is not a native runtime witness. Extracted hook verifies final pin drop after timer and outer lock.",
+    "Native Windows runtime remains unverified.",
+    "Historical Run193 resource ownership and first destructive callback are not authenticated.",
+    "No Run177 payload/fragment correspondence, moving-crawl/TAA benefit, gameplay FPS, game launch or installation is qualified."
+  ]
+}

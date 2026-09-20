@@ -238,6 +238,7 @@ struct Device : Hooks {
     object_capture::Cache sector_background_evidence{}; // diagnostic invalidation only; reader is qualified separately
     object_capture::Cache object_evidence{}; // diagnostic association; inert here
     std::shared_ptr<LatticeState> lattice_state;
+    unsigned lattice_query_depth=0;
     MotionOutput motion_output{};
     renderer::BloomPass bloom{};
     ComparisonControls comparison{};
@@ -335,6 +336,8 @@ struct HookGuard {
     explicit HookGuard(frame_timing::Bucket=frame_timing::Bucket::State,const char* =nullptr){++hook_guard_depth;}
     ~HookGuard(){--hook_guard_depth;}
 };
+// The media-integrated capture base names the same recursive lock explicitly.
+using CaptureLock = HookGuard;
 struct CpuCallBoundary { void before_original() noexcept {} void after_original() noexcept {} };
 namespace ownership {
 struct AdmissionMonitor {};
@@ -480,6 +483,36 @@ static void construct_invocation(Environment& env, CompositorInvocation* call, b
         call->input.boundary.depth = env.motion(0); call->input.boundary.depth->AddRef();
         call->candidate.surface = env.bloom(0); call->candidate.surface->AddRef();
     }
+}
+
+static void lattice_query_release_and_reset(AliasModel model, bool extended) {
+    ++scenarios;
+    Environment env(model);
+    env.ctx->lattice_state=std::make_shared<LatticeState>();
+    native_addref(&env.device); // observer's native pin
+    env.ctx->lattice_query_depth=1;
+    native_addref(&env.device); // actual callback model's temporary resource ref
+    const ULONG before=env.native.refs;
+    const unsigned native_calls=env.native.release_calls,adds=env.native.addref_calls;
+    const ULONG after=release_device(&env.device);
+    check(after==before-1 && env.native.release_calls==native_calls+1
+          && env.native.addref_calls==adds,"observer callback forwards native Release exactly once without accounting probes");
+    check(env.ctx->motion_output.restores==0 && env.ctx->motion_output.retention_flushes==0,
+          "observer query skips restoration and retention accounting");
+    release_device(&env.device); // reentrant last application reference
+    check(devices.count(&env.device)==1 && env.native.destroyed==0,
+          "observer native pin holds device after last application Release");
+    D3DPRESENT_PARAMETERS parameters{};D3DDISPLAYMODEEX mode{};
+    const HRESULT result=extended?reset_ex(&env.device,&parameters,&mode):reset(&env.device,&parameters);
+    check(result==D3DERR_INVALIDCALL && env.ctx->lattice_state->invalidations==1,
+          "observer Reset/ResetEx invalidates packet then refuses");
+    check(env.native.reset_calls==0 && env.native.reset_ex_calls==0 && env.ctx->reset_generation==0,
+          "observer Reset refusal leaves native dispatch/generation untouched");
+    check(env.ctx->motion_output.resets==0 && env.ctx->bloom.resets==0,
+          "observer Reset refusal preserves renderer resources");
+    env.ctx->lattice_query_depth=0;
+    check(release_device(&env.device)==0 && env.native.destroyed==1 && !devices.count(&env.device),
+          "ordinary pin drop performs final resource retirement exactly once");
 }
 
 static void nonterminal_get_device(AliasModel model) {
@@ -771,7 +804,7 @@ int main() {
         for(unsigned drop_at:{0u,1u,2u})notice_pin_lifetime(model,drop_at);
         for (bool extended : {false, true}) for (bool success : {false, true})
             reset_case(model, extended, success);
-        for (bool extended : {false, true}) composition_busy_reset(model, extended);
+        for (bool extended : {false, true}) {composition_busy_reset(model, extended);lattice_query_release_and_reset(model,extended);}
     }
     for (auto mismatch : {Mismatch::None, Mismatch::Frame, Mismatch::Thread,
                           Mismatch::Generation, Mismatch::Owner, Mismatch::Glow}) post_case(mismatch);
