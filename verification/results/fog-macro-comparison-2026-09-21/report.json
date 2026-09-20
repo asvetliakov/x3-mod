@@ -1,0 +1,1542 @@
+{
+  "boundary_transects": {
+    "bluewell": {
+      "axis": "+X",
+      "first_transition_bracket": [
+        194560.0,
+        195072.0
+      ],
+      "fixed_yz": [
+        262144.0,
+        262144.0
+      ],
+      "found": true,
+      "left_supported": false,
+      "samples": [
+        {
+          "banked_complete_T": 0.9915762543678284,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.9150109887123108,
+          "current_near_T": 1.0,
+          "offset": -32768.0
+        },
+        {
+          "banked_complete_T": 0.9915762543678284,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.9131461381912231,
+          "current_near_T": 0.9842307567596436,
+          "offset": -28672.0
+        },
+        {
+          "banked_complete_T": 0.9915762543678284,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.9113792777061462,
+          "current_near_T": 0.984280526638031,
+          "offset": -24576.0
+        },
+        {
+          "banked_complete_T": 0.9915740489959717,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.9096269011497498,
+          "current_near_T": 0.9842605590820312,
+          "offset": -20480.0
+        },
+        {
+          "banked_complete_T": 0.9915332794189453,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.9222400188446045,
+          "current_near_T": 1.0,
+          "offset": -16384.0
+        },
+        {
+          "banked_complete_T": 0.9914450645446777,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.9201359152793884,
+          "current_near_T": 0.9993794560432434,
+          "offset": -12288.0
+        },
+        {
+          "banked_complete_T": 0.9913190603256226,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.9180697798728943,
+          "current_near_T": 0.9993838667869568,
+          "offset": -8192.0
+        },
+        {
+          "banked_complete_T": 0.9911652207374573,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.9162197709083557,
+          "current_near_T": 0.999386727809906,
+          "offset": -4096.0
+        },
+        {
+          "banked_complete_T": 0.9909931421279907,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 1.0911094250332098e-10,
+          "current_complete_T": 0.9150109887123108,
+          "current_near_T": 1.0,
+          "offset": 0.0
+        },
+        {
+          "banked_complete_T": 0.9908046126365662,
+          "banked_near_T": 0.9916673302650452,
+          "camera_macro_mask": 0.02928924560546875,
+          "current_complete_T": 0.9131461381912231,
+          "current_near_T": 0.9842307567596436,
+          "offset": 4096.0
+        },
+        {
+          "banked_complete_T": 0.9906632304191589,
+          "banked_near_T": 0.9916921854019165,
+          "camera_macro_mask": 0.22113513946533203,
+          "current_complete_T": 0.9113792777061462,
+          "current_near_T": 0.984280526638031,
+          "offset": 8192.0
+        },
+        {
+          "banked_complete_T": 0.9904887080192566,
+          "banked_near_T": 0.991685688495636,
+          "camera_macro_mask": 0.46685791015625,
+          "current_complete_T": 0.9096269011497498,
+          "current_near_T": 0.9842605590820312,
+          "offset": 12288.0
+        },
+        {
+          "banked_complete_T": 0.9986445307731628,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.565399169921875,
+          "current_complete_T": 0.9222400188446045,
+          "current_near_T": 1.0,
+          "offset": 16384.0
+        },
+        {
+          "banked_complete_T": 0.9985262751579285,
+          "banked_near_T": 0.9999123811721802,
+          "camera_macro_mask": 0.4813995361328125,
+          "current_complete_T": 0.9201359152793884,
+          "current_near_T": 0.9993794560432434,
+          "offset": 20480.0
+        },
+        {
+          "banked_complete_T": 0.9984495043754578,
+          "banked_near_T": 0.9999126195907593,
+          "camera_macro_mask": 0.30923938751220703,
+          "current_complete_T": 0.9180697798728943,
+          "current_near_T": 0.9993838667869568,
+          "offset": 24576.0
+        },
+        {
+          "banked_complete_T": 0.9984233975410461,
+          "banked_near_T": 0.9999133944511414,
+          "camera_macro_mask": 0.1593475341796875,
+          "current_complete_T": 0.9162197709083557,
+          "current_near_T": 0.999386727809906,
+          "offset": 28672.0
+        },
+        {
+          "banked_complete_T": 0.9985096454620361,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.05852031707763672,
+          "current_complete_T": 0.9150109887123108,
+          "current_near_T": 1.0,
+          "offset": 32768.0
+        }
+      ],
+      "scan_step": 512.0,
+      "transition_x": 194560.0000152588
+    },
+    "foggreenoutlands": {
+      "axis": "+X",
+      "first_transition_bracket": [
+        182272.0,
+        182784.0
+      ],
+      "fixed_yz": [
+        262144.0,
+        262144.0
+      ],
+      "found": true,
+      "left_supported": false,
+      "samples": [
+        {
+          "banked_complete_T": 0.9254545569419861,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.6840834021568298,
+          "current_near_T": 0.9876552820205688,
+          "offset": -32768.0
+        },
+        {
+          "banked_complete_T": 0.9250760078430176,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.6773040294647217,
+          "current_near_T": 0.9876453280448914,
+          "offset": -28672.0
+        },
+        {
+          "banked_complete_T": 0.9247006177902222,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.6712807416915894,
+          "current_near_T": 0.9877471327781677,
+          "offset": -24576.0
+        },
+        {
+          "banked_complete_T": 0.9242862462997437,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.6736171841621399,
+          "current_near_T": 0.9999986290931702,
+          "offset": -20480.0
+        },
+        {
+          "banked_complete_T": 0.9238636493682861,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.6672479510307312,
+          "current_near_T": 0.9415810704231262,
+          "offset": -16384.0
+        },
+        {
+          "banked_complete_T": 0.9234709739685059,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.6613523364067078,
+          "current_near_T": 0.9400526881217957,
+          "offset": -12288.0
+        },
+        {
+          "banked_complete_T": 0.923038125038147,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.6558922529220581,
+          "current_near_T": 0.9403372406959534,
+          "offset": -8192.0
+        },
+        {
+          "banked_complete_T": 0.9211703538894653,
+          "banked_near_T": 1.0,
+          "camera_macro_mask": 0.0,
+          "current_complete_T": 0.6908590197563171,
+          "current_near_T": 0.9997590184211731,
+          "offset": -4096.0
+        },
+        {
+          "banked_complete_T": 0.9175071120262146,
+          "banked_near_T": 0.99851393699646,
+          "camera_macro_mask": 9.473311024521536e-12,
+          "current_complete_T": 0.6840834021568298,
+          "current_near_T": 0.9876552820205688,
+          "offset": 0.0
+        },
+        {
+          "banked_complete_T": 0.9124572277069092,
+          "banked_near_T": 0.9985171556472778,
+          "camera_macro_mask": 0.002542973030358553,
+          "current_complete_T": 0.6773040294647217,
+          "current_near_T": 0.9876453280448914,
+          "offset": 4096.0
+        },
+        {
+          "banked_complete_T": 0.9064254760742188,
+          "banked_near_T": 0.9985219240188599,
+          "camera_macro_mask": 0.07380342483520508,
+          "current_complete_T": 0.6712807416915894,
+          "current_near_T": 0.9877471327781677,
+          "offset": 8192.0
+        },
+        {
+          "banked_complete_T": 0.9011425971984863,
+          "banked_near_T": 0.9999986290931702,
+          "camera_macro_mask": 0.317657470703125,
+          "current_complete_T": 0.6736171841621399,
+          "current_near_T": 0.9999986290931702,
+          "offset": 12288.0
+        },
+        {
+          "banked_complete_T": 0.8941044211387634,
+          "banked_near_T": 0.9415810704231262,
+          "camera_macro_mask": 0.7427978515625,
+          "current_complete_T": 0.6672479510307312,
+          "current_near_T": 0.9415810704231262,
+          "offset": 16384.0
+        },
+        {
+          "banked_complete_T": 0.8876706957817078,
+          "banked_near_T": 0.9400526881217957,
+          "camera_macro_mask": 1.0,
+          "current_complete_T": 0.6613523364067078,
+          "current_near_T": 0.9400526881217957,
+          "offset": 20480.0
+        },
+        {
+          "banked_complete_T": 0.8817870020866394,
+          "banked_near_T": 0.9403372406959534,
+          "camera_macro_mask": 1.0,
+          "current_complete_T": 0.6558922529220581,
+          "current_near_T": 0.9403372406959534,
+          "offset": 24576.0
+        },
+        {
+          "banked_complete_T": 0.9318304657936096,
+          "banked_near_T": 0.9997590184211731,
+          "camera_macro_mask": 1.0,
+          "current_complete_T": 0.6908590197563171,
+          "current_near_T": 0.9997590184211731,
+          "offset": 28672.0
+        },
+        {
+          "banked_complete_T": 0.9275619983673096,
+          "banked_near_T": 0.9879204630851746,
+          "camera_macro_mask": 1.0,
+          "current_complete_T": 0.6840834021568298,
+          "current_near_T": 0.9876552820205688,
+          "offset": 32768.0
+        }
+      ],
+      "scan_step": 512.0,
+      "transition_x": 182272.0000152588
+    }
+  },
+  "candidate_assessment": {
+    "clear_space_observed": true,
+    "fixed_candidate": "failed-bounded-appearance-witness",
+    "no_recipe_adjustment_or_search_performed": true,
+    "reason": "all candidate near rays are exact identity in 4/4 endpoint views, removing current near clouds"
+  },
+  "contract": {
+    "S_limitation": "captured radiance unavailable",
+    "candidate": "M(P)=clamp(rho(P/16),0,1); multiply fine premultiplied RGBA equally",
+    "density_scale": 1.5,
+    "far": "unfiltered field at 128/64 spacing",
+    "lighting": "captured production-selected point-sun dir1, normalized unit radiance",
+    "macro_period": 524288.0,
+    "near": "same 24 midpoint quadrature for both fields; appearance control, not equality constraint",
+    "renormalization": false,
+    "search_or_tuning": false,
+    "strength": 0.03,
+    "world_anchor": "fixed origin; divide full P before periodic lookup"
+  },
+  "gates": {
+    "both_fields_far_128_vs_64_T_converged": true,
+    "boundary_transition_found": true,
+    "candidate_field_laws": true
+  },
+  "host_seconds": 33.472592166999995,
+  "images": {
+    "bluewell-16450-macro-mask-near-2.4to30-30to40-complete.png": "ee038862cf9ce965b7ede69a7ffc7fa1ef2489d566c511c88a3bad0d2b5d6689",
+    "bluewell-16450-sky-macro-mask-near-2.4to30-30to40-complete.png": "33e069f63bf5ffe91822afa6bb97787c58e223fc16763170855710b8dd5d302b",
+    "bluewell-16450-sky-transport.png": "2c1568691fc173ac2cf384bd740092e2ac6d5304e0258edaeccb388153bcd73c",
+    "bluewell-16450-transport.png": "b85d24db5bdd2d33e0ecfc61368312cc5205839723333cfa5aad32a9f1a91144",
+    "bluewell-16481-macro-mask-near-2.4to30-30to40-complete.png": "734ff5ebf4ad51f46c54c4425b7e84314bafb0bd9b3d2cb21c87a49662544a68",
+    "bluewell-16481-sky-macro-mask-near-2.4to30-30to40-complete.png": "818d86221e832a6d66e43be55ac7aeee64ccbc073fbbe82bd8dffaa4422cf372",
+    "bluewell-16481-sky-transport.png": "68adac38ac29cc4ef09af5d05ee22715765d582ca229d0b6abc114a99832098f",
+    "bluewell-16481-transport.png": "14939db0449ca57d4d18a43bbdf67fd505241066169dd780e543e80447eedbd3",
+    "foggreenoutlands-43051-macro-mask-near-2.4to30-30to40-complete.png": "fcfaa339624fb087db88af6c9cd2ff0360978b05b14bf7079f753cdb23372e6c",
+    "foggreenoutlands-43051-sky-macro-mask-near-2.4to30-30to40-complete.png": "28be95c97b3d1b727d9c61a34cb1fb924bd58767379e1af6bd2019384edb032a",
+    "foggreenoutlands-43051-sky-transport.png": "ba1b1efb8547b136a90385bb92463075960f317c351ef8456d9e3641257470b5",
+    "foggreenoutlands-43051-transport.png": "cd90233e37bcd8f6bf88d4c4a641acf9d988d7b5aa536218ced185578fff349a",
+    "foggreenoutlands-43082-macro-mask-near-2.4to30-30to40-complete.png": "d43ff7066dd86bbc5cccb309352ec4559e3317159cdddc9df9c83c6af5aa12e6",
+    "foggreenoutlands-43082-sky-macro-mask-near-2.4to30-30to40-complete.png": "ecb009423ed0d96d703b29f37277f87b28b8f101e4ee5716d0bf2f115dbee958",
+    "foggreenoutlands-43082-sky-transport.png": "87d341863a1a91c915f023659cfad614f2e5ed5c8efcb7a59bd957db9a4635f0",
+    "foggreenoutlands-43082-transport.png": "fd53311e8ac7488a0e6993b7aefb0b41eecdad0e61482641d1b2c6784037754b"
+  },
+  "limitations": [
+    "Four deterministic endpoint views and 64-frame sparse paths are bounded witnesses, not population estimates or user acceptance.",
+    "The 25% clear-ray screen is descriptive only.",
+    "Normalized unit-radiance S is not production-scaled lighting parity.",
+    "Cloud-only fixed-scale sheets are not game composites; run194 native cards were not used.",
+    "No production integrator, GPU cost, native execution, TAA, or flight appearance is established."
+  ],
+  "operation_counts": {
+    "GPU_or_FPS_claim": false,
+    "offline_only": true,
+    "per_field_far128_steps": 1470,
+    "per_field_far64_steps": 2939
+  },
+  "result": "completed-morphology-comparison",
+  "schema": 1,
+  "sources": {
+    "analysis_sha256": "4e5ac23b07f37d3f567378569e00d2b4687c2d6635fe745b90009ed2a1918b29",
+    "capture_log": "/tmp/x3-bottleX3-run200/session-20260921-014107-212.log",
+    "capture_log_bytes": 481995947,
+    "depth_files": {
+      "aggregate_sha256": "bb087cddf5297a9282b7d0ae0f82d76ace146d6acc1ac0f529e604651a73f934",
+      "count": 64
+    },
+    "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+    "packets": {
+      "bluewell": {
+        "decoded_sha256": "4529497a5e1feda3276b334d6aaef3ba741460e4e4b539aaaf7df74cbfa7261d",
+        "sha256": "fea1a4bf3842b417007af27c6cc25092c3ac8e815660b02bc3ac410953f1f372"
+      },
+      "foggreenoutlands": {
+        "decoded_sha256": "d0342a05fe0e0421c980bb46bec72a765617f9bd043d84d134928a65d3dc0b0c",
+        "sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8"
+      }
+    },
+    "reviewed_reference_report_sha256": "2760342437d368d7a9d4844d6c14732f9785f5aa8c8df675f5d16a02f00033c3",
+    "selected_capture_metadata_sha256": "99319f340925630006e4ebc11109013d0d72e781b0603041c71e4553a050556d"
+  },
+  "temporal": [
+    {
+      "banked_adjacent_abs_delta_T": {
+        "count": 744,
+        "max": 0.040858566761016846,
+        "p99": 0.015261164903640758
+      },
+      "current_adjacent_abs_delta_T": {
+        "count": 744,
+        "max": 0.16930216550827026,
+        "p99": 0.13542587101459505
+      },
+      "current_vs_banked_abs_delta_T": {
+        "count": 768,
+        "max": 0.23195630311965942,
+        "p99": 0.16620593428611757
+      },
+      "family": "bluewell",
+      "frames": 32,
+      "rays_per_frame": 24
+    },
+    {
+      "banked_adjacent_abs_delta_T": {
+        "count": 744,
+        "max": 0.016985595226287842,
+        "p99": 0.011542923450469983
+      },
+      "current_adjacent_abs_delta_T": {
+        "count": 744,
+        "max": 0.02215743064880371,
+        "p99": 0.02051156878471375
+      },
+      "current_vs_banked_abs_delta_T": {
+        "count": 768,
+        "max": 0.5542126893997192,
+        "p99": 0.5508876180648804
+      },
+      "family": "foggreenoutlands",
+      "frames": 32,
+      "rays_per_frame": 24
+    }
+  ],
+  "views": [
+    {
+      "banked_far_128_vs_64_T": {
+        "count": 2304,
+        "max": 2.7060508728027344e-05,
+        "p99": 5.411505699157631e-06
+      },
+      "converged": true,
+      "current_far_128_vs_64_T": {
+        "count": 2304,
+        "max": 9.733438491821289e-05,
+        "p99": 6.520032882690425e-05
+      },
+      "family": "bluewell",
+      "frame": 16450,
+      "geometry_rays": 314,
+      "images": [
+        "bluewell-16450-transport.png",
+        "bluewell-16450-macro-mask-near-2.4to30-30to40-complete.png",
+        "bluewell-16450-sky-transport.png",
+        "bluewell-16450-sky-macro-mask-near-2.4to30-30to40-complete.png"
+      ],
+      "laws": {
+        "finite": true,
+        "macro_period_exact": true,
+        "no_rgba_amplification": true,
+        "nonnegative": true
+      },
+      "macro_mask": {
+        "complete": {
+          "0": 0.0,
+          "100": 0.27680954337120056,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.00023921886531752534,
+          "90": 0.03962949663400652,
+          "99": 0.2410817356407641
+        },
+        "near": {
+          "0": 0.0,
+          "100": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.0,
+          "99": 0.0
+        },
+        "shell1": {
+          "0": 0.0,
+          "100": 0.1312730759382248,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.0034735424676910097,
+          "99": 0.0843230135738845
+        },
+        "shell2": {
+          "0": 0.0,
+          "100": 1.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.06376616582274441,
+          "99": 0.9528446114063255
+        }
+      },
+      "near_control_change": {
+        "absolute_S_normalized_unit_radiance": [
+          {
+            "count": 2304,
+            "max": 0.0006605623057112098,
+            "p99": 0.0004561149133951389
+          },
+          {
+            "count": 2304,
+            "max": 0.0030042820144444704,
+            "p99": 0.002197423831094054
+          },
+          {
+            "count": 2304,
+            "max": 0.009021290577948093,
+            "p99": 0.006821229555644093
+          }
+        ],
+        "absolute_T": {
+          "count": 2304,
+          "max": 0.04050654172897339,
+          "p99": 0.029241053462028477
+        },
+        "banked_nonzero_opacity_pixels": 0,
+        "current_useful_pixels": 323,
+        "useful_pixels_lost": 323,
+        "whole_view_exact_near_transport_identity": true,
+        "whole_view_useful_near_lost": true
+      },
+      "populations": {
+        "all": {
+          "banked_complete_clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.9552951388888888,
+            "hits": 2201
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.056223511695861816,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.00013647675514221274,
+            "99": 0.014003541469573912
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 2304,
+          "current_complete_clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.0681423611111111,
+            "hits": 157
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.22616618871688843,
+            "25": 0.03470465540885925,
+            "50": 0.06194201111793518,
+            "75": 0.09161578118801117,
+            "90": 0.11750186681747438,
+            "99": 0.17394852876663208
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.04050654172897339,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 7.548928260803223e-05,
+            "90": 0.008004719018936162,
+            "99": 0.029241053462028477
+          }
+        },
+        "geometry": {
+          "banked_complete_clear_below_0.002": {
+            "count": 314,
+            "fraction": 0.9968152866242038,
+            "hits": 313
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.005745589733123779,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 5.1856040954590115e-08
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 314,
+          "current_complete_clear_below_0.002": {
+            "count": 314,
+            "fraction": 0.46178343949044587,
+            "hits": 145
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.14636939764022827,
+            "25": 0.0,
+            "50": 0.007230609655380249,
+            "75": 0.03273053467273712,
+            "90": 0.06120142936706543,
+            "99": 0.09779653847217559
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.026262640953063965,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0023218035697936948,
+            "99": 0.02514194130897522
+          }
+        },
+        "sky": {
+          "banked_complete_clear_below_0.002": {
+            "count": 1990,
+            "fraction": 0.9487437185929648,
+            "hits": 1888
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.056223511695861816,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.00028440952301025393,
+            "99": 0.01859915733337398
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 1990,
+          "current_complete_clear_below_0.002": {
+            "count": 1990,
+            "fraction": 0.006030150753768844,
+            "hits": 12
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.22616618871688843,
+            "25": 0.04357247054576874,
+            "50": 0.06813004612922668,
+            "75": 0.09678664803504944,
+            "90": 0.12088742256164552,
+            "99": 0.17474961102008815
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.04050654172897339,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 9.642541408538818e-05,
+            "90": 0.008568680286407485,
+            "99": 0.029894317984580938
+          }
+        }
+      },
+      "rays": 2304,
+      "shell_30_40km_sky": {
+        "banked_clear_below_0.002": {
+          "count": 1990,
+          "fraction": 0.9633165829145729,
+          "hits": 1917
+        },
+        "banked_opacity": {
+          "0": 0.0,
+          "100": 0.054675936698913574,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 1.3709068298339844e-06,
+          "99": 0.013739449977874725
+        },
+        "banked_regions_above_0.002": 16,
+        "current_clear_below_0.002": {
+          "count": 1990,
+          "fraction": 0.33618090452261307,
+          "hits": 669
+        },
+        "current_opacity": {
+          "0": 0.0,
+          "100": 0.09280776977539062,
+          "25": 0.0009011775255203247,
+          "50": 0.0056393444538116455,
+          "75": 0.016634896397590637,
+          "90": 0.03134379386901856,
+          "99": 0.0573450988531112
+        }
+      },
+      "sky_rays": 1990
+    },
+    {
+      "banked_far_128_vs_64_T": {
+        "count": 2304,
+        "max": 9.47713851928711e-06,
+        "p99": 1.9073486328125e-06
+      },
+      "converged": true,
+      "current_far_128_vs_64_T": {
+        "count": 2304,
+        "max": 9.78708267211914e-05,
+        "p99": 6.179571151733389e-05
+      },
+      "family": "bluewell",
+      "frame": 16481,
+      "geometry_rays": 260,
+      "images": [
+        "bluewell-16481-transport.png",
+        "bluewell-16481-macro-mask-near-2.4to30-30to40-complete.png",
+        "bluewell-16481-sky-transport.png",
+        "bluewell-16481-sky-macro-mask-near-2.4to30-30to40-complete.png"
+      ],
+      "laws": {
+        "finite": true,
+        "macro_period_exact": true,
+        "no_rgba_amplification": true,
+        "nonnegative": true
+      },
+      "macro_mask": {
+        "complete": {
+          "0": 0.0,
+          "100": 0.17804980278015137,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 4.257960335962707e-05,
+          "90": 0.012775841634720566,
+          "99": 0.15607957035303116
+        },
+        "near": {
+          "0": 0.0,
+          "100": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.0,
+          "99": 0.0
+        },
+        "shell1": {
+          "0": 0.0,
+          "100": 0.14061595499515533,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.0010409536305814983,
+          "99": 0.08973965175449844
+        },
+        "shell2": {
+          "0": 0.0,
+          "100": 0.7121992111206055,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.003693941840901973,
+          "99": 0.6243182814121246
+        }
+      },
+      "near_control_change": {
+        "absolute_S_normalized_unit_radiance": [
+          {
+            "count": 2304,
+            "max": 0.0004761623276863247,
+            "p99": 0.00037469888717168857
+          },
+          {
+            "count": 2304,
+            "max": 0.0021784768905490637,
+            "p99": 0.001727130322251468
+          },
+          {
+            "count": 2304,
+            "max": 0.008191993460059166,
+            "p99": 0.006553006935864686
+          }
+        ],
+        "absolute_T": {
+          "count": 2304,
+          "max": 0.03096020221710205,
+          "p99": 0.025284590721130366
+        },
+        "banked_nonzero_opacity_pixels": 0,
+        "current_useful_pixels": 370,
+        "useful_pixels_lost": 370,
+        "whole_view_exact_near_transport_identity": true,
+        "whole_view_useful_near_lost": true
+      },
+      "populations": {
+        "all": {
+          "banked_complete_clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.9765625,
+            "hits": 2250
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.04601353406906128,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 3.454685211181686e-05,
+            "99": 0.005889160037040695
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 2304,
+          "current_complete_clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.07118055555555555,
+            "hits": 164
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.20794790983200073,
+            "25": 0.03582228720188141,
+            "50": 0.06370136141777039,
+            "75": 0.09403055906295776,
+            "90": 0.11844710111618054,
+            "99": 0.1666591078042983
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.03096020221710205,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.00019438564777374268,
+            "90": 0.0069952249526977605,
+            "99": 0.025284590721130366
+          }
+        },
+        "geometry": {
+          "banked_complete_clear_below_0.002": {
+            "count": 260,
+            "fraction": 1.0,
+            "hits": 260
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 5.960464477539063e-08,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 260,
+          "current_complete_clear_below_0.002": {
+            "count": 260,
+            "fraction": 0.5692307692307692,
+            "hits": 148
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.12836110591888428,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.023079857230186462,
+            "90": 0.04947414398193359,
+            "99": 0.09920997858047528
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.023087143898010254,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0010831952095031738,
+            "90": 0.0017817080020904536,
+            "99": 0.015853646397590654
+          }
+        },
+        "sky": {
+          "banked_complete_clear_below_0.002": {
+            "count": 2044,
+            "fraction": 0.9735812133072407,
+            "hits": 1990
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.04601353406906128,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 5.879402160644532e-05,
+            "99": 0.0061788713932037324
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 2044,
+          "current_complete_clear_below_0.002": {
+            "count": 2044,
+            "fraction": 0.007827788649706457,
+            "hits": 16
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.20794790983200073,
+            "25": 0.04436582326889038,
+            "50": 0.0693993866443634,
+            "75": 0.0977393090724945,
+            "90": 0.12137545943260193,
+            "99": 0.16858505129814144
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.03096020221710205,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.00013183057308197021,
+            "90": 0.007812887430191047,
+            "99": 0.02579347014427184
+          }
+        }
+      },
+      "rays": 2304,
+      "shell_30_40km_sky": {
+        "banked_clear_below_0.002": {
+          "count": 2044,
+          "fraction": 0.9853228962818004,
+          "hits": 2014
+        },
+        "banked_opacity": {
+          "0": 0.0,
+          "100": 0.04601353406906128,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.0,
+          "99": 0.003572806119918815
+        },
+        "banked_regions_above_0.002": 12,
+        "current_clear_below_0.002": {
+          "count": 2044,
+          "fraction": 0.3258317025440313,
+          "hits": 666
+        },
+        "current_opacity": {
+          "0": 0.0,
+          "100": 0.08878374099731445,
+          "25": 0.0010475963354110718,
+          "50": 0.005953282117843628,
+          "75": 0.016202881932258606,
+          "90": 0.02941078543663025,
+          "99": 0.05823818266391752
+        }
+      },
+      "sky_rays": 2044
+    },
+    {
+      "banked_far_128_vs_64_T": {
+        "count": 2304,
+        "max": 0.00013256072998046875,
+        "p99": 8.7738037109375e-05
+      },
+      "converged": true,
+      "current_far_128_vs_64_T": {
+        "count": 2304,
+        "max": 0.00022047758102416992,
+        "p99": 0.00012995839118957493
+      },
+      "family": "foggreenoutlands",
+      "frame": 43051,
+      "geometry_rays": 356,
+      "images": [
+        "foggreenoutlands-43051-transport.png",
+        "foggreenoutlands-43051-macro-mask-near-2.4to30-30to40-complete.png",
+        "foggreenoutlands-43051-sky-transport.png",
+        "foggreenoutlands-43051-sky-macro-mask-near-2.4to30-30to40-complete.png"
+      ],
+      "laws": {
+        "finite": true,
+        "macro_period_exact": true,
+        "no_rgba_amplification": true,
+        "nonnegative": true
+      },
+      "macro_mask": {
+        "complete": {
+          "0": 0.0,
+          "100": 0.7813608646392822,
+          "25": 0.01020018756389618,
+          "50": 0.11102308705449104,
+          "75": 0.2950516417622566,
+          "90": 0.49448876082897186,
+          "99": 0.7588090461492537
+        },
+        "near": {
+          "0": 0.0,
+          "100": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.0,
+          "99": 0.0
+        },
+        "shell1": {
+          "0": 0.0,
+          "100": 0.7700881958007812,
+          "25": 0.003347397258039564,
+          "50": 0.10000074654817581,
+          "75": 0.33240436017513275,
+          "90": 0.45465827882289883,
+          "99": 0.7488981425762176
+        },
+        "shell2": {
+          "0": 0.0,
+          "100": 1.0,
+          "25": 0.0,
+          "50": 0.001406777766533196,
+          "75": 0.3157747909426689,
+          "90": 0.9061372637748717,
+          "99": 1.0
+        }
+      },
+      "near_control_change": {
+        "absolute_S_normalized_unit_radiance": [
+          {
+            "count": 2304,
+            "max": 0.010907216928899288,
+            "p99": 0.008889392027631402
+          },
+          {
+            "count": 2304,
+            "max": 0.045796122401952744,
+            "p99": 0.04055378686636686
+          },
+          {
+            "count": 2304,
+            "max": 0.008063528686761856,
+            "p99": 0.006148259295150631
+          }
+        ],
+        "absolute_T": {
+          "count": 2304,
+          "max": 0.16257667541503906,
+          "p99": 0.1439774769544601
+        },
+        "banked_nonzero_opacity_pixels": 0,
+        "current_useful_pixels": 1739,
+        "useful_pixels_lost": 1739,
+        "whole_view_exact_near_transport_identity": true,
+        "whole_view_useful_near_lost": true
+      },
+      "populations": {
+        "all": {
+          "banked_complete_clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.4053819444444444,
+            "hits": 934
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.4134843349456787,
+            "25": 1.475214958190918e-06,
+            "50": 0.009939432144165039,
+            "75": 0.08822216093540192,
+            "90": 0.1744277119636536,
+            "99": 0.32471405386924734
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 2304,
+          "current_complete_clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.1267361111111111,
+            "hits": 292
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.7091249227523804,
+            "25": 0.20599554479122162,
+            "50": 0.29496458172798157,
+            "75": 0.3768392503261566,
+            "90": 0.44405065178871167,
+            "99": 0.5519056808948517
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.16257667541503906,
+            "25": 0.002247944474220276,
+            "50": 0.018193602561950684,
+            "75": 0.04856230318546295,
+            "90": 0.07811480760574344,
+            "99": 0.1439774769544601
+          }
+        },
+        "geometry": {
+          "banked_complete_clear_below_0.002": {
+            "count": 356,
+            "fraction": 1.0,
+            "hits": 356
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 356,
+          "current_complete_clear_below_0.002": {
+            "count": 356,
+            "fraction": 0.8202247191011236,
+            "hits": 292
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.06464892625808716,
+            "25": 0.0,
+            "50": 8.404254913330078e-06,
+            "75": 0.0007400363683700562,
+            "90": 0.00657162070274353,
+            "99": 0.042308863997459326
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.06464892625808716,
+            "25": 0.0,
+            "50": 8.404254913330078e-06,
+            "75": 0.0007400363683700562,
+            "90": 0.00657162070274353,
+            "99": 0.042308863997459326
+          }
+        },
+        "sky": {
+          "banked_complete_clear_below_0.002": {
+            "count": 1948,
+            "fraction": 0.29671457905544146,
+            "hits": 578
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.4134843349456787,
+            "25": 0.0007856786251068115,
+            "50": 0.024386078119277954,
+            "75": 0.10589227080345154,
+            "90": 0.18849337100982666,
+            "99": 0.3280832123756408
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 1948,
+          "current_complete_clear_below_0.002": {
+            "count": 1948,
+            "fraction": 0.0,
+            "hits": 0
+          },
+          "current_complete_opacity": {
+            "0": 0.051311492919921875,
+            "100": 0.7091249227523804,
+            "25": 0.2504162937402725,
+            "50": 0.31746023893356323,
+            "75": 0.39169375598430634,
+            "90": 0.4545228600502014,
+            "99": 0.5568483412265778
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.16257667541503906,
+            "25": 0.00678350031375885,
+            "50": 0.026845932006835938,
+            "75": 0.054368242621421814,
+            "90": 0.08752502799034118,
+            "99": 0.14656016290187832
+          }
+        }
+      },
+      "rays": 2304,
+      "shell_30_40km_sky": {
+        "banked_clear_below_0.002": {
+          "count": 1948,
+          "fraction": 0.6858316221765913,
+          "hits": 1336
+        },
+        "banked_opacity": {
+          "0": 0.0,
+          "100": 0.19989395141601562,
+          "25": 0.0,
+          "50": 2.980232238769531e-07,
+          "75": 0.007351338863372803,
+          "90": 0.045504873991012544,
+          "99": 0.13544604361057272
+        },
+        "banked_regions_above_0.002": 16,
+        "current_clear_below_0.002": {
+          "count": 1948,
+          "fraction": 0.057494866529774126,
+          "hits": 112
+        },
+        "current_opacity": {
+          "0": 0.0,
+          "100": 0.2533208131790161,
+          "25": 0.01704593002796173,
+          "50": 0.04145008325576782,
+          "75": 0.07756352424621582,
+          "90": 0.11556721329689025,
+          "99": 0.1945833545923233
+        }
+      },
+      "sky_rays": 1948
+    },
+    {
+      "banked_far_128_vs_64_T": {
+        "count": 2304,
+        "max": 0.0001462697982788086,
+        "p99": 7.986307144165034e-05
+      },
+      "converged": true,
+      "current_far_128_vs_64_T": {
+        "count": 2304,
+        "max": 0.00020241737365722656,
+        "p99": 0.00013332664966583246
+      },
+      "family": "foggreenoutlands",
+      "frame": 43082,
+      "geometry_rays": 353,
+      "images": [
+        "foggreenoutlands-43082-transport.png",
+        "foggreenoutlands-43082-macro-mask-near-2.4to30-30to40-complete.png",
+        "foggreenoutlands-43082-sky-transport.png",
+        "foggreenoutlands-43082-sky-macro-mask-near-2.4to30-30to40-complete.png"
+      ],
+      "laws": {
+        "finite": true,
+        "macro_period_exact": true,
+        "no_rgba_amplification": true,
+        "nonnegative": true
+      },
+      "macro_mask": {
+        "complete": {
+          "0": 0.0,
+          "100": 0.7813812494277954,
+          "25": 0.010220611933618784,
+          "50": 0.11178629845380783,
+          "75": 0.2959318161010742,
+          "90": 0.4943735897541046,
+          "99": 0.7588204741477966
+        },
+        "near": {
+          "0": 0.0,
+          "100": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "90": 0.0,
+          "99": 0.0
+        },
+        "shell1": {
+          "0": 0.0,
+          "100": 0.7702919244766235,
+          "25": 0.0031883266055956483,
+          "50": 0.10106061398983002,
+          "75": 0.33310656249523163,
+          "90": 0.4565865993499756,
+          "99": 0.7483795583248138
+        },
+        "shell2": {
+          "0": 0.0,
+          "100": 1.0,
+          "25": 0.0,
+          "50": 0.0014109091134741902,
+          "75": 0.31537967920303345,
+          "90": 0.9050527811050415,
+          "99": 1.0
+        }
+      },
+      "near_control_change": {
+        "absolute_S_normalized_unit_radiance": [
+          {
+            "count": 2304,
+            "max": 0.010886912234127522,
+            "p99": 0.008848807550966734
+          },
+          {
+            "count": 2304,
+            "max": 0.04581490531563759,
+            "p99": 0.04038492787629365
+          },
+          {
+            "count": 2304,
+            "max": 0.008039875887334347,
+            "p99": 0.006142766387201829
+          }
+        ],
+        "absolute_T": {
+          "count": 2304,
+          "max": 0.16250693798065186,
+          "p99": 0.14417379498481744
+        },
+        "banked_nonzero_opacity_pixels": 0,
+        "current_useful_pixels": 1733,
+        "useful_pixels_lost": 1733,
+        "whole_view_exact_near_transport_identity": true,
+        "whole_view_useful_near_lost": true
+      },
+      "populations": {
+        "all": {
+          "banked_complete_clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.4053819444444444,
+            "hits": 934
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.41483157873153687,
+            "25": 1.4901161193847656e-06,
+            "50": 0.010308772325515747,
+            "75": 0.08673344552516937,
+            "90": 0.17330718040466317,
+            "99": 0.32447031497955275
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 2304,
+          "current_complete_clear_below_0.002": {
+            "count": 2304,
+            "fraction": 0.1284722222222222,
+            "hits": 296
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.7174206972122192,
+            "25": 0.20673823356628418,
+            "50": 0.2945031523704529,
+            "75": 0.3770989924669266,
+            "90": 0.44520713090896613,
+            "99": 0.5514586722850796
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.16250693798065186,
+            "25": 0.0021981000900268555,
+            "50": 0.018122971057891846,
+            "75": 0.04837694764137268,
+            "90": 0.07786313891410832,
+            "99": 0.14417379498481744
+          }
+        },
+        "geometry": {
+          "banked_complete_clear_below_0.002": {
+            "count": 353,
+            "fraction": 1.0,
+            "hits": 353
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 353,
+          "current_complete_clear_below_0.002": {
+            "count": 353,
+            "fraction": 0.8385269121813032,
+            "hits": 296
+          },
+          "current_complete_opacity": {
+            "0": 0.0,
+            "100": 0.07165533304214478,
+            "25": 0.0,
+            "50": 1.4901161193847656e-06,
+            "75": 0.0007887482643127441,
+            "90": 0.006709885597229005,
+            "99": 0.05056827306747455
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.07165533304214478,
+            "25": 0.0,
+            "50": 1.4901161193847656e-06,
+            "75": 0.0007887482643127441,
+            "90": 0.006709885597229005,
+            "99": 0.05056827306747455
+          }
+        },
+        "sky": {
+          "banked_complete_clear_below_0.002": {
+            "count": 1951,
+            "fraction": 0.29779600205023066,
+            "hits": 581
+          },
+          "banked_complete_opacity": {
+            "0": 0.0,
+            "100": 0.41483157873153687,
+            "25": 0.0007706880569458008,
+            "50": 0.024592101573944092,
+            "75": 0.10497516393661499,
+            "90": 0.1881704330444336,
+            "99": 0.32846561074256897
+          },
+          "banked_near_opacity": {
+            "0": 0.0,
+            "100": 0.0,
+            "25": 0.0,
+            "50": 0.0,
+            "75": 0.0,
+            "90": 0.0,
+            "99": 0.0
+          },
+          "count": 1951,
+          "current_complete_clear_below_0.002": {
+            "count": 1951,
+            "fraction": 0.0,
+            "hits": 0
+          },
+          "current_complete_opacity": {
+            "0": 0.04679030179977417,
+            "100": 0.7174206972122192,
+            "25": 0.2517179548740387,
+            "50": 0.31680768728256226,
+            "75": 0.3924950361251831,
+            "90": 0.45332545042037964,
+            "99": 0.5543460249900818
+          },
+          "current_near_opacity": {
+            "0": 0.0,
+            "100": 0.16250693798065186,
+            "25": 0.006697028875350952,
+            "50": 0.02640378475189209,
+            "75": 0.05400902032852173,
+            "90": 0.08709383010864258,
+            "99": 0.14613649249076843
+          }
+        }
+      },
+      "rays": 2304,
+      "shell_30_40km_sky": {
+        "banked_clear_below_0.002": {
+          "count": 1951,
+          "fraction": 0.6899026140440799,
+          "hits": 1346
+        },
+        "banked_opacity": {
+          "0": 0.0,
+          "100": 0.2022477388381958,
+          "25": 0.0,
+          "50": 1.7881393432617188e-07,
+          "75": 0.006968051195144653,
+          "90": 0.04494661092758179,
+          "99": 0.13354238867759705
+        },
+        "banked_regions_above_0.002": 18,
+        "current_clear_below_0.002": {
+          "count": 1951,
+          "fraction": 0.06355715017939519,
+          "hits": 124
+        },
+        "current_opacity": {
+          "0": 0.0,
+          "100": 0.2483997344970703,
+          "25": 0.016947776079177856,
+          "50": 0.04107874631881714,
+          "75": 0.0778694748878479,
+          "90": 0.1171715259552002,
+          "99": 0.1937101185321808
+        }
+      },
+      "sky_rays": 1951
+    }
+  ]
+}

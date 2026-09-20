@@ -34,6 +34,43 @@ class FogDistanceReplay(unittest.TestCase):
         right = replay.sample_level(volume, np.array([[replay.PERIOD - 1e-3, 11., 13.]]))
         np.testing.assert_allclose(left, right, atol=2e-7)
 
+    def test_macro_bank_uses_full_world_anchor_and_multiplies_all_rgba(self):
+        volume = self.volume()
+        points = np.array([[1234., 5678., 9101.],
+                           [replay.PERIOD * 5 + 321., -4567., replay.PERIOD * 9 + 17.]])
+        fine = replay.sample_level(volume, points)
+        expected_mask = np.clip(replay.sample_level(volume, points / 16)[..., 3], 0, 1)
+        banked = replay.sample_macro_banked(volume, points)
+        np.testing.assert_allclose(banked, fine * expected_mask[:, None], rtol=0, atol=1e-7)
+        self.assertTrue(np.all(banked >= 0))
+        self.assertTrue(np.all(banked <= fine + 1e-7))
+        # Dividing an already fine-period-wrapped point changes the macro anchor.
+        wrong = np.clip(replay.sample_level(volume, np.mod(points, replay.PERIOD) / 16)[..., 3], 0, 1)
+        self.assertGreater(float(np.max(np.abs(expected_mask - wrong))), 1e-4)
+
+    def test_macro_bank_has_fixed_sixteen_period_and_reduces_optical_depth(self):
+        volume = self.volume(); origin = np.array([12345., 67890., -1112.])
+        points = np.array([[17., 23., 29.], [9000., -4000., 80000.]])
+        np.testing.assert_array_equal(replay.sample_macro_banked(volume, points),
+                                      replay.sample_macro_banked(volume, points + [replay.PERIOD * 16, 0, 0]))
+        direction = np.array([[1., .2, -.1], [-.3, .9, .1]], np.float32)
+        direction /= np.linalg.norm(direction, axis=1)[:, None]
+        limit = np.full(2, replay.FAR, np.float32); sun = np.array([0., 0., 1.])
+        current = replay.accurate_reference(volume, origin, direction, limit, 4e-6, 512., sun)
+        banked = replay.accurate_reference(volume, origin, direction, limit, 4e-6, 512., sun,
+                                           sampler=replay.sample_macro_banked)
+        self.assertTrue(np.all(banked["tau"] <= current["tau"] + 1e-6))
+        self.assertTrue(np.all(banked["T"] >= current["T"] - 1e-6))
+
+    def test_first_macro_transition_is_fixed_axis_scan(self):
+        volume = np.zeros((8, 8, 8, 4), np.float32)
+        volume[:, :, 2:6, 3] = 1
+        transition = replay._first_macro_transition(volume)
+        self.assertTrue(transition["found"])
+        self.assertEqual(transition["axis"], "+X")
+        self.assertEqual(transition["fixed_yz"], [replay.PERIOD * 8, replay.PERIOD * 8])
+        self.assertEqual(transition["scan_step"], replay.PERIOD / 64)
+
     def test_candidate_preserves_exact_near_and_depth_laws(self):
         volume = self.volume(); levels = replay.mip_pyramid(volume)
         direction = np.array([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]], np.float32)

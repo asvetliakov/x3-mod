@@ -122,6 +122,16 @@ def sample_level(volume: np.ndarray, points: np.ndarray) -> np.ndarray:
     return out
 
 
+def macro_mask(volume: np.ndarray, points: np.ndarray) -> np.ndarray:
+    """Fixed-world macro envelope M(P)=clamp(rho(P/16),0,1)."""
+    return np.clip(sample_level(volume, np.asarray(points, np.float64) / 16.)[..., 3], 0, 1).astype(F)
+
+
+def sample_macro_banked(volume: np.ndarray, points: np.ndarray) -> np.ndarray:
+    fine = sample_level(volume, points)
+    return fine * macro_mask(volume, points)[..., None]
+
+
 def sample_mipped(levels: list[np.ndarray], points: np.ndarray, lod: np.ndarray) -> np.ndarray:
     lod = np.clip(np.asarray(lod, F), 0, len(levels) - 1)
     lo = np.floor(lod).astype(np.int32); hi = np.minimum(lo + 1, len(levels) - 1); f = lod - lo
@@ -196,12 +206,12 @@ def candidate(levels: list[np.ndarray], origin: np.ndarray, direction: np.ndarra
 
 
 def near24(level0: np.ndarray, origin: np.ndarray, direction: np.ndarray, limit: np.ndarray,
-           sigma: float, sun_direction: np.ndarray) -> dict[str, np.ndarray]:
+           sigma: float, sun_direction: np.ndarray, sampler=sample_level) -> dict[str, np.ndarray]:
     near_limit = np.minimum(np.maximum(limit, 0), NEAR).astype(F)
     ds = near_limit / 24
     index = np.arange(24, dtype=F)[:, None]
     distance = ds[None, :] * (index + F(.5))
-    rgba = sample_level(level0, origin + direction[None, :, :] * distance[..., None])
+    rgba = sampler(level0, origin + direction[None, :, :] * distance[..., None])
     S, T, tau = integrate_samples(rgba, np.broadcast_to(ds, distance.shape), distance,
                                   sigma, direction, False, sun_direction)
     return {"S": S, "T": T, "tau": tau}
@@ -209,12 +219,12 @@ def near24(level0: np.ndarray, origin: np.ndarray, direction: np.ndarray, limit:
 
 def reference_shell(level0: np.ndarray, origin: np.ndarray, direction: np.ndarray,
                     limit: np.ndarray, sigma: float, spacing: float, start: float,
-                    end: float, sun_direction: np.ndarray) -> dict[str, np.ndarray]:
+                    end: float, sun_direction: np.ndarray, sampler=sample_level) -> dict[str, np.ndarray]:
     count = int(math.ceil((end - start) / spacing))
     index = np.arange(count)[:, None]; lo = start + index * spacing
     shell_limit = np.minimum(limit[None, :], end)
     ds = np.clip(shell_limit - lo, 0, spacing).astype(F); distance = lo + ds * .5
-    rgba = sample_level(level0, origin + direction[None, :, :] * distance[..., None])
+    rgba = sampler(level0, origin + direction[None, :, :] * distance[..., None])
     rgba[ds <= 0] = 0
     S, T, tau = integrate_samples(rgba, ds, distance, sigma, direction, True, sun_direction)
     bank = np.floor((lo[:, 0] - start) / PERIOD).astype(np.int32)
@@ -227,15 +237,15 @@ def reference_shell(level0: np.ndarray, origin: np.ndarray, direction: np.ndarra
 
 def accurate_reference(level0: np.ndarray, origin: np.ndarray, direction: np.ndarray,
                        limit: np.ndarray, sigma: float, spacing: float,
-                       sun_direction: np.ndarray, chunk: int = 64) -> dict[str, np.ndarray]:
+                       sun_direction: np.ndarray, chunk: int = 64, sampler=sample_level) -> dict[str, np.ndarray]:
     rows = []
     for first in range(0, len(limit), chunk):
         sl = slice(first, min(first + chunk, len(limit)))
-        near = near24(level0, origin, direction[sl], limit[sl], sigma, sun_direction)
+        near = near24(level0, origin, direction[sl], limit[sl], sigma, sun_direction, sampler)
         shell1 = reference_shell(level0, origin, direction[sl], limit[sl], sigma, spacing,
-                                 NEAR, WINDOW_START, sun_direction)
+                                 NEAR, WINDOW_START, sun_direction, sampler)
         shell2 = reference_shell(level0, origin, direction[sl], limit[sl], sigma, spacing,
-                                 WINDOW_START, FAR, sun_direction)
+                                 WINDOW_START, FAR, sun_direction, sampler)
         S1_added = near["T"][:, None] * shell1["S"]
         T1 = near["T"] * shell1["T"]
         S2_added = T1[:, None] * shell2["S"]
@@ -891,6 +901,234 @@ def run_reference_experiment(capture: Path, asset_data: Path, output: Path) -> d
     return result
 
 
+def _percentiles(values: np.ndarray) -> dict[str, float]:
+    a = np.asarray(values, np.float64)
+    return {str(p): float(np.percentile(a, p)) for p in (0, 25, 50, 75, 90, 99, 100)}
+
+
+def _mask_average(volume: np.ndarray, origin: np.ndarray, direction: np.ndarray,
+                  limit: np.ndarray, start: float, end: float, spacing: float,
+                  chunk: int = 64) -> np.ndarray:
+    result = []
+    for first in range(0, len(limit), chunk):
+        sl = slice(first, min(first + chunk, len(limit)))
+        ray_limit = limit[sl]
+        if start == 0 and end == NEAR:
+            segment_limit = np.minimum(np.maximum(ray_limit, 0), NEAR).astype(F)
+            ds0 = segment_limit / 24
+            distance = ds0[None, :] * (np.arange(24, dtype=F)[:, None] + F(.5))
+            ds = np.broadcast_to(ds0, distance.shape)
+        else:
+            count = int(math.ceil((end - start) / spacing))
+            lo = start + np.arange(count)[:, None] * spacing
+            ds = np.clip(np.minimum(ray_limit[None, :], end) - lo, 0, spacing).astype(F)
+            distance = lo + ds * .5
+        points = origin + direction[sl][None, :, :] * distance[..., None]
+        mask = macro_mask(volume, points)
+        length = np.sum(ds, axis=0, dtype=np.float64)
+        result.append(np.divide(np.sum(mask * ds, axis=0, dtype=np.float64), length,
+                                out=np.zeros_like(length), where=length > 0).astype(F))
+    return np.concatenate(result)
+
+
+def _write_macro_images(output: Path, stem: str, current: dict, banked: dict,
+                        masks: dict[str, np.ndarray], shape: tuple[int, int],
+                        sky=None, scale: int = 5) -> list[str]:
+    from PIL import Image, ImageDraw
+    columns = [
+        ("current near", current["near_S"], 1-current["near_T"], current["near_tau"], current["near_T"]),
+        ("banked near", banked["near_S"], 1-banked["near_T"], banked["near_tau"], banked["near_T"]),
+        ("current 40km", current["S"], 1-current["T"], current["tau"], current["T"]),
+        ("banked 40km", banked["S"], 1-banked["T"], banked["tau"], banked["T"]),
+        ("current 30-40", current["shell2_S"], 1-current["shell2_T"], current["shell2_tau"], current["shell2_T"]),
+        ("banked 30-40", banked["shell2_S"], 1-banked["shell2_T"], banked["shell2_tau"], banked["shell2_T"])]
+    panels = []
+    for _, S, opacity, tau, T in columns:
+        panels.append([_rgb_panel(S, shape, .03), _scalar_panel(opacity, shape, .4),
+                       _scalar_panel(tau, shape, .5), _scalar_panel(T, shape, 1.)])
+    excluded = None if sky is None else ~np.asarray(sky, bool).reshape(shape)
+    if excluded is not None:
+        for group in panels:
+            for panel in group:
+                panel[excluded] = (32, 0, 32)
+    h, w = shape; top, left = 18, 86
+    sheet = Image.new("RGB", (left + len(columns)*w*scale, top + 4*h*scale), "black")
+    draw = ImageDraw.Draw(sheet)
+    for col, ((label, *_), group) in enumerate(zip(columns, panels)):
+        draw.text((left + col*w*scale + 2, 3), label, fill="white")
+        for row, panel in enumerate(group):
+            sheet.paste(Image.fromarray(panel).resize((w*scale, h*scale), Image.Resampling.NEAREST),
+                        (left + col*w*scale, top + row*h*scale))
+    for row, label in enumerate(("S / .03", "opacity / .4", "tau / .5", "T / 1")):
+        draw.text((2, top + row*h*scale + 3), label, fill="white")
+    sheet_path = output / f"{stem}-transport.png"; sheet.save(sheet_path)
+    mask_panels = []
+    for key in ("near", "shell1", "shell2", "complete"):
+        panel = _scalar_panel(masks[key], shape, 1.)
+        if excluded is not None: panel[excluded] = (32, 0, 32)
+        mask_panels.append(panel)
+    mask_image = np.concatenate(mask_panels, axis=1)
+    mask_path = output / f"{stem}-macro-mask-near-2.4to30-30to40-complete.png"
+    Image.fromarray(mask_image).resize((4*w*scale, h*scale), Image.Resampling.NEAREST).save(mask_path)
+    return [sheet_path.name, mask_path.name]
+
+
+def _first_macro_transition(volume: np.ndarray) -> dict:
+    macro_period = PERIOD * 16
+    fixed = macro_period / 2
+    step = PERIOD / 64
+    x = np.arange(0, macro_period + step, step, dtype=np.float64)
+    points = np.stack((x, np.full_like(x, fixed), np.full_like(x, fixed)), axis=-1)
+    supported = macro_mask(volume, points) > 0
+    indices = np.flatnonzero(supported[1:] != supported[:-1])
+    if not len(indices):
+        return {"found": False, "axis": "+X", "fixed_yz": [fixed, fixed], "scan_step": step}
+    index = int(indices[0]); lo, hi = float(x[index]), float(x[index + 1]); left = bool(supported[index])
+    for _ in range(24):
+        mid = (lo + hi) * .5
+        state = bool(macro_mask(volume, np.array([[mid, fixed, fixed]]))[0] > 0)
+        if state == left: lo = mid
+        else: hi = mid
+    return {"found": True, "axis": "+X", "fixed_yz": [fixed, fixed], "scan_step": step,
+            "first_transition_bracket": [float(x[index]), float(x[index + 1])],
+            "transition_x": (lo + hi) * .5, "left_supported": left}
+
+
+def run_macro_comparison(capture: Path, asset_data: Path, output: Path) -> dict:
+    started = time.monotonic(); output.mkdir(parents=True, exist_ok=True)
+    manifest_path = asset_data / "manifest.json"; manifest = json.loads(manifest_path.read_text())
+    log_paths = sorted(capture.glob("session-*.log"))
+    if len(log_paths) != 1: raise ValueError("expected one capture session log")
+    metadata, metadata_sha = load_metadata(log_paths[0])
+    profiles = {row["name"]: row for row in manifest["profiles"]}
+    depth_paths = [capture / f"depth_1_{frame}.rgba32f"
+                   for lo, hi, _ in BURSTS for frame in range(lo, hi + 1)]
+    depth_hashes = {path.name: digest(path) for path in depth_paths}
+    sources = {"manifest_sha256": digest(manifest_path), "selected_capture_metadata_sha256": metadata_sha,
+               "analysis_sha256": digest(Path(__file__)), "reviewed_reference_report_sha256":
+               "2760342437d368d7a9d4844d6c14732f9785f5aa8c8df675f5d16a02f00033c3",
+               "capture_log": str(log_paths[0]), "capture_log_bytes": log_paths[0].stat().st_size,
+               "depth_files": {"count": len(depth_paths), "aggregate_sha256": hashlib.sha256(
+                   b"".join(bytes.fromhex(depth_hashes[p.name]) for p in depth_paths)).hexdigest()}, "packets": {}}
+    views = []; temporal = []; transects = {}; all_converged = True; all_laws = True; all_transitions = True
+    for lo, hi, family in BURSTS:
+        packet = asset_data / f"{family}.fogbin"; volume = decode_packet(packet, manifest)
+        sigma = float(profiles[family]["base_sigma"]) * 1.5
+        sources["packets"][family] = {"sha256": digest(packet), "decoded_sha256": profiles[family]["decoded_sha256"]}
+        probe = np.stack(np.meshgrid(np.linspace(-PERIOD, PERIOD*17, 19),
+                                     np.linspace(-1000, PERIOD*2, 7), np.linspace(0, PERIOD*16, 9),
+                                     indexing="ij"), axis=-1).reshape(-1, 3)
+        fine_probe = sample_level(volume, probe); bank_probe = sample_macro_banked(volume, probe)
+        laws_row = {"finite": bool(np.isfinite(bank_probe).all()),
+                    "nonnegative": bool(np.all(bank_probe >= 0)),
+                    "no_rgba_amplification": bool(np.all(bank_probe <= fine_probe + 2e-7)),
+                    "macro_period_exact": bool(np.array_equal(sample_macro_banked(volume, probe),
+                                                               sample_macro_banked(volume, probe + [PERIOD*16, 0, 0])))}
+        all_laws &= all(laws_row.values())
+        for frame in (lo, hi):
+            depth_path = capture / f"depth_1_{frame}.rgba32f"
+            origin, direction, limit, geometry = ray_set(metadata[frame], depth_path, 64, 36)
+            sun = captured_sun(metadata[frame]); sky = ~geometry
+            current128 = accurate_reference(volume, origin, direction, limit, sigma, 128., sun)
+            current64 = accurate_reference(volume, origin, direction, limit, sigma, 64., sun)
+            bank128 = accurate_reference(volume, origin, direction, limit, sigma, 128., sun, sampler=sample_macro_banked)
+            bank64 = accurate_reference(volume, origin, direction, limit, sigma, 64., sun, sampler=sample_macro_banked)
+            conv_current = metric(np.abs(current128["far_T"] - current64["far_T"]))
+            conv_bank = metric(np.abs(bank128["far_T"] - bank64["far_T"]))
+            converged = all(row["p99"] <= .00025 and row["max"] <= .00075 for row in (conv_current, conv_bank))
+            all_converged &= converged
+            current_near_opacity = 1-current64["near_T"]; bank_near_opacity = 1-bank64["near_T"]
+            current_opacity = 1-current64["T"]; bank_opacity = 1-bank64["T"]
+            masks = {"near": _mask_average(volume, origin, direction, limit, 0, NEAR, 0),
+                     "shell1": _mask_average(volume, origin, direction, limit, NEAR, WINDOW_START, 128.),
+                     "shell2": _mask_average(volume, origin, direction, limit, WINDOW_START, FAR, 128.)}
+            far_length = np.maximum(np.minimum(limit, FAR)-NEAR, 0)
+            near_length = np.minimum(np.maximum(limit, 0), NEAR)
+            masks["complete"] = np.divide(masks["near"]*near_length +
+                                           masks["shell1"]*np.minimum(far_length, WINDOW_START-NEAR) +
+                                           masks["shell2"]*np.maximum(np.minimum(limit, FAR)-WINDOW_START, 0),
+                                           np.minimum(np.maximum(limit, 0), FAR), out=np.zeros_like(limit),
+                                           where=limit > 0)
+            stem = f"{family}-{frame}"
+            images = _write_macro_images(output, stem, current64, bank64, masks, (36, 64))
+            images += _write_macro_images(output, stem+"-sky", current64, bank64, masks, (36, 64), sky)
+            population = {}
+            for name, select in (("all", np.ones(len(limit), bool)), ("sky", sky), ("geometry", geometry)):
+                population[name] = {"count": int(select.sum()),
+                    "current_complete_clear_below_0.002": fraction(current_opacity[select] < .002),
+                    "banked_complete_clear_below_0.002": fraction(bank_opacity[select] < .002),
+                    "current_near_opacity": _percentiles(current_near_opacity[select]),
+                    "banked_near_opacity": _percentiles(bank_near_opacity[select]),
+                    "current_complete_opacity": _percentiles(current_opacity[select]),
+                    "banked_complete_opacity": _percentiles(bank_opacity[select])}
+            useful = current_near_opacity > .002
+            lost = useful & (bank_near_opacity <= .002)
+            shell_current = 1-current64["shell2_T"]; shell_bank = 1-bank64["shell2_T"]
+            views.append({"family": family, "frame": frame, "rays": len(limit), "sky_rays": int(sky.sum()),
+                          "geometry_rays": int(geometry.sum()), "current_far_128_vs_64_T": conv_current,
+                          "banked_far_128_vs_64_T": conv_bank, "converged": converged,
+                          "near_control_change": {"absolute_T": metric(np.abs(bank64["near_T"]-current64["near_T"])),
+                              "absolute_S_normalized_unit_radiance": [metric(np.abs(bank64["near_S"][:, c]-current64["near_S"][:, c])) for c in range(3)],
+                              "current_useful_pixels": int(useful.sum()), "useful_pixels_lost": int(lost.sum()),
+                              "banked_nonzero_opacity_pixels": int(np.count_nonzero(bank_near_opacity)),
+                              "whole_view_exact_near_transport_identity": bool(np.array_equal(bank64["near_T"], np.ones_like(bank64["near_T"])) and
+                                                                                 np.array_equal(bank64["near_S"], np.zeros_like(bank64["near_S"]))),
+                              "whole_view_useful_near_lost": bool(useful.any() and not np.any(bank_near_opacity > .002))},
+                          "populations": population,
+                          "shell_30_40km_sky": {"current_opacity": _percentiles(shell_current[sky]),
+                              "banked_opacity": _percentiles(shell_bank[sky]),
+                              "current_clear_below_0.002": fraction(shell_current[sky] < .002),
+                              "banked_clear_below_0.002": fraction(shell_bank[sky] < .002),
+                              "banked_regions_above_0.002": components(((shell_bank > .002)&sky).reshape(36,64))},
+                          "macro_mask": {key: _percentiles(value[sky]) for key, value in masks.items()},
+                          "images": images, "laws": laws_row})
+        prev_current = prev_bank = None; current_delta = []; bank_delta = []; field_delta = []
+        for frame in range(lo, hi+1):
+            origin, direction, limit, _ = ray_set(metadata[frame], capture/f"depth_1_{frame}.rgba32f", 6, 4)
+            sun = captured_sun(metadata[frame])
+            cur = accurate_reference(volume, origin, direction, limit, sigma, 64., sun)
+            ban = accurate_reference(volume, origin, direction, limit, sigma, 64., sun, sampler=sample_macro_banked)
+            field_delta.append(np.abs(cur["T"]-ban["T"]))
+            if prev_current is not None:
+                current_delta.append(np.abs(cur["T"]-prev_current)); bank_delta.append(np.abs(ban["T"]-prev_bank))
+            prev_current, prev_bank = cur["T"], ban["T"]
+        temporal.append({"family": family, "frames": 32, "rays_per_frame": 24,
+                         "current_adjacent_abs_delta_T": metric(np.concatenate(current_delta)),
+                         "banked_adjacent_abs_delta_T": metric(np.concatenate(bank_delta)),
+                         "current_vs_banked_abs_delta_T": metric(np.concatenate(field_delta))})
+        transition = _first_macro_transition(volume); all_transitions &= transition["found"]
+        if transition["found"]:
+            rows=[]; x0=transition["transition_x"]; fixed=transition["fixed_yz"][0]
+            ray=np.array([[1.,0.,0.]],F); sun=captured_sun(metadata[hi])
+            for offset in np.linspace(-32768,32768,17):
+                camera_origin=np.array([x0+offset,fixed,fixed])
+                cur=accurate_reference(volume,camera_origin,ray,np.array([FAR],F),sigma,64.,sun)
+                ban=accurate_reference(volume,camera_origin,ray,np.array([FAR],F),sigma,64.,sun,sampler=sample_macro_banked)
+                rows.append({"offset": float(offset), "camera_macro_mask": float(macro_mask(volume,camera_origin[None])[0]),
+                             "current_near_T": float(cur["near_T"][0]), "banked_near_T": float(ban["near_T"][0]),
+                             "current_complete_T": float(cur["T"][0]), "banked_complete_T": float(ban["T"][0])})
+            transition["samples"] = rows
+        transects[family]=transition; del volume
+    image_paths=sorted(output.glob("*.png")); status=("completed-morphology-comparison" if all_converged and all_laws and all_transitions else "inconclusive-morphology-comparison")
+    whole_identity = sum(v["near_control_change"]["whole_view_exact_near_transport_identity"] for v in views)
+    assessment = {"fixed_candidate": "failed-bounded-appearance-witness",
+                  "reason": f"all candidate near rays are exact identity in {whole_identity}/4 endpoint views, removing current near clouds",
+                  "clear_space_observed": True,
+                  "no_recipe_adjustment_or_search_performed": True}
+    result={"schema":1,"result":status,"candidate_assessment":assessment,"sources":sources,"contract":{"candidate":"M(P)=clamp(rho(P/16),0,1); multiply fine premultiplied RGBA equally","macro_period":PERIOD*16,"world_anchor":"fixed origin; divide full P before periodic lookup","renormalization":False,"search_or_tuning":False,"near":"same 24 midpoint quadrature for both fields; appearance control, not equality constraint","far":"unfiltered field at 128/64 spacing","strength":.03,"density_scale":1.5,"lighting":"captured production-selected point-sun dir1, normalized unit radiance","S_limitation":"captured radiance unavailable"},
+            "gates":{"both_fields_far_128_vs_64_T_converged":all_converged,"candidate_field_laws":all_laws,"boundary_transition_found":all_transitions},
+            "views":views,"temporal":temporal,"boundary_transects":transects,"operation_counts":{"per_field_far128_steps":1470,"per_field_far64_steps":2939,"offline_only":True,"GPU_or_FPS_claim":False},
+            "images":{p.name:digest(p) for p in image_paths},"limitations":["Four deterministic endpoint views and 64-frame sparse paths are bounded witnesses, not population estimates or user acceptance.","The 25% clear-ray screen is descriptive only.","Normalized unit-radiance S is not production-scaled lighting parity.","Cloud-only fixed-scale sheets are not game composites; run194 native cards were not used.","No production integrator, GPU cost, native execution, TAA, or flight appearance is established."],"host_seconds":time.monotonic()-started}
+    report=output/"report.json"; report.write_text(json.dumps(result,indent=2,sort_keys=True,allow_nan=False)+"\n")
+    near_lost=[v["near_control_change"]["useful_pixels_lost"] for v in views]; whole=[v["near_control_change"]["whole_view_useful_near_lost"] for v in views]
+    current_clear=[v["populations"]["sky"]["current_complete_clear_below_0.002"]["fraction"] for v in views]; bank_clear=[v["populations"]["sky"]["banked_complete_clear_below_0.002"]["fraction"] for v in views]
+    shell_clear=[v["shell_30_40km_sky"]["banked_clear_below_0.002"]["fraction"] for v in views]
+    worst=max(max(v["current_far_128_vs_64_T"]["max"],v["banked_far_128_vs_64_T"]["max"]) for v in views)
+    lines=["# Fixed macro-bank morphology comparison","",f"Result: **{status}**. Fixed-candidate assessment: **failed bounded appearance witness**.","",f"Both current and fixed banked fields use converged unfiltered transport; worst 128-vs-64 far T max is {worst:.9g} (gate .00075).",f"Four endpoint sheets use 2304 rays each. Sky complete-column clear fractions below .002 change from {min(current_clear):.4f}..{max(current_clear):.4f} to {min(bank_clear):.4f}..{max(bank_clear):.4f}; banked 30-40 km shell clear fractions are {min(shell_clear):.4f}..{max(shell_clear):.4f}. The 25% screen is descriptive, not acceptance.",f"The fixed all-distance envelope loses {min(near_lost)}..{max(near_lost)} currently-useful near pixels per view. All 2304 candidate near rays have exact identity transport in {whole_identity}/4 endpoint views, so the visible current near cloud is wholly absent in every bounded view. This is a measured appearance change, not an integration error.","","The candidate creates substantial clear space and preserves visible fine structure inside some distant bank regions, but complete loss of the current near cloud makes this one fixed recipe fail the bounded witness. No anchor, scale, density, strength, normalization, or seed was changed after observing the result.","Sheets compare current/banked near, complete 40 km, 30-40 km transport, and macro-mask averages at fixed scales. They are cloud-only, not composites over captured fog.","The deterministic fixed-axis boundary transects record stable world coordinates across the first support transition; report.json contains every sample and the exact scan rule.","S uses captured production-selected point-sun dir1 with normalized unit radiance; production-scaled radiance parity remains open.","This result is limited to four endpoint views and sparse camera paths. It does not reject all macro distributions, claim flight appearance, or authorize production work.","",f"Host runtime: {result['host_seconds']:.2f}s. No game, Wine, build, production edit, or install was performed.",""]
+    (output/"report.md").write_text("\n".join(lines)); (output/"summary.json").write_text(json.dumps({"result":status,"report_sha256":digest(report),"analysis_sha256":sources["analysis_sha256"],"images":len(image_paths)},indent=2,sort_keys=True)+"\n")
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--capture", type=Path, required=True)
@@ -898,9 +1136,14 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reference-images", action="store_true",
                         help="run the ratified dense unfiltered reference-image experiment")
+    parser.add_argument("--macro-comparison", action="store_true",
+                        help="run the single fixed all-distance macro-bank morphology comparison")
     args = parser.parse_args()
-    result = (run_reference_experiment(args.capture, args.asset_data, args.output)
-              if args.reference_images else run(args.capture, args.asset_data, args.output))
+    if args.reference_images and args.macro_comparison:
+        parser.error("choose only one experiment mode")
+    result = (run_macro_comparison(args.capture, args.asset_data, args.output) if args.macro_comparison else
+              run_reference_experiment(args.capture, args.asset_data, args.output) if args.reference_images else
+              run(args.capture, args.asset_data, args.output))
     print(json.dumps({"result": result["result"], "output": str(args.output), "seconds": result["host_seconds"]}, sort_keys=True))
     return 0
 

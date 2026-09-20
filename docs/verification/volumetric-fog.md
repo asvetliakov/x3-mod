@@ -1007,3 +1007,20 @@ shell-local correlation labels. Scattering still uses normalized unit radiance.
 The images are cloud-only reference comparisons, not a recomposited flight or
 a proposed real-time implementation. No new medium, density, world scale or
 production integrator is selected; production cost and appearance remain open.
+
+### Fixed macro-bank comparison: not selected
+
+The [single fixed morphology experiment](../../verification/results/fog-macro-comparison-2026-09-21/report.md)
+multiplies density and premultiplied colour by the same family field sampled at
+P/16, clamped to [0,1]. Local detail scale, strength and world anchoring are
+unchanged; there was no parameter search or mean-density compensation. Both
+current and banked fields converge in the unfiltered reference.
+
+The candidate creates distant clear space but removes all sampled nearby fog:
+each of four endpoint views has near T exactly 1 and S exactly 0 on all 2,304
+rays. This is independent of the thresholded useful-pixel counts. It therefore
+is not selected as a replacement for the accepted nearby appearance. Complete
+sky clear fractions change from 0–0.78% to 29.67–97.36%; these descriptive
+numbers are not user visual acceptance. Only this fixed recipe/views are closed.
+Independent review passes 14 focused host tests and all 16 image hashes.
+No production, game, Wine or installation change was made.
