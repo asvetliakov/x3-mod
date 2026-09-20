@@ -988,3 +988,29 @@ Missing runtime payload/state parity remains consequential; no RGB explanation,
 moving-crawl correction, TAA quality, performance or native Windows acceptance
 follows. Further work must resolve those inputs rather than tune this conditional
 fixture to the four observed colours.
+
+## 22. Existing clip-W capture separates the face hypotheses (2026-09-20)
+
+The existing run177 depth image also retains interpolated clip-W in `.b/.a`.
+A fixture-only extension changes one operand DWORD in each diagnostic pixel
+shader to export the existing interpolator into the former write-marker lane. It adds
+no instructions, registers, resources or C++ rendering changes. All **40,320
+previous non-W values remain bit-identical** across the 48 repeat/Reset observations.
+Eleven host tests and independent source/runtime review pass; the X3/arm64 run
+completed in 5.725503 seconds. The [compact W record](../../verification/results/lattice-gpu-clip-w.json)
+binds the new inputs/output and prior observation hash.
+
+At dark pixel (799,173), captured W is **59843.8828125**. Face42 rendered alone
+matches both captured depth and W bit-for-bit. Face47 gives W **59782.48828125**,
+a difference of **-61.39453125 / -15,717 float32 ULPs**, alongside the previous
+-3 depth-ULP residual. The other three centers match face47's depth and W exactly.
+Thus these channels strongly separate the conditional face hypotheses, rather
+than grouping both under a broad device-depth tolerance.
+
+The combined fixture still chooses face47 at the dark center. Correspondence
+therefore favors face42 in the capture, but does not establish the game's actual
+owner or explain why the capture differs from the combined fixture. Existing
+run177 files contain shaders
+and rendered outputs, not actual VB/IB/texture payloads or all effective post-route
+states. A bounded actual-draw evidence design is being prepared; no additional
+flight, production capture path, RGB correction or TAA acceptance follows yet.

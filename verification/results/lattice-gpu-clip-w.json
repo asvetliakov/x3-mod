@@ -1,0 +1,157 @@
+{
+  "status": "pass",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "exe_sha256": "e9385088c2feb49b58c3b143b04d65965bea959d8ea68674208a827a2048a532",
+  "manifest_sha256": "5594ba6e3a108ec276b5f7bfc722947bf17235b9707a8b25135208d344980ed7",
+  "observations": 48,
+  "elapsed_seconds": 5.725502874999999,
+  "previous_channels": {
+    "equal": true,
+    "tiles": 48,
+    "float32_values": 40320,
+    "excluded_lane": "RT1.a now clip-W"
+  },
+  "baseline_observations_sha256": "ab86b84b883a096a5baf20005ba7468515fc4ecebd20dfebedf238b9b52e5e21",
+  "limits": [
+    "candidate source DDS identity and wrap are conditional, not runtime payload/address proof",
+    "seven source triangles only; tile is subset coverage, not full scene",
+    "zero depth/slope bias, solid fill and disabled scissor/clip planes are explicit uncaptured conditions",
+    "shader dependency slice preserves bytecode modifiers but is not original complete PS driver execution",
+    "NumPy round-to-nearest-even FP16 is source reconstruction, not captured vertex-buffer payload",
+    "uncaptured tangent/binormal zeroed; mathematically dead to observed outputs with captured light-loop0",
+    "no RGB, TAA, universal depth error bound or native-Windows execution claim"
+  ],
+  "checkpoint": "conditional clip-W witness",
+  "full_result": "/tmp/x3-lattice-gpu-run-v5/summary.json",
+  "full_result_sha256": "23e4078f72234ebb1ac2616db3a07f4f79b6bffc4c66e06a0d36f6743eabe9ec",
+  "host_tests": 11,
+  "production_fix": false,
+  "witnesses": [
+    {
+      "arm": "owner_no_alpha",
+      "face": -1,
+      "point": [
+        799,
+        173
+      ],
+      "owner": 180048,
+      "aux_depth": 0.999902606010437,
+      "depth_residual_fp32_ulps": -3.0,
+      "sampled_diffuse_alpha": null,
+      "output_alpha": 1,
+      "uv": [
+        -7.33614206,
+        0.00214141863
+      ],
+      "captured_clip_w": 59843.8828125,
+      "captured_clip_w_bits": "4769c3e2",
+      "clip_w": 59782.48828125,
+      "clip_w_bits": "4769867d",
+      "clip_w_residual": -61.39453125,
+      "clip_w_residual_fp32_ulps": -15717.0
+    },
+    {
+      "arm": "owner_no_alpha",
+      "face": -1,
+      "point": [
+        800,
+        173
+      ],
+      "owner": 180048,
+      "aux_depth": 0.9999024868011475,
+      "depth_residual_fp32_ulps": 0.0,
+      "sampled_diffuse_alpha": null,
+      "output_alpha": 1,
+      "uv": [
+        -7.40762949,
+        0.0825782046
+      ],
+      "captured_clip_w": 59729.765625,
+      "captured_clip_w_bits": "476951c4",
+      "clip_w": 59729.765625,
+      "clip_w_bits": "476951c4",
+      "clip_w_residual": 0.0,
+      "clip_w_residual_fp32_ulps": 0.0
+    },
+    {
+      "arm": "owner_no_alpha",
+      "face": -1,
+      "point": [
+        798,
+        174
+      ],
+      "owner": 180048,
+      "aux_depth": 0.9999026656150818,
+      "depth_residual_fp32_ulps": 0.0,
+      "sampled_diffuse_alpha": null,
+      "output_alpha": 1,
+      "uv": [
+        -7.22989416,
+        0.0495366342
+      ],
+      "captured_clip_w": 59871.578125,
+      "captured_clip_w_bits": "4769df94",
+      "clip_w": 59871.578125,
+      "clip_w_bits": "4769df94",
+      "clip_w_residual": 0.0,
+      "clip_w_residual_fp32_ulps": 0.0
+    },
+    {
+      "arm": "owner_no_alpha",
+      "face": -1,
+      "point": [
+        797,
+        175
+      ],
+      "owner": 180048,
+      "aux_depth": 0.9999028444290161,
+      "depth_residual_fp32_ulps": 0.0,
+      "sampled_diffuse_alpha": null,
+      "output_alpha": 1,
+      "uv": [
+        -7.12332964,
+        0.097073324
+      ],
+      "captured_clip_w": 59960.9375,
+      "captured_clip_w_bits": "476a38f0",
+      "clip_w": 59960.9375,
+      "clip_w_bits": "476a38f0",
+      "clip_w_residual": 0.0,
+      "clip_w_residual_fp32_ulps": 0.0
+    },
+    {
+      "arm": "owner_no_alpha",
+      "face": 42,
+      "point": [
+        799,
+        173
+      ],
+      "owner": 180043,
+      "aux_depth": 0.9999027848243713,
+      "depth_residual_fp32_ulps": 0.0,
+      "sampled_diffuse_alpha": null,
+      "output_alpha": 1,
+      "uv": [
+        -7.32582426,
+        0.0297634266
+      ],
+      "captured_clip_w": 59843.8828125,
+      "captured_clip_w_bits": "4769c3e2",
+      "clip_w": 59843.8828125,
+      "clip_w_bits": "4769c3e2",
+      "clip_w_residual": 0.0,
+      "clip_w_residual_fp32_ulps": 0.0
+    }
+  ],
+  "conclusion": "Among tested conditional faces, dark captured depth/W corresponds exactly to face42, other three centers to47; combined fixture still selects47 at dark, so runtime exclusion/ownership mechanism unresolved.",
+  "baseline_observations_sha256_encoding": "UTF-8 text after universal newline normalization to LF",
+  "baseline_observations_raw_sha256": "82c7b46d2c85a711b057c11ff9db3351d98cc45c5b9a236d4da737d984eb5833"
+}
