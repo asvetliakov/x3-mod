@@ -352,10 +352,103 @@ static void per_session_transfer() {
     CHECK(superseded.acknowledge_command(play_offer));
     CHECK(!superseded.acknowledge_command(play_offer));
 }
+static bool same_snapshot(const m::Snapshot& a, const m::Snapshot& b) {
+    return a.publication.session == b.publication.session &&
+        a.publication.operation == b.publication.operation && a.publication.epoch == b.publication.epoch &&
+        a.publication.live == b.publication.live && a.publication.playing == b.publication.playing &&
+        a.request.source == b.request.source && a.request.start_ms == b.request.start_ms &&
+        a.request.end_ms == b.request.end_ms && a.request.loop == b.request.loop &&
+        a.intent == b.intent && a.operation_active == b.operation_active;
+}
+static void atomic_loop_bounds() {
+    m::Runtime r(2, 3); auto a = r.try_admit(2), b = r.try_admit(3);
+    m::Command command; while (r.pop_command(command)) {}
+    CHECK(!r.loop_seek(a, 10, 20).accepted); // Admission alone owns no operation.
+    auto pending = r.prepare_play(a, request().playback); auto play = r.commit_play(std::move(pending));
+    auto pending_b = r.prepare_play(b, request(3).playback); auto other = r.commit_play(std::move(pending_b));
+    CHECK(play.accepted && other.accepted && r.run(b).accepted);
+    CHECK(r.consume_event(a, play.operation, play.epoch, m::Event::ready).accepted);
+    m::Snapshot before, after, other_before, other_after;
+    CHECK(r.snapshot(a, before) && r.snapshot(b, other_before));
+    CHECK(before.intent == m::Intent::playing && r.occupied_commands() == 3);
+    m::CommandOffer old_offer, other_offer, new_offer;
+    CHECK(r.peek_command(a, old_offer) && r.peek_command(b, other_offer));
+    const auto failed = r.loop_seek(a, 1234, 5678);
+    CHECK(!failed.accepted && !failed.terminal);
+    CHECK(r.snapshot(a, after) && same_snapshot(before, after));
+    CHECK(r.snapshot(b, other_after) && same_snapshot(other_before, other_after));
+    CHECK(r.offer_current(old_offer) && r.offer_current(other_offer) && r.occupied_commands() == 3);
+    // One normal pass transfers B; the caller can retry A on its next pass. No
+    // terminal event was consumed for A's endpoint while the loop was pending.
+    CHECK(r.acknowledge_command(other_offer));
+    const auto loop = r.loop_seek(a, 1234, 5678);
+    CHECK(loop.accepted && !loop.terminal && loop.previous_operation == 0);
+    CHECK(loop.operation == play.operation && loop.epoch == play.epoch + 1);
+    CHECK(r.snapshot(a, after) && after.request.start_ms == 1234 && after.request.end_ms == 5678);
+    CHECK(after.request.loop && after.intent == m::Intent::preparing && after.publication.playing && after.operation_active);
+    CHECK(!r.offer_current(old_offer));
+    CHECK(old_offer.command().request.start_ms == 2200 && old_offer.command().request.end_ms == 9000);
+    CHECK(!r.acknowledge_command(old_offer));
+    CHECK(r.peek_command(a, new_offer) && new_offer.command().kind == m::CommandKind::seek);
+    CHECK(new_offer.command().session == a && new_offer.command().operation == loop.operation && new_offer.command().epoch == loop.epoch);
+    CHECK(new_offer.command().request.start_ms == after.request.start_ms && new_offer.command().request.end_ms == after.request.end_ms);
+    CHECK(new_offer.command().request.loop && new_offer.command().playing);
+    CHECK(r.peek_command(b, other_offer) && other_offer.command().kind == m::CommandKind::run);
+    CHECK(r.acknowledge_command(other_offer) && r.acknowledge_command(new_offer));
+    CHECK(!r.consume_event(a, play.operation, play.epoch, m::Event::failed).accepted);
+    CHECK(r.accepts_publication(a, loop.operation, loop.epoch));
+    // Preparing loops also retain the same operation. Normalize only the end;
+    // do not alter source coordinates or turn a nonpositive end into EOF.
+    auto previous_epoch = loop.epoch;
+    for (auto end : {0, -1, INT_MIN, INT_MAX}) {
+        const auto next = r.loop_seek(a, -123, end);
+        CHECK(next.accepted && !next.terminal && next.operation == play.operation && next.epoch == previous_epoch + 1);
+        CHECK(r.snapshot(a, after) && after.request.start_ms == -123 && after.request.end_ms == (end > 0 ? end : -1));
+        CHECK(r.peek_command(a, new_offer) && new_offer.command().request.start_ms == -123 && new_offer.command().request.end_ms == after.request.end_ms);
+        CHECK(r.acknowledge_command(new_offer)); previous_epoch = next.epoch;
+    }
+    // The original generic seek still clears end to -1 in both representations.
+    auto generic = r.seek(a, 321, m::SeekIntent::preserve); CHECK(generic.accepted);
+    CHECK(r.snapshot(a, after) && after.request.end_ms == -1);
+    CHECK(r.peek_command(a, new_offer) && new_offer.command().request.end_ms == -1);
+    CHECK(r.acknowledge_command(new_offer));
+    CHECK(r.stop(a).accepted); CHECK(r.snapshot(a, before));
+    CHECK(!r.loop_seek(a, 0, 100).accepted);
+    CHECK(r.snapshot(a, after) && same_snapshot(before, after));
+    CHECK(r.retire(a).accepted && !r.loop_seek(a, 0, 100).accepted);
+
+    // Full-capacity loop failure must not cancel an outstanding play reservation.
+    m::Runtime reserved(1, 1); auto h = reserved.try_admit(2); CHECK(reserved.pop_command(command));
+    pending = reserved.prepare_play(h, request().playback); play = reserved.commit_play(std::move(pending));
+    CHECK(reserved.pop_command(command));
+    pending = reserved.prepare_play(h, request().playback); CHECK(bool(pending));
+    CHECK(reserved.snapshot(h, before));
+    CHECK(!reserved.loop_seek(h, 7, 9).accepted);
+    CHECK(reserved.snapshot(h, after) && same_snapshot(before, after));
+    CHECK(reserved.commit_play(std::move(pending)).accepted);
+
+    // Adapter forwarding preserves callback ownership across pressure/retry. It
+    // emits no completion itself; ordinary stop still terminates that operation.
+    p::Adapter adapter(1, 1); auto ah = admit(adapter, 0x1000); drain(adapter);
+    auto ap = adapter.prepare_play(ah, request()); auto at = adapter.commit_play(std::move(ap));
+    auto denied = adapter.loop_seek(ah, 4400, 8800); p::Notification notification;
+    CHECK(!denied.accepted && !adapter.take_notification(denied, notification));
+    CHECK(adapter.snapshot(ah, before) && before.operation_active && before.publication.epoch == at.epoch);
+    CHECK(adapter.pop_command(command));
+    auto retry = adapter.loop_seek(ah, 4400, 8800);
+    CHECK(retry.accepted && retry.operation == at.operation && retry.epoch == at.epoch + 1);
+    CHECK(!adapter.take_notification(retry, notification));
+    CHECK(adapter.snapshot(ah, after) && after.request.end_ms == 8800 && after.request.start_ms == 4400);
+    CHECK(adapter.pop_command(command) && command.request.end_ms == 8800 && command.request.start_ms == 4400 && command.epoch == retry.epoch);
+    auto stopped = adapter.stop(ah);
+    CHECK(adapter.take_notification(stopped, notification) && notification.operation == at.operation && notification.status == 1);
+    CHECK(!adapter.take_notification(stopped, notification));
+    CHECK(!adapter.loop_seek(ah, 1, 2).accepted);
+}
 int main() {
     const auto before = allocations;
     layout_and_decode(); capacity_and_reservation(); same_key_and_failure();
-    independent_sessions_and_seek(); rates(); reentry_and_reuse(); per_session_transfer();
+    independent_sessions_and_seek(); rates(); reentry_and_reuse(); per_session_transfer(); atomic_loop_bounds();
     p::Adapter a; auto h = admit(a, 0x1000); drain(a);
     auto prep = a.prepare_play(h, request()); auto current = a.commit_play(std::move(prep));
     constexpr unsigned iterations = 200000;

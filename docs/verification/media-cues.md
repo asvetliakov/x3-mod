@@ -1234,3 +1234,34 @@ enabled, no game was launched, and no installed binary was changed. Parent
 rechecks confirm protected EXE and bottle configuration unchanged. The gate's
 instruction-cost review finds one counter read, four temporary stack bytes and
 no calls/allocations/locks; no game performance benefit is measured.
+
+
+### Atomic manager-loop source bounds (2026-09-20)
+
+The reviewed CPU delta adds `Runtime::loop_seek(handle, start_ms, end_ms)` and
+Adapter forwarding. It reserves capacity first, then installs the exact source
+start and normalized end (positive unchanged, otherwise -1) before enqueue. The
+snapshot and immutable command therefore carry identical bounds. Successful loop
+seek preserves operation/source/loop ownership, increments the epoch once and arms
+preparing/playing intent; previous offers become stale without being rewritten.
+
+Queue-pressure rejection leaves state, epoch, commands, preparation reservations
+and callback ownership unchanged. The caller retains the active loop-pending
+operation and can retry on the next pass after another session progresses. This
+layer issues no terminal callback, retirement or endpoint counter. Stopped, retired
+and never-played sessions are rejected. Generic seek still clears end to -1; the
+manager loop must use the new atomic API instead of generic seek followed by
+`set_end`, which only updates the snapshot.
+
+Independent review (`review_media_owned_state`) is clear. The focused suite passes
+**2 tests / 392 checks**, zero failures and zero allocations; the reviewer repeated
+those results and the i686 object/no-x87 checks. ASan+UBSan also passes 392 checks,
+with output at `/tmp/x3-media-loop-seek-sanitize.log`. Runtime/adapter storage remains
+2912/3632 host bytes. The appended `atomic_loop_seek` entry in the
+[qualification record](../../verification/results/media-owned-adapter-state-2026-09-20.json)
+retains exact commands, source base and pressure/bounds witnesses.
+
+This qualifies the CPU transaction and Adapter forwarding only. The manager-loop
+ABI/CPU/LastError/rollback envelope, actual transport and destination/Reset lifetime
+remain separate acceptance dependencies. Production admission stays disabled; no
+Wine/game execution, DLL build, install or native Windows runtime check occurred.

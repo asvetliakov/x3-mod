@@ -104,6 +104,13 @@ Transition Runtime::commit_play(PreparedPlay&& p) noexcept {
     return {true, previous != 0, previous, state.publication.operation, state.publication.epoch};
 }
 Transition Runtime::seek(SessionHandle h, std::int32_t start, SeekIntent intent) noexcept {
+    // Preserve the generic seek's original end-clear/caller-write sequencing.
+    return seek_impl(h, start, -1, intent);
+}
+Transition Runtime::loop_seek(SessionHandle h, std::int32_t start, std::int32_t end) noexcept {
+    return seek_impl(h, start, end > 0 ? end : -1, SeekIntent::loop_restart);
+}
+Transition Runtime::seek_impl(SessionHandle h, std::int32_t start, std::int32_t end, SeekIntent intent) noexcept {
     auto* s = find(h);
     if (!s || s->state.publication.epoch == UINT64_MAX ||
         (intent == SeekIntent::loop_restart && !s->state.operation_active)) return {};
@@ -113,8 +120,8 @@ Transition Runtime::seek(SessionHandle h, std::int32_t start, SeekIntent intent)
     auto& state = s->state;
     ++state.publication.epoch;
     state.request.start_ms = start;
-    // Original seek clears the end; its caller writes the requested end later.
-    state.request.end_ms = -1;
+    // Bounds are installed before enqueue; an exposed offer is never rewritten.
+    state.request.end_ms = end;
     if (intent == SeekIntent::loop_restart) state.publication.playing = true;
     state.intent = state.publication.playing ? Intent::preparing : Intent::stopped;
     enqueue(cell, *s, CommandKind::seek);

@@ -163,5 +163,79 @@
       "dll_built": false,
       "installed": false
     }
+  },
+  "atomic_loop_seek": {
+    "date": "2026-09-20",
+    "source_base_commit": "8b22eb22",
+    "source_binding": "Reviewed Runtime/Adapter loop_seek delta committed together with this appended record",
+    "scope": "CPU state and immutable command-bound transaction; no manager-loop ABI or worker/runtime qualification",
+    "independent_review": "review_media_owned_state: CLEAR; independently repeated 2 tests / 392 checks, i686 object/no-x87 checks and diff check",
+    "api": [
+      "Runtime::loop_seek(SessionHandle,start_ms,end_ms)",
+      "Adapter::loop_seek(SessionHandle,start_ms,end_ms)"
+    ],
+    "contract": [
+      "Reserve command capacity before changing state or releasing a pending preparation reservation.",
+      "Install exact start_ms and normalized end_ms (positive unchanged, otherwise -1) into Snapshot before enqueue so the immutable Command has identical bounds.",
+      "Preserve operation/source/loop ownership, increment epoch exactly once and arm preparing/playing intent.",
+      "Require the still-active operation; no-operation, stopped and retired sessions cannot be resurrected.",
+      "Queue pressure leaves state, epoch, operation, queued offers, reservations and callback ownership unchanged. Caller retains active loop-pending state and may retry next pass.",
+      "No terminal callback, retirement or endpoint counter is emitted at this layer.",
+      "Previously exposed offers are not rewritten; successful new epoch makes old offers ineligible.",
+      "Generic seek keeps its existing end=-1 behavior. Manager loop must use loop_seek, not seek followed by snapshot-only set_end."
+    ],
+    "host": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+      "exit_code": 0,
+      "tests": 2,
+      "fixture_checks": 392,
+      "fixture_failures": 0,
+      "fixture_allocations": 0
+    },
+    "cross_compile": {
+      "production_translation_units": 2,
+      "i686_objects_passed": true,
+      "x87_instructions": 0,
+      "native_windows_execution": false
+    },
+    "sanitizers": {
+      "build_command": "clang++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Werror src/media/playback_runtime.cpp src/proxy/media_playback.cpp verification/probe/media_owned_adapter_state_fixture.cpp -o /tmp/x3-media-loop-seek-sanitize",
+      "run_command": "/tmp/x3-media-loop-seek-sanitize > /tmp/x3-media-loop-seek-sanitize.log 2>&1",
+      "result_path": "/tmp/x3-media-loop-seek-sanitize.log",
+      "exit_code": 0,
+      "fixture_checks": 392,
+      "fixture_failures": 0,
+      "fixture_allocations": 0
+    },
+    "coverage": [
+      "Exact source start/end in snapshot and queued command",
+      "Full-queue unchanged-state failure and successful next-pass retry after other-session progress",
+      "Outstanding preparation reservation survives failed loop admission",
+      "Single new epoch preserves operation and revokes old offers without rewriting them",
+      "Positive/nonpositive end normalization; generic seek behavior retained",
+      "Preparing/playing accepted, stopped/retired/no-operation rejected",
+      "Adapter callback ownership survives pressure/retry and remains single-delivery at later stop"
+    ],
+    "bounded_cost": {
+      "allocation_count": 0,
+      "host_runtime_bytes": 2912,
+      "host_adapter_bytes": 3632,
+      "note": "Reuses bounded seek reservation path; no new queue, storage, clock or backend work"
+    },
+    "open_dependencies": [
+      "Engine manager-loop consumer must use the atomic API",
+      "Manager-loop instruction/CPU/LastError/rollback envelope remains separately qualified",
+      "Worker transport, destination/Reset lifetime, enabled game playback and native Windows runtime remain outside this checkpoint"
+    ],
+    "execution": {
+      "game_launched": false,
+      "wine_executed": false,
+      "bottle_name": null,
+      "wine_arch": null,
+      "FEX_X87REDUCEDPRECISION": null,
+      "WINEMSYNC": null,
+      "dll_built": false,
+      "installed": false
+    }
   }
 }
