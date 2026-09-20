@@ -1760,8 +1760,10 @@ The parent ran the newly affected **actual production dispatcher** under X3:
 **63 checks, four stack alignments, zero failures**, with bound Consumer/Ingress
 and a hostile immediate-memory callback. Disassembly contains no helper/SJLJ
 before FNSAVE or after restore on the return path. Four focused registration/cue
-modes have a separate frozen authored-image executable; their queue state is
-recorded explicitly, not inferred from compilation. Root/capture/loader/Services
+modes pass on the frozen authored-image executable: cue pristine/installed each
+13 checks, Reset owned 13 and conflict 14 (53 total, zero failures). Independent
+review confirms all four locked X3 runs, 5.034 s combined child time and unchanged
+executable bytes. Authored image checks do not qualify live game identity. Root/capture/loader/Services
 Windows x86 compilation passes with SSE2, stack4 and warnings as errors.
 F8-only scalar reporting has no domain/registry/COM/worker call and adds no
 per-frame log. Host empty-maintenance/exclusion timings are indicative fixture

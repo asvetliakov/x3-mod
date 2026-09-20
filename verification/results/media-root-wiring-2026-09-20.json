@@ -3,7 +3,7 @@
   "checkpoint": "qualified startup root/common record ingress",
   "base_commit": "c457ccf719c3d4c01f8001bc6e19a912ee8e0aba",
   "checkout": "/private/tmp/x3-media-root-wiring",
-  "state": "independently reviewed source checkpoint; registration runtime and combined playback qualification pending",
+  "state": "reviewed source and scoped fixture checkpoint; combined playback and game qualification pending",
   "inputs": {
     "src/proxy/media_root.h": "47c28c7fdaf876f1734c68998fd745d3085d39645e4516edb0125df484a4f8ce",
     "src/proxy/media_root.cpp": "5ab06f1bd90416e7b5fa78f1517b51538106ec38e00be8041dc278eb5088dc45",
@@ -136,7 +136,57 @@
       "reset-owned",
       "reset-conflict"
     ],
-    "runtime": "PENDING: parent Wine queue held for user Run53; compilation/source review only",
+    "runtime": {
+      "state": "PASS; independent review complete",
+      "bottle": "X3",
+      "WineArch": "arm64",
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1",
+      "checks": 53,
+      "failures": 0,
+      "modes": [
+        {
+          "mode": "cue-pristine",
+          "checks": 13,
+          "failures": 0,
+          "runtime_log": "/tmp/x3-root-wiring-build/registration-cue-pristine-runtime.log",
+          "lock_record": "/tmp/x3-root-wiring-build/registration-cue-pristine-lock.json",
+          "lock_wait_seconds": 3.583999999993981e-06,
+          "child_elapsed_seconds": 4.445731875000001,
+          "exit_code": 0
+        },
+        {
+          "mode": "cue-installed",
+          "checks": 13,
+          "failures": 0,
+          "runtime_log": "/tmp/x3-root-wiring-build/registration-cue-installed-runtime.log",
+          "lock_record": "/tmp/x3-root-wiring-build/registration-cue-installed-lock.json",
+          "lock_wait_seconds": 3.917000000002585e-06,
+          "child_elapsed_seconds": 0.20502133300000003,
+          "exit_code": 0
+        },
+        {
+          "mode": "reset-owned",
+          "checks": 13,
+          "failures": 0,
+          "runtime_log": "/tmp/x3-root-wiring-build/registration-reset-owned-runtime.log",
+          "lock_record": "/tmp/x3-root-wiring-build/registration-reset-owned-lock.json",
+          "lock_wait_seconds": 3.750000000000281e-06,
+          "child_elapsed_seconds": 0.191399875,
+          "exit_code": 0
+        },
+        {
+          "mode": "reset-conflict",
+          "checks": 14,
+          "failures": 0,
+          "runtime_log": "/tmp/x3-root-wiring-build/registration-reset-conflict-runtime.log",
+          "lock_record": "/tmp/x3-root-wiring-build/registration-reset-conflict-lock.json",
+          "lock_wait_seconds": 3.833000000001696e-06,
+          "child_elapsed_seconds": 0.19223791699999998,
+          "exit_code": 0
+        }
+      ]
+    },
     "authored_image": "PE base400000 .x3map401000..620000 text630000 noASLR; own MEM_IMAGE validation before writing allocator span; identity verifier stubbed for authored memory"
   },
   "F8": "edge-only owner-safe scalar Root/Startup/Services report; wrong-owner/copy/maintenance busy refuses mutable service reads; no domain/registry/COM/Workers calls; failed_mask is only Services data change",
