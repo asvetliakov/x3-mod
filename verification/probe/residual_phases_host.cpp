@@ -31,7 +31,7 @@ static void at(std::uint64_t advance) { clock_ticks += advance; }
 // One scripted material: the Begin dispatch stamp, then (unless skipped) the
 // first pass_begin after `setup` and the last pass_end after `passes` more.
 static void material(std::uint64_t setup, std::uint64_t passes, bool skip = false) {
-    accumulator.material(clock_ticks, end_clock, begin_clock, begin_armed);
+    accumulator.material(clock_ticks, end_clock, begin_clock, begin_armed, clock_ticks, end_clock, begin_clock, true);
     if (skip) return;
     at(setup); if (begin_armed) { begin_armed = false; begin_clock = clock_ticks; }
     at(passes); end_clock = clock_ticks;
@@ -56,12 +56,12 @@ int main() {
     accumulator.view(2200, 0);
     check(accumulator.view_skipped == 2);
     // Clock failures: counting only; the material after a failure pairs nothing.
-    accumulator.view(0, 2300); accumulator.material(0, end_clock, begin_clock, begin_armed);
+    accumulator.view(0, 2300); accumulator.material(0, end_clock, begin_clock, begin_armed, 0, end_clock, begin_clock, true);
     check(accumulator.clock_failures == 2 && accumulator.broken && !begin_armed);
     at(9); material(50, 100);
     check(!accumulator.broken && accumulator.prepare_skipped == 3 && accumulator.setup_skipped == 2 && accumulator.ticks[0] == 15 && accumulator.ticks[1] == 60);
     // take: the pending setup closes, `other` is views minus setup, submit and particles.
-    accumulator.take(7, 1000000, 1000, 100, 500, 3, 4, begin_clock, begin_armed, s);
+    accumulator.take(7, 1000000, 1000, 100, 500, 3, 4, begin_clock, begin_armed, s, begin_clock);
     check(s.frame == 7 && s.materials == 7 && s.particle_views == 6 && s.passes == 4 && s.views == 3);
     check(s.interval_us[0] == 15 && s.interval_us[1] == 110 && s.interval_us[2] == 60 && s.interval_us[3] == 340);
     check(s.prepare_per_pass_ns == 3750 && s.setup_per_pass_ns == 27500);
@@ -70,10 +70,10 @@ int main() {
     check(accumulator.materials == 0 && accumulator.particle_views == 0 && accumulator.p_clock == 0 && accumulator.submit_end_seen == 0 && !begin_armed);
     // Underflow: views smaller than the attributed sum reports other as 0 and counts it.
     accumulator.view(3000, 2900);
-    accumulator.take(8, 1000000, 50, 10, 20, 1, 0, begin_clock, begin_armed, s);
+    accumulator.take(8, 1000000, 50, 10, 20, 1, 0, begin_clock, begin_armed, s, begin_clock);
     check(s.interval_us[2] == 100 && s.interval_us[3] == 0 && accumulator.other_underflow == 1 && s.prepare_per_pass_ns == 0);
     // Zero frequency: intervals are zero, the counts survive.
-    material(1, 1); accumulator.take(9, 0, 5, 1, 1, 1, 1, begin_clock, begin_armed, s);
+    material(1, 1); accumulator.take(9, 0, 5, 1, 1, 1, 1, begin_clock, begin_armed, s, begin_clock);
     check(s.materials == 1 && s.interval_us[0] == 0 && s.interval_us[3] == 3);
     // Unmatched is the caller's (the handler counts an index outside the table).
     ++accumulator.unmatched; check(accumulator.unmatched == 1);

@@ -125,11 +125,24 @@ void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownersh
 // end, before Reset and at teardown). The caller holds the capture mutex, so a
 // final Release reaching the hooked buffer paths reenters safely.
 void MotionOutput::release_depth_leases() noexcept {
+    // One pair for the entire existing walk; no eligibility lookup or new
+    // lifetime operation. Save error around each diagnostic clock only.
+    LARGE_INTEGER begin{}, end{}; bool begin_ok = false;
+    if (telemetry_) { const DWORD error = GetLastError(); begin_ok = QueryPerformanceCounter(&begin) != FALSE; SetLastError(error); ++counters_.lease_retire_calls; }
     for (unsigned i = 0; i < candidate_capacity_; ++i) {
         auto& g = depth_geometry_[i];
         if (!g.leased && !g.declaration && !g.vertex_buffer && !g.index_buffer) continue;
+        if (telemetry_) {
+            ++counters_.lease_retire_records;
+            counters_.lease_retire_refs += unsigned(g.declaration != nullptr) + unsigned(g.vertex_buffer != nullptr) + unsigned(g.index_buffer != nullptr);
+        }
         release(g.declaration); release(g.vertex_buffer); release(g.index_buffer);
         g.leased = false;
+    }
+    if (telemetry_) {
+        const DWORD error = GetLastError(); const bool end_ok = QueryPerformanceCounter(&end) != FALSE; SetLastError(error);
+        if (begin_ok && end_ok && begin.QuadPart > 0 && end.QuadPart >= begin.QuadPart) counters_.lease_retire_ticks += std::uint64_t(end.QuadPart - begin.QuadPart);
+        else ++counters_.lease_retire_clock_errors;
     }
 }
 void MotionOutput::log_depth_refusal(shadow_replay::DepthReason reason, const char* detail, HRESULT result, unsigned stage) noexcept {

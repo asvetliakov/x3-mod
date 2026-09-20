@@ -8,28 +8,16 @@
 // --residual-phases, which implies --frame-phases and --pass-phases and
 // requires --telemetry). Two byte-verified sites (residual_phase_sites.h):
 // the ID3DXEffect::Begin dispatch of the material submission routine
-// 0x004c0150 splits the engine work between passes into the engine's
-// per-object preparation (last pass_end -> Begin) and the D3DX setup (Begin
-// -> first pass_begin); the particles-call return of the frame routine's
-// per-view loop splits what the frame group leaves between view_submit_end
-// and the next view into the particles pass and the rest (scene-end
-// composite, env-map pass, fixups), computed at the frame boundary as views -
-// view_setup - view_submit - particles. Both stamps pair with clocks the
-// sibling groups retain on the owner thread (pass_phases_core.h end_clock /
-// begin_clock, frame_phases_core.h submit_end); neither sibling's handler
-// gains more than one store. The group uses the shared lean stub
-// (lean_stub.cpp: flags, EAX/ECX/EDX and XMM0-7 saved around a handler under
-// LightCallBoundary, MXCSR + LastError, x87-free;
-// verification/probe/check_no_x87.py walks x3m_residual_phase_enter). The
-// window reduction runs at the frame boundary from
-// frame_phases::detail::frame_impl under its owner guard, ahead of the pass
-// group's own reduction so the pass accumulator is still open: one
-// `residual_phases` line per 300-frame window
-// (docs/verification/sampling-profiler.md, "Residual phases"). Off, nothing
-// is installed; the cost that remains is one relaxed load per frame here
-// plus what the siblings pay unconditionally for the retained clocks: one
-// store per pass_end and one load+predicted branch per pass_begin in the
-// pass handler, one store per view_submit_end in the frame tracker.
+// 0x004c0150 pairs preparation and setup with retained pass clocks. Cumulative
+// main-view submission ticks split both spans at every view boundary: prepare
+// and setup are within submission; between_prepare and outside_setup are the
+// complements of those spans. The particles stamp retains its original scope.
+// Existing lean stubs preserve flags, registers, MXCSR and LastError; no new
+// engine site or per-draw QPC is needed. Fixed counters and window arrays are
+// reduced under the frame owner guard before the pass group's frame discard.
+// Only enabled pass/residual diagnostics pay this bookkeeping; disabled groups
+// install nothing. Dispatch self-cost uses the active-view CPU fixture
+// two-site average; it is not exact flight self-cost.
 namespace x3m::residual_phases {
 bool initialize(); // after pass_phases::initialize, while the install window is open
 extern std::atomic<bool> active;

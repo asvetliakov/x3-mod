@@ -1,4 +1,5 @@
 #pragma once
+#include "readback_timing.h"
 // FP16 HDR scene path, stages 1 and 2 (docs/architecture/hdr-scene-path.md,
 // sections "Stage 1 implementation" and "Stage 2 implementation"): the owned
 // A16B16G16R16F scene target that replaces the game's A8R8G8B8 RT0 inside the
@@ -128,6 +129,7 @@ struct HdrFrameBegin {
     bool stepped = false;                // a meter of the previous frame was consumed
     HRESULT readback = S_FALSE;          // LockRect of the ring surface (S_FALSE: nothing pending)
     float avg_log_l = 0.f, dt = 0.f;     // what the step consumed (dt after the clamp; the statistic is in the state)
+    ReadbackTiming readback_timing{};
     std::uint64_t ticks_readback = 0;    // the copy, the lock and the host statistic
 };
 // Fault injection points of the fixture seam (verification/probe/

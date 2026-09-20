@@ -819,16 +819,28 @@ static void pass_benchmark(){
         return true;
     };
     std::uint64_t baseline=0,hooked=0;
+    FrameBody f=make_frame_body();patch::SiteSpec fs[frame_marker::Count];
+    if(!f.body||!frame_specs(f,fs))return;
+    const char* frame_status=nullptr;
+    check(frame::fixture_install(fs,&frame_status),"pass benchmark frame group installed");
+    phases::fixture_set_callback(nullptr);
+    frame::present_begin();frame::present_end();frame::frame(1);
+    frame::stamp(frame_marker::ViewSetupBegin);frame::stamp(frame_marker::ViewSubmitBegin);
     check(timed(baseline),"pass benchmark baseline timed");
     patch::SiteSpec specs[pass_marker::Count];pass_specs(r,specs);
     const char* status=nullptr;
     check(pass::fixture_install(specs,&status),"pass benchmark group installed");
     pass::frame(1,false,0);
     check(timed(hooked),"pass benchmark hooked timed");
-    pass::frame(2,true,0);
+    frame::stamp(frame_marker::ViewSubmitEnd);
+    const auto submit_us=frame::shared_tracker()->submit_ticks*1000000ull/std::uint64_t(frequency.QuadPart);
+    pass::frame(2,true,submit_us);
     pass::detail::Sample s{};
     check(pass::fixture_last_sample(&s)&&s.passes==loops*trials,"hooked benchmark loop counted every pass");
+    check(s.scoped_us>0&&s.outside_us==0&&s.outside_passes==0&&s.crossing_passes==0,"pass benchmark measures successful inside-view attribution");
+    check(pass::fixture_accumulator()->scope_errors==0&&pass::fixture_accumulator()->complement_underflow==0,"pass benchmark attribution health is clean");
     check(pass::fixture_uninstall(),"pass benchmark group rolled back");
+    check(frame::fixture_uninstall(),"pass benchmark frame group rolled back");
     const double ns_per_tick=1e9/number(std::uint64_t(frequency.QuadPart));
     const double baseline_ns=number(baseline)*ns_per_tick/loops,hooked_ns=number(hooked)*ns_per_tick/loops;
     const double dispatch_ns=(hooked_ns-baseline_ns)/pass_marker::Count;
@@ -1173,8 +1185,10 @@ static void residual_replay_checks(){
     check(accumulator->materials==1&&accumulator->particle_views==1&&accumulator->prepare_skipped==1&&accumulator->setup_skipped==0,"first material has no pass_end to pair with; its setup is pending");
     check(pass_accumulator->begin_armed==false&&pass_accumulator->begin_clock>=accumulator->p_clock&&pass_accumulator->end_clock>pass_accumulator->begin_clock,"pass group retained the first pass_begin and the pass_end for this group");
     check(accumulator->ticks[2]>0&&accumulator->view_skipped==0,"particles paired with the frame's view_submit_end");
+    // These synthetic materials run after both view submissions have closed:
+    // all preparation/setup must land in their outside-view buckets.
     invoke(r.body,hooked);compare(baseline,hooked);
-    check(accumulator->materials==2&&accumulator->ticks[0]>0&&accumulator->ticks[1]>0&&accumulator->prepare_skipped==1&&accumulator->setup_skipped==0,"second material closes the first setup and pairs prepare with the last pass_end");
+    check(accumulator->materials==2&&accumulator->ticks[0]==0&&accumulator->ticks[1]==0&&accumulator->ticks[4]>0&&accumulator->ticks[5]>0&&accumulator->prepare_skipped==1&&accumulator->setup_skipped==0,"second material closes the first setup and pairs prepare with the last pass_end");
     check(accumulator->view_skipped==1&&accumulator->particle_views==2,"a second view stamp against the same view_submit_end is view_skipped");
     // A material whose pass loop is skipped: its setup never closes and the
     // following material has no fresh pass_end.
@@ -1200,6 +1214,16 @@ static void residual_replay_checks(){
     check(accumulator->materials==0&&accumulator->p_clock==0&&pass_accumulator->begin_armed==false,"take resets the per-frame accumulation and disarms the pass capture");
     pass::detail::Sample ps{};
     check(pass::fixture_last_sample(&ps)&&ps.frame==2&&ps.passes==3,"the pass group's own sample closed after this group read it");
+    // Real handler clocks inside a new synthetic view exercise successful
+    // cumulative intersections, in addition to the outside-view bodies above.
+    frame::stamp(frame_marker::ViewSetupBegin); frame::stamp(frame_marker::ViewSubmitBegin);
+    invoke(r.body,hooked);compare(baseline,hooked);
+    invoke(r.body,hooked);compare(baseline,hooked);
+    check(accumulator->ticks[0]>0&&accumulator->ticks[1]>0&&accumulator->ticks[4]==0&&accumulator->ticks[5]==0,"open submission preparation and setup stay inside the view");
+    check(pass_accumulator->scoped_ticks>0&&pass_accumulator->outside_ticks==0&&pass_accumulator->outside_passes==0&&pass_accumulator->crossing_passes==0,"open submission passes have no outside attribution");
+    check(accumulator->scope_errors==0&&pass_accumulator->scope_errors==0,"active-view attribution has zero scope errors");
+    frame::stamp(frame_marker::ViewSubmitEnd);
+    frame::present_begin();frame::present_end();frame::frame(3);
     // A stamp from another thread is foreign, counted and ignored.
     HANDLE thread=CreateThread(nullptr,0,&residual_foreign_thread,r.body,0,nullptr);
     check(thread!=nullptr,"residual foreign thread started");
@@ -1242,8 +1266,8 @@ static void residual_late_window_checks(){ // after the frame checks closed the 
     check(!std::memcmp(original,r.body,r.length),"no residual span touched by the late refusal");
     residual::fixture_uninstall();
 }
-// Per-dispatch cost of the lean stub on the two residual spans (the pass spans
-// run natively, unhooked): the body unhooked against hooked, best of
+// Per-dispatch cost of the two residual spans with pass stamps hooked in both
+// arms inside a live view: residual-unhooked against hooked, best of
 // `trials`; a busy frame fires about 1,000 material stamps and a few view stamps.
 static void residual_benchmark(){
     constexpr unsigned loops=20000,trials=7;
@@ -1265,16 +1289,33 @@ static void residual_benchmark(){
     };
     std::uint64_t baseline=0,hooked=0;
     residual_skip_passes=0;
+    FrameBody f=make_frame_body();patch::SiteSpec fs[frame_marker::Count];
+    if(!f.body||!frame_specs(f,fs))return;
+    patch::SiteSpec ps[pass_marker::Count];residual_pass_specs(r,ps);
+    const char* sibling_status=nullptr;
+    check(frame::fixture_install(fs,&sibling_status),"residual benchmark frame group installed");
+    check(pass::fixture_install(ps,&sibling_status),"residual benchmark pass group installed in both arms");
+    phases::fixture_set_callback(nullptr);
+    frame::present_begin();frame::present_end();frame::frame(1);
+    frame::stamp(frame_marker::ViewSetupBegin);frame::stamp(frame_marker::ViewSubmitBegin);
     check(timed(baseline),"residual benchmark baseline timed");
+    pass::frame(1,false,0); // discard baseline; hooked arm starts with no pending pass
+
     patch::SiteSpec specs[residual_marker::Count];if(!residual_specs(r,specs))return;
     const char* status=nullptr;
     check(residual::fixture_install(specs,&status),"residual benchmark group installed");
     residual::frame(1,false,0,0,0,0);
     check(timed(hooked),"residual benchmark hooked timed");
-    residual::frame(2,true,0,0,0,0);
+    const auto* paired=residual::fixture_accumulator();
+    check(paired->ticks[0]>0&&paired->ticks[1]>0&&paired->ticks[4]==0&&paired->ticks[5]==0&&paired->prepare_skipped==1&&paired->setup_skipped==0,"residual benchmark measures successful inside-view pairing");
+    check(paired->scope_errors==0&&paired->clock_errors==0&&paired->clock_failures==0,"residual benchmark attribution health is clean");
+    frame::stamp(frame_marker::ViewSubmitEnd);
+    const auto submit_us=frame::shared_tracker()->submit_ticks*1000000ull/std::uint64_t(frequency.QuadPart);
+    residual::frame(2,true,submit_us,0,submit_us,1);
     residual::detail::Sample s{};
     check(residual::fixture_last_sample(&s)&&s.materials==loops*trials&&s.particle_views==loops*trials,"hooked benchmark loop counted every material and view stamp");
     check(residual::fixture_uninstall(),"residual benchmark group rolled back");
+    check(pass::fixture_uninstall()&&frame::fixture_uninstall(),"residual benchmark siblings rolled back");
     const double ns_per_tick=1e9/number(std::uint64_t(frequency.QuadPart));
     const double baseline_ns=number(baseline)*ns_per_tick/loops,hooked_ns=number(hooked)*ns_per_tick/loops;
     const double dispatch_ns=(hooked_ns-baseline_ns)/residual_marker::Count;

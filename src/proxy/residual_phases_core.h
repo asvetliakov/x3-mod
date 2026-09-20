@@ -8,39 +8,29 @@
 // no allocation, no locking. Host-tested by
 // verification/probe/residual_phases_host.cpp.
 //
-// Neither stamp opens an interval of its own; each pairs with a clock a
-// sibling group retains on the same thread (pass_phases_core.h Accumulator:
-// end_clock = the last pass_end, begin_clock = the first pass_begin after
-// this group armed it; frame_phases_core.h Tracker: submit_end = the view's
-// view_submit_end stamp):
-//   material_setup (site 0, once per sub-mesh of 0x004c0150):
-//     prepare  += now - end_clock      the engine's per-object preparation
-//                                      (last pass_end -> Begin dispatch)
-//     setup    += begin_clock - p      closed at the next material or at the
-//                                      frame boundary: Begin dispatch -> the
-//                                      first pass_begin (D3DX Begin, the
-//                                      parameter setters, the two engine
-//                                      render-state writes, the geometry guard)
-//   view_particles (site 1, once per view whose particles call ran):
-//     particles += now - submit_end    the particles pass of the view
-// and the frame boundary computes other = views - view_setup - view_submit -
-// particles, the remainder of the per-view loop (scene-end composite, env-map
-// pass, post-view fixups). The first material of a frame has no pass_end to
-// pair with (prepare_skipped, one per frame); a material whose geometry guard
-// skipped the pass loop leaves its setup unpaired (setup_skipped) and the
-// following prepare too, because no pass_end followed it; a second
-// view_particles stamp against the same submit_end is view_skipped.
+// The original pass_end -> material and material -> first pass_begin spans
+// can cross view boundaries. Retained cumulative submission clocks partition
+// each span into its intersection with main-view submission (prepare/setup)
+// and its complement (between_prepare/outside_setup). These complements can
+// include scene composite, particles and other engine/proxy work; they are not
+// additional disjoint frame phases. No new QPC is read for this partition.
+// Particles and other retain their original frame-view definitions. The first
+// material without a fresh pass end, and setup without a following pass, remain
+// explicitly skipped. Failed QPC and each frame discard invalidate pairings.
 namespace x3m::residual_phases::detail {
-inline constexpr unsigned site_count = 2, interval_count = 4, stamped_intervals = 3;
+inline constexpr unsigned site_count = 2, interval_count = 6, stamped_intervals = 6;
 inline constexpr unsigned window_frames = 300;
-inline constexpr const char* const interval_names[interval_count] = {"prepare", "setup", "particles", "other"};
+inline constexpr const char* const interval_names[interval_count] = {"prepare", "setup", "particles", "other", "between_prepare", "outside_setup"};
 // Cost of one lean-stub dispatch (the same stub as pass phases: envelope,
 // owner check, one QueryPerformanceCounter, the pairing) measured by the CPU
 // fixture under the X3 bottle (`RESIDUAL PHASE BENCH dispatch_ns`); the
 // fixture refuses a constant more than 2x off. `self_us` = (materials +
 // particle_views) * this. Keep in step with the ledger in
 // docs/verification/sampling-profiler.md ("Residual phases").
-inline constexpr std::uint64_t dispatch_cost_ns = 91;
+// Active-view successful pairing measured 108.9 ns on 2026-09-20 (best
+// of 7 x 20,000 loops), rounded up to 109 ns. This is a two-site average,
+// not the material-only dispatch cost or exact flight self-cost.
+inline constexpr std::uint64_t dispatch_cost_ns = 109;
 using Gate = x3m::stamp::Gate;
 
 struct Sample {
@@ -59,10 +49,12 @@ struct Sample {
 // per-dispatch work after the owner check; take() converts and resets once
 // per frame.
 struct Accumulator {
-    std::uint64_t ticks[stamped_intervals]{}; // prepare, setup, particles
+    std::uint64_t ticks[stamped_intervals]{}; // slot 3 (other) is computed at take
     std::uint32_t materials = 0, particle_views = 0;
     std::uint64_t p_clock = 0;          // the last material_setup clock, 0 = none this frame
     std::uint64_t submit_end_seen = 0;  // the frame submit_end clock already paired
+    std::uint64_t p_submission = 0;
+    std::uint64_t scope_errors = 0, outside_materials = 0;
     bool broken = false;                // a clock failure at material_setup: the next pairing is skipped
     // Window counters, reset by the reporter.
     std::uint64_t prepare_skipped = 0;  // no pass_end since the previous material (the frame's first, or a skipped pass loop)
@@ -72,22 +64,27 @@ struct Accumulator {
     std::uint64_t clock_errors = 0;     // a backward clock: the interval is not accumulated
     std::uint64_t clock_failures = 0;   // QueryPerformanceCounter failed: counting only
     std::uint64_t unmatched = 0;        // an index outside the site table
-    void close_setup(std::uint64_t begin_clock, bool& begin_armed) noexcept {
+    void close_setup(std::uint64_t begin_clock, bool& begin_armed, std::uint64_t begin_submission) noexcept {
         if (!p_clock) return;
-        if (!begin_armed && begin_clock >= p_clock) ticks[1] += begin_clock - p_clock;
+        if (!begin_armed && begin_clock >= p_clock) partition(1, 5, begin_clock - p_clock, p_submission, begin_submission);
         else ++setup_skipped;
     }
-    void material(std::uint64_t now, std::uint64_t end_clock, std::uint64_t begin_clock, bool& begin_armed) noexcept {
-        ++materials;
+    void partition(unsigned inside, unsigned outside, std::uint64_t elapsed, std::uint64_t from, std::uint64_t to) noexcept {
+        if (to < from || to - from > elapsed) { ++scope_errors; return; }
+        ticks[inside] += to - from; ticks[outside] += elapsed - (to - from);
+    }
+    void material(std::uint64_t now, std::uint64_t end_clock, std::uint64_t begin_clock, bool& begin_armed,
+                  std::uint64_t submission, std::uint64_t end_submission, std::uint64_t begin_submission, bool in_view) noexcept {
+        ++materials; if (!in_view) ++outside_materials;
         if (!now) { ++clock_failures; broken = true; begin_armed = false; p_clock = 0; return; }
         if (broken) { ++prepare_skipped; ++setup_skipped; broken = false; }
         else {
-            close_setup(begin_clock, begin_armed);
+            close_setup(begin_clock, begin_armed, begin_submission);
             if (end_clock && end_clock > p_clock) {
-                if (now >= end_clock) ticks[0] += now - end_clock; else ++clock_errors;
+                if (now >= end_clock) partition(0, 4, now - end_clock, end_submission, submission); else ++clock_errors;
             } else ++prepare_skipped;
         }
-        p_clock = now; begin_armed = true;
+        p_clock = now; p_submission = submission; begin_armed = true;
     }
     void view(std::uint64_t now, std::uint64_t submit_end) noexcept {
         ++particle_views;
@@ -99,14 +96,14 @@ struct Accumulator {
     }
     void discard(bool& begin_armed) noexcept {
         for (auto& t : ticks) t = 0;
-        materials = particle_views = 0; p_clock = 0; submit_end_seen = 0; broken = false; begin_armed = false;
+        materials = particle_views = 0; p_clock = p_submission = 0; submit_end_seen = 0; broken = false; begin_armed = false;
     }
     // Closes the frame's accumulation as a sample in microseconds; the pending
     // setup of the frame's last material is closed first.
     void take(std::uint64_t frame, std::uint64_t frequency, std::uint64_t views_us, std::uint64_t view_setup_us,
               std::uint64_t view_submit_us, std::uint32_t views, std::uint32_t passes,
-              std::uint64_t begin_clock, bool& begin_armed, Sample& out) noexcept {
-        if (!broken) close_setup(begin_clock, begin_armed);
+              std::uint64_t begin_clock, bool& begin_armed, Sample& out, std::uint64_t begin_submission) noexcept {
+        if (!broken) close_setup(begin_clock, begin_armed, begin_submission);
         out = Sample{};
         out.frame = frame; out.materials = materials; out.particle_views = particle_views;
         out.passes = passes; out.views = views;

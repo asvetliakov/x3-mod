@@ -1002,3 +1002,25 @@ The independent audit and streamed witness are local:
 reproduced, with unique frames/device 1 and 3,840 metering tiles checked.
 Implementation is isolated on `experiment/submission-attribution-2026-09-20`;
 no installed candidate change follows from this audit.
+
+
+## Submission attribution diagnostic implementation (2026-09-20)
+
+View/pass accounting now intersects existing timestamps with cumulative view
+submission time, separating cross-view work without another per-draw clock.
+Outside-view and crossing passes are explicit, and submission complement is
+computed per frame before window statistics. HDR readback has three exhaustive
+buckets (transfer/lock, extraction/unlock, statistics/adaptation), adding two
+clocks only when timing is enabled. Lease-retirement timing surrounds the
+existing release walk without changing ownership.
+
+Independent deep review covers source and evidence. Sixty-four affected host
+tests pass; the final estimate-only update has twenty affected tests passing.
+The serialized X3 CPU fixture passes 8,881 checks with zero failures. Measured
+pass dispatch 101.4 ns and residual two-site average 108.9 ns set estimates 102/109 ns.
+These are fixture estimates, not measured flight overhead. The unchanged loop
+group measures 136 ns here versus its retained historical 91 ns estimate.
+HDR/lease records remain sparsely sampled; they do not partition each 300-frame
+window on identical coverage. Completed full host/build qualification is bound in the
+[compact record](../../verification/results/submission-attribution-qualification-2026-09-20.json).
+No new hook sites, rendering policy or native Windows runtime claim are added.
