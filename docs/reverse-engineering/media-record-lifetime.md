@@ -645,3 +645,62 @@ records separate counts, local evidence paths/hashes and scope. Local detail is
 `/tmp/x3-media-input-activation-closure.md`; raw evidence stays untracked.
 No production interception, owner lifetime/thread model, Reset safety, natural
 message delivery or native runtime behavior is qualified by this checkpoint.
+
+
+## Engine consumers of a prospective pending wrapper (2026-09-20)
+
+**A constructor-only pending pointer substitution is insufficient.** The media
+object is not opaque: after `0x4981d3→0x4cf460(id,flags)` returns, record+0x24
+receives EAX at0x4981dd, then media+0x8c is read at0x498248 and copied into
+record flags **before** publication0x498265/268. Original continuations also
+write media+0x94 directly at0x498420 (loop),0x498d69 (explicit play) and0x498f6e
+(speech). A compatible engine shell or explicit interception of these accesses
+is required; arbitrary sidecar layout is invalid. This is consumer evidence,
+not approval of a worker implementation or shell representation.
+
+Beyond the established constructor/seek/Run/pump/position/stop/destructor/copy
+seams, the bounded investigation found:
+
+| Consumer | Concrete requirement |
+| --- | --- |
+| Rate setter0x498650, EDX=ID and one caller-cleaned integer | VM caller0x4998d6 reaches an unguarded media+0x70 position-interface dereference and put_Rate(+0x38) at0x498695 unless media flags0x20 reject it. No playing/readiness test exists. Owned objects need routing before this COM access and an explicit rate-result contract. |
+| Inline stop-all0x4982b0 | Pauses through media+4/+0x74 at0x4982f0, then clears playing and delivers/clears completion. Hooking ordinary stop0x4d1810 alone misses it. NULL COM fields can skip Pause but cannot convey worker cancellation or stopped intent. |
+| Volume0x4d0570, ECX=record/EAX=volume | Flags8 returns0 before COM; other routes use media+0x6c or+0x44. Five E8 callers include constructor calls0x498280/299, list updates0x4985fc/62f and script0x4999d2. A valid flags8 shell can retain this original rejection; shared audio semantics remain separate. |
+| Construction/existence0x498730/0x4987a0 | If requested and eligible, NULL factory result reports0 at0x49876c, nonnull reports1 at0x498799, and existing record reports1 at0x498806. All require nonzero EDI request flag, live enabled registry, signed index bound and nonnull slot. They report construction/existence success, **not first-ready-frame proof**; pending admission and late failure need a separate semantic contract. |
+| MOVI save/restore0x4988d0/0x498ad0 | Save copies ten record metadata dwords (+10,+14,+18,+1c,+20,+2c,+30,+34,+38,+3c), without record+0x24 (the media pointer), COM pointer or position getter. Restore clears saved playing bit at0x498b99, may reconstruct at0x498bae and reapplies destination metadata. New pending/rate/failure persistence is not thereby defined. |
+
+The separate position helper has only one encoded E8 caller, **0x4983ed**.
+Manager0x498370 passes its stack local at `[ESP+0x10]`, ignores helper EAX, then
+jumps to next-record traversal. No manager instruction reads that output as data;
+POP ECX at0x4984c2 finally discards the slot. This is an incidental synchronous
+COM dependency to intercept for owned objects, not a found external position
+comparison or callback input.
+
+The **visible video clock obligation** is pump's positive-end check: position
+query0x4d16f0, truncated seconds×1000, compare0x4d1720 and strict `>` at0x4d1726
+before copy. Result2 drives loop seek or completion; physical EOF is separate.
+A clock anchored on first readiness is not ruled out by the discarded getter,
+but endpoint/pause/rate/seek and completion timing still need ratification. No
+claim of equivalence to backend cold-start behavior follows from static bytes.
+
+Shared routes remain material: seek callers0x49840a/0x498d54/**0x498f55** and
+Run callers0x498d71/**0x498f76** include speech. Pump also E9-tail-transfers
+at0x4d17cc to audio helper0x4d0700 with EAX=media; flags8 bypasses this audio end
+processing. Function0x4d0680 is the manager-root allocator, not another per-media
+consumer. Factory/helper interception must recognize genuinely owned objects;
+flag8 alone includes other IDs and does not establish ownership. Inspected
+external record-root users use ID/flags/destination metadata and existing helper
+calls; no additional external surface/dimensions or clip-position reader was
+found in that scope. Arbitrary aliases and computed entries remain unclosed.
+
+Independent review reproduced
+`python3 /tmp/verify_x3_media_async_wrapper_consumers.py`: **18 gap-free ranges,
+680 instructions / 1,853 bytes / 24 anchors / 100 branch-boundary checks**,
+16 direct E8 caller sets and the E9 audio tail. It checks original bytes, rejects
+pseudo-decodes, and validates the discarded position local and serialized fields.
+The [compact record](../../verification/results/media-async-wrapper-consumers-2026-09-20.json)
+binds the local note/verifier/result paths and hashes. Full details/raw rows use
+`/tmp/x3-media-async-wrapper-consumers*`; raw bytes remain local. This establishes
+additional consumer seams, not asynchronous admission policy, worker/module or
+engine lifetime, clock approval, complete entry closure or production hook spans.
+No game, Wine, build or native runtime execution was performed.
