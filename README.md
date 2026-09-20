@@ -16,10 +16,16 @@ its absolute path to CMake. Configuration stops with an actionable error when
 the selected interpreter cannot import NumPy 2.0.2; it never installs packages
 or silently selects a different Python.
 
+The media worker also requires the reviewed LAV 0.81 SDK headers. Set
+`X3M_LAV_INCLUDE_DIR` to the SDK directory containing `LAVVideoSettings.h` and
+`LAVSplitterSettings.h`; configuration checks that both are present. Provider
+deployment is separate from compilation; see the [media package note](docs/architecture/media-package.md).
+
 ```sh
 cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DPython3_EXECUTABLE=/absolute/path/to/python3
+  -DPython3_EXECUTABLE=/absolute/path/to/python3 \
+  -DX3M_LAV_INCLUDE_DIR=/absolute/path/to/lav-sdk/include
 cmake --build build -j4
 ```
 
