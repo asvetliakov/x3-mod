@@ -861,3 +861,81 @@ The [compact record](../../verification/results/media-owned-consumer-seams-2026-
 binds corrected local note/verifier/result hashes and counts. Details and raw
 rows remain under `/tmp/x3-media-owned-consumer-seams*`; no raw bytes are tracked.
 No game/Wine execution, build, source edit or installation was performed.
+
+## Source ID versus playback-instance identity (2026-09-20)
+
+**Numeric ID selects both source and normal manager-record lookup; it is not
+an independent scene-object instance handle.** In the inspected ordinary
+serialized routes, same-ID requests reuse the first matching record, overwrite
+its destination binding when requested and replace its playback operation.
+Two visible animations may instead use different IDs or sample one shared
+texture. Static VM argument loads do not identify which applies to the user's
+two objects; this checkpoint does not change original replacement semantics.
+
+Allocator0x498140 takes EAX=flags override and caller-cleaned stack ID. It
+allocates a fresh0x40-byte record without deduplication, calls constructor0x4cf460
+at0x4981d3, and passes the same ID used by constructor media+0 at0x4cf522 and
+numeric `%05d.dat` formatting0x4cf6a2/a3/b5. Record+24 receives media0x4981dd;
+publication0x498265/268 **precedes ID assignment at0x4982a3**. Its five encoded
+callers are guarded by ordinary ID searches: create/existence0x49873a through
+0x4987a0; MOVI restore0x498bae; play0x498cd8; separate speech0x498ef8; and
+emitter/track0x4f6610. These support intended first-match reuse, not unconditional
+uniqueness: constructor COM/recovery and publication ordering leave reentry
+unclosed, and allocator has no unique-key reservation or late duplicate check.
+No actual duplicate creation is observed. A duplicate would not acquire a new
+addressable instance key through these ID-only APIs.
+
+| Binding/play path | Established identity consequence |
+| --- | --- |
+| Emitter helper0x4f65f0 | ESI=ID, first stack argument=slot/kind; finds by record+10 only, sets bit4 at0x4f6639, overwrites the single record+30 slot at0x4f6641, then calls play0x498c90 at0x4f6668. There is no `(ID,slot)` lookup. |
+| Script bind0x498550 | EDX=ID and caller-cleaned slot; overwrites record+30 at0x498578 and sets bit4. Sole caller0x4998f9 loads VM ID/slot. Unbind0x498590 clears only the same ID's matching current slot/bit4. |
+| Manager0x498370 | For playing records with valid bit4/slot, resolves one table entry to record+28 at0x4983d1, then pumps once at0x4983d9. No per-record destination fanout was found. Multiple materials sampling that output remain possible and untraced. |
+| Play0x498c90 | Ten caller-cleaned DWORDs: callback index/context, ID, six start/end components, option. Finds by ID only; seek0x498d54 and Run0x498d71 affect that record. Success replaces one start/end tuple and eligible old/new callback operation; no destination+28/+30 assignment occurs in the bounded successful body. |
+
+Two same-ID calls therefore do not request independent playheads or retain two
+destination slots. Distinct IDs can have distinct records/media/clock/callbacks,
+although binding them to one destination can still overwrite that resource.
+A worker session keyed only by source ID cannot create independently addressable
+engine instances. Owned dispatch must retain record/shell identity and lifetime
+generation; generations alone do not pin engine memory.
+
+Relevant encoded callers: create/existence0x4987a0 has VM0x4997f3; play0x498c90
+has VM0x49981f/0x499982 and helper0x4f6668. Helper0x4f65f0 has selector0x45c607
+(Videos+14 ID, slot0x5a),0x460424 (Videos+14 and supplied slot), and descriptor
+route0x4f6836 (table-entry+28 ID, signed WORD[outer descriptor+70] slot).
+Descriptor+18 receives the source ID at0x4f6848, not a newly allocated instance.
+Separate speech VM0x499849→0x498e30 shares the namespace but is not evidence
+of another animated destination. Dynamic table/script values remain unknown.
+
+The zero-override map includes other video-capable IDs1/3/800/10001 as well as2;
+that does not establish the second animated source. **ID2-only ownership is an
+initial known-source scope, not coverage of every legitimate second-record ID.**
+Extension needs a validated source ID/path/stream-mode contract or qualified
+whitelist, not all flags8 or speech/audio. If two objects share ID/output, retain
+that original behavior unless separately asked to introduce independent instances.
+
+Two precision corrections accompany this result. Existing ledger evidence has
+failed ID2 attempts for kinds0x5a and0x520, including selector ID2; it contradicts
+the older selector-wide audio-only generalization, now corrected in
+[media-cue-playback](media-cue-playback.md). Those failures do not prove concurrent
+successful records. Also, allocator's early OR4 at0x4981fe/210 is overwritten
+by media flags copied at0x498254; it is not an unconditional final bit4 guarantee.
+The explicit binding helpers above set bit4 afterward.
+
+Minimum missing evidence is a finite identity burst during the already-required
+two-animation observation: timestamp/frame/TID, caller, source ID/resolved path/
+effective flags, found/created record and media with allocation generation,
+play operation/bounds, old/new slot and destination identity/generation, and
+retirement/stop. Correlate concurrently live successful records, not failed
+attempts or reused pointers. If both resolve one destination, bounded correlation
+of those two objects' materials to that texture is needed to establish sharing.
+No new generic flight or production trace implementation is introduced here.
+
+Independent review reproduced `python3 /tmp/verify_x3_media_instance_identity.py`:
+**17 ranges, 748 instructions / 2,048 bytes / 43 anchors / 95 internal branch
+boundaries**, nine encoded E8 caller sets, no scanned E9 entries or whole-file
+literal references to those entries. The [compact record](../../verification/results/media-instance-identity-2026-09-20.json)
+binds local note/verifier/result hashes. Detail/raw evidence remains local under
+`/tmp/x3-media-instance-identity*`; no raw bytes are tracked. No global alias,
+thread/reentry uniqueness, actual concurrent-source census or hook qualification
+is claimed. No game/Wine/build/install/production changes were made.

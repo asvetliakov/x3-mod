@@ -1,0 +1,105 @@
+{
+  "status": "pass",
+  "date": "2026-09-20",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "ranges": 17,
+  "instructions": 748,
+  "bytes": 2048,
+  "anchors": 43,
+  "internal_branch_boundaries": 95,
+  "direct_e8_callers": {
+    "0x498140": [
+      "0x49873a",
+      "0x498bae",
+      "0x498cd8",
+      "0x498ef8",
+      "0x4f6610"
+    ],
+    "0x498730": [
+      "0x4987d3"
+    ],
+    "0x4987a0": [
+      "0x4997f3"
+    ],
+    "0x498c90": [
+      "0x49981f",
+      "0x499982",
+      "0x4f6668"
+    ],
+    "0x498e30": [
+      "0x499849"
+    ],
+    "0x4f65f0": [
+      "0x45c607",
+      "0x460424",
+      "0x4f6836"
+    ],
+    "0x498550": [
+      "0x4998f9"
+    ],
+    "0x498590": [
+      "0x4f66a2",
+      "0x4f66ca"
+    ],
+    "0x4cf460": [
+      "0x4981d3"
+    ]
+  },
+  "entry_e9_sites": {
+    "0x498140": [],
+    "0x498730": [],
+    "0x4987a0": [],
+    "0x498c90": [],
+    "0x498e30": [],
+    "0x4f65f0": [],
+    "0x498550": [],
+    "0x498590": [],
+    "0x4cf460": []
+  },
+  "whole_file_entry_literals": {
+    "0x498140": [],
+    "0x498730": [],
+    "0x4987a0": [],
+    "0x498c90": [],
+    "0x498e30": [],
+    "0x4f65f0": [],
+    "0x498550": [],
+    "0x498590": [],
+    "0x4cf460": []
+  },
+  "command": "python3 /tmp/verify_x3_media_instance_identity.py",
+  "identity": "Numeric ID selects source and record+10 lookup key. Normal callers reuse first same-ID record; allocator itself does not enforce uniqueness.",
+  "publication_order": [
+    "498265/498268 link record",
+    "4982a3 store record ID"
+  ],
+  "destination": "Single record+30 slot assigned by4f6641/498578; manager resolves to record+28 once per playing record; play does not supply a separate destination key.",
+  "same_id": "Ordinary first-match reuse/rebinding/replay of one record, not independent playheads. No global uniqueness under constructor/recovery reentry.",
+  "distinct_ids": "Distinct records can retain separate media/clock/callbacks; actual second animated ID/source and material texture sharing remain unknown.",
+  "eligibility": "ID2-only is initial known-source scope. Additional owned sources require validated ID/path/stream-mode or qualified whitelist; no blanket flags8/speech admission.",
+  "corrections": [
+    "Selector-wide audio-only inference contradicted by existing ledger selectorID2 failures; not concurrent success proof.",
+    "Early allocator OR4 is overwritten by media-flags copy498254; explicit binding helpers set4 later."
+  ],
+  "minimal_observation": "Finite identity burst during required two-animation observation: frame/time/TID, caller, source ID/path/flags, record/media generation, play operation/bounds, old/new binding/destination generation, retirement. Material-to-texture correlation only if sharing remains unresolved.",
+  "limits": "Scoped ordinary routes, not global uniqueness under reentry, computed/alias closure, actual concurrent instance census, second-video source identity or material fanout proof.",
+  "runtime": "No game/Wine/build/install/production edits or trace implementation",
+  "local_evidence": [
+    {
+      "path": "/tmp/x3-media-instance-identity.md",
+      "sha256": "f61d3eda218876c5950cec0dcf41678d66a7b49c098608e4fc803a0603574445"
+    },
+    {
+      "path": "/tmp/verify_x3_media_instance_identity.py",
+      "sha256": "0bae1bd85d11ef8f21dd3a73fb57c5bc77cbafa4c77059a2fcdcd854b58e6a9a"
+    },
+    {
+      "path": "/tmp/x3-media-instance-identity-check.json",
+      "sha256": "c6b559d5493979bd4d6fd7d66516a2a53a817cf0670d80e2bf94e6ba056cebe7"
+    },
+    {
+      "path": "/tmp/x3-media-instance-identity-raw.txt",
+      "sha256": "eecad0bf42c223db811b99599b8cb2715f9f8c5dd4f4620c4d4562405636b876"
+    }
+  ]
+}
