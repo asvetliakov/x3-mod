@@ -147,6 +147,10 @@ public:
     bool accepts_publication(SessionHandle h, media::OperationId op, media::Epoch epoch) const noexcept {
         return runtime_.accepts_publication(h, op, epoch);
     }
+    // Same non-reentrant submit/ack contract as Runtime; no intermediate queue.
+    bool peek_command(SessionHandle h, media::CommandOffer& out) noexcept { return runtime_.peek_command(h, out); }
+    bool offer_current(const media::CommandOffer& offer) const noexcept { return runtime_.offer_current(offer); }
+    bool acknowledge_command(media::CommandOffer& offer) noexcept { return runtime_.acknowledge_command(offer); }
     bool pop_command(media::Command& out) noexcept { return runtime_.pop_command(out); }
     std::uint32_t occupied_commands() const noexcept { return runtime_.occupied_commands(); }
 private:

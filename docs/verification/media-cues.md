@@ -1352,3 +1352,15 @@ writes/renames after release. Its **6,983 bytes** of synthetic package data neve
 load COM or decode media. Native Windows execution and real two-worker provider/
 source opens with retained configuration remain unverified. No game launch or
 installation was performed for this checkpoint.
+
+
+### Adapter access to command offers (2026-09-20)
+
+Adapter now forwards `peek_command`, `offer_current` and `acknowledge_command`
+to its existing Runtime. This closes the service integration seam without adding
+state or another queue. The same transfer cases execute through both interfaces:
+busy-worker retention, independent-session progress, single acknowledgment and
+identity invalidation. Independent review is clear; two tests pass 479 checks,
+zero failures/allocations, with i686/no-x87 checks passing. Adjacent non-reentrant
+submit/ack remains mandatory. Actual worker transfer and injected caller ABI
+remain separately qualified; no Wine, DLL build or install occurred.

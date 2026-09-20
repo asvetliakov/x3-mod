@@ -244,7 +244,8 @@ struct SubmitSpy {
         ++accepted; last = c; return true;
     }
 };
-static bool transfer(m::Runtime& r, m::SessionHandle h, SubmitSpy& worker) {
+template<class Service>
+static bool transfer(Service& r, m::SessionHandle h, SubmitSpy& worker) {
     m::CommandOffer offer;
     if (!r.peek_command(h, offer)) return false;
     CHECK(r.offer_current(offer));
@@ -351,6 +352,39 @@ static void per_session_transfer() {
     CHECK(foreign.offer_current(foreign_offer) && foreign.occupied_commands() == 1);
     CHECK(superseded.acknowledge_command(play_offer));
     CHECK(!superseded.acknowledge_command(play_offer));
+}
+static void adapter_offer_forwarding() {
+    p::Adapter adapter(2, 2); auto a = admit(adapter, 0x1000), b = admit(adapter, 0x3000, 3);
+    SubmitSpy worker_a, worker_b; worker_a.busy = true;
+    m::CommandOffer offer_a, offer_b;
+    CHECK(adapter.peek_command(a, offer_a) && adapter.peek_command(b, offer_b));
+    CHECK(!transfer(adapter, a, worker_a));
+    CHECK(worker_a.accepted == 0 && adapter.occupied_commands() == 2 && adapter.offer_current(offer_a));
+    CHECK(transfer(adapter, b, worker_b) && worker_b.accepted == 1 && worker_b.last.session == b);
+    CHECK(!adapter.acknowledge_command(offer_b) && adapter.occupied_commands() == 1);
+    CHECK(!transfer(adapter, b, worker_b) && worker_b.accepted == 1);
+    // New operation invalidates the retained construct offer through the exact
+    // same Runtime tuple check, then a peek exposes only the current command.
+    auto prepared = adapter.prepare_play(a, request()); auto play = adapter.commit_play(std::move(prepared));
+    CHECK(play.accepted && !adapter.offer_current(offer_a));
+    CHECK(!adapter.acknowledge_command(offer_a));
+    CHECK(adapter.peek_command(a, offer_a) && offer_a.command().operation == play.operation);
+    worker_a.busy = false;
+    CHECK(transfer(adapter, a, worker_a) && worker_a.accepted == 1);
+    CHECK(!adapter.acknowledge_command(offer_a));
+    CHECK(!transfer(adapter, a, worker_a) && worker_a.accepted == 1);
+    CHECK(adapter.run(a).accepted && adapter.peek_command(a, offer_a));
+    adapter.observe_record_retirement({0x1100, 1});
+    CHECK(!adapter.offer_current(offer_a) && !adapter.acknowledge_command(offer_a));
+    auto recycled = adapter.try_admit({0x1000, 2}, 2); CHECK(bool(recycled.session));
+    CHECK(!adapter.peek_command(a, offer_a));
+    CHECK(adapter.peek_command(recycled.session, offer_a));
+    p::Adapter foreign; auto foreign_h = admit(foreign, 0x5000);
+    CHECK(foreign.peek_command(foreign_h, offer_b));
+    CHECK(!adapter.offer_current(offer_b) && !adapter.acknowledge_command(offer_b));
+    CHECK(adapter.offer_current(offer_a) && foreign.occupied_commands() == 1);
+    adapter.clear();
+    CHECK(!adapter.offer_current(offer_a) && !adapter.acknowledge_command(offer_a));
 }
 static bool same_snapshot(const m::Snapshot& a, const m::Snapshot& b) {
     return a.publication.session == b.publication.session &&
@@ -535,7 +569,7 @@ static void loop_backpressure_classification() {
 int main() {
     const auto before = allocations;
     layout_and_decode(); capacity_and_reservation(); same_key_and_failure();
-    independent_sessions_and_seek(); rates(); reentry_and_reuse(); per_session_transfer(); atomic_loop_bounds(); loop_backpressure_classification();
+    independent_sessions_and_seek(); rates(); reentry_and_reuse(); per_session_transfer(); adapter_offer_forwarding(); atomic_loop_bounds(); loop_backpressure_classification();
     p::Adapter a; auto h = admit(a, 0x1000); drain(a);
     auto prep = a.prepare_play(h, request()); auto current = a.commit_play(std::move(prep));
     constexpr unsigned iterations = 200000;

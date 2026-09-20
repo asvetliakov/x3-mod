@@ -252,5 +252,17 @@
     "sanitizer_log": "/tmp/x3-media-loop-backpressure-sanitize.log",
     "fixture_limit": "Only fixture TU uses -fno-access-control for counter exhaustion; production TUs compile separately with normal access checks.",
     "remaining": "Consumer retry/termination routing and injected ABI/native runtime remain separate."
+  },
+  "adapter_offer_forwarding": {
+    "base": "156c8b63",
+    "review": "review_media_owned_state: CLEAR; independently repeated focused tests",
+    "host_command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_owned_adapter -v",
+    "tests": 2,
+    "checks": 479,
+    "failures": 0,
+    "allocations": 0,
+    "i686_no_x87": "passed",
+    "scope": "Direct Adapter forwarding for existing Runtime peek/current/ack, no new state or queue. Shared transfer tests cover backpressure, independent sessions and identity invalidation.",
+    "limit": "Adjacent non-reentrant submit/ack remains required; actual worker transfer and injected ABI separate."
   }
 }
