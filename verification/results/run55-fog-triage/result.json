@@ -1,0 +1,78 @@
+{
+  "generated_at_utc": "2026-09-20T21:11:47.867353+00:00",
+  "log": "/tmp/x3-bottleX3-run199/session-20260921-005922-212.log",
+  "log_mtime_utc": "2026-09-20T21:02:01.328747+00:00",
+  "log_sha256": "3fcee37bde2a9e96c7ad3c436e184d7fce1d6a2063785c32e8a83071695741f8",
+  "source_commit": "54b48c36f6d7d6aa846992fe5412fbaee5f26219",
+  "source_header": "/tmp/x3-media-production-integration/src/renderer/fog_volume_math.h",
+  "source_header_sha256": "c132ed237d724f7e6dc47470e6c289c6526526bd4a8cfcb5722e8e68a16579b8",
+  "f8_range": [
+    2188,
+    2219
+  ],
+  "f8_frames": 32,
+  "camera_rows": 32,
+  "camera_valid_reason_cut": {
+    "1|0|0": 32
+  },
+  "gram_max": 0.0001501851443415081,
+  "det_min": 0.9997936217456329,
+  "det_max": 0.9998695390256784,
+  "helper_witness": "rows=32 accepted=32 gram_max=0.000150185144342 det_min=0.999793621746 det_max=0.999869539026",
+  "compile_command": [
+    "clang++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-I",
+    "/tmp/x3-media-production-integration/src/renderer",
+    "/tmp/x3-run55-fog-triage/admission_witness.cpp",
+    "-o",
+    "/tmp/x3-run55-fog-triage/admission_witness"
+  ],
+  "motion_rows": 32,
+  "motion_camera_cut_history": {
+    "1|0|0|1": 24,
+    "1|0|1|0": 8
+  },
+  "sector_rows": 15,
+  "sector_status": {
+    "ready|\"bluewell\"|match|match": 15
+  },
+  "f8_fog_rows": [],
+  "f8_card_rows": [
+    {
+      "device": "1",
+      "frame": "2197",
+      "observed": "3",
+      "suppressed": "3",
+      "refused": "0",
+      "ready": "1",
+      "warmup": "0",
+      "applied": "1",
+      "fault": "0",
+      "reason": "none",
+      "mode": "2",
+      "observed_total": "4379",
+      "suppressed_total": "4161",
+      "refused_total": "0"
+    }
+  ],
+  "session_fog_reasons": {
+    "ok": 10,
+    "card_refused": 1
+  },
+  "session_card_states": {
+    "0|1|0": 63,
+    "0|0|0": 1
+  },
+  "pixel_queries": 0,
+  "limits": [
+    "camera values are logger-precision values, not raw D3D matrix bytes",
+    "volumetric_fog_frame is sparse: no such row lies in the F8 interval",
+    "one card-state row samples F8 state but does not enumerate every FogPass transaction",
+    "no image pixel statistic can isolate the fog contribution from this composited capture"
+  ]
+}

@@ -722,3 +722,28 @@ Independent deep review validated five relevant instruction ranges (717 rows /
 and check: `/tmp/x3-media-seek-contract.md`,
 `/tmp/x3-media-seek-contract-check.json`. No hook or game decoder change is
 qualified by these findings.
+
+## Run55 LAV scheduler fault attribution (2026-09-21)
+
+Run199 places PC `0x6eb2413a` inside native LAVVideo.ax at RVA `0xa413a`
+(module SHA-256 `84ac9e2f4da06d52518557cb8c3e04315c0364f01f822bde761e284d0b8d2cdd`).
+The instruction is `mov ecx,[ecx]` in a hash-chain lookup, with ECX=`ffffffff`.
+Exception handlers at RVAs `0xdb7f6` and `0xdb72b` match the handlers installed
+by topology-map initialization at `0xa9f19` and its caller `0xa9924`, which
+creates the default Concurrency scheduler. RTTI identifies SchedulerBase,
+ResourceManager and GlobalCore/GlobalNode topology objects. Exact private method
+names are inferred without PDBs. If Run197 loaded the same binary at Run199's
+base (not established by its logs), its earlier PC `0x6eb2a0fa` would map to
+RVA `0xaa0fa`, a topology-resource vtable-slot read. This establishes the failing scheduler-initialization path,
+not why its pointer is invalid; no raw game caller stack or memory dump exists.
+
+Pinned LAV source `c97e4049aff5d2ed86a2aa517b6a75357daf83b0` independently sets
+RGB-converter threads to `min(8,max(1,av_cpu_count()/2))` and uses
+`Concurrency::parallel_for` above one thread. Decoder `SetNumThreads(1)` does
+not control this converter. Installed instructions at RVAs `0x17366..0x1739f`
+corroborate the separate count. No provider repair was implemented: the user
+instead accepted omission of the ID2 animated texture and removal of replacement
+playback. Detailed derived analysis remains local at
+`/tmp/x3-run55-media-fault-design/report.md`; raw disassembly stays untracked.
+See the [Run55 triage](../../verification/results/run55-crash-triage/result.md)
+and [media ledger](../verification/media-cues.md#run55-crash-and-user-authorized-video-omission-2026-09-21).

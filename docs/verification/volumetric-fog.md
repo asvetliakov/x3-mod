@@ -551,3 +551,15 @@ three focused passes after its module was integrated following discovery. The
 clean committed candidate build, linked CPU audit and two actual-DLL HDR/TAA
 smoke cases also pass; [status](../status.md) records the current flight candidate.
 Native Windows runtime and user visual acceptance remain open.
+
+## Run55: first-person fog accepted (2026-09-21)
+
+The user reports `/tmp/x3-bottleX3-run199` (414 referenced files): fog is fixed
+in first-person view, and F8 was taken in that view. This accepts the visible
+first-person correction; it does not establish every family or shafts appearance.
+The flight crashed again, so overall candidate qualification remains open.
+[Capture evidence](../../verification/results/run55-fog-triage/report.md): frames
+2188–2219 have 32 valid cameras and all 32 pass the actual corrected helper.
+Frame 2197 samples replacement ready/applied with 3/3 cards suppressed and no
+refusal/fault. Fog-frame telemetry is sparse and has no row inside F8; the user
+report establishes appearance, not a per-frame FogPass or shafts acceptance.

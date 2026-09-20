@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "inputs": {
+    "launcher": {
+      "path": "/tmp/x3-bottleX3-run199/launcher-stderr.log",
+      "bytes": 157511525,
+      "lines": 1051089,
+      "sha256": "620f65ec8426af938666953c1f4f435b925436e8055e324d698a101e0eac0686"
+    },
+    "session": {
+      "path": "/tmp/x3-bottleX3-run199/session-20260921-005922-212.log",
+      "bytes": 155852247,
+      "lines": 2484536,
+      "sha256": "3fcee37bde2a9e96c7ad3c436e184d7fce1d6a2063785c32e8a83071695741f8"
+    }
+  },
+  "candidate": {
+    "line": 3,
+    "text": "proxy_identity sha256=4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012 bytes=58746286 path=C:\\X3\\d3d9.dll manifest_sha256=4b47f636acd66eba35c61a3f9a4d4d18d911470f46b2df7b64aaf1465cdaa012 source_commit=54b48c36f6d7d6aa846992fe5412fbaee5f26219 attach_us=182989"
+  },
+  "trace_configuration": [
+    {
+      "line": 33,
+      "channels": "+timestamp,+pid,+seh,+unwind,+process,+module,+loaddll,+threadname,+timestamp,+tid,+seh,+loaddll"
+    },
+    {
+      "line": 36,
+      "channels": "+timestamp,+pid,+seh,+unwind,+process,+module,+loaddll,+threadname,+timestamp,+tid,+seh,+loaddll"
+    }
+  ],
+  "fault": {
+    "exception": "0xc0000005",
+    "access": "read",
+    "address": "0xffffffff",
+    "eip": "0x6eb2413a",
+    "tid": "0x03f8",
+    "process": "0x00d4",
+    "first_dispatch": {
+      "line": 1046452,
+      "ts": "2026-09-20T21:01:47.734Z",
+      "pid": "00d4",
+      "tid": "03f8",
+      "text": "[2026-09-20T21:01:47.734Z] 1667545.514:00d4:03f8:trace:seh:dispatch_exception code=c0000005 (EXCEPTION_ACCESS_VIOLATION) flags=0 addr=000000006EB2413A"
+    },
+    "dispatch_count": 4,
+    "fault_log_lines": [
+      {
+        "line": 1046452,
+        "text": "[2026-09-20T21:01:47.734Z] 1667545.514:00d4:03f8:trace:seh:dispatch_exception code=c0000005 (EXCEPTION_ACCESS_VIOLATION) flags=0 addr=000000006EB2413A"
+      },
+      {
+        "line": 1046517,
+        "text": "[2026-09-20T21:01:47.735Z] 1667545.514:00d4:03f8:trace:seh:dispatch_exception code=c0000005 (EXCEPTION_ACCESS_VIOLATION) flags=0 addr=6EB2413A"
+      },
+      {
+        "line": 1046520,
+        "text": "[2026-09-20T21:01:47.735Z] 1667545.514:00d4:03f8:trace:seh:dispatch_exception eip=6eb2413a esp=56b3f80c ebp=56b3f80c eflags=20000202"
+      },
+      {
+        "line": 1048064,
+        "text": "[2026-09-20T21:01:48.813Z] wine: Unhandled page fault on read access to FFFFFFFF at address 6EB2413A (thread 03f8), starting debugger..."
+      },
+      {
+        "line": 1048630,
+        "text": "[2026-09-20T21:01:55.796Z] 1667553.583:00d4:03f8:trace:seh:dispatch_exception code=c0000005 (EXCEPTION_ACCESS_VIOLATION) flags=0 addr=000000006EB2413A"
+      },
+      {
+        "line": 1048725,
+        "text": "[2026-09-20T21:01:55.797Z] 1667553.583:00d4:03f8:trace:seh:dispatch_exception code=c0000005 (EXCEPTION_ACCESS_VIOLATION) flags=0 addr=6EB2413A"
+      },
+      {
+        "line": 1048728,
+        "text": "[2026-09-20T21:01:55.797Z] 1667553.583:00d4:03f8:trace:seh:dispatch_exception eip=6eb2413a esp=56b3f80c ebp=56b3f80c eflags=20000202"
+      }
+    ],
+    "x86_context_lines": [
+      {
+        "line": 1046520,
+        "text": "[2026-09-20T21:01:47.735Z] 1667545.514:00d4:03f8:trace:seh:dispatch_exception eip=6eb2413a esp=56b3f80c ebp=56b3f80c eflags=20000202"
+      },
+      {
+        "line": 1046521,
+        "text": "[2026-09-20T21:01:47.735Z] 1667545.514:00d4:03f8:trace:seh:dispatch_exception eax=00000000 ebx=00000c02 ecx=ffffffff edx=00000c02"
+      },
+      {
+        "line": 1046522,
+        "text": "[2026-09-20T21:01:47.735Z] 1667545.514:00d4:03f8:trace:seh:dispatch_exception esi=5852567c edi=56b3f884 cs=0023 ds=002b es=002b fs=0053 gs=002b ss=002b"
+      },
+      {
+        "line": 1048728,
+        "text": "[2026-09-20T21:01:55.797Z] 1667553.583:00d4:03f8:trace:seh:dispatch_exception eip=6eb2413a esp=56b3f80c ebp=56b3f80c eflags=20000202"
+      },
+      {
+        "line": 1048729,
+        "text": "[2026-09-20T21:01:55.797Z] 1667553.583:00d4:03f8:trace:seh:dispatch_exception eax=00000000 ebx=00000c02 ecx=ffffffff edx=00000c02"
+      },
+      {
+        "line": 1048730,
+        "text": "[2026-09-20T21:01:55.797Z] 1667553.583:00d4:03f8:trace:seh:dispatch_exception esi=5852567c edi=56b3f884 cs=0023 ds=002b es=002b fs=0053 gs=002b ss=002b"
+      }
+    ],
+    "thread_names": [
+      {
+        "line": 1045691,
+        "name": "CLAVOutputPin Video",
+        "text": "[2026-09-20T21:01:47.715Z] 1667545.495:00d4:03f8:warn:threadname:dispatch_exception Thread renamed to \"CLAVOutputPin Video\""
+      },
+      {
+        "line": 1045818,
+        "name": "CLAVOutputPin Video",
+        "text": "[2026-09-20T21:01:47.717Z] 1667545.495:00d4:03f8:warn:threadname:dispatch_exception Thread renamed to \"CLAVOutputPin Video\""
+      }
+    ]
+  },
+  "module": {
+    "name": "LAVVideo.ax",
+    "runtime_maps": [
+      {
+        "line": 617509,
+        "base": "0x6ea80000",
+        "end": "0x6eb8e000",
+        "text": "[2026-09-20T21:00:09.278Z] 1667447.051:00d4:013c:trace:module:map_image_into_view mapping PE file L\"\\\\??\\\\C:\\\\X3\\\\x3-modern-media\\\\providers\\\\lav081-strict-cadf5fbf4cf41bae\\\\LAVVideo.ax\" at 0x6ea80000-0x6eb8e000"
+      }
+    ],
+    "runtime_loaded": [
+      {
+        "line": 617663,
+        "provider": "lav081-strict-cadf5fbf4cf41bae",
+        "base": "0x6ea80000",
+        "text": "[2026-09-20T21:00:09.284Z] 1667447.058:00d4:013c:trace:loaddll:build_module Loaded L\"C:\\\\X3\\\\x3-modern-media\\\\providers\\\\lav081-strict-cadf5fbf4cf41bae\\\\LAVVideo.ax\" at 6EA80000: native"
+      }
+    ],
+    "pe": {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-media/providers/lav081-strict-cadf5fbf4cf41bae/LAVVideo.ax",
+      "bytes": 1100472,
+      "sha256": "84ac9e2f4da06d52518557cb8c3e04315c0364f01f822bde761e284d0b8d2cdd",
+      "image_base": "0x10000000",
+      "size_of_image": "0x10e000"
+    },
+    "fault_rva": "0xa413a",
+    "range_contains_fault": true,
+    "owning_source_location": null,
+    "owning_source_note": "The logs establish the native provider binary path, not a source-file/symbol location."
+  },
+  "debugger": {
+    "auto_start_line": 1048065,
+    "auto_debugger": "winedbg --auto 212 8820",
+    "stack_or_winedbg_context_lines": 0
+  },
+  "media": {
+    "counts": {
+      "media_owned_snapshot": 1,
+      "media_owned_services": 1,
+      "media_worker": 0,
+      "media_submission": 0,
+      "media_retire": 0,
+      "media_completion": 0,
+      "media_shutdown": 0,
+      "media_cue_window": 19,
+      "frame_end": 629
+    },
+    "last": {
+      "frame_end": {
+        "line": 2484524,
+        "text": "frame_end device=1 frame=5980 draws=322 capture=0 present=00000000 elapsed_ms=155457 dt_ms=191 qpc=16675545396986"
+      },
+      "media_cue_window": {
+        "line": 2480892,
+        "text": "media_cue_window qpc=16675441396107 frame=5699 frames=300 attempts=0 failures=0 successes=0 refused=0 unobserved=0 attempts_frame_p50=0 attempts_frame_max=0 ids=none id_overflow=0 cache_used=0 evictions=0 depth_max=1 overflow=0 stale=0 mismatched=0 lost=0 suppressed=0 enter_suppressed=0 dropped=0 early=0 foreign=0 video_blits=0 video_unlocks=0 video_failures=0 video_suppressed=0 video_reentries=0 video_foreign=0 video_early=0"
+      },
+      "media_owned_snapshot": {
+        "line": 25990,
+        "text": "media_owned_snapshot report=1 startup=10 closed=1 claimed=1 entry_active=0 requested_qpc=16674052318010 bootstrap_begin_qpc=16674052330970 bootstrap_end_qpc=16674053100286 ready_qpc=16674065142393 first_device_qpc=16674062860609 installed=1 debt=0 owner=216 device=0029ce48 veto=0 consumer_admission=1 copy_admission=1 capacity_closed=0"
+      },
+      "media_owned_services": {
+        "line": 25991,
+        "text": "media_owned_services prepared=1 initialized=1 admission=1 assigned=1 draining=0 quarantine=0 leases=3 failed_mask=0"
+      }
+    }
+  },
+  "limitations": [
+    "No winedbg register dump, module list, raw stack, or symbolic caller chain was emitted after the automatic debugger launch.",
+    "The repeated dispatch records are exception delivery/unwind observations, not independent crashes.",
+    "The session telemetry has no worker/submission/retirement/completion/shutdown records, so it cannot establish the bad object's provenance.",
+    "This is CrossOver/Wine evidence only; it does not establish native Windows behavior or a production-source root cause."
+  ]
+}

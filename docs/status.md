@@ -1,7 +1,7 @@
 # Project status
 
-Updated 2026-09-21: Run55 is ready for the first-person fog check and crash
-diagnosis. The agent never launches the game. See the [run queue](verification/user-runs.md),
+Updated 2026-09-21: Run55 (run199) confirms the first-person fog fix in flight;
+the crash recurred. A reduced candidate omitting ID2 animated video is in progress. The agent never launches the game. See the [run queue](verification/user-runs.md),
 [goals](goals.md) and [original objective](user-objective.md).
 
 ## Installed build
@@ -40,21 +40,18 @@ Use the integration launcher in the run queue for media preflight/coordination.
 
 ## Current work and pending acceptance
 
-- **Run54 crashes:** runs195/196/197 failed in flight. Three logged anchors
-  establish both addressed faults outside the proxy, but the external module
-  and cause remain unknown. [Reproducible triage](../verification/results/run54a-triage/result.md).
-  Run197 proves an owned copy occurred before its F8 snapshot, not at crash time.
-- **Media:** three bounded original-voice/owned-worker cases did not reproduce
-  the crash or GStreamer criticals. Active playback includes 15 exact copies,
-  overlapping original audio progress and guarded retirement/reuse; this does
-  not exonerate either path. [Record](../verification/results/media-run54-coexistence-2026-09-21.json).
-  Run55 adds `CX_DEBUGMSG=+timestamp,+tid,+seh,+loaddll`. Existing Wine/WineDbg
-  produced correct module/register/stack evidence in two deliberate background
-  read faults, including a relocated DLL; game output is not guaranteed.
-  [Diagnostic qualification](../verification/results/run54-crash-trace-qualification.json).
+- **Crash / media decision:** Run55 run199 repeats the crash in native
+  `LAVVideo.ax`, RVA `0xa413a`, on its video output thread. Exception handlers
+  and disassembly place it in Concurrency scheduler initialization; the origin
+  of the invalid pointer remains unproved. [Crash evidence](../verification/results/run55-crash-triage/result.md).
+  The user accepts missing ID2 animated textures and authorizes removing the
+  replacement playback machinery. Work is in progress on a targeted allocator
+  refusal before graph construction, plus removal of owned runtime/build/package
+  prerequisites. Speech, music and unrelated media must retain their existing
+  paths. This is not installed yet; no further flight is requested meanwhile.
 - **Fog:** the user confirms Run197 F8 was first-person. All 32 captured matrices
   failed the old fog-only tolerance despite passing the camera reader; corrected
-  helper and D3D-route checks pass. Run55 checks the visible result. Density
+  helper and D3D-route checks pass. Run199 confirms the visible fix by user report, with F8 in first person. Density
   remains 0.03 (the user's 1.50× preference); fog remains opt-in/off by default.
   Fourteen-family visuals, shafts and clear-sector travel retain their flight
   acceptance gaps. Camera-cut native-card replacement protection remains enabled.

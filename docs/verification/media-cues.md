@@ -1115,3 +1115,25 @@ stutter-performance solution. Millisecond boundaries and pending cancellation
 are next, followed by the engine's seek-only loop behavior and record/target
 lifetime. No production decoder change, game playback acceptance or native
 Windows execution follows from this checkpoint.
+
+## Run55 crash and user-authorized video omission (2026-09-21)
+
+Run199 repeats the crash with qualified exception/module tracing. The first
+access violation occurs at `2026-09-20T21:01:47.734Z`, thread `03f8`
+(`CLAVOutputPin Video`), PC `0x6eb2413a`, reading `0xffffffff`.
+The loaded `LAVVideo.ax` range is `0x6ea80000..0x6eb8e000`, so the RVA is
+`0xa413a`; the native provider SHA-256 is
+`84ac9e2f4da06d52518557cb8c3e04315c0364f01f822bde761e284d0b8d2cdd`.
+The [streamed triage](../../verification/results/run55-crash-triage/result.md)
+binds logs, registers, module geometry and candidate identity. Wine starts its
+automatic debugger, but no raw stack or symbolic caller chain is preserved.
+
+The user explicitly accepts missing animated textures and asks to remove the
+replacement media code. The selected direction is a fresh-process ID2 flags0/8
+allocator refusal before owned/native construction, using existing NULL failure
+semantics for every caller. Other IDs and explicit nonvideo overrides retain
+native handling. A cheap repeated request is acceptable; repeated graph creation
+and the 30-second construction stall are not. No dummy playback success or empty
+owned shell is planned. The replacement runtime/build prerequisites are being
+removed; prior research and fixture evidence remain historical. No reduced build
+or crash-free flight is claimed by this decision.
