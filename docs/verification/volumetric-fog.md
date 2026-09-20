@@ -436,3 +436,38 @@ not exact native-resolution ray identity, a clean replacement preview, history/
 TAA acceptance or native Windows qualification. Full-float GPU repair ST remains
 unread; its CPU-empty identity control is separate. Full-transaction timing is
 the next detached fixture check.
+
+### Spatial fog complete-transaction timing checkpoint (2026-09-20)
+
+The detached fixture passes the fixed performance gates with the qualified pass
+and shaders unchanged. Each profile runs 16 warm and 64 measured iterations,
+round-robin across four views. All 160 rows and 26 correctness/lifetime checks
+pass. Independent review recomputes the statistics directly from raw QPC ticks:
+
+| Profile | Submit median | EVENT-completed median | Completed p95 |
+| --- | ---: | ---: | ---: |
+| 1280x768 captures | 0.1336 ms | 1.1002 ms | 1.584285 ms |
+| 1920x1080 resized performance inputs | 0.1330 ms | 1.22575 ms | 1.501395 ms |
+
+The fixed gates are submit median <=0.25 ms for each profile, completed median
+<=1.25/2.0 ms respectively, and completed p95 <=2.5 ms at 1920. The 1280 p95 is
+reported but was not gated. No samples were dropped and no quality parameters
+were reduced. The interval includes validation, state preservation, scene copy,
+march, full-pixel repairs, composite, restoration and reference cleanup, including
+the added 64 stream calls. Its 254 instrumented-call count excludes validation
+calls/Releases; those operations remain inside the measured elapsed interval.
+
+A completed pre-fence excludes uploads, pristine-scene reset and earlier work.
+The measured completion includes EVENT issue/poll overhead; CPU submit is wall
+time, not thread CPU use. No active disjoint query was introduced and GPU
+timestamps were not collected. Two resident family atlases occupy 35,692,800
+bytes per profile. All 16 baseline/final readback pairs match, eight 1280 outputs
+match earlier accepted readbacks, and allocation/reference checks remain stable.
+
+Seven host tests and independent source/runtime review pass. The
+[compact timing record](../../verification/results/fog-volume-gpu-timing.json)
+binds source, inputs, executable, shaders and full measurements. The command's
+5.934438-second duration is fixture runtime. These measurements do not establish
+game FPS, native Windows performance or production integration; the separately
+qualified 32-frame sequence retains its existing limits. The next work is the
+production scene/sector/resource boundary, including loading cost.

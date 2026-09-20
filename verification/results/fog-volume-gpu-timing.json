@@ -1,0 +1,289 @@
+{
+  "checkpoint": "Spatial fog full transaction performance",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "executable_sha256": "9125a4a52d81ac58ea49b53b9fe64d697f8f6189d60fbc0ebbba9153eda4549e",
+  "full_result": "/tmp/x3-fog-volume-gpu/build/fog-volume-gpu-timing/timing-readback/report.json",
+  "full_result_sha256": "89e53ede47a9868616319605ee9252d49e5c75e861754c6a854840deec3374a5",
+  "manifest_sha256": "6836afbfb2ad4f67d1a7acf92eddce5de023b7656dd2a2e4c5e8a3f5ef0cb633",
+  "sources": {
+    "verification/analysis/test_fog_volume_gpu_timing.py": "f6c966da301378b22762d04eb1b4b69ff826de99c3f040c481ad2731bf97bb54",
+    "verification/probe/fog_volume_gpu_state_run.py": "eb970ed6e424bbef2dd3e74c9bf2e4a94d3e211b9efebacf32aed15e3302fff3",
+    "verification/probe/fog_volume_gpu_fixture.cpp": "ebc37d7bc56213f72eeaf575d5266eb53d323d4b157dfa7d49890fe6cdc74981",
+    "verification/probe/fog_volume_gpu_build.sh": "97e533bd8c4d51abe7b564ae439d85101f61c5bf4f0e6b3d0b8aaa8e009f18eb",
+    "verification/probe/fog_volume_gpu_run.py": "2a0ab58a2480945d72e7cff4bb74ef77c90657881d91024d46fb27f4e1942800",
+    "verification/probe/fog_volume_gpu_timing_inc.h": "2f28e85aff42ba44167cddf878d1e5de36c9d61f727ddd2321c19fe1fe95556b",
+    "verification/probe/fog_volume_gpu_timing_prepare.py": "6df939af89b62cdcc306b85c1813ac04d190e0e84ab4d5276a8e573a5d90deba",
+    "verification/probe/fog_volume_gpu_state_inc.h": "58c6a37be6be89c0725259ecf6ac0d28811f2a14bf5852b7f6d1cce9d274516f",
+    "verification/probe/fog_volume_gpu_pass.h": "c53a58ae2f3488904f278d9513719100d9cda73643a0bd4de36e4c5708507018",
+    "verification/probe/fog_volume_gpu_timing_run.py": "f0de004e18872a951b0512d184e7b7677ad242f0251599abdd27532996bac23c",
+    "verification/probe/fog_volume_gpu_pass.cpp": "24da210b94142dc6c558e49ff742517859a15d970047fa09a89817dec0c9ceac",
+    "verification/probe/shaders/fog_volume_composite_ps.hlsl": "8d27bedbd8c6a1b1035d055b093f329b329a664eacf4aa9641b5cd698fceaaa1",
+    "verification/probe/shaders/fog_volume_field_inc.h": "31230f4089e6cb3fd83ea3a8474290e4e6c353d0dc5421c75a83e62e18e7d0b1",
+    "verification/probe/shaders/fog_volume_march_ps.hlsl": "7baddbbd0eaf84ffc520e5730f166c55ab912c552c4a502abdd770a9b2ba15a5"
+  },
+  "shader_binaries": {
+    "march": "a214fc49e020e3044c3534f2f74d20c4ddf71e2b16654d7399937b7817bbc85f",
+    "composite": "7d2d321de821ffc0a051df79e1d4f03ad440ab8893f21e730fba160638c85506"
+  },
+  "command_seconds": 5.934438167,
+  "profiles": [
+    {
+      "profile": "1280x768",
+      "passed": true,
+      "gates": {
+        "cpu_submit_median_ms": 0.25,
+        "event_fenced_median_ms": 1.25,
+        "event_fenced_p95_ms": null
+      },
+      "count": 64,
+      "cpu_submit_ms": {
+        "median": 0.1336,
+        "p95": 0.16330999999999998,
+        "min": 0.1188,
+        "max": 0.206
+      },
+      "event_fenced_ms": {
+        "median": 1.1002,
+        "p95": 1.584285,
+        "min": 0.9839,
+        "max": 1.7181
+      },
+      "fenced_minus_submit_estimate_ms": {
+        "median": 0.97525,
+        "p95": 1.451635,
+        "min": 0.8555,
+        "max": 1.5831
+      },
+      "views": {
+        "1280x768-1974": {
+          "count": 16,
+          "cpu_submit_ms": {
+            "median": 0.13505,
+            "p95": 0.165625,
+            "min": 0.1269,
+            "max": 0.1741
+          },
+          "event_fenced_ms": {
+            "median": 1.1037,
+            "p95": 1.617675,
+            "min": 1.0009,
+            "max": 1.7181
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 0.9733499999999999,
+            "p95": 1.485975,
+            "min": 0.8693,
+            "max": 1.5831
+          }
+        },
+        "1280x768-9204": {
+          "count": 16,
+          "cpu_submit_ms": {
+            "median": 0.13425,
+            "p95": 0.17404999999999998,
+            "min": 0.1259,
+            "max": 0.206
+          },
+          "event_fenced_ms": {
+            "median": 1.11215,
+            "p95": 1.271325,
+            "min": 0.9945,
+            "max": 1.6914
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 0.9770000000000001,
+            "p95": 1.1293,
+            "min": 0.8661,
+            "max": 1.5604
+          }
+        },
+        "1280x768-21901": {
+          "count": 16,
+          "cpu_submit_ms": {
+            "median": 0.13574999999999998,
+            "p95": 0.159825,
+            "min": 0.1228,
+            "max": 0.1647
+          },
+          "event_fenced_ms": {
+            "median": 1.0277,
+            "p95": 1.237575,
+            "min": 0.9839,
+            "max": 1.5843
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 0.87435,
+            "p95": 1.10695,
+            "min": 0.8555,
+            "max": 1.4473
+          }
+        },
+        "1280x768-26447": {
+          "count": 16,
+          "cpu_submit_ms": {
+            "median": 0.1272,
+            "p95": 0.149925,
+            "min": 0.1188,
+            "max": 0.1527
+          },
+          "event_fenced_ms": {
+            "median": 1.11225,
+            "p95": 1.5757,
+            "min": 0.9937,
+            "max": 1.6051
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 0.987,
+            "p95": 1.443025,
+            "min": 0.8653,
+            "max": 1.4524
+          }
+        }
+      }
+    },
+    {
+      "profile": "1920x1080",
+      "passed": true,
+      "gates": {
+        "cpu_submit_median_ms": 0.25,
+        "event_fenced_median_ms": 2.0,
+        "event_fenced_p95_ms": 2.5
+      },
+      "count": 64,
+      "cpu_submit_ms": {
+        "median": 0.133,
+        "p95": 0.19339999999999996,
+        "min": 0.1157,
+        "max": 0.2918
+      },
+      "event_fenced_ms": {
+        "median": 1.2257500000000001,
+        "p95": 1.5013949999999998,
+        "min": 1.0159,
+        "max": 1.5747
+      },
+      "fenced_minus_submit_estimate_ms": {
+        "median": 1.08575,
+        "p95": 1.35119,
+        "min": 0.8779,
+        "max": 1.4493
+      },
+      "views": {
+        "1920x1080-1974": {
+          "count": 16,
+          "cpu_submit_ms": {
+            "median": 0.13395,
+            "p95": 0.21289999999999998,
+            "min": 0.1157,
+            "max": 0.2918
+          },
+          "event_fenced_ms": {
+            "median": 1.1950500000000002,
+            "p95": 1.301175,
+            "min": 1.085,
+            "max": 1.3644
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 1.0501,
+            "p95": 1.1197,
+            "min": 0.8984,
+            "max": 1.1227
+          }
+        },
+        "1920x1080-9204": {
+          "count": 16,
+          "cpu_submit_ms": {
+            "median": 0.12990000000000002,
+            "p95": 0.21,
+            "min": 0.1191,
+            "max": 0.2562
+          },
+          "event_fenced_ms": {
+            "median": 1.1507999999999998,
+            "p95": 1.3842750000000001,
+            "min": 1.1091,
+            "max": 1.4514
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 1.0023,
+            "p95": 1.252125,
+            "min": 0.8779,
+            "max": 1.326
+          }
+        },
+        "1920x1080-21901": {
+          "count": 16,
+          "cpu_submit_ms": {
+            "median": 0.13445000000000001,
+            "p95": 0.1594,
+            "min": 0.1201,
+            "max": 0.1771
+          },
+          "event_fenced_ms": {
+            "median": 1.2481,
+            "p95": 1.5189,
+            "min": 1.0159,
+            "max": 1.5192
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 1.1065,
+            "p95": 1.391375,
+            "min": 0.8821,
+            "max": 1.3991
+          }
+        },
+        "1920x1080-26447": {
+          "count": 16,
+          "cpu_submit_ms": {
+            "median": 0.13235000000000002,
+            "p95": 0.18510000000000001,
+            "min": 0.1189,
+            "max": 0.2652
+          },
+          "event_fenced_ms": {
+            "median": 1.2368999999999999,
+            "p95": 1.523175,
+            "min": 1.0246,
+            "max": 1.5747
+          },
+          "fenced_minus_submit_estimate_ms": {
+            "median": 1.0979999999999999,
+            "p95": 1.3760999999999999,
+            "min": 0.8964,
+            "max": 1.4493
+          }
+        }
+      }
+    }
+  ],
+  "samples": {
+    "per_profile_warm": 16,
+    "per_profile_measured": 64,
+    "per_view_measured": 16,
+    "total_including_warm": 160
+  },
+  "checks": 26,
+  "host_tests": 7,
+  "readback_pairs_identical": 16,
+  "accepted_1280_readbacks_identical": 8,
+  "resident_atlas_count": 2,
+  "resident_atlas_bytes": 35692800,
+  "review": "Independent combined source/runtime review passed; raw tick statistics recomputed",
+  "passed": true,
+  "limits": [
+    "Detached EVENT-fenced wall time including fence polling, not GPU timestamp timing or game FPS",
+    "CPU submit is elapsed wall time, includes full execute and cleanup",
+    "1920x1080 inputs are resized performance fixtures, not native-resolution captures",
+    "1280 p95 is reported, not a fixed acceptance gate",
+    "Native Windows and production integration remain unverified",
+    "Existing sequence qualification remains a separate checkpoint"
+  ]
+}
