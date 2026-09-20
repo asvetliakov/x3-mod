@@ -1,0 +1,71 @@
+{
+  "checkpoint": "march-only",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "native": "unverified",
+  "full_acceptance": false,
+  "executable_sha256": "fef254e3c86a1b861251451c5ee408a3c1308fe2475bb40a2de850add717ec86",
+  "shaders": {
+    "march": {
+      "source_sha256": "7baddbbd0eaf84ffc520e5730f166c55ab912c552c4a502abdd770a9b2ba15a5",
+      "helper_sha256": "31230f4089e6cb3fd83ea3a8474290e4e6c353d0dc5421c75a83e62e18e7d0b1",
+      "binary_sha256": "a214fc49e020e3044c3534f2f74d20c4ddf71e2b16654d7399937b7817bbc85f",
+      "bytes": 2932,
+      "seconds": 7.829832958
+    },
+    "composite": {
+      "source_sha256": "da596c7ea1106000fc517bfcceb4461257396bd70605d534f6152b4317994b93",
+      "helper_sha256": "31230f4089e6cb3fd83ea3a8474290e4e6c353d0dc5421c75a83e62e18e7d0b1",
+      "binary_sha256": "dca2d146a529c703cbd862938f8a1081529e495a7e475e2f568b94833188d740",
+      "bytes": 4312,
+      "seconds": 7.7852781659999994
+    },
+    "compiler_dll_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+    "compiler_exe_sha256": "c22387538a1d2f7fb7b672a121485c65b779ed198b2a5c99791b6ba851d9235f",
+    "bottle": {
+      "name": "X3",
+      "wine_arch": "arm64",
+      "environment": {
+        "FEX_X87REDUCEDPRECISION": "1",
+        "WINEMSYNC": "1"
+      },
+      "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+    }
+  },
+  "sources": {
+    "verification/probe/fog_volume_gpu_fixture.cpp": "76706cd3258c434eb38b3242508c41358bf6f489e9e704deee5eee89bd66938f",
+    "verification/probe/fog_volume_gpu_build.sh": "1fda08787609229d659c3658036bd98364616bd519f1767eb7e20d4a510b5562",
+    "verification/probe/fog_volume_gpu_run.py": "735b7ae9a4dc5675d3591f0542ab3354b25f5a6ecc9dcdd00d8c0e67d5fab737",
+    "verification/probe/fog_volume_gpu_pass.h": "c53a58ae2f3488904f278d9513719100d9cda73643a0bd4de36e4c5708507018",
+    "verification/probe/fog_volume_gpu_pass.cpp": "544c9a8dcb0e7d2bb40033db7a8ff983103931659c0e845b157ceeaeeba836ee",
+    "verification/probe/shaders/fog_volume_composite_ps.hlsl": "da596c7ea1106000fc517bfcceb4461257396bd70605d534f6152b4317994b93",
+    "verification/probe/shaders/fog_volume_field_inc.h": "31230f4089e6cb3fd83ea3a8474290e4e6c353d0dc5421c75a83e62e18e7d0b1",
+    "verification/probe/shaders/fog_volume_march_ps.hlsl": "7baddbbd0eaf84ffc520e5730f166c55ab912c552c4a502abdd770a9b2ba15a5",
+    "verification/analysis/prepare_fog_volume_gpu.py": "a7c0293555b80e5f7d0f5de1ec1271db816043d0a2c6d1576aaaa4cb1367f397"
+  },
+  "exit_code": 0,
+  "command_seconds": 4.794852042,
+  "manifest_sha256": "b5755cc8277c784e6d2e4a2691c18fe5eb3063c7329eceffab03f0609465c24d",
+  "total_seconds": 4.85675475,
+  "qualification": {
+    "checks": 22,
+    "successful_transactions": 5,
+    "frame_groups_passed": 16,
+    "max_T_error": 0.00048828125,
+    "max_S_error": 1.52587890625e-05,
+    "atlas_max_error": 0.001953125,
+    "atlas_centres_exact": true,
+    "full_report": "/tmp/x3-fog-volume-gpu/build/fog-volume-gpu/gpu-readback/report.json",
+    "limits": [
+      "March only",
+      "No composite/recovery/full state/timing/native qualification"
+    ]
+  }
+}

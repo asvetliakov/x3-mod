@@ -323,3 +323,22 @@ Evidence and visual controls:
 - [`run185 frame 26447`](/tmp/x3-fog-patchy-replay/verification/results/fog-family-volume-policy/run185-frame-26447-foggreenoutlands.png)
 - [`old card-free run153 sandbox`](/tmp/x3-fog-patchy-replay/verification/results/fog-family-volume-policy/run153-frame7741-sandbox.png)
 - [`fixed experiment helper`](/tmp/x3-fog-patchy-replay/tools/analysis/fog_family_volume_policy.py)
+
+
+### Spatial fog first GPU march checkpoint (2026-09-20)
+
+The standalone D3D9 fixture passes 22 checks and five march transactions, with
+all 16 sky/geometry/boundary/whole-frame metric groups passing across four
+original captures. Maximum transmittance error against the matching float32
+reference is 0.00048828125; maximum scattering-channel error is 0.0000152587890625.
+Atlas centres match exactly; maximum filtering error is 0.001953125, within its
+gate (four binary16 steps at one witness, not one ULP). X3/arm64 command time
+is 4.795 s; this includes fixture work and is not rendering performance.
+Independent deep source/evidence review passed. A reserved HLSL identifier was
+renamed after compiler rejection; arithmetic and thresholds were unchanged.
+
+The [compact record](../../verification/results/fog-volume-gpu-march.json) binds
+source/compiler/shader/input hashes. This is march-only qualification: composite,
+synthetic clipping/ordering, full state/Reset/fault coverage, 32-frame checks and
+complete-transaction timing remain pending. No production fog change or native
+Windows execution is claimed.
