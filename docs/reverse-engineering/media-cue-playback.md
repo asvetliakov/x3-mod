@@ -432,7 +432,10 @@ only ones on `[obj+0x04]` (`IAMMultiMediaStream`) are `+0x10` `GetMediaStream`,
 with a NULL event and NULL APC; `CompletionStatus` is called with timeout 0;
 every retry is bounded at two attempts. Combined with §1 of
 [voice-startup-sequence.md](voice-startup-sequence.md) (no thread, no wait
-import), **the game cannot block by construction — it polls once per pump.**
+import), **the game polls once per pump without an explicit unbounded wait loop.**
+This does not bound synchronous COM calls: the [standalone seek witness](../verification/media-cues.md#standalone-id2-playback-boundary-2026-09-20)
+blocks inside `put_CurrentPosition`. The exact blocking call in the historical
+comm flight remains unproved.
 
 ### 8.4 Which cues build a video branch: the comm avatar vs. the sector selector
 
@@ -683,3 +686,39 @@ findings do not establish destination lifetime, Reset behavior, the precise
 post-create blocking call, or a working replacement. A standalone documented-API
 playback fixture is the next investigation; no game launch or decoder change
 was performed.
+
+
+## Seek/replay contract after the standalone witness (2026-09-20)
+
+`0x004d0430` takes EAX=record and a caller-cleaned signed start-ms argument,
+returns a boolean-like value and preserves EBP/EBX/ESI/EDI. Its six-byte entry
+`55 8b ec 83 e4 c0` contains complete instructions; five bytes would split AND.
+The gap-free 111-instruction function has three direct callers: manager loop
+return0x49840f, shared explicit-play return0x498d59 and speech return0x498f5a.
+These are structural findings, not hook approval.
+
+For ID2 flags8, seek first Pauses, sets media+0x64=1, +0x90=start and +0x94=-1,
+then calls `put_CurrentPosition(start_ms/1000)`. Both negative HRESULT attempts
+can fail and the helper still returns1. The alternate flags0x20 Seek arm checks
+failure. The later Run helper also swallows a failed final Run HRESULT, so its
+return is not a playback-success witness.
+
+Seek does not release the video sample or reset pump state+0xb0. Repeated
+explicit play reuses sample+0x14 and surface+0x10, then calls Run. Ordinary
+stop-by-ID Pauses and retains those objects. Automatic manager looping invokes
+seek alone, ignores its result, reapplies the end bound and does not call Run.
+Physical CompletionStatus EOF resets pump state1; an engine segment-end test
+returns finished while retaining state4. Explicit play ORs the loop bit, rather
+than clearing an old loop bit when a nonlooping replay is requested.
+
+Consequently Stop-before-seek cannot be applied blindly as a game fix. First
+play, retained-sample replay, pending Update, segment-end looping and physical
+EOF need distinct fixture cases, with actual target-frame evidence and bounded
+teardown. Added COM calls also require an engine-record reentrancy/lifetime
+contract; COM AddRef alone cannot pin the malloc-owned engine record.
+
+Independent deep review validated five relevant instruction ranges (717 rows /
+1,992 bytes) against the original EXE with zero mismatches. Local full contract
+and check: `/tmp/x3-media-seek-contract.md`,
+`/tmp/x3-media-seek-contract-check.json`. No hook or game decoder change is
+qualified by these findings.

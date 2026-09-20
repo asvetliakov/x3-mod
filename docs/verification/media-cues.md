@@ -851,3 +851,44 @@ EXE/configuration/proxy hashes remain unchanged after the counter.
 The reviewed fixture and compact four-run record are checkpointed as
 `e8071b1e` on isolated branch `experiment/media-playback-seek-2026-09-20`.
 They have not been merged into the qualifying candidate.
+
+
+### Stopped seek: no hang, but target-frame qualification fails
+
+The next independently reviewed diagnostic adds Stop before the original seek,
+reads back position while stopped, then restores Pause before the unchanged
+sample/Run/copy sequence. Thirty host tests pass. Reviewed source
+`3160aefef7c018971652d5e8fc75d4195c55c9d533d8c487316059671383637d`
+builds fixture EXE
+`f2b8e22e2d8b1f0e2db090d4774e2f5110d0498fb0b48d8f33de1c6a25e823fb`.
+The serialized X3 run uses v5, `--stage copy --stop-before-seek --start-ms 10000
+--diagnostics`; local result `/tmp/x3-media-fixture-v5-stopped-seek-10s`.
+
+The executable exits 0 in 7.155 s with six progressive, distinct frame copies and
+clean teardown. Stop and seek return in 4.692/2.046 ms, stopped position reads
+10.000 s, and restored Pause takes 48.715 ms. However, the first sample starts at 0
+and five of six frame hashes match frames from the skip-zero run. The parser
+correctly rejects the experiment as
+`sample_target_or_timestamp_domain_unqualified`; no playback/seek acceptance
+flag is true. Independent review reproduces the verdict and paired call chains.
+
+Native FFmpeg frames at 0 and 10 s differ in 178,808 of 1,048,576 BGRA bytes; these
+asset frames are not a ten-second repeat. Decoder colour differences prevent
+treating native and Wine hashes as interchangeable, but the same-backend frame
+matches strongly suggest playback restarted at the head. Position readback
+alone is insufficient. The next diagnostic records position after Pause,
+sample creation and Run to localize the lost target, without changing playback
+behavior. Repeat/loop and live game integration remain unqualified.
+
+
+Four diagnostic position readings subsequently remain at 10.000 s after Pause,
+after sample creation and immediately before Run, and 10.004 s after Run. The
+first two copied frames still match zero-position playback. Graph-position
+metadata therefore survives these observed boundaries; it does not prove the
+source stream sought correctly. This readback-only run also exits cleanly
+(7.931 s), with all seek/playback acceptance flags false. Local result:
+`/tmp/x3-media-fixture-v5-stopped-seek-positions`, fixture EXE
+`b2c7d123abf3d0747822d22a5d9bd6bfbd18182c3e221456b4c6719267167aa5`,
+reviewed source `118174b3822227690665ed4b529115de67e1682bb4129c1e5679b22570683db4`.
+Thirty-six focused host tests pass. The native content comparison is retained
+in `/tmp/x3-media-native-seek-reference/result.json` with both local raw frames.
