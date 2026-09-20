@@ -437,10 +437,24 @@ def _is_within(path: Path, parent: Path) -> bool:
 # install / restore
 
 
+def managed_media_mutation(operation):
+    """Share the managed install lock across legacy original-file mutations."""
+    def run(args):
+        try:
+            try:
+                import media_package
+            except ModuleNotFoundError:
+                from tools import media_package
+            with media_package.installer_lock(Path(args.game_dir)):
+                media_package.guard_legacy(Path(args.game_dir), args.id)
+                return operation(args)
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise ToolError(str(error)) from error
+    return run
+
+
+@managed_media_mutation
 def cmd_install(args) -> int:
-    running = x3_running()
-    if running:
-        raise ToolError(f"X3AP.exe is running, refusing to touch mov/: {running}")
 
     game_dir = Path(args.game_dir)
     target = cue_path(game_dir, args.id)
@@ -494,10 +508,8 @@ def cmd_install(args) -> int:
     return 0
 
 
+@managed_media_mutation
 def cmd_restore(args) -> int:
-    running = x3_running()
-    if running:
-        raise ToolError(f"X3AP.exe is running, refusing to touch mov/: {running}")
     game_dir = Path(args.game_dir)
     target = cue_path(game_dir, args.id)
     orig = target.with_name(target.name + ".orig")

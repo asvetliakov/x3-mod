@@ -1265,3 +1265,44 @@ This qualifies the CPU transaction and Adapter forwarding only. The manager-loop
 ABI/CPU/LastError/rollback envelope, actual transport and destination/Reset lifetime
 remain separate acceptance dependencies. Production admission stays disabled; no
 Wine/game execution, DLL build, install or native Windows runtime check occurred.
+
+
+### Local media package/import checkpoint (2026-09-20)
+
+The bounded [package and transaction implementation](../architecture/media-package.md)
+imports the accepted provider and derived asset into a fresh non-game directory.
+Host checks cover installation/relocation, shared cache reuse, DLL-only manifests,
+rollback/uninstall, copy corruption, path/case/symlink/collision refusal, wrong
+source/module/manifest identities, process enumeration failure and journal recovery
+at all three publication phases. EXE, original MOV, CAT/DAT and unrelated settings
+are asserted unchanged in temporary game trees. No Wine, real install, game
+launch, binary rebuild or remux was used for package qualification.
+
+The actual local stage `/tmp/x3-media-local-stage-v1/package.json` contains nine
+PE modules (110,019,880 bytes), two manifests and three notices, plus the
+534,031,204-byte derived clip. Its [compact qualification record](../../verification/results/media-package-2026-09-20.json)
+retains the local staging result: schema/path bases are checked and
+original EXE/media, derived asset and input record identities remain unchanged
+across read-only revalidation (1.246 seconds). Package digest:
+`7686206cde064dd0411f0ff2c0a3338f619eeee45fb9cf036566425889a7eed4`.
+The scope is local qualification; public redistribution, native Windows execution,
+relocated worker module observations and integrated launcher dry-run remain with
+subsequent owning checkpoints. The staging digest is delivery provenance only.
+
+The common installer/launcher lock spans final journal, ownership and selection
+checks through the complete child lifetime. Dry-run validates under that lock
+without a child or process-closed requirement. Legacy install/restore use only
+the shared portable process guard. Missing assemblyIdentity yields PackageError;
+changed control records abort uninstall rather than being treated as payload
+retention. Tests include two lifecycle lock contention points, last-moment journal
+rejection (normal/dry-run/vanilla), dry-run serialization, native tasklist legacy
+guard, changed-control refusal and foreign/missing project rejection despite
+valid proxy hashes and media selections. Legacy DLL-only launch compatibility
+is retained.
+
+Affected command:
+`PYTHONPATH=verification/probe python3 -u -m unittest verification.analysis.test_media_package verification.analysis.test_media_transcode.InstallRestore verification.analysis.test_env_experiment_launch verification.analysis.test_launcher_stderr_tee`.
+The complete stdout/stderr and unittest summary are retained in
+`/tmp/x3-media-package-tests.log`.
+45 tests passed in 2.745 seconds; four-tool `py_compile` and `git diff --check`
+also pass. The compact local result records the command, exit status and log digest.
