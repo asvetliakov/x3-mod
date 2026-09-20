@@ -425,3 +425,82 @@ historical; its corrected reproduction is
 `/tmp/x3-media-record-lifetime-check-v2.json`: 1,234 instructions, 3,511 bytes
 and 40 anchors. This corrects extraction/counts, not the semantic lifetime
 findings or the unresolved runtime boundaries.
+
+
+## Cancellation continuations and request identity (2026-09-20)
+
+Suppressing Run alone cannot represent cancellation in explicit play. At seek
+return `0x498d59` and sample/Run return `0x498d76`, zero from either helper selects
+destructor call `0x498dde`. Nonzero seek proceeds to sample/Run; nonzero
+sample/Run commits start/end and playing at `0x498d83/89/8f`, calls the old
+completion with status1 at `0x498dbf` if eligible, then installs incoming
+context/index at `0x498dd2/5`. There is no third cancellation
+result in these TEST/JZ pairs. These are static branch facts, not observed COM
+message dispatch or a qualified hook.
+
+Play `0x498c90` takes ten caller-cleaned dword arguments. Let S be entry ESP and
+B=S−0x14 after the local slot and saved EBX/EBP/ESI/EDI. At B, incoming callback
+index/context/media ID are +0x18/+0x1c/+0x20; loop is +0x3c. ESI is the record,
+EDI start-ms and EBX end-ms before seek. The three direct callers
+`0x49981f/0x499982/0x4f6668` clean 0x28 bytes. Both VM callers overwrite EAX
+with1; the helper does not test it and supplies callback index/context0. No
+boolean return contract for the outer play function is established.
+
+| Continuation | ESP on arrival | Established behavior or required normalization |
+| --- | --- | --- |
+| `0x498d59`, after seek | B−4 | ADD ESP,4 precedes result test; one start-ms argument remains |
+| `0x498d76`, after sample/Run | B | Result test precedes success commit |
+| `0x498dc1`, after old callback | B−8 | Two callback arguments remain; playing was already committed |
+| `0x498ce8`, allocation-failure dispatch | B | Uses incoming stack args/global registry; status0 callback at `0x498d12`; no record access/destruction |
+| `0x498d17` or `0x498dd8` | B | Stack-only play epilogue; direct entry leaves incoming completion unreported |
+| `0x4983de`, after manager pump | B | AX selects routes below; manager has the same B=S−0x14 frame size |
+| `0x49840f`, after manager loop seek | B−4 | **Reads [EDI+0x20] before ADD ESP,4 at `0x498412`** |
+| `0x4984be` | B | Stack-only manager epilogue; avoids current and saved-next accesses |
+
+The alternative status0 block at `0x498de3` also lies after, rather than before,
+the destructor call. Neither rejection block establishes valid registry/context
+lifetime or the desired cancellation meaning. Bare epilogues pop saved registers
+and the local slot, then RET; redirecting to them requires the exact stack depth.
+
+The manager holds EDI=current and EBP=saved-next across pump `0x4983d9`, which
+uses ECX=record/EAX=destination. AX0 leads to destructor `0x4984b0`; AX1 calls
+position helper `0x4d0600` at `0x4983ed`, including another synchronous COM call
+at `0x4d061c` or `0x4d0648`; AX2 selects loop seek or completion. Other AX values
+skip to `0x4984b5`, which still dereferences saved-next. Thus no existing return
+code is a lifetime-independent abort. Leaving the whole pass at `0x4984be`
+avoids those accesses structurally, but needs an approved operation policy and
+cannot undo writes inside the pump. Loop seek ignores EAX and normally reapplies
+media+0x94 at `0x498420`, without Run or callback installation; a gate after its
+stack ADD would already be too late to avoid the record load at `0x49840f`.
+
+Incoming completion ownership exists only in the caller frame until
+`0x498dd2/5`. Nested stop-all can therefore settle/clear the **old** request while
+the incoming request remains uninstalled. Equal index/context identifies the
+same receiver, **not necessarily the same logical request**: ordinary replacement
+already sends old-status1 then installs a new request that may have the same key.
+Old-status1 followed by incoming-status0 can be legitimate distinct-request
+outcomes. Two invocations do not prove duplicate delivery; key equality must not
+be used to deduplicate or suppress incoming completion. The reviewed handlers'
+result/list updates do not by themselves establish caller request ownership.
+
+Remaining obligations are a distinct cancellation outcome before post-COM
+writes/continuations, per-operation identity, and an observed cancellation
+transition (active=false alone misses deactivate→reactivate; first play already
+has playing=false). Existing fields inspected here establish no monotonic
+cancellation token. Callback policy needs caller ownership/admission semantics
+before it can be ratified. These branch witnesses do not establish a cancellation policy; a host
+harness merely mirroring them would not validate one.
+The listed return addresses are instruction boundaries, not qualified patch
+spans. CPU/flags/FP/MXCSR/LastError, interior entries, rollback/unwind, record/media
+lifetime, shutdown and destination recovery remain separate obligations.
+
+Reproduction: `python3 /tmp/verify_x3_media_cancellation_continuation.py`:
+PASS, six gap-free ranges, 410 instructions / 1,091 bytes, 29 byte anchors and
+53 direct branch-boundary checks; pseudo-decodes are rejected. Independent
+review reproduced these counts and cleared stack/routing evidence, with the
+receiver-versus-request clarification above. The compact
+[check record](../../verification/results/media-cancellation-continuation-2026-09-20.json)
+contains derived findings and provenance. Full local note, verifier, JSON and
+raw rows use `/tmp/x3-media-cancellation-continuation*` (verifier prefix
+`/tmp/verify_x3_media_cancellation_continuation.py`). No runtime cancellation,
+backend dispatch, production hook or safe owner lifetime is established.
