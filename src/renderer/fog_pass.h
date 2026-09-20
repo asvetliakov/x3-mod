@@ -15,9 +15,12 @@ struct FogCaps {
     HRESULT formats=S_FALSE,programs=S_FALSE;
     unsigned largest_program_slots=0;
 };
-// Retained only for source compatibility with the previous integration. Spatial
-// fog does not consume cascades or a mean-sky history.
-struct FogCascadeInput { IDirect3DTexture9* map=nullptr; float rows[12]{}; float bias=0; bool valid=false; };
+// Borrowed only during execute. Rows map current view coordinates to the exact
+// retained replay basis; frame stamps prohibit the surface lane's older far map.
+struct FogCascadeInput {
+    IDirect3DTexture9* map=nullptr; float rows[12]{}; float bias=0; bool valid=false;
+    std::uint64_t frame=~std::uint64_t(0);
+};
 constexpr unsigned fog_cascade_max=3;
 struct FogParams {
     // Already corrected exactly once for raster jitter and quad pixel centres.
@@ -37,6 +40,7 @@ struct FogFrame {
     IDirect3DTexture9* depth_share=nullptr; // current RGBA32F RT2: .r class, .b positive view z
     IDirect3DSurface9* target=nullptr; // owning non-MSAA FP16 scene
     UINT width=0,height=0;
+    std::uint64_t frame=0;
     unsigned count=0; FogCascadeInput cascades[fog_cascade_max]{};
     FogParams params{};
     fog_field::Profile profile=fog_field::Profile::None;
@@ -56,7 +60,7 @@ struct FogResult {
     bool applied=false; // successful composite draw; not a rollback guarantee
     bool scene_known=false,scene_open=false,scene_write_started=false;
     bool caller_state_restored=false,route_poisoned=false;
-    bool sky_updated=false; unsigned cascades_bound=0; // legacy diagnostics, always zero
+    bool sky_updated=false; unsigned cascades_bound=0; // actual current maps admitted
     unsigned device_calls=0; // native methods + block Capture/Apply; excludes Releases/resource validation
     IDirect3DTexture9* lit=nullptr; // borrowed FP16 (S.rgb,T), invalidated by resize/Reset/detach
     UINT half_width=0,half_height=0;

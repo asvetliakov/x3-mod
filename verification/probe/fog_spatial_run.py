@@ -37,6 +37,13 @@ STATE_REQUIRED.update(name+'_zero_scene_writes' for name in FAULTS[:6])
 STATE_REQUIRED.update('capture_partial_'+str(i) for i in (101,103));STATE_REQUIRED.update('restore_failure_'+str(i) for i in (100,102))
 STATE_REQUIRED.update('injected_loss_'+name for name in ('capture','close','copy','reopen','recovery_after_error','march','composite_after_write','end_after_error','restore_after_error','stream_restore'))
 
+STATE_REQUIRED.update('shafts_dark_map_slot_'+str(i) for i in range(3))
+STATE_REQUIRED.update('shafts_lit_map_identity_slot_'+str(i) for i in range(3))
+STATE_REQUIRED.update('shafts_unavailable_identity_'+str(i) for i in range(6))
+STATE_REQUIRED.update('cpu_shadow_execute_'+str(i) for i in range(3))
+STATE_REQUIRED.add('shafts_borrowed_no_retained_reference')
+STATE_REQUIRED.update(('shafts_fractional_pcf','shafts_blend_to_lit_coarser','shafts_blend_to_dark_coarser'))
+
 def windows(path):return 'Z:'+str(Path(path).resolve()).replace('/','\\')
 def helper(root):
     path=root/'verification/analysis/prepare_fog_volume_gpu.py'
@@ -81,12 +88,12 @@ def verify_execution(execution,build,inputs_path,cases_path,build_path):
     for key,value in expected.items():
         if execution.get(key)!=value:raise ValueError('execution provenance mismatch: '+key)
 
-def controls(variant):return (0 if variant==3 else .9 if variant==4 else .3,1 if variant==2 else 2.2,(0,2,.5) if variant==5 else (1,1,1))
+def controls(variant):return (0 if variant==3 else .9 if variant==4 else .3,1 if variant==2 else 2.2,(0,2,.5) if variant==5 else (0,0,0) if variant==8 else (1,1,1))
 def altered_depth(depth,variant):
     result=depth.copy()
     if variant==6:
         result[...,0]=.5;result[...,2]=np.resize(np.array([0,-1,np.nan,np.inf],np.float32),result.shape[:2])
-    if variant==7:result[::2,::2,0]=.5;result[::2,::2,2]=np.nan
+    if variant>=7:result[::2,::2,0]=.5;result[::2,::2,2]=np.nan
     return result
 
 def analyze(record,out,prototype):
@@ -96,7 +103,7 @@ def analyze(record,out,prototype):
         if family not in volumes:volumes[family]=p.volume_from_atlas(np.fromfile(Path(record['data'])/f'{family}.atlas16f','<f2').reshape(p.AH,p.AW,4))
         v=volumes[family];c=np.fromfile(source/'constants.f32','<f4').reshape(8,4);depth=np.fromfile(source/'depth.rgba32f','<f4').reshape(h,w,4);scene=np.fromfile(source/'scene.rgba16f','<f2').reshape(h,w,4)
         cache={}
-        for variant in range(8):
+        for variant in range(10):
             paths=[out/f'{frame}-v{variant}.{name}.rgba16f' for name in ('st','composite')]
             for path in paths:raw[path.name]=digest(path)
             st=np.fromfile(paths[0],'<f2').reshape((h+1)//2,(w+1)//2,4);gpu=np.fromfile(paths[1],'<f2').reshape(h,w,4)
@@ -117,10 +124,15 @@ def analyze(record,out,prototype):
                 original_st=np.fromfile(source/'reference.rgba16f','<f2').reshape(st.shape);original_comp=np.fromfile(source/'composite-reference.rgba16f','<f2').reshape(gpu.shape)
                 baseline=dict(ST=reference.numeric_groups(p,st,original_st,d[::2,::2]),composite=reference.numeric_groups(p,gpu,original_comp,d,repair))
             open_equal=variant!=1 or (np.array_equal(st.view('<u2'),np.fromfile(out/f'{frame}-v0.st.rgba16f','<u2').reshape(st.shape)) and np.array_equal(gpu.view('<u2'),np.fromfile(out/f'{frame}-v0.composite.rgba16f','<u2').reshape(gpu.shape)))
-            ok=finite and alpha and identity and open_equal and all(v['passed'] for v in [*sg.values(),*cg.values()])
+            repair_shadow=True
+            if variant==9:
+                unshadowed=np.fromfile(out/f'{frame}-v7.composite.rgba16f','<f2').reshape(gpu.shape)
+                dark=np.fromfile(out/f'{frame}-v8.composite.rgba16f','<f2').reshape(gpu.shape)
+                repair_shadow=bool(repair.any() and np.array_equal(gpu,unshadowed) and np.any(dark[repair,:3]!=gpu[repair,:3]))
+            ok=finite and alpha and identity and open_equal and repair_shadow and all(v['passed'] for v in [*sg.values(),*cg.values()])
             if baseline:ok&=all(v['passed'] for group in baseline.values() for v in group.values())
             all_pass &= ok
-            rows.append(dict(frame=frame,variant=variant,passed=bool(ok),finite=finite,alpha_exact=alpha,identity_exact=identity,actual_half_empty=int(actual_empty.sum()),actual_half_empty_changed=int((changed&actual_empty).sum()),float32_empty_repair=int(repair_empty.sum()),float32_empty_repair_changed=int((changed&repair_empty).sum()),open_closed_exact=bool(open_equal),ST=sg,composite=cg,qualified_baseline=baseline))
+            rows.append(dict(frame=frame,variant=variant,passed=bool(ok),finite=finite,alpha_exact=alpha,identity_exact=identity,actual_half_empty=int(actual_empty.sum()),actual_half_empty_changed=int((changed&actual_empty).sum()),float32_empty_repair=int(repair_empty.sum()),float32_empty_repair_changed=int((changed&repair_empty).sum()),open_closed_exact=bool(open_equal),shadow_repair_verified=repair_shadow if variant==9 else None,repair_pixels=int(repair.sum()),ST=sg,composite=cg,qualified_baseline=baseline))
             print(f'CHECKED {frame} variant={variant} pass={bool(ok)}',flush=True)
     return dict(passed=bool(all_pass),cases=rows,readback_hashes=raw,sampler_sha256=digest(prototype/'verification/analysis/prepare_fog_volume_gpu.py'),limitations=['GPU full-float repaired ST is not separately read back; CPU-float32-empty repair identity checked independently','Native Windows unverified; no game or TAA evidence'])
 
@@ -153,7 +165,7 @@ def main():
         complete &= len(failed_reset)==1 and bool(int(failed_reset[0],16)&0x80000000)
         if set(checks)!=STATE_REQUIRED:print('Missing checks:',sorted(STATE_REQUIRED-set(checks)),'extra:',sorted(set(checks)-STATE_REQUIRED))
     else:
-        expected={f'{frame}_{name}_{variant}' for frame in (c['frame'] for c in record['cases']) for name in ('transaction','alpha') for variant in range(8)}
+        expected={f'{frame}_{name}_{variant}' for frame in (c['frame'] for c in record['cases']) for name in ('transaction','alpha') for variant in range(10)}
         expected.update(f'{frame}_invalid_depth_exact_{name}' for frame in (c['frame'] for c in record['cases']) for name in ('identity','st'))
         complete &= set(checks)==expected
     result=dict(passed=bool(complete),checks=checks,execution=execution,inputs_sha256=digest(out/'inputs.json'),build_sha256=digest(a.build/'build.json'),checker_sources={str(Path(__file__).resolve()):digest(__file__),str(Path(reference.__file__).resolve()):digest(reference.__file__)})

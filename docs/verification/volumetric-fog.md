@@ -551,3 +551,85 @@ three focused passes after its module was integrated following discovery. The
 clean committed candidate build, linked CPU audit and two actual-DLL HDR/TAA
 smoke cases also pass; [status](../status.md) records the current flight candidate.
 Native Windows runtime and user visual acceptance remain open.
+
+### Spatial directional shaft implementation and host witness (2026-09-20)
+
+The next-flight shaft source now multiplies only spatial in-scattering by
+same-frame replay visibility. Current maps remain usable when surface-shadow
+application is refused. Individual unavailable maps fall back independently;
+previous-frame far maps are rejected. Constant world/texel bias and manual
+2×2 comparison filtering replace the analytic fog's surface-clamp fallback.
+The owning architecture records coverage, coordinate, lifetime and cost rules.
+
+The selected host command passes **33 tests** in **1.954 s**:
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_shadows verification.analysis.test_fog_spatial_reference verification.analysis.test_volumetric_fog verification.analysis.test_fog_route_bridge`.
+Seven new tests cover D3D9 texel convention, a thin occluder under two view
+transforms, continuous cascade XY boundaries/coarser fallback, unavailable maps,
+bias, unchanged transmission/empty identity, and native frame/row validation.
+The actual FogPass and extended fixture separately cross-compile with i686
+SSE2, four-byte incoming stack alignment and `-Wall -Wextra -Werror`.
+
+Root-owned shader generation passes; march/composite use **315/506 ps_3_0 slots**
+(1397/2162 words). The initial composite was 515 slots; removing a redundant
+already-guarded uniform branch brought it below the required 512-slot limit.
+The fixture now requires **132** named checks, adding actual dark/lit R32F
+comparisons in each slot, stale/invalid map fallback, S-only changes, unchanged
+T/empty pixels, CPU preservation, fractional PCF, blending into lit/dark coarser maps and no
+retained map references. The numeric fixture adds two full-pixel repair
+variants with dark/all-lit maps: **40 variants / 88 checks**, including a
+zero-incident-radiance CPU reference and exact all-lit/unshadowed comparison.
+Hostile state
+now includes samplers 4–6 and all 22 modified pixel constants. These new runtime
+checks are prepared, not yet execution evidence in this checkpoint.
+
+`fog_shadow_replay.py --step 2` against run185 frames 1974, 9204, 21901 and
+26447 and the frozen accepted atlases passes **983,040** actual half-grid rays
+in **15.800 s**. Transmission and unavailable-map output are bit-identical;
+**410,638** empty rays remain exact identity. Only **four rays**, all in frame
+26447, have cloud/shadow overlap; the largest scattering reduction is
+**0.0009555351**. The other three views have zero reduction. This limits any
+appearance claim: the geometric shadow must overlap occupied cloud, and the
+implementation does not add density or paint beams to manufacture that overlap.
+Raw detailed host evidence stays at `/tmp/x3-spatial-fog-shafts-offline-half.json`;
+the [compact host record](../../verification/results/fog-spatial-shafts-host.json)
+records these observations and scoped checks.
+
+Actual new-shader GPU behavior, full-pixel shadow repair, state/Reset recovery,
+whole-transaction timing, native Windows runtime and flight visual acceptance
+remain open. Existing unshadowed runtime evidence is not reused as proof of the
+new shadow sampling. The installed Run53 candidate is unchanged.
+
+
+### Spatial directional shafts actual GPU checkpoint (2026-09-20)
+
+Root-owned locked execution in bottle **X3**, CrossOver Preview, WineArch
+**arm64**, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`, passes the new production
+shader/renderer state fixture: **132 checks** in **8.894 s**. This includes
+actual per-slot dark/lit comparisons, fractional PCF, coarser-cascade blending,
+exact unchanged transmission, invalid/stale-map fallback, hostile sampler and
+constant restoration, CPU/LastError preservation, borrowed map references,
+injected loss and the existing real Reset blocker/retry. The executable hash is
+`56002b6d21af12684286b8042d020ccce9c31c819f47e509b0dfe960879c8a85`.
+
+The same frozen executable passes four-view numerical qualification in
+**8.597 s**: **40 variants**, **88 raw checks**, **80 readback hashes**, all
+finite with exact source alpha. Full-resolution repair covers **737,280 pixels
+per view** in the controlled invalid-half-depth variants. All-lit shadow repair
+(v9) exactly equals unshadowed repair (v7); fully occluded repair (v8) differs
+on those repaired pixels and passes the zero-incident-radiance CPU reference
+with unchanged extinction. These runs use the original bluewell/green assets;
+they do not qualify the separate all-family expansion.
+
+Independent deep source/state/numerical review clears this checkpoint. The
+[compact record](../../verification/results/fog-spatial-shafts-host.json) now
+binds both report hashes, commands, executable and bottle provenance. Detailed
+reports remain `/tmp/x3-spatial-fog-shafts-gpu-v2/state/report.json` and
+`/tmp/x3-spatial-fog-shafts-gpu-v2/numeric/report.json`. Root's protected-file
+checks confirm the EXE, bottle configuration and installed DLL are unchanged.
+
+Whole-transaction shaft cost is still unmeasured; a paired timing extension
+must use the same shaders/resources and toggle map validity. The captured
+four-ray cloud/shadow overlap finding above still limits appearance claims.
+Native Windows execution, naturally occurring device loss, temporal flight
+appearance and acceptance remain open. No game launch or candidate installation
+is part of this checkpoint.

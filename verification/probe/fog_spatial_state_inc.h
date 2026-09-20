@@ -99,7 +99,7 @@ struct Snapshot {
         for(auto state:{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ZFUNC,D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_CLIPPING,D3DRS_LIGHTING,D3DRS_INDEXEDVERTEXBLENDENABLE,D3DRS_POINTSPRITEENABLE,D3DRS_DITHERENABLE,D3DRS_ANTIALIASEDLINEENABLE,D3DRS_VERTEXBLEND,D3DRS_FILLMODE,D3DRS_CULLMODE,D3DRS_COLORWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_COLORWRITEENABLE2,D3DRS_COLORWRITEENABLE3,D3DRS_MULTISAMPLEMASK,D3DRS_SRCBLEND,D3DRS_DESTBLEND,D3DRS_BLENDOP}){DWORD value=0;check(d->GetRenderState(state,&value),"state render");tag("render["+std::to_string(state)+"]");add(value);}
         for(UINT i=0;i<8;++i){DWORD value=0;check(d->GetRenderState(D3DRENDERSTATETYPE(D3DRS_WRAP0+i),&value),"state wrap");tag("wrap["+std::to_string(i)+"]");add(value);}
         for(UINT i=0;i<8;++i)for(auto state:{D3DTSS_TEXCOORDINDEX,D3DTSS_TEXTURETRANSFORMFLAGS}){DWORD value=0;check(d->GetTextureStageState(i,state,&value),"state stage");tag("stage["+std::to_string(i)+"].state["+std::to_string(state)+"]");add(value);}
-        float pc[36]{},vc[32]{};check(d->GetPixelShaderConstantF(0,pc,9),"state ps constants");check(d->GetVertexShaderConstantF(0,vc,8),"state vs constants");tag("ps_float_constants");add(pc);tag("vs_float_constants");add(vc);
+        float pc[88]{},vc[32]{};check(d->GetPixelShaderConstantF(0,pc,22),"state ps constants");check(d->GetVertexShaderConstantF(0,vc,8),"state vs constants");tag("ps_float_constants");add(pc);tag("vs_float_constants");add(vc);
     }
     bool operator==(const Snapshot& other)const{return bytes==other.bytes;}
     void differences(const Snapshot& other)const{
@@ -191,13 +191,13 @@ struct Scene {
         check(d->SetRenderState(D3DRS_CULLMODE,D3DCULL_CW),"hostile cull");check(d->SetRenderState(D3DRS_FILLMODE,D3DFILL_WIREFRAME),"hostile fill");check(d->SetRenderState(D3DRS_COLORWRITEENABLE,1),"hostile color mask");check(d->SetRenderState(D3DRS_MULTISAMPLEMASK,0),"hostile sample mask");
         for(UINT i=0;i<8;++i)check(d->SetRenderState(D3DRENDERSTATETYPE(D3DRS_WRAP0+i),D3DWRAP_U|D3DWRAP_V),"hostile wrap");
         RECT sc{3,5,13,17};check(d->SetScissorRect(&sc),"hostile scissor");D3DVIEWPORT9 vp{2,3,19,17,.2f,.8f};check(d->SetViewport(&vp),"hostile viewport");
-        for(UINT i=0;i<4;++i){
+        for(UINT i=0;i<7;++i){
             for(auto state:{D3DSAMP_ADDRESSU,D3DSAMP_ADDRESSV,D3DSAMP_ADDRESSW})check(d->SetSamplerState(i,state,D3DTADDRESS_WRAP),"hostile address");
             for(auto state:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER,D3DSAMP_MIPFILTER})check(d->SetSamplerState(i,state,D3DTEXF_LINEAR),"hostile filter");
             float bias=-.75f;DWORD bits=0;std::memcpy(&bits,&bias,4);check(d->SetSamplerState(i,D3DSAMP_MIPMAPLODBIAS,bits),"hostile LOD");check(d->SetSamplerState(i,D3DSAMP_SRGBTEXTURE,TRUE),"hostile sRGB");check(d->SetSamplerState(i,D3DSAMP_MAXMIPLEVEL,2),"hostile maxmip");check(d->SetSamplerState(i,D3DSAMP_MAXANISOTROPY,1),"hostile anisotropy");
         }
-        float constants[36];for(unsigned i=0;i<36;++i)constants[i]=float(i)*.25f-2;
-        check(d->SetPixelShaderConstantF(0,constants,9),"hostile ps constants");check(d->SetVertexShaderConstantF(0,constants,8),"hostile vs constants");
+        float constants[88];for(unsigned i=0;i<88;++i)constants[i]=float(i)*.25f-2;
+        check(d->SetPixelShaderConstantF(0,constants,22),"hostile ps constants");check(d->SetVertexShaderConstantF(0,constants,8),"hostile vs constants");
     }
     void unbind(IDirect3DSurface9* backbuffer){
         for(UINT i=0;i<16;++i)check(d->SetTexture(i,nullptr),"unbind texture");

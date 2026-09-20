@@ -38,10 +38,13 @@ python3 verification/probe/fog_spatial_run.py \
 Then root runs the same arguments through `wine_lock.py`, replacing
 `--prepare-only` with `--run-existing --state`, and setting
 `X3M_FIXTURE_BOTTLE=X3`. Repeat preparation with a new `numeric-bound` output
-and run without `--state` for four views × eight variants: qualified default,
+and run without `--state` for four views × ten variants: qualified default,
 borrowed-open default, linear encoding, isotropic and g=.9 phase, colored E,
 all invalid geometry depths, and invalid half-depth neighbors with valid full
-pixels. Numeric analysis follows the run automatically; `--analyze-existing`
+pixels; dark-map and all-lit-map versions of that same full-pixel repair.
+The dark-map repair is compared to a CPU zero-incident-radiance reference
+while retaining transmission; all-lit repair must exactly match unshadowed
+repair and differ from dark repair. Numeric analysis follows the run automatically; `--analyze-existing`
 reanalyzes unchanged readbacks into a distinct report filename.
 
 State checks cover hostile state, all stream tuples and auxiliary/depth bytes,
@@ -66,7 +69,7 @@ The root-requested 32-frame production replay uses the same executable and froze
 new `sequence-bound` output with `--prepare-only --sequence`; the reader selects
 exactly its 32 `captured_frame_ids` and excludes the separate seam fixtures.
 Run that prepared output without `--state` only after state and four-view gates
-pass. The eight variants remain enabled at 120x72; existing-TAA replay consumes
+pass. The ten variants remain enabled at 120x72; existing-TAA replay consumes
 only `<frame>-v0.composite.rgba16f`. Preparation is not runtime evidence.
 
 `inputs.json` binds both the physical input hashes and the exact executable
@@ -74,3 +77,13 @@ only `<frame>-v0.composite.rgba16f`. Preparation is not runtime evidence.
 routing, frozen executable and build record before launching; analysis rejects
 mismatches, and its report records runner/reference hashes. Modified analysis
 uses a new report path and never overwrites the original runtime report.
+
+
+Spatial shaft qualification adds actual R32F map cases to `--state` (132 named
+checks): dark/lit independently at s4–s6, stale/unavailable/malformed fallback,
+fractional 2×2 PCF, blending into lit/dark coarser maps, exact T/empty identity,
+CPU preservation and no retained map references. Hostile state includes all
+seven used samplers and 22 modified pixel constants. Numeric mode has 40
+variants and 88 checks over four views. The separate host captured-map witness
+is `fog_shadow_replay.py`; its optional `--step 2` selects actual half-grid rays.
+It neither launches Wine nor establishes GPU/flight appearance.

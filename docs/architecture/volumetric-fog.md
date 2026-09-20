@@ -806,3 +806,60 @@ Detailed primary-source comparisons and implementation limits are retained in
 [/tmp/x3-space-fog-research.md](/tmp/x3-space-fog-research.md). In particular,
 Brown's accessible GDC2015 slides list gas clouds as future work; the session
 abstract alone must not be cited as an implemented cloud algorithm.
+
+### Spatial directional shafts (2026-09-20)
+
+The requested next-flight extension modulates the directional incident-light
+term at each occupied sample of the existing 24-step spatial march. It changes
+`S += T * opacity * phase * chroma * visibility`; density, integration distance,
+transmission and the empty-field identity law remain unchanged. There is no
+uniform underlayer, screen-space beam mask, secondary light or density increase.
+This section supersedes the unshadowed-only limitation of the initial spatial
+production contract; flight appearance remains unaccepted.
+
+The route supplies up to three active general-scene cascades in ladder order,
+excluding cascade zero's own-ship-only map. A map requires successful replay
+publication, an exact current-frame stamp, and rows composed from its retained
+basis and the current camera. Surface-shadow application is not an admission
+condition. In particular, the surface lane's permitted previous-frame far map
+is unavailable to fog. Failed replay and Reset invalidate retained publication;
+fog stores no map reference or lighting history between calls. Invalid/missing
+maps independently fall back to a containing coarser current map or full light.
+If every map is unavailable, the original unshadowed spatial field remains.
+
+Each admitted map is a same-device square R32F texture with at least 64 texels.
+The shader projects camera-relative **view** positions into these maps, keeping
+the modulo-world position exclusively for density lookup. The D3D9 replay
+convention places sample `(i,j)` at screen `(i,j)/N`; manual 2×2 bilinear PCF
+filters four depth comparisons around this location through point samplers.
+The depth comparison subtracts the existing computed **constant** bias:
+`(configured_world_bias + 2*extent/N) / depth_range`. A volume sample has no
+receiver surface plane, so neither slope correction nor the surface plane-fit
+clamp (used by the older uniform fog fallback) applies.
+
+Coverage requires normalized depth in `[0,1]` and maximum absolute XY at most
+0.95. From XY 0.85 to 0.95, its weight decreases continuously into the next
+containing available map, or full light. Coarser weights use the residual
+weight, preserving a bounded `[0,1]` visibility even with overlapping bands or
+holes in admission. Normal covered samples pay four map reads; overlap bands
+can pay eight or twelve. Empty density samples skip all map projection/reads.
+The same shared shader function runs in full-pixel edge repair, preventing a
+lighting mismatch at depth/class boundaries.
+
+Textures s4–s6 and constants c9–c21 are shared by march and composite. Existing
+ALL-state-block capture/restore covers these textures, samplers and constants;
+normalization explicitly initializes every touched sampler, both target binds
+unbind all seven used pixel slots, and restoration unbinds all sixteen before
+restoring caller state. Map validation precedes scene mutation, and loss during
+validation aborts. No new GPU resource, allocation, Reset lease or per-draw work
+is introduced. Map references remain borrowed for the serialized call; the
+existing CPU/LastError guard, scene recovery and write-start/no-rollback contract
+remain in force. Runtime qualification must exercise the additional samplers,
+constants, actual comparisons, recovery and full transaction timing.
+
+Native D3D9 compatibility uses only public texture/state APIs and ps_3_0. The
+compiled march/composite use 315/506 instruction slots. Host compilation and
+numerical witnesses do not establish native Windows execution. Captured
+half-grid evidence finds very little overlap between these authored clouds and
+existing caster shadows; this physically valid implementation therefore does
+not promise visible shafts in arbitrary views. See the verification ledger.

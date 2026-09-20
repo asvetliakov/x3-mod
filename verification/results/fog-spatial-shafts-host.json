@@ -1,0 +1,166 @@
+{
+  "checkpoint": "spatial-directional-shafts-host-and-actual-gpu",
+  "date": "2026-09-20",
+  "host_tests": {
+    "count": 33,
+    "seconds": 1.954,
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_shadows verification.analysis.test_fog_spatial_reference verification.analysis.test_volumetric_fog verification.analysis.test_fog_route_bridge"
+  },
+  "cross_compilation": "FogPass and actual fixture: i686-w64-mingw32-g++, -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2",
+  "compiled_programs": {
+    "march": {
+      "slots": 315,
+      "words": 1397
+    },
+    "composite": {
+      "slots": 506,
+      "words": 2162
+    }
+  },
+  "prepared_runtime_checks": 132,
+  "actual_dump_host": {
+    "report": "/tmp/x3-spatial-fog-shafts-offline-half.json",
+    "seconds": 15.799608375,
+    "passed": true,
+    "cases": [
+      {
+        "frame": 1974,
+        "family": "bluewell",
+        "samples": 245760,
+        "shadowed_samples": 0,
+        "shadowed_fraction": 0.0,
+        "scattering_reduction_max": 0.0,
+        "scattering_reduction_mean": 0.0,
+        "transmission_identical": true,
+        "unavailable_identical": true,
+        "empty_samples": 88707,
+        "passed": true
+      },
+      {
+        "frame": 9204,
+        "family": "bluewell",
+        "samples": 245760,
+        "shadowed_samples": 0,
+        "shadowed_fraction": 0.0,
+        "scattering_reduction_max": 0.0,
+        "scattering_reduction_mean": 0.0,
+        "transmission_identical": true,
+        "unavailable_identical": true,
+        "empty_samples": 152739,
+        "passed": true
+      },
+      {
+        "frame": 21901,
+        "family": "foggreenoutlands",
+        "samples": 245760,
+        "shadowed_samples": 0,
+        "shadowed_fraction": 0.0,
+        "scattering_reduction_max": 0.0,
+        "scattering_reduction_mean": 0.0,
+        "transmission_identical": true,
+        "unavailable_identical": true,
+        "empty_samples": 74335,
+        "passed": true
+      },
+      {
+        "frame": 26447,
+        "family": "foggreenoutlands",
+        "samples": 245760,
+        "shadowed_samples": 4,
+        "shadowed_fraction": 1.6276041666666666e-05,
+        "scattering_reduction_max": 0.0009555350989103317,
+        "scattering_reduction_mean": 3.7216552062346864e-09,
+        "transmission_identical": true,
+        "unavailable_identical": true,
+        "empty_samples": 94857,
+        "passed": true
+      }
+    ]
+  },
+  "limitations": [
+    "The actual_dump_host subsection is host arithmetic; actual_gpu separately records production GPU execution",
+    "2-pixel captured grid; no flight visual acceptance",
+    "Existing captures already contain fog",
+    "Tracked radiance unavailable in frozen inputs: qualified white radiance",
+    "Whole transaction performance remains open",
+    "Native Windows unverified",
+    "Run53 unchanged",
+    "GPU numerical/state fixtures use the two original profiles; all-family GPU coverage remains separate",
+    "Injected device-loss evidence does not establish naturally occurring device loss"
+  ],
+  "prepared_numeric_variants": 40,
+  "prepared_numeric_checks": 88,
+  "actual_gpu": {
+    "state": {
+      "report": "/tmp/x3-spatial-fog-shafts-gpu-v2/state/report.json",
+      "report_sha256": "73374fcc9b3661c17c23f234268cebc36c8c37217ef2c27bdb8a18a04a0aa67b",
+      "passed": true,
+      "checks": 132,
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "/tmp/x3-spatial-fog-shafts-gpu-v2/fog_spatial_fixture.exe",
+          "Z:\\private\\tmp\\x3-spatial-fog-shafts-gpu-v2\\state\\cases.txt",
+          "Z:\\private\\tmp\\x3-spatial-fog-shafts-gpu-v2\\state",
+          "--state"
+        ],
+        "returncode": 0,
+        "seconds": 8.893607167,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "executable_sha256": "56002b6d21af12684286b8042d020ccce9c31c819f47e509b0dfe960879c8a85",
+        "inputs_sha256": "7bae653c13254e9c51e9921ddc6964f90ae04f8c24ae7f452443a9b7a652e786",
+        "cases_sha256": "ee2afbc118a3acb27e82277ecb4f3fac46c5da31cac30b490f1f502866663985",
+        "build_sha256": "9dec31f090f7e265701159d7610de9ef4a91327fb48dbf241ad932ef36a67da7"
+      }
+    },
+    "numeric": {
+      "report": "/tmp/x3-spatial-fog-shafts-gpu-v2/numeric/report.json",
+      "report_sha256": "41cff29a6aa7110c98bc3c10edcb0b42e58aa43ed207911141c7a71cfc7c1d08",
+      "passed": true,
+      "checks": 88,
+      "execution": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "/tmp/x3-spatial-fog-shafts-gpu-v2/fog_spatial_fixture.exe",
+          "Z:\\private\\tmp\\x3-spatial-fog-shafts-gpu-v2\\numeric\\cases.txt",
+          "Z:\\private\\tmp\\x3-spatial-fog-shafts-gpu-v2\\numeric"
+        ],
+        "returncode": 0,
+        "seconds": 8.597018,
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "executable_sha256": "56002b6d21af12684286b8042d020ccce9c31c819f47e509b0dfe960879c8a85",
+        "inputs_sha256": "7bae653c13254e9c51e9921ddc6964f90ae04f8c24ae7f452443a9b7a652e786",
+        "cases_sha256": "ee2afbc118a3acb27e82277ecb4f3fac46c5da31cac30b490f1f502866663985",
+        "build_sha256": "9dec31f090f7e265701159d7610de9ef4a91327fb48dbf241ad932ef36a67da7"
+      },
+      "variants": 40,
+      "readback_hashes": 80,
+      "repair_pixels_per_view": 737280,
+      "all_lit_repair_equals_unshadowed": true,
+      "dark_repair_differs": true
+    }
+  },
+  "independent_review": "Root confirms deep source/state/numeric review clear, 2026-09-20"
+}
