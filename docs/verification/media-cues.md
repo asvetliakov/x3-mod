@@ -1636,3 +1636,78 @@ The final artifact uses a separate filename. The
 binds commands, checks, hashes, local witnesses, accepted evidence reuse and the
 conservative permanent-veto/native-runtime limitations. Independent source and
 evidence review is clear; no commit, install, proxy build or game launch occurred.
+### Canonical LAV worker extraction and real package integration (2026-09-20)
+
+The fixture now links the actual [production transport](../architecture/media-lav-worker.md)
+and canonical clock, rather than a copied worker implementation. The
+[compact extraction record](../../verification/results/media-lav-worker-transport-2026-09-20.json)
+binds all eight production inputs, the unchanged frozen helper/reference cohorts,
+both executables, commands, lock timings and raw results. Independent combined
+source/evidence review (`review_media_worker`) is **CLEAR** for clock v5 and EOF v4.
+Both use bottle **X3**, WineArch **arm64**, `FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`.
+
+Clock v5 passed **4,586** exact QPC transactions, **35** exact RGB/time captures
+(**A8/B27**) and **43** render-target readbacks with both distinct destinations
+actually sampled. It produced 38 READY frames, revoked three old A leases, held
+three paused A leases, observed a fresh B selection in A's **58.8106 ms** pre-seek
+pause, and continued with **18** fresh B selections after A's actual failed Load.
+Both services ended with three FREE slots. All **299** events were freed
+(297 video-size, two clock-change); **57 Empty + six More** batches stayed within
+the unchanged deadline, maximum anchor age **406 ms**. Zero late/superseded drops
+were observed; those paths retain host coverage rather than a runtime-exercise
+claim. Native exit was 0, execution **19.108701125 s**, with **91/91** protected
+inputs unchanged. The lock wrapper recorded **0.000003875 s** wait and
+**31.776444792 s** child time including host validation.
+
+The real module-relative reader opened the relocated Unicode/space package from
+unrelated CWD in **13.4122 ms**. Its typed owner transferred to both services and
+remained alive through graph/source retirement, then expired after actual worker
+and watchdog exits. Initial cancellation before any graph produced **four**
+coherent quiescent facts across the two services; **two** newer live publications
+rejected old facts. This qualifies the initial no-graph smoke, not a separate
+runtime exercise of post-graph assignment quiescence. Cohort enumeration verifies
+nine module identities/paths; the driver binds the nine PE files and two manifests
+to frozen runtime bytes, the three installed notices to selected package rows, and
+keeps SDK/reference provenance protected at its original paths.
+
+EOF v4 independently passed **12** exact suffix captures/readbacks across two
+fresh graphs on one retained DD service. Each reached actual sample EOS and one
+fresh `EC_COMPLETE`; both EOS WRITING reservations were abandoned after public
+retirement guards, with FREE3 before reuse/final exit. Its **14** events were freed
+and **20** drains reached Empty, maximum anchor age **386 ms**. Exit was 0,
+execution **7.436763333 s**, **92/92** protected inputs unchanged; lock wait was
+**0.0000065 s**, wrapper child **20.42982625 s**. The same production transport hashes
+are in v4 and v5, so the fixture-only pause gate needs no duplicate EOF run.
+Retained-graph EOF replay, sink-callback observation and simultaneous playback in
+EOF mode are not claimed.
+
+Preserved observations remain distinct. The first v4 host preflight rejected the
+installed package because the checker incorrectly expected root notices and SDK
+headers there; no Wine child ran. The actual v4 clock then exited 0 but its checker
+rejected documented extended drive-path spelling. Narrow normalization removes
+only the `\\?\` drive prefix while comparing the complete decoded path; namespace,
+parent-directory and Unicode mismatches still fail. Offline reanalysis preserved
+the original rejection and passed all functional checks, but correctly remained
+coverage-incomplete: its **12.5439 ms** pre-seek pause contained no fresh B selection.
+V5 changes fixture progression to keep normal pumping/rendering until a real B
+selection occurs, under one immutable 10 s bound; it changes no production code,
+source window, rate, oracle or coverage predicate.
+
+Cost remains explicit. V5's largest main completion gap was **226.4 ms**, including
+**110.57 ms Clear** and **113.3303 ms EndScene** in the cold interval; concurrent
+DD creation/cooperative calls overlap it, without establishing isolated causality.
+DD creation was **111.1465/219.9964 ms**. Later gaps after the first A selection
+heartbeat reached **15.2747 ms**; diagnostic readback Lock reached **13.4969 ms**.
+Individual texture Lock/row-copy/Unlock spans stayed below **0.22 ms**, which does
+not measure completed GPU work. EOF's maximum gap was **71.9719 ms** and readback
+Lock **15.8764 ms**. No no-stall guarantee, previous-cost erasure or game-FPS claim
+follows. The final affected host modules passed **131 tests in 1.784 s**; the earlier
+128-test production-primitive/package-teardown run and exact commands are retained
+in the record. Python compilation and diff checks passed.
+
+This checkpoint qualifies the reusable transport and real package opens in the
+standalone fixtures. Engine admission, startup placement before flight, destination/
+Reset/callback integration and native Windows runtime remain open. The documented
+process-lifetime module pin intentionally does not support unloadable plugins;
+unsafe retirement retains the STA, interfaces, storage and package owner. No game
+was launched, no installed binary changed, and no production admission was enabled.

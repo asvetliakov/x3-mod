@@ -5,8 +5,9 @@ and source mapping for owned media workers. Its host/parser and synthetic Win32
 file-adapter qualification are recorded in the
 [media ledger](../verification/media-cues.md#media-package-reader-file-lifetime-checkpoint-2026-09-20)
 and [compact result](../../verification/results/media-package-config-2026-09-20.json).
-Real provider/decoder opens with the retained configuration, native Windows
-execution and enabled engine playback remain separate acceptance work.
+Real provider/decoder opens with retained configuration are now qualified by the
+[canonical worker fixtures](media-lav-worker.md#package-integration-and-measured-scope).
+Native Windows execution and enabled engine playback remain separate work.
 
 ## Configuration and lifetime
 
@@ -77,7 +78,8 @@ Only **6,983 bytes** of synthetic record/file data are prepared; named provider
 and source files are dummy bytes and cannot serve as decoder inputs. The fixture
 uses the self EXE's pinned HMODULE to exercise the real production Win32 adapter.
 Its result therefore establishes the tested file API behavior on CrossOver, with
-native Windows and actual two-worker COM/decoder read-sharing still unverified.
+native Windows still unverified. Actual two-worker COM/decoder opens with the
+same retained owner are separately qualified by the canonical worker fixtures.
 
 ## Bounds and cost
 
