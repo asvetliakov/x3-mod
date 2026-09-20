@@ -1082,3 +1082,56 @@ Independent review cleared this concrete implementation/qualification candidate:
 sets/17 sites plus the E9 tail**. The [compact result](../../verification/results/media-copy-reset-gate-2026-09-20.json)
 binds local note, verifier, source provenance and result/raw hashes. No
 production change, runtime execution, build or commit was performed here.
+
+## Selected owned-consumer dispatch spans (2026-09-20)
+
+The reviewed implementation brief selects constructor CALL0x4981d3 instead of
+competing with the existing media_cue allocator-entry hook0x498140. At that call,
+ESI is the unpublished zero-initialized0x40 record (default ID2 has already set
++0x2c=4/+0x30=0x3d), EBX=ID and EDI=effective flags. Stub entry P has return
+0x4981d8, ID at[P+4], flags at[P+8]. Return EAX=shell/0 with plain RET;
+unowned dispatch tail-jumps0x4cf460. Original caller stores record+0x24,
+reads shell+0x8c and links the record before storing its ID. Reserve/associate
+before success, use matching game allocation/accounting for the0xb4 shell, and
+compose owned eligibility with media_cue's earlier negative-cache refusal and
+existing allocator-return observer. Do not double-patch that allocator entry.
+
+Shared complete-entry dispatch candidates are seek0x4d0430(6 bytes),
+Run0x4d1870(7), position0x4d0600(6), stop0x4d1810(8) and media destructor
+0x4d1d40(6). Seek takes EAX=record and one caller-popped start argument;
+position takes EAX=record/ESI=output; Run/stop have no stack arguments. Owned
+paths return before the original prologue; unowned paths replay complete spans.
+Destructor may use the matching free/accounting tail0x4d1dd3 only with its
+original two-saved-register frame and ESI=shell after owned retirement.
+Recognized-owned invalid state must never fall through into legacy COM.
+
+Caller-specific spans remain distinct. Manager CALL0x4983d9 has a4-byte added
+return address; loop-seek CALL0x49840a has that plus a4-byte argument. Invalid
+traversal discards4/8 respectively and takes0x4984be at manager body ESP.
+Loop seek's result is overwritten at0x49840f and no Run follows: local re-arm
+must be guaranteed reserved or use a defined caller-specific failure route.
+Explicit preseek0x498d51 spans8 bytes and permits rejection at0x498ce8 before
+mutation/destructive helper failure; accepted skip-to-commit0x498d7a requires
+EBP=0 and all shell/local transaction effects. Its relocated CALL rel32 is at
+span byte4. Shared speech has prior writes0x498f49/4f/52 and destructive zero
+seek/Run failure0x498fd8; this explicit-play seam does not supply speech's
+reservation/rejection policy. Equal callback keys still need distinct operation
+identities. These caller obligations are admission dependencies.
+
+The prior rate0x498670(10 bytes) and stop-all0x4982db(6) candidates retain their
+HRESULT-like0/negative and stack-sensitive continuations. Observers at common
+retirement0x4984d0(5), root shutdown0x4980d0(5) and clear0x497190(7) must
+invalidate before original callback/context/COM work, including unowned retirement
+in a mixed list. Owned dispatch alone does not guard suspended unowned inline
+Pause or post-callback writes; remaining return guards are separately qualified.
+
+Static witness: **35 ranges,802 instructions,2,271 bytes,14 spans,128 internal
+branch boundaries,25 real encoded relative references,3 classified false relative
+candidates,7 classified DWORD coincidences**. No real scanned reference targets a
+selected interior. Every first5 patch bytes fits an aligned qword; this does not
+prove concurrent installation. The [compact result](../../verification/results/media-owned-engine-sites-2026-09-20.json)
+binds local brief/verifier/result/raw and source hashes. Independent review cleared
+these selected facts, not enabled admission. Full CPU/flags/LastError/x87/SSE/MXCSR,
+four-byte stack, emitted relocation, checked rollback, callback policy and
+destination coverage remain implementation obligations. Publish admission last;
+live owned shells prohibit removing their dispatch. No production/runtime change.
