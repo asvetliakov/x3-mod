@@ -76,7 +76,7 @@ class SourceAndPolicy(unittest.TestCase):
         enter = enter[:enter.index('\n}')]
         self.assertIn('if(!active.load(std::memory_order_relaxed))return 1;', enter)
         self.assertIn('if(!gate.owned(GetCurrentThreadId()))return 1;', enter)
-        self.assertIn('if(cache_on&&scoped&&cache.refuses(f->id,now,retry_ticks)){', enter)
+        self.assertIn('if(cache_on&&scoped&&!bypass&&cache.refuses(f->id,now,retry_ticks)){', enter)
         self.assertIn('if(pending.push(p))f->ret=std::uint32_t(reinterpret_cast<std::uintptr_t>(return_trampoline));', enter)
         self.assertEqual(source.count('__attribute__((force_align_arg_pointer))'), 2)
         # The entry-side line: one predicate on the trace-off path, its own

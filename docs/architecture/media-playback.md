@@ -115,3 +115,110 @@ clock/scheduling, verified patch spans and ABI, safe callback continuations and
 record retirement, destination recovery/Reset, save/restore behavior, bounded
 worker/module lifetime, performance and native-platform qualification. No
 production merge is authorized while the existing candidate is qualifying.
+
+
+## Concrete engine consumer checkpoint (2026-09-20)
+
+The default-disabled `media_engine_adapter` now implements 24 whole-instruction
+consumer detours and 11 caller-return envelopes. The production encoder is also
+the fixture encoder. This qualifies a reusable consumer group, not enabled game
+playback. The existing `media_cue` owner at 0x498140 supplies the eligible ID2 /
+effective-flags8 predicate; it is never patched twice. The consumer group alone
+cannot satisfy admission readiness.
+
+Consumer references the canonical playback Adapter, runtime and clock. Its bounded
+eight-entry map relates the record and compatible 0xb4 shell to a session; it does
+not duplicate commands, frames, destination storage or clock state. Record
+retirement invalidates traversal before callbacks or external work, including for
+unowned list members. Shell identity remains until matching destruction. Allocation
+uses the matching game allocator and live/cumulative accounting; unpublished
+failure undoes live accounting, and owned destruction bypasses legacy COM cleanup.
+
+Explicit play and shared speech reserve and commit before metadata writes. Rejected
+incoming requests follow their original status0 paths and retain the accepted
+operation. Success resumes the original old-callback/new-callback commit path;
+speech preserves its existing loop bit and uses its own saved-register epilogue.
+Stop-all covers the inline COM bypass, and rate success means an actual local clock
+transaction with the original HRESULT convention. No helper fabricates decoder
+readiness or forwards an owned shell into legacy graph code.
+
+At loop completion, the operation remains active until atomic
+`loop_seek(session, start, end, &backpressure)` succeeds. Capacity pressure leaves
+its epoch, end and callback obligation unchanged, skips to the validated next
+record at 0x4984b5 and retries once on a later pass. Permanent live refusal uses
+0x498473; invalid traversal uses the pointer-free 0x4984be exit. Each drops the
+return address and start argument as required. This avoids starving the next
+record while preserving the pending loop. Services must forbid uploads past the
+finite end and must not consume the loop's terminal event before rearm.
+
+`Services` is the external transport/destination boundary. Except for `pump`, all
+methods are bounded, CPU-only, allocation-free, non-reentrant and `noexcept`.
+`reserve` binds an already prepared worker slot; `publish` uses canonical
+peek/offer/submit/ack and retains commands under pressure. `pump` holds an independent
+local immutable FrameLease across destination calls, rechecks session, operation,
+epoch and traversal after final release/gate close, then commits actual scheduling.
+Only observed scheduling/provider outcomes may report completion or failure.
+Initial record observation carries slot, initial flags and anticipated publication
+flags as values; constructor bit4 is not proof of a published binding.
+
+Destination observers use the public value-only API
+`Consumer::binding_owner(uint32_t record, SessionHandle& session, EngineKey& key)`.
+It admits only a live owned record in the bound owner domain, reads no engine
+memory and leaves both outputs unchanged on failure. Destination watches and
+surface ownership stay in their canonical modules; no worker receives record keys.
+
+### Owner thread, stack and exceptional escape
+
+Before publication, native binding fixes one owner TID and stack allocation using
+public `GetCurrentThreadStackLimits`, with a bounded `VirtualQuery` allocation walk
+fallback. Each mutable dispatch validates that domain, the complete 168-byte CPU
+frame and 64-byte argument extent. A separate stack allocation fails even on the
+same TID. The owner thread and allocation must outlive every owned object; custom
+stack switching within the same allocation is outside this contract.
+
+Two append-only lock-free atomic tables retain up to 256 record keys and 256 shell
+keys, including tombstones. Capacity is checked before allocation/accounting and
+both keys are published before owned exposure. Keys are never evicted, so a miss
+cannot forget an admitted object. Exhaustion permanently closes new admission;
+existing owner cleanup remains available. Historical address reuse can
+conservatively refuse a foreign unowned call. Never-seen foreign keys use the exact
+original replay without a token-dependent return observer. A foreign owned or
+root/list operation closes admission and takes its qualified failure/abort route,
+without reading mutable Adapter state or the list. Once claimed, closed eligible
+construction is locally refused rather than falling back to synchronous graphs.
+
+Return guards retain 32 bounded value snapshots. On the supported downward-growing
+owner stack, a new call prunes abandoned same/higher normalized stack addresses;
+a return prunes deeper abandoned addresses and then matches its own ID and stack.
+There are no locks or leases to unwind in these snapshots. Production neither
+catches nor swallows exceptions. The fixture executes actual `RaiseException`,
+then its handler restores ESP/EIP manually and returns `ExceptionContinueExecution`.
+This verifies lazy cleanup after those escapes and nested catches, **not** general
+SEH/RtlUnwind or C++ unwinding across substituted pump/loop/retire return addresses.
+Unchanged unowned helpers retain their internal COM reentry behavior; caller guards
+do not claim to repair inherited helper-internal stale accesses or accesses before
+an interior hook seam.
+
+### Installation, cost and remaining integration
+
+The group preflights complete spans, checks emitted writes/readback/RX protection
+and instruction-cache flushes, then uses aligned-qword compare/exchange for each
+five-byte branch. Failed installation restores claimed words in reverse order and
+retains redirect, protection and cache debt when restoration fails. Emitted code
+is process-lifetime storage. Live-shell uninstall is prohibited. Helpers preserve
+GPRs, EFLAGS, XMM0..7, x87/MXCSR and LastError with SSE2/four-byte-stack compilation.
+
+The source cost pass finds bounded eight-identity/32-return-guard work on owner
+paths, no graph calls, waits, logging or allocations in ordinary consumer updates.
+The foreign classifier scans at most 256 atomic keys per queried kind. Staging
+reserves 24 process-lifetime 4 KiB code blocks; construction alone uses the matched
+shell allocation. These are source bounds, not measured game latency or FPS.
+
+The [ledger](../verification/media-cues.md#concrete-engine-consumer-qualification-2026-09-20)
+records 4,490 host assertions and 5,055 executed x86 fixture checks. The x86 fixture
+uses authored engine memory/callbacks in its own checked PE image, not a loaded
+game. Native Windows runtime remains unverified. Admission remains disabled until
+the root composes actual worker/clock/destination services, binding and Reset
+observers, startup/module lifetime, cue ownership and complete checked readiness.
+Actual destination integration, game callbacks, source eligibility beyond ID2,
+startup timing and user-launched playback/Reset acceptance remain open.

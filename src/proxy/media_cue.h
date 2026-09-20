@@ -36,6 +36,11 @@
 // either call) and count into the window line. Needs --ownership: without the
 // wrapper no shell sees the game's surfaces.
 namespace x3m::media_cue {
+// Compose with the sole allocator-site owner. Predicate is bounded CPU-only,
+// x87-free, noexcept, and checks the complete owned admission state. It receives
+// normalized effective flags (ID2 input0 maps to8); null restores cache policy.
+using OwnedEligibility=bool(*)(std::uint32_t source,std::uint32_t flags) noexcept;
+void set_owned_eligibility(OwnedEligibility) noexcept;
 bool initialize(); // after loop_phases::initialize, while the install window is open
 // The witness to publish through ownership::set_surface_lock_observer, or
 // nullptr when the trace is off (nothing is registered, the shell pays one

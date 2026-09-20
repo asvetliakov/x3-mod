@@ -1427,3 +1427,68 @@ contention remain acceptance dependencies. No game launch, DLL install or
 production callback enablement occurred. Source-level cost is bounded to factory
 and device creation, with no per-draw/frame work or engine wait; runtime durations
 are fixture diagnostics, not game performance measurements.
+
+
+### Concrete engine consumer qualification (2026-09-20)
+
+The production `media_engine_adapter` consumer and encoder pass focused source,
+host and executed x86 qualification with admission disabled. Independent review
+(`review_media_engine_adapter`) is clear after fixes for abandoned return guards,
+speech failure epilogue order, permanent versus transient loop refusal, and
+owner-thread/stack enforcement. The owning [architecture](../architecture/media-playback.md#concrete-engine-consumer-checkpoint-2026-09-20)
+defines the service and public `binding_owner` contracts and remaining integration.
+
+Host command, from `/tmp/x3-media-engine-adapter`:
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_media_engine_adapter verification.analysis.test_media_cue
+```
+
+Result: **9 tests / 4,490 assertions / zero failures**, 4.690 s. It compiles actual
+production sources and exercises constructor/accounting failure, transactional
+speech/explicit play, callback replacement, record reuse, all-member retirement,
+loop A-pressure/B-progress, finite key exhaustion, concurrent foreign lookup,
+alternate-stack refusal and owner cleanup after closure. Failure injection covers
+**218 stage points and 194 install points**, including retained rollback/cache debt.
+The suite also cross-compiles affected sources for Windows x86 with SSE2 and the
+four-byte incoming-stack flags. The host result is retained in tool session 7677;
+no separate raw host log was saved.
+
+The root compiled and audited the native fixture using the full command retained
+in the [compact record](../../verification/results/media-engine-adapter-2026-09-20.json).
+The executable's own PE mapping reserves 0x401000..0x620000, starts real code at
+0x630000 and disables ASLR. Runtime checks require fixture-owned committed
+MEM_IMAGE before writing authored engine bytes; no occupied external mapping is
+overwritten. The root then ran exactly:
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-media-engine-adapter-x86-v1/lock.json '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update /tmp/x3-media-engine-adapter-x86-v1/media_engine_adapter_fixture.exe > /tmp/x3-media-engine-adapter-x86-v1/runtime.log 2>&1
+```
+
+Bottle **X3**, WineArch **arm64**, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`:
+**5,055 checks / zero failures / 24 sites / 11 return envelopes / four alignments**.
+Child time **3.633209333 s**, lock wait **0.000003083 s**, exit 0. The EXE SHA256 is
+`5ff5ce87a322328976e5a9e97660995fb81d431e24b4e9401f1d508b8f5e13e7`.
+`/tmp/x3-media-engine-adapter-x86-v1/{build.json,lock.json,runtime.log}` retains the
+build, ten source/header hashes, mapping audit and runtime evidence; review matched
+all ten inputs to the tested source. Static original-EXE comparison independently
+checked 24 selected spans, 165 bytes and 62 whole instructions.
+
+Actual emitted paths execute displaced instructions, all after envelopes, exact
+stack adjustments, both real POP epilogue orders, register/flags/XMM/x87/MXCSR/
+LastError preservation and matched allocation/free accounting against authored
+engine memory and callback spies. Actual foreign-thread and separate-stack calls
+are refused without mutable Adapter access; owner retirement remains usable.
+The exception fixture uses actual `RaiseException` plus **manual CONTEXT ESP/EIP
+restoration**, not RtlUnwind. Its 100 exceptional escapes and nested outer catch
+qualify lazy value-guard cleanup only; general SEH/C++ unwinding across substituted
+return addresses remains unverified.
+
+The 256-key tables retain tombstones forever. Exhaustion closes admission before
+allocation; historical address reuse may conservatively refuse foreign unowned
+objects. The admitted owner stack must outlive objects. This is not concurrent
+engine playback support. Original unowned helper-internal reentry behavior and
+pre-seam engine accesses are unchanged. The fixture does not execute real game
+callbacks, actual worker/destination copy or engine Reset, and is not native
+Windows runtime proof. Production services/startup/combined readiness remain open;
+no admission, game launch, DLL build or install was performed for this checkpoint.

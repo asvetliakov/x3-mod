@@ -14,6 +14,8 @@ static_assert(sizeof(x3m::media_cue::EnterFrame)==0xa4,"gate stub frame layout")
 static_assert(sizeof(x3m::media_cue::ReturnFrame)==0x98,"return trampoline frame layout");
 namespace x3m::media_cue {
 std::atomic<bool> active{false};
+static std::atomic<OwnedEligibility> owned_eligibility{nullptr};
+void set_owned_eligibility(OwnedEligibility predicate) noexcept {owned_eligibility.store(predicate,std::memory_order_release);}
 namespace {
 std::atomic<bool> installed{false};
 bool initialized=false,trace_on=false,cache_on=false;
@@ -225,7 +227,9 @@ x3m_media_cue_enter(x3m::media_cue::EnterFrame* f) {
     detail::Entry e;
     e.qpc=now;e.frame=current_frame.load(std::memory_order_relaxed);e.id=f->id;e.kind=f->slot_10;e.flags=f->eax;
     e.attempt=attempts_frame;e.caller=caller;e.scoped=scoped;
-    if(cache_on&&scoped&&cache.refuses(f->id,now,retry_ticks)){
+    const auto owned=owned_eligibility.load(std::memory_order_acquire);
+    const bool bypass=f->id==2&&owned&&owned(2,f->eax?f->eax:8);
+    if(cache_on&&scoped&&!bypass&&cache.refuses(f->id,now,retry_ticks)){
         ++refused_total;e.outcome=detail::refused;ring.push(e);
         return 0;
     }
