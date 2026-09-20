@@ -704,3 +704,74 @@ binds the local note/verifier/result paths and hashes. Full details/raw rows use
 additional consumer seams, not asynchronous admission policy, worker/module or
 engine lifetime, clock approval, complete entry closure or production hook spans.
 No game, Wine, build or native runtime execution was performed.
+
+## Early worker scheduling candidate on ordinary startup (2026-09-20)
+
+The primary game factory call supplies a **pre-device, pre-main-loop scheduling
+candidate**, conditional on that invocation reaching Direct3DCreate9 and returning
+success. An arbitrary first successful proxy export call is insufficient. This
+checkpoint qualifies static ordering only; no worker startup or hook was added.
+
+The normal chain is EXE entry0x512ead → CRT0x512ccd → WinMain0x4d43b0
+(call0x512e3f) → SEH wrapper0x402710 (call0x4d44d2) → startup0x402780
+(call0x40273c). Its **factory-setup call0x402edc→0x4d8470** dominates both
+window/device bring-up0x40332a→0x4f95d0 and main-loop call0x40373a→0x403840
+in the bounded normal intraprocedural CFG, including the nine-entry phase
+switch0x403818. The setup skips the factory if renderer root `*0x608b3c` is
+already nonnull. When reached, call0x4d848f→thunk0x4faedc→IAT0x532314 invokes
+the sole static `d3d9.dll!Direct3DCreate9` import with SDK0x20; its successful
+export return precedes this chain's window/device creation and main loop.
+Configuration/archive work already occurs before setup: no before-all-loading
+or timing bound follows.
+
+Bring-up continues0x4f960a→0x4dac90, CreateWindowExA at0x4dae0d, then
+0x4db058→0x4d8f10 and factory-vtable+0x40 **CreateDevice at0x4d9642**.
+The second encoded factory caller, **0x4dae76**, occurs after HWND creation
+when the renderer's factory DWORD is null; a failed primary factory can permit
+this later attempt. It is outside the proposed admission. Ordinary lost-device
+handling0x4dac7d→0x4da960 instead invokes the existing device's vtable+0x40
+**Reset at0x4daa0b**, with no direct factory/setup call in that inspected helper.
+Teardown0x4f986a→0x4dbd50 can release/free the renderer and clear0x608b3c at
+0x4dbfb0. Service startup must therefore be process-one-shot, not rearmed by
+renderer nullness, Reset or later factory calls; arbitrary aliases/recreation
+entries remain unclosed.
+
+The proposed narrow guard captures actual **export-entry ESP=E**, before later
+C++ frames: `[E]=0x4d8494`, `[E+4]=0x20`, `[E+0x14]=0x402ee1`. At setup entry
+S, PUSH EBX/ESI/EDI at0x4d8477/78/79 consumes12 bytes; the allocator argument
+is cleaned at0x4d8485; PUSH SDK plus CALL consumes8 more. Thus E=S−20, and
+the JMP import thunk adds no frame. Saved EDI/ESI/EBX occupy E+8/+0xc/+0x10;
+they are not guard keys. Preserve the one-DWORD stdcall ABI and four-byte
+incoming-stack contract. Ancestor inspection requires bounded safe reading of
+the actual 24-byte entry span, not a guessed current ESP or a 16-byte alignment
+assumption. Exact image/site identity, successful result, non-reentered
+one-shot admission and a startup window closed by the first device creation
+attempt are **candidate obligations**, not an implemented/qualified guard.
+CPU/LastError, safe-read, unwind and rollback behavior still require validation.
+
+The identified call is on ordinary CRT/WinMain startup, with backend loading
+returned before the proposed successful-export-return scheduling point. This
+supports that narrow context rather than arbitrary export calls from DLL
+initializers. The EXE has no TLS/delay-import directory; only the import thunk
+references its D3D9 IAT slot in the scanned text literals. Encoded E8/E9/literal
+entry scans are not computed-name, ordinal, indirect-entry, exceptional-control
+or other-module loader-lock closure. The export's C++ signature and DllMain
+comment alone cannot certify loader context. Schedule only: no DD/COM/HWND
+creation on the export thread or DllMain, and no engine wait. Unknown/late callers,
+failed startup and recovery must not start cold DD during flight. Worker/module
+retention and shutdown remain separate obligations.
+
+**Early request is not ready-before-flight proof.** Worker scheduling can lag
+device creation or flight; no driver-contention or timing result follows from
+these bytes. Next qualification needs guard accept/reject/one-shot evidence,
+request/ready/device/actual-flight-phase timestamps and defined pending/fallback
+behavior without an engine wait. No native Windows runtime behavior is claimed.
+
+Independent review reproduced `python3 /tmp/verify_x3_media_worker_startup_boundary.py`:
+**16 ranges, 2,231 instructions / 7,917 bytes / 29 anchors / 264 internal branch
+boundaries, 12 encoded E8 caller sets**. It verifies original PE/import identity,
+contiguous non-pseudo decodes, byte/boundary checks and scoped normal-CFG
+ordering. The [compact record](../../verification/results/media-worker-startup-boundary-2026-09-20.json)
+binds the corrected local note, verifier and result hashes. Full details are
+`/tmp/x3-media-worker-startup-boundary.md`; raw disassembly remains local and
+untracked. No production changes, game/Wine execution or build was performed.

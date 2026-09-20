@@ -1,0 +1,47 @@
+{
+  "status": "pass",
+  "date": "2026-09-20",
+  "scope": "Reviewed static startup scheduling candidate; no injection or runtime qualification",
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "ranges": 16,
+  "instructions": 2231,
+  "bytes": 7917,
+  "anchors": 29,
+  "internal_branch_boundaries": 264,
+  "direct_e8_caller_sets": 12,
+  "command": "python3 /tmp/verify_x3_media_worker_startup_boundary.py",
+  "normal_ordering": "Setup call402edc dominates40332a bring-up and40373a main-loop in bounded normal intraprocedural CFG. Setup can skip factory when renderer root nonnull. Successful export return precedes both only if this invocation reaches4d848f.",
+  "primary_factory": "4d848f ->4faedc ->IAT532314 Direct3DCreate9; return4d8494; SDK0x20",
+  "alternate_factory": "4dae76 after CreateWindowExA4dae0d, admitted only by null factory field; excluded from proposed worker-start guard",
+  "proposed_export_entry_guard": {
+    "ESP": "actual export-entry E, four-byte incoming alignment",
+    "E+0": "0x4d8494",
+    "E+4": "0x20",
+    "E+0x14": "0x402ee1",
+    "derivation": "Setup entryS minus12 saved-register bytes minus8 SDK/CALL bytes; thunk JMP adds no frame. Ancestor requires safe readable24-byte original entry span.",
+    "other_obligations": "Exact image/site identity, successful result, non-reentered process-one-shot admission and startup window closed by first device creation attempt; unqualified capture/CPU/LastError/unwind/rollback."
+  },
+  "device_and_reset": "Startup CreateDevice4d9642 uses factory vtable+40. Lost-device4dac7d ->4da960 calls existing-device Reset+40 at4daa0b, with no direct factory/setup call in inspected helper. Teardown4dbfb0 can clear renderer root; do not rearm service from root nullness.",
+  "loader_context": "Identified ordinary CRT/WinMain chain, backend load returned before candidate point. Not an arbitrary export/DLL initializer loader-lock proof; encoded scans do not close computed/ordinal/indirect/exceptional entries.",
+  "service_constraint": "Schedule only; no DD/COM/HWND initialization on export thread or DllMain, no engine wait, no cold startup/retry during flight. Worker/module lifetime and shutdown separate.",
+  "readiness_limit": "Early request does not prove worker ready before flight or absence of driver contention; next qualification requires accept/reject/one-shot checks and request/ready/device/actual-flight timestamps with pending/fallback behavior.",
+  "runtime": "No game, Wine, build or native Windows execution; no production source edits.",
+  "local_evidence": [
+    {
+      "path": "/tmp/x3-media-worker-startup-boundary.md",
+      "sha256": "07192c214de2f162788f19e0553aa62bedd0dd6d5b384f067052029c7335b756"
+    },
+    {
+      "path": "/tmp/verify_x3_media_worker_startup_boundary.py",
+      "sha256": "16b2c90bf505ef90f6571be53b7c53b0f790d1e72d3d439d872746d2e92466c5"
+    },
+    {
+      "path": "/tmp/x3-media-worker-startup-boundary-check.json",
+      "sha256": "72e55ea143a9b2eccfafba99eb752f539a856edccadc56db27bce5b7cf0944d8"
+    },
+    {
+      "path": "/tmp/x3-media-worker-startup-boundary-raw.txt",
+      "sha256": "cb0fc549ab65347d423c5aaf6136581e9d4ec2e7a20002de9b5c4d57fa2fb093"
+    }
+  ]
+}
