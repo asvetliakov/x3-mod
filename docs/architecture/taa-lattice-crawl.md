@@ -1391,3 +1391,42 @@ another foreground/background predictor. The work is isolated under
 extra flight is authorized by this experiment. Empty/unstable strata are a valid
 negative outcome. Run54's corrected state capture remains the selected flight
 step; neither it nor the offline audit promises a crawl fix.
+
+## 29. Existing-capture stage attribution: bounded negative (2026-09-21)
+
+The §28 audit is complete. Its [compact record](../../verification/results/lattice-stage-attribution-2026-09-21.json) binds the local scripts, reports and input manifest;
+[method and limitations](/tmp/x3-lattice-stage-attribution/METHOD.md) remain local.
+Ordinary replay reproduces crop-wide 31-frame dump MAE of 0.1678813085 codes.
+Tracked RMS is 6.7132120046 codes on the unchanged 2,154/1,406 supports over
+frames 6408–6423.
+Comparable material-tracked AgX RMS is 29.845104 before resolve, 6.337852 after
+resolve and 6.713212 after RCAS. TAA reduces this measured variation; these
+metrics neither identify its remaining cause nor establish a shaded subpixel
+reference. Per-step variance covariance terms are algebra, not causal ablations.
+
+The loose material partition has 66 transition, zero stable-interior and
+34,398 unknown point-frames out of 34,464; all 22,496 lattice point-frames are
+unknown. The stricter partition is entirely unknown because its fixed 0.02
+CPU clip-W screen rejects all twelve bit-exact GPU controls. Ten residuals are
+0.05032–0.06690; two involve conditional face48/face42 differences. This is a
+failed model qualifier, not evidence of runtime clip-W disagreement. Projected
+edge margins also lack hardware qualification. Thresholds were not loosened.
+The original fourteen-pixel witness retains twelve exact controls and the same
+two discrepant pixels. Stationary/slow controls reproduce their own settings
+but have no geometry oracle and remain unknown.
+
+The checker passes 854 checks over 490 hash-bound input files. Final audit/check
+CPU times are 55.959669/2.500942 s; independent reviewer checker CPU time is
+2.451943 s. These are host analysis costs. Preserved host
+matmul warnings coexist with zero full-crop/retained nonfinite values. Explicit
+reactive-mask rejection is unavailable, so zero measured depth/other replay
+rejections does not establish complete history validity. Review corrected the
+same-face predicate to require all four taps in both frames; an independent
+eight-tap reconstruction verifies it, and published partition counts are unchanged.
+
+Close this bounded audit without a renderer patch or another RGB fit. Coverage
+remains a candidate, not a demonstrated displayed-image fix. Unknown overlap and
+background ownership prevent selecting a safe source-coverage or history-lock
+implementation from this audit. Run54 B guarded state capture remains the intended next lattice evidence, but
+is held after the user reported Run54 A crashes. It cannot retroactively
+authenticate Run177.

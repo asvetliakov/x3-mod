@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-20: Run54 is ready for user flight. The agent never launches the
+Updated 2026-09-21: Run54 qualification is held after repeated Session A crashes. The agent never launches the
 game. See the [run queue](verification/user-runs.md), [goals](goals.md) and
 [original objective](user-objective.md). The prior narrative is preserved in
 [the Run53 status archive](archive/status-through-run53-2026-09-20.md).
@@ -50,20 +50,24 @@ explicit options; stationary improvement is accepted, moving crawl is open.
   The connected fixture has 20 exact RGB readbacks covering both sequence-zero
   first pictures, concurrent playback, retirement/reuse and natural completion.
   These authored engine continuations and native copies do not prove game
-  playback or elimination of stutters. Run54 A checks those. Detailed evidence
+  playback or elimination of stutters. Run54 A returned run195/run196/run197 with repeated crashes; cause is under
+  investigation. Playback and stutter acceptance remain open. Detailed evidence
   remains in the integration branch's media ledger and the qualification record.
 - **Fog:** fourteen profiles and shafts are qualified in fixtures. Run194's
   repeated camera-cut warmups explain the native-card flicker; the correction
   preserves replacement across cuts while retaining sector/Reset/failure recovery.
-  Run54 A checks density, moving-camera flicker, shafts and clear-sector travel.
+  Run54 A reports fog flickering/disappearing in first person while chase view
+  renders it. Camera eligibility and authority are under investigation; visual
+  acceptance and shafts remain open.
   [Run53 findings](../verification/results/run53b-triage/main.md).
 - **Lattice:** the observer guard passes **830 native checks** across both RT
   modes, real resource-release callbacks, Reset, failure and target retirement.
-  It fixes diagnostic interference, not the visible crawl. Run54 B repeats the
-  three bounded state captures. [Owning note §27](architecture/taa-lattice-crawl.md#27-bound-observer-reference-callbacks-and-device-lifetime-2026-09-20).
+  It fixes diagnostic interference, not the visible crawl. Run54 B is held
+  pending crash diagnosis before repeating the three bounded state captures. [Owning note §27](architecture/taa-lattice-crawl.md#27-bound-observer-reference-callbacks-and-device-lifetime-2026-09-20).
   The requested external-engine design research is complete; a bounded offline
-  stage-attribution audit on existing captures is active, without new payload
-  copying or another flight request for that audit.
+  stage-attribution audit on existing captures is complete: TAA reduces measured
+  variation, but geometry ownership remains unqualified. No new renderer patch
+  is selected. [Bounded negative result](architecture/taa-lattice-crawl.md#29-existing-capture-stage-attribution-bounded-negative-2026-09-21).
 - **Collision:** paused by user request. Snapshot lifetime remains unproved;
   no moving-collision patch or capture is queued.
 - **Engine/proxy timing:** Run52 accepted lazy RT binding. Corrected attribution
@@ -76,3 +80,8 @@ counter is superseded by the replacement-media flight, not reported as flown.
 Six host fixture/setup/source assertions failed the first combined discovery run;
 all received independent review and bounded repairs, and the clean full rerun
 passed. No production change was needed for those host repairs.
+
+Run54 crash reports: run195 reads `FFFFFFFF` at `6EB2413A`; run197 reads
+`00000004` at `6EB2A0FA`; run196 also crashed without a supplied address.
+Module attribution and cause are not established yet. No replacement DLL has
+been installed; the retained rollback remains available.

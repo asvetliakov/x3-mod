@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-20 (Run54 ready: media, expanded fog/shafts and corrected lattice observation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-21 (Run54 held: repeated Session A crashes and first-person fog failure). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -84,7 +84,13 @@ not rerun requests.
 <a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
 Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
 
-## 54. Media repair, expanded fog/shafts and corrected lattice observation — ready
+## 54. Media repair, expanded fog/shafts and corrected lattice observation — held
+
+**Hold further flight:** Session A returned run195, run196 and run197 with
+repeated crashes. Run197 also reports first-person fog flicker/disappearance
+while chase view renders fog. The user confirms the run197 F8 was taken in
+first-person mode. Diagnosis is active; Session B is not requested
+until the crash is resolved. The commands below are retained as provenance.
 
 Qualification, installation and rollback are recorded in [status](../status.md).
 Use the absolute integration-launcher path below. Close the game between A and B,

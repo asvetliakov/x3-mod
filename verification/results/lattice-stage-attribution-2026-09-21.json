@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "date": "2026-09-21",
+  "outcome": "bounded_negative_no_renderer_patch_selected",
+  "scope": "Offline existing-capture attribution; no game, Wine, build or install.",
+  "local_evidence": {
+    "audit.py": {
+      "path": "/tmp/x3-lattice-stage-attribution/audit.py",
+      "sha256": "a8e2471161106e993ae89b6d88cd99f55e09a01a07a5d7bbb529abcbbfd542e2"
+    },
+    "check.py": {
+      "path": "/tmp/x3-lattice-stage-attribution/check.py",
+      "sha256": "bfa355ab7385ed45283d21fef8028e792276176a081a31dfafd7ddd68c1aec98"
+    },
+    "REPORT.md": {
+      "path": "/tmp/x3-lattice-stage-attribution/REPORT.md",
+      "sha256": "c75065ed76887032d7a16812c2129f03ce2690d18050f49c4e59a204006976fa"
+    },
+    "METHOD.md": {
+      "path": "/tmp/x3-lattice-stage-attribution/METHOD.md",
+      "sha256": "13b40125f93da27a7b13108b0fb94efbdbc5bd4528a4392365c272639dae01c6"
+    },
+    "attribution.json": {
+      "path": "/tmp/x3-lattice-stage-attribution/attribution.json",
+      "sha256": "acf13e5387a305444ae9766650887d6b3832c16cfa946f165732f739e35fafe8"
+    },
+    "input-bindings.json": {
+      "path": "/tmp/x3-lattice-stage-attribution/input-bindings.json",
+      "sha256": "b73da72b70285d8510839a865eb01d51e741a5c845836895d829c22320db1bdd"
+    },
+    "checks.json": {
+      "path": "/tmp/x3-lattice-stage-attribution/checks.json",
+      "sha256": "d0a60956a6209577c819fb8c6f2d32a9bb6f96607f3d22d48d4db9ef4e950cfb"
+    },
+    "timing-provenance.json": {
+      "path": "/tmp/x3-lattice-stage-attribution/timing-provenance.json",
+      "sha256": "a0a2874f133084377eeda1e8cbcbce3e375eb09a47d0ff2cc0739440f4029718"
+    }
+  },
+  "reproduce": [
+    "OPENBLAS_NUM_THREADS=1 python3 -B /tmp/x3-lattice-stage-attribution/audit.py",
+    "OPENBLAS_NUM_THREADS=1 python3 -B /tmp/x3-lattice-stage-attribution/check.py"
+  ],
+  "checks": {
+    "status": "pass",
+    "checks": 854,
+    "input_files_hashed": 490,
+    "cpu_seconds": 2.451943,
+    "real_capture_metrics_recomputed": true,
+    "input_hashes_verified": true,
+    "witness_exact_controls": 12,
+    "witness_mismatches": 2
+  },
+  "audit_cpu_seconds": 55.959669,
+  "supports": {
+    "material": 2154,
+    "lattice": 1406,
+    "score_frames": [
+      6408,
+      6423
+    ]
+  },
+  "baseline": {
+    "display_dump_mae_codes": 0.1678813085,
+    "tracked_rms_codes": 6.7132120046,
+    "display_dump_mae_scope": "crop-wide all 31 resolved frames",
+    "tracked_rms_scope": "fixed material support, final 16 frames 6408\u20136423"
+  },
+  "material_stage_rms_agx_codes": {
+    "source": 29.845104,
+    "resolve": 6.337852,
+    "rcas": 6.713212
+  },
+  "loose_partition": {
+    "material_transition": 66,
+    "material_stable_interior": 0,
+    "material_unknown": 34398,
+    "material_total": 34464,
+    "lattice_unknown": 22496,
+    "lattice_total": 22496
+  },
+  "strict_partition": "all_unknown_unqualified_CPU_clip_W_screen",
+  "witness": {
+    "exact_controls": 12,
+    "mismatches": [
+      [
+        799,
+        173
+      ],
+      [
+        796,
+        175
+      ]
+    ],
+    "CPU_clip_W_screen_exact_controls_passed": 0,
+    "CPU_clip_W_threshold": 0.02
+  },
+  "limitations": [
+    "Model labels are not hardware ownership; projected edge margins are also unqualified.",
+    "Strict screen rejects all 12 exact GPU controls; this is qualifier failure, not runtime disagreement.",
+    "Stationary and slow controls have no geometry oracle and remain unknown.",
+    "Per-step variance covariance terms are algebra, not causal ablation.",
+    "Explicit reactive-mask rejection unavailable; zero reported replay depth/other rejection does not establish all history validity.",
+    "Full-crop and retained nonfinite counts zero despite preserved host matmul warnings.",
+    "No hidden background, shaded subpixel reference, bloom/exposure-feedback model, visible improvement or native Windows claim.",
+    "Run193 and observer guard checks do not authenticate Run177."
+  ],
+  "author_check_cpu_seconds": 2.500942,
+  "reviewer_check_cpu_seconds": 2.451943
+}
