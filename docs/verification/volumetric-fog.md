@@ -799,3 +799,8 @@ elapsed **10.58533 s**, exit zero. Nineteen affected host tests pass. Timing
 covers the original two profiles; separate all-family correctness does not
 establish all-family performance. Native Windows execution and flight appearance
 remain open. No installed-build change or game launch is part of this checkpoint.
+
+Combined timing-tool integration preserves the fourteen-resource inventory and
+adds the included family fixture header to the build-input hashes, as requested
+by review. The 19 affected timing host tests pass in 0.136 s. Production shaders
+and renderer are unchanged; the existing paired measurements remain applicable.

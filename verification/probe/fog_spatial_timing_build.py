@@ -17,7 +17,7 @@ def build(asset,data,out):
     if out.exists():raise ValueError('new timing build directory required')
     shaders=shaders_current()
     sources=[ROOT/'verification/probe/fog_spatial_timing_fixture.cpp',ROOT/'src/renderer/fog_pass.cpp',asset/'src/renderer/fog_field_assets.cpp']
-    paths=[*sources,Path(__file__),ROOT/'verification/probe/fog_spatial_build.py',ROOT/'verification/probe/fog_spatial_timing_inc.h',ROOT/'verification/probe/fog_spatial_fixture.cpp',ROOT/'verification/probe/fog_spatial_state_inc.h',asset/'src/renderer/fog_field_assets.h',asset/'cmake/fog_field_assets.rc.in',*asset_inputs(data)]
+    paths=[*sources,Path(__file__),ROOT/'verification/probe/fog_spatial_build.py',ROOT/'verification/probe/fog_spatial_timing_inc.h',ROOT/'verification/probe/fog_spatial_fixture.cpp',ROOT/'verification/probe/fog_spatial_state_inc.h',ROOT/'verification/probe/fog_family_gpu_cases_inc.h',asset/'src/renderer/fog_field_assets.h',asset/'cmake/fog_field_assets.rc.in',*asset_inputs(data)]
     paths.extend(ROOT/'src/renderer'/name for name in ('fog_pass.h','fog_volume_math.h','fog_pass_math.h','ambient_occlusion_caps.h','quad_vertex_program.h','quad_vertex_program_inc.h','fog_march_program_inc.h','fog_composite_program_inc.h'))
     paths.extend(ROOT/'src/fog'/name for name in ('fog_field_inc.h','fog_march_ps.hlsl','fog_composite_ps.hlsl'));paths.append(ROOT/'src/proxy/cpu_state.h')
     toolchain={name:dict(path=shutil.which(name),version=subprocess.check_output([name,'--version'],text=True).splitlines()[0]) for name in ('i686-w64-mingw32-g++','i686-w64-mingw32-windres')}
