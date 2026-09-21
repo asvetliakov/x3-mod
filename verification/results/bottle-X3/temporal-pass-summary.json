@@ -61,7 +61,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "7610ab86652ecd4147a325421ffb02242a603924910c34dbf7bdfd39493de895",
+  "executable_sha256": "c24354266bbaf662e562afc25cd206118cfe545f8d2cfa0ec1cfa2be8d871f95",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -70,12 +70,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1925412d7a06178a/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a1925412d7a06178a/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a1925412d7a06178a/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a1925412d7a06178a/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a1925412d7a06178a/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
@@ -295,7 +295,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "e0fcf2243320fba5dcbacc90c9f68d77c7227b013f9ccf26f448b7f73ae803af",
+    "report_sha256": "e36136bcdfb509793f5795060315ca5e34d76e1a2e11141f8ead0b7b81a64b15",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -2111,15 +2111,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.6457",
-        "current_filter_ms": "0.6423",
-        "line_filter_ms": "0.8639",
-        "far_stabiliser_ms": "0.8161",
-        "thin_region_ms": "1.4196",
-        "taps_delta_ms": "-0.0034",
-        "line_delta_ms": "0.2182",
-        "far_delta_ms": "0.1704",
-        "thin_region_delta_ms": "0.7739",
+        "plain_ms": "0.8549",
+        "current_filter_ms": "0.8677",
+        "line_filter_ms": "1.3290",
+        "far_stabiliser_ms": "1.3278",
+        "thin_region_ms": "2.1043",
+        "taps_delta_ms": "0.0128",
+        "line_delta_ms": "0.4741",
+        "far_delta_ms": "0.4729",
+        "thin_region_delta_ms": "1.2494",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3349,12 +3349,12 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "1.4196",
-        "no_region_camera_ms": "1.5909",
-        "no_region_camera_delta_ms": "0.1713",
-        "fragmented_pan_thin_ms": "1.2339",
-        "fragmented_pan_camera_ms": "1.7464",
-        "fragmented_pan_camera_delta_ms": "0.5125",
+        "no_region_thin_ms": "2.1043",
+        "no_region_camera_ms": "2.1870",
+        "no_region_camera_delta_ms": "0.0827",
+        "fragmented_pan_thin_ms": "1.2792",
+        "fragmented_pan_camera_ms": "1.8350",
+        "fragmented_pan_camera_delta_ms": "0.5558",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -3363,11 +3363,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.7464",
-        "lane_input_law_ms": "1.4217",
-        "lane_input_lane_ms": "1.4777",
-        "lane_fetch_delta_ms": "0.0560",
-        "lane_input_over_r32f_ms": "-0.3247",
+        "r32f_camera_ms": "1.8350",
+        "lane_input_law_ms": "1.5238",
+        "lane_input_lane_ms": "1.5397",
+        "lane_fetch_delta_ms": "0.0159",
+        "lane_input_over_r32f_ms": "-0.3112",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3579,9 +3579,9 @@
         "height": "768",
         "rounds": "6",
         "content": "all_unrouted_sentinel_pan",
-        "strength_off_ms": "1.0698",
-        "strength_on_separable_ms": "1.3747",
-        "sentinel_delta_ms": "0.3049",
+        "strength_off_ms": "1.2663",
+        "strength_on_separable_ms": "1.4320",
+        "sentinel_delta_ms": "0.1658",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

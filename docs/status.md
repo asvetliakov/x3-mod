@@ -7,40 +7,29 @@ work remain open. The agent never launches the game. See the [run queue](verific
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run60 DLL SHA-256:
-`aaa8abb25e48f45ebed19348b871f715793762e10bbcb55f768d75de4bed600b`
-(55,033,332 bytes), built once from clean reviewed main
-`39c98242e4a3629496783d5fb9f365711e665ffa`, checkout `/tmp/x3-run60b-integration`.
-Retained DLL: `/tmp/x3-run60b-candidate/build/d3d9.dll`. Installed 2026-09-21.
+Bottle **X3**, **CrossOver Preview.app**. Run61 DLL SHA-256:
+`0bc8ff3600942e59009a365acaa7edf19ddff149cbe2309dcbfff2be16c0028d`
+(55,161,477 bytes), built once from clean reviewed main `ed105485`.
+Retained DLL: `/tmp/x3-run61-candidate/build/d3d9.dll`. Installed 2026-09-21.
 
-Changes against Run59 (`b1bb05fb…`, user-accepted camera gate for pans):
-(1) the camera-relative thin-region gate is depth- and translation-aware, so it
-stays open in forward flight (camera mask only, 226 slots; resolve and the other
-programs byte-identical), and it is the built-in default when the thin region is
-on; (2) default-off `--taa-unmatched-static node|all`, a static-in-world fallback
-for first-frame history misses (the suspected LOD flash on approach); (3) the
-stored-density long-range fog behind `--volumetric-fog-range stored` (default
-`legacy`, bit-identical and zero-cost), with a background generation worker,
-session-stable placement per sector record, readiness ramps and a quit-safe
-worker lifetime. Earlier accepted behaviour is retained.
+Changes against Run60 (`aaa8abb2…`): (1) routed sentinel-depth pixels (panel
+glass) no longer vote in the camera thin-region gate
+([§32.5](architecture/taa-lattice-crawl.md)); (2) camera-gate depth from the RT2
+lane where bound (`a659e2a8`); (3) `--taa-unmatched-static node` is the default
+with TAA (`off` opts out); (4) default-off `--taa-sentinel-stabiliser S[,E]` for
+distant unrouted stations ([design](architecture/temporal-integration.md));
+(5) stored-fog look presets L0–L3, Ctrl+Alt+F11 / `--volumetric-fog-look`
+(L0 bytecode unchanged; [direction review](architecture/fog-visual-direction-review-2026-09-21.md)).
 
-[Qualification](../verification/results/run60-candidate-qualification.json): full
-host discovery **2,802 tests in 763.1 s, all pass**. Linked audit **95 roots / 547
-reachable functions / zero violations**; import table identical to Run59. Ten
-selected actual-DLL cases pass: the four production cases (**43/39, 83/51, 43/39,
-83/51** checks/restorations), `seam-taa-camera-on` **177**, `seam-taa-on` **164**,
-four unmatched-static cases **95** each. This is not a full renderer-suite pass
-or native Windows execution. The stored fog was qualified by its route bridge
-(**26,692 checks**) and quit fixture on the same sources, not through this DLL;
-the first candidate from `f646f84f` failed the x87 audit and was never installed.
-
-Installation used `python3 tools/manage.py install --bottle X3 --dll-source
-/tmp/x3-run60b-candidate/build/d3d9.dll` from main. The
-[install record](../verification/results/run60-candidate-install.json) verifies
+[Qualification](../verification/results/run61-candidate-qualification.json): full
+host discovery 2,717 + 109 tests pass; linked audit 95 roots / 547 reachable /
+zero violations; imports identical to Run60; the ten actual-DLL cases equal the
+Run60 numbers; temporal-pass and fog shader fixtures (16 gates) pass. Not a full
+renderer-suite pass or native Windows execution. The
+[install record](../verification/results/run61-candidate-install.json) verifies
 installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`.
-Rollback: the exact Run59 DLL at `/tmp/x3-run59-candidate/build/d3d9.dll`, and the
-Run56 baseline `a51d1e75…` behind it. Both Run 60 launch dry-runs passed; no game
-was launched by the agent.
+Rollback: Run60 `/tmp/x3-run60b-candidate/build/d3d9.dll`, then Run59 and Run56.
+Both Run 61 dry-runs passed; no game was launched by the agent.
 
 ## Current work and pending acceptance
 

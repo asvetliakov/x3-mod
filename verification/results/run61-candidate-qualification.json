@@ -1,0 +1,270 @@
+{
+  "schema": 1,
+  "candidate": {
+    "commit": "ed105485",
+    "commit_full": "ed1054852ebe9e686b11c5552e10197240a46683",
+    "branch": "main",
+    "checkout": "/Users/asvetl/x3-mod",
+    "source_clean": true,
+    "dll": "/tmp/x3-run61-candidate/build/d3d9.dll",
+    "sha256": "0bc8ff3600942e59009a365acaa7edf19ddff149cbe2309dcbfff2be16c0028d",
+    "bytes": 55161477,
+    "configuration": "RelWithDebInfo",
+    "toolchain": "cmake/mingw-i686.cmake",
+    "python3": "/usr/bin/python3 (NumPy for the fog asset step)",
+    "build_commands": [
+      "cmake -S . -B /tmp/x3-run61-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+      "cmake --build /tmp/x3-run61-candidate/build -j"
+    ],
+    "supersedes": "Run60 candidate aaa8abb2 (39c98242), installed"
+  },
+  "scope": "Versus installed Run60 DLL aaa8abb2 (39c98242): thin-region mask change, opt-in sentinel stabiliser (--taa-sentinel-stabiliser, default off), stored fog look presets L0-L3 (--volumetric-fog-look, default 0) and X3M_TAA_UNMATCHED_STATIC defaulting to node with the TAA route in launcher and native fallback (off is the opt-out).",
+  "linked_audit": {
+    "command": "python3 verification/probe/check_no_x87.py /tmp/x3-run61-candidate/build/d3d9.dll",
+    "cwd": "/Users/asvetl/x3-mod",
+    "result": "PASS",
+    "roots_count": 95,
+    "reachable_functions": 547,
+    "violations": {},
+    "comparison": {
+      "run60b": "95 roots / 547 reachable / 0 violations (identical)"
+    },
+    "import_delta": {
+      "command": "i686-w64-mingw32-objdump -p",
+      "baseline_dll": "/tmp/x3-run60b-candidate/build/d3d9.dll",
+      "imported_dlls": 15,
+      "new_imported_dlls": [],
+      "removed_imported_dlls": [],
+      "total_imported_functions": {
+        "run60b": 217,
+        "run61": 217
+      },
+      "per_function_delta": {
+        "new": [],
+        "removed": []
+      }
+    }
+  },
+  "selected_render_smoke": {
+    "status": "PARTIAL",
+    "consume_only": true,
+    "rebuilt_candidate": false,
+    "scope": "The same ten actual-DLL cases Run60 qualified: four production cases, the camera-gate seam pair and the four unmatched-static option cases. No full renderer suite, no benchmark.",
+    "commands": [
+      "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run61-candidate/lock-timings-prod.json python3 verification/probe/run_motion_output.py --dll /tmp/x3-run61-candidate/build/d3d9.dll --seam /tmp/x3-run61-candidate/binaries/motion-output-seam/d3d9.dll --fixture /tmp/x3-run61-candidate/binaries/motion_output_fixture.exe production-ownership-hdr-on production-taa-hdr-on production-ownership-on production-ownership-taa-on seam-taa-camera-on seam-taa-on",
+      "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run61-candidate/lock-timings-static.json python3 verification/probe/run_motion_output.py --dll ... seam-taa-unmatched-static-unset seam-taa-unmatched-static-off seam-taa-unmatched-static-node seam-taa-unmatched-static-all"
+    ],
+    "binaries": {
+      "/private/tmp/x3-run61-candidate/binaries/motion_output_fixture.exe": "7c928dda14237dc2a922c423a66cfb4dc0ad1649d4dfdb016360fab7860b6747",
+      "/private/tmp/x3-run61-candidate/binaries/motion-output-seam/d3d9.dll": "68d9cea21850420be6d05b288d2eeae2ced64fa0280a4df6f77ad64f2694d56a",
+      "/private/tmp/x3-run61-candidate/build/d3d9.dll": "0bc8ff3600942e59009a365acaa7edf19ddff149cbe2309dcbfff2be16c0028d"
+    },
+    "seam_build": {
+      "command": "X3M_CANDIDATE_BUILD=/tmp/x3-run61-candidate/build sh verification/probe/build_motion_output.sh",
+      "note": "seam DLL and fixture rebuilt from HEAD against the frozen candidate objects, then frozen under /tmp/x3-run61-candidate/binaries"
+    },
+    "cases": {
+      "production-ownership-on": {
+        "exit": 0,
+        "checks": 43,
+        "restorations": 39,
+        "frames": 12,
+        "motion_pixels": 0
+      },
+      "seam-taa-on": {
+        "exit": 0,
+        "checks": 164,
+        "restorations": 51,
+        "frames": 12,
+        "motion_pixels": 44279
+      },
+      "production-ownership-taa-on": {
+        "exit": 0,
+        "checks": 83,
+        "restorations": 51,
+        "frames": 12,
+        "motion_pixels": 0
+      },
+      "seam-taa-camera-on": {
+        "exit": 0,
+        "checks": 177,
+        "restorations": 51,
+        "frames": 12,
+        "motion_pixels": 44279
+      },
+      "production-ownership-hdr-on": {
+        "exit": 0,
+        "checks": 43,
+        "restorations": 39,
+        "frames": 12,
+        "motion_pixels": 0
+      },
+      "production-taa-hdr-on": {
+        "exit": 0,
+        "checks": 83,
+        "restorations": 51,
+        "frames": 12,
+        "motion_pixels": 0
+      },
+      "seam-taa-unmatched-static-unset": {
+        "exit": 0,
+        "checks": 95
+      },
+      "seam-taa-unmatched-static-off": {
+        "exit": 0,
+        "checks": 95,
+        "motion_frames_differing_from_seam-taa-unmatched-static-unset": []
+      },
+      "seam-taa-unmatched-static-node": {
+        "exit": 0,
+        "checks": 95,
+        "motion_frames_differing_from_seam-taa-unmatched-static-off": [
+          3
+        ]
+      },
+      "seam-taa-unmatched-static-all": {
+        "exit": 0,
+        "checks": 95,
+        "motion_frames_differing_from_seam-taa-unmatched-static-node": [
+          6
+        ]
+      }
+    },
+    "comparison_to_run60": "All ten identical to the Run60 record: checks 43/83/43/83/177/164 and 95x4, restorations 39/51, 12 frames, seam motion_pixels 44279, node differs from off at frame 3, all differs from node at frame 6.",
+    "partial_records": {
+      "production_and_seam_taa": "/tmp/x3-run61-candidate/motion-output-partial-prod.json",
+      "unmatched_static": "/tmp/x3-run61-candidate/runner-written/motion-output-partial.json"
+    },
+    "lock": {
+      "production_and_seam_taa": {
+        "lock_wait_seconds": 4.666999999999866e-06,
+        "child_elapsed_seconds": 14.803575917,
+        "exit_code": 0
+      },
+      "unmatched_static": {
+        "lock_wait_seconds": 3.124999999999656e-06,
+        "child_elapsed_seconds": 9.773801833,
+        "exit_code": 0
+      }
+    },
+    "unmatched_static_default_note": "run_motion_output.py pins X3M_TAA_UNMATCHED_STATIC=0 for every case (line 5157), so the \"unset\" case is the runner-pinned off, not the new DLL node default; the node default is exercised by the launcher dry-runs below."
+  },
+  "temporal_pass": {
+    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run61-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+    "reason": "thin-region mask change and the new sentinel stabiliser",
+    "passed": true,
+    "exit_code": 0,
+    "samples": 386,
+    "numerical_state_generations": [
+      508,
+      278,
+      2
+    ],
+    "source_unchanged": true,
+    "binary_unchanged": true,
+    "compiler_unchanged": true,
+    "summary": "verification/results/bottle-X3/temporal-pass-summary.json",
+    "lock": {
+      "lock_wait_seconds": 3.3329999999977267e-06,
+      "child_elapsed_seconds": 142.537796125,
+      "exit_code": 0
+    }
+  },
+  "fog_stored_density": {
+    "reason": "stored fog look presets L0-L3 (default L0)",
+    "build": "python3 verification/probe/fog_density_shader_run.py build --output /tmp/x3-run61-candidate/fog (host)",
+    "reference": "python3 tools/analysis/fog_density_shader_reference.py --asset-data /tmp/x3-run61-candidate/fog/fog_field --output /tmp/x3-run61-candidate/fog-reference",
+    "run": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py ... fog_density_shader_run.py run --output /tmp/x3-run61-candidate/fog --reference /tmp/x3-run61-candidate/fog-reference",
+    "check": "... fog_density_shader_run.py check --output ... --reference ...",
+    "executable_sha256": "62358160fcd156a961cce8f1ab3e5f0ee1ae12e1d9569b0406c356ce2eade543",
+    "pass_executable_sha256": "6973f6871f2b51134753e2936870fcfa37259a80d0430f5c6e22dcb83f2567a6",
+    "run_returncode": 0,
+    "run_seconds": 44.982597291,
+    "pass_seconds": 27.483707042,
+    "check_result": "PASS",
+    "gates": {
+      "pass_fixture_passed": true,
+      "fixture_passed": true,
+      "slots_below_512": true,
+      "march_loops_kept": true,
+      "look_cases": true,
+      "look0_shadowed_black": true,
+      "look1_shadowed_coloured": true,
+      "candidate_T": true,
+      "parity_T": true,
+      "dense64_T": true,
+      "dense64_S": true,
+      "candidate_S": true,
+      "production_rgba16f_candidate": true,
+      "production_rgba16f_dense64": true,
+      "temporal": true,
+      "production_rgba16f_temporal": true
+    },
+    "summary": "/tmp/x3-run61-candidate/fog/summary.json",
+    "lock": {
+      "run": {
+        "lock_wait_seconds": 3.875000000000406e-06,
+        "child_elapsed_seconds": 72.588847209,
+        "exit_code": 0
+      },
+      "check": {
+        "lock_wait_seconds": 3.500000000000031e-06,
+        "child_elapsed_seconds": 0.24803862499999998,
+        "exit_code": 0
+      }
+    }
+  },
+  "live_runner_note": "No live runner that sets X3M_TAA=1 without pinning X3M_TAA_UNMATCHED_STATIC (run_sun_share_live.py, run_ambient_occlusion_live.py, run_linear_cutout/distance_fade/emission/material_live.py) is among the ten qualified cases, so no Run60 result exists to compare; they were not run for this candidate and may shift under the new node default.",
+  "dry_run": {
+    "command_script": "/tmp/x3-run61-candidate/dryrun.sh",
+    "cwd": "/Users/asvetl/x3-mod",
+    "base": "Run 60 session A and B command lines (docs/verification/user-runs.md), --dry-run, one wine_lock around both (x3run takes the lock itself, so manage.py launch is invoked directly as in Run60)",
+    "game_launched": false,
+    "output": "/tmp/x3-run61-dryrun.txt",
+    "cases": {
+      "A": {
+        "variant": "Run 60 session A with --taa-sentinel-stabiliser 0.7 and --taa-unmatched-static removed",
+        "exit": 0,
+        "observed": {
+          "X3M_TAA_SENTINEL_STABILISER": "0.7",
+          "X3M_TAA_UNMATCHED_STATIC": "node",
+          "X3M_VOLUMETRIC_FOG_LOOK": "0",
+          "X3M_VOLUMETRIC_FOG": "0",
+          "X3M_VOLUMETRIC_FOG_RANGE": "legacy"
+        }
+      },
+      "B": {
+        "variant": "Run 60 session B with --volumetric-fog-look 1",
+        "exit": 0,
+        "observed": {
+          "X3M_TAA_UNMATCHED_STATIC": "node",
+          "X3M_VOLUMETRIC_FOG_LOOK": "1",
+          "X3M_VOLUMETRIC_FOG": "1",
+          "X3M_VOLUMETRIC_FOG_RANGE": "stored"
+        }
+      }
+    },
+    "lock": {
+      "lock_wait_seconds": 4.04200000000271e-06,
+      "child_elapsed_seconds": 0.18325841699999998,
+      "exit_code": 0
+    }
+  },
+  "build_logs": {
+    "/tmp/x3-run61-configure.log": "dadffeb2782e68257267e5b569f835119964bbe0573c867a9c7de8167a4401fe",
+    "/tmp/x3-run61-build.log": "3aae35b64b085a38b051594b3a92ac1bb8431e0c3e683ccd2929ddf96507cb10",
+    "/tmp/x3-run61-seam-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "bottle": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1",
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "native_windows": "unverified",
+  "game_acceptance": "pending Run61",
+  "host": {
+    "note": "Full host suite run by the orchestrator at this tree before qualification: 2717 + 109 tests pass after the bloom manifest regeneration; not rerun here."
+  }
+}
