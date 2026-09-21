@@ -1150,3 +1150,21 @@ The analysis evaluated 201,738,240 unique world stations and is host reference w
 The user finds the distribution close and requests a little more patchiness and
 varying density. The overall mass layout is the selected visual direction;
 one modest internal-detail refinement is next. This is not production approval.
+
+### Modest internal-detail refinement
+
+Following the user’s request for a little more patchiness and varying density,
+the fixed reference preserves the broad mass layout and changes only internal
+modulation/weak-edge erosion. Two green A/B views and one B pixel-area witness
+pass six focused tests and independent source/evidence review. Worst 128/64
+along-ray transmission difference is 0.000004709. Mean opacity falls from
+0.178401/0.204468 to 0.158121/0.184848 without gain compensation.
+
+The images show modest additional mottling and clearer weak edges. B’s
+area-versus-point transmission p99/max difference is 0.001188/0.002951; this
+is one angular witness, not convergence proof. The 81.73-second host reference
+provides no GPU cost estimate. Final game appearance and runtime representation
+remain open; no production fog or installed build changed.
+
+[Checkpoint](../../verification/results/fog-mass-detail-refinement-2026-09-21/checkpoint.json),
+[review](../../verification/results/fog-mass-detail-refinement-2026-09-21/review.json).

@@ -1011,3 +1011,12 @@ Four base views and two B pixel-area witnesses pass reference checks. Along-ray
 comparison, not proof of angular convergence. Spatial family chroma, a bounded
 runtime representation, GPU cost/state/Reset behavior and flight appearance
 remain unresolved. No shader/baker or new production fog is selected.
+
+The requested modest detail refinement preserves the mass field, scales and
+world coordinates. It changes the density from
+`max(0,B*(.65+.35*Dlo)-.15*(1-B)*Dhi)` to
+`max(0,B*(.50+.50*Dlo)-.20*(1-B)*Dhi)`. This only removes density: it introduces
+no peak boost, global gain or floor. The reviewed two-view comparison shows
+stronger internal variation and weaker edges while retaining the broad layout.
+It is an offline visual reference; runtime representation and flight acceptance
+remain unresolved.

@@ -67,7 +67,8 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   so it is not selected. The target is varied cloud shapes, sizes and internal
   density with more clear space throughout the sector. The mass/detail reference
   is now close to the user’s target; one modest increase in patchiness/internal
-  contrast is being previewed. No production integrator or new fog build is selected.
+  contrast now has a reviewed two-view preview, with modestly clearer weak edges.
+  No production integrator or new fog build is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
   now apply this to the unchanged installed DLL; native fallback defaults match
