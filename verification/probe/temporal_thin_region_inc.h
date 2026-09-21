@@ -43,10 +43,14 @@ double forward_velocity(float depth){double dx,dy;forward_oracle(EdgeScene::S*.5
 // flight.lane: the pass receives an A32B32G32R32F current depth (r = g = device depth, b = a = view z from the true law, -1
 // on the sentinel), as the four-channel sun-shadow lane supplies it; flight.laneHole: columns x < laneHole carry b = -1 on
 // valid depth as well (a MIXED frame: the mask must keep those pixels on the far plane, never on the c8 law). flight.withhold: neither c8 nor c9 (rotation-only path).
+// flight.glass (section 32.5): a routed quad over the whole shard field drawn UNDER the rows that writes motion alpha 1 and the
+// velocity of static geometry at the near band's distance but the depth SENTINEL (blended glass: no depth write), so every cell
+// between the rows is a routed sentinel pixel whose speed against the far plane is the whole parallax (forwardSpeed > HI). It must
+// cast no vote. flight.mover: a routed VALID-depth 2x2 object at (6..7, 9..10) moving 2 px/frame against the static geometry.
 // flight_mask() is the CPU oracle of the published gates (b camera, a screen) from the last frame's depth and motion targets:
 // full double unprojection / reprojection with the exact inverse rotation, the shader's max(w, 1e-6) clamp, 8-bit openness,
 // 17x17 minimum, 11x11 FRAGMENTED maximum, clamped addressing.
-struct Flight{double yaw=0,dz=0,dx=0;float m20=0;double pos[3]={1234,-654,5000};float latchM22=forwardM22,latchM32=forwardM32;bool lane=false,withhold=false;int laneHole=0;float rowDepth[2]={lineDepth,forwardDepth2};double rowV[2][2]={{0,0},{0,0}};};
+struct Flight{double yaw=0,dz=0,dx=0;float m20=0;double pos[3]={1234,-654,5000};float latchM22=forwardM22,latchM32=forwardM32;bool lane=false,withhold=false,glass=false,mover=false;int laneHole=0;float rowDepth[2]={lineDepth,forwardDepth2};double rowV[2][2]={{0,0},{0,0}};};
 bool thinFlight=false;Flight flight;
 struct FlightLane{Com<IDirect3DTexture9> texture;Com<IDirect3DSurface9> surface;Com<IDirect3DPixelShader9> convert;};FlightLane* flightLane=nullptr;
 x3m::renderer::CameraState flight_camera(double n){x3m::renderer::CameraState c;c.valid=true;c.m00=c.m11=1;c.m20=flight.m20;c.m22=flight.latchM22;c.m32=flight.latchM32;const double a=flight.yaw*n,co=std::cos(a),si=std::sin(a);
@@ -68,8 +72,10 @@ FlightMask flight_mask(const std::vector<float>& depth,const std::vector<float>&
     auto open=[&](double speed){const double o=1-(speed-double(farLo))/(double(farHi)-double(farLo));return o==o?quantise8(o):0.f;};
     for(int y=0;y<S;++y)for(int x=0;x<S;++x){const float d=px(depth,UINT(x),UINT(y));const bool valid=d>=0&&d<=1,path=valid||d<=-.5f,routed=px(motion,UINT(x),UINT(y),3)==1;const double u=(x+.5)/S,v=(y+.5)/S;double cu=u,cv=v;
         if(path){double c[3];flight_previous(now,before,2*(x-jx)/S-1,1-2*(y-jy)/S,valid&&!(flight.lane&&x<flight.laneHole)?forward_view_z(d):0,c);const double w=std::max(c[2],1e-6);cu=c[0]/w*.5+.5+(.5+jx)/S;cv=-c[1]/w*.5+.5+(.5+jy)/S;}
-        const double pu=routed?double(px(motion,UINT(x),UINT(y),0))+jx/S:cu,pv=routed?double(px(motion,UINT(x),UINT(y),1))+jy/S:cv,relative=std::hypot((pu-cu)*S,(pv-cv)*S);
-        scr[y*S+x]=open(std::hypot((pu-u)*S,(pv-v)*S));cam[y*S+x]=path?std::max(scr[y*S+x],routed?open(relative):1.f):scr[y*S+x];if(routed&&valid&&!(flight.lane&&x<flight.laneHole))out.residual=std::max(out.residual,relative);}
+        const double pu=routed?double(px(motion,UINT(x),UINT(y),0))+jx/S:cu,pv=routed?double(px(motion,UINT(x),UINT(y),1))+jy/S:cv,relative=std::hypot((pu-cu)*S,(pv-cv)*S),screenSpeed=std::hypot((pu-u)*S,(pv-v)*S);
+        // Section 32.5, intent: a routed pixel on the sentinel casts NO VOTE (1) when its correspondence is finite and reads CLOSED (0) when it is not.
+        const float vote=!routed?1.f:valid?open(relative):std::isfinite(screenSpeed)?1.f:0.f;
+        scr[y*S+x]=open(screenSpeed);cam[y*S+x]=path?std::max(scr[y*S+x],vote):scr[y*S+x];if(routed&&valid&&!flight.mover&&!(flight.lane&&x<flight.laneHole))out.residual=std::max(out.residual,relative);}
     for(int y=0;y<S;++y)for(int x=0;x<S;++x){bool any=false;float c=1,q=1;for(int dy=-8;dy<=8;++dy)for(int dx=-8;dx<=8;++dx){const int tx=std::min(std::max(x+dx,0),S-1),ty=std::min(std::max(y+dy,0),S-1);
             any=any||(std::abs(dx)<=5&&std::abs(dy)<=5&&fragmented(depth,tx,ty));c=std::min(c,cam[ty*S+tx]);q=std::min(q,scr[ty*S+tx]);}
         out.camera[y*S+x]=any?quantise8(c):0;out.screen[y*S+x]=any?quantise8(q):0;}
@@ -81,20 +87,26 @@ double thinPanX=0,thinPatchV=0;unsigned thinPatchFrom=~0u,thinInjectFrame=~0u;co
 // injected patch. thinBadMotion != 0: a routed 2x2 object on the static arm with that x velocity (1e30: the speed overflows to a non-finite value
 // inside the mask program; NaN: a NaN correspondence). thinK: luminance k.
 bool thinBadTap=false;double thinBadMotion=0;float thinK=0;
+// Section 32.5: thinPatchGlass / thinBadGlass give the pan scene's mover / the bad-motion object the depth SENTINEL (routed blended
+// glass: motion alpha 1, no depth write), drawn over the shards.
+bool thinPatchGlass=false,thinBadGlass=false;
 constexpr int injectRect[4]={20,9,26,15};
 std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;constexpr double S=EdgeScene::S;
-    if(thinFlight){for(double top=2.31;top<30;top+=2.37)if(top>=2&&!(top<16&&top+.8>15.5)){const bool lower=top>=16;o.push_back({0,top,S,top+.8,1,flight.rowDepth[lower],flight.rowV[lower][0],flight.rowV[lower][1]});}return o;}
+    if(thinFlight){if(flight.glass)o.push_back({0,2,S,30,.25f,-1.f,flight.rowV[0][0],flight.rowV[0][1]});
+        for(double top=2.31;top<30;top+=2.37)if(top>=2&&!(top<16&&top+.8>15.5)){const bool lower=top>=16;o.push_back({0,top,S,top+.8,1,flight.rowDepth[lower],flight.rowV[lower][0],flight.rowV[lower][1]});}
+        if(flight.mover)o.push_back({6,9,8,11,1,flight.rowDepth[0],flight.rowV[0][0]+2,flight.rowV[0][1]});
+        return o;}
     if(thinForward){const double v[2]={forward_velocity(lineDepth),forward_velocity(forwardDepth2)};
         for(double top=2.31;top<30;top+=2.37)if(top>=2&&!(top<16&&top+.8>15.5)){const bool lower=top>=16;o.push_back({0,top,S,top+.8,1,lower?forwardDepth2:lineDepth,v[lower],0});}
         if(thinForwardMover)o.push_back({6,9,8,11,1,lineDepth,v[0]+2,0});
         return o;}
     if(thinPanX!=0){for(double top=2.31;top<30;top+=2.37)if(top>=2)o.push_back({0,top,S,top+.8,1,lineDepth,thinPanX,0});
         if(thinBadTap)o.push_back({23,12,24,13,65504.f,lineDepth,thinPanX,0});
-        if(thinPatchFrom!=~0u&&n>=thinPatchFrom){const double l=-8+thinPatchV*(n-thinPatchFrom);if(l<S&&l+6>0)o.push_back({l,8,l+6,14,patchValue,patchDepth,thinPatchV,0});}
+        if(thinPatchFrom!=~0u&&n>=thinPatchFrom){const double l=-8+thinPatchV*(n-thinPatchFrom);if(l<S&&l+6>0)o.push_back({l,8,l+6,14,patchValue,thinPatchGlass?-1.f:patchDepth,thinPatchV,0});}
         return o;}
     const double moved=n>thinMoveFrom?thinDrift*(n-thinMoveFrom):thinMoveFrom==~0u?thinDrift*n:0,phase=std::fmod(2.31+moved,2.37);
     for(double top=phase;top<30;top+=2.37)if(top>=2)o.push_back({2,top,11,top+.8,1,lineDepth,0,n>thinMoveFrom||thinMoveFrom==~0u?thinDrift:0});
-    o.push_back({21,12,29,20,1,squareDepth,0,0});if(thinBadMotion!=0)o.push_back({6,13,8,15,1,lineDepth,thinBadMotion,0});return o;}
+    o.push_back({21,12,29,20,1,squareDepth,0,0});if(thinBadMotion!=0)o.push_back({6,13,8,15,1,thinBadGlass?-1.f:lineDepth,thinBadMotion,0});return o;}
 double thin_velocity(double nearest){return nearest==double(lineDepth)?thinDrift:0;}
 double thin_velocity_x(double nearest){return nearest==double(patchDepth)?thinPatchV:cameraPanX;}
 // Fails the creation of A16B16G16R16F render-target textures (the box targets of the camera gate) while alive.
@@ -145,7 +157,7 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     std::puts("THIN_REGION_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
     struct Hooks{Hooks(){line_velocity=thin_velocity;line_velocity_x=thin_velocity_x;farD0=.98f;farInv=200;} // far gate for the combined config: farw 1 on the shards (0.99), 0 on the square (0.98)
-        ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinK=0;oracleK=0;thinFlight=false;flight=Flight{};flightLane=nullptr;thinForward=thinForwardMover=false;thinForwardParallax=true;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;}} hooks;
+        ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinPatchGlass=thinBadGlass=false;thinK=0;oracleK=0;thinFlight=false;flight=Flight{};flightLane=nullptr;thinForward=thinForwardMover=false;thinForwardParallax=true;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;}} hooks;
     const LineConfig base{"thin-base",false,0,0,0},on97{"thin-region-0.97",false,0,0,0,1,0,0,.97f,1},on985{"thin-region-0.985",false,0,0,0,1,0,0,.985f,1},half{"thin-region-0.97-relax-0.5",false,0,0,0,1,0,0,.97f,.5f},weightOnly{"thin-region-0.97-relax-0",false,0,0,0,1,0,0,.97f,0},withFar{"thin-region-0.97+far-weight-0.985",false,0,0,0,1,.985f,0,.97f,1},
         camera97{"thin-region-0.97-camera-gate",false,0,0,0,1,0,0,.97f,1,true};
     // ---- refusals, hostile state, failed draw, Reset ----
@@ -262,6 +274,24 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
             ++numeric_checks;require(badPixels>0&&bad==0&&beside<1.5,"non-finite tap: exercised, resolved black, and the stale patch beside it stays bounded by the finite 7x7 colours");
             thinBadTap=false;thinK=0;oracleK=0;}
         thinInjectFrame=oracleInjectFrame=~0u;
+        // Section 32.5: the same bright mover as routed SENTINEL-depth glass (value 4, 2 px/frame over the shards). It casts no vote, so
+        // the camera gate stays open around it (the valid-depth mover above closes it) and the 7x7 box is the only ghost bound. The
+        // mover advances 2 px/frame against a box radius of 3: a pixel 5 px or more behind the trailing edge l (x <= l - 5) was last
+        // covered 3 frames ago and its box [x - 3, x + 3] ends at l - 2, short of the mover even with the +-0.5 px jitter, so its
+        // history is clipped to the scene's own maximum (1); only x in [l - 4, l - 2] may carry mover colour, bounded by the mover's value.
+        {thinPatchV=2;thinPatchFrom=40;thinPatchGlass=true;const auto run=thin_sequence(s,resolver,camera97,thinFrames),present=thin_sequence(s,resolver,camera97,50);
+            double after=0,behind=0,within=0,gateMin=1,screenMax=0,maskError=0;unsigned glassPixels=0;const auto motion=s.read(s.motion.p); // frame 49 of `present`: mover at x in [10, 16)
+            for(unsigned n=61;n<thinFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x)after=std::max(after,double(px(run.output[n],x,y))-1);
+            for(unsigned n=46;n<=56;++n){const int l=-8+2*int(n-40);for(UINT y=9;y<13;++y)for(int x=3;x<=l-2;++x){const double v=double(px(run.output[n],UINT(x),y))-1;if(x<=l-5)behind=std::max(behind,v);else within=std::max(within,v);}}
+            for(UINT y=3;y<23;++y)for(UINT x=3;x<25;++x){gateMin=std::min(gateMin,double(px(present.mask[0],x,y,2)));screenMax=std::max(screenMax,double(px(present.mask[0],x,y,3)));glassPixels+=px(motion,x,y,3)==1&&px(present.depth.back(),x,y)<=-.5f;
+                maskError=std::max(maskError,double(std::fabs(px(present.mask[0],x,y,2)-quantise8(thin_region_strength(present.depth.back(),int(x),int(y),true)))));}
+            std::printf("THIN_REGION_GLASS_MOVER pan=0.50 mover_px_per_frame=2 mover_value=%.1f routed_sentinel_px=%u camera_gate_min_within_8px=%.4f screen_gate_max_within_8px=%.4f mask_error=%.6f excess_after_mover=%.6f excess_5px_behind=%.6f excess_within_box_reach=%.6f box_reach_bound=%.4f\n",
+                patchValue,glassPixels,gateMin,screenMax,maskError,after,behind,within,double(patchValue)-1);
+            ++numeric_checks;require(glassPixels>=24&&gateMin>=.99&&screenMax==0,"sentinel-depth fast mover: it casts no vote, the camera gate stays open within 8 px of it while the screen-gate channel reads closed");
+            ++numeric_checks;require(maskError<=.5/255,"sentinel-depth fast mover: the published camera gate equals the depth-only oracle (the mover counts as background)");
+            ++numeric_checks;require(after<=2./255&&behind<=2./255,"sentinel-depth fast mover: no ghost above the scene's maximum 5 px or more behind the mover, nor after it left (7x7 box clip)");
+            ++numeric_checks;require(within<=double(patchValue)-1+2./255,"sentinel-depth fast mover: within the box's reach of the trailing edge the ghost is bounded by the mover's own value");
+            thinPatchV=0;thinPatchFrom=~0u;thinPatchGlass=false;}
         // Box-target creation failure on the first camera-gate frame: the screen gate for the rest of the session, history kept.
         {const auto fell=thin_sequence(s,resolver,camera97,32,false,true),screen32=thin_sequence(s,resolver,on97,32);
             ++numeric_checks;require(same_rgb(fell.output,screen32.output)&&same_rgb(fell.age,screen32.age),"box-target creation failure: the camera gate falls back to the screen gate bit for bit, history kept");}
@@ -304,22 +334,32 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
         std::vector<Case> cases;
         {Flight f;f.yaw=-2.5e-6;f.dz=forward_dz();f.m20=forwardM20;cases.push_back({"yaw+forward",f,savedLo,savedHi,false,{0,0},1});f.lane=true;cases.push_back({"yaw+forward-lane",f,savedLo,savedHi,false,{0,0},1});f.lane=false;f.withhold=true;cases.push_back({"yaw+forward-withheld",f,savedLo,savedHi,false,{0,0},0});}
         {Flight f;f.dz=forward_dz();f.m20=forwardM20;f.latchM22=wrongM22;f.latchM32=wrongM32;cases.push_back({"wrong-latch",f,savedLo,savedHi,false,{0,0},0});f.lane=true;cases.push_back({"wrong-latch-lane",f,savedLo,savedHi,false,{0,0},1});f.laneHole=6;cases.push_back({"wrong-latch-lane-mixed",f,savedLo,savedHi,false,{0,0},1});}
+        // Section 32.5: routed sentinel-depth glass between the rows (expect 1: no vote, open on both bands); with a routed valid-depth
+        // fast mover (expect 2: closed within 8 px of the mover, open on the window beyond its reach). R32F law and lane.
+        {Flight f;f.dz=forward_dz();f.m20=forwardM20;f.glass=true;cases.push_back({"glass",f,savedLo,savedHi,false,{0,0},1});f.lane=true;cases.push_back({"glass-lane",f,savedLo,savedHi,false,{0,0},1});
+            f.mover=true;cases.push_back({"glass-mover-lane",f,savedLo,savedHi,false,{0,0},2});f.lane=false;cases.push_back({"glass-mover",f,savedLo,savedHi,false,{0,0},2});}
         {Flight f;f.dz=12;f.dx=20;f.rowDepth[0]=f.rowDepth[1]=.5f;cases.push_back({"near",f,2,10,false,{0,0},-1});f.lane=true;cases.push_back({"near-lane",f,2,10,false,{0,0},-1});f.lane=false;f.withhold=true;cases.push_back({"near-withheld",f,2,10,false,{0,0},-1});}
         {Flight f;f.dz=-12.5;f.rowDepth[0]=f.rowDepth[1]=.5f;cases.push_back({"behind",f,2,10,true,{12,0},0});f.lane=true;cases.push_back({"behind-lane",f,2,10,true,{12,0},0});}
         double nearMean[3]={0,0,0};unsigned nearIndex=0;
         for(const auto& c:cases){flight=c.f;farLo=c.lo;farHi=c.hi;for(unsigned band=0;band<2;++band){if(c.claim){flight.rowV[band][0]=c.claimed[0];flight.rowV[band][1]=c.claimed[1];}else flight_velocity(flight.rowDepth[band],flight.rowV[band]);}
             const auto run=thin_sequence(s,resolver,camera97,32);const auto motion=s.read(s.motion.p);const auto model=flight_mask(run.depth.back(),motion,31);
             const bool modelled=!flight.withhold&&(flight.lane||flight.latchM32==forwardM32); // the oracle is the true camera path: not what a withheld term or a wrong latch on the R32F law computes
-            double error=0,screenError=0,share[2]={0,0},lo=1,hi=0,mean=0,holeMax=0;unsigned window[2]={0,0};
+            double error=0,screenError=0,share[2]={0,0},lo=1,hi=0,mean=0,holeMax=0,moverMax=0,glassShare=0;unsigned window[2]={0,0},field=0;
+            for(UINT y=3;y<17;++y)for(UINT x=3;x<13;++x)moverMax=std::max(moverMax,double(px(run.mask[0],x,y,2))); // within 8 px of the mover's (6..7, 9..10) in both axes
+            for(UINT y=5;y<27;++y)for(UINT x=18;x<28;++x){++field;glassShare+=px(motion,x,y,3)==1&&px(run.depth.back(),x,y)<=-.5f;}
+            glassShare/=field;
             for(UINT y=5;y<27;++y)for(int x=0;x<flight.laneHole+8;++x)holeMax=std::max(holeMax,double(px(run.mask[0],UINT(x),y,2)));
             for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){const double b=px(run.mask[0],x,y,2),a=px(run.mask[0],x,y,3);if(modelled)error=std::max(error,std::fabs(b-double(model.camera[y*S+x])));screenError=std::max(screenError,std::fabs(a-double(model.screen[y*S+x])));
                 if(x>=18&&x<28&&y>=5&&y<27&&!(y>=14&&y<18)){const unsigned band=y>=18;++window[band];share[band]+=b>0;lo=std::min(lo,b);hi=std::max(hi,b);mean+=b;}}
             share[0]/=window[0];share[1]/=window[1];mean/=window[0]+window[1];
-            std::printf("THIN_REGION_CAMERA_FLIGHT case=%s lane=%u withheld=%u lo=%.2f hi=%.2f speed_near=%.4f,%.4f speed_far=%.4f,%.4f routed_residual_px=%.6f camera_share_near=%.4f camera_share_far=%.4f window_min=%.4f window_max=%.4f window_mean=%.4f modelled=%u oracle_error=%.6f screen_oracle_error=%.6f lane_hole_columns=%d hole_reach_max=%.4f\n",
-                c.name,unsigned(flight.lane),unsigned(flight.withhold),double(c.lo),double(c.hi),flight.rowV[0][0],flight.rowV[0][1],flight.rowV[1][0],flight.rowV[1][1],model.residual,share[0],share[1],lo,hi,mean,unsigned(modelled),error,screenError,flight.laneHole,holeMax);
+            char residualText[32];if(flight.mover)std::snprintf(residualText,sizeof residualText,"not_measured");else std::snprintf(residualText,sizeof residualText,"%.6f",model.residual); // the mover is routed valid depth off the camera path by construction
+            std::printf("THIN_REGION_CAMERA_FLIGHT case=%s lane=%u withheld=%u lo=%.2f hi=%.2f speed_near=%.4f,%.4f speed_far=%.4f,%.4f routed_residual_px=%s camera_share_near=%.4f camera_share_far=%.4f window_min=%.4f window_max=%.4f window_mean=%.4f modelled=%u oracle_error=%.6f screen_oracle_error=%.6f lane_hole_columns=%d hole_reach_max=%.4f glass=%u mover=%u routed_sentinel_share=%.4f mover_reach_max=%.4f\n",
+                c.name,unsigned(flight.lane),unsigned(flight.withhold),double(c.lo),double(c.hi),flight.rowV[0][0],flight.rowV[0][1],flight.rowV[1][0],flight.rowV[1][1],residualText,share[0],share[1],lo,hi,mean,unsigned(modelled),error,screenError,flight.laneHole,holeMax,unsigned(flight.glass),unsigned(flight.mover),glassShare,moverMax);
             if(flight.laneHole>0){++numeric_checks;require(holeMax==0,"mixed frame: valid depth without a lane z stays on the far plane (closed within 8 px of the hole), whatever the latch");}
             ++numeric_checks;require(error<=2./255&&screenError<=2./255,"flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes");
             if(c.expect==1){++numeric_checks;require(share[0]>=.99&&share[1]>=.99&&lo>=.9&&model.residual<.05,"flight: the camera gate is open on the static rows of both bands (residual < 0.05 px)");}
+            if(c.expect==2){++numeric_checks;require(glassShare>=.3&&share[0]>=.99&&share[1]>=.99&&lo>=.9&&moverMax==0,"glass with a mover: routed sentinel cells leave the gate open on the shards while a routed valid-depth fast mover closes it within 8 px of itself");}
+            if(flight.glass&&c.expect==1){++numeric_checks;require(glassShare>=.3,"glass: routed sentinel-depth cells fill the space between the shard rows");}
             if(c.expect==0){++numeric_checks;require(hi==0,"flight: the camera gate is closed on the window");}
             if(c.expect==-1&&nearIndex<3)nearMean[nearIndex++]=mean;}
         ++numeric_checks;require(nearMean[0]>.05&&nearMean[0]<.95&&std::fabs(nearMean[0]-nearMean[1])<=2./255&&nearMean[2]<nearMean[0]-.05,"near geometry (c8 term O(1)): a graded gate, the same through the law and the lane, and lower without the term");
@@ -329,16 +369,18 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     // close both gates within 8 px of every covered pixel, as the plain mask closes its one; the output equals the screen gate's bit
     // for bit. NaN: reported only. This backend compiles shaders with fast-math semantics, under which no in-shader expression is
     // reliable on a NaN (the plain mask's closure reads open as well); the openness form is closed under IEEE and D3D UNORM rules.
-    for(double bad:{1e30,double(NAN)}){thinBadMotion=bad;const bool asserted=bad==bad;const auto screenRun=thin_sequence(s,resolver,on97,32),cameraRun=thin_sequence(s,resolver,camera97,32);double open[2]={0,0},cameraScreenChannel=0;unsigned covered=0;
+    // Section 32.5 (glass = 1): the same object on the depth SENTINEL. Its finite vote is "none", formed from the scaled screen speed,
+    // so a non-finite correspondence must still close the camera gate.
+    for(const bool glass:{false,true})for(double bad:{1e30,double(NAN)}){thinBadMotion=bad;thinBadGlass=glass;const bool asserted=bad==bad;const auto screenRun=thin_sequence(s,resolver,on97,32),cameraRun=thin_sequence(s,resolver,camera97,32);double open[2]={0,0},cameraScreenChannel=0;unsigned covered=0;
         const auto motion=s.read(s.motion.p); // the last frame's motion target: the covered pixels are those whose alpha is 1 and whose depth is the object's but lie off the shard rows' own motion
         for(UINT y=12;y<16;++y)for(UINT x=5;x<9;++x){const float u=px(motion,x,y,0);if(px(motion,x,y,3)==1&&!(std::fabs(u)<=2)){++covered;
             for(int dy=-8;dy<=8;++dy)for(int dx=-8;dx<=8;++dx){const UINT qx=UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),qy=UINT(std::min(std::max(int(y)+dy,0),int(S)-1));
                 open[0]=std::max(open[0],double(px(screenRun.mask[0],qx,qy,2)));open[1]=std::max(open[1],double(px(cameraRun.mask[0],qx,qy,2)));cameraScreenChannel=std::max(cameraScreenChannel,double(px(cameraRun.mask[0],qx,qy,3)));}}}
         const bool identical=same_rgb(cameraRun.output,screenRun.output)&&same_rgb(cameraRun.age,screenRun.age);
-        std::printf("THIN_REGION_BAD_MOTION kind=%s asserted=%u covered_px=%u screen_gate_max_within_8px=%.4f camera_gate_max_within_8px=%.4f camera_screen_channel_max=%.4f identical_to_screen_gate=%u\n",asserted?"overflow_1e30":"nan",unsigned(asserted),covered,open[0],open[1],cameraScreenChannel,unsigned(identical));
+        std::printf("THIN_REGION_BAD_MOTION kind=%s glass=%u asserted=%u covered_px=%u screen_gate_max_within_8px=%.4f camera_gate_max_within_8px=%.4f camera_screen_channel_max=%.4f identical_to_screen_gate=%u\n",asserted?"overflow_1e30":"nan",unsigned(glass),unsigned(asserted),covered,open[0],open[1],cameraScreenChannel,unsigned(identical));
         if(asserted){++numeric_checks;require(covered>0&&open[1]==0&&cameraScreenChannel==0&&open[0]==0,"non-finite speed (overflow): the camera mask closes both gates within 8 px, as the plain mask closes its one");
             ++numeric_checks;require(identical,"non-finite speed (overflow): camera-gate output and age equal the screen gate's bit for bit");}}
-    thinBadMotion=0;
+    thinBadMotion=0;thinBadGlass=false;
     // ---- mask-target creation failure: option off for the session, plain resolve bit for bit, history kept ----
     {const auto baseRun=thin_sequence(s,resolver,base,32),failed=thin_sequence(s,resolver,on97,32,true);
         ++numeric_checks;require(same_rgb(baseRun.output,failed.output)&&failed.masksFailed,"mask-target creation failure under the thin region: plain resolve, history kept");}

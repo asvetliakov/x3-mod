@@ -20,9 +20,9 @@
     "verification/probe/temporal_flicker_inc.h": "4c52ec625f011cb22a4251aaccb80bd599d0a26850f8b3335ed14911de6a3b86",
     "verification/probe/temporal_line_inc.h": "d0ece6f04a571546e5f846f2aae26c31b59838619984a6db20c2a413fb2e3e98",
     "verification/probe/temporal_far_inc.h": "315ce3471778ea438262ea6725c1eb62ecf652cda81ef95758532c3b99b9e3da",
-    "verification/probe/temporal_thin_region_inc.h": "d8f64ea8defeccdbe3e756f257c5dcda5944d9a979fe8fff6f08be57d2527020",
+    "verification/probe/temporal_thin_region_inc.h": "4b7b0c7f32b8e230b4dfdd247f7f3fb9209f81b642bd865d607956053ed094a8",
     "src/temporal/line_mask_camera_ps.hlsl": "c60a1986f5d304b6690d05e20ac94ce96c762dd6e618cc2d5a46ad5601a17923",
-    "src/renderer/temporal_line_mask_camera_program_inc.h": "7cd01cf50fa6174082181b6b76bd9e14a42dd54078a771011d1abc8cd0ebf09d",
+    "src/renderer/temporal_line_mask_camera_program_inc.h": "79056b50f07a1bd175f1081a30033b25393b8b4219c3fcd089faf1fbf1a209e0",
     "src/temporal/resolve_far_camera.hlsl": "375cb64c664241e7915f976e4b0ac4ff0f773caea5abcf728c72823d611bbd9d",
     "src/renderer/temporal_resolve_far_camera_program_inc.h": "d1af33789b924a430edf6749167a72d153c911c72e24d2664f40d96249a12112",
     "src/temporal/thin_box_ps.hlsl": "0f12a9cb79e8945b11844c977c5ad67bd7bc958af9275949b6ddc1c947b942e9",
@@ -30,7 +30,7 @@
     "verification/probe/temporal_resolve_far_reference_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
     "src/renderer/temporal_resolve_far_program_inc.h": "fbaf0e28ccab2493cf91fb0817ffaae6d4c4c694ecc1523da4d5692e3cae2a26",
-    "src/temporal/line_mask_ps.hlsl": "b219e964e038329c7623ca76685a05eb55474a7443759b4f6a9dbdef4518d50b",
+    "src/temporal/line_mask_ps.hlsl": "79f8daeabf4a68ac952a1ef578428b8ebe199eb5f19ddc7c3910395627e3984e",
     "src/renderer/temporal_line_mask_program_inc.h": "7a9a37a7f4abd963394bfbdf4792e4f6d4db702b5a0abc83fb1a41bb27cecf54",
     "src/temporal/resolve_line.hlsl": "18807f732512dc66460deda4367c560e733160bb4e75263875fdd0c00bb52f31",
     "src/renderer/temporal_resolve_line_program_inc.h": "543713f79f560dd3136a055415640cc3cae61a0e7700036d88974574a7b0476a",
@@ -44,7 +44,7 @@
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
     "verification/probe/temporal_pass_fixture.cpp": "87c5d4e79241e40ecd75dedaafb5af0613583ec36a11d6afb22940efcbd30fb3",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "30b560757ea42e5eb8db2701e9ff82ab49500ee21f0393862aa6149b490cd193"
+    "verification/probe/run_temporal_pass.py": "5927a2ac12dd145db26ede8287a372c675298eccb6e107fca6067f552fc07a57"
   },
   "game_launched": false,
   "bottle": {
@@ -57,7 +57,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "d04d0b0b2cfd8305c970e69f1a7f38c68923c3f2716c83cc93f9dc92507b750a",
+  "executable_sha256": "237fd8e2ae30965c60942f7e97306fb81d60980ba8cc12a2ec71fc8f4fde47e2",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -66,12 +66,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-af83fa719fdd8ab33/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-af83fa719fdd8ab33/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a9d8d2bd069f798d2/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a9d8d2bd069f798d2/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-af83fa719fdd8ab33/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-af83fa719fdd8ab33/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-af83fa719fdd8ab33/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a9d8d2bd069f798d2/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a9d8d2bd069f798d2/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a9d8d2bd069f798d2/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
@@ -291,7 +291,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "96a10e0fba0a93073e17c6f119f826bad3c4f2f75644a23266c0fbb0e71e1218",
+    "report_sha256": "5b52430ca2e4b137078f2282f8ca85251248eb333b363f007a72d28ad01d64ce",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -393,10 +393,10 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask_camera": {
-        "dwords": 974.0,
-        "instruction_slots": 243.0,
+        "dwords": 983.0,
+        "instruction_slots": 245.0,
         "device_limit": 512.0,
-        "headroom": 269.0,
+        "headroom": 267.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_far_camera": {
@@ -2093,15 +2093,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.6406",
-        "current_filter_ms": "0.6138",
-        "line_filter_ms": "0.9060",
-        "far_stabiliser_ms": "0.8327",
-        "thin_region_ms": "1.4567",
-        "taps_delta_ms": "-0.0268",
-        "line_delta_ms": "0.2653",
-        "far_delta_ms": "0.1920",
-        "thin_region_delta_ms": "0.8161",
+        "plain_ms": "0.7525",
+        "current_filter_ms": "0.7336",
+        "line_filter_ms": "0.9154",
+        "far_stabiliser_ms": "1.1218",
+        "thin_region_ms": "1.8416",
+        "taps_delta_ms": "-0.0189",
+        "line_delta_ms": "0.1629",
+        "far_delta_ms": "0.3693",
+        "thin_region_delta_ms": "1.0891",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -2898,7 +2898,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "1.0000"
+        "hole_reach_max": "1.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "1.0000"
       },
       {
         "case": "yaw+forward-lane",
@@ -2918,7 +2922,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "1.0000"
+        "hole_reach_max": "1.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "1.0000"
       },
       {
         "case": "yaw+forward-withheld",
@@ -2938,7 +2946,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "0.0000"
+        "hole_reach_max": "0.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "0.0000"
       },
       {
         "case": "wrong-latch",
@@ -2958,7 +2970,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "0.0000"
+        "hole_reach_max": "0.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "0.0000"
       },
       {
         "case": "wrong-latch-lane",
@@ -2978,7 +2994,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "1.0000"
+        "hole_reach_max": "1.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "1.0000"
       },
       {
         "case": "wrong-latch-lane-mixed",
@@ -2998,7 +3018,107 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "6",
-        "hole_reach_max": "0.0000"
+        "hole_reach_max": "0.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "0.0000"
+      },
+      {
+        "case": "glass",
+        "lane": "0",
+        "withheld": "0",
+        "lo": "0.03",
+        "hi": "0.25",
+        "speed_near": "0.6002,0.0000",
+        "speed_far": "0.3003,0.0000",
+        "routed_residual_px": "0.007234",
+        "camera_share_near": "1.0000",
+        "camera_share_far": "1.0000",
+        "window_min": "1.0000",
+        "window_max": "1.0000",
+        "window_mean": "1.0000",
+        "modelled": "1",
+        "oracle_error": "0.000000",
+        "screen_oracle_error": "0.000000",
+        "lane_hole_columns": "0",
+        "hole_reach_max": "1.0000",
+        "glass": "1",
+        "mover": "0",
+        "routed_sentinel_share": "0.6364",
+        "mover_reach_max": "1.0000"
+      },
+      {
+        "case": "glass-lane",
+        "lane": "1",
+        "withheld": "0",
+        "lo": "0.03",
+        "hi": "0.25",
+        "speed_near": "0.6002,0.0000",
+        "speed_far": "0.3003,0.0000",
+        "routed_residual_px": "0.007234",
+        "camera_share_near": "1.0000",
+        "camera_share_far": "1.0000",
+        "window_min": "1.0000",
+        "window_max": "1.0000",
+        "window_mean": "1.0000",
+        "modelled": "1",
+        "oracle_error": "0.000000",
+        "screen_oracle_error": "0.000000",
+        "lane_hole_columns": "0",
+        "hole_reach_max": "1.0000",
+        "glass": "1",
+        "mover": "0",
+        "routed_sentinel_share": "0.6364",
+        "mover_reach_max": "1.0000"
+      },
+      {
+        "case": "glass-mover-lane",
+        "lane": "1",
+        "withheld": "0",
+        "lo": "0.03",
+        "hi": "0.25",
+        "speed_near": "0.6002,0.0000",
+        "speed_far": "0.3003,0.0000",
+        "routed_residual_px": "not_measured",
+        "camera_share_near": "1.0000",
+        "camera_share_far": "1.0000",
+        "window_min": "1.0000",
+        "window_max": "1.0000",
+        "window_mean": "1.0000",
+        "modelled": "1",
+        "oracle_error": "0.000000",
+        "screen_oracle_error": "0.000000",
+        "lane_hole_columns": "0",
+        "hole_reach_max": "1.0000",
+        "glass": "1",
+        "mover": "1",
+        "routed_sentinel_share": "0.6364",
+        "mover_reach_max": "0.0000"
+      },
+      {
+        "case": "glass-mover",
+        "lane": "0",
+        "withheld": "0",
+        "lo": "0.03",
+        "hi": "0.25",
+        "speed_near": "0.6002,0.0000",
+        "speed_far": "0.3003,0.0000",
+        "routed_residual_px": "not_measured",
+        "camera_share_near": "1.0000",
+        "camera_share_far": "1.0000",
+        "window_min": "1.0000",
+        "window_max": "1.0000",
+        "window_mean": "1.0000",
+        "modelled": "1",
+        "oracle_error": "0.000000",
+        "screen_oracle_error": "0.000000",
+        "lane_hole_columns": "0",
+        "hole_reach_max": "1.0000",
+        "glass": "1",
+        "mover": "1",
+        "routed_sentinel_share": "0.6364",
+        "mover_reach_max": "0.0000"
       },
       {
         "case": "near",
@@ -3018,7 +3138,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "0.1686"
+        "hole_reach_max": "0.1686",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "0.3843"
       },
       {
         "case": "near-lane",
@@ -3038,7 +3162,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "0.1686"
+        "hole_reach_max": "0.1686",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "0.3843"
       },
       {
         "case": "near-withheld",
@@ -3058,7 +3186,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "0.0000"
+        "hole_reach_max": "0.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "0.0000"
       },
       {
         "case": "behind",
@@ -3078,7 +3210,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "0.0000"
+        "hole_reach_max": "0.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "0.0000"
       },
       {
         "case": "behind-lane",
@@ -3098,7 +3234,11 @@
         "oracle_error": "0.000000",
         "screen_oracle_error": "0.000000",
         "lane_hole_columns": "0",
-        "hole_reach_max": "0.0000"
+        "hole_reach_max": "0.0000",
+        "glass": "0",
+        "mover": "0",
+        "routed_sentinel_share": "0.0000",
+        "mover_reach_max": "0.0000"
       }
     ],
     "stale": [
@@ -3132,6 +3272,7 @@
     "bad_motion": [
       {
         "kind": "overflow_1e30",
+        "glass": "0",
         "asserted": "1",
         "covered_px": "4",
         "screen_gate_max_within_8px": "0.0000",
@@ -3141,6 +3282,27 @@
       },
       {
         "kind": "nan",
+        "glass": "0",
+        "asserted": "0",
+        "covered_px": "4",
+        "screen_gate_max_within_8px": "1.0000",
+        "camera_gate_max_within_8px": "1.0000",
+        "camera_screen_channel_max": "1.0000",
+        "identical_to_screen_gate": "1"
+      },
+      {
+        "kind": "overflow_1e30",
+        "glass": "1",
+        "asserted": "1",
+        "covered_px": "4",
+        "screen_gate_max_within_8px": "0.0000",
+        "camera_gate_max_within_8px": "0.0000",
+        "camera_screen_channel_max": "0.0000",
+        "identical_to_screen_gate": "1"
+      },
+      {
+        "kind": "nan",
+        "glass": "1",
         "asserted": "0",
         "covered_px": "4",
         "screen_gate_max_within_8px": "1.0000",
@@ -3149,17 +3311,32 @@
         "identical_to_screen_gate": "1"
       }
     ],
+    "glass_mover": [
+      {
+        "pan": "0.50",
+        "mover_px_per_frame": "2",
+        "mover_value": "4.0",
+        "routed_sentinel_px": "36",
+        "camera_gate_min_within_8px": "1.0000",
+        "screen_gate_max_within_8px": "0.0000",
+        "mask_error": "0.000000",
+        "excess_after_mover": "0.000000",
+        "excess_5px_behind": "0.000000",
+        "excess_within_box_reach": "2.572266",
+        "box_reach_bound": "3.0000"
+      }
+    ],
     "timing": [
       {
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "1.4567",
-        "no_region_camera_ms": "1.5953",
-        "no_region_camera_delta_ms": "0.1386",
-        "fragmented_pan_thin_ms": "1.3938",
-        "fragmented_pan_camera_ms": "1.9869",
-        "fragmented_pan_camera_delta_ms": "0.5930",
+        "no_region_thin_ms": "1.8416",
+        "no_region_camera_ms": "1.8291",
+        "no_region_camera_delta_ms": "-0.0125",
+        "fragmented_pan_thin_ms": "1.3100",
+        "fragmented_pan_camera_ms": "1.9154",
+        "fragmented_pan_camera_delta_ms": "0.6054",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -3168,11 +3345,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.9869",
-        "lane_input_law_ms": "1.9344",
-        "lane_input_lane_ms": "2.0492",
-        "lane_fetch_delta_ms": "0.1148",
-        "lane_input_over_r32f_ms": "-0.0525",
+        "r32f_camera_ms": "1.9154",
+        "lane_input_law_ms": "1.6580",
+        "lane_input_lane_ms": "1.6400",
+        "lane_fetch_delta_ms": "-0.0180",
+        "lane_input_over_r32f_ms": "-0.2574",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

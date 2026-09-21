@@ -2211,3 +2211,26 @@ pixel that really moves independently (glass on a passing ship) no longer closes
 valid-depth hull within 8 px still does, and the box7 bound applies (*inference*, not replayed: no such mover in
 run212). The alternative, giving routed glass a depth in RT2, touches the cutout route and the resolve's sentinel
 policy and is not the cheap fix. W 0.94 is a launcher value (`--taa-thin-region 0.94`), no code.
+
+#### 32.5 outcome: a routed sentinel pixel casts no vote (2026-09-21) [M fixture; not installed, no flight]
+
+`gateOpen()` in `src/temporal/line_mask_ps.hlsl` now measures `relative` only on a valid depth; a routed pixel on the
+depth sentinel contributes openness 1 to the camera gate (the value a non-routed pixel already contributes), and the
+screen-speed channel is unchanged. The sentinel is read from s1 `.r`, which is the device depth with either source (R32F
+or the four-channel lane), so one test serves both; a VALID depth whose lane `.b` is not positive still votes from the far
+plane, as section 32.4's mixed-frame case requires. The no-vote is formed as `gateOpenness(screenSpeed * 1e-20)`, not a
+constant 1, so a non-finite routed correspondence on glass still reads closed without a foldable comparison. Camera mask
+program 243 -> 245 instruction slots (983 words), texldl count 10 -> 10 (no added fetch); the plain mask program is
+byte-identical. Fixture (`temporal_thin_region_inc.h`, flight scene, forward flight 0.6 px/frame > HI): a routed
+sentinel-depth quad under the shard rows (63.6 % of the window), R32F law and lane: gate open on both bands (share 1.000,
+window minimum 1.000, oracle error 0); the same with a routed valid-depth 2 px/frame mover: window still open, gate 0
+everywhere within 8 px of the mover. Fast SENTINEL-depth mover (pan scene, value 4, 2 px/frame over the shards, `THIN_REGION_GLASS_MOVER`): it casts no vote, camera
+gate 1.000 within 8 px of it, screen channel 0, mask equals the depth-only oracle; the 7x7 box is then the only ghost bound:
+excess over the scene maximum 0.000 five or more pixels behind the trailing edge and after the mover left, 2.57 (bound: the
+mover's own value, 3.0 over the maximum) on the three pixels the box still reaches. That trail is the price of the no-vote for
+bright fast glass; a valid-depth mover closes the gate instead. Non-finite routed motion on a sentinel pixel: 1e30 px/frame
+reads closed on the GPU in both channels, output bit-identical to the screen gate (asserted); NaN reads OPEN on this backend,
+with and without glass and in the plain mask too (fast-math shader compilation, reported only, as before this change).
+`run_temporal_pass.py` on bottle X3: numerical 538 (was 522), 15 flight rows. The
+host replays (`taa_lattice_gate_replay.py` `camera_check`) still count the sentinel vote; section 32.5's `sentfix` variant
+is the model of this change.

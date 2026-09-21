@@ -49,7 +49,8 @@
 // openness of the camera-relative speed, i.e. the gate on min(screen speed,
 // camera-relative speed); the camera-relative speed is the routed
 // correspondence measured against the camera path c0..c3 at this pixel's depth,
-// 0 where the pixel follows the camera path itself (c0..c3 are validated finite
+// 0 where the pixel follows the camera path itself, and not measured (open) on a
+// routed pixel on the depth sentinel, section 32.5 (c0..c3 are validated finite
 // by the caller). The separable draws take the 17x17 MINIMUM of both (r carries
 // no line mask) and the composition writes b = the camera-gated strength and a =
 // the screen-gated strength (a <= b), so the resolve knows where the camera term
@@ -107,7 +108,11 @@ float gateClosure(float2 uv, float depth) {
 
 #else
 // Openness of this pixel's own gates (no dilation: the 17x17 minimum of the later draws covers the neighbours): x = the camera
-// gate, y = the screen-speed gate. A routed pixel without a valid depth has no camera path and keeps its screen speed.
+// gate, y = the screen-speed gate. A routed pixel whose depth is neither valid nor the sentinel has no camera path and keeps
+// its screen speed. A routed pixel on the SENTINEL (blended glass routes motion but writes no depth; s1.r is the sentinel there
+// with either depth source, R32F or the lane) has no distance and casts no vote in the camera gate (section 32.5): against the
+// far plane its relative speed is the whole translation parallax, which the 17x17 minimum would spread over every strut.
+// A VALID depth whose lane .b is not positive still votes from the far plane (fail closed on an inconsistent frame).
 float gateOpenness(float speed) { return saturate(1 - (speed - thinGate.z) * thinGate.w); }
 float2 gateOpen(float2 uv, float depth) {
     float4 motion = tex2Dlod(motionOverride, float4(uv, 0, 0));
@@ -129,8 +134,12 @@ float2 gateOpen(float2 uv, float depth) {
         cameraUV = float2(previous.x, -previous.y) / max(previous.z, 1e-6) * 0.5 + 0.5 + 0.5 * sizeJitter.xy + sizeJitter.zw;
     }
     float2 previousUV = routed ? motion.xy + sizeJitter.zw : cameraUV;
-    float screen = gateOpenness(length((previousUV - uv) / sizeJitter.xy));
-    float relative = routed ? gateOpenness(length((previousUV - cameraUV) / sizeJitter.xy)) : 1;
+    float screenSpeed = length((previousUV - uv) / sizeJitter.xy);
+    float screen = gateOpenness(screenSpeed);
+    // No vote on the sentinel, yet a non-finite routed correspondence must still read closed without a comparison: the screen
+    // speed scaled by 1e-20 stays NaN / infinite when it is, and is below LO (open, no vote) for any finite speed under LO * 1e20
+    // px/frame; a finite garbage speed beyond that grades to closed, which is the safe side.
+    float relative = routed ? gateOpenness(validDepth(depth) ? length((previousUV - cameraUV) / sizeJitter.xy) : screenSpeed * 1e-20) : 1;
     return float2(cameraPath ? max(screen, relative) : screen, screen);
 }
 #endif
