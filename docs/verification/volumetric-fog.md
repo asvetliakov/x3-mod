@@ -1881,3 +1881,56 @@ flown; appearance is unjudged. [M] measured in bottle X3 unless marked.
 - One fixture run hung in the shader fixture while a parallel `cmake -j` build loaded the machine (process ended
   by hand, rerun on an idle machine passed in 54 s); not reproduced, cause unknown.
 
+
+## Run 61 session B diagnosis (run220): ribs are the coverage-variation term; L3 = L2 is expected (2026-09-22)
+
+Flight `/tmp/x3-bottleX3-run220` (Run61 DLL `0bc8ff36`, commit `ed105485`, bluewell then foggreenoutlands, 48 654 applied fog
+frames, 82 preset switches). Compact record: `verification/results/fog-run220-diagnosis.json`. No production edit, Wine or build.
+
+Evidence limits. The F8 burst dumps post-fog HDR, depth, motion and shadow maps; **no fog target is dumped**, and the log carries
+neither camera world position nor the inverse view rows, so the flight pose could not be replayed and optical-depth statistics
+come from the host reference, not the flight. The three bursts are 3685-3692 (L1), 4477-4484 (L2) and 13583-13590 (L2), all at
+0.50x: **there is no L3 burst**. `--volumetric-fog-timing` records CPU wall time of the pass (`cpu_us`), not GPU time.
+
+**1. Ribs (measured in the host reference, consistent with screenshots).** `fog2.png`/`fog3.png`: 6-8 parallel, evenly spaced
+bands (about 45-50 px at 1280x768) inside one patch, straight, fading with the patch, not concentric around the camera and not
+radiating from the sun (vertical in `fog2`, diagonal in `fog3`). In the L1 and L2 bursts the band profile is identical between
+frame 0 and frame 7 (correlation .999 at zero shift): static, not a per-frame sampling artefact. Cause: the coverage variation
+`cover = look_edge.x * wave1.x * wave2.y` (`src/fog/fog_density_field_inc.h:235`). `wave1.x` is a function of world Y only (5
+cycles per 65536 = 13107 units) and `wave2.y` of world X only (13 cycles = 5041 units, 1.0 km), so the term is a set of infinite
+slabs `x = const`, constant along Z, moving the coverage by +-.12 on a remap whose visible range starts at .35 with exponent 2
+(at stored rho .5 the remapped density swings .002 to .17) and sigma x8. Reproduction (scratch render, the reference's
+`look_march` law on a dense store of the screen's field, 320x192, tan half-vfov .75, 1.0x): looking along world Z the slabs
+appear exactly as in `fog3.png`; 6-px high-pass RMS of 1-T: L2 .00707, coverage variation off .00240, warp off (variation on)
+.00713, both off .00219, L3 .00707. Looking along X (slabs face-on) all variants agree (.0010-.0012). So (c)/coverage term is the
+cause; the warp itself, slice lerp (b), bin banding (a), lattice (d), self-shadow (e), FP16 (f) and upsample (g) are not: the
+reference has exact trilinear lookups, no half-resolution pass and float64 arithmetic and still shows the ribs, and removing the
+one term removes them. 48 px at 5041 units puts the ribbed patch near 54 000 units (10.7 km), inside the 70 000 cap (inferred).
+
+**2. L3 = L2.** `look_phase` is `counters_.jitter_index` when jitter and TAA are live (`src/proxy/motion_output_fog_inc.h:422`);
+the log shows `jitter=1 jitter_index=1 taa=1` on burst frames and `JITTER_NEAR=1 JITTER_FAR=1` resolved, L3 selected 20 561 frames
+(code + log; not measured in a dump, no L3 burst). Reference: one L3 frame differs from L2 by mean 7e-5 / max .0015 in T, the
+8-phase mean by max .0009: the 24+40 bins already resolve this band-limited field, so the offset has nothing to remove and an
+identical picture is the expected result. The ribs are not depth-slice banding, which is why L3 does not touch them.
+
+**3. Distribution and fade.** LOD blend 20 000-30 000 units (4-6 km) in all presets: as designed. Taper: L0 150 000-200 000
+(30-40 km); **L1-L3 end every ray at `SKY_CAP` 70 000 with the taper over 52 500-70 000 (10.5-14 km)**, by design of the look
+presets but short of the 30-40 km the plan quotes: with L1-L3 no fog beyond 14 km is drawn. Readiness: far ramp frames 900-989,
+both levels 1.0 at frame 1040, 1/90 per frame, re-ramped after each sector change (28 217, 43 966); 226 `density_filling` frames.
+Reference (diagonal pose, 1.0x): 46 % of sky rays exactly empty; 1-T mean .037, p50 .0005, p99 .215, max .26 for L1 = L2 = L3
+(the presets differ in light, not extinction); .019/.114 at 0.5x, .053/.304 at 1.5x. L2 sun-lit sum is .56 of L1 (self-shadow +
+powder). Phase forward/back 37:1, 30 deg / 150 deg 4.9:1; ambient sun-side (.018,.094,.350) vs away (.110,.034,.133).
+`shadow_maps=2` on applied frames; shaft presence was not isolated in this flight. Per preset (applied, non-capture frames; scenes
+differ, frame time is 1 ms quantised): cpu_us mean/p95 L0 534/750, L1 552/760, L2 554/763, L3 476/716; frame dt mean 12.0, 11.5,
+11.7, 10.2 ms (84-98 FPS), p95 16 ms each. No preset cost is visible at this resolution of measurement; GPU time is not logged.
+
+**4. Strength 1.5.** The code default is already 1.0x: `fog_strength_default = .02f` (`src/renderer/fog_pass_math.h:11`),
+launcher `const=0.02` (`tools/manage.py:381`), overlay scale `strength/.02`. 1.50x came from the published run command
+`--volumetric-fog 0.03` in `docs/verification/user-runs.md:122` (log: `X3M_VOLUMETRIC_FOG_STRENGTH=0.03`, `density_scale=1.5`).
+Change that argument to `0.02` (or drop the value).
+
+**5. Fix.** Cheapest: `coverage_variation = 0` at `src/renderer/fog_look_math.h:18`. No shader change, slot budgets unchanged
+(repair L2 503, march L2 415); the user can confirm today with `X3M_FOG_LOOK_COVERAGE_VARIATION=0` on the installed DLL. Cost:
+edges are again one iso-surface of the warped noise (the warp stays and did not rib in the reference). If edge variation is
+wanted back, it must not be a product of single-axis waves: drive it from a stored sample (for L2 the sun-ward far tap is already
+fetched) rather than from `look_wave`; that needs a slot count before it is promised.

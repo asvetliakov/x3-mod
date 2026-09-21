@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "date": "2026-09-22",
+  "flight": "/tmp/x3-bottleX3-run220",
+  "dll": "0bc8ff36", "commit": "ed105485", "bottle": "X3",
+  "limits": ["no fog target dumped", "no camera world pose in log: flight pose not replayed", "no L3 burst (bursts: 3685 L1, 4477 L2, 13583 L2, all 0.50x)", "fog timing is CPU wall time only; no GPU time logged", "reference field is the screen's host twin field"],
+  "ribs": {
+    "cause": "coverage variation look_edge.x*wave1.x*wave2.y: slabs x=const, period 5041 units, gated in Y at 13107 units, constant in Z",
+    "site": "src/fog/fog_density_field_inc.h:235",
+    "screenshot_spacing_px_estimate": [45, 50],
+    "burst_profile_corr_frame0_vs_7": {"L1_3685": 0.999, "L2_4477": 0.999, "L2_13583": 0.979},
+    "reference_view_along_z_highpass_rms_1mT": {"L2": 0.00707, "L2_no_coverage_variation": 0.00240, "L2_no_warp": 0.00713, "L2_neither": 0.00219, "L3": 0.00707},
+    "reference_view_along_x_highpass_rms_1mT": {"L2": 0.00116, "L2_no_coverage_variation": 0.00114, "L2_no_warp": 0.00103, "L2_neither": 0.00103, "L3": 0.00116},
+    "excluded": ["bin banding", "slice lerp", "warp", "lattice+remap", "self-shadow/cascade", "fp16", "half-res upsample"]
+  },
+  "l3": {"selected_frames": 20561, "phase_source": "src/proxy/motion_output_fog_inc.h:422 (jitter_index, TAA live)", "log": "jitter=1 taa=1 JITTER_NEAR=1 JITTER_FAR=1",
+         "reference_dT_vs_L2": {"single_frame_mean": 7.4e-05, "single_frame_max": 0.0015, "eight_phase_mean_max": 0.00086}, "verdict": "active (code+log), invisible as expected; cannot affect ribs"},
+  "distribution": {
+    "lod_units": [20000, 30000], "taper_units_L0": [150000, 200000], "taper_units_L1_L3": [52500, 70000],
+    "deviation": "L1-L3 draw no fog beyond 70000 units (14 km); plan text says 30-40 km",
+    "ramp_frames": 90, "both_ready_frame": 1040, "density_filling_frames": 226,
+    "reference_1mT_diag_pose": {"x0.5": {"mean": 0.019, "p50": 0.0002, "p99": 0.114}, "x1.0": {"mean": 0.0367, "p50": 0.0005, "p99": 0.215, "max": 0.262}, "x1.5": {"mean": 0.0534, "p50": 0.0007, "p99": 0.304}, "empty_sky_share": 0.46, "same_for_L1_L2_L3": true},
+    "L2_over_L1_sunlit_sum": 0.56, "phase_forward_over_back": 37.0, "phase_30_over_150_deg": 4.9
+  },
+  "per_preset_flight": {
+    "L0": {"frames": 2037, "cpu_us_mean": 533.8, "cpu_us_p95": 749.9, "dt_ms_mean": 11.97, "dt_ms_p95": 16.0},
+    "L1": {"frames": 6188, "cpu_us_mean": 551.5, "cpu_us_p95": 759.7, "dt_ms_mean": 11.53, "dt_ms_p95": 16.0},
+    "L2": {"frames": 17472, "cpu_us_mean": 553.5, "cpu_us_p95": 762.6, "dt_ms_mean": 11.73, "dt_ms_p95": 16.0},
+    "L3": {"frames": 20561, "cpu_us_mean": 476.3, "cpu_us_p95": 715.5, "dt_ms_mean": 10.23, "dt_ms_p95": 16.0}
+  },
+  "strength_1_5_source": {"site": "docs/verification/user-runs.md:122 (--volumetric-fog 0.03)", "code_default": "src/renderer/fog_pass_math.h:11 = .02 (1.0x)", "launcher_const": "tools/manage.py:381 = 0.02"},
+  "fix": {"site": "src/renderer/fog_look_math.h:18 coverage_variation .12 -> 0", "slots": "unchanged (repair L2 503, march L2 415)", "user_check": "X3M_FOG_LOOK_COVERAGE_VARIATION=0 on the installed DLL"}
+}
