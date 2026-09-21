@@ -285,14 +285,18 @@ class FogLauncherTests(unittest.TestCase):
         stored = ('--volumetric-fog', '0.03', '--volumetric-fog-cards', 'replace', '--volumetric-fog-range', 'stored')
         status, output, error = self.launch(*self.BASE, *stored)
         self.assertEqual(status, 0, error)
-        self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "0"', output)
+        self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "2"', output)  # stored range starts on look 2
+        legacy = self.launch(*self.BASE, '--volumetric-fog', '0.03')
+        self.assertEqual(legacy[0], 0, legacy[2]); self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "0"', legacy[1])
+        self.assertIn('volumetric_fog_look=renderer::fog_look_default;', (ROOT / 'src/proxy/capture.cpp').read_text())
+        self.assertIn('constexpr unsigned fog_look_default = 2;', (ROOT / 'src/renderer/fog_look_math.h').read_text())
         for look in '0123':
             status, output, error = self.launch(*self.BASE, *stored, '--volumetric-fog-look', look)
             self.assertEqual(status, 0, error)
             self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "%s"' % look, output)
         # An inherited preset never survives; the look needs the stored range; 4 is no preset.
-        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_VOLUMETRIC_FOG_LOOK': '2'})
-        self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "0"', output)
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_VOLUMETRIC_FOG_LOOK': '1'})
+        self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "2"', output)
         self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-look', '1')[0], 2)
         self.assertEqual(self.launch(*self.BASE, *stored, '--volumetric-fog-look', '4')[0], 2)
 

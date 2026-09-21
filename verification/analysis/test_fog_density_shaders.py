@@ -95,7 +95,7 @@ class FogDensityShaders(unittest.TestCase):
         for gate in ('look_cases', 'look0_shadowed_black', 'look1_shadowed_coloured', 'march_loops_kept', 'slots_below_512'):
             self.assertIs(s['gates'][gate], True, gate)
         looks = s['look_presets_versus_host']
-        self.assertEqual(sorted(looks), ['A_look1_depth45000', 'A_look1_shadowed', 'A_look1_sky', 'A_look2_depth3', 'A_look2_sky', 'A_look3_sky', 'B_look1_sky', 'B_look2_sky', 'B_look3_sky'])
+        self.assertEqual(sorted(looks), ['A_look1_depth90000', 'A_look1_shadowed', 'A_look1_sky', 'A_look2_depth3', 'A_look2_sky', 'A_look3_sky', 'B_look1_sky', 'B_look2_sky', 'B_look3_sky'])
         for label, row in looks.items():
             self.assertGreater(row['fogged'], 50, label); self.assertLessEqual(row['left_out_near_noise_wrap'], 6, label)
             for variant in ('bilinear32', 'bilinear16'):

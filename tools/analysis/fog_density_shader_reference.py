@@ -21,10 +21,11 @@ spec = importlib.util.spec_from_file_location('fog_density_runtime_screen', HERE
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 SHIFTS = (-5500., -5000., -4500., 0., 4500., 5000., 5500.)
 LOOK_PHASE = 3  # TAA sequence index of the L3 cases
+COVER_WAVES = ((1., -2., 1.), (2., 1., -1.), (-1., 1., 2.))  # coverage variation wave vectors, cycles per 65536 units
 # Defaults of renderer::FogLookTuning.
 TUNING = dict(coverage=.35, exponent=2., sigma_scale=8., coverage_variation=.12, warp_cycles_near=13., warp_near=500.,
               warp_cycles_far=5., warp_far=1400., forward_g=.75, forward_weight=.7, back_g=-.15, albedo_white=.5,
-              ambient_gain=.35, extinction_tint=.6, scatter_lift=.5, lift_floor=.5, shadow_floor=.15, sky_cap=70000.,
+              ambient_gain=.35, extinction_tint=.6, scatter_lift=.5, lift_floor=.5, shadow_floor=.15, sky_cap=112500., taper_start=65000.,
               self_shadow=3., powder=.5, tap_distance=3000., tap_length=9000., jitter_near=1., jitter_far=1.)
 
 
@@ -50,7 +51,8 @@ def look_constants(look, chroma, radiance_over_pi=(1., 1., 1.), phase=0, tuning=
         rows[6, 2:] = (t['jitter_near'], t['jitter_far'])
     rows[7, :2] = (t['tap_distance'], t['tap_length'])
     rows[9] = (f(int(t['warp_cycles_far'] + f(.5))) / f(65536), t['warp_far'], f(int(t['warp_cycles_near'] + f(.5))) / f(65536), t['warp_near'])
-    rows[10, 0] = t['coverage_variation']
+    start = t['taper_start'] if t['taper_start'] <= t['sky_cap'] - f(1000) else f(.75) * t['sky_cap']
+    rows[10, :3] = (t['coverage_variation'] / f(3), start, f(1) / (t['sky_cap'] - start))
     rows[8, 3] = f(5.588238) * f(phase % 64)
     return rows, float(t['sigma_scale'])
 
@@ -74,7 +76,7 @@ def look_march(origin, directions, limits, solid, chroma, store, look, sigma, ph
     solid = np.broadcast_to(np.asarray(solid, bool), (n,))
     # Every ray ends at the column cap, sky and geometry alike (no silhouette rim around distant hulls).
     L = np.minimum(np.where(solid, np.asarray(limits, np.float64), m.FAR), min(m.FAR, k[0, 3]))
-    taper_start = np.full(n, .75 * k[0, 3]); taper_recip = np.full(n, 4. / k[0, 3])
+    taper_start = np.full(n, k[10, 1]); taper_recip = np.full(n, k[10, 2])
     near = np.minimum(L, 12000.) / 24; far = np.maximum(L - 12000., 0) / 40
     offset = np.full((n, 2), .5)
     if look >= 2 and pixels is not None:
@@ -97,7 +99,9 @@ def look_march(origin, directions, limits, solid, chroma, store, look, sigma, ph
             continue
         ray = d[active] * s[active, None]; world = local + ray
         wave1 = wave(world[:, [1, 2, 0]] * k[9, 0]); wave2 = wave(world[:, [2, 0, 1]] * k[9, 2])
-        points = origin + ray + wave1 * k[9, 1] + wave2 * k[9, 3]; cover = k[10, 0] * wave1[:, 0] * wave2[:, 1]
+        offsets = wave1 * k[9, 1] + wave2 * k[9, 3]; points = origin + ray + offsets; warped = (world + offsets) / 65536.
+        # Three oblique plane waves, whole cycles per fine window, at the warped position (no axis-aligned slabs).
+        cover = k[10, 0] * sum(wave(warped[:, 0] * a + warped[:, 1] * b + warped[:, 2] * c) for a, b, c in COVER_WAVES)
         rho = density(store.sample(points, s[active], origin).astype(np.float64), cover)
         e = np.clip((s[active] - taper_start[active]) * taper_recip[active], 0, 1); rho = rho * (1 - e * e * (3 - 2 * e))
         step = sigma * rho * ds[active]; a = 1 - np.exp(-step); a2 = 1 - np.exp(-.5 * step)
@@ -178,7 +182,7 @@ def run(asset_data, output):
         strat = sy * m.W + sx; arrays[f'{name}_look_pixels'] = strat
         looks = [(f'{name}_look{look}_sky', look, 'sky', None, False) for look in (1, 2, 3)]
         if name == 'A':
-            looks += [('A_look2_depth3', 2, 'depth', float(m.DEPTHS[3]), False), ('A_look1_depth45000', 1, 'depth', 45000., False), ('A_look0_shadowed', 0, 'sky', None, True), ('A_look1_shadowed', 1, 'sky', None, True)]
+            looks += [('A_look2_depth3', 2, 'depth', float(m.DEPTHS[3]), False), ('A_look1_depth90000', 1, 'depth', 90000., False), ('A_look0_shadowed', 0, 'sky', None, True), ('A_look1_shadowed', 1, 'sky', None, True)]
         for label, look, mode, depth, shadowed in looks:
             phase = LOOK_PHASE if look == 3 else 0
             case(label, origin, pose, mode, repr(depth) if depth else '0', f'look={look} phase={phase} shadow={int(shadowed)}')

@@ -181,7 +181,7 @@ bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volume
 // X3M_VOLUMETRIC_FOG_RANGE=legacy|stored (default legacy; fog-density-runtime-integration.md):
 // stored selects the two-level stored-density field with its 30-40 km horizon. Anything else is legacy.
 bool volumetric_fog_range_stored = false;
-// X3M_VOLUMETRIC_FOG_LOOK=0..3 (default 0, the current law) and X3M_FOG_LOOK_<NAME>=<float> tuning
+// X3M_VOLUMETRIC_FOG_LOOK=0..3 (default renderer::fog_look_default = 2; 0 is the unshaped law) and X3M_FOG_LOOK_<NAME>=<float> tuning
 // (renderer::fog_look_fields; X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only.
 unsigned volumetric_fog_look = 0;
 x3m::renderer::FogLookTuning volumetric_fog_look_tuning{};
@@ -3224,6 +3224,7 @@ void initialize_log(HMODULE module) {
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
      volumetric_fog_look=0;volumetric_fog_look_tuning={};
      if(volumetric_fog_range_stored){
+        volumetric_fog_look=renderer::fog_look_default; // absent or malformed: the default look
         if(fog_env(L"X3M_VOLUMETRIC_FOG_LOOK")==1&&setting[0]>=L'0'&&setting[0]<L'0'+wchar_t(renderer::fog_look_count))volumetric_fog_look=unsigned(setting[0]-L'0');
         unsigned overrides=0;
         for(const auto& field:renderer::fog_look_fields){

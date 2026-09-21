@@ -7,6 +7,7 @@
 #include <cstddef>
 namespace x3m::renderer {
 constexpr unsigned fog_look_count = 4;           // L0 current law, L1 shaped, L2 + powder/self-shadow, L3 + sample offset
+constexpr unsigned fog_look_default = 2;         // stored range without X3M_VOLUMETRIC_FOG_LOOK (the launcher passes the same)
 constexpr unsigned fog_look_first_register = 25; // c25..c35
 constexpr unsigned fog_look_rows = 11;
 // Shaft cascades a look program reads (the two coarsest current maps; the unshaped law reads three).
@@ -15,7 +16,7 @@ inline unsigned fog_look_next(unsigned look) noexcept { return look + 1 < fog_lo
 // Every scalar has an environment override X3M_FOG_LOOK_<NAME> read once at init (fog_look_fields).
 struct FogLookTuning {
     float coverage = .35f, exponent = 2.f, sigma_scale = 8.f;         // rho' = saturate((rho-c)/(1-c))^p: soft zero-slope toe
-    float coverage_variation = .12f;                                  // c moves by this x a low-frequency world term
+    float coverage_variation = .12f;                                  // c moves by this x the mean of three oblique plane waves
     float warp_cycles_near = 13.f, warp_near = 500.f;                 // domain warp octaves: whole cycles per 65536 units,
     float warp_cycles_far = 5.f, warp_far = 1400.f;                   // amplitude in render units (sum <= 2000: fine window margin)
     float forward_g = .75f, forward_weight = .7f, back_g = -.15f;     // w HG(g0) + (1-w) HG(g1)
@@ -25,7 +26,8 @@ struct FogLookTuning {
     float extinction_tint = .6f;                                      // k = 1 + this x (1 - chroma)
     float scatter_lift = .5f, lift_floor = .5f;                       // half-extinction isotropic octave; its shaft floor
     float shadow_floor = .15f;                                        // minimum shaft visibility of the sun term
-    float sky_cap = 70000.f;                                          // sky rays end here (taper over the last quarter)
+    float sky_cap = 112500.f, taper_start = 65000.f;                  // every ray ends at the cap; smoothstep fade from the start
+                                                                      // (start > cap - 1000: the last quarter of the cap)
     float self_shadow = 3.f, powder = .5f;                            // L2+
     float tap_distance = 3000.f, tap_length = 9000.f;                 // L2+ one sun-ward tap and the path it stands for
     float jitter_near = 1.f, jitter_far = 1.f;                        // L3: offset amplitude in bins (24 near, 40 far)
@@ -38,7 +40,8 @@ constexpr FogLookField fog_look_fields[] = {
     {"ALBEDO_WHITE", &FogLookTuning::albedo_white, 0.f, 1.f}, {"AMBIENT_GAIN", &FogLookTuning::ambient_gain, 0.f, 4.f},
     {"EXTINCTION_TINT", &FogLookTuning::extinction_tint, 0.f, 4.f}, {"SCATTER_LIFT", &FogLookTuning::scatter_lift, 0.f, 4.f},
     {"LIFT_FLOOR", &FogLookTuning::lift_floor, 0.f, 1.f}, {"SHADOW_FLOOR", &FogLookTuning::shadow_floor, 0.f, 1.f},
-    {"SKY_CAP", &FogLookTuning::sky_cap, 20000.f, 200000.f}, {"SELF_SHADOW", &FogLookTuning::self_shadow, 0.f, 40.f},
+    {"SKY_CAP", &FogLookTuning::sky_cap, 20000.f, 200000.f}, {"TAPER_START", &FogLookTuning::taper_start, 0.f, 199000.f},
+    {"SELF_SHADOW", &FogLookTuning::self_shadow, 0.f, 40.f},
     {"POWDER", &FogLookTuning::powder, 0.f, 1.f}, {"TAP_DISTANCE", &FogLookTuning::tap_distance, 100.f, 7000.f},
     {"TAP_LENGTH", &FogLookTuning::tap_length, 0.f, 40000.f}, {"JITTER_NEAR", &FogLookTuning::jitter_near, 0.f, 1.f},
     {"JITTER_FAR", &FogLookTuning::jitter_far, 0.f, 1.f}, {"COVERAGE_VARIATION", &FogLookTuning::coverage_variation, 0.f, .3f},
@@ -79,7 +82,8 @@ inline float fog_look_constants(unsigned look, const FogLookTuning& t, const flo
     // Whole cycles per fine window (65536 units): the warp is world anchored under the camera modulo.
     rows[9][0] = float(int(t.warp_cycles_far + .5f)) / 65536.f; rows[9][1] = t.warp_far;
     rows[9][2] = float(int(t.warp_cycles_near + .5f)) / 65536.f; rows[9][3] = t.warp_near;
-    rows[10][0] = t.coverage_variation;
+    const float start = t.taper_start <= t.sky_cap - 1000.f ? t.taper_start : .75f * t.sky_cap;
+    rows[10][0] = t.coverage_variation / 3.f; rows[10][1] = start; rows[10][2] = 1.f / (t.sky_cap - start);
     rows[8][3] = 5.588238f * float(phase % 64u);
     return t.sigma_scale;
 }

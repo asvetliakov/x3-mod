@@ -31,7 +31,7 @@ float4 look_self : register(c31);       // self-shadow strength, powder strength
 float4 look_taps : register(c32);       // sun-ward tap distance, the length it stands for
 float4 look_extinction : register(c33); // extinction exponent RGB of T_rgb = pow(T,k), offset frame shift
 float4 look_warp : register(c34);       // domain warp: octave 1 cycles per unit and amplitude, octave 2 the same
-float4 look_edge : register(c35);       // coverage variation amplitude
+float4 look_edge : register(c35);       // coverage variation amplitude / 3, taper start, 1/(taper end - start)
 #endif
 
 // Same slots in march and composite: the latter also repairs full-resolution
@@ -190,6 +190,9 @@ float4 march_depth(float2 uv, float4 depth) {
 #else
 // Soft edge: zero below the coverage, zero-slope toe (exponent >= 1.5). `cover` moves the coverage by a low
 // frequency world-anchored term, so a cloud edge is not one iso-surface of the stored noise.
+// The term is a sum of three plane waves along oblique directions (1,-2,1), (2,1,-1), (-1,1,2): whole cycles per
+// 65536 units (world anchored under the camera modulo), wavelength 26756 units (5.35 km at 5000 units per km)
+// each, evaluated at the warped position: about two repeats inside the full-density range. A product of single-axis waves made world-axis slabs that showed as ribs (run220).
 float look_density(float rho, float cover) {
     float x = saturate((rho-look_remap.x-cover)*look_remap.y);
     return x > 0.0 ? pow(x,look_remap.z) : 0.0; // exact zero below the coverage: empty samples stay empty
@@ -204,13 +207,13 @@ float4 march_depth(float2 uv, float4 depth) {
     float3 view = float3((2.0*uv.x-1.0-projection.z)/projection.x,
                         (1.0-2.0*uv.y-projection.w)/projection.y,1.0);
     // Every ray ends at the column cap (look_remap.w), sky and geometry alike, so a distant hull and the sky
-    // pixel beside it carry the same in-scatter; the taper keeps its 3:1 shape over the last quarter.
+    // pixel beside it carry the same in-scatter; the taper is a smoothstep from look_edge.y to the cap.
     float distance = min(geometry(depth) ? depth.b*length(view) : sun_horizon.w,min(sun_horizon.w,look_remap.w));
     float3 direction = normalize(float3(dot(view,inverse_view0.xyz),dot(view,inverse_view1.xyz),dot(view,inverse_view2.xyz)));
     float3 view_direction = normalize(view);
     // Scalars that live across the loop share registers (ps_3_0 has 32 temporaries and the compiler gives
-    // every live scalar its own): steps = near step, far step, taper start, taper reciprocal.
-    float4 steps = float4(min(distance,12000.0)/24.0,max(distance-12000.0,0.0)/40.0,0.75*look_remap.w,4.0/look_remap.w);
+    // every live scalar its own): steps = near step, far step.
+    float2 steps = float2(min(distance,12000.0)/24.0,max(distance-12000.0,0.0)/40.0);
     float2 offset = 0.5;
 #if FOG_LOOK >= 2 && !defined(FOG_LOOK_NO_OFFSET) // repair pixels (depth-class edges) keep the bin centres
     float2 cell = floor(uv*sizes.xy)*0.5 + look_extinction.w;
@@ -224,15 +227,16 @@ float4 march_depth(float2 uv, float4 depth) {
             float lambda = (1.0-t*t*(3.0-2.0*t))*chroma_ready.w;
             // Domain warp, no fetch: two octaves of a world-anchored periodic offset (whole cycles per fine
             // window of 65536 units, so camera_local's modulo never shows), each axis driven by the two others.
-            // It bends the rounded, lattice-aligned value-noise silhouettes; the product also moves the coverage.
+            // It bends the rounded, lattice-aligned value-noise silhouettes.
             float3 world = fine_local.xyz+direction*bin.y;
             float3 wave1 = look_wave(world.yzx*look_warp.x), wave2 = look_wave(world.zxy*look_warp.z);
             float3 ray = direction*bin.y+wave1*look_warp.y+wave2*look_warp.w;
             float rho = 0.0;
             [branch] if (lambda > 0.0) rho += lambda*level_sample(fine_atlas,fine_local,ray);
             [branch] if (lambda < 1.0) rho += (1.0-lambda)*level_sample(far_atlas,far_local,ray);
-            float e = saturate((bin.y-steps.z)*steps.w);
-            float cover = look_edge.x*wave1.x*wave2.y;
+            float e = saturate((bin.y-look_edge.y)*look_edge.z);
+            float3 warped = fine_local.xyz+ray;
+            float cover = dot(look_wave(float3(dot(warped,float3(1,-2,1)/65536.0),dot(warped,float3(2,1,-1)/65536.0),dot(warped,float3(-1,1,2)/65536.0))),look_edge.x);
             rho = look_density(rho,cover)*(1.0-e*e*(3.0-2.0*e));
             float2 a = 1.0-exp(-camera_sigma.w*rho*bin.x*float2(1.0,0.5)); // extinction, half-extinction octave
             float2 light = 1.0; // shaft visibility, sun-ward self-shadow

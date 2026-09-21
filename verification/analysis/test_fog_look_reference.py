@@ -15,6 +15,7 @@ CHROMA = (0.20072728, 1.0, 0.120704934)
 PROGRAM = r'''
 #include "fog_look_math.h"
 #include <cstdio>
+#include <initializer_list>
 #include <limits>
 int main() {
     using namespace x3m::renderer;
@@ -25,6 +26,12 @@ int main() {
         for (auto& row : rows) for (float v : row) std::printf(" %.9g", double(v));
         std::printf("\n");
     }
+    // Fade start fallback: cap - 1000 is taken as given, anything later becomes the last quarter of the cap.
+    for (float start : {69000.f, 69001.f, 199000.f}) {
+        FogLookTuning f; f.sky_cap = 70000.f; f.taper_start = start; float rows[fog_look_rows][4];
+        fog_look_constants(1, f, chroma, radiance, 0, rows); std::printf("%.9g %.9g ", double(rows[10][1]), double(rows[10][2]));
+    }
+    std::printf("\n");
     FogLookTuning t; unsigned taken = 0;
     for (const auto& field : fog_look_fields) { taken += fog_look_set(t, field, field.minimum); taken += fog_look_set(t, field, field.maximum + 1.f); taken += fog_look_set(t, field, std::numeric_limits<float>::quiet_NaN()); }
     std::printf("%u %u %u %u\n", taken, unsigned(sizeof fog_look_fields / sizeof fog_look_fields[0]), fog_look_next(3), fog_look_next(0));
@@ -53,8 +60,16 @@ class FogLookReference(unittest.TestCase):
             rows, scale = ref.look_constants(look, CHROMA, (1., .5, 1.5), 3 + 64 * look)
             self.assertEqual(values[0], scale if look else 1.)
             np.testing.assert_allclose(values[1:], rows.ravel().astype(np.float64), rtol=2e-7, atol=0, err_msg='look %d' % look)
+        # Fade 65000 -> 112500 units by default; a start that does not precede the cap falls back to its last quarter.
+        rows, _ = ref.look_constants(1, CHROMA)
+        np.testing.assert_allclose(rows[10, :3], (.04, 65000., 1. / 47500.), rtol=1e-6); self.assertEqual(rows[0, 3], 112500.)
+        rows, _ = ref.look_constants(1, CHROMA, tuning=dict(ref.TUNING, sky_cap=70000., taper_start=70000.))
+        np.testing.assert_allclose(rows[10, 1:3], (52500., 1. / 17500.), rtol=1e-6)
         # Every field takes its minimum and refuses out-of-range and NaN; the hotkey wraps 3 -> 0.
-        taken, fields, wrap, step = map(int, lines[4].split())
+        np.testing.assert_allclose(np.array(lines[4].split(), np.float64), (69000., 1e-3, 52500., 1 / 17500., 52500., 1 / 17500.), rtol=1e-6)
+        for start, expect in ((69000., 69000.), (69001., 52500.)):
+            self.assertEqual(ref.look_constants(1, CHROMA, tuning=dict(ref.TUNING, sky_cap=70000., taper_start=start))[0][10, 1], expect)
+        taken, fields, wrap, step = map(int, lines[5].split())
         self.assertEqual((taken, wrap, step), (fields, 0, 1)); self.assertEqual(fields, len(ref.TUNING))
 
     def march(self, look, store=None, **options):

@@ -1965,3 +1965,66 @@ frame (or a debug print at `0x00488720`'s return and `0x00471660`), since none o
 caught the disc mid-visible or mid-ramp.
 
 Evidence: `/Users/asvetl/x3-mod/verification/results/run220-sun-occlusion-triage.json`.
+
+## Rib fix, 22 km fade, look 2 default (2026-09-22)
+
+Source: `src/fog/fog_density_field_inc.h` (FOG_LOOK), `src/renderer/fog_look_math.h`, host twin
+`tools/analysis/fog_density_shader_reference.py`. Host evaluation is a scratch render (not tracked): the reference's look law,
+T only, on a dense float16 store of the screen's field around pose A's origin, 320x192, tan half-vfov .75, 1.0x
+(sigma = screen sigma / 1.5, x8), sky rays, views along world Z, X, Y and the pose-A diagonal (D).
+
+**1. Coverage variation.** `cover = (.12/3) x sum of three parabolic-sine plane waves` with wave vectors (1,-2,1), (2,1,-1),
+(-1,1,2) cycles per 65536 units (whole cycles, so world anchored under the camera modulo; 26756 units = 5.35 km each at 5000
+units per km, about two repeats inside the 13 km full-density range), evaluated at the warped position; no fetch. A
+stored-density driver was not used: the coverage is needed before the sample's own remap and L1 has no spare tap; an extra
+`level_sample` does not fit repair L2, and neither does a second wave scale (repair L2 is at 510 of 512). Metrics against
+variation off in the same view, 240x144, default fade: stripe score = largest normalised autocorrelation of the 6-px
+high-passed 1-T at lags 12-90 px (periodic ribs score high); HP = high-pass RMS ratio; edge = pixels whose `1-T > .01`
+footprint differs from variation off, per footprint-perimeter pixel. Views: world Z, X, Y, the pose-A diagonal D, along each
+wave vector (k0-k2) and along each pairwise cross product (x0-x2), where a plane-wave lattice would line up.
+
+| Set | Wavelength | Worst stripe excess over off (view) | Stripe range | HP ratio | Edge px (views with an edge) |
+| --- | --- | --- | --- | --- | --- |
+| first attempt (4,-2,3),(-2,5,3),(3,3,-5) | 2.0-2.4 km (wrongly recorded as 10-12 km) | +.124 (x1: .232 vs .108) | .104-.232 | 1.14-1.43 | .84-1.77 |
+| **(1,-2,1),(2,1,-1),(-1,1,2)** | 5.35 km | **+.025** (Y .109 vs .089) | .107-.185 | 1.02-1.12 | .71-2.27 |
+| (2,1,-2),(-1,2,1),(1,-1,2) | 4.4-5.4 km | +.047 | .098-.228 | .98-1.14 | .81-3.29 |
+| (1,2,-2),(2,-1,1),(-2,1,2) | 4.4-5.4 km | +.030 | .090-.185 | .97-1.08 | .89-2.35 |
+| (1,-1,2),(2,1,-1),(-1,2,1) | 5.35 km | +.049 | .089-.227 | .96-1.12 | .66-3.12 |
+
+Chosen set per view, stripe new/off: Z .126/.153, X .156/.139, Y .109/.089, D .164/.139, k0 .185/.181, x0 .112/.115,
+k1 .147/.146, x1 .170/.187, k2 .132/.142, x2 .107/.111. Old product law for scale (320x192): stripe .43 (Z), .83 (Y), HP 2.5-2.9.
+The chosen set adds almost no high-pass energy (it moves edges at the 5 km scale rather than texturing them) and its stripe
+score is within .025 of variation off in all ten views. Limit: this reshapes patch outlines at kilometre scale; it does not add
+sub-kilometre edge detail (that remains the generator-side recipe noted in the architecture note).
+Slots / static texture instructions, one `rep` loop each: march L1 349/13, L2-3 422/15; repair L1 450/18, L2-3 510/20
+(before: 341, 415, 442, 503); composite look 210/10 unchanged. L0 march, repair, composite and the exact variant recompiled
+byte-identical (headers unchanged; only the include hash in their records moved).
+
+**2. Fade range** (orchestrator decision: no 30-40 km default). Default `TAPER_START` 65000, `SKY_CAP` 112500: full density to
+13 km, smoothstep to nothing at 22.5 km, all rays. Both are `X3M_FOG_LOOK_*` overrides (14 km: 52500/70000; 35 km:
+150000/200000). Bin layout kept at 24 + 40. Sky-ray 1-T (160x96, measured with the first-attempt coverage set; the range conclusion does not depend on it) and the 64-bin march against a
+384+640-bin march, plus the change when every sample moves half a bin (`offset .25` vs `.75`, the coarse-step shimmer proxy):
+
+| View | Range | mean | p50 | p99 | exactly empty | err p99 / max | half-bin p99 / max |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| D | 14 km | .082 | .0001 | .478 | .50 | .0006 / .0014 | .0012 / .0023 |
+| D | 22 km (default) | .097 | .0003 | .508 | .49 | .0027 / .0055 | .0051 / .0102 |
+| D | 35 km | .167 | .103 | .592 | .23 | .0194 / .0390 | .0332 / .0587 |
+| Z | 14 / 22 / 35 km | .078 / .147 / .183 | 0 / 0 / .0035 | .592 / .787 / .862 | .61 / .53 / .45 | max .0021 / .0052 / .0337 | max .0035 / .0112 / .0526 |
+| X | 14 / 22 / 35 km | .023 / .044 / .111 | 0 / 0 / .007 | .318 / .571 / .756 | .76 / .74 / .39 | max .0011 / .0044 / .0291 | max .0023 / .0080 / .0480 |
+
+The 35 km range veils the sky (D median .10, empty share .50 to .23) and its 4700-unit far bins under-sample the x8 medium
+(half-bin change up to .059 in T: visible shimmer under forward motion for L1/L2); the 22 km default keeps the empty share and
+the median of the 14 km law and stays near 1 % worst case. Bin splits at the default: 20+44 err max .0041-.0047, half-bin max
+.0087-.0092; 16+48 err max .0032-.0036, half-bin .0061-.0106: under a third better at best and the near bins grow to 750 units
+(past the 512-unit fine node), so the layout was not changed. Camera-inside-fog poses were not part of this measurement.
+
+**3. Defaults.** Stored range starts on look 2: launcher (`X3M_VOLUMETRIC_FOG_LOOK` = 2 unless `--volumetric-fog-look` is given;
+legacy range stays 0) and the DLL fallback (`renderer::fog_look_default`, absent or malformed variable). Overlay 1.0x is
+`--volumetric-fog 0.02` or the bare flag (`const=0.02`, overlay = strength / .02); 0.03 gives 1.50x.
+
+**4. Fixture** (bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`): `fog_density_shader_run.py build/run/check` PASS,
+all 16 gates, pass fixture 58 checks, none failed, run 43.8 s + 27.5 s. GPU versus host `look_march` over the nine look cases
+(576 rays each, 221-295 fogged; the taper-depth case is now 90000 units): T max .00036 (FP32) / .00074 (RGBA16F), S max
+.00037 / .00060, gates .003. Generator `--check` PASS for the nine fog programs. Summary:
+`verification/results/fog-density-shader/summary.json`.
