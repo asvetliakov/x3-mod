@@ -358,3 +358,16 @@ fixtures green on its own.
 - Retired tests currently keep passing under `--include-retired`; deleting them
   removes that historical oracle. If the user wants the record kept, move them
   to `verification/historical/` as was done for `owned_media` instead.
+
+## User verdicts (2026-09-22)
+
+- `--point-light-root-admission`: **keep** (verified inert when unset:
+  `point_light_admission.cpp` `initialize()` returns before any patch).
+- `--taa-alpha-history`: **keep** (plain default-off flag).
+- `X3M_ENGINE_READS=rpm`: **remove**; direct reads are the only mode flown.
+- Held lattice upload/geometry-capture chain (~8,900 lines): **remove**; the crawl
+  it was built to explain is fixed and accepted (taa-lattice-crawl.md §32.5–§32.6).
+  Keep the ownership/shader-shadow lifetime fix. Archive the uncommitted
+  `/tmp/x3-lattice-capture-lifecycle` and `/tmp/x3-lattice-payload-writer` work to a
+  git branch before removing those worktrees. Own production batch with review,
+  production build and `check_no_x87.py`, after batches 1–2.
