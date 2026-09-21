@@ -3383,3 +3383,74 @@ this proves captured-frame availability, not a complete sign-artifact verdict.
 The two extra bursts are The Hole and Atreus' Clouds by user chronology. Fog
 on/off captures and timing limitations are in the [fog ledger](volumetric-fog.md#run-48-b--run180-2026-09-20).
 Local reproducible analysis: `verification/results/run48b-triage/reproduce.py`.
+
+## Run 62 (run222) off-screen caster drop: the view inverse is a transpose of a 16.16-quantised rotation (2026-09-22)
+
+Diagnosis only; no source change, no Wine. Evidence `/tmp/x3-bottleX3-run222` (local), compact record
+`verification/results/run222-shadow-caster-drop.json`; scratch scripts not committed. Symptom and fog side:
+[volumetric-fog.md](volumetric-fog.md), "Run 62 fog flight diagnosis (run222)".
+
+**Cause (measured).** The static class is decided on the object→world rows that
+`shadow_retention::world_rows` (`src/proxy/shadow_retention_core.h:216-227`) recovers as
+`world = r·(view − t)`, i.e. with the **transpose** of the latched view rotation as its inverse. The latched rotation
+is the engine's 16.16 fixed-point basis (`r·65536` is integral to log precision), so it is orthonormal only to
+`max|R·Rᵀ − I|` median 1.24e-5, p99 2.1e-5 (6,001 frames). The transpose error is `(R·Rᵀ − I)·t`: at the session's
+`|t|` (median 37 km, run222 burst 32.5 km) median 0.39, p90 0.59, max 1.06 units, 8–20 × `eps = 0.05`, and it re-rolls
+whenever the orientation changes by one LSB. It is not float noise, not a re-key, not rotating parts and not a
+sector re-base: it is a common-mode pseudo-motion of the whole world, proportional to the eye's distance from the
+sector origin. The architecture note's precision model (≤ 0.03 u) and fixture case l used orthonormal cameras.
+
+| Measurement | Result |
+| --- | --- |
+| Station | model `000053aa`, handle 23824, serial 23823 (serial 68097 after the reload, burst 31040), 28 records, 97,855 primitives, world AABB half ≈ (3103, 1538, 10176), `class=moving streak=0 static_mask=0 moved_mask=31` on all 8 frames of every burst it appears in; absent from burst 9152 (0 records) |
+| Burst frame lines | 9152: `nodes_live=6 static=0 moving=6`; 9539: `nodes_live=15 static=0 moving=15`; 31040: 14 / 0 / 14; `nodes_unseen=0` in all three. All 3,173 `shadow_retention_caster` records of the five bursts are `moving` |
+| Apparent motion of station-class records, consecutive frames (production rows, record centres) | per burst median 0.51–1.07 u/frame, max 1.38–3.35; the player-ship nodes move exactly with the eye, as expected |
+| Same centres corrected to the exact inverse, `c' = (r·rᵀ)⁻¹·c` | median 0.003–0.008, p90 ≤ 0.018, **max 0.025 u** over 1,456 record pairs (log-precision floor ≈ 0.005): every one under `eps` |
+| Rigid common-mode fit (translation + rotation about the eye) to one station, burst 7910 | residual 0.0004–0.007 u of 0.5–1.3 u; fitted rotation 4–20 µrad = the 1/65536 quantum |
+| Frame-level law, 30,032 frames | live static share 0.35 on the 9,948 frames whose predicted error step `‖Δ((R·Rᵀ−I)t)‖` < 0.005 u (orientation bit-frozen) and **0.00** on the 19,994 frames above it; 529 of 539 promotions follow ≥ 8 bit-frozen frames; 444 of 511 reclassifications fall on a predicted step ≥ 0.05 u. Eye speed and turn rate alone do not separate the classes |
+| Frame 31045 (camera bit-identical to 31044) | every record delta exactly 0: the recovery is deterministic, the error is the rotation's |
+
+**Is retention working in flight? No, and it never has.** `static=0` on 15,577 of 30,035 frames; the rest are
+parked or orientation-frozen stretches plus unseen statics kept from them (`nodes_unseen>0` on 12,146 frames).
+`moving_dropped` 1,646, `box_exit`/`age`/`evicted` 0. Same law in older flights: run116 (first census) live static
+share 0.20 bit-frozen / 0.00 otherwise, 11,596 of 11,609 promotions after ≥ 8 frozen frames; run212 0.70 / 0.00,
+373 of 381. `static=0` frames: run116 3,545/24,296, run117 8,786/26,466, run200 25,863/42,836, run214 10,976/28,776,
+run220 18,909/48,881, run221 7,916/19,386. The run116 diagnosis' "ruled out" drift check looked only at sightings
+that were already static, i.e. at frozen orientations (survivorship). `classify_candidate_static`
+(`src/proxy/motion_output.cpp:7179`) feeds the same rows to the ring, so the static-only far-cascade pool is
+affected the same way.
+
+**On-screen shadows, not only fog (measured on the dumped maps).** Occluder texels 9152 → 9539: C0 13,860 → 158,002
+(137,703 at the station's depth, ≈ 11.4 km sun-ward of the ship), C1 393 → 1,361,826 (32 % of the map), C2 1,048 →
+288,866, C3 41 → 30,264. CPU twin of the apply (`expected_factor_cascades`, the frames' own `sun_shadow_apply_params`
+and RT2): shadowed pixels (f < 0.5) 3,483 of 46,876 valid at 9152 against 9,749 of 45,979 at 9539. Frame 9152's
+receivers evaluated against 9539's maps (rows re-expressed through both latches with the exact inverse): C2-owned
+shadowed pixels 2 → 91 of 132. C0 is not comparable across the bursts (own-ship pose changed), so the C0 share of
+the 3,483 → 9,749 difference that is the station is inferred, not isolated.
+
+**Fix (recommended, not made).**
+1. Replace the transpose by the exact inverse of the latched rotation (adjugate / det in double, as
+   `camera_translation_clip` already does, `src/renderer/camera_reprojection.h:132-142`; its comment's "~1e-7" is
+   1.2e-5 on this engine) in **one shared helper computed once per latch**, and use it at every world-recovery site
+   together, because live casters, the box centre and the receiver rows cancel the error today only by sharing the
+   same pseudo-world: `shadow_retention_core.h:216-227` and `:233-235` (`camera_position`),
+   `src/renderer/shadow_replay_projection.h:708-719` (`shadow_cascade_draw_rows`), `:103-104`, `:136`, `:170`,
+   `:587-599`, `src/proxy/shadow_replay_sun_point.h:145,168-169`, `src/renderer/static_previous_rows.h:80-81`. Changing
+   `world_rows` alone would put retained casters in true world and live casters/receivers in the pseudo-world, a
+   0.4–1 u offset = 3–8 C0 texels. Today a retained caster already replays with frame A's pseudo-world inside frame
+   B's: the same offset, hidden because almost nothing is retained.
+2. Keep `eps`, the 8-sighting streak and node keying as they are; with 1 the station is static from its ninth
+   sighting (measured ≤ 0.025 u). Holding moving-class large casters for N frames is not needed for this symptom
+   and stays stage 3.
+
+Risks: a working retention is new behaviour in flight — stale shadows of objects that depart or dock while unseen
+without a retirement (bounded by `age_cap` 7,200 frames, `box_exit`, the orphan probe), up to 1,024 nodes / 4,096
+records held (fixed storage, 1.85 MB, unchanged), `would_c3/c4` issues rising towards the caps (budget 640 issues,
+2.16 ms), first-look pop-in unchanged. Per-frame cost of the helper: one 3×3 inverse per latch. Windows: pure CPU
+arithmetic, no API.
+
+Fixture that proves it: host `test_shadow_retention.py` case l rebuilt with a 16.16-quantised, non-renormalised
+rotation at |t| 33 km and 81 km, orientation stepping ≥ 1 LSB every frame: drift ≤ eps and promotion on sighting 9
+(fails today with drift ≈ 0.4–1 u, never promoted); motion-output fixture case a with the same quantised rotating
+camera: blob within 1 texel of the twin for 600 unseen frames, plus a live-against-retained C0 alignment check
+(same node, seen then unseen, blob shift ≤ 1 texel) to guard fix 1's all-sites requirement.

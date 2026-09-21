@@ -1,0 +1,25 @@
+{
+  "schema": "run222-shadow-caster-drop/1",
+  "date": "2026-09-22",
+  "evidence": "/tmp/x3-bottleX3-run222 (local, untracked); session-20260922-015557-212.log; Run62 DLL 924be5c0; comparison logs run116, run212 and static=0 counts of run117/200/214/220/221",
+  "method": "read-only log and dump analysis; scratch scripts not committed; no Wine, no build",
+  "cause": "shadow_retention::world_rows (src/proxy/shadow_retention_core.h:216-227) inverts the latched view with the transpose of a 16.16 fixed-point rotation; error (R R^T - I) t re-rolls with every orientation LSB and exceeds eps 0.05",
+  "measured": {
+    "rotation_orthonormality_max_abs": {"median": 1.24e-5, "p99": 2.14e-5, "frames": 6001},
+    "transpose_error_units_at_t_32539": {"median": 0.393, "p90": 0.594, "max": 1.063},
+    "station": {"model": "000053aa", "handle": 23824, "serial": 23823, "serial_after_reload": 68097, "records": 28, "primitives": 97855, "class": "moving", "streak": 0, "moved_mask": 31, "records_at_9152": 0},
+    "burst_frames": {"9152": {"nodes_live": 6, "static": 0, "moving": 6}, "9539": {"nodes_live": 15, "static": 0, "moving": 15}, "31040": {"nodes_live": 14, "static": 0, "moving": 14}},
+    "caster_lines": {"total": 3173, "moving": 3173},
+    "apparent_motion_units_per_frame_production": {"median_range": [0.505, 1.065], "max_range": [1.383, 3.349]},
+    "apparent_motion_units_per_frame_exact_inverse": {"median_range": [0.003, 0.008], "max": 0.025, "record_pairs": 1456},
+    "rigid_fit_burst_7910": {"residual_units": [0.0004, 0.0073], "rotation_urad": [4.4, 20.2]},
+    "frame_law": {"frames": 30032, "bit_frozen_frames": 9948, "live_static_share_frozen": 0.35, "live_static_share_otherwise": 0.0, "promotions": 539, "promotions_after_8_frozen": 529, "reclassified": 511, "reclassified_on_step_ge_eps": 444},
+    "session": {"frames": 30035, "static_zero_frames": 15577, "nodes_unseen_gt0_frames": 12146, "moving_dropped": 1646, "box_exit": 0, "age": 0, "evicted": 0, "flush_sun": 2},
+    "older_flights": {"run116": {"mode": "census", "frames": 24296, "static_zero": 3545, "live_static_share_frozen": 0.20, "otherwise": 0.0, "promotions": 11609, "after_8_frozen": 11596}, "run212": {"frames": 15744, "static_zero": 137, "live_static_share_frozen": 0.70, "otherwise": 0.0, "promotions": 381, "after_8_frozen": 373}, "static_zero_over_frames": {"run117": [8786, 26466], "run150": [2947, 4776], "run200": [25863, 42836], "run214": [10976, 28776], "run218": [3655, 8106], "run220": [18909, 48881], "run221": [7916, 19386]}},
+    "maps_occluder_texels_9152_to_9539": {"c0": [13860, 158002], "c1": [393, 1361826], "c2": [1048, 288866], "c3": [41, 30264], "c4": [2524, 4153], "c0_station_depth_texels_9539": 137703, "c1_station_depth_texels_9539": 1361264},
+    "screen_twin": {"9152_own_maps": {"valid_px": 46876, "shadowed": 3483}, "9539_own_maps": {"valid_px": 45979, "shadowed": 9749}, "9152_receivers_with_9539_maps_c2_owned": {"owned": 132, "shadowed_own": 2, "shadowed_with_station": 91}}
+  },
+  "inferred": ["the station's share of the C0 on-screen difference (own-ship pose differs between bursts)", "draws use the same quantised rotation as the latch (supported by the exact-inverse collapse to 0.025 u)"],
+  "fix": {"primary": "one exact-inverse (adjugate/det, double) world-from-view helper per latch, used at every recovery site together: shadow_retention_core.h:216-235, shadow_replay_projection.h:103-104,136,170,587-599,708-719, shadow_replay_sun_point.h:145,168-169, static_previous_rows.h:80-81; precedent camera_reprojection.h:132-142", "not_needed": "N-frame hold of moving-class casters (stage 3)", "fixture": "test_shadow_retention case l and motion-output case a with a 16.16-quantised rotating camera at |t| 33/81 km; live-vs-retained C0 alignment <= 1 texel"},
+  "ledger": "docs/verification/directional-shadows.md, section 'Run 62 (run222) off-screen caster drop'"
+}
