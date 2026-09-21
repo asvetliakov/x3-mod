@@ -951,3 +951,21 @@ not the next production layout. The separate fixed 500-unit marcher also failed
 its numerical gates. Further design must address organic connected regions and
 clear pockets without turning support connectivity into an artificial street or
 tube network, and without reintroducing a uniform sector-wide haze.
+
+### Connected-region reference preview (2026-09-21)
+
+The [offline reference](../../tools/analysis/fog_connected_preview.py) tests a
+fixed paired-lobe region in each deterministic 5P cell, with P=32768 render
+units. Each lobe has axes (1.5P,P,0.75P), fixed orientation and a smooth angularly
+uneven boundary. The union uses the maximum envelope, multiplying the original
+family density and premultiplied colour once; overlapping lobes do not add
+extinction. Original detail scale/phase are retained, with no density floor.
+Merged conservative ray intervals are clipped by depth and the 30–40 km taper.
+These dimensions are authored choices, not recovered game fog parameters.
+
+Six 128×72 reference views and two slices establish numerical convergence,
+not production suitability. Nearby regions are broader, but distant views
+still read as speckled ovals; appearance remains unselected. The largest
+analytic cost is 1,558 atlas reads per ray at 128-unit spacing before lighting,
+shadows or repair. There is no selected runtime integrator, GPU timing or new
+flight build. See the [verification ledger](../verification/volumetric-fog.md#fixed-paired-lobe-connected-cloud-reference-preview).

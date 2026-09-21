@@ -1,0 +1,12 @@
+{
+  "verdict": "PASS",
+  "reviewer": "review_fog_range_replay",
+  "scope": "combined frozen source, focused tests and offline numerical/image evidence",
+  "tests_passed": 9,
+  "image_hashes_verified": 8,
+  "checkpoint_sha256": "4d87c3ae50bda3c9c9c8ab99ecb84cc49ef03e18018416d294e631c4f1adaff4",
+  "limitations": [
+    "Appearance selection pending.",
+    "No production integrator or runtime approval."
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "evidence": {
+    "image_count": 8,
+    "images": {
+      "bluewell-30km-cloud-only.png": "6a59ece8f5846cbee863cded616b54bab9ad28a4dcb710ee306cf9d6479308bd",
+      "bluewell-38km-cloud-only.png": "db86aad90b9970e03bea50f4fc99dfc04adced62d828d82bdeea17c3289b4bf7",
+      "bluewell-inside-core-cloud-only.png": "23448b3c150fd75f5183c4902ab2cd19cb5ae70555fb7475104448b4e5c1ccc5",
+      "bluewell-localXY-support-detail.png": "e31c8233b9fd10992d17c24376892932cd50b6bf81baf55b026e37b3877089cf",
+      "foggreenoutlands-30km-cloud-only.png": "c2a4594be1036ce13b31273871a6d017d0f2082332b340eb240a6aea028ec145",
+      "foggreenoutlands-38km-cloud-only.png": "cf98af1c6f0b039abf568961d584aded1ebecf4b0e86f36798643d93538aa5ee",
+      "foggreenoutlands-inside-core-cloud-only.png": "bde2f3c12ed5497c93aba47d16fb4691563e37426824dcf1733858113bb2c185",
+      "foggreenoutlands-localXY-support-detail.png": "d11737229d2f445e0bfba79dd19931274f618e4768e34b2d75cd02a716df0f5e"
+    },
+    "numeric_report_sha256": "a008c7ca7b2c1fa373f749769af44087117b27b7c4b9123570f6cd118a5519d5",
+    "numeric_source_sha256": "f32065bdf8de5d70baa48bfc5d55fcfb6bc11eb7ca6ff6fc0284c234b36180a8",
+    "report_json_sha256": "a008c7ca7b2c1fa373f749769af44087117b27b7c4b9123570f6cd118a5519d5",
+    "report_md_sha256": "df83966cea7f473032b7f5ea6ef13033afcb5d3a809124f2ce86e6bc00f043e8"
+  },
+  "execution": {
+    "command": "python3 tools/analysis/fog_connected_preview.py --capture /tmp/x3-bottleX3-run200 --asset-data /tmp/x3-run56-candidate/build/generated/fog_field --output /tmp/x3-fog-connected-preview --design /tmp/x3-fog-connected-design.md",
+    "focused_test_command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_connected_preview",
+    "focused_tests_passed": 9,
+    "host_seconds": 259.688825625
+  },
+  "limitations": [
+    "Appearance choice remains pending user/parent review.",
+    "Operation counts exclude lighting, shadows and repair and are not GPU timing or FPS.",
+    "Synthetic normalized unit-radiance cloud-only sheets are not game composites.",
+    "No candidate integrator, production shader, parameter search, game, Wine, build or install was executed."
+  ],
+  "numerical": {
+    "T_gates": {
+      "max": 0.00075,
+      "p99": 0.00025
+    },
+    "max_implied_atlas_reads_per_ray_at_128": 1558.0,
+    "reference_128_vs_64_T_worst_max": 0.0001876354217529297,
+    "reference_128_vs_64_T_worst_p99": 8.147656917572037e-05,
+    "views": 6
+  },
+  "result": "passed-connected-reference-preview",
+  "schema": 1,
+  "scope": "reference-only numerical and cloud-only appearance preview; no production selection or runtime approval",
+  "source": {
+    "analysis_sha256": "f32065bdf8de5d70baa48bfc5d55fcfb6bc11eb7ca6ff6fc0284c234b36180a8",
+    "design_sha256": "75b0390bcbafbac59846cd19864185a21c2064f0c26d0d2a0d1052b453f4faf8",
+    "test_sha256": "34b5b7b2d08aa1e26ed9ac8a8cdfb74ed636b393c23ecd3f96f5023ea9800470"
+  }
+}

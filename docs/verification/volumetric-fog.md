@@ -1092,3 +1092,11 @@ provenance. Corrected cost witnesses see 5–10 full-resolution visible banks an
 3,574–6,422 per-bank-union support-edge pixels potentially requiring repair.
 These are operation/coverage counts, not GPU timing. Production, native Windows,
 state/Reset, radiance/shafts and flight acceptance remain open.
+
+### Fixed paired-lobe connected-cloud reference preview
+
+The frozen six-view, reference-only preview passed its numerical 128/64 transport check: worst T p99/max was 0.0000814766/0.000187635 against 0.00025/0.00075. The host analysis took 259.69 s; 9 focused tests passed, and hashes for all 6 fixed-scale cloud-only view sheets plus 2 localXY support/detail slice sheets bind to the report. The largest analytic count was 1,558 implied atlas reads per ray at 128-unit spacing; it excludes lighting, shadows, repair and GPU timing.
+
+This establishes reference convergence only. The broad near views and speckled oval distant views require parent/user appearance review; no selection is recorded. It does not approve aesthetics, a production integrator, GPU cost, flight appearance or native runtime behavior. No parameter iteration followed the result.
+
+[Checkpoint](../../verification/results/fog-connected-preview-2026-09-21/checkpoint.json) and [review](../../verification/results/fog-connected-preview-2026-09-21/review.json).
