@@ -1060,3 +1060,133 @@ projection check above.
 
 Native Windows: arithmetic and a log line only; no API use. Cross-compiled, not run
 natively.
+
+## Distant unrouted stations under a pan: sentinel stabiliser (2026-09-21, design, not implemented)
+
+Decision note for the run214 symptom "distant stations flicker on a vertical pan"
+(`docs/verification/volumetric-fog.md`, "Run 60 session B diagnosis"; numbers in
+`verification/results/fog-run214-diagnosis.json`). [M] measured this session, [I] inferred.
+
+### What the stations are [M]
+
+Frame 24630 (run214): 62 `overlay_node` refusals are the reviewed hull pairs `494fe349/fffdabd9` (28),
+`53a0a641/8759c783` (19), `4944d81d/ca6bfa4a` (14) and `53a0a641/63f96eba` (1), all source-over (`src=5 dst=6`),
+`zwrite=0`, `atest=0`, `jittered=1`; the 26 `no_zwrite` are the same families with `atest=1` or `src=2`. They reach the
+overlay arm (`src/proxy/motion_output.cpp:1011-1046`) and fail only its witness "the very next draw after a routed draw of
+the same node" (`:1043`), which a station with no opaque routed draw can never satisfy. So the engine draws the whole far
+station blended without depth writes; the pixels are jittered, unrouted, sentinel-depth. Station detail is dim: luma p50 /
+p99 / max = 0.095 / 0.34 / 0.76 on 4325 detail pixels.
+
+### Recommendation: option (b), restricted — a box-bounded stabiliser on unrouted sentinel pixels
+
+Give unrouted sentinel pixels a thin-region strength `S` (default 0.7, `0` = off and bit-identical) through the
+**existing camera-gate path**, always with the 7x7 box and never with the unclipped history:
+
+- In the composition draw of the camera mask, a pixel whose own depth is the sentinel and whose own motion alpha is
+  exactly -1 (the route's unrouted fill; a routed sentinel pixel, section 32.5 glass, is excluded) gets
+  `b = max(b, S * result.a)` and keeps `a` (0 for such a pixel unless a lattice region covers it). `result.a` is the 17x17
+  minimum of the camera openness, so a routed object moving against the camera path (own ship in chase view, a routed ship
+  crossing the sky) closes the stabiliser within 8 px of itself. The class is **not** dilated: silhouettes of routed
+  geometry keep today's resolve.
+- The resolve is untouched (`resolve_far` is at 508 of 512 slots; taa-distant-line-fade.md section 10). With `a = 0`,
+  `src/temporal/resolve.hlsl:455-457` gives `old = clip3 + S * (box7(old) - clip3)` and `:485` gives
+  `keep = max(keep, keep + S * (min(ramp, W_thin) - keep))`: 0.949 at S = 0.7 with the flown W_thin = 0.97, never below
+  the base weight on young pixels. The far-plane rotation path these pixels already use is exact for the skybox and
+  matched both stations within 1.3 px in run214; their camera-relative speed is 0 by construction, so no speed gate is
+  needed and the pan no longer switches anything off.
+- Emitter bound in the box pass: where the raw (unweighted) luma maximum of the 7x7 exceeds `E` (default 1.0; station
+  detail max 0.76, the project's emitters are authored > 1.0) and the centre depth is the sentinel, the pass writes the
+  inner 3x3 min / max instead of the 7x7. The history is then within one pixel of the tight clip around lasers, engine
+  trails, explosions and suns. `E = 0` disables the bound.
+
+Offline estimate (scratch copy of `tools/analysis/taa_resolve_replay.py` with a `sent` option; resolve validated against
+the dumped `taa_*` of run212 at 0.0016 codes mean error on sentinel pixels, conv 1). Flicker = rms of the output against
+the motion-compensated previous output, codes; gradient = detail kept:
+
+| input | config | flicker | gradient | pixels > 4 codes above the current 3x3 max |
+|---|---|---|---|---|
+| run214 station crop 540 180 700 340, detail px (post-TAA `hdr_*` as the current sample: a proxy, no `color_*` dumped), pan 3-9 px/frame | installed | 2.16 | 9.44 | 0 |
+| | W 0.985 / 0.95, tight clip (what a weight alone buys) | 1.60 / 1.75 | 9.25 / 9.29 | 0 |
+| | S 0.5 / **0.7** / 1.0, W 0.97, box7 | 1.47 / **1.20** / 0.86 | 10.0 / **10.5** / 11.8 | 297 / 507 / 961 of 179 200 |
+| run212 star field + space dust 150 120 500 420, 16113-16144 (true pre-resolve input; 0.13-3.46 deg/frame) | installed | 0.36 slow / 0.63 fast | 5.55 / 5.76 | |
+| | **S 0.7** | 0.18 / 0.29 | 5.23 / 5.53 | 5-122 px per frame of 105 000, max 27 codes; highest in the dust frames 16143-16144 |
+| run212 routed station geometry 700 250 1200 600 treated as unrouted (proxy for a detailed hull) | plain -> box7 W 0.95 | 3.95 -> 2.17 slow, 5.67 -> 2.57 fast | 23.1 -> 21.0 | |
+
+So S = 0.7 removes about 45 % of the station's frame-to-frame change (tight clip with any weight: at most 26 %), keeps
+more station detail than the installed resolve, softens stars by 4-6 %, and the dust streaks of a 45 px/frame pan leave
+at most 0.12 % of the pixels above their 3x3 box. run212 has no distant unrouted object in view (checked on 16113 /
+16144), so the station rows rest on the run214 proxy.
+
+What can ghost, and its bound [I]: everything unrouted over sky (lasers, trails, explosions, distant unrouted ships, fog
+cards, in-world markers drawn before the resolve). The ghost is a trail at most 3 px behind a feature that moved across
+the sky relative to the camera path, no brighter than the brightest colour now within 3 px, decaying 5 % per frame and
+cut to the tight clip once the feature is more than 3 px away; with the emitter bound, 1 px for anything above E. Smooth
+content (fog cards, glows) has a 7x7 box barely wider than its 3x3. A blinking 1-px light rises 5 % instead of 10 % per
+frame (dimmer blink); it falls at once (the box closes).
+
+### Change list (for one `implement` agent on Fable; default S = 0 until flown, then 0.7)
+
+1. `src/temporal/line_mask_ps.hlsl:166-172` (camera program only): in `compose`, fetch the centre depth (new sampler s6 =
+   `depths_[next]`) and `motionOverride` at `uv`; `sentinelDepth(d) && motion.w >= -1 && motion.w <= -1 && options.x > 0.5`
+   -> `result.b = max(result.b, thinGate.x * result.a)` after line 170. `thinGate.x` (c6.x) is documented unused (`:76`).
+   With the per-pixel motion policy off the class is empty.
+2. `src/renderer/temporal_pass.cpp:402`: `thin_constants[0] = camera ? in.sentinel_strength : 0`; bind `depths_[next]` at s6
+   for the composition pass in the mask loop (`:490-503`); `src/renderer/temporal_pass.h:114`: `float sentinel_strength =
+   0.f`, validated `0..1`, ignored without the camera gate.
+3. `src/temporal/thin_box_ps.hlsl:29-40`: track the inner 3x3 min / max and the raw luma maximum inside the existing loop;
+   select the inner box when `rawMax > c23.x && c23.x > 0` and the centre depth (s1) is the sentinel; upload c23 and bind
+   s1 at `temporal_pass.cpp:513-519`.
+4. `src/proxy/capture.cpp:113-115` and `src/proxy/motion_output.h:893`: `X3M_TAA_SENTINEL_STABILISER=S[,E]`, launcher
+   option `--taa-sentinel-stabiliser`, echoed in the `motion_output_taa` line; add the final mask target to the
+   `--taa-debug` dumps (already asked for by the run214 diagnosis).
+5. No change to `resolve.hlsl`, to the route, or to any per-draw path.
+
+Cost: no per-draw or CPU work beyond two constants. GPU: two more fetches per pixel in one mask draw; the box pass, which
+today skips every pixel outside a camera-opened lattice region, runs its 49 taps on every unrouted sentinel pixel (sentinel share 81-91 %
+of the frame in run212, routed sentinel included). Not measured. If a GPU timing of the pass shows more than about 0.5 ms at the user's
+resolution, make the box separable (min / max is exactly separable: 7 + 7 taps, one more FP16 pair) before flying it.
+Native Windows: ps_3_0, `tex2Dlod`, two-target MRT and FP16 targets already required by the camera gate; no new cap, no
+backend-specific call. Cross-compile only, not run natively.
+
+Fixture rows (`verification/probe/run_temporal_pass.py`, thin-region / camera-gate group): (1) S = 0 and E = 0: every
+target bit-identical to the current camera-gate run; (2) sentinel sub-pixel facets panned 0 / 0.3 / 4 px/frame on the
+far-plane path, S = 0.7: shader = CPU oracle, ripple ratio against S = 0 below 0.6 at all three speeds (the far
+stabiliser's row is 1.000 at 0.30); (3) geometry silhouette against the sentinel: geometry pixels bit-identical to S = 0;
+(4) a bright bar (luma 4) crossing the sentinel at 6 px/frame, camera at rest: trail <= 1 px with E = 1, <= 3 px with
+E = 0, zero after it leaves; (5) a routed quad moving against the camera path: sentinel pixels within 8 px bit-identical
+to S = 0; (6) routed sentinel pixels (motion alpha 1) bit-identical; (7) Reset / history-invalid frame: current-only.
+
+### Alternatives
+
+- **(a) camera-relative speed gate for the far stabiliser.** Does nothing for this symptom (these pixels have
+  `farWeight = 0`, `line_mask_ps.hlsl:91`), and for routed far geometry it re-opens W = 0.985 with the tight clip under
+  continuous fractional resampling, which is the flown "blurry when the camera moves" verdict the 0.03-0.25 gate was
+  introduced to end (taa-distant-line-fade.md section 10: gradient x 0.78 at 0.085 px/frame); the gate lives in the
+  resolve, which has four free slots. If the confirming capture shows *routed* far stations flickering on a pan too, the
+  follow-up is the same mechanism as above, `b = max(b, S_far * farw * result.a)`, box-bounded at W_thin, not a wider
+  gate on 0.985.
+- **(c) route the refused draws.** Feasible as an admission (the overlay arm already writes motion with alpha 1 and a
+  masked RT2 for exactly this state; only the witness refuses), but it does not address the flicker: reprojection is
+  already within 1.3 px, and a routed sentinel pixel gets neither `farWeight` nor a class change, plus the section 32.5
+  gate closure. It becomes the right long-term fix only together with a depth write (RT2 unmasked, alpha 1), which would
+  also give these stations the far stabiliser at rest and a true fog march distance (run214 ranking item 4). That needs
+  what is not known: why the engine draws these nodes blended without depth (a distance band, a far-scene list or a
+  material flag) and whether their draw order is near-last-wins. Settled by one `disassemble` task on the draw-list
+  builder for the three pairs plus a diagnostic that logs `g_AlphaValue` and the node on `overlay_node` refusals.
+  The witness was also a review requirement (`seam-taa-fade-route-foreign`); dropping it needs its own review.
+- **(d) accept.** The user reported it and tolerates slight ghosting for stability; the measured remedy is cheap.
+
+### Unknown
+
+- The run214 estimate uses post-TAA frames as the current sample; whether the speckle is already in the pre-resolve
+  colour (source aliasing the jitter can integrate) is unmeasured.
+- No capture contains a laser, an explosion or an unrouted moving ship over sky: the emitter bound and E = 1.0 are
+  unvalidated against real content.
+- GPU cost of the full-sky box pass.
+
+### Confirming capture (user; current install, no new build)
+
+`--taa-debug`, same flags as Run 60. (1) F8 during a slow vertical pan (3-9 px/frame) across the two distant stations of
+run214; (2) F8 at rest on them; (3) F8 while firing lasers across open sky with a slow pan. (1) and (2) give the true
+`color_*` input for the replay and tell whether routed far stations need the follow-up; (3) gives the emitter luma for E
+and the ghost measurement. After the build: the same three bursts with `--taa-sentinel-stabiliser 0.7`.
