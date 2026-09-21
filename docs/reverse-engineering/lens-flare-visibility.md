@@ -179,6 +179,9 @@ correctness fix, and it is below TAA/HDR in value:
   not want the patch, the honest call is **DROP**, because without (a) the proxy
   can only soften a decision already made.
 
+Reopened 2026-09-22 on a user report; the design that follows this section's two-part outline is
+[sun-partial-occlusion.md](../architecture/sun-partial-occlusion.md).
+
 ## 9. What comparable space games do (author's own knowledge, not verified here)
 
 Modern space titles moved off CPU visibility tests for sun glare and onto
