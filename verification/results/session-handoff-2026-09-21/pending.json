@@ -1,0 +1,53 @@
+{
+  "code_base_main": "36860cb444ad4c13784a378464487abb8cb5aa56",
+  "pending": {
+    "lattice-capture-lifecycle": {
+      "worktree": "/tmp/x3-lattice-capture-lifecycle",
+      "branch": "investigate/lattice-capture-lifecycle",
+      "head": "e85ecc41382beae5e226002bf97ecbba36c5c694",
+      "files": {
+        "src/proxy/capture.cpp": "7e17eae94e362d38cd9dc2713bf0506d084f91636d0d0921a1ae514e20d4a598",
+        "src/proxy/capture.h": "cbdef1c1f0dd697d3a22519e909a262088a41c5c5a9f92474b20bb695ad6ab7d",
+        "verification/probe/lattice_capture_lifecycle_abi.h": "6ef07d42e02e1cb50f4feb5691a4c3b27561dc0bd181229ec5ee326f1e7690cd",
+        "verification/probe/lattice_capture_lifecycle_check.py": "a1660a8f35d2d806edabb85a7d13404cb76f82ffb010457894e0f761adb2b4bf",
+        "verification/probe/lattice_capture_lifecycle_fixture.cpp": "209994cfdae73fcbaef96497e79a5d225798a21cc3e7070a89c22cd1a111493b"
+      },
+      "backup_archive": "/tmp/x3-session-handoff-2026-09-21/lattice-capture-lifecycle.tar.gz",
+      "backup_sha256": "6ef2a30640db4a23efdb5f4542dac9b7d8db8a08509deddebe1d526366510d62",
+      "committed": false
+    },
+    "lattice-payload-writer": {
+      "worktree": "/tmp/x3-lattice-payload-writer",
+      "branch": "investigate/lattice-payload-writer",
+      "head": "75f04dde5cf1aeb5f507bf4cecb500513013b878",
+      "files": {
+        "src/proxy/lattice_state_capture.cpp": "cd1f4a7f3b0ee3d39d3e19f3fcf42d0647d5a07f3ec08a8f9b9e9012cb0c00e2",
+        "src/proxy/lattice_state_capture.h": "2a57beda13ddc2691fe221204a81cf3456b1f250b49f3a11df523342bbf95469",
+        "src/proxy/lattice_geometry_packet.h": "36b2ac9d2dbe2e907a0ed3ac5b6cf6084496e302f9151accd6ab8939fd72571d",
+        "src/proxy/lattice_geometry_windows.h": "102209a8aa761f611f60e9668f6ccdceb747a9741be84b439b994fbed745f8e1",
+        "verification/analysis/test_lattice_geometry_packet.py": "6f254bc8a3828a16106c036b6c876126906853fc5b9210dda5d9c7aaa50c5a2f",
+        "verification/probe/lattice_geometry_packet_host.cpp": "c9a13c430857703243e3f53e45c60c04d7c1b35243e5bde56ee0abf9583a958e",
+        "verification/probe/lattice_state_fixture_build.py": "7fe1f9711b31e6f7c3906fb3aef7d09ad42cb408bef4c0f99a609a52e0c70b1d",
+        "verification/probe/lattice_observer_release_build.py": "2989d8f48865b0875018828803b5b09d4eb6310182ee693f951a3f2a2d1f6126",
+        "verification/probe/lattice_state_only_ownership_stubs.cpp": "589336a7bfa30a272fa93c234e90107ff232e0fcae3556b633b1d7c09b8ec724"
+      },
+      "backup_archive": "/tmp/x3-session-handoff-2026-09-21/lattice-payload-writer.tar.gz",
+      "backup_sha256": "1ca8250221a4b89c22753a6890d45cc508a9ab7e881932ec1919b1e48db6bf40",
+      "committed": false
+    },
+    "fog-density-screen": {
+      "worktree": "/tmp/x3-fog-finite-banks",
+      "branch": "investigate/fog-finite-banks",
+      "head": "e2270076dc68c01d586fe97ce4d97bfd6bc16ded",
+      "files": {
+        "tools/analysis/fog_density_runtime_screen.py": "488954aafdd6460708de9cb3037024692a77eab9a920a3a265f110a9665414bc",
+        "verification/analysis/test_fog_density_runtime_screen.py": "2079753bf908deff2705714a47c25d74125cca59aa51f28beccdb4013400e32a"
+      },
+      "backup_archive": "/tmp/x3-session-handoff-2026-09-21/fog-density-screen.tar.gz",
+      "backup_sha256": "14792d0254de1b0e1983e90c2d0bf93878efa1ddff682ee19015c48f663d5101",
+      "committed": false
+    }
+  },
+  "local_backup": "/tmp/x3-session-handoff-2026-09-21",
+  "all_agents_quiescing_for_handoff": true
+}

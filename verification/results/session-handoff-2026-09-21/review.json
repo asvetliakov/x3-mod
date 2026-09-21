@@ -1,0 +1,14 @@
+{
+  "reviewer": "review_session_handoff",
+  "verdict": "No material correction found",
+  "checks": [
+    "three uncommitted pending worktree heads/branches and file hashes match",
+    "other14fog preview files already tracked on main; only2newdensity files pending",
+    "handoff local links and5durable contracts exist",
+    "accepted/paused/closed decisions and current evidence limits preserved",
+    "16pending source files match3localbackup archives"
+  ],
+  "all_task_agents_stopped": true,
+  "active_wine_build_or_experiment": false,
+  "new_candidate_or_install": false
+}

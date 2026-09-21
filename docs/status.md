@@ -42,6 +42,9 @@ files remain valid for rollback under
 The affected launch dry-run passed; no game was launched by the agent. The
 completed Run56 command is archived. Future runs omit CrossOver debug tracing.
 
+All task agents and executions are stopped at the session boundary.
+Session-limit continuation and pending worktrees: [handoff 2026-09-21](handoff-2026-09-21.md).
+
 ## Current work and pending acceptance
 
 - **Media accepted:** Run200 identifies the intended DLL and enables the ID2 skip.
@@ -69,8 +72,8 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   is now close to the user’s target; one modest increase in patchiness/internal
   contrast now has a reviewed two-view preview, with modestly clearer weak edges.
   The fixed global 64-step transport screen fails accuracy/temporal gates; its
-  expensive corner-cache route is closed. A cheaper stored-density representation
-  is being designed.
+  expensive corner-cache route is closed. The cheaper stored-density experiment is written,
+  with independent source review and numerical execution still pending.
   No production integrator or new fog build is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
@@ -89,7 +92,11 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   observer now passes 421 checks and independent review. The isolated game-call
   adapter passes 389 checks plus the 158-check ABI regression. Ownership pin lifecycle and paired copying pass 386 checks plus the 421-check
   manual regression. The F8 payload reader/collector passes 47 host tests and review. Capture
-  Release/Reset accounting and F8 attachment remain to integrate. No repeat
+  Release/Reset accounting and F8 attachment remain to integrate. The first
+  ownership-on Capture fixture passes direct/deferred retirement but crashes
+  restoring a shader in the routed case; the wrapper/shadow lifetime contract
+  has been diagnosed; its fix is not implemented. This is a standalone fixture,
+  not a game run. No repeat
   flight or renderer correction is selected.
   [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.

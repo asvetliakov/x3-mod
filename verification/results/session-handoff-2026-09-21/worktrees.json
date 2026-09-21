@@ -1,0 +1,1108 @@
+{
+  "count": 77,
+  "purpose": "Read-only handoff inventory; old dirty branches are not automatically pending integrations. No cleanup performed.",
+  "worktrees": [
+    {
+      "path": "/Users/asvetl/x3-mod",
+      "head": "36860cb444ad4c13784a378464487abb8cb5aa56",
+      "branch": "refs/heads/main",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M docs/status.md",
+        "?? verification/results/session-handoff-2026-09-21/"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-collide-query-phases",
+      "head": "405f6715a1fcf9d8166a2d2debd7ae12c6eda76a",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M  CMakeLists.txt",
+        "M  docs/architecture/platform-portability.md",
+        "A  docs/verification/collide-query-phases.md",
+        "M  src/proxy/collide_memo.cpp",
+        "M  src/proxy/collide_memo.h",
+        "A  src/proxy/collide_query_phases.cpp",
+        "A  src/proxy/collide_query_phases.h",
+        "A  src/proxy/collide_query_phases_core.h",
+        "M  tools/manage.py",
+        "A  verification/analysis/test_collide_query_phases.py",
+        "M  verification/probe/build_collide_memo.py",
+        "A  verification/probe/build_collide_query_phases.py",
+        "M  verification/probe/check_no_x87.py",
+        "M  verification/probe/collide_memo_fixture.cpp",
+        "A  verification/probe/collide_query_phases_fixture.cpp",
+        "A  verification/probe/collide_query_phases_host.cpp",
+        "A  verification/probe/run_collide_query_phases.py",
+        "A  verification/probe/verify_collide_query_phases.py",
+        "?? verification/results/bottle-X3/collide-query-phases-first-rejected-stderr.txt",
+        "?? verification/results/bottle-X3/collide-query-phases-first-rejected.json",
+        "?? verification/results/bottle-X3/collide-query-phases-first-rejected.txt",
+        "?? verification/results/bottle-X3/collide-query-phases-stack-witness-stderr.txt",
+        "?? verification/results/bottle-X3/collide-query-phases-stack-witness.json",
+        "?? verification/results/bottle-X3/collide-query-phases-stack-witness.txt"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-collision-mode-ceiling",
+      "head": "59b907fd8d0c9b3f3bd4093f8e74f339ce635174",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-collision-owned-replay",
+      "head": "c99984b8fc5e798d2c289a45b0d2226f5c5696d4",
+      "branch": "refs/heads/experiment/collision-owned-replay-2026-09-20",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-collision-shared-extract",
+      "head": "56d1a307fe598c2338febe9ddb9d699fca88816d",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-fog-all-families",
+      "head": "fd64017207dacafa63999f5ea9e7e9f7dd78b16a",
+      "branch": "refs/heads/feat/fog-all-families",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-fog-card-replacement",
+      "head": "e42232c32698a2e213324c8783dcd89f3e4ebab7",
+      "branch": "refs/heads/work/fog-card-replacement",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/proxy/capture.cpp",
+        " A src/proxy/fog_card_mask.h",
+        " A src/proxy/fog_card_match.h",
+        " A src/proxy/fog_card_policy.h",
+        " M src/proxy/motion_output.cpp",
+        " M src/proxy/motion_output.h",
+        " M src/proxy/motion_output_fog_inc.h",
+        " M src/renderer/fog_pass.h",
+        " M tools/manage.py",
+        " M verification/analysis/test_capture_bloom_lifetime.py",
+        " M verification/analysis/test_comparison_hotkeys.py",
+        " A verification/analysis/test_fog_cards.py",
+        " M verification/analysis/test_motion_wrap_states.py",
+        " M verification/analysis/test_volumetric_fog.py",
+        " M verification/probe/capture_bloom_lifetime_fixture.cpp",
+        " A verification/probe/fog_card_motion_cases_inc.h",
+        " A verification/probe/fog_card_motion_mock.h",
+        " M verification/probe/fog_pass_fixture.cpp",
+        " M verification/probe/linear_material_live_fixture.cpp",
+        " M verification/probe/run_fog_pass.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-cut-warmup",
+      "head": "3e648822b2698047a916d3a981419e0646099f68",
+      "branch": "refs/heads/fix/fog-cut-warmup",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-fog-decode.1slhgq",
+      "head": "63fcc747bcc2dd2ef3907e3fd9f224be346bc284",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/renderer/fog_field_assets.cpp",
+        " M verification/analysis/test_fog_field_assets.py",
+        " M verification/probe/fog_field_assets_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-field-assets",
+      "head": "21e50802dafec95685c730a62305cd1b932137da",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M README.md",
+        "?? cmake/FogField.cmake",
+        "?? cmake/fog_field_assets.rc.in",
+        "?? src/renderer/fog_field_assets.cpp",
+        "?? src/renderer/fog_field_assets.h",
+        "?? tools/build/bake_fog_fields.py",
+        "?? tools/fog_field_recipe.py",
+        "?? verification/analysis/test_fog_field_assets.py",
+        "?? verification/probe/fog_field_assets_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-finite-banks",
+      "head": "e2270076dc68c01d586fe97ce4d97bfd6bc16ded",
+      "branch": "refs/heads/investigate/fog-finite-banks",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? tools/analysis/fog_analytic64_screen.py",
+        "?? tools/analysis/fog_banks_replay.py",
+        "?? tools/analysis/fog_connected_preview.py",
+        "?? tools/analysis/fog_density_runtime_screen.py",
+        "?? tools/analysis/fog_mass_column_screen.py",
+        "?? tools/analysis/fog_mass_detail_preview.py",
+        "?? tools/analysis/fog_mass_detail_refinement.py",
+        "?? tools/analysis/fog_sector_patches_preview.py",
+        "?? verification/analysis/test_fog_analytic64_screen.py",
+        "?? verification/analysis/test_fog_banks_replay.py",
+        "?? verification/analysis/test_fog_connected_preview.py",
+        "?? verification/analysis/test_fog_density_runtime_screen.py",
+        "?? verification/analysis/test_fog_mass_column_screen.py",
+        "?? verification/analysis/test_fog_mass_detail_preview.py",
+        "?? verification/analysis/test_fog_mass_detail_refinement.py",
+        "?? verification/analysis/test_fog_sector_patches_preview.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-patchy-replay",
+      "head": "c1b9668d2d4a4e6f4d4f018e5ec9f510811a0fda",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? tools/analysis/fog_family_volume_policy.py",
+        "?? tools/analysis/fog_patchy_appearance.py",
+        "?? tools/analysis/fog_patchy_feasibility.py",
+        "?? tools/analysis/fog_patchy_replay.py",
+        "?? tools/analysis/fog_volume_support.py",
+        "?? tools/analysis/fog_warped_support.py",
+        "?? verification/results/fog-family-volume-policy/",
+        "?? verification/results/fog-patchy-appearance/",
+        "?? verification/results/fog-patchy-feasibility/",
+        "?? verification/results/fog-patchy-replay/",
+        "?? verification/results/fog-volume-support/",
+        "?? verification/results/fog-warped-support/"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-prefix-reconstruction",
+      "head": "edd0fc5ab1ef0b1713e0efb4d716852f404000eb",
+      "branch": "refs/heads/investigate/fog-prefix-reconstruction",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? tools/analysis/fog_prefix_replay.py",
+        "?? verification/analysis/test_fog_prefix_replay.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-proxy-integration",
+      "head": "21e50802dafec95685c730a62305cd1b932137da",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/proxy/capture.cpp",
+        " M src/proxy/capture_state.h",
+        " M src/proxy/motion_output.cpp",
+        " M src/proxy/motion_output.h",
+        " M src/proxy/motion_output_fog_inc.h",
+        " M src/renderer/fog_pass.h",
+        " M tools/manage.py",
+        " M verification/analysis/test_fog_cards.py",
+        " M verification/analysis/test_sector_background.py",
+        " M verification/analysis/test_volumetric_fog.py",
+        " M verification/probe/fog_card_motion_cases_inc.h",
+        " M verification/probe/fog_card_motion_mock.h",
+        " M verification/probe/linear_material_live_fixture.cpp",
+        " M verification/probe/sector_background_context_host.cpp",
+        "?? src/proxy/fog_sector_policy.h",
+        "?? src/proxy/lattice_state_capture.h",
+        "?? src/proxy/lattice_state_policy.h",
+        "?? src/renderer/fog_field_assets.h",
+        "?? src/renderer/fog_volume_math.h",
+        "?? verification/analysis/test_fog_route_bridge.py",
+        "?? verification/analysis/test_fog_sector_policy.py",
+        "?? verification/probe/fog_route_bridge.cpp",
+        "?? verification/probe/fog_route_bridge.md",
+        "?? verification/probe/fog_route_bridge_build.py",
+        "?? verification/probe/fog_route_bridge_check.py",
+        "?? verification/probe/fog_route_owner_inc.h"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-renderer-production",
+      "head": "21e50802dafec95685c730a62305cd1b932137da",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/fog/fog_composite_ps.hlsl",
+        " M src/fog/fog_march_ps.hlsl",
+        " M src/renderer/fog_composite_program_inc.h",
+        " M src/renderer/fog_march_program_inc.h",
+        " M src/renderer/fog_pass.cpp",
+        " M src/renderer/fog_pass.h",
+        " M verification/probe/build_fog_pass.sh",
+        " M verification/probe/run_fog_pass.py",
+        " M verification/results/fog-composite-program.json",
+        " M verification/results/fog-march-program.json",
+        "?? src/fog/fog_field_inc.h",
+        "?? src/renderer/fog_volume_math.h",
+        "?? verification/analysis/test_fog_spatial_reference.py",
+        "?? verification/analysis/test_fog_spatial_timing.py",
+        "?? verification/probe/fog_spatial_build.py",
+        "?? verification/probe/fog_spatial_fixture.cpp",
+        "?? verification/probe/fog_spatial_fixture.md",
+        "?? verification/probe/fog_spatial_math_fixture.cpp",
+        "?? verification/probe/fog_spatial_reference.py",
+        "?? verification/probe/fog_spatial_run.py",
+        "?? verification/probe/fog_spatial_state_inc.h",
+        "?? verification/probe/fog_spatial_timing.md",
+        "?? verification/probe/fog_spatial_timing_build.py",
+        "?? verification/probe/fog_spatial_timing_fixture.cpp",
+        "?? verification/probe/fog_spatial_timing_inc.h",
+        "?? verification/probe/fog_spatial_timing_prepare.py",
+        "?? verification/probe/fog_spatial_timing_run.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-sector-diagnostic",
+      "head": "e42232c32698a2e213324c8783dcd89f3e4ebab7",
+      "branch": "refs/heads/work/fog-sector-diagnostic",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/proxy/capture.cpp",
+        " M tools/manage.py",
+        "?? src/proxy/sector_background.h",
+        "?? verification/analysis/test_sector_background.py",
+        "?? verification/probe/sector_background_context_host.cpp",
+        "?? verification/probe/sector_background_host.cpp",
+        "?? verification/probe/sector_background_memory.h"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-sequence-inputs",
+      "head": "3f12dc15304a98597c662ba574babc6dd631d49d",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-fog-sequence-runtime",
+      "head": "b533380c5ea3e1569c3fae7b323332ed3bdb5825",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-fog-temporal-replay",
+      "head": "63fcc747bcc2dd2ef3907e3fd9f224be346bc284",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? tools/analysis/fog_temporal_replay.py",
+        "?? verification/analysis/test_fog_temporal_replay.py",
+        "?? verification/results/fog-temporal-replay/"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-fog-volume-gpu",
+      "head": "83435ce7245cae5aff5b519fcbb18a4e6bfa6dad",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-lattice-capture-lifecycle",
+      "head": "e85ecc41382beae5e226002bf97ecbba36c5c694",
+      "branch": "refs/heads/investigate/lattice-capture-lifecycle",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/proxy/capture.cpp",
+        " M src/proxy/capture.h",
+        "?? verification/probe/lattice_capture_lifecycle_abi.h",
+        "?? verification/probe/lattice_capture_lifecycle_check.py",
+        "?? verification/probe/lattice_capture_lifecycle_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-coverage-oracle",
+      "head": "01de129c288cf90827af07f0532b073849688e22",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? tools/analysis/lattice_coverage_metrics.py",
+        "?? tools/analysis/lattice_coverage_oracle.py",
+        "?? tools/analysis/lattice_rgb_admission.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-display-replay",
+      "head": "c1b9668d2d4a4e6f4d4f018e5ec9f510811a0fda",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? tools/analysis/taa_lattice_display_replay.py",
+        "?? verification/results/lattice-display-replay/"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-flight-hook",
+      "head": "157aa4897219739eae42ae0e79bbe18635a82367",
+      "branch": "refs/heads/investigate/lattice-flight-hook",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/ownership/clone_upload_abi.cpp",
+        " M src/ownership/clone_upload_abi.h",
+        " M verification/probe/lattice_upload_abi_check.py",
+        " M verification/probe/lattice_upload_abi_fixture.cpp",
+        "?? src/proxy/lattice_upload_hook.cpp",
+        "?? src/proxy/lattice_upload_hook.h",
+        "?? verification/probe/lattice_upload_hook_build.py",
+        "?? verification/probe/lattice_upload_hook_check.py",
+        "?? verification/probe/lattice_upload_hook_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-flight-lifecycle",
+      "head": "89e035fc604b5aebc0d71c37049b8099ca6c0215",
+      "branch": "refs/heads/investigate/lattice-flight-lifecycle",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/ownership/clone_upload_core.h",
+        " M src/ownership/clone_upload_observer.h",
+        " M src/ownership/clone_upload_observer_inc.h",
+        "?? verification/probe/lattice_upload_lifecycle_check.py",
+        "?? verification/probe/lattice_upload_lifecycle_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-gpu-witness",
+      "head": "e606acc4121c6ccd2451774e767b4c608e173b4b",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-lattice-observer-guard",
+      "head": "3d65afb9b6fe03860600f9ae2bd156ad9463ab19",
+      "branch": "refs/heads/fix/lattice-observer-guard",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-lattice-observer-release",
+      "head": "bc53959c9da9420b5bfcba32448e4ba24f8dc210",
+      "branch": "refs/heads/probe/lattice-observer-release",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-lattice-payload-reader",
+      "head": "0fd5945585261e18113f678e63799d912aad552b",
+      "branch": "refs/heads/investigate/lattice-payload-reader",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M tools/analysis/snapshot_x3_run.py",
+        " M verification/analysis/test_snapshot_x3_run.py",
+        " M verification/probe/lattice_state_packet.py",
+        "?? verification/analysis/test_lattice_payload_packet.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-payload-writer",
+      "head": "75f04dde5cf1aeb5f507bf4cecb500513013b878",
+      "branch": "refs/heads/investigate/lattice-payload-writer",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/proxy/lattice_state_capture.cpp",
+        " M src/proxy/lattice_state_capture.h",
+        " M verification/probe/lattice_observer_release_build.py",
+        " M verification/probe/lattice_state_fixture_build.py",
+        "?? src/proxy/lattice_geometry_packet.h",
+        "?? src/proxy/lattice_geometry_windows.h",
+        "?? verification/analysis/test_lattice_geometry_packet.py",
+        "?? verification/probe/lattice_geometry_packet_host.cpp",
+        "?? verification/probe/lattice_state_only_ownership_stubs.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-state-observation",
+      "head": "4d19f2f6dd780d320d8ec45a5e5a2760930afd9e",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M CMakeLists.txt",
+        " M docs/architecture/platform-portability.md",
+        " M docs/architecture/taa-lattice-crawl.md",
+        " M src/proxy/capture.cpp",
+        " M src/proxy/capture_state.cpp",
+        " M src/proxy/capture_state.h",
+        " M tools/analysis/snapshot_x3_run.py",
+        " M tools/manage.py",
+        " M verification/analysis/test_capture_bloom_lifetime.py",
+        " M verification/analysis/test_snapshot_x3_run.py",
+        " M verification/probe/capture_bloom_lifetime_fixture.cpp",
+        " M verification/probe/check_no_x87.py",
+        "?? src/proxy/lattice_state_capture.cpp",
+        "?? src/proxy/lattice_state_capture.h",
+        "?? src/proxy/lattice_state_policy.h",
+        "?? verification/analysis/test_check_no_x87.py",
+        "?? verification/analysis/test_lattice_state_capture.py",
+        "?? verification/probe/lattice_state_fixture.cpp",
+        "?? verification/probe/lattice_state_fixture_build.py",
+        "?? verification/probe/lattice_state_fixture_report.py",
+        "?? verification/probe/lattice_state_hook_host.cpp",
+        "?? verification/probe/lattice_state_packet.py",
+        "?? verification/probe/lattice_state_policy_host.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-upload-abi",
+      "head": "c147cd44604feed66909dc764a3cadb6d9405d2d",
+      "branch": "refs/heads/investigate/lattice-upload-abi",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? src/ownership/clone_upload_abi.cpp",
+        "?? src/ownership/clone_upload_abi.h",
+        "?? verification/probe/lattice_upload_abi_build.py",
+        "?? verification/probe/lattice_upload_abi_check.py",
+        "?? verification/probe/lattice_upload_abi_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-upload-prototype",
+      "head": "e2270076dc68c01d586fe97ce4d97bfd6bc16ded",
+      "branch": "refs/heads/investigate/lattice-upload-prototype",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/ownership/d3d9_ownership.cpp",
+        " M src/ownership/d3d9_ownership.h",
+        "?? src/ownership/clone_upload_abi.h",
+        "?? src/ownership/clone_upload_core.h",
+        "?? src/ownership/clone_upload_observer.h",
+        "?? src/ownership/clone_upload_observer_inc.h",
+        "?? verification/probe/lattice_upload_clone_check.py",
+        "?? verification/probe/lattice_upload_clone_fixture.cpp",
+        "?? verification/probe/lattice_upload_core_test.cpp",
+        "?? verification/probe/lattice_upload_host_test.py",
+        "?? verification/probe/lattice_upload_prototype.md",
+        "?? verification/probe/lattice_upload_readable_build.py",
+        "?? verification/probe/lattice_upload_readable_check.py",
+        "?? verification/probe/lattice_upload_readable_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lattice-vertex-points",
+      "head": "e606acc4121c6ccd2451774e767b4c608e173b4b",
+      "branch": "refs/heads/investigate/lattice-vertex-points",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": [
+        "?? verification/probe/lattice_vertex_point.md",
+        "?? verification/probe/lattice_vertex_point_build.py",
+        "?? verification/probe/lattice_vertex_point_check.py",
+        "?? verification/probe/lattice_vertex_point_fixture.cpp",
+        "?? verification/probe/lattice_vertex_point_inputs.py",
+        "?? verification/probe/lattice_vertex_point_layout.h",
+        "?? verification/probe/lattice_vertex_point_report.py",
+        "?? verification/probe/lattice_vertex_point_run.py",
+        "?? verification/probe/lattice_vertex_point_test.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-lazy-default",
+      "head": "ddf38fa301c0359afcb748b7a787635a2c09b3d1",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-lightmap-fade-default",
+      "head": "e42232c32698a2e213324c8783dcd89f3e4ebab7",
+      "branch": "refs/heads/work/lightmap-fade-default",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M tools/manage.py",
+        " M verification/analysis/test_hull_lightmap_gain.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-media-app-local-package",
+      "head": "c63f8cbd3d92cee55e705c2b52229b3d0c133236",
+      "branch": "refs/heads/feat/media-app-local-package",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-clock-bound",
+      "head": "60eae6c196bdc4a2310daa29646c4d5eb4d08cac",
+      "branch": "refs/heads/feat/media-clock-bound",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? src/media/owned_clock/",
+        "?? verification/analysis/test_media_clock_bound.py",
+        "?? verification/probe/media_clock_bound_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-media-connected-runtime",
+      "head": "96cbcac08e96714150b9a5f33355fd1bd0d630bb",
+      "branch": "refs/heads/feat/media-connected-runtime",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-destination-integration",
+      "head": "be65e6ff6fd66f2283965d175a379914c1d41cb1",
+      "branch": "refs/heads/feat/media-destination-integration",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-engine-adapter",
+      "head": "9ac49b48b8f53d1d3af704539efabb6b39701856",
+      "branch": "refs/heads/feat/media-engine-adapter",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-eof-graph-v1",
+      "head": "b1311caa808412001046d9d7086957076ac82ef7",
+      "branch": "refs/heads/diag/media-eof-events",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-graph-integer",
+      "head": "fff2dde0e780cd6bf1976049b03fa718b3ae7beb",
+      "branch": "refs/heads/diag/media-cold-miss-recovery",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-graph-provider",
+      "head": "5dd71d1e02960c009ff2758b800abc227edb2371",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": [
+        "?? verification/analysis/test_lav_graph_provider.py",
+        "?? verification/probe/prepare_lav_graph_provider.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-media-multigop-fixture",
+      "head": "5dd71d1e02960c009ff2758b800abc227edb2371",
+      "branch": "refs/heads/diag/media-strict-multigop",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-owned-adapter",
+      "head": "208d1e12c86fd26c53240a34a64486a253cac880",
+      "branch": "refs/heads/feat/media-owned-adapter",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-owned-clock",
+      "head": "0abe0a448399e73c800f49b5ba9237bf314ba0e3",
+      "branch": "refs/heads/diag/media-owned-clock",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-package-config",
+      "head": "e2fabd5eba51146056274d2fb34c55a44f8b7589",
+      "branch": "refs/heads/feat/media-package-config",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-playback-fixture",
+      "head": "e3edcb2348d01c5ce5dd51eb01ce13820b5be0ee",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-presentation-gate",
+      "head": "bc6b743279babc2e8ad93ba3337f1df47d300336",
+      "branch": "refs/heads/feat/media-presentation-gate",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-production-integration",
+      "head": "54b48c36f6d7d6aa846992fe5412fbaee5f26219",
+      "branch": "refs/heads/feat/media-production-integration",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-reentry-note",
+      "head": "378a33b82b3c79d91809ead45416da4c9f3cb07e",
+      "branch": "refs/heads/diag/media-eof-reference",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-root-wiring",
+      "head": "2e04fae956201cb797bc78fc3aaba59938b82811",
+      "branch": "refs/heads/feat/media-root-wiring",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-services-integration",
+      "head": "bebc9edd6c369b6e211fc7550d6062d7cc973723",
+      "branch": "refs/heads/feat/media-services-integration",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-startup-boundary",
+      "head": "230921986cf8ba493a6325ea664844f178e7fb13",
+      "branch": "refs/heads/feat/media-startup-boundary",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-surface-lease",
+      "head": "f13acc593483633aa2f3a0b6ce645315abd5b0c3",
+      "branch": "refs/heads/feat/media-surface-lease",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-media-worker-sample",
+      "head": "1384893a37ca3a5f5dc29cbc2854494ce3bf8695",
+      "branch": "refs/heads/diag/media-worker-dd-reuse",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-motion-lattice-replay",
+      "head": "405f6715a1fcf9d8166a2d2debd7ae12c6eda76a",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? tools/analysis/taa_lattice_bounded_loop.py",
+        "?? tools/analysis/taa_lattice_bounded_replay.py",
+        "?? tools/analysis/taa_lattice_window_replay.py",
+        "?? tools/analysis/taa_motion_lattice_replay.py",
+        "?? verification/results/lattice-bounded-loop/",
+        "?? verification/results/lattice-bounded-rotation/",
+        "?? verification/results/lattice-bounded-slow159/",
+        "?? verification/results/lattice-bounded-static/",
+        "?? verification/results/motion-lattice-replay/",
+        "?? verification/results/motion-lattice-slow159/",
+        "?? verification/results/motion-lattice-static/"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-next-flight-engine-lattice-docs",
+      "head": "ee72cecdfa33bf586160e548b0148ed71e652fc3",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-owned-media-provenance",
+      "head": "64cb8afb2e593fb0c09c6122aae27137cce10ff3",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": [
+        "M verification/probe/run_lav_packet_fixture.py",
+        "?? verification/analysis/test_owned_lav_provider.py",
+        "?? verification/probe/owned_lav_provider.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-owned-media-strict-provenance",
+      "head": "e3edcb2348d01c5ce5dd51eb01ce13820b5be0ee",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": [
+        "M verification/analysis/test_owned_lav_provider.py",
+        " M verification/probe/owned_lav_provider.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-r2-fov-oracle",
+      "head": "09cd76b8cc83f349f6df373f5be4eaa8e5e5bd4f",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-r7-light-phases",
+      "head": "e3bd3504e77d8d0865ab538e22def117f462d253",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M CMakeLists.txt",
+        " M docs/architecture/platform-portability.md",
+        " M docs/verification/sampling-profiler.md",
+        " M src/proxy/capture.cpp",
+        " M src/proxy/frame_phases.cpp",
+        " M tools/manage.py",
+        " M verification/probe/build_game_phase_cpu.py",
+        " M verification/probe/check_no_x87.py",
+        "?? src/proxy/light_phase_sites.h",
+        "?? src/proxy/light_phases.cpp",
+        "?? src/proxy/light_phases.h",
+        "?? src/proxy/light_phases_core.h",
+        "?? tools/analysis/summarize_light_phases.py",
+        "?? verification/analysis/test_light_phases.py",
+        "?? verification/probe/build_light_phase_cpu.py",
+        "?? verification/probe/light_phase_cpu_fixture.cpp",
+        "?? verification/probe/light_phases_host.cpp",
+        "?? verification/probe/run_light_phase_cpu.py",
+        "?? verification/probe/verify_light_phase_sites.py",
+        "?? verification/results/bottle-X3/light_phase_cpu.json"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-run54-fog-camera",
+      "head": "7aa546e32a9f0cbc93a9455aef5c56649d5ddc8d",
+      "branch": "refs/heads/fix/run54-fog-camera",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-run54-media-coexistence",
+      "head": "adbb60b4effbda8d77a6ef1b63d3ca940ac7a788",
+      "branch": "refs/heads/investigate/run54-media-coexistence",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-run56-integration",
+      "head": "85da89a8955a72b20d92f2309e4b9a4cb4dd325e",
+      "branch": "refs/heads/fix/id2-video-omission",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-run56-media-removal",
+      "head": "54b48c36f6d7d6aa846992fe5412fbaee5f26219",
+      "branch": "refs/heads/refactor/run56-remove-owned-media",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M CMakeLists.txt",
+        " M README.md",
+        " D src/media/lav_graph_inc.h",
+        " D src/media/lav_worker.cpp",
+        " D src/media/lav_worker.h",
+        " D src/media/owned_clock/clock.h",
+        " D src/media/owned_clock/exact_time.h",
+        " D src/media/package_config.cpp",
+        " D src/media/package_config.h",
+        " D src/media/playback_runtime.cpp",
+        " D src/media/playback_runtime.h",
+        " M src/proxy/capture.cpp",
+        " M src/proxy/loader.cpp",
+        " D src/proxy/media_destination.cpp",
+        " D src/proxy/media_destination.h",
+        " D src/proxy/media_destination_sites.h",
+        " D src/proxy/media_destination_state.h",
+        " D src/proxy/media_destination_stubs_inc.h",
+        " D src/proxy/media_engine_adapter.cpp",
+        " D src/proxy/media_engine_adapter.h",
+        " D src/proxy/media_engine_sites.h",
+        " D src/proxy/media_engine_stubs_inc.h",
+        " D src/proxy/media_playback.cpp",
+        " D src/proxy/media_playback.h",
+        " D src/proxy/media_presentation_gate.cpp",
+        " D src/proxy/media_presentation_gate.h",
+        " D src/proxy/media_presentation_gate_win32.cpp",
+        " D src/proxy/media_presentation_gate_win32.h",
+        " D src/proxy/media_root.cpp",
+        " D src/proxy/media_root.h",
+        " D src/proxy/media_services.cpp",
+        " D src/proxy/media_services.h",
+        " D src/proxy/media_startup.cpp",
+        " D src/proxy/media_startup.h",
+        " D src/proxy/media_startup_abi.h",
+        " M tools/manage.py",
+        " M tools/media_package.py",
+        " M verification/analysis/test_capture_device_creation.py",
+        " M verification/analysis/test_lattice_state_capture.py",
+        " A verification/analysis/test_loader_factory.py",
+        " M verification/analysis/test_media_package.py",
+        " M verification/analysis/test_media_worker_clock_fixture.py",
+        " A verification/historical/owned_media/README.md",
+        " R verification/analysis/test_lav_worker_pin_discovery.py -> verification/historical/owned_media/test_lav_worker_pin_discovery.py",
+        " R verification/analysis/test_lav_worker_transport.py -> verification/historical/owned_media/test_lav_worker_transport.py",
+        " R verification/analysis/test_media_clock_bound.py -> verification/historical/owned_media/test_media_clock_bound.py",
+        " R verification/analysis/test_media_destination.py -> verification/historical/owned_media/test_media_destination.py",
+        " R verification/analysis/test_media_engine_adapter.py -> verification/historical/owned_media/test_media_engine_adapter.py",
+        " R verification/analysis/test_media_owned_adapter.py -> verification/historical/owned_media/test_media_owned_adapter.py",
+        " R verification/analysis/test_media_presentation_gate.py -> verification/historical/owned_media/test_media_presentation_gate.py",
+        " R verification/analysis/test_media_root_wiring.py -> verification/historical/owned_media/test_media_root_wiring.py",
+        " R verification/analysis/test_media_services.py -> verification/historical/owned_media/test_media_services.py",
+        " R verification/analysis/test_media_startup.py -> verification/historical/owned_media/test_media_startup.py",
+        " A verification/historical/owned_media/test_media_worker_clock_replay.py",
+        " M verification/probe/build_motion_output.sh",
+        " M verification/probe/capture_device_creation_fixture.cpp",
+        " M verification/probe/media_startup_loader_fixture.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-run56-media-skip",
+      "head": "54b48c36f6d7d6aa846992fe5412fbaee5f26219",
+      "branch": "refs/heads/fix/run56-media-skip",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/proxy/media_cue.cpp",
+        " M src/proxy/media_cue.h",
+        " M src/proxy/media_cue_core.h",
+        " M src/proxy/media_cue_sites.h",
+        " M verification/analysis/test_media_cue.py",
+        " M verification/probe/game_phase_cpu_fixture.cpp",
+        " M verification/probe/media_cue_host.cpp",
+        "?? verification/probe/media_cue_skip_fixture_inc.h"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-run57-fog-replay",
+      "head": "85da89a8955a72b20d92f2309e4b9a4cb4dd325e",
+      "branch": "refs/heads/investigate/run57-fog-range",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? tools/analysis/fog_distance_replay.py",
+        "?? verification/analysis/test_fog_distance_replay.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-runner-housekeeping",
+      "head": "405f6715a1fcf9d8166a2d2debd7ae12c6eda76a",
+      "branch": "refs/heads/work/runner-housekeeping",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M docs/architecture/screen-emission-region.md",
+        " A verification/analysis/test_runner_housekeeping.py",
+        " A verification/analysis/test_verify_ownership.py",
+        " M verification/probe/ownership_integration_fallback_stub.cpp",
+        " M verification/probe/run_application_admission_abi.py",
+        " M verification/probe/run_ownership_integration_fallback.py",
+        " M verification/probe/verify_ownership.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-runner-housekeeping-82",
+      "head": "82f4e47be462bf9417eaf8ab875da1b1febb8ac0",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M verification/analysis/test_depth_runner_provenance.py",
+        " M verification/analysis/test_object_lifetime_runner.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-sector-fog-census",
+      "head": "405f6715a1fcf9d8166a2d2debd7ae12c6eda76a",
+      "branch": null,
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "?? docs/reverse-engineering/sector-fog-census.csv",
+        "?? docs/reverse-engineering/sector-fog-census.md",
+        "?? tools/analysis/sector_fog_census.py"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-sector-fog-density-policy",
+      "head": "405f6715a1fcf9d8166a2d2debd7ae12c6eda76a",
+      "branch": "refs/heads/work/sector-fog-density-policy",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/proxy/capture.cpp",
+        " M src/proxy/sector_background.h",
+        " A src/renderer/sector_fog_density.h",
+        " M verification/analysis/test_sector_background.py",
+        " M verification/probe/sector_background_context_host.cpp",
+        " A verification/probe/sector_fog_density_host.cpp"
+      ]
+    },
+    {
+      "path": "/private/tmp/x3-spatial-fog-shafts",
+      "head": "3fb8f9ef1fe06334a0521c957de104e1f61ee162",
+      "branch": "refs/heads/feat/spatial-fog-shafts",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": false,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-submission-attribution",
+      "head": "446ec38f22e2d33ecb89e67615ddf0dc7dcd1bef",
+      "branch": "refs/heads/experiment/submission-attribution-2026-09-20",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": []
+    },
+    {
+      "path": "/private/tmp/x3-taa-heuristics-default-off",
+      "head": "a5c1a06d5feba5e0e9caf12789d6f6660905c3e3",
+      "branch": "refs/heads/fix/taa-heuristics-default-off",
+      "locked": false,
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": [
+        "M src/proxy/capture.cpp",
+        " M src/proxy/motion_output.h",
+        " M tools/manage.py",
+        "?? verification/analysis/test_motion_cut_defaults.py"
+      ]
+    },
+    {
+      "path": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a505bb9b339475fd9",
+      "head": "e0b03f15de457bdfe5495ec624b0505fabb76d86",
+      "branch": "refs/heads/worktree-agent-a505bb9b339475fd9",
+      "locked": "claude agent agent-a505bb9b339475fd9 (pid 51275 start Fri Sep 18 19:21:57 2026)",
+      "exists": true,
+      "head_is_ancestor_of_main": true,
+      "dirty_entries": []
+    }
+  ]
+}
