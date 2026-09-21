@@ -1226,3 +1226,10 @@ this screen. Compact results:
 [summary](../../verification/results/fog-density-runtime-screen/summary.json),
 [report](../../verification/results/fog-density-runtime-screen/report.md);
 full report and images stay local under `/tmp/x3-fog-density-runtime-screen`.
+
+Addendum, same day: the user inspected the four images and accepts the appearance
+("okay for me, don't see any differences between columns"). The .001 quadrature
+gate is below display resolution; the orchestrator rescaled the runtime accuracy
+gate to half a display code (T p99 ≤ .002, max ≤ .003, temporal ≤ .003), which
+the measured run passes. The route is reopened for a production integration
+design; no shader, build or game execution yet.
